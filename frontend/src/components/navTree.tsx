@@ -91,6 +91,8 @@ const TECH_ROLES: EmployeeRole[] = ['TECHNICAL', 'SERVICE_MANAGER']
 
 // قرار (ع) 10-09: عامل الغسل قائمته مقفلة على غسل السيارات + دوامه وتقييمه.
 export const CAR_WASHER_NAV = ['/', '/car-wash', '/attendance', '/leaves', '/my-ranking', '/privacy-policy']
+// قرار (ع) 10-10: مطوّر الخدمات — يكتشف خدمات جديدة ويطوّر الموجودة (دراسات الخدمات).
+export const SERVICE_DEVELOPER_NAV = ['/', '/service-studies', '/attendance', '/leaves', '/my-ranking', '/my-work', '/privacy-policy']
 
 const TECHNICIAN_NAV = [
   '/', '/attendance', '/leaves', '/my-ranking', '/my-tasks', '/my-extra-tasks', '/my-inventory', '/my-achievements', '/my-work', '/privacy-policy',
@@ -111,6 +113,7 @@ export const navItems: NavItem[] = [
   // ترتيب (ع) 10-04: المتابعة والإجراءات وماتركس بند واحد «مكتب المدير» —
   // ينفتح على الثلاثة واحنا نختار.
   { to: '/?board=desk', label: '🏛️ مكتب المدير', icon: icon('M3 21h18M5 21V8l7-5 7 5v13M9 21v-6h6v6'), roles: ['ADMIN'] },
+  { to: '/service-studies', label: '🧪 دراسات الخدمات', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M9 3h6M10 3v6L4.5 19a1.5 1.5 0 0 0 1.3 2h12.4a1.5 1.5 0 0 0 1.3-2L14 9V3"/></svg>, roles: ['SERVICE_DEVELOPER'] },
   { to: '/car-wash', label: '🧽 غسل السيارات', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M5 17h14l-1.5-6h-11z"/><circle cx="8" cy="18" r="1.5"/><circle cx="16" cy="18" r="1.5"/><path d="M9 7c0-1 1-2 1-3M13 7c0-1 1-2 1-3"/></svg>, roles: ['CAR_WASHER'] },
   { to: '/attendance', label: 'جدول دوامي', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg> },
   // ⚠️ مهامي الإضافية بلا قيد دور ولا صلاحية — هاي **مهام الموظف
@@ -827,6 +830,8 @@ export function isNavVisible(item: NavItem, ctx: NavContext, unitGranted = false
     // الفني العادي: قائمة مقفلة على شغله. العنصر الي إله رابط (مو
     // مجموعة) لازم يكون بالقائمة المسموحة، أو ينفتح بصلاحية منحها
     // المدير بيده — مو بصلاحية جات تلقائياً مع الدور.
+    // مطوّر الخدمات: قائمته مقفلة، وأي شي ينمنحله صراحةً يطلع (قاعدة المنح فوك)
+    if (role === 'SERVICE_DEVELOPER' && !item.children && !item.divider && !SERVICE_DEVELOPER_NAV.includes((item.to || '').split('?')[0])) return false
     if (role === 'CAR_WASHER' && !item.children && !item.divider && !CAR_WASHER_NAV.includes((item.to || '').split('?')[0])) return false
     if (isPlainTechnician && !item.children && !item.divider && !unitGranted) {
       const path = (item.to || '').split('?')[0]

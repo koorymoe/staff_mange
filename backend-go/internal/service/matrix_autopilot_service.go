@@ -120,6 +120,8 @@ func (s *MatrixAutopilotService) runActions(now time.Time) int {
 		func() (int, error) { return s.afterInventory(today, dayStart) },
 		func() (int, error) { return s.monitorBacklog(today, dayStart) },
 		func() (int, error) { return s.internalNoInvoice(today, dayStart) },
+		func() (int, error) { return s.projectIdleToday(today, dayStart) },
+		func() (int, error) { return s.projectOverLimit(today, dayStart) },
 	}
 	for _, step := range steps {
 		c, err := step()

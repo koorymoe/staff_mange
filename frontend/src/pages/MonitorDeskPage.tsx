@@ -40,8 +40,9 @@ const AttendanceClaims = lazy(() => import('../components/AttendanceClaims'))
 const PeriodicRatings = lazy(() => import('../components/StaffRating').then((m) => ({ default: m.PeriodicRatings })))
 const WorkplaceIssuesPage = lazy(() => import('./WorkplaceIssuesPage'))
 const ProjectPaymentsPage = lazy(() => import('./ProjectPaymentsPage'))
+const ProjectDelaysPanel = lazy(() => import('../components/ProjectDelaysPanel'))
 
-type SectionId = 'eyes' | 'ratings' | 'scores' | 'peer' | 'wissues' | 'inbox' | 'issues' | 'crew' | 'quality' | 'invoices' | 'gps' | 'inventory' | 'missions' | 'board' | 'projects'
+type SectionId = 'eyes' | 'ratings' | 'scores' | 'peer' | 'wissues' | 'inbox' | 'issues' | 'crew' | 'quality' | 'invoices' | 'gps' | 'inventory' | 'missions' | 'board' | 'projects' | 'delays'
 
 interface Section {
   id: SectionId
@@ -70,6 +71,8 @@ const SECTIONS: Section[] = [
   // «ما تخلي وحدة هيج، ماريد أزيد ازدحامها».
   // قرار (ع) 10-08: «فلوس المشاريع» صارت تدقيق مشاريع بالمكتب — من البداية لحد ما المشرف يستلم الفلوس ويگول تم.
   { id: 'projects', label: 'تدقيق المشاريع', icon: '🏗️', todo: 'كل مشروع من البداية لحد ما المشرف يستلم الفلوس ويگول تم' },
+  // قرار (ع) 10-10: ليش المشروع متأخر ومنو ما اشتغل اليوم
+  { id: 'delays', label: 'تأخير المشاريع', icon: '⏱️', todo: 'منو تجاوز حد المرحلة وليش، ومنو ما اشتغل اليوم' },
   { id: 'gps', label: 'الجي بي اس', icon: '📡', todo: 'اشتراكات قربت تنتهي ومشاكل مفتوحة — عرض بلا تنفيذ' },
   // ⚠️ **متابعة** الجرد، مو شاشة `/inventory` مال أبو الكميات (الي
   // يضيف ويحذف أدوات ويوافق على الطلبات). المراقب يشوف منو جرد ومنو
@@ -215,6 +218,7 @@ export default function MonitorDeskPage() {
         {cur?.id === 'missions' && <MissionsPage />}
         {cur?.id === 'board' && <MonitorDashboard />}
         {cur?.id === 'projects' && <ProjectPaymentsPage />}
+        {cur?.id === 'delays' && <ProjectDelaysPanel />}
       </Suspense>
     </div>
   )

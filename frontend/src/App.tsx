@@ -283,7 +283,7 @@ function App() {
           <Route path="tech-showcase" element={<TechShowcasePage />} />
           <Route path="exhibitions" element={<RequirePermission permission="content_technician" anyOf={['unit_technicians']}><ExhibitionsPage /></RequirePermission>} />
           <Route path="product-requests" element={<RequirePermission permission="content_technician" anyOf={['unit_technicians']}><ProductRequestsPage /></RequirePermission>} />
-          <Route path="service-studies" element={<RequirePermission permission="content_technician" anyOf={['unit_technicians']}><ServiceStudiesPage /></RequirePermission>} />
+          <Route path="service-studies" element={<RequirePermission permission="content_technician" anyOf={['unit_technicians']} roles={['SERVICE_DEVELOPER']}><ServiceStudiesPage /></RequirePermission>} />
           {/* ⚠️ چانن كلهن `RequireAdmin` — يعني حتى بعد ما ينفتح
               الخادم للمصممة، الواجهة تحجبها قبل ما يوصل النداء.
               صارت الصلاحية نفسها الي يفحصها الخادم. */}

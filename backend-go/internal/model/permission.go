@@ -212,6 +212,7 @@ var RoleDefaultPermissions = map[string][]string{
 	"ENGINEER":          {"expenses", "quotation_manage_all", "project_management"},
 	"PROCUREMENT_ADMIN": {"procurement", "inventory", "tool_requests_approve"},
 	"CAR_WASHER":        {},
+	"SERVICE_DEVELOPER": {},
 	// ⚠️ بلا `view_bookings`: قراره الصريح إن المصممة **ما تشوف
 	// الحجوزات** — شغلها الفورمة والتصاميم والمهام الموجّهة لها.
 	"DESIGNER":        {"design_forms", "design_gallery", "unit_design"},
@@ -220,7 +221,7 @@ var RoleDefaultPermissions = map[string][]string{
 	// وإحصائياته وبس. وأي شي غير هذا ينمنح بالإيد من شاشة الصلاحيات.
 	"IT_SUPPORT": {"unit_it", "it_assets", "it_stats"},
 	// الإعلام: يشوف المشاريع المحوّلة إلهم بتفاصيلها حتى يصوّرون — وبس.
-	"MEDIA": {"media"},
+	"MEDIA":            {"media"},
 	"PUBLIC_RELATIONS": {"media", "unit_pr", "vip_manual_add"}, // قرار (ع) 10-08: يضيف شخصيات مهمة
 	// تقرير ٢: التقني كان يأخذ صلاحياته من migrate.go بس، وما يقبله الدور الثانوي.
 	"TECHNICAL": {"unit_technicians", "content_technician"},

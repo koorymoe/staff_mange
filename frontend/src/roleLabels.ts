@@ -41,6 +41,7 @@ export const ROLE_LABELS: Record<EmployeeRole, string> = {
   IT_SUPPORT: 'الدعم التقني',
   MEDIA: 'الإعلام',
   CAR_WASHER: 'عامل الغسل',
+  SERVICE_DEVELOPER: 'مطوّر خدمات',
   PUBLIC_RELATIONS: 'العلاقات العامة',
 }
 
@@ -66,6 +67,7 @@ const SHORT_LABELS: Partial<Record<EmployeeRole, string>> = {
   IT_SUPPORT: 'IT',
   MEDIA: 'إعلام',
   CAR_WASHER: 'غسل',
+  SERVICE_DEVELOPER: 'تطوير',
   PUBLIC_RELATIONS: 'علاقات عامة',
 }
 
@@ -140,6 +142,7 @@ export const ROLE_CHIP_COLORS: Record<EmployeeRole, { bg: string; text: string; 
   IT_SUPPORT: { bg: 'bg-slate-100', text: 'text-slate-700', dot: 'bg-slate-600' },
   MEDIA: { bg: 'bg-pink-100', text: 'text-pink-700', dot: 'bg-pink-600' },
   CAR_WASHER: { bg: 'bg-cyan-50', text: 'text-cyan-700', dot: 'bg-cyan-500' },
+  SERVICE_DEVELOPER: { bg: 'bg-fuchsia-50', text: 'text-fuchsia-700', dot: 'bg-fuchsia-500' },
   PUBLIC_RELATIONS: { bg: 'bg-fuchsia-100', text: 'text-fuchsia-700', dot: 'bg-fuchsia-600' },
 }
 
@@ -175,6 +178,7 @@ export const ROLE_GRADIENTS: Record<EmployeeRole, string> = {
   IT_SUPPORT: 'from-slate-500 to-slate-700',
   MEDIA: 'from-pink-500 to-rose-600',
   CAR_WASHER: 'from-cyan-500 to-sky-600',
+  SERVICE_DEVELOPER: 'from-fuchsia-500 to-purple-600',
   PUBLIC_RELATIONS: 'from-fuchsia-500 to-purple-600',
 }
 

@@ -38,6 +38,9 @@ type ProjectVerdict struct {
 	Status      string   `json:"status"` // OK | LATE | MISSED | ISSUE | NA
 	Problems    []string `json:"problems"`
 	Verdict     string   `json:"verdict"`
+	// قرار (ع) 10-10: تجاوز حد المرحلة؟ واشتغل عليه أحد اليوم؟
+	OverLimit   bool `json:"overLimit"`
+	WorkedToday bool `json:"workedToday"`
 }
 
 type ProjectPersonStat struct {
@@ -75,7 +78,50 @@ func (s *MatrixProjectService) limits() (map[string]int, map[string]float64) {
 		}
 		lim[st] = l
 	}
+	// قرار (ع) 10-10: الحد الي ثبّته المالك بإيده يغلب المتعلَّم
+	if manual, err := s.repo.ManualStageLimits(); err == nil {
+		for st, d := range manual {
+			lim[st] = d
+		}
+	}
 	return lim, med
+}
+
+// StageLimitRow حد كل مرحلة: المتعلَّم والوسيط واليدوي.
+type StageLimitRow struct {
+	Stage   string  `json:"stage"`
+	Learned int     `json:"learned"`
+	Median  float64 `json:"median"`
+	Manual  *int    `json:"manual"`
+}
+
+// StageLimits لشاشة «حدود المراحل».
+func (s *MatrixProjectService) StageLimits(stages []string) []StageLimitRow {
+	rows, _ := s.repo.StageDurations()
+	by := map[string][]float64{}
+	for _, r := range rows {
+		by[r.Stage] = append(by[r.Stage], r.Days)
+	}
+	manual, _ := s.repo.ManualStageLimits()
+	out := make([]StageLimitRow, 0, len(stages))
+	for _, st := range stages {
+		row := StageLimitRow{Stage: st, Learned: 7}
+		if v := by[st]; len(v) > 0 {
+			sort.Float64s(v)
+			m := v[len(v)/2]
+			row.Median = math.Round(m*10) / 10
+			row.Learned = int(math.Ceil(m * 1.5))
+			if row.Learned < 3 {
+				row.Learned = 3
+			}
+		}
+		if d, ok := manual[st]; ok {
+			d := d
+			row.Manual = &d
+		}
+		out = append(out, row)
+	}
+	return out
 }
 
 func (s *MatrixProjectService) judge(f repository.ProjectFacts, lim map[string]int, now time.Time) ProjectVerdict {
@@ -100,6 +146,7 @@ func (s *MatrixProjectService) judge(f repository.ProjectFacts, lim map[string]i
 		last = *f.LastActivityAt
 	}
 	v.IdleDays = int(now.Sub(last).Hours() / 24)
+	v.WorkedToday = f.LastActivityAt != nil && f.LastActivityAt.In(debriefLoc).Format("2006-01-02") == now.In(debriefLoc).Format("2006-01-02")
 	v.StageLimit = lim[f.Stage]
 	if v.StageLimit == 0 {
 		v.StageLimit = 7 // ماكو عينات بعد: أسبوع
@@ -113,6 +160,7 @@ func (s *MatrixProjectService) judge(f repository.ProjectFacts, lim map[string]i
 		v.Problems = append(v.Problems, "بلا مسؤول — محد متوجهله.")
 	}
 	if v.DaysInStage > v.StageLimit {
+		v.OverLimit = true
 		v.Problems = append(v.Problems, fmt.Sprintf("صارله %d يوم بمرحلة «%s» والمعتاد لحد %d.", v.DaysInStage, f.Stage, v.StageLimit))
 	}
 	if v.IdleDays >= 7 {

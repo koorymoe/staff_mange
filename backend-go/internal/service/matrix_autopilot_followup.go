@@ -725,3 +725,104 @@ func (s *MatrixAutopilotService) internalNoInvoice(today string, dayStart time.T
 	}
 	return n, nil
 }
+
+// ١٦. مسؤول مشاريع ما سوّى شي اليوم — طلب (ع) 10-10: «اريده يشوف اذا هذا
+// الموظف سوّا شي اليوم او لا». من الساعة ١ الظهر: تنبيه للمسؤول، وملخص للمراقب.
+func (s *MatrixAutopilotService) projectIdleToday(today string, dayStart time.Time) (int, error) {
+	if time.Now().In(debriefLoc).Hour() < 13 {
+		return 0, nil
+	}
+	duties := s.projectDuties()
+	idle := []string{}
+	n := 0
+	for owner, ps := range duties {
+		worked := false
+		names := []string{}
+		for _, p := range ps {
+			if p.WorkedToday {
+				worked = true
+			}
+			names = append(names, p.Name)
+		}
+		if worked || len(ps) == 0 {
+			continue
+		}
+		emp, name := owner, ps[0].OwnerName
+		idle = append(idle, fmt.Sprintf("%s (%d مشروع)", name, len(ps)))
+		msg := fmt.Sprintf("🤖 ماتركس — لحد هسه ما سوّيت أي شي اليوم على مشاريعك (%s). كوادرنا لازم تشتغل بأسرع ما يمكن — حرّك مشروع واحد على الأقل.", strings.Join(names, "، "))
+		if s.act(model.AiAction{Kind: model.AiActionProjectIdleToday, EntityType: "EMPLOYEE", EntityID: emp,
+			Period: today, TargetEmployeeID: &emp, TargetLabel: name,
+			Summary: fmt.Sprintf("ذكّر %s: ما اشتغل اليوم على %d مشروع", name, len(ps)),
+			Details: why(map[string]any{"projects": names})}, dayStart,
+			func() error { return s.notif.Create(emp, "AI_AUTOPILOT", msg) }) {
+			n++
+		}
+	}
+	if len(idle) == 0 {
+		return n, nil
+	}
+	monitors, err := s.actions.Monitors()
+	if err != nil {
+		return n, err
+	}
+	for _, id := range monitors {
+		mon := id
+		msg := fmt.Sprintf("🤖 ماتركس — ما اشتغلوا اليوم على مشاريعهم: %s. التفاصيل بـ«⏱️ تأخير المشاريع» بمكتب المراقب.", strings.Join(idle, "، "))
+		if s.act(model.AiAction{Kind: model.AiActionProjectIdleToday, EntityType: "MONITOR", EntityID: mon,
+			Period: today, TargetEmployeeID: &mon, TargetLabel: s.actions.EmployeeName(mon),
+			Summary: fmt.Sprintf("بلّغ المراقب: %d مسؤول ما اشتغل اليوم", len(idle)),
+			Details: why(map[string]any{"idle": idle})}, dayStart,
+			func() error { return s.notif.Create(mon, "AI_AUTOPILOT", msg) }) {
+			n++
+		}
+	}
+	return n, nil
+}
+
+// ١٧. مشروع تجاوز حد مرحلته وما انكتب سبب — المسؤول ينذكّر يومياً لحد ما
+// يكتب السبب، والمراقب يتبلّغ. بعد ما يكتب، التذكير يوقف.
+func (s *MatrixAutopilotService) projectOverLimit(today string, dayStart time.Time) (int, error) {
+	duties := s.projectDuties()
+	n := 0
+	noReason := []string{}
+	for owner, ps := range duties {
+		for _, p := range ps {
+			if !p.OverLimit || p.DelayReason != nil {
+				continue
+			}
+			emp, pid := owner, p.ID
+			noReason = append(noReason, fmt.Sprintf("«%s» عند %s (%d يوم والحد %d)", p.Name, p.OwnerName, p.DaysInStage, p.StageLimit))
+			msg := fmt.Sprintf("🤖 ماتركس — مشروع «%s» صارله %d يوم بمرحلة «%s» والحد %d. اكتب سبب التأخير من «إدارة المشاريع» وسرّع الشغل.", p.Name, p.DaysInStage, p.Stage, p.StageLimit)
+			if s.act(model.AiAction{Kind: model.AiActionProjectOverLimit, EntityType: "PROJECT", EntityID: pid,
+				Period: today, TargetEmployeeID: &emp, TargetLabel: p.OwnerName,
+				Summary: fmt.Sprintf("مشروع «%s» تجاوز حد المرحلة بلا سبب", p.Name),
+				Details: why(map[string]any{"stage": p.Stage, "days": p.DaysInStage, "limit": p.StageLimit})}, dayStart,
+				func() error { return s.notif.Create(emp, "AI_AUTOPILOT", msg) }) {
+				n++
+			}
+		}
+	}
+	if len(noReason) == 0 {
+		return n, nil
+	}
+	monitors, err := s.actions.Monitors()
+	if err != nil {
+		return n, err
+	}
+	shown := noReason
+	if len(shown) > 8 {
+		shown = shown[:8]
+	}
+	for _, id := range monitors {
+		mon := id
+		msg := fmt.Sprintf("🤖 ماتركس — %d مشروع تجاوز حد مرحلته وبلا سبب مكتوب: %s.", len(noReason), strings.Join(shown, "؛ "))
+		if s.act(model.AiAction{Kind: model.AiActionProjectOverLimit, EntityType: "MONITOR", EntityID: mon,
+			Period: today, TargetEmployeeID: &mon, TargetLabel: s.actions.EmployeeName(mon),
+			Summary: fmt.Sprintf("بلّغ المراقب: %d مشروع متأخر بلا سبب", len(noReason)),
+			Details: why(map[string]any{"projects": noReason})}, dayStart,
+			func() error { return s.notif.Create(mon, "AI_AUTOPILOT", msg) }) {
+			n++
+		}
+	}
+	return n, nil
+}

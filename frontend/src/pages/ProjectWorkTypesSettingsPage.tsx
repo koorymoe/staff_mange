@@ -3,11 +3,14 @@ import { api, type ProjectWorkType } from '../api'
 import { useSaveGuard } from '../useSaveGuard'
 import SaveError from '../components/SaveError'
 import { loadFailed } from '../netErrors'
+import StageLimitsEditor from '../components/StageLimitsEditor'
+import { useSession } from '../session'
 
 // إعدادات وحدة إدارة المشاريع — أنواع الأعمال ("نوع العمل") صارت قابلة
 // للإضافة والحذف براحة المدير، بدل قائمة ثابتة بالكود. أي نوع تضيفه هنا
 // يظهر فوراً بقائمة "نوع العمل" عند إنشاء/تعديل/فلترة المشاريع.
 export default function ProjectWorkTypesSettingsPage() {
+  const { employee } = useSession()
   // كل حفظ بهاي الشاشة يمر من هنا — الفشل ينعرض بدل ما ينبلع
   const guard = useSaveGuard()
   const [types, setTypes] = useState<ProjectWorkType[]>([])
@@ -84,6 +87,8 @@ export default function ProjectWorkTypesSettingsPage() {
           {types.length === 0 && <p className="text-slate-400">ما اكو أنواع أعمال مضافة بعد.</p>}
         </div>
       )}
+      {/* قرار (ع) 10-10: حدود المراحل — للمدير والمالك بس (المسار requireAdmin) */}
+      {(employee?.role === 'ADMIN' || employee?.actualRole === 'OWNER') && <div className="mt-6"><StageLimitsEditor /></div>}
     </div>
     </>
   )

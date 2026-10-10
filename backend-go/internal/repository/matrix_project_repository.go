@@ -44,6 +44,10 @@ type ProjectFacts struct {
 	LastActivityBy *string    `db:"lastActivityBy" json:"lastActivityBy"`
 	Touchers       int        `db:"touchers" json:"touchers"`
 	ChecklistCount int        `db:"checklistCount" json:"checklistCount"`
+	// قرار (ع) 10-10: آخر سبب تأخير انكتب للمرحلة الحالية
+	DelayReason   *string    `db:"delayReason" json:"delayReason"`
+	DelayReasonBy *string    `db:"delayReasonBy" json:"delayReasonBy"`
+	DelayReasonAt *time.Time `db:"delayReasonAt" json:"delayReasonAt"`
 }
 
 const projectFactsSQL = `
@@ -56,8 +60,12 @@ SELECT p.id, p.code, p.name, p.stage, p."workType", p."deliveryDate", p."created
        (p."contractPdfBase64" IS NOT NULL) AS "hasContract", (p."signedContractPdfBase64" IS NOT NULL) AS "hasSigned",
        (SELECT max(l."createdAt") FROM "ProjectStageLog" l WHERE l."projectId" = p.id) AS "stageSince",
        act."lastAt" AS "lastActivityAt", ae.name AS "lastActivityBy", COALESCE(act.n, 0) AS touchers,
-       (SELECT count(*) FROM "ProjectChecklist" c WHERE c."projectId" = p.id)::int AS "checklistCount"
+       (SELECT count(*) FROM "ProjectChecklist" c WHERE c."projectId" = p.id)::int AS "checklistCount",
+       dr.reason AS "delayReason", dre.name AS "delayReasonBy", dr."createdAt" AS "delayReasonAt"
 FROM "Project" p
+LEFT JOIN LATERAL (SELECT reason, "employeeId", "createdAt" FROM "ProjectDelayReason" d
+	WHERE d."projectId" = p.id AND d.stage = p.stage ORDER BY d."createdAt" DESC LIMIT 1) dr ON true
+LEFT JOIN "Employee" dre ON dre.id = dr."employeeId"
 LEFT JOIN "Employee" ce ON ce.id = p."createdByEmployeeId"
 LEFT JOIN "Employee" re ON re.id = p."responsibleEmployeeId"
 LEFT JOIN "Employee" se ON se.id = p."surveyorEmployeeId"
@@ -165,4 +173,20 @@ func (r *MatrixProjectRepository) StageDurations() ([]StageDuration, error) {
 		      FROM "ProjectStageLog" WHERE "createdAt" > now() - interval '180 days') x
 		WHERE nxt IS NOT NULL`)
 	return rows, err
+}
+
+// ManualStageLimits الحدود الي ثبّتها المالك بإيده (تغلب المتعلَّمة).
+func (r *MatrixProjectRepository) ManualStageLimits() (map[string]int, error) {
+	rows := []struct {
+		Stage string `db:"stage"`
+		Days  int    `db:"days"`
+	}{}
+	out := map[string]int{}
+	if err := r.db.Select(&rows, `SELECT stage, days FROM "ProjectStageLimit"`); err != nil {
+		return out, err
+	}
+	for _, x := range rows {
+		out[x.Stage] = x.Days
+	}
+	return out, nil
 }

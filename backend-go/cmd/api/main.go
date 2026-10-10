@@ -784,7 +784,9 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	// التقنيين تحديداً (المعارض/المنتجات/الخدمات) حتى ما تنفتح بالغلط لأي حد
 	// عنده content_technician من مكان ثاني (مواد التدريب/الموردين/المنتجات).
 	requireUnitTechnicians := middleware.RequirePermission(permissionRepo, employeeRepo, notificationRepo, "unit_technicians")
-	requireTechUnitOrProcurement := middleware.RequireRoleOrPermission(permissionRepo, employeeRepo, notificationRepo, []string{"PROCUREMENT_ADMIN"}, "unit_technicians")
+	requireTechUnitOrProcurement := middleware.RequireRoleOrPermission(permissionRepo, employeeRepo, notificationRepo, []string{"PROCUREMENT_ADMIN", "SERVICE_DEVELOPER"}, "unit_technicians")
+	// قرار (ع) 10-10: مطوّر الخدمات شغله دراسات الخدمات — يشوفها ويقترح ويرفع تقارير
+	requireServiceStudies := middleware.RequireRoleOrPermission(permissionRepo, employeeRepo, notificationRepo, []string{"SERVICE_DEVELOPER"}, "unit_technicians")
 	requireQuality := middleware.RequirePermission(permissionRepo, employeeRepo, notificationRepo, "quality_control")
 	requireProjectMgmtPerm := middleware.RequirePermission(permissionRepo, employeeRepo, notificationRepo, "project_management")
 	requireKpi := middleware.RequirePermission(permissionRepo, employeeRepo, notificationRepo, "kpi_management")
@@ -1581,8 +1583,8 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	mux.Handle("PUT /api/product-procurements/{id}/settle", middleware.Chain(http.HandlerFunc(productProcurementHandler.Settle), requireAuth, requireFund))
 
 	// وحدة التقنيين — إدارة الخدمات
-	mux.Handle("GET /api/service-studies", middleware.Chain(http.HandlerFunc(serviceStudyHandler.List), requireAuth, requireUnitTechnicians))
-	mux.Handle("POST /api/service-studies", middleware.Chain(http.HandlerFunc(serviceStudyHandler.Create), requireAuth, requireUnitTechnicians))
+	mux.Handle("GET /api/service-studies", middleware.Chain(http.HandlerFunc(serviceStudyHandler.List), requireAuth, requireServiceStudies))
+	mux.Handle("POST /api/service-studies", middleware.Chain(http.HandlerFunc(serviceStudyHandler.Create), requireAuth, requireServiceStudies))
 	mux.Handle("PUT /api/service-studies/{id}/assign", middleware.Chain(http.HandlerFunc(serviceStudyHandler.Assign), requireAuth, requireAdmin))
 	mux.Handle("POST /api/service-studies/{id}/reports", middleware.Chain(http.HandlerFunc(serviceStudyHandler.AddReport), requireAuth, requireTechUnitOrProcurement))
 	mux.Handle("PUT /api/service-studies/{id}/archive", middleware.Chain(http.HandlerFunc(serviceStudyHandler.Archive), requireAuth, requireAdmin))
@@ -2307,6 +2309,13 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	matrixProjectService := service.NewMatrixProjectService(repository.NewMatrixProjectRepository(db))
 	matrixAutopilotService.SetProjectDuties(matrixProjectService.Report)
 	matrixProjectHandler := handler.NewMatrixProjectHandler(matrixProjectService)
+	// ⏱️ تأخير المشاريع (قرار (ع) 10-10)
+	projectDelayHandler := handler.NewProjectDelayHandler(db, matrixProjectService)
+	mux.Handle("GET /api/projects/stage-limits", middleware.Chain(http.HandlerFunc(projectDelayHandler.StageLimits), requireAuth, requireAdmin))
+	mux.Handle("PUT /api/projects/stage-limits", middleware.Chain(http.HandlerFunc(projectDelayHandler.SetStageLimit), requireAuth, requireAdmin))
+	mux.Handle("POST /api/projects/{id}/delay-reason", middleware.Chain(http.HandlerFunc(projectDelayHandler.AddReason), requireAuth))
+	mux.Handle("GET /api/projects/my-delays", middleware.Chain(http.HandlerFunc(projectDelayHandler.MyDelays), requireAuth))
+	mux.Handle("GET /api/projects/delays", middleware.Chain(http.HandlerFunc(projectDelayHandler.Delays), requireAuth, requireMonitor))
 	mux.Handle("GET /api/ai/projects", middleware.Chain(http.HandlerFunc(matrixProjectHandler.Report), requireAuth, requireAdmin))
 	mux.Handle("GET /api/ai/projects/{id}", middleware.Chain(http.HandlerFunc(matrixProjectHandler.Chain), requireAuth, requireAdmin))
 

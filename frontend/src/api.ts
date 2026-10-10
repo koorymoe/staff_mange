@@ -115,6 +115,7 @@ export type EmployeeRole =
   | 'MEDIA'
   | 'PUBLIC_RELATIONS'
   | 'CAR_WASHER'
+  | 'SERVICE_DEVELOPER'
   | 'OWNER'
 
 export interface Employee {
@@ -3799,6 +3800,13 @@ export const api = {
     request<{ ok: boolean }>('/auth/command-password', {
       method: 'PUT', body: JSON.stringify({ newPassword, employeeId }),
     }),
+  getMyProjectDelays: () => request<ProjectDelay[]>('/projects/my-delays'),
+  getProjectDelays: () => request<ProjectDelay[]>('/projects/delays'),
+  addProjectDelayReason: (id: string, reason: string) =>
+    request<{ ok: boolean }>(`/projects/${id}/delay-reason`, { method: 'POST', body: JSON.stringify({ reason }) }),
+  getStageLimits: () => request<StageLimitRow[]>('/projects/stage-limits'),
+  setStageLimit: (stage: string, days: number | null) =>
+    request<StageLimitRow[]>('/projects/stage-limits', { method: 'PUT', body: JSON.stringify({ stage, days }) }),
   getMonthCompare: (months: string[]) => request<MonthStats[]>(`/stats-management/month-compare?months=${months.join(',')}`),
   getCommandAccounts: () =>
     request<{ id: string; name: string; username: string | null; setAt: string | null }[]>('/auth/command-accounts'),
@@ -5948,3 +5956,13 @@ export interface MonthStats {
   month: string; bookingsCreated: number; bookingsCompleted: number; bookingsCancelled: number; internalWorks: number
   projectsCreated: number; newCustomers: number; complaints: number; bookingsRevenue: number; projectsRevenue: number; expenses: number
 }
+
+// ═══ تأخير المشاريع (قرار (ع) 10-10) ═══
+export interface ProjectDelay {
+  id: string; code: string; name: string; stage: string; workType: string | null
+  ownerId: string; ownerName: string; daysInStage: number; stageLimit: number; idleDays: number
+  status: string; problems: string[]; verdict: string; overLimit: boolean; workedToday: boolean
+  lastActivityAt: string | null; lastActivityBy: string | null
+  delayReason: string | null; delayReasonBy: string | null; delayReasonAt: string | null
+}
+export interface StageLimitRow { stage: string; learned: number; median: number; manual: number | null }

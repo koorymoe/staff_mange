@@ -23,6 +23,8 @@ const (
 	AiActionPredictionNudge   = "PREDICTION_NUDGE"    // الموظف: توقّع ماتركس وافق عليه المدير
 	AiActionCrewRating        = "CREW_RATING"         // الليدر: خلّص حجز وما قيّم فنيّيه
 	AiActionAfterInventory    = "AFTER_INVENTORY"     // الفني: خلّص حجز ويا ليدر وما جرد عدّته بعده
+	AiActionProjectIdleToday  = "PROJECT_IDLE_TODAY"  // مسؤول مشاريع ما سوّى شي اليوم
+	AiActionProjectOverLimit  = "PROJECT_OVER_LIMIT"  // مشروع تجاوز حد مرحلته بلا سبب مكتوب
 	AiActionInternalNoInvoice = "INTERNAL_NO_INVOICE" // المراقب: أعمال داخلية خلصت وبلا فاتورة من إداري الكوادر
 	AiActionMonitorBacklog    = "MONITOR_BACKLOG"     // المراقب: بنود بالصندوق تنتظر حكمه من +٢٤ ساعة
 	// ── أفعال تنفيذية (المرحلة الثالثة) — كل وحدة بمفتاح المالك وتنرجع ──
@@ -61,6 +63,8 @@ var AiActionLabels = map[string]string{
 	AiActionAfterInventory:    "جرد العدّة بعد الحجز",
 	AiActionMonitorBacklog:    "بنود متأخرة بصندوق المراقب",
 	AiActionInternalNoInvoice: "أعمال داخلية بلا فاتورة",
+	AiActionProjectIdleToday:  "ما اشتغل اليوم على مشاريعه",
+	AiActionProjectOverLimit:  "مشروع تجاوز حد المرحلة",
 	AiActionAutoCrew:          "ماتركس كلّف كادر حجز باچر",
 	AiActionMonitorEscalate:   "تصعيد بنود المراقب للمدير",
 	AiActionToolReturn:        "تذكير بإرجاع أداة",

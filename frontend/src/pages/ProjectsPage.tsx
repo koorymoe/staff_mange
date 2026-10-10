@@ -4,6 +4,7 @@ import { api, apiRequest, type ProjectMoney } from '../api'
 import { useNavigate } from 'react-router-dom'
 import { useSession } from '../session'
 import LocationFields from '../components/LocationFields'
+import ProjectDelayBanner from '../components/ProjectDelayBanner'
 import { matches } from '../utils/search'
 import BookingCodeChip from '../components/BookingCodeChip'
 import SurveyPhotos from '../components/SurveyPhotos'
@@ -818,6 +819,7 @@ function ProjectCard({ p, canManage, onEdit, onMove, onReport, onDelete, onRefre
         {p.priority === 'عاجل جداً' && <span className="bg-red-600 text-white text-xs px-2 py-0.5 rounded-full animate-pulse">عاجل 🔥</span>}
         <span className="text-xs text-gray-400 font-normal">{p.code}</span>
       </h3>
+      {!isRejected && !isCompleted && <ProjectDelayBanner projectId={p.id} />}
 
       <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-2 mt-4">
         <Info icon="📞" value={p.phone} />
