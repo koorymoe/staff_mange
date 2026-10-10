@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { api, type RemoteTimer } from '../api'
 import { useSession } from '../session'
+import { pollVisible } from '../utils/poll'
 
 // ═══ عدّاد ساعات البيت بالشريط العلوي — بكل الشاشات ═══
 // (ع): «أريد عدّاد، أني من أشتغل أحسب وقتي». يطلع لصاحب صلاحية ساعات البيت
@@ -23,8 +24,7 @@ export default function RemoteTimerChip() {
     if (!allowed) return
     load()
     // تزامن كل دقيقة — لو شغّله من جهاز ثاني يبين هنا.
-    const id = window.setInterval(load, 60000)
-    return () => window.clearInterval(id)
+    return pollVisible(load, 60_000)
   }, [allowed, load])
   useEffect(() => {
     if (!timer?.running) return

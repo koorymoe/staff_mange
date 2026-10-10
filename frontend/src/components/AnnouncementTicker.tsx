@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { api, type Announcement } from '../api'
 import { isEnabled, SWITCH_ANNOUNCEMENTS } from '../systemSwitches'
+import { pollVisible } from '../utils/poll'
 
 /**
  * شريط الإعلانات المتحرك.
@@ -61,8 +62,8 @@ export default function AnnouncementTicker() {
     }
     fetch()
     fetchNews()
-    const timer = setInterval(() => { fetch(); fetchNews() }, 60_000)
-    return () => { alive = false; clearInterval(timer) }
+    const stop = pollVisible(() => { fetch(); fetchNews() }, 120_000)
+    return () => { alive = false; stop() }
   }, [])
 
   // بنود أخبار اليوم — تدور بالشريط جنب إعلانات المدير.

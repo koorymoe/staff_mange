@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { useSession } from '../session'
 import ExtraTasksPage from './ExtraTasksPage'
 import MatrixNote from '../components/MatrixNote'
+import { pollVisible } from '../utils/poll'
 
 const API = import.meta.env.VITE_API_URL || 'http://localhost:4000/api'
 async function request<T>(path: string, opts?: RequestInit): Promise<T> {
@@ -212,8 +213,7 @@ export default function MissionsPage() {
 
   // Auto-refresh every 30s
   useEffect(() => {
-    const iv = setInterval(load, 30000)
-    return () => clearInterval(iv)
+    return pollVisible(load, 30_000)
   }, [load])
 
   // تتبع موقع حي: أي مهمة أنا قائدها أو عضو فيها وحالتها "بالطريق" — نرسل موقعنا كل 20 ثانية
@@ -668,7 +668,7 @@ function LivePathModal({ mission, onClose }: { mission: Mission; onClose: () => 
 
   // Same as above: `load` is async and only sets state after awaiting the request.
   // eslint-disable-next-line react-hooks/set-state-in-effect
-  useEffect(() => { load(); const iv = setInterval(load, 15000); return () => clearInterval(iv) }, [load])
+  useEffect(() => { load(); return pollVisible(load, 15_000) }, [load])
 
   useEffect(() => {
     let disposed = false

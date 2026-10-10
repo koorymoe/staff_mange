@@ -18,6 +18,7 @@ import MatrixDialect from './MatrixDialect'
 import MatrixSuggestAccuracyPanel from './MatrixSuggestAccuracy'
 import MatrixAutonomy from './MatrixAutonomy'
 import MatrixAICost from './MatrixAICost'
+import { pollVisible } from '../utils/poll'
 
 // ═══ مركز قيادة ماتركس — شاشة المدير (تصميم (ع)) ═══
 // كل رقم من بيانات حقيقية؛ لو ما تكفي نگول «بيانات قليلة» بدل رقم وهمي.
@@ -109,8 +110,7 @@ export default function MatrixCommandCenter() {
   }, [])
   useEffect(() => {
     loadAll()
-    const t = setInterval(() => { api.getMatrixFeed().then(setFeed).catch(() => {}) }, 60000)
-    return () => clearInterval(t)
+    return pollVisible(() => { api.getMatrixFeed().then(setFeed).catch(() => {}) }, 60_000)
   }, [loadAll])
 
   if (err) return <p className="rounded-lg bg-red-50 p-3 text-red-600">{err}</p>

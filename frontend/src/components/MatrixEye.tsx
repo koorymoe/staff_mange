@@ -6,6 +6,7 @@ import { useSession } from '../session'
 import { isEnabled, SWITCH_MATRIX_STAFF_EYE } from '../systemSwitches'
 import MatrixEyeGraphic from './MatrixEyeGraphic'
 import { eyeColor, type EyeGroup, type EyeMood } from './matrixEyeColors'
+import { pollVisible } from '../utils/poll'
 
 // ═══ عين ماتركس — «عين الرب» ═══
 //
@@ -117,10 +118,10 @@ export default function MatrixEye() {
     let alive = true
     const load = () => api.getMyWatch().then((w) => { if (alive) setWatch(w) }).catch(() => {})
     load()
-    const t = window.setInterval(load, POLL_MS)
+    const stop = pollVisible(load, POLL_MS)
     // بعد كل حفظ: التذكير الي انحل ينسكّر بالخادم، فنعيد الحالة فوراً.
     window.addEventListener('matrix-refresh', load)
-    return () => { alive = false; window.clearInterval(t); window.removeEventListener('matrix-refresh', load) }
+    return () => { alive = false; stop(); window.removeEventListener('matrix-refresh', load) }
   }, [])
 
   // الحمرة: أول ما يدخل أي شاشة، العين تحچي.

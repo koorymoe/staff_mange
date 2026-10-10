@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState, type ReactNode } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { api, type AttendanceGateState } from '../api'
 import { useSession } from '../session'
+import { pollVisible } from '../utils/poll'
 
 // ═══ الحضور الإجباري — قرار (ع) 10-06 ═══
 // «اول ما يفتح النظام الموظف اريده ينطلب منه تسجيل الحضور… ميعبر للنقطه
@@ -24,9 +25,9 @@ export default function AttendanceGate({ children }: { children: ReactNode }) {
   // الوقت يمشي: اللي فتح ٦:٣٠ (برّا الدوام) لازم تطلعله البوابة الإجبارية من ٧.
   useEffect(() => {
     if (exempt) return
-    const t = window.setInterval(load, 5 * 60 * 1000)
+    const stop = pollVisible(load, 5 * 60 * 1000)
     window.addEventListener('focus', load)
-    return () => { window.clearInterval(t); window.removeEventListener('focus', load) }
+    return () => { stop(); window.removeEventListener('focus', load) }
   }, [exempt, load])
 
   const [skipped, setSkipped] = useState(() => { try { return sessionStorage.getItem(SKIP_KEY) === '1' } catch { return false } })

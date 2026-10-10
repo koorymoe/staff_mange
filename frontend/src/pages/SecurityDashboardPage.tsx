@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { api } from '../api'
 import { useSession } from '../session'
+import { pollVisible } from '../utils/poll'
 
 type DashboardData = Awaited<ReturnType<typeof api.getSecurityDashboard>>
 type LoginRow = DashboardData['recentLogins'][number]
@@ -74,8 +75,7 @@ export default function SecurityDashboardPage() {
         .catch((e) => setError(e.message))
     }
     fetchData()
-    const interval = setInterval(fetchData, 5000)
-    return () => clearInterval(interval)
+    return pollVisible(fetchData, 15_000)
   }, [isOwner])
 
   const handleFreeMemory = async () => {

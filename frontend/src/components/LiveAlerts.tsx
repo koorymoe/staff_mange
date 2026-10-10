@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { api } from '../api'
+import { pollVisible } from '../utils/poll'
 
 // ═══ التنبيهات الحيّة ═══
 //
@@ -94,8 +95,8 @@ export default function LiveAlerts() {
     }
 
     const t = setTimeout(check, 3000)
-    const iv = setInterval(check, 45_000)
-    return () => { alive = false; clearTimeout(t); clearInterval(iv) }
+    const stop = pollVisible(check, 90_000)
+    return () => { alive = false; clearTimeout(t); stop() }
   }, [permission])
 
   // ⚠️ ما نعرض الزر إلا لمن يكون الإذن ما انطلب بعد: عرضه بعد الرفض

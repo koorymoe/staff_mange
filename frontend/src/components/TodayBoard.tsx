@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { api, type TodayBoardData, type FinanceSummary } from '../api'
 import EmployeeAvatar from './EmployeeAvatar'
+import { pollVisible } from '../utils/poll'
 
 // ═══ لوحة اليوم ═══
 //
@@ -153,8 +154,8 @@ export default function TodayBoard({ finance }: { finance?: FinanceSummary | nul
     const load = () => api.getTodayBoard().then((x) => { if (alive) setD(x) }).catch(() => {})
     const t = setTimeout(load, 0)
     // يتجدد كل دقيقتين — الأرقام تتغيّر والإداري ما يعيد تحميل الصفحة
-    const iv = setInterval(load, 120_000)
-    return () => { alive = false; clearTimeout(t); clearInterval(iv) }
+    const stop = pollVisible(load, 120_000)
+    return () => { alive = false; clearTimeout(t); stop() }
   }, [])
 
   if (!d) return null

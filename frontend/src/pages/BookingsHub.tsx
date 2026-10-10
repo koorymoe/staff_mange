@@ -8,6 +8,7 @@ import SalesBooking from './SalesBooking'
 import PartialBookings from './PartialBookings'
 import StageBucketsPage from './StageBucketsPage'
 import BookingDeleteRequestsPage from './BookingDeleteRequestsPage'
+import { pollVisible } from '../utils/poll'
 const Customers = lazy(() => import('./Customers'))
 const BookingsArchive = lazy(() => import('./BookingsArchive'))
 const SalesOpportunitiesPage = lazy(() => import('./SalesOpportunitiesPage'))
@@ -144,8 +145,8 @@ export default function BookingsHub() {
     const t = setTimeout(load, 0)
     // ⚠️ تحديث كل دقيقة: الحجز الجديد يوصل والإداري ما يعيد تحميل
     // الصفحة — فيقعد ساعة وهو يظن ماكو شغل جديد.
-    const iv = setInterval(load, 60_000)
-    return () => { alive = false; clearTimeout(t); clearInterval(iv) }
+    const stop = pollVisible(load, 60_000)
+    return () => { alive = false; clearTimeout(t); stop() }
   }, [tab, canViewAll])
 
   // نفس حارس البند القديم بالقائمة بالضبط — مو حارساً أوسع ولا أضيق.

@@ -2177,7 +2177,8 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	mux.Handle("GET /api/bookings/internal-paperwork", middleware.Chain(http.HandlerFunc(internalBackfillHandler.CoordinatorQueue), requireAuth,
 		middleware.RequireRoleOrAnyPermission(permissionRepo, employeeRepo, notificationRepo, []string{"ADMIN", "HR_COORDINATOR"}, "coordinator", "invoice_internal")))
 	mux.Handle("POST /api/leader-invoices/internal", middleware.Chain(http.HandlerFunc(leaderInvoiceHandler.CreateInternalInvoice), requireAuth,
-		middleware.RequireAnyPermission(permissionRepo, employeeRepo, notificationRepo, "invoice_internal")))
+		// (ع) 10-10: نفس الي يشوفون طابور «تنتظر ورقك» يسوّون الحساب من نافذته
+		middleware.RequireRoleOrAnyPermission(permissionRepo, employeeRepo, notificationRepo, []string{"ADMIN", "HR_COORDINATOR"}, "coordinator", "invoice_internal")))
 	// حساب تقريبي بدون حفظ لما زبون يستفسر — نفس صلاحية إنشاء الفاتورة (الليدر)
 	// حساب تكلفة التنصيب للتنفيذ: فقرة رئيسية بكل الحسابات وكل الأدوار،
 	// فما بيها قيد غير تسجيل الدخول — هي حاسبة ما تكشف بيانات أحد

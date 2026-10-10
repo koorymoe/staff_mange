@@ -53,6 +53,7 @@ const notifTargets: Record<string, string> = {
 }
 import AnnouncementTicker from './AnnouncementTicker'
 import { navItems, isNavVisible, isExtraForMonitor, isPathAllowed, type NavItem } from './navTree'
+import { pollVisible } from '../utils/poll'
 
 
 const loadStoredEmployee = (): Employee | null => {
@@ -163,10 +164,10 @@ export default function Layout() {
     if (!employee) { setNotifications([]); setUnreadCount(0); return }
     const load = () => api.getNotifications().then((r) => { setNotifications(r.notifications); setUnreadCount(r.unreadCount) }).catch(() => {})
     load()
-    const interval = setInterval(load, 30000)
+    const stop = pollVisible(load, 60_000)
     // إشعار تذكير ماتركس يتعلّم مقروء لمن ينحل — العدد ينزل بعد الحفظ مباشرة.
     window.addEventListener('matrix-refresh', load)
-    return () => { clearInterval(interval); window.removeEventListener('matrix-refresh', load) }
+    return () => { stop(); window.removeEventListener('matrix-refresh', load) }
   }, [employee])
 
   // ═══ إغلاق قائمة الإشعارات ═══

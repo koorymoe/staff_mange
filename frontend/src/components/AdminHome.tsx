@@ -16,6 +16,7 @@ import {
 import TodayBoard from './TodayBoard'
 import ActionsTable from './ActionsTable'
 import ReplacementSuggestionsPanel from './ReplacementSuggestionsPanel'
+import { pollVisible } from '../utils/poll'
 
 // ═══ رئيسية مدير النظام: لوحتين ═══
 //
@@ -177,8 +178,8 @@ function OnlineNow() {
     let alive = true
     const load = () => api.getOnlineEmployees().then((r) => { if (alive) { setRows(r); setNow(Date.now()) } }).catch(() => { if (alive) setRows(null) })
     load()
-    const t = window.setInterval(load, 60_000)
-    return () => { alive = false; window.clearInterval(t) }
+    const stop = pollVisible(load, 60_000)
+    return () => { alive = false; stop() }
   }, [])
   const mins = (s: string) => Math.max(0, Math.round((now - new Date(s).getTime()) / 60000))
   const live = (rows ?? []).filter((r) => mins(r.lastSeenAt) <= 5)
