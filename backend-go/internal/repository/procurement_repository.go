@@ -150,9 +150,13 @@ func (r *ProcurementRepository) Create(req model.CreateProcurementRequestRequest
 	return &request, nil
 }
 
-func (r *ProcurementRepository) UpdateStatus(id, status string) (*model.ProcurementRequest, error) {
+func (r *ProcurementRepository) UpdateStatus(id, status, actorID string) (*model.ProcurementRequest, error) {
 	var request model.ProcurementRequest
-	err := r.db.Get(&request, `UPDATE "ProcurementRequest" SET status = $2 WHERE id = $1 RETURNING *`, id, status)
+	// أول قرار ينسجّل (منو ووكت) — والقرارات الي بعده ما تمسحه
+	err := r.db.Get(&request, `UPDATE "ProcurementRequest" SET status = $2,
+		"decidedAt" = CASE WHEN "decidedAt" IS NULL AND $2 <> 'PENDING' THEN now() ELSE "decidedAt" END,
+		"decidedById" = CASE WHEN "decidedById" IS NULL AND $2 <> 'PENDING' THEN NULLIF($3, '') ELSE "decidedById" END
+		WHERE id = $1 RETURNING *`, id, status, actorID)
 	if err != nil {
 		return nil, err
 	}
@@ -192,7 +196,9 @@ func (r *ProcurementRepository) Fulfill(id string, req model.FulfillProcurementR
 			"totalCost" = $3,
 			"fulfillmentNotes" = $4,
 			"fulfilledAt" = $5,
-			"supplierId" = COALESCE($6, "supplierId")
+			"supplierId" = COALESCE($6, "supplierId"),
+			"decidedAt" = COALESCE("decidedAt", $5),
+			"decidedById" = COALESCE("decidedById", $2)
 		WHERE id = $1
 		RETURNING *
 	`, id, req.FulfilledByID, req.TotalCost, req.FulfillmentNotes, now, req.SupplierID)

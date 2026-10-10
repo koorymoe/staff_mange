@@ -5,7 +5,7 @@ import { type StaffScore } from '../api'
 // من الأفضل». كل الأرقام من لوحة التقييم نفسها (ماتركس ٦٠٪ + البشر ٤٠٪،
 // والاعتمادية رقم منفصل) — المقارنة ما تخترع رقم جديد، ترتّب وتقارن بس.
 
-const SRC: Record<string, string> = { BOOKING: 'الحجوزات', DAY: 'الحضور', TASK: 'المهام', PROJECT: 'المشاريع' }
+const SRC: Record<string, string> = { BOOKING: 'الحجوزات', DAY: 'الحضور', TASK: 'المهام', PROJECT: 'المشاريع', PROCUREMENT: 'المخازن' }
 const pct = (v: number | null | undefined) => (v == null ? '—' : `${Math.round(v)}%`)
 const tone = (v: number | null | undefined) => (v == null ? '#94a3b8' : v >= 80 ? '#059669' : v >= 60 ? '#d97706' : '#dc2626')
 const srcPct = (s: StaffScore, k: string) => {

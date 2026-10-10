@@ -443,6 +443,7 @@ func versionedMigrations() []Migration {
 	result = append(result, carWasherMigrations()...)
 	result = append(result, serviceDeveloperMigrations()...)
 	result = append(result, projectDelayMigrations()...)
+	result = append(result, procurementDecisionMigrations()...)
 	return result
 }
 

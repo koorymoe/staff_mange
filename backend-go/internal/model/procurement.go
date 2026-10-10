@@ -34,6 +34,9 @@ type ProcurementRequest struct {
 	SupplierID  *string    `db:"supplierId" json:"supplierId"`
 	CreatedAt   time.Time  `db:"createdAt" json:"createdAt"`
 	FulfilledAt *time.Time `db:"fulfilledAt" json:"fulfilledAt"`
+	// أول قرار على الطلب (تنفيذ أو رفض أو قيد التنفيذ) — منو ووكت
+	DecidedAt   *time.Time `db:"decidedAt" json:"decidedAt"`
+	DecidedByID *string    `db:"decidedById" json:"decidedById"`
 
 	Items       []ProcurementItem          `db:"-" json:"items"`
 	RequestedBy *ProcurementRequesterBrief `db:"-" json:"requestedBy"`
@@ -105,6 +108,8 @@ type CreateProcurementRequestRequest struct {
 
 type UpdateProcurementStatusRequest struct {
 	Status string `json:"status"`
+	// يملّيه الـhandler من التوكن — مو من الجسم
+	DecidedByID string `json:"-"`
 }
 
 type FulfillProcurementItemRequest struct {

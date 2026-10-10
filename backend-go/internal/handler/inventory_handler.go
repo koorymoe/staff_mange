@@ -383,7 +383,7 @@ func (h *InventoryHandler) ApproveToolRequest(w http.ResponseWriter, r *http.Req
 }
 
 func (h *InventoryHandler) RejectToolRequest(w http.ResponseWriter, r *http.Request) {
-	request, err := h.service.RejectToolRequest(r.PathValue("id"))
+	request, err := h.service.RejectToolRequest(r.PathValue("id"), middleware.EmployeeIDFromContext(r))
 	if err != nil {
 		WriteError(w, http.StatusBadRequest, err.Error())
 		return

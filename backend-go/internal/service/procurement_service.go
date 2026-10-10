@@ -96,7 +96,7 @@ func (s *ProcurementService) Create(employeeID, role string, req model.CreatePro
 }
 
 func (s *ProcurementService) UpdateStatus(id string, req model.UpdateProcurementStatusRequest) (*model.ProcurementRequest, error) {
-	saved, err := s.repo.UpdateStatus(id, req.Status)
+	saved, err := s.repo.UpdateStatus(id, req.Status, req.DecidedByID)
 	if err != nil {
 		return nil, err
 	}

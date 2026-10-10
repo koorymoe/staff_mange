@@ -686,6 +686,29 @@ func (r *AiActionRepository) InternalNoInvoice() ([]string, error) {
 	return NewMatrixChainRepository(r.db).InternalNoInvoice()
 }
 
+// ═══ شغل أبو الكميات (قرار (ع) 10-10) ═══
+func (r *AiActionRepository) procScore() *MatrixScoreRepository {
+	return NewMatrixScoreRepository(r.db)
+}
+func (r *AiActionRepository) PendingMaterials() ([]ProcDecision, error) {
+	return r.procScore().MaterialDecisions(true)
+}
+func (r *AiActionRepository) PendingTools() ([]ProcDecision, error) {
+	return r.procScore().ToolDecisions(true)
+}
+func (r *AiActionRepository) OpenShortages() ([]ProcDecision, error) {
+	return r.procScore().Shortages(true)
+}
+func (r *AiActionRepository) VehiclesUnratedToday() ([]string, error) {
+	return r.procScore().VehiclesUnratedToday()
+}
+func (r *AiActionRepository) FleetOverdue() ([]string, error) { return r.procScore().FleetOverdue() }
+func (r *AiActionRepository) ProcurementAdmins() ([]string, error) {
+	ids := []string{}
+	err := r.db.Select(&ids, `SELECT id FROM "Employee" WHERE status = 'ACTIVE' AND role::text = 'PROCUREMENT_ADMIN'`)
+	return ids, err
+}
+
 func (r *AiActionRepository) Monitors() ([]string, error) {
 	return NewMatrixChainRepository(r.db).Monitors()
 }

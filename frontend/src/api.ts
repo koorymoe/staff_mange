@@ -3807,6 +3807,7 @@ export const api = {
   getStageLimits: () => request<StageLimitRow[]>('/projects/stage-limits'),
   setStageLimit: (stage: string, days: number | null) =>
     request<StageLimitRow[]>('/projects/stage-limits', { method: 'PUT', body: JSON.stringify({ stage, days }) }),
+  getProcurementWatch: () => request<ProcurementWatch>('/monitor/procurement-watch'),
   getMonthCompare: (months: string[]) => request<MonthStats[]>(`/stats-management/month-compare?months=${months.join(',')}`),
   getCommandAccounts: () =>
     request<{ id: string; name: string; username: string | null; setAt: string | null }[]>('/auth/command-accounts'),
@@ -5966,3 +5967,10 @@ export interface ProjectDelay {
   delayReason: string | null; delayReasonBy: string | null; delayReasonAt: string | null
 }
 export interface StageLimitRow { stage: string; learned: number; median: number; manual: number | null }
+
+// ═══ شغل المخازن (قرار (ع) 10-10) ═══
+export interface ProcDecision { id: string; label: string; createdAt: string; decidedAt: string | null; decidedBy: string | null; byName: string | null }
+export interface ProcurementWatch {
+  since: string; materials: ProcDecision[]; tools: ProcDecision[]; shortages: ProcDecision[]
+  vehicleDays: { day: string; total: number; rated: number }[]; unratedToday: string[]; fleetOverdue: string[]
+}

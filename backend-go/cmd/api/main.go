@@ -2315,6 +2315,8 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	mux.Handle("PUT /api/projects/stage-limits", middleware.Chain(http.HandlerFunc(projectDelayHandler.SetStageLimit), requireAuth, requireAdmin))
 	mux.Handle("POST /api/projects/{id}/delay-reason", middleware.Chain(http.HandlerFunc(projectDelayHandler.AddReason), requireAuth))
 	mux.Handle("GET /api/projects/my-delays", middleware.Chain(http.HandlerFunc(projectDelayHandler.MyDelays), requireAuth))
+	procurementWatchHandler := handler.NewProcurementWatchHandler(db)
+	mux.Handle("GET /api/monitor/procurement-watch", middleware.Chain(http.HandlerFunc(procurementWatchHandler.Get), requireAuth, requireMonitor))
 	mux.Handle("GET /api/projects/delays", middleware.Chain(http.HandlerFunc(projectDelayHandler.Delays), requireAuth, requireMonitor))
 	mux.Handle("GET /api/ai/projects", middleware.Chain(http.HandlerFunc(matrixProjectHandler.Report), requireAuth, requireAdmin))
 	mux.Handle("GET /api/ai/projects/{id}", middleware.Chain(http.HandlerFunc(matrixProjectHandler.Chain), requireAuth, requireAdmin))

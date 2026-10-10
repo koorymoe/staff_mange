@@ -26,14 +26,15 @@ const (
 	GroupTechnical   = "TECHNICAL"
 	GroupCoordinator = "COORDINATORS"
 	GroupOthers      = "OTHERS"
+	GroupProcurement = "PROCUREMENT"
 )
 
 var ScoreGroupLabels = map[string]string{
 	GroupTechs: "الفنيين", GroupLeaders: "الليدرية", GroupSales: "المبيعات", GroupMonitors: "المراقبين",
-	GroupFinance: "المحاسبة", GroupTechnical: "التقنيين ومسؤولي الخدمات", GroupCoordinator: "الإداريين", GroupOthers: "بقية الأقسام",
+	GroupFinance: "المحاسبة", GroupTechnical: "التقنيين ومسؤولي الخدمات", GroupCoordinator: "الإداريين", GroupProcurement: "المخازن والأسطول", GroupOthers: "بقية الأقسام",
 }
 
-var ScoreGroupOrder = []string{GroupLeaders, GroupTechs, GroupCoordinator, GroupSales, GroupTechnical, GroupFinance, GroupMonitors, GroupOthers}
+var ScoreGroupOrder = []string{GroupLeaders, GroupTechs, GroupCoordinator, GroupSales, GroupTechnical, GroupFinance, GroupProcurement, GroupMonitors, GroupOthers}
 
 // ScoreGroup مجموعة الموظف بالتقييم. الليدر ينفصل عن الفنيين بعلامة الليدر،
 // والمبيعات بالدور.
@@ -47,6 +48,8 @@ func ScoreGroup(p repository.Scorable) string {
 		return GroupFinance
 	case p.Role == "HR_COORDINATOR":
 		return GroupCoordinator
+	case p.Role == "PROCUREMENT_ADMIN":
+		return GroupProcurement
 	case p.IsLeader:
 		return GroupLeaders
 	case p.Role == "ENGINEER" || p.Role == "TECHNICAL" || p.Role == "SERVICE_MANAGER" || p.IsServiceManager:
@@ -66,6 +69,7 @@ var groupRaterStages = map[string]map[string]bool{
 	GroupSales:       {"MONITOR_PERIODIC": true},
 	GroupFinance:     {"MONITOR_PERIODIC": true},
 	GroupTechnical:   {"MONITOR_PERIODIC": true},
+	GroupProcurement: {"MONITOR_PERIODIC": true},
 	GroupOthers:      {"MONITOR_PERIODIC": true},
 }
 

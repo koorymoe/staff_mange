@@ -644,13 +644,13 @@ func (r *InventoryRepository) ReturnToolStock(toolID string) error {
 	return err
 }
 
-func (r *InventoryRepository) RejectToolRequest(id string) (*model.ToolRequest, error) {
+func (r *InventoryRepository) RejectToolRequest(id, actorID string) (*model.ToolRequest, error) {
 	var req model.ToolRequest
 	err := r.db.Get(&req, `
-		UPDATE "ToolRequest" SET status = 'REJECTED'
+		UPDATE "ToolRequest" SET status = 'REJECTED', "rejectedAt" = now(), "rejectedById" = NULLIF($2, '')
 		WHERE id = $1
 		RETURNING *
-	`, id)
+	`, id, actorID)
 	if err != nil {
 		return nil, err
 	}

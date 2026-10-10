@@ -291,6 +291,8 @@ type ToolRequest struct {
 	RequestedAt  time.Time  `db:"requestedAt" json:"requestedAt"`
 	ApprovedAt   *time.Time `db:"approvedAt" json:"approvedAt"`
 	ReturnedAt   *time.Time `db:"returnedAt" json:"returnedAt"`
+	RejectedAt   *time.Time `db:"rejectedAt" json:"rejectedAt"`
+	RejectedByID *string    `db:"rejectedById" json:"rejectedById"`
 	// إذا الأداة ما كانت متوفرة بالشركة وقت الموافقة، إداري الكميات لازم يدخل
 	// سعر الشراء، ويتفتح طلب مشتريات تلقائياً يوصل للمحاسب — هذول الحقلين
 	// يربطون طلب الأداة بطلب المشتريات المتولّد منه.

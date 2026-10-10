@@ -65,6 +65,7 @@ func (h *ProcurementHandler) UpdateStatus(w http.ResponseWriter, r *http.Request
 		WriteError(w, http.StatusBadRequest, "بيانات الطلب غير صحيحة")
 		return
 	}
+	req.DecidedByID = middleware.EmployeeIDFromContext(r)
 	request, err := h.service.UpdateStatus(r.PathValue("id"), req)
 	if err != nil {
 		WriteError(w, http.StatusBadRequest, err.Error())

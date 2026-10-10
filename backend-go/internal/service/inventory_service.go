@@ -292,8 +292,8 @@ func (s *InventoryService) ApproveToolRequest(id string, req model.ApproveToolRe
 	return out, nil
 }
 
-func (s *InventoryService) RejectToolRequest(id string) (*model.ToolRequest, error) {
-	out, err := s.repo.RejectToolRequest(id)
+func (s *InventoryService) RejectToolRequest(id, actorID string) (*model.ToolRequest, error) {
+	out, err := s.repo.RejectToolRequest(id, actorID)
 	if err != nil {
 		return nil, err
 	}

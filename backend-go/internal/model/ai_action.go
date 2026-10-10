@@ -25,6 +25,10 @@ const (
 	AiActionAfterInventory    = "AFTER_INVENTORY"     // الفني: خلّص حجز ويا ليدر وما جرد عدّته بعده
 	AiActionProjectIdleToday  = "PROJECT_IDLE_TODAY"  // مسؤول مشاريع ما سوّى شي اليوم
 	AiActionProjectOverLimit  = "PROJECT_OVER_LIMIT"  // مشروع تجاوز حد مرحلته بلا سبب مكتوب
+	AiActionProcPending       = "PROC_PENDING"        // أبو الكميات: طلبات مواد/أدوات معلّقة
+	AiActionVehiclesUnrated   = "VEHICLES_UNRATED"    // أبو الكميات: سيارات ما انقيّمت اليوم
+	AiActionShortageOpen      = "SHORTAGE_OPEN"       // أبو الكميات: نواقص جرد ما انحلت
+	AiActionFleetOverdue      = "FLEET_OVERDUE"       // أبو الكميات: صيانة أو وثيقة فات موعدها
 	AiActionInternalNoInvoice = "INTERNAL_NO_INVOICE" // المراقب: أعمال داخلية خلصت وبلا فاتورة من إداري الكوادر
 	AiActionMonitorBacklog    = "MONITOR_BACKLOG"     // المراقب: بنود بالصندوق تنتظر حكمه من +٢٤ ساعة
 	// ── أفعال تنفيذية (المرحلة الثالثة) — كل وحدة بمفتاح المالك وتنرجع ──
@@ -63,6 +67,10 @@ var AiActionLabels = map[string]string{
 	AiActionAfterInventory:    "جرد العدّة بعد الحجز",
 	AiActionMonitorBacklog:    "بنود متأخرة بصندوق المراقب",
 	AiActionInternalNoInvoice: "أعمال داخلية بلا فاتورة",
+	AiActionProcPending:       "طلبات مواد وأدوات معلّقة",
+	AiActionVehiclesUnrated:   "سيارات ما انقيّمت اليوم",
+	AiActionShortageOpen:      "نواقص جرد ما انحلت",
+	AiActionFleetOverdue:      "صيانة أو وثيقة سيارة فات موعدها",
 	AiActionProjectIdleToday:  "ما اشتغل اليوم على مشاريعه",
 	AiActionProjectOverLimit:  "مشروع تجاوز حد المرحلة",
 	AiActionAutoCrew:          "ماتركس كلّف كادر حجز باچر",

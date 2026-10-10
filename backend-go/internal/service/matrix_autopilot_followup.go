@@ -826,3 +826,74 @@ func (s *MatrixAutopilotService) projectOverLimit(today string, dayStart time.Ti
 	}
 	return n, nil
 }
+
+// ١٨. شغل أبو الكميات — طلب (ع) 10-10: «مراقب من خلال ماتركس ومن خلال المراقب».
+// طلبات معلّقة +٢٤ ساعة (والمراقب +٤٨)، سيارات ما انقيّمت اليوم (من الساعة ٢)،
+// نواقص جرد +يومين (والمراقب)، وصيانة/وثائق فات موعدها (أسبوعي).
+func (s *MatrixAutopilotService) procurementWatch(today, week string, dayStart time.Time) (int, error) {
+	admins, err := s.actions.ProcurementAdmins()
+	if err != nil || len(admins) == 0 {
+		return 0, err
+	}
+	monitors, _ := s.actions.Monitors()
+	now := time.Now()
+	n := 0
+	notify := func(kind, entity, period, summary, msg string, to []string) {
+		for _, id := range to {
+			emp := id
+			if s.act(model.AiAction{Kind: kind, EntityType: entity, EntityID: emp, Period: period,
+				TargetEmployeeID: &emp, TargetLabel: s.actions.EmployeeName(emp), Summary: summary,
+				Details: why(map[string]any{"msg": msg})}, dayStart,
+				func() error { return s.notif.Create(emp, "AI_AUTOPILOT", msg) }) {
+				n++
+			}
+		}
+	}
+	older := func(rows []repository.ProcDecision, d time.Duration) []repository.ProcDecision {
+		out := []repository.ProcDecision{}
+		for _, r := range rows {
+			if now.Sub(r.CreatedAt) > d {
+				out = append(out, r)
+			}
+		}
+		return out
+	}
+
+	mats, _ := s.actions.PendingMaterials()
+	tools, _ := s.actions.PendingTools()
+	pend := append(older(mats, 24*time.Hour), older(tools, 24*time.Hour)...)
+	if len(pend) > 0 {
+		notify(model.AiActionProcPending, "EMPLOYEE", today, fmt.Sprintf("ذكّر أبو الكميات: %d طلب معلّق", len(pend)),
+			fmt.Sprintf("🤖 ماتركس — عندك %d طلب (مواد/أدوات) معلّق من أكثر من يوم، أقدمها: %s. رد عليهن — نفّذ أو ارفض بسبب.", len(pend), pend[0].Label), admins)
+		late := append(older(mats, 48*time.Hour), older(tools, 48*time.Hour)...)
+		if len(late) > 0 {
+			notify(model.AiActionProcPending, "MONITOR", today, fmt.Sprintf("بلّغ المراقب: %d طلب معلّق عند المخازن +٤٨ ساعة", len(late)),
+				fmt.Sprintf("🤖 ماتركس — %d طلب مواد/أدوات معلّق عند إداري الكميات من أكثر من يومين. التفاصيل بـ«📦 شغل المخازن» بمكتب المراقب.", len(late)), monitors)
+		}
+	}
+
+	if now.In(debriefLoc).Hour() >= 14 {
+		if cars, _ := s.actions.VehiclesUnratedToday(); len(cars) > 0 {
+			notify(model.AiActionVehiclesUnrated, "EMPLOYEE", today, fmt.Sprintf("ذكّر أبو الكميات: %d سيارة ما انقيّمت اليوم", len(cars)),
+				fmt.Sprintf("🤖 ماتركس — %d سيارة بعدها ما انقيّمت اليوم (%s). قيّمها من «🚗 متابعة السيارات».", len(cars), strings.Join(cars, "، ")), admins)
+		}
+	}
+
+	if open, _ := s.actions.OpenShortages(); len(open) > 0 {
+		if old := older(open, 48*time.Hour); len(old) > 0 {
+			msg := fmt.Sprintf("🤖 ماتركس — %d نقص جرد مفتوح من أكثر من يومين (أقدمها: %s). حلّه وأشّره «انحل».", len(old), old[0].Label)
+			notify(model.AiActionShortageOpen, "EMPLOYEE", today, fmt.Sprintf("ذكّر أبو الكميات: %d نقص جرد مفتوح", len(old)), msg, admins)
+			notify(model.AiActionShortageOpen, "MONITOR", today, fmt.Sprintf("بلّغ المراقب: %d نقص جرد مفتوح", len(old)), msg, monitors)
+		}
+	}
+
+	if fleet, _ := s.actions.FleetOverdue(); len(fleet) > 0 {
+		shown := fleet
+		if len(shown) > 6 {
+			shown = shown[:6]
+		}
+		notify(model.AiActionFleetOverdue, "EMPLOYEE", week, fmt.Sprintf("ذكّر أبو الكميات: %d صيانة/وثيقة فات موعدها", len(fleet)),
+			fmt.Sprintf("🤖 ماتركس — %d صيانة أو وثيقة سيارة فات موعدها: %s. سجّلها بإدارة المركبات.", len(fleet), strings.Join(shown, "؛ ")), admins)
+	}
+	return n, nil
+}
