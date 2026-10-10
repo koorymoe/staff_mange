@@ -130,6 +130,8 @@ function printInvoice(inv: LeaderInvoice, adjustments: LeaderInvoiceAdjustment[]
  *  يشوف صفاً بشاشة ومحلولاً بالثانية ويفقد الثقة بالاثنتين. */
 interface EmbeddedProps { embedded?: boolean }
 
+const isFreeInv = (inv: LeaderInvoice) => inv.isFree || inv.auditVerdict === 'FREE'
+
 export default function LeaderInvoicesListPage({ embedded }: EmbeddedProps = {}) {
   const [params] = useSearchParams()
   // تنزيل إكسل الشهر — بتبويب «داخل الشركة» وبس.
@@ -417,7 +419,7 @@ export default function LeaderInvoicesListPage({ embedded }: EmbeddedProps = {})
   useEffect(load, [])
 
   const handleApprove = async () => {
-    if (!approveFor || !invoiceNo.trim()) return
+    if (!approveFor || (!invoiceNo.trim() && !isFreeInv(approveFor))) return
     setBusyId(approveFor.id)
     setApproveErr(null)
     try {
@@ -1194,6 +1196,11 @@ export default function LeaderInvoicesListPage({ embedded }: EmbeddedProps = {})
               {' · '}المجموع: <b>{approveFor.netTotal.toLocaleString()} د.ع</b>
             </p>
 
+            {/* قرار (ع) 10-10: المجانية ما إلها فاتورة بالنظام الثاني — تنعتمد بلا رقم */}
+            {isFreeInv(approveFor) && (
+              <p className="mt-4 rounded-xl bg-emerald-50 px-3 py-2 text-sm font-bold text-emerald-800">🎁 فاتورة مجانية — تنعتمد بلا رقم فاتورة محاسبية.</p>
+            )}
+            {!isFreeInv(approveFor) && <>
             <label className="mt-4 block text-sm font-medium text-slate-600">
               رقم الفاتورة المحاسبية <span className="text-red-500">*</span>
             </label>
@@ -1212,6 +1219,7 @@ export default function LeaderInvoicesListPage({ embedded }: EmbeddedProps = {})
               الرقم ينحفظ ويتأرشف مع الفاتورة، وتكدر تدوّر بيه بعدين من خانة البحث فوق.
               وما ينعاد على فاتورة ثانية.
             </p>
+            </>}
 
             {approveErr && (
               <p className="mt-2 rounded-lg bg-red-50 px-3 py-2 text-xs font-bold text-red-700">{approveErr}</p>
@@ -1220,7 +1228,7 @@ export default function LeaderInvoicesListPage({ embedded }: EmbeddedProps = {})
             <div className="mt-4 flex gap-2">
               <button
                 onClick={handleApprove}
-                disabled={!invoiceNo.trim() || busyId === approveFor.id}
+                disabled={(!invoiceNo.trim() && !isFreeInv(approveFor)) || busyId === approveFor.id}
                 className="flex-1 rounded-xl bg-gradient-to-l from-emerald-500 to-emerald-700 px-4 py-2.5 text-sm font-bold text-white disabled:opacity-50"
               >
                 {busyId === approveFor.id ? 'جاري الاعتماد...' : '✔ اعتماد الفاتورة'}

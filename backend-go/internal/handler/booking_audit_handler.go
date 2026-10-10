@@ -168,6 +168,14 @@ func (h *BookingAuditHandler) Audit(w http.ResponseWriter, r *http.Request) {
 		}
 		zero := 0.0
 		h.stampInvoiceVerdict(bookingID, model.AuditVerdictFree, req.Note, empID, &zero)
+		// قرار (ع) 10-10: المجانية تنعتمد مباشرة — ما إلها رقم بالنظام الثاني
+		if rows, err := h.invoices.ListByBooking(bookingID); err == nil && len(rows) > 0 {
+			if latest := rows[len(rows)-1]; latest.Status != "APPROVED" {
+				if _, err := h.invoices.Approve(latest.ID, empID, ""); err != nil {
+					log.Printf("auto-approve free invoice (booking %s): %v", bookingID, err)
+				}
+			}
+		}
 		// 🔴 إشعار **للمالك وحده**: إسقاط مبلغ قرار مالي يستاهل
 		// يُعرف منو أشّره ومتى — بلا ما ينحسب غلطاً على أحد.
 		if h.notify != nil {

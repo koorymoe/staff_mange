@@ -417,9 +417,6 @@ func (s *LeaderInvoiceService) Approve(id, approverEmployeeID, externalNumber st
 	// وبدون الرقم ينقطع الخيط بين النظامين وما يبقى شي يربط فاتورتنا
 	// المعتمدة بفاتورته الصادرة.
 	externalNumber = strings.TrimSpace(externalNumber)
-	if externalNumber == "" {
-		return nil, fmt.Errorf("رقم الفاتورة المحاسبية مطلوب قبل الاعتماد")
-	}
 
 	// ═══ التدقيق قبل الاعتماد — إجباري ═══
 	//
@@ -445,6 +442,11 @@ func (s *LeaderInvoiceService) Approve(id, approverEmployeeID, externalNumber st
 		// الخطوة الجاية بلا ما يسأل أحداً.
 		return nil, fmt.Errorf("دقّق الفاتورة أول — اختر مطابق أو غير مطابق أو خطأ بالسعر، وبعدها تنتقل لطابور الاعتماد")
 	}
+	// قرار (ع) 10-10: الفاتورة المجانية ما إلها فاتورة بالنظام الثاني، فتنعتمد بلا رقم.
+	free := current.IsFree || *current.AuditVerdict == model.AuditVerdictFree
+	if externalNumber == "" && !free {
+		return nil, fmt.Errorf("رقم الفاتورة المحاسبية مطلوب قبل الاعتماد")
+	}
 
 	inv, err := s.invoices.Approve(id, approverEmployeeID, externalNumber)
 	if err != nil {
@@ -463,7 +465,7 @@ func (s *LeaderInvoiceService) Approve(id, approverEmployeeID, externalNumber st
 	if s.monitor != nil {
 		title, summary := monitorInvoiceSummary(inv)
 		s.monitor.InvoiceStage(model.MonitorStageInvoiceAfterAudit, inv.ID, title,
-			summary+" • رقم الفاتورة المحاسبية: "+externalNumber, "FINANCE", &approverEmployeeID, false)
+			summary+approveNote(externalNumber), "FINANCE", &approverEmployeeID, false)
 	}
 	return inv, nil
 }
@@ -1007,4 +1009,11 @@ func (s *LeaderInvoiceService) CreateInternalInvoice(employeeID string, req mode
 	// (وصف بطول معقول، سعر أكبر من صفر) ونفس صف صندوق المراقب.
 	// بناء مسار حفظ ثانٍ يعني تحقّقين يفترقون بأول تعديل.
 	return s.CreateManualInvoice(employeeID, manual)
+}
+
+func approveNote(number string) string {
+	if number == "" {
+		return " • 🎁 مجانية — انعتمدت بلا فاتورة محاسبية"
+	}
+	return " • رقم الفاتورة المحاسبية: " + number
 }

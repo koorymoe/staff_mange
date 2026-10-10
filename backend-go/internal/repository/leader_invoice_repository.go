@@ -219,8 +219,8 @@ func (r *LeaderInvoiceRepository) Approve(id, approverEmployeeID, externalNumber
 		SET status = 'APPROVED',
 		    "approvedByEmployeeId" = $2,
 		    "approvedAt" = CURRENT_TIMESTAMP,
-		    "externalInvoiceNumber" = $3,
-		    "externalInvoiceAt" = CURRENT_TIMESTAMP
+		    "externalInvoiceNumber" = NULLIF(btrim($3), ''),
+		    "externalInvoiceAt" = CASE WHEN btrim($3) <> '' THEN CURRENT_TIMESTAMP END
 		WHERE id = $1 AND status != 'APPROVED'
 		RETURNING *
 	`, id, approverEmployeeID, externalNumber)
@@ -1005,6 +1005,8 @@ func (r *LeaderInvoiceRepository) ListApprovedWithoutNumber() ([]model.LeaderInv
 		SELECT * FROM "LeaderInvoice"
 		WHERE status = 'APPROVED'
 		  AND ("externalInvoiceNumber" IS NULL OR btrim("externalInvoiceNumber") = '')
+		  -- قرار (ع) 10-10: المجانية ما إلها فاتورة بالنظام الثاني — مو نقص
+		  AND NOT "isFree" AND COALESCE("auditVerdict", '') <> 'FREE'
 		ORDER BY "approvedAt" DESC NULLS LAST`)
 	if err != nil {
 		return nil, err
