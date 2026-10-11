@@ -4285,6 +4285,7 @@ export const api = {
   // ═══ تقييم الموظفين: ماتركس ٦٠٪ + البشر ٤٠٪ ═══
   getStaffScoreBoard: (month = '') => request<StaffScoreBoard>(`/staff-score${month ? `?month=${month}` : ''}`),
   getStaffScore: (id: string, month = '') => request<StaffScoreDetail>(`/staff-score/${id}${month ? `?month=${month}` : ''}`),
+  getStaffPoints: (month = '') => request<{ month: string; staff: StaffPointsRow[] }>(`/staff-points${month ? `?month=${month}` : ''}`),
   getStaffScorePeers: () => request<{ id: string; final: number | null }[]>('/staff-score/peers'),
   getMyScore: () => request<{ score: StaffScoreDetail; on: boolean } | null>('/staff-score/me'),
   runStaffScore: () => request<{ added: number }>('/staff-score/run', { method: 'POST' }),
@@ -5914,4 +5915,5 @@ export interface ProcurementWatch {
 export interface MatrixChatRow { id: string; title: string; updatedAt: string }
 export interface MatrixChatMessage { id: string; role: 'USER' | 'ASSISTANT'; text: string; steps: string | null; image?: string | null; createdAt: string }
 export interface MatrixMission { id: string; employeeId: string; employeeName: string; note: string | null; startsOn: string; endsOn: string; active: boolean; summary: string | null; createdAt: string; summaryAt: string | null }
+export interface StaffPointsRow { id: string; name: string; role: string; group: string; groupLabel: string; kpi: number; kpiLost: string[]; attendance: number; work: number; total: number; lines: { label: string; count: number; each: number; points: number }[] }
 export interface MatrixLesson { id: string; text: string; context: string | null; by: string | null; createdAt: string }

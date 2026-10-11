@@ -5,6 +5,7 @@ import OwnerSwitch from '../components/OwnerSwitch'
 import { GroupRanking, PairCompare } from '../components/StaffCompare'
 import { SWITCH_MATRIX_SCORING } from '../systemSwitches'
 import { useSession } from '../session'
+import StaffPointsBoard from '../components/StaffPointsBoard'
 
 // ═══ تقييم الموظفين — قرار (ع) 10-05 ═══
 // النهائي = ٦٠٪ ماتركس (نقاط كل حجز ويوم دوام ومهمة ومشروع) + ٤٠٪ البشر
@@ -115,7 +116,7 @@ export default function StaffScorePage() {
   const [busy, setBusy] = useState(false)
   const [tab, setTab] = useState('')
   // قرار (ع) 10-10: «مقارنة» — ترتيب الأفضل للأسوأ، و«قارن بموظف آخر»
-  const [view, setView] = useState<'list' | 'compare'>('list')
+  const [view, setView] = useState<'list' | 'compare' | 'points'>('points')
   const [cmpA, setCmpA] = useState<string | null>(null)
   const [cmpB, setCmpB] = useState<string | null>(null)
   const load = useCallback(() => { void api.getStaffScoreBoard(month).then(setB).catch((e) => setErr(e instanceof Error ? e.message : 'تعذر')) }, [month])
@@ -156,13 +157,14 @@ export default function StaffScorePage() {
         ))}
       </div>
       <div className="flex gap-1.5">
-        {([['list', '📋 القائمة'], ['compare', '⚖️ المقارنة']] as const).map(([k, l]) => (
+        {([['points', '🏅 رصيد النقاط'], ['list', '📋 التقييم'], ['compare', '⚖️ المقارنة']] as const).map(([k, l]) => (
           <button key={k} type="button" onClick={() => setView(k)}
             className={`rounded-lg px-3 py-1.5 text-sm font-bold ${view === k ? 'bg-violet-700 text-white' : 'bg-white text-slate-700 ring-1 ring-slate-200'}`}>{l}</button>
         ))}
       </div>
       {view === 'compare' && <GroupRanking staff={shown} />}
-      {g && <p className="text-xs text-slate-500">👥 منو يقيّم {b.staff.find((s) => s.group === g)?.groupLabel}: {RATERS[g]}</p>}
+      {view === 'points' && g && <StaffPointsBoard month={month || b.month} group={g} />}
+      {g && view !== 'points' && <p className="text-xs text-slate-500">👥 منو يقيّم {b.staff.find((s) => s.group === g)?.groupLabel}: {RATERS[g]}</p>}
       {view === 'list' && <div className="grid gap-4 lg:grid-cols-[1fr_1.2fr]">
         <div className="space-y-1.5">
           {shown.map((s, i) => (
