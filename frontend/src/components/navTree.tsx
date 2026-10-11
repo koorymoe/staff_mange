@@ -127,7 +127,8 @@ export const navItems: NavItem[] = [
   // النظام والمالك حصراً — شوف backend `Achievement`.
   // ترتيب (ع) للمراقب: «مهامي الإضافية» و«إنجازاتي اليوم» شاشة وحدة بتبويبين.
   // قرار (ع) 10-08: نفس الشي لكل الأدوار — خانة وحدة «مهامي وإنجازاتي».
-  { to: '/my-work', label: 'مهامي وإنجازاتي', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><path d="m9 14 2 2 4-4"/></svg> },
+  // (ع) 10-11: المالك والمدير ما عدهم مهام — يشوفون مهام وإنجازات الموظفين
+  { to: '/my-work', label: 'مهامي وإنجازاتي', labelFor: (ctx) => (ctx.employee?.role === 'ADMIN' || ctx.employee?.actualRole === 'OWNER' ? 'مهام وإنجازات الموظفين' : 'مهامي وإنجازاتي'), icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><path d="m9 14 2 2 4-4"/></svg> },
   // ساعات البيت لأي موظف عنده الصلاحية (لنفسه أو مسؤول) — بالقائمة الرئيسية حتى الفني يوصلها.
   { monitorMenuHide: true, to: '/remote-hours', label: '🏠 ساعات العمل من البيت', icon: <></>, roles: ['ADMIN'], anyPermission: ['remote_hours_self', 'remote_hours_manage'] },
   // ⚠️ «حساب الكلفة» انشال من القائمة العلوية: كان يطلع مرتين —
@@ -570,9 +571,10 @@ export const navItems: NavItem[] = [
   // قرار (ع) 10-07: «الحجوزات» المرحّلة — التقني ومسؤول الخدمة يشوفونها جوّا «العمل»؛
   // هذا البند لمسؤول خدمة دوره غير (ينعرف بصلاحية الفواتير).
   { to: '/my-handovers', label: '🛠️ الحجوزات', icon: icon('M8 2v4M16 2v4M3 10h18M5 4h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z'), anyPermission: ['invoice_gps', 'invoice_dashcam'], hideForRoles: ['ADMIN', ...TECH_ROLES] },
-  { to: '/leader-invoices/new?service=1', label: '🛰️ فاتورة خدمة', icon: icon('M12 2v4M12 18v4M2 12h4M18 12h4M7.8 7.8 4.9 4.9M16.2 7.8l2.9-2.9M7.8 16.2l-2.9 2.9M16.2 16.2l2.9 2.9'), anyPermission: ['invoice_gps', 'invoice_dashcam'], hideForRoles: TECH_ROLES },
+  // (ع) 10-11: للمدير والمالك هاي بوحدة الخدمة — ما تطلع خانة رئيسية
+  { to: '/leader-invoices/new?service=1', label: '🛰️ فاتورة خدمة', icon: icon('M12 2v4M12 18v4M2 12h4M18 12h4M7.8 7.8 4.9 4.9M16.2 7.8l2.9-2.9M7.8 16.2l-2.9 2.9M16.2 16.2l2.9 2.9'), anyPermission: ['invoice_gps', 'invoice_dashcam'], hideForRoles: [...TECH_ROLES, 'ADMIN'] },
   // «فواتير **وتقارير**»: نفس الصلاحيتين يسوّون تقرير حجوزات نوعهم.
-  { to: '/work-reports', label: '📝 تقرير خدمة', icon: icon('M9 12h6M9 16h6M7 3h7l5 5v11a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z'), anyPermission: ['invoice_gps', 'invoice_dashcam'], hideForRoles: TECH_ROLES },
+  { to: '/work-reports', label: '📝 تقرير خدمة', icon: icon('M9 12h6M9 16h6M7 3h7l5 5v11a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z'), anyPermission: ['invoice_gps', 'invoice_dashcam'], hideForRoles: [...TECH_ROLES, 'ADMIN'] },
   // وفواتيره هو: بلا هذا يحفظ الفاتورة ويشوف رقمها **مرة وحدة** وخلاص.
   // ⚠️ والخادم يقصّر القائمة على فواتير صاحبها حصراً (`List` يفرض
   // معرّف الطالب لكل من ما يملك مراجعة) — فما يشوف فواتير غيره.
