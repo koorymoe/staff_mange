@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"staffmange-api/internal/timeutil"
 	"time"
 
 	"github.com/google/uuid"
@@ -570,7 +571,9 @@ func (r *SolarRepository) hydrateInstallations(rows []model.SolarInstallation) e
 		}
 	}
 
-	today := time.Now().Truncate(24 * time.Hour)
+	// (فحص 10-11) «اليوم» ببغداد مو UTC — بين ١٢ و٣ الفجر چان يحسب يوم غلط
+	nb := time.Now().In(timeutil.CompanyLocation())
+	today := time.Date(nb.Year(), nb.Month(), nb.Day(), 0, 0, 0, 0, time.UTC)
 	for i := range rows {
 		if c, ok := customers[rows[i].CustomerID]; ok {
 			cc := c

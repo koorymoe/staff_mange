@@ -131,7 +131,7 @@ func (r *KpiRepository) MonthlyPointsSeriesForEmployee(employeeID string, months
 			interval '1 month'
 		) m
 		LEFT JOIN "KpiEvaluation" k ON k."employeeId" = $1 AND k.cancelled = false
-			AND to_char(k."createdAt", 'YYYY-MM') = to_char(m, 'YYYY-MM')
+			AND to_char(baghdad_date(k."createdAt"), 'YYYY-MM') = to_char(m, 'YYYY-MM')
 		GROUP BY m
 		ORDER BY m
 	`, employeeID, monthsCount, endMonth)

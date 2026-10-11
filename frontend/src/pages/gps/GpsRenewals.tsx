@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { api, type GpsRenewalRequest } from '../../api'
+import { escDeep } from '../../utils/printIdentity'
 
 function formatDate(d: string) {
   if (!d) return '-'
@@ -65,7 +66,8 @@ export default function GpsRenewals() {
     setApproving(false)
   }
 
-  function printRenewalInvoice(renewal: GpsRenewalRequest) {
+  function printRenewalInvoice(rawRenewal: GpsRenewalRequest) {
+    const renewal = escDeep(rawRenewal)
     const customerName = renewal.customer
       ? `${renewal.customer.fullName} ${renewal.customer.fatherName} ${renewal.customer.grandfatherName}`
       : '-'

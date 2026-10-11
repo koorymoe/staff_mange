@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { api, type Employee, type GpsDeviceRequest, type GpsSimCard } from '../../api'
 import { useSession, hasGpsSkill } from '../../session'
+import { escDeep } from '../../utils/printIdentity'
 
 const subLabel = (t: string) => t === 'THREE_MONTHS' ? '3 أشهر' : t === 'SIX_MONTHS' ? '6 أشهر' : 'سنوي'
 const subDays = (t: string) => t === 'THREE_MONTHS' ? 90 : t === 'SIX_MONTHS' ? 180 : 365
@@ -93,7 +94,7 @@ export default function GpsRequestsReview({ embedded }: { embedded?: boolean } =
 
   const printRequest = () => {
     if (!selected) return
-    const s = selected
+    const s = escDeep(selected)
     const photos: { label: string; url: string }[] = [
       ['idCardFrontUrl', 'الهوية - أمامي'], ['idCardBackUrl', 'الهوية - خلفي'],
       ['residenceCardFrontUrl', 'بطاقة السكن - أمامي'], ['residenceCardBackUrl', 'بطاقة السكن - خلفي'],

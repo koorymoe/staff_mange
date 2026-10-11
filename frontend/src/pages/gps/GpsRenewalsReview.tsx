@@ -1,3 +1,4 @@
+import { escDeep } from '../../utils/printIdentity'
 import { useEffect, useState } from 'react'
 import { api, type GpsRenewalRequest } from '../../api'
 import { loadFailed } from '../../netErrors'
@@ -5,7 +6,8 @@ import { loadFailed } from '../../netErrors'
 const subLabel = (t: string) => t === 'THREE_MONTHS' ? '3 أشهر' : t === 'SIX_MONTHS' ? '6 أشهر' : 'سنوي'
 const subDays = (t: string) => t === 'THREE_MONTHS' ? 90 : t === 'SIX_MONTHS' ? 180 : 365
 
-function printRenewal(renewal: GpsRenewalRequest, newEnd: Date) {
+function printRenewal(rawRenewal: GpsRenewalRequest, newEnd: Date) {
+  const renewal = escDeep(rawRenewal)
   const customerName = `${renewal.customer.fullName} ${renewal.customer.fatherName || ''} ${renewal.customer.grandfatherName || ''}`.trim()
   const newEndStr = newEnd.toLocaleDateString('ar-IQ')
   const oldEndStr = renewal.deviceRequest.subscriptionEnd ? new Date(renewal.deviceRequest.subscriptionEnd).toLocaleDateString('ar-IQ') : '-'

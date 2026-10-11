@@ -63,6 +63,9 @@ func (h *BookingHandler) requireAllBookings(w http.ResponseWriter, r *http.Reque
 // فالحل **يضيق النطاق لا يترفض**: الي ما عنده صلاحية شاملة يشوف
 // **حجوزاته هو** بدل حجوزات الشركة. نفس نمط `ExpenseHandler.canSeeAll`
 // الموجود أصلاً بالمشروع — ما ينبنى نمط جديد.
+// CanSeeAllBookings نفسها للمعالجات الثانية (تقدّم الحجز وطلعاته).
+func (h *BookingHandler) CanSeeAllBookings(r *http.Request) bool { return h.canSeeAllBookings(r) }
+
 func (h *BookingHandler) canSeeAllBookings(r *http.Request) bool {
 	switch middleware.RoleFromContext(r) {
 	case "ADMIN", "OWNER", "HR_COORDINATOR", "MONITOR", "FINANCE",

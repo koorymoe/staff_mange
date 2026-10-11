@@ -1198,6 +1198,9 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	// «تم الإنجاز» على شغل ناقص — وهاي المشكلة الي نحلها أصلاً.
 	mux.Handle("POST /api/bookings/{id}/partial-complete", middleware.Chain(http.HandlerFunc(bookingProgressHandler.PartialComplete), requireAuth, requireBookingParty))
 	mux.Handle("POST /api/bookings/{id}/schedule-continuation", middleware.Chain(http.HandlerFunc(bookingProgressHandler.ScheduleContinuation), requireAuth, requireCoordinator))
+	bookingProgressHandler.SetViewGate(func(r *http.Request, id string) bool {
+		return bookingHandler.CanSeeAllBookings(r) || bookingRepo.IsInvolved(id, middleware.EmployeeIDFromContext(r))
+	})
 	mux.Handle("GET /api/bookings/{id}/progress", middleware.Chain(http.HandlerFunc(bookingProgressHandler.Reports), requireAuth))
 	// ⚠️ الطلعات ما إلها حارس خاص: منو يشوف الحجز يشوف طلعاته. إخفاء
 	// «منو طلع ومتى» عن الي يشوف الحجز نفسه ما إله معنى.
@@ -1992,10 +1995,10 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	mux.Handle("DELETE /api/vehicles/{id}", middleware.Chain(http.HandlerFunc(vehicleHandler.Delete), requireAuth, requireAdmin))
 
 	// ملف السيارة الكامل: وثائق وصور
-	mux.Handle("GET /api/vehicles/{id}/documents", middleware.Chain(http.HandlerFunc(vehicleHandler.ListDocuments), requireAuth))
+	mux.Handle("GET /api/vehicles/{id}/documents", middleware.Chain(http.HandlerFunc(vehicleHandler.ListDocuments), requireAuth, requireVehicleMgmt))
 	mux.Handle("POST /api/vehicles/{id}/documents", middleware.Chain(http.HandlerFunc(vehicleHandler.CreateDocument), requireAuth, requireVehicleMgmt))
 	mux.Handle("DELETE /api/vehicles/{id}/documents/{docId}", middleware.Chain(http.HandlerFunc(vehicleHandler.DeleteDocument), requireAuth, requireVehicleMgmt))
-	mux.Handle("GET /api/vehicles/{id}/photos", middleware.Chain(http.HandlerFunc(vehicleHandler.ListPhotos), requireAuth))
+	mux.Handle("GET /api/vehicles/{id}/photos", middleware.Chain(http.HandlerFunc(vehicleHandler.ListPhotos), requireAuth, requireVehicleMgmt))
 	mux.Handle("POST /api/vehicles/{id}/photos", middleware.Chain(http.HandlerFunc(vehicleHandler.CreatePhoto), requireAuth, requireVehicleMgmt))
 	mux.Handle("DELETE /api/vehicles/{id}/photos/{photoId}", middleware.Chain(http.HandlerFunc(vehicleHandler.DeletePhoto), requireAuth, requireVehicleMgmt))
 
@@ -2003,12 +2006,12 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	mux.Handle("POST /api/vehicle-missions", middleware.Chain(http.HandlerFunc(vehicleMissionHandler.Start), requireAuth, requireVehicleMgmt))
 	mux.Handle("PUT /api/vehicle-missions/{id}/end", middleware.Chain(http.HandlerFunc(vehicleMissionHandler.End), requireAuth, requireVehicleMgmt))
 	mux.Handle("GET /api/vehicle-missions", middleware.Chain(http.HandlerFunc(vehicleMissionHandler.List), requireAuth, requireVehicleMgmt))
-	mux.Handle("GET /api/vehicle-missions/{id}", middleware.Chain(http.HandlerFunc(vehicleMissionHandler.Get), requireAuth))
+	mux.Handle("GET /api/vehicle-missions/{id}", middleware.Chain(http.HandlerFunc(vehicleMissionHandler.Get), requireAuth, requireVehicleMgmt))
 	mux.Handle("POST /api/vehicle-missions/{id}/rating", middleware.Chain(http.HandlerFunc(vehicleMissionHandler.CreateRating), requireAuth, requireVehicleMgmt))
 	// فحص أدوات المركبة العامة عند بدء مهمة — حصراً لليدر (نفس requireLeader
 	// المستخدم بصيانة الأجهزة)، الموظف العادي ما يشوف/يستخدم هالراوت إطلاقاً.
 	mux.Handle("POST /api/vehicle-missions/{id}/tool-check", middleware.Chain(http.HandlerFunc(vehicleMissionHandler.CreateToolCheck), requireAuth, requireLeader))
-	mux.Handle("GET /api/employees/{id}/driver-rating-summary", middleware.Chain(http.HandlerFunc(vehicleMissionHandler.DriverRatingSummary), requireAuth))
+	mux.Handle("GET /api/employees/{id}/driver-rating-summary", middleware.Chain(http.HandlerFunc(vehicleMissionHandler.DriverRatingSummary), requireAuth, requireVehicleMgmt))
 
 	// نظام حجز المركبات (مسبق) — منفصل عن بدء المهمة الفعلي أعلاه.
 	mux.Handle("POST /api/vehicle-bookings", middleware.Chain(http.HandlerFunc(vehicleBookingHandler.Create), requireAuth, requireVehicleMgmt))

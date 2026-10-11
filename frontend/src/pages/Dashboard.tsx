@@ -17,6 +17,7 @@ import SaveError from '../components/SaveError'
 import { timeGreeting, GREETING_HOLD_MS } from '../greeting'
 import { MapViewer } from '../components/MapLazy'
 import BookingCodeChip from '../components/BookingCodeChip'
+import { parseAmount } from '../utils/money'
 
 function formatTime(): string {
   return new Date().toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' })
@@ -280,8 +281,8 @@ function StaffDashboard() {
   const handleTaskComplete = async (b: Booking) => {
     if (!(await guard.run('إنهاء المهمة', () => api.completeBooking(b.id, {
       completionNotes: taskNotes[b.id] || undefined,
-      amountCollected: taskAmounts[b.id] ? Number(taskAmounts[b.id]) : undefined,
-      advancePaid: taskAdvances[b.id] ? Number(taskAdvances[b.id]) : undefined,
+      amountCollected: taskAmounts[b.id]?.trim() ? parseAmount(taskAmounts[b.id]) : undefined,
+      advancePaid: taskAdvances[b.id]?.trim() ? parseAmount(taskAdvances[b.id]) : undefined,
     })))) return
     setMyTasks(prev => prev.filter(t => t.id !== b.id))
     bookingDone()
@@ -1302,10 +1303,10 @@ function StaffDashboard() {
                       ) : (
                         <div className="space-y-2">
                           <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-                            <input type="number" placeholder="المبلغ المستلم" value={taskAmounts[b.id] || ''}
+                            <input inputMode="numeric" placeholder="المبلغ المستلم" value={taskAmounts[b.id] || ''}
                               onChange={e => setTaskAmounts(p => ({ ...p, [b.id]: e.target.value }))}
                               className="rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-brand-500" />
-                            <input type="number" placeholder="دفعة مقدمة" value={taskAdvances[b.id] || ''}
+                            <input inputMode="numeric" placeholder="دفعة مقدمة" value={taskAdvances[b.id] || ''}
                               onChange={e => setTaskAdvances(p => ({ ...p, [b.id]: e.target.value }))}
                               className="rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-brand-500" />
                             <input placeholder="ملاحظات" value={taskNotes[b.id] || ''}

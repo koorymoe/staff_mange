@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { onEnter } from '../utils/enterKey'
 import { api, AUDIT_VERDICTS, type LeaderInvoice, type LeaderInvoiceAdjustment } from '../api'
+import { parseAmount } from '../utils/money'
 import EntityIdentity from '../components/EntityIdentity'
 import StatTile from '../components/StatTile'
 import Pager from '../components/Pager'
@@ -265,15 +266,15 @@ export default function LeaderInvoicesListPage({ embedded }: EmbeddedProps = {})
       reason: '',
     })
   }
-  const adjNet = Math.max(0, (Number(adj.executionCost) || 0) + (Number(adj.materialsTotal) || 0) - (Number(adj.discountValue) || 0))
+  const adjNet = Math.max(0, parseAmount(adj.executionCost) + parseAmount(adj.materialsTotal) - parseAmount(adj.discountValue))
   const saveAdjust = async () => {
     if (!adjustFor || !adj.reason.trim()) return
     setBusyId(adjustFor.id); setAdjErr(null)
     try {
       await api.adjustLeaderInvoice(adjustFor.id, {
-        executionCost: Number(adj.executionCost) || 0,
-        materialsTotal: Number(adj.materialsTotal) || 0,
-        discountValue: Number(adj.discountValue) || 0,
+        executionCost: parseAmount(adj.executionCost),
+        materialsTotal: parseAmount(adj.materialsTotal),
+        discountValue: parseAmount(adj.discountValue),
         reason: adj.reason.trim(),
       })
       setAdjustFor(null); load()
@@ -392,7 +393,7 @@ export default function LeaderInvoicesListPage({ embedded }: EmbeddedProps = {})
         note: auditNote.trim(),
         // ⚠️ Number('') = صفر مو فاضي — بلا الفحص نرسل صفراً كأنه
         // «ما دخل ولا دينار» وهي معلومة غلط تماماً.
-        auditedAmount: auditAmount.trim() ? Number(auditAmount) : null,
+        auditedAmount: auditAmount.trim() ? parseAmount(auditAmount) : null,
       })
       setAuditFor(null); setAuditNote(''); setAuditAmount('')
       load()
@@ -984,7 +985,7 @@ export default function LeaderInvoicesListPage({ embedded }: EmbeddedProps = {})
                 <div key={f.k}>
                   <label className="mb-1 block text-xs font-medium text-slate-600">{f.l}</label>
                   <input
-                    type="number"
+                    inputMode="numeric"
                     value={adj[f.k]}
                     onChange={(e) => setAdj((p) => ({ ...p, [f.k]: e.target.value }))}
                     className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand-500"
@@ -1072,7 +1073,7 @@ export default function LeaderInvoicesListPage({ embedded }: EmbeddedProps = {})
 
             <label className="mb-1 mt-3 block text-xs font-bold text-slate-500">المبلغ الي دخل فعلاً (اختياري)</label>
             <input
-              type="number"
+              inputMode="numeric"
               value={auditAmount}
               onChange={(e) => setAuditAmount(e.target.value)}
               {...onEnter(saveAudit, { disabled: busyId !== null })}

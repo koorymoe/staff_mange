@@ -66,7 +66,7 @@ func (r *EmployeeCommissionRepository) MonthlyCommissionSeriesForEmployee(employ
 			interval '1 month'
 		) m
 		LEFT JOIN "EmployeeCommission" c ON c."employeeId" = $1
-			AND to_char(c."createdAt", 'YYYY-MM') = to_char(m, 'YYYY-MM')
+			AND to_char(baghdad_date(c."createdAt"), 'YYYY-MM') = to_char(m, 'YYYY-MM')
 		GROUP BY m
 		ORDER BY m
 	`, employeeID, monthsCount, endMonth)

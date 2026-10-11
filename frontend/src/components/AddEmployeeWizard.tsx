@@ -317,7 +317,7 @@ export default function AddEmployeeWizard({ onClose, onCreated, limited = false 
               <input value={username} onChange={e => setUsername(e.target.value)} placeholder="username"
                 className="rounded-xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-brand-500" />
               <label className="text-xs font-bold text-slate-500 mt-2">كلمة المرور *</label>
-              <input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="4 أحرف على الأقل"
+              <input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="8 أحرف على الأقل"
                 className="rounded-xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-brand-500" />
             </div>
           )}

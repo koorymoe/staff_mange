@@ -3,6 +3,7 @@ package repository
 import (
 	"database/sql"
 	"errors"
+	"staffmange-api/internal/timeutil"
 	"time"
 
 	"github.com/jmoiron/sqlx"
@@ -42,7 +43,7 @@ func (r *BookingReopenRepository) Reopen(bookingID, byName, reason string) (*Reo
 	if b.Status != "COMPLETED" {
 		return nil, ErrNotCompleted
 	}
-	note := "↩️ رجع للكادر " + time.Now().Format("2006-01-02 15:04") + " — بواسطة " + byName + ": " + reason
+	note := "↩️ رجع للكادر " + time.Now().In(timeutil.CompanyLocation()).Format("2006-01-02 15:04") + " — بواسطة " + byName + ": " + reason
 	if _, err := tx.Exec(`UPDATE "Booking" SET status = 'IN_PROGRESS', "completedAt" = NULL, "updatedAt" = now(),
 		"adminNotes" = CASE WHEN COALESCE(btrim("adminNotes"), '') = '' THEN $2 ELSE "adminNotes" || E'\n' || $2 END
 		WHERE id = $1`, bookingID, note); err != nil {

@@ -50,6 +50,9 @@ func (r *SecurityLockoutRepository) LogEvent(employeeID *string, employeeName, k
 
 // RegisterFailedLogin يزيد عدّاد المحاولات الفاشلة المتتالية ويرجّع العدد
 // الجديد. لما يوصل الحد، ينحظر الحساب.
+// PrivilegedLoginThreshold حد قفل المالك والمدير المؤقت (أعلى من الموظفين).
+const PrivilegedLoginThreshold = 10
+
 func (r *SecurityLockoutRepository) RegisterFailedLogin(employeeID string) (streak int, locked bool, err error) {
 	err = r.db.Get(&streak, `
 		UPDATE "Employee" SET "failedLoginStreak" = "failedLoginStreak" + 1
@@ -73,10 +76,13 @@ func (r *SecurityLockoutRepository) RegisterFailedLogin(employeeID string) (stre
 			UPDATE "Employee"
 			SET "lockedAt" = now(), "lockedReason" = $2,
 				"lockedDetail" = 'تعطيل مؤقت — ينتهي تلقائياً بعد 15 دقيقة'
-			WHERE id = $1 AND role NOT IN ('OWNER', 'ADMIN')
+			-- (فحص 10-11) المالك والمدير چانوا ما ينقفلون أبداً — فتخمين بلا حد
+			-- على أهم حساب. هسه ينقفلون مؤقتاً بس بعد حد أعلى (10)، حتى
+			-- ما يكدر أحد يقفل المالك بسهولة، والتخمين يوگف.
+			WHERE id = $1 AND (role NOT IN ('OWNER', 'ADMIN') OR $3 >= $4)
 			RETURNING 1
 		)
-		SELECT COUNT(*) FROM upd`, employeeID, LockReasonFailedLogins)
+		SELECT COUNT(*) FROM upd`, employeeID, LockReasonFailedLogins, streak, PrivilegedLoginThreshold)
 	if err != nil {
 		return streak, false, err
 	}

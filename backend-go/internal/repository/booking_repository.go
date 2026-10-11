@@ -851,7 +851,7 @@ func (r *BookingRepository) ServiceIDsFor(bookingID string) ([]string, error) {
 }
 
 func (r *BookingRepository) Confirm(id string, req model.ConfirmBookingRequest, scheduledAt *string) error {
-	_, err := r.db.Exec(`
+	res, err := r.db.Exec(`
 		UPDATE "Booking" SET
 			status = 'CONFIRMED',
 			"confirmedByName" = COALESCE($2, "confirmedByName"),
@@ -871,9 +871,16 @@ func (r *BookingRepository) Confirm(id string, req model.ConfirmBookingRequest, 
 			-- وبلاها يبقى عالق بالمحطة ومخفي عن الحجوزات (شكوى (ع) 10-10)
 			"waitingSince" = NULL, "waitingNote" = NULL, "waitingById" = NULL,
 			"waitingKind" = NULL, "lastWaitingReminderAt" = NULL, "waitingReminderCount" = 0
-		WHERE id = $1
+		-- (فحص 10-11) الحجز المنجز أو الملغي ما يرجع «مثبّت» بالغلط
+		WHERE id = $1 AND status NOT IN ('COMPLETED', 'CANCELLED')
 	`, id, req.ConfirmedByName, req.ConfirmedByEmployeeID, req.AdminNotes, req.TransferToProjects, req.QuotedPrice, req.Address, scheduledAt)
-	return err
+	if err != nil {
+		return err
+	}
+	if n, _ := res.RowsAffected(); n == 0 {
+		return errors.New("الحجز منجز أو ملغي — ما ينثبّت")
+	}
+	return nil
 }
 
 // MarkConfirmationContacted يسجّل لحظة "تم" الإداري بعد ما اتصل بالزبون وأكّد
@@ -937,7 +944,7 @@ func (r *BookingRepository) TouchLastEdited(id, editorID string) error {
 // StartWithResponseTime يبدأ العمل ويحسب كم دقيقة أخذ الفنيون بعد ما تيم ليدر جهّز
 // المواد ولحد ما فعلاً بدأوا الشغل — حتى نعرف مين ضيّع وقت.
 func (r *BookingRepository) StartWithResponseTime(id string) error {
-	_, err := r.db.Exec(`
+	res, err := r.db.Exec(`
 		UPDATE "Booking" SET
 			status = 'IN_PROGRESS',
 			"startedAt" = COALESCE("startedAt", now()),
@@ -946,9 +953,15 @@ func (r *BookingRepository) StartWithResponseTime(id string) error {
 				THEN GREATEST(0, EXTRACT(EPOCH FROM (now() - "materialsReadyAt"))::int / 60)
 				ELSE "responseMinutes"
 			END
-		WHERE id = $1
+		WHERE id = $1 AND status NOT IN ('COMPLETED', 'CANCELLED')
 	`, id)
-	return err
+	if err != nil {
+		return err
+	}
+	if n, _ := res.RowsAffected(); n == 0 {
+		return errors.New("الحجز منجز أو ملغي — ما يبدي")
+	}
+	return nil
 }
 
 // MarkArrived يسجّل لحظة وصول الفنيين لموقع الزبون (قبل بدء العمل فعلياً) — يُستخدم
@@ -2174,8 +2187,15 @@ func (r *BookingRepository) TechRequestCrew(id string) error {
 }
 
 func (r *BookingRepository) TechResolve(id, notes string) error {
-	_, err := r.db.Exec(`UPDATE "Booking" SET status = 'COMPLETED', "completedAt" = now(),
-		"completionNotes" = $2, "updatedAt" = now() WHERE id = $1`, id, notes)
+	res, err := r.db.Exec(`UPDATE "Booking" SET status = 'COMPLETED', "completedAt" = now(),
+		"completionNotes" = $2, "updatedAt" = now(),
+		"waitingSince" = NULL, "waitingKind" = NULL, "waitingNote" = NULL, "waitingById" = NULL
+		WHERE id = $1 AND status NOT IN ('COMPLETED', 'CANCELLED')`, id, notes)
+	if err == nil {
+		if n, _ := res.RowsAffected(); n == 0 {
+			return errors.New("الحجز منجز أو ملغي من قبل")
+		}
+	}
 	return err
 }
 
@@ -2197,4 +2217,17 @@ func (r *BookingRepository) TechVisited(id string) error {
 	_, err := r.db.Exec(`UPDATE "Booking" SET "techVisitedAt" = COALESCE("techVisitedAt", now() AT TIME ZONE 'UTC'),
 		"updatedAt" = now() WHERE id = $1`, id)
 	return err
+}
+
+// IsInvolved هل الموظف إله علاقة بالحجز (مكلّف، سجّله، محوّل إله، أو مشرفه) —
+// للقراءات التفصيلية (التقدّم، الطلعات) لمن ما عنده صلاحية كل الحجوزات.
+func (r *BookingRepository) IsInvolved(bookingID, employeeID string) bool {
+	var ok bool
+	_ = r.db.Get(&ok, `SELECT EXISTS (
+		SELECT 1 FROM "Booking" b WHERE b.id = $1 AND (
+			$2 IN (COALESCE(b."createdById", ''), COALESCE(b."handoverToId", ''), COALESCE(b."projectSupervisorId", ''),
+			       COALESCE(b."inspectionSupervisorId", ''), COALESCE(b."confirmedByEmployeeId", ''))
+			OR EXISTS (SELECT 1 FROM "BookingAssignment" ba WHERE ba."bookingId" = b.id AND ba."employeeId" = $2)))`,
+		bookingID, employeeID)
+	return ok
 }

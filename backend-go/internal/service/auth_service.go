@@ -249,7 +249,8 @@ func (s *AuthService) ParseToken(tokenString string) (*Claims, error) {
 }
 
 // PasswordMinLength الحد الأدنى لطول كلمة المرور.
-const PasswordMinLength = 4
+// (فحص 10-11) چانت 4 — ضعيفة جداً. تنطبق على كلمات السر الجديدة بس.
+const PasswordMinLength = 8
 
 // ValidatePasswordStrength الحد الأدنى لكلمة المرور: 4 محارف وبس.
 //

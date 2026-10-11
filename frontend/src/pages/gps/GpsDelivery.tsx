@@ -1,3 +1,4 @@
+import { escDeep } from '../../utils/printIdentity'
 import { useEffect, useState } from 'react'
 import { api, type GpsDeviceRequest } from '../../api'
 import { matches } from '../../utils/search'
@@ -5,7 +6,8 @@ import { loadFailed } from '../../netErrors'
 
 const subLabel = (t: string) => t === 'THREE_MONTHS' ? '3 أشهر' : t === 'SIX_MONTHS' ? '6 أشهر' : 'سنوي'
 
-function printAgreement(req: GpsDeviceRequest) {
+function printAgreement(rawReq: GpsDeviceRequest) {
+  const req = escDeep(rawReq)
   const customerName = `${req.customer.fullName} ${req.customer.fatherName || ''} ${req.customer.grandfatherName || ''}`.trim()
   const today = new Date().toLocaleDateString('ar-IQ')
   const accountNum = req.id.slice(-6).toUpperCase()

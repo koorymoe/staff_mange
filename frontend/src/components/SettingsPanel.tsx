@@ -116,7 +116,7 @@ export default function SettingsPanel({ onClose }: { onClose: () => void }) {
                 className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand-500"
               />
               <input
-                type="password" required placeholder="كلمة المرور الجديدة" minLength={4}
+                type="password" required placeholder="كلمة المرور الجديدة" minLength={8}
                 value={newPassword} onChange={(e) => setNewPassword(e.target.value)}
                 className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand-500"
               />

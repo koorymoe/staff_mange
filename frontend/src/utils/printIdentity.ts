@@ -56,3 +56,19 @@ export function printIdentityHtml(id: IdentityFields): string {
   if (parts.length <= 1) return ''
   return `<div class="ident-strip">${parts.join('')}</div>`
 }
+
+/**
+ * نسخة من الكائن كل نصوصه مهرّبة — للطباعة الي تبني HTML من بيانات
+ * الزبون (فحص 10-11: عنوان زبون بيه HTML چان ينحقن بعقد الـGPS المطبوع).
+ * الأرقام والتواريخ تبقى مثل ما هي.
+ */
+export function escDeep<T>(v: T): T {
+  if (typeof v === 'string') return esc(v) as T
+  if (Array.isArray(v)) return v.map((x) => escDeep(x)) as T
+  if (v && typeof v === 'object' && !(v instanceof Date)) {
+    const out: Record<string, unknown> = {}
+    for (const [k, x] of Object.entries(v as Record<string, unknown>)) out[k] = escDeep(x)
+    return out as T
+  }
+  return v
+}

@@ -116,7 +116,7 @@ func (r *TodayRepository) Board() (*TodayBoard, error) {
 		FROM "BookingVisitCrew" vc
 		JOIN "BookingVisit" v ON v.id = vc."visitId"
 		JOIN "Employee" e ON e.id = vc."employeeId"
-		WHERE to_char(v."occurredAt", 'YYYY-MM') = to_char(now(), 'YYYY-MM')
+		WHERE to_char(baghdad_date(v."occurredAt"), 'YYYY-MM') = to_char((now() AT TIME ZONE 'Asia/Baghdad'), 'YYYY-MM')
 		  AND e.status = 'ACTIVE'
 		GROUP BY e.id, e.name, e."photoUrl"
 		ORDER BY visits DESC, done DESC

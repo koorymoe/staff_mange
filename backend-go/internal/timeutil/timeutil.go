@@ -57,3 +57,6 @@ func NormalizeCompanyLocal(value string) string {
 	}
 	return t.Format("2006-01-02T15:04:05")
 }
+
+// CompanyLocation توقيت الشركة (بغداد) — لكل «اليوم/الساعة» الي تنعرض للناس.
+func CompanyLocation() *time.Location { return companyLoc }

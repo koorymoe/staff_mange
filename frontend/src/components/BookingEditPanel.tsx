@@ -5,6 +5,7 @@ import { api, type Booking, type Service } from '../api'
 import { useSession } from '../session'
 import BookingChainView from './BookingChain'
 import { validateCustomerName } from '../validation'
+import { parseAmount } from '../utils/money'
 
 // ═══ تعديل الحجز بمكان واحد ═══
 //
@@ -111,7 +112,7 @@ export default function BookingEditPanel({
       let updated = await api.updateBookingDetails(booking.id, {
         // بلا تبديل ما ننرسلها: إرسال قائمة فاضية يمسح الخدمات
         ...(sameServices ? {} : { serviceIds }),
-        quotedPrice: price.trim() === '' ? undefined : Number(price),
+        quotedPrice: price.trim() === '' ? undefined : parseAmount(price),
         // ⚠️ ننرسلها بس إذا انتبدّلت: إرسالها دائماً يخلي أي حفظ
         // يكتب نفس القيمة، وإرسال '' بالغلط يمحي فترة محدَّدة.
         ...(shift !== (booking.shift ?? '') ? { shift } : {}),
@@ -184,7 +185,7 @@ export default function BookingEditPanel({
         <div>
           <label className="mb-1 block text-xs font-medium text-slate-600">كلفة العمل التقديرية</label>
           <input
-            type="number"
+            inputMode="numeric"
             value={price}
             onChange={(e) => setPrice(e.target.value)}
             {...onEnter(save, { disabled: saving })}

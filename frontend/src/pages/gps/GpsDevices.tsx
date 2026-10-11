@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { api, type GpsDeviceRequest } from '../../api'
+import { escDeep } from '../../utils/printIdentity'
 
 // Some legacy records store purchaseType/subscriptionType in lowercase, so we widen
 // those two fields to `string` here rather than reusing the strict literal unions.
@@ -74,7 +75,8 @@ export default function GpsDevices() {
     } finally { setDelivering(false) }
   }
 
-  function handlePrint(req: DeviceRequest) {
+  function handlePrint(rawReq: DeviceRequest) {
+    const req = escDeep(rawReq)
     const customerName = req.customer ? `${req.customer.fullName} ${req.customer.fatherName} ${req.customer.grandfatherName}` : '-'
     const subLabel = req.subscriptionType ? getSubscriptionLabel(req.subscriptionType) : 'لا يوجد'
     const purchaseDate = formatDate(req.createdAt)

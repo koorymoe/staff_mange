@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { bookingDone } from '../bookingDone'
 import { api, type Booking, type BookingProgressReport } from '../api'
 import BookingCodeChip from './BookingCodeChip'
+import { parseAmount } from '../utils/money'
 
 // ═══ الإنجاز الجزئي — «خلصنا جزء والباقي باچر» ═══
 //
@@ -43,7 +44,7 @@ export default function PartialCompleteDialog({
         percentDone: percent,
         blockers: blockers.trim() || undefined,
         materialsUsed: materials.trim() || undefined,
-        amountCollected: amount ? Number(amount) : undefined,
+        amountCollected: amount.trim() ? parseAmount(amount) : undefined,
       })
       onDone(report)
       bookingDone()
@@ -119,7 +120,7 @@ export default function PartialCompleteDialog({
 
         <label className="mt-3 block text-sm font-bold text-slate-700">مبلغ مستلم اليوم (إن وجد)</label>
         <input
-          type="number"
+          inputMode="numeric"
           value={amount}
           onChange={(e) => setAmount(e.target.value)}
           className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand-500"

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { api, type ProjectChecklist, fileUrl } from '../api'
 import { loadFailed } from '../netErrors'
+import { esc } from '../utils/printIdentity'
 
 function fileToBase64(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -11,7 +12,8 @@ function fileToBase64(file: File): Promise<string> {
   })
 }
 
-function printBlankChecklist(title: string) {
+function printBlankChecklist(rawTitle: string) {
+  const title = esc(rawTitle)
   const win = window.open('', '_blank')
   if (!win) return
   win.document.write(`

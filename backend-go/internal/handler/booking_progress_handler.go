@@ -21,6 +21,19 @@ type BookingProgressHandler struct {
 	// ai: إشارة إنجاز جزئي متكرر لماتركس. اختيارية — نفس سبب notify:
 	// فشل تسجيل إشارة تحليل ما يصير يمنع تقرير الكادر.
 	ai service.AiSignalRecorder
+	// canView (فحص 10-11): التقدّم والطلعات والكادر المقترح لأهل الحجوزات
+	// أو للي إله علاقة بالحجز — چانت مفتوحة لأي موظف بالرابط
+	canView func(r *http.Request, bookingID string) bool
+}
+
+func (h *BookingProgressHandler) SetViewGate(f func(r *http.Request, bookingID string) bool) { h.canView = f }
+
+func (h *BookingProgressHandler) allowView(w http.ResponseWriter, r *http.Request) bool {
+	if h.canView == nil || h.canView(r, r.PathValue("id")) {
+		return true
+	}
+	WriteError(w, http.StatusNotFound, "الحجز غير موجود")
+	return false
 }
 
 func NewBookingProgressHandler(
@@ -40,6 +53,9 @@ func (h *BookingProgressHandler) SetAiRecorder(a service.AiSignalRecorder) { h.a
 // «أريد حتى لو الحجز نفسه طلعناله أربع أيام، كل مرة طلعناله تنحسب
 // حجز للموظف، وكل مرة ينكتب بيها تاريخ وكادر طلع».
 func (h *BookingProgressHandler) Visits(w http.ResponseWriter, r *http.Request) {
+	if !h.allowView(w, r) {
+		return
+	}
 	visits, err := h.visits.ByBooking(r.PathValue("id"))
 	if err != nil {
 		WriteError(w, http.StatusInternalServerError, "تعذر جلب الطلعات")
@@ -138,6 +154,9 @@ func (h *BookingProgressHandler) ScheduleContinuation(w http.ResponseWriter, r *
 // GET /api/bookings/{id}/progress — تقارير كل الأيام. يقراها الكادر
 // الجاي قبل ما يطلع، والإداري قبل ما ينسّق.
 func (h *BookingProgressHandler) Reports(w http.ResponseWriter, r *http.Request) {
+	if !h.allowView(w, r) {
+		return
+	}
 	rows, err := h.repo.Reports(r.PathValue("id"))
 	if err != nil {
 		WriteError(w, http.StatusInternalServerError, "تعذر جلب تقارير الإنجاز")
@@ -149,6 +168,9 @@ func (h *BookingProgressHandler) Reports(w http.ResponseWriter, r *http.Request)
 // GET /api/bookings/{id}/suggested-crew — الكادر الي اشتغل بالأيام
 // الفائتة. اقتراح بس: الإداري إله الحق الكامل يبدّل.
 func (h *BookingProgressHandler) SuggestedCrew(w http.ResponseWriter, r *http.Request) {
+	if !h.allowView(w, r) {
+		return
+	}
 	rows, err := h.repo.SuggestedCrew(r.PathValue("id"))
 	if err != nil {
 		WriteError(w, http.StatusInternalServerError, "تعذر جلب الكادر المقترح")
