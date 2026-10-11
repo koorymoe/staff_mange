@@ -187,15 +187,3 @@ func (r *BookingAuditRepository) KindOf(id string) (string, error) {
 	err := r.db.Get(&kind, `SELECT kind FROM "BookingAuditIssue" WHERE id = $1`, id)
 	return kind, err
 }
-
-// PendingZeroAmount الحجوزات المنجزة الي مبلغها صفر أو فاضي — هذي
-// الي المحاسب لازم يمشي عليها بفواتير النظام القديم.
-func (r *BookingAuditRepository) PendingZeroAmount() (int, error) {
-	var n int
-	err := r.db.Get(&n, `
-		SELECT COUNT(*) FROM "Booking"
-		WHERE status = 'COMPLETED' AND COALESCE("amountCollected", 0) = 0
-		  AND `+BookingCountableSQL(`"Booking"`)+`
-	`)
-	return n, err
-}

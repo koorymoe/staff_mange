@@ -50,7 +50,3 @@ export function currentStage(b: Booking): Stage {
   return BOOKING_STAGES.find((s) => !s.done(b)) ?? BOOKING_STAGES[BOOKING_STAGES.length - 1]
 }
 
-/** كم مرحلة خلصت من الكل. */
-export function stageProgress(b: Booking): { done: number; total: number } {
-  return { done: BOOKING_STAGES.filter((s) => s.done(b)).length, total: BOOKING_STAGES.length }
-}

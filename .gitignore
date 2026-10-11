@@ -21,3 +21,6 @@ docs/security-audit*.md
 # ⚠️ اكتُشف لمن رفعت مجسّماً بالتجربة ولگيته **مرشّحاً للرفع** مع الكود.
 backend-go/data/uploads/
 data/uploads/
+
+# البرنامج المبني — ينبني من المصدر، ما ينرفع
+backend-go/api

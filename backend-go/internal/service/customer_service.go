@@ -15,10 +15,6 @@ func NewCustomerService(repo *repository.CustomerRepository) *CustomerService {
 	return &CustomerService{repo: repo}
 }
 
-func (s *CustomerService) List() ([]model.CustomerResponse, error) {
-	return s.Search("", 0)
-}
-
 // Search بحث الزبائن بالسيرفر مع حد أقصى.
 //
 // ⚠️ لازم يمر بنفس تحويل List بالضبط (ToResponse + خدمات الزبون):

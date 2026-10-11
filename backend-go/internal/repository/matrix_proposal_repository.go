@@ -82,13 +82,6 @@ func (r *MatrixProposalRepository) PendingCount() int {
 	return n
 }
 
-// Stats نسبة الموافقة — جزء من «دقة ماتركس».
-func (r *MatrixProposalRepository) Stats() (approved, rejected int) {
-	_ = r.db.Get(&approved, `SELECT COUNT(*) FROM "MatrixProposal" WHERE status = 'APPROVED' AND "decidedAt" > now() - interval '30 days'`)
-	_ = r.db.Get(&rejected, `SELECT COUNT(*) FROM "MatrixProposal" WHERE status = 'REJECTED' AND "decidedAt" > now() - interval '30 days'`)
-	return
-}
-
 // ═══ مادة التعلّم ═══
 
 type KindOutcome struct {

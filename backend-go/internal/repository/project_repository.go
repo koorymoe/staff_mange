@@ -1,8 +1,9 @@
 package repository
 
 import (
-	"github.com/jmoiron/sqlx"
 	"strings"
+
+	"github.com/jmoiron/sqlx"
 
 	"staffmange-api/internal/model"
 )
@@ -170,12 +171,6 @@ func (r *ProjectRepository) NextCodeNumber() (int, error) {
 		return 0, err
 	}
 	return maxNum + 1, nil
-}
-
-func (r *ProjectRepository) CountAll() (int, error) {
-	var count int
-	err := r.db.Get(&count, `SELECT COUNT(*) FROM "Project"`)
-	return count, err
 }
 
 func (r *ProjectRepository) Create(code, name string, rep, phone, location *string, mapLatitude, mapLongitude *float64, workType, refPerson *string, priority string, deliveryDate, bookingID, responsibleEmployeeID, surveyorEmployeeID, locationUrl, createdByEmployeeID *string) (*model.Project, error) {

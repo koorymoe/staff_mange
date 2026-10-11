@@ -289,16 +289,6 @@ func (r *GpsRepository) MarkSimBurned(simID string) (*model.SimCard, error) {
 	return &s, nil
 }
 
-// MarkSimNeedsBurn يحط الشريحة بقائمة "تحتاج حرق" حتى تطلع لمسؤول
-// الجي بي اس. ما نلمس شريحة انحرقت أصلاً.
-func (r *GpsRepository) MarkSimNeedsBurn(simID string) error {
-	_, err := r.db.Exec(`
-		UPDATE "SimCard" SET status = 'NEEDS_BURN'
-		WHERE id = $1 AND status = 'IN_USE'
-	`, simID)
-	return err
-}
-
 func (r *GpsRepository) CreateSim(req model.UpsertSimCardRequest) (*model.SimCard, error) {
 	status := "AVAILABLE"
 	if req.Status != nil {

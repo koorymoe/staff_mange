@@ -41,11 +41,6 @@ var AuditIssueLabels = map[string]string{
 	AuditPriceError: "خطأ بالسعر",
 }
 
-func ValidAuditIssue(v string) bool {
-	_, ok := AuditIssueLabels[v]
-	return ok
-}
-
 const (
 	AuditIssueOpen     = "OPEN"
 	AuditIssueResolved = "RESOLVED"

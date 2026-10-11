@@ -83,34 +83,6 @@ var AllowedContentTypes = map[string]bool{
 	"application/pdf": true,
 }
 
-// DecodeDataURL يفك سلسلة data:...;base64,... ويرجّع المحتوى ونوعه.
-//
-// نحتاجها بمكانين: ترحيل البيانات القديمة، وقبول رفع من واجهات لسّه
-// ترسل base64.
-func DecodeDataURL(s string) (data []byte, contentType string, err error) {
-	if !strings.HasPrefix(s, "data:") {
-		return nil, "", errors.New("مو data URL")
-	}
-	comma := strings.IndexByte(s, ',')
-	if comma < 0 {
-		return nil, "", errors.New("data URL ناقص")
-	}
-	meta := s[len("data:"):comma]
-	payload := s[comma+1:]
-	if !strings.HasSuffix(meta, ";base64") {
-		return nil, "", errors.New("data URL مو base64")
-	}
-	contentType = strings.TrimSuffix(meta, ";base64")
-	if contentType == "" {
-		contentType = "application/octet-stream"
-	}
-	data, err = base64.StdEncoding.DecodeString(payload)
-	if err != nil {
-		return nil, "", fmt.Errorf("base64 غير صالح: %w", err)
-	}
-	return data, contentType, nil
-}
-
 // SniffContentType يحدد النوع من محتوى الملف نفسه مو من ما يدّعيه
 // المستخدم — الترويسة المرسلة تنزوّر بسهولة.
 func SniffContentType(data []byte) string {
@@ -149,3 +121,31 @@ func ctxTimeout(parent context.Context) (context.Context, context.CancelFunc) {
 
 // ReadLimited يقرأ محتوى برفع مع حد أقصى — تُستخدم من طبقة المعالجات.
 func ReadLimited(r io.Reader, max int64) ([]byte, error) { return readAllLimited(r, max) }
+
+// DecodeDataURL يفك سلسلة data:...;base64,... ويرجّع المحتوى ونوعه.
+//
+// نحتاجها بمكانين: ترحيل البيانات القديمة، وقبول رفع من واجهات لسّه
+// ترسل base64.
+func DecodeDataURL(s string) (data []byte, contentType string, err error) {
+	if !strings.HasPrefix(s, "data:") {
+		return nil, "", errors.New("مو data URL")
+	}
+	comma := strings.IndexByte(s, ',')
+	if comma < 0 {
+		return nil, "", errors.New("data URL ناقص")
+	}
+	meta := s[len("data:"):comma]
+	payload := s[comma+1:]
+	if !strings.HasSuffix(meta, ";base64") {
+		return nil, "", errors.New("data URL مو base64")
+	}
+	contentType = strings.TrimSuffix(meta, ";base64")
+	if contentType == "" {
+		contentType = "application/octet-stream"
+	}
+	data, err = base64.StdEncoding.DecodeString(payload)
+	if err != nil {
+		return nil, "", fmt.Errorf("base64 غير صالح: %w", err)
+	}
+	return data, contentType, nil
+}

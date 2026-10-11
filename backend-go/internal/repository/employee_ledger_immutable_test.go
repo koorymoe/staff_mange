@@ -97,34 +97,6 @@ func TestMigrationDeclaresImmutability(t *testing.T) {
 	}
 }
 
-// TestLedgerErrorsAreArabic يتأكد إن رفض القاعدة يوصل للمستخدم بعربية
-// مفهومة مو بنص Postgres.
-func TestLedgerErrorsAreArabic(t *testing.T) {
-	cases := map[string]string{
-		"employee_ledger_collected_needs_booking": "ينربط بحجز",
-		"employee_ledger_reversal_needs_note":     "سبب مكتوب",
-		"EmployeeLedgerEntry_amount_check":        "أكبر من صفر",
-		"EmployeeLedgerEntry_kind_check":          "مو معروف",
-		"EmployeeLedgerEntry_reverse_unique":      "ما ينصحّح مرتين",
-		"ما ينعدّل ولا ينمسح":                     "قيد عكسي",
-	}
-	for raw, want := range cases {
-		got := translateLedgerError(&stubErr{raw}).Error()
-		if !strings.Contains(got, want) {
-			t.Errorf("رسالة %q طلعت %q — المتوقع تحتوي %q", raw, got, want)
-		}
-	}
-	// خطأ مو معروف يمر كما هو بدل ما ينخفي وراء رسالة عامة.
-	other := &stubErr{"connection refused"}
-	if translateLedgerError(other).Error() != "connection refused" {
-		t.Error("الخطأ غير المعروف لازم يمر كما هو حتى ما ينضيع بالتشخيص")
-	}
-}
-
-type stubErr struct{ s string }
-
-func (e *stubErr) Error() string { return e.s }
-
 // ═══ اختبار القاعدة الحية ═══
 //
 // يشتغل بس إذا DATABASE_URL موجود — نفس نمط بقية حرّاس هذا المجلد.

@@ -389,11 +389,6 @@ func (r *BookingRepository) FindByIDs(ids []string) (map[string]*model.Booking, 
 	return out, nil
 }
 
-// hydrate يجلب علاقات حجز واحد — يلف hydrateAll تفادياً لتكرار المنطق.
-func (r *BookingRepository) hydrate(b *model.Booking) error {
-	return r.hydrateAll([]*model.Booking{b})
-}
-
 // hydrateAll يجلب كل العلاقات المرتبطة بمجموعة حجوزات دفعة وحدة (batch) بدل استعلام
 // منفصل لكل حجز — قبل هذا التعديل كل حجز كان يسوي 8-15+ استعلام لحاله (N+1)، فلما
 // صار عدد الحجوزات بالآلاف بعد استيراد البيانات القديمة، صفحة الحجوزات صارت تسوي

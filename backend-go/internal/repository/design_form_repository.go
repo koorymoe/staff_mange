@@ -21,12 +21,6 @@ func (r *DesignFormRepository) ListForms() ([]model.DesignForm, error) {
 	return forms, err
 }
 
-func (r *DesignFormRepository) GetForm(id string) (*model.DesignForm, error) {
-	var f model.DesignForm
-	err := r.db.Get(&f, `SELECT * FROM "DesignForm" WHERE id = $1`, id)
-	return &f, err
-}
-
 func (r *DesignFormRepository) GetFormByToken(token string) (*model.DesignForm, error) {
 	var f model.DesignForm
 	err := r.db.Get(&f, `SELECT * FROM "DesignForm" WHERE "publicToken" = $1`, token)

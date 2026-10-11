@@ -159,13 +159,6 @@ func registerAuthzViolation(employeeID string, now time.Time) int {
 	return len(kept)
 }
 
-// clearAuthzViolations يصفّي سجل الموظف (يُستعمل بالاختبارات وبعد فك الحظر).
-func clearAuthzViolations(employeeID string) {
-	authzViolationLog.Lock()
-	defer authzViolationLog.Unlock()
-	delete(authzViolationLog.hits, employeeID)
-}
-
 // recordViolationAndBlock تسجل محاولة وصول مرفوضة وترد "ممنوع".
 //
 // الحظر التلقائي ما ينحرك إلا بشرطين مع بعض:
@@ -615,22 +608,6 @@ func RoleFromContext(r *http.Request) string {
 	return role
 }
 
-// RequireCommandRealm يقبل توكنات مركز القيادة بس.
-//
-// العكس مقصود: توكن الموظف العادي ما يفتح مركز القيادة حتى لو صاحبه
-// مالك — الطبقة العليا تتطلب الباسورد الثاني، وهذا كل معناها.
-func RequireCommandRealm() func(http.Handler) http.Handler {
-	return func(next http.Handler) http.Handler {
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			if realm, _ := r.Context().Value(ContextRealm).(string); realm != service.RealmCommand {
-				writeError(w, http.StatusNotFound, "المسار غير موجود")
-				return
-			}
-			next.ServeHTTP(w, r)
-		})
-	}
-}
-
 // ═══ سجل النشاط ═══
 var activityRecorder func(employeeID, method, pattern, path string, status int)
 
@@ -664,3 +641,10 @@ func (s *statusWriter) Write(b []byte) (int, error) {
 
 // Unwrap حتى http.ResponseController يوصل للـFlusher وغيره.
 func (s *statusWriter) Unwrap() http.ResponseWriter { return s.ResponseWriter }
+
+// clearAuthzViolations يصفّي سجل الموظف (يُستعمل بالاختبارات وبعد فك الحظر).
+func clearAuthzViolations(employeeID string) {
+	authzViolationLog.Lock()
+	defer authzViolationLog.Unlock()
+	delete(authzViolationLog.hits, employeeID)
+}

@@ -108,10 +108,6 @@ func (r *PeerVoiceRepository) Accept(id string, accepted bool, note *string) err
 	return err
 }
 
-func (r *PeerVoiceRepository) MarkReported(id string) {
-	_, _ = r.db.Exec(`UPDATE "PeerNote" SET "reportedAt" = COALESCE("reportedAt", now()) WHERE id = $1`, id)
-}
-
 type Colleague struct {
 	ID     string `db:"id" json:"id"`
 	Name   string `db:"name" json:"name"`

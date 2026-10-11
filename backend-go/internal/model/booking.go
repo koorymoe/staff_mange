@@ -31,9 +31,9 @@ type Booking struct {
 	ProjectExecutionAt *time.Time `db:"projectExecutionAt" json:"projectExecutionAt,omitempty"`
 	// ProjectLocked محسوب مو عمود: عند المشاريع وما وصل التنفيذ.
 	// المنسّق يشوفه بس ما يكدر يلمسه.
-	ProjectLocked          bool       `db:"-" json:"projectLocked"`
+	ProjectLocked bool `db:"-" json:"projectLocked"`
 	// قرار (ع) 10-09: قيمة الشغل الداخلي = مجموع فواتيره الداخلية (مو amountCollected)
-	InternalInvoiceTotal *float64 `db:"-" json:"internalInvoiceTotal,omitempty"`
+	InternalInvoiceTotal   *float64   `db:"-" json:"internalInvoiceTotal,omitempty"`
 	ConfirmedByName        *string    `db:"confirmedByName" json:"confirmedByName,omitempty"`
 	AdminNotes             *string    `db:"adminNotes" json:"adminNotes,omitempty"`
 	AssignedVehicle        *string    `db:"assignedVehicle" json:"assignedVehicle,omitempty"`
@@ -224,22 +224,22 @@ type Booking struct {
 	LastEditedBy              *EmployeeBrief `db:"-" json:"lastEditedBy,omitempty"`
 
 	// ترحيل للتقني (0326): الحجز صار برقبة تقني أو مسؤول خدمة.
-	HandoverToID        *string        `db:"handoverToId" json:"handoverToId,omitempty"`
-	HandoverByID        *string        `db:"handoverById" json:"-"`
-	HandoverAt          *time.Time     `db:"handoverAt" json:"handoverAt,omitempty"`
-	HandoverReason      *string        `db:"handoverReason" json:"handoverReason,omitempty"`
-	TechContactedAt     *time.Time     `db:"techContactedAt" json:"techContactedAt,omitempty"`
-	TechDiagnosis       *string        `db:"techDiagnosis" json:"techDiagnosis,omitempty"`
-	TechDiagnosedAt     *time.Time     `db:"techDiagnosedAt" json:"techDiagnosedAt,omitempty"`
-	TechCrewRequestedAt *time.Time     `db:"techCrewRequestedAt" json:"techCrewRequestedAt,omitempty"`
+	HandoverToID        *string    `db:"handoverToId" json:"handoverToId,omitempty"`
+	HandoverByID        *string    `db:"handoverById" json:"-"`
+	HandoverAt          *time.Time `db:"handoverAt" json:"handoverAt,omitempty"`
+	HandoverReason      *string    `db:"handoverReason" json:"handoverReason,omitempty"`
+	TechContactedAt     *time.Time `db:"techContactedAt" json:"techContactedAt,omitempty"`
+	TechDiagnosis       *string    `db:"techDiagnosis" json:"techDiagnosis,omitempty"`
+	TechDiagnosedAt     *time.Time `db:"techDiagnosedAt" json:"techDiagnosedAt,omitempty"`
+	TechCrewRequestedAt *time.Time `db:"techCrewRequestedAt" json:"techCrewRequestedAt,omitempty"`
 	// قرار التقني (0330): PHONE انحلّت بالتلفون · VISIT يحتاج كشف/زيارة بموعد.
-	TechDecision   *string    `db:"techDecision" json:"techDecision,omitempty"`
-	TechDecidedAt  *time.Time `db:"techDecidedAt" json:"techDecidedAt,omitempty"`
-	TechVisitAt    *time.Time `db:"techVisitAt" json:"techVisitAt,omitempty"`
-	TechVisitedAt  *time.Time `db:"techVisitedAt" json:"techVisitedAt,omitempty"`
-	TechVisitMoves int        `db:"techVisitMoves" json:"techVisitMoves"`
-	HandoverTo          *EmployeeBrief `db:"-" json:"handoverTo,omitempty"`
-	HandoverBy          *EmployeeBrief `db:"-" json:"handoverBy,omitempty"`
+	TechDecision   *string        `db:"techDecision" json:"techDecision,omitempty"`
+	TechDecidedAt  *time.Time     `db:"techDecidedAt" json:"techDecidedAt,omitempty"`
+	TechVisitAt    *time.Time     `db:"techVisitAt" json:"techVisitAt,omitempty"`
+	TechVisitedAt  *time.Time     `db:"techVisitedAt" json:"techVisitedAt,omitempty"`
+	TechVisitMoves int            `db:"techVisitMoves" json:"techVisitMoves"`
+	HandoverTo     *EmployeeBrief `db:"-" json:"handoverTo,omitempty"`
+	HandoverBy     *EmployeeBrief `db:"-" json:"handoverBy,omitempty"`
 
 	Customer *Customer `db:"-" json:"customer,omitempty"`
 	// Service الخدمة الرئيسية (توافق مع الشاشات القديمة)، و Services كل
@@ -435,25 +435,6 @@ const (
 	// «الزبون يرجع خبر» — ينتظر قراره، مو إنه ما رد.
 	StageBucketCustomerDecision = "AWAITING_CUSTOMER_DECISION"
 )
-
-// StageBucketLabel التسمية العربية — مصدر واحد للسيرفر والواجهة.
-func StageBucketLabel(bucket string) string {
-	switch bucket {
-	case StageBucketPostponed:
-		return "مؤجّلة"
-	case StageBucketCustomerDecision:
-		return "بانتظار موافقة الزبون"
-	case StageBucketNoAnswerBefore:
-		return "الزبون ما رد — قبل التثبيت"
-	case StageBucketNoAnswerAfter:
-		return "الزبون ما رد — بعد التثبيت"
-	case StageBucketCancelledBefore:
-		return "ملغى قبل التثبيت"
-	case StageBucketCancelledAfter:
-		return "ملغى بعد التثبيت"
-	}
-	return ""
-}
 
 // ComputeStageBucket يحدد سلّة الحجز — أو نص فاضي لو ما ينتمي لولا وحدة.
 //

@@ -43,20 +43,6 @@ const (
 	ExtraTaskUrgent = "URGENT"
 )
 
-func ExtraTaskStatusLabel(s string) string {
-	switch s {
-	case ExtraTaskNew:
-		return "جديدة"
-	case ExtraTaskInProgress:
-		return "قيد التنفيذ"
-	case ExtraTaskDone:
-		return "منجزة"
-	case ExtraTaskCancelled:
-		return "ملغاة"
-	}
-	return s
-}
-
 // CreateExtraTaskRequest توجيه مهمة لموظف.
 type CreateExtraTaskRequest struct {
 	Title        string  `json:"title"`

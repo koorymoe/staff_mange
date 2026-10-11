@@ -78,11 +78,3 @@ func (s *VehicleMissionService) List(filters model.VehicleMissionFilters) ([]mod
 func (s *VehicleMissionService) Get(id string) (*model.VehicleMission, error) {
 	return s.repo.Get(id)
 }
-
-func (s *VehicleMissionService) GetActiveMissionForVehicle(vehicleID string) (*model.VehicleMission, error) {
-	m, err := s.repo.GetActiveMissionForVehicle(vehicleID)
-	if errors.Is(err, sql.ErrNoRows) {
-		return nil, nil
-	}
-	return m, err
-}

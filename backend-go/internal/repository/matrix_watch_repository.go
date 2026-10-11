@@ -77,13 +77,6 @@ func (r *MatrixWatchRepository) ToolsNotReturned() ([]ToolOutRow, error) {
 	return rows, err
 }
 
-// ToolReturnedOrGone للتذكير «انحل؟».
-func (r *MatrixWatchRepository) ToolReturned(requestID string) bool {
-	var ok bool
-	_ = r.db.Get(&ok, `SELECT NOT EXISTS (SELECT 1 FROM "ToolRequest" WHERE id = $1 AND status::text = 'APPROVED' AND "returnedAt" IS NULL)`, requestID)
-	return ok
-}
-
 type ToolCountRow struct {
 	ID        string `db:"id"`
 	Name      string `db:"name"`

@@ -367,20 +367,6 @@ func (r *RevolvingFundRepository) EmployeeOutstandingInFund(employeeID, fundID s
 	return v, err
 }
 
-// EmployeeOutstanding شكد بيد هذا الموظف وما انتسوّى — **مجموع كل الدوارات**.
-//
-// ⚠️ للعرض بس (بطاقة «مطلوب منك»). أي تحقق قبل حركة فلوس لازم يستعمل
-// EmployeeOutstandingInFund، وإلا الفلوس ترجع لدوار غلط.
-func (r *RevolvingFundRepository) EmployeeOutstanding(employeeID string) (float64, error) {
-	var v float64
-	err := r.db.Get(&v, `
-		SELECT COALESCE(SUM(CASE WHEN kind = 'DISBURSE' THEN amount ELSE 0 END), 0)
-		     - COALESCE(SUM(CASE WHEN kind = 'SETTLEMENT' AND status = 'APPROVED'
-		                         THEN "spentAmount" + "returnedAmount" ELSE 0 END), 0)
-		FROM "RevolvingFundTxn" WHERE "employeeId" = $1`, employeeID)
-	return v, err
-}
-
 // EmployeeBalance ملخص رصيد موظف — يظهر بلوحته الرئيسية.
 func (r *RevolvingFundRepository) EmployeeBalance(employeeID string) (*model.EmployeeFundBalance, error) {
 	var b model.EmployeeFundBalance

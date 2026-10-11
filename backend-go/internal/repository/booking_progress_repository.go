@@ -268,14 +268,3 @@ func (r *BookingProgressRepository) ScheduleContinuation(bookingID, scheduledAt,
 	}
 	return tx.Commit()
 }
-
-// ListPartial الحجوزات الواقفة بإنجاز جزئي — شاشة الإداري.
-func (r *BookingProgressRepository) ListPartial() ([]string, error) {
-	ids := []string{}
-	err := r.db.Select(&ids, `
-		SELECT id FROM "Booking"
-		WHERE status = 'PARTIAL' AND "archivedAt" IS NULL
-		ORDER BY "lastPartialAt" DESC NULLS LAST
-	`)
-	return ids, err
-}

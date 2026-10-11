@@ -178,25 +178,6 @@ func (r *MatrixScoreRepository) Scores(from, to time.Time, employeeID string) ([
 	return rows, err
 }
 
-// DropStation يشيل نقاط محطة صار حكمها «ما تنطبق» (مثلاً الحجز تحوّل
-// لإدارة المشاريع بعد ما انحسبت). الملغية بيد المدير تبقى بالسجل.
-func (r *MatrixScoreRepository) DropStation(bookingID, rule string) error {
-	_, err := r.db.Exec(`DELETE FROM "MatrixScore" WHERE source = 'BOOKING' AND "sourceId" = $1 AND rule = $2 AND "cancelledAt" IS NULL`,
-		bookingID, rule)
-	return err
-}
-
-// DropStations نفس DropStation بس دفعة وحدة (حجز+محطة) — للمحطات الي صارت «ما تنطبق».
-func (r *MatrixScoreRepository) DropStations(bookingIDs, rules []string) error {
-	if len(bookingIDs) == 0 {
-		return nil
-	}
-	_, err := r.db.Exec(`DELETE FROM "MatrixScore" m USING unnest($1::text[], $2::text[]) AS x(b, rule)
-		WHERE m.source = 'BOOKING' AND m."sourceId" = x.b AND m.rule = x.rule AND m."cancelledAt" IS NULL`,
-		pq.Array(bookingIDs), pq.Array(rules))
-	return err
-}
-
 // KeepOnlyStations يمسح نقاط الحجوزات الي ما عادت بالحساب الحالي: محطة صارت
 // NA/تنتظر، أو انشالت (حجز مرحّل للتقني)، أو صاحبها تغيّر. keep = "حجز|قاعدة|موظف".
 // الملغية يدوياً (cancelledAt) تبقى.
@@ -318,11 +299,6 @@ func (r *MatrixScoreRepository) RatedOn(raterID, bookingID, stage string) (map[s
 	return out, err
 }
 
-// PeriodicRated تقييمات المراقب الدورية لهالفترة.
-func (r *MatrixScoreRepository) PeriodicRated(raterID, period string) (map[string]int, error) {
-	return r.StageRated(raterID, "MONITOR_PERIODIC", period)
-}
-
 // StageRated تقييمات دورية لهالمقيّم بمحطة وفترة.
 func (r *MatrixScoreRepository) StageRated(raterID, stage, period string) (map[string]int, error) {
 	type row struct {
@@ -371,12 +347,12 @@ type ReliabilityFact struct {
 	// قرار (ع) 10-08 — «مؤشرات أداء الموظف»: الإجازات، المشاكل ويا الزملاء،
 	// العدّة (ضياع/تلف)، خصومات KPI. ومعلومات تنعرض بس (ما تدخل بالنسبة):
 	// المهارات، إجازة السوق.
-	LeaveDays   int  `db:"leaveDays"`
-	Issues      int  `db:"issues"`
-	ToolLosses  int  `db:"toolLosses"`
-	KpiHits     int  `db:"kpiHits"`
-	Skills      int  `db:"skills"`
-	HasLicense  bool `db:"hasLicense"`
+	LeaveDays  int  `db:"leaveDays"`
+	Issues     int  `db:"issues"`
+	ToolLosses int  `db:"toolLosses"`
+	KpiHits    int  `db:"kpiHits"`
+	Skills     int  `db:"skills"`
+	HasLicense bool `db:"hasLicense"`
 }
 
 func (r *MatrixScoreRepository) ReliabilityFacts(from, to time.Time) (map[string]ReliabilityFact, error) {

@@ -380,10 +380,6 @@ func stageClause(stage string) string {
 	}
 }
 
-func (r *LeaderInvoiceRepository) List(employeeID string) ([]model.LeaderInvoice, error) {
-	return r.ListByStage(employeeID, "")
-}
-
 // ListByStage يرجّع فواتير مرحلة معيّنة.
 //
 // ⚠️ الترشيح **بالخادم** مو بالمتصفح: القائمة چانت تنزّل **كل**

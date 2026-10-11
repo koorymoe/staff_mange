@@ -80,14 +80,6 @@ export interface ServiceManager {
   service: Service | null
 }
 
-export interface LocationPing {
-  id: string
-  employeeId: string
-  bookingId: string | null
-  latitude: number
-  longitude: number
-  createdAt: string
-}
 
 export interface EmployeeSkill {
   id: string
@@ -1414,14 +1406,6 @@ export interface SystemPriceCatalog {
   createdAt: string
 }
 
-export interface Material {
-  id: string
-  name: string
-  code: string
-  sellPrice: number
-  profitPerUnit: number
-  createdAt: string
-}
 
 export interface ExecutionCostItem {
   systemName: string
@@ -1964,10 +1948,6 @@ export const AI_METRIC_LABELS: Record<string, string> = {
   LATE_START_RATE: 'نسبة التأخر بالخروج للزبون',
 }
 
-export interface AiWorkWindow {
-  startHour: number
-  endHour: number
-}
 
 /** ═══ المهام الإضافية ═══
  *  شغل موجّه من المدير لموظف، مو مربوط بحجز: «خرّج فواتير الشهر»،
@@ -3012,12 +2992,6 @@ export interface DeviceMaintenanceTicket {
   status: 'NEW' | 'IN_PROGRESS' | 'DELIVERED'
 }
 
-// جرد الفريق ("جرد العدد")
-export interface TeamInventoryToolCatalogItem {
-  id: string
-  name: string
-  createdAt: string
-}
 
 export type TeamInventoryPersonRole = 'LEADER' | 'EMPLOYEE1' | 'EMPLOYEE2'
 export type TeamInventoryShortageReason = 'FORGOTTEN' | 'DAMAGED' | 'UNKNOWN'
@@ -3697,7 +3671,6 @@ export const api = {
     request<EmployeeLetter[]>(`/letters${status ? '?status=' + status : ''}`),
   decideLetter: (id: string, body: { approve: boolean; note: string }) =>
     request<EmployeeLetter>(`/letters/${id}/decide`, { method: 'PUT', body: JSON.stringify(body) }),
-  getPendingLettersCount: () => request<{ count: number }>('/letters/pending-count'),
 
   getDisciplinePoints: () => request<DisciplinePoints[]>('/discipline'),
   getDisciplineEvents: (employeeId?: string) =>
@@ -3733,11 +3706,6 @@ export const api = {
     request<{ kind: string }>(`/services/${serviceId}/kind`, { method: 'PUT', body: JSON.stringify({ kind }) }),
 
   // تتبع الموقع الحي
-  createLocationPing: (data: { latitude: number; longitude: number; bookingId?: string | null }) =>
-    request<LocationPing>('/location-pings', { method: 'POST', body: JSON.stringify(data) }),
-  getLatestLocations: () => request<LocationPing[]>('/location-pings/latest'),
-  getLocationPath: (employeeId: string, bookingId?: string) =>
-    request<LocationPing[]>(`/location-pings/path?employeeId=${employeeId}${bookingId ? `&bookingId=${bookingId}` : ''}`),
 
   getEmployees: () => request<Employee[]>('/employees'),
   // ساعات العمل من البيت — صلاحية remote_hours_manage
@@ -4069,7 +4037,6 @@ export const api = {
 
   // ═══ الطاقة الشمسية ═══
   getSolarStats: () => request<SolarStats>('/solar/stats'),
-  getSolarLowStock: () => request<SolarComponent[]>('/solar/low-stock'),
 
   getSolarComponents: (category?: SolarCategory) =>
     request<SolarComponent[]>(`/solar/components${category ? `?category=${category}` : ''}`),
@@ -4181,7 +4148,6 @@ export const api = {
   /** كل طلعة صارت على الحجز — بتاريخها وكادرها */
   getBookingVisits: (id: string) => request<BookingVisit[]>(`/bookings/${id}/visits`),
 
-  getPostponedBookings: () => request<Booking[]>('/bookings/postponed'),
   /** scheduledAt فارغ = تأجيل بلا موعد */
   postponeBooking: (id: string, scheduledAt: string, reason: string) =>
     request<Booking>(`/bookings/${id}/postpone`, { method: 'PUT', body: JSON.stringify({ scheduledAt, reason }) }),
@@ -4253,9 +4219,6 @@ export const api = {
   getAiCatalog: () => request<AiCatalog>('/ai/catalog'),
   getAiMetrics: () => request<AiMetric[]>('/ai/metrics'),
   recomputeAiMetrics: () => request<{ metrics: number }>('/ai/metrics/recompute', { method: 'POST' }),
-  getAiWorkWindow: () => request<AiWorkWindow>('/ai/work-window'),
-  setAiWorkWindow: (startHour: number, endHour: number) =>
-    request<{ ok: boolean }>('/ai/work-window', { method: 'PUT', body: JSON.stringify({ startHour, endHour }) }),
 
   /** حكم التدقيق قبل الاعتماد: مطابق / غير مطابق / خطأ بالسعر */
   setInvoiceAuditVerdict: (id: string, data: { verdict: string; note: string; auditedAmount?: number | null }) =>
@@ -4273,7 +4236,6 @@ export const api = {
   revokeInvoiceApproval: (id: string, reason: string) =>
     request<LeaderInvoice>(`/leader-invoices/${id}/revoke`, { method: 'PUT', body: JSON.stringify({ reason }) }),
   /** الفواتير المعتمدة بلا رقم فاتورة محاسبية — الفجوة الي كلّفت */
-  getApprovedWithoutNumber: () => request<LeaderInvoice[]>('/leader-invoices/approved-without-number'),
 
   /** قصة الحجز كاملة + التأخيرات */
   getBookingTimeline: (id: string) => request<BookingTimeline>(`/bookings/${id}/timeline`),
@@ -4354,7 +4316,6 @@ export const api = {
   /** مهامي أنا — المعرّف من التوكن، ما ينرسل بالطلب */
   getMyExtraTasks: (includeDone = false) =>
     request<ExtraTask[]>(`/extra-tasks/mine${includeDone ? '?includeDone=1' : ''}`),
-  getMyExtraTaskCount: () => request<{ count: number }>('/extra-tasks/mine/count'),
   markExtraTaskSeen: (id: string) =>
     request<{ ok: boolean }>(`/extra-tasks/${id}/seen`, { method: 'PUT' }),
   startExtraTask: (id: string) =>
@@ -4371,8 +4332,6 @@ export const api = {
   setBookingProjectNotes: (id: string, note: string) =>
     request<Booking>(`/bookings/${id}/project-notes`, { method: 'PUT', body: JSON.stringify({ note }) }),
   /** إلغاء الحجز — السبب إجباري. */
-  cancelBooking: (id: string, reason: string) =>
-    request<Booking>(`/bookings/${id}/cancel`, { method: 'PUT', body: JSON.stringify({ reason }) }),
   /** حجوزات سلّة مرحلة وحدة (مؤجّل/ما رد/ملغى × قبل وبعد التثبيت). */
   getBookingsByStageBucket: (bucket: StageBucket) =>
     request<Booking[]>(`/bookings/stage-bucket?bucket=${encodeURIComponent(bucket)}`),
@@ -4459,8 +4418,6 @@ export const api = {
     request<BookingSurveyReport>('/booking-survey-reports', {
       method: 'POST', body: JSON.stringify({ bookingId, ...body }),
     }),
-  getBookingSurveyReports: (bookingId: string) =>
-    request<BookingSurveyReport[]>(`/booking-survey-reports?bookingId=${encodeURIComponent(bookingId)}`),
 
   /** تغيير نوع الحجز — للمالك ومدير النظام بس (السيرفر يرفض غيرهم) */
   /** تسعير الأعمال الداخلية القديمة (مؤقت — قرار (ع) 10-07). */
@@ -4482,8 +4439,6 @@ export const api = {
     request<Booking>(`/bookings/${id}/arrived`, { method: 'PUT', body: JSON.stringify({}) }),
   setMaterialsReady: (id: string) =>
     request<Booking>(`/bookings/${id}/materials-ready`, { method: 'PUT', body: JSON.stringify({}) }),
-  verifyAmount: (id: string) =>
-    request<Booking>(`/bookings/${id}/verify`, { method: 'PUT', body: JSON.stringify({}) }),
   // إرجاع الحجز للتدقيق بعد ما انتأشر مدقّق — مدير النظام حصراً
   unverifyBooking: (id: string) =>
     request<Booking>(`/bookings/${id}/unverify`, { method: 'PUT' }),
@@ -4498,7 +4453,6 @@ export const api = {
     request<CoordinationAlert[]>(`/bookings/${bookingId}/coordination-alerts`),
   getCoordinationAlertSummaries: () =>
     request<CoordinationAlertSummary[]>('/coordination-alerts/summaries'),
-  getBookingToolChecks: (id: string) => request<BookingToolCheck[]>(`/bookings/${id}/tool-checks`),
   getStats: () => request<Stats>('/stats'),
 
   getExpenses: (employeeId?: string) =>
@@ -4557,8 +4511,6 @@ export const api = {
   getGpsInstallCosts: () => request<GpsInstallCostSummary>('/finance/gps-install-costs'),
   addStockIntake: (data: { toolId: string; quantity: number; unitPrice?: number | null; supplier?: string | null; notes?: string | null }) =>
     request<StockIntake>('/inventory/stock-intake', { method: 'POST', body: JSON.stringify(data) }),
-  getStockIntakes: (toolId?: string) =>
-    request<StockIntake[]>(`/inventory/stock-intake${toolId ? '?toolId=' + toolId : ''}`),
   /** أرقام اللوحة الرئيسية — بدون سحب أرشيف الشركة كامل للمتصفح */
   /** آخر ظهور بآخر ساعة — «منو فاتح النظام هسه» (المدير/المالك والمراقب). */
   getOnlineEmployees: () => request<{ id: string; name: string; role: string; photoUrl: string | null; lastSeenAt: string }[]>('/presence/online'),
@@ -4610,7 +4562,6 @@ export const api = {
       method: 'PUT', body: JSON.stringify({ approve, reviewNote: reviewNote || null }),
     }),
   getMyFundBalance: () => request<EmployeeFundBalance>('/funds/my-balance'),
-  getMyFundTransactions: () => request<RevolvingFundTxn[]>('/funds/my-transactions'),
 
   /** المحاسب يأشر «تم التخريج» ويحدد الحساب — هنا يرجع المصروف للدوار */
   dischargeSettlement: (id: string, data: { account: string; note?: string | null }) =>
@@ -4626,8 +4577,6 @@ export const api = {
   getSimCards: () => request<GpsSimCard[]>('/gps/sims'),
   createSimCard: (data: Partial<GpsSimCard>) =>
     request<GpsSimCard>('/gps/sims', { method: 'POST', body: JSON.stringify(data) }),
-  updateSimCard: (id: string, data: Partial<GpsSimCard>) =>
-    request<GpsSimCard>(`/gps/sims/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
 
   // ── دورة حياة الشريحة ومتابعة التجديد ──
   getAvailableSimCards: () => request<GpsSimCard[]>('/gps/sims/available'),
@@ -4639,8 +4588,6 @@ export const api = {
     request<GpsSimCard>(`/gps/sims/${id}/burn`, { method: 'POST' }),
   getSubscriptionFollowUps: () =>
     request<GpsSubscriptionFollowUp[]>('/gps/subscriptions/follow-up'),
-  getDeviceFollowUps: (deviceId: string) =>
-    request<GpsRenewalFollowUp[]>(`/gps/devices/${deviceId}/follow-up`),
   createDeviceFollowUp: (deviceId: string, outcome: GpsFollowUpOutcome, notes?: string) =>
     request<GpsRenewalFollowUp>(`/gps/devices/${deviceId}/follow-up`, {
       method: 'POST', body: JSON.stringify({ outcome, notes: notes || null }),
@@ -4669,8 +4616,6 @@ export const api = {
     commitmentScore?: number | null; speedScore?: number | null; qualityScore?: number | null
   }) =>
     request<PerformanceReview>('/performance-reviews', { method: 'POST', body: JSON.stringify(data) }),
-  getPerformanceReviews: () => request<PerformanceReview[]>('/performance-reviews'),
-  getRatableEmployees: () => request<{ id: string; name: string }[]>('/performance-reviews/ratable'),
   /** حجوزات الليدر المنجزة وكادر كل وحدة وحالة تقييمهم. */
   // النطاق يمرّ للخادم مو ينترشح محلياً: الخادم چان يقصّ على آخر ٣٠
   // يوم قبل ما توصل البيانات للواجهة، فاختيار تاريخ أقدم ما يجيب ولا شي.
@@ -4682,7 +4627,6 @@ export const api = {
     return request<BookingAwaitingReview[]>(
       `/performance-reviews/my-bookings${qs ? `?${qs}` : ''}`)
   },
-  getPerformanceReviewsForEmployee: (employeeId: string) => request<PerformanceReview[]>(`/performance-reviews/employee/${employeeId}`),
 
   // Products
   getProducts: () => request<Product[]>('/products'),
@@ -4690,7 +4634,6 @@ export const api = {
   //
   // الصور القديمة لسّه data: URLs والجديدة صارت /api/files/... —
   // fileUrl() يتعامل مع الاثنين، فما نحتاج نعدّل كل شاشة.
-  getFileToken: () => request<{ token: string }>('/files/token'),
   uploadFile: async (file: File, folder?: string) => {
     const form = new FormData()
     form.append('file', file)
@@ -4776,7 +4719,6 @@ export const api = {
     request<void>(`/products/${id}`, { method: 'DELETE' }),
 
   // Quotations
-  getQuotations: (search?: string) => request<Quotation[]>(`/quotations${search ? `?search=${encodeURIComponent(search)}` : ''}`),
   /** ═══ تعلّم أسعار الخدمات ═══ */
   getServicePriceSamples: () => request<ServicePriceStats[]>('/service-prices/samples'),
   getServicePriceSuggestions: (status?: string) =>
@@ -4835,15 +4777,12 @@ export const api = {
 
   getSystemPriceCatalog: (systemName?: string) =>
     request<SystemPriceCatalog[]>(`/system-price-catalog${systemName ? `?systemName=${encodeURIComponent(systemName)}` : ''}`),
-  getMaterials: (code?: string) =>
-    request<Material[]>(`/materials${code ? `?code=${encodeURIComponent(code)}` : ''}`),
   getInvoiceAdjustments: (id: string) =>
     request<LeaderInvoiceAdjustment[]>(`/leader-invoices/${id}/adjustments`),
   /** يدوّر على الحجز بكل الأماكن ويقول وين هو. */
   locate: (q: string) => request<LocateResult>(`/locate?q=${encodeURIComponent(q)}`),
   getLeaderInvoices: (employeeId?: string) =>
     request<LeaderInvoice[]>(`/leader-invoices${employeeId ? `?employeeId=${encodeURIComponent(employeeId)}` : ''}`),
-  getLeaderInvoice: (id: string) => request<LeaderInvoice>(`/leader-invoices/${id}`),
   createLeaderInvoice: (data: CreateLeaderInvoiceRequest) =>
     request<LeaderInvoice>('/leader-invoices', { method: 'POST', body: JSON.stringify(data) }),
   estimateLeaderInvoiceCost: (items: ExecutionCostItem[]) =>
@@ -4862,8 +4801,6 @@ export const api = {
   adjustLeaderInvoice: (id: string, data: { executionCost: number; materialsTotal: number; discountValue: number; reason: string }) =>
     request<LeaderInvoice>(`/leader-invoices/${id}/adjust`, { method: 'PUT', body: JSON.stringify(data) }),
   // البحث برقم فاتورة المحاسب — سبب أرشفة الرقم أصلاً
-  findInvoiceByNumber: (number: string) =>
-    request<LeaderInvoice>(`/leader-invoices/by-number?number=${encodeURIComponent(number)}`),
   // المشاريع الموجّهة للموظف الحالي — الليدر يسوي فاتورة للشغل الموجّه له
   getProjectsDirectedToMe: () =>
     request<{ projects: DirectedProject[] }>('/projects/delegated-to-me'),
@@ -5026,7 +4963,6 @@ export const api = {
   getMyTechSuppliers: () => request<TechSupplier[]>('/tech-suppliers/mine'),
   addTechSupplier: (body: TechSupplierIn) => request<{ id: string; message: string }>('/tech-suppliers', { method: 'POST', body: JSON.stringify(body) }),
   getAllTechSuppliers: () => request<{ suppliers: TechSupplier[]; people: { id: string; name: string; role: string; kind: string }[] }>('/tech-suppliers'),
-  updateTechSupplier: (id: string, body: TechSupplierIn) => request<{ ok: boolean }>(`/tech-suppliers/${id}`, { method: 'PUT', body: JSON.stringify(body) }),
   deleteTechSupplier: (id: string) => request<{ ok: boolean }>(`/tech-suppliers/${id}`, { method: 'DELETE' }),
   setTechSupplierAccess: (employeeId: string, supplierIds: string[]) => request<{ ok: boolean }>(`/tech-suppliers/access/${employeeId}`, { method: 'PUT', body: JSON.stringify({ supplierIds }) }),
   answerAutoCheckout: (id: string, kind: 'ACK' | 'WORKED' | 'BACK', until?: string, note?: string) =>
@@ -5042,14 +4978,10 @@ export const api = {
     request<{ ok: boolean }>(`/projects/${projectId}/fill-info`, { method: 'PUT', body: JSON.stringify(body) }),
   setProjectContractValue: (projectId: string, amount: number) => request<ProjectPaymentsState>(`/projects/${projectId}/contract-value`, { method: 'PUT', body: JSON.stringify({ amount }) }),
   getProjectMoneyOverview: () => request<ProjectMoney[]>('/project-payments/overview'),
-  getMyAttendanceToday: () => request<AttendanceRecord | null>('/attendance/mine'),
   getMyOpenSession: () => request<OpenSessionResponse>('/attendance/open'),
-  getTodayAttendance: () => request<AttendanceRecord[]>('/attendance/today'),
   getTodaySummary: () => request<EmployeeDailyAttendanceSummary[]>('/attendance/today-summary'),
   getMonthlyAttendance: (employeeId: string, month: string) =>
     request<MonthlyAttendanceReport>(`/attendance/employee/${employeeId}?month=${month}`),
-  correctAttendance: (id: string, data: { checkIn?: string; checkOut?: string }) =>
-    request<AttendanceRecord>(`/attendance/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
   exportEmployeeAttendance: (employeeId: string, month: string) =>
     downloadFile(`/attendance/export/employee/${employeeId}?month=${month}`, `attendance-${employeeId}-${month}.xlsx`),
   exportTodayAttendance: (date?: string) =>
@@ -5057,7 +4989,6 @@ export const api = {
 
   // KPI
   getKpiEvaluations: () => request<KpiEvaluation[]>('/kpi'),
-  getEmployeeKpi: (employeeId: string) => request<KpiEvaluation[]>(`/kpi/employee/${employeeId}`),
   createKpiEvaluation: (data: { employeeId: string; evaluatorId: string; points: number; reason: string; announce?: boolean }) =>
     request<KpiEvaluation>('/kpi', { method: 'POST', body: JSON.stringify(data) }),
   deleteKpiEvaluation: (id: string) => request<void>(`/kpi/${id}`, { method: 'DELETE' }),
@@ -5167,7 +5098,6 @@ export const api = {
     const qs = params.toString()
     return request<VehicleMission[]>(`/vehicle-missions${qs ? `?${qs}` : ''}`)
   },
-  getVehicleMission: (id: string) => request<VehicleMission>(`/vehicle-missions/${id}`),
   createVehicleMissionRating: (missionId: string, data: {
     commitment: number; vehicleCare: number; driving: number; cleanliness: number; notes?: string
   }) => request<VehicleMissionRating>(`/vehicle-missions/${missionId}/rating`, { method: 'POST', body: JSON.stringify(data) }),
@@ -5233,8 +5163,6 @@ export const api = {
     request<TrainingMaterial[]>(`/training/materials${serviceId ? `?serviceId=${serviceId}` : ''}`),
   createTrainingMaterial: (data: { serviceId: string; title: string; url: string; type?: string; order?: number }) =>
     request<TrainingMaterial>('/training/materials', { method: 'POST', body: JSON.stringify(data) }),
-  updateTrainingMaterial: (id: string, data: { title: string; url: string; type?: string; order?: number }) =>
-    request<TrainingMaterial>(`/training/materials/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
   deleteTrainingMaterial: (id: string) =>
     request<void>(`/training/materials/${id}`, { method: 'DELETE' }),
 
@@ -5277,8 +5205,6 @@ export const api = {
   getCartItems: (bookingId: string) => request<CartItem[]>(`/cart/booking/${bookingId}`),
   addCartItem: (bookingId: string, data: { productName: string; quantity: number; unitPrice: number; notes?: string }) =>
     request<CartItem>(`/cart/booking/${bookingId}`, { method: 'POST', body: JSON.stringify(data) }),
-  updateCartItem: (id: string, data: Partial<CartItem>) =>
-    request<CartItem>(`/cart/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
   deleteCartItem: (id: string) => request<void>(`/cart/${id}`, { method: 'DELETE' }),
 
   // Notifications
@@ -5337,8 +5263,6 @@ export const api = {
     request<OnDemandTool>(`/inventory/ondemand/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
   // يفتح رابط الخريطة بالسيرفر ويرجع النقطة — ضروري للروابط المختصرة
   // (maps.app.goo.gl) الي ما تحتوي إحداثيات إلا بعد ما تنفتح.
-  resolveMapLink: (url: string) =>
-    request<{ lat: number; lng: number }>(`/geo/resolve-map-link?url=${encodeURIComponent(url)}`),
   getToolRequests: (employeeId?: string) =>
     request<ToolRequestItem[]>(`/inventory/requests${employeeId ? `?employeeId=${employeeId}` : ''}`),
   createToolRequest: (data: { employeeId: string; toolId: string; reason: ToolRequestReason; description?: string }) =>
@@ -5409,11 +5333,6 @@ export const api = {
     request<Complaint>(`/complaints/${id}/resolve`, { method: 'PUT', body: JSON.stringify({ resolution }) }),
 
   // GPS Settings
-  getGpsSettings: () => request<Record<string, unknown>[]>('/gps/settings'),
-  updateGpsSettings: (data: Record<string, unknown>) =>
-    request<Record<string, unknown>>('/gps/settings', { method: 'PUT', body: JSON.stringify(data) }),
-  updateGpsCustomer: (id: string, data: Partial<GpsCustomer>) =>
-    request<GpsCustomer>(`/gps/customers/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
 
   // Procurement
   getProcurementRequests: () => request<ProcurementRequest[]>('/procurement'),
@@ -5433,12 +5352,7 @@ export const api = {
     request<DeviceMaintenanceTicket>(`/device-maintenance/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
 
   // جرد الفريق ("جرد العدد") — ليدر فقط
-  getTeamInventoryTools: () => request<TeamInventoryToolCatalogItem[]>('/team-inventory/tools'),
-  createTeamInventoryTool: (name: string) =>
-    request<TeamInventoryToolCatalogItem>('/team-inventory/tools', { method: 'POST', body: JSON.stringify({ name }) }),
   getTeamInventoryChecks: () => request<TeamInventoryCheck[]>('/team-inventory/checks'),
-  createTeamInventoryCheck: (data: { employee1Id?: string | null; employee2Id?: string | null; items: { toolName: string; personRole: TeamInventoryPersonRole; present: boolean; reason?: TeamInventoryShortageReason | null }[] }) =>
-    request<TeamInventoryCheck>('/team-inventory/checks', { method: 'POST', body: JSON.stringify(data) }),
 
   // تقدير مدة العمل المتعلَّم تلقائياً (بدون رقم مفروض يدوياً) — يرجع expectedMinutes:
   // null لو البيانات التاريخية غير كافية بعد (sampleCount < minSamples).

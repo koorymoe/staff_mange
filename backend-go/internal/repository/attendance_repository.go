@@ -301,21 +301,6 @@ func (r *AttendanceRepository) AutoClose(id, employeeID string, at time.Time, re
 	return tx.Commit()
 }
 
-// AutoCountSince كم مرة انسكّر انصرافه تلقائياً من تاريخ.
-func (r *AttendanceRepository) AutoCountSince(since time.Time) (map[string]int, error) {
-	type row struct {
-		EmployeeID string `db:"employeeId"`
-		N          int    `db:"n"`
-	}
-	rows := []row{}
-	err := r.db.Select(&rows, `SELECT "employeeId", count(*)::int AS n FROM "AttendanceAuto" WHERE "createdAt" >= $1 GROUP BY 1`, since)
-	out := map[string]int{}
-	for _, x := range rows {
-		out[x.EmployeeID] = x.N
-	}
-	return out, err
-}
-
 // ═══ ما بعد الانصراف التلقائي: سؤال الموظف والدليل ═══
 
 // AutoClosedOpen آخر جلسة انسكّرت تلقائياً خلال ٢٠ ساعة وماكو جواب عليها.

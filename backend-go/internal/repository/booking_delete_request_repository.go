@@ -166,9 +166,3 @@ func (r *BookingDeleteRequestRepository) Decide(id string, approve bool, note *s
 	}
 	return r.Get(id)
 }
-
-func (r *BookingDeleteRequestRepository) PendingCount() (int, error) {
-	var n int
-	err := r.db.Get(&n, `SELECT COUNT(*) FROM "BookingDeleteRequest" WHERE status = 'PENDING'`)
-	return n, err
-}

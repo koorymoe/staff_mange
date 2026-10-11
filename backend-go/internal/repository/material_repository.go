@@ -41,16 +41,3 @@ func (r *MaterialRepository) GetByCode(code string) (*model.Material, error) {
 	}
 	return &m, nil
 }
-
-// GetByID يبحث عن مادة واحدة بالمعرف.
-func (r *MaterialRepository) GetByID(id string) (*model.Material, error) {
-	var m model.Material
-	err := r.db.Get(&m, `SELECT * FROM "Material" WHERE id = $1`, id)
-	if err == sql.ErrNoRows {
-		return nil, nil
-	}
-	if err != nil {
-		return nil, err
-	}
-	return &m, nil
-}

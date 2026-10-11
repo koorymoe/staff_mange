@@ -13,7 +13,7 @@ type PerformanceReview struct {
 	Reason      string `db:"reason" json:"reason"`
 	// الحجز الي انقيّم عليه. فاضي بالتقييمات القديمة الي انسجّلت قبل
 	// ما يصير التقييم مربوط بشغل.
-	BookingID *string   `db:"bookingId" json:"bookingId"`
+	BookingID *string `db:"bookingId" json:"bookingId"`
 	// درجات ١-٥ اختيارية — تفصّل «وين» بالضبط بدل حكم واحد عام.
 	// NULL يعني الليدر ما نطّى نجوم، مو إنه نطّى صفر.
 	CommitmentScore *int      `db:"commitmentScore" json:"commitmentScore"`
@@ -42,15 +42,6 @@ var ReviewRatingLabels = map[string]string{
 	ReviewNeedsTraining: "يحتاج تدريب",
 	ReviewMisconduct:    "مخالفة سلوك",
 	ReviewCommitment:    "خلل بالالتزام",
-}
-
-// ReviewNeedsAdminAction هل هذا التقييم يحتاج قرار إداري؟
-//
-// ⚠️ الليدر **ما يغرّم** — يبلّغ بس. الغرامة قرار الإدارة.
-// إعطاء الليدر سلطة غرامة مباشرة على زملائه يخلي أي خلاف شخصي
-// يتحوّل خصم من راتب، والنظام يصير سلاح مو أداة.
-func ReviewNeedsAdminAction(rating string) bool {
-	return rating == ReviewMisconduct || rating == ReviewCommitment
 }
 
 // ValidReviewRating فحص القيمة.
@@ -82,15 +73,15 @@ func ValidReviewScore(v *int) bool {
 // الليدر ما يحتاج يدور على موظفيه بقائمة — النظام يگله «هذني
 // الحجوزات الي خلّصتها، ومنو طلع وياك بكل وحدة».
 type BookingAwaitingReview struct {
-	BookingID    string     `db:"bookingId" json:"bookingId"`
-	Code         string     `db:"code" json:"code"`
-	CustomerName string     `db:"customerName" json:"customerName"`
-	ServiceName  *string    `db:"serviceName" json:"serviceName"`
+	BookingID    string  `db:"bookingId" json:"bookingId"`
+	Code         string  `db:"code" json:"code"`
+	CustomerName string  `db:"customerName" json:"customerName"`
+	ServiceName  *string `db:"serviceName" json:"serviceName"`
 	// هوية الزبون بنفس البطاقة — الليدر يتذكّر الشغلة من العنوان
 	// والرقم أسرع ما يتذكرها من كود الحجز.
-	CustomerPhone   *string `db:"customerPhone" json:"customerPhone"`
-	CustomerAddress *string `db:"customerAddress" json:"customerAddress"`
-	CompletedAt  *time.Time `db:"completedAt" json:"completedAt"`
+	CustomerPhone   *string    `db:"customerPhone" json:"customerPhone"`
+	CustomerAddress *string    `db:"customerAddress" json:"customerAddress"`
+	CompletedAt     *time.Time `db:"completedAt" json:"completedAt"`
 
 	// الكادر الي طلع بهذا الحجز، وحالة تقييم كل واحد
 	Crew []CrewReviewState `db:"-" json:"crew"`

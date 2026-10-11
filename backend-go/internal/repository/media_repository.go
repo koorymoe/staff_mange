@@ -112,13 +112,6 @@ func (r *MediaRepository) OpenProjects() ([]string, error) {
 	return ids, err
 }
 
-// ProjectStage مرحلة المشروع الحالية.
-func (r *MediaRepository) ProjectStage(projectID string) string {
-	var st string
-	_ = r.db.Get(&st, `SELECT stage FROM "Project" WHERE id = $1`, projectID)
-	return st
-}
-
 type MediaUpdate struct {
 	Status       string
 	ShootAt      *time.Time
@@ -139,16 +132,4 @@ func (r *MediaRepository) ProjectEngineer(projectID string) *string {
 	var id *string
 	_ = r.db.Get(&id, `SELECT COALESCE("responsibleEmployeeId", "delegatedToEmployeeId", "surveyorEmployeeId") FROM "Project" WHERE id = $1`, projectID)
 	return id
-}
-
-func (r *MediaRepository) SetProjectStage(projectID, stage string) error {
-	_, err := r.db.Exec(`UPDATE "Project" SET stage = $2, "updatedAt" = CURRENT_TIMESTAMP WHERE id = $1`, projectID, stage)
-	return err
-}
-
-// StaleNew تحويلات للإعلام بعدها «جديدة» من +٣ أيام — لعين الطلبات المعلّقة.
-func (r *MediaRepository) StaleNew() ([]MediaBrief, error) {
-	rows := []MediaBrief{}
-	err := r.db.Select(&rows, mediaSelect+` WHERE m.status = 'NEW' AND m."createdAt" < now() - interval '3 days' ORDER BY m."createdAt"`)
-	return rows, err
 }

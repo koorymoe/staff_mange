@@ -31,13 +31,6 @@ func (r *EmployeeCommissionRepository) Create(employeeID, leaderInvoiceID, role 
 	return &c, nil
 }
 
-// ListByLeaderInvoice يرجّع كل عمولات فاتورة ليدر واحدة.
-func (r *EmployeeCommissionRepository) ListByLeaderInvoice(leaderInvoiceID string) ([]model.EmployeeCommission, error) {
-	rows := []model.EmployeeCommission{}
-	err := r.db.Select(&rows, `SELECT * FROM "EmployeeCommission" WHERE "leaderInvoiceId" = $1 ORDER BY "createdAt"`, leaderInvoiceID)
-	return rows, err
-}
-
 // SumForEmployeeMonth يرجّع مجموع "totalCommission" لموظف معيّن خلال شهر معيّن
 // (monthPrefix بصيغة "YYYY-MM").
 func (r *EmployeeCommissionRepository) SumForEmployeeMonth(employeeID, monthPrefix string) (float64, error) {
@@ -78,17 +71,6 @@ func (r *EmployeeCommissionRepository) MonthlyCommissionSeriesForEmployee(employ
 		ORDER BY m
 	`, employeeID, monthsCount, endMonth)
 	return buckets, err
-}
-
-// SumForEmployeeLast7Days يرجّع مجموع "totalCommission" لموظف معيّن خلال آخر 7
-// أيام — يُستخدم لحساب "حجم المبيعات" الأسبوعي.
-func (r *EmployeeCommissionRepository) SumForEmployeeLast7Days(employeeID string) (float64, error) {
-	var total sql64
-	err := r.db.Get(&total, `
-		SELECT COALESCE(SUM("totalCommission"), 0) FROM "EmployeeCommission"
-		WHERE "employeeId" = $1 AND "createdAt" >= now() - interval '7 days'
-	`, employeeID)
-	return float64(total), err
 }
 
 // SumForDate يرجّع مجموع "totalCommission" لكل الموظفين بتاريخ معيّن —

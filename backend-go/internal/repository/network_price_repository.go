@@ -38,19 +38,6 @@ func (r *NetworkPriceRepository) List(activeOnly bool) ([]model.NetworkPriceItem
 	return rows, nil
 }
 
-func (r *NetworkPriceRepository) FindByID(id string) (*model.NetworkPriceItem, error) {
-	var it model.NetworkPriceItem
-	err := r.db.Get(&it, `SELECT * FROM "NetworkPriceItem" WHERE id = $1`, id)
-	if errors.Is(err, sql.ErrNoRows) {
-		return nil, nil
-	}
-	if err != nil {
-		return nil, err
-	}
-	decodeBrackets(&it)
-	return &it, nil
-}
-
 func (r *NetworkPriceRepository) Create(req model.SaveNetworkPriceItemRequest) (*model.NetworkPriceItem, error) {
 	var it model.NetworkPriceItem
 	err := r.db.Get(&it, `

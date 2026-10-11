@@ -654,17 +654,6 @@ func (s *LeaderInvoiceService) FindByExternalNumber(number string) (*model.Leade
 	return s.invoices.FindByExternalNumber(number)
 }
 
-func (s *LeaderInvoiceService) approveOld(id, approverEmployeeID string) (*model.LeaderInvoice, error) {
-	inv, err := s.invoices.Approve(id, approverEmployeeID, "")
-	if err != nil {
-		return nil, err
-	}
-	if inv == nil {
-		return nil, fmt.Errorf("الفاتورة غير موجودة أو معتمدة أصلاً")
-	}
-	return inv, nil
-}
-
 func (s *LeaderInvoiceService) Get(id string) (*model.LeaderInvoice, error) {
 	inv, err := s.invoices.GetByID(id)
 	if err != nil {
@@ -679,10 +668,6 @@ func (s *LeaderInvoiceService) Get(id string) (*model.LeaderInvoice, error) {
 // ListByStage فواتير مرحلة معيّنة — فارغة تعني الكل.
 func (s *LeaderInvoiceService) ListByStage(employeeID, stage string) ([]model.LeaderInvoice, error) {
 	return s.invoices.ListByStage(employeeID, stage)
-}
-
-func (s *LeaderInvoiceService) List(employeeID string) ([]model.LeaderInvoice, error) {
-	return s.invoices.List(employeeID)
 }
 
 func derefString(p *string) string {

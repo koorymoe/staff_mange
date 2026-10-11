@@ -704,14 +704,3 @@ func (s *AssistantService) callGeminiWithTools(prompt string, enableSearch bool)
 	}
 	return gr.Candidates[0].Content.Parts[0].Text, nil
 }
-
-// UsageToday يرجع عدد الأسئلة المستخدمة اليوم والحد الأقصى — للعرض بلوحة المراقبة.
-func (s *AssistantService) UsageToday() (used int, cap_ int) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	today := time.Now().Format("2006-01-02")
-	if today != s.resetDate {
-		return 0, s.dailyCap
-	}
-	return s.usedToday, s.dailyCap
-}

@@ -617,12 +617,6 @@ func (r *VehicleRepository) ListParts(vehicleID string) ([]model.VehiclePart, er
 	return parts, err
 }
 
-func (r *VehicleRepository) GetPart(id string) (*model.VehiclePart, error) {
-	var p model.VehiclePart
-	err := r.db.Get(&p, `SELECT * FROM "VehiclePart" WHERE id = $1`, id)
-	return &p, err
-}
-
 func (r *VehicleRepository) CreatePart(vehicleID string, req model.CreateVehiclePartRequest) (*model.VehiclePart, error) {
 	var p model.VehiclePart
 	err := r.db.Get(&p, `

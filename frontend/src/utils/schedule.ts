@@ -23,13 +23,3 @@ export function formatScheduleWindow(
   return `${day}، من ${timeOnly(start)} إلى ${timeOnly(end)}`
 }
 
-/** «من ٧:٠٠ إلى ٨:٠٠» — بدون التاريخ، للمساحات الضيقة */
-export function formatScheduleWindowTime(
-  scheduledAt: string | null | undefined,
-  scheduledEndAt?: string | null,
-): string {
-  if (!scheduledAt) return '—'
-  const start = new Date(scheduledAt)
-  const end = scheduledEndAt ? new Date(scheduledEndAt) : new Date(start.getTime() + HOUR_MS)
-  return `من ${timeOnly(start)} إلى ${timeOnly(end)}`
-}

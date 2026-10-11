@@ -27,25 +27,6 @@ func (r *ServiceManagerRepository) List() ([]model.ServiceManager, error) {
 	return rows, nil
 }
 
-// ForService يرجع الموظفين المسؤولين عن خدمة معينة (بديل عام عن GPS_ADMIN المكتوب بالكود)
-func (r *ServiceManagerRepository) ForService(serviceID string) ([]model.ServiceManager, error) {
-	rows := []model.ServiceManager{}
-	if err := r.db.Select(&rows, `SELECT * FROM "ServiceManager" WHERE "serviceId" = $1`, serviceID); err != nil {
-		return nil, err
-	}
-	for i := range rows {
-		r.hydrate(&rows[i])
-	}
-	return rows, nil
-}
-
-// IsManagerOf يتحقق هل موظف معين مسؤول عن خدمة معينة
-func (r *ServiceManagerRepository) IsManagerOf(employeeID, serviceID string) (bool, error) {
-	var count int
-	err := r.db.Get(&count, `SELECT COUNT(*) FROM "ServiceManager" WHERE "employeeId" = $1 AND "serviceId" = $2`, employeeID, serviceID)
-	return count > 0, err
-}
-
 // SetForEmployee يستبدل مجموعة الخدمات اللي الموظف مسؤول عنها بالكامل (حذف القديم وإدخال الجديد)
 func (r *ServiceManagerRepository) SetForEmployee(employeeID string, serviceIDs []string) error {
 	tx, err := r.db.Beginx()

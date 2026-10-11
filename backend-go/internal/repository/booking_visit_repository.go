@@ -82,17 +82,3 @@ func (r *BookingVisitRepository) ByBooking(bookingID string) ([]model.BookingVis
 	}
 	return visits, nil
 }
-
-// CountVisitsForEmployee عدد طلعات موظف بمدة — **هذا** هو مقياس
-// الإنتاجية الصح: يعدّ الطلعات مو الحجوزات، ويعتمد على كادر كل طلعة
-// وقتها مو على التكليف الحالي.
-func (r *BookingVisitRepository) CountVisitsForEmployee(employeeID string, sinceDays int) (int, error) {
-	var n int
-	err := r.db.Get(&n, `
-		SELECT COUNT(*) FROM "BookingVisitCrew" vc
-		JOIN "BookingVisit" v ON v.id = vc."visitId"
-		WHERE vc."employeeId" = $1
-		  AND ($2 <= 0 OR v."occurredAt" >= now() - ($2::text || ' days')::interval)
-	`, employeeID, sinceDays)
-	return n, err
-}

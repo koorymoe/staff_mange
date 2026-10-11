@@ -21,11 +21,7 @@ export const hasGpsSkill = (employee: Employee | null, gpsServiceId: string | nu
 
 export const useSession = () => useContext(SessionContext)
 
-export const hasMonitorAccess = (role?: string, permissions: string[] = []) =>
-  role === 'ADMIN' || role === 'MONITOR' || permissions.includes('monitoring')
 
-export const hasAuditAccess = (role?: string, permissions: string[] = []) =>
-  role === 'ADMIN' || role === 'MONITOR' || permissions.includes('auditing')
 
 /**
  * canAuditFinance: منو يصدر **قرار** التدقيق والمطابقة؟

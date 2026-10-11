@@ -122,19 +122,6 @@ func (g *PaperworkGuard) IsBookingManager(employeeID, bookingID string) (bool, e
 	return count > 0, err
 }
 
-// IsManagerPaperwork هل ورق هالحجز على مسؤول الخدمة؟ (للواجهة والسلال)
-func (g *PaperworkGuard) IsManagerPaperwork(bookingID string) (bool, error) {
-	var managed bool
-	err := g.db.Get(&managed, `
-		SELECT COALESCE(s."managerHandlesPaperwork", false)
-		FROM "Booking" b LEFT JOIN "Service" s ON s.id = b."serviceId"
-		WHERE b.id = $1`, bookingID)
-	if errors.Is(err, sql.ErrNoRows) {
-		return false, nil
-	}
-	return managed, err
-}
-
 // holdsServicePaperworkPermission صاحب «فواتير وتقارير الجي بي اس/
 // الداش كام» يسوي ورق حجوزات نوع خدمته — (ع): «من انطيها للموظف يكدر
 // يسوي تقرير وفاتورة». نفس المفتاح القديم، فالي عندهم الصلاحية أصلاً

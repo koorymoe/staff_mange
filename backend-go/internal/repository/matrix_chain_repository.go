@@ -360,12 +360,6 @@ func (r *MatrixChainRepository) LeadersPendingRating() ([]LeaderPending, error) 
 	return rows, err
 }
 
-// LeaderHasPending بعده عنده حجوزات بلا تقييم؟ (للتذكير «انحل؟»)
-func (r *MatrixChainRepository) LeaderHasPending(leaderID string) bool {
-	rows, err := r.PendingRatings(leaderID)
-	return err == nil && len(rows) > 0
-}
-
 // ═══ جرد العدّة بعد الحجز ═══
 
 // afterPendingSQL حجوزات منجزة (آخر ١٤ يوم) الموظف مكلّف بيها كفني ويا ليدر

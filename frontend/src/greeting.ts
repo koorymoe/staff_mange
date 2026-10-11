@@ -38,10 +38,6 @@ export function timeGreeting(d: Date = new Date()): { text: string; icon: string
   }
 }
 
-/** التحية الثابتة الي تستقر عليها الشاشة بعد الترحيب. */
-export function restingGreeting(): string {
-  return 'مرحباً'
-}
 
 /** كم يقعد الترحيب قبل ما يتحوّل — بالمللي ثانية. */
 export const GREETING_HOLD_MS = 4200
