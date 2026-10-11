@@ -2358,6 +2358,16 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 			Scores: matrixScoreService.Board, ScoreRepo: matrixScoreService.Repo(),
 		})
 		matrixCommandService.SetAgent(agent)
+		// ☀️ رسالة الصبح (٨ص) + 🏆 إشادة الأسبوع (الخميس) — قرار (ع) 10-11
+		morningService := service.NewMatrixMorningService(db, aiRepo, notificationRepo, announcementRepo, agent)
+		safeguard.Loop("رسالة الصبح وإشادة الأسبوع", 3*time.Minute, 15*time.Minute, func() {
+			if err := morningService.RunMorningIfDue(); err != nil {
+				log.Printf("morning brief: %v", err)
+			}
+			if err := morningService.RunKudosIfDue(); err != nil {
+				log.Printf("weekly kudos: %v", err)
+			}
+		})
 		// صوت ماتركس: كل تنبيه بأسلوب جديد (وأي فشل يرجّع الأصل)
 		repository.SetNotificationRewriter(func(emp, msg string) string {
 			return agent.Rewrite(notificationRepo.RecentAutopilotMessages(emp, 3), msg)
