@@ -111,3 +111,18 @@ func TestVoiceRewriteKeepsFacts(t *testing.T) {
 		t.Fatalf("banned word should fall back, got %q", got)
 	}
 }
+
+func TestChatSendsImageAndHidesLessonNames(t *testing.T) {
+	f := &textLLM{reply: "هاي شاشة الحجوزات"}
+	a := &MatrixAgent{llm: f, model: "x", testNames: map[string]string{"علي حسين الليدر": "e1"}}
+	run, err := a.ChatWith("TEST", "دروس:\n- علي حسين الليدر ما يصير يتقيّم", nil, "شنو هاي؟", &AgentImage{MediaType: "image/png", Data: "iVBORw0KGgo="})
+	if err != nil || run.Answer == "" {
+		t.Fatalf("err=%v run=%v", err, run)
+	}
+	if !strings.Contains(f.seen, `"type":"image"`) || !strings.Contains(f.seen, "iVBORw0KGgo=") {
+		t.Fatalf("image block missing: %s", f.seen)
+	}
+	if strings.Contains(f.seen, "علي حسين") {
+		t.Fatalf("lesson name leaked: %s", f.seen)
+	}
+}

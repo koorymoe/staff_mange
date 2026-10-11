@@ -3812,8 +3812,12 @@ export const api = {
   createMatrixChat: () => request<MatrixChatRow>('/matrix/chats', { method: 'POST' }),
   getMatrixChat: (id: string) => request<MatrixChatMessage[]>(`/matrix/chats/${id}`),
   deleteMatrixChat: (id: string) => request<{ ok: boolean }>(`/matrix/chats/${id}`, { method: 'DELETE' }),
-  sendMatrixChat: (id: string, text: string) =>
-    request<MatrixChatMessage>(`/matrix/chats/${id}/messages`, { method: 'POST', body: JSON.stringify({ text }) }),
+  sendMatrixChat: (id: string, text: string, image?: string) =>
+    request<MatrixChatMessage>(`/matrix/chats/${id}/messages`, { method: 'POST', body: JSON.stringify({ text, image }) }),
+  correctMatrixChat: (id: string, msgId: string, correction: string) =>
+    request<{ ok: boolean }>(`/matrix/chats/${id}/messages/${msgId}/correct`, { method: 'POST', body: JSON.stringify({ correction }) }),
+  getMatrixLessons: () => request<MatrixLesson[]>('/matrix/lessons'),
+  disableMatrixLesson: (id: string) => request<{ ok: boolean }>(`/matrix/lessons/${id}`, { method: 'DELETE' }),
   getMonthCompare: (months: string[]) => request<MonthStats[]>(`/stats-management/month-compare?months=${months.join(',')}`),
   getCommandAccounts: () =>
     request<{ id: string; name: string; username: string | null; setAt: string | null }[]>('/auth/command-accounts'),
@@ -5985,4 +5989,5 @@ export interface ProcurementWatch {
 
 // ═══ دردشة ماتركس (قرار (ع) 10-10) ═══
 export interface MatrixChatRow { id: string; title: string; updatedAt: string }
-export interface MatrixChatMessage { id: string; role: 'USER' | 'ASSISTANT'; text: string; steps: string | null; createdAt: string }
+export interface MatrixChatMessage { id: string; role: 'USER' | 'ASSISTANT'; text: string; steps: string | null; image?: string | null; createdAt: string }
+export interface MatrixLesson { id: string; text: string; context: string | null; by: string | null; createdAt: string }

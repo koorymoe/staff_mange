@@ -32,7 +32,8 @@ const chatSystemPrompt = `أنت «ماتركس»، الذكاء الاصطنا�
 - لا تخترع رقم ما شفته بأداة. إذا ما تگدر تتأكد گول بصراحة.
 - الموظفين يجوك كرموز «موظف#n» — استعمل نفس الرمز بالضبط.
 - لا تقترح غرامة أو خصم فلوس، ولا تخمّن أسباب شخصية. اقتراحاتك عملية.
-- أدواتك قراءة بس: إذا طلبوا منك تغيّر شي، گلهم شنو يسوون هم ومن وين.`
+- أدواتك قراءة بس: إذا طلبوا منك تغيّر شي، گلهم شنو يسوون هم ومن وين.
+- إذا دزّولك صورة (سكرين من النظام): اقرا الي بيها، افتح system_guide حتى تفهم الشاشة، وإذا بيها كود حجز أو مشروع افتحه بـlookup_code، وبعدين اشرح «شنو هاي وليش» بالأرقام الي شفتها.`
 
 type chatRow struct {
 	ID        string    `db:"id" json:"id"`
@@ -45,6 +46,7 @@ type chatMsg struct {
 	Role      string    `db:"role" json:"role"`
 	Text      string    `db:"text" json:"text"`
 	Steps     *string   `db:"steps" json:"steps"`
+	Image     *string   `db:"image" json:"image"`
 	CreatedAt time.Time `db:"createdAt" json:"createdAt"`
 }
 
@@ -84,7 +86,7 @@ func (h *MatrixChatHandler) Messages(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	rows := []chatMsg{}
-	_ = h.db.Select(&rows, `SELECT id, role, text, steps, "createdAt" FROM "MatrixTalkMessage" WHERE "chatId" = $1 ORDER BY "createdAt"`, id)
+	_ = h.db.Select(&rows, `SELECT id, role, text, steps, image, "createdAt" FROM "MatrixTalkMessage" WHERE "chatId" = $1 ORDER BY "createdAt"`, id)
 	WriteJSON(w, http.StatusOK, rows)
 }
 
@@ -101,14 +103,29 @@ func (h *MatrixChatHandler) Send(w http.ResponseWriter, r *http.Request) {
 		WriteError(w, http.StatusNotFound, "المحادثة غير موجودة")
 		return
 	}
+	// الوكيل يسمح لنفسه 60 ثانية والخادم يقطع بـ30 — نمد مهلة هالرد بس
+	_ = http.NewResponseController(w).SetWriteDeadline(time.Now().Add(90 * time.Second))
 	var in struct {
-		Text string `json:"text"`
+		Text  string `json:"text"`
+		Image string `json:"image"` // data:image/...;base64,...
 	}
-	if err := DecodeJSON(r, &in); err != nil || strings.TrimSpace(in.Text) == "" {
+	if err := DecodeJSON(r, &in); err != nil || (strings.TrimSpace(in.Text) == "" && in.Image == "") {
 		WriteError(w, http.StatusBadRequest, "اكتب رسالتك")
 		return
 	}
+	var img *service.AgentImage
+	if in.Image != "" {
+		mt, data, ok := parseChatImage(in.Image)
+		if !ok {
+			WriteError(w, http.StatusBadRequest, "الصورة لازم PNG أو JPG أو WEBP وأصغر من 4 ميگا")
+			return
+		}
+		img = &service.AgentImage{MediaType: mt, Data: data}
+	}
 	text := strings.TrimSpace(in.Text)
+	if text == "" {
+		text = "شنو هاي الشاشة؟ اشرحلي شنو الي بيها وليش."
+	}
 	if len([]rune(text)) > 2000 {
 		WriteError(w, http.StatusBadRequest, "الرسالة طويلة — خليها أقصر")
 		return
@@ -125,17 +142,31 @@ func (h *MatrixChatHandler) Send(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	hist := []chatMsg{}
-	_ = h.db.Select(&hist, `SELECT * FROM (SELECT id, role, text, steps, "createdAt" FROM "MatrixTalkMessage" WHERE "chatId" = $1
+	_ = h.db.Select(&hist, `SELECT * FROM (SELECT id, role, text, steps, image, "createdAt" FROM "MatrixTalkMessage" WHERE "chatId" = $1
 		ORDER BY "createdAt" DESC LIMIT 20) x ORDER BY "createdAt"`, id)
 	turns := make([]service.AgentTurn, 0, len(hist))
 	for _, m := range hist {
-		turns = append(turns, service.AgentTurn{Role: m.Role, Text: m.Text})
+		t := m.Text
+		if m.Image != nil {
+			t = "[أرفق صورة] " + t
+		}
+		// رسالتين ورا بعض من نفس الطرف (مثل «تصحيح:») ينلزكن بوحدة
+		if n := len(turns); n > 0 && turns[n-1].Role == m.Role {
+			turns[n-1].Text += "\n" + t
+			continue
+		}
+		turns = append(turns, service.AgentTurn{Role: m.Role, Text: t})
 	}
 	// التاريخ لازم يبدي برسالة مستخدم (النموذج يرفض غيرها)
 	for len(turns) > 0 && turns[0].Role != "USER" {
 		turns = turns[1:]
 	}
-	run, err := h.agent.Chat("CHAT", chatSystemPrompt, turns, text)
+	prompt := text
+	if n := len(turns); n > 0 && turns[n-1].Role == "USER" {
+		prompt = turns[n-1].Text + "\n" + text
+		turns = turns[:n-1]
+	}
+	run, err := h.agent.ChatWith("CHAT", chatSystemPrompt+h.lessonsBlock(), turns, prompt, img)
 	if err != nil || strings.TrimSpace(run.Answer) == "" {
 		msg := "ماتركس ما گدر يرد هسه — جرّب بعد شوية"
 		if errors.Is(err, service.ErrAgentOff) {
@@ -151,7 +182,7 @@ func (h *MatrixChatHandler) Send(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	defer tx.Rollback()
-	_, _ = tx.Exec(`INSERT INTO "MatrixTalkMessage" (id, "chatId", role, text) VALUES (gen_random_uuid()::text, $1, 'USER', $2)`, id, text)
+	_, _ = tx.Exec(`INSERT INTO "MatrixTalkMessage" (id, "chatId", role, text, image) VALUES (gen_random_uuid()::text, $1, 'USER', $2, NULLIF($3, ''))`, id, text, in.Image)
 	var reply chatMsg
 	err = tx.Get(&reply, `INSERT INTO "MatrixTalkMessage" (id, "chatId", role, text, steps, "createdAt")
 		VALUES (gen_random_uuid()::text, $1, 'ASSISTANT', $2, NULLIF($3, ''), now() + interval '1 millisecond')
@@ -170,4 +201,100 @@ func (h *MatrixChatHandler) Send(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	WriteJSON(w, http.StatusOK, reply)
+}
+
+// parseChatImage يفك data-URL ويتأكد من النوع والحجم.
+func parseChatImage(u string) (string, string, bool) {
+	head, data, ok := strings.Cut(u, ",")
+	if !ok || !strings.HasPrefix(head, "data:") || !strings.HasSuffix(head, ";base64") {
+		return "", "", false
+	}
+	mt := strings.TrimSuffix(strings.TrimPrefix(head, "data:"), ";base64")
+	switch mt {
+	case "image/png", "image/jpeg", "image/webp":
+	default:
+		return "", "", false
+	}
+	if len(data) == 0 || len(data) > 4*1024*1024*4/3 {
+		return "", "", false
+	}
+	return mt, data, true
+}
+
+// ── ماتركس يتعلّم: تصحيح المالك يصير درس دائم (قرار (ع) 10-11) ──
+
+func (h *MatrixChatHandler) lessonsBlock() string {
+	rows := []string{}
+	_ = h.db.Select(&rows, `SELECT text FROM "MatrixLesson" WHERE active ORDER BY "createdAt" DESC LIMIT 50`)
+	if len(rows) == 0 {
+		return ""
+	}
+	var b strings.Builder
+	b.WriteString("\n\nدروس من المالك (صحّحك بيها قبل) — التزم بيها وقدّمها على أي استنتاج ثاني:\n")
+	for _, t := range rows {
+		b.WriteString("- " + t + "\n")
+	}
+	return b.String()
+}
+
+type lessonRow struct {
+	ID        string    `db:"id" json:"id"`
+	Text      string    `db:"text" json:"text"`
+	Context   *string   `db:"context" json:"context"`
+	By        *string   `db:"by" json:"by"`
+	CreatedAt time.Time `db:"createdAt" json:"createdAt"`
+}
+
+// POST /api/matrix/chats/{id}/messages/{msgId}/correct {correction}
+func (h *MatrixChatHandler) Correct(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("id")
+	if !h.own(r, id) {
+		WriteError(w, http.StatusNotFound, "المحادثة غير موجودة")
+		return
+	}
+	var in struct {
+		Correction string `json:"correction"`
+	}
+	if err := DecodeJSON(r, &in); err != nil || len([]rune(strings.TrimSpace(in.Correction))) < 5 {
+		WriteError(w, http.StatusBadRequest, "اكتب شنو الصح")
+		return
+	}
+	corr := strings.TrimSpace(in.Correction)
+	if r := []rune(corr); len(r) > 600 {
+		corr = string(r[:600])
+	}
+	// السياق: سؤال المستخدم الي قبل الرد الغلط
+	var ctx string
+	_ = h.db.Get(&ctx, `SELECT u.text FROM "MatrixTalkMessage" a JOIN "MatrixTalkMessage" u ON u."chatId" = a."chatId"
+		AND u.role = 'USER' AND u."createdAt" < a."createdAt"
+		WHERE a.id = $1 AND a."chatId" = $2 AND a.role = 'ASSISTANT' ORDER BY u."createdAt" DESC LIMIT 1`, r.PathValue("msgId"), id)
+	if ctx == "" {
+		WriteError(w, http.StatusNotFound, "الرد غير موجود")
+		return
+	}
+	if r := []rune(ctx); len(r) > 200 {
+		ctx = string(r[:200]) + "…"
+	}
+	if _, err := h.db.Exec(`INSERT INTO "MatrixLesson" (id, text, context, "createdById") VALUES (gen_random_uuid()::text, $1, $2, $3)`,
+		corr, ctx, middleware.EmployeeIDFromContext(r)); err != nil {
+		WriteError(w, http.StatusInternalServerError, "تعذر حفظ الدرس")
+		return
+	}
+	_, _ = h.db.Exec(`INSERT INTO "MatrixTalkMessage" (id, "chatId", role, text) VALUES (gen_random_uuid()::text, $1, 'USER', $2)`,
+		id, "تصحيح: "+corr)
+	WriteJSON(w, http.StatusOK, map[string]bool{"ok": true})
+}
+
+// GET /api/matrix/lessons
+func (h *MatrixChatHandler) Lessons(w http.ResponseWriter, r *http.Request) {
+	rows := []lessonRow{}
+	_ = h.db.Select(&rows, `SELECT l.id, l.text, l.context, e.name AS by, l."createdAt" FROM "MatrixLesson" l
+		LEFT JOIN "Employee" e ON e.id = l."createdById" WHERE l.active ORDER BY l."createdAt" DESC`)
+	WriteJSON(w, http.StatusOK, rows)
+}
+
+// DELETE /api/matrix/lessons/{id} — يطفّيه، ما يحذفه
+func (h *MatrixChatHandler) DisableLesson(w http.ResponseWriter, r *http.Request) {
+	_, _ = h.db.Exec(`UPDATE "MatrixLesson" SET active = false WHERE id = $1`, r.PathValue("id"))
+	WriteJSON(w, http.StatusOK, map[string]bool{"ok": true})
 }

@@ -57,5 +57,19 @@ func matrixChatMigrations() []Migration {
 			ANALYZE "Booking";
 			ANALYZE "Notification";
 		`,
+	}, {
+		// (ع) 10-11: سكرين بالدردشة + ماتركس يتعلّم من تصحيح المالك
+		Version: "0348_matrix_chat_image_lessons",
+		SQL: `
+			ALTER TABLE "MatrixTalkMessage" ADD COLUMN IF NOT EXISTS image TEXT;
+			CREATE TABLE IF NOT EXISTS "MatrixLesson" (
+				id TEXT PRIMARY KEY,
+				text TEXT NOT NULL,
+				context TEXT,
+				"createdById" TEXT REFERENCES "Employee"(id) ON DELETE SET NULL,
+				active BOOLEAN NOT NULL DEFAULT true,
+				"createdAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+			);
+		`,
 	}}
 }

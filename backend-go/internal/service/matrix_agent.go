@@ -206,8 +206,20 @@ type AgentTurn struct {
 	Text string
 }
 
+// AgentImage صورة مرفقة بالرسالة الحالية (سكرين من النظام) — قرار (ع) 10-11:
+// الصورة تروح لهايكو بالدردشة، استثناء من قاعدة الأسماء.
+type AgentImage struct {
+	MediaType string // image/png | image/jpeg | image/webp
+	Data      string // base64 بلا بادئة data:
+}
+
 // Chat محادثة: التاريخ + الرسالة الجديدة، وهايكو يرد ويفتح أدواته إذا يحتاج.
 func (a *MatrixAgent) Chat(feature, system string, history []AgentTurn, message string) (*AgentRun, error) {
+	return a.ChatWith(feature, system, history, message, nil)
+}
+
+// ChatWith مثل Chat ويا صورة اختيارية للرسالة الحالية.
+func (a *MatrixAgent) ChatWith(feature, system string, history []AgentTurn, message string, img *AgentImage) (*AgentRun, error) {
 	if !a.Enabled(feature) {
 		return nil, ErrAgentOff
 	}
@@ -240,7 +252,14 @@ func (a *MatrixAgent) Chat(feature, system string, history []AgentTurn, message 
 			msgs = append(msgs, anthropic.NewUserMessage(block))
 		}
 	}
-	msgs = append(msgs, anthropic.NewUserMessage(anthropic.NewTextBlock(mask.Hide(message))))
+	cur := []anthropic.ContentBlockParamUnion{}
+	if img != nil && img.Data != "" {
+		cur = append(cur, anthropic.NewImageBlockBase64(img.MediaType, img.Data))
+	}
+	cur = append(cur, anthropic.NewTextBlock(mask.Hide(message)))
+	msgs = append(msgs, anthropic.NewUserMessage(cur...))
+	// الـsystem بيه دروس المالك (ممكن بيها أسماء) — ينخفى هو هم
+	system = mask.Hide(system)
 	ctx, cancel := context.WithTimeout(context.Background(), agentTimeout)
 	defer cancel()
 	run := &AgentRun{}
