@@ -105,6 +105,8 @@ export default function MonitorHome() {
     { to: '/missions', icon: '📅', label: 'حجوزات اليوم' },
     { to: '/attendance', icon: '🕐', label: 'جدول الدوام' },
     { to: '/monitor-inbox', icon: '📝', label: 'ملاحظات المراقب' },
+    // (ع) 10-11: المراقب يكلّف ماتركس يراقب موظف
+    { to: '/matrix-missions', icon: '🎯', label: 'مهام ماتركس' },
     { to: '/complaints', icon: '💬', label: 'شكاوى العملاء' },
   ].filter((t) => isPathAllowed(t.to, ctx) !== false)
 

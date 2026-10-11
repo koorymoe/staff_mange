@@ -25,6 +25,7 @@ const Coordinator = lazy(() => import('./pages/Coordinator'))
 const SalesOpportunitiesPage = lazy(() => import('./pages/SalesOpportunitiesPage'))
 const WeeklyReportPage = lazy(() => import('./pages/WeeklyReportPage'))
 const MatrixDecisionsPage = lazy(() => import('./pages/MatrixDecisionsPage'))
+const MatrixMissions = lazy(() => import('./components/MatrixMissions'))
 const MatrixEmployeeReportPage = lazy(() => import('./pages/MatrixEmployeeReportPage'))
 const BookingsArchive = lazy(() => import('./pages/BookingsArchive'))
 const SolarPage = lazy(() => import('./pages/SolarPage'))
@@ -257,6 +258,7 @@ function App() {
           <Route path="camera-cost" element={<CameraCostPage />} />
           <Route path="network-cost" element={<NetworkCostPage />} />
           <Route path="monitor-inbox" element={<MonitorInboxPage />} />
+          <Route path="matrix-missions" element={<RequirePermission permission="monitoring" anyOf={['auditing']} roles={['MONITOR']}><MatrixMissions /></RequirePermission>} />
           <Route path="network-prices" element={<NetworkPricesPage />} />
           <Route path="permission-preview" element={<PermissionPreview />} />
           {/* المشاريع الموجّهة للموظف — نفس واجهة إدارة المشاريع بس على مشاريعه */}

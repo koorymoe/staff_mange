@@ -266,3 +266,81 @@ func (s *MatrixMorningService) RunKudosIfDue() error {
 	}
 	return notifyOwnerAndAdmin(s.notif, "AI_KUDOS", "🏆 ماتركس نشر إشادة الأسبوع بالإعلانات: "+strings.Join(parts, "، "))
 }
+
+// ═══ 👁️ تقرير المراقب اليومي — قرار (ع) 10-11 ═══
+// ٨:٣٠ الصبح عن أمس: منو تأخر/غاب، نزول مفاجئ بالإنجاز، أبطال أمس،
+// والمعلّق الي يخص المراقب. حساب بحت (الأسماء ما تطلع لذكاء خارجي).
+
+const monitorDailyHour, monitorDailyMinute = 8, 30
+
+// MonitorDaily نص التقرير (فارغ = ماكو شي يستاهل).
+func (s *MatrixMorningService) MonitorDaily(day string) string {
+	names := func(label, q string) []string {
+		out := []string{}
+		if err := s.db.Select(&out, q, day); err != nil {
+			log.Printf("monitor daily %s: %v", label, err)
+		}
+		return out
+	}
+	// الحضور: الي عنده شفت ومو بإجازة
+	late := names("late", `
+		SELECT e.name || ' (' || to_char(min(a."checkIn") AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Baghdad', 'HH24:MI') || ')'
+		FROM "Attendance" a JOIN "Employee" e ON e.id = a."employeeId"
+		WHERE baghdad_date(a."checkIn") = $1::date AND e.status = 'ACTIVE' AND e.role NOT IN ('ADMIN', 'OWNER')
+		GROUP BY e.id, e.name, e."shiftStart"
+		HAVING (min(a."checkIn") AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Baghdad')::time
+			> COALESCE(NULLIF(e."shiftStart", ''), '08:00')::time + interval '10 minutes'
+		ORDER BY e.name LIMIT 15`)
+	absent := names("absent", `
+		SELECT e.name FROM "Employee" e
+		WHERE e.status = 'ACTIVE' AND e.role NOT IN ('ADMIN', 'OWNER') AND extract(isodow FROM $1::date) <> 5
+		  AND NOT EXISTS (SELECT 1 FROM "Attendance" a WHERE a."employeeId" = e.id AND baghdad_date(a."checkIn") = $1::date)
+		  AND NOT EXISTS (SELECT 1 FROM "LeaveRequest" l WHERE l."employeeId" = e.id AND l.status = 'APPROVED'
+		                  AND $1::date BETWEEN l."startDate"::date AND l."endDate"::date)
+		ORDER BY e.name LIMIT 15`)
+	heroes := names("heroes", `
+		SELECT e.name || ' (' || count(DISTINCT b.id) || ')'
+		FROM "BookingAssignment" ba JOIN "Booking" b ON b.id = ba."bookingId" JOIN "Employee" e ON e.id = ba."employeeId"
+		WHERE b.status = 'COMPLETED' AND baghdad_date(b."completedAt") = $1::date
+		  AND e.status = 'ACTIVE' AND e.role NOT IN ('ADMIN', 'OWNER')
+		  AND (b."scheduledAt" IS NULL OR b."completedAt" <= b."scheduledAt" + interval '4 hours')
+		GROUP BY e.id, e.name ORDER BY count(DISTINCT b.id) DESC LIMIT 3`)
+
+	var b strings.Builder
+	if len(late) > 0 {
+		fmt.Fprintf(&b, "⏰ تأخروا أمس (%d): %s\n", len(late), strings.Join(late, "، "))
+	}
+	if len(absent) > 0 {
+		fmt.Fprintf(&b, "🚫 ما سجّلوا حضور أمس (بلا إجازة) (%d): %s\n", len(absent), strings.Join(absent, "، "))
+	}
+	if len(heroes) > 0 {
+		fmt.Fprintf(&b, "🏆 أبطال أمس: %s\n", strings.Join(heroes, "، "))
+	}
+	for _, it := range s.Items() {
+		if strings.Contains(it.line, "بلا فاتورة") || strings.Contains(it.line, "التدقيق") || strings.Contains(it.line, "نزول مفاجئ") ||
+			strings.Contains(it.line, "فات موعده") {
+			fmt.Fprintf(&b, "• %s\n", it.line)
+		}
+	}
+	if b.Len() == 0 {
+		return ""
+	}
+	return "👁️ تقرير ماتركس للمراقب — " + day + ":\n" + strings.TrimSpace(b.String())
+}
+
+// RunMonitorIfDue ٨:٣٠ الصبح، مرة باليوم، للمراقبين وأهل صلاحية المراقبة.
+func (s *MatrixMorningService) RunMonitorIfDue() error {
+	now := time.Now().In(debriefLoc)
+	if now.Hour() < monitorDailyHour || (now.Hour() == monitorDailyHour && now.Minute() < monitorDailyMinute) || now.Hour() >= 12 {
+		return nil
+	}
+	claimed, err := s.aiRepo.ClaimDailyMarker("MATRIX_MONITOR_DAILY", now.Format("2006-01-02"))
+	if err != nil || !claimed {
+		return err
+	}
+	msg := s.MonitorDaily(now.AddDate(0, 0, -1).Format("2006-01-02"))
+	if msg == "" {
+		return nil
+	}
+	return s.notif.CreateForRolesOrPermission([]string{"MONITOR"}, "monitoring", "AI_MONITOR_DAILY", msg)
+}

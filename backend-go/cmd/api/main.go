@@ -2388,6 +2388,9 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 			if err := morningService.RunKudosIfDue(); err != nil {
 				log.Printf("weekly kudos: %v", err)
 			}
+			if err := morningService.RunMonitorIfDue(); err != nil {
+				log.Printf("monitor daily: %v", err)
+			}
 		})
 		// صوت ماتركس: كل تنبيه بأسلوب جديد (وأي فشل يرجّع الأصل)
 		repository.SetNotificationRewriter(func(emp, msg string) string {
@@ -2411,10 +2414,10 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 			}
 		})
 		missionHandler := handler.NewMatrixMissionHandler(missionService)
-		mux.Handle("GET /api/matrix/missions", middleware.Chain(http.HandlerFunc(missionHandler.List), requireAuth, requireAdmin))
-		mux.Handle("POST /api/matrix/missions", middleware.Chain(http.HandlerFunc(missionHandler.Create), requireAuth, requireAdmin))
-		mux.Handle("GET /api/matrix/missions/{id}", middleware.Chain(http.HandlerFunc(missionHandler.Get), requireAuth, requireAdmin))
-		mux.Handle("DELETE /api/matrix/missions/{id}", middleware.Chain(http.HandlerFunc(missionHandler.Stop), requireAuth, requireAdmin))
+		mux.Handle("GET /api/matrix/missions", middleware.Chain(http.HandlerFunc(missionHandler.List), requireAuth, requireMonitor))
+		mux.Handle("POST /api/matrix/missions", middleware.Chain(http.HandlerFunc(missionHandler.Create), requireAuth, requireMonitor))
+		mux.Handle("GET /api/matrix/missions/{id}", middleware.Chain(http.HandlerFunc(missionHandler.Get), requireAuth, requireMonitor))
+		mux.Handle("DELETE /api/matrix/missions/{id}", middleware.Chain(http.HandlerFunc(missionHandler.Stop), requireAuth, requireMonitor))
 	}
 
 	// ── تكلفة الشبكات ──
