@@ -60,9 +60,10 @@ export default function AnnouncementTicker() {
         // ⚠️ فشل الأخبار ما يطفّي إعلانات المدير — كل واحد منفصل
         .catch(() => { if (alive) setNews(null) })
     }
+    // (ع) 10-11: أخبار نقاط الانضباط القديمة انشالت ويا نظامها
+    void fetchNews
     fetch()
-    fetchNews()
-    const stop = pollVisible(() => { fetch(); fetchNews() }, 120_000)
+    const stop = pollVisible(() => { fetch() }, 120_000)
     return () => { alive = false; stop() }
   }, [])
 

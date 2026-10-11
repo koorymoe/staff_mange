@@ -148,7 +148,8 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	// نربط فحص عدالة التوزيع بخدمة الحجوزات بعد بناء الاثنين (تفادي
 	// اعتماد دائري بينهن)
 	bookingService.SetDisciplineChecker(disciplineService)
-	disciplineService.StartBackgroundSweeps()
+	// (ع) 10-11: نظام نقاط الانضباط القديم (١٠٠ نقطة) انشال — ما تشتغل كنساته.
+	// البيانات القديمة تبقى بالقاعدة وبسجل الانضباط للتاريخ بس.
 	qualityFollowUpService := service.NewQualityFollowUpService(qualityFollowUpRepo, notificationRepo)
 	cartService := service.NewCartService(cartRepo)
 	expenseService := service.NewExpenseService(expenseRepo)
@@ -890,7 +891,6 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	mux.Handle("GET /api/discipline/today-headline", middleware.Chain(http.HandlerFunc(disciplineHandler.TodayHeadline), requireAuth))
 	// التعديل اليدوي: المالك ومدير النظام بس. requireAdmin يمرّر OWNER أصلاً.
 	mux.Handle("POST /api/discipline/adjust", middleware.Chain(http.HandlerFunc(disciplineHandler.Adjust), requireAuth, requireAdmin))
-	mux.Handle("POST /api/discipline/run", middleware.Chain(http.HandlerFunc(disciplineHandler.Run), requireAuth, requireAdmin))
 	mux.Handle("GET /api/employees/archived", middleware.Chain(http.HandlerFunc(employeeHandler.ListArchived), requireAuth, requireAdmin))
 	mux.Handle("GET /api/security/dashboard", middleware.Chain(http.HandlerFunc(securityHandler.Dashboard), requireAuth, requireOwner))
 	mux.Handle("POST /api/security/unlock/{id}", middleware.Chain(http.HandlerFunc(securityHandler.Unlock), requireAuth, requireOwner))
