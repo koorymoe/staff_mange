@@ -19,12 +19,14 @@ const ROLE_AR: Record<string, string> = {
   SALES: 'مبيعات', MEDIA: 'إعلام', PUBLIC_RELATIONS: 'علاقات عامة', QUALITY_ENGINEER: 'جودة', MONITOR: 'مراقب', PROJECT_MANAGER: 'مدير مشاريع', PROCUREMENT_ADMIN: 'إداري كميات',
 }
 
-const GROUP_ORDER = ['LEADERS', 'TECHS', 'COORDINATORS', 'SALES', 'TECHNICAL', 'FINANCE', 'PROCUREMENT', 'MONITORS', 'OTHERS']
+const GROUP_ORDER = ['LEADERS', 'TECHS', 'DECOR', 'COORDINATORS', 'SALES', 'TECHNICAL', 'FINANCE', 'PROCUREMENT', 'MONITORS', 'QUALITY', 'DESIGN', 'IT', 'OTHERS']
 const RATERS: Record<string, string> = {
   TECHS: 'الليدر مالتهم بعد كل حجز', LEADERS: 'المراقب + الإداري + الجودة', COORDINATORS: 'المراقب + الجودة',
   SALES: 'المراقب (كل نص شهر)', TECHNICAL: 'المراقب (كل نص شهر)', FINANCE: 'المراقب (كل نص شهر)',
   PROCUREMENT: 'المراقب (كل نص شهر) + ماتركس على الطلبات والسيارات والجرد',
   MONITORS: 'المدير والمالك (كل نص شهر)', OTHERS: 'المراقب (كل نص شهر)',
+  QUALITY: 'المراقب (كل نص شهر)', DESIGN: 'المراقب (كل نص شهر)', IT: 'المراقب (كل نص شهر)',
+  DECOR: 'الليدر مالتهم بعد كل حجز (والليدر: المراقب + الإداري + الجودة)',
 }
 
 function ScoreBadge({ v, big }: { v: number | null; big?: boolean }) {

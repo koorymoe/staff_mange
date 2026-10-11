@@ -57,11 +57,12 @@ type Scorable struct {
 	CreatedAt        time.Time `db:"createdAt" json:"-"`
 	IsLeader         bool      `db:"isLeader" json:"isLeader"`
 	IsServiceManager bool      `db:"isServiceManager" json:"isServiceManager"`
+	Division         string    `db:"division" json:"division"`
 }
 
 func (r *MatrixScoreRepository) Scorables() ([]Scorable, error) {
 	rows := []Scorable{}
-	err := r.db.Select(&rows, `SELECT id, name, role::text AS role, "createdAt", COALESCE("isLeader", false) AS "isLeader",
+	err := r.db.Select(&rows, `SELECT id, name, role::text AS role, "createdAt", COALESCE("isLeader", false) AS "isLeader", COALESCE(division, 'ENGINEERING') AS division,
 		EXISTS (SELECT 1 FROM "ServiceManager" sm WHERE sm."employeeId" = "Employee".id) AS "isServiceManager"
 		FROM "Employee" WHERE status = 'ACTIVE' AND role::text NOT IN ('ADMIN', 'OWNER') ORDER BY name`)
 	return rows, err

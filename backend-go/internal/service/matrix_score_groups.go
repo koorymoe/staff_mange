@@ -27,14 +27,20 @@ const (
 	GroupCoordinator = "COORDINATORS"
 	GroupOthers      = "OTHERS"
 	GroupProcurement = "PROCUREMENT"
+	// (ع) 10-11: الجودة والتصميم والآيتي كل وحدة مجموعة، والديكور منعزل عن الهندسية
+	GroupQuality = "QUALITY"
+	GroupDesign  = "DESIGN"
+	GroupIT      = "IT"
+	GroupDecor   = "DECOR"
 )
 
 var ScoreGroupLabels = map[string]string{
 	GroupTechs: "الفنيين", GroupLeaders: "الليدرية", GroupSales: "المبيعات", GroupMonitors: "المراقبين",
 	GroupFinance: "المحاسبة", GroupTechnical: "التقنيين ومسؤولي الخدمات", GroupCoordinator: "الإداريين", GroupProcurement: "المخازن والأسطول", GroupOthers: "بقية الأقسام",
+	GroupQuality: "الجودة", GroupDesign: "التصميم", GroupIT: "تقنية المعلومات", GroupDecor: "شعبة الديكور",
 }
 
-var ScoreGroupOrder = []string{GroupLeaders, GroupTechs, GroupCoordinator, GroupSales, GroupTechnical, GroupFinance, GroupProcurement, GroupMonitors, GroupOthers}
+var ScoreGroupOrder = []string{GroupLeaders, GroupTechs, GroupDecor, GroupCoordinator, GroupSales, GroupTechnical, GroupFinance, GroupProcurement, GroupMonitors, GroupQuality, GroupDesign, GroupIT, GroupOthers}
 
 // ScoreGroup مجموعة الموظف بالتقييم. الليدر ينفصل عن الفنيين بعلامة الليدر،
 // والمبيعات بالدور.
@@ -50,6 +56,16 @@ func ScoreGroup(p repository.Scorable) string {
 		return GroupCoordinator
 	case p.Role == "PROCUREMENT_ADMIN":
 		return GroupProcurement
+	// الدور يغلب علامة الليدر: ليدر صار مهندس جودة ينحسب جودة (10-11)
+	case p.Role == "QUALITY_ENGINEER":
+		return GroupQuality
+	case p.Role == "DESIGNER":
+		return GroupDesign
+	case p.Role == "IT_SUPPORT":
+		return GroupIT
+	// شعبة الديكور (فنيها وليدرها) منعزلة عن الهندسية
+	case p.Division == "DECOR" && (p.IsLeader || p.Role == "TECHNICIAN"):
+		return GroupDecor
 	case p.IsLeader:
 		return GroupLeaders
 	case p.Role == "ENGINEER" || p.Role == "TECHNICAL" || p.Role == "SERVICE_MANAGER" || p.IsServiceManager:
@@ -71,6 +87,10 @@ var groupRaterStages = map[string]map[string]bool{
 	GroupTechnical:   {"MONITOR_PERIODIC": true},
 	GroupProcurement: {"MONITOR_PERIODIC": true},
 	GroupOthers:      {"MONITOR_PERIODIC": true},
+	GroupQuality:     {"MONITOR_PERIODIC": true},
+	GroupDesign:      {"MONITOR_PERIODIC": true},
+	GroupIT:          {"MONITOR_PERIODIC": true},
+	GroupDecor:       {"LEADER_CREW": true, "COORD_LEADER": true, "AUDIT": true, "QUALITY_CALL": true},
 }
 
 // periodicTargets منو يقيّم منو دورياً: المدير ← المراقبين؛ المراقب ← المجموعات
