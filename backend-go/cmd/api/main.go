@@ -2382,6 +2382,18 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 		mux.Handle("POST /api/matrix/chats/{id}/messages/{msgId}/correct", middleware.Chain(http.HandlerFunc(chatHandler.Correct), requireAuth, requireAdmin))
 		mux.Handle("GET /api/matrix/lessons", middleware.Chain(http.HandlerFunc(chatHandler.Lessons), requireAuth, requireAdmin))
 		mux.Handle("DELETE /api/matrix/lessons/{id}", middleware.Chain(http.HandlerFunc(chatHandler.DisableLesson), requireAuth, requireAdmin))
+		// 🎯 «راقب فلان» — يومية كل ليلة وخلاصة بالنهاية
+		missionService := service.NewMatrixMissionService(db, aiRepo, notificationRepo, agent)
+		safeguard.Loop("مهام ماتركس", 5*time.Minute, 30*time.Minute, func() {
+			if err := missionService.RunIfDue(); err != nil {
+				log.Printf("matrix missions: %v", err)
+			}
+		})
+		missionHandler := handler.NewMatrixMissionHandler(missionService)
+		mux.Handle("GET /api/matrix/missions", middleware.Chain(http.HandlerFunc(missionHandler.List), requireAuth, requireAdmin))
+		mux.Handle("POST /api/matrix/missions", middleware.Chain(http.HandlerFunc(missionHandler.Create), requireAuth, requireAdmin))
+		mux.Handle("GET /api/matrix/missions/{id}", middleware.Chain(http.HandlerFunc(missionHandler.Get), requireAuth, requireAdmin))
+		mux.Handle("DELETE /api/matrix/missions/{id}", middleware.Chain(http.HandlerFunc(missionHandler.Stop), requireAuth, requireAdmin))
 	}
 
 	// ── تكلفة الشبكات ──

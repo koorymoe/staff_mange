@@ -182,7 +182,10 @@ func (h *MatrixChatHandler) Send(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	defer tx.Rollback()
-	_, _ = tx.Exec(`INSERT INTO "MatrixTalkMessage" (id, "chatId", role, text, image) VALUES (gen_random_uuid()::text, $1, 'USER', $2, NULLIF($3, ''))`, id, text, in.Image)
+	if _, err := tx.Exec(`INSERT INTO "MatrixTalkMessage" (id, "chatId", role, text, image) VALUES (gen_random_uuid()::text, $1, 'USER', $2, NULLIF($3, ''))`, id, text, in.Image); err != nil {
+		WriteError(w, http.StatusInternalServerError, "تعذر الحفظ")
+		return
+	}
 	var reply chatMsg
 	err = tx.Get(&reply, `INSERT INTO "MatrixTalkMessage" (id, "chatId", role, text, steps, "createdAt")
 		VALUES (gen_random_uuid()::text, $1, 'ASSISTANT', $2, NULLIF($3, ''), now() + interval '1 millisecond')

@@ -37,3 +37,10 @@ export function readMoney(raw: string): MoneyInput {
 export function money(n: number): string {
   return (n ?? 0).toLocaleString('en-US', { maximumFractionDigits: 2 })
 }
+
+// يقرا مبلغ مكتوب بأي أرقام (عربية ٠-٩ أو فارسية ۰-۹ أو إنگليزية) ويشيل
+// الفواصل — «٥٠٠٬٠٠٠» و«500,000» نفس الرقم. يرجّع 0 إذا ماكو رقم.
+export function parseAmount(s: string): number {
+  const ascii = s.replace(/[٠-٩]/g, (d) => String(d.charCodeAt(0) - 0x0660)).replace(/[۰-۹]/g, (d) => String(d.charCodeAt(0) - 0x06f0))
+  return Number(ascii.replace(/[^\d]/g, '')) || 0
+}

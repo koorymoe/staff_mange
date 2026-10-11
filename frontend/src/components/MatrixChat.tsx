@@ -10,9 +10,9 @@ import { api, type MatrixChatMessage, type MatrixChatRow, type MatrixLesson } fr
 const TOOL_AR: Record<string, string> = {
   money_month: 'فلوس الشهر', invoices_status: 'الفواتير', late_bookings: 'الحجوزات المتأخرة', team_performance: 'أداء الفرق',
   employee_profile: 'ملف موظف', attendance_today: 'دوام اليوم', project_delays: 'تأخير المشاريع', procurement_watch: 'شغل المخازن',
-  staff_scores: 'التقييم', system_guide: 'دليل النظام', lookup_code: 'فتح كود',
+  staff_scores: 'التقييم', system_guide: 'دليل النظام', lookup_code: 'فتح كود', service_economics: 'ربحية الخدمات',
 }
-const SUGGEST = ['شلون الشركة اليوم؟', 'سويلي فحص فوري للأموال هالشهر', 'منو الموظف الي يحتاج متابعة هالأسبوع وليش؟', 'شنو المشاريع المتأخرة؟']
+const SUGGEST = ['شلون الشركة اليوم؟', 'أي خدمة أكثر ربح للساعة؟', 'شنو لو زدنا فني ثالث للكاميرات؟', 'منو الموظف الي يحتاج متابعة هالأسبوع وليش؟', 'شنو المشاريع المتأخرة؟']
 
 // تصغير الصورة بالمتصفح: سكرين 4K يصير ~300 كيلو، والكلفة تنزل
 function shrink(file: File): Promise<string> {

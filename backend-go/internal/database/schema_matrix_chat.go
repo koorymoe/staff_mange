@@ -71,5 +71,30 @@ func matrixChatMigrations() []Migration {
 				"createdAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 			);
 		`,
+	}, {
+		// (ع) 10-11: «راقب فلان» — مهمة مراقبة بيومية وخلاصة
+		Version: "0349_matrix_missions",
+		SQL: `
+			CREATE TABLE IF NOT EXISTS "MatrixMission" (
+				id TEXT PRIMARY KEY,
+				"employeeId" TEXT NOT NULL REFERENCES "Employee"(id) ON DELETE CASCADE,
+				"createdById" TEXT NOT NULL REFERENCES "Employee"(id) ON DELETE CASCADE,
+				note TEXT,
+				"startsOn" DATE NOT NULL,
+				"endsOn" DATE NOT NULL,
+				active BOOLEAN NOT NULL DEFAULT true,
+				summary TEXT,
+				"summaryAt" TIMESTAMP,
+				"createdAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+			);
+			CREATE TABLE IF NOT EXISTS "MatrixMissionLog" (
+				id TEXT PRIMARY KEY,
+				"missionId" TEXT NOT NULL REFERENCES "MatrixMission"(id) ON DELETE CASCADE,
+				day DATE NOT NULL,
+				text TEXT NOT NULL,
+				"createdAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+				UNIQUE ("missionId", day)
+			);
+		`,
 	}}
 }

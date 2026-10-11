@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { api, type Employee } from '../api'
+import { parseAmount } from '../utils/money'
 
 // ═══ «أكمل معلومات المشروع» — طلب (ع) 10-10 ═══
 // «خيار كدام كل مشروع يخلون المبلغ المالي والمستلم واسم المشرف… وكل
@@ -29,12 +30,17 @@ export default function ProjectFillInfo({ p, onClose, onSaved }: { p: FillTarget
   }, [])
 
   const save = async () => {
-    const amt = Number(amount.replace(/[^\d]/g, ''))
+    const amt = parseAmount(amount)
     setBusy(true)
     setErr(null)
     try {
-      if (price.trim() !== (p.priceRaw ?? '') || resp !== (p.responsibleId ?? '')) {
-        await api.fillProjectInfo(p.id, { price: price.trim(), responsibleId: resp })
+      if (amount.trim() && amt <= 0) throw new Error('مبلغ الدفعة مو مفهوم — اكتبه أرقام')
+      // السعر ينحفظ بأرقام إنگليزية حتى الإحصائيات تقراه («١٥٠٠٠٠٠٠» كان يطلع غير مُسعّر)
+      const priceNum = parseAmount(price)
+      if (price.trim() && priceNum <= 0) throw new Error('السعر مو مفهوم — اكتبه أرقام')
+      const priceOut = priceNum > 0 ? priceNum.toLocaleString('en-US') : ''
+      if (priceOut !== (p.priceRaw ?? '') || resp !== (p.responsibleId ?? '')) {
+        await api.fillProjectInfo(p.id, { price: priceOut, responsibleId: resp })
       }
       if (amt > 0) await api.addProjectPayment(p.id, { amount: amt, paidAt, method })
       onSaved()

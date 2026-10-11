@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { api } from '../api'
+import { parseAmount } from '../utils/money'
 
 // ═══ طابور الإداري: ورق الأعمال داخل الشركة (قرار (ع) 10-07) ═══
 // «من يكمل الحجز الي داخل الشركة الإداري لازم يسوي الفاتورة والتقرير» —
@@ -51,7 +52,7 @@ function QuickCost({ row, onClose, onSaved }: { row: Row; onClose: () => void; o
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState<string | null>(null)
   const save = async () => {
-    const amount = Number(price.replace(/[^\d]/g, ''))
+    const amount = parseAmount(price)
     if (work.trim().length < 10) { setErr('اكتب شنو انعمل بالتفصيل (10 أحرف على الأقل)'); return }
     if (!(amount > 0)) { setErr('اكتب السعر المقدّر'); return }
     setBusy(true)

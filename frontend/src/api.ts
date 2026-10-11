@@ -3817,6 +3817,11 @@ export const api = {
   correctMatrixChat: (id: string, msgId: string, correction: string) =>
     request<{ ok: boolean }>(`/matrix/chats/${id}/messages/${msgId}/correct`, { method: 'POST', body: JSON.stringify({ correction }) }),
   getMatrixLessons: () => request<MatrixLesson[]>('/matrix/lessons'),
+  getMatrixMissions: () => request<MatrixMission[]>('/matrix/missions'),
+  getMatrixMission: (id: string) => request<{ mission: MatrixMission; logs: { day: string; text: string }[] }>(`/matrix/missions/${id}`),
+  createMatrixMission: (body: { employeeId: string; note?: string; days: number }) =>
+    request<MatrixMission>('/matrix/missions', { method: 'POST', body: JSON.stringify(body) }),
+  stopMatrixMission: (id: string) => request<{ ok: boolean }>(`/matrix/missions/${id}`, { method: 'DELETE' }),
   disableMatrixLesson: (id: string) => request<{ ok: boolean }>(`/matrix/lessons/${id}`, { method: 'DELETE' }),
   getMonthCompare: (months: string[]) => request<MonthStats[]>(`/stats-management/month-compare?months=${months.join(',')}`),
   getCommandAccounts: () =>
@@ -5990,4 +5995,5 @@ export interface ProcurementWatch {
 // ═══ دردشة ماتركس (قرار (ع) 10-10) ═══
 export interface MatrixChatRow { id: string; title: string; updatedAt: string }
 export interface MatrixChatMessage { id: string; role: 'USER' | 'ASSISTANT'; text: string; steps: string | null; image?: string | null; createdAt: string }
+export interface MatrixMission { id: string; employeeId: string; employeeName: string; note: string | null; startsOn: string; endsOn: string; active: boolean; summary: string | null; createdAt: string; summaryAt: string | null }
 export interface MatrixLesson { id: string; text: string; context: string | null; by: string | null; createdAt: string }

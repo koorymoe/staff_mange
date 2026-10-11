@@ -122,6 +122,43 @@ func (s *MatrixMorningService) Items() []briefItem {
 		add(2, float64(len(drops)), "نزول مفاجئ بالإنجاز: %s — اسأله إذا أكو شي يعيقه", strings.Join(parts, "، "))
 	}
 
+	// مشاريع راح تتأخر: بمرحلتها أكثر من المعتاد تاريخياً (الوسيط) وقربت
+	// من حدها (٧٥٪+) بس بعد ما عبرته — تنبيه قبل التأخير مو بعده
+	risky := []struct {
+		Code  string  `db:"code"`
+		Stage string  `db:"stage"`
+		Days  float64 `db:"days"`
+		Limit float64 `db:"lim"`
+	}{}
+	if err := s.db.Select(&risky, `
+		WITH spans AS (
+			SELECT l."toStage" AS stage,
+				EXTRACT(EPOCH FROM (lead(l."createdAt") OVER (PARTITION BY l."projectId" ORDER BY l."createdAt") - l."createdAt")) / 86400 AS d
+			FROM "ProjectStageLog" l
+		), med AS (
+			SELECT stage, percentile_cont(0.5) WITHIN GROUP (ORDER BY d) AS m, count(*) AS n
+			FROM spans WHERE d IS NOT NULL GROUP BY stage
+		), cur AS (
+			SELECT p.code, p.stage,
+				EXTRACT(EPOCH FROM (now() - COALESCE((SELECT max(l."createdAt") FROM "ProjectStageLog" l WHERE l."projectId" = p.id), p."createdAt"))) / 86400 AS days
+			FROM "Project" p
+			WHERE p.stage NOT LIKE '%مكتمل%' AND p.stage NOT LIKE '%مرفوض%'
+		)
+		SELECT c.code, c.stage, c.days, sl.days AS lim
+		FROM cur c JOIN "ProjectStageLimit" sl ON sl.stage = c.stage
+		JOIN med ON med.stage = c.stage AND med.n >= 3
+		WHERE c.days > med.m AND c.days >= sl.days * 0.75 AND c.days < sl.days
+		ORDER BY c.days / sl.days DESC LIMIT 3`); err != nil {
+		log.Printf("morning brief project risk: %v", err)
+	}
+	if len(risky) > 0 {
+		parts := []string{}
+		for _, r := range risky {
+			parts = append(parts, fmt.Sprintf("%s (%s: %.0f من %.0f يوم)", r.Code, r.Stage, r.Days, r.Limit))
+		}
+		add(2.5, float64(len(risky)), "مشاريع راح تتأخر إذا ما تتحرك اليوم: %s", strings.Join(parts, "، "))
+	}
+
 	sort.SliceStable(items, func(i, j int) bool { return items[i].weight*items[i].count > items[j].weight*items[j].count })
 	return items
 }

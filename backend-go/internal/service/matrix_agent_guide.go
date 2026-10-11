@@ -48,10 +48,15 @@ func (a *MatrixAgent) registerGuideTools() {
 			if code == "" || a.db == nil {
 				return "اكتب الكود", nil
 			}
-			if strings.HasPrefix(strings.ToUpper(code), "PRJ") {
-				return a.lookupProject(code)
+			first, second := a.lookupBooking, a.lookupProject
+			if strings.HasPrefix(strings.ToUpper(code), "P") {
+				first, second = second, first
 			}
-			return a.lookupBooking(code)
+			out, err := first(code)
+			if err == nil && strings.HasPrefix(out, "ما لگيت") {
+				return second(code)
+			}
+			return out, err
 		},
 	})
 }
@@ -169,4 +174,72 @@ func (a *MatrixAgent) lookupProject(code string) (string, error) {
 	}
 	return fmt.Sprintf("مشروع %s «%s» — المرحلة %s، انضاف %s\nالسعر المكتوب %s، صافي عرض السعر %s\nالمسؤول %s، موجّه إلى %s\nالمستلم %s (منها تنتظر تأكيد المحاسب %s)",
 		p.Code, p.Name, p.Stage, bagh(p.Created).Format("2006-01-02"), s(p.Price), q, s(p.Resp), s(p.Deleg), money(p.Paid), money(p.Unver)), nil
+}
+
+// ── 💰 ربحية الخدمات وأرقام «شنو لو؟» — (ع) 10-11 ──
+// الأرقام من فواتير الليدر المعتمدة/المقدّمة (بلا الملغية والمسحوبة) +
+// مصاريف الحجز + أوقات الشغل. ⚠️ الرواتب وإيجار الشركة مو بالنظام —
+// الأداة تگولها بصراحة حتى هايكو ما يسمّي الهامش «صافي ربح».
+func (a *MatrixAgent) registerEconomicsTools() {
+	a.AddTool(agentTool{Name: "service_economics", Desc: "ربحية كل خدمة بآخر N يوم (افتراضي ٩٠): عدد الشغلات، مجموع الفواتير، أجور التنفيذ، ربح المواد، المصاريف، معدل ساعات الشغلة وحجم الفريق، والدخل لكل ساعة عمل. استعملها لسؤال الربحية ولحسابات «شنو لو؟» (زيادة فني، رفع سعر…).",
+		Props: map[string]any{"days": map[string]any{"type": "integer", "description": "عدد الأيام (٣٠–٣٦٥)"}},
+		Run: func(in map[string]any, _ *nameMask) (string, error) {
+			days := 90
+			if v, ok := in["days"].(float64); ok && v >= 30 && v <= 365 {
+				days = int(v)
+			}
+			rows := []struct {
+				Service string   `db:"service"`
+				Jobs    int      `db:"jobs"`
+				Net     float64  `db:"net"`
+				Exec    float64  `db:"exec"`
+				MatProf float64  `db:"matprof"`
+				Exp     float64  `db:"exp"`
+				Hours   *float64 `db:"hours"`
+				Crew    *float64 `db:"crew"`
+			}{}
+			err := a.db.Select(&rows, `
+				WITH inv AS (
+					SELECT DISTINCT ON (li."bookingId") li."bookingId", li.id, COALESCE(li."netTotal", 0) AS net, COALESCE(li."executionCost", 0) AS exec
+					FROM "LeaderInvoice" li
+					WHERE li."bookingId" IS NOT NULL AND li.status IN ('SUBMITTED', 'APPROVED') AND li."revokedAt" IS NULL
+					ORDER BY li."bookingId", li."createdAt" DESC
+				)
+				SELECT COALESCE(s.name, 'بلا خدمة') AS service, count(*) AS jobs,
+					COALESCE(SUM(inv.net), 0) AS net, COALESCE(SUM(inv.exec), 0) AS exec,
+					COALESCE(SUM((SELECT SUM(mi."profitPerUnit" * mi.quantity) FROM "LeaderInvoiceMaterialItem" mi WHERE mi."leaderInvoiceId" = inv.id)), 0) AS matprof,
+					COALESCE(SUM((SELECT SUM(e.amount) FROM "Expense" e WHERE e."bookingId" = b.id AND e.status::text <> 'REJECTED')), 0) AS exp,
+					AVG(EXTRACT(EPOCH FROM (b."completedAt" - b."startedAt")) / 3600) FILTER (WHERE b."startedAt" IS NOT NULL AND b."completedAt" > b."startedAt"
+						AND b."completedAt" - b."startedAt" < interval '16 hours') AS hours,
+					AVG((SELECT count(*) FROM "BookingAssignment" ba WHERE ba."bookingId" = b.id)) AS crew
+				FROM "Booking" b
+				LEFT JOIN "Service" s ON s.id = b."serviceId"
+				LEFT JOIN inv ON inv."bookingId" = b.id
+				WHERE b.status = 'COMPLETED' AND b."completedAt" >= now() - make_interval(days => $1)
+				  AND COALESCE(b."bookingType"::text, '') <> 'INTERNAL'
+				GROUP BY 1 ORDER BY 3 DESC LIMIT 25`, days)
+			if err != nil {
+				return "", err
+			}
+			var sb strings.Builder
+			fmt.Fprintf(&sb, "ربحية الخدمات آخر %d يوم (الحجوزات المنجزة، بلا الداخلية):\n", days)
+			for _, r := range rows {
+				h, c := "—", "—"
+				perHour := "—"
+				if r.Hours != nil && *r.Hours > 0 {
+					h = fmt.Sprintf("%.1f", *r.Hours)
+					if r.Crew != nil && *r.Crew > 0 && r.Jobs > 0 {
+						perHour = money((r.Net - r.Exp) / (float64(r.Jobs) * *r.Hours * *r.Crew))
+					}
+				}
+				if r.Crew != nil {
+					c = fmt.Sprintf("%.1f", *r.Crew)
+				}
+				fmt.Fprintf(&sb, "- %s: %d شغلة، فواتير %s، أجور تنفيذ %s، ربح مواد %s، مصاريف %s، معدل %s ساعة × %s شخص، الدخل لكل ساعة عمل شخص %s\n",
+					r.Service, r.Jobs, money(r.Net), money(r.Exec), money(r.MatProf), money(r.Exp), h, c, perHour)
+			}
+			sb.WriteString("⚠️ ملاحظة: الرواتب والإيجار والوقود العام مو مسجّلة بالنظام — هذا «هامش مباشر» (أجور التنفيذ + ربح المواد − مصاريف الحجز)، مو صافي ربح. والحجز البلا فاتورة ينحسب بعدّه بس.")
+			return sb.String(), nil
+		},
+	})
 }
