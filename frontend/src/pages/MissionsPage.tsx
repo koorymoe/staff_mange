@@ -184,7 +184,7 @@ export default function MissionsPage() {
     return () => clearInterval(iv)
   }, [])
 
-  const isAdmin = employee?.role === 'ADMIN' || employee?.role === 'HR_COORDINATOR' || employee?.role === 'MONITOR' || permissions.includes('monitoring')
+  const isAdmin = employee?.role === 'ADMIN' || employee?.role === 'HR_COORDINATOR' || employee?.role === 'MONITOR' || permissions.includes('monitoring') || permissions.includes('mission_tracking')
   // ⚠️ نفس حارس بند "توجيه المهام الإضافية" القديم بالقائمة الجانبية
   // بالضبط (navTree.tsx كان: roles: ['ADMIN'], permission:
   // 'extra_tasks_assign') — مو `isAdmin` الأوسع فوگ.

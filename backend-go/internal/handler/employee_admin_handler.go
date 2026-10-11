@@ -2,7 +2,10 @@ package handler
 
 import (
 	"net/http"
+	"slices"
 	"strings"
+
+	"github.com/lib/pq"
 
 	"staffmange-api/internal/middleware"
 	"staffmange-api/internal/model"
@@ -24,6 +27,7 @@ type EmployeeAdminHandler struct {
 }
 
 func NewEmployeeAdminHandler(s *service.EmployeeService, p *repository.PermissionRepository, r *repository.EmployeeRepository) *EmployeeAdminHandler {
+	scopeRepo = r
 	return &EmployeeAdminHandler{service: s, perms: p, repo: r}
 }
 
@@ -77,6 +81,14 @@ func (h *EmployeeAdminHandler) UpdateAll(w http.ResponseWriter, r *http.Request)
 			return
 		}
 		req.SecondaryRoles = nil
+		if t, err := h.service.Get(id); err == nil && t != nil && !h.inScope(r, t.Role) {
+			WriteError(w, http.StatusForbidden, "ما مسموحلك تعدّل موظف بهذا الدور — المالك يحدد الأدوار الي تعدّلها")
+			return
+		}
+		if req.Role != nil && !h.inScope(r, *req.Role) {
+			WriteError(w, http.StatusForbidden, "ما مسموحلك تحوّل الموظف لهذا الدور")
+			return
+		}
 	}
 	emp, err := h.service.Update(id, req)
 	if err != nil {
@@ -154,6 +166,14 @@ func (h *EmployeeAdminHandler) Create(w http.ResponseWriter, r *http.Request) {
 			WriteError(w, http.StatusForbidden, "حساب مدير أو مالك يفتحه المالك بس")
 			return
 		}
+		newRole := "EMPLOYEE"
+		if req.Role != nil && *req.Role != "" {
+			newRole = *req.Role
+		}
+		if !h.inScope(r, newRole) {
+			WriteError(w, http.StatusForbidden, "ما مسموحلك تضيف موظف بهذا الدور — المالك يحدد الأدوار الي تضيفها")
+			return
+		}
 		req.SecondaryRoles = nil
 	}
 	emp, err := h.service.Create(req)
@@ -210,4 +230,78 @@ func validClock(s string) bool {
 	h := int(s[0]-'0')*10 + int(s[1]-'0')
 	m := int(s[3]-'0')*10 + int(s[4]-'0')
 	return s[0] >= '0' && s[0] <= '2' && s[1] >= '0' && s[1] <= '9' && s[3] >= '0' && s[3] <= '5' && s[4] >= '0' && s[4] <= '9' && h < 24 && m < 60
+}
+
+// ── نطاق الأدوار للمفوَّض (قرار (ع) 10-11) ──
+// «الموظف الي انطيه صلاحية يضيف موظف، اني احدد شنو الأدوار الي يضيفهم».
+// بلا نطاق محدد = ما يضيف ولا يعدّل أحد (الافتراضي مقفول، مو مفتوح).
+
+// scopeRepo يتعبّى من NewEmployeeAdminHandler — حتى معالج «الاسم والدور»
+// (EmployeeHandler) يفحص نفس النطاق.
+var scopeRepo *repository.EmployeeRepository
+
+func (h *EmployeeAdminHandler) scopeOf(empID string) []string { return adminScopeOf(empID) }
+
+func adminScopeOf(empID string) []string {
+	var roles pq.StringArray
+	if scopeRepo != nil {
+		_ = scopeRepo.DB().Get(&roles, `SELECT roles FROM "EmployeeAdminScope" WHERE "employeeId" = $1`, empID)
+	}
+	return roles
+}
+
+func (h *EmployeeAdminHandler) inScope(r *http.Request, role string) bool { return roleInAdminScope(r, role) }
+
+func roleInAdminScope(r *http.Request, role string) bool {
+	if isTop(middleware.RoleFromContext(r)) {
+		return true
+	}
+	return slices.Contains(adminScopeOf(middleware.EmployeeIDFromContext(r)), role)
+}
+
+// GET /api/employees/{id}/admin-scope — المالك والمدير
+func (h *EmployeeAdminHandler) GetScope(w http.ResponseWriter, r *http.Request) {
+	roles := h.scopeOf(r.PathValue("id"))
+	if roles == nil {
+		roles = []string{}
+	}
+	WriteJSON(w, http.StatusOK, map[string][]string{"roles": roles})
+}
+
+// GET /api/employees/my-admin-scope — الأدوار المسموحة إلي (حتى القائمة تبين بس هي)
+func (h *EmployeeAdminHandler) MyScope(w http.ResponseWriter, r *http.Request) {
+	if isTop(middleware.RoleFromContext(r)) {
+		WriteJSON(w, http.StatusOK, map[string]any{"all": true, "roles": []string{}})
+		return
+	}
+	roles := h.scopeOf(middleware.EmployeeIDFromContext(r))
+	if roles == nil {
+		roles = []string{}
+	}
+	WriteJSON(w, http.StatusOK, map[string]any{"all": false, "roles": roles})
+}
+
+// PUT /api/employees/{id}/admin-scope {roles} — المالك والمدير
+func (h *EmployeeAdminHandler) SetScope(w http.ResponseWriter, r *http.Request) {
+	var in struct {
+		Roles []string `json:"roles"`
+	}
+	if err := DecodeJSON(r, &in); err != nil {
+		WriteError(w, http.StatusBadRequest, "بيانات غير صحيحة")
+		return
+	}
+	clean := []string{}
+	for _, x := range in.Roles {
+		x = strings.TrimSpace(x)
+		if x != "" && !isTop(x) && !slices.Contains(clean, x) {
+			clean = append(clean, x)
+		}
+	}
+	if _, err := h.repo.DB().Exec(`INSERT INTO "EmployeeAdminScope" ("employeeId", roles, "updatedById") VALUES ($1, $2, $3)
+		ON CONFLICT ("employeeId") DO UPDATE SET roles = EXCLUDED.roles, "updatedById" = EXCLUDED."updatedById", "updatedAt" = now()`,
+		r.PathValue("id"), pq.StringArray(clean), middleware.EmployeeIDFromContext(r)); err != nil {
+		WriteError(w, http.StatusInternalServerError, "تعذر الحفظ")
+		return
+	}
+	WriteJSON(w, http.StatusOK, map[string][]string{"roles": clean})
 }

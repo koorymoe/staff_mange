@@ -3,6 +3,7 @@ import { api, type Employee, type MissingRoleDefault, type Permission } from '..
 import { roleLabel } from '../roleLabels'
 import { matches } from '../utils/search'
 import { loadFailed } from '../netErrors'
+import EmployeeAdminScope from '../components/EmployeeAdminScope'
 
 const DEAD_PERMISSIONS = new Set(['work_reports', 'leave_approve_field', 'leave_approve_admin', 'manage_services'])
 
@@ -377,6 +378,9 @@ export default function PermissionsPage() {
                   </button>
                 )}
               </div>
+              {(employeePerms.includes('employee_create') || employeePerms.includes('employee_edit_all')) && (
+                <EmployeeAdminScope employeeId={selectedEmployeeId} />
+              )}
 
               {/* 🔴 «ما لگيت الخانة بشاشة الصلاحيات» — والسبب إن ماكو
                   بحث بالصلاحيات إطلاقاً: خانة البحث فوق تصفّي

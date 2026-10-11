@@ -1010,17 +1010,26 @@ func (r *BookingRepository) Complete(id string, req model.CompleteBookingRequest
 	}
 	defer func() { _ = tx.Rollback() }()
 
-	if _, err = tx.Exec(`
+	// (فحص 10-11) ضغطة «تم» مرتين، أو على حجز ملغي، چانت تسجّل طلعتين
+	// والكادر ياخذ إنجاز مضاعف — هسه الحجز المنجز/الملغي ما ينقفل ثاني.
+	// ويطلع من محطات الانتظار (علم الانتظار ينمسح ويا الإنجاز).
+	res, err := tx.Exec(`
 		UPDATE "Booking" SET
 			status = 'COMPLETED',
 			"completedAt" = now(),
 			"completionNotes" = COALESCE($2, "completionNotes"),
 			"amountCollected" = COALESCE($3, "amountCollected"),
 			"advancePaid" = COALESCE($4, "advancePaid"),
-			"workLocation" = COALESCE(NULLIF($5,''), "workLocation")
-		WHERE id = $1
-	`, id, req.CompletionNotes, req.AmountCollected, req.AdvancePaid, workLocationOrEmpty(req.WorkLocation)); err != nil {
+			"workLocation" = COALESCE(NULLIF($5,''), "workLocation"),
+			"waitingSince" = NULL, "waitingKind" = NULL, "waitingNote" = NULL, "waitingById" = NULL,
+			"awaitingReschedule" = false
+		WHERE id = $1 AND status NOT IN ('COMPLETED', 'CANCELLED')
+	`, id, req.CompletionNotes, req.AmountCollected, req.AdvancePaid, workLocationOrEmpty(req.WorkLocation))
+	if err != nil {
 		return err
+	}
+	if n, _ := res.RowsAffected(); n == 0 {
+		return errors.New("الحجز منجز أو ملغي من قبل")
 	}
 
 	if _, err = recordVisitTx(tx, id, "DONE", nil, nil); err != nil {

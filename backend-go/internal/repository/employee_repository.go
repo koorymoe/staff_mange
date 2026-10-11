@@ -618,3 +618,6 @@ func (r *EmployeeRepository) IsHandoverTarget(id string) bool {
 		AND (e.role IN ('TECHNICAL', 'SERVICE_MANAGER') OR EXISTS (SELECT 1 FROM "ServiceManager" sm WHERE sm."employeeId" = e.id)))`, id)
 	return ok
 }
+
+// DB القاعدة نفسها — لاستعلامات صغيرة بالمعالج (نطاق الأدوار).
+func (r *EmployeeRepository) DB() *sqlx.DB { return r.db }

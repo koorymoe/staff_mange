@@ -2,6 +2,7 @@ package repository
 
 import (
 	"fmt"
+	"math"
 	"strings"
 	"unicode/utf8"
 
@@ -144,6 +145,13 @@ func (r *RevolvingFundRepository) Topup(fundID string, amount float64, notes *st
 //
 // تنحفظ PENDING — ما تأثر على ولا رصيد لحد ما المحاسب يوافق.
 func (r *RevolvingFundRepository) SubmitSettlement(employeeID string, req model.SettlementRequest) (*model.RevolvingFundTxn, error) {
+	// (فحص 10-11) أرقام حقيقية بس: السالب كان يمر — «صرفت −5 مليون ورجّعت
+	// 5 مليون» بلا وصل، والموافقة تنفخ رصيد الدوار بفلوس ما رجعت
+	if req.SpentAmount < 0 || req.ReturnedAmount < 0 || math.IsNaN(req.SpentAmount) || math.IsNaN(req.ReturnedAmount) ||
+		math.IsInf(req.SpentAmount, 0) || math.IsInf(req.ReturnedAmount, 0) {
+		return nil, fmt.Errorf("المبالغ لازم تكون أرقام موجبة")
+	}
+	req.SpentAmount, req.ReturnedAmount = math.Round(req.SpentAmount), math.Round(req.ReturnedAmount)
 	total := req.SpentAmount + req.ReturnedAmount
 	if total <= 0 {
 		return nil, fmt.Errorf("لازم تحدد المبلغ المصروف أو المرتجع")
@@ -234,6 +242,10 @@ func (r *RevolvingFundRepository) ReviewSettlement(id string, req model.ReviewSe
 		return nil, fmt.Errorf("التسوية مو موجودة أو انتدققت من قبل")
 	}
 
+	// تسوية قديمة بمبلغ سالب (قبل فحص 10-11) ما تنقبل — ترجع بالرفض
+	if req.Approve && (t.SpentAmount < 0 || t.ReturnedAmount < 0) {
+		return nil, fmt.Errorf("التسوية بيها مبلغ سالب — ارفضها وخلي الموظف يرفعها صح")
+	}
 	// المبلغ المرتجع يرجع للدوار عند الموافقة بس
 	if req.Approve && t.ReturnedAmount > 0 {
 		if _, err := tx.Exec(`UPDATE "RevolvingFund" SET balance = balance + $2, "updatedAt" = now() WHERE id = $1`,

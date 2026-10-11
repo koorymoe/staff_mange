@@ -96,5 +96,27 @@ func matrixChatMigrations() []Migration {
 				UNIQUE ("missionId", day)
 			);
 		`,
+	}, {
+		// (ع) 10-11: صاحب «إضافة موظف»/«تعديل كل الموظفين» يشتغل بس على
+		// الأدوار الي المالك يحددها إله — بلاها يكدر يفتح حساب محاسب
+		Version: "0350_employee_admin_scope",
+		SQL: `
+			CREATE TABLE IF NOT EXISTS "EmployeeAdminScope" (
+				"employeeId" TEXT PRIMARY KEY REFERENCES "Employee"(id) ON DELETE CASCADE,
+				roles TEXT[] NOT NULL DEFAULT '{}',
+				"updatedById" TEXT REFERENCES "Employee"(id) ON DELETE SET NULL,
+				"updatedAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+			);
+		`,
+	}, {
+		// فحص 10-11: فواتير انسحب اعتمادها ورجعت انعتمدت كانت مختفية من
+		// المجاميع (revokedAt بقى) — نرجّعها؛ ومبالغ تسوية الدوار ما تكون سالبة
+		Version: "0351_reapproved_invoices_fund_nonneg",
+		SQL: `
+			UPDATE "LeaderInvoice" SET "revokedAt" = NULL WHERE status = 'APPROVED' AND "revokedAt" IS NOT NULL;
+			ALTER TABLE "RevolvingFundTxn" DROP CONSTRAINT IF EXISTS fund_txn_nonneg;
+			ALTER TABLE "RevolvingFundTxn" ADD CONSTRAINT fund_txn_nonneg
+				CHECK (COALESCE("spentAmount", 0) >= 0 AND COALESCE("returnedAmount", 0) >= 0) NOT VALID;
+		`,
 	}}
 }

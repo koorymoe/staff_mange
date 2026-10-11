@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { api, type Division, type Employee, type EmployeeRole, type Permission } from '../api'
 import { ROLE_LABELS, ASSIGNABLE_ROLES, SECONDARY_ASSIGNABLE_ROLES } from '../roleLabels'
 
@@ -21,7 +21,17 @@ const steps = ['الشعبة', 'الاسم', 'الشهادة والمنصب', '�
 // limited: صاحب صلاحية «إضافة موظف» (مو المالك) — بلا دور مدير، وبلا خطوة
 // الصلاحيات (مسارها للمدير بس، والضغط عليها ينحسب مخالفة).
 export default function AddEmployeeWizard({ onClose, onCreated, limited = false }: { onClose: () => void; onCreated: () => void; limited?: boolean }) {
-  const roleChoices = limited ? creatableRoles.filter((r) => r !== 'ADMIN') : creatableRoles
+  // (ع) 10-11: المفوَّض يشوف بس الأدوار الي المالك حددها إله
+  const [scope, setScope] = useState<string[] | null>(null)
+  useEffect(() => {
+    if (!limited) return
+    let alive = true
+    api.getMyAdminScope().then((r) => { if (alive) setScope(r.all ? null : r.roles) }).catch(() => { if (alive) setScope([]) })
+    return () => { alive = false }
+  }, [limited])
+  const roleChoices = limited
+    ? creatableRoles.filter((r) => r !== 'ADMIN' && (scope === null || scope.includes(r)))
+    : creatableRoles
   const [step, setStep] = useState(0)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -249,6 +259,12 @@ export default function AddEmployeeWizard({ onClose, onCreated, limited = false 
               ) : (
                 <>
                   <label className="text-xs font-bold text-slate-500">الدور الوظيفي بالنظام</label>
+                  {limited && scope !== null && scope.length === 0 && (
+                    <p className="rounded-lg bg-amber-50 p-2 text-xs font-bold text-amber-800">المالك ما حدد إلك أدوار تضيفها بعد — اطلب منه يحددها من شاشة الصلاحيات.</p>
+                  )}
+                  {limited && !roleChoices.includes(role) && roleChoices.length > 0 && (
+                    <p className="text-xs text-amber-700">اختار دور من المسموحة إلك.</p>
+                  )}
                   <div className="grid grid-cols-2 gap-2">
                     {roleChoices.map(key => {
                       const label = ROLE_LABELS[key]

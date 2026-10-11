@@ -12,6 +12,20 @@ import (
 // SolarHandler نظام الطاقة الشمسية المنقول من Google Sheets.
 type SolarHandler struct {
 	repo *repository.SolarRepository
+	// canSeeCost: تفصيل الكلفة (أسلاك، حديد، نصب…) لأهل الطاقة بس —
+	// المبيعات تحتاج السعر الكلي للحجز، مو الكلفة (فحص 10-11)
+	canSeeCost func(r *http.Request) bool
+}
+
+func (h *SolarHandler) SetCostGate(f func(r *http.Request) bool) { h.canSeeCost = f }
+
+func (h *SolarHandler) hideCost(r *http.Request, s *model.SolarSystem) {
+	if s == nil || h.canSeeCost == nil || h.canSeeCost(r) {
+		return
+	}
+	s.WiringDetails, s.IronDetails = nil, nil
+	s.WiringTotalCost, s.IronTotalCost, s.InstallPrice, s.ProgramPrice, s.WarrantyPrice = 0, 0, 0, 0, 0
+	s.Price = model.SolarPrice{Total: s.Price.Total}
 }
 
 func NewSolarHandler(repo *repository.SolarRepository) *SolarHandler {
@@ -130,6 +144,9 @@ func (h *SolarHandler) ListSystems(w http.ResponseWriter, r *http.Request) {
 		WriteError(w, http.StatusInternalServerError, "تعذر جلب المنظومات")
 		return
 	}
+	for i := range rows {
+		h.hideCost(r, &rows[i])
+	}
 	WriteJSON(w, http.StatusOK, rows)
 }
 
@@ -140,6 +157,7 @@ func (h *SolarHandler) GetSystem(w http.ResponseWriter, r *http.Request) {
 		WriteError(w, http.StatusNotFound, "المنظومة مو موجودة")
 		return
 	}
+	h.hideCost(r, s)
 	WriteJSON(w, http.StatusOK, s)
 }
 

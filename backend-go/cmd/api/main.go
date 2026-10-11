@@ -883,8 +883,9 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	mux.Handle("GET /api/letters/pending-count", middleware.Chain(http.HandlerFunc(employeeLetterHandler.PendingCount), requireAuth, requireAdmin))
 	mux.Handle("PUT /api/letters/{id}/decide", middleware.Chain(http.HandlerFunc(employeeLetterHandler.Decide), requireAuth, requireAdmin))
 
-	mux.Handle("GET /api/discipline", middleware.Chain(http.HandlerFunc(disciplineHandler.List), requireAuth))
-	mux.Handle("GET /api/discipline/events", middleware.Chain(http.HandlerFunc(disciplineHandler.Events), requireAuth))
+	// (ع) 10-11: سجل الانضباط (أرصدة كل الموظفين ومخالفاتهم) للمالك والمدير بس
+	mux.Handle("GET /api/discipline", middleware.Chain(http.HandlerFunc(disciplineHandler.List), requireAuth, requireAdmin))
+	mux.Handle("GET /api/discipline/events", middleware.Chain(http.HandlerFunc(disciplineHandler.Events), requireAuth, requireAdmin))
 	// أرقام مجرّدة بلا أسماء — تنعرض بشريط الإعلانات لكل الموظفين
 	mux.Handle("GET /api/discipline/today-headline", middleware.Chain(http.HandlerFunc(disciplineHandler.TodayHeadline), requireAuth))
 	// التعديل اليدوي: المالك ومدير النظام بس. requireAdmin يمرّر OWNER أصلاً.
@@ -905,6 +906,9 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	employeeAdminHandler := handler.NewEmployeeAdminHandler(employeeService, permissionRepo, employeeRepo)
 	_ = requireOwnerAccounts
 	mux.Handle("POST /api/employees", middleware.Chain(http.HandlerFunc(employeeAdminHandler.Create), requireAuth))
+	mux.Handle("GET /api/employees/my-admin-scope", middleware.Chain(http.HandlerFunc(employeeAdminHandler.MyScope), requireAuth))
+	mux.Handle("GET /api/employees/{id}/admin-scope", middleware.Chain(http.HandlerFunc(employeeAdminHandler.GetScope), requireAuth, requireAdmin))
+	mux.Handle("PUT /api/employees/{id}/admin-scope", middleware.Chain(http.HandlerFunc(employeeAdminHandler.SetScope), requireAuth, requireAdmin))
 	mux.Handle("PUT /api/employees/{id}/all", middleware.Chain(http.HandlerFunc(employeeAdminHandler.UpdateAll), requireAuth,
 		middleware.RequireRoleOrPermission(permissionRepo, employeeRepo, notificationRepo, []string{"ADMIN"}, "employee_edit_all")))
 	mux.Handle("PUT /api/employees/{id}/suspend", middleware.Chain(http.HandlerFunc(employeeAdminHandler.Suspend), requireAuth,
@@ -1479,9 +1483,12 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	mux.Handle("DELETE /api/training/materials/{id}", middleware.Chain(http.HandlerFunc(trainingHandler.DeleteMaterial), requireAuth, requireContentTech))
 
 	// تتبع المهام (missions)
-	mux.Handle("GET /api/missions", middleware.Chain(http.HandlerFunc(missionHandler.List), requireAuth))
-	mux.Handle("GET /api/missions/monitor/live", middleware.Chain(http.HandlerFunc(missionHandler.MonitorLive), requireAuth))
-	mux.Handle("GET /api/missions/reports/performance", middleware.Chain(http.HandlerFunc(missionHandler.PerformanceReport), requireAuth))
+	// (فحص 10-11) كل المهمات (مواقع الزبائن والحركة) لأهل المتابعة بس — الفني يشوف مهامه بـ/my
+	requireMissionView := middleware.RequireRoleOrAnyPermission(permissionRepo, employeeRepo, notificationRepo,
+		[]string{"ADMIN", "HR_COORDINATOR", "MONITOR"}, "monitoring", "mission_tracking")
+	mux.Handle("GET /api/missions", middleware.Chain(http.HandlerFunc(missionHandler.List), requireAuth, requireMissionView))
+	mux.Handle("GET /api/missions/monitor/live", middleware.Chain(http.HandlerFunc(missionHandler.MonitorLive), requireAuth, requireMissionView))
+	mux.Handle("GET /api/missions/reports/performance", middleware.Chain(http.HandlerFunc(missionHandler.PerformanceReport), requireAuth, requireMissionView))
 	mux.Handle("GET /api/missions/my/{employeeId}", middleware.Chain(http.HandlerFunc(missionHandler.ListForEmployee), requireAuth))
 	mux.Handle("GET /api/missions/{id}", middleware.Chain(http.HandlerFunc(missionHandler.Get), requireAuth))
 	mux.Handle("POST /api/missions", middleware.Chain(http.HandlerFunc(missionHandler.Create), requireAuth, requireBookingCoord))
@@ -1862,6 +1869,14 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	// (كتالوج المنظومات /solar/systems يبقى مفتوح لأن الحجز وعرض السعر يقرونه.)
 	requireSolarView := middleware.RequireRoleOrPermission(permissionRepo, employeeRepo, notificationRepo,
 		[]string{"ADMIN", "OWNER", "MONITOR", "TECHNICIAN", "SERVICE_MANAGER"}, "solar_system")
+	solarHandler.SetCostGate(func(r *http.Request) bool {
+		switch middleware.RoleFromContext(r) {
+		case "ADMIN", "OWNER", "MONITOR", "TECHNICIAN", "SERVICE_MANAGER":
+			return true
+		}
+		ok, _ := permissionRepo.HasPermission(middleware.EmployeeIDFromContext(r), "solar_system")
+		return ok
+	})
 	mux.Handle("GET /api/solar/stats", middleware.Chain(http.HandlerFunc(solarHandler.Stats), requireAuth, requireSolarView))
 	mux.Handle("GET /api/solar/low-stock", middleware.Chain(http.HandlerFunc(solarHandler.LowStock), requireAuth, requireSolarView))
 

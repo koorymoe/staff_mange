@@ -106,6 +106,11 @@ func (h *QuotationHandler) Delete(w http.ResponseWriter, r *http.Request) {
 
 // GET /api/quotations/{id}/versions — النسخ القديمة المؤرشفة
 func (h *QuotationHandler) Versions(w http.ResponseWriter, r *http.Request) {
+	// نفس حماية فتح العرض نفسه: الي ما يكدر يشوف العرض ما يشوف نسخه (فحص 10-11)
+	if _, err := h.service.Get(r.PathValue("id"), middleware.EmployeeIDFromContext(r), middleware.RoleFromContext(r)); err != nil {
+		WriteError(w, http.StatusNotFound, "عرض السعر غير موجود")
+		return
+	}
 	rows, err := h.service.Versions(r.PathValue("id"))
 	if err != nil {
 		WriteError(w, http.StatusInternalServerError, "تعذر جلب النسخ القديمة")

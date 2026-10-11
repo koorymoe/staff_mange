@@ -220,7 +220,11 @@ func (r *LeaderInvoiceRepository) Approve(id, approverEmployeeID, externalNumber
 		    "approvedByEmployeeId" = $2,
 		    "approvedAt" = CURRENT_TIMESTAMP,
 		    "externalInvoiceNumber" = NULLIF(btrim($3), ''),
-		    "externalInvoiceAt" = CASE WHEN btrim($3) <> '' THEN CURRENT_TIMESTAMP END
+		    "externalInvoiceAt" = CASE WHEN btrim($3) <> '' THEN CURRENT_TIMESTAMP END,
+		    -- (فحص 10-11) إعادة الاعتماد ترجّع الفاتورة «حيّة»: كل المجاميع تفلتر
+		    -- revokedAt IS NULL، فبلاها الفاتورة المسحوبة والمعتمدة من جديد
+		    -- تختفي للأبد من المبيعات والإيرادات. السبب والعدد يبقون تاريخ.
+		    "revokedAt" = NULL
 		WHERE id = $1 AND status != 'APPROVED'
 		RETURNING *
 	`, id, approverEmployeeID, externalNumber)

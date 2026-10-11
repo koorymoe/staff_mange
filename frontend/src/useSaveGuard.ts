@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useRef } from 'react'
 
 // ═══ حارس الحفظ ═══
 //
@@ -39,7 +39,12 @@ export function useSaveGuard(): SaveGuard {
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
 
+  // (فحص 10-11) نفس العملية ما تنرسل مرتين وهي بعدها شغالة — ضغطة «تم»
+  // مرتين چانت تسجّل إنجاز مضاعف للكادر
+  const inflight = useRef(new Set<string>())
   const run = useCallback(async <T,>(what: string, fn: () => Promise<T>): Promise<T | undefined> => {
+    if (inflight.current.has(what)) return undefined
+    inflight.current.add(what)
     setBusy(true)
     setError(null)
     try {
@@ -50,6 +55,7 @@ export function useSaveGuard(): SaveGuard {
       setError(`تعذر ${what}: ${e instanceof Error ? e.message : 'خطأ غير متوقع'}`)
       return undefined
     } finally {
+      inflight.current.delete(what)
       setBusy(false)
     }
   }, [])

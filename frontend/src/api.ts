@@ -3817,6 +3817,10 @@ export const api = {
   correctMatrixChat: (id: string, msgId: string, correction: string) =>
     request<{ ok: boolean }>(`/matrix/chats/${id}/messages/${msgId}/correct`, { method: 'POST', body: JSON.stringify({ correction }) }),
   getMatrixLessons: () => request<MatrixLesson[]>('/matrix/lessons'),
+  getEmployeeAdminScope: (id: string) => request<{ roles: string[] }>(`/employees/${id}/admin-scope`),
+  setEmployeeAdminScope: (id: string, roles: string[]) =>
+    request<{ roles: string[] }>(`/employees/${id}/admin-scope`, { method: 'PUT', body: JSON.stringify({ roles }) }),
+  getMyAdminScope: () => request<{ all: boolean; roles: string[] }>('/employees/my-admin-scope'),
   getMatrixMissions: () => request<MatrixMission[]>('/matrix/missions'),
   getMatrixMission: (id: string) => request<{ mission: MatrixMission; logs: { day: string; text: string }[] }>(`/matrix/missions/${id}`),
   createMatrixMission: (body: { employeeId: string; note?: string; days: number }) =>

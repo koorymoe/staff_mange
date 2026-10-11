@@ -53,6 +53,15 @@ export default function Employees({ embedded }: { embedded?: boolean } = {}) {
   const guard = useSaveGuard()
   const { employee: currentUser, permissions: userPermissions } = useSession()
   const isAdmin = currentUser?.role === 'ADMIN'
+  // (ع) 10-11: نطاق الأدوار للمفوَّض بتعديل الموظفين
+  const [myScope, setMyScope] = useState<string[] | null>(null)
+  useEffect(() => {
+    if (isAdmin) return
+    let alive = true
+    api.getMyAdminScope().then((r) => { if (alive) setMyScope(r.all ? null : r.roles) }).catch(() => { if (alive) setMyScope([]) })
+    return () => { alive = false }
+  }, [isAdmin])
+  const roleInScope = (r: string) => isAdmin || myScope === null || myScope.includes(r)
   // «تعديل اسم الموظف ودوره» صلاحية مستقلة تنمنح فرد-فرد.
   const canIdentity = isAdmin || userPermissions.includes('edit_employee_identity')
   // (ع): صلاحيات تنطى لأي أحد — كل زر يطلع بس لمن الخادم يقبله.
@@ -523,7 +532,7 @@ export default function Employees({ embedded }: { embedded?: boolean } = {}) {
                         (مو للمدير والمالك — الخادم يرفضها، فالزر ما يطلع). */}
                     {(canEditAll || canSuspend) && (isAdmin || (selectedEmployee.role !== 'ADMIN' && selectedEmployee.role !== 'OWNER')) && (
                       <div className="relative mt-4 flex flex-wrap gap-2">
-                        {canEditAll && selectedEmployee.status === 'ACTIVE' && (
+                        {canEditAll && selectedEmployee.status === 'ACTIVE' && roleInScope(selectedEmployee.role) && (
                           <button onClick={() => setEditAllOpen(true)} className="rounded-lg bg-sky-500/20 px-3 py-1.5 text-xs font-bold text-sky-100 hover:bg-sky-500/30">✏️ تعديل كل البيانات</button>
                         )}
                         {canSuspend && selectedEmployee.id !== currentUser?.id && (selectedEmployee.status === 'ACTIVE' ? (
@@ -775,7 +784,7 @@ export default function Employees({ embedded }: { embedded?: boolean } = {}) {
                           className="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-3 py-2.5 text-sm outline-none transition-colors focus:border-[#2c5aad] focus:bg-white" />
                       </div>
                     )}
-                    {(isAdmin || (canIdentity && !targetIsTop && selectedEmployee.id !== currentUser?.id)) && (
+                    {(isAdmin || (canIdentity && !targetIsTop && selectedEmployee.id !== currentUser?.id && roleInScope(selectedEmployee.role))) && (
                       <div>
                         <label className="mb-1 block text-xs font-medium text-slate-400">الصلاحية / الدور</label>
                         <select value={selectedEmployee.role}
@@ -792,7 +801,7 @@ export default function Employees({ embedded }: { embedded?: boolean } = {}) {
                           }}
                           className="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-3 py-2.5 text-sm outline-none transition-colors focus:border-[#2c5aad] focus:bg-white">
                           {(selectedEmployee.role === 'GPS_ADMIN' ? [...ASSIGNABLE_ROLES, 'GPS_ADMIN' as const] : ASSIGNABLE_ROLES)
-                            .filter((k) => isAdmin || (k !== 'ADMIN' && k !== 'OWNER'))
+                            .filter((k) => isAdmin || (k !== 'ADMIN' && k !== 'OWNER' && (roleInScope(k) || k === selectedEmployee.role)))
                             .map((k) => <option key={k} value={k}>{ROLE_LABELS[k]}</option>)}
                         </select>
                       </div>

@@ -106,6 +106,11 @@ func (h *EmployeeHandler) UpdateIdentity(w http.ResponseWriter, r *http.Request)
 			WriteError(w, http.StatusForbidden, "حساب المدير والمالك يعدّله المدير بس")
 			return
 		}
+		// (ع) 10-11: نفس نطاق الأدوار الي يحدده المالك للمفوَّض
+		if !roleInAdminScope(r, target.Role) || (body.Role != nil && !roleInAdminScope(r, *body.Role)) {
+			WriteError(w, http.StatusForbidden, "ما مسموحلك تعدّل هذا الدور — المالك يحدد الأدوار الي تعدّلها")
+			return
+		}
 		if body.Role != nil {
 			if *body.Role == "ADMIN" || *body.Role == "OWNER" {
 				WriteError(w, http.StatusForbidden, "منح دور المدير أو المالك للمدير بس")
