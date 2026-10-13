@@ -26,7 +26,7 @@ import { useSession } from '../session'
 const MonitorInboxPage = lazy(() => import('./MonitorInboxPage'))
 const AuditIssuesPage = lazy(() => import('./AuditIssuesPage'))
 const MonitorCrewBookingsPage = lazy(() => import('./MonitorCrewBookingsPage'))
-const QualityFollowUpsPage = lazy(() => import('./QualityFollowUpsPage'))
+const QualityAuditView = lazy(() => import('../components/QualityAuditView'))
 const LeaderInvoicesListPage = lazy(() => import('./LeaderInvoicesListPage'))
 const MonitorGpsPage = lazy(() => import('./MonitorGpsPage'))
 const MonitorInventoryPage = lazy(() => import('./MonitorInventoryPage'))
@@ -209,7 +209,8 @@ export default function MonitorDeskPage() {
         {active === 'invoices' && <LeaderInvoicesListPage embedded />}
         {active === 'quality' && canQuality && (
           <div className="space-y-4">
-            <QualityFollowUpsPage embedded />
+            {/* (ع) 10-13: بالمكتب تدقيق — شنو سوّى مهندس الجودة وتقرير الزبون */}
+            <QualityAuditView />
             {/* ⚠️ الشكاوى تحتها بنفس التبويب — انشالت من القائمة
                 الجانبية للمراقب، فلو ما انعرضت هنا يخسر وصوله كلياً. */}
             <ComplaintsPage />
