@@ -20,8 +20,9 @@ const KpiPage = lazy(() => import('./KpiPage'))
 const PerformanceReviewPage = lazy(() => import('./PerformanceReviewPage'))
 const StaffRequestsPage = lazy(() => import('./StaffRequestsPage'))
 const PermissionsPage = lazy(() => import('./PermissionsPage'))
+const DisciplineRecordPage = lazy(() => import('./DisciplineRecordPage'))
 
-type SectionId = 'employees' | 'kpi' | 'performance' | 'staffRequests' | 'permissions'
+type SectionId = 'employees' | 'kpi' | 'performance' | 'staffRequests' | 'permissions' | 'discipline'
 
 interface Section {
   id: SectionId
@@ -50,6 +51,11 @@ const SECTIONS: Section[] = [
   {
     id: 'staffRequests', label: 'طلبات الكادر', icon: '👷',
     navItem: { to: '/staff-requests', label: 'طلبات الكادر', icon: <></>, roles: ['ADMIN', 'MONITOR'], unlockPermission: 'staff_requests' },
+  },
+  // (ع) 10-13: سجل الانضباط الوظيفي تبويب هنا — مو بند بالقائمة
+  {
+    id: 'discipline', label: 'سجل الانضباط الوظيفي', icon: '📒',
+    navItem: { to: '/discipline-record', label: 'سجل الانضباط الوظيفي', icon: <></>, roles: ['ADMIN'] },
   },
   // (ع) 10-13: الصلاحيات تبويب هنا مو بند لحاله — نفس حارس المسار (RequireAdmin)
   {
@@ -114,6 +120,7 @@ export default function StaffManagementDeskPage() {
             {cur?.id === 'performance' && <PerformanceReviewPage embedded />}
             {cur?.id === 'staffRequests' && <StaffRequestsPage embedded />}
             {cur?.id === 'permissions' && <PermissionsPage embedded />}
+            {cur?.id === 'discipline' && <DisciplineRecordPage />}
           </Suspense>
         </>
       )}

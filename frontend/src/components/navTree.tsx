@@ -284,7 +284,7 @@ export const navItems: NavItem[] = [
       // ماتركس — تقرير المالك الأسبوعي: نفس حارس GET /api/ai/weekly-report (ADMIN/OWNER بس).
       { to: '/weekly-report', label: '📊 التقرير الأسبوعي', icon: <></>, roles: ['ADMIN'] },
       // قرار (ع) 10-05: كل خصم من أول يوم بالنظام — للمدير والمالك بس.
-      { to: '/discipline-record', label: '📒 سجل الانضباط الوظيفي', icon: <></>, roles: ['ADMIN'] },
+      { to: '/discipline-record', label: '📒 سجل الانضباط الوظيفي', icon: <></>, roles: ['ADMIN'], hideForRoles: ['ADMIN', 'OWNER'] },
       // قرار (ع) 10-05: الفضفضة والمشاكل الوظيفية — نفس حارس requireMonitor.
       // قرار (ع) 10-05: ماتركس ٦٠٪ + البشر ٤٠٪ — نفس حارس GET /api/staff-score (requireMonitor).
       // قرار (ع) 10-06: فلوس المشاريع — نفس حارس GET /api/project-payments/overview.
@@ -619,9 +619,6 @@ export const navItems: NavItem[] = [
       { to: '/work-schedule', label: '🕘 جدول الدوام', icon: <></>, roles: ['ADMIN', 'HR_COORDINATOR', 'MONITOR'], unlockAnyPermission: ['work_schedule_manage', 'staff_management'] },
       // نفس حارس /api/remote-hours: المدير أو صلاحية «تسجيل ساعات العمل من البيت».
       { monitorMenuHide: true, to: '/remote-hours', label: '🏠 ساعات العمل من البيت', icon: <></>, roles: ['ADMIN'], anyPermission: ['remote_hours_manage', 'remote_hours_self'] },
-      { to: '/nav-hr-score', label: '🏅 التقييم', icon: <></>, divider: true, plain: true },
-      { to: '/performance-review', label: '⭐ تقييم الأداء', icon: <></>, roles: ['ADMIN', 'HR_COORDINATOR'], unlockPermission: 'performance_review' },
-      { strict: true, to: '/discipline-record', label: '📒 سجل الانضباط الوظيفي', icon: <></>, roles: ['ADMIN'] },
       { to: '/nav-hr-stats', label: '📊 الإحصائيات', icon: <></>, divider: true, plain: true },
       { strict: true, to: '/stats-management', label: '📊 الإحصائيات', icon: <></>, roles: ['ADMIN'], unlockPermission: 'employee_stats' },
     ],
@@ -1083,6 +1080,9 @@ const SELF_SCOPED: Record<string, RouteRule> = {
   // (ع) 10-13: طلبات الكادر تبويب بإدارة الموظفين، والإجازات تبويب بجدول الدوام
   // (ع) 10-13: الإحصائيات الثلاث صارت واجهة وحدة، والإنجازات انشالت من القائمة
   '/stats': { roles: ['ADMIN'] },
+  // (ع) 10-13: تقييم الأداء وسجل الانضباط تبويبات بإدارة الموظفين
+  '/performance-review': { roles: ['ADMIN', 'HR_COORDINATOR'], anyPermission: ['performance_review'] },
+  '/discipline-record': { roles: ['ADMIN'] },
   '/employee-stats': { roles: ['ADMIN'], anyPermission: ['employee_stats'] },
   '/achievements': { roles: ['ADMIN'] },
   '/kpi': { roles: ['ADMIN', 'MONITOR'], anyPermission: ['kpi_management'] },
