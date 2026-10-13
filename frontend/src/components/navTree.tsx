@@ -53,6 +53,8 @@ export interface NavItem {
   labelFor?: (ctx: NavContext) => string
   // ownerOnly: الاستثناء الوحيد الي المنح ما يكسره — شاشات المالك.
   ownerOnly?: boolean
+  // strict: حارس البند ينفحص حتى لو الوحدة ممنوحة — صلاحية الوحدة ما تفتحه وحدها (10-13)
+  strict?: boolean
   // hideForRoles: منع صريح لدور معيّن — يشتغل **قبل** كل شي، حتى قبل
   // «الصلاحية الممنوحة تفتح العنصر». استعماله الوحيد: نفس الشاشة
   // موجودة بمحل أنسب لهذا الدور، فما نريدها تتكرر بالقائمة مرتين.
@@ -728,19 +730,38 @@ export const navItems: NavItem[] = [
   // قرار (ع) 10-09: «العمل» الثانية (وحدة الحسابات unit_finance) انشالت — كل بنودها
   // موجودة بـ«إدارة الحسابات» جوّا العمل، فچانت تطلع مرتين.
   {
-    to: '/unit-hr', label: 'وحدة الكوادر التنفيذية', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/></svg>,
+    to: '/unit-hr', label: 'وحدة إدارة الكوادر', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/></svg>,
     unitPermission: 'unit_hr',
     // قرار (ع) 10-09: «ما يخص هذا الموظف» — إداري الكميات ما تطلعله
     hideForRoles: ['PROCUREMENT_ADMIN'],
     children: [
+      // ═══ قرار (ع) 10-13: «وحدة إدارة الكوادر» — كل شغل الموظفين بمكان واحد ═══
+      // البنود المنقولة strict: صلاحية الوحدة ما تفتحها، كل وحدة بحارسها.
+      { to: '/nav-hr-staff', label: '👥 الموظفين', icon: <></>, divider: true, plain: true },
       { to: '/employees', label: 'إدارة الكوادر', icon: <></>, roles: ['ADMIN', 'HR_COORDINATOR', 'MONITOR'], permission: 'staff_management' },
+      { strict: true, to: '/staff-management-desk', label: 'إدارة الموظفين', icon: <></>, roles: ['ADMIN', 'MONITOR'], anyPermission: ['staff_management', 'kpi_management', 'performance_review', 'staff_requests'] },
+      { strict: true, to: '/departments', label: '🏢 الأقسام ومسؤوليها', icon: <></>, permission: 'departments_manage' },
+      { to: '/staff-requests', label: 'طلبات الكادر', icon: <></>, roles: ['ADMIN', 'HR_COORDINATOR'], unlockPermission: 'staff_requests' },
+      { to: '/nav-hr-perms', label: '🔐 الصلاحيات', icon: <></>, divider: true, plain: true },
+      { strict: true, to: '/permissions', label: 'الصلاحيات', icon: <></>, roles: ['ADMIN'] },
+      { strict: true, to: '/permission-preview', label: '🔎 شوف بعين الموظف', icon: <></>, roles: ['ADMIN'] },
+      { strict: true, to: '/roles-guide', label: '📋 دليل الأدوار والصلاحيات', icon: <></>, roles: ['ADMIN'] },
+      { to: '/nav-hr-time', label: '🕘 الدوام', icon: <></>, divider: true, plain: true },
       // نفس حارس GET /api/work-schedule: الأدوار الثلاثة، أو صلاحية الجدول أو إدارة الكوادر.
       { to: '/work-schedule', label: '🕘 جدول الدوام', icon: <></>, roles: ['ADMIN', 'HR_COORDINATOR', 'MONITOR'], unlockAnyPermission: ['work_schedule_manage', 'staff_management'] },
+      { strict: true, to: '/leaves', label: '🗓️ طلبات الإجازات', icon: <></>, roles: ['ADMIN', 'OWNER'], anyPermission: ['leave_approve_morning', 'leave_approve_evening'] },
       // نفس حارس /api/remote-hours: المدير أو صلاحية «تسجيل ساعات العمل من البيت».
       { monitorMenuHide: true, to: '/remote-hours', label: '🏠 ساعات العمل من البيت', icon: <></>, roles: ['ADMIN'], anyPermission: ['remote_hours_manage', 'remote_hours_self'] },
+      { to: '/nav-hr-score', label: '🏅 التقييم', icon: <></>, divider: true, plain: true },
       { to: '/kpi', label: 'نقاط الكي بي اي', icon: <></>, roles: ['ADMIN', 'MONITOR'], permission: 'kpi_management' },
-      { to: '/staff-requests', label: 'طلبات الكادر', icon: <></>, roles: ['HR_COORDINATOR'], unlockPermission: 'staff_requests' },
-      { to: '/performance-review', label: '⭐ تقييم الأداء', icon: <></>, roles: ['HR_COORDINATOR'], unlockPermission: 'performance_review' },
+      { to: '/performance-review', label: '⭐ تقييم الأداء', icon: <></>, roles: ['ADMIN', 'HR_COORDINATOR'], unlockPermission: 'performance_review' },
+      { strict: true, to: '/discipline-record', label: '📒 سجل الانضباط الوظيفي', icon: <></>, roles: ['ADMIN'] },
+      { to: '/nav-hr-stats', label: '📊 الإحصائيات', icon: <></>, divider: true, plain: true },
+      { strict: true, to: '/stats', label: 'إحصائيات الموظفين', icon: <></>, roles: ['ADMIN'] },
+      { strict: true, to: '/employee-stats', label: 'إحصائيات الموظفين الشهرية', icon: <></>, roles: ['ADMIN'], unlockPermission: 'employee_stats' },
+      { strict: true, to: '/stats-management', label: 'إدارة الإحصائيات', icon: <></>, roles: ['ADMIN'], unlockPermission: 'employee_stats' },
+      { to: '/nav-hr-work', label: '📋 الشغل', icon: <></>, divider: true, plain: true },
+      { strict: true, to: '/achievements', label: '📋 الإنجازات', icon: <></>, roles: ['ADMIN'] },
     ],
   },
   {
@@ -844,7 +865,7 @@ export function isNavVisible(item: NavItem, ctx: NavContext, unitGranted = false
     // ويتسجّل تجاوز على الموظف. كل صفحة تحتاج دورها أو صلاحيتها هي.
     const granted =
       (!!item.unitPermission && (role === 'ADMIN' || ctx.permissions.includes(item.unitPermission)))
-    if (!granted) {
+    if (!granted || item.strict) {
       // الصلاحية الممنوحة فعلياً تكفي بحالها. قبل، العنصر كان يشترط الدور
       // *و* الصلاحية سوه — فلو منحت إداري الكميات صلاحية "عرض الحجوزات"
       // تضل مخفية عنه لأن دوره مو بقائمة الأدوار المسموحة. هذا خالف معنى
