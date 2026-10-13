@@ -13,6 +13,8 @@ interface Props {
   mood: EyeMood
   /** فتحة الجفن 0..1.2 */
   lid?: number
+  // (ع) 10-13: 0 عادية · 1 شارنغان · 2 مانغكيو (للمالك والمدير بس — يقرره MatrixEye)
+  sharingan?: 0 | 1 | 2
   width?: number
   /** توهج «شفتك» */
   flash?: boolean
@@ -55,7 +57,7 @@ function GroupMark({ group, color }: { group: EyeGroup; color: string }) {
   }
 }
 
-const MatrixEyeGraphic = forwardRef<SVGGElement, Props>(function MatrixEyeGraphic({ group, mood, lid = 0.9, width = 76, flash = false }, pupilRef) {
+const MatrixEyeGraphic = forwardRef<SVGGElement, Props>(function MatrixEyeGraphic({ group, mood, lid = 0.9, width = 76, flash = false, sharingan = 0 }, pupilRef) {
   const uid = useId().replace(/:/g, '')
   const color = eyeColor(group, mood)
   const angry = mood === 'ANGRY'
@@ -98,6 +100,7 @@ const MatrixEyeGraphic = forwardRef<SVGGElement, Props>(function MatrixEyeGraphi
           </g>
         )}
         <g ref={pupilRef}>
+          {sharingan > 0 ? <SharinganIris stage={sharingan === 2 ? 2 : 1} uid={uid} /> : <>
           {/* القزحية: خطوط شعاعية حتى تبين حيّة */}
           <circle r="10.5" fill={`url(#ir${uid})`} />
           <g className="mx-iris" stroke={color} strokeOpacity="0.55" strokeWidth="0.35">
@@ -109,9 +112,10 @@ const MatrixEyeGraphic = forwardRef<SVGGElement, Props>(function MatrixEyeGraphi
           {angry && <ellipse rx={pupilW + 0.6} ry="6.9" fill="none" stroke="#ef4444" strokeWidth="0.5" />}
           <circle cx="-3.4" cy="-3.6" r="1.7" fill="#fff" opacity="0.9" />
           <circle cx="3" cy="2.8" r="0.7" fill="#fff" opacity="0.5" />
+          </>}
         </g>
         {/* خط مسح يعبر العين */}
-        <rect x="-30" y="-0.6" width="60" height="1.2" fill={color} opacity="0.35" className="mx-scan" />
+        {sharingan === 0 && <rect x="-30" y="-0.6" width="60" height="1.2" fill={color} opacity="0.35" className="mx-scan" />}
       </g>
 
       {/* حاجب غاضب */}
@@ -119,5 +123,45 @@ const MatrixEyeGraphic = forwardRef<SVGGElement, Props>(function MatrixEyeGraphi
     </svg>
   )
 })
+
+// ═══ الشارنغان والمانغكيو — قرار (ع) 10-13 ═══
+// نفس رسم المعاينة الي وافق عليها، مصغّر لنصف قطر القزحية (10.5).
+// التحول ناعم: الفواصل تدور وتتلاشى والشفرات تظهر (CSS transition).
+const TOMOE = 'M-6.3 -29 C -7.5 -38 -1 -45 8.5 -43.5 C 2.5 -41 -0.8 -36.5 0.2 -30.5 Z'
+const BLADE = 'M 0 -10 C 9 -18 16 -30 13 -47 C 21 -33 22 -20 15 -9 C 10 -3 4 -2 0 -3 Z'
+function SharinganIris({ stage, uid }: { stage: 1 | 2; uid: string }) {
+  const m = stage === 2
+  return (
+    <g transform="scale(0.2234)">
+      <defs>
+        <radialGradient id={`sg${uid}`} cx="50%" cy="50%" r="50%">
+          <stop offset="0" stopColor="#ff3b30" /><stop offset=".45" stopColor="#e0101c" /><stop offset=".82" stopColor="#9c0610" /><stop offset="1" stopColor="#3d0006" />
+        </radialGradient>
+      </defs>
+      <circle r="47" fill={`url(#sg${uid})`} />
+      <g stroke="#ff8a7a" strokeOpacity="0.28" strokeWidth="0.6">
+        {Array.from({ length: 48 }, (_, i) => { const a = (i / 48) * Math.PI * 2; return <line key={i} x1={Math.cos(a) * 14} y1={Math.sin(a) * 14} x2={Math.cos(a) * 44} y2={Math.sin(a) * 44} /> })}
+      </g>
+      <circle r="31" fill="none" stroke="#5a0009" strokeWidth="1.4" opacity={m ? 0 : 0.7} style={{ transition: 'opacity .8s' }} />
+      <g style={{ opacity: m ? 0 : 1, transform: m ? 'scale(.5) rotate(140deg)' : 'none', transition: 'opacity .9s, transform 1.1s' }}>
+        <g className="mx-sharingan-spin">
+          {[0, 120, 240].map((a) => (
+            <g key={a} transform={`rotate(${a})`} fill="#0a0a0a"><circle cx="0" cy="-30" r="6.4" /><path d={TOMOE} /></g>
+          ))}
+        </g>
+      </g>
+      <g fill="#0a0a0a" style={{ opacity: m ? 1 : 0, transform: m ? 'none' : 'rotate(-60deg) scale(.6)', transition: 'opacity 1s .4s, transform 1.2s .3s' }}>
+        <g className="mx-sharingan-spin mx-sharingan-fast">
+          <circle r="12.5" />
+          {[0, 120, 240].map((a) => <path key={a} d={BLADE} transform={`rotate(${a})`} />)}
+        </g>
+      </g>
+      <circle r={m ? 6 : 10.5} fill="#050505" style={{ transition: 'r .8s' }} />
+      <circle r="47" fill="none" stroke="#1a0002" strokeWidth="4" />
+      <ellipse cx="-15" cy="-22" rx="11" ry="6" fill="#fff" opacity=".55" transform="rotate(-25)" />
+      <circle cx="17" cy="-15" r="2.6" fill="#fff" opacity=".7" />
+    </g>
+  )
+}
 
 export default MatrixEyeGraphic

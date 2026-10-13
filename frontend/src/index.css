@@ -1381,3 +1381,8 @@ html.theme-amani-eye {
 html.dark .matrix-note{background:rgba(124,58,237,.14);color:#ddd6fe;border-color:rgba(167,139,250,.28)}
 html.dark .matrix-note b.mx-tag{color:#c4b5fd}
 
+
+/* (ع) 10-13: شارنغان عين ماتركس — دوران الفواصل */
+.mx-sharingan-spin{transform-origin:0 0;animation:mx-spin 9s linear infinite}
+.mx-sharingan-fast{animation-duration:5s}
+@media (prefers-reduced-motion: reduce){.mx-sharingan-spin{animation:none}}

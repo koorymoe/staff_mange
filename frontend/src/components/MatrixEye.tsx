@@ -221,6 +221,33 @@ export default function MatrixEye() {
     return () => { window.removeEventListener('mousemove', onMove); cancelAnimationFrame(raf) }
   }, [])
 
+  // ═══ الشارنغان — قرار (ع) 10-13 ═══
+  // المالك: شارنغان دائماً. المدير: عين عادية، وتصير شارنغان من «يبدي
+  // يشتغل ويطوّل» (٢٠ ضغطة أو ١٠ دقايق شغل بالجلسة). وأي إجراء ماتركس
+  // (راقب فلان، دردشة، قرار) يحوّلها مانغكيو قدّامه شوية وترجع.
+  const isOwner = employee?.actualRole === 'OWNER'
+  const isAdminOnly = employee?.role === 'ADMIN' && !isOwner
+  const [awake, setAwake] = useState(() => { try { return sessionStorage.getItem('mx-sharingan') === '1' } catch { return false } })
+  const [mangekyo, setMangekyo] = useState(false)
+  useEffect(() => {
+    if (!isAdminOnly || awake) return
+    let clicks = 0
+    const started = Date.now()
+    const wake = () => { setAwake(true); try { sessionStorage.setItem('mx-sharingan', '1') } catch { /* ignore */ } }
+    const onClick = () => { clicks += 1; if (clicks >= 20 || Date.now() - started >= 10 * 60_000) wake() }
+    const t = window.setTimeout(wake, 10 * 60_000)
+    window.addEventListener('click', onClick, true)
+    return () => { window.removeEventListener('click', onClick, true); window.clearTimeout(t) }
+  }, [isAdminOnly, awake])
+  useEffect(() => {
+    if (!isOwner && !isAdminOnly) return
+    let t = 0
+    const on = () => { setMangekyo(true); window.clearTimeout(t); t = window.setTimeout(() => setMangekyo(false), 9000) }
+    window.addEventListener('matrix-mangekyo', on)
+    return () => { window.removeEventListener('matrix-mangekyo', on); window.clearTimeout(t) }
+  }, [isOwner, isAdminOnly])
+  const sharingan: 0 | 1 | 2 = !(isOwner || isAdminOnly) ? 0 : mangekyo ? 2 : (isOwner || awake) ? 1 : 0
+
   if (!employee) return null
   if (staffOff && employee.role !== 'ADMIN' && employee.actualRole !== 'OWNER') return null
 
@@ -244,7 +271,7 @@ export default function MatrixEye() {
           className={`matrix-eye ${angry ? 'is-red' : ''} ${flash ? 'is-flash' : ''}`}
           style={{ ['--eye' as string]: color }}
         >
-          <MatrixEyeGraphic ref={pupilRef} group={group} mood={mood} lid={lid} flash={flash} width={76} />
+          <MatrixEyeGraphic ref={pupilRef} group={group} mood={mood} lid={lid} flash={flash} width={76} sharingan={sharingan} />
           {watch && watch.open > 0 && shown && (
             <span className="absolute -top-1 -end-1 grid h-4 min-w-4 place-items-center rounded-full px-1 text-[10px] font-extrabold text-white" style={{ background: angry ? '#ef4444' : '#ca8a04' }}>{watch.open}</span>
           )}

@@ -24,6 +24,8 @@ export default function MatrixMissions() {
     if (!emp) { setErr('اختار الموظف'); return }
     setBusy(true); setErr('')
     try {
+      // (ع) 10-13: إجراء ماتركس — العين تتحول مانغكيو قدّامه
+      window.dispatchEvent(new Event('matrix-mangekyo'))
       await api.createMatrixMission({ employeeId: emp, note: note.trim() || undefined, days })
       setEmp(''); setNote(''); load()
     } catch (e) { setErr(e instanceof Error ? e.message : 'تعذر') } finally { setBusy(false) }

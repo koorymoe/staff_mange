@@ -100,6 +100,7 @@ export default function MatrixChat() {
       }
       setMsgs((m) => [...m, { id: 'tmp', role: 'USER', text: body || 'شنو هاي الشاشة؟', steps: null, image: img, createdAt: new Date().toISOString() }])
       setText(''); setImage(null)
+      window.dispatchEvent(new Event('matrix-mangekyo')) // (ع) 10-13: ماتركس يشتغل — مانغكيو
       const reply = await api.sendMatrixChat(id, body, img ?? undefined)
       setMsgs((m) => [...m.map((x) => (x.id === 'tmp' ? { ...x, id: 'u' + reply.id } : x)), reply])
       loadChats()

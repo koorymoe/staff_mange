@@ -76,6 +76,7 @@ export default function MatrixDecisionsPage() {
     if (!confirm('ماتركس ما راح يعيد هذا الفعل على نفس الشي لمدة ٣٠ يوم. متأكد؟')) return
     setBusy(id)
     try {
+      window.dispatchEvent(new Event('matrix-mangekyo'))
       await api.undoMatrixAction(id)
       load()
     } catch (e) {
