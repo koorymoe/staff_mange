@@ -52,7 +52,7 @@ export default function TeamInventoryCheckPage({ embedded }: { embedded?: boolea
   if (loading) return <p className="p-6 text-center text-slate-400">جارٍ التحميل...</p>
 
   return (
-    <div dir="rtl" className={`space-y-4 ${embedded ? '' : 'mx-auto max-w-5xl'}`}>
+    <div dir="rtl" className={`space-y-4 w-full`}>
       {/* مدمجة جوّا «الجرد»؟ ما نعيد الرأس — الشاشة أصلاً بيها رأس
           وعنوان التبويب، وتكراره يدفع المحتوى للأسفل بلا فايدة. */}
       {!embedded && (

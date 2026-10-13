@@ -110,7 +110,7 @@ export default function PerformanceReviewPage({ embedded }: { embedded?: boolean
   if (loading) return <p className="p-6 text-center text-slate-400">جارٍ التحميل...</p>
 
   return (
-    <div dir="rtl" className="mx-auto max-w-6xl space-y-4">
+    <div dir="rtl" className="w-full space-y-4">
       {/* ═══ العنوان ═══
           ⚠️ يختفي لمّن الشاشة مضمَّنة بشاشة أخرى (مثلاً «التقييم» أو
           مكتب إدارة الموظفين) — وإلا ترويستان فوگ بعض. */}

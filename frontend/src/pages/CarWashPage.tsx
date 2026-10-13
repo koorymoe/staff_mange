@@ -28,7 +28,7 @@ export default function CarWashPage() {
 
   const done = rows?.filter((r) => r.washedAt).length ?? 0
   return (
-    <div dir="rtl" className="mx-auto max-w-4xl space-y-4">
+    <div dir="rtl" className="w-full space-y-4">
       <div className="rounded-2xl bg-gradient-to-l from-cyan-700 to-sky-600 p-5 text-white shadow">
         <h1 className="text-2xl font-extrabold">🧽 غسل السيارات</h1>
         <p className="mt-1 text-sm text-cyan-50">اضغط «تم الغسل» على كل سيارة تغسلها اليوم.</p>

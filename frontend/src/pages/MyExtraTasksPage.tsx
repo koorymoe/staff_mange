@@ -189,7 +189,7 @@ export default function MyExtraTasksPage() {
   const shown = filtered.slice((safePage - 1) * perPage, safePage * perPage)
 
   return (
-    <div dir="rtl" className="mx-auto max-w-6xl space-y-4 p-1">
+    <div dir="rtl" className="w-full space-y-4 p-1">
       <div className="flex items-center gap-3">
         <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-violet-50 text-lg sm:h-11 sm:w-11 sm:text-xl">📋</span>
         <div className="min-w-0">
