@@ -85,6 +85,8 @@ const AGENT_TOOL_AR: Record<string, string> = {
 export default function MatrixCommandCenter() {
   const [groups, setGroups] = useState<GroupRep[] | null>(null)
   const [feed, setFeed] = useState<MatrixFeedItem[]>([])
+  // (ع) 10-13: كل رقم فوگ ينضغط ويطلع مصدره موظف موظف
+  const [proof, setProof] = useState<ProofKind | null>(null)
   const [trend, setTrend] = useState<MatrixTrendDay[]>([])
   const [late, setLate] = useState<LateFocus | null>(null)
   const [biz, setBiz] = useState<MatrixBusinessData | null>(null)
@@ -126,6 +128,7 @@ export default function MatrixCommandCenter() {
 
   return (
     <div dir="rtl" className="space-y-4 rounded-3xl bg-[var(--mx-bg)] p-3 text-[var(--mx-text)] sm:p-5">
+      {proof && <ProofModal kind={proof} groups={active} onClose={() => setProof(null)} />}
       {/* ── الرأس ── */}
       <div className="grid items-center gap-4 lg:grid-cols-[1fr_auto]">
         <div className="flex flex-wrap items-center gap-4">
@@ -139,10 +142,10 @@ export default function MatrixCommandCenter() {
           </div>
         </div>
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-          <Kpi value={`${stability}%`} label="استقرار النظام" tone="text-[var(--mx-ok)]" icon="〰️" />
-          <Kpi value={attention} label="حالات تحتاج انتباه" tone="text-[var(--mx-bad)]" icon="⚠️" />
-          <Kpi value={people} label="موظف تحت المراقبة" tone="text-[var(--mx-accent)]" icon="👥" />
-          <Kpi value={tasks} label="مهمة اليوم" tone="text-[var(--mx-accent)]" icon="📦" />
+          <Kpi value={`${stability}%`} label="استقرار النظام" tone="text-[var(--mx-ok)]" icon="〰️" onClick={() => setProof('stability')} />
+          <Kpi value={attention} label="حالات تحتاج انتباه" tone="text-[var(--mx-bad)]" icon="⚠️" onClick={() => setProof('attention')} />
+          <Kpi value={people} label="موظف تحت المراقبة" tone="text-[var(--mx-accent)]" icon="👥" onClick={() => setProof('people')} />
+          <Kpi value={tasks} label="شغلة اليوم (منجز + باقي)" tone="text-[var(--mx-accent)]" icon="📦" onClick={() => setProof('tasks')} />
         </div>
       </div>
 
@@ -238,11 +241,90 @@ export default function MatrixCommandCenter() {
   )
 }
 
-function Kpi({ value, label, tone, icon }: { value: string | number; label: string; tone: string; icon: string }) {
+function Kpi({ value, label, tone, icon, onClick }: { value: string | number; label: string; tone: string; icon: string; onClick?: () => void }) {
   return (
-    <div className={`${card} min-w-[120px] p-3`}>
+    <button type="button" onClick={onClick} title="اضغط حتى تشوف منين جا الرقم"
+      className={`${card} min-w-[120px] p-3 text-right transition hover:-translate-y-0.5 hover:border-[var(--mx-accent)]`}>
       <div className="flex items-start justify-between"><b className={`text-2xl ${tone}`}>{value}</b><span>{icon}</span></div>
-      <p className="mt-1 text-[11px] text-[var(--mx-muted)]">{label}</p>
+      <p className="mt-1 text-[11px] text-[var(--mx-muted)]">{label} ‹</p>
+    </button>
+  )
+}
+
+// ═══ إثبات الأرقام — (ع) 10-13: «من اضغط عليهن يوديني لشي يثبت صحتهن» ═══
+type ProofKind = 'stability' | 'attention' | 'people' | 'tasks'
+type WatchGroup = { group: string; employees: MatrixWatch[]; red: number; alert: number }
+
+function ProofModal({ kind, groups, onClose }: { kind: ProofKind; groups: WatchGroup[]; onClose: () => void }) {
+  const all = groups.flatMap((g) => g.employees.map((e) => ({ ...e, group: g.group })))
+  const people = all.length
+  const red = all.filter((e) => e.level === 'RED')
+  const alert = all.filter((e) => e.level === 'ALERT')
+  const name = (e: MatrixWatch) => e.name || '—'
+  const glabel = (g: string) => GROUP_LABEL[g as EyeGroup] ?? g
+  const emp = (e: MatrixWatch, extra?: React.ReactNode) => (
+    <li key={e.id} className="rounded-lg bg-[var(--mx-sunken)] px-3 py-2">
+      <div className="flex items-center justify-between gap-2">
+        {e.id ? <Link to={`/matrix/employee/${e.id}`} className="font-bold text-[var(--mx-title)] hover:underline">{name(e)} ←</Link> : <b>{name(e)}</b>}
+        <span className="text-[11px] text-[var(--mx-muted)]">{glabel(e.group)} · {e.level === 'RED' ? '🔴 أحمر' : e.level === 'ALERT' ? '🟡 منتبه' : '🟢 مستقر'}</span>
+      </div>
+      {extra}
+    </li>
+  )
+  const reasons = (e: MatrixWatch) => e.items.length > 0 && (
+    <ul className="mt-1 space-y-0.5 text-[12px] text-[var(--mx-muted)]">
+      {e.items.map((it, i) => <li key={i}>• {it.escalated ? '⬆️ ' : ''}{it.summary} <span className="text-[10px]">({it.label} · من {new Date(it.since).toLocaleDateString('ar-IQ')})</span></li>)}
+    </ul>
+  )
+  const work = (e: MatrixWatch) => (
+    <ul className="mt-1 space-y-0.5 text-[12px]">
+      {e.workload.map((w) => (
+        <li key={w.key} className="flex items-center justify-between gap-2">
+          <Link to={w.route} className="text-[var(--mx-accent)] hover:underline">{w.label} ←</Link>
+          <span className="tabular-nums text-[var(--mx-muted)]">{w.verb} {w.done} · باقي {w.left} = <b className="text-[var(--mx-title)]">{w.done + w.left}</b></span>
+        </li>
+      ))}
+    </ul>
+  )
+  let title: string, how: string, body: React.ReactNode
+  if (kind === 'stability') {
+    title = `〰️ استقرار النظام ${people ? Math.round(((people - red.length) / people) * 100) : 100}%`
+    how = `الحسبة: (كل الموظفين تحت المراقبة ${people} − الحمر ${red.length}) ÷ ${people}. الأحمر = تذكير صعد للمدير أو ٣ تذكيرات مفتوحة.`
+    body = red.length ? <ul className="space-y-1.5">{red.map((e) => emp(e, reasons(e)))}</ul> : <p>ماكو موظف أحمر ✅</p>
+  } else if (kind === 'attention') {
+    title = `⚠️ ${red.length + alert.length} حالة تحتاج انتباه`
+    how = `= الحمر (${red.length}) + المنتبه عليهم (${alert.length}). تحت كل اسم التذكيرات المفتوحة الي خلّته هيچ.`
+    body = <ul className="space-y-1.5">{[...red, ...alert].map((e) => emp(e, reasons(e)))}</ul>
+  } else if (kind === 'people') {
+    title = `👥 ${people} موظف تحت المراقبة`
+    how = 'كل موظف فعّال عنده دور يراقبه ماتركس (المالك والمدير ما ينحسبون). مجمّعين حسب المجموعة.'
+    body = (
+      <div className="space-y-3">
+        {groups.filter((g) => g.employees.length).map((g) => (
+          <div key={g.group}>
+            <p className="mb-1 text-sm font-extrabold text-[var(--mx-title)]">{glabel(g.group)} ({g.employees.length})</p>
+            <ul className="grid gap-1 sm:grid-cols-2">{g.employees.map((e) => emp({ ...e, group: g.group }))}</ul>
+          </div>
+        ))}
+      </div>
+    )
+  } else {
+    const withWork = all.filter((e) => e.workload.length > 0)
+    const total = all.reduce((n, e) => n + e.workload.reduce((k, w) => k + w.done + w.left, 0), 0)
+    title = `📦 ${total} شغلة اليوم`
+    how = 'مو «مهام» بالمعنى العادي: هو مجموع شغل اليوم لكل موظف حسب دوره (مثلاً حجوزات يدققها المراقب، فواتير يعتمدها المحاسب، ورق الليدر) = الي خلّصه + الي باقي عليه. كل سطر يودّيك لشاشته.'
+    body = withWork.length ? <ul className="space-y-1.5">{withWork.map((e) => emp(e, work(e)))}</ul> : <p>ماكو شغل محسوب اليوم.</p>
+  }
+  return (
+    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/50 p-4" onClick={onClose}>
+      <div dir="rtl" className="w-full max-w-3xl rounded-2xl bg-[var(--mx-bg)] p-5 text-[var(--mx-text)] shadow-2xl" onClick={(e) => e.stopPropagation()}>
+        <div className="mb-2 flex items-center justify-between">
+          <h3 className="text-lg font-extrabold text-[var(--mx-title)]">{title}</h3>
+          <button onClick={onClose} className="text-2xl text-[var(--mx-muted)]">×</button>
+        </div>
+        <p className="mb-3 rounded-lg bg-[var(--mx-sunken)] px-3 py-2 text-[12px]">🧮 {how}</p>
+        <div className="max-h-[70vh] overflow-y-auto">{body}</div>
+      </div>
     </div>
   )
 }
