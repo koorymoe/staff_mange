@@ -203,6 +203,8 @@ export default function ComplaintsPage() {
 
   return (
     <div>
+      {/* (ع) 10-13: بوضع المتابعة، «ComplaintsTracking» عنده ترويسته — فما نكررها */}
+      {!canTrack && (
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-bold text-brand-900">شكاوى الصيانة</h2>
@@ -217,6 +219,7 @@ export default function ComplaintsPage() {
           </button>
         )}
       </div>
+      )}
 
       {/* New complaint form */}
       {!canTrack && showForm && (
