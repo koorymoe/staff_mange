@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import {
   api, type GroupPerformance, type LateFocus, type MatrixBusiness as MatrixBusinessData, type MatrixFeedItem,
-  type MatrixProposal, type MatrixTrendDay, type MatrixWatch,
+  type MatrixProposal, type MatrixWatch,
 } from '../api'
 import MatrixBusiness from './MatrixBusiness'
 import OwnerSwitch from './OwnerSwitch'
@@ -65,28 +65,14 @@ function perfIndex(m: Member, field = true) {
   if (m.speed != null && m.speed > 1.15) v -= Math.min(25, (m.speed - 1) * 40)
   return Math.max(0, Math.min(100, Math.round(v)))
 }
-function perfStatus(i: number) {
-  if (i >= 90) return { t: 'ممتاز', c: 'bg-emerald-500/15 text-[var(--mx-ok)]', bar: '#22c55e', dot: 'bg-emerald-500' }
-  if (i >= 75) return { t: 'جيد', c: 'bg-sky-500/15 text-[var(--mx-info)]', bar: '#3b82f6', dot: 'bg-blue-500' }
-  if (i >= 60) return { t: 'متابعة', c: 'bg-amber-500/15 text-[var(--mx-warn)]', bar: '#f59e0b', dot: 'bg-amber-500' }
-  return { t: 'يحتاج دعم', c: 'bg-red-500/15 text-[var(--mx-bad)]', bar: '#ef4444', dot: 'bg-red-500' }
-}
-const GROUP_ICON: Record<string, string> = { TECHS: '🔧', LEADERS: '🧭', MONITORS: '🔍', COORDINATORS: '🗂️', FINANCE: '💵', DESIGN: '🎨', QUALITY: '✅', IT: '💻', SALES: '🛒', PROJECTS: '🏗️', GPS: '📡', ADMINS: '👑', STAFF: '🛠️', MEDIA: '📸', SUPERVISORS: '🏗️' }
 function confidence(samples: number) { return samples >= 20 ? 87 : samples >= 8 ? 72 : 50 }
 
-// قرار (ع) 10-10: أسماء أدوات ماتركس الوكيل بالعربي — حتى تعرف شنو فتّش
-const AGENT_TOOL_AR: Record<string, string> = {
-  money_month: 'فلوس الشهر', invoices_status: 'الفواتير', late_bookings: 'الحجوزات المتأخرة', team_performance: 'أداء الفرق',
-  employee_profile: 'ملف موظف', attendance_today: 'دوام اليوم', project_delays: 'تأخير المشاريع', procurement_watch: 'شغل المخازن',
-  staff_scores: 'التقييم',
-}
 
 export default function MatrixCommandCenter() {
   const [groups, setGroups] = useState<GroupRep[] | null>(null)
   const [feed, setFeed] = useState<MatrixFeedItem[]>([])
   // (ع) 10-13: كل رقم فوگ ينضغط ويطلع مصدره موظف موظف
   const [proof, setProof] = useState<ProofKind | null>(null)
-  const [trend, setTrend] = useState<MatrixTrendDay[]>([])
   const [late, setLate] = useState<LateFocus | null>(null)
   const [biz, setBiz] = useState<MatrixBusinessData | null>(null)
   const [props, setProps] = useState<MatrixProposal[]>([])
@@ -103,7 +89,6 @@ export default function MatrixCommandCenter() {
         .then((r) => setPerf(r.filter((x): x is GroupPerformance => !!x)))
     }).catch((e) => setErr(e instanceof Error ? e.message : 'تعذر جلب ماتركس'))
     api.getMatrixFeed().then(setFeed).catch(() => {})
-    api.getMatrixTrend().then(setTrend).catch(() => {})
     api.getLateFocus().then(setLate).catch(() => {})
     api.getMatrixBusiness().then(setBiz).catch(() => {})
     api.getMatrixProposals('PENDING').then(setProps).catch(() => {})
@@ -146,6 +131,9 @@ export default function MatrixCommandCenter() {
           <Kpi value={tasks} label="شغلة اليوم (منجز + باقي)" tone="text-[var(--mx-accent)]" icon="📦" onClick={() => setProof('tasks')} />
         </div>
       </div>
+
+      {/* ── توقعات ماتركس — فوگ، من الحجوزات (قرار ع 10-13) ── */}
+      <Predictions biz={biz} late={late} props={props} />
 
       {/* مفتاح (ع): يطفي عين ماتركس عن الموظفين ويرجّعها وقت ما يريد */}
       <div className="text-slate-900"><OwnerSwitch switchKey={SWITCH_MATRIX_STAFF_EYE} label="عين ماتركس عند الموظفين" hint="إذا انطفت، العين وتوجيهاتها تختفي من شاشات الموظفين. إنت والمدير تبقى عندكم، وماتركس يكمّل يحلّل." /></div>
@@ -222,13 +210,7 @@ export default function MatrixCommandCenter() {
       <MatrixLearning />
       <MatrixDialect />
 
-      {/* ── الصف الأخير ── */}
-      <div className="grid gap-4 lg:grid-cols-2 2xl:grid-cols-4">
-        <TrendChart days={trend} />
-        <WatchList perf={perf} />
-        <Predictions biz={biz} late={late} props={props} />
-        <AskMatrix />
-      </div>
+      {/* (ع) 10-13: صف «أداء الشركة · قائمة المراقبة · اسأل ماتركس» انشال، والتوقعات صعدت فوگ */}
 
       <details className="rounded-2xl border border-[var(--mx-border)] bg-[var(--mx-card)] text-[var(--mx-text)]">
         <summary className="cursor-pointer p-3 text-sm font-bold">💼 تفاصيل الأعمال والزبائن</summary>
@@ -603,110 +585,18 @@ function Feed({ items }: { items: MatrixFeedItem[] }) {
   )
 }
 
-// ── رسم ٣٠ يوم: المنجز (أعمدة)، الإيراد والالتزام بالموعد (خطوط) ──
-function TrendChart({ days }: { days: MatrixTrendDay[] }) {
-  const W = 340, H = 170, P = 22
-  const maxC = Math.max(1, ...days.map((d) => d.completed))
-  const maxR = Math.max(1, ...days.map((d) => d.revenue))
-  const x = (i: number) => P + (i * (W - P * 2)) / Math.max(1, days.length - 1)
-  const line = (vals: number[], max: number) => vals.map((v, i) => `${i ? 'L' : 'M'}${x(i).toFixed(1)} ${(H - P - (v / max) * (H - P * 2)).toFixed(1)}`).join(' ')
-  const onTime = days.map((d) => (d.scheduled ? (d.onTime / d.scheduled) * 100 : 0))
-  return (
-    <section className={`${card} p-4`}>
-      <h3 className="text-sm font-extrabold text-[var(--mx-accent)]">📈 أداء الشركة (آخر ٣٠ يوم)</h3>
-      <div className="mt-1 flex gap-3 text-[10px] text-[var(--mx-muted)]">
-        <span><i className="inline-block h-2 w-2 rounded-full bg-sky-400" /> الحجوزات المنجزة</span>
-        <span><i className="inline-block h-2 w-2 rounded-full bg-emerald-400" /> الأرباح</span>
-        <span><i className="inline-block h-2 w-2 rounded-full bg-violet-400" /> الالتزام بالموعد</span>
-      </div>
-      {days.length === 0 ? <p className="mt-6 text-sm text-[var(--mx-muted)]">ماكو بيانات.</p> : (
-        <svg viewBox={`0 0 ${W} ${H}`} className="mt-2 w-full">
-          {days.map((d, i) => {
-            const h = (d.completed / maxC) * (H - P * 2)
-            return <rect key={d.day} x={x(i) - 3} y={H - P - h} width="6" height={h} rx="1.5" fill="url(#cbar)" />
-          })}
-          <defs><linearGradient id="cbar" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="#38bdf8" /><stop offset="1" stopColor="#1d4ed8" /></linearGradient></defs>
-          <path d={line(days.map((d) => d.revenue), maxR)} fill="none" stroke="#34d399" strokeWidth="1.6" />
-          <path d={line(onTime, 100)} fill="none" stroke="#a78bfa" strokeWidth="1.4" strokeDasharray="3 2" />
-          {days.map((d, i) => i % 5 === 0 && <text key={d.day} x={x(i)} y={H - 6} fontSize="8" fill="var(--mx-axis)" textAnchor="middle">{d.day}</text>)}
-        </svg>
-      )}
-    </section>
-  )
-}
-
-// ── قائمة مراقبة الموظفين (تصميم (ع)) ──
-function WatchList({ perf }: { perf: GroupPerformance[] }) {
-  // كل موظف ينقاس بشغل دوره، والترتيب داخل مجموعته: أضعف واحد من كل مجموعة أول،
-  // حتى ما ينقارن محاسب ويا فني بنفس المسطرة.
-  const all = perf.flatMap((g) => g.members.map((m) => ({ ...m, group: g.group, idx: perfIndex(m, g.field !== false) })))
-  const rank = new Map<string, number>()
-  for (const g of perf) {
-    [...g.members].map((m) => ({ id: m.id, i: perfIndex(m, g.field !== false) })).sort((a, b) => a.i - b.i).forEach((x, n) => rank.set(x.id, n))
-  }
-  const rows = [...all].sort((a, b) => (rank.get(a.id) ?? 0) - (rank.get(b.id) ?? 0) || a.idx - b.idx).slice(0, 6)
-  const good = all.filter((m) => m.idx >= 75).length
-  const support = all.filter((m) => m.idx < 60).length
-  return (
-    <section className={`${card} flex flex-col p-4`}>
-      <div className="mb-3 flex items-start justify-between gap-2">
-        <div className="flex items-center gap-2">
-          <span className="grid h-10 w-10 place-items-center rounded-xl bg-sky-500/15 text-lg">👥</span>
-          <div>
-            <h3 className="text-base font-extrabold text-[var(--mx-title)]">قائمة مراقبة الموظفين</h3>
-            <p className="text-[11px] text-[var(--mx-muted)]">متابعة أداء الموظفين ومستويات الإنتاجية</p>
-          </div>
-        </div>
-        <span className="rounded-xl bg-sky-500/10 px-3 py-1 text-center"><b className="block text-lg text-[var(--mx-accent)]">{all.length}</b><span className="text-[10px] text-[var(--mx-muted)]">موظف</span></span>
-      </div>
-      {rows.length === 0 ? <p className="text-sm text-[var(--mx-muted)]">ماتركس يحسب…</p> : (
-        <table className="w-full text-[12px]">
-          <thead><tr className="bg-[var(--mx-sunken)] text-[var(--mx-muted)]"><th className="rounded-r-lg p-2 text-right">الموظف</th><th className="text-right">القسم</th><th>مؤشر الأداء</th><th className="rounded-l-lg">الحالة</th></tr></thead>
-          <tbody>
-            {rows.map((m) => {
-              const st = perfStatus(m.idx)
-              return (
-                <tr key={m.id} className="border-b border-[var(--mx-border)]">
-                  <td className="py-2">
-                    <Link to={`/matrix/employee/${m.id}`} className="flex items-center gap-2 font-bold text-[var(--mx-title)] hover:text-[var(--mx-accent)]">
-                      <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-sky-500/15 text-[11px] text-[var(--mx-accent)]">{m.name.trim().split(/\s+/).slice(0, 2).map((w) => w[0]).join(' ')}</span>
-                      <span className="truncate">{m.name}</span>
-                    </Link>
-                  </td>
-                  <td><span className="rounded-lg bg-[var(--mx-sunken)] px-2 py-0.5 text-[11px] text-[var(--mx-text)]">{GROUP_ICON[m.group] ?? ''} {GROUP_LABEL[m.group as EyeGroup] ?? m.group}</span></td>
-                  <td className="px-2">
-                    <b className="text-[var(--mx-title)]">{m.idx}%</b>
-                    <div className="mt-0.5 h-1.5 w-20 rounded-full bg-[var(--mx-sunken)]"><div className="h-1.5 rounded-full" style={{ width: `${m.idx}%`, background: st.bar }} /></div>
-                  </td>
-                  <td className="text-center"><span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold ${st.c}`}><i className={`h-1.5 w-1.5 rounded-full ${st.dot}`} />{st.t}</span></td>
-                </tr>
-              )
-            })}
-          </tbody>
-        </table>
-      )}
-      {all.length > 0 && (
-        <div className="mt-3 flex items-center gap-2 rounded-xl bg-[var(--mx-sunken)] p-2.5">
-          <span className="text-lg">📊</span>
-          <div className="text-[11px]">
-            <b className="block text-[var(--mx-accent)]">{good} من أصل {all.length} موظف أداؤهم جيد أو ممتاز</b>
-            <span className="text-[var(--mx-muted)]">{support > 0 ? `يوجد ${support} يحتاج دعم إضافي لتحسين أدائه.` : 'ماكو أحد يحتاج دعم هسه.'} · المؤشر للمتابعة بس — مو نقاط.</span>
-          </div>
-        </div>
-      )}
-    </section>
-  )
-}
-
 // ── توقعات ماتركس (أعمال بس — بلا توقعات شخصية) ──
 function Predictions({ biz, late, props }: { biz: MatrixBusinessData | null; late: LateFocus | null; props: MatrixProposal[] }) {
   const items: { text: string; change: number | null; conf: number }[] = []
   if (biz) {
     const ch = biz.mtd.lastBookings > 0 ? Math.round(((biz.mtd.bookings - biz.mtd.lastBookings) / biz.mtd.lastBookings) * 100) : null
     items.push({ text: `المتوقع لآخر الشهر ${biz.forecast.expectedJobs} حجز`, change: ch, conf: biz.forecast.insufficient ? 50 : confidence(biz.mtd.bookings) })
-    const bR = biz.mtd.revenue - (biz.mtd.projectRevenue ?? 0), bL = biz.mtd.lastRevenue - (biz.mtd.lastProjectRevenue ?? 0)
+    const proj = biz.mtd.projectRevenue ?? 0
+    const bR = biz.mtd.revenue - proj, bL = biz.mtd.lastRevenue - (biz.mtd.lastProjectRevenue ?? 0)
     const rc = bL > 0 ? Math.round(((bR - bL) / bL) * 100) : null
-    items.push({ text: `الأرباح المتوقعة ${fmtIQD(biz.forecast.expected)}`, change: rc, conf: biz.forecast.insufficient ? 50 : confidence(biz.mtd.bookings) })
+    // إيراد الحجوزات المتوقع بس — دفعات المشاريع كتل تنسجّل بأي وكت فما تنتوقّع
+    items.push({ text: `إيراد الحجوزات المتوقع لآخر الشهر ${fmtIQD(Math.max(0, biz.forecast.expected - proj))}`, change: rc, conf: biz.forecast.insufficient ? 50 : confidence(biz.mtd.bookings) })
+    if (proj > 0) items.push({ text: `دفعات مشاريع مقبوضة هالشهر لحد هسه ${fmtIQD(proj)} (ما تدخل بالتوقع)`, change: null, conf: 100 })
   }
   if (late) items.push({ text: `الحجوزات المتأخرة: ${late.recentPct}% من آخر ٣ أيام`, change: late.changePct == null ? null : -late.changePct, conf: confidence(late.recent.total) })
   const pred = props.filter((p) => p.kind === 'PREDICTION').length
@@ -730,44 +620,6 @@ function Predictions({ biz, late, props }: { biz: MatrixBusinessData | null; lat
   )
 }
 
-// ── اسأل ماتركس (للمدير — قراءة بس) ──
-function AskMatrix() {
-  const [q, setQ] = useState('')
-  const [a, setA] = useState<{ answer: string; source: string; steps?: string[] } | null>(null)
-  const [busy, setBusy] = useState(false)
-  const ask = async (text: string) => {
-    if (!text.trim() || busy) return
-    setBusy(true); setA(null)
-    try { setA(await api.askMatrix(text)) } catch (e) { setA({ answer: e instanceof Error ? e.message : 'تعذّر الجواب', source: 'ERR' }) } finally { setBusy(false) }
-  }
-  return (
-    <section className={`${card} flex flex-col p-4`}>
-      <h3 className="text-sm font-extrabold text-[var(--mx-accent)]">💬 اسأل ماتركس</h3>
-      <p className="mb-2 text-[11px] text-[var(--mx-muted)]">اطرح سؤالك واحصل على تحليل فوري</p>
-      <form onSubmit={(e) => { e.preventDefault(); ask(q) }} className="flex gap-2">
-        <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="مثال: ما سبب تأخر الحجوزات؟" className="min-w-0 flex-1 rounded-xl border border-[var(--mx-border)] bg-[var(--mx-sunken)] px-3 py-2 text-sm text-[var(--mx-title)] placeholder:text-[var(--mx-muted)]" />
-        <button disabled={busy} className="rounded-xl bg-blue-600 px-3 text-white disabled:opacity-50">➤</button>
-      </form>
-      <div className="mt-2 flex flex-wrap gap-1.5">
-        {['تحليل الأرباح اليوم', 'أداء الموظفين', 'مقترحات التحسين', 'منو متأخر اليوم؟'].map((s) => (
-          <button key={s} onClick={() => { setQ(s); ask(s) }} className="rounded-full border border-[var(--mx-border)] px-2.5 py-1 text-[11px] text-[var(--mx-text)] hover:border-[var(--mx-accent)]">{s}</button>
-        ))}
-      </div>
-      {busy && <p className="mt-3 text-xs text-[var(--mx-muted)]">ماتركس يفكّر…</p>}
-      {a && (
-        <div className="mt-3 whitespace-pre-line rounded-xl border border-[var(--mx-border)] bg-[var(--mx-sunken)] p-3 text-[13px] leading-6 text-[var(--mx-text)]">
-          {a.answer}
-          {a.source !== 'ERR' && <p className="mt-1 text-[10px] text-[var(--mx-muted)]">{a.source === 'AGENT' ? `🤖 ماتركس فتّش بنفسه (بلا أسماء): ${[...new Set(a.steps ?? [])].map((s) => AGENT_TOOL_AR[s] ?? s).join('، ') || 'من معلوماته'}` : a.source === 'MODEL' ? 'تحليل بالنموذج (بلا أسماء)' : 'من أرقام النظام مباشرة'}</p>}
-        </div>
-      )}
-    </section>
-  )
-}
-
-// ═══ دليل «أداء الموظفين» حسب شغل كل واحد ═══
-// كادر الميدان (ليدرية وفنيين): الحجوزات والسرعة. الباقين (مراقب، محاسب،
-// تنسيق، جودة...): شغلهم اليوم من «شغلك اليوم» — مو «حجوزات 0» الي ما تعني شي.
-// المفتاح «الاسم|المعرّف» حتى النافذة تسوي الاسم رابط لتقريره.
 const FIELD_GROUPS = new Set(['TECHS', 'LEADERS'])
 function perfEvidence(group: string, perf: GroupPerformance[], groups: GroupRep[]): Record<string, unknown> {
   const out: Record<string, unknown> = {}
