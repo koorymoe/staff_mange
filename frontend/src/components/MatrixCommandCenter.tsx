@@ -17,7 +17,6 @@ import { MatrixLearning, MatrixProjectsEye } from './MatrixProjectsEye'
 import MatrixDialect from './MatrixDialect'
 import MatrixSuggestAccuracyPanel from './MatrixSuggestAccuracy'
 import MatrixAutonomy from './MatrixAutonomy'
-import MatrixAICost from './MatrixAICost'
 import { pollVisible } from '../utils/poll'
 
 // ═══ مركز قيادة ماتركس — شاشة المدير (تصميم (ع)) ═══
@@ -210,7 +209,7 @@ export default function MatrixCommandCenter() {
         </div>
       </div>
       {sel === 'VEHICLES' && <MatrixWatchEyes key="v" initialTab="VEHICLES" />}
-      {sel === 'MATRIX' && <div className="space-y-4"><MatrixAutonomy /><MatrixSuggestAccuracyPanel /><MatrixAICost /></div>}
+      {sel === 'MATRIX' && <div className="space-y-4"><MatrixAutonomy /><MatrixSuggestAccuracyPanel /></div>}
       {sel === 'SUPERVISORS' && <MatrixProjectsEye />}
       {sel && sel !== 'VEHICLES' && sel !== 'MATRIX' && sel !== 'SUPERVISORS' && <div><GroupPerf key={sel} group={sel} /></div>}
 
@@ -219,7 +218,6 @@ export default function MatrixCommandCenter() {
       <MatrixWatchEyes />
       <MatrixSuggestAccuracyPanel />
       <MatrixAutonomy />
-      <MatrixAICost />
       <MatrixProjectsEye />
       <MatrixLearning />
       <MatrixDialect />
