@@ -124,7 +124,6 @@ export default function MatrixCommandCenter() {
   const attention = active.reduce((n, g) => n + g.red + g.alert, 0)
   const tasks = active.reduce((n, g) => n + g.employees.reduce((m, e) => m + e.workload.reduce((k, w) => k + w.done + w.left, 0), 0), 0)
   const stability = people ? Math.round(((people - red) / people) * 100) : 100
-  const worst: EyeMood = red > 0 ? 'ANGRY' : attention > 0 ? 'ALERT' : 'PLEASED'
 
   return (
     <div dir="rtl" className="space-y-4 rounded-3xl bg-[var(--mx-bg)] p-3 text-[var(--mx-text)] sm:p-5">
@@ -132,7 +131,7 @@ export default function MatrixCommandCenter() {
       {/* ── الرأس ── */}
       <div className="grid items-center gap-4 lg:grid-cols-[1fr_auto]">
         <div className="flex flex-wrap items-center gap-4">
-          <BigSharingan mood={worst === 'PLEASED' ? 'CALM' : worst} />
+          <BigSharingan />
           <div>
             <span className="mb-2 inline-flex items-center gap-1.5 rounded-full border border-emerald-400/30 bg-emerald-500/10 px-3 py-0.5 text-[11px] text-[var(--mx-ok)]">
               <span className="h-2 w-2 animate-pulse rounded-full bg-emerald-400" /> الذكاء التحليلي النشط الآن
@@ -789,7 +788,8 @@ function perfEvidence(group: string, perf: GroupPerformance[], groups: GroupRep[
 // ═══ العين الكبيرة بمركز القيادة — قرار (ع) 10-13 ═══
 // شارنغان دائمي (نفس عين المالك)، وضغطتين عليها تحوّلها مانغكيو دقيقة
 // وترجع. هنا بس — عين الشريط العلوي ما تتأثر.
-function BigSharingan({ mood }: { mood: EyeMood }) {
+// (ع) 10-13: بلا حواجب — نرسمها دايماً «هادئة» (الشارنغان يفرض اللون الأحمر)
+function BigSharingan() {
   const [mangekyo, setMangekyo] = useState(false)
   const t = useRef(0)
   useEffect(() => () => window.clearTimeout(t.current), [])
@@ -810,7 +810,7 @@ function BigSharingan({ mood }: { mood: EyeMood }) {
     <button type="button" onDoubleClick={toggle} title="ضغطتين: مانغكيو شارنغان لمدة دقيقة"
       className={`shrink-0 select-none transition ${mangekyo ? 'drop-shadow-[0_0_40px_rgba(220,38,38,0.85)]' : 'drop-shadow-[0_0_30px_rgba(185,28,28,0.55)]'}`}
       style={{ ['--eye' as string]: '#b91c1c' }}>
-      <MatrixEyeGraphic group="ADMINS" mood={mood} width={190} lid={blink ? 0.06 : 0.95} sharingan={mangekyo ? 2 : 1} />
+      <MatrixEyeGraphic group="ADMINS" mood="CALM" width={190} lid={blink ? 0.06 : 0.95} sharingan={mangekyo ? 2 : 1} />
     </button>
   )
 }
