@@ -4971,6 +4971,8 @@ export const api = {
   getAttendanceClaims: (status = 'PENDING') => request<AttendanceClaim[]>(`/attendance/claims?status=${status}`),
   decideAttendanceClaim: (id: string, approve: boolean) => request<{ ok: boolean }>(`/attendance/claims/${id}/decide`, { method: 'POST', body: JSON.stringify({ approve }) }),
   getProjectPayments: (projectId: string) => request<ProjectPaymentsState>(`/projects/${projectId}/payments`),
+  // فترة الحجز وموظفها (ع 10-13)
+  getPendingShifts: () => request<{ bookingId: string; shift: 'MORNING' | 'EVENING'; owners: { id: string; name: string; strikes: number }[] }[]>('/coordination-alerts/shifts'),
   // تبرير الموظف (ع 10-13)
   getMyJustifications: () => request<Justification[]>('/justifications/mine'),
   answerJustification: (id: string, answer: string) => request<{ ok: boolean }>(`/justifications/${id}/answer`, { method: 'POST', body: JSON.stringify({ answer }) }),

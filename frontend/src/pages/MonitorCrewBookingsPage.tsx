@@ -39,6 +39,8 @@ function elapsedSince(iso: string): string {
 export default function MonitorCrewBookingsPage({ embedded }: EmbeddedProps = {}) {
   const [bookings, setBookings] = useState<Booking[]>([])
   const [summaries, setSummaries] = useState<Record<string, CoordinationAlertSummary>>({})
+  // (ع) 10-13: الحجز صباحي لو مسائي، والتقصير على موظف الفترة
+  const [shifts, setShifts] = useState<Record<string, { shift: 'MORNING' | 'EVENING'; owners: { id: string; name: string; strikes: number }[] }>>({})
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const guard = useSaveGuard()
@@ -51,9 +53,10 @@ export default function MonitorCrewBookingsPage({ embedded }: EmbeddedProps = {}
   const [log, setLog] = useState<CoordinationAlert[] | null>(null)
 
   const load = () => {
-    Promise.all([api.getPendingAudit(), api.getCoordinationAlertSummaries()])
-      .then(([b, s]) => {
+    Promise.all([api.getPendingAudit(), api.getCoordinationAlertSummaries(), api.getPendingShifts().catch(() => [])])
+      .then(([b, s, sh]) => {
         setBookings(b)
+        setShifts(Object.fromEntries(sh.map((x) => [x.bookingId, x])))
         setSummaries(Object.fromEntries(s.map((x) => [x.bookingId, x])))
       })
       .catch((e) => setError(e instanceof Error ? e.message : 'حدث خطأ'))
@@ -139,7 +142,11 @@ export default function MonitorCrewBookingsPage({ embedded }: EmbeddedProps = {}
                     <p><span className="text-slate-400">الزبون: </span>{b.customer?.name || 'زبون غير معروف'}</p>
                     <p><span className="text-slate-400">الهاتف: </span>{b.customer?.phone || '-'}</p>
                     <p><span className="text-slate-400">وجّهه: </span>{b.transferEmployee?.name || 'غير محدد'}</p>
-                    <p><span className="text-slate-400">الإداري المسؤول: </span>{b.confirmedByEmployee?.name || 'غير محدد'}</p>
+                    <p><span className="text-slate-400">وصل: </span>{relTime(b.createdAt)}{' '}
+                      {shifts[b.id] && <b className={shifts[b.id].shift === 'MORNING' ? 'text-amber-600' : 'text-indigo-700'}>{shifts[b.id].shift === 'MORNING' ? '🌅 صباحي' : '🌙 مسائي'}</b>}</p>
+                    <p><span className="text-slate-400">موظف الفترة: </span>{shifts[b.id]?.owners.length
+                      ? shifts[b.id].owners.map((o) => <span key={o.id} className="me-1 font-bold text-slate-700" title="تقصيراته نحو خصم النقطة الجاية">{o.name} ({o.strikes % 10}/10)</span>)
+                      : (b.confirmedByEmployee?.name || 'غير محدد')}</p>
                     <p><span className="text-slate-400">موعد الحجز: </span>{b.scheduledAt ? relTime(b.scheduledAt) : 'غير محدد'}</p>
                     <p><span className="text-slate-400">آخر تنبيه: </span>{relTime(s.lastAlertAt)}</p>
                     <p><span className="text-slate-400">إجمالي التنبيهات: </span>{s.totalCount}</p>

@@ -1234,6 +1234,8 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	// ينشر إعلان يسمّي الإداري والحجز — نفس حارس تبويب التنسيق (crew_management).
 	coordinationAlertRepo := repository.NewCoordinationAlertRepository(db)
 	coordinationAlertHandler := handler.NewCoordinationAlertHandler(coordinationAlertRepo, bookingRepo, disciplineRepo, announcementRepo, notificationRepo, employeeRepo)
+	coordinationAlertHandler.Kpi = kpiRepo
+	mux.Handle("GET /api/coordination-alerts/shifts", middleware.Chain(http.HandlerFunc(coordinationAlertHandler.Shifts), requireAuth, requireCrewManagement))
 	mux.Handle("POST /api/bookings/{id}/coordination-alerts", middleware.Chain(http.HandlerFunc(coordinationAlertHandler.Add), requireAuth, requireCrewManagement))
 	mux.Handle("PUT /api/bookings/{id}/coordination-alerts/resolve", middleware.Chain(http.HandlerFunc(coordinationAlertHandler.Resolve), requireAuth, requireCrewManagement))
 	mux.Handle("GET /api/bookings/{id}/coordination-alerts", middleware.Chain(http.HandlerFunc(coordinationAlertHandler.ListForBooking), requireAuth, requireCrewManagement))

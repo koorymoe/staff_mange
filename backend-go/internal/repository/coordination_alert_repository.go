@@ -83,3 +83,81 @@ func (r *CoordinationAlertRepository) Summaries() ([]model.CoordinationAlertSumm
 		GROUP BY "bookingId"`)
 	return rows, err
 }
+
+// ═══ (ع) 10-13: التقصير على موظف الفترة ═══
+// الحجز يجي صباحي أو مسائي (حقل الفترة، وإذا فاضي من ساعة إنشائه ببغداد:
+// قبل ٣ العصر صباحي). المسؤول = موظفين التنسيق (صلاحية coordinator) بنفس
+// الفترة. وكل ١٠ تقصيرات على الموظف = نقطة كي بي اي «تنفيذ المهام».
+
+type ShiftOwner struct {
+	ID      string `db:"id" json:"id"`
+	Name    string `db:"name" json:"name"`
+	Strikes int    `db:"strikes" json:"strikes"`
+}
+
+type BookingShiftInfo struct {
+	BookingID string       `json:"bookingId"`
+	Shift     string       `json:"shift"`
+	Owners    []ShiftOwner `json:"owners"`
+}
+
+const bookingShiftSQL = `CASE WHEN b.shift IS NOT NULL THEN b.shift::text
+	WHEN EXTRACT(HOUR FROM (b."createdAt" AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Baghdad')) < 15 THEN 'MORNING' ELSE 'EVENING' END`
+
+func (r *CoordinationAlertRepository) BookingShift(bookingID string) (string, error) {
+	var s string
+	err := r.db.Get(&s, `SELECT `+bookingShiftSQL+` FROM "Booking" b WHERE b.id = $1`, bookingID)
+	return s, err
+}
+
+func (r *CoordinationAlertRepository) ShiftOwners(shift string) ([]ShiftOwner, error) {
+	out := []ShiftOwner{}
+	err := r.db.Select(&out, `
+		SELECT e.id, e.name,
+		       (SELECT COUNT(*) FROM "CoordinationAlert" a WHERE a."coordinatorId" = e.id) AS strikes
+		FROM "Employee" e
+		WHERE e.status = 'ACTIVE' AND e.role::text NOT IN ('ADMIN', 'OWNER', 'MONITOR')
+		  AND COALESCE(e.shift::text, 'MORNING') = $1
+		  AND EXISTS (SELECT 1 FROM "EmployeePermission" ep JOIN "Permission" p ON p.id = ep."permissionId"
+		              WHERE ep."employeeId" = e.id AND p.name = 'coordinator')
+		ORDER BY e.name`, shift)
+	return out, err
+}
+
+// PendingShifts فترة كل حجز ينتظر التثبيت وما تواصل وياه الإداري بعد.
+func (r *CoordinationAlertRepository) PendingShifts() ([]BookingShiftInfo, error) {
+	rows := []struct {
+		ID    string `db:"id"`
+		Shift string `db:"shift"`
+	}{}
+	if err := r.db.Select(&rows, `SELECT b.id, `+bookingShiftSQL+` AS shift FROM "Booking" b
+		WHERE b.status = 'PENDING' AND b."archivedAt" IS NULL AND b."confirmationContactedAt" IS NULL`); err != nil {
+		return nil, err
+	}
+	owners := map[string][]ShiftOwner{}
+	out := make([]BookingShiftInfo, 0, len(rows))
+	for _, x := range rows {
+		if _, ok := owners[x.Shift]; !ok {
+			o, _ := r.ShiftOwners(x.Shift)
+			owners[x.Shift] = o
+		}
+		out = append(out, BookingShiftInfo{BookingID: x.ID, Shift: x.Shift, Owners: owners[x.Shift]})
+	}
+	return out, nil
+}
+
+// StrikesFor مجموع التقصيرات المسجّلة على موظف (كل الوقت).
+func (r *CoordinationAlertRepository) StrikesFor(employeeID string) int {
+	var n int
+	_ = r.db.Get(&n, `SELECT COUNT(*) FROM "CoordinationAlert" WHERE "coordinatorId" = $1`, employeeID)
+	return n
+}
+
+// KpiTaskCriterion نص بند «تنفيذ المهام» كما هو بالقاعدة (حتى رصيد النقاط يطابقه).
+func (r *CoordinationAlertRepository) KpiTaskCriterion() string {
+	var l string
+	if err := r.db.Get(&l, `SELECT label FROM "KpiCriterion" WHERE label LIKE '%تنفيذ المهام%' OR label LIKE '%إتمام المهام%' OR label LIKE '%اتمام المهام%' ORDER BY "createdAt" LIMIT 1`); err != nil || l == "" {
+		return "تنفيذ المهام الموكلة إليه"
+	}
+	return l
+}

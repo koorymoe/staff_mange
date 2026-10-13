@@ -22,6 +22,8 @@ type CoordinationAlertHandler struct {
 	announcements *repository.AnnouncementRepository
 	notify        *repository.NotificationRepository
 	employees     *repository.EmployeeRepository
+	// Kpi نقطة «تنفيذ المهام» كل ١٠ تقصيرات (ع 10-13)
+	Kpi *repository.KpiRepository
 }
 
 func NewCoordinationAlertHandler(
@@ -66,19 +68,48 @@ func (h *CoordinationAlertHandler) Add(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var coordinatorID, coordinatorName *string
-	if booking.ConfirmedByEmployee != nil {
-		coordinatorID = &booking.ConfirmedByEmployee.ID
-		coordinatorName = &booking.ConfirmedByEmployee.Name
-	}
-
 	byID := middleware.EmployeeIDFromContext(r)
 	byName := h.byNameFor(byID)
-	openCount, err := h.repo.Add(bookingID, coordinatorID, coordinatorName, strings.TrimSpace(req.Reason), byID, byName)
-	if err != nil {
-		log.Printf("add coordination alert: %v", err)
-		WriteError(w, http.StatusInternalServerError, "تعذر تسجيل التقصير")
-		return
+	// (ع) 10-13: التقصير على موظف التنسيق بفترة الحجز (صباحي/مسائي)
+	shift, _ := h.repo.BookingShift(bookingID)
+	owners, _ := h.repo.ShiftOwners(shift)
+	if len(owners) == 0 && booking.ConfirmedByEmployee != nil {
+		owners = []repository.ShiftOwner{{ID: booking.ConfirmedByEmployee.ID, Name: booking.ConfirmedByEmployee.Name}}
+	}
+	reason := strings.TrimSpace(req.Reason)
+	shiftWord := map[string]string{"MORNING": "صباحي", "EVENING": "مسائي"}[shift]
+	var coordinatorID, coordinatorName *string
+	openCount := 0
+	add := func(id, name *string) bool {
+		n, err := h.repo.Add(bookingID, id, name, reason, byID, byName)
+		if err != nil {
+			log.Printf("add coordination alert: %v", err)
+			WriteError(w, http.StatusInternalServerError, "تعذر تسجيل التقصير")
+			return false
+		}
+		openCount = n
+		return true
+	}
+	if len(owners) == 0 {
+		if !add(nil, nil) {
+			return
+		}
+	}
+	for i := range owners {
+		o := owners[i]
+		coordinatorID, coordinatorName = &o.ID, &o.Name
+		if !add(&o.ID, &o.Name) {
+			return
+		}
+		total := h.repo.StrikesFor(o.ID)
+		if total > 0 && total%10 == 0 && h.Kpi != nil {
+			label := h.repo.KpiTaskCriterion()
+			if _, err := h.Kpi.Create(o.ID, byID, -1, label+" — "+strconv.Itoa(total)+" تقصير بتثبيت الحجوزات ("+shiftWord+") — عدم إتمام المهام", 0); err != nil {
+				log.Printf("coordination kpi: %v", err)
+			} else if h.notify != nil {
+				_ = h.notify.Create(o.ID, "coordination_kpi", "📉 انخصمت نقطة كي بي اي («"+label+"») — وصلت "+strconv.Itoa(total)+" تقصير بتثبيت الحجوزات")
+			}
+		}
 	}
 
 	// ⚠️ `==` لا `>=` — النشر مرة وحدة بالضبط عند العاشر بالضبط.
@@ -148,6 +179,16 @@ func (h *CoordinationAlertHandler) Summaries(w http.ResponseWriter, r *http.Requ
 	if err != nil {
 		log.Printf("coordination alert summaries: %v", err)
 		WriteError(w, http.StatusInternalServerError, "تعذر جلب الملخص")
+		return
+	}
+	WriteJSON(w, http.StatusOK, rows)
+}
+
+// GET /api/coordination-alerts/shifts — فترة كل حجز ينتظر التثبيت ومنو موظفها
+func (h *CoordinationAlertHandler) Shifts(w http.ResponseWriter, r *http.Request) {
+	rows, err := h.repo.PendingShifts()
+	if err != nil {
+		WriteError(w, http.StatusInternalServerError, "تعذر جلب الفترات")
 		return
 	}
 	WriteJSON(w, http.StatusOK, rows)

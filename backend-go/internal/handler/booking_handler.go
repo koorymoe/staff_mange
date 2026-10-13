@@ -618,7 +618,14 @@ func (h *BookingHandler) PendingAudit(w http.ResponseWriter, r *http.Request) {
 		WriteError(w, http.StatusInternalServerError, "تعذر جلب الحجوزات")
 		return
 	}
-	WriteJSON(w, http.StatusOK, bookings)
+	// (ع) 10-13: الي تواصل وياه الإداري بموعد مناسب يختفي من هنا
+	out := bookings[:0]
+	for _, b := range bookings {
+		if b.ConfirmationContactedAt == nil {
+			out = append(out, b)
+		}
+	}
+	WriteJSON(w, http.StatusOK, out)
 }
 
 // GET /api/bookings/{id}/tool-checks
