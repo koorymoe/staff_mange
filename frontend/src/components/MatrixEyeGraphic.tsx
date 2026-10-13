@@ -59,10 +59,12 @@ function GroupMark({ group, color }: { group: EyeGroup; color: string }) {
 
 const MatrixEyeGraphic = forwardRef<SVGGElement, Props>(function MatrixEyeGraphic({ group, mood, lid = 0.9, width = 76, flash = false, sharingan = 0 }, pupilRef) {
   const uid = useId().replace(/:/g, '')
-  const color = eyeColor(group, mood)
+  // (ع) 10-13: وقت الشارنغان الهالة قرمزية بدل لون المزاج (الأصفر ما يليق وياها)
+  const color = sharingan > 0 ? '#b91c1c' : eyeColor(group, mood)
   const angry = mood === 'ANGRY'
   const pleased = mood === 'PLEASED'
-  const h = 17 * lid
+  // (ع) 10-13: وقت الشارنغان العين تنفتح أوسع حتى تبين القزحية كاملة
+  const h = 17 * lid * (sharingan > 0 ? 1.4 : 1)
   const eyePath = `M-30 0 Q0 ${-h} 30 0 Q0 ${h} -30 0Z`
   const pupilW = angry ? 1.4 : flash ? 2.6 : pleased ? 4.6 : 3.8
 

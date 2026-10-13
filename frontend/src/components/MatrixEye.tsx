@@ -247,6 +247,7 @@ export default function MatrixEye() {
     return () => { window.removeEventListener('matrix-mangekyo', on); window.clearTimeout(t) }
   }, [isOwner, isAdminOnly])
   const sharingan: 0 | 1 | 2 = !(isOwner || isAdminOnly) ? 0 : mangekyo ? 2 : (isOwner || awake) ? 1 : 0
+  const tint = sharingan > 0 ? '#b91c1c' : color
 
   if (!employee) return null
   if (staffOff && employee.role !== 'ADMIN' && employee.actualRole !== 'OWNER') return null
@@ -257,7 +258,7 @@ export default function MatrixEye() {
   return (
     <>
       {shown && createPortal(
-        <div aria-hidden className={`matrix-eye-frame ${angry ? 'is-red' : ''} ${flash ? 'is-flash' : ''}`} style={{ ['--eye' as string]: color }} />,
+        <div aria-hidden className={`matrix-eye-frame ${angry ? 'is-red' : ''} ${flash ? 'is-flash' : ''}`} style={{ ['--eye' as string]: tint }} />,
         document.body,
       )}
 
@@ -269,7 +270,7 @@ export default function MatrixEye() {
           title={title}
           aria-label={title}
           className={`matrix-eye ${angry ? 'is-red' : ''} ${flash ? 'is-flash' : ''}`}
-          style={{ ['--eye' as string]: color }}
+          style={{ ['--eye' as string]: tint }}
         >
           <MatrixEyeGraphic ref={pupilRef} group={group} mood={mood} lid={lid} flash={flash} width={76} sharingan={sharingan} />
           {watch && watch.open > 0 && shown && (
@@ -278,7 +279,7 @@ export default function MatrixEye() {
         </button>
 
         {say && shown && !open && (
-          <div dir="rtl" className="matrix-eye-say" style={{ ['--eye' as string]: color }}>
+          <div dir="rtl" className="matrix-eye-say" style={{ ['--eye' as string]: tint }}>
             <b>ماتركس:</b> {say}
           </div>
         )}
