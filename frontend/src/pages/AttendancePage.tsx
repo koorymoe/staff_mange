@@ -72,6 +72,8 @@ export default function AttendancePage({ embedded }: { embedded?: boolean } = {}
   // تصدير جدول الدوام مو لكل موظف — للمراقب ومدير النظام والمالك بس،
   // أو لمن ينطيه المدير صلاحية المراقبة صراحةً.
   const canExport = isAdmin
+  // (ع) 10-13: المالك والمدير ما عدهم «جدول دوامي» — يشوفون دوام الموظفين بس
+  const isTop = employee?.role === 'ADMIN' || employee?.actualRole === 'OWNER'
 
   const loadOpenSession = useCallback(() => {
     if (!employee) return
@@ -169,8 +171,8 @@ export default function AttendancePage({ embedded }: { embedded?: boolean } = {}
           <div className="flex items-center gap-3">
             <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-sky-50 text-xl">🕐</span>
             <div>
-              <h1 className="text-2xl font-black text-[#0f2040]">جدول دوامي</h1>
-              <p className="text-xs text-slate-500">متابعة حضورك وانصرافك وطلبات الإجازة من مكان واحد</p>
+              <h1 className="text-2xl font-black text-[#0f2040]">{isTop ? 'جدول دوام الموظفين' : 'جدول دوامي'}</h1>
+              <p className="text-xs text-slate-500">{isTop ? 'حضور الموظفين اليوم، واختار موظف حتى تشوف سجله الشهري' : 'متابعة حضورك وانصرافك وطلبات الإجازة من مكان واحد'}</p>
             </div>
           </div>
           <span className="rounded-lg bg-white px-3 py-1.5 text-xs font-bold text-slate-600 shadow-sm">
@@ -184,6 +186,9 @@ export default function AttendancePage({ embedded }: { embedded?: boolean } = {}
       )}
 
       {/* ═══ ترتيب (ع) 10-08: ثلاث بطاقات تنفتح — الحضور، ملخص اليوم، طلب إجازة ═══ */}
+      {isTop && <AdminTable records={todaySummary} />}
+
+      {!isTop && (
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         <ActionCard
           tone="emerald" icon="👆" title={today ? 'متواجد بالشركة' : 'تسجيل حضور'}
@@ -201,6 +206,7 @@ export default function AttendancePage({ embedded }: { embedded?: boolean } = {}
           open={panel === 'leave'} onClick={() => setPanel(panel === 'leave' ? null : 'leave')}
         />
       </div>
+      )}
 
       {panel === 'att' && (
         <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
@@ -294,16 +300,30 @@ export default function AttendancePage({ embedded }: { embedded?: boolean } = {}
       {/* «طلب الإجازة يكون من داخل» — جزء من جدول دوامك. */}
       {panel === 'leave' && <LeavePanel onSubmitted={loadMyLeaves} leaves={myLeaves} />}
 
+      {/* المالك والمدير: اختيار الموظف فوگ السجل */}
+      {isTop && (
+        <div className="flex items-center gap-3 rounded-2xl bg-white p-4 shadow-[0_4px_20px_rgba(15,32,64,0.06)]">
+          <label className="text-sm font-semibold text-gray-600">سجل الدوام الشهري للموظف:</label>
+          <select value={viewedEmployeeId} onChange={(e) => setViewedEmployeeId(e.target.value)}
+            className="rounded-lg border border-gray-200 px-3 py-1.5 text-sm">
+            <option value="">— اختار موظف —</option>
+            {todaySummary.filter(s => s.employeeId !== employee.id).map(s => (
+              <option key={s.employeeId} value={s.employeeId}>{s.employee?.name || s.employeeId}</option>
+            ))}
+          </select>
+        </div>
+      )}
+
       {/* ═══ سجل الدوام الشهري — كل أيام الشهر بجدول واحد ═══ */}
-      <MonthlyView
+      {(!isTop || viewedEmployeeId) && <MonthlyView
         month={month} setMonth={setMonth} report={report}
         employeeId={targetEmployeeId} canExport={canExport}
         shiftStart={shiftStart} lateDays={lateDays} absentDays={absentDays}
         leaves={viewedEmployeeId ? [] : myLeaves}
-      />
+      />}
 
       {/* Employee picker for admins */}
-      {isAdmin && (
+      {isAdmin && !isTop && (
         <div className="flex items-center gap-3 rounded-2xl bg-white p-4 shadow-[0_4px_20px_rgba(15,32,64,0.06)]">
           <label className="text-sm font-semibold text-gray-600">عرض سجل موظف آخر:</label>
           <select
@@ -320,7 +340,7 @@ export default function AttendancePage({ embedded }: { embedded?: boolean } = {}
       )}
 
       {/* Admin table */}
-      {isAdmin && <AdminTable records={todaySummary} />}
+      {isAdmin && !isTop && <AdminTable records={todaySummary} />}
     </div>
   )
 }

@@ -117,7 +117,7 @@ export const navItems: NavItem[] = [
   { to: '/?board=desk', label: '🏛️ مكتب المدير', icon: icon('M3 21h18M5 21V8l7-5 7 5v13M9 21v-6h6v6'), roles: ['ADMIN'] },
   { to: '/service-studies', label: '🧪 دراسات الخدمات', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M9 3h6M10 3v6L4.5 19a1.5 1.5 0 0 0 1.3 2h12.4a1.5 1.5 0 0 0 1.3-2L14 9V3"/></svg>, roles: ['SERVICE_DEVELOPER'] },
   { to: '/car-wash', label: '🧽 غسل السيارات', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M5 17h14l-1.5-6h-11z"/><circle cx="8" cy="18" r="1.5"/><circle cx="16" cy="18" r="1.5"/><path d="M9 7c0-1 1-2 1-3M13 7c0-1 1-2 1-3"/></svg>, roles: ['CAR_WASHER'] },
-  { to: '/attendance', label: 'جدول دوامي', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg> },
+  { to: '/attendance', label: 'جدول دوامي', labelFor: (ctx) => (ctx.employee?.role === 'ADMIN' || ctx.employee?.actualRole === 'OWNER' ? 'جدول دوام الموظفين' : 'جدول دوامي'), icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg> },
   // ⚠️ مهامي الإضافية بلا قيد دور ولا صلاحية — هاي **مهام الموظف
   // نفسه**، مو مهام غيره. كانت محصورة بشاشة «مهامي» (فنيين فقط)،
   // يعني المدير يوجّه مهمة لإداري أو محاسب وما توصله إلا كإشعار
