@@ -47,7 +47,7 @@ const BREAKDOWN_LABELS: Record<string, string> = {
 
 // ─── Technician Tab ───────────────────────────────────────────────────────────
 
-function TechnicianTab() {
+export function TechnicianTab() {
   const [leaderboard, setLeaderboard] = useState<TechnicianKpi[]>([])
   const [chartFor, setChartFor] = useState<{ id: string; name: string } | null>(null)
   const [month, setMonth] = useState(getCurrentMonth)
@@ -263,7 +263,7 @@ function TechnicianTab() {
 
 // ─── Administrative Tab ───────────────────────────────────────────────────────
 
-function AdministrativeTab() {
+export function AdministrativeTab() {
   const { employee: currentUser, permissions } = useSession()
   const [evaluations, setEvaluations] = useState<KpiEvaluation[]>([])
   const [employees, setEmployees] = useState<Employee[]>([])

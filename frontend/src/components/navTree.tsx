@@ -620,7 +620,6 @@ export const navItems: NavItem[] = [
       // نفس حارس /api/remote-hours: المدير أو صلاحية «تسجيل ساعات العمل من البيت».
       { monitorMenuHide: true, to: '/remote-hours', label: '🏠 ساعات العمل من البيت', icon: <></>, roles: ['ADMIN'], anyPermission: ['remote_hours_manage', 'remote_hours_self'] },
       { to: '/nav-hr-score', label: '🏅 التقييم', icon: <></>, divider: true, plain: true },
-      { to: '/kpi', label: 'نقاط الكي بي اي', icon: <></>, roles: ['ADMIN', 'MONITOR'], permission: 'kpi_management' },
       { to: '/performance-review', label: '⭐ تقييم الأداء', icon: <></>, roles: ['ADMIN', 'HR_COORDINATOR'], unlockPermission: 'performance_review' },
       { strict: true, to: '/discipline-record', label: '📒 سجل الانضباط الوظيفي', icon: <></>, roles: ['ADMIN'] },
       { to: '/nav-hr-stats', label: '📊 الإحصائيات', icon: <></>, divider: true, plain: true },
@@ -1086,6 +1085,7 @@ const SELF_SCOPED: Record<string, RouteRule> = {
   // (ع) 10-13: الصلاحيات صارت تبويب جوّا «إدارة الموظفين»
   '/permissions': { roles: ['ADMIN'] },
   // (ع) 10-13: طلبات الكادر تبويب بإدارة الموظفين، والإجازات تبويب بجدول الدوام
+  '/kpi': { roles: ['ADMIN', 'MONITOR'], anyPermission: ['kpi_management'] },
   '/staff-requests': { roles: ['ADMIN', 'HR_COORDINATOR'], anyPermission: ['staff_requests'] },
   // فاتورة الحجز من «مهامي» — نفس requireLeaderBasket بالخادم.
   '/leader-invoices/new': { leader: true, anyPermission: ['leader_basket', 'invoice_gps', 'invoice_dashcam', 'invoice_internal', 'execution_cost', 'finance', 'finance_audit'] },

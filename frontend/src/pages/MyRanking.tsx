@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { type KpiLeaderboardEntry, type StaffScoreDetail } from '../api'
 import { api, type Stats, type RoleKpiLeaderboard } from '../api'
 import { useSession } from '../session'
+import { AdministrativeTab as KpiAdministrativeTab } from './KpiPage'
 import { roleLabel as arabicRole } from '../roleLabels'
 import { tracksFor } from '../rankingTracks'
 import PerformanceReviewPage from './PerformanceReviewPage'
@@ -117,7 +118,9 @@ export default function MyRanking() {
   // بلا هذا الشرط، ADMIN بلا `tracksFor` مطابق يسقط لمقارنة كل
   // حسابات ADMIN ببعض بنقاط KPI/حجوزات — مقارنة بلا معنى لعمل إداري.
   const isTopAdmin = employee?.role === 'ADMIN' || employee?.actualRole === 'OWNER'
-  const [view, setView] = useState<'mine' | 'team' | 'evaluators'>('mine')
+  // (ع) 10-13: «تقييم كي بي اي» تبويب هنا — مو شاشة لحالها
+  const canKpi = employee?.role === 'ADMIN' || employee?.role === 'MONITOR' || (permissions ?? []).includes('kpi_management')
+  const [view, setView] = useState<'mine' | 'team' | 'evaluators' | 'kpi'>('mine')
   const [stats, setStats] = useState<Stats | null>(null)
   const [board, setBoard] = useState<RoleKpiLeaderboard | null>(null)
   const [peers, setPeers] = useState<Map<string, number | null>>(new Map())
@@ -241,6 +244,7 @@ export default function MyRanking() {
             <p className="text-xs text-slate-500">
               {effectiveView === 'mine' ? `تقييمي وتصنيفي — مقارنة بين الي يشتغلون ${roleLabel}`
                 : effectiveView === 'team' ? 'قيّم فريقك عن كل حجز'
+                : effectiveView === 'kpi' ? 'خصم وإضافة نقاط الكي بي اي على بنودها الثمانية'
                 : 'مقارنة نشاط المراجعة بين الإداريين'}
             </p>
           </div>
@@ -264,12 +268,13 @@ export default function MyRanking() {
 
       {/* ═══ خيارات من فوگ ═══
           نفس نمط «مهامي» و«الجرد»: بند واحد بالقائمة والاختيار هنا. */}
-      {(canReviewTeam || canSeeEvaluators) && (
+      {(canReviewTeam || canSeeEvaluators || canKpi) && (
         <div className="grid grid-cols-2 gap-1.5 rounded-2xl border border-slate-200 bg-white p-1.5 shadow-[0_2px_12px_rgba(15,32,64,0.05)] sm:inline-flex sm:gap-2">
           {([
             ...(isTopAdmin ? [] : [{ k: 'mine' as const, label: '🏆 تقييمي وتصنيفي' }]),
             ...(canReviewTeam ? [{ k: 'team' as const, label: '👥 تقييم الموظفين' }] : []),
             ...(canSeeEvaluators ? [{ k: 'evaluators' as const, label: '📋 تقييم بين الإداريين' }] : []),
+            ...(canKpi ? [{ k: 'kpi' as const, label: '🎯 تقييم كي بي اي' }] : []),
           ]).map((o) => (
             <button
               key={o.k}
@@ -288,6 +293,7 @@ export default function MyRanking() {
 
       {/* تقييم الفريق يعيد استعمال نفس الشاشة بلا نسخ منطقها */}
       {effectiveView === 'team' && <PerformanceReviewPage embedded />}
+      {effectiveView === 'kpi' && <KpiAdministrativeTab />}
 
       {/* ═══ تقييم بين الإداريين ═══
           ⚠️ «نقاط»/«حجوزات مراجعة» هنا **عدد المراجعات المسجَّلة**

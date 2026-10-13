@@ -1,4 +1,5 @@
 import StaffScorePage from './StaffScorePage'
+import { TechnicianTab as KpiTechnicianTab } from './KpiPage'
 import { useEffect, useState } from 'react'
 import type { Employee } from '../api'
 import { useSession } from '../session'
@@ -56,7 +57,7 @@ export default function StatsPage() {
   const [stats, setStats] = useState<StatsData | null>(null)
   const [employees, setEmployees] = useState<Employee[]>([])
   const [inventory, setInventory] = useState<InventoryItem[]>([])
-  const [tab, setTab] = useState<'overview' | 'sales' | 'technicians' | 'coordinators' | 'scores'>('overview')
+  const [tab, setTab] = useState<'overview' | 'sales' | 'technicians' | 'coordinators' | 'scores' | 'techPoints'>('overview')
 
   useEffect(() => {
     if (role !== 'ADMIN') return
@@ -78,6 +79,8 @@ export default function StatsPage() {
     { key: 'coordinators' as const, label: 'المنسقون' },
     // قرار (ع) 10-07: المدير يشوف كل دور وموظفينه وتقييمهم — نفس تقييم ماتركس.
     { key: 'scores' as const, label: '⭐ التقييم حسب الدور' },
+    // (ع) 10-13: نقاط الفنيين انتقلت هنا من شاشة الكي بي اي
+    { key: 'techPoints' as const, label: '🔧 نقاط الفنيين' },
   ]
 
   return (
@@ -95,6 +98,7 @@ export default function StatsPage() {
       </div>
 
       {tab === 'scores' && <StaffScorePage />}
+      {tab === 'techPoints' && <KpiTechnicianTab />}
 
       {tab === 'overview' && (
         <div className="space-y-6">
