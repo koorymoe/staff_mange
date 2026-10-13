@@ -6,7 +6,7 @@ import { useSession } from '../session'
 const ICON_CHOICES = ['😀', '😎', '🦁', '🐺', '🦅', '🐉', '⚡', '🔥', '⭐', '🚀', '🛠️', '🎯']
 
 export default function SettingsPanel({ onClose }: { onClose: () => void }) {
-  const { employee } = useSession()
+  const { employee, permissions } = useSession()
   const navigate = useNavigate()
   const [tab, setTab] = useState<'password' | 'volume' | 'icon' | 'approvals'>('volume')
 
@@ -184,7 +184,17 @@ export default function SettingsPanel({ onClose }: { onClose: () => void }) {
           )}
 
           {/* سياسة الخصوصية — الموظف يرجع يقراها بأي وقت من هنا */}
-          <div className="mt-4 border-t border-slate-100 pt-4">
+          <div className="mt-4 space-y-2 border-t border-slate-100 pt-4">
+            {/* (ع) 10-13: الأقسام ومسؤوليها مكانها بالإعدادات — نفس حارس الخادم */}
+            {(employee?.role === 'ADMIN' || employee?.role === 'OWNER' || permissions.includes('departments_manage')) && (
+              <button
+                onClick={() => { onClose(); navigate('/departments') }}
+                className="flex w-full items-center justify-between rounded-lg border border-slate-200 px-3 py-2.5 text-sm font-bold text-slate-700 hover:bg-slate-50"
+              >
+                <span>🏢 الأقسام ومسؤوليها</span>
+                <span className="text-slate-400">←</span>
+              </button>
+            )}
             <button
               onClick={() => { onClose(); navigate('/privacy-policy') }}
               className="flex w-full items-center justify-between rounded-lg border border-slate-200 px-3 py-2.5 text-sm font-bold text-slate-700 hover:bg-slate-50"

@@ -101,6 +101,8 @@ export default function Employees({ embedded }: { embedded?: boolean } = {}) {
   const [savingCreds, setSavingCreds] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [filterRole, setFilterRole] = useState<string>('')
+  // (ع) 10-13: الديكور ينفصل عن الشعبة الهندسية، وجوّا كل شعبة كل دور لحاله
+  const [filterDivision, setFilterDivision] = useState<'' | 'ENGINEERING' | 'DECOR'>('')
 
   const [showAddForm, setShowAddForm] = useState(false)
 
@@ -157,7 +159,9 @@ export default function Employees({ embedded }: { embedded?: boolean } = {}) {
   }, [isAdmin, canSuspend, showArchived])
 
   const baseEmployees = showArchived ? archivedEmployees : (isHR ? employees.filter((emp) => emp.role === 'TECHNICIAN') : employees)
+  const inDivision = (emp: Employee) => !filterDivision || (emp.division === 'DECOR' ? 'DECOR' : 'ENGINEERING') === filterDivision
   const visibleEmployees = baseEmployees.filter(emp => {
+    if (!inDivision(emp)) return false
     if (searchQuery && !matches([emp.name, emp.position, emp.phone, emp.jobTitle], searchQuery)) return false
     if (filterRole && emp.role !== filterRole) return false
     return true
@@ -314,7 +318,13 @@ export default function Employees({ embedded }: { embedded?: boolean } = {}) {
   }
 
 
-  const uniqueRoles = [...new Set(baseEmployees.map(e => e.role))]
+  const divisionEmployees = baseEmployees.filter(inDivision)
+  const uniqueRoles = [...new Set(divisionEmployees.map(e => e.role))]
+  const roleCount = (r: string) => divisionEmployees.filter(e => e.role === r).length
+  // «كل الأدوار» = الكل معروض، بس مجمّع: كل دور تحت عنوانه
+  const roleGroups = filterRole
+    ? [{ role: filterRole, items: visibleEmployees }]
+    : [...new Set(visibleEmployees.map(e => e.role))].map(role => ({ role, items: visibleEmployees.filter(e => e.role === role) }))
 
   return (
     <>
@@ -339,16 +349,6 @@ export default function Employees({ embedded }: { embedded?: boolean } = {}) {
               className="w-48 bg-transparent text-sm outline-none placeholder:text-slate-300"
             />
           </div>
-          {!isHR && (
-            <select
-              value={filterRole}
-              onChange={(e) => setFilterRole(e.target.value)}
-              className="rounded-xl bg-white px-3 py-2.5 text-sm text-slate-600 shadow-[0_1px_3px_rgba(0,0,0,0.04),0_6px_16px_rgba(0,0,0,0.04)] outline-none"
-            >
-              <option value="">كل الأدوار</option>
-              {uniqueRoles.map(r => <option key={r} value={r}>{roleLabel(r)}</option>)}
-            </select>
-          )}
           {(isAdmin || canSuspend) && (
             <button
               onClick={() => { setShowArchived(!showArchived); setSelectedId(null) }}
@@ -391,8 +391,39 @@ export default function Employees({ embedded }: { embedded?: boolean } = {}) {
         <div className="grid grid-cols-1 gap-6 xl:grid-cols-[340px_1fr]">
           {/* Employee Cards Grid */}
           <div className="space-y-3 max-h-[calc(100vh-200px)] overflow-y-auto pl-2 scrollbar-thin">
+            {!isHR && (
+              <div className="space-y-2 rounded-2xl bg-white p-3 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
+                <div className="flex gap-1 rounded-xl bg-slate-100 p-1">
+                  {([['', 'الكل'], ['ENGINEERING', 'الشعبة الهندسية'], ['DECOR', 'الديكور']] as const).map(([d, label]) => (
+                    <button key={d} onClick={() => { setFilterDivision(d); setFilterRole('') }}
+                      className={`flex-1 rounded-lg px-2 py-1.5 text-xs font-bold transition-all ${filterDivision === d ? 'bg-[#0f2040] text-white shadow' : 'text-slate-500 hover:text-slate-700'}`}>
+                      {label}
+                    </button>
+                  ))}
+                </div>
+                <div className="flex flex-wrap gap-1.5">
+                  <button onClick={() => setFilterRole('')}
+                    className={`rounded-full px-2.5 py-1 text-[11px] font-bold ${!filterRole ? 'bg-[#2c5aad] text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>
+                    كل الأدوار · {divisionEmployees.length}
+                  </button>
+                  {uniqueRoles.map(r => (
+                    <button key={r} onClick={() => setFilterRole(r)}
+                      className={`rounded-full px-2.5 py-1 text-[11px] font-bold ${filterRole === r ? 'bg-[#2c5aad] text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>
+                      {roleLabel(r)} · {roleCount(r)}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
             <p className="text-xs font-medium text-slate-400 mb-2">{visibleEmployees.length} موظف</p>
-            {visibleEmployees.map((emp) => {
+            {roleGroups.map(group => (
+              <div key={group.role} className="space-y-3">
+                {!isHR && (
+                  <p className="sticky top-0 z-10 flex items-center justify-between rounded-lg bg-slate-50/95 px-2 py-1 text-xs font-extrabold text-[#0f2040] backdrop-blur">
+                    <span>{roleLabel(group.role)}</span><span className="text-slate-400">{group.items.length}</span>
+                  </p>
+                )}
+            {group.items.map((emp) => {
               const rc = roleChipColor(emp.role)
               const skillCount = emp.skills.filter(s => s.canPerform).length
               const isSelected = selectedId === emp.id
@@ -435,6 +466,8 @@ export default function Employees({ embedded }: { embedded?: boolean } = {}) {
                 </button>
               )
             })}
+              </div>
+            ))}
             {visibleEmployees.length === 0 && (
               <div className="flex flex-col items-center py-12 text-slate-500">
                 <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>

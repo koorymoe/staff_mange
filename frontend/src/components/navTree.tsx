@@ -208,7 +208,6 @@ export const navItems: NavItem[] = [
           // ⚠️ `permission` يقيّد ويفتح: المالك ومدير النظام يشوفونها
           // بأدوارهم، وأي أحد ثاني بس إذا انمنحله `departments_manage`
           // بالإيد — «بعدين نقرر المن ننطيها».
-          { to: '/departments', label: '🏢 الأقسام ومسؤوليها', icon: <></>, permission: 'departments_manage' },
           // ⚠️ الإجازات انشالت من القائمة العلوية: الموظف يطلبها من
           // «جدول دوامي» مباشرة. بس المدير لازم يضل يوصل صندوق الطلبات
           // حتى يوافق — بلا هذا المدخل الطلبات تنتراكم وماكو منو يشوفها.
@@ -617,9 +616,7 @@ export const navItems: NavItem[] = [
       { monitorMenuHide: true, to: '/customers', label: 'العملاء', icon: <></>, roles: ['ADMIN', 'HR_COORDINATOR', 'MONITOR'], permission: 'manage_customers' },
       // البنود المنقولة strict: صلاحية الوحدة ما تفتحها، كل وحدة بحارسها.
       { to: '/nav-hr-staff', label: '👥 الموظفين', icon: <></>, divider: true, plain: true },
-      { to: '/employees', label: 'إدارة الكوادر', icon: <></>, roles: ['ADMIN', 'HR_COORDINATOR', 'MONITOR'], permission: 'staff_management' },
       { strict: true, to: '/staff-management-desk', label: 'إدارة الموظفين', icon: <></>, roles: ['ADMIN', 'MONITOR'], anyPermission: ['staff_management', 'kpi_management', 'performance_review', 'staff_requests'] },
-      { strict: true, to: '/departments', label: '🏢 الأقسام ومسؤوليها', icon: <></>, permission: 'departments_manage' },
       { to: '/staff-requests', label: 'طلبات الكادر', icon: <></>, roles: ['ADMIN', 'HR_COORDINATOR'], unlockPermission: 'staff_requests' },
       { to: '/nav-hr-perms', label: '🔐 الصلاحيات', icon: <></>, divider: true, plain: true },
       { strict: true, to: '/permissions', label: 'الصلاحيات', icon: <></>, roles: ['ADMIN'] },
@@ -1090,6 +1087,9 @@ const SELF_SCOPED: Record<string, RouteRule> = {
   // (ع) 10-13: الأرشيف انشال من قائمة المدير (تبويب جوّا الحجوزات) — الرابط المباشر يبقى ينفتح
   '/bookings-archive': { roles: ['ADMIN', 'MONITOR'], anyPermission: ['bookings_archive'] },
   '/sales-opportunities': { roles: ['ADMIN'], anyPermission: ['sales_booking'] },
+  // (ع) 10-13: «إدارة الكوادر» صارت تبويب جوّا «إدارة الموظفين» بس، والأقسام انتقلت للإعدادات (⚙️)
+  '/employees': { roles: ['ADMIN', 'HR_COORDINATOR', 'MONITOR'], anyPermission: ['staff_management'] },
+  '/departments': { roles: ['ADMIN'], anyPermission: ['departments_manage'] },
   // فاتورة الحجز من «مهامي» — نفس requireLeaderBasket بالخادم.
   '/leader-invoices/new': { leader: true, anyPermission: ['leader_basket', 'invoice_gps', 'invoice_dashcam', 'invoice_internal', 'execution_cost', 'finance', 'finance_audit'] },
 }
