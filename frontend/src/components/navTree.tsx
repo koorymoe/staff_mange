@@ -258,7 +258,7 @@ export const navItems: NavItem[] = [
       },
       { to: '/my-handovers', label: '🛠️ الحجوزات', icon: <></>, roles: TECH_ROLES },
       // ماتركس — فرص البيع: نفس حارس GET /api/ai/opportunities (ADMIN/OWNER أو sales_booking).
-      { monitorMenuHide: true, to: '/sales-opportunities', label: '💡 فرص البيع', icon: <></>, roles: ['ADMIN'], permission: 'sales_booking', hideForRoles: [...TECH_ROLES, 'SALES'] }, // قرار (ع) 10-08: ما تطلع للمبيعات
+      { monitorMenuHide: true, to: '/sales-opportunities', label: '💡 فرص البيع', icon: <></>, roles: ['ADMIN'], permission: 'sales_booking', hideForRoles: [...TECH_ROLES, 'SALES', 'ADMIN'] }, // قرار (ع) 10-08: ما تطلع للمبيعات
       // قرار (ع) 10-08: طلبات GPS للمبيعات صارت جوّا «العمل».
       {
         to: '/gps-group', label: '📡 GPS', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>,
@@ -274,7 +274,7 @@ export const navItems: NavItem[] = [
       // ⚠️ «📅 الحجوزات المؤجلة» انشالت: نفس حجوزاتها تطلع بسلّة
       // «حجوزات مؤجّلة» جوّا «ما وصلت للتنفيذ» بشاشة الحجوزات، مع
       // نفس إمكانية تحديد موعد جديد.
-      { monitorMenuHide: true, to: '/bookings-archive', label: 'أرشيف الحجوزات', icon: <></>, roles: ['ADMIN', 'MONITOR'], permission: 'bookings_archive' },
+      { monitorMenuHide: true, to: '/bookings-archive', label: 'أرشيف الحجوزات', icon: <></>, roles: ['ADMIN', 'MONITOR'], permission: 'bookings_archive', hideForRoles: ['ADMIN'] }, // (ع) 10-13: للمدير والمالك تبويب جوّا الحجوزات
       // ⚠️ «🔄 حجوزات تحتاج إكمال» انشالت: صارت محطة جوّا شاشة
       // الحجوزات بين «مكلّف» و«تم الإنجاز» — «ما أريدها بالقائمة
       // الجانبية، أريدها تطلع بجانب الحجوزات وحجوزات بانتظار
@@ -609,16 +609,12 @@ export const navItems: NavItem[] = [
     hideForRoles: ['PROCUREMENT_ADMIN'],
     children: [
       // ═══ قرار (ع) 10-13: «وحدة إدارة الكوادر» — كل شغل الموظفين بمكان واحد ═══
-      // (ع) 10-13: الحجوزات والزبائن هنا، مو بإدارة الخدمة
+      // (ع) 10-13: الحجوزات والزبائن هنا، مو بإدارة الخدمة.
+      // «حجز جديد» و«تنسيق الحجوزات» و«الأرشيف» و«فرص البيع» انشالن: تبويبات جوّا «الحجوزات» نفسها
       { to: '/nav-hr-bookings', label: '📋 الحجوزات', icon: <></>, divider: true, plain: true },
-      { to: '/sales', label: 'حجز جديد', icon: <></>, roles: ['ADMIN', 'HR_COORDINATOR', 'QUALITY_ENGINEER'], permission: 'sales_booking' },
       { to: '/bookings', label: 'الحجوزات', icon: <></>, roles: ['ADMIN', 'HR_COORDINATOR', 'MONITOR', 'FINANCE'], permission: 'view_bookings' },
-      { to: '/coordinator', label: 'تنسيق الحجوزات', icon: <></>, roles: ['ADMIN', 'HR_COORDINATOR', 'MONITOR'], permission: 'coordinator' },
-      { monitorMenuHide: true, to: '/bookings-archive', label: 'أرشيف الحجوزات', icon: <></>, roles: ['ADMIN', 'MONITOR'], permission: 'bookings_archive' },
       { monitorMenuHide: true, to: '/missions', label: 'تتبع المهام', icon: <></>, roles: ['ADMIN', 'HR_COORDINATOR', 'MONITOR'], permission: 'mission_tracking', hideForRoles: ['FINANCE'] },
-      { to: '/nav-hr-customers', label: '👤 الزبائن', icon: <></>, divider: true, plain: true },
       { monitorMenuHide: true, to: '/customers', label: 'العملاء', icon: <></>, roles: ['ADMIN', 'HR_COORDINATOR', 'MONITOR'], permission: 'manage_customers' },
-      { monitorMenuHide: true, to: '/sales-opportunities', label: '💡 فرص البيع', icon: <></>, roles: ['ADMIN'], permission: 'sales_booking', hideForRoles: [...TECH_ROLES, 'SALES'] },
       // البنود المنقولة strict: صلاحية الوحدة ما تفتحها، كل وحدة بحارسها.
       { to: '/nav-hr-staff', label: '👥 الموظفين', icon: <></>, divider: true, plain: true },
       { to: '/employees', label: 'إدارة الكوادر', icon: <></>, roles: ['ADMIN', 'HR_COORDINATOR', 'MONITOR'], permission: 'staff_management' },
@@ -1091,6 +1087,9 @@ export function isPathAllowed(path: string, ctx: NavContext): boolean | null {
 
 const SELF_SCOPED: Record<string, RouteRule> = {
   '/missions': { roles: ['TECHNICIAN', 'TECHNICAL'], leader: true }, // /missions/my/{id} — مهامه هو
+  // (ع) 10-13: الأرشيف انشال من قائمة المدير (تبويب جوّا الحجوزات) — الرابط المباشر يبقى ينفتح
+  '/bookings-archive': { roles: ['ADMIN', 'MONITOR'], anyPermission: ['bookings_archive'] },
+  '/sales-opportunities': { roles: ['ADMIN'], anyPermission: ['sales_booking'] },
   // فاتورة الحجز من «مهامي» — نفس requireLeaderBasket بالخادم.
   '/leader-invoices/new': { leader: true, anyPermission: ['leader_basket', 'invoice_gps', 'invoice_dashcam', 'invoice_internal', 'execution_cost', 'finance', 'finance_audit'] },
 }
