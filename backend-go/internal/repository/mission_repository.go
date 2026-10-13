@@ -183,6 +183,10 @@ const missionStageExpr = `
 		WHEN 3 THEN 'EN_ROUTE' WHEN 4 THEN 'ARRIVED' WHEN 5 THEN 'WORK_STARTED'
 		WHEN 6 THEN 'COMPLETED' ELSE 'STOPPED' END`
 
+// MissionStageSQL نفس المرحلة المحسوبة — للوحة المتابعة (ع 10-13) حتى
+// أرقامها تطابق شاشة تتبع المهام. يحتاج `m` (Mission) و`b` (Booking).
+const MissionStageSQL = missionStageExpr
+
 // missionSelect يجيب أعمدة المهمة مع المرحلة المحسوبة، والأوقات
 // المكمّلة من الحجز.
 //

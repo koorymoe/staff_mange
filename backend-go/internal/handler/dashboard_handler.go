@@ -186,8 +186,10 @@ func (h *DashboardHandler) TodayPulse(w http.ResponseWriter, r *http.Request) {
 			  WHERE "archivedAt" IS NULL`+repository.NotDeletePendingSQL(`"Booking"`)+`
 			    AND baghdad_date("scheduledAt") = baghdad_today() - 1)                          AS "yesterdayBookings",
 			-- المهام المفتوحة: الي لسه بالميدان، مو المنجزة ولا المتوقفة
-			(SELECT COUNT(*) FROM "Mission"
-			  WHERE stage NOT IN ('COMPLETED','STOPPED'))                            AS "openMissions",
+			-- (ع) 10-13: المرحلة المحسوبة من الحجز مو عمود المهمة الخام (ما يتحدّث
+			-- لمن الليدر يشتغل) — نفس رقم «المهام النشطة» بتتبع المهام.
+			(SELECT COUNT(*) FROM "Mission" m JOIN "Booking" b ON b.id = m."bookingId"
+			  WHERE b."archivedAt" IS NULL AND (`+repository.MissionStageSQL+`) NOT IN ('COMPLETED','STOPPED')) AS "openMissions",
 			(SELECT COUNT(*) FROM "Complaint" WHERE status = 'NEW')                  AS "newComplaints",
 			-- مثبّت بس بلا موعد أو بلا كادر — هذا الي يحتاج شغل الإداري
 			(SELECT COUNT(*) FROM "Booking" b
@@ -207,9 +209,10 @@ func (h *DashboardHandler) TodayPulse(w http.ResponseWriter, r *http.Request) {
 			    WHERE m.stage IN ('EN_ROUTE','ARRIVED','WORK_STARTED') AND m."leaderId" IS NOT NULL
 			 ) x)                                                                    AS "crewInField",
 			-- تأخر ميداني: مهمة مفتوحة من أكثر من يوم بلا إنجاز
-			(SELECT COUNT(*) FROM "Mission"
-			  WHERE stage NOT IN ('COMPLETED','STOPPED')
-			    AND "assignedAt" < now() - interval '24 hours')                      AS "overdueMissions"`)
+			-- متأخرة = مفتوحة وموعد حجزها فات بأكثر من ٢٤ ساعة (مو إسناد قديم بس)
+			(SELECT COUNT(*) FROM "Mission" m JOIN "Booking" b ON b.id = m."bookingId"
+			  WHERE b."archivedAt" IS NULL AND (`+repository.MissionStageSQL+`) NOT IN ('COMPLETED','STOPPED')
+			    AND COALESCE(b."scheduledAt", m."assignedAt") < now() - interval '24 hours') AS "overdueMissions"`)
 	if err != nil {
 		log.Printf("today pulse: %v", err)
 		WriteError(w, http.StatusInternalServerError, "تعذر جلب نبض اليوم")

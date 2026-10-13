@@ -351,7 +351,7 @@ function FollowBoard() {
             <Stat big icon="📅" tone="blue" label="حجوزات اليوم" to="/missions" value={fmt(pulse.todayBookings)} hint={`أمس ${fmt(pulse.yesterdayBookings)}`} />
             <Stat big icon="📄" tone="blue" label="المهام المفتوحة" to="/missions" value={fmt(pulse.openMissions)} hint="مهمة" />
             <Stat big icon="⚠️" tone={pulse.newComplaints ? 'red' : 'slate'} label="الشكاوى الجديدة" to="/complaints" value={fmt(pulse.newComplaints)} hint="شكوى" />
-            <Stat big icon="⏳" tone={pulse.overdueMissions ? 'amber' : 'slate'} label="المتأخرات" to="/missions" value={fmt(pulse.overdueMissions)} hint="متأخرة +٢٤ ساعة" />
+            <Stat big icon="⏳" tone={pulse.overdueMissions ? 'amber' : 'slate'} label="المتأخرات" to="/missions" value={fmt(pulse.overdueMissions)} hint="موعدها فات +٢٤ ساعة وما خلصت" />
             <Stat big icon="👷" tone="green" label="الكوادر بالميدان" to="/missions?tab=field" value={fmt(pulse.crewInField)} hint="موظف طالع لزبون هسه" />
           </div>
         )}
