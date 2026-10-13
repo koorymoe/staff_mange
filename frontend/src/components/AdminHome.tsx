@@ -18,6 +18,7 @@ import ActionsTable from './ActionsTable'
 import MatrixMissions from './MatrixMissions'
 import ReplacementSuggestionsPanel from './ReplacementSuggestionsPanel'
 import { pollVisible } from '../utils/poll'
+import { roleLabel } from '../roleLabels'
 
 // ═══ رئيسية مدير النظام: لوحتين ═══
 //
@@ -83,17 +84,30 @@ const TONE: Record<Tone, { card: string; ink: string; chip: string }> = {
 
 // بطاقة رقم بتصميم (ع) 10-04: لون خفيف، أيقونة بدائرة، والرقم كبير.
 // (ع): «من اضغط ع شي يوديني عليه» — كل بطاقة تفتح الشاشة الي تفصّلها (to).
-function Stat({ label, value, hint, tone = 'slate', to, icon, big }: { label: string; value: ReactNode; hint?: ReactNode; tone?: Tone; to?: string; icon?: string; big?: boolean }) {
+// تصميم (ع) 10-13: سهم ‹ تحت لكل بطاقة تودّي لتفاصيلها، وشريط نسبة اختياري.
+function Stat({ label, value, hint, tone = 'slate', to, icon, big, pct }: { label: string; value: ReactNode; hint?: ReactNode; tone?: Tone; to?: string; icon?: string; big?: boolean; pct?: number | null }) {
   const t = TONE[tone]
+  const p = pct == null || !isFinite(pct) ? null : Math.max(0, Math.min(100, Math.round(pct)))
   const body = (
-    <div className="flex items-center justify-between gap-2">
-      <div className="min-w-0">
-        <p className="text-xs font-bold leading-snug text-slate-600">{label}</p>
-        <p className={`mt-1 font-extrabold tabular-nums ${big ? 'text-3xl' : 'text-2xl'} ${t.ink}`}>{value}</p>
-        {hint && <p className="mt-0.5 truncate text-[11px] text-slate-400">{hint}</p>}
+    <>
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0">
+          <p className={`text-[13px] font-extrabold leading-snug ${tone === 'slate' ? 'text-slate-700' : t.ink}`}>{label}</p>
+          <p className={`mt-1 font-extrabold tabular-nums text-[#0f2040] ${big ? 'text-3xl' : 'text-2xl'}`}>{value}</p>
+          {hint && <p className="mt-0.5 truncate text-[11px] text-slate-500">{hint}</p>}
+        </div>
+        <div className="flex shrink-0 flex-col items-center gap-2">
+          {icon && <span className={`grid place-items-center rounded-2xl ${big ? 'h-14 w-14 text-2xl' : 'h-12 w-12 text-xl'} ${t.chip}`}>{icon}</span>}
+          {to && <span className="grid h-6 w-6 place-items-center rounded-full bg-white text-xs text-slate-500 shadow-sm">‹</span>}
+        </div>
       </div>
-      {icon && <span className={`grid shrink-0 place-items-center rounded-2xl ${big ? 'h-14 w-14 text-2xl' : 'h-11 w-11 text-xl'} ${t.chip}`}>{icon}</span>}
-    </div>
+      {p != null && (
+        <div className="mt-2 flex items-center gap-2">
+          <div className="h-2 flex-1 rounded-full bg-white/80"><div className={`h-2 rounded-full ${tone === 'blue' ? 'bg-sky-500' : tone === 'amber' ? 'bg-amber-500' : 'bg-emerald-500'}`} style={{ width: `${p}%` }} /></div>
+          <span className={`text-[11px] font-extrabold tabular-nums ${t.ink}`}>{p}%</span>
+        </div>
+      )}
+    </>
   )
   const cls = `block rounded-2xl border p-3.5 transition ${t.card}`
   return to
@@ -143,27 +157,51 @@ function NewEmployeeCurves() {
       {curves === undefined ? <Loading /> : curves === null ? <Missing /> : curves.length === 0 ? (
         <p className="text-sm text-slate-500">ماكو فنيين أو ليدرية جدد بآخر ٩٠ يوم.</p>
       ) : (
-        <ul>
-          {curves.map((c) => {
-            const last = [...c.weeks].reverse().find((w) => w.complete)
-            return (
-              <li key={c.employeeId} className="my-1.5 flex flex-wrap items-center gap-3 rounded-xl border border-slate-100 bg-slate-50/50 px-3 py-2">
-                <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-sky-50 text-sm">👤</span>
-                <div className="min-w-0 flex-1">
-                  <p className="truncate font-bold text-slate-700">{c.name}{c.isLeader ? ' — ليدر' : ''}</p>
-                  <p className="text-[11px] text-slate-400">الأسبوع {fmt(Math.min(13, Math.ceil(c.daysIn / 7) || 1))} من ١٣ · يومه {fmt(c.daysIn)}</p>
-                </div>
-                <div className="flex items-center gap-4 text-center text-[11px]">
-                  <div><p className="text-slate-400">منجز</p><b className="text-base text-emerald-700">{fmt(last?.completed ?? 0)}</b></div>
-                  <div><p className="text-slate-400">توقف</p><b className={`text-base ${(last?.stops ?? 0) > 0 ? 'text-red-600' : 'text-slate-500'}`}>{fmt(last?.stops ?? 0)}</b></div>
-                  <div><p className="text-slate-400">شكوى</p><b className={`text-base ${(last?.complaints ?? 0) > 0 ? 'text-red-600' : 'text-slate-500'}`}>{fmt(last?.complaints ?? 0)}</b></div>
-                </div>
-                <span className={c.status === 'NEEDS_FOLLOWUP' ? 'text-red-500' : 'text-emerald-600'} title="نقاط كل أسبوع"><Sparkline values={c.weeks.map((w) => w.score)} /></span>
-                <span className={`rounded-full px-2.5 py-1 text-[11px] font-bold ${CURVE_TONE[c.status]}`} title={c.statusNote}>{c.status === 'NEEDS_FOLLOWUP' ? '❗ ' : c.status === 'OK' ? '✅ ' : ''}{CURVE_LABEL[c.status]}</span>
-              </li>
-            )
-          })}
-        </ul>
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[760px] text-sm">
+            <thead>
+              <tr className="border-b border-slate-100 text-[12px] text-slate-500">
+                <th className="py-2 text-right font-bold">#</th>
+                <th className="py-2 text-right font-bold">الموظف</th>
+                <th className="py-2 text-right font-bold">فترة المتابعة</th>
+                <th className="py-2 text-center font-bold">الحالة</th>
+                <th className="py-2 text-center font-bold">مؤشر الأداء (كل أسبوع)</th>
+                <th className="py-2 text-center font-bold"><i className="me-1 inline-block h-2 w-2 rounded-full bg-emerald-500" />منجز</th>
+                <th className="py-2 text-center font-bold"><i className="me-1 inline-block h-2 w-2 rounded-full bg-amber-500" />توقف</th>
+                <th className="py-2 text-center font-bold"><i className="me-1 inline-block h-2 w-2 rounded-full bg-red-500" />شكاوي</th>
+              </tr>
+            </thead>
+            <tbody>
+              {curves.map((c, i) => {
+                const last = [...c.weeks].reverse().find((w) => w.complete)
+                return (
+                  <tr key={c.employeeId} className="border-b border-slate-50 hover:bg-slate-50/60">
+                    <td className="py-2.5 text-xs font-bold text-slate-400">{String(i + 1).padStart(2, '0')}</td>
+                    <td className="py-2.5">
+                      <Link to={`/matrix/employee/${c.employeeId}`} className="flex items-center gap-2 font-extrabold text-[#0f2040] hover:underline">
+                        <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-sky-50 text-xs">👤</span>
+                        {c.name}{c.isLeader ? ' — ليدر' : ''}
+                      </Link>
+                    </td>
+                    <td className="py-2.5 text-xs">
+                      <p className="font-bold text-slate-700">منذ {fmt(c.daysIn)} يوم</p>
+                      <p className="text-[11px] text-slate-400">الأسبوع {fmt(Math.min(13, Math.ceil(c.daysIn / 7) || 1))} من ١٣</p>
+                    </td>
+                    <td className="py-2.5 text-center">
+                      <span className={`rounded-full px-2.5 py-1 text-[11px] font-bold ${CURVE_TONE[c.status]}`} title={c.statusNote}>{CURVE_LABEL[c.status]}</span>
+                    </td>
+                    <td className="py-2.5 text-center">
+                      <span className={`inline-block ${c.status === 'NEEDS_FOLLOWUP' ? 'text-red-500' : 'text-emerald-600'}`} title="نقاط كل أسبوع"><Sparkline values={c.weeks.map((w) => w.score)} /></span>
+                    </td>
+                    <td className="py-2.5 text-center text-base font-extrabold text-emerald-700 tabular-nums">{fmt(last?.completed ?? 0)}</td>
+                    <td className={`py-2.5 text-center text-base font-extrabold tabular-nums ${(last?.stops ?? 0) > 0 ? 'text-amber-600' : 'text-slate-400'}`}>{fmt(last?.stops ?? 0)}</td>
+                    <td className={`py-2.5 text-center text-base font-extrabold tabular-nums ${(last?.complaints ?? 0) > 0 ? 'text-red-600' : 'text-slate-400'}`}>{fmt(last?.complaints ?? 0)}</td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        </div>
       )}
       <p className="mt-2 text-[11px] text-slate-400">نقاط الأسبوع = منجز − ٢×توقف − ٣×شكوى. «يحتاج متابعة» = ٣ أسابيع مكتملة بلا تحسّن — للمتابعة والتدريب، مو عقوبة.</p>
     </Section>
@@ -191,11 +229,16 @@ function OnlineNow() {
         <p className="text-sm text-slate-500">محد فاتح النظام هسه.</p>
       ) : (
         <div className="space-y-2">
-          <div className="flex flex-wrap gap-1.5">
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
             {live.map((r) => (
-              <span key={r.id} className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1 text-xs font-bold text-emerald-800">
-                <i className="h-2 w-2 rounded-full bg-emerald-500" />{r.name}<span className="font-normal text-emerald-600">{mins(r.lastSeenAt) <= 1 ? 'هسه' : `قبل ${mins(r.lastSeenAt)} د`}</span>
-              </span>
+              <div key={r.id} className="flex items-center gap-2.5 rounded-2xl border border-emerald-100 bg-emerald-50/50 px-3 py-2.5">
+                <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-sky-50 text-sm">👤</span>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-extrabold text-[#0f2040]">{r.name}</p>
+                  <p className="truncate text-[11px] text-slate-500">{roleLabel(r.role)} · {mins(r.lastSeenAt) <= 1 ? 'هسه' : `قبل ${mins(r.lastSeenAt)} د`}</p>
+                </div>
+                <i className="h-2.5 w-2.5 shrink-0 rounded-full bg-emerald-500" />
+              </div>
             ))}
           </div>
           {recent.length > 0 && (
@@ -301,26 +344,15 @@ function FollowBoard() {
 
   return (
     <div className="space-y-4">
-      <Section title="🏢 الشركة بالأرقام">
-        {summary === undefined ? <Loading /> : summary === null ? <Missing /> : (
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-            <Stat big icon="👥" tone="violet" label="الموظفين" hint="موظف وموظفة" to="/employees" value={fmt(summary.employeeCount)} />
-            <Stat big icon="🤝" tone="blue" label="العملاء" hint="عميل بالنظام" to="/customers" value={fmt(summary.customerCount)} />
-            <Stat big icon="📦" tone="green" label="الحجوزات" hint="حجز بالنظام" to="/bookings" value={fmt(summary.bookingCount)} />
-            <Stat big icon="📡" tone="amber" label="أجهزة الجي بي اس" hint="جهاز مسجّل" to="/gps/devices" value={fmt(summary.gpsDeviceCount)} />
-          </div>
-        )}
-      </Section>
-
-      <Section title={`📅 متابعة اليوم · ${new Date().toLocaleDateString('ar-IQ', { timeZone: 'Asia/Baghdad', weekday: 'long', day: 'numeric', month: 'long' })}`} to="/missions" linkLabel="عرض كل المتابعات ←">
+      {/* تصميم (ع) 10-13: المؤشرات الرئيسية أول شي */}
+      <Section title="📊 المؤشرات الرئيسية اليوم" to="/missions" linkLabel="عرض كل المتابعات ←">
         {pulse === undefined ? <Loading /> : pulse === null ? <Missing /> : (
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
-            <Stat icon="📅" label="حجوزات اليوم" to="/missions" value={fmt(pulse.todayBookings)} hint={`أمس ${fmt(pulse.yesterdayBookings)}`} tone="blue" />
-            <Stat icon="✔️" label="كوادر بالميدان" to="/missions" value={fmt(pulse.crewInField)} tone="green" />
-            <Stat icon="📄" tone="blue" label="مهام مفتوحة" to="/missions" value={fmt(pulse.openMissions)} />
-            <Stat icon="⏳" label="متأخرة +٢٤ ساعة" to="/missions" value={fmt(pulse.overdueMissions)} tone={pulse.overdueMissions ? 'red' : 'slate'} />
-            <Stat icon="🕐" label="تنتظر تنسيق" to="/bookings?tab=coord" value={fmt(pulse.needsCoordination)} tone={pulse.needsCoordination ? 'amber' : 'slate'} />
-            <Stat icon="⚠️" label="شكاوى جديدة" to="/complaints" value={fmt(pulse.newComplaints)} tone={pulse.newComplaints ? 'red' : 'slate'} />
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+            <Stat big icon="📅" tone="blue" label="حجوزات اليوم" to="/missions" value={fmt(pulse.todayBookings)} hint={`أمس ${fmt(pulse.yesterdayBookings)}`} />
+            <Stat big icon="📄" tone="blue" label="المهام المفتوحة" to="/missions" value={fmt(pulse.openMissions)} hint="مهمة" />
+            <Stat big icon="⚠️" tone={pulse.newComplaints ? 'red' : 'slate'} label="الشكاوى الجديدة" to="/complaints" value={fmt(pulse.newComplaints)} hint="شكوى" />
+            <Stat big icon="⏳" tone={pulse.overdueMissions ? 'amber' : 'slate'} label="المتأخرات" to="/missions" value={fmt(pulse.overdueMissions)} hint="متأخرة +٢٤ ساعة" />
+            <Stat big icon="👷" tone="green" label="الكوادر بالميدان" to="/missions" value={fmt(pulse.crewInField)} hint="موظف" />
           </div>
         )}
       </Section>
@@ -328,16 +360,27 @@ function FollowBoard() {
       <div className="grid gap-4 lg:grid-cols-2">
         <Section title="💰 الحسابات" to="/finance">
           {finance === undefined ? <Loading /> : finance === null ? <Missing /> : (
-            <div className="grid grid-cols-2 gap-2">
-              {/* قرار (ع) 10-09: فلوس الحجوزات مفصولة عن فلوس المشاريع */}
-              <Stat icon="💳" label="المحصّل من الحجوزات" to="/finance" value={money(finance.bookingsCollected ?? finance.totalCollected)} hint={`المجموع ويا المشاريع ${money(finance.totalCollected)}`} tone="green" />
-              <Stat icon="🏗️" label="المحصّل من المشاريع" to="/project-payments" value={money(finance.projectsCollected ?? 0)} tone="green" />
-              <Stat icon="🪙" tone="blue" label="مدقّق" to="/daily-audit" value={money(finance.verifiedAmount)} hint={`${fmt(finance.verifiedCount)} حجز`} />
-              <Stat icon="⏰" label="بانتظار التدقيق" to="/daily-audit" value={money(finance.unverifiedAmount)} hint={`${fmt(finance.unverifiedCount)} حجز`} tone={finance.unverifiedCount ? 'amber' : 'slate'} />
+            <>
+            {(() => {
+              const booked = finance.bookingsCollected ?? finance.totalCollected
+              const projects = finance.projectsCollected ?? 0
+              const audited = finance.verifiedAmount + finance.unverifiedAmount
+              return (
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  {/* قرار (ع) 10-09: فلوس الحجوزات مفصولة عن فلوس المشاريع. النِّسب كلها من نفس الأرقام */}
+                  <Stat icon="💳" label="المقبوض من الحجوزات" to="/finance" value={money(booked)} hint={`نصيبها من كل المقبوض ${money(finance.totalCollected)}`} tone="green" pct={finance.totalCollected ? (booked / finance.totalCollected) * 100 : null} />
+                  <Stat icon="🏗️" label="المقبوض من المشاريع" to="/project-payments" value={money(projects)} hint={`نصيبها من كل المقبوض ${money(finance.totalCollected)}`} tone="green" pct={finance.totalCollected ? (projects / finance.totalCollected) * 100 : null} />
+                  <Stat icon="🪙" tone="blue" label="مدقّق" to="/daily-audit" value={money(finance.verifiedAmount)} hint={`${fmt(finance.verifiedCount)} حجز · من أصل ${money(audited)}`} pct={audited ? (finance.verifiedAmount / audited) * 100 : null} />
+                  <Stat icon="⏰" label="بانتظار التدقيق" to="/daily-audit" value={money(finance.unverifiedAmount)} hint={`عدد ${fmt(finance.unverifiedCount)} حجز`} tone={finance.unverifiedCount ? 'amber' : 'slate'} />
+                </div>
+              )
+            })()}
+            <div className="mt-3 grid grid-cols-3 gap-2">
               <Stat icon="🧾" label="المصاريف" to="/expenses" value={money(finance.totalExpenseValue)} hint={`${fmt(finance.pendingExpenses)} بانتظار الموافقة`} tone="red" />
               <Stat icon="✅" tone="violet" label="أنجزت اليوم" to="/bookings?tab=done" value={fmt(finance.todayCompleted)} hint={`انفتح اليوم ${fmt(finance.todayCreated)}`} />
               <Stat icon="⚙️" label="قيد التنفيذ" to="/bookings?tab=assigned" value={fmt(finance.inProgressCount)} hint={`مثبّتة ${fmt(finance.confirmedCount)} · معلّقة ${fmt(finance.pendingCount)}`} />
             </div>
+            </>
           )}
         </Section>
 
@@ -350,14 +393,21 @@ function FollowBoard() {
                 <Stat icon="💵" label="المبلغ" to="/stats-management" value={money(internal.inHouseAmount)} tone="green" />
               </div>
               {internal.services.length > 0 && (
-                <ul className="mt-3 space-y-1 text-sm">
-                  {internal.services.slice(0, 5).map((s) => (
-                    <li key={s.name} className="flex justify-between gap-2 text-slate-600">
-                      <span>{s.name}</span>
-                      <span className="tabular-nums text-slate-500">{fmt(s.count)} · {money(s.amount)}</span>
-                    </li>
-                  ))}
-                </ul>
+                <div className="mt-4">
+                  <p className="mb-2 text-sm font-extrabold text-[#0f2040]">☰ تفاصيل سريعة</p>
+                  <ul className="space-y-1.5 text-sm">
+                    {internal.services.slice(0, 6).map((sv, i) => (
+                      <li key={sv.name}>
+                        <Link to="/stats-management" className="flex items-center gap-2 rounded-xl bg-slate-50 px-3 py-2 hover:bg-sky-50">
+                          <i className={`h-2.5 w-2.5 shrink-0 rounded-full ${['bg-sky-500', 'bg-violet-500', 'bg-amber-500', 'bg-emerald-500', 'bg-red-500', 'bg-slate-400'][i % 6]}`} />
+                          <span className="flex-1 font-bold text-slate-700">{sv.name}</span>
+                          <span className="tabular-nums text-slate-500">{fmt(sv.count)} · {money(sv.amount)}</span>
+                          <span className="grid h-6 w-6 place-items-center rounded-full bg-white text-xs text-slate-500 shadow-sm">‹</span>
+                        </Link>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
               )}
             </>
           )}
@@ -424,10 +474,11 @@ function FollowBoard() {
       <Section title="🕒 سجل الدوام اليوم" to="/attendance" linkLabel="سجل الدوام ←">
         {attendance === undefined ? <Loading /> : attendance === null ? <Missing /> : (
           <>
-            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-              <Stat icon="👥" tone="green" label="سجّلوا حضور اليوم" to="/attendance" value={fmt(present)} />
-              <Stat icon="🕘" label="بالدوام هسه" to="/attendance" value={fmt(activeNow)} tone="green" />
-              <Stat icon="🚪" tone="slate" label="طلعوا" to="/attendance" value={fmt(present - activeNow)} />
+            <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+              <Stat big icon="👥" tone="green" label="إجمالي الحضور اليوم" to="/attendance" value={fmt(present)} hint={summary ? `من ${fmt(summary.employeeCount)} موظف` : undefined} />
+              <Stat big icon="🕘" tone="blue" label="على الدوام هسه" to="/attendance" value={fmt(activeNow)} hint="مسجّل ولسه ما طلع" />
+              <Stat big icon="🚪" tone="amber" label="انصرفوا" to="/attendance" value={fmt(present - activeNow)} hint="سجّلوا وطلعوا" />
+              {summary && <Stat big icon="❌" tone="red" label="ما سجّلوا حضور" to="/attendance" value={fmt(Math.max(0, summary.employeeCount - present))} hint="من كل الموظفين (بيهم الإجازات والعطل)" />}
             </div>
             {present > 0 && (
               <div className="mt-3 flex flex-wrap items-center gap-1.5">
@@ -446,6 +497,26 @@ function FollowBoard() {
       </Section>
 
       <NewEmployeeCurves />
+
+      {/* ما موجودة بتصميم (ع) — نزلت جوّا لحد ما يقرر تبقى لو تنشال */}
+      <div className="grid gap-4 lg:grid-cols-2">
+      <Section title="🏢 الشركة بالأرقام (عام)">
+        {summary === undefined ? <Loading /> : summary === null ? <Missing /> : (
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-2">
+            <Stat icon="👥" tone="violet" label="الموظفين" hint="موظف وموظفة" to="/employees" value={fmt(summary.employeeCount)} />
+            <Stat icon="🤝" tone="blue" label="العملاء" hint="عميل بالنظام" to="/customers" value={fmt(summary.customerCount)} />
+            <Stat icon="📦" tone="green" label="الحجوزات" hint="حجز بالنظام" to="/bookings" value={fmt(summary.bookingCount)} />
+            <Stat icon="📡" tone="amber" label="أجهزة الجي بي اس" hint="جهاز مسجّل" to="/gps/devices" value={fmt(summary.gpsDeviceCount)} />
+          </div>
+        )}
+      </Section>
+
+        {pulse && (
+          <Section title="🕐 تنتظر تنسيق">
+            <Stat icon="🕐" label="حجوزات تنتظر تنسيق" to="/bookings?tab=coord" value={fmt(pulse.needsCoordination)} tone={pulse.needsCoordination ? 'amber' : 'slate'} />
+          </Section>
+        )}
+      </div>
     </div>
   )
 }

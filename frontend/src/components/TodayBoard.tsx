@@ -19,24 +19,32 @@ import { pollVisible } from '../utils/poll'
 
 const NUMBERS = 'tabular-nums'
 
-function StatCard({ icon, label, value, tone }: {
-  icon: string; label: string; value: React.ReactNode; tone: 'blue' | 'amber' | 'emerald' | 'violet'
+// تصميم (ع) 10-13: العنوان ملوّن فوگ، الرقم كبير، سطر تحته، الأيقونة
+// بمربع ملوّن، وسهم ‹ لمن البطاقة تودّي لتفاصيلها.
+function StatCard({ icon, label, value, tone, hint, to }: {
+  icon: string; label: string; value: React.ReactNode; tone: 'blue' | 'amber' | 'emerald' | 'violet'; hint?: string; to?: string
 }) {
   const tones = {
-    blue: 'border-sky-200 bg-sky-50/70 text-sky-800',
-    amber: 'border-amber-200 bg-amber-50/70 text-amber-800',
-    emerald: 'border-emerald-200 bg-emerald-50/70 text-emerald-800',
-    violet: 'border-violet-200 bg-violet-50/70 text-violet-800',
-  }
-  return (
-    <div className={`flex items-center justify-between rounded-2xl border px-4 py-3 ${tones[tone]}`}>
-      <span className="text-xl opacity-70">{icon}</span>
-      <div className="text-left">
-        <p className="text-[11px] font-bold opacity-80">{label}</p>
-        <p className={`text-2xl font-black leading-tight ${NUMBERS}`}>{value}</p>
+    blue: { card: 'border-sky-200 bg-sky-50/70', ink: 'text-sky-800', chip: 'bg-sky-100' },
+    amber: { card: 'border-amber-200 bg-amber-50/70', ink: 'text-amber-800', chip: 'bg-amber-100' },
+    emerald: { card: 'border-emerald-200 bg-emerald-50/70', ink: 'text-emerald-800', chip: 'bg-emerald-100' },
+    violet: { card: 'border-violet-200 bg-violet-50/70', ink: 'text-violet-800', chip: 'bg-violet-100' },
+  }[tone]
+  const body = (
+    <>
+      <div className="min-w-0 flex-1">
+        <p className={`text-[12px] font-extrabold ${tones.ink}`}>{label}</p>
+        <p className={`mt-0.5 text-3xl font-black leading-tight text-[#0f2040] ${NUMBERS}`}>{value}</p>
+        {hint && <p className="text-[11px] text-slate-500">{hint}</p>}
       </div>
-    </div>
+      <div className="flex flex-col items-center gap-2">
+        <span className={`grid h-11 w-11 place-items-center rounded-xl text-xl ${tones.chip}`}>{icon}</span>
+        {to && <span className="grid h-6 w-6 place-items-center rounded-full bg-white text-xs text-slate-500 shadow-sm">‹</span>}
+      </div>
+    </>
   )
+  const cls = `flex items-center justify-between gap-3 rounded-2xl border px-4 py-3 ${tones.card}`
+  return to ? <Link to={to} className={`${cls} transition hover:-translate-y-0.5 hover:shadow-md`}>{body}</Link> : <div className={cls}>{body}</div>
 }
 
 /** بطاقة شغل — تنضغط وتروح لمحطتها. */
@@ -168,11 +176,11 @@ export default function TodayBoard({ finance }: { finance?: FinanceSummary | nul
       <div>
         <h3 className="mb-2 text-sm font-extrabold text-[#0f2040]">📅 شنو صاير اليوم</h3>
         <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-          <StatCard icon="✨" label="حجوزات وصلت اليوم" value={d.newToday} tone="amber" />
-          <StatCard icon="🏁" label="خلّصوا اليوم" value={d.completedToday} tone="emerald" />
+          <StatCard icon="✨" label="حجوزات وصلت اليوم" value={d.newToday} tone="amber" hint="وصلت اليوم" to="/bookings" />
+          <StatCard icon="🏁" label="خلّصوا اليوم" value={d.completedToday} tone="emerald" hint="اكتمل العمل" to="/bookings?tab=done" />
           {/* ⚠️ نفس `d.inField` (حجوزات IN_PROGRESS) — تسمية بس، البيانات ما تغيّرت */}
-          <StatCard icon="🚚" label="بالطريق (الصيانة)" value={d.inField} tone="violet" />
-          <StatCard icon="🗓️" label="حجوزات اليوم" value={d.bookingsToday} tone="blue" />
+          <StatCard icon="🚚" label="بالطريق (الصيانة)" value={d.inField} tone="violet" hint="انطلق اليوم" to="/missions" />
+          <StatCard icon="🗓️" label="حجوزات اليوم" value={d.bookingsToday} tone="blue" hint="موعدها اليوم" to="/missions" />
         </div>
       </div>
 
@@ -190,12 +198,12 @@ export default function TodayBoard({ finance }: { finance?: FinanceSummary | nul
         <div className="mb-2.5 grid grid-cols-1 gap-2.5 sm:grid-cols-3">
           <StatCard icon="📈" label="نجاح الأسبوع"
             value={d.weekTotal > 0 ? `${Math.round((d.weekCompleted / d.weekTotal) * 100)}٪` : '—'}
-            tone="emerald" />
+            tone="emerald" hint={d.weekTotal > 0 ? `${d.weekCompleted} من ${d.weekTotal} هذا الأسبوع` : 'نسبة الإنجاز'} />
           {finance != null && (
             <StatCard icon="💵" label="تدقيق استلام المبالغ"
-              value={finance.unverifiedCount} tone="amber" />
+              value={finance.unverifiedCount} tone="amber" hint="معاملة تنتظر التدقيق" to="/daily-audit" />
           )}
-          <StatCard icon="🎯" label="عدد المهام لسه" value={totalWaiting} tone="blue" />
+          <StatCard icon="🎯" label="عدد المهام لسه" value={totalWaiting} tone="blue" hint="تنتظر تصرّف" />
         </div>
 
         {totalWaiting > 0 && (
