@@ -18,6 +18,8 @@ type MonitorActionHandler struct {
 	reviews *repository.MonitorReviewRepository
 	notif   *repository.NotificationRepository
 	tasks   *repository.ExtraTaskRepository
+	// Just يسجّل طلب التبرير حتى الموظف يجاوب والمراقب يحكم (ع 10-13)
+	Just *JustificationHandler
 }
 
 func NewMonitorActionHandler(r *repository.MonitorReviewRepository, n *repository.NotificationRepository, t *repository.ExtraTaskRepository) *MonitorActionHandler {
@@ -80,8 +82,14 @@ func (h *MonitorActionHandler) Act(w http.ResponseWriter, r *http.Request) {
 		if !needEmp() {
 			return
 		}
-		_ = h.notif.Create(empID, "monitor_justify", "📝 المراقب يطلب تبرير: "+what+". اكتب السبب لمسؤولك أو بملاحظة المهمة."+extra)
-		done = "انطلب تبرير من الموظف"
+		if h.Just != nil {
+			if err := h.Just.Request(row.ID, empID, me, what+extra); err != nil {
+				WriteError(w, http.StatusBadRequest, "تعذر تسجيل طلب التبرير")
+				return
+			}
+		}
+		_ = h.notif.Create(empID, "monitor_justify", "📝 المراقب يطلب تبرير: "+what+". اكتب عذرك — يطلعلك أول ما تفتح النظام."+extra)
+		done = "انطلب تبرير من الموظف — ردّه يوصلك بتبويب «التبريرات»"
 	case "FOLLOW_UP":
 		if !needEmp() {
 			return

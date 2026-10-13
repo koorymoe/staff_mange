@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { api, type MonitorReview, type MonitorStage } from '../api'
+import { api, type Justification, type MonitorReview, type MonitorStage } from '../api'
 import EntityIdentity from '../components/EntityIdentity'
 import { formatCustomerCode } from '../utils/identity'
 import BookingTimelineView from '../components/BookingTimeline'
@@ -58,6 +58,8 @@ export default function MonitorInboxPage({ embedded }: EmbeddedProps = {}) {
   const { employee, permissions } = useSession()
   const canDup = employee?.role === 'ADMIN' || employee?.actualRole === 'OWNER' || permissions.includes('duplicate_review')
   const [dupMode, setDupMode] = useState(false)
+  // (ع) 10-13: تبريرات الموظفين — ردودهم ترجع هنا والمراقب يحكم
+  const [justMode, setJustMode] = useState(false)
   const [showDone, setShowDone] = useState(false)
   const [ownerRole, setOwnerRole] = useState('')
   const [query, setQuery] = useState('')
@@ -161,12 +163,12 @@ export default function MonitorInboxPage({ embedded }: EmbeddedProps = {}) {
         {STAGES.map((st) => (
           <button
             key={st.key}
-            onClick={() => { setStage(st.key); setPage(1); setDupMode(false) }}
+            onClick={() => { setStage(st.key); setPage(1); setDupMode(false); setJustMode(false) }}
             title={st.hint}
             className={`rounded-lg border px-3 py-2 text-xs font-bold transition-colors ${
-              stage === st.key && !dupMode ? 'border-brand-600 bg-brand-600 text-white' : ''
+              stage === st.key && !dupMode && !justMode ? 'border-brand-600 bg-brand-600 text-white' : ''
             }`}
-            style={stage === st.key && !dupMode ? undefined : { borderColor: 'var(--bd-line)', backgroundColor: 'var(--sf-card)', color: 'var(--t-body)' }}
+            style={stage === st.key && !dupMode && !justMode ? undefined : { borderColor: 'var(--bd-line)', backgroundColor: 'var(--sf-card)', color: 'var(--t-body)' }}
           >
             {st.label}
             {counts[st.key] > 0 && (
@@ -177,16 +179,22 @@ export default function MonitorInboxPage({ embedded }: EmbeddedProps = {}) {
           </button>
         ))}
         {canDup && (
-          <button onClick={() => setDupMode(true)} title="حجوزات وزبائن مكررة — ماتركس يكتشفها كل ساعة"
+          <button onClick={() => { setDupMode(true); setJustMode(false) }} title="حجوزات وزبائن مكررة — ماتركس يكتشفها كل ساعة"
             className={`rounded-lg border px-3 py-2 text-xs font-bold transition-colors ${dupMode ? 'border-violet-600 bg-violet-600 text-white' : ''}`}
             style={dupMode ? undefined : { borderColor: 'var(--bd-line)', backgroundColor: 'var(--sf-card)', color: 'var(--t-body)' }}>
             🤖 تدقيق التكرار
           </button>
         )}
+        <button onClick={() => { setJustMode(true); setDupMode(false) }} title="ردود الموظفين على «طلب تبرير»"
+          className={`rounded-lg border px-3 py-2 text-xs font-bold transition-colors ${justMode ? 'border-amber-600 bg-amber-600 text-white' : ''}`}
+          style={justMode ? undefined : { borderColor: 'var(--bd-line)', backgroundColor: 'var(--sf-card)', color: 'var(--t-body)' }}>
+          📝 التبريرات
+        </button>
       </div>
 
-      {dupMode && <DuplicateReviewPage />}
-      <div className={dupMode ? 'hidden' : 'contents'}>
+      {dupMode && !justMode && <DuplicateReviewPage />}
+      {justMode && <JustificationsPanel />}
+      <div className={dupMode || justMode ? 'hidden' : 'contents'}>
       <SearchBar value={query} onChange={(v) => { setQuery(v); setPage(1) }} placeholder="ابحث بالعنوان أو الملخص أو صاحب الشغل...">
         <label className="flex items-center gap-1.5 text-xs font-bold" style={{ color: 'var(--t-body)' }}>
           <input type="checkbox" checked={showDone} onChange={(e) => { setShowDone(e.target.checked); setPage(1) }} />
@@ -410,6 +418,51 @@ function LateHistory({ late }: { late: NonNullable<MonitorReview['late']> }) {
 }
 
 // ═══ «اتخاذ إجراء» — تنبيه، طلب تبرير، متابعة، إحالة (بلا غرامة ولا نقاط) ═══
+// ═══ التبريرات — (ع) 10-13 ═══
+function JustificationsPanel() {
+  const [rows, setRows] = useState<Justification[] | null>(null)
+  const [notes, setNotes] = useState<Record<string, string>>({})
+  const [reload, setReload] = useState(0)
+  useEffect(() => { api.getJustifications().then(setRows).catch(() => setRows([])) }, [reload])
+  const decide = async (id: string, verdict: 'ACCEPTED' | 'REJECTED') => {
+    try { await api.decideJustification(id, verdict, notes[id] || ''); setReload((x) => x + 1) } catch (e) { alert(e instanceof Error ? e.message : 'تعذّر') }
+  }
+  if (!rows) return <p className="py-8 text-center text-slate-400">جاري التحميل…</p>
+  if (rows.length === 0) return <p className="py-8 text-center text-slate-500">ماكو طلبات تبرير بعد. اطلبها من «⚡ اتخاذ إجراء ← طلب تبرير».</p>
+  const waiting = rows.filter((r) => r.answeredAt && !r.verdict).length
+  const fmt = (s: string | null) => s ? new Date(s).toLocaleString('ar-IQ', { timeZone: 'Asia/Baghdad', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : ''
+  return (
+    <div className="space-y-2">
+      <p className="text-sm font-bold text-slate-600">ردود تنتظر حكمك: <b className="text-amber-700">{waiting}</b> · كل الطلبات (آخر ٦٠ يوم): {rows.length}</p>
+      {rows.map((r) => (
+        <div key={r.id} className={`rounded-xl border p-3 text-sm ${r.answeredAt && !r.verdict ? 'border-amber-300 bg-amber-50' : 'border-slate-200 bg-white'}`}>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <b className="text-[#0f2040]">{r.employeeName}</b>
+            <span className="text-[11px] text-slate-500">طلبه {r.monitorName || 'المراقب'} · {fmt(r.createdAt)}</span>
+          </div>
+          <p className="mt-1 text-slate-700">📝 {r.question}</p>
+          {!r.answeredAt
+            ? <p className="mt-2 text-xs font-bold text-slate-500">⏳ لسه الموظف ما رد</p>
+            : <p className="mt-2 rounded-lg bg-sky-50 px-3 py-2 text-sky-900">💬 عذره: «{r.answer}» <span className="text-[11px] text-slate-500">— {fmt(r.answeredAt)}</span></p>}
+          {r.verdict && (
+            <p className={`mt-2 text-xs font-bold ${r.verdict === 'ACCEPTED' ? 'text-emerald-700' : 'text-red-700'}`}>
+              {r.verdict === 'ACCEPTED' ? '✅ النتيجة: مقبول' : '❌ النتيجة: مرفوض'}{r.verdictNote ? ` — ${r.verdictNote}` : ''} · {fmt(r.decidedAt)}
+            </p>
+          )}
+          {r.answeredAt && !r.verdict && (
+            <div className="mt-2 flex flex-wrap items-center gap-2">
+              <input value={notes[r.id] ?? ''} onChange={(e) => setNotes((n) => ({ ...n, [r.id]: e.target.value }))} placeholder="ملاحظة للموظف (اختياري)"
+                className="min-w-[200px] flex-1 rounded-lg border border-slate-300 px-3 py-1.5 text-xs" />
+              <button onClick={() => void decide(r.id, 'ACCEPTED')} className="rounded-lg bg-emerald-700 px-3 py-1.5 text-xs font-bold text-white">✓ مقبول</button>
+              <button onClick={() => void decide(r.id, 'REJECTED')} className="rounded-lg bg-red-600 px-3 py-1.5 text-xs font-bold text-white">✗ مرفوض</button>
+            </div>
+          )}
+        </div>
+      ))}
+    </div>
+  )
+}
+
 const ACTIONS: { key: 'NOTIFY' | 'JUSTIFY' | 'FOLLOW_UP' | 'ESCALATE'; icon: string; label: string; confirm: string }[] = [
   { key: 'NOTIFY', icon: '🔔', label: 'تنبيه الموظف', confirm: 'ترسل تنبيه للموظف؟' },
   { key: 'JUSTIFY', icon: '📝', label: 'طلب تبرير', confirm: 'تطلب من الموظف يبرّر؟' },

@@ -2214,6 +2214,12 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	mux.Handle("GET /api/monitor-reviews", middleware.Chain(http.HandlerFunc(monitorReviewHandler.List), requireAuth, requireMonitor))
 	mux.Handle("GET /api/monitor-reviews/counts", middleware.Chain(http.HandlerFunc(monitorReviewHandler.Counts), requireAuth, requireMonitor))
 	monitorActionHandler := handler.NewMonitorActionHandler(monitorReviewRepo, notificationRepo, extraTaskRepo)
+	justHandler := handler.NewJustificationHandler(db, notificationRepo)
+	monitorActionHandler.Just = justHandler
+	mux.Handle("GET /api/justifications/mine", middleware.Chain(http.HandlerFunc(justHandler.Mine), requireAuth))
+	mux.Handle("POST /api/justifications/{id}/answer", middleware.Chain(http.HandlerFunc(justHandler.Answer), requireAuth))
+	mux.Handle("GET /api/justifications", middleware.Chain(http.HandlerFunc(justHandler.List), requireAuth, requireMonitor))
+	mux.Handle("POST /api/justifications/{id}/decide", middleware.Chain(http.HandlerFunc(justHandler.Decide), requireAuth, requireMonitor))
 	mux.Handle("POST /api/monitor-reviews/{id}/action", middleware.Chain(http.HandlerFunc(monitorActionHandler.Act), requireAuth, requireMonitor))
 	mux.Handle("POST /api/monitor-reviews/{id}/decide", middleware.Chain(http.HandlerFunc(monitorReviewHandler.Decide), requireAuth, requireMonitor))
 	// «منو فاتح النظام هسه» — المدير/المالك والمراقب.

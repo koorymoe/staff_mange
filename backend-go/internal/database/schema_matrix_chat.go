@@ -138,5 +138,25 @@ func matrixChatMigrations() []Migration {
 			CREATE INDEX IF NOT EXISTS matrix_courier_recipient ON "MatrixCourier" ("recipientId", "createdAt" DESC);
 			CREATE INDEX IF NOT EXISTS matrix_courier_sender ON "MatrixCourier" ("senderId", "createdAt" DESC);
 		`,
+	}, {
+		// (ع) 10-13: «طلب تبرير» من المراقب يروح للموظف نفسه، يكتب عذره،
+		// ويرجع للمراقب يحكم (مقبول/مرفوض) — والنتيجة تنحفظ وتوصل للموظف.
+		Version: "0353_monitor_justification",
+		SQL: `
+			CREATE TABLE IF NOT EXISTS "MonitorJustification" (
+				id TEXT PRIMARY KEY,
+				"reviewId" TEXT,
+				"employeeId" TEXT NOT NULL REFERENCES "Employee"(id) ON DELETE CASCADE,
+				"monitorId" TEXT REFERENCES "Employee"(id) ON DELETE SET NULL,
+				question TEXT NOT NULL,
+				answer TEXT,
+				"answeredAt" TIMESTAMP,
+				verdict TEXT,
+				"verdictNote" TEXT,
+				"decidedAt" TIMESTAMP,
+				"createdAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+			);
+			CREATE INDEX IF NOT EXISTS monitor_justification_emp ON "MonitorJustification" ("employeeId", "createdAt" DESC);
+		`,
 	}}
 }

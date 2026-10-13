@@ -4971,6 +4971,12 @@ export const api = {
   getAttendanceClaims: (status = 'PENDING') => request<AttendanceClaim[]>(`/attendance/claims?status=${status}`),
   decideAttendanceClaim: (id: string, approve: boolean) => request<{ ok: boolean }>(`/attendance/claims/${id}/decide`, { method: 'POST', body: JSON.stringify({ approve }) }),
   getProjectPayments: (projectId: string) => request<ProjectPaymentsState>(`/projects/${projectId}/payments`),
+  // تبرير الموظف (ع 10-13)
+  getMyJustifications: () => request<Justification[]>('/justifications/mine'),
+  answerJustification: (id: string, answer: string) => request<{ ok: boolean }>(`/justifications/${id}/answer`, { method: 'POST', body: JSON.stringify({ answer }) }),
+  getJustifications: () => request<Justification[]>('/justifications'),
+  decideJustification: (id: string, verdict: 'ACCEPTED' | 'REJECTED', note: string) =>
+    request<{ ok: boolean }>(`/justifications/${id}/decide`, { method: 'POST', body: JSON.stringify({ verdict, note }) }),
   // سجل الدفعات + تصحيح المبلغ — للمالك (ع 10-13)
   getPaymentAudit: (by = '', since = '') => request<PaymentAuditRow[]>(`/project-payments/audit?by=${encodeURIComponent(by)}&since=${encodeURIComponent(since)}`),
   setPaymentAmount: (id: string, amount: number, reason: string) =>
@@ -5710,6 +5716,11 @@ export interface MatrixDecisions {
 
 // عين ماتركس — حالة الموظف نفسه.
 export interface MatrixWorkload { key: string; label: string; done: number; left: number; route: string; verb: string; codes?: string[]; links?: { label: string; to: string }[] }
+export interface Justification {
+  id: string; employeeId: string; employeeName: string; monitorName: string | null
+  question: string; answer: string | null; answeredAt: string | null
+  verdict: 'ACCEPTED' | 'REJECTED' | null; verdictNote: string | null; decidedAt: string | null; createdAt: string
+}
 export interface PaymentAuditRow {
   id: string; projectId: string; projectCode: string; projectName: string
   contractValue: number | null; received: number; amount: number; paidAt: string
