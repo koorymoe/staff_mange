@@ -1871,6 +1871,37 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	// HR_COORDINATOR. يعني تنطي موظف صلاحية إدارة الكوادر فينفتحله
 	// معاها تعديل برامج التدريب بلا ما تقصد.
 	mux.Handle("GET /api/training-programs", middleware.Chain(http.HandlerFunc(trainingProgramHandler.List), requireAuth))
+	// ═══ مركز التدريب — قرار (ع) 10-13 ═══
+	trainingCenter := handler.NewTrainingCenterHandler(db)
+	tcRoute := func(pattern string, f http.HandlerFunc, manage bool) {
+		if manage {
+			mux.Handle(pattern, middleware.Chain(f, requireAuth, requireTrainingManage))
+		} else {
+			mux.Handle(pattern, middleware.Chain(f, requireAuth))
+		}
+	}
+	tcRoute("GET /api/training-center/insights", trainingCenter.Insights, true)
+	tcRoute("GET /api/training-center/tracks", trainingCenter.Tracks, true)
+	tcRoute("GET /api/training-center/curriculum", trainingCenter.Curriculum, true)
+	tcRoute("POST /api/training-center/curriculum", trainingCenter.AddCurriculum, true)
+	tcRoute("DELETE /api/training-center/curriculum/{id}", trainingCenter.DeleteCurriculum, true)
+	tcRoute("GET /api/training-center/questions", trainingCenter.Questions, true)
+	tcRoute("POST /api/training-center/questions", trainingCenter.AddQuestion, true)
+	tcRoute("POST /api/training-center/questions/generate", trainingCenter.GenerateQuestions, true)
+	tcRoute("POST /api/training-center/questions/{id}/approve", trainingCenter.ApproveQuestion, true)
+	tcRoute("DELETE /api/training-center/questions/{id}", trainingCenter.DeleteQuestion, true)
+	tcRoute("POST /api/training-center/exams", trainingCenter.CreateExam, true)
+	tcRoute("GET /api/training-center/exams/report", trainingCenter.ExamReport, true)
+	tcRoute("GET /api/training-center/plans", trainingCenter.Plans, true)
+	tcRoute("POST /api/training-center/plans", trainingCenter.AddPlan, true)
+	tcRoute("POST /api/training-center/plans/{id}/inspect", trainingCenter.InspectPlan, true)
+	tcRoute("DELETE /api/training-center/plans/{id}", trainingCenter.DeletePlan, true)
+	tcRoute("GET /api/training-center/mentors", trainingCenter.Mentors, true)
+	tcRoute("PUT /api/training-center/mentors/{id}", trainingCenter.SetMentor, true)
+	tcRoute("GET /api/training-center/my-exam", trainingCenter.MyExam, false)
+	tcRoute("POST /api/training-center/my-exam/start", trainingCenter.StartExam, false)
+	tcRoute("POST /api/training-center/my-exam/submit", trainingCenter.SubmitExam, false)
+
 	mux.Handle("POST /api/training-programs", middleware.Chain(http.HandlerFunc(trainingProgramHandler.Create), requireAuth, requireTrainingManage))
 	mux.Handle("PUT /api/training-programs/{id}", middleware.Chain(http.HandlerFunc(trainingProgramHandler.Update), requireAuth, requireTrainingManage))
 	mux.Handle("PUT /api/training-programs/{id}/complete", middleware.Chain(http.HandlerFunc(trainingProgramHandler.Complete), requireAuth, requireTrainingManage))
@@ -2395,6 +2426,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 			Scores: matrixScoreService.Board, ScoreRepo: matrixScoreService.Repo(),
 		})
 		matrixCommandService.SetAgent(agent)
+		trainingCenter.Agent = agent
 		// ☀️ رسالة الصبح (٨ص) + 🏆 إشادة الأسبوع (الخميس) — قرار (ع) 10-11
 		morningService := service.NewMatrixMorningService(db, aiRepo, notificationRepo, announcementRepo, agent)
 		safeguard.Loop("رسالة الصبح وإشادة الأسبوع", 3*time.Minute, 15*time.Minute, func() {

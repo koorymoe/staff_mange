@@ -13,6 +13,7 @@ import AttendanceGate from './AttendanceGate'
 import LastBookingPrompt from './LastBookingPrompt'
 import AutoCheckoutPrompt from './AutoCheckoutPrompt'
 import JustificationPrompt from './JustificationPrompt'
+import MyExamBanner from './MyExamBanner'
 import ErrorBoundary from './ErrorBoundary'
 import { api, type Employee } from '../api'
 import { SessionContext } from '../session'
@@ -780,6 +781,7 @@ export default function Layout() {
 
           {/* Content */}
           <main className="min-w-0 flex-1 overflow-x-hidden overflow-y-auto p-3 sm:p-5 lg:p-8">
+            <MyExamBanner />
             {/* خطأ بشاشة وحدة يبقى بيها — القائمة تبقى شغّالة */}
             <ErrorBoundary inline key={location.pathname}>
               {/* حارس الرابط: نفس قرار القائمة — الشاشة الي ما تطلعلك بالقائمة ما تنفتح بالرابط */}

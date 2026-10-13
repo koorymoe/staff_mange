@@ -20,7 +20,7 @@ const STEPS = ['التسجيل', 'النظرية', 'عملي', 'تقييم', 'ش
 
 const iqd = (n: number) => `${Math.round(n || 0).toLocaleString('en-US')} د.ع`
 
-export default function TrainingPrograms() {
+export default function TrainingPrograms({ embedded = false }: { embedded?: boolean } = {}) {
   const { employee, permissions } = useSession()
   const canManage =
     employee?.role === 'ADMIN' || employee?.actualRole === 'OWNER' || employee?.role === 'HR_COORDINATOR' ||
@@ -56,12 +56,12 @@ export default function TrainingPrograms() {
 
   return (
     <div className="space-y-4">
-      <div className="rounded-2xl bg-gradient-to-l from-lime-600 to-emerald-600 p-5 text-white shadow-lg">
+      {!embedded && <div className="rounded-2xl bg-gradient-to-l from-[#0f2040] to-[#2c5aad] p-5 text-white shadow-lg">
         <h1 className="text-xl font-extrabold">🎓 التدريب والتطوير المهني</h1>
         <p className="mt-1 text-xs opacity-90">
           برامج تدريبية بمهارات مستهدفة — وإكمال البرنامج يمنح مهاراته للمتدربين تلقائياً
         </p>
-      </div>
+      </div>}
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <Box label="إجمالي البرامج" value={counts.total} tone="lime" />
@@ -88,7 +88,7 @@ export default function TrainingPrograms() {
           </div>
           {canManage && (
             <div className="flex items-end">
-              <button onClick={() => setEditing('new')} className="w-full rounded-xl bg-gradient-to-l from-lime-600 to-emerald-600 px-4 py-2.5 text-sm font-bold text-white">
+              <button onClick={() => setEditing('new')} className="w-full rounded-xl bg-gradient-to-l from-[#0f2040] to-[#2c5aad] px-4 py-2.5 text-sm font-bold text-white">
                 + برنامج تدريبي جديد
               </button>
             </div>
@@ -118,7 +118,7 @@ export default function TrainingPrograms() {
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         {shown.map((p) => (
           <div key={p.id} className="overflow-hidden rounded-2xl bg-white shadow-sm">
-            <div className="flex items-center justify-between bg-gradient-to-l from-lime-600 to-emerald-600 p-4 text-white">
+            <div className="flex items-center justify-between bg-gradient-to-l from-[#0f2040] to-[#2c5aad] p-4 text-white">
               <StatusBadge status={p.status} />
               <div className="text-right">
                 <div className="text-base font-black">{p.name}</div>
@@ -160,16 +160,16 @@ export default function TrainingPrograms() {
                   return (
                     <div key={label} className="flex flex-1 flex-col items-center">
                       <div className={`flex h-7 w-7 items-center justify-center rounded-full text-[11px] font-black ${
-                        done ? 'bg-emerald-500 text-white' : 'border-2 border-slate-200 bg-white text-slate-400'
+                        done ? 'bg-[#2c5aad] text-white' : 'border-2 border-slate-200 bg-white text-slate-400'
                       }`}>{done ? '✓' : i + 1}</div>
-                      <div className={`mt-1 text-[9px] font-bold ${done ? 'text-emerald-600' : 'text-slate-400'}`}>{label}</div>
+                      <div className={`mt-1 text-[9px] font-bold ${done ? 'text-[#2c5aad]' : 'text-slate-400'}`}>{label}</div>
                     </div>
                   )
                 })}
               </div>
 
               <div className="mb-3 h-2 overflow-hidden rounded-full bg-slate-100">
-                <div className="h-full rounded-full bg-emerald-500" style={{ width: `${p.progress}%` }} />
+                <div className="h-full rounded-full bg-[#2c5aad]" style={{ width: `${p.progress}%` }} />
               </div>
 
               <div className="flex flex-wrap justify-between gap-2 text-[11px] text-slate-500">
@@ -233,7 +233,7 @@ function StatusBadge({ status }: { status: string }) {
 
 function Box({ label, value, tone }: { label: string; value: number; tone: string }) {
   const tones: Record<string, string> = {
-    lime: 'border-lime-200 bg-lime-50 text-lime-700',
+    lime: 'border-sky-200 bg-sky-50 text-[#0f2040]',
     blue: 'border-blue-200 bg-blue-50 text-blue-700',
     emerald: 'border-emerald-200 bg-emerald-50 text-emerald-700',
     amber: 'border-amber-200 bg-amber-50 text-amber-700',
@@ -308,7 +308,7 @@ function ProgramForm({
   }
 
   return (
-    <div className="rounded-2xl border-2 border-lime-400 bg-white p-5 shadow-lg">
+    <div className="rounded-2xl border-2 border-[#2c5aad]/40 bg-white p-5 shadow-lg">
       <h3 className="mb-4 text-base font-extrabold text-[#0f2040]">
         {program ? '✏️ تعديل البرنامج' : '➕ برنامج تدريبي جديد'}
       </h3>
@@ -417,7 +417,7 @@ function ProgramForm({
       </div>
 
       <div className="mt-4 flex items-center gap-2">
-        <button onClick={save} disabled={busy} className="rounded-lg bg-gradient-to-l from-lime-600 to-emerald-600 px-5 py-2 text-sm font-bold text-white disabled:opacity-50">
+        <button onClick={save} disabled={busy} className="rounded-lg bg-gradient-to-l from-[#0f2040] to-[#2c5aad] px-5 py-2 text-sm font-bold text-white disabled:opacity-50">
           {busy ? 'جاري الحفظ...' : 'حفظ البرنامج'}
         </button>
         <button onClick={onClose} className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-bold text-slate-600">إلغاء</button>

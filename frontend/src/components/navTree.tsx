@@ -669,6 +669,8 @@ export const navItems: NavItem[] = [
     to: '/unit-training', label: 'وحدة التدريب', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M22 10 12 5 2 10l10 5 10-5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg>,
     unitPermission: 'unit_training',
     children: [
+      // (ع) 10-13: مركز التدريب — ماتركس يحدد الواجب تدريبهم، الخطة، الاختبارات
+      { to: '/training-center', label: '🧠 مركز التدريب', icon: <></>, roles: ['ADMIN', 'OWNER'], permission: 'training_manage' },
       { to: '/training-programs', label: '🎓 برامج التدريب', icon: <></>, roles: ['ADMIN', 'OWNER'], permission: 'training_manage' },
     ],
   },

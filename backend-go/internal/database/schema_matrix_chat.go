@@ -158,5 +158,42 @@ func matrixChatMigrations() []Migration {
 			);
 			CREATE INDEX IF NOT EXISTS monitor_justification_emp ON "MonitorJustification" ("employeeId", "createdAt" DESC);
 		`,
+	}, {
+		// (ع) 10-13: مركز التدريب — المنهج لكل دور، بنك أسئلة (يدوي + ماتركس
+		// يقترح والمدرب يعتمد)، اختبار شهري لكل دور يسويه الموظف من حسابه،
+		// خطة شهرية ويا تفتيش، ومشرف لكل موظف جديد. بلا خصم نقاط.
+		Version: "0354_training_center",
+		SQL: `
+			CREATE TABLE IF NOT EXISTS "TrainingCurriculum" (
+				id TEXT PRIMARY KEY, role TEXT NOT NULL, title TEXT NOT NULL, details TEXT,
+				ord INTEGER NOT NULL DEFAULT 0, "createdAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP);
+			CREATE TABLE IF NOT EXISTS "TrainingQuestion" (
+				id TEXT PRIMARY KEY, role TEXT NOT NULL, "curriculumId" TEXT REFERENCES "TrainingCurriculum"(id) ON DELETE SET NULL,
+				text TEXT NOT NULL, options TEXT[] NOT NULL, correct INTEGER NOT NULL,
+				approved BOOLEAN NOT NULL DEFAULT false, source TEXT NOT NULL DEFAULT 'MANUAL',
+				"createdAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP);
+			CREATE TABLE IF NOT EXISTS "TrainingExam" (
+				id TEXT PRIMARY KEY, role TEXT NOT NULL, month TEXT NOT NULL, title TEXT NOT NULL,
+				"questionIds" TEXT[] NOT NULL, minutes INTEGER NOT NULL DEFAULT 15, "passPct" INTEGER NOT NULL DEFAULT 60,
+				"createdById" TEXT REFERENCES "Employee"(id) ON DELETE SET NULL,
+				"createdAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, UNIQUE (role, month));
+			CREATE TABLE IF NOT EXISTS "TrainingAttempt" (
+				id TEXT PRIMARY KEY, "examId" TEXT NOT NULL REFERENCES "TrainingExam"(id) ON DELETE CASCADE,
+				"employeeId" TEXT NOT NULL REFERENCES "Employee"(id) ON DELETE CASCADE,
+				answers INTEGER[], score INTEGER, total INTEGER,
+				"startedAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, "finishedAt" TIMESTAMP,
+				UNIQUE ("examId", "employeeId"));
+			CREATE TABLE IF NOT EXISTS "TrainingPlan" (
+				id TEXT PRIMARY KEY, month TEXT NOT NULL, title TEXT NOT NULL, role TEXT,
+				"employeeIds" TEXT[] NOT NULL DEFAULT '{}', "plannedDate" DATE,
+				"trainerId" TEXT REFERENCES "Employee"(id) ON DELETE SET NULL,
+				"inspectorId" TEXT REFERENCES "Employee"(id) ON DELETE SET NULL,
+				"inspectionResult" TEXT, "inspectionNotes" TEXT, "inspectedAt" TIMESTAMP,
+				"createdAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP);
+			CREATE TABLE IF NOT EXISTS "TrainingMentor" (
+				"employeeId" TEXT PRIMARY KEY REFERENCES "Employee"(id) ON DELETE CASCADE,
+				"mentorId" TEXT REFERENCES "Employee"(id) ON DELETE SET NULL,
+				notes TEXT, "updatedAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP);
+		`,
 	}}
 }

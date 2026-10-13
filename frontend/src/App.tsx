@@ -44,6 +44,8 @@ const RolesGuidePage = lazy(() => import('./pages/RolesGuidePage'))
 // الطلبات — كتاب رسمي من الموظف للإدارة، متاح لكل الموظفين
 const LettersPage = lazy(() => import('./pages/LettersPage'))
 const TrainingPrograms = lazy(() => import('./pages/TrainingPrograms'))
+const TrainingCenterPage = lazy(() => import('./pages/TrainingCenterPage'))
+const MyExamPage = lazy(() => import('./pages/MyExamPage'))
 const BookingsHub = lazy(() => import('./pages/BookingsHub'))
 const MyTasks = lazy(() => import('./pages/MyTasks'))
 const MyHandoversPage = lazy(() => import('./pages/MyHandoversPage'))
@@ -222,6 +224,8 @@ function App() {
           <Route path="letters" element={<LettersPage />} />
           <Route path="solar" element={<SolarPage />} />
           <Route path="training-programs" element={<TrainingPrograms />} />
+          <Route path="training-center" element={<TrainingCenterPage />} />
+          <Route path="my-exam" element={<MyExamPage />} />
           {/* «الحجوزات» صارت مدخل واحد بثلاثة خيارات: حجوزات اليوم ·
               تنسيق الحجوزات · حجز جديد. والمسارات القديمة باقية شغّالة
               لمن عنده رابط محفوظ أو إشعار قديم يوديه لها. */}

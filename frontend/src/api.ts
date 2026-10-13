@@ -4971,6 +4971,28 @@ export const api = {
   getAttendanceClaims: (status = 'PENDING') => request<AttendanceClaim[]>(`/attendance/claims?status=${status}`),
   decideAttendanceClaim: (id: string, approve: boolean) => request<{ ok: boolean }>(`/attendance/claims/${id}/decide`, { method: 'POST', body: JSON.stringify({ approve }) }),
   getProjectPayments: (projectId: string) => request<ProjectPaymentsState>(`/projects/${projectId}/payments`),
+  // ═══ مركز التدريب (ع 10-13) ═══
+  tcInsights: () => request<TcInsight[]>('/training-center/insights'),
+  tcTracks: () => request<{ id: string; name: string; division: string; materials: number; skills: number; masters: number; assigned: number; programs: number }[]>('/training-center/tracks'),
+  tcCurriculum: () => request<TcCurriculum[]>('/training-center/curriculum'),
+  tcAddCurriculum: (b: { role: string; title: string; details?: string }) => request<TcCurriculum[]>('/training-center/curriculum', { method: 'POST', body: JSON.stringify(b) }),
+  tcDeleteCurriculum: (id: string) => request<TcCurriculum[]>(`/training-center/curriculum/${id}`, { method: 'DELETE' }),
+  tcQuestions: (role = '') => request<TcQuestion[]>(`/training-center/questions?role=${encodeURIComponent(role)}`),
+  tcAddQuestion: (b: { role: string; text: string; options: string[]; correct: number }) => request<{ ok: boolean }>('/training-center/questions', { method: 'POST', body: JSON.stringify(b) }),
+  tcGenerateQuestions: (role: string, roleLabel: string, count: number) => request<{ added: number }>('/training-center/questions/generate', { method: 'POST', body: JSON.stringify({ role, roleLabel, count }) }),
+  tcApproveQuestion: (id: string) => request<{ ok: boolean }>(`/training-center/questions/${id}/approve`, { method: 'POST' }),
+  tcDeleteQuestion: (id: string) => request<{ ok: boolean }>(`/training-center/questions/${id}`, { method: 'DELETE' }),
+  tcCreateExam: (b: { role: string; title?: string; count: number; minutes: number }) => request<{ questions: number }>('/training-center/exams', { method: 'POST', body: JSON.stringify(b) }),
+  tcExamReport: (month = '') => request<TcExamReportRow[]>(`/training-center/exams/report?month=${month}`),
+  tcPlans: (month = '') => request<TcPlan[]>(`/training-center/plans?month=${month}`),
+  tcAddPlan: (b: { title: string; role?: string; employeeIds: string[]; plannedDate?: string; trainerId?: string; month?: string }) => request<{ ok: boolean }>('/training-center/plans', { method: 'POST', body: JSON.stringify(b) }),
+  tcInspectPlan: (id: string, result: 'DONE' | 'PARTIAL' | 'NOT_DONE', notes: string) => request<{ ok: boolean }>(`/training-center/plans/${id}/inspect`, { method: 'POST', body: JSON.stringify({ result, notes }) }),
+  tcDeletePlan: (id: string) => request<{ ok: boolean }>(`/training-center/plans/${id}`, { method: 'DELETE' }),
+  tcMentors: () => request<{ employeeId: string; mentorId: string | null; mentorName: string | null; notes: string | null }[]>('/training-center/mentors'),
+  tcSetMentor: (employeeId: string, mentorId: string, notes: string) => request<{ ok: boolean }>(`/training-center/mentors/${employeeId}`, { method: 'PUT', body: JSON.stringify({ mentorId, notes }) }),
+  tcMyExam: () => request<TcMyExam>('/training-center/my-exam'),
+  tcStartExam: () => request<TcMyExam>('/training-center/my-exam/start', { method: 'POST' }),
+  tcSubmitExam: (answers: Record<string, number>) => request<{ score: number; total: number }>('/training-center/my-exam/submit', { method: 'POST', body: JSON.stringify({ answers }) }),
   // فترة الحجز وموظفها (ع 10-13)
   getPendingShifts: () => request<{ bookingId: string; shift: 'MORNING' | 'EVENING'; owners: { id: string; name: string; strikes: number }[] }[]>('/coordination-alerts/shifts'),
   // تبرير الموظف (ع 10-13)
@@ -5718,6 +5740,24 @@ export interface MatrixDecisions {
 
 // عين ماتركس — حالة الموظف نفسه.
 export interface MatrixWorkload { key: string; label: string; done: number; left: number; route: string; verb: string; codes?: string[]; links?: { label: string; to: string }[] }
+export interface TcInsight {
+  id: string; name: string; role: string; daysIn: number; jobs: number
+  avgMinutes: number | null; teamMinutes: number | null; complaints: number; stops: number; partials: number
+  deductions: number; skills: number; lastExamPct: number | null; score: number; reasons: string[]; strengths: string[]
+}
+export interface TcCurriculum { id: string; role: string; title: string; details: string | null; ord: number }
+export interface TcQuestion { id: string; role: string; text: string; options: string[]; correct: number; approved: boolean; source: 'MANUAL' | 'AI' }
+export interface TcExamReportRow { examId: string; role: string; month: string; title: string; passPct: number; employeeId: string; employeeName: string; score: number | null; total: number | null; finishedAt: string | null }
+export interface TcPlan {
+  id: string; month: string; title: string; role: string | null; employeeIds: string[]; employeeNames: string[]
+  plannedDate: string | null; trainerId: string | null; trainerName: string | null; inspectorName: string | null
+  inspectionResult: 'DONE' | 'PARTIAL' | 'NOT_DONE' | null; inspectionNotes: string | null; inspectedAt: string | null
+}
+export interface TcMyExam {
+  exam: { id: string; title: string; minutes: number; passPct: number; count: number } | null
+  questions?: { id: string; text: string; options: string[] }[]
+  attempt?: { score: number | null; total: number | null; finishedAt: string | null; startedAt: string }
+}
 export interface Justification {
   id: string; employeeId: string; employeeName: string; monitorName: string | null
   question: string; answer: string | null; answeredAt: string | null
