@@ -217,7 +217,7 @@ export const navItems: NavItem[] = [
       //
       // ⚠️ المالك ومدير النظام يبقون بالدور — هما فوق نظام الصلاحيات
       // أصلاً، والخادم يعطيهما كل الشفتات (routesFor).
-      { to: '/leaves', label: '🗓️ طلبات الإجازات', icon: <></>, roles: ['ADMIN', 'OWNER'], anyPermission: ['leave_approve_morning', 'leave_approve_evening'] },
+      { to: '/leaves', label: '🗓️ طلبات الإجازات', icon: <></>, roles: ['ADMIN', 'OWNER'], anyPermission: ['leave_approve_morning', 'leave_approve_evening'], hideForRoles: ['ADMIN', 'OWNER'] },
           // ⚠️ ADMIN بس — StatsPage.tsx نفسها تقفل على غير ADMIN
           // (role !== 'ADMIN')، وكان المراقب يشوف الرابط هنا ويفتح
           // دائماً على «غير مصرح». والخادم (`GET /api/stats`) صار
@@ -374,7 +374,7 @@ export const navItems: NavItem[] = [
           { to: '/project-work-types', label: 'إعدادات: أنواع الأعمال', icon: <></>, permission: 'project_management' },
           { to: '/project-statistics', label: '📊 إحصائيات المشاريع', icon: <></>, permission: 'project_management' },
       { to: '/checklists', label: 'الكشوفات', icon: <></>, permission: 'project_management' },
-          { to: '/staff-requests', label: 'طلبات الكادر', icon: <></>, permission: 'project_management' },
+          { to: '/staff-requests', label: 'طلبات الكادر', icon: <></>, permission: 'project_management', hideForRoles: ['ADMIN', 'OWNER'] },
           { to: '/quotations', label: 'عروض الأسعار', icon: <></>, anyPermission: ['quotation_create', 'quotation_edit_own', 'quotation_manage_all', 'quotation_system'] },
           { to: '/products', label: '📦 المنتجات', icon: <></>, anyPermission: ['quotation_manage_all', 'quotation_system', 'content_technician', 'quotation_create'] },
         ],
@@ -614,11 +614,9 @@ export const navItems: NavItem[] = [
       // البنود المنقولة strict: صلاحية الوحدة ما تفتحها، كل وحدة بحارسها.
       { to: '/nav-hr-staff', label: '👥 الموظفين', icon: <></>, divider: true, plain: true },
       { strict: true, to: '/staff-management-desk', label: 'إدارة الموظفين', icon: <></>, roles: ['ADMIN', 'MONITOR'], anyPermission: ['staff_management', 'kpi_management', 'performance_review', 'staff_requests'] },
-      { to: '/staff-requests', label: 'طلبات الكادر', icon: <></>, roles: ['ADMIN', 'HR_COORDINATOR'], unlockPermission: 'staff_requests' },
       { to: '/nav-hr-time', label: '🕘 الدوام', icon: <></>, divider: true, plain: true },
       // نفس حارس GET /api/work-schedule: الأدوار الثلاثة، أو صلاحية الجدول أو إدارة الكوادر.
       { to: '/work-schedule', label: '🕘 جدول الدوام', icon: <></>, roles: ['ADMIN', 'HR_COORDINATOR', 'MONITOR'], unlockAnyPermission: ['work_schedule_manage', 'staff_management'] },
-      { strict: true, to: '/leaves', label: '🗓️ طلبات الإجازات', icon: <></>, roles: ['ADMIN', 'OWNER'], anyPermission: ['leave_approve_morning', 'leave_approve_evening'] },
       // نفس حارس /api/remote-hours: المدير أو صلاحية «تسجيل ساعات العمل من البيت».
       { monitorMenuHide: true, to: '/remote-hours', label: '🏠 ساعات العمل من البيت', icon: <></>, roles: ['ADMIN'], anyPermission: ['remote_hours_manage', 'remote_hours_self'] },
       { to: '/nav-hr-score', label: '🏅 التقييم', icon: <></>, divider: true, plain: true },
@@ -1087,6 +1085,8 @@ const SELF_SCOPED: Record<string, RouteRule> = {
   '/departments': { roles: ['ADMIN'], anyPermission: ['departments_manage'] },
   // (ع) 10-13: الصلاحيات صارت تبويب جوّا «إدارة الموظفين»
   '/permissions': { roles: ['ADMIN'] },
+  // (ع) 10-13: طلبات الكادر تبويب بإدارة الموظفين، والإجازات تبويب بجدول الدوام
+  '/staff-requests': { roles: ['ADMIN', 'HR_COORDINATOR'], anyPermission: ['staff_requests'] },
   // فاتورة الحجز من «مهامي» — نفس requireLeaderBasket بالخادم.
   '/leader-invoices/new': { leader: true, anyPermission: ['leader_basket', 'invoice_gps', 'invoice_dashcam', 'invoice_internal', 'execution_cost', 'finance', 'finance_audit'] },
 }

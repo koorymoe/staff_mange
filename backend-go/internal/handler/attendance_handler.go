@@ -18,6 +18,8 @@ import (
 type AttendanceHandler struct {
 	service        *service.AttendanceService
 	permissionRepo *repository.PermissionRepository
+	// (ع) 10-13: أيام الإجازة تنكتب بإكسل الشهر
+	Board *AttendanceBoardHandler
 }
 
 func NewAttendanceHandler(s *service.AttendanceService, permissionRepo *repository.PermissionRepository) *AttendanceHandler {
@@ -204,33 +206,68 @@ func (h *AttendanceHandler) ExportEmployeeMonth(w http.ResponseWriter, r *http.R
 	f := excelize.NewFile()
 	sheet := "الحضور"
 	f.SetSheetName("Sheet1", sheet)
-	headers := []string{"التاريخ", "وقت الدخول", "وقت الخروج", "مجموع الساعات"}
+	headers := []string{"التاريخ", "وقت الدخول", "وقت الخروج", "مجموع الساعات", "الحالة"}
 	for i, h := range headers {
 		cell, _ := excelize.CoordinatesToCellName(i+1, 1)
 		_ = f.SetCellValue(sheet, cell, h)
 	}
-	setExcelHeaderStyle(f, sheet, "D")
+	setExcelHeaderStyle(f, sheet, "E")
 
 	bodyStyle, _ := f.NewStyle(&excelize.Style{Alignment: &excelize.Alignment{Horizontal: "right", WrapText: true}})
+	leaveStyle, _ := f.NewStyle(&excelize.Style{Alignment: &excelize.Alignment{Horizontal: "right"},
+		Fill: excelize.Fill{Type: "pattern", Pattern: 1, Color: []string{"FFF4CC"}}})
 
-	for i, day := range report.Days {
-		row := i + 2
-		hours := fmt.Sprintf("%.2f", float64(day.TotalMinutes)/60)
-		values := []interface{}{
-			day.Date,
-			sessionsJoined(day.Sessions, true),
-			sessionsJoined(day.Sessions, false),
-			hours,
+	// (ع) 10-13: كل أيام الشهر — يوم الإجازة المعتمدة ينكتب «إجازة»
+	leaves := map[string]string{}
+	if h.Board != nil {
+		leaves = h.Board.LeaveDays(employeeID, report.Month)
+	}
+	byDate := map[string]int{}
+	for i, d := range report.Days {
+		byDate[d.Date[:10]] = i
+	}
+	start, _ := time.Parse("2006-01", report.Month)
+	end := start.AddDate(0, 1, 0)
+	if today := time.Now(); end.After(today) {
+		end = time.Date(today.Year(), today.Month(), today.Day()+1, 0, 0, 0, 0, time.UTC)
+	}
+	row, present, leaveN, totalMin := 2, 0, 0, 0
+	for d := start; d.Before(end); d = d.AddDate(0, 0, 1) {
+		key := d.Format("2006-01-02")
+		values := []interface{}{key, "—", "—", "0.00", ""}
+		style := bodyStyle
+		if i, ok := byDate[key]; ok {
+			day := report.Days[i]
+			values = []interface{}{key, sessionsJoined(day.Sessions, true), sessionsJoined(day.Sessions, false),
+				fmt.Sprintf("%.2f", float64(day.TotalMinutes)/60), "حضر"}
+			present++
+			totalMin += day.TotalMinutes
+		}
+		if l, ok := leaves[key]; ok {
+			values[4] = l
+			style = leaveStyle
+			leaveN++
+		} else if values[4] == "" {
+			values[4] = "ما حضر"
 		}
 		for c, v := range values {
 			cell, _ := excelize.CoordinatesToCellName(c+1, row)
 			_ = f.SetCellValue(sheet, cell, v)
-			_ = f.SetCellStyle(sheet, cell, cell, bodyStyle)
+			_ = f.SetCellStyle(sheet, cell, cell, style)
 		}
+		row++
+	}
+	row++
+	for _, kv := range [][2]interface{}{{"أيام الحضور", present}, {"أيام الإجازة", leaveN}, {"مجموع الساعات", fmt.Sprintf("%.2f", float64(totalMin)/60)}} {
+		a, _ := excelize.CoordinatesToCellName(1, row)
+		b, _ := excelize.CoordinatesToCellName(2, row)
+		_ = f.SetCellValue(sheet, a, kv[0])
+		_ = f.SetCellValue(sheet, b, kv[1])
+		row++
 	}
 	_ = f.SetColWidth(sheet, "A", "A", 14)
 	_ = f.SetColWidth(sheet, "B", "C", 22)
-	_ = f.SetColWidth(sheet, "D", "D", 14)
+	_ = f.SetColWidth(sheet, "D", "E", 16)
 
 	filename := fmt.Sprintf("attendance-%s-%s.xlsx", employeeID, report.Month)
 	w.Header().Set("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")

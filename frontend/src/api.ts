@@ -24,6 +24,11 @@ export interface DailyAttendance {
   late?: boolean
 }
 
+export interface AttendanceBoardRow {
+  id: string; name: string; role: string; shift: string | null; shiftStart: string | null; shiftEnd: string | null
+  firstIn: string | null; lastOut: string | null; open: boolean; minutes: number; leaveKind: string | null
+}
+
 export interface MonthlyAttendanceReport {
   employeeId: string
   month: string
@@ -5015,6 +5020,8 @@ export const api = {
   getProjectMoneyOverview: () => request<ProjectMoney[]>('/project-payments/overview'),
   getMyOpenSession: () => request<OpenSessionResponse>('/attendance/open'),
   getTodaySummary: () => request<EmployeeDailyAttendanceSummary[]>('/attendance/today-summary'),
+  // لوحة الدوام (ع 10-13): كل الموظفين بيوم — بدا/انتهى/إجازة
+  getAttendanceBoard: (date: string) => request<{ date: string; rows: AttendanceBoardRow[] }>(`/attendance/board?date=${date}`),
   getMonthlyAttendance: (employeeId: string, month: string) =>
     request<MonthlyAttendanceReport>(`/attendance/employee/${employeeId}?month=${month}`),
   exportEmployeeAttendance: (employeeId: string, month: string) =>

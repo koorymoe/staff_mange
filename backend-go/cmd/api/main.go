@@ -1412,6 +1412,9 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	mux.Handle("GET /api/attendance/employee/{id}", middleware.Chain(http.HandlerFunc(attendanceHandler.MonthlyReport), requireAuth))
 	mux.Handle("GET /api/attendance/export/employee/{id}", middleware.Chain(http.HandlerFunc(attendanceHandler.ExportEmployeeMonth), requireAuth))
 	mux.Handle("GET /api/attendance/export/today", middleware.Chain(http.HandlerFunc(attendanceHandler.ExportToday), requireAuth, requireMonitor))
+	attendanceBoard := handler.NewAttendanceBoardHandler(db)
+	attendanceHandler.Board = attendanceBoard
+	mux.Handle("GET /api/attendance/board", middleware.Chain(http.HandlerFunc(attendanceBoard.Board), requireAuth, requireMonitor))
 	mux.Handle("PUT /api/attendance/{id}", middleware.Chain(http.HandlerFunc(attendanceHandler.Correct), requireAuth, requireMonitor))
 
 	// كل تقييمات الشركة — حارسها يطابق حارس شاشة «نقاط الكي بي اي».
