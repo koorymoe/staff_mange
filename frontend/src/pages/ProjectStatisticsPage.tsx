@@ -2,6 +2,8 @@ import { useEffect, useMemo, useState } from 'react'
 import { matches } from '../utils/search'
 import { Link } from 'react-router-dom'
 import ProjectFillInfo from '../components/ProjectFillInfo'
+import PaymentAuditModal from '../components/PaymentAuditModal'
+import { useSession } from '../session'
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000/api'
 
@@ -65,6 +67,10 @@ export default function ProjectStatisticsPage() {
   const [search, setSearch] = useState('')
   const [onlyMissing, setOnlyMissing] = useState(false)
   const [editing, setEditing] = useState<ProjectRow | null>(null)
+  // (ع) 10-13: سجل الدفعات وتصحيحها — للمالك بس
+  const { employee } = useSession()
+  const isOwner = employee?.actualRole === 'OWNER'
+  const [auditOpen, setAuditOpen] = useState(false)
   const [reload, setReload] = useState(0)
   // ترتيب جدول الموظفين حسب العمود الي يهم المدير هالوقت
   const [empSort, setEmpSort] = useState<keyof EmployeeRow>('responsibleCount')
@@ -150,7 +156,12 @@ export default function ProjectStatisticsPage() {
       </div>
 
       {/* تبويبات */}
-      <div className="flex gap-2">
+      <div className="flex flex-wrap gap-2">
+        {isOwner && (
+          <button onClick={() => setAuditOpen(true)} className="rounded-lg bg-red-600 px-4 py-2 text-sm font-bold text-white shadow">
+            🧾 سجل دفعات المشاريع (تصحيح المستلم)
+          </button>
+        )}
         <button onClick={() => setTab('projects')}
           className={`rounded-lg px-4 py-2 text-sm font-medium ${tab === 'projects' ? 'bg-[var(--color-brand-500)] text-white' : 'border bg-white text-slate-600'}`}>
           كل مشروع وقيمته ({data.projects.length})
@@ -161,6 +172,7 @@ export default function ProjectStatisticsPage() {
         </button>
       </div>
 
+      {auditOpen && <PaymentAuditModal onClose={() => setAuditOpen(false)} onChanged={() => setReload((r) => r + 1)} />}
       {editing && <ProjectFillInfo p={editing} onClose={() => setEditing(null)} onSaved={() => { setEditing(null); setReload((r) => r + 1) }} />}
 
       {tab === 'projects' && (

@@ -2290,6 +2290,8 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	mux.Handle("POST /api/project-payments/{id}/verify", middleware.Chain(http.HandlerFunc(projectPaymentHandler.Verify), requireAuth))
 	mux.Handle("POST /api/project-payments/{id}/cancel", middleware.Chain(http.HandlerFunc(projectPaymentHandler.Cancel), requireAuth))
 	mux.Handle("GET /api/project-payments/overview", middleware.Chain(http.HandlerFunc(projectPaymentHandler.Overview), requireAuth))
+	mux.Handle("GET /api/project-payments/audit", middleware.Chain(http.HandlerFunc(projectPaymentHandler.Audit), requireAuth))
+	mux.Handle("PUT /api/project-payments/{id}/amount", middleware.Chain(http.HandlerFunc(projectPaymentHandler.SetAmount), requireAuth))
 	mux.Handle("GET /api/projects/media/open", middleware.Chain(http.HandlerFunc(mediaHandler.OpenProjects), requireAuth, requireProjectMgmt))
 	mux.Handle("GET /api/projects/{id}/media", middleware.Chain(http.HandlerFunc(mediaHandler.ForProject), requireAuth, requireProjectMgmt))
 	mux.Handle("POST /api/projects/{id}/media", middleware.Chain(http.HandlerFunc(mediaHandler.Transfer), requireAuth, requireProjectMgmt))

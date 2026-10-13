@@ -42,6 +42,9 @@ export default function ProjectFillInfo({ p, onClose, onSaved }: { p: FillTarget
       if (priceOut !== (p.priceRaw ?? '') || resp !== (p.responsibleId ?? '')) {
         await api.fillProjectInfo(p.id, { price: priceOut, responsibleId: resp })
       }
+      // (ع) 10-13: المدير كتب المستلم الكلي مرة ثانية فصار ضعف — نحذّر قبل الحفظ
+      if (amt > 0 && p.paidAmount > 0 && amt >= p.paidAmount && !window.confirm(
+        `⚠️ المسجّل مستلم هسه ${p.paidAmount.toLocaleString('en-US')} د.ع.\nالي تكتبه هنا يتجمع فوقه (يصير ${(p.paidAmount + amt).toLocaleString('en-US')}).\nمتأكد هاي دفعة جديدة مو نفس المبلغ القديم؟`)) throw new Error('ما انحفظت الدفعة — اكتب بس الدفعة الجديدة')
       if (amt > 0) await api.addProjectPayment(p.id, { amount: amt, paidAt, method })
       onSaved()
     } catch (e) {

@@ -156,3 +156,60 @@ func (r *ProjectPaymentRepository) StaleUnverified() ([]ProjectPayment, error) {
 		ORDER BY pp."createdAt"`)
 	return rows, err
 }
+
+// ═══ سجل الدفعات للمالك — (ع) 10-13 ═══
+// المدير كمّل معلومات المشاريع وكتب المستلم الكلي كدفعة جديدة فوق المسجّل،
+// فصار ضعف. هذا يعرض كل دفعة ومنو سجّلها، ويأشّر المكرر المحتمل.
+type PaymentAuditRow struct {
+	ID            string     `db:"id" json:"id"`
+	ProjectID     string     `db:"projectId" json:"projectId"`
+	ProjectCode   string     `db:"projectCode" json:"projectCode"`
+	ProjectName   string     `db:"projectName" json:"projectName"`
+	ContractValue *float64   `db:"contractValue" json:"contractValue"`
+	Received      float64    `db:"received" json:"received"`
+	Amount        float64    `db:"amount" json:"amount"`
+	PaidAt        time.Time  `db:"paidAt" json:"paidAt"`
+	Note          *string    `db:"note" json:"note"`
+	CreatedAt     time.Time  `db:"createdAt" json:"createdAt"`
+	CreatedByID   *string    `db:"createdById" json:"createdById"`
+	CreatedByName *string    `db:"createdByName" json:"createdByName"`
+	VerifiedAt    *time.Time `db:"verifiedAt" json:"verifiedAt"`
+	CancelledAt   *time.Time `db:"cancelledAt" json:"cancelledAt"`
+	CancelReason  *string    `db:"cancelReason" json:"cancelReason"`
+	Duplicate     bool       `db:"duplicate" json:"duplicate"`
+}
+
+func (r *ProjectPaymentRepository) Audit(byID, since string) ([]PaymentAuditRow, error) {
+	rows := []PaymentAuditRow{}
+	err := r.db.Select(&rows, `
+		SELECT pp.id, pp."projectId", COALESCE(p.code, '') AS "projectCode", COALESCE(p.name, '') AS "projectName",
+		       COALESCE(cv.amount, NULLIF(regexp_replace(COALESCE(p.price, ''), '[^0-9]', '', 'g'), '')::numeric)::float8 AS "contractValue",
+		       (SELECT COALESCE(SUM(x.amount), 0) FROM "ProjectPayment" x WHERE x."projectId" = pp."projectId" AND x."cancelledAt" IS NULL)::float8 AS received,
+		       pp.amount::float8 AS amount, pp."paidAt", pp.note, pp."createdAt", pp."createdById", e.name AS "createdByName",
+		       pp."verifiedAt", pp."cancelledAt", pp."cancelReason",
+		       (pp."cancelledAt" IS NULL AND (
+		          EXISTS (SELECT 1 FROM "ProjectPayment" y WHERE y."projectId" = pp."projectId" AND y.id <> pp.id
+		                   AND y."cancelledAt" IS NULL AND y.amount = pp.amount)
+		          OR pp.amount = (SELECT COALESCE(SUM(z.amount), -1) FROM "ProjectPayment" z WHERE z."projectId" = pp."projectId"
+		                   AND z."cancelledAt" IS NULL AND z."createdAt" < pp."createdAt"))) AS duplicate
+		FROM "ProjectPayment" pp
+		JOIN "Project" p ON p.id = pp."projectId"
+		LEFT JOIN "ProjectContractValue" cv ON cv."projectId" = pp."projectId"
+		LEFT JOIN "Employee" e ON e.id = pp."createdById"
+		WHERE ($1 = '' OR pp."createdById" = $1)
+		  AND ($2 = '' OR pp."createdAt" >= $2::date)
+		ORDER BY p.name, pp."createdAt"`, byID, since)
+	return rows, err
+}
+
+// SetAmount المالك يصحّح مبلغ دفعة؛ صفر = إلغاء. القديم ينكتب بالملاحظة.
+func (r *ProjectPaymentRepository) SetAmount(id, byID string, amount float64, reason string) error {
+	if amount <= 0 {
+		return r.Cancel(id, byID, "ألغاها المالك: "+reason)
+	}
+	_, err := r.db.Exec(`UPDATE "ProjectPayment"
+		SET note = TRIM(COALESCE(note, '') || ' [عدّلها المالك من ' || amount::text || ' إلى ' || $2::text || ' — ' || $3 || ']'),
+		    amount = $2
+		WHERE id = $1 AND "cancelledAt" IS NULL`, id, amount, reason)
+	return err
+}

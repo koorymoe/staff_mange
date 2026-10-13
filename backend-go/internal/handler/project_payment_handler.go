@@ -181,3 +181,45 @@ func (h *ProjectPaymentHandler) Overview(w http.ResponseWriter, r *http.Request)
 	}
 	WriteJSON(w, http.StatusOK, rows)
 }
+
+// ═══ سجل الدفعات + تصحيح المبلغ — للمالك بس (ع 10-13) ═══
+func isOwner(r *http.Request) bool { return middleware.RoleFromContext(r) == "OWNER" }
+
+// GET /api/project-payments/audit?by=&since=
+func (h *ProjectPaymentHandler) Audit(w http.ResponseWriter, r *http.Request) {
+	if !isOwner(r) {
+		WriteError(w, http.StatusForbidden, "سجل الدفعات للمالك")
+		return
+	}
+	rows, err := h.repo.Audit(r.URL.Query().Get("by"), r.URL.Query().Get("since"))
+	if err != nil {
+		WriteError(w, http.StatusInternalServerError, "تعذر جلب السجل")
+		return
+	}
+	WriteJSON(w, http.StatusOK, rows)
+}
+
+// PUT /api/project-payments/{id}/amount {amount, reason}
+func (h *ProjectPaymentHandler) SetAmount(w http.ResponseWriter, r *http.Request) {
+	if !isOwner(r) {
+		WriteError(w, http.StatusForbidden, "تصحيح الدفعات للمالك")
+		return
+	}
+	var in struct {
+		Amount float64 `json:"amount"`
+		Reason string  `json:"reason"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&in); err != nil || in.Amount < 0 {
+		WriteError(w, http.StatusBadRequest, "المبلغ مو مفهوم")
+		return
+	}
+	reason := strings.TrimSpace(in.Reason)
+	if reason == "" {
+		reason = "تصحيح تكرار"
+	}
+	if err := h.repo.SetAmount(r.PathValue("id"), middleware.EmployeeIDFromContext(r), in.Amount, reason); err != nil {
+		WriteError(w, http.StatusBadRequest, "تعذر الحفظ")
+		return
+	}
+	WriteJSON(w, http.StatusOK, map[string]bool{"ok": true})
+}

@@ -4971,6 +4971,10 @@ export const api = {
   getAttendanceClaims: (status = 'PENDING') => request<AttendanceClaim[]>(`/attendance/claims?status=${status}`),
   decideAttendanceClaim: (id: string, approve: boolean) => request<{ ok: boolean }>(`/attendance/claims/${id}/decide`, { method: 'POST', body: JSON.stringify({ approve }) }),
   getProjectPayments: (projectId: string) => request<ProjectPaymentsState>(`/projects/${projectId}/payments`),
+  // سجل الدفعات + تصحيح المبلغ — للمالك (ع 10-13)
+  getPaymentAudit: (by = '', since = '') => request<PaymentAuditRow[]>(`/project-payments/audit?by=${encodeURIComponent(by)}&since=${encodeURIComponent(since)}`),
+  setPaymentAmount: (id: string, amount: number, reason: string) =>
+    request<{ ok: boolean }>(`/project-payments/${id}/amount`, { method: 'PUT', body: JSON.stringify({ amount, reason }) }),
   addProjectPayment: (projectId: string, body: { amount: number; paidAt: string; method: string; receiptNo?: string; note?: string }) =>
     request<ProjectPaymentsState>(`/projects/${projectId}/payments`, { method: 'POST', body: JSON.stringify(body) }),
   verifyProjectPayment: (id: string) => request<ProjectPaymentsState>(`/project-payments/${id}/verify`, { method: 'POST' }),
@@ -5706,6 +5710,13 @@ export interface MatrixDecisions {
 
 // عين ماتركس — حالة الموظف نفسه.
 export interface MatrixWorkload { key: string; label: string; done: number; left: number; route: string; verb: string; codes?: string[]; links?: { label: string; to: string }[] }
+export interface PaymentAuditRow {
+  id: string; projectId: string; projectCode: string; projectName: string
+  contractValue: number | null; received: number; amount: number; paidAt: string
+  note: string | null; createdAt: string; createdById: string | null; createdByName: string | null
+  verifiedAt: string | null; cancelledAt: string | null; cancelReason: string | null; duplicate: boolean
+}
+
 export interface CourierMessage {
   id: string
   kind: 'extra_task' | 'leave' | 'project' | 'booking'
