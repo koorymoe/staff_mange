@@ -340,7 +340,7 @@ export default function Employees({ embedded }: { embedded?: boolean } = {}) {
   return (
     <>
       <SaveError message={guard.error} onClose={guard.clear} />
-    <div className="max-w-[1400px] mx-auto">
+    <div className="w-full">
       {/* Header — ⚠️ العنوان يختفي لمّن الشاشة مضمَّنة (مكتب إدارة
           الموظفين)، وشريط البحث/الفلتر يبقى. */}
       <div className={`mb-6 flex items-center gap-3 ${embedded ? '' : 'justify-between'}`}>
@@ -399,7 +399,7 @@ export default function Employees({ embedded }: { embedded?: boolean } = {}) {
       {error && <p className="mt-6 rounded-2xl bg-red-50 p-5 text-red-600 text-sm">تعذر الاتصال بالخادم: {error}</p>}
 
       {!loading && !error && (
-        <div className="grid grid-cols-1 gap-6 xl:grid-cols-[340px_1fr]">
+        <div className="grid grid-cols-1 gap-6 xl:grid-cols-[380px_1fr] 2xl:grid-cols-[440px_1fr]">
           {/* Employee Cards Grid */}
           <div className="space-y-3 max-h-[calc(100vh-200px)] overflow-y-auto pl-2 scrollbar-thin">
             {!isHR && (
