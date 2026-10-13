@@ -696,6 +696,9 @@ export const navItems: NavItem[] = [
       { to: '/checklists', label: 'الكشوفات', icon: <></>, permission: 'project_management' },
       { to: '/quotations', label: 'عروض الأسعار', icon: <></>, anyPermission: ['quotation_create', 'quotation_edit_own', 'quotation_manage_all', 'quotation_system'] },
       { to: '/products', label: '📦 المنتجات', icon: <></>, anyPermission: ['quotation_manage_all', 'quotation_system', 'content_technician', 'quotation_create'] },
+      // قرار (ع) 10-13: فلوس المشاريع والمشاريع الموجّهة لي هنا
+      { monitorMenuHide: true, to: '/project-payments', label: '💰 فلوس المشاريع', icon: <></>, roles: ['ADMIN', 'FINANCE', 'PROJECT_MANAGER', 'MONITOR'], anyPermission: ['finance', 'finance_audit', 'project_management', 'monitoring'] },
+      { to: '/my-projects', label: 'المشاريع الموجّهة لي', icon: <></>, permission: 'my_projects', hideForRoles: TECH_ROLES },
     ],
   },
 
@@ -728,39 +731,7 @@ export const navItems: NavItem[] = [
     unitPermission: 'unit_pr',
     children: [
       { to: '/vip-customers', label: '⭐ الشخصيات المهمة', icon: <></>, permission: 'vip_manual_add' },
-    ],
-  },
-  {
-    // الإعلام والعلاقات العامة — قرار (ع) 10-05: المشاريع تتحوّل إلهم قبل التنفيذ حتى يصوّرون.
-    to: '/unit-media', label: 'الإعلام والعلاقات العامة', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>,
-    unitPermission: 'media',
-    children: [
       { to: '/media', label: '📸 مشاريع للتصوير', icon: <></>, roles: ['ADMIN', 'MEDIA', 'PUBLIC_RELATIONS'], anyPermission: ['media', 'project_management'] },
-    ],
-  },
-  // وحدتان فارغتان مؤقتاً (بانتظار تحديد آلية العمل والصلاحيات المطلوبة لكل
-  // وحدة) — تطلعان لمدير النظام بس، وتفتحان صفحة "قريباً" بدل ما تختفيان بالكامل.
-  {
-    to: '/unit-design-group', label: 'وحدة التصميم', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 2a4.5 4.5 0 0 0 0 9 4.5 4.5 0 0 1 0 9"/></svg>, roles: ['ADMIN'],
-    // ⚠️ `roles: ['ADMIN']` وحده چان يحجب المجموعة كلها عن المصممة
-    // مهما انمنحت — فالبنود جوّاها ما تظهر أبداً. `anyPermission`
-    // يفتح المجموعة لصاحب أي صلاحية تصميم، والبنود تبقى بحراسها.
-    anyPermission: ['design_forms', 'design_gallery'],
-    unitPermission: 'unit_design',
-    children: [
-      { to: '/design-forms/quick-add', label: 'إضافة سؤال', icon: <></>, roles: ['ADMIN'], unlockPermission: 'design_forms' },
-      { to: '/design-forms', label: 'فورمة التصميم', icon: <></>, roles: ['ADMIN'], unlockPermission: 'design_forms' },
-      { to: '/design-gallery', label: '🎨 معرض التصاميم', icon: <></>, roles: ['ADMIN'], unlockPermission: 'design_gallery' },
-    ],
-  },
-
-  {
-    to: '/unit-quality', label: 'وحدة الجودة والسلامة المهنية', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z"/></svg>,
-    unitPermission: 'unit_quality',
-    children: [
-      { to: '/quality', label: 'الجودة', icon: <></>, permission: 'quality_control' },
-      { to: '/work-reports-review', label: 'مراجعة تقارير العمل', icon: <></>, anyPermission: ['monitoring', 'quality_control'] },
-      { to: '/quality-follow-ups', label: 'متابعة الجودة', icon: <></>, roles: ['ADMIN', 'MONITOR', 'QUALITY_ENGINEER'], permission: 'quality_control', hideForRoles: ['MONITOR'] },
     ],
   },
   {
@@ -781,6 +752,85 @@ export const navItems: NavItem[] = [
       { to: '/privacy-policy', label: '🔒 إدارة سياسة الخصوصية', icon: <></>, permission: 'privacy_policy_manage' },
     ],
   },
+
+  {
+    // ═══ قرار (ع) 10-13: وحدة الحسابات ═══
+    to: '/unit-accounts', label: 'وحدة الحسابات', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="4" y="2" width="16" height="20" rx="2"/><path d="M8 6h8M8 10h8M8 14h4"/></svg>,
+    unitPermission: 'unit_accounts',
+    hideForRoles: ['FINANCE'],
+    children: [
+      { to: '/finance', label: 'تدقيق الحسابات', icon: <></>, roles: ['ADMIN', 'FINANCE', 'MONITOR'], unlockAnyPermission: ['finance', 'finance_audit'] },
+      { to: '/daily-audit', label: '📅 التدقيق اليومي', icon: <></>, roles: ['ADMIN', 'FINANCE', 'MONITOR'], unlockAnyPermission: ['finance', 'finance_audit'] },
+      { to: '/audit-issues', label: '💸 بلاغات أخطاء التدقيق', icon: <></>, roles: ['ADMIN', 'MONITOR', 'QUALITY_ENGINEER', 'FINANCE'], unlockAnyPermission: ['audit_issues', 'finance_audit'] },
+      { to: '/leader-invoices', label: '🧾 فواتير الليدر', icon: <></>, labelFor: leaderInvoicesLabel, roles: ['ADMIN'], anyPermission: ['leader_invoices_view', 'finance', 'finance_audit', 'leader_basket'] },
+      { to: '/revolving-fund', label: '💵 الدوار', icon: <></>, permission: 'revolving_fund' },
+      { to: '/expenses', label: 'إدارة المصاريف', icon: <></>, roles: ['ADMIN', 'FINANCE'], unlockPermission: 'expenses_manage' },
+    ],
+  },
+  {
+    to: '/unit-procurement', label: 'وحدة المشتريات والمخازن', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M3 3h18v18H3z"/></svg>,
+    unitPermission: 'unit_procurement',
+    children: [
+      { to: '/procurement', label: 'طلبات المواد', icon: <></>, roles: ['ADMIN', 'MONITOR', 'PROJECT_MANAGER', 'TECHNICIAN', 'PROCUREMENT_ADMIN'], permission: 'procurement' },
+      { to: '/suppliers', label: 'الموردون', icon: <></>, anyPermission: ['suppliers_management'] },
+      // (ع) 10-13: جرد الأدوات انتقل لـ«وحدة العدد والمركبات»
+      // قرار (ع) 10-09: إدارة المركبات انشالت من هنا — محلها «المركبات» جوّا العمل
+      // لوحة تحكم الأسطول محلها هنا — المخازن هيه المسؤولة عن الأسطول
+    ],
+  },
+  {
+    // ═══ قرار (ع) 10-13: وحدة العدد والمركبات ═══
+    to: '/unit-fleet', label: 'وحدة العدد والمركبات', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M5 17h14l-1.5-6h-11z"/><circle cx="8" cy="18" r="1.5"/><circle cx="16" cy="18" r="1.5"/></svg>,
+    unitPermission: 'unit_fleet',
+    children: [
+      { to: '/vehicles', label: 'إدارة المركبات', icon: <></>, permission: 'vehicle_management' },
+      { to: '/vehicle-tracking', label: '🚗 متابعة السيارات', icon: <></>, permission: 'vehicle_management' },
+      { to: '/fleet-dashboard', label: 'لوحة تحكم الأسطول', icon: <></>, permission: 'vehicle_management', hideForRoles: ['PROCUREMENT_ADMIN'] },
+      { to: '/vehicle-bookings', label: 'حجز المركبات', icon: <></>, permission: 'vehicle_management' },
+      { to: '/vehicle-missions', label: 'مهمات المركبات', icon: <></>, permission: 'vehicle_management' },
+      { to: '/inventory', label: 'جرد الأدوات', icon: <></>, roles: ['ADMIN', 'HR_COORDINATOR', 'MONITOR', 'PROCUREMENT_ADMIN'], permission: 'inventory', hideForRoles: ['MONITOR'] },
+    ],
+  },
+  {
+    // ═══ قرار (ع) 10-13: وحدة المراقبون ماتركس ═══
+    to: '/unit-matrix', label: 'وحدة المراقبون — ماتركس', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3"/></svg>,
+    unitPermission: 'unit_matrix',
+    children: [
+      { to: '/matrix/decisions', label: '🤖 صندوق قرارات ماتركس', icon: <></>, roles: ['ADMIN'] },
+      { to: '/ai-insights', label: '🧠 مؤشرات الذكاء الاصطناعي', icon: <></>, roles: ['ADMIN'] },
+      { to: '/weekly-report', label: '📊 التقرير الأسبوعي', icon: <></>, roles: ['ADMIN'] },
+      { monitorMenuHide: true, hideForRoles: ['QUALITY_ENGINEER'], to: '/staff-score', label: '🏅 تقييم الموظفين', icon: <></>, roles: ['ADMIN', 'MONITOR'], anyPermission: ['monitoring', 'auditing'] },
+      { monitorMenuHide: true, hideForRoles: ['QUALITY_ENGINEER'], to: '/employee-indicators', label: '📈 مؤشرات أداء الموظف', icon: <></>, roles: ['ADMIN', 'MONITOR'], anyPermission: ['monitoring', 'auditing'] },
+      { monitorMenuHide: true, hideForRoles: ['QUALITY_ENGINEER'], to: '/peer-voice', label: '🗣️ صوت الموظفين', icon: <></>, roles: ['ADMIN', 'MONITOR'], anyPermission: ['monitoring', 'auditing'] },
+      { monitorMenuHide: true, hideForRoles: ['QUALITY_ENGINEER'], to: '/workplace-issues', label: '🤝 المشاكل الوظيفية', icon: <></>, roles: ['ADMIN', 'MONITOR'], anyPermission: ['monitoring', 'auditing'] },
+      { monitorMenuHide: true, to: '/duplicate-review', label: '🤖 ماتركس — التكرار', icon: <></>, roles: ['ADMIN'], permission: 'duplicate_review' },
+    ],
+  },
+
+  {
+    to: '/unit-quality', label: 'وحدة الجودة والسلامة المهنية', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z"/></svg>,
+    unitPermission: 'unit_quality',
+    children: [
+      { to: '/quality', label: 'الجودة', icon: <></>, permission: 'quality_control' },
+      { to: '/work-reports-review', label: 'مراجعة تقارير العمل', icon: <></>, anyPermission: ['monitoring', 'quality_control'] },
+      { to: '/quality-follow-ups', label: 'متابعة الجودة', icon: <></>, roles: ['ADMIN', 'MONITOR', 'QUALITY_ENGINEER'], permission: 'quality_control', hideForRoles: ['MONITOR'] },
+    ],
+  },
+  // وحدتان فارغتان مؤقتاً (بانتظار تحديد آلية العمل والصلاحيات المطلوبة لكل
+  // وحدة) — تطلعان لمدير النظام بس، وتفتحان صفحة "قريباً" بدل ما تختفيان بالكامل.
+  {
+    to: '/unit-design-group', label: 'وحدة التصميم', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 2a4.5 4.5 0 0 0 0 9 4.5 4.5 0 0 1 0 9"/></svg>, roles: ['ADMIN'],
+    // ⚠️ `roles: ['ADMIN']` وحده چان يحجب المجموعة كلها عن المصممة
+    // مهما انمنحت — فالبنود جوّاها ما تظهر أبداً. `anyPermission`
+    // يفتح المجموعة لصاحب أي صلاحية تصميم، والبنود تبقى بحراسها.
+    anyPermission: ['design_forms', 'design_gallery'],
+    unitPermission: 'unit_design',
+    children: [
+      { to: '/design-forms/quick-add', label: 'إضافة سؤال', icon: <></>, roles: ['ADMIN'], unlockPermission: 'design_forms' },
+      { to: '/design-forms', label: 'فورمة التصميم', icon: <></>, roles: ['ADMIN'], unlockPermission: 'design_forms' },
+      { to: '/design-gallery', label: '🎨 معرض التصاميم', icon: <></>, roles: ['ADMIN'], unlockPermission: 'design_gallery' },
+    ],
+  },
   {
     // وحدة الـIT: الدور والصلاحيات انبنت (0278) وما چانت إلها ولا شاشة.
     to: '/unit-it', label: 'وحدة تقنية المعلومات', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>,
@@ -791,17 +841,15 @@ export const navItems: NavItem[] = [
     ],
   },
   {
-    to: '/unit-procurement', label: 'وحدة المشتريات والمخازن', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M3 3h18v18H3z"/></svg>,
-    unitPermission: 'unit_procurement',
+    // الإعلام والعلاقات العامة — قرار (ع) 10-05: المشاريع تتحوّل إلهم قبل التنفيذ حتى يصوّرون.
+    to: '/unit-media', label: 'الإعلام والعلاقات العامة', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>,
+    // (ع) 10-13: للمدير والمالك محتواها صار بـ«وحدة الإعلام والعلاقات العامة» — تبقى لأصحاب صلاحيتها
+    hideForRoles: ['ADMIN'],
+    unitPermission: 'media',
     children: [
-      { to: '/procurement', label: 'طلبات المواد', icon: <></>, roles: ['ADMIN', 'MONITOR', 'PROJECT_MANAGER', 'TECHNICIAN', 'PROCUREMENT_ADMIN'], permission: 'procurement' },
-      { to: '/suppliers', label: 'الموردون', icon: <></>, anyPermission: ['suppliers_management'] },
-      { to: '/inventory', label: 'جرد الأدوات', icon: <></>, roles: ['ADMIN', 'HR_COORDINATOR', 'MONITOR', 'PROCUREMENT_ADMIN'], permission: 'inventory', hideForRoles: ['MONITOR'] },
-      // قرار (ع) 10-09: إدارة المركبات انشالت من هنا — محلها «المركبات» جوّا العمل
-      // لوحة تحكم الأسطول محلها هنا — المخازن هيه المسؤولة عن الأسطول
+      { to: '/media', label: '📸 مشاريع للتصوير', icon: <></>, roles: ['ADMIN', 'MEDIA', 'PUBLIC_RELATIONS'], anyPermission: ['media', 'project_management'] },
     ],
   },
-
   // ── اختصارات سريعة (أهم إجراءات المبيعات) ──
   // قرار (ع) 10-08: «حجز جديد» مكرر ويا «＋ إنشاء حجز» جوّا «العمل» — يبقى واحد.
   { to: '/complaints', label: '⚠️ الشكاوى', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 9v4M12 17h.01M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/></svg>, roles: ['SALES'] },
