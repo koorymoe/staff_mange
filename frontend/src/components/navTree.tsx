@@ -600,20 +600,51 @@ export const navItems: NavItem[] = [
   // للمحاسب ما بقى فوگ الفاصل ولا شي (الإدارة انحجبت عنه لأنها مكرّرة)،
   // فالفاصل يصير خط يفصل الفراغ عن «العمل» — ضجيج بلا معنى.
   { to: '/units-divider', label: '── الوحدات ──', icon: <></>, divider: true, hideForRoles: ['FINANCE'] },
-
+  // قرار (ع) 10-09: «العمل» الثانية (وحدة الحسابات unit_finance) انشالت — كل بنودها
+  // موجودة بـ«إدارة الحسابات» جوّا العمل، فچانت تطلع مرتين.
   {
-    // وحدة الخدمة: استقبال وتنسيق طلبات الزبائن وتنفيذها
-    to: '/unit-service', label: 'وحدة الخدمة', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>,
-    unitPermission: 'unit_service',
+    to: '/unit-hr', label: 'وحدة إدارة الكوادر', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/></svg>,
+    unitPermission: 'unit_hr',
+    // قرار (ع) 10-09: «ما يخص هذا الموظف» — إداري الكميات ما تطلعله
+    hideForRoles: ['PROCUREMENT_ADMIN'],
     children: [
+      // ═══ قرار (ع) 10-13: «وحدة إدارة الكوادر» — كل شغل الموظفين بمكان واحد ═══
+      // (ع) 10-13: الحجوزات والزبائن هنا، مو بإدارة الخدمة
+      { to: '/nav-hr-bookings', label: '📋 الحجوزات', icon: <></>, divider: true, plain: true },
       { to: '/sales', label: 'حجز جديد', icon: <></>, roles: ['ADMIN', 'HR_COORDINATOR', 'QUALITY_ENGINEER'], permission: 'sales_booking' },
-      { monitorMenuHide: true, to: '/customers', label: 'العملاء', icon: <></>, roles: ['ADMIN', 'HR_COORDINATOR', 'MONITOR'], permission: 'manage_customers' },
       { to: '/bookings', label: 'الحجوزات', icon: <></>, roles: ['ADMIN', 'HR_COORDINATOR', 'MONITOR', 'FINANCE'], permission: 'view_bookings' },
       { to: '/coordinator', label: 'تنسيق الحجوزات', icon: <></>, roles: ['ADMIN', 'HR_COORDINATOR', 'MONITOR'], permission: 'coordinator' },
       { monitorMenuHide: true, to: '/bookings-archive', label: 'أرشيف الحجوزات', icon: <></>, roles: ['ADMIN', 'MONITOR'], permission: 'bookings_archive' },
-      { to: '/solar', label: '☀️ الطاقة الشمسية', icon: <></>, roles: ['ADMIN', 'OWNER', 'MONITOR', 'TECHNICIAN', 'SERVICE_MANAGER'], permission: 'solar_system' },
-      { to: '/training-programs', label: '🎓 برامج التدريب', icon: <></>, roles: ['ADMIN', 'OWNER'], permission: 'training_manage' },
       { monitorMenuHide: true, to: '/missions', label: 'تتبع المهام', icon: <></>, roles: ['ADMIN', 'HR_COORDINATOR', 'MONITOR'], permission: 'mission_tracking', hideForRoles: ['FINANCE'] },
+      { to: '/nav-hr-customers', label: '👤 الزبائن', icon: <></>, divider: true, plain: true },
+      { monitorMenuHide: true, to: '/customers', label: 'العملاء', icon: <></>, roles: ['ADMIN', 'HR_COORDINATOR', 'MONITOR'], permission: 'manage_customers' },
+      { monitorMenuHide: true, to: '/sales-opportunities', label: '💡 فرص البيع', icon: <></>, roles: ['ADMIN'], permission: 'sales_booking', hideForRoles: [...TECH_ROLES, 'SALES'] },
+      // البنود المنقولة strict: صلاحية الوحدة ما تفتحها، كل وحدة بحارسها.
+      { to: '/nav-hr-staff', label: '👥 الموظفين', icon: <></>, divider: true, plain: true },
+      { to: '/employees', label: 'إدارة الكوادر', icon: <></>, roles: ['ADMIN', 'HR_COORDINATOR', 'MONITOR'], permission: 'staff_management' },
+      { strict: true, to: '/staff-management-desk', label: 'إدارة الموظفين', icon: <></>, roles: ['ADMIN', 'MONITOR'], anyPermission: ['staff_management', 'kpi_management', 'performance_review', 'staff_requests'] },
+      { strict: true, to: '/departments', label: '🏢 الأقسام ومسؤوليها', icon: <></>, permission: 'departments_manage' },
+      { to: '/staff-requests', label: 'طلبات الكادر', icon: <></>, roles: ['ADMIN', 'HR_COORDINATOR'], unlockPermission: 'staff_requests' },
+      { to: '/nav-hr-perms', label: '🔐 الصلاحيات', icon: <></>, divider: true, plain: true },
+      { strict: true, to: '/permissions', label: 'الصلاحيات', icon: <></>, roles: ['ADMIN'] },
+      { strict: true, to: '/permission-preview', label: '🔎 شوف بعين الموظف', icon: <></>, roles: ['ADMIN'] },
+      { strict: true, to: '/roles-guide', label: '📋 دليل الأدوار والصلاحيات', icon: <></>, roles: ['ADMIN'] },
+      { to: '/nav-hr-time', label: '🕘 الدوام', icon: <></>, divider: true, plain: true },
+      // نفس حارس GET /api/work-schedule: الأدوار الثلاثة، أو صلاحية الجدول أو إدارة الكوادر.
+      { to: '/work-schedule', label: '🕘 جدول الدوام', icon: <></>, roles: ['ADMIN', 'HR_COORDINATOR', 'MONITOR'], unlockAnyPermission: ['work_schedule_manage', 'staff_management'] },
+      { strict: true, to: '/leaves', label: '🗓️ طلبات الإجازات', icon: <></>, roles: ['ADMIN', 'OWNER'], anyPermission: ['leave_approve_morning', 'leave_approve_evening'] },
+      // نفس حارس /api/remote-hours: المدير أو صلاحية «تسجيل ساعات العمل من البيت».
+      { monitorMenuHide: true, to: '/remote-hours', label: '🏠 ساعات العمل من البيت', icon: <></>, roles: ['ADMIN'], anyPermission: ['remote_hours_manage', 'remote_hours_self'] },
+      { to: '/nav-hr-score', label: '🏅 التقييم', icon: <></>, divider: true, plain: true },
+      { to: '/kpi', label: 'نقاط الكي بي اي', icon: <></>, roles: ['ADMIN', 'MONITOR'], permission: 'kpi_management' },
+      { to: '/performance-review', label: '⭐ تقييم الأداء', icon: <></>, roles: ['ADMIN', 'HR_COORDINATOR'], unlockPermission: 'performance_review' },
+      { strict: true, to: '/discipline-record', label: '📒 سجل الانضباط الوظيفي', icon: <></>, roles: ['ADMIN'] },
+      { to: '/nav-hr-stats', label: '📊 الإحصائيات', icon: <></>, divider: true, plain: true },
+      { strict: true, to: '/stats', label: 'إحصائيات الموظفين', icon: <></>, roles: ['ADMIN'] },
+      { strict: true, to: '/employee-stats', label: 'إحصائيات الموظفين الشهرية', icon: <></>, roles: ['ADMIN'], unlockPermission: 'employee_stats' },
+      { strict: true, to: '/stats-management', label: 'إدارة الإحصائيات', icon: <></>, roles: ['ADMIN'], unlockPermission: 'employee_stats' },
+      { to: '/nav-hr-work', label: '📋 الشغل', icon: <></>, divider: true, plain: true },
+      { strict: true, to: '/achievements', label: '📋 الإنجازات', icon: <></>, roles: ['ADMIN'] },
     ],
   },
   {
@@ -647,6 +678,66 @@ export const navItems: NavItem[] = [
       { to: '/tech-suppliers', label: '🏪 موردين التقنيين', icon: <></>, roles: ['ADMIN', 'ENGINEER', 'TECHNICAL', 'SERVICE_MANAGER'], unlockPermission: 'tech_suppliers' },
     ],
   },
+  {
+    // قرار (ع) 10-13: وحدة التدريب
+    to: '/unit-training', label: 'وحدة التدريب', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M22 10 12 5 2 10l10 5 10-5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg>,
+    unitPermission: 'unit_training',
+    children: [
+      { to: '/training-programs', label: '🎓 برامج التدريب', icon: <></>, roles: ['ADMIN', 'OWNER'], permission: 'training_manage' },
+    ],
+  },
+  {
+    to: '/unit-projects', label: 'وحدة إدارة المشاريع', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/></svg>,
+    unitPermission: 'unit_projects',
+    children: [
+      { to: '/projects', label: '🏗️ المشاريع', icon: <></>, anyPermission: ['project_management', 'project_create_only'], unlockPermission: 'project_management', labelFor: projectsLabel },
+          { to: '/project-work-types', label: 'إعدادات: أنواع الأعمال', icon: <></>, permission: 'project_management' },
+      { to: '/project-statistics', label: '📊 إحصائيات المشاريع', icon: <></>, permission: 'project_management' },
+      { to: '/checklists', label: 'الكشوفات', icon: <></>, permission: 'project_management' },
+      { to: '/quotations', label: 'عروض الأسعار', icon: <></>, anyPermission: ['quotation_create', 'quotation_edit_own', 'quotation_manage_all', 'quotation_system'] },
+      { to: '/products', label: '📦 المنتجات', icon: <></>, anyPermission: ['quotation_manage_all', 'quotation_system', 'content_technician', 'quotation_create'] },
+    ],
+  },
+
+  {
+    // وحدة الخدمة: استقبال وتنسيق طلبات الزبائن وتنفيذها
+    to: '/unit-service', label: 'وحدة إدارة الخدمة', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>,
+    unitPermission: 'unit_service',
+    children: [
+      // ═══ قرار (ع) 10-13: «وحدة إدارة الخدمة» — الخدمات قسم جواها ═══
+      // (الحجوزات والزبائن راحت لوحدة إدارة الكوادر، والتدريب لوحدته)
+      { to: '/nav-svc-services', label: '🛠️ الخدمات', icon: <></>, divider: true, plain: true },
+      { to: '/gps', label: '📡 نظام GPS', icon: <></>, permission: 'gps_system', hideForRoles: ['MONITOR', ...TECH_ROLES] },
+      { to: '/gps/requests-hub', label: '📥 طلبات GPS', icon: <></>, permission: 'gps_system', hideForRoles: ['MONITOR', ...TECH_ROLES] },
+      { to: '/gps/follow-up', label: '🔄 متابعة تجديد الاشتراكات', icon: <></>, permission: 'quality_control', hideForRoles: ['MONITOR'] },
+      { to: '/solar', label: '☀️ الطاقة الشمسية', icon: <></>, roles: ['ADMIN', 'OWNER', 'MONITOR', 'TECHNICIAN', 'SERVICE_MANAGER'], permission: 'solar_system' },
+      { to: '/nav-svc-papers', label: '🧾 أوراق الخدمة', icon: <></>, divider: true, plain: true },
+      { to: '/leader-invoices/new?service=1', label: '🛰️ فاتورة خدمة', icon: <></>, roles: ['ADMIN'], anyPermission: ['invoice_gps', 'invoice_dashcam'], hideForRoles: TECH_ROLES },
+      { to: '/work-reports', label: '📝 تقرير خدمة', icon: <></>, roles: ['ADMIN'], anyPermission: ['invoice_gps', 'invoice_dashcam'], hideForRoles: TECH_ROLES },
+      { to: '/leader-invoices/new', label: '🧮 حساب الكلفة', icon: <></>, permission: 'execution_cost', hideForRoles: TECH_ROLES },
+      { to: '/nav-svc-settings', label: '⚙️ إعدادات الخدمة', icon: <></>, divider: true, plain: true },
+      { to: '/service-managers', label: 'مسؤولو الخدمات', icon: <></>, roles: ['ADMIN'], unlockPermission: 'service_managers' },
+      { to: '/network-prices', label: 'أسعار الشبكات', icon: <></>, roles: ['ADMIN'], unlockPermission: 'network_prices' },
+      { to: '/gps-install-costs', label: '🔧 حساب تكاليف الشد', icon: <></>, roles: ['ADMIN', 'FINANCE'], unlockPermission: 'gps_install_costs' },
+    ],
+  },
+  {
+    // وحدة الإعلام والعلاقات العامة: علاقات الشركة مع زبائنها — الشخصيات
+    // المهمة (VIP) الي يأشّرها الموظفون، وسياسة الخصوصية المعلنة.
+    to: '/unit-pr', label: 'وحدة الإعلام والعلاقات العامة', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M11 5L6 9H2v6h4l5 4V5z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/></svg>,
+    unitPermission: 'unit_pr',
+    children: [
+      { to: '/vip-customers', label: '⭐ الشخصيات المهمة', icon: <></>, permission: 'vip_manual_add' },
+    ],
+  },
+  {
+    // الإعلام والعلاقات العامة — قرار (ع) 10-05: المشاريع تتحوّل إلهم قبل التنفيذ حتى يصوّرون.
+    to: '/unit-media', label: 'الإعلام والعلاقات العامة', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>,
+    unitPermission: 'media',
+    children: [
+      { to: '/media', label: '📸 مشاريع للتصوير', icon: <></>, roles: ['ADMIN', 'MEDIA', 'PUBLIC_RELATIONS'], anyPermission: ['media', 'project_management'] },
+    ],
+  },
   // وحدتان فارغتان مؤقتاً (بانتظار تحديد آلية العمل والصلاحيات المطلوبة لكل
   // وحدة) — تطلعان لمدير النظام بس، وتفتحان صفحة "قريباً" بدل ما تختفيان بالكامل.
   {
@@ -660,15 +751,6 @@ export const navItems: NavItem[] = [
       { to: '/design-forms/quick-add', label: 'إضافة سؤال', icon: <></>, roles: ['ADMIN'], unlockPermission: 'design_forms' },
       { to: '/design-forms', label: 'فورمة التصميم', icon: <></>, roles: ['ADMIN'], unlockPermission: 'design_forms' },
       { to: '/design-gallery', label: '🎨 معرض التصاميم', icon: <></>, roles: ['ADMIN'], unlockPermission: 'design_gallery' },
-    ],
-  },
-  {
-    // وحدة الإعلام والعلاقات العامة: علاقات الشركة مع زبائنها — الشخصيات
-    // المهمة (VIP) الي يأشّرها الموظفون، وسياسة الخصوصية المعلنة.
-    to: '/unit-pr', label: 'وحدة الإعلام والعلاقات العامة', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M11 5L6 9H2v6h4l5 4V5z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/></svg>,
-    unitPermission: 'unit_pr',
-    children: [
-      { to: '/vip-customers', label: '⭐ الشخصيات المهمة', icon: <></>, permission: 'vip_manual_add' },
     ],
   },
 
@@ -700,14 +782,6 @@ export const navItems: NavItem[] = [
     ],
   },
   {
-    // الإعلام والعلاقات العامة — قرار (ع) 10-05: المشاريع تتحوّل إلهم قبل التنفيذ حتى يصوّرون.
-    to: '/unit-media', label: 'الإعلام والعلاقات العامة', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>,
-    unitPermission: 'media',
-    children: [
-      { to: '/media', label: '📸 مشاريع للتصوير', icon: <></>, roles: ['ADMIN', 'MEDIA', 'PUBLIC_RELATIONS'], anyPermission: ['media', 'project_management'] },
-    ],
-  },
-  {
     // وحدة الـIT: الدور والصلاحيات انبنت (0278) وما چانت إلها ولا شاشة.
     to: '/unit-it', label: 'وحدة تقنية المعلومات', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>,
     unitPermission: 'unit_it',
@@ -725,55 +799,6 @@ export const navItems: NavItem[] = [
       { to: '/inventory', label: 'جرد الأدوات', icon: <></>, roles: ['ADMIN', 'HR_COORDINATOR', 'MONITOR', 'PROCUREMENT_ADMIN'], permission: 'inventory', hideForRoles: ['MONITOR'] },
       // قرار (ع) 10-09: إدارة المركبات انشالت من هنا — محلها «المركبات» جوّا العمل
       // لوحة تحكم الأسطول محلها هنا — المخازن هيه المسؤولة عن الأسطول
-    ],
-  },
-  // قرار (ع) 10-09: «العمل» الثانية (وحدة الحسابات unit_finance) انشالت — كل بنودها
-  // موجودة بـ«إدارة الحسابات» جوّا العمل، فچانت تطلع مرتين.
-  {
-    to: '/unit-hr', label: 'وحدة إدارة الكوادر', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/></svg>,
-    unitPermission: 'unit_hr',
-    // قرار (ع) 10-09: «ما يخص هذا الموظف» — إداري الكميات ما تطلعله
-    hideForRoles: ['PROCUREMENT_ADMIN'],
-    children: [
-      // ═══ قرار (ع) 10-13: «وحدة إدارة الكوادر» — كل شغل الموظفين بمكان واحد ═══
-      // البنود المنقولة strict: صلاحية الوحدة ما تفتحها، كل وحدة بحارسها.
-      { to: '/nav-hr-staff', label: '👥 الموظفين', icon: <></>, divider: true, plain: true },
-      { to: '/employees', label: 'إدارة الكوادر', icon: <></>, roles: ['ADMIN', 'HR_COORDINATOR', 'MONITOR'], permission: 'staff_management' },
-      { strict: true, to: '/staff-management-desk', label: 'إدارة الموظفين', icon: <></>, roles: ['ADMIN', 'MONITOR'], anyPermission: ['staff_management', 'kpi_management', 'performance_review', 'staff_requests'] },
-      { strict: true, to: '/departments', label: '🏢 الأقسام ومسؤوليها', icon: <></>, permission: 'departments_manage' },
-      { to: '/staff-requests', label: 'طلبات الكادر', icon: <></>, roles: ['ADMIN', 'HR_COORDINATOR'], unlockPermission: 'staff_requests' },
-      { to: '/nav-hr-perms', label: '🔐 الصلاحيات', icon: <></>, divider: true, plain: true },
-      { strict: true, to: '/permissions', label: 'الصلاحيات', icon: <></>, roles: ['ADMIN'] },
-      { strict: true, to: '/permission-preview', label: '🔎 شوف بعين الموظف', icon: <></>, roles: ['ADMIN'] },
-      { strict: true, to: '/roles-guide', label: '📋 دليل الأدوار والصلاحيات', icon: <></>, roles: ['ADMIN'] },
-      { to: '/nav-hr-time', label: '🕘 الدوام', icon: <></>, divider: true, plain: true },
-      // نفس حارس GET /api/work-schedule: الأدوار الثلاثة، أو صلاحية الجدول أو إدارة الكوادر.
-      { to: '/work-schedule', label: '🕘 جدول الدوام', icon: <></>, roles: ['ADMIN', 'HR_COORDINATOR', 'MONITOR'], unlockAnyPermission: ['work_schedule_manage', 'staff_management'] },
-      { strict: true, to: '/leaves', label: '🗓️ طلبات الإجازات', icon: <></>, roles: ['ADMIN', 'OWNER'], anyPermission: ['leave_approve_morning', 'leave_approve_evening'] },
-      // نفس حارس /api/remote-hours: المدير أو صلاحية «تسجيل ساعات العمل من البيت».
-      { monitorMenuHide: true, to: '/remote-hours', label: '🏠 ساعات العمل من البيت', icon: <></>, roles: ['ADMIN'], anyPermission: ['remote_hours_manage', 'remote_hours_self'] },
-      { to: '/nav-hr-score', label: '🏅 التقييم', icon: <></>, divider: true, plain: true },
-      { to: '/kpi', label: 'نقاط الكي بي اي', icon: <></>, roles: ['ADMIN', 'MONITOR'], permission: 'kpi_management' },
-      { to: '/performance-review', label: '⭐ تقييم الأداء', icon: <></>, roles: ['ADMIN', 'HR_COORDINATOR'], unlockPermission: 'performance_review' },
-      { strict: true, to: '/discipline-record', label: '📒 سجل الانضباط الوظيفي', icon: <></>, roles: ['ADMIN'] },
-      { to: '/nav-hr-stats', label: '📊 الإحصائيات', icon: <></>, divider: true, plain: true },
-      { strict: true, to: '/stats', label: 'إحصائيات الموظفين', icon: <></>, roles: ['ADMIN'] },
-      { strict: true, to: '/employee-stats', label: 'إحصائيات الموظفين الشهرية', icon: <></>, roles: ['ADMIN'], unlockPermission: 'employee_stats' },
-      { strict: true, to: '/stats-management', label: 'إدارة الإحصائيات', icon: <></>, roles: ['ADMIN'], unlockPermission: 'employee_stats' },
-      { to: '/nav-hr-work', label: '📋 الشغل', icon: <></>, divider: true, plain: true },
-      { strict: true, to: '/achievements', label: '📋 الإنجازات', icon: <></>, roles: ['ADMIN'] },
-    ],
-  },
-  {
-    to: '/unit-projects', label: 'وحدة إدارة المشاريع', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/></svg>,
-    unitPermission: 'unit_projects',
-    children: [
-      { to: '/projects', label: '🏗️ المشاريع', icon: <></>, anyPermission: ['project_management', 'project_create_only'], unlockPermission: 'project_management', labelFor: projectsLabel },
-          { to: '/project-work-types', label: 'إعدادات: أنواع الأعمال', icon: <></>, permission: 'project_management' },
-      { to: '/project-statistics', label: '📊 إحصائيات المشاريع', icon: <></>, permission: 'project_management' },
-      { to: '/checklists', label: 'الكشوفات', icon: <></>, permission: 'project_management' },
-      { to: '/quotations', label: 'عروض الأسعار', icon: <></>, anyPermission: ['quotation_create', 'quotation_edit_own', 'quotation_manage_all', 'quotation_system'] },
-      { to: '/products', label: '📦 المنتجات', icon: <></>, anyPermission: ['quotation_manage_all', 'quotation_system', 'content_technician', 'quotation_create'] },
     ],
   },
 
