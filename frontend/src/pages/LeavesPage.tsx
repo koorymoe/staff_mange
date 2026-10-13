@@ -100,39 +100,32 @@ export default function LeavesPage() {
     catch (e) { alert(e instanceof Error ? e.message : 'خطأ') }
   }
 
+  const ini = (n: string) => n.split(/\s+/).slice(0, 2).map((w) => w[0]).join(' ')
+  const step = (title: string, name?: string | null, note?: string | null, rejected?: boolean) => (
+    <div className="rounded-xl border border-slate-100 bg-slate-50/60 p-3">
+      <p className="text-[11px] text-slate-500">{title}</p>
+      {name ? <>
+        <p className="mt-0.5 text-sm font-bold text-[#0f2040]">{name}</p>
+        <span className={`mt-1 inline-block rounded-lg px-2 py-0.5 text-[11px] font-bold ${rejected ? 'bg-rose-50 text-rose-700' : 'bg-emerald-50 text-emerald-700'}`}>{rejected ? '✕ تم الرفض' : '✓ تمت الموافقة'}</span>
+        {note && <p className="mt-1 text-[11px] text-slate-500">{note}</p>}
+      </> : <p className="mt-1 text-xs text-slate-400">بالانتظار</p>}
+    </div>
+  )
   const card = (l: LeaveRequest, forApprover: boolean) => (
-    <div key={l.id} className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          {forApprover && (
-            <p className="font-bold text-slate-800">
-              {l.employeeName}
-              {l.jobTitle && <span className="mr-2 text-xs font-normal text-slate-400">{l.jobTitle}</span>}
-            </p>
-          )}
-          <p className={forApprover ? 'mt-1 text-sm text-slate-600' : 'font-bold text-slate-800'}>
-            {fmt(l.startDate)}
-            {l.endDate !== l.startDate && <> ← {fmt(l.endDate)}</>}
-            <span className="mr-2 text-xs text-slate-400">({l.days} يوم)</span>
-          </p>
-          {l.reason && <p className="mt-1 text-sm text-slate-600">📝 {l.reason}</p>}
-          <p className="mt-1 text-xs text-slate-400">{l.routeLabel}</p>
-          {l.preliminaryByName && (
-            <p className="mt-1 text-xs text-sky-700">
-              🔎 موافقة أولية: {l.preliminaryByName}
-              {l.preliminaryNote && ` — ${l.preliminaryNote}`}
-            </p>
-          )}
-          {l.decidedByName && (
-            <p className="mt-1 text-xs text-slate-500">
-              البت النهائي: {l.decidedByName}
-              {l.decisionNote && ` — ${l.decisionNote}`}
-            </p>
-          )}
+    <div key={l.id} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+      <div className="grid gap-3 md:grid-cols-[1.2fr_1fr_1.2fr_1fr_1fr_auto] md:items-start">
+        <div className="flex items-center gap-3">
+          <span className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-sky-50 text-sm font-bold text-[#2c5aad]">{ini(l.employeeName)}</span>
+          <div><p className="font-extrabold text-[#0f2040]">{l.employeeName}</p><p className="text-xs text-slate-500">{l.jobTitle || l.routeLabel}</p></div>
         </div>
-        <span className={`rounded-full px-3 py-1 text-xs font-bold ${STATUS_STYLE[l.status]}`}>{l.statusLabel}</span>
+        <div><p className="text-[11px] text-slate-500">📅 مدة الإجازة</p><p className="font-bold text-[#0f2040]">{l.days} يوم</p><p className="text-[11px] text-slate-500">{fmt(l.startDate)}{l.endDate !== l.startDate && <> ← {fmt(l.endDate)}</>}</p></div>
+        <div><p className="text-[11px] text-slate-500">📝 سبب الإجازة</p><p className="text-sm text-slate-700">{l.reason || '—'}</p></div>
+        {step('الموافقة الأولى', l.preliminaryByName, l.preliminaryNote)}
+        {step('الموافقة الثانية', l.decidedByName, l.decisionNote, l.status === 'REJECTED')}
+        <div className="flex flex-col items-end gap-1">
+          <span className={`rounded-full px-3 py-1 text-xs font-bold ${STATUS_STYLE[l.status]}`}>{l.statusLabel}</span>
+        </div>
       </div>
-
       {forApprover && (l.status === 'PENDING' || l.status === 'PRELIMINARY') && (
         <div className="mt-3">
           {l.status === 'PRELIMINARY' && (
@@ -187,12 +180,33 @@ export default function LeavesPage() {
 
   return (
     <div dir="rtl" className="space-y-6">
-      <div className="rounded-2xl p-6 shadow-sm" style={{ backgroundColor: '#1a3a5c' }}>
-        <h1 className="text-2xl font-bold text-white">🏖️ الإجازات</h1>
-        <p className="mt-1 text-sm text-blue-200">
-          طلب الإجازة يُقدَّم قبل يومين على الأقل، ويروح لإداري شفتك — ويوصلك إشعار بالقرار.
-        </p>
+      <div className="flex items-center justify-between overflow-hidden rounded-2xl border border-sky-100 bg-gradient-to-l from-sky-50 to-white p-6 shadow-sm">
+        <div>
+          <h1 className="text-2xl font-black text-[#0f2040]">🏖️ الإجازات</h1>
+          <p className="mt-1 text-sm text-slate-500">طلب الإجازة يُقدَّم قبل يومين على الأقل، ويروح لإداري شفتك — ويوصلك إشعار بالقرار.</p>
+        </div>
+        <span className="hidden text-6xl sm:block">🌴</span>
       </div>
+      {(() => {
+        const all = canApprove ? [...new Map([...inbox, ...mine].map((l) => [l.id, l])).values()] : mine
+        const c = (f: (l: LeaveRequest) => boolean) => all.filter(f).length
+        const items = [
+          { t: 'إجمالي الطلبات', v: all.length, i: '📄', tone: 'border-sky-100 bg-sky-50/50 text-sky-800' },
+          { t: 'المقبولة', v: c((l) => l.status === 'APPROVED'), i: '✅', tone: 'border-emerald-100 bg-emerald-50/50 text-emerald-700' },
+          { t: 'بانتظار الموافقة', v: c((l) => l.status === 'PENDING' || l.status === 'PRELIMINARY'), i: '⏳', tone: 'border-amber-100 bg-amber-50/50 text-amber-700' },
+          { t: 'المرفوضة', v: c((l) => l.status === 'REJECTED'), i: '⛔', tone: 'border-rose-100 bg-rose-50/50 text-rose-700' },
+        ]
+        return (
+          <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+            {items.map((x) => (
+              <div key={x.t} className={`flex items-center justify-between rounded-2xl border p-4 shadow-sm ${x.tone}`}>
+                <div><p className="text-sm font-extrabold">{x.t}</p><p className="mt-1 text-2xl font-black text-[#0f2040] tabular-nums">{x.v}</p><p className="text-[11px] text-slate-500">طلب</p></div>
+                <span className="grid h-12 w-12 place-items-center rounded-2xl bg-white/80 text-2xl shadow-sm">{x.i}</span>
+              </div>
+            ))}
+          </div>
+        )
+      })()}
 
       <div className="flex flex-wrap items-center gap-2">
         <button onClick={() => setTab('mine')}

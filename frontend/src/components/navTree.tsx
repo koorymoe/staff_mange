@@ -150,7 +150,7 @@ export const navItems: NavItem[] = [
   // كانت مجموعة تنفتح على «تصنيفي» و«تقييم الأداء». صارت بند واحد
   // يفتح الشاشة، والاختيار بين «تقييمي وتصنيفي» و«تقييم فريقي» من
   // فوگ بالواجهة — نفس نمط «مهامي» و«الجرد».
-  { monitorMenuHide: true, to: '/my-ranking', label: 'التقييم', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>,
+  { monitorMenuHide: true, hideForRoles: ['ADMIN', 'OWNER'], to: '/my-ranking', label: 'التقييم', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>,
     roles: ['ADMIN', 'SALES', 'HR_COORDINATOR', 'TECHNICIAN', 'MONITOR', 'FINANCE', 'GPS_ADMIN', 'QUALITY_ENGINEER', 'PROCUREMENT_ADMIN', 'TECHNICAL'] },
 
   // ── الإدارة ──
@@ -1083,6 +1083,8 @@ const SELF_SCOPED: Record<string, RouteRule> = {
   // (ع) 10-13: تقييم الأداء وسجل الانضباط تبويبات بإدارة الموظفين
   '/performance-review': { roles: ['ADMIN', 'HR_COORDINATOR'], anyPermission: ['performance_review'] },
   '/discipline-record': { roles: ['ADMIN'] },
+  // (ع) 10-13: «التقييم» انشال من قائمة المدير/المالك — صار جوّا إدارة الموظفين
+  '/my-ranking': { roles: ['ADMIN'] },
   '/employee-stats': { roles: ['ADMIN'], anyPermission: ['employee_stats'] },
   '/achievements': { roles: ['ADMIN'] },
   '/kpi': { roles: ['ADMIN', 'MONITOR'], anyPermission: ['kpi_management'] },

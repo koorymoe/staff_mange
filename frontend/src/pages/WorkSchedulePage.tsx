@@ -13,15 +13,6 @@ function minutes(t?: string | null) {
   return m ? Number(m[1]) * 60 + Number(m[2]) : null
 }
 
-function todayStatus(r: WorkScheduleRow) {
-  const start = minutes(r.shiftStart)
-  if (!r.checkIn) return { text: 'ما حضر بعد', cls: 'text-slate-400' }
-  const inAt = minutes(new Date(r.checkIn).toTimeString().slice(0, 5))
-  const hhmm = new Date(r.checkIn).toLocaleTimeString('ar-IQ', { hour: '2-digit', minute: '2-digit' })
-  if (start != null && inAt != null && inAt - start > 10) return { text: `حضر ${hhmm} — متأخر ${inAt - start} د`, cls: 'text-amber-600 font-bold' }
-  return { text: `حضر ${hhmm}`, cls: 'text-emerald-600' }
-}
-
 function ScheduleTab() {
   const { employee, permissions } = useSession()
   const role = employee?.role
@@ -32,6 +23,9 @@ function ScheduleTab() {
   const [rows, setRows] = useState<WorkScheduleRow[]>([])
   const [edits, setEdits] = useState<Record<string, Partial<WorkScheduleRow>>>({})
   const [q, setQ] = useState('')
+  const [fShift, setFShift] = useState('')
+  const [fRole, setFRole] = useState('')
+  const [fState, setFState] = useState('')
   const [msg, setMsg] = useState('')
 
   const load = useCallback(() => { api.getWorkSchedule().then(setRows).catch(() => setMsg('تعذّر جلب الجدول')) }, [])
@@ -50,39 +44,62 @@ function ScheduleTab() {
     } catch (err) { setMsg(err instanceof Error ? err.message : 'تعذّر الحفظ') }
   }
 
-  const shown = rows.filter((r) => !q || r.name.includes(q))
-  const inp = 'rounded border border-slate-300 px-1.5 py-1 text-xs disabled:bg-transparent disabled:border-transparent'
+  const shown = rows.filter((r) => (!q || r.name.includes(q)) && (!fShift || (r.shift || 'MORNING') === fShift)
+    && (!fRole || r.role === fRole) && (!fState || dayKind(r) === fState))
+  const kinds = rows.map(dayKind)
+  const morning = rows.filter((r) => (r.shift || 'MORNING') === 'MORNING').length
+  const roles = [...new Set(rows.map((r) => r.role))]
+  const inp = 'rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-xs disabled:border-transparent disabled:bg-transparent'
+  const sel = 'rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm'
+  const pill = (k: ReturnType<typeof dayKind>, r: WorkScheduleRow) => {
+    const t = r.checkIn ? new Date(r.checkIn).toLocaleTimeString('ar-IQ', { hour: '2-digit', minute: '2-digit' }) : ''
+    const m = { present: ['✅', 'حضر اليوم', 'bg-emerald-50 text-emerald-700'], late: ['⏰', 'متأخر', 'bg-amber-50 text-amber-700'], absent: ['⊗', 'غائب اليوم', 'bg-rose-50 text-rose-700'], notyet: ['🕓', 'ما حضر بعد', 'bg-slate-100 text-slate-600'] }[k]
+    return <span className={`inline-flex items-center gap-1.5 rounded-xl px-3 py-1 text-xs font-bold ${m[2]}`}>{m[0]} <span className="leading-tight">{m[1]}{t && <span className="block text-[10px] font-normal">حضر {t}</span>}</span></span>
+  }
   return (
     <div className="space-y-4" dir="rtl">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <h1 className="text-2xl font-extrabold text-[#0f2040]">🕘 جدول الدوام</h1>
-        <input placeholder="بحث بالاسم…" value={q} onChange={(e) => setQ(e.target.value)} className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm" />
+      <div>
+        <h1 className="text-2xl font-black text-[#0f2040]">🕘 جدول الدوام</h1>
+        <p className="text-sm text-slate-500">إدارة ورديات الموظفين ومتابعة الحضور اليومي</p>
+      </div>
+      <StatCards items={[
+        { label: 'إجمالي الموظفين', value: rows.length, icon: '👥', tone: 'border-sky-100 bg-sky-50/50 text-sky-800' },
+        { label: 'الحاضرين اليوم', value: kinds.filter((k) => k === 'present').length, icon: '✅', tone: 'border-emerald-100 bg-emerald-50/50 text-emerald-700' },
+        { label: 'المتأخرين', value: kinds.filter((k) => k === 'late').length, icon: '⏰', tone: 'border-amber-100 bg-amber-50/50 text-amber-700' },
+        { label: 'الغائبين', value: kinds.filter((k) => k === 'absent').length, icon: '🚫', tone: 'border-rose-100 bg-rose-50/50 text-rose-700' },
+        { label: 'الصباحي / المسائي', value: `${morning} / ${rows.length - morning}`, icon: '🔁', tone: 'border-violet-100 bg-violet-50/50 text-violet-700' },
+      ]} />
+      <div className="flex flex-wrap items-end gap-2 rounded-2xl border border-slate-200 bg-white p-3 shadow-sm">
+        <input placeholder="🔍 بحث باسم الموظف…" value={q} onChange={(e) => setQ(e.target.value)} className={`${sel} min-w-[200px] flex-1`} />
+        <label className="text-xs text-slate-500">الوجبة<select value={fShift} onChange={(e) => setFShift(e.target.value)} className={`${sel} mt-1 block`}><option value="">جميع الوجبات</option><option value="MORNING">صباحي</option><option value="EVENING">مسائي</option></select></label>
+        <label className="text-xs text-slate-500">الدور الوظيفي<select value={fRole} onChange={(e) => setFRole(e.target.value)} className={`${sel} mt-1 block`}><option value="">جميع الأدوار</option>{roles.map((r) => <option key={r} value={r}>{roleLabel(r)}</option>)}</select></label>
+        <label className="text-xs text-slate-500">حالة الحضور<select value={fState} onChange={(e) => setFState(e.target.value)} className={`${sel} mt-1 block`}><option value="">جميع الحالات</option><option value="present">حضر</option><option value="late">متأخر</option><option value="absent">غائب</option><option value="notyet">ما حضر بعد</option></select></label>
+        <button onClick={() => { setQ(''); setFShift(''); setFRole(''); setFState('') }} className="rounded-xl border border-slate-300 px-4 py-2 text-sm text-slate-600">↻ إعادة تعيين</button>
       </div>
       {!canEdit && <p className="text-xs text-slate-500">عرض فقط — تحديد الأوقات يحتاج صلاحية «تحديد جدول الدوام».</p>}
       {msg && <p className="text-sm text-sky-700">{msg}</p>}
-      <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white">
-        <table className="w-full text-sm">
+      <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-sm">
+        <table className="w-full min-w-[860px] text-sm">
           <thead className="bg-slate-50 text-xs text-slate-500">
-            <tr><th className="p-2 text-right">الموظف</th><th className="p-2 text-right">الدور</th><th className="p-2">الوجبة</th><th className="p-2">يبدي</th><th className="p-2">ينتهي</th><th className="p-2 text-right">اليوم</th>{canEdit && <th />}</tr>
+            <tr><th className="p-3 text-right">الموظف</th><th className="p-3 text-right">الدور الوظيفي</th><th className="p-3">الوجبة</th><th className="p-3">يبدأ</th><th className="p-3">ينتهي</th><th className="p-3">حالة اليوم</th>{canEdit && <th className="p-3">إجراءات</th>}</tr>
           </thead>
           <tbody>
             {shown.map((r) => {
               const e = edits[r.id] ?? {}
               const set = (k: keyof WorkScheduleRow, v: string) => setEdits((x) => ({ ...x, [r.id]: { ...x[r.id], [k]: v } }))
-              const st = todayStatus(r)
               return (
-                <tr key={r.id} className="border-t border-slate-100">
-                  <td className="p-2 font-bold">{r.name}{r.isLeader && <span className="mr-1 text-[10px] text-amber-600">قائد</span>}</td>
-                  <td className="p-2 text-xs text-slate-500">{roleLabel(r.role)}</td>
-                  <td className="p-2 text-center">
-                    <select disabled={!canEdit} className={inp} value={e.shift ?? r.shift ?? 'MORNING'} onChange={(ev) => set('shift', ev.target.value)}>
+                <tr key={r.id} className="border-t border-slate-100 hover:bg-slate-50/50">
+                  <td className="p-2.5"><span className="flex items-center gap-2 font-bold text-[#0f2040]"><span className="grid h-8 w-8 place-items-center rounded-full bg-sky-50 text-[11px] text-[#2c5aad]">{initials(r.name)}</span>{r.name}{r.isLeader && <span className="text-[10px] text-amber-600">قائد</span>}</span></td>
+                  <td className="p-2.5 text-xs text-slate-500">{roleLabel(r.role)}</td>
+                  <td className="p-2.5 text-center">
+                    <select disabled={!canEdit} className={`${inp} ${(e.shift ?? r.shift) === 'EVENING' ? 'bg-violet-50' : ''}`} value={e.shift ?? r.shift ?? 'MORNING'} onChange={(ev) => set('shift', ev.target.value)}>
                       <option value="MORNING">صباحي</option><option value="EVENING">مسائي</option>
                     </select>
                   </td>
-                  <td className="p-2 text-center"><input type="time" disabled={!canEdit} className={inp} value={e.shiftStart ?? r.shiftStart ?? ''} onChange={(ev) => set('shiftStart', ev.target.value)} /></td>
-                  <td className="p-2 text-center"><input type="time" disabled={!canEdit} className={inp} value={e.shiftEnd ?? r.shiftEnd ?? ''} onChange={(ev) => set('shiftEnd', ev.target.value)} /></td>
-                  <td className={`p-2 text-xs ${st.cls}`}>{st.text}</td>
-                  {canEdit && <td className="p-2">{edits[r.id] && <button onClick={() => save(r)} className="rounded bg-brand-600 px-2 py-1 text-xs font-bold text-white">حفظ</button>}</td>}
+                  <td className="p-2.5 text-center"><input type="time" disabled={!canEdit} className={inp} value={e.shiftStart ?? r.shiftStart ?? ''} onChange={(ev) => set('shiftStart', ev.target.value)} /></td>
+                  <td className="p-2.5 text-center"><input type="time" disabled={!canEdit} className={inp} value={e.shiftEnd ?? r.shiftEnd ?? ''} onChange={(ev) => set('shiftEnd', ev.target.value)} /></td>
+                  <td className="p-2.5 text-center">{pill(dayKind(r), r)}</td>
+                  {canEdit && <td className="p-2.5 text-center">{edits[r.id] ? <button onClick={() => save(r)} className="rounded-lg bg-[#0f2040] px-3 py-1 text-xs font-bold text-white">حفظ</button> : <span className="text-slate-300">⋮</span>}</td>}
                 </tr>
               )
             })}
@@ -95,6 +112,32 @@ function ScheduleTab() {
 
 // ═══ (ع) 10-13: جدول الدوام بثلاث واجهات — الجدول، دوام الموظفين (يوم/شهر)، طلبات الإجازات ═══
 const LeavesPage = lazy(() => import('./LeavesPage'))
+
+function nowMin() { const d = new Date(); return d.getHours() * 60 + d.getMinutes() }
+// حالة اليوم بكلمة وحدة (للبطاقات والفلتر)
+function dayKind(r: WorkScheduleRow): 'present' | 'late' | 'absent' | 'notyet' {
+  const start = minutes(r.shiftStart)
+  if (r.checkIn) {
+    const inAt = minutes(new Date(r.checkIn).toTimeString().slice(0, 5))
+    return start != null && inAt != null && inAt - start > 10 && inAt - start <= 180 ? 'late' : 'present'
+  }
+  return start != null && nowMin() > start + 60 ? 'absent' : 'notyet'
+}
+const initials = (n: string) => n.split(/\s+/).slice(0, 2).map((w) => w[0]).join(' ')
+
+// بطاقات الأرقام — تصميم (ع) 10-13
+function StatCards({ items }: { items: { label: string; value: string | number; icon: string; tone: string }[] }) {
+  return (
+    <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
+      {items.map((x) => (
+        <div key={x.label} className={`flex items-center justify-between rounded-2xl border p-4 shadow-sm ${x.tone}`}>
+          <div><p className="text-sm font-extrabold">{x.label}</p><p className="mt-1 text-2xl font-black text-[#0f2040] tabular-nums">{x.value}</p><p className="text-[11px] text-slate-500">موظف</p></div>
+          <span className="grid h-12 w-12 place-items-center rounded-2xl bg-white/80 text-2xl shadow-sm">{x.icon}</span>
+        </div>
+      ))}
+    </div>
+  )
+}
 
 export default function WorkSchedulePage() {
   const [tab, setTab] = useState<'schedule' | 'board' | 'leaves'>('schedule')
@@ -119,36 +162,64 @@ function AttendanceBoard() {
   const [date, setDate] = useState(() => new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Baghdad' }))
   const [rows, setRows] = useState<AttendanceBoardRow[] | null>(null)
   const [q, setQ] = useState('')
+  const [fRole, setFRole] = useState('')
+  const [fState, setFState] = useState('')
   const [open, setOpen] = useState<AttendanceBoardRow | null>(null)
   useEffect(() => { api.getAttendanceBoard(date).then((r) => setRows(r.rows)).catch(() => setRows([])) }, [date])
-  const list = (rows ?? []).filter((r) => !q || r.name.includes(q))
-  const present = (rows ?? []).filter((r) => r.firstIn).length
-  const onLeave = (rows ?? []).filter((r) => r.leaveKind).length
+  const all = rows ?? []
+  const kind = (r: AttendanceBoardRow): 'leave' | 'late' | 'present' | 'absent' => {
+    if (r.leaveKind) return 'leave'
+    if (!r.firstIn) return 'absent'
+    const s = minutes(r.shiftStart), i = minutes(new Date(r.firstIn).toTimeString().slice(0, 5))
+    return s != null && i != null && i - s > 10 && i - s <= 180 ? 'late' : 'present'
+  }
+  const list = all.filter((r) => (!q || r.name.includes(q)) && (!fRole || r.role === fRole) && (!fState || kind(r) === fState))
+  const ks = all.map(kind)
+  const morning = all.filter((r) => (r.shift || 'MORNING') === 'MORNING').length
+  const roles = [...new Set(all.map((r) => r.role))]
+  const sel = 'rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm'
+  const PILL = { present: ['✅ حضر', 'bg-emerald-50 text-emerald-700'], late: ['⏰ متأخر', 'bg-amber-50 text-amber-700'], absent: ['⊗ ما حضر', 'bg-rose-50 text-rose-700'], leave: ['🗓️ إجازة', 'bg-sky-50 text-sky-700'] }
   return (
-    <div className="space-y-3">
-      <div className="flex flex-wrap items-center gap-2 rounded-2xl bg-white p-3 shadow-sm">
-        <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm" />
-        <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="بحث بالاسم…" className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm" />
-        <span className="text-sm text-slate-600">حضروا <b className="text-emerald-700">{present}</b> · بإجازة <b className="text-amber-700">{onLeave}</b> · ما حضروا <b className="text-red-600">{(rows?.length ?? 0) - present - onLeave}</b></span>
+    <div className="space-y-4" dir="rtl">
+      <div>
+        <h1 className="text-2xl font-black text-[#0f2040]">📋 دوام الموظفين (يوم وشهر)</h1>
+        <p className="text-sm text-slate-500">متابعة حضور وانصراف الموظفين وساعات العمل اليومية</p>
       </div>
-      <div className="overflow-x-auto rounded-2xl bg-white shadow-sm">
-        <table className="w-full min-w-[760px] text-sm">
-          <thead><tr className="border-b text-[12px] text-slate-500">
-            {['الموظف', 'الدور', 'جدوله', 'بدا دوامه', 'انتهى', 'مجموع الساعات', 'الحالة', ''].map((h) => <th key={h} className="px-3 py-2 text-right font-bold">{h}</th>)}
+      <StatCards items={[
+        { label: 'إجمالي الموظفين', value: all.length, icon: '👥', tone: 'border-sky-100 bg-sky-50/50 text-sky-800' },
+        { label: 'الحاضرين', value: ks.filter((k) => k === 'present').length, icon: '✅', tone: 'border-emerald-100 bg-emerald-50/50 text-emerald-700' },
+        { label: 'المتأخرين', value: ks.filter((k) => k === 'late').length, icon: '⏰', tone: 'border-amber-100 bg-amber-50/50 text-amber-700' },
+        { label: 'الغياب', value: ks.filter((k) => k === 'absent').length, icon: '🚫', tone: 'border-rose-100 bg-rose-50/50 text-rose-700' },
+        { label: 'الصباحي / المسائي', value: `${morning} / ${all.length - morning}`, icon: '🔁', tone: 'border-violet-100 bg-violet-50/50 text-violet-700' },
+      ]} />
+      <div className="flex flex-wrap items-end gap-2 rounded-2xl border border-slate-200 bg-white p-3 shadow-sm">
+        <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="🔍 بحث باسم الموظف…" className={`${sel} min-w-[200px] flex-1`} />
+        <label className="text-xs text-slate-500">الدور الوظيفي<select value={fRole} onChange={(e) => setFRole(e.target.value)} className={`${sel} mt-1 block`}><option value="">جميع الأدوار</option>{roles.map((r) => <option key={r} value={r}>{roleLabel(r)}</option>)}</select></label>
+        <label className="text-xs text-slate-500">حالة الحضور<select value={fState} onChange={(e) => setFState(e.target.value)} className={`${sel} mt-1 block`}><option value="">جميع الحالات</option><option value="present">حضر</option><option value="late">متأخر</option><option value="absent">ما حضر</option><option value="leave">إجازة</option></select></label>
+        <label className="text-xs text-slate-500">التاريخ<input type="date" value={date} onChange={(e) => setDate(e.target.value)} className={`${sel} mt-1 block`} /></label>
+      </div>
+      <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-sm">
+        <table className="w-full min-w-[860px] text-sm">
+          <thead className="bg-slate-50"><tr className="text-[12px] text-slate-500">
+            {['#', 'الموظف', 'الدور', 'جدوله', 'بدا دوامه', 'انتهى', 'مجموع الساعات', 'الحالة', ''].map((h, i) => <th key={i} className="px-3 py-3 text-right font-bold">{h}</th>)}
           </tr></thead>
           <tbody>
-            {rows === null ? <tr><td colSpan={8} className="p-6 text-center text-slate-400">جاري التحميل…</td></tr> : list.map((r) => (
-              <tr key={r.id} className="border-b border-slate-50">
-                <td className="px-3 py-2 font-bold text-[#0f2040]">{r.name}</td>
-                <td className="px-3 text-xs text-slate-500">{roleLabel(r.role)}</td>
-                <td className="px-3 text-xs">{r.shiftStart && r.shiftEnd ? `${r.shiftStart} – ${r.shiftEnd}` : r.shift === 'EVENING' ? 'مسائي' : 'صباحي'}</td>
-                <td className="px-3 font-bold tabular-nums">{hm(r.firstIn)}</td>
-                <td className="px-3 tabular-nums">{r.open ? <span className="text-emerald-600">بالدوام هسه</span> : hm(r.lastOut)}</td>
-                <td className="px-3 tabular-nums">{r.minutes ? dur(r.minutes) : '—'}</td>
-                <td className="px-3 text-xs font-bold">{r.leaveKind ? <span className="text-amber-700">🗓️ إجازة</span> : r.firstIn ? <span className="text-emerald-700">حضر</span> : <span className="text-red-600">ما حضر</span>}</td>
-                <td className="px-3"><button onClick={() => setOpen(r)} className="rounded-lg border border-slate-300 px-2.5 py-1 text-xs font-bold text-[#2c5aad]">📅 جدول الشهر</button></td>
-              </tr>
-            ))}
+            {rows === null ? <tr><td colSpan={9} className="p-6 text-center text-slate-400">جاري التحميل…</td></tr> : list.map((r, i) => {
+              const k = kind(r)
+              return (
+                <tr key={r.id} className="border-t border-slate-100 hover:bg-slate-50/50">
+                  <td className="px-3 py-2.5 text-xs text-slate-400">{i + 1}</td>
+                  <td className="px-3"><span className="flex items-center gap-2 font-bold text-[#0f2040]"><span className="grid h-8 w-8 place-items-center rounded-full bg-sky-50 text-[11px] text-[#2c5aad]">{initials(r.name)}</span>{r.name}</span></td>
+                  <td className="px-3 text-xs text-slate-500">{roleLabel(r.role)}</td>
+                  <td className="px-3 text-xs tabular-nums">{r.shiftStart && r.shiftEnd ? `${r.shiftStart} – ${r.shiftEnd}` : r.shift === 'EVENING' ? 'مسائي' : 'صباحي'}</td>
+                  <td className="px-3 font-bold tabular-nums">{hm(r.firstIn)}</td>
+                  <td className="px-3 tabular-nums">{r.open ? <span className="text-emerald-600">بالدوام هسه</span> : hm(r.lastOut)}</td>
+                  <td className="px-3 tabular-nums">{r.minutes ? dur(r.minutes) : '—'}</td>
+                  <td className="px-3"><span className={`rounded-xl px-3 py-1 text-xs font-bold ${PILL[k][1]}`}>{PILL[k][0]}</span></td>
+                  <td className="px-3"><button onClick={() => setOpen(r)} className="rounded-lg border border-slate-300 px-2.5 py-1 text-xs font-bold text-[#2c5aad]">📅 جدول الشهر</button></td>
+                </tr>
+              )
+            })}
           </tbody>
         </table>
       </div>
