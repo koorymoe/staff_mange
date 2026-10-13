@@ -222,13 +222,13 @@ export const navItems: NavItem[] = [
           // (role !== 'ADMIN')، وكان المراقب يشوف الرابط هنا ويفتح
           // دائماً على «غير مصرح». والخادم (`GET /api/stats`) صار
           // محمياً بـ`requireAdmin` نفسه — القفلان يطابقان القائمة.
-          { to: '/stats', label: 'إحصائيات الموظفين', icon: <></>, roles: ['ADMIN'] },
-          { to: '/employee-stats', label: 'إحصائيات الموظفين الشهرية', icon: <></>, roles: ['ADMIN'], unlockPermission: 'employee_stats' },
+          { to: '/stats', label: 'إحصائيات الموظفين', icon: <></>, roles: ['ADMIN'], hideForRoles: ['ADMIN', 'OWNER'] },
+          { to: '/employee-stats', label: 'إحصائيات الموظفين الشهرية', icon: <></>, roles: ['ADMIN'], unlockPermission: 'employee_stats', hideForRoles: ['ADMIN', 'OWNER'] },
         ],
       },
       // إدارة الإحصائيات — عنصر مستقل مباشر تحت "الإدارة"، مو داخل إدارة
       // الموظفين، حصراً لمدير النظام.
-      { to: '/stats-management', label: 'إدارة الإحصائيات', icon: <></>, roles: ['ADMIN'], unlockPermission: 'employee_stats' },
+      { to: '/stats-management', label: 'إدارة الإحصائيات', icon: <></>, roles: ['ADMIN'], unlockPermission: 'employee_stats', hideForRoles: ['ADMIN', 'OWNER'] },
       // ═══ «إدارة العمل» انفكّت ═══
       // كانت مجموعة جوّا مجموعة: تضغط «الإدارة» فتنفتح «إدارة العمل»
       // فتنفتح الشاشات — ثلاث ضغطات. هسه محتوياتها مباشرة تحت «العمل».
@@ -297,7 +297,7 @@ export const navItems: NavItem[] = [
       { to: '/matrix/decisions', label: '🤖 صندوق قرارات ماتركس', icon: <></>, roles: ['ADMIN'] },
       // نفس منطق الأعلى: تحليل تكرار حجوزات/زبائن بيد موظف ثاني حساس بنفس الطريقة
       { monitorMenuHide: true, to: '/duplicate-review', label: '🤖 ماتركس — التكرار', icon: <></>, roles: ['ADMIN'], permission: 'duplicate_review' },
-      { to: '/achievements', label: '📋 الإنجازات', icon: <></>, roles: ['ADMIN'] },
+      { to: '/achievements', label: '📋 الإنجازات', icon: <></>, roles: ['ADMIN'], hideForRoles: ['ADMIN', 'OWNER'] },
       // دليل الأدوار — يوضّح منو يوصل لوين، فمحله عند من يوزّع الصلاحيات
       { to: '/solar', label: '☀️ الطاقة الشمسية', icon: <></>, roles: ['ADMIN', 'OWNER', 'MONITOR', 'TECHNICIAN', 'SERVICE_MANAGER'], permission: 'solar_system' },
       { to: '/training-programs', label: '🎓 برامج التدريب', icon: <></>, roles: ['ADMIN', 'OWNER'], permission: 'training_manage' },
@@ -623,11 +623,7 @@ export const navItems: NavItem[] = [
       { to: '/performance-review', label: '⭐ تقييم الأداء', icon: <></>, roles: ['ADMIN', 'HR_COORDINATOR'], unlockPermission: 'performance_review' },
       { strict: true, to: '/discipline-record', label: '📒 سجل الانضباط الوظيفي', icon: <></>, roles: ['ADMIN'] },
       { to: '/nav-hr-stats', label: '📊 الإحصائيات', icon: <></>, divider: true, plain: true },
-      { strict: true, to: '/stats', label: 'إحصائيات الموظفين', icon: <></>, roles: ['ADMIN'] },
-      { strict: true, to: '/employee-stats', label: 'إحصائيات الموظفين الشهرية', icon: <></>, roles: ['ADMIN'], unlockPermission: 'employee_stats' },
-      { strict: true, to: '/stats-management', label: 'إدارة الإحصائيات', icon: <></>, roles: ['ADMIN'], unlockPermission: 'employee_stats' },
-      { to: '/nav-hr-work', label: '📋 الشغل', icon: <></>, divider: true, plain: true },
-      { strict: true, to: '/achievements', label: '📋 الإنجازات', icon: <></>, roles: ['ADMIN'] },
+      { strict: true, to: '/stats-management', label: '📊 الإحصائيات', icon: <></>, roles: ['ADMIN'], unlockPermission: 'employee_stats' },
     ],
   },
   {
@@ -1085,6 +1081,10 @@ const SELF_SCOPED: Record<string, RouteRule> = {
   // (ع) 10-13: الصلاحيات صارت تبويب جوّا «إدارة الموظفين»
   '/permissions': { roles: ['ADMIN'] },
   // (ع) 10-13: طلبات الكادر تبويب بإدارة الموظفين، والإجازات تبويب بجدول الدوام
+  // (ع) 10-13: الإحصائيات الثلاث صارت واجهة وحدة، والإنجازات انشالت من القائمة
+  '/stats': { roles: ['ADMIN'] },
+  '/employee-stats': { roles: ['ADMIN'], anyPermission: ['employee_stats'] },
+  '/achievements': { roles: ['ADMIN'] },
   '/kpi': { roles: ['ADMIN', 'MONITOR'], anyPermission: ['kpi_management'] },
   '/staff-requests': { roles: ['ADMIN', 'HR_COORDINATOR'], anyPermission: ['staff_requests'] },
   // فاتورة الحجز من «مهامي» — نفس requireLeaderBasket بالخادم.

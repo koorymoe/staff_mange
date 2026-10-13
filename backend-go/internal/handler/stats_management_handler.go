@@ -53,3 +53,13 @@ func (h *StatsManagementHandler) ProjectStages(w http.ResponseWriter, r *http.Re
 	}
 	WriteJSON(w, http.StatusOK, stats)
 }
+
+// GET /api/stats-management/projects/monthly
+func (h *StatsManagementHandler) ProjectMonths(w http.ResponseWriter, r *http.Request) {
+	rows, err := h.service.ProjectMonths()
+	if err != nil {
+		WriteError(w, http.StatusInternalServerError, "تعذر جلب حركة المشاريع")
+		return
+	}
+	WriteJSON(w, http.StatusOK, rows)
+}

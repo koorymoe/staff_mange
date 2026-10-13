@@ -5460,6 +5460,7 @@ export const api = {
   getWeeklyStats: (from: string, to: string) =>
     request<WeeklyStats>(`/stats-management/weekly?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`),
   getProjectStageStats: () => request<ProjectStageStats[]>('/stats-management/projects'),
+  getProjectMonths: () => request<{ month: string; new: number; completed: number; inProgress: number }[]>('/stats-management/projects/monthly'),
   getEmployeePerformanceCurve: (employeeId: string, month?: string, months = 6) =>
     request<EmployeePerformanceCurve>(`/employee-stats/curve/${employeeId}?months=${months}${month ? `&month=${encodeURIComponent(month)}` : ''}`),
 

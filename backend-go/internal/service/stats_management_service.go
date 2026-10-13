@@ -1,6 +1,7 @@
 package service
 
 import (
+	"strings"
 	"time"
 
 	"staffmange-api/internal/model"
@@ -159,4 +160,42 @@ func (s *StatsManagementService) ProjectStages() ([]model.ProjectStageStats, err
 		result = append(result, model.ProjectStageStats{Stage: stage, Count: counts[stage]})
 	}
 	return result, nil
+}
+
+// ProjectMonth حركة المشاريع بشهر — لرسم «تطور المشاريع عبر الفترات» (ع 10-13).
+// الجديد = انخلق بالشهر. المكتمل = مرحلته «مكتمل» وآخر تحديث إله بالشهر.
+// قيد التنفيذ = مفتوح بنهاية الشهر (انخلق قبله وما خلص/انرفض لحد ذاك).
+type ProjectMonth struct {
+	Month      string `json:"month"`
+	New        int    `json:"new"`
+	Completed  int    `json:"completed"`
+	InProgress int    `json:"inProgress"`
+}
+
+func (s *StatsManagementService) ProjectMonths() ([]ProjectMonth, error) {
+	projects, err := s.projects.List()
+	if err != nil {
+		return nil, err
+	}
+	now := time.Now()
+	out := []ProjectMonth{}
+	for i := 11; i >= 0; i-- {
+		start := time.Date(now.Year(), now.Month()-time.Month(i), 1, 0, 0, 0, 0, time.Local)
+		end := start.AddDate(0, 1, 0)
+		m := ProjectMonth{Month: start.Format("2006-01")}
+		for _, p := range projects {
+			closed := strings.Contains(p.Stage, "مكتمل") || strings.Contains(p.Stage, "مرفوض")
+			if !p.CreatedAt.Before(start) && p.CreatedAt.Before(end) {
+				m.New++
+			}
+			if strings.Contains(p.Stage, "مكتمل") && !p.UpdatedAt.Before(start) && p.UpdatedAt.Before(end) {
+				m.Completed++
+			}
+			if p.CreatedAt.Before(end) && (!closed || !p.UpdatedAt.Before(end)) {
+				m.InProgress++
+			}
+		}
+		out = append(out, m)
+	}
+	return out, nil
 }

@@ -2529,6 +2529,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	mux.Handle("GET /api/stats-management/daily", middleware.Chain(http.HandlerFunc(statsManagementHandler.Daily), requireAuth, requireEmployeeStats))
 	mux.Handle("GET /api/stats-management/weekly", middleware.Chain(http.HandlerFunc(statsManagementHandler.Weekly), requireAuth, requireEmployeeStats))
 	mux.Handle("GET /api/stats-management/projects", middleware.Chain(http.HandlerFunc(statsManagementHandler.ProjectStages), requireAuth, requireEmployeeStats))
+	mux.Handle("GET /api/stats-management/projects/monthly", middleware.Chain(http.HandlerFunc(statsManagementHandler.ProjectMonths), requireAuth, requireEmployeeStats))
 	monthCompareHandler := handler.NewMonthCompareHandler(db)
 	mux.Handle("GET /api/stats-management/month-compare", middleware.Chain(http.HandlerFunc(monthCompareHandler.Compare), requireAuth, requireEmployeeStats))
 	mux.Handle("GET /api/stats-management/internal-works", middleware.Chain(http.HandlerFunc(statsManagementHandler.InternalWorks), requireAuth, requireEmployeeStats))

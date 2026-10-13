@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react'
-import { api, type DailyStats, type WeeklyStats, type ProjectStageStats, type Stats, type InternalWorksReport } from '../api'
+import { api, type DailyStats, type WeeklyStats, type Stats, type InternalWorksReport } from '../api'
 import EmployeeMonthlyStatsPage from './EmployeeMonthlyStatsPage'
 import MonthCompare from '../components/MonthCompare'
 import BookingCodeChip from '../components/BookingCodeChip'
+import ProjectStatsBoard from '../components/ProjectStatsBoard'
+import StatsPage from './StatsPage'
 import RoleSplit, { MiniMetric, SummaryCard } from '../components/RoleSplit'
 
 const PRIMARY = '#1a237e'
@@ -203,42 +205,9 @@ function WeeklyTab() {
   )
 }
 
+// (ع) 10-13: إحصائيات المشاريع بالتصميم الجديد
 function ProjectsTab() {
-  const [stats, setStats] = useState<ProjectStageStats[]>([])
-  useEffect(() => {
-    let alive = true
-    api.getProjectStageStats().then((r) => { if (alive) setStats(r) }).catch(() => { if (alive) setStats([]) })
-    return () => { alive = false }
-  }, [])
-  const total = stats.reduce((s, r) => s + r.count, 0)
-  return (
-    <div style={{ overflowX: 'auto', background: 'var(--sf-card)', borderRadius: '12px', border: '1px solid var(--bd-line)' }}>
-      <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-        <thead>
-          <tr>
-            <th style={{ padding: '10px 12px', textAlign: 'right', fontSize: '13px', color: 'white', background: PRIMARY }}>مرحلة المشروع</th>
-            <th style={{ padding: '10px 12px', textAlign: 'right', fontSize: '13px', color: 'white', background: PRIMARY }}>عدد المشاريع</th>
-          </tr>
-        </thead>
-        <tbody>
-          {stats.map((r) => (
-            <tr key={r.stage}>
-              <td style={{ padding: '10px 12px', fontSize: '13px', borderBottom: '1px solid var(--bd-line)' }}>{r.stage}</td>
-              <td style={{ padding: '10px 12px', fontSize: '13px', borderBottom: '1px solid var(--bd-line)' }}>{r.count}</td>
-            </tr>
-          ))}
-          {stats.length === 0 && (
-            <tr><td colSpan={2} style={{ padding: '30px', textAlign: 'center', color: 'var(--t-faint)' }}>لا توجد مشاريع بعد</td></tr>
-          )}
-        </tbody>
-        {stats.length > 0 && (
-          <tfoot>
-            <tr><td style={{ padding: '10px 12px', fontWeight: 'bold' }}>الإجمالي</td><td style={{ padding: '10px 12px', fontWeight: 'bold', color: PRIMARY_TEXT }}>{total}</td></tr>
-          </tfoot>
-        )}
-      </table>
-    </div>
-  )
+  return <ProjectStatsBoard />
 }
 
 function monthStr() {
@@ -378,12 +347,14 @@ function InternalWorksTab() {
 }
 
 export default function StatsManagementPage() {
-  const [tab, setTab] = useState<'daily' | 'weekly' | 'monthly' | 'compare' | 'internal' | 'services' | 'projects'>('daily')
+  const [tab, setTab] = useState<'staff' | 'daily' | 'weekly' | 'monthly' | 'compare' | 'internal' | 'services' | 'projects'>('staff')
 
   const tabs: { key: typeof tab; label: string }[] = [
+    // (ع) 10-13: «إحصائيات الموظفين» و«الشهرية» و«إدارة الإحصائيات» صارت واجهة وحدة
+    { key: 'staff', label: '👥 إحصائيات الموظفين' },
     { key: 'daily', label: 'يومية' },
     { key: 'weekly', label: 'أسبوعية' },
-    { key: 'monthly', label: 'شهرية' },
+    { key: 'monthly', label: 'شهرية (لكل موظف)' },
     { key: 'compare', label: '📅 مقارنة الأشهر' },
     { key: 'internal', label: 'داخل الشركة' },
     { key: 'services', label: 'أكثر خدمة مطلوبة' },
@@ -396,11 +367,11 @@ export default function StatsManagementPage() {
         background: `linear-gradient(135deg, ${PRIMARY}, #283593)`,
         color: 'white', padding: '20px 30px', borderRadius: '12px', marginBottom: '20px',
       }}>
-        <h1 style={{ margin: 0, fontSize: '24px' }}>إدارة الإحصائيات</h1>
+        <h1 style={{ margin: 0, fontSize: '24px' }}>📊 الإحصائيات</h1>
         <span style={{ color: GOLD_TEXT, fontSize: '14px' }}>يومية، أسبوعية، شهرية، شغل داخل الشركة، أكثر خدمة مطلوبة، ومشاريع — حصراً لمدير النظام</span>
       </div>
 
-      <div style={{ display: 'flex', gap: '8px', marginBottom: '20px' }}>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '20px' }}>
         {tabs.map((t) => (
           <button
             key={t.key}
@@ -418,6 +389,7 @@ export default function StatsManagementPage() {
         ))}
       </div>
 
+      {tab === 'staff' && <StatsPage />}
       {tab === 'daily' && <DailyTab />}
       {tab === 'weekly' && <WeeklyTab />}
       {tab === 'monthly' && <EmployeeMonthlyStatsPage />}
