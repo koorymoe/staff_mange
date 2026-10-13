@@ -43,6 +43,14 @@ func (r *MatrixReportRepository) Attendance(id, day string) ([]DayAttendance, er
 	return rows, err
 }
 
+// OnLeave عنده إجازة معتمدة تشمل اليوم؟ (ع 10-13: الي بإجازة مو غايب)
+func (r *MatrixReportRepository) OnLeave(id, day string) bool {
+	var n int
+	_ = r.db.Get(&n, `SELECT COUNT(*) FROM "LeaveRequest" WHERE "employeeId" = $1 AND status = 'APPROVED'
+		AND $2::date BETWEEN "startDate"::date AND "endDate"::date`, id, day)
+	return n > 0
+}
+
 // AttendanceRange حضور فترة — لملف السلوك.
 func (r *MatrixReportRepository) AttendanceRange(id string, days int) ([]DayAttendance, error) {
 	rows := []DayAttendance{}

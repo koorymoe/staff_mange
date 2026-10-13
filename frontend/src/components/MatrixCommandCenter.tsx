@@ -373,15 +373,18 @@ function Discovery({ focus, late, perf, groups, biz, proposal, onDone }: {
       }
     }
     if (!biz) return null
-    const ch = biz.mtd.lastRevenue > 0 ? Math.round(((biz.mtd.revenue - biz.mtd.lastRevenue) / biz.mtd.lastRevenue) * 100) : null
+    // (ع) 10-13: المقارنة حجوزات بحجوزات — دفعات المشاريع تنسجّل بالجملة وتخرّب النسبة
+    const bRev = biz.mtd.revenue - (biz.mtd.projectRevenue ?? 0)
+    const bLast = biz.mtd.lastRevenue - (biz.mtd.lastProjectRevenue ?? 0)
+    const ch = bLast > 0 ? Math.round(((bRev - bLast) / bLast) * 100) : null
     return {
-      title: ch == null ? `إيراد الشهر لحد اليوم ${fmtIQD(biz.mtd.revenue)}` : `الإيراد ${ch >= 0 ? 'أعلى' : 'أقل'} بـ${Math.abs(ch)}% من نفس الفترة الشهر الماضي`,
-      sub: `${biz.mtd.bookings} حجز منجز هالشهر مقابل ${biz.mtd.lastBookings} — ${fmtIQD(biz.mtd.revenue)} مقابل ${fmtIQD(biz.mtd.lastRevenue)}.`,
+      title: ch == null ? `إيراد الحجوزات لحد اليوم ${fmtIQD(bRev)}` : `إيراد الحجوزات ${ch >= 0 ? 'أعلى' : 'أقل'} بـ${Math.abs(ch)}% من نفس الفترة الشهر الماضي`,
+      sub: `${biz.mtd.bookings} حجز منجز هالشهر مقابل ${biz.mtd.lastBookings} — ${fmtIQD(bRev)} مقابل ${fmtIQD(bLast)}. ودفعات مشاريع انسجّلت هالشهر ${fmtIQD(biz.mtd.projectRevenue ?? 0)}.`,
       cause: ch != null && ch < 0 ? 'حجوزات منجزة أقل، أو فواتير ما انسجّلت بعد.' : 'وتيرة الإنجاز والفوترة.',
       impact: biz.forecast.insufficient ? biz.forecast.basis : `المتوقع لآخر الشهر ${fmtIQD(biz.forecast.expected)}.`,
       suggestion: ch != null && ch < 0 ? 'تابع الزبائن الي استفسروا وما حجزوا، وسجّل الفواتير المعلّقة.' : 'ركّز على الحجوزات المفتوحة حتى تتحول لإيراد.',
       severity: (ch != null && ch <= -15 ? 'HIGH' : 'LOW') as 'HIGH' | 'LOW', link: '/leader-invoices',
-      evidence: { 'حجوزات الشهر': biz.mtd.bookings, 'الإيراد': fmtIQD(biz.mtd.revenue), 'نفس الفترة قبل': fmtIQD(biz.mtd.lastRevenue), 'أساس التوقع': biz.forecast.basis } as Record<string, unknown>,
+      evidence: { 'حجوزات الشهر': biz.mtd.bookings, 'إيراد الحجوزات': fmtIQD(bRev), 'نفس الفترة قبل': fmtIQD(bLast), 'دفعات مشاريع هالشهر': fmtIQD(biz.mtd.projectRevenue ?? 0), 'أساس التوقع': biz.forecast.basis } as Record<string, unknown>,
     }
   }, [focus, late, perf, groups, biz])
 
@@ -389,7 +392,7 @@ function Discovery({ focus, late, perf, groups, biz, proposal, onDone }: {
   const weak = useMemo(() => perf.flatMap((g) => g.members.map((m) => {
     const field = g.field !== false
     const why: string[] = []
-    if (m.absent) why.push('ما سجّل حضور اليوم (عنده جدول)')
+    if (m.absent) why.push('ما سجّل حضور اليوم (عنده جدول، ومو بإجازة)')
     else if (m.late > 0) why.push(`تأخّر اليوم ${m.late} دقيقة عن جدوله`)
     if (field) {
       const stuck = m.open - (m.unstarted ?? 0)
@@ -398,7 +401,7 @@ function Discovery({ focus, late, perf, groups, biz, proposal, onDone }: {
       if (m.speed != null && m.speed >= 1.4) why.push(`يطوّل ×${m.speed.toFixed(1)} عن المتوقع لنفس الخدمة`)
     } else {
       const done = (m.metrics ?? []).filter((x) => x.label !== 'عمليات بالنظام').reduce((a, x) => a + x.value, 0)
-      if ((m.metrics ?? []).length > 1 && done === 0) why.push('ما سجّل شغل دوره بآخر ٣٠ يوم')
+      if ((m.metrics ?? []).length > 1 && done === 0) why.push('النظام ما لگى شغل مسجّل إله بآخر ٣٠ يوم (شغله برّا النظام؟)')
     }
     return { ...m, group: g.group, idx: perfIndex(m, field), why }
   })).filter((m) => m.idx < 75 && m.why.length > 0).sort((a, b) => a.idx - b.idx), [perf])
@@ -703,7 +706,8 @@ function Predictions({ biz, late, props }: { biz: MatrixBusinessData | null; lat
   if (biz) {
     const ch = biz.mtd.lastBookings > 0 ? Math.round(((biz.mtd.bookings - biz.mtd.lastBookings) / biz.mtd.lastBookings) * 100) : null
     items.push({ text: `المتوقع لآخر الشهر ${biz.forecast.expectedJobs} حجز`, change: ch, conf: biz.forecast.insufficient ? 50 : confidence(biz.mtd.bookings) })
-    const rc = biz.mtd.lastRevenue > 0 ? Math.round(((biz.mtd.revenue - biz.mtd.lastRevenue) / biz.mtd.lastRevenue) * 100) : null
+    const bR = biz.mtd.revenue - (biz.mtd.projectRevenue ?? 0), bL = biz.mtd.lastRevenue - (biz.mtd.lastProjectRevenue ?? 0)
+    const rc = bL > 0 ? Math.round(((bR - bL) / bL) * 100) : null
     items.push({ text: `الأرباح المتوقعة ${fmtIQD(biz.forecast.expected)}`, change: rc, conf: biz.forecast.insufficient ? 50 : confidence(biz.mtd.bookings) })
   }
   if (late) items.push({ text: `الحجوزات المتأخرة: ${late.recentPct}% من آخر ٣ أيام`, change: late.changePct == null ? null : -late.changePct, conf: confidence(late.recent.total) })

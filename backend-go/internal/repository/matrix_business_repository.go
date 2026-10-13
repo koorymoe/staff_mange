@@ -186,9 +186,9 @@ func (r *MatrixBusinessRepository) Pace() ([]PaceMonth, error) {
 	rows := []PaceMonth{}
 	err := r.db.Select(&rows, `
 		WITH ev AS (
+		  -- (ع) 10-13: الوتيرة من الحجوزات بس — دفعات المشاريع كتل كبيرة تنسجّل
+		  -- بأي وكت (وأحياناً متأخرة بالجملة)، فتخرّب «شكد يوصل لحد اليوم N»
 		  SELECT baghdad_date(b."completedAt") AS d, `+RevenueAmountSQL("b")+` AS v FROM "Booking" b WHERE `+completedCountable+`
-		  UNION ALL
-		  SELECT "paidAt", amount FROM "ProjectPayment" WHERE "cancelledAt" IS NULL
 		), m AS (
 		  SELECT k, (date_trunc('month', baghdad_today()) - make_interval(months => k))::date AS ms FROM generate_series(1, 3) k
 		)

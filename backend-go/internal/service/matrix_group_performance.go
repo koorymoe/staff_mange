@@ -21,6 +21,9 @@ type GroupMember struct {
 	CheckIn   string   `json:"checkIn,omitempty"`
 	Late      int      `json:"late"` // دقائق
 	Absent    bool     `json:"absent"`
+	// (ع) 10-13: حضر بوكت بعيد عن شفته (شفت متغيّر بموافقة) — مو تأخير
+	ShiftChanged bool `json:"shiftChanged,omitempty"`
+	OnLeave      bool `json:"onLeave,omitempty"`
 	Jobs      int      `json:"jobs"`
 	Completed int      `json:"completed"`
 	Partial   int      `json:"partial"`
@@ -75,7 +78,7 @@ func (s *MatrixEmployeeReportService) GroupPerformance(group string) (*GroupPerf
 		}
 		m := GroupMember{ID: sub.ID, Name: sub.Name}
 		if e, err := s.repo.Employee(sub.ID); err == nil {
-			start, _, assumed := shiftWindow(e)
+			start, end, assumed := shiftWindow(e)
 			// بلا جدول مسجّل: نعرض وكت الحضور بس، بلا «غايب» ولا «متأخر».
 			m.NoSchedule = assumed
 			if att, _ := s.repo.Attendance(sub.ID, day); len(att) > 0 && assumed {
@@ -84,10 +87,16 @@ func (s *MatrixEmployeeReportService) GroupPerformance(group string) (*GroupPerf
 				// لا شي
 			} else if len(att) > 0 {
 				m.CheckIn = hm(att[0].CheckIn)
-				if l := mins(att[0].CheckIn.Sub(atClock(dayT, start))); l > lateGraceMin {
+				l := mins(att[0].CheckIn.Sub(atClock(dayT, start)))
+				// بصمة بعد نهاية شفته أو بعد بدايته بـ٣ ساعات+ = شفت متغيّر مو تأخير
+				if l > 180 || att[0].CheckIn.After(atClock(dayT, end)) {
+					m.ShiftChanged = true
+				} else if l > lateGraceMin {
 					m.Late = l
 					late = append(late, sub.Name)
 				}
+			} else if s.repo.OnLeave(sub.ID, day) {
+				m.OnLeave = true
 			} else if now.After(atClock(dayT, start).Add(time.Hour)) {
 				m.Absent = true
 				absent = append(absent, sub.Name)

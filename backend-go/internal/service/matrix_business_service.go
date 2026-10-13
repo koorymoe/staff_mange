@@ -85,7 +85,11 @@ func (s *MatrixBusinessService) forecast(now time.Time, mtd *repository.MonthToD
 	}
 	pipeVal := pl.Value.Float64
 	expJobs := int(math.Round(pl.ExpJobs.Float64))
-	pipeline := mtd.Revenue + pipeVal
+	// (ع) 10-13: التوقع من الحجوزات بس. دفعات المشاريع المقبوضة هالشهر تنضاف
+	// كما هي بلا ضرب بوتيرة — إدخال دفعات قديمة بالجملة چان يطلّع التوقع بالمليارات.
+	bookRev := mtd.Revenue - mtd.ProjectRevenue
+	projRev := mtd.ProjectRevenue
+	pipeline := bookRev + pipeVal
 
 	t := now.In(debriefLoc)
 	daysIn := time.Date(t.Year(), t.Month()+1, 0, 0, 0, 0, 0, debriefLoc).Day()
@@ -104,9 +108,9 @@ func (s *MatrixBusinessService) forecast(now time.Time, mtd *repository.MonthToD
 				fr = append(fr, m.Upto/m.Total)
 			}
 		}
-		if len(fr) >= 2 && upto > 0 && mtd.Revenue > 0 {
+		if len(fr) >= 2 && upto > 0 && bookRev > 0 {
 			f := upto / tot
-			p := mtd.Revenue / f
+			p := bookRev / f
 			pace = &p
 			// جرّب الطريقة على كل شهر سابق: لو چنا نتوقع بهاليوم، شكد چان الغلط؟
 			for i, fi := range fr {
@@ -124,7 +128,7 @@ func (s *MatrixBusinessService) forecast(now time.Time, mtd *repository.MonthToD
 				}
 			}
 			paceNote = fmt.Sprintf(" الوتيرة: بآخر %d أشهر چان الإيراد لحد يوم %d يوصل %.0f٪ من الشهر، فالمقبوض (%s) يعني ~%s.",
-				len(fr), t.Day(), f*100, iqdShort(mtd.Revenue), iqdShort(p))
+				len(fr), t.Day(), f*100, iqdShort(bookRev), iqdShort(p))
 		}
 	}
 
@@ -133,11 +137,17 @@ func (s *MatrixBusinessService) forecast(now time.Time, mtd *repository.MonthToD
 		// الوتيرة تشوف شغل بعده ما انحجز — نعطيها وزن يقل كل ما يمشي الشهر.
 		expected = elapsed*pipeline + (1-elapsed)**pace
 	}
+	bookExpected := expected
+	expected += projRev
+	projNote := ""
+	if projRev > 0 {
+		projNote = fmt.Sprintf(" + دفعات مشاريع انسجّلت هالشهر %s (تنضاف كما هي، ما تنحسب بالوتيرة) = %s.", iqdShort(projRev), iqdShort(expected))
+	}
 	fc := BusinessForecast{
 		Expected:     math.Round(expected),
 		ExpectedJobs: mtd.Bookings + expJobs,
-		Basis: fmt.Sprintf("المقبوض لحد هسه %s + %d حجز مفتوح موعده هالشهر، متوقع ينجز منها ~%d (نسبة إنجاز كل خدمة × معدل المقبوض بيها بآخر ٩٠ يوم) = %s.%s",
-			iqdShort(mtd.Revenue), pl.Jobs, expJobs, iqdShort(pipeline), paceNote),
+		Basis: fmt.Sprintf("الحجوزات: المقبوض لحد هسه %s + %d حجز مفتوح موعده هالشهر، متوقع ينجز منها ~%d (نسبة إنجاز كل خدمة × معدل المقبوض بيها بآخر ٩٠ يوم) = %s.%s توقع الحجوزات %s.%s",
+			iqdShort(bookRev), pl.Jobs, expJobs, iqdShort(pipeline), paceNote, iqdShort(bookExpected), projNote),
 	}
 	// المدى: الشغل الي بعده ما صار (المتوقع − المقبوض) بيه غلط بقدر غلط الوتيرة
 	// بالأشهر الماضية (أقل شي ١٠٪، أكثر شي ٥٠٪). المقبوض ثابت ما بيه غلط.

@@ -5859,7 +5859,7 @@ export interface EmployeeReport {
 export interface RoleMetric { label: string; value: number }
 export interface MatrixBusiness {
   months: { month: string; bookings: number; revenue: number; invoiced: number }[]
-  mtd: { bookings: number; revenue: number; lastBookings: number; lastRevenue: number }
+  mtd: { bookings: number; revenue: number; lastBookings: number; lastRevenue: number; projectRevenue?: number; lastProjectRevenue?: number }
   forecast: { expected: number; expectedJobs: number; basis: string; insufficient: boolean; low?: number; high?: number; accuracy?: string }
   customers: { actual: number; inquiry: number; repeat: number; openOnly: number }
   inquirers: { id: string; name: string; archived: number; lastAt: string }[]
@@ -5885,7 +5885,7 @@ export interface GroupPerformance {
   /** حجوزات وسرعة للميدانيين بس؛ الباقين بشغل دورهم (columns/metrics). */
   field: boolean
   columns?: string[]
-  members: { id: string; name: string; checkIn?: string; late: number; absent: boolean; jobs: number; completed: number; partial: number; open: number; unstarted?: number; speed: number | null; prevSpeed: number | null; score: number; noSchedule?: boolean; metrics?: RoleMetric[]; pending?: number }[]
+  members: { id: string; name: string; checkIn?: string; late: number; absent: boolean; shiftChanged?: boolean; onLeave?: boolean; jobs: number; completed: number; partial: number; open: number; unstarted?: number; speed: number | null; prevSpeed: number | null; score: number; noSchedule?: boolean; metrics?: RoleMetric[]; pending?: number }[]
   problems: { text: string; link?: string; fixes: string[] }[]
 }
 
