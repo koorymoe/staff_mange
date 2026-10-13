@@ -5375,6 +5375,11 @@ export const api = {
     request<{ ok: boolean }>(`/materials/${encodeURIComponent(id)}/stock`, { method: 'PUT', body: JSON.stringify({ quantity }) }),
   getReplacementSuggestions: () => request<ReplacementSuggestions>('/ai/replacement-suggestions'),
   getMyWatch: () => request<MatrixWatch>('/ai/my-watch'),
+  // رسول ماتركس (ع 10-13)
+  getCourierState: () => request<CourierState>('/matrix-courier/state'),
+  getCourierInbox: () => request<CourierMessage[]>('/matrix-courier/inbox'),
+  courierDelivered: (id: string) => request<void>(`/matrix-courier/${id}/delivered`, { method: 'POST' }),
+  courierSeen: (link: string) => request<void>(`/matrix-courier/seen?link=${encodeURIComponent(link)}`, { method: 'POST' }),
   getMatrixGuide: (path: string, label: string) =>
     request<{ text: string; source: 'RULES' | 'MODEL' | 'NONE' }>(`/ai/guide?path=${encodeURIComponent(path)}&label=${encodeURIComponent(label)}`),
   getEmployeeReport: (employeeId: string, day?: string) =>
@@ -5701,6 +5706,23 @@ export interface MatrixDecisions {
 
 // عين ماتركس — حالة الموظف نفسه.
 export interface MatrixWorkload { key: string; label: string; done: number; left: number; route: string; verb: string; codes?: string[]; links?: { label: string; to: string }[] }
+export interface CourierMessage {
+  id: string
+  kind: 'extra_task' | 'leave' | 'project' | 'booking'
+  message: string
+  link: string
+  createdAt: string
+  deliveredAt: string | null
+  recipientName?: string
+}
+
+export interface CourierState {
+  now: string
+  outgoing: CourierMessage[]
+  incoming: CourierMessage[]
+  badges: Record<string, number>
+}
+
 export interface MatrixWatch {
   level: 'CALM' | 'ALERT' | 'RED'
   mood: 'CALM' | 'PLEASED' | 'ALERT' | 'ANGRY'

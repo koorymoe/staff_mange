@@ -5,6 +5,7 @@ import EmployeeAvatar from './EmployeeAvatar'
 import LiveAlerts from './LiveAlerts'
 import ThemeToggle from './ThemeToggle'
 import MatrixEye from './MatrixEye'
+import MatrixCourier from './MatrixCourier'
 import RemoteTimerChip from './RemoteTimerChip'
 import GlobalSearch from './GlobalSearch'
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
@@ -89,6 +90,13 @@ export default function Layout() {
   const notifPanelRef = useRef<HTMLDivElement>(null)
   const notifBtnRef = useRef<HTMLButtonElement>(null)
   const [settingsOpen, setSettingsOpen] = useState(false)
+  // أرقام رسول ماتركس على البنود — عدد الي توجّهله وما فتحه بعد (من الخادم)
+  const [courierBadges, setCourierBadges] = useState<Record<string, number>>({})
+  useEffect(() => {
+    const on = (e: Event) => setCourierBadges((e as CustomEvent<Record<string, number>>).detail || {})
+    window.addEventListener('matrix-courier-badges', on)
+    return () => window.removeEventListener('matrix-courier-badges', on)
+  }, [])
   const location = useLocation()
   const navigate = useNavigate()
 
@@ -96,6 +104,12 @@ export default function Layout() {
   // navigation, not data fetching; safe to keep as a synchronous effect.
   // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { setMobileOpen(false) }, [location.pathname])
+  // فتح البند = شاف الشغل الموجّه → رقمه يتصفّر بالخادم
+  useEffect(() => {
+    const link = location.pathname
+    if (!courierBadges[link]) return
+    api.courierSeen(link).then(() => window.dispatchEvent(new Event('matrix-courier-refresh'))).catch(() => {})
+  }, [location.pathname, courierBadges])
 
   // وسم عرض الملفات: ينجاب مرة عند الدخول ويتجدد كل 10 دقائق. بدونه
   // الصور المخزّنة برّا القاعدة ترجع 401 لأن <img> ما يرسل ترويسة
@@ -422,6 +436,12 @@ export default function Layout() {
   // unitGranted ينتقل للأولاد: لما الموظف عنده صلاحية الوحدة، كل صفحاتها
   // تنعرض له بدون فحص صلاحياتها التفصيلية.
   // العنصر وصلنا منضّف من prune — ما نفلتر ولا نحسب صلاحيات هنا من جديد.
+  const badgeOf = (it: PrunedItem): number => it.children
+    ? it.children.reduce((n, c) => n + badgeOf(c as PrunedItem), 0)
+    : (courierBadges[it.to] || 0)
+  const courierPill = (n: number) => n > 0
+    ? <span title="شغل وجّهه المدير وما فتحته بعد" className="ms-auto rounded-full bg-red-600 px-1.5 text-[10px] font-extrabold leading-4 text-white shadow">{n}</span>
+    : null
   const renderNavItem = (rawItem: PrunedItem, depth: number = 0): React.ReactNode => {
     // اسم البند حسب الي يشوفه — `labelFor` تبدّل الاسم وبس، ما تفتح
     // ولا تقيّد ولا تبدّل المسار.
@@ -475,6 +495,7 @@ export default function Layout() {
                 </svg>
               )}
               {!collapsed && <span className="flex-1 text-right">{item.label}</span>}
+              {!collapsed && courierPill(badgeOf(item))}
               {/* الأيقونة بمربّع — نفس التصميم: صندوق صغير بحافة دائرية
                   يميّز العنصر النشط ويخلي الأيقونات على خط واحد. */}
               <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-md transition-all duration-300 ${
@@ -503,6 +524,7 @@ export default function Layout() {
               <polyline points="6 9 12 15 18 9"/>
             </svg>
             <span className="flex-1 text-right">{item.label}</span>
+            {courierPill(badgeOf(item))}
             {active && <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" style={{ flexShrink: 0 }}/>}
           </button>
           {open && (
@@ -547,6 +569,7 @@ export default function Layout() {
                       إضافية
                     </span>
                   )}
+                  {courierPill(badgeOf(item))}
                 </span>
               )}
               <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-md transition-all duration-300 ${
@@ -578,6 +601,7 @@ export default function Layout() {
                     إضافية
                   </span>
                 )}
+                {courierPill(badgeOf(item))}
               </span>
               {isActive && <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" style={{ flexShrink: 0 }}/>}
             </>
@@ -612,6 +636,7 @@ export default function Layout() {
                   إضافية
                 </span>
               )}
+              {courierPill(badgeOf(item))}
             </span>
           </>
         )}
@@ -663,6 +688,8 @@ export default function Layout() {
               <GlobalSearch />
               {/* عين ماتركس — تتابع وتنتبه لكل إجراء، ولونها حسب الدور والحالة */}
               <MatrixEye />
+              {/* رسول ماتركس — عين المدير تجي تسلّم الشغل الموجّه (ع 10-13) */}
+              <MatrixCourier />
               {/* عدّاد ساعات البيت — لصاحب الصلاحية، بكل الشاشات */}
               <RemoteTimerChip />
               {/* الوضع الليلي — اختياره ينحفظ بالجهاز */}

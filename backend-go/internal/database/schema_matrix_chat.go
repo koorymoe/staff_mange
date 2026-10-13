@@ -118,5 +118,25 @@ func matrixChatMigrations() []Migration {
 			ALTER TABLE "RevolvingFundTxn" ADD CONSTRAINT fund_txn_nonneg
 				CHECK (COALESCE("spentAmount", 0) >= 0 AND COALESCE("returnedAmount", 0) >= 0) NOT VALID;
 		`,
+	}, {
+		// (ع) 10-13: «رسول ماتركس» — المالك/المدير يوجّه شغل لموظف، وعين
+		// الشارنغان تروح تسلّمه الرسالة على شاشته وترجع. السطر يبقى حتى
+		// الموظف يرجع يقراها من عينه، و"seenAt" يصفّر رقم البند بالقائمة.
+		Version: "0352_matrix_courier",
+		SQL: `
+			CREATE TABLE IF NOT EXISTS "MatrixCourier" (
+				id TEXT PRIMARY KEY,
+				kind TEXT NOT NULL,
+				"senderId" TEXT REFERENCES "Employee"(id) ON DELETE SET NULL,
+				"recipientId" TEXT NOT NULL REFERENCES "Employee"(id) ON DELETE CASCADE,
+				message TEXT NOT NULL,
+				link TEXT NOT NULL,
+				"createdAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+				"deliveredAt" TIMESTAMP,
+				"seenAt" TIMESTAMP
+			);
+			CREATE INDEX IF NOT EXISTS matrix_courier_recipient ON "MatrixCourier" ("recipientId", "createdAt" DESC);
+			CREATE INDEX IF NOT EXISTS matrix_courier_sender ON "MatrixCourier" ("senderId", "createdAt" DESC);
+		`,
 	}}
 }

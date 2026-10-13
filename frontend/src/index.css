@@ -1386,3 +1386,14 @@ html.dark .matrix-note b.mx-tag{color:#c4b5fd}
 .mx-sharingan-spin{transform-origin:0 0;animation:mx-spin 9s linear infinite}
 .mx-sharingan-fast{animation-duration:5s}
 @media (prefers-reduced-motion: reduce){.mx-sharingan-spin{animation:none}}
+
+/* ═══ رسول ماتركس (ع 10-13): عين المدير تطلع يم عين الموظف وتسلّمه الرسالة ═══ */
+.matrix-courier{position:relative;display:flex;align-items:center;animation:mx-courier-in .9s cubic-bezier(.2,.8,.2,1)}
+.matrix-courier-eye{display:block;filter:drop-shadow(0 0 10px rgba(185,28,28,.55))}
+.matrix-courier-say{position:absolute;top:calc(100% + 8px);inset-inline-start:0;z-index:60;width:max-content;max-width:min(360px,82vw);
+  border-radius:14px;background:#fff1f2;color:#7f1d1d;border:1px solid #fecaca;padding:8px 12px;font-size:13px;line-height:1.6;
+  box-shadow:0 10px 30px rgba(127,29,29,.18);animation:mx-courier-in .6s .5s both}
+.matrix-courier-say b{color:#b91c1c}
+html.dark .matrix-courier-say{background:#2a0b0e;color:#fecaca;border-color:#7f1d1d}
+@keyframes mx-courier-in{from{opacity:0;transform:translateX(-40px) scale(.6)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){.matrix-courier,.matrix-courier-say{animation:none!important}}

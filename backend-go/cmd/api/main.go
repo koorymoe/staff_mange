@@ -1077,7 +1077,13 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	mux.Handle("GET /api/bookings/paged", middleware.Chain(http.HandlerFunc(bookingHandler.Paged), requireAuth))
 	mux.Handle("POST /api/bookings/{id}/settle-legacy", middleware.Chain(http.HandlerFunc(bookingHandler.SettleLegacy), requireAuth, requireOwner))
 	mux.Handle("PUT /api/bookings/{id}/resume", middleware.Chain(http.HandlerFunc(bookingHandler.ResumeFromWaiting), requireAuth, requireCoordinator))
-	mux.Handle("PUT /api/bookings/{id}/assign", middleware.Chain(http.HandlerFunc(bookingHandler.Assign), requireAuth, requireBookingCoord))
+	// رسول ماتركس (ع 10-13): المالك/المدير يوجّه شغل → العين تسلّمه للموظف
+	courier := handler.NewMatrixCourierHandler(db)
+	mux.Handle("GET /api/matrix-courier/state", middleware.Chain(http.HandlerFunc(courier.State), requireAuth))
+	mux.Handle("GET /api/matrix-courier/inbox", middleware.Chain(http.HandlerFunc(courier.Inbox), requireAuth))
+	mux.Handle("POST /api/matrix-courier/seen", middleware.Chain(http.HandlerFunc(courier.Seen), requireAuth))
+	mux.Handle("POST /api/matrix-courier/{id}/delivered", middleware.Chain(http.HandlerFunc(courier.Delivered), requireAuth))
+	mux.Handle("PUT /api/bookings/{id}/assign", middleware.Chain(http.HandlerFunc(bookingHandler.Assign), requireAuth, requireBookingCoord, courier.Wrap("booking")))
 	// «كشف»: الإداري يطلّع ليدر يعاين الموقع قبل ما يصير مشروع.
 	mux.Handle("PUT /api/bookings/{id}/send-to-survey", middleware.Chain(http.HandlerFunc(bookingHandler.SendToSurvey), requireAuth, requireBookingCoord))
 	// ترحيل للتقني (قرار (ع) 10-07): الإداري يرحّل، والتقني المرحّل إله بس يكمّل الخطوات.
@@ -1093,7 +1099,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	// ⚠️ مسارات التنفيذ requireAuth بس — الحارس ما يعرف صاحب المهمة،
 	// فالمستودع يفحص "assignedToId" بكل عملية. بدونه أي موظف ينهي
 	// مهمة موظف ثاني بمعرّفها.
-	mux.Handle("POST /api/extra-tasks", middleware.Chain(http.HandlerFunc(extraTaskHandler.Create), requireAuth, requireExtraTaskAssign))
+	mux.Handle("POST /api/extra-tasks", middleware.Chain(http.HandlerFunc(extraTaskHandler.Create), requireAuth, requireExtraTaskAssign, courier.Wrap("extra_task")))
 	mux.Handle("GET /api/extra-tasks", middleware.Chain(http.HandlerFunc(extraTaskHandler.List), requireAuth, requireExtraTaskAssign))
 	mux.Handle("PUT /api/extra-tasks/{id}/cancel", middleware.Chain(http.HandlerFunc(extraTaskHandler.Cancel), requireAuth, requireExtraTaskAssign))
 	mux.Handle("GET /api/extra-tasks/mine", middleware.Chain(http.HandlerFunc(extraTaskHandler.Mine), requireAuth))
@@ -1520,7 +1526,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	mux.Handle("PUT /api/projects/{id}/fill-info", middleware.Chain(http.HandlerFunc(projectHandler.FillInfo), requireAuth, requireProjectMgmt))
 	mux.Handle("GET /api/projects/{id}/delegation-log", middleware.Chain(http.HandlerFunc(projectHandler.DelegationLog), requireAuth, requireProjectManager))
 	// التسليم/السحب بيد مدير المشاريع بس — الموظف المُسلَّم إله ما يقدر يسلّمه لغيره
-	mux.Handle("PUT /api/projects/{id}/delegate", middleware.Chain(http.HandlerFunc(projectHandler.Delegate), requireAuth, requireProjectManager))
+	mux.Handle("PUT /api/projects/{id}/delegate", middleware.Chain(http.HandlerFunc(projectHandler.Delegate), requireAuth, requireProjectManager, courier.Wrap("project")))
 
 	// التعديل: مدير المشاريع على أي مشروع، أو الموظف المُسلَّم إله على مشروعه هو
 	// فقط. أي موظف ثاني ينرفض حتى لو حاول يعدّل مشروع مو إله.
@@ -1827,7 +1833,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	mux.Handle("GET /api/leaves/inbox", middleware.Chain(http.HandlerFunc(leaveHandler.Inbox), requireAuth))
 	mux.Handle("GET /api/leaves/pending-count", middleware.Chain(http.HandlerFunc(leaveHandler.PendingCount), requireAuth))
 	mux.Handle("PUT /api/leaves/{id}/preliminary", middleware.Chain(http.HandlerFunc(leaveHandler.Preliminary), requireAuth))
-	mux.Handle("PUT /api/leaves/{id}/decide", middleware.Chain(http.HandlerFunc(leaveHandler.Decide), requireAuth))
+	mux.Handle("PUT /api/leaves/{id}/decide", middleware.Chain(http.HandlerFunc(leaveHandler.Decide), requireAuth, courier.Wrap("leave")))
 
 	// أرقام اللوحة الرئيسية بدون سحب أرشيف الشركة كامل
 	mux.Handle("GET /api/dashboard/summary", middleware.Chain(http.HandlerFunc(dashboardHandler.Summary), requireAuth))

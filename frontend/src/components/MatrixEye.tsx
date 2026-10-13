@@ -7,6 +7,8 @@ import { isEnabled, SWITCH_MATRIX_STAFF_EYE } from '../systemSwitches'
 import MatrixEyeGraphic from './MatrixEyeGraphic'
 import { eyeColor, type EyeGroup, type EyeMood } from './matrixEyeColors'
 import { pollVisible } from '../utils/poll'
+import { CourierInbox } from './MatrixCourier'
+import { COURIER_TRIP_MS, tweenLid } from '../utils/courier'
 
 // ═══ عين ماتركس — «عين الرب» ═══
 //
@@ -105,7 +107,11 @@ export default function MatrixEye() {
   // المالك والمدير: العين ظاهرة دايماً وتنطيهم تقارير (طلب (ع)) —
   // للموظفين تبقى تطلع عند الإجراء بس.
   const isBoss = employee?.role === 'ADMIN' || employee?.actualRole === 'OWNER'
-  const shown = visible || angry || open || isBoss
+  // رسول ماتركس: العين «مسافرة» عند الموظف — تختفي من هنا
+  const [away, setAway] = useState(false)
+  const [lidOverride, setLidOverride] = useState<number | null>(null)
+  const [courierBack, setCourierBack] = useState(false)
+  const shown = (visible || angry || open || isBoss) && !away
 
   const speak = useCallback((text: string | null) => {
     window.clearTimeout(sayT.current)
@@ -246,13 +252,35 @@ export default function MatrixEye() {
     window.addEventListener('matrix-mangekyo', on)
     return () => { window.removeEventListener('matrix-mangekyo', on); window.clearTimeout(t) }
   }, [isOwner, isAdminOnly])
-  const sharingan: 0 | 1 | 2 = !(isOwner || isAdminOnly) ? 0 : mangekyo ? 2 : (isOwner || awake) ? 1 : 0
+  // رحلة الرسول (ع 10-13): مانغكيو ← يغمض ببطء ← يختفي ← (عند الموظف) ←
+  // يرجع شارنغان مغمّض ثواني ← ينفتح ويرجع للشغل. الرحلة كلها ~٢٠ ثانية.
+  useEffect(() => {
+    if (!isOwner && !isAdminOnly) return
+    const timers: number[] = []
+    let cancelTween = () => {}
+    const at = (ms: number, fn: () => void) => { timers.push(window.setTimeout(fn, Math.max(0, ms))) }
+    const go = (e: Event) => {
+      const age = (e as CustomEvent<{ age: number }>).detail?.age ?? 0
+      timers.forEach((t) => window.clearTimeout(t)); timers.length = 0; cancelTween()
+      setAway(false); setCourierBack(false); setLidOverride(null)
+      setMangekyo(true)
+      at(2500, () => { cancelTween = tweenLid(0.95, 0, 2200, setLidOverride) })
+      at(4900, () => setAway(true))
+      const back = COURIER_TRIP_MS - age - 3500
+      at(back, () => { setMangekyo(false); setCourierBack(true); setLidOverride(0); setAway(false) })
+      at(back + 3000, () => { cancelTween = tweenLid(0, 0.95, 1300, setLidOverride) })
+      at(back + 4500, () => { setLidOverride(null); setCourierBack(false) })
+    }
+    window.addEventListener('matrix-courier-go', go)
+    return () => { window.removeEventListener('matrix-courier-go', go); timers.forEach((t) => window.clearTimeout(t)); cancelTween() }
+  }, [isOwner, isAdminOnly])
+  const sharingan: 0 | 1 | 2 = !(isOwner || isAdminOnly) ? 0 : mangekyo ? 2 : (isOwner || awake || courierBack) ? 1 : 0
   const tint = sharingan > 0 ? '#b91c1c' : color
 
   if (!employee) return null
   if (staffOff && employee.role !== 'ADMIN' && employee.actualRole !== 'OWNER') return null
 
-  const lid = !shown ? 0 : blink ? 0.06 : flash ? 1.15 : angry ? 0.6 : mood === 'PLEASED' ? 0.75 : 0.95
+  const lid = lidOverride != null ? lidOverride : !shown ? 0 : blink ? 0.06 : flash ? 1.15 : angry ? 0.6 : mood === 'PLEASED' ? 0.75 : 0.95
   const title = angry ? 'ماتركس يراقبك عن قرب' : 'ماتركس'
 
   return (
@@ -329,6 +357,7 @@ export default function MatrixEye() {
               </div>
             )}
             {isBoss && <BossReport onGo={() => setOpen(false)} />}
+            {!isBoss && <CourierInbox onGo={() => setOpen(false)} />}
             {!isBoss && watch && watch.workload.length === 0 && watch.items.length === 0 && <p className="mt-1 text-xs text-slate-500">ماكو عليك شي مفتوح.</p>}
           </div>
         )}
