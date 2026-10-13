@@ -203,8 +203,6 @@ export const navItems: NavItem[] = [
           // الصلاحيات جانت مدفونة جوّا مجموعة «إدارة الصلاحيات» — يعني
           // خمس مستويات للوصول لشاشة وحدة. المجموعة انشالت والشاشتين
           // صعدن هنا مباشرة.
-          { to: '/permissions', label: 'الصلاحيات', icon: <></>, roles: ['ADMIN'] },
-          { to: '/permission-preview', label: '🔎 شوف بعين الموظف', icon: <></>, roles: ['ADMIN'] },
           // ⚠️ `permission` يقيّد ويفتح: المالك ومدير النظام يشوفونها
           // بأدوارهم، وأي أحد ثاني بس إذا انمنحله `departments_manage`
           // بالإيد — «بعدين نقرر المن ننطيها».
@@ -301,7 +299,6 @@ export const navItems: NavItem[] = [
       { monitorMenuHide: true, to: '/duplicate-review', label: '🤖 ماتركس — التكرار', icon: <></>, roles: ['ADMIN'], permission: 'duplicate_review' },
       { to: '/achievements', label: '📋 الإنجازات', icon: <></>, roles: ['ADMIN'] },
       // دليل الأدوار — يوضّح منو يوصل لوين، فمحله عند من يوزّع الصلاحيات
-      { to: '/roles-guide', label: '📋 دليل الأدوار والصلاحيات', icon: <></>, roles: ['ADMIN'] },
       { to: '/solar', label: '☀️ الطاقة الشمسية', icon: <></>, roles: ['ADMIN', 'OWNER', 'MONITOR', 'TECHNICIAN', 'SERVICE_MANAGER'], permission: 'solar_system' },
       { to: '/training-programs', label: '🎓 برامج التدريب', icon: <></>, roles: ['ADMIN', 'OWNER'], permission: 'training_manage' },
           { monitorMenuHide: true, to: '/missions', label: 'تتبع المهام', icon: <></>, roles: ['ADMIN', 'HR_COORDINATOR', 'MONITOR'], permission: 'mission_tracking', hideForRoles: ['FINANCE'] },
@@ -618,9 +615,6 @@ export const navItems: NavItem[] = [
       { to: '/nav-hr-staff', label: '👥 الموظفين', icon: <></>, divider: true, plain: true },
       { strict: true, to: '/staff-management-desk', label: 'إدارة الموظفين', icon: <></>, roles: ['ADMIN', 'MONITOR'], anyPermission: ['staff_management', 'kpi_management', 'performance_review', 'staff_requests'] },
       { to: '/staff-requests', label: 'طلبات الكادر', icon: <></>, roles: ['ADMIN', 'HR_COORDINATOR'], unlockPermission: 'staff_requests' },
-      { to: '/nav-hr-perms', label: '🔐 الصلاحيات', icon: <></>, divider: true, plain: true },
-      { strict: true, to: '/permission-preview', label: '🔎 شوف بعين الموظف', icon: <></>, roles: ['ADMIN'] },
-      { strict: true, to: '/roles-guide', label: '📋 دليل الأدوار والصلاحيات', icon: <></>, roles: ['ADMIN'] },
       { to: '/nav-hr-time', label: '🕘 الدوام', icon: <></>, divider: true, plain: true },
       // نفس حارس GET /api/work-schedule: الأدوار الثلاثة، أو صلاحية الجدول أو إدارة الكوادر.
       { to: '/work-schedule', label: '🕘 جدول الدوام', icon: <></>, roles: ['ADMIN', 'HR_COORDINATOR', 'MONITOR'], unlockAnyPermission: ['work_schedule_manage', 'staff_management'] },
