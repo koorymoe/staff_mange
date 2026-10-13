@@ -174,6 +174,8 @@ export default function MissionsPage() {
   const [missions, setMissions] = useState<Mission[]>([])
   const [loading, setLoading] = useState(true)
   const [tab, setTab] = useState<'active' | 'completed' | 'monitor' | 'extra'>('active')
+  // ترتيب البطاقات (تصميم ع 10-13)
+  const [sortBy, setSortBy] = useState<'newest' | 'oldest' | 'late'>('newest')
   const [selectedMission, setSelectedMission] = useState<Mission | null>(null)
   const [pathMission, setPathMission] = useState<Mission | null>(null)
   // Ticking clock so delay-status calculations stay pure during render (no Date.now() in render body)
@@ -264,8 +266,13 @@ export default function MissionsPage() {
   // الإحصائيات (StatsPage.tsx: المنجز ÷ المسند). كلمة وحدة بمعنى
   // واحد بكل الشاشات — وإلا يصير رقمان بنفس الاسم، وهاي بالضبط
   // العلّة الي دا نصلّحها بشاشات ثانية.
-  const activeMissions = missions.filter(m => !['COMPLETED', 'STOPPED'].includes(m.stage))
-  const completedMissions = missions.filter(m => ['COMPLETED', 'STOPPED'].includes(m.stage))
+  const byTime = (m: Mission) => new Date(m.booking.scheduledAt || m.assignedAt || 0).getTime()
+  const sortMissions = (list: Mission[]) => [...list].sort((a, b) =>
+    sortBy === 'oldest' ? byTime(a) - byTime(b)
+      : sortBy === 'late' ? (missionFindings(b, now).length - missionFindings(a, now).length) || byTime(b) - byTime(a)
+      : byTime(b) - byTime(a))
+  const activeMissions = sortMissions(missions.filter(m => !['COMPLETED', 'STOPPED'].includes(m.stage)))
+  const completedMissions = sortMissions(missions.filter(m => ['COMPLETED', 'STOPPED'].includes(m.stage)))
 
   const donePct = missions.length
     ? (missions.filter(m => m.stage === 'COMPLETED').length / missions.length) * 100
@@ -295,22 +302,23 @@ export default function MissionsPage() {
   if (loading) return <div className="flex items-center justify-center p-12"><div className="h-8 w-8 animate-spin rounded-full border-4 border-blue-500 border-t-transparent" /></div>
 
   return (
-    <div className="mx-auto max-w-7xl space-y-6">
-      {/* Header */}
-      <div className="rounded-2xl bg-gradient-to-l from-[#0f2040] to-[#1a3a6c] p-6 text-white">
-        <div className="flex flex-wrap items-center justify-between gap-4">
-          <div>
-            <h1 className="text-2xl font-bold">🎯 نظام تتبع المهام الميدانية</h1>
-            <p className="mt-1 text-blue-200/80">
-              تتبع جميع المهام وفرق العمل في الميدان لحظة بلحظة
-            </p>
-            <div className="mt-4 flex flex-wrap gap-2">
-              <HeroChip icon="🗓️" label="حالة اليوم" value={dayHealth.word} />
-              <HeroChip icon="👥" label="المهام النشطة" value={String(activeMissions.length)} />
-              <HeroChip icon="📈" label="نسبة الإنجاز" value={`${Math.round(donePct)}%`} />
-            </div>
+    <div className="w-full space-y-5">
+      {/* Header — تصميم (ع) 10-13: العنوان يمين ويا أيقونة خريطة، والأرقام بصف وحد يسار */}
+      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-l from-[#0f2040] to-[#1a3a6c] p-6 text-white">
+        <span aria-hidden className="pointer-events-none absolute -right-2 top-1/2 -translate-y-1/2 text-[110px] opacity-10">🗺️</span>
+        <div className="relative flex flex-wrap items-center justify-between gap-5">
+          <div className="pr-16">
+            <h1 className="text-2xl font-bold">نظام تتبع المهام الميدانية 🎯</h1>
+            <p className="mt-1 text-blue-200/80">تتبع جميع المهام وفرق العمل في الميدان لحظة بلحظة</p>
           </div>
-          <ProgressRing pct={donePct} />
+          <div className="flex flex-wrap items-center gap-4">
+            <HeroChip icon="📈" label="نسبة الإنجاز" value={`${Math.round(donePct)}%`} />
+            <span className="hidden h-10 w-px bg-white/20 sm:block" />
+            <HeroChip icon="🗓️" label="مهام اليوم" value={dayHealth.word} />
+            <span className="hidden h-10 w-px bg-white/20 sm:block" />
+            <HeroChip icon="📋" label="إجمالي المهام" value={`${missions.length} مهمة`} />
+            <ProgressRing pct={donePct} />
+          </div>
         </div>
       </div>
 
@@ -346,7 +354,7 @@ export default function MissionsPage() {
       )}
 
       {/* Tabs */}
-      <div className="flex gap-2">
+      <div className="flex flex-wrap items-center gap-2 rounded-2xl bg-white p-2 shadow-sm">
         <button onClick={() => setTab('active')} className={`rounded-xl px-5 py-2.5 text-sm font-bold transition ${tab === 'active' ? 'bg-[#0f2040] text-white' : 'bg-white text-slate-600'}`}>
           المهام النشطة ({activeMissions.length})
         </button>
@@ -362,6 +370,14 @@ export default function MissionsPage() {
           <button onClick={() => setTab('extra')} className={`rounded-xl px-5 py-2.5 text-sm font-bold transition ${tab === 'extra' ? 'bg-[#0f2040] text-white' : 'bg-white text-slate-600'}`}>
             📋 مهام إضافية
           </button>
+        )}
+        {(tab === 'active' || tab === 'completed') && (
+          <select value={sortBy} onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
+            className="ms-auto rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-bold text-slate-600">
+            <option value="newest">↓ أحدث المهام أولاً</option>
+            <option value="oldest">↑ أقدم المهام أولاً</option>
+            <option value="late">⚠️ الي بيها ملاحظات أولاً</option>
+          </select>
         )}
       </div>
 
@@ -384,62 +400,59 @@ export default function MissionsPage() {
               <div key={m.id} className={`rounded-2xl bg-white p-5 shadow-sm border-r-4 ${
                 delay === 'late' ? 'border-red-500' : delay === 'warning' ? 'border-yellow-400' : 'border-transparent'
               }`}>
-                {/* Top */}
-                <div className="flex items-center justify-between mb-3">
-                  <div className="flex items-center gap-2">
-                    <span className="text-lg">{s.icon}</span>
-                    <span className="rounded-full px-3 py-1 text-xs font-bold text-white" style={{ backgroundColor: s.fill }}>{s.label}</span>
-                    <span className="text-xs text-slate-400">{m.code}</span>
+                {/* تصميم (ع) 10-13: المعلومات يمين وخط المراحل بعناوينه يسار */}
+                <div className="mb-3 flex flex-wrap items-start justify-between gap-4">
+                  <div className="min-w-0 flex-1 space-y-1">
+                    <div className="flex items-center gap-2">
+                      <span className="text-lg">{s.icon}</span>
+                      <span className="whitespace-nowrap rounded-full px-3 py-1 text-xs font-bold text-white" style={{ backgroundColor: s.fill }}>{s.label}</span>
+                      <span className="whitespace-nowrap rounded-md bg-slate-100 px-2 py-0.5 text-[11px] text-slate-500">{m.code}</span>
+                      {delay === 'late' && <span className="text-xs font-bold text-red-500 animate-pulse">❗ متأخر</span>}
+                    </div>
+                    <p className="pt-1 text-lg font-extrabold text-slate-800">{m.booking.customer.name}</p>
+                    <p className="text-sm text-slate-500">📍 {m.booking.service?.name || '---'} - {m.customerAddress || m.booking.customer.location || '---'}</p>
+                    <p className="text-sm text-slate-500">📞 {m.booking.customer.phone}</p>
+                    <div className="flex flex-wrap gap-1 pt-1">
+                      {/* ⚠️ «(ليدر)» بس إذا مؤشّر تيم ليدر صدك — چان الفني يطلع للمراقب ليدر. */}
+                      {m.leaderIsLeader
+                        ? <span className="rounded-lg bg-blue-50 px-2 py-1 text-xs font-bold text-blue-700">👤 {m.leader?.name || '---'} (ليدر)</span>
+                        : <span className="rounded-lg bg-amber-50 px-2 py-1 text-xs font-bold text-amber-800 ring-1 ring-amber-200" title="ماكو تيم ليدر بالكادر">⚠️ لا يدير: {m.leader?.name || '---'} (فني)</span>}
+                      {(m.members ?? []).filter((mem) => mem.id !== m.leaderId).map(mem => (
+                        <span key={mem.id} className="rounded-lg bg-slate-50 px-2 py-1 text-xs text-slate-600">{mem.name}</span>
+                      ))}
+                    </div>
                   </div>
-                  {delay === 'late' && <span className="text-xs font-bold text-red-500 animate-pulse">❗ متأخر</span>}
-                </div>
-
-                {/* Customer info */}
-                <div className="mb-3 space-y-1">
-                  <p className="font-bold text-slate-800">{m.booking.customer.name}</p>
-                  <p className="text-sm text-slate-500">{m.booking.service?.name || '---'} • {m.customerAddress || m.booking.customer.location || '---'}</p>
-                  <p className="text-sm text-slate-400">📞 {m.booking.customer.phone}</p>
-                </div>
-
-                {/* Team */}
-                <div className="mb-3 flex flex-wrap gap-1">
-                  {/* ⚠️ «(ليدر)» بس إذا مؤشّر تيم ليدر صدك — چان الفني يطلع للمراقب ليدر. */}
-                  {m.leaderIsLeader
-                    ? <span className="rounded-lg bg-blue-50 px-2 py-1 text-xs font-bold text-blue-700">👤 {m.leader?.name || '---'} (ليدر)</span>
-                    : <span className="rounded-lg bg-amber-50 px-2 py-1 text-xs font-bold text-amber-800" title="ماكو تيم ليدر بالكادر">⚠️ بلا ليدر · {m.leader?.name || '---'} (فني)</span>}
-                  {(m.members ?? []).filter((mem) => mem.id !== m.leaderId).map(mem => (
-                    <span key={mem.id} className="rounded-lg bg-slate-50 px-2 py-1 text-xs text-slate-600">{mem.name}</span>
-                  ))}
-                </div>
-
-                {/* Timeline */}
-                <div className="mb-3 flex items-center gap-1">
-                  {stageOrder.map((st, i) => {
-                    const done = i <= stageIdx
-                    const stg = STAGES[st]
-                    return (
-                      <div key={st} className="flex items-center gap-1">
-                        <div className={`h-2.5 w-2.5 rounded-full ${done ? '' : 'bg-slate-200'}`} style={done ? { backgroundColor: stg.fill } : {}} title={stg.label} />
-                        {i < stageOrder.length - 1 && <div className={`h-0.5 w-4 ${done ? 'bg-slate-400' : 'bg-slate-200'}`} />}
-                      </div>
-                    )
-                  })}
+                  <div className="flex items-start" dir="rtl">
+                    {stageOrder.filter((st) => st !== 'MATERIALS_PREP').map((st, i, arr) => {
+                      const done = stageOrder.indexOf(st) <= stageIdx
+                      const stg = STAGES[st]
+                      const label = st === 'ASSIGNED' ? 'قيد الإسناد' : st === 'COMPLETED' ? 'المنجزة' : stg.label
+                      return (
+                        <div key={st} className="flex items-start">
+                          <div className="flex w-12 flex-col items-center gap-1">
+                            <span className={`h-3.5 w-3.5 rounded-full ring-4 ${done ? 'bg-blue-600 ring-blue-100' : 'bg-slate-200 ring-slate-50'}`} />
+                            <span className={`text-center text-[10px] leading-tight ${done ? 'font-bold text-slate-700' : 'text-slate-400'}`}>{label}</span>
+                          </div>
+                          {i < arr.length - 1 && <span className={`mt-1.5 h-0.5 w-3 ${stageOrder.indexOf(arr[i + 1]) <= stageIdx ? 'bg-blue-500' : 'bg-slate-200'}`} />}
+                        </div>
+                      )
+                    })}
+                  </div>
                 </div>
 
                 {/* التواريخ كاملة — الموعد ثم كل مرحلة بيومها وساعتها */}
-                <div className="mb-3 rounded-xl bg-slate-50 p-2.5 text-[11px]">
-                  <div className="mb-1.5 flex items-center justify-between gap-2 border-b border-slate-200 pb-1.5">
-                    <span className="text-slate-500">📅 موعد الحجز</span>
-                    <b className="text-slate-800">{dateTimeStr(m.booking.scheduledAt)}</b>
-                  </div>
-                  <div className="grid grid-cols-2 gap-x-3 gap-y-1">
-                    {([
-                      ['الإسناد', m.assignedAt], ['المواد جاهزة', m.materialsReadyAt], ['الانطلاق', m.departedAt],
-                      ['الوصول', m.arrivedAt], ['بدء العمل', m.workStartedAt], ['الإنجاز', m.completedAt],
-                    ] as [string, string | null][]).map(([l, v]) => (
-                      <div key={l} className="flex justify-between gap-1"><span className="text-slate-400">{l}</span><span className={`font-bold ${v ? 'text-slate-700' : 'text-slate-300'}`}>{dateTimeStr(v)}</span></div>
-                    ))}
-                  </div>
+                <div className="mb-3 grid grid-cols-1 gap-x-6 gap-y-2 rounded-xl border border-slate-100 bg-slate-50 p-3 text-[12px] sm:grid-cols-2">
+                  {([
+                    ['📅', 'موعد الحجز', m.booking.scheduledAt], ['📄', 'المواد جاهزة', m.materialsReadyAt],
+                    ['🕘', 'الانطلاق', m.departedAt], ['📍', 'الوصول', m.arrivedAt],
+                    ['▶️', 'بدء العمل', m.workStartedAt], ['🏁', 'الإنجاز', m.completedAt],
+                  ] as [string, string, string | null][]).map(([ic, l, v]) => (
+                    <div key={l} className="flex items-center justify-between gap-2">
+                      <span className="text-slate-500">{ic} {l}</span>
+                      <span className={`font-bold ${v ? 'text-slate-800' : 'text-slate-300'}`}>{v ? dateTimeStr(v) : '-'}</span>
+                    </div>
+                  ))}
+                  <p className="text-[10px] text-slate-400 sm:col-span-2">أُسندت: {dateTimeStr(m.assignedAt)}</p>
                 </div>
 
                 {/* ليش متأخر / ليش ما خلص */}
