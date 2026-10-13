@@ -103,6 +103,8 @@ export default function Employees({ embedded }: { embedded?: boolean } = {}) {
   const [filterRole, setFilterRole] = useState<string>('')
   // (ع) 10-13: الديكور ينفصل عن الشعبة الهندسية، وجوّا كل شعبة كل دور لحاله
   const [filterDivision, setFilterDivision] = useState<'' | 'ENGINEERING' | 'DECOR'>('')
+  // تبويبات القائمة (تصميم ع 10-13): الكل · الأقسام (الشعبة) · الوظائف (الأدوار)
+  const [listTab, setListTab] = useState<'all' | 'div' | 'role'>('all')
 
   const [showAddForm, setShowAddForm] = useState(false)
 
@@ -321,10 +323,19 @@ export default function Employees({ embedded }: { embedded?: boolean } = {}) {
   const divisionEmployees = baseEmployees.filter(inDivision)
   const uniqueRoles = [...new Set(divisionEmployees.map(e => e.role))]
   const roleCount = (r: string) => divisionEmployees.filter(e => e.role === r).length
-  // «كل الأدوار» = الكل معروض، بس مجمّع: كل دور تحت عنوانه
-  const roleGroups = filterRole
-    ? [{ role: filterRole, items: visibleEmployees }]
-    : [...new Set(visibleEmployees.map(e => e.role))].map(role => ({ role, items: visibleEmployees.filter(e => e.role === role) }))
+  const divLabel = (emp: Employee) => emp.division === 'DECOR' ? 'الديكور' : 'الشعبة الهندسية'
+  // الكل = قائمة وحدة · الأقسام = كل شعبة تحت عنوانها · الوظائف = كل دور تحت عنوانه
+  const groupBy = (keyOf: (e: Employee) => string) =>
+    [...new Set(visibleEmployees.map(keyOf))].map(key => ({ key, items: visibleEmployees.filter(e => keyOf(e) === key) }))
+  const roleGroups = isHR || listTab === 'all' ? [{ key: '', items: visibleEmployees }]
+    : listTab === 'div' ? groupBy(divLabel)
+    : groupBy(e => roleLabel(e.role))
+  const statTiles = [
+    { label: 'كل الموظفين', n: divisionEmployees.length, dot: '' },
+    { label: 'على الدوام', n: divisionEmployees.filter(e => e.onDuty).length, dot: 'bg-emerald-500' },
+    { label: 'خارج الدوام', n: divisionEmployees.filter(e => !e.onDuty).length, dot: 'bg-slate-300' },
+    { label: 'الوظائف', n: uniqueRoles.length, dot: 'bg-[#2c5aad]' },
+  ]
 
   return (
     <>
@@ -332,21 +343,21 @@ export default function Employees({ embedded }: { embedded?: boolean } = {}) {
     <div className="max-w-[1400px] mx-auto">
       {/* Header — ⚠️ العنوان يختفي لمّن الشاشة مضمَّنة (مكتب إدارة
           الموظفين)، وشريط البحث/الفلتر يبقى. */}
-      <div className="flex items-center justify-between mb-6">
+      <div className={`mb-6 flex items-center gap-3 ${embedded ? '' : 'justify-between'}`}>
         {!embedded && (
         <div>
           <h2 className="text-2xl font-extrabold text-[#0f2040]">إدارة الكوادر</h2>
           <p className="mt-1 text-sm text-slate-400">إدارة بيانات الموظفين وتحديد المهارات</p>
         </div>
         )}
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2 rounded-xl bg-white px-4 py-2.5 shadow-[0_1px_3px_rgba(0,0,0,0.04),0_6px_16px_rgba(0,0,0,0.04)]">
+        <div className={`flex flex-wrap items-center gap-3 ${embedded ? 'w-full' : ''}`}>
+          <div className="flex min-w-[220px] flex-1 items-center gap-2 rounded-xl bg-white px-4 py-2.5 shadow-[0_1px_3px_rgba(0,0,0,0.04),0_6px_16px_rgba(0,0,0,0.04)]">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
             <input
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="بحث عن موظف..."
-              className="w-48 bg-transparent text-sm outline-none placeholder:text-slate-300"
+              placeholder="ابحث عن موظف بالاسم أو المسمى الوظيفي..."
+              className="w-full bg-transparent text-sm outline-none placeholder:text-slate-300"
             />
           </div>
           {(isAdmin || canSuspend) && (
@@ -362,7 +373,7 @@ export default function Employees({ embedded }: { embedded?: boolean } = {}) {
           {canCreateAccounts && !showArchived && (
             <button
               onClick={() => setShowAddForm(!showAddForm)}
-              className="flex items-center gap-2 rounded-xl bg-gradient-to-l from-[#2c5aad] to-[#1e3f7a] px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-blue-900/20 transition-all hover:shadow-xl hover:shadow-blue-900/30"
+              className="ms-auto flex items-center gap-2 rounded-xl bg-gradient-to-l from-[#2c5aad] to-[#1e3f7a] px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-blue-900/20 transition-all hover:shadow-xl hover:shadow-blue-900/30"
             >
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
               إضافة موظف
@@ -392,35 +403,57 @@ export default function Employees({ embedded }: { embedded?: boolean } = {}) {
           {/* Employee Cards Grid */}
           <div className="space-y-3 max-h-[calc(100vh-200px)] overflow-y-auto pl-2 scrollbar-thin">
             {!isHR && (
-              <div className="space-y-2 rounded-2xl bg-white p-3 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
+              <div className="space-y-3 rounded-2xl bg-white p-3 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
                 <div className="flex gap-1 rounded-xl bg-slate-100 p-1">
-                  {([['', 'الكل'], ['ENGINEERING', 'الشعبة الهندسية'], ['DECOR', 'الديكور']] as const).map(([d, label]) => (
-                    <button key={d} onClick={() => { setFilterDivision(d); setFilterRole('') }}
-                      className={`flex-1 rounded-lg px-2 py-1.5 text-xs font-bold transition-all ${filterDivision === d ? 'bg-[#0f2040] text-white shadow' : 'text-slate-500 hover:text-slate-700'}`}>
+                  {([['all', 'الكل'], ['div', 'الأقسام'], ['role', 'الوظائف']] as const).map(([t, label]) => (
+                    <button key={t} onClick={() => { setListTab(t); setFilterDivision(''); setFilterRole('') }}
+                      className={`flex-1 rounded-lg px-2 py-1.5 text-xs font-bold transition-all ${listTab === t ? 'bg-white text-[#2c5aad] shadow' : 'text-slate-500 hover:text-slate-700'}`}>
                       {label}
                     </button>
                   ))}
                 </div>
-                <div className="flex flex-wrap gap-1.5">
-                  <button onClick={() => setFilterRole('')}
-                    className={`rounded-full px-2.5 py-1 text-[11px] font-bold ${!filterRole ? 'bg-[#2c5aad] text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>
-                    كل الأدوار · {divisionEmployees.length}
-                  </button>
-                  {uniqueRoles.map(r => (
-                    <button key={r} onClick={() => setFilterRole(r)}
-                      className={`rounded-full px-2.5 py-1 text-[11px] font-bold ${filterRole === r ? 'bg-[#2c5aad] text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>
-                      {roleLabel(r)} · {roleCount(r)}
-                    </button>
+                <div className="grid grid-cols-4 gap-1.5">
+                  {statTiles.map(t => (
+                    <div key={t.label} className="rounded-xl border border-slate-100 px-1.5 py-2 text-center">
+                      <p className="text-[10px] text-slate-400">{t.label}</p>
+                      <p className="mt-0.5 flex items-center justify-center gap-1 text-sm font-extrabold text-[#0f2040]">
+                        {t.dot && <span className={`h-1.5 w-1.5 rounded-full ${t.dot}`}/>}{t.n}
+                      </p>
+                    </div>
                   ))}
                 </div>
+                {listTab === 'div' && (
+                  <div className="flex flex-wrap gap-1.5">
+                    {([['', 'الشعبتين'], ['ENGINEERING', 'الشعبة الهندسية'], ['DECOR', 'الديكور']] as const).map(([d, label]) => (
+                      <button key={d} onClick={() => setFilterDivision(d)}
+                        className={`rounded-full px-2.5 py-1 text-[11px] font-bold ${filterDivision === d ? 'bg-[#2c5aad] text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>
+                        {label} · {baseEmployees.filter(e => !d || (e.division === 'DECOR' ? 'DECOR' : 'ENGINEERING') === d).length}
+                      </button>
+                    ))}
+                  </div>
+                )}
+                {listTab === 'role' && (
+                  <div className="flex flex-wrap gap-1.5">
+                    <button onClick={() => setFilterRole('')}
+                      className={`rounded-full px-2.5 py-1 text-[11px] font-bold ${!filterRole ? 'bg-[#2c5aad] text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>
+                      كل الوظائف · {divisionEmployees.length}
+                    </button>
+                    {uniqueRoles.map(r => (
+                      <button key={r} onClick={() => setFilterRole(r)}
+                        className={`rounded-full px-2.5 py-1 text-[11px] font-bold ${filterRole === r ? 'bg-[#2c5aad] text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>
+                        {roleLabel(r)} · {roleCount(r)}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
             <p className="text-xs font-medium text-slate-400 mb-2">{visibleEmployees.length} موظف</p>
             {roleGroups.map(group => (
-              <div key={group.role} className="space-y-3">
-                {!isHR && (
+              <div key={group.key} className="space-y-3">
+                {group.key && (
                   <p className="sticky top-0 z-10 flex items-center justify-between rounded-lg bg-slate-50/95 px-2 py-1 text-xs font-extrabold text-[#0f2040] backdrop-blur">
-                    <span>{roleLabel(group.role)}</span><span className="text-slate-400">{group.items.length}</span>
+                    <span>{group.key}</span><span className="text-slate-400">{group.items.length}</span>
                   </p>
                 )}
             {group.items.map((emp) => {
@@ -481,7 +514,8 @@ export default function Employees({ embedded }: { embedded?: boolean } = {}) {
             {!selectedEmployee && (
               <div className="flex flex-col items-center justify-center py-20 text-slate-500">
                 <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
-                <p className="mt-4 text-sm">اختر موظفاً لعرض التفاصيل</p>
+                <p className="mt-4 text-base font-bold text-[#0f2040]">اختر موظفاً لعرض التفاصيل</p>
+                <p className="mt-1 text-xs text-slate-400">اختار موظف من القائمة حتى تشوف ملفه وكل تفاصيله</p>
               </div>
             )}
 

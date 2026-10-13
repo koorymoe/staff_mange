@@ -68,11 +68,14 @@ export default function StaffManagementDeskPage() {
 
   return (
     <div dir="rtl" className="space-y-4">
-      <div>
-        <h1 className="text-2xl font-black text-[#0f2040]">🗂️ إدارة الموظفين</h1>
-        <p className="mt-1 text-sm text-slate-500">
-          إدارة الكوادر ونقاط الكي بي اي وتقييم الأداء وطلبات الكادر — كل شغلك بمكان واحد.
-        </p>
+      <div className="flex items-center gap-3">
+        <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-brand-50 text-2xl">👥</span>
+        <div>
+          <h1 className="text-2xl font-black text-[#0f2040]">إدارة الموظفين</h1>
+          <p className="mt-0.5 text-sm text-slate-500">
+            إدارة الكوادر ونقاط الكي بي اي وتقييم الأداء وطلبات الكادر — كل شغلك بمكان واحد.
+          </p>
+        </div>
       </div>
 
       {shown.length === 0 && (
@@ -88,9 +91,9 @@ export default function StaffManagementDeskPage() {
               <button
                 key={s.id}
                 onClick={() => setActive(s.id)}
-                className={`rounded-xl border px-4 py-2 text-sm font-bold transition-all ${
-                  active === s.id
-                    ? 'border-transparent bg-gradient-to-l from-brand-500 to-brand-800 text-white shadow'
+                className={`rounded-xl border px-3.5 py-1.5 text-xs font-bold transition-all ${
+                  cur?.id === s.id
+                    ? 'border-brand-300 bg-brand-50 text-brand-700 shadow-sm'
                     : 'border-slate-200 bg-white text-slate-600 hover:border-brand-300 hover:text-brand-700'
                 }`}
               >
