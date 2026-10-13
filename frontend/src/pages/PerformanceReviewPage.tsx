@@ -360,13 +360,7 @@ function BookingReviewCard({ booking, onSaved }: { booking: BookingAwaitingRevie
         </div>
       ) : (
         <>
-          <div className="px-3 pt-3 sm:px-4">
-            <p className="text-xs font-bold text-slate-600">
-              👥 الفريق المشارك في هذا الحجز ({booking.crew.length})
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 gap-3 p-3 sm:p-4 xl:grid-cols-2">
+          <div className="grid grid-cols-1 gap-3 p-3 sm:p-4">
             {booking.crew.map((c) => (
               <CrewCard
                 key={c.employeeId}
@@ -400,77 +394,62 @@ function BookingReviewCard({ booking, onSaved }: { booking: BookingAwaitingRevie
 
 /* ───── بطاقة موظف ───── */
 
+// تصميم (ع) 10-13: ثلاث أعمدة — تقييم عام للحجز · تقييم أداء الموظف (نجوم) · الفريق
 function CrewCard({ member, draft, onChange }: {
   member: CrewReviewState; draft: Draft; onChange: (p: Partial<Draft>) => void
 }) {
+  const tones: Record<string, { on: string; off: string }> = {
+    emerald: { on: 'bg-emerald-700 text-white shadow-md', off: 'border-emerald-300 text-emerald-700 hover:bg-emerald-50' },
+    amber:   { on: 'bg-amber-600 text-white shadow-md',   off: 'border-amber-300 text-amber-700 hover:bg-amber-50' },
+    red:     { on: 'bg-red-600 text-white shadow-md',     off: 'border-red-300 text-red-700 hover:bg-red-50' },
+    orange:  { on: 'bg-orange-600 text-white shadow-md',  off: 'border-orange-300 text-orange-700 hover:bg-orange-50' },
+  }
   return (
-    <div className="rounded-2xl border border-slate-200 bg-slate-50/40 p-3">
-      <div className="flex items-center gap-2.5 border-b border-slate-200 pb-2.5">
-        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white text-sm font-black text-slate-500 shadow-sm">
-          {member.name.charAt(0)}
-        </span>
-        <div className="min-w-0">
-          <p className="truncate text-sm font-bold text-slate-800">{member.name}</p>
-          {member.position && <p className="text-[10px] text-slate-500">{member.position}</p>}
+    <div className="grid grid-cols-1 gap-3 lg:grid-cols-[1.25fr_1.25fr_0.9fr]">
+      {/* ── تقييم عام ── «يحتاج تدريب» غير «مخالفة سلوك»: الأول دورة، والثاني إجراء إداري */}
+      <div className="rounded-2xl border border-slate-200 p-3">
+        <p className="mb-2 text-sm font-extrabold text-[#0f2040]">تقييم عام لهذا الحجز</p>
+        <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-4">
+          {REVIEW_RATINGS.map((r) => {
+            const active = draft.rating === r.value
+            const t = tones[r.tone]
+            return (
+              <button key={r.value} onClick={() => onChange({ rating: active ? null : r.value })} title={r.hint}
+                className={`whitespace-nowrap rounded-xl px-1.5 py-2 text-[11px] font-bold transition ${active ? t.on : `border-2 bg-white ${t.off}`}`}>
+                {r.icon} {r.label}
+              </button>
+            )
+          })}
         </div>
-        {member.rating && (
-          <span className="mr-auto shrink-0 rounded-lg bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-emerald-700">
-            انقيّم
-          </span>
+        <input value={draft.note} onChange={(e) => onChange({ note: e.target.value })} placeholder="ملاحظات إضافية حول هذا التقييم (اختياري)…"
+          className="mt-2 w-full rounded-xl border border-slate-200 px-3 py-2 text-xs outline-none focus:border-sky-500" />
+        {(draft.rating === 'MISCONDUCT' || draft.rating === 'COMMITMENT') && (
+          <p className="mt-1 text-[10px] font-bold text-amber-700">⚠️ هذا بلاغ يروح للإدارة — السبب المكتوب إجباري.</p>
         )}
       </div>
 
-      {/* ── النجوم الثلاث (اختيارية) ── */}
-      <div className="mt-2.5 space-y-1.5">
-        <StarRow label="الالتزام" value={draft.commitment} onPick={(v) => onChange({ commitment: v })} />
-        <StarRow label="السرعة" value={draft.speed} onPick={(v) => onChange({ speed: v })} />
-        <StarRow label="جودة التنفيذ" value={draft.quality} onPick={(v) => onChange({ quality: v })} />
+      {/* ── تقييم أداء الموظف — النجوم الثلاث (اختيارية) ── */}
+      <div className="rounded-2xl border border-slate-200 p-3">
+        <p className="mb-3 border-b border-slate-100 pb-2 text-sm font-extrabold text-[#0f2040]">تقييم أداء الموظف</p>
+        <div className="grid grid-cols-3 gap-2 text-center">
+          <StarRow label="الالتزام" value={draft.commitment} onPick={(v) => onChange({ commitment: v })} />
+          <StarRow label="السرعة" value={draft.speed} onPick={(v) => onChange({ speed: v })} />
+          <StarRow label="جودة التنفيذ" value={draft.quality} onPick={(v) => onChange({ quality: v })} />
+        </div>
       </div>
 
-      {/* ═══ أربعة أنواع مو اثنين ═══
-          «يحتاج تدريب» غير «مخالفة سلوك»: الأول نقص مهارة علاجه دورة،
-          والثاني إجراء إداري. خلطهن يخلي صاحب الأسلوب السيّئ ينزل
-          بدورة فنية ما تعالج شي، وناقص المهارة ينحسب مخالف.
-
-          ⚠️ متجاوب: أربع أزرار بصف واحد على شاشة موبايل تصير مضغوطة
-          ما تنضغط — فتنكسر ٢×٢. */}
-      <p className="mt-2.5 text-[10px] font-bold text-slate-500">تقييم الأداء في هذا الحجز</p>
-      <div className="mt-1 grid grid-cols-2 gap-1.5">
-        {REVIEW_RATINGS.map((r) => {
-          const active = draft.rating === r.value
-          const tones: Record<string, { on: string; off: string }> = {
-            emerald: { on: 'bg-emerald-700 text-white shadow-md', off: 'border-emerald-300 text-emerald-700 hover:bg-emerald-50' },
-            amber:   { on: 'bg-amber-600 text-white shadow-md',   off: 'border-amber-300 text-amber-700 hover:bg-amber-50' },
-            red:     { on: 'bg-red-600 text-white shadow-md',     off: 'border-red-300 text-red-700 hover:bg-red-50' },
-            orange:  { on: 'bg-orange-600 text-white shadow-md',  off: 'border-orange-300 text-orange-700 hover:bg-orange-50' },
-          }
-          const t = tones[r.tone]
-          return (
-            <button
-              key={r.value}
-              onClick={() => onChange({ rating: active ? null : r.value })}
-              title={r.hint}
-              className={`rounded-lg px-2 py-2 text-[10px] font-bold transition sm:text-[11px] ${
-                active ? t.on : `border bg-white ${t.off}`
-              }`}
-            >
-              {r.icon} {r.label}
-            </button>
-          )
-        })}
+      {/* ── الموظف ── */}
+      <div className="rounded-2xl border border-slate-200 bg-slate-50/50 p-3">
+        <p className="mb-2 text-xs font-bold text-slate-600">الفريق المشارك في هذا الحجز</p>
+        <div className="flex items-center gap-2.5 rounded-xl bg-white p-2.5 shadow-sm">
+          <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-sky-50 text-sm font-black text-[#2c5aad]">{member.name.charAt(0)}</span>
+          <div className="min-w-0">
+            <p className="truncate text-sm font-bold text-slate-800">{member.name}</p>
+            {member.position && <p className="text-[10px] text-slate-500">{member.position}</p>}
+          </div>
+          {member.rating && <span className="mr-auto shrink-0 rounded-lg bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-emerald-700">انقيّم</span>}
+        </div>
       </div>
-
-      <input
-        value={draft.note}
-        onChange={(e) => onChange({ note: e.target.value })}
-        placeholder="ملاحظة مرتبطة بهذا الحجز (اختياري)"
-        className="mt-2 w-full rounded-lg border border-slate-200 px-3 py-1.5 text-[11px] outline-none focus:border-sky-500"
-      />
-      {(draft.rating === 'MISCONDUCT' || draft.rating === 'COMMITMENT') && (
-        <p className="mt-1 text-[10px] font-bold text-amber-700">
-          ⚠️ هذا بلاغ يروح للإدارة — السبب المكتوب إجباري.
-        </p>
-      )}
     </div>
   )
 }
@@ -483,15 +462,15 @@ function StarRow({ label, value, onPick }: {
   label: string; value: number | null; onPick: (v: number | null) => void
 }) {
   return (
-    <div className="flex items-center justify-between gap-2">
-      <span className="text-[10px] text-slate-500">{label}</span>
-      <div className="flex gap-0.5">
+    <div className="flex flex-col items-center gap-1.5">
+      <span className="text-xs font-bold text-slate-600">{label}</span>
+      <div className="flex gap-0.5" dir="ltr">
         {[1, 2, 3, 4, 5].map((n) => (
           <button
             key={n}
             onClick={() => onPick(value === n ? null : n)}
             aria-label={`${label} ${n} من ٥`}
-            className={`text-sm leading-none transition ${
+            className={`text-xl leading-none transition ${
               value != null && n <= value ? 'text-amber-400' : 'text-slate-300 hover:text-amber-200'
             }`}
           >

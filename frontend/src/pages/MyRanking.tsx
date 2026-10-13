@@ -235,6 +235,8 @@ export default function MyRanking() {
 
   return (
     <div dir="rtl" className="space-y-5">
+      {/* تصميم (ع) 10-13: العنوان والتبويبات بشريط فاتح وحد */}
+      <div className="space-y-4 rounded-2xl bg-gradient-to-l from-sky-50 to-indigo-50 p-5">
       {/* ═══ العنوان + التبديل ═══ */}
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="flex items-center gap-3">
@@ -290,6 +292,7 @@ export default function MyRanking() {
           ))}
         </div>
       )}
+      </div>
 
       {/* تقييم الفريق يعيد استعمال نفس الشاشة بلا نسخ منطقها */}
       {effectiveView === 'team' && <PerformanceReviewPage embedded />}
