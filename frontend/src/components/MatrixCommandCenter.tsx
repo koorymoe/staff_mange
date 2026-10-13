@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import {
   api, type GroupPerformance, type LateFocus, type MatrixBusiness as MatrixBusinessData, type MatrixFeedItem,
@@ -129,7 +129,7 @@ export default function MatrixCommandCenter() {
       {/* ── الرأس ── */}
       <div className="grid items-center gap-4 lg:grid-cols-[1fr_auto]">
         <div className="flex flex-wrap items-center gap-4">
-          <div className="shrink-0 drop-shadow-[0_0_30px_rgba(56,189,248,0.6)]"><MatrixEyeGraphic group="IT" mood={worst === 'PLEASED' ? 'CALM' : worst} width={190} /></div>
+          <BigSharingan mood={worst === 'PLEASED' ? 'CALM' : worst} />
           <div>
             <span className="mb-2 inline-flex items-center gap-1.5 rounded-full border border-emerald-400/30 bg-emerald-500/10 px-3 py-0.5 text-[11px] text-[var(--mx-ok)]">
               <span className="h-2 w-2 animate-pulse rounded-full bg-emerald-400" /> الذكاء التحليلي النشط الآن
@@ -702,4 +702,33 @@ function perfEvidence(group: string, perf: GroupPerformance[], groups: GroupRep[
     out[`${e.name ?? '—'}|${e.id ?? ''}`] = work + (e.open ? ` · ${e.open} تذكير مفتوح` : '')
   }
   return out
+}
+
+// ═══ العين الكبيرة بمركز القيادة — قرار (ع) 10-13 ═══
+// شارنغان دائمي (نفس عين المالك)، وضغطتين عليها تحوّلها مانغكيو دقيقة
+// وترجع. هنا بس — عين الشريط العلوي ما تتأثر.
+function BigSharingan({ mood }: { mood: EyeMood }) {
+  const [mangekyo, setMangekyo] = useState(false)
+  const t = useRef(0)
+  useEffect(() => () => window.clearTimeout(t.current), [])
+  // رمشة طبيعية كل ٣–٦ ثواني
+  const [blink, setBlink] = useState(false)
+  useEffect(() => {
+    let id = 0
+    const loop = () => { id = window.setTimeout(() => { setBlink(true); window.setTimeout(() => setBlink(false), 140); loop() }, 3000 + Math.random() * 3000) }
+    loop()
+    return () => window.clearTimeout(id)
+  }, [])
+  const toggle = () => {
+    window.clearTimeout(t.current)
+    setMangekyo(true)
+    t.current = window.setTimeout(() => setMangekyo(false), 60_000)
+  }
+  return (
+    <button type="button" onDoubleClick={toggle} title="ضغطتين: مانغكيو شارنغان لمدة دقيقة"
+      className={`shrink-0 select-none transition ${mangekyo ? 'drop-shadow-[0_0_40px_rgba(220,38,38,0.85)]' : 'drop-shadow-[0_0_30px_rgba(185,28,28,0.55)]'}`}
+      style={{ ['--eye' as string]: '#b91c1c' }}>
+      <MatrixEyeGraphic group="ADMINS" mood={mood} width={190} lid={blink ? 0.06 : 0.95} sharingan={mangekyo ? 2 : 1} />
+    </button>
+  )
 }
