@@ -619,7 +619,6 @@ export const navItems: NavItem[] = [
       { strict: true, to: '/staff-management-desk', label: 'إدارة الموظفين', icon: <></>, roles: ['ADMIN', 'MONITOR'], anyPermission: ['staff_management', 'kpi_management', 'performance_review', 'staff_requests'] },
       { to: '/staff-requests', label: 'طلبات الكادر', icon: <></>, roles: ['ADMIN', 'HR_COORDINATOR'], unlockPermission: 'staff_requests' },
       { to: '/nav-hr-perms', label: '🔐 الصلاحيات', icon: <></>, divider: true, plain: true },
-      { strict: true, to: '/permissions', label: 'الصلاحيات', icon: <></>, roles: ['ADMIN'] },
       { strict: true, to: '/permission-preview', label: '🔎 شوف بعين الموظف', icon: <></>, roles: ['ADMIN'] },
       { strict: true, to: '/roles-guide', label: '📋 دليل الأدوار والصلاحيات', icon: <></>, roles: ['ADMIN'] },
       { to: '/nav-hr-time', label: '🕘 الدوام', icon: <></>, divider: true, plain: true },
@@ -1090,6 +1089,8 @@ const SELF_SCOPED: Record<string, RouteRule> = {
   // (ع) 10-13: «إدارة الكوادر» صارت تبويب جوّا «إدارة الموظفين» بس، والأقسام انتقلت للإعدادات (⚙️)
   '/employees': { roles: ['ADMIN', 'HR_COORDINATOR', 'MONITOR'], anyPermission: ['staff_management'] },
   '/departments': { roles: ['ADMIN'], anyPermission: ['departments_manage'] },
+  // (ع) 10-13: الصلاحيات صارت تبويب جوّا «إدارة الموظفين»
+  '/permissions': { roles: ['ADMIN'] },
   // فاتورة الحجز من «مهامي» — نفس requireLeaderBasket بالخادم.
   '/leader-invoices/new': { leader: true, anyPermission: ['leader_basket', 'invoice_gps', 'invoice_dashcam', 'invoice_internal', 'execution_cost', 'finance', 'finance_audit'] },
 }

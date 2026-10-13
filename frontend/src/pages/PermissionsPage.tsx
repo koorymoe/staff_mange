@@ -7,7 +7,7 @@ import EmployeeAdminScope from '../components/EmployeeAdminScope'
 
 const DEAD_PERMISSIONS = new Set(['work_reports', 'leave_approve_field', 'leave_approve_admin', 'manage_services'])
 
-export default function PermissionsPage() {
+export default function PermissionsPage({ embedded = false }: { embedded?: boolean } = {}) {
   // ═══ فحص الصلاحيات الناقصة ═══
   //
   // ⚠️ خريطة صلاحيات الأدوار بالكود **اقتراح مو قاعدة منفَّذة**:
@@ -242,8 +242,10 @@ export default function PermissionsPage() {
 
   return (
     <div dir="rtl">
-      <h2 className="text-2xl font-bold text-brand-900">إدارة الصلاحيات</h2>
-      <p className="mt-1 text-slate-500">تحديد صلاحيات الوصول لكل موظف في الأنظمة المختلفة.</p>
+      {!embedded && (<>
+        <h2 className="text-2xl font-bold text-brand-900">إدارة الصلاحيات</h2>
+        <p className="mt-1 text-slate-500">تحديد صلاحيات الوصول لكل موظف في الأنظمة المختلفة.</p>
+      </>)}
 
       {/* فحص: منو ناقصه صلاحيات دوره */}
       <div className="mt-4 rounded-xl border p-4"

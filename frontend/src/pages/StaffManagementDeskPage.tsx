@@ -19,8 +19,9 @@ const Employees = lazy(() => import('./Employees'))
 const KpiPage = lazy(() => import('./KpiPage'))
 const PerformanceReviewPage = lazy(() => import('./PerformanceReviewPage'))
 const StaffRequestsPage = lazy(() => import('./StaffRequestsPage'))
+const PermissionsPage = lazy(() => import('./PermissionsPage'))
 
-type SectionId = 'employees' | 'kpi' | 'performance' | 'staffRequests'
+type SectionId = 'employees' | 'kpi' | 'performance' | 'staffRequests' | 'permissions'
 
 interface Section {
   id: SectionId
@@ -49,6 +50,11 @@ const SECTIONS: Section[] = [
   {
     id: 'staffRequests', label: 'طلبات الكادر', icon: '👷',
     navItem: { to: '/staff-requests', label: 'طلبات الكادر', icon: <></>, roles: ['ADMIN', 'MONITOR'], unlockPermission: 'staff_requests' },
+  },
+  // (ع) 10-13: الصلاحيات تبويب هنا مو بند لحاله — نفس حارس المسار (RequireAdmin)
+  {
+    id: 'permissions', label: 'الصلاحيات', icon: '🔐',
+    navItem: { to: '/permissions', label: 'الصلاحيات', icon: <></>, roles: ['ADMIN'] },
   },
 ]
 
@@ -107,6 +113,7 @@ export default function StaffManagementDeskPage() {
             {cur?.id === 'kpi' && <KpiPage embedded />}
             {cur?.id === 'performance' && <PerformanceReviewPage embedded />}
             {cur?.id === 'staffRequests' && <StaffRequestsPage embedded />}
+            {cur?.id === 'permissions' && <PermissionsPage embedded />}
           </Suspense>
         </>
       )}
