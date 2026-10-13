@@ -82,7 +82,7 @@ func (r *TodayRepository) Board() (*TodayBoard, error) {
 	err := r.db.Get(&row, `
 		SELECT
 		  COUNT(*) FILTER (WHERE baghdad_date(b."scheduledAt") = baghdad_date(now())) AS "bookingsToday",
-		  COUNT(*) FILTER (WHERE b.status = 'IN_PROGRESS' OR (b."startedAt" IS NOT NULL AND b."completedAt" IS NULL)) AS "inField",
+		  COUNT(*) FILTER (WHERE `+InFieldSQL+`) AS "inField",
 		  COUNT(*) FILTER (WHERE baghdad_date(b."completedAt") = baghdad_date(now())) AS "completedToday",
 		  COUNT(*) FILTER (WHERE baghdad_date(b."createdAt") = baghdad_date(now())) AS "newToday",
 		  COUNT(*) FILTER (WHERE `+bucketCondition("pending")+`) AS "needsContact",

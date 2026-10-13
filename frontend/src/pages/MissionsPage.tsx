@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useSession } from '../session'
 import ExtraTasksPage from './ExtraTasksPage'
+import FieldBoard from '../components/FieldBoard'
 import MatrixNote from '../components/MatrixNote'
 import { pollVisible } from '../utils/poll'
 
@@ -173,7 +174,9 @@ export default function MissionsPage() {
   const { employee, permissions } = useSession()
   const [missions, setMissions] = useState<Mission[]>([])
   const [loading, setLoading] = useState(true)
-  const [tab, setTab] = useState<'active' | 'completed' | 'monitor' | 'extra'>('active')
+  // ?tab=field — من بطاقة «الكوادر بالميدان» بلوحة المتابعة
+  const [tab, setTab] = useState<'active' | 'completed' | 'monitor' | 'extra' | 'field'>(() =>
+    new URLSearchParams(window.location.search).get('tab') === 'field' ? 'field' : 'active')
   // ترتيب البطاقات (تصميم ع 10-13)
   const [sortBy, setSortBy] = useState<'newest' | 'oldest' | 'late'>('newest')
   const [selectedMission, setSelectedMission] = useState<Mission | null>(null)
@@ -362,6 +365,11 @@ export default function MissionsPage() {
           المنجزة ({completedMissions.length})
         </button>
         {isAdmin && (
+          <button onClick={() => setTab('field')} className={`rounded-xl px-5 py-2.5 text-sm font-bold transition ${tab === 'field' ? 'bg-[#0f2040] text-white' : 'bg-white text-slate-600'}`}>
+            🚗 بالميدان والمعلّق
+          </button>
+        )}
+        {isAdmin && (
           <button onClick={() => setTab('monitor')} className={`rounded-xl px-5 py-2.5 text-sm font-bold transition ${tab === 'monitor' ? 'bg-[#0f2040] text-white' : 'bg-white text-slate-600'}`}>
             🖥️ لوحة المراقبة
           </button>
@@ -384,6 +392,7 @@ export default function MissionsPage() {
       {/* المهام الإضافية — توجيه ومتابعة، نفس الشاشة المستقلة
           (/extra-tasks) مضمَّنة هنا بدل بند القائمة الجانبية. */}
       {tab === 'extra' && <ExtraTasksPage embedded />}
+      {tab === 'field' && isAdmin && <FieldBoard />}
 
       {/* Active Missions */}
       {tab === 'active' && (

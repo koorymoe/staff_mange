@@ -197,8 +197,15 @@ func (h *DashboardHandler) TodayPulse(w http.ResponseWriter, r *http.Request) {
 			         OR NOT EXISTS (SELECT 1 FROM "BookingAssignment" ba
 			                         WHERE ba."bookingId" = b.id)))                  AS "needsCoordination",
 			-- كوادر بالميدان هسه: طلعوا وما وصلوا/خلصوا
-			(SELECT COUNT(DISTINCT m."leaderId") FROM "Mission" m
-			  WHERE m.stage IN ('EN_ROUTE','ARRIVED','WORK_STARTED'))                AS "crewInField",
+			-- (ع) 10-13: چان يعدّ من Mission بس، والليدر يأشّر على الحجز → دايماً صفر.
+			-- هسه: كل موظف على حجز بالميدان اليوم + أي مهمة ميدانية — بلا تكرار.
+			(SELECT COUNT(DISTINCT x.id) FROM (
+			   SELECT ba."employeeId" AS id FROM "BookingAssignment" ba JOIN "Booking" b ON b.id = ba."bookingId"
+			    WHERE `+repository.InFieldSQL+repository.NotDeletePendingSQL("b")+`
+			   UNION
+			   SELECT m."leaderId" FROM "Mission" m
+			    WHERE m.stage IN ('EN_ROUTE','ARRIVED','WORK_STARTED') AND m."leaderId" IS NOT NULL
+			 ) x)                                                                    AS "crewInField",
 			-- تأخر ميداني: مهمة مفتوحة من أكثر من يوم بلا إنجاز
 			(SELECT COUNT(*) FROM "Mission"
 			  WHERE stage NOT IN ('COMPLETED','STOPPED')

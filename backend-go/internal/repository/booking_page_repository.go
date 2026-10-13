@@ -68,6 +68,15 @@ func bucketCondition(bucket string) string {
 	notStuck := ` AND b."waitingSince" IS NULL AND NOT b."awaitingReschedule"`
 
 	switch bucket {
+	// ═══ (ع) 10-13: الميدان والمعلّق — تعريف واحد للوحة وتتبع المهام ═══
+	case "in_field":
+		return InFieldSQL + ` AND NOT ` + deletePendingSQL
+	case "stopped":
+		return `b."workStoppedAt" IS NOT NULL AND b.status NOT IN ('COMPLETED', 'CANCELLED')` + notDeleting
+	case "partial":
+		return `b.status = 'PARTIAL'` + notDeleting
+	case "needs_paper":
+		return `b.status = 'COMPLETED' AND b."settledLegacyAt" IS NULL AND NOT ` + paperworkDoneSQL
 	// محطة مستقلة: ينتظر قرار المراقب
 	case "delete_pending":
 		return deletePendingSQL
@@ -182,6 +191,14 @@ const isSurveySQL = `b."bookingType" = 'SURVEY'`
 // ⚠️ ينكتب مرة وحدة وينستعمل بكل مكان يسأل «ناقصه ورق؟»: نسختان
 // تفترقان بأول تعديل، فتطلع الشاشة رقماً والطابور رقماً ثانياً.
 const paperworkDoneSQL = `((` + hasInvoiceSQL + ` AND ` + hasReportSQL + `) OR ` + isLegacyImportSQL + ` OR ` + isSurveySQL + `)`
+
+// InFieldSQL «بالميدان هسه» (ع 10-13): الليدر ضغط «انطلقنا/وصلنا» أو «بدء
+// العمل» **اليوم**، والحجز لسه ما خلص ولا توقف ولا صار إنجاز جزئي. أول ما
+// يخلص يطلع لحاله، ولو طلع الكادر لحجز ثاني ينحسب بالثاني. الطلعة القديمة
+// العالقة (بدأ من أيام) ما تبقى «بالميدان» — تطلع بالمتوقف/المعلّق.
+const InFieldSQL = `(b."arrivedAt" IS NOT NULL OR b."startedAt" IS NOT NULL)
+	AND b.status NOT IN ('COMPLETED', 'CANCELLED', 'PARTIAL') AND b."workStoppedAt" IS NULL
+	AND baghdad_date(COALESCE(b."startedAt", b."arrivedAt")) = baghdad_today() AND b."archivedAt" IS NULL`
 
 // BookingPageQuery شنو تطلبه الشاشة.
 type BookingPageQuery struct {
