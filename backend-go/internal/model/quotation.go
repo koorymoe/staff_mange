@@ -20,10 +20,10 @@ type Quotation struct {
 	Notes           *string `db:"notes" json:"notes"`
 	Duration        *string `db:"duration" json:"duration"`
 	// (ع) 10-14: شروط هذا العرض (مصفوفة نصوص) — null = الشروط الافتراضية
-	Terms               json.RawMessage `db:"terms" json:"terms"`
-	Status              string          `db:"status" json:"status"`
-	CreatedByEmployeeID string          `db:"createdByEmployeeId" json:"-"`
-	CreatedAt           time.Time       `db:"createdAt" json:"createdAt"`
+	Terms               *json.RawMessage `db:"terms" json:"terms"`
+	Status              string           `db:"status" json:"status"`
+	CreatedByEmployeeID string           `db:"createdByEmployeeId" json:"-"`
+	CreatedAt           time.Time        `db:"createdAt" json:"createdAt"`
 
 	Items             []QuotationItem `db:"-" json:"items"`
 	CreatedByEmployee *EmployeeBrief  `db:"-" json:"createdByEmployee"`
