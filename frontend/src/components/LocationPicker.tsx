@@ -48,12 +48,16 @@ export default function LocationPicker({ value, onChange }: Props) {
   const containerRef = useRef<HTMLDivElement>(null)
   const markerRef = useRef<L.Marker | null>(null)
   const myMarkerRef = useRef<L.Marker | null>(null)
+  const accCircleRef = useRef<L.Circle | null>(null)
 
   const [query, setQuery] = useState('')
   const [results, setResults] = useState<SearchResult[]>([])
   const [searching, setSearching] = useState(false)
   const [searchError, setSearchError] = useState('')
   const [myLocation, setMyLocation] = useState<[number, number] | null>(null)
+  // دقة «موقعي الحالي»: الحاسبة ما بيها GPS فالمتصفح يقدّر من الإنترنت وقد يغلط كيلوات
+  const [locating, setLocating] = useState(false)
+  const [locInfo, setLocInfo] = useState<{ kind: 'ok' | 'warn' | 'err'; text: string } | null>(null)
   // ملء الشاشة: الخريطة تتوسع بنفس الصفحة (overlay) — ما تحوّل المستخدم
   // لنافذة/رابط ثاني، والخروج بزر أو بمفتاح Esc.
   const [fullscreen, setFullscreen] = useState(false)
@@ -89,7 +93,7 @@ export default function LocationPicker({ value, onChange }: Props) {
           setMyLocation(here)
         },
         () => {},
-        { timeout: 5000 }
+        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
       )
     }
 
@@ -174,14 +178,44 @@ export default function LocationPicker({ value, onChange }: Props) {
   }
 
   const useMyLocation = () => {
-    if (!navigator.geolocation) return
+    if (!navigator.geolocation) {
+      setLocInfo({ kind: 'err', text: 'هذا المتصفح ما يدعم تحديد الموقع' })
+      return
+    }
+    setLocating(true)
+    setLocInfo(null)
     navigator.geolocation.getCurrentPosition(
       (pos) => {
+        setLocating(false)
         const here: [number, number] = [pos.coords.latitude, pos.coords.longitude]
+        const acc = Math.round(pos.coords.accuracy || 0)
         setMyLocation(here)
-        onChange({ lat: pos.coords.latitude, lng: pos.coords.longitude })
+        onChange({ lat: here[0], lng: here[1] })
+        const map = mapRef.current
+        if (map) {
+          if (accCircleRef.current) accCircleRef.current.remove()
+          accCircleRef.current = acc > 0
+            ? L.circle(here, { radius: acc, color: '#2c5aad', weight: 1, fillOpacity: 0.08, interactive: false }).addTo(map)
+            : null
+          if (acc > 500) map.fitBounds(L.latLng(here).toBounds(acc * 2))
+        }
+        const accText = acc >= 1000 ? `${(acc / 1000).toFixed(1)} كم` : `${acc} م`
+        if (acc > 500) {
+          setLocInfo({ kind: 'warn', text: `⚠️ هذا موقع تقريبي (±${accText}) — الجهاز ما بيه GPS فالمتصفح قدّره من الإنترنت. اسحب العلامة الحمراء لمكانها الصح، أو حط رابط كوكل ماب، أو حدده من الموبايل.` })
+        } else {
+          setLocInfo({ kind: 'ok', text: `✓ تم تحديد موقعك بدقة ±${accText}` })
+        }
       },
-      () => setSearchError('تعذر تحديد موقعك الحالي')
+      (err) => {
+        setLocating(false)
+        const text = err.code === err.PERMISSION_DENIED
+          ? 'المتصفح ممنوع من الموقع — اسمحله من أيقونة القفل 🔒 جنب الرابط وعيد المحاولة.'
+          : err.code === err.POSITION_UNAVAILABLE
+            ? 'خدمة الموقع بالجهاز طافية — بويندوز: الإعدادات ← الخصوصية والأمان ← الموقع، وشغّلها.'
+            : 'انتهت مهلة تحديد الموقع — عيد المحاولة أو حدد يدوياً على الخريطة.'
+        setLocInfo({ kind: 'err', text })
+      },
+      { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
     )
   }
 
@@ -236,13 +270,19 @@ export default function LocationPicker({ value, onChange }: Props) {
         <button
           type="button"
           onClick={useMyLocation}
-          className="rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-medium text-slate-600 hover:border-brand-400"
+          disabled={locating}
+          className="disabled:opacity-60 rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-medium text-slate-600 hover:border-brand-400"
         >
-          📍 موقعي الحالي
+          {locating ? '⏳ جاري تحديد موقعك…' : '📍 موقعي الحالي'}
         </button>
       </div>
 
       {searchError && <p className="text-xs text-red-600">{searchError}</p>}
+      {locInfo && (
+        <p className={`rounded-xl border px-3 py-2 text-sm font-medium ${locInfo.kind === 'ok' ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : locInfo.kind === 'warn' ? 'border-amber-300 bg-amber-50 text-amber-800' : 'border-red-200 bg-red-50 text-red-700'}`}>
+          {locInfo.text}
+        </p>
+      )}
 
       <div className={`relative w-full overflow-hidden rounded-xl border border-slate-200 ${fullscreen ? 'flex-1' : 'h-72'}`}>
         <div ref={containerRef} className="h-full w-full" />
