@@ -1708,6 +1708,8 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 		mux.Handle("POST /api/customer-app/branches", middleware.Chain(http.HandlerFunc(cust.AdminSaveBranch), requireAuth, requireAdmin))
 		mux.Handle("PUT /api/customer-app/branches/{id}", middleware.Chain(http.HandlerFunc(cust.AdminSaveBranch), requireAuth, requireAdmin))
 		mux.Handle("DELETE /api/customer-app/branches/{id}", middleware.Chain(http.HandlerFunc(cust.AdminDeleteBranch), requireAuth, requireAdmin))
+		mux.Handle("GET /api/customer-app/mail-status", middleware.Chain(http.HandlerFunc(cust.AdminMailStatus), requireAuth, requireAdmin))
+		mux.Handle("POST /api/customer-app/mail-test", middleware.Chain(http.HandlerFunc(cust.AdminMailTest), requireAuth, requireAdmin))
 		mux.Handle("GET /api/customer-app/ratings", middleware.Chain(http.HandlerFunc(cust.AdminRatings), requireAuth, requireAdmin))
 	}
 

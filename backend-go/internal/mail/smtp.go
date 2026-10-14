@@ -6,6 +6,7 @@ package mail
 
 import (
 	"crypto/tls"
+	"errors"
 	"fmt"
 	"html"
 	"log"
@@ -35,9 +36,21 @@ func FromEnv() *Sender {
 
 func (s *Sender) Configured() bool { return s.host != "" && s.user != "" && s.pass != "" }
 
+// DevLog التطوير المحلي: بلا SMTP الرمز ينكتب باللوك (MAIL_DEV_LOG=1).
+func DevLog() bool { return os.Getenv("MAIL_DEV_LOG") == "1" }
+
+// ErrNotConfigured إرسال الإيميل متوقف — ماكو إعدادات SMTP بالإنتاج.
+var ErrNotConfigured = errors.New("إعدادات الإيميل (SMTP) ناقصة")
+
+// From المرسل المضبوط (لشاشة المالك).
+func (s *Sender) From() string { return s.from }
+
 // Send يرسل HTML. بلا إعدادات يطبع الرسالة باللوك (للتطوير).
 func (s *Sender) Send(to, subject, body string) error {
 	if !s.Configured() {
+		if !DevLog() {
+			return ErrNotConfigured
+		}
 		log.Printf("[mail:dev] to=%s subject=%s\n%s", to, subject, body)
 		return nil
 	}
@@ -53,7 +66,7 @@ func (s *Sender) Send(to, subject, body string) error {
 	addr := net.JoinHostPort(s.host, s.port)
 	auth := smtp.PlainAuth("", s.user, s.pass, s.host)
 	if s.port == "465" {
-		conn, err := tls.Dial("tcp", addr, &tls.Config{ServerName: s.host})
+		conn, err := tls.DialWithDialer(&net.Dialer{Timeout: 15 * time.Second}, "tcp", addr, &tls.Config{ServerName: s.host})
 		if err != nil {
 			return err
 		}
@@ -80,7 +93,40 @@ func (s *Sender) Send(to, subject, body string) error {
 		}
 		return wc.Close()
 	}
-	return smtp.SendMail(addr, auth, s.from, []string{to}, []byte(msg))
+	// منفذ 587: STARTTLS بمهلة حتى ما يعلك الطلب إذا المنفذ مسدود
+	conn, err := net.DialTimeout("tcp", addr, 15*time.Second)
+	if err != nil {
+		return err
+	}
+	_ = conn.SetDeadline(time.Now().Add(30 * time.Second))
+	c, err := smtp.NewClient(conn, s.host)
+	if err != nil {
+		return err
+	}
+	defer c.Close()
+	if err := c.StartTLS(&tls.Config{ServerName: s.host}); err != nil {
+		return err
+	}
+	if err := c.Auth(auth); err != nil {
+		return err
+	}
+	if err := c.Mail(s.from); err != nil {
+		return err
+	}
+	if err := c.Rcpt(to); err != nil {
+		return err
+	}
+	wc, err := c.Data()
+	if err != nil {
+		return err
+	}
+	if _, err := wc.Write([]byte(msg)); err != nil {
+		return err
+	}
+	if err := wc.Close(); err != nil {
+		return err
+	}
+	return c.Quit()
 }
 
 // OtpHTML قالب رسالة الرمز بالعربي.

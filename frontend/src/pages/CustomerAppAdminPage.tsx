@@ -78,6 +78,8 @@ export default function CustomerAppAdminPage() {
         </div>
       </div>
 
+      <MailStatus />
+
       <div className="inline-flex gap-1.5 rounded-2xl border border-slate-200 bg-white p-1.5 shadow-sm">
         {([['content', '🎁 العروض والأعمال'], ['services', '🛠️ الخدمات بالتطبيق'], ['branches', '🏢 الفروع'], ['ratings', '⭐ التقييمات'], ['accounts', '👥 الزبائن ومحادثاتهم']] as const).map(([k, l]) => (
           <button key={k} onClick={() => setTab(k)} className={`rounded-xl px-4 py-2 text-xs font-extrabold ${tab === k ? 'bg-[#0f2040] text-white' : 'text-slate-600'}`}>{l}</button>
@@ -339,6 +341,34 @@ function RatingsTab() {
             ))}
           </tbody>
         </table>
+      </div>
+    </div>
+  )
+}
+
+// ═══ حالة إرسال رموز التأكيد (Gmail) + إيميل تجربة ═══
+function MailStatus() {
+  const [st, setSt] = useState<{ configured: boolean; from: string } | null>(null)
+  const [to, setTo] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [res, setRes] = useState<{ ok: boolean; msg: string } | null>(null)
+  useEffect(() => { apiRequest<{ configured: boolean; from: string }>('/customer-app/mail-status').then(setSt).catch(() => {}) }, [])
+  const test = async () => {
+    setBusy(true); setRes(null)
+    try { await apiRequest('/customer-app/mail-test', { method: 'POST', body: JSON.stringify({ to }) }); setRes({ ok: true, msg: `انرسل ✓ — شوف وارد ${to} (أو الـSpam)` }) }
+    catch (e) { setRes({ ok: false, msg: e instanceof Error ? e.message : 'فشل' }) } finally { setBusy(false) }
+  }
+  if (!st) return null
+  return (
+    <div className={`rounded-2xl border p-4 text-sm ${st.configured ? 'border-emerald-200 bg-emerald-50/60' : 'border-amber-300 bg-amber-50'}`}>
+      {st.configured
+        ? <p className="font-bold text-emerald-800">✅ إرسال رموز التأكيد شغّال من <span dir="ltr">{st.from}</span></p>
+        : <div className="text-amber-900"><p className="font-bold">⚠️ إرسال رموز التأكيد متوقف — ناقص إعدادات Gmail بملف .env على السيرفر</p>
+            <p className="mt-1 text-xs">SMTP_HOST=smtp.gmail.com · SMTP_PORT=587 · SMTP_USER · SMTP_PASS (كلمة سر التطبيق) · MAIL_FROM — بعدها: docker compose up -d backend</p></div>}
+      <div className="mt-3 flex flex-wrap items-center gap-2">
+        <input dir="ltr" value={to} onChange={(e) => setTo(e.target.value)} placeholder="email@example.com" className="rounded-xl border border-slate-300 bg-white px-3 py-1.5 text-sm" />
+        <button disabled={busy || !to.includes('@')} onClick={test} className="rounded-xl bg-[#0f2040] px-4 py-1.5 text-sm font-bold text-white disabled:opacity-50">{busy ? '…' : '✉️ إرسال إيميل تجربة'}</button>
+        {res && <span className={`text-xs font-bold ${res.ok ? 'text-emerald-700' : 'text-rose-700'}`}>{res.msg}</span>}
       </div>
     </div>
   )

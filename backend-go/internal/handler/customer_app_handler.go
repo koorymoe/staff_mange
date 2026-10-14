@@ -288,7 +288,7 @@ func (h *CustomerAppHandler) Signup(w http.ResponseWriter, r *http.Request) {
 	}
 	if err := h.sendOtp(a, "signup"); err != nil && !errors.Is(err, errTooSoon) {
 		log.Printf("customer otp: %v", err)
-		WriteError(w, http.StatusBadGateway, "ما كدرنا نرسل الرمز للإيميل — تأكد منه وحاول مرة ثانية")
+		WriteError(w, http.StatusBadGateway, otpSendError(err))
 		return
 	}
 	WriteJSON(w, http.StatusOK, map[string]any{"username": a.Username, "email": maskEmail(a.Email)})
@@ -344,11 +344,12 @@ func (h *CustomerAppHandler) Resend(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := h.sendOtp(a, purpose); err != nil {
-		code := http.StatusBadGateway
 		if errors.Is(err, errTooSoon) {
-			code = http.StatusTooManyRequests
+			WriteError(w, http.StatusTooManyRequests, err.Error())
+			return
 		}
-		WriteError(w, code, err.Error())
+		log.Printf("customer otp: %v", err)
+		WriteError(w, http.StatusBadGateway, otpSendError(err))
 		return
 	}
 	WriteJSON(w, http.StatusOK, map[string]any{"ok": true, "email": maskEmail(a.Email)})
@@ -382,7 +383,8 @@ func (h *CustomerAppHandler) Forgot(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := h.sendOtp(a, "reset"); err != nil && !errors.Is(err, errTooSoon) {
-		WriteError(w, http.StatusBadGateway, "ما كدرنا نرسل الرمز — حاول بعد شوية")
+		log.Printf("customer otp: %v", err)
+		WriteError(w, http.StatusBadGateway, otpSendError(err))
 		return
 	}
 	WriteJSON(w, http.StatusOK, map[string]any{"ok": true, "email": maskEmail(a.Email)})
@@ -787,4 +789,42 @@ func (h *CustomerAppHandler) AdminSuggest(w http.ResponseWriter, r *http.Request
 	id := uuid.NewString()
 	_, _ = h.db.Exec(`INSERT INTO "PromoItem" (id, kind, title, body, active, source) VALUES ($1,'offer',$2,$3,false,'matrix')`, id, title, body)
 	WriteJSON(w, http.StatusOK, map[string]string{"id": id, "title": title, "body": body})
+}
+
+func otpSendError(err error) string {
+	if errors.Is(err, mail.ErrNotConfigured) {
+		return "إرسال رمز التأكيد متوقف مؤقتاً — حسابك انحفظ، جرّب «إعادة الإرسال» بعد شوية أو تواصل ويانا"
+	}
+	return "ما كدرنا نرسل الرمز للإيميل — تأكد منه وحاول مرة ثانية"
+}
+
+// GET /api/customer-app/mail-status — حالة إرسال الإيميل (شاشة المالك)
+func (h *CustomerAppHandler) AdminMailStatus(w http.ResponseWriter, r *http.Request) {
+	WriteJSON(w, http.StatusOK, map[string]any{"configured": h.mail.Configured(), "from": h.mail.From(), "devLog": mail.DevLog()})
+}
+
+// POST /api/customer-app/mail-test {to} — إيميل تجربة ويرجّع السبب الحقيقي إذا فشل
+func (h *CustomerAppHandler) AdminMailTest(w http.ResponseWriter, r *http.Request) {
+	var b struct{ To string }
+	_ = DecodeJSON(r, &b)
+	to := strings.TrimSpace(b.To)
+	if !strings.Contains(to, "@") {
+		WriteError(w, http.StatusBadRequest, "اكتب إيميل صحيح")
+		return
+	}
+	if !h.mail.Configured() {
+		WriteError(w, http.StatusBadRequest, "إعدادات Gmail ناقصة بملف .env (SMTP_HOST, SMTP_USER, SMTP_PASS)")
+		return
+	}
+	if err := h.mail.Send(to, "تجربة إيميل — الأماني", mail.OtpHTML("المالك", "123456", "signup")); err != nil {
+		msg := err.Error()
+		if strings.Contains(msg, "535") || strings.Contains(strings.ToLower(msg), "username and password") {
+			msg = "Gmail رفض الدخول — تأكد إن SMTP_PASS هي «كلمة سر التطبيق» (16 حرف) مو كلمة سر الإيميل، وإن التحقق بخطوتين مفعّل. (" + msg + ")"
+		} else if strings.Contains(msg, "timeout") || strings.Contains(msg, "refused") {
+			msg = "ما كدرنا نوصل لـGmail — يمكن المنفذ 587 مسدود من الاستضافة. (" + msg + ")"
+		}
+		WriteError(w, http.StatusBadGateway, msg)
+		return
+	}
+	WriteJSON(w, http.StatusOK, map[string]bool{"ok": true})
 }
