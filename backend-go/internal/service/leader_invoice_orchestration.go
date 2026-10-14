@@ -446,7 +446,9 @@ func (s *LeaderInvoiceService) Approve(id, approverEmployeeID, externalNumber st
 		return nil, fmt.Errorf("دقّق الفاتورة أول — اختر مطابق أو غير مطابق أو خطأ بالسعر، وبعدها تنتقل لطابور الاعتماد")
 	}
 	// قرار (ع) 10-10: الفاتورة المجانية ما إلها فاتورة بالنظام الثاني، فتنعتمد بلا رقم.
-	free := internal || current.IsFree || (current.AuditVerdict != nil && *current.AuditVerdict == model.AuditVerdictFree)
+	free := internal || current.IsFree || (current.AuditVerdict != nil && (*current.AuditVerdict == model.AuditVerdictFree ||
+		// (ع) 10-14: الآجل ينعتمد بالضغط بس — ماكو فاتورة بالنظام الثاني لحد ما تنستلم الفلوس
+		*current.AuditVerdict == model.AuditVerdictCredit))
 	if externalNumber == "" && !free {
 		return nil, fmt.Errorf("رقم الفاتورة المحاسبية مطلوب قبل الاعتماد")
 	}

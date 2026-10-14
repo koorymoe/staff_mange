@@ -1253,6 +1253,13 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	leaderInvoiceService.SetPriceLearning(servicePriceLearningRepo)
 	// التدقيق اليومي: نفس واجهة التدقيق بس بيوم واحد، مع مجاميع اليوم
 	dailyAuditHandler := handler.NewDailyAuditHandler(repository.NewDailyAuditRepository(db))
+	// (ع) 10-14: سجل الآجل — نفس حارس التدقيق
+	creditHandler := handler.NewCreditHandler(db)
+	mux.Handle("GET /api/credits", middleware.Chain(http.HandlerFunc(creditHandler.List), requireAuth, requireVerifyBooking))
+	mux.Handle("GET /api/credits/export", middleware.Chain(http.HandlerFunc(creditHandler.Export), requireAuth, requireVerifyBooking))
+	mux.Handle("POST /api/credits", middleware.Chain(http.HandlerFunc(creditHandler.Create), requireAuth, requireVerifyBooking))
+	mux.Handle("GET /api/credits/{id}/payments", middleware.Chain(http.HandlerFunc(creditHandler.Payments), requireAuth, requireVerifyBooking))
+	mux.Handle("POST /api/credits/{id}/payments", middleware.Chain(http.HandlerFunc(creditHandler.AddPayment), requireAuth, requireVerifyBooking))
 	mux.Handle("GET /api/finance/daily-audit", middleware.Chain(http.HandlerFunc(dailyAuditHandler.Day), requireAuth, requireVerifyBooking))
 	mux.Handle("PUT /api/bookings/{id}/audit", middleware.Chain(http.HandlerFunc(bookingAuditHandler.Audit), requireAuth, requireVerifyBooking))
 	// شريط الإعلانات: يقراه كل موظف، وينزّله المالك ومدير النظام بس

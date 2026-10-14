@@ -143,6 +143,7 @@ const WorkReportsReview = lazy(() => import('./pages/WorkReportsReview'))
 const EmployeeMonthlyStatsPage = lazy(() => import('./pages/EmployeeMonthlyStatsPage'))
 const StatsManagementPage = lazy(() => import('./pages/StatsManagementPage'))
 const CustomerAppAdminPage = lazy(() => import('./pages/CustomerAppAdminPage'))
+const CreditsPage = lazy(() => import('./pages/CreditsPage'))
 const BookingDeleteRequestsPage = lazy(() => import('./pages/BookingDeleteRequestsPage'))
 const AuditIssuesPage = lazy(() => import('./pages/AuditIssuesPage'))
 const DailyAuditPage = lazy(() => import('./pages/DailyAuditPage'))
@@ -319,6 +320,7 @@ function App() {
           <Route path="booking-delete-requests" element={<BookingDeleteRequestsPage />} />
           <Route path="audit-issues" element={<AuditIssuesPage />} />
           <Route path="daily-audit" element={<DailyAuditPage />} />
+          <Route path="credits" element={<CreditsPage />} />
           <Route path="finance-desk" element={<FinanceDeskPage />} />
           <Route path="cost-calc" element={<CostCalcPage />} />
           <Route path="vehicle-tracking" element={<RequirePermission permission="vehicle_management"><VehicleTrackingPage /></RequirePermission>} />

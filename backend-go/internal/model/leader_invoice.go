@@ -545,6 +545,8 @@ const (
 	// بلاه المحاسب لازم يأشّر فاتورة الضمان «غير مطابق» فتنفتح
 	// مخالفة على شغل سليم.
 	AuditVerdictFree = "FREE"
+	// AuditVerdictCredit «الآجل»: الفلوس مؤجلة وتنسجّل بسجل الآجل — ينعتمد بلا رقم.
+	AuditVerdictCredit = "CREDIT"
 )
 
 func AuditVerdictLabel(v string) string {
@@ -557,13 +559,15 @@ func AuditVerdictLabel(v string) string {
 		return "خطأ بالسعر"
 	case AuditVerdictFree:
 		return "🎁 صيانة مجانية"
+	case AuditVerdictCredit:
+		return "⏳ آجل"
 	}
 	return v
 }
 
 func ValidAuditVerdict(v string) bool {
 	return v == AuditVerdictMatched || v == AuditVerdictMismatch ||
-		v == AuditVerdictPriceError || v == AuditVerdictFree
+		v == AuditVerdictPriceError || v == AuditVerdictFree || v == AuditVerdictCredit
 }
 
 // AuditVerdictRequest حكم المحاسب على الفاتورة.

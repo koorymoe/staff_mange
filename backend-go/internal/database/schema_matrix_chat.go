@@ -257,5 +257,22 @@ func matrixChatMigrations() []Migration {
 				id TEXT PRIMARY KEY, name TEXT NOT NULL, address TEXT, phone TEXT, "mapUrl" TEXT,
 				ord INTEGER NOT NULL DEFAULT 0, "createdAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP);
 		`,
+	}, {
+		// (ع) 10-14: «الآجل» — حجز أو مشروع خلص والفلوس مؤجلة (دفعات أو مبلغ كامل)
+		Version: "0358_credit_sales",
+		SQL: `
+			CREATE TABLE IF NOT EXISTS "CreditSale" (
+				id TEXT PRIMARY KEY, kind TEXT NOT NULL DEFAULT 'BOOKING',
+				"bookingId" TEXT UNIQUE REFERENCES "Booking"(id) ON DELETE SET NULL,
+				"projectId" TEXT REFERENCES "Project"(id) ON DELETE SET NULL,
+				title TEXT NOT NULL, "customerName" TEXT, phone TEXT,
+				amount NUMERIC NOT NULL CHECK (amount > 0), note TEXT, "dueDate" DATE,
+				"createdById" TEXT, "createdAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, "settledAt" TIMESTAMP);
+			CREATE TABLE IF NOT EXISTS "CreditPayment" (
+				id TEXT PRIMARY KEY, "creditId" TEXT NOT NULL REFERENCES "CreditSale"(id) ON DELETE CASCADE,
+				amount NUMERIC NOT NULL CHECK (amount > 0), "paidAt" DATE NOT NULL DEFAULT CURRENT_DATE,
+				note TEXT, "byId" TEXT, "createdAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP);
+			CREATE INDEX IF NOT EXISTS credit_payment_credit ON "CreditPayment" ("creditId");
+		`,
 	}}
 }

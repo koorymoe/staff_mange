@@ -86,6 +86,27 @@ func (r *BookingAuditRepository) VerifyFree(bookingID string, allowReset bool) e
 	return nil
 }
 
+// VerifyCredit (ع) 10-14: «الآجل» — الحجز مدقَّق والمبلغ ما انستلم بعد؛
+// الدين ينسجّل بسجل الآجل (CreditSale) والدفعات تنضاف للمستلم وقت توصل.
+func (r *BookingAuditRepository) VerifyCredit(bookingID string) error {
+	var got string
+	err := r.db.Get(&got, `UPDATE "Booking" SET "amountVerified" = true WHERE id = $1 AND status = 'COMPLETED' RETURNING id`, bookingID)
+	if err != nil {
+		return fmt.Errorf("الآجل بس للحجز المنجز")
+	}
+	return nil
+}
+
+// OpenCredit يسجّل دين الآجل للحجز (مرة وحدة لكل حجز — التكرار يحدّث المبلغ).
+func (r *BookingAuditRepository) OpenCredit(bookingID string, amount float64, note *string, byID string) error {
+	_, err := r.db.Exec(`INSERT INTO "CreditSale" (id, kind, "bookingId", title, "customerName", phone, amount, note, "createdById")
+		SELECT gen_random_uuid()::text, 'BOOKING', b.id, 'حجز ' || b.code || COALESCE(' — ' || s.name, ''), c.name, c.phone, $2, $3, $4
+		FROM "Booking" b LEFT JOIN "Customer" c ON c.id = b."customerId" LEFT JOIN "Service" s ON s.id = b."serviceId"
+		WHERE b.id = $1
+		ON CONFLICT ("bookingId") DO UPDATE SET amount = $2, note = COALESCE($3, "CreditSale".note)`, bookingID, amount, note, byID)
+	return err
+}
+
 // SetAmount يصحّح المبلغ بلا تدقيق — للحجوزات القديمة الي المحاسب
 // يمشي عليها وحدة وحدة من فواتير النظام القديم.
 func (r *BookingAuditRepository) SetAmount(bookingID string, amount, advance *float64) error {

@@ -3,6 +3,7 @@ package handler
 import (
 	"log"
 	"net/http"
+	"strconv"
 	"strings"
 
 	"staffmange-api/internal/middleware"
@@ -188,6 +189,39 @@ func (h *BookingAuditHandler) Audit(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 
+	case model.AuditCredit:
+		// ═══ الآجل (ع) 10-14 ═══
+		// الشغل خلص والزبون يدفع بعدين (دفعات أو كامل). المبلغ المستحق
+		// = الي كتبه المحاسب، وإذا ماكو فصافي فاتورة الليدر.
+		owed := 0.0
+		if req.AmountCollected != nil {
+			owed = *req.AmountCollected
+		}
+		if owed <= 0 && h.invoices != nil {
+			if rows, err := h.invoices.ListByBooking(bookingID); err == nil && len(rows) > 0 {
+				owed = rows[len(rows)-1].NetTotal
+			}
+		}
+		if owed <= 0 {
+			WriteError(w, http.StatusBadRequest, "اكتب المبلغ المستحق على الزبون حتى ينسجّل بالآجل")
+			return
+		}
+		if err := h.repo.VerifyCredit(bookingID); err != nil {
+			WriteError(w, http.StatusBadRequest, err.Error())
+			return
+		}
+		if err := h.repo.OpenCredit(bookingID, owed, req.Note, empID); err != nil {
+			log.Printf("open credit (booking %s): %v", bookingID, err)
+			WriteError(w, http.StatusInternalServerError, "تعذر تسجيل الآجل")
+			return
+		}
+		h.stampInvoiceVerdict(bookingID, model.AuditVerdictCredit, req.Note, empID, &owed)
+		if h.notify != nil {
+			if b, err := h.bookings.FindByID(bookingID); err == nil && b != nil {
+				_ = h.notify.CreateForRole("OWNER", "audit_issue", "⏳ آجل: الحجز "+b.Code+" — مستحق "+formatIQD(owed))
+			}
+		}
+
 	case model.AuditMismatch, model.AuditPriceError:
 		// المبلغ الي كتبه المحاسب ينحفظ حتى لو أشّر خطأ — هو الرقم
 		// الصحيح من الفاتورة، والفرق يبين للي راح يتابع.
@@ -370,4 +404,16 @@ func (h *BookingAuditHandler) ResolveIssue(w http.ResponseWriter, r *http.Reques
 	}
 
 	WriteJSON(w, http.StatusOK, map[string]bool{"ok": true})
+}
+
+func formatIQD(v float64) string {
+	s := strconv.FormatInt(int64(v+0.5), 10)
+	out := []byte{}
+	for i := range s {
+		if i > 0 && (len(s)-i)%3 == 0 {
+			out = append(out, ',')
+		}
+		out = append(out, s[i])
+	}
+	return string(out) + " د.ع"
 }

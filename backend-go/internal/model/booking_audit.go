@@ -34,6 +34,9 @@ const (
 	// نهرب منه. إشعاره للمالك وحده: إسقاط مبلغ قرار مالي يستاهل
 	// يُعرف منو أشّره، بلا ما ينحسب غلطاً على أحد.
 	AuditFree = "FREE"
+	// AuditCredit (ع) 10-14: «الآجل» — الشغل خلص والفلوس تتأجل (دفعات أو
+	// مبلغ كامل بعدين). مو خطأ ولا مجاني: دين على الزبون ينسجّل ويتابَع.
+	AuditCredit = "CREDIT"
 )
 
 var AuditIssueLabels = map[string]string{
@@ -77,7 +80,7 @@ type BookingAuditIssue struct {
 
 // AuditBookingRequest قرار المحاسب على حجز واحد.
 type AuditBookingRequest struct {
-	Action string `json:"action"` // VERIFY | MISMATCH | PRICE_ERROR | FREE
+	Action string `json:"action"` // VERIFY | MISMATCH | PRICE_ERROR | FREE | CREDIT
 	// المحاسب يقدر يصحّح المبلغ وهو يدقق — لازم للحجوزات القديمة
 	// المستوردة بقيم صفر: يفتح فاتورة النظام القديم ويكتب سعرها.
 	AmountCollected *float64 `json:"amountCollected"`

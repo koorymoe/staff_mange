@@ -1496,7 +1496,7 @@ export interface LeaderInvoice {
   materials: LeaderInvoiceMaterialItem[]
   // ═══ التدقيق ═══
   /** MATCHED مطابق · MISMATCH غير مطابق · PRICE_ERROR خطأ بالسعر · FREE صيانة مجانية */
-  auditVerdict?: 'MATCHED' | 'MISMATCH' | 'PRICE_ERROR' | 'FREE'
+  auditVerdict?: 'MATCHED' | 'MISMATCH' | 'PRICE_ERROR' | 'FREE' | 'CREDIT'
   auditNote?: string
   auditedByName?: string
   auditedAt?: string
@@ -1525,12 +1525,20 @@ export interface LeaderInvoice {
   revokedCount?: number
 }
 
-export const AUDIT_VERDICTS: { key: 'MATCHED' | 'MISMATCH' | 'PRICE_ERROR' | 'FREE'; label: string; cls: string }[] = [
+export interface CreditSale {
+  id: string; kind: 'BOOKING' | 'PROJECT' | 'OTHER'; bookingId: string | null; bookingCode: string | null; projectId: string | null; projectCode: string | null
+  title: string; customerName: string | null; phone: string | null; amount: number; paid: number; note: string | null; dueDate: string | null
+  createdByName: string | null; createdAt: string; settledAt: string | null; lastPaidAt: string | null
+}
+
+export const AUDIT_VERDICTS: { key: 'MATCHED' | 'MISMATCH' | 'PRICE_ERROR' | 'FREE' | 'CREDIT'; label: string; cls: string }[] = [
   { key: 'MATCHED', label: '✅ مطابق', cls: 'bg-emerald-100 text-emerald-800' },
   { key: 'MISMATCH', label: '⚠️ غير مطابق', cls: 'bg-amber-100 text-amber-800' },
   { key: 'PRICE_ERROR', label: '❌ خطأ بالسعر', cls: 'bg-red-100 text-red-800' },
   /** الصافي صفر وهو **الصح** — مو فرق بالمبلغ */
   { key: 'FREE', label: '🎁 صيانة مجانية', cls: 'bg-teal-100 text-teal-800' },
+  /** (ع) 10-14: الفلوس مؤجلة — بسجل الآجل، وينعتمد بلا رقم */
+  { key: 'CREDIT', label: '⏳ آجل', cls: 'bg-violet-100 text-violet-800' },
 ]
 
 export type BookingDeleteChannel = 'WEBSITE' | 'MOBILE_APP' | 'CALL_CENTER'
@@ -3868,8 +3876,26 @@ export const api = {
   /** FREE: صيانة مجانية — الصافي صفر **بقصد** (ضمان/إعادة عمل/تعويض).
    *  بلاها المحاسب لازم يكتب مبلغاً ما انستلم أو يأشّر «غير مطابق»
    *  فتنفتح مخالفة على شغل سليم. والسبب اختياري. */
-  auditBooking: (id: string, data: { action: 'VERIFY' | 'MISMATCH' | 'PRICE_ERROR' | 'FREE'; amountCollected?: number; advancePaid?: number; note?: string; freeReasonId?: string }) =>
+  auditBooking: (id: string, data: { action: 'VERIFY' | 'MISMATCH' | 'PRICE_ERROR' | 'FREE' | 'CREDIT'; amountCollected?: number; advancePaid?: number; note?: string; freeReasonId?: string }) =>
     request<Booking | AuditIssue>(`/bookings/${id}/audit`, { method: 'PUT', body: JSON.stringify(data) }),
+  // ═══ الآجل (ع) 10-14 ═══
+  getCredits: (status: 'open' | 'settled' | 'all', q = '') => request<CreditSale[]>(`/credits?status=${status}&q=${encodeURIComponent(q)}`),
+  getCreditPayments: (id: string) => request<{ id: string; amount: number; paidAt: string; note: string | null; byName: string | null }[]>(`/credits/${id}/payments`),
+  addCreditPayment: (id: string, data: { amount: number; paidAt?: string; note?: string }) =>
+    request<{ ok: boolean }>(`/credits/${id}/payments`, { method: 'POST', body: JSON.stringify(data) }),
+  createCredit: (data: { projectCode?: string; bookingCode?: string; title?: string; customerName?: string; phone?: string; amount: number; note?: string; dueDate?: string }) =>
+    request<{ ok: boolean }>('/credits', { method: 'POST', body: JSON.stringify(data) }),
+  exportCredits: async (month: string) => {
+    const token = currentToken()
+    const res = await fetch(`${API_URL}/credits/export?month=${month}`, { headers: token ? { Authorization: `Bearer ${token}` } : {} })
+    if (!res.ok) throw new Error('تعذر تنزيل الإكسل')
+    const blob = await res.blob()
+    const a = document.createElement('a')
+    a.href = URL.createObjectURL(blob)
+    a.download = `الآجل-${month}.xlsx`
+    a.click()
+    URL.revokeObjectURL(a.href)
+  },
   getAuditIssues: (status?: string) =>
     request<AuditIssue[]>(`/audit-issues${status ? `?status=${status}` : ''}`),
   // ⚠️ الإغلاق يتطلب إجراءً وسبباً — الخادم يرفض بدونهما. قبلها

@@ -134,6 +134,8 @@ interface EmbeddedProps { embedded?: boolean }
 // قرار (ع) 10-10: الشغل داخل الشركة ما إله فاتورة بالنظام الثاني — ينعتمد بضغطة بلا رقم ولا تدقيق
 const isInternalInv = (inv: LeaderInvoice) => (inv.systems ?? []).includes('شغل داخل الشركة')
 const isFreeInv = (inv: LeaderInvoice) => inv.isFree || inv.auditVerdict === 'FREE' || isInternalInv(inv)
+// (ع) 10-14: الآجل ينعتمد بالضغط بس — بلا رقم فاتورة محاسبية
+const noNumberInv = (inv: LeaderInvoice) => isFreeInv(inv) || inv.auditVerdict === 'CREDIT'
 
 export default function LeaderInvoicesListPage({ embedded }: EmbeddedProps = {}) {
   const [params] = useSearchParams()
@@ -422,7 +424,7 @@ export default function LeaderInvoicesListPage({ embedded }: EmbeddedProps = {})
   useEffect(load, [])
 
   const handleApprove = async () => {
-    if (!approveFor || (!invoiceNo.trim() && !isFreeInv(approveFor))) return
+    if (!approveFor || (!invoiceNo.trim() && !noNumberInv(approveFor))) return
     setBusyId(approveFor.id)
     setApproveErr(null)
     try {
@@ -793,7 +795,7 @@ export default function LeaderInvoicesListPage({ embedded }: EmbeddedProps = {})
                         <button
                           onClick={() => {
                             setAuditFor(inv)
-                            setAuditVerdict(inv.auditVerdict === 'FREE' ? 'MATCHED' : (inv.auditVerdict || 'MATCHED'))
+                            setAuditVerdict(inv.auditVerdict === 'FREE' || inv.auditVerdict === 'CREDIT' ? 'MATCHED' : (inv.auditVerdict || 'MATCHED'))
                             setAuditNote(inv.auditNote || '')
                             setAuditAmount(inv.auditedAmount != null ? String(inv.auditedAmount) : '')
                             setAuditErr(null)
@@ -1200,10 +1202,10 @@ export default function LeaderInvoicesListPage({ embedded }: EmbeddedProps = {})
             </p>
 
             {/* قرار (ع) 10-10: المجانية ما إلها فاتورة بالنظام الثاني — تنعتمد بلا رقم */}
-            {isFreeInv(approveFor) && (
-              <p className="mt-4 rounded-xl bg-emerald-50 px-3 py-2 text-sm font-bold text-emerald-800">{isInternalInv(approveFor) ? '🏭 شغل داخل الشركة — ينعتمد بلا رقم فاتورة محاسبية.' : '🎁 فاتورة مجانية — تنعتمد بلا رقم فاتورة محاسبية.'}</p>
+            {noNumberInv(approveFor) && (
+              <p className="mt-4 rounded-xl bg-emerald-50 px-3 py-2 text-sm font-bold text-emerald-800">{isInternalInv(approveFor) ? '🏭 شغل داخل الشركة — ينعتمد بلا رقم فاتورة محاسبية.' : approveFor.auditVerdict === 'CREDIT' ? '⏳ آجل — ينعتمد بالضغط بلا رقم فاتورة؛ الفلوس تنسجّل بسجل الآجل وقت توصل.' : '🎁 فاتورة مجانية — تنعتمد بلا رقم فاتورة محاسبية.'}</p>
             )}
-            {!isFreeInv(approveFor) && <>
+            {!noNumberInv(approveFor) && <>
             <label className="mt-4 block text-sm font-medium text-slate-600">
               رقم الفاتورة المحاسبية <span className="text-red-500">*</span>
             </label>
@@ -1231,7 +1233,7 @@ export default function LeaderInvoicesListPage({ embedded }: EmbeddedProps = {})
             <div className="mt-4 flex gap-2">
               <button
                 onClick={handleApprove}
-                disabled={(!invoiceNo.trim() && !isFreeInv(approveFor)) || busyId === approveFor.id}
+                disabled={(!invoiceNo.trim() && !noNumberInv(approveFor)) || busyId === approveFor.id}
                 className="flex-1 rounded-xl bg-gradient-to-l from-emerald-500 to-emerald-700 px-4 py-2.5 text-sm font-bold text-white disabled:opacity-50"
               >
                 {busyId === approveFor.id ? 'جاري الاعتماد...' : '✔ اعتماد الفاتورة'}

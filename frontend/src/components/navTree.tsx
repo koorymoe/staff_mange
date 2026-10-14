@@ -414,6 +414,8 @@ export const navItems: NavItem[] = [
           // محجوبة عن المراقب — هذا الي يمنع تكرار الشاشة بمحلين.
           { to: '/finance', label: 'تدقيق الحسابات', icon: <></>, roles: ['ADMIN', 'FINANCE', 'MONITOR'], unlockAnyPermission: ['finance', 'finance_audit'] },
       { to: '/daily-audit', label: '📅 التدقيق اليومي', icon: <></>, roles: ['ADMIN', 'FINANCE', 'MONITOR'], unlockAnyPermission: ['finance', 'finance_audit'] },
+      // (ع) 10-14: سجل الآجل — نفس حارس التدقيق
+      { to: '/credits', label: '⏳ الآجل', icon: <></>, roles: ['ADMIN', 'FINANCE', 'MONITOR'], unlockAnyPermission: ['finance', 'finance_audit'] },
           // فواتير الليدر تترحّل للمحاسب بتفاصيلها حتى يدققها ويعتمدها
           { to: '/revolving-fund', label: '💵 الدوار', icon: <></>, permission: 'revolving_fund' },
       { to: '/audit-issues', label: '💸 بلاغات أخطاء التدقيق', icon: <></>, roles: ['ADMIN', 'MONITOR', 'QUALITY_ENGINEER', 'FINANCE'], unlockAnyPermission: ['audit_issues', 'finance_audit'] },
@@ -741,6 +743,8 @@ export const navItems: NavItem[] = [
     children: [
       { to: '/finance', label: 'تدقيق الحسابات', icon: <></>, roles: ['ADMIN', 'FINANCE', 'MONITOR'], unlockAnyPermission: ['finance', 'finance_audit'] },
       { to: '/daily-audit', label: '📅 التدقيق اليومي', icon: <></>, roles: ['ADMIN', 'FINANCE', 'MONITOR'], unlockAnyPermission: ['finance', 'finance_audit'] },
+      // (ع) 10-14: سجل الآجل — نفس حارس التدقيق
+      { to: '/credits', label: '⏳ الآجل', icon: <></>, roles: ['ADMIN', 'FINANCE', 'MONITOR'], unlockAnyPermission: ['finance', 'finance_audit'] },
       { to: '/audit-issues', label: '💸 بلاغات أخطاء التدقيق', icon: <></>, roles: ['ADMIN', 'MONITOR', 'QUALITY_ENGINEER', 'FINANCE'], unlockAnyPermission: ['audit_issues', 'finance_audit'] },
       { to: '/leader-invoices', label: '🧾 فواتير الليدر', icon: <></>, labelFor: leaderInvoicesLabel, roles: ['ADMIN'], anyPermission: ['leader_invoices_view', 'finance', 'finance_audit', 'leader_basket'] },
       { to: '/revolving-fund', label: '💵 الدوار', icon: <></>, permission: 'revolving_fund' },

@@ -141,7 +141,7 @@ export default function DailyAuditPage() {
     }
   }
 
-  const audit = async (row: DailyAuditRow, action: 'VERIFY' | 'MISMATCH' | 'PRICE_ERROR' | 'FREE') => {
+  const audit = async (row: DailyAuditRow, action: 'VERIFY' | 'MISMATCH' | 'PRICE_ERROR' | 'FREE' | 'CREDIT') => {
     const typed = amounts[row.id]
     // بلا مبلغ مكتوب: ننزل على المعتمد (فاتورة الليدر أو تقدير الإداري)
     const amount = typed !== undefined && typed !== ''
@@ -159,6 +159,24 @@ export default function DailyAuditPage() {
         load(date)
       } catch (e) {
         alert(e instanceof Error ? e.message : 'تعذر تأشير الصيانة المجانية')
+      } finally {
+        setBusy(null)
+      }
+      return
+    }
+
+    // ═══ الآجل (ع) 10-14 ═══ الشغل خلص والفلوس تتأجل — ينسجّل بسجل الآجل
+    if (action === 'CREDIT') {
+      const owed = typed !== undefined && typed !== '' ? Number(typed) : row.expectedAmount
+      const ans = prompt(`⏳ آجل — المبلغ المستحق على الزبون: ${(owed || 0).toLocaleString('en-US')} د.ع\nملاحظة (مثلاً: يدفع على 3 دفعات، أو كامل آخر الشهر):`)
+      if (ans === null) return
+      setBusy(row.id)
+      try {
+        await api.auditBooking(row.id, { action, amountCollected: owed || undefined, note: ans.trim() || undefined })
+        setAmounts((prev) => ({ ...prev, [row.id]: '' }))
+        load(date)
+      } catch (e) {
+        alert(e instanceof Error ? e.message : 'تعذر تسجيل الآجل')
       } finally {
         setBusy(null)
       }
@@ -479,7 +497,7 @@ export default function DailyAuditPage() {
                         ))}
                       </select>
                     )}
-                    <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-4">
+                    <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-3 lg:grid-cols-5">
                       <button disabled={busy === row.id || row.invoiceIsFree} onClick={() => audit(row, 'VERIFY')}
                         className="rounded-lg bg-gradient-to-l from-brand-500 to-brand-800 px-3 py-2 text-sm font-medium text-white disabled:opacity-50">
                         ✔ مطابق
@@ -495,6 +513,11 @@ export default function DailyAuditPage() {
                       <button disabled={busy === row.id} onClick={() => audit(row, 'PRICE_ERROR')}
                         className="rounded-lg bg-red-600 px-3 py-2 text-sm font-medium text-white disabled:opacity-50">
                         ✕ خطأ بالسعر
+                      </button>
+                      <button disabled={busy === row.id || row.invoiceIsFree} onClick={() => audit(row, 'CREDIT')}
+                        title="الشغل خلص والفلوس مؤجلة — دفعات أو مبلغ كامل"
+                        className="rounded-lg bg-violet-600 px-3 py-2 text-sm font-medium text-white hover:bg-violet-700 disabled:opacity-50">
+                        ⏳ الآجل
                       </button>
                     </div>
                   </div>
