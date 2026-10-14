@@ -4470,6 +4470,9 @@ export const api = {
   ) => request<Booking>(`/bookings/${id}/complete`, { method: 'PUT', body: JSON.stringify(data) }),
   startBooking: (id: string, missingToolIds?: string[]) =>
     request<Booking>(`/bookings/${id}/start`, { method: 'PUT', body: JSON.stringify({ missingToolIds: missingToolIds || [] }) }),
+  // (ع) 10-14: وقت المرحلة الحقيقي + موقعها — يشتغل حتى لو انضغطت بلا نت
+  stageProof: (id: string, data: { stage: 'ARRIVED' | 'STARTED' | 'COMPLETED'; pressedAt: string; offline: boolean; lat?: number; lng?: number; accuracy?: number }) =>
+    request<{ ok: boolean; verdict: 'OK' | 'FAR' | 'BATCH'; distanceM: number | null }>(`/bookings/${id}/stage-proof`, { method: 'POST', body: JSON.stringify(data) }),
   markArrived: (id: string) =>
     request<Booking>(`/bookings/${id}/arrived`, { method: 'PUT', body: JSON.stringify({}) }),
   setMaterialsReady: (id: string) =>

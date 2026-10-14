@@ -6,6 +6,7 @@ import 'leaflet/dist/leaflet.css'
 import { formatScheduleWindow } from '../utils/schedule'
 import CompletionBadge from '../components/CompletionBadge'
 import { api, type Booking, type PersonalTool } from '../api'
+import { cacheMyTasks, cachedMyTasks, flushStages, isNetworkError, pendingStages, runStage } from '../utils/offlineStages'
 import PartialCompleteDialog from '../components/PartialCompleteDialog'
 import SurveyReportDialog from '../components/SurveyReportDialog'
 import BookingProgressTimeline from '../components/BookingProgressTimeline'
@@ -103,6 +104,9 @@ export default function MyTasks() {
   const navigate = useNavigate()
   const [bookings, setBookings] = useState<Booking[]>([])
   const [loading, setLoading] = useState(true)
+  // (ع) 10-14: وضع بلا نت + عدد الضغطات المحفوظة الي تنتظر الإرسال
+  const [offline, setOffline] = useState(() => !navigator.onLine)
+  const [pending, setPending] = useState(() => pendingStages().length)
   const [amounts, setAmounts] = useState<Record<string, string>>({})
   const [advances, setAdvances] = useState<Record<string, string>>({})
   const [notes, setNotes] = useState<Record<string, string>>({})
@@ -157,11 +161,25 @@ export default function MyTasks() {
     // وفايدة ثانية: الفني ما عاد ينزّل حجوزات الشركة كلها بزبائنها
     // على تلفونه حتى يشوف مهامه هو.
     api.getBookings({ assignedTo: 'me' })
-      .then(setBookings)
-      .finally(() => setLoading(false)).catch(loadFailed)
+      .then((rows) => { setBookings(rows); cacheMyTasks(rows) })
+      .catch((e) => {
+        // (ع) 10-14: بلا نت → آخر نسخة محفوظة بالموبايل، والأزرار تشتغل
+        const cached = cachedMyTasks()
+        if (cached && isNetworkError(e)) { setBookings(cached); setOffline(true) } else loadFailed(e)
+      })
+      .finally(() => setLoading(false))
   }
 
   useEffect(load, [])
+  useEffect(() => {
+    const upd = () => setPending(pendingStages().length)
+    const on = () => { setOffline(false); flushStages().then(() => { upd(); load() }) }
+    const off = () => setOffline(true)
+    window.addEventListener('stage-queue', upd)
+    window.addEventListener('online', on)
+    window.addEventListener('offline', off)
+    return () => { window.removeEventListener('stage-queue', upd); window.removeEventListener('online', on); window.removeEventListener('offline', off) }
+  }, [])
 
   // الحجز يخصني إذا انكلّفت بيه ككادر، **أو** إذا أني التيم ليدر
   // مالته. الليدر ينحفظ بعمود مستقل مو بجدول التعيينات — بدون هذا
@@ -250,9 +268,15 @@ export default function MyTasks() {
     .filter((b) => isMine(b) && b.status === 'COMPLETED')
     .sort((a, b) => new Date(b.completedAt || 0).getTime() - new Date(a.completedAt || 0).getTime())
 
+  // (ع) 10-14: المراحل تنحفظ بوقتها الحقيقي حتى بلا نت (utils/offlineStages)
+  const patchLocal = (id: string, patch: Partial<Booking>) =>
+    setBookings((prev) => { const next = prev.map((b) => (b.id === id ? { ...b, ...patch } : b)); cacheMyTasks(next); return next })
+
   const handleArrive = async (booking: Booking) => {
-    const updated = await guard.run('تسجيل الوصول', () => api.markArrived(booking.id))
-    if (!updated) return
+    const r = await guard.run('تسجيل الوصول', () => runStage(booking, 'ARRIVED', () => api.markArrived(booking.id)))
+    if (!r) return
+    if (r.queued) { patchLocal(booking.id, { arrivedAt: new Date().toISOString() }); return }
+    const updated = r.result as Booking
     setBookings((prev) => prev.map((b) => (b.id === updated.id ? updated : b)))
   }
 
@@ -260,8 +284,12 @@ export default function MyTasks() {
   // ما عنده أدوات شخصية مسجلة أصلاً (نتخطى المودال حتى لا يعلق بواجهة فاضية)،
   // أو بعد ما يضغط "تم" بمودال شيك الأدوات.
   const doStart = async (bookingId: string, missingToolIds?: string[]) => {
-    const updated = await guard.run('بدء العمل', () => api.startBooking(bookingId, missingToolIds))
-    if (!updated) return
+    const booking = bookings.find((b) => b.id === bookingId)
+    if (!booking) return
+    const r = await guard.run('بدء العمل', () => runStage(booking, 'STARTED', () => api.startBooking(bookingId, missingToolIds), { missingToolIds }))
+    if (!r) return
+    if (r.queued) { patchLocal(bookingId, { status: 'IN_PROGRESS', startedAt: new Date().toISOString() } as Partial<Booking>); return }
+    const updated = r.result as Booking
     setBookings((prev) => prev.map((b) => (b.id === updated.id ? updated : b)))
   }
 
@@ -368,11 +396,14 @@ export default function MyTasks() {
     // ⚠️ ما نشيل المهمة من القائمة إلا بعد نجاح الحفظ: شيلها عند
     // الفشل يخلي الفني يظن إنه سلّم الشغل والمبلغ، والحجز يبقى مفتوح
     // بالنظام وماكو منو يدري.
-    if (!(await guard.run('إنهاء الحجز', () => api.completeBooking(booking.id, {
-      completionNotes: notes[booking.id] || undefined,
-      amountCollected,
-      advancePaid,
-    })))) return
+    const data = { completionNotes: notes[booking.id] || undefined, amountCollected, advancePaid }
+    const r = await guard.run('إنهاء الحجز', () => runStage(booking, 'COMPLETED', () => api.completeBooking(booking.id, data), data))
+    if (!r) return
+    if (r.queued) {
+      // بلا نت: الإنجاز محفوظ بوقته — الأوراق (فاتورة/تقرير) تنرفع من يرجع النت
+      patchLocal(booking.id, { status: 'COMPLETED', completedAt: new Date().toISOString() } as Partial<Booking>)
+      return
+    }
     setBookings((prev) => prev.filter((b) => b.id !== booking.id))
     setPaperwork({ booking, stopped: false })
     bookingDone()
@@ -399,6 +430,12 @@ export default function MyTasks() {
     <>
       <SaveError message={guard.error} onClose={guard.clear} />
     <div dir="rtl">
+      {(offline || pending > 0) && (
+        <div className={`mb-3 rounded-xl px-4 py-3 text-sm font-bold ${offline ? 'bg-amber-50 text-amber-800 ring-1 ring-amber-200' : 'bg-sky-50 text-sky-800 ring-1 ring-sky-200'}`}>
+          {offline ? '📴 ماكو نت — اشتغل عادي: «وصلنا / بدأنا / تم الإنجاز» تنحفظ بوقتها وموقعها وترسل وحدها من يرجع النت.' : '🔄 جاري إرسال الضغطات المحفوظة…'}
+          {pending > 0 && <span className="mt-1 block text-xs font-normal">⏳ {pending} ضغطة محفوظة بالموبايل تنتظر الإرسال</span>}
+        </div>
+      )}
       {/* ═══ العنوان ═══ */}
       <div className="flex items-center gap-3">
         <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-50 text-lg sm:h-11 sm:w-11 sm:text-xl">☑️</span>

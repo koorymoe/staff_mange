@@ -286,5 +286,18 @@ func matrixChatMigrations() []Migration {
 				OR systems::text LIKE '%شغل داخل الشركة%'
 			) NOT VALID;
 		`,
+	}, {
+		// (ع) 10-14: مراحل الحجز بلا نت — وقت الضغطة الحقيقي + موقعها كدليل
+		Version: "0360_booking_stage_proof",
+		SQL: `
+			CREATE TABLE IF NOT EXISTS "BookingStageProof" (
+				id TEXT PRIMARY KEY, "bookingId" TEXT NOT NULL REFERENCES "Booking"(id) ON DELETE CASCADE,
+				stage TEXT NOT NULL, "employeeId" TEXT, "pressedAt" TIMESTAMP NOT NULL,
+				"receivedAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, offline BOOLEAN NOT NULL DEFAULT false,
+				lat DOUBLE PRECISION, lng DOUBLE PRECISION, accuracy DOUBLE PRECISION, "distanceM" DOUBLE PRECISION,
+				verdict TEXT NOT NULL DEFAULT 'OK');
+			CREATE INDEX IF NOT EXISTS stage_proof_booking ON "BookingStageProof" ("bookingId");
+			CREATE INDEX IF NOT EXISTS stage_proof_emp ON "BookingStageProof" ("employeeId", "pressedAt");
+		`,
 	}}
 }
