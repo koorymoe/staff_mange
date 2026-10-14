@@ -710,6 +710,8 @@ export const navItems: NavItem[] = [
     children: [
       { to: '/vip-customers', label: '⭐ الشخصيات المهمة', icon: <></>, permission: 'vip_manual_add' },
       { to: '/media', label: '📸 مشاريع للتصوير', icon: <></>, roles: ['ADMIN', 'MEDIA', 'PUBLIC_RELATIONS'], anyPermission: ['media', 'project_management'] },
+      // (ع) 10-14: تطبيق الزبائن — العروض والأعمال ومحادثات ماتركس (المالك والمدير)
+      { strict: true, to: '/customer-app', label: '📱 تطبيق الزبائن', icon: <></>, roles: ['ADMIN'] },
     ],
   },
   {

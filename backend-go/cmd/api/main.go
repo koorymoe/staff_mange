@@ -14,6 +14,7 @@ import (
 	"staffmange-api/internal/config"
 	"staffmange-api/internal/database"
 	"staffmange-api/internal/handler"
+	"staffmange-api/internal/mail"
 	"staffmange-api/internal/middleware"
 	"staffmange-api/internal/repository"
 	"staffmange-api/internal/safeguard"
@@ -1656,6 +1657,38 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	publicFormSubmitLimit := middleware.RateLimit(5, time.Minute)
 	mux.Handle("GET /api/public/design-forms/{token}", publicFormReadLimit(http.HandlerFunc(designFormHandler.PublicGet)))
 	mux.Handle("POST /api/public/design-forms/{token}/submit", publicFormSubmitLimit(http.HandlerFunc(designFormHandler.PublicSubmit)))
+
+	// ═══ تطبيق الزبائن — قرار (ع) 10-14 ═══
+	// مسارات /api/c/ بحارسها المستقل (توكن الزبون ما يفتح شي من النظام).
+	{
+		client, model := matrixCommandService.Client()
+		custMatrix := service.NewCustomerMatrix(db, client, model)
+		cust := handler.NewCustomerAppHandler(db, cfg.JWTSecret, mail.FromEnv(), custMatrix, fileStore, bookingService, customerRepo, notificationRepo)
+		authLimit := middleware.RateLimit(10, time.Minute)
+		mux.Handle("POST /api/c/signup", authLimit(http.HandlerFunc(cust.Signup)))
+		mux.Handle("POST /api/c/verify", authLimit(http.HandlerFunc(cust.Verify)))
+		mux.Handle("POST /api/c/resend", authLimit(http.HandlerFunc(cust.Resend)))
+		mux.Handle("POST /api/c/login", authLimit(http.HandlerFunc(cust.Login)))
+		mux.Handle("POST /api/c/forgot", authLimit(http.HandlerFunc(cust.Forgot)))
+		mux.Handle("POST /api/c/reset", authLimit(http.HandlerFunc(cust.Reset)))
+		mux.Handle("GET /api/c/img/{id}", middleware.RateLimit(240, time.Minute)(http.HandlerFunc(cust.Image)))
+		mux.Handle("GET /api/c/me", cust.RequireCustomer(http.HandlerFunc(cust.Me)))
+		mux.Handle("PUT /api/c/me", cust.RequireCustomer(http.HandlerFunc(cust.UpdateMe)))
+		mux.Handle("GET /api/c/home", cust.RequireCustomer(http.HandlerFunc(cust.Home)))
+		mux.Handle("POST /api/c/home/seen", cust.RequireCustomer(http.HandlerFunc(cust.Seen)))
+		mux.Handle("GET /api/c/bookings", cust.RequireCustomer(http.HandlerFunc(cust.Bookings)))
+		mux.Handle("GET /api/c/chat", cust.RequireCustomer(http.HandlerFunc(cust.Chat)))
+		mux.Handle("POST /api/c/chat", middleware.RateLimit(20, time.Minute)(cust.RequireCustomer(http.HandlerFunc(cust.Send))))
+		// إدارة المالك/المدير
+		mux.Handle("GET /api/customer-app/promos", middleware.Chain(http.HandlerFunc(cust.AdminPromos), requireAuth, requireAdmin))
+		mux.Handle("POST /api/customer-app/promos", middleware.Chain(http.HandlerFunc(cust.AdminCreatePromo), requireAuth, requireAdmin))
+		mux.Handle("POST /api/customer-app/promos/suggest", middleware.Chain(http.HandlerFunc(cust.AdminSuggest), requireAuth, requireAdmin))
+		mux.Handle("PUT /api/customer-app/promos/{id}", middleware.Chain(http.HandlerFunc(cust.AdminUpdatePromo), requireAuth, requireAdmin))
+		mux.Handle("DELETE /api/customer-app/promos/{id}", middleware.Chain(http.HandlerFunc(cust.AdminDeletePromo), requireAuth, requireAdmin))
+		mux.Handle("POST /api/customer-app/promos/{id}/image", middleware.Chain(http.HandlerFunc(cust.AdminPromoImage), requireAuth, requireAdmin))
+		mux.Handle("GET /api/customer-app/accounts", middleware.Chain(http.HandlerFunc(cust.AdminAccounts), requireAuth, requireAdmin))
+		mux.Handle("GET /api/customer-app/accounts/{id}/chat", middleware.Chain(http.HandlerFunc(cust.AdminChat), requireAuth, requireAdmin))
+	}
 
 	// طلبات تغيير أيقونة الحضور — أي موظف يطلب، ومدير النظام بس يوافق/يرفض
 	mux.Handle("POST /api/attendance-icon-requests", middleware.Chain(http.HandlerFunc(attendanceIconRequestHandler.Create), requireAuth))

@@ -619,7 +619,7 @@ export default function BookingsList({ bucket = 'all', focus }: { bucket?: Booki
                     <td className="px-4 py-3">{b.customer?.name || 'زبون غير معروف'}</td>
                     <td className="px-4 py-3 font-mono text-sm text-slate-500">{formatCustomerCode(b.customer) || '-'}</td>
                     <td className="px-4 py-3 text-slate-600">{serviceNames(b)}</td>
-                    <td className="px-4 py-3 text-slate-600">{b.transferEmployee?.name || '-'}</td>
+                    <td className="px-4 py-3 text-slate-600">{b.source === 'matrix_app' ? <span className="font-bold text-violet-700">🤖 ماتركس</span> : b.transferEmployee?.name || '-'}</td>
                     <td className="px-4 py-3 text-slate-500">{b.assignedVehicle || '-'}</td>
                     <td className="px-4 py-3 text-slate-500">
                       {b.scheduledAt
@@ -968,6 +968,12 @@ export default function BookingsList({ bucket = 'all', focus }: { bucket?: Booki
                             <p className="text-slate-400">موظف المبيعات (مصدر الزبون)</p>
                             <p className="mt-1 text-slate-700">{b.transferEmployee?.name || '-'}</p>
                           </div>
+                          {b.createdByName && (
+                            <div>
+                              <p className="text-slate-400">من أنشأ الحجز</p>
+                              <p className={`mt-1 ${b.source === 'matrix_app' ? 'font-bold text-violet-700' : 'text-slate-700'}`}>{b.createdByName}</p>
+                            </div>
+                          )}
                           {b.adminNotes && (
                             <div className="col-span-full">
                               <p className="text-slate-400">ملاحظات الإدارة</p>

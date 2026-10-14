@@ -597,6 +597,8 @@ export interface Booking {
   settledLegacyNote?: string | null
   // ═══ تتبّع المراحل ═══
   createdByName?: string
+  // (ع) 10-14: matrix_app = سجّله ماتركس من تطبيق الزبائن
+  source?: string | null
   crewNotes?: string
   crewNotesByName?: string
   crewNotesAt?: string
@@ -4641,6 +4643,15 @@ export const api = {
   //
   // الصور القديمة لسّه data: URLs والجديدة صارت /api/files/... —
   // fileUrl() يتعامل مع الاثنين، فما نحتاج نعدّل كل شاشة.
+  // (ع) 10-14: صورة عرض/عمل بتطبيق الزبائن
+  uploadCustomerPromoImage: async (id: string, file: File) => {
+    const form = new FormData()
+    form.append('file', file)
+    const token = currentToken()
+    const res = await fetch(`${API_URL}/customer-app/promos/${id}/image`, { method: 'POST', headers: token ? { Authorization: `Bearer ${token}` } : {}, body: form })
+    if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || 'تعذر رفع الصورة')
+  },
+  customerPromoImageUrl: (id: string) => `${API_URL}/c/img/${id}`,
   uploadFile: async (file: File, folder?: string) => {
     const form = new FormData()
     form.append('file', file)

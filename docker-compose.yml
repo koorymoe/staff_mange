@@ -34,6 +34,12 @@ services:
       # ماتركس: نموذج Anthropic (اختياري). بلا مفتاح يبقى على القواعد.
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
       AI_MODEL: ${AI_MODEL:-claude-haiku-4-5}
+      # (ع) 10-14: إيميلات رموز التحقق لتطبيق الزبائن (Gmail + App Password)
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASS: ${SMTP_PASS:-}
+      MAIL_FROM: ${MAIL_FROM:-}
       AI_DAILY_CAP: ${AI_DAILY_CAP:-200}
       # ماتركس يسمع الفويس: تحويل الصوت لنص بحاوية whisper الداخلية (الصوت ما يطلع).
       WHISPER_URL: ${WHISPER_URL:-http://whisper:8080}
@@ -82,6 +88,14 @@ services:
     ports:
       - "127.0.0.1:8081:80"
 
+  # (ع) 10-14: تطبيق الزبائن — واجهة مستقلة على دومينها (CUSTOMER_DOMAIN)
+  customer:
+    build: ./customer-app
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_healthy
+
   # عكس-وكيل (reverse proxy) بشهادة أمان تلقائية مجانية (HTTPS) عن طريق
   # الدومين — Caddy يجدد الشهادة تلقائياً بدون أي تدخل يدوي (بخلاف certbot).
   caddy:
@@ -89,11 +103,13 @@ services:
     restart: unless-stopped
     depends_on:
       - frontend
+      - customer
     ports:
       - "80:80"
       - "443:443"
     environment:
       DOMAIN: ${DOMAIN}
+      CUSTOMER_DOMAIN: ${CUSTOMER_DOMAIN:-customer.localhost}
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile
       - caddy_data:/data

@@ -142,6 +142,7 @@ const QualityPage = lazy(() => import('./pages/QualityPage'))
 const WorkReportsReview = lazy(() => import('./pages/WorkReportsReview'))
 const EmployeeMonthlyStatsPage = lazy(() => import('./pages/EmployeeMonthlyStatsPage'))
 const StatsManagementPage = lazy(() => import('./pages/StatsManagementPage'))
+const CustomerAppAdminPage = lazy(() => import('./pages/CustomerAppAdminPage'))
 const BookingDeleteRequestsPage = lazy(() => import('./pages/BookingDeleteRequestsPage'))
 const AuditIssuesPage = lazy(() => import('./pages/AuditIssuesPage'))
 const DailyAuditPage = lazy(() => import('./pages/DailyAuditPage'))
@@ -250,6 +251,7 @@ function App() {
           <Route path="it-stats" element={<RequirePermission permission="it_stats" anyOf={['it_assets']}><ItStatsPage /></RequirePermission>} />
           <Route path="my-inventory" element={<MyInventory />} />
           <Route path="permissions" element={<RequireAdmin><PermissionsPage /></RequireAdmin>} />
+          <Route path="customer-app" element={<RequireAdmin><CustomerAppAdminPage /></RequireAdmin>} />
           {/* سجل الأقسام ومسؤوليها — «التعديل فقط لمالك ومدير النظام
               حالياً، وخليها صلاحية». الحارس بالسيرفر هو الفاصل؛ هذا
               يمنع فتح شاشة ما تشتغل أزرارها. */}

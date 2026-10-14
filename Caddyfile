@@ -1,3 +1,8 @@
 {$DOMAIN} {
 	reverse_proxy frontend:80
 }
+
+# (ع) 10-14: تطبيق الزبائن على دومينه الخاص
+{$CUSTOMER_DOMAIN:customer.localhost} {
+	reverse_proxy customer:80
+}

@@ -160,6 +160,9 @@ type Booking struct {
 
 	// أسماء محسوبة وقت الجلب — مو أعمدة.
 	CreatedByName      *string `db:"-" json:"createdByName,omitempty"`
+	// (ع) 10-14: مصدر الحجز — null = موظف، matrix_app = ماتركس من تطبيق الزبائن
+	Source            *string `db:"source" json:"source,omitempty"`
+	CustomerAccountID *string `db:"customerAccountId" json:"-"`
 	CrewNotesByName    *string `db:"-" json:"crewNotesByName,omitempty"`
 	ProjectNotesByName *string `db:"-" json:"projectNotesByName,omitempty"`
 	CancelledByName    *string `db:"-" json:"cancelledByName,omitempty"`

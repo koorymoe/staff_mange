@@ -724,6 +724,11 @@ func (r *BookingRepository) hydrateAll(bookings []*model.Booking) error {
 			return nil
 		}
 		b.CreatedByName = name(b.CreatedByID)
+		// (ع) 10-14: الحجز الي سجّله ماتركس من تطبيق الزبائن
+		if b.Source != nil && *b.Source == "matrix_app" {
+			mx := "🤖 ماتركس (تطبيق الزبائن)"
+			b.CreatedByName = &mx
+		}
 		b.CrewNotesByName = name(b.CrewNotesByID)
 		b.ProjectNotesByName = name(b.ProjectNotesByID)
 		b.CancelledByName = name(b.CancelledByID)
