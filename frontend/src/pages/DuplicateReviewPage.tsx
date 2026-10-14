@@ -23,6 +23,8 @@ export default function DuplicateReviewPage() {
   const [err, setErr] = useState<string | null>(null)
   const [busyId, setBusyId] = useState<string | null>(null)
   const [msg, setMsg] = useState<string | null>(null)
+  // (ع) 10-14: بحث بالكود أو اسم الزبون أو الهاتف أو العنوان أو منو سجّل
+  const [q, setQ] = useState('')
   const [report, setReport] = useState<Awaited<ReturnType<typeof api.getDuplicateReport>> | null>(null)
   useEffect(() => { api.getDuplicateReport().then(setReport).catch(() => {}) }, [msg])
   const [merge, setMerge] = useState<{ row: DuplicateCandidate; keepId: string; moves: { label: string; count: number }[] | null } | null>(null)
@@ -79,6 +81,9 @@ export default function DuplicateReviewPage() {
   }
 
   const actBtn = 'rounded-lg px-3 py-1.5 text-xs font-bold disabled:opacity-50'
+  const needle = q.trim().toLowerCase().replace(/^#/, '')
+  const shown = needle ? rows.filter((r) => JSON.stringify(r).toLowerCase().includes(needle)) : rows
+
   return (
     <div dir="rtl" className="space-y-5">
       <div>
@@ -129,9 +134,13 @@ export default function DuplicateReviewPage() {
         ))}
       </div>
 
+      <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="🔍 ابحث بكود الحجز، اسم الزبون، الهاتف، العنوان، أو منو سجّله…"
+        className="w-full rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm" />
+
       {msg && <p className="rounded-lg bg-emerald-50 p-3 text-sm font-bold text-emerald-800">{msg}</p>}
       {err && <p className="rounded-lg bg-red-50 p-4 text-red-600">{err}</p>}
       {loading && <p className="text-slate-400">جاري التحميل...</p>}
+      {!loading && rows.length > 0 && shown.length === 0 && <p className="rounded-xl bg-white p-6 text-center text-slate-400">ماكو نتيجة لـ«{q}»</p>}
       {!loading && rows.length === 0 && (
         <p className="rounded-xl border border-white bg-white p-8 text-center text-slate-400">
           {tab === 'DONE' ? 'بعد ما انحل شي.' : 'ماكو أزواج مشتبه بيها معلّقة حالياً بهذا التبويب.'}
@@ -139,7 +148,7 @@ export default function DuplicateReviewPage() {
       )}
 
       <div className="space-y-3">
-        {rows.map((r) => (
+        {shown.map((r) => (
           <div key={r.id} className="rounded-2xl border border-white bg-white p-4 shadow-[0_4px_20px_rgba(15,32,64,0.06)]">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <p className="text-sm font-bold text-[#0f2040]">{r.kind === 'BOOKING' ? '📋 ' : '👤 '}{r.matchReason}</p>
