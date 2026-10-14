@@ -25,11 +25,11 @@ export default function OffersPage() {
         {offers.map((p, i) => {
           const s = p.serviceId ? services?.find((x) => x.id === p.serviceId) : undefined
           return (
-            <article key={p.id} className="rise relative h-[152px] overflow-hidden rounded-2xl bg-navy-deep shadow-[0_10px_22px_-14px_rgba(13,59,140,.8)]" style={{ animationDelay: `${i * 50}ms` }}>
+            <article key={p.id} className="rise relative min-h-[150px] overflow-hidden rounded-2xl bg-navy-deep shadow-[0_10px_22px_-14px_rgba(13,59,140,.8)]" style={{ animationDelay: `${i * 50}ms` }}>
               {p.hasImage ? <img src={imgUrl(p.id)} alt="" className="absolute inset-y-0 left-0 h-full w-3/5 object-cover" />
-                : <div className="absolute inset-y-0 left-0 w-[45%]"><ServiceArt name={s?.name ?? p.title} className="h-full w-full" /></div>}
-              <div className="absolute inset-0 bg-gradient-to-l from-navy-deep from-40% via-navy/90 via-55% to-transparent to-80%" />
-              <div className="absolute inset-y-0 right-0 flex w-[62%] flex-col justify-center p-4 text-white">
+                : <ServiceArt name={s?.name ?? p.title} className="absolute inset-y-0 left-0 h-full w-[55%]" />}
+              <div className="absolute inset-0 bg-gradient-to-l from-navy-deep from-38% via-navy-deep/80 via-52% to-transparent to-75%" />
+              <div className="relative mr-0 ml-auto flex min-h-[150px] w-[62%] flex-col justify-center p-4 text-white">
                 {p.discountPercent ? <span className="mb-1.5 w-fit rounded-md bg-gold px-2.5 py-0.5 text-[12px] font-black text-navy-deep">{p.discountPercent}% خصم</span>
                   : p.isNew ? <span className="mb-1.5 w-fit rounded-md bg-gold px-2.5 py-0.5 text-[12px] font-black text-navy-deep">جديد</span> : null}
                 <p className="line-clamp-2 text-[16px] leading-snug font-black">{p.title}</p>

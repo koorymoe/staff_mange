@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react'
 import { api, ApiError, type Account } from '../api'
 import Logo from '../components/Logo'
-import HeroScene from '../components/HeroScene'
 
 type Step = 'splash' | 'login' | 'signup' | 'verify' | 'forgot' | 'reset'
 
@@ -45,8 +44,9 @@ export default function AuthPage({ onSession }: { onSession: (token: string, a: 
   if (step === 'splash') {
     return (
       <div role="button" tabIndex={0} onClick={() => go('login')} className="relative h-full w-full overflow-hidden bg-navy-deep">
-        <HeroScene className="kenburns absolute inset-0 h-full w-full" />
-        <div className="absolute inset-0 bg-gradient-to-b from-navy-deep/90 via-transparent via-45% to-transparent" />
+        <img src="/img/villa.webp" alt="" className="kenburns absolute inset-0 h-full w-full object-cover object-[50%_60%]" />
+        <div className="absolute inset-0 bg-gradient-to-b from-navy-deep via-navy-deep/70 via-40% to-navy-deep/10" />
+        <div className="absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-navy-deep/80 to-transparent" />
         <div className="rise relative flex flex-col items-center px-6 pt-[11vh] text-center">
           <Logo light size={96} />
           <p className="mt-5 text-[17px] font-bold text-white/95">حلول تقنية .. لحياة أكثر أماناً</p>

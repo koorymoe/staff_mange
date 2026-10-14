@@ -40,17 +40,20 @@ function Icon({ kind, c }: { kind: Kind; c: string }) {
   }
 }
 
-export default function ServiceArt({ id, name, hasImage, className = '', iconOnly = false }: { id?: string; name: string; hasImage?: boolean; className?: string; iconOnly?: boolean }) {
+// صورة افتراضية حقيقية لكل نوع (CC0 — public/img/CREDITS.md)
+const photoOf = (name: string) => `/img/${kindOf(name)}.webp`
+
+export default function ServiceArt({ id, name, hasImage, className = '', iconOnly = false, badge = false }: { id?: string; name: string; hasImage?: boolean; className?: string; iconOnly?: boolean; badge?: boolean }) {
   const k = kindOf(name)
   const [a, b, c] = TONES[k]
-  if (hasImage && id) return <img src={imgServiceUrl(id)} alt={name} loading="lazy" className={`object-cover ${className}`} />
+  if (badge) {
+    // أيقونة الخدمات الرئيسية: دائرة ملوّنة متدرجة وأيقونة مجسّمة (مثل التصميم)
+    return (
+      <span className={`grid place-items-center rounded-2xl ${className}`} style={{ background: `linear-gradient(145deg, ${a}, ${b})`, boxShadow: `inset 0 -3px 0 ${b}, 0 6px 14px -8px ${c}` }}>
+        <svg viewBox="0 0 100 100" className="h-[70%] w-[70%] drop-shadow-[0_3px_3px_rgba(15,29,58,.25)]" aria-hidden><Icon kind={k} c={c} /></svg>
+      </span>
+    )
+  }
   if (iconOnly) return <svg viewBox="0 0 100 100" className={className} aria-hidden><Icon kind={k} c={c} /></svg>
-  return (
-    <div className={`relative overflow-hidden ${className}`} style={{ background: `linear-gradient(135deg, ${a}, ${b})` }} aria-hidden>
-      <div className="absolute -top-6 -left-6 h-24 w-24 rounded-full bg-white/40" />
-      <div className="absolute -right-8 -bottom-10 h-28 w-28 rounded-full bg-white/30" />
-      <svg viewBox="0 0 100 100" className="absolute inset-0 m-auto h-[72%] w-[72%] drop-shadow-[0_6px_10px_rgba(15,29,58,.18)]"><Icon kind={k} c={c} /></svg>
-    </div>
-  )
+  return <img src={hasImage && id ? imgServiceUrl(id) : photoOf(name)} alt={name} loading="lazy" className={`bg-[#e9eef7] object-cover ${className}`} />
 }
-

@@ -69,9 +69,8 @@ export default function HomePage({ me, onBadge }: { me: Account; onBadge: (n: nu
                 return (
                   <Link key={p.id} to="/offers" className={`absolute inset-0 transition-opacity duration-700 ${i === slide ? 'opacity-100' : 'pointer-events-none opacity-0'}`}>
                     {p.hasImage ? <img src={imgUrl(p.id)} alt="" className="absolute inset-0 h-full w-full object-cover" />
-                      : <div className="absolute inset-0 bg-gradient-to-l from-navy-deep to-navy-2" />}
-                    {!p.hasImage && <ServiceArt name={s?.name ?? p.title} iconOnly className="absolute top-3 left-3 h-32 w-32 drop-shadow-xl" />}
-                    <div className="absolute inset-0 bg-gradient-to-l from-navy-deep/90 via-navy-deep/50 to-transparent" />
+                      : <ServiceArt name={s?.name ?? p.title} className="absolute inset-y-0 left-0 h-full w-[62%]" />}
+                    <div className="absolute inset-0 bg-gradient-to-l from-navy-deep from-35% via-navy-deep/75 via-55% to-transparent to-85%" />
                     <div className="absolute inset-y-0 right-0 flex w-3/5 flex-col justify-center p-4 text-white">
                       <p className="line-clamp-2 text-[17px] leading-snug font-black">{p.title}</p>
                       {p.body && <p className="mt-1 line-clamp-1 text-[11.5px] text-white/80">{p.body}</p>}
@@ -98,7 +97,7 @@ export default function HomePage({ me, onBadge }: { me: Account; onBadge: (n: nu
           <div className="grid grid-cols-4 gap-2.5">
             {!services.data ? [0, 1, 2, 3].map((i) => <Skel key={i} className="h-24" />) : svc.slice(0, 4).map((s) => (
               <Link key={s.id} to={`/services/${s.id}`} className="card flex flex-col items-center gap-1.5 px-1 py-3 text-center transition active:scale-95">
-                <ServiceArt name={s.name} iconOnly className="h-11 w-11" />
+                <ServiceArt name={s.name} badge className="h-12 w-12" />
                 <span className="line-clamp-2 text-[11.5px] leading-tight font-bold text-ink">{s.name}</span>
               </Link>
             ))}
@@ -107,12 +106,13 @@ export default function HomePage({ me, onBadge }: { me: Account; onBadge: (n: nu
 
         {/* عروض خاصة */}
         {maxDiscount > 0 && (
-          <Link to="/offers" className="relative flex items-center overflow-hidden rounded-2xl bg-gradient-to-l from-[#7a4a06] via-[#b9781a] to-gold p-4 text-white shadow-[0_10px_22px_-12px_rgba(185,120,26,.9)]">
+          <Link to="/offers" className="relative flex h-[92px] items-center overflow-hidden rounded-2xl bg-gradient-to-l from-[#8a5a12] via-[#c08a2a] to-[#e9b04a] p-4 text-white shadow-[0_10px_22px_-12px_rgba(185,120,26,.9)]">
+            <img src="/img/gift.webp" alt="" className="absolute inset-y-0 left-0 h-full w-[45%] object-cover" />
+            <div className="absolute inset-0 bg-gradient-to-l from-[#8a5a12] from-45% via-[#a8741f]/80 via-60% to-transparent" />
             <div className="relative z-10">
               <p className="text-[18px] font-black">عروض خاصة</p>
               <p className="text-[15px] font-extrabold">خصومات تصل إلى {maxDiscount}%</p>
             </div>
-            <span className="mr-auto text-[54px] drop-shadow-lg">🎁</span>
           </Link>
         )}
 
