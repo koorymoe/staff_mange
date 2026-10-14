@@ -274,5 +274,17 @@ func matrixChatMigrations() []Migration {
 				note TEXT, "byId" TEXT, "createdAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP);
 			CREATE INDEX IF NOT EXISTS credit_payment_credit ON "CreditPayment" ("creditId");
 		`,
+	}, {
+		// 🔴 (ع) 10-14: اعتماد «الآجل» بلا رقم چان ينرفض من قيد القاعدة — نضيف CREDIT
+		Version: "0359_credit_approve_no_number",
+		SQL: `
+			ALTER TABLE "LeaderInvoice" DROP CONSTRAINT IF EXISTS leader_invoice_approved_needs_number;
+			ALTER TABLE "LeaderInvoice" ADD CONSTRAINT leader_invoice_approved_needs_number CHECK (
+				status <> 'APPROVED'
+				OR ("externalInvoiceNumber" IS NOT NULL AND btrim("externalInvoiceNumber") <> '')
+				OR "isFree" OR COALESCE("auditVerdict", '') IN ('FREE', 'CREDIT')
+				OR systems::text LIKE '%شغل داخل الشركة%'
+			) NOT VALID;
+		`,
 	}}
 }
