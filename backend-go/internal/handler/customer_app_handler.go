@@ -82,6 +82,7 @@ type customerAccount struct {
 	PasswordHash          string     `db:"passwordHash" json:"-"`
 	Name                  string     `db:"name" json:"name"`
 	Phone                 string     `db:"phone" json:"phone"`
+	City                  *string    `db:"city" json:"city"`
 	CustomerID            *string    `db:"customerId" json:"-"`
 	EmailVerifiedAt       *time.Time `db:"emailVerifiedAt" json:"-"`
 	SessionsInvalidatedAt *time.Time `db:"sessionsInvalidatedAt" json:"-"`
@@ -417,15 +418,18 @@ func (h *CustomerAppHandler) Me(w http.ResponseWriter, r *http.Request) {
 // PUT /api/c/me {name, phone}
 func (h *CustomerAppHandler) UpdateMe(w http.ResponseWriter, r *http.Request) {
 	a := current(r)
-	var b struct{ Name, Phone string }
+	var b struct{ Name, Phone, City string }
 	_ = DecodeJSON(r, &b)
+	if c := strings.TrimSpace(b.City); c != "" {
+		a.City = &c
+	}
 	if n := strings.TrimSpace(b.Name); len([]rune(n)) >= 2 {
 		a.Name = n
 	}
 	if p := strings.TrimSpace(b.Phone); len(p) >= 10 {
 		a.Phone = p
 	}
-	_, _ = h.db.Exec(`UPDATE "CustomerAccount" SET name = $2, phone = $3 WHERE id = $1`, a.ID, a.Name, a.Phone)
+	_, _ = h.db.Exec(`UPDATE "CustomerAccount" SET name = $2, phone = $3, city = $4 WHERE id = $1`, a.ID, a.Name, a.Phone, a.City)
 	h.linkCustomer(a)
 	WriteJSON(w, http.StatusOK, a)
 }
@@ -442,13 +446,14 @@ type promoItem struct {
 	ServiceID *string   `db:"serviceId" json:"serviceId"`
 	Active    bool      `db:"active" json:"active"`
 	Ord       int       `db:"ord" json:"ord"`
+	Discount  *int      `db:"discountPercent" json:"discountPercent"`
 	Source    string    `db:"source" json:"source"`
 	CreatedAt time.Time `db:"createdAt" json:"createdAt"`
 	IsNew     bool      `db:"-" json:"isNew"`
 }
 
 func (h *CustomerAppHandler) promos(onlyActive bool) []promoItem {
-	q := `SELECT id, kind, title, body, "imageUrl", "serviceId", active, ord, source, "createdAt" FROM "PromoItem"`
+	q := `SELECT id, kind, title, body, "imageUrl", "serviceId", active, ord, "discountPercent", source, "createdAt" FROM "PromoItem"`
 	if onlyActive {
 		q += ` WHERE active`
 	}
@@ -651,6 +656,7 @@ type promoInput struct {
 	ServiceID *string `json:"serviceId"`
 	Active    bool    `json:"active"`
 	Ord       int     `json:"ord"`
+	Discount  *int    `json:"discountPercent"`
 }
 
 func (p *promoInput) valid() error {
@@ -676,8 +682,8 @@ func (h *CustomerAppHandler) AdminCreatePromo(w http.ResponseWriter, r *http.Req
 		return
 	}
 	id := uuid.NewString()
-	if _, err := h.db.Exec(`INSERT INTO "PromoItem" (id, kind, title, body, "serviceId", active, ord, "approvedAt") VALUES ($1,$2,$3,$4,$5,$6,$7, CASE WHEN $6 THEN now() END)`,
-		id, p.Kind, p.Title, p.Body, p.ServiceID, p.Active, p.Ord); err != nil {
+	if _, err := h.db.Exec(`INSERT INTO "PromoItem" (id, kind, title, body, "serviceId", active, ord, "discountPercent", "approvedAt") VALUES ($1,$2,$3,$4,$5,$6,$7,$8, CASE WHEN $6 THEN now() END)`,
+		id, p.Kind, p.Title, p.Body, p.ServiceID, p.Active, p.Ord, p.Discount); err != nil {
 		WriteError(w, http.StatusBadRequest, "تعذر الحفظ")
 		return
 	}
@@ -693,8 +699,9 @@ func (h *CustomerAppHandler) AdminUpdatePromo(w http.ResponseWriter, r *http.Req
 		return
 	}
 	_, err := h.db.Exec(`UPDATE "PromoItem" SET kind=$2, title=$3, body=$4, "serviceId"=$5, active=$6, ord=$7,
+		"discountPercent"=$8,
 		"approvedAt" = CASE WHEN $6 THEN COALESCE("approvedAt", now()) ELSE "approvedAt" END WHERE id=$1`,
-		r.PathValue("id"), p.Kind, p.Title, p.Body, p.ServiceID, p.Active, p.Ord)
+		r.PathValue("id"), p.Kind, p.Title, p.Body, p.ServiceID, p.Active, p.Ord, p.Discount)
 	if err != nil {
 		WriteError(w, http.StatusBadRequest, "تعذر الحفظ")
 		return

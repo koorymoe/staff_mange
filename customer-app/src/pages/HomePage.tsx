@@ -1,169 +1,140 @@
-import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { api, imgUrl, type Account, type Home, type Promo } from '../api'
-import Logo from '../components/Logo'
-import MatrixEye from '../components/MatrixEye'
+import { useEffect, useMemo, useState } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
+import { api, imgUrl, type Account } from '../api'
+import { useBookings, useHome, useServices } from '../data'
+import ServiceArt from '../components/ServiceArt'
+import { Skel, StatusPill } from '../components/ui'
+import { fmtDate } from '../lib'
 
-const greet = () => {
-  const h = new Date().getHours()
-  return h < 12 ? 'صباح الخير' : h < 18 ? 'نهارك سعيد' : 'مساء الخير'
-}
+const greet = () => { const h = new Date().getHours(); return h < 12 ? 'صباح الخير' : h < 18 ? 'نهارك سعيد' : 'مساء الخير' }
 
-// ألوان البطاقات حسب الصنف — بلا صورة تطلع خلفية متدرجة
-const TONES = ['from-navy to-[#2563eb]', 'from-[#9a3412] to-sun', 'from-[#065f46] to-[#10b981]', 'from-[#4c1d95] to-[#8b5cf6]', 'from-[#0f172a] to-[#334155]']
-const ICONS: [RegExp, string][] = [[/gps|جي بي|تتبع/i, '📍'], [/كامير|camera|ip/i, '📹'], [/شمس|طاقة|solar/i, '☀️'], [/شبك|انترنت|network/i, '🌐'],
-  [/صوت|sound/i, '🔊'], [/ديكور|decor/i, '🛋️'], [/كهرب/i, '⚡'], [/حريق|انذار/i, '🚨']]
-const iconFor = (n: string) => ICONS.find(([re]) => re.test(n))?.[1] ?? '🛠️'
-
+// ═══ الرئيسية (شاشة 3) ═══
 export default function HomePage({ me, onBadge }: { me: Account; onBadge: (n: number) => void }) {
   const nav = useNavigate()
-  const [data, setData] = useState<Home | null>(null)
-  const [err, setErr] = useState('')
+  const home = useHome()
+  const services = useServices()
+  const bookings = useBookings()
+  const [q, setQ] = useState('')
   const [slide, setSlide] = useState(0)
-  const [allSvc, setAllSvc] = useState(false)
 
-  useEffect(() => {
-    api.home().then((d) => { setData(d); onBadge(d.newCount) }).catch((e) => setErr(e.message))
-  }, [onBadge])
+  const offers = useMemo(() => (home.data?.items ?? []).filter((p) => p.kind !== 'work'), [home.data])
+  const maxDiscount = Math.max(0, ...offers.map((o) => o.discountPercent ?? 0))
+  const last = bookings.data?.[0]
+  const svc = services.data ?? []
+  const lastSvc = last?.serviceId ? svc.find((s) => s.id === last.serviceId) : undefined
 
-  const offers = (data?.items ?? []).filter((p) => p.kind !== 'work')
-  const works = (data?.items ?? []).filter((p) => p.kind === 'work')
-
-  // البانر يتبدّل لحاله كل 5 ثواني — «كل شوي يعرض شي جديد»
+  useEffect(() => { if (home.data) onBadge(home.data.newCount) }, [home.data, onBadge])
   useEffect(() => {
     if (offers.length < 2) return
-    const t = setInterval(() => setSlide((s) => (s + 1) % offers.length), 5000)
+    const t = setInterval(() => setSlide((s) => (s + 1) % offers.length), 4500)
     return () => clearInterval(t)
   }, [offers.length])
-
-  // شاف العروض الجديدة → ينصفّر الرقم بعد ثانيتين على الشاشة
   useEffect(() => {
-    if (!data?.newCount) return
-    const t = setTimeout(() => { api.seen().then(() => onBadge(0)).catch(() => {}) }, 2500)
+    if (!home.data?.newCount) return
+    const t = setTimeout(() => { api.seen().then(() => onBadge(0)).catch(() => {}) }, 3000)
     return () => clearTimeout(t)
-  }, [data?.newCount, onBadge])
+  }, [home.data?.newCount, onBadge])
 
-  const ask = (text: string) => nav('/matrix', { state: { prefill: text } })
+  const search = (e: React.FormEvent) => { e.preventDefault(); nav(`/services?q=${encodeURIComponent(q)}`) }
+  const initials = me.name.trim().split(/\s+/).slice(0, 2).map((w) => w[0]).join('')
 
   return (
-    <div className="rise">
-      <header className="rounded-b-[2rem] bg-gradient-to-br from-navy to-[#1d4ed8] px-5 pt-8 pb-16 text-white">
+    <div className="page-in pb-4">
+      {/* الرأس الكحلي */}
+      <header className="safe-t rounded-b-[28px] bg-gradient-to-b from-navy-deep to-navy px-5 pt-5 pb-6 text-white">
         <div className="flex items-center gap-3">
-          <Logo size={42} />
-          <div className="min-w-0">
-            <p className="text-xs text-blue-100">{greet()}</p>
-            <p className="truncate text-lg font-black">{me.name.split(' ')[0]} 👋</p>
+          <Link to="/account" className="grid h-12 w-12 shrink-0 place-items-center rounded-full bg-white/15 text-[17px] font-black ring-2 ring-white/30">{initials}</Link>
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-[18px] font-extrabold">مرحباً {me.name.split(' ')[0]} 👋</p>
+            <p className="text-[12px] text-white/75">{greet()}، مرحباً بك في شركة الأماني</p>
           </div>
-          {data && data.completedJobs > 0 && (
-            <span className="mr-auto rounded-2xl bg-white/10 px-3 py-1.5 text-center text-[11px] leading-tight">
-              <b className="block text-base">{data.completedJobs.toLocaleString('ar-IQ')}+</b>عمل منجز
-            </span>
-          )}
+          <Link to="/account/edit" className="flex shrink-0 items-center gap-1 rounded-full bg-white/12 px-3 py-1.5 text-[12px] font-bold ring-1 ring-white/25">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 22s7-6.2 7-12a7 7 0 0 0-14 0c0 5.8 7 12 7 12z" /><circle cx="12" cy="10" r="2.5" /></svg>
+            {me.city || 'المحافظة'}
+          </Link>
         </div>
+        <form onSubmit={search} className="mt-4 flex h-12 items-center gap-2 rounded-xl bg-white px-4 text-ink shadow-lg">
+          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="ابحث عن خدمة ..." className="min-w-0 flex-1 bg-transparent text-[14px] outline-none placeholder:text-[#a3acbf]" />
+          <button aria-label="بحث" className="text-navy"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><circle cx="11" cy="11" r="7" /><path d="M21 21l-4.3-4.3" /></svg></button>
+        </form>
       </header>
 
-      <div className="-mt-12 space-y-6 px-4">
-        {/* ماتركس */}
-        <button onClick={() => nav('/matrix')} className="flex w-full items-center gap-3 rounded-3xl bg-white p-4 text-right shadow-lg shadow-navy/10 transition active:scale-[.99]">
-          <MatrixEye size={48} />
-          <div className="min-w-0 flex-1">
-            <p className="font-black text-ink">اسأل ماتركس أو احجز</p>
-            <p className="truncate text-xs text-slate-500">مساعدنا الذكي يجاوبك ويسجّل حجزك بدقيقة</p>
-          </div>
-          <span className="rounded-2xl bg-sun px-3 py-2 text-xs font-black text-white">ابدأ</span>
-        </button>
-
-        {err && <p className="rounded-2xl bg-rose-50 p-3 text-sm text-rose-700">{err}</p>}
-        {!data && !err && <div className="h-44 animate-pulse rounded-3xl bg-slate-200" />}
-
-        {/* العروض */}
-        {offers.length > 0 && (
+      <div className="space-y-6 px-4 pt-4">
+        {/* بانر العروض */}
+        {!home.data ? <Skel className="h-40" /> : offers.length > 0 ? (
           <section>
-            <SectionTitle title="عروضنا الحالية" />
-            <div className="relative h-48 overflow-hidden rounded-3xl shadow-md">
-              {offers.map((p, i) => <OfferSlide key={p.id} p={p} i={i} active={i === slide} onAsk={() => ask(`مهتم بالعرض: ${p.title}`)} />)}
-              {offers.length > 1 && (
-                <div className="absolute bottom-3 left-1/2 flex -translate-x-1/2 gap-1.5">
-                  {offers.map((p, i) => <button key={p.id} aria-label={`عرض ${i + 1}`} onClick={() => setSlide(i)} className={`h-1.5 rounded-full transition-all ${i === slide ? 'w-5 bg-white' : 'w-1.5 bg-white/50'}`} />)}
-                </div>
-              )}
+            <div className="relative h-40 overflow-hidden rounded-2xl shadow-[0_10px_24px_-12px_rgba(13,59,140,.6)]">
+              {offers.map((p, i) => {
+                const s = p.serviceId ? svc.find((x) => x.id === p.serviceId) : undefined
+                return (
+                  <Link key={p.id} to="/offers" className={`absolute inset-0 transition-opacity duration-700 ${i === slide ? 'opacity-100' : 'pointer-events-none opacity-0'}`}>
+                    {p.hasImage ? <img src={imgUrl(p.id)} alt="" className="absolute inset-0 h-full w-full object-cover" />
+                      : <div className="absolute inset-0 bg-gradient-to-l from-navy-deep to-navy-2" />}
+                    {!p.hasImage && <ServiceArt name={s?.name ?? p.title} iconOnly className="absolute top-3 left-3 h-32 w-32 drop-shadow-xl" />}
+                    <div className="absolute inset-0 bg-gradient-to-l from-navy-deep/90 via-navy-deep/50 to-transparent" />
+                    <div className="absolute inset-y-0 right-0 flex w-3/5 flex-col justify-center p-4 text-white">
+                      <p className="line-clamp-2 text-[17px] leading-snug font-black">{p.title}</p>
+                      {p.body && <p className="mt-1 line-clamp-1 text-[11.5px] text-white/80">{p.body}</p>}
+                      <span className="mt-2.5 w-fit rounded-lg bg-gold px-4 py-1.5 text-[12px] font-extrabold text-navy-deep">اطلب الآن</span>
+                    </div>
+                  </Link>
+                )
+              })}
             </div>
-          </section>
-        )}
-
-        {/* الخدمات */}
-        {data && data.services.length > 0 && (
-          <section>
-            <SectionTitle title="خدماتنا" sub="اضغط على أي خدمة وماتركس يكمل وياك" />
-            <div className="grid grid-cols-3 gap-2.5">
-              {(allSvc ? data.services : data.services.slice(0, 9)).map((s) => (
-                <button key={s.id} onClick={() => ask(`أريد أستفسر عن خدمة ${s.name}`)}
-                  className="flex flex-col items-center gap-1.5 rounded-2xl bg-white px-2 py-3.5 text-center shadow-sm transition active:scale-95">
-                  <span className="grid h-11 w-11 place-items-center rounded-2xl bg-navy/5 text-2xl">{iconFor(s.name)}</span>
-                  <span className="line-clamp-2 text-[12px] leading-tight font-bold text-slate-700">{s.name}</span>
-                </button>
-              ))}
-            </div>
-            {data.services.length > 9 && (
-              <button onClick={() => setAllSvc((v) => !v)} className="mt-2.5 w-full rounded-2xl bg-white py-2.5 text-sm font-black text-navy shadow-sm">
-                {allSvc ? 'عرض أقل' : `عرض كل الخدمات (${data.services.length})`}
-              </button>
+            {offers.length > 1 && (
+              <div className="mt-2.5 flex justify-center gap-1.5">
+                {offers.map((p, i) => <button key={p.id} aria-label={`عرض ${i + 1}`} onClick={() => setSlide(i)} className={`h-1.5 rounded-full transition-all ${i === slide ? 'w-5 bg-navy' : 'w-1.5 bg-[#c9d1e2]'}`} />)}
+              </div>
             )}
           </section>
-        )}
+        ) : null}
 
-        {/* من أعمالنا */}
-        {works.length > 0 && (
-          <section>
-            <SectionTitle title="من أعمالنا" />
-            <div className="no-scrollbar -mx-4 flex snap-x gap-3 overflow-x-auto px-4 pb-1">
-              {works.map((w) => (
-                <article key={w.id} className="w-64 shrink-0 snap-start overflow-hidden rounded-3xl bg-white shadow-sm">
-                  {w.hasImage ? <img src={imgUrl(w.id)} alt={w.title} loading="lazy" className="h-36 w-full object-cover" />
-                    : <div className="grid h-36 place-items-center bg-gradient-to-br from-slate-100 to-slate-200 text-4xl">🏗️</div>}
-                  <div className="p-3">
-                    <p className="font-black text-ink">{w.title}</p>
-                    {w.body && <p className="mt-0.5 line-clamp-2 text-xs text-slate-500">{w.body}</p>}
-                  </div>
-                </article>
-              ))}
-            </div>
-          </section>
-        )}
-
-        <section className="rounded-3xl bg-gradient-to-l from-amber-50 to-orange-50 p-5">
-          <p className="font-black text-ink">ليش الأماني؟ ✨</p>
-          <ul className="mt-2 space-y-1.5 text-sm text-slate-600">
-            <li>✅ فرق فنية متخصصة وتنفيذ مضمون</li>
-            <li>✅ متابعة بعد التنفيذ وخدمة ما بعد البيع</li>
-            <li>✅ حجز سهل ومتابعة حالة طلبك من التطبيق</li>
-          </ul>
+        {/* الخدمات الرئيسية */}
+        <section>
+          <div className="mb-3 flex items-center justify-between">
+            <h2 className="text-[17px] font-extrabold text-ink">الخدمات الرئيسية</h2>
+            <Link to="/services" className="text-[13px] font-bold text-navy">عرض الكل</Link>
+          </div>
+          <div className="grid grid-cols-4 gap-2.5">
+            {!services.data ? [0, 1, 2, 3].map((i) => <Skel key={i} className="h-24" />) : svc.slice(0, 4).map((s) => (
+              <Link key={s.id} to={`/services/${s.id}`} className="card flex flex-col items-center gap-1.5 px-1 py-3 text-center transition active:scale-95">
+                <ServiceArt name={s.name} iconOnly className="h-11 w-11" />
+                <span className="line-clamp-2 text-[11.5px] leading-tight font-bold text-ink">{s.name}</span>
+              </Link>
+            ))}
+          </div>
         </section>
-      </div>
-    </div>
-  )
-}
 
-function SectionTitle({ title, sub }: { title: string; sub?: string }) {
-  return (
-    <div className="mb-2.5 px-1">
-      <h2 className="text-lg font-black text-ink">{title}</h2>
-      {sub && <p className="text-xs text-slate-500">{sub}</p>}
-    </div>
-  )
-}
+        {/* عروض خاصة */}
+        {maxDiscount > 0 && (
+          <Link to="/offers" className="relative flex items-center overflow-hidden rounded-2xl bg-gradient-to-l from-[#7a4a06] via-[#b9781a] to-gold p-4 text-white shadow-[0_10px_22px_-12px_rgba(185,120,26,.9)]">
+            <div className="relative z-10">
+              <p className="text-[18px] font-black">عروض خاصة</p>
+              <p className="text-[15px] font-extrabold">خصومات تصل إلى {maxDiscount}%</p>
+            </div>
+            <span className="mr-auto text-[54px] drop-shadow-lg">🎁</span>
+          </Link>
+        )}
 
-function OfferSlide({ p, i, active, onAsk }: { p: Promo; i: number; active: boolean; onAsk: () => void }) {
-  return (
-    <div className={`absolute inset-0 transition-opacity duration-700 ${active ? 'opacity-100' : 'pointer-events-none opacity-0'}`}>
-      {p.hasImage ? <img src={imgUrl(p.id)} alt="" className="absolute inset-0 h-full w-full object-cover" />
-        : <div className={`absolute inset-0 bg-gradient-to-br ${TONES[i % TONES.length]}`} />}
-      <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/25 to-transparent" />
-      <div className="absolute inset-x-0 bottom-0 p-4 pb-7 text-white">
-        {p.isNew && <span className="mb-1.5 inline-block rounded-full bg-sun px-2 py-0.5 text-[10px] font-black">جديد</span>}
-        <p className="text-lg leading-snug font-black">{p.title}</p>
-        {p.body && <p className="mt-0.5 line-clamp-2 text-xs text-white/85">{p.body}</p>}
-        <button onClick={onAsk} className="mt-2 rounded-xl bg-white px-3 py-1.5 text-xs font-black text-navy">أريد أعرف أكثر ←</button>
+        {/* آخر حجز */}
+        <section>
+          <h2 className="mb-3 text-[17px] font-extrabold text-ink">آخر حجز لك</h2>
+          {!bookings.data ? <Skel className="h-24" /> : last ? (
+            <Link to={`/bookings/${last.id}`} className="card flex items-center gap-3 p-3">
+              <ServiceArt id={lastSvc?.id} name={lastSvc?.name ?? last.services} hasImage={lastSvc?.hasImage} className="h-16 w-16 shrink-0 rounded-xl" />
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-[15px] font-extrabold text-ink">{last.services || 'خدمة'}</p>
+                <p className="mt-0.5 text-[12px] text-mute">{fmtDate(last.scheduledAt ?? last.createdAt)} · <span dir="ltr">#{last.code}</span></p>
+              </div>
+              <StatusPill status={last.status} />
+            </Link>
+          ) : (
+            <Link to="/request" className="card flex items-center justify-between p-4">
+              <span className="text-[14px] font-bold text-mute">ما عندك حجز بعد</span>
+              <span className="rounded-lg bg-navy-2 px-3 py-1.5 text-[12px] font-extrabold text-white">احجز خدمة</span>
+            </Link>
+          )}
+        </section>
       </div>
     </div>
   )

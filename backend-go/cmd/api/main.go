@@ -1688,6 +1688,27 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 		mux.Handle("POST /api/customer-app/promos/{id}/image", middleware.Chain(http.HandlerFunc(cust.AdminPromoImage), requireAuth, requireAdmin))
 		mux.Handle("GET /api/customer-app/accounts", middleware.Chain(http.HandlerFunc(cust.AdminAccounts), requireAuth, requireAdmin))
 		mux.Handle("GET /api/customer-app/accounts/{id}/chat", middleware.Chain(http.HandlerFunc(cust.AdminChat), requireAuth, requireAdmin))
+		// التصميم الجديد (10-14): الكتالوك، المفضلة، طلب بالنموذج، تفاصيل الحجز، التقييم، الفروع
+		rc := func(f http.HandlerFunc) http.Handler { return cust.RequireCustomer(f) }
+		mux.Handle("GET /api/c/services", rc(cust.Services))
+		mux.Handle("GET /api/c/services/{id}", rc(cust.ServiceDetail))
+		mux.Handle("GET /api/c/img/s/{id}", middleware.RateLimit(240, time.Minute)(http.HandlerFunc(cust.ServiceImage)))
+		mux.Handle("GET /api/c/favorites", rc(cust.Favorites))
+		mux.Handle("POST /api/c/favorites/{id}", rc(cust.AddFavorite))
+		mux.Handle("DELETE /api/c/favorites/{id}", rc(cust.RemoveFavorite))
+		mux.Handle("POST /api/c/bookings", middleware.RateLimit(6, time.Minute)(rc(cust.CreateBooking)))
+		mux.Handle("GET /api/c/bookings/{id}", rc(cust.BookingDetail))
+		mux.Handle("GET /api/c/bookings/{id}/tech-photo", rc(cust.TechPhoto))
+		mux.Handle("POST /api/c/bookings/{id}/rate", rc(cust.Rate))
+		mux.Handle("GET /api/c/branches", rc(cust.Branches))
+		mux.Handle("GET /api/customer-app/services", middleware.Chain(http.HandlerFunc(cust.AdminServices), requireAuth, requireAdmin))
+		mux.Handle("PUT /api/customer-app/services/{id}", middleware.Chain(http.HandlerFunc(cust.AdminSaveService), requireAuth, requireAdmin))
+		mux.Handle("POST /api/customer-app/services/{id}/image", middleware.Chain(http.HandlerFunc(cust.AdminServiceImage), requireAuth, requireAdmin))
+		mux.Handle("GET /api/customer-app/branches", middleware.Chain(http.HandlerFunc(cust.Branches), requireAuth, requireAdmin))
+		mux.Handle("POST /api/customer-app/branches", middleware.Chain(http.HandlerFunc(cust.AdminSaveBranch), requireAuth, requireAdmin))
+		mux.Handle("PUT /api/customer-app/branches/{id}", middleware.Chain(http.HandlerFunc(cust.AdminSaveBranch), requireAuth, requireAdmin))
+		mux.Handle("DELETE /api/customer-app/branches/{id}", middleware.Chain(http.HandlerFunc(cust.AdminDeleteBranch), requireAuth, requireAdmin))
+		mux.Handle("GET /api/customer-app/ratings", middleware.Chain(http.HandlerFunc(cust.AdminRatings), requireAuth, requireAdmin))
 	}
 
 	// طلبات تغيير أيقونة الحضور — أي موظف يطلب، ومدير النظام بس يوافق/يرفض

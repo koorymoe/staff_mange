@@ -1,87 +1,67 @@
-import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { api, type CBooking } from '../api'
+import { useState } from 'react'
+import { Link } from 'react-router-dom'
+import type { CBooking } from '../api'
+import { useBookings, useServices } from '../data'
+import ServiceArt from '../components/ServiceArt'
+import { Empty, Skel, StatusPill, TopBar } from '../components/ui'
+import { fmtDate, fmtTime } from '../lib'
 
-// مراحل الحجز كما يفهمها الزبون
-const STAGES = [
-  { key: 'PENDING', label: 'استلمنا الطلب' },
-  { key: 'CONFIRMED', label: 'تثبّت الموعد' },
-  { key: 'IN_PROGRESS', label: 'قيد التنفيذ' },
-  { key: 'COMPLETED', label: 'منجز' },
+const TABS: { k: string; label: string; match: (b: CBooking) => boolean }[] = [
+  { k: 'active', label: 'الفعّالة', match: (b) => ['PENDING', 'CONFIRMED', 'WAITING'].includes(b.status) },
+  { k: 'progress', label: 'قيد التنفيذ', match: (b) => ['IN_PROGRESS', 'PARTIAL'].includes(b.status) },
+  { k: 'done', label: 'المكتملة', match: (b) => b.status === 'COMPLETED' },
+  { k: 'cancel', label: 'الملغاة', match: (b) => b.status === 'CANCELLED' },
 ]
-const stageIdx = (s: string) => (s === 'WAITING' ? 1 : s === 'PARTIAL' ? 2 : STAGES.findIndex((x) => x.key === s))
-const date = (s?: string) => (s ? new Date(s).toLocaleDateString('ar-IQ', { weekday: 'short', day: 'numeric', month: 'long', year: 'numeric' }) : '')
 
+// ═══ حجوزاتي (شاشة 8) ═══
 export default function BookingsPage() {
-  const nav = useNavigate()
-  const [rows, setRows] = useState<CBooking[] | null>(null)
-  const [tab, setTab] = useState<'open' | 'past'>('open')
-  const [err, setErr] = useState('')
-
-  useEffect(() => { api.bookings().then(setRows).catch((e) => { setErr(e.message); setRows([]) }) }, [])
-
-  const closed = (b: CBooking) => b.status === 'COMPLETED' || b.status === 'CANCELLED'
-  const list = (rows ?? []).filter((b) => (tab === 'past' ? closed(b) : !closed(b)))
+  const { data, err } = useBookings()
+  const { data: services } = useServices()
+  const [tab, setTab] = useState('active')
+  const cur = TABS.find((t) => t.k === tab)!
+  const list = (data ?? []).filter(cur.match)
 
   return (
-    <div className="rise px-4 pt-6">
-      <h1 className="text-2xl font-black text-ink">حجوزاتي</h1>
-      <p className="text-sm text-slate-500">تابع حالة طلباتك، والسابقة كلها هنا</p>
-
-      <div className="mt-4 grid grid-cols-2 rounded-2xl bg-slate-200/70 p-1">
-        {(['open', 'past'] as const).map((t) => (
-          <button key={t} onClick={() => setTab(t)} className={`rounded-xl py-2 text-sm font-black transition ${tab === t ? 'bg-white text-navy shadow-sm' : 'text-slate-500'}`}>
-            {t === 'open' ? 'الحالية' : 'السابقة'} ({(rows ?? []).filter((b) => (t === 'past' ? closed(b) : !closed(b))).length})
+    <div className="page-in">
+      <TopBar title="حجوزاتي" back={false} />
+      <div className="grid grid-cols-4 gap-1.5 px-4 pt-1 pb-3">
+        {TABS.map((t) => (
+          <button key={t.k} onClick={() => setTab(t.k)} className={`rounded-lg px-1 py-2 text-[11.5px] font-bold whitespace-nowrap transition ${tab === t.k ? 'bg-navy-2 text-white shadow-md' : 'bg-white text-mute ring-1 ring-line'}`}>
+            {t.label} ({(data ?? []).filter(t.match).length})
           </button>
         ))}
       </div>
-
-      {err && <p className="mt-4 rounded-2xl bg-rose-50 p-3 text-sm text-rose-700">{err}</p>}
-      <div className="mt-4 space-y-3">
-        {rows === null && [0, 1].map((i) => <div key={i} className="h-32 animate-pulse rounded-3xl bg-slate-200" />)}
-        {rows && list.length === 0 && (
-          <div className="rounded-3xl bg-white p-8 text-center shadow-sm">
-            <p className="text-4xl">🗓️</p>
-            <p className="mt-2 font-black text-ink">{tab === 'open' ? 'ماكو حجز حالي' : 'ماكو حجوزات سابقة'}</p>
-            <button onClick={() => nav('/matrix', { state: { prefill: 'أريد أحجز' } })} className="mt-4 rounded-2xl bg-navy px-5 py-2.5 text-sm font-black text-white">احجز ويّا ماتركس</button>
-          </div>
+      <div className="space-y-3 px-4 pb-4">
+        {err && <p className="rounded-xl bg-rose-50 p-3 text-sm text-rose-600">{err}</p>}
+        {!data && [0, 1, 2].map((i) => <Skel key={i} className="h-28" />)}
+        {data && list.length === 0 && (
+          <Empty icon="🗓️" title={`ماكو حجوزات ${cur.label}`}>
+            <Link to="/request" className="mt-4 inline-block rounded-xl bg-navy-2 px-6 py-2.5 text-[14px] font-extrabold text-white">طلب خدمة</Link>
+          </Empty>
         )}
-        {list.map((b) => {
-          const idx = stageIdx(b.status)
-          const cancelled = b.status === 'CANCELLED'
+        {list.map((b, i) => {
+          const s = b.serviceId ? services?.find((x) => x.id === b.serviceId) : undefined
+          const when = b.scheduledAt ?? b.createdAt
           return (
-            <article key={b.id} className="rounded-3xl bg-white p-4 shadow-sm">
-              <div className="flex items-start justify-between gap-2">
-                <div className="min-w-0">
-                  <p className="font-black text-ink">{b.services || 'خدمة'}</p>
-                  <p className="text-xs text-slate-500">طلب بتاريخ {date(b.createdAt)}</p>
+            <Link key={b.id} to={`/bookings/${b.id}`} className="card rise flex gap-3 p-3" style={{ animationDelay: `${i * 40}ms` }}>
+              <div className="min-w-0 flex-1">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <p className="text-[11.5px] font-bold text-mute" dir="ltr">#{b.code}</p>
+                    <p className="mt-0.5 truncate text-[15px] font-extrabold text-ink">{b.services || 'خدمة'}</p>
+                  </div>
+                  <StatusPill status={b.status} />
                 </div>
-                <span className="shrink-0 rounded-lg bg-slate-100 px-2 py-1 font-mono text-xs font-bold text-slate-600">{b.code}</span>
+                <p className="mt-2 flex items-center gap-1.5 text-[12px] text-mute">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></svg>
+                  {fmtDate(when)}{b.scheduledAt && ` - ${fmtTime(b.scheduledAt)}`}
+                </p>
+                {b.address && <p className="mt-1 flex items-center gap-1.5 truncate text-[12px] text-mute">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 22s7-6.2 7-12a7 7 0 0 0-14 0c0 5.8 7 12 7 12z" /><circle cx="12" cy="10" r="2.5" /></svg>
+                  <span className="truncate">{b.address.split('—')[0].trim()}</span></p>}
               </div>
-              <p className={`mt-3 rounded-2xl px-3 py-2 text-sm font-bold ${cancelled ? 'bg-rose-50 text-rose-700' : b.status === 'COMPLETED' ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-800'}`}>
-                {b.statusLabel}
-              </p>
-              {!cancelled && (
-                <ol className="mt-3 flex items-center">
-                  {STAGES.map((s, i) => (
-                    <li key={s.key} className="flex flex-1 flex-col items-center text-center">
-                      <div className="flex w-full items-center">
-                        <span className={`h-0.5 flex-1 ${i === 0 ? 'opacity-0' : i <= idx ? 'bg-emerald-500' : 'bg-slate-200'}`} />
-                        <span className={`grid h-6 w-6 place-items-center rounded-full text-[11px] font-black ${i <= idx ? 'bg-emerald-500 text-white' : 'bg-slate-200 text-slate-400'}`}>{i < idx || b.status === 'COMPLETED' ? '✓' : i + 1}</span>
-                        <span className={`h-0.5 flex-1 ${i === STAGES.length - 1 ? 'opacity-0' : i < idx ? 'bg-emerald-500' : 'bg-slate-200'}`} />
-                      </div>
-                      <span className={`mt-1 text-[10px] ${i <= idx ? 'font-bold text-emerald-700' : 'text-slate-400'}`}>{s.label}</span>
-                    </li>
-                  ))}
-                </ol>
-              )}
-              <div className="mt-3 space-y-1 text-xs text-slate-500">
-                {b.scheduledAt && <p>📅 الموعد: <b className="text-slate-700">{date(b.scheduledAt)}</b></p>}
-                {b.completedAt && <p>🏁 انجز: {date(b.completedAt)}</p>}
-                {b.address && <p className="truncate">📍 {b.address}</p>}
-                {b.fromApp && <p className="text-violet-700">👁️ انحجز عن طريق ماتركس</p>}
-              </div>
-            </article>
+              <ServiceArt id={s?.id} name={s?.name ?? b.services} hasImage={s?.hasImage} className="h-[84px] w-[84px] shrink-0 self-center rounded-xl" />
+            </Link>
           )
         })}
       </div>

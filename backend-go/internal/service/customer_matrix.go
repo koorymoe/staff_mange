@@ -233,6 +233,7 @@ type CustomerBookingRow struct {
 	Status      string     `db:"status" json:"status"`
 	StatusLabel string     `db:"-" json:"statusLabel"`
 	Services    string     `db:"services" json:"services"`
+	ServiceID   *string    `db:"serviceId" json:"serviceId"`
 	Address     *string    `db:"address" json:"address,omitempty"`
 	ScheduledAt *time.Time `db:"scheduledAt" json:"scheduledAt,omitempty"`
 	CompletedAt *time.Time `db:"completedAt" json:"completedAt,omitempty"`
@@ -249,7 +250,7 @@ var customerStatusAr = map[string]string{
 func CustomerBookings(db *sqlx.DB, accountID string, limit int) ([]CustomerBookingRow, error) {
 	rows := []CustomerBookingRow{}
 	err := db.Select(&rows, `
-		SELECT b.id, b.code, b.status, b.address, b."scheduledAt", b."completedAt", b."createdAt",
+		SELECT b.id, b.code, b.status, b.address, b."serviceId", b."scheduledAt", b."completedAt", b."createdAt",
 			(b.source = 'matrix_app') IS TRUE AS "fromApp",
 			COALESCE((SELECT string_agg(s.name, '، ') FROM "BookingService" bs JOIN "Service" s ON s.id = bs."serviceId" WHERE bs."bookingId" = b.id),
 				(SELECT s.name FROM "Service" s WHERE s.id = b."serviceId"), '') AS services

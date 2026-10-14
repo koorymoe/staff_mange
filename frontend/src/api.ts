@@ -4652,6 +4652,14 @@ export const api = {
     if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || 'تعذر رفع الصورة')
   },
   customerPromoImageUrl: (id: string) => `${API_URL}/c/img/${id}`,
+  customerServiceImageUrl: (id: string) => `${API_URL}/c/img/s/${id}`,
+  uploadCustomerServiceImage: async (id: string, file: File) => {
+    const form = new FormData()
+    form.append('file', file)
+    const token = currentToken()
+    const res = await fetch(`${API_URL}/customer-app/services/${id}/image`, { method: 'POST', headers: token ? { Authorization: `Bearer ${token}` } : {}, body: form })
+    if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || 'تعذر رفع الصورة')
+  },
   uploadFile: async (file: File, folder?: string) => {
     const form = new FormData()
     form.append('file', file)

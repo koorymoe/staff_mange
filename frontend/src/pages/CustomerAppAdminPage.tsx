@@ -6,15 +6,15 @@ import { apiRequest, api, type Service } from '../api'
 // ماتركس يقترح مسودة والمالك يوافق قبل النشر)، ويشوف حسابات الزبائن
 // ومحادثاتهم ويّا ماتركس.
 
-interface Promo { id: string; kind: 'offer' | 'work' | 'service'; title: string; body: string | null; hasImage: boolean; serviceId: string | null; active: boolean; ord: number; source: string; createdAt: string }
+interface Promo { id: string; kind: 'offer' | 'work' | 'service'; title: string; body: string | null; hasImage: boolean; serviceId: string | null; active: boolean; ord: number; discountPercent: number | null; source: string; createdAt: string }
 interface CAccount { id: string; username: string; name: string; phone: string; email: string; verified: boolean; messages: number; bookings: number; lastChatAt: string | null; createdAt: string }
 interface CMsg { id: string; role: 'user' | 'matrix'; content: string; bookingCode?: string; createdAt: string }
 
 const KIND: Record<Promo['kind'], string> = { offer: '🎁 عرض', work: '🏗️ من أعمالنا', service: '🛠️ خدمة مميزة' }
-const empty = { kind: 'offer' as Promo['kind'], title: '', body: '', serviceId: '', active: true, ord: 0 }
+const empty = { kind: 'offer' as Promo['kind'], title: '', body: '', serviceId: '', active: true, ord: 0, discountPercent: '' }
 
 export default function CustomerAppAdminPage() {
-  const [tab, setTab] = useState<'content' | 'accounts'>('content')
+  const [tab, setTab] = useState<'content' | 'services' | 'branches' | 'ratings' | 'accounts'>('content')
   const [promos, setPromos] = useState<Promo[] | null>(null)
   const [services, setServices] = useState<Service[]>([])
   const [edit, setEdit] = useState<(typeof empty & { id?: string }) | null>(null)
@@ -36,7 +36,7 @@ export default function CustomerAppAdminPage() {
     if (!edit) return
     setBusy(true); setMsg('')
     try {
-      const body = JSON.stringify({ ...edit, serviceId: edit.serviceId || null, body: edit.body || null })
+      const body = JSON.stringify({ ...edit, serviceId: edit.serviceId || null, body: edit.body || null, discountPercent: Number(edit.discountPercent) > 0 ? Math.min(90, Number(edit.discountPercent)) : null })
       let id = edit.id
       if (id) await apiRequest(`/customer-app/promos/${id}`, { method: 'PUT', body })
       else id = (await apiRequest<{ id: string }>('/customer-app/promos', { method: 'POST', body })).id
@@ -79,7 +79,7 @@ export default function CustomerAppAdminPage() {
       </div>
 
       <div className="inline-flex gap-1.5 rounded-2xl border border-slate-200 bg-white p-1.5 shadow-sm">
-        {([['content', '🎁 العروض والأعمال'], ['accounts', '👥 الزبائن ومحادثاتهم']] as const).map(([k, l]) => (
+        {([['content', '🎁 العروض والأعمال'], ['services', '🛠️ الخدمات بالتطبيق'], ['branches', '🏢 الفروع'], ['ratings', '⭐ التقييمات'], ['accounts', '👥 الزبائن ومحادثاتهم']] as const).map(([k, l]) => (
           <button key={k} onClick={() => setTab(k)} className={`rounded-xl px-4 py-2 text-xs font-extrabold ${tab === k ? 'bg-[#0f2040] text-white' : 'text-slate-600'}`}>{l}</button>
         ))}
       </div>
@@ -101,13 +101,14 @@ export default function CustomerAppAdminPage() {
                   <div className="flex flex-wrap items-center gap-1.5 text-[11px]">
                     <span className="rounded-md bg-slate-100 px-2 py-0.5">{KIND[p.kind]}</span>
                     <span className={`rounded-md px-2 py-0.5 font-bold ${p.active ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'}`}>{p.active ? 'منشور' : 'مسودة'}</span>
+                    {p.discountPercent ? <span className="rounded-md bg-amber-100 px-2 py-0.5 font-bold text-amber-800">{p.discountPercent}% خصم</span> : null}
                     {p.source === 'matrix' && <span className="rounded-md bg-violet-50 px-2 py-0.5 text-violet-700">👁️ اقتراح ماتركس</span>}
                   </div>
                   <p className="mt-1.5 font-extrabold text-[#0f2040]">{p.title}</p>
                   {p.body && <p className="mt-0.5 line-clamp-3 text-xs text-slate-500">{p.body}</p>}
                   <div className="mt-2 flex gap-1.5">
                     <button onClick={() => toggle(p)} className={`rounded-lg px-3 py-1 text-xs font-bold ${p.active ? 'border border-slate-300 text-slate-600' : 'bg-emerald-700 text-white'}`}>{p.active ? 'إخفاء' : 'نشر'}</button>
-                    <button onClick={() => { setEdit({ id: p.id, kind: p.kind, title: p.title, body: p.body ?? '', serviceId: p.serviceId ?? '', active: p.active, ord: p.ord }); setFile(null) }} className="rounded-lg border border-slate-300 px-3 py-1 text-xs text-[#2c5aad]">تعديل</button>
+                    <button onClick={() => { setEdit({ id: p.id, kind: p.kind, title: p.title, body: p.body ?? '', serviceId: p.serviceId ?? '', active: p.active, ord: p.ord, discountPercent: p.discountPercent ? String(p.discountPercent) : '' }); setFile(null) }} className="rounded-lg border border-slate-300 px-3 py-1 text-xs text-[#2c5aad]">تعديل</button>
                     <button onClick={() => remove(p)} className="rounded-lg border border-rose-200 px-3 py-1 text-xs text-rose-600">حذف</button>
                   </div>
                 </div>
@@ -116,6 +117,10 @@ export default function CustomerAppAdminPage() {
           </div>
         </>
       )}
+
+      {tab === 'services' && <ServicesTab />}
+      {tab === 'branches' && <BranchesTab />}
+      {tab === 'ratings' && <RatingsTab />}
 
       {tab === 'accounts' && (
         <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-sm">
@@ -160,6 +165,7 @@ export default function CustomerAppAdminPage() {
             <label className="block text-xs text-slate-500">الصورة {edit.id && '(اتركها إذا ما تريد تغيّرها)'}<input type="file" accept="image/jpeg,image/png,image/webp" className="mt-1 block text-sm" onChange={(e) => setFile(e.target.files?.[0] ?? null)} /></label>
             <div className="flex items-center gap-4">
               <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={edit.active} onChange={(e) => setEdit({ ...edit, active: e.target.checked })} /> منشور بالتطبيق</label>
+              <label className="flex items-center gap-2 text-xs text-slate-500">خصم %<input type="number" min={0} max={90} className="w-16 rounded-lg border border-slate-300 px-2 py-1" value={edit.discountPercent} onChange={(e) => setEdit({ ...edit, discountPercent: e.target.value })} /></label>
               <label className="flex items-center gap-2 text-xs text-slate-500">الترتيب<input type="number" className="w-16 rounded-lg border border-slate-300 px-2 py-1" value={edit.ord} onChange={(e) => setEdit({ ...edit, ord: Number(e.target.value) || 0 })} /></label>
             </div>
             <div className="flex gap-2 pt-1">
@@ -188,6 +194,152 @@ export default function CustomerAppAdminPage() {
           </div>
         </div>
       )}
+    </div>
+  )
+}
+
+// ═══ بطاقة كل خدمة بالتطبيق: صورة، وصف، مميزات، «يبدأ من»، ظاهرة ═══
+interface SCard { id: string; name: string; description: string | null; features: { icon: string; text: string }[]; priceFrom: number | null; hasImage: boolean; visible: boolean; ord: number; rating: number | null; ratingCount: number }
+
+function ServicesTab() {
+  const [rows, setRows] = useState<SCard[] | null>(null)
+  const [edit, setEdit] = useState<(SCard & { priceText: string }) | null>(null)
+  const [file, setFile] = useState<File | null>(null)
+  const [busy, setBusy] = useState(false)
+  const [msg, setMsg] = useState('')
+  const [ver, setVer] = useState(0)
+  const load = useCallback(() => { apiRequest<SCard[]>('/customer-app/services').then(setRows).catch((e) => { setMsg(e.message); setRows([]) }) }, [])
+  useEffect(load, [load])
+  const save = async () => {
+    if (!edit) return
+    setBusy(true); setMsg('')
+    try {
+      await apiRequest(`/customer-app/services/${edit.id}`, { method: 'PUT', body: JSON.stringify({
+        description: edit.description || null, features: edit.features.filter((f) => f.text.trim()),
+        priceFrom: Number(edit.priceText.replace(/,/g, '')) > 0 ? Number(edit.priceText.replace(/,/g, '')) : null, visible: edit.visible, ord: edit.ord, color: null,
+      }) })
+      if (file) await api.uploadCustomerServiceImage(edit.id, file)
+      setEdit(null); setFile(null); setVer((v) => v + 1); load()
+    } catch (e) { setMsg(e instanceof Error ? e.message : 'خطأ') } finally { setBusy(false) }
+  }
+  const inp = 'w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm'
+  return (
+    <div className="space-y-3">
+      <p className="text-sm text-slate-500">كل خدمة تطلع بالتطبيق بصورتها ووصفها ومميزاتها. «يبدأ من» يطلع بس إذا كتبته. التقييم يجي من تقييمات الزبائن الحقيقية.</p>
+      {msg && <p className="rounded-xl bg-rose-50 px-3 py-2 text-sm text-rose-700">{msg}</p>}
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+        {rows === null && <div className="h-40 animate-pulse rounded-2xl bg-slate-100" />}
+        {rows?.map((s) => (
+          <button key={s.id} onClick={() => { setEdit({ ...s, features: [...s.features, ...Array(Math.max(0, 4 - s.features.length)).fill(null).map(() => ({ icon: '', text: '' }))], priceText: s.priceFrom ? String(s.priceFrom) : '' }); setFile(null) }}
+            className={`overflow-hidden rounded-2xl border bg-white text-right shadow-sm ${s.visible ? 'border-slate-200' : 'border-dashed border-slate-300 opacity-60'}`}>
+            {s.hasImage ? <img src={`${api.customerServiceImageUrl(s.id)}?v=${ver}`} alt="" className="h-28 w-full object-cover" /> : <div className="grid h-28 place-items-center bg-slate-50 text-xs text-slate-400">بلا صورة — اضغط وارفع صورة</div>}
+            <div className="p-3">
+              <p className="font-extrabold text-[#0f2040]">{s.name}</p>
+              <p className="mt-0.5 text-[11px] text-slate-500">{s.visible ? 'ظاهرة' : 'مخفية'} · {s.features.length} مميزات{s.priceFrom ? ` · يبدأ من ${s.priceFrom.toLocaleString('en-US')}` : ''}{s.ratingCount ? ` · ⭐ ${s.rating} (${s.ratingCount})` : ''}</p>
+            </div>
+          </button>
+        ))}
+      </div>
+      {edit && (
+        <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/40 p-4" onClick={() => setEdit(null)}>
+          <div dir="rtl" className="w-full max-w-lg space-y-3 rounded-2xl bg-white p-5 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <h3 className="text-lg font-extrabold text-[#0f2040]">🛠️ {edit.name} بالتطبيق</h3>
+            <label className="block text-xs text-slate-500">الصورة<input type="file" accept="image/jpeg,image/png,image/webp" className="mt-1 block text-sm" onChange={(e) => setFile(e.target.files?.[0] ?? null)} /></label>
+            <label className="block text-xs text-slate-500">الوصف<textarea rows={3} className={`${inp} mt-1`} value={edit.description ?? ''} onChange={(e) => setEdit({ ...edit, description: e.target.value })} placeholder="نوفر أحدث أنظمة … مع تركيب احترافي وضمان شامل" /></label>
+            <div className="text-xs text-slate-500">المميزات (أيقونة + نص)
+              {edit.features.map((f, i) => (
+                <div key={i} className="mt-1 flex gap-1.5">
+                  <input className="w-14 rounded-xl border border-slate-300 px-2 py-2 text-center text-sm" placeholder="🛡️" value={f.icon} onChange={(e) => setEdit({ ...edit, features: edit.features.map((x, j) => (j === i ? { ...x, icon: e.target.value } : x)) })} />
+                  <input className={inp} placeholder="مثلاً: ضمان معتمد" value={f.text} onChange={(e) => setEdit({ ...edit, features: edit.features.map((x, j) => (j === i ? { ...x, text: e.target.value } : x)) })} />
+                </div>
+              ))}
+            </div>
+            <label className="block text-xs text-slate-500">تبدأ الأسعار من (دينار — اتركه فارغ إذا ما تريد يطلع سعر)<input inputMode="numeric" dir="ltr" className={`${inp} mt-1`} value={edit.priceText} onChange={(e) => setEdit({ ...edit, priceText: e.target.value.replace(/[^\d,]/g, '') })} /></label>
+            <div className="flex items-center gap-4">
+              <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={edit.visible} onChange={(e) => setEdit({ ...edit, visible: e.target.checked })} /> ظاهرة بالتطبيق</label>
+              <label className="flex items-center gap-2 text-xs text-slate-500">الترتيب<input type="number" className="w-16 rounded-lg border border-slate-300 px-2 py-1" value={edit.ord} onChange={(e) => setEdit({ ...edit, ord: Number(e.target.value) || 0 })} /></label>
+            </div>
+            <div className="flex gap-2 pt-1">
+              <button disabled={busy} onClick={save} className="flex-1 rounded-xl bg-[#0f2040] py-2.5 font-bold text-white disabled:opacity-50">{busy ? '…' : 'حفظ'}</button>
+              <button onClick={() => setEdit(null)} className="rounded-xl border border-slate-300 px-4">إلغاء</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+interface Branch { id: string; name: string; address: string | null; phone: string | null; mapUrl: string | null; ord: number }
+function BranchesTab() {
+  const [rows, setRows] = useState<Branch[] | null>(null)
+  const [edit, setEdit] = useState<Partial<Branch> | null>(null)
+  const [msg, setMsg] = useState('')
+  const load = useCallback(() => { apiRequest<Branch[]>('/customer-app/branches').then(setRows).catch(() => setRows([])) }, [])
+  useEffect(load, [load])
+  const save = async () => {
+    if (!edit?.name?.trim()) return
+    try {
+      await apiRequest(edit.id ? `/customer-app/branches/${edit.id}` : '/customer-app/branches', { method: edit.id ? 'PUT' : 'POST', body: JSON.stringify({ ord: 0, ...edit }) })
+      setEdit(null); load()
+    } catch (e) { setMsg(e instanceof Error ? e.message : 'خطأ') }
+  }
+  const del = async (b: Branch) => { if (confirm(`تحذف فرع «${b.name}» من التطبيق؟`)) { await apiRequest(`/customer-app/branches/${b.id}`, { method: 'DELETE' }).catch(() => {}); load() } }
+  const inp = 'w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm'
+  return (
+    <div className="space-y-3">
+      <button onClick={() => setEdit({})} className="rounded-xl bg-emerald-700 px-4 py-2 text-sm font-bold text-white">+ فرع</button>
+      {msg && <p className="text-sm text-rose-700">{msg}</p>}
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+        {rows?.length === 0 && <p className="text-sm text-slate-400">ماكو فروع — ضيفها حتى تطلع للزبون بـ«فروعنا».</p>}
+        {rows?.map((b) => (
+          <div key={b.id} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+            <p className="font-extrabold text-[#0f2040]">📍 {b.name}</p>
+            {b.address && <p className="text-xs text-slate-500">{b.address}</p>}
+            {b.phone && <p className="text-xs text-slate-500" dir="ltr">{b.phone}</p>}
+            <div className="mt-2 flex gap-1.5"><button onClick={() => setEdit(b)} className="rounded-lg border border-slate-300 px-3 py-1 text-xs text-[#2c5aad]">تعديل</button><button onClick={() => del(b)} className="rounded-lg border border-rose-200 px-3 py-1 text-xs text-rose-600">حذف</button></div>
+          </div>
+        ))}
+      </div>
+      {edit && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={() => setEdit(null)}>
+          <div dir="rtl" className="w-full max-w-md space-y-3 rounded-2xl bg-white p-5 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <h3 className="text-lg font-extrabold text-[#0f2040]">{edit.id ? 'تعديل فرع' : 'فرع جديد'}</h3>
+            {(['name', 'address', 'phone', 'mapUrl'] as const).map((k) => (
+              <label key={k} className="block text-xs text-slate-500">{{ name: 'اسم الفرع', address: 'العنوان', phone: 'الهاتف', mapUrl: 'رابط الخريطة (كوكل ماب)' }[k]}
+                <input className={`${inp} mt-1`} dir={k === 'name' || k === 'address' ? 'rtl' : 'ltr'} value={(edit[k] as string) ?? ''} onChange={(e) => setEdit({ ...edit, [k]: e.target.value })} /></label>
+            ))}
+            <div className="flex gap-2"><button onClick={save} className="flex-1 rounded-xl bg-[#0f2040] py-2.5 font-bold text-white">حفظ</button><button onClick={() => setEdit(null)} className="rounded-xl border border-slate-300 px-4">إلغاء</button></div>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+interface Rating { code: string; customer: string; service: string; tech: string | null; stars: number; comment: string | null; createdAt: string }
+function RatingsTab() {
+  const [rows, setRows] = useState<Rating[] | null>(null)
+  useEffect(() => { apiRequest<Rating[]>('/customer-app/ratings').then(setRows).catch(() => setRows([])) }, [])
+  const avg = rows?.length ? rows.reduce((a, r) => a + r.stars, 0) / rows.length : 0
+  return (
+    <div className="space-y-3">
+      {rows && rows.length > 0 && <p className="text-sm text-slate-600">المعدّل العام <b className="text-amber-600">⭐ {avg.toFixed(1)}</b> من {rows.length} تقييم</p>}
+      <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-sm">
+        <table className="w-full min-w-[720px] text-sm">
+          <thead className="bg-slate-50 text-xs text-slate-500"><tr>{['الحجز', 'الزبون', 'الخدمة', 'الفني', 'التقييم', 'الملاحظة', 'التاريخ'].map((h) => <th key={h} className="p-3 text-right">{h}</th>)}</tr></thead>
+          <tbody>
+            {rows?.length === 0 && <tr><td colSpan={7} className="p-6 text-center text-slate-400">ماكو تقييمات بعد — الزبون يقيّم بعد ما يخلص حجزه.</td></tr>}
+            {rows?.map((r) => (
+              <tr key={r.code + r.createdAt} className="border-t border-slate-100">
+                <td className="p-3 font-mono text-xs">{r.code}</td><td className="p-3 font-bold">{r.customer}</td><td className="p-3 text-xs">{r.service}</td>
+                <td className="p-3 text-xs">{r.tech ?? '—'}</td><td className="p-3 text-amber-500">{'★'.repeat(r.stars)}<span className="text-slate-200">{'★'.repeat(5 - r.stars)}</span></td>
+                <td className="p-3 text-xs text-slate-600">{r.comment ?? '—'}</td><td className="p-3 text-xs text-slate-500">{new Date(r.createdAt).toLocaleDateString('ar-IQ')}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   )
 }

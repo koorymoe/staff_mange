@@ -229,5 +229,33 @@ func matrixChatMigrations() []Migration {
 			ALTER TABLE "Booking" ADD COLUMN IF NOT EXISTS source TEXT;
 			ALTER TABLE "Booking" ADD COLUMN IF NOT EXISTS "customerAccountId" TEXT;
 		`,
+	}, {
+		// (ع) 10-14: تطبيق الزبائن بالتصميم الجديد — بطاقة كل خدمة (صورة، وصف،
+		// مميزات، يبدأ من)، خصم العروض، المفضلة، تقييم الزبون، صور الطلب، والفروع.
+		Version: "0357_customer_app_catalog",
+		SQL: `
+			CREATE TABLE IF NOT EXISTS "ServiceApp" (
+				"serviceId" TEXT PRIMARY KEY REFERENCES "Service"(id) ON DELETE CASCADE,
+				"imageUrl" TEXT, description TEXT, features JSONB NOT NULL DEFAULT '[]',
+				"priceFrom" NUMERIC, visible BOOLEAN NOT NULL DEFAULT true, ord INTEGER NOT NULL DEFAULT 100,
+				color TEXT, "updatedAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP);
+			ALTER TABLE "PromoItem" ADD COLUMN IF NOT EXISTS "discountPercent" INTEGER;
+			ALTER TABLE "CustomerAccount" ADD COLUMN IF NOT EXISTS city TEXT;
+			CREATE TABLE IF NOT EXISTS "CustomerFavorite" (
+				"accountId" TEXT NOT NULL REFERENCES "CustomerAccount"(id) ON DELETE CASCADE,
+				"serviceId" TEXT NOT NULL REFERENCES "Service"(id) ON DELETE CASCADE,
+				"createdAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, PRIMARY KEY ("accountId", "serviceId"));
+			CREATE TABLE IF NOT EXISTS "CustomerRating" (
+				id TEXT PRIMARY KEY, "bookingId" TEXT NOT NULL UNIQUE REFERENCES "Booking"(id) ON DELETE CASCADE,
+				"accountId" TEXT NOT NULL REFERENCES "CustomerAccount"(id) ON DELETE CASCADE,
+				stars INTEGER NOT NULL CHECK (stars BETWEEN 1 AND 5), comment TEXT,
+				"createdAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP);
+			CREATE TABLE IF NOT EXISTS "CustomerBookingPhoto" (
+				id TEXT PRIMARY KEY, "bookingId" TEXT NOT NULL REFERENCES "Booking"(id) ON DELETE CASCADE,
+				key TEXT NOT NULL, "createdAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP);
+			CREATE TABLE IF NOT EXISTS "AppBranch" (
+				id TEXT PRIMARY KEY, name TEXT NOT NULL, address TEXT, phone TEXT, "mapUrl" TEXT,
+				ord INTEGER NOT NULL DEFAULT 0, "createdAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP);
+		`,
 	}}
 }
