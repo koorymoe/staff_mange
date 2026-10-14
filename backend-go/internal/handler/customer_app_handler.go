@@ -436,6 +436,44 @@ func (h *CustomerAppHandler) UpdateMe(w http.ResponseWriter, r *http.Request) {
 	WriteJSON(w, http.StatusOK, a)
 }
 
+// GET/PUT /api/c/me/location — موقع الزبون الرسمي (ع) 10-14: الزبون يحدده
+// بنفسه، ويصير هو المعتمد بالنظام لكل حجوزاته (الطريق والمسافة والوقت).
+func (h *CustomerAppHandler) MyLocation(w http.ResponseWriter, r *http.Request) {
+	a := current(r)
+	var loc struct {
+		Lat *float64 `db:"lat" json:"lat"`
+		Lng *float64 `db:"lng" json:"lng"`
+	}
+	if a.CustomerID != nil {
+		_ = h.db.Get(&loc, `SELECT lat, lng FROM "Customer" WHERE id = $1 AND "locationSource" = 'APP'`, *a.CustomerID)
+	}
+	WriteJSON(w, http.StatusOK, loc)
+}
+
+func (h *CustomerAppHandler) SetMyLocation(w http.ResponseWriter, r *http.Request) {
+	a := current(r)
+	var b struct{ Lat, Lng float64 }
+	if err := DecodeJSON(r, &b); err != nil || b.Lat < 29 || b.Lat > 38 || b.Lng < 38 || b.Lng > 49 {
+		WriteError(w, http.StatusBadRequest, "حدد موقعك داخل العراق على الخريطة")
+		return
+	}
+	h.linkCustomer(a)
+	if a.CustomerID == nil {
+		_ = h.db.Get(&a.CustomerID, `SELECT "customerId" FROM "CustomerAccount" WHERE id = $1`, a.ID)
+	}
+	if a.CustomerID == nil {
+		WriteError(w, http.StatusBadRequest, "تعذر ربط حسابك — جرّب بعد شوية")
+		return
+	}
+	if _, err := h.db.Exec(`UPDATE "Customer" SET lat = $2, lng = $3, "locationSource" = 'APP' WHERE id = $1`, *a.CustomerID, b.Lat, b.Lng); err != nil {
+		WriteError(w, http.StatusInternalServerError, "تعذر حفظ الموقع")
+		return
+	}
+	// الحجوزات المفتوحة تاخذ الموقع الجديد
+	_, _ = h.db.Exec(`UPDATE "Booking" SET "mapLatitude" = $2, "mapLongitude" = $3 WHERE "customerId" = $1 AND "completedAt" IS NULL AND status::text <> 'CANCELLED'`, *a.CustomerID, b.Lat, b.Lng)
+	WriteJSON(w, http.StatusOK, map[string]any{"lat": b.Lat, "lng": b.Lng})
+}
+
 // ─── المحتوى ───
 
 type promoItem struct {

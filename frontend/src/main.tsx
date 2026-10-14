@@ -9,6 +9,7 @@ import { installNetworkErrorTrap } from './netErrors.ts'
 import { applyTheme, getTheme } from './utils/theme.ts'
 import { installInAppAlert } from './utils/dialog.tsx'
 import { startStageSync } from './utils/offlineStages.ts'
+import { startFieldTracker } from './utils/fieldTracker.ts'
 
 // قبل الرندر: أي طلب يفشل بلا معالجة بالشاشة يوصل الموظف برسالة
 // مفهومة بدل ما ينبلع بصمت.
@@ -35,3 +36,4 @@ if ('serviceWorker' in navigator && import.meta.env.PROD) {
   window.addEventListener('load', () => { navigator.serviceWorker.register(`${import.meta.env.BASE_URL}sw.js`).catch(() => {}) })
 }
 startStageSync()
+startFieldTracker()

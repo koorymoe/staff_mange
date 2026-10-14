@@ -10,6 +10,7 @@ type LocationPing struct {
 	BookingID  *string   `db:"bookingId" json:"bookingId"`
 	Latitude   float64   `db:"latitude" json:"latitude"`
 	Longitude  float64   `db:"longitude" json:"longitude"`
+	Accuracy   *float64  `db:"accuracy" json:"accuracy,omitempty"`
 	CreatedAt  time.Time `db:"createdAt" json:"createdAt"`
 }
 

@@ -13,7 +13,7 @@ import (
 
 // ═══ مراحل الحجز بوقتها الحقيقي — قرار (ع) 10-14 ═══
 //
-// الليدر يدوس «وصلنا / بدأنا / تم الإنجاز» حتى لو ماكو نت: الموبايل يحفظ
+// الليدر يدوس «استلام / المواد / انطلاق / وصلنا / بدأنا / تم الإنجاز» حتى لو ماكو نت: الموبايل يحفظ
 // الضغطة بوقتها وموقعها ويرسلها من يرجع النت. هنا:
 //   - نسجّل الدليل (وقت الضغطة، الموقع، دقته، البعد عن الزبون).
 //   - إذا الضغطة انحفظت بلا نت، نصحّح وقت المرحلة بالحجز لوقت الضغطة
@@ -25,7 +25,11 @@ type StageProofHandler struct{ db *sqlx.DB }
 
 func NewStageProofHandler(db *sqlx.DB) *StageProofHandler { return &StageProofHandler{db: db} }
 
-var stageColumn = map[string]string{"ARRIVED": "arrivedAt", "STARTED": "startedAt", "COMPLETED": "completedAt"}
+var stageColumn = map[string]string{"ACCEPTED": "acceptedAt", "MATERIALS": "materialsReadyAt", "DEPARTED": "departedAt",
+	"ARRIVED": "arrivedAt", "STARTED": "startedAt", "COMPLETED": "completedAt"}
+
+// ترتيب المراحل: الاستلام ← المواد ← الانطلاق ← الوصول ← البدء ← الإنجاز
+var stageOrder = []string{"ACCEPTED", "MATERIALS", "DEPARTED", "ARRIVED", "STARTED", "COMPLETED"}
 
 func haversineM(lat1, lng1, lat2, lng2 float64) float64 {
 	const r = 6371000.0
@@ -78,8 +82,10 @@ func (h *StageProofHandler) Record(w http.ResponseWriter, r *http.Request) {
 	if b.Lat != nil && b.Lng != nil && bk.Lat != nil && bk.Lng != nil && *bk.Lat != 0 {
 		d := haversineM(*b.Lat, *b.Lng, *bk.Lat, *bk.Lng)
 		dist = &d
-		// الدقة الضعيفة (أكثر من ٥٠٠ م) ما نحكم بيها — GPS داخل البيوت يغلط
-		if d > 1000 && (b.Accuracy == nil || *b.Accuracy <= 500) {
+		// الدقة الضعيفة (أكثر من ٥٠٠ م) ما نحكم بيها — GPS داخل البيوت يغلط.
+		// والاستلام والمواد والانطلاق تصير بالشركة أصلاً — «بعيد» ما ينطبق عليها.
+		atCustomer := b.Stage == "ARRIVED" || b.Stage == "STARTED" || b.Stage == "COMPLETED"
+		if atCustomer && d > 1000 && (b.Accuracy == nil || *b.Accuracy <= 500) {
 			verdict = "FAR"
 		}
 	}
@@ -98,13 +104,23 @@ func (h *StageProofHandler) Record(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// الضغطة الأوفلاين: وقت المرحلة = وقت الضغطة الحقيقي، بشرط الترتيب
-	// (الوصول ≤ البدء ≤ الإنجاز) وما يتأخر عن الوقت المسجّل.
+	// (ما يسبق مرحلة قبلها ولا يتأخر عن مرحلة بعدها) وما يتأخر عن الوقت المسجّل.
 	if b.Offline {
-		_, _ = h.db.Exec(`UPDATE "Booking" SET "`+col+`" = $2
-			WHERE id = $1 AND "`+col+`" IS NOT NULL AND $2 < "`+col+`"
-			  AND ($3 <> 'STARTED' OR "arrivedAt" IS NULL OR "arrivedAt" <= $2)
-			  AND ($3 <> 'COMPLETED' OR "startedAt" IS NULL OR "startedAt" <= $2)
-			  AND ($3 <> 'ARRIVED' OR "startedAt" IS NULL OR $2 <= "startedAt")`, bookingID, pressed, b.Stage)
+		q := `UPDATE "Booking" SET "` + col + `" = $2 WHERE id = $1 AND "` + col + `" IS NOT NULL AND $2 < "` + col + `"`
+		before := true
+		for _, st := range stageOrder {
+			if st == b.Stage {
+				before = false
+				continue
+			}
+			c := stageColumn[st]
+			if before {
+				q += ` AND ("` + c + `" IS NULL OR "` + c + `" <= $2)`
+			} else {
+				q += ` AND ("` + c + `" IS NULL OR $2 <= "` + c + `")`
+			}
+		}
+		_, _ = h.db.Exec(q, bookingID, pressed)
 	}
 	WriteJSON(w, http.StatusOK, map[string]any{"ok": true, "verdict": verdict, "distanceM": dist, "pressedAt": pressed})
 }

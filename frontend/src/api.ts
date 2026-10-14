@@ -634,6 +634,12 @@ export interface Booking {
   scheduleLogs: { id: string; changedById: string; changedBy: { id: string; name: string; role: string }; oldTime: string | null; newTime: string; kind: string; reason: string | null; createdAt: string }[]
   materialsReadyAt: string | null
   materialsReadyBy: { id: string; name: string } | null
+  acceptedAt?: string | null
+  departedAt?: string | null
+  departOrigin?: DepartOrigin | null
+  autoDepartedAt?: string | null
+  autoArrivedAt?: string | null
+  autoCompletedAt?: string | null
   responseMinutes: number | null
   arrivedAt: string | null
   startedAt: string | null
@@ -4471,12 +4477,24 @@ export const api = {
   startBooking: (id: string, missingToolIds?: string[]) =>
     request<Booking>(`/bookings/${id}/start`, { method: 'PUT', body: JSON.stringify({ missingToolIds: missingToolIds || [] }) }),
   // (ع) 10-14: وقت المرحلة الحقيقي + موقعها — يشتغل حتى لو انضغطت بلا نت
-  stageProof: (id: string, data: { stage: 'ARRIVED' | 'STARTED' | 'COMPLETED'; pressedAt: string; offline: boolean; lat?: number; lng?: number; accuracy?: number }) =>
+  stageProof: (id: string, data: { stage: 'ACCEPTED' | 'MATERIALS' | 'DEPARTED' | 'ARRIVED' | 'STARTED' | 'COMPLETED'; pressedAt: string; offline: boolean; lat?: number; lng?: number; accuracy?: number }) =>
     request<{ ok: boolean; verdict: 'OK' | 'FAR' | 'BATCH'; distanceM: number | null }>(`/bookings/${id}/stage-proof`, { method: 'POST', body: JSON.stringify(data) }),
   markArrived: (id: string) =>
     request<Booking>(`/bookings/${id}/arrived`, { method: 'PUT', body: JSON.stringify({}) }),
   setMaterialsReady: (id: string) =>
     request<Booking>(`/bookings/${id}/materials-ready`, { method: 'PUT', body: JSON.stringify({}) }),
+  // (ع) 10-14: استلام المهمة · الانطلاق (منفصل عن الوصول) · نقاط المسار · خريطة الميدان
+  acceptBooking: (id: string) =>
+    request<{ ok: boolean }>(`/bookings/${id}/accept`, { method: 'PUT', body: JSON.stringify({}) }),
+  departBooking: (id: string, pos?: { lat?: number; lng?: number }) =>
+    request<{ ok: boolean; origin: DepartOrigin }>(`/bookings/${id}/depart`, { method: 'PUT', body: JSON.stringify(pos ?? {}) }),
+  pingBatch: (points: { lat: number; lng: number; accuracy?: number; at: string; bookingId?: string }[]) =>
+    request<{ saved: number }>('/location-pings/batch', { method: 'POST', body: JSON.stringify({ points }) }),
+  getCompanyLocation: () => request<{ company: CompanyLocation | null }>('/company-location'),
+  setCompanyLocation: (c: CompanyLocation) =>
+    request<{ company: CompanyLocation }>('/company-location', { method: 'PUT', body: JSON.stringify(c) }),
+  getBookingTrack: (id: string) => request<BookingTrack>(`/bookings/${id}/track`),
+  getFieldMap: (from: string, to: string) => request<FieldMap>(`/field-map?from=${from}&to=${to}`),
   // إرجاع الحجز للتدقيق بعد ما انتأشر مدقّق — مدير النظام حصراً
   unverifyBooking: (id: string) =>
     request<Booking>(`/bookings/${id}/unverify`, { method: 'PUT' }),
@@ -6062,3 +6080,30 @@ export interface MatrixChatMessage { id: string; role: 'USER' | 'ASSISTANT'; tex
 export interface MatrixMission { id: string; employeeId: string; employeeName: string; note: string | null; startsOn: string; endsOn: string; active: boolean; summary: string | null; createdAt: string; summaryAt: string | null }
 export interface StaffPointsRow { id: string; name: string; role: string; group: string; groupLabel: string; kpi: number; kpiLost: string[]; attendance: number; work: number; total: number; lines: { label: string; count: number; each: number; points: number }[] }
 export interface MatrixLesson { id: string; text: string; context: string | null; by: string | null; createdAt: string }
+
+// ═══ الميدان (ع) 10-14 ═══
+export type DepartOrigin = 'COMPANY' | 'PREV_BOOKING' | 'OUTSIDE' | 'UNKNOWN'
+export interface CompanyLocation { lat: number; lng: number; radiusM: number }
+export interface BookingTrack {
+  times: {
+    acceptedAt: string | null; materialsReadyAt: string | null; departedAt: string | null; departOrigin: DepartOrigin | null
+    arrivedAt: string | null; startedAt: string | null; completedAt: string | null
+    autoDepartedAt: string | null; autoArrivedAt: string | null; autoCompletedAt: string | null
+    lat: number | null; lng: number | null
+  }
+  stops: { kind: 'ROAD' | 'ARRIVAL'; lat: number; lng: number; startAt: string; endAt: string; minutes: number }[]
+  proofs: { stage: string; pressedAt: string; offline: boolean; verdict: string; distanceM: number | null }[]
+  path: [number, number][]
+  company: CompanyLocation | null
+}
+export interface FieldMapBooking {
+  id: string; code: string; customer: string | null; status: string; lat: number | null; lng: number | null
+  departedAt: string | null; departOrigin: DepartOrigin | null; arrivedAt: string | null; completedAt: string | null
+  autoArrivedAt: string | null; autoCompletedAt: string | null; team: string | null
+}
+export interface FieldMap {
+  company: CompanyLocation | null
+  bookings: FieldMapBooking[]
+  employees: { employeeId: string; name: string; lat: number; lng: number; at: string; bookingId: string | null }[]
+  heat: [number, number, number][]
+}

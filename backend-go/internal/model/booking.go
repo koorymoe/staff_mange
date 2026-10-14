@@ -159,10 +159,10 @@ type Booking struct {
 	CancelReason     *string    `db:"cancelReason" json:"cancelReason,omitempty"`
 
 	// أسماء محسوبة وقت الجلب — مو أعمدة.
-	CreatedByName      *string `db:"-" json:"createdByName,omitempty"`
+	CreatedByName *string `db:"-" json:"createdByName,omitempty"`
 	// (ع) 10-14: مصدر الحجز — null = موظف، matrix_app = ماتركس من تطبيق الزبائن
-	Source            *string `db:"source" json:"source,omitempty"`
-	CustomerAccountID *string `db:"customerAccountId" json:"-"`
+	Source             *string `db:"source" json:"source,omitempty"`
+	CustomerAccountID  *string `db:"customerAccountId" json:"-"`
 	CrewNotesByName    *string `db:"-" json:"crewNotesByName,omitempty"`
 	ProjectNotesByName *string `db:"-" json:"projectNotesByName,omitempty"`
 	CancelledByName    *string `db:"-" json:"cancelledByName,omitempty"`
@@ -208,13 +208,22 @@ type Booking struct {
 	PartialJobBookingID *string                `db:"partialJobBookingId" json:"-"`
 	PartialJobBooking   *PartialJobBookingLink `db:"-" json:"partialJobBooking,omitempty"`
 
-	AddressDescription      *string    `db:"addressDescription" json:"addressDescription,omitempty"`
-	CreatedAt               time.Time  `db:"createdAt" json:"createdAt"`
-	UpdatedAt               time.Time  `db:"updatedAt" json:"updatedAt"`
-	MaterialsReadyAt        *time.Time `db:"materialsReadyAt" json:"materialsReadyAt,omitempty"`
-	MaterialsReadyByID      *string    `db:"materialsReadyById" json:"-"`
-	ResponseMinutes         *int       `db:"responseMinutes" json:"responseMinutes,omitempty"`
-	ArrivedAt               *time.Time `db:"arrivedAt" json:"arrivedAt,omitempty"`
+	AddressDescription *string    `db:"addressDescription" json:"addressDescription,omitempty"`
+	CreatedAt          time.Time  `db:"createdAt" json:"createdAt"`
+	UpdatedAt          time.Time  `db:"updatedAt" json:"updatedAt"`
+	MaterialsReadyAt   *time.Time `db:"materialsReadyAt" json:"materialsReadyAt,omitempty"`
+	MaterialsReadyByID *string    `db:"materialsReadyById" json:"-"`
+	ResponseMinutes    *int       `db:"responseMinutes" json:"responseMinutes,omitempty"`
+	ArrivedAt          *time.Time `db:"arrivedAt" json:"arrivedAt,omitempty"`
+	// (ع) 10-14: المراحل الست (استلام · انطلاق) + أوقات الخوارزمية من الـGPS للمقارنة
+	AcceptedAt              *time.Time `db:"acceptedAt" json:"acceptedAt,omitempty"`
+	DepartedAt              *time.Time `db:"departedAt" json:"departedAt,omitempty"`
+	DepartOrigin            *string    `db:"departOrigin" json:"departOrigin,omitempty"`
+	AutoDepartedAt          *time.Time `db:"autoDepartedAt" json:"autoDepartedAt,omitempty"`
+	AutoArrivedAt           *time.Time `db:"autoArrivedAt" json:"autoArrivedAt,omitempty"`
+	AutoCompletedAt         *time.Time `db:"autoCompletedAt" json:"autoCompletedAt,omitempty"`
+	AutoArrivedLat          *float64   `db:"autoArrivedLat" json:"-"`
+	AutoArrivedLng          *float64   `db:"autoArrivedLng" json:"-"`
 	StartedAt               *time.Time `db:"startedAt" json:"startedAt,omitempty"`
 	ConfirmationContactedAt *time.Time `db:"confirmationContactedAt" json:"confirmationContactedAt,omitempty"`
 	// وقت تحويل الحجز لتنسيق الحجوزات (التثبيت)

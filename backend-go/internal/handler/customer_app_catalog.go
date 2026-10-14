@@ -195,6 +195,9 @@ func (h *CustomerAppHandler) CreateBooking(w http.ResponseWriter, r *http.Reques
 	}
 	var id string
 	_ = h.db.Get(&id, `SELECT id FROM "Booking" WHERE code = $1`, code)
+	// موقع الزبون الرسمي (الي حدده بالتطبيق) يصير موقع الحجز
+	_, _ = h.db.Exec(`UPDATE "Booking" b SET "mapLatitude" = c.lat, "mapLongitude" = c.lng FROM "Customer" c
+		WHERE b.id = $1 AND c.id = b."customerId" AND c."locationSource" = 'APP' AND c.lat IS NOT NULL AND b."mapLatitude" IS NULL`, id)
 	for _, p := range photos {
 		key := storage.NewKey("customer-app", p.ct)
 		if err := h.store.Put(r.Context(), key, p.data, p.ct); err == nil {

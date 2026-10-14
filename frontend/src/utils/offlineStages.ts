@@ -2,12 +2,12 @@ import { api, type Booking } from '../api'
 
 // ═══ مراحل الحجز بلا نت — قرار (ع) 10-14 ═══
 //
-// الليدر يدوس «وصلنا / بدأنا / تم الإنجاز» حتى لو ماكو نت عند الزبون:
+// الليدر يدوس «استلام / المواد / انطلاق / وصلنا / بدأنا / تم الإنجاز» حتى لو ماكو نت عند الزبون:
 // الضغطة تنحفظ بالموبايل **بوقتها الحقيقي وموقعها** (GPS ما يحتاج نت)،
 // وترسل وحدها من يرجع النت. السيرفر يصحّح وقت المرحلة لوقت الضغطة.
 // فـ«ماعندي نت» ما يصير عذر للتسجيل بالشركة آخر اليوم.
 
-export type Stage = 'ARRIVED' | 'STARTED' | 'COMPLETED'
+export type Stage = 'ACCEPTED' | 'MATERIALS' | 'DEPARTED' | 'ARRIVED' | 'STARTED' | 'COMPLETED'
 
 interface QueuedStage {
   id: string
@@ -50,6 +50,9 @@ export const isNetworkError = (e: unknown) => !navigator.onLine || e instanceof 
   (e instanceof Error && /fetch|network|تعذر الاتصال|الاتصال بالخادم/i.test(e.message))
 
 function call(item: QueuedStage): Promise<unknown> {
+  if (item.stage === 'ACCEPTED') return api.acceptBooking(item.bookingId)
+  if (item.stage === 'MATERIALS') return api.setMaterialsReady(item.bookingId)
+  if (item.stage === 'DEPARTED') return api.departBooking(item.bookingId, { lat: item.lat, lng: item.lng })
   if (item.stage === 'ARRIVED') return api.markArrived(item.bookingId)
   if (item.stage === 'STARTED') return api.startBooking(item.bookingId, item.payload?.missingToolIds)
   return api.completeBooking(item.bookingId, item.payload ?? {})
@@ -59,7 +62,8 @@ function call(item: QueuedStage): Promise<unknown> {
  * runStage: ينفّذ المرحلة. بالنت → ينرسل فوراً ويّا دليل الموقع.
  * بلا نت → ينحفظ بالطابور ويرجّع null (الواجهة تعرض «محفوظ — ينرسل من يرجع النت»).
  */
-export async function runStage<T>(booking: Booking, stage: Stage, fn: () => Promise<T>,
+export type StagePos = { lat: number; lng: number; accuracy: number } | null
+export async function runStage<T>(booking: Booking, stage: Stage, fn: (pos: StagePos) => Promise<T>,
   payload?: QueuedStage['payload']): Promise<{ result: T | null; queued: boolean }> {
   const pressedAt = new Date().toISOString()
   const pos = await currentPosition()
@@ -69,7 +73,7 @@ export async function runStage<T>(booking: Booking, stage: Stage, fn: () => Prom
   }
   if (!navigator.onLine) return queue()
   try {
-    const result = await fn()
+    const result = await fn(pos)
     api.stageProof(booking.id, { stage, pressedAt, offline: false, ...(pos ?? {}) }).catch(() => {})
     return { result, queued: false }
   } catch (e) {

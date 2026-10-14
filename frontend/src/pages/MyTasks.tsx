@@ -7,6 +7,7 @@ import { formatScheduleWindow } from '../utils/schedule'
 import CompletionBadge from '../components/CompletionBadge'
 import { api, type Booking, type PersonalTool } from '../api'
 import { cacheMyTasks, cachedMyTasks, flushStages, isNetworkError, pendingStages, runStage } from '../utils/offlineStages'
+import { setTrackingBooking } from '../utils/fieldTracker'
 import PartialCompleteDialog from '../components/PartialCompleteDialog'
 import SurveyReportDialog from '../components/SurveyReportDialog'
 import BookingProgressTimeline from '../components/BookingProgressTimeline'
@@ -263,6 +264,13 @@ export default function MyTasks() {
     b.projectSupervisor?.id === employee?.id
   const myTasks = bookings.filter((b) => isMine(b) && b.status !== 'COMPLETED')
 
+  // التتبع شغّال ما دام عندي حجز انطلقت له وما خلص — ويوقف وحده بعد الإنجاز
+  const trackingId = myTasks.find((b) => amDriverOf(b) && b.departedAt)?.id ?? null
+  useEffect(() => {
+    if (loading) return
+    setTrackingBooking(trackingId)
+  }, [trackingId, loading])
+
   // شغلي الي خلّصته — يضل ظاهر بتفاصيله وبحالة ورقه
   const myDone = bookings
     .filter((b) => isMine(b) && b.status === 'COMPLETED')
@@ -367,9 +375,28 @@ export default function MyTasks() {
   }
 
   const handleMaterialsReady = async (booking: Booking) => {
-    const updated = await guard.run('تأشير جاهزية المواد', () => api.setMaterialsReady(booking.id))
-    if (!updated) return
+    const r = await guard.run('تأشير جاهزية المواد', () => runStage(booking, 'MATERIALS', () => api.setMaterialsReady(booking.id)))
+    if (!r) return
+    if (r.queued) { patchLocal(booking.id, { materialsReadyAt: new Date().toISOString() }); return }
+    const updated = r.result as Booking
     setBookings((prev) => prev.map((b) => (b.id === updated.id ? updated : b)))
+  }
+
+  // (ع) 10-14: «استلام المهمة» بعد التواصل ويّا الزبون والتأكد إنه موجود
+  const handleAccept = async (booking: Booking) => {
+    const r = await guard.run('استلام المهمة', () => runStage(booking, 'ACCEPTED', () => api.acceptBooking(booking.id)))
+    if (!r) return
+    patchLocal(booking.id, { acceptedAt: new Date().toISOString() })
+  }
+
+  // «انطلاق» منفصل عن الوصول: يسجّل منين انطلق (الشركة / حجز سابق / خارج)،
+  // ويفتح طريق الزبون، ويبدي تتبع المسار لحد «تم الإنجاز».
+  const handleDepart = async (booking: Booking) => {
+    const r = await guard.run('تسجيل الانطلاق', () => runStage(booking, 'DEPARTED', (pos) => api.departBooking(booking.id, pos ? { lat: pos.lat, lng: pos.lng } : {})))
+    if (!r) return
+    patchLocal(booking.id, { departedAt: new Date().toISOString(), departOrigin: r.result?.origin ?? null })
+    setTrackingBooking(booking.id)
+    setDirectionsFor(booking)
   }
 
   // ═══ بعد الإنجاز: الورق ما ينتسى ═══
@@ -646,39 +673,54 @@ export default function MyTasks() {
                       amDriverOf(b) ? (
                       /* ═══ الليدر يسوق المسار ═══ */
                       <div className="mt-3 space-y-2">
-                        {b.materialsReadyAt ? (
-                          <div className="rounded-lg border-2 border-red-300 bg-red-50 px-4 py-3 text-center">
-                            <p className="font-bold text-red-700">⏰ المواد جاهزة — انطلق الآن!</p>
-                            <p className="mt-1 text-xs text-red-600">
-                              جهّزها {b.materialsReadyBy?.name || 'تيم ليدر الفريق'} من {elapsedSince(b.materialsReadyAt)}
-                            </p>
-                          </div>
-                        ) : (
+                        {/* ═══ المراحل بالترتيب (ع) 10-14: استلام ← المواد ← انطلاق ← وصول ← بدء ═══ */}
+                        <StageSteps b={b} />
+                        {!b.acceptedAt ? (
+                          <button
+                            onClick={() => handleAccept(b)}
+                            className="w-full rounded-lg bg-gradient-to-l from-indigo-500 to-indigo-700 px-4 py-3 text-sm font-bold text-white shadow-md transition-all hover:shadow-lg"
+                          >
+                            🤝 استلام المهمة — تواصلت ويّا الزبون وهو موجود
+                          </button>
+                        ) : !b.materialsReadyAt ? (
                           <button
                             onClick={() => handleMaterialsReady(b)}
                             className="w-full rounded-lg bg-gradient-to-l from-purple-500 to-purple-700 px-4 py-3 text-sm font-bold text-white shadow-md transition-all hover:shadow-lg"
                           >
                             📦 تم تجهيز المواد — أبلغ الفريق
                           </button>
-                        )}
-                        {b.arrivedAt ? (
+                        ) : !b.departedAt ? (
+                          <button
+                            onClick={() => handleDepart(b)}
+                            className="w-full rounded-lg bg-gradient-to-l from-red-500 to-red-700 px-4 py-3 text-sm font-bold text-white shadow-md transition-all hover:shadow-lg"
+                          >
+                            🚗 انطلاق — عن الفريق كله
+                          </button>
+                        ) : !b.arrivedAt ? (
+                          <>
+                            <div className="rounded-lg bg-emerald-50 px-3 py-2 text-xs font-bold text-emerald-700">
+                              🛰️ بالطريق من {elapsedSince(b.departedAt)} — النظام يسجّل المسار، خلّي الصفحة مفتوحة
+                            </div>
+                            <button
+                              onClick={() => handleArrive(b)}
+                              className="w-full rounded-lg bg-gradient-to-l from-sky-500 to-sky-700 px-4 py-3 text-sm font-bold text-white shadow-md transition-all hover:shadow-lg"
+                            >
+                              📍 وصلنا للزبون — عن الفريق كله
+                            </button>
+                          </>
+                        ) : (
                           <div className="rounded-lg bg-sky-50 px-3 py-2 text-xs font-bold text-sky-700">
                             📍 وصلنا للزبون من {elapsedSince(b.arrivedAt)}
                           </div>
-                        ) : (
-                          <button
-                            onClick={() => handleArrive(b)}
-                            className="w-full rounded-lg bg-gradient-to-l from-sky-500 to-sky-700 px-4 py-3 text-sm font-bold text-white shadow-md transition-all hover:shadow-lg"
-                          >
-                            📍 انطلقنا / وصلنا للزبون — عن الفريق كله
-                          </button>
                         )}
+                        {b.arrivedAt && (
                         <button
                           onClick={() => openToolsCheck(b, false)}
                           className="w-full rounded-lg bg-gradient-to-l from-amber-500 to-amber-700 px-4 py-3 text-sm font-bold text-white shadow-md transition-all hover:shadow-lg"
                         >
                           ✅ بدأنا بالعمل — عن الفريق كله
                         </button>
+                        )}
                       </div>
                       ) : (
                       /* ═══ الفني: يتابع بس، وشغله جرد أدواته ═══ */
@@ -686,6 +728,8 @@ export default function MyTasks() {
                         <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-600">
                           {b.arrivedAt
                             ? `📍 الفريق وصل للزبون من ${elapsedSince(b.arrivedAt)}`
+                            : b.departedAt
+                              ? `🚗 الفريق انطلق من ${elapsedSince(b.departedAt)}`
                             : b.materialsReadyAt
                               ? `📦 المواد جاهزة من ${elapsedSince(b.materialsReadyAt)} — انتظر إشارة الليدر`
                               : '⏳ بانتظار الليدر يجهّز المواد'}
@@ -1128,6 +1172,23 @@ function TaskStat({ icon, label, value, tone, unit }: {
       </div>
       <p className={`mt-1 text-xl font-black sm:text-2xl ${c.t}`}>{value}</p>
       <p className="text-[9px] text-slate-400 sm:text-[10px]">{unit}</p>
+    </div>
+  )
+}
+
+// شريط المراحل الست — يبين وين واصل الحجز
+function StageSteps({ b }: { b: Booking }) {
+  const steps: [string, string | null | undefined][] = [
+    ['استلام', b.acceptedAt], ['المواد', b.materialsReadyAt], ['انطلاق', b.departedAt],
+    ['وصول', b.arrivedAt], ['بدء', b.startedAt], ['إنجاز', b.completedAt],
+  ]
+  return (
+    <div className="flex flex-wrap gap-1 text-[11px] font-bold">
+      {steps.map(([label, at]) => (
+        <span key={label} className={`rounded-full px-2 py-0.5 ${at ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-400'}`}>
+          {at ? '✓' : '○'} {label}{at ? ` ${new Date(at).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}` : ''}
+        </span>
+      ))}
     </div>
   )
 }

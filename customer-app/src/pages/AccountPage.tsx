@@ -16,6 +16,7 @@ const ic = (d: ReactNode, color: string) => (
 export default function AccountPage({ me, onLogout }: { me: Account; onLogout: () => void }) {
   const initials = me.name.trim().split(/\s+/).slice(0, 2).map((w) => w[0]).join('')
   const rows: [string, string, ReactNode][] = [
+    ['/account/location', 'موقعي (عنوان البيت)', ic(<path d="M12 2a7 7 0 0 0-7 7c0 5.3 7 13 7 13s7-7.7 7-13a7 7 0 0 0-7-7zm0 9.5A2.5 2.5 0 1 1 12 6.5a2.5 2.5 0 0 1 0 5z" />, '#e11d48')],
     ['/account/favorites', 'المفضلة', ic(<path d="M12 21s-7-4.4-9.3-9A5.4 5.4 0 0 1 12 6a5.4 5.4 0 0 1 9.3 6c-2.3 4.6-9.3 9-9.3 9z" />, '#e11d48')],
     ['/account/notifications', 'الإشعارات', ic(<path d="M12 22a2.5 2.5 0 0 0 2.5-2.5h-5A2.5 2.5 0 0 0 12 22zm7-6V11a7 7 0 0 0-5.5-6.8V3.5a1.5 1.5 0 0 0-3 0v.7A7 7 0 0 0 5 11v5l-2 2v1h18v-1z" />, '#f59e0b')],
     ['/account/branches', 'فروعنا', ic(<path d="M12 2a7 7 0 0 0-7 7c0 5.3 7 13 7 13s7-7.7 7-13a7 7 0 0 0-7-7zm0 9.5A2.5 2.5 0 1 1 12 6.5a2.5 2.5 0 0 1 0 5z" />, '#0d3b8c')],

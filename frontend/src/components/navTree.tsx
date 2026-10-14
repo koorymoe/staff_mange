@@ -168,6 +168,7 @@ export const navItems: NavItem[] = [
       { to: '/leader-invoices', label: '🧾 فواتير الليدر', icon: <></>, roles: ['FINANCE'] },
       // قرار (ع) 10-08: مكتب المراقب جوّا «العمل» — أول بند.
       { to: '/monitor-desk', label: '🗂️ مكتب المراقب', icon: <></>, roles: ['ADMIN', 'MONITOR'], permission: 'monitoring' },
+      { to: '/field-map', label: '🗺️ خريطة الميدان', icon: <></>, roles: ['ADMIN', 'MONITOR'], permission: 'monitoring' },
       {
         // بدون قيد أدوار هنا أيضاً — نفس مبدأ مجموعة "الإدارة" الأعلى: قيد على المجموعة
         // الوسيطة يمنع ظهورها بالكامل حتى لو ابن معيّن مسموح لدور/صلاحية موظف غير
@@ -722,6 +723,7 @@ export const navItems: NavItem[] = [
     unitPermission: 'unit_monitoring',
     children: [
       { to: '/monitor-desk', label: '🗂️ مكتب المراقب', icon: <></>, roles: ['ADMIN', 'MONITOR'], permission: 'monitoring' },
+      { to: '/field-map', label: '🗺️ خريطة الميدان', icon: <></>, roles: ['ADMIN', 'MONITOR'], permission: 'monitoring' },
       // ⚠️ «صندوق المراقب» انشال من القائمة — هو **نفس الشاشة** الي تنعرض
   // كأول تبويب بمكتب المراقب (بخاصية embedded). بندان يودّيان لنفس
   // الشي = تكرار صرف. والمسار `/monitor-inbox` يبقى شغّالاً للروابط

@@ -6,11 +6,15 @@ import (
 )
 
 type Customer struct {
-	ID           string  `db:"id" json:"id"`
-	CustomerCode int     `db:"customerCode" json:"customerCode"`
-	Name         string  `db:"name" json:"name"`
-	Phone        string  `db:"phone" json:"phone"`
-	Location     *string `db:"location" json:"location"`
+	ID           string `db:"id" json:"id"`
+	CustomerCode int    `db:"customerCode" json:"customerCode"`
+	Name         string `db:"name" json:"name"`
+	// الموقع الرسمي للزبون (من تطبيق الزبون أو من الوصولات المتكررة)
+	Lat            *float64 `db:"lat" json:"lat,omitempty"`
+	Lng            *float64 `db:"lng" json:"lng,omitempty"`
+	LocationSource *string  `db:"locationSource" json:"locationSource,omitempty"`
+	Phone          string   `db:"phone" json:"phone"`
+	Location       *string  `db:"location" json:"location"`
 	// منصب الزبون — يظهر بالشخصيات المهمة. لازم يكون موجود هنا وإلا
 	// SELECT * ينكسر بـ"missing destination name position" (نفس الفخ الي
 	// وكعنا بيه مرتين قبل: عمود بقاعدة البيانات بلا حقل بالستركت).

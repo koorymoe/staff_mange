@@ -14,6 +14,7 @@ import BookingsPage from './pages/BookingsPage'
 import BookingDetailPage from './pages/BookingDetailPage'
 import ChatPage from './pages/ChatPage'
 import AccountPage, { AboutPage, BranchesPage, EditProfilePage, FavoritesPage, NotificationsPage, PrivacyPage } from './pages/AccountPage'
+import MyLocationPage from './pages/MyLocationPage'
 
 // الشاشات الي بيها الشريط السفلي (الخمسة الرئيسية)
 const TABS = ['/', '/services', '/offers', '/bookings', '/account']
@@ -56,6 +57,7 @@ export default function App() {
         <Route path="/account" element={<AccountPage me={me} onLogout={logout} />} />
         <Route path="/account/edit" element={<EditProfilePage me={me} onChange={setMe} />} />
         <Route path="/account/favorites" element={<FavoritesPage />} />
+        <Route path="/account/location" element={<MyLocationPage />} />
         <Route path="/account/branches" element={<BranchesPage />} />
         <Route path="/account/notifications" element={<NotificationsPage />} />
         <Route path="/account/about" element={<AboutPage />} />

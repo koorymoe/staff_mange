@@ -132,6 +132,7 @@ const MissionsPage = lazy(() => import('./pages/MissionsPage'))
 const ProcurementPage = lazy(() => import('./pages/ProcurementPage'))
 const MapPage = lazy(() => import('./pages/MapPage'))
 const MonitorDashboard = lazy(() => import('./pages/MonitorDashboard'))
+const FieldMapPage = lazy(() => import('./pages/FieldMapPage'))
 const MonitorCrewBookingsPage = lazy(() => import('./pages/MonitorCrewBookingsPage'))
 const TrainingManagement = lazy(() => import('./pages/TrainingManagement'))
 const VehiclesPage = lazy(() => import('./pages/VehiclesPage'))
@@ -310,6 +311,7 @@ function App() {
           <Route path="procurement" element={<ProcurementPage />} />
           <Route path="map" element={<MapPage />} />
           <Route path="monitor" element={<MonitorDashboard />} />
+          <Route path="field-map" element={<FieldMapPage />} />
           <Route path="gps" element={<GpsDashboard />} />
           <Route path="gps/customers" element={<GpsCustomers />} />
           <Route path="gps/devices" element={<GpsDevices />} />
