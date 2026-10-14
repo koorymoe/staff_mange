@@ -92,6 +92,9 @@ services:
   customer:
     build: ./customer-app
     restart: unless-stopped
+    # معاينة قبل الدومين: http://IP-السيرفر:8082 (يكدر ينشال بعد ما يتوجّه الدومين)
+    ports:
+      - "${CUSTOMER_PREVIEW_PORT:-8082}:80"
     depends_on:
       backend:
         condition: service_healthy

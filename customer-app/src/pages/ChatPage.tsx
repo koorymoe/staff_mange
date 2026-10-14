@@ -5,6 +5,10 @@ import MatrixEye from '../components/MatrixEye'
 
 const SUGGEST = ['شنو خدماتكم؟', 'أريد أحجز', 'شنو العروض الحالية؟', 'شوكت يوصلني الفريق؟']
 
+// معرّف مؤقت للرسالة — randomUUID ما يشتغل على http (المعاينة بالـIP)
+let seq = 0
+const tmpId = () => `tmp-${++seq}`
+
 const time = (s: string) => new Date(s).toLocaleTimeString('ar-IQ', { hour: '2-digit', minute: '2-digit' })
 
 // ═══ ماتركس — المحادثة ═══
@@ -25,7 +29,7 @@ export default function ChatPage({ me }: { me: Account }) {
     const body = t.trim()
     if (!body || busy) return
     setText(''); setErr(''); setBusy(true)
-    const mine: ChatMsg = { id: `tmp-${crypto.randomUUID()}`, role: 'user', content: body, createdAt: new Date().toISOString() }
+    const mine: ChatMsg = { id: tmpId(), role: 'user', content: body, createdAt: new Date().toISOString() }
     setMsgs((m) => [...(m ?? []), mine])
     try {
       const reply = await api.send(body)
