@@ -391,7 +391,7 @@ export const navItems: NavItem[] = [
         ],
       },
       // قرار (ع) 10-06: «المشاريع الموجّهة لي» مباشرة تحت «العمل» جنب «إضافة مشروع».
-      { to: '/my-projects', label: 'المشاريع الموجّهة لي', icon: <></>, permission: 'my_projects', hideForRoles: TECH_ROLES },
+      { to: '/my-projects', label: 'المشاريع الموجّهة لي', icon: <></>, permission: 'my_projects', hideForRoles: [...TECH_ROLES, 'ADMIN', 'OWNER'] },
       // قرار (ع) 10-06: موردين التقنيين — التقني يضيف والمدير يختار لكل تقني.
       // قرار (ع) 10-07: مكانه «وحدة التقنيين» — هنا يبقى بس للي ما عنده الوحدة.
       { to: '/tech-suppliers', label: '🏪 موردين التقنيين', icon: <></>, roles: ['ADMIN', 'ENGINEER', 'TECHNICAL', 'SERVICE_MANAGER'], unlockPermission: 'tech_suppliers', hideForRoles: ['ADMIN'], hideIfAnyPermission: ['unit_technicians'] },
@@ -676,7 +676,7 @@ export const navItems: NavItem[] = [
       { to: '/products', label: '📦 المنتجات', icon: <></>, anyPermission: ['quotation_manage_all', 'quotation_system', 'content_technician', 'quotation_create'] },
       // قرار (ع) 10-13: فلوس المشاريع والمشاريع الموجّهة لي هنا
       { monitorMenuHide: true, to: '/project-payments', label: '💰 فلوس المشاريع', icon: <></>, roles: ['ADMIN', 'FINANCE', 'PROJECT_MANAGER', 'MONITOR'], anyPermission: ['finance', 'finance_audit', 'project_management', 'monitoring'] },
-      { to: '/my-projects', label: 'المشاريع الموجّهة لي', icon: <></>, permission: 'my_projects', hideForRoles: TECH_ROLES },
+      { to: '/my-projects', label: 'المشاريع الموجّهة لي', icon: <></>, permission: 'my_projects', hideForRoles: [...TECH_ROLES, 'ADMIN', 'OWNER'] },
     ],
   },
 

@@ -64,8 +64,11 @@ export default function QuotationNew() {
   // النسخة المعروضة من الهيستوري (null = الحالية)
   const [viewSnap, setViewSnap] = useState<{ snap: Quotation; version: number } | null>(null)
   // الشروط والأحكام من الإعدادات (قرار (ع) 10-08) — الثابتة احتياط إذا ما وصلت.
-  const [terms, setTerms] = useState<string[]>(DEFAULT_TERMS)
-  useEffect(() => { api.getQuotationTerms().then((r) => { if (r.length) setTerms(r.map((t) => t.text)) }).catch(() => {}) }, [])
+  const [defaultTerms, setDefaultTerms] = useState<string[]>(DEFAULT_TERMS)
+  useEffect(() => { api.getQuotationTerms().then((r) => { if (r.length) setDefaultTerms(r.map((t) => t.text)) }).catch(() => {}) }, [])
+  // (ع) 10-14: كل عرض بشروطه — null = يمشي على الافتراضية لحد ما تتعدّل
+  const [ownTerms, setOwnTerms] = useState<string[] | null>(null)
+  const terms = ownTerms ?? defaultTerms
   // نطلب المعاينة بعد ما تنحمّل البيانات — البناء يحتاج الحقول تكون جاهزة
   const [wantsPreview, setWantsPreview] = useState(false)
   const [products, setProducts] = useState<Product[]>([])
@@ -184,6 +187,7 @@ export default function QuotationNew() {
         setDiscountPercent(q.discountPercent)
         setDuration(q.duration || '')
         setNotes(q.notes || '')
+        setOwnTerms(q.terms && q.terms.length ? q.terms : null)
         setItems(q.items.length > 0 ? q.items.map((it) => ({
           imageBase64: it.imageBase64 || '',
           productName: it.productName,
@@ -301,6 +305,7 @@ export default function QuotationNew() {
           discountPercent,
           duration: duration || undefined,
           notes: notes || undefined,
+          terms: terms.filter((t) => t.trim()),
         })
         showStatus('تم حفظ التعديلات بنجاح ✓', 'ok')
       } else {
@@ -317,6 +322,7 @@ export default function QuotationNew() {
           discountPercent,
           duration: duration || undefined,
           notes: notes || undefined,
+          terms: terms.filter((t) => t.trim()),
           createdByEmployeeId: employee?.id,
         })
         showStatus('تم الحفظ بنجاح ✓', 'ok')
@@ -372,11 +378,12 @@ export default function QuotationNew() {
         }
       : { customerName, customerPhone, customerAddress, projectName, quotationNumber, discountPercent, notes, grandTotal, discountValue, netTotal, today, items }
     return buildPrintHtmlFrom(withImages, cur.customerName, cur.customerPhone, cur.customerAddress, cur.projectName, cur.quotationNumber,
-      cur.discountPercent, cur.notes, cur.grandTotal, cur.discountValue, cur.netTotal, cur.today, cur.items)
+      cur.discountPercent, cur.notes, cur.grandTotal, cur.discountValue, cur.netTotal, cur.today, cur.items,
+      snap ? (snap.terms?.length ? snap.terms : defaultTerms) : terms)
   }
   const buildPrintHtmlFrom = (withImages: boolean, customerName: string, customerPhone: string, customerAddress: string,
     projectName: string, quotationNumber: string, discountPercent: number, notes: string,
-    grandTotal: number, discountValue: number, netTotal: number, today: string, items: ItemRow[]): string | null => {
+    grandTotal: number, discountValue: number, netTotal: number, today: string, items: ItemRow[], terms: string[]): string | null => {
     if (!customerName.trim()) {
       showStatus('الرجاء إدخال اسم الزبون قبل الطباعة', 'err')
       return null
@@ -645,7 +652,7 @@ body { background: #fff; margin: 0; padding: 0; -webkit-print-color-adjust: exac
       return pageShell(inner)
     }).join('\n')
 
-    const termsHtml = terms.map((t, i) => `<li><span class="num">${i + 1}.</span>${esc(t)}</li>`).join('')
+    const termsHtml = terms.filter((t) => t.trim()).map((t, i) => `<li><span class="num">${i + 1}.</span>${esc(t)}</li>`).join('')
 
     const notesText = notes.trim() || 'لا توجد ملاحظات'
 
@@ -700,10 +707,16 @@ ${pageShell(`
   const handlePrint = (withImages = true, snap: Quotation | null = null) => {
     const html = buildPrintHtml(withImages, snap)
     if (!html) return
-    const printWindow = window.open('', '_blank')
-    if (!printWindow) return
+    // (ع) 10-14: بنفس النافذة — إطار مخفي بدل تاب about:blank جديد
+    const frame = document.createElement('iframe')
+    frame.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0;visibility:hidden'
+    document.body.appendChild(frame)
+    const printWindow = frame.contentWindow
+    if (!printWindow) { frame.remove(); return }
+    printWindow.document.open()
     printWindow.document.write(html)
     printWindow.document.close()
+    printWindow.onafterprint = () => setTimeout(() => frame.remove(), 500)
     // الصور صارت تنجلب من السيرفر بدل ما تكون مضمّنة بالنص، فننتظرها
     // تخلص قبل الطباعة — وإلا الطباعة تطلع بلا بانر لو انفتحت قبلها.
     // (المهلة الثابتة القديمة جانت تكفي لأن الصور جانت جاهزة بالنص.)
@@ -720,7 +733,7 @@ ${pageShell(`
     void Promise.race([
       Promise.all(ready),
       new Promise((resolve) => setTimeout(resolve, 5000)),
-    ]).then(() => setTimeout(() => printWindow.print(), 150))
+    ]).then(() => setTimeout(() => { printWindow.focus(); printWindow.print() }, 150))
   }
 
   // المعاينة: نعرض النسخة المطبوعة داخل النظام (مثل ملف PDF) — للاطلاع فقط،
@@ -1088,6 +1101,26 @@ ${pageShell(`
           rows={4} style={{ width: '100%', padding: '12px 14px', border: '1.5px solid var(--bd-line)', borderRadius: '8px', fontSize: '14px', fontFamily: 'inherit', boxSizing: 'border-box' as const, outline: 'none', resize: 'vertical' }} />
       </div>
 
+      {/* ===== شروط وأحكام هذا العرض — (ع) 10-14 ===== */}
+      <div style={{ background: 'var(--sf-card)', borderRadius: '12px', padding: '24px', marginBottom: '20px', boxShadow: '0 2px 12px rgba(0,0,0,0.06)' }}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', alignItems: 'center', justifyContent: 'space-between', fontSize: '15px', fontWeight: 700, color: 'var(--t-title-alt)', marginBottom: '16px', paddingBottom: '10px', borderBottom: '2px solid var(--bd-line)' }}>
+          <span>📜 شروط وأحكام هذا العرض {ownTerms ? '' : <small style={{ color: '#64748b', fontWeight: 400 }}>(الافتراضية)</small>}</span>
+          <span style={{ display: 'flex', gap: '6px' }}>
+            <button type="button" onClick={() => setOwnTerms([...terms, ''])} style={{ background: '#1565c0', color: 'white', border: 'none', padding: '6px 12px', borderRadius: '8px', cursor: 'pointer', fontFamily: 'inherit', fontSize: '12px', fontWeight: 700 }}>+ شرط</button>
+            {ownTerms && <button type="button" onClick={() => setOwnTerms(null)} style={{ background: 'transparent', color: '#475569', border: '1px solid var(--bd-line)', padding: '6px 12px', borderRadius: '8px', cursor: 'pointer', fontFamily: 'inherit', fontSize: '12px' }}>↺ استرجاع الافتراضية</button>}
+          </span>
+        </div>
+        {terms.map((t, i) => (
+          <div key={i} style={{ display: 'flex', gap: '8px', alignItems: 'flex-start', marginBottom: '8px' }}>
+            <span style={{ minWidth: '22px', paddingTop: '10px', fontWeight: 700, color: '#47528f' }}>{i + 1}.</span>
+            <textarea value={t} rows={2} onChange={(e) => setOwnTerms(terms.map((x, j) => (j === i ? e.target.value : x)))}
+              style={{ flex: 1, padding: '8px 12px', border: '1.5px solid var(--bd-line)', borderRadius: '8px', fontSize: '13px', fontFamily: 'inherit', resize: 'vertical' }} />
+            <button type="button" title="حذف الشرط" onClick={() => setOwnTerms(terms.filter((_, j) => j !== i))}
+              style={{ background: '#fee2e2', color: '#b91c1c', border: 'none', padding: '8px 10px', borderRadius: '8px', cursor: 'pointer', fontFamily: 'inherit' }}>✕</button>
+          </div>
+        ))}
+      </div>
+
       {/* ===== Grand Total Box ===== */}
       <div style={{
         background: 'linear-gradient(135deg, #1a237e, #283593)',
@@ -1266,6 +1299,10 @@ ${pageShell(`
               background: '#e65100', color: 'white', border: 'none', padding: '10px 18px',
               borderRadius: '8px', cursor: 'pointer', fontWeight: 700, fontFamily: 'inherit',
             }}>🖨️ طباعة</button>
+            <button onClick={() => { setPreviewHtml(null); setViewSnap(null); navigate(returnTo || '/quotations') }} style={{
+              background: '#475569', color: 'white', border: 'none', padding: '10px 18px',
+              borderRadius: '8px', cursor: 'pointer', fontWeight: 700, fontFamily: 'inherit',
+            }}>→ رجوع</button>
             {returnTo && (
               <button onClick={() => navigate(returnTo)} style={{
                 background: '#2e7d32', color: 'white', border: 'none', padding: '10px 18px',

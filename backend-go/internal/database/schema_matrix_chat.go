@@ -195,5 +195,9 @@ func matrixChatMigrations() []Migration {
 				"mentorId" TEXT REFERENCES "Employee"(id) ON DELETE SET NULL,
 				notes TEXT, "updatedAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP);
 		`,
+	}, {
+		// (ع) 10-14: كل عرض سعر بشروطه وأحكامه — الفارغة (القديمة) تاخذ الافتراضية
+		Version: "0355_quotation_terms",
+		SQL:     `ALTER TABLE "Quotation" ADD COLUMN IF NOT EXISTS terms JSONB;`,
 	}}
 }

@@ -1,24 +1,29 @@
 package model
 
-import "time"
+import (
+	"encoding/json"
+	"time"
+)
 
 type Quotation struct {
-	ID                  string    `db:"id" json:"id"`
-	QuotationNumber     string    `db:"quotationNumber" json:"quotationNumber"`
-	CustomerName        string    `db:"customerName" json:"customerName"`
-	CustomerPhone       *string   `db:"customerPhone" json:"customerPhone"`
-	CustomerAddress     *string   `db:"customerAddress" json:"customerAddress"`
-	ProjectName         *string   `db:"projectName" json:"projectName"`
-	ProjectID           *string   `db:"projectId" json:"projectId"`
-	GrandTotal          float64   `db:"grandTotal" json:"grandTotal"`
-	DiscountPercent     float64   `db:"discountPercent" json:"discountPercent"`
-	DiscountValue       float64   `db:"discountValue" json:"discountValue"`
-	NetTotal            float64   `db:"netTotal" json:"netTotal"`
-	Notes               *string   `db:"notes" json:"notes"`
-	Duration            *string   `db:"duration" json:"duration"`
-	Status              string    `db:"status" json:"status"`
-	CreatedByEmployeeID string    `db:"createdByEmployeeId" json:"-"`
-	CreatedAt           time.Time `db:"createdAt" json:"createdAt"`
+	ID              string  `db:"id" json:"id"`
+	QuotationNumber string  `db:"quotationNumber" json:"quotationNumber"`
+	CustomerName    string  `db:"customerName" json:"customerName"`
+	CustomerPhone   *string `db:"customerPhone" json:"customerPhone"`
+	CustomerAddress *string `db:"customerAddress" json:"customerAddress"`
+	ProjectName     *string `db:"projectName" json:"projectName"`
+	ProjectID       *string `db:"projectId" json:"projectId"`
+	GrandTotal      float64 `db:"grandTotal" json:"grandTotal"`
+	DiscountPercent float64 `db:"discountPercent" json:"discountPercent"`
+	DiscountValue   float64 `db:"discountValue" json:"discountValue"`
+	NetTotal        float64 `db:"netTotal" json:"netTotal"`
+	Notes           *string `db:"notes" json:"notes"`
+	Duration        *string `db:"duration" json:"duration"`
+	// (ع) 10-14: شروط هذا العرض (مصفوفة نصوص) — null = الشروط الافتراضية
+	Terms               json.RawMessage `db:"terms" json:"terms"`
+	Status              string          `db:"status" json:"status"`
+	CreatedByEmployeeID string          `db:"createdByEmployeeId" json:"-"`
+	CreatedAt           time.Time       `db:"createdAt" json:"createdAt"`
 
 	Items             []QuotationItem `db:"-" json:"items"`
 	CreatedByEmployee *EmployeeBrief  `db:"-" json:"createdByEmployee"`
@@ -60,6 +65,7 @@ type CreateQuotationRequest struct {
 	DiscountPercent     *float64             `json:"discountPercent"`
 	Notes               *string              `json:"notes"`
 	Duration            *string              `json:"duration"`
+	Terms               []string             `json:"terms"`
 	CreatedByEmployeeID string               `json:"createdByEmployeeId"`
 }
 
@@ -72,6 +78,7 @@ type UpdateQuotationRequest struct {
 	Notes           *string              `json:"notes"`
 	Duration        *string              `json:"duration"`
 	Status          *string              `json:"status"`
+	Terms           []string             `json:"terms"`
 	Items           []QuotationItemInput `json:"items"`
 }
 

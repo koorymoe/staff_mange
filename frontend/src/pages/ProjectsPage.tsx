@@ -265,7 +265,9 @@ export default function ProjectsPage({ mode: initialMode = 'all' }: { mode?: 'al
   const canQuote = role === 'ADMIN' || role === 'OWNER'
     || ['quotation_create', 'quotation_edit_own', 'quotation_manage_all', 'quotation_system']
       .some((p) => permissions.includes(p))
-  const [mode, setMode] = useState<'all' | 'delegated'>(initialMode)
+  // (ع) 10-14: المالك والمدير يشوفون كل المشاريع — ماكو «موجّهة لي» إلهم
+  const isTop = role === 'ADMIN' || role === 'OWNER'
+  const [mode, setMode] = useState<'all' | 'delegated'>(isTop ? 'all' : initialMode)
   const delegatedMode = mode === 'delegated'
   const canManage = delegatedMode
     || role === 'ADMIN' || role === 'PROJECT_MANAGER' || permissions.includes('project_management')
@@ -451,7 +453,7 @@ export default function ProjectsPage({ mode: initialMode = 'all' }: { mode?: 'al
         <div className="inline-flex flex-wrap gap-1.5 rounded-2xl border border-slate-200 bg-white p-1.5 shadow-sm">
           {([
             { k: 'all' as const, label: '🏗️ كل المشاريع' },
-            { k: 'delegated' as const, label: '📤 المشاريع الموجّهة لي' },
+            ...(isTop ? [] : [{ k: 'delegated' as const, label: '📤 المشاريع الموجّهة لي' }]),
           ]).map((o) => (
             <button
               key={o.k}

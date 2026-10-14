@@ -2388,6 +2388,7 @@ export interface Quotation {
   netTotal: number
   duration: string | null
   notes: string | null
+  terms?: string[] | null
   status: 'NEW' | 'SENT' | 'ACCEPTED' | 'REJECTED'
   createdAt: string
 }
@@ -4761,6 +4762,7 @@ export const api = {
     netTotal: number
     duration?: string
     notes?: string
+    terms?: string[]
     createdByEmployeeId?: string
   }) => request<Quotation>('/quotations', { method: 'POST', body: JSON.stringify(data) }),
   updateQuotation: (id: string, data: {
@@ -4772,6 +4774,7 @@ export const api = {
     discountPercent?: number
     duration?: string
     notes?: string
+    terms?: string[]
     status?: Quotation['status']
   }) => request<Quotation>(`/quotations/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
   deleteQuotation: (id: string) =>

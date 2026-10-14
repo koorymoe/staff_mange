@@ -90,7 +90,7 @@ export default function QuotationsPage() {
         {canTerms && (
           <button onClick={() => setShowTerms(true)}
             style={{ background: 'transparent', color: '#fff', border: '1px solid rgba(255,255,255,.5)', padding: '10px 16px', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', fontSize: '14px' }}>
-            ⚙️ الشروط والأحكام
+            ⚙️ الشروط الافتراضية
           </button>
         )}
         <button

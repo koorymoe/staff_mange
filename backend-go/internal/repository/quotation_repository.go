@@ -236,10 +236,10 @@ func (r *QuotationRepository) Create(req model.CreateQuotationRequest) (*model.Q
 
 	var q model.Quotation
 	err = tx.Get(&q, `
-		INSERT INTO "Quotation" (id, "quotationNumber", "customerName", "customerPhone", "customerAddress", "projectName", "discountPercent", "discountValue", "grandTotal", "netTotal", notes, duration, "createdByEmployeeId", "projectId")
-		VALUES (gen_random_uuid()::text, $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+		INSERT INTO "Quotation" (id, "quotationNumber", "customerName", "customerPhone", "customerAddress", "projectName", "discountPercent", "discountValue", "grandTotal", "netTotal", notes, duration, "createdByEmployeeId", "projectId", terms)
+		VALUES (gen_random_uuid()::text, $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14::jsonb)
 		RETURNING *
-	`, quotationNumber, req.CustomerName, req.CustomerPhone, req.CustomerAddress, req.ProjectName, discountPercent, discountValue, grandTotal, netTotal, req.Notes, req.Duration, req.CreatedByEmployeeID, req.ProjectID)
+	`, quotationNumber, req.CustomerName, req.CustomerPhone, req.CustomerAddress, req.ProjectName, discountPercent, discountValue, grandTotal, netTotal, req.Notes, req.Duration, req.CreatedByEmployeeID, req.ProjectID, termsJSON(req.Terms))
 	if err != nil {
 		return nil, err
 	}
@@ -348,11 +348,12 @@ func (r *QuotationRepository) Update(id string, req model.UpdateQuotationRequest
 			status = COALESCE($9, status),
 			"grandTotal" = COALESCE($10, "grandTotal"),
 			"discountValue" = COALESCE($11, "discountValue"),
-			"netTotal" = COALESCE($12, "netTotal")
+			"netTotal" = COALESCE($12, "netTotal"),
+			terms = COALESCE($13::jsonb, terms)
 		WHERE id = $1
 		RETURNING *
 	`, id, req.CustomerName, req.CustomerPhone, req.CustomerAddress, req.ProjectName,
-		req.DiscountPercent, req.Notes, req.Duration, req.Status, grandTotal, discountValue, netTotal)
+		req.DiscountPercent, req.Notes, req.Duration, req.Status, grandTotal, discountValue, netTotal, termsJSON(req.Terms))
 	if err != nil {
 		return nil, err
 	}
@@ -447,4 +448,20 @@ func (r *QuotationRepository) ListPage(search, ownerID string, page, limit int) 
 		}
 	}
 	return out, nil
+}
+
+// termsJSON — شروط العرض كـJSON، أو nil (ما تتغير / الافتراضية) إذا ما انبعثت.
+func termsJSON(t []string) *string {
+	if t == nil {
+		return nil
+	}
+	clean := make([]string, 0, len(t))
+	for _, x := range t {
+		if x = strings.TrimSpace(x); x != "" {
+			clean = append(clean, x)
+		}
+	}
+	b, _ := json.Marshal(clean)
+	s := string(b)
+	return &s
 }
