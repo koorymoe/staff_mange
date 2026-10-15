@@ -5,6 +5,47 @@ import ServiceArt from '../components/ServiceArt'
 import { Skel, Stars } from '../components/ui'
 import { iqd } from '../lib'
 
+type Visual = { title: string; note: string; src: string }
+const visualsFor = (name: string): Visual[] => {
+  const n = name.toLowerCase()
+  if (/كامير|camera|مراقب/.test(n)) return [
+    { title: 'كاميرات خارجية', note: 'رؤية واضحة وحماية للمداخل', src: '/img/camera-premium.png' },
+    { title: 'كاميرات داخلية', note: 'متابعة ذكية للمساحات الداخلية', src: '/img/camera.webp' },
+    { title: 'منظومات مراقبة متكاملة', note: 'خيارات تناسب البيت والعمل', src: '/img/smart-premium.png' },
+  ]
+  if (/شبك|انترنت|wifi|ستلايت/.test(n)) return [
+    { title: 'شبكات منزلية', note: 'تغطية ثابتة بكل الغرف', src: '/img/network-premium.png' },
+    { title: 'تقوية واي فاي', note: 'حلول مرتبة للمساحات الكبيرة', src: '/img/network.webp' },
+    { title: 'ربط احترافي', note: 'تنظيم وأداء أسرع للأجهزة', src: '/img/tool.webp' },
+  ]
+  if (/شمس|solar|طاق/.test(n)) return [
+    { title: 'ألواح شمسية', note: 'حلول طاقة لبيتك وعملك', src: '/img/solar-premium.png' },
+    { title: 'منظومات احتياطية', note: 'تشغيل أكثر استقراراً', src: '/img/solar.webp' },
+    { title: 'إدارة الطاقة', note: 'ترتيب وتوصيل آمن', src: '/img/power.webp' },
+  ]
+  if (/ذكي|smart|بيت/.test(n)) return [
+    { title: 'تحكم بالبيت الذكي', note: 'راحة وأمان من مكانك', src: '/img/smart-premium.png' },
+    { title: 'إضاءة وأتمتة', note: 'تجربة يومية أسهل', src: '/img/smart.webp' },
+    { title: 'ربط الأجهزة', note: 'حل متكامل لبيتك', src: '/img/phone.webp' },
+  ]
+  if (/gps|جي بي|تتبع/.test(n)) return [
+    { title: 'أجهزة تتبع GPS', note: 'متابعة أوضح لمركبتك', src: '/img/gps-premium.png' },
+    { title: 'تتبع المركبات', note: 'حلول عملية وآمنة', src: '/img/gps.webp' },
+    { title: 'ربط التطبيق', note: 'اطّلع على معلوماتك بسهولة', src: '/img/phone.webp' },
+  ]
+  if (/حريق|انذار|إنذار/.test(n)) return [
+    { title: 'أنظمة إنذار', note: 'تنبيه أسرع وحماية أفضل', src: '/img/alarm-premium.png' },
+    { title: 'حساسات ذكية', note: 'حلول تناسب مساحة المكان', src: '/img/alarm.webp' },
+    { title: 'سلامة المكان', note: 'تركيب مرتب ومتابعة', src: '/img/power.webp' },
+  ]
+  if (/قفل|بصمة|حاكي|اقفال/.test(n)) return [
+    { title: 'أقفال ذكية', note: 'دخول أسهل وحماية أعلى', src: '/img/lock-premium.png' },
+    { title: 'أنظمة بصمة', note: 'خيارات للبيت والعمل', src: '/img/lock.webp' },
+    { title: 'حاكيات وانتركم', note: 'تواصل أوضح عند المدخل', src: '/img/phone.webp' },
+  ]
+  return [{ title: 'حلول الأماني', note: 'خيارات تناسب احتياجك', src: '/img/amani-services-hero.png' }]
+}
+
 // ═══ تفاصيل الخدمة (شاشة 6) ═══
 export default function ServiceDetailPage() {
   const { id = '' } = useParams()
@@ -21,6 +62,7 @@ export default function ServiceDetailPage() {
   }
   // المميزات يكتبهن المالك — بلا مميزات مخترعة
   const features = s?.features ?? []
+  const visuals = s ? visualsFor(s.name) : []
 
   return (
     <div className="page-in min-h-full bg-white pb-28">
@@ -49,6 +91,15 @@ export default function ServiceDetailPage() {
             <p className="mt-3 text-[14px] leading-7 text-[#4b5672]">
               {s.description || `نقدم خدمة ${s.name} بأعلى جودة، بفريق فني متخصص وتنفيذ احترافي ومتابعة بعد التنفيذ.`}
             </p>
+            <section className="mt-5">
+              <div className="mb-2 flex items-center justify-between"><h2 className="text-[16px] font-black text-ink">حلول وخيارات الخدمة</h2><span className="rounded-full bg-blue-50 px-2.5 py-1 text-[10px] font-bold text-navy">اختَر اللي يناسبك</span></div>
+              <div className="flex gap-3 overflow-x-auto pb-2 no-scrollbar">
+                {visuals.map((v) => <article key={v.title} className="min-w-[184px] overflow-hidden rounded-2xl border border-line bg-white shadow-[0_10px_22px_-16px_rgba(15,29,58,.3)]">
+                  <img src={v.src} alt={v.title} className="h-28 w-full object-cover" loading="lazy" />
+                  <div className="p-3"><p className="text-[13px] font-extrabold text-ink">{v.title}</p><p className="mt-1 text-[10.5px] leading-5 text-mute">{v.note}</p></div>
+                </article>)}
+              </div>
+            </section>
             {features.length > 0 && <div className="mt-4 grid grid-cols-2 gap-2.5">
               {features.slice(0, 4).map((f, i) => (
                 <div key={i} className="flex items-center gap-2.5 rounded-xl border border-line bg-[#fafbfe] px-3 py-3">
