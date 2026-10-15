@@ -43,7 +43,7 @@ export default function BookingsPage() {
           const s = b.serviceId ? services?.find((x) => x.id === b.serviceId) : undefined
           const when = b.scheduledAt ?? b.createdAt
           return (
-            <Link key={b.id} to={`/bookings/${b.id}`} className="card rise flex gap-3 p-3" style={{ animationDelay: `${i * 40}ms` }}>
+            <Link key={b.id} to={`/bookings/${b.id}`} className="touch-card card rise flex gap-3 p-3" style={{ animationDelay: `${i * 40}ms` }}>
               <div className="min-w-0 flex-1">
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0">

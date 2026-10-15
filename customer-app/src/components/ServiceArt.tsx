@@ -41,7 +41,13 @@ function Icon({ kind, c }: { kind: Kind; c: string }) {
 }
 
 // صورة افتراضية حقيقية لكل نوع (CC0 — public/img/CREDITS.md)
-const photoOf = (name: string) => `/img/${kindOf(name)}.webp`
+// الصور الأصلية الجديدة تتقدم على المكتبة العامة، والباقي يبقى له صورة مخصصة.
+const photoOf = (name: string) => {
+  const kind = kindOf(name)
+  if (kind === 'camera') return '/img/camera-premium.png'
+  if (kind === 'solar') return '/img/solar-premium.png'
+  return `/img/${kind}.webp`
+}
 
 export default function ServiceArt({ id, name, hasImage, className = '', iconOnly = false, badge = false }: { id?: string; name: string; hasImage?: boolean; className?: string; iconOnly?: boolean; badge?: boolean }) {
   const k = kindOf(name)
