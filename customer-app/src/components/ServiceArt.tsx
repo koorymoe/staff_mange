@@ -55,5 +55,5 @@ export default function ServiceArt({ id, name, hasImage, className = '', iconOnl
     )
   }
   if (iconOnly) return <svg viewBox="0 0 100 100" className={className} aria-hidden><Icon kind={k} c={c} /></svg>
-  return <img src={hasImage && id ? imgServiceUrl(id) : photoOf(name)} alt={name} loading="lazy" className={`bg-[#e9eef7] object-cover ${className}`} />
+  return <img src={hasImage && id ? imgServiceUrl(id) : photoOf(name)} alt={name} loading="lazy" className={`service-photo bg-[#e9eef7] object-cover ${className}`} />
 }

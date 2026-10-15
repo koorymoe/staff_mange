@@ -23,9 +23,15 @@ export default function ServicesPage() {
         <div className="mt-4 grid grid-cols-2 gap-3 pb-4">
           {!data && [0, 1, 2, 3, 4, 5].map((i) => <Skel key={i} className="h-40" />)}
           {list.map((s, i) => (
-            <Link key={s.id} to={`/services/${s.id}`} className="card rise overflow-hidden transition active:scale-[.97]" style={{ animationDelay: `${Math.min(i, 8) * 35}ms` }}>
-              <ServiceArt id={s.id} name={s.name} hasImage={s.hasImage} className="h-28 w-full" />
-              <p className="truncate px-2 py-2.5 text-center text-[14px] font-extrabold text-ink">{s.name}</p>
+            <Link key={s.id} to={`/services/${s.id}`} className="touch-card card rise group overflow-hidden transition" style={{ animationDelay: `${Math.min(i, 8) * 35}ms` }}>
+              <div className="relative overflow-hidden">
+                <ServiceArt id={s.id} name={s.name} hasImage={s.hasImage} className="h-32 w-full" />
+                {s.rating && <span className="absolute left-2 top-2 rounded-full bg-white/92 px-2 py-1 text-[10px] font-extrabold text-[#8a5a12] shadow-sm">★ {s.rating}</span>}
+              </div>
+              <div className="flex items-center gap-1.5 px-3 py-3">
+                <span className="min-w-0 flex-1 truncate text-right text-[14px] font-extrabold text-ink">{s.name}</span>
+                <span className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-[#edf3ff] text-navy transition group-hover:-translate-x-0.5">‹</span>
+              </div>
             </Link>
           ))}
         </div>
