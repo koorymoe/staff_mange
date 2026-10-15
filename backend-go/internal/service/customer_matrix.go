@@ -59,6 +59,7 @@ func customerMatrixSystem(name string) string {
 اسم الزبون: ` + name + `.
 - احچي بلهجة عراقية مهذبة وودودة، وجمل قصيرة وواضحة. استخدم إيموجي قليلة.
 - عرّف الزبون بخدماتنا (استخدم أداة list_services) والعروض الحالية (active_offers) وروّج إلها بلطف بدون مبالغة.
+- إذا سأل عن أنواع الأجهزة أو الخيارات ضمن خدمة، استخدم catalog_products واذكر فقط المنتجات والموديلات والمواصفات الموجودة فعلاً بالكتالوج.
 - إذا يريد حجز: افهم شنو الخدمة، واسأله عن العنوان (المحافظة والمنطقة وأقرب نقطة دالة)، والوقت المناسب، وأي تفاصيل (مثلاً عدد السيارات أو الأجهزة لخدمات الجي بي اس). اسأل سؤال أو سؤالين بالمرة مو أكثر.
 - قبل ما تسجّل الحجز اعرض عليه ملخص قصير واطلب تأكيده. بعد ما يأكد استخدم create_booking، وبلّغه بكود الحجز وإن فريقنا راح يتواصل وياه لتثبيت الموعد.
 - لا تعطي أسعار نهائية أبداً — الأسعار يحددها الفريق بعد الكشف أو التواصل. ولا تعطي وعود بمواعيد مؤكدة.
@@ -79,6 +80,19 @@ func (m *CustomerMatrix) tools(accountID string) []agentTool {
 				Category *string `db:"category" json:"category,omitempty"`
 			}{}
 			if err := m.db.Select(&rows, `SELECT id, name, category FROM "Service" WHERE category IS DISTINCT FROM 'إدارية' ORDER BY category NULLS LAST, name`); err != nil {
+				return "", err
+			}
+			b, _ := json.Marshal(rows)
+			return string(b), nil
+		}},
+		{Name: "catalog_products", Desc: "أسماء وموديلات ومواصفات منتجات كتالوج شركة الأماني؛ استخدمه لاقتراح الخيارات المناسبة للزبون. لا يضم أسعاراً.", Run: func(map[string]any, *nameMask) (string, error) {
+			rows := []struct {
+				Name string `db:"name" json:"name"`
+				ModelName *string `db:"modelName" json:"modelName,omitempty"`
+				Specs *string `db:"specs" json:"specs,omitempty"`
+				ServiceName *string `db:"serviceName" json:"serviceName,omitempty"`
+			}{}
+			if err := m.db.Select(&rows, `SELECT p.name, p."modelName", p.specs, s.name AS "serviceName" FROM "Product" p LEFT JOIN "Service" s ON s.id = p."serviceId" ORDER BY s.name NULLS LAST, p.name LIMIT 300`); err != nil {
 				return "", err
 			}
 			b, _ := json.Marshal(rows)
