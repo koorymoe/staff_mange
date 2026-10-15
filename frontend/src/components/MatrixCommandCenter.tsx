@@ -586,36 +586,92 @@ function Feed({ items }: { items: MatrixFeedItem[] }) {
 }
 
 // ── توقعات ماتركس (أعمال بس — بلا توقعات شخصية) ──
+// (ع) 10-15: لكل توقع ثلاث أرقام — لحد اليوم · الشهر السابق لنفس اليوم · المتوقع —
+// والثقة **حقيقية** (نسبة توقعاته الصح بالأشهر المحكومة)، وسجل صح/غلط يتعلّم منه.
 function Predictions({ biz, late, props }: { biz: MatrixBusinessData | null; late: LateFocus | null; props: MatrixProposal[] }) {
+  const [showHist, setShowHist] = useState(false)
   const items: { text: string; change: number | null; conf: number }[] = []
-  if (biz) {
-    const ch = biz.mtd.lastBookings > 0 ? Math.round(((biz.mtd.bookings - biz.mtd.lastBookings) / biz.mtd.lastBookings) * 100) : null
-    items.push({ text: `المتوقع لآخر الشهر ${biz.forecast.expectedJobs} حجز`, change: ch, conf: biz.forecast.insufficient ? 50 : confidence(biz.mtd.bookings) })
-    const proj = biz.mtd.projectRevenue ?? 0
-    const bR = biz.mtd.revenue - proj, bL = biz.mtd.lastRevenue - (biz.mtd.lastProjectRevenue ?? 0)
-    const rc = bL > 0 ? Math.round(((bR - bL) / bL) * 100) : null
-    // إيراد الحجوزات المتوقع بس — دفعات المشاريع كتل تنسجّل بأي وكت فما تنتوقّع
-    items.push({ text: `إيراد الحجوزات المتوقع لآخر الشهر ${fmtIQD(Math.max(0, biz.forecast.expected - proj))}`, change: rc, conf: biz.forecast.insufficient ? 50 : confidence(biz.mtd.bookings) })
-    if (proj > 0) items.push({ text: `دفعات مشاريع مقبوضة هالشهر لحد هسه ${fmtIQD(proj)} (ما تدخل بالتوقع)`, change: null, conf: 100 })
-  }
   if (late) items.push({ text: `الحجوزات المتأخرة: ${late.recentPct}% من آخر ٣ أيام`, change: late.changePct == null ? null : -late.changePct, conf: confidence(late.recent.total) })
   const pred = props.filter((p) => p.kind === 'PREDICTION').length
   if (pred) items.push({ text: `${pred} توقّع ينتظر قرارك (موظفين ما يلحگون شغل اليوم)`, change: null, conf: 72 })
+  const fc = biz?.forecast
+  const hist = fc?.history ?? []
+  const okN = hist.filter((h) => h.verdict === 'CORRECT').length
+  const months = [...new Set(hist.map((h) => h.month))]
+  const proj = biz?.mtd.projectRevenue ?? 0
+  const rows = biz && fc ? [
+    { title: '📦 الحجوزات المنجزة', now: String(biz.mtd.bookings), last: String(biz.mtd.lastBookings), exp: `${fc.expectedJobs} حجز`,
+      range: null as string | null, calib: fc.jobsCalibrationPct ?? 0, conf: fc.jobsConfidence ?? null, curr: biz.mtd.bookings, prev: biz.mtd.lastBookings },
+    { title: '💰 إيراد الحجوزات', now: fmtIQD(biz.mtd.revenue - proj), last: fmtIQD(biz.mtd.lastRevenue - (biz.mtd.lastProjectRevenue ?? 0)),
+      exp: fmtIQD(Math.max(0, fc.expected - proj)), range: fc.low && fc.high ? `${fmtIQD(Math.max(0, fc.low - proj))} – ${fmtIQD(fc.high - proj)}` : null,
+      calib: fc.calibrationPct ?? 0, conf: fc.confidence ?? null,
+      curr: biz.mtd.revenue - proj, prev: biz.mtd.lastRevenue - (biz.mtd.lastProjectRevenue ?? 0) },
+  ] : []
   return (
     <section className={`${card} p-4`}>
       <h3 className="text-sm font-extrabold text-[var(--mx-accent)]">📉 توقعات ماتركس</h3>
-      <p className="mb-2 text-[11px] text-[var(--mx-muted)]">توقعات مبنية على تحليل البيانات الحالية</p>
-      <ul className="space-y-2">
-        {items.map((it, i) => (
-          <li key={i} className="flex items-center gap-2 rounded-xl border border-[var(--mx-border)] bg-[var(--mx-sunken)] p-2">
-            <span className={`min-w-[60px] rounded-lg px-2 py-1 text-center text-xs font-bold ${it.change == null ? 'bg-slate-600/30 text-[var(--mx-text)]' : it.change >= 0 ? 'bg-emerald-500/15 text-[var(--mx-ok)]' : 'bg-red-500/15 text-[var(--mx-bad)]'}`}>
-              {it.change == null ? '—' : `${it.change >= 0 ? '↗ +' : '↘ '}${it.change}%`}
-            </span>
-            <span className="flex-1 text-[12px] text-[var(--mx-text)]">{it.text}</span>
-            <span className="rounded-full border border-[var(--mx-border)] px-1.5 py-0.5 text-[10px] text-[var(--mx-accent)]" title="الثقة حسب كمية البيانات">{it.conf}%{it.conf <= 50 && ' · بيانات قليلة'}</span>
-          </li>
-        ))}
-      </ul>
+      <p className="mb-2 text-[11px] text-[var(--mx-muted)]">
+        كل شهر يخلص، ماتركس يقارن توقعه (يوم ١٥) بالنتيجة: ±١٠٪ = صح ✓، وأكثر = غلط ✗ — ويصحّح توقعاته الجاية من أغلاطه.
+      </p>
+      {fc?.insufficient && <p className="mb-2 text-[11px] text-amber-500">البيانات ما تكفي للتوقع بعد.</p>}
+      <div className="space-y-2">
+        {rows.map((r) => {
+          const ch = r.prev > 0 ? Math.round(((r.curr - r.prev) / r.prev) * 100) : null
+          return (
+            <div key={r.title} className="rounded-xl border border-[var(--mx-border)] bg-[var(--mx-sunken)] p-2">
+              <div className="mb-1 flex items-center gap-2">
+                <span className="text-[12px] font-bold text-[var(--mx-text)]">{r.title}</span>
+                <span className={`rounded-lg px-1.5 py-0.5 text-[10px] font-bold ${ch == null ? 'text-[var(--mx-muted)]' : ch >= 0 ? 'bg-emerald-500/15 text-[var(--mx-ok)]' : 'bg-red-500/15 text-[var(--mx-bad)]'}`}>
+                  {ch == null ? '—' : `${ch >= 0 ? '↗ +' : '↘ '}${ch}% عن الشهر السابق`}
+                </span>
+                <span className="mr-auto rounded-full border border-[var(--mx-border)] px-1.5 py-0.5 text-[10px] text-[var(--mx-accent)]" title="نسبة توقعات ماتركس الصح بآخر ٦ أشهر محكومة">
+                  {r.conf == null ? 'ثقة: جديد — لسه يتعلّم' : `ثقة حقيقية ${r.conf}%`}
+                </span>
+              </div>
+              <div className="grid grid-cols-3 gap-1 text-center">
+                <div className="rounded-lg bg-[var(--mx-card)] p-1"><p className="text-[10px] text-[var(--mx-muted)]">لحد اليوم</p><p className="text-[13px] font-bold text-[var(--mx-text)]">{r.now}</p></div>
+                <div className="rounded-lg bg-[var(--mx-card)] p-1"><p className="text-[10px] text-[var(--mx-muted)]">الشهر السابق لنفس اليوم</p><p className="text-[13px] font-bold text-[var(--mx-text)]">{r.last}</p></div>
+                <div className="rounded-lg bg-[var(--mx-card)] p-1 ring-1 ring-[var(--mx-accent)]"><p className="text-[10px] text-[var(--mx-muted)]">المتوقع لآخر الشهر</p><p className="text-[13px] font-bold text-[var(--mx-accent)]">{r.exp}</p>
+                  {r.range && <p className="text-[9px] text-[var(--mx-muted)]">{r.range}</p>}</div>
+              </div>
+              {r.calib !== 0 && <p className="mt-1 text-[10px] text-[var(--mx-muted)]">🧠 مصحّح حسب أخطائه السابقة ({r.calib > 0 ? `چان يبالغ ${Math.round(r.calib)}٪` : `چان يقلّل ${Math.round(-r.calib)}٪`})</p>}
+            </div>
+          )
+        })}
+        {proj > 0 && <p className="text-[11px] text-[var(--mx-muted)]">+ دفعات مشاريع مقبوضة هالشهر {fmtIQD(proj)} (ما تدخل بالتوقع)</p>}
+      </div>
+      {items.length > 0 && (
+        <ul className="mt-2 space-y-2">
+          {items.map((it, i) => (
+            <li key={i} className="flex items-center gap-2 rounded-xl border border-[var(--mx-border)] bg-[var(--mx-sunken)] p-2">
+              <span className={`min-w-[60px] rounded-lg px-2 py-1 text-center text-xs font-bold ${it.change == null ? 'bg-slate-600/30 text-[var(--mx-text)]' : it.change >= 0 ? 'bg-emerald-500/15 text-[var(--mx-ok)]' : 'bg-red-500/15 text-[var(--mx-bad)]'}`}>
+                {it.change == null ? '—' : `${it.change >= 0 ? '↗ +' : '↘ '}${it.change}%`}
+              </span>
+              <span className="flex-1 text-[12px] text-[var(--mx-text)]">{it.text}</span>
+              <span className="rounded-full border border-[var(--mx-border)] px-1.5 py-0.5 text-[10px] text-[var(--mx-accent)]" title="الثقة حسب كمية البيانات">{it.conf}%{it.conf <= 50 && ' · بيانات قليلة'}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+      <button onClick={() => setShowHist((v) => !v)} className="mt-2 text-[11px] font-bold text-[var(--mx-accent)] underline">
+        📒 سجل دقة ماتركس {hist.length ? `— صح ${okN} من ${hist.length}` : ''}
+      </button>
+      {showHist && (
+        <div className="mt-1 space-y-1">
+          {months.length === 0 && <p className="text-[11px] text-[var(--mx-muted)]">لسه ماكو شهر محكوم — أول حكم يصير أول يوم بالشهر الجاي.</p>}
+          {months.map((m) => (
+            <div key={m} className="rounded-lg border border-[var(--mx-border)] p-1.5 text-[11px] text-[var(--mx-text)]">
+              <b>{m}</b>
+              {hist.filter((h) => h.month === m).map((h) => (
+                <p key={h.kind} className={h.verdict === 'CORRECT' ? 'text-[var(--mx-ok)]' : 'text-[var(--mx-bad)]'}>
+                  {h.verdict === 'CORRECT' ? '✓ صح' : '✗ غلط'} · {h.kind === 'JOBS' ? 'الحجوزات' : 'الإيراد'}: توقّع {h.kind === 'JOBS' ? Math.round(h.forecast) : fmtIQD(h.forecast)} — طلع {h.kind === 'JOBS' ? Math.round(h.actual) : fmtIQD(h.actual)} ({h.errorPct > 0 ? '+' : ''}{Math.round(h.errorPct)}٪)
+                </p>
+              ))}
+            </div>
+          ))}
+          <p className="text-[10px] text-[var(--mx-muted)]">الشهر الحالي: التوقع ينحكم عليه أول يوم بالشهر الجاي.</p>
+        </div>
+      )}
     </section>
   )
 }

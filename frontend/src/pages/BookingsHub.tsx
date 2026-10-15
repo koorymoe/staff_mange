@@ -116,7 +116,7 @@ export default function BookingsHub() {
   // شاشة إدخال، وفتحها افتراضياً يعني الإداري يفتح النظام ويلگه
   // نموذج فاضي بدل شغله الي ينتظره.
   // ?tab= من روابط الصفحة الرئيسية (مثلاً «تنتظر تنسيق» ← coord).
-  const [params] = useSearchParams()
+  const [params, setParams] = useSearchParams()
   const focusParam = params.get('focus') || params.get('q') || ''
   // الرابط القديم ?tab=projects يفتح «مرحّل لإدارة أخرى» على المشاريع.
   const [tab, setTab] = useState<TabKey>(() => {
@@ -207,7 +207,16 @@ export default function BookingsHub() {
           {shown.map((t) => (
             <button
               key={t.key}
-              onClick={() => setTab(t.key)}
+              onClick={() => {
+                setTab(t.key)
+                // (ع) 10-15: «من انتقل بالسلسلة يضل بمكانه» — رابط ?focus= چان يقفل
+                // الشاشة على حجز واحد. ضغط أي محطة يشيله ويفتح المحطة.
+                if (focusParam) {
+                  const n = new URLSearchParams(params)
+                  n.delete('focus'); n.delete('q')
+                  setParams(n, { replace: true })
+                }
+              }}
               className={`rounded-xl px-3 py-2 text-[11px] font-extrabold transition sm:px-5 sm:text-xs ${
                 activeTab === t.key
                   ? 'bg-gradient-to-l from-brand-500 to-brand-800 text-white shadow-md'

@@ -550,6 +550,15 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	matrixEmployeeReportService := service.NewMatrixEmployeeReportService(repository.NewMatrixReportRepository(db), matrixAutopilotService)
 	matrixEmployeeReportService.EnableModel(cfg.AnthropicAPIKey, cfg.AIModel)
 	matrixBusinessService := service.NewMatrixBusinessService(repository.NewMatrixBusinessRepository(db))
+	// (ع) 10-15: كل ساعة — أي شهر خلص وبيه توقع محفوظ ينحكم عليه صح/غلط ويوصل للمالك
+	go func() {
+		for {
+			matrixBusinessService.EvaluateForecasts(func(msg string) {
+				_ = notificationRepo.CreateForRolesOrPermission([]string{"ADMIN", "OWNER"}, "matrix_forecast", "matrix_forecast", msg)
+			})
+			time.Sleep(time.Hour)
+		}
+	}()
 	matrixLearningService.SetReportService(matrixEmployeeReportService)
 	// سجل النشاط: كل حفظ ناجح ينكتب — «شنو سوّى اليوم» بتقرير الموظف.
 	employeeActivityService := service.NewEmployeeActivityService(repository.NewEmployeeActivityRepository(db))

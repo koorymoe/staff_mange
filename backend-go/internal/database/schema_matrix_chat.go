@@ -418,5 +418,16 @@ func matrixChatMigrations() []Migration {
 					p."techSupplierId", COALESCE(t."companyName", 'مورد غير مسجّل'), e."employeeId"
 				FROM "ExpensePurchase" p JOIN "Expense" e ON e.id = p."expenseId" LEFT JOIN "TechSupplier" t ON t.id = p."techSupplierId";
 		`,
+	}, {
+		// (ع) 10-15: توقعات ماتركس — حفظ توقع الحجوزات + الحكم صح/غلط آخر الشهر
+		Version: "0366_forecast_outcome",
+		SQL: `
+			ALTER TABLE "MatrixForecastLog" ADD COLUMN IF NOT EXISTS "expectedJobs" INT;
+			ALTER TABLE "MatrixForecastLog" ADD COLUMN IF NOT EXISTS "mtdJobs" INT;
+			CREATE TABLE IF NOT EXISTS "MatrixForecastOutcome" (
+				month TEXT NOT NULL, kind TEXT NOT NULL, forecast DOUBLE PRECISION NOT NULL, actual DOUBLE PRECISION NOT NULL,
+				"errorPct" DOUBLE PRECISION NOT NULL, verdict TEXT NOT NULL, "snapshotDay" DATE NOT NULL,
+				"evaluatedAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, PRIMARY KEY (month, kind));
+		`,
 	}}
 }

@@ -202,12 +202,56 @@ func (r *MatrixBusinessRepository) Pace() ([]PaceMonth, error) {
 }
 
 // LogForecast يحفظ توقع اليوم (مرة باليوم — آخر قيمة تغلب).
-func (r *MatrixBusinessRepository) LogForecast(expected, pipeline float64, pace *float64, mtd float64) error {
-	_, err := r.db.Exec(`INSERT INTO "MatrixForecastLog" (day, month, expected, pipeline, pace, mtd)
-		VALUES (baghdad_today(), to_char(baghdad_today(), 'YYYY-MM'), $1, $2, $3, $4)
+func (r *MatrixBusinessRepository) LogForecast(expected, pipeline float64, pace *float64, mtd float64, expJobs, mtdJobs int) error {
+	_, err := r.db.Exec(`INSERT INTO "MatrixForecastLog" (day, month, expected, pipeline, pace, mtd, "expectedJobs", "mtdJobs")
+		VALUES (baghdad_today(), to_char(baghdad_today(), 'YYYY-MM'), $1, $2, $3, $4, $5, $6)
 		ON CONFLICT (day) DO UPDATE SET expected = EXCLUDED.expected, pipeline = EXCLUDED.pipeline,
-		  pace = EXCLUDED.pace, mtd = EXCLUDED.mtd`, expected, pipeline, pace, mtd)
+		  pace = EXCLUDED.pace, mtd = EXCLUDED.mtd, "expectedJobs" = EXCLUDED."expectedJobs", "mtdJobs" = EXCLUDED."mtdJobs"`,
+		expected, pipeline, pace, mtd, expJobs, mtdJobs)
 	return err
+}
+
+// ═══ الحكم على التوقعات (ع) 10-15 ═══
+
+type ForecastSnapshot struct {
+	Month        string    `db:"month"`
+	Day          time.Time `db:"day"`
+	Expected     float64   `db:"expected"`
+	ExpectedJobs *int      `db:"expectedJobs"`
+}
+
+// MidMonthSnapshots توقع منتصف كل شهر سابق (اليوم الأقرب لـ١٥) ما انحكم عليه بعد.
+func (r *MatrixBusinessRepository) MidMonthSnapshots() ([]ForecastSnapshot, error) {
+	rows := []ForecastSnapshot{}
+	err := r.db.Select(&rows, `SELECT DISTINCT ON (month) month, day, expected, "expectedJobs" FROM "MatrixForecastLog"
+		WHERE month < to_char(baghdad_today(), 'YYYY-MM')
+		  AND NOT EXISTS (SELECT 1 FROM "MatrixForecastOutcome" o WHERE o.month = "MatrixForecastLog".month AND o.kind = 'REVENUE')
+		ORDER BY month, abs(extract(day FROM day) - 15), day`)
+	return rows, err
+}
+
+type ForecastOutcome struct {
+	Month    string  `db:"month" json:"month"`
+	Kind     string  `db:"kind" json:"kind"`
+	Forecast float64 `db:"forecast" json:"forecast"`
+	Actual   float64 `db:"actual" json:"actual"`
+	ErrorPct float64 `db:"errorPct" json:"errorPct"`
+	Verdict  string  `db:"verdict" json:"verdict"`
+	Day      string  `db:"snapshotDay" json:"snapshotDay"`
+}
+
+func (r *MatrixBusinessRepository) SaveOutcome(o ForecastOutcome) error {
+	_, err := r.db.Exec(`INSERT INTO "MatrixForecastOutcome" (month, kind, forecast, actual, "errorPct", verdict, "snapshotDay")
+		VALUES ($1,$2,$3,$4,$5,$6,$7) ON CONFLICT (month, kind) DO NOTHING`, o.Month, o.Kind, o.Forecast, o.Actual, o.ErrorPct, o.Verdict, o.Day)
+	return err
+}
+
+// Outcomes آخر n حكم (الأحدث أول).
+func (r *MatrixBusinessRepository) Outcomes(n int) ([]ForecastOutcome, error) {
+	rows := []ForecastOutcome{}
+	err := r.db.Select(&rows, `SELECT month, kind, forecast, actual, "errorPct", verdict, to_char("snapshotDay", 'YYYY-MM-DD') AS "snapshotDay"
+		FROM "MatrixForecastOutcome" ORDER BY month DESC, kind LIMIT $1`, n)
+	return rows, err
 }
 
 // ForecastCheck دقة توقع الشهر الماضي: التوقع بنص الشهر مقابل النتيجة الفعلية.
@@ -240,7 +284,7 @@ type InquiryCustomer struct {
 var inquiryCTE = `
 	WITH c AS (
 	  SELECT b."customerId" AS id,
-	         COUNT(*) FILTER (WHERE b.status = 'COMPLETED' AND `+BookingCountableSQL("b")+`) AS done,
+	         COUNT(*) FILTER (WHERE b.status = 'COMPLETED' AND ` + BookingCountableSQL("b") + `) AS done,
 	         COUNT(*) FILTER (WHERE b."archivedAt" IS NOT NULL) AS archived,
 	         COUNT(*) FILTER (WHERE b."archivedAt" IS NULL AND b.status <> 'COMPLETED' AND b.status <> 'CANCELLED') AS open,
 	         MAX(b."createdAt") AS "lastAt"
