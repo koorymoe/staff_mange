@@ -613,7 +613,7 @@ func (h *CustomerAppHandler) Send(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		log.Printf("customer matrix: %v", err)
 		if answer == "" {
-			answer = "عذراً، صار عندي ضغط هسه 🙏 حاول بعد شوية، أو إذا مستعجل اكتبلي رقمك وفريقنا يتواصل وياك."
+			answer = "عذراً، صار عندي ضغط هسه 🙏 تحب أحوّلك لأحد موظفينا حتى يتابع وياك؟"
 		}
 	}
 	if code != "" && answer == "" {
