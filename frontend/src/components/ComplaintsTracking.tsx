@@ -419,8 +419,19 @@ export default function ComplaintsTracking({
                       onChange={(e) => onAssign(selected.id, e.target.value)}
                       className="mt-1 w-full rounded-lg border border-slate-300 px-2 py-1 text-xs">
                       <option value="">— اختر —</option>
-                      {employees.filter((e) => e.status === 'ACTIVE')
-                        .map((e) => <option key={e.id} value={e.id}>{e.name}</option>)}
+                      {/* (ع) 10-15: التكليف بس للمراقب ومهندس الجودة والتقنيين — مو كل الموظفين */}
+                      {([['QUALITY_ENGINEER', '🎧 مهندسين الجودة'], ['MONITOR', '👁️ المراقبين'], ['TECHNICAL', '🛠️ التقنيين']] as const).map(([role, label]) => {
+                        const list = employees.filter((e) => e.status === 'ACTIVE' && e.role === role)
+                        return list.length ? (
+                          <optgroup key={role} label={label}>
+                            {list.map((e) => <option key={e.id} value={e.id}>{e.name}</option>)}
+                          </optgroup>
+                        ) : null
+                      })}
+                      {/* المكلّف الحالي لو مو من هذني الأدوار — يبقى ظاهر حتى ما يختفي اسمه */}
+                      {selected.assignedToEmployeeId && !employees.some((e) => e.id === selected.assignedToEmployeeId && ['QUALITY_ENGINEER', 'MONITOR', 'TECHNICAL'].includes(e.role)) && (
+                        <option value={selected.assignedToEmployeeId}>{selected.assignedToEmployee?.name ?? '—'}</option>
+                      )}
                     </select>
                   )}
                 </Box>
