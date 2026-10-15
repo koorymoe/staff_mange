@@ -5452,7 +5452,7 @@ export const api = {
     request<ProcurementRequest>('/procurement', { method: 'POST', body: JSON.stringify(data) }),
   updateProcurementStatus: (id: string, status: string) =>
     request<ProcurementRequest>(`/procurement/${id}/status`, { method: 'PUT', body: JSON.stringify({ status }) }),
-  fulfillProcurementRequest: (id: string, data: { fulfilledById: string; supplierId: string; totalCost?: number; fulfillmentNotes?: string; items?: { id: string; unitPrice?: number; totalPrice?: number; fulfilled?: boolean }[] }) =>
+  fulfillProcurementRequest: (id: string, data: { fulfilledById: string; supplierId: string; totalCost?: number; fulfillmentNotes?: string; items?: { id: string; unitPrice?: number; totalPrice?: number; fulfilled?: boolean }[]; quotes?: { supplierId: string; totalPrice: number }[] }) =>
     request<ProcurementRequest>(`/procurement/${id}/fulfill`, { method: 'PUT', body: JSON.stringify(data) }),
 
   // صيانة الأجهزة العامة (شيت "صيانة الاجهزة") — ليدر فقط
@@ -6112,7 +6112,7 @@ export interface FieldMap {
 export interface PurchaseControlRow { id: string; verifiedAt: string | null; verifiedBy: string | null; myReview: boolean; alerts: number }
 export interface PurchasePriceRow { key: string; product: string; supplier: string; lastPrice: number; minPrice: number; times: number; lastAt: string }
 export interface PurchaseAlert {
-  id: string; kind: 'PRICIER' | 'JUMP'; code: string; product: string; supplier: string | null; unitPrice: number; quantity: number
+  id: string; kind: 'PRICIER' | 'JUMP' | 'QUOTE'; code: string; product: string; supplier: string | null; unitPrice: number; quantity: number
   refSupplier: string | null; refPrice: number; loss: number; buyer: string | null; createdAt: string; reviewedAt: string | null; reviewNote: string | null
 }
 export interface SupplierScore { supplierId: string; n: number; price: number; quality: number; speed: number; punctuality: number; dealing: number; alerts: number }
@@ -6125,4 +6125,9 @@ export const purchaseApi = {
   alerts: () => request<PurchaseAlert[]>('/procurement/alerts'),
   reviewAlert: (id: string, note: string) => request<{ ok: boolean }>(`/procurement-alerts/${id}`, { method: 'PUT', body: JSON.stringify({ note }) }),
   supplierScores: () => request<SupplierScore[]>('/suppliers/scores'),
+  policy: () => request<{ quoteThreshold: number }>('/procurement-policy'),
+  setPolicy: (quoteThreshold: number) => request<{ quoteThreshold: number }>('/procurement-policy', { method: 'PUT', body: JSON.stringify({ quoteThreshold }) }),
+  quotes: (id: string) => request<{ supplier: string; totalPrice: number; chosen: boolean; note: string | null }[]>(`/procurement-quotes/${id}`),
+  bias: () => request<PurchaseBias[]>('/procurement-bias'),
 }
+export interface PurchaseBias { buyer: string; supplier: string; n: number; total: number; share: number; extra: number; cheaperAvailable: number }

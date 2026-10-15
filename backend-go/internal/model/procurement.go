@@ -125,6 +125,14 @@ type FulfillProcurementRequestRequest struct {
 	TotalCost        *float64                        `json:"totalCost"`
 	FulfillmentNotes *string                         `json:"fulfillmentNotes"`
 	Items            []FulfillProcurementItemRequest `json:"items"`
+	// (ع) 10-15: عروض الموردين الثانيين — إلزامية للمشتريات فوق حد السياسة
+	Quotes []ProcurementQuoteInput `json:"quotes"`
+}
+
+type ProcurementQuoteInput struct {
+	SupplierID string  `json:"supplierId"`
+	TotalPrice float64 `json:"totalPrice"`
+	Note       *string `json:"note"`
 }
 
 type ProcurementStats struct {

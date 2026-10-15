@@ -372,5 +372,19 @@ func matrixChatMigrations() []Migration {
 				SELECT lower(btrim(regexp_replace(COALESCE(n, '') || CASE WHEN COALESCE(btrim(m), '') <> '' THEN ' ' || m ELSE '' END, '\s+', ' ', 'g')))
 			$$;
 		`,
+	}, {
+		// (ع) 10-15: رقابة المشتريات ٢ — شرط العرضين للمشتريات الكبيرة
+		Version: "0364_purchase_quotes",
+		SQL: `
+			CREATE TABLE IF NOT EXISTS "PurchasePolicy" (
+				id INT PRIMARY KEY DEFAULT 1 CHECK (id = 1), "quoteThreshold" DOUBLE PRECISION NOT NULL DEFAULT 500000,
+				"updatedAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP);
+			INSERT INTO "PurchasePolicy" (id) VALUES (1) ON CONFLICT DO NOTHING;
+			CREATE TABLE IF NOT EXISTS "ProcurementQuote" (
+				id TEXT PRIMARY KEY, "procurementId" TEXT NOT NULL REFERENCES "ProcurementRequest"(id) ON DELETE CASCADE,
+				"supplierId" TEXT NOT NULL REFERENCES "Supplier"(id), "totalPrice" DOUBLE PRECISION NOT NULL,
+				chosen BOOLEAN NOT NULL DEFAULT false, note TEXT, "createdAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP);
+			CREATE INDEX IF NOT EXISTS procurement_quote_req ON "ProcurementQuote" ("procurementId");
+		`,
 	}}
 }

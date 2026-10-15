@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { purchaseApi, type ProcurementRequest, type PurchaseAlert, type PurchaseControlRow, type PurchasePriceRow, type SupplierReviewInput } from '../api'
+import { purchaseApi, type ProcurementRequest, type PurchaseAlert, type PurchaseBias, type PurchaseControlRow, type PurchasePriceRow, type SupplierReviewInput } from '../api'
 
 // ═══ رقابة المشتريات — قرار (ع) 10-15 ═══
 // المشتري يسجّل الشراء ويقيّم المورد ببنود (أولها السعر) · المحاسب يثبّت ·
@@ -22,7 +22,10 @@ interface Props {
 }
 
 export default function PurchaseControlPanel({ requests, canBuy, canVerify, canWatch, canDecide, reviewFor, onReviewClose }: Props) {
-  const [tab, setTab] = useState<'todo' | 'prices' | 'alerts'>('todo')
+  const [tab, setTab] = useState<'todo' | 'prices' | 'alerts' | 'bias'>('todo')
+  const [bias, setBias] = useState<PurchaseBias[]>([])
+  const [threshold, setThreshold] = useState<number | null>(null)
+  const [quotesOf, setQuotesOf] = useState<{ id: string; rows: { supplier: string; totalPrice: number; chosen: boolean }[] } | null>(null)
   const [control, setControl] = useState<PurchaseControlRow[]>([])
   const [alerts, setAlerts] = useState<PurchaseAlert[]>([])
   const [q, setQ] = useState('')
@@ -35,6 +38,8 @@ export default function PurchaseControlPanel({ requests, canBuy, canVerify, canW
     let alive = true
     purchaseApi.control().then((r) => { if (alive) setControl(r) }).catch(() => {})
     if (canWatch) purchaseApi.alerts().then((r) => { if (alive) setAlerts(r) }).catch(() => {})
+    if (canWatch) purchaseApi.bias().then((r) => { if (alive) setBias(r) }).catch(() => {})
+    purchaseApi.policy().then((p) => { if (alive) setThreshold(p.quoteThreshold) }).catch(() => {})
     return () => { alive = false }
   }, [reload, canWatch, requests])
 
@@ -65,12 +70,27 @@ export default function PurchaseControlPanel({ requests, canBuy, canVerify, canW
   }
 
   const tabs: [typeof tab, string][] = [['todo', `📋 بانتظاري (${toReview.length + toVerify.length})`], ['prices', '📊 سجل الأسعار']]
-  if (canWatch) tabs.push(['alerts', `🚨 تنبيهات ماتركس (${openAlerts.length})`])
+  if (canWatch) tabs.push(['alerts', `🚨 تنبيهات ماتركس (${openAlerts.length})`], ['bias', `🔁 الميل لمورد (${bias.length})`])
+  const editThreshold = async () => {
+    const v = prompt('حد «العرضين» بالدينار (الشراء فوقه لازم وياه عرض مورد ثاني، 0 = بلا شرط):', String(threshold ?? 500000))
+    if (v == null || isNaN(Number(v))) return
+    try { await purchaseApi.setPolicy(Number(v)); setReload((n) => n + 1) } catch (e) { alert(e instanceof Error ? e.message : 'تعذر الحفظ') }
+  }
+  const showQuotes = async (id: string) => {
+    if (quotesOf?.id === id) { setQuotesOf(null); return }
+    try { setQuotesOf({ id, rows: await purchaseApi.quotes(id) }) } catch { /* */ }
+  }
 
   return (
     <div className="rounded-xl border border-white bg-white p-4 shadow-[0_4px_20px_rgba(15,32,64,0.06)]">
       <div className="mb-3 flex flex-wrap items-center gap-2">
-        <h2 className="ml-auto text-lg font-bold text-[#0f2040]">🛡️ رقابة المشتريات</h2>
+        <h2 className="text-lg font-bold text-[#0f2040]">🛡️ رقابة المشتريات</h2>
+        {threshold != null && (
+          <span className="ml-auto text-xs text-slate-500">
+            🧾 شرط العرضين فوق {threshold > 0 ? iqd(threshold) : '— (مطفي)'}
+            {canDecide && <button onClick={editThreshold} className="mr-1 text-[#2c5aad] underline">تغيير</button>}
+          </span>
+        )}
         {tabs.map(([k, label]) => (
           <button key={k} onClick={() => setTab(k)} className={`rounded-lg px-3 py-1.5 text-sm font-bold ${tab === k ? (k === 'alerts' ? 'bg-red-600 text-white' : 'bg-[#2c5aad] text-white') : 'bg-slate-100 text-slate-600'}`}>{label}</button>
         ))}
@@ -89,7 +109,14 @@ export default function PurchaseControlPanel({ requests, canBuy, canVerify, canW
             <div key={'vf' + r.id} className="flex flex-wrap items-center gap-2 rounded-lg border border-sky-200 bg-sky-50 px-3 py-2 text-sm">
               <span className="font-bold">{r.code}</span> · {r.supplier?.name} · اشتراه {r.fulfilledBy?.name ?? '—'} · {r.totalCost != null ? iqd(r.totalCost) : 'بلا مبلغ'}
               {byId.get(r.id)!.alerts > 0 && <span className="rounded bg-red-100 px-2 py-0.5 text-xs font-bold text-red-700">🚨 {byId.get(r.id)!.alerts} تنبيه سعر</span>}
-              <button onClick={() => verify(r.id)} className="mr-auto rounded-lg bg-sky-600 px-3 py-1 font-bold text-white">✓ تثبيت المحاسب</button>
+              <button onClick={() => showQuotes(r.id)} className="mr-auto rounded-lg bg-white px-3 py-1 text-xs font-bold text-sky-700 ring-1 ring-sky-300">🧾 العروض</button>
+              <button onClick={() => verify(r.id)} className="rounded-lg bg-sky-600 px-3 py-1 font-bold text-white">✓ تثبيت المحاسب</button>
+              {quotesOf?.id === r.id && (
+                <div className="w-full text-xs">
+                  {quotesOf.rows.length === 0 ? <p className="text-slate-500">ماكو عروض مسجّلة لهذا الشراء.</p>
+                    : quotesOf.rows.map((q, i) => <p key={i} className={q.chosen ? 'font-bold' : ''}>{q.chosen ? '✓ المختار' : '•'} {q.supplier}: {iqd(q.totalPrice)}</p>)}
+                </div>
+              )}
             </div>
           ))}
         </div>
@@ -131,16 +158,33 @@ export default function PurchaseControlPanel({ requests, canBuy, canVerify, canW
           {alerts.map((a) => (
             <div key={a.id} className={`rounded-lg border px-3 py-2 text-sm ${a.reviewedAt ? 'border-slate-200 bg-slate-50 text-slate-500' : 'border-red-200 bg-red-50'}`}>
               <p className="font-bold">
-                {a.kind === 'PRICIER' ? '🚨 اشترى من الأغلى' : '📈 المورد رفع سعره'} · {a.code} · «{a.product}» ×{a.quantity}
+                {a.kind === 'PRICIER' ? '🚨 اشترى من الأغلى' : a.kind === 'QUOTE' ? '🧾 اختار العرض الأغلى' : '📈 المورد رفع سعره'} · {a.code} · «{a.product}»{a.kind !== 'QUOTE' && ` ×${a.quantity}`}
               </p>
               <p className="mt-0.5">
-                {a.kind === 'PRICIER'
+                {a.kind === 'QUOTE'
+                  ? <>اختار عرض <b>{a.supplier}</b> بـ<b>{iqd(a.unitPrice)}</b> — وعرض <b>{a.refSupplier}</b> چان <b>{iqd(a.refPrice)}</b></>
+                  : a.kind === 'PRICIER'
                   ? <>انشترت من <b>{a.supplier}</b> بـ<b>{iqd(a.unitPrice)}</b> — وموجودة عند <b>{a.refSupplier}</b> بـ<b>{iqd(a.refPrice)}</b></>
                   : <><b>{a.supplier}</b> رفع السعر من <b>{iqd(a.refPrice)}</b> إلى <b>{iqd(a.unitPrice)}</b></>}
                 {' · '}الفرق <b className="text-red-700">{iqd(a.loss)}</b> · المشتري: {a.buyer ?? '—'} · {day(a.createdAt)}
               </p>
               {a.reviewedAt ? <p className="mt-1 text-xs">✓ انحسم: {a.reviewNote}</p>
                 : canDecide && <button onClick={() => decide(a)} className="mt-1 rounded-lg bg-white px-3 py-1 text-xs font-bold text-red-700 ring-1 ring-red-300">احسم التنبيه</button>}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {tab === 'bias' && (
+        <div className="space-y-2">
+          <p className="text-xs text-slate-500">آخر ٩٠ يوم: مشتري يروح ٧٠٪ أو أكثر من مشترياته لنفس المورد (من ٥ مشتريات فأكثر)، ويّا قديش دفع زيادة عن أرخص سعر لنفس المواد عند غيره.</p>
+          {bias.length === 0 && <p className="text-sm text-slate-400">ماكو ميل واضح لمورد واحد ✓</p>}
+          {bias.map((b, i) => (
+            <div key={i} className={`rounded-lg border px-3 py-2 text-sm ${b.extra > 0 ? 'border-red-200 bg-red-50' : 'border-amber-200 bg-amber-50'}`}>
+              <p className="font-bold">🔁 {b.buyer} ← {b.supplier}: {Math.round(b.share * 100)}٪ من مشترياته ({b.n} من {b.total})</p>
+              <p className="mt-0.5">
+                {b.extra > 0 ? <>دفع زيادة <b className="text-red-700">{iqd(b.extra)}</b> عن أرخص سعر — وبـ{b.cheaperAvailable} مادة چان أكو مورد أرخص.</> : 'أسعاره بنفس مستوى الأرخص — الميل بلا خسارة لحد هسه.'}
+              </p>
             </div>
           ))}
         </div>

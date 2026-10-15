@@ -11,6 +11,7 @@ import (
 	"github.com/jmoiron/sqlx"
 
 	"staffmange-api/internal/middleware"
+	"staffmange-api/internal/model"
 )
 
 // ═══ رقابة المشتريات — قرار (ع) 10-15 ═══
@@ -91,6 +92,14 @@ func (h *PurchaseControlHandler) CheckPrices(procurementID string) {
 		}
 	}
 }
+
+func (h *PurchaseControlHandler) afterAll(procurementID string) {
+	h.CheckPrices(procurementID)
+	h.checkQuotes(procurementID)
+}
+
+// AfterFulfill كل فحوصات ماتركس بعد الشراء
+func (h *PurchaseControlHandler) AfterFulfill(procurementID string) { h.afterAll(procurementID) }
 
 func (h *PurchaseControlHandler) alert(procID string, it pricedItem, kind string, refSup *string, refPrice, loss float64, msg string) {
 	r, err := h.db.Exec(`INSERT INTO "ProcurementPriceAlert" (id, "procurementId", "itemId", kind, "productName", "supplierId", "unitPrice", quantity,
@@ -267,5 +276,164 @@ func (h *PurchaseControlHandler) SupplierScores(w http.ResponseWriter, r *http.R
 		COALESCE(avg(v.speed),0) AS speed, COALESCE(avg(v.punctuality),0) AS punctuality, COALESCE(avg(v.dealing),0) AS dealing,
 		(SELECT count(*) FROM "ProcurementPriceAlert" a WHERE a."supplierId" = s.id)::int AS alerts
 		FROM "Supplier" s LEFT JOIN "SupplierReview" v ON v."supplierId" = s.id GROUP BY s.id`)
+	WriteJSON(w, http.StatusOK, rows)
+}
+
+// ═══ شرط العرضين — (ع) 10-15 ═══
+// الشراء الي مبلغه فوق الحد (افتراضي ٥٠٠,٠٠٠ د.ع) لازم يتسجّل وياه عرض سعر
+// من مورد ثاني على الأقل. وإذا المشتري اختار الأغلى بين العروض، ماتركس ينبّه.
+
+func (h *PurchaseControlHandler) threshold() float64 {
+	var t float64
+	if err := h.db.Get(&t, `SELECT "quoteThreshold" FROM "PurchasePolicy" WHERE id = 1`); err != nil {
+		return 500000
+	}
+	return t
+}
+
+// BeforeFulfill يفحص العروض ويحفظها قبل ما ينحفظ الشراء.
+func (h *PurchaseControlHandler) BeforeFulfill(procurementID string, req model.FulfillProcurementRequestRequest) error {
+	total := 0.0
+	if req.TotalCost != nil {
+		total = *req.TotalCost
+	} else {
+		for _, it := range req.Items {
+			if it.TotalPrice != nil {
+				total += *it.TotalPrice
+			}
+		}
+	}
+	others := 0
+	for _, q := range req.Quotes {
+		if q.SupplierID != "" && req.SupplierID != nil && q.SupplierID != *req.SupplierID && q.TotalPrice > 0 {
+			others++
+		}
+	}
+	if th := h.threshold(); th > 0 && total >= th && others == 0 {
+		return fmt.Errorf("الشراء فوق %s د.ع — لازم تسجّل عرض سعر من مورد ثاني على الأقل قبل الشراء", money(th))
+	}
+	if len(req.Quotes) == 0 || req.SupplierID == nil {
+		return nil
+	}
+	tx, err := h.db.Beginx()
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback() }()
+	_, _ = tx.Exec(`DELETE FROM "ProcurementQuote" WHERE "procurementId" = $1`, procurementID)
+	// العرض المختار نفسه ينحفظ ويّا البقية حتى تصير المقارنة كاملة
+	if _, err := tx.Exec(`INSERT INTO "ProcurementQuote" (id, "procurementId", "supplierId", "totalPrice", chosen) VALUES ($1,$2,$3,$4,true)`,
+		uuid.NewString(), procurementID, *req.SupplierID, total); err != nil {
+		return err
+	}
+	for _, q := range req.Quotes {
+		if q.SupplierID == "" || q.SupplierID == *req.SupplierID || q.TotalPrice <= 0 {
+			continue
+		}
+		if _, err := tx.Exec(`INSERT INTO "ProcurementQuote" (id, "procurementId", "supplierId", "totalPrice", note) VALUES ($1,$2,$3,$4,$5)`,
+			uuid.NewString(), procurementID, q.SupplierID, q.TotalPrice, q.Note); err != nil {
+			return err
+		}
+	}
+	return tx.Commit()
+}
+
+// checkQuotes بعد الشراء: إذا المختار مو الأرخص بين العروض → تنبيه.
+func (h *PurchaseControlHandler) checkQuotes(procurementID string) {
+	var q struct {
+		Chosen     float64 `db:"chosen"`
+		Best       float64 `db:"best"`
+		BestSup    string  `db:"bestSup"`
+		BestName   string  `db:"bestName"`
+		ChosenSup  *string `db:"chosenSup"`
+		ChosenName *string `db:"chosenName"`
+		Code       string  `db:"code"`
+		Buyer      *string `db:"buyer"`
+	}
+	err := h.db.Get(&q, `SELECT c."totalPrice" AS chosen, b."totalPrice" AS best, b."supplierId" AS "bestSup", bs."companyName" AS "bestName",
+		c."supplierId" AS "chosenSup", cs."companyName" AS "chosenName", r.code, r."fulfilledById" AS buyer
+		FROM "ProcurementQuote" c JOIN "ProcurementRequest" r ON r.id = c."procurementId" LEFT JOIN "Supplier" cs ON cs.id = c."supplierId",
+		LATERAL (SELECT * FROM "ProcurementQuote" x WHERE x."procurementId" = c."procurementId" AND NOT x.chosen ORDER BY x."totalPrice" LIMIT 1) b
+		JOIN "Supplier" bs ON bs.id = b."supplierId"
+		WHERE c."procurementId" = $1 AND c.chosen`, procurementID)
+	if err != nil || q.Chosen <= q.Best*1.02 {
+		return
+	}
+	loss := q.Chosen - q.Best
+	it := pricedItem{ID: "quote:" + procurementID, Name: "عرض الشراء كامل", Qty: 1, UnitPrice: &q.Chosen, SupplierID: q.ChosenSup, BuyerID: q.Buyer, Code: q.Code}
+	name := ""
+	if q.ChosenName != nil {
+		name = *q.ChosenName
+	}
+	h.alert(procurementID, it, "QUOTE", &q.BestSup, q.Best, loss,
+		fmt.Sprintf("🧾 مشتريات %s: اختار عرض %s بـ%s د.ع وعرض %s چان %s — فرق %s د.ع", q.Code, name, money(q.Chosen), q.BestName, money(q.Best), money(loss)))
+}
+
+// GET/PUT /api/procurement/policy — حد العرضين (المدير يغيّره)
+func (h *PurchaseControlHandler) GetPolicy(w http.ResponseWriter, r *http.Request) {
+	WriteJSON(w, http.StatusOK, map[string]any{"quoteThreshold": h.threshold()})
+}
+
+func (h *PurchaseControlHandler) SetPolicy(w http.ResponseWriter, r *http.Request) {
+	var b struct {
+		QuoteThreshold float64 `json:"quoteThreshold"`
+	}
+	if err := DecodeJSON(r, &b); err != nil || b.QuoteThreshold < 0 {
+		WriteError(w, http.StatusBadRequest, "مبلغ غير صالح")
+		return
+	}
+	_, _ = h.db.Exec(`UPDATE "PurchasePolicy" SET "quoteThreshold" = $1, "updatedAt" = now() WHERE id = 1`, b.QuoteThreshold)
+	WriteJSON(w, http.StatusOK, b)
+}
+
+// GET /api/procurement/quotes/{id} — العروض المسجّلة لشراء (دليل للمحاسب والمراقب)
+func (h *PurchaseControlHandler) Quotes(w http.ResponseWriter, r *http.Request) {
+	type row struct {
+		Supplier   string  `db:"supplier" json:"supplier"`
+		TotalPrice float64 `db:"totalPrice" json:"totalPrice"`
+		Chosen     bool    `db:"chosen" json:"chosen"`
+		Note       *string `db:"note" json:"note"`
+	}
+	rows := []row{}
+	_ = h.db.Select(&rows, `SELECT s."companyName" AS supplier, q."totalPrice", q.chosen, q.note FROM "ProcurementQuote" q
+		JOIN "Supplier" s ON s.id = q."supplierId" WHERE q."procurementId" = $1 ORDER BY q."totalPrice"`, r.PathValue("id"))
+	WriteJSON(w, http.StatusOK, rows)
+}
+
+// ═══ الميل لمورد واحد — (ع) 10-15 ═══
+// GET /api/procurement/bias — آخر ٩٠ يوم: مشتري يروح ٧٠٪ أو أكثر من مشترياته
+// (٥ فأكثر) لنفس المورد، ويّا قديش دفع زيادة عن أرخص سعر لنفس المواد عند غيره.
+func (h *PurchaseControlHandler) Bias(w http.ResponseWriter, r *http.Request) {
+	type row struct {
+		Buyer    string  `db:"buyer" json:"buyer"`
+		Supplier string  `db:"supplier" json:"supplier"`
+		N        int     `db:"n" json:"n"`
+		Total    int     `db:"total" json:"total"`
+		Share    float64 `db:"share" json:"share"`
+		Extra    float64 `db:"extra" json:"extra"`
+		Cheaper  int     `db:"cheaper" json:"cheaperAvailable"`
+	}
+	rows := []row{}
+	if err := h.db.Select(&rows, `WITH p AS (
+			SELECT r.id AS req, r."fulfilledById" AS buyer, r."supplierId" AS sup, product_key(i."productName", i.model) AS key,
+				i."unitPrice" AS price, i.quantity AS q
+			FROM "ProcurementItem" i JOIN "ProcurementRequest" r ON r.id = i."requestId"
+			WHERE r."fulfilledAt" > now() - interval '90 days' AND i."unitPrice" > 0 AND r."supplierId" IS NOT NULL AND r."fulfilledById" IS NOT NULL
+		), best AS (SELECT key, min(price) AS minp, count(DISTINCT sup) AS sups FROM p GROUP BY key),
+		per AS (
+			SELECT p.buyer, p.sup, count(DISTINCT p.req) AS n,
+				sum(GREATEST(p.price - b.minp, 0) * p.q) AS extra,
+				count(*) FILTER (WHERE b.sups > 1 AND p.price > b.minp * 1.05) AS cheaper
+			FROM p JOIN best b ON b.key = p.key GROUP BY p.buyer, p.sup
+		), tot AS (SELECT buyer, count(DISTINCT req) AS total FROM p GROUP BY buyer)
+		SELECT e.name AS buyer, s."companyName" AS supplier, per.n::int, tot.total::int,
+			per.n::float / tot.total AS share, per.extra, per.cheaper::int
+		FROM per JOIN tot ON tot.buyer = per.buyer JOIN "Employee" e ON e.id = per.buyer JOIN "Supplier" s ON s.id = per.sup
+		WHERE tot.total >= 5 AND per.n::float / tot.total >= 0.7
+		ORDER BY per.extra DESC`); err != nil {
+		log.Printf("[purchase-control] bias: %v", err)
+		WriteError(w, http.StatusInternalServerError, "تعذر الحساب")
+		return
+	}
 	WriteJSON(w, http.StatusOK, rows)
 }

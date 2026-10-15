@@ -1,5 +1,6 @@
 import { Fragment, useState, useEffect, useContext } from 'react'
 import PurchaseControlPanel from '../components/PurchaseControlPanel'
+import { purchaseApi } from '../api'
 import { useSearchParams } from 'react-router-dom'
 import { api, procurementTypeLabels, type ProcurementRequest, type ProcurementRequestType, type ProcurementStats, type Booking } from '../api'
 import { SessionContext } from '../session'
@@ -62,6 +63,10 @@ export default function ProcurementPage() {
   const [fulfilling, setFulfilling] = useState(false)
   // (ع) 10-15: بعد الشراء ينطلب تقييم المورد مباشرة
   const [reviewFor, setReviewFor] = useState<ProcurementRequest | null>(null)
+  // شرط العرضين: الشراء فوق الحد لازم وياه عرض مورد ثاني
+  const [quoteThreshold, setQuoteThreshold] = useState(500000)
+  const [quotes, setQuotes] = useState<{ supplierId: string; totalPrice: string }[]>([])
+  useEffect(() => { purchaseApi.policy().then((p) => setQuoteThreshold(p.quoteThreshold)).catch(() => {}) }, [])
   const canVerifyPurchase = isAdminLike || employee?.role === 'FINANCE' || permissions.includes('finance_audit')
   const canWatchPurchase = canVerifyPurchase || employee?.role === 'MONITOR' || permissions.includes('monitoring')
 
@@ -204,6 +209,7 @@ export default function ProcurementPage() {
         supplierId: fulfillSupplierId,
         totalCost: fulfillCost ? parseFloat(fulfillCost) : undefined,
         fulfillmentNotes: fulfillNotes || undefined,
+        quotes: quotes.filter((q) => q.supplierId && Number(q.totalPrice) > 0).map((q) => ({ supplierId: q.supplierId, totalPrice: Number(q.totalPrice) })),
         items: fulfillItems.map(i => ({
           id: i.id,
           unitPrice: i.unitPrice ? parseFloat(i.unitPrice) : undefined,
@@ -213,6 +219,7 @@ export default function ProcurementPage() {
       })
       const done = fulfillModal
       setFulfillModal(null)
+      setQuotes([])
       await loadData()
       setReviewFor({ ...done, supplierId: fulfillSupplierId, supplier: { id: fulfillSupplierId, name: suppliers.find((x) => x.id === fulfillSupplierId)?.companyName ?? '' } })
     } catch (e) {
@@ -619,6 +626,30 @@ export default function ProcurementPage() {
                 className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#2c5aad]"
               />
             </div>
+
+            {(() => {
+              const total = fulfillCost ? parseFloat(fulfillCost) : fulfillItems.reduce((a, i) => a + (parseFloat(i.totalPrice) || 0), 0)
+              const need = quoteThreshold > 0 && total >= quoteThreshold
+              const okCount = quotes.filter((q) => q.supplierId && q.supplierId !== fulfillSupplierId && Number(q.totalPrice) > 0).length
+              return (
+                <div className={`rounded-lg border p-3 ${need && okCount === 0 ? 'border-red-300 bg-red-50' : 'border-slate-200'}`}>
+                  <p className="text-sm font-bold text-slate-700">🧾 عروض الموردين الثانيين {need ? <span className="text-red-600">(إلزامي — الشراء فوق {quoteThreshold.toLocaleString('en-US')} د.ع)</span> : <span className="font-normal text-slate-400">(اختياري)</span>}</p>
+                  {quotes.map((q, i) => (
+                    <div key={i} className="mt-2 flex gap-2">
+                      <select value={q.supplierId} onChange={(e) => setQuotes(quotes.map((x, j) => (j === i ? { ...x, supplierId: e.target.value } : x)))}
+                        className="flex-1 rounded-lg border border-slate-300 px-2 py-1.5 text-sm">
+                        <option value="">المورد</option>
+                        {suppliers.filter((x) => x.id !== fulfillSupplierId).map((x) => <option key={x.id} value={x.id}>{x.companyName}</option>)}
+                      </select>
+                      <input type="number" placeholder="سعره الكلي" value={q.totalPrice} onChange={(e) => setQuotes(quotes.map((x, j) => (j === i ? { ...x, totalPrice: e.target.value } : x)))}
+                        className="w-36 rounded-lg border border-slate-300 px-2 py-1.5 text-sm" />
+                      <button onClick={() => setQuotes(quotes.filter((_, j) => j !== i))} className="text-xl text-red-500">×</button>
+                    </div>
+                  ))}
+                  <button onClick={() => setQuotes([...quotes, { supplierId: '', totalPrice: '' }])} className="mt-2 text-sm text-[#2c5aad] hover:underline">+ عرض مورد ثاني</button>
+                </div>
+              )
+            })()}
 
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1">ملاحظات التوفير</label>

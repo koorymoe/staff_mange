@@ -1796,7 +1796,8 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	purchaseControl := handler.NewPurchaseControlHandler(db, func(msg string) {
 		_ = notificationRepo.CreateForRolesOrPermission([]string{"ADMIN", "MONITOR"}, "monitoring", "purchase_alert", msg)
 	})
-	procurementHandler.SetAfterFulfill(purchaseControl.CheckPrices)
+	procurementHandler.SetAfterFulfill(purchaseControl.AfterFulfill)
+	procurementHandler.SetBeforeFulfill(purchaseControl.BeforeFulfill)
 	requirePurchaseWatch := middleware.RequireRoleOrAnyPermission(permissionRepo, employeeRepo, notificationRepo, []string{"ADMIN", "MONITOR", "FINANCE"}, "monitoring", "finance_audit")
 	mux.Handle("GET /api/procurement/control", middleware.Chain(http.HandlerFunc(purchaseControl.Control), requireAuth))
 	mux.Handle("POST /api/procurement/{id}/review", middleware.Chain(http.HandlerFunc(purchaseControl.Review), requireAuth, requireProcurementAdmin))
@@ -1804,6 +1805,10 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	mux.Handle("GET /api/procurement/prices", middleware.Chain(http.HandlerFunc(purchaseControl.Prices), requireAuth))
 	mux.Handle("GET /api/procurement/alerts", middleware.Chain(http.HandlerFunc(purchaseControl.Alerts), requireAuth, requirePurchaseWatch))
 	mux.Handle("PUT /api/procurement-alerts/{id}", middleware.Chain(http.HandlerFunc(purchaseControl.ReviewAlert), requireAuth, requireAdmin))
+	mux.Handle("GET /api/procurement-policy", middleware.Chain(http.HandlerFunc(purchaseControl.GetPolicy), requireAuth))
+	mux.Handle("PUT /api/procurement-policy", middleware.Chain(http.HandlerFunc(purchaseControl.SetPolicy), requireAuth, requireAdmin))
+	mux.Handle("GET /api/procurement-quotes/{id}", middleware.Chain(http.HandlerFunc(purchaseControl.Quotes), requireAuth))
+	mux.Handle("GET /api/procurement-bias", middleware.Chain(http.HandlerFunc(purchaseControl.Bias), requireAuth, requirePurchaseWatch))
 	mux.Handle("GET /api/suppliers/scores", middleware.Chain(http.HandlerFunc(purchaseControl.SupplierScores), requireAuth))
 
 	// الموردون (suppliers)
