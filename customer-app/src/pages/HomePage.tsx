@@ -115,6 +115,23 @@ export default function HomePage({ me, onBadge }: { me: Account; onBadge: (n: nu
           </div>
         </section>
 
+        {/* حملات ثابتة: تبقى واجهة تسويقية قوية حتى لو ماكو عرض إداري منشور */}
+        <section>
+          <div className="mb-3 flex items-center justify-between"><h2 className="text-[17px] font-extrabold text-ink">حلول تحمي وتطوّر بيتك</h2><Link to="/services" className="text-[13px] font-bold text-navy">شوف الخدمات</Link></div>
+          <div className="flex gap-3 overflow-x-auto pb-1 no-scrollbar">
+            <Link to="/services" className="touch-card relative h-[166px] min-w-[78%] overflow-hidden rounded-[22px] bg-navy-deep shadow-[0_16px_30px_-18px_rgba(8,42,102,.9)]">
+              <ServiceArt name="كاميرات المراقبة" className="absolute inset-0 h-full w-full opacity-90" />
+              <div className="absolute inset-0 bg-gradient-to-l from-[#071f4d] from-[15%] via-[#071f4d]/78 via-[49%] to-transparent" />
+              <div className="relative flex h-full w-[67%] flex-col justify-center p-4 text-white"><span className="mb-2 w-fit rounded-full bg-gold px-2.5 py-1 text-[10px] font-black text-navy-deep">أمان 24/7</span><p className="text-[19px] leading-snug font-black">راقب بيتك<br />وأنت مرتاح</p><span className="mt-2 text-[11px] font-bold text-white/80">أنظمة كاميرات حديثة ←</span></div>
+            </Link>
+            <Link to="/services" className="touch-card relative h-[166px] min-w-[78%] overflow-hidden rounded-[22px] bg-navy-deep shadow-[0_16px_30px_-18px_rgba(8,42,102,.9)]">
+              <ServiceArt name="الطاقة الشمسية" className="absolute inset-0 h-full w-full opacity-90" />
+              <div className="absolute inset-0 bg-gradient-to-l from-[#071f4d] from-[15%] via-[#071f4d]/78 via-[49%] to-transparent" />
+              <div className="relative flex h-full w-[67%] flex-col justify-center p-4 text-white"><span className="mb-2 w-fit rounded-full bg-gold px-2.5 py-1 text-[10px] font-black text-navy-deep">وفر أكثر</span><p className="text-[19px] leading-snug font-black">طاقة نظيفة<br />لبيت أهدأ</p><span className="mt-2 text-[11px] font-bold text-white/80">اكتشف حلول الطاقة ←</span></div>
+            </Link>
+          </div>
+        </section>
+
         {/* عروض خاصة */}
         {maxDiscount > 0 && (
           <Link to="/offers" className="relative flex h-[92px] items-center overflow-hidden rounded-2xl bg-gradient-to-l from-[#8a5a12] via-[#c08a2a] to-[#e9b04a] p-4 text-white shadow-[0_10px_22px_-12px_rgba(185,120,26,.9)]">
