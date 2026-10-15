@@ -655,6 +655,7 @@ export const navItems: NavItem[] = [
       { to: '/tech-content', label: '📚 المحتوى التقني', icon: <></>, anyPermission: ['unit_technicians', 'content_technician'] },
       // قرار (ع) 10-07: «موردين التقنيين» داخل وحدة التقنيين.
       { to: '/tech-suppliers', label: '🏪 موردين التقنيين', icon: <></>, roles: ['ADMIN', 'ENGINEER', 'TECHNICAL', 'SERVICE_MANAGER'], unlockPermission: 'tech_suppliers' },
+      { to: '/supplier-relations', label: '🤝 علاقات الموردين', icon: <></>, roles: ['ADMIN', 'PUBLIC_RELATIONS', 'MONITOR'], unlockAnyPermission: ['supplier_relations', 'suppliers_management', 'tech_suppliers', 'unit_technicians'] },
     ],
   },
   {
@@ -712,6 +713,7 @@ export const navItems: NavItem[] = [
     unitPermission: 'unit_pr',
     children: [
       { to: '/vip-customers', label: '⭐ الشخصيات المهمة', icon: <></>, permission: 'vip_manual_add' },
+      { to: '/supplier-relations', label: '🤝 علاقات الموردين', icon: <></>, roles: ['ADMIN', 'PUBLIC_RELATIONS', 'MONITOR'], unlockAnyPermission: ['supplier_relations', 'suppliers_management', 'tech_suppliers', 'unit_technicians'] },
       { to: '/media', label: '📸 مشاريع للتصوير', icon: <></>, roles: ['ADMIN', 'MEDIA', 'PUBLIC_RELATIONS'], anyPermission: ['media', 'project_management'] },
       // (ع) 10-14: تطبيق الزبائن — العروض والأعمال ومحادثات ماتركس (المالك والمدير)
       { strict: true, to: '/customer-app', label: '📱 تطبيق الزبائن', icon: <></>, roles: ['ADMIN'] },

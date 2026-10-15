@@ -1828,6 +1828,16 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	mux.Handle("GET /api/procurement-quotes/{id}", middleware.Chain(http.HandlerFunc(purchaseControl.Quotes), requireAuth))
 	mux.Handle("GET /api/procurement-monthly", middleware.Chain(http.HandlerFunc(purchaseControl.Monthly), requireAuth, requirePurchaseWatch))
 	mux.Handle("GET /api/procurement-bias", middleware.Chain(http.HandlerFunc(purchaseControl.Bias), requireAuth, requirePurchaseWatch))
+	// (ع) 10-15: علاقات الموردين — العلاقات العامة + وحدة التقنيين
+	supplierRelations := handler.NewSupplierRelationsHandler(db, func(msg string) {
+		_ = notificationRepo.CreateForRolesOrPermission([]string{"ADMIN", "OWNER", "PUBLIC_RELATIONS"}, "supplier_relations", "supplier_relations", msg)
+	})
+	go supplierRelations.RunReminders()
+	requireSupplierRel := middleware.RequireRoleOrAnyPermission(permissionRepo, employeeRepo, notificationRepo, []string{"ADMIN", "PUBLIC_RELATIONS", "MONITOR"}, "supplier_relations", "suppliers_management", "tech_suppliers", "unit_technicians")
+	mux.Handle("GET /api/supplier-relations", middleware.Chain(http.HandlerFunc(supplierRelations.List), requireAuth, requireSupplierRel))
+	mux.Handle("POST /api/supplier-relations/{kind}/{id}/contact", middleware.Chain(http.HandlerFunc(supplierRelations.AddContact), requireAuth, requireSupplierRel))
+	mux.Handle("GET /api/supplier-relations/{kind}/{id}/timeline", middleware.Chain(http.HandlerFunc(supplierRelations.Timeline), requireAuth, requireSupplierRel))
+	mux.Handle("PUT /api/supplier-relations/policy", middleware.Chain(http.HandlerFunc(supplierRelations.SetPolicy), requireAuth, requireAdmin))
 	mux.Handle("GET /api/suppliers/scores", middleware.Chain(http.HandlerFunc(purchaseControl.SupplierScores), requireAuth))
 
 	// الموردون (suppliers)

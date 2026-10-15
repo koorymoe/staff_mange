@@ -5039,6 +5039,12 @@ export const api = {
   getAttendanceGate: () => request<AttendanceGateState>('/attendance/gate'),
   techSuppliersCan: () => request<{ can: boolean }>('/tech-suppliers/can'),
   getMyTechSuppliers: () => request<TechSupplier[]>('/tech-suppliers/mine'),
+  // (ع) 10-15: علاقات الموردين
+  supplierRelations: () => request<{ rows: unknown[]; contactDays: number; kinds: Record<string, string> }>('/supplier-relations'),
+  supplierTimeline: (kind: string, id: string) => request<{ at: string; type: string; text: string | null; by: string | null }[]>(`/supplier-relations/${kind}/${id}/timeline`),
+  addSupplierContact: (kind: string, id: string, type: string, note: string) =>
+    request<{ ok: boolean }>(`/supplier-relations/${kind}/${id}/contact`, { method: 'POST', body: JSON.stringify({ type, note }) }),
+  setSupplierContactDays: (contactDays: number) => request<{ contactDays: number }>('/supplier-relations/policy', { method: 'PUT', body: JSON.stringify({ contactDays }) }),
   addTechSupplier: (body: TechSupplierIn) => request<{ id: string; message: string }>('/tech-suppliers', { method: 'POST', body: JSON.stringify(body) }),
   getAllTechSuppliers: () => request<{ suppliers: TechSupplier[]; people: { id: string; name: string; role: string; kind: string }[] }>('/tech-suppliers'),
   deleteTechSupplier: (id: string) => request<{ ok: boolean }>(`/tech-suppliers/${id}`, { method: 'DELETE' }),

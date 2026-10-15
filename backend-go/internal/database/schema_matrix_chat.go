@@ -429,5 +429,18 @@ func matrixChatMigrations() []Migration {
 				"errorPct" DOUBLE PRECISION NOT NULL, verdict TEXT NOT NULL, "snapshotDay" DATE NOT NULL,
 				"evaluatedAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, PRIMARY KEY (month, kind));
 		`,
+	}, {
+		// (ع) 10-15: علاقات الموردين — سجل التواصل ويّا موردين المشتريات والتقنيين + تذكير
+		Version: "0367_supplier_relations",
+		SQL: `
+			ALTER TABLE "PurchasePolicy" ADD COLUMN IF NOT EXISTS "contactDays" INT NOT NULL DEFAULT 30;
+			CREATE TABLE IF NOT EXISTS "SupplierContact" (
+				id TEXT PRIMARY KEY, "supplierKind" TEXT NOT NULL, "supplierId" TEXT NOT NULL,
+				kind TEXT NOT NULL, note TEXT, "byId" TEXT, at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP);
+			CREATE INDEX IF NOT EXISTS supplier_contact_sup ON "SupplierContact" ("supplierKind", "supplierId", at DESC);
+			INSERT INTO "Permission" (id, name, label) VALUES
+				(gen_random_uuid()::text, 'supplier_relations', 'علاقات الموردين (التواصل والتذكير)')
+			ON CONFLICT (name) DO NOTHING;
+		`,
 	}}
 }
