@@ -224,6 +224,7 @@ type Booking struct {
 	AutoCompletedAt         *time.Time `db:"autoCompletedAt" json:"autoCompletedAt,omitempty"`
 	AutoArrivedLat          *float64   `db:"autoArrivedLat" json:"-"`
 	AutoArrivedLng          *float64   `db:"autoArrivedLng" json:"-"`
+	ArriveRemindedAt        *time.Time `db:"arriveRemindedAt" json:"-"` // تذكير «وصلنا» انرسل — 0362
 	StartedAt               *time.Time `db:"startedAt" json:"startedAt,omitempty"`
 	ConfirmationContactedAt *time.Time `db:"confirmationContactedAt" json:"confirmationContactedAt,omitempty"`
 	// وقت تحويل الحجز لتنسيق الحجوزات (التثبيت)
