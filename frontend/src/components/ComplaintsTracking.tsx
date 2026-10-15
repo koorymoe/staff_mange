@@ -73,6 +73,8 @@ export default function ComplaintsTracking({
   const [tab, setTab] = useState<'audit' | 'direct'>(canAudit ? 'audit' : 'direct')
   const [query, setQuery] = useState('')
   const [onlyPending, setOnlyPending] = useState(false)
+  // (ع) 10-15: «اكو شكوى مفتوحة وين الگاها؟» — العدّاد ينضغط ويطلّع المفتوحة بس
+  const [onlyOpen, setOnlyOpen] = useState(false)
   const [page, setPage] = useState(1)
   const [perPage, setPerPage] = useState(10)
   const [selectedId, setSelectedId] = useState<string | null>(null)
@@ -114,7 +116,9 @@ export default function ComplaintsTracking({
     for (const c of complaints) if (c.isVip && c.customer?.id) m.set(c.customer.id, c.vipNote ?? 'شخصية مهمة')
     return m
   }, [complaints])
-  const shown = [...stats].sort((a, b) => Number(vipOf.has(b.customerId)) - Number(vipOf.has(a.customerId)))
+  // المفتوحة أول، وبيناتهن الشخصيات المهمة أول
+  const shown = [...stats].sort((a, b) => (Number(b.openCount > 0) - Number(a.openCount > 0)) || (Number(vipOf.has(b.customerId)) - Number(vipOf.has(a.customerId))))
+    .filter((s) => !onlyOpen || s.openCount > 0)
     .filter((s) => !onlyPending || s.notContactedCount > 0)
     .filter((s) => !query.trim() || matches([s.customerName, s.customerPhone], query))
   const start = (page - 1) * perPage
@@ -189,7 +193,7 @@ export default function ComplaintsTracking({
         <StatTile label="تم التواصل" icon="📞" tone="success" value={contacted30}
           hint="خلال آخر ٣٠ يوم" />
         <StatTile label="الشكاوى المفتوحة" icon="💬" tone="info" value={openCount}
-          hint="شكاوى تحتاج متابعة" />
+          hint={onlyOpen ? '✓ معروضة بس المفتوحة — اضغط للكل' : 'اضغط حتى تشوفها بس'} onClick={() => { setOnlyOpen(!onlyOpen); setPage(1) }} />
       </div>
 
       {toolbar}
@@ -249,7 +253,10 @@ export default function ComplaintsTracking({
                           {s.customerName}
                         </td>
                         <td className="px-3 py-2.5 text-slate-500">{s.customerPhone}</td>
-                        <td className="px-3 py-2.5 font-bold text-brand-700">{s.complaintCount}</td>
+                        <td className="px-3 py-2.5 font-bold text-brand-700">
+                          {s.complaintCount}
+                          {s.openCount > 0 && <span className="mr-1 rounded-full bg-red-100 px-2 py-0.5 text-[10px] font-black text-red-700">🔴 {s.openCount} مفتوحة</span>}
+                        </td>
                         <td className="px-3 py-2.5">
                           <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-bold text-slate-700">
                             {s.latestStatus ? statusLabels[s.latestStatus] : '—'}
