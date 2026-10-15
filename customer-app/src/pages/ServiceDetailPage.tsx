@@ -3,7 +3,6 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import { api, type SCard } from '../api'
 import ServiceArt from '../components/ServiceArt'
 import { Skel, Stars } from '../components/ui'
-import { iqd } from '../lib'
 
 type Visual = { title: string; note: string; src: string }
 const visualsFor = (name: string): Visual[] => {
@@ -108,12 +107,6 @@ export default function ServiceDetailPage() {
                 </div>
               ))}
             </div>}
-            {s.priceFrom != null && (
-              <div className="mt-5">
-                <p className="text-[13px] text-mute">تبدأ الأسعار من</p>
-                <p className="text-[28px] leading-tight font-black text-navy">{iqd(s.priceFrom)}</p>
-              </div>
-            )}
             <Link to="/matrix" state={{ prefill: `عندي سؤال عن خدمة ${s.name}` }} className="mt-4 flex items-center gap-2 text-[13px] font-bold text-navy">
               💬 عندك سؤال؟ اسأل ماتركس
             </Link>
@@ -124,7 +117,7 @@ export default function ServiceDetailPage() {
       {s && (
         <div className="safe-b fixed inset-x-0 bottom-0 z-30 border-t border-line bg-white px-5 pt-3 pb-3">
           <Link to={`/request?service=${s.id}`} className="mx-auto flex h-[52px] max-w-lg items-center justify-center rounded-xl bg-navy-2 text-[16px] font-extrabold text-white shadow-[0_10px_20px_-10px_rgba(13,59,140,.7)] active:scale-[.98]">
-            اطلب الخدمة
+            ماذا تنتظر؟ اطلب الآن
           </Link>
         </div>
       )}
