@@ -8,6 +8,8 @@ import (
 	"time"
 
 	"github.com/jmoiron/sqlx"
+
+	"staffmange-api/internal/repository"
 )
 
 // ═══ فحص دقة ماتركس — قرار (ع) 10-15 ═══
@@ -140,4 +142,30 @@ func (h *MatrixSelfCheckHandler) RunDaily() {
 		}
 		time.Sleep(30 * time.Minute)
 	}
+}
+
+// (ع) 10-15: «ميصير نفس الحجز يكون بمكانين بالسلسلة بنفس الوقت ابد ابد».
+// يبني الفحص من نفس شروط المحطات بالضبط — أي حجز يطابق أكثر من محطة يطلع.
+func init() {
+	st := [][2]string{
+		{"بانتظار التثبيت", repository.BucketCondition("pending")},
+		{"تم التثبيت", repository.BucketCondition("confirmed")},
+		{"مكلّف", repository.BucketCondition("assigned")},
+		{"تحتاج إكمال", repository.BucketCondition("partial")},
+		{"تم الإنجاز", repository.BucketCondition("done")},
+		{"عند المشاريع", repository.BucketCondition("at_projects")},
+		{"عند التقني", repository.BucketCondition("at_tech")},
+		{"بانتظار الحذف", repository.BucketCondition("delete_pending")},
+		{"ما وصلت للتنفيذ", `(NOT ` + repository.StationElsewhereSQL + ` AND (b.status = 'CANCELLED' OR b."awaitingReschedule" OR (b."waitingSince" IS NOT NULL AND COALESCE(b."waitingKind", 'NO_ANSWER') <> 'CUSTOMER_DECISION')))`},
+		{"بانتظار موافقة الزبون", `(NOT ` + repository.StationElsewhereSQL + ` AND b.status <> 'CANCELLED' AND b."waitingSince" IS NOT NULL AND b."waitingKind" = 'CUSTOMER_DECISION')`},
+	}
+	parts := []string{}
+	for _, x := range st {
+		parts = append(parts, `CASE WHEN `+x[1]+` THEN '`+x[0]+`' END`)
+	}
+	selfChecks = append([]checkDef{{"double_station", "محطات الحجوزات", "حجز ظاهر بمحطتين بنفس الوقت",
+		"كل حجز لازم يكون بمحطة وحدة بالسلسلة — مو مكلّف وبانتظار الحذف، ولا قيد الإنجاز وبانتظار الزبون", "ERROR", "/bookings",
+		`SELECT 'حجز ' || code || ' · ' || array_to_string(st, ' + ') FROM (
+			SELECT b.code, array_remove(ARRAY[` + strings.Join(parts, ", ") + `], NULL) AS st FROM "Booking" b WHERE b."archivedAt" IS NULL) x
+		 WHERE cardinality(st) > 1`}}, selfChecks...)
 }

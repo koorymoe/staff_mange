@@ -74,9 +74,9 @@ func bucketCondition(bucket string) string {
 	case "stopped":
 		return `b."workStoppedAt" IS NOT NULL AND b.status NOT IN ('COMPLETED', 'CANCELLED')` + notDeleting
 	case "partial":
-		return `b.status = 'PARTIAL'` + notDeleting
+		return `b.status = 'PARTIAL'` + notDeleting + ` AND NOT ` + atTechSQL
 	case "needs_paper":
-		return `b.status = 'COMPLETED' AND b."settledLegacyAt" IS NULL AND NOT ` + paperworkDoneSQL
+		return `b.status = 'COMPLETED' AND b."settledLegacyAt" IS NULL AND NOT ` + paperworkDoneSQL + ` AND NOT ` + deletePendingSQL
 	// محطة مستقلة: ينتظر قرار المراقب
 	case "delete_pending":
 		return deletePendingSQL
@@ -85,7 +85,7 @@ func bucketCondition(bucket string) string {
 		return atProjectsSQL + ` AND NOT ` + deletePendingSQL
 	// محطة مستقلة: مرحّل للتقني لحد ما يخلص
 	case "at_tech":
-		return atTechSQL + ` AND NOT ` + deletePendingSQL
+		return atTechSQL + ` AND NOT ` + deletePendingSQL + ` AND NOT ` + atProjectsSQL
 	// ١ — انسجّل وما انثبّت بعد: ولا كادر ولا تنفيذ
 	case "pending":
 		return `b."confirmedAt" IS NULL AND NOT ` + hasCrewSQL + ` AND NOT ` + startedSQL + `
@@ -96,27 +96,30 @@ func bucketCondition(bucket string) string {
 			AND b.status NOT IN ('CANCELLED', 'COMPLETED')` + notDeleting + notStuck + ` AND NOT ` + atTechSQL
 	// ٤ — عليه كادر أو بدا التنفيذ، وما خلص
 	// ⚠️ «أو» مو «و»: حجز باشر بيه الليدر بلا تكليف رسمي لازم يبقى مرئي.
+	// 🔴 (ع) 10-15: «ميصير نفس الحجز يكون بمكانين بالسلسلة ابد ابد» — المكلّف
+	// الي الزبون ما رد أو ينتظر قراره أو مؤجّل يروح لمحطته بس (مو يبقى هنا
+	// كمان)، والمرحّل للتقني بمحطته.
 	case "assigned":
 		return `(` + hasCrewSQL + ` OR ` + startedSQL + `)
-			AND b.status NOT IN ('CANCELLED', 'COMPLETED', 'PARTIAL')` + notDeleting
+			AND b.status NOT IN ('CANCELLED', 'COMPLETED', 'PARTIAL', 'WAITING')` + notDeleting + notStuck + ` AND NOT ` + atTechSQL
 	// ٦ — خلص. المنجز جزئياً **مو** هنا: صارله محطته.
 	case "done":
-		return `b.status = 'COMPLETED'`
+		return `b.status = 'COMPLETED' AND NOT ` + deletePendingSQL
 	// تفرّعات المنجز — تنحسب من وجود الفاتورة والتقرير فعلاً
 	case "done_full":
-		return `b.status = 'COMPLETED' AND ` + paperworkDoneSQL
+		return `b.status = 'COMPLETED' AND ` + paperworkDoneSQL + ` AND NOT ` + deletePendingSQL
 	case "done_no_invoice":
 		return `b.status = 'COMPLETED' AND NOT ` + hasInvoiceSQL +
-			` AND ` + hasReportSQL + ` AND NOT (` + isLegacyImportSQL + `) AND NOT ` + isSurveySQL
+			` AND ` + hasReportSQL + ` AND NOT (` + isLegacyImportSQL + `) AND NOT ` + isSurveySQL + ` AND NOT ` + deletePendingSQL
 	// ⚠️ التاريخي ينستثنى من محطتَي «ناقصه تقرير»: تقريره مستحيل، فبقاؤه
 	// هنا يعني طابوراً محد يگدر يفرغه. وحجز الكشف ينستثنى من الثلاثة:
 	// ما يحتاج فاتورة ولا تقرير أصلاً.
 	case "done_no_report":
 		return `b.status = 'COMPLETED' AND ` + hasInvoiceSQL + ` AND NOT ` + hasReportSQL +
-			` AND NOT (` + isLegacyImportSQL + `) AND NOT ` + isSurveySQL
+			` AND NOT (` + isLegacyImportSQL + `) AND NOT ` + isSurveySQL + ` AND NOT ` + deletePendingSQL
 	case "done_no_both":
 		return `b.status = 'COMPLETED' AND NOT ` + hasInvoiceSQL + ` AND NOT ` + hasReportSQL +
-			` AND NOT (` + isLegacyImportSQL + `) AND NOT ` + isSurveySQL
+			` AND NOT (` + isLegacyImportSQL + `) AND NOT ` + isSurveySQL + ` AND NOT ` + deletePendingSQL
 	}
 	return ""
 }
@@ -153,6 +156,13 @@ const atProjectsSQL = `(b."transferToProjects" AND b."projectExecutionAt" IS NUL
 
 // atTechSQL مرحّل للتقني أو مسؤول الخدمة وبعده مفتوح (قرار (ع) 10-07): صار برقبته،
 // فيطلع من طابور الإداري لمحطة «عند إدارة التقنيين».
+// StationElsewhereSQL (ع) 10-15: الحجز محجوز بمحطة «أعلى» (طلب حذف، أو عند
+// المشاريع، أو عند التقني) — فما يطلع بمحطات الانتظار والإكمال بنفس الوقت.
+var StationElsewhereSQL = `(` + deletePendingSQL + ` OR ` + atProjectsSQL + ` OR ` + atTechSQL + `)`
+
+// BucketCondition للفحص الذاتي: نفس شرط المحطة.
+func BucketCondition(bucket string) string { return bucketCondition(bucket) }
+
 const atTechSQL = `(b."handoverToId" IS NOT NULL AND b.status NOT IN ('CANCELLED', 'COMPLETED'))`
 
 const hasInvoiceSQL = `EXISTS (SELECT 1 FROM "LeaderInvoice" li WHERE li."bookingId" = b.id)`
@@ -336,8 +346,8 @@ func (r *BookingRepository) StationCounts() (map[string]int, error) {
 	// ينعدّ بعد (شوف شاشة الإكمال).
 	var partial int
 	if err := r.db.Get(&partial, `
-		SELECT COUNT(*) FROM "Booking"
-		WHERE "archivedAt" IS NULL AND (status = 'PARTIAL' OR ("partialCount" > 0 AND status = 'CONFIRMED'))
+		SELECT COUNT(*) FROM "Booking" b
+		WHERE b."archivedAt" IS NULL AND (b.status = 'PARTIAL' OR (b."partialCount" > 0 AND b.status = 'CONFIRMED')) AND NOT `+StationElsewhereSQL+`
 	`); err == nil {
 		out["partial"] = partial
 	}
@@ -347,10 +357,10 @@ func (r *BookingRepository) StationCounts() (map[string]int, error) {
 	// بالاثنين يطلع نفس الحجز بمكانين والمجموع أكبر من الحقيقة.
 	var stuck int
 	if err := r.db.Get(&stuck, `
-		SELECT COUNT(*) FROM "Booking"
-		WHERE "archivedAt" IS NULL
-		  AND (status = 'CANCELLED' OR "awaitingReschedule"
-		       OR ("waitingSince" IS NOT NULL AND COALESCE("waitingKind", 'NO_ANSWER') <> 'CUSTOMER_DECISION'))
+		SELECT COUNT(*) FROM "Booking" b
+		WHERE b."archivedAt" IS NULL AND NOT `+StationElsewhereSQL+`
+		  AND (b.status = 'CANCELLED' OR b."awaitingReschedule"
+		       OR (b."waitingSince" IS NOT NULL AND COALESCE(b."waitingKind", 'NO_ANSWER') <> 'CUSTOMER_DECISION'))
 	`); err == nil {
 		out["stuck"] = stuck
 	}
@@ -358,9 +368,9 @@ func (r *BookingRepository) StationCounts() (map[string]int, error) {
 	// «بانتظار موافقة الزبون» — استفسر ورايح يرجعلنا خبر
 	var awaitingCustomer int
 	if err := r.db.Get(&awaitingCustomer, `
-		SELECT COUNT(*) FROM "Booking"
-		WHERE "archivedAt" IS NULL AND status <> 'CANCELLED'
-		  AND "waitingSince" IS NOT NULL AND "waitingKind" = 'CUSTOMER_DECISION'
+		SELECT COUNT(*) FROM "Booking" b
+		WHERE b."archivedAt" IS NULL AND b.status <> 'CANCELLED' AND NOT `+StationElsewhereSQL+`
+		  AND b."waitingSince" IS NOT NULL AND b."waitingKind" = 'CUSTOMER_DECISION'
 	`); err == nil {
 		out["awaitingCustomer"] = awaitingCustomer
 	}

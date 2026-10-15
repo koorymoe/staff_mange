@@ -252,7 +252,9 @@ export default function StageBucketsPage({ only }: Props = {}) {
     setBusyId(id)
     setActionError(null)
     try {
-      await api.markBookingWaiting(id, 'اتصلنا وما رد')
+      // ⚠️ بمحطة «بانتظار موافقة الزبون» المحاولة تنعدّ والحجز يبقى بمحطته —
+      // بلا نوع چان ينقلب «ما رد» وينتقل لمحطة ثانية بصمت.
+      await api.markBookingWaiting(id, 'اتصلنا وما رد', bucket === 'AWAITING_CUSTOMER_DECISION' ? 'CUSTOMER_DECISION' : undefined)
       // نحدّث العدّاد محلياً — إعادة تحميل كل شي تومض الصفحة بلا داعي
       setRows((prev) => prev.map((b) => (
         b.id === id ? { ...b, contactAttempts: (b.contactAttempts || 0) + 1 } : b
@@ -265,12 +267,14 @@ export default function StageBucketsPage({ only }: Props = {}) {
   /** الزبون رد — الحجز يرجع لطابوره (مثبّت لو غير مثبّت حسب حالته
    *  قبل الانتظار)، وعدد المحاولات يبقى مسجّل مو ينمسح. */
   const resume = async (id: string, name: string) => {
-    if (!confirm(`الزبون «${name}» رد؟ الحجز راح يرجع لطابور الشغل.`)) return
+    // (ع) 10-15: بعد «الزبون رد» مباشرة يسأله — والحجز ينتقل (مو يبقى بمكانين)
+    if (!confirm(`📞 الزبون «${name}» رد.\n\nتريد نرجعه للحجوزات؟`)) return
     setBusyId(id)
     setActionError(null)
     try {
-      await api.resumeBooking(id)
+      const back = await api.resumeBooking(id)
       setRows((prev) => prev.filter((b) => b.id !== id))
+      alert(`✓ رجع للحجوزات — محطة «${back.confirmedAt ? 'تم التثبيت' : 'بانتظار التثبيت'}». وما يبقى هنا.`)
       setCounts((c) => ({ ...c, [bucket]: Math.max(0, (c[bucket] || 1) - 1) }))
     } catch (e) {
       setActionError(e instanceof Error ? e.message : 'تعذر إرجاع الحجز')

@@ -1755,8 +1755,10 @@ func (r *BookingRepository) MarkWaiting(id, note, byEmployeeID, kind string) err
 		    "waitingNote" = NULLIF($2, ''),
 		    "waitingById" = $3,
 		    "waitingKind" = $4,
-		    "contactAttempts" = "contactAttempts" + CASE WHEN $5 THEN 0 ELSE 1 END,
-		    "lastContactAttemptAt" = CASE WHEN $5 THEN "lastContactAttemptAt" ELSE now() END,
+		    -- (ع) 10-15: «مارد» على حجز ينتظر قرار الزبون = محاولة اتصال فعلية
+		    -- (الحجز بالمحطة أصلاً) فتنعدّ، ويبقى بنفس محطته.
+		    "contactAttempts" = "contactAttempts" + CASE WHEN $5 AND "waitingSince" IS NULL THEN 0 ELSE 1 END,
+		    "lastContactAttemptAt" = CASE WHEN $5 AND "waitingSince" IS NULL THEN "lastContactAttemptAt" ELSE now() END,
 		    -- محاولة اتصال جديدة تبدي سلّم التذكير من الأول: الإداري
 		    -- توّه اتصل، ما ينفع نذكّره بعد ساعة.
 		    "lastWaitingReminderAt" = NULL,
@@ -2010,9 +2012,9 @@ func (r *BookingRepository) ListByStageBucket(bucket string, limit int) ([]model
 	}
 	bookings := []model.Booking{}
 	err := r.db.Select(&bookings, `
-		SELECT * FROM "Booking"
-		WHERE "archivedAt" IS NULL AND `+cond+`
-		ORDER BY "createdAt" DESC LIMIT $1`, limit)
+		SELECT * FROM "Booking" b
+		WHERE b."archivedAt" IS NULL AND `+cond+` AND NOT `+StationElsewhereSQL+`
+		ORDER BY b."createdAt" DESC LIMIT $1`, limit)
 	if err != nil {
 		return nil, err
 	}
@@ -2040,7 +2042,7 @@ func (r *BookingRepository) StageBucketCounts() (map[string]int, error) {
 		  COUNT(*) FILTER (WHERE status <> 'CANCELLED' AND "waitingSince" IS NOT NULL AND "confirmedAt" IS NOT NULL AND COALESCE("waitingKind", 'NO_ANSWER') <> 'CUSTOMER_DECISION') AS "noAnsAfter",
 		  COUNT(*) FILTER (WHERE status <> 'CANCELLED' AND "waitingSince" IS NOT NULL AND "waitingKind" = 'CUSTOMER_DECISION') AS "custDecision",
 		  COUNT(*) FILTER (WHERE status <> 'CANCELLED' AND "waitingSince" IS NULL AND "awaitingReschedule") AS "postponed"
-		FROM "Booking" b WHERE b."archivedAt" IS NULL`+NotDeletePendingSQL(`b`))
+		FROM "Booking" b WHERE b."archivedAt" IS NULL AND NOT `+StationElsewhereSQL)
 	if err != nil {
 		return nil, err
 	}

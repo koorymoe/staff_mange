@@ -15,11 +15,7 @@ import BookingCodeChip from './BookingCodeChip'
 // ⚠️ ما نطلع إلا لمن يكون البحث **ما لگه شي بالمحطة الحالية**: مساعدة
 // تطلع وانت لاگي طلبك تصير إزعاج.
 
-// المحطات الي «الزبون رد» يطلّع منها الحجز — شكوى (ع) 10-10: الزبون يرجع
-// خبر والحجز يبقى عالق، فنخلي الرجوع من نفس مكان البحث.
-const RESUMABLE = ['بانتظار موافقة الزبون', 'ما وصلت للتنفيذ']
-
-export default function BookingLocator({ term, currentStation, canResume = false }: {
+export default function BookingLocator({ term, currentStation }: {
   term: string
   /** منسّق/مدير — نفس حارس الخادم على «الزبون رد» */
   canResume?: boolean
@@ -28,21 +24,9 @@ export default function BookingLocator({ term, currentStation, canResume = false
 }) {
   const [found, setFound] = useState<{ id: string; code: string; customerName: string | null; station: string }[]>([])
   const [loading, setLoading] = useState(false)
-  const [tick, setTick] = useState(0)
-  const [busy, setBusy] = useState<string | null>(null)
-  const [err, setErr] = useState<string | null>(null)
+  const [tick] = useState(0)
+  const [err] = useState<string | null>(null)
 
-  const resume = async (id: string, name: string | null) => {
-    if (!confirm(`الزبون «${name ?? ''}» رد؟ الحجز يرجع للحجوزات.`)) return
-    setBusy(id)
-    setErr(null)
-    try {
-      await api.resumeBooking(id)
-      setTick((t) => t + 1)
-    } catch (e) {
-      setErr(e instanceof Error ? e.message : 'تعذر إرجاع الحجز')
-    } finally { setBusy(null) }
-  }
 
   useEffect(() => {
     const q = term.trim()
@@ -89,12 +73,7 @@ export default function BookingLocator({ term, currentStation, canResume = false
             <span className="mr-auto rounded-full bg-amber-100 px-2.5 py-0.5 text-[11px] font-black text-amber-900">
               📍 {f.station}
             </span>
-            {canResume && RESUMABLE.some((r) => f.station.includes(r)) && (
-              <button type="button" disabled={busy === f.id} onClick={() => resume(f.id, f.customerName)}
-                className="rounded-lg bg-emerald-600 px-2.5 py-1 text-[11px] font-black text-white hover:bg-emerald-700 disabled:opacity-50">
-                📞 الزبون رد — رجّعه للحجوزات
-              </button>
-            )}
+            {/* (ع) 10-15: «ماريد يطلع خيار باعلى الشاشة» — الإرجاع بس من زر «الزبون رد» بمحطته */}
           </div>
         ))}
       </div>
