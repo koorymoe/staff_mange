@@ -171,6 +171,8 @@ export const navItems: NavItem[] = [
       { to: '/field-map', label: '🗺️ خريطة الميدان', icon: <></>, roles: ['ADMIN', 'MONITOR'], permission: 'monitoring' },
       { to: '/late-audit', label: '🔍 فحص المتأخرات', icon: <></>, roles: ['ADMIN', 'MONITOR'], permission: 'monitoring' },
       { to: '/matrix-selfcheck', label: '🧪 فحص دقة ماتركس', icon: <></>, roles: ['ADMIN', 'MONITOR'], permission: 'monitoring' },
+      // قرار (ع) 10-15: صوت الموظفين للمراقب جوّا «العمل» (بالإدارة مخفي عنه).
+      { to: '/peer-voice', label: '🗣️ صوت الموظفين', icon: <></>, roles: ['MONITOR'], anyPermission: ['monitoring', 'auditing'], hideForRoles: ['QUALITY_ENGINEER'] },
       {
         // بدون قيد أدوار هنا أيضاً — نفس مبدأ مجموعة "الإدارة" الأعلى: قيد على المجموعة
         // الوسيطة يمنع ظهورها بالكامل حتى لو ابن معيّن مسموح لدور/صلاحية موظف غير
@@ -730,6 +732,8 @@ export const navItems: NavItem[] = [
       { to: '/field-map', label: '🗺️ خريطة الميدان', icon: <></>, roles: ['ADMIN', 'MONITOR'], permission: 'monitoring' },
       { to: '/late-audit', label: '🔍 فحص المتأخرات', icon: <></>, roles: ['ADMIN', 'MONITOR'], permission: 'monitoring' },
       { to: '/matrix-selfcheck', label: '🧪 فحص دقة ماتركس', icon: <></>, roles: ['ADMIN', 'MONITOR'], permission: 'monitoring' },
+      // قرار (ع) 10-15: صوت الموظفين للمراقب جوّا «العمل» (بالإدارة مخفي عنه).
+      { to: '/peer-voice', label: '🗣️ صوت الموظفين', icon: <></>, roles: ['MONITOR'], anyPermission: ['monitoring', 'auditing'], hideForRoles: ['QUALITY_ENGINEER'] },
       // ⚠️ «صندوق المراقب» انشال من القائمة — هو **نفس الشاشة** الي تنعرض
   // كأول تبويب بمكتب المراقب (بخاصية embedded). بندان يودّيان لنفس
   // الشي = تكرار صرف. والمسار `/monitor-inbox` يبقى شغّالاً للروابط
