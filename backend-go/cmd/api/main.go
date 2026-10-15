@@ -177,6 +177,12 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	kpiCriterionService := service.NewKpiCriterionService(kpiCriterionRepo)
 	smartKpiService := service.NewSmartKpiService(smartKpiRepo)
 	complaintService := service.NewComplaintService(complaintRepo)
+	complaintService.SetNewNotifier(func(assignee *string, msg string) {
+		if assignee != nil {
+			_ = notificationRepo.Create(*assignee, "complaint_new", msg)
+		}
+		_ = notificationRepo.CreateForRolesOrPermission([]string{"ADMIN", "OWNER", "MONITOR"}, "complaints_watch", "complaint_new", msg)
+	})
 	complaintService.SetVipNotifier(func(msg string) {
 		_ = notificationRepo.CreateForRolesOrPermission([]string{"ADMIN", "OWNER"}, "complaints_vip", "complaint_vip", msg)
 	})

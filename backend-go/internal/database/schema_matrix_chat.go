@@ -442,5 +442,13 @@ func matrixChatMigrations() []Migration {
 				(gen_random_uuid()::text, 'supplier_relations', 'علاقات الموردين (التواصل والتذكير)')
 			ON CONFLICT (name) DO NOTHING;
 		`,
+	}, {
+		// (ع) 10-15: الشكاوى المفتوحة الي ما مكلّف بيها أحد تروح لمهندس الجودة
+		Version: "0368_complaints_to_quality",
+		SQL: `
+			UPDATE "Complaint" c SET "assignedToEmployeeId" = (
+				SELECT e.id FROM "Employee" e WHERE e.role::text = 'QUALITY_ENGINEER' AND e.status::text = 'ACTIVE' ORDER BY e."createdAt" LIMIT 1)
+			WHERE c."assignedToEmployeeId" IS NULL AND c.status::text IN ('NEW', 'IN_PROGRESS');
+		`,
 	}}
 }

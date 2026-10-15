@@ -14,7 +14,11 @@ type ComplaintService struct {
 	ai AiSignalRecorder
 	// notifyVip: إشعار فوري للمالك والمدير بشكوى شخصية مهمة (ع) 10-15
 	notifyVip func(message string)
+	notifyNew func(assigneeID *string, message string)
 }
+
+// SetNewNotifier (ع) 10-15: كل شكوى جديدة → إشعار لمهندس الجودة المكلّف + المراقب والمدير.
+func (s *ComplaintService) SetNewNotifier(f func(assigneeID *string, message string)) { s.notifyNew = f }
 
 // SetVipNotifier يربط إشعار شكاوى الشخصيات المهمة.
 func (s *ComplaintService) SetVipNotifier(f func(string)) { s.notifyVip = f }
@@ -51,6 +55,17 @@ func (s *ComplaintService) Create(req model.CreateComplaintRequest) (*model.Comp
 	s.repo.AddEvent(c.ID, model.EventCreated, nil, req.CreatedByEmployeeID)
 	// ماتركس ٩: شكاوى متكررة على نفس الليدر — ما يوقف الشكوى أبداً.
 	recordRepeatComplaint(s.ai, c.ID)
+	if s.notifyNew != nil {
+		who := "زبون"
+		if c.Customer != nil {
+			who = c.Customer.Name
+		}
+		to := "ما أكو مهندس جودة فعّال — كلّف أحد"
+		if c.AssignedToEmployee != nil {
+			to = "انكلّف بيها " + c.AssignedToEmployee.Name
+		}
+		s.notifyNew(c.AssignedToEmployeeID, "🎧 شكوى جديدة: "+who+" — "+model.ComplaintTypeLabels[c.Type]+" · "+to+" · تواصل ويّا الزبون")
+	}
 	if c.IsVip && s.notifyVip != nil {
 		who := "زبون"
 		if c.Customer != nil {

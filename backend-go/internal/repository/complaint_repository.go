@@ -170,8 +170,8 @@ func (r *ComplaintRepository) List() ([]model.Complaint, error) {
 func (r *ComplaintRepository) Create(customerID string, bookingID *string, complaintType, description, createdByEmployeeID string, relatedEmployeeID *string) (*model.Complaint, error) {
 	var c model.Complaint
 	err := r.db.Get(&c, `
-		INSERT INTO "Complaint" (id, "customerId", "bookingId", type, description, "createdByEmployeeId", "relatedEmployeeId")
-		VALUES (gen_random_uuid()::text, $1, $2, $3, $4, $5, $6)
+		INSERT INTO "Complaint" (id, "customerId", "bookingId", type, description, "createdByEmployeeId", "relatedEmployeeId", "assignedToEmployeeId")
+		VALUES (gen_random_uuid()::text, $1, $2, $3, $4, $5, $6, (`+qualityPickSQL+`))
 		RETURNING *
 	`, customerID, bookingID, complaintType, description, createdByEmployeeID, relatedEmployeeID)
 	if err != nil {
@@ -300,3 +300,9 @@ func (r *ComplaintRepository) VipOf(customerID string) (bool, *string) {
 	}
 	return v.Vip, v.Note
 }
+
+// qualityPickSQL (ع) 10-15: «كل الشكاوى تطلع لمهندس الجودة» — الشكوى ما تنتظر
+// أحد يتكلّف: تروح وحدها لمهندس الجودة الفعّال الأقل شكاوى مفتوحة عليه.
+// المراقب والمدير والمالك يشوفونها ويكدرون يبدّلون المكلّف.
+const qualityPickSQL = `SELECT e.id FROM "Employee" e WHERE e.role::text = 'QUALITY_ENGINEER' AND e.status::text = 'ACTIVE'
+	ORDER BY (SELECT count(*) FROM "Complaint" c WHERE c."assignedToEmployeeId" = e.id AND c.status::text IN ('NEW', 'IN_PROGRESS')), e."createdAt" LIMIT 1`
