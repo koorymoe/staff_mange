@@ -46,7 +46,7 @@ export default function HomePage({ me, onBadge }: { me: Account; onBadge: (n: nu
           <Link to="/account" className="grid h-12 w-12 shrink-0 place-items-center rounded-full bg-white/15 text-[17px] font-black ring-2 ring-white/30">{initials}</Link>
           <div className="min-w-0 flex-1">
             <p className="truncate text-[18px] font-extrabold">مرحباً {me.name.split(' ')[0]} 👋</p>
-            <p className="text-[12px] text-white/75">{greet()}، مرحباً بك في شركة الأماني</p>
+            <p className="text-[12px] text-white/75">{greet()}، مرحباً بك في هندسة</p>
           </div>
           <Link to="/account/edit" className="flex shrink-0 items-center gap-1 rounded-full bg-white/12 px-3 py-1.5 text-[12px] font-bold ring-1 ring-white/25">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 22s7-6.2 7-12a7 7 0 0 0-14 0c0 5.8 7 12 7 12z" /><circle cx="12" cy="10" r="2.5" /></svg>

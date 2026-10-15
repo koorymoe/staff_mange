@@ -7,12 +7,12 @@ export function LogoMark({ size = 64, light = false }: { size?: number; light?: 
   )
 }
 
-export default function Logo({ light = false, size = 64, sub = true }: { light?: boolean; size?: number; sub?: boolean }) {
+export default function Logo({ light = false, size = 64, sub = false }: { light?: boolean; size?: number; sub?: boolean }) {
   return (
     <div className="flex flex-col items-center text-center">
       <LogoMark size={size} light={light} />
-      <p className={`mt-2 text-[26px] leading-none font-black ${light ? 'text-white' : 'text-navy'}`}>شركة الأماني</p>
-      {sub && <p className={`mt-1.5 text-[13px] font-bold tracking-[0.35em] ${light ? 'text-white/90' : 'text-navy'}`} dir="ltr">AL AMANI</p>}
+      <p className={`mt-2 text-[26px] leading-none font-black ${light ? 'text-white' : 'text-navy'}`}>هندسة</p>
+      {sub && <p className={`mt-1.5 text-[13px] font-bold tracking-[0.35em] ${light ? 'text-white/90' : 'text-navy'}`} dir="ltr">ENGINEERING</p>}
     </div>
   )
 }
