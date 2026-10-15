@@ -2,7 +2,13 @@ import { useNavigate } from 'react-router-dom'
 import { imgUrl } from '../api'
 import { useHome, useServices } from '../data'
 import ServiceArt from '../components/ServiceArt'
-import { Empty, Skel, TopBar } from '../components/ui'
+import { Skel, TopBar } from '../components/ui'
+
+const campaigns = [
+  { title: 'كاميرات تحمي بيتك 24/7', note: 'تركيب احترافي ومتابعة مستمرة', label: 'اكتشف كاميرات الأماني', service: 'كاميرات المراقبة' },
+  { title: 'خلي بيتك أذكى وأسهل', note: 'تحكم بالإضاءة والأجهزة من مكانك', label: 'شوف حلول البيت الذكي', service: 'المنازل الذكية' },
+  { title: 'وفر باستهلاك الطاقة', note: 'حلول شمسية تناسب بيتك وعملك', label: 'اكتشف الطاقة الشمسية', service: 'الطاقة الشمسية' },
+]
 
 // ═══ العروض (شاشة 5) — بطاقات كبيرة بشارة خصم ذهبية ═══
 export default function OffersPage() {
@@ -28,7 +34,13 @@ export default function OffersPage() {
           </div>
         </section>
         {!data && [0, 1, 2].map((i) => <Skel key={i} className="h-36" />)}
-        {data && offers.length === 0 && <Empty icon="🎁" title="ماكو عروض حالياً"><p className="mt-1 text-[13px] text-mute">تابعنا، العروض الجديدة توصلك هنا أول بأول.</p></Empty>}
+        {data && offers.length === 0 && campaigns.map((p, i) => (
+          <article key={p.title} className="touch-card rise relative min-h-[164px] overflow-hidden rounded-[22px] bg-navy-deep shadow-[0_16px_28px_-17px_rgba(13,59,140,.9)]" style={{ animationDelay: `${i * 50}ms` }}>
+            <ServiceArt name={p.service} className="absolute inset-y-0 left-0 h-full w-3/5" />
+            <div className="absolute inset-0 bg-gradient-to-l from-navy-deep from-38% via-navy-deep/82 via-55% to-transparent" />
+            <div className="relative mr-0 ml-auto flex min-h-[164px] w-[62%] flex-col justify-center p-4 text-white"><span className="mb-2 w-fit rounded-full bg-gold px-2.5 py-1 text-[10px] font-black text-navy-deep">شركة الأماني</span><p className="text-[16px] leading-snug font-black">{p.title}</p><p className="mt-1 text-[11px] text-white/80">{p.note}</p><button onClick={() => nav('/services')} className="mt-3 w-fit rounded-xl bg-white px-3 py-2 text-[11.5px] font-extrabold text-navy">{p.label} ←</button></div>
+          </article>
+        ))}
         {offers.map((p, i) => {
           const s = p.serviceId ? services?.find((x) => x.id === p.serviceId) : undefined
           return (

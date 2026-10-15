@@ -24,14 +24,14 @@ export default function BookingsPage() {
   return (
     <div className="page-in">
       <TopBar title="حجوزاتي" back={false} />
-      <div className="grid grid-cols-4 gap-1.5 px-4 pt-1 pb-3">
+      <div className="mx-4 grid grid-cols-4 gap-1.5 rounded-2xl bg-[#eaf0fa] p-1.5">
         {TABS.map((t) => (
-          <button key={t.k} onClick={() => setTab(t.k)} className={`rounded-lg px-1 py-2 text-[11.5px] font-bold whitespace-nowrap transition ${tab === t.k ? 'bg-navy-2 text-white shadow-md' : 'bg-white text-mute ring-1 ring-line'}`}>
+          <button key={t.k} onClick={() => setTab(t.k)} className={`rounded-xl px-1 py-2 text-[10.5px] font-bold whitespace-nowrap transition ${tab === t.k ? 'bg-navy-2 text-white shadow-md' : 'text-mute'}`}>
             {t.label} ({(data ?? []).filter(t.match).length})
           </button>
         ))}
       </div>
-      <div className="space-y-3 px-4 pb-4">
+      <div className="space-y-3 px-4 pt-2 pb-4">
         {err && <p className="rounded-xl bg-rose-50 p-3 text-sm text-rose-600">{err}</p>}
         {!data && [0, 1, 2].map((i) => <Skel key={i} className="h-28" />)}
         {data && list.length === 0 && (
@@ -43,7 +43,7 @@ export default function BookingsPage() {
           const s = b.serviceId ? services?.find((x) => x.id === b.serviceId) : undefined
           const when = b.scheduledAt ?? b.createdAt
           return (
-            <Link key={b.id} to={`/bookings/${b.id}`} className="touch-card card rise flex gap-3 p-3" style={{ animationDelay: `${i * 40}ms` }}>
+            <Link key={b.id} to={`/bookings/${b.id}`} className="touch-card card rise flex gap-3 border border-white/70 p-3" style={{ animationDelay: `${i * 40}ms` }}>
               <div className="min-w-0 flex-1">
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0">

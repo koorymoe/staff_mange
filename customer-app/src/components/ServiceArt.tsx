@@ -45,7 +45,12 @@ function Icon({ kind, c }: { kind: Kind; c: string }) {
 const photoOf = (name: string) => {
   const kind = kindOf(name)
   if (kind === 'camera') return '/img/camera-premium.png'
+  if (kind === 'gps') return '/img/gps-premium.png'
   if (kind === 'solar') return '/img/solar-premium.png'
+  if (kind === 'network') return '/img/network-premium.png'
+  if (kind === 'smart') return '/img/smart-premium.png'
+  if (kind === 'alarm') return '/img/alarm-premium.png'
+  if (kind === 'lock') return '/img/lock-premium.png'
   return `/img/${kind}.webp`
 }
 

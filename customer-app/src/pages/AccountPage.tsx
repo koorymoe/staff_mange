@@ -28,12 +28,15 @@ export default function AccountPage({ me, onLogout }: { me: Account; onLogout: (
     <div className="page-in pb-4">
       <TopBar title="حسابي" back={false} />
       <div className="space-y-4 px-4 pt-1">
-        <div className="card flex items-center gap-4 p-4">
+        <div className="relative overflow-hidden rounded-[22px] bg-gradient-to-l from-navy-deep to-navy p-4 text-white shadow-[0_16px_30px_-20px_rgba(8,42,102,.9)]">
+          <span className="absolute -left-6 -top-8 h-28 w-28 rounded-full bg-gold/15 blur-2xl" />
+          <div className="relative flex items-center gap-4">
           <span className="grid h-[68px] w-[68px] shrink-0 place-items-center rounded-full bg-gradient-to-br from-navy to-navy-2 text-[22px] font-black text-white ring-4 ring-blue-50">{initials}</span>
           <div className="min-w-0 flex-1">
-            <p className="truncate text-[18px] font-black text-ink">{me.name}</p>
-            <p className="text-[13px] text-mute" dir="ltr">{me.phone}</p>
-            <Link to="/account/edit" className="mt-1.5 inline-block rounded-lg bg-blue-50 px-3 py-1 text-[12px] font-bold text-navy">تعديل الملف الشخصي</Link>
+            <p className="truncate text-[18px] font-black">{me.name}</p>
+            <p className="text-[13px] text-white/75" dir="ltr">{me.phone}</p>
+            <Link to="/account/edit" className="mt-1.5 inline-block rounded-lg bg-white/15 px-3 py-1 text-[12px] font-bold text-white ring-1 ring-white/20">تعديل الملف الشخصي</Link>
+          </div>
           </div>
         </div>
         <div className="card divide-y divide-line">
