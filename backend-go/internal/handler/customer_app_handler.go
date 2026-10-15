@@ -642,7 +642,7 @@ func (h *CustomerAppHandler) createBookingFromMatrix(accountID string, d service
 	}
 	// ماتركس يحجز بس لنفس الزبون — وأقصى 3 حجوزات مفتوحة من التطبيق
 	var open int
-	_ = h.db.Get(&open, `SELECT count(*) FROM "Booking" WHERE "customerAccountId" = $1 AND status = 'PENDING'`, accountID)
+	_ = h.db.Get(&open, `SELECT count(*) FROM "Booking" WHERE "customerAccountId" = $1 AND status = 'PENDING' AND "archivedAt" IS NULL`, accountID)
 	if open >= 3 {
 		return "", errors.New("عندك 3 طلبات بانتظار التثبيت — فريقنا راح يتواصل وياك عليهن أول")
 	}

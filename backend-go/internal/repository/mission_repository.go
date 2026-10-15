@@ -203,8 +203,12 @@ const missionSelect = `
 	FROM "Mission" m
 	JOIN "Booking" b ON b.id = m."bookingId"`
 
+// missionNotArchivedSQL (ع) 10-15: «من ينحذف من مكان ينحذف من كل مكان» — مهمة
+// حجزها انحذف (مؤرشف) ما تطلع بتتبع المهام ولا بمهام الموظف.
+const missionNotArchivedSQL = ` AND NOT EXISTS (SELECT 1 FROM "Booking" xb WHERE xb.id = m."bookingId" AND xb."archivedAt" IS NOT NULL)`
+
 func (r *MissionRepository) List(stage, leaderID, employeeID string) ([]model.Mission, error) {
-	query := missionSelect + ` WHERE 1=1`
+	query := missionSelect + ` WHERE 1=1` + missionNotArchivedSQL
 	args := []any{}
 	if stage != "" {
 		args = append(args, stage)
@@ -392,7 +396,7 @@ func (r *MissionRepository) ListForEmployee(employeeID string) ([]model.Mission,
 	missions := []model.Mission{}
 	err := r.db.Select(&missions, missionSelect+`
 		WHERE (m."leaderId" = $1 OR $1 = ANY(m."memberIds"))
-		  AND `+missionStageExpr+` NOT IN ('COMPLETED', 'STOPPED')
+		  AND `+missionStageExpr+` NOT IN ('COMPLETED', 'STOPPED')`+missionNotArchivedSQL+`
 		ORDER BY m."createdAt" DESC
 	`, employeeID)
 	if err != nil {
@@ -409,7 +413,7 @@ func (r *MissionRepository) ListForEmployee(employeeID string) ([]model.Mission,
 func (r *MissionRepository) ListActive() ([]model.Mission, error) {
 	missions := []model.Mission{}
 	err := r.db.Select(&missions, `
-`+missionSelect+` WHERE `+missionStageExpr+` NOT IN ('COMPLETED', 'STOPPED') ORDER BY m."createdAt" DESC
+`+missionSelect+` WHERE `+missionStageExpr+` NOT IN ('COMPLETED', 'STOPPED')`+missionNotArchivedSQL+` ORDER BY m."createdAt" DESC
 	`)
 	if err != nil {
 		return nil, err

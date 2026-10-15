@@ -211,7 +211,7 @@ func (h *CustomerAppHandler) CreateBooking(w http.ResponseWriter, r *http.Reques
 
 func (h *CustomerAppHandler) owns(accountID, bookingID string) bool {
 	var ok bool
-	_ = h.db.Get(&ok, `SELECT EXISTS (SELECT 1 FROM "Booking" b WHERE b.id = $2 AND (b."customerAccountId" = $1
+	_ = h.db.Get(&ok, `SELECT EXISTS (SELECT 1 FROM "Booking" b WHERE b.id = $2 AND b."archivedAt" IS NULL AND (b."customerAccountId" = $1
 		OR b."customerId" = (SELECT "customerId" FROM "CustomerAccount" WHERE id = $1)))`, accountID, bookingID)
 	return ok
 }

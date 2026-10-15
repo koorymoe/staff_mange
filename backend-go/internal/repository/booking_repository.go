@@ -2042,7 +2042,7 @@ func (r *BookingRepository) StageBucketCounts() (map[string]int, error) {
 		  COUNT(*) FILTER (WHERE status <> 'CANCELLED' AND "waitingSince" IS NOT NULL AND "confirmedAt" IS NOT NULL AND COALESCE("waitingKind", 'NO_ANSWER') <> 'CUSTOMER_DECISION') AS "noAnsAfter",
 		  COUNT(*) FILTER (WHERE status <> 'CANCELLED' AND "waitingSince" IS NOT NULL AND "waitingKind" = 'CUSTOMER_DECISION') AS "custDecision",
 		  COUNT(*) FILTER (WHERE status <> 'CANCELLED' AND "waitingSince" IS NULL AND "awaitingReschedule") AS "postponed"
-		FROM "Booking" b WHERE b."archivedAt" IS NULL AND NOT `+StationElsewhereSQL)
+		FROM "Booking" b WHERE b."archivedAt" IS NULL AND NOT `+StationElsewhereSQL+NotDeletePendingSQL(`b`))
 	if err != nil {
 		return nil, err
 	}

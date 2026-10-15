@@ -257,8 +257,9 @@ func CustomerBookings(db *sqlx.DB, accountID string, limit int) ([]CustomerBooki
 			COALESCE((SELECT string_agg(s.name, '، ') FROM "BookingService" bs JOIN "Service" s ON s.id = bs."serviceId" WHERE bs."bookingId" = b.id),
 				(SELECT s.name FROM "Service" s WHERE s.id = b."serviceId"), '') AS services
 		FROM "Booking" b
-		WHERE b."customerAccountId" = $1
-		   OR b."customerId" = (SELECT "customerId" FROM "CustomerAccount" WHERE id = $1)
+		WHERE (b."customerAccountId" = $1
+		   OR b."customerId" = (SELECT "customerId" FROM "CustomerAccount" WHERE id = $1))
+		  AND b."archivedAt" IS NULL -- المحذوف ما يطلع للزبون
 		ORDER BY b."createdAt" DESC LIMIT $2`, accountID, limit)
 	for i := range rows {
 		rows[i].StatusLabel = customerStatusAr[rows[i].Status]
