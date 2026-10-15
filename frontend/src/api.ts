@@ -6107,3 +6107,22 @@ export interface FieldMap {
   employees: { employeeId: string; name: string; lat: number; lng: number; at: string; bookingId: string | null }[]
   heat: [number, number, number][]
 }
+
+// ═══ رقابة المشتريات (ع) 10-15 ═══
+export interface PurchaseControlRow { id: string; verifiedAt: string | null; verifiedBy: string | null; myReview: boolean; alerts: number }
+export interface PurchasePriceRow { key: string; product: string; supplier: string; lastPrice: number; minPrice: number; times: number; lastAt: string }
+export interface PurchaseAlert {
+  id: string; kind: 'PRICIER' | 'JUMP'; code: string; product: string; supplier: string | null; unitPrice: number; quantity: number
+  refSupplier: string | null; refPrice: number; loss: number; buyer: string | null; createdAt: string; reviewedAt: string | null; reviewNote: string | null
+}
+export interface SupplierScore { supplierId: string; n: number; price: number; quality: number; speed: number; punctuality: number; dealing: number; alerts: number }
+export interface SupplierReviewInput { price: number; quality: number; speed: number; punctuality: number; dealing: number; note?: string }
+export const purchaseApi = {
+  control: () => request<PurchaseControlRow[]>('/procurement/control'),
+  review: (id: string, r: SupplierReviewInput) => request<{ ok: boolean }>(`/procurement/${id}/review`, { method: 'POST', body: JSON.stringify(r) }),
+  verify: (id: string) => request<{ ok: boolean }>(`/procurement/${id}/verify`, { method: 'PUT', body: JSON.stringify({}) }),
+  prices: (q: string) => request<PurchasePriceRow[]>(`/procurement/prices?q=${encodeURIComponent(q)}`),
+  alerts: () => request<PurchaseAlert[]>('/procurement/alerts'),
+  reviewAlert: (id: string, note: string) => request<{ ok: boolean }>(`/procurement-alerts/${id}`, { method: 'PUT', body: JSON.stringify({ note }) }),
+  supplierScores: () => request<SupplierScore[]>('/suppliers/scores'),
+}

@@ -1792,6 +1792,19 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	mux.Handle("POST /api/procurement", middleware.Chain(http.HandlerFunc(procurementHandler.Create), requireAuth))
 	mux.Handle("PUT /api/procurement/{id}/status", middleware.Chain(http.HandlerFunc(procurementHandler.UpdateStatus), requireAuth, requireProcurementAdmin))
 	mux.Handle("PUT /api/procurement/{id}/fulfill", middleware.Chain(http.HandlerFunc(procurementHandler.Fulfill), requireAuth, requireProcurementAdmin))
+	// (ع) 10-15: رقابة المشتريات
+	purchaseControl := handler.NewPurchaseControlHandler(db, func(msg string) {
+		_ = notificationRepo.CreateForRolesOrPermission([]string{"ADMIN", "MONITOR"}, "monitoring", "purchase_alert", msg)
+	})
+	procurementHandler.SetAfterFulfill(purchaseControl.CheckPrices)
+	requirePurchaseWatch := middleware.RequireRoleOrAnyPermission(permissionRepo, employeeRepo, notificationRepo, []string{"ADMIN", "MONITOR", "FINANCE"}, "monitoring", "finance_audit")
+	mux.Handle("GET /api/procurement/control", middleware.Chain(http.HandlerFunc(purchaseControl.Control), requireAuth))
+	mux.Handle("POST /api/procurement/{id}/review", middleware.Chain(http.HandlerFunc(purchaseControl.Review), requireAuth, requireProcurementAdmin))
+	mux.Handle("PUT /api/procurement/{id}/verify", middleware.Chain(http.HandlerFunc(purchaseControl.Verify), requireAuth, requireFinance))
+	mux.Handle("GET /api/procurement/prices", middleware.Chain(http.HandlerFunc(purchaseControl.Prices), requireAuth))
+	mux.Handle("GET /api/procurement/alerts", middleware.Chain(http.HandlerFunc(purchaseControl.Alerts), requireAuth, requirePurchaseWatch))
+	mux.Handle("PUT /api/procurement-alerts/{id}", middleware.Chain(http.HandlerFunc(purchaseControl.ReviewAlert), requireAuth, requireAdmin))
+	mux.Handle("GET /api/suppliers/scores", middleware.Chain(http.HandlerFunc(purchaseControl.SupplierScores), requireAuth))
 
 	// الموردون (suppliers)
 	mux.Handle("GET /api/suppliers/specialties", middleware.Chain(http.HandlerFunc(supplierHandler.ListSpecialties), requireAuth))

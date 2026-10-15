@@ -346,5 +346,31 @@ func matrixChatMigrations() []Migration {
 				RETURN m;
 			END $$;
 		`,
+	}, {
+		// (ع) 10-15: رقابة المشتريات — تقييم المورد ببنود · تثبيت المحاسب · تنبيهات الأسعار
+		Version: "0363_purchase_control",
+		SQL: `
+			CREATE TABLE IF NOT EXISTS "SupplierReview" (
+				id TEXT PRIMARY KEY, "supplierId" TEXT NOT NULL REFERENCES "Supplier"(id) ON DELETE CASCADE,
+				"procurementId" TEXT REFERENCES "ProcurementRequest"(id) ON DELETE SET NULL,
+				price INT NOT NULL, quality INT NOT NULL, speed INT NOT NULL, punctuality INT NOT NULL, dealing INT NOT NULL,
+				note TEXT, "ratedById" TEXT NOT NULL, "createdAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP);
+			CREATE UNIQUE INDEX IF NOT EXISTS supplier_review_once ON "SupplierReview" ("procurementId", "ratedById") WHERE "procurementId" IS NOT NULL;
+			CREATE INDEX IF NOT EXISTS supplier_review_sup ON "SupplierReview" ("supplierId");
+			CREATE TABLE IF NOT EXISTS "ProcurementVerify" (
+				"procurementId" TEXT PRIMARY KEY REFERENCES "ProcurementRequest"(id) ON DELETE CASCADE,
+				"verifiedById" TEXT NOT NULL, "verifiedAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, note TEXT);
+			CREATE TABLE IF NOT EXISTS "ProcurementPriceAlert" (
+				id TEXT PRIMARY KEY, "procurementId" TEXT NOT NULL REFERENCES "ProcurementRequest"(id) ON DELETE CASCADE,
+				"itemId" TEXT NOT NULL, kind TEXT NOT NULL, "productName" TEXT NOT NULL,
+				"supplierId" TEXT, "unitPrice" DOUBLE PRECISION NOT NULL, quantity INT NOT NULL,
+				"refSupplierId" TEXT, "refPrice" DOUBLE PRECISION NOT NULL, "lossIqd" DOUBLE PRECISION NOT NULL,
+				"buyerId" TEXT, "createdAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, "reviewedAt" TIMESTAMP, "reviewNote" TEXT);
+			CREATE UNIQUE INDEX IF NOT EXISTS price_alert_once ON "ProcurementPriceAlert" ("itemId", kind);
+			-- اسم المادة الموحّد للمقارنة: حروف صغيرة ومسافة وحدة، ويّا الموديل إذا موجود
+			CREATE OR REPLACE FUNCTION product_key(n TEXT, m TEXT) RETURNS TEXT LANGUAGE sql IMMUTABLE AS $$
+				SELECT lower(btrim(regexp_replace(COALESCE(n, '') || CASE WHEN COALESCE(btrim(m), '') <> '' THEN ' ' || m ELSE '' END, '\s+', ' ', 'g')))
+			$$;
+		`,
 	}}
 }

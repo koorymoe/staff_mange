@@ -1,4 +1,5 @@
 import { Fragment, useState, useEffect, useContext } from 'react'
+import PurchaseControlPanel from '../components/PurchaseControlPanel'
 import { useSearchParams } from 'react-router-dom'
 import { api, procurementTypeLabels, type ProcurementRequest, type ProcurementRequestType, type ProcurementStats, type Booking } from '../api'
 import { SessionContext } from '../session'
@@ -59,6 +60,10 @@ export default function ProcurementPage() {
   const [fulfillSupplierId, setFulfillSupplierId] = useState('')
   const [fulfillItems, setFulfillItems] = useState<{ id: string; productName: string; quantity: number; unitPrice: string; totalPrice: string; fulfilled: boolean }[]>([])
   const [fulfilling, setFulfilling] = useState(false)
+  // (ع) 10-15: بعد الشراء ينطلب تقييم المورد مباشرة
+  const [reviewFor, setReviewFor] = useState<ProcurementRequest | null>(null)
+  const canVerifyPurchase = isAdminLike || employee?.role === 'FINANCE' || permissions.includes('finance_audit')
+  const canWatchPurchase = canVerifyPurchase || employee?.role === 'MONITOR' || permissions.includes('monitoring')
 
   const loadData = async () => {
     try {
@@ -206,8 +211,10 @@ export default function ProcurementPage() {
           fulfilled: i.fulfilled,
         })),
       })
+      const done = fulfillModal
       setFulfillModal(null)
       await loadData()
+      setReviewFor({ ...done, supplierId: fulfillSupplierId, supplier: { id: fulfillSupplierId, name: suppliers.find((x) => x.id === fulfillSupplierId)?.companyName ?? '' } })
     } catch (e) {
       setError(e instanceof Error ? e.message : 'حدث خطأ في تنفيذ الطلب')
     } finally {
@@ -259,6 +266,9 @@ export default function ProcurementPage() {
           ))}
         </div>
       )}
+
+      <PurchaseControlPanel requests={requests} canBuy={canManageProcurement} canVerify={canVerifyPurchase} canWatch={canWatchPurchase}
+        canDecide={isAdminLike} reviewFor={reviewFor} onReviewClose={() => setReviewFor(null)} />
 
       {/* New Request Form */}
       <div className="rounded-xl border border-white bg-white shadow-[0_4px_20px_rgba(15,32,64,0.06)]">

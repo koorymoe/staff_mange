@@ -10,7 +10,8 @@ import (
 )
 
 type ProcurementHandler struct {
-	service *service.ProcurementService
+	afterFulfill func(procurementID string)
+	service      *service.ProcurementService
 }
 
 func NewProcurementHandler(s *service.ProcurementService) *ProcurementHandler {
@@ -86,5 +87,11 @@ func (h *ProcurementHandler) Fulfill(w http.ResponseWriter, r *http.Request) {
 		WriteError(w, http.StatusBadRequest, err.Error())
 		return
 	}
+	if h.afterFulfill != nil {
+		go h.afterFulfill(r.PathValue("id"))
+	}
 	WriteJSON(w, http.StatusOK, request)
 }
+
+// SetAfterFulfill (ع) 10-15: ماتركس يفحص الأسعار بعد كل شراء
+func (h *ProcurementHandler) SetAfterFulfill(f func(procurementID string)) { h.afterFulfill = f }

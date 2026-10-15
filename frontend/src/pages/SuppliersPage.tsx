@@ -3,6 +3,7 @@ import { useSession } from '../session'
 import { LocationPicker } from '../components/MapLazy'
 import { MapViewer } from '../components/MapLazy'
 import { matches } from '../utils/search'
+import { purchaseApi, type SupplierScore } from '../api'
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000/api'
 
@@ -300,58 +301,26 @@ export default function SuppliersPage() {
     setFormSpecialtyIds((prev) => prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id])
   }
 
-  return (
-    <div>
-      <h2 className="text-2xl font-bold text-brand-900">الموردون</h2>
-      <p className="mt-1 text-slate-500">إدارة الموردين والمقاولين وتقييمهم</p>
+  const [bySpecialty, setBySpecialty] = useState(true)
+  const [scores, setScores] = useState<Map<string, SupplierScore>>(new Map())
+  useEffect(() => {
+    let alive = true
+    purchaseApi.supplierScores().then((r) => { if (alive) setScores(new Map(r.map((x) => [x.supplierId, x]))) }).catch(() => {})
+    return () => { alive = false }
+  }, [])
+  const priceScore = (id: string) => scores.get(id)?.price ?? 0
+  const groupsBySpec: [string, Supplier[]][] = (() => {
+    const m = new Map<string, Supplier[]>()
+    for (const sup of filtered) {
+      const names = sup.specialties.length ? sup.specialties.map((sp) => sp.name) : ['بلا صنف']
+      for (const n of names) m.set(n, [...(m.get(n) ?? []), sup])
+    }
+    return [...m.entries()].map(([n, l]) => [n, [...l].sort((a, b) => priceScore(b.id) - priceScore(a.id))] as [string, Supplier[]])
+      .sort((a, b) => (a[0] === 'بلا صنف' ? 1 : b[0] === 'بلا صنف' ? -1 : a[0].localeCompare(b[0], 'ar')))
+  })()
 
-      {/* Stats bar */}
-      <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
-        {[
-          { label: 'إجمالي الموردين', value: suppliers.length, color: 'text-brand-600' },
-          { label: 'التخصصات', value: totalSpecialties, color: 'text-emerald-600' },
-          { label: 'متوسط التقييم', value: avgRating, color: 'text-yellow-600' },
-        ].map((stat) => (
-          <div key={stat.label} className="rounded-xl border border-white bg-white p-5 shadow-[0_4px_20px_rgba(15,32,64,0.06)]">
-            <p className="text-sm text-slate-500">{stat.label}</p>
-            <p className={`mt-1 text-2xl font-bold ${stat.color}`}>{stat.value}</p>
-          </div>
-        ))}
-      </div>
-
-      {/* Search/filter bar */}
-      <div className="mt-6 grid grid-cols-1 gap-4 rounded-xl border border-white bg-white p-4 shadow-[0_4px_20px_rgba(15,32,64,0.06)] sm:grid-cols-4">
-        <input
-          placeholder="بحث (اسم الشركة، المالك، الهاتف)..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="w-full rounded-lg border border-slate-300 px-3 py-2 outline-none focus:border-brand-500"
-        />
-        <select value={filterSpecialty} onChange={(e) => setFilterSpecialty(e.target.value)}
-          className="w-full rounded-lg border border-slate-300 px-3 py-2 outline-none focus:border-brand-500">
-          <option value="">كل التخصصات</option>
-          {specialties.map((sp) => <option key={sp.id} value={sp.id}>{sp.name}</option>)}
-        </select>
-        <select value={filterType} onChange={(e) => setFilterType(e.target.value)}
-          className="w-full rounded-lg border border-slate-300 px-3 py-2 outline-none focus:border-brand-500">
-          <option value="">كل الأنواع</option>
-          <option value="material">مورد مواد</option>
-          <option value="contractor">منفذ</option>
-        </select>
-        <button onClick={openAdd}
-          className="rounded-lg bg-gradient-to-l from-brand-500 to-brand-800 px-6 py-2 font-medium text-white shadow-md shadow-brand-900/20 transition-all hover:shadow-lg hover:shadow-brand-900/30">
-          + إضافة مورد
-        </button>
-      </div>
-
-      {/* Loading/error */}
-      {loading && <p className="mt-6 text-slate-400">جاري التحميل...</p>}
-      {error && <p className="mt-6 rounded-lg bg-red-50 p-4 text-red-600">تعذر الاتصال بالخادم: {error}</p>}
-
-      {/* Supplier cards grid */}
-      {!loading && !error && (
-        <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {filtered.map((s) => (
+  // (ع) 10-15: كارت المورد — يتكرر بعرض «حسب الصنف»
+  const renderCard = (s: Supplier) => (
             <div key={s.id}
               onClick={() => setDetailSupplier(s)}
               className="cursor-pointer rounded-xl border border-white bg-white p-5 shadow-[0_4px_20px_rgba(15,32,64,0.06)] transition-all hover:shadow-lg hover:shadow-brand-900/10 hover:-translate-y-0.5">
@@ -359,6 +328,19 @@ export default function SuppliersPage() {
                 <h3 className="text-lg font-bold text-brand-800">{s.companyName}</h3>
                 <Stars value={s.avgRating} size="text-sm" />
               </div>
+              {(() => {
+                const sc = scores.get(s.id)
+                if (!sc || sc.n === 0) return null
+                return (
+                  <div className="mt-2 flex flex-wrap gap-1 text-[11px] font-bold">
+                    {([['💰 السعر', sc.price], ['✅ الجودة', sc.quality], ['⚡ السرعة', sc.speed], ['⏰ الالتزام', sc.punctuality], ['🤝 التعامل', sc.dealing]] as [string, number][]).map(([l, v]) => (
+                      <span key={l} className={`rounded-full px-2 py-0.5 ${v >= 4 ? 'bg-emerald-50 text-emerald-700' : v >= 3 ? 'bg-amber-50 text-amber-700' : 'bg-red-50 text-red-700'}`}>{l} {v.toFixed(1)}</span>
+                    ))}
+                    <span className="rounded-full bg-slate-100 px-2 py-0.5 text-slate-500">{sc.n} تقييم</span>
+                    {sc.alerts > 0 && <span className="rounded-full bg-red-100 px-2 py-0.5 text-red-700">🚨 {sc.alerts} تنبيه سعر</span>}
+                  </div>
+                )
+              })()}
               <div className="mt-2 flex flex-wrap gap-1">
                 {s.specialties.map((sp) => (
                   <span key={sp.id} className="rounded-full bg-brand-50 px-2 py-0.5 text-xs font-medium text-brand-700">{sp.name}</span>
@@ -400,13 +382,85 @@ export default function SuppliersPage() {
                 </div>
               )}
             </div>
-          ))}
+  )
+
+  return (
+    <div>
+      <h2 className="text-2xl font-bold text-brand-900">الموردون</h2>
+      <p className="mt-1 text-slate-500">إدارة الموردين والمقاولين وتقييمهم</p>
+
+      {/* Stats bar */}
+      <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
+        {[
+          { label: 'إجمالي الموردين', value: suppliers.length, color: 'text-brand-600' },
+          { label: 'التخصصات', value: totalSpecialties, color: 'text-emerald-600' },
+          { label: 'متوسط التقييم', value: avgRating, color: 'text-yellow-600' },
+        ].map((stat) => (
+          <div key={stat.label} className="rounded-xl border border-white bg-white p-5 shadow-[0_4px_20px_rgba(15,32,64,0.06)]">
+            <p className="text-sm text-slate-500">{stat.label}</p>
+            <p className={`mt-1 text-2xl font-bold ${stat.color}`}>{stat.value}</p>
+          </div>
+        ))}
+      </div>
+
+      {/* Search/filter bar */}
+      <div className="mt-6 grid grid-cols-1 gap-4 rounded-xl border border-white bg-white p-4 shadow-[0_4px_20px_rgba(15,32,64,0.06)] sm:grid-cols-4">
+        <input
+          placeholder="بحث (اسم الشركة، المالك، الهاتف)..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="w-full rounded-lg border border-slate-300 px-3 py-2 outline-none focus:border-brand-500"
+        />
+        <select value={filterSpecialty} onChange={(e) => setFilterSpecialty(e.target.value)}
+          className="w-full rounded-lg border border-slate-300 px-3 py-2 outline-none focus:border-brand-500">
+          <option value="">كل التخصصات</option>
+          {specialties.map((sp) => <option key={sp.id} value={sp.id}>{sp.name}</option>)}
+        </select>
+        <select value={filterType} onChange={(e) => setFilterType(e.target.value)}
+          className="w-full rounded-lg border border-slate-300 px-3 py-2 outline-none focus:border-brand-500">
+          <option value="">كل الأنواع</option>
+          <option value="material">مورد مواد</option>
+          <option value="contractor">منفذ</option>
+        </select>
+        <button onClick={() => setBySpecialty((v) => !v)}
+          className="rounded-lg border border-brand-300 px-4 py-2 text-sm font-bold text-brand-700">
+          {bySpecialty ? '▦ عرض الكل' : '🗂️ حسب الصنف'}
+        </button>
+        <button onClick={openAdd}
+          className="rounded-lg bg-gradient-to-l from-brand-500 to-brand-800 px-6 py-2 font-medium text-white shadow-md shadow-brand-900/20 transition-all hover:shadow-lg hover:shadow-brand-900/30">
+          + إضافة مورد
+        </button>
+      </div>
+
+      {/* Loading/error */}
+      {loading && <p className="mt-6 text-slate-400">جاري التحميل...</p>}
+      {error && <p className="mt-6 rounded-lg bg-red-50 p-4 text-red-600">تعذر الاتصال بالخادم: {error}</p>}
+
+      {/* Supplier cards grid */}
+      {!loading && !error && (
+        <>
+          {/* (ع) 10-15: كل صنف معزول — الموردين مرتبين حسب تقييم السعر */}
+          {bySpecialty ? (
+            <div className="mt-6 space-y-6">
+              {groupsBySpec.map(([name, list]) => (
+                <section key={name}>
+                  <h2 className="mb-2 text-lg font-bold text-brand-800">{name} <span className="text-sm font-normal text-slate-400">({list.length})</span></h2>
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">{list.map(renderCard)}</div>
+                </section>
+              ))}
+              {filtered.length === 0 && <p className="text-slate-400">ماكو موردين</p>}
+            </div>
+          ) : (
+        <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {filtered.map(renderCard)}
           {filtered.length === 0 && (
             <div className="col-span-full rounded-xl border border-white bg-white p-8 text-center shadow-[0_4px_20px_rgba(15,32,64,0.06)]">
               <p className="text-slate-400">لا يوجد موردين</p>
             </div>
           )}
         </div>
+          )}
+        </>
       )}
 
       {/* Specialties management (admin only) */}
