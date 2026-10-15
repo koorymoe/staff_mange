@@ -6,12 +6,22 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"sync"
 
 	"staffmange-api/internal/middleware"
 	"staffmange-api/internal/model"
 	"staffmange-api/internal/repository"
 	"staffmange-api/internal/service"
 )
+
+var customerLocks sync.Map
+
+func lockCustomer(id string) func() {
+	m, _ := customerLocks.LoadOrStore(id, &sync.Mutex{})
+	mu := m.(*sync.Mutex)
+	mu.Lock()
+	return mu.Unlock
+}
 
 type BookingHandler struct {
 	service     *service.BookingService
@@ -280,6 +290,16 @@ func (h *BookingHandler) Create(w http.ResponseWriter, r *http.Request) {
 		}
 		if !allowed {
 			WriteError(w, http.StatusForbidden, "حجز داخل الشركة يسجّله الإداري فما فوق")
+			return
+		}
+	}
+	// (ع) 10-14: الحجز المكرر — طلبين لنفس الزبون ينتظرون بعض (قفل لكل زبون)،
+	// والثاني يرجّع الحجز الأول بدل ما يسوي واحد جديد.
+	unlock := lockCustomer(req.CustomerID)
+	defer unlock()
+	if dup := h.service.RecentDuplicate(req); dup != "" {
+		if existing, err := h.service.Get(dup); err == nil && existing != nil {
+			WriteJSON(w, http.StatusOK, existing)
 			return
 		}
 	}

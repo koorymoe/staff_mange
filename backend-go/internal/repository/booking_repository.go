@@ -2236,3 +2236,15 @@ func (r *BookingRepository) IsInvolved(bookingID, employeeID string) bool {
 		bookingID, employeeID)
 	return ok
 }
+
+// RecentDuplicate (ع) 10-14: «الحجز ينحفظ مرتين» — نفس الزبون ونفس الخدمة
+// الرئيسية ونفس العنوان خلال دقيقتين = نفس الحجز (ضغطتين أو نت بطيء يعيد الطلب).
+func (r *BookingRepository) RecentDuplicate(customerID string, serviceID, address *string) (string, error) {
+	var id string
+	err := r.db.Get(&id, `SELECT id FROM "Booking" WHERE "customerId" = $1
+		AND "serviceId" IS NOT DISTINCT FROM $2
+		AND COALESCE(btrim(address), '') = COALESCE(btrim($3), '')
+		AND "createdAt" > now() - interval '2 minutes' AND status::text <> 'CANCELLED'
+		ORDER BY "createdAt" LIMIT 1`, customerID, serviceID, address)
+	return id, err
+}

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { api, type Customer, type Department, type Service, type SolarSystem } from '../api'
 import { useSession } from '../session'
@@ -96,6 +96,8 @@ export default function SalesBooking() {
   const [maintenanceType, setMaintenanceType] = useState<MaintenanceType | null>(null)
   const [remembersCrew, setRemembersCrew] = useState(false)
   const [submitting, setSubmitting] = useState(false)
+  // (ع) 10-14: قفل فوري من أول ضغطة — الحالة (state) تتأخر رندر، فضغطتين سريعتين كانن يسوّن حجزين
+  const submitLock = useRef(false)
   const [message, setMessage] = useState<string | null>(null)
   const [success, setSuccess] = useState<{ customerCode: string; bookingCode: string } | null>(null)
   const [nameTouched, setNameTouched] = useState(false)
@@ -245,6 +247,7 @@ export default function SalesBooking() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (submitLock.current) return
     setMessage(null)
     setSuccess(null)
     setNameTouched(true)
@@ -328,6 +331,7 @@ export default function SalesBooking() {
     // الزبون عنده حجز مفتوح؟ أكثر سبب للتكرار — نسأل قبل ما يصير حجز ثاني.
     const open = existingCustomer?.openBookings ?? []
     if (open.length > 0 && !confirm(`⚠️ هذا الزبون عنده ${open.length} حجز مفتوح (${open.map((b) => b.code).join('، ')}).\nإذا تريد تصحّح الاسم أو التفاصيل، عدّل على الحجز الموجود — مو حجز جديد.\n\nمتأكد تريد تسوي حجز ثاني؟`)) return
+    submitLock.current = true
     setSubmitting(true)
     try {
       // الحجز الداخلي ما بيه زبون، بس السجل لازمه جهة يتعلّق بيها
@@ -413,6 +417,7 @@ export default function SalesBooking() {
     } catch (err) {
       setMessage(err instanceof Error ? err.message : 'حدث خطأ')
     } finally {
+      submitLock.current = false
       setSubmitting(false)
     }
   }

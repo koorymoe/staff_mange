@@ -1150,6 +1150,16 @@ func (s *BookingService) StageBucketCounts() (map[string]int, error) {
 
 // Get حجز واحد بمعرّفه — للمنادين الي يحتاجون النسخة المهدرجة
 // (بالأسماء وسلّة المرحلة) بعد عملية كتابة.
+// RecentDuplicate يرجّع حجز مطابق انحفظ قبل أقل من دقيقتين (أو "" إذا ماكو).
+func (s *BookingService) RecentDuplicate(req model.CreateBookingRequest) string {
+	sid := req.ServiceID
+	if len(req.ServiceIDs) > 0 {
+		sid = &req.ServiceIDs[0]
+	}
+	id, _ := s.repo.RecentDuplicate(req.CustomerID, sid, req.Address)
+	return id
+}
+
 func (s *BookingService) Get(id string) (*model.Booking, error) {
 	return s.repo.FindByID(id)
 }
