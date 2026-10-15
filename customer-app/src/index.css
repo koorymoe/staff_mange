@@ -19,7 +19,8 @@
   --color-page: #f5f7fb;
 }
 
-html, body, #root { height: 100%; }
+html, body, #root { min-height: 100%; }
+html { overflow-x: hidden; }
 body {
   margin: 0;
   background: radial-gradient(circle at 100% -10%, #e9f0ff 0, transparent 31rem), var(--color-page);
@@ -28,7 +29,9 @@ body {
   -webkit-tap-highlight-color: transparent;
   -webkit-font-smoothing: antialiased;
   overscroll-behavior-y: none;
+  overflow-x: hidden;
 }
+#root { overflow-x: clip; }
 button { cursor: pointer; }
 .safe-b { padding-bottom: env(safe-area-inset-bottom); }
 .safe-t { padding-top: env(safe-area-inset-top); }
