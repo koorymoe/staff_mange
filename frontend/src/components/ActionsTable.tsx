@@ -58,7 +58,7 @@ async function load(now: number): Promise<Row[]> {
   for (const s of staff ?? []) {
     if (s.status !== 'PENDING') continue
     rows.push({ key: 'staff' + s.id, type: 'طلب كادر', icon: '👷', desc: clip(`${s.projectName ?? 'مشروع'}${s.notes ? ` — ${s.notes}` : ''}`),
-      who: '—', dept: 'المشاريع', due: s.createdAt, status: olderThan(s.createdAt, 2, now) ? 'LATE' : 'FOLLOW', to: '/staff-requests', act: 'وفّر' })
+      who: s.requester?.name ?? '—', dept: 'المشاريع', due: s.createdAt, status: olderThan(s.createdAt, 2, now) ? 'LATE' : 'FOLLOW', to: '/staff-requests', act: 'وفّر' })
   }
   for (const d of deletes ?? []) {
     rows.push({ key: 'del' + d.id, type: 'طلب حذف حجز', icon: '🗑️', desc: clip(`${d.bookingCode} — ${d.reason}`),
@@ -68,7 +68,7 @@ async function load(now: number): Promise<Row[]> {
     if (c.status !== 'NEW' && c.status !== 'IN_PROGRESS') continue
     const status: Status = olderThan(c.createdAt, 3, now) ? 'LATE' : c.status === 'IN_PROGRESS' ? 'PROGRESS' : 'FOLLOW'
     rows.push({ key: 'cmp' + c.id, type: 'شكوى زبون', icon: '🎧', desc: clip(`${c.customer?.name ?? ''} — ${c.description}`),
-      who: '—', dept: 'خدمة الزبائن', due: c.createdAt, status, to: '/complaints', act: 'تابع' })
+      who: c.assignedToEmployee?.name ?? (c.createdByEmployee?.name ? `${c.createdByEmployee.name} (سجّلها)` : '—'), dept: 'خدمة الزبائن', due: c.createdAt, status, to: '/complaints', act: 'تابع' })
   }
   for (const p of procurement ?? []) {
     if (p.status !== 'PENDING' && p.status !== 'IN_PROGRESS') continue
@@ -83,12 +83,12 @@ async function load(now: number): Promise<Row[]> {
   }
   for (const u of matrix?.unstaffed ?? []) {
     rows.push({ key: 'un' + u.id, type: 'حجز بلا كادر', icon: '📅', desc: `${u.code} — موعده قريب وما عليه كادر`,
-      who: '—', dept: 'الحجوزات', due: u.scheduledAt, status: new Date(u.scheduledAt).getTime() < now ? 'LATE' : 'FOLLOW', to: '/coordinator', act: 'كلّف' })
+      who: 'منسق الحجوزات', dept: 'الحجوزات', due: u.scheduledAt, status: new Date(u.scheduledAt).getTime() < now ? 'LATE' : 'FOLLOW', to: '/coordinator', act: 'كلّف' })
   }
   for (const d of dups ?? []) {
     const a = d.bookingA?.code ?? d.customerA?.name ?? '', b = d.bookingB?.code ?? d.customerB?.name ?? ''
     rows.push({ key: 'dup' + d.id, type: 'تكرار مشتبه', icon: '👯', desc: clip(`${a} و${b} — ${d.matchReason}`),
-      who: '—', dept: 'ماتركس', due: d.detectedAt, status: 'FOLLOW', to: '/duplicate-review', act: 'دقّق' })
+      who: d.bookingB?.createdByName ?? d.bookingA?.createdByName ?? '—', dept: 'ماتركس', due: d.detectedAt, status: 'FOLLOW', to: '/duplicate-review', act: 'دقّق' })
   }
   for (const a of achievements ?? []) {
     if (a.reviewStatus !== 'PENDING') continue
