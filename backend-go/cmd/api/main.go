@@ -177,6 +177,9 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	kpiCriterionService := service.NewKpiCriterionService(kpiCriterionRepo)
 	smartKpiService := service.NewSmartKpiService(smartKpiRepo)
 	complaintService := service.NewComplaintService(complaintRepo)
+	complaintService.SetVipNotifier(func(msg string) {
+		_ = notificationRepo.CreateForRolesOrPermission([]string{"ADMIN", "OWNER"}, "complaints_vip", "complaint_vip", msg)
+	})
 	trainingService := service.NewTrainingService(trainingRepo)
 	missionService := service.NewMissionService(missionRepo)
 	projectService := service.NewProjectService(projectRepo)

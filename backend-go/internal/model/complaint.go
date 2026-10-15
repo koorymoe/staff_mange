@@ -50,6 +50,9 @@ type Complaint struct {
 	CreatedByEmployee  *EmployeeBrief `db:"-" json:"createdByEmployee"`
 	AssignedToEmployee *EmployeeBrief `db:"-" json:"assignedToEmployee"`
 	RelatedEmployee    *EmployeeBrief `db:"-" json:"relatedEmployee"`
+	// (ع) 10-15: شكوى من شخصية مهمة — تطلع فوك ويّا 👑 ومهلتها ٢٤ ساعة
+	IsVip   bool    `db:"-" json:"isVip"`
+	VipNote *string `db:"-" json:"vipNote"`
 }
 
 type CreateComplaintRequest struct {

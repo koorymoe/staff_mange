@@ -30,6 +30,7 @@ func (r *ComplaintRepository) hydrate(c *model.Complaint) {
 	if err := r.db.Get(&customer, `SELECT * FROM "Customer" WHERE id = $1`, c.CustomerID); err == nil {
 		c.Customer = &customer
 	}
+	c.IsVip, c.VipNote = r.VipOf(c.CustomerID)
 	if c.BookingID != nil {
 		var booking model.Booking
 		if err := r.db.Get(&booking, `SELECT * FROM "Booking" WHERE id = $1`, *c.BookingID); err == nil {
@@ -282,4 +283,20 @@ func (r *ComplaintRepository) Resolve(id string, resolution *string) (*model.Com
 	}
 	r.hydrate(&c)
 	return &c, nil
+}
+
+// VipOf (ع) 10-15: الزبون شخصية مهمة؟ (مأشّر بقائمة الشخصيات المهمة، أو عنده منصب)
+// ويرجّع منصبه/وصفه للعرض.
+func (r *ComplaintRepository) VipOf(customerID string) (bool, *string) {
+	var v struct {
+		Vip  bool    `db:"vip"`
+		Note *string `db:"note"`
+	}
+	if err := r.db.Get(&v, `SELECT (EXISTS (SELECT 1 FROM "VipCustomer" x WHERE x."customerId" = c.id) OR COALESCE(btrim(c.position), '') <> '') AS vip,
+		COALESCE((SELECT NULLIF(btrim(x."customerPosition"), '') FROM "VipCustomer" x WHERE x."customerId" = c.id ORDER BY x."createdAt" DESC LIMIT 1),
+			NULLIF(btrim(c.position), '')) AS note
+		FROM "Customer" c WHERE c.id = $1`, customerID); err != nil {
+		return false, nil
+	}
+	return v.Vip, v.Note
 }

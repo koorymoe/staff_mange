@@ -12,7 +12,12 @@ type ComplaintService struct {
 	repo *repository.ComplaintRepository
 	// ai: مسجّل إشارات ماتركس (شكاوى متكررة) — اختياري.
 	ai AiSignalRecorder
+	// notifyVip: إشعار فوري للمالك والمدير بشكوى شخصية مهمة (ع) 10-15
+	notifyVip func(message string)
 }
+
+// SetVipNotifier يربط إشعار شكاوى الشخصيات المهمة.
+func (s *ComplaintService) SetVipNotifier(f func(string)) { s.notifyVip = f }
 
 // SetAiRecorder يربط مسجّل إشارات ماتركس بعد البناء.
 func (s *ComplaintService) SetAiRecorder(a AiSignalRecorder) { s.ai = a }
@@ -46,6 +51,17 @@ func (s *ComplaintService) Create(req model.CreateComplaintRequest) (*model.Comp
 	s.repo.AddEvent(c.ID, model.EventCreated, nil, req.CreatedByEmployeeID)
 	// ماتركس ٩: شكاوى متكررة على نفس الليدر — ما يوقف الشكوى أبداً.
 	recordRepeatComplaint(s.ai, c.ID)
+	if c.IsVip && s.notifyVip != nil {
+		who := "زبون"
+		if c.Customer != nil {
+			who = c.Customer.Name
+		}
+		if c.VipNote != nil {
+			who += " (" + *c.VipNote + ")"
+		}
+		label := model.ComplaintTypeLabels[c.Type]
+		s.notifyVip("👑 شكوى من شخصية مهمة: " + who + " — " + label + ". مهلتها ٢٤ ساعة.")
+	}
 	return c, nil
 }
 

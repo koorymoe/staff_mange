@@ -1,4 +1,4 @@
-import { Fragment, useMemo, useState } from 'react'
+import { Fragment, useMemo, useState, type ReactNode } from 'react'
 import {
   api, auditVerdictLabels, eventKindLabels,
   type AuditVerdict, type Complaint, type ComplaintCustomerStat,
@@ -51,8 +51,9 @@ function Stars({ value }: { value: number | null }) {
 
 export default function ComplaintsTracking({
   complaints, stats, employees, canContact, canAudit, canSeeFullDetail,
-  busyId, onContact, onNotes, onAssign, onStatus, onResolveClick, onAudited,
+  busyId, onContact, onNotes, onAssign, onStatus, onResolveClick, onAudited, toolbar,
 }: {
+  toolbar?: ReactNode
   complaints: Complaint[]
   stats: ComplaintCustomerStat[]
   employees: Employee[]
@@ -107,7 +108,13 @@ export default function ComplaintsTracking({
     (c) => !c.contactedAt && (c.status === 'NEW' || c.status === 'IN_PROGRESS')).length
   const contacted30 = stats.reduce((n, s) => n + s.contactedLast30, 0)
 
-  const shown = stats
+  // الشخصيات المهمة: 👑 بالصف وتطلع فوك
+  const vipOf = useMemo(() => {
+    const m = new Map<string, string>()
+    for (const c of complaints) if (c.isVip && c.customer?.id) m.set(c.customer.id, c.vipNote ?? 'شخصية مهمة')
+    return m
+  }, [complaints])
+  const shown = [...stats].sort((a, b) => Number(vipOf.has(b.customerId)) - Number(vipOf.has(a.customerId)))
     .filter((s) => !onlyPending || s.notContactedCount > 0)
     .filter((s) => !query.trim() || matches([s.customerName, s.customerPhone], query))
   const start = (page - 1) * perPage
@@ -185,6 +192,8 @@ export default function ComplaintsTracking({
           hint="شكاوى تحتاج متابعة" />
       </div>
 
+      {toolbar}
+
       <SearchBar value={query} onChange={(v) => { setQuery(v); setPage(1) }}
         placeholder="ابحث باسم الزبون أو الهاتف...">
         <button onClick={() => { setOnlyPending(!onlyPending); setPage(1) }}
@@ -235,7 +244,10 @@ export default function ComplaintsTracking({
                         onClick={() => { setExpandedCustomer(rowOpen ? null : s.customerId); openRow(s) }}
                         className={`cursor-pointer transition-colors hover:bg-slate-50 ${
                           isSel ? 'bg-brand-50/60' : ''}`}>
-                        <td className="px-3 py-2.5 font-medium">{s.customerName}</td>
+                        <td className="px-3 py-2.5 font-medium">
+                          {vipOf.has(s.customerId) && <span title={vipOf.get(s.customerId)} className="ml-1 rounded bg-amber-100 px-1.5 py-0.5 text-xs font-bold text-amber-800">👑 {vipOf.get(s.customerId)}</span>}
+                          {s.customerName}
+                        </td>
                         <td className="px-3 py-2.5 text-slate-500">{s.customerPhone}</td>
                         <td className="px-3 py-2.5 font-bold text-brand-700">{s.complaintCount}</td>
                         <td className="px-3 py-2.5">

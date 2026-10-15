@@ -3145,6 +3145,9 @@ export const complaintTypeLabels: Record<ComplaintType, string> = {
 
 export interface Complaint {
   id: string
+  // (ع) 10-15: شكوى من شخصية مهمة — 👑 ومهلة ٢٤ ساعة
+  isVip?: boolean
+  vipNote?: string | null
   customerId: string
   customer: { id: string; name: string; phone: string }
   bookingId: string | null

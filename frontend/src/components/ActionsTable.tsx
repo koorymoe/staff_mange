@@ -66,9 +66,10 @@ async function load(now: number): Promise<Row[]> {
   }
   for (const c of complaints ?? []) {
     if (c.status !== 'NEW' && c.status !== 'IN_PROGRESS') continue
-    const status: Status = olderThan(c.createdAt, 3, now) ? 'LATE' : c.status === 'IN_PROGRESS' ? 'PROGRESS' : 'FOLLOW'
-    rows.push({ key: 'cmp' + c.id, type: 'شكوى زبون', icon: '🎧', desc: clip(`${c.customer?.name ?? ''} — ${c.description}`),
-      who: c.assignedToEmployee?.name ?? (c.createdByEmployee?.name ? `${c.createdByEmployee.name} (سجّلها)` : '—'), dept: 'خدمة الزبائن', due: c.createdAt, status, to: '/complaints', act: 'تابع' })
+    // الشخصية المهمة مهلتها يوم واحد (ع) 10-15
+    const status: Status = olderThan(c.createdAt, c.isVip ? 1 : 3, now) ? 'LATE' : c.status === 'IN_PROGRESS' ? 'PROGRESS' : 'FOLLOW'
+    rows.push({ key: 'cmp' + c.id, type: c.isVip ? 'شكوى شخصية مهمة' : 'شكوى زبون', icon: c.isVip ? '👑' : '🎧', desc: clip(`${c.customer?.name ?? ''}${c.vipNote ? ` (${c.vipNote})` : ''} — ${c.description}`),
+      who: c.assignedToEmployee?.name ?? (c.createdByEmployee?.name ? `${c.createdByEmployee.name} (سجّلها)` : '—'), dept: 'خدمة الزبائن', due: c.createdAt, status, to: `/complaints?q=${encodeURIComponent(c.customer?.phone ?? '')}`, act: 'تابع' })
   }
   for (const p of procurement ?? []) {
     if (p.status !== 'PENDING' && p.status !== 'IN_PROGRESS') continue

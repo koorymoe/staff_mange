@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { api, complaintTypeLabels, type Complaint, type ComplaintCustomerStat, type ComplaintType, type Customer, type Employee } from '../api'
 import { useSession } from '../session'
 import ComplaintsTracking from '../components/ComplaintsTracking'
@@ -28,6 +29,19 @@ export default function ComplaintsPage() {
   const canAudit = !!currentUser
     && ['ADMIN', 'OWNER', 'MONITOR'].includes(currentUser.role)
   const [complaints, setComplaints] = useState<Complaint[]>([])
+  // ═══ الفلاتر (ع) 10-15 — تنحفظ بالرابط حتى «تابع» من قائمة الإجراءات يفتحها مفلترة ═══
+  const [params, setParams] = useSearchParams()
+  const fl = {
+    type: params.get('type') ?? '', vip: params.get('vip') ?? '', status: params.get('status') ?? '',
+    late: params.get('late') === '1', rel: params.get('rel') ?? '', asg: params.get('asg') ?? '',
+    from: params.get('from') ?? '', to: params.get('to') ?? '', q: params.get('q') ?? '',
+  }
+  const setFl = (k: string, v: string) => {
+    const n = new URLSearchParams(params)
+    if (v) n.set(k, v); else n.delete(k)
+    setParams(n, { replace: true })
+  }
+  const [nowMs] = useState(() => Date.now())
   const [customers, setCustomers] = useState<Customer[]>([])
   const [employees, setEmployees] = useState<Employee[]>([])
   const [stats, setStats] = useState<ComplaintCustomerStat[]>([])
@@ -201,6 +215,36 @@ export default function ComplaintsPage() {
     }
   }
 
+  const isLate = (c: Complaint) => (c.status === 'NEW' || c.status === 'IN_PROGRESS') &&
+    nowMs - new Date(c.createdAt).getTime() > (c.isVip ? 24 : 72) * 3600_000
+  const filtered = useMemo(() => complaints.filter((c) => {
+    if (fl.type && c.type !== fl.type) return false
+    if (fl.vip === '1' && !c.isVip) return false
+    if (fl.vip === '0' && c.isVip) return false
+    if (fl.status && c.status !== fl.status) return false
+    if (fl.late && !isLate(c)) return false
+    if (fl.rel && c.relatedEmployee?.id !== fl.rel) return false
+    if (fl.asg === 'none' && c.assignedToEmployee) return false
+    if (fl.asg && fl.asg !== 'none' && c.assignedToEmployee?.id !== fl.asg) return false
+    const day = new Date(c.createdAt).toLocaleDateString('en-CA', { timeZone: 'Asia/Baghdad' })
+    if (fl.from && day < fl.from) return false
+    if (fl.to && day > fl.to) return false
+    if (fl.q) {
+      const q = fl.q.trim().toLowerCase()
+      const hay = [c.customer?.name, c.customer?.phone, (c as Complaint & { booking?: { code?: string } }).booking?.code, c.description].join(' ').toLowerCase()
+      if (!hay.includes(q)) return false
+    }
+    return true
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }), [complaints, params, nowMs])
+  const filteredStats = useMemo(() => {
+    const ids = new Set(filtered.map((c) => c.customer?.id))
+    return stats.filter((s) => ids.has(s.customerId))
+  }, [filtered, stats])
+  const anyFilter = [...params.keys()].length > 0
+  const vipCount = complaints.filter((c) => c.isVip && (c.status === 'NEW' || c.status === 'IN_PROGRESS')).length
+  const lateCount = complaints.filter(isLate).length
+
   return (
     <div>
       {/* (ع) 10-13: بوضع المتابعة، «ComplaintsTracking» عنده ترويسته — فما نكررها */}
@@ -354,8 +398,44 @@ export default function ComplaintsPage() {
 
 {canTrack && (
         <ComplaintsTracking
-          complaints={complaints}
-          stats={stats}
+          toolbar={
+        <div className="mb-3 flex flex-wrap items-center gap-2 rounded-xl bg-white p-3 shadow-sm">
+          <select value={fl.type} onChange={(e) => setFl('type', e.target.value)} className="rounded-lg border border-slate-300 px-2 py-1.5 text-sm">
+            <option value="">كل أنواع المشكلة</option>
+            {Object.entries(complaintTypeLabels).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+          </select>
+          <select value={fl.vip} onChange={(e) => setFl('vip', e.target.value)} className="rounded-lg border border-slate-300 px-2 py-1.5 text-sm">
+            <option value="">كل الزبائن</option>
+            <option value="1">👑 شخصيات مهمة بس</option>
+            <option value="0">الزبائن العاديين</option>
+          </select>
+          <select value={fl.status} onChange={(e) => setFl('status', e.target.value)} className="rounded-lg border border-slate-300 px-2 py-1.5 text-sm">
+            <option value="">كل الحالات</option>
+            <option value="NEW">جديدة</option><option value="IN_PROGRESS">قيد المعالجة</option>
+            <option value="RESOLVED">محلولة</option><option value="CLOSED">مغلقة</option>
+          </select>
+          <select value={fl.rel} onChange={(e) => setFl('rel', e.target.value)} className="rounded-lg border border-slate-300 px-2 py-1.5 text-sm">
+            <option value="">كل الموظفين المسبّبين</option>
+            {employees.map((e) => <option key={e.id} value={e.id}>{e.name}</option>)}
+          </select>
+          <select value={fl.asg} onChange={(e) => setFl('asg', e.target.value)} className="rounded-lg border border-slate-300 px-2 py-1.5 text-sm">
+            <option value="">كل المسؤولين</option>
+            <option value="none">بلا مسؤول</option>
+            {employees.map((e) => <option key={e.id} value={e.id}>{e.name}</option>)}
+          </select>
+          <label className="text-xs text-slate-500">من</label>
+          <input type="date" value={fl.from} onChange={(e) => setFl('from', e.target.value)} className="rounded-lg border border-slate-300 px-2 py-1 text-sm" />
+          <label className="text-xs text-slate-500">إلى</label>
+          <input type="date" value={fl.to} onChange={(e) => setFl('to', e.target.value)} className="rounded-lg border border-slate-300 px-2 py-1 text-sm" />
+          <input value={fl.q} onChange={(e) => setFl('q', e.target.value)} placeholder="بحث: زبون، رقم، كود حجز" className="min-w-[180px] flex-1 rounded-lg border border-slate-300 px-3 py-1.5 text-sm" />
+          <button onClick={() => setFl('late', fl.late ? '' : '1')} className={`rounded-lg px-3 py-1.5 text-sm font-bold ${fl.late ? 'bg-red-600 text-white' : 'bg-red-50 text-red-700'}`}>⏰ المتأخرة ({lateCount})</button>
+          <button onClick={() => setFl('vip', fl.vip === '1' ? '' : '1')} className={`rounded-lg px-3 py-1.5 text-sm font-bold ${fl.vip === '1' ? 'bg-amber-500 text-white' : 'bg-amber-50 text-amber-800'}`}>👑 مفتوحة لشخصيات مهمة ({vipCount})</button>
+          {anyFilter && <button onClick={() => setParams({}, { replace: true })} className="text-sm text-slate-500 underline">مسح الفلاتر</button>}
+          <span className="mr-auto text-xs text-slate-500">{filtered.length} من {complaints.length} شكوى</span>
+        </div>
+                }
+          complaints={filtered}
+          stats={filteredStats}
           employees={employees}
           canContact={canContact}
           canAudit={canAudit}
