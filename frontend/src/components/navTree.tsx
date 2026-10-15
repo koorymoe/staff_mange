@@ -168,11 +168,10 @@ export const navItems: NavItem[] = [
       { to: '/leader-invoices', label: '🧾 فواتير الليدر', icon: <></>, roles: ['FINANCE'] },
       // قرار (ع) 10-08: مكتب المراقب جوّا «العمل» — أول بند.
       { to: '/monitor-desk', label: '🗂️ مكتب المراقب', icon: <></>, roles: ['ADMIN', 'MONITOR'], permission: 'monitoring' },
-      { to: '/field-map', label: '🗺️ خريطة الميدان', icon: <></>, roles: ['ADMIN', 'MONITOR'], permission: 'monitoring' },
-      { to: '/late-audit', label: '🔍 فحص المتأخرات', icon: <></>, roles: ['ADMIN', 'MONITOR'], permission: 'monitoring' },
-      { to: '/matrix-selfcheck', label: '🧪 فحص دقة ماتركس', icon: <></>, roles: ['ADMIN', 'MONITOR'], permission: 'monitoring' },
-      // قرار (ع) 10-15: صوت الموظفين للمراقب جوّا «العمل» (بالإدارة مخفي عنه).
-      { to: '/peer-voice', label: '🗣️ صوت الموظفين', icon: <></>, roles: ['MONITOR'], anyPermission: ['monitoring', 'auditing'], hideForRoles: ['QUALITY_ENGINEER'] },
+      // قرار (ع) 10-15: الخريطة وفحص المتأخرات تبويبات بمكتب المراقب · فحص الدقة للمالك بس.
+      { monitorMenuHide: true, to: '/field-map', label: '🗺️ خريطة الميدان', icon: <></>, roles: ['ADMIN', 'MONITOR'], permission: 'monitoring' },
+      { monitorMenuHide: true, to: '/late-audit', label: '🔍 فحص المتأخرات', icon: <></>, roles: ['ADMIN', 'MONITOR'], permission: 'monitoring' },
+      { ownerOnly: true, to: '/matrix-selfcheck', label: '🧪 فحص دقة ماتركس', icon: <></>, roles: ['ADMIN'] },
       {
         // بدون قيد أدوار هنا أيضاً — نفس مبدأ مجموعة "الإدارة" الأعلى: قيد على المجموعة
         // الوسيطة يمنع ظهورها بالكامل حتى لو ابن معيّن مسموح لدور/صلاحية موظف غير
@@ -729,11 +728,10 @@ export const navItems: NavItem[] = [
     unitPermission: 'unit_monitoring',
     children: [
       { to: '/monitor-desk', label: '🗂️ مكتب المراقب', icon: <></>, roles: ['ADMIN', 'MONITOR'], permission: 'monitoring' },
-      { to: '/field-map', label: '🗺️ خريطة الميدان', icon: <></>, roles: ['ADMIN', 'MONITOR'], permission: 'monitoring' },
-      { to: '/late-audit', label: '🔍 فحص المتأخرات', icon: <></>, roles: ['ADMIN', 'MONITOR'], permission: 'monitoring' },
-      { to: '/matrix-selfcheck', label: '🧪 فحص دقة ماتركس', icon: <></>, roles: ['ADMIN', 'MONITOR'], permission: 'monitoring' },
-      // قرار (ع) 10-15: صوت الموظفين للمراقب جوّا «العمل» (بالإدارة مخفي عنه).
-      { to: '/peer-voice', label: '🗣️ صوت الموظفين', icon: <></>, roles: ['MONITOR'], anyPermission: ['monitoring', 'auditing'], hideForRoles: ['QUALITY_ENGINEER'] },
+      // قرار (ع) 10-15: الخريطة وفحص المتأخرات تبويبات بمكتب المراقب · فحص الدقة للمالك بس.
+      { monitorMenuHide: true, to: '/field-map', label: '🗺️ خريطة الميدان', icon: <></>, roles: ['ADMIN', 'MONITOR'], permission: 'monitoring' },
+      { monitorMenuHide: true, to: '/late-audit', label: '🔍 فحص المتأخرات', icon: <></>, roles: ['ADMIN', 'MONITOR'], permission: 'monitoring' },
+      { ownerOnly: true, to: '/matrix-selfcheck', label: '🧪 فحص دقة ماتركس', icon: <></>, roles: ['ADMIN'] },
       // ⚠️ «صندوق المراقب» انشال من القائمة — هو **نفس الشاشة** الي تنعرض
   // كأول تبويب بمكتب المراقب (بخاصية embedded). بندان يودّيان لنفس
   // الشي = تكرار صرف. والمسار `/monitor-inbox` يبقى شغّالاً للروابط

@@ -1231,7 +1231,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 		_ = notificationRepo.CreateForRolesOrPermission([]string{"ADMIN", "OWNER"}, "matrix_selfcheck", "matrix_selfcheck", msg)
 	})
 	go selfCheck.RunDaily()
-	mux.Handle("GET /api/matrix-selfcheck", middleware.Chain(http.HandlerFunc(selfCheck.Get), requireAuth, requireFieldMonitor))
+	mux.Handle("GET /api/matrix-selfcheck", middleware.Chain(http.HandlerFunc(selfCheck.Get), requireAuth, requireOwner))
 	mux.Handle("GET /api/field-map", middleware.Chain(http.HandlerFunc(fieldTrackHandler.FieldMap), requireAuth, requireFieldMonitor))
 	mux.Handle("PUT /api/bookings/{id}/start", middleware.Chain(http.HandlerFunc(bookingHandler.Start), requireAuth, requireBookingParty))
 	mux.Handle("PUT /api/bookings/{id}/arrived", middleware.Chain(http.HandlerFunc(bookingHandler.MarkArrived), requireAuth, requireBookingParty))

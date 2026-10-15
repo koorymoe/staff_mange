@@ -41,9 +41,11 @@ const PeriodicRatings = lazy(() => import('../components/StaffRating').then((m) 
 const WorkplaceIssuesPage = lazy(() => import('./WorkplaceIssuesPage'))
 const ProjectPaymentsPage = lazy(() => import('./ProjectPaymentsPage'))
 const ProjectDelaysPanel = lazy(() => import('../components/ProjectDelaysPanel'))
+const LateAuditPage = lazy(() => import('./LateAuditPage'))
+const FieldMapPage = lazy(() => import('./FieldMapPage'))
 const ProcurementWatchPanel = lazy(() => import('../components/ProcurementWatchPanel'))
 
-type SectionId = 'eyes' | 'ratings' | 'scores' | 'peer' | 'wissues' | 'inbox' | 'issues' | 'crew' | 'quality' | 'invoices' | 'gps' | 'inventory' | 'missions' | 'board' | 'projects' | 'delays' | 'stores'
+type SectionId = 'eyes' | 'ratings' | 'scores' | 'peer' | 'wissues' | 'inbox' | 'issues' | 'crew' | 'quality' | 'invoices' | 'gps' | 'inventory' | 'missions' | 'board' | 'projects' | 'delays' | 'stores' | 'late' | 'fieldmap'
 
 interface Section {
   id: SectionId
@@ -76,6 +78,9 @@ const SECTIONS: Section[] = [
   { id: 'delays', label: 'تأخير المشاريع', icon: '⏱️', todo: 'منو تجاوز حد المرحلة وليش، ومنو ما اشتغل اليوم' },
   // قرار (ع) 10-10: شغل أبو الكميات بعين ماتركس والمراقب
   { id: 'stores', label: 'شغل المخازن', icon: '📦', todo: 'طلبات المواد والأدوات المعلّقة، متابعة السيارات، النواقص، والأسطول' },
+  // قرار (ع) 10-15: انشالن من القائمة الجانبية وصارن هنا.
+  { id: 'fieldmap', label: 'خريطة الميدان', icon: '🗺️', todo: 'وين الفرق هسه، والمسار والتوقفات' },
+  { id: 'late', label: 'فحص المتأخرات', icon: '🔍', todo: 'الحجوزات المتأخرة: ذنب منو وليش' },
   { id: 'gps', label: 'الجي بي اس', icon: '📡', todo: 'اشتراكات قربت تنتهي ومشاكل مفتوحة — عرض بلا تنفيذ' },
   // ⚠️ **متابعة** الجرد، مو شاشة `/inventory` مال أبو الكميات (الي
   // يضيف ويحذف أدوات ويوافق على الطلبات). المراقب يشوف منو جرد ومنو
@@ -137,6 +142,7 @@ export default function MonitorDeskPage() {
     (s.id !== 'quality' || canQuality) && (s.id !== 'crew' || canCrew) && (s.id !== 'gps' || canGps)
     && (s.id !== 'inventory' || canInventory)
     && (s.id !== 'missions' || isMon || permissions.includes('mission_tracking'))
+    && ((s.id !== 'late' && s.id !== 'fieldmap') || isMon || permissions.includes('monitoring'))
     && (s.id !== 'board' || isMon || permissions.includes('monitoring')))
 
   const cur = shown.find((s) => s.id === active) ?? shown[0]
@@ -224,6 +230,8 @@ export default function MonitorDeskPage() {
         {cur?.id === 'projects' && <ProjectPaymentsPage />}
         {cur?.id === 'delays' && <ProjectDelaysPanel />}
         {cur?.id === 'stores' && <ProcurementWatchPanel />}
+        {cur?.id === 'late' && <LateAuditPage />}
+        {cur?.id === 'fieldmap' && <FieldMapPage />}
       </Suspense>
     </div>
   )
