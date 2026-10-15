@@ -1808,6 +1808,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	mux.Handle("GET /api/procurement-policy", middleware.Chain(http.HandlerFunc(purchaseControl.GetPolicy), requireAuth))
 	mux.Handle("PUT /api/procurement-policy", middleware.Chain(http.HandlerFunc(purchaseControl.SetPolicy), requireAuth, requireAdmin))
 	mux.Handle("GET /api/procurement-quotes/{id}", middleware.Chain(http.HandlerFunc(purchaseControl.Quotes), requireAuth))
+	mux.Handle("GET /api/procurement-monthly", middleware.Chain(http.HandlerFunc(purchaseControl.Monthly), requireAuth, requirePurchaseWatch))
 	mux.Handle("GET /api/procurement-bias", middleware.Chain(http.HandlerFunc(purchaseControl.Bias), requireAuth, requirePurchaseWatch))
 	mux.Handle("GET /api/suppliers/scores", middleware.Chain(http.HandlerFunc(purchaseControl.SupplierScores), requireAuth))
 

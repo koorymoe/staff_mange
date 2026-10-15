@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { purchaseApi, type ProcurementRequest, type PurchaseAlert, type PurchaseBias, type PurchaseControlRow, type PurchasePriceRow, type SupplierReviewInput } from '../api'
+import { purchaseApi, type ProcurementRequest, type PurchaseAlert, type PurchaseBias, type PurchaseGroup, type PurchaseMonth, type PurchaseControlRow, type PurchasePriceRow, type SupplierReviewInput } from '../api'
 
 // ═══ رقابة المشتريات — قرار (ع) 10-15 ═══
 // المشتري يسجّل الشراء ويقيّم المورد ببنود (أولها السعر) · المحاسب يثبّت ·
@@ -22,7 +22,9 @@ interface Props {
 }
 
 export default function PurchaseControlPanel({ requests, canBuy, canVerify, canWatch, canDecide, reviewFor, onReviewClose }: Props) {
-  const [tab, setTab] = useState<'todo' | 'prices' | 'alerts' | 'bias'>('todo')
+  const [tab, setTab] = useState<'todo' | 'prices' | 'alerts' | 'bias' | 'month'>('todo')
+  const [month, setMonth] = useState(() => new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Baghdad' }).slice(0, 7))
+  const [report, setReport] = useState<PurchaseMonth | null>(null)
   const [bias, setBias] = useState<PurchaseBias[]>([])
   const [threshold, setThreshold] = useState<number | null>(null)
   const [quotesOf, setQuotesOf] = useState<{ id: string; rows: { supplier: string; totalPrice: number; chosen: boolean }[] } | null>(null)
@@ -42,6 +44,13 @@ export default function PurchaseControlPanel({ requests, canBuy, canVerify, canW
     purchaseApi.policy().then((p) => { if (alive) setThreshold(p.quoteThreshold) }).catch(() => {})
     return () => { alive = false }
   }, [reload, canWatch, requests])
+
+  useEffect(() => {
+    if (!canWatch || tab !== 'month') return
+    let alive = true
+    purchaseApi.monthly(month).then((m) => { if (alive) setReport(m) }).catch(() => {})
+    return () => { alive = false }
+  }, [canWatch, tab, month, reload])
 
   useEffect(() => {
     let alive = true
@@ -70,7 +79,7 @@ export default function PurchaseControlPanel({ requests, canBuy, canVerify, canW
   }
 
   const tabs: [typeof tab, string][] = [['todo', `📋 بانتظاري (${toReview.length + toVerify.length})`], ['prices', '📊 سجل الأسعار']]
-  if (canWatch) tabs.push(['alerts', `🚨 تنبيهات ماتركس (${openAlerts.length})`], ['bias', `🔁 الميل لمورد (${bias.length})`])
+  if (canWatch) tabs.push(['alerts', `🚨 تنبيهات ماتركس (${openAlerts.length})`], ['bias', `🔁 الميل لمورد (${bias.length})`], ['month', '📅 التقرير الشهري'])
   const editThreshold = async () => {
     const v = prompt('حد «العرضين» بالدينار (الشراء فوقه لازم وياه عرض مورد ثاني، 0 = بلا شرط):', String(threshold ?? 500000))
     if (v == null || isNaN(Number(v))) return
@@ -190,6 +199,63 @@ export default function PurchaseControlPanel({ requests, canBuy, canVerify, canW
         </div>
       )}
 
+      {tab === 'month' && (
+        <div className="space-y-4">
+          <div className="flex flex-wrap items-center gap-2">
+            <input type="month" value={month} onChange={(e) => setMonth(e.target.value)} className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm" />
+            <button onClick={() => purchaseApi.monthlyExcel(month).catch((e) => alert(e.message))} className="rounded-lg bg-emerald-700 px-3 py-1.5 text-sm font-bold text-white">⬇️ إكسل</button>
+          </div>
+          {!report || report.month !== month ? <p className="text-sm text-slate-400">جاري الجلب...</p> : (
+            <>
+              <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
+                {(() => {
+                  const diff = report.prevTotal > 0 ? Math.round((report.total / report.prevTotal - 1) * 100) : null
+                  const tiles: [string, string, string][] = [
+                    ['💸 المصروف', iqd(report.total), `${report.requests} شراء · ${report.count} مادة`],
+                    ['📆 الشهر السابق لنفس اليوم', iqd(report.prevTotal), diff == null ? '—' : `${diff > 0 ? '▲' : '▼'} ${Math.abs(diff)}٪ ${diff > 0 ? 'أكثر' : 'أقل'}`],
+                    ['💡 چان ممكن نوفّر', iqd(report.saving), report.total > 0 ? `${Math.round((report.saving / report.total) * 100)}٪ من المصروف` : ''],
+                    ['🚨 تنبيهات · ⏳ بلا تثبيت', `${report.alerts} · ${report.unverified}`, 'تنبيه ماتركس · شراء ما ثبّته المحاسب'],
+                  ]
+                  return tiles.map(([l, v, sub]) => (
+                    <div key={l} className="rounded-lg border border-slate-200 p-3">
+                      <p className="text-xs text-slate-500">{l}</p>
+                      <p className="mt-1 text-lg font-bold text-[#0f2040]">{v}</p>
+                      <p className="text-xs text-slate-400">{sub}</p>
+                    </div>
+                  ))
+                })()}
+              </div>
+              <div className="grid grid-cols-1 gap-3 lg:grid-cols-3">
+                <GroupTable title="🗂️ حسب الصنف" rows={report.byCategory} total={report.total} />
+                <GroupTable title="🏪 حسب المورد" rows={report.bySupplier} total={report.total} />
+                <GroupTable title="👤 حسب المشتري" rows={report.byBuyer} total={report.total} />
+              </div>
+              {report.lines.some((l) => l.saving > 0) && (
+                <div className="rounded-lg border border-red-200">
+                  <p className="border-b border-red-100 bg-red-50 px-3 py-1.5 text-sm font-bold text-red-700">💡 وين چان ممكن نوفّر</p>
+                  <table className="w-full text-sm">
+                    <thead><tr className="text-xs text-slate-400"><th className="px-3 text-right">المادة</th><th>المورد</th><th>السعر</th><th>أرخص عند</th><th>الفرق</th><th>المشتري</th></tr></thead>
+                    <tbody>
+                      {report.lines.filter((l) => l.saving > 0).sort((a, b) => b.saving - a.saving).map((l, i) => (
+                        <tr key={i} className="border-t border-slate-100">
+                          <td className="px-3 py-1">{l.product} ×{l.qty} <span className="text-xs text-slate-400">{l.code}</span></td>
+                          <td className="text-center">{l.supplier}</td>
+                          <td className="text-center">{iqd(l.unitPrice)}</td>
+                          <td className="text-center">{l.bestSupplier} {l.bestPrice != null && iqd(l.bestPrice)}</td>
+                          <td className="text-center font-bold text-red-700">{iqd(l.saving)}</td>
+                          <td className="text-center">{l.buyer}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+              {report.lines.length === 0 && <p className="text-sm text-slate-400">ماكو مشتريات بهذا الشهر.</p>}
+            </>
+          )}
+        </div>
+      )}
+
       {open && <ReviewModal req={open} onClose={() => { setReviewing(null); onReviewClose() }} onSaved={() => { setReviewing(null); onReviewClose(); setReload((n) => n + 1) }} />}
     </div>
   )
@@ -225,6 +291,22 @@ function ReviewModal({ req, onClose, onSaved }: { req: ProcurementRequest; onClo
           <button onClick={onClose} className="rounded-lg px-4 py-2 text-sm text-slate-600 hover:bg-slate-100">بعدين</button>
         </div>
       </div>
+    </div>
+  )
+}
+
+function GroupTable({ title, rows, total }: { title: string; rows: PurchaseGroup[]; total: number }) {
+  return (
+    <div className="rounded-lg border border-slate-200">
+      <p className="border-b border-slate-100 bg-slate-50 px-3 py-1.5 text-sm font-bold">{title}</p>
+      {rows.length === 0 && <p className="p-3 text-xs text-slate-400">—</p>}
+      {rows.map((g) => (
+        <div key={g.name} className="border-t border-slate-100 px-3 py-1.5 text-sm first:border-t-0">
+          <div className="flex justify-between"><span className="font-medium">{g.name}</span><span className="font-bold">{iqd(g.total)}</span></div>
+          <div className="mt-1 h-1.5 rounded bg-slate-100"><div className="h-1.5 rounded bg-[#2c5aad]" style={{ width: `${total > 0 ? Math.min(100, (g.total / total) * 100) : 0}%` }} /></div>
+          <p className="mt-0.5 text-xs text-slate-400">{g.count} مادة{g.saving > 0 && <span className="text-red-600"> · چان ممكن نوفّر {iqd(g.saving)}</span>}</p>
+        </div>
+      ))}
     </div>
   )
 }

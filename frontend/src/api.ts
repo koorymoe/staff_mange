@@ -6129,5 +6129,22 @@ export const purchaseApi = {
   setPolicy: (quoteThreshold: number) => request<{ quoteThreshold: number }>('/procurement-policy', { method: 'PUT', body: JSON.stringify({ quoteThreshold }) }),
   quotes: (id: string) => request<{ supplier: string; totalPrice: number; chosen: boolean; note: string | null }[]>(`/procurement-quotes/${id}`),
   bias: () => request<PurchaseBias[]>('/procurement-bias'),
+  monthly: (month: string) => request<PurchaseMonth>(`/procurement-monthly?month=${month}`),
+  monthlyExcel: async (month: string) => {
+    const token = currentToken()
+    const res = await fetch(`${API_URL}/procurement-monthly?month=${month}&format=xlsx`, { headers: token ? { Authorization: `Bearer ${token}` } : {} })
+    if (!res.ok) throw new Error('تعذر تنزيل الإكسل')
+    const a = document.createElement('a')
+    a.href = URL.createObjectURL(await res.blob())
+    a.download = `المشتريات-${month}.xlsx`
+    a.click()
+  },
+}
+export interface PurchaseGroup { name: string; total: number; count: number; saving: number }
+export interface PurchaseMonth {
+  month: string; total: number; count: number; requests: number; prevTotal: number; prevCount: number
+  saving: number; alerts: number; unverified: number
+  byCategory: PurchaseGroup[]; bySupplier: PurchaseGroup[]; byBuyer: PurchaseGroup[]
+  lines: { at: string; code: string; product: string; qty: number; unitPrice: number; supplier: string; category: string; buyer: string; bestPrice: number | null; bestSupplier: string | null; saving: number }[]
 }
 export interface PurchaseBias { buyer: string; supplier: string; n: number; total: number; share: number; extra: number; cheaperAvailable: number }
