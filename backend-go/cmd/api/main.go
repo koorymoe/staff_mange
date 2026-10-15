@@ -1218,6 +1218,14 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	mux.Handle("PUT /api/bookings/{id}/depart", middleware.Chain(http.HandlerFunc(fieldTrackHandler.Depart), requireAuth, requireBookingParty))
 	mux.Handle("POST /api/location-pings/batch", middleware.Chain(http.HandlerFunc(fieldTrackHandler.PingBatch), requireAuth))
 	mux.Handle("GET /api/bookings/{id}/track", middleware.Chain(http.HandlerFunc(fieldTrackHandler.Track), requireAuth, requireFieldMonitor))
+	// (ع) 10-15: فحص المتأخرات + فحص دقة ماتركس
+	lateAudit := handler.NewLateAuditHandler(db)
+	mux.Handle("GET /api/late-audit", middleware.Chain(http.HandlerFunc(lateAudit.List), requireAuth, requireFieldMonitor))
+	selfCheck := handler.NewMatrixSelfCheckHandler(db, func(msg string) {
+		_ = notificationRepo.CreateForRolesOrPermission([]string{"ADMIN", "OWNER"}, "matrix_selfcheck", "matrix_selfcheck", msg)
+	})
+	go selfCheck.RunDaily()
+	mux.Handle("GET /api/matrix-selfcheck", middleware.Chain(http.HandlerFunc(selfCheck.Get), requireAuth, requireFieldMonitor))
 	mux.Handle("GET /api/field-map", middleware.Chain(http.HandlerFunc(fieldTrackHandler.FieldMap), requireAuth, requireFieldMonitor))
 	mux.Handle("PUT /api/bookings/{id}/start", middleware.Chain(http.HandlerFunc(bookingHandler.Start), requireAuth, requireBookingParty))
 	mux.Handle("PUT /api/bookings/{id}/arrived", middleware.Chain(http.HandlerFunc(bookingHandler.MarkArrived), requireAuth, requireBookingParty))

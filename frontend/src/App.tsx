@@ -133,6 +133,8 @@ const ProcurementPage = lazy(() => import('./pages/ProcurementPage'))
 const MapPage = lazy(() => import('./pages/MapPage'))
 const MonitorDashboard = lazy(() => import('./pages/MonitorDashboard'))
 const FieldMapPage = lazy(() => import('./pages/FieldMapPage'))
+const LateAuditPage = lazy(() => import('./pages/LateAuditPage'))
+const MatrixSelfCheckPage = lazy(() => import('./pages/MatrixSelfCheckPage'))
 const SupplierRelationsPage = lazy(() => import('./pages/SupplierRelationsPage'))
 const MonitorCrewBookingsPage = lazy(() => import('./pages/MonitorCrewBookingsPage'))
 const TrainingManagement = lazy(() => import('./pages/TrainingManagement'))
@@ -313,6 +315,8 @@ function App() {
           <Route path="map" element={<MapPage />} />
           <Route path="monitor" element={<MonitorDashboard />} />
           <Route path="field-map" element={<FieldMapPage />} />
+          <Route path="late-audit" element={<LateAuditPage />} />
+          <Route path="matrix-selfcheck" element={<MatrixSelfCheckPage />} />
           <Route path="supplier-relations" element={<SupplierRelationsPage />} />
           <Route path="gps" element={<GpsDashboard />} />
           <Route path="gps/customers" element={<GpsCustomers />} />

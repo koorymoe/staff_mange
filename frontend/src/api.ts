@@ -4497,6 +4497,17 @@ export const api = {
   setCompanyLocation: (c: CompanyLocation) =>
     request<{ company: CompanyLocation }>('/company-location', { method: 'PUT', body: JSON.stringify(c) }),
   getBookingTrack: (id: string) => request<BookingTrack>(`/bookings/${id}/track`),
+  lateAudit: (from: string, to: string) => request<{ total: number; rows: unknown[]; causes: Record<string, string> }>(`/late-audit?from=${from}&to=${to}`),
+  lateAuditExcel: async (from: string, to: string) => {
+    const token = currentToken()
+    const res = await fetch(`${API_URL}/late-audit?from=${from}&to=${to}&format=xlsx`, { headers: token ? { Authorization: `Bearer ${token}` } : {} })
+    if (!res.ok) throw new Error('تعذر تنزيل الإكسل')
+    const a = document.createElement('a')
+    a.href = URL.createObjectURL(await res.blob())
+    a.download = `المتأخرات-${from}-${to}.xlsx`
+    a.click()
+  },
+  matrixSelfCheck: () => request<{ checks: unknown[]; at: string }>('/matrix-selfcheck'),
   getFieldMap: (from: string, to: string) => request<FieldMap>(`/field-map?from=${from}&to=${to}`),
   // إرجاع الحجز للتدقيق بعد ما انتأشر مدقّق — مدير النظام حصراً
   unverifyBooking: (id: string) =>
