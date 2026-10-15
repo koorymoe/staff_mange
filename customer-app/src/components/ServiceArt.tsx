@@ -49,6 +49,8 @@ const photoOf = (name: string) => {
   if (kind === 'solar') return '/img/solar-premium.png'
   if (kind === 'network') return '/img/network-premium.png'
   if (kind === 'smart') return '/img/smart-premium.png'
+  if (kind === 'alarm') return '/img/alarm-premium.png'
+  if (kind === 'lock') return '/img/lock-premium.png'
   return `/img/${kind}.webp`
 }
 
