@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { purchaseApi, type ProcurementRequest, type PurchaseAlert, type PurchaseBias, type PurchaseGroup, type PurchaseMonth, type PurchaseControlRow, type PurchasePriceRow, type SupplierReviewInput } from '../api'
+import { purchaseApi, type ProcurementRequest, type PurchaseAlert, type PurchaseBias, type StandardPrice, type StandardSuggestion, type PurchaseGroup, type PurchaseMonth, type PurchaseControlRow, type PurchasePriceRow, type SupplierReviewInput } from '../api'
 
 // ═══ رقابة المشتريات — قرار (ع) 10-15 ═══
 // المشتري يسجّل الشراء ويقيّم المورد ببنود (أولها السعر) · المحاسب يثبّت ·
@@ -22,7 +22,9 @@ interface Props {
 }
 
 export default function PurchaseControlPanel({ requests, canBuy, canVerify, canWatch, canDecide, reviewFor, onReviewClose }: Props) {
-  const [tab, setTab] = useState<'todo' | 'prices' | 'alerts' | 'bias' | 'month'>('todo')
+  const [tab, setTab] = useState<'todo' | 'prices' | 'alerts' | 'bias' | 'month' | 'std'>('todo')
+  const [std, setStd] = useState<{ standards: StandardPrice[]; suggestions: StandardSuggestion[]; ceilingPct: number } | null>(null)
+  const [stdQ, setStdQ] = useState('')
   const [month, setMonth] = useState(() => new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Baghdad' }).slice(0, 7))
   const [report, setReport] = useState<PurchaseMonth | null>(null)
   const [bias, setBias] = useState<PurchaseBias[]>([])
@@ -41,6 +43,7 @@ export default function PurchaseControlPanel({ requests, canBuy, canVerify, canW
     purchaseApi.control().then((r) => { if (alive) setControl(r) }).catch(() => {})
     if (canWatch) purchaseApi.alerts().then((r) => { if (alive) setAlerts(r) }).catch(() => {})
     if (canWatch) purchaseApi.bias().then((r) => { if (alive) setBias(r) }).catch(() => {})
+    if (canWatch) purchaseApi.standards().then((r) => { if (alive) setStd(r) }).catch(() => {})
     purchaseApi.policy().then((p) => { if (alive) setThreshold(p.quoteThreshold) }).catch(() => {})
     return () => { alive = false }
   }, [reload, canWatch, requests])
@@ -79,11 +82,18 @@ export default function PurchaseControlPanel({ requests, canBuy, canVerify, canW
   }
 
   const tabs: [typeof tab, string][] = [['todo', `📋 بانتظاري (${toReview.length + toVerify.length})`], ['prices', '📊 سجل الأسعار']]
-  if (canWatch) tabs.push(['alerts', `🚨 تنبيهات ماتركس (${openAlerts.length})`], ['bias', `🔁 الميل لمورد (${bias.length})`], ['month', '📅 التقرير الشهري'])
+  if (canWatch) tabs.push(['alerts', `🚨 تنبيهات ماتركس (${openAlerts.length})`], ['bias', `🔁 الميل لمورد (${bias.length})`], ['month', '📅 التقرير الشهري'], ['std', `📏 الأسعار الستاندرد${std?.suggestions.length ? ` (${std.suggestions.length} اقتراح)` : ''}`])
   const editThreshold = async () => {
     const v = prompt('حد «العرضين» بالدينار (الشراء فوقه لازم وياه عرض مورد ثاني، 0 = بلا شرط):', String(threshold ?? 500000))
     if (v == null || isNaN(Number(v))) return
     try { await purchaseApi.setPolicy(Number(v)); setReload((n) => n + 1) } catch (e) { alert(e instanceof Error ? e.message : 'تعذر الحفظ') }
+  }
+  const stdAct = async (fn: () => Promise<unknown>) => {
+    try { await fn(); setReload((n) => n + 1) } catch (e) { alert(e instanceof Error ? e.message : 'تعذر الحفظ') }
+  }
+  const editStd = (product: string, cur?: number) => {
+    const v = prompt(`السعر الستاندرد لـ«${product}» (د.ع للوحدة):`, cur ? String(cur) : '')
+    if (v && Number(v) > 0) void stdAct(() => purchaseApi.setStandard(product, Number(v)))
   }
   const showQuotes = async (id: string) => {
     if (quotesOf?.id === id) { setQuotesOf(null); return }
@@ -167,10 +177,12 @@ export default function PurchaseControlPanel({ requests, canBuy, canVerify, canW
           {alerts.map((a) => (
             <div key={a.id} className={`rounded-lg border px-3 py-2 text-sm ${a.reviewedAt ? 'border-slate-200 bg-slate-50 text-slate-500' : 'border-red-200 bg-red-50'}`}>
               <p className="font-bold">
-                {a.kind === 'PRICIER' ? '🚨 اشترى من الأغلى' : a.kind === 'QUOTE' ? '🧾 اختار العرض الأغلى' : '📈 المورد رفع سعره'} · {a.code} · «{a.product}»{a.kind !== 'QUOTE' && ` ×${a.quantity}`}
+                {a.kind === 'OVER_STD' ? '📏 فوق السعر الستاندرد' : a.kind === 'PRICIER' ? '🚨 اشترى من الأغلى' : a.kind === 'QUOTE' ? '🧾 اختار العرض الأغلى' : '📈 المورد رفع سعره'} · {a.code} · «{a.product}»{a.kind !== 'QUOTE' && ` ×${a.quantity}`}
               </p>
               <p className="mt-0.5">
-                {a.kind === 'QUOTE'
+                {a.kind === 'OVER_STD'
+                  ? <>انشترت من <b>{a.supplier ?? '—'}</b> بـ<b>{iqd(a.unitPrice)}</b> — والستاندرد <b>{iqd(a.refPrice)}</b> (+{Math.round((a.unitPrice / a.refPrice - 1) * 100)}٪)</>
+                  : a.kind === 'QUOTE'
                   ? <>اختار عرض <b>{a.supplier}</b> بـ<b>{iqd(a.unitPrice)}</b> — وعرض <b>{a.refSupplier}</b> چان <b>{iqd(a.refPrice)}</b></>
                   : a.kind === 'PRICIER'
                   ? <>انشترت من <b>{a.supplier}</b> بـ<b>{iqd(a.unitPrice)}</b> — وموجودة عند <b>{a.refSupplier}</b> بـ<b>{iqd(a.refPrice)}</b></>
@@ -253,6 +265,53 @@ export default function PurchaseControlPanel({ requests, canBuy, canVerify, canW
               {report.lines.length === 0 && <p className="text-sm text-slate-400">ماكو مشتريات بهذا الشهر.</p>}
             </>
           )}
+        </div>
+      )}
+
+      {tab === 'std' && std && (
+        <div className="space-y-3">
+          <p className="text-xs text-slate-500">
+            كل مادة إلها سعر مرجعي — أي شراء (موظف المشتريات أو الفني من مورده) فوقه بأكثر من <b>{std.ceilingPct}٪</b> ينبّهك وينبّه المراقب.
+            المرجعي التلقائي = أرخص آخر سعر بين الموردين (آخر ٩٠ يوم، بلا الموردين الي تقييم سعرهم ضعيف)، واليدوي يغلب.
+            {canDecide && <button onClick={() => { const v = prompt('السقف المسموح فوق الستاندرد (٪):', String(std.ceilingPct)); if (v != null && !isNaN(Number(v))) void stdAct(() => purchaseApi.setCeiling(Number(v))) }} className="mr-1 text-[#2c5aad] underline">تغيير السقف</button>}
+          </p>
+          {std.suggestions.length > 0 && (
+            <div className="rounded-lg border border-violet-200 bg-violet-50 p-2">
+              <p className="mb-1 text-sm font-bold text-violet-800">🤖 ماتركس يقترح تعديل (السوق تغيّر)</p>
+              {std.suggestions.map((x) => (
+                <div key={x.key} className="flex flex-wrap items-center gap-2 border-t border-violet-100 py-1.5 text-sm first:border-t-0">
+                  <b>{x.product}</b>: {iqd(x.current)} ← <b className={x.suggested < x.current ? 'text-emerald-700' : 'text-red-700'}>{iqd(x.suggested)}</b>
+                  <span className="text-xs text-slate-500">{x.basis}</span>
+                  {canDecide && (
+                    <span className="mr-auto flex gap-1">
+                      <button onClick={() => stdAct(() => purchaseApi.acceptStandard(x.key, true))} className="rounded bg-violet-600 px-2 py-0.5 text-xs font-bold text-white">✓ اعتمد</button>
+                      <button onClick={() => stdAct(() => purchaseApi.acceptStandard(x.key, false))} className="rounded bg-white px-2 py-0.5 text-xs ring-1 ring-slate-300">✕ اترك</button>
+                    </span>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+          <div className="flex gap-2">
+            <input value={stdQ} onChange={(e) => setStdQ(e.target.value)} placeholder="دوّر على مادة" className="flex-1 rounded-lg border border-slate-300 px-3 py-2 text-sm" />
+            {canDecide && <button onClick={() => { const p = prompt('اسم المادة:'); if (p?.trim()) editStd(p.trim()) }} className="rounded-lg bg-[#2c5aad] px-3 py-2 text-sm font-bold text-white">+ سعر ستاندرد</button>}
+          </div>
+          <table className="w-full text-sm">
+            <thead><tr className="text-xs text-slate-400"><th className="text-right">المادة</th><th>الستاندرد</th><th>المصدر</th><th>أرخص بالسوق (٩٠ يوم)</th><th>آخر تحديث</th><th></th></tr></thead>
+            <tbody>
+              {std.standards.filter((x) => !stdQ.trim() || x.product.includes(stdQ.trim())).map((x) => (
+                <tr key={x.key} className="border-t border-slate-100">
+                  <td className="py-1">{x.product}</td>
+                  <td className="text-center font-bold">{iqd(x.price)}</td>
+                  <td className="text-center text-xs">{x.source === 'MANUAL' ? `✍️ يدوي${x.setBy ? ` (${x.setBy})` : ''}` : '🤖 تلقائي'}</td>
+                  <td className="text-center">{x.market != null ? iqd(x.market) : '—'}</td>
+                  <td className="text-center text-xs">{day(x.updatedAt)}</td>
+                  <td>{canDecide && <button onClick={() => editStd(x.product, x.price)} className="text-xs text-[#2c5aad] underline">تعديل</button>}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          {std.standards.length === 0 && <p className="text-sm text-slate-400">ماكو أسعار ستاندرد بعد — تنحسب تلقائياً من المشتريات، أو ضيفها يدوياً.</p>}
         </div>
       )}
 

@@ -386,5 +386,37 @@ func matrixChatMigrations() []Migration {
 				chosen BOOLEAN NOT NULL DEFAULT false, note TEXT, "createdAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP);
 			CREATE INDEX IF NOT EXISTS procurement_quote_req ON "ProcurementQuote" ("procurementId");
 		`,
+	}, {
+		// (ع) 10-15: رقابة المشتريات ٣ — الأسعار الستاندرد + مشتريات الفنيين من موردينهم
+		Version: "0365_standard_prices",
+		SQL: `
+			ALTER TABLE "PurchasePolicy" ADD COLUMN IF NOT EXISTS "ceilingPct" DOUBLE PRECISION NOT NULL DEFAULT 10;
+			CREATE TABLE IF NOT EXISTS "StandardPrice" (
+				key TEXT PRIMARY KEY, product TEXT NOT NULL, price DOUBLE PRECISION NOT NULL,
+				source TEXT NOT NULL DEFAULT 'AUTO', "setById" TEXT, "updatedAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP);
+			CREATE TABLE IF NOT EXISTS "StandardPriceSuggestion" (
+				key TEXT PRIMARY KEY, product TEXT NOT NULL, current DOUBLE PRECISION NOT NULL, suggested DOUBLE PRECISION NOT NULL,
+				basis TEXT NOT NULL, "createdAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP);
+			-- شراء مواد من مصروف الفني: من أي مورد فنيين، شنو المادة، الكمية والسعر
+			CREATE TABLE IF NOT EXISTS "ExpensePurchase" (
+				"expenseId" TEXT PRIMARY KEY REFERENCES "Expense"(id) ON DELETE CASCADE,
+				"techSupplierId" TEXT REFERENCES "TechSupplier"(id) ON DELETE SET NULL,
+				"productName" TEXT NOT NULL, quantity INT NOT NULL, "unitPrice" DOUBLE PRECISION NOT NULL,
+				"createdAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP);
+			ALTER TABLE "ProcurementPriceAlert" ALTER COLUMN "procurementId" DROP NOT NULL;
+			ALTER TABLE "ProcurementPriceAlert" ADD COLUMN IF NOT EXISTS "expenseId" TEXT REFERENCES "Expense"(id) ON DELETE CASCADE;
+			ALTER TABLE "ProcurementPriceAlert" ADD COLUMN IF NOT EXISTS "techSupplierId" TEXT;
+			-- كل المشتريات بمكان واحد: طلبات المواد (موردين المشتريات) + مصاريف الفنيين (موردين الفنيين)
+			CREATE OR REPLACE VIEW "PurchaseLine" AS
+				SELECT 'PROC' AS source, r.id AS "refId", r.code, product_key(i."productName", i.model) AS key, i."productName" AS product,
+					i.quantity AS qty, i."unitPrice" AS price, r."fulfilledAt" AS at, r."supplierId" AS "supplierId",
+					s."companyName" AS supplier, r."fulfilledById" AS "buyerId"
+				FROM "ProcurementItem" i JOIN "ProcurementRequest" r ON r.id = i."requestId" LEFT JOIN "Supplier" s ON s.id = r."supplierId"
+				WHERE i."unitPrice" > 0 AND r."fulfilledAt" IS NOT NULL
+				UNION ALL
+				SELECT 'TECH', e.id, 'مصروف', product_key(p."productName", NULL), p."productName", p.quantity, p."unitPrice", p."createdAt",
+					p."techSupplierId", COALESCE(t."companyName", 'مورد غير مسجّل'), e."employeeId"
+				FROM "ExpensePurchase" p JOIN "Expense" e ON e.id = p."expenseId" LEFT JOIN "TechSupplier" t ON t.id = p."techSupplierId";
+		`,
 	}}
 }

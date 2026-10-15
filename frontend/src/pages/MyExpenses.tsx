@@ -45,6 +45,19 @@ export default function MyExpenses() {
   const [activeBookings, setActiveBookings] = useState<Booking[]>([])
   const [canExpense, setCanExpense] = useState(false)
   const [bookingId, setBookingId] = useState('')
+  // (ع) 10-15: شراء مواد — من أي مورد فنيين، وشنو المادة وسعرها (يدخل برقابة الأسعار)
+  const [isPurchase, setIsPurchase] = useState(false)
+  const [techSuppliers, setTechSuppliers] = useState<{ id: string; companyName: string }[]>([])
+  const [pSupplier, setPSupplier] = useState('')
+  const [pProduct, setPProduct] = useState('')
+  const [pQty, setPQty] = useState('1')
+  const [pPrice, setPPrice] = useState('')
+  useEffect(() => {
+    let alive = true
+    // ⚠️ نسأل «مسموحلي؟» أول — نداء مرفوض (403) ينحسب مخالفة
+    api.techSuppliersCan().then((c) => { if (c.can) return api.getMyTechSuppliers().then((r) => { if (alive) setTechSuppliers(r) }) }).catch(() => {})
+    return () => { alive = false }
+  }, [])
 
   const load = () => {
     if (!employee) return
@@ -77,10 +90,12 @@ export default function MyExpenses() {
     try {
       await api.createExpense({
         employeeId: employee.id,
-        amount: Number(amount),
-        description: description || undefined,
+        amount: isPurchase ? Number(pQty) * Number(pPrice) : Number(amount),
+        description: (isPurchase ? `شراء ${pProduct} ×${pQty}${description ? ` — ${description}` : ''}` : description) || undefined,
         bookingId: bookingId || undefined,
+        purchase: isPurchase ? { techSupplierId: pSupplier || undefined, productName: pProduct.trim(), quantity: Number(pQty), unitPrice: Number(pPrice) } : undefined,
       })
+      setIsPurchase(false); setPProduct(''); setPQty('1'); setPPrice(''); setPSupplier('')
       setAmount('')
       setDescription('')
       setBookingId('')
@@ -125,12 +140,31 @@ export default function MyExpenses() {
           onSubmit={handleSubmit}
           className="mt-6 grid grid-cols-1 gap-4 rounded-xl border border-white bg-white p-6 shadow-[0_4px_20px_rgba(15,32,64,0.06)] sm:grid-cols-3"
         >
+          <div className="sm:col-span-3">
+            <label className="flex items-center gap-2 text-sm font-bold text-slate-700">
+              <input type="checkbox" checked={isPurchase} onChange={(e) => setIsPurchase(e.target.checked)} />
+              🛒 هذا شراء مواد من مورد
+            </label>
+            {isPurchase && (
+              <div className="mt-2 grid grid-cols-1 gap-2 rounded-lg border border-amber-200 bg-amber-50 p-3 sm:grid-cols-4">
+                <select value={pSupplier} onChange={(e) => setPSupplier(e.target.value)} className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm">
+                  <option value="">— مورد مو بالقائمة —</option>
+                  {techSuppliers.map((t) => <option key={t.id} value={t.id}>{t.companyName}</option>)}
+                </select>
+                <input required value={pProduct} onChange={(e) => setPProduct(e.target.value)} placeholder="المادة" className="rounded-lg border border-slate-300 px-2 py-2 text-sm" />
+                <input required type="number" min={1} value={pQty} onChange={(e) => setPQty(e.target.value)} placeholder="الكمية" className="rounded-lg border border-slate-300 px-2 py-2 text-sm" />
+                <input required type="number" min={1} value={pPrice} onChange={(e) => setPPrice(e.target.value)} placeholder="سعر الوحدة" className="rounded-lg border border-slate-300 px-2 py-2 text-sm" />
+                <p className="text-xs text-amber-800 sm:col-span-4">السعر ينقارن بالسعر الستاندرد للمادة — والمورد المو مسجّل ينبّه المدير.</p>
+              </div>
+            )}
+          </div>
           <div>
             <label className="mb-1 block text-sm font-medium text-slate-600">المبلغ</label>
             <input
-              required
+              required={!isPurchase}
+              disabled={isPurchase}
               type="number"
-              value={amount}
+              value={isPurchase ? String((Number(pQty) || 0) * (Number(pPrice) || 0)) : amount}
               onChange={(e) => setAmount(e.target.value)}
               className="w-full rounded-lg border border-slate-300 px-3 py-2 outline-none focus:border-brand-500"
             />

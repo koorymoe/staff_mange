@@ -4516,7 +4516,7 @@ export const api = {
 
   getExpenses: (employeeId?: string) =>
     request<Expense[]>(`/expenses${employeeId ? `?employeeId=${employeeId}` : ''}`),
-  createExpense: (data: { employeeId: string; amount: number; description?: string; bookingId?: string }) =>
+  createExpense: (data: { employeeId: string; amount: number; description?: string; bookingId?: string; purchase?: { techSupplierId?: string; productName: string; quantity: number; unitPrice: number } }) =>
     request<Expense>('/expenses', { method: 'POST', body: JSON.stringify(data) }),
   updateExpenseStatus: (id: string, status: 'APPROVED' | 'REJECTED') =>
     request<Expense>(`/expenses/${id}/status`, {
@@ -6115,7 +6115,7 @@ export interface FieldMap {
 export interface PurchaseControlRow { id: string; verifiedAt: string | null; verifiedBy: string | null; myReview: boolean; alerts: number }
 export interface PurchasePriceRow { key: string; product: string; supplier: string; lastPrice: number; minPrice: number; times: number; lastAt: string }
 export interface PurchaseAlert {
-  id: string; kind: 'PRICIER' | 'JUMP' | 'QUOTE'; code: string; product: string; supplier: string | null; unitPrice: number; quantity: number
+  id: string; kind: 'PRICIER' | 'JUMP' | 'QUOTE' | 'OVER_STD'; code: string; product: string; supplier: string | null; unitPrice: number; quantity: number
   refSupplier: string | null; refPrice: number; loss: number; buyer: string | null; createdAt: string; reviewedAt: string | null; reviewNote: string | null
 }
 export interface SupplierScore { supplierId: string; n: number; price: number; quality: number; speed: number; punctuality: number; dealing: number; alerts: number }
@@ -6132,6 +6132,10 @@ export const purchaseApi = {
   setPolicy: (quoteThreshold: number) => request<{ quoteThreshold: number }>('/procurement-policy', { method: 'PUT', body: JSON.stringify({ quoteThreshold }) }),
   quotes: (id: string) => request<{ supplier: string; totalPrice: number; chosen: boolean; note: string | null }[]>(`/procurement-quotes/${id}`),
   bias: () => request<PurchaseBias[]>('/procurement-bias'),
+  standards: () => request<{ standards: StandardPrice[]; suggestions: StandardSuggestion[]; ceilingPct: number }>('/procurement-standards'),
+  setStandard: (product: string, price: number) => request<{ ok: boolean }>('/procurement-standards', { method: 'PUT', body: JSON.stringify({ product, price }) }),
+  acceptStandard: (key: string, accept: boolean) => request<{ ok: boolean }>('/procurement-standards/accept', { method: 'POST', body: JSON.stringify({ key, accept }) }),
+  setCeiling: (ceilingPct: number) => request<{ ceilingPct: number }>('/procurement-policy/ceiling', { method: 'PUT', body: JSON.stringify({ ceilingPct }) }),
   monthly: (month: string) => request<PurchaseMonth>(`/procurement-monthly?month=${month}`),
   monthlyExcel: async (month: string) => {
     const token = currentToken()
@@ -6143,6 +6147,8 @@ export const purchaseApi = {
     a.click()
   },
 }
+export interface StandardPrice { key: string; product: string; price: number; source: 'AUTO' | 'MANUAL'; setBy: string | null; updatedAt: string; market: number | null }
+export interface StandardSuggestion { key: string; product: string; current: number; suggested: number; basis: string }
 export interface PurchaseGroup { name: string; total: number; count: number; saving: number }
 export interface PurchaseMonth {
   month: string; total: number; count: number; requests: number; prevTotal: number; prevCount: number

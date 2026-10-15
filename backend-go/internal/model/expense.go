@@ -3,11 +3,11 @@ package model
 import "time"
 
 type Expense struct {
-	ID          string    `db:"id" json:"id"`
-	EmployeeID  string    `db:"employeeId" json:"employeeId"`
-	Amount      float64   `db:"amount" json:"amount"`
-	Description *string   `db:"description" json:"description"`
-	Status      string    `db:"status" json:"status"`
+	ID          string  `db:"id" json:"id"`
+	EmployeeID  string  `db:"employeeId" json:"employeeId"`
+	Amount      float64 `db:"amount" json:"amount"`
+	Description *string `db:"description" json:"description"`
+	Status      string  `db:"status" json:"status"`
 	// ═══ الحجز الي انصرف عليه ═══
 	//
 	// ⚠️ **قابل للفراغ**: المصاريف المسجّلة قبل هالتعديل ما إلها حجز،
@@ -15,7 +15,7 @@ type Expense struct {
 	//
 	// ⚠️ ولازم يكون بالـstruct لأن المستودع يستعمل `SELECT *` —
 	// بدونه sqlx يفشل بـ«missing destination name bookingId».
-	BookingID   *string   `db:"bookingId" json:"bookingId"`
+	BookingID *string `db:"bookingId" json:"bookingId"`
 	// BookingCode كود الحجز للعرض — ما ينخزن.
 	BookingCode *string   `db:"-" json:"bookingCode,omitempty"`
 	CreatedAt   time.Time `db:"createdAt" json:"createdAt"`
@@ -32,10 +32,19 @@ type EmployeeBrief struct {
 
 type CreateExpenseRequest struct {
 	// BookingID الحجز الي انصرف عليه — الليدر يختاره من حجوزاته.
-	BookingID *string `json:"bookingId"`
+	BookingID   *string  `json:"bookingId"`
 	EmployeeID  string   `json:"employeeId"`
 	Amount      *float64 `json:"amount"`
 	Description *string  `json:"description"`
+	// (ع) 10-15: شراء مواد من مورد فنيين — يدخل برقابة الأسعار
+	Purchase *ExpensePurchaseInput `json:"purchase"`
+}
+
+type ExpensePurchaseInput struct {
+	TechSupplierID *string `json:"techSupplierId"`
+	ProductName    string  `json:"productName"`
+	Quantity       int     `json:"quantity"`
+	UnitPrice      float64 `json:"unitPrice"`
 }
 
 type UpdateExpenseStatusRequest struct {

@@ -2,6 +2,7 @@ package handler
 
 import (
 	"net/http"
+	"strings"
 
 	"staffmange-api/internal/middleware"
 	"staffmange-api/internal/model"
@@ -12,6 +13,13 @@ import (
 type ExpenseHandler struct {
 	service *service.ExpenseService
 	perms   *repository.PermissionRepository
+	// afterPurchase (ع) 10-15: شراء الفني من مورده يدخل برقابة الأسعار
+	afterPurchase func(expenseID, employeeID string, p model.ExpensePurchaseInput)
+}
+
+// SetAfterPurchase يربط رقابة الأسعار بمصاريف شراء المواد.
+func (h *ExpenseHandler) SetAfterPurchase(f func(string, string, model.ExpensePurchaseInput)) {
+	h.afterPurchase = f
 }
 
 func NewExpenseHandler(s *service.ExpenseService, perms *repository.PermissionRepository) *ExpenseHandler {
@@ -73,10 +81,20 @@ func (h *ExpenseHandler) Create(w http.ResponseWriter, r *http.Request) {
 	// المصروف دايماً باسم صاحب الجلسة الحالي — ما نثق بـ employeeId المرسل
 	// بالطلب حتى ما يقدر موظف يسجل مصروف باسم زميله.
 	req.EmployeeID = middleware.EmployeeIDFromContext(r)
+	if p := req.Purchase; p != nil {
+		p.ProductName = strings.TrimSpace(p.ProductName)
+		if p.ProductName == "" || p.Quantity <= 0 || p.UnitPrice <= 0 {
+			WriteError(w, http.StatusBadRequest, "شراء المواد: اكتب المادة والكمية وسعر الوحدة")
+			return
+		}
+	}
 	expense, err := h.service.Create(req)
 	if err != nil {
 		WriteError(w, http.StatusBadRequest, err.Error())
 		return
+	}
+	if req.Purchase != nil && h.afterPurchase != nil {
+		h.afterPurchase(expense.ID, req.EmployeeID, *req.Purchase)
 	}
 	WriteJSON(w, http.StatusCreated, expense)
 }

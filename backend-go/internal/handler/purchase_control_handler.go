@@ -60,6 +60,7 @@ func (h *PurchaseControlHandler) CheckPrices(procurementID string) {
 		if it.SupplierID == nil {
 			continue
 		}
+		h.checkStandard(&procurementID, nil, nil, it, "مشتريات "+it.Code)
 		// أرخص مورد ثاني لنفس المادة (آخر سعر لكل مورد)
 		var best struct {
 			SupplierID string  `db:"supplierId"`
@@ -208,10 +209,8 @@ func (h *PurchaseControlHandler) Prices(w http.ResponseWriter, r *http.Request) 
 	rows := []row{}
 	if err := h.db.Select(&rows, `SELECT key, max(product) AS product, supplier,
 		(array_agg(price ORDER BY at DESC))[1] AS "lastPrice", min(price) AS "minPrice", count(*)::int AS times, max(at) AS "lastAt"
-		FROM (SELECT product_key(i."productName", i.model) AS key, i."productName" AS product, s."companyName" AS supplier,
-			i."unitPrice" AS price, r."fulfilledAt" AS at
-			FROM "ProcurementItem" i JOIN "ProcurementRequest" r ON r.id = i."requestId" JOIN "Supplier" s ON s.id = r."supplierId"
-			WHERE i."unitPrice" > 0 AND r."fulfilledAt" > now() - interval '365 days') x
+		FROM (SELECT key, product, CASE WHEN source = 'TECH' THEN supplier || ' (فنيين)' ELSE supplier END AS supplier, price, at
+			FROM "PurchaseLine" WHERE at > now() - interval '365 days') x
 		WHERE key LIKE $1 GROUP BY key, supplier ORDER BY key, "lastPrice" LIMIT 1000`, q); err != nil {
 		log.Printf("[purchase-control] prices: %v", err)
 		WriteError(w, http.StatusInternalServerError, "تعذر جلب الأسعار")
@@ -239,10 +238,12 @@ func (h *PurchaseControlHandler) Alerts(w http.ResponseWriter, r *http.Request) 
 		ReviewNote  *string    `db:"reviewNote" json:"reviewNote"`
 	}
 	rows := []row{}
-	_ = h.db.Select(&rows, `SELECT a.id, a.kind, r.code, a."productName", s."companyName" AS supplier, a."unitPrice", a.quantity,
+	_ = h.db.Select(&rows, `SELECT a.id, a.kind, COALESCE(r.code, 'مصروف فني') AS code, a."productName", s."companyName" AS supplier, a."unitPrice", a.quantity,
 		rs."companyName" AS "refSupplier", a."refPrice", a."lossIqd", e.name AS buyer, a."createdAt", a."reviewedAt", a."reviewNote"
-		FROM "ProcurementPriceAlert" a JOIN "ProcurementRequest" r ON r.id = a."procurementId"
-		LEFT JOIN "Supplier" s ON s.id = a."supplierId" LEFT JOIN "Supplier" rs ON rs.id = a."refSupplierId"
+		FROM "ProcurementPriceAlert" a LEFT JOIN "ProcurementRequest" r ON r.id = a."procurementId"
+		LEFT JOIN "Supplier" s0 ON s0.id = a."supplierId" LEFT JOIN "TechSupplier" ts ON ts.id = a."techSupplierId"
+		LEFT JOIN LATERAL (SELECT COALESCE(s0."companyName", ts."companyName", CASE WHEN a."expenseId" IS NOT NULL THEN 'مورد غير مسجّل' END) AS "companyName") s ON true
+		LEFT JOIN "Supplier" rs ON rs.id = a."refSupplierId"
 		LEFT JOIN "Employee" e ON e.id = a."buyerId" ORDER BY a."reviewedAt" IS NOT NULL, a."createdAt" DESC LIMIT 300`)
 	WriteJSON(w, http.StatusOK, rows)
 }
