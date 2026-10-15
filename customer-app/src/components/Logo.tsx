@@ -1,10 +1,9 @@
-// شعار الأماني: حرف A بقمّة كحلية وخط ذهبي — بأسلوب التصميم المقترح.
+// الشعار الرسمي لشركة الأماني — نفس ملف الهوية المعتمد، مو شعار A التصميمي.
 export function LogoMark({ size = 64, light = false }: { size?: number; light?: boolean }) {
   return (
-    <svg width={size} height={size * 0.82} viewBox="0 0 100 82" aria-hidden>
-      <path d="M50 2 L96 80 H72 L50 41 L28 80 H4 Z" fill={light ? '#fff' : '#0d3b8c'} />
-      <path d="M58 54 L72 80 H58 L48 62 Z" fill="#f5b335" />
-    </svg>
+    <span className={`grid place-items-center ${light ? 'rounded-2xl bg-white/95 shadow-[0_12px_30px_-12px_rgba(0,0,0,.6)]' : ''}`} style={{ width: size, height: size }}>
+      <img src="/apple-touch-icon.png" width={size} height={size} alt="شعار شركة الأماني" className="h-full w-full object-contain" />
+    </span>
   )
 }
 
