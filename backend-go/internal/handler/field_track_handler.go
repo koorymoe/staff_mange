@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"fmt"
 	"log"
 	"net/http"
 	"time"
@@ -15,7 +16,13 @@ import (
 // قرار (ع) 10-14 — كل وقت ينسجّل مرتين: ضغطة الموظف وحساب النظام من الـGPS،
 // حتى نقارن، ونغطي النسيان، وتنضبط أوقات الشغل.
 
-type FieldTrackHandler struct{ db *sqlx.DB }
+type FieldTrackHandler struct {
+	db     *sqlx.DB
+	notify func(employeeID, message string)
+}
+
+// SetNotifier إشعار داخل النظام (تذكير «وصلنا»)
+func (h *FieldTrackHandler) SetNotifier(f func(employeeID, message string)) { h.notify = f }
 
 func NewFieldTrackHandler(db *sqlx.DB) *FieldTrackHandler { return &FieldTrackHandler{db: db} }
 
@@ -258,6 +265,7 @@ func (h *FieldTrackHandler) RunLoop() {
 		}
 		for _, b := range rows {
 			h.analyzeBooking(b)
+			h.remindArrival(b)
 		}
 	}
 }
@@ -385,4 +393,41 @@ func (h *FieldTrackHandler) FieldMap(w http.ResponseWriter, r *http.Request) {
 		heat = append(heat, [3]float64{p.Lat, p.Lng, 1})
 	}
 	WriteJSON(w, http.StatusOK, map[string]any{"company": h.company(), "bookings": bookings, "employees": latest, "heat": heat})
+}
+
+// remindArrival (ع) 10-15: النظام شاف الموظف واكف ١٠ دقايق أو أكثر قرب الزبون وهو
+// ما ضاغط «وصلنا» — نذكّره مرة وحدة. (بعد ٣٠ دقيقة النظام يسجّلها بداله.)
+func (h *FieldTrackHandler) remindArrival(b trackBooking) {
+	if h.notify == nil || b.DepartedAt == nil {
+		return
+	}
+	var st struct {
+		ArrivedAt  *time.Time `db:"arrivedAt"`
+		RemindedAt *time.Time `db:"arriveRemindedAt"`
+		Code       string     `db:"code"`
+		Driver     *string    `db:"driver"`
+	}
+	if err := h.db.Get(&st, `SELECT b."arrivedAt", b."arriveRemindedAt", b.code::text AS code,
+		COALESCE((SELECT p."employeeId" FROM "BookingStageProof" p WHERE p."bookingId" = b.id AND p.stage = 'DEPARTED' AND p."employeeId" IS NOT NULL ORDER BY p."pressedAt" LIMIT 1), b."projectSupervisorId") AS driver
+		FROM "Booking" b WHERE b.id = $1`, b.ID); err != nil || st.ArrivedAt != nil || st.RemindedAt != nil || st.Driver == nil {
+		return
+	}
+	s := currentStop(h.loadPoints(b.ID))
+	if s == nil || s.End.Sub(s.Start) < 10*time.Minute || time.Since(s.End) > 10*time.Minute {
+		return
+	}
+	var cust *[2]float64
+	if b.CustLat != nil && b.CustLng != nil {
+		cust = &[2]float64{*b.CustLat, *b.CustLng}
+	} else if b.MapLat != nil && b.MapLng != nil && *b.MapLat != 0 {
+		cust = &[2]float64{*b.MapLat, *b.MapLng}
+	}
+	if cust != nil && haversineM(cust[0], cust[1], s.Lat, s.Lng) > customerNearM {
+		return
+	}
+	if r, err := h.db.Exec(`UPDATE "Booking" SET "arriveRemindedAt" = now() WHERE id = $1 AND "arriveRemindedAt" IS NULL`, b.ID); err == nil {
+		if n, _ := r.RowsAffected(); n > 0 {
+			h.notify(*st.Driver, fmt.Sprintf("📍 الحجز %s: النظام شافك عند الزبون من %d دقيقة — دوس «وصلنا» من «مهامي»", st.Code, s.Minutes()))
+		}
+	}
 }

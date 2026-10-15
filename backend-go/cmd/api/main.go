@@ -1198,6 +1198,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	mux.Handle("POST /api/bookings/{id}/stage-proof", middleware.Chain(http.HandlerFunc(stageProofHandler.Record), requireAuth, requireBookingParty))
 	// (ع) 10-14: الميدان — موقع الشركة · استلام · انطلاق · نقاط المسار · خريطة المراقبة
 	fieldTrackHandler := handler.NewFieldTrackHandler(db)
+	fieldTrackHandler.SetNotifier(func(emp, msg string) { _ = notificationRepo.Create(emp, "stage_reminder", msg) })
 	go fieldTrackHandler.RunLoop()
 	mux.Handle("GET /api/company-location", middleware.Chain(http.HandlerFunc(fieldTrackHandler.GetCompany), requireAuth))
 	mux.Handle("PUT /api/company-location", middleware.Chain(http.HandlerFunc(fieldTrackHandler.SetCompany), requireAuth, requireAdmin))

@@ -103,3 +103,13 @@ func analyzeTrack(pts []trackPoint, origin, customer *[2]float64) trackResult {
 	}
 	return res
 }
+
+// currentStop التوقف الأخير (الحالي) من النقاط — للتذكير «وصلنا» قبل ما يكمل ٣٠ دقيقة.
+func currentStop(pts []trackPoint) *trackStop {
+	if len(pts) == 0 {
+		return nil
+	}
+	stops := clusterStops(pts)
+	s := stops[len(stops)-1]
+	return &s
+}

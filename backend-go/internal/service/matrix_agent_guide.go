@@ -209,7 +209,7 @@ func (a *MatrixAgent) registerEconomicsTools() {
 					COALESCE(SUM(inv.net), 0) AS net, COALESCE(SUM(inv.exec), 0) AS exec,
 					COALESCE(SUM((SELECT SUM(mi."profitPerUnit" * mi.quantity) FROM "LeaderInvoiceMaterialItem" mi WHERE mi."leaderInvoiceId" = inv.id)), 0) AS matprof,
 					COALESCE(SUM((SELECT SUM(e.amount) FROM "Expense" e WHERE e."bookingId" = b.id AND e.status::text <> 'REJECTED')), 0) AS exp,
-					AVG(EXTRACT(EPOCH FROM (b."completedAt" - b."startedAt")) / 3600) FILTER (WHERE b."startedAt" IS NOT NULL AND b."completedAt" > b."startedAt"
+					AVG((booking_work_minutes(b.id, b."startedAt", b."completedAt", b."autoArrivedAt", b."autoCompletedAt") / 60)) FILTER (WHERE b."startedAt" IS NOT NULL AND b."completedAt" > b."startedAt"
 						AND b."completedAt" - b."startedAt" < interval '16 hours') AS hours,
 					AVG((SELECT count(*) FROM "BookingAssignment" ba WHERE ba."bookingId" = b.id)) AS crew
 				FROM "Booking" b

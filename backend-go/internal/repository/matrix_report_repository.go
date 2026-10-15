@@ -204,7 +204,7 @@ const perfJobsCTE = `
 	WITH mine AS (
 		SELECT DISTINCT b.id, b.code, b.status::text AS status, b."partialCount", b."serviceId",
 		       COALESCE(s.name, '') AS service, (b."startedAt" IS NOT NULL) AS started,
-		       EXTRACT(EPOCH FROM (b."completedAt" - b."startedAt")) / 60 AS actual
+		       booking_work_minutes(b.id, b."startedAt", b."completedAt", b."autoArrivedAt", b."autoCompletedAt") AS actual
 		FROM "Booking" b
 		LEFT JOIN "Service" s ON s.id = b."serviceId"
 		LEFT JOIN "Mission" m ON m."bookingId" = b.id
@@ -214,7 +214,7 @@ const perfJobsCTE = `
 		  AND (EXISTS (SELECT 1 FROM "BookingAssignment" a WHERE a."bookingId" = b.id AND a."employeeId" = $1)
 		       OR m."leaderId" = $1 OR $1 = ANY(m."memberIds"))
 	), med AS (
-		SELECT b."serviceId", percentile_cont(0.5) WITHIN GROUP (ORDER BY EXTRACT(EPOCH FROM (b."completedAt" - b."startedAt")) / 60) AS expected
+		SELECT b."serviceId", percentile_cont(0.5) WITHIN GROUP (ORDER BY booking_work_minutes(b.id, b."startedAt", b."completedAt", b."autoArrivedAt", b."autoCompletedAt")) AS expected
 		FROM "Booking" b
 		WHERE b."completedAt" IS NOT NULL AND b."startedAt" IS NOT NULL
 		  AND b."completedAt" - b."startedAt" >= interval '5 minutes' AND b."completedAt" - b."startedAt" < interval '14 hours'
@@ -222,7 +222,7 @@ const perfJobsCTE = `
 		GROUP BY b."serviceId"
 		-- ⚠️ خدمة وسيطها دقائق قليلة (تسجيل بدء/إنجاز بنفس اللحظة) چانت تطلّع
 		-- سرعة ×900 لأي حجز عادي — المتوقع لازم يكون ١٥ دقيقة فأكثر حتى ينحسب.
-		HAVING COUNT(*) >= 3 AND percentile_cont(0.5) WITHIN GROUP (ORDER BY EXTRACT(EPOCH FROM (b."completedAt" - b."startedAt")) / 60) >= 15
+		HAVING COUNT(*) >= 3 AND percentile_cont(0.5) WITHIN GROUP (ORDER BY booking_work_minutes(b.id, b."startedAt", b."completedAt", b."autoArrivedAt", b."autoCompletedAt")) >= 15
 	)`
 
 // Performance أداء الموظف بنافذة ٣٠ يوم تنتهي قبل offsetDays.

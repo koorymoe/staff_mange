@@ -187,6 +187,22 @@ func (s *MatrixScoreService) scoreBookings(now time.Time, add func(repository.Ma
 			}
 		}
 	}
+	// (ع) 10-15: الالتزام بتسجيل المراحل — للي ساق الحجز
+	codes := map[string]string{}
+	for i := range facts {
+		codes[facts[i].ID] = s.chain.chainOf(&facts[i], now).Code
+	}
+	logs, _ := s.repo.StageLogFacts(seen)
+	for _, f := range logs {
+		if f.DriverID == nil || f.CompletedAt == nil {
+			continue
+		}
+		pts, why := stageLogPoints(f)
+		label := "حجز " + codes[f.BookingID]
+		keep = append(keep, f.BookingID+"|STAGE_LOG|"+*f.DriverID)
+		add(repository.MatrixScoreRow{EmployeeID: *f.DriverID, Source: "BOOKING", SourceID: f.BookingID, SourceLabel: &label,
+			Rule: "STAGE_LOG", Points: pts, MaxPoints: 2, At: *f.CompletedAt, Reason: label + " · تسجيل المراحل: " + why})
+	}
 	return nil
 }
 
@@ -324,10 +340,12 @@ var ruleTitles = map[string]string{
 	"ATTENDANCE": "تسجيل الحضور", "TASK_DUE": "المهام المضافة بموعدها", "PROJECT_WEEK": "المشاريع",
 	"PROC_RESPONSE": "الرد على طلبات المواد", "TOOL_RESPONSE": "الرد على طلبات الأدوات",
 	"VEHICLE_DAILY": "متابعة السيارات اليومية", "SHORTAGE_RESOLVE": "حل نواقص الجرد",
+	"STAGE_LOG": "الالتزام بتسجيل المراحل",
 }
 
 var ruleAdvice = map[string]string{
 	"ATTENDANCE":       "سجّل حضورك كل يوم دوام أول ما توصل.",
+	"STAGE_LOG":        "دوس كل مرحلة بوقتها وبمكانها (انطلاق بالشركة، وصول عند الزبون) — حتى بلا نت تنحفظ.",
 	"TASK_DUE":         "خلّص المهام قبل موعدها، وإذا ما تلحق گول للي وجّهها قبل الموعد.",
 	"PROJECT_WEEK":     "حرّك المشروع: كل أسبوع لازم يتقدم خطوة ويتسجل عليه شي.",
 	"PAPER":            "سوّي الفاتورة والتقرير نفس يوم الإنجاز.",

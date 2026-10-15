@@ -43,3 +43,15 @@ func TestAnalyzeTrack(t *testing.T) {
 		t.Fatalf("should not arrive")
 	}
 }
+
+func TestCurrentStop(t *testing.T) {
+	base := time.Date(2026, 10, 15, 9, 0, 0, 0, time.UTC)
+	pts := []trackPoint{{32.60, 44.00, base}, {32.62, 44.03, base.Add(5 * time.Minute)}}
+	for m := 10; m <= 22; m += 2 {
+		pts = append(pts, trackPoint{32.65, 44.06, base.Add(time.Duration(m) * time.Minute)})
+	}
+	s := currentStop(pts)
+	if s == nil || s.Minutes() != 12 {
+		t.Fatalf("stop %+v", s)
+	}
+}

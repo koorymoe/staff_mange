@@ -385,3 +385,35 @@ func (r *MatrixScoreRepository) ReliabilityFacts(from, to time.Time) (map[string
 	}
 	return out, err
 }
+
+// StageLogFact بيانات بند «الالتزام بتسجيل المراحل» لحجز (ع) 10-15.
+type StageLogFact struct {
+	BookingID       string     `db:"id"`
+	DriverID        *string    `db:"driverId"`
+	DepartedAt      *time.Time `db:"departedAt"`
+	ArrivedAt       *time.Time `db:"arrivedAt"`
+	StartedAt       *time.Time `db:"startedAt"`
+	CompletedAt     *time.Time `db:"completedAt"`
+	AutoArrivedAt   *time.Time `db:"autoArrivedAt"`
+	AutoCompletedAt *time.Time `db:"autoCompletedAt"`
+	Batch           int        `db:"batch"`
+	Far             int        `db:"far"`
+	AutoArrive      bool       `db:"autoArrive"`
+}
+
+// StageLogFacts الحجوزات المكتملة الي انطلقت بالنظام الجديد (بيها انطلاق) —
+// السائق = منو ضغط «انطلاق»، وإلا التيم ليدر.
+func (r *MatrixScoreRepository) StageLogFacts(ids []string) ([]StageLogFact, error) {
+	rows := []StageLogFact{}
+	if len(ids) == 0 {
+		return rows, nil
+	}
+	err := r.db.Select(&rows, `SELECT b.id,
+		COALESCE((SELECT p."employeeId" FROM "BookingStageProof" p WHERE p."bookingId" = b.id AND p.stage = 'DEPARTED' AND p."employeeId" IS NOT NULL ORDER BY p."pressedAt" LIMIT 1), b."projectSupervisorId") AS "driverId",
+		b."departedAt", b."arrivedAt", b."startedAt", b."completedAt", b."autoArrivedAt", b."autoCompletedAt",
+		(SELECT count(*) FROM "BookingStageProof" p WHERE p."bookingId" = b.id AND p.verdict = 'BATCH')::int AS batch,
+		(SELECT count(*) FROM "BookingStageProof" p WHERE p."bookingId" = b.id AND p.verdict = 'FAR')::int AS far,
+		EXISTS (SELECT 1 FROM "BookingStageProof" p WHERE p."bookingId" = b.id AND p.verdict = 'AUTO') AS "autoArrive"
+		FROM "Booking" b WHERE b.id = ANY($1) AND b.status::text = 'COMPLETED' AND b."departedAt" IS NOT NULL`, pq.Array(ids))
+	return rows, err
+}

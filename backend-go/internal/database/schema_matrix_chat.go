@@ -326,5 +326,25 @@ func matrixChatMigrations() []Migration {
 			ALTER TABLE "Customer" ADD COLUMN IF NOT EXISTS lng DOUBLE PRECISION;
 			ALTER TABLE "Customer" ADD COLUMN IF NOT EXISTS "locationSource" TEXT;
 		`,
+	}, {
+		// (ع) 10-15: تكملة المراحل — مدة شغل موثوقة للمتوسطات + تذكير «وصلنا»
+		Version: "0362_reliable_work_minutes",
+		SQL: `
+			ALTER TABLE "Booking" ADD COLUMN IF NOT EXISTS "arriveRemindedAt" TIMESTAMP;
+			-- مدة الشغل بالدقايق: أوقات النظام (من الـGPS) أولاً، وإلا ضغطات الموظف.
+			-- NULL (يعني ما تدخل بالمتوسط) إذا البدء/الإنجاز تسجيل جماعي أو بعيد
+			-- بلا وقت تلقائي يعوّضه، أو المدة أقل من ٥ دقايق (تسجيل بنفس اللحظة).
+			CREATE OR REPLACE FUNCTION booking_work_minutes(bid TEXT, s TIMESTAMP, c TIMESTAMP, aa TIMESTAMP, ac TIMESTAMP)
+			RETURNS DOUBLE PRECISION LANGUAGE plpgsql STABLE AS $$
+			DECLARE st TIMESTAMP := COALESCE(aa, s); en TIMESTAMP := COALESCE(ac, c); m DOUBLE PRECISION;
+			BEGIN
+				IF st IS NULL OR en IS NULL OR en <= st THEN RETURN NULL; END IF;
+				IF (aa IS NULL OR ac IS NULL) AND EXISTS (SELECT 1 FROM "BookingStageProof" p WHERE p."bookingId" = bid
+					AND p.stage IN ('STARTED', 'COMPLETED') AND p.verdict IN ('BATCH', 'FAR')) THEN RETURN NULL; END IF;
+				m := EXTRACT(EPOCH FROM (en - st)) / 60;
+				IF m < 5 OR m > 16 * 60 THEN RETURN NULL; END IF;
+				RETURN m;
+			END $$;
+		`,
 	}}
 }

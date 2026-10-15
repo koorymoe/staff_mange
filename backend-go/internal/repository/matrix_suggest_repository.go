@@ -47,7 +47,7 @@ func (r *MatrixSuggestRepository) ServiceDurations() (map[string]int, int) {
 		Minutes   float64 `db:"minutes"`
 		N         int     `db:"n"`
 	}{}
-	_ = r.db.Select(&rows, `SELECT "serviceId", percentile_cont(0.5) WITHIN GROUP (ORDER BY EXTRACT(EPOCH FROM ("completedAt" - "startedAt")) / 60) AS minutes, count(*)::int AS n
+	_ = r.db.Select(&rows, `SELECT "serviceId", percentile_cont(0.5) WITHIN GROUP (ORDER BY booking_work_minutes(id, "startedAt", "completedAt", "autoArrivedAt", "autoCompletedAt")) AS minutes, count(booking_work_minutes(id, "startedAt", "completedAt", "autoArrivedAt", "autoCompletedAt"))::int AS n
 		FROM "Booking" WHERE "serviceId" IS NOT NULL AND "startedAt" IS NOT NULL AND "completedAt" > "startedAt"
 		  AND "completedAt" > now() - interval '180 days' AND "completedAt" - "startedAt" < interval '12 hours'
 		GROUP BY "serviceId"`)
@@ -58,7 +58,7 @@ func (r *MatrixSuggestRepository) ServiceDurations() (map[string]int, int) {
 		}
 	}
 	var all float64
-	_ = r.db.Get(&all, `SELECT COALESCE(percentile_cont(0.5) WITHIN GROUP (ORDER BY EXTRACT(EPOCH FROM ("completedAt" - "startedAt")) / 60), 120)
+	_ = r.db.Get(&all, `SELECT COALESCE(percentile_cont(0.5) WITHIN GROUP (ORDER BY booking_work_minutes(id, "startedAt", "completedAt", "autoArrivedAt", "autoCompletedAt")), 120)
 		FROM "Booking" WHERE "startedAt" IS NOT NULL AND "completedAt" > "startedAt" AND "completedAt" - "startedAt" < interval '12 hours'
 		  AND "completedAt" > now() - interval '180 days'`)
 	return out, int(all)
@@ -142,7 +142,7 @@ func (r *MatrixSuggestRepository) People(serviceID *string, day time.Time) ([]Su
 		  (SELECT count(DISTINCT b.id) FROM "Booking" b LEFT JOIN "BookingAssignment" a ON a."bookingId" = b.id
 		    WHERE (b."projectSupervisorId" = e.id OR a."employeeId" = e.id) AND b."serviceId" IS NOT DISTINCT FROM $1
 		      AND b."completedAt" > now() - interval '180 days')::int AS "sameDone",
-		  (SELECT percentile_cont(0.5) WITHIN GROUP (ORDER BY EXTRACT(EPOCH FROM (b."completedAt" - b."startedAt")) / 60)
+		  (SELECT percentile_cont(0.5) WITHIN GROUP (ORDER BY booking_work_minutes(b.id, b."startedAt", b."completedAt", b."autoArrivedAt", b."autoCompletedAt"))
 		     FROM "Booking" b LEFT JOIN "BookingAssignment" a ON a."bookingId" = b.id
 		    WHERE (b."projectSupervisorId" = e.id OR a."employeeId" = e.id) AND b."serviceId" IS NOT DISTINCT FROM $1
 		      AND b."startedAt" IS NOT NULL AND b."completedAt" > b."startedAt" AND b."completedAt" - b."startedAt" < interval '12 hours'
