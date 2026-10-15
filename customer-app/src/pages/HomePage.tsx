@@ -60,6 +60,17 @@ export default function HomePage({ me, onBadge }: { me: Account; onBadge: (n: nu
       </header>
 
       <div className="space-y-6 px-4 pt-4">
+        {/* وعد الخدمة — مدخل بصري دافئ بدل واجهة مزدحمة */}
+        <section className="relative isolate min-h-44 overflow-hidden rounded-[24px] bg-navy-deep shadow-[0_18px_35px_-18px_rgba(8,42,102,.8)]">
+          <img src="/img/amani-services-hero.png" alt="فني يجهز خدمة منزلية" className="absolute inset-0 h-full w-full object-cover object-left" />
+          <div className="absolute inset-0 bg-gradient-to-l from-[#082a66] from-[24%] via-[#082a66]/92 via-[47%] to-[#082a66]/10" />
+          <div className="relative flex min-h-44 w-[63%] flex-col justify-center py-5 pr-5 text-white">
+            <span className="mb-2 w-fit rounded-full glass px-2.5 py-1 text-[10px] font-bold text-white/90">خدمات البيت بلمسة واحدة</span>
+            <h1 className="text-[21px] leading-[1.45] font-black">من الطلب إلى الإنجاز…<br />كلشي واضح وياك</h1>
+            <Link to="/services" className="mt-3 flex w-fit items-center gap-1.5 rounded-xl bg-gold px-3 py-2 text-[11px] font-extrabold text-navy-deep shadow-lg">استكشف الخدمات <span className="text-base leading-none">←</span></Link>
+          </div>
+        </section>
+
         {/* بانر العروض */}
         {!home.data ? <Skel className="h-40" /> : offers.length > 0 ? (
           <section>
@@ -96,7 +107,7 @@ export default function HomePage({ me, onBadge }: { me: Account; onBadge: (n: nu
           </div>
           <div className="grid grid-cols-4 gap-2.5">
             {!services.data ? [0, 1, 2, 3].map((i) => <Skel key={i} className="h-24" />) : svc.slice(0, 4).map((s) => (
-              <Link key={s.id} to={`/services/${s.id}`} className="card flex flex-col items-center gap-1.5 px-1 py-3 text-center transition active:scale-95">
+              <Link key={s.id} to={`/services/${s.id}`} className="touch-card card flex flex-col items-center gap-1.5 px-1 py-3 text-center transition">
                 <ServiceArt name={s.name} badge className="h-12 w-12" />
                 <span className="line-clamp-2 text-[11.5px] leading-tight font-bold text-ink">{s.name}</span>
               </Link>
@@ -120,7 +131,7 @@ export default function HomePage({ me, onBadge }: { me: Account; onBadge: (n: nu
         <section>
           <h2 className="mb-3 text-[17px] font-extrabold text-ink">آخر حجز لك</h2>
           {!bookings.data ? <Skel className="h-24" /> : last ? (
-            <Link to={`/bookings/${last.id}`} className="card flex items-center gap-3 p-3">
+            <Link to={`/bookings/${last.id}`} className="touch-card card flex items-center gap-3 p-3">
               <ServiceArt id={lastSvc?.id} name={lastSvc?.name ?? last.services} hasImage={lastSvc?.hasImage} className="h-16 w-16 shrink-0 rounded-xl" />
               <div className="min-w-0 flex-1">
                 <p className="truncate text-[15px] font-extrabold text-ink">{last.services || 'خدمة'}</p>
@@ -129,7 +140,7 @@ export default function HomePage({ me, onBadge }: { me: Account; onBadge: (n: nu
               <StatusPill status={last.status} />
             </Link>
           ) : (
-            <Link to="/request" className="card flex items-center justify-between p-4">
+            <Link to="/request" className="touch-card card flex items-center justify-between p-4">
               <span className="text-[14px] font-bold text-mute">ما عندك حجز بعد</span>
               <span className="rounded-lg bg-navy-2 px-3 py-1.5 text-[12px] font-extrabold text-white">احجز خدمة</span>
             </Link>
