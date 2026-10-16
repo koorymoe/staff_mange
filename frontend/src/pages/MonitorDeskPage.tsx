@@ -19,6 +19,7 @@
 // الموظفين، وحذف مسار يعني صفحة بيضاء بلا تفسير.
 
 import { lazy, Suspense, useEffect, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 
 import { api, type MonitorDeskCounts } from '../api'
 import { useSession } from '../session'
@@ -46,7 +47,7 @@ const FieldMapPage = lazy(() => import('./FieldMapPage'))
 const ProjectQuoteWatchPanel = lazy(() => import('../components/ProjectQuoteWatchPanel'))
 const ProcurementWatchPanel = lazy(() => import('../components/ProcurementWatchPanel'))
 
-type SectionId = 'eyes' | 'ratings' | 'scores' | 'peer' | 'wissues' | 'inbox' | 'issues' | 'crew' | 'quality' | 'invoices' | 'gps' | 'inventory' | 'missions' | 'board' | 'projects' | 'delays' | 'stores' | 'late' | 'fieldmap' | 'quotes'
+type SectionId = 'eyes' | 'ratings' | 'scores' | 'peer' | 'inbox' | 'issues' | 'crew' | 'quality' | 'invoices' | 'gps' | 'inventory' | 'missions' | 'board' | 'projects' | 'delays' | 'stores' | 'late' | 'fieldmap' | 'quotes'
 
 interface Section {
   id: SectionId
@@ -61,8 +62,8 @@ const SECTIONS: Section[] = [
   { id: 'eyes', label: 'عيون الرقابة', icon: '🔎', todo: 'المخزن والسيارات ورأي الزبائن والآيتي والطلبات المعلّقة — ويا اقتراح ماتركس' },
   { id: 'ratings', label: 'تقييماتي والانصراف', icon: '⭐', todo: 'طلبات تصحيح الانصراف، وقيّم الليدر والإداري، وشغل المكاتب كل نص شهر' },
   { id: 'scores', label: 'تقييم الموظفين', icon: '🏅', todo: 'ماتركس ٦٠٪ + البشر ٤٠٪ — شوف منو نازل وليش' },
-  { id: 'peer', label: 'صوت الموظفين', icon: '🗣️', todo: 'تقارير ماتركس عن مشاكل الموظفين ويا زملائهم' },
-  { id: 'wissues', label: 'المشاكل الوظيفية', icon: '🤝', todo: 'سجّل الإفادات وخلّي ماتركس يقترح' },
+  // قرار (ع) 10-16: «صوت الموظفين» و«المشاكل الوظيفية» نفس الشي — تبويب واحد
+  { id: 'peer', label: 'صوت الموظفين', icon: '🗣️', todo: 'تقارير ماتركس عن مشاكل الموظفين، وسجل المشاكل وإجراءاتها' },
   { id: 'inbox', label: 'صندوق المراقب', icon: '👁️', todo: 'كل صف: سليم أو عندي ملاحظة' },
   { id: 'issues', label: 'بلاغات التدقيق', icon: '💸', todo: 'دقّق البلاغ على الليدر وسكّره' },
   { id: 'invoices', label: 'الفواتير', icon: '🧾', todo: 'الفواتير الي أرسلها المحاسب لمراجعتك' },
@@ -108,6 +109,8 @@ const COUNT_KEY: Partial<Record<SectionId, keyof MonitorDeskCounts>> = {
 export default function MonitorDeskPage() {
   const { employee, permissions } = useSession()
   const [active, setActive] = useState<SectionId>('inbox')
+  const [, setParams] = useSearchParams()
+  const [issuesKey, setIssuesKey] = useState(0)
   const [counts, setCounts] = useState<MonitorDeskCounts | null>(null)
 
   useEffect(() => {
@@ -211,8 +214,19 @@ export default function MonitorDeskPage() {
         {active === 'eyes' && <MatrixWatchEyes />}
         {active === 'ratings' && <div className="space-y-4"><AttendanceClaims /><PeriodicRatings /></div>}
         {active === 'scores' && <StaffScorePage />}
-        {active === 'peer' && <PeerVoicePage />}
-        {active === 'wissues' && <WorkplaceIssuesPage />}
+        {active === 'peer' && (
+          <div className="space-y-6">
+            <PeerVoicePage onOpenIssue={(q) => {
+              // نفتح نموذج المشكلة جوّا نفس التبويب (WorkplaceIssuesPage تقرا الرابط)
+              setParams((p) => { const n = new URLSearchParams(p); q.forEach((v, k) => n.set(k, v)); return n })
+              setIssuesKey((k) => k + 1)
+              setTimeout(() => document.getElementById('desk-issues')?.scrollIntoView({ behavior: 'smooth' }), 100)
+            }} />
+            <div id="desk-issues" className="border-t-2 border-slate-200 pt-4">
+              <WorkplaceIssuesPage key={issuesKey} />
+            </div>
+          </div>
+        )}
         {active === 'inbox' && <MonitorInboxPage embedded />}
         {active === 'issues' && <AuditIssuesPage embedded />}
         {active === 'invoices' && <LeaderInvoicesListPage embedded />}

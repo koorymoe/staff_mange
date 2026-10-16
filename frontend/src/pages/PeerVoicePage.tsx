@@ -16,7 +16,9 @@ const SEV: Record<PeerNote['severity'], { cls: string; label: string }> = {
 const KIND: Record<PeerNote['kind'], string> = { GOOD: '👍 إيجابي', NOTE: '📝 ملاحظة', PROBLEM: '⚠️ مشكلة' }
 const d = (s: string) => new Date(s).toLocaleDateString('en-GB')
 
-export default function PeerVoicePage() {
+// (ع 10-16) بمكتب المراقب «صوت الموظفين» صار تبويب واحد ويا سجل المشاكل:
+// onOpenIssue يفتح نموذج المشكلة بنفس التبويب بدل ما يودّي لشاشة ثانية.
+export default function PeerVoicePage({ onOpenIssue }: { onOpenIssue?: (q: URLSearchParams) => void } = {}) {
   const nav = useNavigate()
   const [r, setR] = useState<PeerVoiceReport | null>(null)
   const [err, setErr] = useState('')
@@ -29,6 +31,7 @@ export default function PeerVoicePage() {
     const q = new URLSearchParams({ a, title, desc })
     if (b) q.set('b', b)
     if (noteId) q.set('note', noteId)
+    if (onOpenIssue) { q.set('new', '1'); onOpenIssue(q); return }
     nav(`/workplace-issues?new=1&${q.toString()}`)
   }
 
