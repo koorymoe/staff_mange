@@ -153,6 +153,22 @@ func (r *BookingProgressRepository) Recent(days int) ([]ProgressRecentRow, error
 	return rows, err
 }
 
+// WorkWindow وقت الشغل الموثوق ومصدره (GPS / ضغطة / التقرير / الانطلاق+٣٠د) — 0378.
+type WorkWindow struct {
+	StartAt  *time.Time `db:"startAt" json:"startAt"`
+	EndAt    *time.Time `db:"endAt" json:"endAt"`
+	StartSrc *string    `db:"startSrc" json:"startSrc"`
+	EndSrc   *string    `db:"endSrc" json:"endSrc"`
+}
+
+func (r *BookingProgressRepository) WorkWindow(bookingID string) (*WorkWindow, error) {
+	var w WorkWindow
+	if err := r.db.Get(&w, `SELECT * FROM booking_work_window($1)`, bookingID); err != nil {
+		return nil, err
+	}
+	return &w, nil
+}
+
 // Reports كل تقارير حجز مرتبة باليوم — هذا الي يقراه الكادر الجاي حتى
 // يعرف وين وصل الي قبله.
 func (r *BookingProgressRepository) Reports(bookingID string) ([]model.BookingProgressReport, error) {

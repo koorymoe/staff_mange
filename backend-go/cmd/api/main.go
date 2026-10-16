@@ -1268,6 +1268,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	mux.Handle("GET /api/progress-reports/recent", middleware.Chain(http.HandlerFunc(bookingProgressHandler.Recent), requireAuth,
 		middleware.RequireRoleOrAnyPermission(permissionRepo, employeeRepo, notificationRepo, []string{"ADMIN", "MONITOR"}, "monitoring")))
 	mux.Handle("GET /api/bookings/{id}/progress", middleware.Chain(http.HandlerFunc(bookingProgressHandler.Reports), requireAuth))
+	mux.Handle("GET /api/bookings/{id}/work-window", middleware.Chain(http.HandlerFunc(bookingProgressHandler.WorkWindow), requireAuth))
 	// ⚠️ الطلعات ما إلها حارس خاص: منو يشوف الحجز يشوف طلعاته. إخفاء
 	// «منو طلع ومتى» عن الي يشوف الحجز نفسه ما إله معنى.
 	mux.Handle("GET /api/bookings/{id}/visits", middleware.Chain(http.HandlerFunc(bookingProgressHandler.Visits), requireAuth))

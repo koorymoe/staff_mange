@@ -3,6 +3,7 @@ import { api, type WorkReport } from '../api'
 import { formatCustomerCode } from '../utils/identity'
 import EntityIdentity from '../components/EntityIdentity'
 import { ExecutionSheetView } from '../components/ExecutionSheet'
+import WorkWindowLine from '../components/WorkWindowLine'
 import { asSheet } from '../utils/executionSheet'
 import BookingCodeChip from '../components/BookingCodeChip'
 import { loadFailed } from '../netErrors'
@@ -53,6 +54,7 @@ export default function WorkReportsReview() {
               <span className="font-mono">{r.booking?.code}</span>
             </div>
             <div className="p-5">
+              {r.bookingId && <div className="mb-3"><WorkWindowLine bookingId={r.bookingId} /></div>}
             <div className="flex items-center justify-between">
               <div>
                 <span className="font-mono font-bold text-brand-700"><BookingCodeChip code={r.booking?.code} /></span>

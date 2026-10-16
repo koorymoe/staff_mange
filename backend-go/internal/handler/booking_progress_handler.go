@@ -163,6 +163,19 @@ func (h *BookingProgressHandler) Recent(w http.ResponseWriter, r *http.Request) 
 	WriteJSON(w, http.StatusOK, rows)
 }
 
+// GET /api/bookings/{id}/work-window — وقت الشغل الي يعتمده ماتركس ومن وين أخذه.
+func (h *BookingProgressHandler) WorkWindow(w http.ResponseWriter, r *http.Request) {
+	if !h.allowView(w, r) {
+		return
+	}
+	out, err := h.repo.WorkWindow(r.PathValue("id"))
+	if err != nil {
+		WriteError(w, http.StatusNotFound, "الحجز غير موجود")
+		return
+	}
+	WriteJSON(w, http.StatusOK, out)
+}
+
 func (h *BookingProgressHandler) Reports(w http.ResponseWriter, r *http.Request) {
 	if !h.allowView(w, r) {
 		return

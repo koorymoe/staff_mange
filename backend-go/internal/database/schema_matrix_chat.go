@@ -590,5 +590,67 @@ func matrixChatMigrations() []Migration {
 			ALTER TABLE "QualityFollowUp" ADD COLUMN IF NOT EXISTS "monitorAt" TIMESTAMP;
 			ALTER TABLE "QualityFollowUp" ADD COLUMN IF NOT EXISTS "monitorTargetId" TEXT REFERENCES "Employee"(id) ON DELETE SET NULL;
 		`,
+	}, {
+		// (ع) 10-16: «صار عدنا ٣ مدخلات لأوقات العمل — ماتركس يشوفهن كلهن، وإذا غابن
+		// ثنين يعتمد الموجودة». وقت الشغل الموثوق لكل حجز، ومن وين أخذه:
+		//   البداية: GPS (وصل الموقع) ← ضغطة «بدأ العمل» (إذا مو جماعية/بعيدة)
+		//            ← وقت البدء بورقة التنفيذ ← الانطلاق + نص ساعة.
+		//   النهاية: GPS (خلص) ← ضغطة «تم» (إذا مو جماعية/بعيدة) ← وقت الانتهاء بالورقة.
+		// الأعمدة بلا منطقة زمنية = UTC؛ ساعة الورقة بتوقيت بغداد.
+		Version: "0378_booking_work_window",
+		SQL: `
+			CREATE OR REPLACE FUNCTION booking_sheet_time(d TEXT, h TEXT, m TEXT) RETURNS TIMESTAMP
+			LANGUAGE plpgsql IMMUTABLE AS $$
+			BEGIN
+				IF d !~ '^\d{4}-\d{2}-\d{2}$' OR h !~ '^\d{1,2}$' OR m !~ '^\d{1,2}$' THEN RETURN NULL; END IF;
+				RETURN ((d || ' ' || h || ':' || m)::timestamp AT TIME ZONE 'Asia/Baghdad') AT TIME ZONE 'UTC';
+			EXCEPTION WHEN others THEN RETURN NULL;
+			END $$;
+
+			CREATE OR REPLACE FUNCTION booking_work_window(bid TEXT)
+			RETURNS TABLE("startAt" TIMESTAMP, "endAt" TIMESTAMP, "startSrc" TEXT, "endSrc" TEXT)
+			LANGUAGE plpgsql STABLE AS $$
+			DECLARE b RECORD; sh JSONB; bad_s BOOLEAN; bad_e BOOLEAN; ss TIMESTAMP; se TIMESTAMP; dep TIMESTAMP;
+			BEGIN
+				SELECT "autoArrivedAt", "autoCompletedAt", "startedAt", "completedAt", "autoDepartedAt", "departedAt"
+				  INTO b FROM "Booking" WHERE id = bid;
+				IF NOT FOUND THEN RETURN; END IF;
+				bad_s := EXISTS (SELECT 1 FROM "BookingStageProof" p WHERE p."bookingId" = bid AND p.stage = 'STARTED' AND p.verdict IN ('BATCH', 'FAR'));
+				bad_e := EXISTS (SELECT 1 FROM "BookingStageProof" p WHERE p."bookingId" = bid AND p.stage = 'COMPLETED' AND p.verdict IN ('BATCH', 'FAR'));
+				SELECT w.sheet INTO sh FROM "WorkReport" w WHERE w."bookingId" = bid AND w.sheet IS NOT NULL ORDER BY w."createdAt" DESC LIMIT 1;
+				IF sh IS NOT NULL THEN
+					ss := booking_sheet_time(COALESCE(NULLIF(sh->'header'->>'date', ''), sh->'data'->>'startDate'), sh->'time'->>'startH', sh->'time'->>'startM');
+					se := booking_sheet_time(COALESCE(NULLIF(sh->'data'->>'endDate', ''), sh->'header'->>'date'), sh->'time'->>'endH', sh->'time'->>'endM');
+				END IF;
+				dep := COALESCE(b."autoDepartedAt", b."departedAt");
+				"startAt" := CASE WHEN b."autoArrivedAt" IS NOT NULL THEN b."autoArrivedAt"
+				                  WHEN b."startedAt" IS NOT NULL AND NOT bad_s THEN b."startedAt"
+				                  WHEN ss IS NOT NULL THEN ss
+				                  WHEN dep IS NOT NULL THEN dep + interval '30 minutes' END;
+				"startSrc" := CASE WHEN b."autoArrivedAt" IS NOT NULL THEN 'GPS'
+				                   WHEN b."startedAt" IS NOT NULL AND NOT bad_s THEN 'TAP'
+				                   WHEN ss IS NOT NULL THEN 'SHEET'
+				                   WHEN dep IS NOT NULL THEN 'DEPART_30' END;
+				"endAt" := CASE WHEN b."autoCompletedAt" IS NOT NULL THEN b."autoCompletedAt"
+				                WHEN b."completedAt" IS NOT NULL AND NOT bad_e THEN b."completedAt"
+				                WHEN se IS NOT NULL THEN se END;
+				"endSrc" := CASE WHEN b."autoCompletedAt" IS NOT NULL THEN 'GPS'
+				                 WHEN b."completedAt" IS NOT NULL AND NOT bad_e THEN 'TAP'
+				                 WHEN se IS NOT NULL THEN 'SHEET' END;
+				RETURN NEXT;
+			END $$;
+
+			-- نفس التوقيع القديم حتى كل استعلامات ماتركس تستفاد بلا تغيير.
+			CREATE OR REPLACE FUNCTION booking_work_minutes(bid TEXT, s TIMESTAMP, c TIMESTAMP, aa TIMESTAMP, ac TIMESTAMP)
+			RETURNS DOUBLE PRECISION LANGUAGE plpgsql STABLE AS $$
+			DECLARE w RECORD; m DOUBLE PRECISION;
+			BEGIN
+				SELECT * INTO w FROM booking_work_window(bid);
+				IF w."startAt" IS NULL OR w."endAt" IS NULL OR w."endAt" <= w."startAt" THEN RETURN NULL; END IF;
+				m := EXTRACT(EPOCH FROM (w."endAt" - w."startAt")) / 60;
+				IF m < 5 OR m > 16 * 60 THEN RETURN NULL; END IF;
+				RETURN m;
+			END $$;
+		`,
 	}}
 }

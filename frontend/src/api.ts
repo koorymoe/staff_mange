@@ -4070,6 +4070,8 @@ export const api = {
     request<QualityFollowUp[]>(`/quality-follow-ups/${id}/inspect`, { method: 'POST', body: JSON.stringify(body) }),
   /** بعد ما يفتح حجز صيانة حقيقي من شاشة المتابعة — يربطها بيه بدل
    *  ما تروح بالهوا. تبقى معلّقة لحد ما الحجز ينجز. */
+  getBookingWorkWindow: (id: string) =>
+    request<{ startAt: string | null; endAt: string | null; startSrc: string | null; endSrc: string | null }>(`/bookings/${id}/work-window`),
   getRecentProgressReports: () => request<ProgressRecentRow[]>('/progress-reports/recent'),
   linkComplaintBooking: (id: string, bookingId: string) =>
     request<Complaint>(`/complaints/${id}/link-booking`, { method: 'PUT', body: JSON.stringify({ bookingId }) }),
