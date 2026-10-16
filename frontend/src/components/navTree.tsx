@@ -171,6 +171,7 @@ export const navItems: NavItem[] = [
       // قرار (ع) 10-16: مكتب المراقب = مراقبة بس — الفواتير والجودة لمكاتبهن، بالصلاحية
       { to: '/accountant-desk', label: '🧾 مكتب المحاسب', icon: <></>, roles: ['ADMIN'], anyPermission: ['finance', 'finance_audit'], hideForRoles: ['FINANCE'] },
       { to: '/quality-desk', label: '⭐ مكتب الجودة', icon: <></>, roles: ['ADMIN', 'QUALITY_ENGINEER'], anyPermission: ['quality_control', 'complaints'] },
+      { to: '/reports-desk', label: '📑 تقارير الحجوزات والمشاريع', icon: <></>, roles: ['ADMIN', 'QUALITY_ENGINEER'], anyPermission: ['monitoring', 'quality_control'] },
       // قرار (ع) 10-15: الخريطة وفحص المتأخرات تبويبات بمكتب المراقب · فحص الدقة للمالك بس.
       { monitorMenuHide: true, to: '/field-map', label: '🗺️ خريطة الميدان', icon: <></>, roles: ['ADMIN', 'MONITOR'], permission: 'monitoring' },
       { monitorMenuHide: true, to: '/late-audit', label: '🔍 فحص المتأخرات', icon: <></>, roles: ['ADMIN', 'MONITOR'], permission: 'monitoring' },

@@ -1264,6 +1264,8 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	bookingProgressHandler.SetViewGate(func(r *http.Request, id string) bool {
 		return bookingHandler.CanSeeAllBookings(r) || bookingRepo.IsInvolved(id, middleware.EmployeeIDFromContext(r))
 	})
+	mux.Handle("GET /api/progress-reports/recent", middleware.Chain(http.HandlerFunc(bookingProgressHandler.Recent), requireAuth,
+		middleware.RequireRoleOrAnyPermission(permissionRepo, employeeRepo, notificationRepo, []string{"ADMIN", "MONITOR", "QUALITY_ENGINEER"}, "monitoring", "quality_control")))
 	mux.Handle("GET /api/bookings/{id}/progress", middleware.Chain(http.HandlerFunc(bookingProgressHandler.Reports), requireAuth))
 	// ⚠️ الطلعات ما إلها حارس خاص: منو يشوف الحجز يشوف طلعاته. إخفاء
 	// «منو طلع ومتى» عن الي يشوف الحجز نفسه ما إله معنى.
@@ -1529,6 +1531,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	// اتصل. حصرها بالجودة يخلي الشكوى تضل بلا متابعة لو المهندس مشغول.
 	mux.Handle("PUT /api/complaints/{id}/contact", middleware.Chain(http.HandlerFunc(complaintHandler.SetContacted), requireAuth, requireComplaintContact))
 	mux.Handle("PUT /api/complaints/{id}/notes", middleware.Chain(http.HandlerFunc(complaintHandler.SetNotes), requireAuth, requireComplaintContact))
+	mux.Handle("PUT /api/complaints/{id}/link-booking", middleware.Chain(http.HandlerFunc(complaintHandler.LinkBooking), requireAuth, requireComplaintContact))
 	mux.Handle("PUT /api/complaints/{id}/resolve", middleware.Chain(http.HandlerFunc(complaintHandler.Resolve), requireAuth, requireQuality))
 	mux.Handle("GET /api/complaints/stats", middleware.Chain(http.HandlerFunc(complaintHandler.Stats), requireAuth, requireCustomerRead))
 	// ⚠️ التدقيق للمالك والمراقب والمدير **بس** — مهندس الجودة ما

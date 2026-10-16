@@ -89,6 +89,23 @@ func (h *ComplaintHandler) SetContacted(w http.ResponseWriter, r *http.Request) 
 	WriteJSON(w, http.StatusOK, out)
 }
 
+// PUT /api/complaints/{id}/link-booking — حجز الشكوى انسجل، نربطه بيها.
+func (h *ComplaintHandler) LinkBooking(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		BookingID string `json:"bookingId"`
+	}
+	if err := DecodeJSON(r, &req); err != nil || req.BookingID == "" {
+		WriteError(w, http.StatusBadRequest, "bookingId مطلوب")
+		return
+	}
+	out, err := h.service.LinkBooking(r.PathValue("id"), req.BookingID, middleware.EmployeeIDFromContext(r))
+	if err != nil {
+		WriteError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	WriteJSON(w, http.StatusOK, out)
+}
+
 // PUT /api/complaints/{id}/notes — ملاحظات الزبون
 func (h *ComplaintHandler) SetNotes(w http.ResponseWriter, r *http.Request) {
 	var req struct {

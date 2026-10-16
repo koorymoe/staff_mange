@@ -153,6 +153,16 @@ func (h *BookingProgressHandler) ScheduleContinuation(w http.ResponseWriter, r *
 
 // GET /api/bookings/{id}/progress — تقارير كل الأيام. يقراها الكادر
 // الجاي قبل ما يطلع، والإداري قبل ما ينسّق.
+// GET /api/progress-reports/recent — التقارير اليومية للمشاريع (آخر ٣٠ يوم).
+func (h *BookingProgressHandler) Recent(w http.ResponseWriter, r *http.Request) {
+	rows, err := h.repo.Recent(30)
+	if err != nil {
+		WriteError(w, http.StatusInternalServerError, "تعذر جلب التقارير")
+		return
+	}
+	WriteJSON(w, http.StatusOK, rows)
+}
+
 func (h *BookingProgressHandler) Reports(w http.ResponseWriter, r *http.Request) {
 	if !h.allowView(w, r) {
 		return

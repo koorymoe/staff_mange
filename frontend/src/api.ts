@@ -4063,6 +4063,9 @@ export const api = {
     request<QualityFollowUp[]>(`/quality-follow-ups/${id}/inspect`, { method: 'POST', body: JSON.stringify(body) }),
   /** بعد ما يفتح حجز صيانة حقيقي من شاشة المتابعة — يربطها بيه بدل
    *  ما تروح بالهوا. تبقى معلّقة لحد ما الحجز ينجز. */
+  getRecentProgressReports: () => request<ProgressRecentRow[]>('/progress-reports/recent'),
+  linkComplaintBooking: (id: string, bookingId: string) =>
+    request<Complaint>(`/complaints/${id}/link-booking`, { method: 'PUT', body: JSON.stringify({ bookingId }) }),
   linkQualityFollowUpBooking: (id: string, bookingId: string) =>
     request<QualityFollowUp>(`/quality-follow-ups/${id}/link-booking`, {
       method: 'PUT',
@@ -4491,7 +4494,7 @@ export const api = {
     request<unknown>(`/internal-backfill/${id}`, { method: 'POST', body: JSON.stringify({ work, price }) }),
   /** طابور الإداري: أعمال داخلية خلصت وناقصها فاتورة أو تقرير. */
   getInternalPaperwork: () => request<{ id: string; code: string; department: string | null; hasInvoice: boolean; hasReport: boolean; doneAt: string | null }[]>('/bookings/internal-paperwork'),
-  changeBookingType: (id: string, bookingType: 'REGULAR' | 'MAINTENANCE' | 'INTERNAL' | 'SOLAR' | 'SURVEY') =>
+  changeBookingType: (id: string, bookingType: 'REGULAR' | 'MAINTENANCE' | 'INTERNAL' | 'SOLAR' | 'SURVEY' | 'COMPLAINT') =>
     request<Booking>(`/bookings/${id}/type`, { method: 'PUT', body: JSON.stringify({ bookingType }) }),
 
   completeBooking: (
@@ -5653,6 +5656,17 @@ export interface PartialCompleteBody {
   amountCollected?: number
   /** (ع 10-16) نموذج «تقرير تنفيذ المشروع» */
   sheet?: unknown
+}
+
+export interface ProgressRecentRow {
+  bookingId: string
+  bookingCode: string
+  customerName: string | null
+  reports: number
+  lastDay: number
+  lastPercent: number
+  lastAt: string
+  leaderName: string | null
 }
 
 export interface BookingProgressReport {

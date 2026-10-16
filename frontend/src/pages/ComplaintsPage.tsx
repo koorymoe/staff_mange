@@ -10,6 +10,7 @@ import ComplaintsTracking from '../components/ComplaintsTracking'
 // باقي الأدوار الي عندها صلاحية الشكاوى (مثلاً المبيعات) تشوف تسجيل شكوى
 // جديدة بس، بدون واجهة المتابعة والإدارة.
 const trackingRoles = ['QUALITY_ENGINEER', 'MONITOR', 'ADMIN', 'OWNER']
+// صاحب صلاحية monitoring = مراقب (ع 10-16)
 // الاتصال بالزبون مو حكر على مهندس الجودة: أي موظف ينطيه المدير صلاحية
 // complaint_contact يكدر يتصل ويأشر النتيجة، واسمه ينحفظ كدام الشكوى.
 const contactRoles = ['QUALITY_ENGINEER', 'MONITOR', 'ADMIN', 'OWNER']
@@ -21,18 +22,18 @@ const fullDetailRoles = ['QUALITY_ENGINEER', 'ADMIN']
 export default function ComplaintsPage() {
   const { employee: currentUser, permissions } = useSession()
   const canContact = !!currentUser
-    && (contactRoles.includes(currentUser.role) || permissions.includes('complaint_contact'))
+    && (contactRoles.includes(currentUser.role) || permissions.includes('complaint_contact') || permissions.includes('monitoring'))
   const canTrack = (!!currentUser && trackingRoles.includes(currentUser.role)) || canContact
   const canSeeFullDetail = !!currentUser && fullDetailRoles.includes(currentUser.role)
   // ⚠️ نفس قائمة المسار بالخادم بالضبط (main.go: ADMIN/OWNER/MONITOR).
   // المالك ينوصل بدوره المطبَّع ADMIN، وactualRole للتوثيق.
   const canAudit = !!currentUser
-    && ['ADMIN', 'OWNER', 'MONITOR'].includes(currentUser.role)
+    && (['ADMIN', 'OWNER', 'MONITOR'].includes(currentUser.role) || permissions.includes('monitoring'))
   const [complaints, setComplaints] = useState<Complaint[]>([])
   // ═══ الفلاتر (ع) 10-15 — تنحفظ بالرابط حتى «تابع» من قائمة الإجراءات يفتحها مفلترة ═══
   const [params, setParams] = useSearchParams()
   const fl = {
-    type: params.get('type') ?? '', vip: params.get('vip') ?? '', status: params.get('status') ?? '',
+    type: params.get('type') ?? '', vip: params.get('vip') ?? '', status: params.get('status') ?? 'OPEN',
     late: params.get('late') === '1', rel: params.get('rel') ?? '', asg: params.get('asg') ?? '',
     from: params.get('from') ?? '', to: params.get('to') ?? '', q: params.get('q') ?? '',
   }
@@ -221,7 +222,9 @@ export default function ComplaintsPage() {
     if (fl.type && c.type !== fl.type) return false
     if (fl.vip === '1' && !c.isVip) return false
     if (fl.vip === '0' && c.isVip) return false
-    if (fl.status && c.status !== fl.status) return false
+    // (ع) 10-16: الافتراضي «المفتوحة» — الشغل الي لازم يخلص، مو ٦٠٠ شكوى قديمة.
+    if (fl.status === 'OPEN') { if (c.status !== 'NEW' && c.status !== 'IN_PROGRESS') return false }
+    else if (fl.status && fl.status !== 'ALL' && c.status !== fl.status) return false
     if (fl.late && !isLate(c)) return false
     if (fl.rel && c.relatedEmployee?.id !== fl.rel) return false
     if (fl.asg === 'none' && c.assignedToEmployee) return false
@@ -410,7 +413,8 @@ export default function ComplaintsPage() {
             <option value="0">الزبائن العاديين</option>
           </select>
           <select value={fl.status} onChange={(e) => setFl('status', e.target.value)} className="rounded-lg border border-slate-300 px-2 py-1.5 text-sm">
-            <option value="">كل الحالات</option>
+            <option value="OPEN">المفتوحة (جديدة + قيد المعالجة)</option>
+            <option value="ALL">كل الحالات</option>
             <option value="NEW">جديدة</option><option value="IN_PROGRESS">قيد المعالجة</option>
             <option value="RESOLVED">محلولة</option><option value="CLOSED">مغلقة</option>
           </select>

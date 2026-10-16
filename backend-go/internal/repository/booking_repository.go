@@ -1946,6 +1946,8 @@ func bookingTypeLabel(t string) string {
 		return "شغل داخل الشركة"
 	case "SOLAR":
 		return "حجز طاقة شمسية"
+	case "COMPLAINT":
+		return "حجز شكوى"
 	}
 	return t
 }

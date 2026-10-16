@@ -140,6 +140,9 @@ export default function SalesBooking() {
   // بالمتابعة (شوف onSubmit تحت). نوع الحجز نفسه انعبّى بالقيمة
   // الأولية لـ`bookingType` فوق.
   const qualityFollowUpId = searchParams.get('qualityFollowUpId')
+  // (ع) 10-16: «الحجز بعد الشكوى لازم يتسجل حجز شكوى مو حجز عادي» —
+  // بعد الإنشاء نربطه بالشكوى، والخادم يحوّل نوعه لـ«حجز شكوى».
+  const complaintId = searchParams.get('complaintId')
 
   useEffect(() => {
     // Guard-clause reset when the typed phone isn't a valid lookup key yet.
@@ -392,6 +395,10 @@ export default function SalesBooking() {
       if (qualityFollowUpId) {
         api.linkQualityFollowUpBooking(qualityFollowUpId, booking.id).catch(() => {})
       }
+      if (complaintId) {
+        await api.linkComplaintBooking(complaintId, booking.id)
+          .catch(() => setMessage('الحجز انسجل بس ما انربط بالشكوى — بلّغ المراقب'))
+      }
       setSuccess({ customerCode: customer.code, bookingCode: booking.code })
       setFirstName('')
       setFatherName('')
@@ -432,6 +439,11 @@ export default function SalesBooking() {
         </p>
       </div>
 
+      {complaintId && (
+        <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-bold text-red-800">
+          ⚠️ حجز شكوى — ينسجل مربوط بالشكوى (نوعه «حجز شكوى» مو حجز عادي)، والشكوى تبقى عند مهندس الجودة لحد ما يتأكد ويا الزبون.
+        </div>
+      )}
       <form onSubmit={handleSubmit} className="space-y-6">
         {/* Step 1: Booking Type */}
         <div className="rounded-2xl border border-white bg-white p-6 shadow-[0_4px_20px_rgba(15,32,64,0.06)]">

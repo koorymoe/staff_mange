@@ -58,18 +58,18 @@ function MyHours({ meId }: { meId: string }) {
   }, [timer?.running, base])
   const shown = (timer?.elapsed ?? 0) + (timer?.running ? tick : 0)
 
+  // (ع) 10-16: «الإنهاء وحفظ بالجدول جاي تعلك» — جان يسأل بـprompt() المتصفح،
+  // والمتصفح (أو التطبيق المنصّب) أحياناً يمنع النوافذ فالزر ما يسوي شي.
+  // هسه التأكيد والملاحظة جوّا الصفحة.
+  const [confirmFinish, setConfirmFinish] = useState(false)
+  const [finishNote, setFinishNote] = useState('')
   const act = async (a: 'start' | 'pause' | 'finish') => {
-    let note: string | undefined
-    if (a === 'finish') {
-      const v = prompt(`تنهي العدّاد وتنضاف ${hms(shown)} لساعاتك؟\nاكتب شنو اشتغلت (اختياري):`, '')
-      if (v === null) return
-      note = v.trim() || undefined
-    }
+    const note = a === 'finish' ? finishNote.trim() || undefined : undefined
     setBusy(true); setMsg(null)
     try {
       const r = await api.remoteTimer(a, note)
       apply(r.timer)
-      if (a === 'finish') { setMsg({ ok: true, t: `انضافت ${hms(r.saved ?? 0)} لساعاتك ✅` }); load() }
+      if (a === 'finish') { setMsg({ ok: true, t: `انضافت ${hms(r.saved ?? 0)} لساعاتك ✅` }); setConfirmFinish(false); setFinishNote(''); load() }
     } catch (e) { setMsg({ ok: false, t: e instanceof Error ? e.message : 'تعذّر' }) } finally { setBusy(false) }
   }
   const addManual = async () => {
@@ -99,8 +99,20 @@ function MyHours({ meId }: { meId: string }) {
           {timer?.running
             ? <button disabled={busy} onClick={() => act('pause')} className="rounded-xl bg-amber-500 py-2.5 font-extrabold text-white disabled:opacity-50">⏸️ توقّف</button>
             : <button disabled={busy} onClick={() => act('start')} className="rounded-xl bg-emerald-600 py-2.5 font-extrabold text-white disabled:opacity-50">▶️ {shown > 0 ? 'كمّل' : 'ابدأ'}</button>}
-          <button disabled={busy || shown === 0} onClick={() => act('finish')} className="col-span-2 rounded-xl bg-brand-600 py-2.5 font-extrabold text-white disabled:opacity-40">✅ إنهاء وحفظ بالجدول</button>
+          <button disabled={busy || shown === 0} onClick={() => setConfirmFinish(true)} className="col-span-2 rounded-xl bg-brand-600 py-2.5 font-extrabold text-white disabled:opacity-40">✅ إنهاء وحفظ بالجدول</button>
         </div>
+        {confirmFinish && (
+          <div className="mt-3 rounded-xl border border-brand-200 bg-brand-50 p-3">
+            <p className="text-sm font-extrabold text-[#0f2040]">تنهي العدّاد وتنضاف {hms(shown)} لساعاتك؟</p>
+            <input value={finishNote} onChange={(e) => setFinishNote(e.target.value)} placeholder="شنو اشتغلت (اختياري)"
+              className="mt-2 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm" />
+            <div className="mt-2 flex gap-2">
+              <button disabled={busy} onClick={() => act('finish')} className="flex-1 rounded-lg bg-brand-600 py-2 text-sm font-extrabold text-white disabled:opacity-50">{busy ? 'جاري الحفظ…' : '✅ إي، احفظ'}</button>
+              <button disabled={busy} onClick={() => setConfirmFinish(false)} className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-bold text-slate-600">إلغاء</button>
+            </div>
+            {msg && !msg.ok && <p className="mt-2 text-sm font-bold text-red-600">{msg.t}</p>}
+          </div>
+        )}
         <p className="mt-2 text-[11px] text-slate-400">«إنهاء» يضيف الوقت لجدول ساعاتك ويصفّر العدّاد. العدّاد محفوظ بالسيرفر — لو سدّيت الجهاز ما يضيع.</p>
 
         <h3 className="mb-1 mt-4 text-sm font-extrabold text-[#0f2040]">✍️ أو ضيف بيدك</h3>

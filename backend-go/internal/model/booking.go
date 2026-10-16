@@ -54,6 +54,8 @@ type Booking struct {
 	ProjectCar             *string    `db:"projectCar" json:"projectCar,omitempty"`
 	CrewNotes              *string    `db:"crewNotes" json:"crewNotes,omitempty"`
 	BookingType            string     `db:"bookingType" json:"bookingType"`
+	// حجز شكوى: الشكوى الي انسجل الحجز حتى يحلها (bookingType = COMPLAINT)
+	ComplaintID *string `db:"complaintId" json:"complaintId,omitempty"`
 	Urgency                *string    `db:"urgency" json:"urgency,omitempty"`
 	MaintenanceType        *string    `db:"maintenanceType" json:"maintenanceType,omitempty"`
 	RemembersExecutionCrew bool       `db:"remembersExecutionCrew" json:"remembersExecutionCrew"`

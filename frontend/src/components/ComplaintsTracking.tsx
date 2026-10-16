@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom'
 import { Fragment, useMemo, useState, type ReactNode } from 'react'
 import {
   api, auditVerdictLabels, eventKindLabels,
@@ -512,11 +513,19 @@ export default function ComplaintsTracking({
                       : selected.contactedAt ? 'تواصل مع الزبون' : 'انفتحت الشكوى'}
                   </b>
                 </p>
-                <div className="flex gap-2">
+                <div className="flex flex-wrap gap-2">
+                  {/* (ع) 10-16: الخيارات ابسط — تواصل، وإذا الشكوى تنحل بالكلام تنقفل،
+                      وإذا تحتاج شغل ينسجل «حجز شكوى» مربوط بيها (مو حجز عادي). */}
+                  {canContact && selected.status !== 'RESOLVED' && selected.status !== 'CLOSED' && selected.customer?.id && (
+                    <Link to={`/sales?customerId=${selected.customer.id}&complaintId=${selected.id}`}
+                      className="rounded-lg bg-red-600 px-3 py-1.5 text-xs font-bold text-white">
+                      🔧 يحتاج حجز شكوى
+                    </Link>
+                  )}
                   {canSeeFullDetail && selected.status !== 'RESOLVED' && (
                     <button onClick={() => onResolveClick(selected.id)}
                       className="rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-bold text-white">
-                      علّمها محلولة
+                      ✅ انحلّت بالتواصل
                     </button>
                   )}
                   {canSeeFullDetail && (

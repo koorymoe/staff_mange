@@ -1,6 +1,8 @@
 package repository
 
 import (
+	"time"
+
 	"errors"
 	"strings"
 
@@ -119,6 +121,36 @@ func (r *BookingProgressRepository) loadBrief(id string) *model.EmployeeBrief {
 		return nil
 	}
 	return &b
+}
+
+// ProgressRecentRow مشروع/حجز بيه تقارير يومية — لشاشة المراقب (ع 10-16).
+type ProgressRecentRow struct {
+	BookingID    string    `db:"bookingId" json:"bookingId"`
+	BookingCode  string    `db:"bookingCode" json:"bookingCode"`
+	CustomerName *string   `db:"customerName" json:"customerName"`
+	Reports      int       `db:"reports" json:"reports"`
+	LastDay      int       `db:"lastDay" json:"lastDay"`
+	LastPercent  int       `db:"lastPercent" json:"lastPercent"`
+	LastAt       time.Time `db:"lastAt" json:"lastAt"`
+	LeaderName   *string   `db:"leaderName" json:"leaderName"`
+}
+
+// Recent الحجوزات الي انكتبلها تقرير يومي بآخر N يوم، الأحدث أول.
+func (r *BookingProgressRepository) Recent(days int) ([]ProgressRecentRow, error) {
+	rows := []ProgressRecentRow{}
+	err := r.db.Select(&rows, `
+		SELECT b.id AS "bookingId", COALESCE(b.code, b.id) AS "bookingCode", c.name AS "customerName",
+		       x.reports, x."lastDay", x."lastPercent", x."lastAt",
+		       (SELECT name FROM "Employee" WHERE id = booking_leader_id(b.id)) AS "leaderName"
+		  FROM (SELECT "bookingId", COUNT(*) AS reports, MAX("dayNumber") AS "lastDay",
+		               (ARRAY_AGG("percentDone" ORDER BY "createdAt" DESC))[1] AS "lastPercent",
+		               MAX("createdAt") AS "lastAt"
+		          FROM "BookingProgressReport" GROUP BY "bookingId") x
+		  JOIN "Booking" b ON b.id = x."bookingId"
+		  LEFT JOIN "Customer" c ON c.id = b."customerId"
+		 WHERE x."lastAt" >= now() - make_interval(days => $1)
+		 ORDER BY x."lastAt" DESC LIMIT 300`, days)
+	return rows, err
 }
 
 // Reports كل تقارير حجز مرتبة باليوم — هذا الي يقراه الكادر الجاي حتى

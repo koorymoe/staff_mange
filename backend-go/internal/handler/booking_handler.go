@@ -848,7 +848,7 @@ func (h *BookingHandler) ChangeType(w http.ResponseWriter, r *http.Request) {
 		WriteError(w, http.StatusBadRequest, "بيانات غير صالحة")
 		return
 	}
-	allowed := map[string]bool{"REGULAR": true, "MAINTENANCE": true, "INTERNAL": true, "SOLAR": true, "SURVEY": true}
+	allowed := map[string]bool{"REGULAR": true, "MAINTENANCE": true, "INTERNAL": true, "SOLAR": true, "SURVEY": true, "COMPLAINT": true}
 	if !allowed[req.BookingType] {
 		WriteError(w, http.StatusBadRequest, "نوع حجز غير معروف")
 		return

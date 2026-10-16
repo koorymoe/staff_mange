@@ -33,6 +33,8 @@ type Complaint struct {
 	ContactedByName *string    `db:"-" json:"contactedByName"`
 	CreatedAt       time.Time  `db:"createdAt" json:"createdAt"`
 	ResolvedAt      *time.Time `db:"resolvedAt" json:"resolvedAt"`
+	// انقفلت لأنها من النظام القديم (قبل ٢٠٢٦-٠٨-٠١) — مو حل حقيقي.
+	SettledLegacyAt *time.Time `db:"settledLegacyAt" json:"settledLegacyAt"`
 
 	// تقييم الزبون للخدمة (١..٥) — يسجّله مهندس الجودة وقت التواصل.
 	// ⚠️ nullable بقصد: «ما انسأل» مو «تقييمه صفر»، والصفر يهبّط
@@ -122,6 +124,7 @@ const (
 	EventAssigned  = "ASSIGNED"
 	EventAudited   = "AUDITED"
 	EventResolved  = "RESOLVED"
+	EventBooked    = "BOOKED"
 )
 
 // ComplaintCustomerStat يلخص كم مرة اشتكى زبون معيّن — تقرير منفصل عن إحصائيات الحجوزات.

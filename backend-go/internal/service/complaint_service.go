@@ -140,6 +140,16 @@ func (s *ComplaintService) SetNotes(id, notes, byID string) (*model.Complaint, e
 	return c, nil
 }
 
+func (s *ComplaintService) LinkBooking(id, bookingID, byID string) (*model.Complaint, error) {
+	code, err := s.repo.LinkBooking(id, bookingID)
+	if err != nil {
+		return nil, errors.New("تعذر ربط الحجز — لازم يكون حجز لنفس زبون الشكوى")
+	}
+	d := "انسجل حجز شكوى " + code
+	s.repo.AddEvent(id, model.EventBooked, &d, byID)
+	return s.repo.Find(id)
+}
+
 func (s *ComplaintService) Resolve(id string, req model.ResolveComplaintRequest, byID string) (*model.Complaint, error) {
 	c, err := s.repo.Resolve(id, req.Resolution)
 	if err != nil {

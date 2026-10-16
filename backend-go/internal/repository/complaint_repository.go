@@ -147,6 +147,21 @@ func (r *ComplaintRepository) SetNotes(id, notes string) (*model.Complaint, erro
 	return r.Find(id)
 }
 
+// LinkBooking يربط حجز الشكوى بشكوته: الحجز يصير نوع «شكوى»، والشكوى
+// «قيد المعالجة» — ما تنقفل لحد ما مهندس الجودة يتأكد ويا الزبون.
+func (r *ComplaintRepository) LinkBooking(id, bookingID string) (string, error) {
+	var code string
+	err := r.db.Get(&code, `
+		UPDATE "Booking" SET "complaintId" = $1, "bookingType" = 'COMPLAINT', "updatedAt" = now()
+		 WHERE id = $2 AND "customerId" = (SELECT "customerId" FROM "Complaint" WHERE id = $1)
+		RETURNING COALESCE(code, id)`, id, bookingID)
+	if err != nil {
+		return "", err
+	}
+	_, err = r.db.Exec(`UPDATE "Complaint" SET status = 'IN_PROGRESS' WHERE id = $1 AND status = 'NEW'`, id)
+	return code, err
+}
+
 func (r *ComplaintRepository) Find(id string) (*model.Complaint, error) {
 	var c model.Complaint
 	if err := r.db.Get(&c, `SELECT * FROM "Complaint" WHERE id = $1`, id); err != nil {

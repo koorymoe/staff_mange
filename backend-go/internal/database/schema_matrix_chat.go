@@ -543,5 +543,25 @@ func matrixChatMigrations() []Migration {
 			ALTER TABLE "Project" ADD COLUMN IF NOT EXISTS "customerContactedById" TEXT;
 			ALTER TABLE "Project" ADD COLUMN IF NOT EXISTS "customerContactNote" TEXT;
 		`,
+	}, {
+		// (ع) 10-16: «كل شكوى تاريخها قبل الشهر الثامن من هاي السنة تعتبر محلولة» —
+		// من النظام القديم. التسوية مكشوفة بعمودها، مو مخلوطة بالحل الحقيقي.
+		Version: "0374_complaint_legacy_settle",
+		SQL: `
+			ALTER TABLE "Complaint" ADD COLUMN IF NOT EXISTS "settledLegacyAt" TIMESTAMP;
+			UPDATE "Complaint"
+			   SET status = 'RESOLVED', "resolvedAt" = COALESCE("resolvedAt", now()),
+			       "settledLegacyAt" = now(),
+			       resolution = COALESCE(NULLIF(resolution, ''), 'محلولة — من النظام القديم')
+			 WHERE "createdAt" < '2026-08-01' AND status NOT IN ('RESOLVED', 'CLOSED');
+		`,
+	}, {
+		// (ع) 10-16: «من يتسجل الحجز بعد الشكوى لازم يتسجل حجز شكوى مو حجز عادي»
+		Version: "0375_complaint_booking",
+		SQL: `
+			ALTER TYPE "BookingType" ADD VALUE IF NOT EXISTS 'COMPLAINT';
+			ALTER TABLE "Booking" ADD COLUMN IF NOT EXISTS "complaintId" TEXT REFERENCES "Complaint"(id) ON DELETE SET NULL;
+			CREATE INDEX IF NOT EXISTS "Booking_complaint_idx" ON "Booking" ("complaintId") WHERE "complaintId" IS NOT NULL;
+		`,
 	}}
 }
