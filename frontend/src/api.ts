@@ -567,6 +567,9 @@ export type CompletionState =
   | 'DONE_FULL'        // تم الإنجاز بشكل كامل
 
 export interface Booking {
+  // حجز ديكور مربوط (ع 10-16)
+  parentBookingId?: string | null
+  decorTiming?: 'BEFORE' | 'WITH' | null
   /** (ع 10-16) ليدر الحجز بالتعريف الموحّد بالخادم (booking_leader_id) — استعمله بدل الحساب بالمتصفح */
   leaderId?: string | null
   leaderName?: string | null
@@ -4070,6 +4073,9 @@ export const api = {
     request<QualityFollowUp[]>(`/quality-follow-ups/${id}/inspect`, { method: 'POST', body: JSON.stringify(body) }),
   /** بعد ما يفتح حجز صيانة حقيقي من شاشة المتابعة — يربطها بيه بدل
    *  ما تروح بالهوا. تبقى معلّقة لحد ما الحجز ينجز. */
+  getBookingDecor: (id: string) => request<Booking[]>(`/bookings/${id}/decor`),
+  createBookingDecor: (id: string, body: { serviceId: string; timing: 'BEFORE' | 'WITH'; scheduledAt?: string; notes?: string }) =>
+    request<Booking>(`/bookings/${id}/decor`, { method: 'POST', body: JSON.stringify(body) }),
   getBookingWorkWindow: (id: string) =>
     request<{ startAt: string | null; endAt: string | null; startSrc: string | null; endSrc: string | null }>(`/bookings/${id}/work-window`),
   getRecentProgressReports: () => request<ProgressRecentRow[]>('/progress-reports/recent'),

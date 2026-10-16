@@ -56,6 +56,9 @@ type Booking struct {
 	BookingType            string     `db:"bookingType" json:"bookingType"`
 	// حجز شكوى: الشكوى الي انسجل الحجز حتى يحلها (bookingType = COMPLAINT)
 	ComplaintID *string `db:"complaintId" json:"complaintId,omitempty"`
+	// حجز ديكور مربوط بحجز الشعبة الهندسية (0379): BEFORE قبله، WITH وياه
+	ParentBookingID *string `db:"parentBookingId" json:"parentBookingId,omitempty"`
+	DecorTiming     *string `db:"decorTiming" json:"decorTiming,omitempty"`
 	Urgency                *string    `db:"urgency" json:"urgency,omitempty"`
 	MaintenanceType        *string    `db:"maintenanceType" json:"maintenanceType,omitempty"`
 	RemembersExecutionCrew bool       `db:"remembersExecutionCrew" json:"remembersExecutionCrew"`

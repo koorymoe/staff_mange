@@ -1935,6 +1935,19 @@ func (r *BookingRepository) ChangeType(id, newType, byEmployeeID string) error {
 	return tx.Commit()
 }
 
+// LinkDecor يربط حجز الديكور بأبوه — بعد الإنشاء (Create ما يعرف الأعمدة الجديدة).
+func (r *BookingRepository) LinkDecor(id, parentID, timing string) error {
+	_, err := r.db.Exec(`UPDATE "Booking" SET "parentBookingId" = $2, "decorTiming" = $3 WHERE id = $1`, id, parentID, timing)
+	return err
+}
+
+// DecorChildren حجوزات الديكور المربوطة بحجز.
+func (r *BookingRepository) DecorChildren(parentID string) ([]model.Booking, error) {
+	rows := []model.Booking{}
+	err := r.db.Select(&rows, `SELECT * FROM "Booking" WHERE "parentBookingId" = $1 ORDER BY "scheduledAt" NULLS LAST`, parentID)
+	return rows, err
+}
+
 // bookingTypeLabel الاسم العربي لنوع الحجز — للسجل والإشعارات.
 func bookingTypeLabel(t string) string {
 	switch t {
@@ -1948,6 +1961,8 @@ func bookingTypeLabel(t string) string {
 		return "حجز طاقة شمسية"
 	case "COMPLAINT":
 		return "حجز شكوى"
+	case "DECOR":
+		return "حجز ديكور"
 	}
 	return t
 }

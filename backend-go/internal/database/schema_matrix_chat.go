@@ -652,5 +652,15 @@ func matrixChatMigrations() []Migration {
 				RETURN m;
 			END $$;
 		`,
+	}, {
+		// (ع) 10-16: «حجز ديكور مربوط» — الديكور يطلعون ويا الشعبة الهندسية أو قبلها
+		// بيوم يكملون شغل (حداد يسوي قاعدة داتا شو…). حجز مستقل مربوط بالأب.
+		Version: "0379_decor_booking",
+		SQL: `
+			ALTER TYPE "BookingType" ADD VALUE IF NOT EXISTS 'DECOR';
+			ALTER TABLE "Booking" ADD COLUMN IF NOT EXISTS "parentBookingId" TEXT REFERENCES "Booking"(id) ON DELETE SET NULL;
+			ALTER TABLE "Booking" ADD COLUMN IF NOT EXISTS "decorTiming" TEXT;
+			CREATE INDEX IF NOT EXISTS "Booking_parent_idx" ON "Booking" ("parentBookingId") WHERE "parentBookingId" IS NOT NULL;
+		`,
 	}}
 }

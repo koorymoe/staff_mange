@@ -271,6 +271,40 @@ func (h *BookingHandler) List(w http.ResponseWriter, r *http.Request) {
 	WriteJSON(w, http.StatusOK, bookings)
 }
 
+// POST /api/bookings/{id}/decor — «🪚 أضف شغل ديكور» من حجز الشعبة (ع 10-16).
+func (h *BookingHandler) CreateDecor(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		ServiceID   string  `json:"serviceId"`
+		Timing      string  `json:"timing"`
+		ScheduledAt *string `json:"scheduledAt"`
+		Notes       *string `json:"notes"`
+	}
+	if err := DecodeJSON(r, &req); err != nil {
+		WriteError(w, http.StatusBadRequest, "بيانات غير صالحة")
+		return
+	}
+	b, err := h.service.CreateDecor(r.PathValue("id"), req.ServiceID, req.Timing, req.ScheduledAt, req.Notes)
+	if err != nil {
+		WriteError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	WriteJSON(w, http.StatusCreated, b)
+}
+
+// GET /api/bookings/{id}/decor — حجوزات الديكور المربوطة.
+func (h *BookingHandler) DecorChildren(w http.ResponseWriter, r *http.Request) {
+	if !h.canSeeAllBookings(r) {
+		WriteJSON(w, http.StatusOK, []model.Booking{})
+		return
+	}
+	rows, err := h.service.DecorChildren(r.PathValue("id"))
+	if err != nil {
+		WriteError(w, http.StatusInternalServerError, "تعذر جلب حجوزات الديكور")
+		return
+	}
+	WriteJSON(w, http.StatusOK, rows)
+}
+
 // POST /api/v1/bookings
 func (h *BookingHandler) Create(w http.ResponseWriter, r *http.Request) {
 	var req model.CreateBookingRequest

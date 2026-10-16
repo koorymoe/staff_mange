@@ -1051,6 +1051,10 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 			[]string{"ADMIN", "OWNER", "FINANCE", "MONITOR", "HR_COORDINATOR"},
 			"invoice_internal", "finance", "finance_audit", "monitoring", "auditing")))
 	mux.Handle("POST /api/bookings", middleware.Chain(http.HandlerFunc(bookingHandler.Create), requireAuth))
+	// (ع) 10-16: حجز ديكور مربوط — المنسق/المدير/المراقب
+	mux.Handle("POST /api/bookings/{id}/decor", middleware.Chain(http.HandlerFunc(bookingHandler.CreateDecor), requireAuth,
+		middleware.RequireRoleOrAnyPermission(permissionRepo, employeeRepo, notificationRepo, []string{"ADMIN", "HR_COORDINATOR", "MONITOR"}, "coordinator")))
+	mux.Handle("GET /api/bookings/{id}/decor", middleware.Chain(http.HandlerFunc(bookingHandler.DecorChildren), requireAuth))
 	mux.Handle("PUT /api/bookings/{id}/confirm", middleware.Chain(http.HandlerFunc(bookingHandler.Confirm), requireAuth, requireBookingCoord))
 	mux.Handle("PUT /api/bookings/{id}/details", middleware.Chain(http.HandlerFunc(bookingHandler.UpdateDetails), requireAuth, requireBookingEdit))
 	// حارس ملكية الحجز: أي إجراء على مسار عمل الحجز (موعد/بدء/وصول/تجهيز

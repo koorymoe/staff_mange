@@ -1,3 +1,4 @@
+import DecorPanel from './DecorPanel'
 import { useEffect, useState } from 'react'
 import MultiSelect from './MultiSelect'
 import { onEnter } from '../utils/enterKey'
@@ -235,6 +236,7 @@ export default function BookingEditPanel({
         )}
         {msg && <span className={`text-xs font-bold ${msg.includes('✓') ? 'text-emerald-600' : 'text-red-600'}`}>{msg}</span>}
       </div>
+      <DecorPanel booking={booking} />
       {/* ماتركس ٢٠٥٠ — نفس حارس الخادم (requireMonitor): المدير والمراقب. */}
       {(employee?.role === 'ADMIN' || employee?.role === 'MONITOR' || permissions.includes('monitoring') || permissions.includes('auditing')) && (
         <details className="mt-3">

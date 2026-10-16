@@ -8,7 +8,7 @@ import { api, type Employee } from '../api'
 // الليدر يكتب بـExecutionSheetForm، والمراقب يقرا بـExecutionSheetView —
 // نفس التعريف (SECTIONS) للاثنين حتى ما يفترق الترتيب.
 
-import { type SheetCrewRow, type ExecutionSheetData, CHECKS, PROJECT_STATUS, PROGRAMMING, RATINGS, HOURS, MINUTES, DAYS, DATA_ROWS, today, inp } from '../utils/executionSheet'
+import { type SheetCrewRow, type ExecutionSheetData, PROJECT_STATUS, PROGRAMMING, RATINGS, HOURS, MINUTES, DAYS, DECOR_UNITS, rowsFor, checksFor, today, inp } from '../utils/executionSheet'
 
 const Hint = ({ children }: { children: ReactNode }) => <span className="block text-[11px] font-bold text-white/90">{children}</span>
 const Title = ({ children }: { children: ReactNode }) => (
@@ -23,7 +23,7 @@ export function ExecutionSheetForm({ value, onChange }: { value: ExecutionSheetD
     onChange({ ...s, [k]: { ...(s[k] as object), ...patch } } as ExecutionSheetData)
   const setCrew = (i: number, patch: Partial<SheetCrewRow>) => onChange({ ...s, crew: s.crew.map((r, j) => (j === i ? { ...r, ...patch } : r)) })
 
-  const dataInput = (row: typeof DATA_ROWS[number]) => {
+  const dataInput = (row: ReturnType<typeof rowsFor>[number]) => {
     const v = s.data[row.key]
     const ch = (x: string) => set('data', { [row.key]: x } as Partial<ExecutionSheetData['data']>)
     if (row.kind === 'days') return <select className={inp} value={v} onChange={(e) => ch(e.target.value)}>{DAYS.map((d) => <option key={d}>{d}</option>)}</select>
@@ -52,7 +52,7 @@ export function ExecutionSheetForm({ value, onChange }: { value: ExecutionSheetD
 
       <div className="overflow-hidden rounded-lg border border-slate-300">
         <Title>بيانات التنفيذ</Title>
-        {DATA_ROWS.map((row, i) => (
+        {rowsFor(s).map((row, i) => (
           <div key={row.key} className="grid grid-cols-[2rem_1fr] border-t border-slate-200 sm:grid-cols-[2rem_12rem_1fr_14rem]">
             <span className="grid place-items-center bg-slate-50 text-sm font-bold">{i + 1}</span>
             <span className={`px-2 py-2 text-sm font-bold ${row.key === 'systemType' ? 'bg-yellow-200' : ''}`}>{row.label}</span>
@@ -61,6 +61,8 @@ export function ExecutionSheetForm({ value, onChange }: { value: ExecutionSheetD
           </div>
         ))}
       </div>
+
+      {s.kind === 'DECOR' && <DecorForm s={s} onChange={onChange} />}
 
       <div className="overflow-hidden rounded-lg border border-slate-300">
         <Title>تقارير الفنيين و الكادر</Title>
@@ -87,7 +89,7 @@ export function ExecutionSheetForm({ value, onChange }: { value: ExecutionSheetD
 
       <div className="overflow-hidden rounded-lg border border-slate-300">
         <Title>اكمال المشروع</Title>
-        {CHECKS.map((c) => (
+        {checksFor(s).map((c) => (
           <label key={c.key} className="grid cursor-pointer grid-cols-[1fr_2.5rem] border-t border-slate-200 sm:grid-cols-[14rem_2.5rem_1fr]">
             <span className="px-2 py-2 text-sm font-bold">{c.label}</span>
             <span className="grid place-items-center"><input type="checkbox" className="h-5 w-5" checked={s.checks[c.key]} onChange={(e) => onChange({ ...s, checks: { ...s.checks, [c.key]: e.target.checked } })} /></span>
@@ -111,7 +113,7 @@ function SheetHeader({ s }: { s: ExecutionSheetData }) {
   return (
     <div className="overflow-hidden rounded-lg border border-slate-300 text-sm">
       <div className="flex flex-wrap items-center justify-between gap-2 bg-slate-100 px-3 py-2">
-        <b className="text-[#0f2040]">تقرير تنفيذ المشروع</b>
+        <b className="text-[#0f2040]">{s.kind === 'DECOR' ? '🪚 تقرير شغل الديكور' : 'تقرير تنفيذ المشروع'}</b>
         <span>الموظف المسؤول: <b>{h.responsible || '—'}</b></span>
       </div>
       <div className="grid grid-cols-2 gap-px bg-slate-200 sm:grid-cols-6">
@@ -141,7 +143,7 @@ export function ExecutionSheetView({ sheet }: { sheet: ExecutionSheetData }) {
       </div>
       <div className="overflow-hidden rounded-lg border border-slate-300 text-sm">
         <Title>بيانات التنفيذ</Title>
-        {DATA_ROWS.map((row, i) => (
+        {rowsFor(s).map((row, i) => (
           <div key={row.key} className="grid grid-cols-[2rem_12rem_1fr] border-t border-slate-200">
             <span className="grid place-items-center bg-slate-50 font-bold">{i + 1}</span>
             <span className={`p-2 font-bold ${row.key === 'systemType' ? 'bg-yellow-200' : ''}`}>{row.label}</span>
@@ -149,6 +151,7 @@ export function ExecutionSheetView({ sheet }: { sheet: ExecutionSheetData }) {
           </div>
         ))}
       </div>
+      {s.kind === 'DECOR' && <DecorView s={s} />}
       <div className="overflow-x-auto rounded-lg border border-slate-300 text-sm">
         <Title>تقارير الفنيين و الكادر</Title>
         <table className="w-full"><thead className="bg-slate-50 text-[11px] text-slate-500"><tr><th className="p-1.5">#</th><th className="p-1.5">الموظف</th><th className="p-1.5">من</th><th className="p-1.5">الى</th><th className="p-1.5">ايام</th><th className="p-1.5">التقييم</th></tr></thead>
@@ -158,7 +161,7 @@ export function ExecutionSheetView({ sheet }: { sheet: ExecutionSheetData }) {
       </div>
       <div className="overflow-hidden rounded-lg border border-slate-300 text-sm">
         <Title>اكمال المشروع</Title>
-        {CHECKS.map((c) => (
+        {checksFor(s).map((c) => (
           <div key={c.key} className="grid grid-cols-[1fr_3rem] border-t border-slate-200">
             <span className="p-2 font-bold">{c.label}</span>
             <span className={`grid place-items-center font-black ${s.checks?.[c.key] ? 'text-emerald-600' : 'text-red-600'}`}>{s.checks?.[c.key] ? '✓' : '✗'}</span>
@@ -168,6 +171,59 @@ export function ExecutionSheetView({ sheet }: { sheet: ExecutionSheetData }) {
       <div className="grid gap-2 text-sm sm:grid-cols-2">
         <div className="rounded-lg border border-slate-300"><span className="block bg-cyan-500 px-2 py-1 text-center font-black text-white">اقتراح تنصيب من الزبون</span><p className="p-2">{dash(s.suggestion)}</p></div>
         <div className="rounded-lg border border-slate-300"><span className="block bg-cyan-500 px-2 py-1 text-center font-black text-white">المبلغ المستلم من الزبون</span><p className="p-2 tabular-nums">{s.amountReceived ? `${Number(s.amountReceived).toLocaleString('en-US')} د.ع` : '—'}</p></div>
+      </div>
+    </div>
+  )
+}
+
+// ═══ بنود الديكور — القياسات والكميات، والمواد المستهلكة (ع 10-16) ═══
+function DecorForm({ s, onChange }: { s: ExecutionSheetData; onChange: (v: ExecutionSheetData) => void }) {
+  const d = s.decor ?? { items: [], materials: [] }
+  const put = (patch: Partial<typeof d>) => onChange({ ...s, decor: { ...d, ...patch } })
+  return (
+    <>
+      <div className="overflow-hidden rounded-lg border border-slate-300">
+        <Title>القياسات والكميات</Title>
+        {d.items.map((x, i) => (
+          <div key={i} className="grid grid-cols-[1fr_6rem_7rem_2rem] gap-1 border-t border-slate-200 p-1">
+            <input className={inp} placeholder="البند (مثلاً قاعدة حديد)" value={x.item} onChange={(e) => put({ items: d.items.map((y, j) => (j === i ? { ...y, item: e.target.value } : y)) })} />
+            <input className={inp} placeholder="الكمية" value={x.qty} onChange={(e) => put({ items: d.items.map((y, j) => (j === i ? { ...y, qty: e.target.value } : y)) })} />
+            <select className={inp} value={x.unit} onChange={(e) => put({ items: d.items.map((y, j) => (j === i ? { ...y, unit: e.target.value } : y)) })}>{DECOR_UNITS.map((u) => <option key={u}>{u}</option>)}</select>
+            <button type="button" onClick={() => put({ items: d.items.filter((_, j) => j !== i) })} className="text-red-500">✕</button>
+          </div>
+        ))}
+        <button type="button" onClick={() => put({ items: [...d.items, { item: '', qty: '', unit: 'متر' }] })} className="m-2 rounded-lg border border-dashed border-slate-400 px-3 py-1 text-xs font-bold text-slate-600">➕ ضيف بند</button>
+      </div>
+      <div className="overflow-hidden rounded-lg border border-slate-300">
+        <Title>المواد المستهلكة</Title>
+        {d.materials.map((x, i) => (
+          <div key={i} className="grid grid-cols-[1fr_8rem_2rem] gap-1 border-t border-slate-200 p-1">
+            <input className={inp} placeholder="المادة (حديد، براغي، صبغ…)" value={x.name} onChange={(e) => put({ materials: d.materials.map((y, j) => (j === i ? { ...y, name: e.target.value } : y)) })} />
+            <input className={inp} placeholder="الكمية" value={x.qty} onChange={(e) => put({ materials: d.materials.map((y, j) => (j === i ? { ...y, qty: e.target.value } : y)) })} />
+            <button type="button" onClick={() => put({ materials: d.materials.filter((_, j) => j !== i) })} className="text-red-500">✕</button>
+          </div>
+        ))}
+        <button type="button" onClick={() => put({ materials: [...d.materials, { name: '', qty: '' }] })} className="m-2 rounded-lg border border-dashed border-slate-400 px-3 py-1 text-xs font-bold text-slate-600">➕ ضيف مادة</button>
+      </div>
+    </>
+  )
+}
+
+function DecorView({ s }: { s: ExecutionSheetData }) {
+  const d = s.decor ?? { items: [], materials: [] }
+  return (
+    <div className="grid gap-2 text-sm sm:grid-cols-2">
+      <div className="overflow-hidden rounded-lg border border-slate-300">
+        <Title>القياسات والكميات</Title>
+        {d.items.length === 0 ? <p className="p-2 text-slate-400">—</p> : d.items.map((x, i) => (
+          <p key={i} className="border-t border-slate-200 p-2"><b>{x.item || '—'}</b> · {x.qty || '—'} {x.unit}</p>
+        ))}
+      </div>
+      <div className="overflow-hidden rounded-lg border border-slate-300">
+        <Title>المواد المستهلكة</Title>
+        {d.materials.length === 0 ? <p className="p-2 text-slate-400">—</p> : d.materials.map((x, i) => (
+          <p key={i} className="border-t border-slate-200 p-2"><b>{x.name || '—'}</b> · {x.qty || '—'}</p>
+        ))}
       </div>
     </div>
   )

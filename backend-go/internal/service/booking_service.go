@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"strings"
+	"time"
 
 	"github.com/google/uuid"
 
@@ -1162,6 +1163,55 @@ func (s *BookingService) RecentDuplicate(req model.CreateBookingRequest) string 
 	}
 	id, _ := s.repo.RecentDuplicate(req.CustomerID, sid, req.Address)
 	return id
+}
+
+// CreateDecor حجز ديكور مربوط بحجز الشعبة: نفس الزبون والموقع، بخدمة ديكور،
+// وموعده قبل الأب بيوم (BEFORE) أو بنفس موعده (WITH) إذا ما انطى موعد.
+func (s *BookingService) CreateDecor(parentID, serviceID, timing string, scheduledAt *string, notes *string) (*model.Booking, error) {
+	if timing != "BEFORE" && timing != "WITH" {
+		return nil, errors.New("التوقيت لازم «قبل» لو «ويا الشعبة»")
+	}
+	if serviceID == "" {
+		return nil, errors.New("اختار مهنة الديكور")
+	}
+	p, err := s.repo.FindByID(parentID)
+	if err != nil || p == nil {
+		return nil, errors.New("الحجز الأصلي مو موجود")
+	}
+	if scheduledAt == nil || *scheduledAt == "" {
+		if p.ScheduledAt != nil {
+			t := *p.ScheduledAt
+			if timing == "BEFORE" {
+				t = t.AddDate(0, 0, -1)
+			}
+			v := t.UTC().Format(time.RFC3339)
+			scheduledAt = &v
+		}
+	}
+	bt := "DECOR"
+	req := model.CreateBookingRequest{
+		CustomerID: p.CustomerID, ServiceIDs: []string{serviceID}, Notes: notes,
+		Address: p.Address, MapLatitude: p.MapLatitude, MapLongitude: p.MapLongitude, LocationUrl: p.LocationUrl,
+		BookingType: &bt,
+	}
+	b, err := s.Create(req)
+	if err != nil {
+		return nil, err
+	}
+	if err := s.repo.LinkDecor(b.ID, parentID, timing); err != nil {
+		return nil, err
+	}
+	if scheduledAt != nil && *scheduledAt != "" {
+		if err := s.repo.SetSchedule(b.ID, *scheduledAt); err != nil {
+			return nil, err
+		}
+	}
+	return s.repo.FindByID(b.ID)
+}
+
+// DecorChildren حجوزات الديكور المربوطة بهذا الحجز.
+func (s *BookingService) DecorChildren(parentID string) ([]model.Booking, error) {
+	return s.repo.DecorChildren(parentID)
 }
 
 func (s *BookingService) Get(id string) (*model.Booking, error) {

@@ -1294,7 +1294,9 @@ export default function Coordinator() {
                       <div className="mt-2 grid grid-cols-1 gap-3 sm:grid-cols-3">
                         {techRoles.map((tr) => {
                           const assigned = booking.assignments.find((a) => a.role === tr.key)
-                          const candidates = matches[booking.id] || []
+                          // (ع) 10-16: حجز الديكور يتكلّف بموظفين الديكور بس
+                          const candidates = (matches[booking.id] || []).filter((c) =>
+                            booking.bookingType !== 'DECOR' || (c as { division?: string }).division === 'DECOR')
                           return (
                             <div key={tr.key}>
                               <div className="mb-1 flex items-center justify-between gap-2">
