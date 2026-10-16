@@ -86,6 +86,12 @@ func (r *QualityFollowUpRepository) loadFinancials(bookingID string) *model.Qual
 	if err != nil {
 		return nil
 	}
+	finishFinancials(&f)
+	return &f
+}
+
+// finishFinancials يحسب المتفق/المستلم/الفارق — تعريف واحد للصف وللدفعة.
+func finishFinancials(f *model.QualityFollowUpFinancials) {
 	// السعر المعتمد: سعر المشروع إذا الحجز انرحّل لمشروع، وإلا السعر المتفق بالحجز
 	if f.ProjectPrice != nil && *f.ProjectPrice > 0 {
 		f.AgreedTotal = *f.ProjectPrice
@@ -99,7 +105,6 @@ func (r *QualityFollowUpRepository) loadFinancials(bookingID string) *model.Qual
 		f.ReceivedTotal += *f.AmountCollected
 	}
 	f.Difference = f.AgreedTotal - f.ReceivedTotal
-	return &f
 }
 
 // CreateForBooking تنشئ سطر متابعة جودة تلقائياً لحجز اكتمل (idempotent — ما تكرر لو
@@ -118,10 +123,121 @@ func (r *QualityFollowUpRepository) List() ([]model.QualityFollowUp, error) {
 	if err := r.db.Select(&items, `SELECT * FROM "QualityFollowUp" ORDER BY "createdAt" DESC`); err != nil {
 		return nil, err
 	}
-	for i := range items {
-		r.hydrate(&items[i])
-	}
+	r.hydrateMany(items)
 	return items, nil
+}
+
+// hydrateMany نفس hydrate بالضبط، بس بدفعات (= ANY) بدل ~١٠ استعلامات لكل
+// صف — (ع) 10-16: «مكتب الجودة نص دقيقة يحمّل» جان ~٧٠٠٠ استعلام متسلسل.
+func (r *QualityFollowUpRepository) hydrateMany(items []model.QualityFollowUp) {
+	if len(items) == 0 {
+		return
+	}
+	bookingIDs := []string{}
+	customerIDs := []string{}
+	empIDs := []string{}
+	for _, q := range items {
+		bookingIDs = append(bookingIDs, q.BookingID)
+		if q.LinkedBookingID != nil {
+			bookingIDs = append(bookingIDs, *q.LinkedBookingID)
+		}
+		customerIDs = append(customerIDs, q.CustomerID)
+		for _, e := range []*string{q.ContactedByEmployeeID, q.InspectedByID, q.PenalizedEmployeeID} {
+			if e != nil {
+				empIDs = append(empIDs, *e)
+			}
+		}
+	}
+
+	bookings := map[string]*model.Booking{}
+	var bl []model.Booking
+	if err := r.db.Select(&bl, `SELECT * FROM "Booking" WHERE id = ANY($1)`, pq.Array(bookingIDs)); err == nil {
+		for i := range bl {
+			bookings[bl[i].ID] = &bl[i]
+		}
+	}
+	customers := map[string]*model.Customer{}
+	var cl []model.Customer
+	if err := r.db.Select(&cl, `SELECT * FROM "Customer" WHERE id = ANY($1)`, pq.Array(customerIDs)); err == nil {
+		for i := range cl {
+			customers[cl[i].ID] = &cl[i]
+		}
+	}
+	emps := map[string]model.EmployeeBrief{}
+	var el []model.EmployeeBrief
+	if err := r.db.Select(&el, `SELECT id, name FROM "Employee" WHERE id = ANY($1)`, pq.Array(empIDs)); err == nil {
+		for _, e := range el {
+			emps[e.ID] = e
+		}
+	}
+	fins := map[string]*model.QualityFollowUpFinancials{}
+	var fl []struct {
+		BookingID string `db:"bid"`
+		model.QualityFollowUpFinancials
+	}
+	if err := r.db.Select(&fl, `
+		SELECT DISTINCT ON (b.id)
+			b.id AS bid,
+			b.code AS "bookingCode", s.name AS "serviceName", b.address AS "location", b.notes AS "workDetails",
+			p.id AS "projectId", p.code AS "projectCode", p.name AS "projectName", p.stage AS "projectStage",
+			b."quotedPrice" AS "quotedPrice", p.price AS "projectPrice",
+			b."advancePaid" AS "advancePaid", b."amountCollected" AS "amountCollected"
+		FROM "Booking" b
+		LEFT JOIN "Service" s ON s.id = b."serviceId"
+		LEFT JOIN "Project" p ON p."bookingId" = b.id
+		WHERE b.id = ANY($1)
+		ORDER BY b.id`, pq.Array(bookingIDs)); err == nil {
+		for i := range fl {
+			f := fl[i].QualityFollowUpFinancials
+			finishFinancials(&f)
+			fins[fl[i].BookingID] = &f
+		}
+	}
+	crew := map[string][]model.BookingCrewMember{}
+	var crl []struct {
+		BookingID string `db:"bid"`
+		model.BookingCrewMember
+	}
+	_ = r.db.Select(&crl, `
+		SELECT a."bookingId" AS bid, a."employeeId", e.name, a.role::text AS role, e."isLeader"
+		FROM "BookingAssignment" a
+		JOIN "Employee" e ON e.id = a."employeeId"
+		WHERE a."bookingId" = ANY($1)
+		ORDER BY e."isLeader" DESC, a.role ASC`, pq.Array(bookingIDs))
+	for _, c := range crl {
+		crew[c.BookingID] = append(crew[c.BookingID], c.BookingCrewMember)
+	}
+	reports := map[string][]model.BookingProgressReport{}
+	var rl []model.BookingProgressReport
+	_ = r.db.Select(&rl, `SELECT * FROM "BookingProgressReport" WHERE "bookingId" = ANY($1) ORDER BY "dayNumber" ASC`, pq.Array(bookingIDs))
+	for _, x := range rl {
+		reports[x.BookingID] = append(reports[x.BookingID], x)
+	}
+
+	brief := func(id *string) *model.EmployeeBrief {
+		if id == nil {
+			return nil
+		}
+		if e, ok := emps[*id]; ok {
+			return &e
+		}
+		return nil
+	}
+	for i := range items {
+		q := &items[i]
+		q.Booking = bookings[q.BookingID]
+		q.Customer = customers[q.CustomerID]
+		q.ContactedByEmployee = brief(q.ContactedByEmployeeID)
+		q.Financials = fins[q.BookingID]
+		q.Execution = executionFrom(bookings[q.BookingID], crew[q.BookingID], reports[q.BookingID])
+		q.InspectedBy = brief(q.InspectedByID)
+		q.PenalizedEmployee = brief(q.PenalizedEmployeeID)
+		if q.LinkedBookingID != nil {
+			if lb := bookings[*q.LinkedBookingID]; lb != nil {
+				q.LinkedBooking = &model.QualityLinkedBooking{ID: lb.ID, Code: lb.Code, Status: lb.Status}
+			}
+		}
+	}
 }
 
 func (r *QualityFollowUpRepository) Update(id, status string, contactedByEmployeeID string, contactNotes *string) (*model.QualityFollowUp, error) {
@@ -263,6 +379,35 @@ func (r *QualityFollowUpRepository) ExecutionOf(bookingID string) *model.Booking
 	_ = r.db.Select(&d.ProgressReports, `
 		SELECT * FROM "BookingProgressReport" WHERE "bookingId" = $1 ORDER BY "dayNumber" ASC`, bookingID)
 
+	return d
+}
+
+// executionFrom نفس ExecutionOf من بيانات محمّلة مسبقاً (للدفعة).
+func executionFrom(b *model.Booking, crew []model.BookingCrewMember, reports []model.BookingProgressReport) *model.BookingExecutionDetail {
+	if b == nil {
+		return nil
+	}
+	d := &model.BookingExecutionDetail{
+		StartedAt:       b.StartedAt,
+		CompletedAt:     b.CompletedAt,
+		CompletionNotes: b.CompletionNotes,
+		WorkStoppedAt:   b.WorkStoppedAt,
+		WorkStopReason:  b.WorkStopReason,
+		Crew:            crew,
+		ProgressReports: reports,
+	}
+	if d.Crew == nil {
+		d.Crew = []model.BookingCrewMember{}
+	}
+	if d.ProgressReports == nil {
+		d.ProgressReports = []model.BookingProgressReport{}
+	}
+	if b.StartedAt != nil && b.CompletedAt != nil {
+		m := int(b.CompletedAt.Sub(*b.StartedAt).Minutes())
+		if m >= 0 {
+			d.DurationMinutes = &m
+		}
+	}
 	return d
 }
 
