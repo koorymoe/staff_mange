@@ -31,7 +31,11 @@ func (r *MonitorDeskRepository) Counts() (issues, invoices, quality, crew int, e
 	}
 	// 🔴 الشارة چانت تعدّ المؤرشف والمطلوب حذفه، والقسم الي تفتحه
 	// يستثنيهم — فتگول «٥» ويفتح ويلگى ٣. نفس نطاق دالة List.
+	// 🔴 (ع 10-16) «طالعلي ٤ ومن ضاغط ما يطلع شي»: القائمة (PendingAudit)
+	// تخفي الي تواصل وياه الإداري (confirmationContactedAt) والشارة ما چانت —
+	// هسه نفس الشرط بالضبط.
 	if err = r.db.Get(&crew, `SELECT COUNT(*) FROM "Booking" WHERE status = 'PENDING'
+		AND "confirmationContactedAt" IS NULL
 		AND `+BookingCountableSQL(`"Booking"`)); err != nil {
 		return
 	}
