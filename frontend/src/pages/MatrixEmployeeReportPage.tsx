@@ -113,7 +113,7 @@ export default function MatrixEmployeeReportPage() {
             {rep.summary} <span className="text-[11px] opacity-60">{rep.summaryBy === 'MODEL' ? '(🧠 هايكو)' : '(📏 القواعد)'}</span>
           </MatrixNote>
 
-          <Section title={`📝 شنو سوّى ${rep.day === todayBaghdad() ? 'اليوم' : 'بهاليوم'} (${(rep.activity ?? []).reduce((n, a) => n + a.count, 0)} فعل)`}>
+          <Section title={`📝 حركاته بالنظام ${rep.day === todayBaghdad() ? 'اليوم' : 'بهاليوم'} — ${(rep.activity ?? []).reduce((n, a) => n + a.count, 0)} حركة`}>
             {(rep.activity ?? []).length === 0 ? (
               <p className="text-xs text-slate-400">ما سجّل ولا فعل بالنظام هاليوم (حفظ، قرار، إضافة، تعديل).</p>
             ) : (
@@ -121,16 +121,20 @@ export default function MatrixEmployeeReportPage() {
                 <div className="mb-2 flex flex-wrap gap-1.5">
                   {Object.entries((rep.activity ?? []).reduce<Record<string, number>>((m, a) => { m[a.area] = (m[a.area] ?? 0) + a.count; return m }, {}))
                     .sort((a, b) => b[1] - a[1])
-                    .map(([area, n]) => <span key={area} className="rounded-full bg-sky-50 px-2.5 py-0.5 text-[11px] font-bold text-sky-800">{area}: {n}</span>)}
+                    .map(([area, n]) => <span key={area} className="rounded-full bg-sky-50 px-3 py-1 text-xs font-bold text-sky-800">{area} — {n} {n === 1 ? 'مرة' : 'مرات'}</span>)}
                 </div>
-                <ol className="max-h-80 space-y-1 overflow-y-auto border-r-2 border-sky-200 pr-3">
+                {/* (ع) 10-16: «المدير رجال بسيط» — الملخص فوك يكفي، والتفصيل مخفي لمن يريده */}
+                <details>
+                <summary className="cursor-pointer text-xs font-bold text-sky-700">اعرض كل حركة بوقتها ←</summary>
+                <ol className="mt-2 max-h-80 space-y-1 overflow-y-auto border-r-2 border-sky-200 pr-3">
                   {(rep.activity ?? []).map((a, i) => (
                     <li key={i} className="flex gap-3 text-sm">
                       <span className="w-12 shrink-0 font-mono text-xs text-slate-400">{a.at}</span>
-                      <span className="text-slate-800">{a.text}{a.count > 1 && <b className="mr-1 text-sky-700">×{a.count}</b>}</span>
+                      <span className="text-slate-800">{a.text}{a.count > 1 && <b className="mr-2 text-sky-700">({a.count} مرات)</b>}</span>
                     </li>
                   ))}
                 </ol>
+                </details>
               </>
             )}
           </Section>

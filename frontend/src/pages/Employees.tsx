@@ -147,8 +147,10 @@ export default function Employees({ embedded }: { embedded?: boolean } = {}) {
   useEffect(() => {
     // ⚠️ چانت `if (isHR)` — فالمالك والمدير ما يجلبونها أصلاً
     // وعدّادات «إحصائيات الموظف» تطلعلهم **صفراً دائماً**.
+    // (ع) 10-16: بس لمن الخادم يسمح (employee_stats) — الرفض 403 ينحسب مخالفة على الموظف
+    if (!isAdmin && !userPermissions.includes('employee_stats')) return
     api.getStats().then(setStats).catch(() => setStats(null))
-  }, [isHR])
+  }, [isHR, isAdmin, userPermissions])
   useEffect(() => {
     if (isAdmin && showArchived) api.getArchivedEmployees().then(setArchivedEmployees).catch(() => setArchivedEmployees([]))
     // صاحب صلاحية الإيقاف (مو مدير): يشوف الموقوفين بس، من مساره هو.

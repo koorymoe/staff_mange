@@ -66,6 +66,31 @@ var sectionAr = map[string]string{
 	"achievements": "إنجاز يومي", "materials": "مادة", "work-reports": "تقرير عمل", "monitor-reviews": "مراجعة مراقب",
 	"booking-survey-reports": "تقرير كشف", "survey-photos": "صور كشف", "team-inventory": "جرد الفريق", "stories": "قصة",
 	"device-maintenance": "صيانة جهاز", "vip-customers": "زبون مميز", "kpi-criteria": "معايير النقاط",
+	// (ع) 10-16: «المدير رجال بسيط يشوف شي بسيط» — كل قسم بالعربي، ماكو إنكليزي
+	"duplicate-candidates": "زبون مكرر", "justifications": "تبرير", "staff-ratings": "تقييم موظف", "crew-ratings": "تقييم كادر",
+	"audit-issues": "بلاغ تدقيق", "booking-delete-requests": "طلب حذف حجز", "attendance-icon-requests": "طلب أيقونة حضور",
+	"car-wash": "غسل سيارة", "checklists": "قائمة فحص", "company-location": "موقع الشركة", "coordination-alerts": "تنبيه تنسيق",
+	"credits": "الآجل", "decor-rates": "أسعار الديكور", "department-heads": "مسؤول قسم", "design-assets": "ملف تصميم",
+	"discipline-record": "سجل انضباط", "free-work-reasons": "سبب شغل مجاني", "internal-bookings": "شغل داخلي",
+	"media": "مشروع تصوير", "monitor": "المراقبة", "monitor-desk": "مكتب المراقب", "peer": "صوت الموظفين",
+	"performance-reviews": "مراجعة أداء", "procurement-quotes": "عرض سعر مورد", "procurement-standards": "معيار شراء",
+	"procurement-policy": "سياسة الشراء", "product-procurements": "شراء منتج", "progress-reports": "تقرير مشروع يومي",
+	"project-payments": "دفعة مشروع", "project-work-types": "نوع شغل مشروع", "quality": "الجودة", "quotation-terms": "شروط عرض السعر",
+	"remote-hours": "ساعات العمل من البيت", "service-managers": "مسؤول خدمة", "service-prices": "سعر خدمة", "skills": "مهارة",
+	"staff-points": "نقاط موظف", "store-tools": "عدة المخزن", "supplier-relations": "علاقة مورد", "system-price-catalog": "جدول الكلفة",
+	"tech-showcase": "عرض تقني", "tech-suppliers": "مورد تقني", "training-center": "مركز التدريب", "vehicle-parts": "قطعة سيارة",
+	"work-schedule": "جدول الدوام", "workplace-issues": "مشكلة وظيفية", "late-invoices": "فاتورة متأخرة", "project-quote-watch": "متابعة عرض سعر",
+	"files": "ملف", "finance": "الحسابات", "owner": "إعدادات المالك", "security": "الأمان", "system": "إعدادات النظام",
+	"location-pings": "الموقع", "geo": "الموقع", "locate": "الموقع", "presence": "التواجد",
+}
+
+// جمل خاصة لأفعال شايعة — أوضح من «عدّل زبون مكرر».
+var phraseAr = map[string]string{
+	"duplicate-candidates/dismiss": "قرّر إنه زبون مو مكرر", "duplicate-candidates/merge": "دمج زبونين مكررين",
+	"duplicate-candidates/request-delete": "طلب حذف زبون مكرر", "POST duplicate-candidates": "فحص زبائن مكررين",
+	"POST justifications": "طلب تبرير من موظف", "justifications/answer": "جاوب على طلب تبرير", "justifications/decide": "حكم على تبرير",
+	"POST staff-ratings": "قيّم موظف", "POST crew-ratings": "قيّم كادر الحجز", "monitor-reviews/decide": "دقّق بند بصندوق المراقب",
+	"work-reports/review": "دقّق تقرير عمل", "progress/review": "دقّق تقارير مشروع", "quality-follow-ups/monitor-verdict": "قيّم شغل مهندس الجودة",
 }
 
 var verbAr = map[string]string{
@@ -120,13 +145,29 @@ func (s *EmployeeActivityService) describe(r repository.ActivityRow) (text, area
 	section := segs[0]
 	noun := sectionAr[section]
 	if noun == "" {
-		noun = section
+		// ما نعرض كلمة إنكليزية للمدير أبداً
+		noun = "شغلة بالنظام"
 	}
 	name := ""
 	if len(segs) > 1 && segs[1] == "{id}" && len(real) > 1 {
 		name = s.entityName(section, real[1])
 	}
 	last := segs[len(segs)-1]
+	// جملة جاهزة إذا الفعل معروف (مثلاً «دمج زبونين مكررين»)
+	for _, k := range []string{section + "/" + last, r.Method + " " + section, last + "/" + last} {
+		if p, ok := phraseAr[k]; ok && (k != section+"/"+last || len(segs) > 1) {
+			if strings.HasSuffix(pat, "/progress/review") {
+				p = phraseAr["progress/review"]
+			}
+			if name != "" {
+				p += " «" + name + "»"
+			}
+			return p, noun
+		}
+	}
+	if strings.HasSuffix(pat, "/progress/review") {
+		return phraseAr["progress/review"], "تقرير مشروع يومي"
+	}
 	verb := verbAr[last]
 	if verb == "" {
 		switch r.Method {

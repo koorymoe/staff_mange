@@ -14,7 +14,8 @@ const PAGE_SIZE = 10
 type Tab = 'overview' | 'crews' | 'audit' | 'finance' | 'vehicles'
 
 export default function MonitorDashboard() {
-  const { employee: currentUser } = useSession()
+  const { employee: currentUser, permissions } = useSession()
+  const canStats = currentUser?.role === 'ADMIN' || permissions.includes('employee_stats')
   const navigate = useNavigate()
   const [tab, setTab] = useState<Tab>('overview')
   const [stats, setStats] = useState<Stats | null>(null)
@@ -41,7 +42,7 @@ export default function MonitorDashboard() {
     monthAgo.setMonth(monthAgo.getMonth() - 1)
     const since = monthAgo.toISOString().slice(0, 10)
     Promise.all([
-      api.getStats().catch(() => null),
+      canStats ? api.getStats().catch(() => null) : Promise.resolve(null),
       // الشغل الحيّ كامل + آخر ٢٠٠ منجز للعرض. جان يسحب أرشيف الشركة
       // كله (بكل زبائنه وتعييناته وسلة مواده) وهو أصلاً يقص القوائم
       // على ٢٠ و٣٠ صف بالعرض — يعني ميغابايتات تمشي بالشبكة عشان
@@ -64,7 +65,7 @@ export default function MonitorDashboard() {
       setVehicleScores(vs as VehicleScoreSummary[])
       setTechWashSummaries(tw as TechnicianWashSummary[])
     }).finally(() => setLoading(false))
-  }, [])
+  }, [canStats])
 
   useEffect(load, [load])
 
