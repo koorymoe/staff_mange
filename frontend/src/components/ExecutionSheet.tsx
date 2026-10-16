@@ -1,5 +1,5 @@
 import { useEffect, useState, type ReactNode } from 'react'
-import { api, type Booking, type Employee } from '../api'
+import { api, type Employee } from '../api'
 
 // ═══ «تقرير تنفيذ المشروع» — نموذج المشرف الأصلي (ع 10-16) ═══
 // «هاي الطريقه الصحيحه مال التقارير… الليدر يطلعله نفس هذا النموذج،
@@ -8,95 +8,8 @@ import { api, type Booking, type Employee } from '../api'
 // الليدر يكتب بـExecutionSheetForm، والمراقب يقرا بـExecutionSheetView —
 // نفس التعريف (SECTIONS) للاثنين حتى ما يفترق الترتيب.
 
-export interface SheetCrewRow { employeeId: string; name: string; from: string; to: string; days: string; rating: string }
-export interface ExecutionSheetData {
-  v: 1
-  header: { date: string; customer: string; phone: string; location: string; workType: string; customerCode: string; responsible: string }
-  time: { startH: string; startM: string; startNote: string; endH: string; endM: string; endNote: string }
-  data: {
-    workDays: string; landmark: string; startDate: string; endDate: string; systemType: string; devices: string
-    wiringMeters: string; extras: string; obstacles: string; projectStatus: string; programming: string; codeGiven: string
-  }
-  crew: SheetCrewRow[]
-  checks: Record<CheckKey, boolean>
-  suggestion: string
-  amountReceived: string
-}
+import { type SheetCrewRow, type ExecutionSheetData, CHECKS, PROJECT_STATUS, PROGRAMMING, RATINGS, HOURS, MINUTES, DAYS, DATA_ROWS, today, inp } from '../utils/executionSheet'
 
-type CheckKey = 'photosDevices' | 'photosWiring' | 'photosController' | 'systemRunning' | 'explained' | 'cleaned' | 'toolsTaken'
-const CHECKS: { key: CheckKey; label: string; hint: string }[] = [
-  { key: 'photosDevices', label: 'تصوير الاجهزة', hint: 'لا تنسى التصوير كل الاجهزة' },
-  { key: 'photosWiring', label: 'تصوير التسليك', hint: 'لا تنسى تصوير الاسلاك' },
-  { key: 'photosController', label: 'تصوير الجهاز المسيطر', hint: 'صور الجهاز المسيطرة و الشاشاة ان وجدت' },
-  { key: 'systemRunning', label: 'تشغيل المنظومة', hint: 'شغل المنظومة قبل الخروج' },
-  { key: 'explained', label: 'شرح المنظومة للزبون', hint: 'اشرح بالتفصيل عن المنظومة' },
-  { key: 'cleaned', label: 'تم تنظيف الموقع', hint: 'نظف مكانك بعد اكمال العمل لان انت نظيف' },
-  { key: 'toolsTaken', label: 'اخذ جميع المعدات و عدم نسيان شيء', hint: 'معداتك و ادواتك لك لا تنساهم' },
-]
-export const PROJECT_STATUS = ['تم اكمال العمل 100%', 'انجاز جزئي', 'متوقف'] as const
-const PROGRAMMING = ['كملت الاعدادات', 'ما كملت', 'ما تحتاج برمجة']
-const RATINGS = ['ممتاز', 'جيد جداً', 'جيد', 'مقبول', 'ضعيف']
-const HOURS = Array.from({ length: 24 }, (_, i) => String(i).padStart(2, '0'))
-const MINUTES = Array.from({ length: 12 }, (_, i) => String(i * 5).padStart(2, '0'))
-const DAYS = Array.from({ length: 30 }, (_, i) => String(i + 1))
-
-// بنود «بيانات التنفيذ» بنفس ترتيب الشيت وتلميحاته
-type DataKey = keyof ExecutionSheetData['data']
-const DATA_ROWS: { key: DataKey; label: string; hint: string; kind: 'text' | 'num' | 'date' | 'days' | 'system' | 'status' | 'prog' }[] = [
-  { key: 'workDays', label: 'عدد ايام العمل', hint: 'عدد الايام العمل بالمضبوط', kind: 'days' },
-  { key: 'landmark', label: 'موقع المشروع اقرب نقطة دالة', hint: '', kind: 'text' },
-  { key: 'startDate', label: 'تاريخ البدء', hint: 'ادخل الزمن الحقيقي', kind: 'date' },
-  { key: 'endDate', label: 'تاريخ الانتهاء', hint: 'يا ساعة كملت', kind: 'date' },
-  { key: 'systemType', label: 'نوع المنظومة', hint: 'شوكت خلص البطل', kind: 'system' },
-  { key: 'devices', label: 'عدد الاجهزة النهائية', hint: 'كل الاجهزة الي استخدمتها', kind: 'num' },
-  { key: 'wiringMeters', label: 'مسافات التسليك', hint: 'الرقم التقريبي بالمتر', kind: 'num' },
-  { key: 'extras', label: 'اضافات اخرى', hint: 'اي اضافة من الزبون اذكرها', kind: 'text' },
-  { key: 'obstacles', label: 'معرقلات العمل', hint: 'شنو الي اخرك و شنو تحتاج', kind: 'text' },
-  { key: 'projectStatus', label: 'حالة المشروع', hint: 'تم اكمال العمل 100%', kind: 'status' },
-  { key: 'programming', label: 'برمجة الاجهزة', hint: 'كملت الاعدادات ؟', kind: 'prog' },
-  { key: 'codeGiven', label: 'اعطاء الكود للزبون', hint: 'اذكر الكود الخاص بالزبون و يجب ان يكون رقم الهاتف و am', kind: 'text' },
-]
-
-const today = () => new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Baghdad' })
-
-export function emptySheet(b: Booking): ExecutionSheetData {
-  const crew: SheetCrewRow[] = []
-  const seen = new Set<string>()
-  const push = (id?: string | null, name?: string | null) => {
-    if (!id || seen.has(id) || crew.length >= 7) return
-    seen.add(id); crew.push({ employeeId: id, name: name || '', from: today(), to: today(), days: '1', rating: '' })
-  }
-  push(b.leaderId, b.leaderName)
-  for (const a of b.assignments || []) push(a.employee?.id, a.employee?.name)
-  const svc = (b.services && b.services.length ? b.services.map((s) => s.name).join(' + ') : b.service?.name) || ''
-  return {
-    v: 1,
-    header: {
-      date: today(), customer: b.customer?.name || '', phone: b.customer?.phone || '',
-      location: b.address || '', workType: svc, customerCode: String(b.customer?.customerCode ?? ''),
-      responsible: b.leaderName || b.projectSupervisor?.name || '',
-    },
-    time: { startH: '', startM: '', startNote: '', endH: '', endM: '', endNote: '' },
-    data: {
-      workDays: '1', landmark: '', startDate: today(), endDate: today(), systemType: svc, devices: '',
-      wiringMeters: '', extras: '', obstacles: '', projectStatus: '', programming: '', codeGiven: '',
-    },
-    crew,
-    checks: Object.fromEntries(CHECKS.map((c) => [c.key, false])) as Record<CheckKey, boolean>,
-    suggestion: '', amountReceived: '',
-  }
-}
-
-/** شنو ناقص قبل الإرسال — نفس الخانات الإجبارية بالشيت */
-export function sheetMissing(s: ExecutionSheetData): string | null {
-  if (!s.time.startH || !s.time.startM) return 'اذكر وقت البدء بالعمل (الساعة والدقيقة)'
-  if (!s.time.endH || !s.time.endM) return 'اذكر وقت انتهاء العمل الكلي (الساعة والدقيقة)'
-  if (!s.data.projectStatus) return 'اختار حالة المشروع'
-  if (s.data.projectStatus !== PROJECT_STATUS[0] && s.data.obstacles.trim().length < 3) return 'اكتب معرقلات العمل — شنو الي أخرك وشنو تحتاج'
-  return null
-}
-
-const inp = 'w-full rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-sm outline-none focus:border-brand-500'
 const Hint = ({ children }: { children: ReactNode }) => <span className="block text-[11px] font-bold text-white/90">{children}</span>
 const Title = ({ children }: { children: ReactNode }) => (
   <div className="rounded-t-lg bg-slate-200 px-3 py-2 text-center text-sm font-black text-[#0f2040]">{children}</div>
@@ -258,9 +171,4 @@ export function ExecutionSheetView({ sheet }: { sheet: ExecutionSheetData }) {
       </div>
     </div>
   )
-}
-
-/** يقرا sheet من الخادم (JSON) بأمان */
-export function asSheet(raw: unknown): ExecutionSheetData | null {
-  return raw && typeof raw === 'object' && (raw as { v?: number }).v === 1 ? (raw as ExecutionSheetData) : null
 }

@@ -57,17 +57,17 @@ function TaskCard({ icon, label, value, to, hint }: {
   // تخلّي العين تتعوّد تتجاهلها — فلمن يصير رقم حقيقي ما تنتبهله.
   if (!value) return null
   const cls = 'flex items-center gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3 transition hover:border-brand-300 hover:shadow-sm'
-  const Wrap = ({ children }: { children: React.ReactNode }) => (to ? <Link to={to} className={cls}>{children}</Link> : <div className={cls}>{children}</div>)
-  return (
-    <Wrap>
+  const body = (
+    <>
       <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-50 text-lg">{icon}</span>
       <div className="min-w-0 flex-1">
         <p className="text-[13px] font-extrabold text-[#0f2040]">{label}</p>
         <p className="text-[11px] text-slate-400">{hint}</p>
       </div>
       <span className={`rounded-xl bg-[#0f2040] px-2.5 py-1 text-sm font-black text-white ${NUMBERS}`}>{value}</span>
-    </Wrap>
+    </>
   )
+  return to ? <Link to={to} className={cls}>{body}</Link> : <div className={cls}>{body}</div>
 }
 
 const MONTH_AR = ['يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو', 'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر']

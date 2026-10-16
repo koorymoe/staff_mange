@@ -4,7 +4,8 @@ import { api, type Booking, type WorkReport } from '../api'
 import { useSession } from '../session'
 import EntityIdentity from '../components/EntityIdentity'
 import BookingCodeChip from '../components/BookingCodeChip'
-import { ExecutionSheetForm, emptySheet, sheetMissing, PROJECT_STATUS, type ExecutionSheetData } from '../components/ExecutionSheet'
+import { ExecutionSheetForm } from '../components/ExecutionSheet'
+import { emptySheet, sheetMissing, PROJECT_STATUS, type ExecutionSheetData } from '../utils/executionSheet'
 
 export default function WorkReportPage() {
   const { employee: currentUser, permissions } = useSession()

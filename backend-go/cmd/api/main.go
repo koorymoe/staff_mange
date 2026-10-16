@@ -574,10 +574,12 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	presenceRepo := repository.NewPresenceRepository(db)
 	var presenceMu sync.Mutex
 	presenceLast := map[string]time.Time{}
-	middleware.SetMonitorPermChecker(func(employeeID string) bool {
+	monitorPerm := func(employeeID string) bool {
 		ok, err := permissionRepo.HasPermission(employeeID, "monitoring")
 		return err == nil && ok
-	})
+	}
+	middleware.SetMonitorPermChecker(monitorPerm)
+	service.MonitorPermChecker = monitorPerm
 	middleware.SetSeenRecorder(func(employeeID string) {
 		presenceMu.Lock()
 		if time.Since(presenceLast[employeeID]) < time.Minute {

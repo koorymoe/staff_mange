@@ -768,6 +768,9 @@ func (s *BookingService) ResumeWork(id string) (*model.Booking, error) {
 	return s.repo.FindByID(id)
 }
 
+// MonitorPermChecker: صاحب صلاحية monitoring = مراقب — (ع) 10-16. يُربط بالـmain.
+var MonitorPermChecker func(employeeID string) bool
+
 // SetMaterialsReady يسمح فقط لتيم ليدر مسند لهذا الحجز (أو أدمن/مراقب) بتأكيد تجهيز
 // المواد — لحظة الضغط تصير بداية عدّاد استجابة الفنيين.
 func (s *BookingService) SetMaterialsReady(id, employeeID string) (*model.Booking, error) {
@@ -785,7 +788,8 @@ func (s *BookingService) SetMaterialsReady(id, employeeID string) (*model.Bookin
 	//
 	// ⚠️ والفحص على **الحجز** مو على الطالب: لو أكو ليدر مكلَّف وياه،
 	// الترفيض يبقى وما ينسحب القرار من الليدر.
-	if !employee.IsLeader && employee.Role != "ADMIN" && employee.Role != "MONITOR" {
+	isMon := employee.Role == "MONITOR" || (MonitorPermChecker != nil && MonitorPermChecker(employee.ID))
+	if !employee.IsLeader && employee.Role != "ADMIN" && !isMon {
 		solo := false
 		if none, err := s.repo.HasNoLeader(id); err == nil && none {
 			if assigned, err := s.repo.IsAssignedTo(id, employeeID); err == nil && assigned {

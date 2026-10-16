@@ -20,8 +20,7 @@ export default function DrillPage() {
   useEffect(() => {
     if (!allowed) return
     let alive = true
-    setD(null); setErr('')
-    api.getDrill(key).then((x) => { if (alive) setD(x) })
+    api.getDrill(key).then((x) => { if (alive) { setD(x); setErr('') } })
       .catch((e) => { if (alive) setErr(e instanceof Error ? e.message : 'تعذر جلب القائمة') })
     return () => { alive = false }
   }, [key, allowed])

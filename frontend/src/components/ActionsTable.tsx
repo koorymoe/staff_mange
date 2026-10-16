@@ -117,6 +117,8 @@ export default function ActionsTable({ gate }: { gate?: (perm: string) => boolea
     let alive = true
     load(Date.now(), gate).then((r) => { if (alive) setRows(r) }).catch(() => { if (alive) setRows([]) })
     return () => { alive = false }
+    // gate يتحسب من الجلسة مرة — التحميل مرة بفتح الشاشة
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const all = useMemo(() => rows ?? [], [rows])

@@ -24,7 +24,7 @@ func (h *BookingSurveyReportHandler) Create(w http.ResponseWriter, r *http.Reque
 		WriteError(w, http.StatusBadRequest, "بيانات الطلب غير صحيحة")
 		return
 	}
-	report, err := h.service.Create(middleware.EmployeeIDFromContext(r), middleware.RoleFromContext(r), req)
+	report, err := h.service.Create(middleware.EmployeeIDFromContext(r), middleware.EffectiveRole(r), req)
 	if errors.Is(err, service.ErrSurveyNotParty) {
 		// رفض بالهاندلر — ما ينحسب مخالفة (الزر أصلاً ما يطلع لغير المكلّف).
 		WriteError(w, http.StatusForbidden, err.Error())

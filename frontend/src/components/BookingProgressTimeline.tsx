@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 import { api, type Booking, type BookingProgressReport } from '../api'
 import EntityIdentity from './EntityIdentity'
-import { ExecutionSheetView, asSheet } from './ExecutionSheet'
+import { ExecutionSheetView } from './ExecutionSheet'
+import { asSheet } from '../utils/executionSheet'
 
 // ═══ «وين وصل الي قبلنا؟» ═══
 //
