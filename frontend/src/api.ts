@@ -4928,6 +4928,7 @@ export const api = {
     return request<MonitorReview[]>(`/monitor-reviews${qs ? `?${qs}` : ''}`)
   },
   getMonitorReviewCounts: () => request<{ stage: MonitorStage; count: number }[]>('/monitor-reviews/counts'),
+  getMonitorReviewCards: () => request<{ invoices: number; bookings: number }>('/monitor-reviews/cards'),
   getMonitorDeskCounts: () => request<MonitorDeskCounts>('/monitor-desk/counts'),
   // «اتخاذ إجراء» على صف بصندوق المراقب
   monitorReviewAction: (id: string, action: 'NOTIFY' | 'JUSTIFY' | 'FOLLOW_UP' | 'ESCALATE', note: string) =>

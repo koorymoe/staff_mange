@@ -43,6 +43,16 @@ func (h *MonitorReviewHandler) Counts(w http.ResponseWriter, r *http.Request) {
 	WriteJSON(w, http.StatusOK, rows)
 }
 
+// GET /api/monitor-reviews/cards — عدد الكارتات لتبويبي الفواتير والحجوزات.
+func (h *MonitorReviewHandler) Cards(w http.ResponseWriter, r *http.Request) {
+	c, err := h.svc.Cards()
+	if err != nil {
+		WriteError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	WriteJSON(w, http.StatusOK, c)
+}
+
 // POST /api/monitor-reviews/{id}/decide — «سليم» أو «عندي ملاحظة».
 func (h *MonitorReviewHandler) Decide(w http.ResponseWriter, r *http.Request) {
 	var req model.DecideMonitorReviewRequest

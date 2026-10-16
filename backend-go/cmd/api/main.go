@@ -2415,6 +2415,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	// والمالك داخل بالأدمن.
 	mux.Handle("GET /api/monitor-reviews", middleware.Chain(http.HandlerFunc(monitorReviewHandler.List), requireAuth, requireMonitor))
 	mux.Handle("GET /api/monitor-reviews/counts", middleware.Chain(http.HandlerFunc(monitorReviewHandler.Counts), requireAuth, requireMonitor))
+	mux.Handle("GET /api/monitor-reviews/cards", middleware.Chain(http.HandlerFunc(monitorReviewHandler.Cards), requireAuth, requireMonitor))
 	monitorActionHandler := handler.NewMonitorActionHandler(monitorReviewRepo, notificationRepo, extraTaskRepo)
 	justHandler := handler.NewJustificationHandler(db, notificationRepo)
 	monitorActionHandler.Just = justHandler

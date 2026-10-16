@@ -177,6 +177,12 @@ type DecideMonitorReviewRequest struct {
 }
 
 // MonitorInboxCounts عدّادات فوق التبويبات.
+// MonitorInboxCards عدد الكارتات (فاتورة/حجز واحد = كارت) — (ع) 10-16.
+type MonitorInboxCards struct {
+	Invoices int `db:"invoices" json:"invoices"`
+	Bookings int `db:"bookings" json:"bookings"`
+}
+
 type MonitorInboxCount struct {
 	Stage string `db:"stage" json:"stage"`
 	Count int    `db:"count" json:"count"`

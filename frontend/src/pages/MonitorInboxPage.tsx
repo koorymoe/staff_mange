@@ -79,6 +79,8 @@ export default function MonitorInboxPage({ embedded }: EmbeddedProps = {}) {
   const [query, setQuery] = useState('')
   const [rows, setRows] = useState<MonitorReview[]>([])
   const [counts, setCounts] = useState<Record<string, number>>({})
+  // (ع) 10-16: رقم تبويبي الفواتير والحجوزات = عدد الكارتات، مو عدد المحطات.
+  const [cards, setCards] = useState<{ invoices: number; bookings: number } | null>(null)
   const [notes, setNotes] = useState<Record<string, string>>({})
   const [loading, setLoading] = useState(true)
   const [pageError, setPageError] = useState<string | null>(null)
@@ -98,14 +100,16 @@ export default function MonitorInboxPage({ embedded }: EmbeddedProps = {}) {
       try {
         // ⚠️ ٥٠٠ حد الخادم الأقصى — قبلها ما كانت الواجهة ترسل `limit`
         // فتاخذ الافتراضي ٢٠٠ بلا ترقيم ولا مؤشر إذا اكو أكثر.
-        const [list, c] = await Promise.all([
+        const [list, c, cards] = await Promise.all([
           Promise.all(tabDef.stages.map((st) => api.getMonitorReviews({ stage: st, status: showDone ? '' : 'PENDING', ownerRole, limit: 500 })))
             .then((ls) => ls.flat().sort((a, b) => Number(b.urgent) - Number(a.urgent) || b.createdAt.localeCompare(a.createdAt))),
           api.getMonitorReviewCounts(),
+          api.getMonitorReviewCards().catch(() => null),
         ])
         if (alive) {
           setRows(list)
           setCounts(Object.fromEntries(c.map((x) => [x.stage, x.count])))
+          setCards(cards)
           setPageError(null)
         }
       } catch (e) {
@@ -134,8 +138,11 @@ export default function MonitorInboxPage({ embedded }: EmbeddedProps = {}) {
     }
   }
 
-  const totalPending = useMemo(() => Object.values(counts).reduce((a, b) => a + b, 0), [counts])
-  const tabCount = (t: typeof TABS[number]) => t.stages.reduce((a, st) => a + (counts[st] ?? 0), 0)
+  const tabCount = (t: typeof TABS[number]) =>
+    t.key === 'INVOICES' && cards ? cards.invoices
+      : t.key === 'BOOKINGS' && cards ? cards.bookings
+        : t.stages.reduce((a, st) => a + (counts[st] ?? 0), 0)
+  const totalPending = TABS.reduce((a, t) => a + tabCount(t), 0)
 
   const filtered = useMemo(() => {
     if (!query.trim()) return rows
@@ -183,7 +190,7 @@ export default function MonitorInboxPage({ embedded }: EmbeddedProps = {}) {
       )}
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-        <StatTile label="إجمالي بانتظار القرار" icon="📥" tone="warning" value={totalPending} hint="كل المحطات مجتمعة" />
+        <StatTile label="إجمالي بانتظار القرار" icon="📥" tone="warning" value={totalPending} hint="كل الكارتات مجتمعة" />
         <StatTile label={tabDef.label} icon="🎯" tone="info" value={tabCount(tabDef)} hint={tabDef.hint} />
         <StatTile label="بالصفحة الحالية" icon="🔍" tone="default" value={filtered.length} hint="بعد البحث" />
       </div>

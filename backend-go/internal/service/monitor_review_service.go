@@ -50,6 +50,10 @@ func (s *MonitorReviewService) Counts() ([]model.MonitorInboxCount, error) {
 	return s.repo.Counts()
 }
 
+func (s *MonitorReviewService) Cards() (model.MonitorInboxCards, error) {
+	return s.repo.Cards()
+}
+
 // TrimmedMonitorStages محطات انشالت من صندوق المراقب — قرار (ع) 10-04:
 // «نريد نبسط الشغل مانعقده». الشغل نفسه يصير عادي، بس ما ينكتب بند بالصندوق:
 //   - المنظومة الشمسية والجهاز المسلّم: ما يحتاجهن.

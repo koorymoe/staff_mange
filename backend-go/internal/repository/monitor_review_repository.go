@@ -107,6 +107,20 @@ func (r *MonitorReviewRepository) Counts() ([]model.MonitorInboxCount, error) {
 	return rows, err
 }
 
+// Cards عدد الكارتات المعلّقة: كل فاتورة (وتعديلاتها) كارت، وكل حجز كارت —
+// نفس تجميع الصندوق، مو عدد المحطات.
+func (r *MonitorReviewRepository) Cards() (model.MonitorInboxCards, error) {
+	var c model.MonitorInboxCards
+	err := r.db.Get(&c, `
+		SELECT
+		  (SELECT COUNT(DISTINCT COALESCE(a."invoiceId", m."entityId")) FROM "MonitorReview" m
+		     LEFT JOIN "LeaderInvoiceAdjustment" a ON m."entityType" = 'INVOICE_ADJUSTMENT' AND a.id = m."entityId"
+		    WHERE m.status = 'PENDING' AND m.stage LIKE 'INVOICE\_%') AS invoices,
+		  (SELECT COUNT(DISTINCT "entityId") FROM "MonitorReview"
+		    WHERE status = 'PENDING' AND stage LIKE 'BOOKING\_%') AS bookings`)
+	return c, err
+}
+
 // Decide قرار المراقب — مرة وحدة بس.
 //
 // شرط status = 'PENDING' يمنع تغيير القرار بعد ما ينصدر: الموظف
