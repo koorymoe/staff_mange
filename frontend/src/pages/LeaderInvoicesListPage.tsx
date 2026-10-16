@@ -150,7 +150,7 @@ export default function LeaderInvoicesListPage({ embedded }: EmbeddedProps = {})
   const canApprove = canAuditFinance(employee?.role, permissions)
   /** ⚠️ المراقب يبتّ بطلب المحاسب — والمحاسب ما يبتّ بطلبه بنفسه،
    *  وإلا الإرسال للمراقب يصير شكلياً. (والخادم يمنعه فعلياً.) */
-  const isMonitor = employee?.role === 'ADMIN' || employee?.role === 'MONITOR'
+  const isMonitor = employee?.role === 'ADMIN' || (employee?.role === 'MONITOR' || permissions.includes('monitoring'))
   /**
    * monitorSeat: هل الي فاتح الشاشة يشتغل **بعين المراقب**؟
    *
@@ -159,7 +159,7 @@ export default function LeaderInvoicesListPage({ embedded }: EmbeddedProps = {})
    * (`embedded` ما يجي إلا من هناك). وعليها يتعيّن التبويب الافتراضي
    * ونصّ الإرشاد.
    */
-  const monitorSeat = !!embedded || employee?.role === 'MONITOR'
+  const monitorSeat = !!embedded || (employee?.role === 'MONITOR' || permissions.includes('monitoring'))
   // ⚠️ مطابق لحارس الخادم `requireServicePriceRead` حرفياً. و`role`
   // يتطبّع لـ'ADMIN' للمالك بالجلسة، فهذا يغطي الاثنين.
   const canSeePrices = ['ADMIN', 'OWNER', 'FINANCE', 'MONITOR'].includes(employee?.role ?? '')

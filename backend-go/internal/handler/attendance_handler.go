@@ -33,7 +33,7 @@ func (h *AttendanceHandler) canViewEmployee(r *http.Request, employeeID string) 
 	if requesterID == employeeID {
 		return true
 	}
-	role := middleware.RoleFromContext(r)
+	role := middleware.EffectiveRole(r)
 	if role == "ADMIN" || role == "MONITOR" || role == "OWNER" {
 		return true
 	}

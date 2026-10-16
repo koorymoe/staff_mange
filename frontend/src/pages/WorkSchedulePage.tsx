@@ -17,7 +17,7 @@ function ScheduleTab() {
   const { employee, permissions } = useSession()
   const role = employee?.role
   const isAdmin = role === 'ADMIN' || role === 'OWNER'
-  const canView = isAdmin || role === 'HR_COORDINATOR' || role === 'MONITOR'
+  const canView = isAdmin || role === 'HR_COORDINATOR' || role === 'MONITOR' || permissions.includes('monitoring')
     || permissions.includes('work_schedule_manage') || permissions.includes('staff_management')
   const canEdit = isAdmin || permissions.includes('work_schedule_manage')
   const [rows, setRows] = useState<WorkScheduleRow[]>([])

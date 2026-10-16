@@ -220,7 +220,8 @@ func RequireRole(employees *repository.EmployeeRepository, notifications *reposi
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			role, _ := r.Context().Value(ContextRole).(string)
 			// OWNER يتخطى أي قيد أدوار — حساب المالك الأساسي، أقوى من أي دور ثاني بما فيه ADMIN
-			if role != "OWNER" && !allowed[role] {
+			// (ع) 10-16: صاحب صلاحية monitoring يعدّي وين ما الدور «MONITOR» مسموح.
+			if role != "OWNER" && !(allowed[role] || (allowed["MONITOR"] && IsMonitor(r))) {
 				recordViolationAndBlock(w, r, employees, notifications, EmployeeIDFromContext(r))
 				return
 			}
@@ -443,7 +444,7 @@ func RequireRoleOrPermission(permissions *repository.PermissionRepository, emplo
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			role, _ := r.Context().Value(ContextRole).(string)
-			if role == "ADMIN" || role == "OWNER" || allowed[role] {
+			if role == "ADMIN" || role == "OWNER" || (allowed[role] || (allowed["MONITOR"] && IsMonitor(r))) {
 				next.ServeHTTP(w, r)
 				return
 			}
@@ -477,7 +478,7 @@ func RequireRoleOrAnyPermission(permissions *repository.PermissionRepository, em
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			role, _ := r.Context().Value(ContextRole).(string)
-			if role == "ADMIN" || role == "OWNER" || allowedRoles[role] {
+			if role == "ADMIN" || role == "OWNER" || (allowedRoles[role] || (allowedRoles["MONITOR"] && IsMonitor(r))) {
 				next.ServeHTTP(w, r)
 				return
 			}
@@ -576,7 +577,7 @@ func RequireLeaderOrRoleOrAnyPermission(permissions *repository.PermissionReposi
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			role, _ := r.Context().Value(ContextRole).(string)
-			if role == "ADMIN" || role == "OWNER" || allowedRoles[role] {
+			if role == "ADMIN" || role == "OWNER" || (allowedRoles[role] || (allowedRoles["MONITOR"] && IsMonitor(r))) {
 				next.ServeHTTP(w, r)
 				return
 			}
@@ -605,6 +606,32 @@ func EmployeeIDFromContext(r *http.Request) string {
 
 func RoleFromContext(r *http.Request) string {
 	role, _ := r.Context().Value(ContextRole).(string)
+	return role
+}
+
+// ═══ المراقب بالصلاحية — (ع) 10-16 ═══
+// «مراقب جديد بنفس الصلاحيات يشوف نفس الشي»: صاحب صلاحية monitoring
+// ينعامل مراقب بكل فحص كان مكتوب على اسم الدور.
+var monitorPermChecker func(employeeID string) bool
+
+// SetMonitorPermChecker يربط فحص صلاحية monitoring (يُنادى بالـmain).
+func SetMonitorPermChecker(f func(employeeID string) bool) { monitorPermChecker = f }
+
+// IsMonitor: دوره مراقب أو عنده صلاحية monitoring.
+func IsMonitor(r *http.Request) bool {
+	if RoleFromContext(r) == "MONITOR" {
+		return true
+	}
+	return monitorPermChecker != nil && monitorPermChecker(EmployeeIDFromContext(r))
+}
+
+// EffectiveRole مثل RoleFromContext، بس صاحب صلاحية monitoring (من غير
+// المدير/المالك) يرجع "MONITOR" — للفحوصات المبنية على اسم الدور.
+func EffectiveRole(r *http.Request) string {
+	role := RoleFromContext(r)
+	if role != "ADMIN" && role != "OWNER" && IsMonitor(r) {
+		return "MONITOR"
+	}
 	return role
 }
 

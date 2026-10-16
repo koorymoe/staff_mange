@@ -16,7 +16,7 @@ export default function MonitorDashboard() {
   const raw = params.get('board')
   const tab: Tab = raw === 'follow' || raw === 'actions' || raw === 'missions' ? raw : 'home'
   const gate = (perm: string) =>
-    permissions.includes(perm) || (perm === 'booking_delete_approve' && employee?.role === 'MONITOR')
+    permissions.includes(perm) || (perm === 'booking_delete_approve' && (employee?.role === 'MONITOR' || permissions.includes('monitoring')))
   const btn = (t: Tab, label: string) => (
     <button key={t} type="button" onClick={() => setParams(t === 'home' ? {} : { board: t })}
       className={`rounded-xl px-4 py-2 text-sm font-extrabold transition-colors ${tab === t ? 'bg-[#0f2040] text-white' : 'bg-white text-slate-600 ring-1 ring-slate-200 hover:bg-slate-50'}`}>

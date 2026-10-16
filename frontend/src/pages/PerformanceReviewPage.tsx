@@ -61,7 +61,7 @@ export default function PerformanceReviewPage({ embedded }: { embedded?: boolean
   const seesAll =
     employee?.role === 'ADMIN' ||
     employee?.actualRole === 'OWNER' ||
-    employee?.role === 'MONITOR' ||
+    (employee?.role === 'MONITOR' || permissions.includes('monitoring')) ||
     permissions.includes('performance_review')
 
   const load = useCallback(() => {

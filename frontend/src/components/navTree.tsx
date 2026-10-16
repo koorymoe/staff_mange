@@ -1010,7 +1010,7 @@ function structuralPermissions(item: NavItem): string[] {
  * شغله الاعتيادي — ولو كل الشروط صلاحيات زايدة، فهو ظاهر له بسببها بس.
  */
 export function isExtraForMonitor(item: NavItem, ctx: NavContext, unitGranted = false): boolean {
-  if (ctx.employee?.role !== 'MONITOR') return false
+  if (ctx.employee?.role !== 'MONITOR' && !(ctx.employee?.role !== 'ADMIN' && ctx.permissions.includes('monitoring'))) return false
   if (!isNavVisible(item, ctx, unitGranted)) return false
   const structural = structuralPermissions(item)
   if (structural.length === 0) return false
@@ -1024,7 +1024,7 @@ export function isExtraForMonitor(item: NavItem, ctx: NavContext, unitGranted = 
  * قائمة يدوية ثانية تفترق عن الأولى بأول تعديل.
  */
 export function collectMonitorExtraLinks(items: NavItem[], ctx: NavContext, unitGranted = false): NavItem[] {
-  if (ctx.employee?.role !== 'MONITOR') return []
+  if (ctx.employee?.role !== 'MONITOR' && !(ctx.employee?.role !== 'ADMIN' && ctx.permissions.includes('monitoring'))) return []
   const seen = new Set<string>()
   const out: NavItem[] = []
   const walk = (list: NavItem[], granted: boolean) => {
@@ -1079,13 +1079,16 @@ export function isPathAllowed(path: string, ctx: NavContext): boolean | null {
   // مهامه هو بس) وتنفتح من روابط داخلية حتى لو مو بقائمته.
   if (OPEN_PATHS.has(target)) return null
   const self = SELF_SCOPED[target]
-  if (self && (self.roles?.includes(role as EmployeeRole) || (self.leader && ctx.employee?.isLeader)
+  // (ع) 10-16: صاحب صلاحية monitoring = مراقب بكل قاعدة مكتوبة على الدور (نفس الخادم).
+  const asMon = role !== 'ADMIN' && ctx.permissions.includes('monitoring')
+  const roleOk = (rs?: EmployeeRole[]) => !!rs && (rs.includes(role as EmployeeRole) || (asMon && rs.includes('MONITOR')))
+  if (self && (roleOk(self.roles) || (self.leader && ctx.employee?.isLeader)
     || (self.anyPermission ?? []).some((p) => ctx.permissions.includes(p)))) return true
   if (found) return false
   // شاشات مو بالقائمة (تنفتح من روابط داخلية) — شرطها نفس حارس الخادم بالضبط.
   const rule = ROUTE_RULES[target]
   if (!rule) return null
-  if (role === 'ADMIN' || (rule.roles ?? []).includes(role as EmployeeRole)) return true
+  if (role === 'ADMIN' || roleOk(rule.roles)) return true
   if (rule.leader && ctx.employee?.isLeader) return true
   return (rule.anyPermission ?? []).some((p) => ctx.permissions.includes(p))
 }

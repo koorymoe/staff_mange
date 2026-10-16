@@ -151,7 +151,7 @@ export default function BookingsHub() {
 
   // نفس حارس البند القديم بالقائمة بالضبط — مو حارساً أوسع ولا أضيق.
   const canDecideDelete = employee?.role === 'ADMIN' || employee?.actualRole === 'OWNER'
-    || employee?.role === 'MONITOR' || permissions.includes('booking_delete_approve')
+    || (employee?.role === 'MONITOR' || permissions.includes('monitoring')) || permissions.includes('booking_delete_approve')
 
   // مفتاح العدّاد لكل محطة (الي ما إلها عدّاد ما تعرض رقم)
   const countKey: Partial<Record<TabKey, string>> = {
@@ -163,7 +163,7 @@ export default function BookingsHub() {
   // نفس حارس بنود القائمة القديمة بالضبط.
   const isAdminLike = employee?.role === 'ADMIN' || employee?.actualRole === 'OWNER'
   const canCustomers = isAdminLike || ['HR_COORDINATOR', 'MONITOR'].includes(employee?.role ?? '') || permissions.includes('manage_customers')
-  const canArchive = isAdminLike || employee?.role === 'MONITOR' || permissions.includes('bookings_archive')
+  const canArchive = isAdminLike || (employee?.role === 'MONITOR' || permissions.includes('monitoring')) || permissions.includes('bookings_archive')
   // قرار (ع) 10-07: فرص البيع ما تطلع للتقني ومسؤول الخدمة — حتى لو عندهم
   // صلاحية تسجيل الحجز (sales_booking)، شغلهم مو متابعة البيع.
   const canOpps = (isAdminLike || permissions.includes('sales_booking'))

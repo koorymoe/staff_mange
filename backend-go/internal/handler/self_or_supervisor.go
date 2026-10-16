@@ -19,7 +19,7 @@ func selfOrSupervisor(r *http.Request, targetEmployeeID string) bool {
 	if targetEmployeeID != "" && targetEmployeeID == middleware.EmployeeIDFromContext(r) {
 		return true
 	}
-	return canSeeOperational(middleware.RoleFromContext(r))
+	return canSeeOperational(middleware.EffectiveRole(r))
 }
 
 // requireSelfOrSupervisor يكتب 403 ويرجّع false إذا الطالب مو مخوّل.

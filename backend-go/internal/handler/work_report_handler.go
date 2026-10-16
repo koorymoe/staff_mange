@@ -32,7 +32,7 @@ func (h *WorkReportHandler) SetPermissions(p *repository.PermissionRepository) {
 // ضمن الأدوار الإشرافية بـ`canSeeOperational` — فالاعتماد عليها
 // يفرّغ شاشته وهو شغّال اليوم.
 func (h *WorkReportHandler) canReviewReports(r *http.Request) bool {
-	if canSeeOperational(middleware.RoleFromContext(r)) {
+	if canSeeOperational(middleware.EffectiveRole(r)) {
 		return true
 	}
 	if h.permissions == nil {

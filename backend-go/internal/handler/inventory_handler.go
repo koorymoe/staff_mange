@@ -28,8 +28,8 @@ func (h *InventoryHandler) SetPermissions(p *repository.PermissionRepository) { 
 // ضمن `canSeeOperational`، وهو صاحب شاشة الجرد الأصلية — فالاعتماد
 // على الدور بس يكسر شغله.
 func (h *InventoryHandler) canSeeOthersTools(r *http.Request) bool {
-	if canSeeOperational(middleware.RoleFromContext(r)) ||
-		middleware.RoleFromContext(r) == "PROCUREMENT_ADMIN" {
+	if canSeeOperational(middleware.EffectiveRole(r)) ||
+		middleware.EffectiveRole(r) == "PROCUREMENT_ADMIN" {
 		return true
 	}
 	if h.permissions == nil {

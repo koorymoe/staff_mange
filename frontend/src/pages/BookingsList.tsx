@@ -70,7 +70,7 @@ const techRoleLabels: Record<string, string> = {
 // focus: رابط «ودّيني» لحجز معيّن (معرّف أو كود) — يفتح عليه مباشرة، بلا فلتر تاريخ.
 export default function BookingsList({ bucket = 'all', focus }: { bucket?: BookingBucket; focus?: string } = {}) {
   const { employee, permissions } = useSession()
-  const canSeeStats = employee?.role === 'ADMIN' || employee?.role === 'MONITOR' || permissions.includes('monitoring')
+  const canSeeStats = employee?.role === 'ADMIN' || (employee?.role === 'MONITOR' || permissions.includes('monitoring'))
   const [bookings, setBookings] = useState<Booking[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -135,7 +135,7 @@ export default function BookingsList({ bucket = 'all', focus }: { bucket?: Booki
   }
   const canMarkWaiting = isAdmin || employee?.actualRole === 'OWNER' || permissions.includes('coordinator')
   const canRequestDelete = isAdmin || employee?.actualRole === 'OWNER' ||
-    employee?.role === 'HR_COORDINATOR' || employee?.role === 'MONITOR' ||
+    employee?.role === 'HR_COORDINATOR' || (employee?.role === 'MONITOR' || permissions.includes('monitoring')) ||
     permissions.includes('booking_delete_request')
 
   // الزبون ما رد: ينزاح الحجز لطابور «ما وصلت للتنفيذ» فوراً بلا

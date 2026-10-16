@@ -36,7 +36,7 @@ func NewExpenseHandler(s *service.ExpenseService, perms *repository.PermissionRe
 // (تدقيق الحسابات ومراجعة المصاريف)، حتى ما ينكسر ولا موظف: الي
 // چان يشوف يبقى يشوف، والي ما إله يشوف مصاريفه هو.
 func (h *ExpenseHandler) canSeeAll(r *http.Request) bool {
-	switch middleware.RoleFromContext(r) {
+	switch middleware.EffectiveRole(r) {
 	case "ADMIN", "OWNER", "FINANCE", "MONITOR":
 		return true
 	}

@@ -111,7 +111,7 @@ export default function MyRanking() {
   // «تقييم بين الإداريين» — منو يقارن أبو الكوادر والمراقبين ببعض،
   // مو أبو الكوادر نفسه. نفس حارس الخادم بالضبط
   // (`RequireRole("ADMIN","OWNER","MONITOR")`).
-  const canSeeEvaluators = employee?.role === 'ADMIN' || employee?.actualRole === 'OWNER' || employee?.role === 'MONITOR'
+  const canSeeEvaluators = employee?.role === 'ADMIN' || employee?.actualRole === 'OWNER' || (employee?.role === 'MONITOR' || permissions.includes('monitoring'))
   // ⚠️⚠️ الإداريون العليا (ADMIN/OWNER) ماعندهم تصنيف شخصي — «عندهم
   // كل الصلاحيات بحكم موقعهم، فيطلعون بكل تصنيف ويزاحمون الي يشتغل
   // الشغل فعلاً» (نفس مبدأ استثناء PermissionLeaderboard بالخادم).
@@ -119,7 +119,7 @@ export default function MyRanking() {
   // حسابات ADMIN ببعض بنقاط KPI/حجوزات — مقارنة بلا معنى لعمل إداري.
   const isTopAdmin = employee?.role === 'ADMIN' || employee?.actualRole === 'OWNER'
   // (ع) 10-13: «تقييم كي بي اي» تبويب هنا — مو شاشة لحالها
-  const canKpi = employee?.role === 'ADMIN' || employee?.role === 'MONITOR' || (permissions ?? []).includes('kpi_management')
+  const canKpi = employee?.role === 'ADMIN' || (employee?.role === 'MONITOR' || permissions.includes('monitoring')) || (permissions ?? []).includes('kpi_management')
   const [view, setView] = useState<'mine' | 'team' | 'evaluators' | 'kpi'>('mine')
   const [stats, setStats] = useState<Stats | null>(null)
   const [board, setBoard] = useState<RoleKpiLeaderboard | null>(null)

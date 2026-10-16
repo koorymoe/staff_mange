@@ -335,6 +335,8 @@ export default function Layout() {
   }
 
   const role = employee?.role
+  // صاحب صلاحية monitoring يشوف قائمة المراقب نفسها — (ع) 10-16
+  const isMonRole = role === 'MONITOR' || (role !== 'ADMIN' && employeePermissions.includes('monitoring'))
   const isVisible = (item: NavItem, unitGranted = false): boolean =>
     isNavVisible(item, { employee, permissions: employeePermissions, gpsServiceId }, unitGranted)
   // ⚠️ عزل شغل المراقب: عنصر ظاهر بصلاحية ممنوحة زيادة عن دوره، مو
@@ -368,7 +370,7 @@ export default function Layout() {
   const collectUnit = (items: NavItem[], granted: boolean, inUnit: boolean) => {
     for (const it of items) {
       if (!isVisible(it, granted)) continue
-      if (it.monitorMenuHide && role === 'MONITOR') continue
+      if (it.monitorMenuHide && isMonRole) continue
       const g = granted || (!!it.unitPermission && (role === 'ADMIN' || employeePermissions.includes(it.unitPermission)))
       if (it.children) collectUnit(it.children, g, inUnit || !!it.unitPermission)
       else if (inUnit && it.to) unitPaths.add(it.to)
@@ -381,7 +383,7 @@ export default function Layout() {
     for (const item of items) {
       if (!isVisible(item, unitGranted)) continue
       // ترتيب (ع) لقائمة المراقب: البند صار تبويباً بشاشة ثانية — ينشال من القائمة بس.
-      if (item.monitorMenuHide && role === 'MONITOR') continue
+      if (item.monitorMenuHide && isMonRole) continue
       const granted =
         unitGranted ||
         (!!item.unitPermission && (role === 'ADMIN' || employeePermissions.includes(item.unitPermission)))

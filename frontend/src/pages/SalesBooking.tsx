@@ -42,7 +42,7 @@ export default function SalesBooking() {
   const { employee, permissions } = useSession()
   // حجز داخل الشركة للإداري فما فوق — نفس قيد السيرفر بالضبط
   const canInternal = employee?.role === 'ADMIN' || employee?.actualRole === 'OWNER' ||
-    employee?.role === 'HR_COORDINATOR' || employee?.role === 'MONITOR' ||
+    employee?.role === 'HR_COORDINATOR' || (employee?.role === 'MONITOR' || permissions.includes('monitoring')) ||
     permissions.includes('booking_internal')
   const [services, setServices] = useState<Service[]>([])
 

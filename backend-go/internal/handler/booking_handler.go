@@ -77,7 +77,7 @@ func (h *BookingHandler) requireAllBookings(w http.ResponseWriter, r *http.Reque
 func (h *BookingHandler) CanSeeAllBookings(r *http.Request) bool { return h.canSeeAllBookings(r) }
 
 func (h *BookingHandler) canSeeAllBookings(r *http.Request) bool {
-	switch middleware.RoleFromContext(r) {
+	switch middleware.EffectiveRole(r) {
 	case "ADMIN", "OWNER", "HR_COORDINATOR", "MONITOR", "FINANCE",
 		"PROJECT_MANAGER", "PROCUREMENT_ADMIN":
 		return true
@@ -134,7 +134,7 @@ func (h *BookingHandler) ListInternal(w http.ResponseWriter, r *http.Request) {
 	// ⚠️ والموظف ينجي من **التوكن** مو من الرابط: بلاها يبدّل الرقم
 	// ويشوف حجوزات غيره (نفس سبب `ManagerPaperwork`).
 	party := middleware.EmployeeIDFromContext(r)
-	switch middleware.RoleFromContext(r) {
+	switch middleware.EffectiveRole(r) {
 	case "ADMIN", "OWNER", "FINANCE", "MONITOR", "HR_COORDINATOR":
 		party = ""
 	}
@@ -281,7 +281,7 @@ func (h *BookingHandler) Create(w http.ResponseWriter, r *http.Request) {
 	// حجز داخل الشركة للإداري فما فوق حصراً — موظف المبيعات ما يقدر
 	// يسجّل شغل داخلي، لأنه شغل شركة مو بيع لزبون.
 	if req.BookingType != nil && *req.BookingType == "INTERNAL" {
-		role := middleware.RoleFromContext(r)
+		role := middleware.EffectiveRole(r)
 		allowed := role == "ADMIN" || role == "OWNER" || role == "HR_COORDINATOR" || role == "MONITOR"
 		if !allowed && h.permissions != nil {
 			if ok, err := h.permissions.HasPermission(middleware.EmployeeIDFromContext(r), "booking_internal"); err == nil && ok {

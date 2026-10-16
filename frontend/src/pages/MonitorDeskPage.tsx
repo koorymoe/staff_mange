@@ -115,7 +115,7 @@ export default function MonitorDeskPage() {
   // والمراقب الي دوره MONITOR يوصل الشاشة أصلاً بدونها. (وهذا الي طلع
   // بالفحص: التبويبان انخفوا عن حساب مراقب سليم.)
   const role = employee?.actualRole ?? employee?.role
-  const isMon = role === 'MONITOR' || role === 'ADMIN' || role === 'OWNER'
+  const isMon = role === 'MONITOR' || permissions.includes('monitoring') || role === 'ADMIN' || role === 'OWNER'
   const canQuality = isMon || role === 'QUALITY_ENGINEER' || permissions.includes('quality_control')
   // ⚠️⚠️ **المكتب ما يصير يفوّت حارساً.** شاشة «تنسيق الحجوزات»
   // المستقلة محروسة بـ`RequirePermission("crew_management")`، فلو

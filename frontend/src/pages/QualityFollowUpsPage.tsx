@@ -51,7 +51,7 @@ export default function QualityFollowUpsPage({ embedded }: EmbeddedProps = {}) {
   // مو حماية.
   const canContact = employee?.role === 'QUALITY_ENGINEER' || employee?.role === 'ADMIN'
   const canSeeDetail = canContact
-    || employee?.role === 'MONITOR'
+    || (employee?.role === 'MONITOR' || permissions.includes('monitoring'))
     || employee?.actualRole === 'OWNER' 
 
   const [items, setItems] = useState<QualityFollowUp[]>([])

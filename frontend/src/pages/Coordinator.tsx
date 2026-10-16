@@ -66,7 +66,7 @@ export default function Coordinator() {
   // منو يكدر يطلب حذف حجز — نفس قائمة شاشة الحجوزات بالضبط، حتى ما
   // يصير الزر يطلع بشاشة ويختفي بالثانية لنفس الموظف.
   const canRequestDelete = currentUser?.role === 'ADMIN' || currentUser?.actualRole === 'OWNER'
-    || currentUser?.role === 'HR_COORDINATOR' || currentUser?.role === 'MONITOR'
+    || currentUser?.role === 'HR_COORDINATOR' || (currentUser?.role === 'MONITOR' || permissions.includes('monitoring'))
     || (permissions ?? []).includes('booking_delete_request')
   // «الزبون ما رد» و«يرجع خبر» = PUT /bookings/{id}/waiting — حارسه صلاحية
   // «coordinator» بس (مو طلب الحذف)، فالزر يطلع بنفس الشرط حتى ما ينحسب مخالفة.

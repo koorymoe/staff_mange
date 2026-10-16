@@ -40,7 +40,7 @@ func (h *EmployeeHandler) List(w http.ResponseWriter, r *http.Request) {
 	}
 	// نبني نسخة مقيّدة حسب دور الطالب — الحقول الي ما تخصه تنشال من الـJSON
 	// بالكامل، مو تنرجع null (شوف employee_view.go)
-	WriteJSON(w, http.StatusOK, ViewEmployees(employees, middleware.RoleFromContext(r), middleware.EmployeeIDFromContext(r)))
+	WriteJSON(w, http.StatusOK, ViewEmployees(employees, middleware.EffectiveRole(r), middleware.EmployeeIDFromContext(r)))
 }
 
 // GET /api/v1/employees/archived — الأدمن/المالك فقط، يشوفون الموظفين المؤرشفين والمحذوفين
@@ -65,7 +65,7 @@ func (h *EmployeeHandler) Get(w http.ResponseWriter, r *http.Request) {
 		WriteError(w, http.StatusInternalServerError, "تعذر جلب بيانات الموظف")
 		return
 	}
-	WriteJSON(w, http.StatusOK, ViewEmployee(employee, middleware.RoleFromContext(r), middleware.EmployeeIDFromContext(r)))
+	WriteJSON(w, http.StatusOK, ViewEmployee(employee, middleware.EffectiveRole(r), middleware.EmployeeIDFromContext(r)))
 }
 
 // (إنشاء الموظف انتقل لـEmployeeAdminHandler.Create — المالك أو صلاحية employee_create.)

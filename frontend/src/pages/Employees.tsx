@@ -193,7 +193,7 @@ export default function Employees({ embedded }: { embedded?: boolean } = {}) {
   }
   const compareEmployee = employees.find((emp) => emp.id === compareId) || null
 
-  const canGenerateAiReport = isAdmin || currentUser?.role === 'MONITOR'
+  const canGenerateAiReport = isAdmin || (currentUser?.role === 'MONITOR' || userPermissions.includes('monitoring'))
 
   const handleGenerateAiReport = async () => {
     if (!selectedEmployee) return

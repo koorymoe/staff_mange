@@ -84,7 +84,7 @@ export default function InventoryPage() {
     isAdmin ||
     permissions.includes('tool_requests_approve') ||
     currentUser?.role === 'HR_COORDINATOR' ||
-    currentUser?.role === 'MONITOR'
+    (currentUser?.role === 'MONITOR' || permissions.includes('monitoring'))
   // حذف الطلب يمحي أثره نهائياً — لمدير النظام والمالك فقط، مطابق للباك إند.
   const canDeleteRequests = isAdmin
   // الموظف المفتوحة عدته بتبويب "أدوات خاصة" (null = عرض كل الموظفين)

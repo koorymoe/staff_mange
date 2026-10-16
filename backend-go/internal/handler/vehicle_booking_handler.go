@@ -48,7 +48,7 @@ func (h *VehicleBookingHandler) Decide(w http.ResponseWriter, r *http.Request) {
 
 func (h *VehicleBookingHandler) Cancel(w http.ResponseWriter, r *http.Request) {
 	actorID := middleware.EmployeeIDFromContext(r)
-	isAdmin := isAdminOrMonitor(middleware.RoleFromContext(r))
+	isAdmin := isAdminOrMonitor(middleware.EffectiveRole(r))
 	booking, err := h.service.CancelBooking(r.PathValue("id"), actorID, isAdmin)
 	if err != nil {
 		WriteError(w, http.StatusBadRequest, err.Error())

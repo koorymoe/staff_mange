@@ -70,7 +70,7 @@ func (h *LeaderInvoiceHandler) Get(w http.ResponseWriter, r *http.Request) {
 // ومدير النظام والمالك. الليدر نفسه يشوف مالته بس، وباقي الموظفين
 // (مصمم، مبيعات...) ما إلهم شغل بهذي الشاشة أصلاً.
 func canReviewInvoices(r *http.Request) bool {
-	switch middleware.RoleFromContext(r) {
+	switch middleware.EffectiveRole(r) {
 	case "ADMIN", "OWNER", "FINANCE", "MONITOR":
 		return true
 	}
