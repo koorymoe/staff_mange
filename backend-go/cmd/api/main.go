@@ -2322,6 +2322,8 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	mux.Handle("GET /api/team-inventory/tools", middleware.Chain(http.HandlerFunc(teamInventoryCheckHandler.ListTools), requireAuth, requireInventoryFollow))
 	mux.Handle("POST /api/team-inventory/tools", middleware.Chain(http.HandlerFunc(teamInventoryCheckHandler.CreateTool), requireAuth, requireLeader))
 	mux.Handle("GET /api/team-inventory/checks", middleware.Chain(http.HandlerFunc(teamInventoryCheckHandler.List), requireAuth, requireInventoryFollow))
+	// (ع) 10-16: الجرد الحقيقي (InventoryCheck من «جردي»/«مهامي») — نفس حارس تبويب المراقب
+	mux.Handle("GET /api/inventory/checks/follow", middleware.Chain(http.HandlerFunc(handler.NewInventoryFollowHandler(db).List), requireAuth, requireInventoryFollow))
 	mux.Handle("POST /api/team-inventory/checks", middleware.Chain(http.HandlerFunc(teamInventoryCheckHandler.Create), requireAuth, requireLeader))
 
 	// فوترة الليدر (تحل محل شيت جوجل) — القراءة (الكتالوج/المواد/عرض الفواتير)

@@ -6,6 +6,7 @@ import EmptyState from '../components/EmptyState'
 import SearchBar from '../components/SearchBar'
 import Pager from '../components/Pager'
 import { matches } from '../utils/search'
+import InventoryFollowPanel from '../components/InventoryFollowPanel'
 
 /**
  * ═══ متابعة الجرد — للمراقب ═══
@@ -35,7 +36,6 @@ const fmt = (v: string) => new Date(v).toLocaleString('en-CA', { hour12: false }
 export default function MonitorInventoryPage({ embedded }: { embedded?: boolean } = {}) {
   // null = لسه ما انجاب · [] = انجاب وماكو نتيجة. التفريق مقصود.
   const [checks, setChecks] = useState<TeamInventoryCheck[] | null>(null)
-  const [failed, setFailed] = useState(false)
   const [search, setSearch] = useState('')
   const [page, setPage] = useState(1)
   const [openId, setOpenId] = useState<string | null>(null)
@@ -44,7 +44,7 @@ export default function MonitorInventoryPage({ embedded }: { embedded?: boolean 
     let alive = true
     api.getTeamInventoryChecks()
       .then((rows) => { if (alive) setChecks(rows) })
-      .catch(() => { if (alive) setFailed(true) })
+      .catch(() => { if (alive) setChecks([]) }) // (10-16) فشل جرد الفريق ما يخفي الجرد الحقيقي
     return () => { alive = false }
   }, [])
 
@@ -72,7 +72,6 @@ export default function MonitorInventoryPage({ embedded }: { embedded?: boolean 
     return { total: rows.length, missing, damaged }
   }, [checks])
 
-  if (failed) return <EmptyState icon="📦" title="تعذر جلب الجرود" reason="جرّب تحدّث الصفحة" />
   if (!checks) return <div className="rounded-2xl bg-white p-8 text-center text-slate-400">جاري الجلب...</div>
 
   const shown = filtered.slice((page - 1) * PAGE, page * PAGE)
@@ -83,6 +82,12 @@ export default function MonitorInventoryPage({ embedded }: { embedded?: boolean 
         <PageHeader title="📦 متابعة الجرد" subtitle="منو جرد ومنو ما جرد، وشنو ناقص وليش — متابعة بلا تنفيذ" />
       )}
 
+      {/* (ع 10-16) الجرد الحقيقي — من «جردي» و«مهامي» */}
+      <InventoryFollowPanel />
+
+      {/* جرد الفريق من شاشة الليدر — يطلع بس إذا بيه بيانات */}
+      {checks.length > 0 && (<>
+      <h3 className="pt-2 text-sm font-extrabold text-[#0f2040]">👥 جرد الفريق (من شاشة الليدر)</h3>
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         <StatTile label="جرود مسجّلة" icon="📋" tone="info" value={stats.total} />
         {/* ⚠️ «—» لا «٠» لمن ماكو ولا جرد أصلاً: صفر معناه «جردوا وماكو نقص»،
@@ -162,6 +167,7 @@ export default function MonitorInventoryPage({ embedded }: { embedded?: boolean 
           </div>
         )}
       </div>
+      </>)}
     </div>
   )
 }
