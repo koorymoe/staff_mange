@@ -306,6 +306,11 @@ export default function LeaderInvoicesListPage({ embedded }: EmbeddedProps = {})
   /** فاتورة شغل داخل الشركة — نقراها من **نوع الحجز نفسه**، مو من
    *  علم مكرَّر بالفاتورة ينحرف عن الحجز بأول تعديل. */
   const isInternal = (inv: LeaderInvoice) => inv.booking?.bookingType === 'INTERNAL'
+  // 🔴 (ع 10-16) «مسجّل عليها مجانية، ليش يطلب رقم فاتورة محاسبية؟» — نفس شرط
+  // الخادم حرفياً (ListApprovedWithoutNumber + قيد 0345): المجانية والداخلي مستثنين.
+  const needsAccountingNumber = (inv: LeaderInvoice) =>
+    inv.status === 'APPROVED' && !inv.externalInvoiceNumber?.trim()
+    && !inv.isFree && inv.auditVerdict !== 'FREE' && !isInternal(inv) && !isInternalInv(inv)
   const inTab = (inv: LeaderInvoice) => {
     if (tab === 'INTERNAL') return isInternal(inv)
     // 🔴 العزل: الداخلي ما يطلع بأي تبويب ثانٍ — ولا بـ«الكل».
@@ -316,7 +321,7 @@ export default function LeaderInvoicesListPage({ embedded }: EmbeddedProps = {})
     if (tab === 'REVIEWED') return monitorReviewed(inv)
     if (tab === 'PENDING') return inv.status !== 'APPROVED' && audited(inv) && !atMonitor(inv)
     if (tab === 'APPROVED') return inv.status === 'APPROVED'
-    return inv.status === 'APPROVED' && !inv.externalInvoiceNumber
+    return needsAccountingNumber(inv)
   }
   // ⚠️ المرشّحات تتراكم مع البحث مو تستبدله.
   const matchesFilters = (i: LeaderInvoice) =>
@@ -341,7 +346,7 @@ export default function LeaderInvoicesListPage({ embedded }: EmbeddedProps = {})
     MONITOR: external.filter((i) => i.status !== 'APPROVED' && atMonitor(i)).length,
     REVIEWED: external.filter(monitorReviewed).length,
     PENDING: external.filter((i) => i.status !== 'APPROVED' && audited(i) && !atMonitor(i)).length,
-    NO_NUMBER: external.filter((i) => i.status === 'APPROVED' && !i.externalInvoiceNumber).length,
+    NO_NUMBER: external.filter(needsAccountingNumber).length,
     APPROVED: external.filter((i) => i.status === 'APPROVED').length,
     ALL: external.length,
   }
@@ -554,7 +559,7 @@ export default function LeaderInvoicesListPage({ embedded }: EmbeddedProps = {})
           ? 'ⓘ هاي الي دقّقتها إنت — للاطلاع والرجعة، وحكمك وملاحظتك مكتوبين بكل صف.'
           : 'ⓘ هاي بتّ بيها المراقب فعلاً — حكمه وملاحظته ظاهرين بالصف.')}
         {tab === 'APPROVED' && 'ⓘ هاي خلصت: انعتمدت وطلع إلها رقم محاسبي. للاطلاع بس — ولو انعتمدت بالغلط، سحب الاعتماد يرجّعها للطابور.'}
-        {tab === 'NO_NUMBER' && 'ⓘ معتمدة بس ماكو إلها رقم فاتورة محاسبية — اربط الرقم حتى تخلص ورقتها.'}
+        {tab === 'NO_NUMBER' && 'ⓘ معتمدة بس ماكو إلها رقم فاتورة محاسبية — اربط الرقم حتى تخلص ورقتها. (المجانية والشغل داخل الشركة ما تحتاج رقم.)'}
         {tab === 'ALL' && 'ⓘ كل الفواتير بكل مراحلها (ما عدا الشغل داخل الشركة — إله تبويبه).'}
         {tab === 'INTERNAL' && 'ⓘ الشغل داخل الشركة معزول هنا: ماكو زبون، والمبلغ تقدير. ومنه تنزّل إكسل الشهر.'}
         {tab === 'PRICES' && 'ⓘ هاي مو فواتير: أسعار يقترحها النظام من معدّل الفواتير اليدوية. راجعها إذا إنت المحاسب، وبعدها المالك يعتمدها.'}
@@ -883,7 +888,7 @@ export default function LeaderInvoicesListPage({ embedded }: EmbeddedProps = {})
                       )}
                       {/* الفواتير الي انعتمدت قبل ما يصير الرقم إجبارياً —
                           المحاسب يربطها بأرقامها بأثر رجعي */}
-                      {canApprove && inv.status === 'APPROVED' && !inv.externalInvoiceNumber && (
+                      {canApprove && needsAccountingNumber(inv) && (
                         <button
                           onClick={() => { setLinkFor(inv); setLinkNo(''); setLinkErr(null) }}
                           disabled={busyId === inv.id}
