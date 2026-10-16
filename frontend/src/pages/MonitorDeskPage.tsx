@@ -25,7 +25,6 @@ import { api, type MonitorDeskCounts } from '../api'
 import { useSession } from '../session'
 
 const MonitorInboxPage = lazy(() => import('./MonitorInboxPage'))
-const AuditIssuesPage = lazy(() => import('./AuditIssuesPage'))
 const MonitorCrewBookingsPage = lazy(() => import('./MonitorCrewBookingsPage'))
 const QualityAuditView = lazy(() => import('../components/QualityAuditView'))
 const LeaderInvoicesListPage = lazy(() => import('./LeaderInvoicesListPage'))
@@ -47,7 +46,7 @@ const FieldMapPage = lazy(() => import('./FieldMapPage'))
 const ProjectQuoteWatchPanel = lazy(() => import('../components/ProjectQuoteWatchPanel'))
 const ProcurementWatchPanel = lazy(() => import('../components/ProcurementWatchPanel'))
 
-type SectionId = 'eyes' | 'ratings' | 'scores' | 'peer' | 'inbox' | 'issues' | 'crew' | 'quality' | 'invoices' | 'gps' | 'inventory' | 'missions' | 'board' | 'projects' | 'delays' | 'stores' | 'late' | 'fieldmap' | 'quotes'
+type SectionId = 'eyes' | 'ratings' | 'scores' | 'peer' | 'inbox' | 'crew' | 'quality' | 'invoices' | 'gps' | 'inventory' | 'missions' | 'board' | 'projects' | 'delays' | 'stores' | 'late' | 'fieldmap' | 'quotes'
 
 interface Section {
   id: SectionId
@@ -65,7 +64,7 @@ const SECTIONS: Section[] = [
   // قرار (ع) 10-16: «صوت الموظفين» و«المشاكل الوظيفية» نفس الشي — تبويب واحد
   { id: 'peer', label: 'صوت الموظفين', icon: '🗣️', todo: 'تقارير ماتركس عن مشاكل الموظفين، وسجل المشاكل وإجراءاتها' },
   { id: 'inbox', label: 'صندوق المراقب', icon: '👁️', todo: 'كل صف: سليم أو عندي ملاحظة' },
-  { id: 'issues', label: 'بلاغات التدقيق', icon: '💸', todo: 'دقّق البلاغ على الليدر وسكّره' },
+  // قرار (ع) 10-16: «بلاغات التدقيق» انشالت — الفاتورة تجي بالصندوق والمراقب يسجّل بيها خطأ لو لا
   { id: 'invoices', label: 'الفواتير', icon: '🧾', todo: 'الفواتير الي أرسلها المحاسب لمراجعتك' },
   // ⚠️ الجودة والشكاوى **شاشة وحدة** للمراقب — «ماريد خيارين بلقائمة
   // الجانبية». الاثنان شغل جودة واحد: الشكوى تجي، والمتابعة تحسمها.
@@ -103,7 +102,7 @@ const SECTIONS: Section[] = [
 // وشارة رقمية عليه توحي إن اكو شي ينتظر ضغطة وماكو. وحطّه على
 // `inbox` چان يعرض عدّاد الصندوق على تبويب الجي بي اس — رقم كاذب.
 const COUNT_KEY: Partial<Record<SectionId, keyof MonitorDeskCounts>> = {
-  inbox: 'inbox', issues: 'issues', invoices: 'invoices', quality: 'quality', crew: 'crew',
+  inbox: 'inbox', invoices: 'invoices', quality: 'quality', crew: 'crew',
 }
 
 export default function MonitorDeskPage() {
@@ -228,7 +227,6 @@ export default function MonitorDeskPage() {
           </div>
         )}
         {active === 'inbox' && <MonitorInboxPage embedded />}
-        {active === 'issues' && <AuditIssuesPage embedded />}
         {active === 'invoices' && <LeaderInvoicesListPage embedded />}
         {active === 'quality' && canQuality && (
           <div className="space-y-4">

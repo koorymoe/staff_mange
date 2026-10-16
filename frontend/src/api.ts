@@ -2230,6 +2230,20 @@ export interface MonitorReview {
     /** رقم الفاتورة المحاسبية — لصفوف الفواتير وتعديلاتها بس */
     externalInvoiceNumber?: string
   }
+  /** (ع 10-16) الفاتورة والحجز بكل تفاصيلهم — يتعبّى بالخادم */
+  details?: {
+    invoice?: {
+      invoiceId: string; leaderName: string | null; executionCost: number; materialsTotal: number; discountValue: number
+      netTotal: number; isFree: boolean; status: string; collected: number | null; externalNo: string | null; createdAt: string
+      adjustments: { oldNetTotal: number; newNetTotal: number; oldExecutionCost: number; newExecutionCost: number; oldMaterialsTotal: number; newMaterialsTotal: number; reason: string; byName: string | null; createdAt: string }[]
+    }
+    booking?: {
+      status: string; station: string; service: string | null; createdByName: string | null; createdAt: string
+      contactedAt: string | null; confirmedAt: string | null; confirmedByName: string | null; scheduledAt: string | null
+      shift: string | null; arrivedAt: string | null; startedAt: string | null; completedAt: string | null
+      leaderName: string | null; crew: string | null; collected: number | null; quality: string | null
+    }
+  }
   // تفاصيل «تأخر بالخروج للزبون» (أحكام ماتركس)
   late?: { employeeId: string | null; employeeName: string | null; bookingId: string | null; bookingCode: string | null; scheduledAt: string | null; departedAt: string | null; minutesLate: number | null; threshold: number | null; count30d: number | null; reason: string | null
     /** «صارت قبل؟» — مرات تأخر نفس الموظف السابقة (٩٠ يوم، الأحدث أول). */

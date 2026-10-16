@@ -94,6 +94,7 @@ func (r *MonitorReviewRepository) List(stage, status, ownerRole string, limit in
 	r.hydrate(rows)
 	r.hydrateIdentity(rows)
 	r.hydrateLate(rows)
+	r.hydrateDetails(rows)
 	return rows, nil
 }
 
@@ -131,6 +132,7 @@ func (r *MonitorReviewRepository) Decide(id, monitorID string, req model.DecideM
 	r.hydrate(rows)
 	r.hydrateIdentity(rows)
 	r.hydrateLate(rows)
+	r.hydrateDetails(rows)
 	return &rows[0], nil
 }
 
@@ -390,6 +392,7 @@ func (r *MonitorReviewRepository) Get(id string) (*model.MonitorReview, error) {
 	r.hydrate(rows)
 	r.hydrateIdentity(rows)
 	r.hydrateLate(rows)
+	r.hydrateDetails(rows)
 	return &rows[0], nil
 }
 

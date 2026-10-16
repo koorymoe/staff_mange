@@ -31,6 +31,8 @@ type MonitorReview struct {
 	Urgent bool `db:"urgent" json:"urgent"`
 	// Late تفاصيل «تأخر بالخروج للزبون» — منو، والموعد، ووكت الطلعة، وشكد، وليش.
 	Late *LateDetail `db:"-" json:"late,omitempty"`
+	// (ع 10-16) «تجيني الفاتورة بكل تفاصيلها… الحجز وتفاصيله» — يتعبّى بالخادم
+	Details *MonitorDetails `db:"-" json:"details,omitempty"`
 }
 
 // LateDetail لأحكام ماتركس عن التأخر بالخروج — (ع): «أريد يظهر الحجز واسم
@@ -178,4 +180,57 @@ type DecideMonitorReviewRequest struct {
 type MonitorInboxCount struct {
 	Stage string `db:"stage" json:"stage"`
 	Count int    `db:"count" json:"count"`
+}
+
+// MonitorDetails تفاصيل الصف الكاملة بجهة وحدة — قرار (ع) 10-16.
+type MonitorDetails struct {
+	Invoice *MonitorInvoiceDetail `json:"invoice,omitempty"`
+	Booking *MonitorBookingDetail `json:"booking,omitempty"`
+}
+
+type MonitorInvoiceDetail struct {
+	InvoiceID      string                   `db:"id" json:"invoiceId"`
+	LeaderName     *string                  `db:"leaderName" json:"leaderName"`
+	ExecutionCost  float64                  `db:"executionCost" json:"executionCost"`
+	MaterialsTotal float64                  `db:"materialsTotal" json:"materialsTotal"`
+	DiscountValue  float64                  `db:"discountValue" json:"discountValue"`
+	NetTotal       float64                  `db:"netTotal" json:"netTotal"`
+	IsFree         bool                     `db:"isFree" json:"isFree"`
+	Status         string                   `db:"status" json:"status"`
+	Collected      *float64                 `db:"collected" json:"collected"`
+	ExternalNo     *string                  `db:"externalNo" json:"externalNo"`
+	CreatedAt      time.Time                `db:"createdAt" json:"createdAt"`
+	Adjustments    []MonitorInvoiceAdjustment `db:"-" json:"adjustments"`
+}
+
+type MonitorInvoiceAdjustment struct {
+	OldNetTotal       float64   `db:"oldNetTotal" json:"oldNetTotal"`
+	NewNetTotal       float64   `db:"newNetTotal" json:"newNetTotal"`
+	OldExecutionCost  float64   `db:"oldExecutionCost" json:"oldExecutionCost"`
+	NewExecutionCost  float64   `db:"newExecutionCost" json:"newExecutionCost"`
+	OldMaterialsTotal float64   `db:"oldMaterialsTotal" json:"oldMaterialsTotal"`
+	NewMaterialsTotal float64   `db:"newMaterialsTotal" json:"newMaterialsTotal"`
+	Reason            string    `db:"reason" json:"reason"`
+	ByName            *string   `db:"byName" json:"byName"`
+	CreatedAt         time.Time `db:"createdAt" json:"createdAt"`
+}
+
+type MonitorBookingDetail struct {
+	Status          string     `db:"status" json:"status"`
+	Station         string     `db:"station" json:"station"`
+	Service         *string    `db:"service" json:"service"`
+	CreatedByName   *string    `db:"createdByName" json:"createdByName"`
+	CreatedAt       time.Time  `db:"createdAt" json:"createdAt"`
+	ContactedAt     *time.Time `db:"contactedAt" json:"contactedAt"`
+	ConfirmedAt     *time.Time `db:"confirmedAt" json:"confirmedAt"`
+	ConfirmedByName *string    `db:"confirmedByName" json:"confirmedByName"`
+	ScheduledAt     *time.Time `db:"scheduledAt" json:"scheduledAt"`
+	Shift           *string    `db:"shift" json:"shift"`
+	ArrivedAt       *time.Time `db:"arrivedAt" json:"arrivedAt"`
+	StartedAt       *time.Time `db:"startedAt" json:"startedAt"`
+	CompletedAt     *time.Time `db:"completedAt" json:"completedAt"`
+	LeaderName      *string    `db:"leaderName" json:"leaderName"`
+	Crew            *string    `db:"crew" json:"crew"`
+	Collected       *float64   `db:"collected" json:"collected"`
+	Quality         *string    `db:"quality" json:"quality"`
 }
