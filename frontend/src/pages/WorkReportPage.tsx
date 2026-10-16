@@ -6,32 +6,6 @@ import EntityIdentity from '../components/EntityIdentity'
 import BookingCodeChip from '../components/BookingCodeChip'
 import { ExecutionSheetForm, emptySheet, sheetMissing, PROJECT_STATUS, type ExecutionSheetData } from '../components/ExecutionSheet'
 
-type WorkStatus = 'COMPLETED' | 'STOPPED' | null
-
-interface ReportForm {
-  workStatus: WorkStatus
-  events: string
-  customerRequests: string
-  cleanedPlace: boolean
-  gaveInfo: boolean
-  tookPhotos: boolean
-  additionalNotes: string
-  stopReason: string
-  stopNotes: string
-}
-
-const emptyForm: ReportForm = {
-  workStatus: null,
-  events: '',
-  customerRequests: '',
-  cleanedPlace: false,
-  gaveInfo: false,
-  tookPhotos: false,
-  additionalNotes: '',
-  stopReason: '',
-  stopNotes: '',
-}
-
 export default function WorkReportPage() {
   const { employee: currentUser, permissions } = useSession()
   // «فواتير وتقارير الجي بي اس/الداش كام»: صاحب الصلاحية يسوي تقرير
@@ -60,7 +34,6 @@ export default function WorkReportPage() {
   const [focusParams] = useSearchParams()
   const focusId = focusParams.get('bookingId') || ''
   const [expandedId, setExpandedId] = useState<string | null>(focusId || null)
-  const [forms, setForms] = useState<Record<string, ReportForm>>({})
   const [submitting, setSubmitting] = useState(false)
 
   const load = () => {
@@ -92,9 +65,6 @@ export default function WorkReportPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(load, [currentUser, serviceKindsKey])
 
-  const getForm = (id: string) => forms[id] || emptyForm
-  const updateForm = (id: string, patch: Partial<ReportForm>) =>
-    setForms((prev) => ({ ...prev, [id]: { ...getForm(id), ...patch } }))
 
   // (ع 10-16) التقرير بنموذج المشرف الأصلي — والأعمدة القديمة تتعبّى منه
   const [sheets, setSheets] = useState<Record<string, ExecutionSheetData>>({})
@@ -135,44 +105,6 @@ export default function WorkReportPage() {
     setExpandedId(expandedId === id ? null : id)
   }
 
-  const handleSubmit = async (bookingId: string) => {
-    const form = getForm(bookingId)
-    if (form.workStatus === 'COMPLETED' && !form.events.trim()) {
-      alert('يرجى كتابة تقرير الأحداث والمشاكل')
-      return
-    }
-    if (form.workStatus === 'STOPPED' && !form.stopReason.trim()) {
-      alert('يرجى كتابة سبب التوقف')
-      return
-    }
-    setSubmitting(true)
-    try {
-      await api.createWorkReport({
-        bookingId,
-        workStatus: form.workStatus!,
-        events: form.events || undefined,
-        extraRequests: form.customerRequests || undefined,
-        cleanedSite: form.cleanedPlace,
-        gaveInfo: form.gaveInfo,
-        tookPhotos: form.tookPhotos,
-        stopReason: form.stopReason || undefined,
-        notes: form.additionalNotes || form.stopNotes || undefined,
-      })
-      setExpandedId(null)
-      setForms((prev) => {
-        const next = { ...prev }
-        delete next[bookingId]
-        return next
-      })
-      setReportedBookingIds((prev) => new Set(prev).add(bookingId))
-      load() // نعيد الجلب حتى تنضبط أرقام اليوم والأسبوع
-      alert('تم إرسال التقرير بنجاح ✓')
-    } catch (e) {
-      alert(e instanceof Error ? e.message : 'تعذر إرسال التقرير')
-    } finally {
-      setSubmitting(false)
-    }
-  }
 
   if (loading) return <p className="mt-6 text-slate-400">جاري التحميل...</p>
   if (error)
@@ -187,7 +119,6 @@ export default function WorkReportPage() {
 
   const renderCard = (booking: Booking) => {
     const expanded = expandedId === booking.id
-    const form = getForm(booking.id)
 
     return (
       <div
