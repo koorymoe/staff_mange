@@ -149,6 +149,22 @@ func (h *RevolvingFundHandler) SubmitSettlement(w http.ResponseWriter, r *http.R
 	WriteJSON(w, http.StatusOK, t)
 }
 
+// POST /api/funds/settlements/for/{employeeId} — (ع) 10-16: صاحب صلاحية
+// الدوار يسوّي بدل موظف نسى. نفس الفحوص، وتروح للتدقيق.
+func (h *RevolvingFundHandler) SubmitSettlementFor(w http.ResponseWriter, r *http.Request) {
+	var req model.SettlementRequest
+	if err := DecodeJSON(r, &req); err != nil {
+		WriteError(w, http.StatusBadRequest, "بيانات الطلب غير صحيحة")
+		return
+	}
+	t, err := h.repo.SubmitSettlementFor(r.PathValue("employeeId"), middleware.EmployeeIDFromContext(r), req)
+	if err != nil {
+		WriteError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	WriteJSON(w, http.StatusOK, t)
+}
+
 // PUT /api/funds/settlements/{id}/review — المحاسب يدقّق ويوافق أو يرفض
 func (h *RevolvingFundHandler) ReviewSettlement(w http.ResponseWriter, r *http.Request) {
 	var req model.ReviewSettlementRequest

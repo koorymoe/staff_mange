@@ -4645,6 +4645,9 @@ export const api = {
   getDischargeAccounts: () => request<string[]>('/funds/discharge-accounts'),
   submitFundSettlement: (data: { fundId: string; spentAmount: number; returnedAmount: number; receiptImage?: string | null; bookingId?: string | null; notes?: string | null }) =>
     request<RevolvingFundTxn>('/funds/settlements', { method: 'POST', body: JSON.stringify(data) }),
+  /** (ع) 10-16: صاحب صلاحية الدوار يسوّي بدل موظف نسى — تروح للتدقيق مثل أي تسوية */
+  submitFundSettlementFor: (employeeId: string, data: { fundId: string; spentAmount: number; returnedAmount: number; receiptImage?: string | null; bookingId?: string | null; notes?: string | null }) =>
+    request<RevolvingFundTxn>(`/funds/settlements/for/${employeeId}`, { method: 'POST', body: JSON.stringify(data) }),
 
   getSimCards: () => request<GpsSimCard[]>('/gps/sims'),
   createSimCard: (data: Partial<GpsSimCard>) =>
@@ -5390,6 +5393,11 @@ export const api = {
     request<VehicleTool>(`/inventory/vehicle/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
   deleteVehicleTool: (id: string) => request<void>(`/inventory/vehicle/${id}`, { method: 'DELETE' }),
   getOnDemandTools: () => request<OnDemandTool[]>('/inventory/ondemand'),
+  /** (ع) 10-16: أدوات المخزن التخصصية — أبو الكميات ينطي موظف من المخزن ويرجّع */
+  issueStoreTool: (toolId: string, employeeId: string, note?: string) =>
+    request<ToolRequestItem>(`/store-tools/${toolId}/issue`, { method: 'POST', body: JSON.stringify({ employeeId, note: note || null }) }),
+  returnStoreTool: (requestId: string) =>
+    request<ToolRequestItem>(`/store-tools/issued/${requestId}/return`, { method: 'POST' }),
   createOnDemandTool: (data: { name: string; barcode: string; totalQuantity: number }) =>
     request<OnDemandTool>('/inventory/ondemand', { method: 'POST', body: JSON.stringify(data) }),
   updateOnDemandTool: (id: string, data: Partial<OnDemandTool>) =>

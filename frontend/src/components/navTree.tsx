@@ -438,6 +438,8 @@ export const navItems: NavItem[] = [
           { to: '/procurement', label: 'طلبات المواد', icon: <></>, roles: ['ADMIN', 'MONITOR', 'PROJECT_MANAGER', 'TECHNICIAN', 'PROCUREMENT_ADMIN'], permission: 'procurement' },
           // جرد الأدوات جان تحت «إدارة الموظفين» — وهو مخزن مو ملف موظف
           { to: '/inventory', label: 'جرد الأدوات', icon: <></>, roles: ['ADMIN', 'HR_COORDINATOR', 'MONITOR', 'PROCUREMENT_ADMIN'], permission: 'inventory', hideForRoles: ['MONITOR'] },
+          // (ع) 10-16: أبو الكميات — يضيف الأدوات التخصصية وعددها وينطي منها (نفس حارس الخادم: ADMIN/PROCUREMENT_ADMIN)
+          { to: '/store-tools', label: '🧰 أدوات المخزن', icon: <></>, roles: ['ADMIN', 'PROCUREMENT_ADMIN'], strict: true },
           { to: '/suppliers', label: 'الموردون', icon: <></>, anyPermission: ['suppliers_management'] },
         ],
       },
@@ -783,6 +785,8 @@ export const navItems: NavItem[] = [
       { to: '/vehicle-bookings', label: 'حجز المركبات', icon: <></>, permission: 'vehicle_management' },
       { to: '/vehicle-missions', label: 'مهمات المركبات', icon: <></>, permission: 'vehicle_management' },
       { to: '/inventory', label: 'جرد الأدوات', icon: <></>, roles: ['ADMIN', 'HR_COORDINATOR', 'MONITOR', 'PROCUREMENT_ADMIN'], permission: 'inventory', hideForRoles: ['MONITOR'] },
+          // (ع) 10-16: أبو الكميات — يضيف الأدوات التخصصية وعددها وينطي منها (نفس حارس الخادم: ADMIN/PROCUREMENT_ADMIN)
+          { to: '/store-tools', label: '🧰 أدوات المخزن', icon: <></>, roles: ['ADMIN', 'PROCUREMENT_ADMIN'], strict: true },
     ],
   },
   {

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { api, type RevolvingFund, type RevolvingFundTxn, type EmployeeFundBalance, type Employee, type ProcurementRequest, fileUrl } from '../api'
 import { useSession } from '../session'
+import MyFundBalance from '../components/MyFundBalance'
 
 /**
  * الدوار — شاشة المحاسب.
@@ -27,6 +28,7 @@ export default function RevolvingFundPage() {
   const [tab, setTab] = useState<Tab>('funds')
   const [funds, setFunds] = useState<RevolvingFund[]>([])
   const [balances, setBalances] = useState<EmployeeFundBalance[]>([])
+  const [settleFor, setSettleFor] = useState<EmployeeFundBalance | null>(null)
   const [pending, setPending] = useState<RevolvingFundTxn[]>([])
   const [log, setLog] = useState<RevolvingFundTxn[]>([])
   const [employees, setEmployees] = useState<Employee[]>([])
@@ -210,6 +212,7 @@ export default function RevolvingFundPage() {
                   <th className="px-4 py-3 text-sm font-semibold">سوّى</th>
                   <th className="px-4 py-3 text-sm font-semibold">مطلوب منه</th>
                   <th className="px-4 py-3 text-sm font-semibold">تسويات معلّقة</th>
+                  <th className="px-4 py-3 text-sm font-semibold">إجراء</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -236,11 +239,27 @@ export default function RevolvingFundPage() {
                     <td className="px-4 py-3">{b.pendingSettlements > 0
                       ? <span className="rounded-full bg-amber-100 px-3 py-1 text-xs font-bold text-amber-800">{b.pendingSettlements}</span>
                       : <span className="text-slate-400">—</span>}</td>
+                    {/* (ع) 10-16: الموظف نسى يسوّي؟ صاحب الصلاحية يسوّيها بداله */}
+                    <td className="px-4 py-3">{b.outstanding > 0.001
+                      ? <button onClick={() => setSettleFor(b)} className="rounded-lg bg-amber-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-amber-700">🧾 سوّي بداله</button>
+                      : <span className="text-slate-400">—</span>}</td>
                   </tr>
                 ))}
-                {balances.length === 0 && <tr><td colSpan={5} className="p-8 text-center text-slate-400">ماكو ولا موظف ساحب من الدوار</td></tr>}
+                {balances.length === 0 && <tr><td colSpan={6} className="p-8 text-center text-slate-400">ماكو ولا موظف ساحب من الدوار</td></tr>}
               </tbody>
             </table>
+          </div>
+        </div>
+      )}
+
+      {settleFor && (
+        <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/40 p-4" onClick={() => setSettleFor(null)}>
+          <div dir="rtl" className="max-h-[90vh] w-full max-w-xl overflow-y-auto rounded-2xl bg-white p-4 shadow-xl" onClick={(e) => e.stopPropagation()}>
+            <div className="mb-3 flex items-center justify-between">
+              <h3 className="text-lg font-bold" style={{ color: 'var(--t-title)' }}>🧾 تسوية بدل {settleFor.employeeName}</h3>
+              <button onClick={() => setSettleFor(null)} className="rounded-lg border border-slate-300 px-3 py-1 text-sm">إغلاق</button>
+            </div>
+            <MyFundBalance forEmployee={settleFor} onDone={() => { setSettleFor(null); load() }} />
           </div>
         </div>
       )}

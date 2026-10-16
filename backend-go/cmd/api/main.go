@@ -1439,6 +1439,9 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	mux.Handle("PUT /api/inventory/ondemand/{id}", middleware.Chain(http.HandlerFunc(inventoryHandler.UpdateOnDemandTool), requireAuth, requireProcurementAdmin))
 
 	// إضافة الكميات للمخزون — إداري الكميات حصراً
+	// (ع) 10-16: «أدوات المخزن التخصصية» — أبو الكميات ينطي ويرجّع من شاشته (نفس حارس إضافة الأدوات)
+	mux.Handle("POST /api/store-tools/{id}/issue", middleware.Chain(http.HandlerFunc(inventoryHandler.IssueStoreTool), requireAuth, requireProcurementAdmin))
+	mux.Handle("POST /api/store-tools/issued/{id}/return", middleware.Chain(http.HandlerFunc(inventoryHandler.ReturnStoreTool), requireAuth, requireProcurementAdmin))
 	mux.Handle("POST /api/inventory/stock-intake", middleware.Chain(http.HandlerFunc(inventoryHandler.AddStock), requireAuth, requireProcurementAdmin))
 	mux.Handle("GET /api/inventory/stock-intake", middleware.Chain(http.HandlerFunc(inventoryHandler.ListStockIntakes), requireAuth, requireProcurementAdmin))
 
@@ -2105,6 +2108,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	mux.Handle("GET /api/funds/balances", middleware.Chain(http.HandlerFunc(revolvingFundHandler.Balances), requireAuth, requireFund))
 	mux.Handle("GET /api/funds/transactions", middleware.Chain(http.HandlerFunc(revolvingFundHandler.Txns), requireAuth, requireFund))
 	mux.Handle("GET /api/funds/transactions/{id}/receipt", middleware.Chain(http.HandlerFunc(revolvingFundHandler.Receipt), requireAuth, requireFund))
+	mux.Handle("POST /api/funds/settlements/for/{employeeId}", middleware.Chain(http.HandlerFunc(revolvingFundHandler.SubmitSettlementFor), requireAuth, requireFund))
 	mux.Handle("PUT /api/funds/settlements/{id}/review", middleware.Chain(http.HandlerFunc(revolvingFundHandler.ReviewSettlement), requireAuth, requireFund))
 	mux.Handle("PUT /api/funds/settlements/{id}/discharge", middleware.Chain(http.HandlerFunc(revolvingFundHandler.Discharge), requireAuth, requireDischarge))
 	mux.Handle("GET /api/funds/discharge-accounts", middleware.Chain(http.HandlerFunc(revolvingFundHandler.DischargeAccounts), requireAuth, requireFund))

@@ -483,3 +483,72 @@ func (h *InventoryHandler) ListStockIntakes(w http.ResponseWriter, r *http.Reque
 	}
 	WriteJSON(w, http.StatusOK, rows)
 }
+
+// ═══ أدوات المخزن التخصصية — قرار (ع) 10-16 ═══
+// «أبو الكميات يضيف الأدوات التخصصية وعددهن، ومن يصير نقص عند موظف ينطي
+// من عدهن». نفس سلسلة «أدوات حسب الحاجة» الموجودة (طلب ← موافقة ← تنقص
+// الكمية)، بس بضغطة وحدة من المخزن: ما يحتاج الموظف يطلب أول.
+
+type issueToolReq struct {
+	EmployeeID string  `json:"employeeId"`
+	Reason     string  `json:"reason"`
+	Note       *string `json:"note"`
+}
+
+// POST /api/store-tools/{id}/issue — ينطي قطعة وحدة لموظف من المخزن
+func (h *InventoryHandler) IssueStoreTool(w http.ResponseWriter, r *http.Request) {
+	var req issueToolReq
+	if err := DecodeJSON(r, &req); err != nil {
+		WriteError(w, http.StatusBadRequest, "بيانات الطلب غير صحيحة")
+		return
+	}
+	if req.Reason == "" {
+		req.Reason = model.ToolRequestReasonNeverHad
+	}
+	me := middleware.EmployeeIDFromContext(r)
+	toolID := r.PathValue("id")
+	tools, err := h.service.ListOnDemandTools()
+	if err != nil {
+		WriteError(w, http.StatusInternalServerError, "تعذر جلب الأدوات")
+		return
+	}
+	found := false
+	for _, t := range tools {
+		if t.ID == toolID {
+			found = true
+			if t.AvailableQuantity <= 0 {
+				WriteError(w, http.StatusBadRequest, "ماكو من هاي الأداة بالمخزن — ضيف كمية أول")
+				return
+			}
+		}
+	}
+	if !found {
+		WriteError(w, http.StatusNotFound, "الأداة غير موجودة")
+		return
+	}
+	kind := model.ToolRequestKindSpecialized
+	created, err := h.service.CreateToolRequest(model.CreateToolRequestRequest{
+		EmployeeID: req.EmployeeID, ToolID: toolID, Reason: req.Reason, RequestKind: &kind, Description: req.Note,
+	})
+	if err != nil {
+		WriteError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	out, err := h.service.ApproveToolRequest(created.ID, model.ApproveToolRequestRequest{ApprovedByID: me})
+	if err != nil {
+		_ = h.service.DeleteToolRequest(created.ID)
+		WriteError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	WriteJSON(w, http.StatusOK, out)
+}
+
+// POST /api/store-tools/issued/{id}/return — الموظف رجّع الأداة للمخزن
+func (h *InventoryHandler) ReturnStoreTool(w http.ResponseWriter, r *http.Request) {
+	out, err := h.service.ReturnToolRequest(r.PathValue("id"))
+	if err != nil {
+		WriteError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	WriteJSON(w, http.StatusOK, out)
+}

@@ -824,9 +824,12 @@ func (r *InventoryRepository) ReturnToolRequest(id string) (*model.ToolRequest, 
 	var req model.ToolRequest
 	err := r.db.Get(&req, `
 		UPDATE "ToolRequest" SET status = 'RETURNED', "returnedAt" = now()
-		WHERE id = $1
+		WHERE id = $1 AND status = 'APPROVED' -- (10-16) بلا هذا: «رجّع» مرتين = الكمية تزيد مرتين
 		RETURNING *
 	`, id)
+	if err == sql.ErrNoRows {
+		return nil, fmt.Errorf("هاي الأداة راجعة للمخزن من قبل، أو الطلب ما انصرف")
+	}
 	if err != nil {
 		return nil, err
 	}

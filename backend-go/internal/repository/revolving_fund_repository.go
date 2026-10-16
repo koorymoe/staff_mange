@@ -145,6 +145,21 @@ func (r *RevolvingFundRepository) Topup(fundID string, amount float64, notes *st
 //
 // تنحفظ PENDING — ما تأثر على ولا رصيد لحد ما المحاسب يوافق.
 func (r *RevolvingFundRepository) SubmitSettlement(employeeID string, req model.SettlementRequest) (*model.RevolvingFundTxn, error) {
+	return r.submitSettlement(employeeID, employeeID, req)
+}
+
+// SubmitSettlementFor (ع) 10-16: «انطه فلوس لموظف ونسه يسوي فلوسه… يكدر
+// هوه يسويهن بدل عنه». نفس فحوص التسوية بالضبط (رصيد الدوار، الوصل،
+// البيان)، بس المنشئ صاحب الصلاحية والدَّين على الموظف. وتبقى PENDING —
+// تمر بالتدقيق مثل أي تسوية، ومنشئها ما يكدر يدقّقها (ReviewSettlement).
+func (r *RevolvingFundRepository) SubmitSettlementFor(employeeID, byID string, req model.SettlementRequest) (*model.RevolvingFundTxn, error) {
+	if byID == "" || employeeID == "" {
+		return nil, fmt.Errorf("لازم تحدد الموظف")
+	}
+	return r.submitSettlement(employeeID, byID, req)
+}
+
+func (r *RevolvingFundRepository) submitSettlement(employeeID, createdByID string, req model.SettlementRequest) (*model.RevolvingFundTxn, error) {
 	// (فحص 10-11) أرقام حقيقية بس: السالب كان يمر — «صرفت −5 مليون ورجّعت
 	// 5 مليون» بلا وصل، والموافقة تنفخ رصيد الدوار بفلوس ما رجعت
 	if req.SpentAmount < 0 || req.ReturnedAmount < 0 || math.IsNaN(req.SpentAmount) || math.IsNaN(req.ReturnedAmount) ||
@@ -205,9 +220,9 @@ func (r *RevolvingFundRepository) SubmitSettlement(employeeID string, req model.
 		INSERT INTO "RevolvingFundTxn"
 			(id, "fundId", "employeeId", kind, "spentAmount", "returnedAmount",
 			 "bookingId", "receiptImage", notes, status, "createdById")
-		VALUES (gen_random_uuid()::text, $1, $2, 'SETTLEMENT', $3, $4, $5, $6, NULLIF($7,''), 'PENDING', $2)
+		VALUES (gen_random_uuid()::text, $1, $2, 'SETTLEMENT', $3, $4, $5, $6, NULLIF($7,''), 'PENDING', $8)
 		RETURNING *`, req.FundID, employeeID, req.SpentAmount, req.ReturnedAmount,
-		req.BookingID, req.ReceiptImage, deref(req.Notes))
+		req.BookingID, req.ReceiptImage, deref(req.Notes), createdByID)
 	if err != nil {
 		return nil, err
 	}
@@ -230,6 +245,17 @@ func (r *RevolvingFundRepository) ReviewSettlement(id string, req model.ReviewSe
 	status := model.FundTxnRejected
 	if req.Approve {
 		status = model.FundTxnApproved
+	}
+
+	// (ع) 10-16: التسوية الي سوّاها أحد بدل الموظف ما يدقّقها نفس الشخص —
+	// وإلا واحد يرفع ويوافق لحاله بلا عين ثانية.
+	var maker struct {
+		CreatedBy  *string `db:"createdById"`
+		EmployeeID string  `db:"employeeId"`
+	}
+	if err := tx.Get(&maker, `SELECT "createdById", "employeeId" FROM "RevolvingFundTxn" WHERE id = $1`, id); err == nil &&
+		byID != nil && maker.CreatedBy != nil && *maker.CreatedBy == *byID && *maker.CreatedBy != maker.EmployeeID {
+		return nil, fmt.Errorf("هاي التسوية انت سوّيتها بدل الموظف — لازم غيرك يدقّقها")
 	}
 
 	var t model.RevolvingFundTxn

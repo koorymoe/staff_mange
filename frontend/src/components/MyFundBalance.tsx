@@ -24,8 +24,11 @@ import { api, type EmployeeFundBalance, type EmployeeFundLine } from '../api'
  */
 const money = (n: number) => n.toLocaleString('en-US') + ' د.ع'
 
-export default function MyFundBalance() {
-  const [bal, setBal] = useState<EmployeeFundBalance | null>(null)
+// (ع) 10-16: نفس البطاقة والنموذج يخدمن «سوّي بداله» — `forEmployee` = رصيد
+// موظف من شاشة الدوار، والتسوية تنرفع باسمه وتروح للتدقيق.
+export default function MyFundBalance({ forEmployee, onDone }: { forEmployee?: EmployeeFundBalance; onDone?: () => void } = {}) {
+  const [bal, setBal] = useState<EmployeeFundBalance | null>(forEmployee ?? null)
+  const who = forEmployee ? forEmployee.employeeName : null
   // الدوار الي دا يتسوّى الآن — بدل التخمين
   const [target, setTarget] = useState<EmployeeFundLine | null>(null)
   const [spent, setSpent] = useState('')
@@ -35,9 +38,11 @@ export default function MyFundBalance() {
   const [busy, setBusy] = useState(false)
 
   const load = () => {
+    if (forEmployee) { onDone?.(); return }
     api.getMyFundBalance().then(setBal).catch(() => setBal(null))
   }
-  useEffect(load, [])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { if (!forEmployee) load() }, [])
 
   // ما نعرض شي لموظف ما أخذ من الدوار أبداً
   if (!bal || (bal.totalTaken === 0 && bal.outstanding === 0)) return null
@@ -78,10 +83,12 @@ export default function MyFundBalance() {
     }
     setBusy(true)
     try {
-      await api.submitFundSettlement({
+      const data = {
         fundId: target.fundId, spentAmount: s, returnedAmount: r,
         receiptImage: receipt || null, notes: notes || null,
-      })
+      }
+      if (forEmployee) await api.submitFundSettlementFor(forEmployee.employeeId, data)
+      else await api.submitFundSettlement(data)
       setTarget(null)
       load()
       alert('انرفعت التسوية — تنتظر تدقيق المحاسب')
@@ -98,7 +105,7 @@ export default function MyFundBalance() {
         <div>
           <p className={`text-sm font-bold ${settled ? 'text-emerald-800' : 'text-amber-900'}`}>💵 رصيد الدوار</p>
           <p className={`mt-1 text-2xl font-bold ${settled ? 'text-emerald-700' : 'text-amber-900'}`}>
-            {settled ? 'ما عليك شي' : `مطلوب منك ${money(bal.outstanding)}`}
+            {settled ? (who ? `${who} ما عليه شي` : 'ما عليك شي') : who ? `مطلوب من ${who} ${money(bal.outstanding)}` : `مطلوب منك ${money(bal.outstanding)}`}
           </p>
           <p className="mt-1 text-xs text-slate-600">
             استلمت {money(bal.totalTaken)} · سوّيت {money(bal.totalSettled)}
@@ -140,8 +147,13 @@ export default function MyFundBalance() {
           <div dir="rtl" className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-white p-6 shadow-xl" onClick={(e) => e.stopPropagation()}>
             <h3 className="text-lg font-bold" style={{ color: 'var(--t-title)' }}>تسوية — {target.fundName}</h3>
             <p className="mt-1 text-sm text-slate-600">
-              الي بيدك من هذا الدوار: <span className="font-bold">{money(target.outstanding)}</span>
+              {who ? `الي بيد ${who} من هذا الدوار:` : 'الي بيدك من هذا الدوار:'} <span className="font-bold">{money(target.outstanding)}</span>
             </p>
+            {who && (
+              <p className="mt-2 rounded-lg bg-sky-50 p-3 text-xs font-bold text-sky-800">
+                🧾 دا تسوّي بدل {who} — التسوية تنسجّل باسمه وباسمك (منو سوّاها)، وتروح للتدقيق. انت ما تكدر تدقّقها، لازم غيرك.
+              </p>
+            )}
             <p className="mt-2 rounded-lg bg-slate-50 p-3 text-xs text-slate-600">
               اكتب شكد صرفت وشكد راجع رجّعته، وارفع صورة الوصل. رصيدك ما يتصفّر إلا بعد ما المحاسب يدقّق ويوافق.
               {' '}⚠️ هاي التسوية تخص <span className="font-bold">{target.fundName}</span> وحده — الفلوس ترجع إله هو.
