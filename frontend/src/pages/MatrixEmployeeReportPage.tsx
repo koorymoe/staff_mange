@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
+import EmployeeLedger from '../components/EmployeeLedger'
 import { api, type EmployeeReport, type ReportLine } from '../api'
 import MatrixEyeGraphic from '../components/MatrixEyeGraphic'
 import { GROUP_LABEL, type EyeGroup } from '../components/matrixEyeColors'
@@ -103,6 +104,7 @@ export default function MatrixEmployeeReportPage() {
       </div>
 
       {err && <p className="rounded-lg bg-red-50 p-3 text-red-600">{err}</p>}
+      {id && <EmployeeLedger employeeId={id} day={day} />}
       {!rep && !err && <p className="text-slate-400">ماتركس يحلّل…</p>}
 
       {rep && (

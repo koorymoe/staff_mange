@@ -2873,6 +2873,11 @@ export interface KpiCriterion {
   createdAt: string
 }
 
+export interface EmployeeLedger {
+  period: 'day' | 'month'; from: string; to: string; total: number
+  sections: { key: string; title: string; count: number; items: { at: string; text: string; link?: string | null }[] }[]
+}
+
 export interface WorkReport {
   id: string
   // تدقيق المراقب (ع 10-16)
@@ -5365,6 +5370,8 @@ export const api = {
     /** (ع 10-16) نموذج «تقرير تنفيذ المشروع» كامل */
     sheet?: unknown
   }) => request<WorkReport>('/work-reports', { method: 'POST', body: JSON.stringify(data) }),
+  getEmployeeLedger: (employeeId: string, period: 'day' | 'month', day?: string) =>
+    request<EmployeeLedger>(`/ai/employee-ledger?employeeId=${encodeURIComponent(employeeId)}&period=${period}${day ? `&day=${day}` : ''}`),
   reviewWorkReport: (id: string, note?: string) =>
     request<{ ok: boolean }>(`/work-reports/${id}/review`, { method: 'PUT', body: JSON.stringify({ note }) }),
   reviewProjectReports: (bookingId: string, note?: string) =>
