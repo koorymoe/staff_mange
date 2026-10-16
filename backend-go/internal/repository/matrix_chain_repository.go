@@ -435,7 +435,7 @@ func (r *MatrixChainRepository) BookingCodeAndEmployee(bookingID, employeeID str
 // ═══ ماتركس على المراقب: بنود الصندوق المتأخرة ═══
 
 // monitorBacklogSQL بنود صندوق المراقب الي تنتظر حكم من أكثر من ٢٤ ساعة.
-const monitorBacklogSQL = `SELECT count(*) FROM "MonitorReview" WHERE status = 'PENDING' AND "createdAt" < now() - interval '24 hours'`
+var monitorBacklogSQL = `SELECT count(*) FROM "MonitorReview" WHERE status = 'PENDING' AND "createdAt" < now() - interval '24 hours' AND ` + awaitingAccountant(`"MonitorReview"`)
 
 type MonitorBacklog struct {
 	Count  int        `db:"n"`
@@ -460,7 +460,7 @@ func (r *MatrixChainRepository) InternalNoInvoice() ([]string, error) {
 func (r *MatrixChainRepository) MonitorBacklog() (MonitorBacklog, error) {
 	var b MonitorBacklog
 	err := r.db.Get(&b, `SELECT count(*)::int AS n, min("createdAt") AS oldest FROM "MonitorReview"
-		WHERE status = 'PENDING' AND "createdAt" < now() - interval '24 hours'`)
+		WHERE status = 'PENDING' AND "createdAt" < now() - interval '24 hours' AND `+awaitingAccountant(`"MonitorReview"`))
 	return b, err
 }
 

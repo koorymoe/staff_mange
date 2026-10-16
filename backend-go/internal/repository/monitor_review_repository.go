@@ -60,6 +60,16 @@ func (r *MonitorReviewRepository) Enqueue(in model.EnqueueMonitorReview) error {
 }
 
 // List الصندوق مع فلاتر: المحطة، الحالة، ودور صاحب الشغل.
+// awaitingAccountant (ع 10-16): «إذا هي مامدققة شلون تروح للمراقب وهي
+// ماكاملة؟» — صف فاتورة «قبل التدقيق» ما يطلع للمراقب لحد ما المحاسب
+// يحكم عليها (أو يطلب المراقب، أو تنعتمد). الصف يبقى بالقاعدة، ولمن
+// المحاسب يدقق يتحدّث نفس الصف ويطلع لحاله — بلا حذف.
+func awaitingAccountant(alias string) string {
+	return `NOT (` + alias + `.stage = 'INVOICE_BEFORE_AUDIT' AND ` + alias + `."entityType" = 'LEADER_INVOICE' AND EXISTS (
+		SELECT 1 FROM "LeaderInvoice" li WHERE li.id = ` + alias + `."entityId"
+		   AND li."auditedAt" IS NULL AND li."monitorRequestedAt" IS NULL AND li.status <> 'APPROVED'))`
+}
+
 func (r *MonitorReviewRepository) List(stage, status, ownerRole string, limit int) ([]model.MonitorReview, error) {
 	if limit <= 0 || limit > 500 {
 		limit = 200
@@ -79,6 +89,7 @@ func (r *MonitorReviewRepository) List(stage, status, ownerRole string, limit in
 	if ownerRole != "" {
 		add(`"ownerRole" = ?`, ownerRole)
 	}
+	where = append(where, awaitingAccountant(`"MonitorReview"`))
 	q := `SELECT * FROM "MonitorReview"`
 	if len(where) > 0 {
 		q += ` WHERE ` + strings.Join(where, " AND ")
@@ -103,7 +114,7 @@ func (r *MonitorReviewRepository) Counts() ([]model.MonitorInboxCount, error) {
 	rows := []model.MonitorInboxCount{}
 	err := r.db.Select(&rows, `
 		SELECT stage, COUNT(*) AS count FROM "MonitorReview"
-		WHERE status = 'PENDING' GROUP BY stage`)
+		WHERE status = 'PENDING' AND `+awaitingAccountant(`"MonitorReview"`)+` GROUP BY stage`)
 	return rows, err
 }
 
@@ -115,7 +126,7 @@ func (r *MonitorReviewRepository) Cards() (model.MonitorInboxCards, error) {
 		SELECT
 		  (SELECT COUNT(DISTINCT COALESCE(a."invoiceId", m."entityId")) FROM "MonitorReview" m
 		     LEFT JOIN "LeaderInvoiceAdjustment" a ON m."entityType" = 'INVOICE_ADJUSTMENT' AND a.id = m."entityId"
-		    WHERE m.status = 'PENDING' AND m.stage LIKE 'INVOICE\_%') AS invoices,
+		    WHERE m.status = 'PENDING' AND m.stage LIKE 'INVOICE\_%' AND `+awaitingAccountant("m")+`) AS invoices,
 		  (SELECT COUNT(DISTINCT "entityId") FROM "MonitorReview"
 		    WHERE status = 'PENDING' AND stage LIKE 'BOOKING\_%') AS bookings`)
 	return c, err

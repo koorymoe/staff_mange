@@ -299,12 +299,9 @@ func (s *LeaderInvoiceService) Create(employeeID string, req model.CreateLeaderI
 		recordPriceOutlier(s.ai, saved.ID, saved.EmployeeID)
 	}
 
-	// الفاتورة توصل المراقب **قبل** ما يدققها المحاسب — يعني يشوف
-	// الأرقام الأصلية قبل أي تعديل، وهذا كل الفايدة.
-	if s.monitor != nil {
-		title, summary := monitorInvoiceSummary(saved)
-		s.monitor.InvoiceStage(model.MonitorStageInvoiceBeforeAudit, saved.ID, title, summary, "TECHNICIAN", &saved.EmployeeID, false)
-	}
+	// (ع) 10-16: «إذا هي مامدققة شلون تروح للمراقب وهي ماكاملة؟» — الفاتورة
+	// ما توصل صندوق المراقب لحظة إنشائها؛ توصله بعد حكم المحاسب (Audit)،
+	// أو إذا المحاسب طلب مراجعته، أو عند الاعتماد/السحب.
 
 	return saved, nil
 }
@@ -771,6 +768,10 @@ func (s *LeaderInvoiceService) SetAuditVerdict(id string, req model.AuditVerdict
 	if s.monitor != nil && inv != nil {
 		title, summary := monitorInvoiceSummary(inv)
 		detail := " • حكم التدقيق: " + model.AuditVerdictLabel(req.Verdict)
+		if inv.ManualWork != nil && strings.TrimSpace(*inv.ManualWork) != "" {
+			// الفاتورة اليدوية: وصف الشغل هو المرجع الوحيد للسعر
+			detail += " • كلفة يدوية — الشغل: " + strings.TrimSpace(*inv.ManualWork)
+		}
 		if urgent {
 			detail = " • 🔴 عاجل" + detail
 		}
@@ -842,17 +843,9 @@ func (s *LeaderInvoiceService) CreateServiceInvoice(employeeID string, req model
 		return nil, err
 	}
 	s.computeAndSaveCommissions(saved)
-	// نفس مسار المراقب مثل أي فاتورة — السعر اليدوي **بالذات** يستاهل
-	// عينه، لأنه ماكو جدول كلفة يراجعه.
-	if s.monitor != nil {
-		title, summary := monitorInvoiceSummary(saved)
-		detail := " • " + kindLabel + " — السعر بالإيد من مسؤول الخدمة"
-		if req.Note != nil && strings.TrimSpace(*req.Note) != "" {
-			detail += " — " + strings.TrimSpace(*req.Note)
-		}
-		s.monitor.InvoiceStage(model.MonitorStageInvoiceBeforeAudit, saved.ID, title,
-			summary+detail, "SERVICE_MANAGER", &saved.EmployeeID, false)
-	}
+	// (ع) 10-16: «إذا هي مامدققة شلون تروح للمراقب وهي ماكاملة؟» — الفاتورة
+	// ما توصل صندوق المراقب لحظة إنشائها؛ توصله بعد حكم المحاسب (Audit)،
+	// أو إذا المحاسب طلب مراجعته، أو عند الاعتماد/السحب.
 	return saved, nil
 }
 
@@ -955,18 +948,9 @@ func (s *LeaderInvoiceService) CreateManualInvoice(employeeID string, req model.
 		}
 	}
 
-	// ⚠️ **المراقب هو الحارس الوحيد الباقي**: ماكو جدول كلفة يراجع
-	// هذا السعر، فالصف ينزل بصندوقه **ووصف الشغل جوّاه** — بلا
-	// الوصف يصير الصف رقماً بلا مرجع.
-	if s.monitor != nil {
-		title, summary := monitorInvoiceSummary(saved)
-		detail := " • كلفة يدوية — السعر بالإيد، ماكو جدول كلفة يراجعه — الشغل: " + work
-		if note != nil {
-			detail += " — ملاحظة: " + *note
-		}
-		s.monitor.InvoiceStage(model.MonitorStageInvoiceBeforeAudit, saved.ID, title,
-			summary+detail, "FINANCE", &saved.EmployeeID, false)
-	}
+	// (ع) 10-16: «إذا هي مامدققة شلون تروح للمراقب وهي ماكاملة؟» — الفاتورة
+	// ما توصل صندوق المراقب لحظة إنشائها؛ توصله بعد حكم المحاسب (Audit)،
+	// أو إذا المحاسب طلب مراجعته، أو عند الاعتماد/السحب.
 	return saved, nil
 }
 

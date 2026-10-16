@@ -513,7 +513,7 @@ func (r *AiActionRepository) AuditedByToday(id string) int {
 }
 
 func (r *AiActionRepository) MonitorPending() int {
-	return r.count(`SELECT COUNT(*) FROM "MonitorReview" WHERE status = 'PENDING'`)
+	return r.count(`SELECT COUNT(*) FROM "MonitorReview" WHERE status = 'PENDING' AND ` + awaitingAccountant(`"MonitorReview"`))
 }
 
 func (r *AiActionRepository) BookingsPendingConfirm() int {
@@ -751,6 +751,6 @@ func (r *AiActionRepository) RecentOfKinds(kinds []string, limit int) ([]model.A
 // MonitorOverdue بنود صندوق المراقب +٤٨ ساعة بلا حكم.
 func (r *AiActionRepository) MonitorOverdue() (int, error) {
 	var n int
-	err := r.db.Get(&n, `SELECT count(*) FROM "MonitorReview" WHERE status = 'PENDING' AND "createdAt" < now() - interval '48 hours'`)
+	err := r.db.Get(&n, `SELECT count(*) FROM "MonitorReview" WHERE status = 'PENDING' AND "createdAt" < now() - interval '48 hours' AND `+awaitingAccountant(`"MonitorReview"`))
 	return n, err
 }
