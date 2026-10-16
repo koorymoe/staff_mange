@@ -18,6 +18,7 @@ import ActionsTable from './ActionsTable'
 import MatrixMissions from './MatrixMissions'
 import ReplacementSuggestionsPanel from './ReplacementSuggestionsPanel'
 import { pollVisible } from '../utils/poll'
+import { drillTo } from '../utils/drill'
 import { roleLabel } from '../roleLabels'
 
 // ═══ رئيسية مدير النظام: لوحتين ═══
@@ -85,7 +86,7 @@ const TONE: Record<Tone, { card: string; ink: string; chip: string }> = {
 // بطاقة رقم بتصميم (ع) 10-04: لون خفيف، أيقونة بدائرة، والرقم كبير.
 // (ع): «من اضغط ع شي يوديني عليه» — كل بطاقة تفتح الشاشة الي تفصّلها (to).
 // تصميم (ع) 10-13: سهم ‹ تحت لكل بطاقة تودّي لتفاصيلها، وشريط نسبة اختياري.
-function Stat({ label, value, hint, tone = 'slate', to, icon, big, pct }: { label: string; value: ReactNode; hint?: ReactNode; tone?: Tone; to?: string; icon?: string; big?: boolean; pct?: number | null }) {
+function Stat({ label, value, hint, tone = 'slate', to, icon, big, pct, onClick, active }: { label: string; value: ReactNode; hint?: ReactNode; tone?: Tone; to?: string; icon?: string; big?: boolean; pct?: number | null; onClick?: () => void; active?: boolean }) {
   const t = TONE[tone]
   const p = pct == null || !isFinite(pct) ? null : Math.max(0, Math.min(100, Math.round(pct)))
   const body = (
@@ -94,11 +95,12 @@ function Stat({ label, value, hint, tone = 'slate', to, icon, big, pct }: { labe
         <div className="min-w-0">
           <p className={`text-[13px] font-extrabold leading-snug ${tone === 'slate' ? 'text-slate-700' : t.ink}`}>{label}</p>
           <p className={`mt-1 font-extrabold tabular-nums text-[#0f2040] ${big ? 'text-3xl' : 'text-2xl'}`}>{value}</p>
-          {hint && <p className="mt-0.5 truncate text-[11px] text-slate-500">{hint}</p>}
+          {/* (ع) 10-16: سطر الشرح ينقرا كامل — مو مقصوص */}
+          {hint && <p className="mt-0.5 text-[11px] leading-snug text-slate-500">{hint}</p>}
         </div>
         <div className="flex shrink-0 flex-col items-center gap-2">
           {icon && <span className={`grid place-items-center rounded-2xl ${big ? 'h-14 w-14 text-2xl' : 'h-12 w-12 text-xl'} ${t.chip}`}>{icon}</span>}
-          {to && <span className="grid h-6 w-6 place-items-center rounded-full bg-white text-xs text-slate-500 shadow-sm">‹</span>}
+          {(to || onClick) && <span className="grid h-6 w-6 place-items-center rounded-full bg-white text-xs text-slate-500 shadow-sm">‹</span>}
         </div>
       </div>
       {p != null && (
@@ -109,7 +111,8 @@ function Stat({ label, value, hint, tone = 'slate', to, icon, big, pct }: { labe
       )}
     </>
   )
-  const cls = `block rounded-2xl border p-3.5 transition ${t.card}`
+  const cls = `block rounded-2xl border p-3.5 transition ${t.card}${active ? ' ring-2 ring-brand-500' : ''}`
+  if (onClick) return <button type="button" onClick={onClick} className={`${cls} w-full text-right hover:-translate-y-0.5 hover:shadow-md`}>{body}</button>
   return to
     ? <Link to={to} className={`${cls} hover:-translate-y-0.5 hover:shadow-md`}>{body}</Link>
     : <div className={cls}>{body}</div>
@@ -339,20 +342,30 @@ function FollowBoard() {
       .sort((a, b) => (SEVERITY[b.top]?.rank || 0) - (SEVERITY[a.top]?.rank || 0) || b.count - a.count)
   }, [signals, since])
 
+  const [attFilter, setAttFilter] = useState<'all' | 'active' | 'left' | 'absent'>('all')
+  const [absentees, setAbsentees] = useState<{ id: string; name: string }[] | null>(null)
+  useEffect(() => {
+    if (attFilter !== 'absent' || absentees !== null || !attendance) return
+    const here = new Set(attendance.map((x) => x.employeeId))
+    api.getEmployees()
+      .then((all) => setAbsentees(all.filter((e) => e.status === 'ACTIVE' && !here.has(e.id)).map((e) => ({ id: e.id, name: e.name }))))
+      .catch(() => setAbsentees([]))
+  }, [attFilter, absentees, attendance])
   const present = attendance?.length ?? 0
   const activeNow = attendance?.filter((a) => a.currentlyActive).length ?? 0
 
   return (
     <div className="space-y-4">
       {/* تصميم (ع) 10-13: المؤشرات الرئيسية أول شي */}
-      <Section title="📊 المؤشرات الرئيسية اليوم" to="/missions" linkLabel="عرض كل المتابعات ←">
+      <Section title="📊 المؤشرات الرئيسية اليوم" to="/missions" linkLabel="تتبع المهام كامل ←">
         {pulse === undefined ? <Loading /> : pulse === null ? <Missing /> : (
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
-            <Stat big icon="📅" tone="blue" label="حجوزات اليوم" to="/missions" value={fmt(pulse.todayBookings)} hint={`أمس ${fmt(pulse.yesterdayBookings)}`} />
-            <Stat big icon="📄" tone="blue" label="المهام المفتوحة" to="/missions" value={fmt(pulse.openMissions)} hint="مهمة" />
-            <Stat big icon="⚠️" tone={pulse.newComplaints ? 'red' : 'slate'} label="الشكاوى الجديدة" to="/complaints" value={fmt(pulse.newComplaints)} hint="شكوى" />
-            <Stat big icon="⏳" tone={pulse.overdueMissions ? 'amber' : 'slate'} label="المتأخرات" to="/missions" value={fmt(pulse.overdueMissions)} hint="موعدها فات +٢٤ ساعة وما خلصت" />
-            <Stat big icon="👷" tone="green" label="الكوادر بالميدان" to="/missions?tab=field" value={fmt(pulse.crewInField)} hint="موظف طالع لزبون هسه" />
+            {/* 🔴 (ع) 10-16 «الرقم = القائمة»: كل بطاقة تفتح نفس الي عدّته بالضبط */}
+            <Stat big icon="📅" tone="blue" label="حجوزات اليوم" to={drillTo('today_scheduled')} value={fmt(pulse.todayBookings)} hint={`موعدها اليوم · أمس جانت ${fmt(pulse.yesterdayBookings)}`} />
+            <Stat big icon="📄" tone="blue" label="المهام المفتوحة" to={drillTo('open_missions')} value={fmt(pulse.openMissions)} hint="حجوزات عليها مهمة بعدها ما خلصت — كل الفترات" />
+            <Stat big icon="⚠️" tone={pulse.newComplaints ? 'red' : 'slate'} label="الشكاوى الجديدة" to="/complaints?status=NEW" value={fmt(pulse.newComplaints)} hint="شكاوى بعد ما أحد اشتغل عليها" />
+            <Stat big icon="⏳" tone={pulse.overdueMissions ? 'amber' : 'slate'} label="المتأخرات" to={drillTo('overdue')} value={fmt(pulse.overdueMissions)} hint="مهام موعدها فات +٢٤ ساعة وما خلصت" />
+            <Stat big icon="👷" tone="green" label="الكوادر بالميدان" to={drillTo('in_field')} value={fmt(pulse.crewInField)} hint="عدد الموظفين الطالعين هسه — القائمة بالحجوزات الي طالعين عليها" />
           </div>
         )}
       </Section>
@@ -370,15 +383,15 @@ function FollowBoard() {
                   {/* قرار (ع) 10-09: فلوس الحجوزات مفصولة عن فلوس المشاريع. النِّسب كلها من نفس الأرقام */}
                   <Stat icon="💳" label="المقبوض من الحجوزات" to="/finance" value={money(booked)} hint={`نصيبها من كل المقبوض ${money(finance.totalCollected)}`} tone="green" pct={finance.totalCollected ? (booked / finance.totalCollected) * 100 : null} />
                   <Stat icon="🏗️" label="المقبوض من المشاريع" to="/project-payments" value={money(projects)} hint={`نصيبها من كل المقبوض ${money(finance.totalCollected)}`} tone="green" pct={finance.totalCollected ? (projects / finance.totalCollected) * 100 : null} />
-                  <Stat icon="🪙" tone="blue" label="مدقّق" to="/daily-audit" value={money(finance.verifiedAmount)} hint={`${fmt(finance.verifiedCount)} حجز · من أصل ${money(audited)}`} pct={audited ? (finance.verifiedAmount / audited) * 100 : null} />
-                  <Stat icon="⏰" label="بانتظار التدقيق" to="/daily-audit" value={money(finance.unverifiedAmount)} hint={`عدد ${fmt(finance.unverifiedCount)} حجز`} tone={finance.unverifiedCount ? 'amber' : 'slate'} />
+                  <Stat icon="🪙" tone="blue" label="مدقّق" to={drillTo('verified')} value={money(finance.verifiedAmount)} hint={`${fmt(finance.verifiedCount)} حجز المحاسب دقّق مبلغه · من أصل ${money(audited)} — كل الأيام`} pct={audited ? (finance.verifiedAmount / audited) * 100 : null} />
+                  <Stat icon="⏰" label="بانتظار التدقيق" to={drillTo('unverified')} value={money(finance.unverifiedAmount)} hint={`${fmt(finance.unverifiedCount)} حجز منجز بعده ما تدقّق — كل الأيام`} tone={finance.unverifiedCount ? 'amber' : 'slate'} />
                 </div>
               )
             })()}
             <div className="mt-3 grid grid-cols-3 gap-2">
               <Stat icon="🧾" label="المصاريف" to="/expenses" value={money(finance.totalExpenseValue)} hint={`${fmt(finance.pendingExpenses)} بانتظار الموافقة`} tone="red" />
-              <Stat icon="✅" tone="violet" label="أنجزت اليوم" to="/bookings?tab=done" value={fmt(finance.todayCompleted)} hint={`انفتح اليوم ${fmt(finance.todayCreated)}`} />
-              <Stat icon="⚙️" label="قيد التنفيذ" to="/bookings?tab=assigned" value={fmt(finance.inProgressCount)} hint={`مثبّتة ${fmt(finance.confirmedCount)} · معلّقة ${fmt(finance.pendingCount)}`} />
+              <Stat icon="✅" tone="violet" label="أنجزت اليوم" to={drillTo('completed_today')} value={fmt(finance.todayCompleted)} hint={`تأشّرت منجز اليوم · وانسجّل اليوم ${fmt(finance.todayCreated)} جديد`} />
+              <Stat icon="⚙️" label="قيد التنفيذ" to={drillTo('in_progress')} value={fmt(finance.inProgressCount)} hint={`مثبّتة ${fmt(finance.confirmedCount)} · معلّقة ${fmt(finance.pendingCount)}`} />
             </div>
             </>
           )}
@@ -388,9 +401,9 @@ function FollowBoard() {
           {internal === undefined ? <Loading /> : internal === null ? <Missing /> : (
             <>
               <div className="grid grid-cols-3 gap-2">
-                <Stat icon="🏢" tone="blue" label="داخل الشركة" to="/stats-management" value={fmt(internal.inHouseCount)} />
-                <Stat icon="📍" tone="blue" label="بالموقع" to="/stats-management" value={fmt(internal.onSiteCount)} />
-                <Stat icon="💵" label="المبلغ" to="/stats-management" value={money(internal.inHouseAmount)} tone="green" />
+                <Stat icon="🏢" tone="blue" label="داخل الشركة" to={drillTo('inhouse_month')} value={fmt(internal.inHouseCount)} hint="حجز انخلص جوّا الشركة هذا الشهر" />
+                <Stat icon="📍" tone="blue" label="بالموقع" to={drillTo('onsite_month')} value={fmt(internal.onSiteCount)} hint="حجز انخلص عند الزبون هذا الشهر" />
+                <Stat icon="💵" label="المبلغ" to="/stats-management" value={money(internal.inHouseAmount)} tone="green" hint="مبلغ الشغل الداخلي هذا الشهر — التفصيل بالإحصائيات" />
               </div>
               {internal.services.length > 0 && (
                 <div className="mt-4">
@@ -475,15 +488,23 @@ function FollowBoard() {
         {attendance === undefined ? <Loading /> : attendance === null ? <Missing /> : (
           <>
             <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-              <Stat big icon="👥" tone="green" label="إجمالي الحضور اليوم" to="/attendance" value={fmt(present)} hint={summary ? `من ${fmt(summary.employeeCount)} موظف` : undefined} />
-              <Stat big icon="🕘" tone="blue" label="على الدوام هسه" to="/attendance" value={fmt(activeNow)} hint="مسجّل ولسه ما طلع" />
-              <Stat big icon="🚪" tone="amber" label="انصرفوا" to="/attendance" value={fmt(present - activeNow)} hint="سجّلوا وطلعوا" />
-              {summary && <Stat big icon="❌" tone="red" label="ما سجّلوا حضور" to="/attendance" value={fmt(Math.max(0, summary.employeeCount - present))} hint="من كل الموظفين (بيهم الإجازات والعطل)" />}
+              {/* (ع) 10-16: البطاقة تفلتر الأسماء جوّا بدل ما الأربعة يودّن لنفس الشاشة */}
+              <Stat big icon="👥" tone="green" label="إجمالي الحضور اليوم" onClick={() => setAttFilter('all')} active={attFilter === 'all'} value={fmt(present)} hint={summary ? `من ${fmt(summary.employeeCount)} موظف — اضغط تشوف أسماءهم جوّا` : undefined} />
+              <Stat big icon="🕘" tone="blue" label="على الدوام هسه" onClick={() => setAttFilter('active')} active={attFilter === 'active'} value={fmt(activeNow)} hint="مسجّل حضور ولسه ما طلع" />
+              <Stat big icon="🚪" tone="amber" label="انصرفوا" onClick={() => setAttFilter('left')} active={attFilter === 'left'} value={fmt(present - activeNow)} hint="سجّلوا حضور وطلعوا" />
+              {summary && <Stat big icon="❌" tone="red" label="ما سجّلوا حضور" onClick={() => setAttFilter('absent')} active={attFilter === 'absent'} value={fmt(Math.max(0, summary.employeeCount - present))} hint="من كل الموظفين (بيهم الإجازات والعطل)" />}
             </div>
-            {present > 0 && (
+            {attFilter === 'absent' ? (
               <div className="mt-3 flex flex-wrap items-center gap-1.5">
-                <span className="text-xs font-bold text-slate-500">👥 الموظفون اليوم</span>
-                {attendance.slice(0, 40).map((a) => (
+                <span className="text-xs font-bold text-slate-500">❌ ما سجّلوا حضور اليوم</span>
+                {absentees === null ? <span className="text-xs text-slate-400">جاري التحميل…</span>
+                  : absentees.length === 0 ? <span className="text-xs text-emerald-600">الكل سجّل ✓</span>
+                  : absentees.map((e) => <span key={e.id} className="rounded-full bg-red-50 px-3 py-1 text-xs font-bold text-red-700">{e.name}</span>)}
+              </div>
+            ) : present > 0 && (
+              <div className="mt-3 flex flex-wrap items-center gap-1.5">
+                <span className="text-xs font-bold text-slate-500">👥 {attFilter === 'active' ? 'على الدوام هسه' : attFilter === 'left' ? 'انصرفوا' : 'الموظفون اليوم'}</span>
+                {attendance.filter((a) => attFilter === 'all' || (attFilter === 'active' ? a.currentlyActive : !a.currentlyActive)).slice(0, 60).map((a) => (
                   <span key={a.employeeId}
                     className={`rounded-full px-3 py-1 text-xs font-bold ${a.currentlyActive ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-500'}`}
                     title={`أول دخول ${new Date(a.firstCheckIn).toLocaleTimeString('ar-IQ', { hour: '2-digit', minute: '2-digit' })}`}>
@@ -503,7 +524,7 @@ function FollowBoard() {
       <Section title="🏢 الشركة بالأرقام (عام)">
         {summary === undefined ? <Loading /> : summary === null ? <Missing /> : (
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-2">
-            <Stat icon="👥" tone="violet" label="الموظفين" hint="موظف وموظفة" to="/employees" value={fmt(summary.employeeCount)} />
+            <Stat icon="👥" tone="violet" label="الموظفين" hint="موظف وموظفة — يفتح «إدارة الموظفين»" to="/staff-management-desk" value={fmt(summary.employeeCount)} />
             <Stat icon="🤝" tone="blue" label="العملاء" hint="عميل بالنظام" to="/customers" value={fmt(summary.customerCount)} />
             <Stat icon="📦" tone="green" label="الحجوزات" hint="حجز بالنظام" to="/bookings" value={fmt(summary.bookingCount)} />
             <Stat icon="📡" tone="amber" label="أجهزة الجي بي اس" hint="جهاز مسجّل" to="/gps/devices" value={fmt(summary.gpsDeviceCount)} />
@@ -513,7 +534,8 @@ function FollowBoard() {
 
         {pulse && (
           <Section title="🕐 تنتظر تنسيق">
-            <Stat icon="🕐" label="حجوزات تنتظر تنسيق" to="/bookings?tab=coord" value={fmt(pulse.needsCoordination)} tone={pulse.needsCoordination ? 'amber' : 'slate'} />
+            <Stat icon="🕐" label="حجوزات تنتظر تنسيق" to={drillTo('needs_coord')} value={fmt(pulse.needsCoordination)} tone={pulse.needsCoordination ? 'amber' : 'slate'}
+              hint="مثبّتة وناقصها موعد أو كادر — اضغط تشوف كل وحدة وين واكفة وليش" />
           </Section>
         )}
       </div>

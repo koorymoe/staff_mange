@@ -807,7 +807,10 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	requireTechUnitOrProcurement := middleware.RequireRoleOrPermission(permissionRepo, employeeRepo, notificationRepo, []string{"PROCUREMENT_ADMIN", "SERVICE_DEVELOPER"}, "unit_technicians")
 	// قرار (ع) 10-10: مطوّر الخدمات شغله دراسات الخدمات — يشوفها ويقترح ويرفع تقارير
 	requireServiceStudies := middleware.RequireRoleOrPermission(permissionRepo, employeeRepo, notificationRepo, []string{"SERVICE_DEVELOPER"}, "unit_technicians")
-	requireQuality := middleware.RequirePermission(permissionRepo, employeeRepo, notificationRepo, "quality_control")
+	// 🔴 (10-16) چان صلاحية بس: الواجهة تطلّع أزرار الشكوى لمهندس الجودة بدوره
+	// (ComplaintsPage fullDetailRoles)، فمهندس جودة ما انمنحله quality_control
+	// چان ياخذ ٤٠٣ = مخالفة وقفل حساب. هسه الدور أو الصلاحية — نفس الواجهة.
+	requireQuality := middleware.RequireRoleOrAnyPermission(permissionRepo, employeeRepo, notificationRepo, []string{"QUALITY_ENGINEER"}, "quality_control")
 	requireProjectMgmtPerm := middleware.RequirePermission(permissionRepo, employeeRepo, notificationRepo, "project_management")
 	requireKpi := middleware.RequirePermission(permissionRepo, employeeRepo, notificationRepo, "kpi_management")
 	requireKpiCriteria := middleware.RequirePermission(permissionRepo, employeeRepo, notificationRepo, "kpi_criteria_management")
@@ -1091,6 +1094,13 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	// لوحة اليوم — كل أرقامها بنداء واحد
 	todayHandler := handler.NewTodayHandler(repository.NewTodayRepository(db))
 	mux.Handle("GET /api/dashboard/today", middleware.Chain(http.HandlerFunc(todayHandler.Board), requireAuth))
+	// «الرقم = القائمة» (ع 10-16): قائمة كل بطاقة باللوحة. بيها أسماء زبائن
+	// وأرقامهم، فمحصورة بالي تطلعله «لوحة اليوم» أصلاً — ⚠️ نفس شرط الواجهة
+	// بـDashboard.tsx (canDrill بـutils/drill.ts) حرفياً، وإلا البطاقة تنضغط
+	// وتاخذ ٤٠٣ = مخالفة على موظف بريء.
+	mux.Handle("GET /api/drill/{key}", middleware.Chain(http.HandlerFunc(todayHandler.Drill), requireAuth,
+		middleware.RequireRoleOrAnyPermission(permissionRepo, employeeRepo, notificationRepo,
+			[]string{"ADMIN", "OWNER", "MONITOR", "HR_COORDINATOR"}, "coordinator", "view_bookings", "monitoring")))
 	mux.Handle("GET /api/bookings/locate", middleware.Chain(http.HandlerFunc(bookingHandler.Locate), requireAuth))
 	mux.Handle("GET /api/bookings/station-counts", middleware.Chain(http.HandlerFunc(bookingHandler.StationCounts), requireAuth))
 	mux.Handle("GET /api/bookings/paged", middleware.Chain(http.HandlerFunc(bookingHandler.Paged), requireAuth))

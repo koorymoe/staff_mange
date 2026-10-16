@@ -4219,6 +4219,8 @@ export const api = {
 
   /** لوحة اليوم — كل أرقامها بنداء واحد */
   getTodayBoard: () => request<TodayBoardData>('/dashboard/today'),
+  /** «الرقم = القائمة» (ع 10-16): الحجوزات الي عدّتها البطاقة بالضبط */
+  getDrill: (key: string) => request<DrillResult>(`/drill/${encodeURIComponent(key)}`),
 
   /** «وين هذا الحجز؟» — يرجّع المحطة الي بيها الحجز فعلاً */
   locateBookings: (q: string) =>
@@ -6180,3 +6182,13 @@ export interface PurchaseMonth {
   lines: { at: string; code: string; product: string; qty: number; unitPrice: number; supplier: string; category: string; buyer: string; bestPrice: number | null; bestSupplier: string | null; saving: number }[]
 }
 export interface PurchaseBias { buyer: string; supplier: string; n: number; total: number; share: number; extra: number; cheaperAvailable: number }
+
+export interface DrillRow {
+  id: string; code: string; customer: string | null; phone: string | null; service: string | null
+  status: string; scheduledAt: string | null; createdAt: string; crew: string | null
+  responsible: string | null; ageDays: number | null; station: string; missing: string | null
+}
+export interface DrillResult {
+  key: string; title: string; explain: string; count: number; rows: DrillRow[]
+  extra?: { completed: number; total: number }
+}

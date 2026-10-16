@@ -81,23 +81,19 @@ func (r *TodayRepository) Board() (*TodayBoard, error) {
 	}{}
 	err := r.db.Get(&row, `
 		SELECT
-		  COUNT(*) FILTER (WHERE baghdad_date(b."scheduledAt") = baghdad_date(now())) AS "bookingsToday",
-		  COUNT(*) FILTER (WHERE `+InFieldSQL+`) AS "inField",
-		  COUNT(*) FILTER (WHERE baghdad_date(b."completedAt") = baghdad_date(now())) AS "completedToday",
-		  COUNT(*) FILTER (WHERE baghdad_date(b."createdAt") = baghdad_date(now())) AS "newToday",
-		  COUNT(*) FILTER (WHERE `+bucketCondition("pending")+`) AS "needsContact",
-		  COUNT(*) FILTER (WHERE `+bucketCondition("confirmed")+`) AS "needsCrew",
-		  -- منجز وناقصه ورق: هذا الي يجيب الغرامات.
-		  -- ⚠️ «ناقصه ورق» ينحسب بـpaperworkDoneSQL مو بشرط مكتوب هنا:
-		  -- الشاشة والطابور لازم يتفقون، وشرطان منفصلان يفترقون بأول تعديل.
-		  COUNT(*) FILTER (WHERE b.status = 'COMPLETED' AND b."settledLegacyAt" IS NULL
-		                     AND NOT `+paperworkDoneSQL+`) AS "needsPaper",
-		  COUNT(*) FILTER (WHERE b.status = 'PARTIAL') AS "needsFinish",
-		  COUNT(*) FILTER (WHERE baghdad_date(b."createdAt")
-		             BETWEEN baghdad_date(now()) - interval '6 days' AND baghdad_date(now())) AS "weekTotal",
-		  COUNT(*) FILTER (WHERE b.status = 'COMPLETED' AND baghdad_date(b."createdAt")
-		             BETWEEN baghdad_date(now()) - interval '6 days' AND baghdad_date(now())) AS "weekCompleted"
-		FROM "Booking" b WHERE b."archivedAt" IS NULL` + NotDeletePendingSQL("b"))
+		  -- 🔴 (ع) 10-16 «الرقم = القائمة»: كل رقم من DrillCountSQL، نفس شرط
+		  -- قائمته بـ/api/drill/{key} — فالضغطة تطلّع نفس العدد بالضبط.
+		  `+DrillCountSQL("today_scheduled")+` AS "bookingsToday",
+		  `+DrillCountSQL("in_field")+` AS "inField",
+		  `+DrillCountSQL("completed_today")+` AS "completedToday",
+		  `+DrillCountSQL("new_today")+` AS "newToday",
+		  `+DrillCountSQL("needs_contact")+` AS "needsContact",
+		  `+DrillCountSQL("needs_crew")+` AS "needsCrew",
+		  `+DrillCountSQL("needs_paper")+` AS "needsPaper",
+		  `+DrillCountSQL("needs_finish")+` AS "needsFinish",
+		  `+DrillCountSQL("week")+` AS "weekTotal",
+		  COUNT(*) FILTER (WHERE b.status = 'COMPLETED' AND `+weekSQL+`) AS "weekCompleted"
+		FROM "Booking" b WHERE ` + drillBase())
 	if err != nil {
 		return nil, err
 	}
@@ -136,3 +132,6 @@ func (r *TodayRepository) Board() (*TodayBoard, error) {
 
 	return b, nil
 }
+
+// Drill قائمة رقم واحد من أرقام اللوحة (نفس شرط عدّه).
+func (r *TodayRepository) Drill(key string) (*DrillResult, error) { return Drill(r.db, key, 500) }

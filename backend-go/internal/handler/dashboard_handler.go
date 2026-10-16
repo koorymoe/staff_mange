@@ -178,26 +178,18 @@ func (h *DashboardHandler) TodayPulse(w http.ResponseWriter, r *http.Request) {
 	var s todayPulse
 	err := h.db.Get(&s, `
 		SELECT
-			(SELECT COUNT(*) FROM "Booking"
-			  WHERE "archivedAt" IS NULL`+repository.NotDeletePendingSQL(`"Booking"`)+`
-			    AND baghdad_date("scheduledAt") = baghdad_today())                            AS "todayBookings",
+			-- 🔴 (ع) 10-16 «الرقم = القائمة»: الأرقام من DrillCountSQL — نفس شرط
+			-- قائمتها بـ/api/drill/{key}.
+			(SELECT `+repository.DrillCountSQL("today_scheduled")+` FROM "Booking" b WHERE `+repository.BookingCountableSQL("b")+`) AS "todayBookings",
 			-- أمس للمقارنة: رقم بلا مرجع ما يگول شي. ١٢ حجز زين لو خبل؟
 			(SELECT COUNT(*) FROM "Booking"
 			  WHERE "archivedAt" IS NULL`+repository.NotDeletePendingSQL(`"Booking"`)+`
 			    AND baghdad_date("scheduledAt") = baghdad_today() - 1)                          AS "yesterdayBookings",
-			-- المهام المفتوحة: الي لسه بالميدان، مو المنجزة ولا المتوقفة
-			-- (ع) 10-13: المرحلة المحسوبة من الحجز مو عمود المهمة الخام (ما يتحدّث
-			-- لمن الليدر يشتغل) — نفس رقم «المهام النشطة» بتتبع المهام.
-			(SELECT COUNT(*) FROM "Mission" m JOIN "Booking" b ON b.id = m."bookingId"
-			  WHERE b."archivedAt" IS NULL AND (`+repository.MissionStageSQL+`) NOT IN ('COMPLETED','STOPPED')) AS "openMissions",
+			-- المهام المفتوحة: حجوزات عليها مهمة لسه ما خلصت ولا توقفت
+			(SELECT `+repository.DrillCountSQL("open_missions")+` FROM "Booking" b WHERE `+repository.BookingCountableSQL("b")+`) AS "openMissions",
 			(SELECT COUNT(*) FROM "Complaint" WHERE status = 'NEW')                  AS "newComplaints",
 			-- مثبّت بس بلا موعد أو بلا كادر — هذا الي يحتاج شغل الإداري
-			(SELECT COUNT(*) FROM "Booking" b
-			  WHERE b."archivedAt" IS NULL`+repository.NotDeletePendingSQL("b")+`
-			    AND b.status = 'CONFIRMED'
-			    AND (b."scheduledAt" IS NULL
-			         OR NOT EXISTS (SELECT 1 FROM "BookingAssignment" ba
-			                         WHERE ba."bookingId" = b.id)))                  AS "needsCoordination",
+			(SELECT `+repository.DrillCountSQL("needs_coord")+` FROM "Booking" b WHERE `+repository.BookingCountableSQL("b")+`) AS "needsCoordination",
 			-- كوادر بالميدان هسه: طلعوا وما وصلوا/خلصوا
 			-- (ع) 10-13: چان يعدّ من Mission بس، والليدر يأشّر على الحجز → دايماً صفر.
 			-- هسه: كل موظف على حجز بالميدان اليوم + أي مهمة ميدانية — بلا تكرار.
@@ -208,11 +200,8 @@ func (h *DashboardHandler) TodayPulse(w http.ResponseWriter, r *http.Request) {
 			   SELECT m."leaderId" FROM "Mission" m
 			    WHERE m.stage IN ('EN_ROUTE','ARRIVED','WORK_STARTED') AND m."leaderId" IS NOT NULL
 			 ) x)                                                                    AS "crewInField",
-			-- تأخر ميداني: مهمة مفتوحة من أكثر من يوم بلا إنجاز
-			-- متأخرة = مفتوحة وموعد حجزها فات بأكثر من ٢٤ ساعة (مو إسناد قديم بس)
-			(SELECT COUNT(*) FROM "Mission" m JOIN "Booking" b ON b.id = m."bookingId"
-			  WHERE b."archivedAt" IS NULL AND (`+repository.MissionStageSQL+`) NOT IN ('COMPLETED','STOPPED')
-			    AND COALESCE(b."scheduledAt", m."assignedAt") < now() - interval '24 hours') AS "overdueMissions"`)
+			-- متأخرة = مفتوحة وموعد حجزها فات بأكثر من ٢٤ ساعة
+			(SELECT `+repository.DrillCountSQL("overdue")+` FROM "Booking" b WHERE `+repository.BookingCountableSQL("b")+`) AS "overdueMissions"`)
 	if err != nil {
 		log.Printf("today pulse: %v", err)
 		WriteError(w, http.StatusInternalServerError, "تعذر جلب نبض اليوم")

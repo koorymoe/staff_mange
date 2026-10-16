@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { api, type TodayBoardData, type FinanceSummary } from '../api'
 import EmployeeAvatar from './EmployeeAvatar'
+import { useSession } from '../session'
+import { canDrill, drillTo } from '../utils/drill'
 import { pollVisible } from '../utils/poll'
 
 // ═══ لوحة اليوم ═══
@@ -49,23 +51,22 @@ function StatCard({ icon, label, value, tone, hint, to }: {
 
 /** بطاقة شغل — تنضغط وتروح لمحطتها. */
 function TaskCard({ icon, label, value, to, hint }: {
-  icon: string; label: string; value: number; to: string; hint: string
+  icon: string; label: string; value: number; to?: string; hint: string
 }) {
   // ⚠️ الصفر ما يطلع: «ماكو شي ينتظرك» أحسن من صف بطاقات بأصفار
   // تخلّي العين تتعوّد تتجاهلها — فلمن يصير رقم حقيقي ما تنتبهله.
   if (!value) return null
+  const cls = 'flex items-center gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3 transition hover:border-brand-300 hover:shadow-sm'
+  const Wrap = ({ children }: { children: React.ReactNode }) => (to ? <Link to={to} className={cls}>{children}</Link> : <div className={cls}>{children}</div>)
   return (
-    <Link
-      to={to}
-      className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3 transition hover:border-brand-300 hover:shadow-sm"
-    >
+    <Wrap>
       <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-50 text-lg">{icon}</span>
       <div className="min-w-0 flex-1">
         <p className="text-[13px] font-extrabold text-[#0f2040]">{label}</p>
         <p className="text-[11px] text-slate-400">{hint}</p>
       </div>
       <span className={`rounded-xl bg-[#0f2040] px-2.5 py-1 text-sm font-black text-white ${NUMBERS}`}>{value}</span>
-    </Link>
+    </Wrap>
   )
 }
 
@@ -156,6 +157,9 @@ function MiniChart({ points }: { points: { day: string; count: number }[] }) {
 
 export default function TodayBoard({ finance }: { finance?: FinanceSummary | null } = {}) {
   const [d, setD] = useState<TodayBoardData | null>(null)
+  // 🔴 (ع) 10-16 «الرقم = القائمة»: كل بطاقة تفتح نفس الحجوزات الي عدّتها
+  const { employee, permissions } = useSession()
+  const dl = (key: string) => (canDrill(employee, permissions) ? drillTo(key) : undefined)
 
   useEffect(() => {
     let alive = true
@@ -176,11 +180,11 @@ export default function TodayBoard({ finance }: { finance?: FinanceSummary | nul
       <div>
         <h3 className="mb-2 text-sm font-extrabold text-[#0f2040]">📅 شنو صاير اليوم</h3>
         <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-          <StatCard icon="✨" label="حجوزات وصلت اليوم" value={d.newToday} tone="amber" hint="وصلت اليوم" to="/bookings" />
-          <StatCard icon="🏁" label="خلّصوا اليوم" value={d.completedToday} tone="emerald" hint="اكتمل العمل" to="/bookings?tab=done" />
+          <StatCard icon="✨" label="حجوزات وصلت اليوم" value={d.newToday} tone="amber" hint="حجز جديد انسجّل اليوم — اضغط تشوفهن" to={dl('new_today')} />
+          <StatCard icon="🏁" label="خلّصوا اليوم" value={d.completedToday} tone="emerald" hint="تأشّرت «منجز» اليوم — اضغط تشوفهن" to={dl('completed_today')} />
           {/* ⚠️ نفس `d.inField` (حجوزات IN_PROGRESS) — تسمية بس، البيانات ما تغيّرت */}
-          <StatCard icon="🚚" label="بالطريق (الصيانة)" value={d.inField} tone="violet" hint="انطلق اليوم" to="/missions" />
-          <StatCard icon="🗓️" label="حجوزات اليوم" value={d.bookingsToday} tone="blue" hint="موعدها اليوم" to="/missions" />
+          <StatCard icon="🚚" label="بالميدان هسه" value={d.inField} tone="violet" hint="الكادر انطلق أو وصل اليوم وبعده ما خلص" to={dl('in_field')} />
+          <StatCard icon="🗓️" label="حجوزات اليوم" value={d.bookingsToday} tone="blue" hint="موعدها اليوم — اضغط تشوفهن" to={dl('today_scheduled')} />
         </div>
       </div>
 
@@ -198,24 +202,26 @@ export default function TodayBoard({ finance }: { finance?: FinanceSummary | nul
         <div className="mb-2.5 grid grid-cols-1 gap-2.5 sm:grid-cols-3">
           <StatCard icon="📈" label="نجاح الأسبوع"
             value={d.weekTotal > 0 ? `${Math.round((d.weekCompleted / d.weekTotal) * 100)}٪` : '—'}
-            tone="emerald" hint={d.weekTotal > 0 ? `${d.weekCompleted} من ${d.weekTotal} هذا الأسبوع` : 'نسبة الإنجاز'} />
+            tone="emerald" to={dl('week')}
+            hint={d.weekTotal > 0 ? `خلص ${d.weekCompleted} من ${d.weekTotal} حجز انسجّل آخر ٧ أيام — اضغط تشوف التفاصيل` : 'ماكو حجوزات آخر ٧ أيام'} />
           {finance != null && (
             <StatCard icon="💵" label="تدقيق استلام المبالغ"
-              value={finance.unverifiedCount} tone="amber" hint="معاملة تنتظر التدقيق" to="/daily-audit" />
+              value={finance.unverifiedCount} tone="amber" hint="حجوزات منجزة المحاسب بعده ما دقّق مبلغها — من كل الأيام" to={dl('unverified')} />
           )}
-          <StatCard icon="🎯" label="عدد المهام لسه" value={totalWaiting} tone="blue" hint="تنتظر تصرّف" />
+          <StatCard icon="🎯" label="عدد المهام لسه" value={totalWaiting} tone="blue"
+            hint="مجموع البطاقات الأربع جوّا (تواصل + كادر + ورق + إكمال) — من كل الفترات، مو اليوم بس" />
         </div>
 
         {totalWaiting > 0 && (
           <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
             <TaskCard icon="📞" label="ينتظرون تواصل وتثبيت" value={d.needsContact}
-              to="/bookings" hint="حجوزات مرحّلة وما أحد حچى وية زبونها" />
+              to={dl('needs_contact')} hint="انسجّلت وما أحد ثبّتها ويا الزبون بعد" />
             <TaskCard icon="👥" label="ينتظرون كادراً وموعداً" value={d.needsCrew}
-              to="/bookings" hint="مثبّتة وما عليها كادر بعد" />
+              to={dl('needs_crew')} hint="انثبّتت ويا الزبون وما انحطلها كادر" />
             <TaskCard icon="🧾" label="منجزة وناقصها ورق" value={d.needsPaper}
-              to="/bookings" hint="فاتورة أو تقرير — وهاي الي تجيب الغرامات" />
+              to={dl('needs_paper')} hint="الشغل خلص وناقص فاتورة أو تقرير — هاي الي تجيب الغرامات" />
             <TaskCard icon="🔄" label="تحتاج موعد إكمال" value={d.needsFinish}
-              to="/bookings" hint="طلع الكادر وما خلّص الشغل" />
+              to={dl('needs_finish')} hint="طلع الكادر وأنجز جزء — يحتاج موعد ثاني" />
           </div>
         )}
       </div>

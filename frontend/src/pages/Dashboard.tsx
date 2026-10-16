@@ -412,7 +412,7 @@ function StaffDashboard() {
 
 
   const kpiCards = [
-    { title: 'الموظفين', value: employeeCount, color: 'var(--t-info)', bg: 'from-blue-500/10 to-blue-500/5', ring: 75, path: '/employees',
+    { title: 'الموظفين', value: employeeCount, color: 'var(--t-info)', bg: 'from-blue-500/10 to-blue-500/5', ring: 75, path: '/staff-management-desk',
       icon: <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2M9 7a4 4 0 100-8 4 4 0 000 8zM23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75" /> },
     { title: 'العملاء', value: customerCount, color: 'var(--t-success)', bg: 'from-emerald-500/10 to-emerald-500/5', ring: 60, path: '/customers',
       icon: <><path d="M16 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" /><circle cx="8.5" cy="7" r="4" /><line x1="20" y1="8" x2="20" y2="14" /><line x1="23" y1="11" x2="17" y2="11" /></> },
@@ -1420,7 +1420,7 @@ function StaffDashboard() {
           </SystemPanel>
 
           {/* HR Panel */}
-          <SystemPanel title="الموارد البشرية" color="#10b981" dotColor="bg-emerald-400" actionLabel="عرض الكل" onAction={() => navigate('/employees')}>
+          <SystemPanel title="الموارد البشرية" color="#10b981" dotColor="bg-emerald-400" actionLabel="عرض الكل" onAction={() => navigate('/staff-management-desk')}>
             <div className="grid grid-cols-2 gap-3">
               <MiniKPI label="الموظفين" value={employeeCount} ink="var(--t-info)" tint="var(--sf-info)" />
               <MiniKPI label="الشكاوى" value={0} ink="var(--t-danger)" tint="var(--sf-danger)" />

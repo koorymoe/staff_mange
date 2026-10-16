@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { drillTo } from '../utils/drill'
 import { api, type FinanceSummary, type MonitorReview, type TodayBoardData } from '../api'
 import { useSession } from '../session'
 import { isPathAllowed } from './navTree'
@@ -130,9 +131,9 @@ export default function MonitorHome() {
       </section>
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <StatCard label="حجوزات اليوم" value={board ? fmt(board.bookingsToday) : '…'} to={linkIf('/missions')} tone="blue" icon="📅" />
-        <StatCard label="مكتملة اليوم" value={board ? fmt(board.completedToday) : '…'} to={linkIf('/bookings') && '/bookings?tab=done'} tone="green" icon="✅" />
-        <StatCard label="قيد التنفيذ" value={board ? fmt(board.inField) : '…'} to={linkIf('/missions')} tone="amber" icon="⏳" />
+        <StatCard label="حجوزات اليوم" value={board ? fmt(board.bookingsToday) : '…'} to={drillTo('today_scheduled')} tone="blue" icon="📅" />
+        <StatCard label="مكتملة اليوم" value={board ? fmt(board.completedToday) : '…'} to={drillTo('completed_today')} tone="green" icon="✅" />
+        <StatCard label="بالميدان هسه" value={board ? fmt(board.inField) : '…'} to={drillTo('in_field')} tone="amber" icon="⏳" />
         <StatCard label="تحتاج متابعة" value={pending ?? '…'} to={linkIf('/monitor-inbox')} tone="red" icon="❗" />
       </div>
 
