@@ -16,6 +16,7 @@ const ROLE_LABELS: Record<string, string> = {
   TECH_1: 'الفني الأول',
   TECH_2: 'الفني الثاني',
   TECH_3: 'الفني الثالث',
+  LEADER: 'الليدر',
 }
 
 export default function BookingVisits({ bookingId }: { bookingId: string }) {

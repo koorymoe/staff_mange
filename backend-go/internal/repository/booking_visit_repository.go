@@ -56,6 +56,21 @@ func recordVisitTx(tx *sqlx.Tx, bookingID, outcome string, percentDone *int, pro
 	`, visitID, bookingID); err != nil {
 		return "", err
 	}
+	// 🔴 (ع) 10-16 «اكو ليدر واكو فني ليش يطلعلي بس اسم الفني؟»: الليدر
+	// ممكن يكون على الحجز **بلا تكليف** — ليدر المهمة الميدانية (Mission.leaderId)
+	// الي استلمها وطلع بيها. (مشرف المشاريع ما ينضاف: مو هو الي طلع.)
+	// چان ما ينسجّل بالطلعة، فما يطلع اسمه وما تنحسبله إنتاجيته.
+	if _, err := tx.Exec(`
+		INSERT INTO "BookingVisitCrew" (id, "visitId", "employeeId", role, "isLeader")
+		SELECT gen_random_uuid()::text, $1, l.id, 'LEADER', true
+		FROM (
+		  SELECT DISTINCT m."leaderId" AS id FROM "Mission" m WHERE m."bookingId" = $2 AND m."leaderId" IS NOT NULL
+		) l
+		JOIN "Employee" e ON e.id = l.id
+		ON CONFLICT ("visitId", "employeeId") DO NOTHING
+	`, visitID, bookingID); err != nil {
+		return "", err
+	}
 	return visitID, nil
 }
 

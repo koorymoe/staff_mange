@@ -460,5 +460,19 @@ func matrixChatMigrations() []Migration {
 			ALTER TABLE "DuplicateCandidate" ADD CONSTRAINT "DuplicateCandidate_status_check"
 				CHECK (status IN ('PENDING', 'DISMISSED', 'RESOLVED'));
 		`,
+	}, {
+		// 🔴 (ع) 10-16: الطلعات القديمة الي فاتها ليدر المهمة (استلمها بلا تكليف)
+		// — ينضاف لكل طلعة حتى يطلع اسمه وتنحسبله.
+		Version: "0370_visit_crew_leader",
+		SQL: `
+			INSERT INTO "BookingVisitCrew" (id, "visitId", "employeeId", role, "isLeader")
+			SELECT gen_random_uuid()::text, v.id, l.id, 'LEADER', true
+			FROM "BookingVisit" v
+			JOIN LATERAL (
+			  SELECT DISTINCT m."leaderId" AS id FROM "Mission" m WHERE m."bookingId" = v."bookingId" AND m."leaderId" IS NOT NULL
+			) l ON true
+			JOIN "Employee" e ON e.id = l.id
+			ON CONFLICT ("visitId", "employeeId") DO NOTHING;
+		`,
 	}}
 }
