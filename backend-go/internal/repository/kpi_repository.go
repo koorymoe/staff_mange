@@ -175,9 +175,8 @@ func (r *KpiRepository) PermissionLeaderboard(permission string, since, until st
 			COALESCE(SUM(k.points), 0) AS points,
 			COUNT(k.id) AS "evaluationCount",
 			COALESCE((
-				SELECT COUNT(*) FROM "BookingAssignment" ba
-				JOIN "Booking" b ON b.id = ba."bookingId"
-				WHERE ba."employeeId" = h.id AND b.status = 'COMPLETED'
+				SELECT COUNT(*) FROM "Booking" b -- (ع 10-16) الكادر الموحّد: الليدر الي مو بالتكليف ينحسب
+				WHERE `+BookingWorkedBySQL("b", `h.id`)+` AND b.status = 'COMPLETED'
 				  AND b."completedAt" >= $2::timestamp
 				  AND ($3 = '' OR b."completedAt" < $3::timestamp)
 				  -- 🔴 المؤرشف (المحذوف) والمطلوب حذفه كانا ينعدّان: حجز
@@ -187,9 +186,8 @@ func (r *KpiRepository) PermissionLeaderboard(permission string, since, until st
 				  AND `+BookingCountableSQL("b")+`
 			), 0) AS "completedBookings",
 			COALESCE((
-				SELECT COUNT(*) FROM "BookingAssignment" ba
-				JOIN "Booking" b ON b.id = ba."bookingId"
-				WHERE ba."employeeId" = h.id
+				SELECT COUNT(*) FROM "Booking" b -- (ع 10-16) الكادر الموحّد: الليدر الي مو بالتكليف ينحسب
+				WHERE `+BookingWorkedBySQL("b", `h.id`)+`
 				  AND b."createdAt" >= $2::timestamp
 				  AND ($3 = '' OR b."createdAt" < $3::timestamp)
 				  AND b.status <> 'CANCELLED'
@@ -242,9 +240,8 @@ func (r *KpiRepository) RoleLeaderboard(roles []string, since, until string, sco
 			COALESCE(SUM(k.points), 0) AS points,
 			COUNT(k.id) AS "evaluationCount",
 			COALESCE((
-				SELECT COUNT(*) FROM "BookingAssignment" ba
-				JOIN "Booking" b ON b.id = ba."bookingId"
-				WHERE ba."employeeId" = e.id AND b.status = 'COMPLETED'
+				SELECT COUNT(*) FROM "Booking" b -- (ع 10-16) الكادر الموحّد: الليدر الي مو بالتكليف ينحسب
+				WHERE `+BookingWorkedBySQL("b", `e.id`)+` AND b.status = 'COMPLETED'
 				  AND b."completedAt" >= $2::timestamp
 				  AND ($3 = '' OR b."completedAt" < $3::timestamp)
 				  -- 🔴 المؤرشف (المحذوف) والمطلوب حذفه كانا ينعدّان: حجز
@@ -257,9 +254,8 @@ func (r *KpiRepository) RoleLeaderboard(roles []string, since, until string, sco
 			-- بدونها ما نكدر نحسب معدل الإنجاز، والمعدل هو الي يميّز
 			-- الي خلّص ٨ من ٨ عن الي خلّص ٨ من ٢٠.
 			COALESCE((
-				SELECT COUNT(*) FROM "BookingAssignment" ba
-				JOIN "Booking" b ON b.id = ba."bookingId"
-				WHERE ba."employeeId" = e.id
+				SELECT COUNT(*) FROM "Booking" b -- (ع 10-16) الكادر الموحّد: الليدر الي مو بالتكليف ينحسب
+				WHERE `+BookingWorkedBySQL("b", `e.id`)+`
 				  AND b."createdAt" >= $2::timestamp
 				  AND ($3 = '' OR b."createdAt" < $3::timestamp)
 				  AND b.status <> 'CANCELLED'

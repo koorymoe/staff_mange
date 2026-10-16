@@ -144,7 +144,7 @@ SELECT b.id, b.code, b.status::text AS status, b."bookingType"::text AS "booking
        b."handoverReason", b."techContactedAt", b."techDiagnosedAt", b."techCrewRequestedAt",
        b."techDecision", b."techDecidedAt", b."techVisitAt", b."techVisitedAt", b."techVisitMoves",
        asg."firstAssignAt", COALESCE(asg.crew, '{}') AS "crewIds", COALESCE(asg.techs, '{}') AS "techIds",
-       COALESCE(b."projectSupervisorId", asg.leader, m."leaderId") AS "leaderId", le.name AS "leaderName",
+       booking_leader_id(b.id) AS "leaderId", le.name AS "leaderName",
        m."assignedAt" AS "missionAt", COALESCE(m."materialsReadyAt", b."materialsReadyAt") AS "materialsAt",
        m."departedAt", COALESCE(m."arrivedAt", b."arrivedAt") AS "arrivedAt", m."workStartedAt" AS "workStartAt",
        b."startedAt", b."completedAt", b."workStoppedAt" AS "stoppedAt", b."partialCount",
@@ -185,7 +185,7 @@ LEFT JOIN LATERAL (
 LEFT JOIN LATERAL (
 	SELECT * FROM "Mission" mm WHERE mm."bookingId" = b.id ORDER BY mm."assignedAt" DESC LIMIT 1
 ) m ON true
-LEFT JOIN "Employee" le ON le.id = COALESCE(b."projectSupervisorId", asg.leader, m."leaderId")
+LEFT JOIN "Employee" le ON le.id = booking_leader_id(b.id) -- (ع 10-16) التعريف الموحّد
 LEFT JOIN LATERAL (
 	SELECT li."createdAt", li."employeeId", li."netTotal", li."auditedAt", li."auditedById",
 	       li."approvedAt", li."approvedByEmployeeId"
@@ -342,7 +342,7 @@ func (r *MatrixChainRepository) LeadersPendingRating() ([]LeaderPending, error) 
 	rows := []LeaderPending{}
 	err := r.db.Select(&rows, `
 		WITH lb AS (
-			SELECT DISTINCT b.id, b.code, COALESCE(la."employeeId", m."leaderId", b."projectSupervisorId") AS "leaderId"
+			SELECT DISTINCT b.id, b.code, booking_leader_id(b.id) AS "leaderId" -- (ع 10-16) التعريف الموحّد
 			FROM "Booking" b
 			LEFT JOIN LATERAL (SELECT a."employeeId" FROM "BookingAssignment" a JOIN "Employee" e ON e.id = a."employeeId"
 			                   WHERE a."bookingId" = b.id AND e."isLeader" ORDER BY a."createdAt" LIMIT 1) la ON true

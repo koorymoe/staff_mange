@@ -579,11 +579,8 @@ func itoa(n int) string {
 
 // complaintLeaderExpr: الليدر المنسوب للشكوى — relatedEmployeeId لو
 // محدد، وإلا الليدر (isLeader) من كادر حجز الشكوى.
-const complaintLeaderExpr = `COALESCE(c."relatedEmployeeId", (
-	SELECT ba."employeeId" FROM "BookingAssignment" ba
-	JOIN "Employee" e ON e.id = ba."employeeId"
-	WHERE ba."bookingId" = c."bookingId" AND e."isLeader" = true
-	ORDER BY ba."createdAt" LIMIT 1))`
+// (ع 10-16) وإلا ليدر الحجز بالتعريف الموحّد.
+const complaintLeaderExpr = `COALESCE(c."relatedEmployeeId", booking_leader_id(c."bookingId"))`
 
 // ComplaintLeaderID يرجّع الليدر المنسوب للشكوى، أو "" لو ما ينعرف.
 func (r *AiRepository) ComplaintLeaderID(complaintID string) (string, error) {

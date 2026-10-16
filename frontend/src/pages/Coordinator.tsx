@@ -597,17 +597,14 @@ export default function Coordinator() {
   const leaderLoad = (() => {
     const map = new Map<string, { name: string; active: Booking[]; done: Booking[] }>()
     for (const b of bookings) {
-      for (const a of b.assignments || []) {
-        // الليدر بالحجز = الموظف المعيّن الي مؤشّر «تيم ليدر» بملفه
-        // (الأدوار TECH_1/2/3 هي لبقية الكادر، مو للليدر).
-        if (!a.employee?.isLeader) continue
-        const id = a.employee?.id
-        if (!id) continue
-        if (!map.has(id)) map.set(id, { name: a.employee.name, active: [], done: [] })
-        const entry = map.get(id)!
-        if (b.status === 'COMPLETED' || b.status === 'CANCELLED') entry.done.push(b)
-        else entry.active.push(b)
-      }
+      // (ع 10-16) ليدر الحجز بالتعريف الموحّد من الخادم (المشرف الليدر ←
+      // الليدر بالتكليف ← ليدر المهمة) — مو التكليف بس.
+      const id = b.leaderId
+      if (!id) continue
+      if (!map.has(id)) map.set(id, { name: b.leaderName || '—', active: [], done: [] })
+      const entry = map.get(id)!
+      if (b.status === 'COMPLETED' || b.status === 'CANCELLED') entry.done.push(b)
+      else entry.active.push(b)
     }
     return [...map.entries()]
       .map(([id, v]) => ({ id, ...v }))
@@ -620,8 +617,7 @@ export default function Coordinator() {
     .filter((b) => matchesSearch(b))
     .filter((b) => stateFilter === 'ALL' || b.completionState === stateFilter)
     .filter((b) =>
-      leaderFilter === 'ALL' ||
-      (b.assignments || []).some((a) => a.employee?.isLeader && a.employee?.id === leaderFilter),
+      leaderFilter === 'ALL' || b.leaderId === leaderFilter,
     )
 
   const stateCounts = COMPLETION_ORDER.reduce<Record<string, number>>((acc, st) => {

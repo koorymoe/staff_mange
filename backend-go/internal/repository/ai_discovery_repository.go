@@ -57,10 +57,7 @@ const leaderLateralJoin = `
 			 JOIN "BookingVisit" v ON v.id = vc."visitId"
 			 WHERE v."bookingId" = b.id AND vc."isLeader"
 			 ORDER BY v."visitNumber" DESC LIMIT 1),
-			(SELECT ba."employeeId" FROM "BookingAssignment" ba
-			 JOIN "Employee" le ON le.id = ba."employeeId"
-			 WHERE ba."bookingId" = b.id AND le."isLeader"
-			 ORDER BY ba.role LIMIT 1)
+			booking_leader_id(b.id) -- (ع 10-16) التعريف الموحّد
 		)
 	) ldr ON true`
 

@@ -57,8 +57,8 @@ func (r *AiRepository) CrewCandidates(bookingID, serviceID, day string) ([]CrewC
 	rows := []CrewCandidateRow{}
 	err := r.db.Select(&rows, `
 		WITH done AS (
-			SELECT b.id, ba."employeeId" AS eid
-			FROM "Booking" b JOIN "BookingAssignment" ba ON ba."bookingId" = b.id
+			SELECT b.id, bc.eid
+			FROM "Booking" b CROSS JOIN LATERAL booking_crew_ids(b.id) bc(eid) -- (ع 10-16) الكادر الموحّد
 			WHERE b.status = 'COMPLETED' AND b."serviceId" = $2 AND b."serviceId" <> ''
 			  AND b."archivedAt" IS NULL AND b."settledLegacyAt" IS NULL
 			  AND b."completedAt" >= (now() AT TIME ZONE 'UTC') - interval '365 days'
@@ -72,8 +72,7 @@ func (r *AiRepository) CrewCandidates(bookingID, serviceID, day string) ([]CrewC
 		           EXISTS (SELECT 1 FROM "AiSignal" sg WHERE sg."entityType" = 'BOOKING' AND sg."entityId" = d.id AND sg.kind = 'WORK_STOPPED')
 		           OR EXISTS (SELECT 1 FROM "Complaint" c WHERE c."bookingId" = d.id))) AS "problemCount",
 		       (SELECT COUNT(DISTINCT b2.id) FROM "Booking" b2
-		        JOIN "BookingAssignment" ba2 ON ba2."bookingId" = b2.id
-		        WHERE ba2."employeeId" = e.id AND b2.id <> $1 AND b2."archivedAt" IS NULL
+		        WHERE `+BookingWorkedBySQL("b2", "e.id")+` AND b2.id <> $1 AND b2."archivedAt" IS NULL
 		          AND b2.status IN ('PENDING', 'CONFIRMED', 'IN_PROGRESS', 'COMPLETED')
 		          AND baghdad_date(b2."scheduledAt") = $3::date) AS "dayLoad"
 		FROM "Employee" e
@@ -123,12 +122,12 @@ func (r *AiRepository) EmployeeEvents(ids []string, from, to time.Time) ([]Emplo
 	rows := []EmployeeEvent{}
 	err := r.db.Select(&rows, `
 		SELECT x.eid, e.name, x.kind, x.at, x."paperDue", x."paperOk" FROM (
-			SELECT ba."employeeId" AS eid, 'DONE' AS kind, (b."completedAt" AT TIME ZONE 'UTC') AS at,
+			SELECT bc.eid, 'DONE' AS kind, (b."completedAt" AT TIME ZONE 'UTC') AS at,
 			       (le."isLeader" AND b."completedAt" < (now() AT TIME ZONE 'UTC') - interval '48 hours') AS "paperDue",
 			       `+paperworkDoneSQL+` AS "paperOk"
 			FROM "Booking" b
-			JOIN "BookingAssignment" ba ON ba."bookingId" = b.id
-			JOIN "Employee" le ON le.id = ba."employeeId"
+			CROSS JOIN LATERAL booking_crew_ids(b.id) bc(eid) -- (ع 10-16) الكادر الموحّد
+			JOIN "Employee" le ON le.id = bc.eid
 			WHERE b.status = 'COMPLETED' AND b."archivedAt" IS NULL AND b."settledLegacyAt" IS NULL
 			  AND NOT (`+isLegacyImportSQL+`)
 			  AND (b."completedAt" AT TIME ZONE 'UTC') >= $2 AND (b."completedAt" AT TIME ZONE 'UTC') < $3

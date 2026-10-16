@@ -251,10 +251,7 @@ func (r *DisciplineRepository) OverdueLeaderPaperwork(hours int) ([]OverdueLeade
 				 JOIN "BookingVisit" v ON v.id = vc."visitId"
 				 WHERE v."bookingId" = b.id AND vc."isLeader"
 				 ORDER BY v."visitNumber" DESC LIMIT 1),
-				(SELECT ba."employeeId" FROM "BookingAssignment" ba
-				 JOIN "Employee" le ON le.id = ba."employeeId"
-				 WHERE ba."bookingId" = b.id AND le."isLeader"
-				 ORDER BY ba.role LIMIT 1)
+				booking_leader_id(b.id) -- (ع 10-16) التعريف الموحّد
 			)
 			AND e.status = 'ACTIVE'
 		) ldr ON true
@@ -398,10 +395,7 @@ func (r *DisciplineRepository) PendingPaperworkForEmployee(employeeID string) ([
 		             JOIN "BookingVisit" v ON v.id = vc."visitId"
 		             WHERE v."bookingId" = b.id AND vc."isLeader"
 		             ORDER BY v."visitNumber" DESC LIMIT 1),
-		            (SELECT ba."employeeId" FROM "BookingAssignment" ba
-		             JOIN "Employee" le ON le.id = ba."employeeId"
-		             WHERE ba."bookingId" = b.id AND le."isLeader"
-		             ORDER BY ba.role LIMIT 1)
+		            booking_leader_id(b.id) -- (ع 10-16) التعريف الموحّد
 		          ) = $1),
 		         false
 		       ) AS "asLeader"
@@ -445,10 +439,7 @@ func (r *DisciplineRepository) PendingPaperworkForEmployee(employeeID string) ([
 		       JOIN "BookingVisit" v ON v.id = vc."visitId"
 		       WHERE v."bookingId" = b.id AND vc."isLeader"
 		       ORDER BY v."visitNumber" DESC LIMIT 1),
-		      (SELECT ba."employeeId" FROM "BookingAssignment" ba
-		       JOIN "Employee" le ON le.id = ba."employeeId"
-		       WHERE ba."bookingId" = b.id AND le."isLeader"
-		       ORDER BY ba.role LIMIT 1)
+		      booking_leader_id(b.id) -- (ع 10-16) التعريف الموحّد
 		    ) = $1
 		    OR
 		    -- الإداري الي كلّف

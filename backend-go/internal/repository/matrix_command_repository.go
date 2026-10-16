@@ -91,7 +91,7 @@ func (r *MatrixCommandRepository) LateWindow(from, to int) (*LateWindow, error) 
 		SELECT COUNT(*) AS total,
 		  COUNT(*) FILTER (WHERE (b.status = 'COMPLETED' AND baghdad_date(b."completedAt") > baghdad_date(b."scheduledAt"))
 		                      OR (b.status::text NOT IN ('COMPLETED','CANCELLED') AND baghdad_date(b."scheduledAt") < baghdad_today())) AS late,
-		  COUNT(*) FILTER (WHERE NOT EXISTS (SELECT 1 FROM "BookingAssignment" a WHERE a."bookingId" = b.id)) AS unstaffed,
+		  COUNT(*) FILTER (WHERE NOT EXISTS (SELECT 1 FROM booking_crew_ids(b.id)) /* (ع 10-16) الكادر الموحّد */) AS unstaffed,
 		  COUNT(*) FILTER (WHERE b."partialCount" > 0) AS partial,
 		  COUNT(*) FILTER (WHERE b.status::text NOT IN ('COMPLETED','CANCELLED') AND baghdad_date(b."scheduledAt") < baghdad_today()) AS "openNow"
 		FROM "Booking" b
@@ -134,7 +134,7 @@ func (r *MatrixCommandRepository) LateItems(from, to, limit int) ([]LateItem, er
 		SELECT b.id, b.code, c.name AS customer, s.name AS service, b.status::text AS status, b."scheduledAt", b."completedAt",
 		       (SELECT e.name FROM "Mission" m JOIN "Employee" e ON e.id = m."leaderId" WHERE m."bookingId" = b.id
 		         ORDER BY m."assignedAt" DESC NULLS LAST LIMIT 1) AS leader,
-		       NOT EXISTS (SELECT 1 FROM "BookingAssignment" a WHERE a."bookingId" = b.id) AS unstaffed,
+		       NOT EXISTS (SELECT 1 FROM booking_crew_ids(b.id)) /* (ع 10-16) الكادر الموحّد */ AS unstaffed,
 		       b."partialCount" > 0 AS partial,
 		       (COALESCE(baghdad_date(b."completedAt"), baghdad_today()) - baghdad_date(b."scheduledAt"))::int AS "daysLate",
 		       COALESCE(

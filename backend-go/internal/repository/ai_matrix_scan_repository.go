@@ -16,13 +16,8 @@ import (
 
 // bookingLeaderExpr: ليدر الحجز — أول تكليف لموظف isLeader، وإلا ليدر
 // آخر مهمة. NULL لو ما ينعرف (فما ننسب لأحد).
-const bookingLeaderExpr = `COALESCE((
-	SELECT ba."employeeId" FROM "BookingAssignment" ba
-	JOIN "Employee" e ON e.id = ba."employeeId"
-	WHERE ba."bookingId" = b.id AND e."isLeader" = true
-	ORDER BY ba."createdAt" LIMIT 1), (
-	SELECT m."leaderId" FROM "Mission" m WHERE m."bookingId" = b.id
-	ORDER BY m."createdAt" DESC LIMIT 1))`
+// (ع 10-16) التعريف الموحّد — نفس الترتيب بكل النظام.
+const bookingLeaderExpr = `booking_leader_id(b.id)`
 
 // ── زبون قرب يزعل ──
 

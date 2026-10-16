@@ -480,12 +480,10 @@ func (r *MatrixWatchRepository) MoneyGaps() ([]MoneyGap, error) {
 	err := r.db.Select(&rows, `
 		SELECT b.id AS "bookingId", b.code, b."completedAt", b."amountCollected"::float8 AS collected,
 		       li."netTotal"::float8 AS "invoiceNet",
-		       COALESCE(b."projectSupervisorId", ld."employeeId") AS "leaderId", le.name AS "leaderName"
+		       booking_leader_id(b.id) AS "leaderId", le.name AS "leaderName"
 		FROM "Booking" b
 		LEFT JOIN LATERAL (SELECT "netTotal" FROM "LeaderInvoice" WHERE "bookingId" = b.id ORDER BY "createdAt" DESC LIMIT 1) li ON true
-		LEFT JOIN LATERAL (SELECT ba."employeeId" FROM "BookingAssignment" ba JOIN "Employee" x ON x.id = ba."employeeId"
-		                   WHERE ba."bookingId" = b.id AND x."isLeader" LIMIT 1) ld ON true
-		LEFT JOIN "Employee" le ON le.id = COALESCE(b."projectSupervisorId", ld."employeeId")
+		LEFT JOIN "Employee" le ON le.id = booking_leader_id(b.id) -- (ع 10-16) التعريف الموحّد
 		WHERE b.status = 'COMPLETED' AND b."completedAt" IS NOT NULL AND b."archivedAt" IS NULL
 		  AND b."bookingType" IS DISTINCT FROM 'INTERNAL' AND upper(b.code) NOT LIKE 'OLD%'
 		  AND b."completedAt" >= now() - interval '60 days'

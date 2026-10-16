@@ -567,6 +567,9 @@ export type CompletionState =
   | 'DONE_FULL'        // تم الإنجاز بشكل كامل
 
 export interface Booking {
+  /** (ع 10-16) ليدر الحجز بالتعريف الموحّد بالخادم (booking_leader_id) — استعمله بدل الحساب بالمتصفح */
+  leaderId?: string | null
+  leaderName?: string | null
   /** قرار (ع) 10-09: قيمة الشغل الداخلي من فواتيره الداخلية */
   internalInvoiceTotal?: number
   /** كم مرة انأجّل الحجز لليوم الجاي بسبب إنجاز جزئي */

@@ -261,6 +261,9 @@ type Booking struct {
 	Services            []Service           `db:"-" json:"services"`
 	TransferEmployee    *Employee           `db:"-" json:"transferEmployee,omitempty"`
 	ProjectSupervisor   *Employee           `db:"-" json:"projectSupervisor,omitempty"`
+	// (ع 10-16) ليدر الحجز بالتعريف الموحّد (booking_leader_id) — محسوب بالخادم
+	LeaderID   *string `db:"-" json:"leaderId,omitempty"`
+	LeaderName *string `db:"-" json:"leaderName,omitempty"`
 	ConfirmedByEmployee *Employee           `db:"-" json:"confirmedByEmployee,omitempty"`
 	ExpenseResponsible  *Employee           `db:"-" json:"expenseResponsible,omitempty"`
 	MaterialsReadyBy    *EmployeeBrief      `db:"-" json:"materialsReadyBy,omitempty"`

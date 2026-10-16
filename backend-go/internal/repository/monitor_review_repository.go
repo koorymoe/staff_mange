@@ -324,15 +324,9 @@ func (r *MonitorReviewRepository) hydrateIdentity(rows []model.MonitorReview) {
 		SELECT b.id AS "bookingId", b.code AS "bookingCode",
 		       c."customerCode", c.name AS "customerName", c.phone AS "customerPhone",
 		       b.address,
-		       COALESCE(sup.name, (
-		         SELECT e2.name FROM "BookingAssignment" ba
-		         JOIN "Employee" e2 ON e2.id = ba."employeeId"
-		         WHERE ba."bookingId" = b.id AND e2."isLeader" = true
-		         ORDER BY ba."createdAt" LIMIT 1
-		       )) AS "leaderName"
+		       (SELECT e2.name FROM "Employee" e2 WHERE e2.id = booking_leader_id(b.id)) AS "leaderName" -- (ع 10-16) التعريف الموحّد
 		FROM "Booking" b
 		JOIN "Customer" c ON c.id = b."customerId"
-		LEFT JOIN "Employee" sup ON sup.id = b."projectSupervisorId"
 		WHERE b.id IN (?)`, list)
 	if err != nil {
 		return

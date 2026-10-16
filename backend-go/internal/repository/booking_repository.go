@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"log"
 	"strings"
 	"time"
 
@@ -459,6 +460,25 @@ func (r *BookingRepository) hydrateAll(bookings []*model.Booking) error {
 		addEmp(b.CancelledByID)
 	}
 
+	// 🔴 (ع 10-16) ليدر الحجز بالتعريف الموحّد (booking_leader_id) — الواجهة
+	// تعرضه بدل ما تحسبه بنفسها (چانت تشوف المشرف والتكليف بس، مو ليدر المهمة).
+	leaderOf := map[string]string{}
+	{
+		rows := []struct {
+			ID  string  `db:"id"`
+			LID *string `db:"lid"`
+		}{}
+		if err := r.db.Select(&rows, `SELECT id, booking_leader_id(id) AS lid FROM "Booking" WHERE id = ANY($1)`, pq.Array(bookingIDs)); err != nil {
+			log.Printf("booking leaders: %v", err)
+		}
+		for _, x := range rows {
+			if x.LID != nil {
+				leaderOf[x.ID] = *x.LID
+				addEmp(x.LID)
+			}
+		}
+	}
+
 	customers := map[string]model.Customer{}
 	if len(customerIDs) > 0 {
 		rows := []model.Customer{}
@@ -707,6 +727,13 @@ func (r *BookingRepository) hydrateAll(bookings []*model.Booking) error {
 
 		b.TransferEmployee = getEmp(b.TransferEmployeeID)
 		b.ProjectSupervisor = getEmp(b.ProjectSupervisorID)
+		if lid, ok := leaderOf[b.ID]; ok {
+			l := lid
+			b.LeaderID = &l
+			if e := getEmp(&l); e != nil {
+				b.LeaderName = &e.Name
+			}
+		}
 		b.ConfirmedByEmployee = getEmp(b.ConfirmedByEmployeeID)
 		b.ExpenseResponsible = getEmp(b.ExpenseResponsibleID)
 		b.MaterialsReadyBy = getEmpBrief(b.MaterialsReadyByID)

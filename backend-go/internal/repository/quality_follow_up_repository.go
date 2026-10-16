@@ -216,12 +216,7 @@ const qualityKpiPoints = 1
 func (r *QualityFollowUpRepository) LeaderOf(bookingID string) (string, error) {
 	var id string
 	err := r.db.Get(&id, `
-		SELECT a."employeeId"
-		FROM "BookingAssignment" a
-		JOIN "Employee" e ON e.id = a."employeeId"
-		WHERE a."bookingId" = $1 AND e."isLeader" = true
-		ORDER BY a.role ASC
-		LIMIT 1`, bookingID)
+		SELECT id FROM (SELECT booking_leader_id($1) AS id) x WHERE id IS NOT NULL -- (ع 10-16) التعريف الموحّد`, bookingID)
 	return id, err
 }
 
@@ -431,12 +426,7 @@ func (r *QualityFollowUpRepository) Inspect(id, byEmployeeID string, req model.Q
 func (r *QualityFollowUpRepository) leaderOfTx(tx *sqlx.Tx, bookingID string) (string, error) {
 	var id string
 	err := tx.Get(&id, `
-		SELECT a."employeeId"
-		FROM "BookingAssignment" a
-		JOIN "Employee" e ON e.id = a."employeeId"
-		WHERE a."bookingId" = $1 AND e."isLeader" = true
-		ORDER BY a.role ASC
-		LIMIT 1`, bookingID)
+		SELECT id FROM (SELECT booking_leader_id($1) AS id) x WHERE id IS NOT NULL -- (ع 10-16) التعريف الموحّد`, bookingID)
 	return id, err
 }
 

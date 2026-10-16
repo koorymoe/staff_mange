@@ -474,5 +474,59 @@ func matrixChatMigrations() []Migration {
 			JOIN "Employee" e ON e.id = l.id
 			ON CONFLICT ("visitId", "employeeId") DO NOTHING;
 		`,
+	}, {
+		// 🔴 (ع) 10-16 «اكو هواي هيج اخطاء… دور بكل انحاء النظام»: «ليدر الحجز»
+		// چان إله أكثر من ٨ تعريفات (كل شاشة بترتيب)، فنفس الحجز يطلع بليدر
+		// بشاشة و«بلا ليدر» بثانية، والليدر الي مو بالتكليف ما تنحسبله طلعاته.
+		// هسه تعريف واحد بقاعدة البيانات، وكل النظام يناديه.
+		//
+		// booking_leader_id: مشرف الحجز (إذا هو ليدر) ← ليدر بالتكليف (الأقدم)
+		//                    ← ليدر المهمة الميدانية (الأحدث).
+		// booking_crew_ids : كل من اشتغل على الحجز — التكليف + المشرف الليدر +
+		//                    ليدر المهمة وأعضاؤها.
+		Version: "0371_booking_leader_fn",
+		SQL: `
+			CREATE OR REPLACE FUNCTION booking_leader_id(bid TEXT) RETURNS TEXT
+			LANGUAGE sql STABLE AS $f$
+				SELECT COALESCE(
+				  (SELECT b."projectSupervisorId" FROM "Booking" b JOIN "Employee" e ON e.id = b."projectSupervisorId"
+				    WHERE b.id = bid AND e."isLeader"),
+				  (SELECT ba."employeeId" FROM "BookingAssignment" ba JOIN "Employee" e ON e.id = ba."employeeId"
+				    WHERE ba."bookingId" = bid AND e."isLeader" ORDER BY ba."createdAt", ba.role LIMIT 1),
+				  (SELECT m."leaderId" FROM "Mission" m WHERE m."bookingId" = bid AND m."leaderId" IS NOT NULL
+				    ORDER BY m."createdAt" DESC LIMIT 1))
+			$f$;
+			CREATE OR REPLACE FUNCTION booking_crew_ids(bid TEXT) RETURNS SETOF TEXT
+			LANGUAGE sql STABLE AS $f$
+				SELECT ba."employeeId" FROM "BookingAssignment" ba WHERE ba."bookingId" = bid
+				UNION
+				SELECT b."projectSupervisorId" FROM "Booking" b JOIN "Employee" e ON e.id = b."projectSupervisorId"
+				 WHERE b.id = bid AND e."isLeader"
+				UNION
+				SELECT m."leaderId" FROM "Mission" m WHERE m."bookingId" = bid AND m."leaderId" IS NOT NULL
+				UNION
+				SELECT unnest(m."memberIds") FROM "Mission" m WHERE m."bookingId" = bid
+			$f$;
+			-- الطلعات القديمة: ليدر الحجز (بالتعريف الموحّد) ينضاف لكادرها لو فاته
+			INSERT INTO "BookingVisitCrew" (id, "visitId", "employeeId", role, "isLeader")
+			SELECT gen_random_uuid()::text, v.id, l.id, 'LEADER', true
+			FROM "BookingVisit" v
+			JOIN LATERAL (SELECT booking_leader_id(v."bookingId") AS id) l ON l.id IS NOT NULL
+			ON CONFLICT ("visitId", "employeeId") DO NOTHING;
+			-- الدوام المحسوب يتمدد لآخر حجز خلّصه الموظف — والليدر الي مو بالتكليف هم
+			CREATE OR REPLACE FUNCTION att_last_activity(emp TEXT, ci TIMESTAMP, co TIMESTAMP)
+			RETURNS TIMESTAMP LANGUAGE sql STABLE AS $$
+				SELECT max(b."completedAt") FROM "Booking" b
+				WHERE b."completedAt" > ci
+				  AND b."completedAt" <= LEAST(COALESCE(co, NOW() AT TIME ZONE 'UTC'),
+				      date_trunc('day', ci + interval '3 hours') + interval '27 hours')
+				  AND (EXISTS (SELECT 1 FROM "BookingAssignment" ba WHERE ba."bookingId" = b.id AND ba."employeeId" = emp)
+				    OR (b."projectSupervisorId" = emp AND EXISTS (SELECT 1 FROM "Employee" se WHERE se.id = emp AND se."isLeader"))
+				    OR EXISTS (SELECT 1 FROM "Mission" m WHERE m."bookingId" = b.id AND (m."leaderId" = emp OR emp = ANY(m."memberIds"))))
+			$$;
+			UPDATE "BookingVisitCrew" vc SET "isLeader" = true
+			FROM "BookingVisit" v
+			WHERE v.id = vc."visitId" AND vc."employeeId" = booking_leader_id(v."bookingId") AND NOT vc."isLeader";
+		`,
 	}}
 }

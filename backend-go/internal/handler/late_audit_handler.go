@@ -59,8 +59,7 @@ const lateAuditSQL = `
 		(SELECT count(*) FROM "ScheduleChangeLog" l WHERE l."bookingId" = b.id)::int AS reschedules,
 		(SELECT max(l."createdAt") FROM "ScheduleChangeLog" l WHERE l."bookingId" = b.id) AS "lastChangeAt",
 		(SELECT count(*) FROM "ProcurementRequest" p WHERE p."bookingId" = b.id AND p.status::text NOT IN ('FULFILLED', 'REJECTED', 'CANCELLED'))::int AS "openMaterials",
-		COALESCE((SELECT e.name FROM "Employee" e WHERE e.id = b."projectSupervisorId"),
-			(SELECT e.name FROM "Mission" m JOIN "Employee" e ON e.id = m."leaderId" WHERE m."bookingId" = b.id ORDER BY m."assignedAt" DESC NULLS LAST LIMIT 1)) AS leader,
+		(SELECT e.name FROM "Employee" e WHERE e.id = booking_leader_id(b.id)) AS leader, -- (ع 10-16) التعريف الموحّد
 		(SELECT string_agg(e.name, '، ') FROM "BookingAssignment" a JOIN "Employee" e ON e.id = a."employeeId" WHERE a."bookingId" = b.id) AS team,
 		(SELECT NULLIF(btrim(me.note), '') FROM "Mission" m JOIN "MissionEvent" me ON me."missionId" = m.id
 			WHERE m."bookingId" = b.id AND me.note IS NOT NULL AND btrim(me.note) <> '' ORDER BY me."createdAt" DESC LIMIT 1) AS note,

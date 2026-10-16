@@ -194,6 +194,8 @@ export default function MyTasks() {
   // شغل الفني الوحيد: يجرد أدواته وأدوات السيارة وينطي «تم».
   const amLeaderOf = (b: Booking) => {
     if (!employee) return false
+    // (ع 10-16) التعريف الموحّد من الخادم أول — المشرف الي مو ليدر ما يصير ليدر
+    if (b.leaderId) return b.leaderId === employee.id
     if (b.projectSupervisor?.id) return b.projectSupervisor.id === employee.id
     // حجز ما انتحدد له تيم ليدر: أي ليدر مكلّف بيه يسوق المسار
     return !!employee.isLeader && b.assignments.some((a) => a.employee.id === employee.id)
@@ -217,7 +219,8 @@ export default function MyTasks() {
   // ⚠️ «ماكو ليدر» تنفحص على **الحجز كله** مو على الي فاتح الشاشة:
   // لو أكو ليدر مكلَّف وياه، القيادة تبقى للليدر وما ينسحبها الفني.
   const bookingHasNoLeader = (b: Booking) =>
-    !b.projectSupervisor?.id && !b.assignments.some((a) => a.employee.isLeader)
+    b.leaderId !== undefined ? !b.leaderId // (ع 10-16) التعريف الموحّد من الخادم
+      : !b.projectSupervisor?.id && !b.assignments.some((a) => a.employee.isLeader)
 
   // amDriverOf منو يسوق الحجز: الليدر، أو الفني المكلَّف بحجز بلا ليدر.
   //

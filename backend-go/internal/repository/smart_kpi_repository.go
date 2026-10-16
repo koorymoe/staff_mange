@@ -43,9 +43,8 @@ func (r *SmartKpiRepository) CompletedBookingTimes(employeeID string, start, end
 	var rows []row
 	err = r.db.Select(&rows, `
 		SELECT DISTINCT b.id, b."createdAt", b."completedAt"
-		FROM "BookingAssignment" a
-		JOIN "Booking" b ON b.id = a."bookingId"
-		WHERE a."employeeId" = $1 AND b.status = 'COMPLETED' AND b."completedAt" >= $2 AND b."completedAt" < $3
+		FROM "Booking" b -- (ع 10-16) الكادر الموحّد
+		WHERE `+BookingWorkedBySQL("b", "$1")+` AND b.status = 'COMPLETED' AND b."completedAt" >= $2 AND b."completedAt" < $3
 		  AND b."bookingType" IS DISTINCT FROM 'INTERNAL' AND upper(b.code) NOT LIKE 'OLD%'`+BookingCountableAndSQL("b")+`
 	`, employeeID, start, end)
 	if err != nil {

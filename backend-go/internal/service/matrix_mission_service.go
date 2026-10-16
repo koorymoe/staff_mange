@@ -100,13 +100,13 @@ func (s *MatrixMissionService) dayFacts(empID, day string) string {
 		CheckIn *string `db:"checkin"`
 	}
 	err := s.db.Get(&f, `SELECT
-		(SELECT count(DISTINCT b.id) FROM "BookingAssignment" ba JOIN "Booking" b ON b.id = ba."bookingId"
-			WHERE ba."employeeId" = $1 AND b.status = 'COMPLETED' AND (b."completedAt" AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Baghdad')::date = $2::date) AS done,
-		(SELECT count(DISTINCT b.id) FROM "BookingAssignment" ba JOIN "Booking" b ON b.id = ba."bookingId"
-			WHERE ba."employeeId" = $1 AND b.status = 'COMPLETED' AND (b."completedAt" AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Baghdad')::date = $2::date
+		(SELECT count(DISTINCT b.id) FROM "Booking" b
+			WHERE `+repository.BookingWorkedBySQL("b", "$1")+` AND b.status = 'COMPLETED' AND (b."completedAt" AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Baghdad')::date = $2::date) AS done,
+		(SELECT count(DISTINCT b.id) FROM "Booking" b
+			WHERE `+repository.BookingWorkedBySQL("b", "$1")+` AND b.status = 'COMPLETED' AND (b."completedAt" AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Baghdad')::date = $2::date
 			AND b."scheduledAt" IS NOT NULL AND b."completedAt" > b."scheduledAt" + interval '4 hours') AS late,
-		(SELECT count(DISTINCT b.id) FROM "BookingAssignment" ba JOIN "Booking" b ON b.id = ba."bookingId"
-			WHERE ba."employeeId" = $1 AND b.status IN ('CONFIRMED', 'PENDING', 'PARTIAL') AND b."archivedAt" IS NULL) AS open,
+		(SELECT count(DISTINCT b.id) FROM "Booking" b
+			WHERE `+repository.BookingWorkedBySQL("b", "$1")+` AND b.status IN ('CONFIRMED', 'PENDING', 'PARTIAL') AND b."archivedAt" IS NULL) AS open,
 		(SELECT count(*) FROM "LeaderInvoice" li WHERE li."employeeId" = $1
 			AND (li."createdAt" AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Baghdad')::date = $2::date) AS inv,
 		(SELECT to_char(min(a."checkIn") AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Baghdad', 'HH24:MI') FROM "Attendance" a WHERE a."employeeId" = $1 AND a.date::date = $2::date) AS checkin`,

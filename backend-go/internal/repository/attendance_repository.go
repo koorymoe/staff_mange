@@ -272,8 +272,8 @@ func (r *AttendanceRepository) OpenWithShift() ([]OpenWithShift, error) {
 	err := r.db.Select(&rows, `
 		SELECT a.id, a."employeeId", e.name, a."checkIn", e.shift::text AS shift, e."shiftStart", e."shiftEnd",
 		       att_last_activity(a."employeeId", a."checkIn", NULL) AS "lastActivity",
-		       EXISTS (SELECT 1 FROM "BookingAssignment" ba JOIN "Booking" b ON b.id = ba."bookingId"
-		        WHERE ba."employeeId" = a."employeeId" AND b.status = 'IN_PROGRESS'
+		       EXISTS (SELECT 1 FROM "Booking" b -- (ع 10-16) الكادر الموحّد
+		        WHERE `+BookingWorkedBySQL("b", `a."employeeId"`)+` AND b.status = 'IN_PROGRESS'
 		          AND b."updatedAt" >= a."checkIn") AS busy
 		FROM "Attendance" a JOIN "Employee" e ON e.id = a."employeeId"
 		WHERE a."checkOut" IS NULL`)
@@ -333,8 +333,8 @@ func (r *AttendanceRepository) LastEvidence(employeeID string, from, to time.Tim
 	var e WorkEvidence
 	err := r.db.Get(&e, `SELECT at, label FROM (
 		SELECT (b."completedAt" AT TIME ZONE 'UTC') AS at, 'خلّص حجز ' || b.code AS label
-		  FROM "Booking" b JOIN "BookingAssignment" ba ON ba."bookingId" = b.id
-		  WHERE ba."employeeId" = $1 AND b."completedAt" IS NOT NULL
+		  FROM "Booking" b -- (ع 10-16) الكادر الموحّد
+		  WHERE `+BookingWorkedBySQL("b", "$1")+` AND b."completedAt" IS NOT NULL
 		UNION ALL
 		SELECT (li."createdAt" AT TIME ZONE 'UTC'), 'رفع فاتورة حجز ' || b.code
 		  FROM "LeaderInvoice" li JOIN "Booking" b ON b.id = li."bookingId" WHERE li."employeeId" = $1

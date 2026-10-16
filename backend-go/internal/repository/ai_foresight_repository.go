@@ -16,11 +16,8 @@ import (
 // حر، وبلا أي نموذج خارجي.
 
 // bookingLeaderLateral الليدر (isLeader) الأول بكادر الحجز b.
-const bookingLeaderLateral = `LEFT JOIN LATERAL (
-	SELECT ba."employeeId" AS eid FROM "BookingAssignment" ba
-	JOIN "Employee" e ON e.id = ba."employeeId"
-	WHERE ba."bookingId" = b.id AND e."isLeader" = true
-	ORDER BY ba."createdAt" LIMIT 1) ldr ON true`
+// (ع 10-16) التعريف الموحّد booking_leader_id — مو التكليف بس.
+const bookingLeaderLateral = `LEFT JOIN LATERAL (SELECT booking_leader_id(b.id) AS eid) ldr ON true`
 
 // DelayCandidate حجز مجدول لسه ما بدا.
 type DelayCandidate struct {

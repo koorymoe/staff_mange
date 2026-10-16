@@ -104,7 +104,7 @@ func (s *MatrixMorningService) Items() []briefItem {
 	if err := s.db.Select(&drops, `
 		SELECT e.name, count(DISTINCT b.id) FILTER (WHERE b."completedAt" >= now() - interval '7 days') AS now,
 			count(DISTINCT b.id) FILTER (WHERE b."completedAt" < now() - interval '7 days') / 3.0 AS avg
-		FROM "BookingAssignment" ba JOIN "Booking" b ON b.id = ba."bookingId" JOIN "Employee" e ON e.id = ba."employeeId"
+		FROM "Booking" b CROSS JOIN LATERAL booking_crew_ids(b.id) bc(eid) JOIN "Employee" e ON e.id = bc.eid /* (ع 10-16) الكادر الموحّد */
 		WHERE b.status = 'COMPLETED' AND b."completedAt" >= now() - interval '28 days'
 		  AND e.status = 'ACTIVE' AND e.role NOT IN ('ADMIN', 'OWNER')
 		GROUP BY e.name
@@ -212,9 +212,7 @@ func (s *MatrixMorningService) Kudos() []KudosRow {
 		SELECT e.id, e.name, count(DISTINCT b.id) AS done,
 			count(DISTINCT b.id) FILTER (WHERE b."scheduledAt" IS NOT NULL AND b."completedAt" > b."scheduledAt" + interval '4 hours') AS late,
 			0 AS praise
-		FROM "BookingAssignment" ba
-		JOIN "Booking" b ON b.id = ba."bookingId"
-		JOIN "Employee" e ON e.id = ba."employeeId"
+		FROM "Booking" b CROSS JOIN LATERAL booking_crew_ids(b.id) bc(eid) JOIN "Employee" e ON e.id = bc.eid /* (ع 10-16) الكادر الموحّد */
 		WHERE b.status = 'COMPLETED' AND b."completedAt" >= now() - interval '7 days'
 		  AND e.status = 'ACTIVE' AND e.role NOT IN ('ADMIN', 'OWNER')
 		GROUP BY e.id, e.name
@@ -300,7 +298,7 @@ func (s *MatrixMorningService) MonitorDaily(day string) string {
 		ORDER BY e.name LIMIT 15`)
 	heroes := names("heroes", `
 		SELECT e.name || ' (' || count(DISTINCT b.id) || ')'
-		FROM "BookingAssignment" ba JOIN "Booking" b ON b.id = ba."bookingId" JOIN "Employee" e ON e.id = ba."employeeId"
+		FROM "Booking" b CROSS JOIN LATERAL booking_crew_ids(b.id) bc(eid) JOIN "Employee" e ON e.id = bc.eid /* (ع 10-16) الكادر الموحّد */
 		WHERE b.status = 'COMPLETED' AND baghdad_date(b."completedAt") = $1::date
 		  AND e.status = 'ACTIVE' AND e.role NOT IN ('ADMIN', 'OWNER')
 		  AND (b."scheduledAt" IS NULL OR b."completedAt" <= b."scheduledAt" + interval '4 hours')

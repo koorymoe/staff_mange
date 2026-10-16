@@ -30,6 +30,8 @@ export function formatCustomerCode(customer?: { code?: string; customerCode?: nu
  *  المسؤولية لواحد ما تحمّلها. الشاشة تعرض «بلا ليدر» صراحةً. */
 export function bookingLeaderName(booking?: Partial<Booking> | null): string {
   if (!booking) return ''
+  // (ع 10-16) الخادم يحسبه بالتعريف الموحّد (يشمل ليدر المهمة) — هذا أول
+  if (booking.leaderName) return booking.leaderName
   if (booking.projectSupervisor?.name) return booking.projectSupervisor.name
   const fromCrew = (booking.assignments || []).find((a) => a.employee?.isLeader)
   return fromCrew?.employee?.name || ''

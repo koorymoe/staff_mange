@@ -101,21 +101,16 @@ func (r *PerformanceReviewRepository) BookingsAwaitingReview(
 		fromP, toP = "$1", "$2"
 		soloGuard = `
 		  -- لازم يكون مكلّف بيه أحد أصلاً، ولو واحد
-		  AND EXISTS (
-		      SELECT 1 FROM "BookingAssignment" any_one
-		      WHERE any_one."bookingId" = b.id
-		  )`
+		  AND EXISTS (SELECT 1 FROM booking_crew_ids(b.id)) -- (ع 10-16) الكادر الموحّد`
 	} else {
 		args = []any{viewerID, from, to}
 		fromP, toP = "$2", "$3"
-		scope = `
-		JOIN "BookingAssignment" mine ON mine."bookingId" = b.id AND mine."employeeId" = $1`
+		// (ع 10-16) الكادر الموحّد: الليدر الي مو بالتكليف يقيّم ويتقيّم هم
+		scope = ``
 		soloGuard = `
+		  AND ` + BookingWorkedBySQL("b", "$1") + `
 		  -- لازم يكون وياه غيره: حجز طلع بيه لحاله ماكو منو يتقيّم
-		  AND EXISTS (
-		      SELECT 1 FROM "BookingAssignment" other
-		      WHERE other."bookingId" = b.id AND other."employeeId" <> $1
-		  )`
+		  AND EXISTS (SELECT 1 FROM booking_crew_ids(b.id) other WHERE other <> $1)`
 	}
 
 	rows := []model.BookingAwaitingReview{}
@@ -148,12 +143,12 @@ func (r *PerformanceReviewRepository) BookingsAwaitingReview(
 			SELECT e.id AS "employeeId", e.name, e.position,
 			       pr.rating, pr.reason,
 			       pr."commitmentScore", pr."speedScore", pr."qualityScore"
-			FROM "BookingAssignment" ba
-			JOIN "Employee" e ON e.id = ba."employeeId"
+			FROM booking_crew_ids($1) ce(eid) -- (ع 10-16) الكادر الموحّد
+			JOIN "Employee" e ON e.id = ce.eid
 			LEFT JOIN "PerformanceReview" pr
-			       ON pr."bookingId" = ba."bookingId"
+			       ON pr."bookingId" = $1
 			      AND pr."employeeId" = e.id
-			WHERE ba."bookingId" = $1 AND e.id <> $2
+			WHERE e.id <> $2
 			ORDER BY e.name
 		`, rows[i].BookingID, viewerID); err != nil {
 			return nil, err

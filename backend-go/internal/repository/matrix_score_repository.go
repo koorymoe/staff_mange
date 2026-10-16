@@ -242,9 +242,7 @@ func (r *MatrixScoreRepository) PendingCoordLeader(raterID string) ([]PendingSta
 	err := r.db.Select(&rows, `
 		SELECT b.id AS "bookingId", b.code, l.id AS "rateeId", l.name AS "rateeName", 'LEADER' AS role
 		FROM "Booking" b
-		JOIN "Employee" l ON l.id = COALESCE(b."projectSupervisorId",
-			(SELECT ba."employeeId" FROM "BookingAssignment" ba JOIN "Employee" x ON x.id = ba."employeeId"
-			 WHERE ba."bookingId" = b.id AND x."isLeader" ORDER BY ba."createdAt" LIMIT 1))
+		JOIN "Employee" l ON l.id = booking_leader_id(b.id)
 		WHERE b.status::text IN ('COMPLETED', 'PARTIAL') AND l.role::text NOT IN ('ADMIN', 'OWNER')
 		  AND b."updatedAt" >= now() - interval '7 days'
 		  AND (b."confirmedByEmployeeId" = $1 OR b."createdById" = $1)
@@ -274,9 +272,7 @@ func (r *MatrixScoreRepository) BookingParties(bookingID string) ([]PendingStaff
 		FROM "Booking" b
 		JOIN LATERAL (
 			SELECT e.id, e.name, 'LEADER' AS role FROM "Employee" e
-			WHERE e.id = COALESCE(b."projectSupervisorId",
-				(SELECT ba."employeeId" FROM "BookingAssignment" ba JOIN "Employee" x ON x.id = ba."employeeId"
-				 WHERE ba."bookingId" = b.id AND x."isLeader" ORDER BY ba."createdAt" LIMIT 1)) AND e.role::text NOT IN ('ADMIN', 'OWNER')
+			WHERE e.id = booking_leader_id(b.id) AND e.role::text NOT IN ('ADMIN', 'OWNER')
 			UNION
 			SELECT e.id, e.name, 'COORDINATOR' FROM "Employee" e WHERE e.id = COALESCE(b."confirmedByEmployeeId", b."createdById") AND e.role::text NOT IN ('ADMIN', 'OWNER')
 		) p ON true
@@ -324,9 +320,7 @@ func (r *MatrixScoreRepository) PendingAudit(raterID string) ([]PendingStaffRati
 		FROM "Booking" b
 		JOIN LATERAL (
 			SELECT e.id, e.name, 'LEADER' AS role FROM "Employee" e
-			WHERE e.id = COALESCE(b."projectSupervisorId",
-				(SELECT ba."employeeId" FROM "BookingAssignment" ba JOIN "Employee" x ON x.id = ba."employeeId"
-				 WHERE ba."bookingId" = b.id AND x."isLeader" ORDER BY ba."createdAt" LIMIT 1)) AND e.role::text NOT IN ('ADMIN', 'OWNER')
+			WHERE e.id = booking_leader_id(b.id) AND e.role::text NOT IN ('ADMIN', 'OWNER')
 			UNION
 			SELECT e.id, e.name, 'COORDINATOR' FROM "Employee" e WHERE e.id = COALESCE(b."confirmedByEmployeeId", b."createdById") AND e.role::text NOT IN ('ADMIN', 'OWNER')
 		) p ON true
