@@ -12,6 +12,7 @@ import (
 type QualityFollowUpHandler struct {
 	service     *service.QualityFollowUpService
 	permissions *repository.PermissionRepository
+	notif       *repository.NotificationRepository
 }
 
 func NewQualityFollowUpHandler(s *service.QualityFollowUpService, p *repository.PermissionRepository) *QualityFollowUpHandler {
@@ -68,6 +69,39 @@ func (h *QualityFollowUpHandler) List(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	WriteJSON(w, http.StatusOK, items)
+}
+
+// SetNotifications يربط الإشعارات (تقييم المراقب يوصل للمهندس).
+func (h *QualityFollowUpHandler) SetNotifications(n *repository.NotificationRepository) { h.notif = n }
+
+// PUT /api/quality-follow-ups/{id}/monitor-verdict — المراقب يقيّم شغل مهندس الجودة.
+func (h *QualityFollowUpHandler) MonitorVerdict(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		Verdict          string `json:"verdict"`
+		Note             string `json:"note"`
+		TargetEmployeeID string `json:"targetEmployeeId"`
+	}
+	if err := DecodeJSON(r, &req); err != nil {
+		WriteError(w, http.StatusBadRequest, "بيانات غير صالحة")
+		return
+	}
+	item, err := h.service.MonitorVerdict(r.PathValue("id"), middleware.EmployeeIDFromContext(r), req.Verdict, req.Note, req.TargetEmployeeID)
+	if err != nil {
+		WriteError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	if h.notif != nil && item.MonitorTargetID != nil && req.Verdict != "OK" {
+		label := "مو تمام"
+		if req.Verdict == "SHORTCOMING" {
+			label = "تقصير"
+		}
+		code := ""
+		if item.Booking != nil {
+			code = item.Booking.Code + " — "
+		}
+		_ = h.notif.Create(*item.MonitorTargetID, "quality_monitor_verdict", "⭐ المراقب سجّل «"+label+"» على متابعة الجودة "+code+req.Note)
+	}
+	WriteJSON(w, http.StatusOK, item)
 }
 
 // PUT /api/quality-follow-ups/{id}

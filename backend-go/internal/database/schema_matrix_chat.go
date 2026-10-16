@@ -563,5 +563,32 @@ func matrixChatMigrations() []Migration {
 			ALTER TABLE "Booking" ADD COLUMN IF NOT EXISTS "complaintId" TEXT REFERENCES "Complaint"(id) ON DELETE SET NULL;
 			CREATE INDEX IF NOT EXISTS "Booking_complaint_idx" ON "Booking" ("complaintId") WHERE "complaintId" IS NOT NULL;
 		`,
+	}, {
+		// (ع) 10-16: «الشكاوى القديمة يطلعلي كدامهن تم التواصل ومغلقات، والجديدة
+		// مطلوب متابعة». كل شكوى قبل ٢٠٢٦-٠٨-٠١: مغلقة، تواصل مؤشّر، والتدقيق
+		// معتمد بملاحظة «من النظام القديم» — حتى ما تبقى «✕ لا» و«مطلوب متابعة».
+		Version: "0376_complaint_legacy_closed",
+		SQL: `
+			UPDATE "Complaint"
+			   SET status = 'CLOSED',
+			       "contactedAt" = COALESCE("contactedAt", "resolvedAt", "createdAt"),
+			       "resolvedAt" = COALESCE("resolvedAt", now()),
+			       "settledLegacyAt" = COALESCE("settledLegacyAt", now()),
+			       "auditVerdict" = COALESCE("auditVerdict", 'APPROVED'),
+			       "auditNote" = COALESCE(NULLIF("auditNote", ''), 'مغلقة — من النظام القديم'),
+			       "auditedAt" = COALESCE("auditedAt", now())
+			 WHERE "createdAt" < '2026-08-01';
+		`,
+	}, {
+		// (ع) 10-16: المراقب يقيّم شغل مهندس الجودة («تمام / مو تمام»)، ويسجّل
+		// تقصير على الحالات الي ما انتصل بيها — بلا غرامة فلوس.
+		Version: "0377_quality_monitor_verdict",
+		SQL: `
+			ALTER TABLE "QualityFollowUp" ADD COLUMN IF NOT EXISTS "monitorVerdict" TEXT;
+			ALTER TABLE "QualityFollowUp" ADD COLUMN IF NOT EXISTS "monitorNote" TEXT;
+			ALTER TABLE "QualityFollowUp" ADD COLUMN IF NOT EXISTS "monitorById" TEXT REFERENCES "Employee"(id) ON DELETE SET NULL;
+			ALTER TABLE "QualityFollowUp" ADD COLUMN IF NOT EXISTS "monitorAt" TIMESTAMP;
+			ALTER TABLE "QualityFollowUp" ADD COLUMN IF NOT EXISTS "monitorTargetId" TEXT REFERENCES "Employee"(id) ON DELETE SET NULL;
+		`,
 	}}
 }

@@ -36,6 +36,14 @@ type QualityFollowUp struct {
 	InspectedBy         *EmployeeBrief `db:"-" json:"inspectedBy"`
 	// منو انغرم (أو منو راح ينغرم) — الليدر المسؤول عن الحجز
 	PenalizedEmployee *EmployeeBrief `db:"-" json:"penalizedEmployee"`
+	// تقييم المراقب لشغل مهندس الجودة — (ع) 10-16: OK | NOT_OK | SHORTCOMING
+	MonitorVerdict  *string        `db:"monitorVerdict" json:"monitorVerdict"`
+	MonitorNote     *string        `db:"monitorNote" json:"monitorNote"`
+	MonitorByID     *string        `db:"monitorById" json:"-"`
+	MonitorAt       *time.Time     `db:"monitorAt" json:"monitorAt"`
+	MonitorTargetID *string        `db:"monitorTargetId" json:"monitorTargetId"`
+	MonitorBy       *EmployeeBrief `db:"-" json:"monitorBy"`
+	MonitorTarget   *EmployeeBrief `db:"-" json:"monitorTarget"`
 	// تفاصيل التنفيذ: منو طلع، ومتى بدا وخلّص، وشكد استغرق
 	Execution *BookingExecutionDetail `db:"-" json:"execution"`
 

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
-import { api, type QualityFollowUp } from '../api'
+import { api, type Employee, type QualityFollowUp } from '../api'
+import { askJustification } from '../utils/justify'
 import BookingCodeChip from './BookingCodeChip'
 
 // ═══ «شنو سوّى مهندس الجودة» — (ع) 10-13 ═══
@@ -14,6 +15,18 @@ const STATUS: Record<string, string> = {
   PENDING: '⏳ ينتظر التواصل', CONTACTED_OK: 'تواصل — تمام', CONTACTED_ISSUE: 'تواصل — أكو مشكلة',
   CONVERTED: 'انحوّلت صيانة', RECONTACT: 'يعيد التواصل', CLOSED: 'مقفولة',
 }
+// (ع) 10-16: شكد بين ما خلص الحجز وتواصل مهندس الجودة
+const gap = (from?: string | null, to?: string | null) => {
+  if (!from || !to) return null
+  const h = (new Date(to).getTime() - new Date(from).getTime()) / 3600000
+  if (h < 0) return null
+  return h < 24 ? `${Math.round(h)} ساعة` : `${Math.round(h / 24)} يوم`
+}
+const VERDICT: Record<string, { t: string; c: string }> = {
+  OK: { t: '👍 المراقب: تمام', c: 'bg-emerald-100 text-emerald-800' },
+  NOT_OK: { t: '👎 المراقب: مو تمام', c: 'bg-red-100 text-red-800' },
+  SHORTCOMING: { t: '⚠️ تقصير مسجّل', c: 'bg-red-100 text-red-800' },
+}
 const dt = (s: string | null) => s ? new Date(s).toLocaleString('ar-IQ', { timeZone: 'Asia/Baghdad', weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : '—'
 
 export default function QualityAuditView() {
@@ -22,6 +35,10 @@ export default function QualityAuditView() {
   const [tab, setTab] = useState<'done' | 'pending'>('done')
   const [q, setQ] = useState('')
   useEffect(() => { api.getQualityFollowUps().then(setItems).catch((e) => { setErr(e instanceof Error ? e.message : 'تعذر'); setItems([]) }) }, [])
+  // مهندسين الجودة — للحالات الي محد تواصل بيها (التفسير/التقصير على منو؟)
+  const [qes, setQes] = useState<Employee[]>([])
+  useEffect(() => { api.getEmployees().then((es) => setQes(es.filter((e) => e.role === 'QUALITY_ENGINEER'))).catch(() => {}) }, [])
+  const replace = (x: QualityFollowUp) => setItems((cur) => (cur ?? []).map((i) => (i.id === x.id ? x : i)))
 
   const done = useMemo(() => (items ?? []).filter((i) => i.status !== 'PENDING')
     .sort((a, b) => new Date(b.contactedAt || b.createdAt).getTime() - new Date(a.contactedAt || a.createdAt).getTime()), [items])
@@ -71,10 +88,80 @@ export default function QualityAuditView() {
                   {i.inspectedBy ? ` · ${i.inspectedBy.name}` : ''}{i.inspectionNotes ? ` — «${i.inspectionNotes}»` : ''}</p>
               )}
               {i.penalizedEmployee && <p className="mt-1 text-xs font-bold text-red-700">📉 انخصمت نقطة من: {i.penalizedEmployee.name}</p>}
+              <MonitorActions item={i} qes={qes} onDone={replace} />
             </div>
           ))}
         </div>
       )}
     </section>
+  )
+}
+
+// ═══ إجراء المراقب — (ع) 10-16 ═══
+// المتواصل بيها: «تمام / مو تمام» على شغل المهندس، ويشوف الوقت بين خلص الحجز والتواصل.
+// الي محد تواصل بيها: «اطلب تفسير» و«سجّل تقصير» على مهندس الجودة.
+function MonitorActions({ item: i, qes, onDone }: { item: QualityFollowUp; qes: Employee[]; onDone: (x: QualityFollowUp) => void }) {
+  const [mode, setMode] = useState<null | 'NOT_OK' | 'SHORTCOMING'>(null)
+  const [note, setNote] = useState('')
+  const [target, setTarget] = useState(i.contactedByEmployee?.id ?? (qes.length === 1 ? qes[0].id : ''))
+  const [busy, setBusy] = useState(false)
+  const [err, setErr] = useState('')
+  const pending = i.status === 'PENDING'
+  const who = target || i.contactedByEmployee?.id || (qes.length === 1 ? qes[0].id : '')
+  const send = async (verdict: 'OK' | 'NOT_OK' | 'SHORTCOMING') => {
+    if (verdict !== 'OK' && !note.trim()) { setErr('اكتب السبب'); return }
+    if (pending && !who) { setErr('اختار مهندس الجودة'); return }
+    setBusy(true); setErr('')
+    try {
+      onDone(await api.setQualityMonitorVerdict(i.id, { verdict, note: note.trim() || undefined, targetEmployeeId: who || undefined }))
+      setMode(null); setNote('')
+    } catch (e) { setErr(e instanceof Error ? e.message : 'تعذر') } finally { setBusy(false) }
+  }
+  const ask = async () => {
+    if (!who) { setErr('اختار مهندس الجودة'); return }
+    const code = i.booking?.code ? ` ${i.booking.code}` : ''
+    try {
+      await askJustification(who, pending
+        ? `متابعة الجودة للحجز${code} (${i.customer?.name ?? ''}) — ليش لحد هسه محد تواصل ويا الزبون؟`
+        : `متابعة الجودة للحجز${code} (${i.customer?.name ?? ''}) — وضّح شغلك بهاي المتابعة`)
+    } catch (e) { setErr(e instanceof Error ? e.message : 'تعذر') }
+  }
+  const took = gap(i.booking?.completedAt, i.contactedAt)
+  return (
+    <div className="mt-2 rounded-lg border border-dashed border-slate-300 bg-slate-50 px-3 py-2 text-xs">
+      <div className="flex flex-wrap items-center gap-2">
+        {!pending && (
+          <span className="text-slate-600">⏱️ خلص الحجز: <b>{dt(i.booking?.completedAt ?? null)}</b> · تواصل: <b>{dt(i.contactedAt)}</b>
+            {took && <> · بعد <b className={took.includes('يوم') ? 'text-red-700' : 'text-emerald-700'}>{took}</b></>}</span>
+        )}
+        {pending && i.booking?.completedAt && <span className="text-amber-700">⏱️ الحجز خالص من {dt(i.booking.completedAt)}</span>}
+        {i.monitorVerdict && (
+          <span className={`rounded-full px-2 py-0.5 font-bold ${VERDICT[i.monitorVerdict]?.c}`}>
+            {VERDICT[i.monitorVerdict]?.t}{i.monitorTarget ? ` — ${i.monitorTarget.name}` : ''}{i.monitorNote ? `: ${i.monitorNote}` : ''}
+          </span>
+        )}
+        <span className="ms-auto flex flex-wrap gap-1.5">
+          {(pending || !i.contactedByEmployee) && qes.length > 1 && (
+            <select value={target} onChange={(e) => setTarget(e.target.value)} className="rounded border border-slate-300 bg-white px-1.5 py-1">
+              <option value="">مهندس الجودة…</option>
+              {qes.map((e) => <option key={e.id} value={e.id}>{e.name}</option>)}
+            </select>
+          )}
+          {!pending && <button disabled={busy} onClick={() => send('OK')} className="rounded bg-emerald-600 px-2.5 py-1 font-bold text-white disabled:opacity-50">👍 تمام</button>}
+          {!pending && <button disabled={busy} onClick={() => setMode('NOT_OK')} className="rounded bg-red-600 px-2.5 py-1 font-bold text-white disabled:opacity-50">👎 مو تمام</button>}
+          <button disabled={busy} onClick={ask} className="rounded bg-sky-600 px-2.5 py-1 font-bold text-white disabled:opacity-50">📝 اطلب تفسير</button>
+          <button disabled={busy} onClick={() => setMode('SHORTCOMING')} className="rounded border border-red-300 bg-white px-2.5 py-1 font-bold text-red-700 disabled:opacity-50">⚠️ سجّل تقصير</button>
+        </span>
+      </div>
+      {mode && (
+        <div className="mt-2 flex gap-2">
+          <input value={note} onChange={(e) => setNote(e.target.value)} placeholder={mode === 'SHORTCOMING' ? 'شنو التقصير؟' : 'ليش مو تمام؟'}
+            className="flex-1 rounded border border-slate-300 bg-white px-2 py-1" />
+          <button disabled={busy} onClick={() => send(mode)} className="rounded bg-red-600 px-3 py-1 font-bold text-white disabled:opacity-50">تأكيد</button>
+          <button onClick={() => { setMode(null); setErr('') }} className="rounded border border-slate-300 bg-white px-3 py-1">إلغاء</button>
+        </div>
+      )}
+      {err && <p className="mt-1 font-bold text-red-600">{err}</p>}
+    </div>
   )
 }

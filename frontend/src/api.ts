@@ -1087,6 +1087,11 @@ export interface QualityFollowUp {
   inspectedAt: string | null
   inspectedBy: { id: string; name: string } | null
   penalizedEmployee: { id: string; name: string } | null
+  monitorVerdict: 'OK' | 'NOT_OK' | 'SHORTCOMING' | null
+  monitorNote: string | null
+  monitorAt: string | null
+  monitorBy: { id: string; name: string } | null
+  monitorTarget: { id: string; name: string } | null
   execution: BookingExecutionDetail | null
   // تفاصيل المشروع والمبالغ — مهندس الجودة يحتاجها وهو يتصل بالزبون
   financials?: QualityFollowUpFinancials | null
@@ -4053,6 +4058,8 @@ export const api = {
     request<{ employees: { id: string; name: string; position: string | null }[] }>('/assistant/conversations/employees'),
 
   getQualityFollowUps: () => request<QualityFollowUp[]>('/quality-follow-ups'),
+  setQualityMonitorVerdict: (id: string, body: { verdict: 'OK' | 'NOT_OK' | 'SHORTCOMING'; note?: string; targetEmployeeId?: string }) =>
+    request<QualityFollowUp>(`/quality-follow-ups/${id}/monitor-verdict`, { method: 'PUT', body: JSON.stringify(body) }),
   /** حكم الجودة: إيجابي (ما يترتب عليه شي)، سلبي (يخصم نقطة من الليدر
    *  إلا إذا طلبنا كشف — وقتها الخصم ينتظر النتيجة)، أو الزبون مارد
    *  (ما نگدر نطلّع حكم — تنسكّر بلا خصم ولا تبرئة) */

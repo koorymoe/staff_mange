@@ -89,6 +89,18 @@ func (s *QualityFollowUpService) List() ([]model.QualityFollowUp, error) {
 	return s.repo.List()
 }
 
+func (s *QualityFollowUpService) MonitorVerdict(id, byID, verdict, note, targetID string) (*model.QualityFollowUp, error) {
+	switch verdict {
+	case "OK", "NOT_OK", "SHORTCOMING":
+	default:
+		return nil, errors.New("تقييم غير معروف")
+	}
+	if verdict != "OK" && strings.TrimSpace(note) == "" {
+		return nil, errors.New("اكتب السبب")
+	}
+	return s.repo.MonitorVerdict(id, byID, verdict, strings.TrimSpace(note), targetID)
+}
+
 var validQualityFollowUpStatuses = map[string]bool{
 	"PENDING":         true,
 	"CONTACTED_OK":    true,

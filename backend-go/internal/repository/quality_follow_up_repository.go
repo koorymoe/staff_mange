@@ -51,6 +51,17 @@ func (r *QualityFollowUpRepository) hydrate(q *model.QualityFollowUp) {
 			q.PenalizedEmployee = &b
 		}
 	}
+	for _, x := range []struct {
+		id  *string
+		out **model.EmployeeBrief
+	}{{q.MonitorByID, &q.MonitorBy}, {q.MonitorTargetID, &q.MonitorTarget}} {
+		if x.id != nil {
+			var b model.EmployeeBrief
+			if err := r.db.Get(&b, `SELECT id, name FROM "Employee" WHERE id = $1`, *x.id); err == nil {
+				*x.out = &b
+			}
+		}
+	}
 	if q.LinkedBookingID != nil {
 		var lb model.QualityLinkedBooking
 		if err := r.db.Get(&lb, `SELECT id, code, status::text AS status FROM "Booking" WHERE id = $1`, *q.LinkedBookingID); err == nil {
@@ -142,7 +153,7 @@ func (r *QualityFollowUpRepository) hydrateMany(items []model.QualityFollowUp) {
 			bookingIDs = append(bookingIDs, *q.LinkedBookingID)
 		}
 		customerIDs = append(customerIDs, q.CustomerID)
-		for _, e := range []*string{q.ContactedByEmployeeID, q.InspectedByID, q.PenalizedEmployeeID} {
+		for _, e := range []*string{q.ContactedByEmployeeID, q.InspectedByID, q.PenalizedEmployeeID, q.MonitorByID, q.MonitorTargetID} {
 			if e != nil {
 				empIDs = append(empIDs, *e)
 			}
@@ -232,6 +243,8 @@ func (r *QualityFollowUpRepository) hydrateMany(items []model.QualityFollowUp) {
 		q.Execution = executionFrom(bookings[q.BookingID], crew[q.BookingID], reports[q.BookingID])
 		q.InspectedBy = brief(q.InspectedByID)
 		q.PenalizedEmployee = brief(q.PenalizedEmployeeID)
+		q.MonitorBy = brief(q.MonitorByID)
+		q.MonitorTarget = brief(q.MonitorTargetID)
 		if q.LinkedBookingID != nil {
 			if lb := bookings[*q.LinkedBookingID]; lb != nil {
 				q.LinkedBooking = &model.QualityLinkedBooking{ID: lb.ID, Code: lb.Code, Status: lb.Status}
@@ -380,6 +393,21 @@ func (r *QualityFollowUpRepository) ExecutionOf(bookingID string) *model.Booking
 		SELECT * FROM "BookingProgressReport" WHERE "bookingId" = $1 ORDER BY "dayNumber" ASC`, bookingID)
 
 	return d
+}
+
+// MonitorVerdict تقييم المراقب لشغل مهندس الجودة على متابعة وحدة.
+// الهدف: المهندس الي تواصل، أو الي يختاره المراقب للحالات الي ما انتصل بيها.
+func (r *QualityFollowUpRepository) MonitorVerdict(id, byID, verdict, note, targetID string) (*model.QualityFollowUp, error) {
+	var q model.QualityFollowUp
+	err := r.db.Get(&q, `
+		UPDATE "QualityFollowUp" SET "monitorVerdict" = $2, "monitorNote" = NULLIF($3,''), "monitorById" = $4,
+		       "monitorAt" = now(), "monitorTargetId" = COALESCE(NULLIF($5,''), "contactedByEmployeeId")
+		 WHERE id = $1 RETURNING *`, id, verdict, note, byID, targetID)
+	if err != nil {
+		return nil, err
+	}
+	r.hydrate(&q)
+	return &q, nil
 }
 
 // executionFrom نفس ExecutionOf من بيانات محمّلة مسبقاً (للدفعة).

@@ -236,6 +236,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	bookingHandler := handler.NewBookingHandler(bookingService, permissionRepo)
 	bookingHandler.SetReminderService(bookingReminderService)
 	qualityFollowUpHandler := handler.NewQualityFollowUpHandler(qualityFollowUpService, permissionRepo)
+	qualityFollowUpHandler.SetNotifications(notificationRepo)
 	securityHandler := handler.NewSecurityHandler(db, loginAuditRepo, lockoutRepo, startedAt)
 
 	// تخزين الملفات: R2 إذا انضبطت إعداداته، وإلا القرص المحلي. الاثنين
@@ -1545,6 +1546,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	// الافتراضي» چان ينرفض بالقراءة أصلاً.
 	// والكتابة تبقى على requireQuality، وblockMonitorWrite يمنع
 	// المراقب منها حتى لو عنده الصلاحية.
+	mux.Handle("PUT /api/quality-follow-ups/{id}/monitor-verdict", middleware.Chain(http.HandlerFunc(qualityFollowUpHandler.MonitorVerdict), requireAuth, requireMonitor))
 	mux.Handle("GET /api/quality-follow-ups", middleware.Chain(http.HandlerFunc(qualityFollowUpHandler.List), requireAuth,
 		middleware.RequireRoleOrPermission(permissionRepo, employeeRepo, notificationRepo,
 			[]string{"ADMIN", "OWNER", "MONITOR", "QUALITY_ENGINEER"}, "quality_control")))
