@@ -18,6 +18,8 @@ type BookingProgressReport struct {
 	MaterialsUsed *string   `db:"materialsUsed" json:"materialsUsed"`
 	CrewSnapshot  *string   `db:"crewSnapshot" json:"crewSnapshot"`
 	CreatedAt     time.Time `db:"createdAt" json:"createdAt"`
+	// (ع 10-16) نموذج «تقرير تنفيذ المشروع» — نفس تقرير الحجز
+	Sheet RawJSON `db:"sheet" json:"sheet"`
 
 	ReportedBy *EmployeeBrief `db:"-" json:"reportedBy"`
 }
@@ -33,6 +35,7 @@ type PartialCompleteRequest struct {
 	Blockers        *string  `json:"blockers"`
 	MaterialsUsed   *string  `json:"materialsUsed"`
 	AmountCollected *float64 `json:"amountCollected"`
+	Sheet           RawJSON  `json:"sheet"`
 }
 
 // SuggestedCrewMember عضو كادر يقترحه النظام لإكمال الحجز — هم الي

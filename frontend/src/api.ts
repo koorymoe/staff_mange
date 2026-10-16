@@ -2860,6 +2860,8 @@ export interface WorkReport {
   stopReason: string | null
   notes: string | null
   createdAt: string
+  /** (ع 10-16) نموذج «تقرير تنفيذ المشروع» — null للتقارير القديمة */
+  sheet?: unknown
   employee: { id: string; name: string } | null
   booking: { id: string; code: string; customerName: string; customerPhone?: string | null; customerCode?: number; address?: string | null; leaderName?: string | null } | null
 }
@@ -5316,6 +5318,8 @@ export const api = {
     tookPhotos: boolean
     stopReason?: string
     notes?: string
+    /** (ع 10-16) نموذج «تقرير تنفيذ المشروع» كامل */
+    sheet?: unknown
   }) => request<WorkReport>('/work-reports', { method: 'POST', body: JSON.stringify(data) }),
   getWorkReports: (employeeId?: string) =>
     request<WorkReport[]>(`/work-reports${employeeId ? `?employeeId=${employeeId}` : ''}`),
@@ -5632,6 +5636,8 @@ export interface PartialCompleteBody {
   blockers?: string
   materialsUsed?: string
   amountCollected?: number
+  /** (ع 10-16) نموذج «تقرير تنفيذ المشروع» */
+  sheet?: unknown
 }
 
 export interface BookingProgressReport {
@@ -5647,6 +5653,8 @@ export interface BookingProgressReport {
   materialsUsed: string | null
   crewSnapshot: string | null
   createdAt: string
+  /** (ع 10-16) نموذج «تقرير تنفيذ المشروع» — null للتقارير القديمة */
+  sheet?: unknown
 }
 
 export interface SurveyReportBody {

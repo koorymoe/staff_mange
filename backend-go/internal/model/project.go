@@ -89,6 +89,11 @@ type Project struct {
 	DelegatedByEmployeeID *string    `db:"delegatedByEmployeeId" json:"delegatedByEmployeeId"`
 	DelegatedAt           *time.Time `db:"delegatedAt" json:"delegatedAt"`
 	DelegatedToName       *string    `db:"delegatedToName" json:"delegatedToName"`
+
+	// (ع 10-16) رقابة المشرف: شوكت تواصل ويا الزبون (قبل عرض السعر)
+	CustomerContactedAt   *time.Time `db:"customerContactedAt" json:"customerContactedAt"`
+	CustomerContactedByID *string    `db:"customerContactedById" json:"customerContactedById"`
+	CustomerContactNote   *string    `db:"customerContactNote" json:"customerContactNote"`
 }
 
 // DelegateProjectRequest طلب تسليم المشروع لموظف (أو سحبه لو employeeId فاضي).

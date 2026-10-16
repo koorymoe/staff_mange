@@ -49,6 +49,9 @@ interface Project {
   delegatedToEmployeeId: string | null
   delegatedToName: string | null
   delegatedAt: string | null
+  // (ع 10-16) رقابة المشرف: شوكت تواصل ويا الزبون
+  customerContactedAt?: string | null
+  customerContactNote?: string | null
 }
 
 // حجز محول من إدارة الكوادر (الحجوزات الكبيرة تعتبر مشاريع)
@@ -832,11 +835,24 @@ function ProjectCard({ p, canManage, onEdit, onMove, onReport, onDelete, onRefre
         {/* مكان المرحلة القديم: منو رحّل الحجز أو أضاف المشروع */}
         <Info icon="🧑‍💼" value={p.createdByName ? `أضافه: ${p.createdByName}` : 'أضافه: غير محدد'} />
         {p.delegatedToName && <Info icon="📤" value={`موجّه إلى: ${p.delegatedToName}`} />}
+        {p.customerContactedAt && (
+          <Info icon="📞" value={`تواصل ويا الزبون: ${new Date(p.customerContactedAt.endsWith('Z') ? p.customerContactedAt : p.customerContactedAt + 'Z').toLocaleString('ar-IQ', { timeZone: 'Asia/Baghdad', dateStyle: 'short', timeStyle: 'short' })}${p.customerContactNote ? ` — ${p.customerContactNote}` : ''}`} />
+        )}
       </div>
 
       <div className="mt-4 pt-3 border-t flex flex-wrap items-center justify-between gap-2">
         {canManage && (
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
+            {/* (ع 10-16) المراقب يشوف شوكت تواصل المشرف — قبل عرض السعر */}
+            {!p.customerContactedAt && !isRejected && !isCompleted && (
+              <button onClick={async () => {
+                const note = prompt('شنو حجيت ويا الزبون؟ (جملة قصيرة)')
+                if (!note || note.trim().length < 5) { if (note !== null) alert('اكتب جملة قصيرة على الأقل'); return }
+                try { await apiRequest(`/projects/${p.id}/customer-contacted`, { method: 'POST', body: JSON.stringify({ note: note.trim() }) }); onRefresh() }
+                catch (e) { alert(e instanceof Error ? e.message : 'تعذر التسجيل') }
+              }}
+                className="text-sm px-3 py-1.5 rounded-lg bg-emerald-600 text-white font-bold hover:bg-emerald-700">📞 تواصلت ويا الزبون</button>
+            )}
             <button onClick={() => onEdit(p)}
               className="text-sm px-3 py-1.5 rounded-lg border border-blue-300 text-blue-600 hover:bg-blue-50">تعديل ✏️</button>
             <button onClick={() => onDelete(p.id)}

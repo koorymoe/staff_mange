@@ -1610,6 +1610,10 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 		})
 	}
 	mux.Handle("PUT /api/projects/{id}", middleware.Chain(http.HandlerFunc(projectHandler.Update), requireAuth, allowManagerOrDelegate))
+	// (ع) 10-16: رقابة المشرف على عرض السعر — «تواصلت ويا الزبون» بنفس حارس تعديل المشروع
+	quoteWatch := handler.NewProjectQuoteWatchHandler(db)
+	mux.Handle("POST /api/projects/{id}/customer-contacted", middleware.Chain(http.HandlerFunc(quoteWatch.MarkContacted), requireAuth, allowManagerOrDelegate))
+	mux.Handle("GET /api/project-quote-watch", middleware.Chain(http.HandlerFunc(quoteWatch.List), requireAuth, requireFieldMonitor))
 	mux.Handle("DELETE /api/projects/{id}", middleware.Chain(http.HandlerFunc(projectHandler.Delete), requireAuth, requireProjectManager))
 	// حذف ملف العقد المرفوع — لمدير النظام حصراً
 	mux.Handle("DELETE /api/projects/{id}/contract", middleware.Chain(http.HandlerFunc(projectHandler.DeleteContract), requireAuth, requireAdmin))

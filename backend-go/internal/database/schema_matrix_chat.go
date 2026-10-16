@@ -528,5 +528,20 @@ func matrixChatMigrations() []Migration {
 			FROM "BookingVisit" v
 			WHERE v.id = vc."visitId" AND vc."employeeId" = booking_leader_id(v."bookingId") AND NOT vc."isLeader";
 		`,
+	}, {
+		// (ع) 10-16: «تقرير تنفيذ المشروع» بنموذج المشرف الأصلي — للحجز وللمشروع اليومي
+		Version: "0372_execution_sheet",
+		SQL: `
+			ALTER TABLE "WorkReport" ADD COLUMN IF NOT EXISTS sheet JSONB;
+			ALTER TABLE "BookingProgressReport" ADD COLUMN IF NOT EXISTS sheet JSONB;
+		`,
+	}, {
+		// (ع) 10-16: «شوكت استلم المشروع، شوكت تواصل ويا الزبون، شوكت سواله عرض سعر»
+		Version: "0373_project_customer_contact",
+		SQL: `
+			ALTER TABLE "Project" ADD COLUMN IF NOT EXISTS "customerContactedAt" TIMESTAMP;
+			ALTER TABLE "Project" ADD COLUMN IF NOT EXISTS "customerContactedById" TEXT;
+			ALTER TABLE "Project" ADD COLUMN IF NOT EXISTS "customerContactNote" TEXT;
+		`,
 	}}
 }

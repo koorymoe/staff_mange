@@ -15,6 +15,8 @@ type WorkReport struct {
 	StopReason    *string   `db:"stopReason" json:"stopReason"`
 	Notes         *string   `db:"notes" json:"notes"`
 	CreatedAt     time.Time `db:"createdAt" json:"createdAt"`
+	// (ع 10-16) نموذج «تقرير تنفيذ المشروع» كامل كما دخله الليدر
+	Sheet RawJSON `db:"sheet" json:"sheet"`
 
 	Employee *EmployeeBrief          `db:"-" json:"employee"`
 	Booking  *WorkReportBookingBrief `db:"-" json:"booking"`
@@ -44,4 +46,5 @@ type CreateWorkReportRequest struct {
 	TookPhotos    bool    `json:"tookPhotos"`
 	StopReason    *string `json:"stopReason"`
 	Notes         *string `json:"notes"`
+	Sheet         RawJSON `json:"sheet"`
 }

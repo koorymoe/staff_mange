@@ -4,6 +4,7 @@ import { api, type Booking, type WorkReport } from '../api'
 import { useSession } from '../session'
 import EntityIdentity from '../components/EntityIdentity'
 import BookingCodeChip from '../components/BookingCodeChip'
+import { ExecutionSheetForm, emptySheet, sheetMissing, PROJECT_STATUS, type ExecutionSheetData } from '../components/ExecutionSheet'
 
 type WorkStatus = 'COMPLETED' | 'STOPPED' | null
 
@@ -94,6 +95,41 @@ export default function WorkReportPage() {
   const getForm = (id: string) => forms[id] || emptyForm
   const updateForm = (id: string, patch: Partial<ReportForm>) =>
     setForms((prev) => ({ ...prev, [id]: { ...getForm(id), ...patch } }))
+
+  // (ع 10-16) التقرير بنموذج المشرف الأصلي — والأعمدة القديمة تتعبّى منه
+  const [sheets, setSheets] = useState<Record<string, ExecutionSheetData>>({})
+  const getSheet = (b: Booking) => sheets[b.id] ?? emptySheet(b)
+  const handleSheetSubmit = async (b: Booking) => {
+    const sh = getSheet(b)
+    const miss = sheetMissing(sh)
+    if (miss) { alert(miss); return }
+    const stopped = sh.data.projectStatus === PROJECT_STATUS[2]
+    const has = (k: keyof ExecutionSheetData['checks']) => sh.checks[k]
+    setSubmitting(true)
+    try {
+      await api.createWorkReport({
+        bookingId: b.id,
+        workStatus: stopped ? 'STOPPED' : 'COMPLETED',
+        events: sh.data.obstacles || sh.data.projectStatus,
+        extraRequests: sh.data.extras || undefined,
+        cleanedSite: has('cleaned'),
+        gaveInfo: has('explained'),
+        tookPhotos: has('photosDevices') || has('photosWiring') || has('photosController'),
+        stopReason: stopped ? sh.data.obstacles : undefined,
+        notes: sh.suggestion || undefined,
+        sheet: sh,
+      })
+      setExpandedId(null)
+      setSheets((p) => { const n = { ...p }; delete n[b.id]; return n })
+      setReportedBookingIds((prev) => new Set(prev).add(b.id))
+      load()
+      alert('تم إرسال التقرير بنجاح ✓')
+    } catch (e) {
+      alert(e instanceof Error ? e.message : 'تعذر إرسال التقرير')
+    } finally {
+      setSubmitting(false)
+    }
+  }
 
   const handleToggle = (id: string) => {
     setExpandedId(expandedId === id ? null : id)
@@ -206,151 +242,17 @@ export default function WorkReportPage() {
               {/* Report form */}
               {expanded && (
                 <div className="border-t border-slate-100 p-5">
-                  {/* Work status toggle */}
-                  <p className="mb-3 font-semibold text-brand-800">حالة العمل</p>
-                  <div className="grid grid-cols-2 gap-4">
+                  {/* (ع 10-16) نموذج «تقرير تنفيذ المشروع» الأصلي — نفس الي يشوفه المراقب */}
+                  <ExecutionSheetForm value={getSheet(booking)} onChange={(v) => setSheets((p) => ({ ...p, [booking.id]: v }))} />
+                  <div className="mt-5">
                     <button
-                      type="button"
-                      onClick={() => updateForm(booking.id, { workStatus: 'COMPLETED' })}
-                      className={`rounded-2xl border-2 p-5 text-center font-bold transition-all ${
-                        form.workStatus === 'COMPLETED'
-                          ? 'border-green-500 bg-green-50 text-green-700 shadow-md'
-                          : 'border-slate-200 bg-white text-slate-500 hover:border-green-300'
-                      }`}
+                      onClick={() => handleSheetSubmit(booking)}
+                      disabled={submitting}
+                      className="w-full rounded-xl bg-gradient-to-l from-brand-500 to-brand-800 px-6 py-3.5 font-bold text-white shadow-md shadow-brand-900/20 transition-all hover:shadow-lg hover:shadow-brand-900/30 disabled:opacity-50"
                     >
-                      <span className="mb-1 block text-3xl">&#10003;</span>
-                      تم إنجاز العمل
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => updateForm(booking.id, { workStatus: 'STOPPED' })}
-                      className={`rounded-2xl border-2 p-5 text-center font-bold transition-all ${
-                        form.workStatus === 'STOPPED'
-                          ? 'border-amber-500 bg-amber-50 text-amber-700 shadow-md'
-                          : 'border-slate-200 bg-white text-slate-500 hover:border-amber-300'
-                      }`}
-                    >
-                      <span className="mb-1 block text-3xl">&#9724;</span>
-                      توقف العمل
+                      {submitting ? 'جاري الإرسال...' : '📤 ارسال البيانات'}
                     </button>
                   </div>
-
-                  {/* COMPLETED fields */}
-                  {form.workStatus === 'COMPLETED' && (
-                    <div className="mt-5 space-y-4">
-                      <div>
-                        <label className="mb-1 block text-sm font-medium text-slate-600">
-                          الأحداث والمشاكل <span className="text-red-500">*</span>
-                        </label>
-                        <textarea
-                          required
-                          value={form.events}
-                          onChange={(e) => updateForm(booking.id, { events: e.target.value })}
-                          rows={4}
-                          placeholder="اكتب تقريراً مفصلاً عن كل ما حدث"
-                          className="w-full rounded-xl border border-gray-300 px-4 py-3 text-right outline-none focus:border-brand-500"
-                        />
-                      </div>
-                      <div>
-                        <label className="mb-1 block text-sm font-medium text-slate-600">
-                          طلبات الزبون الإضافية
-                        </label>
-                        <textarea
-                          value={form.customerRequests}
-                          onChange={(e) =>
-                            updateForm(booking.id, { customerRequests: e.target.value })
-                          }
-                          rows={2}
-                          className="w-full rounded-xl border border-gray-300 px-4 py-3 text-right outline-none focus:border-brand-500"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <label className="block text-sm font-medium text-slate-600">
-                          قائمة التحقق
-                        </label>
-                        {[
-                          { key: 'cleanedPlace' as const, label: 'تم تنظيف المكان' },
-                          { key: 'gaveInfo' as const, label: 'تم إعطاء المعلومات اللازمة للزبون' },
-                          { key: 'tookPhotos' as const, label: 'تم تصوير العمل' },
-                        ].map(({ key, label }) => (
-                          <label
-                            key={key}
-                            className="flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 cursor-pointer hover:bg-slate-100 transition-colors"
-                          >
-                            <input
-                              type="checkbox"
-                              checked={form[key]}
-                              onChange={(e) =>
-                                updateForm(booking.id, { [key]: e.target.checked })
-                              }
-                              className="h-5 w-5 rounded accent-brand-600"
-                            />
-                            <span className="font-medium text-slate-700">{label}</span>
-                          </label>
-                        ))}
-                      </div>
-                      <div>
-                        <label className="mb-1 block text-sm font-medium text-slate-600">
-                          ملاحظات إضافية
-                        </label>
-                        <textarea
-                          value={form.additionalNotes}
-                          onChange={(e) =>
-                            updateForm(booking.id, { additionalNotes: e.target.value })
-                          }
-                          rows={2}
-                          className="w-full rounded-xl border border-gray-300 px-4 py-3 text-right outline-none focus:border-brand-500"
-                        />
-                      </div>
-                    </div>
-                  )}
-
-                  {/* STOPPED fields */}
-                  {form.workStatus === 'STOPPED' && (
-                    <div className="mt-5 space-y-4">
-                      <div>
-                        <label className="mb-1 block text-sm font-medium text-slate-600">
-                          سبب التوقف <span className="text-red-500">*</span>
-                        </label>
-                        <textarea
-                          required
-                          value={form.stopReason}
-                          onChange={(e) =>
-                            updateForm(booking.id, { stopReason: e.target.value })
-                          }
-                          rows={4}
-                          placeholder="اكتب سبباً مفصلاً لتوقف العمل"
-                          className="w-full rounded-xl border border-gray-300 px-4 py-3 text-right outline-none focus:border-brand-500"
-                        />
-                      </div>
-                      <div>
-                        <label className="mb-1 block text-sm font-medium text-slate-600">
-                          ملاحظات
-                        </label>
-                        <textarea
-                          value={form.stopNotes}
-                          onChange={(e) =>
-                            updateForm(booking.id, { stopNotes: e.target.value })
-                          }
-                          rows={2}
-                          className="w-full rounded-xl border border-gray-300 px-4 py-3 text-right outline-none focus:border-brand-500"
-                        />
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Submit */}
-                  {form.workStatus && (
-                    <div className="mt-5">
-                      <button
-                        onClick={() => handleSubmit(booking.id)}
-                        disabled={submitting}
-                        className="w-full rounded-xl bg-gradient-to-l from-brand-500 to-brand-800 px-6 py-3.5 font-bold text-white shadow-md shadow-brand-900/20 transition-all hover:shadow-lg hover:shadow-brand-900/30 disabled:opacity-50"
-                      >
-                        {submitting ? 'جاري الإرسال...' : 'إرسال التقرير'}
-                      </button>
-                    </div>
-                  )}
                 </div>
               )}
       </div>

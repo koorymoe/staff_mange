@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { api, type WorkReport } from '../api'
 import { formatCustomerCode } from '../utils/identity'
 import EntityIdentity from '../components/EntityIdentity'
+import { ExecutionSheetView, asSheet } from '../components/ExecutionSheet'
 import BookingCodeChip from '../components/BookingCodeChip'
 import { loadFailed } from '../netErrors'
 
@@ -77,7 +78,10 @@ export default function WorkReportsReview() {
               الفني: {r.employee?.name || '-'} · {new Date(r.createdAt).toLocaleString('ar-IQ')}
             </p>
 
-            {r.workStatus === 'COMPLETED' ? (
+            {/* (ع 10-16) التقرير بنموذج المشرف الأصلي — نفس ترتيب ومدخلات الليدر */}
+            {asSheet(r.sheet) ? (
+              <div className="mt-3"><ExecutionSheetView sheet={asSheet(r.sheet)!} /></div>
+            ) : r.workStatus === 'COMPLETED' ? (
               <div className="mt-3 space-y-2 text-sm">
                 <p><span className="text-slate-500">الأحداث: </span>{r.events || '-'}</p>
                 {r.extraRequests && <p><span className="text-slate-500">طلبات الزبون: </span>{r.extraRequests}</p>}

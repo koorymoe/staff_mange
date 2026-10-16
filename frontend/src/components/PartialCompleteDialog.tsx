@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { bookingDone } from '../bookingDone'
 import { api, type Booking, type BookingProgressReport } from '../api'
 import BookingCodeChip from './BookingCodeChip'
+import { ExecutionSheetForm, emptySheet, sheetMissing, PROJECT_STATUS, type ExecutionSheetData } from './ExecutionSheet'
 import { parseAmount } from '../utils/money'
 
 // ═══ الإنجاز الجزئي — «خلصنا جزء والباقي باچر» ═══
@@ -32,10 +33,17 @@ export default function PartialCompleteDialog({
   const [amount, setAmount] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  // (ع 10-16) تقرير المشروع اليومي بنفس نموذج المشرف الأصلي
+  const [sheet, setSheet] = useState<ExecutionSheetData>(() => {
+    const s = emptySheet(booking)
+    return { ...s, data: { ...s.data, projectStatus: PROJECT_STATUS[1] } }
+  })
 
   const submit = async () => {
     if (workDone.trim().length < 3) return setError('اكتب شنو انخلص اليوم')
     if (remaining.trim().length < 3) return setError('اكتب شنو باقي — الكادر الجاي يعتمد عليها')
+    const miss = sheetMissing(sheet)
+    if (miss) return setError(miss)
     setBusy(true); setError(null)
     try {
       const report = await api.partialCompleteBooking(booking.id, {
@@ -45,6 +53,7 @@ export default function PartialCompleteDialog({
         blockers: blockers.trim() || undefined,
         materialsUsed: materials.trim() || undefined,
         amountCollected: amount.trim() ? parseAmount(amount) : undefined,
+        sheet: { ...sheet, amountReceived: sheet.amountReceived || amount.trim() },
       })
       onDone(report)
       bookingDone()
@@ -57,7 +66,7 @@ export default function PartialCompleteDialog({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-      <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-white p-5 shadow-xl">
+      <div className="max-h-[90vh] w-full max-w-4xl overflow-y-auto rounded-2xl bg-white p-5 shadow-xl">
         <h3 className="text-lg font-bold text-[#0f2040]">
           🔄 إنجاز جزئي — حجز <BookingCodeChip code={booking.code} />
         </h3>
@@ -125,6 +134,10 @@ export default function PartialCompleteDialog({
           onChange={(e) => setAmount(e.target.value)}
           className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand-500"
         />
+
+        <div className="mt-5 border-t border-slate-200 pt-4">
+          <ExecutionSheetForm value={sheet} onChange={setSheet} />
+        </div>
 
         {error && <p className="mt-3 rounded-lg bg-red-50 p-2 text-sm font-bold text-red-700">{error}</p>}
 

@@ -45,9 +45,9 @@ func (r *BookingProgressRepository) PartialComplete(bookingID, reportedByID stri
 	// لقطة الكادر الي اشتغل اليوم — قبل ما يبدّلهم الإداري باچر.
 	crew := []string{}
 	if err = tx.Select(&crew, `
-		SELECT e.name FROM "BookingAssignment" a
-		JOIN "Employee" e ON e.id = a."employeeId"
-		WHERE a."bookingId" = $1 ORDER BY a.role
+		SELECT e.name FROM booking_crew_ids($1) c(eid) -- (ع 10-16) الكادر الموحّد
+		JOIN "Employee" e ON e.id = c.eid
+		ORDER BY e."isLeader" DESC, e.name
 	`, bookingID); err != nil {
 		return nil, err
 	}
@@ -71,11 +71,11 @@ func (r *BookingProgressRepository) PartialComplete(bookingID, reportedByID stri
 	if err = tx.Get(&report, `
 		INSERT INTO "BookingProgressReport"
 			(id, "bookingId", "dayNumber", "reportedById", "workDone", "remainingWork",
-			 "percentDone", blockers, "materialsUsed", "crewSnapshot")
-		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
+			 "percentDone", blockers, "materialsUsed", "crewSnapshot", sheet)
+		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
 		RETURNING *
 	`, uuid.NewString(), bookingID, dayNumber, reportedByID, req.WorkDone, req.RemainingWork,
-		percent, req.Blockers, req.MaterialsUsed, crewSnapshot); err != nil {
+		percent, req.Blockers, req.MaterialsUsed, crewSnapshot, req.Sheet); err != nil {
 		return nil, err
 	}
 

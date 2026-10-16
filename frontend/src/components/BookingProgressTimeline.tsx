@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { api, type Booking, type BookingProgressReport } from '../api'
 import EntityIdentity from './EntityIdentity'
+import { ExecutionSheetView, asSheet } from './ExecutionSheet'
 
 // ═══ «وين وصل الي قبلنا؟» ═══
 //
@@ -74,6 +75,13 @@ export default function BookingProgressTimeline({ bookingId, booking }: { bookin
             )}
             {r.materialsUsed && (
               <p className="mt-1 text-slate-500">📦 مواد: {r.materialsUsed}</p>
+            )}
+            {/* (ع 10-16) تقرير اليوم كامل بنموذج المشرف الأصلي */}
+            {asSheet(r.sheet) && (
+              <details className="mt-2">
+                <summary className="cursor-pointer font-bold text-brand-700">📋 تقرير تنفيذ المشروع — اليوم {r.dayNumber}</summary>
+                <div className="mt-2"><ExecutionSheetView sheet={asSheet(r.sheet)!} /></div>
+              </details>
             )}
           </div>
         ))}

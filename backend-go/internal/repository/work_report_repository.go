@@ -38,10 +38,10 @@ func (r *WorkReportRepository) hydrate(wr *model.WorkReport) {
 func (r *WorkReportRepository) Create(employeeID string, req model.CreateWorkReportRequest) (*model.WorkReport, error) {
 	var wr model.WorkReport
 	err := r.db.Get(&wr, `
-		INSERT INTO "WorkReport" (id, "bookingId", "employeeId", "workStatus", events, "extraRequests", "cleanedSite", "gaveInfo", "tookPhotos", "stopReason", notes)
-		VALUES (gen_random_uuid()::text, $1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+		INSERT INTO "WorkReport" (id, "bookingId", "employeeId", "workStatus", events, "extraRequests", "cleanedSite", "gaveInfo", "tookPhotos", "stopReason", notes, sheet)
+		VALUES (gen_random_uuid()::text, $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
 		RETURNING *
-	`, req.BookingID, employeeID, req.WorkStatus, req.Events, req.ExtraRequests, req.CleanedSite, req.GaveInfo, req.TookPhotos, req.StopReason, req.Notes)
+	`, req.BookingID, employeeID, req.WorkStatus, req.Events, req.ExtraRequests, req.CleanedSite, req.GaveInfo, req.TookPhotos, req.StopReason, req.Notes, req.Sheet)
 	if err != nil {
 		return nil, err
 	}
