@@ -20,6 +20,11 @@ type BookingProgressReport struct {
 	CreatedAt     time.Time `db:"createdAt" json:"createdAt"`
 	// (ع 10-16) نموذج «تقرير تنفيذ المشروع» — نفس تقرير الحجز
 	Sheet RawJSON `db:"sheet" json:"sheet"`
+	// تدقيق المراقب (0381) — «تم التدقيق» حتى ما يبقى التقرير معلّك
+	ReviewedAt     *time.Time `db:"reviewedAt" json:"reviewedAt"`
+	ReviewedByID   *string    `db:"reviewedById" json:"-"`
+	ReviewNote     *string    `db:"reviewNote" json:"reviewNote"`
+	ReviewedByName *string    `db:"-" json:"reviewedByName"`
 
 	ReportedBy *EmployeeBrief `db:"-" json:"reportedBy"`
 }

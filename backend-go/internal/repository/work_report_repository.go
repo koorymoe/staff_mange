@@ -1,6 +1,7 @@
 package repository
 
 import (
+	"errors"
 	"github.com/jmoiron/sqlx"
 
 	"staffmange-api/internal/model"
@@ -33,6 +34,25 @@ func (r *WorkReportRepository) hydrate(wr *model.WorkReport) {
 	if err == nil {
 		wr.Booking = &booking
 	}
+	if wr.ReviewedByID != nil {
+		var n string
+		if err := r.db.Get(&n, `SELECT name FROM "Employee" WHERE id = $1`, *wr.ReviewedByID); err == nil {
+			wr.ReviewedByName = &n
+		}
+	}
+}
+
+// Review «تم التدقيق» على تقرير حجز — مرة وحدة، والملاحظة اختيارية.
+func (r *WorkReportRepository) Review(id, byID, note string) error {
+	res, err := r.db.Exec(`UPDATE "WorkReport" SET "reviewedAt" = now(), "reviewedById" = $2, "reviewNote" = NULLIF($3,'')
+		WHERE id = $1 AND "reviewedAt" IS NULL`, id, byID, note)
+	if err != nil {
+		return err
+	}
+	if n, _ := res.RowsAffected(); n == 0 {
+		return errors.New("التقرير متدقّق من قبل")
+	}
+	return nil
 }
 
 func (r *WorkReportRepository) Create(employeeID string, req model.CreateWorkReportRequest) (*model.WorkReport, error) {
@@ -57,7 +77,8 @@ func (r *WorkReportRepository) List(employeeID string) ([]model.WorkReport, erro
 		args = append(args, employeeID)
 		query += ` AND "employeeId" = $1`
 	}
-	query += ` ORDER BY "createdAt" DESC LIMIT 200`
+	// الي ينتظر التدقيق أول — حتى ما يضيع ورا الحد (٢٠٠)
+	query += ` ORDER BY ("reviewedAt" IS NULL) DESC, "createdAt" DESC LIMIT 200`
 	if err := r.db.Select(&reports, query, args...); err != nil {
 		return nil, err
 	}

@@ -88,3 +88,16 @@ func (h *WorkReportHandler) List(w http.ResponseWriter, r *http.Request) {
 	}
 	WriteJSON(w, http.StatusOK, reports)
 }
+
+// PUT /api/work-reports/{id}/review — المراقب: «✅ تم التدقيق» حتى ما يبقى التقرير معلّك.
+func (h *WorkReportHandler) Review(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		Note string `json:"note"`
+	}
+	_ = DecodeJSON(r, &req)
+	if err := h.service.Review(r.PathValue("id"), middleware.EmployeeIDFromContext(r), strings.TrimSpace(req.Note)); err != nil {
+		WriteError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	WriteJSON(w, http.StatusOK, map[string]bool{"ok": true})
+}

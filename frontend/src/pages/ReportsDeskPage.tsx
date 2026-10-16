@@ -60,11 +60,20 @@ function ProjectReports() {
             {r.leaderName && <span className="text-xs text-slate-500">👷 الليدر: {r.leaderName}</span>}
             <span className="rounded-full bg-sky-50 px-2 py-0.5 text-xs font-bold text-sky-700">{r.reports} تقرير · آخرها اليوم {r.lastDay}</span>
             <span className={`rounded-full px-2 py-0.5 text-xs font-bold ${r.lastPercent >= 100 ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'}`}>{r.lastPercent}%</span>
+            {r.unreviewed > 0
+              ? <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-bold text-amber-800">⏳ {r.unreviewed} تنتظر التدقيق</span>
+              : <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-bold text-emerald-700">✅ متدقّقة</span>}
             <span className="ms-auto text-xs text-slate-400">{new Date(r.lastAt).toLocaleString('ar-IQ', { timeZone: 'Asia/Baghdad' })}</span>
             <span className="text-slate-400">{open === r.bookingId ? '▲' : '▼'}</span>
           </button>
           {open === r.bookingId && (
             <div className="border-t border-slate-100 p-3">
+              {r.unreviewed > 0 && (
+                <button type="button" onClick={async () => {
+                  try { await api.reviewProjectReports(r.bookingId); setRows((rs) => (rs ?? []).map((x) => (x.bookingId === r.bookingId ? { ...x, unreviewed: 0 } : x))) }
+                  catch (e) { alert(e instanceof Error ? e.message : 'تعذر') }
+                }} className="mb-3 rounded-lg bg-emerald-600 px-4 py-1.5 text-sm font-bold text-white">✅ تم التدقيق ({r.unreviewed} تقرير)</button>
+              )}
               <BookingProgressTimeline bookingId={r.bookingId} />
             </div>
           )}

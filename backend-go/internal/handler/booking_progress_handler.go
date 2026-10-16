@@ -153,6 +153,20 @@ func (h *BookingProgressHandler) ScheduleContinuation(w http.ResponseWriter, r *
 
 // GET /api/bookings/{id}/progress — تقارير كل الأيام. يقراها الكادر
 // الجاي قبل ما يطلع، والإداري قبل ما ينسّق.
+// PUT /api/bookings/{id}/progress/review — المراقب: «تم التدقيق» على تقارير المشروع.
+func (h *BookingProgressHandler) Review(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		Note string `json:"note"`
+	}
+	_ = DecodeJSON(r, &req)
+	n, err := h.repo.ReviewBooking(r.PathValue("id"), middleware.EmployeeIDFromContext(r), strings.TrimSpace(req.Note))
+	if err != nil {
+		WriteError(w, http.StatusInternalServerError, "تعذر التسجيل")
+		return
+	}
+	WriteJSON(w, http.StatusOK, map[string]any{"reviewed": n})
+}
+
 // GET /api/progress-reports/recent — التقارير اليومية للمشاريع (آخر ٣٠ يوم).
 func (h *BookingProgressHandler) Recent(w http.ResponseWriter, r *http.Request) {
 	rows, err := h.repo.Recent(30)

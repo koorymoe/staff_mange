@@ -2875,6 +2875,10 @@ export interface KpiCriterion {
 
 export interface WorkReport {
   id: string
+  // تدقيق المراقب (ع 10-16)
+  reviewedAt?: string | null
+  reviewNote?: string | null
+  reviewedByName?: string | null
   bookingId: string
   employeeId: string
   workStatus: 'COMPLETED' | 'STOPPED'
@@ -5361,6 +5365,10 @@ export const api = {
     /** (ع 10-16) نموذج «تقرير تنفيذ المشروع» كامل */
     sheet?: unknown
   }) => request<WorkReport>('/work-reports', { method: 'POST', body: JSON.stringify(data) }),
+  reviewWorkReport: (id: string, note?: string) =>
+    request<{ ok: boolean }>(`/work-reports/${id}/review`, { method: 'PUT', body: JSON.stringify({ note }) }),
+  reviewProjectReports: (bookingId: string, note?: string) =>
+    request<{ reviewed: number }>(`/bookings/${bookingId}/progress/review`, { method: 'PUT', body: JSON.stringify({ note }) }),
   getWorkReports: (employeeId?: string) =>
     request<WorkReport[]>(`/work-reports${employeeId ? `?employeeId=${employeeId}` : ''}`),
 
@@ -5689,6 +5697,7 @@ export interface ProgressRecentRow {
   lastPercent: number
   lastAt: string
   leaderName: string | null
+  unreviewed: number
 }
 
 export interface BookingProgressReport {

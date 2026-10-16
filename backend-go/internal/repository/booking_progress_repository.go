@@ -133,6 +133,7 @@ type ProgressRecentRow struct {
 	LastPercent  int       `db:"lastPercent" json:"lastPercent"`
 	LastAt       time.Time `db:"lastAt" json:"lastAt"`
 	LeaderName   *string   `db:"leaderName" json:"leaderName"`
+	Unreviewed   int       `db:"unreviewed" json:"unreviewed"`
 }
 
 // Recent الحجوزات الي انكتبلها تقرير يومي بآخر N يوم، الأحدث أول.
@@ -140,16 +141,17 @@ func (r *BookingProgressRepository) Recent(days int) ([]ProgressRecentRow, error
 	rows := []ProgressRecentRow{}
 	err := r.db.Select(&rows, `
 		SELECT b.id AS "bookingId", COALESCE(b.code, b.id) AS "bookingCode", c.name AS "customerName",
-		       x.reports, x."lastDay", x."lastPercent", x."lastAt",
+		       x.reports, x."lastDay", x."lastPercent", x."lastAt", x.unreviewed,
 		       (SELECT name FROM "Employee" WHERE id = booking_leader_id(b.id)) AS "leaderName"
 		  FROM (SELECT "bookingId", COUNT(*) AS reports, MAX("dayNumber") AS "lastDay",
 		               (ARRAY_AGG("percentDone" ORDER BY "createdAt" DESC))[1] AS "lastPercent",
-		               MAX("createdAt") AS "lastAt"
+		               MAX("createdAt") AS "lastAt",
+		               COUNT(*) FILTER (WHERE "reviewedAt" IS NULL) AS unreviewed
 		          FROM "BookingProgressReport" GROUP BY "bookingId") x
 		  JOIN "Booking" b ON b.id = x."bookingId"
 		  LEFT JOIN "Customer" c ON c.id = b."customerId"
-		 WHERE x."lastAt" >= now() - make_interval(days => $1)
-		 ORDER BY x."lastAt" DESC LIMIT 300`, days)
+		 WHERE x."lastAt" >= now() - make_interval(days => $1) OR x.unreviewed > 0
+		 ORDER BY (x.unreviewed > 0) DESC, x."lastAt" DESC LIMIT 300`, days)
 	return rows, err
 }
 
@@ -167,6 +169,16 @@ func (r *BookingProgressRepository) WorkWindow(bookingID string) (*WorkWindow, e
 		return nil, err
 	}
 	return &w, nil
+}
+
+// ReviewBooking «تم التدقيق» على كل تقارير المشروع اليومية الي بعدها معلّكة.
+func (r *BookingProgressRepository) ReviewBooking(bookingID, byID, note string) (int64, error) {
+	res, err := r.db.Exec(`UPDATE "BookingProgressReport" SET "reviewedAt" = now(), "reviewedById" = $2, "reviewNote" = NULLIF($3,'')
+		WHERE "bookingId" = $1 AND "reviewedAt" IS NULL`, bookingID, byID, note)
+	if err != nil {
+		return 0, err
+	}
+	return res.RowsAffected()
 }
 
 // Reports كل تقارير حجز مرتبة باليوم — هذا الي يقراه الكادر الجاي حتى

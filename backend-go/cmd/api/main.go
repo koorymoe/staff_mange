@@ -2280,6 +2280,8 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	// تقارير العمل — الفني يرسل تقرير عن حجزه، المراقب/الجودة يشوفون كل التقارير
 	mux.Handle("POST /api/work-reports", middleware.Chain(http.HandlerFunc(workReportHandler.Create), requireAuth))
 	mux.Handle("GET /api/work-reports", middleware.Chain(http.HandlerFunc(workReportHandler.List), requireAuth))
+	mux.Handle("PUT /api/work-reports/{id}/review", middleware.Chain(http.HandlerFunc(workReportHandler.Review), requireAuth, requireMonitor))
+	mux.Handle("PUT /api/bookings/{id}/progress/review", middleware.Chain(http.HandlerFunc(bookingProgressHandler.Review), requireAuth, requireMonitor))
 	// تقرير زيارة معاينة («كشف») — أي كادر مكلّف بالحجز يسلّمه، بلا حارس ورق محاسبي.
 	mux.Handle("POST /api/booking-survey-reports", middleware.Chain(http.HandlerFunc(surveyReportHandler.Create), requireAuth))
 	mux.Handle("GET /api/booking-survey-reports", middleware.Chain(http.HandlerFunc(surveyReportHandler.List), requireAuth))

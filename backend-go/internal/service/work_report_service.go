@@ -40,6 +40,11 @@ func (s *WorkReportService) Create(employeeID, role string, req model.CreateWork
 	return s.repo.Create(employeeID, req)
 }
 
+// Review «تم التدقيق» من المراقب (ع 10-16).
+func (s *WorkReportService) Review(id, byID, note string) error {
+	return s.repo.Review(id, byID, note)
+}
+
 func (s *WorkReportService) List(employeeID string) ([]model.WorkReport, error) {
 	return s.repo.List(employeeID)
 }

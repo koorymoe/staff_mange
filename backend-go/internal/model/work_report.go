@@ -17,6 +17,11 @@ type WorkReport struct {
 	CreatedAt     time.Time `db:"createdAt" json:"createdAt"`
 	// (ع 10-16) نموذج «تقرير تنفيذ المشروع» كامل كما دخله الليدر
 	Sheet RawJSON `db:"sheet" json:"sheet"`
+	// تدقيق المراقب (0381) — «تم التدقيق» حتى ما يبقى التقرير معلّك
+	ReviewedAt     *time.Time `db:"reviewedAt" json:"reviewedAt"`
+	ReviewedByID   *string    `db:"reviewedById" json:"-"`
+	ReviewNote     *string    `db:"reviewNote" json:"reviewNote"`
+	ReviewedByName *string    `db:"-" json:"reviewedByName"`
 
 	Employee *EmployeeBrief          `db:"-" json:"employee"`
 	Booking  *WorkReportBookingBrief `db:"-" json:"booking"`

@@ -679,5 +679,17 @@ func matrixChatMigrations() []Migration {
 			);
 			CREATE INDEX IF NOT EXISTS "DecorRate_service_idx" ON "DecorRate" ("serviceId");
 		`,
+	}, {
+		// (ع) 10-16: «لازم أكو خيار ينطي تم التدقيق حتى ما يضلن معلّكات» —
+		// تقارير الحجوزات والتقارير اليومية للمشاريع.
+		Version: "0381_report_review",
+		SQL: `
+			ALTER TABLE "WorkReport" ADD COLUMN IF NOT EXISTS "reviewedAt" TIMESTAMP;
+			ALTER TABLE "WorkReport" ADD COLUMN IF NOT EXISTS "reviewedById" TEXT REFERENCES "Employee"(id) ON DELETE SET NULL;
+			ALTER TABLE "WorkReport" ADD COLUMN IF NOT EXISTS "reviewNote" TEXT;
+			ALTER TABLE "BookingProgressReport" ADD COLUMN IF NOT EXISTS "reviewedAt" TIMESTAMP;
+			ALTER TABLE "BookingProgressReport" ADD COLUMN IF NOT EXISTS "reviewedById" TEXT REFERENCES "Employee"(id) ON DELETE SET NULL;
+			ALTER TABLE "BookingProgressReport" ADD COLUMN IF NOT EXISTS "reviewNote" TEXT;
+		`,
 	}}
 }
