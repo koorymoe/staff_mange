@@ -1,4 +1,5 @@
 import { lazy, Suspense, useState } from 'react'
+import { useSession } from '../session'
 
 // ═══ مكتب الجودة — قرار (ع) 10-16 ═══
 // شغلتين مختلفات: «متابعة الجودة» (نتواصل ويا الزبون ونتأكد الشغل تم وهو راضي)
@@ -6,11 +7,17 @@ import { lazy, Suspense, useState } from 'react'
 // نفس الصفحة للمراقب ولمهندس الجودة، وكل وحدة بخيارها فوك — مو وحدة جوّا الثانية.
 const QualityAuditView = lazy(() => import('../components/QualityAuditView'))
 const ComplaintsPage = lazy(() => import('./ComplaintsPage'))
+// (ع) 10-16: «الي يطلع للمراقب يختلف عن الي يطلع لمهندس الجودة» — المهندس
+// يشتغل (يتواصل ويا الزبائن ويحكم)، والمراقب يدقق (شنو سوّى المهندس).
+const QualityFollowUpsPage = lazy(() => import('./QualityFollowUpsPage'))
 
 type View = 'quality' | 'complaints'
 
 export default function QualityDeskPage() {
   const [view, setView] = useState<View>('quality')
+  const { employee, permissions } = useSession()
+  const role = employee?.role
+  const isAuditor = role === 'ADMIN' || role === 'MONITOR' || (role !== 'QUALITY_ENGINEER' && permissions.includes('monitoring'))
   const btn = (v: View, label: string, hint: string) => (
     <button type="button" onClick={() => setView(v)}
       className={`flex-1 rounded-2xl px-4 py-3 text-right transition ${view === v ? 'bg-[#0f2040] text-white shadow' : 'bg-white text-slate-700 ring-1 ring-slate-200 hover:bg-slate-50'}`}>
@@ -29,7 +36,7 @@ export default function QualityDeskPage() {
         {btn('complaints', '⚠️ الشكاوى', 'الشكاوى المفتوحة — هل مهندس الجودة تابعها؟ وشنو صار بيها')}
       </div>
       <Suspense fallback={<p className="py-10 text-center text-slate-400">جاري التحميل…</p>}>
-        {view === 'quality' ? <QualityAuditView /> : <ComplaintsPage />}
+        {view === 'quality' ? (isAuditor ? <QualityAuditView /> : <QualityFollowUpsPage embedded />) : <ComplaintsPage />}
       </Suspense>
     </div>
   )
