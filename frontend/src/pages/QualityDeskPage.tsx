@@ -14,10 +14,15 @@ const QualityFollowUpsPage = lazy(() => import('./QualityFollowUpsPage'))
 type View = 'quality' | 'complaints'
 
 export default function QualityDeskPage() {
-  const [view, setView] = useState<View>('quality')
   const { employee, permissions } = useSession()
   const role = employee?.role
   const isAuditor = role === 'ADMIN' || role === 'MONITOR' || (role !== 'QUALITY_ENGINEER' && permissions.includes('monitoring'))
+  // كل خيار يطلع بس لمنو يسمحله الخادم — حتى ما ينادي شي يرجّع 403 ويسجّل مخالفة.
+  // (الشكاوى ومتابعة الجودة انشالن من القائمة وصارن هنا بس — ع 10-16)
+  const canQuality = isAuditor || role === 'QUALITY_ENGINEER' || permissions.includes('quality_control')
+  const canComplaints = isAuditor || role === 'QUALITY_ENGINEER' || role === 'HR_COORDINATOR' || permissions.includes('complaints')
+  const [picked, setView] = useState<View>(canQuality ? 'quality' : 'complaints')
+  const view: View = picked === 'quality' && !canQuality ? 'complaints' : picked
   const btn = (v: View, label: string, hint: string) => (
     <button type="button" onClick={() => setView(v)}
       className={`flex-1 rounded-2xl px-4 py-3 text-right transition ${view === v ? 'bg-[#0f2040] text-white shadow' : 'bg-white text-slate-700 ring-1 ring-slate-200 hover:bg-slate-50'}`}>
@@ -32,8 +37,8 @@ export default function QualityDeskPage() {
         <p className="mt-1 text-sm text-blue-100">متابعة رضا الزبون بعد الشغل، والشكاوى الي لازم مهندس الجودة يخلصها.</p>
       </div>
       <div className="flex flex-col gap-2 sm:flex-row">
-        {btn('quality', '⭐ متابعة الجودة', 'مهندس الجودة تواصل ويا الزبون وتأكد الشغل تم وهو راضي')}
-        {btn('complaints', '⚠️ الشكاوى', 'الشكاوى المفتوحة — هل مهندس الجودة تابعها؟ وشنو صار بيها')}
+        {canQuality && btn('quality', '⭐ متابعة الجودة', 'مهندس الجودة تواصل ويا الزبون وتأكد الشغل تم وهو راضي')}
+        {canComplaints && btn('complaints', '⚠️ الشكاوى', 'الشكاوى المفتوحة — هل مهندس الجودة تابعها؟ وشنو صار بيها')}
       </div>
       <Suspense fallback={<p className="py-10 text-center text-slate-400">جاري التحميل…</p>}>
         {view === 'quality' ? (isAuditor ? <QualityAuditView /> : <QualityFollowUpsPage embedded />) : <ComplaintsPage />}

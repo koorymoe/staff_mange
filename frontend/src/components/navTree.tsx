@@ -171,7 +171,7 @@ export const navItems: NavItem[] = [
       // قرار (ع) 10-16: مكتب المراقب = مراقبة بس — الفواتير والجودة لمكاتبهن، بالصلاحية
       { to: '/accountant-desk', label: '🧾 مكتب المحاسب', icon: <></>, roles: ['ADMIN'], anyPermission: ['finance', 'finance_audit'], hideForRoles: ['FINANCE'] },
       { to: '/quality-desk', label: '⭐ مكتب الجودة', icon: <></>, roles: ['ADMIN', 'QUALITY_ENGINEER'], anyPermission: ['quality_control', 'complaints'] },
-      { to: '/reports-desk', label: '📑 تقارير الحجوزات والمشاريع', icon: <></>, roles: ['ADMIN', 'QUALITY_ENGINEER'], anyPermission: ['monitoring', 'quality_control'] },
+      { to: '/reports-desk', label: '📑 تقارير الحجوزات والمشاريع', icon: <></>, roles: ['ADMIN', 'MONITOR'], permission: 'monitoring', hideForRoles: ['QUALITY_ENGINEER'] },
       // قرار (ع) 10-15: الخريطة وفحص المتأخرات تبويبات بمكتب المراقب · فحص الدقة للمالك بس.
       { monitorMenuHide: true, to: '/field-map', label: '🗺️ خريطة الميدان', icon: <></>, roles: ['ADMIN', 'MONITOR'], permission: 'monitoring' },
       { monitorMenuHide: true, to: '/late-audit', label: '🔍 فحص المتأخرات', icon: <></>, roles: ['ADMIN', 'MONITOR'], permission: 'monitoring' },
@@ -312,8 +312,6 @@ export const navItems: NavItem[] = [
           { monitorMenuHide: true, to: '/missions', label: 'تتبع المهام', icon: <></>, roles: ['ADMIN', 'HR_COORDINATOR', 'MONITOR'], permission: 'mission_tracking', hideForRoles: ['FINANCE'] },
           // الشكاوى ومتابعة الجودة جانن تحت «إدارة الموظفين» — وهنّ شغل
           // على الزبون مو على ملف الموظف. محلهن هنا مع باقي شغل العمل.
-          { to: '/complaints', label: '⚠️ الشكاوى', icon: <></>, roles: ['ADMIN', 'HR_COORDINATOR', 'MONITOR'], permission: 'complaints', hideForRoles: ['MONITOR'] },
-          { to: '/quality-follow-ups', label: 'متابعة الجودة', icon: <></>, roles: ['ADMIN', 'MONITOR', 'QUALITY_ENGINEER'], permission: 'quality_control', hideForRoles: ['MONITOR'] },
           // شاشة البت بطلبات حذف الحجوزات. كانت مدفونة جوّا وحدة العلاقات
           // العامة، ووحدة كاملة تنحجب عن أي واحد ما عنده صلاحية الوحدة —
           // فالمالك كان يوصله إشعار الطلب وما يلكه مكان يوافق بيه. محلها
@@ -744,7 +742,6 @@ export const navItems: NavItem[] = [
   // المحفوظة والإشعارات.
       { monitorMenuHide: true, to: '/monitor', label: 'لوحة المراقبة', icon: <></>, roles: ['ADMIN', 'MONITOR'], permission: 'monitoring' },
       { to: '/crew-bookings-audit', label: 'تدقيق تنسيق الحجوزات', icon: <></>, permission: 'crew_management' },
-      { to: '/complaints', label: '⚠️ الشكاوى', icon: <></>, roles: ['ADMIN', 'HR_COORDINATOR', 'MONITOR'], permission: 'complaints', hideForRoles: ['MONITOR'] },
       // إدارة سياسة الخصوصية (إضافة/تعديل النقاط) — صلاحية مستقلة تماماً عن
       // قراءتها. القراءة متاحة لكل موظف من الرابط فوق "تسجيل الخروج".
       { to: '/privacy-policy', label: '🔒 إدارة سياسة الخصوصية', icon: <></>, permission: 'privacy_policy_manage' },
@@ -815,7 +812,6 @@ export const navItems: NavItem[] = [
     children: [
       { to: '/quality', label: 'الجودة', icon: <></>, permission: 'quality_control' },
       { to: '/work-reports-review', label: 'مراجعة تقارير العمل', icon: <></>, anyPermission: ['monitoring', 'quality_control'] },
-      { to: '/quality-follow-ups', label: 'متابعة الجودة', icon: <></>, roles: ['ADMIN', 'MONITOR', 'QUALITY_ENGINEER'], permission: 'quality_control', hideForRoles: ['MONITOR'] },
     ],
   },
   // وحدتان فارغتان مؤقتاً (بانتظار تحديد آلية العمل والصلاحيات المطلوبة لكل
@@ -854,7 +850,6 @@ export const navItems: NavItem[] = [
   },
   // ── اختصارات سريعة (أهم إجراءات المبيعات) ──
   // قرار (ع) 10-08: «حجز جديد» مكرر ويا «＋ إنشاء حجز» جوّا «العمل» — يبقى واحد.
-  { to: '/complaints', label: '⚠️ الشكاوى', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 9v4M12 17h.01M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/></svg>, roles: ['SALES'] },
 
 ]
 
@@ -1132,6 +1127,9 @@ const GPS_DATA: RouteRule = { roles: ['OWNER', 'SALES'], anyPermission: ['gps_sy
 const ROUTE_RULES: Record<string, RouteRule> = {
   '/booking-delete-requests': { roles: ['OWNER', 'MONITOR'], anyPermission: ['booking_delete_approve'] }, // requireDeleteApprove
   '/extra-tasks': { anyPermission: ['extra_tasks_assign'] }, // requireExtraTaskAssign
+  // (ع) 10-16: انشالن من القائمة (صارن جوّا «مكتب الجودة») — الروابط الداخلية تبقى تشتغل
+  '/complaints': { roles: ['HR_COORDINATOR', 'MONITOR', 'QUALITY_ENGINEER'], anyPermission: ['complaints'] },
+  '/quality-follow-ups': { roles: ['MONITOR', 'QUALITY_ENGINEER'], anyPermission: ['quality_control'] },
   '/monitor-inbox': { roles: ['MONITOR'], anyPermission: ['monitoring', 'auditing'] }, // requireMonitor
   '/matrix-missions': { roles: ['MONITOR'], anyPermission: ['monitoring', 'auditing'] }, // requireMonitor
   '/stage-buckets': { anyPermission: ['coordinator'] }, // requireCoordinator

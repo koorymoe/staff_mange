@@ -1266,7 +1266,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 		return bookingHandler.CanSeeAllBookings(r) || bookingRepo.IsInvolved(id, middleware.EmployeeIDFromContext(r))
 	})
 	mux.Handle("GET /api/progress-reports/recent", middleware.Chain(http.HandlerFunc(bookingProgressHandler.Recent), requireAuth,
-		middleware.RequireRoleOrAnyPermission(permissionRepo, employeeRepo, notificationRepo, []string{"ADMIN", "MONITOR", "QUALITY_ENGINEER"}, "monitoring", "quality_control")))
+		middleware.RequireRoleOrAnyPermission(permissionRepo, employeeRepo, notificationRepo, []string{"ADMIN", "MONITOR"}, "monitoring")))
 	mux.Handle("GET /api/bookings/{id}/progress", middleware.Chain(http.HandlerFunc(bookingProgressHandler.Reports), requireAuth))
 	// ⚠️ الطلعات ما إلها حارس خاص: منو يشوف الحجز يشوف طلعاته. إخفاء
 	// «منو طلع ومتى» عن الي يشوف الحجز نفسه ما إله معنى.

@@ -43,9 +43,16 @@ export default function WorkReportsReview() {
 
       {loading && <p className="text-slate-400">جاري التحميل...</p>}
 
-      <div className="space-y-3">
-        {filtered.map((r) => (
-          <div key={r.id} className="rounded-xl border border-white bg-white p-5 shadow-[0_4px_20px_rgba(15,32,64,0.06)]">
+      {/* (ع) 10-16: «اريد فاصلة توضحلي بين تقرير وتقرير» — كل تقرير بإطار ملوّن
+          وشريط فوكه برقمه، وفراغ واضح بين التقارير */}
+      <div className="space-y-8">
+        {filtered.map((r, idx) => (
+          <div key={r.id} className="overflow-hidden rounded-2xl border-2 border-[#2c5aad] bg-white shadow-md">
+            <div className="flex items-center justify-between bg-[#0f2040] px-5 py-2 text-sm font-extrabold text-white">
+              <span>📄 تقرير {idx + 1} من {filtered.length}</span>
+              <span className="font-mono">{r.booking?.code}</span>
+            </div>
+            <div className="p-5">
             <div className="flex items-center justify-between">
               <div>
                 <span className="font-mono font-bold text-brand-700"><BookingCodeChip code={r.booking?.code} /></span>
@@ -99,6 +106,7 @@ export default function WorkReportsReview() {
                 {r.notes && <p><span className="text-slate-500">ملاحظات: </span>{r.notes}</p>}
               </div>
             )}
+            </div>
           </div>
         ))}
         {!loading && filtered.length === 0 && (
