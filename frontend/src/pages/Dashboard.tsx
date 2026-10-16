@@ -5,7 +5,7 @@ import MyScoreCard from '../components/MyScoreCard'
 import { useNavigate } from 'react-router-dom'
 import MyFundBalance from '../components/MyFundBalance'
 import TodayBoard from '../components/TodayBoard'
-import MonitorHome from '../components/MonitorHome'
+import MonitorDashboard from '../components/MonitorDashboard'
 import AdminHome from '../components/AdminHome'
 import ShiftEndCard from '../components/ShiftEndCard'
 import { api } from '../api'
@@ -423,7 +423,7 @@ function StaffDashboard() {
   ]
 
   // واجهة المراقب الرئيسية بتصميم (ع) — شاشة وحدة مرتبة بدل كل الأقسام.
-  if (isMonitorHome) return <MonitorHome />
+  if (isMonitorHome) return <MonitorDashboard />
 
   return (
     <>

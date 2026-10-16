@@ -34,13 +34,16 @@ const olderThan = (iso: string, days: number, now: number) => now - new Date(iso
 const fmtDate = (s: string | null) => (s ? new Date(s).toLocaleDateString('en-CA', { timeZone: 'Asia/Baghdad' }) : '—')
 const clip = (s: string | null | undefined, n = 90) => { const t = (s ?? '').trim(); return t.length > n ? t.slice(0, n) + '…' : t }
 
-async function load(now: number): Promise<Row[]> {
+// gate: للمراقب — بس النداءات الي صلاحياته تسمحها (ولا 403 تسجّل مخالفة).
+async function load(now: number, gate?: (perm: string) => boolean): Promise<Row[]> {
+  const can = (perm: string) => !gate || gate(perm)
+  const skip = Promise.resolve(null)
   const rows: Row[] = []
   const safe = async <T,>(p: Promise<T>): Promise<T | null> => { try { return await p } catch { return null } }
   const [tasks, leaves, staff, deletes, complaints, procurement, matrix, dups, achievements] = await Promise.all([
-    safe(api.getExtraTasks({})), safe(api.getLeaveInbox('PENDING')), safe(api.getStaffRequests()),
-    safe(api.getBookingDeleteRequests('PENDING')), safe(api.getComplaints()), safe(api.getProcurementRequests()),
-    safe(api.getMatrixDecisions()), safe(api.getDuplicateCandidates(undefined, 'PENDING')), safe(api.getAchievements({ limit: 200 })),
+    can('extra_tasks_assign') ? safe(api.getExtraTasks({})) : skip, safe(api.getLeaveInbox('PENDING')), safe(api.getStaffRequests()),
+    can('booking_delete_approve') ? safe(api.getBookingDeleteRequests('PENDING')) : skip, safe(api.getComplaints()), can('procurement') ? safe(api.getProcurementRequests()) : skip,
+    !gate ? safe(api.getMatrixDecisions()) : skip, can('duplicate_review') ? safe(api.getDuplicateCandidates(undefined, 'PENDING')) : skip, !gate ? safe(api.getAchievements({ limit: 200 })) : skip,
   ])
 
   for (const t of tasks ?? []) {
@@ -102,7 +105,7 @@ async function load(now: number): Promise<Row[]> {
 
 const PAGE = 10
 
-export default function ActionsTable() {
+export default function ActionsTable({ gate }: { gate?: (perm: string) => boolean } = {}) {
   const [rows, setRows] = useState<Row[] | null>(null)
   const [q, setQ] = useState('')
   const [dept, setDept] = useState('')
@@ -112,7 +115,7 @@ export default function ActionsTable() {
 
   useEffect(() => {
     let alive = true
-    load(Date.now()).then((r) => { if (alive) setRows(r) }).catch(() => { if (alive) setRows([]) })
+    load(Date.now(), gate).then((r) => { if (alive) setRows(r) }).catch(() => { if (alive) setRows([]) })
     return () => { alive = false }
   }, [])
 

@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"log"
 	"net/http"
 	"strings"
 	"time"
@@ -27,7 +28,7 @@ func NewJustificationHandler(db *sqlx.DB, n *repository.NotificationRepository) 
 
 // Request ينادى من «اتخاذ إجراء ← طلب تبرير».
 func (h *JustificationHandler) Request(reviewID, employeeID, monitorID, question string) error {
-	_, err := h.db.Exec(`INSERT INTO "MonitorJustification" (id, "reviewId", "employeeId", "monitorId", question) VALUES ($1,$2,$3,$4,$5)`,
+	_, err := h.db.Exec(`INSERT INTO "MonitorJustification" (id, "reviewId", "employeeId", "monitorId", question) VALUES ($1,NULLIF($2,''),$3,$4,$5)`,
 		uuid.NewString(), reviewID, employeeID, monitorID, question)
 	return err
 }
@@ -116,5 +117,28 @@ func (h *JustificationHandler) Decide(w http.ResponseWriter, r *http.Request) {
 		res += " — " + n
 	}
 	_ = h.notif.Create(empID, "monitor_justify_result", res+" (على: "+question+")")
+	WriteJSON(w, http.StatusOK, map[string]bool{"ok": true})
+}
+
+// POST /api/justifications/direct {employeeId, question} — (ع 10-16) من خانة
+// «المتأخر»: المراقب يطلب تفسير مباشرة (مشرف ما تواصل، محاسب تأخر بالتدقيق…)
+// بلا صف بالصندوق. نفس المسار بعدها: الموظف يجاوب، والمراقب يحكم.
+func (h *JustificationHandler) Direct(w http.ResponseWriter, r *http.Request) {
+	var b struct {
+		EmployeeID string `json:"employeeId"`
+		Question   string `json:"question"`
+	}
+	if err := DecodeJSON(r, &b); err != nil || b.EmployeeID == "" || len([]rune(strings.TrimSpace(b.Question))) < 5 {
+		WriteError(w, http.StatusBadRequest, "حدد الموظف واكتب شنو تريد يفسّر")
+		return
+	}
+	me := middleware.EmployeeIDFromContext(r)
+	if err := h.Request("", b.EmployeeID, me, strings.TrimSpace(b.Question)); err != nil {
+		WriteError(w, http.StatusInternalServerError, "تعذر تسجيل الطلب")
+		return
+	}
+	if err := h.notif.Create(b.EmployeeID, "monitor_justify", "📝 المراقب يطلب تفسير: "+strings.TrimSpace(b.Question)+". اكتب عذرك — يطلعلك أول ما تفتح النظام."); err != nil {
+		log.Printf("justify notify: %v", err)
+	}
 	WriteJSON(w, http.StatusOK, map[string]bool{"ok": true})
 }

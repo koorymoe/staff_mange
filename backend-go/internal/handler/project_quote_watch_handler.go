@@ -73,22 +73,29 @@ type quoteWatchRow struct {
 	WaitingHours   float64    `db:"waitingHours" json:"waitingHours"`
 	Late           bool       `db:"late" json:"late"`
 	LateWhy        *string    `db:"lateWhy" json:"lateWhy"`
+	OffSystem      bool       `db:"offSystem" json:"offSystem"`
 }
 
 // GET /api/project-quote-watch — المراقب: كل مشروع ومحطاته الثلاث
 func (h *ProjectQuoteWatchHandler) List(w http.ResponseWriter, r *http.Request) {
 	rows := []quoteWatchRow{}
+	// 🔴 (ع 10-16) «حساب صحيح؟ المشرفين هلكد متأخرين؟» — چان يحسب المكتمل
+	// والي بالتنفيذ متأخر لأن ما بيه زر تواصل مسجّل. هسه **المرحلة تحكم**:
+	// المشروع الي عبر «اتصال بالزبون» معناه تواصل، والي عبر «عرض السعر»
+	// معناه انطى سعر — حتى لو برّا النظام. المتأخر بس الي واكف بمرحلته وفات وقته.
+	// والمكتمل/المرفوض ما يطلع أصلاً.
 	err := h.db.Select(&rows, `
 		WITH base AS (
 		  SELECT p.id, p.code, p.name, p.stage,
 		         COALESCE(p."delegatedToEmployeeId", p."responsibleEmployeeId") AS sup,
 		         COALESCE(p."delegatedAt" AT TIME ZONE 'UTC', p."createdAt") AS recv,
 		         p."customerContactedAt" AS contacted, p."customerContactNote" AS note,
-		         (SELECT min(q."createdAt") FROM "Quotation" q WHERE q."projectId" = p.id) AS quoted
+		         (SELECT min(q."createdAt") FROM "Quotation" q WHERE q."projectId" = p.id) AS quoted,
+		         -- عبر مرحلة الاتصال = تواصل · عبر مرحلة عرض السعر = انطى سعر
+		         (p.stage NOT LIKE '1.%') AS "pastContact",
+		         (p.stage LIKE '4.%' OR p.stage LIKE '5.%' OR p.stage LIKE '%الإعلام%') AS "pastQuote"
 		  FROM "Project" p
-		  WHERE p.stage NOT LIKE '%مرفوض%'
-		    AND (COALESCE(p."delegatedAt" AT TIME ZONE 'UTC', p."createdAt") >= now() - interval '60 days'
-		         OR NOT EXISTS (SELECT 1 FROM "Quotation" q WHERE q."projectId" = p.id))
+		  WHERE p.stage NOT LIKE '%مرفوض%' AND p.stage NOT LIKE '%مكتمل%'
 		)
 		SELECT b.id AS "projectId", b.code, b.name, b.stage, b.sup AS "supervisorId", e.name AS "supervisorName",
 		       b.recv AS "receivedAt", b.contacted AS "contactedAt", b.note AS "contactNote", b.quoted AS "quotedAt",
@@ -96,13 +103,15 @@ func (h *ProjectQuoteWatchHandler) List(w http.ResponseWriter, r *http.Request) 
 		       round((EXTRACT(EPOCH FROM (b.quoted - b.recv)) / 3600)::numeric, 1)::float8 AS "quoteHours",
 		       round((EXTRACT(EPOCH FROM ((now() AT TIME ZONE 'UTC') - b.recv)) / 3600)::numeric, 1)::float8 AS "waitingHours",
 		       CASE
-		         WHEN b.contacted IS NULL AND (now() AT TIME ZONE 'UTC') - b.recv > make_interval(hours => $1) THEN 'ما تواصل ويا الزبون لهسه'
-		         WHEN b.contacted - b.recv > make_interval(hours => $1) THEN 'تواصل متأخر'
-		         WHEN b.quoted IS NULL AND (now() AT TIME ZONE 'UTC') - b.recv > make_interval(hours => $2) THEN 'ما سوّى عرض سعر لهسه'
-		         WHEN b.quoted - b.recv > make_interval(hours => $2) THEN 'عرض السعر طلع متأخر'
-		       END AS "lateWhy"
+		         WHEN b.contacted IS NULL AND NOT b."pastContact" AND (now() AT TIME ZONE 'UTC') - b.recv > make_interval(hours => $1) THEN 'ما تواصل ويا الزبون لهسه'
+		         WHEN b.quoted IS NULL AND NOT b."pastQuote" AND (now() AT TIME ZONE 'UTC') - b.recv > make_interval(hours => $2) THEN 'ما سوّى عرض سعر لهسه'
+		       END AS "lateWhy",
+		       -- ماتركس: سوّى عرض سعر (أو عبر المرحلة) بلا ما يسجّل تواصل — ما ماشي بالنظام.
+		       -- بس للمشاريع الي استلمها بعد ما انضاف زر التواصل (10-16)، حتى ما نظلم القديم.
+		       (b.contacted IS NULL AND (b.quoted IS NOT NULL OR b."pastContact")
+		        AND b.recv >= '2026-10-16'::timestamp) AS "offSystem"
 		FROM base b LEFT JOIN "Employee" e ON e.id = b.sup
-		ORDER BY (b.quoted IS NULL) DESC, b.recv ASC
+		ORDER BY (b.quoted IS NULL AND NOT b."pastQuote") DESC, b.recv ASC
 		LIMIT 400`, quoteWatchContactHours, quoteWatchQuoteHours)
 	if err != nil {
 		log.Printf("project quote watch: %v", err)

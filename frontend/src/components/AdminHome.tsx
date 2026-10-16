@@ -308,13 +308,14 @@ function StockForecastSection() {
 }
 
 // ═══ لوحة المتابعة ═══
-function FollowBoard() {
+// monitor: نسخة المراقب — بلا حسابات الشركة (بس التدقيق) وبلا نداءات المدير الحصرية.
+export function FollowBoard({ monitor = false }: { monitor?: boolean } = {}) {
   const summary = useLoad(() => api.getDashboardSummary())
   const pulse = useLoad<TodayPulse>(() => api.getTodayPulse())
   const finance = useLoad<FinanceSummary>(() => api.getFinanceSummary())
-  const internal = useLoad<InternalWorksReport>(() => api.getInternalWorks(monthKey()))
+  const internal = useLoad<InternalWorksReport>(() => monitor ? Promise.reject(new Error('skip')) : api.getInternalWorks(monthKey()))
   const attendance = useLoad<EmployeeDailyAttendanceSummary[]>(() => api.getTodaySummary())
-  const signals = useLoad<AiSignal[]>(() => api.getAiSignals())
+  const signals = useLoad<AiSignal[]>(() => monitor ? Promise.reject(new Error('skip')) : api.getAiSignals())
   const kpi = useLoad<TechnicianKpi[]>(() => api.getKpiLeaderboard(monthKey()))
   // الوقت ينثبت بفتح الشاشة — قراءة الساعة أثناء الرسم تخلي النتيجة تتغيّر بلا سبب.
   const [since] = useState(() => Date.now() - 7 * 24 * 3600 * 1000)
@@ -371,7 +372,7 @@ function FollowBoard() {
       </Section>
 
       <div className="grid gap-4 lg:grid-cols-2">
-        <Section title="💰 الحسابات" to="/finance">
+        <Section title={monitor ? '🪙 حسابات التدقيق' : '💰 الحسابات'} to={monitor ? undefined : '/finance'}>
           {finance === undefined ? <Loading /> : finance === null ? <Missing /> : (
             <>
             {(() => {
@@ -381,15 +382,17 @@ function FollowBoard() {
               return (
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                   {/* قرار (ع) 10-09: فلوس الحجوزات مفصولة عن فلوس المشاريع. النِّسب كلها من نفس الأرقام */}
+                  {!monitor && <>
                   <Stat icon="💳" label="المقبوض من الحجوزات" to="/finance" value={money(booked)} hint={`نصيبها من كل المقبوض ${money(finance.totalCollected)}`} tone="green" pct={finance.totalCollected ? (booked / finance.totalCollected) * 100 : null} />
                   <Stat icon="🏗️" label="المقبوض من المشاريع" to="/project-payments" value={money(projects)} hint={`نصيبها من كل المقبوض ${money(finance.totalCollected)}`} tone="green" pct={finance.totalCollected ? (projects / finance.totalCollected) * 100 : null} />
+                  </>}
                   <Stat icon="🪙" tone="blue" label="مدقّق" to={drillTo('verified')} value={money(finance.verifiedAmount)} hint={`${fmt(finance.verifiedCount)} حجز المحاسب دقّق مبلغه · من أصل ${money(audited)} — كل الأيام`} pct={audited ? (finance.verifiedAmount / audited) * 100 : null} />
                   <Stat icon="⏰" label="بانتظار التدقيق" to={drillTo('unverified')} value={money(finance.unverifiedAmount)} hint={`${fmt(finance.unverifiedCount)} حجز منجز بعده ما تدقّق — كل الأيام`} tone={finance.unverifiedCount ? 'amber' : 'slate'} />
                 </div>
               )
             })()}
             <div className="mt-3 grid grid-cols-3 gap-2">
-              <Stat icon="🧾" label="المصاريف" to="/expenses" value={money(finance.totalExpenseValue)} hint={`${fmt(finance.pendingExpenses)} بانتظار الموافقة`} tone="red" />
+              {!monitor && <Stat icon="🧾" label="المصاريف" to="/expenses" value={money(finance.totalExpenseValue)} hint={`${fmt(finance.pendingExpenses)} بانتظار الموافقة`} tone="red" />}
               <Stat icon="✅" tone="violet" label="أنجزت اليوم" to={drillTo('completed_today')} value={fmt(finance.todayCompleted)} hint={`تأشّرت منجز اليوم · وانسجّل اليوم ${fmt(finance.todayCreated)} جديد`} />
               <Stat icon="⚙️" label="قيد التنفيذ" to={drillTo('in_progress')} value={fmt(finance.inProgressCount)} hint={`مثبّتة ${fmt(finance.confirmedCount)} · معلّقة ${fmt(finance.pendingCount)}`} />
             </div>
@@ -397,7 +400,7 @@ function FollowBoard() {
           )}
         </Section>
 
-        <Section title="🏭 أعمال داخل الشركة (هذا الشهر)" to="/stats-management">
+        {!monitor && <Section title="🏭 أعمال داخل الشركة (هذا الشهر)" to="/stats-management">
           {internal === undefined ? <Loading /> : internal === null ? <Missing /> : (
             <>
               <div className="grid grid-cols-3 gap-2">
@@ -424,14 +427,14 @@ function FollowBoard() {
               )}
             </>
           )}
-        </Section>
+        </Section>}
       </div>
 
       {/* «شنو صاير اليوم» و«شغلي اليوم» والرسم وأكثر الكوادر — ترتيب (ع) 10-04 */}
       <TodayBoard finance={finance ?? null} />
 
       <div className="grid gap-4 lg:grid-cols-2">
-        <Section title="🧠 ماتركس — تقييمات الموظفين (آخر ٧ أيام)" to="/ai-insights" linkLabel="كل المؤشرات ←">
+        {!monitor && <Section title="🧠 ماتركس — تقييمات الموظفين (آخر ٧ أيام)" to="/ai-insights" linkLabel="كل المؤشرات ←">
           {signals === undefined ? <Loading /> : signals === null ? <Missing /> : matrix.length === 0 ? (
             <p className="text-sm text-slate-500">ماكو أحكام على موظفين هالأسبوع ✅</p>
           ) : (
@@ -453,7 +456,7 @@ function FollowBoard() {
             </ul>
           )}
           <p className="mt-2 text-[11px] text-slate-400">الأحكام توجيه ومراجعة — ماكو غرامة تنطلع منها تلقائياً.</p>
-        </Section>
+        </Section>}
 
         <Section title="🏆 ترتيب الأداء (هذا الشهر)" to="/kpi">
           {kpi === undefined ? <Loading /> : kpi === null ? <Missing /> : kpi.length === 0 ? (
@@ -517,7 +520,7 @@ function FollowBoard() {
         )}
       </Section>
 
-      <NewEmployeeCurves />
+      {!monitor && <NewEmployeeCurves />}
 
       {/* ما موجودة بتصميم (ع) — نزلت جوّا لحد ما يقرر تبقى لو تنشال */}
       <div className="grid gap-4 lg:grid-cols-2">

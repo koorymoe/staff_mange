@@ -168,6 +168,9 @@ export const navItems: NavItem[] = [
       { to: '/leader-invoices', label: '🧾 فواتير الليدر', icon: <></>, roles: ['FINANCE'] },
       // قرار (ع) 10-08: مكتب المراقب جوّا «العمل» — أول بند.
       { to: '/monitor-desk', label: '🗂️ مكتب المراقب', icon: <></>, roles: ['ADMIN', 'MONITOR'], permission: 'monitoring' },
+      // قرار (ع) 10-16: مكتب المراقب = مراقبة بس — الفواتير والجودة لمكاتبهن، بالصلاحية
+      { to: '/accountant-desk', label: '🧾 مكتب المحاسب', icon: <></>, roles: ['ADMIN'], anyPermission: ['finance', 'finance_audit'], hideForRoles: ['FINANCE'] },
+      { to: '/quality-desk', label: '⭐ مكتب الجودة', icon: <></>, roles: ['ADMIN', 'QUALITY_ENGINEER'], anyPermission: ['quality_control', 'complaints'] },
       // قرار (ع) 10-15: الخريطة وفحص المتأخرات تبويبات بمكتب المراقب · فحص الدقة للمالك بس.
       { monitorMenuHide: true, to: '/field-map', label: '🗺️ خريطة الميدان', icon: <></>, roles: ['ADMIN', 'MONITOR'], permission: 'monitoring' },
       { monitorMenuHide: true, to: '/late-audit', label: '🔍 فحص المتأخرات', icon: <></>, roles: ['ADMIN', 'MONITOR'], permission: 'monitoring' },

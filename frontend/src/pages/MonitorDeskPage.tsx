@@ -26,24 +26,17 @@ import { useSession } from '../session'
 
 const MonitorInboxPage = lazy(() => import('./MonitorInboxPage'))
 const MonitorCrewBookingsPage = lazy(() => import('./MonitorCrewBookingsPage'))
-const QualityAuditView = lazy(() => import('../components/QualityAuditView'))
-const LeaderInvoicesListPage = lazy(() => import('./LeaderInvoicesListPage'))
 const MonitorGpsPage = lazy(() => import('./MonitorGpsPage'))
 const MonitorInventoryPage = lazy(() => import('./MonitorInventoryPage'))
-const ComplaintsPage = lazy(() => import('./ComplaintsPage'))
-const MissionsPage = lazy(() => import('./MissionsPage'))
 const MonitorDashboard = lazy(() => import('./MonitorDashboard'))
 const MatrixWatchEyes = lazy(() => import('../components/MatrixWatchEyes'))
 const PeerVoicePage = lazy(() => import('./PeerVoicePage'))
-const StaffScorePage = lazy(() => import('./StaffScorePage'))
 const AttendanceClaims = lazy(() => import('../components/AttendanceClaims'))
 const PeriodicRatings = lazy(() => import('../components/StaffRating').then((m) => ({ default: m.PeriodicRatings })))
 const WorkplaceIssuesPage = lazy(() => import('./WorkplaceIssuesPage'))
 const ProjectPaymentsPage = lazy(() => import('./ProjectPaymentsPage'))
-const ProjectDelaysPanel = lazy(() => import('../components/ProjectDelaysPanel'))
-const LateAuditPage = lazy(() => import('./LateAuditPage'))
+const LateHub = lazy(() => import('../components/LateHub'))
 const FieldMapPage = lazy(() => import('./FieldMapPage'))
-const ProjectQuoteWatchPanel = lazy(() => import('../components/ProjectQuoteWatchPanel'))
 const ProcurementWatchPanel = lazy(() => import('../components/ProcurementWatchPanel'))
 
 type SectionId = 'eyes' | 'ratings' | 'scores' | 'peer' | 'inbox' | 'crew' | 'quality' | 'invoices' | 'gps' | 'inventory' | 'missions' | 'board' | 'projects' | 'delays' | 'stores' | 'late' | 'fieldmap' | 'quotes'
@@ -60,15 +53,12 @@ const SECTIONS: Section[] = [
   // طلب (ع) 10-05: «لازم اكو رقابه بكل مكان… وتروح للمراقب ويا تحليل ماتركس».
   { id: 'eyes', label: 'عيون الرقابة', icon: '🔎', todo: 'المخزن والسيارات ورأي الزبائن والآيتي والطلبات المعلّقة — ويا اقتراح ماتركس' },
   { id: 'ratings', label: 'تقييماتي والانصراف', icon: '⭐', todo: 'طلبات تصحيح الانصراف، وقيّم الليدر والإداري، وشغل المكاتب كل نص شهر' },
-  { id: 'scores', label: 'تقييم الموظفين', icon: '🏅', todo: 'ماتركس ٦٠٪ + البشر ٤٠٪ — شوف منو نازل وليش' },
   // قرار (ع) 10-16: «صوت الموظفين» و«المشاكل الوظيفية» نفس الشي — تبويب واحد
   { id: 'peer', label: 'صوت الموظفين', icon: '🗣️', todo: 'تقارير ماتركس عن مشاكل الموظفين، وسجل المشاكل وإجراءاتها' },
   { id: 'inbox', label: 'صندوق المراقب', icon: '👁️', todo: 'كل صف: سليم أو عندي ملاحظة' },
   // قرار (ع) 10-16: «بلاغات التدقيق» انشالت — الفاتورة تجي بالصندوق والمراقب يسجّل بيها خطأ لو لا
-  { id: 'invoices', label: 'الفواتير', icon: '🧾', todo: 'الفواتير الي أرسلها المحاسب لمراجعتك' },
   // ⚠️ الجودة والشكاوى **شاشة وحدة** للمراقب — «ماريد خيارين بلقائمة
   // الجانبية». الاثنان شغل جودة واحد: الشكوى تجي، والمتابعة تحسمها.
-  { id: 'quality', label: 'الجودة والشكاوى', icon: '⭐', todo: 'تواصل مع الزبون وسجّل الحكم · والشكاوى الواردة' },
   { id: 'crew', label: 'تنسيق الحجوزات', icon: '📋', todo: 'حجوزات تنتظر تثبيت الإداري' },
   // ⚠️ الجي بي اس **نتائج بس**: ست شاشات تشغيلية انخفت عن المراقب
   // بالقائمة، وصارت تبويباً واحداً هنا. وما انزادت ولا محطة بصندوقه —
@@ -77,20 +67,18 @@ const SECTIONS: Section[] = [
   { id: 'projects', label: 'تدقيق المشاريع', icon: '🏗️', todo: 'كل مشروع من البداية لحد ما المشرف يستلم الفلوس ويگول تم' },
   // قرار (ع) 10-10: ليش المشروع متأخر ومنو ما اشتغل اليوم
   // (ع) 10-16: رقابة المشرفين — استلم ← تواصل ← عرض سعر
-  { id: 'quotes', label: 'عروض أسعار المشاريع', icon: '⏱️', todo: 'منو تأخر يتواصل ويا الزبون أو يسوّي عرض السعر' },
-  { id: 'delays', label: 'تأخير المشاريع', icon: '⏱️', todo: 'منو تجاوز حد المرحلة وليش، ومنو ما اشتغل اليوم' },
   // قرار (ع) 10-10: شغل أبو الكميات بعين ماتركس والمراقب
-  { id: 'stores', label: 'شغل المخازن', icon: '📦', todo: 'طلبات المواد والأدوات المعلّقة، متابعة السيارات، النواقص، والأسطول' },
+  // قرار (ع) 10-16: «شغل المخازن ومتابعة الجرد خانة وحدة اسمها المخزن والجرد»
+  { id: 'stores', label: 'المخزن والجرد', icon: '📦', todo: 'منو جرد ومنو ما جرد، الأدوات الناقصة، طلبات المواد والأدوات المعلّقة، والسيارات' },
   // قرار (ع) 10-15: انشالن من القائمة الجانبية وصارن هنا.
   { id: 'fieldmap', label: 'خريطة الميدان', icon: '🗺️', todo: 'وين الفرق هسه، والمسار والتوقفات' },
-  { id: 'late', label: 'فحص المتأخرات', icon: '🔍', todo: 'الحجوزات المتأخرة: ذنب منو وليش' },
+  // قرار (ع) 10-16: عروض الأسعار + تأخير المشاريع + فحص المتأخرات + المحاسب = «المتأخر»
+  { id: 'late', label: 'المتأخر', icon: '⏰', todo: 'اختار: المشاريع، الحجوزات، الفواتير والمحاسب — واطلب تفسير من المقصّر' },
   { id: 'gps', label: 'الجي بي اس', icon: '📡', todo: 'اشتراكات قربت تنتهي ومشاكل مفتوحة — عرض بلا تنفيذ' },
   // ⚠️ **متابعة** الجرد، مو شاشة `/inventory` مال أبو الكميات (الي
   // يضيف ويحذف أدوات ويوافق على الطلبات). المراقب يشوف منو جرد ومنو
   // ما جرد وشنو ناقص وليش — ويحاسب، ما ينفّذ.
-  { id: 'inventory', label: 'متابعة الجرد', icon: '📦', todo: 'منو جرد ومنو ما جرد، وشنو ناقص وليش' },
   // ترتيب (ع) 10-04: «تتبع المهام» و«لوحة المراقبة» صارن هنا بدل القائمة.
-  { id: 'missions', label: 'تتبع المهام', icon: '🎯', todo: 'منو طلع، وليش تأخر، وليش ما خلص' },
   { id: 'board', label: 'لوحة المراقبة', icon: '🖥️', todo: 'نظرة عامة على الحجوزات والكوادر' },
 ]
 
@@ -212,7 +200,6 @@ export default function MonitorDeskPage() {
       <Suspense fallback={<p className="py-16 text-center text-slate-400">جاري التحميل…</p>}>
         {active === 'eyes' && <MatrixWatchEyes />}
         {active === 'ratings' && <div className="space-y-4"><AttendanceClaims /><PeriodicRatings /></div>}
-        {active === 'scores' && <StaffScorePage />}
         {active === 'peer' && (
           <div className="space-y-6">
             <PeerVoicePage onOpenIssue={(q) => {
@@ -227,26 +214,17 @@ export default function MonitorDeskPage() {
           </div>
         )}
         {active === 'inbox' && <MonitorInboxPage embedded />}
-        {active === 'invoices' && <LeaderInvoicesListPage embedded />}
-        {active === 'quality' && canQuality && (
-          <div className="space-y-4">
-            {/* (ع) 10-13: بالمكتب تدقيق — شنو سوّى مهندس الجودة وتقرير الزبون */}
-            <QualityAuditView />
-            {/* ⚠️ الشكاوى تحتها بنفس التبويب — انشالت من القائمة
-                الجانبية للمراقب، فلو ما انعرضت هنا يخسر وصوله كلياً. */}
-            <ComplaintsPage />
-          </div>
-        )}
         {active === 'crew' && canCrew && <MonitorCrewBookingsPage embedded />}
         {active === 'gps' && canGps && <MonitorGpsPage embedded />}
-        {active === 'inventory' && canInventory && <MonitorInventoryPage embedded />}
-        {cur?.id === 'missions' && <MissionsPage />}
         {cur?.id === 'board' && <MonitorDashboard />}
         {cur?.id === 'projects' && <ProjectPaymentsPage />}
-        {cur?.id === 'delays' && <ProjectDelaysPanel />}
-        {cur?.id === 'stores' && <ProcurementWatchPanel />}
-        {cur?.id === 'late' && <LateAuditPage />}
-        {cur?.id === 'quotes' && <ProjectQuoteWatchPanel />}
+        {cur?.id === 'stores' && (
+          <div className="space-y-6">
+            {canInventory && <MonitorInventoryPage embedded />}
+            <div className="border-t-2 border-slate-200 pt-4"><ProcurementWatchPanel /></div>
+          </div>
+        )}
+        {cur?.id === 'late' && <LateHub />}
         {cur?.id === 'fieldmap' && <FieldMapPage />}
       </Suspense>
     </div>
