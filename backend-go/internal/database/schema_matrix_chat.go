@@ -662,5 +662,22 @@ func matrixChatMigrations() []Migration {
 			ALTER TABLE "Booking" ADD COLUMN IF NOT EXISTS "decorTiming" TEXT;
 			CREATE INDEX IF NOT EXISTS "Booking_parent_idx" ON "Booking" ("parentBookingId") WHERE "parentBookingId" IS NOT NULL;
 		`,
+	}, {
+		// (ع) 10-16: «جدول أسعار للديكور» — لكل مهنة بنود بسعرها (متر/قطعة/يوم)،
+		// والفاتورة تنحسب منه ومن القياسات. ماكو سعر بالإيد، نفس حماية الشعبة.
+		Version: "0380_decor_rates",
+		SQL: `
+			CREATE TABLE IF NOT EXISTS "DecorRate" (
+				id TEXT PRIMARY KEY,
+				"serviceId" TEXT NOT NULL REFERENCES "Service"(id) ON DELETE CASCADE,
+				name TEXT NOT NULL,
+				unit TEXT NOT NULL,
+				price NUMERIC NOT NULL CHECK (price >= 0),
+				active BOOLEAN NOT NULL DEFAULT true,
+				"createdAt" TIMESTAMP NOT NULL DEFAULT now(),
+				"updatedAt" TIMESTAMP NOT NULL DEFAULT now()
+			);
+			CREATE INDEX IF NOT EXISTS "DecorRate_service_idx" ON "DecorRate" ("serviceId");
+		`,
 	}}
 }

@@ -174,6 +174,26 @@ type LeaderInvoice struct {
 }
 
 // CreateLeaderInvoiceRequest جسم طلب إنشاء فاتورة ليدر جديدة.
+// DecorRate بند بجدول أسعار الديكور (0380): مهنة + بند + وحدة + سعر.
+type DecorRate struct {
+	ID          string    `db:"id" json:"id"`
+	ServiceID   string    `db:"serviceId" json:"serviceId"`
+	ServiceName string    `db:"serviceName" json:"serviceName"`
+	Name        string    `db:"name" json:"name"`
+	Unit        string    `db:"unit" json:"unit"`
+	Price       float64   `db:"price" json:"price"`
+	Active      bool      `db:"active" json:"active"`
+	CreatedAt   time.Time `db:"createdAt" json:"createdAt"`
+	UpdatedAt   time.Time `db:"updatedAt" json:"updatedAt"`
+}
+
+// DecorInvoiceLine سطر بفاتورة الديكور: بند من الجدول × الكمية.
+type DecorInvoiceLine struct {
+	RateID string  `json:"rateId"`
+	Qty    float64 `json:"qty"`
+	Notes  string  `json:"notes"`
+}
+
 type CreateLeaderInvoiceRequest struct {
 	BookingID *string `json:"bookingId"`
 	// الشغل المجاني: الفاتورة تنسوّى بصفر بسبب من القائمة
@@ -187,6 +207,9 @@ type CreateLeaderInvoiceRequest struct {
 	Items           []ExecutionCostItem         `json:"items"`
 	Materials       []CreateMaterialLineRequest `json:"materials"`
 	DiscountValue   float64                     `json:"discountValue"`
+
+	// فاتورة الديكور (ع 10-16): بنود من جدول أسعار الديكور بدل المنظومات
+	DecorLines []DecorInvoiceLine `json:"decorLines"`
 }
 
 // ═══ فاتورة خدمة بسعر يدوي (جي بي اس / داش كام) ═══

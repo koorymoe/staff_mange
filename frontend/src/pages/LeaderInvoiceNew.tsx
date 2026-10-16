@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { onEnter } from '../utils/enterKey'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
+import DecorInvoiceForm from '../components/DecorInvoiceForm'
 import InternalDepartmentContacts from '../components/InternalDepartmentContacts'
 import FreeWorkBadge from '../components/FreeWorkBadge'
 import { useSession } from '../session'
@@ -158,6 +159,8 @@ export default function LeaderInvoiceNew({ initialMode }: { initialMode?: 'estim
       internalMode ? b.bookingType === 'INTERNAL' : b.bookingType !== 'INTERNAL')
   const internalBooking = completedBookings.find(
     (b) => b.id === selectedBookingId && b.bookingType === 'INTERNAL')
+  // (ع) 10-16: حجز الديكور فاتورته من جدول أسعار الديكور — شاشة خاصة
+  const decorBooking = completedBookings.find((b) => b.id === selectedBookingId && b.bookingType === 'DECOR')
   // المشاريع الموجّهة لهذا الموظف — هذي هي المصدر الأساسي للفاتورة: الليدر
   // يسوي فاتورة للشغل الموجّه له، مو من قائمة عامة بكل الحجوزات.
   const [myProjects, setMyProjects] = useState<DirectedProject[]>([])
@@ -190,7 +193,7 @@ export default function LeaderInvoiceNew({ initialMode }: { initialMode?: 'estim
     // كلها** — فالبند بالقائمة يفتح شاشة ماكو بيها شي يسويه الموظف.
     // نفس العيب الي انقاس بفاتورة الخدمة، وانقاس هنا مرة ثانية.
     initialMode ??
-      (params.get('mode') === 'booking' || params.get('service') === '1' || params.get('internal') === '1'
+      (params.get('mode') === 'booking' || params.get('service') === '1' || params.get('internal') === '1' || !!params.get('bookingId')
         ? 'booking'
         : 'estimate'),
   )
@@ -856,6 +859,10 @@ export default function LeaderInvoiceNew({ initialMode }: { initialMode?: 'estim
         </button>
       </div>
     )
+  }
+
+  if (decorBooking) {
+    return <DecorInvoiceForm booking={decorBooking} onBack={() => setSelectedBookingId('')} onDone={() => navigate('/leader-invoices')} />
   }
 
   return (

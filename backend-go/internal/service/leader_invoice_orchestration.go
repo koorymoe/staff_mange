@@ -3,6 +3,7 @@ package service
 import (
 	"fmt"
 	"log"
+	"math"
 	"strings"
 	"time"
 	"unicode/utf8"
@@ -17,6 +18,7 @@ import (
 type LeaderInvoiceService struct {
 	invoices    *repository.LeaderInvoiceRepository
 	catalog     *repository.SystemPriceCatalogRepository
+	decorRates  *repository.DecorRateRepository
 	materials   *repository.MaterialRepository
 	commissions *repository.EmployeeCommissionRepository
 	bookings    *repository.BookingRepository
@@ -87,9 +89,55 @@ func NewLeaderInvoiceService(
 	}
 }
 
+// SetDecorRates يربط جدول أسعار الديكور.
+func (s *LeaderInvoiceService) SetDecorRates(r *repository.DecorRateRepository) { s.decorRates = r }
+
 // Create يبني ويحفظ فاتورة ليدر جديدة من طلب الإنشاء، بحساب تكاليف التنفيذ
 // ومجموع المواد صرفياً بالسيرفر (مو من الواجهة) — نفس منطق شيت "تكاليف المشروع".
 func (s *LeaderInvoiceService) Create(employeeID string, req model.CreateLeaderInvoiceRequest) (*model.LeaderInvoice, error) {
+	// ═══ فاتورة الديكور — (ع) 10-16 ═══
+	// الأجور من «جدول أسعار الديكور» × القياسات، بالسيرفر — مو سعر بالإيد.
+	// البنود تنحفظ بنفس عمود items حتى كل شاشات الفاتورة والتدقيق تعرضها.
+	var decorCost float64
+	isDecor := len(req.DecorLines) > 0
+	if isDecor {
+		if s.decorRates == nil {
+			return nil, fmt.Errorf("جدول أسعار الديكور مو مربوط")
+		}
+		ids := make([]string, 0, len(req.DecorLines))
+		for _, l := range req.DecorLines {
+			ids = append(ids, l.RateID)
+		}
+		rates, err := s.decorRates.ByIDs(ids)
+		if err != nil {
+			return nil, err
+		}
+		req.Items = req.Items[:0]
+		seen := map[string]bool{}
+		req.Systems = nil
+		for _, l := range req.DecorLines {
+			rt, ok := rates[l.RateID]
+			if !ok {
+				return nil, fmt.Errorf("بند ديكور مو موجود بالجدول")
+			}
+			if l.Qty <= 0 {
+				return nil, fmt.Errorf("كمية «%s» لازم أكبر من صفر", rt.Name)
+			}
+			decorCost += rt.Price * l.Qty
+			note := fmt.Sprintf("%g %s × %.0f", l.Qty, rt.Unit, rt.Price)
+			if strings.TrimSpace(l.Notes) != "" {
+				note += " — " + strings.TrimSpace(l.Notes)
+			}
+			req.Items = append(req.Items, model.ExecutionCostItem{SystemName: rt.ServiceName, ItemName: rt.Name, Count: int(math.Ceil(l.Qty)), Notes: note})
+			if !seen[rt.ServiceName] {
+				seen[rt.ServiceName] = true
+				req.Systems = append(req.Systems, rt.ServiceName)
+			}
+		}
+		if len(req.Systems) > 3 {
+			req.Systems = req.Systems[:3]
+		}
+	}
 	if len(req.Items) == 0 {
 		return nil, fmt.Errorf("يجب اختيار بند تنفيذ واحد على الأقل")
 	}
@@ -100,19 +148,23 @@ func (s *LeaderInvoiceService) Create(employeeID string, req model.CreateLeaderI
 		return nil, fmt.Errorf("لا يمكن اختيار أكثر من 3 منظومات بالفاتورة الواحدة")
 	}
 
-	catalog, err := s.catalog.All()
-	if err != nil {
-		return nil, err
-	}
-
 	totalDeviceCount := 0
-	for _, item := range req.Items {
-		totalDeviceCount += item.Count
-	}
-
-	executionCost, err := CalculateExecutionCost(req.Items, catalog, totalDeviceCount)
-	if err != nil {
-		return nil, err
+	var executionCost int64
+	if isDecor {
+		// الديكور ماعنده أجهزة — والكلفة من الجدول مو من حاسبة المنظومات
+		executionCost = int64(math.Round(decorCost))
+	} else {
+		catalog, err := s.catalog.All()
+		if err != nil {
+			return nil, err
+		}
+		for _, item := range req.Items {
+			totalDeviceCount += item.Count
+		}
+		executionCost, err = CalculateExecutionCost(req.Items, catalog, totalDeviceCount)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	var materialLines []model.LeaderInvoiceMaterialItem

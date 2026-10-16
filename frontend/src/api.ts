@@ -2355,6 +2355,8 @@ export interface CreateMaterialLineRequest {
   profitPerUnit?: number
 }
 
+export interface DecorRate { id: string; serviceId: string; serviceName: string; name: string; unit: string; price: number; active: boolean }
+
 export interface CreateLeaderInvoiceRequest {
   bookingId?: string
   customerName?: string
@@ -2364,6 +2366,8 @@ export interface CreateLeaderInvoiceRequest {
   items: ExecutionCostItem[]
   materials: CreateMaterialLineRequest[]
   discountValue: number
+  // فاتورة الديكور (ع 10-16)
+  decorLines?: { rateId: string; qty: number; notes?: string }[]
   /** الشغل المجاني: الصافي صفر بسبب من القائمة، والكلفة الحقيقية تبقى مسجّلة */
   isFree?: boolean
   freeReasonId?: string
@@ -4073,6 +4077,9 @@ export const api = {
     request<QualityFollowUp[]>(`/quality-follow-ups/${id}/inspect`, { method: 'POST', body: JSON.stringify(body) }),
   /** بعد ما يفتح حجز صيانة حقيقي من شاشة المتابعة — يربطها بيه بدل
    *  ما تروح بالهوا. تبقى معلّقة لحد ما الحجز ينجز. */
+  getDecorRates: (all = false) => request<DecorRate[]>(`/decor-rates${all ? '?all=1' : ''}`),
+  saveDecorRate: (x: { id?: string; serviceId: string; name: string; unit: string; price: number; active: boolean }) =>
+    request<DecorRate[]>('/decor-rates', { method: 'PUT', body: JSON.stringify(x) }),
   getBookingDecor: (id: string) => request<Booking[]>(`/bookings/${id}/decor`),
   createBookingDecor: (id: string, body: { serviceId: string; timing: 'BEFORE' | 'WITH'; scheduledAt?: string; notes?: string }) =>
     request<Booking>(`/bookings/${id}/decor`, { method: 'POST', body: JSON.stringify(body) }),

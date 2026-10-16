@@ -607,6 +607,10 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 		}
 	})
 	leaderInvoiceService.SetNotifications(notificationRepo)
+	// (ع) 10-16: جدول أسعار الديكور — فاتورة الديكور تنحسب منه
+	decorRateRepo := repository.NewDecorRateRepository(db)
+	leaderInvoiceService.SetDecorRates(decorRateRepo)
+	decorRateHandler := handler.NewDecorRateHandler(decorRateRepo)
 	leaderInvoiceService.SetMonitorFeed(monitorReviewService)
 	// بقية الأقسام: كل واحد بلحظة قراره الي ما ينراجع —
 	// المشتريات وقت صرف الفلوس، الجودة وقت الحكم السلبي،
@@ -1052,6 +1056,8 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 			"invoice_internal", "finance", "finance_audit", "monitoring", "auditing")))
 	mux.Handle("POST /api/bookings", middleware.Chain(http.HandlerFunc(bookingHandler.Create), requireAuth))
 	// (ع) 10-16: حجز ديكور مربوط — المنسق/المدير/المراقب
+	mux.Handle("GET /api/decor-rates", middleware.Chain(http.HandlerFunc(decorRateHandler.List), requireAuth))
+	mux.Handle("PUT /api/decor-rates", middleware.Chain(http.HandlerFunc(decorRateHandler.Save), requireAuth, requireAdmin))
 	mux.Handle("POST /api/bookings/{id}/decor", middleware.Chain(http.HandlerFunc(bookingHandler.CreateDecor), requireAuth,
 		middleware.RequireRoleOrAnyPermission(permissionRepo, employeeRepo, notificationRepo, []string{"ADMIN", "HR_COORDINATOR", "MONITOR"}, "coordinator")))
 	mux.Handle("GET /api/bookings/{id}/decor", middleware.Chain(http.HandlerFunc(bookingHandler.DecorChildren), requireAuth))

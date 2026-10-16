@@ -149,6 +149,7 @@ const VehicleMissionsPage = lazy(() => import('./pages/VehicleMissionsPage'))
 const QualityPage = lazy(() => import('./pages/QualityPage'))
 const WorkReportsReview = lazy(() => import('./pages/WorkReportsReview'))
 const ReportsDeskPage = lazy(() => import('./pages/ReportsDeskPage'))
+const DecorRatesPage = lazy(() => import('./pages/DecorRatesPage'))
 const EmployeeMonthlyStatsPage = lazy(() => import('./pages/EmployeeMonthlyStatsPage'))
 const StatsManagementPage = lazy(() => import('./pages/StatsManagementPage'))
 const CustomerAppAdminPage = lazy(() => import('./pages/CustomerAppAdminPage'))
@@ -367,6 +368,7 @@ function App() {
           <Route path="crew-bookings-audit" element={<RequirePermission permission="crew_management"><MonitorCrewBookingsPage /></RequirePermission>} />
           <Route path="work-reports-review" element={<WorkReportsReview />} />
           <Route path="reports-desk" element={<ReportsDeskPage />} />
+          <Route path="decor-rates" element={<RequireAdmin><DecorRatesPage /></RequireAdmin>} />
           <Route path="device-maintenance" element={<DeviceMaintenancePage />} />
           <Route path="team-inventory" element={<TeamInventoryCheckPage />} />
         </Route>
