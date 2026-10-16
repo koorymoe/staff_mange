@@ -44,7 +44,7 @@ func (r *InternalWorksRepository) Monthly(month string) (*model.InternalWorksRep
 			COUNT(*) FILTER (WHERE b."workLocation" <> 'IN_HOUSE')               AS "onSiteCount",
 			COALESCE(SUM((COALESCE(b."amountCollected", 0) + COALESCE((SELECT SUM(li."netTotal") FROM "LeaderInvoice" li WHERE li."bookingId" = b.id AND li."revokedAt" IS NULL AND li.systems::text LIKE '%شغل داخل الشركة%'), 0))) FILTER (WHERE b."workLocation" = 'IN_HOUSE'), 0) AS "inHouseAmount"
 		FROM "Booking" b
-		WHERE b.status = 'COMPLETED' AND ` + BookingCountableSQL("b") + `
+		WHERE b.status = 'COMPLETED' AND `+BookingCountableSQL("b")+`
 		  AND to_char(baghdad_date(b."completedAt"), 'YYYY-MM') = $1
 	`, month); err != nil {
 		return nil, err
@@ -57,7 +57,7 @@ func (r *InternalWorksRepository) Monthly(month string) (*model.InternalWorksRep
 		       COALESCE(SUM((COALESCE(b."amountCollected", 0) + COALESCE((SELECT SUM(li."netTotal") FROM "LeaderInvoice" li WHERE li."bookingId" = b.id AND li."revokedAt" IS NULL AND li.systems::text LIKE '%شغل داخل الشركة%'), 0))), 0) AS amount
 		FROM "Booking" b
 		LEFT JOIN "Service" s ON s.id = b."serviceId"
-		WHERE b.status = 'COMPLETED' AND ` + BookingCountableSQL("b") + `
+		WHERE b.status = 'COMPLETED' AND `+BookingCountableSQL("b")+`
 		  AND b."workLocation" = 'IN_HOUSE'
 		  AND to_char(baghdad_date(b."completedAt"), 'YYYY-MM') = $1
 		GROUP BY s.name
@@ -72,7 +72,7 @@ func (r *InternalWorksRepository) Monthly(month string) (*model.InternalWorksRep
 		FROM "Booking" b
 		JOIN "BookingAssignment" a ON a."bookingId" = b.id
 		JOIN "Employee" e ON e.id = a."employeeId"
-		WHERE b.status = 'COMPLETED' AND ` + BookingCountableSQL("b") + `
+		WHERE b.status = 'COMPLETED' AND `+BookingCountableSQL("b")+`
 		  AND b."workLocation" = 'IN_HOUSE'
 		  AND to_char(baghdad_date(b."completedAt"), 'YYYY-MM') = $1
 		GROUP BY e.name
@@ -87,7 +87,7 @@ func (r *InternalWorksRepository) Monthly(month string) (*model.InternalWorksRep
 		       (COALESCE(b."amountCollected", 0) + COALESCE((SELECT SUM(li."netTotal") FROM "LeaderInvoice" li WHERE li."bookingId" = b.id AND li."revokedAt" IS NULL AND li.systems::text LIKE '%شغل داخل الشركة%'), 0)) AS amount
 		FROM "Booking" b
 		LEFT JOIN "Service" s ON s.id = b."serviceId"
-		WHERE b.status = 'COMPLETED' AND ` + BookingCountableSQL("b") + `
+		WHERE b.status = 'COMPLETED' AND `+BookingCountableSQL("b")+`
 		  AND b."workLocation" = 'IN_HOUSE'
 		  AND to_char(baghdad_date(b."completedAt"), 'YYYY-MM') = $1
 		ORDER BY b."completedAt" DESC

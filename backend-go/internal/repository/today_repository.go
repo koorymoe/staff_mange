@@ -93,7 +93,7 @@ func (r *TodayRepository) Board() (*TodayBoard, error) {
 		  `+DrillCountSQL("needs_finish")+` AS "needsFinish",
 		  `+DrillCountSQL("week")+` AS "weekTotal",
 		  COUNT(*) FILTER (WHERE b.status = 'COMPLETED' AND `+weekSQL+`) AS "weekCompleted"
-		FROM "Booking" b WHERE ` + drillBase())
+		FROM "Booking" b WHERE `+drillBase())
 	if err != nil {
 		return nil, err
 	}
@@ -126,7 +126,7 @@ func (r *TodayRepository) Board() (*TodayBoard, error) {
 		       COUNT(b.id) AS count
 		FROM generate_series(baghdad_date(now()) - interval '13 days', baghdad_date(now()), interval '1 day') AS d(day)
 		LEFT JOIN "Booking" b ON b."archivedAt" IS NULL
-		     AND NOT ` + BookingDeletePendingSQL("b") + `
+		     AND NOT `+BookingDeletePendingSQL("b")+`
 		     AND baghdad_date(b."createdAt") = d.day::date
 		GROUP BY d.day ORDER BY d.day`)
 

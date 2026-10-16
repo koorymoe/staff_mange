@@ -144,7 +144,9 @@ func (h *DuplicateCandidateHandler) Merge(w http.ResponseWriter, r *http.Request
 		dropDesc += " «" + dropB.Name + "» " + dropB.Phone
 	}
 	note := fmt.Sprintf("اندمج %s بـ%s — انتقل: %s.", dropDesc, code(keepB), what)
-	_ = h.repo.Resolve(c.ID, me, "MERGED", note)
+	if err := h.repo.Resolve(c.ID, me, "MERGED", note); err != nil {
+		log.Printf("duplicate resolve MERGED %s: %v", c.ID, err)
+	}
 	if h.notif != nil {
 		name := ""
 		if e, err := h.employees.FindByID(me); err == nil && e != nil {
@@ -189,7 +191,9 @@ func (h *DuplicateCandidateHandler) RequestDelete(w http.ResponseWriter, r *http
 		WriteError(w, http.StatusBadRequest, err.Error())
 		return
 	}
-	_ = h.repo.Resolve(c.ID, me, "DELETE_REQUESTED", "انطلب حذف "+out.BookingCode+" — "+reason+". ينتظر موافقة المراقب أو المدير.")
+	if err := h.repo.Resolve(c.ID, me, "DELETE_REQUESTED", "انطلب حذف "+out.BookingCode+" — "+reason+". ينتظر موافقة المراقب أو المدير."); err != nil {
+		log.Printf("duplicate resolve DELETE_REQUESTED %s: %v", c.ID, err)
+	}
 	if h.notif != nil {
 		msg := "🗑️ طلب حذف الحجز " + out.BookingCode + " من " + out.RequestedByName + " — السبب: " + reason
 		_ = h.notif.CreateForRole("MONITOR", "booking_delete_request", msg)

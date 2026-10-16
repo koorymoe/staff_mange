@@ -162,7 +162,7 @@ export default function DuplicateReviewPage() {
             {tab === 'DONE' ? (
               <div className="mt-2 rounded-lg bg-slate-50 p-3 text-sm">
                 <b className={r.resolution === 'MERGED' ? 'text-sky-700' : r.resolution === 'DELETE_REQUESTED' ? 'text-red-700' : 'text-slate-600'}>
-                  {r.resolution === 'MERGED' ? '🔀 اندمجوا' : r.resolution === 'DELETE_REQUESTED' ? '🗑️ انطلب حذف المكرر' : '🔗 مو تكرار'}
+                  {r.resolution === 'MERGED' ? '🔀 اندمجوا' : r.resolution === 'DELETE_REQUESTED' ? '🗑️ انطلب حذف المكرر' : r.resolution === 'AUTO' ? '🤖 انحلّت لحالها' : '🔗 مو تكرار'}
                 </b>
                 {r.resolutionNote && <p className="mt-1 text-slate-700">{r.resolutionNote}</p>}
                 <p className="mt-1 text-[11px] text-slate-400">{r.reviewedByName ? `${r.reviewedByName} · ` : ''}{r.reviewedAt ? new Date(r.reviewedAt).toLocaleString('en-GB') : ''}</p>

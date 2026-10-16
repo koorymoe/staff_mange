@@ -125,7 +125,8 @@ SELECT b.id, b.code, b.status::text AS status, b."bookingType"::text AS "booking
        (COALESCE(btrim(b.address), '') <> '') AS "hasAddress",
        (b."mapLatitude" IS NOT NULL OR COALESCE(b."locationUrl", '') <> '' OR COALESCE(b."mapLocation", '') <> '') AS "hasLocation",
        COALESCE(array_length(regexp_split_to_array(btrim(c.name), '\s+'), 1), 0) AS "nameWords",
-       EXISTS (SELECT 1 FROM "DuplicateCandidate" d WHERE d.kind = 'BOOKING'
+       -- (ع) 10-16: المعلّق بس — الي انحلّ (مو تكرار/انحذف المكرر/انربط) ما يبقى يأشّر الحجز
+       EXISTS (SELECT 1 FROM "DuplicateCandidate" d WHERE d.kind = 'BOOKING' AND d.status = 'PENDING'
                AND (d."entityAId" = b.id OR d."entityBId" = b.id)) AS duplicate,
        b."confirmationContactedAt" AS "contactedAt", b."confirmationContactedById" AS "contactedById", ke.name AS "contactedBy",
        b."confirmedAt", b."confirmedByEmployeeId" AS "confirmedById", fe.name AS "confirmedBy",

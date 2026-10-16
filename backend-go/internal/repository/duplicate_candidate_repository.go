@@ -2,6 +2,7 @@ package repository
 
 import (
 	"fmt"
+	"log"
 	"time"
 
 	"github.com/jmoiron/sqlx"
@@ -123,8 +124,48 @@ func (r *DuplicateCandidateRepository) customerBrief(id string) *model.Duplicate
 	return &c
 }
 
+// AutoClose يسكّر الأزواج الي انحلّت من مكان ثاني — قرار (ع) 10-16:
+// «دققوهن وشافو مشكلتهن بس الى الان يضهرن… جاي يخربن شغل المراقب».
+// السبب: الفحص يستثني المؤرشف والمربوط **وقت الاكتشاف** بس؛ لو واحد منهم
+// انحذف أو انطلب حذفه أو انربط كجزئي بعدين من شاشة الحجوزات، الزوج يبقى
+// «معلّق» للأبد. هسه ينسكّر ويروح لـ«المحلولة» ويا السبب مكتوب.
+func (r *DuplicateCandidateRepository) AutoClose() (int64, error) {
+	res, err := r.db.Exec(`
+		UPDATE "DuplicateCandidate" d
+		SET status = 'RESOLVED', "reviewedAt" = now(),
+		    resolution = CASE WHEN x.reason = 'DEL' THEN 'DELETE_REQUESTED' ELSE 'AUTO' END,
+		    "resolutionNote" = CASE x.reason
+		        WHEN 'GONE' THEN 'انحلّت لحالها: واحد من الحجزين انحذف'
+		        WHEN 'DEL' THEN 'انحلّت لحالها: انطلب حذف واحد منهم من شاشة الحجوزات'
+		        WHEN 'LINK' THEN 'انحلّت لحالها: انربطوا (يوم إضافي/إنجاز جزئي) — مو تكرار'
+		        ELSE 'انحلّت لحالها: واحد منهم انلغى' END
+		FROM (
+		  SELECT d2.id,
+		         CASE
+		           WHEN a.id IS NULL OR b.id IS NULL OR a."archivedAt" IS NOT NULL OR b."archivedAt" IS NOT NULL THEN 'GONE'
+		           WHEN ` + BookingDeletePendingSQL("a") + ` OR ` + BookingDeletePendingSQL("b") + ` THEN 'DEL'
+		           WHEN a."partialJobBookingId" IS NOT NULL OR b."partialJobBookingId" IS NOT NULL
+		             OR EXISTS (SELECT 1 FROM "Booking" z WHERE z."partialJobBookingId" IN (a.id, b.id)) THEN 'LINK'
+		           WHEN a.status = 'CANCELLED' OR b.status = 'CANCELLED' THEN 'CANCEL'
+		         END AS reason
+		  FROM "DuplicateCandidate" d2
+		  LEFT JOIN "Booking" a ON a.id = d2."entityAId"
+		  LEFT JOIN "Booking" b ON b.id = d2."entityBId"
+		  WHERE d2.kind = 'BOOKING' AND d2.status = 'PENDING'
+		) x
+		WHERE d.id = x.id AND x.reason IS NOT NULL`)
+	if err != nil {
+		return 0, err
+	}
+	return res.RowsAffected()
+}
+
 // List يرجّع الأزواج المشتبه بها — kind/status فاضي يعني "الكل".
 func (r *DuplicateCandidateRepository) List(kind, status string) ([]model.DuplicateCandidate, error) {
+	// قبل العرض: الي انحلّت من مكان ثاني تنشال من المعلّق
+	if _, err := r.AutoClose(); err != nil {
+		log.Printf("duplicate autoclose: %v", err)
+	}
 	query := `SELECT * FROM "DuplicateCandidate" WHERE 1=1`
 	args := []any{}
 	if kind != "" {
@@ -330,6 +371,9 @@ type DuplicateByCreator struct {
 
 // Report منو سجّل الحجز الثاني (الأحدث) بأزواج آخر ٣٠ يوم — حتى نعرف وين ينتج التكرار.
 func (r *DuplicateCandidateRepository) Report() (*DuplicateReport, error) {
+	if _, err := r.AutoClose(); err != nil {
+		log.Printf("duplicate autoclose: %v", err)
+	}
 	rep := &DuplicateReport{ByCreator: []DuplicateByCreator{}}
 	_ = r.db.Get(&rep.PendingBookings, `SELECT COUNT(*) FROM "DuplicateCandidate" WHERE kind = 'BOOKING' AND status = 'PENDING'`)
 	_ = r.db.Get(&rep.PendingCustomers, `SELECT COUNT(*) FROM "DuplicateCandidate" WHERE kind = 'CUSTOMER' AND status = 'PENDING'`)

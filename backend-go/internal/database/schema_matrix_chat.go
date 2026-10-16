@@ -450,5 +450,15 @@ func matrixChatMigrations() []Migration {
 				SELECT e.id FROM "Employee" e WHERE e.role::text = 'QUALITY_ENGINEER' AND e.status::text = 'ACTIVE' ORDER BY e."createdAt" LIMIT 1)
 			WHERE c."assignedToEmployeeId" IS NULL AND c.status::text IN ('NEW', 'IN_PROGRESS');
 		`,
+	}, {
+		// 🔴 (ع) 10-16: «دققوهن وشافو مشكلتهن بس الى الان يضهرن» — قيد الحالة
+		// من 0293 يقبل PENDING/DISMISSED بس، فزر «اطلب حذفه»/الدمج (RESOLVED)
+		// چان يفشل بصمت والزوج يبقى معلّق ينعدّ متأخر على المراقب.
+		Version: "0369_duplicate_resolved_status",
+		SQL: `
+			ALTER TABLE "DuplicateCandidate" DROP CONSTRAINT IF EXISTS "DuplicateCandidate_status_check";
+			ALTER TABLE "DuplicateCandidate" ADD CONSTRAINT "DuplicateCandidate_status_check"
+				CHECK (status IN ('PENDING', 'DISMISSED', 'RESOLVED'));
+		`,
 	}}
 }

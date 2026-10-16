@@ -23,6 +23,11 @@ func (s *DuplicateCandidateService) RunScan() (bookings int64, customers int64, 
 	if err != nil {
 		return 0, 0, err
 	}
+	// (ع) 10-16: الي انحلّت من شاشة ثانية (انحذف/انربط/انلغى) تنسكّر —
+	// حتى ما تبقى تنعدّ متأخرة على المراقب.
+	if _, err := s.repo.AutoClose(); err != nil {
+		return bookings, 0, err
+	}
 	customers, err = s.repo.ScanCustomers()
 	if err != nil {
 		return bookings, 0, err
