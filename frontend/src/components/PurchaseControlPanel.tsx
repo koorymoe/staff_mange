@@ -1,0 +1,371 @@
+import { useEffect, useState } from 'react'
+import { purchaseApi, type ProcurementRequest, type PurchaseAlert, type PurchaseBias, type StandardPrice, type StandardSuggestion, type PurchaseGroup, type PurchaseMonth, type PurchaseControlRow, type PurchasePriceRow, type SupplierReviewInput } from '../api'
+
+// ═══ رقابة المشتريات — قرار (ع) 10-15 ═══
+// المشتري يسجّل الشراء ويقيّم المورد ببنود (أولها السعر) · المحاسب يثبّت ·
+// سجل أسعار لكل مادة · وتنبيهات ماتركس: «اشترى من الأغلى» و«المورد رفع سعره».
+
+const iqd = (n: number) => `${Math.round(n).toLocaleString('en-US')} د.ع`
+const day = (s: string) => new Date(s).toLocaleDateString('en-CA', { timeZone: 'Asia/Baghdad' })
+const CRITERIA: [keyof Omit<SupplierReviewInput, 'note'>, string][] = [
+  ['price', '💰 السعر'], ['quality', '✅ الجودة'], ['speed', '⚡ سرعة التجهيز'], ['punctuality', '⏰ الالتزام بالموعد'], ['dealing', '🤝 التعامل'],
+]
+
+interface Props {
+  requests: ProcurementRequest[]
+  canBuy: boolean // إداري الكميات / المدير — يقيّم المورد
+  canVerify: boolean // المحاسب / المدير — يثبّت
+  canWatch: boolean // المالك / المدير / المراقب / المحاسب — التنبيهات
+  canDecide: boolean // المدير — يحسم التنبيه
+  reviewFor: ProcurementRequest | null
+  onReviewClose: () => void
+}
+
+export default function PurchaseControlPanel({ requests, canBuy, canVerify, canWatch, canDecide, reviewFor, onReviewClose }: Props) {
+  const [tab, setTab] = useState<'todo' | 'prices' | 'alerts' | 'bias' | 'month' | 'std'>('todo')
+  const [std, setStd] = useState<{ standards: StandardPrice[]; suggestions: StandardSuggestion[]; ceilingPct: number } | null>(null)
+  const [stdQ, setStdQ] = useState('')
+  const [month, setMonth] = useState(() => new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Baghdad' }).slice(0, 7))
+  const [report, setReport] = useState<PurchaseMonth | null>(null)
+  const [bias, setBias] = useState<PurchaseBias[]>([])
+  const [threshold, setThreshold] = useState<number | null>(null)
+  const [quotesOf, setQuotesOf] = useState<{ id: string; rows: { supplier: string; totalPrice: number; chosen: boolean }[] } | null>(null)
+  const [control, setControl] = useState<PurchaseControlRow[]>([])
+  const [alerts, setAlerts] = useState<PurchaseAlert[]>([])
+  const [q, setQ] = useState('')
+  const [prices, setPrices] = useState<PurchasePriceRow[]>([])
+  const [reload, setReload] = useState(0)
+  const [reviewing, setReviewing] = useState<ProcurementRequest | null>(null)
+  const open = reviewFor ?? reviewing
+
+  useEffect(() => {
+    let alive = true
+    purchaseApi.control().then((r) => { if (alive) setControl(r) }).catch(() => {})
+    if (canWatch) purchaseApi.alerts().then((r) => { if (alive) setAlerts(r) }).catch(() => {})
+    if (canWatch) purchaseApi.bias().then((r) => { if (alive) setBias(r) }).catch(() => {})
+    if (canWatch) purchaseApi.standards().then((r) => { if (alive) setStd(r) }).catch(() => {})
+    purchaseApi.policy().then((p) => { if (alive) setThreshold(p.quoteThreshold) }).catch(() => {})
+    return () => { alive = false }
+  }, [reload, canWatch, requests])
+
+  useEffect(() => {
+    if (!canWatch || tab !== 'month') return
+    let alive = true
+    purchaseApi.monthly(month).then((m) => { if (alive) setReport(m) }).catch(() => {})
+    return () => { alive = false }
+  }, [canWatch, tab, month, reload])
+
+  useEffect(() => {
+    let alive = true
+    const t = setTimeout(() => { purchaseApi.prices(q).then((r) => { if (alive) setPrices(r) }).catch(() => {}) }, 300)
+    return () => { alive = false; clearTimeout(t) }
+  }, [q, reload])
+
+  const byId = new Map(control.map((c) => [c.id, c]))
+  const fulfilled = requests.filter((r) => r.status === 'FULFILLED' && r.supplierId && byId.has(r.id))
+  const toReview = canBuy ? fulfilled.filter((r) => !byId.get(r.id)!.myReview) : []
+  const toVerify = canVerify ? fulfilled.filter((r) => !byId.get(r.id)!.verifiedAt) : []
+  const openAlerts = alerts.filter((a) => !a.reviewedAt)
+  const totalLoss = openAlerts.reduce((s, a) => s + a.loss, 0)
+
+  // سجل الأسعار مجمّع لكل مادة
+  const groups = new Map<string, PurchasePriceRow[]>()
+  for (const p of prices) groups.set(p.key, [...(groups.get(p.key) ?? []), p])
+
+  const verify = async (id: string) => {
+    try { await purchaseApi.verify(id); setReload((n) => n + 1) } catch (e) { alert(e instanceof Error ? e.message : 'تعذر التثبيت') }
+  }
+  const decide = async (a: PurchaseAlert) => {
+    const note = prompt('ملاحظتك على التنبيه (مثلاً: الأرخص ما چان متوفر · تم التنبيه للمشتري):')
+    if (!note?.trim()) return
+    try { await purchaseApi.reviewAlert(a.id, note.trim()); setReload((n) => n + 1) } catch (e) { alert(e instanceof Error ? e.message : 'تعذر الحفظ') }
+  }
+
+  const tabs: [typeof tab, string][] = [['todo', `📋 بانتظاري (${toReview.length + toVerify.length})`], ['prices', '📊 سجل الأسعار']]
+  if (canWatch) tabs.push(['alerts', `🚨 تنبيهات ماتركس (${openAlerts.length})`], ['bias', `🔁 الميل لمورد (${bias.length})`], ['month', '📅 التقرير الشهري'], ['std', `📏 الأسعار الستاندرد${std?.suggestions.length ? ` (${std.suggestions.length} اقتراح)` : ''}`])
+  const editThreshold = async () => {
+    const v = prompt('حد «العرضين» بالدينار (الشراء فوقه لازم وياه عرض مورد ثاني، 0 = بلا شرط):', String(threshold ?? 500000))
+    if (v == null || isNaN(Number(v))) return
+    try { await purchaseApi.setPolicy(Number(v)); setReload((n) => n + 1) } catch (e) { alert(e instanceof Error ? e.message : 'تعذر الحفظ') }
+  }
+  const stdAct = async (fn: () => Promise<unknown>) => {
+    try { await fn(); setReload((n) => n + 1) } catch (e) { alert(e instanceof Error ? e.message : 'تعذر الحفظ') }
+  }
+  const editStd = (product: string, cur?: number) => {
+    const v = prompt(`السعر الستاندرد لـ«${product}» (د.ع للوحدة):`, cur ? String(cur) : '')
+    if (v && Number(v) > 0) void stdAct(() => purchaseApi.setStandard(product, Number(v)))
+  }
+  const showQuotes = async (id: string) => {
+    if (quotesOf?.id === id) { setQuotesOf(null); return }
+    try { setQuotesOf({ id, rows: await purchaseApi.quotes(id) }) } catch { /* */ }
+  }
+
+  return (
+    <div className="rounded-xl border border-white bg-white p-4 shadow-[0_4px_20px_rgba(15,32,64,0.06)]">
+      <div className="mb-3 flex flex-wrap items-center gap-2">
+        <h2 className="text-lg font-bold text-[#0f2040]">🛡️ رقابة المشتريات</h2>
+        {threshold != null && (
+          <span className="ml-auto text-xs text-slate-500">
+            🧾 شرط العرضين فوق {threshold > 0 ? iqd(threshold) : '— (مطفي)'}
+            {canDecide && <button onClick={editThreshold} className="mr-1 text-[#2c5aad] underline">تغيير</button>}
+          </span>
+        )}
+        {tabs.map(([k, label]) => (
+          <button key={k} onClick={() => setTab(k)} className={`rounded-lg px-3 py-1.5 text-sm font-bold ${tab === k ? (k === 'alerts' ? 'bg-red-600 text-white' : 'bg-[#2c5aad] text-white') : 'bg-slate-100 text-slate-600'}`}>{label}</button>
+        ))}
+      </div>
+
+      {tab === 'todo' && (
+        <div className="space-y-2">
+          {toReview.length === 0 && toVerify.length === 0 && <p className="text-sm text-slate-400">ماكو شي ينتظرك ✓</p>}
+          {toReview.map((r) => (
+            <div key={'rv' + r.id} className="flex flex-wrap items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm">
+              <span className="font-bold">{r.code}</span> · {r.supplier?.name} · {r.totalCost != null ? iqd(r.totalCost) : ''}
+              <button onClick={() => setReviewing(r)} className="mr-auto rounded-lg bg-amber-500 px-3 py-1 font-bold text-white">⭐ قيّم المورد</button>
+            </div>
+          ))}
+          {toVerify.map((r) => (
+            <div key={'vf' + r.id} className="flex flex-wrap items-center gap-2 rounded-lg border border-sky-200 bg-sky-50 px-3 py-2 text-sm">
+              <span className="font-bold">{r.code}</span> · {r.supplier?.name} · اشتراه {r.fulfilledBy?.name ?? '—'} · {r.totalCost != null ? iqd(r.totalCost) : 'بلا مبلغ'}
+              {byId.get(r.id)!.alerts > 0 && <span className="rounded bg-red-100 px-2 py-0.5 text-xs font-bold text-red-700">🚨 {byId.get(r.id)!.alerts} تنبيه سعر</span>}
+              <button onClick={() => showQuotes(r.id)} className="mr-auto rounded-lg bg-white px-3 py-1 text-xs font-bold text-sky-700 ring-1 ring-sky-300">🧾 العروض</button>
+              <button onClick={() => verify(r.id)} className="rounded-lg bg-sky-600 px-3 py-1 font-bold text-white">✓ تثبيت المحاسب</button>
+              {quotesOf?.id === r.id && (
+                <div className="w-full text-xs">
+                  {quotesOf.rows.length === 0 ? <p className="text-slate-500">ماكو عروض مسجّلة لهذا الشراء.</p>
+                    : quotesOf.rows.map((q, i) => <p key={i} className={q.chosen ? 'font-bold' : ''}>{q.chosen ? '✓ المختار' : '•'} {q.supplier}: {iqd(q.totalPrice)}</p>)}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {tab === 'prices' && (
+        <div className="space-y-3">
+          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="دوّر على مادة (كيبل، كاميرا...)" className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" />
+          {groups.size === 0 && <p className="text-sm text-slate-400">ماكو أسعار مسجّلة لهذي المادة.</p>}
+          {[...groups.entries()].slice(0, 50).map(([key, rows]) => {
+            const min = Math.min(...rows.map((r) => r.lastPrice))
+            return (
+              <div key={key} className="rounded-lg border border-slate-200">
+                <p className="border-b border-slate-100 bg-slate-50 px-3 py-1.5 text-sm font-bold">{rows[0].product}</p>
+                <table className="w-full text-sm">
+                  <thead><tr className="text-xs text-slate-400"><th className="px-3 text-right">المورد</th><th>آخر سعر</th><th>أقل سعر</th><th>مرات</th><th>آخر شراء</th></tr></thead>
+                  <tbody>
+                    {rows.map((r) => (
+                      <tr key={r.supplier} className="border-t border-slate-100">
+                        <td className="px-3 py-1">{r.supplier} {r.lastPrice === min && rows.length > 1 && <span className="text-xs font-bold text-emerald-600">الأرخص</span>}</td>
+                        <td className={`text-center font-bold ${r.lastPrice > min * 1.1 ? 'text-red-600' : ''}`}>{iqd(r.lastPrice)}</td>
+                        <td className="text-center">{iqd(r.minPrice)}</td>
+                        <td className="text-center">{r.times}</td>
+                        <td className="text-center">{day(r.lastAt)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )
+          })}
+        </div>
+      )}
+
+      {tab === 'alerts' && (
+        <div className="space-y-2">
+          {openAlerts.length > 0 && <p className="rounded-lg bg-red-50 px-3 py-2 text-sm font-bold text-red-700">مجموع الخسارة بالتنبيهات المفتوحة: {iqd(totalLoss)}</p>}
+          {alerts.length === 0 && <p className="text-sm text-slate-400">ماكو تنبيهات — المشتريات بأسعار طبيعية ✓</p>}
+          {alerts.map((a) => (
+            <div key={a.id} className={`rounded-lg border px-3 py-2 text-sm ${a.reviewedAt ? 'border-slate-200 bg-slate-50 text-slate-500' : 'border-red-200 bg-red-50'}`}>
+              <p className="font-bold">
+                {a.kind === 'OVER_STD' ? '📏 فوق السعر الستاندرد' : a.kind === 'PRICIER' ? '🚨 اشترى من الأغلى' : a.kind === 'QUOTE' ? '🧾 اختار العرض الأغلى' : '📈 المورد رفع سعره'} · {a.code} · «{a.product}»{a.kind !== 'QUOTE' && ` ×${a.quantity}`}
+              </p>
+              <p className="mt-0.5">
+                {a.kind === 'OVER_STD'
+                  ? <>انشترت من <b>{a.supplier ?? '—'}</b> بـ<b>{iqd(a.unitPrice)}</b> — والستاندرد <b>{iqd(a.refPrice)}</b> (+{Math.round((a.unitPrice / a.refPrice - 1) * 100)}٪)</>
+                  : a.kind === 'QUOTE'
+                  ? <>اختار عرض <b>{a.supplier}</b> بـ<b>{iqd(a.unitPrice)}</b> — وعرض <b>{a.refSupplier}</b> چان <b>{iqd(a.refPrice)}</b></>
+                  : a.kind === 'PRICIER'
+                  ? <>انشترت من <b>{a.supplier}</b> بـ<b>{iqd(a.unitPrice)}</b> — وموجودة عند <b>{a.refSupplier}</b> بـ<b>{iqd(a.refPrice)}</b></>
+                  : <><b>{a.supplier}</b> رفع السعر من <b>{iqd(a.refPrice)}</b> إلى <b>{iqd(a.unitPrice)}</b></>}
+                {' · '}الفرق <b className="text-red-700">{iqd(a.loss)}</b> · المشتري: {a.buyer ?? '—'} · {day(a.createdAt)}
+              </p>
+              {a.reviewedAt ? <p className="mt-1 text-xs">✓ انحسم: {a.reviewNote}</p>
+                : canDecide && <button onClick={() => decide(a)} className="mt-1 rounded-lg bg-white px-3 py-1 text-xs font-bold text-red-700 ring-1 ring-red-300">احسم التنبيه</button>}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {tab === 'bias' && (
+        <div className="space-y-2">
+          <p className="text-xs text-slate-500">آخر ٩٠ يوم: مشتري يروح ٧٠٪ أو أكثر من مشترياته لنفس المورد (من ٥ مشتريات فأكثر)، ويّا قديش دفع زيادة عن أرخص سعر لنفس المواد عند غيره.</p>
+          {bias.length === 0 && <p className="text-sm text-slate-400">ماكو ميل واضح لمورد واحد ✓</p>}
+          {bias.map((b, i) => (
+            <div key={i} className={`rounded-lg border px-3 py-2 text-sm ${b.extra > 0 ? 'border-red-200 bg-red-50' : 'border-amber-200 bg-amber-50'}`}>
+              <p className="font-bold">🔁 {b.buyer} ← {b.supplier}: {Math.round(b.share * 100)}٪ من مشترياته ({b.n} من {b.total})</p>
+              <p className="mt-0.5">
+                {b.extra > 0 ? <>دفع زيادة <b className="text-red-700">{iqd(b.extra)}</b> عن أرخص سعر — وبـ{b.cheaperAvailable} مادة چان أكو مورد أرخص.</> : 'أسعاره بنفس مستوى الأرخص — الميل بلا خسارة لحد هسه.'}
+              </p>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {tab === 'month' && (
+        <div className="space-y-4">
+          <div className="flex flex-wrap items-center gap-2">
+            <input type="month" value={month} onChange={(e) => setMonth(e.target.value)} className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm" />
+            <button onClick={() => purchaseApi.monthlyExcel(month).catch((e) => alert(e.message))} className="rounded-lg bg-emerald-700 px-3 py-1.5 text-sm font-bold text-white">⬇️ إكسل</button>
+          </div>
+          {!report || report.month !== month ? <p className="text-sm text-slate-400">جاري الجلب...</p> : (
+            <>
+              <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
+                {(() => {
+                  const diff = report.prevTotal > 0 ? Math.round((report.total / report.prevTotal - 1) * 100) : null
+                  const tiles: [string, string, string][] = [
+                    ['💸 المصروف', iqd(report.total), `${report.requests} شراء · ${report.count} مادة`],
+                    ['📆 الشهر السابق لنفس اليوم', iqd(report.prevTotal), diff == null ? '—' : `${diff > 0 ? '▲' : '▼'} ${Math.abs(diff)}٪ ${diff > 0 ? 'أكثر' : 'أقل'}`],
+                    ['💡 چان ممكن نوفّر', iqd(report.saving), report.total > 0 ? `${Math.round((report.saving / report.total) * 100)}٪ من المصروف` : ''],
+                    ['🚨 تنبيهات · ⏳ بلا تثبيت', `${report.alerts} · ${report.unverified}`, 'تنبيه ماتركس · شراء ما ثبّته المحاسب'],
+                  ]
+                  return tiles.map(([l, v, sub]) => (
+                    <div key={l} className="rounded-lg border border-slate-200 p-3">
+                      <p className="text-xs text-slate-500">{l}</p>
+                      <p className="mt-1 text-lg font-bold text-[#0f2040]">{v}</p>
+                      <p className="text-xs text-slate-400">{sub}</p>
+                    </div>
+                  ))
+                })()}
+              </div>
+              <div className="grid grid-cols-1 gap-3 lg:grid-cols-3">
+                <GroupTable title="🗂️ حسب الصنف" rows={report.byCategory} total={report.total} />
+                <GroupTable title="🏪 حسب المورد" rows={report.bySupplier} total={report.total} />
+                <GroupTable title="👤 حسب المشتري" rows={report.byBuyer} total={report.total} />
+              </div>
+              {report.lines.some((l) => l.saving > 0) && (
+                <div className="rounded-lg border border-red-200">
+                  <p className="border-b border-red-100 bg-red-50 px-3 py-1.5 text-sm font-bold text-red-700">💡 وين چان ممكن نوفّر</p>
+                  <table className="w-full text-sm">
+                    <thead><tr className="text-xs text-slate-400"><th className="px-3 text-right">المادة</th><th>المورد</th><th>السعر</th><th>أرخص عند</th><th>الفرق</th><th>المشتري</th></tr></thead>
+                    <tbody>
+                      {report.lines.filter((l) => l.saving > 0).sort((a, b) => b.saving - a.saving).map((l, i) => (
+                        <tr key={i} className="border-t border-slate-100">
+                          <td className="px-3 py-1">{l.product} ×{l.qty} <span className="text-xs text-slate-400">{l.code}</span></td>
+                          <td className="text-center">{l.supplier}</td>
+                          <td className="text-center">{iqd(l.unitPrice)}</td>
+                          <td className="text-center">{l.bestSupplier} {l.bestPrice != null && iqd(l.bestPrice)}</td>
+                          <td className="text-center font-bold text-red-700">{iqd(l.saving)}</td>
+                          <td className="text-center">{l.buyer}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+              {report.lines.length === 0 && <p className="text-sm text-slate-400">ماكو مشتريات بهذا الشهر.</p>}
+            </>
+          )}
+        </div>
+      )}
+
+      {tab === 'std' && std && (
+        <div className="space-y-3">
+          <p className="text-xs text-slate-500">
+            كل مادة إلها سعر مرجعي — أي شراء (موظف المشتريات أو الفني من مورده) فوقه بأكثر من <b>{std.ceilingPct}٪</b> ينبّهك وينبّه المراقب.
+            المرجعي التلقائي = أرخص آخر سعر بين الموردين (آخر ٩٠ يوم، بلا الموردين الي تقييم سعرهم ضعيف)، واليدوي يغلب.
+            {canDecide && <button onClick={() => { const v = prompt('السقف المسموح فوق الستاندرد (٪):', String(std.ceilingPct)); if (v != null && !isNaN(Number(v))) void stdAct(() => purchaseApi.setCeiling(Number(v))) }} className="mr-1 text-[#2c5aad] underline">تغيير السقف</button>}
+          </p>
+          {std.suggestions.length > 0 && (
+            <div className="rounded-lg border border-violet-200 bg-violet-50 p-2">
+              <p className="mb-1 text-sm font-bold text-violet-800">🤖 ماتركس يقترح تعديل (السوق تغيّر)</p>
+              {std.suggestions.map((x) => (
+                <div key={x.key} className="flex flex-wrap items-center gap-2 border-t border-violet-100 py-1.5 text-sm first:border-t-0">
+                  <b>{x.product}</b>: {iqd(x.current)} ← <b className={x.suggested < x.current ? 'text-emerald-700' : 'text-red-700'}>{iqd(x.suggested)}</b>
+                  <span className="text-xs text-slate-500">{x.basis}</span>
+                  {canDecide && (
+                    <span className="mr-auto flex gap-1">
+                      <button onClick={() => stdAct(() => purchaseApi.acceptStandard(x.key, true))} className="rounded bg-violet-600 px-2 py-0.5 text-xs font-bold text-white">✓ اعتمد</button>
+                      <button onClick={() => stdAct(() => purchaseApi.acceptStandard(x.key, false))} className="rounded bg-white px-2 py-0.5 text-xs ring-1 ring-slate-300">✕ اترك</button>
+                    </span>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+          <div className="flex gap-2">
+            <input value={stdQ} onChange={(e) => setStdQ(e.target.value)} placeholder="دوّر على مادة" className="flex-1 rounded-lg border border-slate-300 px-3 py-2 text-sm" />
+            {canDecide && <button onClick={() => { const p = prompt('اسم المادة:'); if (p?.trim()) editStd(p.trim()) }} className="rounded-lg bg-[#2c5aad] px-3 py-2 text-sm font-bold text-white">+ سعر ستاندرد</button>}
+          </div>
+          <table className="w-full text-sm">
+            <thead><tr className="text-xs text-slate-400"><th className="text-right">المادة</th><th>الستاندرد</th><th>المصدر</th><th>أرخص بالسوق (٩٠ يوم)</th><th>آخر تحديث</th><th></th></tr></thead>
+            <tbody>
+              {std.standards.filter((x) => !stdQ.trim() || x.product.includes(stdQ.trim())).map((x) => (
+                <tr key={x.key} className="border-t border-slate-100">
+                  <td className="py-1">{x.product}</td>
+                  <td className="text-center font-bold">{iqd(x.price)}</td>
+                  <td className="text-center text-xs">{x.source === 'MANUAL' ? `✍️ يدوي${x.setBy ? ` (${x.setBy})` : ''}` : '🤖 تلقائي'}</td>
+                  <td className="text-center">{x.market != null ? iqd(x.market) : '—'}</td>
+                  <td className="text-center text-xs">{day(x.updatedAt)}</td>
+                  <td>{canDecide && <button onClick={() => editStd(x.product, x.price)} className="text-xs text-[#2c5aad] underline">تعديل</button>}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          {std.standards.length === 0 && <p className="text-sm text-slate-400">ماكو أسعار ستاندرد بعد — تنحسب تلقائياً من المشتريات، أو ضيفها يدوياً.</p>}
+        </div>
+      )}
+
+      {open && <ReviewModal req={open} onClose={() => { setReviewing(null); onReviewClose() }} onSaved={() => { setReviewing(null); onReviewClose(); setReload((n) => n + 1) }} />}
+    </div>
+  )
+}
+
+function ReviewModal({ req, onClose, onSaved }: { req: ProcurementRequest; onClose: () => void; onSaved: () => void }) {
+  const [v, setV] = useState<SupplierReviewInput>({ price: 0, quality: 0, speed: 0, punctuality: 0, dealing: 0 })
+  const [note, setNote] = useState('')
+  const [busy, setBusy] = useState(false)
+  const ready = CRITERIA.every(([k]) => v[k] > 0)
+  const save = async () => {
+    setBusy(true)
+    try { await purchaseApi.review(req.id, { ...v, note: note.trim() || undefined }); onSaved() } catch (e) { alert(e instanceof Error ? e.message : 'تعذر الحفظ') } finally { setBusy(false) }
+  }
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" dir="rtl">
+      <div className="w-full max-w-md space-y-3 rounded-2xl bg-white p-5">
+        <p className="text-lg font-bold">⭐ قيّم المورد: {req.supplier?.name}</p>
+        <p className="text-xs text-slate-500">طلب {req.code} — التقييم يساعد ماتركس يعرف منو أرخص وأحسن مورد لكل مادة.</p>
+        {CRITERIA.map(([k, label]) => (
+          <div key={k} className="flex items-center justify-between">
+            <span className="text-sm font-medium">{label}</span>
+            <div className="flex gap-1">
+              {[1, 2, 3, 4, 5].map((n) => (
+                <button key={n} onClick={() => setV({ ...v, [k]: n })} className={`text-2xl ${n <= v[k] ? 'text-amber-400' : 'text-slate-200'}`}>★</button>
+              ))}
+            </div>
+          </div>
+        ))}
+        <textarea value={note} onChange={(e) => setNote(e.target.value)} placeholder="ملاحظة (اختياري)" rows={2} className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" />
+        <div className="flex gap-2">
+          <button disabled={!ready || busy} onClick={save} className="flex-1 rounded-lg bg-[#2c5aad] py-2 font-bold text-white disabled:opacity-50">حفظ التقييم</button>
+          <button onClick={onClose} className="rounded-lg px-4 py-2 text-sm text-slate-600 hover:bg-slate-100">بعدين</button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function GroupTable({ title, rows, total }: { title: string; rows: PurchaseGroup[]; total: number }) {
+  return (
+    <div className="rounded-lg border border-slate-200">
+      <p className="border-b border-slate-100 bg-slate-50 px-3 py-1.5 text-sm font-bold">{title}</p>
+      {rows.length === 0 && <p className="p-3 text-xs text-slate-400">—</p>}
+      {rows.map((g) => (
+        <div key={g.name} className="border-t border-slate-100 px-3 py-1.5 text-sm first:border-t-0">
+          <div className="flex justify-between"><span className="font-medium">{g.name}</span><span className="font-bold">{iqd(g.total)}</span></div>
+          <div className="mt-1 h-1.5 rounded bg-slate-100"><div className="h-1.5 rounded bg-[#2c5aad]" style={{ width: `${total > 0 ? Math.min(100, (g.total / total) * 100) : 0}%` }} /></div>
+          <p className="mt-0.5 text-xs text-slate-400">{g.count} مادة{g.saving > 0 && <span className="text-red-600"> · چان ممكن نوفّر {iqd(g.saving)}</span>}</p>
+        </div>
+      ))}
+    </div>
+  )
+}

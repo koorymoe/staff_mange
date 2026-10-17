@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>فحص النظام — المرحلة الثانية</title>
+<style>
+:root{
+  --bg:#f7f7f5; --surface:#fff; --border:#e5e3dd; --text:#1a1a18; --muted:#6b6862;
+  --high:#b42318; --high-bg:#fef3f2; --med:#b54708; --med-bg:#fffaeb;
+  --low:#175cd3; --low-bg:#eff8ff; --ok:#067647; --ok-bg:#ecfdf3; --accent:#3a3a36;
+}
+:root:not([data-theme="light"]){@media (prefers-color-scheme:dark){
+  :root{--bg:#141413;--surface:#1c1c1a;--border:#2f2f2c;--text:#ececea;--muted:#9a978f;
+  --high:#f97066;--high-bg:#2d1513;--med:#fdb022;--med-bg:#2b1d0a;
+  --low:#53b1fd;--low-bg:#0f1e30;--ok:#47cd89;--ok-bg:#0d2419;--accent:#d8d6d0;}
+}}
+:root[data-theme="dark"]{--bg:#141413;--surface:#1c1c1a;--border:#2f2f2c;--text:#ececea;--muted:#9a978f;
+--high:#f97066;--high-bg:#2d1513;--med:#fdb022;--med-bg:#2b1d0a;
+--low:#53b1fd;--low-bg:#0f1e30;--ok:#47cd89;--ok-bg:#0d2419;--accent:#d8d6d0;}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);
+ font-family:"Segoe UI","Noto Naskh Arabic",Tahoma,system-ui,sans-serif;line-height:1.75}
+.wrap{max-width:900px;margin:0 auto;padding:48px 16px 80px}
+header{border-bottom:2px solid var(--border);padding-bottom:24px;margin-bottom:36px}
+h1{font-size:2rem;margin:0 0 8px;letter-spacing:-.01em}
+.sub{color:var(--muted);font-size:.95rem;margin:0}
+h2{font-size:1.35rem;margin:48px 0 16px;padding-bottom:8px;border-bottom:1px solid var(--border)}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:12px;margin:28px 0}
+.stat{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px}
+.stat b{display:block;font-size:1.7rem;line-height:1.2;font-variant-numeric:tabular-nums}
+.stat span{color:var(--muted);font-size:.82rem}
+.f{background:var(--surface);border:1px solid var(--border);border-inline-start:4px solid var(--border);
+ border-radius:10px;padding:20px 22px;margin:18px 0}
+.f.high{border-inline-start-color:var(--high)}
+.f.med{border-inline-start-color:var(--med)}
+.f.low{border-inline-start-color:var(--low)}
+.f h3{margin:0 0 6px;font-size:1.08rem;display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.tag{font-size:.72rem;font-weight:700;padding:3px 10px;border-radius:99px;letter-spacing:.02em}
+.tag.high{background:var(--high-bg);color:var(--high)}
+.tag.med{background:var(--med-bg);color:var(--med)}
+.tag.low{background:var(--low-bg);color:var(--low)}
+.f p{margin:10px 0}
+.f .lbl{font-weight:700;color:var(--accent);font-size:.9rem}
+code{background:var(--bg);border:1px solid var(--border);border-radius:5px;
+ padding:1px 6px;font-size:.87em;direction:ltr;display:inline-block;
+ font-family:ui-monospace,"SF Mono",Menlo,monospace}
+pre{background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:14px;
+ overflow-x:auto;direction:ltr;text-align:left;font-size:.84rem;margin:12px 0}
+ul{padding-inline-start:22px;margin:10px 0}
+li{margin:5px 0}
+.clean{background:var(--ok-bg);border:1px solid var(--border);border-radius:10px;padding:20px 24px}
+.clean ul{columns:2;column-gap:32px}
+.clean li{break-inside:avoid;color:var(--text)}
+@media(max-width:640px){.clean ul{columns:1}.wrap{padding:28px 16px 60px}h1{font-size:1.5rem}}
+table{width:100%;border-collapse:collapse;margin:16px 0;font-size:.92rem}
+th,td{text-align:right;padding:9px 12px;border-bottom:1px solid var(--border)}
+th{color:var(--muted);font-weight:600;font-size:.85rem}
+.note{background:var(--low-bg);border:1px solid var(--border);border-radius:10px;padding:16px 20px;margin:24px 0}
+footer{margin-top:56px;padding-top:20px;border-top:1px solid var(--border);color:var(--muted);font-size:.85rem}
+</style></head>
+<body>
+<div class="wrap">
+
+<header>
+  <h1>فحص النظام — المرحلة الثانية</h1>
+  <p class="sub">الباك إند كاملاً · ٦٥٫٨٨٤ سطر بـ٤٢١ ملف · فرع <code>avg</code> عند <code>280c757</code> · ١٦ أيلول ٢٠٢٦</p>
+</header>
+
+<p>فحصت طبقات <code>repository</code> (٩١ ملف) · <code>service</code> (٦٠) · <code>handler</code> (٩٣) ·
+<code>database</code> (٧٩) · <code>model</code> (٨٠). قراءة سطر سطر لمنطق الفلوس ونطاق الحجوزات
+والتوقيت والخيوط الخلفية، ومسح آلي شامل على أصناف العلل المعروفة بـGo — وقياس فعلي بالتشغيل
+حيثما أمكن بدل التخمين.</p>
+
+<div class="stats">
+  <div class="stat"><b>٥</b><span>ملاحظات مؤكدة</span></div>
+  <div class="stat"><b>١</b><span>خطورة عالية</span></div>
+  <div class="stat"><b>٣</b><span>خطورة متوسطة</span></div>
+  <div class="stat"><b>١</b><span>خطورة منخفضة</span></div>
+  <div class="stat"><b>٨</b><span>نقاط نظيفة</span></div>
+</div>
+
+<h2>الملاحظات المؤكدة</h2>
+
+<div class="f high">
+  <h3><span class="tag high">عالي</span> ١. حجز محذوف لسه يزيد إنتاجية الموظف</h3>
+  <p><span class="lbl">وين:</span> <code>internal/repository/booking_repository.go</code> — <strong>تسع دوال</strong>:</p>
+  <pre>CountCompletedForEmployeeMonth  (957)   CountCompletedForEmployeeRange
+CountInHouseForEmployeeMonth    (969)   CountAssignedForEmployeeRange
+CountAssignedForEmployeeMonth  (1004)   CountMaintenanceForEmployeeRange
+CountMaintenanceForEmployeeMonth        CountFreeMaintenanceForEmployeeRange
+CountFreeMaintenanceForEmployeeMonth</pre>
+  <p><span class="lbl">شنو صاير:</span> النظام عنده تعريف <strong>واحد</strong> لـ«الحجز الي ينعدّ»
+     (<code>booking_delete_filter.go:40</code>) يستثني المؤرشف والمطلوب حذفه.
+     و<code>List</code> — الي تعرضه الشاشات فعلاً — تطبّقه (سطر ٣١-٣٢).
+     <strong>والتسعة كلهن ما يطبّقنه.</strong></p>
+  <p><span class="lbl">الأثر:</span> كلهن يغذّن <code>employee_monthly_stats_service.go</code> —
+     الإحصائية الشهرية للموظف. يعني نفس المفهوم يطلع برقمين: الشاشة تعرض رقماً والإحصائية رقماً أكبر،
+     والفرق حجوزات <strong>محذوفة</strong>.</p>
+  <p><span class="lbl">وأسوأ وحدة فيهن:</span> <code>CountCompletedForEmployeeMonth</code> تعدّ من
+     <code>BookingVisitCrew</code> <strong>بلا أي ربط بجدول الحجز إطلاقاً</strong> —
+     فطلعات حجز محذوف تنعدّ كاملة بلا أي إمكانية استثناء.</p>
+  <p><span class="lbl">🔴 وليش هاي بالذات مهمة:</span> هاي <strong>نفس العلّة</strong> الي صلّحها
+     آخر كومِت <code>8e0fb03</code> — ورسالته تقولها حرفياً:
+     «حجز محذوف يزيد رصيد موظف بالترتيب. والنقاط تنبني عليها تقييمات وقرارات».
+     انصلّحت <strong>ثنتان</strong> بـ<code>kpi_repository.go</code>، وبقت <strong>تسعة</strong>
+     بنفس العائلة بملف ثاني. نفس نمط <code>ToolEvents</code> بالمرحلة الأولى: جولة إصلاح صحيحة ما كملت.</p>
+  <p><span class="lbl">الحل:</span> إضافة <code>BookingCountableAndSQL("b")</code> لكل استعلام —
+     نفس التعديل الي طبّقه الكومِت بالضبط. والأولى تحتاج ربطاً بجدول الحجز أول.</p>
+</div>
+
+<div class="f med">
+  <h3><span class="tag med">متوسط</span> ٢. تغطية الاختبارات صفر تقريباً</h3>
+  <table>
+  <thead><tr><th>الحزمة</th><th>ملفات</th><th>تغطية</th></tr></thead>
+  <tbody>
+  <tr><td><code>repository</code> — كل الـSQL</td><td>٩١</td><td><b style="color:var(--high)">٠٫٠٪</b></td></tr>
+  <tr><td><code>database</code> — الترحيلات</td><td>٧٩</td><td><b style="color:var(--high)">٠٫٠٪</b></td></tr>
+  <tr><td><code>handler</code></td><td>٩٣</td><td>٠٫٨٪</td></tr>
+  <tr><td><code>model</code></td><td>٨٠</td><td>٢٫٦٪</td></tr>
+  <tr><td><code>service</code></td><td>٦٠</td><td>٤٫٢٪</td></tr>
+  <tr><td><code>middleware</code></td><td>٥</td><td>٤٫٨٪</td></tr>
+  <tr><td><code>safeguard</code></td><td>١</td><td><b style="color:var(--ok)">٩١٫٧٪</b></td></tr>
+  </tbody>
+  </table>
+  <p><span class="lbl">الأثر:</span> ٦٦ ألف سطر بـ٢٢٥٩ سطر اختبار — ٣٫٤٪ بالحجم، وأقل من ذلك بالتنفيذ.
+     و<code>repository</code> على <strong>صفر</strong> يعني كل استعلام SQL بالنظام —
+     بما فيه حسابات الفواتير وعدّادات الحجوزات — <strong>غير مُختبَر إطلاقاً</strong>.</p>
+  <p><span class="lbl">وهاي تفسّر الباقي:</span> ملاحظة ١ فوق، وعلّة شاشة المراقب الي انصلّحت اليوم،
+     وعلّة <code>ToolEvents</code> بالمرحلة الأولى — كلهن أصناف يمسكهن اختبار واحد.
+     ماكو شبكة أمان تمسك «جولة إصلاح ما كملت».</p>
+  <p><span class="lbl">الحل العملي:</span> مو ٨٠٪ تغطية. اختبار واحد لكل قاعدة عدّ
+     («حجز محذوف ما ينعدّ») يمسك عائلة كاملة — و<code>safeguard</code> بـ٩١٫٧٪ يثبت إن الفريق
+     يعرف يكتب اختبارات لمن يقرر.</p>
+</div>
+
+<div class="f med">
+  <h3><span class="tag med">متوسط</span> ٣. «مو موجود» يطلع ٥٠٠ بكل النظام</h3>
+  <p><span class="lbl">الأرقام:</span> <strong>٢٦٣</strong> ردّ <code>500</code> مقابل
+     <strong>٢٩</strong> ردّ <code>404</code> بكل طبقة <code>handler</code>.
+     و<strong>١٨٦</strong> دالة مستودع تجيب صفاً بـ<code>WHERE</code> بلا معالجة
+     <code>sql.ErrNoRows</code> — مثال <code>complaint_repository.go:149</code> يرجّع <code>err</code> خاماً.</p>
+  <p><span class="lbl">الأثر:</span> سجل مو موجود → الخادم يقول «عطل بالسيرفر».
+     والواجهة تبلع الـ٥٠٠ بـ<code>.catch()</code> وتترك المستخدم بشاشة معلّقة بلا رسالة مفهومة —
+     <strong>وهاي بالضبط عائلة العلّة الي علّگت شاشة المراقب</strong>.</p>
+  <p><span class="lbl">والعكس موجود بعد:</span> <code>booking_repository.go:1355</code>
+     (<code>Postpone</code>) يبلع <strong>أي</strong> خطأ قاعدة بيانات ويسمّيه «الحجز مو موجود» —
+     فالعطل الحقيقي ينخبّي وراء رسالة مطمئنة.</p>
+</div>
+
+<div class="f med">
+  <h3><span class="tag med">متوسط</span> ٤. استعلامات N+1 بثمانية مستودعات</h3>
+  <p><span class="lbl">النمط:</span> <code>for i := range rows { r.hydrate(&rows[i]) }</code>
+     و<code>hydrate</code> جوّاها نداءات <code>db.Get</code>.</p>
+  <pre>complaint · leader_invoice · performance_review · quality_follow_up
+service_manager · staff_request · team_inventory_check · work_report</pre>
+  <p><span class="lbl">مثال محسوب:</span> <code>ComplaintRepository.hydrate</code> يسوي أربعة
+     استعلامات لكل صف (الزبون · الحجز · منو أنشأها · منو مُسندة له).
+     فقائمة بـ١٠٠ شكوى = <strong>٤٠١ استعلام</strong> بدل ٢-٣.</p>
+  <p><span class="lbl">والحل موجود بالمستودع نفسه:</span>
+     <code>leader_invoice_repository.go:417</code> عنده <code>hydrateAll</code> — نسخة مجمّعة
+     تجيب الكل بـ<code>ANY($1)</code>. النمط الصحيح مكتوب، بس ما انطبّق بكل مكان
+     (ونفس الملف عنده الاثنان).</p>
+</div>
+
+<div class="f low">
+  <h3><span class="tag low">منخفض</span> ٥. خطر كامن — <code>::date</code> خام على عمود <code>TIMESTAMP</code></h3>
+  <p><span class="lbl">وين:</span> <code>gps_repository.go</code> أسطر ٦٢٥ · ٦٤١ · ٧١٦ · ٧٨٦ · ٧٩٤ · ٧٩٥ · ٨٠١</p>
+  <p><code>subscriptionEnd</code> نوعه <code>TIMESTAMP</code>، وينقارن بـ<code>::date</code> الخام
+     مقابل <code>baghdad_today()</code> — خلط بين تاريخ غرينتش وتاريخ بغداد.</p>
+  <p><span class="lbl">وصحيح اليوم:</span> تأكدت — <code>parseDate</code>
+     (<code>cmd/importgps/main.go:68</code>) يفسّر <code>"2006-01-02"</code> فيخزّن منتصف الليل دائماً،
+     ومنتصف الليل + ٣ ساعات = نفس اليوم. <strong>ماكو خطأ حالياً.</strong></p>
+  <p><span class="lbl">بس:</span> أول قيمة تنكتب بوقت (منتقي تاريخ ووقت، أو <code>now()</code>)
+     → انتهاء الاشتراك ينزاح <strong>يوماً كاملاً</strong> لأي قيمة بين ٢١:٠٠ و٢٤:٠٠ عالمي.
+     وهذا بالضبط الصنف الي انكتب <code>schema_baghdad_date.go</code> لإلغائه —
+     وهاي السبعة انفلتن من تلك الجولة.</p>
+</div>
+
+<h2>الي طلع نظيفاً — وقسته مو خمّنته</h2>
+<div class="clean">
+<ul>
+<li>✅ <b>ماكو ولا قسمة على صفر</b> — فحصت ١٣ موضع قسمة عشرية، كلهن محروسات بشرط صريح</li>
+<li>✅ <b>تقريب الفواتير آمن</b> — شغّلت ٢٦٠٠ تركيبة أسعار واقعية على <code>Ceil(sum/1000)*1000</code>: صفر انحراف</li>
+<li>✅ المعاملات سليمة — كل <code>Beginx</code> عنده <code>Rollback</code>، و<code>return tx.Commit()</code> يرجّع الخطأ</li>
+<li>✅ الترحيلات: كل نسخة بمعاملة مستقلة، وتقف بأول فشل</li>
+<li>✅ توقيت بغداد محلول صح بالقاعدة — <code>baghdad_date()</code> بـ٥٧ موضع</li>
+<li>✅ الخيوط الخلفية محميّة بـ<code>safeguard.Loop</code> — انهيار كنسة ما يسقّط السيرفر</li>
+<li>✅ <code>go build</code> · <code>go vet</code> · <code>go test -race</code> — كلها تمر نظيفة</li>
+<li>✅ التحقق من المدخلات منضبط — ١٩٨ من ٢٠٦ نداء <code>DecodeJSON</code> تفحص الخطأ صراحة، والاستثناء محروس بعده</li>
+</ul>
+</div>
+
+<h2>الخيط الي يربط كلشي</h2>
+<p>الملاحظة الأولى والثالثة والرابعة، وعلّة شاشة المراقب الي انصلّحت اليوم، وعلّة
+<code>ToolEvents</code> بالمرحلة الأولى — <strong>كلهن نفس القصة</strong>:
+التصميم صحيح ومفكَّر فيه، والقاعدة معرَّفة بمكان واحد،
+والإصلاح مكتوب وموثَّق — <strong>بس ما انطبّق على كل المواضع</strong>.</p>
+<p>تعريف «الحجز الي ينعدّ» موجود بملف واحد وممتاز، بس تسعة عدّادات ما تناديه.
+<code>hydrateAll</code> المجمّعة موجودة، بس ثمانية مستودعات تستعمل <code>hydrate</code> الفردية.
+حارس الملكية مكتوب بثلاث دوال بنفس ملف المخزون، بس رابعة انفلتت.</p>
+<p>وهذا <strong>مو ضعف بالمهارة — ضعف بالشبكة</strong>. ماكو اختبار يمسك «الجولة ما كملت»،
+و<code>repository</code> على <strong>صفر تغطية</strong>. فكل إصلاح يعتمد على إن الي يسويه
+يتذكّر كل المواضع — وهذا ما ينجح دائماً، ولا عند أي أحد.</p>
+
+<footer>
+تقرير المرحلة ٢ من ٤ · فرع <code>avg</code> · <code>280c757</code><br>
+الجاي: المرحلة ٣ — الواجهة كاملة (٧٦٫٦٥٤ سطر بـ٢٥٥ ملف، و<code>api.ts</code> وحده ٥٫١٧٠)<br>
+⚠️ ما انعدّل ولا سطر بهذي المرحلة — التعديل كله بعد ما تخلص المراحل، مثل ما اتفقنا.
+</footer>
+
+</div>
+</body>
+</html>

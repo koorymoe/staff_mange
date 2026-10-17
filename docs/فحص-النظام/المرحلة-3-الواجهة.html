@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>فحص النظام — المرحلة الثالثة</title>
+<style>
+:root{
+  --bg:#f7f7f5; --surface:#fff; --border:#e5e3dd; --text:#1a1a18; --muted:#6b6862;
+  --high:#b42318; --high-bg:#fef3f2; --med:#b54708; --med-bg:#fffaeb;
+  --low:#175cd3; --low-bg:#eff8ff; --ok:#067647; --ok-bg:#ecfdf3; --accent:#3a3a36;
+}
+:root:not([data-theme="light"]){@media (prefers-color-scheme:dark){
+  :root{--bg:#141413;--surface:#1c1c1a;--border:#2f2f2c;--text:#ececea;--muted:#9a978f;
+  --high:#f97066;--high-bg:#2d1513;--med:#fdb022;--med-bg:#2b1d0a;
+  --low:#53b1fd;--low-bg:#0f1e30;--ok:#47cd89;--ok-bg:#0d2419;--accent:#d8d6d0;}
+}}
+:root[data-theme="dark"]{--bg:#141413;--surface:#1c1c1a;--border:#2f2f2c;--text:#ececea;--muted:#9a978f;
+--high:#f97066;--high-bg:#2d1513;--med:#fdb022;--med-bg:#2b1d0a;
+--low:#53b1fd;--low-bg:#0f1e30;--ok:#47cd89;--ok-bg:#0d2419;--accent:#d8d6d0;}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);
+ font-family:"Segoe UI","Noto Naskh Arabic",Tahoma,system-ui,sans-serif;line-height:1.75}
+.wrap{max-width:900px;margin:0 auto;padding:48px 16px 80px}
+header{border-bottom:2px solid var(--border);padding-bottom:24px;margin-bottom:36px}
+h1{font-size:2rem;margin:0 0 8px;letter-spacing:-.01em}
+.sub{color:var(--muted);font-size:.95rem;margin:0}
+h2{font-size:1.35rem;margin:48px 0 16px;padding-bottom:8px;border-bottom:1px solid var(--border)}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:12px;margin:28px 0}
+.stat{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px}
+.stat b{display:block;font-size:1.7rem;line-height:1.2;font-variant-numeric:tabular-nums}
+.stat span{color:var(--muted);font-size:.82rem}
+.f{background:var(--surface);border:1px solid var(--border);border-inline-start:4px solid var(--border);
+ border-radius:10px;padding:20px 22px;margin:18px 0}
+.f.high{border-inline-start-color:var(--high)}
+.f.med{border-inline-start-color:var(--med)}
+.f.low{border-inline-start-color:var(--low)}
+.f h3{margin:0 0 6px;font-size:1.08rem;display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.tag{font-size:.72rem;font-weight:700;padding:3px 10px;border-radius:99px;letter-spacing:.02em}
+.tag.high{background:var(--high-bg);color:var(--high)}
+.tag.med{background:var(--med-bg);color:var(--med)}
+.tag.low{background:var(--low-bg);color:var(--low)}
+.f p{margin:10px 0}
+.f .lbl{font-weight:700;color:var(--accent);font-size:.9rem}
+code{background:var(--bg);border:1px solid var(--border);border-radius:5px;
+ padding:1px 6px;font-size:.87em;direction:ltr;display:inline-block;
+ font-family:ui-monospace,"SF Mono",Menlo,monospace}
+pre{background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:14px;
+ overflow-x:auto;direction:ltr;text-align:left;font-size:.84rem;margin:12px 0}
+ul{padding-inline-start:22px;margin:10px 0}
+li{margin:5px 0}
+.clean{background:var(--ok-bg);border:1px solid var(--border);border-radius:10px;padding:20px 24px}
+.clean ul{columns:2;column-gap:32px}
+.clean li{break-inside:avoid;color:var(--text)}
+@media(max-width:640px){.clean ul{columns:1}.wrap{padding:28px 16px 60px}h1{font-size:1.5rem}}
+table{width:100%;border-collapse:collapse;margin:16px 0;font-size:.92rem}
+th,td{text-align:right;padding:9px 12px;border-bottom:1px solid var(--border)}
+th{color:var(--muted);font-weight:600;font-size:.85rem}
+.note{background:var(--low-bg);border:1px solid var(--border);border-radius:10px;padding:16px 20px;margin:24px 0}
+footer{margin-top:56px;padding-top:20px;border-top:1px solid var(--border);color:var(--muted);font-size:.85rem}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <h1>فحص النظام — المرحلة الثالثة</h1>
+  <p class="sub">الواجهة كاملة · ٧٦٫٦٥٤ سطر بـ٢٥٥ ملف · فرع <code>avg</code> عند <code>2d196e6</code></p>
+</header>
+
+<p>فحصت الدروس الأربعة المسجّلة بـ<code>AGENTS.md</code> وحدة وحدة — انطبّقن لو انفلت منهن شي —
+مع مسح شامل على سباقات الطلبات ومعالجة الأخطاء وسطح XSS وحجم الحزمة.</p>
+
+<div class="stats">
+  <div class="stat"><b>٥</b><span>ملاحظات</span></div>
+  <div class="stat"><b>١</b><span>خطورة عالية</span></div>
+  <div class="stat"><b>٢</b><span>خطورة متوسطة</span></div>
+  <div class="stat"><b>٢</b><span>خطورة منخفضة</span></div>
+  <div class="stat"><b>٨</b><span>نقاط نظيفة</span></div>
+</div>
+
+<h2>الملاحظات</h2>
+
+<div class="f high">
+  <h3><span class="tag high">عالي</span> F-01 · صفحة الصلاحيات: سباق يمنح موظفاً صلاحيات موظف ثاني</h3>
+  <p><span class="lbl">وين:</span> <code>frontend/src/pages/PermissionsPage.tsx:47-64</code></p>
+  <pre>useEffect(() =&gt; {
+  setPermsLoadFailed(false)
+  api.getEmployeePermissions(selectedEmployeeId)
+    .then((perms) =&gt; setEmployeePerms(perms.map((p) =&gt; p.name)))   // ← بلا حارس
+    .catch(() =&gt; { setEmployeePerms([]); setPermsLoadFailed(true) })
+}, [selectedEmployeeId])</pre>
+  <p><span class="lbl">السيناريو:</span></p>
+  <table>
+  <tbody>
+  <tr><td>١</td><td>ضغط على الموظف (أ) → ينطلق طلب (أ)</td></tr>
+  <tr><td>٢</td><td>ضغط بسرعة على الموظف (ب) → ينطلق طلب (ب)</td></tr>
+  <tr><td>٣</td><td>رد (ب) يوصل → الحالة = صلاحيات (ب) ✅</td></tr>
+  <tr><td>٤</td><td>رد (أ) يوصل <b>متأخراً</b> → الحالة = صلاحيات <b>(أ)</b> ❌ والشاشة تعرض (ب)</td></tr>
+  <tr><td>٥</td><td><code>permsLoadFailed = false</code> — <b>الطلبان نجحا</b>. الزر شغّال وماكو تحذير</td></tr>
+  <tr><td>٦</td><td>ضغط «حفظ» → <code>setEmployeePermissions(ب, صلاحيات_أ)</code></td></tr>
+  </tbody>
+  </table>
+  <p><span class="lbl">والخادم يستبدل مو يضيف</span> — الكاتب نفسه يوثّقها بالسطر ٥٩:</p>
+  <p style="border-inline-start:3px solid var(--high);padding-inline-start:14px;color:var(--muted)">
+  «ما انجلبت» <b>مو</b> «ماكو صلاحيات»: الحفظ يرسل القائمة كاملة والخادم
+  <b>يحذف كل صفوف الموظف</b> ويعيد إدخال المؤشَّر بس.</p>
+  <p><span class="lbl">الأثر:</span> الموظف (ب) <strong>يفقد كل صلاحياته ويستلم صلاحيات (أ)</strong> —
+  بهدوء، بلا خطأ ولا تحذير. ولو (أ) عنده صلاحيات أوسع، هاي <strong>ترقية صلاحيات بالغلط</strong>.</p>
+  <p><span class="lbl">🔴 وليش مؤلمة:</span> الكاتب <strong>شاف الخطر وحرس منه</strong> —
+  <code>permsLoadFailed</code> وشريط تحذير أحمر وزر مقفول. بس الحارس يمسك مسار <strong>الفشل</strong> وبس،
+  ومسار السباق يمرّ من جنبه لأن <strong>الطلبين نجحا</strong>.</p>
+  <p><span class="lbl">الحل:</span> ثلاث سطور — حارس <code>alive</code> بنفس النمط الموجود بـ<code>SalesBooking.tsx:131</code>.</p>
+</div>
+
+<div class="f med">
+  <h3><span class="tag med">متوسط</span> F-02 · ٣١ <code>useEffect</code> بتبعيّات متغيّرة بلا حارس سباق</h3>
+  <p><span class="lbl">القياس:</span> من أصل ٦٠ <code>useEffect</code> عندها تبعيّات متغيّرة + نداء API + <code>setState</code>:
+  <strong>٢٩ محروسة</strong> · <strong>٣١ بلا حارس</strong>.</p>
+  <table>
+  <thead><tr><th>الملف</th><th>التبعيّة</th><th>الخطر</th></tr></thead>
+  <tbody>
+  <tr><td><code>PermissionsPage.tsx:47</code></td><td><code>selectedEmployeeId</code></td><td>F-01 فوق</td></tr>
+  <tr><td><code>TrainingManagement.tsx:27</code></td><td><code>selectedEmployeeId</code></td><td>تدريب موظف ينعرض لموظف ثاني</td></tr>
+  <tr><td><code>TeamInventoryCheckPage.tsx:43</code></td><td><code>selected</code></td><td>جرد كادر ينخلط</td></tr>
+  <tr><td><code>VehiclesPage.tsx:219</code></td><td><code>selectedId, expenseMonth</code></td><td>مصاريف مركبة لمركبة ثانية</td></tr>
+  <tr><td><code>StatsManagementPage.tsx:134</code></td><td><code>from, to</code></td><td>إحصاءات مدى تنخلط</td></tr>
+  <tr><td><code>KpiBreakdownChart.tsx:29</code></td><td><code>employeeId, month</code></td><td>تقييم موظف لموظف ثاني</td></tr>
+  </tbody>
+  </table>
+  <p>الباقية تبعيّتها منطقية (<code>isAdmin</code> · <code>isHR</code>) تتغيّر مرة وحدة عند التحميل — خطرها أوطى بكثير.</p>
+</div>
+
+<div class="f med">
+  <h3><span class="tag med">متوسط</span> F-03 · ٥٦٪ من معالجات الأخطاء تخفي الفشل</h3>
+  <table>
+  <thead><tr><th>النمط</th><th>العدد</th><th>النسبة</th></tr></thead>
+  <tbody>
+  <tr><td>✅ يعرض رسالة للمستخدم</td><td>٤٥</td><td>٢٠٪</td></tr>
+  <tr><td>🟠 يحط حالة فاضية — الفشل يبين «ماكو بيانات»</td><td><b>٧٧</b></td><td>٣٤٪</td></tr>
+  <tr><td>🔴 فاضي تماماً — يبلع بلا أثر</td><td><b>٤٩</b></td><td>٢٢٪</td></tr>
+  <tr><td>◻️ غير ذلك</td><td>٥٣</td><td>٢٤٪</td></tr>
+  </tbody>
+  </table>
+  <p><span class="lbl">الأثر:</span> المستخدم ما يفرّق بين «السيرفر واقع» و«ماكو شي هنا».
+  والـ٧٧ أخبثهن: <code>.catch(() =&gt; setX([]))</code> تخلّي فشل الشبكة يطلع قائمة فاضية طبيعية،
+  فالموظف يتخذ قراراً على «ماكو بيانات» وهي موجودة.</p>
+  <p><span class="lbl">وهاي العائلة الي علّگت شاشة المراقب:</span> <code>.catch(() =&gt; {})</code> بلع
+  فشل الحجز وترك الطبقة السودة معلّقة. ومترابطة مع <b>B-03</b> بالباك إند
+  (٢٦٣ ردّ <code>500</code> مقابل ٢٩ <code>404</code>) — الخادم يرجّع خطأ مضلِّل والواجهة تبلعه بصمت.
+  <strong>الطرفان يضيّعان نفس المعلومة.</strong></p>
+</div>
+
+<div class="f low">
+  <h3><span class="tag low">منخفض</span> F-04 · ٥ أخطاء <code>eslint</code> توقف شرطك بـ<code>AGENTS.md</code></h3>
+  <p><code>AGENTS.md</code> يفرض نجاح <code>npx eslint src</code> قبل أي ترقية لـ<code>prod</code> —
+  وهو <strong>يفشل حالياً</strong>. الخمسة موجودات على <code>prod</code> من قبل هذا الفحص، وكلهن خفيفات:</p>
+  <table>
+  <thead><tr><th>الملف</th><th>الطبيعة</th></tr></thead>
+  <tbody>
+  <tr><td><code>EntityAvatar.tsx:95</code></td><td>تطوير بحت (إعادة تحميل ساخنة) — <b>صفر أثر بالتشغيل</b></td></tr>
+  <tr><td><code>InternalDepartmentContacts.tsx:24</code></td><td>نفسها</td></tr>
+  <tr><td><code>EntityLabPage.tsx:162</code></td><td><code>setState</code> داخل <code>useEffect</code> — أداء</td></tr>
+  <tr><td><code>LeaderInvoiceNew.tsx:81</code> و<code>:219</code></td><td>نفسها</td></tr>
+  </tbody>
+  </table>
+  <p>ما فيهن ولا خطر أمني ولا علّة منطق. بس وجودهن يعني إن شرطك ما ينطبّق —
+  وأي ترقية جاية إما توقف عندهن أو تنتخطّى القاعدة.</p>
+</div>
+
+<div class="f low">
+  <h3><span class="tag low">منخفض</span> F-05 · ٤ فحوص <code>role === 'OWNER'</code> ميتة</h3>
+  <p><code>Layout.tsx:127</code> هو المكان <strong>الوحيد</strong> الي يقلب الدور
+  (<code>OWNER</code> → <code>ADMIN</code> والحقيقي بـ<code>actualRole</code>)،
+  فـ<code>role === 'OWNER'</code> ما تتحقق أبداً.</p>
+  <p><span class="lbl">الأثر الفعلي: صفر</span> — الأربعة كلهن يمرّون عبر <code>isAdmin</code>.
+  مذكورة <strong>كنظافة مو كعلّة</strong>: كود ميت يوهم القارئ إنه يسوي شي.</p>
+</div>
+
+<h2>الي طلع نظيفاً — وتأكدت منه</h2>
+<div class="clean">
+<ul>
+<li>✅ <b>صفر <code>dangerouslySetInnerHTML</code></b> وصفر <code>eval</code> — ماكو سطح XSS إطلاقاً</li>
+<li>✅ <b>صفر صنف <code>dark:</code></b> بالمكوّنات — قلب الوضع الليلي مركزي ١٠٠٪، والانضباط تام</li>
+<li>✅ <b>فخ الشفافية محلول</b> — المستوى <code>-50</code> مقلوب بالمتغيّر مو بالصنف، فـ<code>bg-slate-50/50</code> تنقلب وياه (٢٠٧ استعمال بضربة وحدة)</li>
+<li>✅ فخ <code>actualRole</code> محترَم — ٤١ استعمالاً صحيحاً</li>
+<li>✅ <b>تقسيم الكود ممتاز</b> — ١١٣ استيراداً كسولاً، الحزمة الأولى ١٢٣ ك.ب مضغوطة</li>
+<li>✅ الثقيلات (محرّك الشخصية ٥٦٥ ك.ب · Babylon ٥٢١ ك.ب) ما تنجلب إلا عند الحاجة</li>
+<li>✅ <code>tsc --noEmit</code> نظيف تماماً · <code>npm run build</code> ينجح</li>
+<li>✅ التوكن بـ<code>localStorage</code> مقايضة مقبولة: CSP صارم + صفر سطح XSS</li>
+</ul>
+</div>
+
+<h2>الخيط — نفسه بالضبط</h2>
+<table>
+<thead><tr><th>الي انبنى صح</th><th>الي انفلت</th></tr></thead>
+<tbody>
+<tr><td>حارس السباق مكتوب (<code>SalesBooking.tsx:131</code>)</td><td><b>٣١ موضع</b> بلا حارس</td></tr>
+<tr><td>مبدأ «ما انجلبت ≠ ماكو» موثَّق</td><td><b>٧٧ موضع</b> يسوّون العكس</td></tr>
+<tr><td>فخ <code>actualRole</code> مفهوم ومحترَم</td><td>٤ فحوص ميتة (بلا أثر)</td></tr>
+<tr><td>الوضع الليلي محلول بذكاء ومغطّى كامل</td><td>✅ ماكو انفلات</td></tr>
+</tbody>
+</table>
+<p>وأقوى مثال بكل الفحص هو <strong>F-01</strong>: الكاتب شاف الخطر بالضبط، وكتب حارساً،
+وحطّ تحذيراً أحمر، وقفل الزر — <strong>وبقى باب واحد مفتوح ما انتبه إله</strong>،
+لأن الحارس يمسك الفشل والسباق يمرّ بالنجاح.</p>
+<p>هذا مو سهو — هذا <strong>حدود ما يمسكه الانتباه البشري بلا اختبار</strong>.</p>
+
+<footer>
+تقرير المرحلة ٣ من ٤ · فرع <code>avg</code> · <code>2d196e6</code><br>
+الجاي: المرحلة ٤ — تاريخ الفريق ومناطق التعديل المتكرر، والتقرير النهائي الجامع<br>
+⚠️ ما انعدّل ولا سطر — التعديل كله بعد ما تخلص المراحل.
+</footer>
+</div>
+</body>
+</html>
