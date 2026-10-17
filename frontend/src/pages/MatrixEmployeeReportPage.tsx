@@ -1,3 +1,4 @@
+import DutiesCard from '../components/DutiesCard'
 import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import EmployeeLedger from '../components/EmployeeLedger'
@@ -104,6 +105,7 @@ export default function MatrixEmployeeReportPage() {
       </div>
 
       {err && <p className="rounded-lg bg-red-50 p-3 text-red-600">{err}</p>}
+      {id && <DutiesCard employeeId={id} />}
       {id && <EmployeeLedger employeeId={id} day={day} />}
       {!rep && !err && <p className="text-slate-400">ماتركس يحلّل…</p>}
 

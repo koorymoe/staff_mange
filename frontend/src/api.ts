@@ -5375,6 +5375,8 @@ export const api = {
     /** (ع 10-16) نموذج «تقرير تنفيذ المشروع» كامل */
     sheet?: unknown
   }) => request<WorkReport>('/work-reports', { method: 'POST', body: JSON.stringify(data) }),
+  getMyDuties: () => request<DutiesReport>('/duties/me'),
+  getEmployeeDuties: (employeeId: string) => request<DutiesReport>(`/duties/${encodeURIComponent(employeeId)}`),
   getEmployeeLedger: (employeeId: string, period: 'day' | 'month', day?: string) =>
     request<EmployeeLedger>(`/ai/employee-ledger?employeeId=${encodeURIComponent(employeeId)}&period=${period}${day ? `&day=${day}` : ''}`),
   reviewWorkReport: (id: string, note?: string) =>
@@ -6282,4 +6284,24 @@ export interface DrillRow {
 export interface DrillResult {
   key: string; title: string; explain: string; count: number; rows: DrillRow[]
   extra?: { completed: number; total: number }
+}
+
+/** «🎯 واجباتك اليوم» — (ع 10-17) */
+export interface Duty {
+  key: string
+  label: string
+  hint: string
+  done: number
+  pending: number | null
+  status: 'DONE' | 'PARTIAL' | 'MISSED' | 'INFO'
+  link?: string
+}
+export interface DutiesReport {
+  employeeId: string
+  position: string
+  duties: Duty[] | null
+  doneCount: number
+  total: number
+  verdict: 'GOOD' | 'PARTIAL' | 'BAD'
+  verdictAr: string
 }

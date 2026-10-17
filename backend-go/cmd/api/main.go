@@ -1203,6 +1203,9 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	// (ع) 10-16: «شنو سوّى هذا الموظف» — اليوم/الشهر بالتفصيل، من عيون ماتركس
 	employeeLedgerHandler := handler.NewEmployeeLedgerHandler(repository.NewEmployeeLedgerRepository(db))
 	mux.Handle("GET /api/ai/employee-ledger", middleware.Chain(http.HandlerFunc(employeeLedgerHandler.Get), requireAuth, requireMonitor))
+	dutiesHandler := handler.NewDutiesHandler(repository.NewDutiesRepository(db))
+	mux.Handle("GET /api/duties/me", middleware.Chain(http.HandlerFunc(dutiesHandler.Me), requireAuth))
+	mux.Handle("GET /api/duties/{employeeId}", middleware.Chain(http.HandlerFunc(dutiesHandler.ForEmployee), requireAuth, requireMonitor))
 	mux.Handle("GET /api/ai/group-performance", middleware.Chain(http.HandlerFunc(matrixReportHandler.Group), requireAuth, requireAdmin))
 	mux.Handle("GET /api/ai/feed", middleware.Chain(http.HandlerFunc(matrixCommandHandler.Feed), requireAuth, requireAdmin))
 	mux.Handle("GET /api/ai/daily-trend", middleware.Chain(http.HandlerFunc(matrixCommandHandler.Trend), requireAuth, requireAdmin))

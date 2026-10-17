@@ -1,3 +1,4 @@
+import DutiesCard from '../components/DutiesCard'
 import { positionTitle } from '../roleLabels'
 import { useEffect, useState } from 'react'
 import { bookingDone } from '../bookingDone'
@@ -477,6 +478,8 @@ function StaffDashboard() {
 
       {/* رصيد الدوار — يظهر بس للموظف الي أخذ منه */}
       <MyFundBalance />
+
+      <DutiesCard />
 
       {/* ═══ لوحة اليوم ═══
           «شنو صاير اليوم» و«شغلي اليوم» ولوحة الشرف ومخطط الحركة.

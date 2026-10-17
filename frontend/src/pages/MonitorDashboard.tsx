@@ -8,6 +8,7 @@ import EmptyState from '../components/EmptyState'
 import { matches } from '../utils/search'
 import { Link, useNavigate } from 'react-router-dom'
 import BookingCodeChip from '../components/BookingCodeChip'
+import DutiesCard from '../components/DutiesCard'
 
 const PAGE_SIZE = 10
 
@@ -108,6 +109,7 @@ export default function MonitorDashboard() {
 
   return (
     <div>
+      <div className="mb-6"><DutiesCard /></div>
       <div className="mb-6 flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-bold text-brand-900">لوحة المراقبة والتدقيق</h2>
