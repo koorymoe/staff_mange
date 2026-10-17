@@ -704,5 +704,34 @@ func matrixChatMigrations() []Migration {
 				"createdAt" TIMESTAMP NOT NULL DEFAULT now()
 			);
 		`,
+	}, {
+		// (ع) 10-17: إدارة المركبات تشمل «إجازات سوق الموظفين، والتعهدات وتخويل
+		// السياقة، وبطاقات البنزين» — الناقصات من الموجود (الوقود والعطلات والتنظيف).
+		Version: "0383_vehicle_drivers_fuel_cards",
+		SQL: `
+			CREATE TABLE IF NOT EXISTS "VehicleDriver" (
+				"employeeId" TEXT PRIMARY KEY REFERENCES "Employee"(id) ON DELETE CASCADE,
+				"licenseNumber" TEXT,
+				"licenseExpiry" DATE,
+				authorized BOOLEAN NOT NULL DEFAULT false,
+				"authorizedVehicles" TEXT,
+				"pledgeSignedAt" DATE,
+				"pledgeNote" TEXT,
+				"updatedById" TEXT REFERENCES "Employee"(id) ON DELETE SET NULL,
+				"updatedAt" TIMESTAMP NOT NULL DEFAULT now()
+			);
+			CREATE TABLE IF NOT EXISTS "FuelCard" (
+				id TEXT PRIMARY KEY,
+				number TEXT NOT NULL,
+				provider TEXT,
+				"vehicleId" TEXT REFERENCES "Vehicle"(id) ON DELETE SET NULL,
+				"holderEmployeeId" TEXT REFERENCES "Employee"(id) ON DELETE SET NULL,
+				"monthlyLimit" NUMERIC,
+				active BOOLEAN NOT NULL DEFAULT true,
+				notes TEXT,
+				"createdAt" TIMESTAMP NOT NULL DEFAULT now(),
+				"updatedAt" TIMESTAMP NOT NULL DEFAULT now()
+			);
+		`,
 	}}
 }

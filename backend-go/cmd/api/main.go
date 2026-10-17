@@ -1061,6 +1061,12 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 			"invoice_internal", "finance", "finance_audit", "monitoring", "auditing")))
 	mux.Handle("POST /api/bookings", middleware.Chain(http.HandlerFunc(bookingHandler.Create), requireAuth))
 	// (ع) 10-16: حجز ديكور مربوط — المنسق/المدير/المراقب
+	// (ع) 10-17: السواق (إجازة السوق والتعهد والتخويل) وبطاقات البنزين — إدارة المركبات
+	vehicleDriversHandler := handler.NewVehicleDriversHandler(db)
+	mux.Handle("GET /api/vehicle-drivers", middleware.Chain(http.HandlerFunc(vehicleDriversHandler.List), requireAuth, requireVehicleMgmt))
+	mux.Handle("PUT /api/vehicle-drivers/{employeeId}", middleware.Chain(http.HandlerFunc(vehicleDriversHandler.Save), requireAuth, requireVehicleMgmt))
+	mux.Handle("GET /api/fuel-cards", middleware.Chain(http.HandlerFunc(vehicleDriversHandler.Cards), requireAuth, requireVehicleMgmt))
+	mux.Handle("PUT /api/fuel-cards", middleware.Chain(http.HandlerFunc(vehicleDriversHandler.SaveCard), requireAuth, requireVehicleMgmt))
 	mux.Handle("GET /api/decor-rates", middleware.Chain(http.HandlerFunc(decorRateHandler.List), requireAuth))
 	mux.Handle("PUT /api/decor-rates", middleware.Chain(http.HandlerFunc(decorRateHandler.Save), requireAuth, requireAdmin))
 	mux.Handle("POST /api/bookings/{id}/decor", middleware.Chain(http.HandlerFunc(bookingHandler.CreateDecor), requireAuth,
@@ -2588,6 +2594,8 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	matrixProjectHandler := handler.NewMatrixProjectHandler(matrixProjectService)
 	// ⏱️ تأخير المشاريع (قرار (ع) 10-10)
 	projectDelayHandler := handler.NewProjectDelayHandler(db, matrixProjectService)
+	// (ع) 10-17: المتأخر بمرحلة مشروع ينطلب منه تفسير تلقائي (مرة كل ٢٤ ساعة لكل مرحلة)
+	service.StartProjectDelayEnforcer(db, matrixProjectService.Report, notificationRepo)
 	mux.Handle("GET /api/projects/stage-limits", middleware.Chain(http.HandlerFunc(projectDelayHandler.StageLimits), requireAuth, requireAdmin))
 	mux.Handle("PUT /api/projects/stage-limits", middleware.Chain(http.HandlerFunc(projectDelayHandler.SetStageLimit), requireAuth, requireAdmin))
 	mux.Handle("POST /api/projects/{id}/delay-reason", middleware.Chain(http.HandlerFunc(projectDelayHandler.AddReason), requireAuth))

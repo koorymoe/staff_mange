@@ -21,7 +21,7 @@
 import { lazy, Suspense, useEffect, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 
-import { api, type MonitorDeskCounts } from '../api'
+import { api, type MonitorDeskCounts, purchaseApi } from '../api'
 import { useSession } from '../session'
 
 const MonitorInboxPage = lazy(() => import('./MonitorInboxPage'))
@@ -222,6 +222,15 @@ export default function MonitorDeskPage() {
           <div className="space-y-6">
             {canInventory && <MonitorInventoryPage embedded />}
             <div className="border-t-2 border-slate-200 pt-4"><ProcurementWatchPanel /></div>
+            {/* (ع) 10-17: «الإكسل الي يطلع لأبو الكميات كله يطلع للمراقب» */}
+            <div className="flex flex-wrap items-center gap-2 rounded-xl bg-emerald-50 p-3">
+              <span className="text-sm font-bold text-emerald-900">⬇️ إكسل المشتريات الشهري (نفس ملف أبو الكميات):</span>
+              <input type="month" defaultValue={new Date().toISOString().slice(0, 7)} id="mon-purchase-month" className="rounded-lg border border-slate-300 px-2 py-1 text-sm" />
+              <button type="button" onClick={() => {
+                const m = (document.getElementById('mon-purchase-month') as HTMLInputElement | null)?.value || new Date().toISOString().slice(0, 7)
+                purchaseApi.monthlyExcel(m).catch((e) => alert(e instanceof Error ? e.message : 'تعذر'))
+              }} className="rounded-lg bg-emerald-700 px-3 py-1.5 text-sm font-bold text-white">نزّل</button>
+            </div>
           </div>
         )}
         {cur?.id === 'late' && <LateHub />}

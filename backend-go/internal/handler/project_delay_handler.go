@@ -22,7 +22,7 @@ func NewProjectDelayHandler(db *sqlx.DB, svc *service.MatrixProjectService) *Pro
 }
 
 // المراحل الي إلها حد (المكتمل والمرفوض ما إلهن)
-var projectStages = []string{"1. اتصال بالزبون", "2. مرحلة الكشف", "3. عرض السعر", "4. العقد", "📸 الإعلام", "5. البدء بالتنفيذ"}
+var projectStages = []string{"1. اتصال بالزبون", "2. مرحلة الكشف", "3. عرض السعر", "🔁 إعادة التسعير", "4. العقد", "📸 الإعلام", "5. البدء بالتنفيذ", "6. شراء مواد المشروع", "7. تسليم واستلام المنتجات"}
 
 // GET /api/projects/stage-limits
 func (h *ProjectDelayHandler) StageLimits(w http.ResponseWriter, r *http.Request) {

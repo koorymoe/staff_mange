@@ -16,9 +16,14 @@ var projectStages = []string{
 	"1. اتصال بالزبون",
 	"2. مرحلة الكشف",
 	"3. عرض السعر",
+	// (ع) 10-17: الزبون يرجع يتفاوض أو تتغيّر الكميات — المشروع يرجع للتسعير بوضوح
+	ProjectRepricingStage,
 	"4. العقد",
 	ProjectMediaStage,
 	"5. البدء بالتنفيذ",
+	// (ع) 10-17: داخل التنفيذ — فقرة للشراء لو احتاج المشروع منتج، وتسليم واستلام المنتجات
+	"6. شراء مواد المشروع",
+	"7. تسليم واستلام المنتجات",
 	"✅ مكتمل",
 	"❌ مرفوض",
 }
@@ -31,9 +36,14 @@ const ProjectExecutionStage = "5. البدء بالتنفيذ"
 // ProjectMediaStage قرار (ع) 10-05: قبل التنفيذ المشروع يتحوّل للإعلام حتى يصوّرون الشغل.
 const ProjectMediaStage = "📸 الإعلام"
 
+// ProjectRepricingStage (ع) 10-17: «حالة إعادة التسعير» — مرحلة متابَعة مثل غيرها.
+const ProjectRepricingStage = "🔁 إعادة التسعير"
+
 // stageUnlocksBooking المكتمل يفتح بعد، لو المشروع قفز المرحلة.
 func stageUnlocksBooking(stage string) bool {
-	return stage == ProjectExecutionStage || stage == "✅ مكتمل"
+	// مراحل الشراء والتسليم جوّا التنفيذ — الحجز يبقى مفتوح للكادر
+	return stage == ProjectExecutionStage || stage == "✅ مكتمل" ||
+		strings.HasPrefix(stage, "6.") || strings.HasPrefix(stage, "7.")
 }
 
 // BookingUnlocker يخلي خدمة المشاريع تفتح الحجز بدون ما تعتمد على

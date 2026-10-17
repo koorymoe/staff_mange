@@ -93,7 +93,7 @@ func (h *ProjectQuoteWatchHandler) List(w http.ResponseWriter, r *http.Request) 
 		         (SELECT min(q."createdAt") FROM "Quotation" q WHERE q."projectId" = p.id) AS quoted,
 		         -- عبر مرحلة الاتصال = تواصل · عبر مرحلة عرض السعر = انطى سعر
 		         (p.stage NOT LIKE '1.%') AS "pastContact",
-		         (p.stage LIKE '4.%' OR p.stage LIKE '5.%' OR p.stage LIKE '%الإعلام%') AS "pastQuote"
+		         (p.stage LIKE '4.%' OR p.stage LIKE '5.%' OR p.stage LIKE '6.%' OR p.stage LIKE '7.%' OR p.stage LIKE '%الإعلام%' OR p.stage LIKE '%إعادة التسعير%') AS "pastQuote"
 		  FROM "Project" p
 		  WHERE p.stage NOT LIKE '%مرفوض%' AND p.stage NOT LIKE '%مكتمل%'
 		)
