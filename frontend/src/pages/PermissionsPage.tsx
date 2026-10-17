@@ -271,6 +271,21 @@ export default function PermissionsPage({ embedded = false }: { embedded?: boole
             className="rounded-xl bg-gradient-to-l from-brand-500 to-brand-800 px-5 py-2.5 text-sm font-bold text-white disabled:opacity-50">
             {auditBusy ? 'جاري الفحص...' : 'افحص الآن'}
           </button>
+          {/* (ع) 10-17: الي تطلعله شاشة بمنصبه ياخذ صلاحيتها مسجّلة — وبعدين لمن تشيلها تروح */}
+          <button
+            disabled={auditBusy}
+            onClick={async () => {
+              if (!window.confirm('كل موظف ياخذ صلاحيات منصبه الناقصة (إضافة بس، ما ينشال شي). نكمّل؟')) return
+              setAuditBusy(true)
+              try {
+                const done = await api.applyDefaultsAll()
+                alert(done.length === 0 ? 'كل الموظفين عندهم صلاحيات مناصبهم ✓' : `انضافت الصلاحيات لـ${done.length} موظف:\n` + done.map((d) => `• ${d.employeeName}: ${(d.missingLabels ?? d.missing).join('، ')}`).join('\n'))
+                setAudit(await api.auditRoleDefaults())
+              } catch (e) { alert(e instanceof Error ? e.message : 'تعذر') } finally { setAuditBusy(false) }
+            }}
+            className="rounded-xl bg-emerald-600 px-5 py-2.5 text-sm font-bold text-white disabled:opacity-50">
+            ⚡ انطِ كل موظف صلاحيات منصبه
+          </button>
         </div>
 
         {audit && audit.length === 0 && (

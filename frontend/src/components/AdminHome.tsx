@@ -599,7 +599,7 @@ export default function AdminHome({ name }: { name?: string }) {
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h2 className="text-2xl font-extrabold text-[#0f2040]">{name ? `هلا ${name}` : 'مدير النظام'}</h2>
+          <h2 className="text-2xl font-extrabold text-[#0f2040]">{name ? `هلا يا ${name}` : 'مدير النظام'}</h2>
           <p className="text-sm text-slate-500">كل شي بالشركة بمكان واحد — شوف وتحرك.</p>
         </div>
         <div className="flex flex-wrap gap-2">

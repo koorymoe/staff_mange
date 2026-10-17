@@ -108,6 +108,16 @@ func (h *PermissionHandler) ApplyDefaults(w http.ResponseWriter, r *http.Request
 	WriteJSON(w, http.StatusOK, perms)
 }
 
+// POST /api/permissions/apply-defaults-all — «⚡ انطِ كل موظف صلاحيات منصبه».
+func (h *PermissionHandler) ApplyDefaultsAll(w http.ResponseWriter, r *http.Request) {
+	rows, err := h.service.ApplyDefaultsAll()
+	if err != nil {
+		WriteError(w, http.StatusInternalServerError, "تعذر منح الصلاحيات")
+		return
+	}
+	WriteJSON(w, http.StatusOK, rows)
+}
+
 // GET /api/v1/permissions/role-defaults
 func (h *PermissionHandler) RoleDefaults(w http.ResponseWriter, r *http.Request) {
 	WriteJSON(w, http.StatusOK, h.service.RoleDefaults())

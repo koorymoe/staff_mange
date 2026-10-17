@@ -5025,6 +5025,11 @@ export const api = {
     request<Permission[]>(`/permissions/employee/${employeeId}/apply-defaults`, { method: 'POST' }),
   // فحص: منو ناقصه صلاحيات دوره. قراءة بس — ما يمنح ولا صلاحية.
   auditRoleDefaults: () => request<MissingRoleDefault[]>('/permissions/audit-defaults'),
+  getHandoverPreview: (id: string) =>
+    request<{ position: string; permissions: number; bookings: number; missions: number; projects: number; complaints: number; extraTasks: number; deptHead: number }>(`/employees/${id}/handover`),
+  handoverEmployee: (id: string, toEmployeeId: string) =>
+    request<unknown>(`/employees/${id}/handover`, { method: 'POST', body: JSON.stringify({ toEmployeeId }) }),
+  applyDefaultsAll: () => request<MissingRoleDefault[]>('/permissions/apply-defaults-all', { method: 'POST' }),
   // ⚠️ `all=1` للشاشة الإدارية (يشمل المعطّل)، ومنتقي الحجز ياخذ
   // الفعّال بس حتى ما ينحجز لقسم انلغى.
   /** فاتورة جي بي اس / داش كام بسعر يكتبه مسؤول الخدمة — مسار منفصل

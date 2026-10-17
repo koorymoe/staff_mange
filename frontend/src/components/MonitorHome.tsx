@@ -1,3 +1,4 @@
+import { positionTitle } from '../roleLabels'
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { drillTo } from '../utils/drill'
@@ -124,7 +125,7 @@ export default function MonitorHome() {
       <section className="flex flex-wrap items-center justify-between gap-4 rounded-3xl bg-gradient-to-l from-[#0f2040] via-[#1e3a8a] to-[#1e40af] p-6 text-white shadow-lg">
         <div>
           <span className="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-3 py-0.5 text-xs"><i className="h-2 w-2 rounded-full bg-emerald-400" /> متصل</span>
-          <h2 className="mt-2 text-3xl font-extrabold">مرحباً، {employee?.name}</h2>
+          <h2 className="mt-2 text-3xl font-extrabold">مرحباً يا {positionTitle(employee)}</h2>
           <p className="mt-1 text-sm opacity-80">هذه نظرة سريعة على عملك اليوم</p>
         </div>
         <Clock />

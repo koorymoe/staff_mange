@@ -995,6 +995,11 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	mux.Handle("GET /api/permissions/employees", middleware.Chain(http.HandlerFunc(permissionHandler.EmployeesWithPermission), requireAuth, requireAdmin))
 	mux.Handle("GET /api/permissions/employee/{id}", middleware.Chain(http.HandlerFunc(permissionHandler.ListForEmployee), requireAuth))
 	mux.Handle("PUT /api/permissions/employee/{id}", middleware.Chain(http.HandlerFunc(permissionHandler.SetForEmployee), requireAuth, requireAdmin))
+	// (ع) 10-17: تسليم شغل موظف لموظف جديد — المنصب والصلاحيات والشغل المفتوح
+	employeeHandoverHandler := handler.NewEmployeeHandoverHandler(repository.NewEmployeeHandoverRepository(db))
+	mux.Handle("GET /api/employees/{id}/handover", middleware.Chain(http.HandlerFunc(employeeHandoverHandler.Preview), requireAuth, requireAdmin))
+	mux.Handle("POST /api/employees/{id}/handover", middleware.Chain(http.HandlerFunc(employeeHandoverHandler.Handover), requireAuth, requireAdmin))
+	mux.Handle("POST /api/permissions/apply-defaults-all", middleware.Chain(http.HandlerFunc(permissionHandler.ApplyDefaultsAll), requireAuth, requireAdmin))
 	mux.Handle("POST /api/permissions/employee/{id}/apply-defaults", middleware.Chain(http.HandlerFunc(permissionHandler.ApplyDefaults), requireAuth, requireAdmin))
 
 	// الخدمات والمهارات — القراءة لأي مسجل دخول، الإضافة لمدير النظام فقط
@@ -2481,6 +2486,17 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 		for {
 			time.Sleep(time.Hour)
 			matrixSuggestService.Evaluate()
+		}
+	}()
+	// (ع) 10-17: كل موظف ياخذ صلاحيات منصبه مسجّلة تلقائياً — أول ما يشتغل
+	// الخادم وبعدين كل ٦ ساعات (موظف جديد، منصب تغيّر…). إضافة بس.
+	go func() {
+		time.Sleep(time.Minute)
+		for {
+			if rows, err := permissionService.ApplyDefaultsAll(); err == nil && len(rows) > 0 {
+				log.Printf("[permissions] انضافت صلاحيات المنصب لـ%d موظف", len(rows))
+			}
+			time.Sleep(6 * time.Hour)
 		}
 	}()
 	matrixSuggestHandler := handler.NewMatrixSuggestHandler(matrixSuggestService)

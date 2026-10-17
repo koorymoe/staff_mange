@@ -691,5 +691,18 @@ func matrixChatMigrations() []Migration {
 			ALTER TABLE "BookingProgressReport" ADD COLUMN IF NOT EXISTS "reviewedById" TEXT REFERENCES "Employee"(id) ON DELETE SET NULL;
 			ALTER TABLE "BookingProgressReport" ADD COLUMN IF NOT EXISTS "reviewNote" TEXT;
 		`,
+	}, {
+		// (ع) 10-17: «من يطلع موظف، نختار موظف ويترحّل كلشي إله» — سجل التسليم.
+		Version: "0382_employee_handover",
+		SQL: `
+			CREATE TABLE IF NOT EXISTS "EmployeeHandover" (
+				id TEXT PRIMARY KEY,
+				"fromId" TEXT NOT NULL REFERENCES "Employee"(id) ON DELETE CASCADE,
+				"toId" TEXT NOT NULL REFERENCES "Employee"(id) ON DELETE CASCADE,
+				"byId" TEXT REFERENCES "Employee"(id) ON DELETE SET NULL,
+				summary JSONB NOT NULL,
+				"createdAt" TIMESTAMP NOT NULL DEFAULT now()
+			);
+		`,
 	}}
 }

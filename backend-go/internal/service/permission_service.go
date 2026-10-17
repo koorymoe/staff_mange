@@ -96,6 +96,27 @@ func (s *PermissionService) ApplyDefaults(employeeID string) ([]model.Permission
 	return s.permissions.ListForEmployee(employeeID)
 }
 
+// ApplyDefaultsAll — (ع) 10-17: «أي أحد مفتوحة عنده شاشة بدون صلاحية، النظام
+// يكتشف وينطيه الصلاحية» — كل موظف فعّال ياخذ صلاحيات منصبه (وأدواره الثانوية)
+// مسجّلة. إضافة بس، ما ينشال شي. يرجّع منو انضافله شنو.
+func (s *PermissionService) ApplyDefaultsAll() ([]MissingRoleDefault, error) {
+	missing, err := s.AuditRoleDefaults()
+	if err != nil {
+		return nil, err
+	}
+	done := []MissingRoleDefault{}
+	for _, m := range missing {
+		if len(m.Missing) == 0 {
+			continue
+		}
+		if _, err := s.ApplyDefaults(m.EmployeeID); err != nil {
+			continue
+		}
+		done = append(done, m)
+	}
+	return done, nil
+}
+
 func (s *PermissionService) RoleDefaults() map[string][]string {
 	return model.RoleDefaultPermissions
 }

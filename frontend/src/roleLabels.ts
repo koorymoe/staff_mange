@@ -85,6 +85,17 @@ export function roleLabel(role: string | null | undefined): string {
   return ROLE_LABELS[role as EmployeeRole] ?? role
 }
 
+/**
+ * المنصب للتحية — (ع) 10-17: «النظام يعتمد على المنصب مو على الاسم»: من
+ * يطلع موظف ويستلم مكانه واحد ثاني، الشاشات ما تتغيّر. «صباح الخير يا مراقب».
+ */
+export function positionTitle(e: { role?: string | null; actualRole?: string | null; isLeader?: boolean } | null | undefined): string {
+  if (!e) return ''
+  if (e.actualRole === 'OWNER') return 'صاحب الشركة'
+  if (e.isLeader && (e.role === 'TECHNICIAN' || e.role === 'TECHNICAL')) return 'تيم ليدر'
+  return roleLabelShort(e.role)
+}
+
 /** نفسها بالمختصر — ويرجع للكامل إذا ماكو اختصار. */
 export function roleLabelShort(role: string | null | undefined): string {
   if (!role) return '—'

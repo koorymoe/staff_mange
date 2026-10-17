@@ -1,3 +1,4 @@
+import { positionTitle } from '../roleLabels'
 import { useEffect, useState } from 'react'
 import { bookingDone } from '../bookingDone'
 import PeerCheckinCard from '../components/PeerCheckinCard'
@@ -76,7 +77,7 @@ function ProgressRing({ percent, size = 56, stroke = 5, color }: { percent: numb
 // لأن الرئيسية القديمة بيها عشرات الخطافات — ما ينفع return قبلها.
 export default function Dashboard() {
   const { employee } = useSession()
-  if (employee?.role === 'ADMIN') return <AdminHome name={employee.name} />
+  if (employee?.role === 'ADMIN') return <AdminHome name={positionTitle(employee)} />
   return <StaffDashboard />
 }
 
@@ -456,10 +457,10 @@ function StaffDashboard() {
               {greetingPhase === 'time' ? (
                 <>
                   <span className="greet-icon ml-1 inline-block">{greet.icon}</span>
-                  {greet.text}، {employee.name}
+                  {greet.text} يا {positionTitle(employee)}
                 </>
               ) : (
-                <>مرحباً، {employee.name}</>
+                <>مرحباً يا {positionTitle(employee)}</>
               )}
             </h1>
             <p className="mt-2 text-sm text-blue-200/80">{formatDate()}</p>

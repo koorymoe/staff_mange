@@ -3,6 +3,7 @@ import { api, LEADER_SKILLS, type Employee, type Service, type Stats } from '../
 import EmployeeHRPanel from '../components/EmployeeHRPanel'
 import EmployeeAvatar from '../components/EmployeeAvatar'
 import { useSession } from '../session'
+import EmployeeHandoverDialog from '../components/EmployeeHandoverDialog'
 import { useSaveGuard } from '../useSaveGuard'
 import SaveError from '../components/SaveError'
 import StatTile from '../components/StatTile'
@@ -68,6 +69,7 @@ export default function Employees({ embedded }: { embedded?: boolean } = {}) {
   const canEditAll = isAdmin || userPermissions.includes('employee_edit_all')
   const canSuspend = isAdmin || userPermissions.includes('employee_suspend')
   const [editAllOpen, setEditAllOpen] = useState(false)
+  const [handoverOpen, setHandoverOpen] = useState(false)
 
   // ═══ حفظ صورة موظف ═══
   // نحدّث القائمة والمختار بالجواب الراجع من السيرفر — مو بالقيمة الي
@@ -385,6 +387,10 @@ export default function Employees({ embedded }: { embedded?: boolean } = {}) {
       </div>
 
       {/* Add Employee Wizard */}
+      {handoverOpen && selectedEmployee && (
+        <EmployeeHandoverDialog from={selectedEmployee} employees={employees} onClose={() => setHandoverOpen(false)}
+          onDone={() => { setHandoverOpen(false); setSelectedId(null); load(); alert('انسلّم الشغل ✓ — المستلم صار عنده كلشي، والقديم توقّف حسابه') }} />
+      )}
       {editAllOpen && selectedEmployee && (
         <EditAllModal employee={selectedEmployee} allowRole={isAdmin || canIdentity}
           onClose={() => setEditAllOpen(false)}
@@ -603,6 +609,9 @@ export default function Employees({ embedded }: { embedded?: boolean } = {}) {
                       <div className="relative mt-4 flex flex-wrap gap-2">
                         {canEditAll && selectedEmployee.status === 'ACTIVE' && roleInScope(selectedEmployee.role) && (
                           <button onClick={() => setEditAllOpen(true)} className="rounded-lg bg-sky-500/20 px-3 py-1.5 text-xs font-bold text-sky-100 hover:bg-sky-500/30">✏️ تعديل كل البيانات</button>
+                        )}
+                        {isAdmin && selectedEmployee.id !== currentUser?.id && selectedEmployee.status === 'ACTIVE' && selectedEmployee.role !== 'ADMIN' && (
+                          <button onClick={() => setHandoverOpen(true)} className="rounded-lg bg-amber-500/20 px-3 py-1.5 text-xs font-bold text-amber-100 hover:bg-amber-500/30">🔁 تسليم شغله لموظف جديد</button>
                         )}
                         {canSuspend && selectedEmployee.id !== currentUser?.id && (selectedEmployee.status === 'ACTIVE' ? (
                           <button onClick={async () => {
