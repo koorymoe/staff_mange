@@ -15,7 +15,7 @@ func (r *ProjectRepository) ProjectValueRows() ([]model.ProjectValueRow, error) 
 	rows := []model.ProjectValueRow{}
 	err := r.db.Select(&rows, `
 		SELECT p.id, p.code, p.name, p.stage, p."workType", p.priority, p.price,
-			`+priceValueExpr+` AS "priceValue",
+			COALESCE(cv.amount, `+priceValueExpr+`) AS "priceValue",
 			(SELECT q."netTotal" FROM "Quotation" q WHERE q."projectId" = p.id ORDER BY q."createdAt" DESC LIMIT 1) AS "quotedAmount",
 			COALESCE(pp.paid, 0) AS "paidAmount", COALESCE(pp.unverified, 0) AS "unverifiedAmount",
 			c.name AS "createdByName",
@@ -29,9 +29,10 @@ func (r *ProjectRepository) ProjectValueRows() ([]model.ProjectValueRow, error) 
 		LEFT JOIN "Employee" resp  ON resp.id = p."responsibleEmployeeId"
 		LEFT JOIN "Employee" surv  ON surv.id = p."surveyorEmployeeId"
 		LEFT JOIN "Employee" deleg ON deleg.id = p."delegatedToEmployeeId"
+		LEFT JOIN "ProjectContractValue" cv ON cv."projectId" = p.id
 		LEFT JOIN LATERAL (SELECT SUM(amount) AS paid, SUM(amount) FILTER (WHERE "verifiedAt" IS NULL) AS unverified
 			FROM "ProjectPayment" WHERE "projectId" = p.id AND "cancelledAt" IS NULL) pp ON true
-		ORDER BY `+priceValueExpr+` DESC NULLS LAST, COALESCE(pp.paid, 0) DESC, p."createdAt" DESC`)
+		ORDER BY COALESCE(cv.amount, `+priceValueExpr+`) DESC NULLS LAST, COALESCE(pp.paid, 0) DESC, p."createdAt" DESC`)
 	return rows, err
 }
 
@@ -68,8 +69,17 @@ func (r *ProjectRepository) ProjectEmployeeStats() ([]model.ProjectEmployeeStatR
 
 // FillInfo يكمّل معلومات المشروع الناقصة من الإحصائيات — طلب (ع) 10-10:
 // «كل المعلومات المبهمة تنكتب لمرة وحدة». الفارغ ما يمسح الموجود.
-func (r *ProjectRepository) FillInfo(id string, price, responsibleID *string) error {
-	res, err := r.db.Exec(`UPDATE "Project" SET
+//
+// (ع) 10-19: السعر هنا هو قيمة العقد نفسها — چان ينحفظ بنص السعر بس،
+// وشاشة الدفعات تقرا «قيمة العقد» المسجّلة أول، فتعديل المالك ما يبين.
+// هسه الاثنين ينحفظون سوه بنفس المعاملة.
+func (r *ProjectRepository) FillInfo(id, byID string, price, responsibleID *string) error {
+	tx, err := r.db.Beginx()
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback() }()
+	res, err := tx.Exec(`UPDATE "Project" SET
 		price = COALESCE(NULLIF(btrim($2), ''), price),
 		"responsibleEmployeeId" = COALESCE(NULLIF($3, ''), "responsibleEmployeeId"),
 		"updatedAt" = now()
@@ -80,5 +90,12 @@ func (r *ProjectRepository) FillInfo(id string, price, responsibleID *string) er
 	if n, _ := res.RowsAffected(); n == 0 {
 		return sql.ErrNoRows
 	}
-	return nil
+	if _, err := tx.Exec(`INSERT INTO "ProjectContractValue" ("projectId", amount, "setById")
+		SELECT $1, v, NULLIF($3, '') FROM (SELECT NULLIF(regexp_replace(COALESCE($2, ''), '\D', '', 'g'), '')::numeric AS v) x
+		WHERE v > 0
+		ON CONFLICT ("projectId") DO UPDATE SET amount = EXCLUDED.amount, "setById" = EXCLUDED."setById", "setAt" = now()`,
+		id, price, byID); err != nil {
+		return err
+	}
+	return tx.Commit()
 }

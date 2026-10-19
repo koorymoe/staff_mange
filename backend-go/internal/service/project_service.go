@@ -397,6 +397,6 @@ func (s *ProjectService) Delete(id string) error {
 }
 
 // FillInfo يكمّل السعر والمسؤول من شاشة الإحصائيات.
-func (s *ProjectService) FillInfo(id string, price, responsibleID *string) error {
-	return s.repo.FillInfo(id, price, responsibleID)
+func (s *ProjectService) FillInfo(id, byID string, price, responsibleID *string) error {
+	return s.repo.FillInfo(id, byID, price, responsibleID)
 }

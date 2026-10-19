@@ -95,7 +95,7 @@ func (h *ProjectHandler) FillInfo(w http.ResponseWriter, r *http.Request) {
 		WriteError(w, http.StatusBadRequest, "بيانات غير صالحة")
 		return
 	}
-	if err := h.service.FillInfo(r.PathValue("id"), in.Price, in.ResponsibleID); err != nil {
+	if err := h.service.FillInfo(r.PathValue("id"), middleware.EmployeeIDFromContext(r), in.Price, in.ResponsibleID); err != nil {
 		log.Printf("project fill-info failed: %v", err)
 		WriteError(w, http.StatusBadRequest, "تعذر حفظ المعلومات")
 		return

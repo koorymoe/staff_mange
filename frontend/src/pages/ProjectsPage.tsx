@@ -829,8 +829,8 @@ function ProjectCard({ p, canManage, onEdit, onMove, onReport, onDelete, onRefre
   return (
     <div className="bg-white rounded-2xl shadow-sm p-5 relative" style={{ borderRight: `10px solid ${borderColor}`, opacity: isRejected ? 0.92 : 1 }}>
       <div className="absolute top-0 left-0 text-white text-xs px-3 py-1 rounded-bl-xl font-bold"
-        style={{ background: isRejected ? '#6b7280' : '#f59e0b' }}>
-        📅 انتهاء تقريبي: {p.deliveryDate || '---'}
+        style={{ background: isRejected ? '#6b7280' : isCompleted ? '#16a34a' : '#f59e0b' }}>
+        {isCompleted ? '✅ منتهي' : `📅 انتهاء تقريبي: ${p.deliveryDate || '---'}`}
       </div>
 
       {/* المرحلة بأعلى وسط البطاقة — أهم معلومة، تنقرا بلمحة بدون تدوير */}

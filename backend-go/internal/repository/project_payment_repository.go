@@ -127,7 +127,12 @@ func (r *ProjectPaymentRepository) Cancel(id, byID, reason string) error {
 	return err
 }
 
+// والنص بالمشروع يتحدّث وياها حتى الإحصائيات والبطاقة تشوف نفس الرقم.
 func (r *ProjectPaymentRepository) SetContractValue(projectID, byID string, amount float64) error {
+	if _, err := r.db.Exec(`UPDATE "Project" SET price = to_char($2::numeric, 'FM999,999,999,999,999'), "updatedAt" = now() WHERE id = $1`,
+		projectID, amount); err != nil {
+		return err
+	}
 	_, err := r.db.Exec(`INSERT INTO "ProjectContractValue" ("projectId", amount, "setById") VALUES ($1, $2, $3)
 		ON CONFLICT ("projectId") DO UPDATE SET amount = EXCLUDED.amount, "setById" = EXCLUDED."setById", "setAt" = now()`,
 		projectID, amount, byID)
