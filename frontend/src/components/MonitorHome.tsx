@@ -85,10 +85,18 @@ export default function MonitorHome() {
   const [summary, setSummary] = useState<{ customerCount: number } | null>(null)
   const [alerts, setAlerts] = useState<MonitorReview[]>([])
   const [pending, setPending] = useState<number | null>(null)
+  // استقرار النظام = الي مو بالأحمر ÷ كل الموظفين تحت المراقبة (نفس مركز قيادة ماتركس)
+  const [stability, setStability] = useState<number | null>(null)
 
   useEffect(() => {
     let alive = true
     api.getTodayBoard().then((x) => { if (alive) setBoard(x) }).catch(() => {})
+    api.getRoleWatch().then((g) => {
+      if (!alive) return
+      const people = g.reduce((n, x) => n + x.employees.length, 0)
+      const red = g.reduce((n, x) => n + (x.employees.length ? x.red : 0), 0)
+      setStability(people ? Math.round(((people - red) / people) * 100) : 100)
+    }).catch(() => {})
     api.getFinanceSummary().then((x) => { if (alive) setFin(x) }).catch(() => {})
     api.getDashboardSummary().then((x) => { if (alive) setSummary(x) }).catch(() => {})
     api.getMonitorReviews({ status: 'PENDING', limit: 30 })
@@ -131,11 +139,17 @@ export default function MonitorHome() {
         <Clock />
       </section>
 
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
         <StatCard label="حجوزات اليوم" value={board ? fmt(board.bookingsToday) : '…'} to={drillTo('today_scheduled')} tone="blue" icon="📅" />
         <StatCard label="مكتملة اليوم" value={board ? fmt(board.completedToday) : '…'} to={drillTo('completed_today')} tone="green" icon="✅" />
         <StatCard label="بالميدان هسه" value={board ? fmt(board.inField) : '…'} to={drillTo('in_field')} tone="amber" icon="⏳" />
         <StatCard label="تحتاج متابعة" value={pending ?? '…'} to={linkIf('/monitor-inbox')} tone="red" icon="❗" />
+        {/* (ع) 10-19: «استقرارية النظام ونسبة نجاح الأسبوع لازم تطلع عد المراقب» —
+            نفس حساب لوحة المدير بالضبط (TodayBoard وMatrixCommandCenter). */}
+        <StatCard label="نجاح الأسبوع"
+          value={board ? (board.weekTotal > 0 ? `${Math.round((board.weekCompleted / board.weekTotal) * 100)}٪` : '—') : '…'}
+          to={drillTo('week')} tone="green" icon="📈" />
+        <StatCard label="استقرار النظام" to={null} value={stability == null ? '…' : `${stability}٪`} tone="blue" icon="〰️" />
       </div>
 
       <div className="grid gap-4 lg:grid-cols-5">

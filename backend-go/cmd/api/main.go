@@ -1214,7 +1214,8 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	mux.Handle("GET /api/ai/late-focus", middleware.Chain(http.HandlerFunc(matrixCommandHandler.LateFocus), requireAuth, requireAdmin))
 	mux.Handle("POST /api/ai/ask", middleware.Chain(http.HandlerFunc(matrixCommandHandler.Ask), requireAuth, requireAdmin))
 	mux.Handle("GET /api/ai/business", middleware.Chain(http.HandlerFunc(matrixReportHandler.Business), requireAuth, requireAdmin))
-	mux.Handle("GET /api/ai/role-watch", middleware.Chain(http.HandlerFunc(matrixDecisionsHandler.RoleWatch), requireAuth, requireAdmin))
+	// (ع) 10-19: «استقرارية النظام… لازم تطلع عد المراقب» — نفس حارس تقرير الموظف.
+	mux.Handle("GET /api/ai/role-watch", middleware.Chain(http.HandlerFunc(matrixDecisionsHandler.RoleWatch), requireAuth, requireMonitor))
 	mux.Handle("GET /api/ai/decisions", middleware.Chain(http.HandlerFunc(matrixDecisionsHandler.Get), requireAuth, requireAdmin))
 	mux.Handle("POST /api/ai/actions/kinds/{kind}/resume", middleware.Chain(http.HandlerFunc(matrixDecisionsHandler.Resume), requireAuth, requireAdmin))
 	mux.Handle("POST /api/ai/actions/{id}/undo", middleware.Chain(http.HandlerFunc(matrixDecisionsHandler.Undo), requireAuth, requireAdmin))
