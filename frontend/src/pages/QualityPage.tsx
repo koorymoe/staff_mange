@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
-import { api, type QualityIssue, type Employee } from '../api'
+import { Link } from 'react-router-dom'
+import { api, complaintTypeLabels, type Complaint, type QualityIssue, type Employee } from '../api'
 import { useSaveGuard } from '../useSaveGuard'
 import SaveError from '../components/SaveError'
 import { loadFailed } from '../netErrors'
@@ -26,6 +27,17 @@ export default function QualityPage() {
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
   const [responsible, setResponsible] = useState('')
+
+  // (ع) 10-19: «هنا الجودة للمالك والمدير المفروض تضهر الشكاوي والمشاكل…
+  // شو فارغة تطلعلي بس اضيف شكوى». شكاوى الزبائن المفتوحة فوق، والإضافة تنطوي.
+  const [complaints, setComplaints] = useState<Complaint[] | null>(null)
+  const [showForm, setShowForm] = useState(false)
+  useEffect(() => {
+    let alive = true
+    api.getComplaints().then((r) => { if (alive) setComplaints(r) }).catch(() => { if (alive) setComplaints(null) })
+    return () => { alive = false }
+  }, [])
+  const openComplaints = (complaints ?? []).filter((c) => c.status === 'NEW' || c.status === 'IN_PROGRESS')
 
   const load = () => api.getQualityIssues(filter === 'ALL' ? undefined : filter).then(setIssues).catch(loadFailed)
 
@@ -57,7 +69,42 @@ export default function QualityPage() {
         <p className="mt-1 text-slate-500">مشاكل التنفيذ الميدانية، ومشاكل الرقابة الإدارية/القيادية والمسؤولين عنها</p>
       </div>
 
-      <form onSubmit={handleSubmit} className="grid grid-cols-1 gap-3 rounded-xl border border-white bg-white p-6 shadow-[0_4px_20px_rgba(15,32,64,0.06)] sm:grid-cols-2">
+      {complaints && (
+        <section className="rounded-xl border border-white bg-white p-5 shadow-[0_4px_20px_rgba(15,32,64,0.06)]">
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+            <h3 className="font-extrabold text-brand-900">🎧 شكاوى الزبائن المفتوحة <span className="rounded-full bg-red-100 px-2 py-0.5 text-xs text-red-700">{openComplaints.length}</span></h3>
+            <Link to="/complaints" className="rounded-lg bg-brand-600 px-3 py-1.5 text-xs font-bold text-white hover:brightness-110">افتح متابعة الشكاوى وعالجها ←</Link>
+          </div>
+          {openComplaints.length === 0 ? (
+            <p className="text-sm text-emerald-700">ماكو شكوى مفتوحة ✓</p>
+          ) : (
+            <div className="divide-y divide-slate-100">
+              {openComplaints.slice(0, 10).map((c) => (
+                <div key={c.id} className="flex flex-wrap items-center justify-between gap-2 py-2 text-sm">
+                  <div>
+                    <b className="text-slate-800">{c.isVip ? '👑 ' : ''}{c.customer?.name ?? '—'}</b>
+                    <span className="mr-2 text-xs text-slate-500">{complaintTypeLabels[c.type] ?? c.type}</span>
+                    <p className="text-xs text-slate-500 line-clamp-1">{c.description}</p>
+                  </div>
+                  <div className="flex items-center gap-2 text-xs">
+                    <span className="text-slate-500">{c.assignedToEmployee?.name ?? 'بلا مسؤول'}</span>
+                    <span className={`rounded-full px-2 py-0.5 font-bold ${c.status === 'NEW' ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700'}`}>{c.status === 'NEW' ? 'جديدة' : 'قيد المعالجة'}</span>
+                    {!c.contactedAt && <span className="rounded-full bg-slate-100 px-2 py-0.5 font-bold text-slate-600">ما تواصلنا</span>}
+                  </div>
+                </div>
+              ))}
+              {openComplaints.length > 10 && <p className="pt-2 text-xs text-slate-500">و{openComplaints.length - 10} ثانية — بمتابعة الشكاوى.</p>}
+            </div>
+          )}
+        </section>
+      )}
+
+      <div className="flex items-center justify-between">
+        <h3 className="font-extrabold text-brand-900">🛠️ مشاكل الجودة الداخلية</h3>
+        <button type="button" onClick={() => setShowForm((v) => !v)} className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-bold text-slate-700 hover:bg-slate-50">{showForm ? 'إخفاء' : '+ سجّل مشكلة'}</button>
+      </div>
+
+      {showForm && <form onSubmit={handleSubmit} className="grid grid-cols-1 gap-3 rounded-xl border border-white bg-white p-6 shadow-[0_4px_20px_rgba(15,32,64,0.06)] sm:grid-cols-2">
         <select value={category} onChange={(e) => setCategory(e.target.value as typeof category)} className="rounded-lg border border-slate-300 px-3 py-2">
           <option value="EXECUTION">مشكلة تنفيذية (ميدانية)</option>
           <option value="OVERSIGHT">مشكلة رقابية (إدارية/قيادية)</option>
@@ -69,7 +116,7 @@ export default function QualityPage() {
         <input required placeholder="عنوان المشكلة" value={title} onChange={(e) => setTitle(e.target.value)} className="rounded-lg border border-slate-300 px-3 py-2 sm:col-span-2" />
         <textarea placeholder="تفاصيل إضافية (اختياري)" value={description} onChange={(e) => setDescription(e.target.value)} rows={2} className="rounded-lg border border-slate-300 px-3 py-2 sm:col-span-2" />
         <button type="submit" className="sm:col-span-2 rounded-lg bg-gradient-to-l from-brand-500 to-brand-800 px-5 py-2 font-medium text-white shadow-md">تسجيل المشكلة</button>
-      </form>
+      </form>}
 
       <div className="flex gap-2">
         {([
