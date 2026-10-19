@@ -554,15 +554,17 @@ func BuildScores(people []repository.Scorable, pts []repository.MatrixScoreRow, 
 
 func boardInsights(rows []StaffScore) []string {
 	out := []string{}
-	scored, noHuman := 0, 0
-	var low []string
+	scored := 0
+	var low, pending []string
 	for _, r := range rows {
 		if r.Final == nil {
 			continue
 		}
 		scored++
+		// رقم ماتركس لحاله ناقص — ما يتسمّى «تحت ٦٠٪» قبل ما يقيّمه إنسان.
 		if r.NoHuman {
-			noHuman++
+			pending = append(pending, r.Name)
+			continue
 		}
 		if *r.Final < 60 {
 			low = append(low, r.Name)
@@ -580,8 +582,13 @@ func boardInsights(rows []StaffScore) []string {
 		}
 		out = append(out, "تحت ٦٠٪: "+strings.Join(low, "، ")+more+".")
 	}
-	if noHuman > 0 {
-		out = append(out, fmt.Sprintf("%d موظف بعد ما قيّمه أحد من البشر، فتقييمه هسه من ماتركس بس.", noHuman))
+	if len(pending) > 0 {
+		more := ""
+		if len(pending) > 4 {
+			more = fmt.Sprintf(" و%d غيرهم", len(pending)-4)
+			pending = pending[:4]
+		}
+		out = append(out, "بانتظار تقييم بشري (رقمهم من ماتركس بس): "+strings.Join(pending, "، ")+more+".")
 	}
 	return out
 }

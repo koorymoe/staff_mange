@@ -1,6 +1,7 @@
 package service
 
 import (
+	"strings"
 	"testing"
 	"time"
 
@@ -185,5 +186,23 @@ func TestReliabilityLeavesAndTools(t *testing.T) {
 	}
 	if got["LEAVES"] != 70 || got["TOOLS"] != 75 {
 		t.Fatalf("got %v", got)
+	}
+}
+
+func TestBoardInsightsNoHumanNotLow(t *testing.T) {
+	low, mine := 40.0, 30.0
+	rows := []StaffScore{
+		{Name: "أحمد", Final: &low},
+		{Name: "علي", Final: &mine, NoHuman: true},
+	}
+	got := strings.Join(boardInsights(rows), "\n")
+	if !strings.Contains(got, "تحت ٦٠٪: أحمد.") {
+		t.Fatalf("أحمد لازم يطلع تحت ٦٠٪: %s", got)
+	}
+	if strings.Contains(got, "تحت ٦٠٪: أحمد، علي") || strings.Contains(got, "تحت ٦٠٪: علي") {
+		t.Fatalf("علي بلا تقييم بشري ما يطلع تحت ٦٠٪: %s", got)
+	}
+	if !strings.Contains(got, "بانتظار تقييم بشري (رقمهم من ماتركس بس): علي.") {
+		t.Fatalf("علي لازم يطلع بانتظار تقييم بشري: %s", got)
 	}
 }

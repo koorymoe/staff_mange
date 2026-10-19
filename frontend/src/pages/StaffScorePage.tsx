@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { api, type StaffScore, type StaffScoreBoard, type StaffScoreDetail } from '../api'
 import MatrixNote from '../components/MatrixNote'
 import OwnerSwitch from '../components/OwnerSwitch'
-import { GroupRanking, PairCompare } from '../components/StaffCompare'
+import { GroupRanking, PairCompare, PendingHumanBadge } from '../components/StaffCompare'
 import { SWITCH_MATRIX_SCORING } from '../systemSwitches'
 import { useSession } from '../session'
 import StaffPointsBoard from '../components/StaffPointsBoard'
@@ -174,7 +174,7 @@ export default function StaffScorePage() {
               <span className="flex items-center gap-2">
                 <span className="w-5 text-xs text-slate-400">{s.final == null ? '' : i + 1}</span>
                 <span><b className="text-sm">{s.name}</b> <span className="text-xs text-slate-500">{ROLE_AR[s.role] ?? s.role}</span>
-                  {s.noHuman && <span className="mr-1 rounded bg-slate-100 px-1 text-[10px] text-slate-500">بلا تقييم بشري</span>}</span>
+                  {s.noHuman && <PendingHumanBadge />}</span>
               </span>
               <span className="flex items-center gap-3 text-xs">
                 <span className="hidden text-slate-500 sm:inline">ماتركس {pct(s.matrixPct)} · بشر {pct(s.humanPct)}</span>

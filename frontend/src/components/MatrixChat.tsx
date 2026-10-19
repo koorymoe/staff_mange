@@ -1,5 +1,6 @@
 import { Fragment, useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import { api, type MatrixChatMessage, type MatrixChatRow, type MatrixLesson } from '../api'
+import ScreenshotRedactor from './ScreenshotRedactor'
 
 // ═══ 💬 دردشة ماتركس — المالك والمدير (قرار (ع) 10-10) ═══
 // «نسولف ويا ويرد مثل أي ذكاء اصطناعي». ماتركس يتذكر المحادثة، ويفتح أدواته
@@ -56,7 +57,9 @@ export default function MatrixChat() {
   const [cur, setCur] = useState<string | null>(null)
   const [msgs, setMsgs] = useState<MatrixChatMessage[]>([])
   const [text, setText] = useState('')
+  // image: النسخة المعتمدة (مغطّاة) — هي بس تنرسل. draft: الأصلية، تبقى بالجهاز.
   const [image, setImage] = useState<string | null>(null)
+  const [draft, setDraft] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState('')
   const [fixing, setFixing] = useState<string | null>(null)
@@ -81,7 +84,7 @@ export default function MatrixChat() {
 
   const attach = async (f: File | null | undefined) => {
     if (!f || !f.type.startsWith('image/')) return
-    try { setImage(await shrink(f)); setErr('') } catch (e) { setErr(e instanceof Error ? e.message : 'الصورة ما انقرت') }
+    try { setImage(null); setDraft(await shrink(f)); setErr('') } catch (e) { setErr(e instanceof Error ? e.message : 'الصورة ما انقرت') }
   }
 
   const newChat = () => { setCur(null); setMsgs([]); setImage(null) }
@@ -242,6 +245,12 @@ export default function MatrixChat() {
             className="h-11 rounded-xl bg-gradient-to-l from-violet-600 to-fuchsia-600 px-5 text-sm font-bold text-white disabled:opacity-40">إرسال</button>
         </form>
       </section>
+
+      {draft && (
+        <ScreenshotRedactor src={draft}
+          onDone={(redacted) => { setImage(redacted); setDraft(null) }}
+          onCancel={() => setDraft(null)} />
+      )}
 
       {zoom && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4" onClick={() => setZoom(null)}>

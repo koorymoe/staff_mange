@@ -24,23 +24,35 @@ function Bar({ v }: { v: number | null }) {
   )
 }
 
+// رقم ماتركس لحاله (ماكو تقييم بشري) ناقص — ينعلَّم واضح حتى ما ينقرا حكماً كاملاً.
+export function PendingHumanBadge() {
+  return <span title="الرقم من ماتركس بس — ما قيّمه أحد من البشر بعد"
+    className="mr-1 whitespace-nowrap rounded-full border border-amber-300 bg-amber-100 px-2 py-0.5 text-[11px] font-bold text-amber-900">⏳ بانتظار تقييم بشري</span>
+}
+
 // ── ترتيب المجموعة من الأفضل للأسوأ، وماتركس يكتب الخلاصة ──
 export function GroupRanking({ staff }: { staff: StaffScore[] }) {
   const rated = staff.filter((s) => s.final != null).sort((a, b) => (b.final ?? 0) - (a.final ?? 0))
   const unrated = staff.filter((s) => s.final == null)
   if (rated.length === 0) return <p className="p-6 text-center text-sm text-slate-400">ماكو تقييمات بهالمجموعة بعد.</p>
-  const best = rated[0]
-  const worst = rated[rated.length - 1]
-  const avg = rated.reduce((a, s) => a + (s.final ?? 0), 0) / rated.length
-  const weakest = worst.topLosses?.[0]
+  // الأفضل والأضعف والمعدّل من الي عندهم تقييم بشري بس — رقم ماتركس لحاله ما يحكم.
+  const judged = rated.filter((s) => !s.noHuman)
+  const pending = rated.length - judged.length
+  const best = judged[0]
+  const worst = judged[judged.length - 1]
+  const avg = judged.length ? judged.reduce((a, s) => a + (s.final ?? 0), 0) / judged.length : 0
+  const weakest = worst?.topLosses?.[0]
   return (
     <div className="space-y-3">
       <div className="rounded-2xl border border-violet-200 bg-violet-50/60 p-3 text-sm leading-relaxed text-violet-950">
         <b>🤖 ماتركس يقارن:</b>{' '}
-        الأفضل <b>{best.name}</b> ({pct(best.final)})
-        {rated.length > 1 && <> والأضعف <b>{worst.name}</b> ({pct(worst.final)}) — الفرق {Math.round((best.final ?? 0) - (worst.final ?? 0))} نقطة.</>}
-        {' '}معدّل المجموعة {pct(avg)}، و{rated.filter((s) => (s.final ?? 0) < avg).length} تحت المعدّل.
-        {weakest && rated.length > 1 && <> أكثر شي نزّل {worst.name}: «{weakest.title}» ({weakest.count} مرة) — {weakest.advice}</>}
+        {best ? <>
+          الأفضل <b>{best.name}</b> ({pct(best.final)})
+          {judged.length > 1 && <> والأضعف <b>{worst.name}</b> ({pct(worst.final)}) — الفرق {Math.round((best.final ?? 0) - (worst.final ?? 0))} نقطة.</>}
+          {' '}معدّل المجموعة {pct(avg)}، و{judged.filter((s) => (s.final ?? 0) < avg).length} تحت المعدّل.
+          {weakest && judged.length > 1 && <> أكثر شي نزّل {worst.name}: «{weakest.title}» ({weakest.count} مرة) — {weakest.advice}</>}
+        </> : <>ماكو أحد بهالمجموعة قيّمه إنسان بعد، فما أحكم منو الأفضل والأضعف.</>}
+        {pending > 0 && <> {pending} موظف بانتظار تقييم بشري — ما دخلوا بالمقارنة.</>}
       </div>
       <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white">
         <table className="w-full min-w-[640px] text-right text-sm">
@@ -53,18 +65,19 @@ export function GroupRanking({ staff }: { staff: StaffScore[] }) {
           </thead>
           <tbody className="divide-y divide-slate-100">
             {rated.map((s, i) => {
-              const verdict = i === 0 ? ['🥇 الأفضل', 'bg-emerald-100 text-emerald-800']
-                : i === rated.length - 1 && rated.length > 2 ? ['⚠️ الأضعف', 'bg-red-100 text-red-700']
+              const verdict = s.noHuman ? null
+                : s.id === best?.id ? ['🥇 الأفضل', 'bg-emerald-100 text-emerald-800']
+                : s.id === worst?.id && judged.length > 2 ? ['⚠️ الأضعف', 'bg-red-100 text-red-700']
                 : (s.final ?? 0) >= avg ? ['فوق المعدّل', 'bg-sky-50 text-sky-700'] : ['تحت المعدّل', 'bg-amber-50 text-amber-700']
               return (
                 <tr key={s.id}>
                   <td className="p-2 text-xs text-slate-400">{i + 1}</td>
-                  <td className="p-2 font-bold">{s.name}</td>
+                  <td className="p-2 font-bold">{s.name}{s.noHuman && <PendingHumanBadge />}</td>
                   <td className="p-2"><Bar v={s.final} /></td>
                   <td className="p-2"><Bar v={s.matrixPct} /></td>
                   <td className="p-2"><Bar v={s.humanPct} /></td>
                   <td className="p-2"><Bar v={s.reliability} /></td>
-                  <td className="p-2"><span className={`whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-bold ${verdict[1]}`}>{verdict[0]}</span></td>
+                  <td className="p-2">{verdict ? <span className={`whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-bold ${verdict[1]}`}>{verdict[0]}</span> : <PendingHumanBadge />}</td>
                 </tr>
               )
             })}
