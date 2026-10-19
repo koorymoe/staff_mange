@@ -176,8 +176,9 @@ func Drill(db *sqlx.DB, key string, limit int) (*DrillResult, error) {
 		SELECT b.id, b.code, c.name AS customer, c.phone, s.name AS service, b.status::text AS status,
 		       to_char(b."scheduledAt" AT TIME ZONE 'Asia/Baghdad', 'YYYY-MM-DD HH24:MI') AS "scheduledAt",
 		       to_char(b."createdAt" AT TIME ZONE 'Asia/Baghdad', 'YYYY-MM-DD HH24:MI') AS "createdAt",
-		       (SELECT string_agg(e.name, '، ' ORDER BY e.name) FROM "BookingAssignment" ba
-		          JOIN "Employee" e ON e.id = ba."employeeId" WHERE ba."bookingId" = b.id) AS crew,
+		       (SELECT string_agg(e.name, '، ' ORDER BY e.name) FROM "Employee" e WHERE e.id IN (
+		          SELECT ba."employeeId" FROM "BookingAssignment" ba WHERE ba."bookingId" = b.id
+		          UNION SELECT m."leaderId" FROM "Mission" m WHERE m."bookingId" = b.id AND m."leaderId" IS NOT NULL)) AS crew,
 		       COALESCE(b."confirmedByName", (SELECT e.name FROM "Employee" e WHERE e.id = b."createdById")) AS responsible,
 		       (baghdad_today() - baghdad_date(b.` + d.AgeFrom + `))::int AS "ageDays",
 		       ` + stationCaseSQL() + ` AS station,

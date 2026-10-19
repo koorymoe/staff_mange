@@ -206,9 +206,20 @@ const paperworkDoneSQL = `((` + hasInvoiceSQL + ` AND ` + hasReportSQL + `) OR `
 // العمل» **اليوم**، والحجز لسه ما خلص ولا توقف ولا صار إنجاز جزئي. أول ما
 // يخلص يطلع لحاله، ولو طلع الكادر لحجز ثاني ينحسب بالثاني. الطلعة القديمة
 // العالقة (بدأ من أيام) ما تبقى «بالميدان» — تطلع بالمتوقف/المعلّق.
-const InFieldSQL = `(b."arrivedAt" IS NOT NULL OR b."startedAt" IS NOT NULL)
+//
+// (ع) 10-19: والفني الي طالع بمهمة ميدانية (مثل حجز داش كام أو جي بي اس
+// وحده) چان ينعدّ بـ«الكوادر بالميدان» بس ما يطلع بالقائمة، لأن الحجز نفسه
+// ما انضغط عليه «بدء العمل». هسه المهمة الطالعة اليوم تكفي.
+const InFieldSQL = `((b."arrivedAt" IS NOT NULL OR b."startedAt" IS NOT NULL)
+	  AND baghdad_date(COALESCE(b."startedAt", b."arrivedAt")) = baghdad_today()
+	 OR ` + activeFieldMissionSQL + `)
 	AND b.status NOT IN ('COMPLETED', 'CANCELLED', 'PARTIAL') AND b."workStoppedAt" IS NULL
-	AND baghdad_date(COALESCE(b."startedAt", b."arrivedAt")) = baghdad_today() AND b."archivedAt" IS NULL`
+	AND b."archivedAt" IS NULL`
+
+// activeFieldMissionSQL مهمة على الحجز طالعة هسه (انطلق/وصل/بدأ) وطلعتها اليوم.
+const activeFieldMissionSQL = `EXISTS (SELECT 1 FROM "Mission" fm WHERE fm."bookingId" = b.id
+	AND fm.stage IN ('EN_ROUTE', 'ARRIVED', 'WORK_STARTED')
+	AND baghdad_date(COALESCE(fm."workStartedAt", fm."arrivedAt", fm."departedAt", fm."assignedAt")) = baghdad_today())`
 
 // BookingPageQuery شنو تطلبه الشاشة.
 type BookingPageQuery struct {

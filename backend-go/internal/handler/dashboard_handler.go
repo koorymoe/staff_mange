@@ -197,8 +197,10 @@ func (h *DashboardHandler) TodayPulse(w http.ResponseWriter, r *http.Request) {
 			   SELECT ba."employeeId" AS id FROM "BookingAssignment" ba JOIN "Booking" b ON b.id = ba."bookingId"
 			    WHERE `+repository.InFieldSQL+repository.NotDeletePendingSQL("b")+`
 			   UNION
-			   SELECT m."leaderId" FROM "Mission" m
-			    WHERE m.stage IN ('EN_ROUTE','ARRIVED','WORK_STARTED') AND m."leaderId" IS NOT NULL
+			   -- (ع) 10-19: نفس حجوزات القائمة بالضبط — چانت كل مهمة مفتوحة بلا
+			   -- تاريخ، فالرقم ٣ والقائمة ٢.
+			   SELECT m."leaderId" FROM "Mission" m JOIN "Booking" b ON b.id = m."bookingId"
+			    WHERE m."leaderId" IS NOT NULL AND `+repository.InFieldSQL+repository.NotDeletePendingSQL("b")+`
 			 ) x)                                                                    AS "crewInField",
 			-- متأخرة = مفتوحة وموعد حجزها فات بأكثر من ٢٤ ساعة
 			(SELECT `+repository.DrillCountSQL("overdue")+` FROM "Booking" b WHERE `+repository.BookingCountableSQL("b")+`) AS "overdueMissions"`)
