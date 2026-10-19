@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { api, EXTRA_TASK_STATUS, type Employee, type ExtraTask } from '../api'
+import { VoiceRecorder } from '../components/VoiceNote'
 
 // ═══ المهام الإضافية — شاشة المدير ═══
 //
@@ -33,6 +34,10 @@ export default function ExtraTasksPage({ embedded }: { embedded?: boolean } = {}
   const [priority, setPriority] = useState<'NORMAL' | 'URGENT'>('NORMAL')
   const [dueAt, setDueAt] = useState('')
   const [busy, setBusy] = useState(false)
+  // مهمة بالفويس: الصوت يتحول لمسودة تملي الحقول، والمدير يراجع ويوجّه بنفسه.
+  const [voice, setVoice] = useState<{ blob: Blob; seconds: number } | null>(null)
+  const [voiceBusy, setVoiceBusy] = useState(false)
+  const [heard, setHeard] = useState<{ transcript: string; understood: boolean; suggested: string[] } | null>(null)
 
   // ⚠️ الجلب بمكان **واحد** داخل الـeffect، والتوجيه والإلغاء
   // يطلبونه برفع العدّاد. و`alive` يمنع سباق الطلبات: تبديل الفلتر
@@ -56,6 +61,20 @@ export default function ExtraTasksPage({ embedded }: { embedded?: boolean } = {}
   }, [statusFilter, reload])
   useEffect(() => { api.getEmployees().then(setEmployees).catch(() => setEmployees([])) }, [])
 
+  const fromVoice = async () => {
+    if (!voice) return
+    setErr(null); setVoiceBusy(true)
+    try {
+      const d = await api.voiceTaskDraft(voice.blob)
+      setTitle(d.title); setDesc(d.description); setPriority(d.priority); setDueAt(d.dueAt)
+      setAssignee(d.suggestedEmployeeIds.length === 1 ? d.suggestedEmployeeIds[0] : '')
+      setHeard({ transcript: d.transcript, understood: d.understood, suggested: d.suggestedEmployeeIds })
+      setVoice(null)
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : 'تعذر تحويل الفويس')
+    } finally { setVoiceBusy(false) }
+  }
+
   const assign = async () => {
     setErr(null)
     if (!title.trim()) { setErr('اكتب عنوان المهمة'); return }
@@ -70,7 +89,7 @@ export default function ExtraTasksPage({ embedded }: { embedded?: boolean } = {}
         // datetime-local ينطي وقتاً بلا منطقة — نحوّله ISO كامل
         dueAt: dueAt ? new Date(dueAt).toISOString() : null,
       })
-      setTitle(''); setDesc(''); setDueAt(''); setPriority('NORMAL')
+      setTitle(''); setDesc(''); setDueAt(''); setPriority('NORMAL'); setHeard(null)
       setReload((n) => n + 1)
     } catch (e) {
       setErr(e instanceof Error ? e.message : 'تعذر التوجيه')
@@ -106,6 +125,38 @@ export default function ExtraTasksPage({ embedded }: { embedded?: boolean } = {}
       {/* ═══ التوجيه ═══ */}
       <div className="rounded-2xl border border-white bg-white p-5 shadow-[0_4px_20px_rgba(15,32,64,0.06)]">
         <h3 className="mb-3 font-bold text-[#0f2040]">وجّه مهمة جديدة</h3>
+        <div className="mb-4 space-y-2 rounded-xl border border-violet-200 bg-violet-50/50 p-3">
+          <p className="text-xs font-bold text-violet-900">🎙️ وجّهها بالفويس — احچي المهمة واسم الموظف، وماتركس يملي الحقول وإنت تراجع وتوجّه.</p>
+          <VoiceRecorder value={voice} onChange={setVoice} note="الصوت يتحول لنص بسيرفر الشركة (ما يطلع) وما ينحفظ. لحد ٣ دقايق." />
+          {voice && (
+            <button type="button" onClick={() => void fromVoice()} disabled={voiceBusy}
+              className="rounded-xl bg-gradient-to-l from-violet-600 to-fuchsia-600 px-4 py-2 text-sm font-bold text-white disabled:opacity-50">
+              {voiceBusy ? 'ماتركس يسمع…' : '✨ حوّلها لمهمة'}
+            </button>
+          )}
+          {heard && (
+            <div className="space-y-1 text-xs text-slate-600">
+              <p><b>سمعت:</b> «{heard.transcript}»</p>
+              {!heard.understood && <p className="font-bold text-amber-700">ماتركس ما گدر يرتّبها هسه — حطّيت النص مثل ما هو، رتّبه بيدك.</p>}
+              {heard.suggested.length === 0 && <p className="font-bold text-amber-700">ما عرفت اسم الموظف من الفويس — اختاره من القائمة.</p>}
+              {heard.suggested.length > 1 && (
+                <div className="flex flex-wrap items-center gap-1">
+                  <b>أكثر من موظف بنفس الاسم — منو تقصد؟</b>
+                  {heard.suggested.map((id) => {
+                    const e = employees.find((x) => x.id === id)
+                    return e ? (
+                      <button key={id} type="button" onClick={() => setAssignee(id)}
+                        className={`rounded-full border px-2 py-0.5 ${assignee === id ? 'border-violet-600 bg-violet-600 text-white' : 'border-violet-300 bg-white text-violet-800'}`}>
+                        {e.name}
+                      </button>
+                    ) : null
+                  })}
+                </div>
+              )}
+              <p className="text-[11px] text-slate-400">راجع الحقول تحت قبل ما توجّه.</p>
+            </div>
+          )}
+        </div>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <div>
             <label className="mb-1 block text-xs font-bold text-slate-500">المهمة *</label>

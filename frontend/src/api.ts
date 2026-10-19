@@ -4404,6 +4404,18 @@ export const api = {
     title: string; description?: string; assignedToId: string
     priority: 'NORMAL' | 'URGENT'; dueAt?: string | null
   }) => request<ExtraTask>('/extra-tasks', { method: 'POST', body: JSON.stringify(data) }),
+  /** مهمة بالفويس: مسودة بس (عنوان، تفاصيل، أولوية، موعد، موظف مقترح) — التوجيه يبقى بـcreateExtraTask */
+  voiceTaskDraft: async (audio: Blob) => {
+    const form = new FormData()
+    form.append('file', audio, 'voice')
+    const token = currentToken()
+    const res = await fetch(`${API_URL}/extra-tasks/voice-draft`, { method: 'POST', headers: token ? { Authorization: `Bearer ${token}` } : {}, body: form })
+    if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || 'تعذر تحويل الفويس')
+    return res.json() as Promise<{
+      transcript: string; title: string; description: string; priority: 'NORMAL' | 'URGENT'
+      dueAt: string; suggestedEmployeeIds: string[]; understood: boolean
+    }>
+  },
   /** كل المهام — للمدير */
   getExtraTasks: (params: { status?: string; assigneeId?: string } = {}) => {
     const q = new URLSearchParams()

@@ -1157,6 +1157,8 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	// فالمستودع يفحص "assignedToId" بكل عملية. بدونه أي موظف ينهي
 	// مهمة موظف ثاني بمعرّفها.
 	mux.Handle("POST /api/extra-tasks", middleware.Chain(http.HandlerFunc(extraTaskHandler.Create), requireAuth, requireExtraTaskAssign, courier.Wrap("extra_task")))
+	// مهمة بالفويس: مسودة بس — التوجيه الفعلي يبقى من POST /api/extra-tasks.
+	mux.Handle("POST /api/extra-tasks/voice-draft", middleware.Chain(http.HandlerFunc(handler.NewVoiceTaskHandler(voiceAnalysisService, employeeRepo).Draft), requireAuth, requireExtraTaskAssign))
 	mux.Handle("GET /api/extra-tasks", middleware.Chain(http.HandlerFunc(extraTaskHandler.List), requireAuth, requireExtraTaskAssign))
 	mux.Handle("PUT /api/extra-tasks/{id}/cancel", middleware.Chain(http.HandlerFunc(extraTaskHandler.Cancel), requireAuth, requireExtraTaskAssign))
 	mux.Handle("GET /api/extra-tasks/mine", middleware.Chain(http.HandlerFunc(extraTaskHandler.Mine), requireAuth))

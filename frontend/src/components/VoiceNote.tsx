@@ -7,7 +7,7 @@ import MatrixNote from './MatrixNote'
 
 const MAX_SECONDS = 180
 
-export function VoiceRecorder({ value, onChange }: { value: { blob: Blob; seconds: number } | null; onChange: (v: { blob: Blob; seconds: number } | null) => void }) {
+export function VoiceRecorder({ value, onChange, note }: { value: { blob: Blob; seconds: number } | null; onChange: (v: { blob: Blob; seconds: number } | null) => void; note?: string }) {
   const [rec, setRec] = useState<MediaRecorder | null>(null)
   const [secs, setSecs] = useState(0)
   const [err, setErr] = useState('')
@@ -69,7 +69,7 @@ export function VoiceRecorder({ value, onChange }: { value: { blob: Blob; second
         </>
       )}
       {err && <span className="text-xs text-red-600">{err}</span>}
-      <span className="w-full text-[11px] text-slate-400">الفويس يبقى بسيرفر الشركة (ما يطلع)، يسمعه المدير بس، وماتركس يحوّله لنص ويحسب شغلك منه (لحد ٣ دقايق).</span>
+      <span className="w-full text-[11px] text-slate-400">{note ?? 'الفويس يبقى بسيرفر الشركة (ما يطلع)، يسمعه المدير بس، وماتركس يحوّله لنص ويحسب شغلك منه (لحد ٣ دقايق).'}</span>
     </div>
   )
 }
