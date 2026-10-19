@@ -700,6 +700,16 @@ export default function BookingsList({ bucket = 'all', focus }: { bucket?: Booki
                       >
                         {expandedId === b.id ? 'إخفاء' : 'التفاصيل'}
                       </button>
+                      {/* (ع) 10-19: بسطر الحجز نفسه — جوّا «التفاصيل» چان المالك ما يلگاه */}
+                      {owner && b.status === 'IN_PROGRESS' && (
+                        <button
+                          onClick={() => unstart(b)}
+                          className="mr-1 mt-1 rounded-lg bg-rose-100 px-3 py-1 text-xs font-bold text-rose-800 transition-colors hover:bg-rose-200"
+                          title="انضغط «بدء العمل» بالغلط؟ رجّعه «مثبّت» بموعده"
+                        >
+                          ⏪ تراجع عن بدء العمل
+                        </button>
+                      )}
                     </td>
                   </tr>
                   {expandedId === b.id && (
@@ -741,15 +751,6 @@ export default function BookingsList({ bucket = 'all', focus }: { bucket?: Booki
                                 مدفوناً جوّا نموذج طلب الحذف فمحد يوصله.
                                 وهو مو حذف: الحجز ينزاح لطابور «ما وصلت
                                 للتنفيذ» ويبقى محفوظاً. */}
-                            {owner && b.status === 'IN_PROGRESS' && (
-                              <button
-                                onClick={() => unstart(b)}
-                                className="mt-1 mr-2 rounded-full bg-rose-100 px-3 py-1 text-xs font-bold text-rose-800 transition-colors hover:bg-rose-200"
-                                title="انضغط «بدء العمل» بالغلط؟ رجّعه «مثبّت» بموعده"
-                              >
-                                ⏪ تراجع عن بدء العمل
-                              </button>
-                            )}
                             {canReopen && b.status === 'COMPLETED' && (
                               <button
                                 onClick={() => reopen(b)}
