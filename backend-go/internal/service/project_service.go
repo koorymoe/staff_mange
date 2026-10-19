@@ -396,6 +396,16 @@ func (s *ProjectService) Delete(id string) error {
 	return s.repo.Delete(id)
 }
 
+// PurgeRejected يحذف المشروع المرفوض نهائياً بسبب، ونسخته تبقى بالأرشيف.
+func (s *ProjectService) PurgeRejected(id, byID, reason string) (string, error) {
+	return s.repo.PurgeRejected(id, byID, reason)
+}
+
+// Restore يرجّع المشروع المرفوض لمرحلته قبل الرفض.
+func (s *ProjectService) Restore(id, byID, reason string) (string, error) {
+	return s.repo.Restore(id, byID, reason)
+}
+
 // FillInfo يكمّل السعر والمسؤول من شاشة الإحصائيات.
 func (s *ProjectService) FillInfo(id, byID string, price, responsibleID *string) error {
 	return s.repo.FillInfo(id, byID, price, responsibleID)

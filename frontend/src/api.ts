@@ -3835,6 +3835,12 @@ export const api = {
     }),
   getMyProjectDelays: () => request<ProjectDelay[]>('/projects/my-delays'),
   getProjectDelays: () => request<ProjectDelay[]>('/projects/delays'),
+  // (ع) 10-19: حذف نهائي للمرفوض بسبب (نسخته تبقى بأرشيف المحذوفات)
+  purgeProject: (id: string, reason: string) =>
+    request<{ name: string }>(`/projects/${encodeURIComponent(id)}/purge`, { method: 'DELETE', body: JSON.stringify({ reason }) }),
+  // (ع) 10-19: المشروع المرفوض يرجع لمرحلته قبل الرفض
+  restoreProject: (id: string, reason: string) =>
+    request<{ stage: string }>(`/projects/${encodeURIComponent(id)}/restore`, { method: 'PUT', body: JSON.stringify({ reason }) }),
   addProjectDelayReason: (id: string, reason: string) =>
     request<{ ok: boolean }>(`/projects/${id}/delay-reason`, { method: 'POST', body: JSON.stringify({ reason }) }),
   getStageLimits: () => request<StageLimitRow[]>('/projects/stage-limits'),

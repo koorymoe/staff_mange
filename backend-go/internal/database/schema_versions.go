@@ -447,6 +447,7 @@ func versionedMigrations() []Migration {
 	result = append(result, projectDelayMigrations()...)
 	result = append(result, procurementDecisionMigrations()...)
 	result = append(result, matrixChatMigrations()...)
+	result = append(result, deletedProjectMigrations()...)
 	return result
 }
 

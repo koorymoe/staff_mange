@@ -5,6 +5,7 @@ import (
 	"log"
 	"net/http"
 	"staffmange-api/internal/middleware"
+	"strings"
 
 	"staffmange-api/internal/model"
 	"staffmange-api/internal/service"
@@ -199,4 +200,45 @@ func (h *ProjectHandler) Delete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	WriteJSON(w, http.StatusOK, map[string]bool{"ok": true})
+}
+
+// PUT /api/projects/{id}/restore — يرجّع المشروع المرفوض لمرحلته قبل الرفض.
+func (h *ProjectHandler) Restore(w http.ResponseWriter, r *http.Request) {
+	var in struct {
+		Reason string `json:"reason"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&in); err != nil {
+		WriteError(w, http.StatusBadRequest, "بيانات غير صالحة")
+		return
+	}
+	reason := strings.TrimSpace(in.Reason)
+	if TextLen(reason) < 3 {
+		WriteError(w, http.StatusBadRequest, "اكتب سبب الإرجاع")
+		return
+	}
+	stage, err := h.service.Restore(r.PathValue("id"), middleware.EmployeeIDFromContext(r), reason)
+	if err != nil {
+		WriteError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	WriteJSON(w, http.StatusOK, map[string]string{"stage": stage})
+}
+
+// DELETE /api/projects/{id}/purge — حذف نهائي للمشروع المرفوض، السبب إجباري.
+func (h *ProjectHandler) Purge(w http.ResponseWriter, r *http.Request) {
+	var in struct {
+		Reason string `json:"reason"`
+	}
+	_ = json.NewDecoder(r.Body).Decode(&in)
+	reason := strings.TrimSpace(in.Reason)
+	if TextLen(reason) < 3 {
+		WriteError(w, http.StatusBadRequest, "اكتب سبب الحذف")
+		return
+	}
+	name, err := h.service.PurgeRejected(r.PathValue("id"), middleware.EmployeeIDFromContext(r), reason)
+	if err != nil {
+		WriteError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	WriteJSON(w, http.StatusOK, map[string]string{"name": name})
 }

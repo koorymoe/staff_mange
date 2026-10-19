@@ -575,7 +575,7 @@ export default function ProjectsPage({ mode: initialMode = 'all' }: { mode?: 'al
           onDelegate={delegatedMode ? undefined : (p) => setDelegateTarget(p)}
         />
       ) : (
-        <RejectionView projects={projects} />
+        <RejectionView projects={projects} canManage={canManage} onRefresh={refresh} />
       )}
 
       {showAdd && <AddModal onClose={() => setShowAdd(false)} onSaved={() => { setShowAdd(false); refresh() }} />}
@@ -806,6 +806,7 @@ function ProjectCard({ p, canManage, onEdit, onMove, onReport, onDelete, onRefre
 }) {
   const navigate = useNavigate()
   const isRejected = p.stage.includes('مرفوض')
+  const canPurge = useCanPurge()
   const isCompleted = p.stage.includes('مكتمل')
   const isContractStage = p.stage.includes('عقد')
   const stageIdx = STAGES.indexOf(p.stage)
@@ -942,6 +943,14 @@ function ProjectCard({ p, canManage, onEdit, onMove, onReport, onDelete, onRefre
           {canManage && !isRejected && !isCompleted && (
             <button onClick={() => onMove(p, '❌ مرفوض')}
               className="text-sm px-3 py-1.5 rounded-lg bg-gray-500 text-white font-medium hover:brightness-110">رفض</button>
+          )}
+          {canManage && isRejected && (
+            <button onClick={() => void restoreRejected(p, onRefresh)}
+              className="text-sm px-3 py-1.5 rounded-lg bg-emerald-600 text-white font-bold hover:brightness-110">↩️ إرجاع للمشاريع</button>
+          )}
+          {canPurge && isRejected && (
+            <button onClick={() => void purgeRejected(p, onRefresh)}
+              className="text-sm px-3 py-1.5 rounded-lg bg-red-600 text-white font-bold hover:brightness-110">🗑️ حذف نهائي</button>
           )}
           {isCompleted && (
             <span className="text-sm px-3 py-1.5 rounded-full bg-green-700 text-white font-bold flex items-center gap-1">✅ تم التسليم والانتهاء</span>
@@ -1589,10 +1598,40 @@ function ReportModal({ type, project: listProject, onClose }: { type: 'survey' |
   )
 }
 
+// إرجاع مشروع مرفوض لمرحلته قبل الرفض — (ع) 10-19
+async function restoreRejected(p: { id: string; name: string }, done: () => void) {
+  const reason = prompt(`ترجّع «${p.name}» للمشاريع؟ يرجع لنفس المرحلة الي چان بيها قبل الرفض.\nاكتب السبب (مثلاً: الزبون رجع واتصل):`)
+  if (reason === null) return
+  if (reason.trim().length < 3) { alert('اكتب السبب'); return }
+  try {
+    const r = await api.restoreProject(p.id, reason.trim())
+    alert(`رجع المشروع ✅ — مرحلته هسه: ${r.stage}`)
+    done()
+  } catch (e) { alert(e instanceof Error ? e.message : 'تعذّر الإرجاع') }
+}
+
+// حذف نهائي للمرفوض — (ع) 10-19: «مع طلب السبب». نفس حارس الخادم (ADMIN/PROJECT_MANAGER).
+function useCanPurge() {
+  const { employee } = useSession()
+  return employee?.role === 'ADMIN' || employee?.role === 'PROJECT_MANAGER'
+}
+async function purgeRejected(p: { id: string; name: string }, done: () => void) {
+  const reason = prompt(`🗑️ حذف «${p.name}» نهائياً؟ ينشال من كل الشاشات وما يرجع.\nاكتب سبب الحذف:`)
+  if (reason === null) return
+  if (reason.trim().length < 3) { alert('اكتب سبب الحذف'); return }
+  if (!confirm(`متأكد؟ «${p.name}» ينحذف نهائياً.`)) return
+  try {
+    await api.purgeProject(p.id, reason.trim())
+    alert('انحذف المشروع ✅')
+    done()
+  } catch (e) { alert(e instanceof Error ? e.message : 'تعذّر الحذف') }
+}
+
 // ---------------------------------------------------------------------------
 // Rejection analytics view
 // ---------------------------------------------------------------------------
-function RejectionView({ projects }: { projects: Project[] }) {
+function RejectionView({ projects, canManage, onRefresh }: { projects: Project[]; canManage: boolean; onRefresh: () => void }) {
+  const canPurge = useCanPurge()
   const [category, setCategory] = useState('all')
   const [search, setSearch] = useState('')
   const [sort, setSort] = useState<'count' | 'date' | 'name'>('count')
@@ -1708,6 +1747,14 @@ function RejectionView({ projects }: { projects: Project[] }) {
                           <div className="font-bold">{p.name}</div>
                           <div className="text-xs text-gray-500">{p.location || 'لا يوجد موقع'}</div>
                         </div>
+                        {canManage && (
+                          <button type="button" onClick={(e) => { e.stopPropagation(); void restoreRejected(p, onRefresh) }}
+                            className="rounded-lg bg-emerald-600 px-2.5 py-1 text-xs font-bold text-white hover:brightness-110">↩️ إرجاع للمشاريع</button>
+                        )}
+                        {canPurge && (
+                          <button type="button" onClick={(e) => { e.stopPropagation(); void purgeRejected(p, onRefresh) }}
+                            className="rounded-lg bg-red-600 px-2.5 py-1 text-xs font-bold text-white hover:brightness-110">🗑️ حذف نهائي</button>
+                        )}
                       </div>
                     ))}
                   </div>
