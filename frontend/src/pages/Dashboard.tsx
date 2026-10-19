@@ -225,9 +225,13 @@ function StaffDashboard() {
       setCustomerCount(sum?.customerCount ?? 0)
       setCompletedBookings(cb as Booking[])
       setExpenses(exp as Expense[])
+      // (ع) 10-19: «حجوزات التقنيين لازم تطلع عدهم بالواجهة الرئيسية» — الحجز
+      // المرحّل للتقني (handoverToId) ما بيه تعيين بالكادر، فچان ينفلتر ويختفي
+      // مع إن الخادم يرجّعه. شغله = بالكادر أو مرحّل إله.
+      const mine = (b: Booking) =>
+        b.assignments.some(a => a.employee.id === employee.id) || b.handoverToId === employee.id
       const taskList = (allBookings as Booking[]).filter(b =>
-        b.status !== 'COMPLETED' && b.status !== 'CANCELLED' &&
-        b.assignments.some(a => a.employee.id === employee.id)
+        b.status !== 'COMPLETED' && b.status !== 'CANCELLED' && mine(b)
       )
       setMyTasks(taskList)
       // ═══ منجزاتي هذا الأسبوع ═══
@@ -236,8 +240,7 @@ function StaffDashboard() {
       const weekAgo = Date.now() - 7 * 24 * 60 * 60 * 1000
       setMyDoneThisWeek((allBookings as Booking[]).filter(b =>
         b.status === 'COMPLETED' &&
-        b.completedAt && new Date(b.completedAt).getTime() >= weekAgo &&
-        b.assignments.some(a => a.employee.id === employee.id)
+        b.completedAt && new Date(b.completedAt).getTime() >= weekAgo && mine(b)
       ).length)
     }).finally(() => setLoading(false))
 
