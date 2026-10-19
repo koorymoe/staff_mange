@@ -89,7 +89,9 @@ export default function QualityPage() {
                   <div className="flex items-center gap-2 text-xs">
                     <span className="text-slate-500">{c.assignedToEmployee?.name ?? 'بلا مسؤول'}</span>
                     <span className={`rounded-full px-2 py-0.5 font-bold ${c.status === 'NEW' ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700'}`}>{c.status === 'NEW' ? 'جديدة' : 'قيد المعالجة'}</span>
-                    {!c.contactedAt && <span className="rounded-full bg-slate-100 px-2 py-0.5 font-bold text-slate-600">ما تواصلنا</span>}
+                    {!c.contactedAt && ((c.noAnswerCount ?? 0) > 0
+                      ? <span className="rounded-full bg-amber-50 px-2 py-0.5 font-bold text-amber-700">📵 ما رد {c.noAnswerCount}/٣</span>
+                      : <span className="rounded-full bg-slate-100 px-2 py-0.5 font-bold text-slate-600">ما تواصلنا</span>)}
                   </div>
                 </div>
               ))}

@@ -35,6 +35,11 @@ type Complaint struct {
 	ResolvedAt      *time.Time `db:"resolvedAt" json:"resolvedAt"`
 	// انقفلت لأنها من النظام القديم (قبل ٢٠٢٦-٠٨-٠١) — مو حل حقيقي.
 	SettledLegacyAt *time.Time `db:"settledLegacyAt" json:"settledLegacyAt"`
+	// «الزبون ما رد» (ع 10-19): كل محاولة تأجّل المكالمة الجاية، والثالثة تسقطها.
+	NoAnswerCount     int        `db:"noAnswerCount" json:"noAnswerCount"`
+	NoAnswerAt        *time.Time `db:"noAnswerAt" json:"noAnswerAt"`
+	NextCallAt        *time.Time `db:"nextCallAt" json:"nextCallAt"`
+	DroppedNoAnswerAt *time.Time `db:"droppedNoAnswerAt" json:"droppedNoAnswerAt"`
 
 	// تقييم الزبون للخدمة (١..٥) — يسجّله مهندس الجودة وقت التواصل.
 	// ⚠️ nullable بقصد: «ما انسأل» مو «تقييمه صفر»، والصفر يهبّط
@@ -125,6 +130,7 @@ const (
 	EventAudited   = "AUDITED"
 	EventResolved  = "RESOLVED"
 	EventBooked    = "BOOKED"
+	EventNoAnswer  = "NO_ANSWER"
 )
 
 // ComplaintCustomerStat يلخص كم مرة اشتكى زبون معيّن — تقرير منفصل عن إحصائيات الحجوزات.

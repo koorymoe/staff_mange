@@ -3209,6 +3209,11 @@ export interface Complaint {
   auditedAt: string | null
   auditedBy: { id: string; name: string } | null
   contactedByName: string | null
+  /** «الزبون ما رد» (ع 10-19): ٣ محاولات والشكوى تسقط */
+  noAnswerCount?: number
+  noAnswerAt?: string | null
+  nextCallAt?: string | null
+  droppedNoAnswerAt?: string | null
   notes: string | null
   createdAt: string
   resolvedAt: string | null
@@ -3905,6 +3910,7 @@ export const api = {
 
   // التقييم يمشي **بنفس** طلب التواصل: مهندس الجودة يسأل الزبون وهو
   // بالمكالمة، فتقسيمهن لخطوتين يعني نص التقييمات ما تنسجّل.
+  complaintNoAnswer: (id: string) => request<Complaint>(`/complaints/${id}/no-answer`, { method: 'PUT' }),
   setComplaintContacted: (id: string, contacted: boolean, rating?: number | null) =>
     request<Complaint>(`/complaints/${id}/contact`, {
       method: 'PUT',

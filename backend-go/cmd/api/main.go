@@ -1564,6 +1564,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	// تأشير الاتصال والملاحظات: أي موظف يقدر — المهم النظام يخزن منو
 	// اتصل. حصرها بالجودة يخلي الشكوى تضل بلا متابعة لو المهندس مشغول.
 	mux.Handle("PUT /api/complaints/{id}/contact", middleware.Chain(http.HandlerFunc(complaintHandler.SetContacted), requireAuth, requireComplaintContact))
+	mux.Handle("PUT /api/complaints/{id}/no-answer", middleware.Chain(http.HandlerFunc(complaintHandler.NoAnswer), requireAuth, requireComplaintContact))
 	mux.Handle("PUT /api/complaints/{id}/notes", middleware.Chain(http.HandlerFunc(complaintHandler.SetNotes), requireAuth, requireComplaintContact))
 	mux.Handle("PUT /api/complaints/{id}/link-booking", middleware.Chain(http.HandlerFunc(complaintHandler.LinkBooking), requireAuth, requireComplaintContact))
 	mux.Handle("PUT /api/complaints/{id}/resolve", middleware.Chain(http.HandlerFunc(complaintHandler.Resolve), requireAuth, requireQuality))

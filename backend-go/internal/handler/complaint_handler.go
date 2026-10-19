@@ -89,6 +89,16 @@ func (h *ComplaintHandler) SetContacted(w http.ResponseWriter, r *http.Request) 
 	WriteJSON(w, http.StatusOK, out)
 }
 
+// PUT /api/complaints/{id}/no-answer — «الزبون ما رد» (ع 10-19).
+func (h *ComplaintHandler) NoAnswer(w http.ResponseWriter, r *http.Request) {
+	out, err := h.service.NoAnswer(r.PathValue("id"), middleware.EmployeeIDFromContext(r))
+	if err != nil {
+		WriteError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	WriteJSON(w, http.StatusOK, out)
+}
+
 // PUT /api/complaints/{id}/link-booking — حجز الشكوى انسجل، نربطه بيها.
 func (h *ComplaintHandler) LinkBooking(w http.ResponseWriter, r *http.Request) {
 	var req struct {

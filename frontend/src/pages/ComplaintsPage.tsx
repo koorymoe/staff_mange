@@ -176,6 +176,22 @@ export default function ComplaintsPage() {
     }
   }
 
+  // «الزبون ما رد»: ٣ محاولات بينهن ٢٤ ساعة، والثالثة تسقط الشكوى — (ع) 10-19
+  const noAnswer = async (c: Complaint) => {
+    const left = 3 - (c.noAnswerCount ?? 0)
+    if (!confirm(left <= 1 ? 'هاي ثالث مرة الزبون ما يرد — الشكوى راح تسقط وتنحسب «تواصلنا والزبون ما رد». متأكد؟' : `تسجّل «الزبون ما رد»؟ الشكوى تتأجل ٢٤ ساعة وترجعلك تتصل مرة ثانية (باقي ${left - 1} محاولة قبل ما تسقط).`)) return
+    setContactBusy(c.id)
+    try {
+      const updated = await api.complaintNoAnswer(c.id)
+      setComplaints((prev) => prev.map((x) => (x.id === c.id ? updated : x)))
+      loadStats()
+    } catch (e) {
+      alert(e instanceof Error ? e.message : 'تعذر التسجيل')
+    } finally {
+      setContactBusy(null)
+    }
+  }
+
   const saveNotes = async (c: Complaint, value: string) => {
     if ((c.notes || '') === value.trim()) return
     try {
@@ -435,6 +451,8 @@ export default function ComplaintsPage() {
           <button onClick={() => setFl('late', fl.late ? '' : '1')} className={`rounded-lg px-3 py-1.5 text-sm font-bold ${fl.late ? 'bg-red-600 text-white' : 'bg-red-50 text-red-700'}`}>⏰ المتأخرة ({lateCount})</button>
           <button onClick={() => setFl('vip', fl.vip === '1' ? '' : '1')} className={`rounded-lg px-3 py-1.5 text-sm font-bold ${fl.vip === '1' ? 'bg-amber-500 text-white' : 'bg-amber-50 text-amber-800'}`}>👑 مفتوحة لشخصيات مهمة ({vipCount})</button>
           {anyFilter && <button onClick={() => setParams({}, { replace: true })} className="text-sm text-slate-500 underline">مسح الفلاتر</button>}
+          <span className="rounded-lg bg-amber-50 px-3 py-1.5 text-xs font-bold text-amber-800" title="الزبون ما رد — تنتظر الاتصال الجاي (مو عاجلة)">📵 تنتظر إعادة اتصال ({complaints.filter((c) => !c.contactedAt && !c.droppedNoAnswerAt && c.nextCallAt && new Date(c.nextCallAt) > new Date()).length})</span>
+          <span className="rounded-lg bg-slate-100 px-3 py-1.5 text-xs font-bold text-slate-700" title="تواصلنا ٣ مرات والزبون ما رد — الشكوى سقطت">🔕 سقطت لأن الزبون ما رد ({complaints.filter((c) => c.droppedNoAnswerAt).length})</span>
           <span className="mr-auto text-xs text-slate-500">{filtered.length} من {complaints.length} شكوى</span>
         </div>
                 }
@@ -446,6 +464,7 @@ export default function ComplaintsPage() {
           canSeeFullDetail={canSeeFullDetail}
           busyId={contactBusy}
           onContact={setContacted}
+          onNoAnswer={noAnswer}
           onNotes={saveNotes}
           onAssign={handleAssign}
           onStatus={handleStatusChange}

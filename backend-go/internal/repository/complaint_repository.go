@@ -2,11 +2,13 @@ package repository
 
 import (
 	"errors"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
 
 	"staffmange-api/internal/model"
+	"staffmange-api/internal/timeutil"
 )
 
 type ComplaintRepository struct {
@@ -87,6 +89,41 @@ func (r *ComplaintRepository) SetContacted(
 	}
 	if _, err := r.db.Exec(q, args...); err != nil {
 		return nil, err
+	}
+	return r.Find(id)
+}
+
+// ═══ «الزبون ما رد» — (ع) 10-19 ═══
+// كل محاولة: العدّاد يزيد والمكالمة الجاية بعد ComplaintCallbackAfter.
+// الثالثة: الشكوى تسقط (CLOSED) وتنحسب «تواصلنا والزبون ما رد».
+const (
+	ComplaintNoAnswerLimit = 3
+	complaintCallbackAfter = "24 hours"
+)
+
+func (r *ComplaintRepository) NoAnswer(id string) (*model.Complaint, error) {
+	res, err := r.db.Exec(`UPDATE "Complaint" SET
+		"noAnswerCount" = "noAnswerCount" + 1,
+		"noAnswerAt" = now(),
+		"nextCallAt" = CASE WHEN "noAnswerCount" + 1 >= $2 THEN NULL ELSE now() + interval '`+complaintCallbackAfter+`' END,
+		"droppedNoAnswerAt" = CASE WHEN "noAnswerCount" + 1 >= $2 THEN now() ELSE NULL END,
+		status = CASE WHEN "noAnswerCount" + 1 >= $2 THEN 'CLOSED' ELSE status END,
+		"resolvedAt" = CASE WHEN "noAnswerCount" + 1 >= $2 THEN now() ELSE "resolvedAt" END,
+		resolution = CASE WHEN "noAnswerCount" + 1 >= $2 THEN 'سقطت — الزبون ما رد ' || $2 || ' مرات' ELSE resolution END
+		WHERE id = $1 AND status IN ('NEW', 'IN_PROGRESS') AND "contactedAt" IS NULL
+		  AND ("nextCallAt" IS NULL OR "nextCallAt" <= now())`, id, ComplaintNoAnswerLimit)
+	if err != nil {
+		return nil, err
+	}
+	if n, _ := res.RowsAffected(); n == 0 {
+		// ثلاث ضغطات ورا بعض تسقط الشكوى بلا ما أحد ينتظر — فالمحاولة
+		// الجاية بس بعد موعدها.
+		var next *time.Time
+		_ = r.db.Get(&next, `SELECT "nextCallAt" FROM "Complaint" WHERE id = $1 AND "nextCallAt" > now()`, id)
+		if next != nil {
+			return nil, errors.New("المحاولة الجاية بعد " + next.In(timeutil.CompanyLocation()).Format("2006-01-02 15:04") + " — اتصل بالزبون وكتها")
+		}
+		return nil, errors.New("الشكوى مغلقة أو انتصل بالزبون — ما تنسجّل «ما رد»")
 	}
 	return r.Find(id)
 }

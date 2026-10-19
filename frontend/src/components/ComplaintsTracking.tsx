@@ -52,7 +52,7 @@ function Stars({ value }: { value: number | null }) {
 
 export default function ComplaintsTracking({
   complaints, stats, employees, canContact, canAudit, canSeeFullDetail,
-  busyId, onContact, onNotes, onAssign, onStatus, onResolveClick, onAudited, toolbar,
+  busyId, onContact, onNoAnswer, onNotes, onAssign, onStatus, onResolveClick, onAudited, toolbar,
 }: {
   toolbar?: ReactNode
   complaints: Complaint[]
@@ -63,6 +63,7 @@ export default function ComplaintsTracking({
   canSeeFullDetail: boolean
   busyId: string | null
   onContact: (c: Complaint, contacted: boolean, rating?: number | null) => void
+  onNoAnswer?: (c: Complaint) => void
   onNotes: (c: Complaint, value: string) => void
   onAssign: (complaintId: string, employeeId: string) => void
   onStatus: (complaintId: string, status: Complaint['status']) => void
@@ -445,6 +446,19 @@ export default function ComplaintsTracking({
                       ? new Date(selected.contactedAt).toLocaleString('ar-IQ')
                       : 'ما انتصل بيه بعد'}
                   </p>
+                  {/* (ع) 10-19: «الزبون ما رد» — يأجّل ٢٤ ساعة، والثالثة تسقط الشكوى */}
+                  {!selected.contactedAt && (selected.noAnswerCount ?? 0) > 0 && (
+                    <p className="mt-1 text-xs font-bold text-amber-700">
+                      📵 ما رد {selected.noAnswerCount} من ٣
+                      {selected.droppedNoAnswerAt ? ' — الشكوى سقطت' : selected.nextCallAt ? ` · الاتصال الجاي: ${new Date(selected.nextCallAt).toLocaleString('ar-IQ')}` : ''}
+                    </p>
+                  )}
+                  {canContact && onNoAnswer && !selected.contactedAt && (selected.status === 'NEW' || selected.status === 'IN_PROGRESS') && (
+                    <button disabled={busyId === selected.id} onClick={() => onNoAnswer(selected)}
+                      className="mt-2 rounded-lg bg-amber-100 px-3 py-1 text-xs font-bold text-amber-800 hover:bg-amber-200 disabled:opacity-50">
+                      📵 الزبون ما رد
+                    </button>
+                  )}
                 </Box>
                 <Box label="نتيجة التقييم">
                   <Stars value={selected.customerRating} />

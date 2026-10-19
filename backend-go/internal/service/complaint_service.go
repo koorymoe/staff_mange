@@ -106,6 +106,20 @@ func (s *ComplaintService) SetContacted(
 	return c, nil
 }
 
+// NoAnswer «الزبون ما رد» — يأجّل المكالمة، والثالثة تسقط الشكوى.
+func (s *ComplaintService) NoAnswer(id, byID string) (*model.Complaint, error) {
+	c, err := s.repo.NoAnswer(id)
+	if err != nil {
+		return nil, err
+	}
+	d := "الزبون ما رد — محاولة " + strconv.Itoa(c.NoAnswerCount) + " من " + strconv.Itoa(repository.ComplaintNoAnswerLimit)
+	if c.DroppedNoAnswerAt != nil {
+		d += " — الشكوى سقطت"
+	}
+	s.repo.AddEvent(id, model.EventNoAnswer, &d, byID)
+	return c, nil
+}
+
 // Audit حكم المدقق على شغل مهندس الجودة.
 //
 // ⚠️ الصلاحية تتقرّر بالمسار (المالك والمراقب والمدير بس) — مهندس
