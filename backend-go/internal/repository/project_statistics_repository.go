@@ -49,7 +49,7 @@ func (r *ProjectRepository) ProjectEmployeeStats() ([]model.ProjectEmployeeStatR
 			(SELECT COUNT(*) FROM "Project" p WHERE p."responsibleEmployeeId" = e.id) AS "responsibleCount",
 			(SELECT COUNT(*) FROM "ProjectDelegationLog" l WHERE l."employeeId" = e.id AND l.action = 'ASSIGN') AS "delegationsReceived",
 			(SELECT COUNT(*) FROM "Project" p WHERE p."delegatedToEmployeeId" = e.id) AS "currentlyDelegated",
-			COALESCE((SELECT SUM(`+priceValueExpr+`) FROM "Project" p WHERE p."responsibleEmployeeId" = e.id), 0) AS "responsibleValue",
+			COALESCE((SELECT SUM(COALESCE((SELECT cv.amount FROM "ProjectContractValue" cv WHERE cv."projectId" = p.id), `+priceValueExpr+`)) FROM "Project" p WHERE p."responsibleEmployeeId" = e.id), 0) AS "responsibleValue",
 			(SELECT COUNT(*) FROM "Project" p WHERE p."responsibleEmployeeId" = e.id AND p.stage LIKE '%مكتمل%') AS "completedCount"
 		FROM "Employee" e
 		ORDER BY e.name`)
