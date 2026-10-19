@@ -30,7 +30,18 @@ export default function DutiesCard({ employeeId }: { employeeId?: string }) {
       </div>
       <ul className="space-y-1.5">
         {r.duties.map((d) => {
-          const body = (
+          // (ع) 10-19: واجب شخصي (مشروع/حجز/مهمة/شكوى بإسمه) — الإجراء هو المهم،
+          // ويطلع حتى بالموبايل؛ عدّاد «سوّى/ينتظر» ما إله معنى على شغلة وحدة.
+          const personal = d.key.includes(':')
+          const body = personal ? (
+            <>
+              <span>{ICON[d.status]}</span>
+              <span className="min-w-0">
+                <span className="block font-bold text-slate-800">{d.label}</span>
+                {d.hint && <span className="block text-xs text-slate-600">{d.hint}</span>}
+              </span>
+            </>
+          ) : (
             <>
               <span>{ICON[d.status]}</span>
               <span className="font-bold text-slate-800">{d.label}</span>

@@ -220,6 +220,16 @@ func (r *DutiesRepository) Today(employeeID string) DutiesReport {
 		}
 		rep.Duties = append(rep.Duties, du)
 	}
+	// (ع) 10-19: الشغل الموجّه إله بإسمه (مشاريع، حجوزات مرحّلة، مهام، شكاوى).
+	for _, du := range r.personal(employeeID) {
+		if du.Pending != nil {
+			rep.Total++
+			if du.Status == "DONE" {
+				rep.DoneCount++
+			}
+		}
+		rep.Duties = append(rep.Duties, du)
+	}
 	switch {
 	case rep.Total == 0 || rep.DoneCount == rep.Total:
 		rep.Verdict, rep.VerdictAr = "GOOD", "خوش — خلّص واجباته"
