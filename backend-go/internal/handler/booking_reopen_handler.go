@@ -57,3 +57,32 @@ func (h *BookingReopenHandler) Reopen(w http.ResponseWriter, r *http.Request) {
 	}
 	WriteJSON(w, http.StatusOK, map[string]any{"ok": true, "code": res.Code, "notified": len(res.CrewIDs), "warning": warn})
 }
+
+// PUT /api/bookings/{id}/unstart — المالك يرجّع حجز انضغط عليه «بدء العمل» بالغلط.
+func (h *BookingReopenHandler) Unstart(w http.ResponseWriter, r *http.Request) {
+	var b struct {
+		Reason string `json:"reason"`
+	}
+	if err := DecodeJSON(r, &b); err != nil {
+		WriteError(w, http.StatusBadRequest, "بيانات الطلب غير صحيحة")
+		return
+	}
+	reason := strings.TrimSpace(b.Reason)
+	if TextLen(reason) < 3 {
+		WriteError(w, http.StatusBadRequest, "اكتب سبب التراجع")
+		return
+	}
+	byName := "—"
+	if e, err := h.emps.FindByID(middleware.EmployeeIDFromContext(r)); err == nil && e != nil {
+		byName = e.Name
+	}
+	res, err := h.repo.Unstart(r.PathValue("id"), byName, reason)
+	if err != nil {
+		WriteError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	for _, id := range res.CrewIDs {
+		_ = h.notif.Create(id, "booking_unstarted", "⏪ الحجز "+res.Code+" رجع «مثبّت» بموعده — بدء العمل انضغط بالغلط. السبب: "+reason)
+	}
+	WriteJSON(w, http.StatusOK, map[string]any{"ok": true, "code": res.Code, "notified": len(res.CrewIDs)})
+}

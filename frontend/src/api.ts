@@ -4254,6 +4254,9 @@ export const api = {
    *  - `CUSTOMER_DECISION` استفسر ورايح يرجعلنا خبر → «بانتظار موافقة الزبون»
    *  ⚠️ الافتراضي «ما رد» حتى أي نداء قديم يبقى بمعناه. */
   // حجز «منجز» بالغلط يرجع للكادر حتى يسجّل إنجاز جزئي — صلاحية booking_reopen
+  // (ع) 10-19: «بدء العمل» انضغط بالغلط — المالك بس
+  unstartBooking: (id: string, reason: string) =>
+    request<{ ok: boolean; code: string; notified: number }>(`/bookings/${encodeURIComponent(id)}/unstart`, { method: 'PUT', body: JSON.stringify({ reason }) }),
   reopenBooking: (id: string, reason: string) =>
     request<{ ok: boolean; code: string; notified: number; warning: string }>(`/bookings/${encodeURIComponent(id)}/reopen`, { method: 'PUT', body: JSON.stringify({ reason }) }),
   markBookingWaiting: (id: string, note?: string, kind?: 'NO_ANSWER' | 'CUSTOMER_DECISION') =>

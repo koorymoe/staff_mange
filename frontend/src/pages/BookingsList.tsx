@@ -133,6 +133,17 @@ export default function BookingsList({ bucket = 'all', focus }: { bucket?: Booki
       setBookings((prev) => prev.map((x) => (x.id === b.id ? { ...x, status: 'IN_PROGRESS', completedAt: null } : x)))
     } catch (e) { alert(e instanceof Error ? e.message : 'تعذّر الإرجاع') }
   }
+  // «بدء العمل» انضغط بالغلط (مثلاً حجز باچر) — المالك بس، نفس حارس PUT /bookings/{id}/unstart.
+  const unstart = async (b: Booking) => {
+    const reason = prompt(`ترجّع الحجز ${b.code} «مثبّت» بموعده وتمسح بدء العمل؟\nاكتب السبب (مثلاً: الحجز باچر وانضغط «بدء العمل» بالغلط):`)
+    if (reason === null) return
+    if (reason.trim().length < 3) { alert('اكتب السبب'); return }
+    try {
+      const r = await api.unstartBooking(b.id, reason.trim())
+      alert(`رجع الحجز ${r.code} «مثبّت» ✅ — انبلّغ ${r.notified} من الكادر.`)
+      setBookings((prev) => prev.map((x) => (x.id === b.id ? { ...x, status: 'CONFIRMED', startedAt: null } : x)))
+    } catch (e) { alert(e instanceof Error ? e.message : 'تعذّر التراجع') }
+  }
   const canMarkWaiting = isAdmin || employee?.actualRole === 'OWNER' || permissions.includes('coordinator')
   const canRequestDelete = isAdmin || employee?.actualRole === 'OWNER' ||
     employee?.role === 'HR_COORDINATOR' || (employee?.role === 'MONITOR' || permissions.includes('monitoring')) ||
@@ -730,6 +741,15 @@ export default function BookingsList({ bucket = 'all', focus }: { bucket?: Booki
                                 مدفوناً جوّا نموذج طلب الحذف فمحد يوصله.
                                 وهو مو حذف: الحجز ينزاح لطابور «ما وصلت
                                 للتنفيذ» ويبقى محفوظاً. */}
+                            {owner && b.status === 'IN_PROGRESS' && (
+                              <button
+                                onClick={() => unstart(b)}
+                                className="mt-1 mr-2 rounded-full bg-rose-100 px-3 py-1 text-xs font-bold text-rose-800 transition-colors hover:bg-rose-200"
+                                title="انضغط «بدء العمل» بالغلط؟ رجّعه «مثبّت» بموعده"
+                              >
+                                ⏪ تراجع عن بدء العمل
+                              </button>
+                            )}
                             {canReopen && b.status === 'COMPLETED' && (
                               <button
                                 onClick={() => reopen(b)}
