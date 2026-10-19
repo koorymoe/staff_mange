@@ -47,6 +47,7 @@ const projectListColumns = `id, code, name, rep, phone, location, "locationUrl",
 	"workType", "refPerson", stage, price, staff, time, task, priority, "deliveryDate", (NULL::jsonb) AS survey,
 	"bookingId", "responsibleEmployeeId", "surveyorEmployeeId", "createdByEmployeeId", "createdAt", "updatedAt",
 	"delegatedToEmployeeId", "delegatedByEmployeeId", "delegatedAt",
+	"customerContactedAt", "customerContactedById", "customerContactNote",
 	("contractPdfBase64" IS NOT NULL) AS "hasContract",
 	("signedContractPdfBase64" IS NOT NULL) AS "hasSignedContract"`
 

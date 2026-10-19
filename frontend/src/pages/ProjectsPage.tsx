@@ -91,6 +91,26 @@ const STAGES = [
   '❌ مرفوض',
 ]
 
+// المرحلة الجاية لزر «ترحيل ⮕» — بالأسماء مو بالأرقام: الأرقام انزاحت لمّا
+// انضافت مراحل (١٠-١٧) فوگف الترحيل من «٥. البدء بالتنفيذ».
+// قرار (ع) 10-06: الإعلام زر بخطوات المشروع، مو مرحلة توقفه — العقد يترحّل
+// للتنفيذ مباشرة. وإعادة التسعير فرع ينختار يدوياً، والرفض زر مستقل.
+const STAGE_SIDE_BRANCHES = ['🔁 إعادة التسعير', '📸 الإعلام', '❌ مرفوض']
+const STAGE_NEXT_OVERRIDE: Record<string, string> = {
+  '4. العقد': '5. البدء بالتنفيذ',
+  '🔁 إعادة التسعير': '4. العقد',
+  '📸 الإعلام': '5. البدء بالتنفيذ',
+}
+function nextProjectStage(stage: string): string | null {
+  if (STAGE_NEXT_OVERRIDE[stage]) return STAGE_NEXT_OVERRIDE[stage]
+  const i = STAGES.indexOf(stage)
+  if (i < 0) return null
+  for (let j = i + 1; j < STAGES.length; j++) {
+    if (!STAGE_SIDE_BRANCHES.includes(STAGES[j])) return STAGES[j]
+  }
+  return null
+}
+
 // أنواع الأعمال كانت قائمة ثابتة بالكود — صارت تنجلب من إعدادات وحدة إدارة
 // المشاريع (/project-work-types) حتى يقدر المدير يضيف/يحذف نوع عمل براحته
 // بدون تعديل كود. القائمة القديمة تبقى fallback ريثما يوصل جواب السيرفر.
@@ -789,8 +809,7 @@ function ProjectCard({ p, canManage, onEdit, onMove, onReport, onDelete, onRefre
   const isCompleted = p.stage.includes('مكتمل')
   const isContractStage = p.stage.includes('عقد')
   const stageIdx = STAGES.indexOf(p.stage)
-  // قرار (ع) 10-06: الإعلام زر بخطوات المشروع، مو مرحلة توقفه — العقد يترحّل للتنفيذ مباشرة.
-  const nextStage = isContractStage ? STAGES[5] : STAGES[stageIdx + 1] && stageIdx <= 5 ? STAGES[stageIdx + 1] : null
+  const nextStage = nextProjectStage(p.stage)
   const [showContract, setShowContract] = useState(false)
   const [showMedia, setShowMedia] = useState(false)
   const [showPay, setShowPay] = useState(false)
