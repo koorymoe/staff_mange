@@ -297,6 +297,13 @@ export default function MyTasks() {
   const doStart = async (bookingId: string, missingToolIds?: string[]) => {
     const booking = bookings.find((b) => b.id === bookingId)
     if (!booking) return
+    // (ع) 10-19: فني بدا العمل اليوم على حجز موعده باچر بالغلط. البدء يحسب
+    // عليه وقت «العمل» من هسه — فنأكد إذا الموعد مو اليوم.
+    if (booking.scheduledAt) {
+      const day = (d: Date) => d.toLocaleDateString('en-CA', { timeZone: 'Asia/Baghdad' })
+      const when = new Date(booking.scheduledAt)
+      if (day(when) !== day(new Date()) && !confirm(`⚠️ هذا الحجز موعده ${when.toLocaleString('ar-IQ', { timeZone: 'Asia/Baghdad', weekday: 'long', day: 'numeric', month: 'numeric', hour: 'numeric', minute: '2-digit' })} — مو اليوم.\nبدء العمل يسجّل إنك بديت هسه. متأكد؟`)) return
+    }
     const r = await guard.run('بدء العمل', () => runStage(booking, 'STARTED', () => api.startBooking(bookingId, missingToolIds), { missingToolIds }))
     if (!r) return
     if (r.queued) { patchLocal(bookingId, { status: 'IN_PROGRESS', startedAt: new Date().toISOString() } as Partial<Booking>); return }
@@ -865,7 +872,8 @@ export default function MyTasks() {
       {toolsModalBooking && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
           <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl">
-            <h3 className="text-lg font-bold text-brand-900">تأكيد استلام الحجز <BookingCodeChip code={toolsModalBooking.code} /></h3>
+            {/* (ع) 10-19: چانت «تأكيد استلام الحجز» وهي تبدي العمل — الفني يحسب نفسه يستلم */}
+            <h3 className="text-lg font-bold text-brand-900">{toolsOnly ? '📋 جرد العدّة' : '🛠️ بدء العمل — أكّد عدّتك'} <BookingCodeChip code={toolsModalBooking.code} /></h3>
             <p className="mt-1 text-sm font-medium text-amber-700">
               علّم فقط الأداة الناقصة عندك — الباقي مؤشر مسبقاً كموجود.
             </p>
@@ -905,7 +913,7 @@ export default function MyTasks() {
                 disabled={submittingAccept || toolsLoading}
                 className="flex-1 rounded-lg bg-gradient-to-l from-brand-500 to-brand-800 px-4 py-2.5 text-sm font-bold text-white shadow-md transition-all hover:shadow-lg disabled:opacity-50"
               >
-                {submittingAccept ? 'جارٍ التأكيد...' : 'تم'}
+                {submittingAccept ? 'جارٍ التأكيد...' : toolsOnly ? 'تم' : 'ابدأ العمل'}
               </button>
             </div>
           </div>

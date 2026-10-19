@@ -97,6 +97,12 @@ func (r *BookingReopenRepository) Unstart(bookingID, byName, reason string) (*Re
 		WHERE "bookingId" = $1 AND "completedAt" IS NULL`, bookingID); err != nil {
 		return nil, err
 	}
+	// (ع) 10-19: أثر البدء بسجل الموظف (بدأ/انطلق/وصل) ينشال هم — وإلا يبقى
+	// بسجله وينعدّ بواجب «سجّل مراحل حجوزاتك». الاستلام والمواد يبقون: صحيحة.
+	if _, err := tx.Exec(`DELETE FROM "BookingStageProof" WHERE "bookingId" = $1
+		AND stage IN ('STARTED', 'DEPARTED', 'ARRIVED')`, bookingID); err != nil {
+		return nil, err
+	}
 	res := &ReopenResult{Code: b.Code, CrewIDs: []string{}}
 	_ = tx.Select(&res.CrewIDs, `SELECT DISTINCT x FROM (
 		SELECT "employeeId" AS x FROM "BookingAssignment" WHERE "bookingId" = $1
