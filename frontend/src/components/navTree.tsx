@@ -1085,7 +1085,9 @@ export function isPathAllowed(path: string, ctx: NavContext): boolean | null {
   const roleOk = (rs?: EmployeeRole[]) => !!rs && (rs.includes(role as EmployeeRole) || (asMon && rs.includes('MONITOR')))
   if (self && (roleOk(self.roles) || (self.leader && ctx.employee?.isLeader)
     || (self.anyPermission ?? []).some((p) => ctx.permissions.includes(p)))) return true
-  if (found) return false
+  // (ع) 10-19: الشرط مكتوب وما انطبق = ممنوع. چان يكمّل لـnull فتنفتح
+  // «إدارة الموظفين» و«الصلاحيات» لأي أحد يكتب الرابط بيده.
+  if (self || found) return false
   // شاشات مو بالقائمة (تنفتح من روابط داخلية) — شرطها نفس حارس الخادم بالضبط.
   const rule = ROUTE_RULES[target]
   if (!rule) return null
