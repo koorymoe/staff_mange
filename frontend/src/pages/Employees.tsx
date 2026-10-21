@@ -926,9 +926,16 @@ export default function Employees({ embedded }: { embedded?: boolean } = {}) {
                     <div>
                       <label className="mb-1 block text-xs font-medium text-slate-400">حالة الدوام</label>
                       <label className="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50/50 px-3 py-2.5 text-sm cursor-pointer hover:bg-slate-50 transition-colors">
+                        {/* (ع) 10-21: چان يحفظ على مسار المدير لكل أحد — المراقب صاحب
+                            «تعديل ملف الموظف» يطلعله «لا تملك صلاحية». غير المدير على مسار الملف،
+                            والي ما عنده الصلاحية يشوفه بس. */}
                         <input type="checkbox" checked={selectedEmployee.onDuty}
+                          disabled={!isAdmin && !userPermissions.includes('edit_employee_profile')}
                           onChange={async (e) => {
-                            const updated = await guard.run('تغيير حالة الدوام', () => api.updateEmployee(selectedEmployee.id, { onDuty: e.target.checked }))
+                            const onDuty = e.target.checked
+                            const updated = await guard.run('تغيير حالة الدوام', () => isAdmin
+                              ? api.updateEmployee(selectedEmployee.id, { onDuty })
+                              : api.updateEmployeeProfile(selectedEmployee.id, { onDuty }))
                             if (!updated) return
                             setEmployees(prev => prev.map(emp => emp.id === updated.id ? { ...emp, ...updated } : emp))
                           }}
@@ -972,7 +979,9 @@ export default function Employees({ embedded }: { embedded?: boolean } = {}) {
                       حط اسم مستخدم وباسورد على حساب موجود = استيلاء
                       عليه. لهذا نفس قيد فتح الحسابات ينطبق هنا،
                       والسيرفر يرفضها هم مو الواجهة بس. */}
-                  {canCreateAccounts && (
+                  {/* (ع) 10-21: چانت تطلع لصاحب «إضافة موظف» هم، والسيرفر يقبلها من
+                      المالك بس — فالحفظ يرجع «لا تملك صلاحية» وينحسب مخالفة. */}
+                  {isOwnerUser && (
                     <div className="mt-5">
                       <div className="flex items-center gap-2 mb-3">
                         <div className="h-1.5 w-1.5 rounded-full bg-[#2c5aad]"/>
