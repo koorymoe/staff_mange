@@ -197,3 +197,31 @@ cd frontend && npx vite --port 5199
 **دور المالك ينقلب بالجلسة:** `role: 'OWNER'` تصير `'ADMIN'`
 والدور الحقيقي بـ`actualRole`. أي فحص للمالك لازم يكون
 `actualRole === 'OWNER'` — `role === 'OWNER'` ما تتحقق أبداً.
+
+## ═══ قواعد صاحب النظام (ع) — اقراها قبل أي شغل ═══
+- **الرد بالعراقي.** وإذا كال «وقف» أو «اصبر» توقف فوراً.
+- **الرفع:** على `claude/zen-mendel-70b9j2` و`avg` بعد دمج `origin/avg`. **برود** بس إذا طلبه صراحة («ارفع ع برود») وبعد ما تنجح كل الفحوص.
+- **كل commit** يحدّث `docs/pending-new-repo.md`: الصف «(هذا)» ياخذ هاش الـcommit السابق، وينضاف صف جديد.
+- **ممنوعات:**
+  - غرامات فلوس.
+  - اسم أو صورة موظف أو زبون للذكاء الخارجي.
+  - رفع `.env`.
+  - انطاء باسورد الروت للمبرمج.
+  - حذف بدون موافقته.
+  - أرقام مو حقيقية.
+  - `window.prompt()`، لأنه محجوب على بعض الأجهزة.
+- **ADMIN وOWNER ما ينقيّمون** بماتركس ولا بالواجبات.
+- **403 يسجّل مخالفة على الموظف:** الواجهة ما تنادي endpoint مو مسموح لدوره أو صلاحياته.
+- **صلاحية `monitoring` = دور MONITOR** (`middleware.IsMonitor` و`EffectiveRole`). المدير ADMIN يعبر كل شي بدوره، إلا إضافة موظف (`employee_create`) وأشياء المالك وحده.
+
+### الفحوص قبل أي رفع
+- **الخادم (`backend-go`):** `go vet ./...` و`DATABASE_URL=<قاعدة نظيفة> go test -p 1 -count=1 ./...`.
+- **الواجهة (`frontend`):** `npx tsc --noEmit -p tsconfig.app.json` و`npx eslint .` و`npm run -s build`.
+
+### خريطة سريعة
+- **الترحيلات:** تنضاف بآخر `internal/database/schema_matrix_chat.go`، قبل `\t}}\n}\n`.
+- **أعمدة جديدة** بـBooking أو Project أو WorkReport لازم تنضاف للموديل، لأن الاستعلامات `SELECT *`.
+- **SQL:** `baghdad_today()` و`baghdad_date()` للتوقيت. `awaitingAccountant(alias)` يخفي الفواتير الي المحاسب بعده ما دققها عن المراقب.
+- **الواجهة:** `positionTitle(e)` بـ`roleLabels.ts` للتحية بالمنصب.
+- **واجبات كل منصب:** `repository/duties_repository.go`، و`/api/duties/me`.
+- **مستخدمين التجربة المحليين** (الباسورد `Owner-pass-123`): owner، وemp_t1 (ليدر)، وmon_t2 (صلاحيات مراقب)، وqe_t (مهندس جودة).
