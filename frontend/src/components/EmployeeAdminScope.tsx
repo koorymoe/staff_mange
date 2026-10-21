@@ -25,7 +25,7 @@ export default function EmployeeAdminScope({ employeeId }: { employeeId: string 
   return (
     <div className="mb-6 rounded-xl border border-amber-200 bg-amber-50/60 p-4">
       <p className="font-bold text-amber-900">👥 الأدوار الي يكدر يضيفها ويعدّلها</p>
-      <p className="mb-3 text-xs text-amber-800">عنده صلاحية إضافة أو تعديل موظفين — يشتغل بس على الأدوار المؤشرة. ما مؤشر شي = ما يكدر يضيف ولا يعدّل أحد. المدير والمالك ما ينطون أبداً.</p>
+      <p className="mb-3 text-xs text-amber-800">عنده صلاحية إضافة أو تعديل موظفين — ما مؤشر شي = يضيف ويعدّل كل الأدوار. أشّر أدوار إذا تريد تقيّده بيها بس. المدير والمالك ما ينطون أبداً، والصلاحيات تبقى بيدك.</p>
       <div className="flex flex-wrap gap-2">
         {all.map((r) => (
           <label key={r} className={`cursor-pointer rounded-full border px-3 py-1 text-xs font-bold ${roles.includes(r) ? 'border-amber-500 bg-amber-500 text-white' : 'border-slate-300 bg-white text-slate-600'}`}>

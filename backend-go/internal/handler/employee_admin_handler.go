@@ -256,7 +256,15 @@ func roleInAdminScope(r *http.Request, role string) bool {
 	if isTop(middleware.RoleFromContext(r)) {
 		return true
 	}
-	return slices.Contains(adminScopeOf(middleware.EmployeeIDFromContext(r)), role)
+	// (ع) 10-21: «اريده يضيف موظف ويعدّل الملف، بس الصلاحيات تبقى يمي».
+	// ما محدد إله أدوار = كل الأدوار عدا المدير والمالك. والتحديد يبقى
+	// للي المالك يريد يقيّده. الصلاحيات ما تنمنح بالإضافة أصلاً
+	// (RoleDefaultPermissions اقتراح، والمنح من شاشة الصلاحيات للمدير بس).
+	scope := adminScopeOf(middleware.EmployeeIDFromContext(r))
+	if len(scope) == 0 {
+		return !isTop(role)
+	}
+	return slices.Contains(scope, role)
 }
 
 // GET /api/employees/{id}/admin-scope — المالك والمدير
@@ -275,8 +283,10 @@ func (h *EmployeeAdminHandler) MyScope(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	roles := h.scopeOf(middleware.EmployeeIDFromContext(r))
-	if roles == nil {
-		roles = []string{}
+	// ما محدد = كل الأدوار عدا المدير والمالك (نفس roleInAdminScope)
+	if len(roles) == 0 {
+		WriteJSON(w, http.StatusOK, map[string]any{"all": true, "roles": []string{}})
+		return
 	}
 	WriteJSON(w, http.StatusOK, map[string]any{"all": false, "roles": roles})
 }
