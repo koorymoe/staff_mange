@@ -121,7 +121,9 @@ func (h *SecretaryHandler) Message(w http.ResponseWriter, r *http.Request) {
 		switch {
 		case err == nil && out != nil:
 			res = out
-		case errors.Is(err, service.ErrAgentOff):
+		case errors.Is(err, service.ErrSecretaryOff), errors.Is(err, service.ErrAgentOff):
+		case errors.Is(err, service.ErrSecretaryCap):
+			res = &service.SecretaryResult{Reply: service.ErrSecretaryCap.Error()}
 		default:
 			log.Printf("secretary reply: %v", err)
 			res = &service.SecretaryResult{Reply: "صار خلل بالتفكير — جرّب مرة ثانية بعد شوية."}

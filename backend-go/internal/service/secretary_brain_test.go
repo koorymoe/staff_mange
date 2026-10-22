@@ -57,7 +57,7 @@ func TestSecretaryCollectsCardsAndProposalWithNames(t *testing.T) {
 	if len(res.Cards) != 1 || res.Cards[0].Status != "قيد العمل" {
 		t.Fatalf("cards = %+v (لازم وحدة بلا تكرار)", res.Cards)
 	}
-	if res.Proposal == nil || res.Proposal.Fields["employeeId"] != "e7" {
+	if res.Proposal == nil || res.Proposal.Fields.EmployeeID != "e7" {
 		t.Fatalf("proposal = %+v", res.Proposal)
 	}
 	if !strings.Contains(res.Reply, "أحمد خليل") {

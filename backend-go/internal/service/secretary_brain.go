@@ -43,49 +43,7 @@ var (
 	ErrSecretaryCap = errors.New("السكرتير وصل حده اليومي — يرجع باچر، والملخص وينتظر قرارك يشتغلون عادي")
 )
 
-// SecretaryTurn رسالة وحدة من المستخدم مع سياقها (ناروتو يجهّزها).
-type SecretaryTurn struct {
-	UserID   string
-	UserName string             // للتحية
-	Text     string             // نص الرسالة أو البصمة بعد Whisper
-	History  []SecretaryHistory // آخر الرسائل، الأقدم أول
-	Prefs    []string           // تفضيلات معتمدة بس
-}
-
-// SecretaryHistory رسالة سابقة: Role = "user" | "assistant".
-type SecretaryHistory struct {
-	Role string
-	Text string
-}
-
-type SecretaryCard struct {
-	Kind      string   `json:"kind"` // booking | project | customer | employee | attendance | task | summary | info
-	Title     string   `json:"title"`
-	Status    string   `json:"status"`
-	Owner     *string  `json:"owner"`
-	UpdatedAt *string  `json:"updatedAt"`
-	Lines     []string `json:"lines"`
-	Link      *string  `json:"link"`
-}
-
-type SecretaryProposal struct {
-	ActionID   string            `json:"actionId"`
-	Kind       string            `json:"kind"` // task
-	Summary    string            `json:"summary"`
-	Fields     map[string]string `json:"fields"`
-	Candidates []SecretaryPerson `json:"candidates"`
-}
-
-type SecretaryPerson struct {
-	ID   string `json:"id"`
-	Name string `json:"name"`
-}
-
-type SecretaryResult struct {
-	Reply    string
-	Cards    []SecretaryCard
-	Proposal *SecretaryProposal // nil إذا ماكو تنفيذ
-}
+// الأنواع المشتركة (SecretaryTurn · SecretaryCard · SecretaryProposal · SecretaryResult) بـsecretary_types.go.
 
 // secretaryToolOut الشكل المنظم الاختياري لمخرجات الأداة.
 type secretaryToolOut struct {
@@ -99,6 +57,8 @@ type SecretaryBrain struct {
 	llm   agentLLM
 	model string
 	tools []agentTool
+	// toolsFor أدوات ناروتو لكل دور: تكتب بطاقاتها ومقترحها على tc (secretary_tools.go).
+	toolsFor func(tc *SecretaryTurnCtx) []agentTool
 
 	capMu    sync.Mutex
 	dailyCap int
@@ -116,6 +76,13 @@ func NewSecretaryBrain(db *sqlx.DB, client *anthropic.Client, model string, tool
 	if client != nil {
 		b.llm = anthropicLLM{c: client}
 	}
+	return b
+}
+
+// NewSecretaryBrainFor العقل فوق أدوات السكرتير الحقيقية (main.go).
+func NewSecretaryBrainFor(d SecretaryDeps, dailyCap int) *SecretaryBrain {
+	b := NewSecretaryBrain(d.DB, d.Client, d.Model, nil, dailyCap)
+	b.toolsFor = func(tc *SecretaryTurnCtx) []agentTool { return NewSecretaryAgent(d, tc).tools }
 	return b
 }
 
@@ -189,9 +156,15 @@ func (b *SecretaryBrain) Reply(ctx context.Context, t SecretaryTurn) (*Secretary
 	ctx, cancel := context.WithTimeout(ctx, secretaryTimeout)
 	defer cancel()
 
+	turnTools := b.tools
+	var tc *SecretaryTurnCtx
+	if b.toolsFor != nil {
+		tc = &SecretaryTurnCtx{UserID: t.UserID, Request: t.Text}
+		turnTools = b.toolsFor(tc)
+	}
 	byName := map[string]agentTool{}
-	tools := make([]anthropic.ToolUnionParam, 0, len(b.tools))
-	for _, tl := range b.tools {
+	tools := make([]anthropic.ToolUnionParam, 0, len(turnTools))
+	for _, tl := range turnTools {
 		byName[tl.Name] = tl
 		props := tl.Props
 		if props == nil {
@@ -255,6 +228,17 @@ func (b *SecretaryBrain) Reply(ctx context.Context, t SecretaryTurn) (*Secretary
 			}
 		}
 		if len(results) == 0 || resp.StopReason != anthropic.StopReasonToolUse {
+			if tc != nil {
+				for _, c := range tc.Cards {
+					if key := c.Kind + "|" + c.Title; !seen[key] && len(res.Cards) < secretaryMaxCards {
+						seen[key] = true
+						res.Cards = append(res.Cards, c)
+					}
+				}
+				if tc.Proposal != nil {
+					res.Proposal = tc.Proposal
+				}
+			}
 			res.Reply = strings.TrimSpace(text.String())
 			if res.Reply == "" && res.Proposal != nil {
 				res.Reply = res.Proposal.Summary

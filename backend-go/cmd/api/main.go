@@ -2661,11 +2661,11 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 		// 🗂️ السكرتير (قرار (ع) 10-22): المالك والمدير بس، كل واحد بذاكرته — docs/secretary.md
 		secRepo := repository.NewSecretaryRepository(db)
 		secHandler := handler.NewSecretaryHandler(secRepo, employeeRepo, extraTaskRepo, notificationRepo, voiceAnalysisService)
-		secHandler.SetBrain(&service.SecretaryAgentReplier{Deps: service.SecretaryDeps{
+		secHandler.SetBrain(service.NewSecretaryBrainFor(service.SecretaryDeps{
 			DB: db, Client: client, Model: model, Repo: secRepo,
 			Matrix: service.AgentDeps{Command: matrixCommandService, Projects: matrixProjectService.Report,
 				Scores: matrixScoreService.Board, ScoreRepo: matrixScoreService.Repo()},
-		}})
+		}, 300)) // ٣٠٠ نداء باليوم — حارس فاتورة
 		mux.Handle("POST /api/secretary/message", middleware.Chain(http.HandlerFunc(secHandler.Message), requireAuth, requireAdmin))
 		mux.Handle("POST /api/secretary/actions/{id}/confirm", middleware.Chain(http.HandlerFunc(secHandler.Confirm), requireAuth, requireAdmin))
 		mux.Handle("POST /api/secretary/actions/{id}/cancel", middleware.Chain(http.HandlerFunc(secHandler.Cancel), requireAuth, requireAdmin))
