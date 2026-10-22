@@ -90,10 +90,6 @@ UNION ALL SELECT '٣ج تقييمات KPI على المدير أو المالك 
   FROM "KpiEvaluation" WHERE NOT cancelled AND "employeeId" IN (SELECT id FROM top_roles)
 UNION ALL SELECT '٣د تقييمات الكوادر على المدير أو المالك (ممنوع)', count(*)::text, NULL
   FROM "StaffRating" WHERE "rateeId" IN (SELECT id FROM top_roles)
-UNION ALL SELECT '٣هـ تقييمات KPI بيها خصم فلوس (ممنوع: غرامات فلوس)', count(*)::text,
-       'المجموع ' || COALESCE(sum("deductionAmount"), 0)::text
-  FROM "KpiEvaluation" WHERE NOT cancelled AND "deductionAmount" > 0
-
 UNION ALL SELECT '٤ دوام مفتوح من أيام سابقة (ما سجل خروج)', count(*)::text,
        string_agg(emp || ' ' || d, ' · ') FILTER (WHERE rn <= 10)
   FROM (SELECT *, row_number() OVER (ORDER BY d DESC) rn FROM att_open) t

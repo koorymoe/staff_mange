@@ -209,8 +209,18 @@ func (r *AttendanceRepository) ForEmployeeInRange(employeeID string, from, to st
 }
 
 func (r *AttendanceRepository) Correct(id string, checkIn, checkOut *time.Time) (*model.Attendance, error) {
+	// ═══ ما ينحفظ وقت مستحيل — فحص السيرفر 10-22 ═══
+	// لگينا ٢٣١ جلسة أطول من ١٦ ساعة، بعضها ملايين الساعات (سنة غلط
+	// بالتصحيح اليدوي)، وهاي تخرّب ساعات الدوام والتقييم. البصمة الحية
+	// تستعمل now() فهي سليمة؛ التصحيح هو الباب. نحدّث بمعاملة ونفحص
+	// النتيجة المدموجة (القديم + الجديد)، والغلط يرجع بلا ما ينحفظ.
+	tx, err := r.db.Beginx()
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = tx.Rollback() }()
 	var a model.Attendance
-	err := r.db.Get(&a, `
+	err = tx.Get(&a, `
 		UPDATE "Attendance" SET
 			"checkIn" = COALESCE(($2::timestamptz AT TIME ZONE 'UTC'), "checkIn"),
 			"checkOut" = COALESCE(($3::timestamptz AT TIME ZONE 'UTC'), "checkOut"),
@@ -225,8 +235,38 @@ func (r *AttendanceRepository) Correct(id string, checkIn, checkOut *time.Time) 
 	if err != nil {
 		return nil, err
 	}
+	if err := ValidAttendanceSpan(a.CheckIn, a.CheckOut, time.Now()); err != nil {
+		return nil, err
+	}
+	if err := tx.Commit(); err != nil {
+		return nil, err
+	}
 	r.hydrate(&a)
 	return &a, nil
+}
+
+// أطول جلسة دوام مقبولة بالتصحيح.
+const maxAttendanceSpan = 24 * time.Hour
+
+// ValidAttendanceSpan الدخول مو بالمستقبل، والخروج بعد الدخول وخلال ٢٤ ساعة منه.
+// الأوقات بالقاعدة UTC بلا منطقة، فنقارنها كـUTC.
+func ValidAttendanceSpan(in time.Time, out *time.Time, now time.Time) error {
+	nowUTC := now.UTC()
+	inUTC := time.Date(in.Year(), in.Month(), in.Day(), in.Hour(), in.Minute(), in.Second(), 0, time.UTC)
+	if inUTC.After(nowUTC.Add(5 * time.Minute)) {
+		return errors.New("وقت الحضور بالمستقبل — تأكد من التاريخ")
+	}
+	if out == nil {
+		return nil
+	}
+	outUTC := time.Date(out.Year(), out.Month(), out.Day(), out.Hour(), out.Minute(), out.Second(), 0, time.UTC)
+	if !outUTC.After(inUTC) {
+		return errors.New("وقت الانصراف لازم يكون بعد وقت الحضور")
+	}
+	if outUTC.Sub(inUTC) > maxAttendanceSpan {
+		return errors.New("الجلسة أطول من ٢٤ ساعة — تأكد من التاريخ")
+	}
+	return nil
 }
 
 // ═══ الحضور الإجباري + الانصراف التلقائي ═══

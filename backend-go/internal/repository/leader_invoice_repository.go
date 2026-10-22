@@ -18,6 +18,9 @@ type LeaderInvoiceRepository struct {
 	db *sqlx.DB
 }
 
+// ErrInvoiceSameDay الحجز عليه فاتورة اليوم.
+var ErrInvoiceSameDay = errors.New("هذا الحجز عليه فاتورة اليوم — إذا رجعتوله يوم ثاني تكدر تسوي فاتورة")
+
 func NewLeaderInvoiceRepository(db *sqlx.DB) *LeaderInvoiceRepository {
 	return &LeaderInvoiceRepository{db: db}
 }
@@ -39,6 +42,26 @@ func (r *LeaderInvoiceRepository) Create(inv *model.LeaderInvoice, materials []m
 		return nil, err
 	}
 	defer func() { _ = tx.Rollback() }()
+
+	// ═══ فاتورة وحدة للحجز باليوم — قرار (ع) 10-22 ═══
+	// فحص السيرفر لگى ٤ حجوزات بفاتورتين متطابقتين معتمدتين (ضغطتين على
+	// «إرسال»، فرق ٠–١١ دقيقة) و٤٨ بفاتورتين من ليدرين. القاعدة: ليدر واحد
+	// يفوتر، وفاتورة ثانية بس إذا الحجز انطلعله يوم ثاني. القفل يخلي الضغطتين
+	// بنفس اللحظة تنتظر وحدة الثانية، فالثانية تشوف الأولى وترفض.
+	if inv.BookingID != nil && *inv.BookingID != "" {
+		if _, err := tx.Exec(`SELECT pg_advisory_xact_lock(hashtext('leader-invoice:' || $1))`, *inv.BookingID); err != nil {
+			return nil, err
+		}
+		var dup bool
+		if err := tx.Get(&dup, `SELECT EXISTS (SELECT 1 FROM "LeaderInvoice"
+			WHERE "bookingId" = $1 AND "revokedAt" IS NULL
+			  AND baghdad_date("createdAt") = baghdad_today())`, *inv.BookingID); err != nil {
+			return nil, err
+		}
+		if dup {
+			return nil, ErrInvoiceSameDay
+		}
+	}
 
 	// الكود المحاسبي النهائي يعتمد على معرف الفاتورة (gen_random_uuid) وتاريخ
 	// الإنشاء، وكلاهما لا يُعرف إلا بعد الإدراج — لذا نستخدم كوداً مؤقتاً فريداً
