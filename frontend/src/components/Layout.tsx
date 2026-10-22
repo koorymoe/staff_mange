@@ -335,6 +335,16 @@ export default function Layout() {
   }
 
   const role = employee?.role
+  // «السكرتير» تطبيق مالك مستقل: يستعمل نفس الجلسة وحراسة الخادم، بس ما
+  // يحمل القائمة أو هيدر نظام الموظفين. إبقاؤه داخل Layout ضروري حتى تبقى
+  // SessionContext والجلسة الحقيقية موجودة، مو نسخة محلية قابلة للتلاعب.
+  if (location.pathname === '/secretary') {
+    return (
+      <SessionContext.Provider value={{ employee, setEmployee, permissions: employeePermissions, gpsServiceId }}>
+        <ErrorBoundary inline key={location.pathname}><Outlet /></ErrorBoundary>
+      </SessionContext.Provider>
+    )
+  }
   // صاحب صلاحية monitoring يشوف قائمة المراقب نفسها — (ع) 10-16
   const isMonRole = role === 'MONITOR' || (role !== 'ADMIN' && employeePermissions.includes('monitoring'))
   const isVisible = (item: NavItem, unitGranted = false): boolean =>
