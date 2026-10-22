@@ -61,7 +61,13 @@ type MatrixAgent struct {
 	tools []agentTool
 	// testNames للاختبار بلا قاعدة (اسم ← معرّف)
 	testNames map[string]string
+	// plainNames: الأسماء تطلع كما هي — للسكرتير بس (استثناء مكتوب من (ع)
+	// 10-22، docs/secretary.md). ماتركس وكل عميل ثاني يبقى يخفي.
+	plainNames bool
 }
+
+// ShowNames يطفّي إخفاء الأسماء لهالوكيل — للسكرتير وحده.
+func (a *MatrixAgent) ShowNames() { a.plainNames = true }
 
 func NewMatrixAgent(db *sqlx.DB, client *anthropic.Client, model string) *MatrixAgent {
 	if model == "" {
@@ -85,6 +91,7 @@ func (a *MatrixAgent) AddTool(t agentTool) { a.tools = append(a.tools, t) }
 
 // nameMask يبدّل أسماء الموظفين برموز ثابتة طول التشغيلة.
 type nameMask struct {
+	plain bool     // ما يخفي (السكرتير) — Resolve يبقى يشتغل
 	names []string // مرتّبة الأطول أولاً
 	ids   map[string]string
 	tag   map[string]int // اسم ← رقم
@@ -92,7 +99,7 @@ type nameMask struct {
 }
 
 func (a *MatrixAgent) newMask() *nameMask {
-	m := &nameMask{ids: map[string]string{}, tag: map[string]int{}}
+	m := &nameMask{ids: map[string]string{}, tag: map[string]int{}, plain: a.plainNames}
 	rows := []struct {
 		ID   string `db:"id"`
 		Name string `db:"name"`
@@ -132,6 +139,9 @@ func (m *nameMask) tagFor(name string) string {
 
 // Hide يبدّل كل اسم معروف برمزه.
 func (m *nameMask) Hide(text string) string {
+	if m.plain {
+		return text
+	}
 	for _, n := range m.names {
 		if !strings.Contains(text, n) {
 			continue
@@ -153,6 +163,9 @@ var agentTagRe = regexp.MustCompile(`موظف#(\d+)`)
 
 // Show يرجّع الأسماء الحقيقية بجواب النموذج.
 func (m *nameMask) Show(text string) string {
+	if m.plain {
+		return text
+	}
 	return agentTagRe.ReplaceAllStringFunc(text, func(s string) string {
 		var n int
 		fmt.Sscanf(strings.TrimPrefix(s, "موظف#"), "%d", &n)

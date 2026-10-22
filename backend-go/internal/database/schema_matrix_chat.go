@@ -733,5 +733,43 @@ func matrixChatMigrations() []Migration {
 				"updatedAt" TIMESTAMP NOT NULL DEFAULT now()
 			);
 		`,
+	}, {
+		// ═══ «السكرتير» — أول عميل ذكاء داخل النظام (قرار (ع) 10-22، docs/secretary.md) ═══
+		// للمالك ومدير النظام، كل واحد بذاكرته. المحادثة، وكل مقترح تنفيذ
+		// ونتيجته (السجل)، والتفضيلات المعتمدة بس.
+		Version: "0386_secretary",
+		SQL: `
+			CREATE TABLE IF NOT EXISTS "SecretaryMessage" (
+				id TEXT PRIMARY KEY,
+				"employeeId" TEXT NOT NULL REFERENCES "Employee"(id) ON DELETE CASCADE,
+				role TEXT NOT NULL CHECK (role IN ('user', 'assistant')),
+				text TEXT NOT NULL DEFAULT '',
+				transcript TEXT,
+				cards JSONB NOT NULL DEFAULT '[]'::jsonb,
+				"actionId" TEXT,
+				"createdAt" TIMESTAMPTZ NOT NULL DEFAULT now()
+			);
+			CREATE INDEX IF NOT EXISTS "SecretaryMessage_emp_idx" ON "SecretaryMessage" ("employeeId", "createdAt" DESC);
+			CREATE TABLE IF NOT EXISTS "SecretaryAction" (
+				id TEXT PRIMARY KEY,
+				"employeeId" TEXT NOT NULL REFERENCES "Employee"(id) ON DELETE CASCADE,
+				kind TEXT NOT NULL,
+				request TEXT NOT NULL DEFAULT '',
+				summary TEXT NOT NULL DEFAULT '',
+				fields JSONB NOT NULL DEFAULT '{}'::jsonb,
+				status TEXT NOT NULL DEFAULT 'PROPOSED' CHECK (status IN ('PROPOSED', 'SENT', 'CANCELLED', 'FAILED')),
+				result TEXT,
+				"createdAt" TIMESTAMPTZ NOT NULL DEFAULT now(),
+				"decidedAt" TIMESTAMPTZ
+			);
+			CREATE INDEX IF NOT EXISTS "SecretaryAction_emp_idx" ON "SecretaryAction" ("employeeId", "createdAt" DESC);
+			CREATE TABLE IF NOT EXISTS "SecretaryPref" (
+				id TEXT PRIMARY KEY,
+				"employeeId" TEXT NOT NULL REFERENCES "Employee"(id) ON DELETE CASCADE,
+				text TEXT NOT NULL,
+				active BOOLEAN NOT NULL DEFAULT true,
+				"createdAt" TIMESTAMPTZ NOT NULL DEFAULT now()
+			);
+		`,
 	}}
 }

@@ -2658,6 +2658,19 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 		})
 		matrixCommandService.SetAgent(agent)
 		trainingCenter.Agent = agent
+		// 🗂️ السكرتير (قرار (ع) 10-22): المالك والمدير بس، كل واحد بذاكرته — docs/secretary.md
+		secRepo := repository.NewSecretaryRepository(db)
+		secHandler := handler.NewSecretaryHandler(secRepo, employeeRepo, extraTaskRepo, notificationRepo, voiceAnalysisService)
+		secHandler.SetBrain(&service.SecretaryAgentReplier{Deps: service.SecretaryDeps{
+			DB: db, Client: client, Model: model, Repo: secRepo,
+			Matrix: service.AgentDeps{Command: matrixCommandService, Projects: matrixProjectService.Report,
+				Scores: matrixScoreService.Board, ScoreRepo: matrixScoreService.Repo()},
+		}})
+		mux.Handle("POST /api/secretary/message", middleware.Chain(http.HandlerFunc(secHandler.Message), requireAuth, requireAdmin))
+		mux.Handle("POST /api/secretary/actions/{id}/confirm", middleware.Chain(http.HandlerFunc(secHandler.Confirm), requireAuth, requireAdmin))
+		mux.Handle("POST /api/secretary/actions/{id}/cancel", middleware.Chain(http.HandlerFunc(secHandler.Cancel), requireAuth, requireAdmin))
+		mux.Handle("GET /api/secretary/today", middleware.Chain(http.HandlerFunc(secHandler.Today), requireAuth, requireAdmin))
+		mux.Handle("GET /api/secretary/history", middleware.Chain(http.HandlerFunc(secHandler.History), requireAuth, requireAdmin))
 		// ☀️ رسالة الصبح (٨ص) + 🏆 إشادة الأسبوع (الخميس) — قرار (ع) 10-11
 		morningService := service.NewMatrixMorningService(db, aiRepo, notificationRepo, announcementRepo, agent)
 		safeguard.Loop("رسالة الصبح وإشادة الأسبوع", 3*time.Minute, 15*time.Minute, func() {

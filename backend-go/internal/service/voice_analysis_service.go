@@ -340,3 +340,8 @@ func (s *VoiceAnalysisService) DialectHint() string {
 	s.dialectText = b.String()
 	return s.dialectText
 }
+
+// Transcribe نص البصمة بـWhisper الداخلي — للسكرتير. الصوت ما ينحفظ.
+func (s *VoiceAnalysisService) Transcribe(ctx context.Context, audio []byte, contentType string) (string, error) {
+	return s.transcribe(ctx, audio, contentType)
+}
