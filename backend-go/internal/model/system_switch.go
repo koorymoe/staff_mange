@@ -45,13 +45,15 @@ const (
 	SwitchAIPeer           = "ai_peer"
 	SwitchAITone           = "ai_tone"
 	SwitchAIChat           = "ai_chat"
+	// SwitchAISecretary «السكرتير» للمالك والمدير (دازاي 10-22)
+	SwitchAISecretary = "ai_secretary"
 )
 
 // AIFeatureSwitch مفتاح كل ميزة (اسم الميزة بعدّاد الكلفة ← المفتاح).
 var AIFeatureSwitch = map[string]string{
 	"GUIDE": SwitchAIGuide, "JUDGE": SwitchAIJudge, "DISCOVERY": SwitchAIDiscovery, "VOICE": SwitchAIVoice,
 	"ASK": SwitchAIAsk, "LEARNING": SwitchAILearning, "EMPLOYEE_REPORT": SwitchAIEmployeeReport, "PEER": SwitchAIPeer,
-	"TONE": SwitchAITone, "CHAT": SwitchAIChat,
+	"TONE": SwitchAITone, "CHAT": SwitchAIChat, "SECRETARY": SwitchAISecretary,
 }
 
 // systemSwitchDefaultOff مفاتيح **مطفية** لحد ما المالك يشغّلها بنفسه —
@@ -84,6 +86,7 @@ var SystemSwitchLabels = map[string]string{
 	SwitchAIPeer:                "هايكو: صوت الموظفين والمشاكل الوظيفية",
 	SwitchAITone:                "هايكو: صياغة تنبيهات ماتركس بأسلوب متجدد",
 	SwitchAIChat:                "هايكو: دردشة ماتركس",
+	SwitchAISecretary:           "🗂️ السكرتير: محادثة وبصمات المدير",
 }
 
 // KnownSystemSwitch هل هذا مفتاح نعرفه؟
@@ -105,7 +108,7 @@ var systemSwitchAdminAllowed = map[string]bool{
 	// مفاتيح الكلفة: قرار تشغيلي — المدير كمان.
 	SwitchAIGuide: true, SwitchAIJudge: true, SwitchAIDiscovery: true, SwitchAIVoice: true,
 	SwitchAIAsk: true, SwitchAILearning: true, SwitchAIEmployeeReport: true, SwitchAIPeer: true,
-	SwitchAITone: true, SwitchAIChat: true,
+	SwitchAITone: true, SwitchAIChat: true, SwitchAISecretary: true,
 }
 
 // SystemSwitchAdminAllowed هل مدير النظام (ADMIN) مسموح له يبدّل
