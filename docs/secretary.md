@@ -96,6 +96,22 @@
    "cards": [], "action": { "id": "…", "status": "PROPOSED | SENT | CANCELLED | FAILED", "result": "…" } }]
 ```
 
+## 🗓️ «تذكيراتي» (v2 — دازاي 10-22)
+
+بدل قائمة «ينتظر قرارك» الطويلة: زر «تذكيراتي» + العدد، ويفتح شاشة مرتبة بأقسام.
+الموظف يطلب **مقابلة المدير** أو **يجيب ضيف**، والطلب يوصل هنا. المالك أو المدير يحدد موعد أو يرفض بسبب،
+والموظف يوصله إشعار بالحالتين.
+
+| المسار | منو | الجسم / الرد |
+|---|---|---|
+| `POST /api/meeting-requests` | أي موظف | `{kind:"MEETING"\|"GUEST", reason, guestName?, preferredAt? "YYYY-MM-DDTHH:MM"}` — الضيف يحتاج اسم · حد ٣ طلبات مفتوحة (409) |
+| `GET /api/meeting-requests/mine` | الموظف نفسه | `[{id, kind, reason, guestName, preferredAt, status:"PENDING"\|"SCHEDULED"\|"DECLINED", scheduledAt, note, createdAt}]` |
+| `GET /api/secretary/reminders` | المالك والمدير | `{counts:{meeting,guest,delete_request,leave}, items:[{id, kind, title, who, reason, guestName, preferredAt, link, createdAt}]}` |
+| `POST /api/secretary/reminders/{id}/schedule` | المالك والمدير | `{at:"YYYY-MM-DDTHH:MM", note?}` — meeting/guest بس · الثانية 409 |
+| `POST /api/secretary/reminders/{id}/decline` | المالك والمدير | `{reason}` — meeting/guest بس · الثانية 409 |
+
+الحذف والإجازات بـ«تذكيراتي» تبقى «افتح التفاصيل» + «أجّل» (القرار من شاشتها).
+
 ## العقل (لوفي) — الواجهة بين الباك إند والعقل
 
 ناروتو يجهّز التخزين والمسارات والأدوات. لوفي يكتب العقل بملف `backend-go/internal/service/secretary_brain.go`:

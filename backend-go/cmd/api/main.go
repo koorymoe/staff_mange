@@ -2671,6 +2671,15 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 		mux.Handle("POST /api/secretary/actions/{id}/cancel", middleware.Chain(http.HandlerFunc(secHandler.Cancel), requireAuth, requireAdmin))
 		mux.Handle("GET /api/secretary/today", middleware.Chain(http.HandlerFunc(secHandler.Today), requireAuth, requireAdmin))
 		mux.Handle("GET /api/secretary/history", middleware.Chain(http.HandlerFunc(secHandler.History), requireAuth, requireAdmin))
+		// 🗓️ «تذكيراتي» (دازاي 10-22): أي موظف يطلب مقابلة أو ضيف، والمالك والمدير يحددون موعد أو يرفضون
+		meetingRepo := repository.NewMeetingRequestRepository(db)
+		secHandler.SetMeetings(meetingRepo)
+		meetingHandler := handler.NewMeetingRequestHandler(meetingRepo, notificationRepo)
+		mux.Handle("POST /api/meeting-requests", middleware.Chain(http.HandlerFunc(meetingHandler.Create), requireAuth))
+		mux.Handle("GET /api/meeting-requests/mine", middleware.Chain(http.HandlerFunc(meetingHandler.Mine), requireAuth))
+		mux.Handle("GET /api/secretary/reminders", middleware.Chain(http.HandlerFunc(secHandler.Reminders), requireAuth, requireAdmin))
+		mux.Handle("POST /api/secretary/reminders/{id}/schedule", middleware.Chain(http.HandlerFunc(secHandler.Schedule), requireAuth, requireAdmin))
+		mux.Handle("POST /api/secretary/reminders/{id}/decline", middleware.Chain(http.HandlerFunc(secHandler.Decline), requireAuth, requireAdmin))
 		// ☀️ رسالة الصبح (٨ص) + 🏆 إشادة الأسبوع (الخميس) — قرار (ع) 10-11
 		morningService := service.NewMatrixMorningService(db, aiRepo, notificationRepo, announcementRepo, agent)
 		safeguard.Loop("رسالة الصبح وإشادة الأسبوع", 3*time.Minute, 15*time.Minute, func() {

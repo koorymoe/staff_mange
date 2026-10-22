@@ -26,6 +26,7 @@ type SecretaryHandler struct {
 	notifications *repository.NotificationRepository
 	voice         *service.VoiceAnalysisService
 	brain         service.SecretaryReplier
+	meetings      *repository.MeetingRequestRepository
 }
 
 func NewSecretaryHandler(repo *repository.SecretaryRepository, e *repository.EmployeeRepository,
@@ -331,4 +332,132 @@ func deref(s *string) string {
 		return ""
 	}
 	return *s
+}
+
+// ═══ «تذكيراتي» — الي تنتظر قرار أو موعد من المالك أو المدير ═══
+
+// SetMeetings طلبات المقابلة والضيوف.
+func (h *SecretaryHandler) SetMeetings(m *repository.MeetingRequestRepository) { h.meetings = m }
+
+type secretaryReminder struct {
+	ID          string     `json:"id"`
+	Kind        string     `json:"kind"` // meeting | guest | delete_request | leave
+	Title       string     `json:"title"`
+	Who         string     `json:"who"`
+	Reason      string     `json:"reason"`
+	GuestName   *string    `json:"guestName"`
+	PreferredAt *time.Time `json:"preferredAt"`
+	Link        *string    `json:"link"`
+	CreatedAt   time.Time  `json:"createdAt"`
+}
+
+// GET /api/secretary/reminders
+func (h *SecretaryHandler) Reminders(w http.ResponseWriter, r *http.Request) {
+	counts := map[string]int{"meeting": 0, "guest": 0, "delete_request": 0, "leave": 0}
+	items := []secretaryReminder{}
+	if h.meetings != nil {
+		rows, err := h.meetings.Pending()
+		if err != nil {
+			WriteError(w, http.StatusInternalServerError, "تعذر جلب طلبات المقابلة")
+			return
+		}
+		for _, m := range rows {
+			it := secretaryReminder{ID: m.ID, Who: m.Who, Reason: m.Reason, GuestName: m.GuestName,
+				PreferredAt: m.PreferredAt, CreatedAt: m.CreatedAt}
+			if m.Kind == "GUEST" {
+				it.Kind, it.Title = "guest", m.Who+" يريد يجيب ضيف: "+deref(m.GuestName)
+			} else {
+				it.Kind, it.Title = "meeting", "طلب مقابلة — "+m.Who
+			}
+			counts[it.Kind]++
+			items = append(items, it)
+		}
+	}
+	pending, err := h.repo.Pending()
+	if err != nil {
+		WriteError(w, http.StatusInternalServerError, "تعذر جلب الطلبات")
+		return
+	}
+	for _, p := range pending {
+		link := p.Link
+		counts[p.Kind]++
+		items = append(items, secretaryReminder{ID: p.ID, Kind: p.Kind, Title: p.Question, Who: p.Affects,
+			Reason: p.Why, Link: &link, CreatedAt: p.CreatedAt})
+	}
+	WriteJSON(w, http.StatusOK, map[string]any{"counts": counts, "items": items})
+}
+
+// POST /api/secretary/reminders/{id}/schedule — {at, note}: موعد للمقابلة أو الضيف.
+func (h *SecretaryHandler) Schedule(w http.ResponseWriter, r *http.Request) {
+	var in struct {
+		At   string `json:"at"`
+		Note string `json:"note"`
+	}
+	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 8<<10)).Decode(&in); err != nil {
+		WriteError(w, http.StatusBadRequest, "طلب غير صالح")
+		return
+	}
+	at, err := time.ParseInLocation("2006-01-02T15:04", in.At, secLoc)
+	if err != nil {
+		WriteError(w, http.StatusBadRequest, "حدد التاريخ والوقت")
+		return
+	}
+	if at.Before(time.Now().Add(-5 * time.Minute)) {
+		WriteError(w, http.StatusBadRequest, "الموعد لازم يكون بالجاي")
+		return
+	}
+	note := strings.TrimSpace(in.Note)
+	if r := []rune(note); len(r) > 300 {
+		note = string(r[:300])
+	}
+	m := h.decideMeeting(w, r, "SCHEDULED", &at, note)
+	if m == nil {
+		return
+	}
+	msg := "📅 انحدد موعد " + map[bool]string{true: "ضيفك", false: "مقابلتك"}[m.Kind == "GUEST"] +
+		" ويا الإدارة: " + at.In(secLoc).Format("2006-01-02 15:04")
+	if note != "" {
+		msg += " — " + note
+	}
+	_ = h.notifications.Create(m.EmployeeID, "meeting_request", msg)
+	WriteJSON(w, http.StatusOK, map[string]any{"ok": true})
+}
+
+// POST /api/secretary/reminders/{id}/decline — {reason}
+func (h *SecretaryHandler) Decline(w http.ResponseWriter, r *http.Request) {
+	var in struct {
+		Reason string `json:"reason"`
+	}
+	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 8<<10)).Decode(&in); err != nil {
+		WriteError(w, http.StatusBadRequest, "طلب غير صالح")
+		return
+	}
+	reason := strings.TrimSpace(in.Reason)
+	if n := len([]rune(reason)); n < 2 || n > 300 {
+		WriteError(w, http.StatusBadRequest, "اكتب سبب الرفض")
+		return
+	}
+	m := h.decideMeeting(w, r, "DECLINED", nil, reason)
+	if m == nil {
+		return
+	}
+	_ = h.notifications.Create(m.EmployeeID, "meeting_request", "🗓️ طلبك ما انقبل: "+reason)
+	WriteJSON(w, http.StatusOK, map[string]any{"ok": true})
+}
+
+func (h *SecretaryHandler) decideMeeting(w http.ResponseWriter, r *http.Request, status string, at *time.Time, note string) *repository.MeetingRequest {
+	if h.meetings == nil {
+		WriteError(w, http.StatusNotFound, "الطلب مو موجود")
+		return nil
+	}
+	m, err := h.meetings.Get(r.PathValue("id"))
+	if err != nil {
+		WriteError(w, http.StatusNotFound, "هذا مو طلب مقابلة — الحذف والإجازات تنحسم من شاشتها")
+		return nil
+	}
+	if err := h.meetings.Decide(m.ID, middleware.EmployeeIDFromContext(r), status, at, note); err != nil {
+		WriteError(w, http.StatusConflict, err.Error())
+		return nil
+	}
+	return m
 }

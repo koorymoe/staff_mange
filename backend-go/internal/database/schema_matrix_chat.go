@@ -771,5 +771,27 @@ func matrixChatMigrations() []Migration {
 				"createdAt" TIMESTAMPTZ NOT NULL DEFAULT now()
 			);
 		`,
+	}, {
+		// «تذكيراتي» (دازاي 10-22): الموظف يطلب مقابلة المدير أو يجيب ضيف،
+		// والطلب يوصل لتذكيرات السكرتير — المالك أو المدير يحدد موعد أو يرفض بسبب.
+		Version: "0387_meeting_request",
+		SQL: `
+			CREATE TABLE IF NOT EXISTS "MeetingRequest" (
+				id TEXT PRIMARY KEY,
+				"employeeId" TEXT NOT NULL REFERENCES "Employee"(id) ON DELETE CASCADE,
+				kind TEXT NOT NULL CHECK (kind IN ('MEETING', 'GUEST')),
+				reason TEXT NOT NULL,
+				"guestName" TEXT,
+				"preferredAt" TIMESTAMPTZ,
+				status TEXT NOT NULL DEFAULT 'PENDING' CHECK (status IN ('PENDING', 'SCHEDULED', 'DECLINED')),
+				"scheduledAt" TIMESTAMPTZ,
+				note TEXT,
+				"decidedById" TEXT REFERENCES "Employee"(id) ON DELETE SET NULL,
+				"createdAt" TIMESTAMPTZ NOT NULL DEFAULT now(),
+				"decidedAt" TIMESTAMPTZ
+			);
+			CREATE INDEX IF NOT EXISTS "MeetingRequest_emp_idx" ON "MeetingRequest" ("employeeId", "createdAt" DESC);
+			CREATE INDEX IF NOT EXISTS "MeetingRequest_pending_idx" ON "MeetingRequest" ("createdAt") WHERE status = 'PENDING';
+		`,
 	}}
 }
