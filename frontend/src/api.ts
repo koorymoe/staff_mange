@@ -1172,6 +1172,24 @@ export function fileUrl(value?: string | null): string {
   return value
 }
 
+// ═══ 🗂️ السكرتير — نفس شكل العقد (docs/secretary.md) ═══
+export interface SecretaryCard {
+  kind: 'booking' | 'project' | 'customer' | 'employee' | 'attendance' | 'task' | 'summary' | 'info'
+  title: string; status: string; owner: string | null; updatedAt: string | null; lines: string[]; link: string | null
+}
+export interface SecretaryProposal {
+  actionId: string; kind: 'task'; summary: string
+  fields: { employeeId: string; employeeName: string; title: string; description: string; priority: 'NORMAL' | 'URGENT'; dueAt: string }
+  candidates: { id: string; name: string }[]
+}
+export interface SecretaryReply { messageId: string; transcript: string | null; reply: string; cards: SecretaryCard[]; proposal: SecretaryProposal | null }
+export interface SecretaryChat {
+  id: string; at: string; role: 'user' | 'assistant'; text: string; transcript: string | null; cards: SecretaryCard[]
+  action: { id: string; status: 'PROPOSED' | 'SENT' | 'CANCELLED' | 'FAILED'; result: string | null } | null
+}
+export interface SecretaryPending { id: string; kind: string; question: string; why: string; impact: string; affects: string; link: string; createdAt: string }
+export interface SecretaryToday { greeting: string; summary: { lines: string[]; cards: SecretaryCard[] }; pending: SecretaryPending[] }
+
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
   const token = currentToken()
   const res = await fetch(`${API_URL}${path}`, {
@@ -4419,6 +4437,21 @@ export const api = {
     title: string; description?: string; assignedToId: string
     priority: 'NORMAL' | 'URGENT'; dueAt?: string | null
   }) => request<ExtraTask>('/extra-tasks', { method: 'POST', body: JSON.stringify(data) }),
+  // ═══ 🗂️ السكرتير (docs/secretary.md) — المالك والمدير بس ═══
+  secretaryToday: () => request<SecretaryToday>('/secretary/today'),
+  secretaryHistory: (limit = 50) => request<SecretaryChat[]>(`/secretary/history?limit=${limit}`),
+  secretaryMessage: (text: string) => request<SecretaryReply>('/secretary/message', { method: 'POST', body: JSON.stringify({ text }) }),
+  secretaryVoice: async (audio: Blob) => {
+    const form = new FormData()
+    form.append('file', audio, 'voice')
+    const token = currentToken()
+    const res = await fetch(`${API_URL}/secretary/message`, { method: 'POST', headers: token ? { Authorization: `Bearer ${token}` } : {}, body: form })
+    if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || 'تعذر إرسال البصمة')
+    return res.json() as Promise<SecretaryReply>
+  },
+  secretaryConfirm: (id: string, fields: SecretaryProposal['fields']) =>
+    request<{ ok: boolean; card: SecretaryCard }>(`/secretary/actions/${encodeURIComponent(id)}/confirm`, { method: 'POST', body: JSON.stringify({ fields }) }),
+  secretaryCancel: (id: string) => request<{ ok: boolean }>(`/secretary/actions/${encodeURIComponent(id)}/cancel`, { method: 'POST' }),
   /** مهمة بالفويس: مسودة بس (عنوان، تفاصيل، أولوية، موعد، موظف مقترح) — التوجيه يبقى بـcreateExtraTask */
   voiceTaskDraft: async (audio: Blob) => {
     const form = new FormData()
