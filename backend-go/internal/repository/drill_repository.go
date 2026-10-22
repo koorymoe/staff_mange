@@ -115,6 +115,16 @@ func DrillCountSQL(key string) string {
 	return `COUNT(*) FILTER (WHERE ` + d.Where + `)`
 }
 
+// DrillLateSQL نفس DrillCountSQL بس الي فات عليه أكثر من ٢٤ ساعة من عمره
+// (AgeFrom) — للواجبات: الموظف يتحاسب على المتأخر، مو على الي وصل هسه.
+func DrillLateSQL(key string) string {
+	d := DrillByKey(key)
+	if d == nil {
+		panic("drill: unknown key " + key)
+	}
+	return `COUNT(*) FILTER (WHERE (` + d.Where + `) AND b.` + d.AgeFrom + ` < (now() AT TIME ZONE 'UTC') - interval '24 hours')`
+}
+
 // DrillRow صف بالقائمة.
 type DrillRow struct {
 	ID          string  `db:"id" json:"id"`

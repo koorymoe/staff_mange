@@ -9,6 +9,7 @@ const VERDICT: Record<DutiesReport['verdict'], string> = {
   GOOD: 'bg-emerald-50 text-emerald-700 ring-emerald-200',
   PARTIAL: 'bg-amber-50 text-amber-800 ring-amber-200',
   BAD: 'bg-red-50 text-red-700 ring-red-200',
+  OFF: 'bg-slate-50 text-slate-600 ring-slate-200',
 }
 const ICON = { DONE: '✅', PARTIAL: '🟡', MISSED: '⭕', INFO: 'ℹ️' } as const
 
@@ -48,6 +49,9 @@ export default function DutiesCard({ employeeId }: { employeeId?: string }) {
               <span className="text-xs text-slate-500">سوّى {d.done}</span>
               {d.pending != null && d.pending > 0 && (
                 <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-bold text-amber-800">⏳ {d.pending} ينتظر</span>
+              )}
+              {d.late != null && d.late > 0 && (
+                <span className="rounded-full bg-red-100 px-2 py-0.5 text-xs font-bold text-red-700">⚠️ {d.late} متأخر +٢٤ ساعة</span>
               )}
               {d.hint && <span className="hidden text-xs text-slate-400 sm:inline">— {d.hint}</span>}
             </>

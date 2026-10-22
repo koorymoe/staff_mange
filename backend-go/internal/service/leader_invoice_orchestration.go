@@ -485,6 +485,10 @@ func (s *LeaderInvoiceService) Approve(id, approverEmployeeID, externalNumber st
 	if current == nil {
 		return nil, fmt.Errorf("الفاتورة غير موجودة")
 	}
+	// قرار (ع) 10-22: فاتورة وحدة للحجز باليوم — المكررة ما تنعتمد.
+	if current.Status != "APPROVED" && s.invoices.HasApprovedTwin(id) {
+		return nil, fmt.Errorf("هذي فاتورة مكررة — الحجز عليه فاتورة معتمدة بنفس اليوم")
+	}
 	// قرار (ع) 10-10: الشغل داخل الشركة ما إله زبون ولا فاتورة بالنظام الثاني —
 	// ينعتمد بضغطة وحدة، بلا تدقيق ولا رقم.
 	internal := s.invoices.IsInternal(id)

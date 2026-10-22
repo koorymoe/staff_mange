@@ -6353,6 +6353,8 @@ export interface Duty {
   hint: string
   done: number
   pending: number | null
+  /** المتأخر أكثر من ٢٤ ساعة بالطابور — الحكم عليه (ع 10-22) */
+  late?: number
   status: 'DONE' | 'PARTIAL' | 'MISSED' | 'INFO'
   link?: string
 }
@@ -6362,6 +6364,8 @@ export interface DutiesReport {
   duties: Duty[] | null
   doneCount: number
   total: number
-  verdict: 'GOOD' | 'PARTIAL' | 'BAD'
+  verdict: 'GOOD' | 'PARTIAL' | 'BAD' | 'OFF'
   verdictAr: string
+  /** جمعة أو إجازة معتمدة — الواجبات تبين بس ما تنحسب */
+  off?: 'FRIDAY' | 'LEAVE'
 }

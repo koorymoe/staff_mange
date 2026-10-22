@@ -18,8 +18,10 @@ type Duty struct {
 	Hint    string `json:"hint"`
 	Done    int    `json:"done"`
 	Pending *int   `json:"pending"` // nil = ماكو طابور (يكفي يسوّيه مرة)
-	Status  string `json:"status"`  // DONE | PARTIAL | MISSED | INFO
-	Link    string `json:"link,omitempty"`
+	// Late المتأخر أكثر من ٢٤ ساعة بالطابور — الحكم عليه (قرار (ع) 10-22).
+	Late   *int   `json:"late,omitempty"`
+	Status string `json:"status"` // DONE | PARTIAL | MISSED | INFO
+	Link   string `json:"link,omitempty"`
 }
 
 type DutiesReport struct {
@@ -28,89 +30,121 @@ type DutiesReport struct {
 	Duties     []Duty `json:"duties"`
 	DoneCount  int    `json:"doneCount"`
 	Total      int    `json:"total"`
-	Verdict    string `json:"verdict"` // GOOD | PARTIAL | BAD
+	Verdict    string `json:"verdict"` // GOOD | PARTIAL | BAD | OFF
 	VerdictAr  string `json:"verdictAr"`
+	// Off يوم عطلة (الجمعة) أو إجازة معتمدة — الواجبات تبين بس ما تنحسب.
+	Off string `json:"off,omitempty"` // FRIDAY | LEAVE
 }
 
 type dutyDef struct {
 	key, label, hint, link string
 	done                   string // $1 = الموظف، اليوم = baghdad_today()
 	pending                string // فارغ = ماكو طابور؛ «once» = واجب مرة باليوم
+	// late الي بالطابور وفات عليه أكثر من ٢٤ ساعة — قرار (ع) 10-22. الطابور
+	// مشترك بين أهل المنصب، فالموظف يتحاسب على المتأخر بس: شي وصل الساعة ١١
+	// بالليل، أو شغل ضل لزميله، ما يخلّيه «ناقص». فارغ = الحكم بالطابور كله.
+	late string
 }
 
 const dutyToday = `baghdad_today()`
 
-var dutyAttendance = dutyDef{"attendance", "سجّل حضورك", "أول شي بالدوام", "/attendance",
-	`SELECT count(*) FROM "Attendance" WHERE "employeeId" = $1 AND baghdad_date("checkIn") = ` + dutyToday, "once"}
+// المهلة: الأعمدة بلا منطقة UTC، والي بمنطقة تتقارن ويا now() مباشرة.
+const (
+	lateNaive = ` < (now() AT TIME ZONE 'UTC') - interval '24 hours'`
+	lateTZ    = ` < now() - interval '24 hours'`
+)
+
+// فاتورة مكررة لفاتورة معتمدة بنفس اليوم ما تنحسب بطابور المحاسب.
+const notTwin = ` AND NOT ` + TwinApprovedSQL
+
+var dutyAttendance = dutyDef{key: "attendance", label: "سجّل حضورك", hint: "أول شي بالدوام", link: "/attendance",
+	done:    `SELECT count(*) FROM "Attendance" WHERE "employeeId" = $1 AND baghdad_date("checkIn") = ` + dutyToday,
+	pending: "once"}
 
 var dutiesByPosition = map[string][]dutyDef{
 	"MONITOR": {
 		dutyAttendance,
-		{"inbox", "دقّق صندوق المراقب", "الفواتير بعد تدقيق المحاسب، والحجوزات، وأحكام ماتركس", "/monitor-inbox",
-			`SELECT count(*) FROM "MonitorReview" WHERE "reviewedById" = $1 AND baghdad_date("reviewedAt") = ` + dutyToday,
-			`SELECT count(*) FROM "MonitorReview" WHERE status = 'PENDING' AND ` + awaitingAccountant(`"MonitorReview"`)},
-		{"workReports", "دقّق تقارير الحجوزات", "«✅ تم التدقيق» على كل تقرير", "/reports-desk",
-			`SELECT count(*) FROM "WorkReport" WHERE "reviewedById" = $1 AND baghdad_date("reviewedAt") = ` + dutyToday,
-			`SELECT count(*) FROM "WorkReport" WHERE "reviewedAt" IS NULL`},
-		{"dailyReports", "دقّق تقارير المشاريع اليومية", "", "/reports-desk",
-			`SELECT count(*) FROM "BookingProgressReport" WHERE "reviewedById" = $1 AND baghdad_date("reviewedAt") = ` + dutyToday,
-			`SELECT count(*) FROM "BookingProgressReport" WHERE "reviewedAt" IS NULL`},
-		{"justifications", "احكم على التبريرات الي وصلت", "", "/monitor-inbox",
-			`SELECT count(*) FROM "MonitorJustification" WHERE "monitorId" = $1 AND baghdad_date("decidedAt") = ` + dutyToday,
-			`SELECT count(*) FROM "MonitorJustification" WHERE "answeredAt" IS NOT NULL AND verdict IS NULL`},
+		{key: "inbox", label: "دقّق صندوق المراقب", hint: "الفواتير بعد تدقيق المحاسب، والحجوزات، وأحكام ماتركس", link: "/monitor-inbox",
+			done:    `SELECT count(*) FROM "MonitorReview" WHERE "reviewedById" = $1 AND baghdad_date("reviewedAt") = ` + dutyToday,
+			pending: `SELECT count(*) FROM "MonitorReview" WHERE status = 'PENDING' AND ` + awaitingAccountant(`"MonitorReview"`),
+			late:    `SELECT count(*) FROM "MonitorReview" WHERE status = 'PENDING' AND ` + awaitingAccountant(`"MonitorReview"`) + ` AND "createdAt"` + lateTZ},
+		{key: "workReports", label: "دقّق تقارير الحجوزات", hint: "«✅ تم التدقيق» على كل تقرير", link: "/reports-desk",
+			done:    `SELECT count(*) FROM "WorkReport" WHERE "reviewedById" = $1 AND baghdad_date("reviewedAt") = ` + dutyToday,
+			pending: `SELECT count(*) FROM "WorkReport" WHERE "reviewedAt" IS NULL`,
+			late:    `SELECT count(*) FROM "WorkReport" WHERE "reviewedAt" IS NULL AND "createdAt"` + lateNaive},
+		{key: "dailyReports", label: "دقّق تقارير المشاريع اليومية", link: "/reports-desk",
+			done:    `SELECT count(*) FROM "BookingProgressReport" WHERE "reviewedById" = $1 AND baghdad_date("reviewedAt") = ` + dutyToday,
+			pending: `SELECT count(*) FROM "BookingProgressReport" WHERE "reviewedAt" IS NULL`,
+			late:    `SELECT count(*) FROM "BookingProgressReport" WHERE "reviewedAt" IS NULL AND "createdAt"` + lateTZ},
+		{key: "justifications", label: "احكم على التبريرات الي وصلت", link: "/monitor-inbox",
+			done:    `SELECT count(*) FROM "MonitorJustification" WHERE "monitorId" = $1 AND baghdad_date("decidedAt") = ` + dutyToday,
+			pending: `SELECT count(*) FROM "MonitorJustification" WHERE "answeredAt" IS NOT NULL AND verdict IS NULL`,
+			late:    `SELECT count(*) FROM "MonitorJustification" WHERE "answeredAt" IS NOT NULL AND verdict IS NULL AND "answeredAt"` + lateNaive},
 	},
 	"FINANCE": {
 		dutyAttendance,
-		{"audit", "دقّق فواتير الليدرية", "خلال ٢٤ ساعة من وصولها", "/accountant-desk",
-			`SELECT count(*) FROM "LeaderInvoice" WHERE "auditedById" = $1 AND baghdad_date("auditedAt") = ` + dutyToday,
-			`SELECT count(*) FROM "LeaderInvoice" WHERE "auditedAt" IS NULL AND status <> 'APPROVED' AND NOT "isFree"`},
-		{"approve", "اعتمد الفواتير المدقّقة برقمها المحاسبي", "", "/accountant-desk",
-			`SELECT count(*) FROM "LeaderInvoice" WHERE "approvedByEmployeeId" = $1 AND baghdad_date("approvedAt") = ` + dutyToday,
-			`SELECT count(*) FROM "LeaderInvoice" WHERE "auditedAt" IS NOT NULL AND status <> 'APPROVED' AND NOT "isFree"`},
+		{key: "audit", label: "دقّق فواتير الليدرية", hint: "خلال ٢٤ ساعة من وصولها", link: "/accountant-desk",
+			done:    `SELECT count(*) FROM "LeaderInvoice" WHERE "auditedById" = $1 AND baghdad_date("auditedAt") = ` + dutyToday,
+			pending: `SELECT count(*) FROM "LeaderInvoice" WHERE "auditedAt" IS NULL AND status <> 'APPROVED' AND NOT "isFree"` + notTwin,
+			late:    `SELECT count(*) FROM "LeaderInvoice" WHERE "auditedAt" IS NULL AND status <> 'APPROVED' AND NOT "isFree"` + notTwin + ` AND "createdAt"` + lateNaive},
+		{key: "approve", label: "اعتمد الفواتير المدقّقة برقمها المحاسبي", link: "/accountant-desk",
+			done:    `SELECT count(*) FROM "LeaderInvoice" WHERE "approvedByEmployeeId" = $1 AND baghdad_date("approvedAt") = ` + dutyToday,
+			pending: `SELECT count(*) FROM "LeaderInvoice" WHERE "auditedAt" IS NOT NULL AND status <> 'APPROVED' AND NOT "isFree"` + notTwin,
+			late:    `SELECT count(*) FROM "LeaderInvoice" WHERE "auditedAt" IS NOT NULL AND status <> 'APPROVED' AND NOT "isFree"` + notTwin + ` AND "auditedAt"` + lateTZ},
 	},
 	"HR_COORDINATOR": {
 		dutyAttendance,
-		{"contact", "تواصل ويا الزبائن وثبّت الحجوزات الجديدة", "", "/coordinator",
-			`SELECT count(*) FROM "Booking" WHERE "confirmationContactedById" = $1 AND baghdad_date("confirmationContactedAt") = ` + dutyToday,
-			`SELECT ` + "%needs_contact%" + ` FROM "Booking" b WHERE ` + "%base%"},
-		{"crew", "كلّف كوادر للحجوزات المثبّتة", "", "/coordinator",
-			`SELECT count(*) FROM "BookingAssignment" WHERE "assignedById" = $1 AND baghdad_date("createdAt") = ` + dutyToday,
-			`SELECT ` + "%needs_crew%" + ` FROM "Booking" b WHERE ` + "%base%"},
-		{"rateLeaders", "قيّم الليدرية", "", "/staff-score",
-			`SELECT count(*) FROM "StaffRating" WHERE "raterId" = $1 AND baghdad_date("createdAt") = ` + dutyToday, ""},
+		{key: "contact", label: "تواصل ويا الزبائن وثبّت الحجوزات الجديدة", link: "/coordinator",
+			done:    `SELECT count(*) FROM "Booking" WHERE "confirmationContactedById" = $1 AND baghdad_date("confirmationContactedAt") = ` + dutyToday,
+			pending: `SELECT ` + "%needs_contact%" + ` FROM "Booking" b WHERE ` + "%base%",
+			late:    `SELECT ` + "%needs_contact_late%" + ` FROM "Booking" b WHERE ` + "%base%"},
+		{key: "crew", label: "كلّف كوادر للحجوزات المثبّتة", link: "/coordinator",
+			done:    `SELECT count(*) FROM "BookingAssignment" WHERE "assignedById" = $1 AND baghdad_date("createdAt") = ` + dutyToday,
+			pending: `SELECT ` + "%needs_crew%" + ` FROM "Booking" b WHERE ` + "%base%",
+			late:    `SELECT ` + "%needs_crew_late%" + ` FROM "Booking" b WHERE ` + "%base%"},
+		{key: "rateLeaders", label: "قيّم الليدرية", link: "/staff-score",
+			done: `SELECT count(*) FROM "StaffRating" WHERE "raterId" = $1 AND baghdad_date("createdAt") = ` + dutyToday},
 	},
 	"QUALITY_ENGINEER": {
 		dutyAttendance,
-		{"quality", "تواصل ويا زبائن متابعة الجودة", "تأكد الشغل تم والزبون راضي", "/quality-desk",
-			`SELECT count(*) FROM "QualityFollowUp" WHERE "contactedByEmployeeId" = $1 AND baghdad_date("contactedAt") = ` + dutyToday,
-			`SELECT count(*) FROM "QualityFollowUp" WHERE status = 'PENDING'`},
-		{"complaints", "تابع الشكاوى المفتوحة", "", "/quality-desk",
-			`SELECT count(DISTINCT "complaintId") FROM "ComplaintEvent" WHERE "byEmployeeId" = $1 AND baghdad_date("createdAt") = ` + dutyToday,
-			`SELECT count(*) FROM "Complaint" WHERE status::text IN ('NEW','IN_PROGRESS')`},
+		{key: "quality", label: "تواصل ويا زبائن متابعة الجودة", hint: "تأكد الشغل تم والزبون راضي", link: "/quality-desk",
+			done:    `SELECT count(*) FROM "QualityFollowUp" WHERE "contactedByEmployeeId" = $1 AND baghdad_date("contactedAt") = ` + dutyToday,
+			pending: `SELECT count(*) FROM "QualityFollowUp" WHERE status = 'PENDING'`,
+			late:    `SELECT count(*) FROM "QualityFollowUp" WHERE status = 'PENDING' AND "createdAt"` + lateNaive},
+		{key: "complaints", label: "تابع الشكاوى المفتوحة", link: "/quality-desk",
+			done:    `SELECT count(DISTINCT "complaintId") FROM "ComplaintEvent" WHERE "byEmployeeId" = $1 AND baghdad_date("createdAt") = ` + dutyToday,
+			pending: `SELECT count(*) FROM "Complaint" WHERE status::text IN ('NEW','IN_PROGRESS')`,
+			late:    `SELECT count(*) FROM "Complaint" WHERE status::text IN ('NEW','IN_PROGRESS') AND "createdAt"` + lateNaive},
 	},
 	"LEADER": {
 		dutyAttendance,
-		{"inventory", "جرد عدّتك", "", "/inventory",
-			`SELECT count(*) FROM "InventoryCheck" WHERE "employeeId" = $1 AND baghdad_date("checkedAt") = ` + dutyToday, "once"},
-		{"stages", "سجّل مراحل حجوزاتك (انطلاق، وصول، بدء، إنجاز)", "", "/my-tasks",
-			`SELECT count(*) FROM "BookingStageProof" WHERE "employeeId" = $1 AND baghdad_date("pressedAt") = ` + dutyToday, ""},
-		{"reports", "ارفع تقرير العمل لكل حجز خلص", "", "/work-reports",
-			`SELECT count(*) FROM "WorkReport" WHERE "employeeId" = $1 AND baghdad_date("createdAt") = ` + dutyToday,
-			`SELECT count(*) FROM "Booking" b WHERE b.status = 'COMPLETED' AND b."completedAt" > now() - interval '7 days' AND %worked%
-			   AND NOT EXISTS (SELECT 1 FROM "WorkReport" w WHERE w."bookingId" = b.id)`},
-		{"invoices", "سوّي فاتورة لكل حجز خلص", "", "/leader-invoices/new",
-			`SELECT count(*) FROM "LeaderInvoice" WHERE "employeeId" = $1 AND baghdad_date("createdAt") = ` + dutyToday,
-			`SELECT count(*) FROM "Booking" b WHERE b.status = 'COMPLETED' AND b."completedAt" > now() - interval '7 days' AND %worked%
-			   AND NOT EXISTS (SELECT 1 FROM "LeaderInvoice" li WHERE li."bookingId" = b.id)`},
-		{"crewRating", "قيّم كادرك", "", "/my-tasks",
-			`SELECT count(*) FROM "CrewRating" WHERE "leaderId" = $1 AND baghdad_date("createdAt") = ` + dutyToday, ""},
+		{key: "inventory", label: "جرد عدّتك", link: "/inventory",
+			done:    `SELECT count(*) FROM "InventoryCheck" WHERE "employeeId" = $1 AND baghdad_date("checkedAt") = ` + dutyToday,
+			pending: "once"},
+		{key: "stages", label: "سجّل مراحل حجوزاتك (انطلاق، وصول، بدء، إنجاز)", link: "/my-tasks",
+			done: `SELECT count(*) FROM "BookingStageProof" WHERE "employeeId" = $1 AND baghdad_date("pressedAt") = ` + dutyToday},
+		{key: "reports", label: "ارفع تقرير العمل لكل حجز خلص", link: "/work-reports",
+			done: `SELECT count(*) FROM "WorkReport" WHERE "employeeId" = $1 AND baghdad_date("createdAt") = ` + dutyToday,
+			pending: `SELECT count(*) FROM "Booking" b WHERE b.status = 'COMPLETED' AND b."completedAt" > now() - interval '7 days' AND %worked%
+			   AND NOT EXISTS (SELECT 1 FROM "WorkReport" w WHERE w."bookingId" = b.id)`,
+			late: `SELECT count(*) FROM "Booking" b WHERE b.status = 'COMPLETED' AND b."completedAt" > now() - interval '7 days' AND %worked%
+			   AND b."completedAt"` + lateNaive + ` AND NOT EXISTS (SELECT 1 FROM "WorkReport" w WHERE w."bookingId" = b.id)`},
+		{key: "invoices", label: "سوّي فاتورة لكل حجز خلص", link: "/leader-invoices/new",
+			done: `SELECT count(*) FROM "LeaderInvoice" WHERE "employeeId" = $1 AND baghdad_date("createdAt") = ` + dutyToday,
+			pending: `SELECT count(*) FROM "Booking" b WHERE b.status = 'COMPLETED' AND b."completedAt" > now() - interval '7 days' AND %worked%
+			   AND NOT EXISTS (SELECT 1 FROM "LeaderInvoice" li WHERE li."bookingId" = b.id)`,
+			late: `SELECT count(*) FROM "Booking" b WHERE b.status = 'COMPLETED' AND b."completedAt" > now() - interval '7 days' AND %worked%
+			   AND b."completedAt"` + lateNaive + ` AND NOT EXISTS (SELECT 1 FROM "LeaderInvoice" li WHERE li."bookingId" = b.id)`},
+		{key: "crewRating", label: "قيّم كادرك", link: "/my-tasks",
+			done: `SELECT count(*) FROM "CrewRating" WHERE "leaderId" = $1 AND baghdad_date("createdAt") = ` + dutyToday},
 	},
 	"TECHNICIAN": {
 		dutyAttendance,
-		{"inventory", "جرد عدّتك", "", "/inventory",
-			`SELECT count(*) FROM "InventoryCheck" WHERE "employeeId" = $1 AND baghdad_date("checkedAt") = ` + dutyToday, "once"},
-		{"stages", "سجّل مراحل حجوزاتك", "", "/my-tasks",
-			`SELECT count(*) FROM "BookingStageProof" WHERE "employeeId" = $1 AND baghdad_date("pressedAt") = ` + dutyToday, ""},
+		{key: "inventory", label: "جرد عدّتك", link: "/inventory",
+			done:    `SELECT count(*) FROM "InventoryCheck" WHERE "employeeId" = $1 AND baghdad_date("checkedAt") = ` + dutyToday,
+			pending: "once"},
+		{key: "stages", label: "سجّل مراحل حجوزاتك", link: "/my-tasks",
+			done: `SELECT count(*) FROM "BookingStageProof" WHERE "employeeId" = $1 AND baghdad_date("pressedAt") = ` + dutyToday},
 	},
 }
 
@@ -138,8 +172,10 @@ func (r *DutiesRepository) position(id string) string {
 		return "OTHER"
 	}
 	switch {
-	case e.Role == "ADMIN":
-		return "ADMIN" // المالك/المدير ما ينقيّم
+	case e.Role == "ADMIN" || e.Role == "OWNER":
+		// المالك والمدير ما ينقيّمون — الدور بالقاعدة OWNER (ينقلب ADMIN بالجلسة
+		// بس)، فچان المالك يطلع «موظف» وينحاسب على الحضور.
+		return "ADMIN"
 	case e.Role == "MONITOR" || (e.Monitor && e.Role != "QUALITY_ENGINEER"):
 		return "MONITOR"
 	case (e.Role == "TECHNICIAN" || e.Role == "TECHNICAL") && e.IsLeader:
@@ -158,6 +194,7 @@ func (r *DutiesRepository) fill(sql string) string {
 	out := sql
 	for k, v := range map[string]string{
 		"%needs_contact%": DrillCountSQL("needs_contact"), "%needs_crew%": DrillCountSQL("needs_crew"),
+		"%needs_contact_late%": DrillLateSQL("needs_contact"), "%needs_crew_late%": DrillLateSQL("needs_crew"),
 		"%base%": drillBase(), "%worked%": BookingWorkedBySQL("b", "$1"),
 	} {
 		out = strings.ReplaceAll(out, k, v)
@@ -175,7 +212,7 @@ func (r *DutiesRepository) Today(employeeID string) DutiesReport {
 	if len(defs) == 0 {
 		defs = []dutyDef{dutyAttendance}
 	}
-	rep := DutiesReport{EmployeeID: employeeID, Position: positionAr[pos], Duties: []Duty{}}
+	rep := DutiesReport{EmployeeID: employeeID, Position: positionAr[pos], Duties: []Duty{}, Off: r.dayOff(employeeID)}
 	for _, d := range defs {
 		du := Duty{Key: d.key, Label: d.label, Hint: d.hint, Link: d.link}
 		_ = r.db.Get(&du.Done, r.fill(d.done), employeeID)
@@ -204,9 +241,21 @@ func (r *DutiesRepository) Today(employeeID string) DutiesReport {
 				du.Pending = &p
 			}
 		}
-		if du.Pending != nil {
+		judge := du.Pending
+		if d.late != "" && du.Pending != nil {
+			var l int
+			q := r.fill(d.late)
+			args := []any{}
+			if strings.Contains(q, "$1") {
+				args = append(args, employeeID)
+			}
+			if err := r.db.Get(&l, q, args...); err == nil {
+				du.Late, judge = &l, &l
+			}
+		}
+		if judge != nil {
 			switch {
-			case *du.Pending == 0:
+			case *judge == 0:
 				du.Status = "DONE"
 			case du.Done > 0:
 				du.Status = "PARTIAL"
@@ -231,6 +280,9 @@ func (r *DutiesRepository) Today(employeeID string) DutiesReport {
 		rep.Duties = append(rep.Duties, du)
 	}
 	switch {
+	case rep.Off != "":
+		rep.Total, rep.DoneCount = 0, 0
+		rep.Verdict, rep.VerdictAr = "OFF", map[string]string{"FRIDAY": "جمعة — عطلة", "LEAVE": "إجازة معتمدة"}[rep.Off]
 	case rep.Total == 0 || rep.DoneCount == rep.Total:
 		rep.Verdict, rep.VerdictAr = "GOOD", "خوش — خلّص واجباته"
 	case rep.DoneCount == 0 && !anyPartial(rep.Duties):
@@ -248,4 +300,15 @@ func anyPartial(ds []Duty) bool {
 		}
 	}
 	return false
+}
+
+// dayOff عطلة الموظف اليوم: الجمعة للكل (قرار (ع) 10-22)، أو إجازة معتمدة تغطي اليوم.
+func (r *DutiesRepository) dayOff(employeeID string) string {
+	var off string
+	_ = r.db.Get(&off, `SELECT CASE
+		WHEN extract(isodow FROM baghdad_today()) = 5 THEN 'FRIDAY'
+		WHEN EXISTS (SELECT 1 FROM "LeaveRequest" l WHERE l."employeeId" = $1 AND l.status = 'APPROVED'
+		  AND baghdad_today() BETWEEN l."startDate" AND l."endDate") THEN 'LEAVE'
+		ELSE '' END`, employeeID)
+	return off
 }

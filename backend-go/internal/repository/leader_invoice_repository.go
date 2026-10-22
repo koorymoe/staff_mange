@@ -385,17 +385,33 @@ const (
  *  من استعلام، فينكتب مرة وحدة — نسختان تفترقان بأول تعديل. */
 const atMonitorSQL = `"monitorRequestedAt" IS NOT NULL AND "monitorDecidedAt" IS NULL`
 
+// TwinApprovedSQL الفاتورة إلها توأم معتمد على نفس الحجز بنفس اليوم — تكرار
+// (قرار (ع) 10-22: فاتورة وحدة للحجز باليوم). الفاتورة المسحوبة بتصحيح
+// التكرار ترجع SUBMITTED، فبلا هذا تطلع بطابور الاعتماد والمحاسب يعتمدها
+// مرة ثانية. ينكتب بعد FROM "LeaderInvoice" بلا اسم مستعار.
+const TwinApprovedSQL = `("LeaderInvoice"."bookingId" IS NOT NULL AND EXISTS (SELECT 1 FROM "LeaderInvoice" tw
+	WHERE tw."bookingId" = "LeaderInvoice"."bookingId" AND tw.id <> "LeaderInvoice".id
+	  AND tw."revokedAt" IS NULL AND tw.status = 'APPROVED'
+	  AND baghdad_date(tw."createdAt") = baghdad_date("LeaderInvoice"."createdAt")))`
+
+// HasApprovedTwin هل الفاتورة مكررة لفاتورة معتمدة بنفس اليوم؟
+func (r *LeaderInvoiceRepository) HasApprovedTwin(id string) bool {
+	var twin bool
+	_ = r.db.Get(&twin, `SELECT `+TwinApprovedSQL+` FROM "LeaderInvoice" WHERE id = $1`, id)
+	return twin
+}
+
 func stageClause(stage string) string {
 	switch stage {
 	case StageAwaitingAudit:
-		return ` AND status <> 'APPROVED' AND ("auditVerdict" IS NULL OR btrim("auditVerdict") = '')`
+		return ` AND status <> 'APPROVED' AND ("auditVerdict" IS NULL OR btrim("auditVerdict") = '') AND NOT ` + TwinApprovedSQL
 	case StageAwaitingApproval:
 		// ⚠️ الفاتورة الي عند المراقب **تطلع** من طابور الاعتماد:
 		// لو بقت بالاثنين، المحاسب يعتمدها وهي عند المراقب — ويصير
 		// إرسالها للمراقب بلا معنى.
-		return ` AND status <> 'APPROVED' AND "auditVerdict" IS NOT NULL AND btrim("auditVerdict") <> '' AND NOT (` + atMonitorSQL + `)`
+		return ` AND status <> 'APPROVED' AND "auditVerdict" IS NOT NULL AND btrim("auditVerdict") <> '' AND NOT (` + atMonitorSQL + `) AND NOT ` + TwinApprovedSQL
 	case StageAwaitingMonitor:
-		return ` AND status <> 'APPROVED' AND ` + atMonitorSQL
+		return ` AND status <> 'APPROVED' AND ` + atMonitorSQL + ` AND NOT ` + TwinApprovedSQL
 	case StageApproved:
 		return ` AND status = 'APPROVED'`
 	default:

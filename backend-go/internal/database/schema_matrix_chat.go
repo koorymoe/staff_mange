@@ -793,5 +793,26 @@ func matrixChatMigrations() []Migration {
 			CREATE INDEX IF NOT EXISTS "MeetingRequest_emp_idx" ON "MeetingRequest" ("employeeId", "createdAt" DESC);
 			CREATE INDEX IF NOT EXISTS "MeetingRequest_pending_idx" ON "MeetingRequest" ("createdAt") WHERE status = 'PENDING';
 		`,
+	}, {
+		// «لقطة الواجبات اليومية» (دازاي 10-22): الواجبات چانت تنحسب لحظياً بس،
+		// فماكو تاريخ يحكم عليه ماتركس («الي يكرر ما يسوي واجباته»). كل ليلة
+		// ١١:٥٠ بغداد ينحفظ لكل موظف شنو كمّل — وحدة لكل موظف باليوم.
+		Version: "0388_duty_snapshot",
+		SQL: `
+			CREATE TABLE IF NOT EXISTS "DutySnapshot" (
+				id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
+				"employeeId" TEXT NOT NULL REFERENCES "Employee"(id) ON DELETE CASCADE,
+				day DATE NOT NULL,
+				position TEXT NOT NULL,
+				"doneCount" INT NOT NULL,
+				total INT NOT NULL,
+				verdict TEXT NOT NULL,
+				off TEXT,
+				duties JSONB NOT NULL DEFAULT '[]'::jsonb,
+				"createdAt" TIMESTAMPTZ NOT NULL DEFAULT now(),
+				UNIQUE ("employeeId", day)
+			);
+			CREATE INDEX IF NOT EXISTS "DutySnapshot_day_idx" ON "DutySnapshot" (day);
+		`,
 	}}
 }

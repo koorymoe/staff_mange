@@ -50,7 +50,9 @@ var personalQueries = []struct {
 		SELECT t.id, '📌 مهمة: ' || t.title AS title,
 		  CASE WHEN t."dueAt" IS NOT NULL THEN 'موعدها ' || to_char(t."dueAt" AT TIME ZONE 'Asia/Baghdad', 'YYYY-MM-DD HH24:MI')
 		       ELSE 'نفّذها وسجّل إنجازها' END AS action,
-		  false AS done, true AS counts
+		  false AS done,
+		  -- مهمة موعدها بعدين ما تنحسب ناقصة من اليوم — بس من يوصل موعدها (ع 10-22)
+		  (t."dueAt" IS NULL OR t."dueAt" < ((baghdad_today() + 1)::timestamp AT TIME ZONE 'Asia/Baghdad')) AS counts
 		FROM "ExtraTask" t
 		WHERE t."assignedToId" = $1 AND t.status IN ('NEW', 'IN_PROGRESS')
 		ORDER BY t."dueAt" ASC NULLS LAST LIMIT 10`},
