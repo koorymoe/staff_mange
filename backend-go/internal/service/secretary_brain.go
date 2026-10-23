@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/anthropics/anthropic-sdk-go"
+	"github.com/anthropics/anthropic-sdk-go/option"
 	"github.com/jmoiron/sqlx"
 )
 
@@ -356,7 +357,7 @@ func AIErrorText(err error) string {
 	msg := strings.ToLower(apiErr.Error())
 	switch {
 	case apiErr.StatusCode == 401 || apiErr.StatusCode == 403:
-		return "🔑 مفتاح الذكاء مرفوض — تأكد من ANTHROPIC_API_KEY بملف .env بالسيرفر."
+		return "🔑 مفتاح السكرتير مرفوض — تأكد من AI_KEY_SECRETARY (أو ANTHROPIC_API_KEY) بملف .env بالسيرفر."
 	case strings.Contains(msg, "credit") || strings.Contains(msg, "billing") || apiErr.StatusCode == 402:
 		return "💳 رصيد الذكاء خلص — اشحن من console.anthropic.com ← Billing."
 	case apiErr.StatusCode == 404:
@@ -365,4 +366,13 @@ func AIErrorText(err error) string {
 		return "⏳ الذكاء مضغوط هسه — جرّب بعد دقيقة."
 	}
 	return ""
+}
+
+// NewAnthropicClient عميل بمفتاح وكيل معيّن — nil إذا المفتاح فاضي (الميزة تنطفي، النظام يبقى).
+func NewAnthropicClient(key string) *anthropic.Client {
+	if key == "" {
+		return nil
+	}
+	c := anthropic.NewClient(option.WithAPIKey(key))
+	return &c
 }

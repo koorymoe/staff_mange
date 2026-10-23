@@ -250,7 +250,9 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 			}
 			return "مطفي"
 		}
-		log.Printf("🤖 Claude: %s (%s) · Gemini: %s · Whisper: %s", onOff(cfg.AnthropicAPIKey != ""), cfg.AIModel, onOff(cfg.GeminiAPIKey != ""), onOff(cfg.WhisperURL != ""))
+		log.Printf("🤖 ماتركس: %s · السكرتير: %s · الجودة: %s · الحجوزات: %s (%s) · Gemini: %s · Whisper: %s",
+			onOff(cfg.AIKeyMatrix != ""), onOff(cfg.AIKeySecretary != ""), onOff(cfg.AIKeyQuality != ""), onOff(cfg.AIKeyBooking != ""),
+			cfg.AIModel, onOff(cfg.GeminiAPIKey != ""), onOff(cfg.WhisperURL != ""))
 	}
 	fileHandler := handler.NewFileHandler(fileStore, []byte(cfg.JWTSecret), employeeRepo)
 	surveyPhotoHandler := handler.NewSurveyPhotoHandler(repository.NewSurveyPhotoRepository(db), permissionRepo, fileStore)
@@ -364,8 +366,8 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	// ⚠️ بلا مفتاح يبقى على محرّك القواعد — الميزة تنطفي مو النظام.
 	// وحتى بوجود المفتاح، `ModelJudge` يرجع للقواعد عند أي عثرة
 	// (شبكة، حد يومي، رد مشوّه). القواعد شبكة أمان دائمة.
-	if cfg.AnthropicAPIKey != "" {
-		modelJudge := service.NewModelJudge(cfg.AnthropicAPIKey, cfg.AIModel, cfg.AIDailyCap, service.RulesJudge{})
+	if cfg.AIKeyMatrix != "" {
+		modelJudge := service.NewModelJudge(cfg.AIKeyMatrix, cfg.AIModel, cfg.AIDailyCap, service.RulesJudge{})
 		// حلقة التعلّم: أمثلة حقيقية من قرارات المراقب — بلا جدول
 		// جديد، لأن القرار مخزون أصلاً بصندوق المراقب.
 		modelJudge.SetFeedbackSource(aiRepo)
@@ -437,8 +439,8 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	// حصراً بالأنماط الي عبرت بوابتي العيّنة والانحراف.
 	aiDiscoveryRepo := repository.NewAiDiscoveryRepository(db)
 	aiDiscoveryService := service.NewAiDiscoveryService(aiDiscoveryRepo, aiRepo, employeeRepo, notificationRepo)
-	if cfg.AnthropicAPIKey != "" {
-		aiDiscoveryService.SetNarrator(service.NewModelDiscoveryNarrator(cfg.AnthropicAPIKey, cfg.AIModel, cfg.AIDailyCap))
+	if cfg.AIKeyMatrix != "" {
+		aiDiscoveryService.SetNarrator(service.NewModelDiscoveryNarrator(cfg.AIKeyMatrix, cfg.AIModel, cfg.AIDailyCap))
 	}
 	safeguard.Loop("الاستكشاف الأسبوعي", 15*time.Minute, 6*time.Hour, func() {
 		if err := aiDiscoveryService.RunWeeklyIfDue(); err != nil {
@@ -530,12 +532,12 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	matrixDecisionsHandler := handler.NewMatrixDecisionsHandler(matrixAutopilotService)
 	// عقل التوجيه: تعليمات المدير + هايكو لو المفتاح موجود.
 	matrixGuideService := service.NewMatrixGuideService(repository.NewMatrixGuideRepository(db), matrixAutopilotService)
-	matrixGuideService.EnableModel(cfg.AnthropicAPIKey, cfg.AIModel)
+	matrixGuideService.EnableModel(cfg.AIKeyMatrix, cfg.AIModel)
 	matrixGuideHandler := handler.NewMatrixGuideHandler(matrixGuideService)
 	// ماتركس يقترح ويتعلّم: توقعات يومية + تعليمات من النتائج أسبوعياً + هايكو.
 	matrixLearningService := service.NewMatrixLearningService(repository.NewMatrixProposalRepository(db),
 		repository.NewMatrixGuideRepository(db), aiActionRepo, aiRepo, notificationRepo, matrixAutopilotService)
-	matrixLearningService.EnableModel(cfg.AnthropicAPIKey, cfg.AIModel)
+	matrixLearningService.EnableModel(cfg.AIKeyMatrix, cfg.AIModel)
 	matrixAutopilotService.SetProposalCounter(matrixLearningService.PendingCount)
 	// تذكيرات تجديد الجي بي اس القديمة الي على المالك تروح للجودة فوراً.
 	go matrixAutopilotService.ReassignGpsToQuality()
@@ -564,7 +566,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	matrixLearningHandler := handler.NewMatrixLearningHandler(matrixLearningService)
 	// تقرير الموظف المفصّل + أرقام الشركة والزبائن.
 	matrixEmployeeReportService := service.NewMatrixEmployeeReportService(repository.NewMatrixReportRepository(db), matrixAutopilotService)
-	matrixEmployeeReportService.EnableModel(cfg.AnthropicAPIKey, cfg.AIModel)
+	matrixEmployeeReportService.EnableModel(cfg.AIKeyMatrix, cfg.AIModel)
 	matrixBusinessService := service.NewMatrixBusinessService(repository.NewMatrixBusinessRepository(db))
 	// (ع) 10-15: كل ساعة — أي شهر خلص وبيه توقع محفوظ ينحكم عليه صح/غلط ويوصل للمالك
 	go func() {
@@ -607,7 +609,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	matrixEmployeeReportService.SetActivity(employeeActivityService)
 	matrixCommandService := service.NewMatrixCommandService(repository.NewMatrixCommandRepository(db), matrixAutopilotService,
 		matrixEmployeeReportService, matrixBusinessService, repository.NewMatrixProposalRepository(db))
-	matrixCommandService.EnableModel(cfg.AnthropicAPIKey, cfg.AIModel)
+	matrixCommandService.EnableModel(cfg.AIKeyMatrix, cfg.AIModel)
 	matrixCommandHandler := handler.NewMatrixCommandHandler(matrixCommandService)
 	matrixReportHandler := handler.NewMatrixReportHandler(matrixEmployeeReportService, matrixBusinessService)
 	bookingHandler.SetInquiryNotifier(func(customerID, employeeID string) {
@@ -662,7 +664,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	// ماتركس يسمع الفويس: Whisper داخلي (الصوت ما يطلع) + هايكو على النص بلا أسماء.
 	achievementVoiceRepo := repository.NewAchievementVoiceRepository(db)
 	voiceAnalysisService := service.NewVoiceAnalysisService(achievementVoiceRepo, fileStore, cfg.WhisperURL)
-	voiceAnalysisService.EnableModel(cfg.AnthropicAPIKey, cfg.AIModel)
+	voiceAnalysisService.EnableModel(cfg.AIKeyMatrix, cfg.AIModel)
 	voiceAnalysisService.Start()
 	matrixGuideService.SetDialect(voiceAnalysisService.DialectHint)
 	achievementHandler.SetVoice(achievementVoiceRepo, fileStore, voiceAnalysisService)
@@ -1129,9 +1131,13 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	// 🤖 حالة مفاتيح الذكاء (دازاي 10-23) — شغّال/مطفي بس، المفتاح نفسه ما يطلع أبداً.
 	mux.Handle("GET /api/ai/status", middleware.Chain(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		handler.WriteJSON(w, http.StatusOK, map[string]any{
-			"claude":  map[string]any{"on": cfg.AnthropicAPIKey != "", "model": cfg.AIModel, "dailyCap": cfg.AIDailyCap},
-			"gemini":  map[string]any{"on": cfg.GeminiAPIKey != "", "dailyCap": cfg.GeminiDailyCap},
-			"whisper": map[string]any{"on": cfg.WhisperURL != ""},
+			"claude":    map[string]any{"on": cfg.AIKeyMatrix != "", "model": cfg.AIModel, "dailyCap": cfg.AIDailyCap},
+			"matrix":    map[string]any{"on": cfg.AIKeyMatrix != "", "ownKey": cfg.AIKeyMatrix != cfg.AnthropicAPIKey, "model": cfg.AIModel, "dailyCap": cfg.AIDailyCap},
+			"secretary": map[string]any{"on": cfg.AIKeySecretary != "", "ownKey": cfg.AIKeySecretary != cfg.AnthropicAPIKey, "model": cfg.AIModelSecretary, "dailyCap": cfg.AISecretaryDailyCap},
+			"quality":   map[string]any{"on": cfg.AIKeyQuality != "", "ownKey": cfg.AIKeyQuality != cfg.AnthropicAPIKey, "built": false},
+			"booking":   map[string]any{"on": cfg.AIKeyBooking != "", "ownKey": cfg.AIKeyBooking != cfg.AnthropicAPIKey, "built": false},
+			"gemini":    map[string]any{"on": cfg.GeminiAPIKey != "", "dailyCap": cfg.GeminiDailyCap},
+			"whisper":   map[string]any{"on": cfg.WhisperURL != ""},
 		})
 	}), requireAuth, middleware.RequireOwner()))
 	mux.Handle("POST /api/auth/stealth", middleware.Chain(http.HandlerFunc(authHandler.Stealth), requireAuth, middleware.RequireOwner()))
@@ -2628,7 +2634,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 		func(roles []string, perm, msg string) {
 			_ = notificationRepo.CreateForRolesOrPermission(roles, perm, "MATRIX_PEER", msg)
 		})
-	peerVoiceService.EnableModel(cfg.AnthropicAPIKey, cfg.AIModel)
+	peerVoiceService.EnableModel(cfg.AIKeyMatrix, cfg.AIModel)
 	peerHandler := handler.NewPeerVoiceHandler(peerVoiceService)
 	mux.Handle("GET /api/peer/me", middleware.Chain(http.HandlerFunc(peerHandler.Mine), requireAuth))
 	mux.Handle("POST /api/peer/me", middleware.Chain(http.HandlerFunc(peerHandler.Submit), requireAuth))
@@ -2717,11 +2723,13 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 		// 🗂️ السكرتير (قرار (ع) 10-22): المالك والمدير بس، كل واحد بذاكرته — docs/secretary.md
 		secRepo := repository.NewSecretaryRepository(db)
 		secHandler := handler.NewSecretaryHandler(secRepo, employeeRepo, extraTaskRepo, notificationRepo, voiceAnalysisService)
+		// السكرتير بمفتاحه وموديله وسقفه (دازاي 10-23) — مو عميل ماتركس.
+		secClient := service.NewAnthropicClient(cfg.AIKeySecretary)
 		secHandler.SetBrain(service.NewSecretaryBrainFor(service.SecretaryDeps{
-			DB: db, Client: client, Model: model, Repo: secRepo,
+			DB: db, Client: secClient, Model: cfg.AIModelSecretary, Repo: secRepo,
 			Matrix: service.AgentDeps{Command: matrixCommandService, Projects: matrixProjectService.Report,
 				Scores: matrixScoreService.Board, ScoreRepo: matrixScoreService.Repo()},
-		}, 300)) // ٣٠٠ نداء باليوم — حارس فاتورة
+		}, cfg.AISecretaryDailyCap)) // حارس فاتورة
 		mux.Handle("POST /api/secretary/message", middleware.Chain(http.HandlerFunc(secHandler.Message), requireAuth, requireAdmin))
 		mux.Handle("POST /api/secretary/actions/{id}/confirm", middleware.Chain(http.HandlerFunc(secHandler.Confirm), requireAuth, requireAdmin))
 		mux.Handle("POST /api/secretary/actions/{id}/cancel", middleware.Chain(http.HandlerFunc(secHandler.Cancel), requireAuth, requireAdmin))

@@ -33,6 +33,16 @@ type Config struct {
 	// ⚠️ وبلا مفتاح النظام **ما يوقف**: يبقى على محرّك القواعد. الميزة
 	// تنطفي، مو النظام.
 	AnthropicAPIKey string
+	// ═══ أربع مفاتيح لأربع وكلاء (دازاي 10-23) ═══
+	// كل وكيل بمفتاحه — يتوكف أو ينحد صرفه لحاله، وبالكونسول ينعرف منو صرف شكد.
+	// المفتاح الفاضي يرجع لـANTHROPIC_API_KEY حتى ما ينكسر شي.
+	AIKeyMatrix    string
+	AIKeySecretary string
+	AIKeyQuality   string // محجوز — وكيل الجودة عالواتساب (ينتظر قرار الخصوصية)
+	AIKeyBooking   string // محجوز — وكيل الحجوزات عالواتساب (ينتظر قرار الخصوصية)
+	// موديل وسقف السكرتير — منفصلات عن ماتركس.
+	AIModelSecretary    string
+	AISecretaryDailyCap int
 	// WhisperURL خدمة تحويل الصوت لنص **الداخلية** (حاوية whisper). فاضي = بلا تحليل فويس.
 	WhisperURL string
 	// AIModel من البيئة مو مكتوب بالكود: أسماء الموديلات تتبدّل،
@@ -51,6 +61,20 @@ type Config struct {
 }
 
 func Load() *Config {
+	c := load()
+	// المفتاح الفاضي لوكيل يرجع للعام — حتى .env القديم يبقى يشتغل.
+	for _, k := range []*string{&c.AIKeyMatrix, &c.AIKeySecretary, &c.AIKeyQuality, &c.AIKeyBooking} {
+		if *k == "" {
+			*k = c.AnthropicAPIKey
+		}
+	}
+	if c.AIModelSecretary == "" {
+		c.AIModelSecretary = c.AIModel
+	}
+	return c
+}
+
+func load() *Config {
 	return &Config{
 		Port:           getEnv("PORT", "4000"),
 		DatabaseURL:    getEnv("DATABASE_URL", ""),
@@ -68,10 +92,16 @@ func Load() *Config {
 		GeminiImageModel: getEnv("GEMINI_IMAGE_MODEL", "gemini-2.5-flash-image"),
 		AnthropicAPIKey:  getEnv("ANTHROPIC_API_KEY", ""),
 		WhisperURL:       getEnv("WHISPER_URL", ""),
-		AIModel:          getEnv("AI_MODEL", "claude-haiku-4-5"),
+		AIModel:          getEnv("AI_MODEL", "claude-haiku-5-5"),
 		// ٢٠٠ سقف واسع: حجم الشغل اليوم عشرات الإشارات باليوم، فالسقف
 		// ما يعترض الشغل الطبيعي ويمسك الانفجار.
-		AIDailyCap: getEnvInt("AI_DAILY_CAP", 200),
+		AIDailyCap:          getEnvInt("AI_DAILY_CAP", 200),
+		AIKeyMatrix:         getEnv("AI_KEY_MATRIX", ""),
+		AIKeySecretary:      getEnv("AI_KEY_SECRETARY", ""),
+		AIKeyQuality:        getEnv("AI_KEY_QUALITY", ""),
+		AIKeyBooking:        getEnv("AI_KEY_BOOKING", ""),
+		AIModelSecretary:    getEnv("AI_MODEL_SECRETARY", ""),
+		AISecretaryDailyCap: getEnvInt("AI_SECRETARY_DAILY_CAP", 300),
 		// TutorialsDir: مسار مجلد أدلة الاستخدام (tutorial-*.html و guide-*.txt) اللي
 		// يقرأها المساعد الذكي حتى يعرف يشرح للموظف شلون يستخدم النظام فعلياً.
 		// الافتراضي "../tutorials" يناسب التطوير المحلي (تشغيل go run من داخل backend-go

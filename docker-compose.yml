@@ -33,7 +33,13 @@ services:
       GEMINI_DAILY_CAP: ${GEMINI_DAILY_CAP:-300}
       # ماتركس: نموذج Anthropic (اختياري). بلا مفتاح يبقى على القواعد.
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
-      AI_MODEL: ${AI_MODEL:-claude-haiku-4-5}
+      AI_KEY_MATRIX: ${AI_KEY_MATRIX:-}
+      AI_KEY_SECRETARY: ${AI_KEY_SECRETARY:-}
+      AI_KEY_QUALITY: ${AI_KEY_QUALITY:-}
+      AI_KEY_BOOKING: ${AI_KEY_BOOKING:-}
+      AI_MODEL_SECRETARY: ${AI_MODEL_SECRETARY:-}
+      AI_SECRETARY_DAILY_CAP: ${AI_SECRETARY_DAILY_CAP:-300}
+      AI_MODEL: ${AI_MODEL:-claude-haiku-5-5}
       # (ع) 10-14: إيميلات رموز التحقق لتطبيق الزبائن (Gmail + App Password)
       SMTP_HOST: ${SMTP_HOST:-}
       SMTP_PORT: ${SMTP_PORT:-587}
