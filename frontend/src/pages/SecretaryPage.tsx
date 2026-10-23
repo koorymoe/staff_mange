@@ -160,6 +160,33 @@ function Secretary() {
   const cancelled = useRef(false)
   const mounted = useRef(true)
   const end = useRef<HTMLDivElement>(null)
+  const viewportRoot = useRef<HTMLElement>(null)
+
+  useEffect(() => {
+    const viewport = window.visualViewport
+    const update = () => {
+      const root = viewportRoot.current
+      if (!root) return
+      root.style.setProperty('--iris-viewport-height', `${viewport?.height ?? window.innerHeight}px`)
+      root.style.setProperty('--iris-viewport-top', `${viewport?.offsetTop ?? 0}px`)
+      const keyboard = document.activeElement?.matches('textarea, input') &&
+        (viewport?.height ?? window.innerHeight) < document.documentElement.clientHeight - 120
+      root.classList.toggle('iris-keyboard-open', Boolean(keyboard))
+    }
+    update()
+    viewport?.addEventListener('resize', update)
+    viewport?.addEventListener('scroll', update)
+    window.addEventListener('resize', update)
+    document.addEventListener('focusin', update)
+    document.addEventListener('focusout', update)
+    return () => {
+      viewport?.removeEventListener('resize', update)
+      viewport?.removeEventListener('scroll', update)
+      window.removeEventListener('resize', update)
+      document.removeEventListener('focusin', update)
+      document.removeEventListener('focusout', update)
+    }
+  }, [])
 
   useEffect(() => {
     const update = () => setOnline(navigator.onLine)
@@ -222,7 +249,7 @@ function Secretary() {
     api
       .secretaryHistory(50)
       .then((x) => {
-        if (alive) setChats(x)
+        if (alive) setChats((current) => [...x, ...current.filter((chat) => !x.some((old) => old.id === chat.id))])
       })
       .catch((e) => {
         if (alive) setError(e.message)
@@ -324,19 +351,19 @@ function Secretary() {
     }
   }, [])
 
-  const acceptReply = (text: string, reply: SecretaryReply) => {
+  const acceptReply = (text: string, reply: SecretaryReply, pendingId?: string) => {
     const stamp = new Date().toISOString()
     setChats((v) => [
-      ...v,
-      {
+      ...v.map((chat) => chat.id === pendingId ? { ...chat, text, transcript: reply.transcript } : chat),
+      ...(pendingId ? [] : [{
         id: `user-${reply.messageId}`,
         at: stamp,
-        role: 'user',
+        role: 'user' as const,
         text,
         transcript: reply.transcript,
         cards: [],
         action: null,
-      },
+      }]),
       {
         id: reply.messageId,
         at: stamp,
@@ -358,9 +385,12 @@ function Secretary() {
     setBusy(true)
     setError('')
     setInput('')
+    const pendingId = `local-${crypto.randomUUID()}`
+    setChats((v) => [...v, { id: pendingId, at: new Date().toISOString(), role: 'user', text, transcript: null, cards: [], action: null }])
     try {
-      acceptReply(text, await api.secretaryMessage(text))
+      acceptReply(text, await api.secretaryMessage(text), pendingId)
     } catch (e) {
+      setChats((v) => v.filter((chat) => chat.id !== pendingId))
       setError((e as Error).message)
       setInput(text)
     } finally {
@@ -642,7 +672,7 @@ function Secretary() {
       dayKey(x.at) === todayKey,
   )
   return (
-    <main className="secretary" dir="rtl">
+    <main ref={viewportRoot} className="secretary" dir="rtl">
       {drawer && (
         <button
           className="sec-backdrop"
@@ -823,7 +853,7 @@ function Secretary() {
                 ))}
                 {busy && (
                   <p className="sec-thinking" role="status">
-                    دا أفكر وأرتّب الجواب…
+                    ايريس يفكّر…
                   </p>
                 )}
                 <div ref={end} />
