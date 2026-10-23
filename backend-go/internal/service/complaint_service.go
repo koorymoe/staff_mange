@@ -120,6 +120,17 @@ func (s *ComplaintService) NoAnswer(id, byID string) (*model.Complaint, error) {
 	return c, nil
 }
 
+// DropNoAnswer تسدّ الشكوى فوراً «الزبون ما يرد» — وتنسجّل بسجلها.
+func (s *ComplaintService) DropNoAnswer(id, byID string) (*model.Complaint, error) {
+	c, err := s.repo.DropNoAnswer(id)
+	if err != nil {
+		return nil, err
+	}
+	d := "الزبون ما يرد — الشكوى انسدّت مباشرة"
+	s.repo.AddEvent(id, model.EventNoAnswer, &d, byID)
+	return c, nil
+}
+
 // Audit حكم المدقق على شغل مهندس الجودة.
 //
 // ⚠️ الصلاحية تتقرّر بالمسار (المالك والمراقب والمدير بس) — مهندس

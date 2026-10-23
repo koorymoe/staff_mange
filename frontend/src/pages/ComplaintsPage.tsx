@@ -192,6 +192,21 @@ export default function ComplaintsPage() {
     }
   }
 
+  // «⛔ سدّها — الزبون ما يرد»: من أول مرة، بلا انتظار الثلاث محاولات — (ع) 10-23
+  const closeNoAnswer = async (c: Complaint) => {
+    if (!confirm('تسدّ الشكوى هسه؟ تنحسب «تواصلنا والزبون ما يرد» وتطلع من المفتوحة.')) return
+    setContactBusy(c.id)
+    try {
+      const updated = await api.closeComplaintNoAnswer(c.id)
+      setComplaints((prev) => prev.map((x) => (x.id === c.id ? updated : x)))
+      loadStats()
+    } catch (e) {
+      alert(e instanceof Error ? e.message : 'تعذر السد')
+    } finally {
+      setContactBusy(null)
+    }
+  }
+
   const saveNotes = async (c: Complaint, value: string) => {
     if ((c.notes || '') === value.trim()) return
     try {
@@ -465,6 +480,7 @@ export default function ComplaintsPage() {
           busyId={contactBusy}
           onContact={setContacted}
           onNoAnswer={noAnswer}
+          onCloseNoAnswer={closeNoAnswer}
           onNotes={saveNotes}
           onAssign={handleAssign}
           onStatus={handleStatusChange}

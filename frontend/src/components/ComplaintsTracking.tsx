@@ -52,7 +52,7 @@ function Stars({ value }: { value: number | null }) {
 
 export default function ComplaintsTracking({
   complaints, stats, employees, canContact, canAudit, canSeeFullDetail,
-  busyId, onContact, onNoAnswer, onNotes, onAssign, onStatus, onResolveClick, onAudited, toolbar,
+  busyId, onContact, onNoAnswer, onCloseNoAnswer, onNotes, onAssign, onStatus, onResolveClick, onAudited, toolbar,
 }: {
   toolbar?: ReactNode
   complaints: Complaint[]
@@ -64,6 +64,7 @@ export default function ComplaintsTracking({
   busyId: string | null
   onContact: (c: Complaint, contacted: boolean, rating?: number | null) => void
   onNoAnswer?: (c: Complaint) => void
+  onCloseNoAnswer?: (c: Complaint) => void
   onNotes: (c: Complaint, value: string) => void
   onAssign: (complaintId: string, employeeId: string) => void
   onStatus: (complaintId: string, status: Complaint['status']) => void
@@ -457,6 +458,12 @@ export default function ComplaintsTracking({
                     <button disabled={busyId === selected.id} onClick={() => onNoAnswer(selected)}
                       className="mt-2 rounded-lg bg-amber-100 px-3 py-1 text-xs font-bold text-amber-800 hover:bg-amber-200 disabled:opacity-50">
                       📵 الزبون ما رد
+                    </button>
+                  )}
+                  {canContact && onCloseNoAnswer && !selected.contactedAt && (selected.status === 'NEW' || selected.status === 'IN_PROGRESS') && (
+                    <button disabled={busyId === selected.id} onClick={() => onCloseNoAnswer(selected)}
+                      className="mt-2 ms-2 rounded-lg bg-red-100 px-3 py-1 text-xs font-bold text-red-800 hover:bg-red-200 disabled:opacity-50">
+                      ⛔ سدّها — الزبون ما يرد
                     </button>
                   )}
                 </Box>

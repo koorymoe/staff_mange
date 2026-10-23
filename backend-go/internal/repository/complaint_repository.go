@@ -128,6 +128,23 @@ func (r *ComplaintRepository) NoAnswer(id string) (*model.Complaint, error) {
 	return r.Find(id)
 }
 
+// DropNoAnswer «⛔ سدّها — الزبون ما يرد» (ع 10-23، خيار ب): تسقط من أول مرة بدل
+// ما تنتظر ثلاث محاولات — نفس سقوط الثالثة بالضبط، بس فوراً.
+func (r *ComplaintRepository) DropNoAnswer(id string) (*model.Complaint, error) {
+	res, err := r.db.Exec(`UPDATE "Complaint" SET
+		"noAnswerCount" = "noAnswerCount" + 1, "noAnswerAt" = now(), "nextCallAt" = NULL,
+		"droppedNoAnswerAt" = now(), status = 'CLOSED', "resolvedAt" = now(),
+		resolution = 'سقطت — الزبون ما يرد (انسدّت مباشرة)'
+		WHERE id = $1 AND status IN ('NEW', 'IN_PROGRESS') AND "contactedAt" IS NULL`, id)
+	if err != nil {
+		return nil, err
+	}
+	if n, _ := res.RowsAffected(); n == 0 {
+		return nil, errors.New("الشكوى مغلقة أو انتصل بالزبون — ما تنسدّ «ما يرد»")
+	}
+	return r.Find(id)
+}
+
 // Audit حكم المدقق على شغل مهندس الجودة بهذي الشكوى.
 func (r *ComplaintRepository) Audit(
 	id, verdict string, note *string, byID string,

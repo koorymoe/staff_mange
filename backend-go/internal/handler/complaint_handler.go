@@ -99,6 +99,16 @@ func (h *ComplaintHandler) NoAnswer(w http.ResponseWriter, r *http.Request) {
 	WriteJSON(w, http.StatusOK, out)
 }
 
+// PUT /api/complaints/{id}/no-answer-close — «⛔ سدّها — الزبون ما يرد» (ع 10-23).
+func (h *ComplaintHandler) DropNoAnswer(w http.ResponseWriter, r *http.Request) {
+	out, err := h.service.DropNoAnswer(r.PathValue("id"), middleware.EmployeeIDFromContext(r))
+	if err != nil {
+		WriteError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	WriteJSON(w, http.StatusOK, out)
+}
+
 // PUT /api/complaints/{id}/link-booking — حجز الشكوى انسجل، نربطه بيها.
 func (h *ComplaintHandler) LinkBooking(w http.ResponseWriter, r *http.Request) {
 	var req struct {

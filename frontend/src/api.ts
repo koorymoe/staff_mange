@@ -3936,6 +3936,8 @@ export const api = {
   // التقييم يمشي **بنفس** طلب التواصل: مهندس الجودة يسأل الزبون وهو
   // بالمكالمة، فتقسيمهن لخطوتين يعني نص التقييمات ما تنسجّل.
   complaintNoAnswer: (id: string) => request<Complaint>(`/complaints/${id}/no-answer`, { method: 'PUT' }),
+  /** ⛔ سدّها فوراً — الزبون ما يرد (ع 10-23) */
+  closeComplaintNoAnswer: (id: string) => request<Complaint>(`/complaints/${id}/no-answer-close`, { method: 'PUT' }),
   setComplaintContacted: (id: string, contacted: boolean, rating?: number | null) =>
     request<Complaint>(`/complaints/${id}/contact`, {
       method: 'PUT',
