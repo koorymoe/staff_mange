@@ -64,6 +64,8 @@ type SecretaryBrain struct {
 	dailyCap int
 	capDay   string
 	used     int
+
+	webSearch bool // بحث الويب (SetWebSearch)
 }
 
 // NewSecretaryBrain client = nil يعني بلا ذكاء (Reply يرجّع ErrSecretaryOff).
@@ -85,6 +87,9 @@ func NewSecretaryBrainFor(d SecretaryDeps, dailyCap int) *SecretaryBrain {
 	b.toolsFor = func(tc *SecretaryTurnCtx) []agentTool { return NewSecretaryAgent(d, tc).tools }
 	return b
 }
+
+// SetWebSearch يفعّل بحث الويب لايريس.
+func (b *SecretaryBrain) SetWebSearch(on bool) { b.webSearch = on }
 
 // Enabled السكرتير يكدر يفكر هسه؟
 func (b *SecretaryBrain) Enabled() bool {
@@ -113,7 +118,9 @@ const secretaryInstructions = `انت «ايريس» — سكرتيرة مدير
 - تفهم العراقي وتجاوب بالعراقي، بجملة أو جملتين. التفصيل بس إذا طلبه.
 - كل رقم أو حالة أو اسم يجي من الأدوات. لا تخمّن ولا تكمّل من عندك. إذا ما لكيت، كول ما لكيت وشنو تحتاج منه.
 - دوّر بنفسك: اختار الأداة المناسبة، وإذا الجواب يحتاج أكثر من أداة استعملها.
-- إذا طلب يوجّه شغلة لموظف: سوّي مسودة بأداة propose_task بس — ما تنرسل إلا هو يضغط «إرسال». بجوابك كول بسطر واحد شنو فهمت منه (منو، شنو، شوكت). إذا الاسم يطابق أكثر من موظف كله يختار.
+- إذا طلب يوجّه شغلة لموظف: نفّذها بأداة propose_task — تنرسل فوراً. حوّل كلامه لموعد (باچر الصبح ← باچر 10:00). إذا الأداة كالت ناقص شي، اسأله بجملة وحدة بالكلام — بلا قوائم.
+- اشتغل عنه بالكامل مثل سكرتير حقيقي: لا تكله «روح للشاشة الفلانية» إذا تكدر تجيب الجواب بأداة. دوّر بأكثر من أداة إذا يحتاج.
+- إذا سأل عن شي عام برّا الشركة (سعر، خبر، معلومة، مكان): ابحث بالويب وجاوب بالخلاصة ويا المصدر.
 - ممنوع: أي تعديل فلوس، حذف، تغيير منصب أو صلاحية، غرامة. إذا طلبها، كله هاي يسويها من شاشتها بالنظام.
 - البطاقات تطلع تحت جوابك تلقائياً، فلا تعيد كل تفاصيلها بالنص — قول الخلاصة.
 - لا مقدمات ولا مجاملات طويلة.`
@@ -129,6 +136,9 @@ func (b *SecretaryBrain) system(t SecretaryTurn) string {
 	title := strings.TrimSpace(t.UserTitle)
 	if title == "" {
 		title = "سيدنا"
+	}
+	if role := strings.TrimSpace(t.UserRole); role != "" {
+		fmt.Fprintf(&s, "\n- انت تحچي هسه ويا %s، %s شركة الأماني. إذا سألك «منو آني؟» جاوبه باسمه ومنصبه.", name, role)
 	}
 	fmt.Fprintf(&s, "\n- الاحترام: ناديه «%s» — الترحيب مثل «أهلاً %s، بشنو أكدر أساعدك اليوم؟»، وبالحچي خاطبه «%s» أو «سيدنا». لا تناديه باسمه المجرّد أبداً.", title, title, title)
 	s.WriteString("\nالوقت هسه (بغداد): " + time.Now().In(debriefLoc).Format("2006-01-02 15:04 Monday"))
@@ -184,6 +194,12 @@ func (b *SecretaryBrain) Reply(ctx context.Context, t SecretaryTurn) (*Secretary
 	if len(tools) > 0 {
 		tools[len(tools)-1].OfTool.CacheControl = anthropic.NewCacheControlEphemeralParam()
 	}
+	// 🔎 بحث الويب (دازاي 10-23: «اكله ابحثلي ع كوكل يكلي ما اكدر») — أداة Anthropic نفسها،
+	// لحد ٣ بحثات بالسؤال. للمعلومات العامة بس؛ بيانات الشركة من أدوات النظام.
+	if b.webSearch {
+		tools = append(tools, anthropic.ToolUnionParam{OfWebSearchTool20250305: &anthropic.WebSearchTool20250305Param{
+			MaxUses: anthropic.Int(3)}})
+	}
 
 	msgs := []anthropic.MessageParam{}
 	for _, h := range t.History {
@@ -232,6 +248,10 @@ func (b *SecretaryBrain) Reply(ctx context.Context, t SecretaryTurn) (*Secretary
 				out, isErr := b.callTool(byName, blk, mask, res, seen)
 				results = append(results, anthropic.NewToolResultBlock(blk.ID, out, isErr))
 			}
+		}
+		// بحث الويب الطويل يوكّف الدور (pause_turn) — نكمل من وين وكف.
+		if len(results) == 0 && resp.StopReason == anthropic.StopReasonPauseTurn {
+			continue
 		}
 		if len(results) == 0 || resp.StopReason != anthropic.StopReasonToolUse {
 			if tc != nil {

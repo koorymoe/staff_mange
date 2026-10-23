@@ -115,6 +115,10 @@ func (h *SecretaryHandler) Message(w http.ResponseWriter, r *http.Request) {
 		if e, err := h.employees.FindByID(me); err == nil && e != nil {
 			turn.UserName = e.Name
 			turn.UserTitle = service.SecretaryHonorific(e.Certificate)
+			turn.UserRole = "مدير"
+			if middleware.IsOwner(r) {
+				turn.UserRole = "مالك"
+			}
 		}
 		for _, m := range past {
 			turn.History = append(turn.History, service.SecretaryHistory{Role: m.Role, Text: m.Text})
@@ -137,6 +141,16 @@ func (h *SecretaryHandler) Message(w http.ResponseWriter, r *http.Request) {
 	}
 	if res.Cards == nil {
 		res.Cards = []service.SecretaryCard{}
+	}
+	// (دازاي 10-23) المهمة الكاملة (موظف واحد + موعد) تنرسل فوراً بلا «إرسال».
+	if p := res.Proposal; p != nil && p.Kind == "task" && p.Fields.EmployeeID != "" && p.Fields.DueAt != "" {
+		if card, _, err := h.sendTask(me, p.ActionID, p.Fields); err == nil {
+			res.Cards = append(res.Cards, *card)
+			res.Reply = strings.TrimSpace(res.Reply + "\n✅ انرسلت المهمة لـ" + card.Lines[0][len("انرسلت لـ"):])
+			res.Proposal = nil
+		} else {
+			res.Reply = strings.TrimSpace(res.Reply + "\n⚠️ ما گدرت أرسلها: " + err.Error())
+		}
 	}
 	var actionID *string
 	if res.Proposal != nil {
@@ -186,72 +200,12 @@ func (h *SecretaryHandler) Confirm(w http.ResponseWriter, r *http.Request) {
 	if body.Fields != nil {
 		f = *body.Fields
 	}
-	f.Title = strings.TrimSpace(f.Title)
-	if f.Title == "" {
-		WriteError(w, http.StatusBadRequest, "عنوان المهمة فاضي")
-		return
-	}
-	if r := []rune(f.Title); len(r) > 120 {
-		f.Title = string(r[:120])
-	}
-	if f.Priority != "URGENT" {
-		f.Priority = "NORMAL"
-	}
-	emp, err := h.employees.FindByID(f.EmployeeID)
-	if f.EmployeeID == "" || err != nil || emp == nil || emp.Status != "ACTIVE" {
-		WriteError(w, http.StatusBadRequest, "اختار الموظف أول")
-		return
-	}
-	if emp.ID == me {
-		WriteError(w, http.StatusBadRequest, "ما تكدر توجّه مهمة لنفسك")
-		return
-	}
-	f.EmployeeName = emp.Name
-	req := model.CreateExtraTaskRequest{Title: f.Title, AssignedToID: emp.ID, Priority: f.Priority}
-	if d := strings.TrimSpace(f.Description); d != "" {
-		req.Description = &d
-	}
-	// (ع) 10-23: الموعد إجباري لكل مهمة — نتأكد قبل القفل حتى المسودة ما تنحرق.
-	if f.DueAt == "" {
-		WriteError(w, http.StatusBadRequest, "حدد آخر موعد للإنجاز قبل الإرسال")
-		return
-	}
-	{
-		t, err := time.ParseInLocation("2006-01-02T15:04", f.DueAt, secLoc)
-		if err != nil {
-			WriteError(w, http.StatusBadRequest, "صيغة الموعد غلط")
-			return
-		}
-		s := t.Format(time.RFC3339)
-		req.DueAt = &s
-	}
-	// القفل أول: لو ضغط «إرسال» مرتين بنفس اللحظة، وحدة بس تمر
-	if err := h.repo.Decide(a.ID, me, "SENT", "", f); err != nil {
-		WriteError(w, http.StatusConflict, err.Error())
-		return
-	}
-	task, err := h.tasks.Create(req, me)
+	card, code, err := h.sendTask(me, a.ID, f)
 	if err != nil {
-		_ = h.repo.MarkFailed(a.ID, me, "تعذر إنشاء المهمة")
-		WriteError(w, http.StatusInternalServerError, "تعذر إنشاء المهمة")
+		WriteError(w, code, err.Error())
 		return
 	}
-	_ = h.repo.SetResult(a.ID, me, "انرسلت لـ"+emp.Name+" · "+task.ID)
-	_ = h.notifications.Create(task.AssignedToID, "extra_task", "📋 مهمة جديدة موجّهة إلك: "+task.Title)
-
-	lines := []string{"انرسلت لـ" + emp.Name}
-	if f.Priority == "URGENT" {
-		lines = append(lines, "عاجلة")
-	}
-	if f.DueAt != "" {
-		lines = append(lines, "موعدها "+strings.Replace(f.DueAt, "T", " ", 1))
-	}
-	now := time.Now().UTC().Format(time.RFC3339)
-	link := "/extra-tasks"
-	WriteJSON(w, http.StatusOK, map[string]any{"ok": true, "card": service.SecretaryCard{
-		Kind: "task", Title: task.Title, Status: "انرسلت", Owner: &emp.Name,
-		UpdatedAt: &now, Lines: lines, Link: &link,
-	}})
+	WriteJSON(w, http.StatusOK, map[string]any{"ok": true, "card": card})
 }
 
 // POST /api/secretary/actions/{id}/cancel
@@ -562,4 +516,61 @@ func (h *SecretaryHandler) Agenda(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	WriteJSON(w, http.StatusOK, rows)
+}
+
+// sendTask يرسل مهمة ايريس للموظف — من «إرسال» أو تلقائياً (دازاي 10-23: «المهمة توصل
+// من السكرتير مباشرة للنظام»). يرجّع البطاقة، أو كود HTTP ويا الخطأ.
+func (h *SecretaryHandler) sendTask(me, actionID string, f service.SecretaryTaskFields) (*service.SecretaryCard, int, error) {
+	f.Title = strings.TrimSpace(f.Title)
+	if f.Title == "" {
+		return nil, http.StatusBadRequest, errors.New("عنوان المهمة فاضي")
+	}
+	if r := []rune(f.Title); len(r) > 120 {
+		f.Title = string(r[:120])
+	}
+	if f.Priority != "URGENT" {
+		f.Priority = "NORMAL"
+	}
+	emp, err := h.employees.FindByID(f.EmployeeID)
+	if f.EmployeeID == "" || err != nil || emp == nil || emp.Status != "ACTIVE" {
+		return nil, http.StatusBadRequest, errors.New("اختار الموظف أول")
+	}
+	if emp.ID == me {
+		return nil, http.StatusBadRequest, errors.New("ما تكدر توجّه مهمة لنفسك")
+	}
+	f.EmployeeName = emp.Name
+	req := model.CreateExtraTaskRequest{Title: f.Title, AssignedToID: emp.ID, Priority: f.Priority}
+	if d := strings.TrimSpace(f.Description); d != "" {
+		req.Description = &d
+	}
+	// (ع) 10-23: الموعد إجباري لكل مهمة.
+	if f.DueAt == "" {
+		return nil, http.StatusBadRequest, errors.New("حدد آخر موعد للإنجاز قبل الإرسال")
+	}
+	t, err := time.ParseInLocation("2006-01-02T15:04", f.DueAt, secLoc)
+	if err != nil {
+		return nil, http.StatusBadRequest, errors.New("صيغة الموعد غلط")
+	}
+	due := t.Format(time.RFC3339)
+	req.DueAt = &due
+	// القفل أول: لو انضغط «إرسال» مرتين بنفس اللحظة، وحدة بس تمر
+	if err := h.repo.Decide(actionID, me, "SENT", "", f); err != nil {
+		return nil, http.StatusConflict, err
+	}
+	task, err := h.tasks.Create(req, me)
+	if err != nil {
+		_ = h.repo.MarkFailed(actionID, me, "تعذر إنشاء المهمة")
+		return nil, http.StatusBadRequest, errors.New("تعذر إنشاء المهمة: " + err.Error())
+	}
+	_ = h.repo.SetResult(actionID, me, "انرسلت لـ"+emp.Name+" · "+task.ID)
+	_ = h.notifications.Create(task.AssignedToID, "extra_task", "📋 مهمة جديدة موجّهة إلك: "+task.Title)
+	lines := []string{"انرسلت لـ" + emp.Name}
+	if f.Priority == "URGENT" {
+		lines = append(lines, "عاجلة")
+	}
+	lines = append(lines, "موعدها "+strings.Replace(f.DueAt, "T", " ", 1))
+	now := time.Now().UTC().Format(time.RFC3339)
+	link := "/extra-tasks"
+	return &service.SecretaryCard{Kind: "task", Title: task.Title, Status: "انرسلت", Owner: &emp.Name,
+		UpdatedAt: &now, Lines: lines, Link: &link}, http.StatusOK, nil
 }

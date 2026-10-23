@@ -14,8 +14,8 @@ import (
 // ═══ «السكرتير» — الأدوات (ناروتو · docs/secretary.md) ═══
 // فوق عيون ماتركس الموجودة، بالأسماء الحقيقية (استثناء (ع) 10-22 للسكرتير
 // وحده). كل أداة: نص للنموذج + بطاقات منظّمة بـSecretaryTurnCtx من أرقام
-// النظام مباشرة. أداة التنفيذ الوحيدة propose_task: تحضّر مسودة بس، والإرسال
-// يصير بالمسار بعد «إرسال» من المستخدم — النموذج ما يكدر يرسل شي بنفسه.
+// النظام مباشرة. أداة التنفيذ الوحيدة propose_task: المهمة الكاملة (موظف واحد + موعد)
+// تنرسل فوراً من المعالج (دازاي 10-23)، والناقصة يسأل عنها بالكلام.
 
 // SecretaryDeps مصادر الأدوات.
 type SecretaryDeps struct {
@@ -193,13 +193,13 @@ func registerSecretaryTools(a *MatrixAgent, repo *repository.SecretaryRepository
 		}})
 
 	a.AddTool(agentTool{Name: "propose_task",
-		Desc: "حضّر مسودة مهمة لموظف. ما ترسلها — المستخدم يشوفها ويضغط «إرسال». استعملها مرة وحدة بالدور، لما يطلب يوجّه شغلة لموظف.",
+		Desc: "وجّه مهمة لموظف — تنرسل له فوراً بالنظام. لازم الموظف واضح وآخر موعد للإنجاز محدد (من كلامه: «باچر الصبح»، «الخميس ١٢»…). إذا ناقص شي، الأداة ترجّعلك شنو تسأل. مرة وحدة بالدور.",
 		Props: map[string]any{
 			"employee":    map[string]any{"type": "string", "description": "اسم الموظف كما گاله المستخدم"},
 			"title":       map[string]any{"type": "string", "description": "عنوان قصير (لحد ٨ كلمات)"},
 			"description": map[string]any{"type": "string", "description": "شنو المطلوب بالضبط"},
 			"priority":    map[string]any{"type": "string", "enum": []string{"NORMAL", "URGENT"}},
-			"dueAt":       map[string]any{"type": "string", "description": "YYYY-MM-DDTHH:MM بتوقيت بغداد، أو فاضي"},
+			"dueAt":       map[string]any{"type": "string", "description": "آخر موعد للإنجاز YYYY-MM-DDTHH:MM بتوقيت بغداد — حوّل كلامه لوقت (الصبح=10:00، الظهر=13:00، آخر الدوام=16:00)"},
 		},
 		Req: []string{"employee", "title"},
 		Run: func(in map[string]any, _ *nameMask) (string, error) {
@@ -233,13 +233,20 @@ func registerSecretaryTools(a *MatrixAgent, repo *repository.SecretaryRepository
 					f.DueAt = d
 				}
 			}
-			cands := []SecretaryCandidate{}
-			for _, id := range ids {
-				cands = append(cands, SecretaryCandidate{ID: id, Name: names[id]})
+			// (دازاي 10-23) «اريده يشتغل كلشي عني» — بلا قوائم: إذا الاسم يطابق أكثر من واحد
+			// أو الموعد ناقص، السكرتير يسأل بالكلام مثل سكرتير حقيقي، وما تنعمل مسودة.
+			if len(ids) > 1 {
+				opts := make([]string, 0, len(ids))
+				for _, id := range ids {
+					opts = append(opts, names[id])
+				}
+				return "ما انرسلت — الاسم يطابق: " + strings.Join(opts, "، ") + ". إذا واضح من الكلام منو يقصد عيد الأداة بالاسم الكامل، وإلا اسأله بجملة وحدة منو يقصد (اذكر الأسماء).", nil
 			}
-			if len(ids) == 1 {
-				f.EmployeeID, f.EmployeeName = ids[0], names[ids[0]]
+			if f.DueAt == "" {
+				return "ما انرسلت — ناقص آخر موعد للإنجاز. اسأله بجملة وحدة: شوكت لازم يخلص؟", nil
 			}
+			cands := []SecretaryCandidate{{ID: ids[0], Name: names[ids[0]]}}
+			f.EmployeeID, f.EmployeeName = ids[0], names[ids[0]]
 			who := f.EmployeeName
 			if who == "" {
 				who = "(اختار الموظف)"
@@ -257,10 +264,7 @@ func registerSecretaryTools(a *MatrixAgent, repo *repository.SecretaryRepository
 				return "", err
 			}
 			tc.Proposal = &SecretaryProposal{ActionID: id, Kind: "task", Summary: summary, Fields: f, Candidates: cands}
-			if len(ids) > 1 {
-				return fmt.Sprintf("حضّرت المسودة، بس الاسم يطابق %d موظفين — گله يختار قبل «إرسال».", len(ids)), nil
-			}
-			return "حضّرت المسودة: " + summary + ". ما انرسلت — هو يشوفها ويضغط «إرسال».", nil
+			return "تمام — المهمة راح تنرسل لـ" + f.EmployeeName + " هسه. أكّدله بجملة قصيرة (منو، شنو، شوكت).", nil
 		}})
 }
 

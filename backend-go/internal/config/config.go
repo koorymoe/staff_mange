@@ -43,6 +43,7 @@ type Config struct {
 	// موديل وسقف السكرتير — منفصلات عن ماتركس.
 	AIModelSecretary    string
 	AISecretaryDailyCap int
+	AIIrisWebSearch     bool // بحث الويب لايريس (افتراضياً شغّال)
 	// حد الصرف اليومي بالدولار لكل وكيل — يتحسب من AiUsage فيبقى بعد إعادة التشغيل.
 	AIMatrixDailyUSD float64
 	AIIrisDailyUSD   float64
@@ -120,6 +121,7 @@ func load() *Config {
 		AIKeyBooking:        getEnv("AI_KEY_BOOKING", ""),
 		AIModelSecretary:    getEnv("AI_MODEL_SECRETARY", ""),
 		AISecretaryDailyCap: getEnvInt("AI_SECRETARY_DAILY_CAP", 300),
+		AIIrisWebSearch:     getEnv("AI_IRIS_WEB_SEARCH", "true") != "false",
 		AIMatrixDailyUSD:    getEnvFloat("AI_MATRIX_DAILY_USD", 0.5),
 		AIIrisDailyUSD:      getEnvFloat("AI_IRIS_DAILY_USD", 0.5),
 		AIQualityDailyUSD:   getEnvFloat("AI_QUALITY_DAILY_USD", 0.2),

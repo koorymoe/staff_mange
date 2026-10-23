@@ -54,6 +54,8 @@ type SecretaryTurn struct {
 	UserName string
 	// UserTitle لقبه من ملفه («دكتور»، «أستاذ»، «مهندس»، أو «سيدنا») — دازاي 10-23.
 	UserTitle string
+	// UserRole «المالك» أو «المدير» — حتى يعرف منو يحاچي.
+	UserRole string
 	Text     string
 	History  []SecretaryHistory
 	Prefs    []string

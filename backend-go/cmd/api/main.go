@@ -2739,11 +2739,13 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 		secHandler := handler.NewSecretaryHandler(secRepo, employeeRepo, extraTaskRepo, notificationRepo, voiceAnalysisService)
 		// السكرتير بمفتاحه وموديله وسقفه (دازاي 10-23) — مو عميل ماتركس.
 		secClient := service.NewAnthropicClient(cfg.AIKeySecretary)
-		secHandler.SetBrain(service.NewSecretaryBrainFor(service.SecretaryDeps{
+		irisBrain := service.NewSecretaryBrainFor(service.SecretaryDeps{
 			DB: db, Client: secClient, Model: cfg.AIModelSecretary, Repo: secRepo,
 			Matrix: service.AgentDeps{Command: matrixCommandService, Projects: matrixProjectService.Report,
 				Scores: matrixScoreService.Board, ScoreRepo: matrixScoreService.Repo()},
-		}, cfg.AISecretaryDailyCap)) // حارس فاتورة
+		}, cfg.AISecretaryDailyCap) // حارس فاتورة
+		irisBrain.SetWebSearch(cfg.AIIrisWebSearch)
+		secHandler.SetBrain(irisBrain)
 		mux.Handle("POST /api/secretary/message", middleware.Chain(http.HandlerFunc(secHandler.Message), requireAuth, requireAdmin))
 		mux.Handle("POST /api/secretary/actions/{id}/confirm", middleware.Chain(http.HandlerFunc(secHandler.Confirm), requireAuth, requireAdmin))
 		mux.Handle("POST /api/secretary/actions/{id}/cancel", middleware.Chain(http.HandlerFunc(secHandler.Cancel), requireAuth, requireAdmin))
