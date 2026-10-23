@@ -130,15 +130,31 @@ function MyHours({ meId }: { meId: string }) {
       <section className={card}>
         <h2 className="font-extrabold text-[#0f2040]">📒 ساعاتي (من آخر تصفير)</h2>
         <p className="font-mono text-3xl font-black tabular-nums text-sky-700" dir="ltr">{hms(total)}</p>
-        <EntriesTable entries={entries} canDelete={(e) => e.addedById === meId} onDelete={del} showWho={false} />
+        <EntriesTable entries={entries} canDelete={(e) => e.addedById === meId} onDelete={del} onSaved={load} showWho={false} />
       </section>
     </div>
   )
 }
 
 // قرار (ع) 10-08: عرضين — «حسب الجلسات» (كل توقف وبدء) و«حسب الأيام» (مجموع كل يوم).
-function EntriesTable({ entries, canDelete, onDelete, showWho }: { entries: RemoteEntry[]; canDelete: (e: RemoteEntry) => boolean; onDelete: (e: RemoteEntry) => void; showWho: boolean }) {
+function EntriesTable({ entries, canDelete, onDelete, onSaved, showWho }: { entries: RemoteEntry[]; canDelete: (e: RemoteEntry) => boolean; onDelete: (e: RemoteEntry) => void; onSaved: () => void; showWho: boolean }) {
   const [view, setView] = useState<'sessions' | 'days'>('sessions')
+  // ✏️ تعديل بنفس المكان — بلا window.prompt (محجوب على بعض الأجهزة)
+  const [editing, setEditing] = useState<{ id: string; h: string; m: string; note: string } | null>(null)
+  const [saving, setSaving] = useState(false)
+  const [editErr, setEditErr] = useState('')
+  const startEdit = (e: RemoteEntry) => {
+    setEditErr('')
+    setEditing({ id: e.id, h: String(Math.floor(e.seconds / 3600)), m: String(Math.floor((e.seconds % 3600) / 60)), note: e.note ?? '' })
+  }
+  const saveEdit = async () => {
+    if (!editing) return
+    setSaving(true); setEditErr('')
+    try {
+      await api.updateRemoteHours(editing.id, { hours: Number(editing.h) || 0, minutes: Number(editing.m) || 0, seconds: 0, note: editing.note })
+      setEditing(null); onSaved()
+    } catch (err) { setEditErr(err instanceof Error ? err.message : 'تعذّر الحفظ') } finally { setSaving(false) }
+  }
   const days = useMemo(() => {
     const m = new Map<string, { seconds: number; n: number }>()
     entries.forEach((e) => {
@@ -170,20 +186,43 @@ function EntriesTable({ entries, canDelete, onDelete, showWho }: { entries: Remo
         </tbody>
       </table>
     ) : (
-    <table className="mt-2 w-full text-sm">
-      <thead className="text-xs text-slate-500"><tr><th className="text-right">اليوم</th><th>المدة</th><th className="text-right">ملاحظة</th>{showWho && <th className="text-right">سجّلها</th>}<th /></tr></thead>
-      <tbody>
-        {entries.map((e) => (
-          <tr key={e.id} className="border-t border-slate-100">
-            <td className="py-1">{e.workDate.slice(0, 10)} {e.source === 'TIMER' && <span title="من العدّاد">⏱️</span>}</td>
-            <td className="text-center font-mono" dir="ltr">{hms(e.seconds)}</td>
-            <td className="text-xs text-slate-600">{e.note}</td>
-            {showWho && <td className="text-xs text-slate-400">{e.addedBy}</td>}
-            <td>{canDelete(e) && <button onClick={() => onDelete(e)} className="text-xs text-red-600">حذف</button>}</td>
-          </tr>
-        ))}
-      </tbody>
-    </table>
+    // (ع) 10-23: «نستخدم أصابع للضغط» — بطاقة لكل جلسة وأزرار كبيرة (٤٤px) بدل سطر ناعم.
+    <ul className="mt-2 space-y-2">
+      {entries.map((e) => (
+        <li key={e.id} className="rounded-xl border border-slate-200 bg-white p-3">
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+            <span className="text-sm font-bold text-slate-700">{e.workDate.slice(0, 10)} {e.source === 'TIMER' && <span title="من العدّاد">⏱️</span>}</span>
+            <span className="font-mono text-lg font-extrabold text-slate-900" dir="ltr">{hms(e.seconds)}</span>
+            {showWho && <span className="text-xs text-slate-400">سجّلها: {e.addedBy}</span>}
+          </div>
+          {e.note && <p className="mt-1 text-sm text-slate-600">{e.note}</p>}
+          {editing?.id === e.id ? (
+            <div className="mt-3 space-y-2">
+              <div className="flex gap-2">
+                <label className="flex-1 text-sm font-bold text-slate-600">ساعات
+                  <input type="number" inputMode="numeric" min={0} max={24} value={editing.h} onChange={(x) => setEditing({ ...editing, h: x.target.value })}
+                    className="mt-1 w-full rounded-lg border border-slate-300 p-2.5 text-base" /></label>
+                <label className="flex-1 text-sm font-bold text-slate-600">دقائق
+                  <input type="number" inputMode="numeric" min={0} max={59} value={editing.m} onChange={(x) => setEditing({ ...editing, m: x.target.value })}
+                    className="mt-1 w-full rounded-lg border border-slate-300 p-2.5 text-base" /></label>
+              </div>
+              <input value={editing.note} onChange={(x) => setEditing({ ...editing, note: x.target.value })} placeholder="ملاحظة (اختياري)"
+                className="w-full rounded-lg border border-slate-300 p-2.5 text-base" />
+              {editErr && <p className="text-sm font-bold text-red-600">{editErr}</p>}
+              <div className="flex gap-2">
+                <button type="button" disabled={saving} onClick={saveEdit} className="min-h-11 flex-1 rounded-xl bg-brand-600 px-4 text-base font-extrabold text-white disabled:opacity-50">{saving ? 'جاري الحفظ…' : '✅ احفظ'}</button>
+                <button type="button" disabled={saving} onClick={() => setEditing(null)} className="min-h-11 rounded-xl border border-slate-300 px-5 text-base font-bold text-slate-600">إلغاء</button>
+              </div>
+            </div>
+          ) : canDelete(e) && (
+            <div className="mt-3 flex gap-2">
+              <button type="button" onClick={() => startEdit(e)} className="min-h-11 flex-1 rounded-xl border-2 border-sky-600 px-4 text-base font-extrabold text-sky-700">✏️ تعديل</button>
+              <button type="button" onClick={() => onDelete(e)} className="min-h-11 flex-1 rounded-xl bg-red-600 px-4 text-base font-extrabold text-white">🗑️ حذف</button>
+            </div>
+          )}
+        </li>
+      ))}
+    </ul>
     )}
     </>
   )
@@ -287,7 +326,7 @@ function ManageHours({ meId, isAdmin }: { meId: string; isAdmin: boolean }) {
                 </div>
                 <button onClick={() => api.exportRemoteHours(month, sel.id, sel.name).catch(loadFailed)} className="rounded-lg border border-emerald-600 px-3 py-1.5 text-xs font-bold text-emerald-700">⬇️ Excel هالموظف</button>
               </div>
-              <EntriesTable entries={entries} canDelete={(e) => isAdmin || e.addedById === meId} onDelete={del} showWho />
+              <EntriesTable entries={entries} canDelete={(e) => isAdmin || e.addedById === meId} onDelete={del} onSaved={() => { loadEmp(); loadSummary() }} showWho />
             </>
           )}
         </section>

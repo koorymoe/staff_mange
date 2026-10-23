@@ -1251,6 +1251,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	mux.Handle("POST /api/remote-hours/reset", middleware.Chain(http.HandlerFunc(remoteHoursHandler.Reset), requireAuth, requireRemoteHours))
 	// الحذف: للي سجّلها أو للمدير (يتفحص بالهاندلر) — للمسؤول والموظف لنفسه.
 	mux.Handle("DELETE /api/remote-hours/{id}", middleware.Chain(http.HandlerFunc(remoteHoursHandler.Delete), requireAuth, requireRemoteSelf))
+	mux.Handle("PUT /api/remote-hours/{id}", middleware.Chain(http.HandlerFunc(remoteHoursHandler.Update), requireAuth, requireRemoteSelf))
 	mux.Handle("GET /api/achievements/mine", middleware.Chain(http.HandlerFunc(achievementHandler.Mine), requireAuth))
 	// فويس مسج للإنجاز — يبقى بتخزيننا؛ صاحبه يرفع، وصاحبه أو المدير يسمع.
 	mux.Handle("POST /api/achievements/{id}/voice", middleware.Chain(http.HandlerFunc(achievementHandler.UploadVoice), requireAuth))

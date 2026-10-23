@@ -144,3 +144,19 @@ func (r *RemoteHoursRepository) Delete(id string) error {
 	_, err := r.db.Exec(`DELETE FROM "RemoteWorkEntry" WHERE id = $1`, id)
 	return err
 }
+
+// Entry سجل واحد — للتعديل (الموظف، اليوم، المدة).
+func (r *RemoteHoursRepository) Entry(id string) (*RemoteEntry, error) {
+	var e RemoteEntry
+	err := r.db.Get(&e, remoteSelect+` WHERE r.id = $1`, id)
+	if err != nil {
+		return nil, err
+	}
+	return &e, nil
+}
+
+// Update يعدّل المدة والملاحظة (طلب (ع) 10-23: «اريد اعدلها لان بيها خطأ»).
+func (r *RemoteHoursRepository) Update(id string, seconds int, note *string) error {
+	_, err := r.db.Exec(`UPDATE "RemoteWorkEntry" SET seconds = $2, note = $3 WHERE id = $1`, id, seconds, note)
+	return err
+}

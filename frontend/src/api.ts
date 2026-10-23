@@ -3804,6 +3804,8 @@ export const api = {
   addRemoteHours: (b: { employeeId: string; date: string; hours: number; minutes: number; seconds: number; note?: string }) =>
     request<{ id: string; seconds: number }>('/remote-hours', { method: 'POST', body: JSON.stringify(b) }),
   deleteRemoteHours: (id: string) => request<{ ok: boolean }>(`/remote-hours/${encodeURIComponent(id)}`, { method: 'DELETE' }),
+  updateRemoteHours: (id: string, b: { hours: number; minutes: number; seconds: number; note?: string }) =>
+    request<{ ok: boolean; seconds: number }>(`/remote-hours/${encodeURIComponent(id)}`, { method: 'PUT', body: JSON.stringify(b) }),
   resetRemoteHours: () => request<{ closed: number }>('/remote-hours/reset', { method: 'POST' }),
   // الموظف لنفسه — صلاحية remote_hours_self
   getMyRemote: () => request<{ entries: RemoteEntry[]; totalSeconds: number; timer: RemoteTimer }>('/remote-hours/mine'),

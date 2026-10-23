@@ -271,6 +271,49 @@ func (h *RemoteHoursHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	WriteJSON(w, http.StatusOK, map[string]bool{"ok": true})
 }
 
+// PUT /api/remote-hours/{id} — {hours, minutes, seconds, note}: نفس صلاحية الحذف.
+func (h *RemoteHoursHandler) Update(w http.ResponseWriter, r *http.Request) {
+	e, err := h.repo.Entry(r.PathValue("id"))
+	if err != nil {
+		WriteError(w, http.StatusNotFound, "السجل مو موجود")
+		return
+	}
+	role := middleware.RoleFromContext(r)
+	if role != "ADMIN" && role != "OWNER" && (e.AddedByID == nil || *e.AddedByID != middleware.EmployeeIDFromContext(r)) {
+		WriteError(w, http.StatusForbidden, "تعدّل بس الساعات الي إنت سجّلتها")
+		return
+	}
+	var b addBody
+	if err := DecodeJSON(r, &b); err != nil {
+		WriteError(w, http.StatusBadRequest, "بيانات الطلب غير صحيحة")
+		return
+	}
+	if b.Hours < 0 || b.Minutes < 0 || b.Seconds < 0 || b.Minutes > 59 || b.Seconds > 59 {
+		WriteError(w, http.StatusBadRequest, "الدقائق والثواني من 0 لـ59، وماكو أرقام سالبة")
+		return
+	}
+	total := b.Hours*3600 + b.Minutes*60 + b.Seconds
+	if total <= 0 {
+		WriteError(w, http.StatusBadRequest, "اكتب المدة — وإذا تريد تشيله كله استعمل «حذف»")
+		return
+	}
+	date := e.WorkDate.Format("2006-01-02")
+	if others := h.repo.DaySeconds(e.EmployeeID, date) - e.Seconds; others+total > 24*3600 {
+		WriteError(w, http.StatusBadRequest, fmt.Sprintf("مجموع هاليوم يصير %s — أكثر من ٢٤ ساعة. الباقي المسجّل: %s", HMS(others+total), HMS(others)))
+		return
+	}
+	note := e.Note
+	if b.Note != nil {
+		n := strings.TrimSpace(*b.Note)
+		note = &n
+	}
+	if err := h.repo.Update(e.ID, total, note); err != nil {
+		WriteError(w, http.StatusInternalServerError, "تعذر الحفظ")
+		return
+	}
+	WriteJSON(w, http.StatusOK, map[string]any{"ok": true, "seconds": total})
+}
+
 // GET /api/remote-hours/export?month=&employeeId=
 func (h *RemoteHoursHandler) Export(w http.ResponseWriter, r *http.Request) {
 	month := remoteMonth(r)
