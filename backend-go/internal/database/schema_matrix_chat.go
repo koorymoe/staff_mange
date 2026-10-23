@@ -929,5 +929,31 @@ func matrixChatMigrations() []Migration {
 			ALTER TABLE "QualityFollowUp" ADD COLUMN IF NOT EXISTS "crewRating" INT CHECK ("crewRating" BETWEEN 1 AND 5);
 			ALTER TABLE "QualityFollowUp" ADD COLUMN IF NOT EXISTS "contactedByAgent" TEXT;
 		`,
+	}, {
+		// 💬 محادثات ايريس المتعددة + ذاكرة لكل محادثة (دازاي 10-23: «اريد محادثات مو محادثة
+		// وحدة… كل محادثة إلها ذاكرة حتى ما يصرف أكثر»). الرسائل القديمة تنضم لمحادثة
+		// «المحادثات السابقة». وماتركس عنده محادثات أصلاً (MatrixTalk) — ياخذ الذاكرة بس.
+		Version: "0394_ai_conversations_memory",
+		SQL: `
+			CREATE TABLE IF NOT EXISTS "SecretaryConversation" (
+				id TEXT PRIMARY KEY,
+				"employeeId" TEXT NOT NULL REFERENCES "Employee"(id) ON DELETE CASCADE,
+				title TEXT NOT NULL DEFAULT 'محادثة جديدة',
+				summary TEXT NOT NULL DEFAULT '',
+				"summarizedUpTo" TIMESTAMPTZ,
+				"createdAt" TIMESTAMPTZ NOT NULL DEFAULT now(),
+				"updatedAt" TIMESTAMPTZ NOT NULL DEFAULT now()
+			);
+			CREATE INDEX IF NOT EXISTS "SecretaryConversation_emp_idx" ON "SecretaryConversation" ("employeeId", "updatedAt" DESC);
+			ALTER TABLE "SecretaryMessage" ADD COLUMN IF NOT EXISTS "conversationId" TEXT REFERENCES "SecretaryConversation"(id) ON DELETE CASCADE;
+			INSERT INTO "SecretaryConversation" (id, "employeeId", title, "createdAt", "updatedAt")
+				SELECT 'old-' || m."employeeId", m."employeeId", 'المحادثات السابقة', min(m."createdAt"), max(m."createdAt")
+				FROM "SecretaryMessage" m WHERE m."conversationId" IS NULL GROUP BY m."employeeId"
+				ON CONFLICT (id) DO NOTHING;
+			UPDATE "SecretaryMessage" SET "conversationId" = 'old-' || "employeeId" WHERE "conversationId" IS NULL;
+			CREATE INDEX IF NOT EXISTS "SecretaryMessage_conv_idx" ON "SecretaryMessage" ("conversationId", "createdAt");
+			ALTER TABLE "MatrixTalk" ADD COLUMN IF NOT EXISTS summary TEXT NOT NULL DEFAULT '';
+			ALTER TABLE "MatrixTalk" ADD COLUMN IF NOT EXISTS "summarizedUpTo" TIMESTAMPTZ;
+		`,
 	}}
 }

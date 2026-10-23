@@ -2760,6 +2760,11 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 		mux.Handle("POST /api/secretary/actions/{id}/cancel", middleware.Chain(http.HandlerFunc(secHandler.Cancel), requireAuth, requireAdmin))
 		mux.Handle("GET /api/secretary/today", middleware.Chain(http.HandlerFunc(secHandler.Today), requireAuth, requireAdmin))
 		mux.Handle("GET /api/secretary/history", middleware.Chain(http.HandlerFunc(secHandler.History), requireAuth, requireAdmin))
+		// 💬 محادثات ايريس المتعددة (دازاي 10-23)
+		mux.Handle("GET /api/secretary/conversations", middleware.Chain(http.HandlerFunc(secHandler.Conversations), requireAuth, requireAdmin))
+		mux.Handle("POST /api/secretary/conversations", middleware.Chain(http.HandlerFunc(secHandler.NewConversation), requireAuth, requireAdmin))
+		mux.Handle("PATCH /api/secretary/conversations/{id}", middleware.Chain(http.HandlerFunc(secHandler.RenameConversation), requireAuth, requireAdmin))
+		mux.Handle("DELETE /api/secretary/conversations/{id}", middleware.Chain(http.HandlerFunc(secHandler.DeleteConversation), requireAuth, requireAdmin))
 		// 🗓️ «تذكيراتي» (دازاي 10-22): أي موظف يطلب مقابلة أو ضيف، والمالك والمدير يحددون موعد أو يرفضون
 		meetingRepo := repository.NewMeetingRequestRepository(db)
 		secHandler.SetMeetings(meetingRepo)

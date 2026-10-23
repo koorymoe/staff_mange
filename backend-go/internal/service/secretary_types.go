@@ -56,6 +56,8 @@ type SecretaryTurn struct {
 	UserTitle string
 	// UserRole «المالك» أو «المدير» — حتى يعرف منو يحاچي.
 	UserRole string
+	// Summary ذاكرة المحادثة (ملخص الرسائل القديمة) — والتاريخ آخر رسائل بس.
+	Summary string
 	Text     string
 	History  []SecretaryHistory
 	Prefs    []string

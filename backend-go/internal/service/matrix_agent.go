@@ -336,3 +336,11 @@ func strArg(in map[string]any, k string) string {
 	}
 	return ""
 }
+
+// Remember يحدّث ذاكرة محادثة ماتركس (ملخص + رسائل جديدة).
+func (a *MatrixAgent) Remember(feature, prev string, turns []AgentTurn) (string, error) {
+	if !a.Enabled(feature) {
+		return "", ErrAgentOff
+	}
+	return Remember(context.Background(), a.llm, a.model, feature, prev, turns)
+}

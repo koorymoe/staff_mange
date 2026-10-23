@@ -2,6 +2,7 @@ package handler
 
 import (
 	"errors"
+	"log"
 	"net/http"
 	"strings"
 	"time"
@@ -141,9 +142,12 @@ func (h *MatrixChatHandler) Send(w http.ResponseWriter, r *http.Request) {
 		WriteError(w, http.StatusTooManyRequests, "وصلت حد الرسائل اليوم — باچر يرجع")
 		return
 	}
+	// 🧠 الذاكرة (دازاي 10-23): ملخص المحادثة + آخر رسائل بس — الكلفة ثابتة مهما طالت
+	var summary string
+	_ = h.db.Get(&summary, `SELECT summary FROM "MatrixTalk" WHERE id = $1`, id)
 	hist := []chatMsg{}
 	_ = h.db.Select(&hist, `SELECT * FROM (SELECT id, role, text, steps, image, "createdAt" FROM "MatrixTalkMessage" WHERE "chatId" = $1
-		ORDER BY "createdAt" DESC LIMIT 20) x ORDER BY "createdAt"`, id)
+		ORDER BY "createdAt" DESC LIMIT $2) x ORDER BY "createdAt"`, id, service.MemoryKeep)
 	turns := make([]service.AgentTurn, 0, len(hist))
 	for _, m := range hist {
 		t := m.Text
@@ -166,7 +170,11 @@ func (h *MatrixChatHandler) Send(w http.ResponseWriter, r *http.Request) {
 		prompt = turns[n-1].Text + "\n" + text
 		turns = turns[:n-1]
 	}
-	run, err := h.agent.ChatWith("CHAT", chatSystemPrompt+h.lessonsBlock(), turns, prompt, img)
+	system := chatSystemPrompt + h.lessonsBlock()
+	if strings.TrimSpace(summary) != "" {
+		system += "\n\nذاكرة هالمحادثة (ملخص الي صار قبل آخر الرسائل):\n" + summary
+	}
+	run, err := h.agent.ChatWith("CHAT", system, turns, prompt, img)
 	if err != nil || strings.TrimSpace(run.Answer) == "" {
 		msg := "ماتركس ما گدر يرد هسه — جرّب بعد شوية"
 		if errors.Is(err, service.ErrAgentOff) {
@@ -203,6 +211,7 @@ func (h *MatrixChatHandler) Send(w http.ResponseWriter, r *http.Request) {
 		WriteError(w, http.StatusInternalServerError, "تعذر الحفظ")
 		return
 	}
+	go h.updateMemory(id)
 	WriteJSON(w, http.StatusOK, reply)
 }
 
@@ -300,4 +309,34 @@ func (h *MatrixChatHandler) Lessons(w http.ResponseWriter, r *http.Request) {
 func (h *MatrixChatHandler) DisableLesson(w http.ResponseWriter, r *http.Request) {
 	_, _ = h.db.Exec(`UPDATE "MatrixLesson" SET active = false WHERE id = $1`, r.PathValue("id"))
 	WriteJSON(w, http.StatusOK, map[string]bool{"ok": true})
+}
+
+// updateMemory يدمج الرسائل القديمة بملخص محادثة ماتركس إذا تجمّعن (بالخلفية).
+func (h *MatrixChatHandler) updateMemory(chatID string) {
+	var c struct {
+		Summary string     `db:"summary"`
+		UpTo    *time.Time `db:"summarizedUpTo"`
+	}
+	if err := h.db.Get(&c, `SELECT summary, "summarizedUpTo" FROM "MatrixTalk" WHERE id = $1`, chatID); err != nil {
+		return
+	}
+	msgs := []chatMsg{}
+	if err := h.db.Select(&msgs, `SELECT id, role, text, steps, image, "createdAt" FROM "MatrixTalkMessage"
+		WHERE "chatId" = $1 AND ($2::timestamptz IS NULL OR "createdAt" > $2) ORDER BY "createdAt"`, chatID, c.UpTo); err != nil {
+		return
+	}
+	if len(msgs)-service.MemoryKeep < service.MemoryThreshold {
+		return
+	}
+	msgs = msgs[:len(msgs)-service.MemoryKeep]
+	turns := make([]service.AgentTurn, 0, len(msgs))
+	for _, m := range msgs {
+		turns = append(turns, service.AgentTurn{Role: m.Role, Text: m.Text})
+	}
+	sum, err := h.agent.Remember("CHAT", c.Summary, turns)
+	if err != nil {
+		log.Printf("[matrix-memory] %v", err)
+		return
+	}
+	_, _ = h.db.Exec(`UPDATE "MatrixTalk" SET summary = $2, "summarizedUpTo" = $3 WHERE id = $1`, chatID, sum, msgs[len(msgs)-1].CreatedAt)
 }

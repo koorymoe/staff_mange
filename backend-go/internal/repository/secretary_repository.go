@@ -38,14 +38,129 @@ type SecretaryMessageRow struct {
 }
 
 func (r *SecretaryRepository) SaveMessage(empID, role, text string, transcript *string, cards any, actionID *string) (string, error) {
+	return r.SaveMessageIn(nil, empID, role, text, transcript, cards, actionID)
+}
+
+// SaveMessageIn يحفظ رسالة بمحادثة (convID nil = بلا محادثة — للتوافق القديم).
+func (r *SecretaryRepository) SaveMessageIn(convID *string, empID, role, text string, transcript *string, cards any, actionID *string) (string, error) {
 	raw, err := json.Marshal(cards)
 	if err != nil || cards == nil || string(raw) == "null" {
 		raw = []byte("[]")
 	}
 	id := uuid.NewString()
-	_, err = r.db.Exec(`INSERT INTO "SecretaryMessage" (id, "employeeId", role, text, transcript, cards, "actionId")
-		VALUES ($1, $2, $3, $4, $5, $6, $7)`, id, empID, role, text, transcript, raw, actionID)
+	_, err = r.db.Exec(`INSERT INTO "SecretaryMessage" (id, "employeeId", role, text, transcript, cards, "actionId", "conversationId")
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`, id, empID, role, text, transcript, raw, actionID, convID)
+	if err == nil && convID != nil {
+		_, _ = r.db.Exec(`UPDATE "SecretaryConversation" SET "updatedAt" = now() WHERE id = $1`, *convID)
+	}
 	return id, err
+}
+
+// ── 💬 محادثات ايريس المتعددة + الذاكرة (دازاي 10-23) ──
+
+type SecretaryConversation struct {
+	ID             string     `db:"id" json:"id"`
+	Title          string     `db:"title" json:"title"`
+	Summary        string     `db:"summary" json:"-"`
+	SummarizedUpTo *time.Time `db:"summarizedUpTo" json:"-"`
+	Messages       int        `db:"messages" json:"messages"`
+	CreatedAt      time.Time  `db:"createdAt" json:"createdAt"`
+	UpdatedAt      time.Time  `db:"updatedAt" json:"updatedAt"`
+}
+
+const secConvCols = `c.id, c.title, c.summary, c."summarizedUpTo", c."createdAt", c."updatedAt",
+	(SELECT COUNT(*) FROM "SecretaryMessage" m WHERE m."conversationId" = c.id)::int AS messages`
+
+func (r *SecretaryRepository) Conversations(empID string) ([]SecretaryConversation, error) {
+	rows := []SecretaryConversation{}
+	err := r.db.Select(&rows, `SELECT `+secConvCols+` FROM "SecretaryConversation" c
+		WHERE c."employeeId" = $1 ORDER BY c."updatedAt" DESC LIMIT 100`, empID)
+	return rows, err
+}
+
+// Conversation محادثته هو بس.
+func (r *SecretaryRepository) Conversation(empID, id string) (*SecretaryConversation, error) {
+	var c SecretaryConversation
+	if err := r.db.Get(&c, `SELECT `+secConvCols+` FROM "SecretaryConversation" c WHERE c.id = $1 AND c."employeeId" = $2`, id, empID); err != nil {
+		return nil, errors.New("المحادثة مو موجودة")
+	}
+	return &c, nil
+}
+
+func (r *SecretaryRepository) CreateConversation(empID, title string) (*SecretaryConversation, error) {
+	if strings.TrimSpace(title) == "" {
+		title = "محادثة جديدة"
+	}
+	id := uuid.NewString()
+	if _, err := r.db.Exec(`INSERT INTO "SecretaryConversation" (id, "employeeId", title) VALUES ($1, $2, $3)`, id, empID, title); err != nil {
+		return nil, err
+	}
+	return r.Conversation(empID, id)
+}
+
+// LatestConversation آخر محادثة — وإذا ماكو يفتح وحدة جديدة.
+func (r *SecretaryRepository) LatestConversation(empID string) (*SecretaryConversation, error) {
+	var id string
+	if err := r.db.Get(&id, `SELECT id FROM "SecretaryConversation" WHERE "employeeId" = $1 ORDER BY "updatedAt" DESC LIMIT 1`, empID); err == nil {
+		return r.Conversation(empID, id)
+	}
+	return r.CreateConversation(empID, "")
+}
+
+func (r *SecretaryRepository) RenameConversation(empID, id, title string) error {
+	res, err := r.db.Exec(`UPDATE "SecretaryConversation" SET title = $3 WHERE id = $1 AND "employeeId" = $2`, id, empID, title)
+	return noteHit(res, err)
+}
+
+func (r *SecretaryRepository) DeleteConversation(empID, id string) error {
+	res, err := r.db.Exec(`DELETE FROM "SecretaryConversation" WHERE id = $1 AND "employeeId" = $2`, id, empID)
+	return noteHit(res, err)
+}
+
+// ConversationHistory آخر رسائل محادثة (الأحدث آخراً).
+func (r *SecretaryRepository) ConversationHistory(convID string, limit int) ([]SecretaryMessageRow, error) {
+	if limit <= 0 || limit > 200 {
+		limit = 50
+	}
+	rows := []SecretaryMessageRow{}
+	err := r.db.Select(&rows, `SELECT * FROM (
+		SELECT m.id, m."createdAt", m.role, m.text, m.transcript, m.cards, m."actionId",
+		       a.status AS "actionStatus", a.result AS "actionResult"
+		FROM "SecretaryMessage" m LEFT JOIN "SecretaryAction" a ON a.id = m."actionId"
+		WHERE m."conversationId" = $1 ORDER BY m."createdAt" DESC LIMIT $2) x
+		ORDER BY "createdAt" ASC`, convID, limit)
+	return rows, err
+}
+
+// ToSummarize الرسائل الي بعدها ما دخلت الذاكرة، ما عدا آخر keep — إذا صارن أكثر من threshold.
+func (r *SecretaryRepository) ToSummarize(c *SecretaryConversation, keep, threshold int) ([]SecretaryMessageRow, error) {
+	rows := []SecretaryMessageRow{}
+	err := r.db.Select(&rows, `SELECT m.id, m."createdAt", m.role, m.text, m.transcript, m.cards, m."actionId",
+		NULL::text AS "actionStatus", NULL::text AS "actionResult"
+		FROM "SecretaryMessage" m WHERE m."conversationId" = $1
+		  AND ($2::timestamptz IS NULL OR m."createdAt" > $2)
+		ORDER BY m."createdAt"`, c.ID, c.SummarizedUpTo)
+	if err != nil || len(rows)-keep < threshold {
+		return nil, err
+	}
+	return rows[:len(rows)-keep], nil
+}
+
+func (r *SecretaryRepository) SetMemory(convID, summary string, upTo time.Time) error {
+	_, err := r.db.Exec(`UPDATE "SecretaryConversation" SET summary = $2, "summarizedUpTo" = $3 WHERE id = $1`, convID, summary, upTo)
+	return err
+}
+
+// TitleIfNew يسمّي المحادثة من أول رسالة إذا بعدها «محادثة جديدة».
+func (r *SecretaryRepository) TitleIfNew(convID, text string) {
+	t := strings.TrimSpace(strings.ReplaceAll(text, "\n", " "))
+	if rs := []rune(t); len(rs) > 40 {
+		t = string(rs[:40]) + "…"
+	}
+	if t == "" {
+		return
+	}
+	_, _ = r.db.Exec(`UPDATE "SecretaryConversation" SET title = $2 WHERE id = $1 AND title = 'محادثة جديدة'`, convID, t)
 }
 
 // History آخر الرسائل (الأحدث آخراً) ويا حالة المقترح إذا اكو.

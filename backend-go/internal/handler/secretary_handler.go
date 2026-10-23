@@ -53,7 +53,7 @@ const secretaryOff = "ايريس ما تكدر تفكر هسه (الذكاء م�
 // POST /api/secretary/message — JSON {text} أو multipart بحقل file.
 func (h *SecretaryHandler) Message(w http.ResponseWriter, r *http.Request) {
 	me := middleware.EmployeeIDFromContext(r)
-	var text string
+	var text, convID string
 	var transcript *string
 	if strings.HasPrefix(r.Header.Get("Content-Type"), "multipart/") {
 		if h.stt == nil && (h.voice == nil || !h.voice.Enabled()) {
@@ -65,6 +65,7 @@ func (h *SecretaryHandler) Message(w http.ResponseWriter, r *http.Request) {
 			WriteError(w, http.StatusBadRequest, "البصمة أطول من المسموح (٣ دقايق)")
 			return
 		}
+		convID = strings.TrimSpace(r.FormValue("conversationId"))
 		file, _, err := r.FormFile("file")
 		if err != nil {
 			WriteError(w, http.StatusBadRequest, "ماكو بصمة بالطلب")
@@ -90,13 +91,15 @@ func (h *SecretaryHandler) Message(w http.ResponseWriter, r *http.Request) {
 		transcript = &text
 	} else {
 		var body struct {
-			Text string `json:"text"`
+			Text           string `json:"text"`
+			ConversationID string `json:"conversationId"`
 		}
 		if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 16<<10)).Decode(&body); err != nil {
 			WriteError(w, http.StatusBadRequest, "طلب غير صالح")
 			return
 		}
 		text = strings.TrimSpace(body.Text)
+		convID = strings.TrimSpace(body.ConversationID)
 	}
 	if text == "" {
 		WriteError(w, http.StatusBadRequest, "الرسالة فاضية")
@@ -106,16 +109,28 @@ func (h *SecretaryHandler) Message(w http.ResponseWriter, r *http.Request) {
 		text = string(r[:2000])
 	}
 
-	// السجل قبل الرسالة الجديدة — العقل ياخذ آخر ١٢ رسالة
-	past, _ := h.repo.History(me, 12)
-	if _, err := h.repo.SaveMessage(me, "user", text, transcript, nil, nil); err != nil {
+	// 💬 المحادثة: المحددة (لازم مالته) أو آخر وحدة (دازاي 10-23: محادثات متعددة)
+	var conv *repository.SecretaryConversation
+	var err error
+	if convID != "" {
+		conv, err = h.repo.Conversation(me, convID)
+	} else {
+		conv, err = h.repo.LatestConversation(me)
+	}
+	if err != nil {
+		WriteError(w, http.StatusNotFound, "المحادثة مو موجودة")
+		return
+	}
+	// 🧠 الذاكرة: ملخص المحادثة + آخر رسائل بس — الكلفة ثابتة مهما طالت
+	past, _ := h.repo.ConversationHistory(conv.ID, service.MemoryKeep)
+	if _, err := h.repo.SaveMessageIn(&conv.ID, me, "user", text, transcript, nil, nil); err != nil {
 		WriteError(w, http.StatusInternalServerError, "تعذر حفظ الرسالة")
 		return
 	}
 
 	res := &service.SecretaryResult{Reply: secretaryOff}
 	if h.brain != nil {
-		turn := service.SecretaryTurn{UserID: me, Text: text, Prefs: h.repo.Prefs(me)}
+		turn := service.SecretaryTurn{UserID: me, Text: text, Prefs: h.repo.Prefs(me), Summary: conv.Summary}
 		if e, err := h.employees.FindByID(me); err == nil && e != nil {
 			turn.UserName = e.Name
 			turn.UserTitle = service.SecretaryHonorific(e.Certificate)
@@ -163,14 +178,16 @@ func (h *SecretaryHandler) Message(w http.ResponseWriter, r *http.Request) {
 			res.Proposal.Candidates = []service.SecretaryCandidate{}
 		}
 	}
-	id, err := h.repo.SaveMessage(me, "assistant", res.Reply, nil, res.Cards, actionID)
+	id, err := h.repo.SaveMessageIn(&conv.ID, me, "assistant", res.Reply, nil, res.Cards, actionID)
 	if err != nil {
 		WriteError(w, http.StatusInternalServerError, "تعذر حفظ الجواب")
 		return
 	}
+	h.repo.TitleIfNew(conv.ID, text)
+	go h.updateMemory(*conv)
 	WriteJSON(w, http.StatusOK, map[string]any{
 		"messageId": id, "transcript": transcript, "reply": res.Reply,
-		"cards": res.Cards, "proposal": res.Proposal,
+		"cards": res.Cards, "proposal": res.Proposal, "conversationId": conv.ID,
 	})
 }
 
@@ -274,7 +291,20 @@ func (h *SecretaryHandler) History(w http.ResponseWriter, r *http.Request) {
 	if limit <= 0 || limit > 200 {
 		limit = 50
 	}
-	rows, err := h.repo.History(middleware.EmployeeIDFromContext(r), limit)
+	me := middleware.EmployeeIDFromContext(r)
+	// ?conversationId= محادثة محددة؛ بلاه آخر محادثة (التوافق ويا الواجهة القديمة)
+	var conv *repository.SecretaryConversation
+	var err error
+	if id := r.URL.Query().Get("conversationId"); id != "" {
+		conv, err = h.repo.Conversation(me, id)
+	} else {
+		conv, err = h.repo.LatestConversation(me)
+	}
+	if err != nil {
+		WriteError(w, http.StatusNotFound, "المحادثة مو موجودة")
+		return
+	}
+	rows, err := h.repo.ConversationHistory(conv.ID, limit)
 	if err != nil {
 		WriteError(w, http.StatusInternalServerError, "تعذر جلب السجل")
 		return
@@ -600,4 +630,88 @@ func (h *SecretaryHandler) transcribe(ctx context.Context, data []byte, ct strin
 		return "", errors.New("تحويل الصوت مو متوفر")
 	}
 	return h.voice.Transcribe(ctx, data, ct)
+}
+
+// updateMemory يدمج الرسائل القديمة بملخص المحادثة إذا تجمّعن (بالخلفية، ما يأخّر الرد).
+func (h *SecretaryHandler) updateMemory(c repository.SecretaryConversation) {
+	rem, ok := h.brain.(interface {
+		Remember(ctx context.Context, prev string, turns []service.AgentTurn) (string, error)
+	})
+	if !ok {
+		return
+	}
+	msgs, err := h.repo.ToSummarize(&c, service.MemoryKeep, service.MemoryThreshold)
+	if err != nil || len(msgs) == 0 {
+		return
+	}
+	turns := make([]service.AgentTurn, 0, len(msgs))
+	for _, m := range msgs {
+		turns = append(turns, service.AgentTurn{Role: m.Role, Text: m.Text})
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	defer cancel()
+	sum, err := rem.Remember(ctx, c.Summary, turns)
+	if err != nil {
+		log.Printf("[iris-memory] %v", err)
+		return
+	}
+	_ = h.repo.SetMemory(c.ID, sum, msgs[len(msgs)-1].At)
+}
+
+// ── 💬 مسارات المحادثات ──
+
+// GET /api/secretary/conversations
+func (h *SecretaryHandler) Conversations(w http.ResponseWriter, r *http.Request) {
+	rows, err := h.repo.Conversations(middleware.EmployeeIDFromContext(r))
+	if err != nil {
+		WriteError(w, http.StatusInternalServerError, "تعذر جلب المحادثات")
+		return
+	}
+	WriteJSON(w, http.StatusOK, rows)
+}
+
+// POST /api/secretary/conversations {title?}
+func (h *SecretaryHandler) NewConversation(w http.ResponseWriter, r *http.Request) {
+	var in struct {
+		Title string `json:"title"`
+	}
+	if r.ContentLength != 0 {
+		_ = json.NewDecoder(http.MaxBytesReader(w, r.Body, 2<<10)).Decode(&in)
+	}
+	c, err := h.repo.CreateConversation(middleware.EmployeeIDFromContext(r), strings.TrimSpace(in.Title))
+	if err != nil {
+		WriteError(w, http.StatusInternalServerError, "تعذر فتح محادثة")
+		return
+	}
+	WriteJSON(w, http.StatusCreated, c)
+}
+
+// PATCH /api/secretary/conversations/{id} {title}
+func (h *SecretaryHandler) RenameConversation(w http.ResponseWriter, r *http.Request) {
+	var in struct {
+		Title string `json:"title"`
+	}
+	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 2<<10)).Decode(&in); err != nil {
+		WriteError(w, http.StatusBadRequest, "طلب غير صالح")
+		return
+	}
+	t := strings.TrimSpace(in.Title)
+	if n := len([]rune(t)); n < 1 || n > 80 {
+		WriteError(w, http.StatusBadRequest, "العنوان من ١ إلى ٨٠ حرف")
+		return
+	}
+	if err := h.repo.RenameConversation(middleware.EmployeeIDFromContext(r), r.PathValue("id"), t); err != nil {
+		WriteError(w, http.StatusNotFound, "المحادثة مو موجودة")
+		return
+	}
+	WriteJSON(w, http.StatusOK, map[string]any{"ok": true})
+}
+
+// DELETE /api/secretary/conversations/{id} — محادثته هو بس.
+func (h *SecretaryHandler) DeleteConversation(w http.ResponseWriter, r *http.Request) {
+	if err := h.repo.DeleteConversation(middleware.EmployeeIDFromContext(r), r.PathValue("id")); err != nil {
+		WriteError(w, http.StatusNotFound, "المحادثة مو موجودة")
+		return
+	}
+	WriteJSON(w, http.StatusOK, map[string]any{"ok": true})
 }
