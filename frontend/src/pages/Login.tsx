@@ -1,25 +1,10 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { api } from '../api'
 import CommandLogin from '../command/CommandLogin'
 import '../command/theme.css'
 import { useSession } from '../session'
 
-// ═══ شاشة الدخول ═══
-//
-// «اريد واجهة مضيئة قويه… وأشياء متحركة ورياكشن… بالنصف… والشعار
-// واضح وجميل».
-//
-// ⚠️ «رياكشن» يعني الشاشة **ترد** على المستخدم مو بس تتحرك لحالها:
-// البطاقة تميل ورا الماوس، وضوء يتبع المؤشر، والزر ينبض بالضغط،
-// والخانة ترتفع تسميتها لمن تكتب بيها. الحركة الي ما ترد تصير
-// خلفية متحركة — والمستخدم يمل منها بأسبوع.
-//
-// ⚠️ وكل الحركة `transform`/`opacity` بس، والميلان ينحسب برسمة
-// وحدة (`requestAnimationFrame`) ويكتب **متغيّرات CSS** بدل ما
-// يعيد رسم React — تحريك الحالة مع كل حركة ماوس يخنق الصفحة.
-//
-// ⚠️ والميلان ينطفي باللمس: التلفون ماكو بيه مؤشر، وحساب الميلان
-// من اللمسة يخلّي البطاقة تنط تحت الإصبع.
+// دخول ثابت بدون إمالة أو نبض؛ الحقول 16px حتى يبقى حجم الصفحة ثابت على الآيفون.
 
 const UserIcon = () => <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
 const LockIcon = () => <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
@@ -36,8 +21,6 @@ export default function Login() {
   const dragRef = useRef<{ startY: number; from: number } | null>(null)
   const [dragging, setDragging] = useState(false)
 
-  const cardRef = useRef<HTMLDivElement>(null)
-  const frameRef = useRef(0)
 
   useEffect(() => {
     sessionStorage.removeItem('sessionEndedReason')
@@ -46,31 +29,6 @@ export default function Login() {
     // خانة تشيله.
     localStorage.removeItem('rememberedUser')
   }, [])
-
-  // ═══ الميلان وضوء المؤشر ═══
-  const onPointerMove = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
-    if (e.pointerType !== 'mouse') return
-    const card = cardRef.current
-    if (!card) return
-    const rect = card.getBoundingClientRect()
-    const x = (e.clientX - rect.left) / rect.width
-    const y = (e.clientY - rect.top) / rect.height
-    cancelAnimationFrame(frameRef.current)
-    frameRef.current = requestAnimationFrame(() => {
-      card.style.setProperty('--rx', `${(0.5 - y) * 7}deg`)
-      card.style.setProperty('--ry', `${(x - 0.5) * 9}deg`)
-      card.style.setProperty('--mx', `${x * 100}%`)
-      card.style.setProperty('--my', `${y * 100}%`)
-    })
-  }, [])
-  const onPointerLeave = useCallback(() => {
-    const card = cardRef.current
-    if (!card) return
-    cancelAnimationFrame(frameRef.current)
-    card.style.setProperty('--rx', '0deg')
-    card.style.setProperty('--ry', '0deg')
-  }, [])
-  useEffect(() => () => cancelAnimationFrame(frameRef.current), [])
 
   const onHandleDown = (event: React.PointerEvent<HTMLButtonElement>) => {
     event.currentTarget.setPointerCapture(event.pointerId)
@@ -100,7 +58,7 @@ export default function Login() {
   }
 
   return (
-    <main className="lx" dir="rtl" onPointerMove={onPointerMove} onPointerLeave={onPointerLeave}>
+    <main className="lx" dir="rtl">
       {/* ═══ الخلفية المضيئة ═══ كتل لون تتموّج + شبكة ناعمة */}
       <div className="lx-sky" aria-hidden>
         <span className="lx-blob lx-b1" />
@@ -116,7 +74,7 @@ export default function Login() {
         ))}
       </div>
 
-      <div className="lx-card" ref={cardRef}>
+      <div className="lx-card">
         <span className="lx-glow" aria-hidden />
 
         {/* ═══ الشعار ═══ حلقة متدرّجة تدور حوله وهالة تنبض */}
