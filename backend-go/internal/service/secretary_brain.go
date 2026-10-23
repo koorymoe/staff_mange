@@ -377,11 +377,14 @@ func AIErrorText(err error) string {
 }
 
 // NewAnthropicClient عميل بمفتاح وكيل معيّن — nil إذا المفتاح فاضي (الميزة تنطفي، النظام يبقى).
-func NewAnthropicClient(key string) *anthropic.Client {
+func NewAnthropicClient(key string) *anthropic.Client { return NewAnthropicClientFor(AIAgentIris, key) }
+
+// NewAnthropicClientFor عميل بمفتاح وكيل وحده اليومي بالدولار.
+func NewAnthropicClientFor(agent, key string) *anthropic.Client {
 	if key == "" {
 		return nil
 	}
-	c := NewAIClient(AIAgentIris, key)
+	c := NewAIClient(agent, key)
 	return &c
 }
 

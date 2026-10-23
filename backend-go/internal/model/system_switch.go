@@ -47,7 +47,7 @@ const (
 	SwitchAIChat           = "ai_chat"
 	// SwitchAISecretary «السكرتير» للمالك والمدير (دازاي 10-22)
 	SwitchAISecretary = "ai_secretary"
-	// وكيلي الواتساب (دازاي 10-23) — مطفيين لحد قرار الخصوصية وربط Meta.
+	// وكيلا الواتساب (دازاي 10-23) — مطفيين لحد قرار الخصوصية وحساب Meta
 	SwitchAIQualityAgent = "ai_quality_agent"
 	SwitchAIBookingAgent = "ai_booking_agent"
 )
@@ -64,8 +64,9 @@ var AIFeatureSwitch = map[string]string{
 var systemSwitchDefaultOff = map[string]bool{
 	SwitchMatrixAutoCrew:        true,
 	SwitchMatrixMonitorEscalate: true,
-	SwitchAIQualityAgent:        true,
-	SwitchAIBookingAgent:        true,
+	// الوكيلين يحچون الزبون مباشرة — المالك يشغّلهم بنفسه بعد قرار الخصوصية
+	SwitchAIQualityAgent: true,
+	SwitchAIBookingAgent: true,
 	// قرار (ع) 10-08: «ماتركس لازم يقيّم كل موظف» — التقييم درجة بس بلا فلوس، فصار شغّال افتراضياً.
 }
 
@@ -74,8 +75,6 @@ func SystemSwitchDefault(key string) bool { return !systemSwitchDefaultOff[key] 
 
 // SystemSwitchLabels الاسم العربي لكل مفتاح — للعرض وللسجل.
 var SystemSwitchLabels = map[string]string{
-	SwitchAIQualityAgent:        "وكيل الجودة عالواتساب",
-	SwitchAIBookingAgent:        "وكيل الحجوزات عالواتساب",
 	SwitchEntity:                "شخصية الكائن",
 	SwitchAnnouncements:         "شريط الإعلانات",
 	SwitchMatrixAutopilot:       "ماتركس ينفّذ التذكيرات لحاله",
@@ -94,6 +93,8 @@ var SystemSwitchLabels = map[string]string{
 	SwitchAITone:                "هايكو: صياغة تنبيهات ماتركس بأسلوب متجدد",
 	SwitchAIChat:                "هايكو: دردشة ماتركس",
 	SwitchAISecretary:           "🗂️ السكرتير: محادثة وبصمات المدير",
+	SwitchAIQualityAgent:        "⭐ ابو الجودة: متابعة الزبائن عالواتساب",
+	SwitchAIBookingAgent:        "📅 ابو الحجوزات: تثبيت الحجوزات عالواتساب",
 }
 
 // KnownSystemSwitch هل هذا مفتاح نعرفه؟
@@ -116,6 +117,7 @@ var systemSwitchAdminAllowed = map[string]bool{
 	SwitchAIGuide: true, SwitchAIJudge: true, SwitchAIDiscovery: true, SwitchAIVoice: true,
 	SwitchAIAsk: true, SwitchAILearning: true, SwitchAIEmployeeReport: true, SwitchAIPeer: true,
 	SwitchAITone: true, SwitchAIChat: true, SwitchAISecretary: true,
+	SwitchAIQualityAgent: true, SwitchAIBookingAgent: true,
 }
 
 // SystemSwitchAdminAllowed هل مدير النظام (ADMIN) مسموح له يبدّل

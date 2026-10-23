@@ -73,7 +73,7 @@ func TestWaAgentTools_Live(t *testing.T) {
 	brain.calls = append(brain.calls, struct {
 		name string
 		in   map[string]any
-	}{"record_contact", map[string]any{"outcome": "OK", "customer_rating": float64(5), "crew_rating": float64(4), "notes": "راضي"}})
+	}{"record_contact", map[string]any{"outcome": "OK", "customerRating": float64(5), "crewRating": float64(4), "notes": "راضي"}})
 	svc.SetBrain(WaAgentQuality, brain)
 	ctx := context.Background()
 

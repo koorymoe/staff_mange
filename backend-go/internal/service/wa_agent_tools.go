@@ -1,14 +1,9 @@
 package service
 
 import (
-	"context"
 	"errors"
 	"fmt"
-	"strings"
 	"time"
-
-	"github.com/anthropics/anthropic-sdk-go"
-	"github.com/jmoiron/sqlx"
 
 	"staffmange-api/internal/model"
 	"staffmange-api/internal/repository"
@@ -75,17 +70,17 @@ func (t *waTurnCtx) tools() []agentTool {
 			agentTool{Name: "record_contact",
 				Desc: "سجّل «تم التواصل» بمتابعة الجودة: outcome = OK إذا الزبون راضي بلا مشكلة، ISSUE إذا عنده مشكلة. والتقييمين من ١ لـ٥ إذا انطاهن. سجّلها مرة وحدة بآخر المحادثة، وقبل create_booking إذا اكو مشكلة.",
 				Props: map[string]any{
-					"outcome":         map[string]any{"type": "string", "enum": []string{"OK", "ISSUE"}},
-					"customer_rating": map[string]any{"type": "integer", "description": "تقييم الزبون للشغل ١–٥"},
-					"crew_rating":     map[string]any{"type": "integer", "description": "تقييم الزبون للكادر ١–٥"},
-					"notes":           map[string]any{"type": "string", "description": "شنو كال الزبون بجملة أو جملتين"},
+					"outcome":        map[string]any{"type": "string", "enum": []string{"OK", "ISSUE"}},
+					"customerRating": map[string]any{"type": "integer", "description": "تقييم الزبون للشغل ١–٥"},
+					"crewRating":     map[string]any{"type": "integer", "description": "تقييم الزبون للكادر ١–٥"},
+					"notes":          map[string]any{"type": "string", "description": "شنو كال الزبون بجملة أو جملتين"},
 				}, Req: []string{"outcome", "notes"},
 				Run: func(in map[string]any, _ *nameMask) (string, error) {
 					if t.conv.FollowUpID == nil {
 						return "", errors.New("ماكو متابعة جودة لهذا الحجز")
 					}
 					ok := strArg(in, "outcome") != "ISSUE"
-					cr, kr, notes := intArg(in, "customer_rating"), intArg(in, "crew_rating"), strArg(in, "notes")
+					cr, kr, notes := intArg(in, "customerRating"), intArg(in, "crewRating"), strArg(in, "notes")
 					if !t.conv.Sandbox {
 						if err := t.svc.repo.RecordContactByAgent(*t.conv.FollowUpID, t.conv.Agent, ok, cr, kr, notes); err != nil {
 							return "", err
@@ -197,33 +192,4 @@ func (t *waTurnCtx) tools() []agentTool {
 				return sandboxNote("انثبّت الحجز. كول للزبون الموعد بالضبط."), nil
 			}},
 	)
-}
-
-// ── العقل الافتراضي فوق Claude (لوفي يطوّر السياسة بـwa_agent_prompts.go) ──
-
-type claudeWaBrain struct {
-	db      *sqlx.DB
-	client  *anthropic.Client
-	model   string
-	feature string
-}
-
-// NewClaudeWaBrain عقل Claude لوكيل. client nil = بلا ذكاء (الخدمة تستعمل العقل المؤقت).
-func NewClaudeWaBrain(db *sqlx.DB, client *anthropic.Client, model, agent string) WaBrain {
-	if client == nil {
-		return nil
-	}
-	return &claudeWaBrain{db: db, client: client, model: model, feature: agent + "_AGENT"}
-}
-
-func (c *claudeWaBrain) Reply(_ context.Context, t WaTurn) (string, error) {
-	a := NewMatrixAgent(c.db, c.client, c.model)
-	for _, tool := range t.Tools {
-		a.AddTool(tool)
-	}
-	run, err := a.Chat(c.feature, WaSystemPrompt(t), t.History, t.Message)
-	if err != nil {
-		return "", err
-	}
-	return strings.TrimSpace(run.Answer), nil
 }

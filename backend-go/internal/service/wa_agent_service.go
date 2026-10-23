@@ -147,9 +147,7 @@ func (s *WaAgentService) contextText(c *repository.WaBookingContext) string {
 	if c.CompletedAt != nil {
 		b.WriteString(" · خلص: " + secFmt(c.CompletedAt))
 	}
-	if c.Leader != nil {
-		b.WriteString(" · ليدر الكادر: " + *c.Leader)
-	}
+	// ⚠️ اسم الليدر ما ينرسل — أسماء الموظفين ممنوعة على الذكاء الخارجي (إلا ايريس).
 	// ملاحظات الموظفين ممكن بيها اسم الزبون — بس بعد قرار الخصوصية.
 	if s.PrivacyApproved && c.Notes != nil && strings.TrimSpace(*c.Notes) != "" {
 		b.WriteString("\nملاحظات الحجز: " + *c.Notes)

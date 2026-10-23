@@ -2774,12 +2774,10 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 				repository.NewSystemSwitchRepository(db), notificationRepo, aiAgentNames.AgentName)
 			waSvc.DailyNew, waSvc.Template, waSvc.TemplateLang = cfg.WaDailyNew, cfg.WaTemplate, cfg.WaTemplateLng
 			waSvc.PrivacyApproved = cfg.WaPrivacyApproved
-			if b := service.NewClaudeWaBrain(db, service.NewAnthropicClient(cfg.AIKeyQuality), cfg.AIModel, service.WaAgentQuality); b != nil {
-				waSvc.SetBrain(service.WaAgentQuality, b)
-			}
-			if b := service.NewClaudeWaBrain(db, service.NewAnthropicClient(cfg.AIKeyBooking), cfg.AIModel, service.WaAgentBooking); b != nil {
-				waSvc.SetBrain(service.WaAgentBooking, b)
-			}
+			waSvc.SetBrain(service.WaAgentQuality, service.NewLuffyWaBrain(service.WaAgentQuality,
+				service.NewAnthropicClientFor(service.WaAgentQuality, cfg.AIKeyQuality), cfg.AIModel, 200))
+			waSvc.SetBrain(service.WaAgentBooking, service.NewLuffyWaBrain(service.WaAgentBooking,
+				service.NewAnthropicClientFor(service.WaAgentBooking, cfg.AIKeyBooking), cfg.AIModel, 200))
 			aiAgentNames.SetEnabled(waSvc.Enabled)
 			waH := handler.NewWaHandler(waSvc, waClient, permissionRepo)
 			requireWa := middleware.RequireRoleOrAnyPermission(permissionRepo, employeeRepo, notificationRepo, []string{"ADMIN"}, "quality_control", "coordinator")
