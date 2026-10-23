@@ -86,4 +86,4 @@ git push origin origin/avg:refs/heads/prod     # بعد التأكد إنه fast
 
 ---
 ## سجل لوفي (اكتب هنا)
--
+- 10-23 (لوفي): دمجت avg-sasuke (قائمة محادثات ايريس + تثبيت حجم دخول الموبايل) بـavg بلا تعارض. فحص: go vet ✅، go test -p 1 كامل ✅، tsc ✅، eslint ✅، build ✅، الخادم محلياً بلا panic ومسارات /api/secretary (conversations GET/POST، today، history) 200/201 ✅. رفعت avg وprod بطلب دازاي.
