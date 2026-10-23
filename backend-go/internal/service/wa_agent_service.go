@@ -66,7 +66,7 @@ type WaAgentService struct {
 	brains    map[string]WaBrain
 
 	DailyNew        int
-	Template        string
+	Templates       map[string]string // agent ← اسم قالب Meta
 	TemplateLang    string
 	PrivacyApproved bool
 }
@@ -443,8 +443,9 @@ func (s *WaAgentService) open(ctx context.Context, agent, bookingID string, foll
 		return // محادثة مفتوحة لهذا الرقم أصلاً
 	}
 	greet := s.Greeting(agent, c)
-	if s.Template != "" {
-		_, err = s.wa.SendTemplate(ctx, phone, s.Template, s.TemplateLang, []string{s.name(agent)})
+	if tpl := s.Templates[agent]; tpl != "" {
+		// القالب بيه متغيّر واحد {{1}} = اسم الوكيل (من إعدادات المالك).
+		_, err = s.wa.SendTemplate(ctx, phone, tpl, s.TemplateLang, []string{s.name(agent)})
 	} else {
 		_, err = s.wa.SendText(ctx, phone, greet)
 	}

@@ -2772,7 +2772,8 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 			waSvc := service.NewWaAgentService(db, repository.NewWaRepository(db), waClient, bookingService,
 				qualityFollowUpRepo, repository.NewMatrixProposalRepository(db), bookingDeleteRepo,
 				repository.NewSystemSwitchRepository(db), notificationRepo, aiAgentNames.AgentName)
-			waSvc.DailyNew, waSvc.Template, waSvc.TemplateLang = cfg.WaDailyNew, cfg.WaTemplate, cfg.WaTemplateLng
+			waSvc.DailyNew, waSvc.TemplateLang = cfg.WaDailyNew, cfg.WaTemplateLng
+			waSvc.Templates = map[string]string{service.WaAgentQuality: cfg.WaTemplateQuality, service.WaAgentBooking: cfg.WaTemplateBooking}
 			waSvc.PrivacyApproved = cfg.WaPrivacyApproved
 			waSvc.SetBrain(service.WaAgentQuality, service.NewLuffyWaBrain(service.WaAgentQuality,
 				service.NewAnthropicClientFor(service.WaAgentQuality, cfg.AIKeyQuality), cfg.AIModel, 200))

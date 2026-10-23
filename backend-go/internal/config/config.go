@@ -51,12 +51,13 @@ type Config struct {
 	AIBookingDailyUSD float64
 	WaDailyNew        int
 	// WhatsApp Business Cloud API (Meta). بلاهن الإرسال الحقيقي مطفي، والتجربة تشتغل.
-	WaToken       string
-	WaPhoneID     string
-	WaAppSecret   string
-	WaVerifyToken string
-	WaTemplate    string // قالب الرسالة الأولى الموافق عليه من Meta
-	WaTemplateLng string
+	WaToken           string
+	WaPhoneID         string
+	WaAppSecret       string
+	WaVerifyToken     string
+	WaTemplateQuality string // قالب أول رسالة لابو الجودة (موافق عليه من Meta)
+	WaTemplateBooking string // قالب أول رسالة لابو الحجوزات
+	WaTemplateLng     string
 	// WaPrivacyApproved قرار دازاي المكتوب (الخصوصية · الكلفة · محل المعالجة · مدة الحفظ) —
 	// بلاه ملاحظات الحجز ما تروح للنموذج.
 	WaPrivacyApproved bool
@@ -128,7 +129,8 @@ func load() *Config {
 		WaPhoneID:           getEnv("WA_PHONE_ID", ""),
 		WaAppSecret:         getEnv("WA_APP_SECRET", ""),
 		WaVerifyToken:       getEnv("WA_VERIFY_TOKEN", ""),
-		WaTemplate:          getEnv("WA_TEMPLATE", ""),
+		WaTemplateQuality:   getEnv("WA_TEMPLATE_QUALITY", ""),
+		WaTemplateBooking:   getEnv("WA_TEMPLATE_BOOKING", ""),
 		WaTemplateLng:       getEnv("WA_TEMPLATE_LANG", "ar"),
 		WaPrivacyApproved:   getEnv("WA_PRIVACY_APPROVED", "") == "true",
 		// TutorialsDir: مسار مجلد أدلة الاستخدام (tutorial-*.html و guide-*.txt) اللي
