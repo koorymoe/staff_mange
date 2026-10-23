@@ -23,6 +23,21 @@ export default function Login() {
 
 
   useEffect(() => {
+    // قفل خاص بالدخول، ويرجع إعداد الصفحة الأصلية بعد الدخول.
+    const existing = document.querySelector<HTMLMetaElement>('meta[name="viewport"]')
+    const viewport = existing ?? document.createElement('meta')
+    const previous = viewport.getAttribute('content')
+    viewport.name = 'viewport'
+    viewport.content = 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover'
+    if (!existing) document.head.appendChild(viewport)
+    return () => {
+      if (!existing) viewport.remove()
+      else if (previous === null) viewport.removeAttribute('content')
+      else viewport.content = previous
+    }
+  }, [])
+
+  useEffect(() => {
     sessionStorage.removeItem('sessionEndedReason')
     // ⚠️ «تذكرني» انشالت بطلب صاحب النظام — ننضّف الاسم المحفوظ من
     // الأجهزة الي چانت مأشّرة عليها، وإلا يبقى مخزوناً للأبد بلا

@@ -3,7 +3,14 @@
 /* دخول ثابت — قرار دازاي: بلا نبض أو تكبير/تصغير. */
 .lx .lx-blob, .lx .lx-rings i, .lx .lx-spark,
 .lx .lx-logo-pulse, .lx .lx-logo-ring { animation: none !important; }
-.lx .lx-field input { font-size: 16px; }
+.lx .lx-field input {
+  font-size: 16px;
+  min-width: 0;
+  max-width: 100%;
+  flex: 1 1 0;
+  background-color: transparent;
+  color: #12244c;
+}
 
 @theme {
   --font-sans: 'Tajawal', system-ui, sans-serif;
@@ -794,6 +801,12 @@ html.theme-amani-eye .text-\[var\(--color-brand-500\)\] { color: #22d3ee; }
    ═══════════════════════════════════════════════════════════════ */
 
 .lx {
+  width: 100%;
+  max-width: 100%;
+  grid-template-columns: minmax(0, 1fr);
+  touch-action: pan-y;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
   position: relative;
   z-index: 0;
   display: grid;
@@ -933,6 +946,7 @@ html.theme-amani-eye .text-\[var\(--color-brand-500\)\] { color: #22d3ee; }
 
 /* ═══════════ البطاقة ═══════════ */
 .lx-card {
+  min-width: 0;
   position: relative;
   z-index: 1;
   width: 100%;
