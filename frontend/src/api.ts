@@ -1210,7 +1210,8 @@ export interface SecretaryProposal {
   fields: { employeeId: string; employeeName: string; title: string; description: string; priority: 'NORMAL' | 'URGENT'; dueAt: string }
   candidates: { id: string; name: string }[]
 }
-export interface SecretaryReply { messageId: string; transcript: string | null; reply: string; cards: SecretaryCard[]; proposal: SecretaryProposal | null }
+export interface SecretaryConversation { id: string; title: string; messages: number; createdAt: string; updatedAt: string }
+export interface SecretaryReply { messageId: string; conversationId: string; transcript: string | null; reply: string; cards: SecretaryCard[]; proposal: SecretaryProposal | null }
 export interface SecretaryChat {
   id: string; at: string; role: 'user' | 'assistant'; text: string; transcript: string | null; cards: SecretaryCard[]
   action: { id: string; status: 'PROPOSED' | 'SENT' | 'CANCELLED' | 'FAILED'; result: string | null } | null
@@ -4505,11 +4506,16 @@ export const api = {
   }) => request<ExtraTask>('/extra-tasks', { method: 'POST', body: JSON.stringify(data) }),
   // ═══ 🗂️ السكرتير (docs/secretary.md) — المالك والمدير بس ═══
   secretaryToday: () => request<SecretaryToday>('/secretary/today'),
-  secretaryHistory: (limit = 50) => request<SecretaryChat[]>(`/secretary/history?limit=${limit}`),
-  secretaryMessage: (text: string) => request<SecretaryReply>('/secretary/message', { method: 'POST', body: JSON.stringify({ text }) }),
-  secretaryVoice: async (audio: Blob) => {
+  secretaryConversations: () => request<SecretaryConversation[]>('/secretary/conversations'),
+  secretaryNewConversation: () => request<SecretaryConversation>('/secretary/conversations', { method: 'POST', body: JSON.stringify({}) }),
+  secretaryRenameConversation: (id: string, title: string) => request<{ ok: boolean }>(`/secretary/conversations/${encodeURIComponent(id)}`, { method: 'PATCH', body: JSON.stringify({ title }) }),
+  secretaryDeleteConversation: (id: string) => request<{ ok: boolean }>(`/secretary/conversations/${encodeURIComponent(id)}`, { method: 'DELETE' }),
+  secretaryHistory: (limit = 50, conversationId?: string) => request<SecretaryChat[]>(`/secretary/history?limit=${limit}${conversationId ? `&conversationId=${encodeURIComponent(conversationId)}` : ''}`),
+  secretaryMessage: (text: string, conversationId?: string) => request<SecretaryReply>('/secretary/message', { method: 'POST', body: JSON.stringify({ text, conversationId }) }),
+  secretaryVoice: async (audio: Blob, conversationId?: string) => {
     const form = new FormData()
     form.append('file', audio, 'voice')
+    if (conversationId) form.append('conversationId', conversationId)
     const token = currentToken()
     const res = await fetch(`${API_URL}/secretary/message`, { method: 'POST', headers: token ? { Authorization: `Bearer ${token}` } : {}, body: form })
     if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || 'تعذر إرسال البصمة')
