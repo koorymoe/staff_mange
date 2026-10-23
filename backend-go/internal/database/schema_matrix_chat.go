@@ -861,5 +861,17 @@ func matrixChatMigrations() []Migration {
 			);
 			CREATE INDEX IF NOT EXISTS "SecretaryNote_owner_idx" ON "SecretaryNote" ("ownerId", kind, "createdAt" DESC);
 		`,
+	}, {
+		// 🤖 أسماء الوكلاء (دازاي 10-23): «ابو الجودة» و«ابو الحجوزات» اسمهم يحدده
+		// المالك من الإعدادات بعدين. ماتركس وايريس ثابتين بالكود.
+		Version: "0392_ai_agent_name",
+		SQL: `
+			CREATE TABLE IF NOT EXISTS "AiAgentName" (
+				agent TEXT PRIMARY KEY CHECK (agent IN ('QUALITY', 'BOOKING')),
+				name TEXT NOT NULL,
+				"updatedById" TEXT REFERENCES "Employee"(id) ON DELETE SET NULL,
+				"updatedAt" TIMESTAMPTZ NOT NULL DEFAULT now()
+			);
+		`,
 	}}
 }

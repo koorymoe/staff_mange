@@ -41,7 +41,7 @@ const (
 
 var (
 	ErrSecretaryOff = errors.New("السكرتير مطفي — ماكو مفتاح ذكاء أو المفتاح مسدود")
-	ErrSecretaryCap = errors.New("السكرتير وصل حده اليومي — يرجع باچر، والملخص وينتظر قرارك يشتغلون عادي")
+	ErrSecretaryCap = errors.New("ايريس وصلت حدها اليومي — ترجع باچر، والملخص وينتظر قرارك يشتغلون عادي")
 )
 
 // الأنواع المشتركة (SecretaryTurn · SecretaryCard · SecretaryProposal · SecretaryResult) بـsecretary_types.go.
@@ -110,7 +110,7 @@ func (b *SecretaryBrain) takeQuota() bool {
 	return true
 }
 
-const secretaryInstructions = `انت «السكرتير» — سكرتير مدير شركة الأماني (طاقة شمسية، كهرباء، شبكات، كاميرات). تشتغل لـ%s.
+const secretaryInstructions = `انت «ايريس» — سكرتيرة مدير شركة الأماني (طاقة شمسية، كهرباء، شبكات، كاميرات). تشتغل لـ%s.
 - تفهم العراقي وتجاوب بالعراقي، بجملة أو جملتين. التفصيل بس إذا طلبه.
 - كل رقم أو حالة أو اسم يجي من الأدوات. لا تخمّن ولا تكمّل من عندك. إذا ما لكيت، كول ما لكيت وشنو تحتاج منه.
 - دوّر بنفسك: اختار الأداة المناسبة، وإذا الجواب يحتاج أكثر من أداة استعملها.
@@ -126,6 +126,12 @@ func (b *SecretaryBrain) system(t SecretaryTurn) string {
 	}
 	var s strings.Builder
 	fmt.Fprintf(&s, secretaryInstructions, name)
+	// (ع) 10-23: «من يخاطبه يكله أهلاً دكتور… ومن يحاچي يكله سيدنا» — اللقب من ملفه.
+	title := strings.TrimSpace(t.UserTitle)
+	if title == "" {
+		title = "سيدنا"
+	}
+	fmt.Fprintf(&s, "\n- الاحترام: ناديه «%s» — الترحيب مثل «أهلاً %s، بشنو أكدر أساعدك اليوم؟»، وبالحچي خاطبه «%s» أو «سيدنا». لا تناديه باسمه المجرّد أبداً.", title, title, title)
 	s.WriteString("\nالوقت هسه (بغداد): " + time.Now().In(debriefLoc).Format("2006-01-02 15:04 Monday"))
 	if len(t.Prefs) > 0 {
 		s.WriteString("\n\nتفضيلات المدير (معتمدة منه — امشي عليها):\n")
@@ -298,7 +304,7 @@ func (b *SecretaryBrain) callTool(byName map[string]agentTool, blk anthropic.Too
 
 var secretaryBulletRe = regexp.MustCompile(`^(?:[-•*]+|[0-9٠-٩]+[.)])\s*`)
 
-const secretarySummaryInstructions = `انت «السكرتير» لـ%s. هاي أرقام اليوم الخام من النظام. اكتب ملخص اليوم من ٣ إلى ٦ أسطر قصيرة بالعراقي — الأهم أول.
+const secretarySummaryInstructions = `انت «ايريس»، سكرتيرة %s. هاي أرقام اليوم الخام من النظام. اكتب ملخص اليوم من ٣ إلى ٦ أسطر قصيرة بالعراقي — الأهم أول.
 كل سطر حقيقة وحدة برقمها من الأرقام بس. لا تضيف شي مو موجود. سطر بلا رقم أو حالة ما يفيد.
 رجّع الأسطر بس، كل سطر بسطر جديد، بلا ترقيم ولا مقدمة.`
 
@@ -357,7 +363,7 @@ func AIErrorText(err error) string {
 	msg := strings.ToLower(apiErr.Error())
 	switch {
 	case apiErr.StatusCode == 401 || apiErr.StatusCode == 403:
-		return "🔑 مفتاح السكرتير مرفوض — تأكد من AI_KEY_SECRETARY (أو ANTHROPIC_API_KEY) بملف .env بالسيرفر."
+		return "🔑 مفتاح ايريس مرفوض — تأكد من AI_KEY_SECRETARY (أو ANTHROPIC_API_KEY) بملف .env بالسيرفر."
 	case strings.Contains(msg, "credit") || strings.Contains(msg, "billing") || apiErr.StatusCode == 402:
 		return "💳 رصيد الذكاء خلص — اشحن من console.anthropic.com ← Billing."
 	case apiErr.StatusCode == 404:
@@ -375,4 +381,29 @@ func NewAnthropicClient(key string) *anthropic.Client {
 	}
 	c := anthropic.NewClient(option.WithAPIKey(key))
 	return &c
+}
+
+// SecretaryHonorific لقب المستخدم من «الشهادة» بملفه (دازاي 10-23).
+func SecretaryHonorific(certificate *string) string {
+	if certificate == nil {
+		return "سيدنا"
+	}
+	c := strings.ToLower(*certificate)
+	has := func(words ...string) bool {
+		for _, w := range words {
+			if strings.Contains(c, w) {
+				return true
+			}
+		}
+		return false
+	}
+	switch {
+	case has("دكتوراه", "دكتوراة", "دكتوراء", "دكتور", "phd", "ph.d", "doctor"):
+		return "دكتور"
+	case has("ماجستير", "master", "msc", "m.sc"):
+		return "أستاذ"
+	case has("هندسة", "مهندس", "engineer", "b.eng"):
+		return "مهندس"
+	}
+	return "سيدنا"
 }

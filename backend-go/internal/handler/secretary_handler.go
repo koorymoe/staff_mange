@@ -44,7 +44,7 @@ var secLoc = func() *time.Location {
 	return time.FixedZone("Asia/Baghdad", 3*3600)
 }()
 
-const secretaryOff = "السكرتير ما يكدر يفكر هسه (الذكاء مطفي أو خلص رصيد اليوم). ملخص اليوم و«ينتظر قرارك» يشتغلون عادي."
+const secretaryOff = "ايريس ما تكدر تفكر هسه (الذكاء مطفي أو خلص رصيد اليوم). ملخص اليوم و«ينتظر قرارك» يشتغلون عادي."
 
 // POST /api/secretary/message — JSON {text} أو multipart بحقل file.
 func (h *SecretaryHandler) Message(w http.ResponseWriter, r *http.Request) {
@@ -114,6 +114,7 @@ func (h *SecretaryHandler) Message(w http.ResponseWriter, r *http.Request) {
 		turn := service.SecretaryTurn{UserID: me, Text: text, Prefs: h.repo.Prefs(me)}
 		if e, err := h.employees.FindByID(me); err == nil && e != nil {
 			turn.UserName = e.Name
+			turn.UserTitle = service.SecretaryHonorific(e.Certificate)
 		}
 		for _, m := range past {
 			turn.History = append(turn.History, service.SecretaryHistory{Role: m.Role, Text: m.Text})
