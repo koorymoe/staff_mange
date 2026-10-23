@@ -1,0 +1,186 @@
+package handler
+
+import (
+	"net/http"
+	"strconv"
+	"time"
+
+	"staffmange-api/internal/model"
+	"staffmange-api/internal/repository"
+	"staffmange-api/internal/service"
+)
+
+// AiHandler مسارات نواة الذكاء الاصطناعي.
+//
+// ⚠️ كل هذي المسارات محصورة بالمالك ومدير النظام (تنلف بـrequireAdmin
+// من main). طلب صريح من صاحب العمل: «التقرير النهائي يطلع فقط للمدير
+// النظام والمالك».
+//
+// وهذا مو تفصيل إداري — تحليل «ليش هذا الموظف وقّف الشغل» بيد زميله
+// يتحول لسلاح داخلي، ويخلي الموظفين يخافون يكتبون السبب الحقيقي.
+type AiHandler struct {
+	repo    *repository.AiRepository
+	brain   *service.AiBrainService
+	metrics *service.AiMetricsService
+}
+
+func NewAiHandler(repo *repository.AiRepository, brain *service.AiBrainService, metrics *service.AiMetricsService) *AiHandler {
+	return &AiHandler{repo: repo, brain: brain, metrics: metrics}
+}
+
+// GET /api/ai/signals?kind=&limit=
+func (h *AiHandler) ListSignals(w http.ResponseWriter, r *http.Request) {
+	limit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
+	rows, err := h.repo.ListSignals(r.URL.Query().Get("kind"), limit)
+	if err != nil {
+		WriteError(w, http.StatusInternalServerError, "تعذر جلب الإشارات")
+		return
+	}
+	WriteJSON(w, http.StatusOK, rows)
+}
+
+// POST /api/ai/process — يمشي بالإشارات المعلّقة يدوياً.
+//
+// يدوي بهاي المرحلة قصداً: قبل ما ننشترك بمنصّة، تشغيله بضغطة يخلي
+// المالك يشوف النتيجة وقت ما يريد بدل ما يشتغل بالخلفية ويستهلك
+// بلا ما أحد ينتبه.
+func (h *AiHandler) Process(w http.ResponseWriter, r *http.Request) {
+	n, err := h.brain.Process(50)
+	if err != nil {
+		WriteError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	WriteJSON(w, http.StatusOK, map[string]int{"analyzed": n})
+}
+
+// POST /api/ai/metrics/recompute — يعيد حساب مؤشرات آخر ٣٠ يوم.
+//
+// ⚠️ يدوي بهاي المرحلة، نفس منطق /process: المالك يشوف النتيجة وقت
+// ما يريد بدل ما يشتغل بالخلفية ويستهلك بلا ما أحد ينتبه.
+func (h *AiHandler) RecomputeMetrics(w http.ResponseWriter, r *http.Request) {
+	to := time.Now()
+	from := to.AddDate(0, 0, -30)
+	n, err := h.metrics.Recompute(from, to)
+	if err != nil {
+		WriteError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	WriteJSON(w, http.StatusOK, map[string]int{"metrics": n})
+}
+
+// GET /api/ai/metrics?from=&to=
+func (h *AiHandler) Metrics(w http.ResponseWriter, r *http.Request) {
+	parse := func(v string, def time.Time) time.Time {
+		if t, err := time.Parse("2006-01-02", v); err == nil {
+			return t
+		}
+		return def
+	}
+	to := parse(r.URL.Query().Get("to"), time.Now())
+	from := parse(r.URL.Query().Get("from"), to.AddDate(0, -1, 0))
+	rows, err := h.repo.ListMetrics(from, to)
+	if err != nil {
+		WriteError(w, http.StatusInternalServerError, "تعذر جلب المؤشرات")
+		return
+	}
+	WriteJSON(w, http.StatusOK, rows)
+}
+
+// GET /api/ai/work-window · PUT /api/ai/work-window
+//
+// ساعات الدوام تغذّي التحليل: «وقّف الساعة ١١:٥٠ ليلاً» تفسير مختلف
+// تماماً عن «وقّف الساعة ١١ صباحاً».
+func (h *AiHandler) GetWorkWindow(w http.ResponseWriter, r *http.Request) {
+	win, err := h.repo.WorkWindow()
+	if err != nil {
+		WriteError(w, http.StatusInternalServerError, "تعذر جلب ساعات الدوام")
+		return
+	}
+	WriteJSON(w, http.StatusOK, win)
+}
+
+func (h *AiHandler) SetWorkWindow(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		StartHour int `json:"startHour"`
+		EndHour   int `json:"endHour"`
+	}
+	if err := DecodeJSON(r, &req); err != nil {
+		WriteError(w, http.StatusBadRequest, "بيانات غير صالحة")
+		return
+	}
+	// ⚠️ ١٢ ليلاً = ٢٤ مو ٠: الصفر يخلي «نهاية الدوام» قبل بدايته وكل
+	// حساب «باقي شكد على النهاية» يطلع بالسالب.
+	if req.StartHour < 0 || req.StartHour > 23 || req.EndHour < 1 || req.EndHour > 24 {
+		WriteError(w, http.StatusBadRequest, "البداية ٠-٢٣ والنهاية ١-٢٤ (١٢ ليلاً = ٢٤)")
+		return
+	}
+	if req.EndHour <= req.StartHour {
+		WriteError(w, http.StatusBadRequest, "نهاية الدوام لازم تكون بعد بدايته")
+		return
+	}
+	if err := h.repo.SetWorkWindow(req.StartHour, req.EndHour); err != nil {
+		WriteError(w, http.StatusInternalServerError, "تعذر الحفظ")
+		return
+	}
+	WriteJSON(w, http.StatusOK, map[string]bool{"ok": true})
+}
+
+// GET /api/ai/catalog — شنو يعرف النظام يحلله، وشنو لسه ينتظر المنصّة.
+//
+// شاشة الهيكلة تقراه بدل ما تعيد كتابة نفس القوائم بالواجهة — وإلا
+// أي إشارة جديدة بالسيرفر ما تظهر لحد ما أحد يتذكر يحدّث الواجهة.
+func (h *AiHandler) Catalog(w http.ResponseWriter, r *http.Request) {
+	type item struct {
+		Key    string `json:"key"`
+		Label  string `json:"label"`
+		Ready  bool   `json:"ready"`
+		Detail string `json:"detail"`
+	}
+	signals := []item{
+		{model.AiSignalWorkStopped, model.AiSignalLabel(model.AiSignalWorkStopped), true,
+			"يجمع الأدلة كاملة: الساعة ونهاية الدوام، طلبات المواد، سلة الزبون، وسجل الموظف"},
+		{model.AiSignalLateStart, model.AiSignalLabel(model.AiSignalLateStart), true,
+			"ينسجّل عند استلام الحجز إذا تأخر عن الموعد المجدول أكثر من ساعة، ويجمع سجل تأخر الموظف"},
+		{model.AiSignalRepeatPostpone, model.AiSignalLabel(model.AiSignalRepeatPostpone), true,
+			"ينسجّل من ثاني تأجيل لنفس الحجز، مع السبب المكتوب وحالة الجدولة"},
+		{model.AiSignalInvoiceAdjusted, model.AiSignalLabel(model.AiSignalInvoiceAdjusted), true,
+			"ينسجّل عند تعديل المحاسب لمبالغ فاتورة، مع الفرق وسجل تعديلات نفس الليدر"},
+		{model.AiSignalRepeatPartial, model.AiSignalLabel(model.AiSignalRepeatPartial), true,
+			"ينسجّل من ثاني إنجاز جزئي لنفس الحجز، مع آخر نسبة إنجاز والمعوّقات"},
+		{model.AiSignalSelfReportMismatch, model.AiSignalLabel(model.AiSignalSelfReportMismatch), true,
+			"ينسجّل من تقرير إنجاز مربوط بحجز يدّعي عملاً لحاله («وحدي»/«لحالي») وكادر آخر طلعة أكثر من واحد — بلا لوم تلقائي"},
+		{model.AiSignalFuelAnomaly, model.AiSignalLabel(model.AiSignalFuelAnomaly), true,
+			"ينسجّل عند تعبئة وقود تتجاوز متوسط آخر ٥ تعبئات لنفس المركبة بأكثر من ٤٠٪ (كاشف موجود من زمان)"},
+		{model.AiSignalCustomerRepeatComplaint, model.AiSignalLabel(model.AiSignalCustomerRepeatComplaint), true,
+			"ينسجّل عند شكوى جديدة لو نفس الزبون اشتكى مرتين أو أكثر خلال ٦٠ يوم على شغل نفس الليدر — بلا لوم أبعد من الأرقام"},
+		{model.AiSignalMaterialOveruse, model.AiSignalLabel(model.AiSignalMaterialOveruse), true,
+			"ينسجّل عند فاتورة ليدر بكمية مادة أكثر من ١.٥× وسيط نفس الخدمة (آخر ١٨٠ يوم، ٥ عيّنات على الأقل)"},
+		{model.AiSignalMaterialUnderuse, model.AiSignalLabel(model.AiSignalMaterialUnderuse), true,
+			"ينسجّل عند فاتورة ليدر بكمية مادة أقل من ٠.٥× وسيط نفس الخدمة (آخر ١٨٠ يوم، ٥ عيّنات على الأقل)"},
+		{model.AiSignalInvoiceWorkMismatch, model.AiSignalLabel(model.AiSignalInvoiceWorkMismatch), true,
+			"ينسجّل عند فاتورة ليدر عدد أجهزتها يختلف عن المسجّل بالحجز (فرق ٢ فأكثر و١.٥×) أو صافيها ١.٥× فوق أو ٠.٥× تحت المبلغ المقدّر — يستاهل مراجعة قبل الاعتماد"},
+		{model.AiSignalCustomerAtRisk, model.AiSignalLabel(model.AiSignalCustomerAtRisk), true,
+			"فحص يومي: زبون بحجز فعّال أو منجز خلال ٣٠ يوم وعنده عاملين أو أكثر (تأجيل ٢+، تأخر يوم عن الموعد، شكوى مفتوحة ٣ أيام، تقييم ٢ أو أقل خلال ٦٠ يوم) — مرة بالأسبوع لكل زبون"},
+		{model.AiSignalPriceOutlier, model.AiSignalLabel(model.AiSignalPriceOutlier), true,
+			"ينسجّل عند فاتورة ليدر صافيها فوق ٢× أو تحت ٠.٤× وسيط فواتير نفس الخدمة (آخر ١٨٠ يوم، ٨ عيّنات على الأقل، بلا المجانية والمسودات)"},
+		{model.AiSignalLatePaperwork, model.AiSignalLabel(model.AiSignalLatePaperwork), true,
+			"فحص يومي: حجوزات منجزة (آخر ٣٠ يوم) ناقصها فاتورة أو تقرير بعد ٤٨ ساعة — إشارة وحدة لكل ليدر بالأسبوع، تذكير مو عقوبة"},
+		{model.AiSignalAttendanceWorkGap, model.AiSignalLabel(model.AiSignalAttendanceWorkGap), true,
+			"فحص يومي لليوم السابق: فني/ليدر حاضر ٦ ساعات بلا حجز، أو حجز بدا/خلص باسمه بلا حضور — ممكن نقص تسجيل مو اتهام"},
+	}
+	metrics := []item{
+		{model.AiMetricStopRate, model.AiMetricLabel(model.AiMetricStopRate), false, "ينتظر: حاسبة المؤشرات"},
+		{model.AiMetricStopMinutesAvg, model.AiMetricLabel(model.AiMetricStopMinutesAvg), true, "ينحسب من أدلة التوقفات المتراكمة"},
+		{model.AiMetricMaterialMissRate, model.AiMetricLabel(model.AiMetricMaterialMissRate), true, "ينحسب من أدلة التوقفات المتراكمة"},
+		{model.AiMetricScopeCreepRate, model.AiMetricLabel(model.AiMetricScopeCreepRate), true, "ينحسب من أدلة التوقفات المتراكمة"},
+		{model.AiMetricProcurementDelay, model.AiMetricLabel(model.AiMetricProcurementDelay), true, "ينحسب من أدلة التوقفات المتراكمة"},
+		{model.AiMetricLateStartRate, model.AiMetricLabel(model.AiMetricLateStartRate), false, "ينتظر: حاسبة المؤشرات"},
+	}
+	WriteJSON(w, http.StatusOK, map[string]any{
+		"signals": signals,
+		"metrics": metrics,
+		// الحاكم الحالي: قواعد حتمية. تنبدل بالمنصّة بسطر واحد.
+		"judge":          "rules-v1",
+		"platformLinked": false,
+	})
+}
