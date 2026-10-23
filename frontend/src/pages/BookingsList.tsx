@@ -2,6 +2,7 @@ import { Fragment, useEffect, useRef, useState } from 'react'
 import { api, type Booking, type Employee, type VehicleOption } from '../api'
 import { formatCustomerCode } from '../utils/identity'
 import { useSession } from '../session'
+import AgentActionNotice from '../components/AgentActionNotice'
 import { MapViewer } from '../components/MapLazy'
 import { formatScheduleWindow } from '../utils/schedule'
 import CompletionBadge from '../components/CompletionBadge'
@@ -76,6 +77,7 @@ export default function BookingsList({ bucket = 'all', focus }: { bucket?: Booki
   const [error, setError] = useState<string | null>(null)
   const [search, setSearch] = useState(focus ?? '')
   const [expandedId, setExpandedId] = useState<string | null>(focus ?? null)
+  const [agentRevision, setAgentRevision] = useState(0)
   // ═══ «بانتظار التثبيت» بلا فلتر تاريخ ═══
   //
   // «الحجوزات الجديدة ما يحتاج بيها فلاتر — أي حجز جديد يجي هنا».
@@ -423,7 +425,7 @@ export default function BookingsList({ bucket = 'all', focus }: { bucket?: Booki
         .finally(() => { if (alive) setLoading(false) })
     }, 0)
     return () => { alive = false; clearTimeout(t) }
-  }, [bucket, doneFilter, searchQ, selectedDate, selectedMonth, page, perPage])
+  }, [bucket, doneFilter, searchQ, selectedDate, selectedMonth, page, perPage, agentRevision])
 
   // ═══ شنو يطلع بهاي الشاشة ═══
   //
@@ -721,6 +723,7 @@ export default function BookingsList({ bucket = 'all', focus }: { bucket?: Booki
                             كل مرحلة اختيارية لحالها، والحجز يتثبّت بلا
                             كادر والكادر ينكلّف بعدها بأيام. */}
                         <StageStrip booking={b} />
+                        <AgentActionNotice targetId={b.id} onChanged={() => setAgentRevision(n => n + 1)} />
 
                         {/* ═══ الطلعات ═══
                             الحجز الي ياخذ أربع أيام أربع طلعات، وكل
