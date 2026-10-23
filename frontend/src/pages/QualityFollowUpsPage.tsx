@@ -5,6 +5,7 @@ import { api, type QualityFollowUp } from '../api'
 import EntityIdentity from '../components/EntityIdentity'
 import { formatCustomerCode } from '../utils/identity'
 import BookingExecutionSummary from '../components/BookingExecutionSummary'
+import AgentActionNotice from '../components/AgentActionNotice'
 import { useSession } from '../session'
 import BookingCodeChip from '../components/BookingCodeChip'
 
@@ -228,6 +229,7 @@ export default function QualityFollowUpsPage({ embedded }: EmbeddedProps = {}) {
                 </div>
               )}
               {/* منو طلع، ومتى بدا وخلّص — قبل ما يتصل بالزبون */}
+              <AgentActionNotice targetId={item.id} onChanged={load} />
               <BookingExecutionSummary exec={item.execution} />
 
               {/* الزبون الي سبق واشتكى كذباً — تحذير قبل ما يبني عليه حكم */}

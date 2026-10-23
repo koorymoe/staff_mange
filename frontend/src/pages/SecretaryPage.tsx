@@ -9,6 +9,7 @@ import {
 } from '../api'
 import { useSession } from '../session'
 import './SecretaryPage.css'
+import { irisHonorific } from '../irisIdentity'
 
 type Reminder = {
   id: string
@@ -59,12 +60,14 @@ export default function SecretaryPage() {
     <Secretary key={employee.id} />
   ) : (
     <main className="secretary">
-      <p className="sec-empty">السكرتير خاص بالمالك ومدير النظام.</p>
+      <p className="sec-empty">ايريس خاص بالمالك ومدير النظام.</p>
     </main>
   )
 }
 
 function Secretary() {
+  const { employee } = useSession()
+  const honorific = irisHonorific(employee?.certificate)
   const [today, setToday] = useState<SecretaryToday | null>(null)
   const [chats, setChats] = useState<SecretaryChat[]>([])
   const [reminders, setReminders] = useState<Reminders | null>(null)
@@ -219,9 +222,9 @@ function Secretary() {
     })
     head('meta[name="apple-mobile-web-app-title"]', 'meta', {
       name: 'apple-mobile-web-app-title',
-      content: 'السكرتير',
+      content: 'ايريس',
     })
-    document.title = 'السكرتير'
+    document.title = 'ايريس'
     return () => {
       edits.reverse().forEach((restore) => restore())
       document.title = title
@@ -547,9 +550,9 @@ function Secretary() {
         inert={!wide && !drawer}
       >
         <div className="sec-drawer-brand">
-          <span className="sec-logo">س</span>
+          <span className="sec-logo">إ</span>
           <div>
-            <strong>السكرتير</strong>
+            <strong>ايريس</strong>
             <small>شغلك، بترتيب أوضح</small>
           </div>
           <button
@@ -560,7 +563,7 @@ function Secretary() {
             ×
           </button>
         </div>
-        <nav aria-label="أقسام السكرتير">
+        <nav aria-label="أقسام ايريس">
           {tabs.map((tab) => (
             <button
               key={tab.id}
@@ -590,7 +593,7 @@ function Secretary() {
             ☰
           </button>
           <h1>{tabs.find((t) => t.id === view)?.label}</h1>
-          <span className="sec-top-status">السكرتير</span>
+          <span className="sec-top-status">أهلاً {honorific} · ايريس</span>
         </header>
         {error && (
           <p role="alert" className="sec-error">
@@ -603,8 +606,8 @@ function Secretary() {
               <div className="sec-chat-inner">
                 {!chats.length && (
                   <div className="sec-chat-empty">
-                    <span className="sec-logo">س</span>
-                    <h2>شلون أساعدك اليوم؟</h2>
+                    <span className="sec-logo">إ</span>
+                    <h2>أهلاً {honorific}</h2>
                     <p>اسأل عن الشغل أو وجّه مهمة بصوتك.</p>
                     <div className="sec-suggestions">
                       {[
@@ -628,7 +631,7 @@ function Secretary() {
                 {chats.map((chat) => (
                   <article key={chat.id} className={`sec-message ${chat.role}`}>
                     <small>
-                      {chat.role === 'user' ? 'إنت' : 'السكرتير'} ·{' '}
+                      {chat.role === 'user' ? 'إنت' : 'ايريس'} ·{' '}
                       {clock(chat.at)}
                     </small>
                     {chat.transcript && (
@@ -898,9 +901,7 @@ function Secretary() {
                   <div className="sec-heading">
                     <div>
                       <h2>مذكراتي</h2>
-                      <p>
-                        السكرتير يكدر يرجعلها لمن تسأله: «شنو سويت ويا فلان؟»
-                      </p>
+                      <p>ايريس يكدر يرجعلها لمن تسأله: «شنو سويت ويا فلان؟»</p>
                     </div>
                   </div>
                   <form

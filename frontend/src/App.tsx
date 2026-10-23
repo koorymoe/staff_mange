@@ -23,6 +23,9 @@ const QualityFollowUpsPage = lazy(() => import('./pages/QualityFollowUpsPage'))
 const SecurityDashboardPage = lazy(() => import('./pages/SecurityDashboardPage'))
 const AssistantConversationsPage = lazy(() => import('./pages/AssistantConversationsPage'))
 const SecretaryPage = lazy(() => import('./pages/SecretaryPage'))
+const AiAgentsPage = lazy(() => import('./pages/AiAgentsPage'))
+const WhatsAppPage = lazy(() => import('./pages/WhatsAppPage'))
+const WhatsAppSandboxPage = lazy(() => import('./pages/WhatsAppSandboxPage'))
 const Coordinator = lazy(() => import('./pages/Coordinator'))
 const SalesOpportunitiesPage = lazy(() => import('./pages/SalesOpportunitiesPage'))
 const WeeklyReportPage = lazy(() => import('./pages/WeeklyReportPage'))
@@ -205,6 +208,9 @@ function App() {
           <Route path="assistant-conversations" element={<AssistantConversationsPage />} />
           {/* السكرتير تطبيق مستقل بلا القائمة؛ Layout يمرّر Outlet وحده بهذا المسار. */}
           <Route path="secretary" element={<SecretaryPage />} />
+          <Route path="ai-agents" element={<AiAgentsPage />} />
+          <Route path="whatsapp-conversations" element={<WhatsAppPage />} />
+          <Route path="whatsapp-sandbox" element={<WhatsAppSandboxPage />} />
           <Route path="coordinator" element={<Coordinator />} />
           {/* فرص البيع: الصفحة نفسها تفحص ADMIN/OWNER أو sales_booking (نفس الخادم) */}
           <Route path="sales-opportunities" element={<SalesOpportunitiesPage />} />

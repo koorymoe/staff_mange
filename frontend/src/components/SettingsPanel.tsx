@@ -185,6 +185,7 @@ export default function SettingsPanel({ onClose }: { onClose: () => void }) {
 
           {/* سياسة الخصوصية — الموظف يرجع يقراها بأي وقت من هنا */}
           <div className="mt-4 space-y-2 border-t border-slate-100 pt-4">
+            {employee?.actualRole === 'OWNER' && <button onClick={() => { onClose(); navigate('/ai-agents') }} className="flex w-full items-center justify-between rounded-lg border border-slate-200 px-3 py-2.5 text-sm font-bold text-slate-700 hover:bg-slate-50"><span>🤖 وكلاء الذكاء</span><span>←</span></button>}
             {/* (ع) 10-13: الأقسام ومسؤوليها مكانها بالإعدادات — نفس حارس الخادم */}
             {(employee?.role === 'ADMIN' || employee?.role === 'OWNER' || permissions.includes('departments_manage')) && (
               <button
