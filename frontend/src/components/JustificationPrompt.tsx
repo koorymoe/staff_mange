@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { api, type Justification } from '../api'
+import { api, isStealthSession, loginSessionKey, type Justification } from '../api'
 import { useSession } from '../session'
 import { pollVisible } from '../utils/poll'
 
@@ -11,11 +11,21 @@ export default function JustificationPrompt() {
   const [pending, setPending] = useState<Justification[]>([])
   const [text, setText] = useState('')
   const [busy, setBusy] = useState(false)
-  const [later, setLater] = useState<string | null>(null)
+  // (ع) 10-23: «بعدين» تخفي كل الطلبات لحد تسجيل الدخول الجاي — چانت تأجّل
+  // طلب واحد، فالي عنده ٥ يسد الأول ويطلعله الثاني بنفس اللحظة.
+  const laterKey = 'justificationLater'
+  const [later, setLater] = useState(() => {
+    try { return localStorage.getItem(laterKey) === loginSessionKey() && loginSessionKey() !== '' } catch { return false }
+  })
+  const postpone = () => {
+    try { localStorage.setItem(laterKey, loginSessionKey()) } catch { /* بلا تخزين: تنخفي لحد التحديث بس */ }
+    setLater(true)
+  }
   const [err, setErr] = useState('')
 
   useEffect(() => {
-    if (!employee) return
+    // 🕶️ المالك بالدخول المتخفي ما تطلعله تبريرات الموظف
+    if (!employee || isStealthSession()) return
     let alive = true
     const load = () => api.getMyJustifications().then((r) => { if (alive) setPending(r.filter((j) => !j.answeredAt)) }).catch(() => {})
     load()
@@ -23,7 +33,7 @@ export default function JustificationPrompt() {
     return () => { alive = false; stop() }
   }, [employee])
 
-  const cur = pending.find((j) => j.id !== later)
+  const cur = later || isStealthSession() ? undefined : pending[0]
   if (!cur) return null
   const send = async () => {
     setBusy(true); setErr('')
@@ -42,7 +52,7 @@ export default function JustificationPrompt() {
         {err && <p className="mt-1 text-xs text-red-600">{err}</p>}
         <div className="mt-3 flex gap-2">
           <button disabled={busy || text.trim().length < 3} onClick={() => void send()} className="flex-1 rounded-xl bg-[#0f2040] py-2.5 text-sm font-bold text-white disabled:opacity-40">إرسال التبرير للمراقب</button>
-          <button onClick={() => setLater(cur.id)} className="rounded-xl border border-slate-300 px-4 text-sm text-slate-600">بعدين</button>
+          <button onClick={postpone} className="rounded-xl border border-slate-300 px-4 text-sm text-slate-600">بعدين</button>
         </div>
         <p className="mt-2 text-[10px] text-slate-400">هذا توثيق ومتابعة — ماكو غرامة.</p>
       </div>

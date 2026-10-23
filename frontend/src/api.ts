@@ -1141,6 +1141,29 @@ export function tokenExpiresAt(): number | null {
   }
 }
 
+// tokenClaim حقل من داخل التوكن الحالي (بلا سؤال السيرفر).
+function tokenClaim(name: string): unknown {
+  const t = currentToken()
+  if (!t) return null
+  try {
+    return JSON.parse(atob(t.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')))[name] ?? null
+  } catch {
+    return null
+  }
+}
+
+/** loginSessionKey مفتاح ثابت لجلسة الدخول الحالية (وقت صدور التوكن) —
+ *  يتبدّل بكل تسجيل دخول جديد. «بعدين» بالتبريرات تنربط بيه (ع 10-23). */
+export function loginSessionKey(): string {
+  const iat = tokenClaim('iat')
+  return iat == null ? '' : String(iat)
+}
+
+/** 🕶️ الجلسة الحالية دخول متخفي من المالك؟ (ع 10-23) */
+export function isStealthSession(): boolean {
+  return !!tokenClaim('stealthBy')
+}
+
 export function isTokenExpired(): boolean {
   const exp = tokenExpiresAt()
   return exp !== null && Date.now() >= exp
