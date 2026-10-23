@@ -13,6 +13,7 @@ import ShiftEndCard from '../components/ShiftEndCard'
 import { api } from '../api'
 import type { Booking, Expense, StaffRequest, LeaveRequest, InventoryCheck, FinanceSummary, DailyAuditReport, TodayPulse, Employee } from '../api'
 import { useSession, hasGpsSkill } from '../session'
+import MeetingRequests from '../components/MeetingRequests'
 import { navItems, collectMonitorExtraLinks } from '../components/navTree'
 import { useSaveGuard } from '../useSaveGuard'
 import SaveError from '../components/SaveError'
@@ -79,7 +80,7 @@ function ProgressRing({ percent, size = 56, stroke = 5, color }: { percent: numb
 export default function Dashboard() {
   const { employee } = useSession()
   if (employee?.role === 'ADMIN') return <AdminHome name={positionTitle(employee)} />
-  return <StaffDashboard />
+  return <><MeetingRequests /><StaffDashboard /></>
 }
 
 function StaffDashboard() {
