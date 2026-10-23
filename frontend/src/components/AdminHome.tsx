@@ -365,7 +365,7 @@ export function FollowBoard({ monitor = false }: { monitor?: boolean } = {}) {
             <Stat big icon="📅" tone="blue" label="حجوزات اليوم" to={drillTo('today_scheduled')} value={fmt(pulse.todayBookings)} hint={`موعدها اليوم · أمس جانت ${fmt(pulse.yesterdayBookings)}`} />
             <Stat big icon="📄" tone="blue" label="المهام المفتوحة" to={drillTo('open_missions')} value={fmt(pulse.openMissions)} hint="حجوزات عليها مهمة بعدها ما خلصت — كل الفترات" />
             <Stat big icon="⚠️" tone={pulse.newComplaints ? 'red' : 'slate'} label="الشكاوى الجديدة" to="/complaints?status=NEW" value={fmt(pulse.newComplaints)} hint="شكاوى بعد ما أحد اشتغل عليها" />
-            <Stat big icon="⏳" tone={pulse.overdueMissions ? 'amber' : 'slate'} label="المتأخرات" to={drillTo('overdue')} value={fmt(pulse.overdueMissions)} hint="مهام موعدها فات +٢٤ ساعة وما خلصت" />
+            <Stat big icon="⏳" tone={pulse.overdueMissions ? 'amber' : 'slate'} label="المتأخرات" to={drillTo('overdue')} value={fmt(pulse.overdueMissions)} hint="تواصل +ساعتين · كادر ما طلع · تنفيذ طوّل · ورق ناقص +٢٤ ساعة" />
             <Stat big icon="👷" tone="green" label="الكوادر بالميدان" to={drillTo('in_field')} value={fmt(pulse.crewInField)} hint="عدد الموظفين الطالعين هسه — القائمة بالحجوزات الي طالعين عليها" />
           </div>
         )}

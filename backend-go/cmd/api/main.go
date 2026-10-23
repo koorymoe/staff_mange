@@ -1205,6 +1205,14 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	// (ع) 10-16: «شنو سوّى هذا الموظف» — اليوم/الشهر بالتفصيل، من عيون ماتركس
 	employeeLedgerHandler := handler.NewEmployeeLedgerHandler(repository.NewEmployeeLedgerRepository(db))
 	mux.Handle("GET /api/ai/employee-ledger", middleware.Chain(http.HandlerFunc(employeeLedgerHandler.Get), requireAuth, requireMonitor))
+	// 📝 بانتظار قرار الزبون +٥ أيام ← الأرشيف «استفسار فقط» (ع 10-23)
+	safeguard.Loop("أرشفة الاستفسارات", 3*time.Minute, time.Hour, func() {
+		if n, err := bookingRepo.ArchiveStaleInquiries(); err != nil {
+			log.Printf("stale inquiries: %v", err)
+		} else if n > 0 {
+			log.Printf("stale inquiries: %d حجز للأرشيف", n)
+		}
+	})
 	dutiesRepo := repository.NewDutiesRepository(db)
 	dutiesHandler := handler.NewDutiesHandler(dutiesRepo)
 	// 📸 لقطة الواجبات اليومية (ع 10-22): كل ليلة ١١:٥٠ بغداد — تاريخ يحكم عليه ماتركس

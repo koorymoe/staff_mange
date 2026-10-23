@@ -31,9 +31,41 @@ func drillBase() string { return BookingCountableSQL("b") }
 const openMissionSQL = `EXISTS (SELECT 1 FROM "Mission" m WHERE m."bookingId" = b.id
 	AND (` + missionStageExpr + `) NOT IN ('COMPLETED','STOPPED'))`
 
-const overdueMissionSQL = `EXISTS (SELECT 1 FROM "Mission" m WHERE m."bookingId" = b.id
-	AND (` + missionStageExpr + `) NOT IN ('COMPLETED','STOPPED')
-	AND COALESCE(b."scheduledAt", m."assignedAt") < now() - interval '24 hours')`
+// ═══ «المتأخرات» — تعريف (ع) 10-23 ═══
+// «تصنيف كلمة متأخر هو شنو؟» — التأخير لكل مرحلة من لحظتها، مو من موعد الحجز وبس:
+//   ١ تواصل: حجز جديد فات عليه ساعتين وما أحد حچى ويا الزبون.
+//   ٢ انطلاق: الموعد فات بنص ساعة والكادر ما طلع («الليدر مجهزليه بالأربع ويطلع بالخمس»).
+//   ٣ تنفيذ: الشغل بدا وطوّل أكثر من ٢٤ ساعة وما خلص.
+//   ٤ ورق: من «تم الإنجاز» يبدي يحسب — فات ٢٤ ساعة وناقصه فاتورة أو تقرير.
+// و«بانتظار قرار الزبون» **مو متأخر** (محطته وحدها، ويتأرشف استفسار بعد ٥ أيام).
+// الحجز الي موعده بعدين **مو متأخر** لحد ما يجي موعده.
+var (
+	lateContactSQL = `(` + bucketCondition("pending") + `) AND b."confirmationContactedAt" IS NULL
+		AND b."createdAt" < (now() AT TIME ZONE 'UTC') - interval '2 hours'`
+	lateDepartSQL = `(` + bucketCondition("assigned") + `) AND NOT ` + startedSQL + ` AND b."departedAt" IS NULL
+		AND b."scheduledAt" IS NOT NULL AND b."scheduledAt" < (now() AT TIME ZONE 'UTC') - interval '30 minutes'`
+	lateExecSQL = `(` + bucketCondition("assigned") + `) AND ` + startedSQL + `
+		AND COALESCE(b."startedAt", b."arrivedAt", b."departedAt") < (now() AT TIME ZONE 'UTC') - interval '24 hours'`
+	latePaperSQL = `(` + bucketCondition("needs_paper") + `)
+		AND b."completedAt" < (now() AT TIME ZONE 'UTC') - interval '24 hours'
+		AND b."completedAt" > (now() AT TIME ZONE 'UTC') - interval '60 days'`
+	overdueSQL = `((` + lateContactSQL + `) OR (` + lateDepartSQL + `) OR (` + lateExecSQL + `) OR (` + latePaperSQL + `))`
+	// overdueKindSQL نوع التأخير — يطلع بعمود «وين واكف» بصفحة المتأخرات.
+	overdueKindSQL = `CASE
+		WHEN ` + lateContactSQL + ` THEN '📞 تأخير تواصل — ما أحد حچى ويا الزبون'
+		WHEN ` + lateDepartSQL + ` THEN '🚚 الكادر ما طلع — الموعد فات'
+		WHEN ` + lateExecSQL + ` THEN '⏳ التنفيذ طوّل أكثر من ٢٤ ساعة'
+		WHEN ` + latePaperSQL + ` THEN '🧾 خلص وناقصه ' || concat_ws(' و',
+			CASE WHEN NOT EXISTS (SELECT 1 FROM "LeaderInvoice" li WHERE li."bookingId" = b.id AND li."revokedAt" IS NULL) THEN 'فاتورة' END,
+			CASE WHEN NOT EXISTS (SELECT 1 FROM "WorkReport" w WHERE w."bookingId" = b.id) THEN 'تقرير' END)
+		END`
+	// overdueSinceSQL من يمته يحسب التأخير — حسب نوعه.
+	overdueSinceSQL = `CASE
+		WHEN ` + lateContactSQL + ` THEN b."createdAt"
+		WHEN ` + lateDepartSQL + ` THEN b."scheduledAt"
+		WHEN ` + lateExecSQL + ` THEN COALESCE(b."startedAt", b."arrivedAt", b."departedAt")
+		ELSE b."completedAt" END`
+)
 
 const needsCoordSQL = `b.status = 'CONFIRMED' AND (b."scheduledAt" IS NULL OR NOT ` + hasCrewSQL + `)`
 
@@ -56,8 +88,8 @@ var drillDefs = []DrillDef{
 		Explain: "حجوزات عليها مهمة ميدانية بعدها ما خلصت ولا توقفت — من أول ما تنسند لحد الإنجاز. (كل الفترات، مو اليوم بس.)",
 		Where:   openMissionSQL},
 	{Key: "overdue", Title: "المتأخرات", AgeFrom: `"scheduledAt"`,
-		Explain: "مهام مفتوحة موعد حجزها فات بأكثر من ٢٤ ساعة وبعدها ما خلصت.",
-		Where:   overdueMissionSQL},
+		Explain: "كل مرحلة تتأخر من لحظتها: حجز جديد بلا تواصل +ساعتين · الموعد فات والكادر ما طلع · التنفيذ طوّل +٢٤ ساعة · خلص وناقصه فاتورة أو تقرير +٢٤ ساعة. بانتظار قرار الزبون مو متأخر.",
+		Where:   overdueSQL},
 	{Key: "needs_coord", Title: "حجوزات تنتظر تنسيق", AgeFrom: `"confirmedAt"`,
 		Explain: "حجوزات حالتها «مثبّتة» بس ناقصها موعد أو كادر. عمود «وين واكف» يگلك ليش ما تنسّقت (الزبون ما رد، عند المشاريع، مؤجل…). المسؤول: الإداري المنسّق.",
 		Where:   needsCoordSQL},
@@ -125,6 +157,16 @@ func DrillLateSQL(key string) string {
 	return `COUNT(*) FILTER (WHERE (` + d.Where + `) AND b.` + d.AgeFrom + ` < (now() AT TIME ZONE 'UTC') - interval '24 hours')`
 }
 
+// crewSQL الكادر كامل (ع 10-23: «لازم يطلع الليدر مال الحجز مع الفني»): المكلّفين،
+// وليدر المهمة وأعضاؤها، ومشرف المشروع — والليدر أول بنجمة.
+const crewSQL = `(SELECT string_agg(CASE WHEN e."isLeader" THEN '⭐ ' || e.name ELSE e.name END, '، '
+		ORDER BY e."isLeader" DESC, e.name)
+	FROM "Employee" e WHERE e.id IN (
+		SELECT ba."employeeId" FROM "BookingAssignment" ba WHERE ba."bookingId" = b.id
+		UNION SELECT m."leaderId" FROM "Mission" m WHERE m."bookingId" = b.id AND m."leaderId" IS NOT NULL
+		UNION SELECT unnest(m."memberIds") FROM "Mission" m WHERE m."bookingId" = b.id
+		UNION SELECT b."projectSupervisorId" WHERE b."projectSupervisorId" IS NOT NULL))`
+
 // DrillRow صف بالقائمة.
 type DrillRow struct {
 	ID          string  `db:"id" json:"id"`
@@ -182,16 +224,18 @@ func Drill(db *sqlx.DB, key string, limit int) (*DrillResult, error) {
 	if err := db.Get(&res.Count, `SELECT COUNT(*) FROM "Booking" b WHERE `+where); err != nil {
 		return nil, err
 	}
+	ageExpr, stationExpr, orderExpr := `b.`+d.AgeFrom, stationCaseSQL(), `b.`+d.AgeFrom
+	if d.Key == "overdue" {
+		ageExpr, stationExpr, orderExpr = overdueSinceSQL, overdueKindSQL, overdueSinceSQL
+	}
 	q := `
 		SELECT b.id, b.code, c.name AS customer, c.phone, s.name AS service, b.status::text AS status,
 		       to_char(b."scheduledAt" AT TIME ZONE 'Asia/Baghdad', 'YYYY-MM-DD HH24:MI') AS "scheduledAt",
 		       to_char(b."createdAt" AT TIME ZONE 'Asia/Baghdad', 'YYYY-MM-DD HH24:MI') AS "createdAt",
-		       (SELECT string_agg(e.name, '، ' ORDER BY e.name) FROM "Employee" e WHERE e.id IN (
-		          SELECT ba."employeeId" FROM "BookingAssignment" ba WHERE ba."bookingId" = b.id
-		          UNION SELECT m."leaderId" FROM "Mission" m WHERE m."bookingId" = b.id AND m."leaderId" IS NOT NULL)) AS crew,
+		       ` + crewSQL + ` AS crew,
 		       COALESCE(b."confirmedByName", (SELECT e.name FROM "Employee" e WHERE e.id = b."createdById")) AS responsible,
-		       (baghdad_today() - baghdad_date(b.` + d.AgeFrom + `))::int AS "ageDays",
-		       ` + stationCaseSQL() + ` AS station,
+		       (baghdad_today() - baghdad_date(` + ageExpr + `))::int AS "ageDays",
+		       ` + stationExpr + ` AS station,
 		       NULLIF(concat_ws(' + ',
 		         CASE WHEN b."scheduledAt" IS NULL THEN 'بلا موعد' END,
 		         CASE WHEN NOT ` + hasCrewSQL + ` THEN 'بلا كادر' END), '') AS missing
@@ -199,7 +243,7 @@ func Drill(db *sqlx.DB, key string, limit int) (*DrillResult, error) {
 		LEFT JOIN "Customer" c ON c.id = b."customerId"
 		LEFT JOIN "Service" s ON s.id = b."serviceId"
 		WHERE ` + where + `
-		ORDER BY b.` + d.AgeFrom + ` ASC NULLS LAST
+		ORDER BY ` + orderExpr + ` ASC NULLS LAST
 		LIMIT $1`
 	if err := db.Select(&res.Rows, q, limit); err != nil {
 		return nil, err

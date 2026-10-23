@@ -2331,3 +2331,17 @@ func (r *BookingRepository) RecentDuplicate(customerID string, serviceID, addres
 		ORDER BY "createdAt" LIMIT 1`, customerID, serviceID, address)
 	return id, err
 }
+
+// ArchiveStaleInquiries (ع) 10-23: «إذا متواصل ويا الزبون وعبرت عليه خمس أيام ما
+// اريد الحجز، يتسجل بالأرشيف على إنه استفسار فقط». الي ينتظر قرار الزبون أكثر من
+// ٥ أيام يتأرشف بسبب واضح — ويرجع من الأرشيف إذا الزبون رجع.
+func (r *BookingRepository) ArchiveStaleInquiries() (int64, error) {
+	res, err := r.db.Exec(`UPDATE "Booking" SET "archivedAt" = now(),
+		"archiveReason" = '📝 استفسار فقط — الزبون ما قرر خلال ٥ أيام'
+		WHERE "waitingKind" = 'CUSTOMER_DECISION' AND "waitingSince" < now() - interval '5 days'
+		  AND "archivedAt" IS NULL AND status::text NOT IN ('COMPLETED', 'CANCELLED')`)
+	if err != nil {
+		return 0, err
+	}
+	return res.RowsAffected()
+}
