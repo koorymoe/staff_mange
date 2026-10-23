@@ -52,6 +52,47 @@ const BREAKDOWN_LABELS: Record<string, string> = {
   manualDeductions: 'خصومات يدوية',
 }
 
+// ═══ تفسير كل رقم بنقاط الفنيين — (ع) 10-23 ═══
+// «كل شغلة هيج شلون صارت لازم اكو تفسير وتفهيم للقارئ». نفس حساب الخادم
+// (smart_kpi_service.go) بالكلام، حتى القارئ يعرف منين إجت كل نقطة.
+function explainKpi(key: keyof TechnicianKpi['breakdown'], b: TechnicianKpi['breakdown']): string {
+  switch (key) {
+    case 'completedBookings':
+      return `${b.completedBookings.count} حجز خلص بهالشهر وهو بالكادر × ١٠ = ${b.completedBookings.points} نقطة.`
+    case 'completionSpeed': {
+      const s = b.completionSpeed
+      if (!s.entries) return 'ماكو شغل خلص بهالشهر حتى ينحسب المعدل — صفر نقطة.'
+      const hrs = (s.avgMinutes / 60).toFixed(1)
+      const from = s.basis === 'MISSION' ? 'من تكليف المهمة لحد إنجازها' : 'من تسجيل الحجز لحد إنجازه'
+      return `معدل ${hrs} ساعة ${from} (${s.entries} شغلة). لحد ساعتين = ٢٠، لحد ٤ ساعات = ١٠، أكثر = ٥.`
+    }
+    case 'workReports': {
+      const w = b.workReports
+      const parts = w.count - w.fullReports
+      const lines = [`${w.fullReports} تقرير كامل (نظّف وصوّر وشرح للزبون) × ١٠ + ${parts} ناقص × ٥ = ${w.points} نقطة.`]
+      if (w.count !== b.completedBookings.count && w.bookings != null) {
+        const why: string[] = []
+        if (w.extraVisits) why.push(`${w.extraVisits} تقرير زيادة لأن ${w.multiBookings} حجز بيه أكثر من زيارة (إنجاز جزئي — كل زيارة تقرير)`)
+        if (w.outsideMonth) why.push(`${w.outsideMonth} تقرير على حجوزات ما خلصت بهالشهر`)
+        if (w.noReport) why.push(`${w.noReport} حجز خلص وماكو تقرير منه`)
+        if (why.length) lines.push(`ليش ${w.count} تقرير مقابل ${b.completedBookings.count} حجز؟ ${why.join('، و')}.`)
+      }
+      return lines.join(' ')
+    }
+    case 'attendance':
+      return `داوم ${b.attendance.daysPresent} يوم من ${b.attendance.totalDays} يوم مرّت بالشهر → النسبة × ٢٠ = ${b.attendance.points} نقطة.`
+    case 'complaints':
+      return b.complaints.count === 0
+        ? 'ماكو شكوى عليه بهالشهر → +١٥ نقطة.'
+        : `${b.complaints.count} شكوى عليه × −١٠ = ${b.complaints.points} نقطة.`
+    case 'manualDeductions':
+      return b.manualDeductions.count === 0
+        ? 'ماكو تقييم يدوي بهالشهر.'
+        : `${b.manualDeductions.count} تقييم يدوي من شاشة الـKPI، مجموعها ${b.manualDeductions.points} نقطة (الخصم سالب).`
+  }
+  return ''
+}
+
 // ─── Technician Tab ───────────────────────────────────────────────────────────
 
 export function TechnicianTab() {
@@ -224,6 +265,10 @@ export function TechnicianTab() {
                                       {item.daysPresent}/{item.totalDays} يوم
                                     </p>
                                   )}
+                                  {/* (ع) 10-23: «لازم نعرف منين جاية هاي النقاط» — الحساب نفسه بالكلام */}
+                                  <p className="mt-2 border-t border-slate-100 pt-2 text-right text-xs leading-relaxed text-slate-600">
+                                    {explainKpi(key, tech.breakdown)}
+                                  </p>
                                 </div>
                               )
                             })}

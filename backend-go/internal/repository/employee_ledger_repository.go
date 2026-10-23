@@ -35,7 +35,7 @@ func NewEmployeeLedgerRepository(db *sqlx.DB) *EmployeeLedgerRepository {
 }
 
 // الوصف العربي لمرحلة الحجز.
-const ledgerStageAr = `CASE p.stage WHEN 'ACCEPTED' THEN 'استلم' WHEN 'DEPARTED' THEN 'انطلق' WHEN 'ARRIVED' THEN 'وصل'
+const ledgerStageAr = `CASE p.stage WHEN 'ACCEPTED' THEN 'استلم' WHEN 'MATERIALS' THEN 'جهّز المواد' WHEN 'DEPARTED' THEN 'انطلق' WHEN 'ARRIVED' THEN 'وصل'
 	WHEN 'STARTED' THEN 'بدأ العمل' WHEN 'COMPLETED' THEN 'أنجز' ELSE p.stage END`
 
 const ledgerBookingLabel = `COALESCE(b.code, '') || ' — ' || COALESCE(c.name, 'زبون') || ' — ' || COALESCE(s.name, 'بلا خدمة محددة')`

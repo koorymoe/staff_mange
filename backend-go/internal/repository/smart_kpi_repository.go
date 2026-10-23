@@ -140,3 +140,35 @@ func (r *SmartKpiRepository) ManualDeductionPoints(employeeID string, start, end
 	}
 	return sum, len(points), nil
 }
+
+// ReportsReconcile ليش التقارير أكثر (أو أقل) من الحجوزات — (ع) 10-23: «عنده
+// ٣٣ حجز شلون ٤٢ تقرير؟ لازم اكو تفسير». التقرير ينحسب بيومه، والحجز بيوم
+// إنجازه، فالفرق من ثلاث أسباب: زيارات متعددة لنفس الحجز (إنجاز جزئي)، وتقارير
+// على حجوزات ما خلصت بهالشهر، وحجوزات خلصت بلا تقرير منه.
+type ReportsReconcile struct {
+	Bookings      int `db:"bookings" json:"bookings"`           // حجوزات بيها تقرير منه بالشهر
+	ExtraVisits   int `db:"extraVisits" json:"extraVisits"`     // تقارير زيادة على نفس الحجز (أكثر من زيارة)
+	MultiBookings int `db:"multiBookings" json:"multiBookings"` // كم حجز بيه أكثر من تقرير
+	OutsideMonth  int `db:"outsideMonth" json:"outsideMonth"`   // تقارير على حجوزات ما خلصت بهالشهر (بعدها أو خلصت بشهر ثاني)
+	NoReport      int `db:"noReport" json:"noReport"`           // حجوزات خلصت بالشهر وماكو تقرير منه
+}
+
+func (r *SmartKpiRepository) ReportsReconcile(employeeID string, start, end time.Time) (ReportsReconcile, error) {
+	var out ReportsReconcile
+	err := r.db.Get(&out, `
+		WITH rep AS (
+			SELECT w."bookingId", count(*) n FROM "WorkReport" w
+			WHERE w."employeeId" = $1 AND w."createdAt" >= $2 AND w."createdAt" < $3 AND w."bookingId" IS NOT NULL
+			GROUP BY 1),
+		done AS (
+			SELECT DISTINCT b.id FROM "Booking" b
+			WHERE `+BookingWorkedBySQL("b", "$1")+` AND b.status = 'COMPLETED' AND b."completedAt" >= $2 AND b."completedAt" < $3
+			  AND b."bookingType" IS DISTINCT FROM 'INTERNAL' AND upper(b.code) NOT LIKE 'OLD%'`+BookingCountableAndSQL("b")+`)
+		SELECT (SELECT count(*) FROM rep)::int AS bookings,
+		       (SELECT COALESCE(sum(n - 1), 0) FROM rep)::int AS "extraVisits",
+		       (SELECT count(*) FROM rep WHERE n > 1)::int AS "multiBookings",
+		       (SELECT COALESCE(sum(n), 0) FROM rep WHERE "bookingId" NOT IN (SELECT id FROM done))::int AS "outsideMonth",
+		       (SELECT count(*) FROM done WHERE id NOT IN (SELECT "bookingId" FROM rep))::int AS "noReport"`,
+		employeeID, start, end)
+	return out, err
+}

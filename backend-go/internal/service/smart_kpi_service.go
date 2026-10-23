@@ -92,7 +92,9 @@ func (s *SmartKpiService) CalculateTechnicianKpi(employeeID, month string) (*mod
 	if err != nil {
 		return nil, err
 	}
+	speedBasis := "BOOKING"
 	if len(mAssigned) > 0 {
+		speedBasis = "MISSION"
 		for i := range mAssigned {
 			totalMinutes += mCompleted[i].Sub(mAssigned[i]).Minutes()
 			speedEntries++
@@ -124,6 +126,7 @@ func (s *SmartKpiService) CalculateTechnicianKpi(employeeID, month string) (*mod
 	if err != nil {
 		return nil, err
 	}
+	reconcile, _ := s.repo.ReportsReconcile(employeeID, tsStart, tsEnd)
 	partialReports := totalReports - fullReports
 	workReportPoints := fullReports*10 + partialReports*5
 
@@ -170,11 +173,13 @@ func (s *SmartKpiService) CalculateTechnicianKpi(employeeID, month string) (*mod
 		Period:       fmt.Sprintf("%d-%02d", year, mon),
 		Breakdown: model.SmartKpiBreakdown{
 			CompletedBookings: model.SmartKpiBreakdownEntry{Count: completedCount, Points: completedBookingsPoints},
-			CompletionSpeed:   model.CompletionSpeedEntry{AvgMinutes: avgMinutes, Points: speedPoints},
-			WorkReports:       model.WorkReportsEntry{Count: totalReports, FullReports: fullReports, Points: workReportPoints},
-			Attendance:        model.AttendanceEntry{DaysPresent: daysPresent, TotalDays: totalDays, Points: attendancePoints},
-			Complaints:        model.SmartKpiBreakdownEntry{Count: complaintsCount, Points: complaintsPoints},
-			ManualDeductions:  model.SmartKpiBreakdownEntry{Count: manualDeductionCount, Points: manualDeductionPoints},
+			CompletionSpeed:   model.CompletionSpeedEntry{AvgMinutes: avgMinutes, Points: speedPoints, Entries: speedEntries, Basis: speedBasis},
+			WorkReports: model.WorkReportsEntry{Count: totalReports, FullReports: fullReports, Points: workReportPoints,
+				Bookings: reconcile.Bookings, ExtraVisits: reconcile.ExtraVisits, MultiBookings: reconcile.MultiBookings,
+				OutsideMonth: reconcile.OutsideMonth, NoReport: reconcile.NoReport},
+			Attendance:       model.AttendanceEntry{DaysPresent: daysPresent, TotalDays: totalDays, Points: attendancePoints},
+			Complaints:       model.SmartKpiBreakdownEntry{Count: complaintsCount, Points: complaintsPoints},
+			ManualDeductions: model.SmartKpiBreakdownEntry{Count: manualDeductionCount, Points: manualDeductionPoints},
 		},
 		TotalPoints: totalPoints,
 	}, nil

@@ -2930,8 +2930,12 @@ export interface TechnicianKpi {
   period: string
   breakdown: {
     completedBookings: { count: number; points: number }
-    completionSpeed: { avgMinutes: number; points: number }
-    workReports: { count: number; fullReports: number; points: number }
+    completionSpeed: { avgMinutes: number; points: number; entries?: number; basis?: 'MISSION' | 'BOOKING' }
+    workReports: {
+      count: number; fullReports: number; points: number
+      // تفسير الفرق بين التقارير والحجوزات (ع 10-23)
+      bookings?: number; extraVisits?: number; multiBookings?: number; outsideMonth?: number; noReport?: number
+    }
     attendance: { daysPresent: number; totalDays: number; points: number }
     complaints: { count: number; points: number }
     manualDeductions: { count: number; points: number }
