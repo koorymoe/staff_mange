@@ -49,6 +49,40 @@ func secISO(t time.Time) *string {
 }
 
 func registerSecretaryTools(a *MatrixAgent, repo *repository.SecretaryRepository, tc *SecretaryTurnCtx) {
+	// 🙋 «منو آني؟» — ملف المستخدم الي يحاچي ايريس هسه (دازاي 10-23: «سألته تعرف منو اني؟ ما عرفني»).
+	a.AddTool(agentTool{Name: "whoami",
+		Desc: "ملف الشخص الي يحاچيك هسه: اسمه، دوره، قسمه، شهادته، تاريخ تعيينه. استعملها إذا سأل «منو آني؟» أو تحتاج تعرف عنه.",
+		Run: func(map[string]any, *nameMask) (string, error) {
+			var me struct {
+				Name        string  `db:"name"`
+				Role        string  `db:"role"`
+				Department  *string `db:"department"`
+				Certificate *string `db:"certificate"`
+				HireDate    *string `db:"hireDate"`
+			}
+			if err := a.db.Get(&me, `SELECT name, role::text AS role, department, certificate, to_char("hireDate", 'YYYY-MM-DD') AS "hireDate"
+				FROM "Employee" WHERE id = $1`, tc.UserID); err != nil {
+				return "", err
+			}
+			role := map[string]string{"OWNER": "مالك الشركة", "ADMIN": "مدير النظام"}[me.Role]
+			if role == "" {
+				role = me.Role
+			}
+			out := fmt.Sprintf("الاسم: %s · الدور: %s", me.Name, role)
+			if me.Department != nil && *me.Department != "" {
+				out += " · القسم: " + *me.Department
+			}
+			if me.Certificate != nil && *me.Certificate != "" {
+				out += " · الشهادة: " + *me.Certificate
+			}
+			if me.HireDate != nil && *me.HireDate != "" {
+				out += " · تاريخ التعيين: " + *me.HireDate
+			}
+			if strings.TrimSpace(me.Name) == "المالك" {
+				out += "\n(اسمه بالنظام «المالك» — إذا يريد تناديه باسمه الحقيقي، يغيّره من إدارة الموظفين ← ملفه.)"
+			}
+			return out, nil
+		}})
 	// 📔 مذكرات المستخدم وجدوله — قراءة بس، ملاحظاته هو (دازاي 10-23).
 	a.AddTool(agentTool{Name: "my_notes",
 		Desc:  "اقرا مذكرات المستخدم («مذكراتي») أو بنود جدوله، الأحدث أول. q اختياري للبحث (مثلاً اسم موظف). استعملها من يسأل «شنو سويت ويا فلان» أو «شنو كتبت».",

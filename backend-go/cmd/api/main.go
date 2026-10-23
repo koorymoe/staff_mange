@@ -43,6 +43,8 @@ func main() {
 	if err := database.Migrate(db, cfg.OwnerUsername, cfg.OwnerPassword); err != nil {
 		log.Fatalf("failed to run database migrations: %v", err)
 	}
+	// 🔎 أدوار قراءة الذكاء — ايريس وماتركس يقرون النظام كله بلا الأسرار (دازاي 10-23)
+	database.EnsureAIReaders(db)
 
 	handlerChain := NewHandler(cfg, db, startedAt)
 
