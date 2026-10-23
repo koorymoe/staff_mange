@@ -356,6 +356,11 @@ export interface LeaveRequest {
   createdAt: string
 }
 
+export interface ReturnedFromProjects {
+  id: string; code: string; customer: string | null; phone: string | null; status: string
+  returnedAt: string; note: string | null; by: string | null; scheduledAt: string | null
+}
+
 export interface GpsSimCard {
   id: string
   simNumber: string
@@ -4713,6 +4718,11 @@ export const api = {
   getMyLeaves: () => request<LeaveRequest[]>('/leaves/mine'),
   cancelLeave: (id: string) => request<{ ok: boolean }>(`/leaves/${id}`, { method: 'DELETE' }),
   getLeaveInbox: (status?: string) => request<LeaveRequest[]>(`/leaves/inbox${status ? '?status=' + status : ''}`),
+  /** 🗓️ إجازات الموظفين (وحدة إدارة الكوادر) — المجازين اليوم وكل طلبات الشهر */
+  getLeaveRegister: (month: string) => request<{ month: string; onLeaveToday: LeaveRequest[]; items: LeaveRequest[] }>(`/leaves/register?month=${month}`),
+  /** ↩️ الحجوزات الراجعة من إدارة المشاريع — تنتظر استلام المنسّق */
+  getReturnedFromProjects: () => request<ReturnedFromProjects[]>('/bookings/returned-from-projects'),
+  markReturnHandled: (id: string) => request<{ ok: boolean }>(`/bookings/${encodeURIComponent(id)}/return-handled`, { method: 'PUT' }),
   getLeavePendingCount: () => request<{ count: number; canApprove: boolean }>('/leaves/pending-count'),
   preliminaryLeave: (id: string, note?: string) =>
     request<LeaveRequest>(`/leaves/${id}/preliminary`, { method: 'PUT', body: JSON.stringify({ note }) }),

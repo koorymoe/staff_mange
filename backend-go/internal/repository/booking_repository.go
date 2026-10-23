@@ -1553,17 +1553,54 @@ func (r *BookingRepository) EmployeeHasSkillForService(employeeID, serviceID str
 // ReturnToCrew يرجّع حجز محوّل لإدارة المشاريع رجعة لكادر الشد — يستخدمه
 // مدير المشاريع لما يفتح تفاصيل الحجز ويلكاه مو مال مشروع أصلاً. الحجز يبقى
 // مثبّتاً (CONFIRMED)، بس ينشال من قائمة "بانتظار الاستلام كمشروع".
-func (r *BookingRepository) ReturnToCrew(id string, note *string) error {
+func (r *BookingRepository) ReturnToCrew(id string, note *string, byID string) error {
 	_, err := r.db.Exec(`
 		UPDATE "Booking" SET
 			"transferToProjects" = false,
+			"returnedFromProjectsAt" = now(), "returnedFromProjectsNote" = NULLIF($2::text, ''),
+			"returnedFromProjectsById" = NULLIF($3, ''), "returnHandledAt" = NULL, "returnHandledById" = NULL,
 			"adminNotes" = CASE
 				WHEN $2::text IS NULL OR $2::text = '' THEN "adminNotes"
 				ELSE COALESCE("adminNotes" || E'\n', '') || 'أُعيد لكادر الشد: ' || $2::text
 			END
 		WHERE id = $1 AND "transferToProjects" = true
-	`, id, note)
+	`, id, note, byID)
 	return err
+}
+
+// ReturnedFromProjects الحجوزات الي رجعت من إدارة المشاريع وبعد ما استلمها المنسّق.
+type ReturnedFromProjectsRow struct {
+	ID         string     `db:"id" json:"id"`
+	Code       string     `db:"code" json:"code"`
+	Customer   *string    `db:"customer" json:"customer"`
+	Phone      *string    `db:"phone" json:"phone"`
+	Status     string     `db:"status" json:"status"`
+	ReturnedAt time.Time  `db:"returnedAt" json:"returnedAt"`
+	Note       *string    `db:"note" json:"note"`
+	By         *string    `db:"by" json:"by"`
+	Scheduled  *time.Time `db:"scheduledAt" json:"scheduledAt"`
+}
+
+func (r *BookingRepository) ReturnedFromProjects() ([]ReturnedFromProjectsRow, error) {
+	rows := []ReturnedFromProjectsRow{}
+	err := r.db.Select(&rows, `SELECT b.id, b.code, c.name AS customer, c.phone, b.status::text AS status,
+		b."returnedFromProjectsAt" AS "returnedAt", b."returnedFromProjectsNote" AS note, e.name AS by, b."scheduledAt"
+		FROM "Booking" b LEFT JOIN "Customer" c ON c.id = b."customerId" LEFT JOIN "Employee" e ON e.id = b."returnedFromProjectsById"
+		WHERE b."returnedFromProjectsAt" IS NOT NULL AND b."returnHandledAt" IS NULL AND NOT b."transferToProjects"
+		  AND b."archivedAt" IS NULL AND b.status::text NOT IN ('COMPLETED', 'CANCELLED')
+		ORDER BY b."returnedFromProjectsAt"`)
+	return rows, err
+}
+
+// HandleReturn المنسّق استلم الحجز الراجع — ينشال من المحطة.
+func (r *BookingRepository) HandleReturn(id, byID string) (bool, error) {
+	res, err := r.db.Exec(`UPDATE "Booking" SET "returnHandledAt" = now(), "returnHandledById" = $2
+		WHERE id = $1 AND "returnedFromProjectsAt" IS NOT NULL AND "returnHandledAt" IS NULL`, id, byID)
+	if err != nil {
+		return false, err
+	}
+	n, _ := res.RowsAffected()
+	return n > 0, nil
 }
 
 // BookingPartySQL شرط «الموظف طرف بهذا الحجز» — تعريف **واحد**

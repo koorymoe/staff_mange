@@ -631,6 +631,8 @@ export const navItems: NavItem[] = [
       { to: '/work-schedule', label: '🕘 جدول الدوام', icon: <></>, roles: ['ADMIN', 'HR_COORDINATOR', 'MONITOR'], unlockAnyPermission: ['work_schedule_manage', 'staff_management'] },
       // نفس حارس /api/remote-hours: المدير أو صلاحية «تسجيل ساعات العمل من البيت».
       { monitorMenuHide: true, to: '/remote-hours', label: '🏠 ساعات العمل من البيت', icon: <></>, roles: ['ADMIN'], anyPermission: ['remote_hours_manage', 'remote_hours_self'] },
+      // (ع) 10-23: «خانه مخصصه لاجازات الموظفين» — نفس حارس GET /api/leaves/register
+      { strict: true, to: '/staff-leaves', label: '🗓️ إجازات الموظفين', icon: <></>, roles: ['ADMIN', 'MONITOR'], anyPermission: ['staff_management', 'monitoring', 'leave_approve_morning', 'leave_approve_evening'] },
       { to: '/nav-hr-stats', label: '📊 الإحصائيات', icon: <></>, divider: true, plain: true },
       { strict: true, to: '/stats-management', label: '📊 الإحصائيات', icon: <></>, roles: ['ADMIN'], unlockPermission: 'employee_stats' },
     ],

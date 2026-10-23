@@ -1398,6 +1398,10 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	// (ع) 10-19: «بدء العمل» انضغط بالغلط على حجز باچر — المالك يتراجع عنه.
 	mux.Handle("PUT /api/bookings/{id}/unstart", middleware.Chain(http.HandlerFunc(bookingReopenHandler.Unstart), requireAuth, requireOwner))
 	mux.Handle("PUT /api/bookings/{id}/return-to-crew", middleware.Chain(http.HandlerFunc(bookingHandler.ReturnToCrew), requireAuth, requireProjectMgmt))
+	// ↩️ «رجعت من المشاريع» (ع 10-23): المنسّق يشوفها ويستلمها — نفس حارس «تنسيق الحجوزات» بالواجهة
+	requireReturnedDesk := middleware.RequireRoleOrAnyPermission(permissionRepo, employeeRepo, notificationRepo, []string{"ADMIN"}, "coordinator")
+	mux.Handle("GET /api/bookings/returned-from-projects", middleware.Chain(http.HandlerFunc(bookingHandler.ReturnedFromProjects), requireAuth, requireReturnedDesk))
+	mux.Handle("PUT /api/bookings/{id}/return-handled", middleware.Chain(http.HandlerFunc(bookingHandler.ReturnHandled), requireAuth, requireReturnedDesk))
 	mux.Handle("PUT /api/bookings/{id}/confirmation-contacted", middleware.Chain(http.HandlerFunc(bookingHandler.MarkConfirmationContacted), requireAuth, requireCoordinator))
 	// تدقيق المراقب على الحجوزات الموجّهة قبل التثبيت (crew_management، صلاحية جديدة
 	// يقدر الأدمن يمنحها لأي موظف مراقب من صفحة الصلاحيات).
@@ -2054,6 +2058,10 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	mux.Handle("DELETE /api/leaves/{id}", middleware.Chain(http.HandlerFunc(leaveHandler.Cancel), requireAuth))
 	mux.Handle("GET /api/leaves/inbox", middleware.Chain(http.HandlerFunc(leaveHandler.Inbox), requireAuth))
 	mux.Handle("GET /api/leaves/pending-count", middleware.Chain(http.HandlerFunc(leaveHandler.PendingCount), requireAuth))
+	// 🗓️ «إجازات الموظفين» (ع 10-23) — نفس حارس البند بالقائمة: المدير/المراقب أو إدارة الكوادر أو الموافقة على الإجازات
+	requireLeaveRegister := middleware.RequireRoleOrAnyPermission(permissionRepo, employeeRepo, notificationRepo, []string{"ADMIN", "MONITOR"},
+		"staff_management", "monitoring", "leave_approve_morning", "leave_approve_evening")
+	mux.Handle("GET /api/leaves/register", middleware.Chain(http.HandlerFunc(leaveHandler.Register), requireAuth, requireLeaveRegister))
 	mux.Handle("PUT /api/leaves/{id}/preliminary", middleware.Chain(http.HandlerFunc(leaveHandler.Preliminary), requireAuth))
 	mux.Handle("PUT /api/leaves/{id}/decide", middleware.Chain(http.HandlerFunc(leaveHandler.Decide), requireAuth, courier.Wrap("leave")))
 

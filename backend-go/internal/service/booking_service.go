@@ -691,8 +691,8 @@ func (s *BookingService) ListToolChecks(bookingID string) ([]model.BookingToolCh
 // (صلاحية crew_management) يدقق هل صار التواصل قبل التثبيت الفعلي أو لا.
 // ReturnToCrew يرجّع حجز محوّل لإدارة المشاريع رجعة لكادر الشد، وينبّه
 // إداري الكوادر إنه رجع له حتى ما يضيع بلا متابعة.
-func (s *BookingService) ReturnToCrew(id string, note *string) (*model.Booking, error) {
-	if err := s.repo.ReturnToCrew(id, note); err != nil {
+func (s *BookingService) ReturnToCrew(id string, note *string, byID string) (*model.Booking, error) {
+	if err := s.repo.ReturnToCrew(id, note, byID); err != nil {
 		return nil, err
 	}
 	// الحجز رجع لكادر الشد — ما يبقى عليه أثر مشروع انلغى
@@ -710,8 +710,10 @@ func (s *BookingService) ReturnToCrew(id string, note *string) (*model.Booking, 
 		if note != nil && *note != "" {
 			reason = " — السبب: " + *note
 		}
-		_ = s.notifications.CreateForRole("HR_COORDINATOR", "booking_returned_to_crew",
-			fmt.Sprintf("↩️ الحجز (%s) للزبون %s رجع من إدارة المشاريع لكادر الشد%s",
+		// (ع) 10-23: الإشعار لصاحب صلاحية التنسيق والمدير — چان لدور «إداري
+		// الكوادر» بس، والي ينسّق بالصلاحية ما يدري، فالحجز يضيع.
+		_ = s.notifications.CreateForRolesOrPermission([]string{"HR_COORDINATOR", "ADMIN", "OWNER"}, "coordinator", "booking_returned_to_crew",
+			fmt.Sprintf("↩️ الحجز (%s) للزبون %s رجع من إدارة المشاريع لكادر الشد%s — بمحطة «رجعت من المشاريع» بالحجوزات",
 				booking.Code, customerName, reason))
 	}
 	return booking, nil
@@ -1231,3 +1233,6 @@ func (s *BookingService) ListServicePaperworkByKind(kind string) ([]model.Bookin
 func (s *BookingService) ListInternal(status, partyEmployeeID string, limit int) ([]model.Booking, error) {
 	return s.repo.ListInternal(status, partyEmployeeID, limit)
 }
+
+// Repo للقراءات البسيطة من الهاندلر (محطة «رجعت من المشاريع»).
+func (s *BookingService) Repo() *repository.BookingRepository { return s.repo }

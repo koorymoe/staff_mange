@@ -814,5 +814,19 @@ func matrixChatMigrations() []Migration {
 			);
 			CREATE INDEX IF NOT EXISTS "DutySnapshot_day_idx" ON "DutySnapshot" (day);
 		`,
+	}, {
+		// «الحجوزات المرجوعة من إدارة المشاريع وين تروح؟» (دازاي 10-23): چانت
+		// ترجع لمحطتها بلا أثر، والإشعار لدور «إداري الكوادر» بس — فتضيع. هسه
+		// تنعلّم، وتطلع بمحطة «↩️ رجعت من المشاريع» لحد ما المنسّق يستلمها.
+		Version: "0389_booking_returned_from_projects",
+		SQL: `
+			ALTER TABLE "Booking" ADD COLUMN IF NOT EXISTS "returnedFromProjectsAt" TIMESTAMPTZ;
+			ALTER TABLE "Booking" ADD COLUMN IF NOT EXISTS "returnedFromProjectsNote" TEXT;
+			ALTER TABLE "Booking" ADD COLUMN IF NOT EXISTS "returnedFromProjectsById" TEXT;
+			ALTER TABLE "Booking" ADD COLUMN IF NOT EXISTS "returnHandledAt" TIMESTAMPTZ;
+			ALTER TABLE "Booking" ADD COLUMN IF NOT EXISTS "returnHandledById" TEXT;
+			CREATE INDEX IF NOT EXISTS "Booking_returned_open_idx" ON "Booking" ("returnedFromProjectsAt")
+				WHERE "returnedFromProjectsAt" IS NOT NULL AND "returnHandledAt" IS NULL;
+		`,
 	}}
 }

@@ -192,3 +192,24 @@ func derefStr(s *string) string {
 	}
 	return *s
 }
+
+// ═══ «إجازات الموظفين» بوحدة إدارة الكوادر — (ع) 10-23 ═══
+
+// Register كل طلبات الإجازة الي تمس الشهر (بكل حالاتها).
+func (r *LeaveRequestRepository) Register(month string) ([]model.LeaveRequest, error) {
+	rows := []model.LeaveRequest{}
+	err := r.db.Select(&rows, leaveSelect+`
+		WHERE l."startDate" < (to_date($1, 'YYYY-MM') + interval '1 month')::date
+		  AND l."endDate" >= to_date($1, 'YYYY-MM')
+		ORDER BY l."startDate", e.name`, month)
+	return decorateLeaves(rows), err
+}
+
+// OnLeaveToday المجازين اليوم بإجازة معتمدة.
+func (r *LeaveRequestRepository) OnLeaveToday() ([]model.LeaveRequest, error) {
+	rows := []model.LeaveRequest{}
+	err := r.db.Select(&rows, leaveSelect+`
+		WHERE l.status = 'APPROVED' AND baghdad_today() BETWEEN l."startDate" AND l."endDate"
+		ORDER BY e.name`)
+	return decorateLeaves(rows), err
+}

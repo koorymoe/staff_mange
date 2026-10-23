@@ -275,3 +275,23 @@ func (h *LeaveRequestHandler) PendingCount(w http.ResponseWriter, r *http.Reques
 	}
 	WriteJSON(w, http.StatusOK, map[string]any{"count": n, "canApprove": len(routes) > 0})
 }
+
+// GET /api/leaves/register?month=YYYY-MM — «إجازات الموظفين» بوحدة إدارة الكوادر:
+// المجازين اليوم، وكل طلبات الشهر بحالاتها. للعرض — القرار يبقى بصندوق الإجازات.
+func (h *LeaveRequestHandler) Register(w http.ResponseWriter, r *http.Request) {
+	month := r.URL.Query().Get("month")
+	if _, err := time.Parse("2006-01", month); err != nil {
+		month = time.Now().In(time.FixedZone("Asia/Baghdad", 3*3600)).Format("2006-01")
+	}
+	items, err := h.repo.Register(month)
+	if err != nil {
+		log.Printf("leave register: %v", err)
+		WriteError(w, http.StatusInternalServerError, "تعذر جلب الإجازات")
+		return
+	}
+	today, err := h.repo.OnLeaveToday()
+	if err != nil {
+		today = []model.LeaveRequest{}
+	}
+	WriteJSON(w, http.StatusOK, map[string]any{"month": month, "onLeaveToday": today, "items": items})
+}

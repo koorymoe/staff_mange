@@ -9,6 +9,7 @@ import PartialBookings from './PartialBookings'
 import StageBucketsPage from './StageBucketsPage'
 import BookingDeleteRequestsPage from './BookingDeleteRequestsPage'
 import { pollVisible } from '../utils/poll'
+import ReturnedFromProjects from '../components/ReturnedFromProjects'
 const Customers = lazy(() => import('./Customers'))
 const BookingsArchive = lazy(() => import('./BookingsArchive'))
 const SalesOpportunitiesPage = lazy(() => import('./SalesOpportunitiesPage'))
@@ -66,6 +67,8 @@ const TABS = [
   // محبوس عند إدارة المشاريع — يرجع لحاله أول ما يوصل التنفيذ
   // قرار (ع) 10-07: «مرحّل لإدارة أخرى» — جوّاه إدارة المشاريع وإدارة التقنيين.
   { key: 'transferred' as const, label: 'مرحّل لإدارة أخرى', icon: '↗️' },
+  // (ع) 10-23: الي رجّعته إدارة المشاريع — يبقى هنا لحد ما المنسّق يستلمه
+  { key: 'returned' as const, label: 'رجعت من المشاريع', icon: '↩️' },
   { key: 'stuck' as const, label: 'ما وصلت للتنفيذ', icon: '🚫' },
   // ٨ب — «الزبون يستفسر وبعدين يرجع خبر»: خانة وحدها، مو جوّا «ما
   // وصلت للتنفيذ». الفرق شغل مو تسمية: هذا ننتظر خبره، وذاك نلحقه.
@@ -140,14 +143,16 @@ export default function BookingsHub() {
     if (!canViewAll) return
     let alive = true
     const load = () => api.getBookingStationCounts()
-      .then((c) => { if (alive) setCounts({ ...c, transferred: (c.at_projects ?? 0) + (c.at_tech ?? 0) }) })
+      .then((c) => { if (alive) setCounts((prev) => ({ ...prev, ...c, transferred: (c.at_projects ?? 0) + (c.at_tech ?? 0) })) })
       .catch(() => {})
+    // عدّاد «رجعت من المشاريع» — نفس حارس التبويب (canCoord) حتى ما ينطلب ممنوع
+    if (canCoord) api.getReturnedFromProjects().then((r) => { if (alive) setCounts((prev) => ({ ...prev, returned: r.length })) }).catch(() => {})
     const t = setTimeout(load, 0)
     // ⚠️ تحديث كل دقيقة: الحجز الجديد يوصل والإداري ما يعيد تحميل
     // الصفحة — فيقعد ساعة وهو يظن ماكو شغل جديد.
     const stop = pollVisible(load, 60_000)
     return () => { alive = false; clearTimeout(t); stop() }
-  }, [tab, canViewAll])
+  }, [tab, canViewAll, canCoord])
 
   // نفس حارس البند القديم بالقائمة بالضبط — مو حارساً أوسع ولا أضيق.
   const canDecideDelete = employee?.role === 'ADMIN' || employee?.actualRole === 'OWNER'
@@ -156,7 +161,7 @@ export default function BookingsHub() {
   // مفتاح العدّاد لكل محطة (الي ما إلها عدّاد ما تعرض رقم)
   const countKey: Partial<Record<TabKey, string>> = {
     pending: 'pending', confirmed: 'confirmed', assigned: 'assigned',
-    done: 'done', partial: 'partial', transferred: 'transferred',
+    done: 'done', partial: 'partial', transferred: 'transferred', returned: 'returned',
     deleting: 'delete_pending', stuck: 'stuck',
     awaiting_customer: 'awaitingCustomer',
   }
@@ -182,9 +187,10 @@ export default function BookingsHub() {
     || (t.key === 'deleting' && canCoord)
     // متابعة المحبوس عند المشاريع شغل تنسيق
     || (t.key === 'transferred' && canCoord)
+    || (t.key === 'returned' && canCoord)
     // ⚠️ باقي المحطات (بانتظار التثبيت · تم التثبيت · مكلّف · تم
     // الإنجاز) تحتاج صلاحية شاملة — چانت مفتوحة للكل بلا فحص.
-    || (canViewAll && !['new', 'coord', 'stuck', 'partial', 'deleting', 'transferred', 'awaiting_customer', 'customers', 'archive', 'opportunities'].includes(t.key)),
+    || (canViewAll && !['new', 'coord', 'stuck', 'partial', 'deleting', 'transferred', 'returned', 'awaiting_customer', 'customers', 'archive', 'opportunities'].includes(t.key)),
   )
 
   // ⚠️ التبويب الافتراضي `pending` صار ممكن ما يكون ضمن المسموح —
@@ -258,6 +264,7 @@ export default function BookingsHub() {
         </div>
       ) : <>
       {activeTab === 'new' && canCreate && <SalesBooking />}
+      {activeTab === 'returned' && canCoord && <ReturnedFromProjects onChanged={() => setCounts((prev) => ({ ...prev, returned: Math.max(0, (prev.returned ?? 1) - 1) }))} />}
       {activeTab === 'coord' && canCoord && <Coordinator />}
       {/* كل سلّة تفتح نفس القائمة بفلاترها (بحث · يوم · شهر) —
           والسلّة تقرر شنو يطلع. `key` تجبر React يبني القائمة من

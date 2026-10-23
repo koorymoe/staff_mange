@@ -487,7 +487,7 @@ func (h *BookingHandler) ReturnToCrew(w http.ResponseWriter, r *http.Request) {
 		WriteError(w, http.StatusBadRequest, "لازم تكتب سبب إرجاع الحجز لكادر الشد")
 		return
 	}
-	booking, err := h.service.ReturnToCrew(r.PathValue("id"), req.Note)
+	booking, err := h.service.ReturnToCrew(r.PathValue("id"), req.Note, middleware.EmployeeIDFromContext(r))
 	if err != nil {
 		WriteError(w, http.StatusBadRequest, "تعذر إرجاع الحجز لكادر الشد")
 		return
@@ -1051,4 +1051,28 @@ func (h *BookingHandler) HandoverCandidates(w http.ResponseWriter, r *http.Reque
 		return
 	}
 	WriteJSON(w, http.StatusOK, rows)
+}
+
+// GET /api/bookings/returned-from-projects — محطة «↩️ رجعت من المشاريع» (المنسّق).
+func (h *BookingHandler) ReturnedFromProjects(w http.ResponseWriter, r *http.Request) {
+	rows, err := h.service.Repo().ReturnedFromProjects()
+	if err != nil {
+		WriteError(w, http.StatusInternalServerError, "تعذر جلب الحجوزات الراجعة")
+		return
+	}
+	WriteJSON(w, http.StatusOK, rows)
+}
+
+// PUT /api/bookings/{id}/return-handled — «✅ استلمته».
+func (h *BookingHandler) ReturnHandled(w http.ResponseWriter, r *http.Request) {
+	ok, err := h.service.Repo().HandleReturn(r.PathValue("id"), middleware.EmployeeIDFromContext(r))
+	if err != nil {
+		WriteError(w, http.StatusInternalServerError, "تعذر الحفظ")
+		return
+	}
+	if !ok {
+		WriteError(w, http.StatusConflict, "هذا الحجز مستلم من قبل")
+		return
+	}
+	WriteJSON(w, http.StatusOK, map[string]bool{"ok": true})
 }

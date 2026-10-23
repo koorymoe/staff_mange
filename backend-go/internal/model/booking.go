@@ -25,6 +25,12 @@ type Booking struct {
 	Priority              string     `db:"priority" json:"priority"`
 	Status                string     `db:"status" json:"status"`
 	TransferToProjects    bool       `db:"transferToProjects" json:"transferToProjects"`
+	// رجع من إدارة المشاريع لكادر الشد (0389) — يبقى بمحطته لحد ما المنسّق يستلمه.
+	ReturnedFromProjectsAt   *time.Time `db:"returnedFromProjectsAt" json:"returnedFromProjectsAt"`
+	ReturnedFromProjectsNote *string    `db:"returnedFromProjectsNote" json:"returnedFromProjectsNote"`
+	ReturnedFromProjectsByID *string    `db:"returnedFromProjectsById" json:"returnedFromProjectsById"`
+	ReturnHandledAt          *time.Time `db:"returnHandledAt" json:"returnHandledAt"`
+	ReturnHandledByID        *string    `db:"returnHandledById" json:"returnHandledById"`
 	// وقت وصول المشروع لمرحلة «٥. البدء بالتنفيذ» — هو الي يفتح الحجز
 	// عند إداري الحجوزات حتى ينسّقه بكادر الشد. فارغ = لسه بالإجراءات.
 	// ⚠️ عمود بالجدول → لازم حقل هنا (الجلب SELECT *).
@@ -57,15 +63,15 @@ type Booking struct {
 	// حجز شكوى: الشكوى الي انسجل الحجز حتى يحلها (bookingType = COMPLAINT)
 	ComplaintID *string `db:"complaintId" json:"complaintId,omitempty"`
 	// حجز ديكور مربوط بحجز الشعبة الهندسية (0379): BEFORE قبله، WITH وياه
-	ParentBookingID *string `db:"parentBookingId" json:"parentBookingId,omitempty"`
-	DecorTiming     *string `db:"decorTiming" json:"decorTiming,omitempty"`
-	Urgency                *string    `db:"urgency" json:"urgency,omitempty"`
-	MaintenanceType        *string    `db:"maintenanceType" json:"maintenanceType,omitempty"`
-	RemembersExecutionCrew bool       `db:"remembersExecutionCrew" json:"remembersExecutionCrew"`
-	SystemCount            *int       `db:"systemCount" json:"systemCount,omitempty"`
-	SystemType             *string    `db:"systemType" json:"systemType,omitempty"`
-	ProjectSpeed           *string    `db:"projectSpeed" json:"projectSpeed,omitempty"`
-	WorkType               *string    `db:"workType" json:"workType,omitempty"`
+	ParentBookingID        *string `db:"parentBookingId" json:"parentBookingId,omitempty"`
+	DecorTiming            *string `db:"decorTiming" json:"decorTiming,omitempty"`
+	Urgency                *string `db:"urgency" json:"urgency,omitempty"`
+	MaintenanceType        *string `db:"maintenanceType" json:"maintenanceType,omitempty"`
+	RemembersExecutionCrew bool    `db:"remembersExecutionCrew" json:"remembersExecutionCrew"`
+	SystemCount            *int    `db:"systemCount" json:"systemCount,omitempty"`
+	SystemType             *string `db:"systemType" json:"systemType,omitempty"`
+	ProjectSpeed           *string `db:"projectSpeed" json:"projectSpeed,omitempty"`
+	WorkType               *string `db:"workType" json:"workType,omitempty"`
 	// WorkLocation وين انشتغل الشغل: عند الزبون لو داخل الشركة (بالورشة).
 	// ⚠️ عمود بجدول Booking — لازم يضل إله حقل هنا لأن الاستعلام SELECT *.
 	WorkLocation string `db:"workLocation" json:"workLocation"`
@@ -262,13 +268,13 @@ type Booking struct {
 	Customer *Customer `db:"-" json:"customer,omitempty"`
 	// Service الخدمة الرئيسية (توافق مع الشاشات القديمة)، و Services كل
 	// الخدمات المطلوبة بنفس الحجز — الزبون ممكن يطلب أكثر من منظومة سوة.
-	Service             *Service            `db:"-" json:"service,omitempty"`
-	Services            []Service           `db:"-" json:"services"`
-	TransferEmployee    *Employee           `db:"-" json:"transferEmployee,omitempty"`
-	ProjectSupervisor   *Employee           `db:"-" json:"projectSupervisor,omitempty"`
+	Service           *Service  `db:"-" json:"service,omitempty"`
+	Services          []Service `db:"-" json:"services"`
+	TransferEmployee  *Employee `db:"-" json:"transferEmployee,omitempty"`
+	ProjectSupervisor *Employee `db:"-" json:"projectSupervisor,omitempty"`
 	// (ع 10-16) ليدر الحجز بالتعريف الموحّد (booking_leader_id) — محسوب بالخادم
-	LeaderID   *string `db:"-" json:"leaderId,omitempty"`
-	LeaderName *string `db:"-" json:"leaderName,omitempty"`
+	LeaderID            *string             `db:"-" json:"leaderId,omitempty"`
+	LeaderName          *string             `db:"-" json:"leaderName,omitempty"`
 	ConfirmedByEmployee *Employee           `db:"-" json:"confirmedByEmployee,omitempty"`
 	ExpenseResponsible  *Employee           `db:"-" json:"expenseResponsible,omitempty"`
 	MaterialsReadyBy    *EmployeeBrief      `db:"-" json:"materialsReadyBy,omitempty"`
