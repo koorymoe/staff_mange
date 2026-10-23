@@ -2719,6 +2719,12 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 		mux.Handle("GET /api/secretary/reminders", middleware.Chain(http.HandlerFunc(secHandler.Reminders), requireAuth, requireAdmin))
 		mux.Handle("POST /api/secretary/reminders/{id}/schedule", middleware.Chain(http.HandlerFunc(secHandler.Schedule), requireAuth, requireAdmin))
 		mux.Handle("POST /api/secretary/reminders/{id}/decline", middleware.Chain(http.HandlerFunc(secHandler.Decline), requireAuth, requireAdmin))
+		// 📔 «مذكراتي» و«جدول أعمالي» (دازاي 10-23)
+		mux.Handle("GET /api/secretary/notes", middleware.Chain(http.HandlerFunc(secHandler.Notes), requireAuth, requireAdmin))
+		mux.Handle("POST /api/secretary/notes", middleware.Chain(http.HandlerFunc(secHandler.AddNote), requireAuth, requireAdmin))
+		mux.Handle("PUT /api/secretary/notes/{id}/done", middleware.Chain(http.HandlerFunc(secHandler.NoteDone), requireAuth, requireAdmin))
+		mux.Handle("DELETE /api/secretary/notes/{id}", middleware.Chain(http.HandlerFunc(secHandler.DeleteNote), requireAuth, requireAdmin))
+		mux.Handle("GET /api/secretary/agenda", middleware.Chain(http.HandlerFunc(secHandler.Agenda), requireAuth, requireAdmin))
 		// ☀️ رسالة الصبح (٨ص) + 🏆 إشادة الأسبوع (الخميس) — قرار (ع) 10-11
 		morningService := service.NewMatrixMorningService(db, aiRepo, notificationRepo, announcementRepo, agent)
 		safeguard.Loop("رسالة الصبح وإشادة الأسبوع", 3*time.Minute, 15*time.Minute, func() {

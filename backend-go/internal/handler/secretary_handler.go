@@ -466,3 +466,95 @@ func (h *SecretaryHandler) decideMeeting(w http.ResponseWriter, r *http.Request,
 	}
 	return m
 }
+
+// ═══ «مذكراتي» و«جدول أعمالي» (دازاي 10-23) — كل مستخدم ملاحظاته بس ═══
+
+// GET /api/secretary/notes?kind=DIARY|AGENDA&q=
+func (h *SecretaryHandler) Notes(w http.ResponseWriter, r *http.Request) {
+	kind := r.URL.Query().Get("kind")
+	if kind != "" && kind != "DIARY" && kind != "AGENDA" {
+		WriteError(w, http.StatusBadRequest, "نوع غير معروف")
+		return
+	}
+	rows, err := h.repo.Notes(middleware.EmployeeIDFromContext(r), kind, r.URL.Query().Get("q"), 200)
+	if err != nil {
+		WriteError(w, http.StatusInternalServerError, "تعذر جلب الملاحظات")
+		return
+	}
+	WriteJSON(w, http.StatusOK, rows)
+}
+
+// POST /api/secretary/notes — {kind, body, at?}: at بصيغة 2006-01-02T15:04 بتوقيت بغداد.
+func (h *SecretaryHandler) AddNote(w http.ResponseWriter, r *http.Request) {
+	var in struct {
+		Kind string `json:"kind"`
+		Body string `json:"body"`
+		At   string `json:"at"`
+	}
+	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 32<<10)).Decode(&in); err != nil {
+		WriteError(w, http.StatusBadRequest, "طلب غير صالح")
+		return
+	}
+	body := strings.TrimSpace(in.Body)
+	if body == "" {
+		WriteError(w, http.StatusBadRequest, "اكتب شي أول")
+		return
+	}
+	if rs := []rune(body); len(rs) > 5000 {
+		body = string(rs[:5000])
+	}
+	if in.Kind != "DIARY" && in.Kind != "AGENDA" {
+		WriteError(w, http.StatusBadRequest, "نوع غير معروف")
+		return
+	}
+	var at *time.Time
+	if s := strings.TrimSpace(in.At); s != "" {
+		t, err := time.ParseInLocation("2006-01-02T15:04", s, secLoc)
+		if err != nil {
+			WriteError(w, http.StatusBadRequest, "صيغة الوقت غلط")
+			return
+		}
+		at = &t
+	}
+	n, err := h.repo.AddNote(middleware.EmployeeIDFromContext(r), in.Kind, body, at)
+	if err != nil {
+		WriteError(w, http.StatusInternalServerError, "تعذر الحفظ")
+		return
+	}
+	WriteJSON(w, http.StatusCreated, n)
+}
+
+// PUT /api/secretary/notes/{id}/done — {done}
+func (h *SecretaryHandler) NoteDone(w http.ResponseWriter, r *http.Request) {
+	var in struct {
+		Done bool `json:"done"`
+	}
+	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 1<<10)).Decode(&in); err != nil {
+		WriteError(w, http.StatusBadRequest, "طلب غير صالح")
+		return
+	}
+	if err := h.repo.SetNoteDone(middleware.EmployeeIDFromContext(r), r.PathValue("id"), in.Done); err != nil {
+		WriteError(w, http.StatusNotFound, err.Error())
+		return
+	}
+	WriteJSON(w, http.StatusOK, map[string]any{"ok": true})
+}
+
+// DELETE /api/secretary/notes/{id} — ملاحظته هو بس.
+func (h *SecretaryHandler) DeleteNote(w http.ResponseWriter, r *http.Request) {
+	if err := h.repo.DeleteNote(middleware.EmployeeIDFromContext(r), r.PathValue("id")); err != nil {
+		WriteError(w, http.StatusNotFound, err.Error())
+		return
+	}
+	WriteJSON(w, http.StatusOK, map[string]any{"ok": true})
+}
+
+// GET /api/secretary/agenda — المقابلات الي انحدد موعدها + بنوده، من اليوم وبعد.
+func (h *SecretaryHandler) Agenda(w http.ResponseWriter, r *http.Request) {
+	rows, err := h.repo.Agenda(middleware.EmployeeIDFromContext(r))
+	if err != nil {
+		WriteError(w, http.StatusInternalServerError, "تعذر جلب جدول الأعمال")
+		return
+	}
+	WriteJSON(w, http.StatusOK, rows)
+}

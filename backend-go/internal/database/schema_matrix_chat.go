@@ -845,5 +845,21 @@ func matrixChatMigrations() []Migration {
 			);
 			CREATE INDEX IF NOT EXISTS "StealthLog_employee_idx" ON "StealthLog" ("employeeId", "createdAt" DESC);
 		`,
+	}, {
+		// 📔 «مذكراتي» و«جدول أعمالي» (دازاي 10-23): ملاحظات المالك/المدير الخاصة —
+		// كل واحد يشوف ملاحظاته بس. DIARY مذكرة حرة، AGENDA شي بجدوله بوقت.
+		Version: "0391_secretary_note",
+		SQL: `
+			CREATE TABLE IF NOT EXISTS "SecretaryNote" (
+				id TEXT PRIMARY KEY,
+				"ownerId" TEXT NOT NULL REFERENCES "Employee"(id) ON DELETE CASCADE,
+				kind TEXT NOT NULL CHECK (kind IN ('DIARY', 'AGENDA')),
+				body TEXT NOT NULL,
+				"at" TIMESTAMPTZ,
+				"doneAt" TIMESTAMPTZ,
+				"createdAt" TIMESTAMPTZ NOT NULL DEFAULT now()
+			);
+			CREATE INDEX IF NOT EXISTS "SecretaryNote_owner_idx" ON "SecretaryNote" ("ownerId", kind, "createdAt" DESC);
+		`,
 	}}
 }

@@ -49,6 +49,28 @@ func secISO(t time.Time) *string {
 }
 
 func registerSecretaryTools(a *MatrixAgent, repo *repository.SecretaryRepository, tc *SecretaryTurnCtx) {
+	// 📔 مذكرات المستخدم وجدوله — قراءة بس، ملاحظاته هو (دازاي 10-23).
+	a.AddTool(agentTool{Name: "my_notes",
+		Desc:  "اقرا مذكرات المستخدم («مذكراتي») أو بنود جدوله، الأحدث أول. q اختياري للبحث (مثلاً اسم موظف). استعملها من يسأل «شنو سويت ويا فلان» أو «شنو كتبت».",
+		Props: map[string]any{"q": map[string]any{"type": "string", "description": "كلمة بحث اختيارية"}},
+		Run: func(in map[string]any, _ *nameMask) (string, error) {
+			rows, err := repo.Notes(tc.UserID, "", strArg(in, "q"), 20)
+			if err != nil {
+				return "", err
+			}
+			if len(rows) == 0 {
+				return "ماكو مذكرات مطابقة.", nil
+			}
+			var b strings.Builder
+			for _, n := range rows {
+				kind := "مذكرة"
+				if n.Kind == "AGENDA" {
+					kind = "بند جدول (" + secFmt(n.At) + ")"
+				}
+				fmt.Fprintf(&b, "- [%s · %s] %s\n", bagh(n.CreatedAt).Format("2006-01-02"), kind, n.Body)
+			}
+			return b.String(), nil
+		}})
 	a.AddTool(agentTool{Name: "find",
 		Desc:  "دوّر بالنظام بالاسم أو الكود أو رقم الهاتف: حجوزات، مشاريع، زبائن، موظفين (٥ لكل نوع). أول أداة لأي سؤال عن شخص أو حجز أو مشروع.",
 		Props: map[string]any{"q": map[string]any{"type": "string", "description": "الاسم أو الكود أو الهاتف"}},

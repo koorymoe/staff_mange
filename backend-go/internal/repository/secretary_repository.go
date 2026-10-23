@@ -412,3 +412,85 @@ func (r *SecretaryRepository) MarkFailed(id, empID, result string) error {
 	_, err := r.db.Exec(`UPDATE "SecretaryAction" SET status = 'FAILED', result = $3 WHERE id = $1 AND "employeeId" = $2`, id, empID, result)
 	return err
 }
+
+// ── «مذكراتي» و«جدول أعمالي» (دازاي 10-23) — كل مستخدم ملاحظاته بس ──
+
+type SecretaryNote struct {
+	ID        string     `db:"id" json:"id"`
+	Kind      string     `db:"kind" json:"kind"` // DIARY | AGENDA
+	Body      string     `db:"body" json:"body"`
+	At        *time.Time `db:"at" json:"at"`
+	DoneAt    *time.Time `db:"doneAt" json:"doneAt"`
+	CreatedAt time.Time  `db:"createdAt" json:"createdAt"`
+}
+
+const secNoteCols = `id, kind, body, "at", "doneAt", "createdAt"`
+
+func (r *SecretaryRepository) AddNote(owner, kind, body string, at *time.Time) (*SecretaryNote, error) {
+	var n SecretaryNote
+	err := r.db.Get(&n, `INSERT INTO "SecretaryNote" (id, "ownerId", kind, body, "at")
+		VALUES ($1,$2,$3,$4,$5) RETURNING `+secNoteCols, uuid.NewString(), owner, kind, body, at)
+	return &n, err
+}
+
+// Notes ملاحظات نوع معيّن، الأحدث أول. q اختياري (بحث بالنص).
+func (r *SecretaryRepository) Notes(owner, kind, q string, limit int) ([]SecretaryNote, error) {
+	if limit <= 0 || limit > 200 {
+		limit = 100
+	}
+	rows := []SecretaryNote{}
+	err := r.db.Select(&rows, `SELECT `+secNoteCols+` FROM "SecretaryNote"
+		WHERE "ownerId" = $1 AND ($2 = '' OR kind = $2) AND ($3 = '' OR body ILIKE '%' || $3 || '%')
+		ORDER BY "createdAt" DESC LIMIT $4`, owner, kind, strings.TrimSpace(q), limit)
+	return rows, err
+}
+
+func (r *SecretaryRepository) SetNoteDone(owner, id string, done bool) error {
+	res, err := r.db.Exec(`UPDATE "SecretaryNote" SET "doneAt" = CASE WHEN $3 THEN now() END
+		WHERE id = $1 AND "ownerId" = $2`, id, owner, done)
+	return noteHit(res, err)
+}
+
+func (r *SecretaryRepository) DeleteNote(owner, id string) error {
+	res, err := r.db.Exec(`DELETE FROM "SecretaryNote" WHERE id = $1 AND "ownerId" = $2`, id, owner)
+	return noteHit(res, err)
+}
+
+func noteHit(res sql.Result, err error) error {
+	if err != nil {
+		return err
+	}
+	if n, _ := res.RowsAffected(); n == 0 {
+		return errors.New("الملاحظة مو موجودة")
+	}
+	return nil
+}
+
+// AgendaItem بند بـ«جدول أعمالي»: مقابلة/ضيف انحدد موعده، أو شي سجّله المستخدم.
+type AgendaItem struct {
+	ID     string     `db:"id" json:"id"`
+	Kind   string     `db:"kind" json:"kind"` // meeting | guest | mine
+	Title  string     `db:"title" json:"title"`
+	Who    string     `db:"who" json:"who"`
+	Note   string     `db:"note" json:"note"`
+	At     *time.Time `db:"at" json:"at"`
+	DoneAt *time.Time `db:"doneAt" json:"doneAt"`
+}
+
+// Agenda من بداية اليوم (بغداد) وبعد، ويا بنوده الي ما إلها وقت ولسه ما خلصت.
+func (r *SecretaryRepository) Agenda(owner string) ([]AgendaItem, error) {
+	rows := []AgendaItem{}
+	err := r.db.Select(&rows, `
+		SELECT m.id, lower(m.kind) AS kind,
+		       CASE WHEN m.kind = 'GUEST' THEN 'ضيف: ' || COALESCE(m."guestName", '') ELSE 'مقابلة' END AS title,
+		       COALESCE(e.name, '') AS who, COALESCE(m.reason, '') AS note, m."scheduledAt" AS "at", NULL::timestamptz AS "doneAt"
+		FROM "MeetingRequest" m LEFT JOIN "Employee" e ON e.id = m."employeeId"
+		WHERE m.status = 'SCHEDULED' AND baghdad_date(m."scheduledAt") >= baghdad_today()
+		UNION ALL
+		SELECT n.id, 'mine', n.body, '', '', n."at", n."doneAt"
+		FROM "SecretaryNote" n
+		WHERE n."ownerId" = $1 AND n.kind = 'AGENDA'
+		  AND ((n."at" IS NOT NULL AND baghdad_date(n."at") >= baghdad_today()) OR (n."at" IS NULL AND n."doneAt" IS NULL))
+		ORDER BY "at" NULLS LAST LIMIT 100`, owner)
+	return rows, err
+}
