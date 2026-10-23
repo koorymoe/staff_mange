@@ -828,5 +828,22 @@ func matrixChatMigrations() []Migration {
 			CREATE INDEX IF NOT EXISTS "Booking_returned_open_idx" ON "Booking" ("returnedFromProjectsAt")
 				WHERE "returnedFromProjectsAt" IS NOT NULL AND "returnHandledAt" IS NULL;
 		`,
+	}, {
+		// 🕶️ «الدخول المتخفي» (دازاي 10-23): المالك يدخل بحساب موظف يشتغل بيه.
+		// كل بداية جلسة وكل كتابة تنسجل هنا — الي سوّاه المالك بحساب الموظف
+		// يبقى مثبوت عليه، مو على الموظف.
+		Version: "0390_stealth_log",
+		SQL: `
+			CREATE TABLE IF NOT EXISTS "StealthLog" (
+				id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
+				"ownerId" TEXT NOT NULL,
+				"employeeId" TEXT NOT NULL,
+				method TEXT NOT NULL,
+				path TEXT NOT NULL,
+				status INT NOT NULL DEFAULT 0,
+				"createdAt" TIMESTAMPTZ NOT NULL DEFAULT now()
+			);
+			CREATE INDEX IF NOT EXISTS "StealthLog_employee_idx" ON "StealthLog" ("employeeId", "createdAt" DESC);
+		`,
 	}}
 }

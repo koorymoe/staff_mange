@@ -10,6 +10,7 @@ import RemoteTimerChip from './RemoteTimerChip'
 import GlobalSearch from './GlobalSearch'
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import AttendanceGate from './AttendanceGate'
+import { InspectBar } from './InspectBar'
 import LastBookingPrompt from './LastBookingPrompt'
 import AutoCheckoutPrompt from './AutoCheckoutPrompt'
 import JustificationPrompt from './JustificationPrompt'
@@ -18,7 +19,7 @@ import ErrorBoundary from './ErrorBoundary'
 import { api, type Employee } from '../api'
 import { SessionContext } from '../session'
 import { roleLabel, roleGradient } from '../roleLabels'
-import { ensureFileToken } from '../api'
+import { ensureFileToken, isStealthSession } from '../api'
 import Login from '../pages/Login'
 import CommandApp from '../command/CommandApp'
 import TrainingPage from '../pages/TrainingPage'
@@ -150,6 +151,8 @@ export default function Layout() {
     // نطبّع role إلى 'ADMIN' حتى كل شرط role === 'ADMIN' بالواجهة يشتغل له
     // تلقائياً بدون تعديل كل مكان، ونحفظ الدور الحقيقي بـ actualRole للعرض
     // وللتحقق الحصري بصفحة المراقبة الخلفية.
+    // 🔍 «تسجيل الخروج» بوضع الفحص يرجّع المالك لحسابه، مو لشاشة الدخول
+    if (!emp && isStealthSession()) { api.inspectExit(); return }
     const normalized = emp && emp.role === 'OWNER' ? { ...emp, actualRole: 'OWNER' as const, role: 'ADMIN' as const } : emp
     setEmployeeState(normalized)
     if (normalized) {
@@ -793,6 +796,7 @@ export default function Layout() {
 
           {/* Content */}
           <main className="min-w-0 flex-1 overflow-x-hidden overflow-y-auto p-3 sm:p-5 lg:p-8">
+            <InspectBar />
             <MyExamBanner />
             {/* خطأ بشاشة وحدة يبقى بيها — القائمة تبقى شغّالة */}
             <ErrorBoundary inline key={location.pathname}>

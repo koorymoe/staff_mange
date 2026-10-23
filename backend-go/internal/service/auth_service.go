@@ -49,6 +49,9 @@ type Claims struct {
 	Role       string `json:"role"`
 	// Realm فارغ = staff (التوكنات القديمة الي صدرت قبل هاي الميزة).
 	Realm string `json:"realm,omitempty"`
+	// StealthBy 🕶️ الدخول المتخفي (ع 10-23): معرّف المالك الي فتح حساب هذا
+	// الموظف. فارغ = جلسة عادية.
+	StealthBy string `json:"stealthBy,omitempty"`
 	jwt.RegisteredClaims
 }
 
@@ -219,6 +222,31 @@ func (s *AuthService) generateTokenForRealm(employee *model.Employee, realm stri
 	return token.SignedString(s.jwtSecret)
 }
 
+// ErrStealthTarget الحساب ما ينفتح متخفي.
+var ErrStealthTarget = errors.New("هذا الحساب ما ينفتح بالدخول المتخفي")
+
+// StealthToken 🕶️ توكن متخفي: المالك يدخل بحساب موظف يشتغل بيه، بلا حضور
+// ولا «متصل» ولا مخالفات عليه. ساعتين بس. التحقق إن المتصل مالك بالمسار
+// (RequireOwner — الدور من القاعدة، فالجلسة المتخفية نفسها ما تكدر تفتح ثانية).
+func (s *AuthService) StealthToken(ownerID, employeeID string) (*model.Employee, string, error) {
+	emp, err := s.employees.FindByID(employeeID)
+	if err != nil || emp == nil || emp.Status != "ACTIVE" || emp.Role == "OWNER" || emp.ID == ownerID {
+		return nil, "", ErrStealthTarget
+	}
+	claims := Claims{
+		EmployeeID: emp.ID, Role: emp.Role, Realm: RealmStaff, StealthBy: ownerID,
+		RegisteredClaims: jwt.RegisteredClaims{
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(2 * time.Hour)),
+			IssuedAt:  jwt.NewNumericDate(time.Now()),
+		},
+	}
+	token, err := jwt.NewWithClaims(jwt.SigningMethodHS256, claims).SignedString(s.jwtSecret)
+	if err != nil {
+		return nil, "", err
+	}
+	return emp, token, nil
+}
+
 // SessionValid يتأكد إن التوكن صدر *بعد* آخر إبطال جلسات للموظف.
 func (s *AuthService) SessionValid(employeeID string, issuedAt *jwt.NumericDate) bool {
 	if issuedAt == nil {
@@ -270,7 +298,6 @@ func HashPassword(password string) (string, error) {
 	hashed, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	return string(hashed), err
 }
-
 
 func (s *AuthService) CommandAccounts() ([]repository.CommandAccount, error) {
 	return s.employees.ListCommandAccounts()

@@ -30,6 +30,11 @@ func (h *NotificationHandler) List(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *NotificationHandler) MarkRead(w http.ResponseWriter, r *http.Request) {
+	// 🕶️ المتخفي ما يأشّر إشعارات الموظف «مقروءة» — حتى ما تضيع عليه
+	if middleware.IsStealth(r) {
+		WriteJSON(w, http.StatusOK, map[string]bool{"success": true})
+		return
+	}
 	employeeID := middleware.EmployeeIDFromContext(r)
 	if err := h.service.MarkRead(r.PathValue("id"), employeeID); err != nil {
 		WriteError(w, http.StatusBadRequest, "تعذر تحديث الإشعار")
@@ -39,6 +44,11 @@ func (h *NotificationHandler) MarkRead(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *NotificationHandler) MarkAllRead(w http.ResponseWriter, r *http.Request) {
+	// 🕶️ المتخفي ما يأشّر إشعارات الموظف «مقروءة» — حتى ما تضيع عليه
+	if middleware.IsStealth(r) {
+		WriteJSON(w, http.StatusOK, map[string]bool{"success": true})
+		return
+	}
 	employeeID := middleware.EmployeeIDFromContext(r)
 	if err := h.service.MarkAllRead(employeeID); err != nil {
 		WriteError(w, http.StatusBadRequest, "تعذر تحديث الإشعارات")

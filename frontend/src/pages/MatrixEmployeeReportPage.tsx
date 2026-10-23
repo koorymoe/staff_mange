@@ -6,6 +6,7 @@ import { api, type EmployeeReport, type ReportLine } from '../api'
 import MatrixEyeGraphic from '../components/MatrixEyeGraphic'
 import { GROUP_LABEL, type EyeGroup } from '../components/matrixEyeColors'
 import { useSession } from '../session'
+import { InspectButton } from '../components/InspectBar'
 import MatrixNote from '../components/MatrixNote'
 
 // ═══ تقرير ماتركس عن موظف — بالعراقي، بأرقام حقيقية ═══
@@ -97,6 +98,7 @@ export default function MatrixEmployeeReportPage() {
           </div>
         </div>
         <div className="flex items-center gap-2">
+          <InspectButton employeeId={id} name={rep?.name} />
           {isAdmin
             ? <Link to="/?board=matrix" className="text-sm text-brand-700 underline">← عيون ماتركس</Link>
             : <button onClick={() => navigate(-1)} className="text-sm text-brand-700 underline">← رجوع</button>}

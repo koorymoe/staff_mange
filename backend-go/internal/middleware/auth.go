@@ -26,6 +26,8 @@ const (
 	ContextEmployeeID contextKey = "employeeId"
 	ContextRole       contextKey = "role"
 	ContextRealm      contextKey = "realm"
+	// ContextStealthBy 🕶️ معرّف المالك إذا الجلسة دخول متخفي (ع 10-23).
+	ContextStealthBy contextKey = "stealthBy"
 )
 
 // writeError يكتب استجابة خطأ بنفس شكل handler.WriteError دون استيراد حزمة
@@ -87,12 +89,35 @@ func RequireAuth(auth *service.AuthService, employees *repository.EmployeeReposi
 				return
 			}
 
-			if seenRecorder != nil {
+			stealth := claims.StealthBy != ""
+			// 🕶️ المتخفي ما يطلّع الموظف «متصل هسه»
+			if seenRecorder != nil && !stealth {
 				seenRecorder(claims.EmployeeID)
 			}
 			ctx := context.WithValue(r.Context(), ContextEmployeeID, claims.EmployeeID)
 			ctx = context.WithValue(ctx, ContextRole, role)
 			ctx = context.WithValue(ctx, ContextRealm, realm)
+			if stealth {
+				ctx = context.WithValue(ctx, ContextStealthBy, claims.StealthBy)
+				// 🔍 وضع الفحص **قراءة بس** (ع 10-23: «اريد بس افحص»): أي تعديل
+				// ينرفض من السيرفر — ما ينحفظ شي باسم الموظف أبداً، ولا ينحسب مخالفة.
+				if r.Method != http.MethodGet && r.Method != http.MethodHead && r.Method != http.MethodOptions {
+					// كتابات تلقائية من الواجهة (قريت الإشعار، موقع الجهاز): «تمام» بلا ما
+					// تنحفظ — حتى ما تطلع رسالة خطأ، ولا تتأشّر إشعارات الموظف مقروءة.
+					if p := r.URL.Path; strings.HasPrefix(p, "/api/notifications/") || strings.HasPrefix(p, "/api/location-pings") {
+						w.Header().Set("Content-Type", "application/json")
+						_, _ = w.Write([]byte(`{"success":true,"ok":true}`))
+						return
+					}
+					if stealthRecorder != nil {
+						go stealthRecorder(claims.StealthBy, claims.EmployeeID, r.Method, r.URL.Path, http.StatusForbidden)
+					}
+					writeError(w, http.StatusForbidden, "🔍 وضع الفحص — قراءة بس، ما ينحفظ شي باسم الموظف")
+					return
+				}
+				next.ServeHTTP(w, r.WithContext(ctx))
+				return
+			}
 			// سجل النشاط: كل حفظ ناجح (مو قراءة) ينكتب — «شنو سوّى اليوم».
 			if activityRecorder != nil && r.Method != http.MethodGet && r.Method != http.MethodHead && r.Method != http.MethodOptions {
 				sw := &statusWriter{ResponseWriter: w, status: http.StatusOK}
@@ -167,6 +192,11 @@ func registerAuthzViolation(employeeID string, now time.Time) int {
 //
 // وبكل الحالات ننبّه الإدارة حتى القرار البشري يضل موجود.
 func recordViolationAndBlock(w http.ResponseWriter, r *http.Request, employees *repository.EmployeeRepository, notifications *repository.NotificationRepository, employeeID string) {
+	// 🕶️ المالك بالدخول المتخفي: الرفض ما ينحسب مخالفة على الموظف ولا يقرّبه من الحظر
+	if r != nil && IsStealth(r) {
+		writeError(w, http.StatusForbidden, "🔍 وضع الفحص — هذا مو مسموح لدور هذا الموظف (ما انحسبت مخالفة)")
+		return
+	}
 	if employeeID != "" && employees != nil {
 		if violations, err := employees.RecordAuthzViolation(employeeID); err == nil {
 			name, nameErr := employees.NameByID(employeeID)
@@ -640,6 +670,19 @@ var activityRecorder func(employeeID, method, pattern, path string, status int)
 
 var seenRecorder func(employeeID string)
 
+var stealthRecorder func(ownerID, employeeID, method, path string, status int)
+
+// SetStealthRecorder يربط سجل الدخول المتخفي (يُنادى من main).
+func SetStealthRecorder(f func(ownerID, employeeID, method, path string, status int)) {
+	stealthRecorder = f
+}
+
+// IsStealth الطلب من جلسة دخول متخفي؟
+func IsStealth(r *http.Request) bool {
+	v, _ := r.Context().Value(ContextStealthBy).(string)
+	return v != ""
+}
+
 // SetSeenRecorder يربط «آخر ظهور» — يُنادى بكل طلب مسجّل (المسجِّل نفسه يخفف الكتابة).
 func SetSeenRecorder(f func(employeeID string)) { seenRecorder = f }
 
@@ -674,4 +717,19 @@ func clearAuthzViolations(employeeID string) {
 	authzViolationLog.Lock()
 	defer authzViolationLog.Unlock()
 	delete(authzViolationLog.hits, employeeID)
+}
+
+// SkipInStealth 🕶️ مسارات تخص الموظف نفسه (موقعه بالـGPS…) — بالدخول المتخفي
+// ترجع «تمام» بلا ما تسجّل شي، حتى موقع جهاز المالك ما ينحسب موقع الموظف.
+func SkipInStealth() func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if IsStealth(r) {
+				w.Header().Set("Content-Type", "application/json")
+				_, _ = w.Write([]byte(`{"ok":true,"stealth":true}`))
+				return
+			}
+			next.ServeHTTP(w, r)
+		})
+	}
 }

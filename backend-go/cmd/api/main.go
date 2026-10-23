@@ -1107,6 +1107,16 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	// الكنسة اليدوية للإدارة والفحص — التلقائية تشتغل بالخلفية
 	mux.Handle("POST /api/bookings/waiting-reminder-sweep", middleware.Chain(http.HandlerFunc(bookingHandler.RunWaitingReminderSweep), requireAuth, requireAdmin))
 	// باسورد مركز القيادة — المالك بس بهاي المرحلة
+	// 🕶️ الدخول المتخفي (ع 10-23): المالك وحده يفتح حساب موظف، وكل كتابة تنسجل بـStealthLog
+	stealthLog := func(ownerID, employeeID, method, path string, status int) {
+		if _, err := db.Exec(`INSERT INTO "StealthLog" ("ownerId", "employeeId", method, path, status) VALUES ($1, $2, $3, $4, $5)`,
+			ownerID, employeeID, method, path, status); err != nil {
+			log.Printf("stealth log: %v", err)
+		}
+	}
+	middleware.SetStealthRecorder(stealthLog)
+	authHandler.SetStealthLog(stealthLog)
+	mux.Handle("POST /api/auth/stealth", middleware.Chain(http.HandlerFunc(authHandler.Stealth), requireAuth, middleware.RequireOwner()))
 	mux.Handle("PUT /api/auth/command-password", middleware.Chain(http.HandlerFunc(authHandler.SetCommandPassword), requireAuth, middleware.RequireOwner()))
 	mux.Handle("GET /api/auth/command-accounts", middleware.Chain(http.HandlerFunc(authHandler.CommandAccounts), requireAuth, middleware.RequireOwner()))
 	mux.Handle("DELETE /api/auth/command-password/{employeeId}", middleware.Chain(http.HandlerFunc(authHandler.ClearCommandPassword), requireAuth, middleware.RequireOwner()))
@@ -1288,7 +1298,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	mux.Handle("PUT /api/company-location", middleware.Chain(http.HandlerFunc(fieldTrackHandler.SetCompany), requireAuth, requireAdmin))
 	mux.Handle("PUT /api/bookings/{id}/accept", middleware.Chain(http.HandlerFunc(fieldTrackHandler.Accept), requireAuth, requireBookingParty))
 	mux.Handle("PUT /api/bookings/{id}/depart", middleware.Chain(http.HandlerFunc(fieldTrackHandler.Depart), requireAuth, requireBookingParty))
-	mux.Handle("POST /api/location-pings/batch", middleware.Chain(http.HandlerFunc(fieldTrackHandler.PingBatch), requireAuth))
+	mux.Handle("POST /api/location-pings/batch", middleware.Chain(http.HandlerFunc(fieldTrackHandler.PingBatch), requireAuth, middleware.SkipInStealth()))
 	mux.Handle("GET /api/bookings/{id}/track", middleware.Chain(http.HandlerFunc(fieldTrackHandler.Track), requireAuth, requireFieldMonitor))
 	// (ع) 10-15: فحص المتأخرات + فحص دقة ماتركس
 	lateAudit := handler.NewLateAuditHandler(db)
@@ -1873,7 +1883,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	// إرسال نقطة موقع مفتوح لأي موظف مسجل دخول (يرسل موقعه هو بس، محمي داخل الهاندلر
 	// عبر EmployeeIDFromContext). القراءة (مين وين الحين، مسار أي موظف) محصورة بمن
 	// يدير الفرق الميدانية فعلاً — حتى ما يقدر أي فني يتتبع مواقع زملائه.
-	mux.Handle("POST /api/location-pings", middleware.Chain(http.HandlerFunc(locationPingHandler.Create), requireAuth))
+	mux.Handle("POST /api/location-pings", middleware.Chain(http.HandlerFunc(locationPingHandler.Create), requireAuth, middleware.SkipInStealth()))
 	mux.Handle("GET /api/location-pings/latest", middleware.Chain(http.HandlerFunc(locationPingHandler.Latest), requireAuth, requireFieldMonitor))
 	mux.Handle("GET /api/location-pings/path", middleware.Chain(http.HandlerFunc(locationPingHandler.Path), requireAuth, requireFieldMonitor))
 

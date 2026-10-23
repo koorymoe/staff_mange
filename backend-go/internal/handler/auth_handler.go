@@ -23,7 +23,8 @@ func clientIP(r *http.Request) string {
 }
 
 type AuthHandler struct {
-	auth *service.AuthService
+	auth       *service.AuthService
+	stealthLog func(ownerID, employeeID, method, path string, status int)
 }
 
 func NewAuthHandler(auth *service.AuthService) *AuthHandler {
@@ -91,7 +92,6 @@ func (h *AuthHandler) ChangePassword(w http.ResponseWriter, r *http.Request) {
 	WriteJSON(w, http.StatusOK, map[string]string{"token": token})
 }
 
-
 // PUT /api/auth/command-password — يحط أو يغيّر باسورد مركز القيادة.
 //
 // قرار (ع) 10-09: المالك يختار أي حساب موجود وينطيه الرمز الثاني. المسار
@@ -134,4 +134,31 @@ func (h *AuthHandler) ClearCommandPassword(w http.ResponseWriter, r *http.Reques
 		return
 	}
 	WriteJSON(w, http.StatusOK, map[string]bool{"ok": true})
+}
+
+// POST /api/auth/stealth — 🕶️ المالك يدخل بحساب موظف (ع 10-23). الحارس
+// RequireOwner (الدور من القاعدة)، فجلسة متخفية ما تكدر تفتح ثانية.
+func (h *AuthHandler) Stealth(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		EmployeeID string `json:"employeeId"`
+	}
+	if err := DecodeJSON(r, &req); err != nil || req.EmployeeID == "" {
+		WriteError(w, http.StatusBadRequest, "اختار الموظف")
+		return
+	}
+	owner := middleware.EmployeeIDFromContext(r)
+	employee, token, err := h.auth.StealthToken(owner, req.EmployeeID)
+	if err != nil {
+		WriteError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	if h.stealthLog != nil {
+		h.stealthLog(owner, employee.ID, "STEALTH", "بداية دخول متخفي", http.StatusOK)
+	}
+	WriteJSON(w, http.StatusOK, model.LoginResponse{Employee: *employee, Token: token, Realm: service.RealmStaff})
+}
+
+// SetStealthLog يربط سجل الدخول المتخفي.
+func (h *AuthHandler) SetStealthLog(f func(ownerID, employeeID, method, path string, status int)) {
+	h.stealthLog = f
 }

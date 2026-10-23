@@ -3869,6 +3869,36 @@ export const api = {
       secondaryRoles?: EmployeeRole[]
     },
   ) => request<Employee>('/employees', { method: 'POST', body: JSON.stringify(data) }),
+  /** 🔍 وضع الفحص (ع 10-23): المالك يشوف حساب موظف مثل ما يشوفه هو — قراءة بس،
+   *  السيرفر يرفض أي تعديل. جلسة المالك تنحفظ بالتبويب حتى «رجوع» يرجّعه. */
+  inspectEnter: async (employeeId: string) => {
+    const r = await request<Employee & { token: string }>('/auth/stealth', { method: 'POST', body: JSON.stringify({ employeeId }) })
+    try {
+      sessionStorage.setItem('inspectReturn', JSON.stringify({ token: localStorage.getItem('authToken'), employee: localStorage.getItem('currentEmployee') }))
+      sessionStorage.setItem('inspectName', r.name)
+    } catch { /* بلا تخزين: «رجوع» يطلّعه لشاشة الدخول */ }
+    const { token, ...emp } = r
+    localStorage.setItem('authToken', token)
+    // الواجهة تقرا الجلسة من currentEmployee — بلاه تطلع شاشة الدخول
+    localStorage.setItem('currentEmployee', JSON.stringify(emp))
+    fileToken = ''
+    fileTokenAt = 0
+    window.location.assign(import.meta.env.BASE_URL)
+  },
+  /** يرجّع المالك لحسابه. */
+  inspectExit: () => {
+    let saved: { token: string | null; employee: string | null } | null = null
+    try { saved = JSON.parse(sessionStorage.getItem('inspectReturn') || 'null'); sessionStorage.removeItem('inspectReturn'); sessionStorage.removeItem('inspectName') } catch { /* */ }
+    if (saved?.token) {
+      localStorage.setItem('authToken', saved.token)
+      if (saved.employee) localStorage.setItem('currentEmployee', saved.employee); else localStorage.removeItem('currentEmployee')
+    } else {
+      localStorage.removeItem('authToken'); localStorage.removeItem('currentEmployee')
+    }
+    fileToken = ''
+    fileTokenAt = 0
+    window.location.assign(import.meta.env.BASE_URL)
+  },
   login: async (username: string, password: string) => {
     const result = await request<Employee & { token: string; realm?: string }>('/auth/login', {
       method: 'POST',

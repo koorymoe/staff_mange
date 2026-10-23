@@ -351,6 +351,10 @@ func (h *AttendanceHandler) Gate(w http.ResponseWriter, r *http.Request) {
 		WriteError(w, http.StatusInternalServerError, "تعذر")
 		return
 	}
+	// 🕶️ المالك بالدخول المتخفي ما ينطلب منه حضور — ولا ينسأل «شنو صار بعد دوامك»
+	if middleware.IsStealth(r) {
+		g.Required, g.Offer, g.AfterShift, g.AutoClosed = false, false, false, nil
+	}
 	WriteJSON(w, http.StatusOK, g)
 }
 

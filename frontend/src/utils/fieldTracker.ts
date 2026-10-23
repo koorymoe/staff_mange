@@ -1,4 +1,4 @@
-import { api } from '../api'
+import { api, isStealthSession } from '../api'
 import { isNetworkError } from './offlineStages'
 
 // ═══ تتبع المسار — قرار (ع) 10-14 ═══
@@ -74,6 +74,8 @@ function stopNow() {
 }
 
 function startOn(bookingId: string) {
+  // 🕶️ المالك بالدخول المتخفي: موقع جهازه مو موقع الموظف — ما نتتبّع
+  if (isStealthSession()) return
   if (bookingId === activeBooking && watchId !== null) return
   activeBooking = bookingId
   try { localStorage.setItem(ACTIVE, bookingId) } catch { /* */ }
