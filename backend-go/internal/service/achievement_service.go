@@ -4,6 +4,7 @@ import (
 	"errors"
 	"log"
 	"strings"
+	"unicode/utf8"
 
 	"staffmange-api/internal/model"
 	"staffmange-api/internal/repository"
@@ -92,3 +93,20 @@ func (s *AchievementService) Review(id, reviewerID string, req model.ReviewAchie
 }
 
 func (s *AchievementService) Repo() *repository.AchievementRepository { return s.repo }
+
+// SuggestAchievementReply رد ماتركس المقترح على إنجاز يومي (ع) 10-23.
+// بالقواعد محلياً عمداً: نص التقرير بيه أسماء زبائن وموظفين، وهاي ما تطلع لذكاء خارجي.
+func SuggestAchievementReply(a model.Achievement) (status, reply string) {
+	text := strings.TrimSpace(a.ReportText)
+	n := utf8.RuneCountInString(text)
+	switch {
+	case n < 15 && a.VoiceSeconds != nil:
+		return model.AchievementReviewNeeds, "وصلني الفويس، شكراً 🙏 — بس اكتب ملخص قصير بالنص: شنو سويت اليوم وشنو النتيجة، حتى ينحفظ بسجلك."
+	case n < 40:
+		return model.AchievementReviewNeeds, "شكراً على التقرير 🙏 بس مختصر هواي — اكتب شنو سويت بالضبط، ووكتيش، وشنو النتيجة."
+	case a.BookingCode != nil && *a.BookingCode != "":
+		return model.AchievementReviewGood, "عاشت ايدك على شغل حجز " + *a.BookingCode + " 👏 تقرير واضح — استمر."
+	default:
+		return model.AchievementReviewGood, "عاشت ايدك 👏 تقرير واضح ومفصّل — استمر بهالشكل."
+	}
+}

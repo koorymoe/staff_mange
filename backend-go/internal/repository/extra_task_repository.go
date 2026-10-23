@@ -33,17 +33,21 @@ func (r *ExtraTaskRepository) Create(in model.CreateExtraTaskRequest, byEmployee
 	if in.Priority == model.ExtraTaskUrgent {
 		priority = model.ExtraTaskUrgent
 	}
-	var due *time.Time
-	if in.DueAt != nil && strings.TrimSpace(*in.DueAt) != "" {
-		t, err := time.Parse(time.RFC3339, strings.TrimSpace(*in.DueAt))
-		if err != nil {
-			return nil, errors.New("صيغة الموعد مو صحيحة")
-		}
-		due = &t
+	// (ع) 10-23: «لازم المدير يحدد الوقت» — بلا موعد ما ينعرف إذا الموظف تأخر.
+	if in.DueAt == nil || strings.TrimSpace(*in.DueAt) == "" {
+		return nil, errors.New("حدد آخر موعد للإنجاز — الموظف يشتغل على هذا الوقت")
 	}
+	t, err := time.Parse(time.RFC3339, strings.TrimSpace(*in.DueAt))
+	if err != nil {
+		return nil, errors.New("صيغة الموعد مو صحيحة")
+	}
+	if t.Before(time.Now()) {
+		return nil, errors.New("آخر موعد لازم يكون بعد هسه")
+	}
+	due := &t
 
 	var row model.ExtraTask
-	err := r.db.Get(&row, `
+	err = r.db.Get(&row, `
 		INSERT INTO "ExtraTask" (id, title, description, "assignedToId", "assignedById", priority, "dueAt")
 		VALUES ($1,$2,NULLIF($3,''),$4,$5,$6,$7)
 		RETURNING *`,

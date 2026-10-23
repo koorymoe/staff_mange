@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { api, type Achievement } from '../api'
 import { VoicePlayer } from '../components/VoiceNote'
 
-// ═══ الإنجازات (ماتركس) — للمالك ومدير النظام حصراً ═══
+// ═══ الإنجازات (ماتركس) — للمالك والمدير والمراقب (ع) 10-23 ═══
 //
 // كل تقرير يومي رفعه أي موظف بأي دور — الهدف يخلي ماتركس يتعرف
 // أكثر على الموظفين وسلوكهم. المراجعة هنا تقييم بس («زين» أو «يحتاج
@@ -30,16 +30,16 @@ export default function AchievementsPage() {
     return () => { alive = false }
   }, [day])
 
-  const review = async (id: string, status: 'GOOD' | 'NEEDS_REVIEW') => {
-    let note = ''
-    if (status === 'NEEDS_REVIEW') {
-      note = window.prompt('ملاحظتك على هذا التقرير؟') || ''
-      if (!note.trim()) return
-    }
-    setBusyId(id)
+  // رد ماتركس المقترح — قابل للتعديل قبل الإرسال (ع) 10-23. بلا window.prompt (محجوب ببعض الأجهزة).
+  const [drafts, setDrafts] = useState<Record<string, string>>({})
+  const review = async (a: Achievement, status: 'GOOD' | 'NEEDS_REVIEW') => {
+    const note = (drafts[a.id] ?? a.suggestedReply ?? '').trim()
+    if (status === 'NEEDS_REVIEW' && !note) { setErr('اكتب ملاحظتك للموظف — شنو يحتاج يصلّح'); return }
+    setBusyId(a.id)
+    setErr(null)
     try {
-      const updated = await api.reviewAchievement(id, status, note.trim())
-      setRows((prev) => prev.map((r) => (r.id === id ? updated : r)))
+      const updated = await api.reviewAchievement(a.id, status, note)
+      setRows((prev) => prev.map((r) => (r.id === a.id ? updated : r)))
     } catch (e) {
       setErr(e instanceof Error ? e.message : 'تعذر الحفظ')
     } finally {
@@ -52,7 +52,7 @@ export default function AchievementsPage() {
       <div>
         <h2 className="text-2xl font-bold text-brand-900">📋 الإنجازات</h2>
         <p className="mt-1 text-sm text-slate-500">
-          تقارير يومية حرة من كل الموظفين — للمالك ومدير النظام حصراً. التقييم يذكّر الموظف، ما يغرّمه.
+          تقارير يومية من الموظفين — ماتركس يقترح الرد وأنت تعدّله وتبعثه. الرد يوصل للموظف كإشعار، ما يغرّمه.
         </p>
       </div>
 
@@ -87,26 +87,37 @@ export default function AchievementsPage() {
             {a.voiceSeconds != null && <VoicePlayer achievementId={a.id} seconds={a.voiceSeconds} />}
 
             {a.reviewStatus === 'PENDING' ? (
-              <div className="mt-3 flex justify-end gap-2">
-                <button
-                  onClick={() => review(a.id, 'GOOD')}
-                  disabled={busyId === a.id}
-                  className="rounded-lg bg-emerald-100 px-3 py-1.5 text-xs font-bold text-emerald-800 hover:bg-emerald-200 disabled:opacity-50"
-                >
-                  ✓ زين
-                </button>
-                <button
-                  onClick={() => review(a.id, 'NEEDS_REVIEW')}
-                  disabled={busyId === a.id}
-                  className="rounded-lg bg-amber-100 px-3 py-1.5 text-xs font-bold text-amber-800 hover:bg-amber-200 disabled:opacity-50"
-                >
-                  ⚠️ يحتاج مراجعة
-                </button>
+              <div className="mt-3 rounded-xl border border-violet-100 bg-violet-50/60 p-3">
+                <label className="mb-1 block text-xs font-bold text-violet-800">
+                  🤖 رد ماتركس المقترح {a.suggestedStatus === 'NEEDS_REVIEW' ? '(يقترح «يحتاج مراجعة»)' : '(يقترح «زين»)'} — عدّله براحتك
+                </label>
+                <textarea
+                  value={drafts[a.id] ?? a.suggestedReply ?? ''}
+                  onChange={(e) => setDrafts((d) => ({ ...d, [a.id]: e.target.value }))}
+                  rows={2}
+                  className="w-full rounded-lg border border-violet-200 bg-white px-3 py-2 text-sm outline-none focus:border-violet-400"
+                />
+                <div className="mt-2 flex flex-wrap justify-end gap-2">
+                  <button
+                    onClick={() => review(a, 'GOOD')}
+                    disabled={busyId === a.id}
+                    className="min-h-9 rounded-lg bg-emerald-100 px-3 text-xs font-bold text-emerald-800 hover:bg-emerald-200 disabled:opacity-50"
+                  >
+                    ✓ زين — ابعث الرد
+                  </button>
+                  <button
+                    onClick={() => review(a, 'NEEDS_REVIEW')}
+                    disabled={busyId === a.id}
+                    className="min-h-9 rounded-lg bg-amber-100 px-3 text-xs font-bold text-amber-800 hover:bg-amber-200 disabled:opacity-50"
+                  >
+                    ⚠️ يحتاج مراجعة — ابعث الرد
+                  </button>
+                </div>
               </div>
             ) : (
               <div className="mt-3 flex items-center justify-end gap-2 text-[12px]">
                 {a.reviewStatus === 'GOOD' ? (
-                  <span className="font-bold text-emerald-700">✓ تمت المراجعة — زين</span>
+                  <span className="font-bold text-emerald-700">✓ تمت المراجعة — زين{a.reviewNote ? ` · ${a.reviewNote}` : ''}</span>
                 ) : (
                   <span className="font-bold text-amber-700">⚠️ {a.reviewNote}</span>
                 )}

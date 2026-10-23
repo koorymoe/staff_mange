@@ -206,7 +206,12 @@ func (h *SecretaryHandler) Confirm(w http.ResponseWriter, r *http.Request) {
 	if d := strings.TrimSpace(f.Description); d != "" {
 		req.Description = &d
 	}
-	if f.DueAt != "" {
+	// (ع) 10-23: الموعد إجباري لكل مهمة — نتأكد قبل القفل حتى المسودة ما تنحرق.
+	if f.DueAt == "" {
+		WriteError(w, http.StatusBadRequest, "حدد آخر موعد للإنجاز قبل الإرسال")
+		return
+	}
+	{
 		t, err := time.ParseInLocation("2006-01-02T15:04", f.DueAt, secLoc)
 		if err != nil {
 			WriteError(w, http.StatusBadRequest, "صيغة الموعد غلط")

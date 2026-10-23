@@ -79,6 +79,7 @@ export default function ExtraTasksPage({ embedded }: { embedded?: boolean } = {}
     setErr(null)
     if (!title.trim()) { setErr('اكتب عنوان المهمة'); return }
     if (!assignee) { setErr('اختار الموظف'); return }
+    if (!dueAt) { setErr('حدد آخر موعد للإنجاز — الموظف يشتغل على هذا الوقت'); return }
     setBusy(true)
     try {
       await api.createExtraTask({
@@ -87,7 +88,7 @@ export default function ExtraTasksPage({ embedded }: { embedded?: boolean } = {}
         assignedToId: assignee,
         priority,
         // datetime-local ينطي وقتاً بلا منطقة — نحوّله ISO كامل
-        dueAt: dueAt ? new Date(dueAt).toISOString() : null,
+        dueAt: new Date(dueAt).toISOString(),
       })
       setTitle(''); setDesc(''); setDueAt(''); setPriority('NORMAL'); setHeard(null)
       setReload((n) => n + 1)
@@ -202,11 +203,11 @@ export default function ExtraTasksPage({ embedded }: { embedded?: boolean } = {}
             </select>
           </div>
           <div>
-            {/* ⚠️ «بلا موعد» حالة مشروعة — ما نفرض تاريخاً وهمياً يخلي
-                المهمة تطلع «متأخرة» وهي أصلاً ما إلها موعد. */}
-            <label className="mb-1 block text-xs font-bold text-slate-500">آخر موعد (اختياري)</label>
+            {/* (ع) 10-23: الموعد إجباري — «هذا الوقت عندك للإنجاز». */}
+            <label className="mb-1 block text-xs font-bold text-slate-500">⏳ آخر موعد للإنجاز <span className="text-red-600">*</span></label>
             <input
               type="datetime-local"
+              required
               value={dueAt}
               onChange={(e) => setDueAt(e.target.value)}
               className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand-500"

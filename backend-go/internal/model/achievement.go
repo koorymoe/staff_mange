@@ -12,9 +12,8 @@ import "time"
 // المراقب/المحاسب يرفعون تقريراً عاماً بلا حجز (شغلهم اليومي ما
 // يرتبط بحجز بالضرورة).
 //
-// 🔴 الوجهة حصراً: مدير النظام والمالك — لا المراقب ولا زميل ثانٍ.
-// مساره مستقل عن صندوق المراقب (`MonitorReview`) عمداً — ذاك يوصله
-// دور MONITOR كمان (`requireMonitor`)، وهذا بالضبط الممنوع هنا.
+// الوجهة: المدير والمالك والمراقب (ع) 10-23 — «تطلع للمدير والمالك والمراقب».
+// المراقب ما يشوف ولا يراجع إنجازات المدير/المالك (ما ينقيّمون) ولا إنجازه هو.
 type Achievement struct {
 	ID           string     `db:"id" json:"id"`
 	EmployeeID   string     `db:"employeeId" json:"employeeId"`
@@ -32,6 +31,9 @@ type Achievement struct {
 	ReviewedByName *string `db:"-" json:"reviewedByName,omitempty"`
 	// فويس مسج مرفق (جدول AchievementVoice) — يتعبّى بالمعالج.
 	VoiceSeconds *int `db:"-" json:"voiceSeconds,omitempty"`
+	// رد ماتركس المقترح (ع) 10-23 — بالقواعد محلياً، والي يراجع يعدّله قبل الإرسال.
+	SuggestedStatus string `db:"-" json:"suggestedStatus,omitempty"`
+	SuggestedReply  string `db:"-" json:"suggestedReply,omitempty"`
 }
 
 const (

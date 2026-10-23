@@ -657,6 +657,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	voiceAnalysisService.Start()
 	matrixGuideService.SetDialect(voiceAnalysisService.DialectHint)
 	achievementHandler.SetVoice(achievementVoiceRepo, fileStore, voiceAnalysisService)
+	achievementHandler.SetNotifier(notificationRepo)
 	achievementDigestService := service.NewAchievementDigestService(achievementRepo, aiRepo, notificationRepo)
 	safeguard.Loop("ملخص الإنجازات اليومي", 12*time.Minute, 30*time.Minute, func() {
 		if err := achievementDigestService.RunIfDue(); err != nil {
@@ -1276,8 +1277,8 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	mux.Handle("GET /api/achievements/{id}/voice", middleware.Chain(http.HandlerFunc(achievementHandler.Voice), requireAuth))
 	mux.Handle("GET /api/achievements/{id}/voice/analysis", middleware.Chain(http.HandlerFunc(achievementHandler.VoiceAnalysis), requireAuth))
 	mux.Handle("GET /api/ai/dialect", middleware.Chain(http.HandlerFunc(achievementHandler.Dialect), requireAuth, requireAdmin))
-	mux.Handle("GET /api/achievements", middleware.Chain(http.HandlerFunc(achievementHandler.List), requireAuth, requireAdmin))
-	mux.Handle("PUT /api/achievements/{id}/review", middleware.Chain(http.HandlerFunc(achievementHandler.Review), requireAuth, requireAdmin))
+	mux.Handle("GET /api/achievements", middleware.Chain(http.HandlerFunc(achievementHandler.List), requireAuth, requireMonitor))
+	mux.Handle("PUT /api/achievements/{id}/review", middleware.Chain(http.HandlerFunc(achievementHandler.Review), requireAuth, requireMonitor))
 	mux.Handle("GET /api/bookings/{id}/timeline", middleware.Chain(http.HandlerFunc(bookingHandler.Timeline), requireAuth))
 	mux.Handle("PUT /api/bookings/{id}/crew-notes", middleware.Chain(http.HandlerFunc(bookingHandler.SetCrewNotes), requireAuth, requireBookingCoord))
 	mux.Handle("PUT /api/bookings/{id}/project-notes", middleware.Chain(http.HandlerFunc(bookingHandler.SetProjectNotes), requireAuth, requireBookingCoord))

@@ -316,8 +316,9 @@ export default function MyExtraTasksPage() {
                         <td className="px-3 py-3 font-bold text-[#0f2040]">
                           {t.title}
                           {t.overdue && <span className="mr-1.5 rounded-md bg-red-600 px-1.5 py-0.5 text-[9px] font-bold text-white">فات موعدها</span>}
+                          {t.description && <p className="mt-1 whitespace-pre-wrap text-xs font-normal text-slate-600">{t.description}</p>}
                         </td>
-                        <td className="whitespace-nowrap px-3 py-3 text-xs text-slate-500">📅 {t.dueAt ? new Date(t.dueAt).toLocaleDateString('en-GB') : '—'}</td>
+                        <td className="whitespace-nowrap px-3 py-3 text-xs text-slate-500">⏳ {t.dueAt ? new Date(t.dueAt).toLocaleString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—'}</td>
                         <td className="px-3 py-3">
                           <span className={`whitespace-nowrap rounded-lg border px-2 py-0.5 text-[11px] font-bold ${t.priority === 'URGENT' ? 'border-red-200 bg-red-50 text-red-700' : 'border-sky-200 bg-sky-50 text-sky-700'}`}>
                             {t.priority === 'URGENT' ? '⚠ عالية' : '○ عادية'}

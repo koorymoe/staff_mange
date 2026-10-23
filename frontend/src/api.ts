@@ -5940,6 +5940,8 @@ export interface Achievement {
   reviewedByName?: string | null
   reviewedAt: string | null
   createdAt: string
+  suggestedStatus?: 'GOOD' | 'NEEDS_REVIEW'
+  suggestedReply?: string
   voiceSeconds?: number | null
 }
 

@@ -3,6 +3,7 @@ package handler
 import (
 	"net/http"
 	"strconv"
+	"strings"
 
 	"staffmange-api/internal/middleware"
 	"staffmange-api/internal/model"
@@ -14,14 +15,28 @@ import (
 // AchievementHandler الإنجازات — تقرير يومي حر من أي موظف بأي دور.
 //
 // ⚠️ `Create` بلا حراسة دور (أي موظف مسجّل دخول)؛ `List`/`Review`
-// محميين بـ`requireAdmin` بمسارات `main.go` — الوجهة حصراً مدير النظام
-// والمالك.
+// محميين بـ`requireMonitor` بمسارات `main.go` — المدير والمالك والمراقب (ع) 10-23.
 type AchievementHandler struct {
 	service  *service.AchievementService
 	voices   *repository.AchievementVoiceRepository
 	store    storage.Store
 	analyzer *service.VoiceAnalysisService
+	notif    interface {
+		Create(employeeID, kind, message string) error
+	}
 }
+
+// SetNotifier الموظف ينبعثله إشعار بالرد على إنجازه.
+func (h *AchievementHandler) SetNotifier(n interface {
+	Create(employeeID, kind, message string) error
+}) {
+	h.notif = n
+}
+
+// reviewerIsMonitor المراقب (مو المدير/المالك) — ما يراجع إنجازات الإدارة ولا إنجازه.
+func reviewerIsMonitor(r *http.Request) bool { return middleware.RoleFromContext(r) != "ADMIN" }
+
+func isManagementRole(role string) bool { return role == "ADMIN" || role == "OWNER" }
 
 func NewAchievementHandler(s *service.AchievementService) *AchievementHandler {
 	return &AchievementHandler{service: s}
@@ -50,7 +65,22 @@ func (h *AchievementHandler) List(w http.ResponseWriter, r *http.Request) {
 		WriteError(w, http.StatusInternalServerError, "تعذر جلب الإنجازات")
 		return
 	}
+	if reviewerIsMonitor(r) {
+		me := middleware.EmployeeIDFromContext(r)
+		kept := rows[:0]
+		for _, a := range rows {
+			if !isManagementRole(a.Role) && a.EmployeeID != me {
+				kept = append(kept, a)
+			}
+		}
+		rows = kept
+	}
 	h.attachVoices(rows)
+	for i := range rows {
+		if rows[i].ReviewStatus == model.AchievementReviewPending {
+			rows[i].SuggestedStatus, rows[i].SuggestedReply = service.SuggestAchievementReply(rows[i])
+		}
+	}
 	WriteJSON(w, http.StatusOK, rows)
 }
 
@@ -61,10 +91,30 @@ func (h *AchievementHandler) Review(w http.ResponseWriter, r *http.Request) {
 		WriteError(w, http.StatusBadRequest, "بيانات غير صالحة")
 		return
 	}
-	a, err := h.service.Review(r.PathValue("id"), middleware.EmployeeIDFromContext(r), req)
+	me := middleware.EmployeeIDFromContext(r)
+	cur, err := h.service.Repo().FindByID(r.PathValue("id"))
+	if err != nil || cur == nil {
+		WriteError(w, http.StatusNotFound, "الإنجاز مو موجود")
+		return
+	}
+	if cur.EmployeeID == me || (reviewerIsMonitor(r) && isManagementRole(cur.Role)) {
+		WriteError(w, http.StatusBadRequest, "ما تكدر تراجع هذا الإنجاز")
+		return
+	}
+	a, err := h.service.Review(cur.ID, me, req)
 	if err != nil {
 		WriteError(w, http.StatusBadRequest, err.Error())
 		return
+	}
+	if h.notif != nil {
+		msg := "📝 انراجع إنجازك اليومي ✓ زين"
+		if a.ReviewStatus == model.AchievementReviewNeeds {
+			msg = "📝 انراجع إنجازك اليومي — يحتاج مراجعة"
+		}
+		if note := strings.TrimSpace(req.Note); note != "" {
+			msg += ": " + note
+		}
+		_ = h.notif.Create(a.EmployeeID, "achievement_review", msg)
 	}
 	WriteJSON(w, http.StatusOK, a)
 }

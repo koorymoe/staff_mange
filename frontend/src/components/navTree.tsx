@@ -172,6 +172,8 @@ export const navItems: NavItem[] = [
       { to: '/accountant-desk', label: '🧾 مكتب المحاسب', icon: <></>, roles: ['ADMIN'], anyPermission: ['finance', 'finance_audit'], hideForRoles: ['FINANCE'] },
       { to: '/quality-desk', label: '⭐ مكتب الجودة', icon: <></>, roles: ['ADMIN', 'QUALITY_ENGINEER'], anyPermission: ['quality_control', 'complaints'] },
       { to: '/reports-desk', label: '📑 تقارير الحجوزات والمشاريع', icon: <></>, roles: ['ADMIN', 'MONITOR'], permission: 'monitoring', hideForRoles: ['QUALITY_ENGINEER'] },
+      // (ع) 10-23: الإنجازات اليومية «تطلع للمدير والمالك والمراقب» — المدير يوصلها من الإجراءات
+      { to: '/achievements', label: '📝 الإنجازات اليومية', icon: <></>, roles: ['ADMIN', 'MONITOR'], permission: 'monitoring', hideForRoles: ['ADMIN', 'OWNER'] },
       // قرار (ع) 10-15: الخريطة وفحص المتأخرات تبويبات بمكتب المراقب · فحص الدقة للمالك بس.
       { monitorMenuHide: true, to: '/field-map', label: '🗺️ خريطة الميدان', icon: <></>, roles: ['ADMIN', 'MONITOR'], permission: 'monitoring' },
       { monitorMenuHide: true, to: '/late-audit', label: '🔍 فحص المتأخرات', icon: <></>, roles: ['ADMIN', 'MONITOR'], permission: 'monitoring' },
@@ -1117,7 +1119,7 @@ const SELF_SCOPED: Record<string, RouteRule> = {
   // (ع) 10-13: «التقييم» انشال من قائمة المدير/المالك — صار جوّا إدارة الموظفين
   '/my-ranking': { roles: ['ADMIN'] },
   '/employee-stats': { roles: ['ADMIN'], anyPermission: ['employee_stats'] },
-  '/achievements': { roles: ['ADMIN'] },
+  '/achievements': { roles: ['ADMIN', 'MONITOR'], anyPermission: ['monitoring', 'auditing'] },
   '/kpi': { roles: ['ADMIN', 'MONITOR'], anyPermission: ['kpi_management'] },
   '/staff-requests': { roles: ['ADMIN', 'HR_COORDINATOR'], anyPermission: ['staff_requests'] },
   // فاتورة الحجز من «مهامي» — نفس requireLeaderBasket بالخادم.
