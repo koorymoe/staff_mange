@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -27,6 +28,9 @@ type SecretaryHandler struct {
 	voice         *service.VoiceAnalysisService
 	brain         service.SecretaryReplier
 	meetings      *repository.MeetingRequestRepository
+	stt           interface {
+		Transcribe(ctx context.Context, audio []byte, contentType string) (string, error)
+	}
 }
 
 func NewSecretaryHandler(repo *repository.SecretaryRepository, e *repository.EmployeeRepository,
@@ -52,7 +56,7 @@ func (h *SecretaryHandler) Message(w http.ResponseWriter, r *http.Request) {
 	var text string
 	var transcript *string
 	if strings.HasPrefix(r.Header.Get("Content-Type"), "multipart/") {
-		if h.voice == nil || !h.voice.Enabled() {
+		if h.stt == nil && (h.voice == nil || !h.voice.Enabled()) {
 			WriteError(w, http.StatusServiceUnavailable, "تحويل الصوت مو مشغّل على السيرفر — اكتب بدلها")
 			return
 		}
@@ -77,7 +81,7 @@ func (h *SecretaryHandler) Message(w http.ResponseWriter, r *http.Request) {
 			WriteError(w, http.StatusBadRequest, "صيغة الصوت مو مدعومة")
 			return
 		}
-		t, err := h.voice.Transcribe(r.Context(), data, ct)
+		t, err := h.transcribe(r.Context(), data, ct)
 		if err != nil {
 			WriteError(w, http.StatusBadGateway, "ما گدرت أفهم البصمة — عيدها أو اكتب")
 			return
@@ -573,4 +577,27 @@ func (h *SecretaryHandler) sendTask(me, actionID string, f service.SecretaryTask
 	link := "/extra-tasks"
 	return &service.SecretaryCard{Kind: "task", Title: task.Title, Status: "انرسلت", Owner: &emp.Name,
 		UpdatedAt: &now, Lines: lines, Link: &link}, http.StatusOK, nil
+}
+
+// ═══ 🎙️ فويس ايريس: Gemini أول (أدق وأسرع بالعراقي)، وإذا فشل Whisper الداخلي ═══
+
+// SetSTT محوّل الصوت الخارجي (Gemini) — nil = Whisper بس.
+func (h *SecretaryHandler) SetSTT(t interface {
+	Transcribe(ctx context.Context, audio []byte, contentType string) (string, error)
+}) {
+	h.stt = t
+}
+
+func (h *SecretaryHandler) transcribe(ctx context.Context, data []byte, ct string) (string, error) {
+	if h.stt != nil {
+		if t, err := h.stt.Transcribe(ctx, data, ct); err == nil {
+			return t, nil
+		} else {
+			log.Printf("[iris-voice] gemini: %v — نرجع لـWhisper", err)
+		}
+	}
+	if h.voice == nil || !h.voice.Enabled() {
+		return "", errors.New("تحويل الصوت مو متوفر")
+	}
+	return h.voice.Transcribe(ctx, data, ct)
 }

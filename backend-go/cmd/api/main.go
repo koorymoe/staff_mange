@@ -2746,6 +2746,13 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 		}, cfg.AISecretaryDailyCap) // حارس فاتورة
 		irisBrain.SetWebSearch(cfg.AIIrisWebSearch)
 		secHandler.SetBrain(irisBrain)
+		// 🎙️ فويس ايريس بـGemini (أدق بالعراقي)، ويرجع لـWhisper إذا فشل (دازاي 10-23)
+		if cfg.AIIrisVoice == "gemini" {
+			if g := service.NewGeminiTranscriber(cfg.GeminiAPIKey); g != nil {
+				secHandler.SetSTT(g)
+				log.Printf("🎙️ فويس ايريس: Gemini (ويرجع لـWhisper إذا فشل)")
+			}
+		}
 		mux.Handle("POST /api/secretary/message", middleware.Chain(http.HandlerFunc(secHandler.Message), requireAuth, requireAdmin))
 		mux.Handle("POST /api/secretary/actions/{id}/confirm", middleware.Chain(http.HandlerFunc(secHandler.Confirm), requireAuth, requireAdmin))
 		mux.Handle("POST /api/secretary/actions/{id}/cancel", middleware.Chain(http.HandlerFunc(secHandler.Cancel), requireAuth, requireAdmin))
