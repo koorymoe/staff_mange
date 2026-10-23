@@ -733,3 +733,9 @@ func SkipInStealth() func(http.Handler) http.Handler {
 		})
 	}
 }
+
+// IsOwner الدور الحقيقي مالك (RoleFromContext يقلبه ADMIN).
+func IsOwner(r *http.Request) bool {
+	role, _ := r.Context().Value(ContextRole).(string)
+	return role == "OWNER"
+}

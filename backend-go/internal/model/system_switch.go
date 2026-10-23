@@ -47,6 +47,9 @@ const (
 	SwitchAIChat           = "ai_chat"
 	// SwitchAISecretary «السكرتير» للمالك والمدير (دازاي 10-22)
 	SwitchAISecretary = "ai_secretary"
+	// وكيلي الواتساب (دازاي 10-23) — مطفيين لحد قرار الخصوصية وربط Meta.
+	SwitchAIQualityAgent = "ai_quality_agent"
+	SwitchAIBookingAgent = "ai_booking_agent"
 )
 
 // AIFeatureSwitch مفتاح كل ميزة (اسم الميزة بعدّاد الكلفة ← المفتاح).
@@ -61,6 +64,8 @@ var AIFeatureSwitch = map[string]string{
 var systemSwitchDefaultOff = map[string]bool{
 	SwitchMatrixAutoCrew:        true,
 	SwitchMatrixMonitorEscalate: true,
+	SwitchAIQualityAgent:        true,
+	SwitchAIBookingAgent:        true,
 	// قرار (ع) 10-08: «ماتركس لازم يقيّم كل موظف» — التقييم درجة بس بلا فلوس، فصار شغّال افتراضياً.
 }
 
@@ -69,6 +74,8 @@ func SystemSwitchDefault(key string) bool { return !systemSwitchDefaultOff[key] 
 
 // SystemSwitchLabels الاسم العربي لكل مفتاح — للعرض وللسجل.
 var SystemSwitchLabels = map[string]string{
+	SwitchAIQualityAgent:        "وكيل الجودة عالواتساب",
+	SwitchAIBookingAgent:        "وكيل الحجوزات عالواتساب",
 	SwitchEntity:                "شخصية الكائن",
 	SwitchAnnouncements:         "شريط الإعلانات",
 	SwitchMatrixAutopilot:       "ماتركس ينفّذ التذكيرات لحاله",

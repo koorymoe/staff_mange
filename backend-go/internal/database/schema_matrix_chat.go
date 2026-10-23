@@ -873,5 +873,61 @@ func matrixChatMigrations() []Migration {
 				"updatedAt" TIMESTAMPTZ NOT NULL DEFAULT now()
 			);
 		`,
+	}, {
+		// 💬 وكيلي الجودة والحجوزات عالواتساب (دازاي 10-23 — docs/ai-quality-booking-plan.md).
+		// المحادثة والرسائل، وكل إجراء سواه الوكيل ويا سببه حتى ينراجع وينلغى.
+		// ومتابعة الجودة تاخذ تقييم الزبون للشغل وللكادر.
+		Version: "0393_wa_agents",
+		SQL: `
+			CREATE TABLE IF NOT EXISTS "WaConversation" (
+				id TEXT PRIMARY KEY,
+				agent TEXT NOT NULL CHECK (agent IN ('QUALITY', 'BOOKING')),
+				"customerId" TEXT REFERENCES "Customer"(id) ON DELETE SET NULL,
+				phone TEXT NOT NULL,
+				"bookingId" TEXT REFERENCES "Booking"(id) ON DELETE SET NULL,
+				"followUpId" TEXT REFERENCES "QualityFollowUp"(id) ON DELETE SET NULL,
+				status TEXT NOT NULL DEFAULT 'BOT' CHECK (status IN ('BOT', 'HUMAN', 'CLOSED')),
+				sandbox BOOLEAN NOT NULL DEFAULT false,
+				"humanById" TEXT REFERENCES "Employee"(id) ON DELETE SET NULL,
+				"lastMessageAt" TIMESTAMPTZ NOT NULL DEFAULT now(),
+				"lastReadAt" TIMESTAMPTZ,
+				"createdAt" TIMESTAMPTZ NOT NULL DEFAULT now()
+			);
+			CREATE UNIQUE INDEX IF NOT EXISTS "WaConversation_open_uq" ON "WaConversation" (agent, phone)
+				WHERE status <> 'CLOSED' AND NOT sandbox;
+			CREATE INDEX IF NOT EXISTS "WaConversation_list_idx" ON "WaConversation" (agent, status, "lastMessageAt" DESC);
+			CREATE TABLE IF NOT EXISTS "WaMessage" (
+				id TEXT PRIMARY KEY,
+				"conversationId" TEXT NOT NULL REFERENCES "WaConversation"(id) ON DELETE CASCADE,
+				direction TEXT NOT NULL CHECK (direction IN ('IN', 'OUT')),
+				author TEXT NOT NULL CHECK (author IN ('CUSTOMER', 'AGENT', 'HUMAN')),
+				"authorId" TEXT REFERENCES "Employee"(id) ON DELETE SET NULL,
+				text TEXT NOT NULL,
+				"metaId" TEXT UNIQUE,
+				"createdAt" TIMESTAMPTZ NOT NULL DEFAULT now()
+			);
+			CREATE INDEX IF NOT EXISTS "WaMessage_conv_idx" ON "WaMessage" ("conversationId", "createdAt");
+			CREATE TABLE IF NOT EXISTS "AiAgentAction" (
+				id TEXT PRIMARY KEY,
+				agent TEXT NOT NULL,
+				"conversationId" TEXT REFERENCES "WaConversation"(id) ON DELETE SET NULL,
+				kind TEXT NOT NULL,
+				summary TEXT NOT NULL,
+				reason TEXT NOT NULL DEFAULT '',
+				"targetType" TEXT,
+				"targetId" TEXT,
+				payload JSONB,
+				sandbox BOOLEAN NOT NULL DEFAULT false,
+				"undoneAt" TIMESTAMPTZ,
+				"undoneById" TEXT REFERENCES "Employee"(id) ON DELETE SET NULL,
+				"undoReason" TEXT,
+				"createdAt" TIMESTAMPTZ NOT NULL DEFAULT now()
+			);
+			CREATE INDEX IF NOT EXISTS "AiAgentAction_target_idx" ON "AiAgentAction" ("targetId");
+			CREATE INDEX IF NOT EXISTS "AiAgentAction_conv_idx" ON "AiAgentAction" ("conversationId");
+			ALTER TABLE "QualityFollowUp" ADD COLUMN IF NOT EXISTS "customerRating" INT CHECK ("customerRating" BETWEEN 1 AND 5);
+			ALTER TABLE "QualityFollowUp" ADD COLUMN IF NOT EXISTS "crewRating" INT CHECK ("crewRating" BETWEEN 1 AND 5);
+			ALTER TABLE "QualityFollowUp" ADD COLUMN IF NOT EXISTS "contactedByAgent" TEXT;
+		`,
 	}}
 }

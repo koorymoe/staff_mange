@@ -3,14 +3,18 @@ package model
 import "time"
 
 type QualityFollowUp struct {
-	ID         string  `db:"id" json:"id"`
-	BookingID  string  `db:"bookingId" json:"-"`
-	CustomerID string  `db:"customerId" json:"-"`
-	Status     string  `db:"status" json:"status"` // PENDING | CONTACTED_OK | CONTACTED_ISSUE | CONVERTED | RECONTACT | CLOSED
+	ID                    string     `db:"id" json:"id"`
+	BookingID             string     `db:"bookingId" json:"-"`
+	CustomerID            string     `db:"customerId" json:"-"`
+	Status                string     `db:"status" json:"status"` // PENDING | CONTACTED_OK | CONTACTED_ISSUE | CONVERTED | RECONTACT | CLOSED
 	ContactNotes          *string    `db:"contactNotes" json:"contactNotes"`
 	ContactedByEmployeeID *string    `db:"contactedByEmployeeId" json:"-"`
 	ContactedAt           *time.Time `db:"contactedAt" json:"contactedAt"`
-	CreatedAt             time.Time  `db:"createdAt" json:"createdAt"`
+	// تقييم الزبون للشغل وللكادر (١–٥) — 0393، يسجّلها وكيل الجودة أو الإنسان.
+	CustomerRating   *int      `db:"customerRating" json:"customerRating"`
+	CrewRating       *int      `db:"crewRating" json:"crewRating"`
+	ContactedByAgent *string   `db:"contactedByAgent" json:"contactedByAgent"`
+	CreatedAt        time.Time `db:"createdAt" json:"createdAt"`
 
 	// ── تحويل حقيقي لحجز صيانة ──
 	// ⚠️ يبقى المتابعة معلّقة يم مهندس الجودة لحد ما هذا الحجز ينجز —

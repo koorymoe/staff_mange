@@ -32,7 +32,7 @@
     { "id": "uuid", "direction": "OUT", "author": "AGENT", "text": "…", "createdAt": "…" },
     { "id": "uuid", "direction": "OUT", "author": "HUMAN", "authorName": "اسم الموظف", "text": "…", "createdAt": "…" }
   ],
-  "actions": [ …نفس شكل /ai/actions… ]
+  "actions": [ …نفس شكل /wa/actions… ]
 }
 ```
 
@@ -50,7 +50,7 @@
 بلا جسم. يرجّع `{ "ok": true }`.
 
 ## إجراءات الوكيل
-### `GET /ai/actions?targetId=<bookingId|followUpId>` أو `?conversationId=`
+### `GET /wa/actions?targetId=<bookingId|followUpId>` أو `?conversationId=`
 ```json
 [{
   "id": "uuid", "agent": "QUALITY", "agentName": "ابو الجودة",
@@ -62,7 +62,7 @@
 }]
 ```
 
-### `POST /ai/actions/{id}/undo`
+### `POST /wa/actions/{id}/undo`
 - الجسم: `{ "reason": "…" }`.
 - يرجّع الإجراء بعد التحديث.
 - إلغاء `CREATE_BOOKING` **يرفع طلب حذف عادي** للحجز، مو حذف مباشر.

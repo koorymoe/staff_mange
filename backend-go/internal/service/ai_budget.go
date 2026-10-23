@@ -41,8 +41,13 @@ func SetAIBudget(agent string, usd float64) {
 }
 
 func aiAgentOf(feature string) string {
-	if feature == "SECRETARY" {
+	switch feature {
+	case "SECRETARY":
 		return AIAgentIris
+	case "QUALITY_AGENT":
+		return WaAgentQuality
+	case "BOOKING_AGENT":
+		return WaAgentBooking
 	}
 	return AIAgentMatrix
 }

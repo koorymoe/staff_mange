@@ -23,6 +23,8 @@ const (
 	ProposalGuideRule  = "GUIDE_RULE"
 	ProposalPrediction = "PREDICTION"
 	ProposalRuleTune   = "RULE_TUNE"
+	// ProposalAgentNote اقتراح من وكيل الواتساب (دازاي 10-23) — للقراءة والقرار بس، الموافقة ما تنفّذ شي.
+	ProposalAgentNote = "AGENT_NOTE"
 )
 
 // MatrixProposal اقتراح من ماتركس ينتظر قرار المدير — ما ينفّذ بلا موافقة.

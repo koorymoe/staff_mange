@@ -46,6 +46,20 @@ type Config struct {
 	// حد الصرف اليومي بالدولار لكل وكيل — يتحسب من AiUsage فيبقى بعد إعادة التشغيل.
 	AIMatrixDailyUSD float64
 	AIIrisDailyUSD   float64
+	// وكيلي الواتساب (دازاي 10-23) — حد يومي بالدولار، وحد محادثات جديدة باليوم.
+	AIQualityDailyUSD float64
+	AIBookingDailyUSD float64
+	WaDailyNew        int
+	// WhatsApp Business Cloud API (Meta). بلاهن الإرسال الحقيقي مطفي، والتجربة تشتغل.
+	WaToken       string
+	WaPhoneID     string
+	WaAppSecret   string
+	WaVerifyToken string
+	WaTemplate    string // قالب الرسالة الأولى الموافق عليه من Meta
+	WaTemplateLng string
+	// WaPrivacyApproved قرار دازاي المكتوب (الخصوصية · الكلفة · محل المعالجة · مدة الحفظ) —
+	// بلاه ملاحظات الحجز ما تروح للنموذج.
+	WaPrivacyApproved bool
 	// WhisperURL خدمة تحويل الصوت لنص **الداخلية** (حاوية whisper). فاضي = بلا تحليل فويس.
 	WhisperURL string
 	// AIModel من البيئة مو مكتوب بالكود: أسماء الموديلات تتبدّل،
@@ -107,6 +121,16 @@ func load() *Config {
 		AISecretaryDailyCap: getEnvInt("AI_SECRETARY_DAILY_CAP", 300),
 		AIMatrixDailyUSD:    getEnvFloat("AI_MATRIX_DAILY_USD", 0.5),
 		AIIrisDailyUSD:      getEnvFloat("AI_IRIS_DAILY_USD", 0.5),
+		AIQualityDailyUSD:   getEnvFloat("AI_QUALITY_DAILY_USD", 0.2),
+		AIBookingDailyUSD:   getEnvFloat("AI_BOOKING_DAILY_USD", 0.2),
+		WaDailyNew:          getEnvInt("WA_DAILY_NEW", 10),
+		WaToken:             getEnv("WA_TOKEN", ""),
+		WaPhoneID:           getEnv("WA_PHONE_ID", ""),
+		WaAppSecret:         getEnv("WA_APP_SECRET", ""),
+		WaVerifyToken:       getEnv("WA_VERIFY_TOKEN", ""),
+		WaTemplate:          getEnv("WA_TEMPLATE", ""),
+		WaTemplateLng:       getEnv("WA_TEMPLATE_LANG", "ar"),
+		WaPrivacyApproved:   getEnv("WA_PRIVACY_APPROVED", "") == "true",
 		// TutorialsDir: مسار مجلد أدلة الاستخدام (tutorial-*.html و guide-*.txt) اللي
 		// يقرأها المساعد الذكي حتى يعرف يشرح للموظف شلون يستخدم النظام فعلياً.
 		// الافتراضي "../tutorials" يناسب التطوير المحلي (تشغيل go run من داخل backend-go

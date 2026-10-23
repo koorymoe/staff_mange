@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -20,6 +21,7 @@ import (
 	"staffmange-api/internal/safeguard"
 	"staffmange-api/internal/service"
 	"staffmange-api/internal/storage"
+	"staffmange-api/internal/whatsapp"
 )
 
 func main() {
@@ -1136,12 +1138,15 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	mux.Handle("GET /api/ai/status", middleware.Chain(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		mSpent, mLimit := service.AIBudgetState(service.AIAgentMatrix)
 		iSpent, iLimit := service.AIBudgetState(service.AIAgentIris)
+		qSpent, qLimit := service.AIBudgetState(service.WaAgentQuality)
+		bSpent, bLimit := service.AIBudgetState(service.WaAgentBooking)
 		handler.WriteJSON(w, http.StatusOK, map[string]any{
 			"claude":    map[string]any{"on": cfg.AIKeyMatrix != "", "model": cfg.AIModel, "dailyCap": cfg.AIDailyCap},
 			"matrix":    map[string]any{"on": cfg.AIKeyMatrix != "", "ownKey": cfg.AIKeyMatrix != cfg.AnthropicAPIKey, "model": cfg.AIModel, "dailyCap": cfg.AIDailyCap, "spentTodayUSD": mSpent, "dailyLimitUSD": mLimit},
 			"secretary": map[string]any{"on": cfg.AIKeySecretary != "", "ownKey": cfg.AIKeySecretary != cfg.AnthropicAPIKey, "model": cfg.AIModelSecretary, "dailyCap": cfg.AISecretaryDailyCap, "spentTodayUSD": iSpent, "dailyLimitUSD": iLimit},
-			"quality":   map[string]any{"on": cfg.AIKeyQuality != "", "ownKey": cfg.AIKeyQuality != cfg.AnthropicAPIKey, "built": false},
-			"booking":   map[string]any{"on": cfg.AIKeyBooking != "", "ownKey": cfg.AIKeyBooking != cfg.AnthropicAPIKey, "built": false},
+			"quality":   map[string]any{"on": cfg.AIKeyQuality != "", "ownKey": cfg.AIKeyQuality != cfg.AnthropicAPIKey, "built": true, "model": cfg.AIModel, "spentTodayUSD": qSpent, "dailyLimitUSD": qLimit},
+			"booking":   map[string]any{"on": cfg.AIKeyBooking != "", "ownKey": cfg.AIKeyBooking != cfg.AnthropicAPIKey, "built": true, "model": cfg.AIModel, "spentTodayUSD": bSpent, "dailyLimitUSD": bLimit},
+			"whatsapp":  map[string]any{"on": cfg.WaToken != "" && cfg.WaPhoneID != "" && cfg.WaAppSecret != ""},
 			"gemini":    map[string]any{"on": cfg.GeminiAPIKey != "", "dailyCap": cfg.GeminiDailyCap},
 			"whisper":   map[string]any{"on": cfg.WhisperURL != ""},
 		})
@@ -2758,6 +2763,53 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 		mux.Handle("POST /api/secretary/notes", middleware.Chain(http.HandlerFunc(secHandler.AddNote), requireAuth, requireAdmin))
 		mux.Handle("PUT /api/secretary/notes/{id}/done", middleware.Chain(http.HandlerFunc(secHandler.NoteDone), requireAuth, requireAdmin))
 		mux.Handle("DELETE /api/secretary/notes/{id}", middleware.Chain(http.HandlerFunc(secHandler.DeleteNote), requireAuth, requireAdmin))
+		// 💬 وكيلي الواتساب: الجودة والحجوزات (دازاي 10-23 — docs/ai-quality-booking-plan.md).
+		// مطفيين لحد ما المالك يشغّلهم والواتساب ينربط؛ وضع التجربة للمالك يشتغل هسه.
+		{
+			service.SetAIBudget(service.WaAgentQuality, cfg.AIQualityDailyUSD)
+			service.SetAIBudget(service.WaAgentBooking, cfg.AIBookingDailyUSD)
+			waClient := whatsapp.New(cfg.WaToken, cfg.WaPhoneID, cfg.WaAppSecret, cfg.WaVerifyToken)
+			waSvc := service.NewWaAgentService(db, repository.NewWaRepository(db), waClient, bookingService,
+				qualityFollowUpRepo, repository.NewMatrixProposalRepository(db), bookingDeleteRepo,
+				repository.NewSystemSwitchRepository(db), notificationRepo, aiAgentNames.AgentName)
+			waSvc.DailyNew, waSvc.Template, waSvc.TemplateLang = cfg.WaDailyNew, cfg.WaTemplate, cfg.WaTemplateLng
+			waSvc.PrivacyApproved = cfg.WaPrivacyApproved
+			if b := service.NewClaudeWaBrain(db, service.NewAnthropicClient(cfg.AIKeyQuality), cfg.AIModel, service.WaAgentQuality); b != nil {
+				waSvc.SetBrain(service.WaAgentQuality, b)
+			}
+			if b := service.NewClaudeWaBrain(db, service.NewAnthropicClient(cfg.AIKeyBooking), cfg.AIModel, service.WaAgentBooking); b != nil {
+				waSvc.SetBrain(service.WaAgentBooking, b)
+			}
+			aiAgentNames.SetEnabled(waSvc.Enabled)
+			waH := handler.NewWaHandler(waSvc, waClient, permissionRepo)
+			requireWa := middleware.RequireRoleOrAnyPermission(permissionRepo, employeeRepo, notificationRepo, []string{"ADMIN"}, "quality_control", "coordinator")
+			mux.Handle("GET /api/wa/webhook", http.HandlerFunc(waH.Verify))
+			mux.Handle("POST /api/wa/webhook", http.HandlerFunc(waH.Receive))
+			mux.Handle("GET /api/wa/conversations", middleware.Chain(http.HandlerFunc(waH.List), requireAuth, requireWa))
+			mux.Handle("GET /api/wa/conversations/{id}", middleware.Chain(http.HandlerFunc(waH.Get), requireAuth, requireWa))
+			mux.Handle("POST /api/wa/conversations/{id}/takeover", middleware.Chain(http.HandlerFunc(waH.Takeover), requireAuth, requireWa))
+			mux.Handle("POST /api/wa/conversations/{id}/release", middleware.Chain(http.HandlerFunc(waH.Release), requireAuth, requireWa))
+			mux.Handle("POST /api/wa/conversations/{id}/send", middleware.Chain(http.HandlerFunc(waH.Send), requireAuth, requireWa))
+			mux.Handle("POST /api/wa/conversations/{id}/close", middleware.Chain(http.HandlerFunc(waH.Close), requireAuth, requireWa))
+			mux.Handle("GET /api/wa/actions", middleware.Chain(http.HandlerFunc(waH.Actions), requireAuth, requireWa))
+			mux.Handle("POST /api/wa/actions/{id}/undo", middleware.Chain(http.HandlerFunc(waH.Undo), requireAuth, requireWa))
+			mux.Handle("PUT /api/ai/agents/{agent}/enabled", middleware.Chain(http.HandlerFunc(waH.SetEnabled), requireAuth, middleware.RequireOwner()))
+			mux.Handle("POST /api/wa/sandbox/start", middleware.Chain(http.HandlerFunc(waH.SandboxStart), requireAuth, middleware.RequireOwner()))
+			mux.Handle("POST /api/wa/sandbox/{id}/say", middleware.Chain(http.HandlerFunc(waH.SandboxSay), requireAuth, middleware.RequireOwner()))
+			log.Printf("💬 وكلاء الواتساب: الواتساب %s · ابو الجودة %s · ابو الحجوزات %s",
+				map[bool]string{true: "مربوط", false: "مو مربوط"}[waClient.On()],
+				map[bool]string{true: "شغّال", false: "مطفي"}[waSvc.Enabled(service.WaAgentQuality)],
+				map[bool]string{true: "شغّال", false: "مطفي"}[waSvc.Enabled(service.WaAgentBooking)])
+			go func() {
+				time.Sleep(2 * time.Minute)
+				for {
+					ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+					waSvc.Scan(ctx)
+					cancel()
+					time.Sleep(10 * time.Minute)
+				}
+			}()
+		}
 		mux.Handle("GET /api/secretary/agenda", middleware.Chain(http.HandlerFunc(secHandler.Agenda), requireAuth, requireAdmin))
 		// ☀️ رسالة الصبح (٨ص) + 🏆 إشادة الأسبوع (الخميس) — قرار (ع) 10-11
 		morningService := service.NewMatrixMorningService(db, aiRepo, notificationRepo, announcementRepo, agent)

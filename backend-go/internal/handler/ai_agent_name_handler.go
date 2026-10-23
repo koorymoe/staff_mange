@@ -14,7 +14,15 @@ import (
 // ماتركس وايريس ثابتين. وكيل الجودة ووكيل الحجوزات اسمهم يحدده المالك —
 // هذا الاسم يطلع للزبون، فلازم يعرّف نفسه بأول رسالة إنه مساعد ذكي.
 
-type AiAgentNameHandler struct{ db *sqlx.DB }
+type AiAgentNameHandler struct {
+	db      *sqlx.DB
+	enabled func(agent string) bool
+}
+
+// SetEnabled مصدر حالة مفتاح تشغيل وكيلي الواتساب.
+func (h *AiAgentNameHandler) SetEnabled(f func(agent string) bool) { h.enabled = f }
+
+func (h *AiAgentNameHandler) on(agent string) bool { return h.enabled != nil && h.enabled(agent) }
 
 func NewAiAgentNameHandler(db *sqlx.DB) *AiAgentNameHandler { return &AiAgentNameHandler{db: db} }
 
@@ -34,8 +42,8 @@ func (h *AiAgentNameHandler) List(w http.ResponseWriter, _ *http.Request) {
 	WriteJSON(w, http.StatusOK, []map[string]any{
 		{"agent": "MATRIX", "name": "ماتركس", "editable": false},
 		{"agent": "IRIS", "name": "ايريس", "editable": false},
-		{"agent": "QUALITY", "name": h.AgentName("QUALITY"), "editable": true},
-		{"agent": "BOOKING", "name": h.AgentName("BOOKING"), "editable": true},
+		{"agent": "QUALITY", "name": h.AgentName("QUALITY"), "editable": true, "enabled": h.on("QUALITY"), "built": true},
+		{"agent": "BOOKING", "name": h.AgentName("BOOKING"), "editable": true, "enabled": h.on("BOOKING"), "built": true},
 	})
 }
 
