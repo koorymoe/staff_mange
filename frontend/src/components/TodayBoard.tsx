@@ -199,7 +199,7 @@ export default function TodayBoard({ finance }: { finance?: FinanceSummary | nul
             مو تنتظر تصرّف، فهي أقرب لصف «شنو صاير» لكن مطلوبة هنا
             بالتصميم. الصفر المزيّف أسوأ من فراغ: «—» لو ماكو حجوزات
             هذا الأسبوع أصلاً. */}
-        <div className="mb-2.5 grid grid-cols-1 gap-2.5 sm:grid-cols-3">
+        <div className="mb-2.5 grid grid-cols-1 gap-2.5 sm:grid-cols-2">
           <StatCard icon="📈" label="نجاح الأسبوع"
             value={d.weekTotal > 0 ? `${Math.round((d.weekCompleted / d.weekTotal) * 100)}٪` : '—'}
             tone="emerald" to={dl('week')}
@@ -208,8 +208,6 @@ export default function TodayBoard({ finance }: { finance?: FinanceSummary | nul
             <StatCard icon="💵" label="تدقيق استلام المبالغ"
               value={finance.unverifiedCount} tone="amber" hint="حجوزات منجزة المحاسب بعده ما دقّق مبلغها — من كل الأيام" to={dl('unverified')} />
           )}
-          <StatCard icon="🎯" label="عدد المهام لسه" value={totalWaiting} tone="blue"
-            hint="مجموع البطاقات الأربع جوّا (تواصل + كادر + ورق + إكمال) — من كل الفترات، مو اليوم بس" />
         </div>
 
         {totalWaiting > 0 && (
