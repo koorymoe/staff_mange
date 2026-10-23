@@ -7,6 +7,13 @@ import SearchBar from '../components/SearchBar'
 import { matches } from '../utils/search'
 import { useRoleTabs } from '../components/RoleSplit'
 
+// ═══ الخصم سالب دائماً — فحص السيرفر 10-23 ═══
+// چانت الصفحة تجمع النقاط كما هي، والخصم اليدوي القديم موجب وخصم الجودة
+// سالب، فالجودة تنقّص «انخصم» والموظف يطلع ٩ من ٨. «انخصم» = مقدار السالب
+// بس؛ والمكافأة (+١ إكمال التدريب) ما تمسح خصماً ولا إلها مبلغ.
+const deductedOf = (ev: { points: number }) => (ev.points < 0 ? -ev.points : 0)
+const deductedIQD = (ev: { points: number; deductionAmount: number }) => (ev.points < 0 ? ev.deductionAmount : 0)
+
 // نقاط الكي بي اي صارت تتحمّل من الباك إند (قابلة للإضافة والحذف من الواجهة
 // بدل ما تكون مثبتة هنا بالكود) — راجع KpiCriterion بـ api.ts.
 const POINTS_PER_WEEK = 8
@@ -322,8 +329,8 @@ export function AdministrativeTab() {
     if (!acc[ev.employeeId]) {
       acc[ev.employeeId] = { name: ev.employee.name, totalPoints: 0, totalIQD: 0, count: 0 }
     }
-    acc[ev.employeeId].totalPoints += ev.points
-    acc[ev.employeeId].totalIQD += ev.deductionAmount
+    acc[ev.employeeId].totalPoints += deductedOf(ev)
+    acc[ev.employeeId].totalIQD += deductedIQD(ev)
     acc[ev.employeeId].count += 1
     return acc
   }, {})
@@ -338,8 +345,8 @@ export function AdministrativeTab() {
     }, {}),
   ).sort((a, b) => b[1] - a[1]).slice(0, 5)
 
-  const monthTotalPoints = monthlyEvals.reduce((n, ev) => n + ev.points, 0)
-  const monthTotalIQD = monthlyEvals.reduce((n, ev) => n + ev.deductionAmount, 0)
+  const monthTotalPoints = monthlyEvals.reduce((n, ev) => n + deductedOf(ev), 0)
+  const monthTotalIQD = monthlyEvals.reduce((n, ev) => n + deductedIQD(ev), 0)
 
   const weeklyByEmployee = weeklyEvals.reduce<
     Record<string, { name: string; totalPoints: number; totalIQD: number; deductions: KpiEvaluation[] }>
@@ -347,9 +354,9 @@ export function AdministrativeTab() {
     if (!acc[ev.employeeId]) {
       acc[ev.employeeId] = { name: ev.employee.name, totalPoints: 0, totalIQD: 0, deductions: [] }
     }
-    acc[ev.employeeId].totalPoints += ev.points
-    acc[ev.employeeId].totalIQD += ev.deductionAmount
-    acc[ev.employeeId].deductions.push(ev)
+    acc[ev.employeeId].totalPoints += deductedOf(ev)
+    acc[ev.employeeId].totalIQD += deductedIQD(ev)
+    if (ev.points < 0) acc[ev.employeeId].deductions.push(ev)
     return acc
   }, {})
 
@@ -505,7 +512,7 @@ export function AdministrativeTab() {
                   className="flex items-center justify-between rounded-xl bg-red-50 px-4 py-2"
                 >
                   <div>
-                    <span className="font-medium text-red-700">-{ev.points} نقطة</span>
+                    <span className="font-medium text-red-700">-{Math.abs(ev.points)} نقطة</span>
                     <span className="mr-3 text-sm text-slate-600">{ev.reason}</span>
                   </div>
                   <span className="text-sm text-slate-400">
@@ -900,7 +907,7 @@ export function AdministrativeTab() {
                       <td className="px-4 py-3 text-slate-500">{ev.evaluator.name}</td>
                       <td className="px-4 py-3">
                         <span className={`rounded-full px-3 py-1 text-sm font-bold ${ev.cancelled ? 'bg-slate-100 text-slate-400 line-through' : 'bg-brand-50 text-brand-700'}`}>
-                          {ev.points}
+                          {ev.points > 0 ? `+${ev.points}` : ev.points}
                         </span>
                       </td>
                       <td className="px-4 py-3 text-slate-600">

@@ -62,19 +62,17 @@ func (s *KpiService) Create(req model.CreateKpiEvaluationRequest) (*model.KpiEva
 
 	employee, empErr := s.employees.FindByID(req.EmployeeID)
 
-	// ⚠️ الخصم يتقرّر بالمقدار مو بالإشارة. الواجهة تدزّ النقاط
-	// بالموجب (١..٨) والشرط القديم چان `*req.Points < 0`، فما چان
-	// ينطبق ولا مرة: الموظف ما چان يوصله إشعار بالخصم، و«انشرها
-	// بلوحة الإعلانات» چان صندوقاً ميتاً — يتأشّر وماكو شي ينتشر.
-	// نقرأ المقدار حتى يشتغل بالحالتين، والمخزون ما يتغيّر: نمرّر
-	// req.Points مثل ما إجت حتى البيانات القديمة تبقى مقروءة بنفس
-	// الطريقة.
+	// ⚠️ الخصم يتقرّر بالمقدار مو بالإشارة: الواجهة تدزّ النقاط بالموجب (١..٨).
+	// ═══ وينخزن **سالب** دائماً — فحص السيرفر 10-23 ═══
+	// چان ينخزن مثل ما إجا (موجب)، وخصم الجودة سالب، فكل شاشة تفهمه
+	// بطريقة: صفحة KPI تنقّص خصم الجودة من «انخصم»، وماتركس ومركز التدريب
+	// (points < 0) ما يشوفون الخصم اليدوي، ومجموع النقاط يزيد بالخصم.
 	magnitude := *req.Points
 	if magnitude < 0 {
 		magnitude = -magnitude
 	}
 	deductionAmount := float64(magnitude) * 10000
-	eval, err := s.repo.Create(req.EmployeeID, req.EvaluatorID, *req.Points, req.Reason, deductionAmount)
+	eval, err := s.repo.Create(req.EmployeeID, req.EvaluatorID, -magnitude, req.Reason, deductionAmount)
 	if err != nil {
 		return nil, err
 	}
@@ -157,9 +155,9 @@ func (s *KpiService) CompleteTraining(employeeID, evaluatorID string) (*model.Kp
 	if err := s.employees.SetTrainee(employeeID, false); err != nil {
 		return nil, err
 	}
-	points := 1
-	deductionAmount := float64(points) * 10000
-	return s.repo.Create(employeeID, evaluatorID, points, "إكمال التدريب بنجاح", deductionAmount)
+	// +١ مكافأة — بلا مبلغ خصم (چان ينسجل وياها ١٠ آلاف، فالي ينجح بالتدريب
+	// يطلع بسجل الانضباط مخصوم منه).
+	return s.repo.Create(employeeID, evaluatorID, 1, "إكمال التدريب بنجاح", 0)
 }
 
 func (s *KpiService) Delete(id string) error {
