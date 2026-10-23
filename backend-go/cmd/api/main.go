@@ -520,6 +520,10 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	// ماتركس «موظف ويانه»: تذكيرات وتنبيهات لحاله بعد ٩ الصبح + صندوق قرارات المدير.
 	aiActionRepo := repository.NewAiActionRepository(db)
 	service.SetAIUsageRepo(repository.NewAiUsageRepository(db))
+	// 💵 حد الصرف اليومي بالدولار لكل وكيل (دازاي 10-23)
+	service.SetAIBudget(service.AIAgentMatrix, cfg.AIMatrixDailyUSD)
+	service.SetAIBudget(service.AIAgentIris, cfg.AIIrisDailyUSD)
+	log.Printf("💵 حد الصرف اليومي: ماتركس $%.2f · ايريس $%.2f", cfg.AIMatrixDailyUSD, cfg.AIIrisDailyUSD)
 	service.SetAISwitches(repository.NewSystemSwitchRepository(db))
 	weeklyReportService.SetActions(aiActionRepo)
 	matrixAutopilotService := service.NewMatrixAutopilotService(aiActionRepo, aiRepo,
@@ -1130,10 +1134,12 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	authHandler.SetStealthLog(stealthLog)
 	// 🤖 حالة مفاتيح الذكاء (دازاي 10-23) — شغّال/مطفي بس، المفتاح نفسه ما يطلع أبداً.
 	mux.Handle("GET /api/ai/status", middleware.Chain(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		mSpent, mLimit := service.AIBudgetState(service.AIAgentMatrix)
+		iSpent, iLimit := service.AIBudgetState(service.AIAgentIris)
 		handler.WriteJSON(w, http.StatusOK, map[string]any{
 			"claude":    map[string]any{"on": cfg.AIKeyMatrix != "", "model": cfg.AIModel, "dailyCap": cfg.AIDailyCap},
-			"matrix":    map[string]any{"on": cfg.AIKeyMatrix != "", "ownKey": cfg.AIKeyMatrix != cfg.AnthropicAPIKey, "model": cfg.AIModel, "dailyCap": cfg.AIDailyCap},
-			"secretary": map[string]any{"on": cfg.AIKeySecretary != "", "ownKey": cfg.AIKeySecretary != cfg.AnthropicAPIKey, "model": cfg.AIModelSecretary, "dailyCap": cfg.AISecretaryDailyCap},
+			"matrix":    map[string]any{"on": cfg.AIKeyMatrix != "", "ownKey": cfg.AIKeyMatrix != cfg.AnthropicAPIKey, "model": cfg.AIModel, "dailyCap": cfg.AIDailyCap, "spentTodayUSD": mSpent, "dailyLimitUSD": mLimit},
+			"secretary": map[string]any{"on": cfg.AIKeySecretary != "", "ownKey": cfg.AIKeySecretary != cfg.AnthropicAPIKey, "model": cfg.AIModelSecretary, "dailyCap": cfg.AISecretaryDailyCap, "spentTodayUSD": iSpent, "dailyLimitUSD": iLimit},
 			"quality":   map[string]any{"on": cfg.AIKeyQuality != "", "ownKey": cfg.AIKeyQuality != cfg.AnthropicAPIKey, "built": false},
 			"booking":   map[string]any{"on": cfg.AIKeyBooking != "", "ownKey": cfg.AIKeyBooking != cfg.AnthropicAPIKey, "built": false},
 			"gemini":    map[string]any{"on": cfg.GeminiAPIKey != "", "dailyCap": cfg.GeminiDailyCap},

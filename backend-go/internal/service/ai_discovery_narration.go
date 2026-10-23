@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/anthropics/anthropic-sdk-go"
-	"github.com/anthropics/anthropic-sdk-go/option"
 
 	"staffmange-api/internal/model"
 )
@@ -72,7 +71,7 @@ func NewModelDiscoveryNarrator(apiKey, modelName string, dailyCap int) *ModelDis
 		modelName = "claude-haiku-4-5"
 	}
 	return &ModelDiscoveryNarrator{
-		client:    anthropic.NewClient(option.WithAPIKey(apiKey)),
+		client:    NewAIClient(AIAgentMatrix, apiKey),
 		model:     modelName,
 		fallback:  DeterministicDiscoveryNarrator{},
 		dailyCap:  dailyCap,

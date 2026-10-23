@@ -12,7 +12,6 @@ import (
 	"time"
 
 	"github.com/anthropics/anthropic-sdk-go"
-	"github.com/anthropics/anthropic-sdk-go/option"
 	"github.com/jmoiron/sqlx"
 )
 
@@ -356,6 +355,9 @@ func (b *SecretaryBrain) Summarize(ctx context.Context, userName, facts string) 
 // AIErrorText يترجم رفض مزوّد الذكاء لرسالة يفهمها المالك (دازاي 10-23: «نضيف المفاتيح»)
 // — حتى مفتاح غلط أو رصيد خالص ما يطلع «خلل» عام وهو ما يدري شنو يصلّح.
 func AIErrorText(err error) string {
+	if errors.Is(err, ErrAIBudget) || strings.Contains(err.Error(), ErrAIBudget.Error()) {
+		return "💵 ايريس وصلت حد صرفها اليومي — ترجع باچر. (الحد: AI_IRIS_DAILY_USD بملف .env)"
+	}
 	var apiErr *anthropic.Error
 	if !errors.As(err, &apiErr) {
 		return ""
@@ -379,7 +381,7 @@ func NewAnthropicClient(key string) *anthropic.Client {
 	if key == "" {
 		return nil
 	}
-	c := anthropic.NewClient(option.WithAPIKey(key))
+	c := NewAIClient(AIAgentIris, key)
 	return &c
 }
 

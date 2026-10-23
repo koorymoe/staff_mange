@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/anthropics/anthropic-sdk-go"
-	"github.com/anthropics/anthropic-sdk-go/option"
 
 	"staffmange-api/internal/model"
 )
@@ -73,7 +72,7 @@ func NewModelJudge(apiKey, modelName string, dailyCap int, fallback Judge) *Mode
 		fallback = RulesJudge{}
 	}
 	return &ModelJudge{
-		client:    anthropic.NewClient(option.WithAPIKey(apiKey)),
+		client:    NewAIClient(AIAgentMatrix, apiKey),
 		model:     modelName,
 		fallback:  fallback,
 		dailyCap:  dailyCap,

@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/anthropics/anthropic-sdk-go"
-	"github.com/anthropics/anthropic-sdk-go/option"
 
 	"staffmange-api/internal/model"
 	"staffmange-api/internal/repository"
@@ -73,7 +72,7 @@ func (s *MatrixLearningService) EnableModel(apiKey, modelName string) {
 	if modelName == "" {
 		modelName = "claude-haiku-4-5"
 	}
-	c := anthropic.NewClient(option.WithAPIKey(apiKey))
+	c := NewAIClient(AIAgentMatrix, apiKey)
 	s.client, s.model = &c, modelName
 }
 

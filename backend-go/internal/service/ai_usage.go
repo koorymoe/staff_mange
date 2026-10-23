@@ -56,6 +56,7 @@ func RecordAIUsage(feature, model string, u anthropic.Usage) {
 	if aiUsageRepo == nil {
 		return
 	}
+	aiBudgetAdd(feature, model, u)
 	go aiUsageRepo.Add(feature, model, u.InputTokens, u.OutputTokens, u.CacheReadInputTokens, u.CacheCreationInputTokens)
 }
 
@@ -65,6 +66,8 @@ type modelPrice struct{ In, Out float64 }
 func priceOf(model string) modelPrice {
 	m := strings.ToLower(model)
 	switch {
+	case strings.Contains(m, "haiku-5"):
+		return modelPrice{0.10, 0.50}
 	case strings.Contains(m, "haiku"):
 		return modelPrice{1, 5}
 	case strings.Contains(m, "sonnet-4"):
