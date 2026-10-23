@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from 'react'
-import { Link } from 'react-router-dom'
 import {
   api,
   apiRequest,
@@ -20,6 +19,23 @@ type Reminder = {
   guestName: string | null
   preferredAt: string | null
   link: string | null
+  createdAt: string
+}
+type Agenda = {
+  id: string
+  kind: 'meeting' | 'guest' | 'mine'
+  title: string
+  who: string
+  note: string
+  at: string | null
+  doneAt: string | null
+}
+type Diary = {
+  id: string
+  kind: string
+  body: string
+  at: string | null
+  doneAt: string | null
   createdAt: string
 }
 type Reminders = { counts: Record<Reminder['kind'], number>; items: Reminder[] }
@@ -44,13 +60,11 @@ export default function SecretaryPage() {
   ) : (
     <main className="secretary">
       <p className="sec-empty">السكرتير خاص بالمالك ومدير النظام.</p>
-      <Link to="/">ارجع للرئيسية</Link>
     </main>
   )
 }
 
 function Secretary() {
-  const { employee } = useSession()
   const [today, setToday] = useState<SecretaryToday | null>(null)
   const [chats, setChats] = useState<SecretaryChat[]>([])
   const [reminders, setReminders] = useState<Reminders | null>(null)
@@ -62,8 +76,26 @@ function Secretary() {
   const [recording, setRecording] = useState(false)
   const [seconds, setSeconds] = useState(0)
   const [openingMic, setOpeningMic] = useState(false)
-  const [view, setView] = useState<'home' | 'reminders'>('home')
-  const [deferred, setDeferred] = useState<string[]>([])
+  const [view, setView] = useState<'chat' | 'agenda' | 'reminders' | 'diary'>(
+    'chat',
+  )
+  const [drawer, setDrawer] = useState(false)
+  const [agenda, setAgenda] = useState<Agenda[]>([])
+  const [diary, setDiary] = useState<Diary[]>([])
+  const [search, setSearch] = useState('')
+  const [agendaBody, setAgendaBody] = useState('')
+  const [diaryBody, setDiaryBody] = useState('')
+  const body = view === 'agenda' ? agendaBody : diaryBody
+  const setBody = (value: string) =>
+    view === 'agenda' ? setAgendaBody(value) : setDiaryBody(value)
+  const [wide, setWide] = useState(
+    () => window.matchMedia('(min-width: 900px)').matches,
+  )
+  const [newAt, setNewAt] = useState('')
+  const [adding, setAdding] = useState(false)
+  const [deleteId, setDeleteId] = useState<string | null>(null)
+  const [deleteConfirmed, setDeleteConfirmed] = useState(false)
+  const [calendarNow, setCalendarNow] = useState(() => Date.now())
   const [selected, setSelected] = useState<Reminder | null>(null)
   const [at, setAt] = useState('')
   const [note, setNote] = useState('')
@@ -72,6 +104,18 @@ function Secretary() {
   const cancelled = useRef(false)
   const mounted = useRef(true)
   const end = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const media = window.matchMedia('(min-width: 900px)')
+    const update = () => setWide(media.matches)
+    media.addEventListener('change', update)
+    return () => media.removeEventListener('change', update)
+  }, [])
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setCalendarNow(Date.now()), 60000)
+    return () => window.clearInterval(timer)
+  }, [])
 
   useEffect(() => {
     mounted.current = true
@@ -121,7 +165,7 @@ function Secretary() {
   useEffect(() => {
     if (chats.length || busy)
       end.current?.scrollIntoView({ behavior: 'smooth', block: 'end' })
-  }, [chats, busy])
+  }, [chats, busy, view])
   useEffect(() => {
     if (!recording) return
     const timer = window.setInterval(() => setSeconds((n) => n + 1), 1000)
@@ -171,7 +215,7 @@ function Secretary() {
     })
     head('meta[name="theme-color"]', 'meta', {
       name: 'theme-color',
-      content: '#231536',
+      content: '#2563eb',
     })
     head('meta[name="apple-mobile-web-app-title"]', 'meta', {
       name: 'apple-mobile-web-app-title',
@@ -212,8 +256,8 @@ function Secretary() {
     setProposal(reply.proposal)
     setReload((n) => n + 1)
   }
-  const send = async () => {
-    const text = input.trim()
+  const send = async (raw = input) => {
+    const text = raw.trim()
     if (!text || busy || recording || openingMic) return
     setBusy(true)
     setError('')
@@ -286,7 +330,8 @@ function Secretary() {
       !proposal ||
       busy ||
       !proposal.fields.employeeId ||
-      !proposal.fields.title.trim()
+      !proposal.fields.title.trim() ||
+      !proposal.fields.dueAt
     )
       return
     setBusy(true)
@@ -325,20 +370,34 @@ function Secretary() {
     }
   }
   const decide = async () => {
-    if (!selected || busy || (declining ? !note.trim() : !at)) return
+    if (!selected || busy) return
+    const meeting = selected.kind === 'meeting' || selected.kind === 'guest'
+    if (meeting && (declining ? !note.trim() : !at)) return
+    if (selected.kind === 'delete_request' && !declining && !deleteConfirmed) {
+      setDeleteConfirmed(true)
+      return
+    }
     setBusy(true)
     setError('')
     try {
-      await apiRequest(
-        `/secretary/reminders/${encodeURIComponent(selected.id)}/${declining ? 'decline' : 'schedule'}`,
-        {
-          method: 'POST',
-          body: JSON.stringify(
-            declining ? { reason: note.trim() } : { at, note },
-          ),
-        },
-      )
+      if (meeting)
+        await apiRequest(
+          `/secretary/reminders/${encodeURIComponent(selected.id)}/${declining ? 'decline' : 'schedule'}`,
+          {
+            method: 'POST',
+            body: JSON.stringify(
+              declining ? { reason: note.trim() } : { at, note },
+            ),
+          },
+        )
+      else {
+        const id = selected.id.substring(selected.id.indexOf(':') + 1)
+        if (selected.kind === 'leave')
+          await api.decideLeave(id, !declining, note)
+        else await api.decideBookingDelete(id, !declining, note)
+      }
       setSelected(null)
+      setDeleteConfirmed(false)
       setReload((n) => n + 1)
     } catch (e) {
       setError((e as Error).message)
@@ -346,301 +405,685 @@ function Secretary() {
       setBusy(false)
     }
   }
-  const items = reminders?.items.filter((x) => !deferred.includes(x.id)) ?? []
+  useEffect(() => {
+    let alive = true
+    apiRequest<Agenda[]>('/secretary/agenda')
+      .then((x) => {
+        if (alive) setAgenda(x)
+      })
+      .catch((e) => {
+        if (alive) setError(e.message)
+      })
+    return () => {
+      alive = false
+    }
+  }, [reload])
+  useEffect(() => {
+    let alive = true
+    apiRequest<Diary[]>(
+      `/secretary/notes?kind=DIARY&q=${encodeURIComponent(search)}`,
+    )
+      .then((x) => {
+        if (alive) setDiary(x)
+      })
+      .catch((e) => {
+        if (alive) setError(e.message)
+      })
+    return () => {
+      alive = false
+    }
+  }, [reload, search])
+  const saveNote = async (kind: 'AGENDA' | 'DIARY') => {
+    if (!body.trim() || busy) return
+    setBusy(true)
+    setError('')
+    try {
+      await apiRequest('/secretary/notes', {
+        method: 'POST',
+        body: JSON.stringify({
+          kind,
+          body: body.trim(),
+          ...(kind === 'AGENDA' && newAt ? { at: newAt } : {}),
+        }),
+      })
+      setBody('')
+      setNewAt('')
+      setAdding(false)
+      setReload((n) => n + 1)
+    } catch (e) {
+      setError((e as Error).message)
+    } finally {
+      setBusy(false)
+    }
+  }
+  const changeNote = async (id: string, done?: boolean) => {
+    if (busy) return
+    setBusy(true)
+    setError('')
+    try {
+      await apiRequest(
+        `/secretary/notes/${encodeURIComponent(id)}${done === undefined ? '' : '/done'}`,
+        {
+          method: done === undefined ? 'DELETE' : 'PUT',
+          ...(done === undefined ? {} : { body: JSON.stringify({ done }) }),
+        },
+      )
+      setDeleteId(null)
+      setReload((n) => n + 1)
+    } catch (e) {
+      setError((e as Error).message)
+    } finally {
+      setBusy(false)
+    }
+  }
+  const dayKey = (v: string) =>
+    new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'Asia/Baghdad',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    }).format(new Date(v))
+  const todayKey = dayKey(new Date(calendarNow).toISOString())
+  const tomorrowKey = dayKey(new Date(calendarNow + 86400000).toISOString())
+  const bucket = (v: string | null) =>
+    !v
+      ? 'بلا وقت'
+      : dayKey(v) <= todayKey
+        ? 'اليوم'
+        : dayKey(v) === tomorrowKey
+          ? 'باچر'
+          : 'بعدين'
+  const displayDate = (v: string) =>
+    new Date(v).toLocaleString('ar-IQ', {
+      timeZone: 'Asia/Baghdad',
+      dateStyle: 'medium',
+      timeStyle: 'short',
+    })
+  const items = reminders?.items ?? []
   const fields = (key: keyof SecretaryProposal['fields'], value: string) => {
     if (proposal)
       setProposal({ ...proposal, fields: { ...proposal.fields, [key]: value } })
   }
 
+  const tabs = [
+    { id: 'chat' as const, label: 'المحادثة', icon: '💬', count: chats.length },
+    {
+      id: 'agenda' as const,
+      label: 'جدول أعمالي',
+      icon: '📅',
+      count: agenda.filter((x) => !x.doneAt).length,
+    },
+    {
+      id: 'reminders' as const,
+      label: 'تذكيراتي',
+      icon: '🔔',
+      count: items.length,
+    },
+    { id: 'diary' as const, label: 'مذكراتي', icon: '📔', count: diary.length },
+  ]
+  const openDecision = (item: Reminder, reject: boolean) => {
+    setSelected(item)
+    setDeclining(reject)
+    setAt(
+      item.preferredAt
+        ? `${dayKey(item.preferredAt)}T${new Intl.DateTimeFormat('en-GB', { timeZone: 'Asia/Baghdad', hour: '2-digit', minute: '2-digit' }).format(new Date(item.preferredAt))}`
+        : '',
+    )
+    setNote('')
+    setDeleteConfirmed(false)
+    setError('')
+  }
   return (
     <main className="secretary" dir="rtl">
-      <div className="sec-shell">
-        <header className="sec-header">
-          <img
-            src={`${import.meta.env.BASE_URL}secretary-icon.svg`}
-            alt="السكرتير"
-          />
+      {drawer && (
+        <button
+          className="sec-backdrop"
+          aria-label="غلق القائمة"
+          onClick={() => setDrawer(false)}
+        />
+      )}
+      <aside
+        className={`sec-drawer ${drawer ? 'open' : ''}`}
+        inert={!wide && !drawer}
+      >
+        <div className="sec-drawer-brand">
+          <span className="sec-logo">س</span>
           <div>
-            <small>مساحتك الخاصة</small>
-            <b>السكرتير</b>
+            <strong>السكرتير</strong>
+            <small>شغلك، بترتيب أوضح</small>
           </div>
-          <Link to="/" className="sec-system">
-            النظام ↗
-          </Link>
+          <button
+            className="sec-close-drawer"
+            aria-label="غلق القائمة"
+            onClick={() => setDrawer(false)}
+          >
+            ×
+          </button>
+        </div>
+        <nav aria-label="أقسام السكرتير">
+          {tabs.map((tab) => (
+            <button
+              key={tab.id}
+              aria-current={view === tab.id ? 'page' : undefined}
+              className={view === tab.id ? 'selected' : ''}
+              onClick={() => {
+                setView(tab.id)
+                setDrawer(false)
+                setError('')
+              }}
+            >
+              <span>{tab.icon}</span>
+              {tab.label}
+              <b>{tab.count}</b>
+            </button>
+          ))}
+        </nav>
+        <div className="sec-drawer-foot">مساحتك الخاصة للإدارة</div>
+      </aside>
+      <section className="sec-workspace">
+        <header className="sec-topbar">
+          <button
+            className="sec-menu"
+            aria-label="فتح القائمة"
+            onClick={() => setDrawer((v) => !v)}
+          >
+            ☰
+          </button>
+          <h1>{tabs.find((t) => t.id === view)?.label}</h1>
+          <span className="sec-top-status">السكرتير</span>
         </header>
         {error && (
           <p role="alert" className="sec-error">
             {error}
           </p>
         )}
-        {view === 'home' ? (
+        {view === 'chat' ? (
           <>
-            <section className="sec-welcome">
-              <small>أهلاً {employee?.name.split(' ')[0]}</small>
-              <h1>
-                يومك أوضح.
-                <br />
-                <em>وقتك إلك.</em>
-              </h1>
-              <p>اسألني عن الشغل، أو خلّيني أرتّب مهمة.</p>
-            </section>
-            <div className="sec-voice">
-              <button
-                aria-label={recording ? 'وقف التسجيل وأرسل' : 'ابدأ التسجيل'}
-                aria-pressed={recording}
-                className={recording ? 'sec-mic live' : 'sec-mic'}
-                onClick={voice}
-                disabled={busy || openingMic}
-              >
-                {recording ? (
-                  '■'
-                ) : (
-                  <svg viewBox="0 0 24 24" aria-hidden="true">
-                    <rect x="9" y="2" width="6" height="13" rx="3" />
-                    <path d="M5 10v2a7 7 0 0 0 14 0v-2M12 19v3M8 22h8" />
-                  </svg>
-                )}
-              </button>
-              <strong aria-live="polite">
-                {recording
-                  ? `دا أسمعك · ${seconds} ثانية`
-                  : openingMic
-                    ? 'دا أفتح المايك…'
-                    : 'ضغطة واحچيلي'}
-              </strong>
-              <span>
-                {recording ? 'اضغط مرة ثانية حتى ترسل' : 'أو اكتب طلبك بالأسفل'}
-              </span>
-              {recording && (
-                <button className="sec-cancel-record" onClick={cancelVoice}>
-                  إلغاء التسجيل
-                </button>
-              )}
-            </div>
-            <button
-              className="sec-reminder-banner"
-              onClick={() => setView('reminders')}
-            >
-              <span className="sec-star">✦</span>
-              <span>
-                <b>تذكيراتي</b>
-                <small>مقابلاتك والطلبات اللي تحتاجك</small>
-              </span>
-              <strong>{reminders ? items.length : '—'}</strong>
-              <span>←</span>
-            </button>
-            <section className="sec-summary">
-              <div className="sec-heading">
-                <h2>نبض اليوم</h2>
-                <span>من النظام</span>
-              </div>
-              {today ? (
-                today.summary.lines.length ? (
-                  today.summary.lines.map((x, i) => (
-                    <p key={i}>
-                      <span>0{i + 1}</span>
-                      {x}
-                    </p>
-                  ))
-                ) : (
-                  <p>ماكو مستجدات بالملخص هسه.</p>
-                )
-              ) : (
-                <p>دا أجيب ملخص اليوم…</p>
-              )}
-            </section>
-            <section className="sec-conversation">
-              <div className="sec-heading">
-                <h2>بينك وبين السكرتير</h2>
-                <span>المحادثة</span>
-              </div>
-              {!chats.length && (
-                <p className="sec-empty">شنو تحب نتابع أول شي اليوم؟</p>
-              )}
-              {chats.map((chat) => (
-                <article key={chat.id} className={`sec-message ${chat.role}`}>
-                  <small>
-                    {chat.role === 'user' ? 'إنت' : 'السكرتير'} ·{' '}
-                    {clock(chat.at)}
-                  </small>
-                  {chat.transcript && (
-                    <p className="sec-transcript">البصمة: {chat.transcript}</p>
-                  )}
-                  <p>{chat.text}</p>
-                  {chat.cards.map((c, i) => (
-                    <div className="sec-result" key={i}>
-                      <span>{c.status}</span>
-                      <h3>{c.title}</h3>
-                      {c.owner && <p>المسؤول: {c.owner}</p>}
-                      {c.lines.map((line, j) => (
-                        <p key={j}>{line}</p>
+            <div className="sec-chat-scroll">
+              <div className="sec-chat-inner">
+                {!chats.length && (
+                  <div className="sec-chat-empty">
+                    <span className="sec-logo">س</span>
+                    <h2>شلون أساعدك اليوم؟</h2>
+                    <p>اسأل عن الشغل أو وجّه مهمة بصوتك.</p>
+                    <div className="sec-suggestions">
+                      {[
+                        'شنو صاير اليوم؟',
+                        'منو متأخر؟',
+                        'وجّه مهمة',
+                        'شوفلي الحجوزات',
+                      ].map((text) => (
+                        <button
+                          key={text}
+                          disabled={busy}
+                          onClick={() => void send(text)}
+                        >
+                          {text}
+                          <span>←</span>
+                        </button>
                       ))}
-                      {c.link?.startsWith('/') && !c.link.startsWith('//') && (
-                        <Link to={c.link}>افتح التفاصيل ↗</Link>
-                      )}
                     </div>
-                  ))}
-                  {chat.action?.status === 'SENT' && (
-                    <small>✓ المهمة انرسلت</small>
-                  )}
-                </article>
-              ))}
-              {busy && (
-                <p className="sec-thinking" role="status">
-                  ✦ دا أفكر وأرتّب الجواب…
-                </p>
+                  </div>
+                )}
+                {chats.map((chat) => (
+                  <article key={chat.id} className={`sec-message ${chat.role}`}>
+                    <small>
+                      {chat.role === 'user' ? 'إنت' : 'السكرتير'} ·{' '}
+                      {clock(chat.at)}
+                    </small>
+                    {chat.transcript && (
+                      <p className="sec-transcript">
+                        البصمة: {chat.transcript}
+                      </p>
+                    )}
+                    <p>{chat.text}</p>
+                    {chat.cards.map((c, i) => (
+                      <div className="sec-result" key={i}>
+                        <span>{c.status}</span>
+                        <h3>{c.title}</h3>
+                        {c.owner && <p>المسؤول: {c.owner}</p>}
+                        {c.lines.map((line, j) => (
+                          <p key={j}>{line}</p>
+                        ))}
+                      </div>
+                    ))}
+                    {chat.action?.status === 'SENT' && (
+                      <small>✓ المهمة انرسلت</small>
+                    )}
+                  </article>
+                ))}
+                {busy && (
+                  <p className="sec-thinking" role="status">
+                    دا أفكر وأرتّب الجواب…
+                  </p>
+                )}
+                <div ref={end} />
+              </div>
+            </div>
+            <div className="sec-composer-wrap">
+              {recording && (
+                <div className="sec-recording" role="status">
+                  ● دا أسمعك · {seconds} ثانية
+                  <button onClick={cancelVoice}>إلغاء التسجيل</button>
+                </div>
               )}
-              <div ref={end} />
-            </section>
-            <form
-              className="sec-composer"
-              onSubmit={(e) => {
-                e.preventDefault()
-                void send()
-              }}
-            >
-              <textarea
-                aria-label="طلبك للسكرتير"
-                value={input}
-                rows={1}
-                onChange={(e) => {
-                  setInput(e.target.value)
-                  e.currentTarget.style.height = 'auto'
-                  e.currentTarget.style.height = `${Math.min(e.currentTarget.scrollHeight, 150)}px`
+              <form
+                className="sec-composer"
+                onSubmit={(e) => {
+                  e.preventDefault()
+                  void send()
                 }}
-                placeholder="اكتبلي شتحتاج…"
-              />
-              <button
-                disabled={busy || recording || openingMic || !input.trim()}
               >
-                إرسال ↑
-              </button>
-            </form>
+                <button
+                  type="button"
+                  aria-pressed={recording}
+                  aria-label={recording ? 'وقف التسجيل وأرسل' : 'ابدأ التسجيل'}
+                  className={recording ? 'sec-mic live' : 'sec-mic'}
+                  onClick={voice}
+                  disabled={busy || openingMic}
+                >
+                  {recording ? (
+                    '■'
+                  ) : (
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                      <rect x="9" y="2" width="6" height="13" rx="3" />
+                      <path d="M5 10v2a7 7 0 0 0 14 0v-2M12 19v3M8 22h8" />
+                    </svg>
+                  )}
+                </button>
+                <textarea
+                  aria-label="طلبك للسكرتير"
+                  rows={1}
+                  value={input}
+                  onChange={(e) => {
+                    setInput(e.target.value)
+                    e.currentTarget.style.height = 'auto'
+                    e.currentTarget.style.height = `${Math.min(e.currentTarget.scrollHeight, 150)}px`
+                  }}
+                  placeholder={openingMic ? 'دا أفتح المايك…' : 'اكتب طلبك…'}
+                />
+                <button
+                  className="sec-send"
+                  disabled={busy || recording || openingMic || !input.trim()}
+                >
+                  إرسال ↑
+                </button>
+              </form>
+              <small>المهام ما تنرسل إلا بعد تأكيدك.</small>
+            </div>
           </>
         ) : (
-          <section className="sec-reminders">
-            <button className="sec-back" onClick={() => setView('home')}>
-              → ارجع للمحادثة
-            </button>
-            <h1>
-              تذكيراتي<span>{items.length}</span>
-            </h1>
-            <p>كل موضوع بمكانه، والقرار بإيدك.</p>
-            {(Object.keys(groups) as Reminder['kind'][]).map((kind) => (
-              <section key={kind}>
-                <h2>
-                  {groups[kind]}{' '}
-                  <span>{items.filter((x) => x.kind === kind).length}</span>
-                </h2>
-                {items
-                  .filter((x) => x.kind === kind)
-                  .map((item) => (
-                    <article key={item.id} className="sec-reminder-item">
-                      <small>{item.who}</small>
-                      <h3>{item.title}</h3>
-                      <p>{item.reason}</p>
-                      {item.guestName && <p>الضيف: {item.guestName}</p>}
-                      {item.preferredAt && (
-                        <p>
-                          الوقت المقترح: {item.preferredAt.replace('T', ' ')}
-                        </p>
-                      )}
-                      {kind === 'meeting' || kind === 'guest' ? (
-                        <div className="sec-actions">
-                          <button
-                            onClick={() => {
-                              setSelected(item)
-                              setDeclining(false)
-                              setAt(item.preferredAt || '')
-                              setNote('')
-                            }}
+          <div className="sec-section-scroll">
+            <div className="sec-section-inner">
+              {view === 'agenda' && (
+                <>
+                  <section className="sec-summary">
+                    <div className="sec-heading">
+                      <h2>نبض اليوم</h2>
+                      <span>من النظام</span>
+                    </div>
+                    {today ? (
+                      today.summary.lines.map((line, i) => (
+                        <p key={i}>{line}</p>
+                      ))
+                    ) : (
+                      <p>دا أجيب ملخص اليوم…</p>
+                    )}
+                  </section>
+                  <div className="sec-heading">
+                    <div>
+                      <h2>جدول أعمالي</h2>
+                      <p>كل مواعيدك بتوقيت بغداد.</p>
+                    </div>
+                    <button
+                      className="sec-primary"
+                      onClick={() => {
+                        setAdding((v) => !v)
+                        setBody('')
+                        setNewAt('')
+                      }}
+                    >
+                      ＋ أضف للجدول
+                    </button>
+                  </div>
+                  {adding && (
+                    <form
+                      className="sec-panel sec-note-form"
+                      onSubmit={(e) => {
+                        e.preventDefault()
+                        void saveNote('AGENDA')
+                      }}
+                    >
+                      <label>
+                        شنو عندك بالجدول؟
+                        <textarea
+                          required
+                          value={body}
+                          onChange={(e) => setBody(e.target.value)}
+                        />
+                      </label>
+                      <label>
+                        الوقت · اختياري
+                        <input
+                          type="datetime-local"
+                          value={newAt}
+                          onChange={(e) => setNewAt(e.target.value)}
+                        />
+                      </label>
+                      <div className="sec-actions">
+                        <button disabled={busy || !body.trim()}>
+                          حفظ بالجدول
+                        </button>
+                        <button
+                          type="button"
+                          className="sec-secondary"
+                          onClick={() => setAdding(false)}
+                        >
+                          إلغاء
+                        </button>
+                      </div>
+                    </form>
+                  )}
+                  {['اليوم', 'باچر', 'بعدين', 'بلا وقت'].map((label) => (
+                    <section className="sec-agenda-group" key={label}>
+                      <h3>
+                        {label}
+                        <span>
+                          {agenda.filter((x) => bucket(x.at) === label).length}
+                        </span>
+                      </h3>
+                      {agenda
+                        .filter((x) => bucket(x.at) === label)
+                        .map((item) => (
+                          <article
+                            className={`sec-panel ${item.doneAt ? 'done' : ''}`}
+                            key={item.id}
                           >
-                            حدد موعد
-                          </button>
-                          <button
-                            className="sec-secondary"
-                            onClick={() => {
-                              setSelected(item)
-                              setDeclining(true)
-                              setNote('')
-                            }}
-                          >
-                            ارفض
-                          </button>
-                        </div>
-                      ) : (
-                        <div className="sec-actions">
-                          {item.link?.startsWith('/') &&
-                            !item.link.startsWith('//') && (
-                              <Link to={item.link}>افتح التفاصيل</Link>
+                            <small>
+                              {item.at ? displayDate(item.at) : 'بدون موعد'} ·{' '}
+                              {item.kind === 'mine'
+                                ? 'من جدولك'
+                                : item.kind === 'guest'
+                                  ? 'ضيف'
+                                  : 'مقابلة'}
+                            </small>
+                            <h3>{item.title}</h3>
+                            {item.who && <p>{item.who}</p>}
+                            {item.note && <p>{item.note}</p>}
+                            {item.kind === 'mine' && (
+                              <div className="sec-actions">
+                                <button
+                                  className="sec-approve"
+                                  disabled={busy}
+                                  onClick={() =>
+                                    void changeNote(item.id, !item.doneAt)
+                                  }
+                                >
+                                  {item.doneAt ? '↶ رجّع للمعلّق' : '✓ خلص'}
+                                </button>
+                                <button
+                                  className="sec-danger"
+                                  onClick={() => setDeleteId(item.id)}
+                                >
+                                  حذف
+                                </button>
+                              </div>
                             )}
-                          <button
-                            className="sec-secondary"
-                            onClick={() => setDeferred((v) => [...v, item.id])}
-                          >
-                            أجّل
-                          </button>
-                        </div>
+                          </article>
+                        ))}
+                      {!agenda.some((x) => bucket(x.at) === label) && (
+                        <p className="sec-empty">ماكو بنود.</p>
                       )}
-                    </article>
+                    </section>
                   ))}
-                {!items.some((x) => x.kind === kind) && (
-                  <p className="sec-empty">ماكو طلبات بهذا القسم.</p>
-                )}
-              </section>
-            ))}
-          </section>
+                </>
+              )}
+              {view === 'reminders' && (
+                <>
+                  <div className="sec-heading">
+                    <div>
+                      <h2>تذكيراتي</h2>
+                      <p>راجع الطلب وخذ قرارك من هنا.</p>
+                    </div>
+                    <span className="sec-pending">{items.length} ينتظر</span>
+                  </div>
+                  {(Object.keys(groups) as Reminder['kind'][]).map((kind) => (
+                    <section className="sec-agenda-group" key={kind}>
+                      <h3>
+                        {groups[kind]}
+                        <span>
+                          {items.filter((x) => x.kind === kind).length}
+                        </span>
+                      </h3>
+                      {items
+                        .filter((x) => x.kind === kind)
+                        .map((item) => (
+                          <article className="sec-panel" key={item.id}>
+                            <small>{item.who}</small>
+                            <h3>{item.title}</h3>
+                            <p>{item.reason}</p>
+                            {item.guestName && <p>الضيف: {item.guestName}</p>}
+                            {item.preferredAt && (
+                              <p>
+                                الوقت المقترح: {displayDate(item.preferredAt)}
+                              </p>
+                            )}
+                            <div className="sec-actions">
+                              <button
+                                className="sec-approve"
+                                onClick={() => openDecision(item, false)}
+                              >
+                                {kind === 'meeting' || kind === 'guest'
+                                  ? 'حدد موعد'
+                                  : 'وافق'}
+                              </button>
+                              <button
+                                className="sec-danger"
+                                onClick={() => openDecision(item, true)}
+                              >
+                                ارفض
+                              </button>
+                            </div>
+                          </article>
+                        ))}
+                      {!items.some((x) => x.kind === kind) && (
+                        <p className="sec-empty">ماكو طلبات بهذا القسم.</p>
+                      )}
+                    </section>
+                  ))}
+                </>
+              )}
+              {view === 'diary' && (
+                <>
+                  <div className="sec-heading">
+                    <div>
+                      <h2>مذكراتي</h2>
+                      <p>
+                        السكرتير يكدر يرجعلها لمن تسأله: «شنو سويت ويا فلان؟»
+                      </p>
+                    </div>
+                  </div>
+                  <form
+                    className="sec-panel sec-note-form"
+                    onSubmit={(e) => {
+                      e.preventDefault()
+                      void saveNote('DIARY')
+                    }}
+                  >
+                    <label>
+                      شنو صار اليوم؟
+                      <textarea
+                        required
+                        value={body}
+                        onChange={(e) => setBody(e.target.value)}
+                        placeholder="اكتب ملاحظتك حتى ترجع إلها…"
+                      />
+                    </label>
+                    <button
+                      className="sec-primary"
+                      disabled={busy || !body.trim()}
+                    >
+                      حفظ المذكرة
+                    </button>
+                  </form>
+                  <label className="sec-search">
+                    بحث بمذكراتك
+                    <input
+                      type="search"
+                      value={search}
+                      onChange={(e) => setSearch(e.target.value)}
+                      placeholder="اسم، موضوع، أو كلمة…"
+                    />
+                  </label>
+                  {[...new Set(diary.map((x) => dayKey(x.createdAt)))]
+                    .sort()
+                    .reverse()
+                    .map((day) => (
+                      <section className="sec-agenda-group" key={day}>
+                        <h3>{day}</h3>
+                        {diary
+                          .filter((x) => dayKey(x.createdAt) === day)
+                          .map((item) => (
+                            <article className="sec-panel" key={item.id}>
+                              <small>{clock(item.createdAt)}</small>
+                              <p className="sec-diary-body">{item.body}</p>
+                              <button
+                                className="sec-delete-note"
+                                onClick={() => setDeleteId(item.id)}
+                              >
+                                حذف
+                              </button>
+                            </article>
+                          ))}
+                      </section>
+                    ))}
+                  {!diary.length && (
+                    <p className="sec-empty">
+                      {search
+                        ? 'ما لگيت مذكرات بهذا البحث.'
+                        : 'بعدك ما عندك مذكرات.'}
+                    </p>
+                  )}
+                </>
+              )}
+            </div>
+          </div>
         )}
-      </div>
-      {selected && (
+      </section>
+      {deleteId && (
         <div className="sec-overlay">
-          <form
+          <div
             className="sec-dialog"
-            role="dialog"
+            role="alertdialog"
             aria-modal="true"
-            aria-label={declining ? 'رفض الطلب' : 'تحديد موعد'}
-            onSubmit={(e) => {
-              e.preventDefault()
-              void decide()
-            }}
+            aria-label="تأكيد حذف المذكرة"
           >
-            <small>{selected.who}</small>
-            <h2>{declining ? 'ليش انرفض الطلب؟' : 'خل نرتّب الموعد'}</h2>
-            <p>{selected.title}</p>
-            {!declining && (
-              <label>
-                التاريخ والوقت · بغداد
-                <input
-                  required
-                  type="datetime-local"
-                  value={at}
-                  onChange={(e) => setAt(e.target.value)}
-                />
-              </label>
-            )}
-            <label>
-              {declining ? 'سبب الرفض' : 'ملاحظة للموظف'}
-              <textarea
-                required={declining}
-                value={note}
-                onChange={(e) => setNote(e.target.value)}
-              />
-            </label>
+            <h2>تحذف هذا البند؟</h2>
+            <p>الحذف نهائي وما تكدر ترجّعه.</p>
             <div className="sec-actions">
-              <button disabled={busy}>
-                {busy ? 'دا أحفظ…' : declining ? 'تأكيد الرفض' : 'تأكيد الموعد'}
+              <button
+                className="sec-danger"
+                disabled={busy}
+                onClick={() => void changeNote(deleteId)}
+              >
+                إي، احذفه
               </button>
               <button
-                type="button"
                 className="sec-secondary"
                 disabled={busy}
-                onClick={() => setSelected(null)}
+                onClick={() => setDeleteId(null)}
               >
                 رجوع
               </button>
             </div>
             {error && (
               <p role="alert" className="sec-error">
+                {error}
+              </p>
+            )}
+          </div>
+        </div>
+      )}
+      {selected && (
+        <div className="sec-overlay">
+          <form
+            className="sec-dialog"
+            role="dialog"
+            aria-modal="true"
+            aria-label="قرار الطلب"
+            onSubmit={(e) => {
+              e.preventDefault()
+              void decide()
+            }}
+          >
+            <small>{selected.who}</small>
+            <h2>
+              {deleteConfirmed
+                ? 'متأكد؟ الحجز ينحذف'
+                : declining
+                  ? 'رفض الطلب'
+                  : selected.kind === 'meeting' || selected.kind === 'guest'
+                    ? 'حدد موعد'
+                    : 'موافقة على الطلب'}
+            </h2>
+            <p>{selected.title}</p>
+            <p>{selected.reason}</p>
+            {!declining &&
+              (selected.kind === 'meeting' || selected.kind === 'guest') && (
+                <label>
+                  التاريخ والوقت · بغداد
+                  <input
+                    required
+                    type="datetime-local"
+                    value={at}
+                    onChange={(e) => setAt(e.target.value)}
+                  />
+                </label>
+              )}
+            <label>
+              {declining ? 'سبب الرفض' : 'ملاحظة'}
+              <textarea
+                required={declining}
+                value={note}
+                onChange={(e) => setNote(e.target.value)}
+              />
+            </label>
+            {deleteConfirmed && (
+              <p className="sec-error">
+                الموافقة تحذف الحجز نهائياً. راجع الطلب قبل التأكيد.
+              </p>
+            )}
+            <div className="sec-actions">
+              <button
+                className={
+                  declining || deleteConfirmed ? 'sec-danger' : 'sec-approve'
+                }
+                disabled={busy}
+              >
+                {busy
+                  ? 'دا أحفظ…'
+                  : deleteConfirmed
+                    ? 'إي، وافق واحذف الحجز'
+                    : declining
+                      ? 'تأكيد الرفض'
+                      : selected.kind === 'meeting' || selected.kind === 'guest'
+                        ? 'تأكيد الموعد'
+                        : 'تأكيد الموافقة'}
+              </button>
+              <button
+                type="button"
+                className="sec-secondary"
+                disabled={busy}
+                onClick={() => {
+                  setSelected(null)
+                  setDeleteConfirmed(false)
+                }}
+              >
+                رجوع
+              </button>
+            </div>
+            {error && (
+              <p className="sec-error" role="alert">
                 {error}
               </p>
             )}
