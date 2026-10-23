@@ -345,3 +345,24 @@ func (b *SecretaryBrain) Summarize(ctx context.Context, userName, facts string) 
 	}
 	return lines, nil
 }
+
+// AIErrorText يترجم رفض مزوّد الذكاء لرسالة يفهمها المالك (دازاي 10-23: «نضيف المفاتيح»)
+// — حتى مفتاح غلط أو رصيد خالص ما يطلع «خلل» عام وهو ما يدري شنو يصلّح.
+func AIErrorText(err error) string {
+	var apiErr *anthropic.Error
+	if !errors.As(err, &apiErr) {
+		return ""
+	}
+	msg := strings.ToLower(apiErr.Error())
+	switch {
+	case apiErr.StatusCode == 401 || apiErr.StatusCode == 403:
+		return "🔑 مفتاح الذكاء مرفوض — تأكد من ANTHROPIC_API_KEY بملف .env بالسيرفر."
+	case strings.Contains(msg, "credit") || strings.Contains(msg, "billing") || apiErr.StatusCode == 402:
+		return "💳 رصيد الذكاء خلص — اشحن من console.anthropic.com ← Billing."
+	case apiErr.StatusCode == 404:
+		return "🤖 اسم الموديل غلط — تأكد من AI_MODEL بملف .env."
+	case apiErr.StatusCode == 429 || apiErr.StatusCode == 529:
+		return "⏳ الذكاء مضغوط هسه — جرّب بعد دقيقة."
+	}
+	return ""
+}

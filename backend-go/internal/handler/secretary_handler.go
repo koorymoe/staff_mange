@@ -127,7 +127,11 @@ func (h *SecretaryHandler) Message(w http.ResponseWriter, r *http.Request) {
 			res = &service.SecretaryResult{Reply: service.ErrSecretaryCap.Error()}
 		default:
 			log.Printf("secretary reply: %v", err)
-			res = &service.SecretaryResult{Reply: "صار خلل بالتفكير — جرّب مرة ثانية بعد شوية."}
+			msg := service.AIErrorText(err)
+			if msg == "" {
+				msg = "صار خلل بالتفكير — جرّب مرة ثانية بعد شوية."
+			}
+			res = &service.SecretaryResult{Reply: msg}
 		}
 	}
 	if res.Cards == nil {

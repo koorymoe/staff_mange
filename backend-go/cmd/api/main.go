@@ -243,6 +243,15 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	// نفس الواجهة فباقي النظام ما يعرف أيهم شغّال.
 	fileStore := buildFileStore(cfg)
 	log.Printf("[storage] تخزين الملفات: %s", fileStore.Kind())
+	{
+		onOff := func(b bool) string {
+			if b {
+				return "مفعّل"
+			}
+			return "مطفي"
+		}
+		log.Printf("🤖 Claude: %s (%s) · Gemini: %s · Whisper: %s", onOff(cfg.AnthropicAPIKey != ""), cfg.AIModel, onOff(cfg.GeminiAPIKey != ""), onOff(cfg.WhisperURL != ""))
+	}
 	fileHandler := handler.NewFileHandler(fileStore, []byte(cfg.JWTSecret), employeeRepo)
 	surveyPhotoHandler := handler.NewSurveyPhotoHandler(repository.NewSurveyPhotoRepository(db), permissionRepo, fileStore)
 	// مفاتيح إطفاء الميزات — جدول عام صغير، القراءة للكل والكتابة للمالك.
@@ -1117,6 +1126,14 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	}
 	middleware.SetStealthRecorder(stealthLog)
 	authHandler.SetStealthLog(stealthLog)
+	// 🤖 حالة مفاتيح الذكاء (دازاي 10-23) — شغّال/مطفي بس، المفتاح نفسه ما يطلع أبداً.
+	mux.Handle("GET /api/ai/status", middleware.Chain(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		handler.WriteJSON(w, http.StatusOK, map[string]any{
+			"claude":  map[string]any{"on": cfg.AnthropicAPIKey != "", "model": cfg.AIModel, "dailyCap": cfg.AIDailyCap},
+			"gemini":  map[string]any{"on": cfg.GeminiAPIKey != "", "dailyCap": cfg.GeminiDailyCap},
+			"whisper": map[string]any{"on": cfg.WhisperURL != ""},
+		})
+	}), requireAuth, middleware.RequireOwner()))
 	mux.Handle("POST /api/auth/stealth", middleware.Chain(http.HandlerFunc(authHandler.Stealth), requireAuth, middleware.RequireOwner()))
 	mux.Handle("PUT /api/auth/command-password", middleware.Chain(http.HandlerFunc(authHandler.SetCommandPassword), requireAuth, middleware.RequireOwner()))
 	mux.Handle("GET /api/auth/command-accounts", middleware.Chain(http.HandlerFunc(authHandler.CommandAccounts), requireAuth, middleware.RequireOwner()))
