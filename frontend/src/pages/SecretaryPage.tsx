@@ -6,6 +6,7 @@ import {
   type SecretaryProposal,
   type SecretaryReply,
   type SecretaryToday,
+  type ExtraTask,
 } from '../api'
 import { useSession } from '../session'
 import './SecretaryPage.css'
@@ -53,6 +54,53 @@ const clock = (value: string) =>
     minute: '2-digit',
   })
 
+function IrisIcon({
+  kind,
+}: {
+  kind: 'calendar' | 'bell' | 'check' | 'send' | 'file' | 'pen'
+}) {
+  const paths = {
+    calendar: (
+      <>
+        <rect x="3" y="5" width="18" height="16" rx="3" />
+        <path d="M7 3v4m10-4v4M3 11h18M8 15h2m4 0h2m-8 3h2" />
+      </>
+    ),
+    bell: (
+      <>
+        <path d="M18 8a6 6 0 0 0-12 0c0 7-3 8-3 8h18s-3-1-3-8M10 20h4" />
+      </>
+    ),
+    check: (
+      <>
+        <circle cx="12" cy="12" r="9" />
+        <path d="m8 12 3 3 5-6" />
+      </>
+    ),
+    send: (
+      <>
+        <path d="m21 3-7 18-4-7-7-4 18-7ZM10 14l5-5" />
+      </>
+    ),
+    file: (
+      <>
+        <path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9l-6-6Z" />
+        <path d="M14 3v6h6M8 13h8m-8 4h5" />
+      </>
+    ),
+    pen: (
+      <>
+        <path d="m15 4 5 5M4 20l5-1L21 7a2 2 0 0 0-5-5L4 14l-1 7Z" />
+      </>
+    ),
+  }
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true" className="iris-icon">
+      {paths[kind]}
+    </svg>
+  )
+}
+
 export default function SecretaryPage() {
   const { employee } = useSession()
   const allowed = employee?.actualRole === 'OWNER' || employee?.role === 'ADMIN'
@@ -84,6 +132,11 @@ function Secretary() {
   )
   const [drawer, setDrawer] = useState(false)
   const [agenda, setAgenda] = useState<Agenda[]>([])
+  const [agendaLoaded, setAgendaLoaded] = useState(false)
+  const [urgentTasks, setUrgentTasks] = useState<ExtraTask[] | null>(null)
+  const [urgentOpen, setUrgentOpen] = useState(false)
+  const [online, setOnline] = useState(() => navigator.onLine)
+  const [connected, setConnected] = useState(false)
   const [diary, setDiary] = useState<Diary[]>([])
   const [search, setSearch] = useState('')
   const [agendaBody, setAgendaBody] = useState('')
@@ -107,6 +160,67 @@ function Secretary() {
   const cancelled = useRef(false)
   const mounted = useRef(true)
   const end = useRef<HTMLDivElement>(null)
+  const viewportRoot = useRef<HTMLElement>(null)
+
+  useEffect(() => {
+    const viewport = window.visualViewport
+    const update = () => {
+      const root = viewportRoot.current
+      if (!root) return
+      root.style.setProperty('--iris-viewport-height', `${viewport?.height ?? window.innerHeight}px`)
+      root.style.setProperty('--iris-viewport-top', `${viewport?.offsetTop ?? 0}px`)
+      const keyboard = document.activeElement?.matches('textarea, input') &&
+        (viewport?.height ?? window.innerHeight) < document.documentElement.clientHeight - 120
+      root.classList.toggle('iris-keyboard-open', Boolean(keyboard))
+    }
+    update()
+    viewport?.addEventListener('resize', update)
+    viewport?.addEventListener('scroll', update)
+    window.addEventListener('resize', update)
+    document.addEventListener('focusin', update)
+    document.addEventListener('focusout', update)
+    return () => {
+      viewport?.removeEventListener('resize', update)
+      viewport?.removeEventListener('scroll', update)
+      window.removeEventListener('resize', update)
+      document.removeEventListener('focusin', update)
+      document.removeEventListener('focusout', update)
+    }
+  }, [])
+
+  useEffect(() => {
+    const update = () => setOnline(navigator.onLine)
+    window.addEventListener('online', update)
+    window.addEventListener('offline', update)
+    return () => {
+      window.removeEventListener('online', update)
+      window.removeEventListener('offline', update)
+    }
+  }, [])
+  useEffect(() => {
+    let alive = true
+    api
+      .getExtraTasks()
+      .then((rows) => {
+        if (alive)
+          setUrgentTasks(
+            rows.filter(
+              (x) =>
+                x.priority === 'URGENT' &&
+                (x.status === 'NEW' || x.status === 'IN_PROGRESS'),
+            ),
+          )
+      })
+      .catch((e) => {
+        if (alive) {
+          setUrgentTasks(null)
+          setError(e.message)
+        }
+      })
+    return () => {
+      alive = false
+    }
+  }, [reload])
 
   useEffect(() => {
     const media = window.matchMedia('(min-width: 900px)')
@@ -135,7 +249,7 @@ function Secretary() {
     api
       .secretaryHistory(50)
       .then((x) => {
-        if (alive) setChats(x)
+        if (alive) setChats((current) => [...x, ...current.filter((chat) => !x.some((old) => old.id === chat.id))])
       })
       .catch((e) => {
         if (alive) setError(e.message)
@@ -149,10 +263,16 @@ function Secretary() {
     api
       .secretaryToday()
       .then((x) => {
-        if (alive) setToday(x)
+        if (alive) {
+          setToday(x)
+          setConnected(true)
+        }
       })
       .catch((e) => {
-        if (alive) setError(e.message)
+        if (alive) {
+          setError(e.message)
+          setConnected(false)
+        }
       })
     apiRequest<Reminders>('/secretary/reminders')
       .then((x) => {
@@ -231,19 +351,19 @@ function Secretary() {
     }
   }, [])
 
-  const acceptReply = (text: string, reply: SecretaryReply) => {
+  const acceptReply = (text: string, reply: SecretaryReply, pendingId?: string) => {
     const stamp = new Date().toISOString()
     setChats((v) => [
-      ...v,
-      {
+      ...v.map((chat) => chat.id === pendingId ? { ...chat, text, transcript: reply.transcript } : chat),
+      ...(pendingId ? [] : [{
         id: `user-${reply.messageId}`,
         at: stamp,
-        role: 'user',
+        role: 'user' as const,
         text,
         transcript: reply.transcript,
         cards: [],
         action: null,
-      },
+      }]),
       {
         id: reply.messageId,
         at: stamp,
@@ -265,9 +385,12 @@ function Secretary() {
     setBusy(true)
     setError('')
     setInput('')
+    const pendingId = `local-${crypto.randomUUID()}`
+    setChats((v) => [...v, { id: pendingId, at: new Date().toISOString(), role: 'user', text, transcript: null, cards: [], action: null }])
     try {
-      acceptReply(text, await api.secretaryMessage(text))
+      acceptReply(text, await api.secretaryMessage(text), pendingId)
     } catch (e) {
+      setChats((v) => v.filter((chat) => chat.id !== pendingId))
       setError((e as Error).message)
       setInput(text)
     } finally {
@@ -412,10 +535,16 @@ function Secretary() {
     let alive = true
     apiRequest<Agenda[]>('/secretary/agenda')
       .then((x) => {
-        if (alive) setAgenda(x)
+        if (alive) {
+          setAgenda(x)
+          setAgendaLoaded(true)
+        }
       })
       .catch((e) => {
-        if (alive) setError(e.message)
+        if (alive) {
+          setError(e.message)
+          setAgendaLoaded(false)
+        }
       })
     return () => {
       alive = false
@@ -536,8 +665,14 @@ function Secretary() {
     setDeleteConfirmed(false)
     setError('')
   }
+  const todaysMeetings = agenda.filter(
+    (x) =>
+      (x.kind === 'meeting' || x.kind === 'guest') &&
+      x.at &&
+      dayKey(x.at) === todayKey,
+  )
   return (
-    <main className="secretary" dir="rtl">
+    <main ref={viewportRoot} className="secretary" dir="rtl">
       {drawer && (
         <button
           className="sec-backdrop"
@@ -584,16 +719,43 @@ function Secretary() {
         <div className="sec-drawer-foot">مساحتك الخاصة للإدارة</div>
       </aside>
       <section className="sec-workspace">
-        <header className="sec-topbar">
-          <button
-            className="sec-menu"
-            aria-label="فتح القائمة"
-            onClick={() => setDrawer((v) => !v)}
+        <header className="sec-topbar iris-topbar">
+          <div className="iris-header-tools">
+            <button
+              className="sec-menu"
+              aria-label="فتح القائمة"
+              onClick={() => setDrawer((v) => !v)}
+            >
+              ☰
+            </button>
+            <button
+              className="iris-bell"
+              aria-label={`تذكيراتي · ${items.length} طلب`}
+              onClick={() => setView('reminders')}
+            >
+              <IrisIcon kind="bell" />
+              {items.length > 0 && <span />}
+            </button>
+          </div>
+          <div className="iris-brand">
+            <img
+              src={`${import.meta.env.BASE_URL}apple-touch-icon.png`}
+              alt="شعار الأماني"
+            />
+            <h1>ايريس</h1>
+            <small>شركة الأماني</small>
+          </div>
+          <span
+            className={`iris-presence ${online && connected ? 'connected' : ''}`}
+            role="status"
           >
-            ☰
-          </button>
-          <h1>{tabs.find((t) => t.id === view)?.label}</h1>
-          <span className="sec-top-status">أهلاً {honorific} · ايريس</span>
+            <i />
+            {!online
+              ? 'بدون اتصال'
+              : connected
+                ? 'متصل بالنظام'
+                : 'جار الاتصال'}
+          </span>
         </header>
         {error && (
           <p role="alert" className="sec-error">
@@ -602,38 +764,56 @@ function Secretary() {
         )}
         {view === 'chat' ? (
           <>
+            <div className="iris-stat-cards">
+              <button
+                onClick={() => setView('agenda')}
+                className="iris-stat meetings"
+              >
+                <IrisIcon kind="calendar" />
+                <span>
+                  اجتماعات اليوم
+                  <b>{agendaLoaded ? todaysMeetings.length : '—'}</b>
+                </span>
+                <span aria-hidden="true">‹</span>
+              </button>
+              <button
+                onClick={() => setUrgentOpen(true)}
+                className="iris-stat urgent"
+              >
+                <IrisIcon kind="check" />
+                <span>
+                  مهام عاجلة<b>{urgentTasks?.length ?? '—'}</b>
+                </span>
+                <span aria-hidden="true">‹</span>
+              </button>
+            </div>
             <div className="sec-chat-scroll">
               <div className="sec-chat-inner">
                 {!chats.length && (
-                  <div className="sec-chat-empty">
-                    <span className="sec-logo">إ</span>
-                    <h2>أهلاً {honorific}</h2>
-                    <p>اسأل عن الشغل أو وجّه مهمة بصوتك.</p>
-                    <div className="sec-suggestions">
-                      {[
-                        'شنو صاير اليوم؟',
-                        'منو متأخر؟',
-                        'وجّه مهمة',
-                        'شوفلي الحجوزات',
-                      ].map((text) => (
-                        <button
-                          key={text}
-                          disabled={busy}
-                          onClick={() => void send(text)}
-                        >
-                          {text}
-                          <span>←</span>
-                        </button>
-                      ))}
+                  <div className="iris-welcome">
+                    <span className="iris-avatar">
+                      <img
+                        src={`${import.meta.env.BASE_URL}apple-touch-icon.png`}
+                        alt=""
+                      />
+                    </span>
+                    <div>
+                      <h2>أهلاً {honorific}.</h2>
+                      <p>كيف أساعدك اليوم؟</p>
                     </div>
                   </div>
                 )}
                 {chats.map((chat) => (
                   <article key={chat.id} className={`sec-message ${chat.role}`}>
-                    <small>
-                      {chat.role === 'user' ? 'إنت' : 'ايريس'} ·{' '}
-                      {clock(chat.at)}
-                    </small>
+                    {chat.role === 'assistant' && (
+                      <span className="iris-avatar">
+                        <img
+                          src={`${import.meta.env.BASE_URL}apple-touch-icon.png`}
+                          alt=""
+                        />
+                      </span>
+                    )}
+                    <small>{clock(chat.at)}</small>
                     {chat.transcript && (
                       <p className="sec-transcript">
                         البصمة: {chat.transcript}
@@ -643,11 +823,27 @@ function Secretary() {
                     {chat.cards.map((c, i) => (
                       <div className="sec-result" key={i}>
                         <span>{c.status}</span>
-                        <h3>{c.title}</h3>
+                        <h3>
+                          <IrisIcon
+                            kind={
+                              /اجتماع|موعد/.test(c.title) ? 'calendar' : 'file'
+                            }
+                          />
+                          {c.title}
+                        </h3>
                         {c.owner && <p>المسؤول: {c.owner}</p>}
                         {c.lines.map((line, j) => (
                           <p key={j}>{line}</p>
                         ))}
+                        {/اجتماع|موعد/.test(c.title) && (
+                          <button
+                            className="iris-card-action"
+                            onClick={() => setView('agenda')}
+                          >
+                            <IrisIcon kind="calendar" />
+                            عرض جدول الأعمال
+                          </button>
+                        )}
                       </div>
                     ))}
                     {chat.action?.status === 'SENT' && (
@@ -657,13 +853,41 @@ function Secretary() {
                 ))}
                 {busy && (
                   <p className="sec-thinking" role="status">
-                    دا أفكر وأرتّب الجواب…
+                    ايريس يفكّر…
                   </p>
                 )}
                 <div ref={end} />
               </div>
             </div>
             <div className="sec-composer-wrap">
+              <div className="iris-quick-actions" aria-label="اقتراحات سريعة">
+                {[
+                  {
+                    label: 'ترتيب اجتماع',
+                    prompt: 'رتب لي اجتماع',
+                    icon: 'calendar' as const,
+                  },
+                  {
+                    label: 'تلخيص التقارير',
+                    prompt: 'لخّص لي تقارير اليوم',
+                    icon: 'file' as const,
+                  },
+                  {
+                    label: 'إعداد رسالة',
+                    prompt: 'ساعدني بإعداد رسالة',
+                    icon: 'pen' as const,
+                  },
+                ].map((action) => (
+                  <button
+                    key={action.label}
+                    disabled={busy || recording || openingMic}
+                    onClick={() => void send(action.prompt)}
+                  >
+                    <IrisIcon kind={action.icon} />
+                    {action.label}
+                  </button>
+                ))}
+              </div>
               {recording && (
                 <div className="sec-recording" role="status">
                   ● دا أسمعك · {seconds} ثانية
@@ -695,7 +919,7 @@ function Secretary() {
                   )}
                 </button>
                 <textarea
-                  aria-label="طلبك للسكرتير"
+                  aria-label="رسالتك لايريس"
                   rows={1}
                   value={input}
                   onChange={(e) => {
@@ -703,16 +927,19 @@ function Secretary() {
                     e.currentTarget.style.height = 'auto'
                     e.currentTarget.style.height = `${Math.min(e.currentTarget.scrollHeight, 150)}px`
                   }}
-                  placeholder={openingMic ? 'دا أفتح المايك…' : 'اكتب طلبك…'}
+                  placeholder={
+                    openingMic ? 'دا أفتح المايك…' : 'اكتب رسالتك هنا…'
+                  }
                 />
                 <button
                   className="sec-send"
+                  aria-label="إرسال"
                   disabled={busy || recording || openingMic || !input.trim()}
                 >
-                  إرسال ↑
+                  <IrisIcon kind="send" />
                 </button>
               </form>
-              <small>المهام ما تنرسل إلا بعد تأكيدك.</small>
+              <small>رسائلك ومتابعاتك بمكان واحد.</small>
             </div>
           </>
         ) : (
@@ -971,6 +1198,55 @@ function Secretary() {
           </div>
         )}
       </section>
+      {urgentOpen && (
+        <div className="sec-overlay">
+          <div
+            className="sec-dialog"
+            role="dialog"
+            aria-modal="true"
+            aria-label="المهام العاجلة"
+          >
+            <div className="sec-heading">
+              <h2>المهام العاجلة</h2>
+              <button
+                aria-label="غلق المهام العاجلة"
+                className="sec-secondary"
+                onClick={() => setUrgentOpen(false)}
+              >
+                ×
+              </button>
+            </div>
+            <p>المهام العاجلة الجديدة أو قيد التنفيذ من النظام.</p>
+            {urgentTasks === null ? (
+              <p className="sec-empty">
+                ما توفرت بيانات المهام. جرّب تحديث البيانات.
+              </p>
+            ) : !urgentTasks.length ? (
+              <p className="sec-empty">ماكو مهام عاجلة مفتوحة.</p>
+            ) : (
+              urgentTasks.map((task) => (
+                <article key={task.id} className="sec-panel">
+                  <h3>{task.title}</h3>
+                  <p>{task.description}</p>
+                  <p>المسؤول: {task.assignedToName || 'غير متوفر'}</p>
+                  <small>
+                    {task.dueAt ? displayDate(task.dueAt) : 'بدون موعد'} ·{' '}
+                    {task.status === 'NEW' ? 'جديدة' : 'قيد التنفيذ'}
+                  </small>
+                </article>
+              ))
+            )}
+            <button
+              className="sec-primary"
+              onClick={() => {
+                setReload((n) => n + 1)
+              }}
+            >
+              تحديث البيانات
+            </button>
+          </div>
+        </div>
+      )}
       {deleteId && (
         <div className="sec-overlay">
           <div
