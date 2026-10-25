@@ -287,7 +287,7 @@ export default function LeaderInvoicesListPage({ embedded }: EmbeddedProps = {})
 
   // الفلترة: تبويب + بحث
   const matchesSearch = (inv: LeaderInvoice) => {
-    return matches([inv.externalInvoiceNumber, inv.accountingCode, inv.customerName, inv.employeeName], search)
+    return matches([inv.externalInvoiceNumber, inv.accountingCode, inv.customerName, inv.employeeName, inv.bookingCode], search)
   }
   /** ⚠️ نفس اشتقاق الخادم بالضبط — المرحلة تنحسب من الحالة والحكم
    *  سوا، مو من عمود ثالث ينحرف. */
@@ -774,7 +774,7 @@ export default function LeaderInvoicesListPage({ embedded }: EmbeddedProps = {})
                       <span className="mt-1 block text-center text-[10.5px] font-bold text-red-600">
                         ↩ انسحب اعتمادها {inv.revokedCount} مرة
                         {/* (دازاي 10-25) «اريد اعرف منو الي سحب الاعتماد» */}
-                        {inv.revokedByName && <span className="block font-semibold text-red-700">سحبه: {inv.revokedByName}</span>}
+                        <span className="block font-semibold text-red-700">سحبه: {inv.revokedByName ?? 'ما انسجّل اسمه'}</span>
                         {inv.revokeReason && <span className="block font-normal text-red-600">السبب: {inv.revokeReason}</span>}
                       </span>
                     )}
@@ -1237,6 +1237,16 @@ export default function LeaderInvoicesListPage({ embedded }: EmbeddedProps = {})
             {approveErr && (
               <p className="mt-2 rounded-lg bg-red-50 px-3 py-2 text-xs font-bold text-red-700">{approveErr}</p>
             )}
+            {/* (دازاي 10-25) «الفواتير المعتمدة وين الكاهن؟» — زر يوديك للمعتمدة مباشرة */}
+            {approveErr?.includes('فاتورة مكررة') && (() => {
+              const twin = approveErr.match(/رقمها المحاسبي (\S+)/)?.[1] ?? approveErr.match(/حجز (\S+)/)?.[1] ?? ''
+              return (
+                <button type="button" onClick={() => { setApproveFor(null); setApproveErr(null); setTab('APPROVED'); setSearch(twin) }}
+                  className="mt-2 w-full rounded-xl border border-emerald-300 bg-emerald-50 px-3 py-2 text-sm font-bold text-emerald-800">
+                  🔎 ورّيني الفاتورة المعتمدة{twin ? ` (${twin})` : ''}
+                </button>
+              )
+            })()}
 
             <div className="mt-4 flex gap-2">
               <button

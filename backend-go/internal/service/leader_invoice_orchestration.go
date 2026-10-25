@@ -499,7 +499,7 @@ func (s *LeaderInvoiceService) Approve(id, approverEmployeeID, externalNumber st
 			if t.ApprovedBy != nil {
 				msg += " · اعتمدها " + *t.ApprovedBy
 			}
-			msg += " · تلكاها بتبويب «المعتمدة». إذا هي الغلط، اسحب اعتمادها أول وبعدين اعتمد هاي."
+			msg += " · تلكاها بتبويب «✔ الفواتير المكتملة» (ابحث برقمها أو برقم الحجز). إذا هي الغلط، اسحب اعتمادها أول وبعدين اعتمد هاي."
 		}
 		return nil, fmt.Errorf("%s", msg)
 	}
