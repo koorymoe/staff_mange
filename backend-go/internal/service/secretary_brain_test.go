@@ -10,7 +10,7 @@ import (
 	"github.com/anthropics/anthropic-sdk-go"
 )
 
-// نموذج وهمي للسكرتير: يطلب find، بعدها propose_task، بعدها يجاوب.
+// نموذج وهمي للسكرتير: يطلب find_booking، بعدها propose_task، بعدها يجاوب.
 type secFakeLLM struct {
 	calls []string
 	step  int
@@ -23,7 +23,7 @@ func (f *secFakeLLM) New(_ context.Context, p anthropic.MessageNewParams) (*anth
 	var js string
 	switch f.step {
 	case 1:
-		js = `{"id":"m1","type":"message","role":"assistant","model":"x","stop_reason":"tool_use","content":[{"type":"tool_use","id":"t1","name":"find","input":{"q":"كرار جعفر"}}],"usage":{"input_tokens":1,"output_tokens":1}}`
+		js = `{"id":"m1","type":"message","role":"assistant","model":"x","stop_reason":"tool_use","content":[{"type":"tool_use","id":"t1","name":"find_booking","input":{"q":"كرار جعفر"}}],"usage":{"input_tokens":1,"output_tokens":1}}`
 	case 2:
 		js = `{"id":"m2","type":"message","role":"assistant","model":"x","stop_reason":"tool_use","content":[{"type":"tool_use","id":"t2","name":"propose_task","input":{"who":"أحمد خليل"}}],"usage":{"input_tokens":1,"output_tokens":1}}`
 	default:
@@ -40,7 +40,7 @@ func secTestTools() []agentTool {
 	card := `{"facts":"حجز 8850 لكرار جعفر قيد العمل","cards":[{"kind":"booking","title":"حجز 8850 — كرار جعفر","status":"قيد العمل","lines":["الليدر بالموقع"]},{"kind":"booking","title":"حجز 8850 — كرار جعفر","status":"مكرر"}]}`
 	prop := `{"proposal":{"actionId":"a1","kind":"task","summary":"مهمة لأحمد خليل — متابعة الحجز 8850","fields":{"employeeId":"e7","employeeName":"أحمد خليل","priority":"URGENT"}}}`
 	return []agentTool{
-		{Name: "find", Run: func(map[string]any, *nameMask) (string, error) { return card, nil }},
+		{Name: "find_booking", Run: func(map[string]any, *nameMask) (string, error) { return card, nil }},
 		{Name: "propose_task", Run: func(map[string]any, *nameMask) (string, error) { return prop, nil }},
 	}
 }

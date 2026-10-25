@@ -108,71 +108,73 @@ func registerSecretaryTools(a *MatrixAgent, repo *repository.SecretaryRepository
 	// (دازاي 10-23) «بحثت عن مهندس اسمه مصطفى محمد جابلي حجوزات زبائن بنفس الاسم» — البحث
 	// يفرز حسب النوع (kind)، والنتائج مقسّمة بعناوين، وإذا الاسم يطابق موظف وزبون سوه ايريس تسأل
 	// قبل ما تخلط. ⚠️ أرقام الهواتف ما تروح للنموذج — بالبطاقات (للشاشة) بس.
-	a.AddTool(agentTool{Name: "find",
-		Desc: "دوّر بالنظام بالاسم أو الكود. kind يحدد النوع: employee موظف، customer زبون، booking حجز، project مشروع، all الكل. إذا السؤال واضح (مهندس/موظف/فني ← employee، زبون ← customer، كود حجز ← booking) حدد kind. إذا مو واضح استعمل all، وإذا الاسم يطابق موظف وزبون سوه اسأله «تقصد الموظف لو الزبون؟» قبل ما تجاوب، ولا تخلط بينهم.",
-		Props: map[string]any{
-			"q":    map[string]any{"type": "string", "description": "الاسم أو الكود"},
-			"kind": map[string]any{"type": "string", "enum": []string{"all", "employee", "customer", "booking", "project"}},
-		},
-		Req: []string{"q"},
-		Run: func(in map[string]any, _ *nameMask) (string, error) {
-			kind := strArg(in, "kind")
-			if kind == "" {
-				kind = "all"
+	// (دازاي 10-25) «يخبط بين الموظفين والزبائن»: أداة وحدة ترجّع الكل سوه چانت تلخبط
+	// النموذج. هسه أداة لكل جدول، واسمها يكول شنو ترجّع — ما يكدر يخلط.
+	findKind := func(kind, q string) (string, error) {
+		want := func(k string) bool { return kind == "all" || kind == k }
+		f, err := repo.Find(q)
+		if err != nil {
+			return "", err
+		}
+		var b strings.Builder
+		section := func(title string, n int) {
+			if n > 0 {
+				fmt.Fprintf(&b, "\n### %s (%d)\n", title, n)
 			}
-			want := func(k string) bool { return kind == "all" || kind == k }
-			f, err := repo.Find(strArg(in, "q"))
-			if err != nil {
-				return "", err
+		}
+		if want("employee") {
+			section("موظفين", len(f.Employees))
+			for _, x := range f.Employees {
+				fmt.Fprintf(&b, "- موظف: %s · %s\n", x.Name, x.Role)
 			}
-			var b strings.Builder
-			section := func(title string, n int) {
-				if n > 0 {
-					fmt.Fprintf(&b, "\n### %s (%d)\n", title, n)
-				}
+		}
+		if want("customer") {
+			section("زبائن", len(f.Customers))
+			for _, x := range f.Customers {
+				fmt.Fprintf(&b, "- زبون #%d: %s · حجوزاته: %d\n", x.Code, x.Name, x.Bookings)
+				tc.addCard(SecretaryCard{Kind: "customer", Title: x.Name,
+					Lines: []string{"الهاتف: " + deref(x.Phone, "—"), fmt.Sprintf("حجوزاته: %d", x.Bookings)},
+					Link:  strPtr("/customers")})
 			}
-			if want("employee") {
-				section("موظفين", len(f.Employees))
-				for _, x := range f.Employees {
-					fmt.Fprintf(&b, "- موظف: %s · %s\n", x.Name, x.Role)
-				}
+		}
+		if want("booking") {
+			section("حجوزات (اسم الزبون مو اسم موظف)", len(f.Bookings))
+			for _, x := range f.Bookings {
+				fmt.Fprintf(&b, "- حجز %s — الزبون: %s · %s · الحالة: %s · الموعد: %s · الكادر: %s\n",
+					x.Code, deref(x.Customer, "—"), deref(x.Service, "—"), x.Station, secFmt(x.ScheduledAt), deref(x.Crew, "بلا كادر"))
+				tc.addCard(SecretaryCard{Kind: "booking", Title: "حجز " + x.Code + " — " + deref(x.Customer, ""),
+					Status: x.Station, Owner: x.Crew, UpdatedAt: secISO(x.UpdatedAt),
+					Lines: []string{"الخدمة: " + deref(x.Service, "—"), "الموعد: " + secFmt(x.ScheduledAt)},
+					Link:  strPtr("/bookings?focus=" + x.Code)})
 			}
-			if want("customer") {
-				section("زبائن", len(f.Customers))
-				for _, x := range f.Customers {
-					fmt.Fprintf(&b, "- زبون #%d: %s · حجوزاته: %d\n", x.Code, x.Name, x.Bookings)
-					tc.addCard(SecretaryCard{Kind: "customer", Title: x.Name,
-						Lines: []string{"الهاتف: " + deref(x.Phone, "—"), fmt.Sprintf("حجوزاته: %d", x.Bookings)},
-						Link:  strPtr("/customers")})
-				}
+		}
+		if want("project") {
+			section("مشاريع", len(f.Projects))
+			for _, x := range f.Projects {
+				fmt.Fprintf(&b, "- مشروع %s %s — المرحلة: %s · المسؤول: %s\n", deref(x.Code, ""), x.Name, x.Stage, deref(x.Owner, "—"))
+				tc.addCard(SecretaryCard{Kind: "project", Title: strings.TrimSpace(deref(x.Code, "") + " " + x.Name),
+					Status: x.Stage, Owner: x.Owner, UpdatedAt: secISO(x.UpdatedAt), Lines: []string{}, Link: strPtr("/projects")})
 			}
-			if want("booking") {
-				section("حجوزات (اسم الزبون مو اسم موظف)", len(f.Bookings))
-				for _, x := range f.Bookings {
-					fmt.Fprintf(&b, "- حجز %s — الزبون: %s · %s · الحالة: %s · الموعد: %s · الكادر: %s\n",
-						x.Code, deref(x.Customer, "—"), deref(x.Service, "—"), x.Station, secFmt(x.ScheduledAt), deref(x.Crew, "بلا كادر"))
-					tc.addCard(SecretaryCard{Kind: "booking", Title: "حجز " + x.Code + " — " + deref(x.Customer, ""),
-						Status: x.Station, Owner: x.Crew, UpdatedAt: secISO(x.UpdatedAt),
-						Lines: []string{"الخدمة: " + deref(x.Service, "—"), "الموعد: " + secFmt(x.ScheduledAt)},
-						Link:  strPtr("/bookings?focus=" + x.Code)})
-				}
-			}
-			if want("project") {
-				section("مشاريع", len(f.Projects))
-				for _, x := range f.Projects {
-					fmt.Fprintf(&b, "- مشروع %s %s — المرحلة: %s · المسؤول: %s\n", deref(x.Code, ""), x.Name, x.Stage, deref(x.Owner, "—"))
-					tc.addCard(SecretaryCard{Kind: "project", Title: strings.TrimSpace(deref(x.Code, "") + " " + x.Name),
-						Status: x.Stage, Owner: x.Owner, UpdatedAt: secISO(x.UpdatedAt), Lines: []string{}, Link: strPtr("/projects")})
-				}
-			}
-			if b.Len() == 0 {
-				return "ما لگيت شي بهالاسم أو الكود (النوع: " + kind + ").", nil
-			}
-			if kind == "all" && len(f.Employees) > 0 && (len(f.Customers) > 0 || len(f.Bookings) > 0) {
-				b.WriteString("\n⚠️ الاسم يطابق موظف وزبون/حجوزات سوه. إذا ما واضح من سؤاله منو يقصد، اسأله «تقصد الموظف لو الزبون؟» — ولا تخلط النتائج.")
-			}
-			return strings.TrimSpace(b.String()), nil
-		}})
+		}
+		if b.Len() == 0 {
+			return "ما لگيت شي بهالاسم أو الكود (النوع: " + kind + ").", nil
+		}
+		if kind == "all" && len(f.Employees) > 0 && (len(f.Customers) > 0 || len(f.Bookings) > 0) {
+			b.WriteString("\n⚠️ الاسم يطابق موظف وزبون/حجوزات سوه. إذا ما واضح من سؤاله منو يقصد، اسأله «تقصد الموظف لو الزبون؟» — ولا تخلط النتائج.")
+		}
+		return strings.TrimSpace(b.String()), nil
+	}
+	findTool := func(name, kind, desc string) {
+		a.AddTool(agentTool{Name: name, Desc: desc,
+			Props: map[string]any{"q": map[string]any{"type": "string", "description": "الاسم أو الكود"}},
+			Req:   []string{"q"},
+			Run:   func(in map[string]any, _ *nameMask) (string, error) { return findKind(kind, strArg(in, "q")) }})
+	}
+	findTool("find_employee", "employee", "دوّر على **موظف** بالشركة بالاسم (مهندس، فني، ليدر، محاسب، إداري…). ترجّع موظفين بس — مو زبائن.")
+	findTool("find_customer", "customer", "دوّر على **زبون** بالاسم أو رقم الزبون. ترجّع زبائن بس — مو موظفين.")
+	findTool("find_booking", "booking", "دوّر على **حجز** بكوده أو باسم الزبون صاحب الحجز. الاسم بالنتيجة اسم الزبون، والكادر مكتوب لحاله.")
+	findTool("find_project", "project", "دوّر على **مشروع** بكوده أو اسمه.")
+	findTool("find_any", "all", "إذا ما واضح هل يقصد موظف لو زبون لو حجز: يدوّر بالكل ويفصل النتائج. إذا الاسم طلع موظف وزبون سوه، اسأله منو يقصد قبل ما تجاوب.")
 
 	a.AddTool(agentTool{Name: "booking_timeline",
 		Desc:  "مراحل حجز واحد بالترتيب (انسجّل، انتصل، انثبّت، استلم، انطلق، وصل، بدأ، انجز) ومنو سوّاها ووكتها. استعملها لـ«وين وصل الحجز؟».",
@@ -184,7 +186,7 @@ func registerSecretaryTools(a *MatrixAgent, repo *repository.SecretaryRepository
 				return "", err
 			}
 			if bk == nil {
-				return "ما لگيت حجز بهالكود — جرّب find.", nil
+				return "ما لگيت حجز بهالكود — جرّب find_booking باسم الزبون.", nil
 			}
 			var b strings.Builder
 			lines := []string{}
