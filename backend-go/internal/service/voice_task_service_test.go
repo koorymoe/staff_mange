@@ -41,3 +41,26 @@ func TestParseVoiceTask(t *testing.T) {
 		t.Fatal("عنوان فاضي لازم يرفض")
 	}
 }
+
+func TestMatchEmployeeBest(t *testing.T) {
+	emps := []VoiceTaskEmployee{
+		{ID: "1", Name: "علي حسين كاظم"},
+		{ID: "2", Name: "علي حسين جبار"},
+		{ID: "3", Name: "علي كريم"},
+		{ID: "4", Name: "فاطمة عباس"},
+	}
+	cases := map[string][]string{
+		"علي حسين كاظم":  {"1"},
+		"لعلي حسين جبار": {"2"},
+		"علي حسين":       {"1", "2"}, // تعادل حقيقي — يسأل
+		"علي كريم":       {"3"},
+		"علي":            {"1", "2", "3"},
+		"فاطمه عباس":     {"4"}, // ة/ه
+		"زبون ما موجود":  {},
+	}
+	for text, want := range cases {
+		if got := matchEmployeeBest(text, emps); !reflect.DeepEqual(got, want) {
+			t.Errorf("%q: got %v want %v", text, got, want)
+		}
+	}
+}

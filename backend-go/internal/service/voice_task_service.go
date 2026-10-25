@@ -192,3 +192,43 @@ func parseVoiceTask(raw string) (*voiceTaskUnderstanding, error) {
 	}
 	return &u, nil
 }
+
+// arNorm يوحّد الحروف الي تنكتب بأكثر من شكل (أ/إ/آ ← ا، ة ← ه، ى ← ي) — حتى
+// «فاطمة» و«فاطمه» تنطابق.
+var arNorm = strings.NewReplacer("أ", "ا", "إ", "ا", "آ", "ا", "ة", "ه", "ى", "ي", "ـ", "")
+
+// matchEmployeeBest للحقل الي ياخذ موظف واحد (ايريس — دازاي 10-25: «لكيت أكثر
+// من اسم» حتى لو گال الاسم كامل). كل موظف ينحسب بشكد كلمة من اسمه انذكرت
+// بالترتيب؛ الأعلى يفوز. «علي حسين كاظم» ما يتساوى ويا «علي حسين جبار» إذا
+// انگال الاسم الثلاثي. يرجّع أكثر من واحد بس إذا تعادلوا فعلاً.
+func matchEmployeeBest(text string, emps []VoiceTaskEmployee) []string {
+	t := arNorm.Replace(strings.TrimSpace(text))
+	best, ids := 0, []string{}
+	for _, e := range emps {
+		w := strings.Fields(arNorm.Replace(strings.TrimSpace(e.Name)))
+		score := 0
+		for n := len(w); n >= 1; n-- {
+			c := strings.Join(w[:n], " ")
+			if n == 1 && len([]rune(c)) < 3 {
+				break
+			}
+			re, err := regexp.Compile(`(^|[^\p{L}])(?:و|ف|ب|ل|ك)?` + regexp.QuoteMeta(c) + `($|[^\p{L}])`)
+			if err == nil && re.MatchString(t) {
+				score = n
+				// الاسم الكامل بالضبط يغلب أي تطابق جزئي ويا غيره
+				if n == len(w) {
+					score += 10
+				}
+				break
+			}
+		}
+		switch {
+		case score == 0:
+		case score > best:
+			best, ids = score, []string{e.ID}
+		case score == best:
+			ids = append(ids, e.ID)
+		}
+	}
+	return ids
+}

@@ -281,7 +281,7 @@ func registerSecretaryTools(a *MatrixAgent, repo *repository.SecretaryRepository
 				list = append(list, VoiceTaskEmployee{ID: e.ID, Name: e.Name})
 				names[e.ID] = e.Name
 			}
-			ids := matchEmployees(strArg(in, "employee"), list)
+			ids := matchEmployeeBest(strArg(in, "employee"), list)
 			if len(ids) == 0 {
 				return "ما لگيت موظف بهالاسم — اسأله منو يقصد.", nil
 			}
