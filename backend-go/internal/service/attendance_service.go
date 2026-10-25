@@ -220,7 +220,12 @@ func (s *AttendanceService) Gate(employeeID string, now time.Time) (*AttendanceG
 	// قرار (ع) 10-08: ماكو إجازة أسبوعية — الدوام يومي والإجازات بالطلب بس.
 	in := InShift(from, to, now)
 	out.Required = need && in
-	out.Offer = need && !in
+	// (دازاي 10-25) الديكور: «تسجيل الحضور إجباري» — دوامهم يمشي ويا الشغل، فأي
+	// يوم عنده بيه شغل، البوابة تقفل لحد ما يسجّل حتى لو برّا الشفت المكتوب.
+	if g.Division == "DECOR" && g.JobToday {
+		out.Required = need
+	}
+	out.Offer = need && !out.Required
 	if !exempt && !g.HasOpen {
 		if a, err := s.repo.AutoClosedUnanswered(employeeID); err == nil && a != nil {
 			out.AutoClosed = &AutoClosedInfo{ID: a.ID, At: a.CheckOut, Label: clockLabel(a.CheckOut)}

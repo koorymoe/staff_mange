@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { bookingDone } from '../bookingDone'
 import PeerCheckinCard from '../components/PeerCheckinCard'
 import MyScoreCard from '../components/MyScoreCard'
-import { useNavigate } from 'react-router-dom'
+import { Navigate, useNavigate } from 'react-router-dom'
 import MyFundBalance from '../components/MyFundBalance'
 import TodayBoard from '../components/TodayBoard'
 import MonitorDashboard from '../components/MonitorDashboard'
@@ -430,6 +430,8 @@ function StaffDashboard() {
 
   // واجهة المراقب الرئيسية بتصميم (ع) — شاشة وحدة مرتبة بدل كل الأقسام.
   if (isMonitorHome) return <MonitorDashboard />
+  // (دازاي 10-25) كادر الديكور: الرئيسية مالته «شغلي اليوم» — بسيطة وكبيرة
+  if (!isAdmin && employee.division === 'DECOR') return <Navigate to="/decor-today" replace />
 
   return (
     <>

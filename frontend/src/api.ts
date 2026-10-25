@@ -4669,6 +4669,17 @@ export const api = {
   // (ع) 10-14: وقت المرحلة الحقيقي + موقعها — يشتغل حتى لو انضغطت بلا نت
   stageProof: (id: string, data: { stage: 'ACCEPTED' | 'MATERIALS' | 'DEPARTED' | 'ARRIVED' | 'STARTED' | 'COMPLETED'; pressedAt: string; offline: boolean; lat?: number; lng?: number; accuracy?: number }) =>
     request<{ ok: boolean; verdict: 'OK' | 'FAR' | 'BATCH'; distanceM: number | null }>(`/bookings/${id}/stage-proof`, { method: 'POST', body: JSON.stringify(data) }),
+  // (دازاي 10-25) صور «قبل/بعد» لشغلة الحجز — كادر الديكور يصوّر بدل ما يكتب
+  getWorkPhotos: (id: string) => request<WorkPhoto[]>(`/bookings/${id}/work-photos`),
+  uploadWorkPhoto: async (id: string, phase: 'BEFORE' | 'AFTER', file: Blob) => {
+    const form = new FormData()
+    form.append('phase', phase)
+    form.append('file', file, 'photo')
+    const token = currentToken()
+    const res = await fetch(`${API_URL}/bookings/${id}/work-photos`, { method: 'POST', headers: token ? { Authorization: `Bearer ${token}` } : {}, body: form })
+    if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || 'تعذر رفع الصورة')
+    return (await res.json()) as WorkPhoto
+  },
   markArrived: (id: string) =>
     request<Booking>(`/bookings/${id}/arrived`, { method: 'PUT', body: JSON.stringify({}) }),
   setMaterialsReady: (id: string) =>
@@ -6448,3 +6459,6 @@ export interface DutiesReport {
   /** جمعة أو إجازة معتمدة — الواجبات تبين بس ما تنحسب */
   off?: 'FRIDAY' | 'LEAVE'
 }
+
+/** صورة «قبل» أو «بعد» لشغلة حجز (دازاي 10-25) */
+export interface WorkPhoto { id: string; phase: 'BEFORE' | 'AFTER'; employeeId: string | null; createdAt: string }

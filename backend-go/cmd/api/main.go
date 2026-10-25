@@ -1330,6 +1330,11 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	// (ع) 10-14: وقت المرحلة الحقيقي + موقعها (يشتغل حتى لو انضغطت بلا نت)
 	stageProofHandler := handler.NewStageProofHandler(db)
 	mux.Handle("POST /api/bookings/{id}/stage-proof", middleware.Chain(http.HandlerFunc(stageProofHandler.Record), requireAuth, requireBookingParty))
+	// (دازاي 10-25) صور «قبل/بعد» لكادر الحجز — الديكور يصوّر بدل ما يكتب
+	workPhotoHandler := handler.NewWorkPhotoHandler(db, fileStore)
+	mux.Handle("GET /api/bookings/{id}/work-photos", middleware.Chain(http.HandlerFunc(workPhotoHandler.List), requireAuth, requireBookingParty))
+	mux.Handle("POST /api/bookings/{id}/work-photos", middleware.Chain(http.HandlerFunc(workPhotoHandler.Upload), requireAuth, requireBookingParty))
+	mux.Handle("GET /api/bookings/{id}/work-photos/{photoId}/file", middleware.Chain(http.HandlerFunc(workPhotoHandler.File), requireAuth, requireBookingParty))
 	// (ع) 10-14: الميدان — موقع الشركة · استلام · انطلاق · نقاط المسار · خريطة المراقبة
 	fieldTrackHandler := handler.NewFieldTrackHandler(db)
 	fieldTrackHandler.SetNotifier(func(emp, msg string) { _ = notificationRepo.Create(emp, "stage_reminder", msg) })

@@ -955,5 +955,21 @@ func matrixChatMigrations() []Migration {
 			ALTER TABLE "MatrixTalk" ADD COLUMN IF NOT EXISTS summary TEXT NOT NULL DEFAULT '';
 			ALTER TABLE "MatrixTalk" ADD COLUMN IF NOT EXISTS "summarizedUpTo" TIMESTAMPTZ;
 		`,
+	}, {
+		// (دازاي 10-25) كادر الديكور: صورة «قبل» و«بعد» لكل شغلة بدل التقرير المكتوب
+		// (أغلبهم ما يكتبون). الصورة تنحفظ بالتخزين نفسه، وهنا ربطها بالحجز والمرحلة.
+		Version: "0395_work_photo",
+		SQL: `
+			CREATE TABLE IF NOT EXISTS "WorkPhoto" (
+				id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
+				"bookingId" TEXT NOT NULL REFERENCES "Booking"(id) ON DELETE CASCADE,
+				"employeeId" TEXT REFERENCES "Employee"(id) ON DELETE SET NULL,
+				phase TEXT NOT NULL CHECK (phase IN ('BEFORE', 'AFTER')),
+				"fileKey" TEXT NOT NULL,
+				"contentType" TEXT NOT NULL,
+				"createdAt" TIMESTAMP NOT NULL DEFAULT now()
+			);
+			CREATE INDEX IF NOT EXISTS "WorkPhoto_booking" ON "WorkPhoto"("bookingId", phase);
+		`,
 	}}
 }

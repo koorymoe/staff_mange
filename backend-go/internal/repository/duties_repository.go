@@ -138,6 +138,26 @@ var dutiesByPosition = map[string][]dutyDef{
 		{key: "crewRating", label: "قيّم كادرك", link: "/my-tasks",
 			done: `SELECT count(*) FROM "CrewRating" WHERE "leaderId" = $1 AND baghdad_date("createdAt") = ` + dutyToday},
 	},
+	// (دازاي 10-25) الديكور: حضور، وكل شغلة اليوم تبدي وتخلص، وصورة قبل وبعد.
+	"DECOR": {
+		dutyAttendance,
+		{key: "decorStart", label: "ابدي شغلك", hint: "اضغط «بديت» من توصل", link: "/decor-today",
+			done: `SELECT count(*) FROM "Booking" b WHERE baghdad_date(b."scheduledAt") = ` + dutyToday + ` AND b."startedAt" IS NOT NULL AND %worked%`,
+			pending: `SELECT count(*) FROM "Booking" b WHERE baghdad_date(b."scheduledAt") = ` + dutyToday + ` AND b."startedAt" IS NULL
+			   AND b.status NOT IN ('CANCELLED', 'COMPLETED') AND %worked%`},
+		{key: "decorBefore", label: "صوّر المكان قبل الشغل", link: "/decor-today",
+			done: `SELECT count(*) FROM "WorkPhoto" WHERE "employeeId" = $1 AND phase = 'BEFORE' AND baghdad_date("createdAt") = ` + dutyToday,
+			pending: `SELECT count(*) FROM "Booking" b WHERE baghdad_date(b."scheduledAt") = ` + dutyToday + ` AND b."startedAt" IS NOT NULL AND %worked%
+			   AND NOT EXISTS (SELECT 1 FROM "WorkPhoto" p WHERE p."bookingId" = b.id AND p.phase = 'BEFORE')`},
+		{key: "decorAfter", label: "صوّر الشغل بعد ما تخلص", link: "/decor-today",
+			done: `SELECT count(*) FROM "WorkPhoto" WHERE "employeeId" = $1 AND phase = 'AFTER' AND baghdad_date("createdAt") = ` + dutyToday,
+			pending: `SELECT count(*) FROM "Booking" b WHERE baghdad_date(b."scheduledAt") = ` + dutyToday + ` AND b."startedAt" IS NOT NULL AND %worked%
+			   AND NOT EXISTS (SELECT 1 FROM "WorkPhoto" p WHERE p."bookingId" = b.id AND p.phase = 'AFTER')`},
+		{key: "decorFinish", label: "اضغط «خلصت» من تكمّل", link: "/decor-today",
+			done: `SELECT count(*) FROM "Booking" b WHERE b.status = 'COMPLETED' AND baghdad_date(b."completedAt") = ` + dutyToday + ` AND %worked%`,
+			pending: `SELECT count(*) FROM "Booking" b WHERE baghdad_date(b."scheduledAt") = ` + dutyToday + ` AND b."startedAt" IS NOT NULL
+			   AND b.status <> 'COMPLETED' AND b.status <> 'CANCELLED' AND %worked%`},
+	},
 	"TECHNICIAN": {
 		dutyAttendance,
 		{key: "inventory", label: "جرد عدّتك", link: "/inventory",
@@ -150,7 +170,7 @@ var dutiesByPosition = map[string][]dutyDef{
 
 var positionAr = map[string]string{
 	"MONITOR": "مراقب", "FINANCE": "محاسب", "HR_COORDINATOR": "إداري الحجوزات", "QUALITY_ENGINEER": "مهندس جودة",
-	"LEADER": "تيم ليدر", "TECHNICIAN": "فني", "OTHER": "موظف",
+	"LEADER": "تيم ليدر", "TECHNICIAN": "فني", "DECOR": "ديكور", "OTHER": "موظف",
 }
 
 type DutiesRepository struct{ db *sqlx.DB }
@@ -164,10 +184,12 @@ func (r *DutiesRepository) position(id string) string {
 		IsLeader bool   `db:"isLeader"`
 		Monitor  bool   `db:"monitor"`
 		Coord    bool   `db:"coord"`
+		Division string `db:"division"`
 	}
 	if err := r.db.Get(&e, `SELECT role::text AS role, "isLeader",
 		EXISTS (SELECT 1 FROM "EmployeePermission" ep JOIN "Permission" p ON p.id = ep."permissionId" WHERE ep."employeeId" = $1 AND p.name = 'monitoring') AS monitor,
-		EXISTS (SELECT 1 FROM "EmployeePermission" ep JOIN "Permission" p ON p.id = ep."permissionId" WHERE ep."employeeId" = $1 AND p.name = 'coordinator') AS coord
+		EXISTS (SELECT 1 FROM "EmployeePermission" ep JOIN "Permission" p ON p.id = ep."permissionId" WHERE ep."employeeId" = $1 AND p.name = 'coordinator') AS coord,
+		COALESCE(division, '') AS division
 		FROM "Employee" WHERE id = $1`, id); err != nil {
 		return "OTHER"
 	}
@@ -178,6 +200,8 @@ func (r *DutiesRepository) position(id string) string {
 		return "ADMIN"
 	case e.Role == "MONITOR" || (e.Monitor && e.Role != "QUALITY_ENGINEER"):
 		return "MONITOR"
+	case e.Division == "DECOR" && e.Role != "MONITOR" && !e.Monitor:
+		return "DECOR"
 	case (e.Role == "TECHNICIAN" || e.Role == "TECHNICAL") && e.IsLeader:
 		return "LEADER"
 	case e.Role == "TECHNICIAN" || e.Role == "TECHNICAL":

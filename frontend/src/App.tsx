@@ -53,6 +53,9 @@ const TrainingCenterPage = lazy(() => import('./pages/TrainingCenterPage'))
 const MyExamPage = lazy(() => import('./pages/MyExamPage'))
 const BookingsHub = lazy(() => import('./pages/BookingsHub'))
 const MyTasks = lazy(() => import('./pages/MyTasks'))
+// (دازاي 10-25) كادر الديكور: «شغلي اليوم» و«شنو مطلوب مني؟»
+const DecorTodayPage = lazy(() => import('./pages/DecorTodayPage'))
+const DecorGuidePage = lazy(() => import('./pages/DecorGuidePage'))
 const MyHandoversPage = lazy(() => import('./pages/MyHandoversPage'))
 const MyRanking = lazy(() => import('./pages/MyRanking'))
 const MyExtraTasksPage = lazy(() => import('./pages/MyExtraTasksPage'))
@@ -255,6 +258,8 @@ function App() {
               لمن عنده رابط محفوظ أو إشعار قديم يوديه لها. */}
           <Route path="bookings" element={<BookingsHub />} />
           <Route path="my-tasks" element={<MyTasks />} />
+          <Route path="decor-today" element={<DecorTodayPage />} />
+          <Route path="decor-guide" element={<DecorGuidePage />} />
           <Route path="my-handovers" element={<MyHandoversPage />} />
           <Route path="my-ranking" element={<MyRanking />} />
           {/* مهامي الإضافية — بلا حارس: هاي مهام الموظف نفسه */}

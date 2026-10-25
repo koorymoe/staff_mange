@@ -280,6 +280,9 @@ type GateInfo struct {
 	HasOpen    bool    `db:"hasOpen"`
 	HadToday   bool    `db:"hadToday"`
 	OnLeave    bool    `db:"onLeave"`
+	// (دازاي 10-25) الديكور: الحضور إجباري بأي يوم عنده بيه شغل، مو بس بوقت الشفت.
+	Division string `db:"division"`
+	JobToday bool   `db:"jobToday"`
 }
 
 func (r *AttendanceRepository) Gate(employeeID string) (*GateInfo, error) {
@@ -289,7 +292,10 @@ func (r *AttendanceRepository) Gate(employeeID string) (*GateInfo, error) {
 		       EXISTS (SELECT 1 FROM "Attendance" a WHERE a."employeeId" = e.id AND a."checkOut" IS NULL) AS "hasOpen",
 		       EXISTS (SELECT 1 FROM "Attendance" a WHERE a."employeeId" = e.id AND a.date = baghdad_today()) AS "hadToday",
 		       EXISTS (SELECT 1 FROM "LeaveRequest" l WHERE l."employeeId" = e.id AND l.status = 'APPROVED'
-		               AND baghdad_today()::date BETWEEN l."startDate" AND l."endDate") AS "onLeave"
+		               AND baghdad_today()::date BETWEEN l."startDate" AND l."endDate") AS "onLeave",
+		       COALESCE(e.division, '') AS division,
+		       EXISTS (SELECT 1 FROM "Booking" b WHERE baghdad_date(b."scheduledAt") = baghdad_today()
+		               AND b.status <> 'CANCELLED' AND `+BookingWorkedBySQL("b", "e.id")+`) AS "jobToday"
 		FROM "Employee" e WHERE e.id = $1`, employeeID)
 	return &g, err
 }
