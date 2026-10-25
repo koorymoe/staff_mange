@@ -487,7 +487,21 @@ func (s *LeaderInvoiceService) Approve(id, approverEmployeeID, externalNumber st
 	}
 	// قرار (ع) 10-22: فاتورة وحدة للحجز باليوم — المكررة ما تنعتمد.
 	if current.Status != "APPROVED" && s.invoices.HasApprovedTwin(id) {
-		return nil, fmt.Errorf("هذي فاتورة مكررة — الحجز عليه فاتورة معتمدة بنفس اليوم")
+		msg := "هذي فاتورة مكررة — الحجز عليه فاتورة معتمدة بنفس اليوم"
+		if t := s.invoices.ApprovedTwin(id); t != nil {
+			msg += fmt.Sprintf(": حجز %s · المبلغ %s", t.BookingCode, fmtIQD(t.NetTotal))
+			if t.ExternalNumber != nil && *t.ExternalNumber != "" {
+				msg += " · رقمها المحاسبي " + *t.ExternalNumber
+			}
+			if t.LeaderName != nil {
+				msg += " · رفعها " + *t.LeaderName
+			}
+			if t.ApprovedBy != nil {
+				msg += " · اعتمدها " + *t.ApprovedBy
+			}
+			msg += " · تلكاها بتبويب «المعتمدة». إذا هي الغلط، اسحب اعتمادها أول وبعدين اعتمد هاي."
+		}
+		return nil, fmt.Errorf("%s", msg)
 	}
 	// قرار (ع) 10-10: الشغل داخل الشركة ما إله زبون ولا فاتورة بالنظام الثاني —
 	// ينعتمد بضغطة وحدة، بلا تدقيق ولا رقم.
@@ -1050,3 +1064,4 @@ func approveNote(number string, internal bool) string {
 	}
 	return " • رقم الفاتورة المحاسبية: " + number
 }
+

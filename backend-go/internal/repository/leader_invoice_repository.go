@@ -1,6 +1,8 @@
 package repository
 
 import (
+	"time"
+
 	"database/sql"
 	"encoding/json"
 	"errors"
@@ -294,6 +296,12 @@ func (r *LeaderInvoiceRepository) hydrate(inv *model.LeaderInvoice) error {
 			inv.ApprovedByName = &name
 		}
 	}
+	if inv.RevokedByID != nil {
+		var name string
+		if err := r.db.Get(&name, `SELECT name FROM "Employee" WHERE id = $1`, *inv.RevokedByID); err == nil {
+			inv.RevokedByName = &name
+		}
+	}
 	if inv.BookingID != nil {
 		var b model.Booking
 		if err := r.db.Get(&b, `SELECT * FROM "Booking" WHERE id = $1`, *inv.BookingID); err == nil {
@@ -394,6 +402,35 @@ const TwinApprovedSQL = `("LeaderInvoice"."bookingId" IS NOT NULL AND EXISTS (SE
 	  AND tw."revokedAt" IS NULL AND tw.status = 'APPROVED'
 	  AND baghdad_date(tw."createdAt") = baghdad_date("LeaderInvoice"."createdAt")))`
 
+// ApprovedTwin الفاتورة المعتمدة الثانية لنفس الحجز بنفس اليوم — حتى رسالة
+// «مكررة» تكول **ياهي** (دازاي 10-25: «يكلي عنده فاتورة معتمدة ومجاي الكاها»).
+type ApprovedTwinInfo struct {
+	BookingCode    string    `db:"bookingCode"`
+	ExternalNumber *string   `db:"externalInvoiceNumber"`
+	NetTotal       float64   `db:"netTotal"`
+	ApprovedBy     *string   `db:"approvedBy"`
+	CreatedAt      time.Time `db:"createdAt"`
+	LeaderName     *string   `db:"leaderName"`
+}
+
+func (r *LeaderInvoiceRepository) ApprovedTwin(id string) *ApprovedTwinInfo {
+	var t ApprovedTwinInfo
+	err := r.db.Get(&t, `SELECT COALESCE(b.code, '') AS "bookingCode", tw."externalInvoiceNumber", COALESCE(tw."netTotal", 0) AS "netTotal",
+		  ap.name AS "approvedBy", tw."createdAt", le.name AS "leaderName"
+		FROM "LeaderInvoice" li
+		JOIN "LeaderInvoice" tw ON tw."bookingId" = li."bookingId" AND tw.id <> li.id
+		  AND tw."revokedAt" IS NULL AND tw.status = 'APPROVED'
+		  AND baghdad_date(tw."createdAt") = baghdad_date(li."createdAt")
+		LEFT JOIN "Booking" b ON b.id = tw."bookingId"
+		LEFT JOIN "Employee" ap ON ap.id = tw."approvedByEmployeeId"
+		LEFT JOIN "Employee" le ON le.id = tw."employeeId"
+		WHERE li.id = $1 ORDER BY tw."approvedAt" DESC NULLS LAST LIMIT 1`, id)
+	if err != nil {
+		return nil
+	}
+	return &t
+}
+
 // HasApprovedTwin هل الفاتورة مكررة لفاتورة معتمدة بنفس اليوم؟
 func (r *LeaderInvoiceRepository) HasApprovedTwin(id string) bool {
 	var twin bool
@@ -476,6 +513,9 @@ func (r *LeaderInvoiceRepository) hydrateAll(invoices []model.LeaderInvoice) err
 		employeeIDs[inv.EmployeeID] = true
 		if inv.ApprovedByEmployeeID != nil {
 			employeeIDs[*inv.ApprovedByEmployeeID] = true
+		}
+		if inv.RevokedByID != nil {
+			employeeIDs[*inv.RevokedByID] = true
 		}
 		if inv.BookingID != nil {
 			bookingIDs = append(bookingIDs, *inv.BookingID)
@@ -625,6 +665,13 @@ func (r *LeaderInvoiceRepository) hydrateAll(invoices []model.LeaderInvoice) err
 			if e := employeeByID[*inv.ApprovedByEmployeeID]; e != nil {
 				name := e.Name
 				inv.ApprovedByName = &name
+			}
+		}
+		// (دازاي 10-25) «منو سحب الاعتماد؟» — الاسم محفوظ، بس ما چان ينعرض
+		if inv.RevokedByID != nil {
+			if e := employeeByID[*inv.RevokedByID]; e != nil {
+				name := e.Name
+				inv.RevokedByName = &name
 			}
 		}
 		if inv.BookingID != nil {

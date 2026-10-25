@@ -773,6 +773,9 @@ export default function LeaderInvoicesListPage({ embedded }: EmbeddedProps = {})
                     {(inv.revokedCount ?? 0) > 0 && (
                       <span className="mt-1 block text-center text-[10.5px] font-bold text-red-600">
                         ↩ انسحب اعتمادها {inv.revokedCount} مرة
+                        {/* (دازاي 10-25) «اريد اعرف منو الي سحب الاعتماد» */}
+                        {inv.revokedByName && <span className="block font-semibold text-red-700">سحبه: {inv.revokedByName}</span>}
+                        {inv.revokeReason && <span className="block font-normal text-red-600">السبب: {inv.revokeReason}</span>}
                       </span>
                     )}
                   </td>
