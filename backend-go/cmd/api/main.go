@@ -17,6 +17,7 @@ import (
 	"staffmange-api/internal/handler"
 	"staffmange-api/internal/mail"
 	"staffmange-api/internal/middleware"
+	"staffmange-api/internal/model"
 	"staffmange-api/internal/repository"
 	"staffmange-api/internal/safeguard"
 	"staffmange-api/internal/service"
@@ -818,6 +819,13 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	// "يتابع ويدقّق" (monitoring/auditing) لموظف واحد بلا ما يحوّل دوره
 	// لمراقب فعلياً — نفس مبدأ الصلاحيات الفردية المعتمد بكل الشاشة.
 	requireMonitor := middleware.RequireRoleOrAnyPermission(permissionRepo, employeeRepo, notificationRepo, []string{"ADMIN", "MONITOR"}, "monitoring", "auditing")
+	// (دازاي 10-25) صلاحيات المراقب المفصّلة: كل مسار مراقب يقبل الحزمة كاملة
+	// («monitoring»/«auditing») أو صلاحيته الصغيرة بس.
+	_ = requireMonitor // كل مسارات المراقب صارت على requireMon[sub]
+	requireMon := map[string]func(http.Handler) http.Handler{}
+	for _, sub := range model.MonitorSubPermissions {
+		requireMon[sub] = middleware.RequireRoleOrAnyPermission(permissionRepo, employeeRepo, notificationRepo, []string{"ADMIN", "MONITOR"}, "monitoring", "auditing", sub)
+	}
 	requireProjectManager := middleware.RequireRole(employeeRepo, notificationRepo, "ADMIN", "PROJECT_MANAGER")
 	// إدارة المشاريع: بالدور أو بصلاحية project_management الممنوحة يدوياً
 	requireProjectMgmt := middleware.RequireRoleOrPermission(permissionRepo, employeeRepo, notificationRepo, []string{"ADMIN", "PROJECT_MANAGER"}, "project_management")
@@ -1251,10 +1259,10 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	mux.Handle("POST /api/ai/proposals/{id}/approve", middleware.Chain(http.HandlerFunc(matrixLearningHandler.Approve), requireAuth, requireAdmin))
 	mux.Handle("POST /api/ai/proposals/{id}/reject", middleware.Chain(http.HandlerFunc(matrixLearningHandler.Reject), requireAuth, requireAdmin))
 	// المراقب يشوف تقرير الموظف (قراءة بس) — شغله المتابعة، ومن صندوقه يضغط اسم الموظف.
-	mux.Handle("GET /api/ai/employee-report", middleware.Chain(http.HandlerFunc(matrixReportHandler.Employee), requireAuth, requireMonitor))
+	mux.Handle("GET /api/ai/employee-report", middleware.Chain(http.HandlerFunc(matrixReportHandler.Employee), requireAuth, requireMon["mon_staff"]))
 	// (ع) 10-16: «شنو سوّى هذا الموظف» — اليوم/الشهر بالتفصيل، من عيون ماتركس
 	employeeLedgerHandler := handler.NewEmployeeLedgerHandler(repository.NewEmployeeLedgerRepository(db))
-	mux.Handle("GET /api/ai/employee-ledger", middleware.Chain(http.HandlerFunc(employeeLedgerHandler.Get), requireAuth, requireMonitor))
+	mux.Handle("GET /api/ai/employee-ledger", middleware.Chain(http.HandlerFunc(employeeLedgerHandler.Get), requireAuth, requireMon["mon_staff"]))
 	// 📝 بانتظار قرار الزبون +٥ أيام ← الأرشيف «استفسار فقط» (ع 10-23)
 	safeguard.Loop("أرشفة الاستفسارات", 3*time.Minute, time.Hour, func() {
 		if n, err := bookingRepo.ArchiveStaleInquiries(); err != nil {
@@ -1274,8 +1282,8 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 		}
 	})
 	mux.Handle("GET /api/duties/me", middleware.Chain(http.HandlerFunc(dutiesHandler.Me), requireAuth))
-	mux.Handle("GET /api/duties/{employeeId}", middleware.Chain(http.HandlerFunc(dutiesHandler.ForEmployee), requireAuth, requireMonitor))
-	mux.Handle("GET /api/duties/history/{employeeId}", middleware.Chain(http.HandlerFunc(dutiesHandler.History), requireAuth, requireMonitor))
+	mux.Handle("GET /api/duties/{employeeId}", middleware.Chain(http.HandlerFunc(dutiesHandler.ForEmployee), requireAuth, requireMon["mon_staff"]))
+	mux.Handle("GET /api/duties/history/{employeeId}", middleware.Chain(http.HandlerFunc(dutiesHandler.History), requireAuth, requireMon["mon_staff"]))
 	mux.Handle("GET /api/ai/group-performance", middleware.Chain(http.HandlerFunc(matrixReportHandler.Group), requireAuth, requireAdmin))
 	mux.Handle("GET /api/ai/feed", middleware.Chain(http.HandlerFunc(matrixCommandHandler.Feed), requireAuth, requireAdmin))
 	mux.Handle("GET /api/ai/daily-trend", middleware.Chain(http.HandlerFunc(matrixCommandHandler.Trend), requireAuth, requireAdmin))
@@ -1283,7 +1291,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	mux.Handle("POST /api/ai/ask", middleware.Chain(http.HandlerFunc(matrixCommandHandler.Ask), requireAuth, requireAdmin))
 	mux.Handle("GET /api/ai/business", middleware.Chain(http.HandlerFunc(matrixReportHandler.Business), requireAuth, requireAdmin))
 	// (ع) 10-19: «استقرارية النظام… لازم تطلع عد المراقب» — نفس حارس تقرير الموظف.
-	mux.Handle("GET /api/ai/role-watch", middleware.Chain(http.HandlerFunc(matrixDecisionsHandler.RoleWatch), requireAuth, requireMonitor))
+	mux.Handle("GET /api/ai/role-watch", middleware.Chain(http.HandlerFunc(matrixDecisionsHandler.RoleWatch), requireAuth, requireMon["mon_staff"]))
 	mux.Handle("GET /api/ai/decisions", middleware.Chain(http.HandlerFunc(matrixDecisionsHandler.Get), requireAuth, requireAdmin))
 	mux.Handle("POST /api/ai/actions/kinds/{kind}/resume", middleware.Chain(http.HandlerFunc(matrixDecisionsHandler.Resume), requireAuth, requireAdmin))
 	mux.Handle("POST /api/ai/actions/{id}/undo", middleware.Chain(http.HandlerFunc(matrixDecisionsHandler.Undo), requireAuth, requireAdmin))
@@ -1316,8 +1324,8 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	mux.Handle("GET /api/achievements/{id}/voice", middleware.Chain(http.HandlerFunc(achievementHandler.Voice), requireAuth))
 	mux.Handle("GET /api/achievements/{id}/voice/analysis", middleware.Chain(http.HandlerFunc(achievementHandler.VoiceAnalysis), requireAuth))
 	mux.Handle("GET /api/ai/dialect", middleware.Chain(http.HandlerFunc(achievementHandler.Dialect), requireAuth, requireAdmin))
-	mux.Handle("GET /api/achievements", middleware.Chain(http.HandlerFunc(achievementHandler.List), requireAuth, requireMonitor))
-	mux.Handle("PUT /api/achievements/{id}/review", middleware.Chain(http.HandlerFunc(achievementHandler.Review), requireAuth, requireMonitor))
+	mux.Handle("GET /api/achievements", middleware.Chain(http.HandlerFunc(achievementHandler.List), requireAuth, requireMon["mon_attendance"]))
+	mux.Handle("PUT /api/achievements/{id}/review", middleware.Chain(http.HandlerFunc(achievementHandler.Review), requireAuth, requireMon["mon_attendance"]))
 	mux.Handle("GET /api/bookings/{id}/timeline", middleware.Chain(http.HandlerFunc(bookingHandler.Timeline), requireAuth))
 	mux.Handle("PUT /api/bookings/{id}/crew-notes", middleware.Chain(http.HandlerFunc(bookingHandler.SetCrewNotes), requireAuth, requireBookingCoord))
 	mux.Handle("PUT /api/bookings/{id}/project-notes", middleware.Chain(http.HandlerFunc(bookingHandler.SetProjectNotes), requireAuth, requireBookingCoord))
@@ -1583,20 +1591,20 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	mux.Handle("POST /api/attendance/checkin", middleware.Chain(http.HandlerFunc(attendanceHandler.CheckIn), requireAuth))
 	mux.Handle("POST /api/attendance/checkout", middleware.Chain(http.HandlerFunc(attendanceHandler.CheckOut), requireAuth))
 	mux.Handle("POST /api/attendance/auto/{id}/answer", middleware.Chain(http.HandlerFunc(attendanceHandler.AnswerAuto), requireAuth))
-	mux.Handle("GET /api/attendance/claims", middleware.Chain(http.HandlerFunc(attendanceHandler.Claims), requireAuth, requireMonitor))
-	mux.Handle("POST /api/attendance/claims/{id}/decide", middleware.Chain(http.HandlerFunc(attendanceHandler.DecideClaim), requireAuth, requireMonitor))
+	mux.Handle("GET /api/attendance/claims", middleware.Chain(http.HandlerFunc(attendanceHandler.Claims), requireAuth, requireMon["mon_attendance"]))
+	mux.Handle("POST /api/attendance/claims/{id}/decide", middleware.Chain(http.HandlerFunc(attendanceHandler.DecideClaim), requireAuth, requireMon["mon_attendance"]))
 	mux.Handle("GET /api/attendance/gate", middleware.Chain(http.HandlerFunc(attendanceHandler.Gate), requireAuth))
 	mux.Handle("GET /api/attendance/mine", middleware.Chain(http.HandlerFunc(attendanceHandler.Mine), requireAuth))
 	mux.Handle("GET /api/attendance/open", middleware.Chain(http.HandlerFunc(attendanceHandler.OpenSession), requireAuth))
-	mux.Handle("GET /api/attendance/today", middleware.Chain(http.HandlerFunc(attendanceHandler.Today), requireAuth, requireMonitor))
-	mux.Handle("GET /api/attendance/today-summary", middleware.Chain(http.HandlerFunc(attendanceHandler.TodaySummary), requireAuth, requireMonitor))
+	mux.Handle("GET /api/attendance/today", middleware.Chain(http.HandlerFunc(attendanceHandler.Today), requireAuth, requireMon["mon_attendance"]))
+	mux.Handle("GET /api/attendance/today-summary", middleware.Chain(http.HandlerFunc(attendanceHandler.TodaySummary), requireAuth, requireMon["mon_attendance"]))
 	mux.Handle("GET /api/attendance/employee/{id}", middleware.Chain(http.HandlerFunc(attendanceHandler.MonthlyReport), requireAuth))
 	mux.Handle("GET /api/attendance/export/employee/{id}", middleware.Chain(http.HandlerFunc(attendanceHandler.ExportEmployeeMonth), requireAuth))
-	mux.Handle("GET /api/attendance/export/today", middleware.Chain(http.HandlerFunc(attendanceHandler.ExportToday), requireAuth, requireMonitor))
+	mux.Handle("GET /api/attendance/export/today", middleware.Chain(http.HandlerFunc(attendanceHandler.ExportToday), requireAuth, requireMon["mon_attendance"]))
 	attendanceBoard := handler.NewAttendanceBoardHandler(db)
 	attendanceHandler.Board = attendanceBoard
-	mux.Handle("GET /api/attendance/board", middleware.Chain(http.HandlerFunc(attendanceBoard.Board), requireAuth, requireMonitor))
-	mux.Handle("PUT /api/attendance/{id}", middleware.Chain(http.HandlerFunc(attendanceHandler.Correct), requireAuth, requireMonitor))
+	mux.Handle("GET /api/attendance/board", middleware.Chain(http.HandlerFunc(attendanceBoard.Board), requireAuth, requireMon["mon_attendance"]))
+	mux.Handle("PUT /api/attendance/{id}", middleware.Chain(http.HandlerFunc(attendanceHandler.Correct), requireAuth, requireMon["mon_attendance"]))
 
 	// كل تقييمات الشركة — حارسها يطابق حارس شاشة «نقاط الكي بي اي».
 	mux.Handle("GET /api/kpi", middleware.Chain(http.HandlerFunc(kpiHandler.List), requireAuth,
@@ -1615,7 +1623,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	mux.Handle("POST /api/notifications/read-all", middleware.Chain(http.HandlerFunc(notificationHandler.MarkAllRead), requireAuth))
 	mux.Handle("GET /api/kpi-criteria", middleware.Chain(http.HandlerFunc(kpiCriterionHandler.List), requireAuth))
 	mux.Handle("POST /api/assistant/ask", middleware.Chain(http.HandlerFunc(assistantHandler.Ask), requireAuth))
-	mux.Handle("POST /api/assistant/manager-chat", middleware.Chain(http.HandlerFunc(assistantHandler.ManagerChat), requireAuth, requireMonitor))
+	mux.Handle("POST /api/assistant/manager-chat", middleware.Chain(http.HandlerFunc(assistantHandler.ManagerChat), requireAuth, requireMon["mon_matrix"]))
 	mux.Handle("GET /api/assistant/conversations", middleware.Chain(http.HandlerFunc(assistantHandler.ListConversations), requireAuth, requireOwner))
 	mux.Handle("GET /api/assistant/conversations/employees", middleware.Chain(http.HandlerFunc(assistantHandler.ListConversationEmployees), requireAuth, requireOwner))
 	// قصص الكيان — كلها **لصاحب الجلسة حصراً**، ماكو ولا مسار ياخذ
@@ -1659,7 +1667,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	// الافتراضي» چان ينرفض بالقراءة أصلاً.
 	// والكتابة تبقى على requireQuality، وblockMonitorWrite يمنع
 	// المراقب منها حتى لو عنده الصلاحية.
-	mux.Handle("PUT /api/quality-follow-ups/{id}/monitor-verdict", middleware.Chain(http.HandlerFunc(qualityFollowUpHandler.MonitorVerdict), requireAuth, requireMonitor))
+	mux.Handle("PUT /api/quality-follow-ups/{id}/monitor-verdict", middleware.Chain(http.HandlerFunc(qualityFollowUpHandler.MonitorVerdict), requireAuth, requireMon["mon_inbox"]))
 	mux.Handle("GET /api/quality-follow-ups", middleware.Chain(http.HandlerFunc(qualityFollowUpHandler.List), requireAuth,
 		middleware.RequireRoleOrPermission(permissionRepo, employeeRepo, notificationRepo,
 			[]string{"ADMIN", "OWNER", "MONITOR", "QUALITY_ENGINEER"}, "quality_control")))
@@ -2266,7 +2274,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	// متابعة التجديد: القائمة يشوفها الاثنين (مهندس الجودة يتصل، ومسؤول
 	// الجي بي اس يشوف منو يحتاج حرق)، وتسجيل نتيجة الاتصال لمهندس الجودة.
 	// نتائج الجي بي اس للمراقب — قراءة فقط، بحارس المراقب نفسه.
-	mux.Handle("GET /api/gps/monitor-snapshot", middleware.Chain(http.HandlerFunc(gpsHandler.MonitorSnapshot), requireAuth, requireMonitor))
+	mux.Handle("GET /api/gps/monitor-snapshot", middleware.Chain(http.HandlerFunc(gpsHandler.MonitorSnapshot), requireAuth, requireMon["mon_field"]))
 	mux.Handle("GET /api/gps/subscriptions/follow-up", middleware.Chain(http.HandlerFunc(gpsHandler.SubscriptionFollowUps), requireAuth, requireGpsOrQuality))
 	mux.Handle("GET /api/gps/devices/{id}/follow-up", middleware.Chain(http.HandlerFunc(gpsHandler.ListFollowUps), requireAuth, requireGpsOrQuality))
 	mux.Handle("POST /api/gps/devices/{id}/follow-up", middleware.Chain(http.HandlerFunc(gpsHandler.CreateFollowUp), requireAuth, requireGpsOrQuality))
@@ -2367,8 +2375,8 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	mux.Handle("POST /api/vehicles/tracking/merge", middleware.Chain(http.HandlerFunc(vehicleTrackingHandler.Merge), requireAuth, requireVehicleMgmt))
 	mux.Handle("GET /api/vehicles/tracking/export", middleware.Chain(http.HandlerFunc(vehicleTrackingHandler.Export), requireAuth, requireVehicleMgmt))
 	mux.Handle("PUT /api/vehicles/tracking/day", middleware.Chain(http.HandlerFunc(vehicleTrackingHandler.SaveDay), requireAuth, requireVehicleMgmt))
-	mux.Handle("GET /api/vehicles/ratings/vehicle-summary", middleware.Chain(http.HandlerFunc(vehicleHandler.VehicleScoreSummaries), requireAuth, requireMonitor))
-	mux.Handle("GET /api/vehicles/ratings/technician-summary", middleware.Chain(http.HandlerFunc(vehicleHandler.TechnicianWashSummaries), requireAuth, requireMonitor))
+	mux.Handle("GET /api/vehicles/ratings/vehicle-summary", middleware.Chain(http.HandlerFunc(vehicleHandler.VehicleScoreSummaries), requireAuth, requireMon["mon_field"]))
+	mux.Handle("GET /api/vehicles/ratings/technician-summary", middleware.Chain(http.HandlerFunc(vehicleHandler.TechnicianWashSummaries), requireAuth, requireMon["mon_field"]))
 	// إحصاء الغسل لكل سيارة بشهر: كم مرة انغسلت ومنو غسلها.
 	// نفس حارس إدارة المركبات — أبو الكميات والإداري يفتحونها.
 	mux.Handle("GET /api/vehicles/ratings/wash-monthly", middleware.Chain(http.HandlerFunc(vehicleHandler.VehicleWashMonthly), requireAuth, requireVehicleMgmt))
@@ -2390,8 +2398,8 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	// تقارير العمل — الفني يرسل تقرير عن حجزه، المراقب/الجودة يشوفون كل التقارير
 	mux.Handle("POST /api/work-reports", middleware.Chain(http.HandlerFunc(workReportHandler.Create), requireAuth))
 	mux.Handle("GET /api/work-reports", middleware.Chain(http.HandlerFunc(workReportHandler.List), requireAuth))
-	mux.Handle("PUT /api/work-reports/{id}/review", middleware.Chain(http.HandlerFunc(workReportHandler.Review), requireAuth, requireMonitor))
-	mux.Handle("PUT /api/bookings/{id}/progress/review", middleware.Chain(http.HandlerFunc(bookingProgressHandler.Review), requireAuth, requireMonitor))
+	mux.Handle("PUT /api/work-reports/{id}/review", middleware.Chain(http.HandlerFunc(workReportHandler.Review), requireAuth, requireMon["mon_reports"]))
+	mux.Handle("PUT /api/bookings/{id}/progress/review", middleware.Chain(http.HandlerFunc(bookingProgressHandler.Review), requireAuth, requireMon["mon_reports"]))
 	// تقرير زيارة معاينة («كشف») — أي كادر مكلّف بالحجز يسلّمه، بلا حارس ورق محاسبي.
 	mux.Handle("POST /api/booking-survey-reports", middleware.Chain(http.HandlerFunc(surveyReportHandler.Create), requireAuth))
 	mux.Handle("GET /api/booking-survey-reports", middleware.Chain(http.HandlerFunc(surveyReportHandler.List), requireAuth))
@@ -2541,21 +2549,21 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	// ── صندوق المراقب ──
 	// شغل المراقب: يشوف ويأشّر. requireMonitor = ADMIN أو MONITOR،
 	// والمالك داخل بالأدمن.
-	mux.Handle("GET /api/monitor-reviews", middleware.Chain(http.HandlerFunc(monitorReviewHandler.List), requireAuth, requireMonitor))
-	mux.Handle("GET /api/monitor-reviews/counts", middleware.Chain(http.HandlerFunc(monitorReviewHandler.Counts), requireAuth, requireMonitor))
-	mux.Handle("GET /api/monitor-reviews/cards", middleware.Chain(http.HandlerFunc(monitorReviewHandler.Cards), requireAuth, requireMonitor))
+	mux.Handle("GET /api/monitor-reviews", middleware.Chain(http.HandlerFunc(monitorReviewHandler.List), requireAuth, requireMon["mon_inbox"]))
+	mux.Handle("GET /api/monitor-reviews/counts", middleware.Chain(http.HandlerFunc(monitorReviewHandler.Counts), requireAuth, requireMon["mon_inbox"]))
+	mux.Handle("GET /api/monitor-reviews/cards", middleware.Chain(http.HandlerFunc(monitorReviewHandler.Cards), requireAuth, requireMon["mon_inbox"]))
 	monitorActionHandler := handler.NewMonitorActionHandler(monitorReviewRepo, notificationRepo, extraTaskRepo)
 	justHandler := handler.NewJustificationHandler(db, notificationRepo)
 	monitorActionHandler.Just = justHandler
 	mux.Handle("GET /api/justifications/mine", middleware.Chain(http.HandlerFunc(justHandler.Mine), requireAuth))
 	mux.Handle("POST /api/justifications/{id}/answer", middleware.Chain(http.HandlerFunc(justHandler.Answer), requireAuth))
-	mux.Handle("GET /api/justifications", middleware.Chain(http.HandlerFunc(justHandler.List), requireAuth, requireMonitor))
-	mux.Handle("POST /api/justifications/direct", middleware.Chain(http.HandlerFunc(justHandler.Direct), requireAuth, requireMonitor))
+	mux.Handle("GET /api/justifications", middleware.Chain(http.HandlerFunc(justHandler.List), requireAuth, requireMon["mon_justifications"]))
+	mux.Handle("POST /api/justifications/direct", middleware.Chain(http.HandlerFunc(justHandler.Direct), requireAuth, requireMon["mon_justifications"]))
 	// (ع) 10-16: «المحاسب متأخر إذا تأخر على التدقيق ٢٤ ساعة» — خانة «المتأخر»
-	mux.Handle("GET /api/late-invoices", middleware.Chain(http.HandlerFunc(handler.NewLateInvoicesHandler(db).List), requireAuth, requireMonitor))
-	mux.Handle("POST /api/justifications/{id}/decide", middleware.Chain(http.HandlerFunc(justHandler.Decide), requireAuth, requireMonitor))
-	mux.Handle("POST /api/monitor-reviews/{id}/action", middleware.Chain(http.HandlerFunc(monitorActionHandler.Act), requireAuth, requireMonitor))
-	mux.Handle("POST /api/monitor-reviews/{id}/decide", middleware.Chain(http.HandlerFunc(monitorReviewHandler.Decide), requireAuth, requireMonitor))
+	mux.Handle("GET /api/late-invoices", middleware.Chain(http.HandlerFunc(handler.NewLateInvoicesHandler(db).List), requireAuth, requireMon["mon_inbox"]))
+	mux.Handle("POST /api/justifications/{id}/decide", middleware.Chain(http.HandlerFunc(justHandler.Decide), requireAuth, requireMon["mon_justifications"]))
+	mux.Handle("POST /api/monitor-reviews/{id}/action", middleware.Chain(http.HandlerFunc(monitorActionHandler.Act), requireAuth, requireMon["mon_inbox"]))
+	mux.Handle("POST /api/monitor-reviews/{id}/decide", middleware.Chain(http.HandlerFunc(monitorReviewHandler.Decide), requireAuth, requireMon["mon_inbox"]))
 	// «منو فاتح النظام هسه» — المدير/المالك والمراقب.
 	mux.Handle("GET /api/presence/online", middleware.Chain(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		rows, err := presenceRepo.Recent(60)
@@ -2565,12 +2573,12 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 		}
 		w.Header().Set("Content-Type", "application/json")
 		_ = json.NewEncoder(w).Encode(rows)
-	}), requireAuth, requireMonitor))
-	mux.Handle("GET /api/monitor-desk/counts", middleware.Chain(http.HandlerFunc(monitorDeskHandler.Counts), requireAuth, requireMonitor))
+	}), requireAuth, requireMon["mon_inbox"]))
+	mux.Handle("GET /api/monitor-desk/counts", middleware.Chain(http.HandlerFunc(monitorDeskHandler.Counts), requireAuth, requireMon["mon_inbox"]))
 	// ── ماتركس ٢٠٥٠: سلسلة الحجز (١٤ محطة) + تقارير الأدوار + تقييم الليدر لفنيّيه ──
 	matrixChainService := service.NewMatrixChainService(repository.NewMatrixChainRepository(db), aiActionRepo.EmployeeName)
 	matrixChainHandler := handler.NewMatrixChainHandler(matrixChainService, matrixAutopilotService.ResolveFor)
-	mux.Handle("GET /api/ai/chain/{bookingId}", middleware.Chain(http.HandlerFunc(matrixChainHandler.Chain), requireAuth, requireMonitor))
+	mux.Handle("GET /api/ai/chain/{bookingId}", middleware.Chain(http.HandlerFunc(matrixChainHandler.Chain), requireAuth, requireMon["mon_matrix"]))
 	// تقارير الأدوار فيها «ماتركس على المراقب» — للمدير والمالك بس.
 	mux.Handle("GET /api/ai/role-chain", middleware.Chain(http.HandlerFunc(matrixChainHandler.RoleChain), requireAuth, requireAdmin))
 	mux.Handle("GET /api/ai/role-chain/roles", middleware.Chain(http.HandlerFunc(matrixChainHandler.Roles), requireAuth, requireAdmin))
@@ -2661,17 +2669,17 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	mux.Handle("POST /api/peer/me", middleware.Chain(http.HandlerFunc(peerHandler.Submit), requireAuth))
 	mux.Handle("POST /api/peer/notes/{id}/followup", middleware.Chain(http.HandlerFunc(peerHandler.Followup), requireAuth))
 	mux.Handle("POST /api/peer/notes/{id}/accept", middleware.Chain(http.HandlerFunc(peerHandler.Accept), requireAuth))
-	mux.Handle("GET /api/peer/voice", middleware.Chain(http.HandlerFunc(peerHandler.Report), requireAuth, requireMonitor))
-	mux.Handle("GET /api/workplace-issues", middleware.Chain(http.HandlerFunc(peerHandler.Issues), requireAuth, requireMonitor))
-	mux.Handle("POST /api/workplace-issues", middleware.Chain(http.HandlerFunc(peerHandler.OpenIssue), requireAuth, requireMonitor))
-	mux.Handle("GET /api/workplace-issues/{id}", middleware.Chain(http.HandlerFunc(peerHandler.Issue), requireAuth, requireMonitor))
-	mux.Handle("POST /api/workplace-issues/{id}/entries", middleware.Chain(http.HandlerFunc(peerHandler.AddEntry), requireAuth, requireMonitor))
-	mux.Handle("POST /api/workplace-issues/{id}/analyze", middleware.Chain(http.HandlerFunc(peerHandler.Analyze), requireAuth, requireMonitor))
-	mux.Handle("POST /api/workplace-issues/{id}/decide", middleware.Chain(http.HandlerFunc(peerHandler.Decide), requireAuth, requireMonitor))
+	mux.Handle("GET /api/peer/voice", middleware.Chain(http.HandlerFunc(peerHandler.Report), requireAuth, requireMon["mon_staff"]))
+	mux.Handle("GET /api/workplace-issues", middleware.Chain(http.HandlerFunc(peerHandler.Issues), requireAuth, requireMon["mon_staff"]))
+	mux.Handle("POST /api/workplace-issues", middleware.Chain(http.HandlerFunc(peerHandler.OpenIssue), requireAuth, requireMon["mon_staff"]))
+	mux.Handle("GET /api/workplace-issues/{id}", middleware.Chain(http.HandlerFunc(peerHandler.Issue), requireAuth, requireMon["mon_staff"]))
+	mux.Handle("POST /api/workplace-issues/{id}/entries", middleware.Chain(http.HandlerFunc(peerHandler.AddEntry), requireAuth, requireMon["mon_staff"]))
+	mux.Handle("POST /api/workplace-issues/{id}/analyze", middleware.Chain(http.HandlerFunc(peerHandler.Analyze), requireAuth, requireMon["mon_staff"]))
+	mux.Handle("POST /api/workplace-issues/{id}/decide", middleware.Chain(http.HandlerFunc(peerHandler.Decide), requireAuth, requireMon["mon_staff"]))
 	mux.Handle("POST /api/workplace-issues/{id}/party-followup", middleware.Chain(http.HandlerFunc(peerHandler.PartyFollowup), requireAuth))
 	mux.Handle("GET /api/media/briefs", middleware.Chain(http.HandlerFunc(mediaHandler.List), requireAuth, requireMediaView))
 	mux.Handle("PUT /api/media/briefs/{id}", middleware.Chain(http.HandlerFunc(mediaHandler.Update), requireAuth, requireMedia))
-	mux.Handle("GET /api/ai/watch", middleware.Chain(http.HandlerFunc(handler.NewMatrixWatchHandler(matrixWatchService).Report), requireAuth, requireMonitor))
+	mux.Handle("GET /api/ai/watch", middleware.Chain(http.HandlerFunc(handler.NewMatrixWatchHandler(matrixWatchService).Report), requireAuth, requireMon["mon_matrix"]))
 	// عدّاد كلفة الذكاء الاصطناعي — المدير والمالك.
 	mux.Handle("GET /api/ai/usage", middleware.Chain(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		rep, err := service.AIUsageSummary()
@@ -2697,8 +2705,8 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	mux.Handle("POST /api/projects/{id}/delay-reason", middleware.Chain(http.HandlerFunc(projectDelayHandler.AddReason), requireAuth))
 	mux.Handle("GET /api/projects/my-delays", middleware.Chain(http.HandlerFunc(projectDelayHandler.MyDelays), requireAuth))
 	procurementWatchHandler := handler.NewProcurementWatchHandler(db)
-	mux.Handle("GET /api/monitor/procurement-watch", middleware.Chain(http.HandlerFunc(procurementWatchHandler.Get), requireAuth, requireMonitor))
-	mux.Handle("GET /api/projects/delays", middleware.Chain(http.HandlerFunc(projectDelayHandler.Delays), requireAuth, requireMonitor))
+	mux.Handle("GET /api/monitor/procurement-watch", middleware.Chain(http.HandlerFunc(procurementWatchHandler.Get), requireAuth, requireMon["mon_field"]))
+	mux.Handle("GET /api/projects/delays", middleware.Chain(http.HandlerFunc(projectDelayHandler.Delays), requireAuth, requireMon["mon_field"]))
 	mux.Handle("GET /api/ai/projects", middleware.Chain(http.HandlerFunc(matrixProjectHandler.Report), requireAuth, requireAdmin))
 	mux.Handle("GET /api/ai/projects/{id}", middleware.Chain(http.HandlerFunc(matrixProjectHandler.Chain), requireAuth, requireAdmin))
 
@@ -2712,22 +2720,22 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 		}
 	})
 	staffScoreHandler := handler.NewStaffScoreHandler(matrixScoreService)
-	mux.Handle("GET /api/staff-score", middleware.Chain(http.HandlerFunc(staffScoreHandler.Board), requireAuth, requireMonitor))
+	mux.Handle("GET /api/staff-score", middleware.Chain(http.HandlerFunc(staffScoreHandler.Board), requireAuth, requireMon["mon_staff"]))
 	// 🏅 رصيد نقاط الشهر — تصاعدي بلا حد (قرار (ع) 10-11)
 	staffPointsHandler := handler.NewStaffPointsHandler(service.NewStaffPointsService(db, matrixScoreService.Repo()))
-	mux.Handle("GET /api/staff-points", middleware.Chain(http.HandlerFunc(staffPointsHandler.Month), requireAuth, requireMonitor))
+	mux.Handle("GET /api/staff-points", middleware.Chain(http.HandlerFunc(staffPointsHandler.Month), requireAuth, requireMon["mon_staff"]))
 	mux.Handle("GET /api/staff-score/me", middleware.Chain(http.HandlerFunc(staffScoreHandler.Mine), requireAuth))
 	mux.Handle("GET /api/staff-score/peers", middleware.Chain(http.HandlerFunc(staffScoreHandler.Peers), requireAuth))
-	mux.Handle("GET /api/staff-score/{id}", middleware.Chain(http.HandlerFunc(staffScoreHandler.Detail), requireAuth, requireMonitor))
+	mux.Handle("GET /api/staff-score/{id}", middleware.Chain(http.HandlerFunc(staffScoreHandler.Detail), requireAuth, requireMon["mon_staff"]))
 	mux.Handle("POST /api/staff-score/run", middleware.Chain(http.HandlerFunc(staffScoreHandler.Run), requireAuth, requireAdmin))
 	mux.Handle("POST /api/matrix-score/{id}/cancel", middleware.Chain(http.HandlerFunc(staffScoreHandler.Cancel), requireAuth, requireAdmin))
 	mux.Handle("GET /api/staff-ratings/coord-pending", middleware.Chain(http.HandlerFunc(staffScoreHandler.CoordPending), requireAuth, requireBookingCoord))
 	mux.Handle("POST /api/staff-ratings/coord", middleware.Chain(staffScoreHandler.RateCoord(), requireAuth, requireBookingCoord))
-	mux.Handle("GET /api/staff-ratings/audit-pending", middleware.Chain(http.HandlerFunc(staffScoreHandler.AuditPending), requireAuth, requireMonitor))
-	mux.Handle("POST /api/staff-ratings/audit", middleware.Chain(staffScoreHandler.RateAudit(), requireAuth, requireMonitor))
+	mux.Handle("GET /api/staff-ratings/audit-pending", middleware.Chain(http.HandlerFunc(staffScoreHandler.AuditPending), requireAuth, requireMon["mon_staff"]))
+	mux.Handle("POST /api/staff-ratings/audit", middleware.Chain(staffScoreHandler.RateAudit(), requireAuth, requireMon["mon_staff"]))
 	mux.Handle("POST /api/staff-ratings/quality", middleware.Chain(staffScoreHandler.RateQuality(), requireAuth, requireQuality))
-	mux.Handle("GET /api/staff-ratings/periodic", middleware.Chain(http.HandlerFunc(staffScoreHandler.PeriodicState), requireAuth, requireMonitor))
-	mux.Handle("POST /api/staff-ratings/periodic", middleware.Chain(staffScoreHandler.RatePeriodic(), requireAuth, requireMonitor))
+	mux.Handle("GET /api/staff-ratings/periodic", middleware.Chain(http.HandlerFunc(staffScoreHandler.PeriodicState), requireAuth, requireMon["mon_staff"]))
+	mux.Handle("POST /api/staff-ratings/periodic", middleware.Chain(staffScoreHandler.RatePeriodic(), requireAuth, requireMon["mon_staff"]))
 	requireRater := middleware.RequireRoleOrAnyPermission(permissionRepo, employeeRepo, notificationRepo, []string{"ADMIN", "MONITOR"},
 		"monitoring", "auditing", "quality_control", "coordinator", "crew_management")
 	mux.Handle("GET /api/staff-ratings/booking/{id}", middleware.Chain(http.HandlerFunc(staffScoreHandler.BookingState), requireAuth, requireRater))
@@ -2866,10 +2874,10 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 			}
 		})
 		missionHandler := handler.NewMatrixMissionHandler(missionService)
-		mux.Handle("GET /api/matrix/missions", middleware.Chain(http.HandlerFunc(missionHandler.List), requireAuth, requireMonitor))
-		mux.Handle("POST /api/matrix/missions", middleware.Chain(http.HandlerFunc(missionHandler.Create), requireAuth, requireMonitor))
-		mux.Handle("GET /api/matrix/missions/{id}", middleware.Chain(http.HandlerFunc(missionHandler.Get), requireAuth, requireMonitor))
-		mux.Handle("DELETE /api/matrix/missions/{id}", middleware.Chain(http.HandlerFunc(missionHandler.Stop), requireAuth, requireMonitor))
+		mux.Handle("GET /api/matrix/missions", middleware.Chain(http.HandlerFunc(missionHandler.List), requireAuth, requireMon["mon_matrix"]))
+		mux.Handle("POST /api/matrix/missions", middleware.Chain(http.HandlerFunc(missionHandler.Create), requireAuth, requireMon["mon_matrix"]))
+		mux.Handle("GET /api/matrix/missions/{id}", middleware.Chain(http.HandlerFunc(missionHandler.Get), requireAuth, requireMon["mon_matrix"]))
+		mux.Handle("DELETE /api/matrix/missions/{id}", middleware.Chain(http.HandlerFunc(missionHandler.Stop), requireAuth, requireMon["mon_matrix"]))
 	}
 
 	// ── تكلفة الشبكات ──
@@ -2899,13 +2907,18 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	mux.Handle("PUT /api/leader-invoices/{id}/monitor-request", middleware.Chain(http.HandlerFunc(leaderInvoiceHandler.RequestMonitorReview), requireAuth, requireFinance))
 	// ⚠️ والمراقب يبتّ — حارس المراقب مو المحاسب: المحاسب ما يبتّ
 	// بطلبه بنفسه، وإلا الإرسال للمراقب يصير شكلياً.
-	mux.Handle("PUT /api/leader-invoices/{id}/monitor-decide", middleware.Chain(http.HandlerFunc(leaderInvoiceHandler.DecideMonitorReview), requireAuth, requireMonitor))
+	mux.Handle("PUT /api/leader-invoices/{id}/monitor-decide", middleware.Chain(http.HandlerFunc(leaderInvoiceHandler.DecideMonitorReview), requireAuth, requireMon["mon_inbox"]))
 	// ⚠️⚠️ الإرجاع للمحاسب: **المالك وحده ولا حتى الإداري**. هاي تشيل
 	// اعتماداً صار وترجّع فاتورة لأول الطابور — صلاحية بهالوزن بيد
 	// أكثر من واحد تعني إن المالك ما يعرف منو غيّر شنو.
 	mux.Handle("PUT /api/leader-invoices/{id}/return", middleware.Chain(http.HandlerFunc(leaderInvoiceHandler.ReturnToAccountant), requireAuth,
 		middleware.RequireOwnerOnly("إرجاع الفواتير للمحاسب بيد المالك وحده")))
 	mux.Handle("PUT /api/leader-invoices/{id}/revoke", middleware.Chain(http.HandlerFunc(leaderInvoiceHandler.RevokeApproval), requireAuth, requireFinance))
+	// (دازاي 10-25) طلب حذف فاتورة: المحاسب يطلب، والمالك وحده يوافق (نسخة كاملة قبل الحذف)
+	invoiceDeleteHandler := handler.NewInvoiceDeleteHandler(db, notificationRepo)
+	mux.Handle("POST /api/leader-invoices/{id}/delete-request", middleware.Chain(http.HandlerFunc(invoiceDeleteHandler.Request), requireAuth, requireFinance))
+	mux.Handle("GET /api/leader-invoices/delete-requests", middleware.Chain(http.HandlerFunc(invoiceDeleteHandler.List), requireAuth, requireFinance))
+	mux.Handle("POST /api/leader-invoices/delete-requests/{id}/decide", middleware.Chain(http.HandlerFunc(invoiceDeleteHandler.Decide), requireAuth, middleware.RequireOwner()))
 	mux.Handle("GET /api/leader-invoices/approved-without-number", middleware.Chain(http.HandlerFunc(leaderInvoiceHandler.ApprovedWithoutNumber), requireAuth, requireFinance))
 	mux.Handle("PUT /api/leader-invoices/{id}/external-number", middleware.Chain(http.HandlerFunc(leaderInvoiceHandler.SetExternalNumber), requireAuth, requireFinance))
 	mux.Handle("PUT /api/leader-invoices/{id}/adjust", middleware.Chain(http.HandlerFunc(leaderInvoiceHandler.Adjust), requireAuth, requireFinance))

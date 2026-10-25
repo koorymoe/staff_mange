@@ -9,6 +9,7 @@ import Pager from '../components/Pager'
 import { formatCustomerCode } from '../utils/identity'
 import { useSession, canAuditFinance } from '../session'
 import { matches } from '../utils/search'
+import InvoiceDeleteRequests, { RequestInvoiceDelete } from '../components/InvoiceDeleteRequests'
 import { esc, printIdentityCss, printIdentityHtml } from '../utils/printIdentity'
 import LocateHint from '../components/LocateHint'
 import FreeWorkBadge from '../components/FreeWorkBadge'
@@ -627,6 +628,7 @@ export default function LeaderInvoicesListPage({ embedded }: EmbeddedProps = {})
         )}
       </div>
 
+      <InvoiceDeleteRequests isOwner={employee?.actualRole === 'OWNER'} onChanged={load} />
       <div className={`mt-3 rounded-xl border border-white bg-white px-4 py-3 text-sm shadow-[0_4px_20px_rgba(15,32,64,0.06)] ${tab === 'PRICES' ? 'hidden' : ''}`}>
         العرض: <b className="text-brand-800">{shown.length}</b> فاتورة
         {/* «من إجمالي» چان ناقصاً — بدونه ما تعرف إذا الرقم كل شي
@@ -909,6 +911,10 @@ export default function LeaderInvoicesListPage({ embedded }: EmbeddedProps = {})
                         >
                           ✏️ تعديل المبالغ
                         </button>
+                      )}
+                      {/* (دازاي 10-25) المحاسب يطلب حذف فاتورة بيها مشكلة — الطلب يروح للمالك */}
+                      {canApprove && inv.status !== 'APPROVED' && (
+                        <RequestInvoiceDelete invoiceId={inv.id} code={inv.accountingCode} onDone={load} />
                       )}
                     </div>
                   </td>

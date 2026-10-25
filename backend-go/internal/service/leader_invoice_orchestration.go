@@ -100,6 +100,14 @@ func (s *LeaderInvoiceService) Create(employeeID string, req model.CreateLeaderI
 	// البنود تنحفظ بنفس عمود items حتى كل شاشات الفاتورة والتدقيق تعرضها.
 	var decorCost float64
 	isDecor := len(req.DecorLines) > 0
+	// (دازاي 10-25) «صارن الفواتير مكررة»: السبب إن ماكو شي يمنع فاتورة ثانية لنفس
+	// الحجز بنفس اليوم — ضغطتين، أو إعادة إرسال بعد ما انقطع النت. هسه تنرفض من
+	// البداية ويا اسم الفاتورة الموجودة، بدل ما المحاسب يكتشفها بعدين.
+	if req.BookingID != nil && *req.BookingID != "" {
+		if code := s.invoices.SameDayInvoice(*req.BookingID); code != "" {
+			return nil, fmt.Errorf("هذا الحجز عليه فاتورة اليوم أصلاً (%s) — ما تنرفع فاتورة ثانية لنفس الحجز بنفس اليوم. إذا بيها غلط، كلم المحاسب يعدّلها", code)
+		}
+	}
 	if isDecor {
 		if s.decorRates == nil {
 			return nil, fmt.Errorf("جدول أسعار الديكور مو مربوط")

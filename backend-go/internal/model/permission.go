@@ -196,7 +196,27 @@ var DefaultPermissions = []Permission{
 	{Name: "media", Label: "الإعلام والعلاقات العامة"},
 	{Name: "it_assets", Label: "جرد أجهزة تقنية المعلومات"},
 	{Name: "it_stats", Label: "إحصائيات تقنية المعلومات"},
+
+	// ═══ صلاحيات المراقب المفصّلة (دازاي 10-25) ═══
+	// «اريد انطي لموظف ثاني صلاحية وحده فقط من صلاحيات المراقب». «monitoring»
+	// تبقى = الحزمة كاملة؛ وكل وحدة من هذي تفتح شاشتها ومساراتها بس.
+	{Name: "mon_inbox", Label: "المراقبة: صندوق المراقب وقراراته (الفواتير والحجوزات)"},
+	{Name: "mon_reports", Label: "المراقبة: تدقيق تقارير الحجوزات والمشاريع"},
+	{Name: "mon_justifications", Label: "المراقبة: التبريرات (يطلب ويحكم)"},
+	{Name: "mon_attendance", Label: "المراقبة: الحضور والدوام والإنجازات اليومية"},
+	{Name: "mon_staff", Label: "المراقبة: ملف الموظف وتقييمه وسجله (ماتركس)"},
+	{Name: "mon_matrix", Label: "المراقبة: مهام ماتركس وسلسلة الحجز"},
+	{Name: "mon_field", Label: "المراقبة: الميدان والمركبات وتأخير المشاريع والمشتريات"},
+
+	// ═══ 🤖 الوكلاء (دازاي 10-25) ═══ — ايريس للمالك والمدير بس، ما تنمنح.
+	{Name: "agent_matrix", Label: "الوكلاء: توجيه ماتركس (دردشة وأوامر)"},
+	{Name: "agent_quality", Label: "الوكلاء: متابعة ابو الجودة (محادثات الواتساب)"},
+	{Name: "agent_booking", Label: "الوكلاء: متابعة ابو الحجوزات (محادثات الواتساب)"},
 }
+
+// MonitorSubPermissions الصلاحيات الي تكوّن حزمة «المراقبة» — صاحب «monitoring»
+// عنده كلهن ضمناً.
+var MonitorSubPermissions = []string{"mon_inbox", "mon_reports", "mon_justifications", "mon_attendance", "mon_staff", "mon_matrix", "mon_field"}
 
 // RoleDefaultPermissions هي الصلاحيات الافتراضية لكل دور وظيفي
 var RoleDefaultPermissions = map[string][]string{

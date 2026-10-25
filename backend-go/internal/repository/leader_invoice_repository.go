@@ -431,6 +431,15 @@ func (r *LeaderInvoiceRepository) ApprovedTwin(id string) *ApprovedTwinInfo {
 	return &t
 }
 
+// SameDayInvoice كود فاتورة موجودة لنفس الحجز رُفعت اليوم (بغداد) — حتى ما تنرفع
+// ثانية (دازاي 10-25). فاضي = ماكو.
+func (r *LeaderInvoiceRepository) SameDayInvoice(bookingID string) string {
+	var code string
+	_ = r.db.Get(&code, `SELECT COALESCE("accountingCode", id) FROM "LeaderInvoice"
+		WHERE "bookingId" = $1 AND baghdad_date("createdAt") = baghdad_today() ORDER BY "createdAt" LIMIT 1`, bookingID)
+	return code
+}
+
 // HasApprovedTwin هل الفاتورة مكررة لفاتورة معتمدة بنفس اليوم؟
 func (r *LeaderInvoiceRepository) HasApprovedTwin(id string) bool {
 	var twin bool

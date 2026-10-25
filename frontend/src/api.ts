@@ -4670,6 +4670,12 @@ export const api = {
   stageProof: (id: string, data: { stage: 'ACCEPTED' | 'MATERIALS' | 'DEPARTED' | 'ARRIVED' | 'STARTED' | 'COMPLETED'; pressedAt: string; offline: boolean; lat?: number; lng?: number; accuracy?: number }) =>
     request<{ ok: boolean; verdict: 'OK' | 'FAR' | 'BATCH'; distanceM: number | null }>(`/bookings/${id}/stage-proof`, { method: 'POST', body: JSON.stringify(data) }),
   // (دازاي 10-25) صور «قبل/بعد» لشغلة الحجز — كادر الديكور يصوّر بدل ما يكتب
+  // (دازاي 10-25) طلب حذف فاتورة — المحاسب يطلب، والمالك يحسم
+  requestInvoiceDelete: (id: string, reason: string) =>
+    request<{ id: string }>(`/leader-invoices/${id}/delete-request`, { method: 'POST', body: JSON.stringify({ reason }) }),
+  getInvoiceDeleteRequests: (status = 'PENDING') => request<InvoiceDeleteRequest[]>(`/leader-invoices/delete-requests?status=${status}`),
+  decideInvoiceDelete: (id: string, approve: boolean, note = '') =>
+    request<{ ok: boolean }>(`/leader-invoices/delete-requests/${id}/decide`, { method: 'POST', body: JSON.stringify({ approve, note }) }),
   getWorkPhotos: (id: string) => request<WorkPhoto[]>(`/bookings/${id}/work-photos`),
   uploadWorkPhoto: async (id: string, phase: 'BEFORE' | 'AFTER', file: Blob) => {
     const form = new FormData()
@@ -6462,3 +6468,10 @@ export interface DutiesReport {
 
 /** صورة «قبل» أو «بعد» لشغلة حجز (دازاي 10-25) */
 export interface WorkPhoto { id: string; phase: 'BEFORE' | 'AFTER'; employeeId: string | null; createdAt: string }
+
+/** طلب حذف فاتورة (دازاي 10-25) */
+export interface InvoiceDeleteRequest {
+  id: string; invoiceId: string; accountingCode: string | null; bookingCode: string | null; netTotal: number | null
+  requestedByName: string | null; reason: string; status: 'PENDING' | 'APPROVED' | 'REJECTED'
+  decidedByName: string | null; decidedAt: string | null; decisionNote: string | null; createdAt: string
+}

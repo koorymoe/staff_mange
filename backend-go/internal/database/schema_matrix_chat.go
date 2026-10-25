@@ -971,5 +971,28 @@ func matrixChatMigrations() []Migration {
 			);
 			CREATE INDEX IF NOT EXISTS "WorkPhoto_booking" ON "WorkPhoto"("bookingId", phase);
 		`,
+	}, {
+		// (دازاي 10-25) «اريد خيار للمحاسب انو يطلب حذف الفاتورة… طلبها يوصل للمالك».
+		// الفاتورة ما تنحذف إلا بموافقة المالك، وقبل الحذف تنحفظ نسختها كاملة هنا.
+		Version: "0396_invoice_delete_request",
+		SQL: `
+			CREATE TABLE IF NOT EXISTS "LeaderInvoiceDeleteRequest" (
+				id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
+				"invoiceId" TEXT NOT NULL,
+				"accountingCode" TEXT,
+				"bookingCode" TEXT,
+				"netTotal" NUMERIC,
+				"requestedById" TEXT REFERENCES "Employee"(id) ON DELETE SET NULL,
+				reason TEXT NOT NULL,
+				status TEXT NOT NULL DEFAULT 'PENDING' CHECK (status IN ('PENDING', 'APPROVED', 'REJECTED')),
+				"decidedById" TEXT REFERENCES "Employee"(id) ON DELETE SET NULL,
+				"decidedAt" TIMESTAMP,
+				"decisionNote" TEXT,
+				snapshot JSONB,
+				"createdAt" TIMESTAMP NOT NULL DEFAULT now()
+			);
+			CREATE UNIQUE INDEX IF NOT EXISTS "LeaderInvoiceDeleteRequest_pending"
+				ON "LeaderInvoiceDeleteRequest"("invoiceId") WHERE status = 'PENDING';
+		`,
 	}}
 }
