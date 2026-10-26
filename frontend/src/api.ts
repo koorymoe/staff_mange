@@ -1219,6 +1219,10 @@ export interface SecretaryChat {
 export interface SecretaryPending { id: string; kind: string; question: string; why: string; impact: string; affects: string; link: string; createdAt: string }
 export interface SecretaryToday { greeting: string; summary: { lines: string[]; cards: SecretaryCard[] }; pending: SecretaryPending[] }
 
+export class ApiError extends Error {
+  status: number
+  constructor(message: string, status: number) { super(message); this.name = 'ApiError'; this.status = status }
+}
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
   const token = currentToken()
   const res = await fetch(`${API_URL}${path}`, {
@@ -1237,7 +1241,7 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
   }
   if (!res.ok) {
     const body = await res.json().catch(() => ({}))
-    throw new Error(body.error || describeHttpStatus(res.status))
+    throw new ApiError(body.error || describeHttpStatus(res.status), res.status)
   }
   // عين ماتركس: كل إجراء ناجح (حفظ/تعديل/حذف) تنتبهله العين لحظة.
   const method = (options?.method || 'GET').toUpperCase()
