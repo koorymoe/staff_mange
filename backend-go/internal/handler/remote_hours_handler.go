@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"sort"
 	"strings"
 	"time"
 
@@ -335,9 +336,80 @@ func (h *RemoteHoursHandler) Export(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	// ═══ يوم بيوم (دازاي 10-26: «اريد كل يوم وشكد اشتغل بيه») — أول ورقة تنفتح ═══
+	daily := "يوم بيوم"
+	f.SetSheetName("Sheet1", daily)
+	_ = f.SetSheetView(daily, 0, &excelize.ViewOptions{RightToLeft: boolPtr(true)})
+	put(daily, 1, "الموظف", "التاريخ", "اليوم", "المدة (س:د:ث)", "بالساعات", "عدد التسجيلات", "ملاحظات")
+	setExcelHeaderStyle(f, daily, "G")
+	bold, _ := f.NewStyle(&excelize.Style{Font: &excelize.Font{Bold: true}, Fill: excelize.Fill{Type: "pattern", Color: []string{"EEF2F7"}, Pattern: 1},
+		Alignment: &excelize.Alignment{Horizontal: "right"}})
+	boldRow := func(row int) {
+		a, _ := excelize.CoordinatesToCellName(1, row)
+		g, _ := excelize.CoordinatesToCellName(7, row)
+		_ = f.SetCellStyle(daily, a, g, bold)
+	}
+	type dayAgg struct {
+		sec, n int
+		notes  []string
+	}
+	weekday := []string{"الأحد", "الاثنين", "الثلاثاء", "الأربعاء", "الخميس", "الجمعة", "السبت"}
+	empOrder := []string{}
+	empName := map[string]string{}
+	empDays := map[string]map[string]*dayAgg{}
+	for _, x := range rows {
+		if _, ok := empDays[x.EmployeeID]; !ok {
+			empDays[x.EmployeeID] = map[string]*dayAgg{}
+			empName[x.EmployeeID] = x.EmployeeName
+			empOrder = append(empOrder, x.EmployeeID)
+		}
+		d := x.WorkDate.Format("2006-01-02")
+		a := empDays[x.EmployeeID][d]
+		if a == nil {
+			a = &dayAgg{}
+			empDays[x.EmployeeID][d] = a
+		}
+		a.sec += x.Seconds
+		a.n++
+		if x.Note != nil && strings.TrimSpace(*x.Note) != "" {
+			a.notes = append(a.notes, strings.TrimSpace(*x.Note))
+		}
+	}
+	sort.SliceStable(empOrder, func(i, j int) bool { return empName[empOrder[i]] < empName[empOrder[j]] })
+	row, allSec := 2, 0
+	for _, id := range empOrder {
+		days := make([]string, 0, len(empDays[id]))
+		for d := range empDays[id] {
+			days = append(days, d)
+		}
+		sort.Strings(days)
+		empSec := 0
+		for _, d := range days {
+			a := empDays[id][d]
+			wd := ""
+			if t, err := time.Parse("2006-01-02", d); err == nil {
+				wd = weekday[t.Weekday()]
+			}
+			put(daily, row, empName[id], d, wd, HMS(a.sec), fmt.Sprintf("%.2f", float64(a.sec)/3600), a.n, strings.Join(a.notes, " · "))
+			empSec += a.sec
+			row++
+		}
+		put(daily, row, "مجموع "+empName[id], fmt.Sprintf("%d يوم", len(days)), "", HMS(empSec), fmt.Sprintf("%.2f", float64(empSec)/3600), "", "")
+		boldRow(row)
+		allSec += empSec
+		row += 2
+	}
+	if len(empOrder) > 1 {
+		put(daily, row, "المجموع الكلي", "", "", HMS(allSec), fmt.Sprintf("%.2f", float64(allSec)/3600), "", "")
+		boldRow(row)
+	}
+	_ = f.SetColWidth(daily, "A", "A", 28)
+	_ = f.SetColWidth(daily, "B", "F", 15)
+	_ = f.SetColWidth(daily, "G", "G", 40)
+
 	// الملخص
 	sum := "الملخص"
-	f.SetSheetName("Sheet1", sum)
+	_, _ = f.NewSheet(sum)
 	_ = f.SetSheetView(sum, 0, &excelize.ViewOptions{RightToLeft: boolPtr(true)})
 	put(sum, 1, "الموظف", "عدد الأيام", "المجموع (س:د:ث)", "المجموع بالساعات")
 	setExcelHeaderStyle(f, sum, "D")
@@ -371,7 +443,7 @@ func (h *RemoteHoursHandler) Export(w http.ResponseWriter, r *http.Request) {
 	_ = f.SetColWidth(sum, "B", "D", 18)
 
 	// التفاصيل
-	det := "التفاصيل"
+	det := "التسجيلات"
 	_, _ = f.NewSheet(det)
 	_ = f.SetSheetView(det, 0, &excelize.ViewOptions{RightToLeft: boolPtr(true)})
 	put(det, 1, "الموظف", "التاريخ", "المدة (س:د:ث)", "ملاحظة", "سجّلها", "وقت التسجيل")
