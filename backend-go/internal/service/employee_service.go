@@ -2,6 +2,7 @@ package service
 
 import (
 	"errors"
+	"fmt"
 	"log"
 	"strings"
 	"time"
@@ -74,6 +75,17 @@ func (s *EmployeeService) Create(req model.CreateEmployeeRequest) (*model.Employ
 	// = "expenses" بس)، فيتحقق شرط "صفر صلاحيات تقريباً" مباشرة بدون كود إضافي.
 	if division == model.DivisionDecor {
 		role = "TECHNICIAN"
+	}
+
+	// (دازاي 10-26) اليوزر ما يتكرر — حتى «Ali» و«ali » ينحسبون نفس اليوزر.
+	if req.Username != nil {
+		u := strings.TrimSpace(*req.Username)
+		req.Username = &u
+		if u != "" {
+			if owner := s.repo.UsernameOwner(u, ""); owner != "" {
+				return nil, fmt.Errorf("اسم المستخدم «%s» مستعمل لـ%s — اختار يوزر ثاني", u, owner)
+			}
+		}
 	}
 
 	employee := &model.Employee{
@@ -185,7 +197,13 @@ func (s *EmployeeService) Update(id string, req model.UpdateEmployeeRequest) (*m
 			employee.OnDuty = *req.OnDuty
 		}
 		if req.Username != nil {
-			employee.Username = req.Username
+			u := strings.TrimSpace(*req.Username)
+			if u != "" {
+				if owner := s.repo.UsernameOwner(u, employee.ID); owner != "" {
+					return fmt.Errorf("اسم المستخدم «%s» مستعمل لـ%s — اختار يوزر ثاني", u, owner)
+				}
+			}
+			employee.Username = &u
 		}
 		if req.HasDrivingLicense != nil {
 			employee.HasDrivingLicense = *req.HasDrivingLicense

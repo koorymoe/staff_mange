@@ -115,10 +115,25 @@ func (r *EmployeeRepository) NameByID(id string) (string, error) {
 	return name, err
 }
 
+// UsernameOwner اسم الموظف الي ماخذ هذا اليوزر — بلا فرق بالحروف الكبيرة والصغيرة
+// والفراغات (دازاي 10-26: «ما اريد نفس اليوزر يتكرر»). exceptID = الموظف نفسه
+// وكت التعديل. فاضي = اليوزر متاح.
+func (r *EmployeeRepository) UsernameOwner(username, exceptID string) string {
+	var name string
+	_ = r.db.Get(&name, `SELECT name FROM "Employee" WHERE lower(btrim(username)) = lower(btrim($1)) AND id <> $2 LIMIT 1`, username, exceptID)
+	return name
+}
+
 func (r *EmployeeRepository) FindByUsername(username string) (*model.Employee, error) {
 	var e model.Employee
-	if err := r.db.Get(&e, `SELECT * FROM "Employee" WHERE username = $1`, username); err != nil {
-		return nil, err
+	err := r.db.Get(&e, `SELECT * FROM "Employee" WHERE username = $1`, username)
+	if err != nil {
+		// الدخول ما يتأثر بالحروف الكبيرة/الصغيرة أو فراغ زايد — بس إذا التطابق واحد بالضبط
+		var rows []model.Employee
+		if e2 := r.db.Select(&rows, `SELECT * FROM "Employee" WHERE lower(btrim(username)) = lower(btrim($1)) LIMIT 2`, username); e2 != nil || len(rows) != 1 {
+			return nil, err
+		}
+		e = rows[0]
 	}
 	skills, err := r.SkillsForEmployee(e.ID)
 	if err != nil {

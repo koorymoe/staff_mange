@@ -994,5 +994,21 @@ func matrixChatMigrations() []Migration {
 			CREATE UNIQUE INDEX IF NOT EXISTS "LeaderInvoiceDeleteRequest_pending"
 				ON "LeaderInvoiceDeleteRequest"("invoiceId") WHERE status = 'PENDING';
 		`,
+	}, {
+		// (دازاي 10-26) «ما اريد نفس اليوزر يتكرر» — قفل بالقاعدة بلا فرق حروف أو فراغات.
+		// ⚠️ إذا اكو تكرار قديم، ما نوكّف الإقلاع: نتركه (الكود يمنع الجديد) ونطلّع ملاحظة.
+		Version: "0397_username_ci_unique",
+		SQL: `
+			DO $$
+			BEGIN
+				IF EXISTS (SELECT 1 FROM "Employee" WHERE username IS NOT NULL
+				           GROUP BY lower(btrim(username)) HAVING count(*) > 1) THEN
+					RAISE NOTICE 'Employee: يوزرات مكررة قديمة — القفل ما انضاف، صلّحها أول';
+				ELSE
+					CREATE UNIQUE INDEX IF NOT EXISTS "Employee_username_ci_key"
+						ON "Employee" (lower(btrim(username))) WHERE username IS NOT NULL;
+				END IF;
+			END $$;
+		`,
 	}}
 }
