@@ -4676,6 +4676,9 @@ export const api = {
   getInvoiceDeleteRequests: (status = 'PENDING') => request<InvoiceDeleteRequest[]>(`/leader-invoices/delete-requests?status=${status}`),
   decideInvoiceDelete: (id: string, approve: boolean, note = '') =>
     request<{ ok: boolean }>(`/leader-invoices/delete-requests/${id}/decide`, { method: 'POST', body: JSON.stringify({ approve, note }) }),
+  // (دازاي 10-26) ورق الحجوزات القديمة لليدر السابق
+  getCarryover: () => request<CarryoverItem[]>('/paperwork/carryover'),
+  getCarryoverBookings: () => request<Booking[]>('/paperwork/carryover/bookings'),
   getWorkPhotos: (id: string) => request<WorkPhoto[]>(`/bookings/${id}/work-photos`),
   uploadWorkPhoto: async (id: string, phase: 'BEFORE' | 'AFTER', file: Blob) => {
     const form = new FormData()
@@ -6475,3 +6478,6 @@ export interface InvoiceDeleteRequest {
   requestedByName: string | null; reason: string; status: 'PENDING' | 'APPROVED' | 'REJECTED'
   decidedByName: string | null; decidedAt: string | null; decisionNote: string | null; createdAt: string
 }
+
+/** حجز قديم ناقصه ورق (دازاي 10-26) */
+export interface CarryoverItem { id: string; code: string; completedAt: string | null; hasInvoice: boolean; hasReport: boolean }

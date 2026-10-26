@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/jmoiron/sqlx"
 )
@@ -107,6 +108,11 @@ func (g *PaperworkGuard) IsBookingManager(employeeID, bookingID string) (bool, e
 	if bookingID == "" || employeeID == "" {
 		return false, nil
 	}
+	// (دازاي 10-26) الليدر السابق ويا صلاحية «إكمال ورق حجوزاته القديمة»: يسوي
+	// فاتورة حجز اشتغل بيه هو وبعده ناقص ورق — مو أي حجز.
+	if ok, _ := g.CarryoverAllowed(employeeID, bookingID); ok {
+		return true, nil
+	}
 	var count int
 	err := g.db.Get(&count, `
 		SELECT COUNT(*)
@@ -146,4 +152,74 @@ func (g *PaperworkGuard) holdsServicePaperworkPermission(bookingID, employeeID s
 			)
 		)`, bookingID, employeeID)
 	return ok, err
+}
+
+// carryoverMissingSQL حجوزات الموظف المنجزة الي ناقصها فاتورة أو تقرير.
+const carryoverMissingSQL = `FROM "Booking" b
+	WHERE b.status = 'COMPLETED' AND b."archivedAt" IS NULL
+	  AND (EXISTS (SELECT 1 FROM "BookingAssignment" ba WHERE ba."bookingId" = b.id AND ba."employeeId" = $1)
+	       OR b."projectSupervisorId" = $1)
+	  AND (NOT EXISTS (SELECT 1 FROM "LeaderInvoice" li WHERE li."bookingId" = b.id)
+	       OR NOT EXISTS (SELECT 1 FROM "WorkReport" w WHERE w."bookingId" = b.id))`
+
+func (g *PaperworkGuard) holdsCarryover(employeeID string) bool {
+	var n int
+	_ = g.db.Get(&n, `SELECT count(*) FROM "EmployeePermission" ep JOIN "Permission" p ON p.id = ep."permissionId"
+		WHERE ep."employeeId" = $1 AND p.name = 'paperwork_carryover'`, employeeID)
+	return n > 0
+}
+
+// CarryoverAllowed الموظف عنده الصلاحية، والحجز من حجوزاته وناقصه ورق.
+func (g *PaperworkGuard) CarryoverAllowed(employeeID, bookingID string) (bool, error) {
+	if !g.holdsCarryover(employeeID) {
+		return false, nil
+	}
+	var n int
+	err := g.db.Get(&n, `SELECT count(*) `+carryoverMissingSQL+` AND b.id = $2`, employeeID, bookingID)
+	return n > 0, err
+}
+
+// CarryoverItem حجز قديم ناقصه ورق.
+type CarryoverItem struct {
+	ID          string  `db:"id" json:"id"`
+	Code        string  `db:"code" json:"code"`
+	CompletedAt *string `db:"completedAt" json:"completedAt"`
+	HasInvoice  bool    `db:"hasInvoice" json:"hasInvoice"`
+	HasReport   bool    `db:"hasReport" json:"hasReport"`
+}
+
+// CarryoverList حجوزاته الناقص ورقها — فاضية إذا ما عنده الصلاحية.
+func (g *PaperworkGuard) CarryoverList(employeeID string) ([]CarryoverItem, error) {
+	out := []CarryoverItem{}
+	if !g.holdsCarryover(employeeID) {
+		return out, nil
+	}
+	err := g.db.Select(&out, `SELECT b.id, b.code, to_char(baghdad_date(b."completedAt"), 'YYYY-MM-DD') AS "completedAt",
+		EXISTS (SELECT 1 FROM "LeaderInvoice" li WHERE li."bookingId" = b.id) AS "hasInvoice",
+		EXISTS (SELECT 1 FROM "WorkReport" w WHERE w."bookingId" = b.id) AS "hasReport"
+		`+carryoverMissingSQL+` ORDER BY b."completedAt"`, employeeID)
+	return out, err
+}
+
+// SweepCarryover يشيل الصلاحية عن الي خلّص كل ورقه، ويرجّع أسماءهم للتبليغ.
+func (g *PaperworkGuard) SweepCarryover() ([]struct{ ID, Name string }, error) {
+	var done []struct {
+		ID   string `db:"id"`
+		Name string `db:"name"`
+	}
+	err := g.db.Select(&done, `SELECT e.id, e.name FROM "Employee" e
+		JOIN "EmployeePermission" ep ON ep."employeeId" = e.id
+		JOIN "Permission" p ON p.id = ep."permissionId" AND p.name = 'paperwork_carryover'
+		WHERE NOT EXISTS (SELECT 1 `+strings.Replace(carryoverMissingSQL, "$1", "e.id", -1)+`)`)
+	if err != nil {
+		return nil, err
+	}
+	out := []struct{ ID, Name string }{}
+	for _, d := range done {
+		if _, err := g.db.Exec(`DELETE FROM "EmployeePermission" WHERE "employeeId" = $1
+			AND "permissionId" = (SELECT id FROM "Permission" WHERE name = 'paperwork_carryover')`, d.ID); err == nil {
+			out = append(out, struct{ ID, Name string }{d.ID, d.Name})
+		}
+	}
+	return out, nil
 }

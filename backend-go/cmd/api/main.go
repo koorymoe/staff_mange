@@ -2396,6 +2396,54 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 
 	// الجودة — مشاكل تنفيذية ميدانية + مشاكل رقابية/إدارية
 	// تقارير العمل — الفني يرسل تقرير عن حجزه، المراقب/الجودة يشوفون كل التقارير
+	// (دازاي 10-26) ورق الحجوزات القديمة لليدر السابق — قائمته، وتنشال الصلاحية لحالها من يخلّص
+	mux.Handle("GET /api/paperwork/carryover", middleware.Chain(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		rows, err := paperworkGuard.CarryoverList(middleware.EmployeeIDFromContext(r))
+		if err != nil {
+			handler.WriteError(w, http.StatusInternalServerError, "تعذر")
+			return
+		}
+		handler.WriteJSON(w, http.StatusOK, rows)
+	}), requireAuth))
+	// نفس القائمة بس كحجوزات كاملة — لقائمة الحجوزات بشاشة الفاتورة
+	mux.Handle("GET /api/paperwork/carryover/bookings", middleware.Chain(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		items, err := paperworkGuard.CarryoverList(middleware.EmployeeIDFromContext(r))
+		if err != nil {
+			handler.WriteError(w, http.StatusInternalServerError, "تعذر")
+			return
+		}
+		ids := make([]string, 0, len(items))
+		for _, it := range items {
+			if !it.HasInvoice {
+				ids = append(ids, it.ID)
+			}
+		}
+		out := []*model.Booking{}
+		if len(ids) > 0 {
+			m, err := bookingRepo.FindByIDs(ids)
+			if err != nil {
+				handler.WriteError(w, http.StatusInternalServerError, "تعذر")
+				return
+			}
+			for _, id := range ids {
+				if b := m[id]; b != nil {
+					out = append(out, b)
+				}
+			}
+		}
+		handler.WriteJSON(w, http.StatusOK, out)
+	}), requireAuth))
+	safeguard.Loop("صلاحية ورق الحجوزات القديمة", 4*time.Minute, time.Hour, func() {
+		done, err := paperworkGuard.SweepCarryover()
+		if err != nil {
+			log.Printf("carryover sweep: %v", err)
+			return
+		}
+		for _, d := range done {
+			_ = notificationRepo.Create(d.ID, "PAPERWORK_DONE", "✅ خلّصت كل فواتير وتقارير حجوزاتك القديمة — عاشت ايدك. صلاحية «إكمال الورق القديم» انشالت تلقائياً.")
+			_ = notificationRepo.CreateForRole("OWNER", "PAPERWORK_DONE", "✅ "+d.Name+" خلّص ورق حجوزاته القديمة، وانشالت منه صلاحية «إكمال الورق القديم» تلقائياً.")
+		}
+	})
 	mux.Handle("POST /api/work-reports", middleware.Chain(http.HandlerFunc(workReportHandler.Create), requireAuth))
 	mux.Handle("GET /api/work-reports", middleware.Chain(http.HandlerFunc(workReportHandler.List), requireAuth))
 	mux.Handle("PUT /api/work-reports/{id}/review", middleware.Chain(http.HandlerFunc(workReportHandler.Review), requireAuth, requireMon["mon_reports"]))

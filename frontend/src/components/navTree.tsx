@@ -478,6 +478,8 @@ export const navItems: NavItem[] = [
   // كأول تبويب بمكتب المراقب (بخاصية embedded). بندان يودّيان لنفس
   // الشي = تكرار صرف. والمسار `/monitor-inbox` يبقى شغّالاً للروابط
   // المحفوظة والإشعارات.
+  // (دازاي 10-26) ليدر سابق يكمّل ورق حجوزاته — يطلع بس لصاحب الصلاحية المؤقتة
+  { to: '/my-paperwork', label: '📄 ورق حجوزاتي القديمة', icon: <span>📄</span>, permission: 'paperwork_carryover' },
   { monitorMenuHide: true, to: '/monitor', label: 'لوحة المراقبة', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>, roles: ['ADMIN', 'MONITOR'], permission: 'monitoring' },
   // "خريطة المواقع" انشالت من القائمة — الفني هسه يشوف طريق مهمته مباشرة
   // من صفحة "مهامي" (بوب-أب داخل نفس الصفحة، بدون تحويل لصفحة ثانية).

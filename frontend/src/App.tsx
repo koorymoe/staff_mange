@@ -56,6 +56,7 @@ const MyTasks = lazy(() => import('./pages/MyTasks'))
 // (دازاي 10-25) كادر الديكور: «شغلي اليوم» و«شنو مطلوب مني؟»
 const DecorTodayPage = lazy(() => import('./pages/DecorTodayPage'))
 const DecorGuidePage = lazy(() => import('./pages/DecorGuidePage'))
+const MyPaperworkPage = lazy(() => import('./pages/MyPaperworkPage'))
 const MyHandoversPage = lazy(() => import('./pages/MyHandoversPage'))
 const MyRanking = lazy(() => import('./pages/MyRanking'))
 const MyExtraTasksPage = lazy(() => import('./pages/MyExtraTasksPage'))
@@ -260,6 +261,7 @@ function App() {
           <Route path="my-tasks" element={<MyTasks />} />
           <Route path="decor-today" element={<DecorTodayPage />} />
           <Route path="decor-guide" element={<DecorGuidePage />} />
+          <Route path="my-paperwork" element={<MyPaperworkPage />} />
           <Route path="my-handovers" element={<MyHandoversPage />} />
           <Route path="my-ranking" element={<MyRanking />} />
           {/* مهامي الإضافية — بلا حارس: هاي مهام الموظف نفسه */}

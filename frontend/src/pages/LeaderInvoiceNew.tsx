@@ -57,6 +57,10 @@ export default function LeaderInvoiceNew({ initialMode }: { initialMode?: 'estim
   // تقرير ١ (B14): فاتورة الحجز يحفظها الخادم لليدر ومسؤول خدمة الحجز بس
   // (requireLeaderOrServiceManager) — غيرهم كانت ترجعله 403.
   const canBookingInvoice = !!employee?.isLeader || ['ADMIN', 'OWNER', 'SERVICE_MANAGER', 'TECHNICAL'].includes(employee?.role ?? '')
+    // (دازاي 10-26) ليدر سابق: فواتير حجوزاته القديمة بس — الخادم يتحقق حجز حجز
+    || permissions.includes('paperwork_carryover')
+  const carryoverOnly = !employee?.isLeader && permissions.includes('paperwork_carryover')
+    && !['ADMIN', 'OWNER', 'SERVICE_MANAGER', 'TECHNICAL'].includes(employee?.role ?? '')
   /**
    * ⚠️ **يفتح من الرابط `?service=1`**: بند القائمة مال صاحب صلاحية
    * الفاتورة يوصله لهالشاشة، وهي شاشة **حساب كلفة** أصلاً — فلو
@@ -328,7 +332,10 @@ export default function LeaderInvoiceNew({ initialMode }: { initialMode?: 'estim
         // القائمة صارت «فواتير وتقارير»: حجز انفوتر ويبقى بيها لحد ما
         // ينكتب تقريره — فهنا ينشال حتى ما ينفوتر مرتين.
         ? api.getServicePaperwork(serviceKind).then((list) => list.filter((b) => !b.hasInvoice))
-        : api.getBookings({ status: 'COMPLETED' })
+        // (دازاي 10-26) ليدر سابق: حجوزاته القديمة الناقصة فاتورة بس
+        : carryoverOnly
+          ? api.getCarryoverBookings()
+          : api.getBookings({ status: 'COMPLETED' })
     load.then(setCompletedBookings).catch(() => setCompletedBookings([]))
     // ⚠️ والمشاريع الموجّهة تنخفي بالوضعين: ماكو علاقة بين مشروع
     // إنشائي وفاتورة جي بي اس، وعرض ٥١ مشروعاً بالقائمة هو الي
@@ -344,7 +351,7 @@ export default function LeaderInvoiceNew({ initialMode }: { initialMode?: 'estim
       .catch(() => setMyProjects([]))
     // ⚠️ `serviceKind` بالاعتماديات: بلاها تبديل جي بي اس ↔ داش كام
     // ما يعيد الجلب، فالقائمة تبقى على النوع الأول بهدوء.
-  }, [estimateOnly, internalMode, serviceMode, serviceKind, canServiceInvoice])
+  }, [estimateOnly, internalMode, serviceMode, serviceKind, canServiceInvoice, carryoverOnly])
 
   const allSystemNames = useMemo(
     () => Array.from(new Set(catalog.map((c) => c.systemName))).sort(),
