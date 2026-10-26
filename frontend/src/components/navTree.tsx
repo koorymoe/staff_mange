@@ -898,7 +898,10 @@ export function isNavVisible(item: NavItem, ctx: NavContext, unitGranted = false
     if (item.hideForRoles && role && item.hideForRoles.includes(role as EmployeeRole)) return false
     // (ع) 10-16: صاحب صلاحية monitoring = مراقب — الي ينخفي عن المراقب ينخفي عنه هم،
     // حتى مراقب جديد بنفس الصلاحيات يطلعله نفس القائمة بالضبط.
-    if (item.hideForRoles?.includes('MONITOR') && role !== 'ADMIN' && ctx.permissions.includes('monitoring')) return false
+    // (دازاي 10-26) بس إذا البند **مو** من شغله الأصلي: أبو الكميات الي انطى صلاحية
+    // مراقبة يبقى يشوف «جرد الأدوات» — صلاحية إضافية ما تشيل شاشات دوره.
+    if (item.hideForRoles?.includes('MONITOR') && role !== 'ADMIN' && ctx.permissions.includes('monitoring')
+      && !(role && item.roles?.includes(role as EmployeeRole))) return false
     if (item.hideIfAnyPermission && item.hideIfAnyPermission.some((p) => ctx.permissions.includes(p))) return false
 
     if (item.divider) return true

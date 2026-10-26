@@ -54,6 +54,53 @@ const notifTargets: Record<string, string> = {
   extra_task_cancelled: '/my-extra-tasks',
   // ماتركس — يوصل للمالك ومدير النظام بس
   AI_WEEKLY_REPORT: '/weekly-report',
+  // (دازاي 10-26) «يدوس على الإشعار ما يحوله على المشكلة» — كل نوع يرسله الخادم إله وجهة
+  INVENTORY: '/inventory',
+  inventory: '/inventory',
+  AI_AUTOPILOT: '/inventory',
+  AI_MISSION: '/matrix-missions',
+  AI_WEEKLY_PRAISE: '/weekly-report',
+  PRICE_SUGGESTION: '/leader-invoices',
+  INVOICE_DELETE_REQUEST: '/leader-invoices',
+  PAPERWORK_DONE: '/my-paperwork',
+  achievement_review: '/achievements',
+  audit_issue_closed: '/audit-issues',
+  booking_handover: '/bookings',
+  booking_partial: '/bookings',
+  booking_tech_crew: '/bookings',
+  booking_tech_visit: '/bookings',
+  booking_unstarted: '/bookings',
+  project_booking_ready: '/bookings',
+  stage_reminder: '/my-tasks',
+  waiting_callback_reminder: '/bookings',
+  invoice_mismatch: '/leader-invoices',
+  invoice_monitor: '/monitor-desk',
+  invoice_returned: '/leader-invoices',
+  monitor_flag: '/monitor-desk',
+  monitor_notice: '/monitor-desk',
+  review_flag: '/monitor-desk',
+  monitor_justify_result: '/monitor-desk',
+  it_assets: '/it-assets',
+  vehicle_management: '/vehicles',
+  employee_letter: '/letters',
+  wa_handoff: '/whatsapp-conversations',
+}
+
+/** (دازاي 10-26) وجهة الإشعار: كود حجز بالنص يفتح الحجز نفسه، وبعدها النوع، وبعدها
+ *  كلمات النص — حتى ماكو إشعار ينضغط وما يسوي شي. */
+function notifTarget(n: { type: string; message: string }): string | null {
+  const code = n.message.match(/(?:^|[^A-Za-z0-9])(B\d{2,6})(?![0-9])/)?.[1]
+  const byType = notifTargets[n.type]
+  if (code && (!byType || byType === '/bookings' || byType === '/my-tasks')) return `/bookings?focus=${code}`
+  if (byType) return byType
+  const m = n.message
+  if (/نقص|جرد|عدّة|العدة|أداة|اداة/.test(m)) return '/inventory'
+  if (/فاتورة|فاتوره|فواتير/.test(m)) return '/leader-invoices'
+  if (/إجازة|اجازة|إجازات/.test(m)) return '/leaves'
+  if (/شكوى|شكاوى/.test(m)) return '/quality-desk'
+  if (/مهمة|مهام/.test(m)) return '/my-extra-tasks'
+  if (/حجز/.test(m)) return '/bookings'
+  return null
 }
 import AnnouncementTicker from './AnnouncementTicker'
 import { navItems, isNavVisible, isExtraForMonitor, isPathAllowed, type NavItem } from './navTree'
@@ -90,6 +137,8 @@ export default function Layout() {
   const [notifications, setNotifications] = useState<import('../api').Notification[]>([])
   const [unreadCount, setUnreadCount] = useState(0)
   const [notifOpen, setNotifOpen] = useState(false)
+  // إشعار بلا وجهة: ينفتح نصه كامل
+  const [notifFull, setNotifFull] = useState<string | null>(null)
   const notifPanelRef = useRef<HTMLDivElement>(null)
   const notifBtnRef = useRef<HTMLButtonElement>(null)
   const [settingsOpen, setSettingsOpen] = useState(false)
@@ -240,10 +289,13 @@ export default function Layout() {
     }
     // الإشعار بلا وجهة يخلي الموظف يدوّر بيده على الشاشة الي تخص الخبر —
     // وأحياناً ما يلكها أصلاً. كل نوع يوديه لمحله مباشرة.
-    const target = notifTargets[n.type]
+    const target = notifTarget(n)
     if (target) {
       setNotifOpen(false)
       navigate(target)
+    } else {
+      // بلا وجهة: النص كامل قدامه بدل ما «ما يصير شي»
+      setNotifFull(n.message)
     }
   }
 
@@ -665,6 +717,14 @@ export default function Layout() {
     <SessionContext.Provider value={{ employee, setEmployee, permissions: employeePermissions, gpsServiceId }}>
       {/* سياسة الخصوصية: تنعرض أول دخول ولما تنضاف نقاط جديدة */}
       <PrivacyPolicyGate />
+      {notifFull && (
+        <div dir="rtl" className="fixed inset-0 z-[80] flex items-center justify-center bg-black/40 p-4" onClick={() => setNotifFull(null)}>
+          <div className="w-full max-w-md rounded-2xl bg-white p-5 text-sm leading-relaxed text-slate-800 shadow-xl" onClick={(e) => e.stopPropagation()}>
+            <p className="whitespace-pre-wrap">{notifFull}</p>
+            <button type="button" onClick={() => setNotifFull(null)} className="mt-4 w-full rounded-xl bg-[#0f2040] py-2 font-bold text-white">تمام</button>
+          </div>
+        </div>
+      )}
       <div dir="ltr" className="app-shell flex bg-[#f0f4f9]">
 
         {/* ===== Main Area ===== */}
@@ -764,7 +824,7 @@ export default function Layout() {
                             <div className="mt-1 flex items-center justify-between">
                               <span className="text-[11px] text-slate-400">{new Date(n.createdAt).toLocaleString('ar-IQ')}</span>
                               {/* سهم يبيّن إن الإشعار ينفتح على شاشة */}
-                              {notifTargets[n.type] && (
+                              {notifTarget(n) && (
                                 <span className="text-[11px] font-bold text-brand-600">افتحها ←</span>
                               )}
                             </div>
