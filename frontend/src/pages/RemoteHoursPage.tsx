@@ -6,13 +6,11 @@ import { loadFailed } from '../netErrors'
 // ═══ ساعات العمل من البيت ═══
 // صلاحيتان:
 //  • remote_hours_self   — الموظف لنفسه: عدّاد حي (ابدأ/وقّف/إنهاء) + إضافة يدوية.
-//  • remote_hours_manage — المسؤول: كل الموظفين، والإكسل، والتصفير (يوم ٢٧ وطالع).
+//  • remote_hours_manage — المسؤول: كل الموظفين والإكسل. التصفير للمالك بس، بأي وقت.
 // التصفير ما يحذف: يسكّر الفترة، فالعدّادات تبدي من صفر والسجلات تبقى بالإكسل.
 
-const RESET_DAY = 27
 const hms = (sec: number) => `${Math.floor(sec / 3600)}:${String(Math.floor((sec % 3600) / 60)).padStart(2, '0')}:${String(sec % 60).padStart(2, '0')}`
 const today = () => new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Baghdad' })
-const baghdadDay = () => Number(new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Baghdad', day: '2-digit' }))
 const n = (v: string) => Math.max(0, Math.floor(Number(v) || 0))
 const inp = 'rounded-lg border border-slate-300 px-2 py-1.5 text-sm'
 const card = 'rounded-2xl border border-slate-200 bg-white p-4 shadow-sm'
@@ -274,7 +272,8 @@ function ManageHours({ meId, isAdmin }: { meId: string; isAdmin: boolean }) {
     if (!confirm('متأكد؟ هالخطوة ما ترجع.')) return
     try { const r = await api.resetRemoteHours(); alert(`تصفّرت — ${r.closed} تسجيل انقفل.`); setSel(null); setEntries([]); setTotal(0); loadSummary() } catch (e) { alert(e instanceof Error ? e.message : 'تعذّر التصفير') }
   }
-  const showReset = baghdadDay() >= RESET_DAY
+  // (دازاي 10-26) «الزر يطلع فقط للمالك بكل وقت»
+  const showReset = useSession().employee?.actualRole === 'OWNER'
 
   return (
     <div className="space-y-4">

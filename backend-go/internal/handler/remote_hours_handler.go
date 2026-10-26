@@ -198,14 +198,13 @@ func (h *RemoteHoursHandler) TimerAction(w http.ResponseWriter, r *http.Request)
 	WriteJSON(w, http.StatusOK, map[string]any{"timer": h.timerView(me)})
 }
 
-// ResetDay أول يوم بالشهر يطلع بي زر التصفير.
-const ResetDay = 27
 
 // POST /api/remote-hours/reset — المسؤول، من يوم ٢٧ وطالع.
 // ما يحذف: يسكّر الفترة، فالعدّادات تبدي من صفر والسجلات تبقى بالإكسل.
 func (h *RemoteHoursHandler) Reset(w http.ResponseWriter, r *http.Request) {
-	if time.Now().In(baghdad).Day() < ResetDay {
-		WriteError(w, http.StatusBadRequest, fmt.Sprintf("التصفير يصير من يوم %d بالشهر", ResetDay))
+	// (دازاي 10-26) التصفير للمالك وحده، وبأي يوم
+	if middleware.RoleFromContext(r) != "OWNER" {
+		WriteError(w, http.StatusForbidden, "تصفير الساعات للمالك بس")
 		return
 	}
 	n, err := h.repo.CloseAll(middleware.EmployeeIDFromContext(r))
