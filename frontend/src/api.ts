@@ -6513,5 +6513,5 @@ export interface RoleDriftRow {
 }
 export interface PermissionAuditRow {
   id: string; employeeId: string; employeeName: string | null; actorName: string | null
-  action: 'ADD' | 'REMOVE' | 'EXPIRE'; permission: string; reason: string | null; createdAt: string
+  action: 'ADD' | 'REMOVE' | 'EXPIRE' | 'UNPIN'; permission: string; reason: string | null; createdAt: string
 }

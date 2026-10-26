@@ -42,7 +42,7 @@ export type RoleDrift = {
 }
 export type AccessAudit = {
   id: string
-  action: 'ADD' | 'REMOVE' | 'EXPIRE'
+  action: 'ADD' | 'REMOVE' | 'EXPIRE' | 'UNPIN'
   permission: string
   actorName: string | null
   reason: string | null
@@ -83,9 +83,9 @@ export const accessApi = {
       method: 'POST',
       body: JSON.stringify(body),
     }),
-  removeException: (employeeId: string, permission: string) =>
+  removeException: (employeeId: string, permission: string, version: number) =>
     apiRequest(
-      `/permissions/exceptions?${new URLSearchParams({ employeeId, permission })}`,
+      `/permissions/exceptions?${new URLSearchParams({ employeeId, permission, version: String(version) })}`,
       { method: 'DELETE' },
     ),
   audit: (employeeId: string) =>

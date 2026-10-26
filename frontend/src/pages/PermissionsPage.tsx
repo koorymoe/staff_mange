@@ -591,7 +591,7 @@ function AccessEditor({
     setError('')
     try {
       if (exception.removing)
-        await accessApi.removeException(id, exception.name)
+        await accessApi.removeException(id, exception.name, state.version)
       else {
         const at = exceptionDeadline(expires)
         await accessApi.exception({
@@ -953,7 +953,9 @@ function AccessEditor({
                     ? 'إضافة'
                     : item.action === 'REMOVE'
                       ? 'إزالة'
-                      : 'انتهاء مؤقتة'}{' '}
+                      : item.action === 'UNPIN'
+                        ? 'شيل تثبيت استثناء'
+                        : 'انتهاء مؤقتة'}{' '}
                   · {label(item.permission)}
                 </strong>
                 <p>

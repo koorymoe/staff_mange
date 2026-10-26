@@ -571,7 +571,7 @@ function ActionsBoard() {
             { to: '/finance', label: '🧾 تدقيق الحسابات' },
             { to: '/complaints', label: '📣 الشكاوى' },
             { to: '/staff-management-desk', label: '👥 إدارة الموظفين' },
-            { to: '/access', label: '🔐 الصلاحيات والوصول' },
+            { to: '/permissions', label: '🔐 الصلاحيات والوصول' },
           ].map((a) => (
             <Link key={a.to} to={a.to}
               className="rounded-xl bg-brand-50 px-3 py-2 text-sm font-bold text-brand-700 transition-colors hover:bg-brand-100">

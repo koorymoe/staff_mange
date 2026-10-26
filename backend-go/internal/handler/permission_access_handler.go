@@ -3,6 +3,7 @@ package handler
 import (
 	"net/http"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -178,7 +179,8 @@ func (h *PermissionAccessHandler) audit(tx *sqlx.Tx, empID, actor, action, perm,
 }
 
 // apply يضيف ويشيل بمعاملة وحدة ويا التحقق من النسخة والقفل والسجل.
-func (h *PermissionAccessHandler) apply(r *http.Request, empID string, version int, add, remove []string, reason string) (int, string) {
+// extra (اختياري) ينفّذ جوّا نفس المعاملة — فشله يرجّع كلشي.
+func (h *PermissionAccessHandler) apply(r *http.Request, empID string, version int, add, remove []string, reason string, extra func(tx *sqlx.Tx, actor string) error) (int, string) {
 	if middleware.RoleFromContext(r) != "OWNER" {
 		var role string
 		_ = h.db.Get(&role, `SELECT role::text FROM "Employee" WHERE id = $1`, empID)
@@ -225,6 +227,11 @@ func (h *PermissionAccessHandler) apply(r *http.Request, empID string, version i
 			_, _ = tx.Exec(`DELETE FROM "PermissionException" WHERE "employeeId" = $1 AND permission = $2`, empID, n)
 		}
 	}
+	if extra != nil {
+		if err := extra(tx, actor); err != nil {
+			return http.StatusInternalServerError, "تعذر حفظ الاستثناء"
+		}
+	}
 	if _, err := tx.Exec(`UPDATE "Employee" SET "accessVersion" = "accessVersion" + 1 WHERE id = $1`, empID); err != nil {
 		return http.StatusInternalServerError, "تعذر"
 	}
@@ -246,7 +253,7 @@ func (h *PermissionAccessHandler) Save(w http.ResponseWriter, r *http.Request) {
 		WriteError(w, http.StatusBadRequest, "بيانات الطلب غير صحيحة")
 		return
 	}
-	if code, msg := h.apply(r, r.PathValue("id"), b.Version, b.Add, b.Remove, strings.TrimSpace(b.Reason)); code != http.StatusOK {
+	if code, msg := h.apply(r, r.PathValue("id"), b.Version, b.Add, b.Remove, strings.TrimSpace(b.Reason), nil); code != http.StatusOK {
 		WriteError(w, code, msg)
 		return
 	}
@@ -344,7 +351,7 @@ func (h *PermissionAccessHandler) Align(w http.ResponseWriter, r *http.Request) 
 		}
 		return out
 	}
-	if code, msg := h.apply(r, e.ID, b.Version, keep(d.Missing), keep(d.Extra), "مطابقة الصنف: "+strings.TrimSpace(b.Reason)); code != http.StatusOK {
+	if code, msg := h.apply(r, e.ID, b.Version, keep(d.Missing), keep(d.Extra), "مطابقة الصنف: "+strings.TrimSpace(b.Reason), nil); code != http.StatusOK {
 		WriteError(w, code, msg)
 		return
 	}
@@ -378,25 +385,45 @@ func (h *PermissionAccessHandler) AddException(w http.ResponseWriter, r *http.Re
 		}
 		exp = &t
 	}
-	if code, msg := h.apply(r, b.EmployeeID, b.Version, []string{b.Permission}, nil, "استثناء: "+strings.TrimSpace(b.Reason)); code != http.StatusOK {
+	reason := strings.TrimSpace(b.Reason)
+	if code, msg := h.apply(r, b.EmployeeID, b.Version, []string{b.Permission}, nil, "استثناء: "+reason, func(tx *sqlx.Tx, actor string) error {
+		_, err := tx.Exec(`INSERT INTO "PermissionException" ("employeeId", permission, reason, "approvedById", "expiresAt")
+			VALUES ($1, $2, $3, $4, $5) ON CONFLICT ("employeeId", permission) DO UPDATE SET reason = EXCLUDED.reason,
+			"approvedById" = EXCLUDED."approvedById", "expiresAt" = EXCLUDED."expiresAt"`,
+			b.EmployeeID, b.Permission, reason, actor, exp)
+		return err
+	}); code != http.StatusOK {
 		WriteError(w, code, msg)
-		return
-	}
-	if _, err := h.db.Exec(`INSERT INTO "PermissionException" ("employeeId", permission, reason, "approvedById", "expiresAt")
-		VALUES ($1, $2, $3, $4, $5) ON CONFLICT ("employeeId", permission) DO UPDATE SET reason = EXCLUDED.reason,
-		"approvedById" = EXCLUDED."approvedById", "expiresAt" = EXCLUDED."expiresAt"`,
-		b.EmployeeID, b.Permission, strings.TrimSpace(b.Reason), middleware.EmployeeIDFromContext(r), exp); err != nil {
-		WriteError(w, http.StatusInternalServerError, "تعذر حفظ الاستثناء")
 		return
 	}
 	WriteJSON(w, http.StatusOK, map[string]bool{"ok": true})
 }
 
-// DELETE /api/permissions/exceptions?employeeId=&permission= — يشيل «الاستثناء» بس (الصلاحية تبقى)
+// DELETE /api/permissions/exceptions?employeeId=&permission=&version= — يشيل «الاستثناء» بس (الصلاحية تبقى).
+// نفس حراسة الحفظ: النسخة، والأقفال، وحسابات الإدارة، والسجل.
 func (h *PermissionAccessHandler) RemoveException(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
-	if _, err := h.db.Exec(`DELETE FROM "PermissionException" WHERE "employeeId" = $1 AND permission = $2`, q.Get("employeeId"), q.Get("permission")); err != nil {
-		WriteError(w, http.StatusInternalServerError, "تعذر")
+	version, err := strconv.Atoi(q.Get("version"))
+	if err != nil || q.Get("employeeId") == "" || q.Get("permission") == "" {
+		WriteError(w, http.StatusBadRequest, "حدد الموظف والصلاحية والنسخة")
+		return
+	}
+	perm := q.Get("permission")
+	if why := lockFor(r, perm); why != "" {
+		WriteError(w, http.StatusForbidden, "«"+perm+"» مقفولة: "+why)
+		return
+	}
+	if code, msg := h.apply(r, q.Get("employeeId"), version, nil, nil, "", func(tx *sqlx.Tx, actor string) error {
+		res, err := tx.Exec(`DELETE FROM "PermissionException" WHERE "employeeId" = $1 AND permission = $2`, q.Get("employeeId"), perm)
+		if err != nil {
+			return err
+		}
+		if k, _ := res.RowsAffected(); k > 0 {
+			h.audit(tx, q.Get("employeeId"), actor, "UNPIN", perm, "شيل تثبيت الاستثناء — الصلاحية باقية")
+		}
+		return nil
+	}); code != http.StatusOK {
+		WriteError(w, code, msg)
 		return
 	}
 	WriteJSON(w, http.StatusOK, map[string]bool{"ok": true})

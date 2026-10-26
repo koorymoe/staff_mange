@@ -1121,7 +1121,6 @@ const SELF_SCOPED: Record<string, RouteRule> = {
   '/departments': { roles: ['ADMIN'], anyPermission: ['departments_manage'] },
   // (ع) 10-13: الصلاحيات صارت تبويب جوّا «إدارة الموظفين»
   '/permissions': { roles: ['ADMIN'] },
-  '/access': { roles: ['ADMIN'] },
   // (ع) 10-13: طلبات الكادر تبويب بإدارة الموظفين، والإجازات تبويب بجدول الدوام
   // (ع) 10-13: الإحصائيات الثلاث صارت واجهة وحدة، والإنجازات انشالت من القائمة
   '/stats': { roles: ['ADMIN'] },
