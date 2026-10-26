@@ -18,6 +18,7 @@ export default function WorkReportsReview() {
   const { employee, permissions } = useSession()
   const canReview = employee?.role === 'ADMIN' || employee?.role === 'MONITOR'
     || (employee?.role !== 'QUALITY_ENGINEER' && (permissions.includes('monitoring') || permissions.includes('auditing')))
+    || permissions.includes('mon_reports')
   const [notes, setNotes] = useState<Record<string, string>>({})
   const markReviewed = async (id: string) => {
     try {

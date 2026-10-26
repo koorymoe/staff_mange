@@ -822,6 +822,8 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	// (دازاي 10-25) صلاحيات المراقب المفصّلة: كل مسار مراقب يقبل الحزمة كاملة
 	// («monitoring»/«auditing») أو صلاحيته الصغيرة بس.
 	_ = requireMonitor // كل مسارات المراقب صارت على requireMon[sub]
+	// التبريرات تنفتح من صندوق المراقب هم — صاحب الصندوق أو صاحب التبريرات
+	requireMonJust := middleware.RequireRoleOrAnyPermission(permissionRepo, employeeRepo, notificationRepo, []string{"ADMIN", "MONITOR"}, "monitoring", "auditing", "mon_justifications", "mon_inbox")
 	requireMon := map[string]func(http.Handler) http.Handler{}
 	for _, sub := range model.MonitorSubPermissions {
 		requireMon[sub] = middleware.RequireRoleOrAnyPermission(permissionRepo, employeeRepo, notificationRepo, []string{"ADMIN", "MONITOR"}, "monitoring", "auditing", sub)
@@ -1394,7 +1396,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 		return bookingHandler.CanSeeAllBookings(r) || bookingRepo.IsInvolved(id, middleware.EmployeeIDFromContext(r))
 	})
 	mux.Handle("GET /api/progress-reports/recent", middleware.Chain(http.HandlerFunc(bookingProgressHandler.Recent), requireAuth,
-		middleware.RequireRoleOrAnyPermission(permissionRepo, employeeRepo, notificationRepo, []string{"ADMIN", "MONITOR"}, "monitoring")))
+		middleware.RequireRoleOrAnyPermission(permissionRepo, employeeRepo, notificationRepo, []string{"ADMIN", "MONITOR"}, "monitoring", "mon_reports")))
 	mux.Handle("GET /api/bookings/{id}/progress", middleware.Chain(http.HandlerFunc(bookingProgressHandler.Reports), requireAuth))
 	mux.Handle("GET /api/bookings/{id}/work-window", middleware.Chain(http.HandlerFunc(bookingProgressHandler.WorkWindow), requireAuth))
 	// ⚠️ الطلعات ما إلها حارس خاص: منو يشوف الحجز يشوف طلعاته. إخفاء
@@ -2628,11 +2630,11 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	monitorActionHandler.Just = justHandler
 	mux.Handle("GET /api/justifications/mine", middleware.Chain(http.HandlerFunc(justHandler.Mine), requireAuth))
 	mux.Handle("POST /api/justifications/{id}/answer", middleware.Chain(http.HandlerFunc(justHandler.Answer), requireAuth))
-	mux.Handle("GET /api/justifications", middleware.Chain(http.HandlerFunc(justHandler.List), requireAuth, requireMon["mon_justifications"]))
-	mux.Handle("POST /api/justifications/direct", middleware.Chain(http.HandlerFunc(justHandler.Direct), requireAuth, requireMon["mon_justifications"]))
+	mux.Handle("GET /api/justifications", middleware.Chain(http.HandlerFunc(justHandler.List), requireAuth, requireMonJust))
+	mux.Handle("POST /api/justifications/direct", middleware.Chain(http.HandlerFunc(justHandler.Direct), requireAuth, requireMonJust))
 	// (ع) 10-16: «المحاسب متأخر إذا تأخر على التدقيق ٢٤ ساعة» — خانة «المتأخر»
 	mux.Handle("GET /api/late-invoices", middleware.Chain(http.HandlerFunc(handler.NewLateInvoicesHandler(db).List), requireAuth, requireMon["mon_inbox"]))
-	mux.Handle("POST /api/justifications/{id}/decide", middleware.Chain(http.HandlerFunc(justHandler.Decide), requireAuth, requireMon["mon_justifications"]))
+	mux.Handle("POST /api/justifications/{id}/decide", middleware.Chain(http.HandlerFunc(justHandler.Decide), requireAuth, requireMonJust))
 	mux.Handle("POST /api/monitor-reviews/{id}/action", middleware.Chain(http.HandlerFunc(monitorActionHandler.Act), requireAuth, requireMon["mon_inbox"]))
 	mux.Handle("POST /api/monitor-reviews/{id}/decide", middleware.Chain(http.HandlerFunc(monitorReviewHandler.Decide), requireAuth, requireMon["mon_inbox"]))
 	// «منو فاتح النظام هسه» — المدير/المالك والمراقب.

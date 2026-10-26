@@ -10,6 +10,7 @@ import { useSaveGuard } from '../useSaveGuard'
 import PageHeader from '../components/PageHeader'
 import StatTile from '../components/StatTile'
 import { useSession } from '../session'
+import { monCan } from '../utils/monAccess'
 import DuplicateReviewPage from './DuplicateReviewPage'
 import SearchBar from '../components/SearchBar'
 import EmptyState from '../components/EmptyState'
@@ -74,6 +75,8 @@ export default function MonitorInboxPage({ embedded }: EmbeddedProps = {}) {
   const [dupMode, setDupMode] = useState(false)
   // (ع) 10-13: تبريرات الموظفين — ردودهم ترجع هنا والمراقب يحكم
   const [justMode, setJustMode] = useState(false)
+  // (دازاي 10-26) صاحب «التبريرات» بس: الصندوق يفتح على التبريرات وحدها، والمراجعات ما تنجلب
+  const canReviews = monCan(employee?.actualRole ?? employee?.role, permissions, 'mon_inbox')
   const [showDone, setShowDone] = useState(false)
   const [ownerRole, setOwnerRole] = useState('')
   const [query, setQuery] = useState('')
@@ -95,6 +98,7 @@ export default function MonitorInboxPage({ embedded }: EmbeddedProps = {}) {
   const [reload, setReload] = useState(0)
 
   useEffect(() => {
+    if (!canReviews) return
     let alive = true
     void (async () => {
       try {
@@ -178,6 +182,14 @@ export default function MonitorInboxPage({ embedded }: EmbeddedProps = {}) {
   const start = (page - 1) * perPage
   const pagedGroups = groups.slice(start, start + perPage)
 
+  if (!canReviews) {
+    return (
+      <div className="space-y-4">
+        {!embedded && <h1 className="text-2xl font-bold text-brand-900">📝 التبريرات</h1>}
+        <JustificationsPanel />
+      </div>
+    )
+  }
   return (
     <div dir="rtl" className="space-y-4">
       <SaveError message={guard.error ?? pageError} onClose={() => { guard.clear(); setPageError(null) }} />

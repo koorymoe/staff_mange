@@ -1,3 +1,4 @@
+import { MON_SUBS } from '../utils/monAccess'
 import type { Employee, EmployeeRole } from '../api'
 import { hasGpsSkill } from '../session'
 
@@ -172,15 +173,15 @@ export const navItems: NavItem[] = [
       { to: '/cost-calc', label: '🧮 حساب الكلفة', icon: <></>, roles: ['FINANCE'] },
       { to: '/leader-invoices', label: '🧾 فواتير الليدر', icon: <></>, roles: ['FINANCE'] },
       // قرار (ع) 10-08: مكتب المراقب جوّا «العمل» — أول بند.
-      { to: '/monitor-desk', label: '🗂️ مكتب المراقب', icon: <></>, roles: ['ADMIN', 'MONITOR'], permission: 'monitoring' },
+      { to: '/monitor-desk', label: '🗂️ مكتب المراقب', icon: <></>, roles: ['ADMIN', 'MONITOR'], anyPermission: ['monitoring', ...MON_SUBS] },
       // قرار (ع) 10-16: مكتب المراقب = مراقبة بس — الفواتير والجودة لمكاتبهن، بالصلاحية
       { to: '/accountant-desk', label: '🧾 مكتب المحاسب', icon: <></>, roles: ['ADMIN'], anyPermission: ['finance', 'finance_audit'], hideForRoles: ['FINANCE'] },
       { to: '/quality-desk', label: '⭐ مكتب الجودة', icon: <></>, roles: ['ADMIN', 'QUALITY_ENGINEER'], anyPermission: ['quality_control', 'complaints'] },
-      { to: '/reports-desk', label: '📑 تقارير الحجوزات والمشاريع', icon: <></>, roles: ['ADMIN', 'MONITOR'], permission: 'monitoring', hideForRoles: ['QUALITY_ENGINEER'] },
+      { to: '/reports-desk', label: '📑 تقارير الحجوزات والمشاريع', icon: <></>, roles: ['ADMIN', 'MONITOR'], anyPermission: ['monitoring', 'mon_reports'], hideForRoles: ['QUALITY_ENGINEER'] },
       // (ع) 10-23: الإنجازات اليومية «تطلع للمدير والمالك والمراقب» — المدير يوصلها من الإجراءات
-      { to: '/achievements', label: '📝 الإنجازات اليومية', icon: <></>, roles: ['ADMIN', 'MONITOR'], permission: 'monitoring', hideForRoles: ['ADMIN', 'OWNER'] },
+      { to: '/achievements', label: '📝 الإنجازات اليومية', icon: <></>, roles: ['ADMIN', 'MONITOR'], anyPermission: ['monitoring', 'mon_attendance'], hideForRoles: ['ADMIN', 'OWNER'] },
       // قرار (ع) 10-15: الخريطة وفحص المتأخرات تبويبات بمكتب المراقب · فحص الدقة للمالك بس.
-      { monitorMenuHide: true, to: '/field-map', label: '🗺️ خريطة الميدان', icon: <></>, roles: ['ADMIN', 'MONITOR'], permission: 'monitoring' },
+      { monitorMenuHide: true, to: '/field-map', label: '🗺️ خريطة الميدان', icon: <></>, roles: ['ADMIN', 'MONITOR'], anyPermission: ['monitoring', 'mon_field'] },
       { monitorMenuHide: true, to: '/late-audit', label: '🔍 فحص المتأخرات', icon: <></>, roles: ['ADMIN', 'MONITOR'], permission: 'monitoring' },
       { ownerOnly: true, to: '/matrix-selfcheck', label: '🧪 فحص دقة ماتركس', icon: <></>, roles: ['ADMIN'] },
       {
@@ -304,10 +305,10 @@ export const navItems: NavItem[] = [
       // قرار (ع) 10-05: ماتركس ٦٠٪ + البشر ٤٠٪ — نفس حارس GET /api/staff-score (requireMonitor).
       // قرار (ع) 10-06: فلوس المشاريع — نفس حارس GET /api/project-payments/overview.
       { monitorMenuHide: true, to: '/project-payments', label: '💰 فلوس المشاريع', icon: <></>, roles: ['ADMIN', 'FINANCE', 'PROJECT_MANAGER', 'MONITOR'], anyPermission: ['finance', 'finance_audit', 'project_management', 'monitoring'] },
-      { monitorMenuHide: true, hideForRoles: ['QUALITY_ENGINEER'], to: '/staff-score', label: '🏅 تقييم الموظفين', icon: <></>, roles: ['ADMIN', 'MONITOR'], anyPermission: ['monitoring', 'auditing'] },
-      { monitorMenuHide: true, hideForRoles: ['QUALITY_ENGINEER'], to: '/employee-indicators', label: '📈 مؤشرات أداء الموظف', icon: <></>, roles: ['ADMIN', 'MONITOR'], anyPermission: ['monitoring', 'auditing'] },
-      { monitorMenuHide: true, hideForRoles: ['QUALITY_ENGINEER'], to: '/peer-voice', label: '🗣️ صوت الموظفين', icon: <></>, roles: ['ADMIN', 'MONITOR'], anyPermission: ['monitoring', 'auditing'] },
-      { monitorMenuHide: true, hideForRoles: ['QUALITY_ENGINEER'], to: '/workplace-issues', label: '🤝 المشاكل الوظيفية', icon: <></>, roles: ['ADMIN', 'MONITOR'], anyPermission: ['monitoring', 'auditing'] },
+      { monitorMenuHide: true, hideForRoles: ['QUALITY_ENGINEER'], to: '/staff-score', label: '🏅 تقييم الموظفين', icon: <></>, roles: ['ADMIN', 'MONITOR'], anyPermission: ['monitoring', 'auditing', 'mon_staff'] },
+      { monitorMenuHide: true, hideForRoles: ['QUALITY_ENGINEER'], to: '/employee-indicators', label: '📈 مؤشرات أداء الموظف', icon: <></>, roles: ['ADMIN', 'MONITOR'], anyPermission: ['monitoring', 'auditing', 'mon_staff'] },
+      { monitorMenuHide: true, hideForRoles: ['QUALITY_ENGINEER'], to: '/peer-voice', label: '🗣️ صوت الموظفين', icon: <></>, roles: ['ADMIN', 'MONITOR'], anyPermission: ['monitoring', 'auditing', 'mon_staff'] },
+      { monitorMenuHide: true, hideForRoles: ['QUALITY_ENGINEER'], to: '/workplace-issues', label: '🤝 المشاكل الوظيفية', icon: <></>, roles: ['ADMIN', 'MONITOR'], anyPermission: ['monitoring', 'auditing', 'mon_staff'] },
       // ماتركس — صندوق القرارات: نفس حارس GET /api/ai/decisions (ADMIN/OWNER بس).
       { to: '/matrix/decisions', label: '🤖 صندوق قرارات ماتركس', icon: <></>, roles: ['ADMIN'] },
       // نفس منطق الأعلى: تحليل تكرار حجوزات/زبائن بيد موظف ثاني حساس بنفس الطريقة
@@ -744,9 +745,9 @@ export const navItems: NavItem[] = [
     to: '/unit-monitoring', label: 'وحدة الرقابة', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>,
     unitPermission: 'unit_monitoring',
     children: [
-      { to: '/monitor-desk', label: '🗂️ مكتب المراقب', icon: <></>, roles: ['ADMIN', 'MONITOR'], permission: 'monitoring' },
+      { to: '/monitor-desk', label: '🗂️ مكتب المراقب', icon: <></>, roles: ['ADMIN', 'MONITOR'], anyPermission: ['monitoring', ...MON_SUBS] },
       // قرار (ع) 10-15: الخريطة وفحص المتأخرات تبويبات بمكتب المراقب · فحص الدقة للمالك بس.
-      { monitorMenuHide: true, to: '/field-map', label: '🗺️ خريطة الميدان', icon: <></>, roles: ['ADMIN', 'MONITOR'], permission: 'monitoring' },
+      { monitorMenuHide: true, to: '/field-map', label: '🗺️ خريطة الميدان', icon: <></>, roles: ['ADMIN', 'MONITOR'], anyPermission: ['monitoring', 'mon_field'] },
       { monitorMenuHide: true, to: '/late-audit', label: '🔍 فحص المتأخرات', icon: <></>, roles: ['ADMIN', 'MONITOR'], permission: 'monitoring' },
       { ownerOnly: true, to: '/matrix-selfcheck', label: '🧪 فحص دقة ماتركس', icon: <></>, roles: ['ADMIN'] },
       // ⚠️ «صندوق المراقب» انشال من القائمة — هو **نفس الشاشة** الي تنعرض
@@ -811,10 +812,10 @@ export const navItems: NavItem[] = [
       { to: '/matrix/decisions', label: '🤖 صندوق قرارات ماتركس', icon: <></>, roles: ['ADMIN'] },
       { to: '/ai-insights', label: '🧠 مؤشرات الذكاء الاصطناعي', icon: <></>, roles: ['ADMIN'] },
       { to: '/weekly-report', label: '📊 التقرير الأسبوعي', icon: <></>, roles: ['ADMIN'] },
-      { monitorMenuHide: true, hideForRoles: ['QUALITY_ENGINEER'], to: '/staff-score', label: '🏅 تقييم الموظفين', icon: <></>, roles: ['ADMIN', 'MONITOR'], anyPermission: ['monitoring', 'auditing'] },
-      { monitorMenuHide: true, hideForRoles: ['QUALITY_ENGINEER'], to: '/employee-indicators', label: '📈 مؤشرات أداء الموظف', icon: <></>, roles: ['ADMIN', 'MONITOR'], anyPermission: ['monitoring', 'auditing'] },
-      { monitorMenuHide: true, hideForRoles: ['QUALITY_ENGINEER'], to: '/peer-voice', label: '🗣️ صوت الموظفين', icon: <></>, roles: ['ADMIN', 'MONITOR'], anyPermission: ['monitoring', 'auditing'] },
-      { monitorMenuHide: true, hideForRoles: ['QUALITY_ENGINEER'], to: '/workplace-issues', label: '🤝 المشاكل الوظيفية', icon: <></>, roles: ['ADMIN', 'MONITOR'], anyPermission: ['monitoring', 'auditing'] },
+      { monitorMenuHide: true, hideForRoles: ['QUALITY_ENGINEER'], to: '/staff-score', label: '🏅 تقييم الموظفين', icon: <></>, roles: ['ADMIN', 'MONITOR'], anyPermission: ['monitoring', 'auditing', 'mon_staff'] },
+      { monitorMenuHide: true, hideForRoles: ['QUALITY_ENGINEER'], to: '/employee-indicators', label: '📈 مؤشرات أداء الموظف', icon: <></>, roles: ['ADMIN', 'MONITOR'], anyPermission: ['monitoring', 'auditing', 'mon_staff'] },
+      { monitorMenuHide: true, hideForRoles: ['QUALITY_ENGINEER'], to: '/peer-voice', label: '🗣️ صوت الموظفين', icon: <></>, roles: ['ADMIN', 'MONITOR'], anyPermission: ['monitoring', 'auditing', 'mon_staff'] },
+      { monitorMenuHide: true, hideForRoles: ['QUALITY_ENGINEER'], to: '/workplace-issues', label: '🤝 المشاكل الوظيفية', icon: <></>, roles: ['ADMIN', 'MONITOR'], anyPermission: ['monitoring', 'auditing', 'mon_staff'] },
       { monitorMenuHide: true, to: '/duplicate-review', label: '🤖 ماتركس — التكرار', icon: <></>, roles: ['ADMIN'], permission: 'duplicate_review' },
     ],
   },
@@ -1120,6 +1121,7 @@ const SELF_SCOPED: Record<string, RouteRule> = {
   '/departments': { roles: ['ADMIN'], anyPermission: ['departments_manage'] },
   // (ع) 10-13: الصلاحيات صارت تبويب جوّا «إدارة الموظفين»
   '/permissions': { roles: ['ADMIN'] },
+  '/access': { roles: ['ADMIN'] },
   // (ع) 10-13: طلبات الكادر تبويب بإدارة الموظفين، والإجازات تبويب بجدول الدوام
   // (ع) 10-13: الإحصائيات الثلاث صارت واجهة وحدة، والإنجازات انشالت من القائمة
   '/stats': { roles: ['ADMIN'] },
@@ -1129,7 +1131,7 @@ const SELF_SCOPED: Record<string, RouteRule> = {
   // (ع) 10-13: «التقييم» انشال من قائمة المدير/المالك — صار جوّا إدارة الموظفين
   '/my-ranking': { roles: ['ADMIN'] },
   '/employee-stats': { roles: ['ADMIN'], anyPermission: ['employee_stats'] },
-  '/achievements': { roles: ['ADMIN', 'MONITOR'], anyPermission: ['monitoring', 'auditing'] },
+  '/achievements': { roles: ['ADMIN', 'MONITOR'], anyPermission: ['monitoring', 'auditing', 'mon_attendance'] },
   '/kpi': { roles: ['ADMIN', 'MONITOR'], anyPermission: ['kpi_management'] },
   '/staff-requests': { roles: ['ADMIN', 'HR_COORDINATOR'], anyPermission: ['staff_requests'] },
   // فاتورة الحجز من «مهامي» — نفس requireLeaderBasket بالخادم.
@@ -1152,8 +1154,8 @@ const ROUTE_RULES: Record<string, RouteRule> = {
   // (ع) 10-16: انشالن من القائمة (صارن جوّا «مكتب الجودة») — الروابط الداخلية تبقى تشتغل
   '/complaints': { roles: ['HR_COORDINATOR', 'MONITOR', 'QUALITY_ENGINEER'], anyPermission: ['complaints'] },
   '/quality-follow-ups': { roles: ['MONITOR', 'QUALITY_ENGINEER'], anyPermission: ['quality_control'] },
-  '/monitor-inbox': { roles: ['MONITOR'], anyPermission: ['monitoring', 'auditing'] }, // requireMonitor
-  '/matrix-missions': { roles: ['MONITOR'], anyPermission: ['monitoring', 'auditing'] }, // requireMonitor
+  '/monitor-inbox': { roles: ['MONITOR'], anyPermission: ['monitoring', 'auditing', 'mon_inbox', 'mon_justifications'] }, // requireMonitor
+  '/matrix-missions': { roles: ['MONITOR'], anyPermission: ['monitoring', 'auditing', 'mon_matrix'] }, // requireMonitor
   '/stage-buckets': { anyPermission: ['coordinator'] }, // requireCoordinator
   '/gps/customers': GPS_DATA,
   '/gps/devices': GPS_DATA,

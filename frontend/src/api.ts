@@ -4679,6 +4679,18 @@ export const api = {
   // (دازاي 10-26) ورق الحجوزات القديمة لليدر السابق
   getCarryover: () => request<CarryoverItem[]>('/paperwork/carryover'),
   getCarryoverBookings: () => request<Booking[]>('/paperwork/carryover/bookings'),
+  // (دازاي 10-26) «الصلاحيات والوصول»
+  getPermissionCatalog: () => request<AccessGroup[]>('/permissions/catalog'),
+  getEmployeeAccess: (id: string) => request<EmployeeAccess>(`/employees/${id}/access`),
+  saveEmployeeAccess: (id: string, body: { add: string[]; remove: string[]; reason: string; version: number }) =>
+    request<EmployeeAccess>(`/employees/${id}/access`, { method: 'PUT', body: JSON.stringify(body) }),
+  getRoleDrift: () => request<RoleDriftRow[]>('/permissions/role-drift'),
+  alignRole: (id: string, reason: string, version: number) =>
+    request<RoleDriftRow>(`/permissions/role-drift/${id}/align`, { method: 'POST', body: JSON.stringify({ reason, version }) }),
+  addPermissionException: (body: { employeeId: string; permission: string; reason: string; expiresAt?: string; version: number }) =>
+    request<{ ok: boolean }>('/permissions/exceptions', { method: 'POST', body: JSON.stringify(body) }),
+  getPermissionAuditLog: (employeeId?: string) =>
+    request<PermissionAuditRow[]>(`/permissions/audit-log${employeeId ? `?employeeId=${encodeURIComponent(employeeId)}` : ''}`),
   getWorkPhotos: (id: string) => request<WorkPhoto[]>(`/bookings/${id}/work-photos`),
   uploadWorkPhoto: async (id: string, phase: 'BEFORE' | 'AFTER', file: Blob) => {
     const form = new FormData()
@@ -6481,3 +6493,21 @@ export interface InvoiceDeleteRequest {
 
 /** حجز قديم ناقصه ورق (دازاي 10-26) */
 export interface CarryoverItem { id: string; code: string; completedAt: string | null; hasInvoice: boolean; hasReport: boolean }
+
+/** «الصلاحيات والوصول» (دازاي 10-26) */
+export interface AccessPermDef { name: string; label: string; grantable: boolean; lockReason?: string }
+export interface AccessGroup { key: string; title: string; bundle?: string; perms: AccessPermDef[] }
+export interface EmployeeAccess {
+  employee: { id: string; name: string; role: string; secondaryRoles: string[]; isLeader: boolean }
+  perms: { name: string; source: 'TEMPLATE' | 'MANUAL' | 'EXCEPTION'; expiresAt?: string; reason?: string }[]
+  missingFromTemplate: string[]
+  version: number
+}
+export interface RoleDriftRow {
+  employeeId: string; name: string; role: string; status: 'MATCH' | 'DIFF' | 'NO_TEMPLATE'
+  extra: string[]; missing: string[]; exceptions: string[]; version: number
+}
+export interface PermissionAuditRow {
+  id: string; employeeId: string; employeeName: string | null; actorName: string | null
+  action: 'ADD' | 'REMOVE' | 'EXPIRE'; permission: string; reason: string | null; createdAt: string
+}

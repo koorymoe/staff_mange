@@ -23,6 +23,7 @@ import { useSearchParams } from 'react-router-dom'
 
 import { api, type MonitorDeskCounts, purchaseApi } from '../api'
 import { useSession } from '../session'
+import { isFullMonitor, monCan, type MonSub } from '../utils/monAccess'
 
 const MonitorInboxPage = lazy(() => import('./MonitorInboxPage'))
 const MonitorCrewBookingsPage = lazy(() => import('./MonitorCrewBookingsPage'))
@@ -115,7 +116,7 @@ export default function MonitorDeskPage() {
   // والمراقب الي دوره MONITOR يوصل الشاشة أصلاً بدونها. (وهذا الي طلع
   // بالفحص: التبويبان انخفوا عن حساب مراقب سليم.)
   const role = employee?.actualRole ?? employee?.role
-  const isMon = role === 'MONITOR' || permissions.includes('monitoring') || role === 'ADMIN' || role === 'OWNER'
+  const isMon = isFullMonitor(role, permissions)
   const canQuality = isMon || role === 'QUALITY_ENGINEER' || permissions.includes('quality_control')
   // ⚠️⚠️ **المكتب ما يصير يفوّت حارساً.** شاشة «تنسيق الحجوزات»
   // المستقلة محروسة بـ`RequirePermission("crew_management")`، فلو
@@ -131,8 +132,19 @@ export default function MonitorDeskPage() {
   const canInventory = isMon || permissions.includes('inventory_follow') || permissions.includes('inventory')
   // ⚠️ القسم الي ما عنده صلاحيته **ما يظهر أصلاً**: قسم فاضي بلا
   // تفسير يخلّي المراقب يظن النظام مكسوراً، وقسم يفتح ويرفض أسوأ.
+  // (دازاي 10-26) صاحب صلاحية مراقب صغيرة يشوف بس أقسامها — كل قسم يطلع إذا عنده
+  // **كل** الصلاحيات الي تناديها شاشته، حتى ما ينرفض ويسجّل مخالفة.
+  const full = isFullMonitor(role, permissions)
+  const SUB_NEEDS: Record<string, MonSub[]> = {
+    inbox: ['mon_inbox'], peer: ['mon_staff'], ratings: ['mon_attendance', 'mon_staff'],
+    fieldmap: ['mon_field'], late: ['mon_inbox', 'mon_field'],
+  }
+  const subOk = (id: string) => full || (SUB_NEEDS[id] ? monCan(role, permissions, ...SUB_NEEDS[id]) : false)
+  // صاحب «التبريرات» بس يشوف صندوق المراقب بتبويب التبريرات وحده
+  const justOnly = !full && !permissions.includes('mon_inbox') && permissions.includes('mon_justifications')
   const shown = SECTIONS.filter((s) =>
-    (s.id !== 'quality' || canQuality) && (s.id !== 'crew' || canCrew) && (s.id !== 'gps' || canGps)
+    (full || subOk(s.id) || (s.id === 'inbox' && justOnly) || ['quality', 'crew', 'gps', 'stores', 'missions'].includes(s.id))
+    && (s.id !== 'quality' || canQuality) && (s.id !== 'crew' || canCrew) && (s.id !== 'gps' || canGps)
     && (s.id !== 'inventory' || canInventory)
     && (s.id !== 'missions' || isMon || permissions.includes('mission_tracking'))
     && ((s.id !== 'late' && s.id !== 'fieldmap' && s.id !== 'quotes') || isMon || permissions.includes('monitoring'))
