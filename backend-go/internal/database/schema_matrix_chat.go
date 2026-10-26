@@ -1010,5 +1010,32 @@ func matrixChatMigrations() []Migration {
 				END IF;
 			END $$;
 		`,
+	}, {
+		// (دازاي 10-26) ترتيب الصلاحيات: استثناءات معتمدة (تبقى وكت المطابقة، وممكن
+		// مؤقتة بموعد)، وسجل كل تغيير (منو، شنو، ليش)، ونسخة لكل موظف حتى تعديلين
+		// بنفس الوقت ما يكتب واحد فوق الثاني.
+		Version: "0398_permission_access",
+		SQL: `
+			ALTER TABLE "Employee" ADD COLUMN IF NOT EXISTS "accessVersion" INT NOT NULL DEFAULT 0;
+			CREATE TABLE IF NOT EXISTS "PermissionException" (
+				"employeeId" TEXT NOT NULL REFERENCES "Employee"(id) ON DELETE CASCADE,
+				permission TEXT NOT NULL,
+				reason TEXT NOT NULL,
+				"approvedById" TEXT REFERENCES "Employee"(id) ON DELETE SET NULL,
+				"expiresAt" TIMESTAMP,
+				"createdAt" TIMESTAMP NOT NULL DEFAULT now(),
+				PRIMARY KEY ("employeeId", permission)
+			);
+			CREATE TABLE IF NOT EXISTS "PermissionAuditLog" (
+				id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
+				"employeeId" TEXT NOT NULL,
+				"actorId" TEXT,
+				action TEXT NOT NULL,
+				permission TEXT NOT NULL,
+				reason TEXT,
+				"createdAt" TIMESTAMP NOT NULL DEFAULT now()
+			);
+			CREATE INDEX IF NOT EXISTS "PermissionAuditLog_emp" ON "PermissionAuditLog"("employeeId", "createdAt" DESC);
+		`,
 	}}
 }

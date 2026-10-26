@@ -1027,6 +1027,22 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	employeeHandoverHandler := handler.NewEmployeeHandoverHandler(repository.NewEmployeeHandoverRepository(db))
 	mux.Handle("GET /api/employees/{id}/handover", middleware.Chain(http.HandlerFunc(employeeHandoverHandler.Preview), requireAuth, requireAdmin))
 	mux.Handle("POST /api/employees/{id}/handover", middleware.Chain(http.HandlerFunc(employeeHandoverHandler.Handover), requireAuth, requireAdmin))
+	// (دازاي 10-26) «الصلاحيات والوصول»: مجموعات، مصدر كل صلاحية، حفظ بنسخة، مطابقة الصنف،
+	// استثناءات (ومؤقتة)، وسجل — المالك ومدير النظام.
+	accessHandler := handler.NewPermissionAccessHandler(db)
+	mux.Handle("GET /api/permissions/catalog", middleware.Chain(http.HandlerFunc(accessHandler.Catalog), requireAuth, requireAdmin))
+	mux.Handle("GET /api/employees/{id}/access", middleware.Chain(http.HandlerFunc(accessHandler.Access), requireAuth, requireAdmin))
+	mux.Handle("PUT /api/employees/{id}/access", middleware.Chain(http.HandlerFunc(accessHandler.Save), requireAuth, requireAdmin))
+	mux.Handle("GET /api/permissions/role-drift", middleware.Chain(http.HandlerFunc(accessHandler.RoleDrift), requireAuth, requireAdmin))
+	mux.Handle("POST /api/permissions/role-drift/{id}/align", middleware.Chain(http.HandlerFunc(accessHandler.Align), requireAuth, requireAdmin))
+	mux.Handle("POST /api/permissions/exceptions", middleware.Chain(http.HandlerFunc(accessHandler.AddException), requireAuth, requireAdmin))
+	mux.Handle("DELETE /api/permissions/exceptions", middleware.Chain(http.HandlerFunc(accessHandler.RemoveException), requireAuth, requireAdmin))
+	mux.Handle("GET /api/permissions/audit-log", middleware.Chain(http.HandlerFunc(accessHandler.AuditLog), requireAuth, requireAdmin))
+	safeguard.Loop("الصلاحيات المؤقتة", 6*time.Minute, time.Hour, func() {
+		if n := accessHandler.SweepExpired(); n > 0 {
+			log.Printf("permissions: انشالت %d صلاحية مؤقتة خلص وقتها", n)
+		}
+	})
 	mux.Handle("POST /api/permissions/apply-defaults-all", middleware.Chain(http.HandlerFunc(permissionHandler.ApplyDefaultsAll), requireAuth, requireAdmin))
 	mux.Handle("POST /api/permissions/employee/{id}/apply-defaults", middleware.Chain(http.HandlerFunc(permissionHandler.ApplyDefaults), requireAuth, requireAdmin))
 

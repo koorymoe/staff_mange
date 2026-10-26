@@ -87,6 +87,10 @@ func (r *PermissionRepository) ReplaceForEmployee(employeeID string, permissionI
 		}
 	}
 
+	// (دازاي 10-26) الشاشة القديمة هم تحرّك النسخة — حتى «الصلاحيات والوصول» تكشف التعديل
+	if _, err := tx.Exec(`UPDATE "Employee" SET "accessVersion" = "accessVersion" + 1 WHERE id = $1`, employeeID); err != nil {
+		return err
+	}
 	return tx.Commit()
 }
 

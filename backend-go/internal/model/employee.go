@@ -99,6 +99,8 @@ type Employee struct {
 	//
 	// ⚠️ وعمود بالجدول → حقل هنا إلزامي (الجلب `SELECT *`).
 	SecondaryRoles pq.StringArray `db:"secondaryRoles" json:"secondaryRoles"`
+	// AccessVersion يزيد مع كل تعديل صلاحيات — حتى تعديلين بنفس الوقت ما يكتب واحد فوق الثاني (0398)
+	AccessVersion int `db:"accessVersion" json:"-"`
 
 	Skills           []EmployeeSkillDetail `db:"-" json:"skills"`
 	HasRequiredSkill *bool                 `db:"-" json:"hasRequiredSkill,omitempty"`
