@@ -2449,6 +2449,13 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 		}
 		handler.WriteJSON(w, http.StatusOK, out)
 	}), requireAuth))
+	safeguard.Loop("تسوية حجوزات النظام القديم", 7*time.Minute, time.Hour, func() {
+		if n, err := bookingRepo.SettleOldImports(); err != nil {
+			log.Printf("settle OLD-: %v", err)
+		} else if n > 0 {
+			log.Printf("settle OLD-: %d حجز قديم انحسب «تم»", n)
+		}
+	})
 	safeguard.Loop("صلاحية ورق الحجوزات القديمة", 4*time.Minute, time.Hour, func() {
 		done, err := paperworkGuard.SweepCarryover()
 		if err != nil {

@@ -1037,5 +1037,23 @@ func matrixChatMigrations() []Migration {
 			);
 			CREATE INDEX IF NOT EXISTS "PermissionAuditLog_emp" ON "PermissionAuditLog"("employeeId", "createdAt" DESC);
 		`,
+	}, {
+		// (دازاي 10-26) «أي شي من النظام القديم أريده يعتبر تم» — حجوزات الاستيراد
+		// التاريخي (OLD-) تنسوّى بنفس علامة «تسوية قديم» (settledLegacyAt) الي يستثنيها
+		// كل طابور ورق وانضباط وماتركس. ما نلمس مبالغ ولا نسوّي فواتير ولا نحذف.
+		Version: "0399_settle_old_imports",
+		SQL: `
+			UPDATE "Booking" SET
+				status = 'COMPLETED',
+				"completedAt" = COALESCE("completedAt", "createdAt"),
+				"settledLegacyAt" = now(),
+				"settledLegacyNote" = 'من النظام القديم — يعتبر تم (قرار دازاي 10-26)',
+				"awaitingReschedule" = false,
+				"waitingSince" = NULL,
+				"waitingKind" = NULL,
+				"updatedAt" = now()
+			WHERE code LIKE 'OLD-%' AND "settledLegacyAt" IS NULL
+			  AND "archivedAt" IS NULL AND status <> 'CANCELLED';
+		`,
 	}}
 }

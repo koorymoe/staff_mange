@@ -1090,6 +1090,26 @@ func (r *BookingRepository) Complete(id string, req model.CompleteBookingRequest
 //
 // ⚠️ وما نلمس المبالغ: المبلغ المجهول يبقى فاضي مو صفر. الصفر رقم
 // يدخل بالحسابات ويكذب، والفراغ يگول «ما نعرف» بصراحة.
+// SettleOldImports (دازاي 10-26) أي حجز استيراد تاريخي (OLD-) ينحسب «تم» — نفس
+// ترحيل 0399، حتى الي يستورد بعدين ما يطلع بطوابير الورق. يرجّع العدد.
+func (r *BookingRepository) SettleOldImports() (int64, error) {
+	res, err := r.db.Exec(`UPDATE "Booking" SET
+			status = 'COMPLETED',
+			"completedAt" = COALESCE("completedAt", "createdAt"),
+			"settledLegacyAt" = now(),
+			"settledLegacyNote" = 'من النظام القديم — يعتبر تم (قرار دازاي 10-26)',
+			"awaitingReschedule" = false,
+			"waitingSince" = NULL,
+			"waitingKind" = NULL,
+			"updatedAt" = now()
+		WHERE code LIKE 'OLD-%' AND "settledLegacyAt" IS NULL
+		  AND "archivedAt" IS NULL AND status <> 'CANCELLED'`)
+	if err != nil {
+		return 0, err
+	}
+	return res.RowsAffected()
+}
+
 func (r *BookingRepository) SettleLegacy(id, byEmployeeID, note string) error {
 	res, err := r.db.Exec(`
 		UPDATE "Booking" SET
