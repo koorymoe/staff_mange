@@ -8,11 +8,12 @@ import (
 	"github.com/jmoiron/sqlx"
 
 	"staffmange-api/internal/middleware"
+	"staffmange-api/internal/model"
 )
 
 // ═══ 🤖 أسماء الوكلاء (دازاي 10-23) ═══
-// ماتركس وايريس ثابتين. وكيل الجودة ووكيل الحجوزات اسمهم يحدده المالك —
-// هذا الاسم يطلع للزبون، فلازم يعرّف نفسه بأول رسالة إنه مساعد ذكي.
+// الأربعة اسمهم يحدده المالك (دازاي 10-27). ماتركس وايريس داخليين؛ الجودة والحجوزات
+// اسمهم يطلع للزبون، فلازم يعرّف نفسه بأول رسالة إنه مساعد ذكي.
 
 type AiAgentNameHandler struct {
 	db      *sqlx.DB
@@ -24,34 +25,53 @@ func (h *AiAgentNameHandler) SetEnabled(f func(agent string) bool) { h.enabled =
 
 func (h *AiAgentNameHandler) on(agent string) bool { return h.enabled != nil && h.enabled(agent) }
 
-func NewAiAgentNameHandler(db *sqlx.DB) *AiAgentNameHandler { return &AiAgentNameHandler{db: db} }
+func NewAiAgentNameHandler(db *sqlx.DB) *AiAgentNameHandler {
+	h := &AiAgentNameHandler{db: db}
+	model.SetAgentNameLoader(func() map[string]string {
+		rows := []struct {
+			Agent string `db:"agent"`
+			Name  string `db:"name"`
+		}{}
+		_ = db.Select(&rows, `SELECT agent, name FROM "AiAgentName"`)
+		m := map[string]string{}
+		for _, x := range rows {
+			m[x.Agent] = x.Name
+		}
+		return m
+	})
+	return h
+}
 
-var aiAgentDefaults = map[string]string{"QUALITY": "مساعد الجودة", "BOOKING": "مساعد الحجوزات"}
 
 // AgentName اسم الوكيل الحالي — الافتراضي إذا المالك بعده ما سمّاه.
 func (h *AiAgentNameHandler) AgentName(agent string) string {
-	var name string
-	if err := h.db.Get(&name, `SELECT name FROM "AiAgentName" WHERE agent = $1`, agent); err == nil && name != "" {
-		return name
-	}
-	return aiAgentDefaults[agent]
+	return model.AgentName(agent)
 }
 
 // GET /api/ai/agents
 func (h *AiAgentNameHandler) List(w http.ResponseWriter, _ *http.Request) {
 	WriteJSON(w, http.StatusOK, []map[string]any{
-		{"agent": "MATRIX", "name": "ماتركس", "editable": false},
-		{"agent": "IRIS", "name": "ايريس", "editable": false},
-		{"agent": "QUALITY", "name": h.AgentName("QUALITY"), "editable": true, "enabled": h.on("QUALITY"), "built": true},
-		{"agent": "BOOKING", "name": h.AgentName("BOOKING"), "editable": true, "enabled": h.on("BOOKING"), "built": true},
+		{"agent": "MATRIX", "name": h.AgentName("MATRIX"), "editable": true, "default": model.AgentDefaultNames["MATRIX"]},
+		{"agent": "IRIS", "name": h.AgentName("IRIS"), "editable": true, "default": model.AgentDefaultNames["IRIS"]},
+		{"agent": "QUALITY", "name": h.AgentName("QUALITY"), "editable": true, "enabled": h.on("QUALITY"), "built": true, "default": model.AgentDefaultNames["QUALITY"]},
+		{"agent": "BOOKING", "name": h.AgentName("BOOKING"), "editable": true, "enabled": h.on("BOOKING"), "built": true, "default": model.AgentDefaultNames["BOOKING"]},
 	})
+}
+
+// GET /api/ai/agent-names — الأسماء بس، لكل مستخدم مسجّل (مو سرية، والشاشات تحتاجها).
+func (h *AiAgentNameHandler) Names(w http.ResponseWriter, _ *http.Request) {
+	out := map[string]string{}
+	for k := range model.AgentDefaultNames {
+		out[k] = model.AgentName(k)
+	}
+	WriteJSON(w, http.StatusOK, out)
 }
 
 // PUT /api/ai/agents/{agent} — {name}
 func (h *AiAgentNameHandler) Rename(w http.ResponseWriter, r *http.Request) {
 	agent := r.PathValue("agent")
-	if _, ok := aiAgentDefaults[agent]; !ok {
-		WriteError(w, http.StatusBadRequest, "هذا الوكيل اسمه ثابت")
+	if _, ok := model.AgentDefaultNames[agent]; !ok {
+		WriteError(w, http.StatusBadRequest, "وكيل غير معروف")
 		return
 	}
 	var in struct {
@@ -72,5 +92,6 @@ func (h *AiAgentNameHandler) Rename(w http.ResponseWriter, r *http.Request) {
 		WriteError(w, http.StatusInternalServerError, "تعذر الحفظ")
 		return
 	}
+	model.InvalidateAgentNames()
 	WriteJSON(w, http.StatusOK, map[string]any{"agent": agent, "name": name})
 }

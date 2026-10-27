@@ -45,6 +45,7 @@ func (r *NotificationRepository) RecentAutopilotMessages(employeeID string, n in
 
 // Create ينشئ إشعاراً لموظف واحد.
 func (r *NotificationRepository) Create(employeeID, notifType, message string) error {
+	message = model.Rebrand(message)
 	if notifType == "AI_AUTOPILOT" && notifRewriter != nil {
 		message = notifRewriter(employeeID, message)
 	}
@@ -58,6 +59,7 @@ func (r *NotificationRepository) Create(employeeID, notifType, message string) e
 // CreateForRole يبث نفس الإشعار لكل الموظفين النشطين بدور معيّن (مثال: كل الفنيين
 // يشوفون مين تصدر ترتيبهم الشهري).
 func (r *NotificationRepository) CreateForRole(role, notifType, message string) error {
+	message = model.Rebrand(message)
 	_, err := r.db.Exec(`
 		INSERT INTO "Notification" (id, "employeeId", type, message)
 		SELECT gen_random_uuid()::text, id, $2, $3
@@ -108,6 +110,7 @@ func (r *NotificationRepository) MarkAllRead(employeeID string) error {
 // نستعمله بطلبات الإجازة: التنبيه يروح للمخوّل بهذا المسار بالذات، فلو
 // انتقلت المسؤولية من شخص لشخص تنتقل معها التنبيهات — بدون تعديل كود.
 func (r *NotificationRepository) CreateForPermission(permissionName, notifType, message string) error {
+	message = model.Rebrand(message)
 	_, err := r.db.Exec(`
 		INSERT INTO "Notification" (id, "employeeId", type, message)
 		SELECT gen_random_uuid()::text, e.id, $2, $3
@@ -122,6 +125,7 @@ func (r *NotificationRepository) CreateForPermission(permissionName, notifType, 
 // CreateForRolesOrPermission ينبّه كل موظف نشط دوره من الأدوار المعطاة
 // أو عنده الصلاحية — مرة وحدة للشخص حتى لو انطبق عليه الشرطين.
 func (r *NotificationRepository) CreateForRolesOrPermission(roles []string, permissionName, notifType, message string) error {
+	message = model.Rebrand(message)
 	_, err := r.db.Exec(`
 		INSERT INTO "Notification" (id, "employeeId", type, message)
 		SELECT gen_random_uuid()::text, e.id, $3, $4

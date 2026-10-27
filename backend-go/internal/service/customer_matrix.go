@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"staffmange-api/internal/model"
 	"strings"
 	"time"
 
@@ -87,9 +88,9 @@ func (m *CustomerMatrix) tools(accountID string) []agentTool {
 		}},
 		{Name: "catalog_products", Desc: "أسماء وموديلات ومواصفات منتجات كتالوج شركة الأماني؛ استخدمه لاقتراح الخيارات المناسبة للزبون. لا يضم أسعاراً.", Run: func(map[string]any, *nameMask) (string, error) {
 			rows := []struct {
-				Name string `db:"name" json:"name"`
-				ModelName *string `db:"modelName" json:"modelName,omitempty"`
-				Specs *string `db:"specs" json:"specs,omitempty"`
+				Name        string  `db:"name" json:"name"`
+				ModelName   *string `db:"modelName" json:"modelName,omitempty"`
+				Specs       *string `db:"specs" json:"specs,omitempty"`
 				ServiceName *string `db:"serviceName" json:"serviceName,omitempty"`
 			}{}
 			if err := m.db.Select(&rows, `SELECT p.name, p."modelName", p.specs, s.name AS "serviceName" FROM "Product" p LEFT JOIN "Service" s ON s.id = p."serviceId" ORDER BY s.name NULLS LAST, p.name LIMIT 300`); err != nil {
@@ -197,7 +198,7 @@ func (m *CustomerMatrix) Chat(accountID, name string, history []AgentTurn, messa
 	for step := 0; step < 8; step++ {
 		resp, err := m.llm.New(ctx, anthropic.MessageNewParams{
 			Model: anthropic.Model(m.model), MaxTokens: 900,
-			System:   []anthropic.TextBlockParam{{Text: customerMatrixSystem(name)}},
+			System:   []anthropic.TextBlockParam{{Text: model.Rebrand(customerMatrixSystem(name))}},
 			Messages: msgs, Tools: params,
 		})
 		if err != nil {

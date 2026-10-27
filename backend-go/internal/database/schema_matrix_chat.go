@@ -1055,5 +1055,11 @@ func matrixChatMigrations() []Migration {
 			WHERE code LIKE 'OLD-%' AND "settledLegacyAt" IS NULL
 			  AND "archivedAt" IS NULL AND status <> 'CANCELLED';
 		`,
+	}, {
+		Version: "0400_agent_names_all",
+		SQL: `
+			ALTER TABLE "AiAgentName" DROP CONSTRAINT IF EXISTS "AiAgentName_agent_check";
+			ALTER TABLE "AiAgentName" ADD CONSTRAINT "AiAgentName_agent_check" CHECK (agent IN ('QUALITY', 'BOOKING', 'MATRIX', 'IRIS'));
+		`,
 	}}
 }

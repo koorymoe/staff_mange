@@ -1180,7 +1180,8 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 		})
 	}), requireAuth, middleware.RequireOwner()))
 	aiAgentNames := handler.NewAiAgentNameHandler(db)
-	mux.Handle("GET /api/ai/agents", middleware.Chain(http.HandlerFunc(aiAgentNames.List), requireAuth, middleware.RequireOwner()))
+	mux.Handle("GET /api/ai/agents", middleware.Chain(http.HandlerFunc(aiAgentNames.List), requireAuth, requireAdmin)) // قراءة للأدمن، التعديل للمالك
+	mux.Handle("GET /api/ai/agent-names", middleware.Chain(http.HandlerFunc(aiAgentNames.Names), requireAuth))
 	mux.Handle("PUT /api/ai/agents/{agent}", middleware.Chain(http.HandlerFunc(aiAgentNames.Rename), requireAuth, middleware.RequireOwner()))
 	mux.Handle("POST /api/auth/stealth", middleware.Chain(http.HandlerFunc(authHandler.Stealth), requireAuth, middleware.RequireOwner()))
 	mux.Handle("PUT /api/auth/command-password", middleware.Chain(http.HandlerFunc(authHandler.SetCommandPassword), requireAuth, middleware.RequireOwner()))

@@ -2,11 +2,13 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { apiRequest } from '../api'
 import { useSession } from '../session'
+import { startAgentRebrand } from '../utils/agentBrand'
 
 type Agent = {
   agent: 'MATRIX' | 'IRIS' | 'QUALITY' | 'BOOKING'
   name: string
   editable: boolean
+  default?: string
   enabled?: boolean
   built?: boolean
 }
@@ -79,6 +81,7 @@ function OwnerAgents() {
         body: JSON.stringify({ name }),
       })
       setSaved('انحفظ الاسم.')
+      startAgentRebrand()
       setReload((n) => n + 1)
     } catch (e) {
       setError((e as Error).message)
@@ -174,6 +177,14 @@ function OwnerAgents() {
                     {busy === agent.agent ? 'دا أحفظ…' : 'حفظ'}
                   </button>
                 </form>
+              ) : null}
+              {agent.editable ? (
+                <p className="mt-2 text-xs text-slate-500">
+                  {agent.agent === 'QUALITY' || agent.agent === 'BOOKING'
+                    ? 'هذا الاسم يطلع للزبون بالواتساب.'
+                    : 'اسم داخلي — يشوفه الكادر بالإشعارات والشاشات، والوكيل يعرّف نفسه بيه.'}
+                  {agent.default && agent.name !== agent.default && ` (الأصلي: ${agent.default})`}
+                </p>
               ) : (
                 <p className="mt-3 text-sm text-slate-500">الاسم ثابت.</p>
               )}

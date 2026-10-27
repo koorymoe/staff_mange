@@ -105,6 +105,7 @@ function notifTarget(n: { type: string; message: string }): string | null {
 import AnnouncementTicker from './AnnouncementTicker'
 import { navItems, isNavVisible, isExtraForMonitor, isPathAllowed, type NavItem } from './navTree'
 import { pollVisible } from '../utils/poll'
+import { startAgentRebrand } from '../utils/agentBrand'
 
 
 const loadStoredEmployee = (): Employee | null => {
@@ -154,6 +155,7 @@ export default function Layout() {
 
   // Closing the mobile nav on route change is a one-line UI reset tied to router
   // navigation, not data fetching; safe to keep as a synchronous effect.
+  useEffect(() => { startAgentRebrand() }, [])
   // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { setMobileOpen(false) }, [location.pathname])
   // فتح البند = شاف الشغل الموجّه → رقمه يتصفّر بالخادم

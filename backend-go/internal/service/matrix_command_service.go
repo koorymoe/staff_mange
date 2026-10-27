@@ -8,6 +8,7 @@ import (
 	"math"
 	"regexp"
 	"sort"
+	"staffmange-api/internal/model"
 	"strings"
 	"time"
 
@@ -292,7 +293,7 @@ func (s *MatrixCommandService) askModel(c *askContext, question string) (string,
 	defer cancel()
 	resp, err := s.client.Messages.New(cx, anthropic.MessageNewParams{
 		Model: anthropic.Model(s.model), MaxTokens: 400,
-		System:   []anthropic.TextBlockParam{{Text: askSystemPrompt, CacheControl: anthropic.NewCacheControlEphemeralParam()}},
+		System:   []anthropic.TextBlockParam{{Text: model.Rebrand(askSystemPrompt), CacheControl: anthropic.NewCacheControlEphemeralParam()}},
 		Messages: []anthropic.MessageParam{anthropic.NewUserMessage(anthropic.NewTextBlock(body))},
 	})
 	if err == nil {

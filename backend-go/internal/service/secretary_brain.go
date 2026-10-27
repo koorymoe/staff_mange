@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log"
 	"regexp"
+	"staffmange-api/internal/model"
 	"strings"
 	"sync"
 	"time"
@@ -238,7 +239,7 @@ func (b *SecretaryBrain) Reply(ctx context.Context, t SecretaryTurn) (*Secretary
 		}
 		resp, err := b.llm.New(ctx, anthropic.MessageNewParams{
 			Model: anthropic.Model(b.model), MaxTokens: secretaryMaxTokens,
-			System:   []anthropic.TextBlockParam{{Text: system, CacheControl: anthropic.NewCacheControlEphemeralParam()}},
+			System:   []anthropic.TextBlockParam{{Text: model.Rebrand(system), CacheControl: anthropic.NewCacheControlEphemeralParam()}},
 			Messages: msgs, Tools: tools,
 		})
 		if err != nil {
@@ -354,7 +355,7 @@ func (b *SecretaryBrain) Summarize(ctx context.Context, userName, facts string) 
 	defer cancel()
 	resp, err := b.llm.New(ctx, anthropic.MessageNewParams{
 		Model: anthropic.Model(b.model), MaxTokens: 500,
-		System:   []anthropic.TextBlockParam{{Text: fmt.Sprintf(secretarySummaryInstructions, userName)}},
+		System:   []anthropic.TextBlockParam{{Text: model.Rebrand(fmt.Sprintf(secretarySummaryInstructions, userName))}},
 		Messages: []anthropic.MessageParam{anthropic.NewUserMessage(anthropic.NewTextBlock(facts))},
 	})
 	if err != nil {

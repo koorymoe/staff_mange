@@ -3,6 +3,7 @@ package handler
 import (
 	"encoding/json"
 	"net/http"
+	"staffmange-api/internal/model"
 )
 
 type errorEnvelope struct {
@@ -21,7 +22,7 @@ func WriteJSON(w http.ResponseWriter, status int, data any) {
 func WriteError(w http.ResponseWriter, status int, message string) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
-	_ = json.NewEncoder(w).Encode(errorEnvelope{Error: message})
+	_ = json.NewEncoder(w).Encode(errorEnvelope{Error: model.Rebrand(message)})
 }
 
 func DecodeJSON(r *http.Request, dst any) error {

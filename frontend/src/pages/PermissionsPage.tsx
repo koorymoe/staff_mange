@@ -207,8 +207,8 @@ function AccessPage({
       alive = false
     }
   }, [reload])
+  // (لوفي 10-27) أسماء الوكلاء صارت تنقرا للأدمن هم — التعديل يبقى للمالك.
   useEffect(() => {
-    if (!owner) return
     let alive = true
     accessApi
       .agents()
@@ -224,7 +224,7 @@ function AccessPage({
     return () => {
       alive = false
     }
-  }, [owner, agentReload])
+  }, [agentReload])
   useEffect(() => {
     if (!dirty) return
     const warn = (event: BeforeUnloadEvent) => {

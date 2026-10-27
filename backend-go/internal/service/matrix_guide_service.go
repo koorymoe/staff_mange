@@ -205,7 +205,7 @@ const guideSystemPrompt = `أنت «ماتركس»، عين المتابعة ب�
 - لا تذكر أسماء أشخاص. أقصى حد ٣٠ كلمة. بلا مقدمات ولا علامات تنصيص.`
 
 func (s *MatrixGuideService) guideSystem() []anthropic.TextBlockParam {
-	sys := []anthropic.TextBlockParam{{Text: guideSystemPrompt, CacheControl: anthropic.NewCacheControlEphemeralParam()}}
+	sys := []anthropic.TextBlockParam{{Text: model.Rebrand(guideSystemPrompt), CacheControl: anthropic.NewCacheControlEphemeralParam()}}
 	if s.dialect != nil {
 		if d := s.dialect(); d != "" {
 			sys = append(sys, anthropic.TextBlockParam{Text: d})

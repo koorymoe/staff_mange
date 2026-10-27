@@ -8,6 +8,7 @@ import (
 	"log"
 	"regexp"
 	"sort"
+	"staffmange-api/internal/model"
 	"strings"
 	"time"
 
@@ -279,7 +280,7 @@ func (a *MatrixAgent) ChatWith(feature, system string, history []AgentTurn, mess
 	for step := 0; step < agentMaxSteps; step++ {
 		resp, err := a.llm.New(ctx, anthropic.MessageNewParams{
 			Model: anthropic.Model(a.model), MaxTokens: agentMaxTokens,
-			System:   []anthropic.TextBlockParam{{Text: system, CacheControl: anthropic.NewCacheControlEphemeralParam()}},
+			System:   []anthropic.TextBlockParam{{Text: model.Rebrand(system), CacheControl: anthropic.NewCacheControlEphemeralParam()}},
 			Messages: msgs, Tools: tools,
 		})
 		if err != nil {
