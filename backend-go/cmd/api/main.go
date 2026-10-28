@@ -2833,12 +2833,13 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 		// 🗂️ السكرتير (قرار (ع) 10-22): المالك والمدير بس، كل واحد بذاكرته — docs/secretary.md
 		secRepo := repository.NewSecretaryRepository(db)
 		secHandler := handler.NewSecretaryHandler(secRepo, employeeRepo, extraTaskRepo, notificationRepo, voiceAnalysisService)
-		// السكرتير بمفتاحه وموديله وسقفه (دازاي 10-23) — مو عميل ماتركس.
+		// السكرتير: نفس الدماغ الداخلي ويا ماتركس (دازاي 10-28) — المفتاح AI_KEY_INTERNAL والسقف للدماغ.
 		secClient := service.NewAnthropicClient(cfg.AIKeySecretary)
 		irisBrain := service.NewSecretaryBrainFor(service.SecretaryDeps{
 			DB: db, Client: secClient, Model: cfg.AIModelSecretary, Repo: secRepo,
 			Matrix: service.AgentDeps{Command: matrixCommandService, Projects: matrixProjectService.Report,
 				Scores: matrixScoreService.Board, ScoreRepo: matrixScoreService.Repo()},
+			NotifyOwner: func(msg string) { _ = notificationRepo.CreateForRole("OWNER", "AI_SUGGESTION", msg) },
 		}, cfg.AISecretaryDailyCap) // حارس فاتورة
 		irisBrain.SetWebSearch(cfg.AIIrisWebSearch)
 		secHandler.SetBrain(irisBrain)

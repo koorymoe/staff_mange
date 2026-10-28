@@ -33,6 +33,12 @@ services:
       GEMINI_DAILY_CAP: ${GEMINI_DAILY_CAP:-300}
       # ماتركس: نموذج Anthropic (اختياري). بلا مفتاح يبقى على القواعد.
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      # 🧠 دماغين (10-28): داخلي = ماتركس + ايريس، خارجي = الجودة + الحجوزات
+      AI_KEY_INTERNAL: ${AI_KEY_INTERNAL:-}
+      AI_KEY_EXTERNAL: ${AI_KEY_EXTERNAL:-}
+      AI_MODEL_CHAT: ${AI_MODEL_CHAT:-}
+      AI_INTERNAL_DAILY_USD: ${AI_INTERNAL_DAILY_USD:-2}
+      AI_EXTERNAL_DAILY_USD: ${AI_EXTERNAL_DAILY_USD:-1}
       AI_KEY_MATRIX: ${AI_KEY_MATRIX:-}
       AI_KEY_SECRETARY: ${AI_KEY_SECRETARY:-}
       AI_KEY_QUALITY: ${AI_KEY_QUALITY:-}

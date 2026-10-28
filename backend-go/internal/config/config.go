@@ -85,14 +85,26 @@ type Config struct {
 
 func Load() *Config {
 	c := load()
+	// 🧠 دماغين (دازاي 10-28): مفتاح داخلي (ماتركس + ايريس) ومفتاح خارجي (الجودة + الحجوزات).
+	// إذا انحطّوا يغلبون على مفاتيح الوكلاء القديمة.
+	if k := getEnv("AI_KEY_INTERNAL", ""); k != "" {
+		c.AIKeyMatrix, c.AIKeySecretary = k, k
+	}
+	if k := getEnv("AI_KEY_EXTERNAL", ""); k != "" {
+		c.AIKeyQuality, c.AIKeyBooking = k, k
+	}
 	// المفتاح الفاضي لوكيل يرجع للعام — حتى .env القديم يبقى يشتغل.
 	for _, k := range []*string{&c.AIKeyMatrix, &c.AIKeySecretary, &c.AIKeyQuality, &c.AIKeyBooking} {
 		if *k == "" {
 			*k = c.AnthropicAPIKey
 		}
 	}
+	// المحادثة المباشرة ويا المالك (ماتركس شات + ايريس) على موديل أذكى؛ الخلفية تبقى AI_MODEL.
+	if c.AIModelChat == "" {
+		c.AIModelChat = "claude-sonnet-5-5"
+	}
 	if c.AIModelSecretary == "" {
-		c.AIModelSecretary = c.AIModel
+		c.AIModelSecretary = c.AIModelChat
 	}
 	return c
 }

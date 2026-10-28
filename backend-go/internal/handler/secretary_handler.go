@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"staffmange-api/internal/middleware"
@@ -127,10 +128,34 @@ func (h *SecretaryHandler) Message(w http.ResponseWriter, r *http.Request) {
 		WriteError(w, http.StatusInternalServerError, "تعذر حفظ الرسالة")
 		return
 	}
+	// 🔴 بث حي (دازاي 10-28): ?stream=1 — تفكير وأدوات والجواب أول بأول، وبالآخر done
+	// بنفس شكل الجواب العادي. docs/ai-brains-contract.md
+	var send func(v any)
+	if r.URL.Query().Get("stream") == "1" {
+		rc := http.NewResponseController(w)
+		_ = rc.SetWriteDeadline(time.Now().Add(150 * time.Second))
+		w.Header().Set("Content-Type", "text/event-stream")
+		w.Header().Set("Cache-Control", "no-cache")
+		w.Header().Set("X-Accel-Buffering", "no")
+		w.WriteHeader(http.StatusOK)
+		var mu sync.Mutex
+		send = func(v any) {
+			b, _ := json.Marshal(v)
+			mu.Lock()
+			defer mu.Unlock()
+			_, _ = w.Write([]byte("data: "))
+			_, _ = w.Write(b)
+			_, _ = w.Write([]byte("\n\n"))
+			_ = rc.Flush()
+		}
+	}
 
 	res := &service.SecretaryResult{Reply: secretaryOff}
 	if h.brain != nil {
 		turn := service.SecretaryTurn{UserID: me, Text: text, Prefs: h.repo.Prefs(me), Summary: conv.Summary}
+		if send != nil {
+			turn.Emit = func(e service.AgentEvent) { send(e) }
+		}
 		if e, err := h.employees.FindByID(me); err == nil && e != nil {
 			turn.UserName = e.Name
 			turn.UserTitle = service.SecretaryHonorific(e.Certificate)
@@ -180,15 +205,24 @@ func (h *SecretaryHandler) Message(w http.ResponseWriter, r *http.Request) {
 	}
 	id, err := h.repo.SaveMessageIn(&conv.ID, me, "assistant", res.Reply, nil, res.Cards, actionID)
 	if err != nil {
+		if send != nil {
+			send(map[string]string{"type": "error", "text": "تعذر حفظ الجواب"})
+			return
+		}
 		WriteError(w, http.StatusInternalServerError, "تعذر حفظ الجواب")
 		return
 	}
 	h.repo.TitleIfNew(conv.ID, text)
 	go h.updateMemory(*conv)
-	WriteJSON(w, http.StatusOK, map[string]any{
+	out := map[string]any{
 		"messageId": id, "transcript": transcript, "reply": res.Reply,
 		"cards": res.Cards, "proposal": res.Proposal, "conversationId": conv.ID,
-	})
+	}
+	if send != nil {
+		send(map[string]any{"type": "done", "message": out})
+		return
+	}
+	WriteJSON(w, http.StatusOK, out)
 }
 
 // POST /api/secretary/actions/{id}/confirm — «إرسال»: هنا بس تنرسل المهمة.

@@ -117,6 +117,9 @@ func (b *SecretaryBrain) takeQuota() bool {
 
 const secretaryInstructions = `انت «ايريس» — سكرتيرة مدير شركة الأماني (طاقة شمسية، كهرباء، شبكات، كاميرات). تشتغل لـ%s.
 - تفهم العراقي وتجاوب بالعراقي، بجملة أو جملتين. التفصيل بس إذا طلبه.
+- إنتِ نفس عقل ماتركس (تشوفين كل النظام بأدواته) بس شغلچ غير: سكرتيرة تسولف وياه. أول رسالة بالمحادثة: رحّبي بيه واسأليه «شلون أگدر أساعدك اليوم؟»، وإذا شفتي شي مهم بالنظام (متأخر، ينتظر قراره، رقم غريب) اقترحيه عليه من نفسچ.
+- فكّري بالإنكليزي (التفكير يطلع إله)، والجواب بالعراقي.
+- إذا لاحظتي نقص حقيقي (سؤال ما تگدرين تجاوبينه بأدواتچ، طلب يتكرر)، سجّليه بـsuggest_improvement وكمّلي.
 - كل رقم أو حالة أو اسم يجي من الأدوات. لا تخمّن ولا تكمّل من عندك. إذا ما لكيت، كول ما لكيت وشنو تحتاج منه.
 - دوّر بنفسك: اختار الأداة المناسبة، وإذا الجواب يحتاج أكثر من أداة استعملها.
 - الموظفين والزبائن شي، والحجوزات شي: لكل وحدة أداة. موظف/مهندس/فني/ليدر ← find_employee. زبون ← find_customer. حجز أو «حجز فلان» ← find_booking. مشروع ← find_project. find_any بس إذا ما واضح أبداً، وإذا طلع الاسم موظف وزبون سوه اسأله «تقصد الموظف لو الزبون؟». اسم الزبون ما تنسبه لموظف أبداً، ولا العكس.
@@ -232,16 +235,23 @@ func (b *SecretaryBrain) Reply(ctx context.Context, t SecretaryTurn) (*Secretary
 	seen := map[string]bool{}
 	mask := b.mask()
 	system := b.system(t)
+	think := t.Emit != nil
+	emit := func(e AgentEvent) {
+		if t.Emit != nil {
+			t.Emit(e)
+		}
+	}
 
 	for step := 0; step < secretaryMaxSteps; step++ {
 		if !b.takeQuota() {
 			return nil, ErrSecretaryCap
 		}
-		resp, err := b.llm.New(ctx, anthropic.MessageNewParams{
+		p := anthropic.MessageNewParams{
 			Model: anthropic.Model(b.model), MaxTokens: secretaryMaxTokens,
 			System:   []anthropic.TextBlockParam{{Text: model.Rebrand(system), CacheControl: anthropic.NewCacheControlEphemeralParam()}},
 			Messages: msgs, Tools: tools,
-		})
+		}
+		resp, err := llmStep(ctx, b.llm, &p, t.Emit != nil, &think, emit, mask.Show)
 		if err != nil {
 			return nil, err
 		}
@@ -255,6 +265,7 @@ func (b *SecretaryBrain) Reply(ctx context.Context, t SecretaryTurn) (*Secretary
 			case anthropic.TextBlock:
 				text.WriteString(blk.Text)
 			case anthropic.ToolUseBlock:
+				emit(AgentEvent{Type: "tool", Name: blk.Name})
 				out, isErr := b.callTool(byName, blk, mask, res, seen)
 				results = append(results, anthropic.NewToolResultBlock(blk.ID, out, isErr))
 			}

@@ -58,9 +58,11 @@ type SecretaryTurn struct {
 	UserRole string
 	// Summary ذاكرة المحادثة (ملخص الرسائل القديمة) — والتاريخ آخر رسائل بس.
 	Summary string
-	Text     string
-	History  []SecretaryHistory
-	Prefs    []string
+	Text    string
+	History []SecretaryHistory
+	Prefs   []string
+	// Emit بث حي (تفكير، أدوات، الجواب) — فارغ = طلب عادي (دازاي 10-28).
+	Emit func(AgentEvent)
 }
 
 // SecretaryResult جواب العقل.
