@@ -26,6 +26,8 @@ type SecretaryDeps struct {
 	Matrix AgentDeps
 	// NotifyOwner لاقتراحات الذكاء الي تحتاج برمجة (دازاي 10-28)
 	NotifyOwner func(msg string)
+	// Quotes مسودات عروض الأسعار (دازاي 10-28)
+	Quotes *QuotationService
 }
 
 // NewSecretaryAgent وكيل جديد لكل دور: الأدوات تكتب بطاقاتها ومقترحها على
@@ -36,6 +38,8 @@ func NewSecretaryAgent(d SecretaryDeps, tc *SecretaryTurnCtx) *MatrixAgent {
 	a.RegisterReadTools(d.Matrix)
 	registerSecretaryTools(a, d.Repo, tc)
 	a.RegisterSuggestTool(d.DB, "IRIS", d.NotifyOwner)
+	registerQuoteTools(a, d.Quotes, tc)
+	registerFileTools(a, tc)
 	return a
 }
 

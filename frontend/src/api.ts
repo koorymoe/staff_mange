@@ -3706,6 +3706,8 @@ export const DEPARTMENTS = ['الفنية', 'المبيعات', 'الصيانة'
 export const REVIEW_GRADES = ['ممتاز', 'جيد جداً', 'جيد', 'يحتاج تحسين']
 
 export const api = {
+  // 📊 ملف سوّاه كمال (دازاي 10-28) — الرابط من بطاقة السكرتير
+  downloadSecretaryFile: (link: string, name: string) => downloadFile(link, name),
   getMe: () => request<Employee>('/auth/me'),
   // تغيير كلمة السر يبطل كل الجلسات القديمة — بضمنها توكن الجهاز الحالي.
   // السيرفر يرجّع توكن جديد ولازم نخزنه فوراً، وإلا كل طلب بعدها يطلع

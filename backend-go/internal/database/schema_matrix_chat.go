@@ -1087,5 +1087,16 @@ func matrixChatMigrations() []Migration {
 			);
 			CREATE INDEX IF NOT EXISTS "AiSuggestion_status_idx" ON "AiSuggestion" (status, "createdAt" DESC);
 		`,
+	}, {
+		Version: "0403_ai_file",
+		SQL: `
+			CREATE TABLE IF NOT EXISTS "AiFile" (
+				id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
+				"employeeId" TEXT NOT NULL REFERENCES "Employee"(id) ON DELETE CASCADE,
+				name TEXT NOT NULL,
+				data BYTEA NOT NULL,
+				"createdAt" TIMESTAMPTZ NOT NULL DEFAULT now()
+			);
+		`,
 	}}
 }

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import {
   api,
   apiRequest,
@@ -115,6 +116,7 @@ export default function SecretaryPage() {
 }
 
 function Secretary() {
+  const navigate = useNavigate()
   const { employee } = useSession()
   const honorific = irisHonorific(employee?.certificate)
   const [today, setToday] = useState<SecretaryToday | null>(null)
@@ -968,6 +970,26 @@ function Secretary() {
                         {c.lines.map((line, j) => (
                           <p key={j}>{line}</p>
                         ))}
+                        {c.link && (
+                          <button
+                            className="iris-card-action"
+                            onClick={() =>
+                              c.link!.startsWith('/secretary/files/')
+                                ? void api
+                                    .downloadSecretaryFile(
+                                      c.link!,
+                                      c.title.replace(/^📊\s*/, '') + '.xlsx',
+                                    )
+                                    .catch((e: Error) => window.alert(e.message))
+                                : navigate(c.link!)
+                            }
+                          >
+                            <IrisIcon kind="file" />
+                            {c.link.startsWith('/secretary/files/')
+                              ? 'نزّل الملف'
+                              : 'افتح'}
+                          </button>
+                        )}
                         {/اجتماع|موعد/.test(c.title) && (
                           <button
                             className="iris-card-action"

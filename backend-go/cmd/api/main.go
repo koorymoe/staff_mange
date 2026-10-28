@@ -2840,6 +2840,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 			Matrix: service.AgentDeps{Command: matrixCommandService, Projects: matrixProjectService.Report,
 				Scores: matrixScoreService.Board, ScoreRepo: matrixScoreService.Repo()},
 			NotifyOwner: func(msg string) { _ = notificationRepo.CreateForRole("OWNER", "AI_SUGGESTION", msg) },
+			Quotes:      quotationService,
 		}, cfg.AISecretaryDailyCap) // حارس فاتورة
 		irisBrain.SetWebSearch(cfg.AIIrisWebSearch)
 		secHandler.SetBrain(irisBrain)
@@ -2854,6 +2855,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 		mux.Handle("POST /api/secretary/actions/{id}/confirm", middleware.Chain(http.HandlerFunc(secHandler.Confirm), requireAuth, requireAdmin))
 		mux.Handle("POST /api/secretary/actions/{id}/cancel", middleware.Chain(http.HandlerFunc(secHandler.Cancel), requireAuth, requireAdmin))
 		mux.Handle("GET /api/secretary/today", middleware.Chain(http.HandlerFunc(secHandler.Today), requireAuth, requireAdmin))
+		mux.Handle("GET /api/secretary/files/{id}", middleware.Chain(http.HandlerFunc(secHandler.File), requireAuth, requireAdmin))
 		mux.Handle("GET /api/secretary/history", middleware.Chain(http.HandlerFunc(secHandler.History), requireAuth, requireAdmin))
 		// 💬 محادثات ايريس المتعددة (دازاي 10-23)
 		mux.Handle("GET /api/secretary/conversations", middleware.Chain(http.HandlerFunc(secHandler.Conversations), requireAuth, requireAdmin))

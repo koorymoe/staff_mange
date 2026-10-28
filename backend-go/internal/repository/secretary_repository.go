@@ -20,6 +20,9 @@ type SecretaryRepository struct{ db *sqlx.DB }
 
 func NewSecretaryRepository(db *sqlx.DB) *SecretaryRepository { return &SecretaryRepository{db: db} }
 
+// DB للقراءات البسيطة بالمعالج (ملفات كمال).
+func (r *SecretaryRepository) DB() *sqlx.DB { return r.db }
+
 var ErrSecretaryActionDone = errors.New("هذا المقترح انرسل أو انلغى من قبل")
 
 // ── المحادثة ──

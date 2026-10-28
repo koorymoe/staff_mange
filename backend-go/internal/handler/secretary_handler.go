@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"net/url"
 	"strconv"
 	"strings"
 	"sync"
@@ -748,4 +749,20 @@ func (h *SecretaryHandler) DeleteConversation(w http.ResponseWriter, r *http.Req
 		return
 	}
 	WriteJSON(w, http.StatusOK, map[string]any{"ok": true})
+}
+
+// GET /api/secretary/files/{id} — ملف سوّاه كمال (إكسل) لصاحبه بس (دازاي 10-28).
+func (h *SecretaryHandler) File(w http.ResponseWriter, r *http.Request) {
+	var f struct {
+		Name string `db:"name"`
+		Data []byte `db:"data"`
+	}
+	if err := h.repo.DB().Get(&f, `SELECT name, data FROM "AiFile" WHERE id = $1 AND "employeeId" = $2`,
+		r.PathValue("id"), middleware.EmployeeIDFromContext(r)); err != nil {
+		WriteError(w, http.StatusNotFound, "الملف مو موجود أو انتهى (تنحفظ ٧ أيام)")
+		return
+	}
+	w.Header().Set("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+	w.Header().Set("Content-Disposition", "attachment; filename*=UTF-8''"+url.PathEscape(f.Name))
+	_, _ = w.Write(f.Data)
 }
