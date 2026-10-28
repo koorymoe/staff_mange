@@ -41,6 +41,7 @@ type Config struct {
 	AIKeyQuality   string // محجوز — وكيل الجودة عالواتساب (ينتظر قرار الخصوصية)
 	AIKeyBooking   string // محجوز — وكيل الحجوزات عالواتساب (ينتظر قرار الخصوصية)
 	// موديل وسقف السكرتير — منفصلات عن ماتركس.
+	AIModelChat         string
 	AIModelSecretary    string
 	AISecretaryDailyCap int
 	AIIrisWebSearch     bool   // بحث الويب لايريس (افتراضياً شغّال)
@@ -115,12 +116,14 @@ func load() *Config {
 		AIModel:          getEnv("AI_MODEL", "claude-haiku-5-5"),
 		// ٢٠٠ سقف واسع: حجم الشغل اليوم عشرات الإشارات باليوم، فالسقف
 		// ما يعترض الشغل الطبيعي ويمسك الانفجار.
-		AIDailyCap:          getEnvInt("AI_DAILY_CAP", 200),
-		AIKeyMatrix:         getEnv("AI_KEY_MATRIX", ""),
-		AIKeySecretary:      getEnv("AI_KEY_SECRETARY", ""),
-		AIKeyQuality:        getEnv("AI_KEY_QUALITY", ""),
-		AIKeyBooking:        getEnv("AI_KEY_BOOKING", ""),
-		AIModelSecretary:    getEnv("AI_MODEL_SECRETARY", ""),
+		AIDailyCap:       getEnvInt("AI_DAILY_CAP", 200),
+		AIKeyMatrix:      getEnv("AI_KEY_MATRIX", ""),
+		AIKeySecretary:   getEnv("AI_KEY_SECRETARY", ""),
+		AIKeyQuality:     getEnv("AI_KEY_QUALITY", ""),
+		AIKeyBooking:     getEnv("AI_KEY_BOOKING", ""),
+		AIModelSecretary: getEnv("AI_MODEL_SECRETARY", ""),
+		// موديل المحادثة المباشرة ويا المالك (ماتركس شات) — فارغ = AI_MODEL
+		AIModelChat:         getEnv("AI_MODEL_CHAT", ""),
 		AISecretaryDailyCap: getEnvInt("AI_SECRETARY_DAILY_CAP", 300),
 		AIIrisWebSearch:     getEnv("AI_IRIS_WEB_SEARCH", "true") != "false",
 		AIIrisVoice:         getEnv("AI_IRIS_VOICE", "gemini"),

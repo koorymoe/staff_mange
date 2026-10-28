@@ -1,10 +1,12 @@
 package handler
 
 import (
+	"encoding/json"
 	"errors"
 	"log"
 	"net/http"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/jmoiron/sqlx"
@@ -19,7 +21,12 @@ import (
 type MatrixChatHandler struct {
 	db    *sqlx.DB
 	agent *service.MatrixAgent
+	// chatModel موديل المحادثة المباشرة (أذكى من شغل الخلفية) — فارغ = موديل الوكيل
+	chatModel string
 }
+
+// SetChatModel موديل المحادثة المباشرة (AI_MODEL_CHAT).
+func (h *MatrixChatHandler) SetChatModel(m string) { h.chatModel = m }
 
 func NewMatrixChatHandler(db *sqlx.DB, agent *service.MatrixAgent) *MatrixChatHandler {
 	return &MatrixChatHandler{db: db, agent: agent}
@@ -98,28 +105,34 @@ func (h *MatrixChatHandler) Delete(w http.ResponseWriter, r *http.Request) {
 }
 
 // POST /api/matrix/chats/{id}/messages {text}
-func (h *MatrixChatHandler) Send(w http.ResponseWriter, r *http.Request) {
+// chatTurnIn رسالة جاهزة للوكيل بعد التحقق والذاكرة.
+type chatTurnIn struct {
+	id, text, rawImage, system, prompt string
+	img                                *service.AgentImage
+	turns                              []service.AgentTurn
+}
+
+// prepare يتحقق من الطلب ويجهّز التاريخ والذاكرة — يكتب الخطأ بنفسه ويرجّع nil.
+func (h *MatrixChatHandler) prepare(w http.ResponseWriter, r *http.Request) *chatTurnIn {
 	id, me := r.PathValue("id"), middleware.EmployeeIDFromContext(r)
 	if !h.own(r, id) {
 		WriteError(w, http.StatusNotFound, "المحادثة غير موجودة")
-		return
+		return nil
 	}
-	// الوكيل يسمح لنفسه 60 ثانية والخادم يقطع بـ30 — نمد مهلة هالرد بس
-	_ = http.NewResponseController(w).SetWriteDeadline(time.Now().Add(90 * time.Second))
 	var in struct {
 		Text  string `json:"text"`
 		Image string `json:"image"` // data:image/...;base64,...
 	}
 	if err := DecodeJSON(r, &in); err != nil || (strings.TrimSpace(in.Text) == "" && in.Image == "") {
 		WriteError(w, http.StatusBadRequest, "اكتب رسالتك")
-		return
+		return nil
 	}
 	var img *service.AgentImage
 	if in.Image != "" {
 		mt, data, ok := parseChatImage(in.Image)
 		if !ok {
 			WriteError(w, http.StatusBadRequest, "الصورة لازم PNG أو JPG أو WEBP وأصغر من 4 ميگا")
-			return
+			return nil
 		}
 		img = &service.AgentImage{MediaType: mt, Data: data}
 	}
@@ -129,18 +142,18 @@ func (h *MatrixChatHandler) Send(w http.ResponseWriter, r *http.Request) {
 	}
 	if len([]rune(text)) > 2000 {
 		WriteError(w, http.StatusBadRequest, "الرسالة طويلة — خليها أقصر")
-		return
+		return nil
 	}
 	if !h.agent.Enabled("CHAT") {
 		WriteError(w, http.StatusServiceUnavailable, "ماتركس يحتاج مفتاح هايكو (ANTHROPIC_API_KEY) حتى يسولف — أو مفتاح الدردشة مطفي")
-		return
+		return nil
 	}
 	var today int
 	_ = h.db.Get(&today, `SELECT count(*) FROM "MatrixTalkMessage" m JOIN "MatrixTalk" c ON c.id = m."chatId"
 		WHERE c."employeeId" = $1 AND m.role = 'USER' AND m."createdAt" > now() - interval '24 hours'`, me)
 	if today >= chatDailyLimit {
 		WriteError(w, http.StatusTooManyRequests, "وصلت حد الرسائل اليوم — باچر يرجع")
-		return
+		return nil
 	}
 	// 🧠 الذاكرة (دازاي 10-23): ملخص المحادثة + آخر رسائل بس — الكلفة ثابتة مهما طالت
 	var summary string
@@ -174,33 +187,95 @@ func (h *MatrixChatHandler) Send(w http.ResponseWriter, r *http.Request) {
 	if strings.TrimSpace(summary) != "" {
 		system += "\n\nذاكرة هالمحادثة (ملخص الي صار قبل آخر الرسائل):\n" + summary
 	}
-	run, err := h.agent.ChatWith("CHAT", system, turns, prompt, img)
-	if err != nil || strings.TrimSpace(run.Answer) == "" {
-		msg := "ماتركس ما گدر يرد هسه — جرّب بعد شوية"
-		if errors.Is(err, service.ErrAgentOff) {
-			msg = "ماتركس مطفي هسه"
-		}
-		WriteError(w, http.StatusBadGateway, msg)
+	return &chatTurnIn{id: id, text: text, rawImage: in.Image, system: system, prompt: prompt, img: img, turns: turns}
+}
+
+func (h *MatrixChatHandler) Send(w http.ResponseWriter, r *http.Request) {
+	// الوكيل يسمح لنفسه 60 ثانية والخادم يقطع بـ30 — نمد مهلة هالرد بس
+	_ = http.NewResponseController(w).SetWriteDeadline(time.Now().Add(90 * time.Second))
+	in := h.prepare(w, r)
+	if in == nil {
 		return
 	}
-	steps := strings.Join(run.Steps, ",")
-	tx, err := h.db.Beginx()
+	run, err := h.agent.ChatStream("CHAT", in.system, in.turns, in.prompt, in.img, service.ChatOpts{Model: h.chatModel})
+	if err != nil || strings.TrimSpace(run.Answer) == "" {
+		WriteError(w, http.StatusBadGateway, chatFailMsg(err))
+		return
+	}
+	reply, err := h.save(in, run)
 	if err != nil {
 		WriteError(w, http.StatusInternalServerError, "تعذر الحفظ")
 		return
 	}
-	defer tx.Rollback()
-	if _, err := tx.Exec(`INSERT INTO "MatrixTalkMessage" (id, "chatId", role, text, image) VALUES (gen_random_uuid()::text, $1, 'USER', $2, NULLIF($3, ''))`, id, text, in.Image); err != nil {
-		WriteError(w, http.StatusInternalServerError, "تعذر الحفظ")
+	WriteJSON(w, http.StatusOK, reply)
+}
+
+// POST /api/matrix-chats/{id}/stream — نفس Send بس بث حي (SSE): تفكير بالإنكليزي،
+// والأدوات الي يفتش بيها، والجواب كلمة كلمة، وبالآخر done ويا الرسالة المحفوظة.
+func (h *MatrixChatHandler) Stream(w http.ResponseWriter, r *http.Request) {
+	rc := http.NewResponseController(w)
+	_ = rc.SetWriteDeadline(time.Now().Add(150 * time.Second))
+	in := h.prepare(w, r)
+	if in == nil {
 		return
 	}
+	w.Header().Set("Content-Type", "text/event-stream")
+	w.Header().Set("Cache-Control", "no-cache")
+	w.Header().Set("X-Accel-Buffering", "no")
+	w.WriteHeader(http.StatusOK)
+	var mu sync.Mutex
+	send := func(v any) {
+		b, _ := json.Marshal(v)
+		mu.Lock()
+		defer mu.Unlock()
+		_, _ = w.Write([]byte("data: "))
+		_, _ = w.Write(b)
+		_, _ = w.Write([]byte("\n\n"))
+		_ = rc.Flush()
+	}
+	run, err := h.agent.ChatStream("CHAT", in.system, in.turns, in.prompt, in.img, service.ChatOpts{
+		Model: h.chatModel, Think: true, Emit: func(e service.AgentEvent) { send(e) },
+	})
+	if err != nil || strings.TrimSpace(run.Answer) == "" {
+		send(map[string]string{"type": "error", "text": chatFailMsg(err)})
+		return
+	}
+	reply, err := h.save(in, run)
+	if err != nil {
+		send(map[string]string{"type": "error", "text": "تعذر الحفظ"})
+		return
+	}
+	send(map[string]any{"type": "done", "message": reply})
+}
+
+func chatFailMsg(err error) string {
+	if errors.Is(err, service.ErrAgentOff) {
+		return "ماتركس مطفي هسه"
+	}
+	if errors.Is(err, service.ErrAIBudget) {
+		return "ماتركس وصل سقف الصرف اليومي — يرجع باچر أو زيد السقف"
+	}
+	return "ماتركس ما گدر يرد هسه — جرّب بعد شوية"
+}
+
+// save يحفظ رسالة المستخدم والرد ويحدّث العنوان والذاكرة.
+func (h *MatrixChatHandler) save(in *chatTurnIn, run *service.AgentRun) (chatMsg, error) {
+	id, text := in.id, in.text
+	steps := strings.Join(run.Steps, ",")
 	var reply chatMsg
+	tx, err := h.db.Beginx()
+	if err != nil {
+		return reply, err
+	}
+	defer tx.Rollback()
+	if _, err := tx.Exec(`INSERT INTO "MatrixTalkMessage" (id, "chatId", role, text, image) VALUES (gen_random_uuid()::text, $1, 'USER', $2, NULLIF($3, ''))`, id, text, in.rawImage); err != nil {
+		return reply, err
+	}
 	err = tx.Get(&reply, `INSERT INTO "MatrixTalkMessage" (id, "chatId", role, text, steps, "createdAt")
 		VALUES (gen_random_uuid()::text, $1, 'ASSISTANT', $2, NULLIF($3, ''), now() + interval '1 millisecond')
 		RETURNING id, role, text, steps, "createdAt"`, id, run.Answer, steps)
 	if err != nil {
-		WriteError(w, http.StatusInternalServerError, "تعذر الحفظ")
-		return
+		return reply, err
 	}
 	title := text
 	if r := []rune(title); len(r) > 40 {
@@ -208,11 +283,10 @@ func (h *MatrixChatHandler) Send(w http.ResponseWriter, r *http.Request) {
 	}
 	_, _ = tx.Exec(`UPDATE "MatrixTalk" SET "updatedAt" = now(), title = CASE WHEN title = 'محادثة جديدة' THEN $2 ELSE title END WHERE id = $1`, id, title)
 	if err := tx.Commit(); err != nil {
-		WriteError(w, http.StatusInternalServerError, "تعذر الحفظ")
-		return
+		return reply, err
 	}
 	go h.updateMemory(id)
-	WriteJSON(w, http.StatusOK, reply)
+	return reply, nil
 }
 
 // parseChatImage يفك data-URL ويتأكد من النوع والحجم.

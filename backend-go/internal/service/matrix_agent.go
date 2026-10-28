@@ -31,7 +31,9 @@ import (
 const (
 	agentMaxSteps  = 12
 	agentMaxTokens = 1200
-	agentTimeout   = 60 * time.Second
+	// ويا التفكير: التوكنات تشمل التفكير، فنوسّع حتى ما ينقص الجواب
+	agentThinkMaxTokens = 6000
+	agentTimeout        = 60 * time.Second
 )
 
 // agentLLM واجهة النموذج — حتى الاختبار يركّب نموذجاً وهمياً.
@@ -43,6 +45,46 @@ type anthropicLLM struct{ c *anthropic.Client }
 
 func (a anthropicLLM) New(ctx context.Context, p anthropic.MessageNewParams) (*anthropic.Message, error) {
 	return a.c.Messages.New(ctx, p)
+}
+
+// Stream مثل New بس يبث الأحداث أول بأول ويرجّع الرسالة الكاملة بالآخر.
+func (a anthropicLLM) Stream(ctx context.Context, p anthropic.MessageNewParams, on func(anthropic.MessageStreamEventUnion)) (*anthropic.Message, error) {
+	s := a.c.Messages.NewStreaming(ctx, p)
+	defer s.Close()
+	msg := anthropic.Message{}
+	for s.Next() {
+		e := s.Current()
+		if err := msg.Accumulate(e); err != nil {
+			return nil, err
+		}
+		on(e)
+	}
+	if err := s.Err(); err != nil {
+		return nil, err
+	}
+	return &msg, nil
+}
+
+// agentStreamer نموذج يكدر يبث (الحقيقي). الوهمي بالاختبار ما يحتاجه.
+type agentStreamer interface {
+	Stream(ctx context.Context, p anthropic.MessageNewParams, on func(anthropic.MessageStreamEventUnion)) (*anthropic.Message, error)
+}
+
+// AgentEvent حدث يطلع للواجهة وهو يشتغل (دازاي 10-28: «اريد يطلع ثينكينك بلنكليزي»).
+//   - thinking: قطعة تفكير تنضاف لما قبلها
+//   - tool: اسم الأداة الي بدى يفتش بيها
+//   - text: الجواب لحد هسه (كامل، يتبدّل كل مرة)
+type AgentEvent struct {
+	Type string `json:"type"`
+	Text string `json:"text,omitempty"`
+	Name string `json:"name,omitempty"`
+}
+
+// ChatOpts خيارات المحادثة الحية: موديل غير الافتراضي، وبث الأحداث، والتفكير.
+type ChatOpts struct {
+	Model string
+	Think bool
+	Emit  func(AgentEvent)
 }
 
 // agentTool أداة: وصف + مخطط مدخلات + تنفيذ يرجّع نصاً (بالأسماء الحقيقية —
@@ -234,6 +276,11 @@ func (a *MatrixAgent) Chat(feature, system string, history []AgentTurn, message 
 
 // ChatWith مثل Chat ويا صورة اختيارية للرسالة الحالية.
 func (a *MatrixAgent) ChatWith(feature, system string, history []AgentTurn, message string, img *AgentImage) (*AgentRun, error) {
+	return a.ChatStream(feature, system, history, message, img, ChatOpts{})
+}
+
+// ChatStream مثل ChatWith ويا بث حي (تفكير، أدوات، الجواب كلمة كلمة).
+func (a *MatrixAgent) ChatStream(feature, system string, history []AgentTurn, message string, img *AgentImage, opts ChatOpts) (*AgentRun, error) {
 	if !a.Enabled(feature) {
 		return nil, ErrAgentOff
 	}
@@ -277,16 +324,62 @@ func (a *MatrixAgent) ChatWith(feature, system string, history []AgentTurn, mess
 	ctx, cancel := context.WithTimeout(context.Background(), agentTimeout)
 	defer cancel()
 	run := &AgentRun{}
+	modelName := a.model
+	if opts.Model != "" {
+		modelName = opts.Model
+	}
+	streamer, canStream := a.llm.(agentStreamer)
+	canStream = canStream && opts.Emit != nil
+	think := opts.Think && canStream
+	emit := func(e AgentEvent) {
+		if opts.Emit != nil {
+			opts.Emit(e)
+		}
+	}
 	for step := 0; step < agentMaxSteps; step++ {
-		resp, err := a.llm.New(ctx, anthropic.MessageNewParams{
-			Model: anthropic.Model(a.model), MaxTokens: agentMaxTokens,
+		p := anthropic.MessageNewParams{
+			Model: anthropic.Model(modelName), MaxTokens: agentMaxTokens,
 			System:   []anthropic.TextBlockParam{{Text: model.Rebrand(system), CacheControl: anthropic.NewCacheControlEphemeralParam()}},
 			Messages: msgs, Tools: tools,
-		})
+		}
+		if think {
+			p.MaxTokens = agentThinkMaxTokens
+			p.Thinking = anthropic.ThinkingConfigParamUnion{OfAdaptive: &anthropic.ThinkingConfigAdaptiveParam{Display: anthropic.ThinkingConfigAdaptiveDisplaySummarized}}
+		}
+		var resp *anthropic.Message
+		var err error
+		if canStream {
+			var stepText strings.Builder
+			on := func(e anthropic.MessageStreamEventUnion) {
+				d, ok := e.AsAny().(anthropic.ContentBlockDeltaEvent)
+				if !ok {
+					return
+				}
+				switch x := d.Delta.AsAny().(type) {
+				case anthropic.TextDelta:
+					stepText.WriteString(x.Text)
+					emit(AgentEvent{Type: "text", Text: mask.Show(stepText.String())})
+				case anthropic.ThinkingDelta:
+					emit(AgentEvent{Type: "thinking", Text: mask.Show(x.Thinking)})
+				}
+			}
+			resp, err = streamer.Stream(ctx, p, on)
+			if err != nil && think && step == 0 {
+				// الموديل ما يقبل التفكير؟ نكمل بدونه بدل ما نفشل
+				log.Printf("matrix agent: thinking off (%v)", err)
+				think = false
+				p.Thinking = anthropic.ThinkingConfigParamUnion{}
+				p.MaxTokens = agentMaxTokens
+				stepText.Reset()
+				resp, err = streamer.Stream(ctx, p, on)
+			}
+		} else {
+			resp, err = a.llm.New(ctx, p)
+		}
 		if err != nil {
 			return nil, err
 		}
-		RecordAIUsage(feature, a.model, resp.Usage)
+		RecordAIUsage(feature, modelName, resp.Usage)
 		msgs = append(msgs, resp.ToParam())
 		var results []anthropic.ContentBlockParamUnion
 		var text strings.Builder
@@ -295,6 +388,7 @@ func (a *MatrixAgent) ChatWith(feature, system string, history []AgentTurn, mess
 			case anthropic.TextBlock:
 				text.WriteString(b.Text)
 			case anthropic.ToolUseBlock:
+				emit(AgentEvent{Type: "tool", Name: b.Name})
 				out, isErr := a.callTool(byName, b, mask)
 				run.Steps = append(run.Steps, b.Name)
 				results = append(results, anthropic.NewToolResultBlock(b.ID, out, isErr))

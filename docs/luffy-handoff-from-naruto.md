@@ -104,3 +104,4 @@ git push origin origin/avg:refs/heads/prod     # بعد التأكد إنه fast
 - 10-26 (لوفي): be8ea40b انرفع ع برود بطلب دازاي.
 - 10-27 (لوفي): أسماء الوكلاء الأربعة يعدّلها المالك (0400 يوسّع CHECK). model.AgentName/Rebrand يبدّل الاسم بالبرومبتات (ايريس، ماتركس، اسأل، التوجيه، ماتركس الزبون) والإشعارات ورسائل الأخطاء. GET /api/ai/agent-names لكل مسجّل، و/api/ai/agents صار يُقرا للأدمن. الواجهة: utils/agentBrand.ts يبدّل النص الظاهر إذا الاسم تغيّر. avg فقط.
 - 10-27 (لوفي): 8688e856 (أسماء الوكلاء + 0400) انرفع ع برود بطلب دازاي.
+- 10-28 (لوفي): المرحلة ١ من «دماغين للذكاء» (خطة: docs/ai-brains-contract.md): POST /api/matrix/chats/{id}/stream (SSE: thinking/tool/text/done/error) — MatrixAgent.ChatStream بالبث + تفكير adaptive (يرجع بدونه إذا الموديل رفض)، وSend/Stream يتشاركون prepare/save. AI_MODEL_CHAT (فارغ = AI_MODEL). الواجهة على ساسكي. avg فقط — البث ما انجرب حي (ماكو مفتاح محلي).

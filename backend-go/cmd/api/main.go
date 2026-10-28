@@ -2932,11 +2932,13 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 		})
 		// 💬 دردشة ماتركس — المالك والمدير
 		chatHandler := handler.NewMatrixChatHandler(db, agent)
+		chatHandler.SetChatModel(cfg.AIModelChat)
 		mux.Handle("GET /api/matrix/chats", middleware.Chain(http.HandlerFunc(chatHandler.List), requireAuth, requireAdmin))
 		mux.Handle("POST /api/matrix/chats", middleware.Chain(http.HandlerFunc(chatHandler.Create), requireAuth, requireAdmin))
 		mux.Handle("GET /api/matrix/chats/{id}", middleware.Chain(http.HandlerFunc(chatHandler.Messages), requireAuth, requireAdmin))
 		mux.Handle("DELETE /api/matrix/chats/{id}", middleware.Chain(http.HandlerFunc(chatHandler.Delete), requireAuth, requireAdmin))
 		mux.Handle("POST /api/matrix/chats/{id}/messages", middleware.Chain(http.HandlerFunc(chatHandler.Send), requireAuth, requireAdmin))
+		mux.Handle("POST /api/matrix/chats/{id}/stream", middleware.Chain(http.HandlerFunc(chatHandler.Stream), requireAuth, requireAdmin))
 		mux.Handle("POST /api/matrix/chats/{id}/messages/{msgId}/correct", middleware.Chain(http.HandlerFunc(chatHandler.Correct), requireAuth, requireAdmin))
 		mux.Handle("GET /api/matrix/lessons", middleware.Chain(http.HandlerFunc(chatHandler.Lessons), requireAuth, requireAdmin))
 		mux.Handle("DELETE /api/matrix/lessons/{id}", middleware.Chain(http.HandlerFunc(chatHandler.DisableLesson), requireAuth, requireAdmin))
