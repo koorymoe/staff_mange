@@ -34,7 +34,7 @@ interface DraftMaterial extends CreateMaterialLineRequest {
   key: string
 }
 
-export default function LeaderInvoiceNew({ initialMode }: { initialMode?: 'estimate' | 'booking' } = {}) {
+export default function LeaderInvoiceNew({ initialMode, handoverOnly = false }: { initialMode?: 'estimate' | 'booking'; handoverOnly?: boolean } = {}) {
   // تفصيل الحساب (المعادلات والحدود الدنيا) للمالك ومدير النظام فقط —
   // الليدر يشوف المبلغ وبس. هذي أسعار داخلية ما تنعرض لكل من يحسب كلفة.
   // (المالك ينطبّع دوره لـADMIN بالجلسة، فالشرط يغطي الاثنين.)
@@ -59,6 +59,8 @@ export default function LeaderInvoiceNew({ initialMode }: { initialMode?: 'estim
   const canBookingInvoice = !!employee?.isLeader || ['ADMIN', 'OWNER', 'SERVICE_MANAGER', 'TECHNICAL'].includes(employee?.role ?? '')
     // (دازاي 10-26) ليدر سابق: فواتير حجوزاته القديمة بس — الخادم يتحقق حجز حجز
     || permissions.includes('paperwork_carryover')
+    // (دازاي 10-28) التقني: فواتير حجوزاته المرحّلة — الخادم يتحقق حجز حجز
+    || handoverOnly
   const carryoverOnly = !employee?.isLeader && permissions.includes('paperwork_carryover')
     && !['ADMIN', 'OWNER', 'SERVICE_MANAGER', 'TECHNICAL'].includes(employee?.role ?? '')
   /**
@@ -333,7 +335,9 @@ export default function LeaderInvoiceNew({ initialMode }: { initialMode?: 'estim
         // ينكتب تقريره — فهنا ينشال حتى ما ينفوتر مرتين.
         ? api.getServicePaperwork(serviceKind).then((list) => list.filter((b) => !b.hasInvoice))
         // (دازاي 10-26) ليدر سابق: حجوزاته القديمة الناقصة فاتورة بس
-        : carryoverOnly
+        : handoverOnly
+          ? api.getHandoverBookings()
+          : carryoverOnly
           ? api.getCarryoverBookings()
           : api.getBookings({ status: 'COMPLETED' })
     load.then(setCompletedBookings).catch(() => setCompletedBookings([]))
@@ -351,7 +355,7 @@ export default function LeaderInvoiceNew({ initialMode }: { initialMode?: 'estim
       .catch(() => setMyProjects([]))
     // ⚠️ `serviceKind` بالاعتماديات: بلاها تبديل جي بي اس ↔ داش كام
     // ما يعيد الجلب، فالقائمة تبقى على النوع الأول بهدوء.
-  }, [estimateOnly, internalMode, serviceMode, serviceKind, canServiceInvoice, carryoverOnly])
+  }, [estimateOnly, internalMode, serviceMode, serviceKind, canServiceInvoice, carryoverOnly, handoverOnly])
 
   const allSystemNames = useMemo(
     () => Array.from(new Set(catalog.map((c) => c.systemName))).sort(),

@@ -133,6 +133,12 @@ func (s *BookingService) TechResolve(id, empID, notes string) (*model.Booking, e
 	if s.qualityFollowUps != nil {
 		_ = s.qualityFollowUps.CreateForBooking(b.ID, b.CustomerID)
 	}
+	// (دازاي 10-28) حجز مرحّل خلص بشغل (مو بالتلفون) = إله فاتورة على التقني.
+	// طلب الكادر يخلص بطريق الكادر العادي، والليدر يكتبها هناك.
+	if s.notifications != nil && (b.TechDecision == nil || *b.TechDecision != "PHONE") && b.TechCrewRequestedAt == nil {
+		_ = s.notifications.Create(empID, "handover_invoice",
+			"🧾 حجز "+b.Code+" خلص — اكتب فاتورته من «فواتير حجوزاتي المرحّلة».")
+	}
 	return s.repo.FindByID(id)
 }
 

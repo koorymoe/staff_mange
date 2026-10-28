@@ -15,6 +15,7 @@ import (
 // الي دخلها، واذا فني فقط بدون ليدر». والمسؤول عن فلوس الحجز:
 //   - حجز داخلي ← إداري الحجوزات (الي سوّى الحجز)
 //   - جي بي اس / داش كام ← مسؤول الخدمة (الي يكتب فاتورتها)
+//   - مرحّل لإدارة التقنيين ← التقني، وإذا طلب كادر ← ليدره؛ والمنحل بالتلفون بلا فاتورة
 //   - غيرها ← ليدر الحجز، وإذا ماكو ليدر ← الفني
 // المبلغ من فاتورة الحجز (صافي آخر فاتورة)، ومنو دخّلها من الفاتورة نفسها.
 
@@ -42,10 +43,13 @@ func (a *MatrixAgent) registerRevenueTool() {
 				InvBy    *string `db:"invBy"`
 				Net      float64 `db:"net"`
 				Expected *string `db:"expected"`
+				Handover bool    `db:"handover"`
+				Phone    bool    `db:"phone"`
 			}{}
 			err := a.db.Select(&rows, `
 				WITH bk AS (
 					SELECT b.id, b.code, b."bookingType", COALESCE(s."serviceKind", '') AS kind, b."createdById",
+						b."handoverToId", COALESCE(b."techDecision", '') AS "techDecision", b."techCrewRequestedAt",
 						booking_leader_id(b.id) AS leader,
 						(SELECT ba."employeeId" FROM "BookingAssignment" ba WHERE ba."bookingId" = b.id ORDER BY ba."createdAt" LIMIT 1) AS tech
 					FROM "Booking" b LEFT JOIN "Service" s ON s.id = b."serviceId"
@@ -57,7 +61,11 @@ func (a *MatrixAgent) registerRevenueTool() {
 					ORDER BY li."bookingId", li."createdAt" DESC
 				)
 				SELECT bk.code, bk."bookingType", bk.kind, inv."employeeId" AS "invBy", COALESCE(inv.net, 0) AS net,
-					CASE WHEN bk."bookingType" = 'INTERNAL' THEN bk."createdById" ELSE COALESCE(bk.leader, bk.tech) END AS expected
+					(bk."handoverToId" IS NOT NULL) AS handover, (bk."techDecision" = 'PHONE') AS phone,
+					CASE WHEN bk."bookingType" = 'INTERNAL' THEN bk."createdById"
+						WHEN bk."handoverToId" IS NOT NULL THEN
+							CASE WHEN bk."techCrewRequestedAt" IS NOT NULL AND bk.leader IS NOT NULL THEN bk.leader ELSE bk."handoverToId" END
+						ELSE COALESCE(bk.leader, bk.tech) END AS expected
 				FROM bk LEFT JOIN inv ON inv."bookingId" = bk.id`, from, to)
 			if err != nil {
 				return "", err
@@ -82,12 +90,18 @@ func (a *MatrixAgent) registerRevenueTool() {
 			}
 			var grand float64
 			for _, r := range rows {
+				// المرحّل الي انحل بالتلفون: بلا فاتورة ولا مسؤول فلوس
+				if r.Phone && r.InvBy == nil {
+					continue
+				}
 				role := "ليدر"
 				switch {
 				case r.Type == "INTERNAL":
 					role = "إداري الحجوزات (حجز داخلي)"
 				case r.Kind == "GPS" || r.Kind == "DASHCAM":
 					role = "مسؤول الخدمة (جي بي اس/داش كام)"
+				case r.Handover:
+					role = "تقني (حجز مرحّل)"
 				}
 				var id string
 				switch {
@@ -136,6 +150,9 @@ func (a *MatrixAgent) registerRevenueTool() {
 					name = "موظف غير معروف"
 				}
 				role := g.role
+				if role == "تقني (حجز مرحّل)" && leader[id] {
+					role = "ليدر الكادر (حجز مرحّل)"
+				}
 				if role == "ليدر" && id != "NONE" && !strings.HasPrefix(id, "SERVICE:") && !leader[id] {
 					role = "فني (بلا ليدر)"
 				}

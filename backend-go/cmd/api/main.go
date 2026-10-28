@@ -2431,6 +2431,28 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 		}
 		handler.WriteJSON(w, http.StatusOK, rows)
 	}), requireAuth))
+	// (دازاي 10-28) حجوزاتي المرحّلة لإدارة التقنيين الي بلا فاتورة — للتقني (أو ليدر الكادر)
+	mux.Handle("GET /api/paperwork/handover-bookings", middleware.Chain(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		ids, err := paperworkGuard.HandoverMissing(middleware.EmployeeIDFromContext(r))
+		if err != nil {
+			handler.WriteError(w, http.StatusInternalServerError, "تعذر")
+			return
+		}
+		out := []*model.Booking{}
+		if len(ids) > 0 {
+			m, err := bookingRepo.FindByIDs(ids)
+			if err != nil {
+				handler.WriteError(w, http.StatusInternalServerError, "تعذر")
+				return
+			}
+			for _, id := range ids {
+				if b, ok := m[id]; ok {
+					out = append(out, b)
+				}
+			}
+		}
+		handler.WriteJSON(w, http.StatusOK, out)
+	}), requireAuth))
 	// نفس القائمة بس كحجوزات كاملة — لقائمة الحجوزات بشاشة الفاتورة
 	mux.Handle("GET /api/paperwork/carryover/bookings", middleware.Chain(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		items, err := paperworkGuard.CarryoverList(middleware.EmployeeIDFromContext(r))
@@ -2625,7 +2647,18 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	// حساب تقريبي بدون حفظ لما زبون يستفسر — نفس صلاحية إنشاء الفاتورة (الليدر)
 	// حساب تكلفة التنصيب للتنفيذ: فقرة رئيسية بكل الحسابات وكل الأدوار،
 	// فما بيها قيد غير تسجيل الدخول — هي حاسبة ما تكشف بيانات أحد
-	mux.Handle("POST /api/leader-invoices/estimate", middleware.Chain(http.HandlerFunc(leaderInvoiceHandler.Estimate), requireAuth, requireExecutionCost))
+	// (دازاي 10-28) التقني الي عنده حجز مرحّل بلا فاتورة يحسب كلفته هم — بدون execution_cost
+	requireEstimate := func(next http.Handler) http.Handler {
+		guarded := requireExecutionCost(next)
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if ids, err := paperworkGuard.HandoverMissing(middleware.EmployeeIDFromContext(r)); err == nil && len(ids) > 0 {
+				next.ServeHTTP(w, r)
+				return
+			}
+			guarded.ServeHTTP(w, r)
+		})
+	}
+	mux.Handle("POST /api/leader-invoices/estimate", middleware.Chain(http.HandlerFunc(leaderInvoiceHandler.Estimate), requireAuth, requireEstimate))
 	mux.Handle("POST /api/leader-invoices/camera-cost", middleware.Chain(http.HandlerFunc(leaderInvoiceHandler.CameraCost), requireAuth, requireExecutionCost))
 	// ── صندوق المراقب ──
 	// شغل المراقب: يشوف ويأشّر. requireMonitor = ADMIN أو MONITOR،

@@ -292,6 +292,7 @@ function App() {
           <Route path="quotations/:id/edit" element={<QuotationNew />} />
           <Route path="leader-invoices" element={<LeaderInvoicesListPage />} />
           <Route path="leader-invoices/new" element={<LeaderInvoiceNew />} />
+          <Route path="handover-invoices" element={<LeaderInvoiceNew initialMode="booking" handoverOnly />} />
           <Route path="camera-cost" element={<CameraCostPage />} />
           <Route path="network-cost" element={<NetworkCostPage />} />
           <Route path="monitor-inbox" element={<MonitorInboxPage />} />

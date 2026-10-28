@@ -4685,6 +4685,8 @@ export const api = {
   // (دازاي 10-26) ورق الحجوزات القديمة لليدر السابق
   getCarryover: () => request<CarryoverItem[]>('/paperwork/carryover'),
   getCarryoverBookings: () => request<Booking[]>('/paperwork/carryover/bookings'),
+  // (دازاي 10-28) حجوزاتي المرحّلة لإدارة التقنيين الي بلا فاتورة
+  getHandoverBookings: () => request<Booking[]>('/paperwork/handover-bookings'),
   // (دازاي 10-26) «الصلاحيات والوصول»
   getPermissionCatalog: () => request<AccessGroup[]>('/permissions/catalog'),
   getEmployeeAccess: (id: string) => request<EmployeeAccess>(`/employees/${id}/access`),

@@ -28,6 +28,7 @@ import SettingsPanel from './SettingsPanel'
 // وجهة كل نوع إشعار: ضغطة على الإشعار توديك للشاشة الي تخصه بدل ما
 // تدوّر عليها. نوع مو موجود بالخريطة = الإشعار يتأشر مقروء وبس.
 const notifTargets: Record<string, string> = {
+  handover_invoice: '/handover-invoices',
   leave_request: '/leaves',
   leave_preliminary: '/leaves',
   leave_decision: '/leaves',

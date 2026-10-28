@@ -113,6 +113,13 @@ func (g *PaperworkGuard) IsBookingManager(employeeID, bookingID string) (bool, e
 	if ok, _ := g.CarryoverAllowed(employeeID, bookingID); ok {
 		return true, nil
 	}
+	// (دازاي 10-28) الحجز المرحّل لإدارة التقنيين: التقني يكتب فاتورته، وإذا طلب
+	// كادر فليدر الكادر — مو أي ليدر ومو أي تقني. الي انحل بالتلفون بلا فاتورة.
+	var hv int
+	_ = g.db.Get(&hv, `SELECT count(*) FROM "Booking" b WHERE b.id = $1 AND `+handoverInvoicerSQL+` = $2 AND `+handoverNeedsInvoiceSQL, bookingID, employeeID)
+	if hv > 0 {
+		return true, nil
+	}
 	var count int
 	err := g.db.Get(&count, `
 		SELECT COUNT(*)
@@ -152,6 +159,25 @@ func (g *PaperworkGuard) holdsServicePaperworkPermission(bookingID, employeeID s
 			)
 		)`, bookingID, employeeID)
 	return ok, err
+}
+
+// handoverInvoicerSQL كاتب فاتورة الحجز المرحّل (دازاي 10-28): ليدر الكادر إذا
+// التقني طلب كادر وانعيّن إله ليدر، وإلا التقني نفسه.
+const handoverInvoicerSQL = `(CASE WHEN b."techCrewRequestedAt" IS NOT NULL AND booking_leader_id(b.id) IS NOT NULL
+	THEN booking_leader_id(b.id) ELSE b."handoverToId" END)`
+
+// handoverNeedsInvoiceSQL حجز مرحّل يحتاج فاتورة: مو منحل بالتلفون.
+const handoverNeedsInvoiceSQL = `b."handoverToId" IS NOT NULL AND COALESCE(b."techDecision", '') <> 'PHONE'`
+
+// HandoverMissing حجوزات الموظف المرحّلة المنجزة الي بعدها بلا فاتورة.
+func (g *PaperworkGuard) HandoverMissing(employeeID string) ([]string, error) {
+	ids := []string{}
+	err := g.db.Select(&ids, `SELECT b.id FROM "Booking" b
+		WHERE b.status = 'COMPLETED' AND b."archivedAt" IS NULL AND b."settledLegacyAt" IS NULL
+		  AND `+handoverNeedsInvoiceSQL+` AND `+handoverInvoicerSQL+` = $1
+		  AND NOT EXISTS (SELECT 1 FROM "LeaderInvoice" li WHERE li."bookingId" = b.id)
+		ORDER BY b."completedAt" DESC LIMIT 200`, employeeID)
+	return ids, err
 }
 
 // carryoverMissingSQL حجوزات الموظف المنجزة الي ناقصها فاتورة أو تقرير.
