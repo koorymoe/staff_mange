@@ -1,4 +1,4 @@
-import { readMatrixStream, type MatrixStreamEvent } from './utils/readMatrixStream'
+import { readAIStream, readMatrixStream, type AIStreamEvent, type MatrixStreamEvent } from './utils/readMatrixStream'
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000/api'
 
 export interface AttendanceRecord {
@@ -1275,6 +1275,30 @@ export async function streamMatrixChat(id: string, text: string, image: string |
   }
   if (!res.body || !res.headers.get('Content-Type')?.includes('text/event-stream')) throw new Error('الخادم ما رجّع بث محادثة صالح')
   await readMatrixStream(res.body, emit, signal)
+}
+
+export async function streamSecretaryMessage(input: { text?: string; audio?: Blob; conversationId?: string }, emit: (event: AIStreamEvent<SecretaryReply>) => void, signal: AbortSignal) {
+  const token = currentToken()
+  let body: FormData | string
+  if (input.audio) {
+    body = new FormData()
+    body.append('file', input.audio, 'voice')
+    if (input.conversationId) body.append('conversationId', input.conversationId)
+  } else body = JSON.stringify({ text: input.text, conversationId: input.conversationId })
+  const res = await fetch(`${API_URL}/secretary/message?stream=1`, {
+    method: 'POST', signal, body,
+    headers: { Accept: 'text/event-stream', ...(!input.audio ? { 'Content-Type': 'application/json' } : {}), ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+  })
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({}))
+    if (res.status === 401) handleSessionExpired(error.error)
+    throw new ApiError(error.error || describeHttpStatus(res.status), res.status)
+  }
+  if (!res.body || !res.headers.get('Content-Type')?.includes('text/event-stream')) throw new Error('الخادم ما رجّع بث ايريس صالح')
+  await readAIStream<SecretaryReply>(res.body, emit, signal, (message) => {
+    const value = message as SecretaryReply | null
+    return Boolean(value?.messageId && typeof value.reply === 'string' && Array.isArray(value.cards) && typeof value.conversationId === 'string')
+  })
 }
 
 // ═══ ليش نترجم رقم الحالة ═══

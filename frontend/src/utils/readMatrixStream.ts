@@ -1,15 +1,17 @@
 import type { MatrixChatMessage } from '../api'
 
-export type MatrixStreamEvent =
+export type AIStreamEvent<T> =
   | { type: 'thinking' | 'text'; text: string }
   | { type: 'tool'; name: string }
-  | { type: 'done'; message: MatrixChatMessage }
+  | { type: 'done'; message: T }
+export type MatrixStreamEvent = AIStreamEvent<MatrixChatMessage>
 
 // SSE boundaries can split across byte chunks, including inside Arabic UTF-8.
-export async function readMatrixStream(
+export async function readAIStream<T>(
   body: ReadableStream<Uint8Array>,
-  emit: (event: MatrixStreamEvent) => void,
+  emit: (event: AIStreamEvent<T>) => void,
   signal: AbortSignal,
+  validMessage: (message: unknown) => boolean,
 ) {
   const reader = body.getReader()
   const decoder = new TextDecoder()
@@ -25,11 +27,7 @@ export async function readMatrixStream(
     const event = JSON.parse(data)
     if (event.type === 'error') throw new Error(event.text || 'تعذر إكمال الرد')
     if (event.type === 'done') {
-      if (
-        !event.message?.id ||
-        event.message.role !== 'ASSISTANT' ||
-        typeof event.message.text !== 'string'
-      )
+      if (!validMessage(event.message))
         throw new Error('وصل جواب غير مكتمل من الخادم')
       done = true
       emit(event)
@@ -62,4 +60,17 @@ export async function readMatrixStream(
     await reader.cancel().catch(() => {})
     reader.releaseLock()
   }
+}
+
+export function readMatrixStream(
+  body: ReadableStream<Uint8Array>,
+  emit: (event: MatrixStreamEvent) => void,
+  signal: AbortSignal,
+) {
+  return readAIStream(body, emit, signal, (message) => {
+    const value = message as MatrixChatMessage | null
+    return Boolean(
+      value?.id && value.role === 'ASSISTANT' && typeof value.text === 'string',
+    )
+  })
 }
