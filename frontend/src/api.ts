@@ -1,3 +1,4 @@
+import { readMatrixStream, type MatrixStreamEvent } from './utils/readMatrixStream'
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000/api'
 
 export interface AttendanceRecord {
@@ -1259,6 +1260,22 @@ let refreshTimer = 0
 // apiRequest نفس طريقة الاتصال الموحدة (الجلسة المنتهية، رسائل الأخطاء بالعراقي،
 // تحديث عين ماتركس) — للشاشات الي چانت عندها طريقة خاصة بيها.
 export const apiRequest = request
+
+export async function streamMatrixChat(id: string, text: string, image: string | undefined, emit: (event: MatrixStreamEvent) => void, signal: AbortSignal) {
+  const token = currentToken()
+  const res = await fetch(`${API_URL}/matrix/chats/${encodeURIComponent(id)}/stream`, {
+    method: 'POST', signal,
+    headers: { 'Content-Type': 'application/json', Accept: 'text/event-stream', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+    body: JSON.stringify({ text, image }),
+  })
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}))
+    if (res.status === 401) handleSessionExpired(body.error)
+    throw new ApiError(body.error || describeHttpStatus(res.status), res.status)
+  }
+  if (!res.body || !res.headers.get('Content-Type')?.includes('text/event-stream')) throw new Error('الخادم ما رجّع بث محادثة صالح')
+  await readMatrixStream(res.body, emit, signal)
+}
 
 // ═══ ليش نترجم رقم الحالة ═══
 //
@@ -3940,7 +3957,7 @@ export const api = {
     request<StageLimitRow[]>('/projects/stage-limits', { method: 'PUT', body: JSON.stringify({ stage, days }) }),
   getProcurementWatch: () => request<ProcurementWatch>('/monitor/procurement-watch'),
   getMatrixChats: () => request<{ chats: MatrixChatRow[]; enabled: boolean }>('/matrix/chats'),
-  createMatrixChat: () => request<MatrixChatRow>('/matrix/chats', { method: 'POST' }),
+  createMatrixChat: (signal?: AbortSignal) => request<MatrixChatRow>('/matrix/chats', { method: 'POST', signal }),
   getMatrixChat: (id: string) => request<MatrixChatMessage[]>(`/matrix/chats/${id}`),
   deleteMatrixChat: (id: string) => request<{ ok: boolean }>(`/matrix/chats/${id}`, { method: 'DELETE' }),
   sendMatrixChat: (id: string, text: string, image?: string) =>

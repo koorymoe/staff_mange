@@ -179,10 +179,9 @@ const assert = require('node:assert/strict');
           ),
         }));
       else if (path === '/api/ai/agents') {
-        assert.equal(
-          actor.actualRole,
-          'OWNER',
-          'admin must not call owner endpoint',
+        assert(
+          actor.actualRole === 'OWNER' || actor.role === 'ADMIN',
+          'agent names are readable by admins on avg db1e5066',
         );
         data = agents;
       } else if (path === '/api/ai/agents/QUALITY') {
@@ -487,7 +486,7 @@ const assert = require('node:assert/strict');
     (await contrast()).every((ratio) => ratio >= 4.5),
     'dark body and muted text contrast',
   );
-  // No owner calls from an admin, and locked targets/permissions stay noninteractive.
+  // Admin may read agent names on current avg, never perform owner-only writes.
   const admin = await mount({ ...owner, actualRole: 'ADMIN' }),
     a = admin.page;
   await a.getByLabel('اختر الموظف').selectOption('a');
@@ -505,7 +504,11 @@ const assert = require('node:assert/strict');
       .getByRole('switch', { name: 'عرض الحسابات', exact: true })
       .isDisabled(),
   );
-  assert(!admin.calls.some((c) => c.path.startsWith('/api/ai/')));
+  assert(
+    !admin.calls.some(
+      (c) => c.path.startsWith('/api/ai/') && c.method !== 'GET',
+    ),
+  );
   const race = await mount();
   race.slow();
   await race.page.getByLabel('اختر الموظف').selectOption('a');
@@ -549,7 +552,7 @@ const assert = require('node:assert/strict');
   assert.equal(denied.calls.length, 0);
   assert.deepEqual(errors, []);
   console.log(
-    'PASS: catalog bundles/partial toggles, draft review, delta+version save, unsaved switch confirmation, 409 freeze/refresh, temporary RFC3339 Baghdad exception, metadata removal, owner-only rename, Iris lock, drift preview/confirmation/NO_TEMPLATE, admin locks/no owner calls, failed fetch no edit, late employee race, unauthorized zero API calls, mobile/desktop/dark. Synthetic APIs.',
+    'PASS: catalog bundles/partial toggles, draft review, delta+version save, unsaved switch confirmation, 409 freeze/refresh, temporary RFC3339 Baghdad exception, metadata removal, owner-only rename, Iris lock, drift preview/confirmation/NO_TEMPLATE, admin locks/no owner writes, failed fetch no edit, late employee race, unauthorized zero API calls, mobile/desktop/dark. Synthetic APIs.',
   );
   await browser.close();
 })().catch((e) => {
