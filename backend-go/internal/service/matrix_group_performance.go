@@ -16,22 +16,22 @@ import (
 // ترتيب حسب الأسوأ. ماكو غرامات ولا نقاط — أرقام وروابط بس.
 
 type GroupMember struct {
-	ID        string   `json:"id"`
-	Name      string   `json:"name"`
-	CheckIn   string   `json:"checkIn,omitempty"`
-	Late      int      `json:"late"` // دقائق
-	Absent    bool     `json:"absent"`
+	ID      string `json:"id"`
+	Name    string `json:"name"`
+	CheckIn string `json:"checkIn,omitempty"`
+	Late    int    `json:"late"` // دقائق
+	Absent  bool   `json:"absent"`
 	// (ع) 10-13: حضر بوكت بعيد عن شفته (شفت متغيّر بموافقة) — مو تأخير
-	ShiftChanged bool `json:"shiftChanged,omitempty"`
-	OnLeave      bool `json:"onLeave,omitempty"`
-	Jobs      int      `json:"jobs"`
-	Completed int      `json:"completed"`
-	Partial   int      `json:"partial"`
-	Open      int      `json:"open"`
-	Unstarted int      `json:"unstarted"` // من المفتوح: ما بدا بيها أحد — ما تنحسب عليه
-	Speed     *float64 `json:"speed"`     // الفعلي ÷ المتوقع (١ = طبيعي)
-	PrevSpeed *float64 `json:"prevSpeed"` // نفسه للشهر الي قبله
-	Score     int      `json:"score"`     // للترتيب بس — أعلى = يحتاج انتباه أكثر
+	ShiftChanged bool     `json:"shiftChanged,omitempty"`
+	OnLeave      bool     `json:"onLeave,omitempty"`
+	Jobs         int      `json:"jobs"`
+	Completed    int      `json:"completed"`
+	Partial      int      `json:"partial"`
+	Open         int      `json:"open"`
+	Unstarted    int      `json:"unstarted"` // من المفتوح: ما بدا بيها أحد — ما تنحسب عليه
+	Speed        *float64 `json:"speed"`     // الفعلي ÷ المتوقع (١ = طبيعي)
+	PrevSpeed    *float64 `json:"prevSpeed"` // نفسه للشهر الي قبله
+	Score        int      `json:"score"`     // للترتيب بس — أعلى = يحتاج انتباه أكثر
 	// NoSchedule = ما عنده جدول دوام مسجّل، فما نحكم على حضوره وتأخيره.
 	NoSchedule bool `json:"noSchedule,omitempty"`
 	// غير الميدانيين: شغل دورهم بدل الحجوزات (نفس ترتيب Columns).

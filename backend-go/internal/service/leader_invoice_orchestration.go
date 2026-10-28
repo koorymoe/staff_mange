@@ -1072,4 +1072,3 @@ func approveNote(number string, internal bool) string {
 	}
 	return " • رقم الفاتورة المحاسبية: " + number
 }
-

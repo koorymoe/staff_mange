@@ -402,7 +402,7 @@ func (a *MatrixAgent) ChatStream(feature, system string, history []AgentTurn, me
 			}
 		}
 		if len(results) == 0 || resp.StopReason != anthropic.StopReasonToolUse {
-			run.Answer = mask.Show(strings.TrimSpace(text.String()))
+			run.Answer = stripMarkdown(mask.Show(strings.TrimSpace(text.String())))
 			return run, nil
 		}
 		msgs = append(msgs, anthropic.NewUserMessage(results...))
@@ -445,4 +445,17 @@ func (a *MatrixAgent) Remember(feature, prev string, turns []AgentTurn) (string,
 		return "", ErrAgentOff
 	}
 	return Remember(context.Background(), a.llm, a.model, feature, prev, turns)
+}
+
+// stripMarkdown يشيل ** و## الي ينساها النموذج — الشاشة تعرض نص خام.
+func stripMarkdown(s string) string {
+	s = strings.ReplaceAll(s, "**", "")
+	lines := strings.Split(s, "\n")
+	for i, l := range lines {
+		lines[i] = strings.TrimLeft(l, "#")
+		if len(lines[i]) != len(l) {
+			lines[i] = strings.TrimSpace(lines[i])
+		}
+	}
+	return strings.Join(lines, "\n")
 }

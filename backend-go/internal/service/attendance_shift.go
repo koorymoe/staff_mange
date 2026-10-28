@@ -12,7 +12,6 @@ import (
 
 const autoCheckoutGrace = 3 * time.Hour
 
-
 func parseClock(s *string) (int, int, bool) {
 	if s == nil {
 		return 0, 0, false

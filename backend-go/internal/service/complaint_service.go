@@ -18,7 +18,9 @@ type ComplaintService struct {
 }
 
 // SetNewNotifier (ع) 10-15: كل شكوى جديدة → إشعار لمهندس الجودة المكلّف + المراقب والمدير.
-func (s *ComplaintService) SetNewNotifier(f func(assigneeID *string, message string)) { s.notifyNew = f }
+func (s *ComplaintService) SetNewNotifier(f func(assigneeID *string, message string)) {
+	s.notifyNew = f
+}
 
 // SetVipNotifier يربط إشعار شكاوى الشخصيات المهمة.
 func (s *ComplaintService) SetVipNotifier(f func(string)) { s.notifyVip = f }

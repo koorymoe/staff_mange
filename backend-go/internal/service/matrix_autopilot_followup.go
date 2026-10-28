@@ -913,7 +913,9 @@ func (s *MatrixAutopilotService) paymentsUnverified(today string, dayStart time.
 	if s.act(model.AiAction{Kind: model.AiActionPaymentsUnverified, EntityType: "PAYMENTS", EntityID: "all", Period: today,
 		Summary: fmt.Sprintf("ذكّر المحاسب: %d دفعة مشاريع ما تأكدت", n),
 		Details: why(map[string]any{"count": n, "sum": sum, "top": top})}, dayStart,
-		func() error { return s.notif.CreateForRolesOrPermission([]string{"FINANCE"}, "finance_audit", "AI_AUTOPILOT", msg) }) {
+		func() error {
+			return s.notif.CreateForRolesOrPermission([]string{"FINANCE"}, "finance_audit", "AI_AUTOPILOT", msg)
+		}) {
 		return 1, nil
 	}
 	return 0, nil

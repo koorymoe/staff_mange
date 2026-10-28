@@ -93,13 +93,17 @@ type discoveryFetcher struct {
 func (s *AiDiscoveryService) RunGrid() ([]DiscoveryCell, error) {
 	fetchers := []discoveryFetcher{
 		{
-			key:        model.AiDiscoveryLateStartRate,
-			byAxis:     func(axis string) ([]repository.AxisCell, error) { return s.repo.SignalRateByBookingAxis(model.AiSignalLateStart, axis) },
+			key: model.AiDiscoveryLateStartRate,
+			byAxis: func(axis string) ([]repository.AxisCell, error) {
+				return s.repo.SignalRateByBookingAxis(model.AiSignalLateStart, axis)
+			},
 			byEmployee: func() ([]repository.AxisCell, error) { return s.repo.SignalRateByEmployee(model.AiSignalLateStart) },
 		},
 		{
-			key:        model.AiDiscoveryWorkStopRate,
-			byAxis:     func(axis string) ([]repository.AxisCell, error) { return s.repo.SignalRateByBookingAxis(model.AiSignalWorkStopped, axis) },
+			key: model.AiDiscoveryWorkStopRate,
+			byAxis: func(axis string) ([]repository.AxisCell, error) {
+				return s.repo.SignalRateByBookingAxis(model.AiSignalWorkStopped, axis)
+			},
 			byEmployee: func() ([]repository.AxisCell, error) { return s.repo.SignalRateByEmployee(model.AiSignalWorkStopped) },
 		},
 		{key: model.AiDiscoveryPartialRate, byAxis: s.repo.PartialRateByBookingAxis, byEmployee: s.repo.PartialRateByEmployee},

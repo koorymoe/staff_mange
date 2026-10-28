@@ -103,7 +103,9 @@ var verbAr = map[string]string{
 	"check-out": "سجّل انصراف", "materials-ready": "جهّز مواد", "close": "سكّر", "resolve": "حلّ",
 }
 
-type EmployeeActivityService struct{ repo *repository.EmployeeActivityRepository }
+type EmployeeActivityService struct {
+	repo *repository.EmployeeActivityRepository
+}
 
 func NewEmployeeActivityService(r *repository.EmployeeActivityRepository) *EmployeeActivityService {
 	return &EmployeeActivityService{repo: r}

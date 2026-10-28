@@ -35,6 +35,7 @@ func (a *MatrixAgent) RegisterReadTools(d AgentDeps) {
 	a.registerEconomicsTools()
 	a.registerInspectTools()
 	a.registerDataTools()
+	a.registerRevenueTool()
 	monthProp := map[string]any{"month": map[string]any{"type": "string", "description": "الشهر بصيغة YYYY-MM (فاضي = هالشهر)"}}
 
 	a.AddTool(agentTool{Name: "money_month", Desc: "أرقام شهر كامل: الحجوزات (انفتحت/انجزت/انلغت)، المشاريع الجديدة، الأعمال الداخلية، الزبائن الجدد، الشكاوى، فلوس الحجوزات، فلوس المشاريع، المصاريف. استعملها للفلوس والمقارنة بين الأشهر.",
