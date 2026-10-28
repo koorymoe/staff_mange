@@ -31,13 +31,13 @@
 
 ## ٢. ايريس — نفس الشي بعد دمج الدماغين (لوفي يبلّغ بالمسار)
 
-## ٣. السقف (قريباً)
+## ٣. السقف (جاهز بالخادم)
 `GET /api/ai/status` يرجّع فوق الموجود:
 `brains: {internal: {model, chatModel, spentTodayUSD, dailyLimitUSD}, external: {...}}`
 و`PUT /api/ai/budgets/{internal|external}` بجسم `{dailyUSD}` — المالك بس.
 **الواجهة:** بصفحة الوكلاء بطاقتين للدماغين: صرف اليوم/السقف بشريط، وخانة تعديل السقف للمالك، والموديل.
 
-## ٤. اقتراحات الذكاء (قريباً)
+## ٤. اقتراحات الذكاء (جاهز بالخادم)
 `GET /api/ai/suggestions?status=` و`POST /api/ai/suggestions/{id}/decide` بجسم `{status: ACCEPTED|REJECTED|DONE}` — OWNER/ADMIN.
 `AiSuggestion {id, agent, title, details, needsCode, status, createdAt}`.
 **الواجهة:** صفحة «🧠 اقتراحات الذكاء» من مكتب المدير — بطاقات، علامة «يحتاج برمجة»، أزرار، فلتر (الكل / يحتاج برمجة / الجديد).

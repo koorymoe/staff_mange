@@ -91,9 +91,57 @@ func AIBudgetState(agent string) (spent, limit float64) {
 func NewAIClient(agent, apiKey string) anthropic.Client {
 	return anthropic.NewClient(option.WithAPIKey(apiKey),
 		option.WithMiddleware(func(req *http.Request, next option.MiddlewareNext) (*http.Response, error) {
-			if spent, limit := AIBudgetState(agent); limit > 0 && spent >= limit {
+			if aiOverBudget(agent) {
 				return nil, ErrAIBudget
 			}
 			return next(req)
 		}))
+}
+
+// ═══ 🧠 سقف لكل «دماغ» (دازاي 10-28) ═══
+// الداخلي (ماتركس + ايريس) والخارجي (الجودة + الحجوزات) — كل دماغ مفتاح واحد وسقف
+// واحد يتشاركه وكلاؤه، فما يخلص واحد ورصيد الثاني نايم. إذا سقف الدماغ محطوط
+// يغلب على سقف الوكيل.
+const (
+	AIBrainInternal = "internal"
+	AIBrainExternal = "external"
+)
+
+var aiBrainUSD = map[string]float64{}
+
+// AIBrainOf دماغ الوكيل.
+func AIBrainOf(agent string) string {
+	if agent == WaAgentQuality || agent == WaAgentBooking {
+		return AIBrainExternal
+	}
+	return AIBrainInternal
+}
+
+// SetAIBrainBudget سقف الدماغ اليومي بالدولار (٠ = يرجع لسقوف الوكلاء).
+func SetAIBrainBudget(brain string, usd float64) {
+	aiBudgetMu.Lock()
+	aiBrainUSD[brain] = usd
+	aiBudgetMu.Unlock()
+}
+
+// AIBrainState صرف اليوم وسقف الدماغ.
+func AIBrainState(brain string) (spent, limit float64) {
+	aiBudgetMu.Lock()
+	defer aiBudgetMu.Unlock()
+	aiBudgetRollLocked()
+	for agent, v := range aiBudgetSpent {
+		if AIBrainOf(agent) == brain {
+			spent += v
+		}
+	}
+	return spent, aiBrainUSD[brain]
+}
+
+// aiOverBudget وصل الوكيل (أو دماغه) حده؟
+func aiOverBudget(agent string) bool {
+	if spent, limit := AIBrainState(AIBrainOf(agent)); limit > 0 {
+		return spent >= limit
+	}
+	spent, limit := AIBudgetState(agent)
+	return limit > 0 && spent >= limit
 }

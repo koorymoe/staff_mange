@@ -42,6 +42,8 @@ type Config struct {
 	AIKeyBooking   string // محجوز — وكيل الحجوزات عالواتساب (ينتظر قرار الخصوصية)
 	// موديل وسقف السكرتير — منفصلات عن ماتركس.
 	AIModelChat         string
+	AIInternalDailyUSD  float64
+	AIExternalDailyUSD  float64
 	AIModelSecretary    string
 	AISecretaryDailyCap int
 	AIIrisWebSearch     bool   // بحث الويب لايريس (افتراضياً شغّال)
@@ -123,7 +125,10 @@ func load() *Config {
 		AIKeyBooking:     getEnv("AI_KEY_BOOKING", ""),
 		AIModelSecretary: getEnv("AI_MODEL_SECRETARY", ""),
 		// موديل المحادثة المباشرة ويا المالك (ماتركس شات) — فارغ = AI_MODEL
-		AIModelChat:         getEnv("AI_MODEL_CHAT", ""),
+		AIModelChat: getEnv("AI_MODEL_CHAT", ""),
+		// سقف الدماغين (دازاي 10-28) — الافتراضي، والمالك يغيّره من صفحة الوكلاء
+		AIInternalDailyUSD:  getEnvFloat("AI_INTERNAL_DAILY_USD", 2),
+		AIExternalDailyUSD:  getEnvFloat("AI_EXTERNAL_DAILY_USD", 1),
 		AISecretaryDailyCap: getEnvInt("AI_SECRETARY_DAILY_CAP", 300),
 		AIIrisWebSearch:     getEnv("AI_IRIS_WEB_SEARCH", "true") != "false",
 		AIIrisVoice:         getEnv("AI_IRIS_VOICE", "gemini"),

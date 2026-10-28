@@ -1061,5 +1061,31 @@ func matrixChatMigrations() []Migration {
 			ALTER TABLE "AiAgentName" DROP CONSTRAINT IF EXISTS "AiAgentName_agent_check";
 			ALTER TABLE "AiAgentName" ADD CONSTRAINT "AiAgentName_agent_check" CHECK (agent IN ('QUALITY', 'BOOKING', 'MATRIX', 'IRIS'));
 		`,
+	}, {
+		Version: "0401_ai_brain_budget",
+		SQL: `
+			CREATE TABLE IF NOT EXISTS "AiBrainBudget" (
+				brain TEXT PRIMARY KEY CHECK (brain IN ('internal', 'external')),
+				"dailyUSD" DOUBLE PRECISION NOT NULL CHECK ("dailyUSD" > 0),
+				"updatedById" TEXT,
+				"updatedAt" TIMESTAMPTZ NOT NULL DEFAULT now()
+			);
+		`,
+	}, {
+		Version: "0402_ai_suggestion",
+		SQL: `
+			CREATE TABLE IF NOT EXISTS "AiSuggestion" (
+				id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
+				agent TEXT NOT NULL,
+				title TEXT NOT NULL,
+				details TEXT NOT NULL DEFAULT '',
+				"needsCode" BOOLEAN NOT NULL DEFAULT false,
+				status TEXT NOT NULL DEFAULT 'NEW' CHECK (status IN ('NEW', 'ACCEPTED', 'REJECTED', 'DONE')),
+				"decidedById" TEXT,
+				"decidedAt" TIMESTAMPTZ,
+				"createdAt" TIMESTAMPTZ NOT NULL DEFAULT now()
+			);
+			CREATE INDEX IF NOT EXISTS "AiSuggestion_status_idx" ON "AiSuggestion" (status, "createdAt" DESC);
+		`,
 	}}
 }

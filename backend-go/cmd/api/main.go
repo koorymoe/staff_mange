@@ -1175,12 +1175,19 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 			"quality":   map[string]any{"on": cfg.AIKeyQuality != "", "ownKey": cfg.AIKeyQuality != cfg.AnthropicAPIKey, "built": true, "model": cfg.AIModel, "spentTodayUSD": qSpent, "dailyLimitUSD": qLimit},
 			"booking":   map[string]any{"on": cfg.AIKeyBooking != "", "ownKey": cfg.AIKeyBooking != cfg.AnthropicAPIKey, "built": true, "model": cfg.AIModel, "spentTodayUSD": bSpent, "dailyLimitUSD": bLimit},
 			"whatsapp":  map[string]any{"on": cfg.WaToken != "" && cfg.WaPhoneID != "" && cfg.WaAppSecret != ""},
+			"brains":    aiBrainsStatus(cfg.AIModel, cfg.AIModelChat),
 			"gemini":    map[string]any{"on": cfg.GeminiAPIKey != "", "dailyCap": cfg.GeminiDailyCap},
 			"whisper":   map[string]any{"on": cfg.WhisperURL != ""},
 		})
 	}), requireAuth, middleware.RequireOwner()))
 	aiAgentNames := handler.NewAiAgentNameHandler(db)
 	mux.Handle("GET /api/ai/agents", middleware.Chain(http.HandlerFunc(aiAgentNames.List), requireAuth, requireAdmin)) // قراءة للأدمن، التعديل للمالك
+	// 🧠 الدماغين (دازاي 10-28) — docs/ai-brains-contract.md
+	aiBrains := handler.NewAiBrainHandler(db)
+	aiBrains.LoadBudgets(map[string]float64{service.AIBrainInternal: cfg.AIInternalDailyUSD, service.AIBrainExternal: cfg.AIExternalDailyUSD})
+	mux.Handle("PUT /api/ai/budgets/{brain}", middleware.Chain(http.HandlerFunc(aiBrains.SetBudget), requireAuth, middleware.RequireOwner()))
+	mux.Handle("GET /api/ai/suggestions", middleware.Chain(http.HandlerFunc(aiBrains.Suggestions), requireAuth, requireAdmin))
+	mux.Handle("POST /api/ai/suggestions/{id}/decide", middleware.Chain(http.HandlerFunc(aiBrains.Decide), requireAuth, requireAdmin))
 	mux.Handle("GET /api/ai/agent-names", middleware.Chain(http.HandlerFunc(aiAgentNames.Names), requireAuth))
 	mux.Handle("PUT /api/ai/agents/{agent}", middleware.Chain(http.HandlerFunc(aiAgentNames.Rename), requireAuth, middleware.RequireOwner()))
 	mux.Handle("POST /api/auth/stealth", middleware.Chain(http.HandlerFunc(authHandler.Stealth), requireAuth, middleware.RequireOwner()))
@@ -2933,6 +2940,10 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 		// 💬 دردشة ماتركس — المالك والمدير
 		chatHandler := handler.NewMatrixChatHandler(db, agent)
 		chatHandler.SetChatModel(cfg.AIModelChat)
+		// 🧠 اقتراحات الذكاء (دازاي 10-28): ماتركس يقترح تطوير نفسه
+		agent.RegisterSuggestTool(db, "MATRIX", func(msg string) {
+			_ = notificationRepo.CreateForRole("OWNER", "AI_SUGGESTION", msg)
+		})
 		mux.Handle("GET /api/matrix/chats", middleware.Chain(http.HandlerFunc(chatHandler.List), requireAuth, requireAdmin))
 		mux.Handle("POST /api/matrix/chats", middleware.Chain(http.HandlerFunc(chatHandler.Create), requireAuth, requireAdmin))
 		mux.Handle("GET /api/matrix/chats/{id}", middleware.Chain(http.HandlerFunc(chatHandler.Messages), requireAuth, requireAdmin))
@@ -3058,4 +3069,21 @@ func buildFileStore(cfg *config.Config) storage.Store {
 		return storage.NewUnavailableStore(err.Error())
 	}
 	return s
+}
+
+// aiBrainsStatus صرف وسقف الدماغين لصفحة الوكلاء (دازاي 10-28).
+func aiBrainsStatus(model, chatModel string) map[string]any {
+	if chatModel == "" {
+		chatModel = model
+	}
+	out := map[string]any{}
+	for _, b := range []string{service.AIBrainInternal, service.AIBrainExternal} {
+		spent, limit := service.AIBrainState(b)
+		m := map[string]any{"model": model, "spentTodayUSD": spent, "dailyLimitUSD": limit}
+		if b == service.AIBrainInternal {
+			m["chatModel"] = chatModel
+		}
+		out[b] = m
+	}
+	return out
 }
