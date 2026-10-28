@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { apiRequest } from '../api'
 import { useSession } from '../session'
 import { startAgentRebrand } from '../utils/agentBrand'
+import AiBrainCards from '../components/AiBrainCards'
 
 type Agent = {
   agent: 'MATRIX' | 'IRIS' | 'QUALITY' | 'BOOKING'
@@ -118,6 +119,7 @@ function OwnerAgents() {
           أسماء الوكلاء وحالتهم وحدود الاستخدام. المفاتيح السرية ما تنعرض هنا.
         </p>
       </header>
+      <AiBrainCards owner onChanged={() => setReload((n) => n + 1)} />
       {error && (
         <p role="alert" className="rounded-xl bg-red-50 p-3 text-red-700">
           {error}

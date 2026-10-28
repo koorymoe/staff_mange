@@ -81,6 +81,7 @@ const MyInventory = lazy(() => import('./pages/MyInventory'))
 const DeviceMaintenancePage = lazy(() => import('./pages/DeviceMaintenancePage'))
 const TeamInventoryCheckPage = lazy(() => import('./pages/TeamInventoryCheckPage'))
 const PermissionsPage = lazy(() => import('./pages/PermissionsPage'))
+const AiSuggestionsPage = lazy(() => import('./pages/AiSuggestionsPage'))
 const DepartmentsPage = lazy(() => import('./pages/DepartmentsPage'))
 const DesignGalleryPage = lazy(() => import('./pages/DesignGalleryPage'))
 const QuotationsPage = lazy(() => import('./pages/QuotationsPage'))
@@ -213,6 +214,7 @@ function App() {
           {/* السكرتير تطبيق مستقل بلا القائمة؛ Layout يمرّر Outlet وحده بهذا المسار. */}
           <Route path="secretary" element={<SecretaryPage />} />
           <Route path="ai-agents" element={<AiAgentsPage />} />
+          <Route path="ai-suggestions" element={<RequireAdmin><AiSuggestionsPage /></RequireAdmin>} />
           <Route path="whatsapp-conversations" element={<WhatsAppPage />} />
           <Route path="whatsapp-sandbox" element={<WhatsAppSandboxPage />} />
           <Route path="coordinator" element={<Coordinator />} />

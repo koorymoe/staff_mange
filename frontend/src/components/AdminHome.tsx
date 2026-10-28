@@ -609,6 +609,7 @@ export default function AdminHome({ name }: { name?: string }) {
           {tab('matrix', '👁️ ماتركس')}
           {tab('chat', '💬 دردشة ماتركس')}
           {tab('missions', '🎯 مهام ماتركس')}
+          <Link to="/ai-suggestions" className="rounded-xl bg-white px-4 py-2 text-sm font-extrabold text-slate-600 ring-1 ring-slate-200">🧠 اقتراحات الذكاء</Link>
         </div>
       </div>
       {board === 'desk' ? (
@@ -628,6 +629,12 @@ export default function AdminHome({ name }: { name?: string }) {
               <p className="mt-4 text-sm font-bold text-brand-600 group-hover:underline">افتح ←</p>
             </button>
           ))}
+          <Link to="/ai-suggestions" className="rounded-3xl border border-slate-200 bg-white p-6 text-right shadow-sm">
+            <span className="mb-3 grid h-14 w-14 place-items-center rounded-2xl bg-slate-100 text-3xl">🧠</span>
+            <h3 className="text-lg font-extrabold text-slate-800">اقتراحات الذكاء</h3>
+            <p className="mt-2 text-sm text-slate-500">راجع أفكار الوكلاء، واللي يحتاج برمجة، وسجّل قرارك.</p>
+            <p className="mt-4 text-sm font-bold text-brand-600">افتح ←</p>
+          </Link>
         </div>
       ) : board === 'follow' ? <FollowBoard /> : board === 'actions' ? <ActionsBoard /> : board === 'chat' ? <MatrixChat /> : board === 'missions' ? <MatrixMissions /> : <MatrixCommandCenter />}
     </div>

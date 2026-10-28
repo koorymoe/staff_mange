@@ -1,0 +1,28 @@
+.matrix-thinking {
+  margin-bottom: 10px;
+  background: var(--sf-sunken);
+  border: 1px solid var(--bd-line);
+  border-radius: 10px;
+  color: var(--t-muted);
+  text-align: left;
+  overflow: hidden;
+}
+.matrix-thinking button {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 9px 11px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--t-body);
+  cursor: pointer;
+}
+.matrix-thinking pre {
+  padding: 0 11px 11px;
+  max-height: 220px;
+  overflow-y: auto;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-size: 11px;
+  line-height: 1.7;
+}

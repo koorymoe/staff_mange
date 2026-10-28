@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import {
   api,
   apiRequest,
+  streamSecretaryMessage,
   type SecretaryChat,
   type SecretaryConversation,
   type SecretaryProposal,
@@ -13,6 +14,15 @@ import {
 import { useSession } from '../session'
 import './SecretaryPage.css'
 import { irisHonorific } from '../irisIdentity'
+type IrisTrace = {
+  text: string
+  tools: number
+  seconds: number
+  phase: 'live' | 'done' | 'error' | 'stopped'
+  open: boolean
+}
+type IrisChat = SecretaryChat & { trace?: IrisTrace }
+const streamClock = () => performance.now()
 
 type Reminder = {
   id: string
@@ -120,9 +130,13 @@ function Secretary() {
   const { employee } = useSession()
   const honorific = irisHonorific(employee?.certificate)
   const [today, setToday] = useState<SecretaryToday | null>(null)
-  const [chats, setChats] = useState<SecretaryChat[]>([])
+  const [chats, setChats] = useState<IrisChat[]>([])
+  const [streaming, setStreaming] = useState(false)
+  const [retryAudio, setRetryAudio] = useState<Blob | null>(null)
   const storageKey = `iris-conversation:${employee?.id}`
-  const [conversations, setConversations] = useState<SecretaryConversation[]>([])
+  const [conversations, setConversations] = useState<SecretaryConversation[]>(
+    [],
+  )
   const [conversationId, setConversationId] = useState<string | null>(null)
   const [conversationsReady, setConversationsReady] = useState(false)
   const [conversationListError, setConversationListError] = useState('')
@@ -132,7 +146,10 @@ function Secretary() {
   const [conversationReload, setConversationReload] = useState(0)
   const [conversationBusy, setConversationBusy] = useState(false)
   const [conversationMenu, setConversationMenu] = useState<string | null>(null)
-  const [conversationEdit, setConversationEdit] = useState<{ item: SecretaryConversation; deleting: boolean } | null>(null)
+  const [conversationEdit, setConversationEdit] = useState<{
+    item: SecretaryConversation
+    deleting: boolean
+  } | null>(null)
   const [conversationTitle, setConversationTitle] = useState('')
   const initializedConversations = useRef(false)
   const [reminders, setReminders] = useState<Reminders | null>(null)
@@ -177,6 +194,9 @@ function Secretary() {
   const cancelled = useRef(false)
   const mounted = useRef(true)
   const end = useRef<HTMLDivElement>(null)
+  const streamController = useRef<AbortController | null>(null)
+  const streamStarted = useRef(0)
+  const skipHistory = useRef<string | null>(null)
   const viewportRoot = useRef<HTMLElement>(null)
 
   useEffect(() => {
@@ -184,10 +204,18 @@ function Secretary() {
     const update = () => {
       const root = viewportRoot.current
       if (!root) return
-      root.style.setProperty('--iris-viewport-height', `${viewport?.height ?? window.innerHeight}px`)
-      root.style.setProperty('--iris-viewport-top', `${viewport?.offsetTop ?? 0}px`)
-      const keyboard = document.activeElement?.matches('textarea, input') &&
-        (viewport?.height ?? window.innerHeight) < document.documentElement.clientHeight - 120
+      root.style.setProperty(
+        '--iris-viewport-height',
+        `${viewport?.height ?? window.innerHeight}px`,
+      )
+      root.style.setProperty(
+        '--iris-viewport-top',
+        `${viewport?.offsetTop ?? 0}px`,
+      )
+      const keyboard =
+        document.activeElement?.matches('textarea, input') &&
+        (viewport?.height ?? window.innerHeight) <
+          document.documentElement.clientHeight - 120
       root.classList.toggle('iris-keyboard-open', Boolean(keyboard))
     }
     update()
@@ -255,6 +283,7 @@ function Secretary() {
     mounted.current = true
     return () => {
       mounted.current = false
+      streamController.current?.abort()
       cancelled.current = true
       const r = recorder.current
       if (r?.state === 'recording') r.stop()
@@ -263,22 +292,32 @@ function Secretary() {
   }, [])
   useEffect(() => {
     let alive = true
-    api.secretaryConversations().then((rows) => {
-      if (!alive) return
-      setConversations(rows)
-      setConversationListError('')
-      if (!initializedConversations.current) {
-        let saved: string | null = null
-        try { saved = localStorage.getItem(storageKey) } catch { /* Storage can be disabled. */ }
-        const initialId = rows.find((row) => row.id === saved)?.id ?? rows[0]?.id ?? null
-        setHistoryLoading(Boolean(initialId))
-        setConversationId(initialId)
-        initializedConversations.current = true
-      }
-      setConversationsReady(true)
-    })
+    api
+      .secretaryConversations()
+      .then((rows) => {
+        if (!alive) return
+        setConversations(rows)
+        setConversationListError('')
+        if (!initializedConversations.current) {
+          let saved: string | null = null
+          try {
+            saved = localStorage.getItem(storageKey)
+          } catch {
+            /* Storage can be disabled. */
+          }
+          const initialId =
+            rows.find((row) => row.id === saved)?.id ?? rows[0]?.id ?? null
+          setHistoryLoading(Boolean(initialId))
+          setConversationId(initialId)
+          initializedConversations.current = true
+        }
+        setConversationsReady(true)
+      })
       .catch((e) => {
-        if (alive) { setError(e.message); setConversationListError(e.message) }
+        if (alive) {
+          setError(e.message)
+          setConversationListError(e.message)
+        }
       })
     return () => {
       alive = false
@@ -286,20 +325,35 @@ function Secretary() {
   }, [conversationReload, storageKey])
   useEffect(() => {
     let alive = true
-    if (!conversationId) return
-    api.secretaryHistory(50, conversationId).then((rows) => {
-      if (alive) { setChats(rows); setHistoryLoading(false); setHistoryFailed(false) }
-    }).catch((e) => {
-      if (alive) { setError(e.message); setHistoryLoading(false); setHistoryFailed(true) }
-    })
-    return () => { alive = false }
+    if (!conversationId || skipHistory.current === conversationId) return
+    api
+      .secretaryHistory(50, conversationId)
+      .then((rows) => {
+        if (alive) {
+          setChats(rows)
+          setHistoryLoading(false)
+          setHistoryFailed(false)
+        }
+      })
+      .catch((e) => {
+        if (alive) {
+          setError(e.message)
+          setHistoryLoading(false)
+          setHistoryFailed(true)
+        }
+      })
+    return () => {
+      alive = false
+    }
   }, [conversationId, historyRetry])
   useEffect(() => {
     if (!conversationsReady) return
     try {
       if (conversationId) localStorage.setItem(storageKey, conversationId)
       else localStorage.removeItem(storageKey)
-    } catch { /* A private browser must still be usable. */ }
+    } catch {
+      /* A private browser must still be usable. */
+    }
   }, [conversationId, conversationsReady, storageKey])
   useEffect(() => {
     let alive = true
@@ -329,9 +383,33 @@ function Secretary() {
     }
   }, [reload])
   useEffect(() => {
+    const scroller = end.current?.closest<HTMLElement>('.sec-chat-scroll')
     if (chats.length || busy)
-      end.current?.scrollIntoView({ behavior: 'smooth', block: 'end' })
+      scroller?.scrollTo({ top: scroller.scrollHeight, behavior: 'smooth' })
   }, [chats, busy, view])
+  useEffect(() => {
+    if (!streaming) return
+    const timer = window.setInterval(
+      () =>
+        setChats((rows) =>
+          rows.map((chat) =>
+            chat.trace?.phase === 'live'
+              ? {
+                  ...chat,
+                  trace: {
+                    ...chat.trace,
+                    seconds: Math.floor(
+                      (streamClock() - streamStarted.current) / 1000,
+                    ),
+                  },
+                }
+              : chat,
+          ),
+        ),
+      1000,
+    )
+    return () => window.clearInterval(timer)
+  }, [streaming])
   useEffect(() => {
     if (!recording) return
     const timer = window.setInterval(() => setSeconds((n) => n + 1), 1000)
@@ -394,43 +472,73 @@ function Secretary() {
     }
   }, [])
 
-  const acceptReply = (text: string, reply: SecretaryReply, pendingId?: string) => {
+  const acceptReply = (
+    text: string,
+    reply: SecretaryReply,
+    pendingId: string,
+    liveId: string,
+    audio: boolean,
+  ) => {
     const stamp = new Date().toISOString()
     setChats((v) => [
-      ...v.map((chat) => chat.id === pendingId ? { ...chat, text, transcript: reply.transcript } : chat),
-      ...(pendingId ? [] : [{
-        id: `user-${reply.messageId}`,
-        at: stamp,
-        role: 'user' as const,
-        text,
-        transcript: reply.transcript,
-        cards: [],
-        action: null,
-      }]),
-      {
-        id: reply.messageId,
-        at: stamp,
-        role: 'assistant',
-        text: reply.reply,
-        transcript: null,
-        cards: reply.cards,
-        action: reply.proposal
-          ? { id: reply.proposal.actionId, status: 'PROPOSED', result: null }
-          : null,
-      },
+      ...v.map(
+        (chat): IrisChat =>
+          chat.id === pendingId
+            ? {
+                ...chat,
+                text: audio ? 'رسالة صوتية' : text,
+                transcript: reply.transcript,
+              }
+            : chat.id !== liveId
+              ? chat
+              : {
+                  id: reply.messageId,
+                  at: stamp,
+                  role: 'assistant',
+                  text: reply.reply,
+                  transcript: null,
+                  cards: reply.cards,
+                  action: reply.proposal
+                    ? {
+                        id: reply.proposal.actionId,
+                        status: 'PROPOSED',
+                        result: null,
+                      }
+                    : null,
+                  trace: chat.trace
+                    ? {
+                        ...chat.trace,
+                        phase: 'done',
+                        open: false,
+                        seconds: Math.floor(
+                          (streamClock() - streamStarted.current) / 1000,
+                        ),
+                      }
+                    : undefined,
+                },
+      ),
     ])
     setProposal(reply.proposal)
     setReload((n) => n + 1)
     if (reply.conversationId && !conversationId) {
-      setHistoryLoading(true)
+      skipHistory.current = reply.conversationId
+      setHistoryLoading(false)
       setConversationId(reply.conversationId)
     }
-    setConversationReload((n) => n + 1)
   }
-  const conversationLocked = busy || recording || openingMic || conversationBusy || historyLoading || !conversationsReady
-  const conversationSwitchLocked = busy || recording || openingMic || conversationBusy || !conversationsReady
+  const conversationLocked =
+    busy ||
+    recording ||
+    openingMic ||
+    conversationBusy ||
+    historyLoading ||
+    !conversationsReady
+  const conversationSwitchLocked =
+    busy || recording || openingMic || conversationBusy || !conversationsReady
   const selectConversation = (id: string | null) => {
     if (id !== conversationId) {
+      skipHistory.current = null
+      setRetryAudio(null)
       setHistoryLoading(Boolean(id))
       setHistoryFailed(false)
       setChats([])
@@ -452,8 +560,11 @@ function Secretary() {
       setConversations((rows) => [item, ...rows])
       selectConversation(item.id)
       setConversationReload((n) => n + 1)
-    } catch (e) { setError((e as Error).message) }
-    finally { setConversationBusy(false) }
+    } catch (e) {
+      setError((e as Error).message)
+    } finally {
+      setConversationBusy(false)
+    }
   }
   const saveConversation = async () => {
     if (!conversationEdit || conversationLocked) return
@@ -467,36 +578,146 @@ function Secretary() {
         await api.secretaryDeleteConversation(item.id)
         const remaining = conversations.filter((row) => row.id !== item.id)
         setConversations(remaining)
-        if (conversationId === item.id) selectConversation(remaining[0]?.id ?? null)
+        if (conversationId === item.id)
+          selectConversation(remaining[0]?.id ?? null)
       } else {
         await api.secretaryRenameConversation(item.id, title)
-        setConversations((rows) => rows.map((row) => row.id === item.id ? { ...row, title } : row))
+        setConversations((rows) =>
+          rows.map((row) => (row.id === item.id ? { ...row, title } : row)),
+        )
       }
       setConversationEdit(null)
       setConversationReload((n) => n + 1)
-    } catch (e) { setError((e as Error).message) }
-    finally { setConversationBusy(false) }
+    } catch (e) {
+      setError((e as Error).message)
+    } finally {
+      setConversationBusy(false)
+    }
+  }
+  const runStream = async (text: string, audio?: Blob) => {
+    if (streamController.current || conversationLocked || historyFailed) return
+    const abort = new AbortController()
+    streamController.current = abort
+    streamStarted.current = streamClock()
+    setStreaming(true)
+    setBusy(true)
+    setError('')
+    setRetryAudio(null)
+    if (!audio) setInput('')
+    const pendingId = `local-${crypto.randomUUID()}`
+    const liveId = `live-${crypto.randomUUID()}`
+    const at = new Date().toISOString()
+    setChats((v) => [
+      ...v,
+      {
+        id: pendingId,
+        at,
+        role: 'user',
+        text: audio ? 'رسالة صوتية — دا أحوّلها لنص…' : text,
+        transcript: null,
+        cards: [],
+        action: null,
+      },
+      {
+        id: liveId,
+        at,
+        role: 'assistant',
+        text: '',
+        transcript: null,
+        cards: [],
+        action: null,
+        trace: { text: '', tools: 0, seconds: 0, phase: 'live', open: true },
+      },
+    ])
+    try {
+      await streamSecretaryMessage(
+        {
+          text: audio ? undefined : text,
+          audio,
+          conversationId: conversationId ?? undefined,
+        },
+        (event) => {
+          if (!mounted.current || abort.signal.aborted) return
+          if (event.type === 'done') {
+            acceptReply(text, event.message, pendingId, liveId, Boolean(audio))
+            return
+          }
+          setChats((rows) =>
+            rows.map((chat) => {
+              if (chat.id !== liveId || !chat.trace) return chat
+              if (event.type === 'text') return { ...chat, text: event.text }
+              if (event.type === 'thinking')
+                return {
+                  ...chat,
+                  trace: { ...chat.trace, text: chat.trace.text + event.text },
+                }
+              if (event.type === 'tool')
+                return {
+                  ...chat,
+                  trace: {
+                    ...chat.trace,
+                    tools: chat.trace.tools + 1,
+                    text: `${chat.trace.text}\n🔎 checking ${event.name}…\n`,
+                  },
+                }
+              return chat
+            }),
+          )
+        },
+        abort.signal,
+      )
+    } catch (e) {
+      if (!mounted.current) return
+      setError(
+        abort.signal.aborted
+          ? 'وقّفت الرد. السؤال ممكن محفوظ بالخادم؛ ما أعدنا إرساله.'
+          : (e as Error).message,
+      )
+      setChats((rows) =>
+        rows.map((chat) =>
+          chat.id === liveId && chat.trace
+            ? {
+                ...chat,
+                trace: {
+                  ...chat.trace,
+                  phase: abort.signal.aborted ? 'stopped' : 'error',
+                  open: false,
+                  seconds: Math.floor(
+                    (streamClock() - streamStarted.current) / 1000,
+                  ),
+                },
+              }
+            : chat.id === pendingId && audio
+              ? { ...chat, text: 'رسالة صوتية — ما اكتمل الرد عليها' }
+              : chat,
+        ),
+      )
+      if (audio) setRetryAudio(audio)
+      else setInput(text)
+    } finally {
+      if (mounted.current) {
+        setBusy(false)
+        setStreaming(false)
+        setConversationReload((n) => n + 1)
+      }
+      if (streamController.current === abort) streamController.current = null
+    }
   }
   const send = async (raw = input) => {
     const text = raw.trim()
-    if (!text || conversationLocked || historyFailed) return
-    setBusy(true)
-    setError('')
-    setInput('')
-    const pendingId = `local-${crypto.randomUUID()}`
-    setChats((v) => [...v, { id: pendingId, at: new Date().toISOString(), role: 'user', text, transcript: null, cards: [], action: null }])
-    try {
-      acceptReply(text, await api.secretaryMessage(text, conversationId ?? undefined), pendingId)
-    } catch (e) {
-      setChats((v) => v.filter((chat) => chat.id !== pendingId))
-      setError((e as Error).message)
-      setInput(text)
-    } finally {
-      setBusy(false)
-    }
+    if (!text) return
+    await runStream(text)
   }
   const voice = async () => {
-    if (busy || openingMic || conversationBusy || historyLoading || historyFailed || !conversationsReady) return
+    if (
+      busy ||
+      openingMic ||
+      conversationBusy ||
+      historyLoading ||
+      historyFailed ||
+      !conversationsReady
+    )
+      return
     if (recorder.current?.state === 'recording') {
       recorder.current.stop()
       setRecording(false)
@@ -523,16 +744,7 @@ function Secretary() {
         if (cancelled.current || !mounted.current) return
         const blob = new Blob(chunks, { type: r.mimeType })
         if (!blob.size) return
-        setBusy(true)
-        try {
-          const reply = await api.secretaryVoice(blob, conversationId ?? undefined)
-          if (mounted.current)
-            acceptReply(reply.transcript || 'رسالة صوتية', reply)
-        } catch (e) {
-          if (mounted.current) setError((e as Error).message)
-        } finally {
-          if (mounted.current) setBusy(false)
-        }
+        await runStream('', blob)
       }
       r.start()
       setSeconds(0)
@@ -773,14 +985,62 @@ function Secretary() {
     <main ref={viewportRoot} className="secretary" dir="rtl">
       {conversationEdit && (
         <div className="sec-overlay">
-          <form className="sec-dialog" role="dialog" aria-modal="true" aria-labelledby="iris-conversation-dialog" onSubmit={(e) => { e.preventDefault(); void saveConversation() }}>
-            <h2 id="iris-conversation-dialog">{conversationEdit.deleting ? 'حذف المحادثة؟' : 'تسمية المحادثة'}</h2>
-            {conversationEdit.deleting ? <p>راح تنحذف «{conversationEdit.item.title}» ورسائلها نهائياً. متأكد؟</p> : <label>عنوان المحادثة<input autoFocus required maxLength={80} value={conversationTitle} onChange={(e) => setConversationTitle(e.target.value)} /></label>}
+          <form
+            className="sec-dialog"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="iris-conversation-dialog"
+            onSubmit={(e) => {
+              e.preventDefault()
+              void saveConversation()
+            }}
+          >
+            <h2 id="iris-conversation-dialog">
+              {conversationEdit.deleting ? 'حذف المحادثة؟' : 'تسمية المحادثة'}
+            </h2>
+            {conversationEdit.deleting ? (
+              <p>
+                راح تنحذف «{conversationEdit.item.title}» ورسائلها نهائياً.
+                متأكد؟
+              </p>
+            ) : (
+              <label>
+                عنوان المحادثة
+                <input
+                  autoFocus
+                  required
+                  maxLength={80}
+                  value={conversationTitle}
+                  onChange={(e) => setConversationTitle(e.target.value)}
+                />
+              </label>
+            )}
             <div className="sec-actions">
-              <button className={conversationEdit.deleting ? 'sec-danger' : 'sec-primary'} disabled={conversationBusy || (!conversationEdit.deleting && !conversationTitle.trim())}>{conversationEdit.deleting ? 'نعم، احذف المحادثة' : 'حفظ الاسم'}</button>
-              <button type="button" className="sec-secondary" disabled={conversationBusy} onClick={() => setConversationEdit(null)}>إلغاء</button>
+              <button
+                className={
+                  conversationEdit.deleting ? 'sec-danger' : 'sec-primary'
+                }
+                disabled={
+                  conversationBusy ||
+                  (!conversationEdit.deleting && !conversationTitle.trim())
+                }
+              >
+                {conversationEdit.deleting ? 'نعم، احذف المحادثة' : 'حفظ الاسم'}
+              </button>
+              <button
+                type="button"
+                className="sec-secondary"
+                disabled={conversationBusy}
+                onClick={() => setConversationEdit(null)}
+              >
+                إلغاء
+              </button>
             </div>
-            {error && <p className="sec-error" role="alert">{error}</p>}
+            {error && (
+              <p className="sec-error" role="alert">
+                {error}
+              </p>
+            )}
           </form>
         </div>
       )}
@@ -810,23 +1070,82 @@ function Secretary() {
           </button>
         </div>
         <section className="iris-conversations" aria-label="محادثات ايريس">
-          <button className="sec-primary iris-new-chat" disabled={conversationLocked} onClick={newConversation}>＋ محادثة جديدة</button>
-          {!conversationsReady && !conversationListError && <p role="status">دا أجيب محادثاتك…</p>}
-          {conversationListError && <p className="sec-error">تعذر جلب المحادثات. اضغط تحديث المحادثات حتى تعيد المحاولة.</p>}
-          <button className="iris-conversation-refresh" disabled={conversationBusy} onClick={() => setConversationReload((n) => n + 1)}>تحديث المحادثات</button>
-          {conversationsReady && !conversations.length && <small>ابدأ محادثة جديدة ويا ايريس.</small>}
+          <button
+            className="sec-primary iris-new-chat"
+            disabled={conversationLocked}
+            onClick={newConversation}
+          >
+            ＋ محادثة جديدة
+          </button>
+          {!conversationsReady && !conversationListError && (
+            <p role="status">دا أجيب محادثاتك…</p>
+          )}
+          {conversationListError && (
+            <p className="sec-error">
+              تعذر جلب المحادثات. اضغط تحديث المحادثات حتى تعيد المحاولة.
+            </p>
+          )}
+          <button
+            className="iris-conversation-refresh"
+            disabled={conversationBusy}
+            onClick={() => setConversationReload((n) => n + 1)}
+          >
+            تحديث المحادثات
+          </button>
+          {conversationsReady && !conversations.length && (
+            <small>ابدأ محادثة جديدة ويا ايريس.</small>
+          )}
           <div className="iris-conversation-list">
             {conversations.map((item) => (
-              <div key={item.id} className={`iris-conversation ${conversationId === item.id ? 'selected' : ''}`}>
-                <button className="iris-conversation-select" disabled={conversationSwitchLocked} aria-current={conversationId === item.id ? 'true' : undefined} onClick={() => selectConversation(item.id)}>
+              <div
+                key={item.id}
+                className={`iris-conversation ${conversationId === item.id ? 'selected' : ''}`}
+              >
+                <button
+                  className="iris-conversation-select"
+                  disabled={conversationSwitchLocked}
+                  aria-current={conversationId === item.id ? 'true' : undefined}
+                  onClick={() => selectConversation(item.id)}
+                >
                   <strong>{item.title}</strong>
-                  <time dateTime={item.updatedAt}>{displayDate(item.updatedAt)}</time>
+                  <time dateTime={item.updatedAt}>
+                    {displayDate(item.updatedAt)}
+                  </time>
                 </button>
-                <button className="iris-conversation-more" aria-label={`خيارات ${item.title}`} aria-expanded={conversationMenu === item.id} disabled={conversationLocked} onClick={() => setConversationMenu(conversationMenu === item.id ? null : item.id)}>⋯</button>
-                {conversationMenu === item.id && <div className="iris-conversation-actions">
-                  <button onClick={() => { setConversationEdit({ item, deleting: false }); setConversationTitle(item.title); setConversationMenu(null) }}>تسمية</button>
-                  <button onClick={() => { setConversationEdit({ item, deleting: true }); setConversationMenu(null) }}>حذف</button>
-                </div>}
+                <button
+                  className="iris-conversation-more"
+                  aria-label={`خيارات ${item.title}`}
+                  aria-expanded={conversationMenu === item.id}
+                  disabled={conversationLocked}
+                  onClick={() =>
+                    setConversationMenu(
+                      conversationMenu === item.id ? null : item.id,
+                    )
+                  }
+                >
+                  ⋯
+                </button>
+                {conversationMenu === item.id && (
+                  <div className="iris-conversation-actions">
+                    <button
+                      onClick={() => {
+                        setConversationEdit({ item, deleting: false })
+                        setConversationTitle(item.title)
+                        setConversationMenu(null)
+                      }}
+                    >
+                      تسمية
+                    </button>
+                    <button
+                      onClick={() => {
+                        setConversationEdit({ item, deleting: true })
+                        setConversationMenu(null)
+                      }}
+                    >
+                      حذف
+                    </button>
+                  </div>
+                )}
               </div>
             ))}
           </div>
@@ -923,7 +1242,18 @@ function Secretary() {
             <div className="sec-chat-scroll">
               <div className="sec-chat-inner">
                 {historyLoading && <p role="status">دا أجيب رسائل المحادثة…</p>}
-                {historyFailed && <button className="sec-secondary" onClick={() => { setHistoryLoading(true); setHistoryFailed(false); setHistoryRetry((n) => n + 1) }}>أعد تحميل الرسائل</button>}
+                {historyFailed && (
+                  <button
+                    className="sec-secondary"
+                    onClick={() => {
+                      setHistoryLoading(true)
+                      setHistoryFailed(false)
+                      setHistoryRetry((n) => n + 1)
+                    }}
+                  >
+                    أعد تحميل الرسائل
+                  </button>
+                )}
                 {!chats.length && !historyLoading && !historyFailed && (
                   <div className="iris-welcome">
                     <span className="iris-avatar">
@@ -949,6 +1279,44 @@ function Secretary() {
                       </span>
                     )}
                     <small>{clock(chat.at)}</small>
+                    {chat.trace && (
+                      <div className="iris-thinking" dir="ltr">
+                        <button
+                          type="button"
+                          aria-expanded={chat.trace.open}
+                          onClick={() =>
+                            setChats((rows) =>
+                              rows.map((row) =>
+                                row.id === chat.id && row.trace
+                                  ? {
+                                      ...row,
+                                      trace: {
+                                        ...row.trace,
+                                        open: !row.trace.open,
+                                      },
+                                    }
+                                  : row,
+                              ),
+                            )
+                          }
+                        >
+                          {chat.trace.phase === 'live'
+                            ? `Thinking · ${chat.trace.seconds}s · ${chat.trace.tools} tools`
+                            : `${chat.trace.phase === 'done' ? 'Thought for' : chat.trace.phase === 'stopped' ? 'Stopped after' : 'Interrupted after'} ${chat.trace.seconds}s · ${chat.trace.tools} tools`}
+                        </button>
+                        {chat.trace.open && (
+                          <pre>{chat.trace.text || 'Waiting for Iris…'}</pre>
+                        )}
+                      </div>
+                    )}
+                    {chat.trace &&
+                      (chat.trace.phase === 'error' ||
+                        chat.trace.phase === 'stopped') && (
+                        <small className="iris-stream-warning">
+                          الرد غير مكتمل. إيقاف البث أو انقطاعه ما يضمن إلغاء
+                          إجراء بالخادم؛ راجع المحادثة قبل إعادة الطلب.
+                        </small>
+                      )}
                     {chat.transcript && (
                       <p className="sec-transcript">
                         البصمة: {chat.transcript}
@@ -1006,15 +1374,31 @@ function Secretary() {
                     )}
                   </article>
                 ))}
-                {busy && (
-                  <p className="sec-thinking" role="status">
-                    ايريس يفكّر…
-                  </p>
-                )}
                 <div ref={end} />
               </div>
             </div>
             <div className="sec-composer-wrap">
+              {retryAudio && (
+                <div className="iris-audio-retry" role="status">
+                  <span>
+                    نسخة البصمة لإعادة المحاولة موجودة بالذاكرة مؤقتاً.
+                  </span>
+                  <button
+                    type="button"
+                    disabled={conversationLocked || historyFailed}
+                    onClick={() => void runStream('', retryAudio)}
+                  >
+                    إعادة إرسال البصمة
+                  </button>
+                  <button
+                    type="button"
+                    disabled={streaming}
+                    onClick={() => setRetryAudio(null)}
+                  >
+                    احذف البصمة المؤقتة
+                  </button>
+                </div>
+              )}
               <div className="iris-quick-actions" aria-label="اقتراحات سريعة">
                 {[
                   {
@@ -1062,7 +1446,14 @@ function Secretary() {
                   aria-label={recording ? 'وقف التسجيل وأرسل' : 'ابدأ التسجيل'}
                   className={recording ? 'sec-mic live' : 'sec-mic'}
                   onClick={voice}
-                  disabled={busy || openingMic || conversationBusy || historyLoading || historyFailed || !conversationsReady}
+                  disabled={
+                    busy ||
+                    openingMic ||
+                    conversationBusy ||
+                    historyLoading ||
+                    historyFailed ||
+                    !conversationsReady
+                  }
                 >
                   {recording ? (
                     '■'
@@ -1075,6 +1466,7 @@ function Secretary() {
                 </button>
                 <textarea
                   aria-label="رسالتك لايريس"
+                  disabled={streaming}
                   rows={1}
                   value={input}
                   onChange={(e) => {
@@ -1086,13 +1478,31 @@ function Secretary() {
                     openingMic ? 'دا أفتح المايك…' : 'اكتب رسالتك هنا…'
                   }
                 />
-                <button
-                  className="sec-send"
-                  aria-label="إرسال"
-                  disabled={conversationLocked || historyFailed || !input.trim()}
-                >
-                  <IrisIcon kind="send" />
-                </button>
+                {streaming ? (
+                  <button
+                    key="iris-stop"
+                    type="button"
+                    className="sec-send iris-stop"
+                    aria-label="إيقاف الرد"
+                    onClick={(event) => {
+                      event.preventDefault()
+                      streamController.current?.abort()
+                    }}
+                  >
+                    ■
+                  </button>
+                ) : (
+                  <button
+                    key="iris-send"
+                    className="sec-send"
+                    aria-label="إرسال"
+                    disabled={
+                      conversationLocked || historyFailed || !input.trim()
+                    }
+                  >
+                    <IrisIcon kind="send" />
+                  </button>
+                )}
               </form>
               <small>رسائلك ومتابعاتك بمكان واحد.</small>
             </div>
@@ -1542,6 +1952,7 @@ function Secretary() {
               <select
                 required
                 value={proposal.fields.employeeId}
+                aria-label="الموظف"
                 onChange={(e) => {
                   const candidate = proposal.candidates.find(
                     (c) => c.id === e.target.value,
