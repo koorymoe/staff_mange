@@ -80,6 +80,47 @@ type AgentEvent struct {
 	Name string `json:"name,omitempty"`
 }
 
+// llmStep خطوة وحدة ويا النموذج: بث (تفكير + نص) إذا ممكن، وإلا طلب عادي.
+// إذا الموديل رفض التفكير، يطفّيه (*think=false) ويعيد الخطوة بدونه.
+// show يرجّع الأسماء الحقيقية للي يطلع للمستخدم.
+func llmStep(ctx context.Context, llm agentLLM, p *anthropic.MessageNewParams, canStream bool, think *bool,
+	emit func(AgentEvent), show func(string) string) (*anthropic.Message, error) {
+	streamer, ok := llm.(agentStreamer)
+	if !canStream || !ok {
+		return llm.New(ctx, *p)
+	}
+	base := p.MaxTokens
+	if *think {
+		p.MaxTokens = agentThinkMaxTokens
+		p.Thinking = anthropic.ThinkingConfigParamUnion{OfAdaptive: &anthropic.ThinkingConfigAdaptiveParam{Display: anthropic.ThinkingConfigAdaptiveDisplaySummarized}}
+	}
+	var stepText strings.Builder
+	on := func(e anthropic.MessageStreamEventUnion) {
+		d, ok := e.AsAny().(anthropic.ContentBlockDeltaEvent)
+		if !ok {
+			return
+		}
+		switch x := d.Delta.AsAny().(type) {
+		case anthropic.TextDelta:
+			stepText.WriteString(x.Text)
+			emit(AgentEvent{Type: "text", Text: show(stepText.String())})
+		case anthropic.ThinkingDelta:
+			emit(AgentEvent{Type: "thinking", Text: show(x.Thinking)})
+		}
+	}
+	resp, err := streamer.Stream(ctx, *p, on)
+	if err != nil && *think {
+		// الموديل ما يقبل التفكير؟ نكمل بدونه بدل ما نفشل
+		log.Printf("ai stream: thinking off (%v)", err)
+		*think = false
+		p.Thinking = anthropic.ThinkingConfigParamUnion{}
+		p.MaxTokens = base
+		stepText.Reset()
+		resp, err = streamer.Stream(ctx, *p, on)
+	}
+	return resp, err
+}
+
 // ChatOpts خيارات المحادثة الحية: موديل غير الافتراضي، وبث الأحداث، والتفكير.
 type ChatOpts struct {
 	Model string
@@ -328,8 +369,7 @@ func (a *MatrixAgent) ChatStream(feature, system string, history []AgentTurn, me
 	if opts.Model != "" {
 		modelName = opts.Model
 	}
-	streamer, canStream := a.llm.(agentStreamer)
-	canStream = canStream && opts.Emit != nil
+	canStream := opts.Emit != nil
 	think := opts.Think && canStream
 	emit := func(e AgentEvent) {
 		if opts.Emit != nil {
@@ -342,40 +382,7 @@ func (a *MatrixAgent) ChatStream(feature, system string, history []AgentTurn, me
 			System:   []anthropic.TextBlockParam{{Text: model.Rebrand(system), CacheControl: anthropic.NewCacheControlEphemeralParam()}},
 			Messages: msgs, Tools: tools,
 		}
-		if think {
-			p.MaxTokens = agentThinkMaxTokens
-			p.Thinking = anthropic.ThinkingConfigParamUnion{OfAdaptive: &anthropic.ThinkingConfigAdaptiveParam{Display: anthropic.ThinkingConfigAdaptiveDisplaySummarized}}
-		}
-		var resp *anthropic.Message
-		var err error
-		if canStream {
-			var stepText strings.Builder
-			on := func(e anthropic.MessageStreamEventUnion) {
-				d, ok := e.AsAny().(anthropic.ContentBlockDeltaEvent)
-				if !ok {
-					return
-				}
-				switch x := d.Delta.AsAny().(type) {
-				case anthropic.TextDelta:
-					stepText.WriteString(x.Text)
-					emit(AgentEvent{Type: "text", Text: mask.Show(stepText.String())})
-				case anthropic.ThinkingDelta:
-					emit(AgentEvent{Type: "thinking", Text: mask.Show(x.Thinking)})
-				}
-			}
-			resp, err = streamer.Stream(ctx, p, on)
-			if err != nil && think && step == 0 {
-				// الموديل ما يقبل التفكير؟ نكمل بدونه بدل ما نفشل
-				log.Printf("matrix agent: thinking off (%v)", err)
-				think = false
-				p.Thinking = anthropic.ThinkingConfigParamUnion{}
-				p.MaxTokens = agentMaxTokens
-				stepText.Reset()
-				resp, err = streamer.Stream(ctx, p, on)
-			}
-		} else {
-			resp, err = a.llm.New(ctx, p)
-		}
+		resp, err := llmStep(ctx, a.llm, &p, canStream, &think, emit, mask.Show)
 		if err != nil {
 			return nil, err
 		}
