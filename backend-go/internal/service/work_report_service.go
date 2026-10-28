@@ -48,3 +48,11 @@ func (s *WorkReportService) Review(id, byID, note string) error {
 func (s *WorkReportService) List(employeeID string) ([]model.WorkReport, error) {
 	return s.repo.List(employeeID)
 }
+
+func (s *WorkReportService) ListByReview(employeeID, review string) ([]model.WorkReport, error) {
+	return s.repo.ListByReview(employeeID, review)
+}
+
+func (s *WorkReportService) ReviewCounts(employeeID string) (int, int, error) {
+	return s.repo.ReviewCounts(employeeID)
+}

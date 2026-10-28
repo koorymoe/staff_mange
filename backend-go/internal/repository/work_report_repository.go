@@ -70,6 +70,13 @@ func (r *WorkReportRepository) Create(employeeID string, req model.CreateWorkRep
 }
 
 func (r *WorkReportRepository) List(employeeID string) ([]model.WorkReport, error) {
+	return r.ListByReview(employeeID, "ALL")
+}
+
+// ListByReview (دازاي 10-28: «دققت ٢ اختفن، حدثت رجعن ٢٠٠»): العرض لحد ٢٠٠،
+// فالفلترة بالخادم مو بالواجهة — حتى تبويب «تنتظر» يجيب الي تنتظر فعلاً.
+// review: PENDING (الأقدم أول حتى تخلص بالترتيب) · DONE (الأحدث أول) · ALL.
+func (r *WorkReportRepository) ListByReview(employeeID, review string) ([]model.WorkReport, error) {
 	reports := []model.WorkReport{}
 	query := `SELECT * FROM "WorkReport" WHERE 1=1`
 	args := []any{}
@@ -77,8 +84,15 @@ func (r *WorkReportRepository) List(employeeID string) ([]model.WorkReport, erro
 		args = append(args, employeeID)
 		query += ` AND "employeeId" = $1`
 	}
-	// الي ينتظر التدقيق أول — حتى ما يضيع ورا الحد (٢٠٠)
-	query += ` ORDER BY ("reviewedAt" IS NULL) DESC, "createdAt" DESC LIMIT 200`
+	switch review {
+	case "PENDING":
+		query += ` AND "reviewedAt" IS NULL ORDER BY "createdAt" ASC LIMIT 200`
+	case "DONE":
+		query += ` AND "reviewedAt" IS NOT NULL ORDER BY "reviewedAt" DESC LIMIT 200`
+	default:
+		// الي ينتظر التدقيق أول — حتى ما يضيع ورا الحد (٢٠٠)
+		query += ` ORDER BY ("reviewedAt" IS NULL) DESC, "createdAt" DESC LIMIT 200`
+	}
 	if err := r.db.Select(&reports, query, args...); err != nil {
 		return nil, err
 	}
@@ -86,4 +100,15 @@ func (r *WorkReportRepository) List(employeeID string) ([]model.WorkReport, erro
 		r.hydrate(&reports[i])
 	}
 	return reports, nil
+}
+
+// ReviewCounts العدد الحقيقي (مو المعروض): ينتظر التدقيق ومتدقق.
+func (r *WorkReportRepository) ReviewCounts(employeeID string) (pending, done int, err error) {
+	var c struct {
+		Pending int `db:"pending"`
+		Done    int `db:"done"`
+	}
+	err = r.db.Get(&c, `SELECT count(*) FILTER (WHERE "reviewedAt" IS NULL) AS pending, count(*) FILTER (WHERE "reviewedAt" IS NOT NULL) AS done
+		FROM "WorkReport" WHERE $1 = '' OR "employeeId" = $1`, employeeID)
+	return c.Pending, c.Done, err
 }

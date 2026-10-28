@@ -43,7 +43,7 @@ func (h *WorkReportHandler) canReviewReports(r *http.Request) bool {
 		return false
 	}
 	for _, p := range rows {
-		if p.Name == "monitoring" || p.Name == "quality_control" || p.Name == "auditing" {
+		if p.Name == "monitoring" || p.Name == "quality_control" || p.Name == "auditing" || p.Name == "mon_reports" {
 			return true
 		}
 	}
@@ -81,12 +81,26 @@ func (h *WorkReportHandler) List(w http.ResponseWriter, r *http.Request) {
 	if employeeID != self && !h.canReviewReports(r) {
 		employeeID = self
 	}
-	reports, err := h.service.List(employeeID)
+	reports, err := h.service.ListByReview(employeeID, strings.ToUpper(r.URL.Query().Get("review")))
 	if err != nil {
 		WriteError(w, http.StatusInternalServerError, "تعذر جلب تقارير العمل")
 		return
 	}
 	WriteJSON(w, http.StatusOK, reports)
+}
+
+// GET /api/work-reports/counts — العدد الحقيقي (تنتظر/متدققة)، مو المعروض.
+func (h *WorkReportHandler) Counts(w http.ResponseWriter, r *http.Request) {
+	employeeID := ""
+	if !h.canReviewReports(r) {
+		employeeID = middleware.EmployeeIDFromContext(r)
+	}
+	pending, done, err := h.service.ReviewCounts(employeeID)
+	if err != nil {
+		WriteError(w, http.StatusInternalServerError, "تعذر")
+		return
+	}
+	WriteJSON(w, http.StatusOK, map[string]int{"pending": pending, "done": done})
 }
 
 // PUT /api/work-reports/{id}/review — المراقب: «✅ تم التدقيق» حتى ما يبقى التقرير معلّك.

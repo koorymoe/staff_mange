@@ -24,14 +24,26 @@ export default function WorkReportsReview() {
     try {
       await api.reviewWorkReport(id, notes[id]?.trim() || undefined)
       setReports((rs) => rs.map((x) => (x.id === id ? { ...x, reviewedAt: new Date().toISOString(), reviewNote: notes[id]?.trim() || null, reviewedByName: employee?.name ?? null } : x)))
+      setCounts((c) => (c ? { pending: Math.max(0, c.pending - 1), done: c.done + 1 } : c))
     } catch (e) { alert(e instanceof Error ? e.message : 'تعذر') }
   }
 
+  // (دازاي 10-28) «دققت ٢ اختفن، حدثت رجعن ٢٠٠»: العرض لحد ٢٠٠، فكل تبويب يجيب نوعه
+  // من الخادم، والعداد هو العدد الحقيقي مو عدد المعروض.
+  const [counts, setCounts] = useState<{ pending: number; done: number } | null>(null)
+  const [reload, setReload] = useState(0)
   useEffect(() => {
-    api.getWorkReports().then(setReports).finally(() => setLoading(false)).catch(loadFailed)
-  }, [])
+    let alive = true
+    api.getWorkReports(undefined, review)
+      .then((rs) => { if (alive) setReports(rs) })
+      .catch(loadFailed)
+      .finally(() => { if (alive) setLoading(false) })
+    if (canReview) api.getWorkReportCounts().then((c) => { if (alive) setCounts(c) }).catch(() => {})
+    return () => { alive = false }
+  }, [review, reload, canReview])
 
-  const pendingCount = reports.filter((r) => !r.reviewedAt).length
+  const pendingCount = counts?.pending ?? reports.filter((r) => !r.reviewedAt).length
+  const shownPending = reports.filter((r) => !r.reviewedAt).length
   const filtered = (filter === 'ALL' ? reports : reports.filter((r) => r.workStatus === filter))
     .filter((r) => review === 'ALL' || (review === 'PENDING' ? !r.reviewedAt : !!r.reviewedAt))
 
@@ -45,10 +57,10 @@ export default function WorkReportsReview() {
       <div className="flex flex-wrap gap-2">
         {([
           { key: 'PENDING', label: `⏳ تنتظر التدقيق (${pendingCount})` },
-          { key: 'DONE', label: '✅ متدقّقة' },
+          { key: 'DONE', label: `✅ متدقّقة${counts ? ` (${counts.done})` : ''}` },
           { key: 'ALL', label: 'كل التقارير' },
         ] as const).map((t) => (
-          <button key={t.key} onClick={() => setReview(t.key)}
+          <button key={t.key} onClick={() => { if (t.key !== review) { setLoading(true); setReview(t.key) } }}
             className={`rounded-lg px-4 py-2 text-sm font-bold ${review === t.key ? 'bg-[#0f2040] text-white' : 'border border-slate-200 bg-white text-slate-600'}`}>
             {t.label}
           </button>
@@ -71,6 +83,15 @@ export default function WorkReportsReview() {
       </div>
 
       {loading && <p className="text-slate-400">جاري التحميل...</p>}
+      {review === 'PENDING' && counts && counts.pending > shownPending && (
+        <div className="flex flex-wrap items-center gap-3 rounded-xl bg-amber-50 px-4 py-2 text-sm text-amber-900">
+          <span>يعرض {shownPending} من {counts.pending} — الأقدم أول. من تدققهم تطلع الي بعدها.</span>
+          {shownPending === 0 && (
+            <button type="button" onClick={() => { setLoading(true); setReload((n) => n + 1) }}
+              className="rounded-lg bg-amber-600 px-3 py-1 font-bold text-white">جيب الي بعدها</button>
+          )}
+        </div>
+      )}
 
       {/* (ع) 10-16: «اريد فاصلة توضحلي بين تقرير وتقرير» — كل تقرير بإطار ملوّن
           وشريط فوكه برقمه، وفراغ واضح بين التقارير */}

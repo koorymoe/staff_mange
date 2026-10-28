@@ -5601,8 +5601,15 @@ export const api = {
     request<{ ok: boolean }>(`/work-reports/${id}/review`, { method: 'PUT', body: JSON.stringify({ note }) }),
   reviewProjectReports: (bookingId: string, note?: string) =>
     request<{ reviewed: number }>(`/bookings/${bookingId}/progress/review`, { method: 'PUT', body: JSON.stringify({ note }) }),
-  getWorkReports: (employeeId?: string) =>
-    request<WorkReport[]>(`/work-reports${employeeId ? `?employeeId=${employeeId}` : ''}`),
+  getWorkReports: (employeeId?: string, review?: 'PENDING' | 'DONE' | 'ALL') => {
+    const q = new URLSearchParams()
+    if (employeeId) q.set('employeeId', employeeId)
+    if (review) q.set('review', review)
+    const qs = q.toString()
+    return request<WorkReport[]>(`/work-reports${qs ? `?${qs}` : ''}`)
+  },
+  // (دازاي 10-28) العدد الحقيقي — العرض لحد ٢٠٠ بس
+  getWorkReportCounts: () => request<{ pending: number; done: number }>('/work-reports/counts'),
 
   // Smart KPI
   getTechnicianKpi: (employeeId: string, month?: string) =>
