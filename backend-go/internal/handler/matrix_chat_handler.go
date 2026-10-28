@@ -239,8 +239,11 @@ func (h *MatrixChatHandler) Stream(w http.ResponseWriter, r *http.Request) {
 		_ = rc.Flush()
 	}
 	run, err := h.agent.ChatStream("CHAT", in.system, in.turns, in.prompt, in.img, service.ChatOpts{
-		Model: h.chatModel, Think: true, Emit: func(e service.AgentEvent) { send(e) },
+		Ctx: r.Context(), Model: h.chatModel, Think: true, Emit: func(e service.AgentEvent) { send(e) },
 	})
+	if r.Context().Err() != nil {
+		return // المستخدم وكّف — ما نحفظ نص ناقص
+	}
 	if err != nil || strings.TrimSpace(run.Answer) == "" {
 		send(map[string]string{"type": "error", "text": chatFailMsg(err)})
 		return

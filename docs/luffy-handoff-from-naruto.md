@@ -115,3 +115,4 @@ git push origin origin/avg:refs/heads/prod     # بعد التأكد إنه fast
 - 10-28 (لوفي): f07d08db (فلوس المسؤول، مسودة العرض، الإكسل 0403، الذاكرة) انرفع ع برود بطلب دازاي.
 - 10-28 (لوفي): فواتير الحجوزات المرحّلة لإدارة التقنيين: كاتبها = ليدر الكادر إذا techCrewRequestedAt وانعيّن ليدر، وإلا التقني (handoverToId)؛ PHONE بلا فاتورة. IsBookingManager يسمح إله، GET /api/paperwork/handover-bookings، estimate يقبل من عنده حجز مرحّل ناقص، صفحة /handover-invoices (LeaderInvoiceNew handoverOnly) ورابط للتقني، إشعار handover_invoice بـTechResolve، وrevenue_by_responsible بنفس القاعدة. avg فقط.
 - 10-28 (لوفي): 3fb26c13 (فواتير الحجوزات المرحّلة) انرفع ع برود بطلب دازاي.
+- 10-28 (لوفي): دمجت avg-sasuke (af5d24ee): بث ماتركس وايريس الحي (تفكير/أدوات/إيقاف)، بطاقات سقف الدماغين، صفحة اقتراحات الذكاء. وصلّحت ملاحظتيه: SetBudget يرفض <0.1، والبث ياخذ r.Context() (ChatOpts.Ctx) فالإيقاف يقطع نداء الموديل وما ينحفظ نص ناقص. avg فقط — البث ما انجرب ويا مفتاح حقيقي.

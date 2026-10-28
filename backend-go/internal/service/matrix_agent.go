@@ -123,6 +123,8 @@ func llmStep(ctx context.Context, llm agentLLM, p *anthropic.MessageNewParams, c
 
 // ChatOpts خيارات المحادثة الحية: موديل غير الافتراضي، وبث الأحداث، والتفكير.
 type ChatOpts struct {
+	// Ctx سياق الطلب — إذا المستخدم وكّف البث، ينقطع نداء الموديل (فارغ = Background)
+	Ctx   context.Context
 	Model string
 	Think bool
 	Emit  func(AgentEvent)
@@ -362,7 +364,11 @@ func (a *MatrixAgent) ChatStream(feature, system string, history []AgentTurn, me
 	msgs = append(msgs, anthropic.NewUserMessage(cur...))
 	// الـsystem بيه دروس المالك (ممكن بيها أسماء) — ينخفى هو هم
 	system = mask.Hide(system)
-	ctx, cancel := context.WithTimeout(context.Background(), agentTimeout)
+	parent := opts.Ctx
+	if parent == nil {
+		parent = context.Background()
+	}
+	ctx, cancel := context.WithTimeout(parent, agentTimeout)
 	defer cancel()
 	run := &AgentRun{}
 	modelName := a.model

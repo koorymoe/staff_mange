@@ -46,7 +46,7 @@ func (h *AiBrainHandler) SetBudget(w http.ResponseWriter, r *http.Request) {
 	var in struct {
 		DailyUSD float64 `json:"dailyUSD"`
 	}
-	if err := DecodeJSON(r, &in); err != nil || in.DailyUSD <= 0 || in.DailyUSD > 50 {
+	if err := DecodeJSON(r, &in); err != nil || in.DailyUSD < 0.1 || in.DailyUSD > 50 {
 		WriteError(w, http.StatusBadRequest, "السقف بين ٠.١ و٥٠ دولار باليوم")
 		return
 	}
