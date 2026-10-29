@@ -38,6 +38,22 @@ type SecretaryHandler struct {
 	polish  func(ctx context.Context, text string) string
 }
 
+// voiceChain الأساسي أول، وبعده الباقي احتياط.
+func (h *SecretaryHandler) voiceChain() []service.NamedSTT {
+	out := make([]service.NamedSTT, 0, len(h.sttAll))
+	for _, p := range h.sttAll {
+		if p.Name == h.sttName {
+			out = append(out, p)
+		}
+	}
+	for _, p := range h.sttAll {
+		if p.Name != h.sttName {
+			out = append(out, p)
+		}
+	}
+	return out
+}
+
 // SetVoiceProviders كل المزوّدات المفعّلة (لزر «قارن») + تصحيح القاموس (nil = بلا).
 func (h *SecretaryHandler) SetVoiceProviders(primary string, all []service.NamedSTT, polish func(ctx context.Context, text string) string) {
 	h.sttName, h.sttAll, h.polish = primary, all, polish
@@ -694,11 +710,14 @@ func (h *SecretaryHandler) transcribe(ctx context.Context, data []byte, ct strin
 	defer func() { log.Printf("[iris-voice] %s %dKB بـ%s", ct, len(data)/1024, time.Since(start).Round(100*time.Millisecond)) }()
 	// (دازاي 10-29) Whisper عدنا بطيء (دقايق) وضعيف بالعراقي: إذا المزوّد فشل نگول «عيدها»
 	// خلال ثواني، بدل ما نوگفه ٣ دقايق على Whisper.
-	if h.stt != nil {
-		t, err := h.stt.Transcribe(ctx, data, ct)
+	if len(h.sttAll) > 0 {
+		t, name, err := service.TranscribeChain(ctx, h.voiceChain(), data, ct)
 		if err != nil {
-			log.Printf("[iris-voice] %s فشل: %v", h.sttName, err)
+			log.Printf("[iris-voice] كل المزوّدات فشلت: %v", err)
 			return "", err
+		}
+		if name != h.sttName {
+			log.Printf("[iris-voice] الأساسي %s ما نجح — نجح الاحتياط %s", h.sttName, name)
 		}
 		t = service.DefaultVoiceLexicon.Apply(t)
 		if h.polish != nil {

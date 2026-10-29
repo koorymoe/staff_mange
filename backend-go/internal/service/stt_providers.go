@@ -32,6 +32,45 @@ type STTProvider interface {
 type NamedSTT struct {
 	Name string
 	P    STTProvider
+	// Timeout مهلة هالمزوّد (صفر = ٢٥ ثانية) — حتى البطيء ما يوگف الباقي.
+	Timeout time.Duration
+}
+
+func (n NamedSTT) run(ctx context.Context, audio []byte, ct string) (string, error) {
+	d := n.Timeout
+	if d <= 0 {
+		d = 25 * time.Second
+	}
+	ctx, cancel := context.WithTimeout(ctx, d)
+	defer cancel()
+	t, err := n.P.Transcribe(ctx, audio, ct)
+	if err != nil && errors.Is(ctx.Err(), context.DeadlineExceeded) {
+		return "", fmt.Errorf("تجاوز المهلة (%s)", d)
+	}
+	return t, err
+}
+
+// TranscribeChain يجرّب المزوّدات بالترتيب (الأساسي أول): إذا واحد فشل أو تأخر، الي بعده.
+// (دازاي 10-29) «يگلي عيدها وبعد فترة يطلع» — فما نگول «عيدها» إلا إذا كلهم فشلوا.
+func TranscribeChain(ctx context.Context, chain []NamedSTT, audio []byte, ct string) (text, name string, err error) {
+	if len(chain) == 0 {
+		return "", "", errors.New("ماكو مزوّد صوت")
+	}
+	var errs []string
+	for _, p := range chain {
+		t, e := p.run(ctx, audio, ct)
+		if e == nil && strings.TrimSpace(t) != "" {
+			return t, p.Name, nil
+		}
+		if e == nil {
+			e = errors.New("نص فاضي")
+		}
+		errs = append(errs, p.Name+": "+e.Error())
+		if ctx.Err() != nil {
+			break
+		}
+	}
+	return "", "", errors.New(strings.Join(errs, " | "))
 }
 
 type STTResult struct {
@@ -50,7 +89,10 @@ func CompareSTT(ctx context.Context, all []NamedSTT, audio []byte, ct string) []
 		go func(i int, p NamedSTT) {
 			defer wg.Done()
 			start := time.Now()
-			t, err := p.P.Transcribe(ctx, audio, ct)
+			if p.Timeout <= 0 || p.Timeout > 40*time.Second {
+				p.Timeout = 40 * time.Second
+			}
+			t, err := p.run(ctx, audio, ct)
 			r := STTResult{Name: p.Name, Text: DefaultVoiceLexicon.Apply(t), Seconds: time.Since(start).Round(100 * time.Millisecond).Seconds()}
 			if err != nil {
 				r.Error = err.Error()

@@ -18,12 +18,15 @@ import (
 // لـGemini (المفتاح الموجود)، وإذا فشل يرجع لـWhisper. فويسات الموظفين ما تمر من هنا.
 
 const geminiSTTPrompt = `حوّل هذا التسجيل الصوتي لنص مكتوب حرفياً، باللهجة العراقية مثل ما انحچى (لا تترجمه للفصحى ولا تصلّح الكلام).
-أسماء الأشخاص والأماكن والأرقام اكتبها مثل ما تنسمع. رجّع النص بس — بلا مقدمة ولا شرح ولا علامات تنصيص. إذا ماكو كلام واضح رجّع فاضي.`
+أسماء الأشخاص والأماكن والأرقام اكتبها مثل ما تنسمع. رجّع النص بس — بلا مقدمة ولا شرح ولا علامات تنصيص. إذا ماكو كلام واضح رجّع فاضي.
+المتكلم عراقي من بغداد. هاي كلمات تتكرر واكتبها هيچ: شلونك، شخبارك، شكو ماكو، هسه، زين، حبي، عيني، أكو، ماكو، شنو، ليش، وين، اريد، گول، چا، بلكي، يمعود، خوش، هواية.
+لا تخترع كلمات فصحى ولا كلمات ما انگالت؛ إذا كلمة مو واضحة اكتب أقرب كلمة عراقية مفهومة.`
 
 type GeminiTranscriber struct {
-	key  string
-	url  string
-	http *http.Client
+	model string
+	key   string
+	url   string
+	http  *http.Client
 }
 
 // NewGeminiTranscriber nil إذا ماكو مفتاح.
@@ -39,7 +42,7 @@ func NewGeminiTranscriberModel(key, model string) *GeminiTranscriber {
 	if model == "" {
 		model = "gemini-flash-latest"
 	}
-	return &GeminiTranscriber{key: key, http: &http.Client{Timeout: 60 * time.Second},
+	return &GeminiTranscriber{model: model, key: key, http: &http.Client{Timeout: 60 * time.Second},
 		url: "https://generativelanguage.googleapis.com/v1beta/models/" + model + ":generateContent"}
 }
 
@@ -56,6 +59,11 @@ func (g *GeminiTranscriber) Transcribe(ctx context.Context, audio []byte, conten
 	}
 	// (دازاي 10-29) «يطول هواي وهو يحلل الصوت» — Flash يفكر قبل ما يكتب بشكل افتراضي،
 	// والكتابة الحرفية ما تحتاج تفكير: نطفّيه، وإذا الموديل رفض نعيد بدونه.
+	// موديلات Pro تفكر غصباً وترفض thinkingBudget 0 — نبعثها مباشرة بلا محاولة ضايعة.
+	if strings.Contains(g.model, "-pro") {
+		t, _, err := g.call(ctx, audio, mime, false)
+		return t, err
+	}
 	t, status, err := g.call(ctx, audio, mime, true)
 	if status == http.StatusBadRequest {
 		t, _, err = g.call(ctx, audio, mime, false)

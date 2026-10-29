@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"strings"
 	"sync"
 	"time"
 
@@ -2897,9 +2898,14 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 		// Whisper ما يدخل بمسار كمال (بطيء وضعيف بالعراقي) — يبقى للإنجازات بس.
 		var sttAll []service.NamedSTT
 		if g := service.NewGeminiTranscriberModel(cfg.GeminiAPIKey, cfg.GeminiSTTModel); g != nil {
-			sttAll = append(sttAll, service.NamedSTT{Name: "gemini", P: g})
+			slow := strings.Contains(cfg.GeminiSTTModel, "-pro")
+			t := 20 * time.Second
+			if slow {
+				t = 35 * time.Second
+			}
+			sttAll = append(sttAll, service.NamedSTT{Name: "gemini", P: g, Timeout: t})
 			if cfg.GeminiSTTModel != "" && cfg.GeminiSTTModel != "gemini-flash-latest" {
-				sttAll = append(sttAll, service.NamedSTT{Name: "gemini-flash", P: service.NewGeminiTranscriber(cfg.GeminiAPIKey)})
+				sttAll = append(sttAll, service.NamedSTT{Name: "gemini-flash", P: service.NewGeminiTranscriber(cfg.GeminiAPIKey), Timeout: 20 * time.Second})
 			}
 		}
 		if d := service.NewDeepgramSTT(cfg.DeepgramKey, cfg.DeepgramModel); d != nil {
