@@ -2488,6 +2488,10 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 			log.Printf("settle OLD-: %d حجز قديم انحسب «تم»", n)
 		}
 	})
+	// ⏰ منبّه كمال (دازاي 10-29)
+	safeguard.Loop("تذكيرات كمال", 20*time.Second, 30*time.Second, func() {
+		service.SendDueReminders(db, func(emp, msg string) { _ = notificationRepo.Create(emp, "AI_REMINDER", msg) })
+	})
 	safeguard.Loop("صلاحية ورق الحجوزات القديمة", 4*time.Minute, time.Hour, func() {
 		done, err := paperworkGuard.SweepCarryover()
 		if err != nil {

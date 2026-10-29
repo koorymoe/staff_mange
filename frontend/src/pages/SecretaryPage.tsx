@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { startAgentRebrand } from '../utils/agentBrand'
 import {
   api,
   apiRequest,
@@ -127,6 +128,8 @@ export default function SecretaryPage() {
 
 function Secretary() {
   const navigate = useNavigate()
+  // (دازاي 10-29) الصفحة برّا Layout، فالاسم الي اختاره المالك (كمال) ما چان يتبدّل هنا
+  useEffect(() => { startAgentRebrand() }, [])
   const { employee } = useSession()
   const honorific = irisHonorific(employee?.certificate)
   const [today, setToday] = useState<SecretaryToday | null>(null)
@@ -1477,6 +1480,13 @@ function Secretary() {
                   placeholder={
                     openingMic ? 'دا أفتح المايك…' : 'اكتب رسالتك هنا…'
                   }
+                  // (دازاي 10-29) Enter يرسل، وShift+Enter سطر جديد
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
+                      e.preventDefault()
+                      e.currentTarget.form?.requestSubmit()
+                    }
+                  }}
                 />
                 {streaming ? (
                   <button

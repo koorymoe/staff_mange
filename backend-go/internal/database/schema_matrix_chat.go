@@ -1098,5 +1098,19 @@ func matrixChatMigrations() []Migration {
 				"createdAt" TIMESTAMPTZ NOT NULL DEFAULT now()
 			);
 		`,
+	}, {
+		Version: "0404_ai_reminder",
+		SQL: `
+			CREATE TABLE IF NOT EXISTS "AiReminder" (
+				id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
+				"employeeId" TEXT NOT NULL REFERENCES "Employee"(id) ON DELETE CASCADE,
+				text TEXT NOT NULL,
+				"dueAt" TIMESTAMPTZ NOT NULL,
+				"sentAt" TIMESTAMPTZ,
+				"cancelledAt" TIMESTAMPTZ,
+				"createdAt" TIMESTAMPTZ NOT NULL DEFAULT now()
+			);
+			CREATE INDEX IF NOT EXISTS "AiReminder_due_idx" ON "AiReminder" ("dueAt") WHERE "sentAt" IS NULL AND "cancelledAt" IS NULL;
+		`,
 	}}
 }

@@ -119,3 +119,4 @@ git push origin origin/avg:refs/heads/prod     # بعد التأكد إنه fast
 - 10-28 (لوفي): e788b080 (واجهات ساسكي الحية + إيقاف يقطع النداء) انرفع ع برود بطلب دازاي.
 - 10-28 (لوفي): تقارير العمل «يرجعن ٢٠٠»: التدقيق چان ينحفظ، بس القائمة سقفها ٢٠٠ والعداد ينحسب منها. هسه ?review=PENDING|DONE بالخادم (PENDING الأقدم أول)، GET /api/work-reports/counts بالعدد الحقيقي، والواجهة تجيب كل تبويب لحاله وتبين «يعرض X من N». وcanReviewReports صار يقبل mon_reports. avg.
 - 10-28 (لوفي): 27a6fbfd (عداد تقارير العمل) انرفع ع برود بطلب دازاي.
+- 10-29 (لوفي): منبّه كمال: 0404 AiReminder + set_reminder/list_reminders/cancel_reminder، وحلقة كل ٣٠ث ترسل إشعار AI_REMINDER (FOR UPDATE SKIP LOCKED). برومبت: لا «ما أگدر» — أقرب حل + suggest_improvement. صفحة السكرتير (برّا Layout) صارت تشغّل startAgentRebrand فيطلع «كمال»، وEnter يرسل (Shift+Enter سطر). avg.
