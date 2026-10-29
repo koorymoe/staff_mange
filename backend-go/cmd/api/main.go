@@ -2886,6 +2886,13 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 		}, cfg.AISecretaryDailyCap) // حارس فاتورة
 		irisBrain.SetWebSearch(cfg.AIIrisWebSearch)
 		secHandler.SetBrain(irisBrain)
+		// 👂 أذن تتعلم (دازاي 10-29): ورقة المصطلحات + كلمات النظام + تصحيحات المالك
+		service.DefaultVoiceLexicon = service.NewVoiceLexicon(db)
+		service.StartVoiceLexicon(service.DefaultVoiceLexicon)
+		voiceLex := handler.NewVoiceLexiconHandler(db)
+		mux.Handle("GET /api/voice/terms", middleware.Chain(http.HandlerFunc(voiceLex.List), requireAuth, requireAdmin))
+		mux.Handle("POST /api/voice/terms", middleware.Chain(http.HandlerFunc(voiceLex.Add), requireAuth, requireAdmin))
+		mux.Handle("DELETE /api/voice/terms", middleware.Chain(http.HandlerFunc(voiceLex.Delete), requireAuth, requireAdmin))
 		// 🎙️ فويس ايريس بـGemini (أدق بالعراقي)، ويرجع لـWhisper إذا فشل (دازاي 10-23)
 		if cfg.AIIrisVoice == "gemini" {
 			if g := service.NewGeminiTranscriber(cfg.GeminiAPIKey); g != nil {

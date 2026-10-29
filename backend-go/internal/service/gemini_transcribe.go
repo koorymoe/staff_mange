@@ -46,7 +46,7 @@ func (g *GeminiTranscriber) Transcribe(ctx context.Context, audio []byte, conten
 	body, _ := json.Marshal(map[string]any{
 		"contents": []any{map[string]any{"parts": []any{
 			map[string]any{"inline_data": map[string]any{"mime_type": mime, "data": base64.StdEncoding.EncodeToString(audio)}},
-			map[string]any{"text": geminiSTTPrompt},
+			map[string]any{"text": geminiSTTPrompt + DefaultVoiceLexicon.PromptHint()},
 		}}},
 		"generationConfig": map[string]any{"temperature": 0},
 	})

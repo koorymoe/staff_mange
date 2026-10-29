@@ -667,7 +667,7 @@ func (h *SecretaryHandler) SetSTT(t interface {
 func (h *SecretaryHandler) transcribe(ctx context.Context, data []byte, ct string) (string, error) {
 	if h.stt != nil {
 		if t, err := h.stt.Transcribe(ctx, data, ct); err == nil {
-			return t, nil
+			return service.DefaultVoiceLexicon.Apply(t), nil
 		} else {
 			log.Printf("[iris-voice] gemini: %v — نرجع لـWhisper", err)
 		}
@@ -675,7 +675,8 @@ func (h *SecretaryHandler) transcribe(ctx context.Context, data []byte, ct strin
 	if h.voice == nil || !h.voice.Enabled() {
 		return "", errors.New("تحويل الصوت مو متوفر")
 	}
-	return h.voice.Transcribe(ctx, data, ct)
+	t, err := h.voice.Transcribe(ctx, data, ct)
+	return service.DefaultVoiceLexicon.Apply(t), err
 }
 
 // updateMemory يدمج الرسائل القديمة بملخص المحادثة إذا تجمّعن (بالخلفية، ما يأخّر الرد).

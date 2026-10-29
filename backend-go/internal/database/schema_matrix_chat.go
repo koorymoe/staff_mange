@@ -1129,5 +1129,25 @@ func matrixChatMigrations() []Migration {
 			);
 			CREATE INDEX IF NOT EXISTS "AiWatch_open_idx" ON "AiWatch" (status, "createdAt");
 		`,
+	}, {
+		Version: "0406_voice_lexicon",
+		SQL: `
+			CREATE TABLE IF NOT EXISTS "VoiceTerm" (
+				term TEXT PRIMARY KEY,
+				meaning TEXT NOT NULL DEFAULT '',
+				category TEXT NOT NULL DEFAULT '',
+				source TEXT NOT NULL DEFAULT 'SEED' CHECK (source IN ('SEED', 'SYSTEM', 'LEARNED', 'OWNER')),
+				uses INT NOT NULL DEFAULT 0,
+				"createdAt" TIMESTAMPTZ NOT NULL DEFAULT now(),
+				"updatedAt" TIMESTAMPTZ NOT NULL DEFAULT now()
+			);
+			CREATE TABLE IF NOT EXISTS "VoiceFix" (
+				wrong TEXT PRIMARY KEY,
+				"right" TEXT NOT NULL,
+				source TEXT NOT NULL DEFAULT 'SEED',
+				uses INT NOT NULL DEFAULT 0,
+				"createdAt" TIMESTAMPTZ NOT NULL DEFAULT now()
+			);
+		`,
 	}}
 }
