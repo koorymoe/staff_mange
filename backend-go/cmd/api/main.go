@@ -2944,6 +2944,15 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 			log.Printf("org seed: %v", err)
 		}
 		orgHandler := handler.NewOrgHandler(orgService, notificationRepo)
+		// 🏛️ ماتركس الحاكم (دازاي 10-29): الغرامات (كل ساعة) والتقييم الشهري (أول ٣ أيام).
+		// مفتاح الطوارئ org_governor، والتراجع من صفحة قرارات ماتركس يرجّع النقاط/المنصب.
+		orgGovernor := service.NewOrgGovernor(db, orgService, matrixScoreService, disciplineRepo, aiActionRepo, aiRepo,
+			repository.NewSystemSwitchRepository(db), notificationRepo)
+		orgGovernor.RegisterUndo(matrixAutopilotService.OnUndo)
+		safeguard.Loop("org-governor", 4*time.Minute, time.Hour, func() {
+			orgGovernor.RunFines()
+			orgGovernor.RunMonthlyIfDue()
+		})
 		mux.Handle("GET /api/org/chart", middleware.Chain(http.HandlerFunc(orgHandler.Chart), requireAuth, requireAdmin))
 		mux.Handle("GET /api/org/me", middleware.Chain(http.HandlerFunc(orgHandler.Me), requireAuth))
 		mux.Handle("POST /api/org/assign", middleware.Chain(http.HandlerFunc(orgHandler.Assign), requireAuth, requireAdmin))

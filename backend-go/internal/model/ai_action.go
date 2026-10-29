@@ -37,6 +37,12 @@ const (
 	AiActionMonitorEscalate = "MONITOR_ESCALATE" // بنود المراقب +٤٨ ساعة صعدت للمدير
 	AiActionToolReturn      = "TOOL_RETURN"      // الموظف: أداة ويّاه من +٧ أيام وما رجعها
 	AiActionWatchDigest     = "WATCH_DIGEST"     // المراقب: ملخّص عيون الرقابة المهمة
+	// ── 🏛️ ماتركس الحاكم (دازاي 10-29): قرارات بفلوس ومناصب — بقرار صريح من المالك
+	// («ماتركس صاحب القرار»، ينفّذ من أول شهر). كل وحدة تنرجع من صفحة القرارات.
+	AiActionOrgFineCustomer = "ORG_FINE_CUSTOMER" // غرامة: مشكلة مباشرة ويا الزبون (شكوى على حجزه)
+	AiActionOrgFineOps      = "ORG_FINE_OPS"      // غرامة: مدير العمليات ما حل شكوى خلال ٤٨ ساعة
+	AiActionOrgWarn         = "ORG_WARN"          // تنبيه رسمي: تقييم الشهر تحت ٥٠٪
+	AiActionOrgRevoke       = "ORG_REVOKE"        // سحب منصب ومخصصه: شهرين متتاليين تحت ٥٠٪
 )
 
 // AiActionEscalateAfter تذكير ما انحل بهالمدة يصعد للمدير.
@@ -52,6 +58,10 @@ const (
 
 // AiActionLabels اسم الفعل للعرض.
 var AiActionLabels = map[string]string{
+	AiActionOrgFineCustomer: "غرامة مشكلة ويا الزبون",
+	AiActionOrgFineOps:      "غرامة مدير العمليات (شكوى بلا حل)",
+	AiActionOrgWarn:         "تنبيه رسمي (تقييم تحت ٥٠٪)",
+	AiActionOrgRevoke:       "سحب منصب ومخصصه",
 	AiActionPaperworkReminder:  "تذكير بالورق المتأخر",
 	AiActionDelayWarning:       "تنبيه تأخير لليدر",
 	AiActionCustomerFollowUp:   "متابعة زبون قريب يزعل",

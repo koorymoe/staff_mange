@@ -92,6 +92,9 @@ const (
 	// وحتى ما يصير هذا المفتاح باب خلفي: كل تعديل يدوي ينسجّل بنفس
 	// السجل مع اسم الي عدّل والسبب — يعني ينشاف متل أي حركة ثانية.
 	DisciplineManual = "MANUAL"
+	// DisciplineMatrixFine غرامة قرّرها ماتركس الحاكم (الهيكل الجديد 10-29)، والتراجع عنها
+	DisciplineMatrixFine     = "MATRIX_FINE"
+	DisciplineMatrixFineUndo = "MATRIX_FINE_UNDO"
 )
 
 // DisciplinePoints رصيد نقاط موظف.

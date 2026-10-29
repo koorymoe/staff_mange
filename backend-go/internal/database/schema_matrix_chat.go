@@ -1333,5 +1333,25 @@ func matrixChatMigrations() []Migration {
 			) AS x(n, t)
 			WHERE NOT EXISTS (SELECT 1 FROM "PrivacyPolicyPoint" pp WHERE pp."principleNo" = x.n);
 		`,
+	}, {
+		// 🏛️ ماتركس الحاكم (دازاي 10-29): تقييم شهري لكل صاحب منصب (يحدد التنبيه والسحب)،
+		// وتاريخ تشغيله الأول — الغرامات بس على شكاوي بعده (ما نغرّم على الماضي).
+		Version: "0411_org_governor",
+		SQL: `
+			CREATE TABLE IF NOT EXISTS "OrgEvaluation" (
+				"employeeId" TEXT NOT NULL REFERENCES "Employee"(id) ON DELETE CASCADE,
+				period TEXT NOT NULL,
+				score NUMERIC,
+				components JSONB NOT NULL DEFAULT '{}',
+				decision TEXT NOT NULL CHECK (decision IN ('OK', 'WARN', 'REVOKE', 'NODATA')),
+				"createdAt" TIMESTAMPTZ NOT NULL DEFAULT now(),
+				PRIMARY KEY ("employeeId", period)
+			);
+			CREATE TABLE IF NOT EXISTS "OrgGovernorState" (
+				key TEXT PRIMARY KEY,
+				value TEXT NOT NULL,
+				"updatedAt" TIMESTAMPTZ NOT NULL DEFAULT now()
+			);
+		`,
 	}}
 }

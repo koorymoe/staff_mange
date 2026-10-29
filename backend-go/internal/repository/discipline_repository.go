@@ -76,6 +76,11 @@ func (r *DisciplineRepository) Penalize(employeeID, kind, reason string, booking
 // يرجّع الرصيد بعد التعديل والفرق الي انطبّق فعلاً (ممكن يقل عن
 // المطلوب إذا الرصيد وصل الحد).
 func (r *DisciplineRepository) Adjust(employeeID string, delta int, reason, byEmployeeID string) (remaining int, applied int, err error) {
+	return r.AdjustKind(employeeID, delta, model.DisciplineManual, reason, byEmployeeID)
+}
+
+// AdjustKind نفس Adjust بنوع حركة محدد (غرامات ماتركس الحاكم وتراجعها). byEmployeeID فاضي = النظام.
+func (r *DisciplineRepository) AdjustKind(employeeID string, delta int, kind, reason, byEmployeeID string) (remaining int, applied int, err error) {
 	tx, err := r.db.Beginx()
 	if err != nil {
 		return 0, 0, err
@@ -108,8 +113,8 @@ func (r *DisciplineRepository) Adjust(employeeID string, delta int, reason, byEm
 
 	if _, err = tx.Exec(`
 		INSERT INTO "DisciplineEvent" (id, "employeeId", "bookingId", kind, delta, reason, "byEmployeeId")
-		VALUES ($1, $2, NULL, $3, $4, $5, $6)
-	`, uuid.NewString(), employeeID, model.DisciplineManual, applied, reason, byEmployeeID); err != nil {
+		VALUES ($1, $2, NULL, $3, $4, $5, NULLIF($6, ''))
+	`, uuid.NewString(), employeeID, kind, applied, reason, byEmployeeID); err != nil {
 		return 0, 0, err
 	}
 	if _, err = tx.Exec(`

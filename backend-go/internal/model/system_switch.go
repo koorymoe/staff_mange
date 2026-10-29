@@ -30,6 +30,9 @@ const (
 	SwitchMatrixMonitorEscalate = "matrix_monitor_escalate"
 	// SwitchMatrixScoring ماتركس يقيّم الموظفين بنقاط (درجة تقييم بس، بلا فلوس).
 	SwitchMatrixScoring = "matrix_scoring"
+	// SwitchOrgGovernor ماتركس الحاكم: الغرامات وسحب المناصب (دازاي 10-29) — شغّال افتراضياً
+	// بقرار المالك، والمفتاح للطوارئ.
+	SwitchOrgGovernor = "org_governor"
 )
 
 // مفاتيح توفير الكلفة — كل ميزة تستعمل هايكو إلها مفتاح. المطفي يرجع للقواعد
@@ -82,6 +85,7 @@ var SystemSwitchLabels = map[string]string{
 	SwitchMatrixAutoCrew:        "ماتركس يكلّف كادر حجز باچر لحاله",
 	SwitchMatrixMonitorEscalate: "ماتركس يصعّد بنود المراقب المتأخرة",
 	SwitchMatrixScoring:         "ماتركس يقيّم الموظفين بالنقاط",
+	SwitchOrgGovernor:           "ماتركس الحاكم: الغرامات وسحب المناصب",
 	SwitchAIGuide:               "هايكو: توجيهات ماتركس للموظفين",
 	SwitchAIJudge:               "هايكو: أحكام ماتركس",
 	SwitchAIDiscovery:           "هايكو: ماتركس اكتشف",
