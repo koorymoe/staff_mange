@@ -770,13 +770,29 @@ ${pageShell(`
       : false,
   )
 
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (!file) return
+  // (دازاي 10-29) صورة المنتج: اختيار ملف، أو سحب وإفلات، أو لصق سكرين شوت (Ctrl+V).
+  const [pmDrag, setPmDrag] = useState(false)
+  const takeImageFile = (file?: File | null) => {
+    if (!file || !file.type.startsWith('image/')) return false
     const reader = new FileReader()
     reader.onload = () => setPmImage(reader.result as string)
     reader.readAsDataURL(file)
+    return true
   }
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    takeImageFile(e.target.files?.[0])
+    e.target.value = ''
+  }
+  // اللصق يشتغل بأي مكان بنافذة المنتجات — حتى لو المؤشر بحقل الاسم. نص عادي ما نلمسه.
+  useEffect(() => {
+    if (!showProductModal) return
+    const onPaste = (e: ClipboardEvent) => {
+      const item = Array.from(e.clipboardData?.items ?? []).find((i) => i.kind === 'file' && i.type.startsWith('image/'))
+      if (item && takeImageFile(item.getAsFile())) e.preventDefault()
+    }
+    document.addEventListener('paste', onPaste)
+    return () => document.removeEventListener('paste', onPaste)
+  }, [showProductModal])
 
   const handlePmSave = async () => {
     if (!pmName.trim()) { setPmStatus('⚠ أدخل اسم المنتج'); return }
@@ -1219,10 +1235,31 @@ ${pageShell(`
                   </div>
                   <div style={{ gridColumn: '1 / -1' }}>
                     <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: 'var(--t-body)', marginBottom: '6px' }}>صورة المنتج (اختياري)</label>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                      <input type="file" accept="image/*" onChange={handleImageUpload} style={{ fontSize: 13 }} />
-                      {pmImage && <img src={pmImage} style={{ width: 60, height: 60, objectFit: 'contain', borderRadius: 8, border: '1px solid var(--bd-line)' }} />}
-                    </div>
+                    <label
+                      onDragOver={(e) => { e.preventDefault(); setPmDrag(true) }}
+                      onDragLeave={() => setPmDrag(false)}
+                      onDrop={(e) => { e.preventDefault(); setPmDrag(false); takeImageFile(e.dataTransfer.files?.[0]) }}
+                      style={{
+                        display: 'flex', alignItems: 'center', gap: 14, padding: '14px 16px', cursor: 'pointer',
+                        border: `2px dashed ${pmDrag ? '#283593' : 'var(--bd-line)'}`, borderRadius: 10,
+                        background: pmDrag ? 'rgba(40,53,147,0.08)' : 'var(--sf-card)', transition: 'all .15s',
+                      }}
+                    >
+                      <input type="file" accept="image/*" onChange={handleImageUpload} style={{ display: 'none' }} />
+                      {pmImage
+                        ? <img src={pmImage} alt="" style={{ width: 72, height: 72, objectFit: 'contain', borderRadius: 8, border: '1px solid var(--bd-line)', background: '#fff' }} />
+                        : <span style={{ fontSize: 30 }}>🖼️</span>}
+                      <span style={{ fontSize: 13, color: 'var(--t-body)', lineHeight: 1.7 }}>
+                        <b>اسحب الصورة هنا</b> أو <b>الصق سكرين شوت (Ctrl+V)</b>
+                        <br />أو اضغط حتى تختار ملف
+                      </span>
+                      {pmImage && (
+                        <button type="button" onClick={(e) => { e.preventDefault(); setPmImage('') }}
+                          style={{ marginInlineStart: 'auto', border: 'none', background: 'transparent', color: 'var(--t-danger)', cursor: 'pointer', fontSize: 13, fontFamily: 'inherit' }}>
+                          ✕ شيل الصورة
+                        </button>
+                      )}
+                    </label>
                   </div>
                 </div>
                 <button onClick={handlePmSave} style={{
