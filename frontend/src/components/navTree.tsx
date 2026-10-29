@@ -119,6 +119,8 @@ export const navItems: NavItem[] = [
   // (ع) 10-23: «الرابط مال السكرتير وين؟» — تطبيق مستقل بلا قائمة، فزر يوديله للمالك بس.
   { ownerOnly: true, to: '/secretary', label: '🗂️ ايريس', icon: icon('M12 3a4 4 0 100 8 4 4 0 000-8zM4 21v-1a6 6 0 016-6h4a6 6 0 016 6v1'), roles: ['ADMIN'] },
   { ownerOnly: true, to: '/ai-agents', label: '🤖 وكلاء الذكاء', icon: <></>, roles: ['ADMIN'] },
+  { to: '/ai-suggestions', label: '🧠 اقتراحات الذكاء', icon: <></>, roles: ['ADMIN'] },
+  { to: '/voice-terms', label: '👂 قاموس الأذن', icon: <></>, roles: ['ADMIN'] },
   // (دازاي 10-29) محادثة ماتركس لصاحب الصلاحية — أدواته بحدود صلاحياته بالخادم
   { to: '/matrix-chat', label: '🤖 محادثة ماتركس', icon: <></>, roles: ['ADMIN'], anyPermission: ['agent_matrix'] },
   { to: '/whatsapp-conversations', label: 'محادثات الواتساب', icon: <></>, roles: ['ADMIN'], anyPermission: ['quality_control', 'coordinator'] },
@@ -886,6 +888,8 @@ export type NavContext = {
 
 export function isNavVisible(item: NavItem, ctx: NavContext, unitGranted = false): boolean {
   const role = ctx.employee?.role
+  // These APIs are admin-only even when a whole unit is granted to staff.
+  if (['/voice-terms', '/ai-suggestions'].includes(item.to) && role !== 'ADMIN' && ctx.employee?.actualRole !== 'OWNER') return false
   const hasMonitor = role === 'MONITOR' || ctx.permissions.includes('monitoring')
   // قرار (ع) 10-08: مهندس الجودة يشوف شغله بس — صلاحية auditing ما تعامله كمراقب بالقائمة
   // (وشاشات المراقب نفسها عليها hideForRoles: QUALITY_ENGINEER).

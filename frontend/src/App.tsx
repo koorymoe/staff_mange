@@ -83,6 +83,7 @@ const DeviceMaintenancePage = lazy(() => import('./pages/DeviceMaintenancePage')
 const TeamInventoryCheckPage = lazy(() => import('./pages/TeamInventoryCheckPage'))
 const PermissionsPage = lazy(() => import('./pages/PermissionsPage'))
 const AiSuggestionsPage = lazy(() => import('./pages/AiSuggestionsPage'))
+const VoiceTermsPage = lazy(() => import('./pages/VoiceTermsPage'))
 const DepartmentsPage = lazy(() => import('./pages/DepartmentsPage'))
 const DesignGalleryPage = lazy(() => import('./pages/DesignGalleryPage'))
 const QuotationsPage = lazy(() => import('./pages/QuotationsPage'))
@@ -216,6 +217,7 @@ function App() {
           <Route path="secretary" element={<SecretaryPage />} />
           <Route path="ai-agents" element={<AiAgentsPage />} />
           <Route path="ai-suggestions" element={<RequireAdmin><AiSuggestionsPage /></RequireAdmin>} />
+          <Route path="voice-terms" element={<RequireAdmin><VoiceTermsPage /></RequireAdmin>} />
           <Route path="whatsapp-conversations" element={<WhatsAppPage />} />
           <Route path="whatsapp-sandbox" element={<WhatsAppSandboxPage />} />
           <Route path="coordinator" element={<Coordinator />} />
