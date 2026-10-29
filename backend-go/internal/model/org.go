@@ -53,6 +53,9 @@ type OrgAssignment struct {
 	EndedByID    *string    `db:"endedById" json:"endedById"`
 	EndReason    *string    `db:"endReason" json:"endReason"`
 	Note         *string    `db:"note" json:"note"`
+	// أسماء المكان — تنملي بـ/api/org/me بس (الموظف ما يگدر يطلب الشجرة)
+	DivisionName string  `db:"divisionName" json:"divisionName,omitempty"`
+	UnitName     *string `db:"unitName" json:"unitName,omitempty"`
 }
 
 type orgSeedUnit struct {

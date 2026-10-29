@@ -22,6 +22,23 @@ func NewOrgHandler(svc *service.OrgService, n *repository.NotificationRepository
 	return &OrgHandler{svc: svc, notifications: n}
 }
 
+// guard: غير المالك ما يعيّن ولا ينهي منصب المالك أو مدير النظام، ولا منصبه هو.
+func (h *OrgHandler) guard(r *http.Request, target string) string {
+	if middleware.RoleFromContext(r) == "OWNER" {
+		return ""
+	}
+	if target == "" {
+		return ""
+	}
+	if target == middleware.EmployeeIDFromContext(r) {
+		return "منصبك إنت يعيّنه المالك بس"
+	}
+	if rl := h.svc.TargetRole(target); rl == "OWNER" || rl == "ADMIN" {
+		return "مناصب المالك ومدير النظام يعيّنها المالك بس"
+	}
+	return ""
+}
+
 var orgPositionLabel = map[string]string{"DIRECTOR": "مدير", "DEPUTY": "نائب", "MEMBER": "عضو"}
 
 // GET /api/org/chart
@@ -51,6 +68,10 @@ func (h *OrgHandler) Assign(w http.ResponseWriter, r *http.Request) {
 		WriteError(w, http.StatusBadRequest, "طلب غير صالح")
 		return
 	}
+	if why := h.guard(r, in.EmployeeID); why != "" {
+		WriteError(w, http.StatusForbidden, why)
+		return
+	}
 	a, err := h.svc.Assign(middleware.EmployeeIDFromContext(r), in)
 	if err != nil {
 		status := http.StatusBadRequest
@@ -74,6 +95,10 @@ func (h *OrgHandler) End(w http.ResponseWriter, r *http.Request) {
 	}
 	if err := DecodeJSON(r, &in); err != nil {
 		WriteError(w, http.StatusBadRequest, "طلب غير صالح")
+		return
+	}
+	if why := h.guard(r, h.svc.AssignmentEmployee(r.PathValue("id"))); why != "" {
+		WriteError(w, http.StatusForbidden, why)
 		return
 	}
 	a, err := h.svc.End(middleware.EmployeeIDFromContext(r), r.PathValue("id"), in.Reason)

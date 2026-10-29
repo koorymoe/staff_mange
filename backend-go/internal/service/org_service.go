@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/jmoiron/sqlx"
+	"github.com/lib/pq"
 
 	"staffmange-api/internal/model"
 )
@@ -151,7 +152,9 @@ func nz(s []string) []string {
 // Mine مناصب موظف (الفعّالة).
 func (s *OrgService) Mine(empID string) ([]model.OrgAssignment, error) {
 	out := []model.OrgAssignment{}
-	err := s.db.Select(&out, `SELECT `+orgAssignCols+` FROM "OrgAssignment" a JOIN "Employee" e ON e.id = a."employeeId"
+	err := s.db.Select(&out, `SELECT `+orgAssignCols+`, d.name AS "divisionName", u.name AS "unitName"
+		FROM "OrgAssignment" a JOIN "Employee" e ON e.id = a."employeeId"
+		JOIN "OrgDivision" d ON d.id = a."divisionId" LEFT JOIN "OrgUnit" u ON u.id = a."unitId"
 		WHERE a."employeeId" = $1 AND a."endedAt" IS NULL ORDER BY a."startedAt"`, empID)
 	return out, err
 }
@@ -181,13 +184,6 @@ func (s *OrgService) Assign(actorID string, in OrgAssignInput) (*model.OrgAssign
 	if err := model.CheckIQD("المخصص", in.AllowanceIQD); err != nil {
 		return nil, err
 	}
-	var active string
-	if err := s.db.Get(&active, `SELECT status FROM "Employee" WHERE id = $1`, in.EmployeeID); err != nil {
-		return nil, errors.New("الموظف مو موجود")
-	}
-	if active != "ACTIVE" {
-		return nil, errors.New("الموظف مو فعّال")
-	}
 	var unit any
 	if in.UnitID != "" {
 		var div string
@@ -212,6 +208,14 @@ func (s *OrgService) Assign(actorID string, in OrgAssignInput) (*model.OrgAssign
 		return nil, err
 	}
 	defer tx.Rollback()
+	// قفل الموظف أول — تعيينين بنفس الوكت لنفس الموظف ما يتسابقون على الصلاحيات
+	var active string
+	if err := tx.Get(&active, `SELECT status FROM "Employee" WHERE id = $1 FOR UPDATE`, in.EmployeeID); err != nil {
+		return nil, errors.New("الموظف مو موجود")
+	}
+	if active != "ACTIVE" {
+		return nil, errors.New("الموظف مو فعّال")
+	}
 	var id string
 	err = tx.Get(&id, `INSERT INTO "OrgAssignment" ("employeeId", "divisionId", "unitId", position, "allowanceIQD", note, "createdById")
 		VALUES ($1, $2, $3, $4, $5, NULLIF($6, ''), NULLIF($7, '')) RETURNING id`,
@@ -331,7 +335,29 @@ func orgDesired(q orgQuerier, empID string) (map[string]bool, error) {
 	return out, nil
 }
 
+// OrgWants هل مناصب الموظف الفعّالة تستحق هالصلاحية؟ (لانتهاء الاستثناءات المؤقتة)
+func OrgWants(tx *sqlx.Tx, empID, perm string) bool {
+	d, err := orgDesired(tx, empID)
+	return err == nil && d[perm]
+}
+
 func syncOrgPermissions(tx *sqlx.Tx, empID, actorID, reason string) error {
+	if _, err := tx.Exec(`SELECT 1 FROM "Employee" WHERE id = $1 FOR UPDATE`, empID); err != nil {
+		return err
+	}
+	var emp struct {
+		Role      string         `db:"role"`
+		Secondary pq.StringArray `db:"secondaryRoles"`
+	}
+	if err := tx.Get(&emp, `SELECT role::text AS role, COALESCE("secondaryRoles", '{}') AS "secondaryRoles" FROM "Employee" WHERE id = $1`, empID); err != nil {
+		return err
+	}
+	tmpl := map[string]bool{}
+	for _, rl := range append([]string{emp.Role}, emp.Secondary...) {
+		for _, p := range model.RoleDefaultPermissions[rl] {
+			tmpl[p] = true
+		}
+	}
 	desired, err := orgDesired(tx, empID)
 	if err != nil {
 		return err
@@ -340,12 +366,14 @@ func syncOrgPermissions(tx *sqlx.Tx, empID, actorID, reason string) error {
 		Name    string `db:"name"`
 		ViaOrg  bool   `db:"viaOrg"`
 		Granted bool   `db:"granted"`
+		Pinned  bool   `db:"pinned"`
 	}
 	cur := []held{}
 	if err := tx.Select(&cur, `
 		SELECT p.name,
 		       EXISTS (SELECT 1 FROM "OrgPermissionGrant" g WHERE g."employeeId" = $1 AND g.permission = p.name) AS "viaOrg",
-		       EXISTS (SELECT 1 FROM "EmployeePermission" ep WHERE ep."employeeId" = $1 AND ep."permissionId" = p.id) AS granted
+		       EXISTS (SELECT 1 FROM "EmployeePermission" ep WHERE ep."employeeId" = $1 AND ep."permissionId" = p.id) AS granted,
+		       EXISTS (SELECT 1 FROM "PermissionException" x WHERE x."employeeId" = $1 AND x.permission = p.name) AS pinned
 		FROM "Permission" p`, empID); err != nil {
 		return err
 	}
@@ -364,8 +392,9 @@ func syncOrgPermissions(tx *sqlx.Tx, empID, actorID, reason string) error {
 	for _, n := range names {
 		h := idx[n]
 		switch {
-		case desired[n] && !h.Granted:
-			// يستحقها ومو عنده — ننطيها ونسجّل إنها من المنصب
+		case desired[n] && !h.Granted && !h.ViaOrg:
+			// يستحقها ومو عنده — ننطيها ونسجّل إنها من المنصب.
+			// (ViaOrg ويا مو عنده = الأدمن شالها بيده: نحترم قراره وما نرجّعها)
 			if _, err := tx.Exec(`INSERT INTO "EmployeePermission" (id, "employeeId", "permissionId")
 				SELECT gen_random_uuid()::text, $1, id FROM "Permission" WHERE name = $2 ON CONFLICT DO NOTHING`, empID, n); err != nil {
 				return err
@@ -376,8 +405,9 @@ func syncOrgPermissions(tx *sqlx.Tx, empID, actorID, reason string) error {
 			audit("ORG_GRANT", n)
 			changed = true
 		case !desired[n] && h.ViaOrg:
-			// انطت بسبب منصب وهسه ما يستحقها — تنسحب (اليدوي ما ينمس لأنه مو مسجّل ORG)
-			if h.Granted {
+			// انطت بسبب منصب وهسه ما يستحقها — تنسحب (اليدوي ما ينمس لأنه مو مسجّل ORG).
+			// إلا إذا دوره يستحقها (قالب) أو عليها استثناء مثبّت — نشيل علامة المنصب بس.
+			if h.Granted && !tmpl[n] && !h.Pinned {
 				if _, err := tx.Exec(`DELETE FROM "EmployeePermission" WHERE "employeeId" = $1
 					AND "permissionId" = (SELECT id FROM "Permission" WHERE name = $2)`, empID, n); err != nil {
 					return err
@@ -396,4 +426,18 @@ func syncOrgPermissions(tx *sqlx.Tx, empID, actorID, reason string) error {
 		}
 	}
 	return nil
+}
+
+// TargetRole دور موظف (لحارس «مناصب المالك والمدير يعيّنها المالك بس»).
+func (s *OrgService) TargetRole(empID string) string {
+	var role string
+	_ = s.db.Get(&role, `SELECT role::text FROM "Employee" WHERE id = $1`, empID)
+	return role
+}
+
+// AssignmentEmployee صاحب المنصب.
+func (s *OrgService) AssignmentEmployee(id string) string {
+	var emp string
+	_ = s.db.Get(&emp, `SELECT "employeeId" FROM "OrgAssignment" WHERE id = $1`, id)
+	return emp
 }

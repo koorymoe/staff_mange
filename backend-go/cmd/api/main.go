@@ -2934,6 +2934,10 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 		log.Printf("🎙️ أذن كمال: الأساسي «%s» من %d مزوّد (تصحيح القاموس: %v)", primary, len(sttAll), polish != nil)
 		// 🏛️ الهيكل الجديد (دازاي 10-29): إدارات ووحدات ومناصب — فوك الأدوار
 		orgService := service.NewOrgService(db)
+		// الكتالوج أول — وإلا حزم الوحدات تنزرع ناقصة على قاعدة جديدة
+		if err := permissionRepo.EnsureSeeded(); err != nil {
+			log.Printf("permission seed: %v", err)
+		}
 		if err := orgService.Seed(); err != nil {
 			log.Printf("org seed: %v", err)
 		}

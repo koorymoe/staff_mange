@@ -12,6 +12,7 @@ import (
 
 	"staffmange-api/internal/middleware"
 	"staffmange-api/internal/model"
+	"staffmange-api/internal/service"
 )
 
 // ═══ «الصلاحيات والوصول» — خادم المرحلة ١ (دازاي 10-26، العقد ويا ساسكي) ═══
@@ -106,11 +107,13 @@ type accessEmployee struct {
 	SecondaryRoles pq.StringArray `db:"secondaryRoles" json:"secondaryRoles"`
 	IsLeader       bool           `db:"isLeader" json:"isLeader"`
 	Version        int            `db:"accessVersion" json:"-"`
+	// Org الصلاحيات الي جت ويا منصب بالهيكل (الهيكل الجديد 10-29)
+	Org map[string]bool `db:"-" json:"-"`
 }
 
 type accessItem struct {
 	Name      string     `json:"name"`
-	Source    string     `json:"source"` // TEMPLATE | MANUAL | EXCEPTION
+	Source    string     `json:"source"` // TEMPLATE | MANUAL | EXCEPTION | ORG
 	ExpiresAt *time.Time `json:"expiresAt,omitempty"`
 	Reason    string     `json:"reason,omitempty"`
 }
@@ -141,6 +144,12 @@ func (h *PermissionAccessHandler) state(id string) (*accessEmployee, map[string]
 	for _, x := range ex {
 		exc[x.Permission] = x
 	}
+	var org []string
+	_ = h.db.Select(&org, `SELECT permission FROM "OrgPermissionGrant" WHERE "employeeId" = $1`, id)
+	e.Org = map[string]bool{}
+	for _, n := range org {
+		e.Org[n] = true
+	}
 	return &e, have, exc, nil
 }
 
@@ -159,6 +168,8 @@ func (h *PermissionAccessHandler) Access(w http.ResponseWriter, r *http.Request)
 			it.Source, it.ExpiresAt, it.Reason = "EXCEPTION", x.ExpiresAt, x.Reason
 		} else if tpl[n] {
 			it.Source = "TEMPLATE"
+		} else if e.Org[n] {
+			it.Source = "ORG"
 		}
 		items = append(items, it)
 	}
@@ -216,7 +227,12 @@ func (h *PermissionAccessHandler) apply(r *http.Request, empID string, version i
 		if k, _ := res.RowsAffected(); k > 0 {
 			h.audit(tx, empID, actor, "ADD", n, reason)
 		}
+		// منح يدوي = الصلاحية صارت يدوية — إنهاء المنصب بعدين ما يسحبها
+		if _, err := tx.Exec(`DELETE FROM "OrgPermissionGrant" WHERE "employeeId" = $1 AND permission = $2`, empID, n); err != nil {
+			return http.StatusInternalServerError, "تعذر الحفظ"
+		}
 	}
+	// الشيل اليدوي يخلي علامة المنصب (إن وجدت) كـ«رفض» — المزامنة ما ترجّعها لحالها
 	for _, n := range remove {
 		res, err := tx.Exec(`DELETE FROM "EmployeePermission" WHERE "employeeId" = $1 AND "permissionId" = (SELECT id FROM "Permission" WHERE name = $2)`, empID, n)
 		if err != nil {
@@ -268,17 +284,21 @@ type driftRow struct {
 	Extra      []string `json:"extra"`
 	Missing    []string `json:"missing"`
 	Exceptions []string `json:"exceptions"`
-	Version    int      `json:"version"`
+	// Org من المنصب بالهيكل — مو «زيادة» على القالب، و«مطابقة» ما تشيلها
+	Org     []string `json:"org"`
+	Version int      `json:"version"`
 }
 
 func (h *PermissionAccessHandler) drift(e *accessEmployee, have map[string]bool, exc map[string]exceptionRow) driftRow {
 	tpl := templateFor(e.Role, e.SecondaryRoles)
-	d := driftRow{EmployeeID: e.ID, Name: e.Name, Role: e.Role, Extra: []string{}, Missing: []string{}, Exceptions: []string{}, Version: e.Version}
+	d := driftRow{EmployeeID: e.ID, Name: e.Name, Role: e.Role, Extra: []string{}, Missing: []string{}, Exceptions: []string{}, Org: []string{}, Version: e.Version}
 	_, hasTpl := model.RoleDefaultPermissions[e.Role]
 	for n := range have {
 		switch {
 		case exc[n].Permission != "":
 			d.Exceptions = append(d.Exceptions, n)
+		case e.Org[n] && !tpl[n]:
+			d.Org = append(d.Org, n)
 		case !tpl[n]:
 			d.Extra = append(d.Extra, n)
 		}
@@ -291,6 +311,7 @@ func (h *PermissionAccessHandler) drift(e *accessEmployee, have map[string]bool,
 	sort.Strings(d.Extra)
 	sort.Strings(d.Missing)
 	sort.Strings(d.Exceptions)
+	sort.Strings(d.Org)
 	switch {
 	case !hasTpl:
 		d.Status = "NO_TEMPLATE"
@@ -468,7 +489,12 @@ func (h *PermissionAccessHandler) SweepExpired() int {
 		if err != nil {
 			continue
 		}
-		_, _ = tx.Exec(`DELETE FROM "EmployeePermission" WHERE "employeeId" = $1 AND "permissionId" = (SELECT id FROM "Permission" WHERE name = $2)`, x.EmployeeID, x.Permission)
+		if service.OrgWants(tx, x.EmployeeID, x.Permission) {
+			// المنصب يستحقها — الاستثناء ينتهي بس الصلاحية تبقى وتصير من المنصب
+			_, _ = tx.Exec(`INSERT INTO "OrgPermissionGrant" ("employeeId", permission) VALUES ($1, $2) ON CONFLICT DO NOTHING`, x.EmployeeID, x.Permission)
+		} else {
+			_, _ = tx.Exec(`DELETE FROM "EmployeePermission" WHERE "employeeId" = $1 AND "permissionId" = (SELECT id FROM "Permission" WHERE name = $2)`, x.EmployeeID, x.Permission)
+		}
 		_, _ = tx.Exec(`DELETE FROM "PermissionException" WHERE "employeeId" = $1 AND permission = $2`, x.EmployeeID, x.Permission)
 		_, _ = tx.Exec(`UPDATE "Employee" SET "accessVersion" = "accessVersion" + 1 WHERE id = $1`, x.EmployeeID)
 		h.audit(tx, x.EmployeeID, "", "EXPIRE", x.Permission, "انتهى وقت الصلاحية المؤقتة")
