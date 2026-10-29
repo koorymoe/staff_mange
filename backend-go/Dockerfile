@@ -11,7 +11,8 @@ RUN --mount=type=cache,target=/go/pkg/mod --mount=type=cache,target=/root/.cache
 
 # مرحلة التشغيل — صورة نهائية صغيرة بدون أدوات البناء
 FROM alpine:3.20
-RUN apk add --no-cache ca-certificates tzdata
+# ffmpeg: بصمات الآيفون (m4a) تتحول mp3 قبل Gemini (دازاي 10-29)
+RUN apk add --no-cache ca-certificates tzdata ffmpeg
 # مستخدم غير root مخصص — الصورة كانت تشتغل root افتراضياً بدون هذا السطر،
 # وهذا يوسّع أي ثغرة اختراق بالسيرفر لاختراق كامل بصلاحيات root داخل الحاوية.
 # UID/GID ثابتين (1000) حتى نقدر نمنح صلاحية قراءة صريحة على bind-mount

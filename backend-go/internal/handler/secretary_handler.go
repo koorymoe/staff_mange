@@ -90,6 +90,11 @@ func (h *SecretaryHandler) Message(w http.ResponseWriter, r *http.Request) {
 			WriteError(w, http.StatusBadRequest, "صيغة الصوت مو مدعومة")
 			return
 		}
+		if mp3, err := service.ToMP3(ctx, data); err == nil {
+			data, ct = mp3, "audio/mpeg"
+		} else {
+			log.Printf("[iris-voice] تحويل mp3: %v — نكمل بالصيغة الأصلية %s", err, ct)
+		}
 		audio, audioCT = data, ct
 		t, err := h.transcribe(ctx, data, ct)
 		if err != nil {
@@ -677,6 +682,8 @@ func (h *SecretaryHandler) SetSTT(t interface {
 }
 
 func (h *SecretaryHandler) transcribe(ctx context.Context, data []byte, ct string) (string, error) {
+	start := time.Now()
+	defer func() { log.Printf("[iris-voice] %s %dKB بـ%s", ct, len(data)/1024, time.Since(start).Round(100*time.Millisecond)) }()
 	if h.stt != nil {
 		if t, err := h.stt.Transcribe(ctx, data, ct); err == nil {
 			return service.DefaultVoiceLexicon.Apply(t), nil

@@ -43,27 +43,44 @@ func (g *GeminiTranscriber) Transcribe(ctx context.Context, audio []byte, conten
 	if i := strings.Index(mime, ";"); i > 0 {
 		mime = mime[:i]
 	}
+	if mime == "audio/mpeg" {
+		mime = "audio/mp3"
+	}
+	// (دازاي 10-29) «يطول هواي وهو يحلل الصوت» — Flash يفكر قبل ما يكتب بشكل افتراضي،
+	// والكتابة الحرفية ما تحتاج تفكير: نطفّيه، وإذا الموديل رفض نعيد بدونه.
+	t, status, err := g.call(ctx, audio, mime, true)
+	if status == http.StatusBadRequest {
+		t, _, err = g.call(ctx, audio, mime, false)
+	}
+	return t, err
+}
+
+func (g *GeminiTranscriber) call(ctx context.Context, audio []byte, mime string, noThink bool) (string, int, error) {
+	cfg := map[string]any{"temperature": 0}
+	if noThink {
+		cfg["thinkingConfig"] = map[string]any{"thinkingBudget": 0}
+	}
 	body, _ := json.Marshal(map[string]any{
 		"contents": []any{map[string]any{"parts": []any{
 			map[string]any{"inline_data": map[string]any{"mime_type": mime, "data": base64.StdEncoding.EncodeToString(audio)}},
 			map[string]any{"text": geminiSTTPrompt + DefaultVoiceLexicon.PromptHint()},
 		}}},
-		"generationConfig": map[string]any{"temperature": 0},
+		"generationConfig": cfg,
 	})
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, g.url, bytes.NewReader(body))
 	if err != nil {
-		return "", err
+		return "", 0, err
 	}
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("x-goog-api-key", g.key)
 	resp, err := g.http.Do(req)
 	if err != nil {
-		return "", err
+		return "", 0, err
 	}
 	defer resp.Body.Close()
 	raw, _ := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
 	if resp.StatusCode >= 300 {
-		return "", fmt.Errorf("gemini %d", resp.StatusCode)
+		return "", resp.StatusCode, fmt.Errorf("gemini %d", resp.StatusCode)
 	}
 	var out struct {
 		Candidates []struct {
@@ -75,7 +92,7 @@ func (g *GeminiTranscriber) Transcribe(ctx context.Context, audio []byte, conten
 		} `json:"candidates"`
 	}
 	if err := json.Unmarshal(raw, &out); err != nil || len(out.Candidates) == 0 {
-		return "", errors.New("gemini: رد فاضي")
+		return "", resp.StatusCode, errors.New("gemini: رد فاضي")
 	}
 	var b strings.Builder
 	for _, p := range out.Candidates[0].Content.Parts {
@@ -83,7 +100,7 @@ func (g *GeminiTranscriber) Transcribe(ctx context.Context, audio []byte, conten
 	}
 	text := strings.Trim(strings.TrimSpace(b.String()), "\"«»")
 	if text == "" {
-		return "", errors.New("gemini: ما فهم الصوت")
+		return "", resp.StatusCode, errors.New("gemini: ما فهم الصوت")
 	}
-	return text, nil
+	return text, resp.StatusCode, nil
 }

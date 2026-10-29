@@ -29,7 +29,7 @@ function VoiceBubble({ chat }: { chat: IrisChat }) {
   const [url, setUrl] = useState(chat.audioUrl ?? '')
   const [loading, setLoading] = useState(false)
   const [failed, setFailed] = useState(false)
-  if (url) return <audio className="sec-voice-play" controls src={url} preload="metadata" />
+  if (url) return <audio className="sec-voice-play" controls playsInline src={url} />
   if (!chat.hasAudio) return null
   return (
     <button
@@ -171,7 +171,13 @@ function Secretary() {
     () => (draftAudio ? URL.createObjectURL(draftAudio) : ''),
     [draftAudio],
   )
+  // تسجيل مثل الواتساب: اضغط وخلّي إيدك يسجّل، مرّر يمين/يسار يقفل، شيل إيدك يوقف (بلا إرسال).
   const holdStart = useRef(0)
+  const holdX = useRef(0)
+  const holding = useRef(false)
+  const pendingStop = useRef(false)
+  const [locked, setLocked] = useState(false)
+  const [holdHint, setHoldHint] = useState(false)
   const storageKey = `iris-conversation:${employee?.id}`
   const [conversations, setConversations] = useState<SecretaryConversation[]>(
     [],
@@ -690,6 +696,13 @@ function Secretary() {
           if (!mounted.current || abort.signal.aborted) return
           if (event.type === 'done') {
             acceptReply(text, event.message, pendingId, liveId, Boolean(audio))
+            // البصمة المحفوظة بالخادم (mp3) تشتغل بكل الأجهزة — نجيب السجل حتى تصير هي الي تنسمع
+            if (audio)
+              window.setTimeout(() => {
+                if (!mounted.current || streamController.current) return
+                skipHistory.current = null
+                setHistoryRetry((n) => n + 1)
+              }, 300)
             return
           }
           setChats((rows) =>
@@ -744,6 +757,14 @@ function Secretary() {
       )
       if (audio) setRetryAudio(audio)
       else setInput(text)
+      // (دازاي 10-29) الخادم يكمل الجواب ولو انقطع الاتصال — نراجع السجل كم مرة.
+      if (!abort.signal.aborted)
+        for (const ms of [4000, 12000, 30000, 60000])
+          window.setTimeout(() => {
+            if (!mounted.current || streamController.current) return
+            skipHistory.current = null
+            setHistoryRetry((n) => n + 1)
+          }, ms)
     } finally {
       if (mounted.current) {
         setBusy(false)
@@ -798,13 +819,22 @@ function Secretary() {
         stream.getTracks().forEach((t) => t.stop())
         recorder.current = null
         if (cancelled.current || !mounted.current) return
-        const blob = new Blob(chunks, { type: r.mimeType })
+        const blob = new Blob(chunks, {
+          type: r.mimeType || chunks[0]?.type || 'audio/mp4',
+        })
         if (!blob.size) return
         setDraftAudio(blob)
       }
       r.start()
       setSeconds(0)
       setRecording(true)
+      if (pendingStop.current) {
+        pendingStop.current = false
+        cancelled.current = true
+        r.stop()
+        setRecording(false)
+        setHoldHint(true)
+      }
     } catch {
       setError('ما گدرت أفتح المايك. اسمح بالمايك من المتصفح أو اكتبلي.')
     } finally {
@@ -1361,11 +1391,11 @@ function Secretary() {
                           }
                         >
                           {chat.trace.phase === 'live'
-                            ? `Thinking · ${chat.trace.seconds}s · ${chat.trace.tools} tools`
-                            : `${chat.trace.phase === 'done' ? 'Thought for' : chat.trace.phase === 'stopped' ? 'Stopped after' : 'Interrupted after'} ${chat.trace.seconds}s · ${chat.trace.tools} tools`}
+                            ? `يفكر · ${chat.trace.seconds} ثانية · ${chat.trace.tools} أدوات`
+                            : `${chat.trace.phase === 'done' ? 'فكّر' : chat.trace.phase === 'stopped' ? 'توقف بعد' : 'انقطع بعد'} ${chat.trace.seconds} ثانية · ${chat.trace.tools} أدوات`}
                         </button>
                         {chat.trace.open && (
-                          <pre>{chat.trace.text || 'Waiting for Iris…'}</pre>
+                          <pre>{chat.trace.text || 'ايريس دا يفكر…'}</pre>
                         )}
                       </div>
                     )}
@@ -1488,6 +1518,11 @@ function Secretary() {
                   </button>
                 ))}
               </div>
+              {holdHint && !recording && !draftAudio && (
+                <div className="sec-recording" role="status">
+                  اضغط على المايك وخلّي إيدك حتى يسجّل 🎙️
+                </div>
+              )}
               {draftAudio && !recording && (
                 <div className="sec-voice-draft" role="status">
                   <audio controls src={draftUrl} />
@@ -1498,7 +1533,8 @@ function Secretary() {
               )}
               {recording && (
                 <div className="sec-recording" role="status">
-                  ● دا أسمعك · {seconds} ثانية
+                  ● دا أسمعك · {seconds} ثانية ·{' '}
+                  {locked ? '🔒 مقفول — اضغط ■ حتى يوقف' : 'مرّر يمين أو يسار حتى يقفل'}
                   <button onClick={cancelVoice}>إلغاء التسجيل</button>
                 </div>
               )}
@@ -1518,19 +1554,46 @@ function Secretary() {
                   // ضغطة سريعة = يبدأ، وضغطة ثانية = يوقف.
                   onPointerDown={(e) => {
                     e.preventDefault()
-                    if (recording) return
+                    if (recording) {
+                      // مقفول: ضغطة توقفه
+                      if (locked) {
+                        setLocked(false)
+                        void voice()
+                      }
+                      return
+                    }
+                    e.currentTarget.setPointerCapture(e.pointerId)
                     holdStart.current = Date.now()
+                    holdX.current = e.clientX
+                    holding.current = true
+                    pendingStop.current = false
+                    setLocked(false)
+                    setHoldHint(false)
                     setDraftAudio(null)
                     void voice()
                   }}
-                  onPointerUp={() => {
-                    if (!holdStart.current) {
-                      if (recorder.current?.state === 'recording') void voice()
-                      return
+                  onPointerMove={(e) => {
+                    if (holding.current && !locked && Math.abs(e.clientX - holdX.current) > 60) {
+                      holding.current = false
+                      setLocked(true)
                     }
-                    const held = Date.now() - holdStart.current
-                    holdStart.current = 0
-                    if (held > 400 && recorder.current?.state === 'recording') void voice()
+                  }}
+                  onPointerUp={() => {
+                    if (!holding.current) return
+                    holding.current = false
+                    const short = Date.now() - holdStart.current < 350
+                    if (recorder.current?.state === 'recording') {
+                      if (short) {
+                        cancelVoice()
+                        setHoldHint(true)
+                      } else void voice()
+                    } else pendingStop.current = true
+                  }}
+                  onPointerCancel={() => {
+                    if (!holding.current) return
+                    holding.current = false
+                    if (recorder.current?.state === 'recording') void voice()
+                    else pendingStop.current = true
                   }}
                   onContextMenu={(e) => e.preventDefault()}
                   disabled={
