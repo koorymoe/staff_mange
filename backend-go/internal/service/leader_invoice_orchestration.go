@@ -221,6 +221,9 @@ func (s *LeaderInvoiceService) Create(employeeID string, req model.CreateLeaderI
 		})
 	}
 
+	if err := model.CheckIQD("الخصم", req.DiscountValue); err != nil {
+		return nil, err
+	}
 	discount := req.DiscountValue
 	if discount < 0 {
 		discount = 0
@@ -678,6 +681,14 @@ func (s *LeaderInvoiceService) AdjustAmounts(id string, req model.AdjustLeaderIn
 	if strings.TrimSpace(req.Reason) == "" {
 		return nil, fmt.Errorf("سبب التعديل مطلوب")
 	}
+	for _, c := range []struct {
+		l string
+		v float64
+	}{{"كلفة التنفيذ", req.ExecutionCost}, {"المواد", req.MaterialsTotal}, {"الخصم", req.DiscountValue}} {
+		if err := model.CheckIQD(c.l, c.v); err != nil {
+			return nil, err
+		}
+	}
 	if req.ExecutionCost < 0 || req.MaterialsTotal < 0 || req.DiscountValue < 0 {
 		return nil, fmt.Errorf("المبالغ ما تصير بالسالب")
 	}
@@ -839,6 +850,9 @@ func (s *LeaderInvoiceService) CreateServiceInvoice(employeeID string, req model
 	}
 	// ⚠️ السعر حر بس مو سالباً ولا صفراً: فاتورة بصفر تعني «مجاني»
 	// وهذا مسار ثاني إله سببه المكتوب — خلطهما يخفي كلفة الضمان.
+	if err := model.CheckIQD("السعر", req.Price); err != nil {
+		return nil, err
+	}
 	if req.Price <= 0 {
 		return nil, fmt.Errorf("اكتب سعر الفاتورة")
 	}
@@ -901,6 +915,9 @@ func (s *LeaderInvoiceService) CreateManualInvoice(employeeID string, req model.
 	}
 	// ⚠️ السعر حر بس مو سالباً ولا صفراً: فاتورة بصفر تعني «مجاني»
 	// وهذا مسار ثاني إله سببه المكتوب — خلطهما يخفي كلفة الضمان.
+	if err := model.CheckIQD("السعر", req.Price); err != nil {
+		return nil, err
+	}
 	if req.Price <= 0 {
 		return nil, fmt.Errorf("اكتب سعر الفاتورة")
 	}

@@ -72,6 +72,10 @@ func (h *BookingProgressHandler) PartialComplete(w http.ResponseWriter, r *http.
 		WriteError(w, http.StatusBadRequest, "بيانات غير صالحة")
 		return
 	}
+	if err := model.CheckIQDPtr("المبلغ المحصّل", req.AmountCollected); err != nil {
+		WriteError(w, http.StatusBadRequest, err.Error())
+		return
+	}
 	// الشرط الوحيد المتشدد بهاي الميزة، وهو سبب وجودها كله: بلا «شنو
 	// انخلص» و«شنو باقي» التقرير ما ينفع الكادر الجاي بشي.
 	if TextLen(req.WorkDone) < 3 {

@@ -816,6 +816,12 @@ func (s *BookingService) Complete(id string, req model.CompleteBookingRequest) (
 	if req.AdvancePaid != nil && *req.AdvancePaid < 0 {
 		return nil, errors.New("الدفعة المقدمة ما يصير تكون بالسالب")
 	}
+	if err := model.CheckIQDPtr("المبلغ المحصّل", req.AmountCollected); err != nil {
+		return nil, err
+	}
+	if err := model.CheckIQDPtr("الدفعة المقدمة", req.AdvancePaid); err != nil {
+		return nil, err
+	}
 	if err := s.repo.Complete(id, req); err != nil {
 		return nil, err
 	}

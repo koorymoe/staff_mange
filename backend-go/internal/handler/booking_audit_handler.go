@@ -104,6 +104,16 @@ func (h *BookingAuditHandler) Audit(w http.ResponseWriter, r *http.Request) {
 		WriteError(w, http.StatusBadRequest, "بيانات الطلب غير صحيحة")
 		return
 	}
+	// (دازاي 10-29) «50 بدل 50000» — المبالغ بالدينار بالآلاف
+	for _, c := range []struct {
+		l string
+		v *float64
+	}{{"المبلغ المحصّل", req.AmountCollected}, {"الدفعة المقدمة", req.AdvancePaid}} {
+		if err := model.CheckIQDPtr(c.l, c.v); err != nil {
+			WriteError(w, http.StatusBadRequest, err.Error())
+			return
+		}
+	}
 	bookingID := r.PathValue("id")
 	empID := middleware.EmployeeIDFromContext(r)
 
