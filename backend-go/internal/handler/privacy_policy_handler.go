@@ -64,7 +64,11 @@ func (h *PrivacyPolicyHandler) Accept(w http.ResponseWriter, r *http.Request) {
 	var in struct {
 		Hash string `json:"hash"`
 	}
-	_ = json.NewDecoder(http.MaxBytesReader(w, r.Body, 1<<10)).Decode(&in)
+	// البصمة لازمة — الموافقة على النص الي انعرض بالضبط، مو على أي نسخة
+	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 1<<10)).Decode(&in); err != nil || strings.TrimSpace(in.Hash) == "" {
+		WriteError(w, http.StatusConflict, repository.ErrPolicyChanged.Error())
+		return
+	}
 	if err := h.repo.Accept(middleware.EmployeeIDFromContext(r), in.Hash); err != nil {
 		if errors.Is(err, repository.ErrPolicyChanged) {
 			WriteError(w, http.StatusConflict, err.Error())

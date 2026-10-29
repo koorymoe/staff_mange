@@ -1308,7 +1308,8 @@ func matrixChatMigrations() []Migration {
 			);
 			CREATE INDEX IF NOT EXISTS "PrivacyPolicyAcceptanceLog_emp" ON "PrivacyPolicyAcceptanceLog" ("employeeId", "acceptedAt" DESC);
 			INSERT INTO "PrivacyPolicyPoint" (id, content, "order", "principleNo")
-			SELECT gen_random_uuid()::text, 'مبدأ ' || x.n || ': ' || x.t, x.n, x.n FROM (VALUES
+			-- الترتيب سالب: المبادئ كتلة وحدة بأول السياسة، قبل أي نقطة موجودة أو تنضاف بعدين
+			SELECT gen_random_uuid()::text, 'مبدأ ' || x.n || ': ' || x.t, x.n - 1000, x.n FROM (VALUES
 				(1, 'عمل الكوادر بصورة دقيقة، أفضل من أي منافس بالسوق.'),
 				(2, 'استغلال الكوادر للعمل في جميع المهام الموكلة إليهم.'),
 				(3, 'الحفاظ على العُدد: أعدادها وكمياتها وتنوعها.'),

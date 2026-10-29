@@ -39,6 +39,11 @@ export default function PrivacyPolicyGate() {
     } catch (e) {
       // النص تحدّث بالأثناء: نجيب النسخة الجديدة ويقراها من جديد
       const s = await api.getPrivacyPolicyStatus().catch(() => null)
+      // وافق من تبويب ثاني أو انشالت النقاط — نسكّر بدل ما تعلگ
+      if (s && (!s.needsAcceptance || s.points.length === 0)) {
+        setOpen(false)
+        return
+      }
       if (s?.needsAcceptance) {
         setPoints(s.points)
         setHash(s.hash ?? '')

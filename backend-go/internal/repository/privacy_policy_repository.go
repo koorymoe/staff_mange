@@ -125,14 +125,14 @@ func (r *PrivacyPolicyRepository) Status(employeeID string) (*model.PrivacyPolic
 }
 
 // Accept يوافق على النص الحالي بالضبط: يحدّث آخر موافقة ويضيف سطر بالسجل (ما ينمسح).
-// expectHash (اختياري) — إذا النص تغيّر بين ما قرا الموظف وضغط، نرفض حتى يقرا الجديد.
+// expectHash بصمة النص الي قراه — إذا النص تغيّر (أو ماكو بصمة) نرفض حتى يقرا الجديد.
 func (r *PrivacyPolicyRepository) Accept(employeeID string, expectHash string) error {
 	points, err := r.ListPoints(true)
 	if err != nil {
 		return err
 	}
 	hash := pointsHash(points)
-	if expectHash != "" && expectHash != hash {
+	if expectHash != hash {
 		return ErrPolicyChanged
 	}
 	tx, err := r.db.Beginx()
