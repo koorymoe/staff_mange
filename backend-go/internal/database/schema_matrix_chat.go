@@ -1224,5 +1224,71 @@ func matrixChatMigrations() []Migration {
 				(gen_random_uuid()::text, 'unit_matrix', 'وحدة ماتركس')
 			ON CONFLICT (name) DO NOTHING;
 		`,
+	}, {
+		// 🏛️ مكتب المدير (دازاي 10-29): تقرير المشاكل ومضارها، خطة التحسين بنسبة إنجاز
+		// ويا ماتركس (حل المشاكل + تطوير الأقسام)، ملاحظات النائب، وجدول الصلاحيات DOA.
+		Version: "0409_org_desk",
+		SQL: `
+			CREATE TABLE IF NOT EXISTS "OrgIssueReport" (
+				id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
+				"divisionId" TEXT NOT NULL REFERENCES "OrgDivision"(id),
+				"unitId" TEXT REFERENCES "OrgUnit"(id),
+				"authorId" TEXT REFERENCES "Employee"(id) ON DELETE SET NULL,
+				title TEXT NOT NULL,
+				problem TEXT NOT NULL,
+				impact TEXT NOT NULL DEFAULT '',
+				scope TEXT NOT NULL DEFAULT 'SPECIFIC' CHECK (scope IN ('SPECIFIC', 'GENERAL')),
+				principle INT CHECK (principle BETWEEN 1 AND 20),
+				severity TEXT NOT NULL DEFAULT 'MEDIUM' CHECK (severity IN ('LOW', 'MEDIUM', 'HIGH')),
+				status TEXT NOT NULL DEFAULT 'OPEN' CHECK (status IN ('OPEN', 'IN_PROGRESS', 'RESOLVED')),
+				resolution TEXT,
+				"createdAt" TIMESTAMPTZ NOT NULL DEFAULT now(),
+				"resolvedAt" TIMESTAMPTZ
+			);
+			CREATE INDEX IF NOT EXISTS "OrgIssueReport_div" ON "OrgIssueReport" ("divisionId", status, "createdAt" DESC);
+			CREATE TABLE IF NOT EXISTS "OrgPlan" (
+				id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
+				"divisionId" TEXT NOT NULL REFERENCES "OrgDivision"(id),
+				period TEXT NOT NULL,
+				title TEXT NOT NULL DEFAULT '',
+				"createdById" TEXT REFERENCES "Employee"(id) ON DELETE SET NULL,
+				"createdAt" TIMESTAMPTZ NOT NULL DEFAULT now(),
+				UNIQUE ("divisionId", period)
+			);
+			CREATE TABLE IF NOT EXISTS "OrgPlanItem" (
+				id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
+				"planId" TEXT NOT NULL REFERENCES "OrgPlan"(id) ON DELETE CASCADE,
+				kind TEXT NOT NULL CHECK (kind IN ('PROBLEM', 'DEVELOPMENT')),
+				title TEXT NOT NULL,
+				"issueId" TEXT REFERENCES "OrgIssueReport"(id) ON DELETE SET NULL,
+				metric TEXT,
+				baseline NUMERIC,
+				target NUMERIC,
+				"manualProgress" INT NOT NULL DEFAULT 0 CHECK ("manualProgress" BETWEEN 0 AND 100),
+				"createdById" TEXT REFERENCES "Employee"(id) ON DELETE SET NULL,
+				"createdAt" TIMESTAMPTZ NOT NULL DEFAULT now(),
+				"doneAt" TIMESTAMPTZ
+			);
+			CREATE TABLE IF NOT EXISTS "OrgComment" (
+				id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
+				"targetType" TEXT NOT NULL CHECK ("targetType" IN ('ISSUE', 'PLAN_ITEM')),
+				"targetId" TEXT NOT NULL,
+				"authorId" TEXT REFERENCES "Employee"(id) ON DELETE SET NULL,
+				text TEXT NOT NULL,
+				"createdAt" TIMESTAMPTZ NOT NULL DEFAULT now()
+			);
+			CREATE INDEX IF NOT EXISTS "OrgComment_target" ON "OrgComment" ("targetType", "targetId", "createdAt");
+			CREATE TABLE IF NOT EXISTS "OrgAuthority" (
+				id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
+				"divisionId" TEXT NOT NULL REFERENCES "OrgDivision"(id),
+				decision TEXT NOT NULL,
+				mode TEXT NOT NULL DEFAULT 'DECIDE' CHECK (mode IN ('DECIDE', 'ESCALATE')),
+				"limitIQD" NUMERIC,
+				sort INT NOT NULL DEFAULT 0,
+				"updatedById" TEXT REFERENCES "Employee"(id) ON DELETE SET NULL,
+				"updatedAt" TIMESTAMPTZ NOT NULL DEFAULT now()
+			);
+			CREATE INDEX IF NOT EXISTS "OrgAuthority_div" ON "OrgAuthority" ("divisionId", sort);
+		`,
 	}}
 }

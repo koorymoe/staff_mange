@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { orgApi, orgPositions, type OrgPerson } from '../org'
 import { useSession } from '../session'
 import '../pages/OrgPage.css'
@@ -56,6 +57,11 @@ function MyPlace() {
                 {orgPositions[p.position] ?? p.position}
                 {p.acting && ' · بالوكالة'}
               </p>
+              {(p.position === 'DIRECTOR' || p.position === 'DEPUTY') && (
+                <Link to={`/org/desk/${encodeURIComponent(p.divisionId)}`}>
+                  افتح مكتب الإدارة ←
+                </Link>
+              )}
             </li>
           ))}
         </ul>

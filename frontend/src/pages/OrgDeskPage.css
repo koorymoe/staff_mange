@@ -1,0 +1,318 @@
+.desk-page {
+  --desk-high: #a72035;
+  --desk-medium: #855000;
+  --desk-low: #176339;
+}
+html.dark .desk-page {
+  --desk-high: #ffb1c3;
+  --desk-medium: #f0ce92;
+  --desk-low: #8de3b9;
+}
+.desk-directory,
+.desk-tabs {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.desk-tabs {
+  margin: 22px 0;
+  padding: 8px;
+  background: var(--sf-card);
+  border: 1px solid var(--bd-line);
+  border-radius: 15px;
+}
+.org-ui .desk-tabs button {
+  flex: 1;
+  border: 0;
+  background: transparent;
+  white-space: nowrap;
+}
+.org-ui .desk-tabs button[aria-pressed='true'] {
+  background: #1d459c;
+  color: #fff;
+}
+.desk-intro,
+.desk-plan-heading {
+  display: flex;
+  gap: 22px;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+}
+.desk-intro p {
+  color: var(--t-muted);
+}
+.desk-badge {
+  display: inline-block;
+  border: 1px solid var(--bd-line);
+  background: var(--sf-sunken);
+  padding: 5px 10px;
+  border-radius: 99px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--t-body);
+}
+.desk-badge.severity-HIGH {
+  color: var(--desk-high);
+  background: var(--sf-danger);
+}
+.desk-badge.severity-MEDIUM {
+  color: var(--desk-medium);
+  background: var(--tint-warning);
+}
+.desk-badge.severity-LOW,
+.desk-badge.status-RESOLVED {
+  color: var(--desk-low);
+  background: var(--sf-success);
+}
+.desk-badge.status-IN_PROGRESS,
+.desk-badge.matrix {
+  color: var(--t-info);
+  background: var(--sf-info);
+}
+.desk-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 360px), 1fr));
+  gap: 18px;
+  align-items: start;
+}
+.desk-issue {
+  border: 1px solid var(--bd-line);
+  border-inline-start: 4px solid var(--bd-line);
+  padding: 22px;
+  border-radius: 18px;
+  background: var(--sf-card);
+}
+.desk-issue.severity-HIGH {
+  border-inline-start-color: var(--desk-high);
+}
+.desk-issue.severity-MEDIUM {
+  border-inline-start-color: var(--desk-medium);
+}
+.desk-issue.severity-LOW {
+  border-inline-start-color: var(--desk-low);
+}
+.desk-issue header {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+.desk-issue h3 {
+  font-size: 20px;
+}
+.desk-page h4 {
+  font-size: 13px;
+  font-weight: 800;
+  margin-top: 14px;
+}
+.desk-issue p,
+.desk-comment p {
+  white-space: pre-wrap;
+}
+.desk-meta {
+  font-size: 12px;
+  color: var(--t-muted);
+  margin: 8px 0;
+}
+.desk-principle {
+  padding: 10px;
+  margin: 12px 0;
+  background: var(--sf-info);
+  border-radius: 12px;
+  font-size: 13px;
+}
+.desk-resolution {
+  color: var(--org-success);
+  background: var(--sf-success);
+  border-radius: 10px;
+  padding: 10px;
+  margin: 12px 0;
+}
+.desk-comments {
+  margin-top: 20px;
+  padding-top: 10px;
+  border-top: 1px solid var(--bd-line);
+}
+.desk-comments form {
+  display: grid;
+  gap: 10px;
+  margin-top: 12px;
+}
+.desk-comments form > button {
+  justify-self: start;
+}
+.desk-comment {
+  border-radius: 12px;
+  padding: 12px;
+  background: var(--sf-sunken);
+  margin-top: 10px;
+}
+.desk-comment strong {
+  font-size: 13px;
+}
+.desk-comment p {
+  font-size: 14px;
+}
+.desk-plan-heading {
+  justify-content: start;
+}
+.desk-ring {
+  width: 155px;
+  height: 155px;
+  position: relative;
+  flex: 0 0 155px;
+}
+.desk-ring svg {
+  width: 100%;
+  height: 100%;
+  fill: none;
+  stroke-width: 9;
+}
+.desk-ring-track {
+  stroke: var(--bd-line);
+}
+.desk-ring-value {
+  stroke: var(--t-info);
+  stroke-linecap: round;
+}
+.desk-ring > span {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  text-align: center;
+  font-size: 30px;
+  font-weight: 800;
+}
+.desk-ring small {
+  font-size: 12px;
+}
+.desk-plan-section {
+  margin-bottom: 28px;
+}
+.desk-plan-section > h2 {
+  margin-bottom: 16px;
+}
+.desk-plan-card {
+  margin-bottom: 0;
+}
+.desk-plan-card progress {
+  width: 100%;
+  height: 10px;
+  display: block;
+  appearance: none;
+  border: 0;
+  border-radius: 99px;
+  background: var(--bd-line);
+  overflow: hidden;
+  accent-color: #2563eb;
+  margin-bottom: 14px;
+}
+.desk-plan-card progress::-webkit-progress-bar {
+  background: var(--bd-line);
+}
+.desk-plan-card progress::-webkit-progress-value {
+  background: #2563eb;
+  border-radius: 99px;
+}
+.desk-plan-card progress::-moz-progress-bar {
+  background: #2563eb;
+}
+.desk-measurement {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+  margin: 16px 0;
+  padding: 12px;
+  background: var(--sf-sunken);
+  border-radius: 12px;
+}
+.desk-measurement > span {
+  font-size: 12px;
+}
+.desk-measurement strong {
+  display: block;
+  font-size: 15px;
+  margin-top: 5px;
+}
+.desk-manual {
+  display: grid;
+  gap: 10px;
+  margin: 16px 0;
+}
+.desk-manual input[type='range'] {
+  padding: 0;
+  height: 35px;
+  accent-color: #2563eb;
+}
+.desk-manual button {
+  justify-self: start;
+}
+.desk-team-position {
+  margin-top: 14px;
+  border-top: 1px solid var(--bd-line);
+  padding-top: 8px;
+}
+.desk-team-position ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+.desk-team-position li {
+  background: var(--sf-sunken);
+  border-radius: 99px;
+  padding: 6px 12px;
+  font-size: 14px;
+}
+.desk-dialog fieldset {
+  display: grid;
+  gap: 15px;
+  border: 0;
+  padding: 0;
+  margin: 0;
+}
+.desk-dialog .org-warning {
+  grid-column: auto;
+}
+.desk-authority-row {
+  display: grid;
+  gap: 12px;
+  border: 1px solid var(--bd-line);
+  border-radius: 13px;
+  padding: 14px;
+  background: var(--sf-sunken);
+}
+.org-ui .desk-check {
+  display: flex;
+  gap: 9px;
+  align-items: start;
+}
+.org-ui .desk-check input {
+  width: 20px;
+  height: 20px;
+  flex: 0 0 20px;
+}
+@media (max-width: 600px) {
+  .desk-tabs {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+  }
+  .desk-issue {
+    padding: 16px;
+  }
+  .desk-plan-heading {
+    justify-content: center;
+    text-align: center;
+  }
+  .desk-page > .org-toolbar .org-filters {
+    width: 100%;
+  }
+  .desk-page > .org-toolbar .org-filters > label {
+    flex: 1;
+    width: auto;
+  }
+}

@@ -1,4 +1,6 @@
 import { MON_SUBS } from '../utils/monAccess'
+import type { OrgPerson } from '../org'
+import { orgDeskAllowed } from '../orgDeskAccess'
 import type { Employee, EmployeeRole } from '../api'
 import { hasGpsSkill } from '../session'
 
@@ -122,6 +124,7 @@ export const navItems: NavItem[] = [
   { to: '/ai-suggestions', label: '🧠 اقتراحات الذكاء', icon: <></>, roles: ['ADMIN'] },
   { to: '/org', label: '🏛️ الهيكل التنظيمي', icon: <></>, roles: ['ADMIN'] },
   { to: '/my-org', label: '🏛️ مكاني', icon: <></> },
+  { to: '/org/desk', label: '🏛️ مكتب الإدارة', icon: <></> },
   { to: '/voice-terms', label: '👂 قاموس الأذن', icon: <></>, roles: ['ADMIN'] },
   // (دازاي 10-29) محادثة ماتركس لصاحب الصلاحية — أدواته بحدود صلاحياته بالخادم
   { to: '/matrix-chat', label: '🤖 محادثة ماتركس', icon: <></>, roles: ['ADMIN'], anyPermission: ['agent_matrix'] },
@@ -883,6 +886,7 @@ function projectsLabel(ctx: NavContext): string {
 }
 
 export type NavContext = {
+  orgMemberships?: OrgPerson[] | null
   employee: Employee | null | undefined
   permissions: string[]
   gpsServiceId: string | null
@@ -891,6 +895,7 @@ export type NavContext = {
 export function isNavVisible(item: NavItem, ctx: NavContext, unitGranted = false): boolean {
   const role = ctx.employee?.role
   if (item.to === '/my-org') return !!ctx.employee
+  if (item.to === '/org/desk') return orgDeskAllowed(ctx.employee, ctx.orgMemberships)
   // These APIs are admin-only even when a whole unit is granted to staff.
   if (['/voice-terms', '/ai-suggestions', '/org', '/org/assign'].includes(item.to) && role !== 'ADMIN' && ctx.employee?.actualRole !== 'OWNER') return false
   const hasMonitor = role === 'MONITOR' || ctx.permissions.includes('monitoring')
@@ -1082,6 +1087,10 @@ export function collectMonitorExtraLinks(items: NavItem[], ctx: NavContext, unit
 export function isPathAllowed(path: string, ctx: NavContext): boolean | null {
   const clean = (p: string) => (p.split('?')[0].replace(/\/+$/, '') || '/')
   const target = clean(path)
+  if (target === '/org/desk' || target.startsWith('/org/desk/')) {
+    if (ctx.orgMemberships == null && ctx.employee?.role !== 'ADMIN' && ctx.employee?.actualRole !== 'OWNER') return null
+    return orgDeskAllowed(ctx.employee, ctx.orgMemberships, target.split('/')[3])
+  }
   if (target === '/') return null
   const role = ctx.employee?.role
   let found = false
