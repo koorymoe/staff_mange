@@ -610,6 +610,7 @@ export default function AdminHome({ name }: { name?: string }) {
           {tab('chat', '💬 دردشة ماتركس')}
           {tab('missions', '🎯 مهام ماتركس')}
           <Link to="/ai-suggestions" className="rounded-xl bg-white px-4 py-2 text-sm font-extrabold text-slate-600 ring-1 ring-slate-200">🧠 اقتراحات الذكاء</Link>
+          <Link to="/org" className="rounded-xl bg-white px-4 py-2 text-sm font-extrabold text-slate-600 ring-1 ring-slate-200">🏛️ الهيكل التنظيمي</Link>
           <Link to="/voice-terms" className="rounded-xl bg-white px-4 py-2 text-sm font-extrabold text-slate-600 ring-1 ring-slate-200">👂 قاموس الأذن</Link>
         </div>
       </div>
