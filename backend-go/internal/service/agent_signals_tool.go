@@ -4,39 +4,28 @@ import (
 	"fmt"
 	"sort"
 	"strings"
+
+	"github.com/jmoiron/sqlx"
 )
 
-// ═══ 🩺 مؤشرات الموظف (دازاي 10-29) ═══
-// «اريد النظام يقيس ويحلل…» — اتفقنا: مؤشرات من الشغل الحقيقي مو تخمين نفسي.
-// نقارن آخر ١٤ يوم بالـ١٤ الي قبلها: الحضور، التأخير، الحجوزات المنجزة، الإجازات،
-// وأطول سلسلة أيام دوام ورا بعض. الناتج «إشارة حتى ينتبه»، مو حكم على أحد.
+// EmpMetrics أرقام موظف: آخر ١٤ يوم (الحالي) والـ١٤ قبلها (Prev).
+type EmpMetrics struct {
+	ID       string `db:"id" json:"-"`
+	Name     string `db:"name" json:"-"`
+	Att      int    `db:"att" json:"att"`
+	AttPrev  int    `db:"attPrev" json:"attPrev"`
+	Late     int    `db:"late" json:"late"`
+	LatePrev int    `db:"latePrev" json:"latePrev"`
+	Done     int    `db:"done" json:"done"`
+	DonePrev int    `db:"donePrev" json:"donePrev"`
+	Leave    int    `db:"leave" json:"leave"`
+	Streak   int    `db:"streak" json:"streak"`
+}
 
-func (a *MatrixAgent) registerSignalsTool() {
-	a.AddTool(agentTool{Name: "employee_signals",
-		Desc: "مؤشرات حال الموظفين من شغلهم الحقيقي (آخر ١٤ يوم مقابل الـ١٤ قبلها): الحضور، التأخير، الإنجاز، الإجازات، والدوام المتواصل بلا راحة. بلا who = منو يحتاج انتباه؛ ويا who = موظف واحد. استعملها لأي سؤال عن «حال/نفسية/ضغط/تعب/منو مرتاح» — وگول بوضوح إنها إشارات من الأرقام مو تشخيص نفسي، ولا تحكم على سعادة أو حزن أحد.",
-		Props: map[string]any{"who": map[string]any{"type": "string", "description": "اسم أو رمز موظف (اختياري)"}},
-		Run: func(in map[string]any, mask *nameMask) (string, error) {
-			onlyID := ""
-			if w := strings.TrimSpace(strArg(in, "who")); w != "" {
-				id, _ := mask.Resolve(w)
-				if id == "" {
-					return "", fmt.Errorf("ما لگيت الموظف")
-				}
-				onlyID = id
-			}
-			rows := []struct {
-				ID       string `db:"id"`
-				Name     string `db:"name"`
-				Att      int    `db:"att"`
-				AttPrev  int    `db:"attPrev"`
-				Late     int    `db:"late"`
-				LatePrev int    `db:"latePrev"`
-				Done     int    `db:"done"`
-				DonePrev int    `db:"donePrev"`
-				Leave    int    `db:"leave"`
-				Streak   int    `db:"streak"`
-			}{}
-			err := a.db.Select(&rows, `
+// EmployeeMetrics أرقام الموظفين النشطين (أو واحد بس) — مشتركة بين المؤشرات والمتابعة.
+func EmployeeMetrics(db *sqlx.DB, onlyID string) ([]EmpMetrics, error) {
+	rows := []EmpMetrics{}
+	err := db.Select(&rows, `
 				WITH emp AS (
 					SELECT id, name FROM "Employee"
 					WHERE status = 'ACTIVE' AND role::text NOT IN ('OWNER', 'ADMIN') AND ($1 = '' OR id = $1)
@@ -74,6 +63,28 @@ func (a *MatrixAgent) registerSignalsTool() {
 				LEFT JOIN done dn ON dn.eid = e.id
 				LEFT JOIN streak s ON s."employeeId" = e.id
 				GROUP BY e.id, e.name`, onlyID)
+	return rows, err
+}
+
+// ═══ 🩺 مؤشرات الموظف (دازاي 10-29) ═══
+// «اريد النظام يقيس ويحلل…» — اتفقنا: مؤشرات من الشغل الحقيقي مو تخمين نفسي.
+// نقارن آخر ١٤ يوم بالـ١٤ الي قبلها: الحضور، التأخير، الحجوزات المنجزة، الإجازات،
+// وأطول سلسلة أيام دوام ورا بعض. الناتج «إشارة حتى ينتبه»، مو حكم على أحد.
+
+func (a *MatrixAgent) registerSignalsTool() {
+	a.AddTool(agentTool{Name: "employee_signals",
+		Desc:  "مؤشرات حال الموظفين من شغلهم الحقيقي (آخر ١٤ يوم مقابل الـ١٤ قبلها): الحضور، التأخير، الإنجاز، الإجازات، والدوام المتواصل بلا راحة. بلا who = منو يحتاج انتباه؛ ويا who = موظف واحد. استعملها لأي سؤال عن «حال/نفسية/ضغط/تعب/منو مرتاح» — وگول بوضوح إنها إشارات من الأرقام مو تشخيص نفسي، ولا تحكم على سعادة أو حزن أحد.",
+		Props: map[string]any{"who": map[string]any{"type": "string", "description": "اسم أو رمز موظف (اختياري)"}},
+		Run: func(in map[string]any, mask *nameMask) (string, error) {
+			onlyID := ""
+			if w := strings.TrimSpace(strArg(in, "who")); w != "" {
+				id, _ := mask.Resolve(w)
+				if id == "" {
+					return "", fmt.Errorf("ما لگيت الموظف")
+				}
+				onlyID = id
+			}
+			rows, err := EmployeeMetrics(a.db, onlyID)
 			if err != nil {
 				return "", err
 			}

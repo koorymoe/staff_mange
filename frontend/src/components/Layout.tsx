@@ -29,6 +29,8 @@ import SettingsPanel from './SettingsPanel'
 // تدوّر عليها. نوع مو موجود بالخريطة = الإشعار يتأشر مقروء وبس.
 const notifTargets: Record<string, string> = {
   handover_invoice: '/handover-invoices',
+  AI_WATCH: '/secretary',
+  AI_REMINDER: '/secretary',
   leave_request: '/leaves',
   leave_preliminary: '/leaves',
   leave_decision: '/leaves',

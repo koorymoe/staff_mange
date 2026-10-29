@@ -878,12 +878,15 @@ function Secretary() {
       alive = false
     }
   }, [reload, search])
+  // 👁️ (دازاي 10-29) مذكرة بيها اسم موظف ← كمال يتحقق من أرقامه ويتابعه
+  const [watch, setWatch] = useState<{ employee: string; summary: string; verdict: string } | null>(null)
   const saveNote = async (kind: 'AGENDA' | 'DIARY') => {
     if (!body.trim() || busy) return
     setBusy(true)
     setError('')
+    setWatch(null)
     try {
-      await apiRequest('/secretary/notes', {
+      const saved = await apiRequest<{ watch?: { employee: string; summary: string; verdict: string } }>('/secretary/notes', {
         method: 'POST',
         body: JSON.stringify({
           kind,
@@ -894,6 +897,7 @@ function Secretary() {
       setBody('')
       setNewAt('')
       setAdding(false)
+      setWatch(saved?.watch ?? null)
       setReload((n) => n + 1)
     } catch (e) {
       setError((e as Error).message)
@@ -1729,6 +1733,13 @@ function Secretary() {
                       حفظ المذكرة
                     </button>
                   </form>
+                  {watch && (
+                    <div className="sec-panel" role="status">
+                      <strong>👁️ متابعة {watch.employee}</strong>
+                      <p>{watch.summary}</p>
+                      <p>{watch.verdict}</p>
+                    </div>
+                  )}
                   <label className="sec-search">
                     بحث بمذكراتك
                     <input

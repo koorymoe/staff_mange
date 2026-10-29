@@ -1112,5 +1112,22 @@ func matrixChatMigrations() []Migration {
 			);
 			CREATE INDEX IF NOT EXISTS "AiReminder_due_idx" ON "AiReminder" ("dueAt") WHERE "sentAt" IS NULL AND "cancelledAt" IS NULL;
 		`,
+	}, {
+		Version: "0405_ai_watch",
+		SQL: `
+			CREATE TABLE IF NOT EXISTS "AiWatch" (
+				id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
+				"ownerId" TEXT NOT NULL REFERENCES "Employee"(id) ON DELETE CASCADE,
+				"employeeId" TEXT NOT NULL REFERENCES "Employee"(id) ON DELETE CASCADE,
+				"noteId" TEXT,
+				concern TEXT NOT NULL DEFAULT '',
+				baseline JSONB NOT NULL,
+				status TEXT NOT NULL DEFAULT 'OPEN' CHECK (status IN ('OPEN', 'IMPROVED', 'WORSE', 'CLOSED')),
+				"createdAt" TIMESTAMPTZ NOT NULL DEFAULT now(),
+				"checkedAt" TIMESTAMPTZ,
+				"closedAt" TIMESTAMPTZ
+			);
+			CREATE INDEX IF NOT EXISTS "AiWatch_open_idx" ON "AiWatch" (status, "createdAt");
+		`,
 	}}
 }

@@ -549,6 +549,17 @@ func (h *SecretaryHandler) AddNote(w http.ResponseWriter, r *http.Request) {
 		WriteError(w, http.StatusInternalServerError, "تعذر الحفظ")
 		return
 	}
+	// 👁️ (دازاي 10-29) مذكرة بيها اسم موظف ← تحقق من أرقامه ومتابعة
+	if in.Kind == "DIARY" {
+		if card, err := service.OpenWatchFromText(h.repo.DB(), middleware.EmployeeIDFromContext(r), n.ID, body); err == nil && card != nil {
+			raw, _ := json.Marshal(n)
+			out := map[string]any{}
+			_ = json.Unmarshal(raw, &out)
+			out["watch"] = card
+			WriteJSON(w, http.StatusCreated, out)
+			return
+		}
+	}
 	WriteJSON(w, http.StatusCreated, n)
 }
 

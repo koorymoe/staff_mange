@@ -2488,6 +2488,10 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 			log.Printf("settle OLD-: %d حجز قديم انحسب «تم»", n)
 		}
 	})
+	// 👁️ متابعة الموظفين من «مذكراتي» (دازاي 10-29)
+	safeguard.Loop("متابعات الموظفين", 9*time.Minute, time.Hour, func() {
+		service.SweepWatches(db, func(owner, msg string) { _ = notificationRepo.Create(owner, "AI_WATCH", msg) })
+	})
 	// ⏰ منبّه كمال (دازاي 10-29)
 	safeguard.Loop("تذكيرات كمال", 20*time.Second, 30*time.Second, func() {
 		service.SendDueReminders(db, func(emp, msg string) { _ = notificationRepo.Create(emp, "AI_REMINDER", msg) })
