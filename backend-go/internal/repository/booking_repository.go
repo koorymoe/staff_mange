@@ -264,7 +264,10 @@ func (r *BookingRepository) ListServicePaperworkByKind(kind string, limit int) (
 		          WHERE li."bookingId" = b.id AND li.status <> 'DRAFT'
 		      )
 		      OR (
-		          b."completedAt" >= '2026-09-27'
+		          -- (دازاي 10-29) «كل حجز يبدي بـB اريده يضهر لمسؤول الخدمة، وكل
+		          -- حجز يبدي بـOLD نعتبره منجز»: حجوزات النظام (B…) تطالب بتقرير مهما
+		          -- قدمت، والاستيراد القديم (OLD-) ينشال فوك أصلاً.
+		          (b."completedAt" >= '2026-09-27' OR b.code LIKE 'B%')
 		          AND NOT EXISTS (SELECT 1 FROM "WorkReport" wr WHERE wr."bookingId" = b.id)
 		      )
 		  )
