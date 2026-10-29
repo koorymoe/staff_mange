@@ -23,6 +23,28 @@ type MatrixChatHandler struct {
 	agent *service.MatrixAgent
 	// chatModel موديل المحادثة المباشرة (أذكى من شغل الخلفية) — فارغ = موديل الوكيل
 	chatModel string
+	perms     func(employeeID string) []string
+}
+
+// SetPermissions مصدر صلاحيات الموظف — لفلترة أدوات ماتركس (دازاي 10-29).
+func (h *MatrixChatHandler) SetPermissions(f func(employeeID string) []string) { h.perms = f }
+
+// chatStaffDailyLimit حد رسائل الموظف (غير المدير/المالك) باليوم.
+const chatStaffDailyLimit = 30
+
+func isTopRole(r *http.Request) bool {
+	role := middleware.RoleFromContext(r)
+	return role == "OWNER" || role == "ADMIN"
+}
+
+// toolOpts فلتر الأدوات والأدوات الشخصية حسب منو يحاچي.
+func (h *MatrixChatHandler) toolOpts(r *http.Request) (func(string) bool, []string) {
+	me := middleware.EmployeeIDFromContext(r)
+	var perms []string
+	if h.perms != nil {
+		perms = h.perms(me)
+	}
+	return service.MatrixToolFilter(middleware.RoleFromContext(r), perms), perms
 }
 
 // SetChatModel موديل المحادثة المباشرة (AI_MODEL_CHAT).
@@ -156,7 +178,11 @@ func (h *MatrixChatHandler) prepare(w http.ResponseWriter, r *http.Request) *cha
 	var today int
 	_ = h.db.Get(&today, `SELECT count(*) FROM "MatrixTalkMessage" m JOIN "MatrixTalk" c ON c.id = m."chatId"
 		WHERE c."employeeId" = $1 AND m.role = 'USER' AND m."createdAt" > now() - interval '24 hours'`, me)
-	if today >= chatDailyLimit {
+	limit := chatDailyLimit
+	if !isTopRole(r) {
+		limit = chatStaffDailyLimit
+	}
+	if today >= limit {
 		WriteError(w, http.StatusTooManyRequests, "وصلت حد الرسائل اليوم — باچر يرجع")
 		return nil
 	}
@@ -189,6 +215,11 @@ func (h *MatrixChatHandler) prepare(w http.ResponseWriter, r *http.Request) *cha
 		turns = turns[:n-1]
 	}
 	system := chatSystemPrompt + h.lessonsBlock()
+	if !isTopRole(r) {
+		var name, role string
+		_ = h.db.QueryRow(`SELECT name, role::text FROM "Employee" WHERE id = $1`, me).Scan(&name, &role)
+		system += "\n\n【تحاچي موظف مو المدير】 " + name + " (" + role + "). أدواتك محدودة بصلاحياته هو بس — إذا سأل عن شي ما عندك أداته (فلوس، تقييم غيره، رواتب، بيانات موظفين ثانيين) گول بأدب «هذا مو ضمن صلاحياتك» ولا تخمّن. أرقامه هو من my_stats. لا تكشف أبداً تقييم أو حال أو فلوس موظف ثاني إلا إذا الأداة نفسها انفتحتلك."
+	}
 	if strings.TrimSpace(summary) != "" {
 		system += "\n\nذاكرة هالمحادثة (ملخص الي صار قبل آخر الرسائل):\n" + summary
 	}
@@ -202,7 +233,9 @@ func (h *MatrixChatHandler) Send(w http.ResponseWriter, r *http.Request) {
 	if in == nil {
 		return
 	}
-	run, err := h.agent.ChatStream("CHAT", in.system, in.turns, in.prompt, in.img, service.ChatOpts{Model: h.chatModel})
+	allow, _ := h.toolOpts(r)
+	run, err := h.agent.ChatStream("CHAT", in.system, in.turns, in.prompt, in.img, service.ChatOpts{Model: h.chatModel,
+		AllowTool: allow, ExtraTools: service.MatrixSelfTools(h.db, middleware.EmployeeIDFromContext(r))})
 	if err != nil || strings.TrimSpace(run.Answer) == "" {
 		WriteError(w, http.StatusBadGateway, chatFailMsg(err))
 		return
@@ -224,6 +257,7 @@ func (h *MatrixChatHandler) Stream(w http.ResponseWriter, r *http.Request) {
 	if in == nil {
 		return
 	}
+	allow, _ := h.toolOpts(r)
 	w.Header().Set("Content-Type", "text/event-stream")
 	w.Header().Set("Cache-Control", "no-cache")
 	w.Header().Set("X-Accel-Buffering", "no")
@@ -240,6 +274,7 @@ func (h *MatrixChatHandler) Stream(w http.ResponseWriter, r *http.Request) {
 	}
 	run, err := h.agent.ChatStream("CHAT", in.system, in.turns, in.prompt, in.img, service.ChatOpts{
 		Ctx: r.Context(), Model: h.chatModel, Think: true, Emit: func(e service.AgentEvent) { send(e) },
+		AllowTool: allow, ExtraTools: service.MatrixSelfTools(h.db, middleware.EmployeeIDFromContext(r)),
 	})
 	if r.Context().Err() != nil {
 		return // المستخدم وكّف — ما نحفظ نص ناقص

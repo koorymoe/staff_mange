@@ -2985,16 +2985,26 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 		// 💬 دردشة ماتركس — المالك والمدير
 		chatHandler := handler.NewMatrixChatHandler(db, agent)
 		chatHandler.SetChatModel(cfg.AIModelChat)
+		chatHandler.SetPermissions(func(emp string) []string {
+			rows, _ := permissionRepo.ListForEmployee(emp)
+			out := make([]string, 0, len(rows))
+			for _, p := range rows {
+				out = append(out, p.Name)
+			}
+			return out
+		})
+		// (دازاي 10-29) محادثة ماتركس لصاحب agent_matrix هم — أدواته حسب صلاحياته
+		requireMatrixChat := middleware.RequireRoleOrAnyPermission(permissionRepo, employeeRepo, notificationRepo, []string{"ADMIN"}, "agent_matrix")
 		// 🧠 اقتراحات الذكاء (دازاي 10-28): ماتركس يقترح تطوير نفسه
 		agent.RegisterSuggestTool(db, "MATRIX", func(msg string) {
 			_ = notificationRepo.CreateForRole("OWNER", "AI_SUGGESTION", msg)
 		})
-		mux.Handle("GET /api/matrix/chats", middleware.Chain(http.HandlerFunc(chatHandler.List), requireAuth, requireAdmin))
-		mux.Handle("POST /api/matrix/chats", middleware.Chain(http.HandlerFunc(chatHandler.Create), requireAuth, requireAdmin))
-		mux.Handle("GET /api/matrix/chats/{id}", middleware.Chain(http.HandlerFunc(chatHandler.Messages), requireAuth, requireAdmin))
-		mux.Handle("DELETE /api/matrix/chats/{id}", middleware.Chain(http.HandlerFunc(chatHandler.Delete), requireAuth, requireAdmin))
-		mux.Handle("POST /api/matrix/chats/{id}/messages", middleware.Chain(http.HandlerFunc(chatHandler.Send), requireAuth, requireAdmin))
-		mux.Handle("POST /api/matrix/chats/{id}/stream", middleware.Chain(http.HandlerFunc(chatHandler.Stream), requireAuth, requireAdmin))
+		mux.Handle("GET /api/matrix/chats", middleware.Chain(http.HandlerFunc(chatHandler.List), requireAuth, requireMatrixChat))
+		mux.Handle("POST /api/matrix/chats", middleware.Chain(http.HandlerFunc(chatHandler.Create), requireAuth, requireMatrixChat))
+		mux.Handle("GET /api/matrix/chats/{id}", middleware.Chain(http.HandlerFunc(chatHandler.Messages), requireAuth, requireMatrixChat))
+		mux.Handle("DELETE /api/matrix/chats/{id}", middleware.Chain(http.HandlerFunc(chatHandler.Delete), requireAuth, requireMatrixChat))
+		mux.Handle("POST /api/matrix/chats/{id}/messages", middleware.Chain(http.HandlerFunc(chatHandler.Send), requireAuth, requireMatrixChat))
+		mux.Handle("POST /api/matrix/chats/{id}/stream", middleware.Chain(http.HandlerFunc(chatHandler.Stream), requireAuth, requireMatrixChat))
 		mux.Handle("POST /api/matrix/chats/{id}/messages/{msgId}/correct", middleware.Chain(http.HandlerFunc(chatHandler.Correct), requireAuth, requireAdmin))
 		mux.Handle("GET /api/matrix/lessons", middleware.Chain(http.HandlerFunc(chatHandler.Lessons), requireAuth, requireAdmin))
 		mux.Handle("DELETE /api/matrix/lessons/{id}", middleware.Chain(http.HandlerFunc(chatHandler.DisableLesson), requireAuth, requireAdmin))

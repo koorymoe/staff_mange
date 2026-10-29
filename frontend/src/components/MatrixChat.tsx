@@ -101,11 +101,14 @@ function Rich({ text }: { text: string }) {
 }
 
 export default function MatrixChat() {
-  const { employee } = useSession()
-  return employee?.actualRole === 'OWNER' || employee?.role === 'ADMIN' ? (
-    <MatrixChatView />
+  const { employee, permissions } = useSession()
+  const admin = employee?.actualRole === 'OWNER' || employee?.role === 'ADMIN'
+  // (دازاي 10-29) صاحب «محادثة ماتركس» يحاچيه هم — أدواته بحدود صلاحياته (بالخادم)،
+  // والتصحيح والدروس تبقى للمدير لأنها تغيّر ماتركس للكل.
+  return admin || permissions.includes('agent_matrix') ? (
+    <MatrixChatView admin={admin} />
   ) : (
-    <p>محادثة ماتركس للمالك ومدير النظام فقط.</p>
+    <p>محادثة ماتركس تحتاج صلاحية «محادثة ماتركس».</p>
   )
 }
 type Trace = {
@@ -117,7 +120,7 @@ type Trace = {
 }
 type DisplayMessage = MatrixChatMessage & { trace?: Trace; live?: boolean }
 const clock = () => performance.now()
-function MatrixChatView() {
+function MatrixChatView({ admin }: { admin: boolean }) {
   const [chats, setChats] = useState<MatrixChatRow[]>([])
   const [enabled, setEnabled] = useState(true)
   const [cur, setCur] = useState<string | null>(null)
@@ -407,6 +410,7 @@ function MatrixChatView() {
   }
 
   const openLessons = () => {
+    if (!admin) return
     api
       .getMatrixLessons()
       .then(setLessons)
@@ -462,13 +466,14 @@ function MatrixChatView() {
             <p className="p-3 text-xs text-slate-400">ماكو محادثات بعد.</p>
           )}
         </div>
-        <button
+        {admin && (
+<button
           type="button"
           onClick={openLessons}
           className="m-3 mt-0 rounded-xl border border-violet-200 px-3 py-2 text-xs font-bold text-violet-800 hover:bg-violet-50"
         >
           🧠 دروس ماتركس
-        </button>
+        </button>)}
       </aside>
 
       <section
@@ -511,14 +516,15 @@ function MatrixChatView() {
                 </option>
               ))}
             </select>
-            <button
+            {admin && (
+<button
               type="button"
               onClick={openLessons}
               className="rounded-lg px-2 py-1 text-base"
               title="دروس ماتركس"
             >
               🧠
-            </button>
+            </button>)}
           </div>
         </header>
 
@@ -631,7 +637,7 @@ function MatrixChatView() {
                         ''
                       )}
                     </span>
-                    {learned.has(m.id) ? (
+                    {!admin ? null : learned.has(m.id) ? (
                       <span className="font-bold text-emerald-600">
                         ✓ ماتركس تعلّم
                       </span>

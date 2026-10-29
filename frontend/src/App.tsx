@@ -23,6 +23,7 @@ const QualityFollowUpsPage = lazy(() => import('./pages/QualityFollowUpsPage'))
 const SecurityDashboardPage = lazy(() => import('./pages/SecurityDashboardPage'))
 const AssistantConversationsPage = lazy(() => import('./pages/AssistantConversationsPage'))
 const SecretaryPage = lazy(() => import('./pages/SecretaryPage'))
+const MatrixChatPage = lazy(() => import('./components/MatrixChat'))
 const AiAgentsPage = lazy(() => import('./pages/AiAgentsPage'))
 const WhatsAppPage = lazy(() => import('./pages/WhatsAppPage'))
 const WhatsAppSandboxPage = lazy(() => import('./pages/WhatsAppSandboxPage'))
@@ -294,6 +295,7 @@ function App() {
           <Route path="quotations/:id/edit" element={<QuotationNew />} />
           <Route path="leader-invoices" element={<LeaderInvoicesListPage />} />
           <Route path="leader-invoices/new" element={<LeaderInvoiceNew />} />
+          <Route path="matrix-chat" element={<MatrixChatPage />} />
           <Route path="handover-invoices" element={<LeaderInvoiceNew initialMode="booking" handoverOnly />} />
           <Route path="camera-cost" element={<CameraCostPage />} />
           <Route path="network-cost" element={<NetworkCostPage />} />

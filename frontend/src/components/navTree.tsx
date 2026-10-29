@@ -119,6 +119,8 @@ export const navItems: NavItem[] = [
   // (ع) 10-23: «الرابط مال السكرتير وين؟» — تطبيق مستقل بلا قائمة، فزر يوديله للمالك بس.
   { ownerOnly: true, to: '/secretary', label: '🗂️ ايريس', icon: icon('M12 3a4 4 0 100 8 4 4 0 000-8zM4 21v-1a6 6 0 016-6h4a6 6 0 016 6v1'), roles: ['ADMIN'] },
   { ownerOnly: true, to: '/ai-agents', label: '🤖 وكلاء الذكاء', icon: <></>, roles: ['ADMIN'] },
+  // (دازاي 10-29) محادثة ماتركس لصاحب الصلاحية — أدواته بحدود صلاحياته بالخادم
+  { to: '/matrix-chat', label: '🤖 محادثة ماتركس', icon: <></>, roles: ['ADMIN'], anyPermission: ['agent_matrix'] },
   { to: '/whatsapp-conversations', label: 'محادثات الواتساب', icon: <></>, roles: ['ADMIN'], anyPermission: ['quality_control', 'coordinator'] },
   { ownerOnly: true, to: '/whatsapp-sandbox', label: 'وضع تجربة الواتساب', icon: <></>, roles: ['ADMIN'] },
   { to: '/service-studies', label: '🧪 دراسات الخدمات', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M9 3h6M10 3v6L4.5 19a1.5 1.5 0 0 0 1.3 2h12.4a1.5 1.5 0 0 0 1.3-2L14 9V3"/></svg>, roles: ['SERVICE_DEVELOPER'] },

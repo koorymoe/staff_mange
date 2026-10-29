@@ -128,6 +128,10 @@ type ChatOpts struct {
 	Model string
 	Think bool
 	Emit  func(AgentEvent)
+	// AllowTool يفلتر أدوات الوكيل حسب صلاحيات المستخدم (دازاي 10-29) — nil = كلها
+	AllowTool func(name string) bool
+	// ExtraTools أدوات خاصة بهالطلب (مثل my_stats للمستخدم نفسه)
+	ExtraTools []agentTool
 }
 
 // agentTool أداة: وصف + مخطط مدخلات + تنفيذ يرجّع نصاً (بالأسماء الحقيقية —
@@ -330,7 +334,10 @@ func (a *MatrixAgent) ChatStream(feature, system string, history []AgentTurn, me
 	mask := a.newMask()
 	tools := make([]anthropic.ToolUnionParam, 0, len(a.tools))
 	byName := map[string]agentTool{}
-	for _, t := range a.tools {
+	for _, t := range append(append([]agentTool{}, a.tools...), opts.ExtraTools...) {
+		if opts.AllowTool != nil && !opts.AllowTool(t.Name) {
+			continue
+		}
 		byName[t.Name] = t
 		props := t.Props
 		if props == nil {
