@@ -1159,5 +1159,70 @@ func matrixChatMigrations() []Migration {
 				"createdAt" TIMESTAMPTZ NOT NULL DEFAULT now()
 			);
 		`,
+	}, {
+		// 🏛️ الهيكل الجديد (دازاي 10-29): إدارات ووحدات ومناصب. طبقة فوك الأدوار —
+		// المنصب ينطي حزمة صلاحيات وحدته (مصدر ORG)، والسجل ما ينحذف.
+		Version: "0408_org_structure",
+		SQL: `
+			CREATE TABLE IF NOT EXISTS "OrgDivision" (
+				id TEXT PRIMARY KEY,
+				name TEXT NOT NULL,
+				"parentId" TEXT REFERENCES "OrgDivision"(id),
+				sort INT NOT NULL DEFAULT 0,
+				summary TEXT NOT NULL DEFAULT ''
+			);
+			CREATE TABLE IF NOT EXISTS "OrgUnit" (
+				id TEXT PRIMARY KEY,
+				"divisionId" TEXT NOT NULL REFERENCES "OrgDivision"(id),
+				name TEXT NOT NULL,
+				sort INT NOT NULL DEFAULT 0
+			);
+			-- حزمة الصلاحيات: scope = id الإدارة (لمنصب الإدارة نفسه) أو id الوحدة
+			CREATE TABLE IF NOT EXISTS "OrgBundle" (
+				scope TEXT NOT NULL,
+				permission TEXT NOT NULL,
+				PRIMARY KEY (scope, permission)
+			);
+			CREATE TABLE IF NOT EXISTS "OrgAssignment" (
+				id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
+				"employeeId" TEXT NOT NULL REFERENCES "Employee"(id) ON DELETE CASCADE,
+				"divisionId" TEXT NOT NULL REFERENCES "OrgDivision"(id),
+				"unitId" TEXT REFERENCES "OrgUnit"(id),
+				position TEXT NOT NULL CHECK (position IN ('DIRECTOR', 'DEPUTY', 'MEMBER')),
+				"allowanceIQD" NUMERIC NOT NULL DEFAULT 0,
+				acting BOOLEAN NOT NULL DEFAULT false,
+				"actingUntil" TIMESTAMPTZ,
+				"replacesId" TEXT REFERENCES "OrgAssignment"(id),
+				"startedAt" TIMESTAMPTZ NOT NULL DEFAULT now(),
+				"endedAt" TIMESTAMPTZ,
+				"endedById" TEXT REFERENCES "Employee"(id) ON DELETE SET NULL,
+				"endReason" TEXT,
+				note TEXT,
+				"createdById" TEXT REFERENCES "Employee"(id) ON DELETE SET NULL
+			);
+			-- مدير واحد ونائب واحد (أصليين) لكل إدارة/وحدة بنفس الوكت
+			CREATE UNIQUE INDEX IF NOT EXISTS "OrgAssignment_head_uq" ON "OrgAssignment"
+				("divisionId", COALESCE("unitId", ''), position)
+				WHERE "endedAt" IS NULL AND NOT acting AND position IN ('DIRECTOR', 'DEPUTY');
+			-- موظف ما يتكرر بنفس المكان
+			CREATE UNIQUE INDEX IF NOT EXISTS "OrgAssignment_emp_uq" ON "OrgAssignment"
+				("employeeId", "divisionId", COALESCE("unitId", ''))
+				WHERE "endedAt" IS NULL;
+			CREATE INDEX IF NOT EXISTS "OrgAssignment_emp" ON "OrgAssignment" ("employeeId") WHERE "endedAt" IS NULL;
+			-- الصلاحيات الي انطت بسبب المنصب بس (حتى السحب ما يمس اليدوي)
+			CREATE TABLE IF NOT EXISTS "OrgPermissionGrant" (
+				"employeeId" TEXT NOT NULL REFERENCES "Employee"(id) ON DELETE CASCADE,
+				permission TEXT NOT NULL,
+				"createdAt" TIMESTAMPTZ NOT NULL DEFAULT now(),
+				PRIMARY KEY ("employeeId", permission)
+			);
+			-- مفاتيح وحدات بالقائمة ما چانت موجودة بالخادم (فما چان أحد يگدر ياخذها)
+			INSERT INTO "Permission" (id, name, label) VALUES
+				(gen_random_uuid()::text, 'unit_training', 'وحدة التدريب'),
+				(gen_random_uuid()::text, 'unit_accounts', 'وحدة الحسابات'),
+				(gen_random_uuid()::text, 'unit_fleet', 'وحدة العُدد والمركبات'),
+				(gen_random_uuid()::text, 'unit_matrix', 'وحدة ماتركس')
+			ON CONFLICT (name) DO NOTHING;
+		`,
 	}}
 }

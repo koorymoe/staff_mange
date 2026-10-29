@@ -2932,6 +2932,16 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 		}
 		secHandler.SetVoiceProviders(primary, sttAll, polish)
 		log.Printf("🎙️ أذن كمال: الأساسي «%s» من %d مزوّد (تصحيح القاموس: %v)", primary, len(sttAll), polish != nil)
+		// 🏛️ الهيكل الجديد (دازاي 10-29): إدارات ووحدات ومناصب — فوك الأدوار
+		orgService := service.NewOrgService(db)
+		if err := orgService.Seed(); err != nil {
+			log.Printf("org seed: %v", err)
+		}
+		orgHandler := handler.NewOrgHandler(orgService, notificationRepo)
+		mux.Handle("GET /api/org/chart", middleware.Chain(http.HandlerFunc(orgHandler.Chart), requireAuth, requireAdmin))
+		mux.Handle("GET /api/org/me", middleware.Chain(http.HandlerFunc(orgHandler.Me), requireAuth))
+		mux.Handle("POST /api/org/assign", middleware.Chain(http.HandlerFunc(orgHandler.Assign), requireAuth, requireAdmin))
+		mux.Handle("POST /api/org/assignments/{id}/end", middleware.Chain(http.HandlerFunc(orgHandler.End), requireAuth, requireAdmin))
 		mux.Handle("POST /api/voice/compare/{id}", middleware.Chain(http.HandlerFunc(secHandler.CompareVoice), requireAuth, requireAdmin))
 		mux.Handle("POST /api/secretary/message", middleware.Chain(http.HandlerFunc(secHandler.Message), requireAuth, requireAdmin))
 		mux.Handle("POST /api/secretary/actions/{id}/confirm", middleware.Chain(http.HandlerFunc(secHandler.Confirm), requireAuth, requireAdmin))
