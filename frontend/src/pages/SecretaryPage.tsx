@@ -462,7 +462,7 @@ function Secretary() {
     })
     head('meta[name="theme-color"]', 'meta', {
       name: 'theme-color',
-      content: '#2563eb',
+      content: '#101013',
     })
     head('meta[name="apple-mobile-web-app-title"]', 'meta', {
       name: 'apple-mobile-web-app-title',

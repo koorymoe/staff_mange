@@ -14,6 +14,12 @@ const assert = require('node:assert/strict');
     actualRole: 'OWNER',
     certificate: 'دكتوراه',
   };
+  const transformed = await (
+    await fetch(base + '/src/pages/SecretaryPage.tsx')
+  ).text();
+  const routerPath = transformed.match(
+    /["']([^"']*react-router-dom\.js[^"']*)["']/,
+  )[1];
   const at = '2026-10-28T09:00:00Z';
   async function mount(actor = owner, empty = false) {
     const page = await browser.newPage({
@@ -125,7 +131,7 @@ const assert = require('node:assert/strict');
     await page.route(base + '/iris-stream-preview', (r) =>
       r.fulfill({
         contentType: 'text/html',
-        body: `<html dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head><body><div id="root"></div><script type="module">import RR from '${base}/@react-refresh';RR.injectIntoGlobalHook(window);window.$RefreshReg$=()=>{};window.$RefreshSig$=()=>x=>x;window.__vite_plugin_react_preamble_installed__=true;const R=await import('${base}/node_modules/.vite/deps/react.js');const React=R.default||R;const D=await import('${base}/node_modules/.vite/deps/react-dom_client.js');const {createRoot}=D.default||D;const {SessionContext}=await import('${base}/src/session.ts');await import('${base}/src/index.css');await import('${base}/src/fonts.css');const {default:Page}=await import('${base}/src/pages/SecretaryPage.tsx');window.__root=createRoot(document.getElementById('root'));window.__root.render(React.createElement(SessionContext.Provider,{value:{employee:${JSON.stringify(actor)},permissions:[],setEmployee:()=>{},gpsServiceId:null}},React.createElement(Page)));</script></body></html>`,
+        body: `<html dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head><body><div id="root"></div><script type="module">import RR from '${base}/@react-refresh';RR.injectIntoGlobalHook(window);window.$RefreshReg$=()=>{};window.$RefreshSig$=()=>x=>x;window.__vite_plugin_react_preamble_installed__=true;const R=await import('${base}/node_modules/.vite/deps/react.js');const React=R.default||R;const D=await import('${base}/node_modules/.vite/deps/react-dom_client.js');const {createRoot}=D.default||D;const router=await import('${routerPath}');const {SessionContext}=await import('${base}/src/session.ts');await import('${base}/src/index.css');await import('${base}/src/fonts.css');const {default:Page}=await import('${base}/src/pages/SecretaryPage.tsx');window.__root=createRoot(document.getElementById('root'));window.__root.render(React.createElement(router.BrowserRouter,{basename:'/staff_mange'},React.createElement(SessionContext.Provider,{value:{employee:${JSON.stringify(actor)},permissions:[],setEmployee:()=>{},gpsServiceId:null}},React.createElement(Page))));</script></body></html>`,
       }),
     );
     await page.route('**/api/**', async (r) => {
@@ -134,7 +140,9 @@ const assert = require('node:assert/strict');
         p = u.pathname;
       calls.push({ p, method: req.method(), q: u.search });
       let data = [];
-      if (p === '/api/secretary/conversations') data = rows;
+      if (p === '/api/ai/agent-names')
+        data = { IRIS: 'كمال', MATRIX: 'ماتركس' };
+      else if (p === '/api/secretary/conversations') data = rows;
       else if (p === '/api/secretary/today')
         data = {
           greeting: 'أهلاً دكتور',
@@ -172,9 +180,9 @@ const assert = require('node:assert/strict');
   const x = await mount(owner, true),
     p = x.page;
   const input = p.getByLabel('رسالتك لايريس');
-  await input.fill('رسالة فورية لايريس');
+  await input.fill('رسالة فورية');
   await p.getByRole('button', { name: 'إرسال', exact: true }).click();
-  await p.getByText('رسالة فورية لايريس', { exact: true }).waitFor();
+  await p.getByText('رسالة فورية', { exact: true }).waitFor();
   await p.getByRole('button', { name: /Thinking/ }).waitFor();
   await p.waitForFunction(() => window.__posts.length === 1);
   let post = await p.evaluate(() => window.__posts[0]);
@@ -276,10 +284,7 @@ const assert = require('node:assert/strict');
     !x.calls.some((c) => c.p === '/api/secretary/history'),
     'new conversation history must not overwrite streamed done/cards/trace',
   );
-  assert.equal(
-    await p.getByText('رسالة فورية لايريس', { exact: true }).count(),
-    1,
-  );
+  assert.equal(await p.getByText('رسالة فورية', { exact: true }).count(), 1);
   assert.equal(
     await p.evaluate(() =>
       localStorage.getItem('iris-conversation:iris-owner-test'),
@@ -386,7 +391,11 @@ const assert = require('node:assert/strict');
   await admin.page.getByLabel('رسالتك لايريس').fill('اختبار الأدمن');
   await admin.page.getByRole('button', { name: 'إرسال', exact: true }).click();
   await admin.page.waitForFunction(() => window.__posts.length === 1);
-  assert(!admin.calls.some((c) => c.p.startsWith('/api/ai/')));
+  assert(
+    !admin.calls.some(
+      (c) => c.p.startsWith('/api/ai/') && c.p !== '/api/ai/agent-names',
+    ),
+  );
   await admin.page.evaluate(() => window.__root.unmount());
   assert(
     await admin.page.evaluate(() => window.__aborted),

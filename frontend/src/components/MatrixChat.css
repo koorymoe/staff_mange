@@ -26,3 +26,76 @@
   font-size: 11px;
   line-height: 1.7;
 }
+
+/* Isolated from the surrounding system, including its central light/dark overrides. */
+.matrix-human-next {
+  --t-body: #f4f6fc;
+  --t-muted: #bdc1d0;
+  --sf-sunken: #19151f;
+  --bd-line: #514052;
+  color: #f4f6fc;
+  background: #101013;
+  padding: 8px;
+  border-radius: 20px;
+  color-scheme: dark;
+}
+.matrix-human-next :is(aside, section, form, select, textarea),
+.matrix-human-next [class*='bg-white'] {
+  background: #191b22;
+  background-image: none;
+  color: #f4f6fc;
+  border-color: #514052;
+}
+.matrix-human-next section {
+  background:
+    radial-gradient(ellipse at 90% 0%, #ff009018, transparent 60%), #101013;
+  box-shadow: 0 0 30px #ff00900b;
+}
+.matrix-human-next [class*='text-slate-'],
+.matrix-human-next [class*='text-violet-'],
+.matrix-human-next [class*='text-[#0f2040]'] {
+  color: #cbd0df;
+}
+.matrix-human-next header b[class] {
+  color: #ff9bd2;
+  background: linear-gradient(110deg, #80dcfa, #ff9bd2 55%);
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  text-shadow: 0 0 18px #ff009044;
+}
+.matrix-human-next [class*='border-slate-'],
+.matrix-human-next [class*='border-violet-'] {
+  border-color: #514052;
+}
+.matrix-human-next [class*='bg-violet-50'] {
+  background: #382038;
+}
+.matrix-human-next button[class*='bg-gradient-to-'],
+.matrix-human-next span[class*='bg-gradient-to-'],
+.matrix-human-next [class*='bg-[#0f2040]'] {
+  background: linear-gradient(120deg, #075d7c, #9a235f 70%);
+  color: #fff;
+}
+.matrix-human-next textarea {
+  font-size: 16px;
+}
+.matrix-human-next textarea::placeholder {
+  color: #bdc1d0;
+  opacity: 1;
+}
+.matrix-human-next .matrix-thinking {
+  background: linear-gradient(120deg, #15252e, #301b2b);
+  background-color: #301b2b;
+  border-color: #75516d;
+  color: #d9c8db;
+}
+.matrix-human-next .matrix-thinking button {
+  color: #ffadd8;
+}
+.matrix-human-next :is(button, textarea, select):focus-visible {
+  outline: 2px solid #ff9bd2;
+  outline-offset: 3px;
+}
+.matrix-human-next button:disabled {
+  cursor: not-allowed;
+}
