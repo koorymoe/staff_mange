@@ -2047,6 +2047,8 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	mux.Handle("GET /api/privacy-policy", middleware.Chain(http.HandlerFunc(privacyPolicyHandler.List), requireAuth))
 	mux.Handle("GET /api/privacy-policy/status", middleware.Chain(http.HandlerFunc(privacyPolicyHandler.Status), requireAuth))
 	mux.Handle("POST /api/privacy-policy/accept", middleware.Chain(http.HandlerFunc(privacyPolicyHandler.Accept), requireAuth))
+	// 📜 سجل موافقات المبادئ (دازاي 10-29) — الموظف نفسه أو المالك/مدير النظام
+	mux.Handle("GET /api/privacy-policy/acceptances/{employeeId}", middleware.Chain(http.HandlerFunc(privacyPolicyHandler.Acceptances), requireAuth))
 	mux.Handle("POST /api/privacy-policy", middleware.Chain(http.HandlerFunc(privacyPolicyHandler.Create), requireAuth, requirePrivacyMgmt))
 	mux.Handle("PUT /api/privacy-policy/{id}", middleware.Chain(http.HandlerFunc(privacyPolicyHandler.Update), requireAuth, requirePrivacyMgmt))
 	mux.Handle("DELETE /api/privacy-policy/{id}", middleware.Chain(http.HandlerFunc(privacyPolicyHandler.Delete), requireAuth, requirePrivacyMgmt))

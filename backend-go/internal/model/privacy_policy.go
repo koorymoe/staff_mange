@@ -13,6 +13,8 @@ type PrivacyPolicyPoint struct {
 	CreatedByEmployeeID *string   `db:"createdByEmployeeId" json:"createdByEmployeeId"`
 	CreatedAt           time.Time `db:"createdAt" json:"createdAt"`
 	UpdatedAt           time.Time `db:"updatedAt" json:"updatedAt"`
+	// PrincipleNo رقم المبدأ (١-٢٠) للنقاط المزروعة من المبادئ العشرين — فاضي للنقاط العادية
+	PrincipleNo *int `db:"principleNo" json:"principleNo"`
 
 	// اسم الي أضافها — يرجع فقط للمالك ومدير النظام (يُصفّر لغيرهم بالخدمة)
 	CreatedByName *string `db:"createdByName" json:"createdByName"`
@@ -32,4 +34,8 @@ type PrivacyPolicyStatus struct {
 	NeedsAcceptance bool                 `json:"needsAcceptance"`
 	Points          []PrivacyPolicyPoint `json:"points"`
 	AcceptedAt      *time.Time           `json:"acceptedAt"`
+	// Changed وافق گبل بس النص تغيّر بعدها (حتى الواجهة تگوله «تحدّثت السياسة»)
+	Changed bool `json:"changed"`
+	// Hash بصمة النص الي انعرض — الواجهة ترجعها ويا «قرأت وألتزم»
+	Hash string `json:"hash"`
 }

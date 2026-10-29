@@ -3208,12 +3208,18 @@ export interface PrivacyPolicyPoint {
   createdByName: string | null
   createdAt: string
   updatedAt: string
+  // رقم المبدأ (١-٢٠) لنقاط «المبادئ العشرين» — null للنقاط العادية
+  principleNo?: number | null
 }
 
 export interface PrivacyPolicyStatus {
   needsAcceptance: boolean
   points: PrivacyPolicyPoint[]
   acceptedAt: string | null
+  // وافق گبل بس النص تغيّر بعدها
+  changed?: boolean
+  // بصمة النص المعروض — ترجع ويا الموافقة حتى ما يوافق على نسخة ما قراها
+  hash?: string
 }
 
 export type PersonalToolStatus = 'AVAILABLE' | 'LOST' | 'DAMAGED' | 'REPAIRING' | 'RETIRED' | 'CHECKED_OUT'
@@ -5676,8 +5682,8 @@ export const api = {
   getPrivacyPolicy: (all?: boolean) =>
     request<PrivacyPolicyPoint[]>(`/privacy-policy${all ? '?all=true' : ''}`),
   getPrivacyPolicyStatus: () => request<PrivacyPolicyStatus>('/privacy-policy/status'),
-  acceptPrivacyPolicy: () =>
-    request<{ accepted: boolean }>('/privacy-policy/accept', { method: 'POST' }),
+  acceptPrivacyPolicy: (hash?: string) =>
+    request<{ accepted: boolean }>('/privacy-policy/accept', { method: 'POST', body: JSON.stringify({ hash: hash ?? '' }) }),
   createPrivacyPolicyPoint: (content: string, order?: number) =>
     request<PrivacyPolicyPoint>('/privacy-policy', { method: 'POST', body: JSON.stringify({ content, order }) }),
   updatePrivacyPolicyPoint: (id: string, data: { content?: string; order?: number; isActive?: boolean }) =>

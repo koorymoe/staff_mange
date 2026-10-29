@@ -1,6 +1,8 @@
 package handler
 
 import (
+	"encoding/json"
+	"errors"
 	"net/http"
 	"strings"
 
@@ -58,7 +60,16 @@ func (h *PrivacyPolicyHandler) Status(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *PrivacyPolicyHandler) Accept(w http.ResponseWriter, r *http.Request) {
-	if err := h.repo.Accept(middleware.EmployeeIDFromContext(r)); err != nil {
+	// {hash} اختياري: بصمة النص الي قراه — إذا تغيّر بالأثناء نرفض حتى يقرا الجديد
+	var in struct {
+		Hash string `json:"hash"`
+	}
+	_ = json.NewDecoder(http.MaxBytesReader(w, r.Body, 1<<10)).Decode(&in)
+	if err := h.repo.Accept(middleware.EmployeeIDFromContext(r), in.Hash); err != nil {
+		if errors.Is(err, repository.ErrPolicyChanged) {
+			WriteError(w, http.StatusConflict, err.Error())
+			return
+		}
 		WriteError(w, http.StatusInternalServerError, "تعذر تسجيل الموافقة")
 		return
 	}
@@ -116,4 +127,21 @@ func (h *PrivacyPolicyHandler) Delete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
+}
+
+// GET /api/privacy-policy/acceptances/{employeeId} — سجل موافقات موظف (هو نفسه، أو المالك/مدير النظام).
+// غيرهم ياخذ 404 (مو 403) حتى ما تنسجل مخالفة.
+func (h *PrivacyPolicyHandler) Acceptances(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("employeeId")
+	role := middleware.RoleFromContext(r)
+	if id != middleware.EmployeeIDFromContext(r) && role != "OWNER" && role != "ADMIN" {
+		WriteError(w, http.StatusNotFound, "مو موجود")
+		return
+	}
+	out, err := h.repo.History(id)
+	if err != nil {
+		WriteError(w, http.StatusInternalServerError, "تعذر جلب السجل")
+		return
+	}
+	WriteJSON(w, http.StatusOK, out)
 }

@@ -1,7 +1,9 @@
 package repository
 
 import (
+	"crypto/sha256"
 	"database/sql"
+	"encoding/hex"
 	"errors"
 	"time"
 
@@ -80,29 +82,35 @@ func (r *PrivacyPolicyRepository) DeletePoint(id string) error {
 	return err
 }
 
-func (r *PrivacyPolicyRepository) countActivePoints() (int, error) {
-	var n int
-	err := r.db.Get(&n, `SELECT COUNT(*) FROM "PrivacyPolicyPoint" WHERE "isActive" = true`)
-	return n, err
+// pointsHash بصمة النقاط الفعّالة (المعرّف + النص بالترتيب) — أي تعديل أو إضافة أو
+// تعطيل يغيّرها فينطلب من الكل يوافقون من جديد.
+func pointsHash(points []model.PrivacyPolicyPoint) string {
+	h := sha256.New()
+	for _, p := range points {
+		h.Write([]byte(p.ID))
+		h.Write([]byte{0})
+		h.Write([]byte(p.Content))
+		h.Write([]byte{0})
+	}
+	return hex.EncodeToString(h.Sum(nil))
 }
 
-// Status يحسب إذا الموظف يحتاج يوافق: ما وافق أبداً، أو انضافت نقاط بعد آخر
-// موافقة. لو ما اكو أي نقطة فعّالة ما نطلب موافقة إطلاقاً.
+// Status يحسب إذا الموظف يحتاج يوافق: ما وافق أبداً، أو النص تغيّر بعد آخر موافقة.
+// لو ما اكو أي نقطة فعّالة ما نطلب موافقة إطلاقاً.
 func (r *PrivacyPolicyRepository) Status(employeeID string) (*model.PrivacyPolicyStatus, error) {
 	points, err := r.ListPoints(true)
 	if err != nil {
 		return nil, err
 	}
-	st := &model.PrivacyPolicyStatus{Points: points}
+	st := &model.PrivacyPolicyStatus{Points: points, Hash: pointsHash(points)}
 	if len(points) == 0 {
 		return st, nil
 	}
-
-	var acceptedAt time.Time
-	var version int
-	err = r.db.QueryRow(`
-		SELECT "acceptedAt", "pointsVersion" FROM "PrivacyPolicyAcceptance" WHERE "employeeId" = $1
-	`, employeeID).Scan(&acceptedAt, &version)
+	var row struct {
+		At   time.Time `db:"acceptedAt"`
+		Hash *string   `db:"pointsHash"`
+	}
+	err = r.db.Get(&row, `SELECT "acceptedAt", "pointsHash" FROM "PrivacyPolicyAcceptance" WHERE "employeeId" = $1`, employeeID)
 	if errors.Is(err, sql.ErrNoRows) {
 		st.NeedsAcceptance = true
 		return st, nil
@@ -110,21 +118,68 @@ func (r *PrivacyPolicyRepository) Status(employeeID string) (*model.PrivacyPolic
 	if err != nil {
 		return nil, err
 	}
-	st.AcceptedAt = &acceptedAt
-	st.NeedsAcceptance = version < len(points)
+	st.AcceptedAt = &row.At
+	st.NeedsAcceptance = row.Hash == nil || *row.Hash != st.Hash
+	st.Changed = st.NeedsAcceptance
 	return st, nil
 }
 
-func (r *PrivacyPolicyRepository) Accept(employeeID string) error {
-	n, err := r.countActivePoints()
+// Accept يوافق على النص الحالي بالضبط: يحدّث آخر موافقة ويضيف سطر بالسجل (ما ينمسح).
+// expectHash (اختياري) — إذا النص تغيّر بين ما قرا الموظف وضغط، نرفض حتى يقرا الجديد.
+func (r *PrivacyPolicyRepository) Accept(employeeID string, expectHash string) error {
+	points, err := r.ListPoints(true)
 	if err != nil {
 		return err
 	}
-	_, err = r.db.Exec(`
-		INSERT INTO "PrivacyPolicyAcceptance" (id, "employeeId", "pointsVersion")
-		VALUES (gen_random_uuid()::text, $1, $2)
+	hash := pointsHash(points)
+	if expectHash != "" && expectHash != hash {
+		return ErrPolicyChanged
+	}
+	tx, err := r.db.Beginx()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+	if _, err = tx.Exec(`
+		INSERT INTO "PrivacyPolicyAcceptance" (id, "employeeId", "pointsVersion", "pointsHash")
+		VALUES (gen_random_uuid()::text, $1, $2, $3)
 		ON CONFLICT ("employeeId") DO UPDATE
-		SET "acceptedAt" = now(), "pointsVersion" = EXCLUDED."pointsVersion"
-	`, employeeID, n)
-	return err
+		SET "acceptedAt" = now(), "pointsVersion" = EXCLUDED."pointsVersion", "pointsHash" = EXCLUDED."pointsHash"
+	`, employeeID, len(points), hash); err != nil {
+		return err
+	}
+	if _, err = tx.Exec(`INSERT INTO "PrivacyPolicyAcceptanceLog" ("employeeId", "pointsHash", "pointsCount") VALUES ($1, $2, $3)`,
+		employeeID, hash, len(points)); err != nil {
+		return err
+	}
+	return tx.Commit()
+}
+
+var ErrPolicyChanged = errors.New("السياسة تحدّثت هسه — اقرا النسخة الجديدة ووافق عليها")
+
+// CurrentHash بصمة النص الحالي (ترجع ويا الحالة حتى الواجهة ترسلها ويا الموافقة).
+func (r *PrivacyPolicyRepository) CurrentHash() (string, error) {
+	points, err := r.ListPoints(true)
+	if err != nil {
+		return "", err
+	}
+	return pointsHash(points), nil
+}
+
+type PolicyAcceptance struct {
+	AcceptedAt  time.Time `db:"acceptedAt" json:"acceptedAt"`
+	PointsCount int       `db:"pointsCount" json:"pointsCount"`
+	Current     bool      `db:"current" json:"current"`
+}
+
+// History سجل موافقات موظف (الأحدث أول) — current إذا وافق على النص الحالي.
+func (r *PrivacyPolicyRepository) History(employeeID string) ([]PolicyAcceptance, error) {
+	hash, err := r.CurrentHash()
+	if err != nil {
+		return nil, err
+	}
+	out := []PolicyAcceptance{}
+	err = r.db.Select(&out, `SELECT "acceptedAt", "pointsCount", "pointsHash" = $2 AS current FROM "PrivacyPolicyAcceptanceLog"
+		WHERE "employeeId" = $1 ORDER BY "acceptedAt" DESC LIMIT 100`, employeeID, hash)
+	return out, err
 }

@@ -1290,5 +1290,47 @@ func matrixChatMigrations() []Migration {
 			);
 			CREATE INDEX IF NOT EXISTS "OrgAuthority_div" ON "OrgAuthority" ("divisionId", sort);
 		`,
+	}, {
+		// 📜 المبادئ العشرين (دازاي 10-29): تنزرع بسياسة الخصوصية والعمل، وكل موظف يوافق
+		// بـ«قرأت وألتزم». الإصدار صار بصمة النص (تعديل نقطة يطلب موافقة جديدة)، وكل موافقة
+		// تنحفظ بتاريخها بسجل ما ينمسح — ماتركس يرجعله وقت التقييم.
+		Version: "0410_principles_acceptance",
+		SQL: `
+			ALTER TABLE "PrivacyPolicyPoint" ADD COLUMN IF NOT EXISTS "principleNo" INT;
+			CREATE UNIQUE INDEX IF NOT EXISTS "PrivacyPolicyPoint_principle_uq" ON "PrivacyPolicyPoint" ("principleNo") WHERE "principleNo" IS NOT NULL;
+			ALTER TABLE "PrivacyPolicyAcceptance" ADD COLUMN IF NOT EXISTS "pointsHash" TEXT;
+			CREATE TABLE IF NOT EXISTS "PrivacyPolicyAcceptanceLog" (
+				id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
+				"employeeId" TEXT NOT NULL REFERENCES "Employee"(id) ON DELETE CASCADE,
+				"acceptedAt" TIMESTAMPTZ NOT NULL DEFAULT now(),
+				"pointsHash" TEXT NOT NULL,
+				"pointsCount" INT NOT NULL
+			);
+			CREATE INDEX IF NOT EXISTS "PrivacyPolicyAcceptanceLog_emp" ON "PrivacyPolicyAcceptanceLog" ("employeeId", "acceptedAt" DESC);
+			INSERT INTO "PrivacyPolicyPoint" (id, content, "order", "principleNo")
+			SELECT gen_random_uuid()::text, 'مبدأ ' || x.n || ': ' || x.t, x.n, x.n FROM (VALUES
+				(1, 'عمل الكوادر بصورة دقيقة، أفضل من أي منافس بالسوق.'),
+				(2, 'استغلال الكوادر للعمل في جميع المهام الموكلة إليهم.'),
+				(3, 'الحفاظ على العُدد: أعدادها وكمياتها وتنوعها.'),
+				(4, 'جلب أكبر عدد من الحجوزات للشركة.'),
+				(5, 'إكمال أعمال الشركة بصورة آنية.'),
+				(6, 'العمل على أن يكون العمل بأسرع ما يمكن.'),
+				(7, 'العمل على أن تكون كل أدوات ومركبات الشركة في أبهى حلّة.'),
+				(8, 'عدم التأخر في حجوزات الكادر.'),
+				(9, 'المتابعة لكل حجوزات واتصالات الكادر في كل شيء.'),
+				(10, 'العمل وفق المعايير الهندسية والتصميمية وحسب آليات الشركة.'),
+				(11, 'الاحترام المتبادل للعمل ولجميع الكوادر بغض النظر عن المناصب.'),
+				(12, 'العمل وفق نظام المؤسسات ووفق آليات العمل الرسمية.'),
+				(13, 'تكلفة الكوادر للعمل ضمن ضوابط شركة الأماني.'),
+				(14, 'العمل وفق الهيكلية التنفيذية.'),
+				(15, 'الالتزام بالساعات والدوام.'),
+				(16, 'كل شخص له مسؤولية العمل الخاصة به ويُحاسَب عليها.'),
+				(17, 'أخذ جميع توجيهات المدير على محمل الجد.'),
+				(18, 'الحفاظ على سرية العمل في كل مرحلة.'),
+				(19, 'العمل كخلية نحل: كلٌّ عارف بدوره ومؤدٍّ لمهامه.'),
+				(20, 'عند الإجازات تتغير المناصب مؤقتاً وفقاً لمصلحة العمل وحسب رؤية المدير.')
+			) AS x(n, t)
+			WHERE NOT EXISTS (SELECT 1 FROM "PrivacyPolicyPoint" pp WHERE pp."principleNo" = x.n);
+		`,
 	}}
 }
