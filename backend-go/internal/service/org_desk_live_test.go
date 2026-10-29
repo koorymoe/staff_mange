@@ -77,6 +77,10 @@ func TestOrgDesk_Live(t *testing.T) {
 	}
 	cur, _ := s.MetricValue("issues_open", "quality", OrgPeriod(time.Now()))
 	target := 0.0
+	worse := cur + 5
+	if _, err := s.AddPlanItem(dir, "TECHNICIAN", plan, OrgPlanItemInput{Kind: "PROBLEM", Title: "هدف أسوأ", Metric: "issues_open", Target: &worse}); err == nil {
+		t.Fatal("هدف أسوأ من الحالي انقبل")
+	}
 	item, err := s.AddPlanItem(dir, "TECHNICIAN", plan, OrgPlanItemInput{Kind: "PROBLEM", Title: "صفر مشاكل مفتوحة", IssueID: issue, Metric: "issues_open", Target: &target})
 	if err != nil {
 		t.Fatal(err)
@@ -123,3 +127,26 @@ func TestOrgDesk_Live(t *testing.T) {
 }
 
 func intp(v int) *int { return &v }
+
+// TestOrgDeskMetricRules_Live الهدف لازم أحسن، المقياس اللحظي للشهر الحالي بس، والنسبة مو عدد.
+func TestOrgDeskMetricRules_Live(t *testing.T) {
+	dsn := os.Getenv("DATABASE_URL")
+	if dsn == "" {
+		t.Skip("DATABASE_URL غير موجود بالبيئة")
+	}
+	db, err := sqlx.Connect("postgres", dsn)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
+	s := NewOrgService(db)
+	if _, err := s.MetricValue("issues_open", "quality", "2020-01"); !errors.Is(err, ErrOrgNoData) {
+		t.Fatalf("المقياس اللحظي لشهر قديم لازم «ماكو بيانات»: %v", err)
+	}
+	if _, err := s.MetricValue("late_stations", "it", "2020-01"); !errors.Is(err, ErrOrgNoData) {
+		t.Fatalf("نسبة بلا محطات لازم «ماكو بيانات»: %v", err)
+	}
+	if _, err := s.MetricValue("nope", "it", OrgPeriod(time.Now())); err == nil {
+		t.Fatal("مقياس غير معروف انقبل")
+	}
+}

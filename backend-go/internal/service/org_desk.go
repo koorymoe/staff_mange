@@ -3,6 +3,7 @@ package service
 import (
 	"database/sql"
 	"errors"
+	"fmt"
 	"math"
 	"strings"
 	"time"
@@ -26,7 +27,7 @@ type OrgMetric struct {
 
 var OrgMetrics = []OrgMetric{
 	{Key: "members_score", Label: "معدّل تقييم ماتركس لكادر الإدارة", Unit: "%"},
-	{Key: "late_stations", Label: "محطات متأخرة أو فايتة لكادر الإدارة", LowerBetter: true, Unit: "محطة"},
+	{Key: "late_stations", Label: "نسبة المحطات المتأخرة أو الفايتة لكادر الإدارة", LowerBetter: true, Unit: "%"},
 	{Key: "complaints_open", Label: "شكاوي مفتوحة على كادر الإدارة", LowerBetter: true, Unit: "شكوى"},
 	{Key: "issues_open", Label: "مشاكل مفتوحة بتقارير الإدارة", LowerBetter: true, Unit: "مشكلة"},
 }
@@ -53,13 +54,26 @@ func periodRange(period string) (time.Time, time.Time, error) {
 	return start, start.AddDate(0, 1, 0), nil
 }
 
-const orgMembersSQL = `SELECT DISTINCT "employeeId" FROM "OrgAssignment" WHERE "divisionId" = $1 AND "endedAt" IS NULL`
+// كادر الإدارة بالفترة: كل من چان بيها بأي وكت من الشهر (مو بس الحاليين)
+const orgMembersSQL = `SELECT DISTINCT "employeeId" FROM "OrgAssignment" WHERE "divisionId" = $1
+	AND "startedAt" < $3 AND ("endedAt" IS NULL OR "endedAt" >= $2)`
 
-// MetricValue قيمة مقياس لإدارة بفترة.
+// orgSnapshot مقاييس لحظية (بلا تاريخ) — تنحسب للشهر الحالي بس.
+var orgSnapshot = map[string]bool{"complaints_open": true, "issues_open": true}
+
+// orgCumulative مقاييس تتجمع خلال الشهر — خط أساسها الشهر الي فات كامل.
+var orgCumulative = map[string]bool{"members_score": true, "late_stations": true}
+
+var ErrOrgNoData = errors.New("ماكو بيانات كافية لهالشهر")
+
+// MetricValue قيمة مقياس لإدارة بفترة. ErrOrgNoData إذا ماكو أرقام (فالنسبة ترجع يدوية).
 func (s *OrgService) MetricValue(key, divisionID, period string) (float64, error) {
 	from, to, err := periodRange(period)
 	if err != nil {
 		return 0, err
+	}
+	if orgSnapshot[key] && period != OrgPeriod(time.Now()) {
+		return 0, ErrOrgNoData
 	}
 	var v float64
 	switch key {
@@ -70,15 +84,29 @@ func (s *OrgService) MetricValue(key, divisionID, period string) (float64, error
 		}
 		err = s.db.Get(&r, `SELECT COALESCE(sum(points), 0) AS p, COALESCE(sum("maxPoints"), 0) AS m FROM "MatrixScore"
 			WHERE "employeeId" IN (`+orgMembersSQL+`) AND "cancelledAt" IS NULL AND "at" >= $2 AND "at" < $3`, divisionID, from, to)
+		if err == nil && r.M == 0 {
+			return 0, ErrOrgNoData
+		}
 		if r.M > 0 {
 			v = math.Round(r.P/r.M*1000) / 10
 		}
 	case "late_stations":
-		err = s.db.Get(&v, `SELECT count(*) FROM "MatrixScore" WHERE "employeeId" IN (`+orgMembersSQL+`)
-			AND "cancelledAt" IS NULL AND points < "maxPoints" AND "at" >= $2 AND "at" < $3`, divisionID, from, to)
+		// نسبة مو عدد — العدد يصعد طول الشهر حتى لو الشغل تحسّن
+		var r struct {
+			Late float64 `db:"late"`
+			All  float64 `db:"total"`
+		}
+		err = s.db.Get(&r, `SELECT count(*) FILTER (WHERE points < "maxPoints") AS late, count(*) AS total FROM "MatrixScore"
+			WHERE "employeeId" IN (`+orgMembersSQL+`) AND "cancelledAt" IS NULL AND "at" >= $2 AND "at" < $3`, divisionID, from, to)
+		if err == nil && r.All == 0 {
+			return 0, ErrOrgNoData
+		}
+		if r.All > 0 {
+			v = math.Round(r.Late/r.All*1000) / 10
+		}
 	case "complaints_open":
 		err = s.db.Get(&v, `SELECT count(*) FROM "Complaint" WHERE status IN ('NEW', 'IN_PROGRESS')
-			AND "assignedToEmployeeId" IN (`+orgMembersSQL+`)`, divisionID)
+			AND "assignedToEmployeeId" IN (`+orgMembersSQL+`)`, divisionID, from, to)
 	case "issues_open":
 		err = s.db.Get(&v, `SELECT count(*) FROM "OrgIssueReport" WHERE "divisionId" = $1 AND status <> 'RESOLVED'`, divisionID)
 	default:
@@ -398,20 +426,36 @@ func (s *OrgService) AddPlanItem(empID, role, planID string, in OrgPlanItemInput
 	}
 	var metric, baseline, target any
 	if in.Metric != "" {
-		if _, ok := orgMetric(in.Metric); !ok {
+		m, ok := orgMetric(in.Metric)
+		if !ok {
 			return "", errors.New("مقياس غير معروف")
 		}
 		if in.Target == nil {
 			return "", errors.New("حدد الهدف للمقياس")
 		}
-		cur, err := s.MetricValue(in.Metric, div, period)
+		if *in.Target < 0 || (m.Unit == "%" && *in.Target > 100) {
+			return "", errors.New("هدف غير منطقي")
+		}
+		if period > OrgPeriod(time.Now()) {
+			return "", errors.New("البند المربوط بمقياس ينضاف من يبدي شهره")
+		}
+		// خط الأساس: المقاييس المتجمّعة من الشهر الي فات كامل، واللحظية من هسه
+		basePeriod := period
+		if orgCumulative[in.Metric] {
+			start, _, _ := periodRange(period)
+			basePeriod = start.AddDate(0, -1, 0).Format("2006-01")
+		}
+		base, err := s.MetricValue(in.Metric, div, basePeriod)
+		if errors.Is(err, ErrOrgNoData) {
+			return "", errors.New("ماكو أرقام سابقة لهالمقياس بهالإدارة — خلي البند بنسبة يدوية")
+		}
 		if err != nil {
 			return "", err
 		}
-		if cur == *in.Target {
-			return "", errors.New("الهدف نفس الرقم الحالي — حط هدف أحسن")
+		if (m.LowerBetter && *in.Target >= base) || (!m.LowerBetter && *in.Target <= base) {
+			return "", fmt.Errorf("الهدف لازم يكون أحسن من الرقم الحالي (%v)", base)
 		}
-		metric, baseline, target = in.Metric, cur, *in.Target
+		metric, baseline, target = in.Metric, base, *in.Target
 	}
 	var issue any
 	if in.IssueID != "" {
