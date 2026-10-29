@@ -173,10 +173,27 @@ export default function MonitorInboxPage({ embedded }: EmbeddedProps = {}) {
     const note = (notes[key] || '').trim()
     if (flag && note.length < 5) { setPageError('اكتب الملاحظة — الموظف لازم يعرف شنو يصلّح'); return }
     setPageError(null)
-    const ok = await guard.run('حفظ القرار', async () => {
-      for (const r of rs.filter((x) => x.status === 'PENDING')) await api.decideMonitorReview(r.id, { flag, note })
+    // (دازاي 10-29) «اضغط سليم يترحل مباشرة بلا تحديث» — الكارت يختفي فوراً والعدّاد ينزل،
+    // والحفظ بالخلفية بالتوازي. إذا فشل يرجع الكارت ويطلع الخطأ.
+    const pending = rs.filter((x) => x.status === 'PENDING')
+    const ids = new Set(pending.map((x) => x.id))
+    const before = rows
+    setRows((cur) => showDone
+      ? cur.map((x) => (ids.has(x.id) ? { ...x, status: flag ? 'FLAGGED' : 'OK' } as MonitorReview : x))
+      : cur.filter((x) => !ids.has(x.id)))
+    setCounts((c) => {
+      const n = { ...c }
+      for (const r of pending) if (n[r.stage] != null) n[r.stage] = Math.max(0, n[r.stage] - 1)
+      return n
     })
-    if (ok) setReload((n) => n + 1)
+    setCards((c) => (c && tab === 'BOOKINGS' ? { ...c, bookings: Math.max(0, c.bookings - 1) } : c && tab === 'INVOICES' ? { ...c, invoices: Math.max(0, c.invoices - 1) } : c))
+    const ok = await guard.run('حفظ القرار', async () => {
+      await Promise.all(pending.map((r) => api.decideMonitorReview(r.id, { flag, note })))
+    })
+    if (!ok) {
+      setRows(before)
+      setReload((n) => n + 1)
+    }
   }
 
   const start = (page - 1) * perPage
