@@ -416,7 +416,7 @@ function MatrixChatView() {
   return (
     <div
       dir="rtl"
-      className="grid h-[calc(100vh-180px)] min-h-[520px] gap-3 lg:grid-cols-[260px_1fr]"
+      className="matrix-human-next grid h-[calc(100vh-180px)] min-h-[520px] gap-3 lg:grid-cols-[260px_1fr]"
     >
       <aside className="hidden flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white lg:flex">
         <button
