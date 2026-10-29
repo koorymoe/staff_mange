@@ -218,7 +218,12 @@ func (h *MatrixChatHandler) prepare(w http.ResponseWriter, r *http.Request) *cha
 	if !isTopRole(r) {
 		var name, role string
 		_ = h.db.QueryRow(`SELECT name, role::text FROM "Employee" WHERE id = $1`, me).Scan(&name, &role)
-		system += "\n\n【تحاچي موظف مو المدير】 " + name + " (" + role + "). أدواتك محدودة بصلاحياته هو بس — إذا سأل عن شي ما عندك أداته (فلوس، تقييم غيره، رواتب، بيانات موظفين ثانيين) گول بأدب «هذا مو ضمن صلاحياتك» ولا تخمّن. أرقامه هو من my_stats. لا تكشف أبداً تقييم أو حال أو فلوس موظف ثاني إلا إذا الأداة نفسها انفتحتلك."
+		if l, ok := staffRoleLabels[role]; ok {
+			role = l
+		}
+		// (دازاي 10-29) الاسم ينخفى برمز (موظف#n) قبل ما يوصل النموذج، والخادم يرجّعه
+		// بالجواب — فلازم يعرف إن الرمز هو اسمه ويستعمله، مو يگول «ما أعرف اسمك».
+		system += "\n\n【تحاچي موظف مو المدير】 هو " + name + "، دوره " + role + ". اسمه يوصلك كرمز (موظف#n) — استعمل الرمز نفسه كأنه اسمه وناديه بيه، والنظام يبدّله باسمه الحقيقي قبل ما يوصله. لا تگول أبداً «ما أعرف اسمك» ولا تذكر إن الأسماء رموز. أدواتك محدودة بصلاحياته هو بس — إذا سأل عن شي ما عندك أداته (فلوس، تقييم غيره، رواتب، بيانات موظفين ثانيين) گول بأدب «هذا مو ضمن صلاحياتك» ولا تخمّن. أرقامه هو من my_stats. لا تكشف تقييم أو حال أو فلوس موظف ثاني إلا إذا الأداة نفسها انفتحتلك."
 	}
 	if strings.TrimSpace(summary) != "" {
 		system += "\n\nذاكرة هالمحادثة (ملخص الي صار قبل آخر الرسائل):\n" + summary
@@ -456,4 +461,13 @@ func (h *MatrixChatHandler) updateMemory(chatID string) {
 		return
 	}
 	_, _ = h.db.Exec(`UPDATE "MatrixTalk" SET summary = $2, "summarizedUpTo" = $3 WHERE id = $1`, chatID, sum, msgs[len(msgs)-1].CreatedAt)
+}
+
+// staffRoleLabels أسماء الأدوار بالعربي (نفس frontend/src/roleLabels.ts) — للبرومبت.
+var staffRoleLabels = map[string]string{
+	"SALES": "موظف مبيعات", "HR_COORDINATOR": "إداري الكوادر", "TECHNICIAN": "فني", "TECHNICAL": "تقني",
+	"PROJECT_MANAGER": "مدير مشاريع", "MONITOR": "مدقق / مراقب", "FINANCE": "محاسب", "GPS_ADMIN": "مسؤول GPS",
+	"QUALITY_ENGINEER": "مهندس جودة", "ENGINEER": "مهندس", "PROCUREMENT_ADMIN": "إداري الكميات", "DESIGNER": "مصمم",
+	"SERVICE_MANAGER": "مسؤول خدمة", "IT_SUPPORT": "الدعم التقني", "MEDIA": "الإعلام", "CAR_WASHER": "عامل الغسل",
+	"SERVICE_DEVELOPER": "مطوّر خدمات", "PUBLIC_RELATIONS": "العلاقات العامة",
 }
