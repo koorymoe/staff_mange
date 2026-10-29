@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { startAgentRebrand } from '../utils/agentBrand'
 import {
@@ -23,6 +23,35 @@ type IrisTrace = {
   open: boolean
 }
 type IrisChat = SecretaryChat & { trace?: IrisTrace }
+
+// (دازاي 10-29) «البصمة تضل ظاهرة أسمعها براحتي» — من السجل تنجاب من الخادم وقت ما يضغط.
+function VoiceBubble({ chat }: { chat: IrisChat }) {
+  const [url, setUrl] = useState(chat.audioUrl ?? '')
+  const [loading, setLoading] = useState(false)
+  const [failed, setFailed] = useState(false)
+  if (url) return <audio className="sec-voice-play" controls src={url} preload="metadata" />
+  if (!chat.hasAudio) return null
+  return (
+    <button
+      type="button"
+      className="sec-voice-load"
+      disabled={loading}
+      onClick={async () => {
+        setLoading(true)
+        setFailed(false)
+        try {
+          setUrl(URL.createObjectURL(await api.secretaryAudio(chat.id)))
+        } catch {
+          setFailed(true)
+        } finally {
+          setLoading(false)
+        }
+      }}
+    >
+      {loading ? '…' : failed ? 'ما انجابت — جرّب مرة ثانية' : '▶ اسمع البصمة'}
+    </button>
+  )
+}
 const streamClock = () => performance.now()
 
 type Reminder = {
@@ -136,6 +165,13 @@ function Secretary() {
   const [chats, setChats] = useState<IrisChat[]>([])
   const [streaming, setStreaming] = useState(false)
   const [retryAudio, setRetryAudio] = useState<Blob | null>(null)
+  // (دازاي 10-29) البصمة ما تنرسل لحالها: تنحفظ هنا، يسمعها، وهو يضغط إرسال.
+  const [draftAudio, setDraftAudio] = useState<Blob | null>(null)
+  const draftUrl = useMemo(
+    () => (draftAudio ? URL.createObjectURL(draftAudio) : ''),
+    [draftAudio],
+  )
+  const holdStart = useRef(0)
   const storageKey = `iris-conversation:${employee?.id}`
   const [conversations, setConversations] = useState<SecretaryConversation[]>(
     [],
@@ -413,6 +449,16 @@ function Secretary() {
     )
     return () => window.clearInterval(timer)
   }, [streaming])
+  // (دازاي 10-29) «بس اطلع من التطبيق يوكف» — الخادم يكمل الجواب، فمن يرجع نجيب السجل.
+  useEffect(() => {
+    const onVisible = () => {
+      if (document.visibilityState !== 'visible' || streamController.current) return
+      skipHistory.current = null
+      setHistoryRetry((n) => n + 1)
+    }
+    document.addEventListener('visibilitychange', onVisible)
+    return () => document.removeEventListener('visibilitychange', onVisible)
+  }, [])
   useEffect(() => {
     if (!recording) return
     const timer = window.setInterval(() => setSeconds((n) => n + 1), 1000)
@@ -618,6 +664,7 @@ function Secretary() {
         role: 'user',
         text: audio ? 'رسالة صوتية — دا أحوّلها لنص…' : text,
         transcript: null,
+        audioUrl: audio ? URL.createObjectURL(audio) : undefined,
         cards: [],
         action: null,
       },
@@ -708,6 +755,12 @@ function Secretary() {
   }
   const send = async (raw = input) => {
     const text = raw.trim()
+    if (!text && draftAudio) {
+      const blob = draftAudio
+      setDraftAudio(null)
+      await runStream('', blob)
+      return
+    }
     if (!text) return
     await runStream(text)
   }
@@ -747,7 +800,7 @@ function Secretary() {
         if (cancelled.current || !mounted.current) return
         const blob = new Blob(chunks, { type: r.mimeType })
         if (!blob.size) return
-        await runStream('', blob)
+        setDraftAudio(blob)
       }
       r.start()
       setSeconds(0)
@@ -1324,6 +1377,7 @@ function Secretary() {
                           إجراء بالخادم؛ راجع المحادثة قبل إعادة الطلب.
                         </small>
                       )}
+                    <VoiceBubble key={chat.id} chat={chat} />
                     {chat.transcript && (
                       <p className="sec-transcript">
                         البصمة: {chat.transcript}
@@ -1434,6 +1488,14 @@ function Secretary() {
                   </button>
                 ))}
               </div>
+              {draftAudio && !recording && (
+                <div className="sec-voice-draft" role="status">
+                  <audio controls src={draftUrl} />
+                  <button type="button" onClick={() => setDraftAudio(null)}>
+                    احذف
+                  </button>
+                </div>
+              )}
               {recording && (
                 <div className="sec-recording" role="status">
                   ● دا أسمعك · {seconds} ثانية
@@ -1450,9 +1512,27 @@ function Secretary() {
                 <button
                   type="button"
                   aria-pressed={recording}
-                  aria-label={recording ? 'وقف التسجيل وأرسل' : 'ابدأ التسجيل'}
+                  aria-label={recording ? 'وقف التسجيل' : 'اضغط وسجّل'}
                   className={recording ? 'sec-mic live' : 'sec-mic'}
-                  onClick={voice}
+                  // اضغط وخلّي إيدك = يسجّل، تشيلها = يوقف (وما يرسل).
+                  // ضغطة سريعة = يبدأ، وضغطة ثانية = يوقف.
+                  onPointerDown={(e) => {
+                    e.preventDefault()
+                    if (recording) return
+                    holdStart.current = Date.now()
+                    setDraftAudio(null)
+                    void voice()
+                  }}
+                  onPointerUp={() => {
+                    if (!holdStart.current) {
+                      if (recorder.current?.state === 'recording') void voice()
+                      return
+                    }
+                    const held = Date.now() - holdStart.current
+                    holdStart.current = 0
+                    if (held > 400 && recorder.current?.state === 'recording') void voice()
+                  }}
+                  onContextMenu={(e) => e.preventDefault()}
                   disabled={
                     busy ||
                     openingMic ||
@@ -1511,7 +1591,9 @@ function Secretary() {
                     className="sec-send"
                     aria-label="إرسال"
                     disabled={
-                      conversationLocked || historyFailed || !input.trim()
+                      conversationLocked ||
+                      historyFailed ||
+                      (!input.trim() && !draftAudio)
                     }
                   >
                     <IrisIcon kind="send" />

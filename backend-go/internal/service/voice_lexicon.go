@@ -42,7 +42,7 @@ type voiceFix struct {
 }
 
 func NewVoiceLexicon(db *sqlx.DB) *VoiceLexicon {
-	return &VoiceLexicon{db: db, maxTerm: 2500}
+	return &VoiceLexicon{db: db, maxTerm: 400}
 }
 
 var glossLineRe = regexp.MustCompile(`^- (.+?)(?: ← (.+?))?(?: ← (.+))?$`)
@@ -183,7 +183,7 @@ func (l *VoiceLexicon) load() {
 	terms := []struct {
 		Term string `db:"term"`
 	}{}
-	_ = l.db.Select(&terms, `SELECT term FROM "VoiceTerm" ORDER BY (source = 'OWNER') DESC, uses DESC, "createdAt" LIMIT $1`, l.maxTerm)
+	_ = l.db.Select(&terms, `SELECT term FROM "VoiceTerm" ORDER BY (source IN ('OWNER', 'LEARNED')) DESC, (category = 'موظف') DESC, (source = 'SEED') DESC, uses DESC, "createdAt" LIMIT $1`, l.maxTerm)
 	words := make([]string, 0, len(terms))
 	for _, t := range terms {
 		words = append(words, t.Term)
@@ -220,7 +220,7 @@ func (l *VoiceLexicon) PromptHint() string {
 	if l.prompt == "" {
 		return ""
 	}
-	return "\nكلمات ومصطلحات راح تنسمع بهالتسجيلات (شغل شركة الأماني ولهجة عراقية وأسماء) — إذا سمعت شي قريب منها اكتبها بهالشكل:\n" + l.prompt
+	return "\nمرجع إملاء بس (كلمات شغل شركة الأماني وأسماء): إذا انگالت وحدة منها فعلاً اكتبها بهالشكل. لا تبدّل كلام عادي بكلمة من القائمة، والسلام والكلام اليومي اكتبه مثل ما انگال:\n" + l.prompt
 }
 
 // Apply يطبّق ذاكرة التصحيح على نص طالع من الأذن.

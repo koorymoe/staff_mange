@@ -57,6 +57,12 @@ func (h *SecretaryHandler) Message(w http.ResponseWriter, r *http.Request) {
 	me := middleware.EmployeeIDFromContext(r)
 	var text, convID string
 	var transcript *string
+	// (دازاي 10-29) «بس اطلع من التطبيق يوكف التفكير» — الشغل يكمل ولو انقطع الاتصال،
+	// والجواب ينحفظ بالسجل فيلگاه من يرجع.
+	ctx, cancelWork := context.WithTimeout(context.WithoutCancel(r.Context()), 3*time.Minute)
+	defer cancelWork()
+	var audio []byte
+	var audioCT string
 	if strings.HasPrefix(r.Header.Get("Content-Type"), "multipart/") {
 		if h.stt == nil && (h.voice == nil || !h.voice.Enabled()) {
 			WriteError(w, http.StatusServiceUnavailable, "تحويل الصوت مو مشغّل على السيرفر — اكتب بدلها")
@@ -84,7 +90,8 @@ func (h *SecretaryHandler) Message(w http.ResponseWriter, r *http.Request) {
 			WriteError(w, http.StatusBadRequest, "صيغة الصوت مو مدعومة")
 			return
 		}
-		t, err := h.transcribe(r.Context(), data, ct)
+		audio, audioCT = data, ct
+		t, err := h.transcribe(ctx, data, ct)
 		if err != nil {
 			WriteError(w, http.StatusBadGateway, "ما گدرت أفهم البصمة — عيدها أو اكتب")
 			return
@@ -125,9 +132,14 @@ func (h *SecretaryHandler) Message(w http.ResponseWriter, r *http.Request) {
 	}
 	// 🧠 الذاكرة: ملخص المحادثة + آخر رسائل بس — الكلفة ثابتة مهما طالت
 	past, _ := h.repo.ConversationHistory(conv.ID, service.MemoryKeep)
-	if _, err := h.repo.SaveMessageIn(&conv.ID, me, "user", text, transcript, nil, nil); err != nil {
+	userMsgID, err := h.repo.SaveMessageIn(&conv.ID, me, "user", text, transcript, nil, nil)
+	if err != nil {
 		WriteError(w, http.StatusInternalServerError, "تعذر حفظ الرسالة")
 		return
+	}
+	// (دازاي 10-29) «البصمة تضل ظاهرة أسمعها براحتي»
+	if audio != nil {
+		h.repo.SaveAudio(userMsgID, audioCT, audio)
 	}
 	// 🔴 بث حي (دازاي 10-28): ?stream=1 — تفكير وأدوات والجواب أول بأول، وبالآخر done
 	// بنفس شكل الجواب العادي. docs/ai-brains-contract.md
@@ -168,7 +180,7 @@ func (h *SecretaryHandler) Message(w http.ResponseWriter, r *http.Request) {
 		for _, m := range past {
 			turn.History = append(turn.History, service.SecretaryHistory{Role: m.Role, Text: m.Text})
 		}
-		out, err := h.brain.Reply(r.Context(), turn)
+		out, err := h.brain.Reply(ctx, turn)
 		switch {
 		case err == nil && out != nil:
 			res = out
@@ -351,7 +363,7 @@ func (h *SecretaryHandler) History(w http.ResponseWriter, r *http.Request) {
 			cards = json.RawMessage("[]")
 		}
 		item := map[string]any{"id": m.ID, "at": m.At, "role": m.Role, "text": m.Text,
-			"transcript": m.Transcript, "cards": cards, "action": nil}
+			"transcript": m.Transcript, "cards": cards, "action": nil, "hasAudio": m.HasAudio}
 		if m.ActionID != nil {
 			item["action"] = map[string]any{"id": *m.ActionID, "status": deref(m.ActionStatus), "result": m.ActionResult}
 		}
@@ -777,4 +789,16 @@ func (h *SecretaryHandler) File(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
 	w.Header().Set("Content-Disposition", "attachment; filename*=UTF-8''"+url.PathEscape(f.Name))
 	_, _ = w.Write(f.Data)
+}
+
+// GET /api/secretary/audio/{id} — بصمة المالك نفسه بس
+func (h *SecretaryHandler) Audio(w http.ResponseWriter, r *http.Request) {
+	ct, data, err := h.repo.Audio(middleware.EmployeeIDFromContext(r), r.PathValue("id"))
+	if err != nil {
+		WriteError(w, http.StatusNotFound, "البصمة مو موجودة")
+		return
+	}
+	w.Header().Set("Content-Type", ct)
+	w.Header().Set("Cache-Control", "private, max-age=86400")
+	_, _ = w.Write(data)
 }

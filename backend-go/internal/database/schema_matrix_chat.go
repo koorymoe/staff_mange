@@ -1149,5 +1149,15 @@ func matrixChatMigrations() []Migration {
 				"createdAt" TIMESTAMPTZ NOT NULL DEFAULT now()
 			);
 		`,
+	}, {
+		Version: "0407_secretary_audio",
+		SQL: `
+			CREATE TABLE IF NOT EXISTS "SecretaryAudio" (
+				"messageId" TEXT PRIMARY KEY REFERENCES "SecretaryMessage"(id) ON DELETE CASCADE,
+				"contentType" TEXT NOT NULL,
+				data BYTEA NOT NULL,
+				"createdAt" TIMESTAMPTZ NOT NULL DEFAULT now()
+			);
+		`,
 	}}
 }

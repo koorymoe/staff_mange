@@ -38,6 +38,7 @@ type SecretaryMessageRow struct {
 	// السجل يرجّع حالة المقترح ويا الرسالة الي طلّعته
 	ActionStatus *string `db:"actionStatus" json:"-"`
 	ActionResult *string `db:"actionResult" json:"-"`
+	HasAudio     bool    `db:"hasAudio" json:"hasAudio"`
 }
 
 func (r *SecretaryRepository) SaveMessage(empID, role, text string, transcript *string, cards any, actionID *string) (string, error) {
@@ -128,7 +129,8 @@ func (r *SecretaryRepository) ConversationHistory(convID string, limit int) ([]S
 	rows := []SecretaryMessageRow{}
 	err := r.db.Select(&rows, `SELECT * FROM (
 		SELECT m.id, m."createdAt", m.role, m.text, m.transcript, m.cards, m."actionId",
-		       a.status AS "actionStatus", a.result AS "actionResult"
+		       a.status AS "actionStatus", a.result AS "actionResult",
+		       EXISTS (SELECT 1 FROM "SecretaryAudio" au WHERE au."messageId" = m.id) AS "hasAudio"
 		FROM "SecretaryMessage" m LEFT JOIN "SecretaryAction" a ON a.id = m."actionId"
 		WHERE m."conversationId" = $1 ORDER BY m."createdAt" DESC LIMIT $2) x
 		ORDER BY "createdAt" ASC`, convID, limit)
@@ -611,4 +613,20 @@ func (r *SecretaryRepository) Agenda(owner string) ([]AgendaItem, error) {
 		  AND ((n."at" IS NOT NULL AND baghdad_date(n."at") >= baghdad_today()) OR (n."at" IS NULL AND n."doneAt" IS NULL))
 		ORDER BY "at" NULLS LAST LIMIT 100`, owner)
 	return rows, err
+}
+
+// SaveAudio يحفظ بصمة المالك ويا رسالته (تنمسح ويا الرسالة).
+func (r *SecretaryRepository) SaveAudio(messageID, ct string, data []byte) {
+	_, _ = r.db.Exec(`INSERT INTO "SecretaryAudio" ("messageId", "contentType", data) VALUES ($1, $2, $3)`, messageID, ct, data)
+}
+
+// Audio بصمة رسالة — لصاحبها بس.
+func (r *SecretaryRepository) Audio(empID, messageID string) (string, []byte, error) {
+	var row struct {
+		CT   string `db:"contentType"`
+		Data []byte `db:"data"`
+	}
+	err := r.db.Get(&row, `SELECT au."contentType", au.data FROM "SecretaryAudio" au
+		JOIN "SecretaryMessage" m ON m.id = au."messageId" WHERE au."messageId" = $1 AND m."employeeId" = $2`, messageID, empID)
+	return row.CT, row.Data, err
 }

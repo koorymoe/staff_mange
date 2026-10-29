@@ -1215,6 +1215,8 @@ export interface SecretaryConversation { id: string; title: string; messages: nu
 export interface SecretaryReply { messageId: string; conversationId: string; transcript: string | null; reply: string; cards: SecretaryCard[]; proposal: SecretaryProposal | null }
 export interface SecretaryChat {
   id: string; at: string; role: 'user' | 'assistant'; text: string; transcript: string | null; cards: SecretaryCard[]
+  // (دازاي 10-29) البصمة تضل ظاهرة: hasAudio من السجل، audioUrl للبصمة الي انرسلت هسه
+  hasAudio?: boolean; audioUrl?: string
   action: { id: string; status: 'PROPOSED' | 'SENT' | 'CANCELLED' | 'FAILED'; result: string | null } | null
 }
 export interface SecretaryPending { id: string; kind: string; question: string; why: string; impact: string; affects: string; link: string; createdAt: string }
@@ -3749,6 +3751,14 @@ export const REVIEW_GRADES = ['ممتاز', 'جيد جداً', 'جيد', 'يحت
 export const api = {
   // 📊 ملف سوّاه كمال (دازاي 10-28) — الرابط من بطاقة السكرتير
   downloadSecretaryFile: (link: string, name: string) => downloadFile(link, name),
+  secretaryAudio: async (messageId: string): Promise<Blob> => {
+    const token = currentToken()
+    const res = await fetch(`${API_URL}/secretary/audio/${encodeURIComponent(messageId)}`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    })
+    if (!res.ok) throw new Error('ما گدرت أجيب البصمة')
+    return res.blob()
+  },
   getMe: () => request<Employee>('/auth/me'),
   // تغيير كلمة السر يبطل كل الجلسات القديمة — بضمنها توكن الجهاز الحالي.
   // السيرفر يرجّع توكن جديد ولازم نخزنه فوراً، وإلا كل طلب بعدها يطلع

@@ -241,7 +241,8 @@ func (b *SecretaryBrain) Reply(ctx context.Context, t SecretaryTurn) (*Secretary
 	seen := map[string]bool{}
 	mask := b.mask()
 	system := b.system(t)
-	think := t.Emit != nil
+	// (دازاي 10-29) «هلو حبي شونك» ما يحتاج تفكير ٤٠ ثانية — التفكير للطلبات الطويلة بس.
+	think := t.Emit != nil && len([]rune(t.Text)) > 80
 	emit := func(e AgentEvent) {
 		if t.Emit != nil {
 			t.Emit(e)
