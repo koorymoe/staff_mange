@@ -111,3 +111,150 @@ func (h *OrgHandler) End(w http.ResponseWriter, r *http.Request) {
 	}
 	WriteJSON(w, http.StatusOK, a)
 }
+
+// ── 🏛️ مكتب المدير (المرحلة ٢) ──
+// الي ما يحق له يشوف إدارة ياخذ 404 «مو موجود» (مو 403) — حتى ما تنسجل مخالفة على فضول.
+
+func (h *OrgHandler) orgErr(w http.ResponseWriter, err error) {
+	if errors.Is(err, service.ErrOrgHidden) {
+		WriteError(w, http.StatusNotFound, "مو موجود")
+		return
+	}
+	WriteError(w, http.StatusBadRequest, err.Error())
+}
+
+func who(r *http.Request) (string, string) {
+	return middleware.EmployeeIDFromContext(r), middleware.RoleFromContext(r)
+}
+
+// GET /api/org/desk/{division}?period=YYYY-MM
+func (h *OrgHandler) Desk(w http.ResponseWriter, r *http.Request) {
+	emp, role := who(r)
+	d, err := h.svc.Desk(emp, role, r.PathValue("division"), r.URL.Query().Get("period"))
+	if err != nil {
+		h.orgErr(w, err)
+		return
+	}
+	WriteJSON(w, http.StatusOK, d)
+}
+
+// POST /api/org/issues
+func (h *OrgHandler) AddIssue(w http.ResponseWriter, r *http.Request) {
+	var in service.OrgIssueInput
+	if err := DecodeJSON(r, &in); err != nil {
+		WriteError(w, http.StatusBadRequest, "طلب غير صالح")
+		return
+	}
+	emp, role := who(r)
+	id, err := h.svc.AddIssue(emp, role, in)
+	if err != nil {
+		h.orgErr(w, err)
+		return
+	}
+	WriteJSON(w, http.StatusOK, map[string]string{"id": id})
+}
+
+// PATCH /api/org/issues/{id} — {status, resolution}
+func (h *OrgHandler) UpdateIssue(w http.ResponseWriter, r *http.Request) {
+	var in struct {
+		Status     string `json:"status"`
+		Resolution string `json:"resolution"`
+	}
+	if err := DecodeJSON(r, &in); err != nil {
+		WriteError(w, http.StatusBadRequest, "طلب غير صالح")
+		return
+	}
+	emp, role := who(r)
+	if err := h.svc.UpdateIssue(emp, role, r.PathValue("id"), in.Status, in.Resolution); err != nil {
+		h.orgErr(w, err)
+		return
+	}
+	WriteJSON(w, http.StatusOK, map[string]bool{"ok": true})
+}
+
+// POST /api/org/plans — {divisionId, period?, title}
+func (h *OrgHandler) CreatePlan(w http.ResponseWriter, r *http.Request) {
+	var in struct {
+		DivisionID string `json:"divisionId"`
+		Period     string `json:"period"`
+		Title      string `json:"title"`
+	}
+	if err := DecodeJSON(r, &in); err != nil {
+		WriteError(w, http.StatusBadRequest, "طلب غير صالح")
+		return
+	}
+	emp, role := who(r)
+	id, err := h.svc.CreatePlan(emp, role, in.DivisionID, in.Period, in.Title)
+	if err != nil {
+		h.orgErr(w, err)
+		return
+	}
+	WriteJSON(w, http.StatusOK, map[string]string{"id": id})
+}
+
+// POST /api/org/plans/{id}/items — {kind, title, issueId?, metric?, target?}
+func (h *OrgHandler) AddPlanItem(w http.ResponseWriter, r *http.Request) {
+	var in service.OrgPlanItemInput
+	if err := DecodeJSON(r, &in); err != nil {
+		WriteError(w, http.StatusBadRequest, "طلب غير صالح")
+		return
+	}
+	emp, role := who(r)
+	id, err := h.svc.AddPlanItem(emp, role, r.PathValue("id"), in)
+	if err != nil {
+		h.orgErr(w, err)
+		return
+	}
+	WriteJSON(w, http.StatusOK, map[string]string{"id": id})
+}
+
+// PATCH /api/org/plan-items/{id} — {manualProgress?, done?}
+func (h *OrgHandler) UpdatePlanItem(w http.ResponseWriter, r *http.Request) {
+	var in struct {
+		ManualProgress *int  `json:"manualProgress"`
+		Done           *bool `json:"done"`
+	}
+	if err := DecodeJSON(r, &in); err != nil {
+		WriteError(w, http.StatusBadRequest, "طلب غير صالح")
+		return
+	}
+	emp, role := who(r)
+	if err := h.svc.UpdatePlanItem(emp, role, r.PathValue("id"), in.ManualProgress, in.Done); err != nil {
+		h.orgErr(w, err)
+		return
+	}
+	WriteJSON(w, http.StatusOK, map[string]bool{"ok": true})
+}
+
+// POST /api/org/comments — {targetType: ISSUE|PLAN_ITEM, targetId, text}
+func (h *OrgHandler) AddComment(w http.ResponseWriter, r *http.Request) {
+	var in struct {
+		TargetType string `json:"targetType"`
+		TargetID   string `json:"targetId"`
+		Text       string `json:"text"`
+	}
+	if err := DecodeJSON(r, &in); err != nil {
+		WriteError(w, http.StatusBadRequest, "طلب غير صالح")
+		return
+	}
+	emp, role := who(r)
+	if err := h.svc.AddComment(emp, role, in.TargetType, in.TargetID, in.Text); err != nil {
+		h.orgErr(w, err)
+		return
+	}
+	WriteJSON(w, http.StatusOK, map[string]bool{"ok": true})
+}
+
+// PUT /api/org/authority/{division} — [{decision, mode, limitIQD}] (المالك ومدير النظام)
+func (h *OrgHandler) SetAuthority(w http.ResponseWriter, r *http.Request) {
+	var rows []service.OrgAuthorityRow
+	if err := DecodeJSON(r, &rows); err != nil {
+		WriteError(w, http.StatusBadRequest, "طلب غير صالح")
+		return
+	}
+	if err := h.svc.SetAuthority(middleware.EmployeeIDFromContext(r), r.PathValue("division"), rows); err != nil {
+		WriteError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	WriteJSON(w, http.StatusOK, map[string]bool{"ok": true})
+}
