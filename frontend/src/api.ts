@@ -3751,6 +3751,11 @@ export const REVIEW_GRADES = ['ممتاز', 'جيد جداً', 'جيد', 'يحت
 export const api = {
   // 📊 ملف سوّاه كمال (دازاي 10-28) — الرابط من بطاقة السكرتير
   downloadSecretaryFile: (link: string, name: string) => downloadFile(link, name),
+  secretaryVoiceCompare: (messageId: string) =>
+    request<{ primary: string; results: { name: string; text: string; seconds: number; error?: string }[] }>(
+      `/voice/compare/${encodeURIComponent(messageId)}`,
+      { method: 'POST' },
+    ),
   secretaryAudio: async (messageId: string): Promise<Blob> => {
     const token = currentToken()
     const res = await fetch(`${API_URL}/secretary/audio/${encodeURIComponent(messageId)}`, {

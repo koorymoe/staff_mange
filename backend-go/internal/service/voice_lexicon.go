@@ -4,6 +4,7 @@ import (
 	_ "embed"
 	"errors"
 	"log"
+	"net/url"
 	"regexp"
 	"sort"
 	"strings"
@@ -277,3 +278,23 @@ func registerVoiceTools(a *MatrixAgent, tc *SecretaryTurnCtx) {
 			return "تعلّمتها. گوله بكلمتين إنك حفظتها.", nil
 		}})
 }
+
+// TopTerms أهم الكلمات (المالك أول، بعدين أسماء الموظفين وكلمات الشغل).
+func (l *VoiceLexicon) TopTerms(n int) []string {
+	if l == nil {
+		return nil
+	}
+	l.load()
+	l.mu.RLock()
+	defer l.mu.RUnlock()
+	if l.prompt == "" {
+		return nil
+	}
+	all := strings.Split(l.prompt, "، ")
+	if len(all) > n {
+		all = all[:n]
+	}
+	return all
+}
+
+func urlEscape(s string) string { return url.QueryEscape(s) }

@@ -17,8 +17,17 @@ type Config struct {
 	R2SecretKey string
 	R2Endpoint  string
 	// UploadsDir مجلد التخزين المحلي — يُستخدم لما إعدادات R2 ناقصة.
-	UploadsDir     string
-	GeminiAPIKey   string
+	UploadsDir   string
+	GeminiAPIKey string
+	// 👂 أذن كمال (دازاي 10-29): مزوّدات تحويل الصوت — الأساسي AI_IRIS_VOICE
+	GeminiSTTModel string
+	DeepgramKey    string
+	DeepgramModel  string
+	SonioxKey      string
+	SonioxModel    string
+	VoicePolish    bool
+	ElevenLabsKey  string
+	ElevenSTTModel string
 	GeminiDailyCap int
 	// GeminiImageModel موديل توليد صور شخصية الكيان. من البيئة مو
 	// مكتوب بالكود: أسماء موديلات الصور تتبدّل، وتثبيت الاسم يعني
@@ -121,6 +130,14 @@ func load() *Config {
 		R2Endpoint:     getEnv("R2_ENDPOINT", ""),
 		UploadsDir:     getEnv("UPLOADS_DIR", "data/uploads"),
 		GeminiAPIKey:   getEnv("GEMINI_API_KEY", ""),
+		GeminiSTTModel: getEnv("GEMINI_STT_MODEL", ""),
+		DeepgramKey:    getEnv("DEEPGRAM_API_KEY", ""),
+		DeepgramModel:  getEnv("DEEPGRAM_MODEL", "nova-3"),
+		SonioxKey:      getEnv("SONIOX_API_KEY", ""),
+		SonioxModel:    getEnv("SONIOX_MODEL", ""),
+		VoicePolish:    getEnv("AI_VOICE_POLISH", "1") == "1",
+		ElevenLabsKey:  getEnv("ELEVENLABS_API_KEY", ""),
+		ElevenSTTModel: getEnv("ELEVENLABS_STT_MODEL", ""),
 		GeminiDailyCap: getEnvInt("GEMINI_DAILY_CAP", 300),
 		// الافتراضي موديل الصور الحالي من نفس المزوّد — ويُضبط بالبيئة
 		// لو تبدّل الاسم بلا ما نعدّل كود.

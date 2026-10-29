@@ -23,36 +23,166 @@ type IrisTrace = {
   open: boolean
 }
 type IrisChat = SecretaryChat & { trace?: IrisTrace }
+const streamClock = () => performance.now()
 
-// (دازاي 10-29) «البصمة تضل ظاهرة أسمعها براحتي» — من السجل تنجاب من الخادم وقت ما يضغط.
-function VoiceBubble({ chat }: { chat: IrisChat }) {
-  const [url, setUrl] = useState(chat.audioUrl ?? '')
-  const [loading, setLoading] = useState(false)
-  const [failed, setFailed] = useState(false)
-  if (url) return <audio className="sec-voice-play" controls playsInline src={url} />
-  if (!chat.hasAudio) return null
+// (دازاي 10-29) «البصمة تضل ظاهرة أسمعها براحتي» — مشغّل خاص بـWebAudio بدل <audio>،
+// لأن <audio> ويا روابط blob بآيفون Safari يطلع Error.
+let audioCtx: AudioContext | null = null
+function sharedAudioCtx() {
+  if (!audioCtx) {
+    const C =
+      window.AudioContext ||
+      (window as unknown as { webkitAudioContext: typeof AudioContext })
+        .webkitAudioContext
+    audioCtx = new C()
+  }
+  return audioCtx
+}
+let stopOther: (() => void) | null = null
+
+function VoicePlayer({ load }: { load: () => Promise<Blob> }) {
+  const [state, setState] = useState<'idle' | 'loading' | 'playing' | 'paused' | 'error'>('idle')
+  const [pos, setPos] = useState(0)
+  const [dur, setDur] = useState(0)
+  const buf = useRef<AudioBuffer | null>(null)
+  const src = useRef<AudioBufferSourceNode | null>(null)
+  const startedAt = useRef(0)
+  const offset = useRef(0)
+  const raf = useRef(0)
+  const stop = (keep: boolean) => {
+    cancelAnimationFrame(raf.current)
+    if (src.current) {
+      src.current.onended = null
+      try {
+        src.current.stop()
+      } catch {
+        /* already stopped */
+      }
+      src.current = null
+    }
+    if (keep && buf.current) offset.current += sharedAudioCtx().currentTime - startedAt.current
+  }
+  useEffect(() => () => stop(false), [])
+  const tick = () => {
+    const ctx = sharedAudioCtx()
+    setPos(Math.min(buf.current?.duration ?? 0, offset.current + ctx.currentTime - startedAt.current))
+    raf.current = requestAnimationFrame(tick)
+  }
+  const play = async () => {
+    const ctx = sharedAudioCtx()
+    // iOS: لازم resume بنفس الضغطة
+    void ctx.resume()
+    if (!buf.current) {
+      setState('loading')
+      try {
+        const blob = await load()
+        buf.current = await ctx.decodeAudioData(await blob.arrayBuffer())
+        setDur(buf.current.duration)
+      } catch {
+        setState('error')
+        return
+      }
+    }
+    if (offset.current >= buf.current.duration - 0.05) offset.current = 0
+    stopOther?.()
+    const node = ctx.createBufferSource()
+    node.buffer = buf.current
+    node.connect(ctx.destination)
+    node.onended = () => {
+      cancelAnimationFrame(raf.current)
+      src.current = null
+      offset.current = 0
+      setPos(0)
+      setState('paused')
+    }
+    node.start(0, offset.current)
+    src.current = node
+    startedAt.current = ctx.currentTime
+    stopOther = () => {
+      stop(true)
+      setState('paused')
+    }
+    setState('playing')
+    raf.current = requestAnimationFrame(tick)
+  }
+  const pause = () => {
+    stop(true)
+    stopOther = null
+    setState('paused')
+  }
+  const fmt = (n: number) => `${Math.floor(n / 60)}:${String(Math.floor(n % 60)).padStart(2, '0')}`
+  const total = dur
   return (
-    <button
-      type="button"
-      className="sec-voice-load"
-      disabled={loading}
-      onClick={async () => {
-        setLoading(true)
-        setFailed(false)
-        try {
-          setUrl(URL.createObjectURL(await api.secretaryAudio(chat.id)))
-        } catch {
-          setFailed(true)
-        } finally {
-          setLoading(false)
-        }
-      }}
-    >
-      {loading ? '…' : failed ? 'ما انجابت — جرّب مرة ثانية' : '▶ اسمع البصمة'}
-    </button>
+    <div className="sec-player" dir="ltr">
+      <button
+        type="button"
+        aria-label={state === 'playing' ? 'إيقاف مؤقت' : 'تشغيل البصمة'}
+        disabled={state === 'loading'}
+        onClick={() => (state === 'playing' ? pause() : void play())}
+      >
+        {state === 'loading' ? '…' : state === 'playing' ? '❚❚' : '▶'}
+      </button>
+      <div className="sec-player-bar">
+        <span style={{ width: total ? `${(pos / total) * 100}%` : '0%' }} />
+      </div>
+      <small>{state === 'error' ? 'ما اشتغلت — جرّب مرة ثانية' : total ? `${fmt(pos)} / ${fmt(total)}` : '🎙️'}</small>
+    </div>
   )
 }
-const streamClock = () => performance.now()
+
+function VoiceBubble({ chat, admin }: { chat: IrisChat; admin?: boolean }) {
+  const [cmp, setCmp] = useState<
+    | null
+    | 'loading'
+    | { primary: string; results: { name: string; text: string; seconds: number; error?: string }[] }
+    | string
+  >(null)
+  const local = chat.audioUrl
+  if (!local && !chat.hasAudio) return null
+  return (
+    <div className="sec-voice">
+      <VoicePlayer
+        key={local ?? chat.id}
+        load={() =>
+          local ? fetch(local).then((r) => r.blob()) : api.secretaryAudio(chat.id)
+        }
+      />
+      {admin && chat.hasAudio && !local && (
+        <>
+          <button
+            type="button"
+            className="sec-voice-load"
+            disabled={cmp === 'loading'}
+            onClick={async () => {
+              setCmp('loading')
+              try {
+                setCmp(await api.secretaryVoiceCompare(chat.id))
+              } catch (e) {
+                setCmp((e as Error).message)
+              }
+            }}
+          >
+            {cmp === 'loading' ? 'دا أقارن…' : '⚖️ قارن الأذن'}
+          </button>
+          {typeof cmp === 'string' && cmp !== 'loading' && <small className="sec-cmp-err">{cmp}</small>}
+          {cmp && typeof cmp === 'object' && (
+            <table className="sec-cmp">
+              <tbody>
+                {cmp.results.map((r) => (
+                  <tr key={r.name} className={r.name === cmp.primary ? 'primary' : ''}>
+                    <th>{r.name}</th>
+                    <td>{r.error ? `⚠️ ${r.error}` : r.text}</td>
+                    <td className="sec-cmp-s">{r.seconds.toFixed(1)}ث</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </>
+      )}
+    </div>
+  )
+}
 
 type Reminder = {
   id: string
@@ -1407,7 +1537,7 @@ function Secretary() {
                           إجراء بالخادم؛ راجع المحادثة قبل إعادة الطلب.
                         </small>
                       )}
-                    <VoiceBubble key={chat.id} chat={chat} />
+                    <VoiceBubble key={chat.id} chat={chat} admin />
                     {chat.transcript && (
                       <p className="sec-transcript">
                         البصمة: {chat.transcript}
@@ -1525,7 +1655,10 @@ function Secretary() {
               )}
               {draftAudio && !recording && (
                 <div className="sec-voice-draft" role="status">
-                  <audio controls src={draftUrl} />
+                  <VoicePlayer
+                    key={draftUrl}
+                    load={() => Promise.resolve(draftAudio as Blob)}
+                  />
                   <button type="button" onClick={() => setDraftAudio(null)}>
                     احذف
                   </button>

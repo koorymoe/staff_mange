@@ -28,11 +28,19 @@ type GeminiTranscriber struct {
 
 // NewGeminiTranscriber nil إذا ماكو مفتاح.
 func NewGeminiTranscriber(key string) *GeminiTranscriber {
+	return NewGeminiTranscriberModel(key, "")
+}
+
+// NewGeminiTranscriberModel بموديل محدد (GEMINI_STT_MODEL) — فاضي = gemini-flash-latest.
+func NewGeminiTranscriberModel(key, model string) *GeminiTranscriber {
 	if strings.TrimSpace(key) == "" {
 		return nil
 	}
-	return &GeminiTranscriber{key: key, http: &http.Client{Timeout: 45 * time.Second},
-		url: "https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent"}
+	if model == "" {
+		model = "gemini-flash-latest"
+	}
+	return &GeminiTranscriber{key: key, http: &http.Client{Timeout: 60 * time.Second},
+		url: "https://generativelanguage.googleapis.com/v1beta/models/" + model + ":generateContent"}
 }
 
 func (g *GeminiTranscriber) Transcribe(ctx context.Context, audio []byte, contentType string) (string, error) {

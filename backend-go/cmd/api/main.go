@@ -2893,13 +2893,40 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 		mux.Handle("GET /api/voice/terms", middleware.Chain(http.HandlerFunc(voiceLex.List), requireAuth, requireAdmin))
 		mux.Handle("POST /api/voice/terms", middleware.Chain(http.HandlerFunc(voiceLex.Add), requireAuth, requireAdmin))
 		mux.Handle("DELETE /api/voice/terms", middleware.Chain(http.HandlerFunc(voiceLex.Delete), requireAuth, requireAdmin))
-		// 🎙️ فويس ايريس بـGemini (أدق بالعراقي)، ويرجع لـWhisper إذا فشل (دازاي 10-23)
-		if cfg.AIIrisVoice == "gemini" {
-			if g := service.NewGeminiTranscriber(cfg.GeminiAPIKey); g != nil {
-				secHandler.SetSTT(g)
-				log.Printf("🎙️ فويس ايريس: Gemini (ويرجع لـWhisper إذا فشل)")
+		// 🎙️ أذن كمال (دازاي 10-29): كل المزوّدات المفعّلة بمفاتيحها، والأساسي AI_IRIS_VOICE.
+		// Whisper ما يدخل بمسار كمال (بطيء وضعيف بالعراقي) — يبقى للإنجازات بس.
+		var sttAll []service.NamedSTT
+		if g := service.NewGeminiTranscriberModel(cfg.GeminiAPIKey, cfg.GeminiSTTModel); g != nil {
+			sttAll = append(sttAll, service.NamedSTT{Name: "gemini", P: g})
+			if cfg.GeminiSTTModel != "" && cfg.GeminiSTTModel != "gemini-flash-latest" {
+				sttAll = append(sttAll, service.NamedSTT{Name: "gemini-flash", P: service.NewGeminiTranscriber(cfg.GeminiAPIKey)})
 			}
 		}
+		if d := service.NewDeepgramSTT(cfg.DeepgramKey, cfg.DeepgramModel); d != nil {
+			sttAll = append(sttAll, service.NamedSTT{Name: "deepgram", P: d})
+		}
+		if s := service.NewSonioxSTT(cfg.SonioxKey, cfg.SonioxModel); s != nil {
+			sttAll = append(sttAll, service.NamedSTT{Name: "soniox", P: s})
+		}
+		if e := service.NewElevenLabsSTT(cfg.ElevenLabsKey, cfg.ElevenSTTModel); e != nil {
+			sttAll = append(sttAll, service.NamedSTT{Name: "elevenlabs", P: e})
+		}
+		var polish func(ctx context.Context, text string) string
+		if cfg.VoicePolish && secClient != nil {
+			polish = func(ctx context.Context, text string) string {
+				return service.PolishTranscript(ctx, secClient, cfg.AIModel, text)
+			}
+		}
+		primary := ""
+		for _, p := range sttAll {
+			if p.Name == cfg.AIIrisVoice || (primary == "" && cfg.AIIrisVoice != "whisper") {
+				primary = p.Name
+				secHandler.SetSTT(p.P)
+			}
+		}
+		secHandler.SetVoiceProviders(primary, sttAll, polish)
+		log.Printf("🎙️ أذن كمال: الأساسي «%s» من %d مزوّد (تصحيح القاموس: %v)", primary, len(sttAll), polish != nil)
+		mux.Handle("POST /api/voice/compare/{id}", middleware.Chain(http.HandlerFunc(secHandler.CompareVoice), requireAuth, requireAdmin))
 		mux.Handle("POST /api/secretary/message", middleware.Chain(http.HandlerFunc(secHandler.Message), requireAuth, requireAdmin))
 		mux.Handle("POST /api/secretary/actions/{id}/confirm", middleware.Chain(http.HandlerFunc(secHandler.Confirm), requireAuth, requireAdmin))
 		mux.Handle("POST /api/secretary/actions/{id}/cancel", middleware.Chain(http.HandlerFunc(secHandler.Cancel), requireAuth, requireAdmin))

@@ -33,6 +33,14 @@ type SecretaryHandler struct {
 	stt           interface {
 		Transcribe(ctx context.Context, audio []byte, contentType string) (string, error)
 	}
+	sttName string
+	sttAll  []service.NamedSTT
+	polish  func(ctx context.Context, text string) string
+}
+
+// SetVoiceProviders كل المزوّدات المفعّلة (لزر «قارن») + تصحيح القاموس (nil = بلا).
+func (h *SecretaryHandler) SetVoiceProviders(primary string, all []service.NamedSTT, polish func(ctx context.Context, text string) string) {
+	h.sttName, h.sttAll, h.polish = primary, all, polish
 }
 
 func NewSecretaryHandler(repo *repository.SecretaryRepository, e *repository.EmployeeRepository,
@@ -684,12 +692,19 @@ func (h *SecretaryHandler) SetSTT(t interface {
 func (h *SecretaryHandler) transcribe(ctx context.Context, data []byte, ct string) (string, error) {
 	start := time.Now()
 	defer func() { log.Printf("[iris-voice] %s %dKB بـ%s", ct, len(data)/1024, time.Since(start).Round(100*time.Millisecond)) }()
+	// (دازاي 10-29) Whisper عدنا بطيء (دقايق) وضعيف بالعراقي: إذا المزوّد فشل نگول «عيدها»
+	// خلال ثواني، بدل ما نوگفه ٣ دقايق على Whisper.
 	if h.stt != nil {
-		if t, err := h.stt.Transcribe(ctx, data, ct); err == nil {
-			return service.DefaultVoiceLexicon.Apply(t), nil
-		} else {
-			log.Printf("[iris-voice] gemini: %v — نرجع لـWhisper", err)
+		t, err := h.stt.Transcribe(ctx, data, ct)
+		if err != nil {
+			log.Printf("[iris-voice] %s فشل: %v", h.sttName, err)
+			return "", err
 		}
+		t = service.DefaultVoiceLexicon.Apply(t)
+		if h.polish != nil {
+			t = h.polish(ctx, t)
+		}
+		return t, nil
 	}
 	if h.voice == nil || !h.voice.Enabled() {
 		return "", errors.New("تحويل الصوت مو متوفر")
@@ -808,4 +823,31 @@ func (h *SecretaryHandler) Audio(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", ct)
 	w.Header().Set("Cache-Control", "private, max-age=86400")
 	_, _ = w.Write(data)
+}
+
+// POST /api/voice/compare/{id} — نفس البصمة لكل المزوّدات، ويا الوقت (المالك/المدير، بصمته هو بس)
+func (h *SecretaryHandler) CompareVoice(w http.ResponseWriter, r *http.Request) {
+	if len(h.sttAll) == 0 {
+		WriteError(w, http.StatusServiceUnavailable, "ماكو مزوّد صوت مفعّل")
+		return
+	}
+	ct, data, err := h.repo.Audio(middleware.EmployeeIDFromContext(r), r.PathValue("id"))
+	if err != nil {
+		WriteError(w, http.StatusNotFound, "البصمة مو موجودة")
+		return
+	}
+	ctx, cancel := context.WithTimeout(r.Context(), 90*time.Second)
+	defer cancel()
+	res := service.CompareSTT(ctx, h.sttAll, data, ct)
+	if h.polish != nil {
+		for _, x := range res {
+			if x.Name == h.sttName && x.Error == "" {
+				start := time.Now()
+				p := h.polish(ctx, x.Text)
+				res = append(res, service.STTResult{Name: x.Name + " + تصحيح القاموس", Text: p,
+					Seconds: x.Seconds + time.Since(start).Round(100*time.Millisecond).Seconds()})
+			}
+		}
+	}
+	WriteJSON(w, http.StatusOK, map[string]any{"primary": h.sttName, "results": res})
 }

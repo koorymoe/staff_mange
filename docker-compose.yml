@@ -31,6 +31,15 @@ services:
       R2_ENDPOINT: ${R2_ENDPOINT:-}
       GEMINI_API_KEY: ${GEMINI_API_KEY:-}
       GEMINI_DAILY_CAP: ${GEMINI_DAILY_CAP:-300}
+      # 👂 أذن كمال: مزوّدات تحويل الصوت (الأساسي AI_IRIS_VOICE=gemini|deepgram|soniox)
+      GEMINI_STT_MODEL: ${GEMINI_STT_MODEL:-}
+      DEEPGRAM_API_KEY: ${DEEPGRAM_API_KEY:-}
+      DEEPGRAM_MODEL: ${DEEPGRAM_MODEL:-nova-3}
+      SONIOX_API_KEY: ${SONIOX_API_KEY:-}
+      SONIOX_MODEL: ${SONIOX_MODEL:-}
+      AI_VOICE_POLISH: ${AI_VOICE_POLISH:-1}
+      ELEVENLABS_API_KEY: ${ELEVENLABS_API_KEY:-}
+      ELEVENLABS_STT_MODEL: ${ELEVENLABS_STT_MODEL:-}
       # ماتركس: نموذج Anthropic (اختياري). بلا مفتاح يبقى على القواعد.
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
       # 🧠 دماغين (10-28): داخلي = ماتركس + ايريس، خارجي = الجودة + الحجوزات
