@@ -334,7 +334,19 @@ func (a *MatrixAgent) ChatStream(feature, system string, history []AgentTurn, me
 	mask := a.newMask()
 	tools := make([]anthropic.ToolUnionParam, 0, len(a.tools))
 	byName := map[string]agentTool{}
-	for _, t := range append(append([]agentTool{}, a.tools...), opts.ExtraTools...) {
+	// الأدوات الإضافية (مثل نسخة محصورة من query_data) تبدّل العامة بنفس الاسم
+	override := map[string]bool{}
+	for _, t := range opts.ExtraTools {
+		override[t.Name] = true
+	}
+	all := make([]agentTool, 0, len(a.tools)+len(opts.ExtraTools))
+	for _, t := range a.tools {
+		if !override[t.Name] {
+			all = append(all, t)
+		}
+	}
+	all = append(all, opts.ExtraTools...)
+	for _, t := range all {
 		if opts.AllowTool != nil && !opts.AllowTool(t.Name) {
 			continue
 		}

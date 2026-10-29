@@ -45,7 +45,13 @@ func (h *MatrixChatHandler) toolOpts(r *http.Request) (func(string) bool, []stri
 	if h.perms != nil {
 		perms = h.perms(me)
 	}
-	return service.MatrixToolFilter(middleware.RoleFromContext(r), perms), perms
+	allow := service.MatrixToolFilter(middleware.RoleFromContext(r), perms)
+	// (دازاي 10-29) قراءة بيانات مجاله — النسخة المحصورة تجي من extraTools
+	if allow != nil && service.MatrixDataScope(perms) != nil {
+		base := allow
+		allow = func(n string) bool { return n == "query_data" || n == "describe_data" || base(n) }
+	}
+	return allow, perms
 }
 
 // SetChatModel موديل المحادثة المباشرة (AI_MODEL_CHAT).
@@ -240,6 +246,9 @@ func (h *MatrixChatHandler) prepare(w http.ResponseWriter, r *http.Request) *cha
 		if len(can) > 0 {
 			scope = "صلاحياته بالنظام: " + strings.Join(can, "، ") + "."
 		}
+		if ds := service.MatrixDataScope(perms); ds != nil {
+			scope += " وعنده قراءة لجداول مجاله بـdescribe_data ثم query_data: " + strings.Join(ds, "، ") + " — دوّر بيها قبل ما تگول ماكو بيانات."
+		}
 		system += "\n\n【حدوده ومقامه】 " + scope + " هو موظف تحت إدارة المدير والمالك: ما يوجّه مهام أو أوامر للمدير أو المالك ولا لموظفين برّا صلاحياته، وما يطّلع على شي برّا صلاحياته. إذا طلب شي برّا حدوده (مثل «وجّه مهمة للمدير»، أو بيانات قسم ثاني)، گوله بوضوح واحترام إنه **مو ضمن صلاحياتك/دورك** — لا تگول «ما عندي أداة» ولا تعامله كنقص بالنظام ولا تسجّله بـsuggest_improvement — واقترح الطريق الصحيح (يراجع مديره، أو يطلب من المسؤول). suggest_improvement بس لنقص حقيقي يفيد شغله ضمن صلاحياته."
 		system += "\n\n【تحاچي موظف مو المدير】 هو " + name + "، دوره " + role + ". اسمه يوصلك كرمز (موظف#n) — استعمل الرمز نفسه كأنه اسمه وناديه بيه، والنظام يبدّله باسمه الحقيقي قبل ما يوصله. لا تگول أبداً «ما أعرف اسمك» ولا تذكر إن الأسماء رموز. أدواتك محدودة بصلاحياته هو بس — إذا سأل عن شي ما عندك أداته (فلوس، تقييم غيره، رواتب، بيانات موظفين ثانيين) گول بأدب «هذا مو ضمن صلاحياتك» ولا تخمّن. أرقامه هو من my_stats. لا تكشف تقييم أو حال أو فلوس موظف ثاني إلا إذا الأداة نفسها انفتحتلك."
 	}
@@ -256,9 +265,9 @@ func (h *MatrixChatHandler) Send(w http.ResponseWriter, r *http.Request) {
 	if in == nil {
 		return
 	}
-	allow, _ := h.toolOpts(r)
+	allow, perms := h.toolOpts(r)
 	run, err := h.agent.ChatStream("CHAT", in.system, in.turns, in.prompt, in.img, service.ChatOpts{Model: h.chatModel,
-		AllowTool: allow, ExtraTools: service.MatrixSelfTools(h.db, middleware.EmployeeIDFromContext(r))})
+		AllowTool: allow, ExtraTools: h.agent.StaffTools(h.db, middleware.EmployeeIDFromContext(r), isTopRole(r), perms)})
 	if err != nil || strings.TrimSpace(run.Answer) == "" {
 		WriteError(w, http.StatusBadGateway, chatFailMsg(err))
 		return
@@ -280,7 +289,7 @@ func (h *MatrixChatHandler) Stream(w http.ResponseWriter, r *http.Request) {
 	if in == nil {
 		return
 	}
-	allow, _ := h.toolOpts(r)
+	allow, perms := h.toolOpts(r)
 	w.Header().Set("Content-Type", "text/event-stream")
 	w.Header().Set("Cache-Control", "no-cache")
 	w.Header().Set("X-Accel-Buffering", "no")
@@ -297,7 +306,7 @@ func (h *MatrixChatHandler) Stream(w http.ResponseWriter, r *http.Request) {
 	}
 	run, err := h.agent.ChatStream("CHAT", in.system, in.turns, in.prompt, in.img, service.ChatOpts{
 		Ctx: r.Context(), Model: h.chatModel, Think: true, Emit: func(e service.AgentEvent) { send(e) },
-		AllowTool: allow, ExtraTools: service.MatrixSelfTools(h.db, middleware.EmployeeIDFromContext(r)),
+		AllowTool: allow, ExtraTools: h.agent.StaffTools(h.db, middleware.EmployeeIDFromContext(r), isTopRole(r), perms),
 	})
 	if r.Context().Err() != nil {
 		return // المستخدم وكّف — ما نحفظ نص ناقص

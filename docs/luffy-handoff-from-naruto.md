@@ -132,3 +132,4 @@ git push origin origin/avg:refs/heads/prod     # بعد التأكد إنه fast
 - 10-29 (لوفي): 2383eb8e (اسم الموظف وحدوده ومقامه بماتركس) انرفع ع برود بطلب دازاي.
 - 10-29 (لوفي): المبالغ بالدينار: model.CheckIQD يرفض ١–٩٩٩ (نسيان الأصفار) برسالة «اكتبها 50000» — على المحصّل والمقدمة بالإنجاز والإنجاز الجزئي والتدقيق، والخصم، وسعر فاتورة الخدمة/اليدوية/الداخلية، وتعديل المحاسب. الصفر مسموح. avg.
 - 10-29 (لوفي): c3ec37ca (رفض المبالغ الصغيرة بالدينار) انرفع ع برود بطلب دازاي.
+- 10-29 (لوفي): ماتركس للموظف يقرا كل بيانات مجاله: matrixDataScope (صلاحية← جداول، بادئة *) + AllowedQuery (جداول FROM/JOIN كلها بالمجال، CTE مسموح، أعمدة حساسة salary/phone/password… مرفوضة، information_schema/pg_ مرفوض، Secretary/Ai/Matrix/Permission/Login/Stealth/Notification ممنوعة دايماً) فوك دور القراءة وREAD ONLY. ScopedDataTools تبدّل query_data/describe_data بالطلب (ExtraTools تبدّل العامة بالاسم)، والبرومبت يعدّد جداول مجاله. avg.

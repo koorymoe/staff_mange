@@ -73,3 +73,12 @@ func MatrixSelfTools(db *sqlx.DB, userID string) []agentTool {
 			return fmt.Sprintf("%s\nإجازة %d يوم، وأطول دوام متواصل %d يوم.", metricsLine(m), m.Leave, m.Streak), nil
 		}}}
 }
+
+// StaffTools أدوات خاصة بهالمستخدم: أرقامه هو، وللموظف قراءة بيانات مجاله.
+func (a *MatrixAgent) StaffTools(db *sqlx.DB, userID string, top bool, perms []string) []agentTool {
+	out := MatrixSelfTools(db, userID)
+	if !top {
+		out = append(out, a.ScopedDataTools(MatrixDataScope(perms))...)
+	}
+	return out
+}
