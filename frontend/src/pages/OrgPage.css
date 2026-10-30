@@ -401,6 +401,44 @@ html.dark .org-ui {
   list-style: disc;
   line-height: 2;
 }
+.org-grant-preview {
+  padding: 18px;
+  border: 1px solid var(--bd-line);
+  border-radius: 16px;
+  background: var(--sf-sunken);
+  line-height: 1.9;
+}
+.org-grant-preview h3 {
+  color: var(--t-title);
+  font-size: 17px;
+  font-weight: 700;
+}
+.org-grant-preview header p,
+.org-grant-place {
+  font-weight: 700;
+}
+.org-grant-list {
+  max-height: 260px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  margin: 12px 0;
+  border: 1px solid var(--bd-line);
+  border-radius: 10px;
+  background: var(--sf-card);
+}
+.org-grant-empty {
+  margin: 12px 0;
+  padding: 12px;
+  background: var(--sf-card);
+  border-radius: 10px;
+}
+.org-grant-note {
+  border-top: 1px solid var(--bd-line);
+  padding-top: 12px;
+  margin-top: 12px;
+  font-size: 13px;
+  color: var(--t-muted);
+}
 .org-my-card ul {
   display: grid;
   gap: 10px;

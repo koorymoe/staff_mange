@@ -14,6 +14,7 @@ import {
 import { useSession } from '../session'
 import DirectiveManager from '../components/DirectiveManager'
 import OrgOutputs from '../components/OrgOutputs'
+import OrgAssignmentPreview from '../components/OrgAssignmentPreview'
 import type { DirectiveTarget } from '../orgDirectives'
 import { roleLabel } from '../roleLabels'
 import { matches } from '../utils/search'
@@ -499,6 +500,7 @@ function OrgWorkspace({ view }: { view: 'chart' | 'assign' }) {
       {selection && data?.chart && data.employees && (
         <AssignDialog
           chart={chart}
+          catalog={data.catalog}
           employees={active.filter((e) => canManage(e.id))}
           initial={selection}
           close={() => setSelection(null)}
@@ -568,12 +570,14 @@ function DivisionPanel({
 }
 function AssignDialog({
   chart,
+  catalog,
   employees,
   initial,
   close,
   saved,
 }: {
   chart: OrgDivision[]
+  catalog: AccessGroup[] | null
   employees: Employee[]
   initial: Selection
   close: () => void
@@ -751,9 +755,12 @@ function AssignDialog({
             rows={3}
           />
         </label>
-        <p className="org-wide">
-          التعيين يضيف صلاحيات المكان تلقائياً؛ ما يبدّل الدور القديم.
-        </p>
+        <OrgAssignmentPreview
+          division={division}
+          unitId={unitId}
+          position={position}
+          catalog={catalog}
+        />
         {error && (
           <p className="org-error org-wide" role="alert">
             {error}

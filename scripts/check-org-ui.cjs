@@ -40,6 +40,7 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
         failChart: false,
         failEmployees: false,
         failCatalog: false,
+        missingHead: false,
       };
     const employees = [
       { ...owner, role: 'OWNER', status: 'ACTIVE' },
@@ -124,12 +125,14 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
         parentId: null,
         summary: 'مراقبة كل الوحدات والحسابات والرقابة',
         permissions: ['monitoring'],
+        headPermissions: ['monitoring'],
         units: [
           {
             id: 'accounts',
             divisionId: 'admin',
             name: 'الحسابات',
             permissions: ['finance'],
+            headPermissions: [],
           },
         ],
       },
@@ -146,6 +149,7 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
         parentId: 'admin',
         summary: 'وصف إدارة تجريبي',
         permissions: [],
+        headPermissions: [],
         units:
           i === 2
             ? [
@@ -154,6 +158,14 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
                   divisionId: 'division-2',
                   name: 'خدمات هندسية',
                   permissions: ['inventory', 'unknown_test'],
+                  headPermissions: ['inventory'],
+                },
+                {
+                  id: 'engineering-second',
+                  divisionId: 'division-2',
+                  name: 'خدمات إضافية',
+                  permissions: ['inventory', 'reporting'],
+                  headPermissions: ['reporting'],
                 },
               ]
             : [],
@@ -164,12 +176,14 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
         parentId: null,
         summary: 'وحدة مستقلة',
         permissions: [],
+        headPermissions: [],
         units: [
           {
             id: 'it.main',
             divisionId: 'it',
             name: 'وحدة التقنية',
             permissions: [],
+            headPermissions: [],
           },
         ],
       },
@@ -177,9 +191,11 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
     const chart = () =>
       divisions.map((d) => ({
         ...d,
+        headPermissions: flags.missingHead ? undefined : d.headPermissions,
         people: people.filter((p) => p.divisionId === d.id && !p.unitId),
         units: d.units.map((u) => ({
           ...u,
+          headPermissions: flags.missingHead ? undefined : u.headPermissions,
           people: people.filter((p) => p.unitId === u.id),
         })),
       }));
@@ -303,6 +319,96 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
   await p.screenshot({ path: '/tmp/org-chart-mobile.png', fullPage: true });
   await p.getByRole('button', { name: '+ تعيين جديد', exact: true }).click();
   let dialog = p.getByRole('dialog');
+  const preview = dialog.getByRole('region', {
+    name: 'الصلاحيات الي راح ياخذها',
+  });
+  await preview
+    .getByText('اختار الإدارة والوحدة والمنصب', { exact: false })
+    .waitFor();
+  const callsBeforePreview = x.calls.length;
+  async function expectPermissions(expected) {
+    assert.deepEqual(await preview.locator('li').allTextContents(), expected);
+    await preview
+      .getByText('أي صلاحية عنده يدوياً', { exact: false })
+      .waitFor();
+  }
+  await dialog.getByLabel('الإدارة', { exact: true }).selectOption('admin');
+  await expectPermissions([]);
+  await preview.getByText('هالمنصب بهالمكان ما يضيف أي صلاحية.').waitFor();
+  await dialog.getByLabel('المنصب', { exact: true }).selectOption('DIRECTOR');
+  await expectPermissions([
+    'الحسابات',
+    'صلاحية مو معرّفة بالقاموس: monitoring',
+  ]);
+  await dialog.getByLabel('المنصب', { exact: true }).selectOption('DEPUTY');
+  await expectPermissions([
+    'الحسابات',
+    'صلاحية مو معرّفة بالقاموس: monitoring',
+  ]);
+  await dialog
+    .getByLabel('الإدارة', { exact: true })
+    .selectOption('division-2');
+  await expectPermissions([
+    'الجرد',
+    'صلاحية مو معرّفة بالقاموس: reporting',
+    'صلاحية مو معرّفة بالقاموس: unknown_test',
+  ]);
+  await dialog.getByLabel('المنصب', { exact: true }).selectOption('MEMBER');
+  await expectPermissions([]);
+  await dialog
+    .getByLabel('الوحدة (اختياري)')
+    .selectOption('engineering-service');
+  await expectPermissions(['صلاحية مو معرّفة بالقاموس: unknown_test']);
+  await preview.scrollIntoViewIfNeeded();
+  assert(
+    await p.evaluate(() => document.documentElement.scrollWidth <= innerWidth),
+  );
+  await p.screenshot({ path: '/tmp/org-access-member-mobile.png' });
+  await dialog.getByLabel('المنصب', { exact: true }).selectOption('DIRECTOR');
+  await expectPermissions(['الجرد', 'صلاحية مو معرّفة بالقاموس: unknown_test']);
+  await dialog.getByLabel('المنصب', { exact: true }).selectOption('DEPUTY');
+  await expectPermissions(['الجرد', 'صلاحية مو معرّفة بالقاموس: unknown_test']);
+  await dialog.getByLabel('الوحدة (اختياري)').selectOption('');
+  await expectPermissions([
+    'الجرد',
+    'صلاحية مو معرّفة بالقاموس: reporting',
+    'صلاحية مو معرّفة بالقاموس: unknown_test',
+  ]);
+  for (const dark of [false, true]) {
+    await p.evaluate(
+      (d) => document.documentElement.classList.toggle('dark', d),
+      dark,
+    );
+    const ratio = await preview.evaluate((el) => {
+      const lum = (s) =>
+        s
+          .match(/[\d.]+/g)
+          .slice(0, 3)
+          .map(Number)
+          .map((v) => {
+            v /= 255;
+            return v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4;
+          })
+          .reduce((a, v, i) => a + v * [0.2126, 0.7152, 0.0722][i], 0);
+      const a = lum(getComputedStyle(el).backgroundColor),
+        b = lum(getComputedStyle(el.querySelector('.org-grant-note')).color);
+      return (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05);
+    });
+    assert(ratio >= 4.5, `Preview note contrast ${ratio}`);
+  }
+  await p.setViewportSize({ width: 1366, height: 1000 });
+  await p.evaluate(() => document.documentElement.classList.add('dark'));
+  await p.screenshot({ path: '/tmp/org-access-director-desktop-dark.png' });
+  await p.evaluate(() => document.documentElement.classList.remove('dark'));
+  await p.setViewportSize({ width: 390, height: 844 });
+  await dialog.getByLabel('الإدارة', { exact: true }).selectOption('it');
+  assert.equal(await dialog.getByLabel('الوحدة (اختياري)').inputValue(), '');
+  await expectPermissions([]);
+  assert.equal(
+    x.calls.length,
+    callsBeforePreview,
+    'Preview must use loaded data, no extra requests or writes',
+  );
   await dialog.getByLabel('دوّر على موظف').fill('فني');
   await dialog.getByLabel('الموظف', { exact: true }).selectOption('staff-a');
   await dialog
@@ -572,10 +678,42 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
         throw new Error('Org muted text contrast below 4.5:1');
     });
   }
+  const fallback = await mount(owner);
+  fallback.flags.failCatalog = true;
+  fallback.flags.missingHead = true;
+  await fallback.page.reload();
+  await fallback.page
+    .getByRole('button', { name: '+ تعيين جديد', exact: true })
+    .click();
+  let fd = fallback.page.getByRole('dialog');
+  await fd.getByLabel('الإدارة', { exact: true }).selectOption('division-2');
+  await fd.getByLabel('الوحدة (اختياري)').selectOption('engineering-service');
+  await fd.getByText('بيانات الحزمة مو مكتملة', { exact: false }).waitFor();
+  assert.equal(
+    await fd.locator('.org-grant-list li').count(),
+    0,
+    'Missing head metadata cannot grant head bundle to a member',
+  );
+  fallback.flags.missingHead = false;
+  await fallback.page.reload();
+  await fallback.page
+    .getByRole('button', { name: '+ تعيين جديد', exact: true })
+    .click();
+  fd = fallback.page.getByRole('dialog');
+  await fd.getByLabel('الإدارة', { exact: true }).selectOption('admin');
+  await fd.getByLabel('المنصب', { exact: true }).selectOption('DIRECTOR');
+  await fd
+    .getByText('أسماء الصلاحيات العربية مو متوفرة', { exact: false })
+    .waitFor();
+  assert.deepEqual(await fd.locator('.org-grant-list bdi').allTextContents(), [
+    'finance',
+    'monitoring',
+  ]);
+  assert(!fallback.calls.some((c) => c.method !== 'GET'));
   assert.deepEqual(errors, []);
   await browser.close();
   console.log(
-    'PASS: chart/assign/end/placement/security regression; own me/my-items safe reads + own progress PATCH for ordinary employee, zero desk/chart; 390/1366/dark/overflow. Synthetic data and APIs.',
+    'PASS: position-based assignment preview (unit/division member/director/deputy, headOnly exclusion, child bundle union/dedup, empty/missing metadata, catalog fallback, no preview API/writes); chart/assign/end/placement/security regression; own me/my-items safe reads + progress PATCH, zero desk/chart; 390/1366/dark/contrast/overflow. Synthetic APIs only.',
   );
 })().catch((e) => {
   console.error(e);

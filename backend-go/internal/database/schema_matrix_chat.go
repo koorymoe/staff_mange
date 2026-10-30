@@ -1498,5 +1498,12 @@ func matrixChatMigrations() []Migration {
 			ALTER TABLE "ExtraTask" ADD COLUMN IF NOT EXISTS clause INT;
 			ALTER TABLE "KpiCriterion" ADD COLUMN IF NOT EXISTS clause INT;
 		`,
+	}, {
+		// 🔑 الصلاحيات حسب المنصب (دازاي 10-30): داخل الحزمة، الي headOnly للمدير/النائب
+		// بس، والعضو ياخذ الباقي. التعليم بالبذر (OrgService.Seed) أول مرة لكل حزمة.
+		Version: "0419_org_bundle_head",
+		SQL: `
+			ALTER TABLE "OrgBundle" ADD COLUMN IF NOT EXISTS "headOnly" BOOLEAN NOT NULL DEFAULT false;
+		`,
 	}}
 }
