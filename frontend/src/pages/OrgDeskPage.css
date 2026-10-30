@@ -3,6 +3,63 @@
   --desk-medium: #855000;
   --desk-low: #176339;
 }
+.desk-item-meta {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin: 12px 0;
+  font-size: 13px;
+  color: var(--t-muted);
+}
+.desk-overdue {
+  display: inline-block;
+  color: var(--org-danger);
+  background: var(--sf-danger);
+  border: 1px solid var(--org-danger);
+  border-radius: 99px;
+  padding: 2px 9px;
+  font-size: 12px;
+  font-weight: 700;
+}
+.desk-plan-status {
+  display: inline-block;
+  border-radius: 99px;
+  padding: 6px 12px;
+  font-size: 13px;
+  font-weight: 700;
+  background: var(--sf-sunken);
+  border: 1px solid var(--bd-line);
+}
+.desk-plan-status.plan-SUBMITTED {
+  color: var(--t-info);
+  background: var(--sf-info);
+}
+.desk-plan-status.plan-APPROVED {
+  color: var(--org-success);
+  background: var(--sf-success);
+}
+.desk-plan-status.plan-RETURNED {
+  color: var(--org-warning);
+  background: var(--tint-warning);
+}
+.desk-review-note,
+.desk-solution p {
+  white-space: pre-wrap;
+}
+.desk-solution {
+  padding: 12px;
+  margin: 12px 0;
+  background: var(--sf-info);
+  border-radius: 12px;
+}
+.desk-unit-summary {
+  display: grid;
+  gap: 14px;
+}
+.desk-unit-summary progress {
+  width: 100%;
+  accent-color: #2563eb;
+}
 html.dark .desk-page {
   --desk-high: #ffb1c3;
   --desk-medium: #f0ce92;

@@ -34,7 +34,12 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
       console.log('PAGE ERROR', e.message);
     });
     const calls = [],
-      flags = { fail: '', hideDesk: false, delayMonth: '' };
+      flags = {
+        fail: '',
+        hideDesk: false,
+        delayMonth: '',
+        planStatus: options.planStatus || 'DRAFT',
+      };
     let releaseMonth;
     const membership = options.noHead
       ? []
@@ -60,6 +65,13 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
         name: 'التصميم',
         permissions: [],
         people: membership,
+      },
+      {
+        id: 'projects',
+        divisionId: 'eng',
+        name: 'المشاريع',
+        permissions: [],
+        people: [],
       },
     ];
     const divisions = [
@@ -108,6 +120,8 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
         status: 'OPEN',
         resolution: null,
         authorName: 'مدير تجريبي',
+        authorId: actor.id,
+        solutionPlan: 'خطة أولية لحل مشكلة الاختبار',
         unitId: 'design',
         createdAt: '2026-10-29T06:00:00Z',
       },
@@ -147,6 +161,68 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
       ],
       comments = [];
     let hasPlan = !options.noPlan;
+    let unitPlans = options.noUnitPlan
+      ? []
+      : [
+          {
+            id: 'unit-plan',
+            unitId: 'design',
+            title: 'خطة تطوير التصميم',
+            status: options.unitStatus || 'DRAFT',
+            reviewNote: null,
+            submittedAt: null,
+            items: [
+              {
+                id: 'unit-late',
+                kind: 'DEVELOPMENT',
+                title: 'بند موعده أبعد',
+                metric: null,
+                baseline: null,
+                target: null,
+                current: null,
+                manualProgress: 0,
+                progress: 0,
+                doneAt: null,
+                dueDate: '2026-12-01',
+                ownerId: actor.id,
+                ownerName: actor.name,
+                overdue: false,
+              },
+              {
+                id: 'unit-first',
+                kind: 'DEVELOPMENT',
+                title: 'بند متأخر أولاً',
+                metric: null,
+                baseline: null,
+                target: null,
+                current: null,
+                manualProgress: 20,
+                progress: 20,
+                doneAt: null,
+                dueDate: '2026-10-01',
+                ownerId: actor.id,
+                ownerName: actor.name,
+                overdue: true,
+              },
+            ],
+          },
+        ];
+    const regulations = [
+      {
+        no: 6,
+        article: 2,
+        articleTitle: 'الجودة والأداء التشغيلي',
+        title: 'الدقة والسرعة',
+        code: 'م2/ف1',
+      },
+      {
+        no: 27,
+        article: 5,
+        articleTitle: 'المسؤولية',
+        title: 'فقرة ديناميكية جديدة',
+        code: 'م5/ف3',
+      },
+    ];
     const metrics = [
       { key: 'late', label: 'نسبة التأخير', lowerBetter: true, unit: '%' },
       { key: 'score', label: 'معدل التقييم', lowerBetter: false, unit: '%' },
@@ -183,6 +259,10 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
           body: JSON.stringify(data),
         });
       if (path === '/api/org/me') return send(membership);
+      if (path === '/api/org/regulations')
+        return flags.fail === path
+          ? send({ error: 'تعذر جلب اللائحة' }, 500)
+          : send(regulations);
       if (path === '/api/org/chart') {
         assert(actor.role === 'ADMIN', 'No chart for non-admin heads');
         return send(divisions);
@@ -203,9 +283,29 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
             (!options.root || id === 'admin') &&
             !options.readOnly,
           issues,
+          editableUnits: options.unit
+            ? ['design']
+            : options.root && id !== 'admin'
+              ? []
+              : units.map((u) => u.id),
+          canReview: !options.unit,
+          unitPlans: unitPlans.map((plan) => ({
+            ...plan,
+            period,
+            progress: plan.items.length
+              ? Math.round(
+                  plan.items.reduce((s, i) => s + i.progress, 0) /
+                    plan.items.length,
+                )
+              : 0,
+          })),
           plan: hasPlan
             ? {
                 id: 'plan-test',
+                unitId: null,
+                status: flags.planStatus,
+                reviewNote: null,
+                submittedAt: null,
                 period,
                 title: 'خطة ' + period,
                 progress: items.length
@@ -234,6 +334,30 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
       }
       if (flags.fail === path)
         return send({ error: 'تعذر الحفظ التجريبي' }, 500);
+      if (path.endsWith('/solution') && method === 'PUT') {
+        const i = issues.find((i) => i.id === path.split('/').at(-2));
+        i.solutionPlan = body.plan;
+        i.status = i.status === 'OPEN' ? 'IN_PROGRESS' : i.status;
+        return send({ ok: true });
+      }
+      if (path.endsWith('/submit')) {
+        const id = path.split('/').at(-2),
+          plan = unitPlans.find((p) => p.id === id);
+        if (plan) {
+          plan.status = 'SUBMITTED';
+          plan.submittedAt = '2026-10-30T06:00:00Z';
+        } else flags.planStatus = 'SUBMITTED';
+        return send({ ok: true });
+      }
+      if (path.endsWith('/review')) {
+        const id = path.split('/').at(-2),
+          plan = unitPlans.find((p) => p.id === id);
+        if (plan) {
+          plan.status = body.approve ? 'APPROVED' : 'RETURNED';
+          plan.reviewNote = body.note;
+        } else flags.planStatus = body.approve ? 'APPROVED' : 'RETURNED';
+        return send({ ok: true });
+      }
       if (path === '/api/org/issues' && method === 'POST') {
         issues.push({
           id: 'new-issue',
@@ -254,6 +378,18 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
         return send({ ok: true });
       }
       if (path === '/api/org/plans') {
+        if (body.unitId) {
+          unitPlans.push({
+            id: 'unit-plan',
+            unitId: body.unitId,
+            title: body.title,
+            status: 'DRAFT',
+            reviewNote: null,
+            submittedAt: null,
+            items: [],
+          });
+          return send({ id: 'unit-plan' });
+        }
         hasPlan = true;
         items = [];
         return send({ id: 'plan-test' });
@@ -264,7 +400,10 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
             { error: 'الهدف لازم يكون أحسن من الرقم الحالي (12)' },
             400,
           );
-        items.push({
+        const targetList = path.includes('/unit-plan/')
+          ? unitPlans.find((p) => p.id === 'unit-plan').items
+          : items;
+        targetList.push({
           id: 'new-item',
           ...body,
           issueId: body.issueId || null,
@@ -276,11 +415,17 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
           byMatrix: !!body.metric,
           manualProgress: 0,
           doneAt: null,
+          dueDate: body.dueDate || null,
+          ownerId: body.ownerId || null,
+          ownerName: body.ownerId === actor.id ? actor.name : null,
+          overdue: false,
         });
         return send({ id: 'new-item' });
       }
       if (path.startsWith('/api/org/plan-items/')) {
-        const i = items.find((i) => i.id === path.split('/').at(-1));
+        const i = [...items, ...unitPlans.flatMap((p) => p.items)].find(
+          (i) => i.id === path.split('/').at(-1),
+        );
         if (body.manualProgress != null) {
           assert(!i.byMatrix);
           i.manualProgress = body.manualProgress;
@@ -323,7 +468,7 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
     await p.locator('.desk-issue h3').first().innerText(),
     'تأخير المشاريع',
   );
-  await p.getByText('المبدأ 6: السرعة', { exact: true }).waitFor();
+  await p.getByText('م2/ف1 · الدقة والسرعة', { exact: true }).waitFor();
   await p.screenshot({
     path: '/tmp/org-desk-issues-mobile.png',
     fullPage: true,
@@ -332,10 +477,10 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
   let dialog = p.getByRole('dialog');
   assert.equal(
     await dialog
-      .getByLabel('المبدأ المكسور', { exact: true })
+      .getByLabel('فقرة لائحة العمل', { exact: true })
       .locator('option')
       .count(),
-    21,
+    3,
   );
   await dialog
     .getByLabel('عنوان المشكلة', { exact: true })
@@ -348,14 +493,16 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
     .fill('ضرر تجريبي على الإنجاز');
   await dialog.getByLabel('الوحدة', { exact: true }).selectOption('design');
   await dialog.getByLabel('النطاق', { exact: true }).selectOption('GENERAL');
-  await dialog.getByLabel('المبدأ المكسور', { exact: true }).selectOption('20');
+  await dialog
+    .getByLabel('فقرة لائحة العمل', { exact: true })
+    .selectOption('27');
   await dialog.getByLabel('الخطورة', { exact: true }).selectOption('HIGH');
   await dialog.getByRole('button', { name: 'حفظ', exact: true }).click();
   await p
     .getByRole('heading', { name: 'مشكلة جديدة تجريبية', exact: true })
     .waitFor();
   const newIssue = x.calls.find((c) => c.path === '/api/org/issues');
-  assert.equal(newIssue.body.principle, 20);
+  assert.equal(newIssue.body.principle, 27);
   assert.equal(newIssue.body.divisionId, 'eng');
   assert.equal(newIssue.auth, 'Bearer desk-test-token');
   const firstIssue = p.locator('.desk-issue').filter({
@@ -657,10 +804,245 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
           ),
       );
     }
+  const unitHead = await mount(head, { unit: true }),
+    u = unitHead.page;
+  await u.locator('.desk-intro').waitFor();
+  const unitIssue = u.locator('.desk-issue').filter({
+    has: u.getByRole('heading', { name: 'تأخير المشاريع', exact: true }),
+  });
+  await unitIssue
+    .getByRole('button', { name: 'خطة الحل', exact: true })
+    .click();
+  let ud = u.getByRole('dialog');
+  await ud
+    .getByLabel('خطة الحل', { exact: true })
+    .fill('خطة حل جديدة بخطوات قابلة للتنفيذ');
+  await ud.getByRole('button', { name: 'حفظ', exact: true }).click();
+  await unitIssue
+    .getByText('خطة حل جديدة بخطوات قابلة للتنفيذ', { exact: true })
+    .waitFor();
+  assert(
+    unitHead.calls.some(
+      (c) => c.path === '/api/org/issues/high/solution' && c.method === 'PUT',
+    ),
+  );
+  assert.equal(
+    await u
+      .locator('.desk-issue')
+      .filter({
+        has: u.getByRole('heading', { name: 'مشكلة ثانوية', exact: true }),
+      })
+      .getByRole('button', { name: 'خطة الحل', exact: true })
+      .count(),
+    0,
+  );
+  await u.getByRole('button', { name: '+ مشكلة جديدة', exact: true }).click();
+  ud = u.getByRole('dialog');
+  assert.equal(
+    await ud.getByLabel('الوحدة', { exact: true }).locator('option').count(),
+    2,
+    'Only editable unit, not other units',
+  );
+  assert.equal(
+    await ud
+      .getByLabel('فقرة لائحة العمل', { exact: true })
+      .locator('optgroup')
+      .first()
+      .getAttribute('label'),
+    'المادة 2: الجودة والأداء التشغيلي',
+  );
+  await ud.getByLabel('فقرة لائحة العمل', { exact: true }).selectOption('27');
+  await ud
+    .getByLabel('عنوان المشكلة', { exact: true })
+    .fill('تشخيص وحدة تجريبي');
+  await ud
+    .getByLabel('شرح المشكلة', { exact: true })
+    .fill('وصف تجريبي واضح لمشكلة الوحدة');
+  await ud.getByLabel('مضارها', { exact: true }).fill('أثر تجريبي');
+  await ud.getByLabel('الوحدة', { exact: true }).selectOption('design');
+  await ud
+    .getByLabel('خطة الحل (اختياري)', { exact: true })
+    .fill('خطة حل من نموذج المشكلة');
+  await u.screenshot({ path: '/tmp/org-unit-regulations-mobile.png' });
+  await ud.getByRole('button', { name: 'حفظ', exact: true }).click();
+  await u
+    .getByRole('heading', { name: 'تشخيص وحدة تجريبي', exact: true })
+    .waitFor();
+  const upost = unitHead.calls
+    .filter((c) => c.path === '/api/org/issues' && c.method === 'POST')
+    .at(-1);
+  assert.equal(upost.body.principle, 27);
+  assert.equal(upost.body.solutionPlan, 'خطة حل من نموذج المشكلة');
+  assert.equal(upost.body.unitId, 'design');
+  await u.getByRole('button', { name: 'تطوير الوحدات', exact: true }).click();
+  assert.equal(
+    await u
+      .getByRole('button', { name: 'ابدي خطة الوحدة · المشاريع', exact: true })
+      .count(),
+    0,
+  );
+  await u.getByRole('button', { name: 'افتح التصميم', exact: true }).click();
+  assert.equal(
+    await u.locator('.desk-unit-plan .desk-plan-card h3').first().innerText(),
+    'بند متأخر أولاً',
+  );
+  assert.equal(await u.locator('.desk-unit-plan .desk-overdue').count(), 1);
+  await u
+    .getByRole('button', { name: '+ إضافة بند للوحدة', exact: true })
+    .click();
+  ud = u.getByRole('dialog');
+  await ud
+    .getByLabel('عنوان البند', { exact: true })
+    .fill('بند وحدة بموعد ومسؤول');
+  await ud.getByLabel('الموعد', { exact: true }).fill('2026-11-15');
+  await ud
+    .getByLabel('المسؤول عن البند', { exact: true })
+    .selectOption(head.id);
+  unitHead.flags.fail = '/api/org/plans/unit-plan/items';
+  await ud.getByRole('button', { name: 'حفظ', exact: true }).click();
+  await ud.getByRole('alert').waitFor();
+  assert.equal(
+    await ud.getByLabel('الموعد', { exact: true }).inputValue(),
+    '2026-11-15',
+  );
+  unitHead.flags.fail = '';
+  await ud.getByRole('button', { name: 'حفظ', exact: true }).click();
+  await u
+    .getByRole('heading', { name: 'بند وحدة بموعد ومسؤول', exact: true })
+    .waitFor();
+  const itemPost = unitHead.calls
+    .filter((c) => c.path === '/api/org/plans/unit-plan/items')
+    .at(-1);
+  assert.equal(itemPost.body.ownerId, head.id);
+  assert.equal(itemPost.body.dueDate, '2026-11-15');
+  await u.screenshot({ path: '/tmp/org-unit-plan-mobile.png', fullPage: true });
+  await u
+    .getByRole('button', { name: 'ارفع لمدير الإدارة', exact: true })
+    .click();
+  await u
+    .getByRole('dialog')
+    .getByRole('button', { name: 'تأكيد الرفع', exact: true })
+    .click();
+  await u.getByText('مرفوعة', { exact: true }).waitFor();
+  assert.equal(
+    await u
+      .getByRole('button', { name: '+ إضافة بند للوحدة', exact: true })
+      .count(),
+    0,
+  );
+  assert.equal(
+    await u.getByRole('button', { name: 'اعتماد', exact: true }).count(),
+    0,
+  );
+  const reviewer = await mount(owner, { unitStatus: 'SUBMITTED' }),
+    v = reviewer.page;
+  await v.locator('.desk-intro').waitFor();
+  await v.getByRole('button', { name: 'تطوير الوحدات', exact: true }).click();
+  await v.getByRole('button', { name: 'افتح التصميم', exact: true }).click();
+  await v.getByRole('button', { name: 'إرجاع', exact: true }).click();
+  let vd = v.getByRole('dialog');
+  await vd.getByRole('button', { name: 'تأكيد الإرجاع', exact: true }).click();
+  assert(!reviewer.calls.some((c) => c.path.endsWith('/review')));
+  await vd
+    .getByLabel('ملاحظة الإرجاع', { exact: true })
+    .fill('حددوا المسؤول والموعد لكل بند');
+  await vd.getByRole('button', { name: 'تأكيد الإرجاع', exact: true }).click();
+  await v
+    .getByText('ملاحظة الإرجاع: حددوا المسؤول والموعد لكل بند', { exact: true })
+    .waitFor();
+  await v.screenshot({
+    path: '/tmp/org-unit-returned-mobile.png',
+    fullPage: true,
+  });
+  await v
+    .getByRole('button', { name: 'ارفع لمدير الإدارة', exact: true })
+    .click();
+  await v
+    .getByRole('dialog')
+    .getByRole('button', { name: 'تأكيد الرفع', exact: true })
+    .click();
+  await v.getByRole('button', { name: 'اعتماد', exact: true }).click();
+  await v
+    .getByRole('dialog')
+    .getByRole('button', { name: 'تأكيد الاعتماد', exact: true })
+    .click();
+  await v.getByText('معتمدة', { exact: true }).waitFor();
+  assert.equal(
+    await v
+      .getByRole('button', { name: '+ إضافة بند للوحدة', exact: true })
+      .count(),
+    0,
+  );
+  await v.setViewportSize({ width: 1366, height: 1000 });
+  await v.evaluate(() => document.documentElement.classList.add('dark'));
+  await v.screenshot({
+    path: '/tmp/org-unit-approved-desktop-dark.png',
+    fullPage: true,
+  });
+  const creator = await mount(head, { unit: true, noUnitPlan: true }),
+    c = creator.page;
+  await c.locator('.desk-intro').waitFor();
+  await c.getByLabel('الشهر', { exact: true }).fill('2026-09');
+  await c.locator('.desk-intro').waitFor();
+  await c.getByRole('button', { name: 'تطوير الوحدات', exact: true }).click();
+  await c
+    .getByRole('button', { name: 'ابدي خطة الوحدة · التصميم', exact: true })
+    .click();
+  await c
+    .getByRole('dialog')
+    .getByRole('button', { name: 'حفظ', exact: true })
+    .click();
+  await c
+    .getByRole('button', { name: '+ إضافة بند للوحدة', exact: true })
+    .waitFor();
+  assert(
+    creator.calls.some(
+      (r) =>
+        r.path === '/api/org/plans' &&
+        r.body.unitId === 'design' &&
+        r.body.period === '2026-09',
+    ),
+  );
+  const rootReview = await mount(head, { root: true, unitStatus: 'SUBMITTED' }),
+    rr = rootReview.page;
+  await rr.locator('.desk-intro').waitFor();
+  await rr.getByRole('button', { name: 'تطوير الوحدات', exact: true }).click();
+  await rr.getByRole('button', { name: 'افتح التصميم', exact: true }).click();
+  assert.equal(
+    await rr.getByRole('button', { name: 'اعتماد', exact: true }).count(),
+    0,
+    'Root manager reviews division plan, not foreign unit directly',
+  );
+  unitHead.flags.fail = '/api/org/regulations';
+  await u.reload();
+  await u.getByRole('alert').filter({ hasText: 'لائحة العمل' }).waitFor();
+  await u.getByRole('button', { name: '+ مشكلة جديدة', exact: true }).click();
+  assert(
+    await u
+      .getByRole('dialog')
+      .getByLabel('فقرة لائحة العمل', { exact: true })
+      .isDisabled(),
+  );
+  await u
+    .getByRole('dialog')
+    .getByRole('button', { name: 'إلغاء', exact: true })
+    .click();
+  unitHead.flags.fail = '';
+  await u.getByRole('button', { name: 'أعد جلب اللائحة', exact: true }).click();
+  await u.getByText('م2/ف1 · الدقة والسرعة', { exact: true }).waitFor();
+  for (const page of [u, v, c])
+    for (const width of [390, 1366]) {
+      await page.setViewportSize({ width, height: 900 });
+      assert(
+        await page.evaluate(
+          () => document.documentElement.scrollWidth <= innerWidth,
+        ),
+      );
+    }
   assert.deepEqual(errors, []);
   await browser.close();
   console.log(
-    'PASS: head-only gate/nav and zero desk/chart calls for unassigned/member/wrong scope; root management all desks without chart; owner directory; severity/principles; issue/status/required solution/comments; computed/manual plan progress, done, metric target error preserves draft, create plan; DOA owner-only full replacement with small IQD and retry; history/null current/month race/404; mobile/desktop/dark. Synthetic APIs only.',
+    'PASS: previous desk/security flows + API regulations grouped by article (dynamic clause 27), scoped unit issue/solution, unit plans sorted dates/owners/overdue, DRAFT submit/RETURNED required note/re-submit/APPROVED gates, historical unit creation, review scope and regulation failure retry. Mobile/desktop/dark. Synthetic APIs only.',
   );
 })().catch((e) => {
   console.error(e);

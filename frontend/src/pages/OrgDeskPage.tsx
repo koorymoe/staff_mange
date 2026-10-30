@@ -1,7 +1,16 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { Link, Navigate, useNavigate, useParams } from 'react-router-dom'
-import { orgApi, orgPositions, type OrgDivision } from '../org'
+import {
+  orgApi,
+  orgPositions,
+  type OrgDivision,
+  type OrgPerson,
+  type OrgUnit,
+} from '../org'
 import { useSession } from '../session'
+import DirectiveManager from '../components/DirectiveManager'
+import OrgOutputs from '../components/OrgOutputs'
+import type { DirectiveTarget } from '../orgDirectives'
 import {
   orgAdmin,
   orgDeskAllowed,
@@ -15,7 +24,9 @@ import {
   orgDeskWrite,
   orgIQD,
   orgMonth,
-  orgPrinciples,
+  orgRegulations,
+  type OrgClause,
+  type DeskPlan,
   type AuthorityRow,
   type DeskComment,
   type DeskIssue,
@@ -26,7 +37,25 @@ import {
 import './OrgPage.css'
 import './OrgDeskPage.css'
 
-type Tab = 'issues' | 'plan' | 'authority' | 'team'
+type Tab = 'issues' | 'plan' | 'units' | 'authority' | 'team' | 'directives' | 'outputs'
+const canAddItems = (plan: DeskPlan) =>
+  plan.status === 'DRAFT' || plan.status === 'RETURNED'
+const dueOrder = (a: DeskItem, b: DeskItem) =>
+  !a.dueDate
+    ? b.dueDate
+      ? 1
+      : 0
+    : !b.dueDate
+      ? -1
+      : a.dueDate.localeCompare(b.dueDate)
+const teamPeople = (division: OrgDivision) => [
+  ...new Map(
+    [
+      ...(division.people ?? []),
+      ...(division.units ?? []).flatMap((u) => u.people ?? []),
+    ].map((p) => [p.employeeId, p]),
+  ).values(),
+]
 const number = (n: number | null | undefined) =>
   n == null
     ? 'غير متوفر'
@@ -82,6 +111,7 @@ export default function OrgDeskPage() {
       admin={orgAdmin(employee)}
       choices={choices}
       divisionId={divisionId}
+      managementHead={orgSeesAll(heads)}
     />
   )
 }
@@ -89,10 +119,12 @@ function DeskDirectory({
   admin,
   choices,
   divisionId,
+  managementHead,
 }: {
   admin: boolean
   choices: { id: string; name: string }[]
   divisionId?: string
+  managementHead: boolean
 }) {
   const [chart, setChart] = useState<OrgDivision[] | null>(null)
   const [error, setError] = useState('')
@@ -191,6 +223,7 @@ function DeskDirectory({
           id={divisionId}
           period={period}
           admin={admin}
+          reviewDivision={admin || (managementHead && divisionId !== 'admin')}
           tab={tab}
           setTab={setTab}
         />
@@ -205,24 +238,48 @@ type Modal =
   | { kind: 'plan' }
   | { kind: 'item' }
   | { kind: 'authority' }
+  | { kind: 'solution'; issue: DeskIssue }
 function DeskContent({
   id,
   period,
   admin,
   tab,
   setTab,
+  reviewDivision,
 }: {
   id: string
   period: string
   admin: boolean
   tab: Tab
   setTab: (tab: Tab) => void
+  reviewDivision: boolean
 }) {
+  const { employee } = useSession()
   const [data, setData] = useState<OrgDesk | null>(null)
   const [error, setError] = useState('')
   const [reload, setReload] = useState(0)
   const [modal, setModal] = useState<Modal | null>(null)
   const [notice, setNotice] = useState('')
+  const [openedUnit, setOpenedUnit] = useState<string | null>(null)
+  const [regulations, setRegulations] = useState<OrgClause[] | null>(null)
+  const [regError, setRegError] = useState('')
+  const [regReload, setRegReload] = useState(0)
+  useEffect(() => {
+    let alive = true
+    orgRegulations()
+      .then((rows) => {
+        if (alive) {
+          setRegulations(rows ?? [])
+          setRegError('')
+        }
+      })
+      .catch((e: Error) => {
+        if (alive) setRegError(e.message)
+      })
+    return () => {
+      alive = false
+    }
+  }, [regReload])
   useEffect(() => {
     let alive = true
     orgDeskGet(id, period)
@@ -269,7 +326,13 @@ function DeskContent({
           <p>{data.division.summary}</p>
         </div>
         <span className="desk-badge">
-          {data.canEdit ? 'تدير الخطة والحالات' : 'للقراءة، الإبلاغ والتعليق'}
+          {data.canEdit
+            ? 'تدير خطة الإدارة والحالات'
+            : (data.editableUnits ?? []).length
+              ? 'تدير خطط وحداتك، وتبلّغ وتعلّق'
+              : data.canReview && reviewDivision
+                ? 'تراجع خطة الإدارة، وتبلّغ وتعلّق'
+                : 'للقراءة، الإبلاغ والتعليق'}
         </span>
       </section>
       {notice && (
@@ -277,11 +340,22 @@ function DeskContent({
           {notice}
         </p>
       )}
+      {regError && (
+        <p className="org-error" role="alert">
+          لائحة العمل: {regError}{' '}
+          <button onClick={() => setRegReload((n) => n + 1)}>
+            أعد جلب اللائحة
+          </button>
+        </p>
+      )}
       <nav className="desk-tabs" aria-label="أقسام مكتب الإدارة">
         {(
           [
             ['issues', 'المشاكل'],
             ['plan', 'خطة التحسين'],
+            ['units', 'تطوير الوحدات'],
+            ['directives', 'التوجيهات'],
+            ['outputs', 'المخرجات'],
             ['authority', 'الصلاحيات (DOA)'],
             ['team', 'الفريق'],
           ] as const
@@ -336,8 +410,9 @@ function DeskContent({
                 </p>
                 {issue.principle != null && (
                   <p className="desk-principle">
-                    المبدأ {issue.principle}:{' '}
-                    {orgPrinciples[issue.principle - 1] ?? 'غير معرّف'}
+                    {regulations?.find((c) => c.no === issue.principle)
+                      ? `${regulations.find((c) => c.no === issue.principle)!.code} · ${regulations.find((c) => c.no === issue.principle)!.title}`
+                      : `الفقرة رقم ${issue.principle} · ${regulations ? 'مو موجودة باللائحة الحالية' : 'اسم الفقرة مو متوفر بعد'}`}
                   </p>
                 )}
                 <p className="desk-meta">
@@ -346,6 +421,20 @@ function DeskContent({
                 </p>
                 {issue.resolution && (
                   <p className="desk-resolution">الحل: {issue.resolution}</p>
+                )}
+                {issue.solutionPlan && (
+                  <section className="desk-solution">
+                    <h4>خطة الحل</h4>
+                    <p>{issue.solutionPlan}</p>
+                  </section>
+                )}
+                {(data.canEdit ||
+                  (!!employee && issue.authorId === employee.id) ||
+                  (!!issue.unitId &&
+                    (data.editableUnits ?? []).includes(issue.unitId))) && (
+                  <button onClick={() => setModal({ kind: 'solution', issue })}>
+                    خطة الحل
+                  </button>
                 )}
                 {data.canEdit && (
                   <button onClick={() => setModal({ kind: 'status', issue })}>
@@ -377,7 +466,7 @@ function DeskContent({
                 <div>
                   <h2>{data.plan.title}</h2>
                   <p>خطة {data.plan.period}</p>
-                  {data.canEdit && (
+                  {data.canEdit && canAddItems(data.plan) && (
                     <button
                       className="org-primary"
                       onClick={() => setModal({ kind: 'item' })}
@@ -387,6 +476,13 @@ function DeskContent({
                   )}
                 </div>
               </section>
+              <PlanControls
+                plan={data.plan}
+                canEdit={data.canEdit}
+                canReview={data.canReview && reviewDivision}
+                unit={false}
+                saved={saved}
+              />
               {(['PROBLEM', 'DEVELOPMENT'] as const).map((kind) => (
                 <section key={kind} className="desk-plan-section">
                   <h2>
@@ -395,13 +491,17 @@ function DeskContent({
                   <div className="desk-cards">
                     {(data.plan!.items ?? [])
                       .filter((item) => item.kind === kind)
+                      .sort(dueOrder)
                       .map((item) => (
                         <PlanCard
                           key={item.id}
                           item={item}
                           metrics={data.metrics ?? []}
                           issues={issues}
-                          canEdit={data.canEdit}
+                          canEdit={
+                            data.canEdit ||
+                            (!!employee && item.ownerId === employee.id)
+                          }
                           comments={data.comments ?? []}
                           saved={saved}
                         />
@@ -482,10 +582,28 @@ function DeskContent({
           )}
         </section>
       )}
+      {tab === 'units' && (
+        <UnitDevelopment
+          data={data}
+          period={period}
+          openedUnit={openedUnit}
+          openUnit={setOpenedUnit}
+          viewerId={employee?.id}
+          saved={saved}
+        />
+      )}
       {tab === 'team' && <Team division={data.division} />}
+      {tab === 'outputs' && <OfficeOutputs data={data} period={period} />}
+      {tab === 'directives' && <DirectiveManager divisionId={data.division.id} targets={[
+        ...(admin ? [{scope:'COMPANY',label:'الشركة كلها'} as DirectiveTarget] : []),
+        ...(data.canEdit ? [{scope:'DIVISION',divisionId:data.division.id,label:data.division.name} as DirectiveTarget] : []),
+        ...(data.division.units ?? []).filter(u => (data.editableUnits ?? []).includes(u.id)).map(u => ({scope:'UNIT' as const,divisionId:data.division.id,unitId:u.id,label:`${data.division.name} / ${u.name}`})),
+      ]}/>}
       {modal?.kind === 'issue' && (
         <IssueEditor
           division={data.division}
+          editableUnits={data.editableUnits ?? []}
+          regulations={regulations}
           close={() => setModal(null)}
           saved={saved}
         />
@@ -505,15 +623,19 @@ function DeskContent({
           saved={saved}
         />
       )}
-      {modal?.kind === 'item' && data.canEdit && data.plan && (
-        <ItemEditor
-          planId={data.plan.id}
-          issues={issues}
-          metrics={data.metrics ?? []}
-          close={() => setModal(null)}
-          saved={saved}
-        />
-      )}
+      {modal?.kind === 'item' &&
+        data.canEdit &&
+        data.plan &&
+        canAddItems(data.plan) && (
+          <ItemEditor
+            planId={data.plan.id}
+            issues={issues}
+            metrics={data.metrics ?? []}
+            people={teamPeople(data.division)}
+            close={() => setModal(null)}
+            saved={saved}
+          />
+        )}
       {modal?.kind === 'authority' && admin && (
         <AuthorityEditor
           id={id}
@@ -522,7 +644,352 @@ function DeskContent({
           saved={saved}
         />
       )}
+      {modal?.kind === 'solution' && (
+        <SolutionEditor
+          issue={modal.issue}
+          close={() => setModal(null)}
+          saved={saved}
+        />
+      )}
     </>
+  )
+}
+function OfficeOutputs({ data, period }: { data: OrgDesk; period: string }) {
+  const [scope, setScope] = useState<'division' | 'unit'>('division')
+  const [unitId, setUnitId] = useState('')
+  // Visible office units are not necessarily units whose outputs we may read.
+  const units = (data.division.units ?? []).filter((unit) =>
+    (data.editableUnits ?? []).includes(unit.id),
+  )
+  const selected = units.find((unit) => unit.id === unitId)
+  return (
+    <section className="org-panel">
+      <div className="org-actions">
+        <button aria-pressed={scope === 'division'} onClick={() => setScope('division')}>
+          مخرجات الإدارة
+        </button>
+        {units.length > 0 && (
+          <button aria-pressed={scope === 'unit'} onClick={() => {
+            setScope('unit')
+            if (!selected) setUnitId(units[0].id)
+          }}>
+            مخرجات الوحدة
+          </button>
+        )}
+      </div>
+      {scope === 'unit' && (
+        <label>وحدة المخرجات
+          <select aria-label="وحدة المخرجات" value={unitId} onChange={(e) => setUnitId(e.target.value)}>
+            {units.map((unit) => <option key={unit.id} value={unit.id}>{unit.name}</option>)}
+          </select>
+        </label>
+      )}
+      {scope === 'division' ? (
+        <OrgOutputs key={`division:${data.division.id}`} target={{ kind: 'division', id: data.division.id }} allowed initialPeriod={period} />
+      ) : selected && (
+        <OrgOutputs key={`unit:${selected.id}`} target={{ kind: 'unit', id: selected.id }} allowed initialPeriod={period} />
+      )}
+    </section>
+  )
+}
+function SolutionEditor({
+  issue,
+  close,
+  saved,
+}: {
+  issue: DeskIssue
+  close: () => void
+  saved: () => void
+}) {
+  return (
+    <DeskForm
+      title="خطة الحل"
+      close={close}
+      saved={saved}
+      submit={async (d) => {
+        const plan = field(d, 'plan')
+        if ([...plan].length < 10)
+          throw new Error('اكتب خطة الحل (١٠ حروف على الأقل)')
+        return orgDeskWrite(
+          `issues/${encodeURIComponent(issue.id)}/solution`,
+          { plan },
+          'PUT',
+        )
+      }}
+    >
+      <h3>{issue.title}</h3>
+      <label>
+        خطة الحل
+        <textarea
+          name="plan"
+          aria-label="خطة الحل"
+          required
+          minLength={10}
+          rows={5}
+          defaultValue={issue.solutionPlan ?? ''}
+        />
+      </label>
+    </DeskForm>
+  )
+}
+const planStatusNames = {
+  DRAFT: 'مسودة',
+  SUBMITTED: 'مرفوعة',
+  APPROVED: 'معتمدة',
+  RETURNED: 'مرجعة للتعديل',
+}
+function PlanControls({
+  plan,
+  canEdit,
+  canReview,
+  unit,
+  saved,
+}: {
+  plan: DeskPlan
+  canEdit: boolean
+  canReview: boolean
+  unit: boolean
+  saved: () => void
+}) {
+  const [action, setAction] = useState<'submit' | 'approve' | 'return' | null>(
+    null,
+  )
+  return (
+    <section className="org-panel desk-plan-controls">
+      <div className="org-toolbar">
+        <span className={`desk-plan-status plan-${plan.status}`}>
+          {planStatusNames[plan.status] ?? 'حالة غير معروفة'}
+        </span>
+        {plan.submittedAt && <small>انرفعت: {date(plan.submittedAt)}</small>}
+      </div>
+      {plan.status === 'RETURNED' && (
+        <p className="org-warning desk-review-note">
+          ملاحظة الإرجاع: {plan.reviewNote || 'ما مذكورة'}
+        </p>
+      )}
+      <div className="org-actions">
+        {canEdit && canAddItems(plan) && (
+          <>
+            <button
+              disabled={!plan.items?.length}
+              onClick={() => setAction('submit')}
+            >
+              {unit ? 'ارفع لمدير الإدارة' : 'ارفع لمدير «الإدارة»'}
+            </button>
+            {!plan.items?.length && <small>ضيف بنود للخطة گبل الرفع.</small>}
+          </>
+        )}
+        {canReview && plan.status === 'SUBMITTED' && (
+          <>
+            <button
+              className="org-primary"
+              onClick={() => setAction('approve')}
+            >
+              اعتماد
+            </button>
+            <button className="org-danger" onClick={() => setAction('return')}>
+              إرجاع
+            </button>
+          </>
+        )}
+      </div>
+      {action && (
+        <DeskForm
+          title={
+            action === 'submit'
+              ? 'تأكيد رفع الخطة'
+              : action === 'approve'
+                ? 'اعتماد الخطة'
+                : 'إرجاع الخطة'
+          }
+          label={
+            action === 'submit'
+              ? 'تأكيد الرفع'
+              : action === 'approve'
+                ? 'تأكيد الاعتماد'
+                : 'تأكيد الإرجاع'
+          }
+          close={() => setAction(null)}
+          saved={saved}
+          submit={async (d) => {
+            if (action === 'submit')
+              return orgDeskWrite(
+                `plans/${encodeURIComponent(plan.id)}/submit`,
+                {},
+              )
+            const note = field(d, 'note')
+            if (action === 'return' && [...note].length < 5)
+              throw new Error('اكتب شنو لازم يتعدل حتى ترجّعها')
+            return orgDeskWrite(`plans/${encodeURIComponent(plan.id)}/review`, {
+              approve: action === 'approve',
+              note,
+            })
+          }}
+        >
+          <p>{plan.title}</p>
+          {action === 'submit' ? (
+            <p>
+              الرفع يرسل الخطة للمراجعة ويوقف إضافة البنود لحد ما ترجع للتعديل.
+            </p>
+          ) : (
+            <label>
+              {action === 'return' ? 'ملاحظة الإرجاع' : 'ملاحظة (اختياري)'}
+              <textarea
+                name="note"
+                required={action === 'return'}
+                minLength={action === 'return' ? 5 : undefined}
+                rows={4}
+              />
+            </label>
+          )}
+        </DeskForm>
+      )}
+    </section>
+  )
+}
+function UnitDevelopment({
+  data,
+  period,
+  openedUnit,
+  openUnit,
+  viewerId,
+  saved,
+}: {
+  data: OrgDesk
+  period: string
+  openedUnit: string | null
+  openUnit: (id: string | null) => void
+  viewerId?: string
+  saved: () => void
+}) {
+  const [create, setCreate] = useState(false),
+    [add, setAdd] = useState(false)
+  const units = data.division.units ?? []
+  const unit = units.find((u) => u.id === openedUnit)
+  const plan = (data.unitPlans ?? []).find((p) => p.unitId === openedUnit)
+  const editable = !!unit && (data.editableUnits ?? []).includes(unit.id)
+  if (!unit)
+    return (
+      <div className="desk-cards">
+        {units.map((u) => {
+          const p = (data.unitPlans ?? []).find((p) => p.unitId === u.id)
+          return (
+            <section className="org-panel desk-unit-summary" key={u.id}>
+              <h2>{u.name}</h2>
+              {p ? (
+                <>
+                  <span className={`desk-plan-status plan-${p.status}`}>
+                    {planStatusNames[p.status] ?? 'حالة غير معروفة'}
+                  </span>
+                  <p>الإنجاز: {number(p.progress)}٪</p>
+                  <progress
+                    max={100}
+                    value={percent(p.progress)}
+                    aria-label={`إنجاز وحدة ${u.name}`}
+                  />
+                  <button onClick={() => openUnit(u.id)}>افتح {u.name}</button>
+                </>
+              ) : (data.editableUnits ?? []).includes(u.id) ? (
+                <button
+                  className="org-primary"
+                  onClick={() => {
+                    openUnit(u.id)
+                    setCreate(true)
+                  }}
+                >
+                  ابدي خطة الوحدة · {u.name}
+                </button>
+              ) : (
+                <p className="desk-meta">ما رفعت خطة بعد</p>
+              )}
+            </section>
+          )
+        })}
+        {!units.length && (
+          <p className="org-empty">بعد ما مضافة وحدات لهالإدارة.</p>
+        )}
+      </div>
+    )
+  return (
+    <section className="desk-unit-plan">
+      <div className="org-toolbar">
+        <h2>تطوير {unit.name}</h2>
+        <button
+          onClick={() => {
+            setCreate(false)
+            setAdd(false)
+            openUnit(null)
+          }}
+        >
+          رجع للوحدات ←
+        </button>
+      </div>
+      {plan ? (
+        <>
+          <section className="org-panel desk-plan-heading">
+            <ProgressRing value={plan.progress} />
+            <div>
+              <h3>{plan.title}</h3>
+              <p>{plan.period}</p>
+              {editable && canAddItems(plan) && (
+                <button className="org-primary" onClick={() => setAdd(true)}>
+                  + إضافة بند للوحدة
+                </button>
+              )}
+            </div>
+          </section>
+          <PlanControls
+            plan={plan}
+            canEdit={editable}
+            canReview={data.canReview && data.canEdit}
+            unit
+            saved={saved}
+          />
+          <div className="desk-cards">
+            {[...(plan.items ?? [])].sort(dueOrder).map((item) => (
+              <PlanCard
+                key={item.id}
+                item={item}
+                metrics={data.metrics ?? []}
+                issues={data.issues ?? []}
+                canEdit={editable || (!!viewerId && item.ownerId === viewerId)}
+                comments={data.comments ?? []}
+                saved={saved}
+              />
+            ))}
+          </div>
+          {!plan.items?.length && (
+            <p className="org-empty">ضيف أول بند وحدد المسؤول والموعد.</p>
+          )}
+          {add && editable && canAddItems(plan) && (
+            <ItemEditor
+              planId={plan.id}
+              issues={data.issues ?? []}
+              metrics={data.metrics ?? []}
+              people={teamPeople(data.division)}
+              close={() => setAdd(false)}
+              saved={saved}
+            />
+          )}
+        </>
+      ) : (
+        <section className="org-panel">
+          <p>ما رفعت خطة بعد</p>
+          {editable && (
+            <button onClick={() => setCreate(true)}>ابدي خطة الوحدة</button>
+          )}
+        </section>
+      )}
+      {create && editable && !plan && (
+        <CreatePlan
+          id={data.division.id}
+          unit={unit}
+          period={period}
+          close={() => setCreate(false)}
+          saved={saved}
+        />
+      )}
+    </section>
   )
 }
 function ProgressRing({ value }: { value: number }) {
@@ -651,7 +1118,7 @@ function PlanCard({
     if (
       !canEdit ||
       lock.current ||
-      (item.byMatrix && body.manualProgress != null)
+      ((item.byMatrix || !!item.metric) && body.manualProgress != null)
     )
       return
     lock.current = true
@@ -689,7 +1156,14 @@ function PlanCard({
             'المشكلة المرتبطة مو متوفرة'}
         </p>
       )}
-      {item.byMatrix ? (
+      <div className="desk-item-meta">
+        <span>المسؤول: {item.ownerName || 'مو محدد'}</span>
+        <span>
+          الموعد: <bdi>{item.dueDate || 'مو محدد'}</bdi>
+        </span>
+        {item.overdue && <span className="desk-overdue">متأخر</span>}
+      </div>
+      {item.byMatrix || item.metric ? (
         <>
           <span className="desk-badge matrix">يحسبها ماتركس</span>
           <div className="desk-measurement">
@@ -911,10 +1385,14 @@ const field = (data: FormData, key: string) =>
   String(data.get(key) ?? '').trim()
 function IssueEditor({
   division,
+  editableUnits,
+  regulations,
   close,
   saved,
 }: {
   division: OrgDivision
+  editableUnits: string[]
+  regulations: OrgClause[] | null
   close: () => void
   saved: () => void
 }) {
@@ -935,6 +1413,7 @@ function IssueEditor({
             ? Number(field(d, 'principle'))
             : null,
           severity: field(d, 'severity'),
+          solutionPlan: field(d, 'solutionPlan'),
         })
       }
     >
@@ -951,14 +1430,20 @@ function IssueEditor({
         <textarea name="impact" required rows={2} />
       </label>
       <label>
+        خطة الحل (اختياري)
+        <textarea name="solutionPlan" rows={3} />
+      </label>
+      <label>
         الوحدة
         <select name="unitId" aria-label="الوحدة">
           <option value="">على مستوى الإدارة</option>
-          {(division.units ?? []).map((u) => (
-            <option key={u.id} value={u.id}>
-              {u.name}
-            </option>
-          ))}
+          {(division.units ?? [])
+            .filter((u) => editableUnits.includes(u.id))
+            .map((u) => (
+              <option key={u.id} value={u.id}>
+                {u.name}
+              </option>
+            ))}
         </select>
       </label>
       <label>
@@ -969,14 +1454,32 @@ function IssueEditor({
         </select>
       </label>
       <label>
-        المبدأ المكسور
-        <select name="principle" aria-label="المبدأ المكسور">
-          <option value="">مو محدد</option>
-          {orgPrinciples.map((p, i) => (
-            <option key={i} value={i + 1}>
-              {i + 1}. {p}
-            </option>
-          ))}
+        فقرة لائحة العمل
+        <select
+          name="principle"
+          aria-label="فقرة لائحة العمل"
+          disabled={regulations === null}
+        >
+          <option value="">
+            {regulations === null ? 'اللائحة مو متوفرة بعد' : 'مو محددة'}
+          </option>
+          {[
+            ...new Map(
+              (regulations ?? []).map((c) => [c.article, c.articleTitle]),
+            ).entries(),
+          ]
+            .sort(([a], [b]) => a - b)
+            .map(([article, title]) => (
+              <optgroup key={article} label={`المادة ${article}: ${title}`}>
+                {(regulations ?? [])
+                  .filter((c) => c.article === article)
+                  .map((c) => (
+                    <option key={c.no} value={c.no}>
+                      {c.code} · {c.title}
+                    </option>
+                  ))}
+              </optgroup>
+            ))}
         </select>
       </label>
       <label>
@@ -1045,23 +1548,26 @@ function StatusEditor({
 function CreatePlan({
   id,
   period,
+  unit,
   close,
   saved,
 }: {
   id: string
   period: string
+  unit?: OrgUnit
   close: () => void
   saved: () => void
 }) {
   return (
     <DeskForm
-      title="ابدي خطة هالشهر"
+      title={unit ? 'ابدي خطة الوحدة' : 'ابدي خطة هالشهر'}
       close={close}
       saved={saved}
       submit={(d) =>
         orgDeskWrite('plans', {
           divisionId: id,
           period,
+          ...(unit ? { unitId: unit.id } : {}),
           title: field(d, 'title'),
         })
       }
@@ -1069,7 +1575,11 @@ function CreatePlan({
       <p>خطة الشهر: {period}</p>
       <label>
         عنوان الخطة
-        <input name="title" required defaultValue={`خطة التحسين ${period}`} />
+        <input
+          name="title"
+          required
+          defaultValue={`خطة ${unit?.name || 'التحسين'} ${period}`}
+        />
       </label>
     </DeskForm>
   )
@@ -1078,12 +1588,14 @@ function ItemEditor({
   planId,
   issues,
   metrics,
+  people,
   close,
   saved,
 }: {
   planId: string
   issues: DeskIssue[]
   metrics: DeskMetric[]
+  people: OrgPerson[]
   close: () => void
   saved: () => void
 }) {
@@ -1100,6 +1612,8 @@ function ItemEditor({
           title: field(d, 'title'),
           ...(field(d, 'issueId') ? { issueId: field(d, 'issueId') } : {}),
           ...(metric ? { metric, target: Number(field(d, 'target')) } : {}),
+          ...(field(d, 'dueDate') ? { dueDate: field(d, 'dueDate') } : {}),
+          ...(field(d, 'ownerId') ? { ownerId: field(d, 'ownerId') } : {}),
         })
       }
     >
@@ -1113,6 +1627,21 @@ function ItemEditor({
       <label>
         عنوان البند
         <input name="title" minLength={3} required />
+      </label>
+      <label>
+        الموعد
+        <input name="dueDate" type="date" />
+      </label>
+      <label>
+        المسؤول
+        <select name="ownerId" aria-label="المسؤول عن البند">
+          <option value="">مو محدد</option>
+          {people.map((p) => (
+            <option key={p.employeeId} value={p.employeeId}>
+              {p.employeeName}
+            </option>
+          ))}
+        </select>
       </label>
       <label>
         ربط بمشكلة (اختياري)

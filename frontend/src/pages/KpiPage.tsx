@@ -1,4 +1,8 @@
-import { Fragment, useEffect, useState } from 'react'
+import { Fragment, useEffect, useRef, useState } from 'react'
+import { orgAdmin } from '../orgDeskAccess'
+import { useOutputRegulations } from '../orgOutputs'
+import OutputClauseBinding from '../components/OutputClauseBinding'
+import { useInlineQuestion } from '../useInlineQuestion'
 import { api, type KpiCriterion, type KpiEvaluation, type Employee, type TechnicianKpi } from '../api'
 import { useSession } from '../session'
 import KpiBreakdownChart from '../components/KpiBreakdownChart'
@@ -317,6 +321,10 @@ export function TechnicianTab() {
 
 export function AdministrativeTab() {
   const { employee: currentUser, permissions } = useSession()
+  const question = useInlineQuestion()
+  const regulations = useOutputRegulations(orgAdmin(currentUser))
+  const [clauseNotice, setClauseNotice] = useState('')
+  const loadVersion = useRef({ version: 0 })
   const [evaluations, setEvaluations] = useState<KpiEvaluation[]>([])
   const [employees, setEmployees] = useState<Employee[]>([])
   const [criteria, setCriteria] = useState<KpiCriterion[]>([])
@@ -343,19 +351,30 @@ export function AdministrativeTab() {
   const canManageCriteria = currentUser?.role === 'ADMIN' || permissions.includes('kpi_criteria_management')
 
   const load = () => {
+    const version = ++loadVersion.current.version
     Promise.all([api.getKpiEvaluations(), api.getEmployees(), api.getKpiCriteria()])
       .then(([evals, emps, crit]) => {
+        if (version !== loadVersion.current.version) return
+        setError(null)
         setEvaluations(evals)
         // ⚠️ كانت تشيل الفنيين ومدير النظام من القائمة. الكي بي اي مو
         // خاص بالإداريين — المدير يخصم من أي موظف بالشركة، والفني منهم.
         setEmployees(emps)
         setCriteria(crit)
       })
-      .catch((e) => setError(e.message))
-      .finally(() => setLoading(false))
+      .catch((e) => {
+        if (version === loadVersion.current.version) setError(e.message)
+      })
+      .finally(() => {
+        if (version === loadVersion.current.version) setLoading(false)
+      })
   }
 
-  useEffect(load, [])
+  useEffect(() => {
+    const clock = loadVersion.current
+    load()
+    return () => { clock.version++ }
+  }, [])
 
   // التقييمات الملغاة (المسترجعة) ما تدخل بحساب النقاط المتبقية ولا الخصم المالي
   const weeklyEvals = evaluations.filter((ev) => isThisWeek(ev.createdAt) && !ev.cancelled)
@@ -474,7 +493,7 @@ export function AdministrativeTab() {
   }
 
   const handleDelete = async (id: string) => {
-    if (!confirm('هل أنت متأكد من حذف هذا التقييم؟')) return
+    if (!(await question.ask('هل أنت متأكد من حذف هذا التقييم؟'))) return
     try {
       await api.deleteKpiEvaluation(id)
       load()
@@ -485,7 +504,7 @@ export function AdministrativeTab() {
 
   // إرجاع نقطة: ما تنحذف — تضل بالسجل معلّمة "ملغاة" حتى المراقب يشوف تاريخها
   const handleCancel = async (id: string) => {
-    if (!confirm('استرجاع هذي النقطة؟ راح توقف تأثيرها المالي بس تضل بالسجل.')) return
+    if (!(await question.ask('استرجاع هذي النقطة؟ راح توقف تأثيرها المالي بس تضل بالسجل.'))) return
     try {
       await api.cancelKpiEvaluation(id)
       load()
@@ -506,7 +525,7 @@ export function AdministrativeTab() {
   }
 
   const handleDeleteCriterion = async (id: string) => {
-    if (!confirm('حذف نقطة الكي بي اي هذي نهائياً؟')) return
+    if (!(await question.ask('حذف نقطة الكي بي اي هذي نهائياً؟'))) return
     try {
       await api.deleteKpiCriterion(id)
       load()
@@ -571,6 +590,14 @@ export function AdministrativeTab() {
       )}
 
       {/* إدارة نقاط الكي بي اي — إضافة/حذف (صلاحية kpi_criteria_management) */}
+      {question.dialog}
+      {clauseNotice && <p role="status" className="org-ui org-notice">{clauseNotice}</p>}
+      {regulations.error && (
+        <p role="alert" className="org-ui org-error">
+          لائحة الفقرات: {regulations.error}{' '}
+          <button onClick={regulations.retry}>أعد جلب الفقرات</button>
+        </p>
+      )}
       {canManageCriteria && (
         <div className="mt-6 rounded-2xl border border-white bg-white p-6 shadow-[0_4px_20px_rgba(15,32,64,0.06)]">
           <h3 className="mb-4 text-lg font-bold text-brand-800">إدارة نقاط الكي بي اي</h3>
@@ -590,11 +617,11 @@ export function AdministrativeTab() {
           </div>
           <div className="mt-4 flex flex-wrap gap-2">
             {criteria.map((c) => (
-              <span
+              <div
                 key={c.id}
-                className="flex items-center gap-2 rounded-full bg-slate-100 px-3 py-1.5 text-sm text-slate-700"
+                className="w-full min-w-0 rounded-2xl bg-slate-100 px-4 py-3 text-sm text-slate-700"
               >
-                {c.label}
+                <div className="flex items-center justify-between gap-2"><span>{c.label}</span>
                 <button
                   onClick={() => handleDeleteCriterion(c.id)}
                   className="text-red-500 hover:text-red-700"
@@ -602,7 +629,16 @@ export function AdministrativeTab() {
                 >
                   ✕
                 </button>
-              </span>
+                </div>
+                <OutputClauseBinding
+                  kind="criterion" id={c.id} clause={c.clause} clauses={regulations.clauses}
+                  onSaved={(clause) => {
+                    setCriteria((rows) => rows.map((row) => row.id === c.id ? { ...row, clause } : row))
+                    setClauseNotice('انحفظ ربط فقرة معيار KPI.')
+                    load()
+                  }}
+                />
+              </div>
             ))}
           </div>
         </div>

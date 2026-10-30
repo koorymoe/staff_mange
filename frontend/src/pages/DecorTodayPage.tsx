@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { api, type Booking, type WorkPhoto } from '../api'
+import MyDirectives from '../components/MyDirectives'
 
 // ═══ 🪚 «شغلي اليوم» — كادر الديكور (دازاي 10-25) ═══
 // أغلبهم ما مكملين مدارس: كلمات قليلة، أزرار كبيرة بالترتيب، وكل زر ينفتح بعد
@@ -23,6 +24,7 @@ export default function DecorTodayPage() {
 
   return (
     <div dir="rtl" className="mx-auto max-w-lg space-y-4 pb-24">
+      <MyDirectives />
       <div className="rounded-3xl bg-gradient-to-l from-amber-600 to-orange-500 p-5 text-white shadow">
         <h1 className="text-3xl font-black">🪚 شغلي اليوم</h1>
         <p className="mt-1 text-lg">اضغط الأزرار بالترتيب، من فوك لجوّا.</p>

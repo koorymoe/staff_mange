@@ -97,6 +97,26 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
         note: '',
       },
     ];
+    const myItems = [
+      {
+        id: 'own-item',
+        title: 'بندي الآمن',
+        kind: 'DEVELOPMENT',
+        metric: null,
+        manualProgress: 10,
+        progress: 10,
+        doneAt: null,
+        dueDate: '2026-10-01',
+        ownerId: actor.id,
+        ownerName: actor.name,
+        overdue: true,
+        divisionName: 'الهندسية',
+        unitName: 'التصميم',
+        period: '2026-10',
+        planTitle: 'خطة اختبار',
+        planStatus: 'APPROVED',
+      },
+    ];
     const divisions = [
       {
         id: 'admin',
@@ -215,12 +235,24 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
             : [
                 {
                   ...people[0],
+                  employeeId: actor.id,
+                  employeeName: actor.name,
+                  position:
+                    actor.id === 'staff-a' ? 'MEMBER' : people[0].position,
                   divisionName: 'الإدارة',
                   unitId: 'accounts',
                   unitName: 'الحسابات',
                 },
               ],
         );
+      if (path === '/api/org/my-items') return send(emptyMe ? [] : myItems);
+      if (path === '/api/org/plan-items/own-item' && method === 'PATCH') {
+        Object.assign(myItems[0], {
+          manualProgress: body.manualProgress,
+          progress: body.manualProgress,
+        });
+        return send({ ok: true });
+      }
       if (path === '/api/org/assign') {
         if (flags.conflict)
           return send({ error: 'هذا المكان بي مدير حالياً' }, 409);
@@ -432,7 +464,33 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
   );
   const mine = await mount(staff, 'me');
   await mine.page.getByText('الحسابات', { exact: false }).waitFor();
-  assert(mine.calls.length === 1 && mine.calls[0].path === '/api/org/me');
+  await mine.page
+    .getByRole('heading', { name: 'بندي الآمن', exact: true })
+    .waitFor();
+  assert(
+    mine.calls.every((c) =>
+      ['/api/org/me', '/api/org/my-items'].includes(c.path),
+    ),
+  );
+  await mine.page.getByRole('slider').fill('65');
+  await mine.page
+    .getByRole('button', { name: 'احفظ نسبة بندي', exact: true })
+    .click();
+  await mine.page.getByRole('slider').waitFor();
+  assert.equal(await mine.page.getByRole('slider').inputValue(), '65');
+  assert(
+    mine.calls.some(
+      (c) =>
+        c.method === 'PATCH' &&
+        c.path === '/api/org/plan-items/own-item' &&
+        c.body.manualProgress === 65,
+    ),
+  );
+  assert(
+    !mine.calls.some(
+      (c) => c.path.startsWith('/api/org/desk') || c.path === '/api/org/chart',
+    ),
+  );
   await mine.page.screenshot({ path: '/tmp/org-my-place-mobile.png' });
   const empty = await mount(staff, 'me', true);
   await empty.page.getByText('بعدك ما انوضعت بالهيكل').waitFor();
@@ -517,7 +575,7 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
   assert.deepEqual(errors, []);
   await browser.close();
   console.log(
-    'PASS: chart/tree/mobile collapse/permissions; 50 IQD warning+Arabic digits+commas+zero; assign409 preserved draft; independent end with required reason and failure retry; active placement filters/count; admin protected seats zero mutations; staff admin routes zero API/nav hidden; my-place ONLY /org/me; 390/1366/dark/overflow. Synthetic data and APIs.',
+    'PASS: chart/assign/end/placement/security regression; own me/my-items safe reads + own progress PATCH for ordinary employee, zero desk/chart; 390/1366/dark/overflow. Synthetic data and APIs.',
   );
 })().catch((e) => {
   console.error(e);
