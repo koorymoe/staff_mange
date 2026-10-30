@@ -33,6 +33,9 @@ const (
 	orgFineMaxPoints   = 10 // ١٠٠ ألف
 	orgAIUsageFullAt   = 30.0
 	orgGovernorStarted = "started_at"
+	// orgFineWindow الغرامة بس إذا لحظة استحقاقها قريبة — حتى ما تنزل الغرامات المتراكمة
+	// دفعة وحدة بعد ما المفتاح ينطفي ويرجع، أو النوع يتوقف ويرجع.
+	orgFineWindow = 72 * time.Hour
 )
 
 type OrgGovernor struct {
@@ -75,7 +78,9 @@ func (g *OrgGovernor) startedAt() time.Time {
 	return t
 }
 
-// RegisterUndo يربط التراجع من صفحة القرارات: الغرامة ترجع نقاطها، والسحب يرجّع المنصب.
+// ── التراجع ──
+// يرجع خطأ إذا ما گدر يرجّع — فالقرار يرجع DONE (MatrixAutopilotService.Undo) وينعاد.
+
 func (g *OrgGovernor) RegisterUndo(onUndo func(kind string, f func(model.AiAction) error)) {
 	refund := func(a model.AiAction) error {
 		var d struct {
@@ -85,34 +90,51 @@ func (g *OrgGovernor) RegisterUndo(onUndo func(kind string, f func(model.AiActio
 		if a.TargetEmployeeID == nil || d.Points <= 0 {
 			return nil
 		}
-		_, _, err := g.discipline.AdjustKind(*a.TargetEmployeeID, d.Points, model.DisciplineMatrixFineUndo, "تراجع عن غرامة ماتركس: "+a.Summary, "")
-		if err == nil {
-			g.say(*a.TargetEmployeeID, "ORG_FINE_UNDO", fmt.Sprintf("↩️ انلغت غرامة ماتركس (%s) ورجعتلك %d نقطة.", a.Summary, d.Points))
+		_, back, err := g.discipline.AdjustKind(*a.TargetEmployeeID, d.Points, model.DisciplineMatrixFineUndo, "تراجع عن غرامة ماتركس: "+a.Summary, "")
+		if err != nil {
+			return err
 		}
-		return err
+		g.say(*a.TargetEmployeeID, "ORG_FINE_UNDO", fmt.Sprintf("↩️ انلغت غرامة ماتركس ورجعتلك %d نقطة (%s د.ع).", back, formatIQD(back*model.DisciplineDinarPerPoint)))
+		return nil
 	}
 	onUndo(model.AiActionOrgFineCustomer, refund)
 	onUndo(model.AiActionOrgFineOps, refund)
+	onUndo(model.AiActionOrgWarn, func(a model.AiAction) error {
+		// التنبيه انلغى ← السلسلة تنكسر (الشهر الجاي ما يسحب على هالتنبيه)
+		_, err := g.db.Exec(`UPDATE "OrgEvaluation" SET decision = 'OK' WHERE "employeeId" = $1 AND period = $2 AND decision = 'WARN'`, a.TargetEmployeeID, a.Period)
+		return err
+	})
 	onUndo(model.AiActionOrgRevoke, func(a model.AiAction) error {
 		var d struct {
-			AssignmentID string `json:"assignmentId"`
+			IDs []string `json:"assignmentIds"`
 		}
 		_ = json.Unmarshal(a.Details, &d)
-		if d.AssignmentID == "" {
-			return nil
+		for _, id := range d.IDs {
+			var ended bool
+			if err := g.db.Get(&ended, `SELECT "endedAt" IS NOT NULL FROM "OrgAssignment" WHERE id = $1`, id); err != nil {
+				return err
+			}
+			if !ended {
+				continue // رجع من محاولة سابقة
+			}
+			if err := g.org.Restore("", id); err != nil {
+				if err == ErrOrgSeatTaken {
+					return fmt.Errorf("ما گدرت أرجّع المنصب — مكانه انشغل. أنهِ منصب البديل أول وعيد التراجع")
+				}
+				return err
+			}
 		}
-		if err := g.org.Restore("", d.AssignmentID); err != nil {
+		if _, err := g.db.Exec(`UPDATE "OrgEvaluation" SET decision = 'WARN' WHERE "employeeId" = $1 AND decision = 'REVOKE' AND period = $2`, a.TargetEmployeeID, a.Period); err != nil {
 			return err
 		}
 		if a.TargetEmployeeID != nil {
 			g.say(*a.TargetEmployeeID, "ORG_RESTORE", "↩️ رجع منصبك ومخصصه — انلغى قرار ماتركس بالسحب.")
 		}
-		_, _ = g.db.Exec(`UPDATE "OrgEvaluation" SET decision = 'WARN' WHERE "employeeId" = $1 AND decision = 'REVOKE' AND period = $2`, a.TargetEmployeeID, a.Period)
 		return nil
 	})
 }
 
-// protected المالك ومدير النظام ما ينحكمون.
+// protected المالك ومدير النظام ما ينحكمون (والي ما نعرف دوره ما نحكم عليه).
 func (g *OrgGovernor) protected(empID string) bool {
 	role := g.org.TargetRole(empID)
 	return role == "" || role == "OWNER" || role == "ADMIN"
@@ -120,19 +142,32 @@ func (g *OrgGovernor) protected(empID string) bool {
 
 // ── الغرامات (كل ساعة) ──
 
+// orgComplaintPerson الشخص الي الشكوى عليه: المسجّل بالشكوى أول، وإلا ليدر الحجز
+// (نفس قاعدة complaintLeaderExpr بـai_repository).
+const orgComplaintPerson = `COALESCE(c."relatedEmployeeId", CASE WHEN c."bookingId" IS NULL THEN NULL ELSE booking_leader_id(c."bookingId") END)`
+
 type orgComplaint struct {
 	ID        string     `db:"id"`
 	BookingID *string    `db:"bookingId"`
-	Leader    *string    `db:"leaderId"`
+	Person    *string    `db:"personId"`
 	Customer  string     `db:"customerId"`
 	Status    string     `db:"status"`
+	NoAnswer  bool       `db:"noAnswer"`
 	CreatedAt time.Time  `db:"createdAt"`
 	Resolved  *time.Time `db:"resolvedAt"`
 }
 
+// fineKey غرامة وحدة لكل حجز (شكاوي مكررة على نفس الحجز ما تتراكم).
+func (c orgComplaint) fineKey() string {
+	if c.BookingID != nil {
+		return "BOOKING:" + *c.BookingID
+	}
+	return "COMPLAINT:" + c.ID
+}
+
 // FinePoints تقدير ماتركس لحجم المشكلة (بلا ذكاء خارجي — من أرقام النظام):
-// أساس ٣ نقاط، +٢ إذا ما انحلت خلال ٤٨ ساعة، +٢ لكل شكوى ثانية على نفس الموظف
-// خلال ٣٠ يوم (لحد +٤)، +١ إذا نفس الزبون اشتكى گبل. السقف ١٠ (١٠٠ ألف).
+// أساس ٣ نقاط، +٢ إذا ما انحلت خلال ٤٨ ساعة، +٢ لكل حجز ثاني عليه شكوى على نفس
+// الموظف خلال ٣٠ يوم (لحد +٤)، +١ إذا نفس الزبون اشتكى گبل. السقف ١٠ (١٠٠ ألف).
 func FinePoints(unresolved48 bool, priorOnEmployee, priorFromCustomer int) (int, []string) {
 	pts := orgFineMinPoints
 	why := []string{"شكوى زبون على حجزه"}
@@ -155,15 +190,32 @@ func FinePoints(unresolved48 bool, priorOnEmployee, priorFromCustomer int) (int,
 	return pts, why
 }
 
+// fineFloor أقدم لحظة استحقاق تنحسب: بعد أول تشغيل، وبعد آخر مرة المفتاح انشغّل،
+// وبآخر ٧٢ ساعة — فالمتراكم بالتوقف ما ينزل دفعة وحدة.
+func (g *OrgGovernor) fineFloor() time.Time {
+	floor := g.startedAt()
+	var on *time.Time
+	_ = g.db.Get(&on, `SELECT "updatedAt" FROM "SystemSwitch" WHERE key = $1 AND enabled`, model.SwitchOrgGovernor)
+	if on != nil && on.After(floor) {
+		floor = *on
+	}
+	if w := g.now().Add(-orgFineWindow); w.After(floor) {
+		floor = w
+	}
+	return floor
+}
+
 func (g *OrgGovernor) RunFines() {
 	if !g.on() {
 		return
 	}
 	since := g.startedAt()
+	floor := g.fineFloor()
 	now := g.now()
 	rows := []orgComplaint{}
-	if err := g.db.Select(&rows, `SELECT c.id, c."bookingId", CASE WHEN c."bookingId" IS NULL THEN NULL ELSE booking_leader_id(c."bookingId") END AS "leaderId",
-		c."customerId", c.status::text AS status, c."createdAt", c."resolvedAt"
+	if err := g.db.Select(&rows, `SELECT c.id, c."bookingId", `+orgComplaintPerson+` AS "personId",
+		c."customerId", c.status::text AS status, (c."noAnswerCount" > 0 OR c."droppedNoAnswerAt" IS NOT NULL) AS "noAnswer",
+		c."createdAt", c."resolvedAt"
 		FROM "Complaint" c WHERE c."createdAt" >= $1 ORDER BY c."createdAt"`, since.UTC()); err != nil {
 		log.Printf("[org-governor] الشكاوي: %v", err)
 		return
@@ -173,54 +225,88 @@ func (g *OrgGovernor) RunFines() {
 		AND position = 'DIRECTOR' AND "endedAt" IS NULL AND NOT acting LIMIT 1`)
 	for _, c := range rows {
 		open := c.Status == "NEW" || c.Status == "IN_PROGRESS"
-		age := now.Sub(c.CreatedAt)
-		late := (open && age >= orgFineDeadline) || (c.Resolved != nil && c.Resolved.Sub(c.CreatedAt) >= orgFineDeadline)
-		// (١) غرامة الموظف: نحكم بعد ما تنحل أو تفوت ٤٨ ساعة — حتى نعرف حجمها
-		if c.Leader != nil && (!open || age >= orgFineDeadline) && !g.protected(*c.Leader) {
-			var priorEmp, priorCust int
-			_ = g.db.Get(&priorEmp, `SELECT count(*) FROM "Complaint" WHERE id <> $1 AND "bookingId" IS NOT NULL
-				AND booking_leader_id("bookingId") = $2 AND "createdAt" BETWEEN $3::timestamp - interval '30 days' AND $3`, c.ID, *c.Leader, c.CreatedAt)
-			_ = g.db.Get(&priorCust, `SELECT count(*) FROM "Complaint" WHERE id <> $1 AND "customerId" = $2 AND "createdAt" < $3`, c.ID, c.Customer, c.CreatedAt)
-			pts, why := FinePoints(late, priorEmp, priorCust)
-			g.fine(model.AiActionOrgFineCustomer, c.ID, *c.Leader, pts, why, c.BookingID)
+		deadline := c.CreatedAt.Add(orgFineDeadline)
+		// متأخرة = فاتت ٤٨ ساعة وهي مفتوحة، أو انحلت بعد ٤٨ (مغلقة بلا وقت = ما نعرف، ما نحسبها)
+		late := (open && now.After(deadline)) || (c.Resolved != nil && c.Resolved.After(deadline))
+		// لحظة الاستحقاق: الإغلاق إذا گبل الموعد، وإلا الموعد نفسه
+		due := deadline
+		if !open && c.Resolved != nil && c.Resolved.Before(deadline) {
+			due = *c.Resolved
 		}
-		// (٢) غرامة مدير العمليات: شكوى بقت ٤٨ ساعة بلا حل
-		if late && opsDirector != "" && !g.protected(opsDirector) {
-			over := age
+		if !open && c.Resolved == nil {
+			due = deadline
+		}
+		if due.After(now) || due.Before(floor) {
+			continue
+		}
+		// (١) غرامة الموظف الي الشكوى عليه — وحدة لكل حجز
+		if c.Person != nil && !g.protected(*c.Person) {
+			var priorEmp, priorCust int
+			_ = g.db.Get(&priorEmp, `SELECT count(DISTINCT COALESCE(c."bookingId", c.id)) FROM "Complaint" c
+				WHERE c.id <> $1 AND `+orgComplaintPerson+` = $2 AND c."createdAt" >= $4
+				AND c."createdAt" BETWEEN $3::timestamp - interval '30 days' AND $3
+				AND c."bookingId" IS DISTINCT FROM $5
+				AND NOT EXISTS (SELECT 1 FROM "AiAction" a WHERE a.kind = $6 AND a.status = 'UNDONE'
+					AND a."entityId" = COALESCE('BOOKING:' || c."bookingId", 'COMPLAINT:' || c.id))`,
+				c.ID, *c.Person, c.CreatedAt, since.UTC(), c.BookingID, model.AiActionOrgFineCustomer)
+			_ = g.db.Get(&priorCust, `SELECT count(DISTINCT COALESCE("bookingId", id)) FROM "Complaint"
+				WHERE id <> $1 AND "customerId" = $2 AND "createdAt" < $3 AND "createdAt" >= $4 AND "bookingId" IS DISTINCT FROM $5`,
+				c.ID, c.Customer, c.CreatedAt, since.UTC(), c.BookingID)
+			pts, why := FinePoints(late && !c.NoAnswer, priorEmp, priorCust)
+			g.fine(model.AiActionOrgFineCustomer, c, *c.Person, pts, why)
+		}
+		// (٢) مدير العمليات: شكوى بقت ٤٨ ساعة بلا حل — إلا إذا الزبون هو الي ما يرد
+		if late && !c.NoAnswer && opsDirector != "" && !g.protected(opsDirector) {
+			pts := orgFineMinPoints
+			why := []string{"شكوى بقت أكثر من ٤٨ ساعة بلا حل"}
 			if c.Resolved != nil {
-				over = c.Resolved.Sub(c.CreatedAt)
+				extra := int(c.Resolved.Sub(deadline).Hours() / 24)
+				if extra > 0 {
+					pts += extra
+					why = []string{fmt.Sprintf("شكوى انحلت بعد %d ساعة (المهلة ٤٨)", int(c.Resolved.Sub(c.CreatedAt).Hours()))}
+				}
 			}
-			extraDays := int((over - orgFineDeadline).Hours() / 24)
-			pts := orgFineMinPoints + extraDays
 			if pts > orgFineMaxPoints {
 				pts = orgFineMaxPoints
 			}
-			why := []string{fmt.Sprintf("شكوى بقت %d ساعة بلا حل (المهلة ٤٨)", int(over.Hours()))}
-			g.fine(model.AiActionOrgFineOps, c.ID, opsDirector, pts, why, c.BookingID)
+			g.fine(model.AiActionOrgFineOps, c, opsDirector, pts, why)
 		}
 	}
 }
 
-func (g *OrgGovernor) fine(kind, complaintID, empID string, pts int, why []string, bookingID *string) {
+func (g *OrgGovernor) fine(kind string, c orgComplaint, empID string, pts int, why []string) {
 	name := g.actions.EmployeeName(empID)
-	summary := fmt.Sprintf("غرامة %s د.ع — %s", formatIQD(pts*model.DisciplineDinarPerPoint), strings.Join(why, "، "))
-	details, _ := json.Marshal(map[string]any{"complaintId": complaintID, "bookingId": bookingID, "points": pts, "reasons": why})
+	key := c.fineKey()
 	target := empID
-	ok, err := g.actions.Claim(model.AiAction{Kind: kind, EntityType: "COMPLAINT", EntityID: complaintID, Period: "once",
-		TargetEmployeeID: &target, TargetLabel: name, Summary: summary, Details: details})
+	details := func(applied int) []byte {
+		b, _ := json.Marshal(map[string]any{"complaintId": c.ID, "bookingId": c.BookingID, "points": pts, "appliedPoints": applied, "reasons": why})
+		return b
+	}
+	summary := func(p int) string {
+		return fmt.Sprintf("غرامة %s د.ع — %s", formatIQD(p*model.DisciplineDinarPerPoint), strings.Join(why, "، "))
+	}
+	ok, err := g.actions.Claim(model.AiAction{Kind: kind, EntityType: "COMPLAINT", EntityID: key, Period: "once",
+		TargetEmployeeID: &target, TargetLabel: name, Summary: summary(pts), Details: details(0)})
 	if err != nil || !ok {
 		return
 	}
-	_, applied, err := g.discipline.AdjustKind(empID, -pts, model.DisciplineMatrixFine, "ماتركس: "+summary, "")
+	_, applied, err := g.discipline.AdjustKind(empID, -pts, model.DisciplineMatrixFine, "ماتركس: "+summary(pts), "")
 	if err != nil {
+		// الخصم فشل ← نشيل الحجز حتى ينعاد بالمرة الجاية (ما يبقى قرار بلا خصم)
 		log.Printf("[org-governor] غرامة %s: %v", empID, err)
+		_ = g.actions.DeleteClaim(kind, key, "once")
 		return
 	}
-	// المطبّق فعلاً (الرصيد ما ينزل تحت الصفر) — التراجع يرجّع هذا بالضبط
-	details, _ = json.Marshal(map[string]any{"complaintId": complaintID, "bookingId": bookingID, "points": pts, "appliedPoints": -applied, "reasons": why})
-	_, _ = g.db.Exec(`UPDATE "AiAction" SET details = $3 WHERE kind = $1 AND "entityId" = $2 AND period = 'once'`, kind, complaintID, details)
-	g.say(empID, "ORG_FINE", "🤖 ماتركس: "+summary+". التفاصيل بسجل الانضباط.")
-	g.reportToDirector(empID, "🤖 ماتركس غرّم "+name+": "+summary)
+	got := -applied // المخصوم فعلاً (الرصيد ما ينزل تحت الصفر) — التراجع يرجّع هذا بالضبط
+	if _, err := g.db.Exec(`UPDATE "AiAction" SET details = $3, summary = $4 WHERE kind = $1 AND "entityId" = $2 AND period = 'once'`,
+		kind, key, details(got), summary(got)); err != nil {
+		log.Printf("[org-governor] تسجيل المخصوم %s: %v", empID, err)
+	}
+	if got <= 0 {
+		return
+	}
+	g.say(empID, "ORG_FINE", "🤖 ماتركس: "+summary(got)+". التفاصيل بسجل الانضباط.")
+	g.reportToDirector(empID, "🤖 ماتركس غرّم "+name+": "+summary(got))
 }
 
 // reportToDirector «يرفع تقرير بالقرارات للمدير» — مدير إدارة الموظف (ونسخة لمدير الإدارة).
@@ -259,30 +345,25 @@ type OrgEvalComponents struct {
 }
 
 // OrgScore الدرجة: للعضو تقييم ماتركس الشهري (٦٠٪ ماتركس + ٤٠٪ بشر). للمدير/النائب:
-// ٦٠٪ تقييمه + ٢٥٪ نسبة خطة إدارته + ١٥٪ استعماله للذكاء — والناقص يتوزّع على الموجود.
+// ٦٠٪ تقييمه + ٢٥٪ نسبة خطة إدارته + ١٥٪ استعماله للذكاء.
+// بلا تقييم ماتركس = ما نحكم (nil) — حتى المدير، ما ننحكم على الخطة والذكاء لحالهم.
 func OrgScore(c OrgEvalComponents) *float64 {
-	type part struct {
-		v *float64
-		w float64
-	}
-	parts := []part{{c.Staff, 1}}
-	if c.Director {
-		parts = []part{{c.Staff, 0.60}, {c.Plan, 0.25}, {c.AIUsage, 0.15}}
-	}
-	sum, w := 0.0, 0.0
-	for _, p := range parts {
-		if p.v != nil {
-			sum += *p.v * p.w
-			w += p.w
-		}
-	}
-	if w == 0 {
+	if c.Staff == nil {
 		return nil
 	}
-	v := math.Round(sum/w*10) / 10
+	v := *c.Staff
+	if c.Director {
+		if c.Plan == nil || c.AIUsage == nil {
+			return nil
+		}
+		v = *c.Staff*0.60 + *c.Plan*0.25 + *c.AIUsage*0.15
+	}
+	v = math.Round(v*10) / 10
 	return &v
 }
 
+// RunMonthlyIfDue كل ساعة أول ٣ أيام من الشهر (بغداد). ما يكرر — كل موظف ينقيّم مرة بالشهر،
+// فخطأ بنص التشغيل ينعاد بالساعة الجاية بدل ما يضيع الشهر.
 func (g *OrgGovernor) RunMonthlyIfDue() {
 	if !g.on() {
 		return
@@ -292,20 +373,20 @@ func (g *OrgGovernor) RunMonthlyIfDue() {
 		return
 	}
 	prev := time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, baghdad).AddDate(0, -1, 0)
-	period := prev.Format("2006-01")
-	if ok, err := g.markers.ClaimDailyMarker("ORG_GOVERN_MONTH", prev.Format("2006-01-02")); err != nil || !ok {
-		return
-	}
-	if err := g.EvaluateMonth(period); err != nil {
-		log.Printf("[org-governor] تقييم %s: %v", period, err)
+	if err := g.EvaluateMonth(prev.Format("2006-01")); err != nil {
+		log.Printf("[org-governor] تقييم %s: %v", prev.Format("2006-01"), err)
 	}
 }
 
-// EvaluateMonth يقيّم كل صاحب منصب فعّال بالشهر ويقرر (تنبيه/سحب). ما يكرر نفس الشهر.
+// EvaluateMonth يقيّم كل صاحب منصب ماسكه من أول الشهر، ويقرر (تنبيه/سحب). ما يكرر.
+// الشهر الي بدأ گبل أول تشغيل للحاكم ما ينقيّم (الهيكل ما چان موجود كامل).
 func (g *OrgGovernor) EvaluateMonth(period string) error {
 	from, to, err := periodRange(period)
 	if err != nil {
 		return err
+	}
+	if from.Before(g.startedAt()) {
+		return nil
 	}
 	board, err := g.scores.Board(period)
 	if err != nil {
@@ -323,7 +404,7 @@ func (g *OrgGovernor) EvaluateMonth(period string) error {
 	holders := []holder{}
 	if err := g.db.Select(&holders, `SELECT "employeeId", bool_or(position IN ('DIRECTOR', 'DEPUTY') AND "unitId" IS NULL) AS director,
 		COALESCE(min("divisionId") FILTER (WHERE position IN ('DIRECTOR', 'DEPUTY') AND "unitId" IS NULL), '') AS "divisionId"
-		FROM "OrgAssignment" WHERE "endedAt" IS NULL AND "startedAt" < $1 GROUP BY "employeeId"`, to); err != nil {
+		FROM "OrgAssignment" WHERE "endedAt" IS NULL AND "startedAt" <= $1 GROUP BY "employeeId"`, from); err != nil {
 		return err
 	}
 	decisions := map[string]int{}
@@ -332,13 +413,15 @@ func (g *OrgGovernor) EvaluateMonth(period string) error {
 			continue
 		}
 		var done int
-		_ = g.db.Get(&done, `SELECT count(*) FROM "OrgEvaluation" WHERE "employeeId" = $1 AND period = $2`, h.Emp, period)
-		if done > 0 {
+		if err := g.db.Get(&done, `SELECT count(*) FROM "OrgEvaluation" WHERE "employeeId" = $1 AND period = $2`, h.Emp, period); err != nil || done > 0 {
 			continue
 		}
 		c := OrgEvalComponents{Staff: staff[h.Emp], Director: h.Director}
-		if h.Director && h.Division != "" {
-			if p, err := g.org.plan(h.Division, period); err == nil {
+		noData := c.Staff == nil
+		if h.Director && h.Division != "" && !noData {
+			if p, err := g.org.plan(h.Division, period); err != nil {
+				noData = true
+			} else {
 				v := 0.0 // ماكو خطة = صفر — الخطة واجب المدير
 				if p != nil {
 					v = float64(p.Progress)
@@ -346,47 +429,53 @@ func (g *OrgGovernor) EvaluateMonth(period string) error {
 				c.Plan = &v
 			}
 			var msgs int
-			_ = g.db.Get(&msgs, `SELECT
+			if err := g.db.Get(&msgs, `SELECT
 				(SELECT count(*) FROM "MatrixTalkMessage" m JOIN "MatrixTalk" t ON t.id = m."chatId"
 				  WHERE t."employeeId" = $1 AND m.role = 'USER' AND m."createdAt" >= $2 AND m."createdAt" < $3)
 				+ (SELECT count(*) FROM "SecretaryMessage" s WHERE s."employeeId" = $1 AND s.role = 'user' AND s."createdAt" >= $2 AND s."createdAt" < $3)`,
-				h.Emp, from.UTC(), to.UTC())
-			u := math.Min(100, float64(msgs)/orgAIUsageFullAt*100)
-			c.AIUsage, c.AIMsgs = &u, msgs
+				h.Emp, from.UTC(), to.UTC()); err != nil {
+				noData = true
+			} else {
+				u := math.Min(100, float64(msgs)/orgAIUsageFullAt*100)
+				c.AIUsage, c.AIMsgs = &u, msgs
+			}
 		}
 		var accepted bool
 		_ = g.db.Get(&accepted, `SELECT EXISTS (SELECT 1 FROM "PrivacyPolicyAcceptance" WHERE "employeeId" = $1 AND "pointsHash" IS NOT NULL)`, h.Emp)
 		c.Principle = accepted
 		score := OrgScore(c)
+		if noData {
+			score = nil
+		}
+		comp, _ := json.Marshal(c)
+		// القرار ينكتب بعد التنفيذ بالي صار فعلاً
 		decision := "NODATA"
 		if score != nil {
 			decision = "OK"
 			if *score < orgRevokeBelow {
-				decision = "WARN"
+				// السحب يحتاج تنبيه وصل فعلاً الشهر الي فات (ما انمنع ولا انلغى)
 				prevPeriod := from.AddDate(0, -1, 0).Format("2006-01")
-				var prevBad bool
-				_ = g.db.Get(&prevBad, `SELECT EXISTS (SELECT 1 FROM "OrgEvaluation" WHERE "employeeId" = $1 AND period = $2
-					AND decision IN ('WARN', 'REVOKE') AND score < $3)`, h.Emp, prevPeriod, orgRevokeBelow)
-				if prevBad {
+				var warned bool
+				_ = g.db.Get(&warned, `SELECT EXISTS (SELECT 1 FROM "AiAction" WHERE kind = $1 AND "entityId" = $2 AND period = $3 AND status = 'DONE')`,
+					model.AiActionOrgWarn, orgEvalEntity(h.Emp, prevPeriod), prevPeriod)
+				switch {
+				case warned && g.revoke(h.Emp, period, *score, comp):
 					decision = "REVOKE"
+				case g.warn(h.Emp, period, *score, comp):
+					decision = "WARN"
+				default:
+					decision = "OK" // التنبيه ما انسجّل (ممنوع/موقوف) — ما نبني عليه
 				}
 			}
 		}
-		comp, _ := json.Marshal(c)
 		res, err := g.db.Exec(`INSERT INTO "OrgEvaluation" ("employeeId", period, score, components, decision) VALUES ($1, $2, $3, $4, $5)
 			ON CONFLICT DO NOTHING`, h.Emp, period, score, comp, decision)
 		if err != nil {
+			log.Printf("[org-governor] تسجيل تقييم %s: %v", h.Emp, err)
 			continue
 		}
-		if n, _ := res.RowsAffected(); n == 0 {
-			continue
-		}
-		decisions[decision]++
-		switch decision {
-		case "WARN":
-			g.warn(h.Emp, period, *score, comp)
-		case "REVOKE":
-			g.revoke(h.Emp, period, *score, comp)
+		if n, _ := res.RowsAffected(); n > 0 {
+			decisions[decision]++
 		}
 	}
 	if len(decisions) > 0 {
@@ -401,35 +490,56 @@ func (g *OrgGovernor) EvaluateMonth(period string) error {
 	return nil
 }
 
-func (g *OrgGovernor) warn(emp, period string, score float64, comp []byte) {
+func (g *OrgGovernor) warn(emp, period string, score float64, comp []byte) bool {
 	name := g.actions.EmployeeName(emp)
 	summary := fmt.Sprintf("تنبيه رسمي: تقييم %s = %.1f%% (تحت ٥٠٪). شهر ثاني تحت ٥٠٪ يسحب المنصب ومخصصه.", period, score)
 	target := emp
-	if ok, _ := g.actions.Claim(model.AiAction{Kind: model.AiActionOrgWarn, EntityType: "EMPLOYEE", EntityID: emp, Period: period,
-		TargetEmployeeID: &target, TargetLabel: name, Summary: summary, Details: comp}); ok {
-		g.say(emp, "ORG_WARN", "⚠️ ماتركس: "+summary)
-		g.reportToDirector(emp, "⚠️ ماتركس نبّه "+name+": "+summary)
+	ok, err := g.actions.Claim(model.AiAction{Kind: model.AiActionOrgWarn, EntityType: "EMPLOYEE", EntityID: orgEvalEntity(emp, period), Period: period,
+		TargetEmployeeID: &target, TargetLabel: name, Summary: summary, Details: comp})
+	if err != nil || !ok {
+		return false
 	}
+	g.say(emp, "ORG_WARN", "⚠️ ماتركس: "+summary)
+	g.reportToDirector(emp, "⚠️ ماتركس نبّه "+name+": "+summary)
+	return true
 }
 
-func (g *OrgGovernor) revoke(emp, period string, score float64, comp []byte) {
+// orgEvalEntity مفتاح قرار التقييم: الشخص + الشهر — رفض قرار شهر ما يمنع قرار شهر ثاني
+// (الحجب ٣٠ يوم بـClaim مصمم للتذكيرات، مو لأحكام شهرية).
+func orgEvalEntity(emp, period string) string { return "EMP:" + emp + ":" + period }
+
+// revoke قرار سحب واحد للشخص (كل مناصبه) — حتى تراجع شخص واحد ما يوقّف النوع كله.
+func (g *OrgGovernor) revoke(emp, period string, score float64, comp []byte) bool {
 	name := g.actions.EmployeeName(emp)
 	ids := []string{}
-	_ = g.db.Select(&ids, `SELECT id FROM "OrgAssignment" WHERE "employeeId" = $1 AND "endedAt" IS NULL`, emp)
+	if err := g.db.Select(&ids, `SELECT id FROM "OrgAssignment" WHERE "employeeId" = $1 AND "endedAt" IS NULL ORDER BY "startedAt"`, emp); err != nil || len(ids) == 0 {
+		return false
+	}
+	reason := fmt.Sprintf("ماتركس: شهرين متتاليين تحت ٥٠٪ (آخرها %s = %.1f%%)", period, score)
+	details, _ := json.Marshal(map[string]any{"assignmentIds": ids, "evaluation": json.RawMessage(comp)})
+	target := emp
+	ok, err := g.actions.Claim(model.AiAction{Kind: model.AiActionOrgRevoke, EntityType: "EMPLOYEE", EntityID: orgEvalEntity(emp, period), Period: period,
+		TargetEmployeeID: &target, TargetLabel: name, Summary: "سحب منصب ومخصصه — " + reason, Details: details})
+	if err != nil || !ok {
+		return false
+	}
+	ended := []string{}
 	for _, id := range ids {
-		reason := fmt.Sprintf("ماتركس: شهرين متتاليين تحت ٥٠٪ (آخرها %s = %.1f%%)", period, score)
-		details, _ := json.Marshal(map[string]any{"assignmentId": id, "evaluation": json.RawMessage(comp)})
-		target := emp
-		ok, err := g.actions.Claim(model.AiAction{Kind: model.AiActionOrgRevoke, EntityType: "ORG_ASSIGNMENT", EntityID: id, Period: period,
-			TargetEmployeeID: &target, TargetLabel: name, Summary: "سحب منصب ومخصصه — " + reason, Details: details})
-		if err != nil || !ok {
-			continue
-		}
 		if _, err := g.org.End("", id, reason); err != nil {
 			log.Printf("[org-governor] سحب %s: %v", id, err)
 			continue
 		}
-		g.say(emp, "ORG_REVOKE", "🏛️ "+reason+" — انسحب منصبك ومخصصه وصلاحياته. تگدر تراجع مديرك.")
-		g.reportToDirector(emp, "🏛️ ماتركس سحب منصب "+name+": "+reason)
+		ended = append(ended, id)
 	}
+	if len(ended) == 0 {
+		_ = g.actions.DeleteClaim(model.AiActionOrgRevoke, orgEvalEntity(emp, period), period)
+		return false
+	}
+	if len(ended) != len(ids) {
+		details, _ = json.Marshal(map[string]any{"assignmentIds": ended, "evaluation": json.RawMessage(comp)})
+		_, _ = g.db.Exec(`UPDATE "AiAction" SET details = $3 WHERE kind = $1 AND "entityId" = $2 AND period = $4`, model.AiActionOrgRevoke, orgEvalEntity(emp, period), details, period)
+	}
+	g.say(emp, "ORG_REVOKE", "🏛️ "+reason+" — انسحب منصبك ومخصصه وصلاحياته. تگدر تراجع مديرك.")
+	g.reportToDirector(emp, "🏛️ ماتركس سحب منصب "+name+": "+reason)
+	return true
 }

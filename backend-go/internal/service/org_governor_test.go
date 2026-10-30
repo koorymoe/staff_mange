@@ -37,8 +37,11 @@ func TestOrgScoreWeights(t *testing.T) {
 	if s := OrgScore(OrgEvalComponents{Director: true, Staff: f(50), Plan: f(100), AIUsage: f(0)}); s == nil || *s != 55 {
 		t.Fatalf("وزن المدير: %v", *s)
 	}
-	// الناقص يتوزّع: بلا تقييم ماتركس → الخطة والذكاء بس
-	if s := OrgScore(OrgEvalComponents{Director: true, Plan: f(40), AIUsage: f(100)}); s == nil || *s != 62.5 {
-		t.Fatalf("توزيع الناقص: %v", *s)
+	// بلا تقييم ماتركس ما نحكم — حتى المدير (ما ننحكم على الخطة والذكاء لحالهم)
+	if s := OrgScore(OrgEvalComponents{Director: true, Plan: f(40), AIUsage: f(100)}); s != nil {
+		t.Fatalf("المدير بلا تقييم لازم nil: %v", *s)
+	}
+	if s := OrgScore(OrgEvalComponents{Director: true, Staff: f(80)}); s != nil {
+		t.Fatal("المدير بلا خطة/ذكاء محسوبين لازم nil")
 	}
 }

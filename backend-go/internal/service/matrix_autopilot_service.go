@@ -406,7 +406,10 @@ func (s *MatrixAutopilotService) Undo(id, by string) error {
 	if a != nil {
 		if hook := s.undoHooks[a.Kind]; hook != nil {
 			if err := hook(*a); err != nil {
+				// الأثر ما رجع (فلوس/منصب) — القرار يرجع DONE حتى ينعاد التراجع، والخطأ يطلع للمستخدم
 				log.Printf("[ai] ترجيع %s: %v", a.Kind, err)
+				_ = s.actions.Reopen(id)
+				return err
 			}
 		}
 	}

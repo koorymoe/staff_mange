@@ -88,6 +88,18 @@ func (r *AiActionRepository) Undo(id, byEmployeeID string) error {
 	return nil
 }
 
+// Reopen يرجّع قرار لحالة DONE — إذا التراجع ما گدر يرجّع الأثر (فلوس/منصب)، القرار ما يضيع.
+func (r *AiActionRepository) Reopen(id string) error {
+	_, err := r.db.Exec(`UPDATE "AiAction" SET status = 'DONE', "undoneById" = NULL, "undoneAt" = NULL WHERE id = $1 AND status = 'UNDONE'`, id)
+	return err
+}
+
+// DeleteClaim يشيل حجز قرار ما انفّذ (فشل التنفيذ) — حتى ينعاد بالمرة الجاية.
+func (r *AiActionRepository) DeleteClaim(kind, entityID, period string) error {
+	_, err := r.db.Exec(`DELETE FROM "AiAction" WHERE kind = $1 AND "entityId" = $2 AND period = $3 AND status = 'DONE'`, kind, entityID, period)
+	return err
+}
+
 // PendingAiVerdicts أحكام ماتركس بصندوق المراقب الي بعدها ما انراجعت.
 func (r *AiActionRepository) PendingAiVerdicts(limit int) ([]model.PendingAiDecision, error) {
 	rows := []model.PendingAiDecision{}
@@ -703,6 +715,7 @@ func (r *AiActionRepository) VehiclesUnratedToday() ([]string, error) {
 	return r.procScore().VehiclesUnratedToday()
 }
 func (r *AiActionRepository) FleetOverdue() ([]string, error) { return r.procScore().FleetOverdue() }
+
 // UnverifiedProjectPayments دفعات مشاريع ما أكدها المحاسب من +٤٨ ساعة (قرار (ع) 10-10).
 func (r *AiActionRepository) UnverifiedProjectPayments() (int, float64, string, error) {
 	var n int

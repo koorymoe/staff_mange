@@ -256,7 +256,10 @@ func (r *ComplaintRepository) Update(id string, status, assignedToEmployeeID, re
 		UPDATE "Complaint" SET
 			status = COALESCE($2, status),
 			"assignedToEmployeeId" = COALESCE($3, "assignedToEmployeeId"),
-			resolution = COALESCE($4, resolution)
+			resolution = COALESCE($4, resolution),
+			-- (الهيكل 10-30) الإغلاق من هنا لازم يسجّل وقته — ماتركس الحاكم يحسب المهلة منه
+			"resolvedAt" = CASE WHEN COALESCE($2, status)::text IN ('RESOLVED', 'CLOSED') THEN COALESCE("resolvedAt", now())
+			                    ELSE NULL END
 		WHERE id = $1
 		RETURNING *
 	`, id, status, assignedToEmployeeID, resolution)

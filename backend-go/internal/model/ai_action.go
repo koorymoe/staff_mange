@@ -58,10 +58,10 @@ const (
 
 // AiActionLabels اسم الفعل للعرض.
 var AiActionLabels = map[string]string{
-	AiActionOrgFineCustomer: "غرامة مشكلة ويا الزبون",
-	AiActionOrgFineOps:      "غرامة مدير العمليات (شكوى بلا حل)",
-	AiActionOrgWarn:         "تنبيه رسمي (تقييم تحت ٥٠٪)",
-	AiActionOrgRevoke:       "سحب منصب ومخصصه",
+	AiActionOrgFineCustomer:    "غرامة مشكلة ويا الزبون",
+	AiActionOrgFineOps:         "غرامة مدير العمليات (شكوى بلا حل)",
+	AiActionOrgWarn:            "تنبيه رسمي (تقييم تحت ٥٠٪)",
+	AiActionOrgRevoke:          "سحب منصب ومخصصه",
 	AiActionPaperworkReminder:  "تذكير بالورق المتأخر",
 	AiActionDelayWarning:       "تنبيه تأخير لليدر",
 	AiActionCustomerFollowUp:   "متابعة زبون قريب يزعل",
