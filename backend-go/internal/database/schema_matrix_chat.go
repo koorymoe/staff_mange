@@ -1434,5 +1434,16 @@ func matrixChatMigrations() []Migration {
 			ALTER TABLE "OrgPlanItem" ADD COLUMN IF NOT EXISTS "ownerId" TEXT REFERENCES "Employee"(id) ON DELETE SET NULL;
 			ALTER TABLE "OrgIssueReport" ADD COLUMN IF NOT EXISTS "solutionPlan" TEXT;
 		`,
+	}, {
+		// 🔎 التشخيص الذكي (دازاي 10-30 — النقطة ٤): ماتركس يفتح مشاكل الوحدات لحاله من
+		// أرقامها (source=MATRIX، signal = نوع الإشارة)، يحدّثها إذا بقت، ويسكّرها إذا انحلت.
+		Version: "0415_org_diagnosis",
+		SQL: `
+			ALTER TABLE "OrgIssueReport" ADD COLUMN IF NOT EXISTS source TEXT NOT NULL DEFAULT 'HUMAN';
+			ALTER TABLE "OrgIssueReport" ADD COLUMN IF NOT EXISTS signal TEXT;
+			ALTER TABLE "OrgIssueReport" ADD COLUMN IF NOT EXISTS "lastSeenAt" TIMESTAMPTZ;
+			CREATE UNIQUE INDEX IF NOT EXISTS "OrgIssueReport_signal_open_uq" ON "OrgIssueReport" (signal)
+				WHERE signal IS NOT NULL AND status <> 'RESOLVED';
+		`,
 	}}
 }

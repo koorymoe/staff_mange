@@ -2949,6 +2949,10 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 		orgGovernor := service.NewOrgGovernor(db, orgService, matrixScoreService, disciplineRepo, aiActionRepo, aiRepo,
 			repository.NewSystemSwitchRepository(db), notificationRepo)
 		orgGovernor.RegisterUndo(matrixAutopilotService.OnUndo)
+		// 🔎 التشخيص الذكي (النقطة ٤): ماتركس يفتح/يسكّر مشاكل الوحدات من أرقامها كل ٦ ساعات
+		safeguard.Loop("org-diagnosis", 6*time.Minute, 6*time.Hour, func() {
+			orgService.RunDiagnosis(repository.NewSystemSwitchRepository(db), func(emp, msg string) { _ = notificationRepo.Create(emp, "ORG_DIAGNOSIS", msg) })
+		})
 		// المناصب المؤقتة بالإجازات (المبدأ ٢٠) — مستقلة عن مفتاح الحاكم
 		safeguard.Loop("org-acting", 3*time.Minute, time.Hour, func() {
 			orgService.RunActing(func(emp, msg string) { _ = notificationRepo.Create(emp, "ORG_ACTING", msg) })
