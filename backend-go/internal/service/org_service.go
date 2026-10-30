@@ -128,27 +128,34 @@ type OrgChartUnit struct {
 
 type OrgChartDivision struct {
 	model.OrgDivision
-	Permissions []string              `json:"permissions"`
-	People      []model.OrgAssignment `json:"people"`
-	Units       []OrgChartUnit        `json:"units"`
+	Permissions []string `json:"permissions"`
+	// HeadPermissions الجزء من Permissions الي للمدير/النائب بس (headOnly)
+	HeadPermissions []string              `json:"headPermissions"`
+	People          []model.OrgAssignment `json:"people"`
+	Units           []OrgChartUnit        `json:"units"`
 }
 
 const orgAssignCols = `a.id, a."employeeId", e.name AS "employeeName", a."divisionId", a."unitId", a.position,
 	a."allowanceIQD", a.acting, a."actingUntil", a."replacesId", a."startedAt", a."endedAt", a."endedById", a."endReason", a.note`
 
-func (s *OrgService) bundles() (map[string][]string, error) {
+// bundles حزم الصلاحيات: الكل، والجزء الي للرئيس/النائب بس.
+func (s *OrgService) bundles() (all, head map[string][]string, err error) {
 	rows := []struct {
 		Scope string `db:"scope"`
 		Perm  string `db:"permission"`
+		Head  bool   `db:"headOnly"`
 	}{}
-	if err := s.db.Select(&rows, `SELECT scope, permission FROM "OrgBundle" ORDER BY permission`); err != nil {
-		return nil, err
+	if err := s.db.Select(&rows, `SELECT scope, permission, "headOnly" FROM "OrgBundle" ORDER BY permission`); err != nil {
+		return nil, nil, err
 	}
-	out := map[string][]string{}
+	all, head = map[string][]string{}, map[string][]string{}
 	for _, r := range rows {
-		out[r.Scope] = append(out[r.Scope], r.Perm)
+		all[r.Scope] = append(all[r.Scope], r.Perm)
+		if r.Head {
+			head[r.Scope] = append(head[r.Scope], r.Perm)
+		}
 	}
-	return out, nil
+	return all, head, nil
 }
 
 func (s *OrgService) Chart() ([]OrgChartDivision, error) {
@@ -165,13 +172,13 @@ func (s *OrgService) Chart() ([]OrgChartDivision, error) {
 		WHERE a."endedAt" IS NULL ORDER BY CASE a.position WHEN 'DIRECTOR' THEN 0 WHEN 'DEPUTY' THEN 1 ELSE 2 END, e.name`); err != nil {
 		return nil, err
 	}
-	b, err := s.bundles()
+	b, hb, err := s.bundles()
 	if err != nil {
 		return nil, err
 	}
 	out := make([]OrgChartDivision, 0, len(divs))
 	for _, d := range divs {
-		cd := OrgChartDivision{OrgDivision: d, Permissions: nz(b[d.ID]), People: []model.OrgAssignment{}, Units: []OrgChartUnit{}}
+		cd := OrgChartDivision{OrgDivision: d, Permissions: nz(b[d.ID]), HeadPermissions: nz(hb[d.ID]), People: []model.OrgAssignment{}, Units: []OrgChartUnit{}}
 		for _, p := range people {
 			if p.DivisionID == d.ID && p.UnitID == nil {
 				cd.People = append(cd.People, p)
@@ -182,6 +189,7 @@ func (s *OrgService) Chart() ([]OrgChartDivision, error) {
 				continue
 			}
 			u.Permissions = nz(b[u.ID])
+			u.HeadPermissions = nz(hb[u.ID])
 			cu := OrgChartUnit{OrgUnit: u, People: []model.OrgAssignment{}}
 			for _, p := range people {
 				if p.UnitID != nil && *p.UnitID == u.ID {

@@ -34,6 +34,8 @@ type OrgUnit struct {
 	Name        string   `db:"name" json:"name"`
 	Sort        int      `db:"sort" json:"sort"`
 	Permissions []string `db:"-" json:"permissions"`
+	// HeadPermissions الجزء من Permissions الي لرئيس الوحدة/نائبها بس
+	HeadPermissions []string `db:"-" json:"headPermissions"`
 }
 
 // OrgAssignment منصب موظف. ما ينحذف أبداً — ينتهي (endedAt) وينحفظ السجل حتى التراجع يرجّعه.

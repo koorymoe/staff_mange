@@ -71,6 +71,35 @@ func TestOrgPositionPerms_Live(t *testing.T) {
 	if !has("__pp_dir", "vehicle_management") || !has("__pp_dir", "manage_customers") {
 		t.Fatal("مدير الإدارة لازم ياخذ حزم رؤساء كل وحداته")
 	}
+	chart, err := s.Chart()
+	if err != nil {
+		t.Fatal(err)
+	}
+	in := func(xs []string, x string) bool {
+		for _, v := range xs {
+			if v == x {
+				return true
+			}
+		}
+		return false
+	}
+	found := false
+	for _, d := range chart {
+		for _, u := range d.Units {
+			if u.ID == "ops.staff" {
+				found = true
+				if !in(u.HeadPermissions, "kpi_management") || in(u.HeadPermissions, "staff_requests") || !in(u.Permissions, "staff_requests") {
+					t.Fatalf("headPermissions غلط: %v", u.HeadPermissions)
+				}
+			}
+		}
+		if d.ID == "admin" && !in(d.HeadPermissions, "monitoring") {
+			t.Fatal("حزمة منصب الإدارة لازم كلها للرئيس")
+		}
+	}
+	if !found {
+		t.Fatal("ops.staff ما بالشجرة")
+	}
 	// إعادة البذر ما تكرر شي ولا تغيّر
 	if err := s.Seed(); err != nil {
 		t.Fatal(err)
