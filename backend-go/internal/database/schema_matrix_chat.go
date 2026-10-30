@@ -1490,5 +1490,13 @@ func matrixChatMigrations() []Migration {
 				PRIMARY KEY ("directiveId", "employeeId")
 			);
 		`,
+	}, {
+		// 🎯 ربط المهام والـKPI بالمخرجات (دازاي 10-30 — النقطة ٨): المهمة الإضافية ومعيار
+		// الـKPI ينربطون بفقرة من لائحة العمل، حتى لوحة المخرجات تجمع الأداء لكل فقرة.
+		Version: "0418_outputs_link",
+		SQL: `
+			ALTER TABLE "ExtraTask" ADD COLUMN IF NOT EXISTS clause INT;
+			ALTER TABLE "KpiCriterion" ADD COLUMN IF NOT EXISTS clause INT;
+		`,
 	}}
 }

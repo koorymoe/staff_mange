@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"time"
 
 	"staffmange-api/internal/middleware"
 	"staffmange-api/internal/repository"
@@ -410,6 +411,61 @@ func (h *OrgHandler) ArchiveDirective(w http.ResponseWriter, r *http.Request) {
 	emp, role := who(r)
 	if err := h.svc.ArchiveDirective(emp, role, r.PathValue("id")); err != nil {
 		h.orgErr(w, err)
+		return
+	}
+	WriteJSON(w, http.StatusOK, map[string]bool{"ok": true})
+}
+
+// ── 🎯 المخرجات (النقطة ٨) ──
+
+// GET /api/org/outputs?employeeId=|unitId=|divisionId=&period= — لوحة المخرجات لكل فقرة.
+// الموظف يشوف نفسه، الرئيس يشوف إدارته/وحدته وكادرها، والأدمن الكل. غير ذلك 404.
+func (h *OrgHandler) Outputs(w http.ResponseWriter, r *http.Request) {
+	emp, role := who(r)
+	q := r.URL.Query()
+	e, u, d := q.Get("employeeId"), q.Get("unitId"), q.Get("divisionId")
+	period := q.Get("period")
+	if period == "" {
+		period = service.OrgPeriod(time.Now())
+	}
+	if !h.svc.CanSeeOutputs(emp, role, e, u, d) {
+		WriteError(w, http.StatusNotFound, "مو موجود")
+		return
+	}
+	card, err := service.OutputsScorecard(h.svc.DB(), e, u, d, period)
+	if err != nil {
+		WriteError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	WriteJSON(w, http.StatusOK, card)
+}
+
+// PUT /api/org/tasks/{id}/clause و /api/org/kpi-criteria/{id}/clause — {clause|null} (أدمن)
+func (h *OrgHandler) TaskClause(w http.ResponseWriter, r *http.Request) {
+	var in struct {
+		Clause *int `json:"clause"`
+	}
+	if err := DecodeJSON(r, &in); err != nil {
+		WriteError(w, http.StatusBadRequest, "طلب غير صالح")
+		return
+	}
+	if err := service.SetTaskClause(h.svc.DB(), r.PathValue("id"), in.Clause); err != nil {
+		WriteError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	WriteJSON(w, http.StatusOK, map[string]bool{"ok": true})
+}
+
+func (h *OrgHandler) CriterionClause(w http.ResponseWriter, r *http.Request) {
+	var in struct {
+		Clause *int `json:"clause"`
+	}
+	if err := DecodeJSON(r, &in); err != nil {
+		WriteError(w, http.StatusBadRequest, "طلب غير صالح")
+		return
+	}
+	if err := service.SetCriterionClause(h.svc.DB(), r.PathValue("id"), in.Clause); err != nil {
+		WriteError(w, http.StatusBadRequest, err.Error())
 		return
 	}
 	WriteJSON(w, http.StatusOK, map[string]bool{"ok": true})

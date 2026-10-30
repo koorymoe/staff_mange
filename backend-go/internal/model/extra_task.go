@@ -25,6 +25,8 @@ type ExtraTask struct {
 	CancelReason *string    `db:"cancelReason" json:"cancelReason,omitempty"`
 	CreatedAt    time.Time  `db:"createdAt" json:"createdAt"`
 	UpdatedAt    time.Time  `db:"updatedAt" json:"updatedAt"`
+	// Clause فقرة لائحة العمل الي تخدمها المهمة (النقطة ٨ — 10-30). ⚠️ SELECT * — لازم يبقى.
+	Clause *int `db:"clause" json:"clause"`
 
 	// أسماء محسوبة وقت الجلب — مو أعمدة.
 	AssignedToName *string `db:"-" json:"assignedToName,omitempty"`
