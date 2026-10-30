@@ -33,6 +33,8 @@ const (
 	// SwitchOrgGovernor ماتركس الحاكم: الغرامات وسحب المناصب (دازاي 10-29) — شغّال افتراضياً
 	// بقرار المالك، والمفتاح للطوارئ.
 	SwitchOrgGovernor = "org_governor"
+	// SwitchOrgDiagnosis التشخيص الذكي: ماتركس يفتح مشاكل الوحدات من أرقامها (10-30)
+	SwitchOrgDiagnosis = "org_diagnosis"
 )
 
 // مفاتيح توفير الكلفة — كل ميزة تستعمل هايكو إلها مفتاح. المطفي يرجع للقواعد
@@ -86,6 +88,7 @@ var SystemSwitchLabels = map[string]string{
 	SwitchMatrixMonitorEscalate: "ماتركس يصعّد بنود المراقب المتأخرة",
 	SwitchMatrixScoring:         "ماتركس يقيّم الموظفين بالنقاط",
 	SwitchOrgGovernor:           "ماتركس الحاكم: الغرامات وسحب المناصب",
+	SwitchOrgDiagnosis:          "ماتركس يشخّص مشاكل الوحدات من أرقامها",
 	SwitchAIGuide:               "هايكو: توجيهات ماتركس للموظفين",
 	SwitchAIJudge:               "هايكو: أحكام ماتركس",
 	SwitchAIDiscovery:           "هايكو: ماتركس اكتشف",

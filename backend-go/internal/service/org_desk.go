@@ -132,9 +132,11 @@ type OrgIssue struct {
 	Status     string  `db:"status" json:"status"`
 	Resolution *string `db:"resolution" json:"resolution"`
 	// خطة الحل (تطوير الوحدة 10-30)
-	SolutionPlan *string    `db:"solutionPlan" json:"solutionPlan"`
-	CreatedAt    time.Time  `db:"createdAt" json:"createdAt"`
-	ResolvedAt   *time.Time `db:"resolvedAt" json:"resolvedAt"`
+	SolutionPlan *string `db:"solutionPlan" json:"solutionPlan"`
+	// Source HUMAN أو MATRIX (التشخيص الذكي 10-30)
+	Source     string     `db:"source" json:"source"`
+	CreatedAt  time.Time  `db:"createdAt" json:"createdAt"`
+	ResolvedAt *time.Time `db:"resolvedAt" json:"resolvedAt"`
 }
 
 type OrgPlanItem struct {
@@ -289,7 +291,7 @@ func (s *OrgService) Desk(empID, role, divisionID, period string) (*OrgDesk, err
 		return nil, ErrOrgHidden
 	}
 	if err := s.db.Select(&desk.Issues, `SELECT i.id, i."divisionId", i."unitId", i."authorId", e.name AS "authorName", i.title, i.problem,
-		i.impact, i.scope, i.principle, i.severity, i.status, i.resolution, i."solutionPlan", i."createdAt", i."resolvedAt"
+		i.impact, i.scope, i.principle, i.severity, i.status, i.resolution, i."solutionPlan", i.source, i."createdAt", i."resolvedAt"
 		FROM "OrgIssueReport" i LEFT JOIN "Employee" e ON e.id = i."authorId"
 		WHERE i."divisionId" = $1 ORDER BY (i.status = 'RESOLVED'), CASE i.severity WHEN 'HIGH' THEN 0 WHEN 'MEDIUM' THEN 1 ELSE 2 END, i."createdAt" DESC
 		LIMIT 200`, divisionID); err != nil {

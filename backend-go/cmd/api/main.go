@@ -2949,6 +2949,10 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 		orgGovernor := service.NewOrgGovernor(db, orgService, matrixScoreService, disciplineRepo, aiActionRepo, aiRepo,
 			repository.NewSystemSwitchRepository(db), notificationRepo)
 		orgGovernor.RegisterUndo(matrixAutopilotService.OnUndo)
+		// 🔎 التشخيص الذكي (النقطة ٤): ماتركس يفتح/يسكّر مشاكل الوحدات من أرقامها كل ٦ ساعات
+		safeguard.Loop("org-diagnosis", 6*time.Minute, 6*time.Hour, func() {
+			orgService.RunDiagnosis(repository.NewSystemSwitchRepository(db), func(emp, msg string) { _ = notificationRepo.Create(emp, "ORG_DIAGNOSIS", msg) })
+		})
 		// المناصب المؤقتة بالإجازات (المبدأ ٢٠) — مستقلة عن مفتاح الحاكم
 		safeguard.Loop("org-acting", 3*time.Minute, time.Hour, func() {
 			orgService.RunActing(func(emp, msg string) { _ = notificationRepo.Create(emp, "ORG_ACTING", msg) })
@@ -2972,6 +2976,16 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 		mux.Handle("POST /api/org/plans/{id}/submit", middleware.Chain(http.HandlerFunc(orgHandler.SubmitPlan), requireAuth))
 		mux.Handle("POST /api/org/plans/{id}/review", middleware.Chain(http.HandlerFunc(orgHandler.ReviewPlan), requireAuth))
 		mux.Handle("PUT /api/org/issues/{id}/solution", middleware.Chain(http.HandlerFunc(orgHandler.SetSolution), requireAuth))
+		mux.Handle("GET /api/org/people/{id}/executive", middleware.Chain(http.HandlerFunc(orgHandler.Executive), requireAuth, requireAdmin))
+		mux.Handle("POST /api/org/directives", middleware.Chain(http.HandlerFunc(orgHandler.IssueDirective), requireAuth))
+		mux.Handle("GET /api/org/directives", middleware.Chain(http.HandlerFunc(orgHandler.ManagedDirectives), requireAuth))
+		mux.Handle("GET /api/org/directives/mine", middleware.Chain(http.HandlerFunc(orgHandler.MyDirectives), requireAuth))
+		mux.Handle("POST /api/org/directives/{id}/ack", middleware.Chain(http.HandlerFunc(orgHandler.AckDirective), requireAuth))
+		mux.Handle("POST /api/org/directives/{id}/archive", middleware.Chain(http.HandlerFunc(orgHandler.ArchiveDirective), requireAuth))
+		service.SetDirectiveDeps(orgService, func(emp, msg string) { _ = notificationRepo.Create(emp, "ORG_DIRECTIVE", msg) })
+		mux.Handle("GET /api/org/outputs", middleware.Chain(http.HandlerFunc(orgHandler.Outputs), requireAuth))
+		mux.Handle("PUT /api/org/tasks/{id}/clause", middleware.Chain(http.HandlerFunc(orgHandler.TaskClause), requireAuth, requireAdmin))
+		mux.Handle("PUT /api/org/kpi-criteria/{id}/clause", middleware.Chain(http.HandlerFunc(orgHandler.CriterionClause), requireAuth, requireAdmin))
 		mux.Handle("GET /api/org/my-items", middleware.Chain(http.HandlerFunc(orgHandler.MyItems), requireAuth))
 		mux.Handle("GET /api/org/regulations", middleware.Chain(http.HandlerFunc(orgHandler.Regulations), requireAuth))
 		mux.Handle("PUT /api/org/authority/{division}", middleware.Chain(http.HandlerFunc(orgHandler.SetAuthority), requireAuth, requireAdmin))

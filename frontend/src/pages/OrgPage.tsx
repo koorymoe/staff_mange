@@ -12,6 +12,8 @@ import {
   type OrgUnit,
 } from '../org'
 import { useSession } from '../session'
+import DirectiveManager from '../components/DirectiveManager'
+import type { DirectiveTarget } from '../orgDirectives'
 import { roleLabel } from '../roleLabels'
 import { matches } from '../utils/search'
 import './OrgPage.css'
@@ -115,6 +117,7 @@ function OrgWorkspace({ view }: { view: 'chart' | 'assign' }) {
   const [filter, setFilter] = useState('')
   const [search, setSearch] = useState('')
   const [notice, setNotice] = useState('')
+  const [showDirectives, setShowDirectives] = useState(false)
   useEffect(() => {
     let alive = true
     Promise.allSettled([
@@ -342,6 +345,7 @@ function OrgWorkspace({ view }: { view: 'chart' | 'assign' }) {
         <nav>
           <Link to="/org">الشجرة</Link>
           <Link to="/org/assign">ترتيب الموظفين</Link>
+          <button disabled={loading || !data?.chart} aria-expanded={showDirectives} onClick={() => setShowDirectives(v => !v)}>📣 إصدار توجيه</button>
           <button
             className="org-primary"
             disabled={loading || !data?.chart || !data?.employees}
@@ -351,6 +355,10 @@ function OrgWorkspace({ view }: { view: 'chart' | 'assign' }) {
           </button>
         </nav>
       </header>
+      {showDirectives && data?.chart && <section className="org-panel"><DirectiveManager targets={[
+        {scope:'COMPANY',label:'الشركة كلها'},
+        ...chart.flatMap(d => [{scope:'DIVISION' as const,divisionId:d.id,label:d.name},...(d.units ?? []).map(u => ({scope:'UNIT' as const,divisionId:d.id,unitId:u.id,label:`${d.name} / ${u.name}`}))]),
+      ] as DirectiveTarget[]}/></section>}
       {notice && (
         <p role="status" className="org-notice">
           {notice}

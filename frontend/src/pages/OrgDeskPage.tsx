@@ -8,6 +8,8 @@ import {
   type OrgUnit,
 } from '../org'
 import { useSession } from '../session'
+import DirectiveManager from '../components/DirectiveManager'
+import type { DirectiveTarget } from '../orgDirectives'
 import {
   orgAdmin,
   orgDeskAllowed,
@@ -34,7 +36,7 @@ import {
 import './OrgPage.css'
 import './OrgDeskPage.css'
 
-type Tab = 'issues' | 'plan' | 'units' | 'authority' | 'team'
+type Tab = 'issues' | 'plan' | 'units' | 'authority' | 'team' | 'directives'
 const canAddItems = (plan: DeskPlan) =>
   plan.status === 'DRAFT' || plan.status === 'RETURNED'
 const dueOrder = (a: DeskItem, b: DeskItem) =>
@@ -351,6 +353,7 @@ function DeskContent({
             ['issues', 'المشاكل'],
             ['plan', 'خطة التحسين'],
             ['units', 'تطوير الوحدات'],
+            ['directives', 'التوجيهات'],
             ['authority', 'الصلاحيات (DOA)'],
             ['team', 'الفريق'],
           ] as const
@@ -588,6 +591,11 @@ function DeskContent({
         />
       )}
       {tab === 'team' && <Team division={data.division} />}
+      {tab === 'directives' && <DirectiveManager divisionId={data.division.id} targets={[
+        ...(admin ? [{scope:'COMPANY',label:'الشركة كلها'} as DirectiveTarget] : []),
+        ...(data.canEdit ? [{scope:'DIVISION',divisionId:data.division.id,label:data.division.name} as DirectiveTarget] : []),
+        ...(data.division.units ?? []).filter(u => (data.editableUnits ?? []).includes(u.id)).map(u => ({scope:'UNIT' as const,divisionId:data.division.id,unitId:u.id,label:`${data.division.name} / ${u.name}`})),
+      ]}/>}
       {modal?.kind === 'issue' && (
         <IssueEditor
           division={data.division}

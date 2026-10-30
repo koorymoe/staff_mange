@@ -1434,5 +1434,69 @@ func matrixChatMigrations() []Migration {
 			ALTER TABLE "OrgPlanItem" ADD COLUMN IF NOT EXISTS "ownerId" TEXT REFERENCES "Employee"(id) ON DELETE SET NULL;
 			ALTER TABLE "OrgIssueReport" ADD COLUMN IF NOT EXISTS "solutionPlan" TEXT;
 		`,
+	}, {
+		// 🔎 التشخيص الذكي (دازاي 10-30 — النقطة ٤): ماتركس يفتح مشاكل الوحدات لحاله من
+		// أرقامها (source=MATRIX، signal = نوع الإشارة)، يحدّثها إذا بقت، ويسكّرها إذا انحلت.
+		Version: "0415_org_diagnosis",
+		SQL: `
+			ALTER TABLE "OrgIssueReport" ADD COLUMN IF NOT EXISTS source TEXT NOT NULL DEFAULT 'HUMAN';
+			ALTER TABLE "OrgIssueReport" ADD COLUMN IF NOT EXISTS signal TEXT;
+			ALTER TABLE "OrgIssueReport" ADD COLUMN IF NOT EXISTS "lastSeenAt" TIMESTAMPTZ;
+			CREATE UNIQUE INDEX IF NOT EXISTS "OrgIssueReport_signal_open_uq" ON "OrgIssueReport" (signal)
+				WHERE signal IS NOT NULL AND status <> 'RESOLVED';
+		`,
+	}, {
+		// 🗂️ رأي كمال التنفيذي بكل شخص (دازاي 10-30 — النقطة ٦): كمال يقرا حقائق الموظف من
+		// النظام ويكتب رأيه (تقدير ١-٥ + نقاط قوة/ضعف + توصية) — رأي واحد لكل شهر يتحدّث.
+		Version: "0416_executive_opinion",
+		SQL: `
+			CREATE TABLE IF NOT EXISTS "OrgExecutiveOpinion" (
+				id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
+				"employeeId" TEXT NOT NULL REFERENCES "Employee"(id) ON DELETE CASCADE,
+				period TEXT NOT NULL,
+				rating INT NOT NULL CHECK (rating BETWEEN 1 AND 5),
+				strengths TEXT NOT NULL DEFAULT '',
+				weaknesses TEXT NOT NULL DEFAULT '',
+				recommendation TEXT NOT NULL DEFAULT '',
+				facts JSONB NOT NULL DEFAULT '{}',
+				"requestedById" TEXT REFERENCES "Employee"(id) ON DELETE SET NULL,
+				"updatedAt" TIMESTAMPTZ NOT NULL DEFAULT now(),
+				UNIQUE ("employeeId", period)
+			);
+		`,
+	}, {
+		// 📣 التوجيهات كسياسة عمل (دازاي 10-30 — النقطة ٧): المالك/المدير/رئيس الوحدة يصدر
+		// توجيه لنطاقه (الشركة/إدارة/وحدة) مربوط بفقرة اللائحة، والي بنطاقه يقرون «اطّلعت وألتزم»،
+		// وينحفظ إقرارهم. التوجيه ما ينحذف — يتوقف (archivedAt).
+		Version: "0417_org_directives",
+		SQL: `
+			CREATE TABLE IF NOT EXISTS "OrgDirective" (
+				id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
+				scope TEXT NOT NULL CHECK (scope IN ('COMPANY', 'DIVISION', 'UNIT')),
+				"divisionId" TEXT REFERENCES "OrgDivision"(id),
+				"unitId" TEXT REFERENCES "OrgUnit"(id),
+				title TEXT NOT NULL,
+				body TEXT NOT NULL,
+				clause INT,
+				"issuedById" TEXT REFERENCES "Employee"(id) ON DELETE SET NULL,
+				"issuedAt" TIMESTAMPTZ NOT NULL DEFAULT now(),
+				"archivedAt" TIMESTAMPTZ
+			);
+			CREATE INDEX IF NOT EXISTS "OrgDirective_active" ON "OrgDirective" ("issuedAt" DESC) WHERE "archivedAt" IS NULL;
+			CREATE TABLE IF NOT EXISTS "OrgDirectiveAck" (
+				"directiveId" TEXT NOT NULL REFERENCES "OrgDirective"(id) ON DELETE CASCADE,
+				"employeeId" TEXT NOT NULL REFERENCES "Employee"(id) ON DELETE CASCADE,
+				"ackAt" TIMESTAMPTZ NOT NULL DEFAULT now(),
+				PRIMARY KEY ("directiveId", "employeeId")
+			);
+		`,
+	}, {
+		// 🎯 ربط المهام والـKPI بالمخرجات (دازاي 10-30 — النقطة ٨): المهمة الإضافية ومعيار
+		// الـKPI ينربطون بفقرة من لائحة العمل، حتى لوحة المخرجات تجمع الأداء لكل فقرة.
+		Version: "0418_outputs_link",
+		SQL: `
+			ALTER TABLE "ExtraTask" ADD COLUMN IF NOT EXISTS clause INT;
+			ALTER TABLE "KpiCriterion" ADD COLUMN IF NOT EXISTS clause INT;
+		`,
 	}}
 }

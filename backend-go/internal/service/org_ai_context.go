@@ -71,6 +71,7 @@ func OrgBrief(db *sqlx.DB, empID string) string {
 			fmt.Fprintf(&b, "مكان المستخدم: %s%s — %s.\n", orgPosAr[m.Pos], act, place)
 		}
 	}
+	b.WriteString(directivesBrief(db) + "\n")
 	b.WriteString("اربط أي مشكلة أو ملاحظة بفقرة من اللائحة (برمزها مثل م٢/ف١). للأسماء والأرقام والتفاصيل استعمل org_structure وregulations وunit_status — لا تخمّن.")
 	return b.String()
 }

@@ -46,6 +46,7 @@ const notifTargets: Record<string, string> = {
   // توقعات ماتركس واقتراحاته — صندوق القرارات بي منو وليش
   AI_DECISIONS: '/matrix/decisions',
   AI_SUGGESTION: '/ai-suggestions',
+  ORG_DIRECTIVE: '/',
   // ═══ قرارات الطلبات ═══
   // الإشعار بلا وجهة يخلي الموظف يقرا «انوافق على طلبك» ويضغط عليه
   // وما يصير شي — فيضطر يدوّر على الشاشة بنفسه.

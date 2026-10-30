@@ -27,6 +27,8 @@ type KpiCriterion struct {
 	ID        string    `db:"id" json:"id"`
 	Label     string    `db:"label" json:"label"`
 	CreatedAt time.Time `db:"createdAt" json:"createdAt"`
+	// Clause فقرة لائحة العمل الي يقيسها المعيار (النقطة ٨ — 10-30). ⚠️ SELECT * — لازم يبقى.
+	Clause *int `db:"clause" json:"clause"`
 }
 
 type CreateKpiCriterionRequest struct {

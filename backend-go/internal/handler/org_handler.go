@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"time"
 
 	"staffmange-api/internal/middleware"
 	"staffmange-api/internal/repository"
@@ -339,4 +340,133 @@ func (h *OrgHandler) MyItems(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	WriteJSON(w, http.StatusOK, out)
+}
+
+// GET /api/org/people/{id}/executive — حقائق الموظف التنفيذية + آراء كمال (المالك ومدير النظام)
+func (h *OrgHandler) Executive(w http.ResponseWriter, r *http.Request) {
+	f, err := service.ExecutiveFacts(h.svc.DB(), r.PathValue("id"))
+	if err != nil {
+		WriteError(w, http.StatusNotFound, err.Error())
+		return
+	}
+	ops, _ := service.ExecutiveOpinions(h.svc.DB(), r.PathValue("id"))
+	WriteJSON(w, http.StatusOK, map[string]any{"facts": f, "opinions": ops})
+}
+
+// ── 📣 التوجيهات (النقطة ٧) ──
+
+// POST /api/org/directives — {scope, divisionId?, unitId?, title, body, clause?}
+func (h *OrgHandler) IssueDirective(w http.ResponseWriter, r *http.Request) {
+	var in service.DirectiveInput
+	if err := DecodeJSON(r, &in); err != nil {
+		WriteError(w, http.StatusBadRequest, "طلب غير صالح")
+		return
+	}
+	emp, role := who(r)
+	id, to, err := h.svc.IssueDirective(emp, role, in)
+	if err != nil {
+		h.orgErr(w, err)
+		return
+	}
+	if h.notifications != nil {
+		for _, e := range to {
+			_ = h.notifications.Create(e, "ORG_DIRECTIVE", "📣 توجيه جديد: «"+in.Title+"» — اقراه وأقر «اطّلعت وألتزم».")
+		}
+	}
+	WriteJSON(w, http.StatusOK, map[string]any{"id": id, "audience": len(to)})
+}
+
+// GET /api/org/directives/mine — توجيهاتي (الفعّالة بنطاقي) ويا إقراري
+func (h *OrgHandler) MyDirectives(w http.ResponseWriter, r *http.Request) {
+	out, err := h.svc.MyDirectives(middleware.EmployeeIDFromContext(r))
+	if err != nil {
+		WriteError(w, http.StatusInternalServerError, "تعذر جلب التوجيهات")
+		return
+	}
+	WriteJSON(w, http.StatusOK, out)
+}
+
+// POST /api/org/directives/{id}/ack — «اطّلعت وألتزم»
+func (h *OrgHandler) AckDirective(w http.ResponseWriter, r *http.Request) {
+	if err := h.svc.AckDirective(middleware.EmployeeIDFromContext(r), r.PathValue("id")); err != nil {
+		h.orgErr(w, err)
+		return
+	}
+	WriteJSON(w, http.StatusOK, map[string]bool{"ok": true})
+}
+
+// GET /api/org/directives — الي أصدرها/بمقامه ويا عدد المقرين (رؤساء + أدمن؛ غيرهم قائمة فاضية)
+func (h *OrgHandler) ManagedDirectives(w http.ResponseWriter, r *http.Request) {
+	emp, role := who(r)
+	out, err := h.svc.ManagedDirectives(emp, role)
+	if err != nil {
+		WriteError(w, http.StatusInternalServerError, "تعذر جلب التوجيهات")
+		return
+	}
+	WriteJSON(w, http.StatusOK, out)
+}
+
+// POST /api/org/directives/{id}/archive — يوقف التوجيه (ما ينحذف)
+func (h *OrgHandler) ArchiveDirective(w http.ResponseWriter, r *http.Request) {
+	emp, role := who(r)
+	if err := h.svc.ArchiveDirective(emp, role, r.PathValue("id")); err != nil {
+		h.orgErr(w, err)
+		return
+	}
+	WriteJSON(w, http.StatusOK, map[string]bool{"ok": true})
+}
+
+// ── 🎯 المخرجات (النقطة ٨) ──
+
+// GET /api/org/outputs?employeeId=|unitId=|divisionId=&period= — لوحة المخرجات لكل فقرة.
+// الموظف يشوف نفسه، الرئيس يشوف إدارته/وحدته وكادرها، والأدمن الكل. غير ذلك 404.
+func (h *OrgHandler) Outputs(w http.ResponseWriter, r *http.Request) {
+	emp, role := who(r)
+	q := r.URL.Query()
+	e, u, d := q.Get("employeeId"), q.Get("unitId"), q.Get("divisionId")
+	period := q.Get("period")
+	if period == "" {
+		period = service.OrgPeriod(time.Now())
+	}
+	if !h.svc.CanSeeOutputs(emp, role, e, u, d) {
+		WriteError(w, http.StatusNotFound, "مو موجود")
+		return
+	}
+	card, err := service.OutputsScorecard(h.svc.DB(), e, u, d, period)
+	if err != nil {
+		WriteError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	WriteJSON(w, http.StatusOK, card)
+}
+
+// PUT /api/org/tasks/{id}/clause و /api/org/kpi-criteria/{id}/clause — {clause|null} (أدمن)
+func (h *OrgHandler) TaskClause(w http.ResponseWriter, r *http.Request) {
+	var in struct {
+		Clause *int `json:"clause"`
+	}
+	if err := DecodeJSON(r, &in); err != nil {
+		WriteError(w, http.StatusBadRequest, "طلب غير صالح")
+		return
+	}
+	if err := service.SetTaskClause(h.svc.DB(), r.PathValue("id"), in.Clause); err != nil {
+		WriteError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	WriteJSON(w, http.StatusOK, map[string]bool{"ok": true})
+}
+
+func (h *OrgHandler) CriterionClause(w http.ResponseWriter, r *http.Request) {
+	var in struct {
+		Clause *int `json:"clause"`
+	}
+	if err := DecodeJSON(r, &in); err != nil {
+		WriteError(w, http.StatusBadRequest, "طلب غير صالح")
+		return
+	}
+	if err := service.SetCriterionClause(h.svc.DB(), r.PathValue("id"), in.Clause); err != nil {
+		WriteError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	WriteJSON(w, http.StatusOK, map[string]bool{"ok": true})
 }
