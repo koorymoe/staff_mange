@@ -340,3 +340,14 @@ func (h *OrgHandler) MyItems(w http.ResponseWriter, r *http.Request) {
 	}
 	WriteJSON(w, http.StatusOK, out)
 }
+
+// GET /api/org/people/{id}/executive — حقائق الموظف التنفيذية + آراء كمال (المالك ومدير النظام)
+func (h *OrgHandler) Executive(w http.ResponseWriter, r *http.Request) {
+	f, err := service.ExecutiveFacts(h.svc.DB(), r.PathValue("id"))
+	if err != nil {
+		WriteError(w, http.StatusNotFound, err.Error())
+		return
+	}
+	ops, _ := service.ExecutiveOpinions(h.svc.DB(), r.PathValue("id"))
+	WriteJSON(w, http.StatusOK, map[string]any{"facts": f, "opinions": ops})
+}

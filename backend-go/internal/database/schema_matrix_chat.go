@@ -1445,5 +1445,24 @@ func matrixChatMigrations() []Migration {
 			CREATE UNIQUE INDEX IF NOT EXISTS "OrgIssueReport_signal_open_uq" ON "OrgIssueReport" (signal)
 				WHERE signal IS NOT NULL AND status <> 'RESOLVED';
 		`,
+	}, {
+		// 🗂️ رأي كمال التنفيذي بكل شخص (دازاي 10-30 — النقطة ٦): كمال يقرا حقائق الموظف من
+		// النظام ويكتب رأيه (تقدير ١-٥ + نقاط قوة/ضعف + توصية) — رأي واحد لكل شهر يتحدّث.
+		Version: "0416_executive_opinion",
+		SQL: `
+			CREATE TABLE IF NOT EXISTS "OrgExecutiveOpinion" (
+				id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
+				"employeeId" TEXT NOT NULL REFERENCES "Employee"(id) ON DELETE CASCADE,
+				period TEXT NOT NULL,
+				rating INT NOT NULL CHECK (rating BETWEEN 1 AND 5),
+				strengths TEXT NOT NULL DEFAULT '',
+				weaknesses TEXT NOT NULL DEFAULT '',
+				recommendation TEXT NOT NULL DEFAULT '',
+				facts JSONB NOT NULL DEFAULT '{}',
+				"requestedById" TEXT REFERENCES "Employee"(id) ON DELETE SET NULL,
+				"updatedAt" TIMESTAMPTZ NOT NULL DEFAULT now(),
+				UNIQUE ("employeeId", period)
+			);
+		`,
 	}}
 }

@@ -43,6 +43,7 @@ func NewSecretaryAgent(d SecretaryDeps, tc *SecretaryTurnCtx) *MatrixAgent {
 	registerReminderTools(a, tc)
 	registerWatchTools(a, tc)
 	registerVoiceTools(a, tc)
+	registerExecutiveTools(a, tc)
 	return a
 }
 

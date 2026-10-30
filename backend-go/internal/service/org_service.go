@@ -441,3 +441,6 @@ func (s *OrgService) AssignmentEmployee(id string) string {
 	_ = s.db.Get(&emp, `SELECT "employeeId" FROM "OrgAssignment" WHERE id = $1`, id)
 	return emp
 }
+
+// DB للأدوات المشتركة (رأي كمال التنفيذي).
+func (s *OrgService) DB() *sqlx.DB { return s.db }
