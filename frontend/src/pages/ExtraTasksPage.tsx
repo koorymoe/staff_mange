@@ -1,6 +1,11 @@
 import { useEffect, useState } from 'react'
 import { api, EXTRA_TASK_STATUS, type Employee, type ExtraTask } from '../api'
 import { VoiceRecorder } from '../components/VoiceNote'
+import { useSession } from '../session'
+import { orgAdmin } from '../orgDeskAccess'
+import { useOutputRegulations } from '../orgOutputs'
+import OutputClauseBinding from '../components/OutputClauseBinding'
+import { useInlineQuestion } from '../useInlineQuestion'
 
 // ═══ المهام الإضافية — شاشة المدير ═══
 //
@@ -21,6 +26,10 @@ const STATUS_STYLE: Record<string, string> = {
 }
 
 export default function ExtraTasksPage({ embedded }: { embedded?: boolean } = {}) {
+  const question = useInlineQuestion()
+  const { employee } = useSession()
+  const regulations = useOutputRegulations(orgAdmin(employee))
+  const [clauseNotice, setClauseNotice] = useState('')
   const [tasks, setTasks] = useState<ExtraTask[]>([])
   const [employees, setEmployees] = useState<Employee[]>([])
   const [statusFilter, setStatusFilter] = useState('')
@@ -98,7 +107,7 @@ export default function ExtraTasksPage({ embedded }: { embedded?: boolean } = {}
   }
 
   const cancel = async (t: ExtraTask) => {
-    const reason = prompt(`ليش تلغي «${t.title}»؟`)
+    const reason = await question.ask(`ليش تلغي «${t.title}»؟`, true)
     if (!reason) return
     try {
       await api.cancelExtraTask(t.id, reason)
@@ -242,6 +251,14 @@ export default function ExtraTasksPage({ embedded }: { embedded?: boolean } = {}
         <p className="rounded-xl border border-white bg-white p-8 text-center text-slate-400">ماكو مهام بهذا الفلتر.</p>
       )}
 
+      {clauseNotice && <p role="status" className="org-ui org-notice">{clauseNotice}</p>}
+      {question.dialog}
+      {regulations.error && (
+        <p className="org-ui org-error" role="alert">
+          لائحة الفقرات: {regulations.error}{' '}
+          <button onClick={regulations.retry}>أعد جلب الفقرات</button>
+        </p>
+      )}
       <div className="space-y-3">
         {tasks.map((t) => (
           <div key={t.id} className={`rounded-2xl border bg-white p-4 shadow-[0_2px_12px_rgba(0,0,0,0.06)] ${t.overdue ? 'border-red-300' : 'border-white'}`}>
@@ -260,6 +277,14 @@ export default function ExtraTasksPage({ embedded }: { embedded?: boolean } = {}
             </div>
 
             {t.description && <p className="mt-1.5 text-sm text-slate-600">{t.description}</p>}
+            <OutputClauseBinding
+              kind="task" id={t.id} clause={t.clause} clauses={regulations.clauses}
+              onSaved={(clause) => {
+                setTasks((rows) => rows.map((row) => row.id === t.id ? { ...row, clause } : row))
+                setClauseNotice('انحفظ ربط فقرة المهمة.')
+                setReload((n) => n + 1)
+              }}
+            />
 
             <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-500">
               <span>👤 <b className="text-slate-700">{t.assignedToName || '—'}</b></span>

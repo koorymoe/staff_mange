@@ -9,6 +9,7 @@ import {
 } from '../org'
 import { useSession } from '../session'
 import DirectiveManager from '../components/DirectiveManager'
+import OrgOutputs from '../components/OrgOutputs'
 import type { DirectiveTarget } from '../orgDirectives'
 import {
   orgAdmin,
@@ -36,7 +37,7 @@ import {
 import './OrgPage.css'
 import './OrgDeskPage.css'
 
-type Tab = 'issues' | 'plan' | 'units' | 'authority' | 'team' | 'directives'
+type Tab = 'issues' | 'plan' | 'units' | 'authority' | 'team' | 'directives' | 'outputs'
 const canAddItems = (plan: DeskPlan) =>
   plan.status === 'DRAFT' || plan.status === 'RETURNED'
 const dueOrder = (a: DeskItem, b: DeskItem) =>
@@ -354,6 +355,7 @@ function DeskContent({
             ['plan', 'خطة التحسين'],
             ['units', 'تطوير الوحدات'],
             ['directives', 'التوجيهات'],
+            ['outputs', 'المخرجات'],
             ['authority', 'الصلاحيات (DOA)'],
             ['team', 'الفريق'],
           ] as const
@@ -591,6 +593,7 @@ function DeskContent({
         />
       )}
       {tab === 'team' && <Team division={data.division} />}
+      {tab === 'outputs' && <OfficeOutputs data={data} period={period} />}
       {tab === 'directives' && <DirectiveManager divisionId={data.division.id} targets={[
         ...(admin ? [{scope:'COMPANY',label:'الشركة كلها'} as DirectiveTarget] : []),
         ...(data.canEdit ? [{scope:'DIVISION',divisionId:data.division.id,label:data.division.name} as DirectiveTarget] : []),
@@ -649,6 +652,44 @@ function DeskContent({
         />
       )}
     </>
+  )
+}
+function OfficeOutputs({ data, period }: { data: OrgDesk; period: string }) {
+  const [scope, setScope] = useState<'division' | 'unit'>('division')
+  const [unitId, setUnitId] = useState('')
+  // Visible office units are not necessarily units whose outputs we may read.
+  const units = (data.division.units ?? []).filter((unit) =>
+    (data.editableUnits ?? []).includes(unit.id),
+  )
+  const selected = units.find((unit) => unit.id === unitId)
+  return (
+    <section className="org-panel">
+      <div className="org-actions">
+        <button aria-pressed={scope === 'division'} onClick={() => setScope('division')}>
+          مخرجات الإدارة
+        </button>
+        {units.length > 0 && (
+          <button aria-pressed={scope === 'unit'} onClick={() => {
+            setScope('unit')
+            if (!selected) setUnitId(units[0].id)
+          }}>
+            مخرجات الوحدة
+          </button>
+        )}
+      </div>
+      {scope === 'unit' && (
+        <label>وحدة المخرجات
+          <select aria-label="وحدة المخرجات" value={unitId} onChange={(e) => setUnitId(e.target.value)}>
+            {units.map((unit) => <option key={unit.id} value={unit.id}>{unit.name}</option>)}
+          </select>
+        </label>
+      )}
+      {scope === 'division' ? (
+        <OrgOutputs key={`division:${data.division.id}`} target={{ kind: 'division', id: data.division.id }} allowed initialPeriod={period} />
+      ) : selected && (
+        <OrgOutputs key={`unit:${selected.id}`} target={{ kind: 'unit', id: selected.id }} allowed initialPeriod={period} />
+      )}
+    </section>
   )
 }
 function SolutionEditor({

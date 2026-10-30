@@ -13,6 +13,7 @@ import {
 } from '../org'
 import { useSession } from '../session'
 import DirectiveManager from '../components/DirectiveManager'
+import OrgOutputs from '../components/OrgOutputs'
 import type { DirectiveTarget } from '../orgDirectives'
 import { roleLabel } from '../roleLabels'
 import { matches } from '../utils/search'
@@ -790,6 +791,7 @@ function PersonDialog({
   saved: () => void
 }) {
   const [ending, setEnding] = useState(false)
+  const [outputsOpen, setOutputsOpen] = useState(false)
   const [reason, setReason] = useState('')
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
@@ -841,6 +843,10 @@ function PersonDialog({
         <dt>ملاحظة</dt>
         <dd>{person.note || 'ماكو ملاحظة'}</dd>
       </dl>
+      <button aria-expanded={outputsOpen} onClick={() => setOutputsOpen((v) => !v)}>
+        🎯 المخرجات
+      </button>
+      {outputsOpen && <OrgOutputs target={{ kind: 'employee', id: person.employeeId }} />}
       {!canEnd ? (
         <p>إنهاء هالمنصب للمالك وحده.</p>
       ) : !ending ? (

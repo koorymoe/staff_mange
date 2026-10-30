@@ -2079,6 +2079,7 @@ export const AI_METRIC_LABELS: Record<string, string> = {
  *  شغل موجّه من المدير لموظف، مو مربوط بحجز: «خرّج فواتير الشهر»،
  *  «رتّب المخزن». تطلع عند الموظف الي انتوجّهت له. */
 export interface ExtraTask {
+  clause?: number | null
   id: string
   title: string
   description?: string
@@ -2962,6 +2963,7 @@ export interface KpiEvaluation {
 }
 
 export interface KpiCriterion {
+  clause?: number | null
   id: string
   label: string
   createdAt: string

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import MyOrgItems from './MyOrgItems'
+import { MyOutputs } from './OrgOutputs'
 import { orgApi, orgPositions, type OrgPerson } from '../org'
 import { useSession } from '../session'
 import '../pages/OrgPage.css'
@@ -11,6 +12,7 @@ export default function MyOrgCard() {
     <>
       <MyPlace key={employee.id} />
       <MyOrgItems />
+      <MyOutputs />
     </>
   ) : null
 }
