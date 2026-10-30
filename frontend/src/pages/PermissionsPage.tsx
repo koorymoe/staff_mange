@@ -26,6 +26,7 @@ const sourceLabel = {
   TEMPLATE: 'قالب المنصب',
   MANUAL: 'منح يدوي',
   EXCEPTION: 'استثناء معتمد',
+  ORG: 'منصب بالهيكل',
 }
 const tiers = ['quotation_create', 'quotation_edit_own', 'quotation_manage_all']
 function exceptionDeadline(value: string) {

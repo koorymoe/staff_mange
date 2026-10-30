@@ -1,4 +1,6 @@
 import { MON_SUBS } from '../utils/monAccess'
+import type { OrgPerson } from '../org'
+import { orgDeskAllowed } from '../orgDeskAccess'
 import type { Employee, EmployeeRole } from '../api'
 import { hasGpsSkill } from '../session'
 
@@ -120,6 +122,9 @@ export const navItems: NavItem[] = [
   { ownerOnly: true, to: '/secretary', label: '🗂️ ايريس', icon: icon('M12 3a4 4 0 100 8 4 4 0 000-8zM4 21v-1a6 6 0 016-6h4a6 6 0 016 6v1'), roles: ['ADMIN'] },
   { ownerOnly: true, to: '/ai-agents', label: '🤖 وكلاء الذكاء', icon: <></>, roles: ['ADMIN'] },
   { to: '/ai-suggestions', label: '🧠 اقتراحات الذكاء', icon: <></>, roles: ['ADMIN'] },
+  { to: '/org', label: '🏛️ الهيكل التنظيمي', icon: <></>, roles: ['ADMIN'] },
+  { to: '/my-org', label: '🏛️ مكاني', icon: <></> },
+  { to: '/org/desk', label: '🏛️ مكتب الإدارة', icon: <></> },
   { to: '/voice-terms', label: '👂 قاموس الأذن', icon: <></>, roles: ['ADMIN'] },
   // (دازاي 10-29) محادثة ماتركس لصاحب الصلاحية — أدواته بحدود صلاحياته بالخادم
   { to: '/matrix-chat', label: '🤖 محادثة ماتركس', icon: <></>, roles: ['ADMIN'], anyPermission: ['agent_matrix'] },
@@ -881,6 +886,7 @@ function projectsLabel(ctx: NavContext): string {
 }
 
 export type NavContext = {
+  orgMemberships?: OrgPerson[] | null
   employee: Employee | null | undefined
   permissions: string[]
   gpsServiceId: string | null
@@ -888,8 +894,10 @@ export type NavContext = {
 
 export function isNavVisible(item: NavItem, ctx: NavContext, unitGranted = false): boolean {
   const role = ctx.employee?.role
+  if (item.to === '/my-org') return !!ctx.employee
+  if (item.to === '/org/desk') return orgDeskAllowed(ctx.employee, ctx.orgMemberships)
   // These APIs are admin-only even when a whole unit is granted to staff.
-  if (['/voice-terms', '/ai-suggestions'].includes(item.to) && role !== 'ADMIN' && ctx.employee?.actualRole !== 'OWNER') return false
+  if (['/voice-terms', '/ai-suggestions', '/org', '/org/assign'].includes(item.to) && role !== 'ADMIN' && ctx.employee?.actualRole !== 'OWNER') return false
   const hasMonitor = role === 'MONITOR' || ctx.permissions.includes('monitoring')
   // قرار (ع) 10-08: مهندس الجودة يشوف شغله بس — صلاحية auditing ما تعامله كمراقب بالقائمة
   // (وشاشات المراقب نفسها عليها hideForRoles: QUALITY_ENGINEER).
@@ -1079,6 +1087,10 @@ export function collectMonitorExtraLinks(items: NavItem[], ctx: NavContext, unit
 export function isPathAllowed(path: string, ctx: NavContext): boolean | null {
   const clean = (p: string) => (p.split('?')[0].replace(/\/+$/, '') || '/')
   const target = clean(path)
+  if (target === '/org/desk' || target.startsWith('/org/desk/')) {
+    if (ctx.orgMemberships == null && ctx.employee?.role !== 'ADMIN' && ctx.employee?.actualRole !== 'OWNER') return null
+    return orgDeskAllowed(ctx.employee, ctx.orgMemberships, target.split('/')[3])
+  }
   if (target === '/') return null
   const role = ctx.employee?.role
   let found = false
@@ -1155,6 +1167,7 @@ const OPEN_PATHS = new Set(['/work-reports', '/privacy-policy', '/leaves'])
 type RouteRule = { roles?: EmployeeRole[]; anyPermission?: string[]; leader?: boolean }
 const GPS_DATA: RouteRule = { roles: ['OWNER', 'SALES'], anyPermission: ['gps_system'] } // requireGpsData
 const ROUTE_RULES: Record<string, RouteRule> = {
+  '/org/assign': { roles: ['ADMIN'] },
   '/whatsapp-conversations': { anyPermission: ['quality_control', 'coordinator'] },
   '/booking-delete-requests': { roles: ['OWNER', 'MONITOR'], anyPermission: ['booking_delete_approve'] }, // requireDeleteApprove
   '/extra-tasks': { anyPermission: ['extra_tasks_assign'] }, // requireExtraTaskAssign

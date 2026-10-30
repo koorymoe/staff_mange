@@ -84,6 +84,9 @@ const TeamInventoryCheckPage = lazy(() => import('./pages/TeamInventoryCheckPage
 const PermissionsPage = lazy(() => import('./pages/PermissionsPage'))
 const AiSuggestionsPage = lazy(() => import('./pages/AiSuggestionsPage'))
 const VoiceTermsPage = lazy(() => import('./pages/VoiceTermsPage'))
+const OrgPage = lazy(() => import('./pages/OrgPage'))
+const OrgDeskPage = lazy(() => import('./pages/OrgDeskPage'))
+const MyOrgCard = lazy(() => import('./components/MyOrgCard'))
 const DepartmentsPage = lazy(() => import('./pages/DepartmentsPage'))
 const DesignGalleryPage = lazy(() => import('./pages/DesignGalleryPage'))
 const QuotationsPage = lazy(() => import('./pages/QuotationsPage'))
@@ -218,6 +221,11 @@ function App() {
           <Route path="ai-agents" element={<AiAgentsPage />} />
           <Route path="ai-suggestions" element={<RequireAdmin><AiSuggestionsPage /></RequireAdmin>} />
           <Route path="voice-terms" element={<RequireAdmin><VoiceTermsPage /></RequireAdmin>} />
+          <Route path="org" element={<RequireAdmin><OrgPage /></RequireAdmin>} />
+          <Route path="org/assign" element={<RequireAdmin><OrgPage view="assign" /></RequireAdmin>} />
+          <Route path="org/desk" element={<OrgDeskPage />} />
+          <Route path="org/desk/:divisionId" element={<OrgDeskPage />} />
+          <Route path="my-org" element={<MyOrgCard />} />
           <Route path="whatsapp-conversations" element={<WhatsAppPage />} />
           <Route path="whatsapp-sandbox" element={<WhatsAppSandboxPage />} />
           <Route path="coordinator" element={<Coordinator />} />

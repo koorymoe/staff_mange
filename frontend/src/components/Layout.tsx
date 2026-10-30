@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useAutoRefresh } from '../useAutoRefresh'
+import { useOrgMemberships } from '../orgDeskAccess'
 import PrivacyPolicyGate from './PrivacyPolicyGate'
 import EmployeeAvatar from './EmployeeAvatar'
 import LiveAlerts from './LiveAlerts'
@@ -131,6 +132,7 @@ function hasActiveChild(item: NavItem, pathname: string): boolean {
 // أبداً — نفس الدالة الي ترسم القائمة الحقيقية.
 export default function Layout() {
   const [employee, setEmployeeState] = useState<Employee | null>(loadStoredEmployee)
+  const { items: orgMemberships } = useOrgMemberships(employee)
   const [employeePermissions, setEmployeePermissions] = useState<string[]>([])
   const [gpsServiceId, setGpsServiceId] = useState<string | null>(null)
   // هل عند الموظف المتدرب مواد فعلاً؟ null = لسّه ما فحصنا.
@@ -409,12 +411,12 @@ export default function Layout() {
   // صاحب صلاحية monitoring يشوف قائمة المراقب نفسها — (ع) 10-16
   const isMonRole = role === 'MONITOR' || (role !== 'ADMIN' && employeePermissions.includes('monitoring'))
   const isVisible = (item: NavItem, unitGranted = false): boolean =>
-    isNavVisible(item, { employee, permissions: employeePermissions, gpsServiceId }, unitGranted)
+    isNavVisible(item, { employee, permissions: employeePermissions, gpsServiceId, orgMemberships }, unitGranted)
   // ⚠️ عزل شغل المراقب: عنصر ظاهر بصلاحية ممنوحة زيادة عن دوره، مو
   // من صميم شغله (الإشراف). يُشار له بشارة صغيرة بس — بلا نقل ولا
   // إخفاء، حتى ما تفترق القائمة عن الوصول الفعلي.
   const isExtra = (item: NavItem, unitGranted = false): boolean =>
-    isExtraForMonitor(item, { employee, permissions: employeePermissions, gpsServiceId }, unitGranted)
+    isExtraForMonitor(item, { employee, permissions: employeePermissions, gpsServiceId, orgMemberships }, unitGranted)
   // الفني العادي (مو ليدر): قائمته مسطّحة — تنستعمل بترتيب العرض تحت
   const isPlainTechnician = (role === 'TECHNICIAN' || role === 'TECHNICAL') && !employee?.isLeader
 
@@ -867,7 +869,7 @@ export default function Layout() {
             {/* خطأ بشاشة وحدة يبقى بيها — القائمة تبقى شغّالة */}
             <ErrorBoundary inline key={location.pathname}>
               {/* حارس الرابط: نفس قرار القائمة — الشاشة الي ما تطلعلك بالقائمة ما تنفتح بالرابط */}
-              {employee?.actualRole !== 'OWNER' && isPathAllowed(location.pathname, { employee, permissions: employeePermissions, gpsServiceId }) === false
+              {employee?.actualRole !== 'OWNER' && isPathAllowed(location.pathname, { employee, permissions: employeePermissions, gpsServiceId, orgMemberships }) === false
                 ? <NoAccess />
                 : <AttendanceGate><Outlet /></AttendanceGate>}
             </ErrorBoundary>

@@ -14,7 +14,7 @@ export type AccessGroup = {
 }
 export type AccessItem = {
   name: string
-  source: 'TEMPLATE' | 'MANUAL' | 'EXCEPTION'
+  source: 'TEMPLATE' | 'MANUAL' | 'EXCEPTION' | 'ORG'
   expiresAt?: string
   reason?: string
 }
