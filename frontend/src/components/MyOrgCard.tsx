@@ -1,12 +1,18 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
+import MyOrgItems from './MyOrgItems'
 import { orgApi, orgPositions, type OrgPerson } from '../org'
 import { useSession } from '../session'
 import '../pages/OrgPage.css'
 
 export default function MyOrgCard() {
   const { employee } = useSession()
-  return employee ? <MyPlace key={employee.id} /> : null
+  return employee ? (
+    <>
+      <MyPlace key={employee.id} />
+      <MyOrgItems />
+    </>
+  ) : null
 }
 function MyPlace() {
   const [items, setItems] = useState<OrgPerson[] | null>(null)

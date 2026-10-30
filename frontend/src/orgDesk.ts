@@ -1,27 +1,13 @@
 import { apiRequest } from './api'
 import type { OrgDivision } from './org'
-export const orgPrinciples = [
-  'دقة العمل',
-  'استغلال الكوادر',
-  'الحفاظ على العُدد',
-  'جلب الحجوزات',
-  'الإنجاز الآني',
-  'السرعة',
-  'نظافة الأدوات والمركبات',
-  'عدم التأخر بالحجوزات',
-  'متابعة الحجوزات والاتصالات',
-  'المعايير الهندسية',
-  'الاحترام المتبادل',
-  'نظام المؤسسات',
-  'تكلفة الكوادر',
-  'الهيكلية التنفيذية',
-  'الالتزام بالدوام',
-  'المسؤولية والمحاسبة',
-  'توجيهات المدير',
-  'سرية العمل',
-  'خلية نحل',
-  'المناصب المؤقتة بالإجازات',
-]
+export type OrgClause = {
+  no: number
+  article: number
+  articleTitle: string
+  title: string
+  code: string
+}
+export const orgRegulations = () => apiRequest<OrgClause[]>('/org/regulations')
 export type DeskIssue = {
   id: string
   title: string
@@ -33,6 +19,8 @@ export type DeskIssue = {
   status: 'OPEN' | 'IN_PROGRESS' | 'RESOLVED'
   resolution: string | null
   authorName: string | null
+  authorId: string | null
+  solutionPlan: string | null
   unitId: string | null
   createdAt: string
 }
@@ -49,6 +37,21 @@ export type DeskItem = {
   byMatrix: boolean
   manualProgress: number
   doneAt: string | null
+  dueDate: string | null
+  ownerId: string | null
+  ownerName: string | null
+  overdue: boolean
+}
+export type DeskPlan = {
+  id: string
+  title: string
+  period: string
+  progress: number
+  items: DeskItem[]
+  unitId: string | null
+  status: 'DRAFT' | 'SUBMITTED' | 'APPROVED' | 'RETURNED'
+  reviewNote: string | null
+  submittedAt: string | null
 }
 export type DeskComment = {
   id?: string
@@ -74,13 +77,10 @@ export type OrgDesk = {
   period: string
   canEdit: boolean
   issues: DeskIssue[]
-  plan: null | {
-    id: string
-    title: string
-    period: string
-    progress: number
-    items: DeskItem[]
-  }
+  plan: DeskPlan | null
+  unitPlans: DeskPlan[]
+  editableUnits: string[]
+  canReview: boolean
   comments: DeskComment[]
   authority: AuthorityRow[]
   metrics: DeskMetric[]
