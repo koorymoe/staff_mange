@@ -351,3 +351,66 @@ func (h *OrgHandler) Executive(w http.ResponseWriter, r *http.Request) {
 	ops, _ := service.ExecutiveOpinions(h.svc.DB(), r.PathValue("id"))
 	WriteJSON(w, http.StatusOK, map[string]any{"facts": f, "opinions": ops})
 }
+
+// ── 📣 التوجيهات (النقطة ٧) ──
+
+// POST /api/org/directives — {scope, divisionId?, unitId?, title, body, clause?}
+func (h *OrgHandler) IssueDirective(w http.ResponseWriter, r *http.Request) {
+	var in service.DirectiveInput
+	if err := DecodeJSON(r, &in); err != nil {
+		WriteError(w, http.StatusBadRequest, "طلب غير صالح")
+		return
+	}
+	emp, role := who(r)
+	id, to, err := h.svc.IssueDirective(emp, role, in)
+	if err != nil {
+		h.orgErr(w, err)
+		return
+	}
+	if h.notifications != nil {
+		for _, e := range to {
+			_ = h.notifications.Create(e, "ORG_DIRECTIVE", "📣 توجيه جديد: «"+in.Title+"» — اقراه وأقر «اطّلعت وألتزم».")
+		}
+	}
+	WriteJSON(w, http.StatusOK, map[string]any{"id": id, "audience": len(to)})
+}
+
+// GET /api/org/directives/mine — توجيهاتي (الفعّالة بنطاقي) ويا إقراري
+func (h *OrgHandler) MyDirectives(w http.ResponseWriter, r *http.Request) {
+	out, err := h.svc.MyDirectives(middleware.EmployeeIDFromContext(r))
+	if err != nil {
+		WriteError(w, http.StatusInternalServerError, "تعذر جلب التوجيهات")
+		return
+	}
+	WriteJSON(w, http.StatusOK, out)
+}
+
+// POST /api/org/directives/{id}/ack — «اطّلعت وألتزم»
+func (h *OrgHandler) AckDirective(w http.ResponseWriter, r *http.Request) {
+	if err := h.svc.AckDirective(middleware.EmployeeIDFromContext(r), r.PathValue("id")); err != nil {
+		h.orgErr(w, err)
+		return
+	}
+	WriteJSON(w, http.StatusOK, map[string]bool{"ok": true})
+}
+
+// GET /api/org/directives — الي أصدرها/بمقامه ويا عدد المقرين (رؤساء + أدمن؛ غيرهم قائمة فاضية)
+func (h *OrgHandler) ManagedDirectives(w http.ResponseWriter, r *http.Request) {
+	emp, role := who(r)
+	out, err := h.svc.ManagedDirectives(emp, role)
+	if err != nil {
+		WriteError(w, http.StatusInternalServerError, "تعذر جلب التوجيهات")
+		return
+	}
+	WriteJSON(w, http.StatusOK, out)
+}
+
+// POST /api/org/directives/{id}/archive — يوقف التوجيه (ما ينحذف)
+func (h *OrgHandler) ArchiveDirective(w http.ResponseWriter, r *http.Request) {
+	emp, role := who(r)
+	if err := h.svc.ArchiveDirective(emp, role, r.PathValue("id")); err != nil {
+		h.orgErr(w, err)
+		return
+	}
+	WriteJSON(w, http.StatusOK, map[string]bool{"ok": true})
+}

@@ -1464,5 +1464,31 @@ func matrixChatMigrations() []Migration {
 				UNIQUE ("employeeId", period)
 			);
 		`,
+	}, {
+		// 📣 التوجيهات كسياسة عمل (دازاي 10-30 — النقطة ٧): المالك/المدير/رئيس الوحدة يصدر
+		// توجيه لنطاقه (الشركة/إدارة/وحدة) مربوط بفقرة اللائحة، والي بنطاقه يقرون «اطّلعت وألتزم»،
+		// وينحفظ إقرارهم. التوجيه ما ينحذف — يتوقف (archivedAt).
+		Version: "0417_org_directives",
+		SQL: `
+			CREATE TABLE IF NOT EXISTS "OrgDirective" (
+				id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
+				scope TEXT NOT NULL CHECK (scope IN ('COMPANY', 'DIVISION', 'UNIT')),
+				"divisionId" TEXT REFERENCES "OrgDivision"(id),
+				"unitId" TEXT REFERENCES "OrgUnit"(id),
+				title TEXT NOT NULL,
+				body TEXT NOT NULL,
+				clause INT,
+				"issuedById" TEXT REFERENCES "Employee"(id) ON DELETE SET NULL,
+				"issuedAt" TIMESTAMPTZ NOT NULL DEFAULT now(),
+				"archivedAt" TIMESTAMPTZ
+			);
+			CREATE INDEX IF NOT EXISTS "OrgDirective_active" ON "OrgDirective" ("issuedAt" DESC) WHERE "archivedAt" IS NULL;
+			CREATE TABLE IF NOT EXISTS "OrgDirectiveAck" (
+				"directiveId" TEXT NOT NULL REFERENCES "OrgDirective"(id) ON DELETE CASCADE,
+				"employeeId" TEXT NOT NULL REFERENCES "Employee"(id) ON DELETE CASCADE,
+				"ackAt" TIMESTAMPTZ NOT NULL DEFAULT now(),
+				PRIMARY KEY ("directiveId", "employeeId")
+			);
+		`,
 	}}
 }
