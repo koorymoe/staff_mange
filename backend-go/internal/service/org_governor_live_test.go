@@ -126,6 +126,8 @@ func TestOrgGovernor_Live(t *testing.T) {
 		('__gov_c2', $1, $2, 'نفس الحجز مكررة', 'NEW', $4, now() - interval '71 hours', NULL, 0),
 		('__gov_c3', $1, $3, 'على موظف ثاني والزبون ما يرد', 'NEW', $4, now() - interval '60 hours', $5, 1)`,
 		cust, bk, bk2, dir, oth)
+	// الزبون ما ينوصل وقت المهلة: المكالمة الجاية بعد الـ٤٨ ساعة
+	db.MustExec(`UPDATE "Complaint" SET "nextCallAt" = "createdAt" + interval '50 hours' WHERE id = '__gov_c3'`)
 	gov.RunFines()
 	if p := points(ldr); p != 95 { // ٣ + ٢ (ما انحلت خلال ٤٨) — والمكررة على نفس الحجز ما تزيد
 		t.Fatalf("غرامة الليدر: %d والمتوقع ٩٥", p)
@@ -140,7 +142,7 @@ func TestOrgGovernor_Live(t *testing.T) {
 	if points(ldr) != 95 || points(dir) != 97 || points(oth) != 96 {
 		t.Fatal("الغرامة تكررت")
 	}
-	if err := undo(model.AiActionOrgFineCustomer, "BOOKING:"+bk); err != nil {
+	if err := undo(model.AiActionOrgFineCustomer, "BOOKING:"+bk+":"+ldr); err != nil {
 		t.Fatal(err)
 	}
 	if p := points(ldr); p != 100 {
@@ -160,7 +162,12 @@ func TestOrgGovernor_Live(t *testing.T) {
 	if n != 0 {
 		t.Fatal("شهر گبل أول تشغيل انقيّم")
 	}
-	for i, at := range []time.Time{m1, m1.Add(time.Hour), m2, m2.Add(time.Hour)} {
+	// ٦ نقاط فاشلة بكل شهر (الحد الأدنى للحكم ١٠ نقاط ماتركس)
+	ats := []time.Time{}
+	for k := 0; k < 6; k++ {
+		ats = append(ats, m1.Add(time.Duration(k)*time.Hour), m2.Add(time.Duration(k)*time.Hour))
+	}
+	for i, at := range ats {
 		for _, e := range []string{ldr, oth} {
 			db.MustExec(`INSERT INTO "MatrixScore"("employeeId", source, "sourceId", rule, points, "maxPoints", reason, "at")
 				VALUES ($1, 'BOOKING', $2, 'PAPER', 0, 2, 'تجربة', $3)`, e, "__gov_src_"+e+string(rune('a'+i)), at)
@@ -177,8 +184,8 @@ func TestOrgGovernor_Live(t *testing.T) {
 	if d := dec(ldr, m1.Format("2006-01")); d != "WARN" {
 		t.Fatalf("أول شهر لازم تنبيه: %q", d)
 	}
-	if d := dec(dir, m1.Format("2006-01")); d != "NODATA" {
-		t.Fatalf("مدير بلا تقييم لازم بلا حكم: %q", d)
+	if d := dec(dir, m1.Format("2006-01")); d != "" {
+		t.Fatalf("مدير بلا تقييم لازم ما ينسجّل عليه حكم: %q", d)
 	}
 	// التنبيه الملغى يكسر السلسلة
 	if err := undo(model.AiActionOrgWarn, orgEvalEntity(oth, m1.Format("2006-01"))); err != nil {

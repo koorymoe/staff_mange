@@ -36,6 +36,9 @@ const (
 	// orgFineWindow الغرامة بس إذا لحظة استحقاقها قريبة — حتى ما تنزل الغرامات المتراكمة
 	// دفعة وحدة بعد ما المفتاح ينطفي ويرجع، أو النوع يتوقف ويرجع.
 	orgFineWindow = 72 * time.Hour
+	// orgMinMatrixPoints أقل بيانات للحكم: نقطة فاشلة وحدة ما تسوّي ٠٪ — لازم ١٠ نقاط
+	// ماتركس أو تقييم بشري واحد على الأقل.
+	orgMinMatrixPoints = 10
 )
 
 type OrgGovernor struct {
@@ -153,16 +156,21 @@ type orgComplaint struct {
 	Customer  string     `db:"customerId"`
 	Status    string     `db:"status"`
 	NoAnswer  bool       `db:"noAnswer"`
+	Dropped   bool       `db:"dropped"`
 	CreatedAt time.Time  `db:"createdAt"`
 	Resolved  *time.Time `db:"resolvedAt"`
 }
 
-// fineKey غرامة وحدة لكل حجز (شكاوي مكررة على نفس الحجز ما تتراكم).
-func (c orgComplaint) fineKey() string {
-	if c.BookingID != nil {
-		return "BOOKING:" + *c.BookingID
+// fineKey: غرامة الموظف وحدة لكل حجز ولكل شخص (شكاوي مكررة على نفس الحجز ما تتراكم،
+// وشخص ثاني مذنب بنفس الحجز ما يفلت). غرامة مدير العمليات وحدة لكل حجز (حادثة وحدة).
+func (c orgComplaint) fineKey(kind, empID string) string {
+	if c.BookingID == nil {
+		return "COMPLAINT:" + c.ID
 	}
-	return "COMPLAINT:" + c.ID
+	if kind == model.AiActionOrgFineCustomer {
+		return "BOOKING:" + *c.BookingID + ":" + empID
+	}
+	return "BOOKING:" + *c.BookingID
 }
 
 // FinePoints تقدير ماتركس لحجم المشكلة (بلا ذكاء خارجي — من أرقام النظام):
@@ -192,12 +200,18 @@ func FinePoints(unresolved48 bool, priorOnEmployee, priorFromCustomer int) (int,
 
 // fineFloor أقدم لحظة استحقاق تنحسب: بعد أول تشغيل، وبعد آخر مرة المفتاح انشغّل،
 // وبآخر ٧٢ ساعة — فالمتراكم بالتوقف ما ينزل دفعة وحدة.
-func (g *OrgGovernor) fineFloor() time.Time {
+func (g *OrgGovernor) fineFloor(kind string) time.Time {
 	floor := g.startedAt()
 	var on *time.Time
 	_ = g.db.Get(&on, `SELECT "updatedAt" FROM "SystemSwitch" WHERE key = $1 AND enabled`, model.SwitchOrgGovernor)
 	if on != nil && on.After(floor) {
 		floor = *on
+	}
+	// النوع انوقف (٣ رفضات) ورجع — ما ننزل المتراكم بالتوقف
+	var resumed *time.Time
+	_ = g.db.Get(&resumed, `SELECT "resumedAt" FROM "AiActionKindPause" WHERE kind = $1 AND "resumedAt" IS NOT NULL`, kind)
+	if resumed != nil && resumed.After(floor) {
+		floor = *resumed
 	}
 	if w := g.now().Add(-orgFineWindow); w.After(floor) {
 		floor = w
@@ -210,20 +224,19 @@ func (g *OrgGovernor) RunFines() {
 		return
 	}
 	since := g.startedAt()
-	floor := g.fineFloor()
+	floorCust, floorOps := g.fineFloor(model.AiActionOrgFineCustomer), g.fineFloor(model.AiActionOrgFineOps)
 	now := g.now()
 	rows := []orgComplaint{}
 	if err := g.db.Select(&rows, `SELECT c.id, c."bookingId", `+orgComplaintPerson+` AS "personId",
-		c."customerId", c.status::text AS status, (c."noAnswerCount" > 0 OR c."droppedNoAnswerAt" IS NOT NULL) AS "noAnswer",
+		c."customerId", c.status::text AS status,
+		-- معفية بس إذا الزبون ما چان ينوصل وقت المهلة (سقطت، أو المكالمة الجاية بعد الـ٤٨)
+		(c."droppedNoAnswerAt" IS NOT NULL OR (c."nextCallAt" IS NOT NULL AND c."nextCallAt" >= c."createdAt" + interval '48 hours')) AS "noAnswer",
+		c."droppedNoAnswerAt" IS NOT NULL AS dropped,
 		c."createdAt", c."resolvedAt"
 		FROM "Complaint" c WHERE c."createdAt" >= $1 ORDER BY c."createdAt"`, since.UTC()); err != nil {
 		log.Printf("[org-governor] الشكاوي: %v", err)
 		return
 	}
-	var opsDirector string
-	// الماسك هسه: المدير بالوكالة إذا الأصلي بإجازة (المبدأ ٢٠)، وإلا الأصلي
-	_ = g.db.Get(&opsDirector, `SELECT "employeeId" FROM "OrgAssignment" WHERE "divisionId" = 'ops' AND "unitId" IS NULL
-		AND position = 'DIRECTOR' AND "endedAt" IS NULL ORDER BY acting DESC, "startedAt" DESC LIMIT 1`)
 	for _, c := range rows {
 		open := c.Status == "NEW" || c.Status == "IN_PROGRESS"
 		deadline := c.CreatedAt.Add(orgFineDeadline)
@@ -237,27 +250,51 @@ func (g *OrgGovernor) RunFines() {
 		if !open && c.Resolved == nil {
 			due = deadline
 		}
-		if due.After(now) || due.Before(floor) {
+		if due.After(now) {
 			continue
 		}
-		// (١) غرامة الموظف الي الشكوى عليه — وحدة لكل حجز
-		if c.Person != nil && !g.protected(*c.Person) {
-			var priorEmp, priorCust int
-			_ = g.db.Get(&priorEmp, `SELECT count(DISTINCT COALESCE(c."bookingId", c.id)) FROM "Complaint" c
+		// (١) غرامة الموظف الي الشكوى عليه — وحدة لكل حجز ولكل شخص. الشكوى الي سقطت لأن
+		// الزبون ما رد أبداً ما تنحسب عليه.
+		if c.Person != nil && !c.Dropped && !due.Before(floorCust) && !g.protected(*c.Person) {
+			// ننتظر لحد ما كل شكاوي نفس الحجز على نفس الشخص تستحق، والتأخير لو أي وحدة تأخرت
+			var pending, anyLate bool
+			if c.BookingID != nil {
+				_ = g.db.Get(&pending, `SELECT EXISTS (SELECT 1 FROM "Complaint" c WHERE c."bookingId" = $1 AND `+orgComplaintPerson+` = $2
+					AND c.status IN ('NEW', 'IN_PROGRESS') AND c."createdAt" + interval '48 hours' > $3)`, *c.BookingID, *c.Person, now.UTC())
+				_ = g.db.Get(&anyLate, `SELECT EXISTS (SELECT 1 FROM "Complaint" c WHERE c."bookingId" = $1 AND `+orgComplaintPerson+` = $2
+					AND c."droppedNoAnswerAt" IS NULL AND NOT (c."nextCallAt" IS NOT NULL AND c."nextCallAt" >= c."createdAt" + interval '48 hours')
+					AND ((c.status IN ('NEW', 'IN_PROGRESS') AND c."createdAt" + interval '48 hours' <= $3) OR c."resolvedAt" > c."createdAt" + interval '48 hours'))`,
+					*c.BookingID, *c.Person, now.UTC())
+			} else {
+				anyLate = late && !c.NoAnswer
+			}
+			if !pending {
+				var priorEmp, priorCust int
+				_ = g.db.Get(&priorEmp, `SELECT count(DISTINCT COALESCE(c."bookingId", c.id)) FROM "Complaint" c
 				WHERE c.id <> $1 AND `+orgComplaintPerson+` = $2 AND c."createdAt" >= $4
 				AND c."createdAt" BETWEEN $3::timestamp - interval '30 days' AND $3
-				AND c."bookingId" IS DISTINCT FROM $5
+				AND ($5::text IS NULL OR c."bookingId" IS DISTINCT FROM $5)
+				AND c."droppedNoAnswerAt" IS NULL
 				AND NOT EXISTS (SELECT 1 FROM "AiAction" a WHERE a.kind = $6 AND a.status = 'UNDONE'
-					AND a."entityId" = COALESCE('BOOKING:' || c."bookingId", 'COMPLAINT:' || c.id))`,
-				c.ID, *c.Person, c.CreatedAt, since.UTC(), c.BookingID, model.AiActionOrgFineCustomer)
-			_ = g.db.Get(&priorCust, `SELECT count(DISTINCT COALESCE("bookingId", id)) FROM "Complaint"
-				WHERE id <> $1 AND "customerId" = $2 AND "createdAt" < $3 AND "createdAt" >= $4 AND "bookingId" IS DISTINCT FROM $5`,
-				c.ID, c.Customer, c.CreatedAt, since.UTC(), c.BookingID)
-			pts, why := FinePoints(late && !c.NoAnswer, priorEmp, priorCust)
-			g.fine(model.AiActionOrgFineCustomer, c, *c.Person, pts, why)
+					AND a."entityId" = COALESCE('BOOKING:' || c."bookingId" || ':' || $2, 'COMPLAINT:' || c.id))`,
+					c.ID, *c.Person, c.CreatedAt, since.UTC(), c.BookingID, model.AiActionOrgFineCustomer)
+				_ = g.db.Get(&priorCust, `SELECT count(DISTINCT COALESCE("bookingId", id)) FROM "Complaint"
+				WHERE id <> $1 AND "customerId" = $2 AND "createdAt" < $3 AND "createdAt" >= $4
+				AND ($5::text IS NULL OR "bookingId" IS DISTINCT FROM $5) AND "droppedNoAnswerAt" IS NULL`,
+					c.ID, c.Customer, c.CreatedAt, since.UTC(), c.BookingID)
+				pts, why := FinePoints(anyLate, priorEmp, priorCust)
+				g.fine(model.AiActionOrgFineCustomer, c, *c.Person, pts, why)
+			}
 		}
 		// (٢) مدير العمليات: شكوى بقت ٤٨ ساعة بلا حل — إلا إذا الزبون هو الي ما يرد
-		if late && !c.NoAnswer && opsDirector != "" && !g.protected(opsDirector) {
+		// الماسك وقت الاستحقاق: المدير بالوكالة إذا الأصلي بإجازة (المبدأ ٢٠)، وإلا الأصلي
+		var opsDirector string
+		if late && !c.NoAnswer && !due.Before(floorOps) {
+			_ = g.db.Get(&opsDirector, `SELECT "employeeId" FROM "OrgAssignment" WHERE "divisionId" = 'ops' AND "unitId" IS NULL
+				AND position = 'DIRECTOR' AND "startedAt" <= $1 AND ("endedAt" IS NULL OR "endedAt" > $1)
+				ORDER BY acting DESC, "startedAt" DESC LIMIT 1`, due.UTC())
+		}
+		if opsDirector != "" && !g.protected(opsDirector) {
 			pts := orgFineMinPoints
 			why := []string{"شكوى بقت أكثر من ٤٨ ساعة بلا حل"}
 			if c.Resolved != nil {
@@ -277,7 +314,7 @@ func (g *OrgGovernor) RunFines() {
 
 func (g *OrgGovernor) fine(kind string, c orgComplaint, empID string, pts int, why []string) {
 	name := g.actions.EmployeeName(empID)
-	key := c.fineKey()
+	key := c.fineKey(kind, empID)
 	target := empID
 	details := func(applied int) []byte {
 		b, _ := json.Marshal(map[string]any{"complaintId": c.ID, "bookingId": c.BookingID, "points": pts, "appliedPoints": applied, "reasons": why})
@@ -370,7 +407,9 @@ func (g *OrgGovernor) RunMonthlyIfDue() {
 		return
 	}
 	now := g.now().In(baghdad)
-	if now.Day() > 3 {
+	// يوم ٣ بس — حتى درجات آخر يوم بالشهر تكتمل (المقيّم يرجع ٣ أيام)، وبعدها كل ساعة
+	// باليوم يعيد للي ما انقيّم
+	if now.Day() != 3 {
 		return
 	}
 	prev := time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, baghdad).AddDate(0, -1, 0)
@@ -395,7 +434,9 @@ func (g *OrgGovernor) EvaluateMonth(period string) error {
 	}
 	staff := map[string]*float64{}
 	for _, s := range board.Staff {
-		staff[s.ID] = s.Final
+		if s.HumanCount >= 1 || s.Max >= orgMinMatrixPoints {
+			staff[s.ID] = s.Final
+		}
 	}
 	type holder struct {
 		Emp      string `db:"employeeId"`
@@ -449,6 +490,9 @@ func (g *OrgGovernor) EvaluateMonth(period string) error {
 			score = nil
 		}
 		comp, _ := json.Marshal(c)
+		if score == nil {
+			continue // بلا بيانات كافية: ما نسجّل حكم، يمكن تكتمل بالساعة الجاية
+		}
 		// القرار ينكتب بعد التنفيذ بالي صار فعلاً
 		decision := "NODATA"
 		if score != nil {
@@ -459,13 +503,16 @@ func (g *OrgGovernor) EvaluateMonth(period string) error {
 				var warned bool
 				_ = g.db.Get(&warned, `SELECT EXISTS (SELECT 1 FROM "AiAction" WHERE kind = $1 AND "entityId" = $2 AND period = $3 AND status = 'DONE')`,
 					model.AiActionOrgWarn, orgEvalEntity(h.Emp, prevPeriod), prevPeriod)
+				var already bool
+				_ = g.db.Get(&already, `SELECT EXISTS (SELECT 1 FROM "AiAction" WHERE kind = $1 AND "entityId" = $2 AND status = 'DONE')`,
+					model.AiActionOrgWarn, orgEvalEntity(h.Emp, period))
 				switch {
 				case warned && g.revoke(h.Emp, period, *score, comp):
 					decision = "REVOKE"
-				case g.warn(h.Emp, period, *score, comp):
+				case already || g.warn(h.Emp, period, *score, comp):
 					decision = "WARN"
 				default:
-					decision = "OK" // التنبيه ما انسجّل (ممنوع/موقوف) — ما نبني عليه
+					continue // التنبيه ما انسجّل (موقوف/خطأ) — ما نسجّل حكم، ونعيد بالساعة الجاية
 				}
 			}
 		}

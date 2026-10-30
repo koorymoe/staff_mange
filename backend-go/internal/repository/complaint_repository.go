@@ -346,7 +346,7 @@ func (r *ComplaintRepository) CountForEmployeeRange(employeeID, from, to string)
 func (r *ComplaintRepository) Resolve(id string, resolution *string) (*model.Complaint, error) {
 	var c model.Complaint
 	err := r.db.Get(&c, `
-		UPDATE "Complaint" SET status = 'RESOLVED', resolution = COALESCE($2, resolution), "resolvedAt" = now()
+		UPDATE "Complaint" SET status = 'RESOLVED', resolution = COALESCE($2, resolution), "resolvedAt" = COALESCE("resolvedAt", now())
 		WHERE id = $1
 		RETURNING *
 	`, id, resolution)
