@@ -85,12 +85,12 @@ func TestOrgPermissionSync_Live(t *testing.T) {
 	if has("tool_requests") {
 		t.Fatal("المزامنة رجّعت صلاحية شالها الأدمن")
 	}
-	// استثناء مثبّت على صلاحية من المنصب — الإنهاء ما يشيلها
-	db.MustExec(`INSERT INTO "PermissionException"("employeeId", permission, reason) VALUES ($1, 'it_assets', 'تجربة')`, emp)
+	// استثناء مثبّت على صلاحية من المنصب (عضو IT ياخذ unit_it، مو it_assets الي للرئيس) — الإنهاء ما يشيلها
+	db.MustExec(`INSERT INTO "PermissionException"("employeeId", permission, reason) VALUES ($1, 'unit_it', 'تجربة')`, emp)
 	if _, err := s.End("", b.ID, "تجربة إنهاء"); err != nil {
 		t.Fatal(err)
 	}
-	if !has("it_assets") {
+	if !has("unit_it") {
 		t.Fatal("الاستثناء المثبّت انسحب")
 	}
 	if has("it_stats") {
@@ -101,7 +101,7 @@ func TestOrgPermissionSync_Live(t *testing.T) {
 		t.Fatal(err)
 	}
 	after := perms()
-	want := append(append([]string{}, before...), "it_assets")
+	want := append(append([]string{}, before...), "unit_it")
 	sort.Strings(want)
 	if len(after) != len(want) {
 		t.Fatalf("بعد الإنهاء %v والمتوقع %v", after, want)

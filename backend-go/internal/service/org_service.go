@@ -23,6 +23,7 @@ func NewOrgService(db *sqlx.DB) *OrgService { return &OrgService{db: db} }
 
 // Seed يزرع الإدارات والوحدات وحزمها إذا ناقصة. ما يطمس الي تغيّر بعدين من الشاشة.
 func (s *OrgService) Seed() error {
+	changed := false
 	for i, d := range model.OrgSeed {
 		var parent any
 		if d.Parent != "" {
@@ -35,6 +36,11 @@ func (s *OrgService) Seed() error {
 		if err := s.seedBundle(d.ID, d.Perms); err != nil {
 			return err
 		}
+		if d.HeadAll {
+			if err := s.markHead(d.ID, d.Perms, &changed); err != nil {
+				return err
+			}
+		}
 		for j, u := range d.Units {
 			if _, err := s.db.Exec(`INSERT INTO "OrgUnit" (id, "divisionId", name, sort) VALUES ($1, $2, $3, $4)
 				ON CONFLICT (id) DO NOTHING`, u.ID, d.ID, u.Name, j); err != nil {
@@ -43,6 +49,53 @@ func (s *OrgService) Seed() error {
 			if err := s.seedBundle(u.ID, u.Perms); err != nil {
 				return err
 			}
+			if err := s.markHead(u.ID, u.Head, &changed); err != nil {
+				return err
+			}
+		}
+	}
+	if changed {
+		return s.resyncAll("صلاحيات حسب المنصب")
+	}
+	return nil
+}
+
+// markHead يعلّم صلاحيات الرئيس بالحزمة — مرة وحدة لكل حزمة (إذا ماكو ولا وحدة معلّمة).
+func (s *OrgService) markHead(scope string, head []string, changed *bool) error {
+	if len(head) == 0 {
+		return nil
+	}
+	var n int
+	if err := s.db.Get(&n, `SELECT count(*) FROM "OrgBundle" WHERE scope = $1 AND "headOnly"`, scope); err != nil || n > 0 {
+		return err
+	}
+	res, err := s.db.Exec(`UPDATE "OrgBundle" SET "headOnly" = true WHERE scope = $1 AND permission = ANY($2)`, scope, pq.Array(head))
+	if err != nil {
+		return err
+	}
+	if k, _ := res.RowsAffected(); k > 0 {
+		*changed = true
+	}
+	return nil
+}
+
+// resyncAll يعيد حساب صلاحيات الهيكل لكل صاحب منصب فعّال (بعد تغيير الحزم).
+func (s *OrgService) resyncAll(reason string) error {
+	var emps []string
+	if err := s.db.Select(&emps, `SELECT DISTINCT "employeeId" FROM "OrgAssignment" WHERE "endedAt" IS NULL`); err != nil {
+		return err
+	}
+	for _, e := range emps {
+		tx, err := s.db.Beginx()
+		if err != nil {
+			return err
+		}
+		if err := syncOrgPermissions(tx, e, "", reason); err != nil {
+			tx.Rollback()
+			return err
+		}
+		if err := tx.Commit(); err != nil {
+			return err
 		}
 	}
 	return nil
@@ -303,7 +356,7 @@ type orgQuerier interface {
 }
 
 // OrgDesiredPermissions الصلاحيات الي يستحقها الموظف من مناصبه الفعّالة.
-//   - منصب بوحدة: حزمة الوحدة.
+//   - منصب بوحدة: حزمة الوحدة (صلاحيات headOnly لرئيسها/نائبها بس).
 //   - مدير/نائب إدارة: حزمة الإدارة + حزم كل وحداتها.
 //   - عضو إدارة (بلا وحدة): حزمة الإدارة بس.
 func orgDesired(q orgQuerier, empID string) (map[string]bool, error) {
@@ -314,10 +367,12 @@ func orgDesired(q orgQuerier, empID string) (map[string]bool, error) {
 		SELECT DISTINCT b.permission FROM "OrgAssignment" a
 		JOIN "OrgBundle" b ON b.scope = a."unitId"
 		WHERE a."employeeId" = $1 AND a."endedAt" IS NULL AND a."unitId" IS NOT NULL
+		  AND (NOT b."headOnly" OR a.position IN ('DIRECTOR', 'DEPUTY'))
 		UNION
 		SELECT DISTINCT b.permission FROM "OrgAssignment" a
 		JOIN "OrgBundle" b ON b.scope = a."divisionId"
 		WHERE a."employeeId" = $1 AND a."endedAt" IS NULL AND a."unitId" IS NULL
+		  AND (NOT b."headOnly" OR a.position IN ('DIRECTOR', 'DEPUTY'))
 		UNION
 		SELECT DISTINCT b.permission FROM "OrgAssignment" a
 		JOIN "OrgUnit" u ON u."divisionId" = a."divisionId"
