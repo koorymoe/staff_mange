@@ -109,7 +109,7 @@ function notifTarget(n: { type: string; message: string }): string | null {
   return null
 }
 import AnnouncementTicker from './AnnouncementTicker'
-import { navItems, isNavVisible, isExtraForMonitor, isPathAllowed, type NavItem } from './navTree'
+import { navItems, isNavVisible, isExtraForMonitor, isPathAllowed, organizeOrgNavigation, orgNavigationGroupForPath, type DisplayNavItem, type NavItem } from './navTree'
 import { pollVisible } from '../utils/poll'
 import { startAgentRebrand } from '../utils/agentBrand'
 
@@ -335,6 +335,11 @@ export default function Layout() {
   }, [employee])
 
   useEffect(() => {
+    const orgGroup = orgNavigationGroupForPath(location.pathname, { employee, permissions: employeePermissions, gpsServiceId, orgMemberships })
+    if (orgGroup) {
+      queueMicrotask(() => setExpandedGroups((prev) => ({ ...prev, [orgGroup]: true })))
+      return
+    }
     const autoExpand = (items: NavItem[]) => {
       items.forEach((item) => {
         if (item.children && hasActiveChild(item, location.pathname)) {
@@ -344,7 +349,7 @@ export default function Layout() {
       })
     }
     autoExpand(navItems)
-  }, [location.pathname])
+  }, [location.pathname, employee, employeePermissions, gpsServiceId, orgMemberships])
 
   if (!employee) {
     return (
@@ -433,7 +438,7 @@ export default function Layout() {
   // ننضّف بقاعدتين عامتين تشتغلن لحالهن على أي عنصر ينضاف بالمستقبل:
   //   ١. الشاشة تظهر بأول محل توصلها بيه بس — التكرار بعدها ينشال.
   //   ٢. المجموعة الي ما بقى بيها إلا ولد واحد تنفك، والولد يطلع بمحلها.
-  type PrunedItem = Omit<NavItem, 'children'> & { granted: boolean; children?: PrunedItem[] }
+  type PrunedItem = DisplayNavItem
 
   // insideUnit: هل احنا جوّا وحدة إدارية؟ الوحدات مستثناة من قاعدة
   // «الشاشة تظهر بأول محل بس» — لأن محتواها كله موجود أصلاً تحت
@@ -505,7 +510,7 @@ export default function Layout() {
     })
   }
 
-  const visibleItems = prune(navItems, false, new Set<string>())
+  const visibleItems = organizeOrgNavigation(prune(navItems, false, new Set<string>()))
 
   const toggle = (label: string) => setExpandedGroups((p) => ({ ...p, [label]: !p[label] }))
 

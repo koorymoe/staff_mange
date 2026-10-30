@@ -110,6 +110,9 @@ const leaderInvoicesLabel = (ctx: NavContext) =>
     ? '🧾 فواتير الليدر' : '🧾 فواتير الخدمة مالتي'
 
 export const navItems: NavItem[] = [
+  // Access definitions (including legacy unit gates) stay unchanged. Layout
+  // calls organizeOrgNavigation AFTER filtering/pruning to arrange the visible
+  // screens by OrgSeed without granting or revoking a single route.
   // عنوان القسم — يفصل التنقل عن رأس القائمة (الشعار وبطاقة الموظف)،
   // فالعين تعرف وين تبدي بدل ما تلگه كتلة أزرار ملزوقة بالبطاقة.
   { to: '/nav-main-label', label: 'التنقل الرئيسي', icon: <></>, divider: true, plain: true },
@@ -877,6 +880,291 @@ export const navItems: NavItem[] = [
   // قرار (ع) 10-08: «حجز جديد» مكرر ويا «＋ إنشاء حجز» جوّا «العمل» — يبقى واحد.
 
 ]
+
+export type DisplayNavItem = Omit<NavItem, 'children'> & {
+  granted: boolean
+  children?: DisplayNavItem[]
+}
+
+// Presentation only: these are group buttons, not routes or permission bundles.
+// Keep the access-bearing leaf objects and their original `granted` context.
+const orgNavigationGroups = [
+  {
+    to: '/unit-monitoring',
+    label: 'مراقبة الوحدات',
+    legacy: ['/unit-monitoring', '/unit-matrix'],
+    paths: [
+      '/monitor-desk',
+      '/field-map',
+      '/late-audit',
+      '/matrix-selfcheck',
+      '/monitor',
+      '/reports-desk',
+      '/achievements',
+      '/matrix/decisions',
+      '/ai-insights',
+      '/weekly-report',
+      '/staff-score',
+      '/employee-indicators',
+      '/peer-voice',
+      '/workplace-issues',
+    ],
+  },
+  {
+    to: '/unit-accounts',
+    label: 'الحسابات',
+    legacy: ['/unit-accounts'],
+    paths: [
+      '/finance-desk',
+      '/accountant-desk',
+      '/finance',
+      '/daily-audit',
+      '/credits',
+      '/revolving-fund',
+      '/expenses',
+      '/cost-calc',
+      '/decor-rates',
+    ],
+  },
+  {
+    to: '/unit-oversight',
+    label: 'الرقابة',
+    legacy: [],
+    paths: ['/privacy-policy'],
+  },
+  {
+    to: '/unit-auditing',
+    label: 'التدقيق',
+    legacy: [],
+    paths: [
+      '/audit-issues',
+      '/duplicate-review',
+      '/leader-invoices',
+      '/crew-bookings-audit',
+    ],
+  },
+  {
+    to: '/unit-fleet',
+    label: 'العُدد والمركبات',
+    legacy: ['/unit-fleet'],
+    paths: [
+      '/vehicles',
+      '/vehicle-drivers',
+      '/vehicle-tracking',
+      '/fleet-dashboard',
+      '/vehicle-bookings',
+      '/vehicle-missions',
+      '/inventory',
+      '/store-tools',
+    ],
+  },
+  {
+    to: '/unit-hr',
+    label: 'إدارة الكوادر',
+    legacy: ['/unit-hr'],
+    paths: [
+      '/staff-management-desk',
+      '/work-schedule',
+      '/staff-leaves',
+      '/stats-management',
+      '/remote-hours',
+    ],
+  },
+  {
+    to: '/unit-bookings',
+    label: 'الحجوزات والتنسيق',
+    legacy: [],
+    paths: [
+      '/bookings',
+      '/missions',
+      '/customers',
+      '/bookings-archive',
+      '/sales-opportunities',
+    ],
+  },
+  {
+    to: '/unit-technicians',
+    label: 'التقنيين والخدمات',
+    legacy: ['/unit-technicians', '/unit-service'],
+    paths: [
+      '/tech-bookings',
+      '/tech-products',
+      '/tech-content',
+      '/tech-suppliers',
+      '/supplier-relations',
+      '/gps',
+      '/gps/requests-hub',
+      '/gps/follow-up',
+      '/solar',
+      '/service-managers',
+      '/network-prices',
+      '/gps-install-costs',
+    ],
+  },
+  {
+    to: '/unit-training',
+    label: 'التدريب',
+    legacy: ['/unit-training'],
+    paths: ['/training-center', '/training-programs'],
+  },
+  {
+    to: '/unit-projects',
+    label: 'إدارة المشاريع',
+    legacy: ['/unit-projects'],
+    paths: [
+      '/projects',
+      '/project-work-types',
+      '/project-statistics',
+      '/checklists',
+      '/quotations',
+      '/products',
+      '/project-payments',
+    ],
+  },
+  {
+    to: '/unit-design-group',
+    label: 'التصميم',
+    legacy: ['/unit-design-group'],
+    paths: ['/design-forms/quick-add', '/design-forms', '/design-gallery'],
+  },
+  {
+    to: '/unit-quality',
+    label: 'متابعة الجودة والشكاوي',
+    legacy: ['/unit-quality'],
+    paths: ['/quality-desk', '/quality', '/work-reports-review'],
+  },
+  {
+    to: '/unit-procurement',
+    label: 'المشتريات والمخزن',
+    legacy: ['/unit-procurement'],
+    paths: ['/procurement', '/suppliers'],
+  },
+  {
+    to: '/unit-pr',
+    label: 'الإعلام والعلاقات العامة',
+    legacy: ['/unit-pr', '/unit-media'],
+    paths: ['/vip-customers', '/media', '/customer-app'],
+  },
+  {
+    to: '/unit-it',
+    label: 'التقنية IT',
+    legacy: ['/unit-it'],
+    paths: ['/it-assets', '/it-stats'],
+  },
+]
+const orgGroupByPath = new Map(
+  orgNavigationGroups.flatMap((group) =>
+    group.paths.map((path) => [path, group.to] as const),
+  ),
+)
+const orgGroupByLegacy = new Map(
+  orgNavigationGroups.flatMap((group) =>
+    group.legacy.map((path) => [path, group.to] as const),
+  ),
+)
+
+/** Active-group expansion uses the same display mapping, not a second list. */
+export function orgNavigationGroupForPath(path: string, ctx: NavContext): string | undefined {
+  const clean = (value: string) =>
+    value.split('?')[0].replace(/\/+$/, '') || '/'
+  const target = clean(path)
+  const isMonitor = ctx.employee?.role === 'MONITOR' || (ctx.employee?.role !== 'ADMIN' && ctx.permissions.includes('monitoring'))
+  let best: { length: number; group?: string } | undefined
+  const find = (items: NavItem[], granted = false, inherited?: string): void => {
+    for (const item of items) {
+      if (!isNavVisible(item, ctx, granted) || (item.monitorMenuHide && isMonitor)) continue
+      const group = orgGroupByLegacy.get(item.to) ?? inherited
+      if (item.children) {
+        const childGranted = granted || (!!item.unitPermission && (ctx.employee?.role === 'ADMIN' || ctx.permissions.includes(item.unitPermission)))
+        find(item.children, childGranted, group)
+      } else if (!item.divider) {
+        const candidate = clean(item.to)
+        if (candidate !== target && !target.startsWith(candidate + '/')) continue
+        const destination = orgGroupByPath.get(item.to) ?? group
+        if (!best || candidate.length > best.length || (candidate.length === best.length && destination)) best = { length: candidate.length, group: destination }
+      }
+    }
+  }
+  find(navItems)
+  return best?.group
+}
+
+/** Input MUST already be visibility-filtered. Never call this for authorization.
+ * Reparent only existing leaves; preserve their `to`, guards and granted flag.
+ * Dedup identical links within a merged unit, not distinct query-string routes.
+ */
+export function organizeOrgNavigation(
+  items: DisplayNavItem[],
+): DisplayNavItem[] {
+  const buckets = new Map<string, Map<string, DisplayNavItem>>()
+  const icons = new Map<string, React.ReactNode>()
+  let unitsDivider: DisplayNavItem | undefined
+  const trim = (list: DisplayNavItem[]): DisplayNavItem[] =>
+    list.filter(
+      (item, i) => !item.divider || (!!list[i + 1] && !list[i + 1].divider),
+    )
+  const walk = (
+    list: DisplayNavItem[],
+    inheritedGroup?: string,
+  ): DisplayNavItem[] => {
+    const remaining: DisplayNavItem[] = []
+    for (const item of list) {
+      if (item.to === '/units-divider') {
+        unitsDivider = item
+        continue
+      }
+      const legacyGroup = orgGroupByLegacy.get(item.to)
+      if (legacyGroup && !icons.has(legacyGroup))
+        icons.set(legacyGroup, item.icon)
+      if (item.children) {
+        const children = walk(item.children, legacyGroup ?? inheritedGroup)
+        if (children.length) remaining.push({ ...item, children })
+      } else if (item.divider) {
+        if (!inheritedGroup) remaining.push(item)
+      } else {
+        const group = orgGroupByPath.get(item.to) ?? inheritedGroup
+        if (!group) {
+          remaining.push(item)
+          continue
+        }
+        if (!buckets.has(group)) buckets.set(group, new Map())
+        if (!buckets.get(group)!.has(item.to))
+          buckets.get(group)!.set(item.to, item)
+      }
+    }
+    return trim(remaining)
+  }
+  const remaining = walk(items)
+  const groups: DisplayNavItem[] = orgNavigationGroups.flatMap((group) => {
+    const bucket = buckets.get(group.to)
+    if (!bucket?.size) return []
+    const rank = new Map(group.paths.map((path, i) => [path, i]))
+    const children = [...bucket.values()].sort(
+      (a, b) => (rank.get(a.to) ?? 999) - (rank.get(b.to) ?? 999),
+    )
+    return [
+      {
+        to: group.to,
+        label: group.label,
+        icon: icons.get(group.to) ?? icon('M9 5h10v14H5V5h4M9 3h6v4H9z'),
+        granted: false,
+        children,
+      },
+    ]
+  })
+  if (!groups.length) return remaining
+  return [
+    ...remaining,
+    unitsDivider ?? {
+      to: '/units-divider',
+      label: '── الوحدات ──',
+      icon: <></>,
+      divider: true,
+      granted: false,
+    },
+    ...groups,
+  ]
+}
 
 
 // «المشاريع» لصاحب «إضافة مشروع بس» تفتح نموذج الإضافة بس — فاسمها يگول هالشي (قرار (ع) 10-06).

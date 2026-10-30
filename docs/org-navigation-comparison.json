@@ -1,0 +1,2814 @@
+[
+  {
+    "account": "مالك",
+    "role": "ADMIN",
+    "actualRole": "OWNER",
+    "permissions": [],
+    "countBefore": 97,
+    "countAfter": 97,
+    "before": [
+      {
+        "to": "/?board=desk",
+        "label": "🏛️ مكتب المدير",
+        "group": ""
+      },
+      {
+        "to": "/secretary",
+        "label": "🗂️ ايريس",
+        "group": ""
+      },
+      {
+        "to": "/ai-agents",
+        "label": "🤖 وكلاء الذكاء",
+        "group": ""
+      },
+      {
+        "to": "/ai-suggestions",
+        "label": "🧠 اقتراحات الذكاء",
+        "group": ""
+      },
+      {
+        "to": "/org",
+        "label": "🏛️ الهيكل التنظيمي",
+        "group": ""
+      },
+      {
+        "to": "/my-org",
+        "label": "🏛️ مكاني",
+        "group": ""
+      },
+      {
+        "to": "/org/desk",
+        "label": "🏛️ مكتب الإدارة",
+        "group": ""
+      },
+      {
+        "to": "/voice-terms",
+        "label": "👂 قاموس الأذن",
+        "group": ""
+      },
+      {
+        "to": "/matrix-chat",
+        "label": "🤖 محادثة ماتركس",
+        "group": ""
+      },
+      {
+        "to": "/whatsapp-conversations",
+        "label": "محادثات الواتساب",
+        "group": ""
+      },
+      {
+        "to": "/whatsapp-sandbox",
+        "label": "وضع تجربة الواتساب",
+        "group": ""
+      },
+      {
+        "to": "/attendance",
+        "label": "جدول دوام الموظفين",
+        "group": ""
+      },
+      {
+        "to": "/my-work",
+        "label": "مهام وإنجازات الموظفين",
+        "group": ""
+      },
+      {
+        "to": "/accountant-desk",
+        "label": "🧾 مكتب المحاسب",
+        "group": "العمل"
+      },
+      {
+        "to": "/quality-desk",
+        "label": "⭐ مكتب الجودة",
+        "group": "العمل"
+      },
+      {
+        "to": "/reports-desk",
+        "label": "📑 تقارير الحجوزات والمشاريع",
+        "group": "العمل"
+      },
+      {
+        "to": "/decor-rates",
+        "label": "🪚 أسعار الديكور",
+        "group": "العمل"
+      },
+      {
+        "to": "/vehicle-drivers",
+        "label": "🪪 السواق وبطاقات البنزين",
+        "group": "العمل"
+      },
+      {
+        "to": "/my-paperwork",
+        "label": "📄 ورق حجوزاتي القديمة",
+        "group": ""
+      },
+      {
+        "to": "/bookings",
+        "label": "الحجوزات",
+        "group": "وحدة إدارة الكوادر"
+      },
+      {
+        "to": "/missions",
+        "label": "تتبع المهام",
+        "group": "وحدة إدارة الكوادر"
+      },
+      {
+        "to": "/customers",
+        "label": "العملاء",
+        "group": "وحدة إدارة الكوادر"
+      },
+      {
+        "to": "/staff-management-desk",
+        "label": "إدارة الموظفين",
+        "group": "وحدة إدارة الكوادر"
+      },
+      {
+        "to": "/work-schedule",
+        "label": "🕘 جدول الدوام",
+        "group": "وحدة إدارة الكوادر"
+      },
+      {
+        "to": "/remote-hours",
+        "label": "🏠 ساعات العمل من البيت",
+        "group": "وحدة إدارة الكوادر"
+      },
+      {
+        "to": "/staff-leaves",
+        "label": "🗓️ إجازات الموظفين",
+        "group": "وحدة إدارة الكوادر"
+      },
+      {
+        "to": "/stats-management",
+        "label": "📊 الإحصائيات",
+        "group": "وحدة إدارة الكوادر"
+      },
+      {
+        "to": "/tech-bookings",
+        "label": "🛠️ حجوزات التقنيين",
+        "group": "وحدة التقنيين"
+      },
+      {
+        "to": "/tech-products",
+        "label": "📦 المنتجات والمعارض",
+        "group": "وحدة التقنيين"
+      },
+      {
+        "to": "/tech-content",
+        "label": "📚 المحتوى التقني",
+        "group": "وحدة التقنيين"
+      },
+      {
+        "to": "/tech-suppliers",
+        "label": "🏪 موردين التقنيين",
+        "group": "وحدة التقنيين"
+      },
+      {
+        "to": "/supplier-relations",
+        "label": "🤝 علاقات الموردين",
+        "group": "وحدة التقنيين"
+      },
+      {
+        "to": "/training-center",
+        "label": "🧠 مركز التدريب",
+        "group": "وحدة التدريب"
+      },
+      {
+        "to": "/training-programs",
+        "label": "🎓 برامج التدريب",
+        "group": "وحدة التدريب"
+      },
+      {
+        "to": "/projects",
+        "label": "🏗️ المشاريع",
+        "group": "وحدة إدارة المشاريع"
+      },
+      {
+        "to": "/project-work-types",
+        "label": "إعدادات: أنواع الأعمال",
+        "group": "وحدة إدارة المشاريع"
+      },
+      {
+        "to": "/project-statistics",
+        "label": "📊 إحصائيات المشاريع",
+        "group": "وحدة إدارة المشاريع"
+      },
+      {
+        "to": "/checklists",
+        "label": "الكشوفات",
+        "group": "وحدة إدارة المشاريع"
+      },
+      {
+        "to": "/quotations",
+        "label": "عروض الأسعار",
+        "group": "وحدة إدارة المشاريع"
+      },
+      {
+        "to": "/products",
+        "label": "📦 المنتجات",
+        "group": "وحدة إدارة المشاريع"
+      },
+      {
+        "to": "/project-payments",
+        "label": "💰 فلوس المشاريع",
+        "group": "وحدة إدارة المشاريع"
+      },
+      {
+        "to": "/gps",
+        "label": "📡 نظام GPS",
+        "group": "وحدة إدارة الخدمة"
+      },
+      {
+        "to": "/gps/requests-hub",
+        "label": "📥 طلبات GPS",
+        "group": "وحدة إدارة الخدمة"
+      },
+      {
+        "to": "/gps/follow-up",
+        "label": "🔄 متابعة تجديد الاشتراكات",
+        "group": "وحدة إدارة الخدمة"
+      },
+      {
+        "to": "/solar",
+        "label": "☀️ الطاقة الشمسية",
+        "group": "وحدة إدارة الخدمة"
+      },
+      {
+        "to": "/leader-invoices/new?service=1",
+        "label": "🛰️ فاتورة خدمة",
+        "group": "وحدة إدارة الخدمة"
+      },
+      {
+        "to": "/work-reports",
+        "label": "📝 تقرير خدمة",
+        "group": "وحدة إدارة الخدمة"
+      },
+      {
+        "to": "/leader-invoices/new",
+        "label": "🧮 حساب الكلفة",
+        "group": "وحدة إدارة الخدمة"
+      },
+      {
+        "to": "/service-managers",
+        "label": "مسؤولو الخدمات",
+        "group": "وحدة إدارة الخدمة"
+      },
+      {
+        "to": "/network-prices",
+        "label": "أسعار الشبكات",
+        "group": "وحدة إدارة الخدمة"
+      },
+      {
+        "to": "/gps-install-costs",
+        "label": "🔧 حساب تكاليف الشد",
+        "group": "وحدة إدارة الخدمة"
+      },
+      {
+        "to": "/vip-customers",
+        "label": "⭐ الشخصيات المهمة",
+        "group": "وحدة الإعلام والعلاقات العامة"
+      },
+      {
+        "to": "/supplier-relations",
+        "label": "🤝 علاقات الموردين",
+        "group": "وحدة الإعلام والعلاقات العامة"
+      },
+      {
+        "to": "/media",
+        "label": "📸 مشاريع للتصوير",
+        "group": "وحدة الإعلام والعلاقات العامة"
+      },
+      {
+        "to": "/customer-app",
+        "label": "📱 تطبيق الزبائن",
+        "group": "وحدة الإعلام والعلاقات العامة"
+      },
+      {
+        "to": "/monitor-desk",
+        "label": "🗂️ مكتب المراقب",
+        "group": "وحدة الرقابة"
+      },
+      {
+        "to": "/field-map",
+        "label": "🗺️ خريطة الميدان",
+        "group": "وحدة الرقابة"
+      },
+      {
+        "to": "/late-audit",
+        "label": "🔍 فحص المتأخرات",
+        "group": "وحدة الرقابة"
+      },
+      {
+        "to": "/matrix-selfcheck",
+        "label": "🧪 فحص دقة ماتركس",
+        "group": "وحدة الرقابة"
+      },
+      {
+        "to": "/monitor",
+        "label": "لوحة المراقبة",
+        "group": "وحدة الرقابة"
+      },
+      {
+        "to": "/crew-bookings-audit",
+        "label": "تدقيق تنسيق الحجوزات",
+        "group": "وحدة الرقابة"
+      },
+      {
+        "to": "/privacy-policy",
+        "label": "🔒 إدارة سياسة الخصوصية",
+        "group": "وحدة الرقابة"
+      },
+      {
+        "to": "/finance",
+        "label": "تدقيق الحسابات",
+        "group": "وحدة الحسابات"
+      },
+      {
+        "to": "/daily-audit",
+        "label": "📅 التدقيق اليومي",
+        "group": "وحدة الحسابات"
+      },
+      {
+        "to": "/credits",
+        "label": "⏳ الآجل",
+        "group": "وحدة الحسابات"
+      },
+      {
+        "to": "/audit-issues",
+        "label": "💸 بلاغات أخطاء التدقيق",
+        "group": "وحدة الحسابات"
+      },
+      {
+        "to": "/leader-invoices",
+        "label": "🧾 فواتير الليدر",
+        "group": "وحدة الحسابات"
+      },
+      {
+        "to": "/revolving-fund",
+        "label": "💵 الدوار",
+        "group": "وحدة الحسابات"
+      },
+      {
+        "to": "/expenses",
+        "label": "إدارة المصاريف",
+        "group": "وحدة الحسابات"
+      },
+      {
+        "to": "/procurement",
+        "label": "طلبات المواد",
+        "group": "وحدة المشتريات والمخازن"
+      },
+      {
+        "to": "/suppliers",
+        "label": "الموردون",
+        "group": "وحدة المشتريات والمخازن"
+      },
+      {
+        "to": "/vehicles",
+        "label": "إدارة المركبات",
+        "group": "وحدة العدد والمركبات"
+      },
+      {
+        "to": "/vehicle-tracking",
+        "label": "🚗 متابعة السيارات",
+        "group": "وحدة العدد والمركبات"
+      },
+      {
+        "to": "/fleet-dashboard",
+        "label": "لوحة تحكم الأسطول",
+        "group": "وحدة العدد والمركبات"
+      },
+      {
+        "to": "/vehicle-bookings",
+        "label": "حجز المركبات",
+        "group": "وحدة العدد والمركبات"
+      },
+      {
+        "to": "/vehicle-missions",
+        "label": "مهمات المركبات",
+        "group": "وحدة العدد والمركبات"
+      },
+      {
+        "to": "/inventory",
+        "label": "جرد الأدوات",
+        "group": "وحدة العدد والمركبات"
+      },
+      {
+        "to": "/store-tools",
+        "label": "🧰 أدوات المخزن",
+        "group": "وحدة العدد والمركبات"
+      },
+      {
+        "to": "/matrix/decisions",
+        "label": "🤖 صندوق قرارات ماتركس",
+        "group": "وحدة المراقبون — ماتركس"
+      },
+      {
+        "to": "/ai-insights",
+        "label": "🧠 مؤشرات الذكاء الاصطناعي",
+        "group": "وحدة المراقبون — ماتركس"
+      },
+      {
+        "to": "/weekly-report",
+        "label": "📊 التقرير الأسبوعي",
+        "group": "وحدة المراقبون — ماتركس"
+      },
+      {
+        "to": "/staff-score",
+        "label": "🏅 تقييم الموظفين",
+        "group": "وحدة المراقبون — ماتركس"
+      },
+      {
+        "to": "/employee-indicators",
+        "label": "📈 مؤشرات أداء الموظف",
+        "group": "وحدة المراقبون — ماتركس"
+      },
+      {
+        "to": "/peer-voice",
+        "label": "🗣️ صوت الموظفين",
+        "group": "وحدة المراقبون — ماتركس"
+      },
+      {
+        "to": "/workplace-issues",
+        "label": "🤝 المشاكل الوظيفية",
+        "group": "وحدة المراقبون — ماتركس"
+      },
+      {
+        "to": "/duplicate-review",
+        "label": "🤖 ماتركس — التكرار",
+        "group": "وحدة المراقبون — ماتركس"
+      },
+      {
+        "to": "/quality",
+        "label": "الجودة",
+        "group": "وحدة الجودة والسلامة المهنية"
+      },
+      {
+        "to": "/work-reports-review",
+        "label": "مراجعة تقارير العمل",
+        "group": "وحدة الجودة والسلامة المهنية"
+      },
+      {
+        "to": "/design-forms/quick-add",
+        "label": "إضافة سؤال",
+        "group": "وحدة التصميم"
+      },
+      {
+        "to": "/design-forms",
+        "label": "فورمة التصميم",
+        "group": "وحدة التصميم"
+      },
+      {
+        "to": "/design-gallery",
+        "label": "🎨 معرض التصاميم",
+        "group": "وحدة التصميم"
+      },
+      {
+        "to": "/it-assets",
+        "label": "🖥️ جرد الأجهزة",
+        "group": "وحدة تقنية المعلومات"
+      },
+      {
+        "to": "/it-stats",
+        "label": "📊 إحصائيات الـIT",
+        "group": "وحدة تقنية المعلومات"
+      },
+      {
+        "to": "/privacy-policy",
+        "label": "سياسة الخصوصية",
+        "group": "روابط ثابتة"
+      },
+      {
+        "to": "/announcements",
+        "label": "لوحة الإعلانات",
+        "group": "روابط ثابتة"
+      },
+      {
+        "to": "/owner-security",
+        "label": "لوحة المراقبة الخلفية",
+        "group": "روابط المالك الثابتة"
+      },
+      {
+        "to": "/command-code",
+        "label": "رمز مركز القيادة",
+        "group": "روابط المالك الثابتة"
+      },
+      {
+        "to": "/owner-backups",
+        "label": "النسخ الاحتياطية",
+        "group": "روابط المالك الثابتة"
+      },
+      {
+        "to": "/assistant-conversations",
+        "label": "محادثات المساعد الذكي",
+        "group": "روابط المالك الثابتة"
+      }
+    ],
+    "after": [
+      {
+        "to": "/?board=desk",
+        "label": "🏛️ مكتب المدير",
+        "group": ""
+      },
+      {
+        "to": "/secretary",
+        "label": "🗂️ ايريس",
+        "group": ""
+      },
+      {
+        "to": "/ai-agents",
+        "label": "🤖 وكلاء الذكاء",
+        "group": ""
+      },
+      {
+        "to": "/ai-suggestions",
+        "label": "🧠 اقتراحات الذكاء",
+        "group": ""
+      },
+      {
+        "to": "/org",
+        "label": "🏛️ الهيكل التنظيمي",
+        "group": ""
+      },
+      {
+        "to": "/my-org",
+        "label": "🏛️ مكاني",
+        "group": ""
+      },
+      {
+        "to": "/org/desk",
+        "label": "🏛️ مكتب الإدارة",
+        "group": ""
+      },
+      {
+        "to": "/voice-terms",
+        "label": "👂 قاموس الأذن",
+        "group": ""
+      },
+      {
+        "to": "/matrix-chat",
+        "label": "🤖 محادثة ماتركس",
+        "group": ""
+      },
+      {
+        "to": "/whatsapp-conversations",
+        "label": "محادثات الواتساب",
+        "group": ""
+      },
+      {
+        "to": "/whatsapp-sandbox",
+        "label": "وضع تجربة الواتساب",
+        "group": ""
+      },
+      {
+        "to": "/attendance",
+        "label": "جدول دوام الموظفين",
+        "group": ""
+      },
+      {
+        "to": "/my-work",
+        "label": "مهام وإنجازات الموظفين",
+        "group": ""
+      },
+      {
+        "to": "/my-paperwork",
+        "label": "📄 ورق حجوزاتي القديمة",
+        "group": ""
+      },
+      {
+        "to": "/monitor-desk",
+        "label": "🗂️ مكتب المراقب",
+        "group": "مراقبة الوحدات"
+      },
+      {
+        "to": "/field-map",
+        "label": "🗺️ خريطة الميدان",
+        "group": "مراقبة الوحدات"
+      },
+      {
+        "to": "/late-audit",
+        "label": "🔍 فحص المتأخرات",
+        "group": "مراقبة الوحدات"
+      },
+      {
+        "to": "/matrix-selfcheck",
+        "label": "🧪 فحص دقة ماتركس",
+        "group": "مراقبة الوحدات"
+      },
+      {
+        "to": "/monitor",
+        "label": "لوحة المراقبة",
+        "group": "مراقبة الوحدات"
+      },
+      {
+        "to": "/reports-desk",
+        "label": "📑 تقارير الحجوزات والمشاريع",
+        "group": "مراقبة الوحدات"
+      },
+      {
+        "to": "/matrix/decisions",
+        "label": "🤖 صندوق قرارات ماتركس",
+        "group": "مراقبة الوحدات"
+      },
+      {
+        "to": "/ai-insights",
+        "label": "🧠 مؤشرات الذكاء الاصطناعي",
+        "group": "مراقبة الوحدات"
+      },
+      {
+        "to": "/weekly-report",
+        "label": "📊 التقرير الأسبوعي",
+        "group": "مراقبة الوحدات"
+      },
+      {
+        "to": "/staff-score",
+        "label": "🏅 تقييم الموظفين",
+        "group": "مراقبة الوحدات"
+      },
+      {
+        "to": "/employee-indicators",
+        "label": "📈 مؤشرات أداء الموظف",
+        "group": "مراقبة الوحدات"
+      },
+      {
+        "to": "/peer-voice",
+        "label": "🗣️ صوت الموظفين",
+        "group": "مراقبة الوحدات"
+      },
+      {
+        "to": "/workplace-issues",
+        "label": "🤝 المشاكل الوظيفية",
+        "group": "مراقبة الوحدات"
+      },
+      {
+        "to": "/accountant-desk",
+        "label": "🧾 مكتب المحاسب",
+        "group": "الحسابات"
+      },
+      {
+        "to": "/finance",
+        "label": "تدقيق الحسابات",
+        "group": "الحسابات"
+      },
+      {
+        "to": "/daily-audit",
+        "label": "📅 التدقيق اليومي",
+        "group": "الحسابات"
+      },
+      {
+        "to": "/credits",
+        "label": "⏳ الآجل",
+        "group": "الحسابات"
+      },
+      {
+        "to": "/revolving-fund",
+        "label": "💵 الدوار",
+        "group": "الحسابات"
+      },
+      {
+        "to": "/expenses",
+        "label": "إدارة المصاريف",
+        "group": "الحسابات"
+      },
+      {
+        "to": "/decor-rates",
+        "label": "🪚 أسعار الديكور",
+        "group": "الحسابات"
+      },
+      {
+        "to": "/privacy-policy",
+        "label": "🔒 إدارة سياسة الخصوصية",
+        "group": "الرقابة"
+      },
+      {
+        "to": "/audit-issues",
+        "label": "💸 بلاغات أخطاء التدقيق",
+        "group": "التدقيق"
+      },
+      {
+        "to": "/duplicate-review",
+        "label": "🤖 ماتركس — التكرار",
+        "group": "التدقيق"
+      },
+      {
+        "to": "/leader-invoices",
+        "label": "🧾 فواتير الليدر",
+        "group": "التدقيق"
+      },
+      {
+        "to": "/crew-bookings-audit",
+        "label": "تدقيق تنسيق الحجوزات",
+        "group": "التدقيق"
+      },
+      {
+        "to": "/vehicles",
+        "label": "إدارة المركبات",
+        "group": "العُدد والمركبات"
+      },
+      {
+        "to": "/vehicle-drivers",
+        "label": "🪪 السواق وبطاقات البنزين",
+        "group": "العُدد والمركبات"
+      },
+      {
+        "to": "/vehicle-tracking",
+        "label": "🚗 متابعة السيارات",
+        "group": "العُدد والمركبات"
+      },
+      {
+        "to": "/fleet-dashboard",
+        "label": "لوحة تحكم الأسطول",
+        "group": "العُدد والمركبات"
+      },
+      {
+        "to": "/vehicle-bookings",
+        "label": "حجز المركبات",
+        "group": "العُدد والمركبات"
+      },
+      {
+        "to": "/vehicle-missions",
+        "label": "مهمات المركبات",
+        "group": "العُدد والمركبات"
+      },
+      {
+        "to": "/inventory",
+        "label": "جرد الأدوات",
+        "group": "العُدد والمركبات"
+      },
+      {
+        "to": "/store-tools",
+        "label": "🧰 أدوات المخزن",
+        "group": "العُدد والمركبات"
+      },
+      {
+        "to": "/staff-management-desk",
+        "label": "إدارة الموظفين",
+        "group": "إدارة الكوادر"
+      },
+      {
+        "to": "/work-schedule",
+        "label": "🕘 جدول الدوام",
+        "group": "إدارة الكوادر"
+      },
+      {
+        "to": "/staff-leaves",
+        "label": "🗓️ إجازات الموظفين",
+        "group": "إدارة الكوادر"
+      },
+      {
+        "to": "/stats-management",
+        "label": "📊 الإحصائيات",
+        "group": "إدارة الكوادر"
+      },
+      {
+        "to": "/remote-hours",
+        "label": "🏠 ساعات العمل من البيت",
+        "group": "إدارة الكوادر"
+      },
+      {
+        "to": "/bookings",
+        "label": "الحجوزات",
+        "group": "الحجوزات والتنسيق"
+      },
+      {
+        "to": "/missions",
+        "label": "تتبع المهام",
+        "group": "الحجوزات والتنسيق"
+      },
+      {
+        "to": "/customers",
+        "label": "العملاء",
+        "group": "الحجوزات والتنسيق"
+      },
+      {
+        "to": "/tech-bookings",
+        "label": "🛠️ حجوزات التقنيين",
+        "group": "التقنيين والخدمات"
+      },
+      {
+        "to": "/tech-products",
+        "label": "📦 المنتجات والمعارض",
+        "group": "التقنيين والخدمات"
+      },
+      {
+        "to": "/tech-content",
+        "label": "📚 المحتوى التقني",
+        "group": "التقنيين والخدمات"
+      },
+      {
+        "to": "/tech-suppliers",
+        "label": "🏪 موردين التقنيين",
+        "group": "التقنيين والخدمات"
+      },
+      {
+        "to": "/supplier-relations",
+        "label": "🤝 علاقات الموردين",
+        "group": "التقنيين والخدمات"
+      },
+      {
+        "to": "/gps",
+        "label": "📡 نظام GPS",
+        "group": "التقنيين والخدمات"
+      },
+      {
+        "to": "/gps/requests-hub",
+        "label": "📥 طلبات GPS",
+        "group": "التقنيين والخدمات"
+      },
+      {
+        "to": "/gps/follow-up",
+        "label": "🔄 متابعة تجديد الاشتراكات",
+        "group": "التقنيين والخدمات"
+      },
+      {
+        "to": "/solar",
+        "label": "☀️ الطاقة الشمسية",
+        "group": "التقنيين والخدمات"
+      },
+      {
+        "to": "/service-managers",
+        "label": "مسؤولو الخدمات",
+        "group": "التقنيين والخدمات"
+      },
+      {
+        "to": "/network-prices",
+        "label": "أسعار الشبكات",
+        "group": "التقنيين والخدمات"
+      },
+      {
+        "to": "/gps-install-costs",
+        "label": "🔧 حساب تكاليف الشد",
+        "group": "التقنيين والخدمات"
+      },
+      {
+        "to": "/leader-invoices/new?service=1",
+        "label": "🛰️ فاتورة خدمة",
+        "group": "التقنيين والخدمات"
+      },
+      {
+        "to": "/work-reports",
+        "label": "📝 تقرير خدمة",
+        "group": "التقنيين والخدمات"
+      },
+      {
+        "to": "/leader-invoices/new",
+        "label": "🧮 حساب الكلفة",
+        "group": "التقنيين والخدمات"
+      },
+      {
+        "to": "/training-center",
+        "label": "🧠 مركز التدريب",
+        "group": "التدريب"
+      },
+      {
+        "to": "/training-programs",
+        "label": "🎓 برامج التدريب",
+        "group": "التدريب"
+      },
+      {
+        "to": "/projects",
+        "label": "🏗️ المشاريع",
+        "group": "إدارة المشاريع"
+      },
+      {
+        "to": "/project-work-types",
+        "label": "إعدادات: أنواع الأعمال",
+        "group": "إدارة المشاريع"
+      },
+      {
+        "to": "/project-statistics",
+        "label": "📊 إحصائيات المشاريع",
+        "group": "إدارة المشاريع"
+      },
+      {
+        "to": "/checklists",
+        "label": "الكشوفات",
+        "group": "إدارة المشاريع"
+      },
+      {
+        "to": "/quotations",
+        "label": "عروض الأسعار",
+        "group": "إدارة المشاريع"
+      },
+      {
+        "to": "/products",
+        "label": "📦 المنتجات",
+        "group": "إدارة المشاريع"
+      },
+      {
+        "to": "/project-payments",
+        "label": "💰 فلوس المشاريع",
+        "group": "إدارة المشاريع"
+      },
+      {
+        "to": "/design-forms/quick-add",
+        "label": "إضافة سؤال",
+        "group": "التصميم"
+      },
+      {
+        "to": "/design-forms",
+        "label": "فورمة التصميم",
+        "group": "التصميم"
+      },
+      {
+        "to": "/design-gallery",
+        "label": "🎨 معرض التصاميم",
+        "group": "التصميم"
+      },
+      {
+        "to": "/quality-desk",
+        "label": "⭐ مكتب الجودة",
+        "group": "متابعة الجودة والشكاوي"
+      },
+      {
+        "to": "/quality",
+        "label": "الجودة",
+        "group": "متابعة الجودة والشكاوي"
+      },
+      {
+        "to": "/work-reports-review",
+        "label": "مراجعة تقارير العمل",
+        "group": "متابعة الجودة والشكاوي"
+      },
+      {
+        "to": "/procurement",
+        "label": "طلبات المواد",
+        "group": "المشتريات والمخزن"
+      },
+      {
+        "to": "/suppliers",
+        "label": "الموردون",
+        "group": "المشتريات والمخزن"
+      },
+      {
+        "to": "/vip-customers",
+        "label": "⭐ الشخصيات المهمة",
+        "group": "الإعلام والعلاقات العامة"
+      },
+      {
+        "to": "/media",
+        "label": "📸 مشاريع للتصوير",
+        "group": "الإعلام والعلاقات العامة"
+      },
+      {
+        "to": "/customer-app",
+        "label": "📱 تطبيق الزبائن",
+        "group": "الإعلام والعلاقات العامة"
+      },
+      {
+        "to": "/it-assets",
+        "label": "🖥️ جرد الأجهزة",
+        "group": "التقنية IT"
+      },
+      {
+        "to": "/it-stats",
+        "label": "📊 إحصائيات الـIT",
+        "group": "التقنية IT"
+      },
+      {
+        "to": "/privacy-policy",
+        "label": "سياسة الخصوصية",
+        "group": "روابط ثابتة"
+      },
+      {
+        "to": "/announcements",
+        "label": "لوحة الإعلانات",
+        "group": "روابط ثابتة"
+      },
+      {
+        "to": "/owner-security",
+        "label": "لوحة المراقبة الخلفية",
+        "group": "روابط المالك الثابتة"
+      },
+      {
+        "to": "/command-code",
+        "label": "رمز مركز القيادة",
+        "group": "روابط المالك الثابتة"
+      },
+      {
+        "to": "/owner-backups",
+        "label": "النسخ الاحتياطية",
+        "group": "روابط المالك الثابتة"
+      },
+      {
+        "to": "/assistant-conversations",
+        "label": "محادثات المساعد الذكي",
+        "group": "روابط المالك الثابتة"
+      }
+    ]
+  },
+  {
+    "account": "أدمن",
+    "role": "ADMIN",
+    "actualRole": "ADMIN",
+    "permissions": [],
+    "countBefore": 89,
+    "countAfter": 89,
+    "before": [
+      {
+        "to": "/?board=desk",
+        "label": "🏛️ مكتب المدير",
+        "group": ""
+      },
+      {
+        "to": "/ai-suggestions",
+        "label": "🧠 اقتراحات الذكاء",
+        "group": ""
+      },
+      {
+        "to": "/org",
+        "label": "🏛️ الهيكل التنظيمي",
+        "group": ""
+      },
+      {
+        "to": "/my-org",
+        "label": "🏛️ مكاني",
+        "group": ""
+      },
+      {
+        "to": "/org/desk",
+        "label": "🏛️ مكتب الإدارة",
+        "group": ""
+      },
+      {
+        "to": "/voice-terms",
+        "label": "👂 قاموس الأذن",
+        "group": ""
+      },
+      {
+        "to": "/matrix-chat",
+        "label": "🤖 محادثة ماتركس",
+        "group": ""
+      },
+      {
+        "to": "/whatsapp-conversations",
+        "label": "محادثات الواتساب",
+        "group": ""
+      },
+      {
+        "to": "/attendance",
+        "label": "جدول دوام الموظفين",
+        "group": ""
+      },
+      {
+        "to": "/my-work",
+        "label": "مهام وإنجازات الموظفين",
+        "group": ""
+      },
+      {
+        "to": "/accountant-desk",
+        "label": "🧾 مكتب المحاسب",
+        "group": "العمل"
+      },
+      {
+        "to": "/quality-desk",
+        "label": "⭐ مكتب الجودة",
+        "group": "العمل"
+      },
+      {
+        "to": "/reports-desk",
+        "label": "📑 تقارير الحجوزات والمشاريع",
+        "group": "العمل"
+      },
+      {
+        "to": "/decor-rates",
+        "label": "🪚 أسعار الديكور",
+        "group": "العمل"
+      },
+      {
+        "to": "/vehicle-drivers",
+        "label": "🪪 السواق وبطاقات البنزين",
+        "group": "العمل"
+      },
+      {
+        "to": "/my-paperwork",
+        "label": "📄 ورق حجوزاتي القديمة",
+        "group": ""
+      },
+      {
+        "to": "/bookings",
+        "label": "الحجوزات",
+        "group": "وحدة إدارة الكوادر"
+      },
+      {
+        "to": "/missions",
+        "label": "تتبع المهام",
+        "group": "وحدة إدارة الكوادر"
+      },
+      {
+        "to": "/customers",
+        "label": "العملاء",
+        "group": "وحدة إدارة الكوادر"
+      },
+      {
+        "to": "/staff-management-desk",
+        "label": "إدارة الموظفين",
+        "group": "وحدة إدارة الكوادر"
+      },
+      {
+        "to": "/work-schedule",
+        "label": "🕘 جدول الدوام",
+        "group": "وحدة إدارة الكوادر"
+      },
+      {
+        "to": "/remote-hours",
+        "label": "🏠 ساعات العمل من البيت",
+        "group": "وحدة إدارة الكوادر"
+      },
+      {
+        "to": "/staff-leaves",
+        "label": "🗓️ إجازات الموظفين",
+        "group": "وحدة إدارة الكوادر"
+      },
+      {
+        "to": "/stats-management",
+        "label": "📊 الإحصائيات",
+        "group": "وحدة إدارة الكوادر"
+      },
+      {
+        "to": "/tech-bookings",
+        "label": "🛠️ حجوزات التقنيين",
+        "group": "وحدة التقنيين"
+      },
+      {
+        "to": "/tech-products",
+        "label": "📦 المنتجات والمعارض",
+        "group": "وحدة التقنيين"
+      },
+      {
+        "to": "/tech-content",
+        "label": "📚 المحتوى التقني",
+        "group": "وحدة التقنيين"
+      },
+      {
+        "to": "/tech-suppliers",
+        "label": "🏪 موردين التقنيين",
+        "group": "وحدة التقنيين"
+      },
+      {
+        "to": "/supplier-relations",
+        "label": "🤝 علاقات الموردين",
+        "group": "وحدة التقنيين"
+      },
+      {
+        "to": "/training-center",
+        "label": "🧠 مركز التدريب",
+        "group": "وحدة التدريب"
+      },
+      {
+        "to": "/training-programs",
+        "label": "🎓 برامج التدريب",
+        "group": "وحدة التدريب"
+      },
+      {
+        "to": "/projects",
+        "label": "🏗️ المشاريع",
+        "group": "وحدة إدارة المشاريع"
+      },
+      {
+        "to": "/project-work-types",
+        "label": "إعدادات: أنواع الأعمال",
+        "group": "وحدة إدارة المشاريع"
+      },
+      {
+        "to": "/project-statistics",
+        "label": "📊 إحصائيات المشاريع",
+        "group": "وحدة إدارة المشاريع"
+      },
+      {
+        "to": "/checklists",
+        "label": "الكشوفات",
+        "group": "وحدة إدارة المشاريع"
+      },
+      {
+        "to": "/quotations",
+        "label": "عروض الأسعار",
+        "group": "وحدة إدارة المشاريع"
+      },
+      {
+        "to": "/products",
+        "label": "📦 المنتجات",
+        "group": "وحدة إدارة المشاريع"
+      },
+      {
+        "to": "/project-payments",
+        "label": "💰 فلوس المشاريع",
+        "group": "وحدة إدارة المشاريع"
+      },
+      {
+        "to": "/gps",
+        "label": "📡 نظام GPS",
+        "group": "وحدة إدارة الخدمة"
+      },
+      {
+        "to": "/gps/requests-hub",
+        "label": "📥 طلبات GPS",
+        "group": "وحدة إدارة الخدمة"
+      },
+      {
+        "to": "/gps/follow-up",
+        "label": "🔄 متابعة تجديد الاشتراكات",
+        "group": "وحدة إدارة الخدمة"
+      },
+      {
+        "to": "/solar",
+        "label": "☀️ الطاقة الشمسية",
+        "group": "وحدة إدارة الخدمة"
+      },
+      {
+        "to": "/leader-invoices/new?service=1",
+        "label": "🛰️ فاتورة خدمة",
+        "group": "وحدة إدارة الخدمة"
+      },
+      {
+        "to": "/work-reports",
+        "label": "📝 تقرير خدمة",
+        "group": "وحدة إدارة الخدمة"
+      },
+      {
+        "to": "/leader-invoices/new",
+        "label": "🧮 حساب الكلفة",
+        "group": "وحدة إدارة الخدمة"
+      },
+      {
+        "to": "/service-managers",
+        "label": "مسؤولو الخدمات",
+        "group": "وحدة إدارة الخدمة"
+      },
+      {
+        "to": "/network-prices",
+        "label": "أسعار الشبكات",
+        "group": "وحدة إدارة الخدمة"
+      },
+      {
+        "to": "/gps-install-costs",
+        "label": "🔧 حساب تكاليف الشد",
+        "group": "وحدة إدارة الخدمة"
+      },
+      {
+        "to": "/vip-customers",
+        "label": "⭐ الشخصيات المهمة",
+        "group": "وحدة الإعلام والعلاقات العامة"
+      },
+      {
+        "to": "/supplier-relations",
+        "label": "🤝 علاقات الموردين",
+        "group": "وحدة الإعلام والعلاقات العامة"
+      },
+      {
+        "to": "/media",
+        "label": "📸 مشاريع للتصوير",
+        "group": "وحدة الإعلام والعلاقات العامة"
+      },
+      {
+        "to": "/customer-app",
+        "label": "📱 تطبيق الزبائن",
+        "group": "وحدة الإعلام والعلاقات العامة"
+      },
+      {
+        "to": "/monitor-desk",
+        "label": "🗂️ مكتب المراقب",
+        "group": "وحدة الرقابة"
+      },
+      {
+        "to": "/field-map",
+        "label": "🗺️ خريطة الميدان",
+        "group": "وحدة الرقابة"
+      },
+      {
+        "to": "/late-audit",
+        "label": "🔍 فحص المتأخرات",
+        "group": "وحدة الرقابة"
+      },
+      {
+        "to": "/monitor",
+        "label": "لوحة المراقبة",
+        "group": "وحدة الرقابة"
+      },
+      {
+        "to": "/crew-bookings-audit",
+        "label": "تدقيق تنسيق الحجوزات",
+        "group": "وحدة الرقابة"
+      },
+      {
+        "to": "/privacy-policy",
+        "label": "🔒 إدارة سياسة الخصوصية",
+        "group": "وحدة الرقابة"
+      },
+      {
+        "to": "/finance",
+        "label": "تدقيق الحسابات",
+        "group": "وحدة الحسابات"
+      },
+      {
+        "to": "/daily-audit",
+        "label": "📅 التدقيق اليومي",
+        "group": "وحدة الحسابات"
+      },
+      {
+        "to": "/credits",
+        "label": "⏳ الآجل",
+        "group": "وحدة الحسابات"
+      },
+      {
+        "to": "/audit-issues",
+        "label": "💸 بلاغات أخطاء التدقيق",
+        "group": "وحدة الحسابات"
+      },
+      {
+        "to": "/leader-invoices",
+        "label": "🧾 فواتير الليدر",
+        "group": "وحدة الحسابات"
+      },
+      {
+        "to": "/revolving-fund",
+        "label": "💵 الدوار",
+        "group": "وحدة الحسابات"
+      },
+      {
+        "to": "/expenses",
+        "label": "إدارة المصاريف",
+        "group": "وحدة الحسابات"
+      },
+      {
+        "to": "/procurement",
+        "label": "طلبات المواد",
+        "group": "وحدة المشتريات والمخازن"
+      },
+      {
+        "to": "/suppliers",
+        "label": "الموردون",
+        "group": "وحدة المشتريات والمخازن"
+      },
+      {
+        "to": "/vehicles",
+        "label": "إدارة المركبات",
+        "group": "وحدة العدد والمركبات"
+      },
+      {
+        "to": "/vehicle-tracking",
+        "label": "🚗 متابعة السيارات",
+        "group": "وحدة العدد والمركبات"
+      },
+      {
+        "to": "/fleet-dashboard",
+        "label": "لوحة تحكم الأسطول",
+        "group": "وحدة العدد والمركبات"
+      },
+      {
+        "to": "/vehicle-bookings",
+        "label": "حجز المركبات",
+        "group": "وحدة العدد والمركبات"
+      },
+      {
+        "to": "/vehicle-missions",
+        "label": "مهمات المركبات",
+        "group": "وحدة العدد والمركبات"
+      },
+      {
+        "to": "/inventory",
+        "label": "جرد الأدوات",
+        "group": "وحدة العدد والمركبات"
+      },
+      {
+        "to": "/store-tools",
+        "label": "🧰 أدوات المخزن",
+        "group": "وحدة العدد والمركبات"
+      },
+      {
+        "to": "/matrix/decisions",
+        "label": "🤖 صندوق قرارات ماتركس",
+        "group": "وحدة المراقبون — ماتركس"
+      },
+      {
+        "to": "/ai-insights",
+        "label": "🧠 مؤشرات الذكاء الاصطناعي",
+        "group": "وحدة المراقبون — ماتركس"
+      },
+      {
+        "to": "/weekly-report",
+        "label": "📊 التقرير الأسبوعي",
+        "group": "وحدة المراقبون — ماتركس"
+      },
+      {
+        "to": "/staff-score",
+        "label": "🏅 تقييم الموظفين",
+        "group": "وحدة المراقبون — ماتركس"
+      },
+      {
+        "to": "/employee-indicators",
+        "label": "📈 مؤشرات أداء الموظف",
+        "group": "وحدة المراقبون — ماتركس"
+      },
+      {
+        "to": "/peer-voice",
+        "label": "🗣️ صوت الموظفين",
+        "group": "وحدة المراقبون — ماتركس"
+      },
+      {
+        "to": "/workplace-issues",
+        "label": "🤝 المشاكل الوظيفية",
+        "group": "وحدة المراقبون — ماتركس"
+      },
+      {
+        "to": "/duplicate-review",
+        "label": "🤖 ماتركس — التكرار",
+        "group": "وحدة المراقبون — ماتركس"
+      },
+      {
+        "to": "/quality",
+        "label": "الجودة",
+        "group": "وحدة الجودة والسلامة المهنية"
+      },
+      {
+        "to": "/work-reports-review",
+        "label": "مراجعة تقارير العمل",
+        "group": "وحدة الجودة والسلامة المهنية"
+      },
+      {
+        "to": "/design-forms/quick-add",
+        "label": "إضافة سؤال",
+        "group": "وحدة التصميم"
+      },
+      {
+        "to": "/design-forms",
+        "label": "فورمة التصميم",
+        "group": "وحدة التصميم"
+      },
+      {
+        "to": "/design-gallery",
+        "label": "🎨 معرض التصاميم",
+        "group": "وحدة التصميم"
+      },
+      {
+        "to": "/it-assets",
+        "label": "🖥️ جرد الأجهزة",
+        "group": "وحدة تقنية المعلومات"
+      },
+      {
+        "to": "/it-stats",
+        "label": "📊 إحصائيات الـIT",
+        "group": "وحدة تقنية المعلومات"
+      },
+      {
+        "to": "/privacy-policy",
+        "label": "سياسة الخصوصية",
+        "group": "روابط ثابتة"
+      },
+      {
+        "to": "/announcements",
+        "label": "لوحة الإعلانات",
+        "group": "روابط ثابتة"
+      }
+    ],
+    "after": [
+      {
+        "to": "/?board=desk",
+        "label": "🏛️ مكتب المدير",
+        "group": ""
+      },
+      {
+        "to": "/ai-suggestions",
+        "label": "🧠 اقتراحات الذكاء",
+        "group": ""
+      },
+      {
+        "to": "/org",
+        "label": "🏛️ الهيكل التنظيمي",
+        "group": ""
+      },
+      {
+        "to": "/my-org",
+        "label": "🏛️ مكاني",
+        "group": ""
+      },
+      {
+        "to": "/org/desk",
+        "label": "🏛️ مكتب الإدارة",
+        "group": ""
+      },
+      {
+        "to": "/voice-terms",
+        "label": "👂 قاموس الأذن",
+        "group": ""
+      },
+      {
+        "to": "/matrix-chat",
+        "label": "🤖 محادثة ماتركس",
+        "group": ""
+      },
+      {
+        "to": "/whatsapp-conversations",
+        "label": "محادثات الواتساب",
+        "group": ""
+      },
+      {
+        "to": "/attendance",
+        "label": "جدول دوام الموظفين",
+        "group": ""
+      },
+      {
+        "to": "/my-work",
+        "label": "مهام وإنجازات الموظفين",
+        "group": ""
+      },
+      {
+        "to": "/my-paperwork",
+        "label": "📄 ورق حجوزاتي القديمة",
+        "group": ""
+      },
+      {
+        "to": "/monitor-desk",
+        "label": "🗂️ مكتب المراقب",
+        "group": "مراقبة الوحدات"
+      },
+      {
+        "to": "/field-map",
+        "label": "🗺️ خريطة الميدان",
+        "group": "مراقبة الوحدات"
+      },
+      {
+        "to": "/late-audit",
+        "label": "🔍 فحص المتأخرات",
+        "group": "مراقبة الوحدات"
+      },
+      {
+        "to": "/monitor",
+        "label": "لوحة المراقبة",
+        "group": "مراقبة الوحدات"
+      },
+      {
+        "to": "/reports-desk",
+        "label": "📑 تقارير الحجوزات والمشاريع",
+        "group": "مراقبة الوحدات"
+      },
+      {
+        "to": "/matrix/decisions",
+        "label": "🤖 صندوق قرارات ماتركس",
+        "group": "مراقبة الوحدات"
+      },
+      {
+        "to": "/ai-insights",
+        "label": "🧠 مؤشرات الذكاء الاصطناعي",
+        "group": "مراقبة الوحدات"
+      },
+      {
+        "to": "/weekly-report",
+        "label": "📊 التقرير الأسبوعي",
+        "group": "مراقبة الوحدات"
+      },
+      {
+        "to": "/staff-score",
+        "label": "🏅 تقييم الموظفين",
+        "group": "مراقبة الوحدات"
+      },
+      {
+        "to": "/employee-indicators",
+        "label": "📈 مؤشرات أداء الموظف",
+        "group": "مراقبة الوحدات"
+      },
+      {
+        "to": "/peer-voice",
+        "label": "🗣️ صوت الموظفين",
+        "group": "مراقبة الوحدات"
+      },
+      {
+        "to": "/workplace-issues",
+        "label": "🤝 المشاكل الوظيفية",
+        "group": "مراقبة الوحدات"
+      },
+      {
+        "to": "/accountant-desk",
+        "label": "🧾 مكتب المحاسب",
+        "group": "الحسابات"
+      },
+      {
+        "to": "/finance",
+        "label": "تدقيق الحسابات",
+        "group": "الحسابات"
+      },
+      {
+        "to": "/daily-audit",
+        "label": "📅 التدقيق اليومي",
+        "group": "الحسابات"
+      },
+      {
+        "to": "/credits",
+        "label": "⏳ الآجل",
+        "group": "الحسابات"
+      },
+      {
+        "to": "/revolving-fund",
+        "label": "💵 الدوار",
+        "group": "الحسابات"
+      },
+      {
+        "to": "/expenses",
+        "label": "إدارة المصاريف",
+        "group": "الحسابات"
+      },
+      {
+        "to": "/decor-rates",
+        "label": "🪚 أسعار الديكور",
+        "group": "الحسابات"
+      },
+      {
+        "to": "/privacy-policy",
+        "label": "🔒 إدارة سياسة الخصوصية",
+        "group": "الرقابة"
+      },
+      {
+        "to": "/audit-issues",
+        "label": "💸 بلاغات أخطاء التدقيق",
+        "group": "التدقيق"
+      },
+      {
+        "to": "/duplicate-review",
+        "label": "🤖 ماتركس — التكرار",
+        "group": "التدقيق"
+      },
+      {
+        "to": "/leader-invoices",
+        "label": "🧾 فواتير الليدر",
+        "group": "التدقيق"
+      },
+      {
+        "to": "/crew-bookings-audit",
+        "label": "تدقيق تنسيق الحجوزات",
+        "group": "التدقيق"
+      },
+      {
+        "to": "/vehicles",
+        "label": "إدارة المركبات",
+        "group": "العُدد والمركبات"
+      },
+      {
+        "to": "/vehicle-drivers",
+        "label": "🪪 السواق وبطاقات البنزين",
+        "group": "العُدد والمركبات"
+      },
+      {
+        "to": "/vehicle-tracking",
+        "label": "🚗 متابعة السيارات",
+        "group": "العُدد والمركبات"
+      },
+      {
+        "to": "/fleet-dashboard",
+        "label": "لوحة تحكم الأسطول",
+        "group": "العُدد والمركبات"
+      },
+      {
+        "to": "/vehicle-bookings",
+        "label": "حجز المركبات",
+        "group": "العُدد والمركبات"
+      },
+      {
+        "to": "/vehicle-missions",
+        "label": "مهمات المركبات",
+        "group": "العُدد والمركبات"
+      },
+      {
+        "to": "/inventory",
+        "label": "جرد الأدوات",
+        "group": "العُدد والمركبات"
+      },
+      {
+        "to": "/store-tools",
+        "label": "🧰 أدوات المخزن",
+        "group": "العُدد والمركبات"
+      },
+      {
+        "to": "/staff-management-desk",
+        "label": "إدارة الموظفين",
+        "group": "إدارة الكوادر"
+      },
+      {
+        "to": "/work-schedule",
+        "label": "🕘 جدول الدوام",
+        "group": "إدارة الكوادر"
+      },
+      {
+        "to": "/staff-leaves",
+        "label": "🗓️ إجازات الموظفين",
+        "group": "إدارة الكوادر"
+      },
+      {
+        "to": "/stats-management",
+        "label": "📊 الإحصائيات",
+        "group": "إدارة الكوادر"
+      },
+      {
+        "to": "/remote-hours",
+        "label": "🏠 ساعات العمل من البيت",
+        "group": "إدارة الكوادر"
+      },
+      {
+        "to": "/bookings",
+        "label": "الحجوزات",
+        "group": "الحجوزات والتنسيق"
+      },
+      {
+        "to": "/missions",
+        "label": "تتبع المهام",
+        "group": "الحجوزات والتنسيق"
+      },
+      {
+        "to": "/customers",
+        "label": "العملاء",
+        "group": "الحجوزات والتنسيق"
+      },
+      {
+        "to": "/tech-bookings",
+        "label": "🛠️ حجوزات التقنيين",
+        "group": "التقنيين والخدمات"
+      },
+      {
+        "to": "/tech-products",
+        "label": "📦 المنتجات والمعارض",
+        "group": "التقنيين والخدمات"
+      },
+      {
+        "to": "/tech-content",
+        "label": "📚 المحتوى التقني",
+        "group": "التقنيين والخدمات"
+      },
+      {
+        "to": "/tech-suppliers",
+        "label": "🏪 موردين التقنيين",
+        "group": "التقنيين والخدمات"
+      },
+      {
+        "to": "/supplier-relations",
+        "label": "🤝 علاقات الموردين",
+        "group": "التقنيين والخدمات"
+      },
+      {
+        "to": "/gps",
+        "label": "📡 نظام GPS",
+        "group": "التقنيين والخدمات"
+      },
+      {
+        "to": "/gps/requests-hub",
+        "label": "📥 طلبات GPS",
+        "group": "التقنيين والخدمات"
+      },
+      {
+        "to": "/gps/follow-up",
+        "label": "🔄 متابعة تجديد الاشتراكات",
+        "group": "التقنيين والخدمات"
+      },
+      {
+        "to": "/solar",
+        "label": "☀️ الطاقة الشمسية",
+        "group": "التقنيين والخدمات"
+      },
+      {
+        "to": "/service-managers",
+        "label": "مسؤولو الخدمات",
+        "group": "التقنيين والخدمات"
+      },
+      {
+        "to": "/network-prices",
+        "label": "أسعار الشبكات",
+        "group": "التقنيين والخدمات"
+      },
+      {
+        "to": "/gps-install-costs",
+        "label": "🔧 حساب تكاليف الشد",
+        "group": "التقنيين والخدمات"
+      },
+      {
+        "to": "/leader-invoices/new?service=1",
+        "label": "🛰️ فاتورة خدمة",
+        "group": "التقنيين والخدمات"
+      },
+      {
+        "to": "/work-reports",
+        "label": "📝 تقرير خدمة",
+        "group": "التقنيين والخدمات"
+      },
+      {
+        "to": "/leader-invoices/new",
+        "label": "🧮 حساب الكلفة",
+        "group": "التقنيين والخدمات"
+      },
+      {
+        "to": "/training-center",
+        "label": "🧠 مركز التدريب",
+        "group": "التدريب"
+      },
+      {
+        "to": "/training-programs",
+        "label": "🎓 برامج التدريب",
+        "group": "التدريب"
+      },
+      {
+        "to": "/projects",
+        "label": "🏗️ المشاريع",
+        "group": "إدارة المشاريع"
+      },
+      {
+        "to": "/project-work-types",
+        "label": "إعدادات: أنواع الأعمال",
+        "group": "إدارة المشاريع"
+      },
+      {
+        "to": "/project-statistics",
+        "label": "📊 إحصائيات المشاريع",
+        "group": "إدارة المشاريع"
+      },
+      {
+        "to": "/checklists",
+        "label": "الكشوفات",
+        "group": "إدارة المشاريع"
+      },
+      {
+        "to": "/quotations",
+        "label": "عروض الأسعار",
+        "group": "إدارة المشاريع"
+      },
+      {
+        "to": "/products",
+        "label": "📦 المنتجات",
+        "group": "إدارة المشاريع"
+      },
+      {
+        "to": "/project-payments",
+        "label": "💰 فلوس المشاريع",
+        "group": "إدارة المشاريع"
+      },
+      {
+        "to": "/design-forms/quick-add",
+        "label": "إضافة سؤال",
+        "group": "التصميم"
+      },
+      {
+        "to": "/design-forms",
+        "label": "فورمة التصميم",
+        "group": "التصميم"
+      },
+      {
+        "to": "/design-gallery",
+        "label": "🎨 معرض التصاميم",
+        "group": "التصميم"
+      },
+      {
+        "to": "/quality-desk",
+        "label": "⭐ مكتب الجودة",
+        "group": "متابعة الجودة والشكاوي"
+      },
+      {
+        "to": "/quality",
+        "label": "الجودة",
+        "group": "متابعة الجودة والشكاوي"
+      },
+      {
+        "to": "/work-reports-review",
+        "label": "مراجعة تقارير العمل",
+        "group": "متابعة الجودة والشكاوي"
+      },
+      {
+        "to": "/procurement",
+        "label": "طلبات المواد",
+        "group": "المشتريات والمخزن"
+      },
+      {
+        "to": "/suppliers",
+        "label": "الموردون",
+        "group": "المشتريات والمخزن"
+      },
+      {
+        "to": "/vip-customers",
+        "label": "⭐ الشخصيات المهمة",
+        "group": "الإعلام والعلاقات العامة"
+      },
+      {
+        "to": "/media",
+        "label": "📸 مشاريع للتصوير",
+        "group": "الإعلام والعلاقات العامة"
+      },
+      {
+        "to": "/customer-app",
+        "label": "📱 تطبيق الزبائن",
+        "group": "الإعلام والعلاقات العامة"
+      },
+      {
+        "to": "/it-assets",
+        "label": "🖥️ جرد الأجهزة",
+        "group": "التقنية IT"
+      },
+      {
+        "to": "/it-stats",
+        "label": "📊 إحصائيات الـIT",
+        "group": "التقنية IT"
+      },
+      {
+        "to": "/privacy-policy",
+        "label": "سياسة الخصوصية",
+        "group": "روابط ثابتة"
+      },
+      {
+        "to": "/announcements",
+        "label": "لوحة الإعلانات",
+        "group": "روابط ثابتة"
+      }
+    ]
+  },
+  {
+    "account": "مدير عمليات",
+    "role": "HR_COORDINATOR",
+    "actualRole": "HR_COORDINATOR",
+    "permissions": [
+      "auditing",
+      "audit_issues",
+      "duplicate_review",
+      "leader_invoices_view",
+      "crew_management",
+      "unit_fleet",
+      "vehicle_management",
+      "tool_requests",
+      "tool_requests_approve",
+      "device_maintenance",
+      "unit_hr",
+      "staff_management",
+      "edit_employee_profile",
+      "work_schedule_manage",
+      "leave_approve_morning",
+      "leave_approve_evening",
+      "staff_requests",
+      "extra_tasks_assign",
+      "kpi_management",
+      "performance_review",
+      "employee_stats",
+      "staff_stats",
+      "remote_hours_manage",
+      "sales_booking",
+      "create_booking",
+      "view_bookings",
+      "coordinator",
+      "manage_customers",
+      "bookings_archive",
+      "booking_internal",
+      "mission_tracking",
+      "paperwork_carryover"
+    ],
+    "countBefore": 37,
+    "countAfter": 37,
+    "before": [
+      {
+        "to": "/",
+        "label": "الرئيسية",
+        "group": ""
+      },
+      {
+        "to": "/my-org",
+        "label": "🏛️ مكاني",
+        "group": ""
+      },
+      {
+        "to": "/org/desk",
+        "label": "🏛️ مكتب الإدارة",
+        "group": ""
+      },
+      {
+        "to": "/whatsapp-conversations",
+        "label": "محادثات الواتساب",
+        "group": ""
+      },
+      {
+        "to": "/attendance",
+        "label": "جدول دوامي",
+        "group": ""
+      },
+      {
+        "to": "/my-work",
+        "label": "مهامي وإنجازاتي",
+        "group": ""
+      },
+      {
+        "to": "/my-ranking",
+        "label": "التقييم",
+        "group": ""
+      },
+      {
+        "to": "/leaves",
+        "label": "🗓️ طلبات الإجازات",
+        "group": "إدارة الموظفين"
+      },
+      {
+        "to": "/employee-stats",
+        "label": "إحصائيات الموظفين الشهرية",
+        "group": "إدارة الموظفين"
+      },
+      {
+        "to": "/sales-opportunities",
+        "label": "💡 فرص البيع",
+        "group": "العمل"
+      },
+      {
+        "to": "/bookings-archive",
+        "label": "أرشيف الحجوزات",
+        "group": "العمل"
+      },
+      {
+        "to": "/staff-score",
+        "label": "🏅 تقييم الموظفين",
+        "group": "العمل"
+      },
+      {
+        "to": "/employee-indicators",
+        "label": "📈 مؤشرات أداء الموظف",
+        "group": "العمل"
+      },
+      {
+        "to": "/peer-voice",
+        "label": "🗣️ صوت الموظفين",
+        "group": "العمل"
+      },
+      {
+        "to": "/workplace-issues",
+        "label": "🤝 المشاكل الوظيفية",
+        "group": "العمل"
+      },
+      {
+        "to": "/duplicate-review",
+        "label": "🤖 ماتركس — التكرار",
+        "group": "العمل"
+      },
+      {
+        "to": "/finance",
+        "label": "تدقيق الحسابات",
+        "group": "إدارة الحسابات"
+      },
+      {
+        "to": "/daily-audit",
+        "label": "📅 التدقيق اليومي",
+        "group": "إدارة الحسابات"
+      },
+      {
+        "to": "/credits",
+        "label": "⏳ الآجل",
+        "group": "إدارة الحسابات"
+      },
+      {
+        "to": "/audit-issues",
+        "label": "💸 بلاغات أخطاء التدقيق",
+        "group": "إدارة الحسابات"
+      },
+      {
+        "to": "/leader-invoices",
+        "label": "🧾 فواتير الليدر",
+        "group": "إدارة الحسابات"
+      },
+      {
+        "to": "/vehicle-drivers",
+        "label": "🪪 السواق وبطاقات البنزين",
+        "group": "العمل"
+      },
+      {
+        "to": "/my-paperwork",
+        "label": "📄 ورق حجوزاتي القديمة",
+        "group": ""
+      },
+      {
+        "to": "/bookings",
+        "label": "الحجوزات",
+        "group": "وحدة إدارة الكوادر"
+      },
+      {
+        "to": "/missions",
+        "label": "تتبع المهام",
+        "group": "وحدة إدارة الكوادر"
+      },
+      {
+        "to": "/customers",
+        "label": "العملاء",
+        "group": "وحدة إدارة الكوادر"
+      },
+      {
+        "to": "/staff-management-desk",
+        "label": "إدارة الموظفين",
+        "group": "وحدة إدارة الكوادر"
+      },
+      {
+        "to": "/work-schedule",
+        "label": "🕘 جدول الدوام",
+        "group": "وحدة إدارة الكوادر"
+      },
+      {
+        "to": "/remote-hours",
+        "label": "🏠 ساعات العمل من البيت",
+        "group": "وحدة إدارة الكوادر"
+      },
+      {
+        "to": "/staff-leaves",
+        "label": "🗓️ إجازات الموظفين",
+        "group": "وحدة إدارة الكوادر"
+      },
+      {
+        "to": "/stats-management",
+        "label": "📊 الإحصائيات",
+        "group": "وحدة إدارة الكوادر"
+      },
+      {
+        "to": "/vehicles",
+        "label": "إدارة المركبات",
+        "group": "وحدة العدد والمركبات"
+      },
+      {
+        "to": "/vehicle-tracking",
+        "label": "🚗 متابعة السيارات",
+        "group": "وحدة العدد والمركبات"
+      },
+      {
+        "to": "/fleet-dashboard",
+        "label": "لوحة تحكم الأسطول",
+        "group": "وحدة العدد والمركبات"
+      },
+      {
+        "to": "/vehicle-bookings",
+        "label": "حجز المركبات",
+        "group": "وحدة العدد والمركبات"
+      },
+      {
+        "to": "/vehicle-missions",
+        "label": "مهمات المركبات",
+        "group": "وحدة العدد والمركبات"
+      },
+      {
+        "to": "/privacy-policy",
+        "label": "سياسة الخصوصية",
+        "group": "روابط ثابتة"
+      }
+    ],
+    "after": [
+      {
+        "to": "/",
+        "label": "الرئيسية",
+        "group": ""
+      },
+      {
+        "to": "/my-org",
+        "label": "🏛️ مكاني",
+        "group": ""
+      },
+      {
+        "to": "/org/desk",
+        "label": "🏛️ مكتب الإدارة",
+        "group": ""
+      },
+      {
+        "to": "/whatsapp-conversations",
+        "label": "محادثات الواتساب",
+        "group": ""
+      },
+      {
+        "to": "/attendance",
+        "label": "جدول دوامي",
+        "group": ""
+      },
+      {
+        "to": "/my-work",
+        "label": "مهامي وإنجازاتي",
+        "group": ""
+      },
+      {
+        "to": "/my-ranking",
+        "label": "التقييم",
+        "group": ""
+      },
+      {
+        "to": "/leaves",
+        "label": "🗓️ طلبات الإجازات",
+        "group": "إدارة الموظفين"
+      },
+      {
+        "to": "/employee-stats",
+        "label": "إحصائيات الموظفين الشهرية",
+        "group": "إدارة الموظفين"
+      },
+      {
+        "to": "/my-paperwork",
+        "label": "📄 ورق حجوزاتي القديمة",
+        "group": ""
+      },
+      {
+        "to": "/staff-score",
+        "label": "🏅 تقييم الموظفين",
+        "group": "مراقبة الوحدات"
+      },
+      {
+        "to": "/employee-indicators",
+        "label": "📈 مؤشرات أداء الموظف",
+        "group": "مراقبة الوحدات"
+      },
+      {
+        "to": "/peer-voice",
+        "label": "🗣️ صوت الموظفين",
+        "group": "مراقبة الوحدات"
+      },
+      {
+        "to": "/workplace-issues",
+        "label": "🤝 المشاكل الوظيفية",
+        "group": "مراقبة الوحدات"
+      },
+      {
+        "to": "/finance",
+        "label": "تدقيق الحسابات",
+        "group": "الحسابات"
+      },
+      {
+        "to": "/daily-audit",
+        "label": "📅 التدقيق اليومي",
+        "group": "الحسابات"
+      },
+      {
+        "to": "/credits",
+        "label": "⏳ الآجل",
+        "group": "الحسابات"
+      },
+      {
+        "to": "/audit-issues",
+        "label": "💸 بلاغات أخطاء التدقيق",
+        "group": "التدقيق"
+      },
+      {
+        "to": "/duplicate-review",
+        "label": "🤖 ماتركس — التكرار",
+        "group": "التدقيق"
+      },
+      {
+        "to": "/leader-invoices",
+        "label": "🧾 فواتير الليدر",
+        "group": "التدقيق"
+      },
+      {
+        "to": "/vehicles",
+        "label": "إدارة المركبات",
+        "group": "العُدد والمركبات"
+      },
+      {
+        "to": "/vehicle-drivers",
+        "label": "🪪 السواق وبطاقات البنزين",
+        "group": "العُدد والمركبات"
+      },
+      {
+        "to": "/vehicle-tracking",
+        "label": "🚗 متابعة السيارات",
+        "group": "العُدد والمركبات"
+      },
+      {
+        "to": "/fleet-dashboard",
+        "label": "لوحة تحكم الأسطول",
+        "group": "العُدد والمركبات"
+      },
+      {
+        "to": "/vehicle-bookings",
+        "label": "حجز المركبات",
+        "group": "العُدد والمركبات"
+      },
+      {
+        "to": "/vehicle-missions",
+        "label": "مهمات المركبات",
+        "group": "العُدد والمركبات"
+      },
+      {
+        "to": "/staff-management-desk",
+        "label": "إدارة الموظفين",
+        "group": "إدارة الكوادر"
+      },
+      {
+        "to": "/work-schedule",
+        "label": "🕘 جدول الدوام",
+        "group": "إدارة الكوادر"
+      },
+      {
+        "to": "/staff-leaves",
+        "label": "🗓️ إجازات الموظفين",
+        "group": "إدارة الكوادر"
+      },
+      {
+        "to": "/stats-management",
+        "label": "📊 الإحصائيات",
+        "group": "إدارة الكوادر"
+      },
+      {
+        "to": "/remote-hours",
+        "label": "🏠 ساعات العمل من البيت",
+        "group": "إدارة الكوادر"
+      },
+      {
+        "to": "/bookings",
+        "label": "الحجوزات",
+        "group": "الحجوزات والتنسيق"
+      },
+      {
+        "to": "/missions",
+        "label": "تتبع المهام",
+        "group": "الحجوزات والتنسيق"
+      },
+      {
+        "to": "/customers",
+        "label": "العملاء",
+        "group": "الحجوزات والتنسيق"
+      },
+      {
+        "to": "/bookings-archive",
+        "label": "أرشيف الحجوزات",
+        "group": "الحجوزات والتنسيق"
+      },
+      {
+        "to": "/sales-opportunities",
+        "label": "💡 فرص البيع",
+        "group": "الحجوزات والتنسيق"
+      },
+      {
+        "to": "/privacy-policy",
+        "label": "سياسة الخصوصية",
+        "group": "روابط ثابتة"
+      }
+    ]
+  },
+  {
+    "account": "عضو حجوزات",
+    "role": "HR_COORDINATOR",
+    "actualRole": "HR_COORDINATOR",
+    "permissions": [
+      "create_booking",
+      "view_bookings",
+      "coordinator",
+      "booking_internal",
+      "mission_tracking",
+      "paperwork_carryover"
+    ],
+    "countBefore": 10,
+    "countAfter": 10,
+    "before": [
+      {
+        "to": "/",
+        "label": "الرئيسية",
+        "group": ""
+      },
+      {
+        "to": "/my-org",
+        "label": "🏛️ مكاني",
+        "group": ""
+      },
+      {
+        "to": "/whatsapp-conversations",
+        "label": "محادثات الواتساب",
+        "group": ""
+      },
+      {
+        "to": "/attendance",
+        "label": "جدول دوامي",
+        "group": ""
+      },
+      {
+        "to": "/my-work",
+        "label": "مهامي وإنجازاتي",
+        "group": ""
+      },
+      {
+        "to": "/my-ranking",
+        "label": "التقييم",
+        "group": ""
+      },
+      {
+        "to": "/bookings",
+        "label": "📋 الحجوزات",
+        "group": "العمل"
+      },
+      {
+        "to": "/missions",
+        "label": "تتبع المهام",
+        "group": "العمل"
+      },
+      {
+        "to": "/my-paperwork",
+        "label": "📄 ورق حجوزاتي القديمة",
+        "group": ""
+      },
+      {
+        "to": "/privacy-policy",
+        "label": "سياسة الخصوصية",
+        "group": "روابط ثابتة"
+      }
+    ],
+    "after": [
+      {
+        "to": "/",
+        "label": "الرئيسية",
+        "group": ""
+      },
+      {
+        "to": "/my-org",
+        "label": "🏛️ مكاني",
+        "group": ""
+      },
+      {
+        "to": "/whatsapp-conversations",
+        "label": "محادثات الواتساب",
+        "group": ""
+      },
+      {
+        "to": "/attendance",
+        "label": "جدول دوامي",
+        "group": ""
+      },
+      {
+        "to": "/my-work",
+        "label": "مهامي وإنجازاتي",
+        "group": ""
+      },
+      {
+        "to": "/my-ranking",
+        "label": "التقييم",
+        "group": ""
+      },
+      {
+        "to": "/my-paperwork",
+        "label": "📄 ورق حجوزاتي القديمة",
+        "group": ""
+      },
+      {
+        "to": "/bookings",
+        "label": "📋 الحجوزات",
+        "group": "الحجوزات والتنسيق"
+      },
+      {
+        "to": "/missions",
+        "label": "تتبع المهام",
+        "group": "الحجوزات والتنسيق"
+      },
+      {
+        "to": "/privacy-policy",
+        "label": "سياسة الخصوصية",
+        "group": "روابط ثابتة"
+      }
+    ]
+  },
+  {
+    "account": "عضو عُدد",
+    "role": "PROCUREMENT_ADMIN",
+    "actualRole": "PROCUREMENT_ADMIN",
+    "permissions": [
+      "unit_fleet",
+      "tool_requests",
+      "device_maintenance"
+    ],
+    "countBefore": 7,
+    "countAfter": 7,
+    "before": [
+      {
+        "to": "/",
+        "label": "الرئيسية",
+        "group": ""
+      },
+      {
+        "to": "/my-org",
+        "label": "🏛️ مكاني",
+        "group": ""
+      },
+      {
+        "to": "/attendance",
+        "label": "جدول دوامي",
+        "group": ""
+      },
+      {
+        "to": "/my-work",
+        "label": "مهامي وإنجازاتي",
+        "group": ""
+      },
+      {
+        "to": "/my-ranking",
+        "label": "التقييم",
+        "group": ""
+      },
+      {
+        "to": "/store-tools",
+        "label": "🧰 أدوات المخزن",
+        "group": "وحدة العدد والمركبات"
+      },
+      {
+        "to": "/privacy-policy",
+        "label": "سياسة الخصوصية",
+        "group": "روابط ثابتة"
+      }
+    ],
+    "after": [
+      {
+        "to": "/",
+        "label": "الرئيسية",
+        "group": ""
+      },
+      {
+        "to": "/my-org",
+        "label": "🏛️ مكاني",
+        "group": ""
+      },
+      {
+        "to": "/attendance",
+        "label": "جدول دوامي",
+        "group": ""
+      },
+      {
+        "to": "/my-work",
+        "label": "مهامي وإنجازاتي",
+        "group": ""
+      },
+      {
+        "to": "/my-ranking",
+        "label": "التقييم",
+        "group": ""
+      },
+      {
+        "to": "/store-tools",
+        "label": "🧰 أدوات المخزن",
+        "group": "العُدد والمركبات"
+      },
+      {
+        "to": "/privacy-policy",
+        "label": "سياسة الخصوصية",
+        "group": "روابط ثابتة"
+      }
+    ]
+  },
+  {
+    "account": "مراقب",
+    "role": "MONITOR",
+    "actualRole": "MONITOR",
+    "permissions": [
+      "staff_management",
+      "edit_employee_profile",
+      "kpi_management",
+      "view_bookings",
+      "manage_customers",
+      "manage_services",
+      "mission_tracking",
+      "inventory",
+      "complaints",
+      "finance",
+      "monitoring",
+      "auditing",
+      "quality_control",
+      "gps_system",
+      "vehicle_management"
+    ],
+    "countBefore": 25,
+    "countAfter": 25,
+    "before": [
+      {
+        "to": "/",
+        "label": "الرئيسية",
+        "group": ""
+      },
+      {
+        "to": "/my-org",
+        "label": "🏛️ مكاني",
+        "group": ""
+      },
+      {
+        "to": "/whatsapp-conversations",
+        "label": "محادثات الواتساب",
+        "group": ""
+      },
+      {
+        "to": "/attendance",
+        "label": "جدول دوامي",
+        "group": ""
+      },
+      {
+        "to": "/my-work",
+        "label": "مهامي وإنجازاتي",
+        "group": ""
+      },
+      {
+        "to": "/monitor-desk",
+        "label": "🗂️ مكتب المراقب",
+        "group": "العمل"
+      },
+      {
+        "to": "/accountant-desk",
+        "label": "🧾 مكتب المحاسب",
+        "group": "العمل"
+      },
+      {
+        "to": "/quality-desk",
+        "label": "⭐ مكتب الجودة",
+        "group": "العمل"
+      },
+      {
+        "to": "/reports-desk",
+        "label": "📑 تقارير الحجوزات والمشاريع",
+        "group": "العمل"
+      },
+      {
+        "to": "/achievements",
+        "label": "📝 الإنجازات اليومية",
+        "group": "العمل"
+      },
+      {
+        "to": "/my-ranking",
+        "label": "⭐ التقييم",
+        "group": "إدارة الموظفين"
+      },
+      {
+        "to": "/staff-management-desk",
+        "label": "إدارة الموظفين",
+        "group": "إدارة الموظفين"
+      },
+      {
+        "to": "/bookings",
+        "label": "📋 الحجوزات",
+        "group": "العمل"
+      },
+      {
+        "to": "/finance",
+        "label": "تدقيق الحسابات",
+        "group": "إدارة الحسابات"
+      },
+      {
+        "to": "/daily-audit",
+        "label": "📅 التدقيق اليومي",
+        "group": "إدارة الحسابات"
+      },
+      {
+        "to": "/credits",
+        "label": "⏳ الآجل",
+        "group": "إدارة الحسابات"
+      },
+      {
+        "to": "/audit-issues",
+        "label": "💸 بلاغات أخطاء التدقيق",
+        "group": "إدارة الحسابات"
+      },
+      {
+        "to": "/leader-invoices",
+        "label": "🧾 فواتير الليدر",
+        "group": "إدارة الحسابات"
+      },
+      {
+        "to": "/vehicles",
+        "label": "إدارة المركبات",
+        "group": "المركبات"
+      },
+      {
+        "to": "/vehicle-drivers",
+        "label": "🪪 السواق وبطاقات البنزين",
+        "group": "المركبات"
+      },
+      {
+        "to": "/vehicle-tracking",
+        "label": "🚗 متابعة السيارات",
+        "group": "المركبات"
+      },
+      {
+        "to": "/fleet-dashboard",
+        "label": "لوحة تحكم الأسطول",
+        "group": "المركبات"
+      },
+      {
+        "to": "/vehicle-bookings",
+        "label": "حجز المركبات",
+        "group": "المركبات"
+      },
+      {
+        "to": "/vehicle-missions",
+        "label": "مهمات المركبات",
+        "group": "المركبات"
+      },
+      {
+        "to": "/privacy-policy",
+        "label": "سياسة الخصوصية",
+        "group": "روابط ثابتة"
+      }
+    ],
+    "after": [
+      {
+        "to": "/",
+        "label": "الرئيسية",
+        "group": ""
+      },
+      {
+        "to": "/my-org",
+        "label": "🏛️ مكاني",
+        "group": ""
+      },
+      {
+        "to": "/whatsapp-conversations",
+        "label": "محادثات الواتساب",
+        "group": ""
+      },
+      {
+        "to": "/attendance",
+        "label": "جدول دوامي",
+        "group": ""
+      },
+      {
+        "to": "/my-work",
+        "label": "مهامي وإنجازاتي",
+        "group": ""
+      },
+      {
+        "to": "/my-ranking",
+        "label": "⭐ التقييم",
+        "group": "إدارة الموظفين"
+      },
+      {
+        "to": "/monitor-desk",
+        "label": "🗂️ مكتب المراقب",
+        "group": "مراقبة الوحدات"
+      },
+      {
+        "to": "/reports-desk",
+        "label": "📑 تقارير الحجوزات والمشاريع",
+        "group": "مراقبة الوحدات"
+      },
+      {
+        "to": "/achievements",
+        "label": "📝 الإنجازات اليومية",
+        "group": "مراقبة الوحدات"
+      },
+      {
+        "to": "/accountant-desk",
+        "label": "🧾 مكتب المحاسب",
+        "group": "الحسابات"
+      },
+      {
+        "to": "/finance",
+        "label": "تدقيق الحسابات",
+        "group": "الحسابات"
+      },
+      {
+        "to": "/daily-audit",
+        "label": "📅 التدقيق اليومي",
+        "group": "الحسابات"
+      },
+      {
+        "to": "/credits",
+        "label": "⏳ الآجل",
+        "group": "الحسابات"
+      },
+      {
+        "to": "/audit-issues",
+        "label": "💸 بلاغات أخطاء التدقيق",
+        "group": "التدقيق"
+      },
+      {
+        "to": "/leader-invoices",
+        "label": "🧾 فواتير الليدر",
+        "group": "التدقيق"
+      },
+      {
+        "to": "/vehicles",
+        "label": "إدارة المركبات",
+        "group": "العُدد والمركبات"
+      },
+      {
+        "to": "/vehicle-drivers",
+        "label": "🪪 السواق وبطاقات البنزين",
+        "group": "العُدد والمركبات"
+      },
+      {
+        "to": "/vehicle-tracking",
+        "label": "🚗 متابعة السيارات",
+        "group": "العُدد والمركبات"
+      },
+      {
+        "to": "/fleet-dashboard",
+        "label": "لوحة تحكم الأسطول",
+        "group": "العُدد والمركبات"
+      },
+      {
+        "to": "/vehicle-bookings",
+        "label": "حجز المركبات",
+        "group": "العُدد والمركبات"
+      },
+      {
+        "to": "/vehicle-missions",
+        "label": "مهمات المركبات",
+        "group": "العُدد والمركبات"
+      },
+      {
+        "to": "/staff-management-desk",
+        "label": "إدارة الموظفين",
+        "group": "إدارة الكوادر"
+      },
+      {
+        "to": "/bookings",
+        "label": "📋 الحجوزات",
+        "group": "الحجوزات والتنسيق"
+      },
+      {
+        "to": "/quality-desk",
+        "label": "⭐ مكتب الجودة",
+        "group": "متابعة الجودة والشكاوي"
+      },
+      {
+        "to": "/privacy-policy",
+        "label": "سياسة الخصوصية",
+        "group": "روابط ثابتة"
+      }
+    ]
+  }
+]
