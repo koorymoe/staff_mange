@@ -1353,5 +1353,17 @@ func matrixChatMigrations() []Migration {
 				"updatedAt" TIMESTAMPTZ NOT NULL DEFAULT now()
 			);
 		`,
+	}, {
+		// 🏛️ المناصب المؤقتة بالإجازات (المبدأ ٢٠، دازاي 10-30): النائب يمسك «مدير بالوكالة»
+		// بنفس مكانه — فقيد «الموظف ما يتكرر بنفس المكان» ما يشمل الوكالة، ووكالة وحدة لكل منصب.
+		Version: "0412_org_acting",
+		SQL: `
+			DROP INDEX IF EXISTS "OrgAssignment_emp_uq";
+			CREATE UNIQUE INDEX IF NOT EXISTS "OrgAssignment_emp_uq" ON "OrgAssignment"
+				("employeeId", "divisionId", COALESCE("unitId", ''))
+				WHERE "endedAt" IS NULL AND NOT acting;
+			CREATE UNIQUE INDEX IF NOT EXISTS "OrgAssignment_acting_uq" ON "OrgAssignment" ("replacesId")
+				WHERE "endedAt" IS NULL AND acting;
+		`,
 	}}
 }

@@ -2949,6 +2949,10 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 		orgGovernor := service.NewOrgGovernor(db, orgService, matrixScoreService, disciplineRepo, aiActionRepo, aiRepo,
 			repository.NewSystemSwitchRepository(db), notificationRepo)
 		orgGovernor.RegisterUndo(matrixAutopilotService.OnUndo)
+		// المناصب المؤقتة بالإجازات (المبدأ ٢٠) — مستقلة عن مفتاح الحاكم
+		safeguard.Loop("org-acting", 3*time.Minute, time.Hour, func() {
+			orgService.RunActing(func(emp, msg string) { _ = notificationRepo.Create(emp, "ORG_ACTING", msg) })
+		})
 		safeguard.Loop("org-governor", 4*time.Minute, time.Hour, func() {
 			orgGovernor.RunFines()
 			orgGovernor.RunMonthlyIfDue()

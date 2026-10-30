@@ -221,8 +221,9 @@ func (g *OrgGovernor) RunFines() {
 		return
 	}
 	var opsDirector string
+	// الماسك هسه: المدير بالوكالة إذا الأصلي بإجازة (المبدأ ٢٠)، وإلا الأصلي
 	_ = g.db.Get(&opsDirector, `SELECT "employeeId" FROM "OrgAssignment" WHERE "divisionId" = 'ops' AND "unitId" IS NULL
-		AND position = 'DIRECTOR' AND "endedAt" IS NULL AND NOT acting LIMIT 1`)
+		AND position = 'DIRECTOR' AND "endedAt" IS NULL ORDER BY acting DESC, "startedAt" DESC LIMIT 1`)
 	for _, c := range rows {
 		open := c.Status == "NEW" || c.Status == "IN_PROGRESS"
 		deadline := c.CreatedAt.Add(orgFineDeadline)
@@ -404,7 +405,7 @@ func (g *OrgGovernor) EvaluateMonth(period string) error {
 	holders := []holder{}
 	if err := g.db.Select(&holders, `SELECT "employeeId", bool_or(position IN ('DIRECTOR', 'DEPUTY') AND "unitId" IS NULL) AS director,
 		COALESCE(min("divisionId") FILTER (WHERE position IN ('DIRECTOR', 'DEPUTY') AND "unitId" IS NULL), '') AS "divisionId"
-		FROM "OrgAssignment" WHERE "endedAt" IS NULL AND "startedAt" <= $1 GROUP BY "employeeId"`, from); err != nil {
+		FROM "OrgAssignment" WHERE "endedAt" IS NULL AND NOT acting AND "startedAt" <= $1 GROUP BY "employeeId"`, from); err != nil {
 		return err
 	}
 	decisions := map[string]int{}
