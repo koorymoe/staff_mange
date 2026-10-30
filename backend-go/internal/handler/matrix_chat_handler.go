@@ -221,7 +221,8 @@ func (h *MatrixChatHandler) prepare(w http.ResponseWriter, r *http.Request) *cha
 		prompt = turns[n-1].Text + "\n" + text
 		turns = turns[:n-1]
 	}
-	system := chatSystemPrompt + h.lessonsBlock()
+	// (10-30) الهيكل الجديد ولائحة العمل ومكان المستخدم — النقطة ٢ «الذكاء يفهم النظام»
+	system := chatSystemPrompt + h.lessonsBlock() + service.OrgBrief(h.db, me)
 	if !isTopRole(r) {
 		var name, role string
 		_ = h.db.QueryRow(`SELECT name, role::text FROM "Employee" WHERE id = $1`, me).Scan(&name, &role)

@@ -113,6 +113,11 @@ func TestUnitDevelopment_Live(t *testing.T) {
 	if err := s.UpdatePlanItem(mem, "TECHNICIAN", item, &pct, nil); err != nil {
 		t.Fatalf("المسؤول ما گدر يحدّث بنده: %v", err)
 	}
+	// المسؤول يشوف بنوده بلا المكتب
+	mi, err := s.MyItems(mem)
+	if err != nil || len(mi) != 1 || mi[0].Progress != 40 || !mi[0].Overdue || mi[0].UnitName == nil || mi[0].PlanStatus != "APPROVED" {
+		t.Fatalf("بنودي: %v %+v", err, mi)
+	}
 	d, err := s.Desk(dir, "TECHNICIAN", "eng", "")
 	if err != nil || len(d.UnitPlans) != 1 || d.UnitPlans[0].Status != "APPROVED" {
 		t.Fatalf("مكتب الإدارة لازم يشوف خطة الوحدة المعتمدة: %v %+v", err, d)

@@ -14,6 +14,8 @@ import (
 var matrixToolAccess = map[string][]string{
 	// للكل (ويا agent_matrix)
 	"system_guide": nil, "lookup_code": nil, "booking_check": nil, "suggest_improvement": nil, "my_stats": nil,
+	// الهيكل الجديد ولائحة العمل (10-30) — للكل؛ unit_status (تفاصيل الإدارات) للمالك والمدير بس
+	"org_structure": nil, "regulations": nil,
 	// الحجوزات والميدان
 	"late_bookings":    {"view_bookings", "coordinator", "crew_management", "monitoring", "mon_field", "mon_attendance"},
 	"attendance_today": {"monitoring", "mon_attendance", "staff_management", "coordinator"},

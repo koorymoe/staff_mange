@@ -784,3 +784,36 @@ func (s *OrgService) Regulations() ([]OrgClause, error) {
 		WHERE p."isActive" AND p."principleNo" IS NOT NULL AND p."clauseTitle" IS NOT NULL ORDER BY p."principleNo"`)
 	return out, err
 }
+
+// MyPlanItem بند خطة الموظف مسؤول عنه — مع سياق خطته (بلا باقي المكتب).
+type MyPlanItem struct {
+	OrgPlanItem
+	DivisionName string  `db:"divisionName" json:"divisionName"`
+	UnitName     *string `db:"unitName" json:"unitName"`
+	Period       string  `db:"period" json:"period"`
+	PlanTitle    string  `db:"planTitle" json:"planTitle"`
+	PlanStatus   string  `db:"planStatus" json:"planStatus"`
+}
+
+// MyItems بنود الخطط الي الموظف مسؤول عنها (الشهر الحالي والي فات، أو غير المنتهية) —
+// عقد قراءة آمن لأي موظف: يشوف بنوده بس ويحدّث نسبتها (UpdatePlanItem يسمح للمسؤول).
+func (s *OrgService) MyItems(empID string) ([]MyPlanItem, error) {
+	out := []MyPlanItem{}
+	err := s.db.Select(&out, `SELECT i.id, i."planId", i.kind, i.title, i."issueId", i.metric, i.baseline, i.target, i."manualProgress", i."doneAt",
+		i."dueDate"::text AS "dueDate", i."ownerId", e.name AS "ownerName",
+		d.name AS "divisionName", u.name AS "unitName", p.period, p.title AS "planTitle", p.status AS "planStatus"
+		FROM "OrgPlanItem" i JOIN "OrgPlan" p ON p.id = i."planId" JOIN "OrgDivision" d ON d.id = p."divisionId"
+		LEFT JOIN "OrgUnit" u ON u.id = p."unitId" LEFT JOIN "Employee" e ON e.id = i."ownerId"
+		WHERE i."ownerId" = $1 AND (i."doneAt" IS NULL OR p.period >= to_char((now() AT TIME ZONE 'Asia/Baghdad') - interval '1 month', 'YYYY-MM'))
+		ORDER BY (i."doneAt" IS NOT NULL), i."dueDate" NULLS LAST LIMIT 100`, empID)
+	today := time.Now().In(baghdad).Format("2006-01-02")
+	for k := range out {
+		it := &out[k].OrgPlanItem
+		it.Progress = it.ManualProgress
+		if it.DoneAt != nil {
+			it.Progress = 100
+		}
+		it.Overdue = it.DoneAt == nil && it.DueDate != nil && *it.DueDate < today
+	}
+	return out, err
+}

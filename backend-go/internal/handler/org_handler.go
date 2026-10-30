@@ -330,3 +330,13 @@ func (h *OrgHandler) Regulations(w http.ResponseWriter, r *http.Request) {
 	}
 	WriteJSON(w, http.StatusOK, out)
 }
+
+// GET /api/org/my-items — بنود الخطط الي الموظف مسؤول عنها (آمن لأي موظف)
+func (h *OrgHandler) MyItems(w http.ResponseWriter, r *http.Request) {
+	out, err := h.svc.MyItems(middleware.EmployeeIDFromContext(r))
+	if err != nil {
+		WriteError(w, http.StatusInternalServerError, "تعذر جلب بنودك")
+		return
+	}
+	WriteJSON(w, http.StatusOK, out)
+}

@@ -2972,6 +2972,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 		mux.Handle("POST /api/org/plans/{id}/submit", middleware.Chain(http.HandlerFunc(orgHandler.SubmitPlan), requireAuth))
 		mux.Handle("POST /api/org/plans/{id}/review", middleware.Chain(http.HandlerFunc(orgHandler.ReviewPlan), requireAuth))
 		mux.Handle("PUT /api/org/issues/{id}/solution", middleware.Chain(http.HandlerFunc(orgHandler.SetSolution), requireAuth))
+		mux.Handle("GET /api/org/my-items", middleware.Chain(http.HandlerFunc(orgHandler.MyItems), requireAuth))
 		mux.Handle("GET /api/org/regulations", middleware.Chain(http.HandlerFunc(orgHandler.Regulations), requireAuth))
 		mux.Handle("PUT /api/org/authority/{division}", middleware.Chain(http.HandlerFunc(orgHandler.SetAuthority), requireAuth, requireAdmin))
 		mux.Handle("POST /api/voice/compare/{id}", middleware.Chain(http.HandlerFunc(secHandler.CompareVoice), requireAuth, requireAdmin))

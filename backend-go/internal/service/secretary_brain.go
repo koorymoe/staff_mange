@@ -158,6 +158,8 @@ func (b *SecretaryBrain) system(t SecretaryTurn) string {
 	}
 	fmt.Fprintf(&s, "\n- الاحترام: ناديه «%s» — الترحيب مثل «أهلاً %s، بشنو أكدر أساعدك اليوم؟»، وبالحچي خاطبه «%s» أو «سيدنا». لا تناديه باسمه المجرّد أبداً.", title, title, title)
 	s.WriteString("\nالوقت هسه (بغداد): " + time.Now().In(debriefLoc).Format("2006-01-02 15:04 Monday"))
+	// (10-30) الهيكل الجديد ولائحة العمل — النقطة ٢ «الذكاء يفهم النظام»
+	s.WriteString(OrgBrief(b.db, t.UserID))
 	if sm := strings.TrimSpace(t.Summary); sm != "" {
 		s.WriteString("\n\nذاكرة هالمحادثة (ملخص الي صار قبل آخر الرسائل):\n" + sm + "\n")
 	}
