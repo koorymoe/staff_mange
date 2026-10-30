@@ -68,11 +68,11 @@ func TestOrgDesk_Live(t *testing.T) {
 	if err := s.UpdateIssue(dep, "TECHNICIAN", issue, "RESOLVED", ""); err == nil {
 		t.Fatal("الحل بلا شرح انقبل")
 	}
-	plan, err := s.CreatePlan(dir, "TECHNICIAN", "quality", "", "خطة الشهر")
+	plan, err := s.CreatePlan(dir, "TECHNICIAN", "quality", "", "", "خطة الشهر")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := s.CreatePlan(stranger, "TECHNICIAN", "quality", "", "x"); !errors.Is(err, ErrOrgHidden) {
+	if _, err := s.CreatePlan(stranger, "TECHNICIAN", "quality", "", "", "x"); !errors.Is(err, ErrOrgHidden) {
 		t.Fatal("الغريب سوّى خطة")
 	}
 	cur, _ := s.MetricValue("issues_open", "quality", OrgPeriod(time.Now()))

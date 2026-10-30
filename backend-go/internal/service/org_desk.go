@@ -118,21 +118,23 @@ func (s *OrgService) MetricValue(key, divisionID, period string) (float64, error
 // ── التقارير والخطة ──
 
 type OrgIssue struct {
-	ID         string     `db:"id" json:"id"`
-	DivisionID string     `db:"divisionId" json:"divisionId"`
-	UnitID     *string    `db:"unitId" json:"unitId"`
-	AuthorID   *string    `db:"authorId" json:"authorId"`
-	AuthorName *string    `db:"authorName" json:"authorName"`
-	Title      string     `db:"title" json:"title"`
-	Problem    string     `db:"problem" json:"problem"`
-	Impact     string     `db:"impact" json:"impact"`
-	Scope      string     `db:"scope" json:"scope"`
-	Principle  *int       `db:"principle" json:"principle"`
-	Severity   string     `db:"severity" json:"severity"`
-	Status     string     `db:"status" json:"status"`
-	Resolution *string    `db:"resolution" json:"resolution"`
-	CreatedAt  time.Time  `db:"createdAt" json:"createdAt"`
-	ResolvedAt *time.Time `db:"resolvedAt" json:"resolvedAt"`
+	ID         string  `db:"id" json:"id"`
+	DivisionID string  `db:"divisionId" json:"divisionId"`
+	UnitID     *string `db:"unitId" json:"unitId"`
+	AuthorID   *string `db:"authorId" json:"authorId"`
+	AuthorName *string `db:"authorName" json:"authorName"`
+	Title      string  `db:"title" json:"title"`
+	Problem    string  `db:"problem" json:"problem"`
+	Impact     string  `db:"impact" json:"impact"`
+	Scope      string  `db:"scope" json:"scope"`
+	Principle  *int    `db:"principle" json:"principle"`
+	Severity   string  `db:"severity" json:"severity"`
+	Status     string  `db:"status" json:"status"`
+	Resolution *string `db:"resolution" json:"resolution"`
+	// خطة الحل (تطوير الوحدة 10-30)
+	SolutionPlan *string    `db:"solutionPlan" json:"solutionPlan"`
+	CreatedAt    time.Time  `db:"createdAt" json:"createdAt"`
+	ResolvedAt   *time.Time `db:"resolvedAt" json:"resolvedAt"`
 }
 
 type OrgPlanItem struct {
@@ -146,6 +148,11 @@ type OrgPlanItem struct {
 	Target         *float64   `db:"target" json:"target"`
 	ManualProgress int        `db:"manualProgress" json:"manualProgress"`
 	DoneAt         *time.Time `db:"doneAt" json:"doneAt"`
+	// الجدول الزمني (تطوير الوحدة 10-30): موعد ومسؤول
+	DueDate   *string `db:"dueDate" json:"dueDate"`
+	OwnerID   *string `db:"ownerId" json:"ownerId"`
+	OwnerName *string `db:"ownerName" json:"ownerName"`
+	Overdue   bool    `db:"-" json:"overdue"`
 	// محسوبة
 	Current  *float64 `db:"-" json:"current"`
 	Progress int      `db:"-" json:"progress"`
@@ -153,12 +160,17 @@ type OrgPlanItem struct {
 }
 
 type OrgPlan struct {
-	ID         string        `db:"id" json:"id"`
-	DivisionID string        `db:"divisionId" json:"divisionId"`
-	Period     string        `db:"period" json:"period"`
-	Title      string        `db:"title" json:"title"`
-	Items      []OrgPlanItem `db:"-" json:"items"`
-	Progress   int           `db:"-" json:"progress"`
+	ID          string        `db:"id" json:"id"`
+	DivisionID  string        `db:"divisionId" json:"divisionId"`
+	UnitID      *string       `db:"unitId" json:"unitId"`
+	Period      string        `db:"period" json:"period"`
+	Title       string        `db:"title" json:"title"`
+	Status      string        `db:"status" json:"status"` // DRAFT | SUBMITTED | APPROVED | RETURNED
+	SubmittedAt *time.Time    `db:"submittedAt" json:"submittedAt"`
+	ReviewedAt  *time.Time    `db:"reviewedAt" json:"reviewedAt"`
+	ReviewNote  *string       `db:"reviewNote" json:"reviewNote"`
+	Items       []OrgPlanItem `db:"-" json:"items"`
+	Progress    int           `db:"-" json:"progress"`
 }
 
 type OrgComment struct {
@@ -179,14 +191,18 @@ type OrgAuthorityRow struct {
 }
 
 type OrgDesk struct {
-	Division  OrgChartDivision  `json:"division"`
-	Period    string            `json:"period"`
-	CanEdit   bool              `json:"canEdit"`
-	Issues    []OrgIssue        `json:"issues"`
-	Plan      *OrgPlan          `json:"plan"`
-	Comments  []OrgComment      `json:"comments"`
-	Authority []OrgAuthorityRow `json:"authority"`
-	Metrics   []OrgMetric       `json:"metrics"`
+	Division OrgChartDivision `json:"division"`
+	Period   string           `json:"period"`
+	CanEdit  bool             `json:"canEdit"`
+	Issues   []OrgIssue       `json:"issues"`
+	Plan     *OrgPlan         `json:"plan"`
+	// خطط الوحدات (تطوير الوحدة 10-30) + الوحدات الي المستخدم يعدّل خطتها
+	UnitPlans     []*OrgPlan        `json:"unitPlans"`
+	EditableUnits []string          `json:"editableUnits"`
+	CanReview     bool              `json:"canReview"`
+	Comments      []OrgComment      `json:"comments"`
+	Authority     []OrgAuthorityRow `json:"authority"`
+	Metrics       []OrgMetric       `json:"metrics"`
 }
 
 // ── الوصول ──
@@ -220,6 +236,33 @@ func (s *OrgService) Access(empID, role, divisionID string) (see, edit bool) {
 
 var ErrOrgHidden = errors.New("مو موجود")
 
+// UnitAccess تعديل خطة/تشخيص وحدة: مدير أو نائب الوحدة نفسها، أو من يعدّل الإدارة.
+func (s *OrgService) UnitAccess(empID, role, divisionID, unitID string) bool {
+	if _, edit := s.Access(empID, role, divisionID); edit {
+		return true
+	}
+	var n int
+	_ = s.db.Get(&n, `SELECT count(*) FROM "OrgAssignment" WHERE "employeeId" = $1 AND "unitId" = $2 AND "divisionId" = $3
+		AND "endedAt" IS NULL AND position IN ('DIRECTOR', 'DEPUTY')`, empID, unitID, divisionID)
+	return n > 0
+}
+
+// planReviewer منو يعتمد الخطة: خطة الوحدة ← مدير/نائب إدارتها (أو الأعلى)؛
+// خطة الإدارة ← مدير «الإدارة» أو المالك/مدير النظام.
+func (s *OrgService) planReviewer(empID, role, divisionID string, unitID *string) bool {
+	if role == "OWNER" || role == "ADMIN" {
+		return true
+	}
+	if unitID != nil {
+		_, edit := s.Access(empID, role, divisionID)
+		return edit
+	}
+	var n int
+	_ = s.db.Get(&n, `SELECT count(*) FROM "OrgAssignment" WHERE "employeeId" = $1 AND "divisionId" = 'admin' AND "unitId" IS NULL
+		AND "endedAt" IS NULL AND position IN ('DIRECTOR', 'DEPUTY')`, empID)
+	return n > 0 && divisionID != "admin"
+}
+
 func (s *OrgService) Desk(empID, role, divisionID, period string) (*OrgDesk, error) {
 	see, edit := s.Access(empID, role, divisionID)
 	if !see {
@@ -246,7 +289,7 @@ func (s *OrgService) Desk(empID, role, divisionID, period string) (*OrgDesk, err
 		return nil, ErrOrgHidden
 	}
 	if err := s.db.Select(&desk.Issues, `SELECT i.id, i."divisionId", i."unitId", i."authorId", e.name AS "authorName", i.title, i.problem,
-		i.impact, i.scope, i.principle, i.severity, i.status, i.resolution, i."createdAt", i."resolvedAt"
+		i.impact, i.scope, i.principle, i.severity, i.status, i.resolution, i."solutionPlan", i."createdAt", i."resolvedAt"
 		FROM "OrgIssueReport" i LEFT JOIN "Employee" e ON e.id = i."authorId"
 		WHERE i."divisionId" = $1 ORDER BY (i.status = 'RESOLVED'), CASE i.severity WHEN 'HIGH' THEN 0 WHEN 'MEDIUM' THEN 1 ELSE 2 END, i."createdAt" DESC
 		LIMIT 200`, divisionID); err != nil {
@@ -254,6 +297,20 @@ func (s *OrgService) Desk(empID, role, divisionID, period string) (*OrgDesk, err
 	}
 	if desk.Plan, err = s.plan(divisionID, period); err != nil {
 		return nil, err
+	}
+	desk.UnitPlans, desk.EditableUnits = []*OrgPlan{}, []string{}
+	desk.CanReview = s.planReviewer(empID, role, divisionID, nil) || edit
+	for _, u := range desk.Division.Units {
+		if s.UnitAccess(empID, role, divisionID, u.ID) {
+			desk.EditableUnits = append(desk.EditableUnits, u.ID)
+		}
+		up, err := s.planFor(divisionID, &u.ID, period)
+		if err != nil {
+			return nil, err
+		}
+		if up != nil {
+			desk.UnitPlans = append(desk.UnitPlans, up)
+		}
 	}
 	if err := s.db.Select(&desk.Comments, `SELECT c.id, c."targetType", c."targetId", e.name AS "authorName", c.text, c."createdAt"
 		FROM "OrgComment" c LEFT JOIN "Employee" e ON e.id = c."authorId"
@@ -268,17 +325,24 @@ func (s *OrgService) Desk(empID, role, divisionID, period string) (*OrgDesk, err
 	return desk, nil
 }
 
+// plan خطة الإدارة نفسها (بلا وحدة) — هي الي يحسبها ماتركس الحاكم بتقييم المدير.
 func (s *OrgService) plan(divisionID, period string) (*OrgPlan, error) {
+	return s.planFor(divisionID, nil, period)
+}
+
+func (s *OrgService) planFor(divisionID string, unitID *string, period string) (*OrgPlan, error) {
 	var p OrgPlan
-	if err := s.db.Get(&p, `SELECT id, "divisionId", period, title FROM "OrgPlan" WHERE "divisionId" = $1 AND period = $2`, divisionID, period); err != nil {
+	if err := s.db.Get(&p, `SELECT id, "divisionId", "unitId", period, title, status, "submittedAt", "reviewedAt", "reviewNote"
+		FROM "OrgPlan" WHERE "divisionId" = $1 AND "unitId" IS NOT DISTINCT FROM $2 AND period = $3`, divisionID, unitID, period); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, nil // ماكو خطة لهالشهر بعد
 		}
 		return nil, err
 	}
 	p.Items = []OrgPlanItem{}
-	if err := s.db.Select(&p.Items, `SELECT id, "planId", kind, title, "issueId", metric, baseline, target, "manualProgress", "doneAt"
-		FROM "OrgPlanItem" WHERE "planId" = $1 ORDER BY "createdAt"`, p.ID); err != nil {
+	if err := s.db.Select(&p.Items, `SELECT i.id, i."planId", i.kind, i.title, i."issueId", i.metric, i.baseline, i.target, i."manualProgress", i."doneAt",
+		i."dueDate"::text AS "dueDate", i."ownerId", e.name AS "ownerName"
+		FROM "OrgPlanItem" i LEFT JOIN "Employee" e ON e.id = i."ownerId" WHERE i."planId" = $1 ORDER BY i."dueDate" NULLS LAST, i."createdAt"`, p.ID); err != nil {
 		return nil, err
 	}
 	sum := 0
@@ -298,6 +362,7 @@ func (s *OrgService) plan(divisionID, period string) (*OrgPlan, error) {
 		if it.DoneAt != nil {
 			it.Progress = 100
 		}
+		it.Overdue = it.DoneAt == nil && it.DueDate != nil && *it.DueDate < time.Now().In(baghdad).Format("2006-01-02")
 		sum += it.Progress
 	}
 	if len(p.Items) > 0 {
@@ -317,10 +382,16 @@ type OrgIssueInput struct {
 	Scope      string `json:"scope"`
 	Principle  *int   `json:"principle"`
 	Severity   string `json:"severity"`
+	// SolutionPlan خطة الحل (اختياري بالتشخيص، ينكتب أو يتعدل بعدين)
+	SolutionPlan string `json:"solutionPlan"`
 }
 
 func (s *OrgService) AddIssue(empID, role string, in OrgIssueInput) (string, error) {
 	if see, _ := s.Access(empID, role, in.DivisionID); !see {
+		return "", ErrOrgHidden
+	}
+	// مشكلة وحدة يكتبها رئيس الوحدة نفسها أو من يعدّل الإدارة
+	if in.UnitID != "" && !s.UnitAccess(empID, role, in.DivisionID, in.UnitID) {
 		return "", ErrOrgHidden
 	}
 	in.Title, in.Problem = strings.TrimSpace(in.Title), strings.TrimSpace(in.Problem)
@@ -333,8 +404,8 @@ func (s *OrgService) AddIssue(empID, role string, in OrgIssueInput) (string, err
 	if in.Severity == "" {
 		in.Severity = "MEDIUM"
 	}
-	if in.Principle != nil && (*in.Principle < 1 || *in.Principle > 20) {
-		return "", errors.New("رقم المبدأ من ١ لـ٢٠")
+	if in.Principle != nil && (*in.Principle < 1 || *in.Principle > 40) {
+		return "", errors.New("رقم الفقرة غير صالح")
 	}
 	var unit any
 	if in.UnitID != "" {
@@ -345,13 +416,41 @@ func (s *OrgService) AddIssue(empID, role string, in OrgIssueInput) (string, err
 		unit = in.UnitID
 	}
 	var id string
-	err := s.db.Get(&id, `INSERT INTO "OrgIssueReport" ("divisionId", "unitId", "authorId", title, problem, impact, scope, principle, severity)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING id`,
-		in.DivisionID, unit, empID, in.Title, in.Problem, strings.TrimSpace(in.Impact), in.Scope, in.Principle, in.Severity)
+	err := s.db.Get(&id, `INSERT INTO "OrgIssueReport" ("divisionId", "unitId", "authorId", title, problem, impact, scope, principle, severity, "solutionPlan")
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NULLIF($10, '')) RETURNING id`,
+		in.DivisionID, unit, empID, in.Title, in.Problem, strings.TrimSpace(in.Impact), in.Scope, in.Principle, in.Severity, strings.TrimSpace(in.SolutionPlan))
 	if err != nil && strings.Contains(err.Error(), "check constraint") {
 		return "", errors.New("قيمة غير صالحة بالنطاق أو الخطورة")
 	}
 	return id, err
+}
+
+// SetSolutionPlan يكتب/يعدّل خطة حل مشكلة — كاتبها أو رئيس وحدتها أو من يعدّل الإدارة.
+func (s *OrgService) SetSolutionPlan(empID, role, id, plan string) error {
+	var r struct {
+		Div    string  `db:"divisionId"`
+		Unit   *string `db:"unitId"`
+		Author *string `db:"authorId"`
+	}
+	if err := s.db.Get(&r, `SELECT "divisionId", "unitId", "authorId" FROM "OrgIssueReport" WHERE id = $1`, id); err != nil {
+		return ErrOrgHidden
+	}
+	ok := r.Author != nil && *r.Author == empID
+	if !ok && r.Unit != nil {
+		ok = s.UnitAccess(empID, role, r.Div, *r.Unit)
+	}
+	if !ok {
+		_, ok = s.Access(empID, role, r.Div)
+	}
+	if !ok {
+		return ErrOrgHidden
+	}
+	plan = strings.TrimSpace(plan)
+	if len([]rune(plan)) < 10 {
+		return errors.New("اكتب خطة الحل (١٠ حروف على الأقل)")
+	}
+	_, err := s.db.Exec(`UPDATE "OrgIssueReport" SET "solutionPlan" = $2, status = CASE WHEN status = 'OPEN' THEN 'IN_PROGRESS' ELSE status END WHERE id = $1`, id, plan)
+	return err
 }
 
 func (s *OrgService) issueDivision(id string) string {
@@ -377,8 +476,18 @@ func (s *OrgService) UpdateIssue(empID, role, id, status, resolution string) err
 	return err
 }
 
-func (s *OrgService) CreatePlan(empID, role, divisionID, period, title string) (string, error) {
-	if _, edit := s.Access(empID, role, divisionID); !edit {
+func (s *OrgService) CreatePlan(empID, role, divisionID, unitID, period, title string) (string, error) {
+	var unit any
+	if unitID != "" {
+		var div string
+		if err := s.db.Get(&div, `SELECT "divisionId" FROM "OrgUnit" WHERE id = $1`, unitID); err != nil || div != divisionID {
+			return "", errors.New("الوحدة مو تابعة لهالإدارة")
+		}
+		if !s.UnitAccess(empID, role, divisionID, unitID) {
+			return "", ErrOrgHidden
+		}
+		unit = unitID
+	} else if _, edit := s.Access(empID, role, divisionID); !edit {
 		return "", ErrOrgHidden
 	}
 	if period == "" {
@@ -388,19 +497,93 @@ func (s *OrgService) CreatePlan(empID, role, divisionID, period, title string) (
 		return "", err
 	}
 	var id string
-	err := s.db.Get(&id, `INSERT INTO "OrgPlan" ("divisionId", period, title, "createdById") VALUES ($1, $2, $3, $4)
-		ON CONFLICT ("divisionId", period) DO UPDATE SET title = CASE WHEN EXCLUDED.title <> '' THEN EXCLUDED.title ELSE "OrgPlan".title END
-		RETURNING id`, divisionID, period, strings.TrimSpace(title), empID)
+	err := s.db.Get(&id, `INSERT INTO "OrgPlan" ("divisionId", "unitId", period, title, "createdById") VALUES ($1, $2, $3, $4, $5)
+		ON CONFLICT ("divisionId", COALESCE("unitId", ''), period) DO UPDATE SET title = CASE WHEN EXCLUDED.title <> '' THEN EXCLUDED.title ELSE "OrgPlan".title END
+		RETURNING id`, divisionID, unit, period, strings.TrimSpace(title), empID)
 	return id, err
 }
 
 func (s *OrgService) planDivision(planID string) (div, period string) {
-	var r struct {
-		D string `db:"divisionId"`
-		P string `db:"period"`
+	sc := s.planScope(planID)
+	return sc.Div, sc.Period
+}
+
+type orgPlanScope struct {
+	Div    string  `db:"divisionId"`
+	Unit   *string `db:"unitId"`
+	Period string  `db:"period"`
+	Status string  `db:"status"`
+}
+
+func (s *OrgService) planScope(planID string) orgPlanScope {
+	var r orgPlanScope
+	_ = s.db.Get(&r, `SELECT "divisionId", "unitId", period, status FROM "OrgPlan" WHERE id = $1`, planID)
+	return r
+}
+
+// planEdit يعدّل بنود الخطة: رئيس وحدتها (لخطة الوحدة) أو من يعدّل الإدارة.
+func (s *OrgService) planEdit(empID, role string, sc orgPlanScope) bool {
+	if sc.Div == "" {
+		return false
 	}
-	_ = s.db.Get(&r, `SELECT "divisionId", period FROM "OrgPlan" WHERE id = $1`, planID)
-	return r.D, r.P
+	if sc.Unit != nil {
+		return s.UnitAccess(empID, role, sc.Div, *sc.Unit)
+	}
+	_, edit := s.Access(empID, role, sc.Div)
+	return edit
+}
+
+// SubmitPlan رئيس الوحدة/الإدارة يرفع الخطة للي فوكه.
+func (s *OrgService) SubmitPlan(empID, role, planID string) ([]string, error) {
+	sc := s.planScope(planID)
+	if !s.planEdit(empID, role, sc) {
+		return nil, ErrOrgHidden
+	}
+	if sc.Status != "DRAFT" && sc.Status != "RETURNED" {
+		return nil, errors.New("الخطة مرفوعة أو معتمدة أصلاً")
+	}
+	var n int
+	_ = s.db.Get(&n, `SELECT count(*) FROM "OrgPlanItem" WHERE "planId" = $1`, planID)
+	if n == 0 {
+		return nil, errors.New("ضيف بنود للخطة گبل ما ترفعها")
+	}
+	if _, err := s.db.Exec(`UPDATE "OrgPlan" SET status = 'SUBMITTED', "submittedAt" = now() WHERE id = $1`, planID); err != nil {
+		return nil, err
+	}
+	// منو يوصله: مدير/نائب الإدارة لخطة الوحدة، ومدير «الإدارة» لخطة الإدارة
+	to := []string{}
+	if sc.Unit != nil {
+		_ = s.db.Select(&to, `SELECT "employeeId" FROM "OrgAssignment" WHERE "divisionId" = $1 AND "unitId" IS NULL
+			AND position IN ('DIRECTOR', 'DEPUTY') AND "endedAt" IS NULL AND "employeeId" <> $2`, sc.Div, empID)
+	} else {
+		_ = s.db.Select(&to, `SELECT "employeeId" FROM "OrgAssignment" WHERE "divisionId" = 'admin' AND "unitId" IS NULL
+			AND position = 'DIRECTOR' AND "endedAt" IS NULL AND "employeeId" <> $1`, empID)
+	}
+	return to, nil
+}
+
+// ReviewPlan يعتمد أو يرجّع ويا ملاحظة (الإرجاع لازم بيه ملاحظة).
+func (s *OrgService) ReviewPlan(empID, role, planID string, approve bool, note string) (string, error) {
+	sc := s.planScope(planID)
+	if sc.Div == "" || !s.planReviewer(empID, role, sc.Div, sc.Unit) {
+		return "", ErrOrgHidden
+	}
+	if sc.Status != "SUBMITTED" {
+		return "", errors.New("الخطة مو مرفوعة للاعتماد")
+	}
+	note = strings.TrimSpace(note)
+	status := "APPROVED"
+	if !approve {
+		status = "RETURNED"
+		if len([]rune(note)) < 5 {
+			return "", errors.New("اكتب شنو لازم يتعدل حتى ترجّعها")
+		}
+	}
+	var author string
+	_ = s.db.Get(&author, `SELECT COALESCE("createdById", '') FROM "OrgPlan" WHERE id = $1`, planID)
+	_, err := s.db.Exec(`UPDATE "OrgPlan" SET status = $2, "reviewedById" = $3, "reviewedAt" = now(), "reviewNote" = NULLIF($4, '') WHERE id = $1`,
+		planID, status, empID, note)
+	return author, err
 }
 
 type OrgPlanItemInput struct {
@@ -409,13 +592,36 @@ type OrgPlanItemInput struct {
 	IssueID string   `json:"issueId"`
 	Metric  string   `json:"metric"`
 	Target  *float64 `json:"target"`
+	// الجدول الزمني: موعد (YYYY-MM-DD) ومسؤول (من كادر الإدارة)
+	DueDate string `json:"dueDate"`
+	OwnerID string `json:"ownerId"`
 }
 
 // AddPlanItem — إذا مربوط بمقياس، خط الأساس ينحسب هسه من النظام (ماتركس) مو من الإدخال.
 func (s *OrgService) AddPlanItem(empID, role, planID string, in OrgPlanItemInput) (string, error) {
-	div, period := s.planDivision(planID)
-	if _, edit := s.Access(empID, role, div); !edit || div == "" {
+	sc := s.planScope(planID)
+	div, period := sc.Div, sc.Period
+	if !s.planEdit(empID, role, sc) {
 		return "", ErrOrgHidden
+	}
+	if sc.Status == "SUBMITTED" || sc.Status == "APPROVED" {
+		return "", errors.New("الخطة مرفوعة/معتمدة — البنود تنضاف بس بالمسودة أو بعد الإرجاع")
+	}
+	var due, owner any
+	if in.DueDate != "" {
+		d, err := time.ParseInLocation("2006-01-02", in.DueDate, baghdad)
+		if err != nil {
+			return "", errors.New("الموعد لازم بشكل YYYY-MM-DD")
+		}
+		due = d.Format("2006-01-02")
+	}
+	if in.OwnerID != "" {
+		var n int
+		_ = s.db.Get(&n, `SELECT count(*) FROM "OrgAssignment" WHERE "employeeId" = $1 AND "divisionId" = $2 AND "endedAt" IS NULL`, in.OwnerID, div)
+		if n == 0 {
+			return "", errors.New("المسؤول لازم من كادر هالإدارة")
+		}
+		owner = in.OwnerID
 	}
 	in.Title = strings.TrimSpace(in.Title)
 	if len([]rune(in.Title)) < 3 {
@@ -465,8 +671,8 @@ func (s *OrgService) AddPlanItem(empID, role, planID string, in OrgPlanItemInput
 		issue = in.IssueID
 	}
 	var id string
-	err := s.db.Get(&id, `INSERT INTO "OrgPlanItem" ("planId", kind, title, "issueId", metric, baseline, target, "createdById")
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id`, planID, in.Kind, in.Title, issue, metric, baseline, target, empID)
+	err := s.db.Get(&id, `INSERT INTO "OrgPlanItem" ("planId", kind, title, "issueId", metric, baseline, target, "createdById", "dueDate", "ownerId")
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING id`, planID, in.Kind, in.Title, issue, metric, baseline, target, empID, due, owner)
 	return id, err
 }
 
@@ -474,8 +680,11 @@ func (s *OrgService) AddPlanItem(empID, role, planID string, in OrgPlanItemInput
 func (s *OrgService) UpdatePlanItem(empID, role, itemID string, manual *int, done *bool) error {
 	var planID string
 	_ = s.db.Get(&planID, `SELECT "planId" FROM "OrgPlanItem" WHERE id = $1`, itemID)
-	div, _ := s.planDivision(planID)
-	if _, edit := s.Access(empID, role, div); !edit || div == "" {
+	sc := s.planScope(planID)
+	// المسؤول عن البند يحدّث نسبته هم
+	var isOwner bool
+	_ = s.db.Get(&isOwner, `SELECT COALESCE("ownerId" = $2, false) FROM "OrgPlanItem" WHERE id = $1`, itemID, empID)
+	if !isOwner && !s.planEdit(empID, role, sc) {
 		return ErrOrgHidden
 	}
 	if manual != nil {
@@ -554,4 +763,24 @@ func (s *OrgService) SetAuthority(empID, divisionID string, rows []OrgAuthorityR
 		}
 	}
 	return tx.Commit()
+}
+
+// ── 📜 لائحة العمل (10-30) ──
+
+type OrgClause struct {
+	No           int    `db:"no" json:"no"`
+	Article      int    `db:"article" json:"article"`
+	ArticleTitle string `db:"articleTitle" json:"articleTitle"`
+	Title        string `db:"title" json:"title"`
+	Code         string `db:"code" json:"code"`
+}
+
+// Regulations الفقرات الفعّالة بأرقامها (الي تنربط بيها المشاكل) — «م٢/ف١ الدقة والسرعة».
+func (s *OrgService) Regulations() ([]OrgClause, error) {
+	out := []OrgClause{}
+	err := s.db.Select(&out, `SELECT p."principleNo" AS no, p."articleNo" AS article, a.title AS "articleTitle", p."clauseTitle" AS title,
+		split_part(p.content, ' — ', 1) AS code
+		FROM "PrivacyPolicyPoint" p JOIN "PolicyArticle" a ON a.no = p."articleNo"
+		WHERE p."isActive" AND p."principleNo" IS NOT NULL AND p."clauseTitle" IS NOT NULL ORDER BY p."principleNo"`)
+	return out, err
 }

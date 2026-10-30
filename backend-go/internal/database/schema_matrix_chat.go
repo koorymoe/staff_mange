@@ -1365,5 +1365,74 @@ func matrixChatMigrations() []Migration {
 			CREATE UNIQUE INDEX IF NOT EXISTS "OrgAssignment_acting_uq" ON "OrgAssignment" ("replacesId")
 				WHERE "endedAt" IS NULL AND acting;
 		`,
+	}, {
+		// 📜 لائحة العمل (دازاي 10-30): المبادئ العشرين صارت خمس مواد بعشرين فقرة بنص دازاي
+		// الرسمي (نفس الأرقام ١-٢٠ — الربط بالمشاكل يبقى). تغيّر النص = موافقة جديدة من الكل.
+		// المادة السادسة (التقييم والعقوبات والاعتراض والبيانات) مسودة مطفية — المالك يفعّلها.
+		Version: "0413_work_regulations",
+		SQL: `
+			ALTER TABLE "PrivacyPolicyPoint" ADD COLUMN IF NOT EXISTS "articleNo" INT;
+			ALTER TABLE "PrivacyPolicyPoint" ADD COLUMN IF NOT EXISTS "clauseTitle" TEXT;
+			CREATE TABLE IF NOT EXISTS "PolicyArticle" (no INT PRIMARY KEY, title TEXT NOT NULL);
+			INSERT INTO "PolicyArticle" (no, title) VALUES
+				(1, 'الانضباط الإداري والهيكلية التنظيمية'),
+				(2, 'الجودة والأداء التشغيلي'),
+				(3, 'إدارة الأصول والممتلكات'),
+				(4, 'خدمة الزبائن وتنمية الأعمال'),
+				(5, 'بيئة العمل وسرية المعلومات'),
+				(6, 'التقييم والمساءلة (مسودة)')
+			ON CONFLICT (no) DO UPDATE SET title = EXCLUDED.title;
+			UPDATE "PrivacyPolicyPoint" SET content = 'م1/ف1 — التراتب الإداري: تخضع جميع العمليات والأنشطة للنظام المؤسسي والهيكلية التنفيذية المعتمدة، وتُعد الإدارة العليا (مدير الشركة ومدير النظام) رأس الهرم الإداري وصاحبة السلطة التقديرية النهائية.', "articleNo" = 1, "clauseTitle" = 'التراتب الإداري', "updatedAt" = now() WHERE "principleNo" = 1;
+			UPDATE "PrivacyPolicyPoint" SET content = 'م1/ف2 — الالتزام بالتوجيهات: يلتزم جميع الموظفين والكوادر بتنفيذ قرارات وتوجيهات الإدارة العامة بكل جدية ودقة وفي المواعيد المحددة.', "articleNo" = 1, "clauseTitle" = 'الالتزام بالتوجيهات', "updatedAt" = now() WHERE "principleNo" = 2;
+			UPDATE "PrivacyPolicyPoint" SET content = 'م1/ف3 — مواعيد العمل: الالتزام التام بساعات الدوام الرسمي المحددة، ويُعد الحضور والانصراف في المواعيد المقررة شرطاً أساسياً للقيام بالواجبات الوظيفية.', "articleNo" = 1, "clauseTitle" = 'مواعيد العمل', "updatedAt" = now() WHERE "principleNo" = 3;
+			UPDATE "PrivacyPolicyPoint" SET content = 'م1/ف4 — المسؤولية والمحاسبة: يستقل كل موظف بمسؤوليات مهامه الوظيفية المحددة، ويخضع للمساءلة والتقييم بناءً على أدائه ومخرجات عمله.', "articleNo" = 1, "clauseTitle" = 'المسؤولية والمحاسبة', "updatedAt" = now() WHERE "principleNo" = 4;
+			UPDATE "PrivacyPolicyPoint" SET content = 'م1/ف5 — إدارة الأزمات والطوارئ: في حالات الإنذارات أو الظروف الاستثنائية، يحق للإدارة إعادة توزيع المهام وتغيير التكليفات الوظيفية وفقاً لمتطلبات العمل ورؤية مدير الشركة.', "articleNo" = 1, "clauseTitle" = 'إدارة الأزمات والطوارئ', "updatedAt" = now() WHERE "principleNo" = 5;
+			UPDATE "PrivacyPolicyPoint" SET content = 'م1/ف6 — المناصب المؤقتة: عند الإجازات تتغير المناصب مؤقتاً وفقاً لمصلحة العمل وحسب رؤية المدير، ويتولى النائب مهام المدير بالوكالة لحين عودته.', "articleNo" = 1, "clauseTitle" = 'المناصب المؤقتة', "updatedAt" = now() WHERE "principleNo" = 6;
+			UPDATE "PrivacyPolicyPoint" SET content = 'م2/ف1 — الدقة والسرعة: إنجاز كافة الأعمال الموكلة للشركة بصورة آنية وبدقة متناهية وبأقصى سرعة ممكنة دون الإخلال بمهنية التنفيذ، للوصول إلى أعلى مستويات المنافسة في السوق.', "articleNo" = 2, "clauseTitle" = 'الدقة والسرعة', "updatedAt" = now() WHERE "principleNo" = 7;
+			UPDATE "PrivacyPolicyPoint" SET content = 'م2/ف2 — المرونة التشغيلية: يلتزم الموظف باستغلال كافة مهاراته للقيام بأي مهام إضافية أو مرنة يُكلَّف بها ضمن نطاق اختصاصه ومصلحة العمل.', "articleNo" = 2, "clauseTitle" = 'المرونة التشغيلية', "updatedAt" = now() WHERE "principleNo" = 8;
+			UPDATE "PrivacyPolicyPoint" SET content = 'م2/ف3 — العمل الجماعي: يُدار العمل بروح الفريق الواحد كخلية نحل، حيث يعي كل موظف دوره بدقة ويتكامل مع بقية أعضاء الكادر.', "articleNo" = 2, "clauseTitle" = 'العمل الجماعي', "updatedAt" = now() WHERE "principleNo" = 9;
+			UPDATE "PrivacyPolicyPoint" SET content = 'م2/ف4 — المعايير الفنية والهندسية: الالتزام الصارم بالمعايير الهندسية والتصميمية والآليات التشغيلية المعتمدة في الشركة.', "articleNo" = 2, "clauseTitle" = 'المعايير الفنية والهندسية', "updatedAt" = now() WHERE "principleNo" = 10;
+			UPDATE "PrivacyPolicyPoint" SET content = 'م3/ف1 — العُدد والمعدات: الحفاظ الكامل على أدوات العمل والمعدات والعُدد، وضمان جردها وكمياتها وتنوعها وتوزيعها بشكل دقيق ومحكم.', "articleNo" = 3, "clauseTitle" = 'العُدد والمعدات', "updatedAt" = now() WHERE "principleNo" = 11;
+			UPDATE "PrivacyPolicyPoint" SET content = 'م3/ف2 — الأصول والمركبات: العناية المستمرة بكافة أدوات ومركبات الشركة وصيانتها لتكون دائماً في أبهى حلة وأعلى جاهزية تشغيلية.', "articleNo" = 3, "clauseTitle" = 'الأصول والمركبات', "updatedAt" = now() WHERE "principleNo" = 12;
+			UPDATE "PrivacyPolicyPoint" SET content = 'م3/ف3 — الضبط المالي: الالتزام بتكاليف ومصروفات الكوادر التشغيلية وفق الضوابط والتعليمات المالية المعتمدة في شركة الأماني.', "articleNo" = 3, "clauseTitle" = 'الضبط المالي', "updatedAt" = now() WHERE "principleNo" = 13;
+			UPDATE "PrivacyPolicyPoint" SET content = 'م4/ف1 — جلب الحجوزات: يسعى جميع أفراد الكادر إلى تعزيز سمعة الشركة واستقطاب وتحقيق أكبر قدر ممكن من الحجوزات والتعاقدات.', "articleNo" = 4, "clauseTitle" = 'جلب الحجوزات', "updatedAt" = now() WHERE "principleNo" = 14;
+			UPDATE "PrivacyPolicyPoint" SET content = 'م4/ف2 — المتابعة والانضباط: الالتزام الصارم بمواعيد الحجوزات وعدم التأخر عنها، مع المتابعة المستمرة والدقيقة لكافة اتصالات الزبائن والكوادر الميدانية.', "articleNo" = 4, "clauseTitle" = 'المتابعة والانضباط', "updatedAt" = now() WHERE "principleNo" = 15;
+			UPDATE "PrivacyPolicyPoint" SET content = 'م4/ف3 — جودة الخدمة: تقديم أفضل تجربة للزبائن والتواصل معهم بأعلى درجات اللباقة والاحترافية.', "articleNo" = 4, "clauseTitle" = 'جودة الخدمة', "updatedAt" = now() WHERE "principleNo" = 16;
+			UPDATE "PrivacyPolicyPoint" SET content = 'م5/ف1 — الاحترام المتبادل: ترسيخ بيئة عمل قائمة على الاحترام المتبادل والمساواة بين جميع الموظفين والكوادر، بغض النظر عن الدرجة الوظيفية أو المسمى الإداري.', "articleNo" = 5, "clauseTitle" = 'الاحترام المتبادل', "updatedAt" = now() WHERE "principleNo" = 17;
+			UPDATE "PrivacyPolicyPoint" SET content = 'م5/ف2 — سرية العمل: الالتزام التام والمطلق بالحفاظ على سرية معلومات وأسرار العمل في جميع المراحل والمشاريع، أثناء فترة الخدمة وبعد انتهائها.', "articleNo" = 5, "clauseTitle" = 'سرية العمل', "updatedAt" = now() WHERE "principleNo" = 18;
+			UPDATE "PrivacyPolicyPoint" SET content = 'م5/ف3 — تضارب المصالح: يمتنع الموظف عن ممارسة أي نشاط تجاري أو مهني ينافس الشركة أو يتعارض مع مصالحها بشكل مباشر أو غير مباشر.', "articleNo" = 5, "clauseTitle" = 'تضارب المصالح', "updatedAt" = now() WHERE "principleNo" = 19;
+			UPDATE "PrivacyPolicyPoint" SET content = 'م5/ف4 — السلامة والصحة المهنية: الالتزام بكل معايير وقواعد السلامة أثناء استخدام المعدات والمركبات أو التواجد في مواقع التنفيذ، للحفاظ على الأرواح والممتلكات.', "articleNo" = 5, "clauseTitle" = 'السلامة والصحة المهنية', "updatedAt" = now() WHERE "principleNo" = 20;
+			INSERT INTO "PrivacyPolicyPoint" (id, content, "order", "principleNo", "articleNo", "clauseTitle", "isActive")
+			SELECT gen_random_uuid()::text, x.content, x.n - 1000, x.n, x.a, x.t, false FROM (VALUES
+				(21, 6, 'التقييم الشهري', 'م6/ف1 — التقييم الشهري: يُقيَّم كل موظف وصاحب منصب شهرياً من قبل نظام ماتركس استناداً إلى بيانات العمل الفعلية في النظام، ويُقيَّم المدراء كذلك على خطط التطوير ونسب إنجازها واستخدامهم للذكاء الاصطناعي في العمل.'),
+				(22, 6, 'الغرامات', 'م6/ف2 — الغرامات: تُفرض غرامة على الموظف عند وجود مشكلة مباشرة مع الزبون، وعلى مدير العمليات عند عدم حل الشكوى خلال ٤٨ ساعة، ويُقدَّر مبلغها حسب حجم المشكلة ويُخصم من رصيد الانضباط.'),
+				(23, 6, 'سحب المنصب والمخصصات', 'م6/ف3 — سحب المنصب والمخصصات: يُسحب المنصب ومخصصاته المالية ممن ينخفض تقييمه عن ٥٠٪ لشهرين متتاليين بعد تنبيه رسمي، أو ممن لا يستطيع تنفيذ مهامه أو حل الخلافات.'),
+				(24, 6, 'حق الاعتراض', 'م6/ف4 — حق الاعتراض: يحق للموظف الاعتراض على أي قرار تقييم أو غرامة أو سحب منصب خلال سبعة أيام من تبليغه، ويُرفع الاعتراض إلى مدير إدارته ثم الإدارة العليا التي يحق لها إلغاء القرار.'),
+				(25, 6, 'البيانات والذكاء الاصطناعي', 'م6/ف5 — البيانات والذكاء الاصطناعي: يوافق الموظف على أن النظام يسجّل بيانات الحضور والمواقع وسير العمل والأداء، وأن الذكاء الاصطناعي يحلّلها للتقييم والمتابعة، مع الحفاظ على سريتها وعدم استخدامها خارج نطاق العمل.')
+			) AS x(n, a, t, content)
+			WHERE NOT EXISTS (SELECT 1 FROM "PrivacyPolicyPoint" pp WHERE pp."principleNo" = x.n);
+			ALTER TABLE "OrgIssueReport" DROP CONSTRAINT IF EXISTS "OrgIssueReport_principle_check";
+			ALTER TABLE "OrgIssueReport" ADD CONSTRAINT "OrgIssueReport_principle_check" CHECK (principle BETWEEN 1 AND 40);
+		`,
+	}, {
+		// 🏛️ تطوير الوحدة (دازاي 10-30): كل مدير وحدة يرفع تشخيصه وخطة تطويره لمدير إدارته.
+		// الخطة صارت لكل وحدة أو للإدارة، بحالة (مسودة ← مرفوعة ← معتمدة/مرجّعة)، والبند
+		// بموعد ومسؤول، والمشكلة بخطة حل.
+		Version: "0414_unit_development",
+		SQL: `
+			ALTER TABLE "OrgPlan" ADD COLUMN IF NOT EXISTS "unitId" TEXT REFERENCES "OrgUnit"(id);
+			ALTER TABLE "OrgPlan" ADD COLUMN IF NOT EXISTS status TEXT NOT NULL DEFAULT 'DRAFT';
+			ALTER TABLE "OrgPlan" ADD COLUMN IF NOT EXISTS "submittedAt" TIMESTAMPTZ;
+			ALTER TABLE "OrgPlan" ADD COLUMN IF NOT EXISTS "reviewedById" TEXT REFERENCES "Employee"(id) ON DELETE SET NULL;
+			ALTER TABLE "OrgPlan" ADD COLUMN IF NOT EXISTS "reviewedAt" TIMESTAMPTZ;
+			ALTER TABLE "OrgPlan" ADD COLUMN IF NOT EXISTS "reviewNote" TEXT;
+			ALTER TABLE "OrgPlan" DROP CONSTRAINT IF EXISTS "OrgPlan_status_check";
+			ALTER TABLE "OrgPlan" ADD CONSTRAINT "OrgPlan_status_check" CHECK (status IN ('DRAFT', 'SUBMITTED', 'APPROVED', 'RETURNED'));
+			ALTER TABLE "OrgPlan" DROP CONSTRAINT IF EXISTS "OrgPlan_divisionId_period_key";
+			CREATE UNIQUE INDEX IF NOT EXISTS "OrgPlan_scope_uq" ON "OrgPlan" ("divisionId", COALESCE("unitId", ''), period);
+			ALTER TABLE "OrgPlanItem" ADD COLUMN IF NOT EXISTS "dueDate" DATE;
+			ALTER TABLE "OrgPlanItem" ADD COLUMN IF NOT EXISTS "ownerId" TEXT REFERENCES "Employee"(id) ON DELETE SET NULL;
+			ALTER TABLE "OrgIssueReport" ADD COLUMN IF NOT EXISTS "solutionPlan" TEXT;
+		`,
 	}}
 }

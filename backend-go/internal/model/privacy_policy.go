@@ -15,6 +15,9 @@ type PrivacyPolicyPoint struct {
 	UpdatedAt           time.Time `db:"updatedAt" json:"updatedAt"`
 	// PrincipleNo رقم المبدأ (١-٢٠) للنقاط المزروعة من المبادئ العشرين — فاضي للنقاط العادية
 	PrincipleNo *int `db:"principleNo" json:"principleNo"`
+	// المادة وعنوان الفقرة (لائحة العمل 10-30)
+	ArticleNo   *int    `db:"articleNo" json:"articleNo"`
+	ClauseTitle *string `db:"clauseTitle" json:"clauseTitle"`
 
 	// اسم الي أضافها — يرجع فقط للمالك ومدير النظام (يُصفّر لغيرهم بالخدمة)
 	CreatedByName *string `db:"createdByName" json:"createdByName"`

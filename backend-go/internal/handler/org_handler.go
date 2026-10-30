@@ -176,6 +176,7 @@ func (h *OrgHandler) UpdateIssue(w http.ResponseWriter, r *http.Request) {
 func (h *OrgHandler) CreatePlan(w http.ResponseWriter, r *http.Request) {
 	var in struct {
 		DivisionID string `json:"divisionId"`
+		UnitID     string `json:"unitId"`
 		Period     string `json:"period"`
 		Title      string `json:"title"`
 	}
@@ -184,7 +185,7 @@ func (h *OrgHandler) CreatePlan(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	emp, role := who(r)
-	id, err := h.svc.CreatePlan(emp, role, in.DivisionID, in.Period, in.Title)
+	id, err := h.svc.CreatePlan(emp, role, in.DivisionID, in.UnitID, in.Period, in.Title)
 	if err != nil {
 		h.orgErr(w, err)
 		return
@@ -257,4 +258,75 @@ func (h *OrgHandler) SetAuthority(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	WriteJSON(w, http.StatusOK, map[string]bool{"ok": true})
+}
+
+// ── 🏛️ تطوير الوحدة (10-30) ──
+
+// POST /api/org/plans/{id}/submit — رئيس الوحدة/الإدارة يرفع الخطة
+func (h *OrgHandler) SubmitPlan(w http.ResponseWriter, r *http.Request) {
+	emp, role := who(r)
+	to, err := h.svc.SubmitPlan(emp, role, r.PathValue("id"))
+	if err != nil {
+		h.orgErr(w, err)
+		return
+	}
+	if h.notifications != nil {
+		for _, id := range to {
+			_ = h.notifications.Create(id, "ORG_PLAN_SUBMITTED", "🏛️ انرفعتلك خطة تطوير للاعتماد — بمكتب الإدارة.")
+		}
+	}
+	WriteJSON(w, http.StatusOK, map[string]bool{"ok": true})
+}
+
+// POST /api/org/plans/{id}/review — {approve, note}
+func (h *OrgHandler) ReviewPlan(w http.ResponseWriter, r *http.Request) {
+	var in struct {
+		Approve bool   `json:"approve"`
+		Note    string `json:"note"`
+	}
+	if err := DecodeJSON(r, &in); err != nil {
+		WriteError(w, http.StatusBadRequest, "طلب غير صالح")
+		return
+	}
+	emp, role := who(r)
+	author, err := h.svc.ReviewPlan(emp, role, r.PathValue("id"), in.Approve, in.Note)
+	if err != nil {
+		h.orgErr(w, err)
+		return
+	}
+	if h.notifications != nil && author != "" {
+		msg := "✅ خطة التطوير مالتك انعتمدت."
+		if !in.Approve {
+			msg = "↩️ خطة التطوير مالتك رجعت للتعديل: " + in.Note
+		}
+		_ = h.notifications.Create(author, "ORG_PLAN_REVIEWED", msg)
+	}
+	WriteJSON(w, http.StatusOK, map[string]bool{"ok": true})
+}
+
+// PUT /api/org/issues/{id}/solution — {plan}
+func (h *OrgHandler) SetSolution(w http.ResponseWriter, r *http.Request) {
+	var in struct {
+		Plan string `json:"plan"`
+	}
+	if err := DecodeJSON(r, &in); err != nil {
+		WriteError(w, http.StatusBadRequest, "طلب غير صالح")
+		return
+	}
+	emp, role := who(r)
+	if err := h.svc.SetSolutionPlan(emp, role, r.PathValue("id"), in.Plan); err != nil {
+		h.orgErr(w, err)
+		return
+	}
+	WriteJSON(w, http.StatusOK, map[string]bool{"ok": true})
+}
+
+// GET /api/org/regulations — لائحة العمل (المواد والفقرات الفعّالة) لربط المشاكل
+func (h *OrgHandler) Regulations(w http.ResponseWriter, r *http.Request) {
+	out, err := h.svc.Regulations()
+	if err != nil {
+		WriteError(w, http.StatusInternalServerError, "تعذر جلب اللائحة")
+		return
+	}
+	WriteJSON(w, http.StatusOK, out)
 }
