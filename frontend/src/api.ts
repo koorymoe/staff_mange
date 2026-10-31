@@ -5642,6 +5642,11 @@ export const api = {
   },
   // (دازاي 10-28) العدد الحقيقي — العرض لحد ٢٠٠ بس
   getWorkReportCounts: () => request<{ pending: number; done: number }>('/work-reports/counts'),
+  /** (دازاي 10-31) هل انرسل تقرير عمل لهذا الحجز؟ — بالكود (B964 أو 964) بلا حد الـ٢٠٠ */
+  getWorkReportsByBooking: (code: string) => request<{
+    booking: { id: string; code: string; status: string; completedAt: string | null; leaderName: string | null } | null
+    reports: WorkReport[]
+  }>(`/work-reports/by-booking?code=${encodeURIComponent(code)}`),
 
   // Smart KPI
   getTechnicianKpi: (employeeId: string, month?: string) =>

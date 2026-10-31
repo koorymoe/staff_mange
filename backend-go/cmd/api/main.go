@@ -2524,6 +2524,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	mux.Handle("POST /api/work-reports", middleware.Chain(http.HandlerFunc(workReportHandler.Create), requireAuth))
 	mux.Handle("GET /api/work-reports", middleware.Chain(http.HandlerFunc(workReportHandler.List), requireAuth))
 	mux.Handle("GET /api/work-reports/counts", middleware.Chain(http.HandlerFunc(workReportHandler.Counts), requireAuth))
+	mux.Handle("GET /api/work-reports/by-booking", middleware.Chain(http.HandlerFunc(workReportHandler.ByBooking), requireAuth))
 	mux.Handle("PUT /api/work-reports/{id}/review", middleware.Chain(http.HandlerFunc(workReportHandler.Review), requireAuth, requireMon["mon_reports"]))
 	mux.Handle("PUT /api/bookings/{id}/progress/review", middleware.Chain(http.HandlerFunc(bookingProgressHandler.Review), requireAuth, requireMon["mon_reports"]))
 	// تقرير زيارة معاينة («كشف») — أي كادر مكلّف بالحجز يسلّمه، بلا حارس ورق محاسبي.

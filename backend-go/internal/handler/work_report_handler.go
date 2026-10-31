@@ -6,8 +6,8 @@ import (
 	"strings"
 
 	"staffmange-api/internal/middleware"
-	"staffmange-api/internal/repository"
 	"staffmange-api/internal/model"
+	"staffmange-api/internal/repository"
 	"staffmange-api/internal/service"
 )
 
@@ -114,4 +114,24 @@ func (h *WorkReportHandler) Review(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	WriteJSON(w, http.StatusOK, map[string]bool{"ok": true})
+}
+
+// GET /api/work-reports/by-booking?code=B964 — هل انرسل تقرير عمل لهذا الحجز؟ (دازاي 10-31)
+// المراجِع يشوف كل تقارير الحجز، وغيره تقاريره هو بس.
+func (h *WorkReportHandler) ByBooking(w http.ResponseWriter, r *http.Request) {
+	code := strings.TrimSpace(r.URL.Query().Get("code"))
+	if code == "" {
+		WriteError(w, http.StatusBadRequest, "اكتب كود الحجز")
+		return
+	}
+	employeeID := ""
+	if !h.canReviewReports(r) {
+		employeeID = middleware.EmployeeIDFromContext(r)
+	}
+	res, err := h.service.ByBookingCode(code, employeeID)
+	if err != nil {
+		WriteError(w, http.StatusInternalServerError, "تعذر البحث")
+		return
+	}
+	WriteJSON(w, http.StatusOK, res)
 }

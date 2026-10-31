@@ -56,3 +56,8 @@ func (s *WorkReportService) ListByReview(employeeID, review string) ([]model.Wor
 func (s *WorkReportService) ReviewCounts(employeeID string) (int, int, error) {
 	return s.repo.ReviewCounts(employeeID)
 }
+
+// ByBookingCode تقارير العمل لحجز بكوده.
+func (s *WorkReportService) ByBookingCode(code, employeeID string) (*repository.WorkReportBookingLookup, error) {
+	return s.repo.ByBookingCode(code, employeeID)
+}

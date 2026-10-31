@@ -1,8 +1,11 @@
 package repository
 
 import (
+	"database/sql"
 	"errors"
 	"github.com/jmoiron/sqlx"
+	"strings"
+	"time"
 
 	"staffmange-api/internal/model"
 )
@@ -111,4 +114,53 @@ func (r *WorkReportRepository) ReviewCounts(employeeID string) (pending, done in
 	err = r.db.Get(&c, `SELECT count(*) FILTER (WHERE "reviewedAt" IS NULL) AS pending, count(*) FILTER (WHERE "reviewedAt" IS NOT NULL) AS done
 		FROM "WorkReport" WHERE $1 = '' OR "employeeId" = $1`, employeeID)
 	return c.Pending, c.Done, err
+}
+
+// WorkReportBooking الحجز بنتيجة البحث بكوده.
+type WorkReportBooking struct {
+	ID          string     `db:"id" json:"id"`
+	Code        string     `db:"code" json:"code"`
+	Status      string     `db:"status" json:"status"`
+	CompletedAt *time.Time `db:"completedAt" json:"completedAt"`
+	LeaderName  *string    `db:"leaderName" json:"leaderName"`
+}
+
+// WorkReportBookingLookup نتيجة البحث بكود الحجز (دازاي 10-31: «تقرير B964 ماموجود —
+// شلون أعرف الموظف دز تقرير لو لا؟»): الحجز نفسه، ومسؤول ورقه، وكل تقاريره بلا حد الـ٢٠٠.
+type WorkReportBookingLookup struct {
+	Booking *WorkReportBooking `json:"booking"`
+	Reports []model.WorkReport `json:"reports"`
+}
+
+// ByBookingCode تقارير حجز بكوده (B964 أو 964). employeeID فاضي = الكل، وإلا تقاريره هو بس.
+func (r *WorkReportRepository) ByBookingCode(code, employeeID string) (*WorkReportBookingLookup, error) {
+	code = strings.ToUpper(strings.TrimSpace(code))
+	if code != "" && code[0] >= '0' && code[0] <= '9' {
+		code = "B" + code
+	}
+	out := &WorkReportBookingLookup{Reports: []model.WorkReport{}}
+	var b WorkReportBooking
+	err := r.db.Get(&b, `SELECT b.id, b.code, b.status::text AS status, b."completedAt", e.name AS "leaderName"
+		FROM "Booking" b LEFT JOIN "Employee" e ON e.id = booking_leader_id(b.id)
+		WHERE upper(b.code) = $1 LIMIT 1`, code)
+	if errors.Is(err, sql.ErrNoRows) {
+		return out, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	out.Booking = &b
+	q := `SELECT * FROM "WorkReport" WHERE "bookingId" = $1`
+	args := []any{b.ID}
+	if employeeID != "" {
+		q += ` AND "employeeId" = $2`
+		args = append(args, employeeID)
+	}
+	if err := r.db.Select(&out.Reports, q+` ORDER BY "createdAt" DESC`, args...); err != nil {
+		return nil, err
+	}
+	for i := range out.Reports {
+		r.hydrate(&out.Reports[i])
+	}
+	return out, nil
 }
