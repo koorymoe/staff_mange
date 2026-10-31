@@ -1505,5 +1505,23 @@ func matrixChatMigrations() []Migration {
 		SQL: `
 			ALTER TABLE "OrgBundle" ADD COLUMN IF NOT EXISTS "headOnly" BOOLEAN NOT NULL DEFAULT false;
 		`,
+	}, {
+		// 🏗️ مراحل المشاريع (دازاي 10-31): «تجهيز المنتجات» (كانت «شراء مواد المشروع»)
+		// صارت ورا العقد وقبل التنفيذ، و«التسليم والاستلام» ورا التنفيذ. تحويل الأسماء المخزونة.
+		Version: "0420_project_stages_reorder",
+		SQL: `
+			UPDATE "Project" SET stage = CASE stage WHEN '5. البدء بالتنفيذ' THEN '6. البدء بالتنفيذ' WHEN '6. شراء مواد المشروع' THEN '5. تجهيز المنتجات' WHEN '7. تسليم واستلام المنتجات' THEN '7. التسليم والاستلام' END
+				WHERE stage IN ('5. البدء بالتنفيذ', '6. شراء مواد المشروع', '7. تسليم واستلام المنتجات');
+			UPDATE "ProjectStageLog" SET "fromStage" = CASE "fromStage" WHEN '5. البدء بالتنفيذ' THEN '6. البدء بالتنفيذ' WHEN '6. شراء مواد المشروع' THEN '5. تجهيز المنتجات' WHEN '7. تسليم واستلام المنتجات' THEN '7. التسليم والاستلام' END
+				WHERE "fromStage" IN ('5. البدء بالتنفيذ', '6. شراء مواد المشروع', '7. تسليم واستلام المنتجات');
+			UPDATE "ProjectStageLog" SET "toStage" = CASE "toStage" WHEN '5. البدء بالتنفيذ' THEN '6. البدء بالتنفيذ' WHEN '6. شراء مواد المشروع' THEN '5. تجهيز المنتجات' WHEN '7. تسليم واستلام المنتجات' THEN '7. التسليم والاستلام' END
+				WHERE "toStage" IN ('5. البدء بالتنفيذ', '6. شراء مواد المشروع', '7. تسليم واستلام المنتجات');
+			UPDATE "ProjectRestoreLog" SET "toStage" = CASE "toStage" WHEN '5. البدء بالتنفيذ' THEN '6. البدء بالتنفيذ' WHEN '6. شراء مواد المشروع' THEN '5. تجهيز المنتجات' WHEN '7. تسليم واستلام المنتجات' THEN '7. التسليم والاستلام' END
+				WHERE "toStage" IN ('5. البدء بالتنفيذ', '6. شراء مواد المشروع', '7. تسليم واستلام المنتجات');
+			UPDATE "ProjectStageLimit" SET stage = CASE stage WHEN '5. البدء بالتنفيذ' THEN '6. البدء بالتنفيذ' WHEN '6. شراء مواد المشروع' THEN '5. تجهيز المنتجات' WHEN '7. تسليم واستلام المنتجات' THEN '7. التسليم والاستلام' END
+				WHERE stage IN ('5. البدء بالتنفيذ', '6. شراء مواد المشروع', '7. تسليم واستلام المنتجات');
+			UPDATE "ProjectDelayReason" SET stage = CASE stage WHEN '5. البدء بالتنفيذ' THEN '6. البدء بالتنفيذ' WHEN '6. شراء مواد المشروع' THEN '5. تجهيز المنتجات' WHEN '7. تسليم واستلام المنتجات' THEN '7. التسليم والاستلام' END
+				WHERE stage IN ('5. البدء بالتنفيذ', '6. شراء مواد المشروع', '7. تسليم واستلام المنتجات');
+		`,
 	}}
 }

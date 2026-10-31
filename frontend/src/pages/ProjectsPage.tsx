@@ -1,6 +1,6 @@
 import { useDeferredValue, useEffect, useMemo, useState } from 'react'
 import ProjectPaymentsModal from '../components/ProjectPaymentsModal'
-import { api, apiRequest, type ProjectMoney } from '../api'
+import { api, apiRequest, type ProjectMoney, type ProjectPaymentsState } from '../api'
 import { useNavigate } from 'react-router-dom'
 import { useSession } from '../session'
 import LocationFields from '../components/LocationFields'
@@ -73,7 +73,7 @@ interface TransferredBooking {
 }
 
 interface Stats {
-  اتصال: number; كشف: number; سعر: number; عقد: number; الإعلام?: number; تنفيذ: number; مكتمل: number; مرفوض: number
+  اتصال: number; كشف: number; سعر: number; عقد: number; الإعلام?: number; تجهيز?: number; تنفيذ: number; تسليم?: number; مكتمل: number; مرفوض: number
 }
 
 const STAGES = [
@@ -84,9 +84,10 @@ const STAGES = [
   '4. العقد',
   // قرار (ع) 10-05: قبل التنفيذ المشروع يتحوّل للإعلام حتى يصوّرون الشغل.
   '📸 الإعلام',
-  '5. البدء بالتنفيذ',
-  '6. شراء مواد المشروع',
-  '7. تسليم واستلام المنتجات',
+  // (ع) 10-31: تجهيز المنتجات ورا العقد وقبل التنفيذ، والتسليم والاستلام ورا التنفيذ
+  '5. تجهيز المنتجات',
+  '6. البدء بالتنفيذ',
+  '7. التسليم والاستلام',
   '✅ مكتمل',
   '❌ مرفوض',
 ]
@@ -97,9 +98,9 @@ const STAGES = [
 // للتنفيذ مباشرة. وإعادة التسعير فرع ينختار يدوياً، والرفض زر مستقل.
 const STAGE_SIDE_BRANCHES = ['🔁 إعادة التسعير', '📸 الإعلام', '❌ مرفوض']
 const STAGE_NEXT_OVERRIDE: Record<string, string> = {
-  '4. العقد': '5. البدء بالتنفيذ',
+  '4. العقد': '5. تجهيز المنتجات',
   '🔁 إعادة التسعير': '4. العقد',
-  '📸 الإعلام': '5. البدء بالتنفيذ',
+  '📸 الإعلام': '5. تجهيز المنتجات',
 }
 function nextProjectStage(stage: string): string | null {
   if (STAGE_NEXT_OVERRIDE[stage]) return STAGE_NEXT_OVERRIDE[stage]
@@ -183,7 +184,10 @@ const STAGE_CARDS = [
   { key: 'عقد', label: 'عقد', icon: '📄', color: 'bg-purple-600' },
   // قرار (ع) 10-06: الإعلام بين العقد والتنفيذ.
   { key: 'الإعلام', label: 'إعلام', icon: '📸', color: 'bg-pink-600' },
+  // (ع) 10-31: التجهيز والتسليم يطلعن بالخانات هم
+  { key: 'تجهيز', label: 'تجهيز المنتجات', icon: '📦', color: 'bg-orange-500' },
   { key: 'تنفيذ', label: 'تنفيذ', icon: '🛠️', color: 'bg-red-600' },
+  { key: 'تسليم', label: 'تسليم واستلام', icon: '🤝', color: 'bg-teal-600' },
   { key: 'مكتمل', label: 'مكتمل', icon: '✅', color: 'bg-blue-600' },
   { key: 'مرفوض', label: 'مرفوض', icon: '❌', color: 'bg-gray-500' },
 ] as const
@@ -302,7 +306,7 @@ export default function ProjectsPage({ mode: initialMode = 'all' }: { mode?: 'al
   const addOnly = !canManage && permissions.includes('project_create_only')
 
   const [projects, setProjects] = useState<Project[]>([])
-  const [stats, setStats] = useState<Stats>({ اتصال: 0, كشف: 0, سعر: 0, عقد: 0, تنفيذ: 0, مكتمل: 0, مرفوض: 0 })
+  const [stats, setStats] = useState<Stats>({ اتصال: 0, كشف: 0, سعر: 0, عقد: 0, تجهيز: 0, تنفيذ: 0, تسليم: 0, مكتمل: 0, مرفوض: 0 })
   const [loading, setLoading] = useState(true)
   const [view, setView] = useState<'main' | 'rejection'>('main')
 
@@ -417,7 +421,7 @@ export default function ProjectsPage({ mode: initialMode = 'all' }: { mode?: 'al
     return projects.filter(p => {
       const matchSearch = matches([p.name, p.code, p.phone, p.location, p.rep, p.stage], deferredSearch)
       const matchWork = !filterWorkType || p.workType === filterWorkType
-      const matchStage = !filterStage || p.stage.includes(filterStage)
+      const matchStage = !filterStage || p.stage.includes(filterStage) || (filterStage === 'سعر' && p.stage.includes('التسعير'))
       return matchSearch && matchWork && matchStage
     })
   }, [projects, deferredSearch, filterWorkType, filterStage])
@@ -734,7 +738,7 @@ function MainView(props: {
       </div>
 
       {/* Stat cards */}
-      <div className="grid grid-cols-3 sm:grid-cols-9 gap-2">
+      <div className="grid grid-cols-3 sm:grid-cols-6 lg:grid-cols-11 gap-2">
         <button onClick={() => { props.setFilterStage(''); props.setSearch('') }}
           className="bg-gray-800 text-white rounded-xl p-3 flex flex-col items-center justify-center hover:brightness-110 transition">
           <span className="text-xl">🗂️</span>
@@ -818,7 +822,7 @@ function ProjectCard({ p, canManage, onEdit, onMove, onReport, onDelete, onRefre
 
   const handleAdvance = () => {
     if (isContractStage && !p.hasContract) {
-      alert('ارفع ملف العقد (PDF) الأول قبل الترحيل لمرحلة التنفيذ.')
+      alert('ارفع ملف العقد (PDF) الأول قبل الترحيل لمرحلة تجهيز المنتجات.')
       setShowContract(true)
       return
     }
@@ -958,7 +962,7 @@ function ProjectCard({ p, canManage, onEdit, onMove, onReport, onDelete, onRefre
         </div>
       </div>
 
-      {canManage && p.stage.includes('تنفيذ') && (
+      {canManage && (p.stage.includes('تنفيذ') || p.stage.includes('التسليم')) && (
         <p className="mt-2 text-center text-xs text-emerald-800">🤖 المشروع ما يكتمل بدون الفلوس — سجّل الدفعات من «💰 الدفعات» أول بأول.</p>
       )}
       <div className="mt-3 text-center text-xs text-gray-500 bg-gray-50 rounded-lg py-2">🕐 تاريخ الإضافة: {addedDate}</div>
@@ -1155,6 +1159,50 @@ function AddModal({ onClose, onSaved }: { onClose: () => void; onSaved: () => vo
 // ---------------------------------------------------------------------------
 // Edit project modal
 // ---------------------------------------------------------------------------
+// 💰 قيمة العقد الكلية (دازاي 10-31): نفس قيمة «الدفعات» (ProjectContractValue) بس تنكتب من
+// نموذج المشروع. الي ما يحق له فلوس المشروع ما يشوف الخانة (الخادم يرفض بلا مخالفة).
+function ContractValueField({ projectId }: { projectId: string }) {
+  const [state, setState] = useState<ProjectPaymentsState | null>(null)
+  const [value, setValue] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [msg, setMsg] = useState('')
+  useEffect(() => {
+    let alive = true
+    void api.getProjectPayments(projectId).then((s) => {
+      if (!alive) return
+      setState(s); setValue(s.money.contractValue && !s.money.valueFromText ? String(s.money.contractValue) : '')
+    }).catch(() => {})
+    return () => { alive = false }
+  }, [projectId])
+  if (!state) return null
+  const m = state.money
+  const num = Number(value.replace(/[^\d]/g, ''))
+  const save = async () => {
+    if (!num) { setMsg('اكتب قيمة العقد'); return }
+    setBusy(true); setMsg('')
+    try { const s = await api.setProjectContractValue(projectId, num); setState(s); setMsg('انحفظت ✅') }
+    catch (e) { setMsg(e instanceof Error ? e.message : 'تعذر الحفظ') }
+    finally { setBusy(false) }
+  }
+  return (
+    <div className="sm:col-span-2 rounded-lg border border-emerald-200 bg-emerald-50 p-3">
+      <p className="text-xs font-bold text-emerald-900">💰 قيمة العقد الكلية</p>
+      {state.canValue ? (
+        <div className="mt-2 flex items-end gap-2">
+          <input inputMode="numeric" className="inp flex-1" placeholder="مثلاً 500000000" value={value} onChange={(e) => setValue(e.target.value)} />
+          <button type="button" onClick={save} disabled={busy} className="rounded-lg bg-emerald-700 px-4 py-2 text-sm font-bold text-white disabled:opacity-50">{busy ? '…' : 'حفظ القيمة'}</button>
+        </div>
+      ) : (
+        <p className="mt-1 text-sm font-bold">{m.contractValue != null ? `${m.contractValue.toLocaleString('en-US')} د.ع` : '—'}</p>
+      )}
+      {m.contractValue != null && (
+        <p className="mt-1 text-[11px] text-emerald-800">المدفوع {m.paid.toLocaleString('en-US')} · الباقي {Math.max(0, m.contractValue - m.paid).toLocaleString('en-US')} د.ع{m.valueFromText ? ' · (القيمة الحالية مأخوذة من نص المبلغ التخميني)' : ''}</p>
+      )}
+      {msg && <p className="mt-1 text-[11px] text-slate-700">{msg}</p>}
+    </div>
+  )
+}
+
 function EditModal({ project, onClose, onSaved }: { project: Project; onClose: () => void; onSaved: () => void }) {
   const workTypes = useProjectWorkTypes()
   const [form, setForm] = useState({
@@ -1213,6 +1261,7 @@ function EditModal({ project, onClose, onSaved }: { project: Project; onClose: (
           </select>
         </Field>
         <Field label="تاريخ انتهاء المشروع التقريبي"><input type="date" className="inp" value={form.deliveryDate} onChange={e => set('deliveryDate', e.target.value)} /></Field>
+        <ContractValueField projectId={project.id} />
       </div>
       <button onClick={save} disabled={saving}
         className="w-full mt-5 py-2.5 rounded-lg bg-[var(--color-brand-500)] text-white font-bold disabled:opacity-50">
@@ -1309,13 +1358,13 @@ function MoveModal({ project, nextStage, onClose, onSaved }: {
   const toSer = cur.includes('كشف') && nextStage.includes('سعر')
   const canUploadSurvey = useCanUploadProjectSurvey(project)
   const toContract = cur.includes('سعر') && nextStage.includes('عقد')
-  const toExec = (cur.includes('عقد') || cur.includes('الإعلام')) && nextStage.includes('تنفيذ')
+  const toExec = (cur.includes('تجهيز') || cur.includes('الإعلام')) && nextStage.includes('تنفيذ')
   const toMedia = nextStage.includes('الإعلام')
   const [mediaEngineer, setMediaEngineer] = useState(project.responsibleEmployeeId || project.delegatedToEmployeeId || project.surveyorEmployeeId || '')
   const [mediaStart, setMediaStart] = useState('')
   const [mediaEnd, setMediaEnd] = useState(project.deliveryDate || '')
   const [mediaDuration, setMediaDuration] = useState(project.time || '')
-  const toDone = cur.includes('تنفيذ') && nextStage.includes('مكتمل')
+  const toDone = cur.includes('التسليم') && nextStage.includes('مكتمل')
   // قرار (ع) 10-06: «مينتهي المشروع بدون ميكتبون» — الفلوس لازم تنسجّل قبل الإكمال.
   const toComplete = nextStage.includes('مكتمل')
   const [money, setMoney] = useState<ProjectMoney | null>(null)
@@ -1456,9 +1505,10 @@ function MoveModal({ project, nextStage, onClose, onSaved }: {
       )}
 
       {/* سعر → عقد : تنبيه لازم يترفع العقد قبل ما يترحّل للتنفيذ */}
+      {!isReject && toContract && <div className="mb-3 grid"><ContractValueField projectId={project.id} /></div>}
       {!isReject && toContract && (
         <div className="bg-purple-50 text-purple-700 rounded-lg p-3 text-center text-sm font-bold">
-          📄 بعد الترحيل، ارفع ملف العقد (PDF) من زر "العقد" بالبطاقة — ما تكدر تترحّل لمرحلة التنفيذ قبل رفعه.
+          📄 بعد الترحيل، ارفع ملف العقد (PDF) من زر "العقد" بالبطاقة — ما تكدر تترحّل لمرحلة تجهيز المنتجات قبل رفعه.
         </div>
       )}
 
