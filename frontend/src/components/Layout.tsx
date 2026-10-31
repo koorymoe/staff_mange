@@ -86,6 +86,7 @@ const notifTargets: Record<string, string> = {
   monitor_notice: '/monitor-desk',
   review_flag: '/monitor-desk',
   monitor_justify_result: '/monitor-desk',
+  monitor_justify: '/monitor-desk',
   it_assets: '/it-assets',
   vehicle_management: '/vehicles',
   employee_letter: '/letters',
@@ -94,9 +95,17 @@ const notifTargets: Record<string, string> = {
 
 /** (دازاي 10-26) وجهة الإشعار: كود حجز بالنص يفتح الحجز نفسه، وبعدها النوع، وبعدها
  *  كلمات النص — حتى ماكو إشعار ينضغط وما يسوي شي. */
-function notifTarget(n: { type: string; message: string }): string | null {
+function notifTarget(n: { type: string; message: string }, canOpen: (path: string) => boolean = () => true): string | null {
   const code = n.message.match(/(?:^|[^A-Za-z0-9])(B\d{2,6})(?![0-9])/)?.[1]
-  const byType = notifTargets[n.type]
+  let byType: string | undefined = notifTargets[n.type]
+  // (دازاي 10-31) إشعار المراقب يوصل للموظف نفسه هم (استفسار، تبرير، ملاحظة، حكم فاتورة للمحاسب):
+  // الي ما يحقله مكتب المراقب ما ينفتحله «ما عندك صلاحية» — يروح لمكان يخصه.
+  if (byType && !canOpen(byType)) {
+    if (n.type === 'monitor_justify' || n.type === 'monitor_justify_result') return '/'
+    if (n.type === 'invoice_monitor') return '/leader-invoices'
+    byType = undefined
+    if (!code && !/فاتورة|فاتوره|فواتير/.test(n.message)) return '/'
+  }
   if (code && (!byType || byType === '/bookings' || byType === '/my-tasks')) return `/bookings?focus=${code}`
   if (byType) return byType
   const m = n.message
@@ -136,6 +145,9 @@ export default function Layout() {
   const { items: orgMemberships } = useOrgMemberships(employee)
   const [employeePermissions, setEmployeePermissions] = useState<string[]>([])
   const [gpsServiceId, setGpsServiceId] = useState<string | null>(null)
+  // وجهة الإشعار لازم تكون شاشة يحقله يفتحها (نفس حارس المسار تحت)
+  const canOpenPath = (path: string) =>
+    employee?.actualRole === 'OWNER' || isPathAllowed(path, { employee, permissions: employeePermissions, gpsServiceId, orgMemberships }) !== false
   // هل عند الموظف المتدرب مواد فعلاً؟ null = لسّه ما فحصنا.
   // بدونها ينحبس بشاشة تدريب فارغة ما بيها شي يدرسه.
   const [traineeHasMaterials, setTraineeHasMaterials] = useState<boolean | null>(null)
@@ -298,7 +310,7 @@ export default function Layout() {
     }
     // الإشعار بلا وجهة يخلي الموظف يدوّر بيده على الشاشة الي تخص الخبر —
     // وأحياناً ما يلكها أصلاً. كل نوع يوديه لمحله مباشرة.
-    const target = notifTarget(n)
+    const target = notifTarget(n, canOpenPath)
     if (target) {
       setNotifOpen(false)
       navigate(target)
@@ -833,7 +845,7 @@ export default function Layout() {
                             <div className="mt-1 flex items-center justify-between">
                               <span className="text-[11px] text-slate-400">{new Date(n.createdAt).toLocaleString('ar-IQ')}</span>
                               {/* سهم يبيّن إن الإشعار ينفتح على شاشة */}
-                              {notifTarget(n) && (
+                              {notifTarget(n, canOpenPath) && (
                                 <span className="text-[11px] font-bold text-brand-600">افتحها ←</span>
                               )}
                             </div>
