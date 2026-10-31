@@ -1523,5 +1523,12 @@ func matrixChatMigrations() []Migration {
 			UPDATE "ProjectDelayReason" SET stage = CASE stage WHEN '5. البدء بالتنفيذ' THEN '6. البدء بالتنفيذ' WHEN '6. شراء مواد المشروع' THEN '5. تجهيز المنتجات' WHEN '7. تسليم واستلام المنتجات' THEN '7. التسليم والاستلام' END
 				WHERE stage IN ('5. البدء بالتنفيذ', '6. شراء مواد المشروع', '7. تسليم واستلام المنتجات');
 		`,
+	}, {
+		// 🕘 فاتورة الخدمة (دازاي 10-31): وقت بداية ونهاية الشغل من الحجز.
+		Version: "0421_service_invoice_times",
+		SQL: `
+			ALTER TABLE "LeaderInvoice" ADD COLUMN IF NOT EXISTS "serviceStartAt" TIMESTAMP;
+			ALTER TABLE "LeaderInvoice" ADD COLUMN IF NOT EXISTS "serviceEndAt" TIMESTAMP;
+		`,
 	}}
 }

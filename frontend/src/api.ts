@@ -1529,6 +1529,8 @@ export interface ExecutionCostItem {
   systemName: string
   itemName: string
   count: number
+  /** سعر الوحدة لبنود «الإضافات» بفاتورة الخدمة */
+  unitPrice?: number
   heightMeters: number
   wiringItemName?: string
   // ارتفاع التسليك — قاعدته ثنائية بالاكسل (٥م فما فوق = ضعف السعر)، غير
@@ -1565,6 +1567,9 @@ export interface LeaderInvoiceMaterialItem {
 }
 
 export interface LeaderInvoice {
+  /** فاتورة الخدمة (الداش كام): وقت بداية ونهاية الشغل من الحجز — دازاي 10-31 */
+  serviceStartAt?: string | null
+  serviceEndAt?: string | null
   isFree?: boolean
   freeReasonId?: string | null
   freeReasonNote?: string | null
@@ -5283,6 +5288,10 @@ export const api = {
     customerPhone?: string
     customerAddress?: string
     note?: string
+    extras?: { name: string; count: number; unitPrice: number }[]
+    isFree?: boolean
+    freeReasonId?: string
+    freeReasonNote?: string
   }) => request<LeaderInvoice>('/leader-invoices/service', { method: 'POST', body: JSON.stringify(data) }),
   /** فاتورة بكلفة يدوية: الليدر يكتب شنو اشتغل ويحطّ السعر بنفسه —
    *  للشغل الي ماكو إله بند بجدول الكلفة. مسار منفصل بصلاحيته

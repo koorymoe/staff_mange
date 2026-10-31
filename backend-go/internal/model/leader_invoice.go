@@ -34,14 +34,16 @@ type Material struct {
 
 // ExecutionCostItem بند تنفيذ واحد (منظومة + عنصر) يدخل بحساب تكاليف التنفيذ.
 type ExecutionCostItem struct {
-	SystemName         string `json:"systemName"`
-	ItemName           string `json:"itemName"`
-	Count              int    `json:"count"`
-	HeightMeters       int    `json:"heightMeters"`       // لحساب مضاعف الارتفاع
-	WiringItemName     string `json:"wiringItemName"`     // اسم نوع التسليك المختار (اختياري)
-	WiringHeightMeters int    `json:"wiringHeightMeters"` // ارتفاع التسليك — قاعدته ثنائية (>=5 متر = ضعف)
-	CableLengthMeters  int    `json:"cableLengthMeters"`  // طول الكيبل بالمتر (اختياري)
-	ProgrammingItem    string `json:"programmingItem"`    // اسم خدمة البرمجة المختارة (اختياري)
+	SystemName string `json:"systemName"`
+	ItemName   string `json:"itemName"`
+	Count      int    `json:"count"`
+	// UnitPrice سعر الوحدة لبنود «الإضافات» بفاتورة الخدمة (كيبل إضافي…) — فارغ لبنود الكتالوگ
+	UnitPrice          float64 `json:"unitPrice,omitempty"`
+	HeightMeters       int     `json:"heightMeters"`       // لحساب مضاعف الارتفاع
+	WiringItemName     string  `json:"wiringItemName"`     // اسم نوع التسليك المختار (اختياري)
+	WiringHeightMeters int     `json:"wiringHeightMeters"` // ارتفاع التسليك — قاعدته ثنائية (>=5 متر = ضعف)
+	CableLengthMeters  int     `json:"cableLengthMeters"`  // طول الكيبل بالمتر (اختياري)
+	ProgrammingItem    string  `json:"programmingItem"`    // اسم خدمة البرمجة المختارة (اختياري)
 	// ملاحظة قصيرة للبند («على باب المكتب الداخلي»). ما تدخل بالحساب أبداً —
 	// بس الفني يحتاجها لما يوصل الموقع، والمحاسب يحتاجها لما يدقّق سطر
 	// ما يفهم ليش سعره هيج. تنحفظ بنفس عمود JSON مثل بقية الحقول، فما
@@ -85,6 +87,10 @@ type LeaderInvoice struct {
 	FreeReasonNote *string `db:"freeReasonNote" json:"freeReasonNote"`
 	// اسم السبب للعرض — ينجلب بالربط مو من الجدول
 	FreeReasonLabel *string `db:"-" json:"freeReasonLabel"`
+	// ── وقت الشغل (دازاي 10-31): فاتورة الخدمة (الداش كام) تحمل وقت البداية والنهاية
+	// من حجزها — بداية الشغل (أو الوصول) والإكمال. ⚠️ أعمدة → حقول (SELECT *).
+	ServiceStartAt *time.Time `db:"serviceStartAt" json:"serviceStartAt,omitempty"`
+	ServiceEndAt   *time.Time `db:"serviceEndAt" json:"serviceEndAt,omitempty"`
 	// ═══ الكلفة اليدوية ═══
 	//
 	// ⚠️ `PricingMode` يميّز الفاتورة **للأبد**: بلاه تندسّ الفاتورة
@@ -230,6 +236,19 @@ type CreateServiceInvoiceRequest struct {
 	// السعر يحطّه مسؤول الخدمة — ماكو جدول كلفة لهذي الخدمات.
 	Price float64 `json:"price"`
 	Note  *string `json:"note"`
+	// Extras الإضافات (دازاي 10-31): كيبل إضافي وغيره — اسم وكمية وسعر وحدة.
+	Extras []ServiceInvoiceExtra `json:"extras"`
+	// المجانية: نفس مسار فاتورة الليدر — سبب إجباري، والكلفة تبقى مسجّلة كخصم.
+	IsFree         bool    `json:"isFree"`
+	FreeReasonID   *string `json:"freeReasonId"`
+	FreeReasonNote *string `json:"freeReasonNote"`
+}
+
+// ServiceInvoiceExtra بند إضافي بفاتورة الخدمة.
+type ServiceInvoiceExtra struct {
+	Name      string  `json:"name"`
+	Count     int     `json:"count"`
+	UnitPrice float64 `json:"unitPrice"`
 }
 
 // أنماط التسعير.

@@ -18,6 +18,9 @@ import {
   type Service,
 } from '../api'
 import { readMoney } from '../utils/money'
+
+const fmtServiceTime = (v?: string | null) =>
+  v ? new Date(v).toLocaleString('en-GB', { timeZone: 'Asia/Baghdad', hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' }) : '—'
 import EntityIdentity from '../components/EntityIdentity'
 import { loadFailed } from '../netErrors'
 
@@ -108,6 +111,8 @@ export default function LeaderInvoiceNew({ initialMode, handoverOnly = false }: 
   const setServiceKind = setServiceKindPick
   const [servicePrice, setServicePrice] = useState('')
   const [serviceNote, setServiceNote] = useState('')
+  // الإضافات (دازاي 10-31): كيبل إضافي وغيره — ماكو مسافات تسليك بالداش كام
+  const [serviceExtras, setServiceExtras] = useState<{ name: string; count: string; unitPrice: string }[]>([])
 
   // ═══ الكلفة اليدوية ═══
   //
@@ -163,6 +168,8 @@ export default function LeaderInvoiceNew({ initialMode, handoverOnly = false }: 
     ? completedBookings
     : completedBookings.filter((b) =>
       internalMode ? b.bookingType === 'INTERNAL' : b.bookingType !== 'INTERNAL')
+  // حجز فاتورة الخدمة — منه وقت البداية والنهاية (دازاي 10-31)
+  const serviceBooking = serviceMode ? completedBookings.find((b) => b.id === selectedBookingId) : undefined
   const internalBooking = completedBookings.find(
     (b) => b.id === selectedBookingId && b.bookingType === 'INTERNAL')
   // (ع) 10-16: حجز الديكور فاتورته من جدول أسعار الديكور — شاشة خاصة
@@ -288,6 +295,7 @@ export default function LeaderInvoiceNew({ initialMode, handoverOnly = false }: 
   const [freeReasons, setFreeReasons] = useState<FreeWorkReason[]>([])
   useEffect(() => { api.getFreeWorkReasons().then(setFreeReasons).catch(() => {}) }, [])
   const selectedReason = freeReasons.find((r) => r.id === freeReasonId)
+  const serviceExtrasTotal = serviceExtras.reduce((n, x) => n + (Number(x.count) || 0) * (readMoney(x.unitPrice).value || 0), 0)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [result, setResult] = useState<LeaderInvoice | null>(null)
@@ -598,9 +606,18 @@ export default function LeaderInvoiceNew({ initialMode, handoverOnly = false }: 
       // «حفظ» بلا ما يطلع من الخانة (أو بجهاز ما يطلّق blur)،
       // «١.٥» تنحفظ **دينار ونص** — مقيس فعلاً بالفحص. والحفظ هو
       // آخر باب، فالحراسة تكون عنده.
-      const price = readMoney(servicePrice).value
-      if (!Number.isFinite(price) || price <= 0) {
+      const price = servicePrice.trim() === '' && isFree ? 0 : readMoney(servicePrice).value
+      // مجانية: السعر ممكن يبقى صفر — بس السبب إجباري (دازاي 10-31)
+      if (!Number.isFinite(price) || price < 0 || (price === 0 && !isFree)) {
         setError('اكتب سعر الفاتورة')
+        return
+      }
+      if (isFree && !freeReasonId) { setError('اختار سبب المجانية'); return }
+      const extras = serviceExtras
+        .filter((x) => x.name.trim())
+        .map((x) => ({ name: x.name.trim(), count: Number(x.count) || 0, unitPrice: readMoney(x.unitPrice).value }))
+      if (extras.some((x) => x.count <= 0 || !Number.isFinite(x.unitPrice) || x.unitPrice < 0)) {
+        setError('كمل كمية وسعر كل إضافة')
         return
       }
       setSaving(true)
@@ -613,6 +630,10 @@ export default function LeaderInvoiceNew({ initialMode, handoverOnly = false }: 
           customerPhone: customerPhone || undefined,
           customerAddress: customerAddress || undefined,
           note: serviceNote.trim() || undefined,
+          extras,
+          isFree,
+          freeReasonId: isFree ? freeReasonId : undefined,
+          freeReasonNote: isFree && freeReasonNote.trim() ? freeReasonNote.trim() : undefined,
         })
         setResult(invoice)
       } catch (e) {
@@ -1051,6 +1072,58 @@ export default function LeaderInvoiceNew({ initialMode, handoverOnly = false }: 
                 <input value={serviceNote} onChange={(e) => setServiceNote(e.target.value)}
                   placeholder="شنو انركّب بالضبط"
                   className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm outline-none focus:border-sky-500" />
+              </div>
+              {serviceBooking && (
+                <div className="rounded-xl border border-sky-200 bg-white px-3 py-2 text-xs text-slate-700 sm:col-span-3">
+                  🕘 وقت الشغل من الحجز: البداية <b dir="ltr">{fmtServiceTime(serviceBooking.startedAt || serviceBooking.arrivedAt)}</b>
+                  {' '}← النهاية <b dir="ltr">{fmtServiceTime(serviceBooking.completedAt)}</b>
+                  <span className="block text-[10px] text-slate-500">ينحفظن ويا الفاتورة تلقائياً من الحجز.</span>
+                </div>
+              )}
+              <div className="sm:col-span-3">
+                <div className="mb-1 flex items-center justify-between">
+                  <label className="text-xs font-bold text-slate-600">➕ الإضافات (مثلاً كيبل إضافي)</label>
+                  <button type="button" onClick={() => setServiceExtras((xs) => [...xs, { name: '', count: '1', unitPrice: '' }])}
+                    className="rounded-lg bg-sky-600 px-3 py-1 text-xs font-bold text-white">+ إضافة</button>
+                </div>
+                {serviceExtras.map((x, i) => (
+                  <div key={i} className="mb-2 grid grid-cols-12 gap-2">
+                    <input value={x.name} onChange={(e) => setServiceExtras((xs) => xs.map((y, j) => j === i ? { ...y, name: e.target.value } : y))}
+                      placeholder="شنو الإضافة" className="col-span-5 rounded-lg border border-slate-300 px-2 py-1.5 text-sm" />
+                    <input value={x.count} onChange={(e) => setServiceExtras((xs) => xs.map((y, j) => j === i ? { ...y, count: e.target.value.replace(/[^\d]/g, '') } : y))}
+                      dir="ltr" inputMode="numeric" placeholder="الكمية" className="col-span-2 rounded-lg border border-slate-300 px-2 py-1.5 text-sm" />
+                    <input value={x.unitPrice} onChange={(e) => setServiceExtras((xs) => xs.map((y, j) => j === i ? { ...y, unitPrice: e.target.value.replace(/[^\d.]/g, '') } : y))}
+                      dir="ltr" inputMode="decimal" placeholder="سعر الوحدة" className="col-span-4 rounded-lg border border-slate-300 px-2 py-1.5 text-sm" />
+                    <button type="button" onClick={() => setServiceExtras((xs) => xs.filter((_, j) => j !== i))}
+                      className="col-span-1 rounded-lg text-red-600" aria-label="شيل الإضافة">✕</button>
+                  </div>
+                ))}
+                {serviceExtrasTotal > 0 && (
+                  <p className="text-[11px] font-bold text-sky-800">
+                    الإضافات: {serviceExtrasTotal.toLocaleString('en-US')} د.ع · المجموع: {(serviceExtrasTotal + (readMoney(servicePrice).value || 0)).toLocaleString('en-US')} د.ع
+                  </p>
+                )}
+              </div>
+              <div className={`rounded-xl border-2 p-3 sm:col-span-3 ${isFree ? 'border-emerald-400 bg-emerald-50' : 'border-slate-200 bg-white'}`}>
+                <label className="flex cursor-pointer items-center gap-2">
+                  <input type="checkbox" checked={isFree} className="h-4 w-4"
+                    onChange={(e) => { setIsFree(e.target.checked); if (!e.target.checked) { setFreeReasonId(''); setFreeReasonNote('') } }} />
+                  <span className="text-sm font-bold text-[#0f2040]">🎁 مجانية — الزبون ما يدفع شي</span>
+                </label>
+                {isFree && (
+                  <div className="mt-2 space-y-2">
+                    <select value={freeReasonId} onChange={(e) => setFreeReasonId(e.target.value)}
+                      className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm">
+                      <option value="">— سبب المجانية * —</option>
+                      {freeReasons.map((r) => <option key={r.id} value={r.id}>{r.label}</option>)}
+                    </select>
+                    {selectedReason?.needsNote && (
+                      <input value={freeReasonNote} onChange={(e) => setFreeReasonNote(e.target.value)}
+                        placeholder="وضّح أكثر *" className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" />
+                    )}
+                    <p className="text-[11px] text-emerald-900">السعر اختياري هنا — إذا كتبته ينحفظ ككلفة، والصافي على الزبون صفر.</p>
+                  </div>
+                )}
               </div>
               <p className="text-[11px] leading-relaxed text-sky-800 sm:col-span-3">
                 ⓘ هذي الخدمات ما إلهن جدول كلفة — السعر تحطّه أنت، والفاتورة
