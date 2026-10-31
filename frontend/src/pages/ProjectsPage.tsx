@@ -819,6 +819,7 @@ function ProjectCard({ p, canManage, onEdit, onMove, onReport, onDelete, onRefre
   const [showMedia, setShowMedia] = useState(false)
   const [showPay, setShowPay] = useState(false)
   const inMedia = useMediaOpen().has(p.id)
+  const watch = useMonitorWatch()[p.id]
 
   const handleAdvance = () => {
     if (isContractStage && !p.hasContract) {
@@ -964,6 +965,11 @@ function ProjectCard({ p, canManage, onEdit, onMove, onReport, onDelete, onRefre
 
       {canManage && (p.stage.includes('تنفيذ') || p.stage.includes('التسليم')) && (
         <p className="mt-2 text-center text-xs text-emerald-800">🤖 المشروع ما يكتمل بدون الفلوس — سجّل الدفعات من «💰 الدفعات» أول بأول.</p>
+      )}
+      {watch && (
+        <p className="mt-2 rounded-lg bg-indigo-50 py-1.5 text-center text-xs font-bold text-indigo-900">
+          👁️ المراقب متابع — {WATCH_LABEL[watch.action]}{watch.dueAt ? ` لحد ${new Date(watch.dueAt).toLocaleString('ar-IQ', { timeZone: 'Asia/Baghdad', dateStyle: 'short', timeStyle: 'short' })}` : ''}
+        </p>
       )}
       <div className="mt-3 text-center text-xs text-gray-500 bg-gray-50 rounded-lg py-2">🕐 تاريخ الإضافة: {addedDate}</div>
 
@@ -1274,6 +1280,21 @@ function EditModal({ project, onClose, onSaved }: { project: Project; onClose: (
 // ---------------------------------------------------------------------------
 // 📸 إعلام — تحويل المشروع للإعلام (قرار (ع) 10-06: زر بخطوات المشروع)
 // ---------------------------------------------------------------------------
+// 👁️ (دازاي 10-31) علامة «المراقب متابع» على بطاقة المشروع — من إجراءات المراقب على المتأخر
+type MonitorWatch = Record<string, { action: 'FOLLOW_UP' | 'ESCALATE' | 'VIOLATION'; at: string; dueAt?: string }>
+let monitorWatchCache: Promise<MonitorWatch> | null = null
+function useMonitorWatch(): MonitorWatch {
+  const [m, setM] = useState<MonitorWatch>({})
+  useEffect(() => {
+    if (!monitorWatchCache) monitorWatchCache = request<MonitorWatch>('/projects/monitor-watch').catch(() => ({}))
+    let alive = true
+    void monitorWatchCache.then((x) => { if (alive) setM(x) })
+    return () => { alive = false }
+  }, [])
+  return m
+}
+const WATCH_LABEL = { FOLLOW_UP: '⏰ حاطّ مهلة', ESCALATE: '📌 صعّده للإدارة', VIOLATION: '⚖️ سجّل مخالفة' } as const
+
 let mediaOpenCache: Promise<Set<string>> | null = null
 function useMediaOpen(): Set<string> {
   const [set, setSet] = useState<Set<string>>(new Set())

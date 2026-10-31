@@ -1775,6 +1775,12 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	quoteWatch := handler.NewProjectQuoteWatchHandler(db)
 	mux.Handle("POST /api/projects/{id}/customer-contacted", middleware.Chain(http.HandlerFunc(quoteWatch.MarkContacted), requireAuth, allowManagerOrDelegate))
 	mux.Handle("GET /api/project-quote-watch", middleware.Chain(http.HandlerFunc(quoteWatch.List), requireAuth, requireFieldMonitor))
+	// (دازاي 10-31) إجراءات المراقب على المتأخر: مهلة، تصعيد لمكتب الإدارة، مخالفة (وتراجع)
+	quoteWatch.SetActionDeps(extraTaskRepo, disciplineRepo, notificationRepo)
+	mux.Handle("POST /api/project-quote-watch/{id}/action", middleware.Chain(http.HandlerFunc(quoteWatch.Act), requireAuth, requireFieldMonitor))
+	mux.Handle("POST /api/project-monitor-actions/{id}/revoke", middleware.Chain(http.HandlerFunc(quoteWatch.Revoke), requireAuth, requireFieldMonitor))
+	// علامة فقط (نوع الإجراء ووقته) — بلا حارس صلاحية حتى «إضافة مشروع فقط» ما ياخذ 403 ومخالفة
+	mux.Handle("GET /api/projects/monitor-watch", middleware.Chain(http.HandlerFunc(quoteWatch.WatchList), requireAuth))
 	mux.Handle("DELETE /api/projects/{id}", middleware.Chain(http.HandlerFunc(projectHandler.Delete), requireAuth, requireProjectManager))
 	// (ع) 10-19: حذف نهائي للمرفوض بسبب — نفس حارس الحذف، ونسخته تنحفظ بـ"DeletedProject".
 	mux.Handle("DELETE /api/projects/{id}/purge", middleware.Chain(http.HandlerFunc(projectHandler.Purge), requireAuth, requireProjectManager))

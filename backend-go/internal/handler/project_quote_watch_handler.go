@@ -22,7 +22,10 @@ const (
 	quoteWatchQuoteHours   = 72 // ما سوّى عرض سعر خلال ٣ أيام من الاستلام = متأخر
 )
 
-type ProjectQuoteWatchHandler struct{ db *sqlx.DB }
+type ProjectQuoteWatchHandler struct {
+	db   *sqlx.DB
+	deps *projectMonitorDeps
+}
 
 func NewProjectQuoteWatchHandler(db *sqlx.DB) *ProjectQuoteWatchHandler {
 	return &ProjectQuoteWatchHandler{db: db}
@@ -74,6 +77,8 @@ type quoteWatchRow struct {
 	Late           bool       `db:"late" json:"late"`
 	LateWhy        *string    `db:"lateWhy" json:"lateWhy"`
 	OffSystem      bool       `db:"offSystem" json:"offSystem"`
+	// Watch إجراءات المراقب الفعّالة على المشروع (👁️ المراقب متابع)
+	Watch []projectMonitorAction `db:"-" json:"watch"`
 }
 
 // GET /api/project-quote-watch — المراقب: كل مشروع ومحطاته الثلاث
@@ -118,8 +123,13 @@ func (h *ProjectQuoteWatchHandler) List(w http.ResponseWriter, r *http.Request) 
 		WriteError(w, http.StatusInternalServerError, "تعذر جلب متابعة عروض الأسعار")
 		return
 	}
+	watch := h.watchActions()
 	for i := range rows {
 		rows[i].Late = rows[i].LateWhy != nil
+		rows[i].Watch = watch[rows[i].ProjectID]
+		if rows[i].Watch == nil {
+			rows[i].Watch = []projectMonitorAction{}
+		}
 	}
 	WriteJSON(w, http.StatusOK, map[string]any{
 		"rows": rows, "contactHours": quoteWatchContactHours, "quoteHours": quoteWatchQuoteHours,

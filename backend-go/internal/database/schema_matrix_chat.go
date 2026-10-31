@@ -1530,5 +1530,27 @@ func matrixChatMigrations() []Migration {
 			ALTER TABLE "LeaderInvoice" ADD COLUMN IF NOT EXISTS "serviceStartAt" TIMESTAMP;
 			ALTER TABLE "LeaderInvoice" ADD COLUMN IF NOT EXISTS "serviceEndAt" TIMESTAMP;
 		`,
+	}, {
+		// 👁️ إجراءات المراقب على المشاريع المتأخرة (دازاي 10-31): مهلة ومتابعة، تصعيد لمدير
+		// الإدارة (مشكلة بمكتبها)، وتسجيل مخالفة (نقاط انضباط تنرجع بالتراجع).
+		Version: "0422_project_monitor_actions",
+		SQL: `
+			CREATE TABLE IF NOT EXISTS "ProjectMonitorAction" (
+				id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
+				"projectId" TEXT NOT NULL REFERENCES "Project"(id) ON DELETE CASCADE,
+				"employeeId" TEXT REFERENCES "Employee"(id) ON DELETE SET NULL,
+				action TEXT NOT NULL CHECK (action IN ('FOLLOW_UP', 'ESCALATE', 'VIOLATION')),
+				note TEXT NOT NULL DEFAULT '',
+				"dueAt" TIMESTAMPTZ,
+				points INT NOT NULL DEFAULT 0,
+				"taskId" TEXT,
+				"issueId" TEXT,
+				"byId" TEXT REFERENCES "Employee"(id) ON DELETE SET NULL,
+				"createdAt" TIMESTAMPTZ NOT NULL DEFAULT now(),
+				"revokedAt" TIMESTAMPTZ,
+				"revokedById" TEXT REFERENCES "Employee"(id) ON DELETE SET NULL
+			);
+			CREATE INDEX IF NOT EXISTS "ProjectMonitorAction_project" ON "ProjectMonitorAction"("projectId", "createdAt" DESC);
+		`,
 	}}
 }

@@ -95,6 +95,9 @@ const (
 	// DisciplineMatrixFine غرامة قرّرها ماتركس الحاكم (الهيكل الجديد 10-29)، والتراجع عنها
 	DisciplineMatrixFine     = "MATRIX_FINE"
 	DisciplineMatrixFineUndo = "MATRIX_FINE_UNDO"
+	// DisciplineMonitorFine مخالفة سجّلها المراقب على مشرف مشروع متأخر (دازاي 10-31)، والتراجع عنها
+	DisciplineMonitorFine     = "MONITOR_FINE"
+	DisciplineMonitorFineUndo = "MONITOR_FINE_UNDO"
 )
 
 // DisciplinePoints رصيد نقاط موظف.
