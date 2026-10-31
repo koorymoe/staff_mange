@@ -1976,8 +1976,13 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	// ومنو يقيّم منو محسوم بالخدمة (authorizeReview): الليدر فنيي
 	// فريقه بس، وإداري الكوادر الليدرات بس. فتوسيع الحارس ما يفتح
 	// باب — يخلي الي عنده الحق يوصله.
+	//
+	// (دازاي 10-31) الحارس كان يرفض الليدر والمراقب وإداري الكوادر الي ما عندهم
+	// الصلاحيتين — التبويب يطلعلهم والحفظ يرد «ما عندك صلاحية» (وتنسجل مخالفة).
+	// هسه يطابق authorizeReview: ليدر، MONITOR/HR_COORDINATOR، monitoring/auditing.
 	mux.Handle("POST /api/performance-reviews", middleware.Chain(http.HandlerFunc(performanceReviewHandler.Create), requireAuth,
-		middleware.RequireAnyPermission(permissionRepo, employeeRepo, notificationRepo, "kpi_management", "performance_review")))
+		middleware.RequireLeaderOrRoleOrAnyPermission(permissionRepo, employeeRepo, notificationRepo,
+			[]string{"MONITOR", "HR_COORDINATOR"}, "kpi_management", "performance_review", "monitoring", "auditing")))
 	// كل تقييمات الأداء — سجلات شخصية، للإدارة والمراقبة.
 	mux.Handle("GET /api/performance-reviews", middleware.Chain(http.HandlerFunc(performanceReviewHandler.List), requireAuth,
 		middleware.RequireRoleOrAnyPermission(permissionRepo, employeeRepo, notificationRepo,
