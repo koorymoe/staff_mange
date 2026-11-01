@@ -7,7 +7,7 @@ import EntityIdentity from '../components/EntityIdentity'
 import StatTile from '../components/StatTile'
 import Pager from '../components/Pager'
 import { formatCustomerCode } from '../utils/identity'
-import { useSession, canAuditFinance } from '../session'
+import { useSession, canAuditFinance, hasRole } from '../session'
 import { matches } from '../utils/search'
 import InvoiceDeleteRequests, { RequestInvoiceDelete } from '../components/InvoiceDeleteRequests'
 import { esc, printIdentityCss, printIdentityHtml } from '../utils/printIdentity'
@@ -150,7 +150,7 @@ export default function LeaderInvoicesListPage({ embedded }: EmbeddedProps = {})
   /** ⚠️ `finance_audit` جنب الدور: مفتاح المالك حتى موظف يكمل شغل
    *  المحاسب لمّا ياخذ إجازة — وبلاه المنح ما ينفع بشي هنا (الاعتماد
    *  يبقى مرفوض والفاتورة ما تمشي). */
-  const canApprove = canAuditFinance(employee?.role, permissions)
+  const canApprove = canAuditFinance(employee?.role, permissions, employee?.orgRoles)
   /** ⚠️ المراقب يبتّ بطلب المحاسب — والمحاسب ما يبتّ بطلبه بنفسه،
    *  وإلا الإرسال للمراقب يصير شكلياً. (والخادم يمنعه فعلياً.) */
   const isMonitor = employee?.role === 'ADMIN' || (employee?.role === 'MONITOR' || permissions.includes('monitoring'))
@@ -165,7 +165,7 @@ export default function LeaderInvoicesListPage({ embedded }: EmbeddedProps = {})
   const monitorSeat = !!embedded || (employee?.role === 'MONITOR' || permissions.includes('monitoring'))
   // ⚠️ مطابق لحارس الخادم `requireServicePriceRead` حرفياً. و`role`
   // يتطبّع لـ'ADMIN' للمالك بالجلسة، فهذا يغطي الاثنين.
-  const canSeePrices = ['ADMIN', 'OWNER', 'FINANCE', 'MONITOR'].includes(employee?.role ?? '')
+  const canSeePrices = hasRole(employee, 'ADMIN', 'OWNER', 'FINANCE', 'MONITOR') || permissions.includes('monitoring')
   /** ⚠️ `actualRole` مو `role`: المالك ينوصل كـADMIN بالواجهة،
    *  ودوره الحقيقي بـ`actualRole`. */
   const isOwner = employee?.actualRole === 'OWNER'

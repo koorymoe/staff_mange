@@ -176,7 +176,8 @@ func (r *PerformanceReviewRepository) ReviewerLeaderboard(since, until string) (
 		       0 AS "attendedDays"
 		FROM "PerformanceReview" pr
 		JOIN "Employee" e ON e.id = pr."evaluatorId"
-		WHERE e.role IN ('ADMIN', 'OWNER', 'MONITOR', 'HR_COORDINATOR')
+		WHERE (e.role IN ('ADMIN', 'OWNER', 'MONITOR', 'HR_COORDINATOR')
+			OR e.id IN `+model.OrgRoleEmployeesSQL("ARRAY['MONITOR','HR_COORDINATOR']")+`)
 		  AND (`+fromP+` = '' OR pr."createdAt" >= `+fromP+`::timestamp)
 		  AND (`+toP+` = '' OR pr."createdAt" < (`+toP+`::date + interval '1 day'))
 		GROUP BY e.id, e.name

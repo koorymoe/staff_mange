@@ -1510,18 +1510,30 @@ func matrixChatMigrations() []Migration {
 		// صارت ورا العقد وقبل التنفيذ، و«التسليم والاستلام» ورا التنفيذ. تحويل الأسماء المخزونة.
 		Version: "0420_project_stages_reorder",
 		SQL: `
-			UPDATE "Project" SET stage = CASE stage WHEN '5. البدء بالتنفيذ' THEN '6. البدء بالتنفيذ' WHEN '6. شراء مواد المشروع' THEN '5. تجهيز المنتجات' WHEN '7. تسليم واستلام المنتجات' THEN '7. التسليم والاستلام' END
+			DO $$ BEGIN IF to_regclass('"Project"') IS NOT NULL THEN
+				UPDATE "Project" SET stage = CASE stage WHEN '5. البدء بالتنفيذ' THEN '6. البدء بالتنفيذ' WHEN '6. شراء مواد المشروع' THEN '5. تجهيز المنتجات' WHEN '7. تسليم واستلام المنتجات' THEN '7. التسليم والاستلام' END
 				WHERE stage IN ('5. البدء بالتنفيذ', '6. شراء مواد المشروع', '7. تسليم واستلام المنتجات');
-			UPDATE "ProjectStageLog" SET "fromStage" = CASE "fromStage" WHEN '5. البدء بالتنفيذ' THEN '6. البدء بالتنفيذ' WHEN '6. شراء مواد المشروع' THEN '5. تجهيز المنتجات' WHEN '7. تسليم واستلام المنتجات' THEN '7. التسليم والاستلام' END
+			END IF; END $$;
+			DO $$ BEGIN IF to_regclass('"ProjectStageLog"') IS NOT NULL THEN
+				UPDATE "ProjectStageLog" SET "fromStage" = CASE "fromStage" WHEN '5. البدء بالتنفيذ' THEN '6. البدء بالتنفيذ' WHEN '6. شراء مواد المشروع' THEN '5. تجهيز المنتجات' WHEN '7. تسليم واستلام المنتجات' THEN '7. التسليم والاستلام' END
 				WHERE "fromStage" IN ('5. البدء بالتنفيذ', '6. شراء مواد المشروع', '7. تسليم واستلام المنتجات');
-			UPDATE "ProjectStageLog" SET "toStage" = CASE "toStage" WHEN '5. البدء بالتنفيذ' THEN '6. البدء بالتنفيذ' WHEN '6. شراء مواد المشروع' THEN '5. تجهيز المنتجات' WHEN '7. تسليم واستلام المنتجات' THEN '7. التسليم والاستلام' END
+			END IF; END $$;
+			DO $$ BEGIN IF to_regclass('"ProjectStageLog"') IS NOT NULL THEN
+				UPDATE "ProjectStageLog" SET "toStage" = CASE "toStage" WHEN '5. البدء بالتنفيذ' THEN '6. البدء بالتنفيذ' WHEN '6. شراء مواد المشروع' THEN '5. تجهيز المنتجات' WHEN '7. تسليم واستلام المنتجات' THEN '7. التسليم والاستلام' END
 				WHERE "toStage" IN ('5. البدء بالتنفيذ', '6. شراء مواد المشروع', '7. تسليم واستلام المنتجات');
-			UPDATE "ProjectRestoreLog" SET "toStage" = CASE "toStage" WHEN '5. البدء بالتنفيذ' THEN '6. البدء بالتنفيذ' WHEN '6. شراء مواد المشروع' THEN '5. تجهيز المنتجات' WHEN '7. تسليم واستلام المنتجات' THEN '7. التسليم والاستلام' END
+			END IF; END $$;
+			DO $$ BEGIN IF to_regclass('"ProjectRestoreLog"') IS NOT NULL THEN
+				UPDATE "ProjectRestoreLog" SET "toStage" = CASE "toStage" WHEN '5. البدء بالتنفيذ' THEN '6. البدء بالتنفيذ' WHEN '6. شراء مواد المشروع' THEN '5. تجهيز المنتجات' WHEN '7. تسليم واستلام المنتجات' THEN '7. التسليم والاستلام' END
 				WHERE "toStage" IN ('5. البدء بالتنفيذ', '6. شراء مواد المشروع', '7. تسليم واستلام المنتجات');
-			UPDATE "ProjectStageLimit" SET stage = CASE stage WHEN '5. البدء بالتنفيذ' THEN '6. البدء بالتنفيذ' WHEN '6. شراء مواد المشروع' THEN '5. تجهيز المنتجات' WHEN '7. تسليم واستلام المنتجات' THEN '7. التسليم والاستلام' END
+			END IF; END $$;
+			DO $$ BEGIN IF to_regclass('"ProjectStageLimit"') IS NOT NULL THEN
+				UPDATE "ProjectStageLimit" SET stage = CASE stage WHEN '5. البدء بالتنفيذ' THEN '6. البدء بالتنفيذ' WHEN '6. شراء مواد المشروع' THEN '5. تجهيز المنتجات' WHEN '7. تسليم واستلام المنتجات' THEN '7. التسليم والاستلام' END
 				WHERE stage IN ('5. البدء بالتنفيذ', '6. شراء مواد المشروع', '7. تسليم واستلام المنتجات');
-			UPDATE "ProjectDelayReason" SET stage = CASE stage WHEN '5. البدء بالتنفيذ' THEN '6. البدء بالتنفيذ' WHEN '6. شراء مواد المشروع' THEN '5. تجهيز المنتجات' WHEN '7. تسليم واستلام المنتجات' THEN '7. التسليم والاستلام' END
+			END IF; END $$;
+			DO $$ BEGIN IF to_regclass('"ProjectDelayReason"') IS NOT NULL THEN
+				UPDATE "ProjectDelayReason" SET stage = CASE stage WHEN '5. البدء بالتنفيذ' THEN '6. البدء بالتنفيذ' WHEN '6. شراء مواد المشروع' THEN '5. تجهيز المنتجات' WHEN '7. تسليم واستلام المنتجات' THEN '7. التسليم والاستلام' END
 				WHERE stage IN ('5. البدء بالتنفيذ', '6. شراء مواد المشروع', '7. تسليم واستلام المنتجات');
+			END IF; END $$;
 		`,
 	}, {
 		// 🕘 فاتورة الخدمة (دازاي 10-31): وقت بداية ونهاية الشغل من الحجز.

@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { api, auditCloseLabels, type AuditCloseAction, type AuditIssue } from '../api'
 import { useSaveGuard } from '../useSaveGuard'
 import SaveError from '../components/SaveError'
-import { useSession } from '../session'
+import { useSession, hasRole } from '../session'
 
 /**
  * بلاغات أخطاء التدقيق.
@@ -28,7 +28,7 @@ export default function AuditIssuesPage({ embedded }: EmbeddedProps = {}) {
   // يتأكد من الليدر ليش عنده أخطاء. السيرفر يفلتر (المحاسب يشوف بلاغاته
   // بس)، وهنا نغيّر العنوان والأعمدة حتى الواجهة تگول نفس الكلام.
   const { employee } = useSession()
-  const asAccountant = employee?.role === 'FINANCE'
+  const asAccountant = hasRole(employee, 'FINANCE')
   const [items, setItems] = useState<AuditIssue[]>([])
   const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState<string | null>(null)

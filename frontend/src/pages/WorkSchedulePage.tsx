@@ -1,6 +1,6 @@
 import { lazy, Suspense, useCallback, useEffect, useState } from 'react'
 import { api, type AttendanceBoardRow, type WorkScheduleRow } from '../api'
-import { useSession } from '../session'
+import { useSession, hasRole } from '../session'
 import { roleLabel } from '../roleLabels'
 
 // ═══ جدول الدوام — كل موظف متى يبدي ومتى ينتهي، والمسؤول يحدده ═══
@@ -17,7 +17,7 @@ function ScheduleTab() {
   const { employee, permissions } = useSession()
   const role = employee?.role
   const isAdmin = role === 'ADMIN' || role === 'OWNER'
-  const canView = isAdmin || role === 'HR_COORDINATOR' || role === 'MONITOR' || permissions.includes('monitoring')
+  const canView = isAdmin || role === 'HR_COORDINATOR' || role === 'MONITOR' || permissions.includes('monitoring') || hasRole(employee, 'HR_COORDINATOR')
     || permissions.includes('work_schedule_manage') || permissions.includes('staff_management')
   const canEdit = isAdmin || permissions.includes('work_schedule_manage')
   const [rows, setRows] = useState<WorkScheduleRow[]>([])

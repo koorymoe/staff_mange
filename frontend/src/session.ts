@@ -21,6 +21,14 @@ export const hasGpsSkill = (employee: Employee | null, gpsServiceId: string | nu
 
 export const useSession = () => useContext(SessionContext)
 
+/**
+ * hasRole (دازاي 11-01): دوره الأصلي، أو دور فعلي من منصبه بالهيكل (محاسب،
+ * إداري كوادر، مدير مشاريع…) — نفس `middleware.HasRole` بالخادم. للفحوصات
+ * الي چانت مكتوبة على اسم الدور، حتى صاحب المنصب ياخذ شغل الدور القديم.
+ */
+export const hasRole = (employee: Employee | null | undefined, ...roles: string[]) =>
+  !!employee && (roles.includes(employee.role) || (employee.orgRoles ?? []).some((r) => roles.includes(r)))
+
 
 
 /**
@@ -38,13 +46,13 @@ export const useSession = () => useContext(SessionContext)
  * `Layout`)، فأي قيمة أوليّة تنجمّد على `[]` وتضل غلط. قيمة مشتقّة
  * بكل رسم وبس.
  */
-export const canAuditFinance = (role?: string, permissions: string[] = []) =>
+export const canAuditFinance = (role?: string, permissions: string[] = [], orgRoles: string[] = []) =>
   // 🔴 `OWNER` جان **ناقصاً**: الخادم يمرّر المالك دائماً
   // (`RequireRole` يتخطاه بلا شرط)، فالواجهة چانت تخفي أزراره
   // وتعرضله «عرض فقط» — يفتح شاشة التدقيق ويحسب إن الشغل ما انفّذ
   // أصلاً، مع إن طلبه ينقبل لو وصل. واجهة تكذب على صاحب النظام.
   role === 'ADMIN' || role === 'OWNER' || role === 'FINANCE' ||
-  permissions.includes('finance_audit')
+  permissions.includes('finance_audit') || orgRoles.includes('FINANCE')
 
 /**
  * canLinkPartialBooking: منو يقدر يربط حجزين تاريخيين منفصلين كإنجاز

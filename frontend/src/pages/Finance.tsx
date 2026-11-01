@@ -15,7 +15,7 @@ export default function Finance() {
   // و«خطأ بالسعر» تُعرض لأي واحد يفتحها، والرفض يجي من الخادم بعد
   // الضغط. ومنو يصدر القرار هسه محسوم بالمفتاح مو بالدور.
   const { employee, permissions } = useSession()
-  const canDecide = canAuditFinance(employee?.role, permissions)
+  const canDecide = canAuditFinance(employee?.role, permissions, employee?.orgRoles)
   /** ⚠️ المالك وحده — حذف (أرشفة) حجوزات مكررة/خطأ من هالشاشة مباشرة،
    *  بلا طلب/موافقة (نفس نمط `returnToAccountant` بـ`LeaderInvoicesListPage`). */
   const isOwner = employee?.actualRole === 'OWNER'

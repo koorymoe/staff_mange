@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { api, fileUrl, type ProductRequest, type ProductProcurement, type PayerKind, type RevolvingFund } from '../api'
-import { useSession } from '../session'
+import { useSession, hasRole } from '../session'
 import { loadFailed } from '../netErrors'
 
 const money = (n: number) => n.toLocaleString('en-IQ')
@@ -16,7 +16,7 @@ const emptyFulfill = {
 // الخاصة تنشال حتى ما تتكرر ترويستان فوگ بعض.
 export default function ProductRequestsPage({ embedded }: { embedded?: boolean } = {}) {
   const { permissions, employee } = useSession()
-  const canAdd = employee?.role === 'ADMIN' || employee?.role === 'PROCUREMENT_ADMIN' || permissions.includes('unit_technicians')
+  const canAdd = employee?.role === 'ADMIN' || hasRole(employee, 'PROCUREMENT_ADMIN') || permissions.includes('unit_technicians') || permissions.includes('procurement')
   const isAdmin = employee?.role === 'ADMIN'
   // أبو الحسابات نفسه أبو الكميات — صلاحية الدوار هي الي تحدده
   const canFulfill = isAdmin || employee?.actualRole === 'OWNER' || permissions.includes('revolving_fund')

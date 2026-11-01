@@ -69,6 +69,7 @@ func (h *AuthHandler) Me(w http.ResponseWriter, r *http.Request) {
 		WriteError(w, http.StatusUnauthorized, "الحساب غير موجود")
 		return
 	}
+	employee.OrgRoles = middleware.OrgRoles(r)
 	WriteJSON(w, http.StatusOK, employee)
 }
 

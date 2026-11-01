@@ -121,3 +121,32 @@ var OrgSeed = []orgSeedDivision{
 			{ID: "it.main", Name: "التقنية IT", Perms: []string{"unit_it", "it_assets", "it_stats"}, Head: []string{"it_assets"}},
 		}},
 }
+
+// OrgBundleAddition صلاحية تنضاف لحزمة موجودة (مرة وحدة، بالبذر).
+type OrgBundleAddition struct {
+	Scope, Perm string
+	Head        bool
+}
+
+// OrgBundleAdditions (دازاي 11-01) الصلاحيات العشرة الي چانت برّا كل الحزم — حتى الهيكل
+// يغطي الشغل القديم كله. تنضاف مرة وحدة (OrgGovernorState: bundle_additions_1101).
+var OrgBundleAdditions = []OrgBundleAddition{
+	{"ops.bookings", "booking_delete_request", false},
+	{"admin.monitoring", "booking_delete_approve", true},
+	{"ops.audit", "booking_reopen", false},
+	{"ops.staff", "edit_employee_identity", true},
+	{"ops.staff", "employee_edit_all", true},
+	{"ops.staff", "kpi_criteria_management", true},
+	{"admin", "departments_manage", true},
+	{"admin", "manage_services", true},
+	{"eng.projects", "project_create_only", false},
+	// العمل من البيت لنفسه — لكل وحدة
+	{"admin.monitoring", "remote_hours_self", false}, {"admin.accounts", "remote_hours_self", false},
+	{"admin.oversight", "remote_hours_self", false}, {"ops.audit", "remote_hours_self", false},
+	{"ops.fleet", "remote_hours_self", false}, {"ops.staff", "remote_hours_self", false},
+	{"ops.bookings", "remote_hours_self", false}, {"bizdev.tech", "remote_hours_self", false},
+	{"bizdev.training", "remote_hours_self", false}, {"eng.projects", "remote_hours_self", false},
+	{"eng.design", "remote_hours_self", false}, {"quality.followup", "remote_hours_self", false},
+	{"supply.procurement", "remote_hours_self", false}, {"contracts.media", "remote_hours_self", false},
+	{"it.main", "remote_hours_self", false},
+}

@@ -289,7 +289,8 @@ func (r *EmployeeRepository) Supervisors() ([]model.Employee, error) {
 	employees := []model.Employee{}
 	err := r.db.Select(&employees, `
 		SELECT * FROM "Employee"
-		WHERE status = 'ACTIVE' AND (role = 'PROJECT_MANAGER' OR "isLeader" = true)
+		WHERE status = 'ACTIVE' AND (role = 'PROJECT_MANAGER' OR "isLeader" = true
+			OR id IN `+model.OrgRoleEmployeesSQL("ARRAY['PROJECT_MANAGER']")+`)
 		ORDER BY name ASC
 	`)
 	return employees, err
@@ -636,3 +637,8 @@ func (r *EmployeeRepository) IsHandoverTarget(id string) bool {
 
 // DB القاعدة نفسها — لاستعلامات صغيرة بالمعالج (نطاق الأدوار).
 func (r *EmployeeRepository) DB() *sqlx.DB { return r.db }
+
+// HasOrgRole هل للموظف دور فعلي من منصبه بالهيكل ضمن roles؟ (دازاي 11-01)
+func (r *EmployeeRepository) HasOrgRole(employeeID string, roles ...string) bool {
+	return HasOrgRole(r.db, employeeID, roles...)
+}

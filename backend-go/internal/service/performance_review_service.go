@@ -81,7 +81,7 @@ func (s *PerformanceReviewService) RatableEmployees(evaluatorID string) ([]model
 
 	// ⚠️ نفس فرع `authorizeReview` — أبو الكوادر يقيّم الليدرية
 	// والفنيين العاديين سوا.
-	if evaluator.Role == "HR_COORDINATOR" {
+	if (evaluator.Role == "HR_COORDINATOR" || s.employees.HasOrgRole(evaluator.ID, "HR_COORDINATOR")) {
 		all, err := s.employees.List()
 		if err != nil {
 			return nil, err
@@ -203,7 +203,7 @@ func (s *PerformanceReviewService) authorizeReview(evaluator, target *model.Empl
 	// ⚠️ أبو الكوادر يقيّم الليدرية والفنيين العاديين سوا — كان محصوراً
 	// بالليدرية بس («تيم ليدرات الفرق»)، وصاحب النظام قرر توسيعها: هو
 	// المسؤول عن الطاقم الميداني كله لا شريحة منه بس.
-	if evaluator.Role == "HR_COORDINATOR" {
+	if (evaluator.Role == "HR_COORDINATOR" || s.employees.HasOrgRole(evaluator.ID, "HR_COORDINATOR")) {
 		if target.IsLeader || target.Role == "TECHNICIAN" {
 			return nil
 		}

@@ -2,7 +2,7 @@ import { useDeferredValue, useEffect, useMemo, useState } from 'react'
 import ProjectPaymentsModal from '../components/ProjectPaymentsModal'
 import { api, apiRequest, type ProjectMoney, type ProjectPaymentsState } from '../api'
 import { useNavigate } from 'react-router-dom'
-import { useSession } from '../session'
+import { useSession, hasRole } from '../session'
 import LocationFields from '../components/LocationFields'
 import ProjectDelayBanner from '../components/ProjectDelayBanner'
 import { matches } from '../utils/search'
@@ -1684,7 +1684,7 @@ async function restoreRejected(p: { id: string; name: string }, done: () => void
 // حذف نهائي للمرفوض — (ع) 10-19: «مع طلب السبب». نفس حارس الخادم (ADMIN/PROJECT_MANAGER).
 function useCanPurge() {
   const { employee } = useSession()
-  return employee?.role === 'ADMIN' || employee?.role === 'PROJECT_MANAGER'
+  return employee?.role === 'ADMIN' || hasRole(employee, 'PROJECT_MANAGER')
 }
 async function purgeRejected(p: { id: string; name: string }, done: () => void) {
   const reason = prompt(`🗑️ حذف «${p.name}» نهائياً؟ ينشال من كل الشاشات وما يرجع.\nاكتب سبب الحذف:`)

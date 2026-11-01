@@ -11,6 +11,7 @@ import (
 	"sync"
 	"time"
 
+	"staffmange-api/internal/model"
 	"staffmange-api/internal/repository"
 	"staffmange-api/internal/service"
 )
@@ -251,7 +252,7 @@ func RequireRole(employees *repository.EmployeeRepository, notifications *reposi
 			role, _ := r.Context().Value(ContextRole).(string)
 			// OWNER يتخطى أي قيد أدوار — حساب المالك الأساسي، أقوى من أي دور ثاني بما فيه ADMIN
 			// (ع) 10-16: صاحب صلاحية monitoring يعدّي وين ما الدور «MONITOR» مسموح.
-			if role != "OWNER" && !(allowed[role] || (allowed["MONITOR"] && IsMonitor(r))) {
+			if role != "OWNER" && !(allowed[role] || (allowed["MONITOR"] && IsMonitor(r)) || hasOrgRoleIn(r, allowed)) {
 				recordViolationAndBlock(w, r, employees, notifications, EmployeeIDFromContext(r))
 				return
 			}
@@ -474,7 +475,7 @@ func RequireRoleOrPermission(permissions *repository.PermissionRepository, emplo
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			role, _ := r.Context().Value(ContextRole).(string)
-			if role == "ADMIN" || role == "OWNER" || (allowed[role] || (allowed["MONITOR"] && IsMonitor(r))) {
+			if role == "ADMIN" || role == "OWNER" || (allowed[role] || (allowed["MONITOR"] && IsMonitor(r))) || hasOrgRoleIn(r, allowed) {
 				next.ServeHTTP(w, r)
 				return
 			}
@@ -508,7 +509,7 @@ func RequireRoleOrAnyPermission(permissions *repository.PermissionRepository, em
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			role, _ := r.Context().Value(ContextRole).(string)
-			if role == "ADMIN" || role == "OWNER" || (allowedRoles[role] || (allowedRoles["MONITOR"] && IsMonitor(r))) {
+			if role == "ADMIN" || role == "OWNER" || (allowedRoles[role] || (allowedRoles["MONITOR"] && IsMonitor(r))) || hasOrgRoleIn(r, allowedRoles) {
 				next.ServeHTTP(w, r)
 				return
 			}
@@ -607,7 +608,7 @@ func RequireLeaderOrRoleOrAnyPermission(permissions *repository.PermissionReposi
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			role, _ := r.Context().Value(ContextRole).(string)
-			if role == "ADMIN" || role == "OWNER" || (allowedRoles[role] || (allowedRoles["MONITOR"] && IsMonitor(r))) {
+			if role == "ADMIN" || role == "OWNER" || (allowedRoles[role] || (allowedRoles["MONITOR"] && IsMonitor(r))) || hasOrgRoleIn(r, allowedRoles) {
 				next.ServeHTTP(w, r)
 				return
 			}
@@ -655,12 +656,70 @@ func IsMonitor(r *http.Request) bool {
 	return monitorPermChecker != nil && monitorPermChecker(EmployeeIDFromContext(r))
 }
 
+// ═══ الدور من المنصب — دازاي 11-01 ═══
+// صاحب منصب بالهيكل ياخذ الدور الفعلي لوحدته (model.OrgUnitRole) فوك دوره.
+var orgRolesFn func(employeeID string) []string
+
+// SetOrgRolesFn يربط قراءة الأدوار الفعلية من الهيكل (يُنادى بالـmain).
+func SetOrgRolesFn(f func(employeeID string) []string) { orgRolesFn = f }
+
+type ctxKeyOrgRoles struct{}
+
+// OrgRoles الأدوار الفعلية من منصب صاحب الطلب (فاضية للمدير/المالك).
+func OrgRoles(r *http.Request) []string {
+	role := RoleFromContext(r)
+	if role == "ADMIN" || role == "OWNER" || orgRolesFn == nil {
+		return nil
+	}
+	if v, ok := r.Context().Value(ctxKeyOrgRoles{}).([]string); ok {
+		return v
+	}
+	roles := orgRolesFn(EmployeeIDFromContext(r))
+	// تخزين بالطلب: نفس الطلب يفحص الدور أكثر من مرة
+	*r = *r.WithContext(context.WithValue(r.Context(), ctxKeyOrgRoles{}, roles))
+	return roles
+}
+
+// HasRole دوره الأصلي، أو المراقب بالصلاحية، أو دور فعلي من منصبه — واحد من roles.
+func HasRole(r *http.Request, roles ...string) bool {
+	role := RoleFromContext(r)
+	for _, want := range roles {
+		if role == want {
+			return true
+		}
+		if want == "MONITOR" && IsMonitor(r) {
+			return true
+		}
+	}
+	for _, or := range OrgRoles(r) {
+		for _, want := range roles {
+			if or == want {
+				return true
+			}
+		}
+	}
+	return false
+}
+
 // EffectiveRole مثل RoleFromContext، بس صاحب صلاحية monitoring (من غير
-// المدير/المالك) يرجع "MONITOR" — للفحوصات المبنية على اسم الدور.
+// المدير/المالك) يرجع "MONITOR"، وصاحب المنصب يرجع دور وحدته (دازاي 11-01)
+// — للفحوصات المبنية على اسم الدور.
 func EffectiveRole(r *http.Request) string {
 	role := RoleFromContext(r)
-	if role != "ADMIN" && role != "OWNER" && IsMonitor(r) {
+	if role == "ADMIN" || role == "OWNER" {
+		return role
+	}
+	if IsMonitor(r) {
 		return "MONITOR"
+	}
+	if ors := OrgRoles(r); len(ors) > 0 {
+		for _, p := range model.OrgRolePriority {
+			for _, or := range ors {
+				if or == p {
+					return p
+				}
+			}
+		}
 	}
 	return role
 }
@@ -738,4 +797,14 @@ func SkipInStealth() func(http.Handler) http.Handler {
 func IsOwner(r *http.Request) bool {
 	role, _ := r.Context().Value(ContextRole).(string)
 	return role == "OWNER"
+}
+
+// hasOrgRoleIn دور فعلي من المنصب ضمن المسموح (ADMIN/OWNER ما ينعطون من المنصب).
+func hasOrgRoleIn(r *http.Request, allowed map[string]bool) bool {
+	for _, or := range OrgRoles(r) {
+		if allowed[or] {
+			return true
+		}
+	}
+	return false
 }

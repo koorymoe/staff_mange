@@ -6,6 +6,8 @@ import (
 	"time"
 
 	"github.com/jmoiron/sqlx"
+
+	"staffmange-api/internal/model"
 )
 
 // ═══ فواتير متأخرة على المحاسب — قرار (ع) 10-16 ═══
@@ -52,7 +54,7 @@ func (h *LateInvoicesHandler) List(w http.ResponseWriter, r *http.Request) {
 		ID   string `db:"id" json:"id"`
 		Name string `db:"name" json:"name"`
 	}{}
-	if err := h.db.Select(&acc, `SELECT id, name FROM "Employee" WHERE status = 'ACTIVE' AND role::text = 'FINANCE' ORDER BY name`); err != nil {
+	if err := h.db.Select(&acc, `SELECT id, name FROM "Employee" WHERE status = 'ACTIVE' AND (role::text = 'FINANCE' OR id IN `+model.OrgRoleEmployeesSQL("ARRAY['FINANCE']")+`) ORDER BY name`); err != nil {
 		log.Printf("late invoices accountants: %v", err)
 	}
 	WriteJSON(w, http.StatusOK, map[string]any{"hours": lateInvoiceHours, "rows": rows, "accountants": acc})

@@ -295,7 +295,7 @@ func (h *BookingAuditHandler) Audit(w http.ResponseWriter, r *http.Request) {
 // كل واحد يشوف الي يخصه: الجودة تشوف «غير مطابق»، والإداري يشوف
 // «خطأ سعر»، والرقابة والمالك يشوفون الاثنين.
 func (h *BookingAuditHandler) ListIssues(w http.ResponseWriter, r *http.Request) {
-	role := middleware.RoleFromContext(r)
+	role := middleware.EffectiveRole(r)
 	var kinds []string
 	switch role {
 	case "QUALITY_ENGINEER":

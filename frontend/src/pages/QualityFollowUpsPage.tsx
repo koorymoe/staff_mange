@@ -6,7 +6,7 @@ import EntityIdentity from '../components/EntityIdentity'
 import { formatCustomerCode } from '../utils/identity'
 import BookingExecutionSummary from '../components/BookingExecutionSummary'
 import AgentActionNotice from '../components/AgentActionNotice'
-import { useSession } from '../session'
+import { useSession, hasRole } from '../session'
 import BookingCodeChip from '../components/BookingCodeChip'
 
 const statusLabels: Record<QualityFollowUp['status'], string> = {
@@ -50,7 +50,7 @@ export default function QualityFollowUpsPage({ embedded }: EmbeddedProps = {}) {
   // ⚠️ والخادم يفرض نفس الفصل (quality_follow_up_handler.go:
   // blockMonitorWrite) — التعطيل هنا حتى ما يضغط ويطلعله رفض،
   // مو حماية.
-  const canContact = employee?.role === 'QUALITY_ENGINEER' || employee?.role === 'ADMIN'
+  const canContact = hasRole(employee, 'QUALITY_ENGINEER', 'ADMIN')
   const canSeeDetail = canContact
     || (employee?.role === 'MONITOR' || permissions.includes('monitoring'))
     || employee?.actualRole === 'OWNER' 

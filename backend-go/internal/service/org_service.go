@@ -54,6 +54,26 @@ func (s *OrgService) Seed() error {
 			}
 		}
 	}
+	// (دازاي 11-01) الصلاحيات الي چانت برّا الحزم — مرة وحدة
+	var done int
+	if err := s.db.Get(&done, `SELECT count(*) FROM "OrgGovernorState" WHERE key = 'bundle_additions_1101'`); err == nil && done == 0 {
+		for _, a := range model.OrgBundleAdditions {
+			if _, ownerOnly := model.PermissionOwnerOnly[a.Perm]; ownerOnly {
+				continue
+			}
+			res, err := s.db.Exec(`INSERT INTO "OrgBundle" (scope, permission, "headOnly")
+				SELECT $1, name, $3 FROM "Permission" WHERE name = $2 ON CONFLICT DO NOTHING`, a.Scope, a.Perm, a.Head)
+			if err != nil {
+				return err
+			}
+			if k, _ := res.RowsAffected(); k > 0 {
+				changed = true
+			}
+		}
+		if _, err := s.db.Exec(`INSERT INTO "OrgGovernorState"(key, value) VALUES ('bundle_additions_1101', now()::text) ON CONFLICT (key) DO NOTHING`); err != nil {
+			return err
+		}
+	}
 	if changed {
 		return s.resyncAll("صلاحيات حسب المنصب")
 	}

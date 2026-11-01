@@ -53,7 +53,7 @@ func (h *StaffRequestHandler) Create(w http.ResponseWriter, r *http.Request) {
 func (h *StaffRequestHandler) List(w http.ResponseWriter, r *http.Request) {
 	role := middleware.RoleFromContext(r)
 	requesterID := middleware.EmployeeIDFromContext(r)
-	if (role == "ADMIN" || role == "HR_COORDINATOR") && r.URL.Query().Get("mine") != "1" {
+	if (role == "ADMIN" || middleware.HasRole(r, "HR_COORDINATOR")) && r.URL.Query().Get("mine") != "1" {
 		requesterID = ""
 	}
 	list, err := h.repo.List(requesterID)

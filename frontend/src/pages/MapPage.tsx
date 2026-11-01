@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { useSession } from '../session'
+import { useSession, hasRole } from '../session'
 import { useSaveGuard } from '../useSaveGuard'
 import SaveError from '../components/SaveError'
 import { api } from '../api'
@@ -295,7 +295,7 @@ export default function MapPage() {
     }
   }
 
-  const isCoordinator = employee?.role === 'ADMIN' || employee?.role === 'HR_COORDINATOR'
+  const isCoordinator = hasRole(employee, 'ADMIN', 'HR_COORDINATOR')
   const bookingsWithoutLocation = bookings.filter(b =>
     !b.mapLatitude && !b.mapLongitude &&
     ['PENDING', 'CONFIRMED', 'IN_PROGRESS'].includes(b.status)

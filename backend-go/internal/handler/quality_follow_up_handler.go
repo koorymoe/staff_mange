@@ -40,7 +40,7 @@ func NewQualityFollowUpHandler(s *service.QualityFollowUpService, p *repository.
 // عليها مو محاولة تجاوز.
 func (h *QualityFollowUpHandler) blockMonitorWrite(w http.ResponseWriter, r *http.Request) bool {
 	role := middleware.RoleFromContext(r)
-	if role == "ADMIN" || role == "OWNER" || role == "QUALITY_ENGINEER" {
+	if role == "ADMIN" || role == "OWNER" || middleware.HasRole(r, "QUALITY_ENGINEER") {
 		return false
 	}
 	blocked := role == "MONITOR"

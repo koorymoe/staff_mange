@@ -44,6 +44,11 @@ func (h *SurveyPhotoHandler) hasAny(r *http.Request, roles map[string]bool, perm
 	if roles[middleware.RoleFromContext(r)] {
 		return true
 	}
+	for role := range roles {
+		if middleware.HasRole(r, role) {
+			return true
+		}
+	}
 	for _, p := range perms {
 		if ok, err := h.perms.HasPermission(middleware.EmployeeIDFromContext(r), p); err == nil && ok {
 			return true

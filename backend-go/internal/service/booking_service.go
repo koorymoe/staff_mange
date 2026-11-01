@@ -597,7 +597,7 @@ func (s *BookingService) SetSupervisor(id string, employeeID *string) (*model.Bo
 	}
 	if employeeID != nil {
 		employee, err := s.employees.FindByID(*employeeID)
-		if err != nil || employee == nil || (employee.Role != "PROJECT_MANAGER" && !employee.IsLeader) {
+		if err != nil || employee == nil || (employee.Role != "PROJECT_MANAGER" && !employee.IsLeader && !s.employees.HasOrgRole(employee.ID, "PROJECT_MANAGER")) {
 			return nil, errors.New("يجب أن يكون تيم ليدر أو مدير مشاريع")
 		}
 	}

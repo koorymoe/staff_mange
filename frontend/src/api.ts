@@ -117,6 +117,8 @@ export type EmployeeRole =
   | 'OWNER'
 
 export interface Employee {
+  /** الأدوار الفعلية من منصبه بالهيكل (دازاي 11-01) — من /auth/me */
+  orgRoles?: string[]
   id: string
   name: string
   certificate: string | null

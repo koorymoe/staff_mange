@@ -104,6 +104,8 @@ type Employee struct {
 
 	Skills           []EmployeeSkillDetail `db:"-" json:"skills"`
 	HasRequiredSkill *bool                 `db:"-" json:"hasRequiredSkill,omitempty"`
+	// OrgRoles الأدوار الفعلية من منصبه بالهيكل (دازاي 11-01) — تنملي بـ/auth/me بس
+	OrgRoles []string `db:"-" json:"orgRoles,omitempty"`
 }
 
 // EffectiveRoles الدور الأساسي ومعاه أدواره الثانوية — تُستعمل **حصراً**

@@ -12,7 +12,7 @@ import AdminHome from '../components/AdminHome'
 import ShiftEndCard from '../components/ShiftEndCard'
 import { api } from '../api'
 import type { Booking, Expense, StaffRequest, LeaveRequest, InventoryCheck, FinanceSummary, DailyAuditReport, TodayPulse, Employee } from '../api'
-import { useSession, hasGpsSkill } from '../session'
+import { useSession, hasGpsSkill, hasRole } from '../session'
 import MeetingRequests from '../components/MeetingRequests'
 import MyDirectives from '../components/MyDirectives'
 import MyOrgCard from '../components/MyOrgCard'
@@ -184,7 +184,7 @@ function StaffDashboard() {
     if (!employee) return
     // مدير المشاريع مدير مو فني — ما ينستلم مهام مثل الفنيين
     const isTech = employee.role === 'TECHNICIAN' || employee.role === 'TECHNICAL' || employee.isLeader
-    const needsFinance = employee.role === 'FINANCE' || permissions.includes('monitoring')
+    const needsFinance = hasRole(employee, 'FINANCE') || permissions.includes('monitoring')
     // الفني/التقني بالميدان (مو ليدر): صفحته الرئيسية = مهامه هو، مو أكثر.
     // كان ينزّل كل حجوزات الشركة ويفلترها بالمتصفح حتى يلكه مهامه — يعني
     // كل ما تكبر الشركة تصير صفحته أبطأ، وهو أصلاً ما إله علاقة بالباقي.
@@ -251,7 +251,7 @@ function StaffDashboard() {
     if (fieldOnly) api.getMyLastInventoryCheck().then(setLastCheck).catch(() => setLastCheck(null))
 
     // طلبات الكادر المعلقة — تنبيه لإداري الكوادر والأدمن
-    if (employee.role === 'ADMIN' || employee.role === 'HR_COORDINATOR') {
+    if (employee.role === 'ADMIN' || hasRole(employee, 'HR_COORDINATOR')) {
       api.getStaffRequests()
         .then(reqs => setPendingStaffReqs(reqs.filter(r => r.status === 'PENDING' || r.status === 'APPROVED')))
         .catch(() => setPendingStaffReqs([]))
@@ -267,7 +267,7 @@ function StaffDashboard() {
       .catch(() => setOpenLeaves([]))
 
     // إحصائيات المشاريع للوحة مدير المشاريع (أو الأدمن)
-    if (employee.role === 'PROJECT_MANAGER' || employee.role === 'ADMIN' || permissions.includes('project_management')) {
+    if (hasRole(employee, 'PROJECT_MANAGER') || employee.role === 'ADMIN' || permissions.includes('project_management')) {
       const token = localStorage.getItem('authToken')
       fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:4000/api'}/projects`, {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
@@ -381,7 +381,7 @@ function StaffDashboard() {
       gradient: 'from-purple-500 via-purple-600 to-fuchsia-700',
       iconPath: 'M12 15a3 3 0 100-6 3 3 0 000 6z M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9',
       path: '/quality',
-      visible: employee.role === 'QUALITY_ENGINEER' || permissions.includes('quality_control'),
+      visible: hasRole(employee, 'QUALITY_ENGINEER') || permissions.includes('quality_control'),
     },
     {
       title: 'طلبات GPS المعلقة',
@@ -389,7 +389,7 @@ function StaffDashboard() {
       gradient: 'from-amber-500 via-amber-600 to-orange-700',
       iconPath: 'M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z',
       path: '/gps/requests',
-      visible: employee.role === 'GPS_ADMIN',
+      visible: hasRole(employee, 'GPS_ADMIN'),
     },
     {
       title: 'عرض سعر جديد',
@@ -413,7 +413,7 @@ function StaffDashboard() {
       gradient: 'from-amber-500 via-amber-600 to-amber-700',
       iconPath: 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4',
       path: '/missions',
-      visible: isAdmin || employee.role === 'HR_COORDINATOR' || permissions.includes('monitoring'),
+      visible: isAdmin || hasRole(employee, 'HR_COORDINATOR') || permissions.includes('monitoring'),
     },
   ].filter(c => c.visible)
 
@@ -493,7 +493,7 @@ function StaffDashboard() {
           «شنو صاير اليوم» و«شغلي اليوم» ولوحة الشرف ومخطط الحركة.
           ⚠️ لمن عنده شغل بالحجوزات بس — الفني ما يهمه «شكد مثبّت
           ينتظر كادر»، وعرضها له يحوّل الرئيسية لضجيج. */}
-      {(isAdmin || employee.actualRole === 'OWNER' || employee.role === 'HR_COORDINATOR'
+      {(isAdmin || employee.actualRole === 'OWNER' || hasRole(employee, 'HR_COORDINATOR')
         || employee.role === 'MONITOR' || ['coordinator', 'view_bookings', 'monitoring'].some((p) => permissions.includes(p))) && (
         <TodayBoard finance={finance} />
       )}
@@ -912,7 +912,7 @@ function StaffDashboard() {
       })()}
 
       {/* ═══ Accountant Dashboard Panel ═══ */}
-      {employee.role === 'FINANCE' && (() => {
+      {hasRole(employee, 'FINANCE') && (() => {
         // المجاميع تجي من السيرفر محسوبة على كل الأرشيف المنجز — دقيقة
         // بالكامل. القائمة المعروضة تحت (آخر ٨) تكفيها آخر دفعة نزلت.
         // 🔴 الشغل داخل الشركة منشول من هنا: عدّاداته تجي من ملخّص
@@ -1347,7 +1347,7 @@ function StaffDashboard() {
 
           كل بطاقة تودّي لشاشتها بضغطة — الرقم بلا طريق يوصلك له
           يخلّي الإداري يشوف المشكلة وما يقدر يتصرّف. */}
-      {pulse && (isAdmin || employee.role === 'HR_COORDINATOR' || permissions.includes('coordinator')) && (
+      {pulse && (isAdmin || hasRole(employee, 'HR_COORDINATOR') || permissions.includes('coordinator')) && (
         <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
           <PulseCard
             label="حجوزات اليوم" value={pulse.todayBookings} icon="📅" tone="blue"
@@ -1373,7 +1373,7 @@ function StaffDashboard() {
       )}
 
       {/* ═══ Projects Panel — مدير المشاريع (نظرة سريعة على مراحل المشاريع من دون فتح الصفحة) ═══ */}
-      {!isAdmin && employee.role === 'PROJECT_MANAGER' && projectStats && (
+      {!isAdmin && hasRole(employee, 'PROJECT_MANAGER') && projectStats && (
         <div className="grid grid-cols-1 gap-4">
           <SystemPanel title="المشاريع" color="#8b5cf6" dotColor="bg-violet-400" actionLabel="عرض الكل" onAction={() => navigate('/projects')}>
             <div className="grid grid-cols-3 gap-3 sm:grid-cols-7">
@@ -1394,7 +1394,7 @@ function StaffDashboard() {
           شرطين: مهارة الجي بي اس *و* صلاحية gps_system الي ينطيها
           المدير بيده. قبل، مجرد تأشير المهارة كان يفتح اللوحة —
           فالفني العادي يلكه لوحة جي بي اس بلوحته وهي ما تخصه. */}
-      {!isAdmin && (employee.role === 'GPS_ADMIN'
+      {!isAdmin && (hasRole(employee, 'GPS_ADMIN')
         || (employee.role === 'TECHNICIAN' && hasGpsSkill(employee, gpsServiceId) && permissions.includes('gps_system'))) && (
         <div className="grid grid-cols-1 gap-4">
           <SystemPanel title="نظام GPS" color="#f59e0b" dotColor="bg-amber-400" actionLabel="عرض الكل" onAction={() => navigate('/gps')}>

@@ -905,7 +905,9 @@ export function isNavVisible(item: NavItem, ctx: NavContext, unitGranted = false
   // الفني والتقني العادي (مو ليدر) — قائمتهم مقفلة على شغلهم.
   // التقني نفس الفني بالميدان، بس يتولى أكثر من خدمة — فما إله شغل
   // بالشاشات الإدارية مثل ما ما إله شغل الفني.
-  const isPlainTechnician = (role === 'TECHNICIAN' || role === 'TECHNICAL') && !ctx.employee?.isLeader
+  // (دازاي 11-01) فني صار إله منصب إداري بالهيكل (محاسب، كوادر…) ما يبقى «فني بس»
+  const hasOrgRole = (ctx.employee?.orgRoles ?? []).length > 0
+  const isPlainTechnician = (role === 'TECHNICIAN' || role === 'TECHNICAL') && !ctx.employee?.isLeader && !hasOrgRole
   // unitGranted: صحيح لما يكون الموظف عنده صلاحية الوحدة الي هذا العنصر
   // داخلها — وقتها كل شي جوّا الوحدة يظهر له بدون فحص صلاحيات تفصيلية.
   
@@ -946,7 +948,7 @@ export function isNavVisible(item: NavItem, ctx: NavContext, unitGranted = false
     if (item.ownerOnly && ctx.employee?.actualRole !== 'OWNER') return false
     // كادر الميدان (فني أو ليدر): باب «الإدارة» ما يطلع لهم أبداً. شغل
     // الليدر الإداري موجود بمجموعة «العمل» مالته.
-    if (item.hideFromFieldStaff && (role === 'TECHNICIAN' || role === 'TECHNICAL')) return false
+    if (item.hideFromFieldStaff && (role === 'TECHNICIAN' || role === 'TECHNICAL') && !hasOrgRole) return false
     // الوحدات: بوابة صارمة. الوحدة ما تطلع أبداً إلا لمن عنده صلاحية الوحدة
     // نفسها (أو مدير النظام). قبل، الوحدة جانت تطلع لمجرد إنه ابن واحد جوّاها
     // مسموح بصلاحية عامة — فصار الموظف يشوف وحدات مو إلها علاقة بشغله ويتكرر
@@ -981,7 +983,9 @@ export function isNavVisible(item: NavItem, ctx: NavContext, unitGranted = false
         (!!item.anyPermission && item.anyPermission.some((p) => ctx.permissions.includes(p)))
 
       if (!hasOwnPermission) {
-        if (item.roles && role && !item.roles.includes(role as EmployeeRole)) {
+        // (دازاي 11-01) الدور من المنصب: صاحب منصب بالهيكل ياخذ أدوار وحدته الفعلية
+        const orgRoleOk = !!item.roles && (ctx.employee?.orgRoles ?? []).some((r) => item.roles!.includes(r as EmployeeRole))
+        if (item.roles && role && !item.roles.includes(role as EmployeeRole) && !orgRoleOk) {
           // ⚠️ التيم ليدر فني قبل كل شي — لازم يشوف شاشات الميدان
           // (مهامي، جردي، حساب الكلفة) حتى لو دوره مو TECHNICIAN.
           // بدون هذا كان لازم نخليه «ليدر **وفني**» بنفس الوقت حتى
@@ -1117,7 +1121,8 @@ export function isPathAllowed(path: string, ctx: NavContext): boolean | null {
   const self = SELF_SCOPED[target]
   // (ع) 10-16: صاحب صلاحية monitoring = مراقب بكل قاعدة مكتوبة على الدور (نفس الخادم).
   const asMon = role !== 'ADMIN' && ctx.permissions.includes('monitoring')
-  const roleOk = (rs?: EmployeeRole[]) => !!rs && (rs.includes(role as EmployeeRole) || (asMon && rs.includes('MONITOR')))
+  const roleOk = (rs?: EmployeeRole[]) => !!rs && (rs.includes(role as EmployeeRole) || (asMon && rs.includes('MONITOR'))
+    || (ctx.employee?.orgRoles ?? []).some((r) => rs.includes(r as EmployeeRole)))
   if (self && (roleOk(self.roles) || (self.leader && ctx.employee?.isLeader)
     || (self.anyPermission ?? []).some((p) => ctx.permissions.includes(p)))) return true
   // (ع) 10-19: الشرط مكتوب وما انطبق = ممنوع. چان يكمّل لـnull فتنفتح

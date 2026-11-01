@@ -64,7 +64,7 @@ func (r *NotificationRepository) CreateForRole(role, notifType, message string) 
 		INSERT INTO "Notification" (id, "employeeId", type, message)
 		SELECT gen_random_uuid()::text, id, $2, $3
 		FROM "Employee"
-		WHERE role = $1 AND status = 'ACTIVE'
+		WHERE status = 'ACTIVE' AND (role::text = $1 OR id IN `+model.OrgRoleEmployeesSQL("ARRAY[$1::text]")+`)
 	`, role, notifType, message)
 	return logFail("CreateForRole", role, notifType, err)
 }
@@ -131,7 +131,7 @@ func (r *NotificationRepository) CreateForRolesOrPermission(roles []string, perm
 		SELECT gen_random_uuid()::text, e.id, $3, $4
 		FROM "Employee" e
 		WHERE e.status = 'ACTIVE' AND (
-			e.role::text = ANY($1) OR EXISTS (
+			e.role::text = ANY($1) OR e.id IN `+model.OrgRoleEmployeesSQL("$1::text[]")+` OR EXISTS (
 				SELECT 1 FROM "EmployeePermission" ep
 				JOIN "Permission" p ON p.id = ep."permissionId"
 				WHERE ep."employeeId" = e.id AND p.name = $2))

@@ -27,10 +27,8 @@ func (h *ProjectPaymentHandler) has(r *http.Request, roles []string, perms ...st
 	if role == "ADMIN" || role == "OWNER" {
 		return true
 	}
-	for _, x := range roles {
-		if role == x {
-			return true
-		}
+	if middleware.HasRole(r, roles...) {
+		return true
 	}
 	me := middleware.EmployeeIDFromContext(r)
 	for _, p := range perms {

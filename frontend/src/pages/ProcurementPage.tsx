@@ -3,7 +3,7 @@ import PurchaseControlPanel from '../components/PurchaseControlPanel'
 import { purchaseApi } from '../api'
 import { useSearchParams } from 'react-router-dom'
 import { api, procurementTypeLabels, type ProcurementRequest, type ProcurementRequestType, type ProcurementStats, type Booking } from '../api'
-import { SessionContext } from '../session'
+import { SessionContext, hasRole } from '../session'
 import BookingCodeChip from '../components/BookingCodeChip'
 
 const statusLabels: Record<string, string> = {
@@ -23,7 +23,7 @@ export default function ProcurementPage() {
   const { employee, permissions } = useContext(SessionContext)
   // توفير المواد وتحديد حالتها (توفير/رفض) يقتصر على إداري الكميات والأدمن فقط —
   // أي موظف ثاني (فني، مدير مشاريع، مراقب...) يشوف الطلبات وحالتها بس بدون تحكم.
-  const canManageProcurement = employee?.role === 'ADMIN' || employee?.actualRole === 'OWNER' || employee?.role === 'PROCUREMENT_ADMIN'
+  const canManageProcurement = employee?.role === 'ADMIN' || employee?.actualRole === 'OWNER' || hasRole(employee, 'PROCUREMENT_ADMIN')
   const isAdminLike = employee?.role === 'ADMIN' || employee?.actualRole === 'OWNER'
   // كل نوع طلب له صلاحية مستقلة تُمنح يدوياً بصفحة الصلاحيات — ما تنجر مع أي دور.
   // الأدمن/المالك يقدر ينشئ الاثنين دائماً.
@@ -67,7 +67,7 @@ export default function ProcurementPage() {
   const [quoteThreshold, setQuoteThreshold] = useState(500000)
   const [quotes, setQuotes] = useState<{ supplierId: string; totalPrice: string }[]>([])
   useEffect(() => { purchaseApi.policy().then((p) => setQuoteThreshold(p.quoteThreshold)).catch(() => {}) }, [])
-  const canVerifyPurchase = isAdminLike || employee?.role === 'FINANCE' || permissions.includes('finance_audit')
+  const canVerifyPurchase = isAdminLike || hasRole(employee, 'FINANCE') || permissions.includes('finance_audit')
   const canWatchPurchase = canVerifyPurchase || employee?.role === 'MONITOR' || permissions.includes('monitoring')
 
   const loadData = async () => {

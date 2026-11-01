@@ -94,7 +94,7 @@ export default function DailyAuditPage() {
   // المالك ينطي مفتاح التدقيق لمراقب حتى يكمل بدل المحاسب، الأزرار
   // تبقى مخفية وما ينفع المنح بشي. هسه القرار بالمفتاح:
   // `finance_audit` (أو المحاسب/المدير)، ومنو ما عنده **يشوف ولا يعدّل**.
-  const canDecide = canAuditFinance(employee?.role, permissions)
+  const canDecide = canAuditFinance(employee?.role, permissions, employee?.orgRoles)
 
   // ⚠️ الخطأ چان ينبلع وrep تنرجع null — وnull هي **نفس** حالة ما
   // قبل التحميل، فأي رفض صلاحية أو خطأ خادم يطلع «جاري التحميل...»

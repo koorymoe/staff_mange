@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react'
 import { api, type Expense } from '../api'
-import { useSession } from '../session'
+import { useSession, hasRole } from '../session'
 
 export default function ExpensesReview() {
   // الأزرار بس لمن الخادم يقبل — وإلا كل ضغطة تنحسب مخالفة.
   const { employee, permissions } = useSession()
-  const canDecide = employee?.role === 'ADMIN' || employee?.role === 'OWNER' || employee?.role === 'FINANCE'
+  const canDecide = hasRole(employee, 'ADMIN', 'OWNER', 'FINANCE')
     || permissions.includes('finance_audit') || permissions.includes('expenses_manage')
   const [expenses, setExpenses] = useState<Expense[]>([])
   const [loading, setLoading] = useState(true)

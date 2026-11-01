@@ -1,7 +1,7 @@
 import { Fragment, useEffect, useState, useMemo } from 'react'
 import { api, type PersonalTool, type VehicleTool, type OnDemandTool, type ToolRequest, type ToolRequestItem, type Employee, type InventoryCheck, type PersonalToolTemplateItem,
   type PersonalToolExemption, type BookingToolCheck, type VehicleToolCheck, type Vehicle, type PersonalToolEvent, type PersonalToolStatus, personalToolStatusLabels, personalToolStatusColors } from '../api'
-import { useSession } from '../session'
+import { useSession, hasRole } from '../session'
 import { roleLabel } from '../roleLabels'
 
 // تطبيع اسم الأداة للمقارنة: قصّ الأطراف وتوحيد المسافات الداخلية.
@@ -73,17 +73,17 @@ export default function InventoryPage() {
   // "جرد الأدوات" الآن صلاحية مفعّلة فعلياً بالباك-إند (requireHROrInventory) —
   // أي موظف مُنح صلاحية inventory من صفحة الصلاحيات يقدر يدير الأدوات، حتى لو
   // دوره مختلف عن HR_COORDINATOR (مثلاً PROCUREMENT_ADMIN).
-  const canManageInventory = isAdmin || currentUser?.role === 'HR_COORDINATOR' || permissions.includes('inventory')
+  const canManageInventory = isAdmin || hasRole(currentUser, 'HR_COORDINATOR', 'PROCUREMENT_ADMIN') || permissions.includes('inventory')
   // إداري الكميات مسؤول عن توفير وإضافة "أدوات حسب الحاجة" (نفس مسؤوليته
   // بطلبات المواد الناقصة من الموظفين) — بالإضافة للأدمن.
-  const canManageOnDemand = isAdmin || currentUser?.role === 'PROCUREMENT_ADMIN'
+  const canManageOnDemand = isAdmin || hasRole(currentUser, 'PROCUREMENT_ADMIN')
   // موافقة/رفض طلبات الأدوات صارت صلاحية مستقلة (tool_requests_approve) بدل
   // ما تكون مشتقة من "جرد الأدوات" أو من الدور — إداري الكميات كان ينحرم منها
   // مهما انمنحت له صلاحيات ثانية. الأدوار القديمة باقية حتى ما ينقطع أحد.
   const canApproveRequests =
     isAdmin ||
     permissions.includes('tool_requests_approve') ||
-    currentUser?.role === 'HR_COORDINATOR' ||
+    hasRole(currentUser, 'HR_COORDINATOR') ||
     (currentUser?.role === 'MONITOR' || permissions.includes('monitoring'))
   // حذف الطلب يمحي أثره نهائياً — لمدير النظام والمالك فقط، مطابق للباك إند.
   const canDeleteRequests = isAdmin

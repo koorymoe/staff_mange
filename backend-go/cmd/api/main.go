@@ -601,6 +601,8 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 		return err == nil && ok
 	}
 	middleware.SetMonitorPermChecker(monitorPerm)
+	// (دازاي 11-01) الدور من المنصب: صاحب منصب بالهيكل ياخذ دور وحدته الفعلي
+	middleware.SetOrgRolesFn(func(employeeID string) []string { return repository.OrgEffectiveRoles(db, employeeID) })
 	service.MonitorPermChecker = monitorPerm
 	middleware.SetSeenRecorder(func(employeeID string) {
 		presenceMu.Lock()

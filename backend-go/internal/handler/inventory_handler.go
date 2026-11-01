@@ -332,7 +332,7 @@ func (h *InventoryHandler) UpdateOnDemandTool(w http.ResponseWriter, r *http.Req
 // مسجّل دخول — يعني الفني يشوف منو طلب شنو وليش من F12.
 func (h *InventoryHandler) ListToolRequests(w http.ResponseWriter, r *http.Request) {
 	scope := r.URL.Query().Get("employeeId")
-	switch middleware.RoleFromContext(r) {
+	switch middleware.EffectiveRole(r) {
 	case "OWNER", "ADMIN", "PROCUREMENT_ADMIN", "HR_COORDINATOR":
 		// هذول شغلهم يشوفون الطلبات كلها ويوافقون عليها
 	default:

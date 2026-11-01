@@ -1,7 +1,7 @@
 import { Fragment, useEffect, useRef, useState } from 'react'
 import { api, type Booking, type Employee, type VehicleOption } from '../api'
 import { formatCustomerCode } from '../utils/identity'
-import { useSession } from '../session'
+import { useSession, hasRole } from '../session'
 import AgentActionNotice from '../components/AgentActionNotice'
 import { MapViewer } from '../components/MapLazy'
 import { formatScheduleWindow } from '../utils/schedule'
@@ -148,7 +148,7 @@ export default function BookingsList({ bucket = 'all', focus }: { bucket?: Booki
   }
   const canMarkWaiting = isAdmin || employee?.actualRole === 'OWNER' || permissions.includes('coordinator')
   const canRequestDelete = isAdmin || employee?.actualRole === 'OWNER' ||
-    employee?.role === 'HR_COORDINATOR' || (employee?.role === 'MONITOR' || permissions.includes('monitoring')) ||
+    hasRole(employee, 'HR_COORDINATOR') || (employee?.role === 'MONITOR' || permissions.includes('monitoring')) ||
     permissions.includes('booking_delete_request')
 
   // الزبون ما رد: ينزاح الحجز لطابور «ما وصلت للتنفيذ» فوراً بلا

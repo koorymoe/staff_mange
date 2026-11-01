@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { api, LEADER_SKILLS, type Employee, type Service, type Stats } from '../api'
 import EmployeeHRPanel from '../components/EmployeeHRPanel'
 import EmployeeAvatar from '../components/EmployeeAvatar'
-import { useSession } from '../session'
+import { useSession, hasRole } from '../session'
 import EmployeeHandoverDialog from '../components/EmployeeHandoverDialog'
 import { useSaveGuard } from '../useSaveGuard'
 import SaveError from '../components/SaveError'
@@ -91,7 +91,7 @@ export default function Employees({ embedded }: { embedded?: boolean } = {}) {
   // POST /api/employees). إخفاء الزر لحاله ما يمنع أحد يدزّ الطلب بيده.
   const isOwnerUser = currentUser?.actualRole === 'OWNER'
   const canCreateAccounts = isOwnerUser || userPermissions.includes('employee_create')
-  const isHR = currentUser?.role === 'HR_COORDINATOR'
+  const isHR = hasRole(currentUser, 'HR_COORDINATOR')
   const [employees, setEmployees] = useState<Employee[]>([])
   const [services, setServices] = useState<Service[]>([])
   const [stats, setStats] = useState<Stats | null>(null)
