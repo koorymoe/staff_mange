@@ -10,6 +10,7 @@ export type OrgClause = {
 export const orgRegulations = () => apiRequest<OrgClause[]>('/org/regulations')
 export type DeskIssue = {
   id: string
+  source?: string | null
   title: string
   problem: string
   impact: string

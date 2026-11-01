@@ -97,6 +97,7 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
     let issues = [
       {
         id: 'low',
+        source: 'MONITOR',
         title: 'مشكلة ثانوية',
         problem: 'تفاصيل مشكلة تجريبية ثانية',
         impact: 'تأثير محدود',
@@ -111,6 +112,8 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
       },
       {
         id: 'high',
+        source:
+          options.issueSource === undefined ? 'MATRIX' : options.issueSource,
         title: 'تأخير المشاريع',
         problem: 'تأخير تجريبي بمواعيد المشاريع',
         impact: 'تأخير التسليم للزبون',
@@ -469,6 +472,94 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
     'تأخير المشاريع',
   );
   await p.getByText('م2/ف1 · الدقة والسرعة', { exact: true }).waitFor();
+  const sourceCard = p.locator('.desk-issue').filter({
+    has: p.getByRole('heading', { name: 'تأخير المشاريع', exact: true }),
+  });
+  await sourceCard.getByText('🤖 شخّصها ماتركس', { exact: true }).waitFor();
+  await p
+    .locator('.desk-issue')
+    .filter({
+      has: p.getByRole('heading', { name: 'مشكلة ثانوية', exact: true }),
+    })
+    .getByText('👁️ من المراقب', { exact: true })
+    .waitFor();
+  const sourceButtons = await sourceCard.getByRole('button').allTextContents();
+  assert(
+    sourceButtons.includes('خطة الحل') &&
+      sourceButtons.includes('تغيير الحالة'),
+  );
+  for (const dark of [false, true]) {
+    await p.evaluate(
+      (d) => document.documentElement.classList.toggle('dark', d),
+      dark,
+    );
+    const ratios = await p.locator('.desk-badge').evaluateAll((nodes) => {
+      const lum = (s) =>
+        s
+          .match(/[\d.]+/g)
+          .slice(0, 3)
+          .map(Number)
+          .map((v) => {
+            v /= 255;
+            return v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4;
+          })
+          .reduce((a, v, i) => a + v * [0.2126, 0.7152, 0.0722][i], 0);
+      return nodes
+        .filter((el) => /شخّصها ماتركس|من المراقب/.test(el.textContent))
+        .map((el) => {
+          const s = getComputedStyle(el),
+            a = lum(s.color),
+            b = lum(s.backgroundColor);
+          return (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05);
+        });
+    });
+    assert.equal(ratios.length, 2);
+    assert(
+      ratios.every((r) => r >= 4.5),
+      `Source badge contrast ${ratios}`,
+    );
+    await p.screenshot({
+      path: `/tmp/org-desk-sources-mobile${dark ? '-dark' : ''}.png`,
+      fullPage: true,
+    });
+  }
+  await p.setViewportSize({ width: 1366, height: 900 });
+  for (const dark of [false, true]) {
+    await p.evaluate(
+      (d) => document.documentElement.classList.toggle('dark', d),
+      dark,
+    );
+    await p.screenshot({
+      path: `/tmp/org-desk-sources-desktop${dark ? '-dark' : ''}.png`,
+      fullPage: true,
+    });
+  }
+  await p.setViewportSize({ width: 390, height: 844 });
+  await p.evaluate(() => document.documentElement.classList.remove('dark'));
+  for (const issueSource of ['HUMAN', 'FUTURE_SOURCE', null]) {
+    const neutral = await mount(owner, { issueSource });
+    const card = neutral.page.locator('.desk-issue').filter({
+      has: neutral.page.getByRole('heading', {
+        name: 'تأخير المشاريع',
+        exact: true,
+      }),
+    });
+    await card.waitFor();
+    assert.equal(
+      await card.getByText('🤖 شخّصها ماتركس', { exact: true }).count(),
+      0,
+    );
+    assert.equal(
+      await card.getByText('👁️ من المراقب', { exact: true }).count(),
+      0,
+    );
+    assert.deepEqual(
+      await card.getByRole('button').allTextContents(),
+      sourceButtons,
+      'Source must not hide old actions',
+    );
+    await neutral.page.close();
+  }
   await p.screenshot({
     path: '/tmp/org-desk-issues-mobile.png',
     fullPage: true,
