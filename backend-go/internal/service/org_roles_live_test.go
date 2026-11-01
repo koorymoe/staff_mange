@@ -56,7 +56,7 @@ func TestOrgEffectiveRoles_Live(t *testing.T) {
 	db.Exec(`DELETE FROM "Notification" WHERE type IN ('test_orgrole', 'test_orgrole2')`)
 	var hasRemote int
 	db.Get(&hasRemote, `SELECT count(*) FROM "EmployeePermission" ep JOIN "Permission" p ON p.id = ep."permissionId" WHERE ep."employeeId" = $1 AND p.name = 'remote_hours_self'`, emp)
-	if hasRemote != 1 {
-		t.Fatal("الصلاحيات المضافة (العمل من البيت) ما وصلت")
+	if hasRemote != 0 {
+		t.Fatal("العمل من البيت ما ينعطي بالمنصب — بس يدوي")
 	}
 }

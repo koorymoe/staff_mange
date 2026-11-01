@@ -74,6 +74,18 @@ func (s *OrgService) Seed() error {
 			return err
 		}
 	}
+	// (دازاي 11-01) «ساعات العمل من البيت» تنشال من حزم المنصب — بس بالمنح اليدوي
+	var rhDone int
+	if err := s.db.Get(&rhDone, `SELECT count(*) FROM "OrgGovernorState" WHERE key = 'remote_hours_out_1101'`); err == nil && rhDone == 0 {
+		if res, err := s.db.Exec(`DELETE FROM "OrgBundle" WHERE permission = 'remote_hours_self'`); err != nil {
+			return err
+		} else if k, _ := res.RowsAffected(); k > 0 {
+			changed = true
+		}
+		if _, err := s.db.Exec(`INSERT INTO "OrgGovernorState"(key, value) VALUES ('remote_hours_out_1101', now()::text) ON CONFLICT (key) DO NOTHING`); err != nil {
+			return err
+		}
+	}
 	// (دازاي 11-01) جدول الصلاحيات المقترح — مرة وحدة، وبس للإدارة الي جدولها فارغ
 	var doaDone int
 	if err := s.db.Get(&doaDone, `SELECT count(*) FROM "OrgGovernorState" WHERE key = 'doa_seed_1101'`); err == nil && doaDone == 0 {

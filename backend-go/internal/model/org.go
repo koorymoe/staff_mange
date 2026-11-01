@@ -140,15 +140,7 @@ var OrgBundleAdditions = []OrgBundleAddition{
 	{"admin", "departments_manage", true},
 	{"admin", "manage_services", true},
 	{"eng.projects", "project_create_only", false},
-	// العمل من البيت لنفسه — لكل وحدة
-	{"admin.monitoring", "remote_hours_self", false}, {"admin.accounts", "remote_hours_self", false},
-	{"admin.oversight", "remote_hours_self", false}, {"ops.audit", "remote_hours_self", false},
-	{"ops.fleet", "remote_hours_self", false}, {"ops.staff", "remote_hours_self", false},
-	{"ops.bookings", "remote_hours_self", false}, {"bizdev.tech", "remote_hours_self", false},
-	{"bizdev.training", "remote_hours_self", false}, {"eng.projects", "remote_hours_self", false},
-	{"eng.design", "remote_hours_self", false}, {"quality.followup", "remote_hours_self", false},
-	{"supply.procurement", "remote_hours_self", false}, {"contracts.media", "remote_hours_self", false},
-	{"it.main", "remote_hours_self", false},
+	// (دازاي 11-01) «ساعات العمل من البيت» ما تنعطي بالمنصب — بس بصلاحية يدوية
 }
 
 // OrgAuthorityDefault صف مقترح بجدول الصلاحيات (DOA).
