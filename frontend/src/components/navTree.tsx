@@ -128,6 +128,7 @@ export const navItems: NavItem[] = [
   { ownerOnly: true, to: '/ai-agents', label: '🤖 وكلاء الذكاء', icon: <></>, roles: ['ADMIN'] },
   { to: '/ai-suggestions', label: '🧠 اقتراحات الذكاء', icon: <></>, roles: ['ADMIN'] },
   { to: '/org', label: '🏛️ الهيكل التنظيمي', icon: <></>, roles: ['ADMIN'] },
+  { to: '/org/directors-ranking', label: '🏆 تصنيف المدراء', icon: <></>, roles: ['ADMIN'] },
   { to: '/my-org', label: '🏛️ مكاني', icon: <></> },
   { to: '/org/desk', label: '🏛️ مكتب الإدارة', icon: <></> },
   { to: '/voice-terms', label: '👂 قاموس الأذن', icon: <></>, roles: ['ADMIN'] },
@@ -1206,7 +1207,7 @@ export function isNavVisible(item: NavItem, ctx: NavContext, unitGranted = false
   if (item.to === '/my-org') return !!ctx.employee && !!ctx.orgMemberships?.length && !orgDeskAllowed(ctx.employee, ctx.orgMemberships)
   if (item.to === '/org/desk') return orgDeskAllowed(ctx.employee, ctx.orgMemberships)
   // These APIs are admin-only even when a whole unit is granted to staff.
-  if (['/voice-terms', '/ai-suggestions', '/org', '/org/assign'].includes(item.to) && role !== 'ADMIN' && ctx.employee?.actualRole !== 'OWNER') return false
+  if (['/voice-terms', '/ai-suggestions', '/org', '/org/assign', '/org/directors-ranking'].includes(item.to) && role !== 'ADMIN' && ctx.employee?.actualRole !== 'OWNER') return false
   const hasMonitor = role === 'MONITOR' || ctx.permissions.includes('monitoring')
   // قرار (ع) 10-08: مهندس الجودة يشوف شغله بس — صلاحية auditing ما تعامله كمراقب بالقائمة
   // (وشاشات المراقب نفسها عليها hideForRoles: QUALITY_ENGINEER).
@@ -1483,6 +1484,7 @@ type RouteRule = { roles?: EmployeeRole[]; anyPermission?: string[]; leader?: bo
 const GPS_DATA: RouteRule = { roles: ['OWNER', 'SALES'], anyPermission: ['gps_system'] } // requireGpsData
 const ROUTE_RULES: Record<string, RouteRule> = {
   '/org/assign': { roles: ['ADMIN'] },
+  '/org/directors-ranking': { roles: ['ADMIN'] },
   '/whatsapp-conversations': { anyPermission: ['quality_control', 'coordinator'] },
   '/booking-delete-requests': { roles: ['OWNER', 'MONITOR'], anyPermission: ['booking_delete_approve'] }, // requireDeleteApprove
   '/extra-tasks': { anyPermission: ['extra_tasks_assign'] }, // requireExtraTaskAssign

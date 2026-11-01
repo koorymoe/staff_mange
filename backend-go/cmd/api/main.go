@@ -3007,6 +3007,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 		mux.Handle("POST /api/org/directives/{id}/archive", middleware.Chain(http.HandlerFunc(orgHandler.ArchiveDirective), requireAuth))
 		service.SetDirectiveDeps(orgService, func(emp, msg string) { _ = notificationRepo.Create(emp, "ORG_DIRECTIVE", msg) })
 		mux.Handle("GET /api/org/outputs", middleware.Chain(http.HandlerFunc(orgHandler.Outputs), requireAuth))
+		mux.Handle("GET /api/org/directors-ranking", middleware.Chain(http.HandlerFunc(orgHandler.DirectorsRanking), requireAuth, requireAdmin))
 		mux.Handle("PUT /api/org/tasks/{id}/clause", middleware.Chain(http.HandlerFunc(orgHandler.TaskClause), requireAuth, requireAdmin))
 		mux.Handle("PUT /api/org/kpi-criteria/{id}/clause", middleware.Chain(http.HandlerFunc(orgHandler.CriterionClause), requireAuth, requireAdmin))
 		mux.Handle("GET /api/org/my-items", middleware.Chain(http.HandlerFunc(orgHandler.MyItems), requireAuth))

@@ -470,3 +470,17 @@ func (h *OrgHandler) CriterionClause(w http.ResponseWriter, r *http.Request) {
 	}
 	WriteJSON(w, http.StatusOK, map[string]bool{"ok": true})
 }
+
+// GET /api/org/directors-ranking?period=YYYY-MM — تصنيف مدراء الإدارات (أدمن/مالك)
+func (h *OrgHandler) DirectorsRanking(w http.ResponseWriter, r *http.Request) {
+	period := r.URL.Query().Get("period")
+	if period == "" {
+		period = service.OrgPeriod(time.Now())
+	}
+	res, err := service.DirectorsRanking(h.svc.DB(), period)
+	if err != nil {
+		WriteError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	WriteJSON(w, http.StatusOK, res)
+}

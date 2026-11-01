@@ -86,6 +86,7 @@ const AiSuggestionsPage = lazy(() => import('./pages/AiSuggestionsPage'))
 const VoiceTermsPage = lazy(() => import('./pages/VoiceTermsPage'))
 const OrgPage = lazy(() => import('./pages/OrgPage'))
 const OrgDeskPage = lazy(() => import('./pages/OrgDeskPage'))
+const DirectorsRankingPage = lazy(() => import('./pages/DirectorsRankingPage'))
 const MyOrgCard = lazy(() => import('./components/MyOrgCard'))
 const DepartmentsPage = lazy(() => import('./pages/DepartmentsPage'))
 const DesignGalleryPage = lazy(() => import('./pages/DesignGalleryPage'))
@@ -223,6 +224,7 @@ function App() {
           <Route path="voice-terms" element={<RequireAdmin><VoiceTermsPage /></RequireAdmin>} />
           <Route path="org" element={<RequireAdmin><OrgPage /></RequireAdmin>} />
           <Route path="org/assign" element={<RequireAdmin><OrgPage view="assign" /></RequireAdmin>} />
+          <Route path="org/directors-ranking" element={<RequireAdmin><DirectorsRankingPage /></RequireAdmin>} />
           <Route path="org/desk" element={<OrgDeskPage />} />
           <Route path="org/desk/:divisionId" element={<OrgDeskPage />} />
           <Route path="my-org" element={<MyOrgCard />} />
