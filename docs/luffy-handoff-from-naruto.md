@@ -205,3 +205,4 @@ git push origin origin/avg:refs/heads/prod     # بعد التأكد إنه fast
 - (لوفي 11-01) مركز القيادة: قسم «المشاريع والمقاولات» — طرفية أوامر (مفكك محلي parseCommand.ts) + بطاقات؛ جداول CmdProject/CmdProjectLog (0425) معزولة؛ /api/command/projects ورا RequireCommandRealm (غير القيادة = 404).
 - (لوفي 11-01) رفع على برود: مشاريع مركز القيادة.
 - (لوفي 11-01) انشال قسم «المشاريع والمقاولات» من مركز القيادة بطلب دازاي (تجربة) — revert 1b2ad0e0 + ترحيل 0426 يحذف CmdProject/CmdProjectLog.
+- (لوفي 11-01) رفع على برود: إلغاء مشاريع القيادة.
