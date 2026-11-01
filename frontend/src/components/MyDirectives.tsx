@@ -8,11 +8,12 @@ import { useSession } from '../session'
 import '../pages/OrgPage.css'
 import './OrgDirectives.css'
 
-export default function MyDirectives() {
+// hideWhenEmpty (دازاي 11-01): بالرئيسية ما ينرسم كارت فاضي — بس لمن أكو توجيه بانتظار الإقرار
+export default function MyDirectives({ hideWhenEmpty = false }: { hideWhenEmpty?: boolean } = {}) {
   const { employee } = useSession()
-  return employee ? <MyDirectiveList key={employee.id} /> : null
+  return employee ? <MyDirectiveList key={employee.id} hideWhenEmpty={hideWhenEmpty} /> : null
 }
-function MyDirectiveList() {
+function MyDirectiveList({ hideWhenEmpty }: { hideWhenEmpty: boolean }) {
   const [items, setItems] = useState<OrgDirective[] | null>(null),
     [error, setError] = useState(''),
     [notice, setNotice] = useState(''),
@@ -66,6 +67,7 @@ function MyDirectiveList() {
       setBusy(null)
     }
   }
+  if (hideWhenEmpty && !error && !notice && (!items || !items.some((d) => !d.ackAt))) return null
   return (
     <section
       className="org-ui org-my-card directive-mine"

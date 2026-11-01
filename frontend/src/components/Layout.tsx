@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useAutoRefresh } from '../useAutoRefresh'
-import { useOrgMemberships } from '../orgDeskAccess'
+import { useOrgMemberships, orgPositionTitle } from '../orgDeskAccess'
 import PrivacyPolicyGate from './PrivacyPolicyGate'
 import EmployeeAvatar from './EmployeeAvatar'
 import LiveAlerts from './LiveAlerts'
@@ -144,16 +144,7 @@ export default function Layout() {
   const [employee, setEmployeeState] = useState<Employee | null>(loadStoredEmployee)
   const { items: orgMemberships } = useOrgMemberships(employee)
   // (دازاي 11-01) العنوان تحت الاسم = منصبه بالهيكل («مدير تطوير الأعمال») بدل الدور القديم
-  const orgTitle = (() => {
-    const rank = { DIRECTOR: 0, DEPUTY: 1, MEMBER: 2 } as const
-    const m = [...(orgMemberships ?? [])].sort((a, b) => rank[a.position] - rank[b.position])[0]
-    if (!m) return null
-    const place = m.unitName || m.divisionName
-    if (!place) return null
-    if (m.position === 'DIRECTOR') return `${m.acting ? 'مدير بالوكالة —' : 'مدير'} ${place}`
-    if (m.position === 'DEPUTY') return `نائب ${place}`
-    return `عضو ${place}`
-  })()
+  const orgTitle = orgPositionTitle(orgMemberships)
   const [employeePermissions, setEmployeePermissions] = useState<string[]>([])
   const [gpsServiceId, setGpsServiceId] = useState<string | null>(null)
   // وجهة الإشعار لازم تكون شاشة يحقله يفتحها (نفس حارس المسار تحت)

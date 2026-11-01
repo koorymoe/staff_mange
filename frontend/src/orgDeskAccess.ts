@@ -33,6 +33,18 @@ export const orgDeskSeeds = [
   { id: 'contracts', name: 'العقود والشؤون التجارية والإعلامية' },
   { id: 'it', name: 'التقنية IT' },
 ]
+// (دازاي 11-01) عنوان المنصب بالهيكل («مدير تطوير الأعمال») — للقائمة والترحيب
+export function orgPositionTitle(items: OrgPerson[] | null | undefined): string | null {
+  const rank = { DIRECTOR: 0, DEPUTY: 1, MEMBER: 2 } as const
+  const m = [...(items ?? [])].sort((a, b) => rank[a.position] - rank[b.position])[0]
+  if (!m) return null
+  const place = m.unitName || m.divisionName
+  if (!place) return null
+  if (m.position === 'DIRECTOR') return `${m.acting ? 'مدير بالوكالة —' : 'مدير'} ${place}`
+  if (m.position === 'DEPUTY') return `نائب ${place}`
+  return `عضو ${place}`
+}
+
 export function useOrgMemberships(employee: Employee | null | undefined) {
   const id = employee?.id
   const admin = orgAdmin(employee)

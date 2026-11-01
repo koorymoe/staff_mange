@@ -10,6 +10,7 @@ import {
 import { useSession } from '../session'
 import DirectiveManager from '../components/DirectiveManager'
 import MyOrgCard from '../components/MyOrgCard'
+import MyDirectives from '../components/MyDirectives'
 import OrgOutputs from '../components/OrgOutputs'
 import type { DirectiveTarget } from '../orgDirectives'
 import {
@@ -383,7 +384,7 @@ function DeskContent({
           </button>
         ))}
       </nav>
-      {tab === 'mine' && <MyOrgCard />}
+      {tab === 'mine' && <><MyDirectives /><MyOrgCard /></>}
       {tab === 'issues' && (
         <>
           <div className="org-toolbar">

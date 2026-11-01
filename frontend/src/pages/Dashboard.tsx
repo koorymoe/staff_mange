@@ -16,6 +16,7 @@ import { useSession, hasGpsSkill, hasRole } from '../session'
 import MeetingRequests from '../components/MeetingRequests'
 import MyDirectives from '../components/MyDirectives'
 import MyOrgCard from '../components/MyOrgCard'
+import { useOrgMemberships, orgDeskAllowed, orgPositionTitle } from '../orgDeskAccess'
 import { navItems, collectMonitorExtraLinks } from '../components/navTree'
 import { useSaveGuard } from '../useSaveGuard'
 import SaveError from '../components/SaveError'
@@ -81,8 +82,11 @@ function ProgressRing({ percent, size = 56, stroke = 5, color }: { percent: numb
 // لأن الرئيسية القديمة بيها عشرات الخطافات — ما ينفع return قبلها.
 export default function Dashboard() {
   const { employee } = useSession()
-  if (employee?.role === 'ADMIN') return <><MyDirectives /><MyOrgCard /><AdminHome name={positionTitle(employee)} /></>
-  return <><MyDirectives /><MyOrgCard /><MeetingRequests /><StaffDashboard /></>
+  // (دازاي 11-01) صاحب مكتب الإدارة يشوف «مكاني/بنودي/مخرجاتي» جوّا المكتب، مو بالرئيسية
+  const { items: memberships } = useOrgMemberships(employee)
+  const showMyOrg = !orgDeskAllowed(employee, memberships)
+  if (employee?.role === 'ADMIN') return <><MyDirectives hideWhenEmpty /><AdminHome name={positionTitle(employee)} /></>
+  return <><MyDirectives hideWhenEmpty />{showMyOrg && <MyOrgCard />}<MeetingRequests /><StaffDashboard /></>
 }
 
 function StaffDashboard() {
@@ -90,6 +94,7 @@ function StaffDashboard() {
   const guard = useSaveGuard()
   const { employee, permissions, gpsServiceId } = useSession()
   const navigate = useNavigate()
+  const { items: orgMine } = useOrgMemberships(employee)
   const [gpsStats, setGpsStats] = useState<GpsStats | null>(null)
   const [bookingCount, setBookingCount] = useState(0)
   const [employeeCount, setEmployeeCount] = useState(0)
@@ -466,10 +471,10 @@ function StaffDashboard() {
               {greetingPhase === 'time' ? (
                 <>
                   <span className="greet-icon ml-1 inline-block">{greet.icon}</span>
-                  {greet.text} يا {positionTitle(employee)}
+                  {greet.text} يا {orgPositionTitle(orgMine) ?? positionTitle(employee)}
                 </>
               ) : (
-                <>مرحباً يا {positionTitle(employee)}</>
+                <>مرحباً يا {orgPositionTitle(orgMine) ?? positionTitle(employee)}</>
               )}
             </h1>
             <p className="mt-2 text-sm text-blue-200/80">{formatDate()}</p>
