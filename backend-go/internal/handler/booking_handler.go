@@ -1036,6 +1036,14 @@ func (h *BookingHandler) TechStep(w http.ResponseWriter, r *http.Request) {
 		b, err = h.service.TechRequestCrew(id, me, body.Text)
 	case "resolve":
 		b, err = h.service.TechResolve(id, me, body.Text)
+	case "no-answer":
+		b, err = h.service.TechWaiting(id, me, body.Text, "NO_ANSWER")
+	case "await-customer":
+		b, err = h.service.TechWaiting(id, me, body.Text, "CUSTOMER_DECISION")
+	case "postpone":
+		b, err = h.service.TechPostpone(id, me, body.VisitAt, body.Text)
+	case "resume":
+		b, err = h.service.TechResume(id, me)
 	default:
 		WriteError(w, http.StatusNotFound, "خطوة مو معروفة")
 		return

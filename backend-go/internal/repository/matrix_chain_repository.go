@@ -59,6 +59,8 @@ type ChainFacts struct {
 	TechDiagnosedAt *time.Time `db:"techDiagnosedAt"`
 	TechCrewAt      *time.Time `db:"techCrewRequestedAt"`
 	TechDecision    *string    `db:"techDecision"`
+	WaitingNote     *string    `db:"waitingNote"`
+	TechDiagnosis   *string    `db:"techDiagnosis"`
 	TechDecidedAt   *time.Time `db:"techDecidedAt"`
 	TechVisitAt     *time.Time `db:"techVisitAt"`
 	TechVisitedAt   *time.Time `db:"techVisitedAt"`
@@ -142,7 +144,7 @@ SELECT b.id, b.code, b.status::text AS status, b."bookingType"::text AS "booking
        b."contactAttempts" AS "contactTries",
        b."handoverAt", b."handoverById", hbe.name AS "handoverBy", b."handoverToId", hte.name AS "handoverTo",
        b."handoverReason", b."techContactedAt", b."techDiagnosedAt", b."techCrewRequestedAt",
-       b."techDecision", b."techDecidedAt", b."techVisitAt", b."techVisitedAt", b."techVisitMoves",
+       b."techDecision", b."waitingNote", b."techDiagnosis", b."techDecidedAt", b."techVisitAt", b."techVisitedAt", b."techVisitMoves",
        asg."firstAssignAt", COALESCE(asg.crew, '{}') AS "crewIds", COALESCE(asg.techs, '{}') AS "techIds",
        booking_leader_id(b.id) AS "leaderId", le.name AS "leaderName",
        m."assignedAt" AS "missionAt", COALESCE(m."materialsReadyAt", b."materialsReadyAt") AS "materialsAt",

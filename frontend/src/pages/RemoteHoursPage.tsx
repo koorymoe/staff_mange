@@ -92,9 +92,17 @@ function MyHours({ meId }: { meId: string }) {
   const worked = total + shown
   const target = (plan?.targetHours ?? 0) * 3600
   const left = target - worked
-  const pay = (sec: number) => Math.round((sec / 3600) * (plan?.hourlyRateIQD ?? 0))
+  const rateIQD = plan?.hourlyRateIQD ?? 0
+  const pay = (sec: number) => (sec / 3600) * rateIQD
+  // (دازاي 11-01) فلوس بالفواصل والكسور ويا كلمة «دينار» — حتى ما يصير «62؟ الف؟»
+  const money = (n: number, digits = 2) => `${n.toLocaleString('en-US', { minimumFractionDigits: digits, maximumFractionDigits: digits })} دينار`
+  // «2.715» بالعراقي = ألفين وسبعمية وخمسطعش (النقطة فاصل آلاف)، مو ٢ وكسور
+  const parseRate = (v: string) => {
+    const t = v.trim().replace(/[,،\s]/g, '')
+    return Number(/^\d{1,3}(\.\d{3})+$/.test(t) ? t.replace(/\./g, '') : t.replace(/[^\d.]/g, ''))
+  }
   const savePlan = async () => {
-    const hours = Number(planForm.hours), rate = Number(planForm.rate.replace(/[^\d.]/g, ''))
+    const hours = Number(planForm.hours), rate = parseRate(planForm.rate)
     if (!(hours > 0 && hours <= 400) || !(rate >= 0)) { setPlanMsg('اكتب الساعات المطلوبة بالشهر وسعر الساعة'); return }
     try { const r = await api.setRemotePlan({ targetHours: hours, hourlyRateIQD: rate }); setPlan(r.plan); setPlanMsg('') }
     catch (e) { setPlanMsg(e instanceof Error ? e.message : 'تعذر الحفظ') }
@@ -107,6 +115,7 @@ function MyHours({ meId }: { meId: string }) {
           <label className="text-xs text-slate-600">الساعات المطلوبة بالشهر<input type="number" min={1} max={400} value={planForm.hours} onChange={(e) => setPlanForm({ ...planForm, hours: e.target.value })} className={`${inp} block w-28 text-center`} /></label>
           <label className="text-xs text-slate-600">سعر الساعة (د.ع)<input inputMode="numeric" value={planForm.rate} onChange={(e) => setPlanForm({ ...planForm, rate: e.target.value })} className={`${inp} block w-32 text-center`} dir="ltr" /></label>
           <button onClick={savePlan} className="rounded-lg bg-brand-600 px-4 py-2 text-sm font-bold text-white">حفظ</button>
+          {planForm.rate && <p className="w-full text-xs font-bold text-brand-700">يعني: {money(parseRate(planForm.rate), 0)} بالساعة</p>}
           <p className="w-full text-[11px] text-slate-500">تحددها مرة وحدة — بعدها التعديل من إدارة الساعات.</p>
           {planMsg && <p className="w-full text-sm font-bold text-red-600">{planMsg}</p>}
         </div>
@@ -119,14 +128,23 @@ function MyHours({ meId }: { meId: string }) {
           </div>
           <div className="rounded-2xl bg-slate-50 p-4 text-center">
             <p className="text-xs text-slate-500">💰 راتبي لهسه</p>
-            <p className="text-3xl font-black text-[#0f2040]" dir="ltr">{pay(worked).toLocaleString('en-US')}</p>
-            <p className="text-[11px] text-slate-500">{hms(worked)} × {plan.hourlyRateIQD.toLocaleString('en-US')} د.ع/ساعة</p>
+            <p className="text-2xl font-black tabular-nums text-[#0f2040]" dir="ltr">{money(pay(worked))}</p>
+            <p className="text-[11px] text-slate-500">{hms(worked)} × {money(rateIQD, 0)} بالساعة</p>
+            <p className="mt-1 text-[11px] font-bold text-slate-600">الحد: {money(plan.targetHours * rateIQD, 0)} ({plan.targetHours} ساعة)</p>
           </div>
           <div className="rounded-2xl bg-emerald-50 p-4 text-center">
             <p className="text-xs text-emerald-800">⚡ منها وقت إضافي</p>
-            <p className="text-3xl font-black text-emerald-700" dir="ltr">{pay(Math.max(0, -left)).toLocaleString('en-US')}</p>
+            <p className="text-2xl font-black tabular-nums text-emerald-700" dir="ltr">{money(pay(Math.max(0, -left)))}</p>
             <p className="text-[11px] text-emerald-800">{hms(Math.max(0, -left))} فوك المطلوب</p>
           </div>
+          <div className="grid grid-cols-3 gap-2 rounded-2xl border border-amber-200 bg-amber-50 p-3 text-center sm:col-span-3">
+            <div><p className="text-[11px] text-amber-800">⏱️ كل ساعة</p><p className="font-black tabular-nums text-amber-900" dir="ltr">{money(rateIQD)}</p></div>
+            <div><p className="text-[11px] text-amber-800">كل دقيقة</p><p className="font-black tabular-nums text-amber-900" dir="ltr">{money(rateIQD / 60)}</p></div>
+            <div><p className="text-[11px] text-amber-800">كل ثانية</p><p className="font-black tabular-nums text-amber-900" dir="ltr">{money(rateIQD / 3600, 4)}</p></div>
+          </div>
+          {rateIQD > 0 && rateIQD < 100 && (
+            <p className="rounded-lg bg-red-50 p-2 text-xs font-bold text-red-700 sm:col-span-3">⚠️ سعر ساعتك مسجّل {money(rateIQD)} بس — إذا تقصد {money(rateIQD * 1000, 0)} گول لإدارة الساعات تعدّله.</p>
+          )}
           <p className="text-[11px] text-slate-400 sm:col-span-3">الحساب من آخر تصفية للساعات، ويمشي ويا العدّاد لحظة بلحظة.</p>
         </div>
       )}
@@ -287,12 +305,15 @@ function ManageHours({ meId, isAdmin }: { meId: string; isAdmin: boolean }) {
   const [form, setForm] = useState({ date: today(), h: '', m: '', s: '', note: '' })
   const [msg, setMsg] = useState<{ ok: boolean; t: string } | null>(null)
   const [busy, setBusy] = useState(false)
+  // (دازاي 11-01) إدارة الساعات تعدّل المطلوب وسعر الساعة لأي موظف
+  const [empPlan, setEmpPlan] = useState({ hours: '', rate: '' })
+  const [planNote, setPlanNote] = useState('')
 
   useEffect(() => { api.getEmployees().then((l) => setEmployees(l.filter((e) => e.status === 'ACTIVE'))).catch(loadFailed) }, [])
   const loadSummary = useCallback(() => { api.getRemoteSummary().then(setSummary).catch(loadFailed) }, [])
   const loadEmp = useCallback(() => {
     if (!sel) return
-    api.getRemoteHours(sel.id).then((r) => { setEntries(r.entries); setTotal(r.totalSeconds) }).catch(loadFailed)
+    api.getRemoteHours(sel.id).then((r) => { setEntries(r.entries); setTotal(r.totalSeconds); setEmpPlan({ hours: r.plan ? String(r.plan.targetHours) : '', rate: r.plan ? String(r.plan.hourlyRateIQD) : '' }); setPlanNote('') }).catch(loadFailed)
   }, [sel])
   useEffect(() => { loadSummary() }, [loadSummary])
   useEffect(() => { loadEmp() }, [loadEmp])
@@ -373,6 +394,18 @@ function ManageHours({ meId, isAdmin }: { meId: string; isAdmin: boolean }) {
                   <p className="text-xs text-slate-500">من آخر تصفير · {new Set(entries.map((e) => e.workDate.slice(0, 10))).size} يوم · {entries.length} تسجيل</p>
                 </div>
                 <button onClick={() => api.exportRemoteHours(month, sel.id, sel.name).catch(loadFailed)} className="rounded-lg border border-emerald-600 px-3 py-1.5 text-xs font-bold text-emerald-700">⬇️ Excel هالموظف</button>
+              </div>
+              <div className="my-3 flex flex-wrap items-end gap-2 rounded-xl border border-amber-200 bg-amber-50 p-3">
+                <span className="w-full text-xs font-bold text-amber-900">🎯 المطلوب بالشهر وسعر الساعة</span>
+                <label className="text-xs text-slate-600">ساعات<input type="number" min={1} max={400} value={empPlan.hours} onChange={(e) => setEmpPlan({ ...empPlan, hours: e.target.value })} className={`${inp} block w-24 text-center`} /></label>
+                <label className="text-xs text-slate-600">سعر الساعة (دينار)<input value={empPlan.rate} onChange={(e) => setEmpPlan({ ...empPlan, rate: e.target.value })} className={`${inp} block w-32 text-center`} dir="ltr" /></label>
+                <button className="rounded-lg bg-amber-600 px-3 py-2 text-sm font-bold text-white" onClick={async () => {
+                  const hours = Number(empPlan.hours), rate = Number(empPlan.rate.replace(/[,،\s]/g, ''))
+                  if (!(hours > 0 && hours <= 400) || !(rate >= 0)) { setPlanNote('اكتب الساعات وسعر الساعة'); return }
+                  try { await api.setRemotePlan({ employeeId: sel.id, targetHours: hours, hourlyRateIQD: rate }); setPlanNote(`✅ انحفظ: ${rate.toLocaleString('en-US')} دينار بالساعة`) }
+                  catch (e) { setPlanNote(e instanceof Error ? e.message : 'تعذر الحفظ') }
+                }}>حفظ</button>
+                {planNote && <span className="w-full text-xs font-bold text-slate-700">{planNote}</span>}
               </div>
               <EntriesTable entries={entries} canDelete={(e) => isAdmin || e.addedById === meId} onDelete={del} onSaved={() => { loadEmp(); loadSummary() }} showWho />
             </>

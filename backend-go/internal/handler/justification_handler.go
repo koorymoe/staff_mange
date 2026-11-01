@@ -47,7 +47,7 @@ type justificationRow struct {
 	CreatedAt    time.Time  `db:"createdAt" json:"createdAt"`
 }
 
-const justSelect = `SELECT j.id, j."employeeId", e.name AS "employeeName", m.name AS "monitorName", j.question, j.answer,
+const justSelect = `SELECT j.id, j."employeeId", e.name AS "employeeName", COALESCE(m.name, CASE WHEN j."monitorId" IS NULL THEN '🤖 ماتركس' END) AS "monitorName", j.question, j.answer,
 	j."answeredAt", j.verdict, j."verdictNote", j."decidedAt", j."createdAt"
 	FROM "MonitorJustification" j JOIN "Employee" e ON e.id = j."employeeId" LEFT JOIN "Employee" m ON m.id = j."monitorId"`
 
@@ -68,17 +68,27 @@ func (h *JustificationHandler) Answer(w http.ResponseWriter, r *http.Request) {
 		WriteError(w, http.StatusBadRequest, "اكتب عذرك")
 		return
 	}
-	var monitorID *string
+	var monitorID, projectID *string
 	var question string
+	me, answer := middleware.EmployeeIDFromContext(r), strings.TrimSpace(b.Answer)
 	err := h.db.QueryRowx(`UPDATE "MonitorJustification" SET answer = $3, "answeredAt" = now()
-		WHERE id = $1 AND "employeeId" = $2 AND "answeredAt" IS NULL RETURNING "monitorId", question`,
-		r.PathValue("id"), middleware.EmployeeIDFromContext(r), strings.TrimSpace(b.Answer)).Scan(&monitorID, &question)
+		WHERE id = $1 AND "employeeId" = $2 AND "answeredAt" IS NULL RETURNING "monitorId", "projectId", question`,
+		r.PathValue("id"), me, answer).Scan(&monitorID, &projectID, &question)
 	if err != nil {
 		WriteError(w, http.StatusBadRequest, "التبرير منطي قبل أو مو إلك")
 		return
 	}
+	// (دازاي 11-01) تبرير المشروع المتأخر = سبب تأخيره بلوحة المشاريع هم
+	if projectID != nil {
+		_, _ = h.db.Exec(`INSERT INTO "ProjectDelayReason" (id, "projectId", stage, "employeeId", reason)
+			SELECT gen_random_uuid()::text, p.id, p.stage, $2, $3 FROM "Project" p WHERE p.id = $1`, *projectID, me, answer)
+	}
+	msg := "📝 وصل تبرير على: " + question + " — شوفه بصندوق المراقب ← التبريرات"
 	if monitorID != nil {
-		_ = h.notif.Create(*monitorID, "monitor_justify_answer", "📝 وصل تبرير على: "+question+" — شوفه بصندوق المراقب ← التبريرات")
+		_ = h.notif.Create(*monitorID, "monitor_justify_answer", msg)
+	} else {
+		// طلب ماتركس ما إله مراقب — يوصل لكل المراقبين بدل ما يضيع
+		_ = h.notif.CreateForRolesOrPermission([]string{"MONITOR"}, "mon_justifications", "monitor_justify_answer", msg)
 	}
 	WriteJSON(w, http.StatusOK, map[string]bool{"ok": true})
 }

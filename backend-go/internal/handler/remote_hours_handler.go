@@ -231,7 +231,11 @@ func (h *RemoteHoursHandler) List(w http.ResponseWriter, r *http.Request) {
 	for _, x := range rows {
 		total += x.Seconds
 	}
-	WriteJSON(w, http.StatusOK, map[string]any{"entries": rows, "totalSeconds": total})
+	var plan any
+	if e := r.URL.Query().Get("employeeId"); e != "" {
+		plan = h.repo.Plan(e)
+	}
+	WriteJSON(w, http.StatusOK, map[string]any{"entries": rows, "totalSeconds": total, "plan": plan})
 }
 
 // GET /api/remote-hours/summary?month=

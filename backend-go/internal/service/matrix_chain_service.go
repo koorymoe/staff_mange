@@ -560,9 +560,20 @@ func (s *MatrixChainService) chainOf(f *repository.ChainFacts, now time.Time) *B
 		}
 		add(st)
 		tech := s.owner(f.HandoverToID, f.HandoverTo)
+		// (دازاي 11-01) التقني أشّر «الزبون ما رد/يرجع خبر» — محطاته المفتوحة توقف وتبين ملاحظته
+		techAdd := func(st ChainStation) {
+			if f.Status == "WAITING" && st.EndAt == nil && st.Status != ChainNA {
+				st.Status = ChainWaiting
+				st.Verdict = "بالانتظار على الزبون"
+				if f.WaitingNote != nil && *f.WaitingNote != "" {
+					st.Verdict += ": " + *f.WaitingNote
+				}
+			}
+			add(st)
+		}
 		tc := ChainStation{Key: "TECH_CONTACT", Role: ChainRoleTech, Owners: tech}
 		judge(&tc, f.HandoverAt, f.TechContactedAt, s.threshold(f, "TECH_CONTACT"), nil)
-		add(tc)
+		techAdd(tc)
 		// قرار (ع) 10-07: بعد التواصل يقرر — انحلّت بالتلفون، لو زيارة بموعد.
 		dec := ChainStation{Key: "TECH_DECIDE", Role: ChainRoleTech, Owners: tech}
 		judge(&dec, firstOf(f.TechContactedAt, f.HandoverAt), f.TechDecidedAt, s.threshold(f, "TECH_DECIDE"), nil)
@@ -575,7 +586,7 @@ func (s *MatrixChainService) chainOf(f *repository.ChainFacts, now time.Time) *B
 				dec.Facts = append(dec.Facts, fmt.Sprintf("موعد الزيارة انتغيّر %d مرة.", f.TechVisitMoves))
 			}
 		}
-		add(dec)
+		techAdd(dec)
 		if f.TechDecision != nil && *f.TechDecision == "VISIT" && f.TechVisitAt != nil {
 			// الزيارة: يوصل بموعده — التأخير ينحسب من الموعد نفسه.
 			tv := ChainStation{Key: "TECH_VISIT", Role: ChainRoleTech, Owners: tech}
@@ -586,19 +597,22 @@ func (s *MatrixChainService) chainOf(f *repository.ChainFacts, now time.Time) *B
 				z := 0
 				tv.Minutes = &z
 			}
-			add(tv)
+			techAdd(tv)
 		}
 		if !phone {
 			td := ChainStation{Key: "TECH_DIAG", Role: ChainRoleTech, Owners: tech}
 			judge(&td, firstOf(f.TechVisitedAt, f.TechContactedAt, f.HandoverAt), f.TechDiagnosedAt, s.threshold(f, "TECH_DIAG"), nil)
-			add(td)
+			techAdd(td)
 		}
 		tf := ChainStation{Key: "TECH_FIX", Role: ChainRoleTech, Owners: tech}
 		judge(&tf, firstOf(f.TechDiagnosedAt, f.TechDecidedAt, f.HandoverAt), f.CompletedAt, s.threshold(f, "TECH_FIX"), nil)
+		if f.TechDiagnosis != nil && *f.TechDiagnosis != "" {
+			tf.Facts = append(tf.Facts, "الكشف: "+*f.TechDiagnosis)
+		}
 		if f.TechCrewAt != nil {
 			tf.Facts = append(tf.Facts, "طلب طاقم "+f.TechCrewAt.In(debriefLoc).Format("01-02 15:04")+".")
 		}
-		add(tf)
+		techAdd(tf)
 	}
 
 	// ٣. التثبيت

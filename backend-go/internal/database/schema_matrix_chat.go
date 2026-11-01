@@ -1577,5 +1577,15 @@ func matrixChatMigrations() []Migration {
 				"setAt" TIMESTAMPTZ NOT NULL DEFAULT now()
 			);
 		`,
+	}, {
+		// 📝 (دازاي 11-01) «كتبنالك التبرير بس ما يطلع»: طلب التبرير الي يطلبه ماتركس على
+		// المشروع المتأخر ما إله مراقب، فالجواب ما يوصل لأحد ولا ينحسب سبب تأخير.
+		// نربطه بالمشروع حتى الجواب ينكتب سبب تأخير ويوصل للمراقبين.
+		Version: "0424_justification_project",
+		SQL: `
+			ALTER TABLE "MonitorJustification" ADD COLUMN IF NOT EXISTS "projectId" TEXT REFERENCES "Project"(id) ON DELETE SET NULL;
+			UPDATE "MonitorJustification" j SET "projectId" = p.id FROM "Project" p
+			WHERE j."projectId" IS NULL AND j."monitorId" IS NULL AND j.question LIKE 'مشروع ' || p.code || ' (%';
+		`,
 	}}
 }

@@ -47,8 +47,8 @@ func enforceProjectDelays(db *sqlx.DB, report func() (*ProjectsReport, error), n
 		}
 		q := fmt.Sprintf("مشروع %s (%s) متأخر بمرحلة «%s» — %d يوم والحد %d. اكتب ليش تأخر، وشلون راح تعوّض التأخير.",
 			p.Code, p.Name, p.Stage, p.DaysInStage, p.StageLimit)
-		if _, err := db.Exec(`INSERT INTO "MonitorJustification" (id, "employeeId", question, "createdAt") VALUES ($1, $2, $3, now())`,
-			uuid.NewString(), p.OwnerID, q); err != nil {
+		if _, err := db.Exec(`INSERT INTO "MonitorJustification" (id, "employeeId", question, "projectId", "createdAt") VALUES ($1, $2, $3, $4, now())`,
+			uuid.NewString(), p.OwnerID, q, p.ID); err != nil {
 			continue
 		}
 		if notif != nil {

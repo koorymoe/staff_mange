@@ -221,3 +221,44 @@ func (s *BookingService) TechVisited(id, empID string) (*model.Booking, error) {
 	}
 	return s.repo.FindByID(id)
 }
+
+// ═══ خيارات الزبون للتقني (دازاي 11-01) ═══
+// نفس خيارات الإداري: «الزبون ما رد» و«يرجع خبر» و«أجّل» — والتقني يحسمها
+// على حجزه المرحّل بلا صلاحية coordinator (الحارس = ملكية الترحيل)، والملاحظة
+// إجبارية حتى المراقب وماتركس يشوفون ليش.
+func techNote(note string) (string, error) {
+	note = strings.TrimSpace(note)
+	if len([]rune(note)) < 5 {
+		return "", errors.New("اكتب ملاحظة واضحة — المراقب يشوفها")
+	}
+	return note, nil
+}
+
+func (s *BookingService) TechWaiting(id, empID, note, kind string) (*model.Booking, error) {
+	n, err := techNote(note)
+	if err != nil {
+		return nil, err
+	}
+	if _, err := s.handoverOwned(id, empID); err != nil {
+		return nil, err
+	}
+	return s.MarkWaiting(id, n, empID, kind)
+}
+
+func (s *BookingService) TechPostpone(id, empID, when, reason string) (*model.Booking, error) {
+	n, err := techNote(reason)
+	if err != nil {
+		return nil, err
+	}
+	if _, err := s.handoverOwned(id, empID); err != nil {
+		return nil, err
+	}
+	return s.Postpone(id, when, n, empID)
+}
+
+func (s *BookingService) TechResume(id, empID string) (*model.Booking, error) {
+	if _, err := s.handoverOwned(id, empID); err != nil {
+		return nil, err
+	}
+	return s.ResumeFromWaiting(id)
+}

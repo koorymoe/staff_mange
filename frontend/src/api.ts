@@ -3909,7 +3909,7 @@ export const api = {
   // ساعات العمل من البيت — صلاحية remote_hours_manage
   // الفترة المفتوحة (من آخر تصفير)
   getRemoteHours: (employeeId = '') =>
-    request<{ entries: RemoteEntry[]; totalSeconds: number }>(`/remote-hours?employeeId=${encodeURIComponent(employeeId)}`),
+    request<{ entries: RemoteEntry[]; totalSeconds: number; plan?: RemotePlan | null }>(`/remote-hours?employeeId=${encodeURIComponent(employeeId)}`),
   getRemoteSummary: () => request<RemoteSummary[]>('/remote-hours/summary'),
   addRemoteHours: (b: { employeeId: string; date: string; hours: number; minutes: number; seconds: number; note?: string }) =>
     request<{ id: string; seconds: number }>('/remote-hours', { method: 'POST', body: JSON.stringify(b) }),
@@ -5098,8 +5098,8 @@ export const api = {
   handoverBooking: (id: string, employeeId: string, reason: string) =>
     request<Booking>(`/bookings/${id}/handover`, { method: 'PUT', body: JSON.stringify({ employeeId, reason }) }),
   /** خطوات التقني على الحجز المرحّل إله. */
-  techStep: (id: string, step: 'contacted' | 'diagnosis' | 'crew' | 'resolve' | 'visited', text = '') =>
-    request<Booking>(`/bookings/${id}/tech/${step}`, { method: 'PUT', body: JSON.stringify({ text }) }),
+  techStep: (id: string, step: 'contacted' | 'diagnosis' | 'crew' | 'resolve' | 'visited' | 'no-answer' | 'await-customer' | 'postpone' | 'resume', text = '', visitAt = '') =>
+    request<Booking>(`/bookings/${id}/tech/${step}`, { method: 'PUT', body: JSON.stringify({ text, visitAt }) }),
   /** قرار التقني بعد التواصل: انحلّت بالتلفون، لو زيارة بموعد (بتوقيت بغداد «YYYY-MM-DDTHH:mm»). */
   techDecide: (id: string, decision: 'PHONE' | 'VISIT', text: string, visitAt = '') =>
     request<Booking>(`/bookings/${id}/tech/decide`, { method: 'PUT', body: JSON.stringify({ decision, text, visitAt }) }),

@@ -22,14 +22,17 @@ function Card({ b, onChange }: { b: Booking; onChange: (b: Booking) => void }) {
   const [fix, setFix] = useState('')
   const [phoneNote, setPhoneNote] = useState('')
   const [visitAt, setVisitAt] = useState('')
-  const [mode, setMode] = useState<'' | 'PHONE' | 'VISIT' | 'MOVE'>('')
+  const [mode, setMode] = useState<'' | 'PHONE' | 'VISIT' | 'MOVE' | 'NOANS' | 'AWAIT' | 'POSTPONE'>('')
+  const [note, setNote] = useState('')
+  const [postAt, setPostAt] = useState('')
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState('')
   const call = async (f: () => Promise<Booking>) => {
     setBusy(true); setErr('')
     try { onChange(await f()); setMode('') } catch (e) { setErr(e instanceof Error ? e.message : 'تعذر') } finally { setBusy(false) }
   }
-  const run = (step: 'contacted' | 'diagnosis' | 'crew' | 'resolve' | 'visited', t = '') => call(() => api.techStep(b.id, step, t))
+  const run = (step: Parameters<typeof api.techStep>[1], t = '', at = '') => call(() => api.techStep(b.id, step, t, at))
+  const waiting = b.status === 'WAITING'
   const phone = b.customer?.phone
   const visit = b.techDecision === 'VISIT'
   const visitPicker = (
@@ -53,8 +56,37 @@ function Card({ b, onChange }: { b: Booking; onChange: (b: Booking) => void }) {
       </div>
       {err && <p className="mt-2 text-xs text-red-600">{err}</p>}
 
+      {/* (دازاي 11-01) خيارات الزبون — نفس خيارات الإداري، والملاحظة توصل للمراقب */}
+      {waiting && (
+        <div className="mt-3 flex flex-wrap items-center gap-2 rounded-lg bg-amber-50 p-3 text-sm">
+          <span>⏸️ <b>بالانتظار:</b> {b.waitingNote || '—'} {b.waitingSince ? <span className="text-xs text-slate-500">· {fmt(b.waitingSince)}</span> : null}</span>
+          <button disabled={busy} onClick={() => void run('resume')} className="rounded-lg bg-emerald-600 px-3 py-1.5 text-sm font-bold text-white disabled:opacity-50">📞 الزبون رد — رجّعه</button>
+        </div>
+      )}
+      {!waiting && b.techDecision !== 'PHONE' && (
+        <div className="mt-3">
+          <div className="flex flex-wrap gap-2">
+            {([['NOANS', '📞 الزبون ما رد'], ['AWAIT', '⏳ الزبون يرجع خبر'], ['POSTPONE', '📅 أجّل']] as const).map(([k, l]) => (
+              <button key={k} onClick={() => { setMode(mode === k ? '' : k); setNote('') }}
+                className={`rounded-lg px-3 py-1.5 text-xs font-bold ${mode === k ? 'bg-amber-600 text-white' : 'border border-amber-300 bg-white text-amber-800'}`}>{l}</button>
+            ))}
+          </div>
+          {(mode === 'NOANS' || mode === 'AWAIT' || mode === 'POSTPONE') && (
+            <div className="mt-2 flex flex-wrap items-center gap-2">
+              <input value={note} onChange={(e) => setNote(e.target.value)} className="min-w-[220px] flex-1 rounded-lg border border-slate-300 px-2 py-1.5 text-sm"
+                placeholder={mode === 'NOANS' ? 'مثلاً: اتصلت ٣ مرات وما رد' : mode === 'AWAIT' ? 'شنو استفسر عنه وليش ينتظر' : 'سبب التأجيل'} />
+              {mode === 'POSTPONE' && <input type="datetime-local" value={postAt} onChange={(e) => setPostAt(e.target.value)} className="rounded-lg border border-slate-300 px-2 py-1.5 text-sm" />}
+              <button disabled={busy || note.trim().length < 5}
+                onClick={() => void run(mode === 'NOANS' ? 'no-answer' : mode === 'AWAIT' ? 'await-customer' : 'postpone', note, mode === 'POSTPONE' ? postAt : '')}
+                className="rounded-lg bg-amber-600 px-3 py-1.5 text-sm font-bold text-white disabled:opacity-50">ثبّت</button>
+              <span className="w-full text-[11px] text-slate-500">الملاحظة توصل للمراقب وماتركس — والحجز يوقف عدّاده لحد ما الزبون يرد.</span>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* ١. التواصل */}
-      {!b.techContactedAt && (
+      {!waiting && !b.techContactedAt && (
         <div className="mt-3 flex flex-wrap gap-2">
           {phone && <a href={`tel:${phone}`} className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-bold">📞 اتصل {phone}</a>}
           <button disabled={busy} onClick={() => void run('contacted')} className="rounded-lg bg-orange-600 px-3 py-2 text-sm font-bold text-white disabled:opacity-50">✅ تواصلت ويا الزبون</button>
@@ -62,7 +94,7 @@ function Card({ b, onChange }: { b: Booking; onChange: (b: Booking) => void }) {
       )}
 
       {/* ٢. القرار: بالتلفون لو زيارة */}
-      {b.techContactedAt && !b.techDecidedAt && (
+      {!waiting && b.techContactedAt && !b.techDecidedAt && (
         <div className="mt-3 space-y-2">
           <p className="text-sm font-bold text-slate-700">بعد ما حچيت ويا الزبون، شنو صار؟</p>
           <div className="flex flex-wrap gap-2">
