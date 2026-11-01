@@ -9,6 +9,7 @@ import {
 } from '../org'
 import { useSession } from '../session'
 import DirectiveManager from '../components/DirectiveManager'
+import MyOrgCard from '../components/MyOrgCard'
 import OrgOutputs from '../components/OrgOutputs'
 import type { DirectiveTarget } from '../orgDirectives'
 import {
@@ -37,7 +38,7 @@ import {
 import './OrgPage.css'
 import './OrgDeskPage.css'
 
-type Tab = 'issues' | 'plan' | 'units' | 'authority' | 'team' | 'directives' | 'outputs'
+type Tab = 'mine' | 'issues' | 'plan' | 'units' | 'authority' | 'team' | 'directives' | 'outputs'
 const canAddItems = (plan: DeskPlan) =>
   plan.status === 'DRAFT' || plan.status === 'RETURNED'
 const dueOrder = (a: DeskItem, b: DeskItem) =>
@@ -351,6 +352,8 @@ function DeskContent({
       <nav className="desk-tabs" aria-label="أقسام مكتب الإدارة">
         {(
           [
+            // (دازاي 11-01) «مكاني» جوّا مكتب الإدارة — مو خيار ثاني بالقائمة
+            ['mine', '🏛️ مكاني'],
             ['issues', 'المشاكل'],
             ['plan', 'خطة التحسين'],
             ['units', 'تطوير الوحدات'],
@@ -369,6 +372,7 @@ function DeskContent({
           </button>
         ))}
       </nav>
+      {tab === 'mine' && <MyOrgCard />}
       {tab === 'issues' && (
         <>
           <div className="org-toolbar">
