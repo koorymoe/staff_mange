@@ -43,6 +43,10 @@ func TestOrgActing_Live(t *testing.T) {
 	if _, err := s.Assign("", OrgAssignInput{EmployeeID: dep, UnitID: "eng.design", Position: "DEPUTY"}); err != nil {
 		t.Skipf("المكان مشغول محلياً: %v", err)
 	}
+	// (دازاي 11-01) النائب اطّلاع بس لحد ما المدير ياخذ إجازة
+	if s.UnitAccess(dep, "TECHNICIAN", "eng", "eng.design") || !s.UnitSee(dep, "TECHNICIAN", "eng", "eng.design") {
+		t.Fatal("النائب لازم يشوف بس وما يقرر قبل الإجازة")
+	}
 	db.MustExec(`INSERT INTO "LeaveRequest"(id, "employeeId", "startDate", "endDate", route, status)
 		VALUES ('__act_leave', $1, current_date - 1, current_date + 2, 'ADMIN', 'APPROVED')`, dir)
 	notes := 0
@@ -55,6 +59,9 @@ func TestOrgActing_Live(t *testing.T) {
 	if acting() != 1 || notes != 2 {
 		t.Fatalf("الوكالة: %d، الإشعارات %d", acting(), notes)
 	}
+	if !s.UnitAccess(dep, "TECHNICIAN", "eng", "eng.design") {
+		t.Fatal("بإجازة المدير النائب لازم يقرر (مدير بالوكالة)")
+	}
 	s.RunActing(func(string, string) {})
 	if acting() != 1 {
 		t.Fatal("الوكالة تكررت")
@@ -64,6 +71,9 @@ func TestOrgActing_Live(t *testing.T) {
 	s.RunActing(func(string, string) {})
 	if acting() != 0 {
 		t.Fatal("الوكالة ما انتهت بعد إلغاء الإجازة")
+	}
+	if s.UnitAccess(dep, "TECHNICIAN", "eng", "eng.design") {
+		t.Fatal("بعد رجوع المدير النائب يرجع اطّلاع")
 	}
 	mine, _ := s.Mine(dep)
 	if len(mine) != 1 || mine[0].Position != "DEPUTY" {

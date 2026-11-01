@@ -64,8 +64,12 @@ func TestOrgPermissionSync_Live(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !has("tool_requests_approve") || !has("unit_fleet") {
+	if !has("unit_fleet") || !has("tool_requests") {
 		t.Fatalf("الحزمة ما انطت: %v", perms())
+	}
+	// (دازاي 11-01) النائب اطّلاع: صلاحيات المدير (الموافقات) ما توصله إلا بالوكالة
+	if has("tool_requests_approve") {
+		t.Fatal("النائب أخذ صلاحية مدير")
 	}
 	var viaOrgVM int
 	db.Get(&viaOrgVM, `SELECT count(*) FROM "OrgPermissionGrant" WHERE "employeeId" = $1 AND permission = 'vehicle_management'`, emp)

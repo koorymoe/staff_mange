@@ -52,21 +52,25 @@ export function orgAssignmentPermissions(
   if (unitId && !unit) return null
   const scope = unit ?? division
   if (!Array.isArray(scope.permissions)) return null
-  let permissions = scope.permissions
-  if (position === 'MEMBER') {
-    if (!Array.isArray(scope.headPermissions)) return null
-    const headOnly = new Set(scope.headPermissions)
-    permissions = permissions.filter((name) => !headOnly.has(name))
-  } else if (!unit) {
+  // (دازاي 11-01) صلاحيات الرئيس (headOnly) للمدير بس؛ النائب مثل العضو لحد الوكالة
+  const memberOf = (sc: { permissions: string[]; headPermissions?: string[] }) => {
+    if (!Array.isArray(sc.headPermissions)) return null
+    const headOnly = new Set(sc.headPermissions)
+    return sc.permissions.filter((name) => !headOnly.has(name))
+  }
+  let permissions: string[] | null = position === 'DIRECTOR' ? scope.permissions : memberOf(scope)
+  if (!permissions) return null
+  if (!unit && position !== 'MEMBER') {
     if (
       !Array.isArray(division.units) ||
       division.units.some((u) => !Array.isArray(u.permissions))
     )
       return null
-    permissions = [
-      ...permissions,
-      ...division.units.flatMap((u) => u.permissions),
-    ]
+    for (const u of division.units) {
+      const p = position === 'DIRECTOR' ? u.permissions : memberOf(u)
+      if (!p) return null
+      permissions = [...permissions, ...p]
+    }
   }
   return [...new Set(permissions)].sort()
 }

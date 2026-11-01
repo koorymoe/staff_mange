@@ -48,8 +48,8 @@ func orgRoleValues() string {
 func OrgRoleEmployeesSQL(rolesExpr string) string {
 	return `(SELECT oa."employeeId" FROM "OrgAssignment" oa
 		JOIN (VALUES ` + orgRoleValues() + `) AS om(unit, role, head) ON
-			(om.unit = oa."unitId" AND (NOT om.head OR oa.position IN ('DIRECTOR', 'DEPUTY')))
-			OR (oa."unitId" IS NULL AND oa.position IN ('DIRECTOR', 'DEPUTY')
+			(om.unit = oa."unitId" AND (NOT om.head OR oa.position = 'DIRECTOR'))
+			OR (oa."unitId" IS NULL AND oa.position IN ('DIRECTOR', 'DEPUTY') AND (NOT om.head OR oa.position = 'DIRECTOR')
 				AND om.unit IN (SELECT ou.id FROM "OrgUnit" ou WHERE ou."divisionId" = oa."divisionId"))
 		WHERE oa."endedAt" IS NULL AND om.role = ANY(` + rolesExpr + `))`
 }
@@ -58,8 +58,8 @@ func OrgRoleEmployeesSQL(rolesExpr string) string {
 func OrgRolesOfEmployeeSQL() string {
 	return `SELECT DISTINCT om.role FROM "OrgAssignment" oa
 		JOIN (VALUES ` + orgRoleValues() + `) AS om(unit, role, head) ON
-			(om.unit = oa."unitId" AND (NOT om.head OR oa.position IN ('DIRECTOR', 'DEPUTY')))
-			OR (oa."unitId" IS NULL AND oa.position IN ('DIRECTOR', 'DEPUTY')
+			(om.unit = oa."unitId" AND (NOT om.head OR oa.position = 'DIRECTOR'))
+			OR (oa."unitId" IS NULL AND oa.position IN ('DIRECTOR', 'DEPUTY') AND (NOT om.head OR oa.position = 'DIRECTOR')
 				AND om.unit IN (SELECT ou.id FROM "OrgUnit" ou WHERE ou."divisionId" = oa."divisionId"))
 		WHERE oa."endedAt" IS NULL AND oa."employeeId" = $1 ORDER BY om.role`
 }

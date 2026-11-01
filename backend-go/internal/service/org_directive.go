@@ -140,9 +140,9 @@ func (s *OrgService) ManagedDirectives(empID, role string) ([]OrgDirective, erro
 		ok := role == "OWNER" || role == "ADMIN"
 		if !ok && d.DivisionID != nil {
 			if d.UnitID != nil {
-				ok = s.UnitAccess(empID, role, *d.DivisionID, *d.UnitID)
+				ok = s.UnitSee(empID, role, *d.DivisionID, *d.UnitID)
 			} else {
-				_, ok = s.Access(empID, role, *d.DivisionID)
+				ok, _ = s.Access(empID, role, *d.DivisionID)
 			}
 		}
 		if ok {

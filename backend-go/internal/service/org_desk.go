@@ -219,16 +219,19 @@ func (s *OrgService) Access(empID, role, divisionID string) (see, edit bool) {
 	rows := []struct {
 		Div  string  `db:"divisionId"`
 		Unit *string `db:"unitId"`
+		Pos  string  `db:"position"`
 	}{}
-	_ = s.db.Select(&rows, `SELECT "divisionId", "unitId" FROM "OrgAssignment" WHERE "employeeId" = $1
+	_ = s.db.Select(&rows, `SELECT "divisionId", "unitId", position FROM "OrgAssignment" WHERE "employeeId" = $1
 		AND "endedAt" IS NULL AND position IN ('DIRECTOR', 'DEPUTY')`, empID)
+	// (دازاي 11-01) النائب يشوف بس وما يقرر — القرار للمدير (والنائب يصير مدير
+	// بالوكالة تلقائياً بإجازة المدير: org_acting يعيّنه DIRECTOR acting).
 	for _, r := range rows {
 		if r.Div == "admin" && r.Unit == nil {
 			see = true
 		}
 		if r.Div == divisionID {
 			see = true
-			if r.Unit == nil {
+			if r.Unit == nil && r.Pos == "DIRECTOR" {
 				edit = true
 			}
 		}
@@ -241,6 +244,17 @@ var ErrOrgHidden = errors.New("مو موجود")
 // UnitAccess تعديل خطة/تشخيص وحدة: مدير أو نائب الوحدة نفسها، أو من يعدّل الإدارة.
 func (s *OrgService) UnitAccess(empID, role, divisionID, unitID string) bool {
 	if _, edit := s.Access(empID, role, divisionID); edit {
+		return true
+	}
+	var n int
+	_ = s.db.Get(&n, `SELECT count(*) FROM "OrgAssignment" WHERE "employeeId" = $1 AND "unitId" = $2 AND "divisionId" = $3
+		AND "endedAt" IS NULL AND position = 'DIRECTOR'`, empID, unitID, divisionID)
+	return n > 0
+}
+
+// UnitSee اطّلاع على الوحدة: من يعدّلها، أو رئيسها/نائبها (النائب يشوف بس).
+func (s *OrgService) UnitSee(empID, role, divisionID, unitID string) bool {
+	if see, _ := s.Access(empID, role, divisionID); see {
 		return true
 	}
 	var n int
@@ -261,7 +275,7 @@ func (s *OrgService) planReviewer(empID, role, divisionID string, unitID *string
 	}
 	var n int
 	_ = s.db.Get(&n, `SELECT count(*) FROM "OrgAssignment" WHERE "employeeId" = $1 AND "divisionId" = 'admin' AND "unitId" IS NULL
-		AND "endedAt" IS NULL AND position IN ('DIRECTOR', 'DEPUTY')`, empID)
+		AND "endedAt" IS NULL AND position = 'DIRECTOR'`, empID)
 	return n > 0 && divisionID != "admin"
 }
 

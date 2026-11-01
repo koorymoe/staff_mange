@@ -74,6 +74,14 @@ func (s *OrgService) Seed() error {
 			return err
 		}
 	}
+	// (دازاي 11-01) النائب صار اطّلاع — إعادة مزامنة مرة وحدة تشيل منه صلاحيات المدير
+	var deputyDone int
+	if err := s.db.Get(&deputyDone, `SELECT count(*) FROM "OrgGovernorState" WHERE key = 'deputy_view_1101'`); err == nil && deputyDone == 0 {
+		changed = true
+		if _, err := s.db.Exec(`INSERT INTO "OrgGovernorState"(key, value) VALUES ('deputy_view_1101', now()::text) ON CONFLICT (key) DO NOTHING`); err != nil {
+			return err
+		}
+	}
 	if changed {
 		return s.resyncAll("صلاحيات حسب المنصب")
 	}
@@ -384,7 +392,8 @@ type orgQuerier interface {
 }
 
 // OrgDesiredPermissions الصلاحيات الي يستحقها الموظف من مناصبه الفعّالة.
-//   - منصب بوحدة: حزمة الوحدة (صلاحيات headOnly لرئيسها/نائبها بس).
+//   - منصب بوحدة: حزمة الوحدة (صلاحيات headOnly لمديرها بس — النائب ياخذها
+//     بالوكالة لمن المدير مجاز، دازاي 11-01).
 //   - مدير/نائب إدارة: حزمة الإدارة + حزم كل وحداتها.
 //   - عضو إدارة (بلا وحدة): حزمة الإدارة بس.
 func orgDesired(q orgQuerier, empID string) (map[string]bool, error) {
@@ -395,17 +404,18 @@ func orgDesired(q orgQuerier, empID string) (map[string]bool, error) {
 		SELECT DISTINCT b.permission FROM "OrgAssignment" a
 		JOIN "OrgBundle" b ON b.scope = a."unitId"
 		WHERE a."employeeId" = $1 AND a."endedAt" IS NULL AND a."unitId" IS NOT NULL
-		  AND (NOT b."headOnly" OR a.position IN ('DIRECTOR', 'DEPUTY'))
+		  AND (NOT b."headOnly" OR a.position = 'DIRECTOR')
 		UNION
 		SELECT DISTINCT b.permission FROM "OrgAssignment" a
 		JOIN "OrgBundle" b ON b.scope = a."divisionId"
 		WHERE a."employeeId" = $1 AND a."endedAt" IS NULL AND a."unitId" IS NULL
-		  AND (NOT b."headOnly" OR a.position IN ('DIRECTOR', 'DEPUTY'))
+		  AND (NOT b."headOnly" OR a.position = 'DIRECTOR')
 		UNION
 		SELECT DISTINCT b.permission FROM "OrgAssignment" a
 		JOIN "OrgUnit" u ON u."divisionId" = a."divisionId"
 		JOIN "OrgBundle" b ON b.scope = u.id
-		WHERE a."employeeId" = $1 AND a."endedAt" IS NULL AND a."unitId" IS NULL AND a.position IN ('DIRECTOR', 'DEPUTY')`, empID)
+		WHERE a."employeeId" = $1 AND a."endedAt" IS NULL AND a."unitId" IS NULL AND a.position IN ('DIRECTOR', 'DEPUTY')
+		  AND (NOT b."headOnly" OR a.position = 'DIRECTOR')`, empID)
 	if err != nil {
 		return nil, err
 	}

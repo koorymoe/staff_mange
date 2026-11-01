@@ -288,7 +288,7 @@ func (s *OrgService) CanSeeOutputs(empID, role, employeeID, unitID, divisionID s
 		if s.db.Get(&div, `SELECT "divisionId" FROM "OrgUnit" WHERE id = $1`, unitID) != nil {
 			return false
 		}
-		return s.UnitAccess(empID, role, div, unitID)
+		return s.UnitSee(empID, role, div, unitID)
 	case divisionID != "":
 		see, _ := s.Access(empID, role, divisionID)
 		return see

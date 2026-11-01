@@ -314,6 +314,12 @@ function DeskContent({
       </p>
     )
   if (!data) return <p role="status">دا أجيب مكتب الإدارة…</p>
+  // (دازاي 11-01) النائب اطّلاع بس — والمدير بالوكالة يجيه تعيين DIRECTOR فيصير يقرر
+  const deputyHere =
+    !data.canEdit &&
+    [...(data.division.people ?? []), ...(data.division.units ?? []).flatMap((u) => u.people ?? [])].some(
+      (p) => p.employeeId === employee?.id && p.position === 'DEPUTY',
+    )
   const issues = [...(data.issues ?? [])].sort(
     (a, b) =>
       ({ HIGH: 0, MEDIUM: 1, LOW: 2 })[a.severity] -
@@ -336,6 +342,11 @@ function DeskContent({
                 : 'للقراءة، الإبلاغ والتعليق'}
         </span>
       </section>
+      {deputyHere && (
+        <p role="note" className="org-notice">
+          👁️ أنت نائب بهذا المكان — اطّلاع بس، والقرار للمدير. تصير مدير بالوكالة تلقائياً لمن المدير ياخذ إجازة موافق عليها، وترجع نائب لمن يرجع.
+        </p>
+      )}
       {notice && (
         <p role="status" className="org-notice">
           {notice}
