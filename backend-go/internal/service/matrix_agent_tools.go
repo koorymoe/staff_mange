@@ -101,11 +101,63 @@ func (a *MatrixAgent) RegisterReadTools(d AgentDeps) {
 			var b strings.Builder
 			fmt.Fprintf(&b, "آخر ٣ أيام: %d حجز، متأخر %d (%d٪)، مفتوح وموعده فات %d، بلا كادر %d، جزئي %d. الـ٣ أيام الي قبلها: %d٪.\n",
 				lf.Recent.Total, lf.Recent.Late, lf.RecentPct, lf.Recent.OpenNow, lf.Recent.Unstaffed, lf.Recent.Partial, lf.PrevPct)
+			// (دازاي 11-01) چانت تنطبع بـ%+v فالليدر والزبون يطلعون عناوين ذاكرة (مؤشرات) —
+			// ماتركس ما يعرف منو الموظف. هسه نص صريح؛ الأسماء تنخفي وترجع بالقناع.
+			str := func(p *string, def string) string {
+				if p == nil || strings.TrimSpace(*p) == "" {
+					return def
+				}
+				return *p
+			}
 			for i, it := range lf.Items {
 				if i >= 15 {
 					break
 				}
-				fmt.Fprintf(&b, "- %+v\n", it)
+				who := "الليدر: " + str(it.Leader, "ماكو ليدر مكلّف")
+				if it.Unstaffed {
+					who = "بلا كادر — على التنسيق"
+				}
+				fmt.Fprintf(&b, "- %s · %s · الزبون %s · موعده %s · الحالة %s · متأخر %d يوم · %s%s · السبب: %s\n",
+					it.Code, str(it.Service, "—"), str(it.Customer, "—"), bagh(it.ScheduledAt).Format("2006-01-02"), it.Status,
+					it.DaysLate, who, map[bool]string{true: " · جزئي", false: ""}[it.Partial], str(it.Reason, "ما مكتوب"))
+			}
+			return b.String(), nil
+		}})
+
+	a.AddTool(agentTool{Name: "late_paperwork", Desc: "الورق المتأخر: حجوزات منجزة من أكثر من ٤٨ ساعة وناقصها فاتورة أو تقرير — لكل حجز الليدر المسؤول وشنو الناقص وكم ساعة صارله.",
+		Run: func(map[string]any, *nameMask) (string, error) {
+			if a.db == nil {
+				return "", fmt.Errorf("المصدر مو مربوط")
+			}
+			rows, err := repository.NewAiRepository(a.db).LatePaperworkRows("")
+			if err != nil {
+				return "", err
+			}
+			if len(rows) == 0 {
+				return "ماكو ورق متأخر.", nil
+			}
+			names := map[string]string{}
+			var b strings.Builder
+			fmt.Fprintf(&b, "%d حجز ناقصه ورق:\n", len(rows))
+			for i, r := range rows {
+				if i >= 40 {
+					fmt.Fprintf(&b, "… و%d غيرها\n", len(rows)-40)
+					break
+				}
+				if _, ok := names[r.LeaderID]; !ok {
+					var n string
+					_ = a.db.Get(&n, `SELECT name FROM "Employee" WHERE id = $1`, r.LeaderID)
+					names[r.LeaderID] = n
+				}
+				miss := []string{}
+				if r.MissingInvoice {
+					miss = append(miss, "فاتورة")
+				}
+				if r.MissingReport {
+					miss = append(miss, "تقرير")
+				}
+				fmt.Fprintf(&b, "- %s · الليدر %s · ناقص %s · صارله %d ساعة من الإنجاز\n",
+					r.BookingCode, names[r.LeaderID], strings.Join(miss, " و"), r.HoursSinceDone)
 			}
 			return b.String(), nil
 		}})

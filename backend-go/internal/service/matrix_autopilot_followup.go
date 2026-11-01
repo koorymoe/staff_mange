@@ -770,7 +770,8 @@ func (s *MatrixAutopilotService) projectIdleToday(today string, dayStart time.Ti
 		msg := fmt.Sprintf("🤖 ماتركس — ما اشتغلوا اليوم على مشاريعهم: %s. التفاصيل بـ«⏱️ تأخير المشاريع» بمكتب المراقب.", strings.Join(idle, "، "))
 		if s.act(model.AiAction{Kind: model.AiActionProjectIdleToday, EntityType: "MONITOR", EntityID: mon,
 			Period: today, TargetEmployeeID: &mon, TargetLabel: s.actions.EmployeeName(mon),
-			Summary: fmt.Sprintf("بلّغ المراقب: %d مسؤول ما اشتغل اليوم", len(idle)),
+			// (دازاي 11-01) التذكير بعين المراقب يسمّي الموظفين — مو عدد بس
+			Summary: fmt.Sprintf("ما اشتغلوا اليوم على مشاريعهم: %s", joinFirst(idle, 4)),
 			Details: why(map[string]any{"idle": idle})}, dayStart,
 			func() error { return s.notif.Create(mon, "AI_AUTOPILOT", msg) }) {
 			n++
@@ -818,7 +819,7 @@ func (s *MatrixAutopilotService) projectOverLimit(today string, dayStart time.Ti
 		msg := fmt.Sprintf("🤖 ماتركس — %d مشروع تجاوز حد مرحلته وبلا سبب مكتوب: %s.", len(noReason), strings.Join(shown, "؛ "))
 		if s.act(model.AiAction{Kind: model.AiActionProjectOverLimit, EntityType: "MONITOR", EntityID: mon,
 			Period: today, TargetEmployeeID: &mon, TargetLabel: s.actions.EmployeeName(mon),
-			Summary: fmt.Sprintf("بلّغ المراقب: %d مشروع متأخر بلا سبب", len(noReason)),
+			Summary: fmt.Sprintf("%d مشروع تجاوز حده بلا سبب: %s", len(noReason), joinFirst(noReason, 3)),
 			Details: why(map[string]any{"projects": noReason})}, dayStart,
 			func() error { return s.notif.Create(mon, "AI_AUTOPILOT", msg) }) {
 			n++
@@ -919,4 +920,12 @@ func (s *MatrixAutopilotService) paymentsUnverified(today string, dayStart time.
 		return 1, nil
 	}
 	return 0, nil
+}
+
+// joinFirst أول n عناصر بفاصلة، والباقي «و+ك».
+func joinFirst(xs []string, n int) string {
+	if len(xs) <= n {
+		return strings.Join(xs, "، ")
+	}
+	return fmt.Sprintf("%s و%d غيرهم", strings.Join(xs[:n], "، "), len(xs)-n)
 }
