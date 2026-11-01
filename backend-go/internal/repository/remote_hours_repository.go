@@ -9,18 +9,20 @@ import (
 
 type RemoteHoursRepository struct{ db *sqlx.DB }
 
-func NewRemoteHoursRepository(db *sqlx.DB) *RemoteHoursRepository { return &RemoteHoursRepository{db: db} }
+func NewRemoteHoursRepository(db *sqlx.DB) *RemoteHoursRepository {
+	return &RemoteHoursRepository{db: db}
+}
 
 type RemoteEntry struct {
-	ID           string    `db:"id" json:"id"`
-	EmployeeID   string    `db:"employeeId" json:"employeeId"`
-	EmployeeName string    `db:"employeeName" json:"employeeName"`
-	WorkDate     time.Time `db:"workDate" json:"workDate"`
-	Seconds      int       `db:"seconds" json:"seconds"`
-	Note         *string   `db:"note" json:"note"`
-	AddedByID    *string   `db:"addedById" json:"addedById"`
-	AddedBy      string    `db:"addedBy" json:"addedBy"`
-	CreatedAt    time.Time `db:"createdAt" json:"createdAt"`
+	ID           string     `db:"id" json:"id"`
+	EmployeeID   string     `db:"employeeId" json:"employeeId"`
+	EmployeeName string     `db:"employeeName" json:"employeeName"`
+	WorkDate     time.Time  `db:"workDate" json:"workDate"`
+	Seconds      int        `db:"seconds" json:"seconds"`
+	Note         *string    `db:"note" json:"note"`
+	AddedByID    *string    `db:"addedById" json:"addedById"`
+	AddedBy      string     `db:"addedBy" json:"addedBy"`
+	CreatedAt    time.Time  `db:"createdAt" json:"createdAt"`
 	Source       string     `db:"source" json:"source"` // MANUAL | TIMER
 	ClosedAt     *time.Time `db:"closedAt" json:"closedAt"`
 }
@@ -159,4 +161,35 @@ func (r *RemoteHoursRepository) Entry(id string) (*RemoteEntry, error) {
 func (r *RemoteHoursRepository) Update(id string, seconds int, note *string) error {
 	_, err := r.db.Exec(`UPDATE "RemoteWorkEntry" SET seconds = $2, note = $3 WHERE id = $1`, id, seconds, note)
 	return err
+}
+
+// RemoteHoursPlan المطلوب بالشهر وسعر الساعة (دازاي 11-01).
+type RemoteHoursPlan struct {
+	TargetHours   int     `db:"targetHours" json:"targetHours"`
+	HourlyRateIQD float64 `db:"hourlyRateIQD" json:"hourlyRateIQD"`
+}
+
+// Plan خطة الموظف (nil إذا ما محددة).
+func (r *RemoteHoursRepository) Plan(emp string) *RemoteHoursPlan {
+	var p RemoteHoursPlan
+	if err := r.db.Get(&p, `SELECT "targetHours", "hourlyRateIQD"::float8 AS "hourlyRateIQD" FROM "RemoteHoursPlan" WHERE "employeeId" = $1`, emp); err != nil {
+		return nil
+	}
+	return &p
+}
+
+// SetPlan يحفظ الخطة. onlyIfNew: الموظف لنفسه يحددها مرة وحدة بس.
+func (r *RemoteHoursRepository) SetPlan(emp, by string, p RemoteHoursPlan, onlyIfNew bool) (bool, error) {
+	q := `INSERT INTO "RemoteHoursPlan" ("employeeId", "targetHours", "hourlyRateIQD", "setById") VALUES ($1, $2, $3, $4)`
+	if onlyIfNew {
+		q += ` ON CONFLICT ("employeeId") DO NOTHING`
+	} else {
+		q += ` ON CONFLICT ("employeeId") DO UPDATE SET "targetHours" = EXCLUDED."targetHours", "hourlyRateIQD" = EXCLUDED."hourlyRateIQD", "setById" = EXCLUDED."setById", "setAt" = now()`
+	}
+	res, err := r.db.Exec(q, emp, p.TargetHours, p.HourlyRateIQD, by)
+	if err != nil {
+		return false, err
+	}
+	n, _ := res.RowsAffected()
+	return n > 0, nil
 }

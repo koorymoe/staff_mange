@@ -122,7 +122,7 @@ func (h *RemoteHoursHandler) Mine(w http.ResponseWriter, r *http.Request) {
 	for _, x := range rows {
 		total += x.Seconds
 	}
-	WriteJSON(w, http.StatusOK, map[string]any{"entries": rows, "totalSeconds": total, "timer": h.timerView(me)})
+	WriteJSON(w, http.StatusOK, map[string]any{"entries": rows, "totalSeconds": total, "timer": h.timerView(me), "plan": h.repo.Plan(me)})
 }
 
 // ── العدّاد الحي (محفوظ بالخادم — التحديث أو سد الجهاز ما يضيّعه) ──
@@ -197,7 +197,6 @@ func (h *RemoteHoursHandler) TimerAction(w http.ResponseWriter, r *http.Request)
 	}
 	WriteJSON(w, http.StatusOK, map[string]any{"timer": h.timerView(me)})
 }
-
 
 // POST /api/remote-hours/reset — المسؤول، من يوم ٢٧ وطالع.
 // ما يحذف: يسكّر الفترة، فالعدّادات تبدي من صفر والسجلات تبقى بالإكسل.
@@ -471,3 +470,40 @@ func (h *RemoteHoursHandler) Export(w http.ResponseWriter, r *http.Request) {
 }
 
 func boolPtr(b bool) *bool { return &b }
+
+// PUT /api/remote-hours/plan {employeeId?, targetHours, hourlyRateIQD} — دازاي 11-01:
+// الموظف يحدد المطلوب منه بالشهر وسعر ساعته **مرة وحدة**؛ بعدها التعديل لإدارة الساعات.
+func (h *RemoteHoursHandler) SetPlan(canManage func(r *http.Request) bool) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var b struct {
+			EmployeeID    string  `json:"employeeId"`
+			TargetHours   int     `json:"targetHours"`
+			HourlyRateIQD float64 `json:"hourlyRateIQD"`
+		}
+		if err := DecodeJSON(r, &b); err != nil || b.TargetHours <= 0 || b.TargetHours > 400 || b.HourlyRateIQD < 0 || b.HourlyRateIQD > 10000000 {
+			WriteError(w, http.StatusBadRequest, "اكتب الساعات المطلوبة بالشهر (١–٤٠٠) وسعر الساعة")
+			return
+		}
+		me := middleware.EmployeeIDFromContext(r)
+		emp, onlyIfNew := me, true
+		if canManage(r) {
+			onlyIfNew = false
+			if b.EmployeeID != "" {
+				emp = b.EmployeeID
+			}
+		} else if b.EmployeeID != "" && b.EmployeeID != me {
+			WriteError(w, http.StatusNotFound, "مو موجود")
+			return
+		}
+		saved, err := h.repo.SetPlan(emp, me, repository.RemoteHoursPlan{TargetHours: b.TargetHours, HourlyRateIQD: b.HourlyRateIQD}, onlyIfNew)
+		if err != nil {
+			WriteError(w, http.StatusInternalServerError, "تعذر الحفظ")
+			return
+		}
+		if !saved {
+			WriteError(w, http.StatusBadRequest, "حددتها من قبل — التعديل يصير من إدارة الساعات")
+			return
+		}
+		WriteJSON(w, http.StatusOK, map[string]any{"plan": h.repo.Plan(emp)})
+	}
+}

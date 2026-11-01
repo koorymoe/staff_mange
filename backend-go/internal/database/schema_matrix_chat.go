@@ -1564,5 +1564,18 @@ func matrixChatMigrations() []Migration {
 			);
 			CREATE INDEX IF NOT EXISTS "ProjectMonitorAction_project" ON "ProjectMonitorAction"("projectId", "createdAt" DESC);
 		`,
+	}, {
+		// 🎯 العمل من البيت (دازاي 11-01): المطلوب بالشهر (ساعات) وسعر الساعة — العدّاد
+		// التنازلي يحسب الباقي، وبعد ما يعبر يصير وقت إضافي، والراتب = الساعات × السعر.
+		Version: "0423_remote_hours_plan",
+		SQL: `
+			CREATE TABLE IF NOT EXISTS "RemoteHoursPlan" (
+				"employeeId" TEXT PRIMARY KEY REFERENCES "Employee"(id) ON DELETE CASCADE,
+				"targetHours" INT NOT NULL CHECK ("targetHours" > 0 AND "targetHours" <= 400),
+				"hourlyRateIQD" NUMERIC NOT NULL DEFAULT 0 CHECK ("hourlyRateIQD" >= 0),
+				"setById" TEXT REFERENCES "Employee"(id) ON DELETE SET NULL,
+				"setAt" TIMESTAMPTZ NOT NULL DEFAULT now()
+			);
+		`,
 	}}
 }

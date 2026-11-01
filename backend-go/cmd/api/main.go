@@ -1343,6 +1343,15 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	mux.Handle("GET /api/remote-hours/mine", middleware.Chain(http.HandlerFunc(remoteHoursHandler.Mine), requireAuth, requireRemoteSelf))
 	mux.Handle("POST /api/remote-hours/mine", middleware.Chain(http.HandlerFunc(remoteHoursHandler.AddMine), requireAuth, requireRemoteSelf))
 	mux.Handle("POST /api/remote-hours/timer/{action}", middleware.Chain(http.HandlerFunc(remoteHoursHandler.TimerAction), requireAuth, requireRemoteSelf))
+	// (دازاي 11-01) المطلوب بالشهر وسعر الساعة — الموظف مرة وحدة، والإدارة تعدّل
+	mux.Handle("PUT /api/remote-hours/plan", middleware.Chain(remoteHoursHandler.SetPlan(func(r *http.Request) bool {
+		role := middleware.RoleFromContext(r)
+		if role == "ADMIN" || role == "OWNER" {
+			return true
+		}
+		ok, _ := permissionRepo.HasPermission(middleware.EmployeeIDFromContext(r), "remote_hours_manage")
+		return ok
+	}), requireAuth, requireRemoteSelf))
 	mux.Handle("POST /api/remote-hours/reset", middleware.Chain(http.HandlerFunc(remoteHoursHandler.Reset), requireAuth, requireRemoteHours))
 	// الحذف: للي سجّلها أو للمدير (يتفحص بالهاندلر) — للمسؤول والموظف لنفسه.
 	mux.Handle("DELETE /api/remote-hours/{id}", middleware.Chain(http.HandlerFunc(remoteHoursHandler.Delete), requireAuth, requireRemoteSelf))

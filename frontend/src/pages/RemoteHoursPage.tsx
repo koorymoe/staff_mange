@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { api, type Employee, type RemoteEntry, type RemoteSummary, type RemoteTimer } from '../api'
+import { api, type Employee, type RemoteEntry, type RemoteSummary, type RemoteTimer, type RemotePlan } from '../api'
 import { useSession } from '../session'
 import { loadFailed } from '../netErrors'
 
@@ -42,10 +42,13 @@ function MyHours({ meId }: { meId: string }) {
   const [busy, setBusy] = useState(false)
   const [form, setForm] = useState({ date: today(), h: '', m: '', s: '', note: '' })
   const [msg, setMsg] = useState<{ ok: boolean; t: string } | null>(null)
+  const [plan, setPlan] = useState<RemotePlan | null>(null)
+  const [planForm, setPlanForm] = useState({ hours: '', rate: '' })
+  const [planMsg, setPlanMsg] = useState('')
 
   const apply = (t: RemoteTimer) => { setTimer(t); setBase(Date.now()); setTick(0) }
   const load = useCallback(() => {
-    api.getMyRemote().then((r) => { apply(r.timer); setEntries(r.entries); setTotal(r.totalSeconds) }).catch(loadFailed)
+    api.getMyRemote().then((r) => { apply(r.timer); setEntries(r.entries); setTotal(r.totalSeconds); setPlan(r.plan ?? null) }).catch(loadFailed)
   }, [])
   useEffect(() => { load() }, [load])
   // العدّاد يمشي بالشاشة كل ثانية — والحساب الحقيقي بالخادم.
@@ -85,8 +88,54 @@ function MyHours({ meId }: { meId: string }) {
     try { await api.deleteRemoteHours(e.id); load() } catch (err) { alert(err instanceof Error ? err.message : 'تعذّر الحذف') }
   }
 
+  // 🎯 (دازاي 11-01) المطلوب بالشهر: عدّاد تنازلي، وبعد ما يعبر وقت إضافي — والراتب = الساعات × السعر
+  const worked = total + shown
+  const target = (plan?.targetHours ?? 0) * 3600
+  const left = target - worked
+  const pay = (sec: number) => Math.round((sec / 3600) * (plan?.hourlyRateIQD ?? 0))
+  const savePlan = async () => {
+    const hours = Number(planForm.hours), rate = Number(planForm.rate.replace(/[^\d.]/g, ''))
+    if (!(hours > 0 && hours <= 400) || !(rate >= 0)) { setPlanMsg('اكتب الساعات المطلوبة بالشهر وسعر الساعة'); return }
+    try { const r = await api.setRemotePlan({ targetHours: hours, hourlyRateIQD: rate }); setPlan(r.plan); setPlanMsg('') }
+    catch (e) { setPlanMsg(e instanceof Error ? e.message : 'تعذر الحفظ') }
+  }
+  const planCard = (
+    <section className={`${card} lg:col-span-2`}>
+      <h2 className="mb-2 font-extrabold text-[#0f2040]">🎯 المطلوب مني بالشهر وراتبي</h2>
+      {!plan ? (
+        <div className="flex flex-wrap items-end gap-2">
+          <label className="text-xs text-slate-600">الساعات المطلوبة بالشهر<input type="number" min={1} max={400} value={planForm.hours} onChange={(e) => setPlanForm({ ...planForm, hours: e.target.value })} className={`${inp} block w-28 text-center`} /></label>
+          <label className="text-xs text-slate-600">سعر الساعة (د.ع)<input inputMode="numeric" value={planForm.rate} onChange={(e) => setPlanForm({ ...planForm, rate: e.target.value })} className={`${inp} block w-32 text-center`} dir="ltr" /></label>
+          <button onClick={savePlan} className="rounded-lg bg-brand-600 px-4 py-2 text-sm font-bold text-white">حفظ</button>
+          <p className="w-full text-[11px] text-slate-500">تحددها مرة وحدة — بعدها التعديل من إدارة الساعات.</p>
+          {planMsg && <p className="w-full text-sm font-bold text-red-600">{planMsg}</p>}
+        </div>
+      ) : (
+        <div className="grid gap-3 sm:grid-cols-3">
+          <div className={`rounded-2xl p-4 text-center ${left > 0 ? 'bg-slate-900' : 'bg-emerald-900'}`}>
+            <p className="text-xs text-slate-300">{left > 0 ? '⏳ باقي عليك' : '⚡ وقت إضافي'}</p>
+            <p className={`font-mono text-4xl font-black tabular-nums ${left > 0 ? 'text-amber-300' : 'text-emerald-300'}`} dir="ltr">{hms(Math.abs(left))}</p>
+            <p className="mt-1 text-[11px] text-slate-400">من {plan.targetHours} ساعة بالشهر</p>
+          </div>
+          <div className="rounded-2xl bg-slate-50 p-4 text-center">
+            <p className="text-xs text-slate-500">💰 راتبي لهسه</p>
+            <p className="text-3xl font-black text-[#0f2040]" dir="ltr">{pay(worked).toLocaleString('en-US')}</p>
+            <p className="text-[11px] text-slate-500">{hms(worked)} × {plan.hourlyRateIQD.toLocaleString('en-US')} د.ع/ساعة</p>
+          </div>
+          <div className="rounded-2xl bg-emerald-50 p-4 text-center">
+            <p className="text-xs text-emerald-800">⚡ منها وقت إضافي</p>
+            <p className="text-3xl font-black text-emerald-700" dir="ltr">{pay(Math.max(0, -left)).toLocaleString('en-US')}</p>
+            <p className="text-[11px] text-emerald-800">{hms(Math.max(0, -left))} فوك المطلوب</p>
+          </div>
+          <p className="text-[11px] text-slate-400 sm:col-span-3">الحساب من آخر تصفية للساعات، ويمشي ويا العدّاد لحظة بلحظة.</p>
+        </div>
+      )}
+    </section>
+  )
+
   return (
     <div className="grid gap-4 lg:grid-cols-2">
+      {planCard}
       <section className={card}>
         <h2 className="mb-2 font-extrabold text-[#0f2040]">⏱️ عدّادي</h2>
         <div className="rounded-2xl bg-slate-900 p-5 text-center">

@@ -3918,7 +3918,10 @@ export const api = {
     request<{ ok: boolean; seconds: number }>(`/remote-hours/${encodeURIComponent(id)}`, { method: 'PUT', body: JSON.stringify(b) }),
   resetRemoteHours: () => request<{ closed: number }>('/remote-hours/reset', { method: 'POST' }),
   // الموظف لنفسه — صلاحية remote_hours_self
-  getMyRemote: () => request<{ entries: RemoteEntry[]; totalSeconds: number; timer: RemoteTimer }>('/remote-hours/mine'),
+  getMyRemote: () => request<{ entries: RemoteEntry[]; totalSeconds: number; timer: RemoteTimer; plan: RemotePlan | null }>('/remote-hours/mine'),
+  /** (دازاي 11-01) المطلوب بالشهر وسعر الساعة — الموظف مرة وحدة، والإدارة تعدّل */
+  setRemotePlan: (b: { targetHours: number; hourlyRateIQD: number; employeeId?: string }) =>
+    request<{ plan: RemotePlan }>('/remote-hours/plan', { method: 'PUT', body: JSON.stringify(b) }),
   addMyRemote: (b: { date: string; hours: number; minutes: number; seconds: number; note?: string }) =>
     request<{ id: string; seconds: number }>('/remote-hours/mine', { method: 'POST', body: JSON.stringify(b) }),
   remoteTimer: (action: 'start' | 'pause' | 'finish', note?: string) =>
@@ -6606,3 +6609,5 @@ export interface PermissionAuditRow {
   id: string; employeeId: string; employeeName: string | null; actorName: string | null
   action: 'ADD' | 'REMOVE' | 'EXPIRE' | 'UNPIN'; permission: string; reason: string | null; createdAt: string
 }
+
+export interface RemotePlan { targetHours: number; hourlyRateIQD: number }
