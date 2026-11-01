@@ -1587,5 +1587,34 @@ func matrixChatMigrations() []Migration {
 			UPDATE "MonitorJustification" j SET "projectId" = p.id FROM "Project" p
 			WHERE j."projectId" IS NULL AND j."monitorId" IS NULL AND j.question LIKE 'مشروع ' || p.code || ' (%';
 		`,
+	}, {
+		// 🏗️ (دازاي 11-01) مركز القيادة — المشاريع والمقاولات. معزول تماماً عن «Project»
+		// بنظام الشركة: ولا بيانات تنتقل بين الطبقتين.
+		Version: "0425_command_projects",
+		SQL: `
+			CREATE TABLE IF NOT EXISTS "CmdProject" (
+				id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
+				name TEXT NOT NULL,
+				location TEXT NOT NULL DEFAULT '',
+				owner TEXT NOT NULL DEFAULT '',
+				"contractIQD" NUMERIC NOT NULL DEFAULT 0 CHECK ("contractIQD" >= 0),
+				"durationMonths" INT CHECK ("durationMonths" IS NULL OR "durationMonths" BETWEEN 1 AND 240),
+				"startDate" DATE,
+				stage TEXT NOT NULL DEFAULT 'TENDER' CHECK (stage IN ('TENDER', 'SIGNED', 'EXECUTION', 'HANDOVER', 'CLOSED')),
+				progress INT NOT NULL DEFAULT 0 CHECK (progress BETWEEN 0 AND 100),
+				"createdById" TEXT REFERENCES "Employee"(id) ON DELETE SET NULL,
+				"createdAt" TIMESTAMPTZ NOT NULL DEFAULT now(),
+				"updatedAt" TIMESTAMPTZ NOT NULL DEFAULT now()
+			);
+			CREATE UNIQUE INDEX IF NOT EXISTS "CmdProject_name_uq" ON "CmdProject" (lower(name));
+			CREATE TABLE IF NOT EXISTS "CmdProjectLog" (
+				id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
+				"projectId" TEXT REFERENCES "CmdProject"(id) ON DELETE CASCADE,
+				"employeeId" TEXT REFERENCES "Employee"(id) ON DELETE SET NULL,
+				command TEXT NOT NULL,
+				result TEXT NOT NULL,
+				"createdAt" TIMESTAMPTZ NOT NULL DEFAULT now()
+			);
+		`,
 	}}
 }

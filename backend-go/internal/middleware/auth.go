@@ -808,3 +808,17 @@ func hasOrgRoleIn(r *http.Request, allowed map[string]bool) bool {
 	}
 	return false
 }
+
+// RequireCommandRealm مسارات مركز القيادة: بس توكن القيادة. غيره 404 (مو 403 —
+// حتى ما تنسجل مخالفة على موظف عادي، وما ينكشف إن المسار موجود).
+func RequireCommandRealm() func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if realm, _ := r.Context().Value(ContextRealm).(string); realm != service.RealmCommand {
+				writeError(w, http.StatusNotFound, "مو موجود")
+				return
+			}
+			next.ServeHTTP(w, r)
+		})
+	}
+}
