@@ -118,7 +118,7 @@ function notifTarget(n: { type: string; message: string }, canOpen: (path: strin
   return null
 }
 import AnnouncementTicker from './AnnouncementTicker'
-import { navItems, isNavVisible, isExtraForMonitor, isPathAllowed, organizeOrgNavigation, orgNavigationGroupForPath, type DisplayNavItem, type NavItem } from './navTree'
+import { navItems, isNavVisible, isExtraForMonitor, isPathAllowed, organizeOrgNavigation, orgNavigationGroupForPath, orgGroupUnit, type DisplayNavItem, type NavItem } from './navTree'
 import { pollVisible } from '../utils/poll'
 import { startAgentRebrand } from '../utils/agentBrand'
 
@@ -143,6 +143,17 @@ function hasActiveChild(item: NavItem, pathname: string): boolean {
 export default function Layout() {
   const [employee, setEmployeeState] = useState<Employee | null>(loadStoredEmployee)
   const { items: orgMemberships } = useOrgMemberships(employee)
+  // (دازاي 11-01) العنوان تحت الاسم = منصبه بالهيكل («مدير تطوير الأعمال») بدل الدور القديم
+  const orgTitle = (() => {
+    const rank = { DIRECTOR: 0, DEPUTY: 1, MEMBER: 2 } as const
+    const m = [...(orgMemberships ?? [])].sort((a, b) => rank[a.position] - rank[b.position])[0]
+    if (!m) return null
+    const place = m.unitName || m.divisionName
+    if (!place) return null
+    if (m.position === 'DIRECTOR') return `${m.acting ? 'مدير بالوكالة —' : 'مدير'} ${place}`
+    if (m.position === 'DEPUTY') return `نائب ${place}`
+    return `عضو ${place}`
+  })()
   const [employeePermissions, setEmployeePermissions] = useState<string[]>([])
   const [gpsServiceId, setGpsServiceId] = useState<string | null>(null)
   // وجهة الإشعار لازم تكون شاشة يحقله يفتحها (نفس حارس المسار تحت)
@@ -521,7 +532,13 @@ export default function Layout() {
     })
   }
 
-  const visibleItems = organizeOrgNavigation(prune(navItems, false, new Set<string>()))
+  // (دازاي 11-01) مجموعة «الوحدات حسب الهيكل الجديد» = وحدات منصبه بس
+  const orgAllowedUnits: Set<string> | null = (employee?.role === 'ADMIN' || employee?.actualRole === 'OWNER')
+    ? null
+    : new Set((orgMemberships ?? []).flatMap((m) => m.unitId
+      ? [m.unitId]
+      : Object.values(orgGroupUnit).filter((u) => u.startsWith(m.divisionId + '.'))))
+  const visibleItems = organizeOrgNavigation(prune(navItems, false, new Set<string>()), orgAllowedUnits)
 
   const toggle = (label: string) => setExpandedGroups((p) => ({ ...p, [label]: !p[label] }))
 
@@ -863,7 +880,7 @@ export default function Layout() {
               <div className="flex items-center gap-2 rounded-xl bg-slate-50/80 px-2 py-1.5 transition-colors hover:bg-slate-100 sm:gap-3 sm:px-3">
                 <div className="hidden text-left sm:block">
                   <p className="text-sm font-bold text-slate-800">{employee.name}</p>
-                  <p className="text-[11px] text-slate-400">{roleLabel(employee.actualRole || employee.role)}</p>
+                  <p className="text-[11px] text-slate-400">{orgTitle ?? roleLabel(employee.actualRole || employee.role)}</p>
                 </div>
                 <div className={`relative flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl bg-gradient-to-br ${gradientClass} text-sm font-bold text-white shadow-md sm:h-10 sm:w-10`}>
                   {employee.attendanceIcon || employee.name.charAt(0)}
@@ -938,7 +955,7 @@ export default function Layout() {
               <div className="flex items-center gap-3">
                 <div className="flex-1 text-right">
                   <p className="text-sm font-bold text-white">{employee.name}</p>
-                  <p className="text-[11px] text-blue-300/80">{roleLabel(employee.actualRole || employee.role)}</p>
+                  <p className="text-[11px] text-blue-300/80">{orgTitle ?? roleLabel(employee.actualRole || employee.role)}</p>
                 </div>
                 {/* ═══ صورة الموظف — عرض بس ═══
                     «اقفلها بيد الإدارة بس».
@@ -961,7 +978,7 @@ export default function Layout() {
                 <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse"/>
                 <span className="text-[10px] text-emerald-400/80 font-medium">متصل الآن</span>
                 <span className={`mr-auto rounded-full bg-gradient-to-l ${gradientClass} px-2.5 py-0.5 text-[10px] font-bold text-white shadow-sm`}>
-                  {roleLabel(employee.actualRole || employee.role)}
+                  {orgTitle ?? roleLabel(employee.actualRole || employee.role)}
                 </span>
               </div>
             </div>

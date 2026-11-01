@@ -1092,13 +1092,27 @@ export function orgNavigationGroupForPath(path: string, ctx: NavContext): string
   return best?.group ? orgDisplayGroupTo(best.group) : undefined
 }
 
+/** (دازاي 11-01) مجموعة الهيكل ← وحدتها بـOrgSeed: المجموعة تطلع بس لأصحاب
+ * المنصب بوحدتها (أو بإدارتها)، مو لكل من عنده شاشة منها بصلاحية قديمة. */
+export const orgGroupUnit: Record<string, string> = {
+  '/unit-monitoring': 'admin.monitoring', '/unit-accounts': 'admin.accounts', '/unit-oversight': 'admin.oversight',
+  '/unit-auditing': 'ops.audit', '/unit-fleet': 'ops.fleet', '/unit-hr': 'ops.staff', '/unit-bookings': 'ops.bookings',
+  '/unit-technicians': 'bizdev.tech', '/unit-training': 'bizdev.training',
+  '/unit-projects': 'eng.projects', '/unit-design-group': 'eng.design',
+  '/unit-quality': 'quality.followup', '/unit-procurement': 'supply.procurement',
+  '/unit-pr': 'contracts.media', '/unit-it': 'it.main',
+}
+
 /** Input MUST already be visibility-filtered. Never call this for authorization.
  * Add copies of visible leaves; preserve ALL original nodes and their positions.
  * Dedup only the NEW shortcuts, never an existing link, heading, button or group.
  */
 export function organizeOrgNavigation(
   items: DisplayNavItem[],
+  // وحدات منصبه — null = الكل (المالك ومدير النظام)
+  allowedUnits: Set<string> | null = null,
 ): DisplayNavItem[] {
+  if (allowedUnits && allowedUnits.size === 0) return items
   const buckets = new Map<string, Map<string, DisplayNavItem>>()
   const icons = new Map<string, React.ReactNode>()
   const walk = (
@@ -1122,6 +1136,7 @@ export function organizeOrgNavigation(
   }
   walk(items)
   const groups: DisplayNavItem[] = orgNavigationGroups.flatMap((group) => {
+    if (allowedUnits && !allowedUnits.has(orgGroupUnit[group.to] ?? '')) return []
     const bucket = buckets.get(group.to)
     if (!bucket?.size) return []
     const rank = new Map(group.paths.map((path, i) => [path, i]))
