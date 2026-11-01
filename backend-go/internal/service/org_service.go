@@ -74,6 +74,30 @@ func (s *OrgService) Seed() error {
 			return err
 		}
 	}
+	// (دازاي 11-01) جدول الصلاحيات المقترح — مرة وحدة، وبس للإدارة الي جدولها فارغ
+	var doaDone int
+	if err := s.db.Get(&doaDone, `SELECT count(*) FROM "OrgGovernorState" WHERE key = 'doa_seed_1101'`); err == nil && doaDone == 0 {
+		sorts := map[string]int{}
+		empty := map[string]bool{}
+		for _, r := range model.OrgAuthoritySeed {
+			if _, seen := empty[r.Division]; !seen {
+				var n int
+				_ = s.db.Get(&n, `SELECT count(*) FROM "OrgAuthority" WHERE "divisionId" = $1`, r.Division)
+				empty[r.Division] = n == 0
+			}
+			if !empty[r.Division] {
+				continue
+			}
+			if _, err := s.db.Exec(`INSERT INTO "OrgAuthority" ("divisionId", decision, mode, "limitIQD", sort) VALUES ($1, $2, $3, $4, $5)`,
+				r.Division, r.Decision, r.Mode, r.LimitIQD, sorts[r.Division]); err != nil {
+				return err
+			}
+			sorts[r.Division]++
+		}
+		if _, err := s.db.Exec(`INSERT INTO "OrgGovernorState"(key, value) VALUES ('doa_seed_1101', now()::text) ON CONFLICT (key) DO NOTHING`); err != nil {
+			return err
+		}
+	}
 	// (دازاي 11-01) النائب صار اطّلاع — إعادة مزامنة مرة وحدة تشيل منه صلاحيات المدير
 	var deputyDone int
 	if err := s.db.Get(&deputyDone, `SELECT count(*) FROM "OrgGovernorState" WHERE key = 'deputy_view_1101'`); err == nil && deputyDone == 0 {
