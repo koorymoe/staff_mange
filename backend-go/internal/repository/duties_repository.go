@@ -1,6 +1,7 @@
 package repository
 
 import (
+	"staffmange-api/internal/model"
 	"strings"
 
 	"github.com/jmoiron/sqlx"
@@ -186,7 +187,7 @@ func (r *DutiesRepository) position(id string) string {
 		Coord    bool   `db:"coord"`
 		Division string `db:"division"`
 	}
-	if err := r.db.Get(&e, `SELECT role::text AS role, "isLeader",
+	if err := r.db.Get(&e, `SELECT `+model.EffectiveRoleSQL(`"Employee".id`, `"Employee".role`)+` AS role, "isLeader",
 		EXISTS (SELECT 1 FROM "EmployeePermission" ep JOIN "Permission" p ON p.id = ep."permissionId" WHERE ep."employeeId" = $1 AND p.name = 'monitoring') AS monitor,
 		EXISTS (SELECT 1 FROM "EmployeePermission" ep JOIN "Permission" p ON p.id = ep."permissionId" WHERE ep."employeeId" = $1 AND p.name = 'coordinator') AS coord,
 		COALESCE(division, '') AS division

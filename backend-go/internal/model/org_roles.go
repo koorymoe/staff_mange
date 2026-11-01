@@ -22,6 +22,9 @@ var OrgUnitRole = map[string]string{
 	"quality.followup":   "QUALITY_ENGINEER",
 	"supply.procurement": "PROCUREMENT_ADMIN",
 	"eng.projects":       "PROJECT_MANAGER",
+	"eng.design":         "DESIGNER",
+	"contracts.media":    "MEDIA",
+	"it.main":            "IT_SUPPORT",
 }
 
 // OrgUnitHeadRole الوحدة ← دور فعلي لرئيسها/نائبها بس.
@@ -65,4 +68,19 @@ func OrgRolesOfEmployeeSQL() string {
 }
 
 // OrgRolePriority ترتيب الدور الفعلي الواحد (EffectiveRole) لمن عنده أكثر من دور.
-var OrgRolePriority = []string{"MONITOR", "FINANCE", "HR_COORDINATOR", "PROJECT_MANAGER", "PROCUREMENT_ADMIN", "QUALITY_ENGINEER", "GPS_ADMIN"}
+var OrgRolePriority = []string{"MONITOR", "FINANCE", "HR_COORDINATOR", "PROJECT_MANAGER", "PROCUREMENT_ADMIN", "QUALITY_ENGINEER", "GPS_ADMIN", "MEDIA", "IT_SUPPORT", "DESIGNER"}
+
+// EffectiveRoleSQL تعبير SQL للدور الفعلي: دور المنصب حسب OrgRolePriority، وإلا الدور
+// الأصلي (ADMIN/OWNER ما يتغيرون) — لماتركس (التقييم والتذكيرات والواجبات) حتى يشوف
+// الموظف بمنصبه (دازاي 11-01).
+func EffectiveRoleSQL(idExpr, roleExpr string) string {
+	prio := "ARRAY['" + strings.Join(OrgRolePriority, "','") + "']"
+	return `CASE WHEN ` + roleExpr + `::text IN ('ADMIN', 'OWNER') THEN ` + roleExpr + `::text ELSE COALESCE((
+		SELECT om.role FROM "OrgAssignment" oa
+		JOIN (VALUES ` + orgRoleValues() + `) AS om(unit, role, head) ON
+			(om.unit = oa."unitId" AND (NOT om.head OR oa.position = 'DIRECTOR'))
+			OR (oa."unitId" IS NULL AND oa.position IN ('DIRECTOR', 'DEPUTY') AND (NOT om.head OR oa.position = 'DIRECTOR')
+				AND om.unit IN (SELECT ou.id FROM "OrgUnit" ou WHERE ou."divisionId" = oa."divisionId"))
+		WHERE oa."endedAt" IS NULL AND oa."employeeId" = ` + idExpr + `
+		ORDER BY array_position(` + prio + `, om.role) LIMIT 1), ` + roleExpr + `::text) END`
+}

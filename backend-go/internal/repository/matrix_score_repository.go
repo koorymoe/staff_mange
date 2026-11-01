@@ -1,6 +1,7 @@
 package repository
 
 import (
+	"staffmange-api/internal/model"
 	"time"
 
 	"github.com/jmoiron/sqlx"
@@ -62,7 +63,7 @@ type Scorable struct {
 
 func (r *MatrixScoreRepository) Scorables() ([]Scorable, error) {
 	rows := []Scorable{}
-	err := r.db.Select(&rows, `SELECT id, name, role::text AS role, "createdAt", COALESCE("isLeader", false) AS "isLeader", COALESCE(division, 'ENGINEERING') AS division,
+	err := r.db.Select(&rows, `SELECT id, name, `+model.EffectiveRoleSQL(`"Employee".id`, `"Employee".role`)+` AS role, "createdAt", COALESCE("isLeader", false) AS "isLeader", COALESCE(division, 'ENGINEERING') AS division,
 		EXISTS (SELECT 1 FROM "ServiceManager" sm WHERE sm."employeeId" = "Employee".id) AS "isServiceManager"
 		FROM "Employee" WHERE status = 'ACTIVE' AND role::text NOT IN ('ADMIN', 'OWNER') ORDER BY name`)
 	return rows, err
