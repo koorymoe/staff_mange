@@ -1203,7 +1203,7 @@ export type NavContext = {
 export function isNavVisible(item: NavItem, ctx: NavContext, unitGranted = false): boolean {
   const role = ctx.employee?.role
   // (دازاي 11-01) صاحب مكتب الإدارة يشوف «مكاني» جوّا المكتب — خيار واحد بالقائمة
-  if (item.to === '/my-org') return !!ctx.employee && !orgDeskAllowed(ctx.employee, ctx.orgMemberships)
+  if (item.to === '/my-org') return !!ctx.employee && !!ctx.orgMemberships?.length && !orgDeskAllowed(ctx.employee, ctx.orgMemberships)
   if (item.to === '/org/desk') return orgDeskAllowed(ctx.employee, ctx.orgMemberships)
   // These APIs are admin-only even when a whole unit is granted to staff.
   if (['/voice-terms', '/ai-suggestions', '/org', '/org/assign'].includes(item.to) && role !== 'ADMIN' && ctx.employee?.actualRole !== 'OWNER') return false

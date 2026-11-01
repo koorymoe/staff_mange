@@ -15,8 +15,7 @@ import type { Booking, Expense, StaffRequest, LeaveRequest, InventoryCheck, Fina
 import { useSession, hasGpsSkill, hasRole } from '../session'
 import MeetingRequests from '../components/MeetingRequests'
 import MyDirectives from '../components/MyDirectives'
-import MyOrgCard from '../components/MyOrgCard'
-import { useOrgMemberships, orgDeskAllowed, orgPositionTitle } from '../orgDeskAccess'
+import { useOrgMemberships, orgPositionTitle } from '../orgDeskAccess'
 import { navItems, collectMonitorExtraLinks } from '../components/navTree'
 import { useSaveGuard } from '../useSaveGuard'
 import SaveError from '../components/SaveError'
@@ -82,12 +81,9 @@ function ProgressRing({ percent, size = 56, stroke = 5, color }: { percent: numb
 // لأن الرئيسية القديمة بيها عشرات الخطافات — ما ينفع return قبلها.
 export default function Dashboard() {
   const { employee } = useSession()
-  // (دازاي 11-01) صاحب مكتب الإدارة يشوف «مكاني/بنودي/مخرجاتي» جوّا المكتب، مو بالرئيسية
-  const { items: memberships } = useOrgMemberships(employee)
-  // ما نرسم شي لحد ما يوصل المنصب — بلاه الكروت تطلع لحظة وتختفي عند صاحب المكتب
-  const showMyOrg = memberships !== null && !orgDeskAllowed(employee, memberships)
+  // (دازاي 11-01) «مكاني/بنودي/مخرجاتي» ما تطلع بالرئيسية لأي موظف نهائياً
   if (employee?.role === 'ADMIN') return <><MyDirectives hideWhenEmpty /><AdminHome name={positionTitle(employee)} /></>
-  return <><MyDirectives hideWhenEmpty />{showMyOrg && <MyOrgCard />}<MeetingRequests /><StaffDashboard /></>
+  return <><MyDirectives hideWhenEmpty /><MeetingRequests /><StaffDashboard /></>
 }
 
 function StaffDashboard() {
