@@ -1616,5 +1616,13 @@ func matrixChatMigrations() []Migration {
 				"createdAt" TIMESTAMPTZ NOT NULL DEFAULT now()
 			);
 		`,
+	}, {
+		// (دازاي 11-01) «ارجع الغيلي… بس ردت اجرب» — قسم مشاريع القيادة انشال، وجداوله وياه.
+		// 0425 يبقى بمكانه لأنه انطبق على البرود.
+		Version: "0426_drop_command_projects",
+		SQL: `
+			DROP TABLE IF EXISTS "CmdProjectLog";
+			DROP TABLE IF EXISTS "CmdProject";
+		`,
 	}}
 }

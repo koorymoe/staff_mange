@@ -1,6 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import './theme.css'
-import { CmdTerminal, CmdProjectCards } from './CmdProjects'
 
 // ═══ مركز القيادة — الهيكل ═══
 //
@@ -19,19 +18,10 @@ import { CmdTerminal, CmdProjectCards } from './CmdProjects'
 // تكتب بأسفلها شنو تنتظر — حتى ما تنقري «معطّلة» ولا «مكسورة».
 
 type Panel = { title: string; sub: string; pending: string }
-type Tab = { key: string; label: string; tiles?: string[]; panels: Panel[]; custom?: 'terminal' | 'cards' }
+type Tab = { key: string; label: string; tiles?: string[]; panels: Panel[] }
 type Section = { key: string; label: string; icon: string; tabs: Tab[] }
 
 const SECTIONS: Section[] = [
-  {
-    key: 'projects',
-    label: 'المشاريع والمقاولات',
-    icon: '▲',
-    tabs: [
-      { key: 'terminal', label: 'الطرفية', panels: [], custom: 'terminal' },
-      { key: 'list', label: 'المشاريع', panels: [], custom: 'cards' },
-    ],
-  },
   {
     key: 'overview',
     label: 'نظرة عامة',
@@ -316,9 +306,7 @@ export default function CommandApp({ onExit }: { onExit: () => void }) {
           {/* المفتاح يشمل القسم والتبويب: بدونه React يعيد استعمال نفس
               العقدة عند تبديل التبويب فما تنعاد حركة الدخول. */}
           <div className="cmd-page" key={`${active}/${tab}`}>
-            {current.custom === 'terminal' && <CmdTerminal />}
-            {current.custom === 'cards' && <CmdProjectCards />}
-            {!current.custom && current.tiles && (
+            {current.tiles && (
               <div className="cmd-tiles">
                 {current.tiles.map((k) => (
                   <div className="cmd-tile" key={k}>
@@ -331,13 +319,13 @@ export default function CommandApp({ onExit }: { onExit: () => void }) {
               </div>
             )}
 
-            {!current.custom && <div className="cmd-grid2">
+            <div className="cmd-grid2">
               {current.panels.map((p) => <PanelCard p={p} key={p.title} />)}
-            </div>}
+            </div>
 
-            {!current.custom && <p style={{ marginTop: 20, fontSize: 11.5, color: 'rgba(255,255,255,0.32)' }}>
+            <p style={{ marginTop: 20, fontSize: 11.5, color: 'rgba(255,255,255,0.32)' }}>
               الهيكل جاهز والشاشات فارغة قصداً — ماكو أي بيانات تنتقل من نظام الشركة لحد الان، مثل ما اتفقنا.
-            </p>}
+            </p>
           </div>
         </main>
       </div>
