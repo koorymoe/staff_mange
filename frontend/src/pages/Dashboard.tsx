@@ -84,7 +84,8 @@ export default function Dashboard() {
   const { employee } = useSession()
   // (دازاي 11-01) صاحب مكتب الإدارة يشوف «مكاني/بنودي/مخرجاتي» جوّا المكتب، مو بالرئيسية
   const { items: memberships } = useOrgMemberships(employee)
-  const showMyOrg = !orgDeskAllowed(employee, memberships)
+  // ما نرسم شي لحد ما يوصل المنصب — بلاه الكروت تطلع لحظة وتختفي عند صاحب المكتب
+  const showMyOrg = memberships !== null && !orgDeskAllowed(employee, memberships)
   if (employee?.role === 'ADMIN') return <><MyDirectives hideWhenEmpty /><AdminHome name={positionTitle(employee)} /></>
   return <><MyDirectives hideWhenEmpty />{showMyOrg && <MyOrgCard />}<MeetingRequests /><StaffDashboard /></>
 }
