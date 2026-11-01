@@ -23,6 +23,8 @@ export interface NavItem {
   anyPermission?: string[]
   leaderOnly?: boolean
   gpsSkillOnly?: boolean
+  // (دازاي 11-01) للفني العادي بس (بلا منصب ولا ليدر) — نسخة احتياط بقائمته الميدانية
+  plainFieldOnly?: boolean
   // صلاحية ظهور الوحدة كاملة: منحها للموظف يفتحله الوحدة وكل صفحاتها،
   // بغض النظر عن صلاحياته التفصيلية — هذا معنى "أنطيه الصلاحية ويشوف".
   unitPermission?: string
@@ -375,6 +377,8 @@ export const navItems: NavItem[] = [
           { to: '/gps', label: '📡 نظام GPS', icon: <></>, permission: 'gps_system', hideForRoles: ['MONITOR', ...TECH_ROLES] },
           // للتقني ومسؤول الخدمة: بند واحد «جي بي اس» — الطلبات صارت تبويب جوّاه.
           { to: '/gps', label: '📡 جي بي اس', icon: <></>, permission: 'gps_system', roles: TECH_ROLES, hideForRoles: ['MONITOR'] }, // المراقب: الجي بي اس تبويب بمكتبه
+          // (دازاي 11-01) «لوحتي GPS» جوّا خدمة الجي بي اس — مو خيار وحده بالقائمة
+          { to: '/gps/employee', label: '📍 لوحتي GPS', icon: <></>, roles: ['TECHNICIAN'], gpsSkillOnly: true },
           { to: '/gps/requests-hub', label: '📥 طلبات GPS', icon: <></>, permission: 'gps_system', hideForRoles: ['MONITOR', ...TECH_ROLES] },
           // فواتير وتقارير الخدمة جوّا «إدارة الخدمات» للتقني ومسؤول الخدمة (مو طايفة برّا).
           { to: '/leader-invoices/new?service=1', label: '🛰️ فاتورة خدمة', icon: <></>, anyPermission: ['invoice_gps', 'invoice_dashcam'], roles: TECH_ROLES },
@@ -504,6 +508,8 @@ export const navItems: NavItem[] = [
     fieldStaffOnly: true,
     to: '/tech-work-group', label: 'العمل', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>,
     children: [
+      // الفني العادي (بلا قائمة إدارية) يلگى «لوحتي GPS» هنا — نفس الحارس
+      { to: '/gps/employee', label: '📍 لوحتي GPS', icon: <></>, roles: ['TECHNICIAN'], gpsSkillOnly: true, plainFieldOnly: true },
       // موردين التقنيين للفني الي عنده الصلاحية (مسؤول خدمة مثلاً).
       { to: '/tech-suppliers', label: '🏪 موردين التقنيين', icon: <></>, permission: 'tech_suppliers', hideIfAnyPermission: ['unit_technicians'] },
       // ⚠️ «التقارير» و«فواتير الليدر» انشالن من هنا عن قصد — صاروا
@@ -565,7 +571,6 @@ export const navItems: NavItem[] = [
       { to: '/my-projects', label: '🏗️ المشاريع', icon: <></>, roles: ['TECHNICAL'], unlockPermission: 'my_projects' },
     ],
   },
-  { to: '/gps/employee', label: 'لوحتي GPS', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>, roles: ['TECHNICIAN'], gpsSkillOnly: true },
 
   // ═══ فاصل: تحته "الوحدات" — كل وحدة إدارية تجمع محتوياتها تحت باب واحد.
   // الجودة/مراجعة تقارير العمل صارت بس داخل "وحدة الجودة والسلامة المهنية"،
@@ -1154,8 +1159,22 @@ export function organizeOrgNavigation(
     ]
   })
   if (!groups.length) return items
+  // (دازاي 11-01) «المكرر ينشال»: أي رابط انضاف لمجموعة الهيكل الجديد ينشال من مكانه
+  // القديم، والوحدة القديمة الي تفضى تنشال وياه. الي ما انضاف (صلاحية يدوية من
+  // وحدة ثانية) يبقى بمكانه — فماكو ثغرة: كل شي ظاهر يبقى ظاهر بمكان واحد.
+  const copied = new Set(groups.flatMap((g) => (g.children ?? []).map((c) => c.to)))
+  const strip = (list: DisplayNavItem[]): DisplayNavItem[] =>
+    list.flatMap((item) => {
+      if (item.children) {
+        const children = strip(item.children)
+        return children.some((c) => !c.divider) ? [{ ...item, children }] : []
+      }
+      return !item.divider && copied.has(item.to) ? [] : [item]
+    })
+  const kept = strip(items).filter((item, i, arr) =>
+    !item.divider || (i + 1 < arr.length && !arr[i + 1].divider))
   return [
-    ...items,
+    ...kept,
     {
       to: '/org-units-divider',
       label: 'الوحدات حسب الهيكل الجديد',
@@ -1288,6 +1307,7 @@ export function isNavVisible(item: NavItem, ctx: NavContext, unitGranted = false
       }
       if (item.leaderOnly && !ctx.employee?.isLeader && role !== 'ADMIN') return false
       if (item.gpsSkillOnly && role !== 'ADMIN' && !hasGpsSkill(ctx.employee ?? null, ctx.gpsServiceId)) return false
+      if (item.plainFieldOnly && !isPlainTechnician) return false
       // الفني العادي بس ينمنع — الليدر يشوفه (نفس قيد السيرفر بالضبط)
     }
     if (item.children) return item.children.some((c) => isNavVisible(c, ctx, granted))
