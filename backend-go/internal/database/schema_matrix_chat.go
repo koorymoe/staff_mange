@@ -1505,5 +1505,52 @@ func matrixChatMigrations() []Migration {
 		SQL: `
 			ALTER TABLE "OrgBundle" ADD COLUMN IF NOT EXISTS "headOnly" BOOLEAN NOT NULL DEFAULT false;
 		`,
+	}, {
+		// 🏗️ مراحل المشاريع (دازاي 10-31): «تجهيز المنتجات» (كانت «شراء مواد المشروع»)
+		// صارت ورا العقد وقبل التنفيذ، و«التسليم والاستلام» ورا التنفيذ. تحويل الأسماء المخزونة.
+		Version: "0420_project_stages_reorder",
+		SQL: `
+			UPDATE "Project" SET stage = CASE stage WHEN '5. البدء بالتنفيذ' THEN '6. البدء بالتنفيذ' WHEN '6. شراء مواد المشروع' THEN '5. تجهيز المنتجات' WHEN '7. تسليم واستلام المنتجات' THEN '7. التسليم والاستلام' END
+				WHERE stage IN ('5. البدء بالتنفيذ', '6. شراء مواد المشروع', '7. تسليم واستلام المنتجات');
+			UPDATE "ProjectStageLog" SET "fromStage" = CASE "fromStage" WHEN '5. البدء بالتنفيذ' THEN '6. البدء بالتنفيذ' WHEN '6. شراء مواد المشروع' THEN '5. تجهيز المنتجات' WHEN '7. تسليم واستلام المنتجات' THEN '7. التسليم والاستلام' END
+				WHERE "fromStage" IN ('5. البدء بالتنفيذ', '6. شراء مواد المشروع', '7. تسليم واستلام المنتجات');
+			UPDATE "ProjectStageLog" SET "toStage" = CASE "toStage" WHEN '5. البدء بالتنفيذ' THEN '6. البدء بالتنفيذ' WHEN '6. شراء مواد المشروع' THEN '5. تجهيز المنتجات' WHEN '7. تسليم واستلام المنتجات' THEN '7. التسليم والاستلام' END
+				WHERE "toStage" IN ('5. البدء بالتنفيذ', '6. شراء مواد المشروع', '7. تسليم واستلام المنتجات');
+			UPDATE "ProjectRestoreLog" SET "toStage" = CASE "toStage" WHEN '5. البدء بالتنفيذ' THEN '6. البدء بالتنفيذ' WHEN '6. شراء مواد المشروع' THEN '5. تجهيز المنتجات' WHEN '7. تسليم واستلام المنتجات' THEN '7. التسليم والاستلام' END
+				WHERE "toStage" IN ('5. البدء بالتنفيذ', '6. شراء مواد المشروع', '7. تسليم واستلام المنتجات');
+			UPDATE "ProjectStageLimit" SET stage = CASE stage WHEN '5. البدء بالتنفيذ' THEN '6. البدء بالتنفيذ' WHEN '6. شراء مواد المشروع' THEN '5. تجهيز المنتجات' WHEN '7. تسليم واستلام المنتجات' THEN '7. التسليم والاستلام' END
+				WHERE stage IN ('5. البدء بالتنفيذ', '6. شراء مواد المشروع', '7. تسليم واستلام المنتجات');
+			UPDATE "ProjectDelayReason" SET stage = CASE stage WHEN '5. البدء بالتنفيذ' THEN '6. البدء بالتنفيذ' WHEN '6. شراء مواد المشروع' THEN '5. تجهيز المنتجات' WHEN '7. تسليم واستلام المنتجات' THEN '7. التسليم والاستلام' END
+				WHERE stage IN ('5. البدء بالتنفيذ', '6. شراء مواد المشروع', '7. تسليم واستلام المنتجات');
+		`,
+	}, {
+		// 🕘 فاتورة الخدمة (دازاي 10-31): وقت بداية ونهاية الشغل من الحجز.
+		Version: "0421_service_invoice_times",
+		SQL: `
+			ALTER TABLE "LeaderInvoice" ADD COLUMN IF NOT EXISTS "serviceStartAt" TIMESTAMP;
+			ALTER TABLE "LeaderInvoice" ADD COLUMN IF NOT EXISTS "serviceEndAt" TIMESTAMP;
+		`,
+	}, {
+		// 👁️ إجراءات المراقب على المشاريع المتأخرة (دازاي 10-31): مهلة ومتابعة، تصعيد لمدير
+		// الإدارة (مشكلة بمكتبها)، وتسجيل مخالفة (نقاط انضباط تنرجع بالتراجع).
+		Version: "0422_project_monitor_actions",
+		SQL: `
+			CREATE TABLE IF NOT EXISTS "ProjectMonitorAction" (
+				id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
+				"projectId" TEXT NOT NULL REFERENCES "Project"(id) ON DELETE CASCADE,
+				"employeeId" TEXT REFERENCES "Employee"(id) ON DELETE SET NULL,
+				action TEXT NOT NULL CHECK (action IN ('FOLLOW_UP', 'ESCALATE', 'VIOLATION')),
+				note TEXT NOT NULL DEFAULT '',
+				"dueAt" TIMESTAMPTZ,
+				points INT NOT NULL DEFAULT 0,
+				"taskId" TEXT,
+				"issueId" TEXT,
+				"byId" TEXT REFERENCES "Employee"(id) ON DELETE SET NULL,
+				"createdAt" TIMESTAMPTZ NOT NULL DEFAULT now(),
+				"revokedAt" TIMESTAMPTZ,
+				"revokedById" TEXT REFERENCES "Employee"(id) ON DELETE SET NULL
+			);
+			CREATE INDEX IF NOT EXISTS "ProjectMonitorAction_project" ON "ProjectMonitorAction"("projectId", "createdAt" DESC);
+		`,
 	}}
 }

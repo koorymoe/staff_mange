@@ -1775,6 +1775,12 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	quoteWatch := handler.NewProjectQuoteWatchHandler(db)
 	mux.Handle("POST /api/projects/{id}/customer-contacted", middleware.Chain(http.HandlerFunc(quoteWatch.MarkContacted), requireAuth, allowManagerOrDelegate))
 	mux.Handle("GET /api/project-quote-watch", middleware.Chain(http.HandlerFunc(quoteWatch.List), requireAuth, requireFieldMonitor))
+	// (دازاي 10-31) إجراءات المراقب على المتأخر: مهلة، تصعيد لمكتب الإدارة، مخالفة (وتراجع)
+	quoteWatch.SetActionDeps(extraTaskRepo, disciplineRepo, notificationRepo)
+	mux.Handle("POST /api/project-quote-watch/{id}/action", middleware.Chain(http.HandlerFunc(quoteWatch.Act), requireAuth, requireFieldMonitor))
+	mux.Handle("POST /api/project-monitor-actions/{id}/revoke", middleware.Chain(http.HandlerFunc(quoteWatch.Revoke), requireAuth, requireFieldMonitor))
+	// علامة فقط (نوع الإجراء ووقته) — بلا حارس صلاحية حتى «إضافة مشروع فقط» ما ياخذ 403 ومخالفة
+	mux.Handle("GET /api/projects/monitor-watch", middleware.Chain(http.HandlerFunc(quoteWatch.WatchList), requireAuth))
 	mux.Handle("DELETE /api/projects/{id}", middleware.Chain(http.HandlerFunc(projectHandler.Delete), requireAuth, requireProjectManager))
 	// (ع) 10-19: حذف نهائي للمرفوض بسبب — نفس حارس الحذف، ونسخته تنحفظ بـ"DeletedProject".
 	mux.Handle("DELETE /api/projects/{id}/purge", middleware.Chain(http.HandlerFunc(projectHandler.Purge), requireAuth, requireProjectManager))
@@ -1976,8 +1982,13 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	// ومنو يقيّم منو محسوم بالخدمة (authorizeReview): الليدر فنيي
 	// فريقه بس، وإداري الكوادر الليدرات بس. فتوسيع الحارس ما يفتح
 	// باب — يخلي الي عنده الحق يوصله.
+	//
+	// (دازاي 10-31) الحارس كان يرفض الليدر والمراقب وإداري الكوادر الي ما عندهم
+	// الصلاحيتين — التبويب يطلعلهم والحفظ يرد «ما عندك صلاحية» (وتنسجل مخالفة).
+	// هسه يطابق authorizeReview: ليدر، MONITOR/HR_COORDINATOR، monitoring/auditing.
 	mux.Handle("POST /api/performance-reviews", middleware.Chain(http.HandlerFunc(performanceReviewHandler.Create), requireAuth,
-		middleware.RequireAnyPermission(permissionRepo, employeeRepo, notificationRepo, "kpi_management", "performance_review")))
+		middleware.RequireLeaderOrRoleOrAnyPermission(permissionRepo, employeeRepo, notificationRepo,
+			[]string{"MONITOR", "HR_COORDINATOR"}, "kpi_management", "performance_review", "monitoring", "auditing")))
 	// كل تقييمات الأداء — سجلات شخصية، للإدارة والمراقبة.
 	mux.Handle("GET /api/performance-reviews", middleware.Chain(http.HandlerFunc(performanceReviewHandler.List), requireAuth,
 		middleware.RequireRoleOrAnyPermission(permissionRepo, employeeRepo, notificationRepo,
@@ -2513,6 +2524,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	mux.Handle("POST /api/work-reports", middleware.Chain(http.HandlerFunc(workReportHandler.Create), requireAuth))
 	mux.Handle("GET /api/work-reports", middleware.Chain(http.HandlerFunc(workReportHandler.List), requireAuth))
 	mux.Handle("GET /api/work-reports/counts", middleware.Chain(http.HandlerFunc(workReportHandler.Counts), requireAuth))
+	mux.Handle("GET /api/work-reports/by-booking", middleware.Chain(http.HandlerFunc(workReportHandler.ByBooking), requireAuth))
 	mux.Handle("PUT /api/work-reports/{id}/review", middleware.Chain(http.HandlerFunc(workReportHandler.Review), requireAuth, requireMon["mon_reports"]))
 	mux.Handle("PUT /api/bookings/{id}/progress/review", middleware.Chain(http.HandlerFunc(bookingProgressHandler.Review), requireAuth, requireMon["mon_reports"]))
 	// تقرير زيارة معاينة («كشف») — أي كادر مكلّف بالحجز يسلّمه، بلا حارس ورق محاسبي.

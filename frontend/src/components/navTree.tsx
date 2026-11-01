@@ -111,8 +111,8 @@ const leaderInvoicesLabel = (ctx: NavContext) =>
 
 export const navItems: NavItem[] = [
   // Access definitions (including legacy unit gates) stay unchanged. Layout
-  // calls organizeOrgNavigation AFTER filtering/pruning to arrange the visible
-  // screens by OrgSeed without granting or revoking a single route.
+  // calls organizeOrgNavigation AFTER filtering/pruning to ADD OrgSeed shortcuts.
+  // Existing entries stay in place, with no grants, revocations or removals.
   // عنوان القسم — يفصل التنقل عن رأس القائمة (الشعار وبطاقة الموظف)،
   // فالعين تعرف وين تبدي بدل ما تلگه كتلة أزرار ملزوقة بالبطاقة.
   { to: '/nav-main-label', label: 'التنقل الرئيسي', icon: <></>, divider: true, plain: true },
@@ -1062,6 +1062,9 @@ const orgGroupByLegacy = new Map(
     group.legacy.map((path) => [path, group.to] as const),
   ),
 )
+// Group buttons are not page routes. Avoid duplicate React keys/toggles with
+// the legacy unit buttons, which must stay present in their original places.
+const orgDisplayGroupTo = (to: string) => orgGroupByLegacy.has(to) ? `/org-nav${to}` : to
 
 /** Active-group expansion uses the same display mapping, not a second list. */
 export function orgNavigationGroupForPath(path: string, ctx: NavContext): string | undefined {
@@ -1086,55 +1089,38 @@ export function orgNavigationGroupForPath(path: string, ctx: NavContext): string
     }
   }
   find(navItems)
-  return best?.group
+  return best?.group ? orgDisplayGroupTo(best.group) : undefined
 }
 
 /** Input MUST already be visibility-filtered. Never call this for authorization.
- * Reparent only existing leaves; preserve their `to`, guards and granted flag.
- * Dedup identical links within a merged unit, not distinct query-string routes.
+ * Add copies of visible leaves; preserve ALL original nodes and their positions.
+ * Dedup only the NEW shortcuts, never an existing link, heading, button or group.
  */
 export function organizeOrgNavigation(
   items: DisplayNavItem[],
 ): DisplayNavItem[] {
   const buckets = new Map<string, Map<string, DisplayNavItem>>()
   const icons = new Map<string, React.ReactNode>()
-  let unitsDivider: DisplayNavItem | undefined
-  const trim = (list: DisplayNavItem[]): DisplayNavItem[] =>
-    list.filter(
-      (item, i) => !item.divider || (!!list[i + 1] && !list[i + 1].divider),
-    )
   const walk = (
     list: DisplayNavItem[],
     inheritedGroup?: string,
-  ): DisplayNavItem[] => {
-    const remaining: DisplayNavItem[] = []
+  ): void => {
     for (const item of list) {
-      if (item.to === '/units-divider') {
-        unitsDivider = item
-        continue
-      }
       const legacyGroup = orgGroupByLegacy.get(item.to)
       if (legacyGroup && !icons.has(legacyGroup))
         icons.set(legacyGroup, item.icon)
       if (item.children) {
-        const children = walk(item.children, legacyGroup ?? inheritedGroup)
-        if (children.length) remaining.push({ ...item, children })
-      } else if (item.divider) {
-        if (!inheritedGroup) remaining.push(item)
-      } else {
+        walk(item.children, legacyGroup ?? inheritedGroup)
+      } else if (!item.divider) {
         const group = orgGroupByPath.get(item.to) ?? inheritedGroup
-        if (!group) {
-          remaining.push(item)
-          continue
-        }
+        if (!group) continue
         if (!buckets.has(group)) buckets.set(group, new Map())
         if (!buckets.get(group)!.has(item.to))
           buckets.get(group)!.set(item.to, item)
       }
     }
-    return trim(remaining)
   }
-  const remaining = walk(items)
+  walk(items)
   const groups: DisplayNavItem[] = orgNavigationGroups.flatMap((group) => {
     const bucket = buckets.get(group.to)
     if (!bucket?.size) return []
@@ -1144,7 +1130,7 @@ export function organizeOrgNavigation(
     )
     return [
       {
-        to: group.to,
+        to: orgDisplayGroupTo(group.to),
         label: group.label,
         icon: icons.get(group.to) ?? icon('M9 5h10v14H5V5h4M9 3h6v4H9z'),
         granted: false,
@@ -1152,12 +1138,12 @@ export function organizeOrgNavigation(
       },
     ]
   })
-  if (!groups.length) return remaining
+  if (!groups.length) return items
   return [
-    ...remaining,
-    unitsDivider ?? {
-      to: '/units-divider',
-      label: '── الوحدات ──',
+    ...items,
+    {
+      to: '/org-units-divider',
+      label: 'الوحدات حسب الهيكل الجديد',
       icon: <></>,
       divider: true,
       granted: false,

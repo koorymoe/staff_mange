@@ -20,10 +20,10 @@ var projectStages = []string{
 	ProjectRepricingStage,
 	"4. العقد",
 	ProjectMediaStage,
-	"5. البدء بالتنفيذ",
-	// (ع) 10-17: داخل التنفيذ — فقرة للشراء لو احتاج المشروع منتج، وتسليم واستلام المنتجات
-	"6. شراء مواد المشروع",
-	"7. تسليم واستلام المنتجات",
+	// (ع) 10-31: تجهيز المنتجات ورا توقيع العقد وقبل التنفيذ، والتسليم والاستلام ورا التنفيذ
+	ProjectPrepareStage,
+	ProjectExecutionStage,
+	ProjectHandoverStage,
 	"✅ مكتمل",
 	"❌ مرفوض",
 }
@@ -31,7 +31,13 @@ var projectStages = []string{
 // ProjectExecutionStage المرحلة الي تفتح الحجز عند إداري الحجوزات:
 // خلصت إجراءات المشروع (اتصال، كشف، عرض سعر، عقد) وصار جاهز للتنفيذ،
 // و**نفس كادر الشد** هو الي راح ينفّذ — فيرجع للتنسيق العادي.
-const ProjectExecutionStage = "5. البدء بالتنفيذ"
+const ProjectExecutionStage = "6. البدء بالتنفيذ"
+
+// ProjectPrepareStage (ع) 10-31: تجهيز المنتجات — ورا العقد وقبل التنفيذ (كانت «٦. شراء مواد المشروع»).
+const ProjectPrepareStage = "5. تجهيز المنتجات"
+
+// ProjectHandoverStage (ع) 10-31: التسليم والاستلام — ورا التنفيذ وقبل الإكمال.
+const ProjectHandoverStage = "7. التسليم والاستلام"
 
 // ProjectMediaStage قرار (ع) 10-05: قبل التنفيذ المشروع يتحوّل للإعلام حتى يصوّرون الشغل.
 const ProjectMediaStage = "📸 الإعلام"
@@ -41,9 +47,8 @@ const ProjectRepricingStage = "🔁 إعادة التسعير"
 
 // stageUnlocksBooking المكتمل يفتح بعد، لو المشروع قفز المرحلة.
 func stageUnlocksBooking(stage string) bool {
-	// مراحل الشراء والتسليم جوّا التنفيذ — الحجز يبقى مفتوح للكادر
-	return stage == ProjectExecutionStage || stage == "✅ مكتمل" ||
-		strings.HasPrefix(stage, "6.") || strings.HasPrefix(stage, "7.")
+	// التجهيز قبل التنفيذ ما يفتح الحجز؛ التسليم ورا التنفيذ يبقيه مفتوح للكادر
+	return stage == ProjectExecutionStage || stage == ProjectHandoverStage || stage == "✅ مكتمل"
 }
 
 // BookingUnlocker يخلي خدمة المشاريع تفتح الحجز بدون ما تعتمد على
@@ -124,23 +129,27 @@ func (s *ProjectService) markProjectOwnerAsVip(p *model.Project, createdBy *stri
 func computeProjectStats(projects []model.Project) model.ProjectStats {
 	var stats model.ProjectStats
 	for _, p := range projects {
-		s := p.Stage
-		switch {
-		case strings.Contains(s, "اتصال"):
+		// مطابقة بالاسم الكامل: البحث بجزء من الاسم كان يفوّت مراحل (إعادة التسعير ما بيها «سعر» متصلة)
+		switch p.Stage {
+		case "1. اتصال بالزبون":
 			stats.Contact++
-		case strings.Contains(s, "كشف"):
+		case "2. مرحلة الكشف":
 			stats.Survey++
-		case strings.Contains(s, "سعر"):
+		case "3. عرض السعر", ProjectRepricingStage:
 			stats.Price++
-		case strings.Contains(s, "عقد"):
+		case "4. العقد":
 			stats.Contract++
-		case strings.Contains(s, "الإعلام"):
+		case ProjectMediaStage:
 			stats.Media++
-		case strings.Contains(s, "تنفيذ"):
+		case ProjectPrepareStage:
+			stats.Prepare++
+		case ProjectExecutionStage:
 			stats.Execute++
-		case strings.Contains(s, "مكتمل"):
+		case ProjectHandoverStage:
+			stats.Handover++
+		case "✅ مكتمل":
 			stats.Done++
-		case strings.Contains(s, "مرفوض"):
+		case "❌ مرفوض":
 			stats.Rejected++
 		}
 	}

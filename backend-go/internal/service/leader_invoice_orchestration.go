@@ -242,15 +242,8 @@ func (s *LeaderInvoiceService) Create(employeeID string, req model.CreateLeaderI
 	//
 	// فالفاتورة تبقى تحمل الكلفة الحقيقية، والزبون يدفع صفر.
 	if req.IsFree {
-		if req.FreeReasonID == nil || *req.FreeReasonID == "" {
-			return nil, fmt.Errorf("لازم تحدد سبب المجانية")
-		}
-		reason, rerr := s.invoices.FreeReason(*req.FreeReasonID)
-		if rerr != nil || reason == nil {
-			return nil, fmt.Errorf("سبب المجانية مو معروف")
-		}
-		if reason.NeedsNote && utf8.RuneCountInString(strings.TrimSpace(derefString(req.FreeReasonNote))) < 5 {
-			return nil, fmt.Errorf("سبب «%s» يحتاج توضيح مكتوب", reason.Label)
+		if err := s.checkFreeReason(req.FreeReasonID, req.FreeReasonNote); err != nil {
+			return nil, err
 		}
 		discount = float64(executionCost) + materialsTotal
 		netTotal = 0
@@ -848,13 +841,37 @@ func (s *LeaderInvoiceService) CreateServiceInvoice(employeeID string, req model
 	if _, ok := model.ServiceInvoicePermission[req.Kind]; !ok {
 		return nil, fmt.Errorf("نوع الفاتورة لازم يكون جي بي اس أو داش كام")
 	}
-	// ⚠️ السعر حر بس مو سالباً ولا صفراً: فاتورة بصفر تعني «مجاني»
-	// وهذا مسار ثاني إله سببه المكتوب — خلطهما يخفي كلفة الضمان.
+	// ⚠️ السعر حر بس مو سالباً. صفر بس للمجانية (دازاي 10-31) — وبسببها المكتوب.
 	if err := model.CheckIQD("السعر", req.Price); err != nil {
 		return nil, err
 	}
-	if req.Price <= 0 {
+	if req.Price < 0 || (req.Price == 0 && !req.IsFree) {
 		return nil, fmt.Errorf("اكتب سعر الفاتورة")
+	}
+	// الإضافات (كيبل إضافي…): تنحسب على السيرفر من الكمية وسعر الوحدة.
+	items := []model.ExecutionCostItem{}
+	extrasTotal := 0.0
+	for _, x := range req.Extras {
+		name := strings.TrimSpace(x.Name)
+		if name == "" {
+			continue
+		}
+		if x.Count <= 0 || x.UnitPrice < 0 {
+			return nil, fmt.Errorf("كمية وسعر الإضافة «%s» لازم يكونن صحيحات", name)
+		}
+		if err := model.CheckIQD("سعر الإضافة", x.UnitPrice); err != nil {
+			return nil, err
+		}
+		items = append(items, model.ExecutionCostItem{SystemName: "إضافات", ItemName: name, Count: x.Count, UnitPrice: x.UnitPrice})
+		extrasTotal += float64(x.Count) * x.UnitPrice
+	}
+	discount, netTotal := 0.0, req.Price+extrasTotal
+	if req.IsFree {
+		if err := s.checkFreeReason(req.FreeReasonID, req.FreeReasonNote); err != nil {
+			return nil, err
+		}
+		// نفس مبدأ فاتورة الليدر: الكلفة تبقى، والزبون يدفع صفر.
+		discount, netTotal = netTotal, 0
 	}
 	kindLabel := model.ServiceInvoiceKindLabel[req.Kind]
 	inv := &model.LeaderInvoice{
@@ -866,13 +883,16 @@ func (s *LeaderInvoiceService) CreateServiceInvoice(employeeID string, req model
 		// ⚠️ المنظومة تنكتب باسم الخدمة حتى الفاتورة تبيّن **شنو هي**
 		// بكل الشاشات الموجودة بلا ما نضيف عموداً ونعدّل كل شاشة.
 		Systems:          []string{kindLabel},
-		Items:            []model.ExecutionCostItem{},
+		Items:            items,
 		TotalDeviceCount: 0,
-		// السعر كله «تنفيذ»: ماكو مواد ولا خصم بهذي الخدمات.
+		// السعر «تنفيذ»، والإضافات «مواد».
 		ExecutionCost:  req.Price,
-		MaterialsTotal: 0,
-		DiscountValue:  0,
-		NetTotal:       req.Price,
+		MaterialsTotal: extrasTotal,
+		DiscountValue:  discount,
+		NetTotal:       netTotal,
+		IsFree:         req.IsFree,
+		FreeReasonID:   req.FreeReasonID,
+		FreeReasonNote: req.FreeReasonNote,
 		Status:         "SUBMITTED",
 		// ⚠️ فاتورة الخدمة **يدوية فعلاً** من يوم انبنت: سعرها بالإيد
 		// وبنودها فاضية. توسيمها يخلي التصنيف يقول الحقيقة.
@@ -881,6 +901,14 @@ func (s *LeaderInvoiceService) CreateServiceInvoice(employeeID string, req model
 	saved, err := s.invoices.Create(inv, nil)
 	if err != nil {
 		return nil, err
+	}
+	// وقت البداية والنهاية من الحجز نفسه (مو من الواجهة).
+	if saved.BookingID != nil && *saved.BookingID != "" {
+		if err := s.invoices.SetServiceTimesFromBooking(saved.ID); err != nil {
+			log.Printf("وقت فاتورة الخدمة %s: %v", saved.ID, err)
+		} else if fresh, ferr := s.invoices.GetByID(saved.ID); ferr == nil && fresh != nil {
+			saved = fresh
+		}
 	}
 	s.computeAndSaveCommissions(saved)
 	// (ع) 10-16: «إذا هي مامدققة شلون تروح للمراقب وهي ماكاملة؟» — الفاتورة
@@ -1088,4 +1116,19 @@ func approveNote(number string, internal bool) string {
 		return " • 🎁 مجانية — انعتمدت بلا فاتورة محاسبية"
 	}
 	return " • رقم الفاتورة المحاسبية: " + number
+}
+
+// checkFreeReason سبب المجانية إجباري ومعروف، والي يحتاج توضيح لازم ينكتب — مشترك بين فاتورة الليدر وفاتورة الخدمة.
+func (s *LeaderInvoiceService) checkFreeReason(id, note *string) error {
+	if id == nil || *id == "" {
+		return fmt.Errorf("لازم تحدد سبب المجانية")
+	}
+	reason, err := s.invoices.FreeReason(*id)
+	if err != nil || reason == nil {
+		return fmt.Errorf("سبب المجانية مو معروف")
+	}
+	if reason.NeedsNote && utf8.RuneCountInString(strings.TrimSpace(derefString(note))) < 5 {
+		return fmt.Errorf("سبب «%s» يحتاج توضيح مكتوب", reason.Label)
+	}
+	return nil
 }

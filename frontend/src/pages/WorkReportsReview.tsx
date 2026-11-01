@@ -31,6 +31,19 @@ export default function WorkReportsReview() {
   // (دازاي 10-28) «دققت ٢ اختفن، حدثت رجعن ٢٠٠»: العرض لحد ٢٠٠، فكل تبويب يجيب نوعه
   // من الخادم، والعداد هو العدد الحقيقي مو عدد المعروض.
   const [counts, setCounts] = useState<{ pending: number; done: number } | null>(null)
+  // 🔎 البحث بكود الحجز (دازاي 10-31): «تقرير B964 ماموجود — شلون أعرف دز تقرير لو لا؟»
+  const [code, setCode] = useState('')
+  const [found, setFound] = useState<Awaited<ReturnType<typeof api.getWorkReportsByBooking>> | null>(null)
+  const [searching, setSearching] = useState(false)
+  const [searchErr, setSearchErr] = useState('')
+  const search = async () => {
+    if (!code.trim()) return
+    setSearching(true); setSearchErr('')
+    try { setFound(await api.getWorkReportsByBooking(code.trim())) }
+    catch (e) { setSearchErr(e instanceof Error ? e.message : 'تعذر البحث') }
+    finally { setSearching(false) }
+  }
+  const clearSearch = () => { setFound(null); setCode(''); setSearchErr('') }
   const [reload, setReload] = useState(0)
   useEffect(() => {
     let alive = true
@@ -44,7 +57,7 @@ export default function WorkReportsReview() {
 
   const pendingCount = counts?.pending ?? reports.filter((r) => !r.reviewedAt).length
   const shownPending = reports.filter((r) => !r.reviewedAt).length
-  const filtered = (filter === 'ALL' ? reports : reports.filter((r) => r.workStatus === filter))
+  const filtered = found ? found.reports : (filter === 'ALL' ? reports : reports.filter((r) => r.workStatus === filter))
     .filter((r) => review === 'ALL' || (review === 'PENDING' ? !r.reviewedAt : !!r.reviewedAt))
 
   return (
@@ -82,7 +95,31 @@ export default function WorkReportsReview() {
         ))}
       </div>
 
-      {loading && <p className="text-slate-400">جاري التحميل...</p>}
+      <form onSubmit={(e) => { e.preventDefault(); void search() }} className="flex flex-wrap items-center gap-2 rounded-xl border border-slate-200 bg-white p-3">
+        <label className="text-sm font-bold text-slate-700">🔎 بحث بكود الحجز</label>
+        <input value={code} onChange={(e) => setCode(e.target.value)} dir="ltr" placeholder="B964"
+          className="w-36 rounded-lg border border-slate-300 px-3 py-1.5 text-sm uppercase" />
+        <button type="submit" disabled={searching || !code.trim()} className="rounded-lg bg-[#0f2040] px-4 py-1.5 text-sm font-bold text-white disabled:opacity-50">{searching ? '…' : 'ابحث'}</button>
+        {found && <button type="button" onClick={clearSearch} className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm">رجوع لكل التقارير</button>}
+        {searchErr && <span className="text-sm text-red-700">{searchErr}</span>}
+      </form>
+      {found && (
+        !found.booking ? (
+          <p className="rounded-xl bg-slate-100 px-4 py-3 text-sm font-bold text-slate-700">ماكو حجز بهذا الكود.</p>
+        ) : found.reports.length === 0 ? (
+          <p className="rounded-xl bg-red-50 px-4 py-3 text-sm font-bold text-red-800">
+            ❌ الحجز {found.booking.code} ما انرسل إله تقرير عمل لهسه
+            {found.booking.leaderName ? ` — المسؤول عن ورقه: ${found.booking.leaderName}` : ''}
+            {found.booking.completedAt ? ` · انجز ${new Date(found.booking.completedAt).toLocaleString('ar-IQ')}` : ' · الحجز بعده ما مكتمل'}
+          </p>
+        ) : (
+          <p className="rounded-xl bg-emerald-50 px-4 py-3 text-sm font-bold text-emerald-800">
+            ✅ الحجز {found.booking.code} إله {found.reports.length} تقرير عمل — آخر واحد انرسل {new Date(found.reports[0].createdAt).toLocaleString('ar-IQ')}
+            {found.reports[0].reviewedAt ? ' (متدقّق)' : ' (ينتظر التدقيق)'}. التفاصيل تحت.
+          </p>
+        )
+      )}
+      {loading && !found && <p className="text-slate-400">جاري التحميل...</p>}
       {review === 'PENDING' && counts && counts.pending > shownPending && (
         <div className="flex flex-wrap items-center gap-3 rounded-xl bg-amber-50 px-4 py-2 text-sm text-amber-900">
           <span>يعرض {shownPending} من {counts.pending} — الأقدم أول. من تدققهم تطلع الي بعدها.</span>

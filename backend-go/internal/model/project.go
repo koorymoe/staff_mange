@@ -124,7 +124,9 @@ type ProjectStats struct {
 	Price    int `json:"سعر"`
 	Contract int `json:"عقد"`
 	Media    int `json:"الإعلام"` // 📸 الإعلام — بين العقد والتنفيذ
+	Prepare  int `json:"تجهيز"`   // (ع) 10-31: تجهيز المنتجات — بين العقد والتنفيذ
 	Execute  int `json:"تنفيذ"`
+	Handover int `json:"تسليم"` // التسليم والاستلام — ورا التنفيذ
 	Done     int `json:"مكتمل"`
 	Rejected int `json:"مرفوض"`
 }

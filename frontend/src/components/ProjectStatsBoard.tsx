@@ -13,6 +13,8 @@ function metaOf(stage: string): Meta {
   if (stage.includes('كشف')) return { color: '#f59e0b', icon: '🔍', tint: 'bg-amber-50 border-amber-100' }
   if (stage.includes('سعر')) return { color: '#a855f7', icon: '🧾', tint: 'bg-violet-50 border-violet-100' }
   if (stage.includes('اتصال')) return { color: '#0ea5e9', icon: '📞', tint: 'bg-cyan-50 border-cyan-100' }
+  if (stage.includes('تجهيز')) return { color: '#f59e0b', icon: '📦', tint: 'bg-orange-50 border-orange-100' }
+  if (stage.includes('التسليم')) return { color: '#14b8a6', icon: '🤝', tint: 'bg-teal-50 border-teal-100' }
   if (stage.includes('تنفيذ')) return { color: '#f97316', icon: '🛠️', tint: 'bg-orange-50 border-orange-100' }
   return { color: '#64748b', icon: '📁', tint: 'bg-slate-50 border-slate-200' }
 }

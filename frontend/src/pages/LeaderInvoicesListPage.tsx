@@ -46,7 +46,8 @@ function printInvoice(inv: LeaderInvoice, adjustments: LeaderInvoiceAdjustment[]
       (it) => `<tr><td>${esc(it.itemName)} <small>${esc(it.systemName)}</small></td>
         <td>${esc(it.count)}</td>
         <td><small>${esc(
-          [it.heightMeters ? `ارتفاع ${it.heightMeters}م` : '', it.cableLengthMeters ? `كيبل ${it.cableLengthMeters}م` : '']
+          [it.heightMeters ? `ارتفاع ${it.heightMeters}م` : '', it.cableLengthMeters ? `كيبل ${it.cableLengthMeters}م` : '',
+            it.unitPrice ? `${money(it.unitPrice)} للوحدة` : '']
             .filter(Boolean)
             .join(' · '),
         )}</small></td></tr>`,
@@ -97,6 +98,7 @@ function printInvoice(inv: LeaderInvoice, adjustments: LeaderInvoiceAdjustment[]
   <h1>فاتورة ليدر</h1>
   <p class="code">${esc(inv.accountingCode)}${inv.externalInvoiceNumber ? ` · محاسبياً: ${esc(inv.externalInvoiceNumber)}` : ''}
     · ${esc(new Date(inv.createdAt).toLocaleString('ar-IQ'))}</p>
+  ${inv.serviceStartAt || inv.serviceEndAt ? `<p>🕘 وقت الشغل: البداية ${esc(inv.serviceStartAt ? new Date(inv.serviceStartAt).toLocaleString('ar-IQ') : '—')} ← النهاية ${esc(inv.serviceEndAt ? new Date(inv.serviceEndAt).toLocaleString('ar-IQ') : '—')}</p>` : ''}
   ${identity}
   <h2>بنود التنفيذ — ${esc(inv.systems.join('، ') || '—')} · ${esc(inv.totalDeviceCount)} جهاز</h2>
   <table><thead><tr><th>البند</th><th>العدد</th><th>تفاصيل</th></tr></thead>
@@ -1299,6 +1301,9 @@ export default function LeaderInvoicesListPage({ embedded }: EmbeddedProps = {})
                 <p>الدور: {details.employeeRole || '—'}</p>
                 <p dir="ltr" className="text-right">الهاتف: {details.employeePhone || '—'}</p>
                 <p>التاريخ: {new Date(details.createdAt).toLocaleString('ar-IQ')}</p>
+                {(details.serviceStartAt || details.serviceEndAt) && (
+                  <p>🕘 وقت الشغل: البداية {details.serviceStartAt ? new Date(details.serviceStartAt).toLocaleString('ar-IQ') : '—'} ← النهاية {details.serviceEndAt ? new Date(details.serviceEndAt).toLocaleString('ar-IQ') : '—'}</p>
+                )}
                 <p>الحالة: {details.status === 'APPROVED' ? '✔ مكتملة (معتمدة)'
                   : atMonitor(details) ? '👁️ بانتظار تدقيق المراقب'
                     : audited(details) ? 'بانتظار الاعتماد' : '🔍 بانتظار التدقيق'}</p>

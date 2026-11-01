@@ -397,6 +397,12 @@ function DeskContent({
                   <span className={`desk-badge status-${issue.status}`}>
                     {statuses[issue.status]}
                   </span>
+                  {issue.source === 'MATRIX' && (
+                    <span className="desk-badge matrix">🤖 شخّصها ماتركس</span>
+                  )}
+                  {issue.source === 'MONITOR' && (
+                    <span className="desk-badge">👁️ من المراقب</span>
+                  )}
                 </header>
                 <h3>{issue.title}</h3>
                 <h4>المشكلة</h4>

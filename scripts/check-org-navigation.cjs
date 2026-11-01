@@ -1,6 +1,8 @@
 // Real Layout + synthetic sessions/APIs; read-only fixtures, never production.
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
+const { execFileSync } = require('node:child_process');
+const ts = require('../frontend/node_modules/typescript');
 const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
 (async () => {
   const base = 'http://127.0.0.1:5199/staff_mange';
@@ -38,6 +40,13 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
   const monitor = [...monitorSource.matchAll(/"([^"]+)"/g)]
     .slice(1)
     .map((m) => m[1]);
+  const defaults = (role) => {
+    const line = fs
+      .readFileSync('backend-go/internal/model/permission.go', 'utf8')
+      .split('\n')
+      .find((s) => new RegExp('^\\s*"' + role + '":').test(s));
+    return [...line.matchAll(/"([^"]+)"/g)].slice(1).map((m) => m[1]);
+  };
   const cases = [
     {
       key: 'owner',
@@ -70,16 +79,45 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
       unit: 'ops.bookings',
     },
     {
-      key: 'fleet',
-      name: 'عضو عُدد',
-      role: 'PROCUREMENT_ADMIN',
-      permissions: member('ops.fleet'),
-      division: 'ops',
-      unit: 'ops.fleet',
+      key: 'finance',
+      name: 'محاسب',
+      role: 'FINANCE',
+      permissions: defaults('FINANCE'),
     },
     { key: 'monitor', name: 'مراقب', role: 'MONITOR', permissions: monitor },
+    {
+      key: 'leader',
+      name: 'ليدر تقني',
+      role: 'TECHNICAL',
+      isLeader: true,
+      permissions: defaults('TECHNICAL'),
+    },
   ];
   const code = await (await fetch(base + '/src/components/Layout.tsx')).text();
+  const navCode = await (
+    await fetch(base + '/src/components/navTree.tsx')
+  ).text();
+  const oldNav = execFileSync(
+    'git',
+    ['show', '13730a82:frontend/src/components/navTree.tsx'],
+    { encoding: 'utf8' },
+  );
+  const oldOrganize = oldNav
+    .slice(
+      oldNav.indexOf('export function organizeOrgNavigation('),
+      oldNav.indexOf('// «المشاريع» لصاحب'),
+    )
+    .replace(
+      'export function organizeOrgNavigation',
+      'export function previousOrgNavigation',
+    )
+    .replaceAll('<></>', 'null');
+  const previousJs = ts.transpileModule(oldOrganize, {
+    compilerOptions: {
+      target: ts.ScriptTarget.ES2022,
+      module: ts.ModuleKind.ESNext,
+    },
+  }).outputText;
   const routerPath = code.match(
     /["']([^"']*react-router-dom\.js[^"']*)["']/,
   )[1];
@@ -89,16 +127,18 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
     pattern.test(code),
     'Layout instrumentation must match actual prune call',
   );
-  const instrumented = code.replace(
-    pattern,
-    `const beforeItems=prune(navItems,false,new Set());const visibleItems=organizeOrgNavigation(beforeItems);
+  const instrumented =
+    `import {previousOrgNavigation} from '${base}/src/components/navTree.tsx';\n` +
+    code.replace(
+      pattern,
+      `const policyItems=prune(navItems,false,new Set());const beforeItems=previousOrgNavigation(policyItems);const visibleItems=organizeOrgNavigation(policyItems);
     const flatten=(items,group='')=>items.flatMap(it=>it.children?flatten(it.children,it.label):it.divider?[]:[{item:it,to:it.to,label:it.labelFor?it.labelFor({employee,permissions:employeePermissions,gpsServiceId}):it.label,group}]);
     const before=flatten(beforeItems),after=flatten(visibleItems);
-    window.__sidebarSnapshot={before:before.map(({item,...row})=>row),after:after.map(({item,...row})=>row),permissions:employeePermissions,originalLeaves:after.every(({item})=>before.some(b=>b.item===item)),groups:visibleItems.filter(x=>x.children).map(x=>({to:x.to,label:x.label,children:flatten(x.children).map(x=>x.to)}))};
+    window.__sidebarSnapshot={before:before.map(({item,...row})=>row),after:after.map(({item,...row})=>row),permissions:employeePermissions,originalLeaves:after.every(({item})=>flatten(policyItems).some(b=>b.item===item)),originalTreePreserved:policyItems.every((item,i)=>visibleItems[i]===item),groups:visibleItems.filter(x=>x.children).map(x=>({to:x.to,label:x.label,children:flatten(x.children).map(x=>x.to)}))};
     window.__expandSidebar=()=>{const pairs=[];const walk=items=>items.forEach(it=>{if(it.children){pairs.push([it.to||it.label,true]);walk(it.children)}});walk(visibleItems);setExpandedGroups(Object.fromEntries(pairs))};
     window.__setSidebarGroups=keys=>setExpandedGroups(Object.fromEntries(keys.map(key=>[key,true])));
   `,
-  );
+    );
   const errors = [],
     reports = [];
   const stubs = [
@@ -124,7 +164,7 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
       role: c.role,
       actualRole: c.actualRole || c.role,
       status: 'ACTIVE',
-      isLeader: false,
+      isLeader: !!c.isLeader,
     };
     const page = await browser.newPage({
         viewport: { width: 1366, height: 900 },
@@ -147,6 +187,11 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
         return r.fulfill({
           contentType: 'text/javascript',
           body: instrumented,
+        });
+      if (name === 'navTree')
+        return r.fulfill({
+          contentType: 'text/javascript',
+          body: navCode + '\n' + previousJs,
         });
       if (stubs.includes(name))
         return r.fulfill({
@@ -232,6 +277,24 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
       c.name + ': missing/new screens',
     );
     assert(snap.originalLeaves, c.name + ': leaf permission/context changed');
+    assert(
+      snap.originalTreePreserved,
+      c.name +
+        ': every old node, divider and button must stay at its original position',
+    );
+    assert(
+      snap.after.length >= snap.before.length,
+      'No link occurrence removed',
+    );
+    const signature = (row) => JSON.stringify([row.to, row.label, row.group]);
+    const available = new Map();
+    for (const row of snap.after)
+      available.set(signature(row), (available.get(signature(row)) || 0) + 1);
+    for (const row of snap.before) {
+      const key = signature(row);
+      assert((available.get(key) || 0) > 0, `Old entry missing: ${key}`);
+      available.set(key, available.get(key) - 1);
+    }
     if (c.key === 'owner') {
       const groups = await page.evaluate(async (base) => {
         const nav = await import(base + '/src/components/navTree.tsx');
@@ -258,7 +321,7 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
       }, base);
       assert.deepEqual(
         groups,
-        ['/unit-bookings', '/unit-technicians', undefined],
+        ['/unit-bookings', '/org-nav/unit-technicians', undefined],
         'Deep links and personal field work use their actual visible group',
       );
     }
@@ -268,7 +331,7 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
     );
     assert(
       !snap.groups
-        .find((g) => g.to === '/unit-hr')
+        .find((g) => g.to === '/org-nav/unit-hr')
         ?.children.some((p) =>
           [
             '/bookings',
@@ -346,6 +409,9 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
       permissions: c.permissions,
       countBefore: unique(snap.before).length,
       countAfter: unique(snap.after).length,
+      linksBefore: snap.before.length,
+      linksAfter: snap.after.length,
+      isLeader: actor.isLeader,
       before: snap.before,
       after: snap.after,
     });
@@ -360,15 +426,11 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
         .locator('..')
         .locator('a[href$="/bookings"]')
         .waitFor();
-      assert.equal(
-        await page
-          .getByRole('button', { name: 'إدارة الكوادر', exact: true })
-          .locator('..')
-          .locator('a')
-          .count(),
-        0,
-        'Bookings deep link must not expand the old HR group',
-      );
+      await page
+        .getByRole('button', { name: 'وحدة إدارة الكوادر', exact: true })
+        .locator('..')
+        .locator('a[href$="/bookings"]')
+        .waitFor();
       await page.evaluate(() =>
         window.__setSidebarGroups(['/unit-bookings', '/unit-auditing']),
       );
@@ -385,12 +447,19 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
         .getByRole('button', { name: 'التدقيق', exact: true })
         .scrollIntoViewIfNeeded();
       await page.screenshot({ path: '/tmp/org-nav-desktop.png' });
+      await page.evaluate(() => document.documentElement.classList.add('dark'));
+      await page.screenshot({ path: '/tmp/org-nav-desktop-dark.png' });
+      await page.evaluate(() =>
+        document.documentElement.classList.remove('dark'),
+      );
       await page.setViewportSize({ width: 390, height: 844 });
       await page.locator('header button').first().click();
       await page
         .getByRole('button', { name: 'الحجوزات والتنسيق', exact: true })
         .scrollIntoViewIfNeeded();
       await page.screenshot({ path: '/tmp/org-nav-mobile.png' });
+      await page.evaluate(() => document.documentElement.classList.add('dark'));
+      await page.screenshot({ path: '/tmp/org-nav-mobile-dark.png' });
       assert(
         await page.evaluate(
           () => document.documentElement.scrollWidth <= innerWidth,
@@ -416,7 +485,7 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
   assert.deepEqual(errors, []);
   await browser.close();
   console.log(
-    'PASS: real Layout before/after exact unique routes and leaf guards for six synthetic accounts; OrgSeed bundles, grouping, DOM links, zero chart/writes, mobile/desktop.',
+    'PASS: additive Layout for seven accounts; every old node/button/divider/position preserved, identical screen sets and original guard objects, extra authorized shortcut occurrences only, OrgSeed grouping, deep links and both legacy/new entries, zero chart/writes, mobile/desktop/light/dark.',
   );
 })().catch((e) => {
   console.error(e);

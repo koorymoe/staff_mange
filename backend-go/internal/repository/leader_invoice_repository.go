@@ -1119,3 +1119,13 @@ func (r *LeaderInvoiceRepository) IsInternal(id string) bool {
 	_ = r.db.Get(&ok, `SELECT EXISTS (SELECT 1 FROM "LeaderInvoice" WHERE id = $1 AND systems::text LIKE '%شغل داخل الشركة%')`, id)
 	return ok
 }
+
+// SetServiceTimesFromBooking وقت بداية ونهاية الشغل لفاتورة الخدمة من حجزها:
+// البداية = بدء الشغل (أو الوصول)، والنهاية = الإكمال.
+func (r *LeaderInvoiceRepository) SetServiceTimesFromBooking(invoiceID string) error {
+	_, err := r.db.Exec(`UPDATE "LeaderInvoice" li
+		SET "serviceStartAt" = COALESCE(b."startedAt", b."arrivedAt", b."autoArrivedAt"),
+		    "serviceEndAt" = COALESCE(b."completedAt", b."autoCompletedAt")
+		FROM "Booking" b WHERE li.id = $1 AND b.id = li."bookingId"`, invoiceID)
+	return err
+}
