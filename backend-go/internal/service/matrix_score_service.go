@@ -132,6 +132,7 @@ func (s *MatrixScoreService) Run(now time.Time) (int, error) {
 	}
 	s.scoreProjects(now, add)
 	s.scoreProcurement(now, add)
+	s.scoreMonitorAudit(now, add)
 	if len(errs) > 0 {
 		return n, errors.New(strings.Join(errs, "; "))
 	}
@@ -340,7 +341,7 @@ var ruleTitles = map[string]string{
 	"ATTENDANCE": "تسجيل الحضور", "TASK_DUE": "المهام المضافة بموعدها", "PROJECT_WEEK": "المشاريع",
 	"PROC_RESPONSE": "الرد على طلبات المواد", "TOOL_RESPONSE": "الرد على طلبات الأدوات",
 	"VEHICLE_DAILY": "متابعة السيارات اليومية", "SHORTAGE_RESOLVE": "حل نواقص الجرد",
-	"STAGE_LOG": "الالتزام بتسجيل المراحل",
+	"STAGE_LOG": "الالتزام بتسجيل المراحل", "MONITOR_AUDIT": "تدقيق المراقب (غير الحجوزات)",
 }
 
 var ruleAdvice = map[string]string{

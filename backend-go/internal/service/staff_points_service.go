@@ -160,7 +160,7 @@ func (s *StaffPointsService) Month(month string) ([]StaffPoints, error) {
 	}
 	paper := steps("paper", `'PAPER'`)
 	rating := steps("rating", `'RATING'`)
-	monitor := steps("monitor", `'MONITOR'`)
+	monitor := steps("monitor", `'MONITOR','MONITOR_AUDIT'`)
 	quality := steps("quality", `'QUALITY'`)
 	office := steps("office", `'CREATE','CONTACT','CONFIRM','HANDOFF','CREW','ACCOUNT','PROC_RESPONSE','TOOL_RESPONSE','VEHICLE_DAILY','SHORTAGE_RESOLVE','PROJECT_WEEK'`)
 
@@ -203,7 +203,7 @@ func (s *StaffPointsService) Month(month string) ([]StaffPoints, error) {
 				add("تقييم الكادر بوقته", rating[p.ID], pointsLeaderRate)
 			}
 		case GroupMonitors:
-			add("حجز دقّقه بوقته", monitor[p.ID], pointsMonitor)
+			add("بند دقّقه بوقته", monitor[p.ID], pointsMonitor)
 		case GroupQuality:
 			add("اتصال جودة بوقته", quality[p.ID], pointsQuality)
 		case GroupTechnical:

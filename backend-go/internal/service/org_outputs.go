@@ -20,7 +20,7 @@ import (
 // matrixRuleClause قواعد نقاط ماتركس ← فقرة اللائحة (principleNo).
 var matrixRuleClause = map[string]int{
 	"ATTENDANCE": 3,                 // م١/ف٣ مواعيد العمل
-	"MONITOR":    4, "STAGE_LOG": 4, // م١/ف٤ المسؤولية والمحاسبة
+	"MONITOR":    4, "MONITOR_AUDIT": 4, "STAGE_LOG": 4, // م١/ف٤ المسؤولية والمحاسبة
 	"TASK_DUE": 2,                                   // م١/ف٢ الالتزام بالتوجيهات
 	"WORK":     7, "COMPLETE": 7, "PROJECT_WEEK": 7, // م٢/ف١ الدقة والسرعة
 	"CREW":      9,                                                                    // م٢/ف٣ العمل الجماعي
