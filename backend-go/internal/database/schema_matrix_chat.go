@@ -1624,5 +1624,15 @@ func matrixChatMigrations() []Migration {
 			DROP TABLE IF EXISTS "CmdProjectLog";
 			DROP TABLE IF EXISTS "CmdProject";
 		`,
+	}, {
+		// (دازاي 11-02) أحكام ماتركس بلا «مُلام» (حضور بلا شغل…) چانت تطلع بلا اسم
+		// بصندوق المراقب — صاحبها = الموظف الي الإشارة عليه.
+		Version: "0427_ai_verdict_owner",
+		SQL: `
+			UPDATE "MonitorReview" r SET "ownerEmployeeId" = s."employeeId"
+			FROM "AiVerdict" v JOIN "AiSignal" s ON s.id = v."signalId"
+			WHERE r."entityType" = 'AI_VERDICT' AND r."entityId" = v.id
+			  AND r."ownerEmployeeId" IS NULL AND s."employeeId" IS NOT NULL;
+		`,
 	}}
 }

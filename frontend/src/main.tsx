@@ -10,12 +10,15 @@ import { applyTheme, getTheme } from './utils/theme.ts'
 import { installInAppAlert } from './utils/dialog.tsx'
 import { startStageSync } from './utils/offlineStages.ts'
 import { startFieldTracker } from './utils/fieldTracker.ts'
+import { installStaleChunkReload } from './utils/staleReload.ts'
 
 // قبل الرندر: أي طلب يفشل بلا معالجة بالشاشة يوصل الموظف برسالة
 // مفهومة بدل ما ينبلع بصمت.
 installNetworkErrorTrap()
 // alert() يطلع بشريط من النظام بدل نافذة المتصفح «staffmanage.cc says».
 installInAppAlert()
+// بعد كل رفع: ملف شاشة قديم ما ينلگه → تحديث تلقائي مرة وحدة بدل ما يعلگ التنقل
+installStaleChunkReload()
 
 // ⚠️ الوضع الليلي ينطبّق **قبل** أول رسم: لو انتظرنا React، الموظف
 // يشوف ومضة بيضا بكل فتحة صفحة — وهاي بالليل تضرب العين فعلاً.

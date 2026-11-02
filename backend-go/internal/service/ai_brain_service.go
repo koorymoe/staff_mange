@@ -125,8 +125,14 @@ func (s *AiBrainService) stageForMonitor(sig model.AiSignal, v *model.AiVerdict)
 		ownerRole = "FINANCE"
 	}
 	urgent := v.Severity == model.AiSeverityCritical || v.Severity == model.AiSeverityWarn
+	// (دازاي 11-02) صاحب الكارت = المُلام، وإلا الموظف الي الإشارة عليه — حتى
+	// المراقب يعرف على منو («حضور بلا شغل» تذكير بلا اتهام، بس إله صاحب).
+	owner := v.BlameEmployeeID
+	if owner == nil {
+		owner = sig.EmployeeID
+	}
 	s.monitor.StageUrgent(model.MonitorStageAiVerdict, "AI_VERDICT", v.ID,
-		v.Headline, summary, ownerRole, v.BlameEmployeeID, urgent)
+		v.Headline, summary, ownerRole, owner, urgent)
 }
 
 // StartBackgroundLoop يخلّي النظام **يفكر لحاله**.
