@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { type KpiLeaderboardEntry, type StaffScoreDetail } from '../api'
 import { api, type Stats, type RoleKpiLeaderboard } from '../api'
 import { useSession, isAdminOrOwner } from '../session'
+import { todayBaghdad } from '../utils/format'
 import { AdministrativeTab as KpiAdministrativeTab } from './KpiPage'
 import { roleLabel as arabicRole } from '../roleLabels'
 import { tracksFor } from '../rankingTracks'
@@ -83,7 +84,8 @@ function MatrixMine({ score }: { score: StaffScoreDetail | null }) {
         <span className="text-2xl font-black text-sky-700">{pct(score.final)}</span>
       </div>
       <p className="mt-1 text-[11px] text-slate-500">
-        {score.max > 0 ? `انحسبلك ${Math.round(score.earned / 2)} من ${Math.round(score.max / 2)} بشغلك هالشهر` : 'بعد ماكو شغل كافي ينحسب هالشهر'}
+        {score.month !== todayBaghdad().slice(0, 7) && <b className="text-amber-700">تقييم الشهر الماضي ({score.month}) — هالشهر بعده بأوله · </b>}
+        {score.max > 0 ? `انحسبلك ${Math.round(score.earned / 2)} من ${Math.round(score.max / 2)} بشغلك` : 'بعد ماكو نقاط هالشهر — تنحسبلك من تقرير إنجازك اليومي وحجوزاتك ومهامك وتقييم مسؤوليك'}
         {score.humanCount > 0 && ` · ${score.humanCount} تقييم من مسؤوليك`}
       </p>
       {score.topLosses.length > 0 && (
@@ -127,7 +129,16 @@ export default function MyRanking() {
   const [myScore, setMyScore] = useState<StaffScoreDetail | null>(null)
   useEffect(() => {
     api.getStaffScorePeers().then((r) => setPeers(new Map(r.map((x) => [x.id, x.final])))).catch(() => {})
-    api.getMyScore().then((r) => setMyScore(r?.score ?? null)).catch(() => {})
+    api.getMyScore().then(async (r) => {
+      const cur = r?.score ?? null
+      // (11-02) أول الشهر بعده ماكو شغل كافي — نعرض الشهر الماضي بداله، مو «ماكو شغل»
+      if (cur && cur.max === 0 && cur.humanCount === 0) {
+        const d = new Date(todayBaghdad() + 'T12:00:00'); d.setDate(1); d.setMonth(d.getMonth() - 1)
+        const prev = await api.getMyScore(d.toISOString().slice(0, 7)).catch(() => null)
+        if (prev?.score && (prev.score.max > 0 || prev.score.humanCount > 0)) { setMyScore(prev.score); return }
+      }
+      setMyScore(cur)
+    }).catch(() => {})
   }, [])
   const [evalBoard, setEvalBoard] = useState<RoleKpiLeaderboard | null>(null)
   const [evalPeriod, setEvalPeriod] = useState<'weekly' | 'monthly'>('weekly')

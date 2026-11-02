@@ -4568,7 +4568,7 @@ export const api = {
   getStaffScore: (id: string, month = '') => request<StaffScoreDetail>(`/staff-score/${id}${month ? `?month=${month}` : ''}`),
   getStaffPoints: (month = '') => request<{ month: string; staff: StaffPointsRow[] }>(`/staff-points${month ? `?month=${month}` : ''}`),
   getStaffScorePeers: () => request<{ id: string; final: number | null }[]>('/staff-score/peers'),
-  getMyScore: () => request<{ score: StaffScoreDetail; on: boolean } | null>('/staff-score/me'),
+  getMyScore: (month = '') => request<{ score: StaffScoreDetail; on: boolean } | null>(`/staff-score/me${month ? `?month=${month}` : ''}`),
   runStaffScore: () => request<{ added: number }>('/staff-score/run', { method: 'POST' }),
   cancelMatrixScore: (id: string, note: string) => request<{ ok: boolean }>(`/matrix-score/${id}/cancel`, { method: 'POST', body: JSON.stringify({ note }) }),
   getCoordPendingRatings: () => request<PendingStaffRating[]>('/staff-ratings/coord-pending'),

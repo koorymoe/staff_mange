@@ -225,7 +225,7 @@ func (s *MatrixScoreService) scoreDays(now time.Time, add func(repository.Matrix
 		return err
 	}
 	today := now.In(debriefLoc)
-	for back := 1; back <= 3; back++ {
+	for back := 1; back <= 7; back++ { // ٧ أيام: التقرير المتأخر ينكتب خلال أسبوع
 		d := today.AddDate(0, 0, -back)
 		day := time.Date(d.Year(), d.Month(), d.Day(), 0, 0, 0, 0, debriefLoc)
 		present, leave, err := s.repo.DayFacts(day)
@@ -234,7 +234,28 @@ func (s *MatrixScoreService) scoreDays(now time.Time, add func(repository.Matrix
 		}
 		key := day.Format("2006-01-02")
 		label := "يوم " + key
+		// (11-02) تقرير الإنجاز اليومي ينحسب بالتقييم لكل من داوم — حتى موظف
+		// المكتب الي ماله حجوزات ولا مهام ينقيّم على شغله اليومي.
+		reports, since, rerr := s.repo.DailyReportsOn(day)
+		if rerr != nil {
+			return rerr
+		}
+		reportOn := since != "" && key >= since
 		for _, p := range people {
+			if _, ok := present[p.ID]; ok && reportOn && !leave[p.ID] {
+				rl := "تقرير " + key
+				r := repository.MatrixScoreRow{EmployeeID: p.ID, Source: "REPORT", SourceID: "daily:" + key, SourceLabel: &rl,
+					Rule: "DAILY_REPORT", MaxPoints: 2, At: day.Add(13 * time.Hour).UTC()}
+				switch late, wrote := reports[p.ID]; {
+				case wrote && !late:
+					r.Points, r.Reason = 2, rl+": كتب تقرير إنجازه بيومه."
+				case wrote:
+					r.Points, r.Reason = 1, rl+": كتب تقرير إنجازه متأخر."
+				default:
+					r.Points, r.Reason = 0, rl+": داوم وما كتب تقرير إنجازه."
+				}
+				add(r)
+			}
 			if leave[p.ID] || p.CreatedAt.After(day.Add(9*time.Hour)) {
 				continue
 			}
@@ -344,11 +365,12 @@ var ruleTitles = map[string]string{
 	"ATTENDANCE": "تسجيل الحضور", "TASK_DUE": "المهام المضافة بموعدها", "PROJECT_WEEK": "المشاريع",
 	"PROC_RESPONSE": "الرد على طلبات المواد", "TOOL_RESPONSE": "الرد على طلبات الأدوات",
 	"VEHICLE_DAILY": "متابعة السيارات اليومية", "SHORTAGE_RESOLVE": "حل نواقص الجرد",
-	"STAGE_LOG": "الالتزام بتسجيل المراحل", "MONITOR_AUDIT": "تدقيق المراقب (غير الحجوزات)", "RATING_DUTY": "واجب التقييم اليومي", "REPORT_MATCH": "صدق تقرير الإنجاز",
+	"STAGE_LOG": "الالتزام بتسجيل المراحل", "MONITOR_AUDIT": "تدقيق المراقب (غير الحجوزات)", "RATING_DUTY": "واجب التقييم اليومي", "REPORT_MATCH": "صدق تقرير الإنجاز", "DAILY_REPORT": "تقرير الإنجاز اليومي",
 }
 
 var ruleAdvice = map[string]string{
 	"RATING_DUTY":      "قيّم الي عليك نفس اليوم — الي يفوتك ينكتب بسجل الإهمال.",
+	"DAILY_REPORT":     "اكتب تقرير إنجازك بنفس اليوم قبل ما تطلع.",
 	"REPORT_MATCH":     "اكتب بتقريرك الي سويته فعلاً واذكر أكواد الحجوزات الي اشتغلت عليها.",
 	"ATTENDANCE":       "سجّل حضورك كل يوم دوام أول ما توصل.",
 	"STAGE_LOG":        "دوس كل مرحلة بوقتها وبمكانها (انطلاق بالشركة، وصول عند الزبون) — حتى بلا نت تنحفظ.",

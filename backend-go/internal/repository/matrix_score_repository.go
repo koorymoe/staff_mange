@@ -448,3 +448,21 @@ func (r *MatrixScoreRepository) ReportMatches(since time.Time) ([]ReportMatchRow
 		WHERE m."createdAt" >= $1 AND e.role::text NOT IN ('ADMIN','OWNER')`, since)
 	return rows, err
 }
+
+// DailyReportsOn تقارير الإنجاز ليوم: موظف ← متأخر؟ + يوم تشغيل الإلزام (٩.١).
+func (r *MatrixScoreRepository) DailyReportsOn(day time.Time) (map[string]bool, string, error) {
+	rows := []struct {
+		ID   string `db:"employeeId"`
+		Late bool   `db:"late"`
+	}{}
+	if err := r.db.Select(&rows, `SELECT "employeeId", late FROM "DailyWorkReport" WHERE day = $1::date`, day.Format("2006-01-02")); err != nil {
+		return nil, "", err
+	}
+	out := map[string]bool{}
+	for _, x := range rows {
+		out[x.ID] = x.Late
+	}
+	var since string
+	_ = r.db.Get(&since, `SELECT value FROM "OrgGovernorState" WHERE key = 'daily_report_since'`)
+	return out, since, nil
+}
