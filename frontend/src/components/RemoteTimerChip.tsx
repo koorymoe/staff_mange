@@ -3,11 +3,11 @@ import { Link } from 'react-router-dom'
 import { api, type RemoteTimer } from '../api'
 import { useSession, isAdminOrOwner } from '../session'
 import { pollVisible } from '../utils/poll'
+import { hms } from '../utils/format'
 
 // ═══ عدّاد ساعات البيت بالشريط العلوي — بكل الشاشات ═══
 // (ع): «أريد عدّاد، أني من أشتغل أحسب وقتي». يطلع لصاحب صلاحية ساعات البيت
 // (لنفسه أو مسؤول): ▶️/⏸️ من أي شاشة، والوقت يمشي. «إنهاء» من صفحة الساعات.
-const hms = (sec: number) => `${Math.floor(sec / 3600)}:${String(Math.floor((sec % 3600) / 60)).padStart(2, '0')}:${String(sec % 60).padStart(2, '0')}`
 
 export default function RemoteTimerChip() {
   const { employee, permissions } = useSession()

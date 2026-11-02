@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { api, type Employee } from '../api'
 import { parseAmount } from '../utils/money'
+import { todayBaghdad as today } from '../utils/format'
 
 // ═══ «أكمل معلومات المشروع» — طلب (ع) 10-10 ═══
 // «خيار كدام كل مشروع يخلون المبلغ المالي والمستلم واسم المشرف… وكل
@@ -13,7 +14,6 @@ export interface FillTarget {
   paidAmount: number
 }
 
-const today = () => new Date().toISOString().slice(0, 10)
 
 export default function ProjectFillInfo({ p, onClose, onSaved }: { p: FillTarget; onClose: () => void; onSaved: () => void }) {
   const [emps, setEmps] = useState<Employee[]>([])

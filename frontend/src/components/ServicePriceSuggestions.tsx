@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { api, type ServicePriceStats, type ServicePriceSuggestion } from '../api'
 import { useSession } from '../session'
+import { numRound as fmt } from '../utils/format'
 
 // ═══ أسعار يقترحها النظام ═══
 //
@@ -19,7 +20,6 @@ import { useSession } from '../session'
 // المحاسب يراجعه قبل الاعتماد» — وزر يطلع ويرجع خطأ أسوأ من زر مو
 // موجود.
 
-const fmt = (n: number) => Math.round(n).toLocaleString('en-US')
 
 const STATUS: Record<string, { label: string; cls: string }> = {
   PROPOSED: { label: '🧠 اقتراح جديد — ينتظر المحاسب', cls: 'bg-amber-50 text-amber-800 border-amber-200' },

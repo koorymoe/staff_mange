@@ -1,6 +1,7 @@
 package repository
 
 import (
+	"strconv"
 	"time"
 
 	"github.com/google/uuid"
@@ -61,14 +62,14 @@ func (r *AchievementRepository) List(employeeID, day string, limit int) ([]model
 	args := []any{}
 	if employeeID != "" {
 		args = append(args, employeeID)
-		q += ` AND "employeeId" = $` + itoa(len(args))
+		q += ` AND "employeeId" = $` + strconv.Itoa(len(args))
 	}
 	if day != "" {
 		args = append(args, day)
-		q += ` AND baghdad_date("createdAt") = $` + itoa(len(args)) + `::date`
+		q += ` AND baghdad_date("createdAt") = $` + strconv.Itoa(len(args)) + `::date`
 	}
 	args = append(args, limit)
-	q += ` ORDER BY "createdAt" DESC LIMIT $` + itoa(len(args))
+	q += ` ORDER BY "createdAt" DESC LIMIT $` + strconv.Itoa(len(args))
 	if err := r.db.Select(&rows, q, args...); err != nil {
 		return nil, err
 	}

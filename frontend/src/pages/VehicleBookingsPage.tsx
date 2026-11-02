@@ -3,6 +3,7 @@ import { api, type VehicleBooking, type VehicleOption } from '../api'
 import { useSession } from '../session'
 import { useSaveGuard } from '../useSaveGuard'
 import SaveError from '../components/SaveError'
+import { dateTimeAr as fmt } from '../utils/format'
 
 // ═══ حجز المركبات ═══
 //
@@ -25,7 +26,6 @@ const STATUS_LABELS: Record<VehicleBooking['status'], { label: string; cls: stri
 const CARD = 'rounded-xl border border-white bg-white p-5 shadow-[0_4px_20px_rgba(15,32,64,0.06)]'
 const INPUT = 'rounded-lg border border-slate-300 px-3 py-2'
 
-const fmt = (s: string) => new Date(s).toLocaleString('ar-IQ', { dateStyle: 'medium', timeStyle: 'short' })
 
 type Row = VehicleBooking & { started: boolean }
 

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { api, type Employee, type RemoteEntry, type RemoteSummary, type RemoteTimer, type RemotePlan } from '../api'
 import { useSession, isAdminOrOwner } from '../session'
 import { loadFailed } from '../netErrors'
+import { hms, todayBaghdad as today } from '../utils/format'
 
 // ═══ ساعات العمل من البيت ═══
 // صلاحيتان:
@@ -9,8 +10,6 @@ import { loadFailed } from '../netErrors'
 //  • remote_hours_manage — المسؤول: كل الموظفين والإكسل. التصفير للمالك بس، بأي وقت.
 // التصفير ما يحذف: يسكّر الفترة، فالعدّادات تبدي من صفر والسجلات تبقى بالإكسل.
 
-const hms = (sec: number) => `${Math.floor(sec / 3600)}:${String(Math.floor((sec % 3600) / 60)).padStart(2, '0')}:${String(sec % 60).padStart(2, '0')}`
-const today = () => new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Baghdad' })
 const n = (v: string) => Math.max(0, Math.floor(Number(v) || 0))
 const inp = 'rounded-lg border border-slate-300 px-2 py-1.5 text-sm'
 const card = 'rounded-2xl border border-slate-200 bg-white p-4 shadow-sm'

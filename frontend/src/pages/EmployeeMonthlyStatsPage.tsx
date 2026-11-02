@@ -3,9 +3,9 @@ import { api, type EmployeeMonthlyStats } from '../api'
 import KpiBreakdownChart from '../components/KpiBreakdownChart'
 import PerformanceCurveModal from '../components/PerformanceCurveModal'
 import { roleChipColor, roleGradient, roleLabel } from '../roleLabels'
+import { numIQ as fmt } from '../utils/format'
 
 
-const fmt = (n: number) => n.toLocaleString('en-IQ')
 
 function getCurrentMonth(): string {
   const now = new Date()

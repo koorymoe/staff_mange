@@ -167,7 +167,7 @@ func (s *MatrixProjectService) judge(f repository.ProjectFacts, lim map[string]i
 		v.Problems = append(v.Problems, fmt.Sprintf("ماكو أي حركة عليه من %d يوم.", v.IdleDays))
 	}
 	if f.DeliveryDate != nil && *f.DeliveryDate != "" {
-		if d, err := time.ParseInLocation("2006-01-02", (*f.DeliveryDate)[:minInt(10, len(*f.DeliveryDate))], debriefLoc); err == nil && now.After(d.Add(24*time.Hour)) {
+		if d, err := time.ParseInLocation("2006-01-02", (*f.DeliveryDate)[:min(10, len(*f.DeliveryDate))], debriefLoc); err == nil && now.After(d.Add(24*time.Hour)) {
 			v.Problems = append(v.Problems, fmt.Sprintf("فات موعد التسليم (%s) بـ%d يوم.", d.Format("2006-01-02"), int(now.Sub(d).Hours()/24)))
 		}
 	}
@@ -192,13 +192,6 @@ func (s *MatrixProjectService) judge(f repository.ProjectFacts, lim map[string]i
 		v.Verdict = strings.Join(v.Problems, " ")
 	}
 	return v
-}
-
-func minInt(a, b int) int {
-	if a < b {
-		return a
-	}
-	return b
 }
 
 func (s *MatrixProjectService) Report() (*ProjectsReport, error) {

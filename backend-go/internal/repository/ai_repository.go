@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
+	"strconv"
 	"time"
 
 	"github.com/google/uuid"
@@ -79,7 +80,7 @@ func (r *AiRepository) ListSignals(kind string, limit int) ([]model.AiSignal, er
 		q += ` WHERE kind = $1`
 		args = append(args, kind)
 	}
-	q += ` ORDER BY "occurredAt" DESC LIMIT $` + itoa(len(args)+1)
+	q += ` ORDER BY "occurredAt" DESC LIMIT $` + strconv.Itoa(len(args)+1)
 	args = append(args, limit)
 	if err := r.db.Select(&rows, q, args...); err != nil {
 		return nil, err
@@ -565,14 +566,6 @@ func (r *AiRepository) ListMetrics(from, to time.Time) ([]model.AiMetric, error)
 		}
 	}
 	return rows, nil
-}
-
-// itoa بسيط لبناء رقم المعامل بالاستعلام — بدون استيراد strconv لعملية وحدة.
-func itoa(n int) string {
-	if n < 10 {
-		return string(rune('0' + n))
-	}
-	return string(rune('0'+n/10)) + string(rune('0'+n%10))
 }
 
 // ═══ صحة الزبون (ماتركس ٩) ═══

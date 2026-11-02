@@ -3,6 +3,7 @@ package service
 import (
 	"math"
 	"sort"
+	"strconv"
 
 	"github.com/jmoiron/sqlx"
 )
@@ -83,12 +84,12 @@ func DirectorsRanking(db *sqlx.DB, period string) (*DirectorRanking, error) {
 			}
 			if n > 0 {
 				outputs = rankPtr(sum / float64(n))
-				outD = rankItoa(n) + " فقرة عليها بيانات"
+				outD = strconv.Itoa(n) + " فقرة عليها بيانات"
 			}
 			if card.People > 0 {
 				per := float64(bad) / float64(card.People)
 				complaints = rankPtr(100 - per*20)
-				compD = rankItoa(bad) + " شكوى/تأخير على " + rankItoa(card.People) + " موظف"
+				compD = strconv.Itoa(bad) + " شكوى/تأخير على " + strconv.Itoa(card.People) + " موظف"
 			}
 		}
 
@@ -104,7 +105,7 @@ func DirectorsRanking(db *sqlx.DB, period string) (*DirectorRanking, error) {
 			FROM "OrgPlanItem" i JOIN "OrgPlan" p ON p.id = i."planId"
 			WHERE p."divisionId" = $1 AND p.period = $2`, h.DivisionID, period); err == nil && pl.N > 0 && pl.Avg != nil {
 			plan = rankPtr(*pl.Avg)
-			planD = rankItoa(pl.N) + " بند بالخطة"
+			planD = strconv.Itoa(pl.N) + " بند بالخطة"
 		}
 
 		// ٣. السرعة، ٤. قلة المشاكل، ٥. حل المشاكل — من تقارير المشاكل
@@ -127,15 +128,15 @@ func DirectorsRanking(db *sqlx.DB, period string) (*DirectorRanking, error) {
 		if is.AvgDays != nil {
 			// ٣ أيام أو أقل = ١٠٠، ٣٠ يوم أو أكثر = صفر
 			speed = rankPtr(100 - (*is.AvgDays-3)*100/27)
-			speedD = "معدل الحل " + rankItoa(int(math.Round(*is.AvgDays))) + " يوم"
+			speedD = "معدل الحل " + strconv.Itoa(int(math.Round(*is.AvgDays))) + " يوم"
 		}
 		if row.People > 0 {
 			few = rankPtr(100 - is.Weighted/float64(row.People)*25)
 		}
-		fewD := rankItoa(is.Opened) + " مشكلة انفتحت"
+		fewD := strconv.Itoa(is.Opened) + " مشكلة انفتحت"
 		if is.Opened > 0 {
 			solve = rankPtr(float64(is.Resolved) * 100 / float64(is.Opened))
-			solveD = rankItoa(is.Resolved) + " من " + rankItoa(is.Opened) + " انحلت"
+			solveD = strconv.Itoa(is.Resolved) + " من " + strconv.Itoa(is.Opened) + " انحلت"
 		}
 
 		row.Criteria = []DirectorCriterion{
@@ -176,23 +177,4 @@ func DirectorsRanking(db *sqlx.DB, period string) (*DirectorRanking, error) {
 		}
 	}
 	return out, nil
-}
-
-func rankItoa(n int) string {
-	if n == 0 {
-		return "0"
-	}
-	neg := n < 0
-	if neg {
-		n = -n
-	}
-	b := []byte{}
-	for n > 0 {
-		b = append([]byte{byte('0' + n%10)}, b...)
-		n /= 10
-	}
-	if neg {
-		b = append([]byte{'-'}, b...)
-	}
-	return string(b)
 }

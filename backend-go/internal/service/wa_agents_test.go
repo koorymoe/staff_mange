@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"encoding/json"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -27,7 +28,7 @@ func (s *waScript) New(_ context.Context, p anthropic.MessageNewParams) (*anthro
 	var js string
 	if strings.HasPrefix(step, "tool:") {
 		parts := strings.SplitN(strings.TrimPrefix(step, "tool:"), ":", 2)
-		js = `{"id":"m","type":"message","role":"assistant","model":"x","stop_reason":"tool_use","content":[{"type":"tool_use","id":"t` + itoa(s.i) + `","name":"` + parts[0] + `","input":` + parts[1] + `}],"usage":{"input_tokens":1,"output_tokens":1}}`
+		js = `{"id":"m","type":"message","role":"assistant","model":"x","stop_reason":"tool_use","content":[{"type":"tool_use","id":"t` + strconv.Itoa(s.i) + `","name":"` + parts[0] + `","input":` + parts[1] + `}],"usage":{"input_tokens":1,"output_tokens":1}}`
 	} else {
 		txt, _ := json.Marshal(strings.TrimPrefix(step, "text:"))
 		js = `{"id":"m","type":"message","role":"assistant","model":"x","stop_reason":"end_turn","content":[{"type":"text","text":` + string(txt) + `}],"usage":{"input_tokens":1,"output_tokens":1}}`
@@ -36,8 +37,6 @@ func (s *waScript) New(_ context.Context, p anthropic.MessageNewParams) (*anthro
 	err := json.Unmarshal([]byte(js), &m)
 	return &m, err
 }
-
-func itoa(n int) string { b, _ := json.Marshal(n); return string(b) }
 
 // أدوات ناروتو الوهمية: تسجّل شنو انادى.
 type waFakeTools struct{ ran []string }

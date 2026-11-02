@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { api, type ReplacementSuggestions } from '../api'
 import { useSession } from '../session'
 import MatrixNote from './MatrixNote'
+import { numRound as fmt } from '../utils/format'
 
 // ═══ ماتركس — اقتراح استبدال ═══
 // نفس حارس GET /api/ai/replacement-suggestions: ADMIN (والمالك) أو
@@ -16,7 +17,6 @@ function canSeeReplacements(role: string | undefined, permissions: string[], par
   return permissions.includes('it_assets') || permissions.includes('vehicle_management')
 }
 
-const fmt = (n: number) => Math.round(n).toLocaleString('en-US')
 
 export default function ReplacementSuggestionsPanel({ part, compact = false }: { part: 'it' | 'vehicles' | 'any'; compact?: boolean }) {
   const { employee, permissions } = useSession()

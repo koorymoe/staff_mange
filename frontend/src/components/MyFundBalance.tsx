@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { api, type EmployeeFundBalance, type EmployeeFundLine } from '../api'
+import { dinar as money } from '../utils/format'
 
 /**
  * رصيد الدوار مال الموظف — يظهر باللوحة الرئيسية حتى يشوف شكد مطلوب منه
@@ -22,7 +23,6 @@ import { api, type EmployeeFundBalance, type EmployeeFundLine } from '../api'
  * هسه: بطاقة لكل دوار برصيده، والتسوية تنرفع لدوارها هي، والخادم يتحقق
  * من رصيد **ذاك الدوار** لا من المجموع.
  */
-const money = (n: number) => n.toLocaleString('en-US') + ' د.ع'
 
 // (ع) 10-16: نفس البطاقة والنموذج يخدمن «سوّي بداله» — `forEmployee` = رصيد
 // موظف من شاشة الدوار، والتسوية تنرفع باسمه وتروح للتدقيق.

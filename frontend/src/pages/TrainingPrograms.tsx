@@ -4,6 +4,7 @@ import {
   type Employee, type SaveTrainingProgramInput, type SkillWithService, type TrainingProgram,
 } from '../api'
 import { useSession, isAdminOrOwner } from '../session'
+import { dinarRound as iqd } from '../utils/format'
 
 // ═══ برامج التدريب ═══
 //
@@ -18,7 +19,6 @@ const LEVELS = ['مبتدئ', 'متوسط', 'متقدم'] as const
 const STATUSES = ['قيد التخطيط', 'جاري التنفيذ', 'مكتمل'] as const
 const STEPS = ['التسجيل', 'النظرية', 'عملي', 'تقييم', 'شهادة']
 
-const iqd = (n: number) => `${Math.round(n || 0).toLocaleString('en-US')} د.ع`
 
 export default function TrainingPrograms({ embedded = false }: { embedded?: boolean } = {}) {
   const { employee, permissions } = useSession()

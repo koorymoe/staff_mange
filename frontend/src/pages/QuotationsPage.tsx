@@ -4,6 +4,7 @@ import { api, type Quotation } from '../api'
 import { useSession } from '../session'
 import QuotationVersions from '../components/QuotationVersions'
 import QuotationTermsEditor from '../components/QuotationTermsEditor'
+import { numIQ as fmt } from '../utils/format'
 
 const PRIMARY = '#1a237e'
 // ⚠️ نسخة **النص** تنقلب بالوضع الليلي، والأصل يبقى للأسطح:
@@ -23,7 +24,6 @@ const statusConfig: Record<Quotation['status'], { label: string; bg: string; col
   REJECTED: { label: 'مرفوض', bg: '#f8d7da', color: 'var(--t-danger)' },
 }
 
-const fmt = (n: number) => n.toLocaleString('en-IQ')
 
 export default function QuotationsPage() {
   const navigate = useNavigate()

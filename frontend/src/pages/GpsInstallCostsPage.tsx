@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { api, type GpsInstallCostSummary } from '../api'
+import { dinar as money } from '../utils/format'
 
 /**
  * حساب تكاليف الشد — تفصيلي لكل الكوادر، ضمن خانة الحسابات.
@@ -7,7 +8,6 @@ import { api, type GpsInstallCostSummary } from '../api'
  * كان بشيت إكسل منفصل يتحدّث يدوياً؛ صار يتحسب حي من بيانات الشد نفسها،
  * فيتحدّث لحاله مع كل عملية شد جديدة.
  */
-const money = (n: number) => n.toLocaleString('en-US') + ' د.ع'
 
 export default function GpsInstallCostsPage() {
   const [data, setData] = useState<GpsInstallCostSummary | null>(null)

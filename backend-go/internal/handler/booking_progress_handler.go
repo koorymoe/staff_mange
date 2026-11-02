@@ -3,6 +3,7 @@ package handler
 import (
 	"log"
 	"net/http"
+	"strconv"
 	"strings"
 
 	"staffmange-api/internal/middleware"
@@ -26,7 +27,9 @@ type BookingProgressHandler struct {
 	canView func(r *http.Request, bookingID string) bool
 }
 
-func (h *BookingProgressHandler) SetViewGate(f func(r *http.Request, bookingID string) bool) { h.canView = f }
+func (h *BookingProgressHandler) SetViewGate(f func(r *http.Request, bookingID string) bool) {
+	h.canView = f
+}
 
 func (h *BookingProgressHandler) allowView(w http.ResponseWriter, r *http.Request) bool {
 	if h.canView == nil || h.canView(r, r.PathValue("id")) {
@@ -109,9 +112,9 @@ func (h *BookingProgressHandler) PartialComplete(w http.ResponseWriter, r *http.
 			code = booking.Code
 		}
 		_ = h.notify.CreateForRole("HR_COORDINATOR", "booking_partial",
-			"🔄 الحجز "+code+" انجز جزئياً ("+itoa(report.PercentDone)+"٪) ويحتاج تنسيق ليوم جديد")
+			"🔄 الحجز "+code+" انجز جزئياً ("+strconv.Itoa(report.PercentDone)+"٪) ويحتاج تنسيق ليوم جديد")
 		_ = h.notify.CreateForRole("ADMIN", "booking_partial",
-			"🔄 الحجز "+code+" انجز جزئياً ("+itoa(report.PercentDone)+"٪) ويحتاج تنسيق ليوم جديد")
+			"🔄 الحجز "+code+" انجز جزئياً ("+strconv.Itoa(report.PercentDone)+"٪) ويحتاج تنسيق ليوم جديد")
 	}
 
 	// إشارة إنجاز جزئي متكرر — أول مرة ظرف طبيعي، ثاني مرة يستاهل
@@ -218,23 +221,4 @@ func (h *BookingProgressHandler) SuggestedCrew(w http.ResponseWriter, r *http.Re
 		return
 	}
 	WriteJSON(w, http.StatusOK, rows)
-}
-
-func itoa(n int) string {
-	if n == 0 {
-		return "0"
-	}
-	neg := n < 0
-	if neg {
-		n = -n
-	}
-	s := ""
-	for n > 0 {
-		s = string(rune('0'+n%10)) + s
-		n /= 10
-	}
-	if neg {
-		s = "-" + s
-	}
-	return s
 }

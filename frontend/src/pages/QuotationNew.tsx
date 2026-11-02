@@ -7,6 +7,7 @@ import vstripUrl from '../assets/print/quotation-vstrip.png'
 import bannerUrl from '../assets/print/quotation-banner.png'
 import { matches } from '../utils/search'
 import QuotationHistoryPicker from '../components/QuotationHistoryPicker'
+import { numIQ as fmt } from '../utils/format'
 
 interface ItemRow {
   productName: string
@@ -26,7 +27,6 @@ const emptyItem = (): ItemRow => ({
   imageBase64: '',
 })
 
-const fmt = (n: number) => n.toLocaleString('en-IQ')
 
 // زرّا الترتيب — بديل السحب للموبايل وللكيبورد.
 const arrowBtnStyle = (disabled: boolean): React.CSSProperties => ({

@@ -2,6 +2,7 @@ import { useEffect, useState, type ReactNode } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { api, type WeeklyMover, type WeeklyReport, type WeekTotals } from '../api'
 import { useSession } from '../session'
+import { numRound as fmt } from '../utils/format'
 
 /**
  * ═══ 📊 تقرير المالك الأسبوعي (ماتركس) ═══
@@ -11,7 +12,6 @@ import { useSession } from '../session'
  * ⚠️ الحارس نفس الخادم: ADMIN/OWNER بس (المالك يوصل هنا كـ ADMIN).
  */
 
-const fmt = (n: number) => Math.round(n).toLocaleString('en-US')
 
 // أعلى = أحسن لهاي المؤشرات؟
 const METRICS: { key: keyof WeekTotals; label: string; money?: boolean; higherIsBetter: boolean }[] = [

@@ -1,12 +1,12 @@
 import { Fragment, useCallback, useEffect, useState } from 'react'
 import { api, type CreditSale } from '../api'
+import { dinarRound as iqd } from '../utils/format'
 
 // ═══ سجل الآجل — قرار (ع) 10-14 ═══
 // حجز أو مشروع خلص والفلوس مؤجلة: دفعات أو مبلغ كامل. الحجز يوصل هنا من
 // «التدقيق اليومي» بزر «⏳ الآجل»، والمشروع ينضاف يدوياً. كل دفعة تنسجّل،
 // والدين يتسكّر لمن يكتمل، وأكو إكسل شهري.
 
-const iqd = (n: number) => `${Math.round(n).toLocaleString('en-US')} د.ع`
 const d = (s?: string | null) => (s ? new Date(s).toLocaleDateString('en-CA') : '—')
 
 export default function CreditsPage() {

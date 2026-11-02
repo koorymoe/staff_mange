@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { api, type ProjectPaymentsState } from '../api'
+import { todayBaghdad as today } from '../utils/format'
 
 // ═══ 💰 دفعات المشروع — قرار (ع) 10-06 ═══
 // «من مشروع واحد محصل 500 مليون ليش ماموجوده بالاحصائيات». كل دفعة تنسجّل
@@ -8,7 +9,6 @@ import { api, type ProjectPaymentsState } from '../api'
 
 const fmt = (v: number) => v.toLocaleString('en-US') + ' د.ع'
 const METHOD: Record<string, string> = { CASH: 'نقد', TRANSFER: 'تحويل', CHEQUE: 'صك' }
-const today = () => new Date().toISOString().slice(0, 10)
 
 export default function ProjectPaymentsModal({ projectId, title, onClose }: { projectId: string; title: string; onClose: () => void }) {
   const [st, setSt] = useState<ProjectPaymentsState | null>(null)

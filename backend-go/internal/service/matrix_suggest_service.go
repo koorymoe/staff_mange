@@ -295,7 +295,7 @@ func (s *MatrixSuggestService) suggestCrew(b *repository.SuggestBooking, at time
 		if len(leaders) > 0 {
 			crew.Leader = &leaders[0]
 			if len(leaders) > 1 {
-				crew.AltLeaders = leaders[1:minInt(3, len(leaders))]
+				crew.AltLeaders = leaders[1:min(3, len(leaders))]
 			}
 		} else {
 			why = append(why, "⚠️ ماكو ليدر فاضي بهالوقت — غيّر الموعد أو حرّر ليدر.")
@@ -305,10 +305,10 @@ func (s *MatrixSuggestService) suggestCrew(b *repository.SuggestBooking, at time
 		crew.CrewSize = 1
 		why = append(why, "خدمة فردية (داش كام/جي بي اس) — فني واحد بلا ليدر.")
 	}
-	n := minInt(size, len(techs))
+	n := min(size, len(techs))
 	crew.Techs = techs[:n]
 	if len(techs) > n {
-		crew.AltTechs = techs[n:minInt(n+3, len(techs))]
+		crew.AltTechs = techs[n:min(n+3, len(techs))]
 	}
 	if n < size {
 		why = append(why, fmt.Sprintf("⚠️ المعتاد %d فني، والفاضي بس %d.", size, n))

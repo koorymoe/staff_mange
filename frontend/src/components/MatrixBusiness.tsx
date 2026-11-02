@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react'
 import { api, type MatrixBusiness as Biz } from '../api'
+import { dinarRound as iqd } from '../utils/format'
 
 // ═══ أرقام الشركة بعين ماتركس ═══
-const iqd = (n: number) => `${Math.round(n).toLocaleString('en-US')} د.ع`
 
 export default function MatrixBusiness() {
   const [b, setB] = useState<Biz | null>(null)

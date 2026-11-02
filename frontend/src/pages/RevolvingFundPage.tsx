@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { api, type RevolvingFund, type RevolvingFundTxn, type EmployeeFundBalance, type Employee, type ProcurementRequest, fileUrl } from '../api'
 import { useSession, isAdminOrOwner } from '../session'
 import MyFundBalance from '../components/MyFundBalance'
+import { dinar as money } from '../utils/format'
 
 /**
  * الدوار — شاشة المحاسب.
@@ -11,7 +12,6 @@ import MyFundBalance from '../components/MyFundBalance'
  * يدقّق ويوافق → وقتها بس رصيد الموظف يتصفّر والمرتجع يرجع للدوار.
  */
 
-const money = (n: number) => n.toLocaleString('en-US') + ' د.ع'
 
 type Tab = 'funds' | 'balances' | 'review' | 'discharge' | 'log'
 

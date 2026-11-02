@@ -1,6 +1,9 @@
 package database
 
-import "github.com/jmoiron/sqlx"
+import (
+	"github.com/jmoiron/sqlx"
+	"strconv"
+)
 
 // catalogSeedRow يمثّل صف واحد من كتالوج أسعار المنظومات الثمانية (تركيب/تسليك/برمجة).
 type catalogSeedRow struct {
@@ -198,7 +201,7 @@ var materialArchiveSeed = []materialSeedRow{
 // "تكاليف المشروع" بالضبط) — idempotent عبر UNIQUE(systemName,itemName,category).
 func seedSystemPriceCatalog(db *sqlx.DB) error {
 	for i, row := range systemPriceCatalogSeed {
-		id := "spc_" + itoa(i)
+		id := "spc_" + strconv.Itoa(i)
 		if _, err := db.Exec(`
 			INSERT INTO "SystemPriceCatalog" (id, "systemName", "itemName", category, value)
 			VALUES ($1, $2, $3, $4, $5)
@@ -214,7 +217,7 @@ func seedSystemPriceCatalog(db *sqlx.DB) error {
 // فريد — idempotent عبر UNIQUE(code)، ويحدّث السعر/الربح لو الكود موجود أصلاً.
 func seedMaterialArchive(db *sqlx.DB) error {
 	for i, row := range materialArchiveSeed {
-		id := "mat_" + itoa(i)
+		id := "mat_" + strconv.Itoa(i)
 		if _, err := db.Exec(`
 			INSERT INTO "Material" (id, name, code, "sellPrice", "profitPerUnit")
 			VALUES ($1, $2, $3, $4, $5)
@@ -224,23 +227,4 @@ func seedMaterialArchive(db *sqlx.DB) error {
 		}
 	}
 	return nil
-}
-
-func itoa(n int) string {
-	if n == 0 {
-		return "0"
-	}
-	neg := n < 0
-	if neg {
-		n = -n
-	}
-	s := ""
-	for n > 0 {
-		s = string(rune('0'+n%10)) + s
-		n /= 10
-	}
-	if neg {
-		s = "-" + s
-	}
-	return s
 }

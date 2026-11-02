@@ -6,6 +6,7 @@ import BookingCodeChip from '../components/BookingCodeChip'
 import ProjectStatsBoard from '../components/ProjectStatsBoard'
 import StatsPage from './StatsPage'
 import RoleSplit, { MiniMetric, SummaryCard } from '../components/RoleSplit'
+import { numIQ as fmt } from '../utils/format'
 
 const PRIMARY = '#1a237e'
 // ⚠️ نسخة **النص** تنقلب بالوضع الليلي، والأصل يبقى للأسطح:
@@ -17,7 +18,6 @@ const PRIMARY_TEXT = 'var(--brand-ink)'
 // قلب الاثنين سوا يكسر واحداً منهما — نفس فخّ --color-white.
 const GOLD_TEXT = 'var(--gold-ink)'
 
-const fmt = (n: number) => n.toLocaleString('en-IQ')
 
 
 function todayStr() {

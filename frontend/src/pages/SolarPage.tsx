@@ -8,6 +8,7 @@ import {
 import { useSession, isAdminOrOwner } from '../session'
 import { useNavigate } from 'react-router-dom'
 import { matches } from '../utils/search'
+import { dinarRound as iqd } from '../utils/format'
 
 // ═══ نظام الطاقة الشمسية ═══
 //
@@ -16,7 +17,6 @@ import { matches } from '../utils/search'
 //
 // أربع شاشات: لوحة التحكم · المنظومات · المخزن · الزبائن.
 
-const iqd = (n: number) => `${Math.round(n || 0).toLocaleString('en-US')} د.ع`
 
 type Tab = 'dashboard' | 'systems' | 'inventory' | 'customers'
 

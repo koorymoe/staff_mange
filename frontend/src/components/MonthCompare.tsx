@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { api, type MonthStats } from '../api'
+import { numRound as fmt, dinarK as money } from '../utils/format'
 
 // ═══ مقارنة الأشهر — قرار (ع) 10-10 ═══
 // «شهر التاسع جان بي ٢٠ مشروع و٢٠٠ حجز والمبالغ ٤٠٠ مليون، وشهر العاشر…».
@@ -8,9 +9,7 @@ import { api, type MonthStats } from '../api'
 const ym = (d: Date) => d.toISOString().slice(0, 7)
 const shift = (m: string, n: number) => { const [y, mo] = m.split('-').map(Number); return ym(new Date(Date.UTC(y, mo - 1 + n, 1))) }
 const AR_MONTH = (m: string) => new Date(m + '-01').toLocaleDateString('ar-IQ', { month: 'long', year: 'numeric' })
-const fmt = (n: number) => Math.round(n).toLocaleString('en-US')
 const thisMonth = () => ym(new Date(Date.now() + 3 * 3600_000))
-const money = (n: number) => `${fmt(Math.round(n / 1000) * 1000)} د.ع`
 
 // good: هل الزيادة شي زين؟ (الإلغاء والشكاوى والمصاريف زيادتها مو زينة)
 const ROWS: { key: keyof MonthStats; label: string; money?: boolean; good: boolean }[] = [

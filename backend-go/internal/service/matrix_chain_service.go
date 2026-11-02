@@ -452,7 +452,7 @@ func (s *MatrixChainService) chainOf(f *repository.ChainFacts, now time.Time) *B
 			st.Verdict = fmt.Sprintf("ما صارت لحد هسه. صارلها %s تنتظر، والمعتاد ما يتجاوز %s.", FmtMinutes(el), FmtMinutes(th))
 		} else {
 			st.Status = ChainWaiting
-			st.Verdict = fmt.Sprintf("تنتظر. صارلها %s، والمعتاد ما يتجاوز %s.", FmtMinutes(maxInt(el, 0)), FmtMinutes(th))
+			st.Verdict = fmt.Sprintf("تنتظر. صارلها %s، والمعتاد ما يتجاوز %s.", FmtMinutes(max(el, 0)), FmtMinutes(th))
 		}
 	}
 	// حجز مرحّل للتقني: التثبيت والكادر والميدان مو على الإداري ولا الليدر —
@@ -1119,13 +1119,6 @@ func qualityStatusLabel(s string) string {
 		return "تنتظر الاتصال"
 	}
 	return s
-}
-
-func maxInt(a, b int) int {
-	if a > b {
-		return a
-	}
-	return b
 }
 
 // chainSummary جملة ماتركس عن الحجز: وين انكسرت السلسلة ومنو.

@@ -5,6 +5,7 @@ import { drillTo } from '../utils/drill'
 import { api, type FinanceSummary, type MonitorReview, type TodayBoardData } from '../api'
 import { useSession } from '../session'
 import { isPathAllowed } from './navTree'
+import { num as fmt } from '../utils/format'
 
 // ═══ الواجهة الرئيسية للمراقب — بتصميم (ع) 10-04 ═══
 // ترحيب وساعة، أربع بطاقات، حركة الحجوزات، أهم التنبيهات (صندوق المراقب)،
@@ -12,7 +13,6 @@ import { isPathAllowed } from './navTree'
 // (بلا عين بالترحيب — طلب (ع)).
 
 const card = 'rounded-2xl border border-slate-200 bg-white p-4 shadow-sm'
-const fmt = (n: number) => n.toLocaleString('en-US')
 
 function Clock() {
   const [now, setNow] = useState(() => new Date())

@@ -20,6 +20,7 @@ import ReplacementSuggestionsPanel from './ReplacementSuggestionsPanel'
 import { pollVisible } from '../utils/poll'
 import { drillTo } from '../utils/drill'
 import { roleLabel } from '../roleLabels'
+import { num as fmt, dinarK as money } from '../utils/format'
 
 // ═══ رئيسية مدير النظام: لوحتين ═══
 //
@@ -35,9 +36,7 @@ import { roleLabel } from '../roleLabels'
 
 type Board = 'follow' | 'actions' | 'matrix' | 'chat' | 'missions'
 
-const fmt = (n: number) => n.toLocaleString('en-US')
 // قرار (ع) 10-09: المبالغ تقريبية لأقرب ألف — بلا كسور مثل ٨٣٢
-const money = (n: number) => `${fmt(Math.round(n / 1000) * 1000)} د.ع`
 const monthKey = () => new Date().toISOString().slice(0, 7)
 
 const SEVERITY: Record<string, { label: string; rank: number; cls: string }> = {
