@@ -1,22 +1,14 @@
-import { useEffect, useState } from 'react'
-import { api, type Booking } from '../api'
+
+import { api } from '../api'
 import TechHandovers from '../components/TechHandovers'
 import { useSession } from '../session'
-
+import { useApi } from '../utils/useApi'
 // ═══ «الحجوزات» للتقني ومسؤول الخدمة — قرار (ع) 10-07 ═══
 // التقني ما عليه ليدر: الحجوزات الي يرحّلها الإداري إله تطلعله هنا، ببند
 // مستقل بالقائمة اسمه «الحجوزات».
 export default function MyHandoversPage() {
   const { employee } = useSession()
-  const [rows, setRows] = useState<Booking[] | null>(null)
-  const [err, setErr] = useState('')
-  useEffect(() => {
-    let alive = true
-    api.getBookings({ assignedTo: 'me' })
-      .then((b) => { if (alive) setRows(b) })
-      .catch((e) => { if (alive) setErr(e instanceof Error ? e.message : 'تعذر جلب الحجوزات') })
-    return () => { alive = false }
-  }, [])
+  const { data: rows, error: err, setData: setRows } = useApi(() => api.getBookings({ assignedTo: 'me' }), [], { fallback: 'تعذر جلب الحجوزات' })
   const mine = (rows ?? []).filter((b) => b.handoverToId === employee?.id)
   const done = mine.filter((b) => b.status === 'COMPLETED')
   return (

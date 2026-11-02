@@ -1,8 +1,9 @@
-import { lazy, Suspense, useEffect, useMemo, useState } from 'react'
+import { Suspense, useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { api, type Employee, type TcCurriculum, type TcExamReportRow, type TcInsight, type TcPlan, type TcQuestion } from '../api'
 import { ROLE_LABELS, roleLabel } from '../roleLabels'
 import { card } from '../ui/classes'
+import { lazyRetry } from '../utils/staleReload'
 
 // ═══ مركز التدريب — قرار (ع) 10-13: «شي إعجازي بالتدريب» ═══
 // ماتركس يحدد منو لازم يتدرّب من شغله الحقيقي (شكاوى، توقف، بطء، خصومات،
@@ -11,7 +12,7 @@ import { card } from '../ui/classes'
 // الأسئلة (يدوي + ماتركس يقترح والمدرب يعتمد) والاختبار الشهري وتقريره.
 // بلا خصم نقاط — تقرير وتدريب.
 
-const TrainingPrograms = lazy(() => import('./TrainingPrograms'))
+const TrainingPrograms = lazyRetry(() => import('./TrainingPrograms'))
 
 type Tab = 'need' | 'notes' | 'tracks' | 'plan' | 'new' | 'curriculum' | 'questions' | 'report' | 'programs'
 const TABS: { id: Tab; icon: string; label: string }[] = [

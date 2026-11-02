@@ -212,3 +212,4 @@ git push origin origin/avg:refs/heads/prod     # بعد التأكد إنه fast
 - (لوفي 11-02) DRY الصلاحيات (تكملة): isAdminOrOwner يغطي role=OWNER الخام كمان، و36 فحص جلسة إضافي صار عليه؛ HasPermSQL بـpaperwork_guard وai_action؛ IsAdminRole بـ3 أماكن بمؤشرات.
 - (لوفي 11-02) DRY ٣أ/٣ب: timeutil.MonthStart لفترة الشهر (org_desk + matrix_score)؛ vehicle_tracking دورة 17→16 مقصودة، وsmart_kpi بتوقيت UTC (ملاحظة، ما انلمس). ui/classes.ts card + inp مرفوع بملفين.
 - (لوفي 11-02) DRY ٣ج: middleware.Guards — 107 حارس بـmain.go صار guards.X(...) بدل تكرار المستودعات الثلاثة؛ مقارنة نصية بعد الإرجاع = مطابق ١٠٠٪.
+- (لوفي 11-02) DRY ٣د: utils/useApi.ts (جلب + alive + خطأ) مطبّق على 4 شاشات كبداية؛ lazyRetry شمل 48 lazy داخلي بـ13 ملف (تصليح التوقف صار كامل).

@@ -1,9 +1,9 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import { api, type DrillResult } from '../api'
+import { api } from '../api'
 import { useSession } from '../session'
 import { canDrill } from '../utils/drill'
-
+import { useApi } from '../utils/useApi'
 // ═══ «الرقم = القائمة» — قرار (ع) 10-16 ═══
 // صفحة وحدة لكل بطاقة رقم باللوحة: العنوان نفس اسم البطاقة، والعدد
 // نفس رقمها، والشرح يگول شنو هذا الرقم ومن يا فترة. الخادم يعدّ ويطلّع
@@ -13,17 +13,9 @@ export default function DrillPage() {
   const navigate = useNavigate()
   const { employee, permissions } = useSession()
   const allowed = canDrill(employee, permissions)
-  const [d, setD] = useState<DrillResult | null>(null)
-  const [err, setErr] = useState('')
   const [q, setQ] = useState('')
 
-  useEffect(() => {
-    if (!allowed) return
-    let alive = true
-    api.getDrill(key).then((x) => { if (alive) { setD(x); setErr('') } })
-      .catch((e) => { if (alive) setErr(e instanceof Error ? e.message : 'تعذر جلب القائمة') })
-    return () => { alive = false }
-  }, [key, allowed])
+  const { data: d, error: err } = useApi(() => api.getDrill(key), [key], { fallback: 'تعذر جلب القائمة', enabled: allowed })
 
   if (!allowed) return <p className="py-16 text-center text-slate-500">هاي القائمة مو ضمن صلاحياتك.</p>
 

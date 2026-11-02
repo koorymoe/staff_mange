@@ -1,9 +1,9 @@
-import { useEffect, useState } from 'react'
+
 import { Link } from 'react-router-dom'
-import { api, IT_KIND_LABELS, IT_LOG_LABELS, IT_STATUS_LABELS, type ItAssetKind, type ItAssetStatus, type ItStats } from '../api'
+import { api, IT_KIND_LABELS, IT_LOG_LABELS, IT_STATUS_LABELS, type ItAssetKind, type ItAssetStatus } from '../api'
 import { useSession } from '../session'
 import ReplacementSuggestionsPanel from '../components/ReplacementSuggestionsPanel'
-
+import { useApi } from '../utils/useApi'
 // ═══ إحصائيات تقنية المعلومات ═══
 // شكد جهاز عدنا ومن أي نوع، شنو بالتصليح، شنو ضمانه قرب يخلص، وشكد
 // صرفنا على التصليح بآخر ٣ أشهر.
@@ -20,14 +20,8 @@ function Card({ label, value, tone = 'text-slate-800' }: { label: string; value:
 export default function ItStatsPage() {
   const { employee, permissions } = useSession()
   const canManage = employee?.role === 'ADMIN' || permissions.includes('it_assets')
-  const [s, setS] = useState<ItStats | null>(null)
-  const [err, setErr] = useState<string | null>(null)
 
-  useEffect(() => {
-    let alive = true
-    api.getItStats().then((r) => { if (alive) setS(r) }).catch((e) => { if (alive) setErr(e instanceof Error ? e.message : 'تعذر جلب الإحصائيات') })
-    return () => { alive = false }
-  }, [])
+  const { data: s, error: err } = useApi(() => api.getItStats(), [], { fallback: 'تعذر جلب الإحصائيات' })
 
   if (err) return <p className="rounded-lg bg-red-50 p-4 text-red-600">{err}</p>
   if (!s) return <p className="text-slate-400">جاري التحميل…</p>

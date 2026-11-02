@@ -1,10 +1,11 @@
-import { lazy, Suspense } from 'react'
+import { Suspense } from 'react'
+import { lazyRetry } from '../utils/staleReload'
 
 // ═══ مكتب المحاسب — قرار (ع) 10-16 ═══
 // «الفواتير شغل المحاسب — بدل ما موجودة بمكتب المراقب اريد فدشي اسمه مكتب
 // المحاسب جوّا العمل». نفس شاشة الفواتير (ما ننسخها)، وتطلع لكل من عنده
 // صلاحية الحسابات — مو لأن دوره مراقب.
-const LeaderInvoicesListPage = lazy(() => import('./LeaderInvoicesListPage'))
+const LeaderInvoicesListPage = lazyRetry(() => import('./LeaderInvoicesListPage'))
 
 export default function AccountantDeskPage() {
   return (

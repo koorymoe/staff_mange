@@ -1,15 +1,16 @@
-import { lazy, Suspense, useState } from 'react'
+import { Suspense, useState } from 'react'
 import { useSession } from '../session'
+import { lazyRetry } from '../utils/staleReload'
 
 // ═══ مكتب الجودة — قرار (ع) 10-16 ═══
 // شغلتين مختلفات: «متابعة الجودة» (نتواصل ويا الزبون ونتأكد الشغل تم وهو راضي)
 // و«الشكاوى» (زبون اشتكى — مهندس الجودة يتابعها لحد ما تخلص، والمراقب يدقق).
 // نفس الصفحة للمراقب ولمهندس الجودة، وكل وحدة بخيارها فوك — مو وحدة جوّا الثانية.
-const QualityAuditView = lazy(() => import('../components/QualityAuditView'))
-const ComplaintsPage = lazy(() => import('./ComplaintsPage'))
+const QualityAuditView = lazyRetry(() => import('../components/QualityAuditView'))
+const ComplaintsPage = lazyRetry(() => import('./ComplaintsPage'))
 // (ع) 10-16: «الي يطلع للمراقب يختلف عن الي يطلع لمهندس الجودة» — المهندس
 // يشتغل (يتواصل ويا الزبائن ويحكم)، والمراقب يدقق (شنو سوّى المهندس).
-const QualityFollowUpsPage = lazy(() => import('./QualityFollowUpsPage'))
+const QualityFollowUpsPage = lazyRetry(() => import('./QualityFollowUpsPage'))
 
 type View = 'quality' | 'complaints'
 

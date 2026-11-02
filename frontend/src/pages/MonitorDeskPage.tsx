@@ -18,27 +18,28 @@
 // ⚠️ والشاشات القديمة **تبقى بمساراتها**: اكو روابط محفوظة بمتصفحات
 // الموظفين، وحذف مسار يعني صفحة بيضاء بلا تفسير.
 
-import { lazy, Suspense, useEffect, useState } from 'react'
+import { Suspense, useEffect, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 
 import { api, type MonitorDeskCounts, purchaseApi } from '../api'
 import { useSession } from '../session'
 import { isFullMonitor, monCan, type MonSub } from '../utils/monAccess'
+import { lazyRetry } from '../utils/staleReload'
 
-const MonitorInboxPage = lazy(() => import('./MonitorInboxPage'))
-const MonitorCrewBookingsPage = lazy(() => import('./MonitorCrewBookingsPage'))
-const MonitorGpsPage = lazy(() => import('./MonitorGpsPage'))
-const MonitorInventoryPage = lazy(() => import('./MonitorInventoryPage'))
-const MonitorDashboard = lazy(() => import('./MonitorDashboard'))
-const MatrixWatchEyes = lazy(() => import('../components/MatrixWatchEyes'))
-const PeerVoicePage = lazy(() => import('./PeerVoicePage'))
-const AttendanceClaims = lazy(() => import('../components/AttendanceClaims'))
-const PeriodicRatings = lazy(() => import('../components/StaffRating').then((m) => ({ default: m.PeriodicRatings })))
-const WorkplaceIssuesPage = lazy(() => import('./WorkplaceIssuesPage'))
-const ProjectPaymentsPage = lazy(() => import('./ProjectPaymentsPage'))
-const LateHub = lazy(() => import('../components/LateHub'))
-const FieldMapPage = lazy(() => import('./FieldMapPage'))
-const ProcurementWatchPanel = lazy(() => import('../components/ProcurementWatchPanel'))
+const MonitorInboxPage = lazyRetry(() => import('./MonitorInboxPage'))
+const MonitorCrewBookingsPage = lazyRetry(() => import('./MonitorCrewBookingsPage'))
+const MonitorGpsPage = lazyRetry(() => import('./MonitorGpsPage'))
+const MonitorInventoryPage = lazyRetry(() => import('./MonitorInventoryPage'))
+const MonitorDashboard = lazyRetry(() => import('./MonitorDashboard'))
+const MatrixWatchEyes = lazyRetry(() => import('../components/MatrixWatchEyes'))
+const PeerVoicePage = lazyRetry(() => import('./PeerVoicePage'))
+const AttendanceClaims = lazyRetry(() => import('../components/AttendanceClaims'))
+const PeriodicRatings = lazyRetry(() => import('../components/StaffRating').then((m) => ({ default: m.PeriodicRatings })))
+const WorkplaceIssuesPage = lazyRetry(() => import('./WorkplaceIssuesPage'))
+const ProjectPaymentsPage = lazyRetry(() => import('./ProjectPaymentsPage'))
+const LateHub = lazyRetry(() => import('../components/LateHub'))
+const FieldMapPage = lazyRetry(() => import('./FieldMapPage'))
+const ProcurementWatchPanel = lazyRetry(() => import('../components/ProcurementWatchPanel'))
 
 type SectionId = 'eyes' | 'ratings' | 'scores' | 'peer' | 'inbox' | 'crew' | 'quality' | 'invoices' | 'gps' | 'inventory' | 'missions' | 'board' | 'projects' | 'delays' | 'stores' | 'late' | 'fieldmap' | 'quotes'
 

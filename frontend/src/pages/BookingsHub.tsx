@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useState } from 'react'
+import { Suspense, useEffect, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { api } from '../api'
 import { useSession, isAdminOrOwner } from '../session'
@@ -10,9 +10,10 @@ import StageBucketsPage from './StageBucketsPage'
 import BookingDeleteRequestsPage from './BookingDeleteRequestsPage'
 import { pollVisible } from '../utils/poll'
 import ReturnedFromProjects from '../components/ReturnedFromProjects'
-const Customers = lazy(() => import('./Customers'))
-const BookingsArchive = lazy(() => import('./BookingsArchive'))
-const SalesOpportunitiesPage = lazy(() => import('./SalesOpportunitiesPage'))
+import { lazyRetry } from '../utils/staleReload'
+const Customers = lazyRetry(() => import('./Customers'))
+const BookingsArchive = lazyRetry(() => import('./BookingsArchive'))
+const SalesOpportunitiesPage = lazyRetry(() => import('./SalesOpportunitiesPage'))
 
 // ═══ «الحجوزات» — ثلاث شاشات بمدخل واحد ═══
 //

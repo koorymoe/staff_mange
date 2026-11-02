@@ -1,15 +1,16 @@
-import { lazy, Suspense, useEffect, useState } from 'react'
+import { Suspense, useEffect, useState } from 'react'
 import { apiRequest } from '../api'
 import { askJustification } from '../utils/justify'
+import { lazyRetry } from '../utils/staleReload'
 
 // ═══ «⏰ المتأخر» — خانة وحدة لكل تأخير (ع 10-16) ═══
 // «عروض أسعار المشاريع، وتأخير المشاريع، والمتأخرات — كلهن بخانة وحدة اسمها
 // المتأخر. يدخل ويختار وين يريد: المشاريع، الحجوزات، الفواتير، المحاسب».
 // وعلى كل متأخر: «📝 اطلب تفسير» يوصل للموظف نفسه، وجوابه يرجع للمراقب
 // بتبويب «التبريرات» بالصندوق، ويحكم عليه (يتسجّل تقصير لو انرفض).
-const ProjectQuoteWatchPanel = lazy(() => import('./ProjectQuoteWatchPanel'))
-const ProjectDelaysPanel = lazy(() => import('./ProjectDelaysPanel'))
-const LateAuditPage = lazy(() => import('../pages/LateAuditPage'))
+const ProjectQuoteWatchPanel = lazyRetry(() => import('./ProjectQuoteWatchPanel'))
+const ProjectDelaysPanel = lazyRetry(() => import('./ProjectDelaysPanel'))
+const LateAuditPage = lazyRetry(() => import('../pages/LateAuditPage'))
 
 type Area = 'projects' | 'bookings' | 'invoices'
 const AREAS: { key: Area; label: string; hint: string }[] = [

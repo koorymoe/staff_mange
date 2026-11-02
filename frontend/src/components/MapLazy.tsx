@@ -1,4 +1,5 @@
-import { Suspense, lazy } from 'react'
+import { Suspense } from 'react'
+import { lazyRetry } from '../utils/staleReload'
 
 // ═══ الخرائط تنزل لمن تنعرض، مو مع كل فتحة للنظام ═══
 //
@@ -10,8 +11,8 @@ import { Suspense, lazy } from 'react'
 // هنا نلفهن بتحميل مؤجل: المكتبة ما تنزل إلا لمن تنرسم خريطة فعلاً.
 // نفس الخصائص ونفس السلوك — بس بوقت التنزيل الصحيح.
 
-const MapViewerInner = lazy(() => import('./MapViewer'))
-const LocationPickerInner = lazy(() => import('./LocationPicker'))
+const MapViewerInner = lazyRetry(() => import('./MapViewer'))
+const LocationPickerInner = lazyRetry(() => import('./LocationPicker'))
 
 // مربّع رمادي بنفس ارتفاع الخريطة حتى الصفحة ما تنقز لمن توصل المكتبة
 const Placeholder = ({ height }: { height: number | string }) => (

@@ -1,7 +1,8 @@
-import { lazy, Suspense, useCallback, useEffect, useState } from 'react'
+import { Suspense, useCallback, useEffect, useState } from 'react'
 import { api, type AttendanceBoardRow, type WorkScheduleRow } from '../api'
 import { useSession, hasRole } from '../session'
 import { roleLabel } from '../roleLabels'
+import { lazyRetry } from '../utils/staleReload'
 
 // ═══ جدول الدوام — كل موظف متى يبدي ومتى ينتهي، والمسؤول يحدده ═══
 // العرض: المدير/المالك/الكوادر/المراقب أو صلاحية work_schedule_manage / staff_management
@@ -111,7 +112,7 @@ function ScheduleTab() {
 }
 
 // ═══ (ع) 10-13: جدول الدوام بثلاث واجهات — الجدول، دوام الموظفين (يوم/شهر)، طلبات الإجازات ═══
-const LeavesPage = lazy(() => import('./LeavesPage'))
+const LeavesPage = lazyRetry(() => import('./LeavesPage'))
 
 function nowMin() { const d = new Date(); return d.getHours() * 60 + d.getMinutes() }
 // حالة اليوم بكلمة وحدة (للبطاقات والفلتر)

@@ -10,17 +10,18 @@
 // ⚠️ والشاشات القديمة **تبقى بمساراتها**: اكو روابط محفوظة بمتصفحات
 // الموظفين، وحذف مسار يعني صفحة بيضاء بلا تفسير.
 
-import { lazy, Suspense, useState } from 'react'
+import { Suspense, useState } from 'react'
 
 import { isNavVisible, type NavItem } from '../components/navTree'
 import { useSession } from '../session'
+import { lazyRetry } from '../utils/staleReload'
 
-const Employees = lazy(() => import('./Employees'))
-const KpiPage = lazy(() => import('./KpiPage'))
-const PerformanceReviewPage = lazy(() => import('./PerformanceReviewPage'))
-const StaffRequestsPage = lazy(() => import('./StaffRequestsPage'))
-const PermissionsPage = lazy(() => import('./PermissionsPage'))
-const DisciplineRecordPage = lazy(() => import('./DisciplineRecordPage'))
+const Employees = lazyRetry(() => import('./Employees'))
+const KpiPage = lazyRetry(() => import('./KpiPage'))
+const PerformanceReviewPage = lazyRetry(() => import('./PerformanceReviewPage'))
+const StaffRequestsPage = lazyRetry(() => import('./StaffRequestsPage'))
+const PermissionsPage = lazyRetry(() => import('./PermissionsPage'))
+const DisciplineRecordPage = lazyRetry(() => import('./DisciplineRecordPage'))
 
 type SectionId = 'employees' | 'kpi' | 'performance' | 'staffRequests' | 'permissions' | 'discipline'
 

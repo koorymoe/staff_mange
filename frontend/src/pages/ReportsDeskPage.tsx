@@ -1,12 +1,13 @@
-import { lazy, Suspense, useEffect, useState } from 'react'
+import { Suspense, useEffect, useState } from 'react'
 import { api, type ProgressRecentRow } from '../api'
 import BookingProgressTimeline from '../components/BookingProgressTimeline'
+import { lazyRetry } from '../utils/staleReload'
 
 // ═══ «📑 تقارير الحجوزات والمشاريع» — (ع) 10-16 ═══
 // «وين المراقب يشوف التقارير مال الحجوزات ومال المشاريع؟» — بمكان واحد:
 // تقرير العمل لكل حجز منجز، والتقرير اليومي لكل مشروع (يوم يوم) — نفس
 // نموذج «تقرير تنفيذ المشروع» الي يملّيه الليدر.
-const WorkReportsReview = lazy(() => import('./WorkReportsReview'))
+const WorkReportsReview = lazyRetry(() => import('./WorkReportsReview'))
 
 type View = 'bookings' | 'projects'
 

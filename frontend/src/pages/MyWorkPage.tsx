@@ -1,14 +1,15 @@
-import { lazy, Suspense, useState } from 'react'
+import { Suspense, useState } from 'react'
 import { useSession, isAdminOrOwner } from '../session'
+import { lazyRetry } from '../utils/staleReload'
 
 // ═══ «مهامي وإنجازاتي» — ترتيب (ع) 10-04 ═══
 // «مهامي الإضافية» و«إنجازاتي اليوم» شاشة وحدة بتبويبين. نفس الشاشتين بالضبط
 // (مو نسخة) — الرابطان القديمان يبقون شغّالين.
-const MyExtraTasksPage = lazy(() => import('./MyExtraTasksPage'))
-const MyAchievementsPage = lazy(() => import('./MyAchievementsPage'))
+const MyExtraTasksPage = lazyRetry(() => import('./MyExtraTasksPage'))
+const MyAchievementsPage = lazyRetry(() => import('./MyAchievementsPage'))
 // (ع) 10-11: المالك والمدير يشوفون مهام وإنجازات الموظفين بدل «مهامي» الفارغة
-const ExtraTasksPage = lazy(() => import('./ExtraTasksPage'))
-const AchievementsPage = lazy(() => import('./AchievementsPage'))
+const ExtraTasksPage = lazyRetry(() => import('./ExtraTasksPage'))
+const AchievementsPage = lazyRetry(() => import('./AchievementsPage'))
 
 const TABS = [
   { id: 'tasks', label: '📋 مهامي الإضافية' },

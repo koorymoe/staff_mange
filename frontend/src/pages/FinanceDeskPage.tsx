@@ -1,12 +1,13 @@
-import { lazy } from 'react'
+
 import TabHub from '../components/TabHub'
 import { useSession } from '../session'
+import { lazyRetry } from '../utils/staleReload'
 
-const Finance = lazy(() => import('./Finance'))
-const DailyAuditPage = lazy(() => import('./DailyAuditPage'))
-const RevolvingFundPage = lazy(() => import('./RevolvingFundPage'))
-const ExpensesReview = lazy(() => import('./ExpensesReview'))
-const AuditIssuesPage = lazy(() => import('./AuditIssuesPage'))
+const Finance = lazyRetry(() => import('./Finance'))
+const DailyAuditPage = lazyRetry(() => import('./DailyAuditPage'))
+const RevolvingFundPage = lazyRetry(() => import('./RevolvingFundPage'))
+const ExpensesReview = lazyRetry(() => import('./ExpensesReview'))
+const AuditIssuesPage = lazyRetry(() => import('./AuditIssuesPage'))
 
 // «التدقيق والدوار» — شاشة المحاسب الوحدة (قرار (ع) 10-08). نفس شروط بنود القائمة القديمة.
 export default function FinanceDeskPage() {

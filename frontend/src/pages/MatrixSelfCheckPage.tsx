@@ -1,8 +1,8 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { api } from '../api'
 import PageHeader from '../components/PageHeader'
-
+import { useApi } from '../utils/useApi'
 // ═══ فحص دقة ماتركس — قرار (ع) 10-15 ═══
 // كل فحص يشتغل على البيانات الحقيقية: ✓ = حسابات ماتركس سليمة، ✗ = أكو حالات
 // تحتاج تصحيح (ويّا أمثلة). «حساب غلط» يبلّغ المالك كل يوم لحد ما ينصلح.
@@ -10,14 +10,9 @@ import PageHeader from '../components/PageHeader'
 interface Check { key: string; area: string; title: string; why: string; severity: 'ERROR' | 'WARN'; count: number; ok: boolean; examples: string[]; link?: string }
 
 export default function MatrixSelfCheckPage() {
-  const [checks, setChecks] = useState<Check[] | null>(null)
   const [reload, setReload] = useState(0)
-  const [err, setErr] = useState('')
-  useEffect(() => {
-    let alive = true
-    api.matrixSelfCheck().then((d) => { if (alive) { setChecks(d.checks as Check[]); setErr('') } }).catch((e) => { if (alive) setErr(e instanceof Error ? e.message : 'تعذر') })
-    return () => { alive = false }
-  }, [reload])
+  const { data, error: err } = useApi(() => api.matrixSelfCheck(), [reload], { fallback: 'تعذر' })
+  const checks = (data?.checks as Check[] | undefined) ?? null
   const okN = checks?.filter((c) => c.ok).length ?? 0
   const errN = checks?.filter((c) => !c.ok && c.severity === 'ERROR').length ?? 0
   const areas = [...new Set((checks ?? []).map((c) => c.area))]

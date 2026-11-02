@@ -1,11 +1,12 @@
-import { lazy } from 'react'
+
 import TabHub from '../components/TabHub'
 import { useSession, isAdminOrOwner } from '../session'
+import { lazyRetry } from '../utils/staleReload'
 
-const LeaderInvoiceNew = lazy(() => import('./LeaderInvoiceNew'))
-const GpsInstallCostsPage = lazy(() => import('./GpsInstallCostsPage'))
-const NetworkCostPage = lazy(() => import('./NetworkCostPage'))
-const CameraCostPage = lazy(() => import('./CameraCostPage'))
+const LeaderInvoiceNew = lazyRetry(() => import('./LeaderInvoiceNew'))
+const GpsInstallCostsPage = lazyRetry(() => import('./GpsInstallCostsPage'))
+const NetworkCostPage = lazyRetry(() => import('./NetworkCostPage'))
+const CameraCostPage = lazyRetry(() => import('./CameraCostPage'))
 
 // «حساب الكلفة» — الحاسبات الأربع بشاشة وحدة (قرار (ع) 10-08).
 export default function CostCalcPage() {
