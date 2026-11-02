@@ -25,4 +25,8 @@ type BackupRun struct {
 	Warnings      *string    `db:"warnings" json:"warnings"`
 	Error         *string    `db:"error" json:"error"`
 	KeptCount     int        `db:"keptCount" json:"keptCount"`
+	// 🧪 تجربة الاسترجاع (0428)
+	Verified   bool    `db:"verified" json:"verified"`
+	VerifyNote *string `db:"verifyNote" json:"verifyNote"`
+	VerifyRows int64   `db:"verifyRows" json:"verifyRows"`
 }

@@ -1634,5 +1634,13 @@ func matrixChatMigrations() []Migration {
 			WHERE r."entityType" = 'AI_VERDICT' AND r."entityId" = v.id
 			  AND r."ownerEmployeeId" IS NULL AND s."employeeId" IS NOT NULL;
 		`,
+	}, {
+		// 🧪 (11-02 — تعديلات ٦ب) نتيجة تجربة استرجاع النسخة الاحتياطية (verify-restore.sh)
+		Version: "0428_backup_verify",
+		SQL: `
+			ALTER TABLE "BackupRun" ADD COLUMN IF NOT EXISTS verified BOOLEAN NOT NULL DEFAULT false;
+			ALTER TABLE "BackupRun" ADD COLUMN IF NOT EXISTS "verifyNote" TEXT;
+			ALTER TABLE "BackupRun" ADD COLUMN IF NOT EXISTS "verifyRows" BIGINT NOT NULL DEFAULT 0;
+		`,
 	}}
 }

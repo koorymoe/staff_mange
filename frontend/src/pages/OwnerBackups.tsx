@@ -100,11 +100,13 @@ export default function OwnerBackups() {
       </div>
 
       {/* أرقام سريعة */}
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
         <Stat label="نجحت (٧ أيام)" value={String(h.success7d)} />
         <Stat label="فشلت (٧ أيام)" value={String(h.failed7d)} tone={h.failed7d > 0 ? 'bad' : undefined} />
         <Stat label="خارج السيرفر" value={h.offsiteOK ? 'نعم' : 'لا'} tone={h.offsiteOK ? undefined : 'bad'} />
         <Stat label="مشفّرة" value={h.encrypted ? 'نعم' : 'لا'} tone={h.encrypted ? undefined : 'bad'} />
+        {/* 🧪 (11-02) آخر نسخة ناجحة: انجرّب استرجاعها فعلاً؟ */}
+        <Stat label="تجربة الاسترجاع" value={h.lastSuccess?.verified ? 'نجحت' : 'ما انجرّبت'} tone={h.lastSuccess?.verified ? undefined : 'bad'} />
       </div>
 
       {/* السجل */}
@@ -144,7 +146,12 @@ export default function OwnerBackups() {
                       {run.encrypted && <span className="mr-1">🔒</span>}
                     </td>
                     <td className="whitespace-nowrap p-3 text-slate-600">{mb(run.sizeBytes)}</td>
-                    <td className="p-3 text-slate-600">{run.tableCount || '—'}</td>
+                    <td className="p-3 text-slate-600">
+                      {run.tableCount || '—'}
+                      {run.ok && (run.verified
+                        ? <div className="text-[11px] font-bold text-emerald-700" title={run.verifyNote ?? ''}>🧪 انجرّب استرجاعها</div>
+                        : <div className="text-[11px] font-bold text-amber-700" title={run.verifyNote ?? ''}>⚠️ ما انجرّب استرجاعها</div>)}
+                    </td>
                     <td className="p-3 text-xs text-slate-600">{run.offsite ? (run.offsiteTarget || 'نعم') : '—'}</td>
                     <td className="p-3 text-xs text-slate-500">
                       {run.error && <div className="font-bold text-red-600">{run.error}</div>}

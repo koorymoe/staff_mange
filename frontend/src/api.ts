@@ -5938,6 +5938,9 @@ export interface BackupRun {
   warnings: string | null
   error: string | null
   keptCount: number
+  verified?: boolean
+  verifyNote?: string | null
+  verifyRows?: number
 }
 
 export interface BackupHealth {

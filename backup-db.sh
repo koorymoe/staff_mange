@@ -76,6 +76,9 @@ STATUS_TARGETS=""
 STATUS_UPLOADS=false
 STATUS_ENV=false
 STATUS_KEPT=0
+STATUS_VERIFIED=false
+STATUS_VERIFY_NOTE=""
+STATUS_VERIFY_ROWS=0
 STATUS_ERROR=""
 
 record_run() {
@@ -87,14 +90,16 @@ record_run() {
     INSERT INTO \"BackupRun\" (
       id, \"startedAt\", \"finishedAt\", ok, \"fileName\", \"sizeBytes\",
       \"tableCount\", encrypted, offsite, \"offsiteTarget\", \"hasUploads\",
-      \"hasEnv\", warnings, error, \"keptCount\"
+      \"hasEnv\", warnings, error, \"keptCount\",
+      verified, \"verifyNote\", \"verifyRows\"
     ) VALUES (
       gen_random_uuid()::text, NOW() - make_interval(secs => $(( $(date +%s) - START_EPOCH ))), NOW(),
       $STATUS_OK, NULLIF('$(sql_escape "$STATUS_FILE")',''), $STATUS_SIZE,
       $STATUS_TABLES, $STATUS_ENCRYPTED, $STATUS_OFFSITE,
       NULLIF('$(sql_escape "$STATUS_TARGETS")',''), $STATUS_UPLOADS,
       $STATUS_ENV, NULLIF('$(sql_escape "$warns")',''),
-      NULLIF('$(sql_escape "$STATUS_ERROR")',''), $STATUS_KEPT
+      NULLIF('$(sql_escape "$STATUS_ERROR")',''), $STATUS_KEPT,
+      $STATUS_VERIFIED, NULLIF('$(sql_escape "$STATUS_VERIFY_NOTE")',''), $STATUS_VERIFY_ROWS
     )
   "
 }
@@ -127,6 +132,24 @@ echo "  ✓ $TABLES جدول ($(du -h "$WORK/database.sql" | cut -f1))"
 STATUS_TABLES=$TABLES
 
 # ── ٢) الملفات المرفوعة ──
+# ═══ 🧪 تجربة الاسترجاع (11-02 — تعديلات ٦ب) ═══
+# النسخة تنسترجع بقاعدة مؤقتة وتنقارن جدول جدول ويا الحية. إذا فشلت، النسخة
+# تنحفظ (أحسن من ماكو) بس المالك يتبلّغ فوراً لأنها ممكن ما تنفع يوم الحاجة.
+echo "→ تجربة الاسترجاع..."
+if [ -x "$SCRIPT_DIR/verify-restore.sh" ]; then
+  VLINE=$(DB_CONTAINER="$DB_CONTAINER" "$SCRIPT_DIR/verify-restore.sh" "$WORK/database.sql" | tail -1)
+  STATUS_VERIFY_ROWS=$(printf '%s' "$VLINE" | sed -n 's/.*VERIFY_ROWS=\([0-9]*\).*/\1/p'); STATUS_VERIFY_ROWS=${STATUS_VERIFY_ROWS:-0}
+  STATUS_VERIFY_NOTE=$(printf '%s' "$VLINE" | sed -n 's/.*VERIFY_NOTE=//p')
+  if printf '%s' "$VLINE" | grep -q "VERIFY_OK=true"; then
+    STATUS_VERIFIED=true; echo "  ✓ $STATUS_VERIFY_NOTE"
+  else
+    warn "تجربة الاسترجاع فشلت: ${STATUS_VERIFY_NOTE:-بلا تفاصيل}"
+    notify_owner "🔴 نسخة اليوم انحفظت بس تجربة استرجاعها فشلت (${STATUS_VERIFY_NOTE:-بلا تفاصيل}) — لا تعتمد عليها، راجع السيرفر"
+  fi
+else
+  warn "verify-restore.sh مو موجود — النسخة ما انجرّبت"
+fi
+
 echo "→ الملفات المرفوعة..."
 if docker ps --format '{{.Names}}' | grep -qx "$BACKEND_CONTAINER"; then
   docker exec "$BACKEND_CONTAINER" sh -c 'cd /app/uploads 2>/dev/null && tar cf - . 2>/dev/null' \
