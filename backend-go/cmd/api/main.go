@@ -16,6 +16,7 @@ import (
 	"staffmange-api/internal/config"
 	"staffmange-api/internal/database"
 	"staffmange-api/internal/handler"
+	"staffmange-api/internal/integrity"
 	"staffmange-api/internal/mail"
 	"staffmange-api/internal/middleware"
 	"staffmange-api/internal/model"
@@ -960,6 +961,16 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	// التعديل اليدوي: المالك ومدير النظام بس. requireAdmin يمرّر OWNER أصلاً.
 	mux.Handle("POST /api/discipline/adjust", middleware.Chain(http.HandlerFunc(disciplineHandler.Adjust), requireAuth, requireAdmin))
 	mux.Handle("GET /api/employees/archived", middleware.Chain(http.HandlerFunc(employeeHandler.ListArchived), requireAuth, requireAdmin))
+	// 🩺 سلامة البيانات (11-02 — شبكة الأمان ٢): قراءة بس، للمالك
+	integrityHandler := handler.NewIntegrityHandler(db, notificationRepo)
+	mux.Handle("GET /api/integrity", middleware.Chain(http.HandlerFunc(integrityHandler.Latest), requireAuth, requireOwner))
+	mux.Handle("POST /api/integrity/run", middleware.Chain(http.HandlerFunc(integrityHandler.RunNow), requireAuth, requireOwner))
+	mux.Handle("GET /api/integrity/{key}/sample", middleware.Chain(http.HandlerFunc(integrityHandler.Sample), requireAuth, requireOwner))
+	safeguard.Loop("فحص سلامة البيانات", 25*time.Minute, 24*time.Hour, func() {
+		if _, _, err := integrity.RunAndStore(db, "daily", notificationRepo); err != nil {
+			log.Printf("integrity: %v", err)
+		}
+	})
 	mux.Handle("GET /api/security/dashboard", middleware.Chain(http.HandlerFunc(securityHandler.Dashboard), requireAuth, requireOwner))
 	mux.Handle("POST /api/security/unlock/{id}", middleware.Chain(http.HandlerFunc(securityHandler.Unlock), requireAuth, requireOwner))
 	mux.Handle("POST /api/security/reset-attempts/{id}", middleware.Chain(http.HandlerFunc(securityHandler.ResetAttempts), requireAuth, requireOwner))

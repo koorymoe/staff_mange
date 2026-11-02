@@ -1642,5 +1642,21 @@ func matrixChatMigrations() []Migration {
 			ALTER TABLE "BackupRun" ADD COLUMN IF NOT EXISTS "verifyNote" TEXT;
 			ALTER TABLE "BackupRun" ADD COLUMN IF NOT EXISTS "verifyRows" BIGINT NOT NULL DEFAULT 0;
 		`,
+	}, {
+		// 🩺 (11-02 — شبكة الأمان ٢) دورات فحص سلامة البيانات (قراءة بس)
+		Version: "0429_integrity_run",
+		SQL: `
+			CREATE TABLE IF NOT EXISTS "IntegrityRun" (
+				id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
+				"startedAt" TIMESTAMPTZ NOT NULL,
+				"finishedAt" TIMESTAMPTZ NOT NULL DEFAULT now(),
+				results JSONB NOT NULL DEFAULT '[]',
+				problems BIGINT NOT NULL DEFAULT 0,
+				critical BIGINT NOT NULL DEFAULT 0,
+				failed INT NOT NULL DEFAULT 0,
+				trigger TEXT NOT NULL DEFAULT 'daily'
+			);
+			CREATE INDEX IF NOT EXISTS "IntegrityRun_started" ON "IntegrityRun" ("startedAt" DESC);
+		`,
 	}}
 }
