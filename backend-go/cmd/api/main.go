@@ -130,6 +130,8 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	locationPingRepo := repository.NewLocationPingRepository(db)
 	performanceReviewRepo := repository.NewPerformanceReviewRepository(db)
 	notificationRepo := repository.NewNotificationRepository(db)
+	// (DRY 11-02) الحراس بالمستودعات الثلاثة مرة وحدة — نفس Require* بالضبط
+	guards := middleware.NewGuards(permissionRepo, employeeRepo, notificationRepo)
 
 	// ═══ نظام الغرامات التلقائي ═══
 	// النظام يغرّم لحاله ويعلن، والنقاط ترجع بالشغل النظيف مو بالطلب.
@@ -729,7 +731,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	requireAuth := middleware.RequireAuth(authService, employeeRepo)
 	requireAdmin := middleware.RequireRole(employeeRepo, notificationRepo, "ADMIN")
 	// صلاحية «إحصائيات الموظفين» تفتح الشاشتين — چانت تظهر البند والخادم يرفضه.
-	requireEmployeeStats := middleware.RequireRoleOrPermission(permissionRepo, employeeRepo, notificationRepo, []string{"ADMIN"}, "employee_stats")
+	requireEmployeeStats := guards.RoleOrPermission([]string{"ADMIN"}, "employee_stats")
 	// حصراً لحساب المالك (OWNER) — أقوى من الأدمن العادي، ما يشوفها إلا هو
 	requireOwner := middleware.RequireRole(employeeRepo, notificationRepo, "OWNER")
 	// فتح الحسابات: المالك وحده، بلا تسجيل مخالفة على مدير النظام
@@ -740,7 +742,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	// طريق نخلي غيره يكمل: المالك ينطي صلاحية والاعتماد يبقى مرفوض
 	// والفاتورة ما تمشي. الإضافة **زيادة مو تضييق** — ولا حارس ينضيّق،
 	// فما تنكسر صلاحية أي موظف شغّال.
-	requireFinance := middleware.RequireRoleOrAnyPermission(permissionRepo, employeeRepo, notificationRepo,
+	requireFinance := guards.RoleOrAnyPermission(
 		[]string{"ADMIN", "FINANCE"}, "finance_audit")
 	// تدقيق مبلغ الحجز يعتمد على صلاحية "finance" الممنوحة فعلياً للموظف (مو بس دوره
 	// الوظيفي) — المراقب مثلاً عنده هذي الصلاحية افتراضياً ويشوف زر "تدقيق" بالواجهة،
@@ -758,34 +760,34 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	// فالتوسيع هنا **بالقراءة**، والتضييق يبقى **بالقرار**:
 	// `booking_audit_handler.go` يفحص المفتاح للمراقب ويرجّعه ٤٠٣ نظيفاً
 	// بلا مخالفة ولا قفل.
-	requireVerifyBooking := middleware.RequireRoleOrAnyPermission(permissionRepo, employeeRepo, notificationRepo,
+	requireVerifyBooking := guards.RoleOrAnyPermission(
 		[]string{"ADMIN", "OWNER", "FINANCE", "MONITOR"}, "finance", "finance_audit")
 	// ربط حجزين تاريخيين منفصلين كإنجاز جزئي لنفس الشغلة — صلاحية
 	// مستقلة (نفس فلسفة finance_audit): المالك ينطيها فرد-فرد، مو دور.
-	requirePartialLink := middleware.RequirePermission(permissionRepo, employeeRepo, notificationRepo, "booking_partial_link")
-	requireCoordinator := middleware.RequirePermission(permissionRepo, employeeRepo, notificationRepo, "coordinator")
-	requireCrewManagement := middleware.RequirePermission(permissionRepo, employeeRepo, notificationRepo, "crew_management")
+	requirePartialLink := guards.Permission("booking_partial_link")
+	requireCoordinator := guards.Permission("coordinator")
+	requireCrewManagement := guards.Permission("crew_management")
 	requireHR := middleware.RequireRole(employeeRepo, notificationRepo, "ADMIN", "HR_COORDINATOR")
 	// تدقيق أمني: مسارات إدارية كانت مفتوحة لأي موظف مسجّل دخول (requireAuth
 	// فقط) — أي فني يقدر يثبّت حجز أو يعدّل زبون أو يضيف أدوات. صارت مربوطة
 	// بصلاحياتها الطبيعية، مع إبقاء المسارات الذاتية (حضور/إشعارات) مفتوحة.
-	requireCustomerMgmt := middleware.RequireAnyPermission(permissionRepo, employeeRepo, notificationRepo, "manage_customers", "sales_booking", "coordinator")
-	requireBookingCoord := middleware.RequireAnyPermission(permissionRepo, employeeRepo, notificationRepo, "coordinator", "crew_management")
+	requireCustomerMgmt := guards.AnyPermission("manage_customers", "sales_booking", "coordinator")
+	requireBookingCoord := guards.AnyPermission("coordinator", "crew_management")
 	// تعديل تفاصيل الحجز تستخدمه صفحات ثانية غير التنسيق (قائمة الحجوزات
 	// لتخصيص مركبة، وخريطة المهام) — فنوسّعها لصلاحياتهن حتى ما ننكسر شغل شغّال.
-	requireBookingEdit := middleware.RequireAnyPermission(permissionRepo, employeeRepo, notificationRepo,
+	requireBookingEdit := guards.AnyPermission(
 		"coordinator", "crew_management", "view_bookings", "mission_tracking", "sales_booking")
 	// إدارة المخزون (عدة الموظفين الشخصية/أدوات المركبات/العدة القياسية) — مسموحة
 	// لأدوار HR/ADMIN كالمعتاد، أو لأي موظف عنده صلاحية "inventory" المخصصة
 	// (ممنوحة من صفحة الصلاحيات، مثلاً PROCUREMENT_ADMIN) — توسيع وصول، مو تضييق.
-	requireHROrInventory := middleware.RequireRoleOrPermission(permissionRepo, employeeRepo, notificationRepo, []string{"ADMIN", "HR_COORDINATOR"}, "inventory")
+	requireHROrInventory := guards.RoleOrPermission([]string{"ADMIN", "HR_COORDINATOR"}, "inventory")
 	requireLeader := middleware.RequireLeader(employeeRepo, notificationRepo)
 	// تقرير ١ (B2): صلاحية «صيانة الأجهزة» تفتح البند لغير الليدر — الخادم يقبلها هم.
-	requireDeviceMaint := middleware.RequireLeaderOrAnyPermission(permissionRepo, employeeRepo, notificationRepo, "device_maintenance")
+	requireDeviceMaint := guards.LeaderOrAnyPermission("device_maintenance")
 	requireLeaderOrServiceManager := middleware.RequireLeaderOrBookingServiceManager(
 		employeeRepo, notificationRepo, paperworkGuard.IsBookingManager)
-	requireInventoryView := middleware.RequirePermission(permissionRepo, employeeRepo, notificationRepo, "inventory")
-	requireToolRequest := middleware.RequireLeaderOrPermission(permissionRepo, employeeRepo, notificationRepo, "tool_requests")
+	requireInventoryView := guards.Permission("inventory")
+	requireToolRequest := guards.LeaderOrPermission("tool_requests")
 	// حساب كلفة التنفيذ: صلاحية تنعطى وتنسحب، مو دور ثابت
 	// ⚠️ **واعية للّيدر** مو صلاحية صرفة — وهذا إصلاح خلل حظر حسابات:
 	//
@@ -800,97 +802,97 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	//
 	// وباقي مسارات فواتير الليدر أصلاً واعية للّيدر (requireLeaderBasket)،
 	// فهذا الحارس چان **متناقض** وياهن.
-	requireExecutionCost := middleware.RequireLeaderOrPermission(permissionRepo, employeeRepo, notificationRepo, "execution_cost")
+	requireExecutionCost := guards.LeaderOrPermission("execution_cost")
 	// موافقة/رفض طلبات الأدوات: كانت دور صارم بدون منفذ صلاحية، فإداري الكميات
 	// — وهو صاحب الشغلة أصلاً — ما كان يقدر يوافق أبداً مهما انمنحت له
 	// صلاحيات. صارت صلاحية مستقلة تُمنح لأي موظف، مع إبقاء الأدوار القديمة.
-	requireInventoryApprove := middleware.RequireRoleOrPermission(permissionRepo, employeeRepo, notificationRepo, []string{"ADMIN", "HR_COORDINATOR", "MONITOR"}, "tool_requests_approve")
+	requireInventoryApprove := guards.RoleOrPermission([]string{"ADMIN", "HR_COORDINATOR", "MONITOR"}, "tool_requests_approve")
 	// تعديل مهارات موظف يعتمد على صلاحية "staff_management" الممنوحة فعلياً (نفس
 	// الصلاحية الي تفتح صفحة "إدارة الكوادر" بالواجهة للمراقب أيضاً) — مو دور
 	// وظيفي صارم، وإلا نفس بگ "تدقيق الحسابات" يتكرر: زر يطلع بالواجهة، السيرفر
 	// يرفضه، وبعد 3 محاولات ينوقف حساب الموظف تلقائياً.
-	requireStaffManagement := middleware.RequirePermission(permissionRepo, employeeRepo, notificationRepo, "staff_management")
+	requireStaffManagement := guards.Permission("staff_management")
 	// ═══ حرّاس الصلاحيات المستقلة ═══
 	//
 	// ⚠️ الإخفاء بالقائمة الجانبية **مو حماية**: الموظف يكتب المسار
 	// بالمتصفح أو يدز طلب مباشر ويوصل. لازم السيرفر يرفض بعد، وإلا
 	// المنع تجميلي بس.
-	requireBookingsArchive := middleware.RequirePermission(permissionRepo, employeeRepo, notificationRepo, "bookings_archive")
-	requireExtraTaskAssign := middleware.RequirePermission(permissionRepo, employeeRepo, notificationRepo, "extra_tasks_assign")
-	requireTrainingManage := middleware.RequirePermission(permissionRepo, employeeRepo, notificationRepo, "training_manage")
+	requireBookingsArchive := guards.Permission("bookings_archive")
+	requireExtraTaskAssign := guards.Permission("extra_tasks_assign")
+	requireTrainingManage := guards.Permission("training_manage")
 	// ⚠️ RequireRoleOrAnyPermission لا RequireRole: صاحب النظام يريد يمنح
 	// "يتابع ويدقّق" (monitoring/auditing) لموظف واحد بلا ما يحوّل دوره
 	// لمراقب فعلياً — نفس مبدأ الصلاحيات الفردية المعتمد بكل الشاشة.
-	requireMonitor := middleware.RequireRoleOrAnyPermission(permissionRepo, employeeRepo, notificationRepo, []string{"ADMIN", "MONITOR"}, "monitoring", "auditing")
+	requireMonitor := guards.RoleOrAnyPermission([]string{"ADMIN", "MONITOR"}, "monitoring", "auditing")
 	// (دازاي 10-25) صلاحيات المراقب المفصّلة: كل مسار مراقب يقبل الحزمة كاملة
 	// («monitoring»/«auditing») أو صلاحيته الصغيرة بس.
 	_ = requireMonitor // كل مسارات المراقب صارت على requireMon[sub]
 	// التبريرات تنفتح من صندوق المراقب هم — صاحب الصندوق أو صاحب التبريرات
-	requireMonJust := middleware.RequireRoleOrAnyPermission(permissionRepo, employeeRepo, notificationRepo, []string{"ADMIN", "MONITOR"}, "monitoring", "auditing", "mon_justifications", "mon_inbox")
+	requireMonJust := guards.RoleOrAnyPermission([]string{"ADMIN", "MONITOR"}, "monitoring", "auditing", "mon_justifications", "mon_inbox")
 	requireMon := map[string]func(http.Handler) http.Handler{}
 	for _, sub := range model.MonitorSubPermissions {
-		requireMon[sub] = middleware.RequireRoleOrAnyPermission(permissionRepo, employeeRepo, notificationRepo, []string{"ADMIN", "MONITOR"}, "monitoring", "auditing", sub)
+		requireMon[sub] = guards.RoleOrAnyPermission([]string{"ADMIN", "MONITOR"}, "monitoring", "auditing", sub)
 	}
 	requireProjectManager := middleware.RequireRole(employeeRepo, notificationRepo, "ADMIN", "PROJECT_MANAGER")
 	// إدارة المشاريع: بالدور أو بصلاحية project_management الممنوحة يدوياً
-	requireProjectMgmt := middleware.RequireRoleOrPermission(permissionRepo, employeeRepo, notificationRepo, []string{"ADMIN", "PROJECT_MANAGER"}, "project_management")
-	requireFieldMonitor := middleware.RequireRoleOrAnyPermission(permissionRepo, employeeRepo, notificationRepo, []string{"ADMIN", "HR_COORDINATOR", "MONITOR", "PROJECT_MANAGER"}, "monitoring", "auditing")
+	requireProjectMgmt := guards.RoleOrPermission([]string{"ADMIN", "PROJECT_MANAGER"}, "project_management")
+	requireFieldMonitor := guards.RoleOrAnyPermission([]string{"ADMIN", "HR_COORDINATOR", "MONITOR", "PROJECT_MANAGER"}, "monitoring", "auditing")
 	requireGpsAdmin := middleware.RequireRole(employeeRepo, notificationRepo, "ADMIN", "GPS_ADMIN")
-	requireContentTech := middleware.RequirePermission(permissionRepo, employeeRepo, notificationRepo, "content_technician")
+	requireContentTech := guards.Permission("content_technician")
 	// الموردون بصلاحية مستقلة (انفصلت عن content_technician الواسعة)
-	requireSuppliersMgmt := middleware.RequirePermission(permissionRepo, employeeRepo, notificationRepo, "suppliers_management")
-	requireVehicleMgmt := middleware.RequirePermission(permissionRepo, employeeRepo, notificationRepo, "vehicle_management")
-	requireProcurement := middleware.RequirePermission(permissionRepo, employeeRepo, notificationRepo, "procurement")
+	requireSuppliersMgmt := guards.Permission("suppliers_management")
+	requireVehicleMgmt := guards.Permission("vehicle_management")
+	requireProcurement := guards.Permission("procurement")
 	// توفير المواد وتحديد حالتها يقتصر على إداري الكميات فعلياً (أو الأدمن) — مو أي
 	// موظف عنده صلاحية "procurement" العامة (زي الفني/مدير المشاريع الي بس يطلبون مواد).
 	requireProcurementAdmin := middleware.RequireRole(employeeRepo, notificationRepo, "ADMIN", "PROCUREMENT_ADMIN")
 	// unit_technicians مو content_technician عمداً — صلاحية مستقلة لوحدة
 	// التقنيين تحديداً (المعارض/المنتجات/الخدمات) حتى ما تنفتح بالغلط لأي حد
 	// عنده content_technician من مكان ثاني (مواد التدريب/الموردين/المنتجات).
-	requireUnitTechnicians := middleware.RequirePermission(permissionRepo, employeeRepo, notificationRepo, "unit_technicians")
-	requireTechUnitOrProcurement := middleware.RequireRoleOrPermission(permissionRepo, employeeRepo, notificationRepo, []string{"PROCUREMENT_ADMIN", "SERVICE_DEVELOPER"}, "unit_technicians")
+	requireUnitTechnicians := guards.Permission("unit_technicians")
+	requireTechUnitOrProcurement := guards.RoleOrPermission([]string{"PROCUREMENT_ADMIN", "SERVICE_DEVELOPER"}, "unit_technicians")
 	// قرار (ع) 10-10: مطوّر الخدمات شغله دراسات الخدمات — يشوفها ويقترح ويرفع تقارير
-	requireServiceStudies := middleware.RequireRoleOrPermission(permissionRepo, employeeRepo, notificationRepo, []string{"SERVICE_DEVELOPER"}, "unit_technicians")
+	requireServiceStudies := guards.RoleOrPermission([]string{"SERVICE_DEVELOPER"}, "unit_technicians")
 	// 🔴 (10-16) چان صلاحية بس: الواجهة تطلّع أزرار الشكوى لمهندس الجودة بدوره
 	// (ComplaintsPage fullDetailRoles)، فمهندس جودة ما انمنحله quality_control
 	// چان ياخذ ٤٠٣ = مخالفة وقفل حساب. هسه الدور أو الصلاحية — نفس الواجهة.
-	requireQuality := middleware.RequireRoleOrAnyPermission(permissionRepo, employeeRepo, notificationRepo, []string{"QUALITY_ENGINEER"}, "quality_control")
-	requireProjectMgmtPerm := middleware.RequirePermission(permissionRepo, employeeRepo, notificationRepo, "project_management")
-	requireKpi := middleware.RequirePermission(permissionRepo, employeeRepo, notificationRepo, "kpi_management")
-	requireKpiCriteria := middleware.RequirePermission(permissionRepo, employeeRepo, notificationRepo, "kpi_criteria_management")
+	requireQuality := guards.RoleOrAnyPermission([]string{"QUALITY_ENGINEER"}, "quality_control")
+	requireProjectMgmtPerm := guards.Permission("project_management")
+	requireKpi := guards.Permission("kpi_management")
+	requireKpiCriteria := guards.Permission("kpi_criteria_management")
 	// إنشاء/تعديل عروض الأسعار: أي مستوى من الثلاث (إضافة فقط / إضافة وتعديل
 	// عروضي / إضافة وتعديل واطلاع الكل) يقدر يوصل للـPOST/PUT — الفرز الدقيق
 	// (مين يشوف شنو، ومين يقدر يعدّل شنو) يصير داخل QuotationService نفسه.
 	// quotation_system القديمة تبقى مرادف quotation_manage_all لأي موظف
 	// كانت ممنوحة له من قبل.
-	requireQuotationAccess := middleware.RequireAnyPermission(permissionRepo, employeeRepo, notificationRepo,
+	requireQuotationAccess := guards.AnyPermission(
 		service.QuotationPermCreate, service.QuotationPermEditOwn, service.QuotationPermManageAll, "quotation_system")
 	// إنشاء/تعديل بيانات نظام GPS (عملاء/شرائح/أجهزة/تجديد/صيانة) يقتصر على من
 	// يملك صلاحية "gps_system" فعلياً (نفس الصلاحية الي تفتح كل صفحات نظام GPS
 	// بالواجهة) — مو أي موظف مسجل دخول.
-	requireFund := middleware.RequirePermission(permissionRepo, employeeRepo, notificationRepo, "revolving_fund")
+	requireFund := guards.Permission("revolving_fund")
 	// قيمة مبالغ الدوار نفسها (تعديل الرصيد والتغذية) — مدير النظام والمالك
 	// فقط، أو أي موظف ينطونه صلاحية revolving_fund_amount صراحةً.
-	requireFundAmount := middleware.RequireRoleOrPermission(permissionRepo, employeeRepo, notificationRepo, []string{"ADMIN", "OWNER"}, "revolving_fund_amount")
+	requireFundAmount := guards.RoleOrPermission([]string{"ADMIN", "OWNER"}, "revolving_fund_amount")
 	// التخريج يرجّع فلوس للدوار — صلاحية مستقلة عن شغل الدوار اليومي.
-	requireDischarge := middleware.RequireRoleOrPermission(permissionRepo, employeeRepo, notificationRepo, []string{"ADMIN", "OWNER", "FINANCE"}, "fund_discharge")
+	requireDischarge := guards.RoleOrPermission([]string{"ADMIN", "OWNER", "FINANCE"}, "fund_discharge")
 	// الاتصال بالزبون مو حكر على مهندس الجودة — أي موظف ينطيه المدير
 	// صلاحية complaint_contact يكدر يتصل ويأشر النتيجة باسمه.
-	requireComplaintContact := middleware.RequireRoleOrPermission(permissionRepo, employeeRepo, notificationRepo, []string{"ADMIN", "OWNER", "QUALITY_ENGINEER", "MONITOR"}, "complaint_contact")
-	requireGpsSystem := middleware.RequirePermission(permissionRepo, employeeRepo, notificationRepo, "gps_system")
+	requireComplaintContact := guards.RoleOrPermission([]string{"ADMIN", "OWNER", "QUALITY_ENGINEER", "MONITOR"}, "complaint_contact")
+	requireGpsSystem := guards.Permission("gps_system")
 	// تقرير ١ (B1): المبيعات يطلعلهم «طلب GPS/تسليم/تجديد/صيانة» — الإرسال يقبلهم
 	// (ويا صاحب gps_requests) بدل ما يرجع 403 وينقفل الحساب.
-	requireGpsRequest := middleware.RequireRoleOrAnyPermission(permissionRepo, employeeRepo, notificationRepo,
+	requireGpsRequest := guards.RoleOrAnyPermission(
 		[]string{"ADMIN", "OWNER", "SALES"}, "gps_system", "gps_requests")
 	// متابعة تجديد اشتراكات الجي بي اس تخص الاثنين: مهندس الجودة يتصل
 	// بالزبائن، ومسؤول الجي بي اس يشوف منو خلصت مهلته وشريحته تحتاج حرق.
-	requireGpsOrQuality := middleware.RequireAnyPermission(permissionRepo, employeeRepo, notificationRepo, "gps_system", "quality_control")
+	requireGpsOrQuality := guards.AnyPermission("gps_system", "quality_control")
 	// قوائم زبائن الجي بي اس فيها أسماء وأرقام ٤٩٣ زبون — كانت مفتوحة لأي
 	// موظف مسجّل دخول، يعني الفني يقدر يسحبها كلها من F12 وهو ما إله علاقة
 	// بالجي بي اس أصلاً. صارت محصورة بالي شغلهم فعلاً بالجي بي اس.
-	requireVipManualAdd := middleware.RequireRoleOrPermission(permissionRepo, employeeRepo, notificationRepo,
+	requireVipManualAdd := guards.RoleOrPermission(
 		[]string{"ADMIN", "OWNER"}, "vip_manual_add")
-	requireGpsData := middleware.RequireRoleOrPermission(permissionRepo, employeeRepo, notificationRepo,
+	requireGpsData := guards.RoleOrPermission(
 		[]string{"ADMIN", "OWNER", "SALES"}, "gps_system")
 
 	mux := http.NewServeMux()
@@ -976,22 +978,22 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	mux.Handle("GET /api/employees/{id}/admin-scope", middleware.Chain(http.HandlerFunc(employeeAdminHandler.GetScope), requireAuth, requireAdmin))
 	mux.Handle("PUT /api/employees/{id}/admin-scope", middleware.Chain(http.HandlerFunc(employeeAdminHandler.SetScope), requireAuth, requireAdmin))
 	mux.Handle("PUT /api/employees/{id}/all", middleware.Chain(http.HandlerFunc(employeeAdminHandler.UpdateAll), requireAuth,
-		middleware.RequireRoleOrPermission(permissionRepo, employeeRepo, notificationRepo, []string{"ADMIN"}, "employee_edit_all")))
+		guards.RoleOrPermission([]string{"ADMIN"}, "employee_edit_all")))
 	mux.Handle("PUT /api/employees/{id}/suspend", middleware.Chain(http.HandlerFunc(employeeAdminHandler.Suspend), requireAuth,
-		middleware.RequireRoleOrPermission(permissionRepo, employeeRepo, notificationRepo, []string{"ADMIN"}, "employee_suspend")))
+		guards.RoleOrPermission([]string{"ADMIN"}, "employee_suspend")))
 	mux.Handle("PUT /api/employees/{id}/reactivate", middleware.Chain(http.HandlerFunc(employeeAdminHandler.Reactivate), requireAuth,
-		middleware.RequireRoleOrPermission(permissionRepo, employeeRepo, notificationRepo, []string{"ADMIN"}, "employee_suspend")))
+		guards.RoleOrPermission([]string{"ADMIN"}, "employee_suspend")))
 	mux.Handle("GET /api/employees/suspended", middleware.Chain(http.HandlerFunc(employeeAdminHandler.ListSuspended), requireAuth,
-		middleware.RequireRoleOrPermission(permissionRepo, employeeRepo, notificationRepo, []string{"ADMIN"}, "employee_suspend")))
+		guards.RoleOrPermission([]string{"ADMIN"}, "employee_suspend")))
 	mux.Handle("PUT /api/employees/{id}/schedule", middleware.Chain(http.HandlerFunc(employeeAdminHandler.Schedule), requireAuth,
-		middleware.RequireRoleOrPermission(permissionRepo, employeeRepo, notificationRepo, []string{"ADMIN"}, "work_schedule_manage")))
+		guards.RoleOrPermission([]string{"ADMIN"}, "work_schedule_manage")))
 	mux.Handle("GET /api/work-schedule", middleware.Chain(http.HandlerFunc(employeeAdminHandler.WorkSchedule), requireAuth,
-		middleware.RequireRoleOrAnyPermission(permissionRepo, employeeRepo, notificationRepo, []string{"ADMIN", "HR_COORDINATOR", "MONITOR"}, "work_schedule_manage", "staff_management")))
+		guards.RoleOrAnyPermission([]string{"ADMIN", "HR_COORDINATOR", "MONITOR"}, "work_schedule_manage", "staff_management")))
 	mux.Handle("PUT /api/employees/{id}", middleware.Chain(http.HandlerFunc(employeeHandler.Update), requireAuth, requireAdmin))
 	mux.Handle("PUT /api/employees/{id}/identity", middleware.Chain(http.HandlerFunc(employeeHandler.UpdateIdentity), requireAuth,
-		middleware.RequireRoleOrPermission(permissionRepo, employeeRepo, notificationRepo, []string{"ADMIN"}, "edit_employee_identity")))
+		guards.RoleOrPermission([]string{"ADMIN"}, "edit_employee_identity")))
 	mux.Handle("PUT /api/employees/{id}/profile", middleware.Chain(http.HandlerFunc(employeeHandler.UpdateProfile), requireAuth,
-		middleware.RequireRoleOrPermission(permissionRepo, employeeRepo, notificationRepo, []string{"ADMIN"}, "edit_employee_profile")))
+		guards.RoleOrPermission([]string{"ADMIN"}, "edit_employee_profile")))
 	mux.Handle("POST /api/employees/{id}/link-historical", middleware.Chain(http.HandlerFunc(employeeHandler.LinkHistoricalRecords), requireAuth, requireAdmin))
 	mux.Handle("PUT /api/employees/{id}/skills", middleware.Chain(http.HandlerFunc(employeeHandler.SetSkills), requireAuth, requireStaffManagement))
 
@@ -1102,10 +1104,10 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	// حتى ما يصير باب يشوف بيه حجوزات وما يكدر يفوترها.
 	mux.Handle("GET /api/bookings/service-paperwork", middleware.Chain(
 		http.HandlerFunc(bookingHandler.ServicePaperworkByKind), requireAuth,
-		middleware.RequireRoleOrAnyPermission(permissionRepo, employeeRepo, notificationRepo,
+		guards.RoleOrAnyPermission(
 			[]string{"ADMIN", "OWNER"}, "invoice_gps", "invoice_dashcam")))
 	mux.Handle("GET /api/bookings/internal", middleware.Chain(http.HandlerFunc(bookingHandler.ListInternal), requireAuth,
-		middleware.RequireRoleOrAnyPermission(permissionRepo, employeeRepo, notificationRepo,
+		guards.RoleOrAnyPermission(
 			[]string{"ADMIN", "OWNER", "FINANCE", "MONITOR", "HR_COORDINATOR"},
 			"invoice_internal", "finance", "finance_audit", "monitoring", "auditing")))
 	mux.Handle("POST /api/bookings", middleware.Chain(http.HandlerFunc(bookingHandler.Create), requireAuth))
@@ -1119,7 +1121,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	mux.Handle("GET /api/decor-rates", middleware.Chain(http.HandlerFunc(decorRateHandler.List), requireAuth))
 	mux.Handle("PUT /api/decor-rates", middleware.Chain(http.HandlerFunc(decorRateHandler.Save), requireAuth, requireAdmin))
 	mux.Handle("POST /api/bookings/{id}/decor", middleware.Chain(http.HandlerFunc(bookingHandler.CreateDecor), requireAuth,
-		middleware.RequireRoleOrAnyPermission(permissionRepo, employeeRepo, notificationRepo, []string{"ADMIN", "HR_COORDINATOR", "MONITOR"}, "coordinator")))
+		guards.RoleOrAnyPermission([]string{"ADMIN", "HR_COORDINATOR", "MONITOR"}, "coordinator")))
 	mux.Handle("GET /api/bookings/{id}/decor", middleware.Chain(http.HandlerFunc(bookingHandler.DecorChildren), requireAuth))
 	mux.Handle("PUT /api/bookings/{id}/confirm", middleware.Chain(http.HandlerFunc(bookingHandler.Confirm), requireAuth, requireBookingCoord))
 	mux.Handle("PUT /api/bookings/{id}/details", middleware.Chain(http.HandlerFunc(bookingHandler.UpdateDetails), requireAuth, requireBookingEdit))
@@ -1214,7 +1216,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	// بـDashboard.tsx (canDrill بـutils/drill.ts) حرفياً، وإلا البطاقة تنضغط
 	// وتاخذ ٤٠٣ = مخالفة على موظف بريء.
 	mux.Handle("GET /api/drill/{key}", middleware.Chain(http.HandlerFunc(todayHandler.Drill), requireAuth,
-		middleware.RequireRoleOrAnyPermission(permissionRepo, employeeRepo, notificationRepo,
+		guards.RoleOrAnyPermission(
 			[]string{"ADMIN", "OWNER", "MONITOR", "HR_COORDINATOR"}, "coordinator", "view_bookings", "monitoring")))
 	mux.Handle("GET /api/bookings/locate", middleware.Chain(http.HandlerFunc(bookingHandler.Locate), requireAuth))
 	mux.Handle("GET /api/bookings/station-counts", middleware.Chain(http.HandlerFunc(bookingHandler.StationCounts), requireAuth))
@@ -1264,10 +1266,10 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	mux.Handle("GET /api/ai/metrics", middleware.Chain(http.HandlerFunc(aiHandler.Metrics), requireAuth, requireAdmin))
 	// توقع التأخير: نفس من يشوف «تنسيق الحجوزات» بالقائمة (أدوار ADMIN/HR_COORDINATOR/MONITOR أو صلاحية coordinator).
 	mux.Handle("GET /api/ai/delay-risks", middleware.Chain(http.HandlerFunc(matrixForesightHandler.DelayRisks), requireAuth,
-		middleware.RequireRoleOrPermission(permissionRepo, employeeRepo, notificationRepo, []string{"ADMIN", "HR_COORDINATOR", "MONITOR"}, "coordinator")))
+		guards.RoleOrPermission([]string{"ADMIN", "HR_COORDINATOR", "MONITOR"}, "coordinator")))
 	// فرص البيع: المالك/مدير النظام أو صلاحية sales_booking (المبيعات بالافتراض).
 	mux.Handle("GET /api/ai/opportunities", middleware.Chain(http.HandlerFunc(matrixForesightHandler.Opportunities), requireAuth,
-		middleware.RequirePermission(permissionRepo, employeeRepo, notificationRepo, "sales_booking")))
+		guards.Permission("sales_booking")))
 	// ═══ ماتركس — ميزات ٣/٧/١٠/١١/١٢: كلها GET ═══
 	// الكادر الأنسب: نفس حارس PUT /api/bookings/{id}/assign بالضبط.
 	mux.Handle("GET /api/ai/crew-recommendation", middleware.Chain(http.HandlerFunc(matrixInsightsHandler.CrewRecommendation), requireAuth, requireBookingCoord))
@@ -1277,7 +1279,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	mux.Handle("GET /api/ai/stock-forecast", middleware.Chain(http.HandlerFunc(matrixInsightsHandler.StockForecast), requireAuth, requireInventoryView))
 	// الاستبدال: ADMIN/OWNER أو it_assets أو vehicle_management — والمعالج يفلتر الأقسام.
 	mux.Handle("GET /api/ai/replacement-suggestions", middleware.Chain(http.HandlerFunc(matrixInsightsHandler.ReplacementSuggestions), requireAuth,
-		middleware.RequireAnyPermission(permissionRepo, employeeRepo, notificationRepo, "it_assets", "vehicle_management")))
+		guards.AnyPermission("it_assets", "vehicle_management")))
 	mux.Handle("GET /api/ai/my-watch", middleware.Chain(http.HandlerFunc(matrixDecisionsHandler.MyWatch), requireAuth))
 	mux.Handle("GET /api/ai/guide", middleware.Chain(http.HandlerFunc(matrixGuideHandler.Guide), requireAuth))
 	mux.Handle("GET /api/ai/guide-rules", middleware.Chain(http.HandlerFunc(matrixGuideHandler.List), requireAuth, requireAdmin))
@@ -1333,13 +1335,13 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	mux.Handle("POST /api/achievements", middleware.Chain(http.HandlerFunc(achievementHandler.Create), requireAuth))
 	// ساعات العمل من البيت — صلاحية «remote_hours_manage».
 	remoteHoursHandler := handler.NewRemoteHoursHandler(repository.NewRemoteHoursRepository(db))
-	requireRemoteHours := middleware.RequireRoleOrPermission(permissionRepo, employeeRepo, notificationRepo, []string{"ADMIN", "OWNER"}, "remote_hours_manage")
+	requireRemoteHours := guards.RoleOrPermission([]string{"ADMIN", "OWNER"}, "remote_hours_manage")
 	mux.Handle("POST /api/remote-hours", middleware.Chain(http.HandlerFunc(remoteHoursHandler.Create), requireAuth, requireRemoteHours))
 	mux.Handle("GET /api/remote-hours", middleware.Chain(http.HandlerFunc(remoteHoursHandler.List), requireAuth, requireRemoteHours))
 	mux.Handle("GET /api/remote-hours/summary", middleware.Chain(http.HandlerFunc(remoteHoursHandler.Summary), requireAuth, requireRemoteHours))
 	mux.Handle("GET /api/remote-hours/export", middleware.Chain(http.HandlerFunc(remoteHoursHandler.Export), requireAuth, requireRemoteHours))
 	// الموظف لنفسه: صلاحية remote_hours_self (أو المسؤول).
-	requireRemoteSelf := middleware.RequireRoleOrAnyPermission(permissionRepo, employeeRepo, notificationRepo, []string{"ADMIN", "OWNER"}, "remote_hours_self", "remote_hours_manage")
+	requireRemoteSelf := guards.RoleOrAnyPermission([]string{"ADMIN", "OWNER"}, "remote_hours_self", "remote_hours_manage")
 	mux.Handle("GET /api/remote-hours/mine", middleware.Chain(http.HandlerFunc(remoteHoursHandler.Mine), requireAuth, requireRemoteSelf))
 	mux.Handle("POST /api/remote-hours/mine", middleware.Chain(http.HandlerFunc(remoteHoursHandler.AddMine), requireAuth, requireRemoteSelf))
 	mux.Handle("POST /api/remote-hours/timer/{action}", middleware.Chain(http.HandlerFunc(remoteHoursHandler.TimerAction), requireAuth, requireRemoteSelf))
@@ -1416,7 +1418,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 		return bookingHandler.CanSeeAllBookings(r) || bookingRepo.IsInvolved(id, middleware.EmployeeIDFromContext(r))
 	})
 	mux.Handle("GET /api/progress-reports/recent", middleware.Chain(http.HandlerFunc(bookingProgressHandler.Recent), requireAuth,
-		middleware.RequireRoleOrAnyPermission(permissionRepo, employeeRepo, notificationRepo, []string{"ADMIN", "MONITOR"}, "monitoring", "mon_reports")))
+		guards.RoleOrAnyPermission([]string{"ADMIN", "MONITOR"}, "monitoring", "mon_reports")))
 	mux.Handle("GET /api/bookings/{id}/progress", middleware.Chain(http.HandlerFunc(bookingProgressHandler.Reports), requireAuth))
 	mux.Handle("GET /api/bookings/{id}/work-window", middleware.Chain(http.HandlerFunc(bookingProgressHandler.WorkWindow), requireAuth))
 	// ⚠️ الطلعات ما إلها حارس خاص: منو يشوف الحجز يشوف طلعاته. إخفاء
@@ -1433,8 +1435,8 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	// النظام يبت. الحذف الفوري ما ينفع لأنه ما يترد.
 	bookingDeleteRepo := repository.NewBookingDeleteRequestRepository(db)
 	bookingDeleteHandler := handler.NewBookingDeleteRequestHandler(bookingDeleteRepo, notificationRepo)
-	requireDeleteRequest := middleware.RequireRoleOrPermission(permissionRepo, employeeRepo, notificationRepo, []string{"ADMIN", "OWNER", "HR_COORDINATOR", "MONITOR"}, "booking_delete_request")
-	requireDeleteApprove := middleware.RequireRoleOrPermission(permissionRepo, employeeRepo, notificationRepo, []string{"ADMIN", "OWNER", "MONITOR"}, "booking_delete_approve")
+	requireDeleteRequest := guards.RoleOrPermission([]string{"ADMIN", "OWNER", "HR_COORDINATOR", "MONITOR"}, "booking_delete_request")
+	requireDeleteApprove := guards.RoleOrPermission([]string{"ADMIN", "OWNER", "MONITOR"}, "booking_delete_approve")
 	mux.Handle("POST /api/bookings/{id}/delete-request", middleware.Chain(http.HandlerFunc(bookingDeleteHandler.Create), requireAuth, requireDeleteRequest))
 	mux.Handle("GET /api/booking-delete-requests", middleware.Chain(http.HandlerFunc(bookingDeleteHandler.List), requireAuth, requireDeleteApprove))
 	mux.Handle("PUT /api/booking-delete-requests/{id}/decide", middleware.Chain(http.HandlerFunc(bookingDeleteHandler.Decide), requireAuth, requireDeleteApprove))
@@ -1484,13 +1486,13 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	// أي دور ثاني يمرّ بلا تصفية = يشوف الكل. نفس الفحص المستخدم
 	// لبقية شاشات المراقبة، وبنفس منفذ monitoring/auditing.
 	mux.Handle("GET /api/audit-issues", middleware.Chain(http.HandlerFunc(bookingAuditHandler.ListIssues), requireAuth,
-		middleware.RequireRoleOrAnyPermission(permissionRepo, employeeRepo, notificationRepo,
+		guards.RoleOrAnyPermission(
 			[]string{"ADMIN", "OWNER", "MONITOR", "QUALITY_ENGINEER", "HR_COORDINATOR", "FINANCE"}, "monitoring", "auditing", "audit_issues", "finance_audit")))
 	// ⚠️⚠️ جان حارسه `requireAuth` **وبس** — أي موظف مسجّل دخول، حتى
 	// فني بالميدان، يكدر يحلّ بلاغ خطأ تدقيق ويغلقه. نفس حارس القراءة
 	// فوق بالضبط.
 	mux.Handle("PUT /api/audit-issues/{id}/resolve", middleware.Chain(http.HandlerFunc(bookingAuditHandler.ResolveIssue), requireAuth,
-		middleware.RequireRoleOrAnyPermission(permissionRepo, employeeRepo, notificationRepo,
+		guards.RoleOrAnyPermission(
 			[]string{"ADMIN", "OWNER", "MONITOR", "QUALITY_ENGINEER", "HR_COORDINATOR", "FINANCE"}, "monitoring", "auditing", "finance_audit", "audit_issues")))
 	mux.Handle("PUT /api/bookings/{id}/verify", middleware.Chain(http.HandlerFunc(bookingHandler.Verify), requireAuth, requireVerifyBooking))
 	// إرجاع الحجز للتدقيق: التدقيق جان قرار نهائي ما إله رجعة. مدير
@@ -1503,12 +1505,12 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	// حجز «منجز» بالغلط يرجع للكادر حتى يسجّل إنجاز جزئي — صلاحية booking_reopen.
 	bookingReopenHandler := handler.NewBookingReopenHandler(repository.NewBookingReopenRepository(db), employeeRepo, notificationRepo)
 	mux.Handle("PUT /api/bookings/{id}/reopen", middleware.Chain(http.HandlerFunc(bookingReopenHandler.Reopen), requireAuth,
-		middleware.RequireRoleOrPermission(permissionRepo, employeeRepo, notificationRepo, []string{"ADMIN", "OWNER"}, "booking_reopen")))
+		guards.RoleOrPermission([]string{"ADMIN", "OWNER"}, "booking_reopen")))
 	// (ع) 10-19: «بدء العمل» انضغط بالغلط على حجز باچر — المالك يتراجع عنه.
 	mux.Handle("PUT /api/bookings/{id}/unstart", middleware.Chain(http.HandlerFunc(bookingReopenHandler.Unstart), requireAuth, requireOwner))
 	mux.Handle("PUT /api/bookings/{id}/return-to-crew", middleware.Chain(http.HandlerFunc(bookingHandler.ReturnToCrew), requireAuth, requireProjectMgmt))
 	// ↩️ «رجعت من المشاريع» (ع 10-23): المنسّق يشوفها ويستلمها — نفس حارس «تنسيق الحجوزات» بالواجهة
-	requireReturnedDesk := middleware.RequireRoleOrAnyPermission(permissionRepo, employeeRepo, notificationRepo, []string{"ADMIN"}, "coordinator")
+	requireReturnedDesk := guards.RoleOrAnyPermission([]string{"ADMIN"}, "coordinator")
 	mux.Handle("GET /api/bookings/returned-from-projects", middleware.Chain(http.HandlerFunc(bookingHandler.ReturnedFromProjects), requireAuth, requireReturnedDesk))
 	mux.Handle("PUT /api/bookings/{id}/return-handled", middleware.Chain(http.HandlerFunc(bookingHandler.ReturnHandled), requireAuth, requireReturnedDesk))
 	mux.Handle("PUT /api/bookings/{id}/confirmation-contacted", middleware.Chain(http.HandlerFunc(bookingHandler.MarkConfirmationContacted), requireAuth, requireCoordinator))
@@ -1554,7 +1556,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	mux.Handle("POST /api/expenses", middleware.Chain(http.HandlerFunc(expenseHandler.Create), requireAuth))
 	// صلاحية «إدارة المصاريف (موافقة ورفض)» چانت ما تشتغل — الحارس ما يعرفها.
 	mux.Handle("PUT /api/expenses/{id}/status", middleware.Chain(http.HandlerFunc(expenseHandler.UpdateStatus), requireAuth,
-		middleware.RequireRoleOrAnyPermission(permissionRepo, employeeRepo, notificationRepo, []string{"ADMIN", "FINANCE"}, "finance_audit", "expenses_manage")))
+		guards.RoleOrAnyPermission([]string{"ADMIN", "FINANCE"}, "finance_audit", "expenses_manage")))
 
 	// المخزون — أدوات شخصية / مركبات / أدوات مشتركة / طلبات الأدوات
 	mux.Handle("GET /api/inventory/personal", middleware.Chain(http.HandlerFunc(inventoryHandler.ListPersonalTools), requireAuth))
@@ -1646,7 +1648,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 
 	// كل تقييمات الشركة — حارسها يطابق حارس شاشة «نقاط الكي بي اي».
 	mux.Handle("GET /api/kpi", middleware.Chain(http.HandlerFunc(kpiHandler.List), requireAuth,
-		middleware.RequireRoleOrAnyPermission(permissionRepo, employeeRepo, notificationRepo,
+		guards.RoleOrAnyPermission(
 			[]string{"ADMIN", "OWNER", "MONITOR"}, "kpi_management")))
 	mux.Handle("GET /api/kpi/employee/{employeeId}", middleware.Chain(http.HandlerFunc(kpiHandler.ListForEmployee), requireAuth))
 	mux.Handle("GET /api/kpi/leaderboard/{role}", middleware.Chain(http.HandlerFunc(kpiHandler.RoleLeaderboard), requireAuth))
@@ -1697,7 +1699,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	// ⚠️ التدقيق للمالك والمراقب والمدير **بس** — مهندس الجودة ما
 	// يدقّق نفسه، هو الي انتقيّم شغله بهذي الشاشة.
 	mux.Handle("PUT /api/complaints/{id}/audit", middleware.Chain(http.HandlerFunc(complaintHandler.Audit), requireAuth,
-		middleware.RequireRoleOrAnyPermission(permissionRepo, employeeRepo, notificationRepo, []string{"ADMIN", "OWNER", "MONITOR"}, "monitoring", "auditing")))
+		guards.RoleOrAnyPermission([]string{"ADMIN", "OWNER", "MONITOR"}, "monitoring", "auditing")))
 	mux.Handle("GET /api/complaints/{id}/events", middleware.Chain(http.HandlerFunc(complaintHandler.Events), requireAuth, requireCustomerRead))
 	// ⚠️ القراءة تقبل **الدور** مو الصلاحية بس: صاحب النظام طلب
 	// «المراقب لازم يشوف متابعة الجودة كاملة»، وخريطة صلاحيات
@@ -1707,7 +1709,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	// المراقب منها حتى لو عنده الصلاحية.
 	mux.Handle("PUT /api/quality-follow-ups/{id}/monitor-verdict", middleware.Chain(http.HandlerFunc(qualityFollowUpHandler.MonitorVerdict), requireAuth, requireMon["mon_inbox"]))
 	mux.Handle("GET /api/quality-follow-ups", middleware.Chain(http.HandlerFunc(qualityFollowUpHandler.List), requireAuth,
-		middleware.RequireRoleOrPermission(permissionRepo, employeeRepo, notificationRepo,
+		guards.RoleOrPermission(
 			[]string{"ADMIN", "OWNER", "MONITOR", "QUALITY_ENGINEER"}, "quality_control")))
 	mux.Handle("PUT /api/quality-follow-ups/{id}", middleware.Chain(http.HandlerFunc(qualityFollowUpHandler.Update), requireAuth, requireQuality))
 	// حكم الجودة: تقرير إيجابي/سلبي، والكشف الميداني. نفس صلاحية الشاشة
@@ -1729,7 +1731,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 
 	// تتبع المهام (missions)
 	// (فحص 10-11) كل المهمات (مواقع الزبائن والحركة) لأهل المتابعة بس — الفني يشوف مهامه بـ/my
-	requireMissionView := middleware.RequireRoleOrAnyPermission(permissionRepo, employeeRepo, notificationRepo,
+	requireMissionView := guards.RoleOrAnyPermission(
 		[]string{"ADMIN", "HR_COORDINATOR", "MONITOR"}, "monitoring", "mission_tracking")
 	mux.Handle("GET /api/missions", middleware.Chain(http.HandlerFunc(missionHandler.List), requireAuth, requireMissionView))
 	mux.Handle("GET /api/missions/monitor/live", middleware.Chain(http.HandlerFunc(missionHandler.MonitorLive), requireAuth, requireMissionView))
@@ -1750,7 +1752,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	// الإنشاء يقبل كذلك صلاحية "إضافة مشروع فقط" المبسّطة — بينما التعديل/الحذف
 	// والترحيل بين المراحل يبقى محصوراً بمدير المشاريع/الأدمن.
 	mux.Handle("POST /api/projects", middleware.Chain(http.HandlerFunc(projectHandler.Create), requireAuth,
-		middleware.RequireRoleOrAnyPermission(permissionRepo, employeeRepo, notificationRepo,
+		guards.RoleOrAnyPermission(
 			[]string{"PROJECT_MANAGER"}, "project_management", "project_create_only")))
 	// المشاريع المُسلَّمة للموظف الحالي — ما تحتاج صلاحية إدارة مشاريع عامة،
 	// التسليم نفسه هو الصلاحية وعلى هالمشاريع بس.
@@ -1969,12 +1971,12 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	mux.Handle("POST /api/staff-requests", middleware.Chain(http.HandlerFunc(staffRequestHandler.Create), requireAuth, requireProjectMgmtPerm))
 	mux.Handle("GET /api/staff-requests", middleware.Chain(http.HandlerFunc(staffRequestHandler.List), requireAuth))
 	mux.Handle("PUT /api/staff-requests/{id}/status", middleware.Chain(http.HandlerFunc(staffRequestHandler.UpdateStatus), requireAuth,
-		middleware.RequireRoleOrPermission(permissionRepo, employeeRepo, notificationRepo, []string{"ADMIN", "HR_COORDINATOR"}, "staff_requests")))
+		guards.RoleOrPermission([]string{"ADMIN", "HR_COORDINATOR"}, "staff_requests")))
 
 	// مسؤول خدمة عام (تعميم فكرة أبو الجي بي اس لأي مجموعة خدمات) — الأدمن فقط يحدد المسؤوليات
 	mux.Handle("GET /api/service-managers", middleware.Chain(http.HandlerFunc(serviceManagerHandler.List), requireAuth))
 	mux.Handle("PUT /api/service-managers", middleware.Chain(http.HandlerFunc(serviceManagerHandler.Set), requireAuth,
-		middleware.RequireRoleOrPermission(permissionRepo, employeeRepo, notificationRepo, []string{"ADMIN"}, "service_managers")))
+		guards.RoleOrPermission([]string{"ADMIN"}, "service_managers")))
 
 	// تتبع الموقع الحي للفرق الميدانية
 	// إرسال نقطة موقع مفتوح لأي موظف مسجل دخول (يرسل موقعه هو بس، محمي داخل الهاندلر
@@ -1998,11 +2000,11 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	// الصلاحيتين — التبويب يطلعلهم والحفظ يرد «ما عندك صلاحية» (وتنسجل مخالفة).
 	// هسه يطابق authorizeReview: ليدر، MONITOR/HR_COORDINATOR، monitoring/auditing.
 	mux.Handle("POST /api/performance-reviews", middleware.Chain(http.HandlerFunc(performanceReviewHandler.Create), requireAuth,
-		middleware.RequireLeaderOrRoleOrAnyPermission(permissionRepo, employeeRepo, notificationRepo,
+		guards.LeaderOrRoleOrAnyPermission(
 			[]string{"MONITOR", "HR_COORDINATOR"}, "kpi_management", "performance_review", "monitoring", "auditing")))
 	// كل تقييمات الأداء — سجلات شخصية، للإدارة والمراقبة.
 	mux.Handle("GET /api/performance-reviews", middleware.Chain(http.HandlerFunc(performanceReviewHandler.List), requireAuth,
-		middleware.RequireRoleOrAnyPermission(permissionRepo, employeeRepo, notificationRepo,
+		guards.RoleOrAnyPermission(
 			[]string{"ADMIN", "OWNER", "MONITOR", "HR_COORDINATOR"}, "performance_review", "kpi_management", "staff_management")))
 	mux.Handle("GET /api/performance-reviews/ratable", middleware.Chain(http.HandlerFunc(performanceReviewHandler.Ratable), requireAuth))
 	mux.Handle("GET /api/performance-reviews/employee/{employeeId}", middleware.Chain(http.HandlerFunc(performanceReviewHandler.ListForEmployee), requireAuth))
@@ -2010,7 +2012,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	// «تقييم بين الإداريين» — ADMIN/OWNER/MONITOR بس (منو يقارن
 	// إداري الكوادر ببعض)، مو إداري الكوادر نفسه ولا التيم ليدر.
 	mux.Handle("GET /api/performance-reviews/evaluator-leaderboard", middleware.Chain(http.HandlerFunc(performanceReviewHandler.EvaluatorLeaderboard), requireAuth,
-		middleware.RequireRoleOrAnyPermission(permissionRepo, employeeRepo, notificationRepo, []string{"ADMIN", "OWNER", "MONITOR"}, "monitoring", "auditing")))
+		guards.RoleOrAnyPermission([]string{"ADMIN", "OWNER", "MONITOR"}, "monitoring", "auditing")))
 
 	// المشتريات (procurement)
 	mux.Handle("GET /api/procurement", middleware.Chain(http.HandlerFunc(procurementHandler.List), requireAuth, requireProcurement))
@@ -2027,7 +2029,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	procurementHandler.SetAfterFulfill(purchaseControl.AfterFulfill)
 	procurementHandler.SetBeforeFulfill(purchaseControl.BeforeFulfill)
 	expenseHandler.SetAfterPurchase(purchaseControl.AfterExpensePurchase)
-	requirePurchaseWatch := middleware.RequireRoleOrAnyPermission(permissionRepo, employeeRepo, notificationRepo, []string{"ADMIN", "MONITOR", "FINANCE"}, "monitoring", "finance_audit")
+	requirePurchaseWatch := guards.RoleOrAnyPermission([]string{"ADMIN", "MONITOR", "FINANCE"}, "monitoring", "finance_audit")
 	go purchaseControl.RunStandardsLoop()
 	mux.Handle("GET /api/procurement-standards", middleware.Chain(http.HandlerFunc(purchaseControl.Standards), requireAuth, requirePurchaseWatch))
 	mux.Handle("PUT /api/procurement-standards", middleware.Chain(http.HandlerFunc(purchaseControl.SetStandard), requireAuth, requireAdmin))
@@ -2049,7 +2051,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 		_ = notificationRepo.CreateForRolesOrPermission([]string{"ADMIN", "OWNER", "PUBLIC_RELATIONS"}, "supplier_relations", "supplier_relations", msg)
 	})
 	go supplierRelations.RunReminders()
-	requireSupplierRel := middleware.RequireRoleOrAnyPermission(permissionRepo, employeeRepo, notificationRepo, []string{"ADMIN", "PUBLIC_RELATIONS", "MONITOR"}, "supplier_relations", "suppliers_management", "tech_suppliers", "unit_technicians")
+	requireSupplierRel := guards.RoleOrAnyPermission([]string{"ADMIN", "PUBLIC_RELATIONS", "MONITOR"}, "supplier_relations", "suppliers_management", "tech_suppliers", "unit_technicians")
 	mux.Handle("GET /api/supplier-relations", middleware.Chain(http.HandlerFunc(supplierRelations.List), requireAuth, requireSupplierRel))
 	mux.Handle("POST /api/supplier-relations/{kind}/{id}/contact", middleware.Chain(http.HandlerFunc(supplierRelations.AddContact), requireAuth, requireSupplierRel))
 	mux.Handle("GET /api/supplier-relations/{kind}/{id}/timeline", middleware.Chain(http.HandlerFunc(supplierRelations.Timeline), requireAuth, requireSupplierRel))
@@ -2065,7 +2067,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	mux.Handle("GET /api/geo/resolve-map-link", middleware.Chain(http.HandlerFunc(mapLinkHandler.Resolve), requireAuth))
 
 	// سياسة الخصوصية — القراءة والموافقة لأي موظف، والإدارة بصلاحية مستقلة
-	requirePrivacyMgmt := middleware.RequirePermission(permissionRepo, employeeRepo, notificationRepo, "privacy_policy_manage")
+	requirePrivacyMgmt := guards.Permission("privacy_policy_manage")
 	mux.Handle("GET /api/privacy-policy", middleware.Chain(http.HandlerFunc(privacyPolicyHandler.List), requireAuth))
 	mux.Handle("GET /api/privacy-policy/status", middleware.Chain(http.HandlerFunc(privacyPolicyHandler.Status), requireAuth))
 	mux.Handle("POST /api/privacy-policy/accept", middleware.Chain(http.HandlerFunc(privacyPolicyHandler.Accept), requireAuth))
@@ -2111,7 +2113,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	// صاحب الفاتورة اليدوية يشوف عيّناته — والنتيجة إن **فني** عنده
 	// حساب الكلفة طلعله تبويب أسعار الشركة كله. وسعر الخدمة قرار
 	// إدارة، مو معلومة كل من يسوي فاتورة.
-	requireServicePriceRead := middleware.RequireRoleOrAnyPermission(permissionRepo, employeeRepo, notificationRepo,
+	requireServicePriceRead := guards.RoleOrAnyPermission(
 		[]string{"ADMIN", "OWNER", "FINANCE", "MONITOR"},
 		"finance", "finance_audit")
 	// القراءة لصاحب حساب الكلفة والمحاسب والمراقب والمالك — الي
@@ -2171,7 +2173,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	// صلاحية «حساب تكاليف الشد» تظهر البند بالقائمة — فلازم تفتح المسار كمان،
 	// وإلا الموظف يضغط وينرفض ويتسجّل عليه تجاوز.
 	mux.Handle("GET /api/finance/gps-install-costs", middleware.Chain(http.HandlerFunc(gpsInstallCostHandler.Summary), requireAuth,
-		middleware.RequireRoleOrAnyPermission(permissionRepo, employeeRepo, notificationRepo, []string{"ADMIN", "FINANCE"}, "finance_audit", "gps_install_costs")))
+		guards.RoleOrAnyPermission([]string{"ADMIN", "FINANCE"}, "finance_audit", "gps_install_costs")))
 
 	// ── الإجازات ──────────────────────────────────────────────────────────────
 	// أي موظف يقدّم ويشوف طلباته. البت بالطلبات محصور بالمخوّل حسب مسار
@@ -2182,7 +2184,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	mux.Handle("GET /api/leaves/inbox", middleware.Chain(http.HandlerFunc(leaveHandler.Inbox), requireAuth))
 	mux.Handle("GET /api/leaves/pending-count", middleware.Chain(http.HandlerFunc(leaveHandler.PendingCount), requireAuth))
 	// 🗓️ «إجازات الموظفين» (ع 10-23) — نفس حارس البند بالقائمة: المدير/المراقب أو إدارة الكوادر أو الموافقة على الإجازات
-	requireLeaveRegister := middleware.RequireRoleOrAnyPermission(permissionRepo, employeeRepo, notificationRepo, []string{"ADMIN", "MONITOR"},
+	requireLeaveRegister := guards.RoleOrAnyPermission([]string{"ADMIN", "MONITOR"},
 		"staff_management", "monitoring", "leave_approve_morning", "leave_approve_evening")
 	mux.Handle("GET /api/leaves/register", middleware.Chain(http.HandlerFunc(leaveHandler.Register), requireAuth, requireLeaveRegister))
 	mux.Handle("PUT /api/leaves/{id}/preliminary", middleware.Chain(http.HandlerFunc(leaveHandler.Preliminary), requireAuth))
@@ -2203,14 +2205,14 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	mux.Handle("GET /api/dashboard/finance-summary", middleware.Chain(
 		http.HandlerFunc(dashboardHandler.FinanceSummary),
 		requireAuth,
-		middleware.RequireRoleOrAnyPermission(permissionRepo, employeeRepo, notificationRepo,
+		guards.RoleOrAnyPermission(
 			[]string{"ADMIN", "OWNER", "FINANCE", "MONITOR"}, "finance", "monitoring"),
 	))
 
 	// ═══ نظام الطاقة الشمسية (منقول من Google Sheets) ═══
 	// القراءة لأي موظف مسجّل: الفني بالموقع يحتاج يشوف مكوّنات المنظومة
 	// ومواصفاتها وهو شغال. التعديل والتجهيز بصلاحية "solar_system".
-	requireSolar := middleware.RequireRoleOrPermission(permissionRepo, employeeRepo, notificationRepo,
+	requireSolar := guards.RoleOrPermission(
 		[]string{"ADMIN", "OWNER"}, "solar_system")
 
 	// ═══ برامج التدريب ═══
@@ -2260,7 +2262,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 
 	// تقرير ١ (B12): تركيبات الزبائن وأسعارها والمخزن — لأصحاب الطاقة الشمسية بس.
 	// (كتالوج المنظومات /solar/systems يبقى مفتوح لأن الحجز وعرض السعر يقرونه.)
-	requireSolarView := middleware.RequireRoleOrPermission(permissionRepo, employeeRepo, notificationRepo,
+	requireSolarView := guards.RoleOrPermission(
 		[]string{"ADMIN", "OWNER", "MONITOR", "TECHNICIAN", "SERVICE_MANAGER"}, "solar_system")
 	solarHandler.SetCostGate(func(r *http.Request) bool {
 		switch middleware.RoleFromContext(r) {
@@ -2418,7 +2420,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	vehicleTrackingHandler := handler.NewVehicleTrackingHandler(db)
 	// 🧽 غسل السيارات: عامل الغسل يأشّر، وصاحب إدارة المركبات يشوف ويتراجع
 	carWashHandler := handler.NewCarWashHandler(db)
-	requireCarWash := middleware.RequireRoleOrPermission(permissionRepo, employeeRepo, notificationRepo, []string{"CAR_WASHER"}, "vehicle_management")
+	requireCarWash := guards.RoleOrPermission([]string{"CAR_WASHER"}, "vehicle_management")
 	mux.Handle("GET /api/car-wash", middleware.Chain(http.HandlerFunc(carWashHandler.List), requireAuth, requireCarWash))
 	mux.Handle("POST /api/car-wash/{vehicleId}", middleware.Chain(http.HandlerFunc(carWashHandler.Mark), requireAuth, requireCarWash))
 	mux.Handle("DELETE /api/car-wash/{vehicleId}", middleware.Chain(http.HandlerFunc(carWashHandler.Unmark), requireAuth, requireCarWash))
@@ -2546,8 +2548,8 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	// ═══ وحدة تقنية المعلومات ═══ — الجرد لصاحب it_assets، والإحصائيات
 	// لصاحب it_stats أو it_assets (الي يدير الأجهزة يشوف أرقامها).
 	itAssetHandler := handler.NewItAssetHandler(repository.NewItAssetRepository(db))
-	requireItAssets := middleware.RequireRoleOrPermission(permissionRepo, employeeRepo, notificationRepo, []string{"ADMIN"}, "it_assets")
-	requireItStats := middleware.RequireRoleOrAnyPermission(permissionRepo, employeeRepo, notificationRepo, []string{"ADMIN"}, "it_stats", "it_assets")
+	requireItAssets := guards.RoleOrPermission([]string{"ADMIN"}, "it_assets")
+	requireItStats := guards.RoleOrAnyPermission([]string{"ADMIN"}, "it_stats", "it_assets")
 	mux.Handle("GET /api/it/assets", middleware.Chain(http.HandlerFunc(itAssetHandler.List), requireAuth, requireItAssets))
 	mux.Handle("POST /api/it/assets", middleware.Chain(http.HandlerFunc(itAssetHandler.Create), requireAuth, requireItAssets))
 	mux.Handle("PUT /api/it/assets/{id}", middleware.Chain(http.HandlerFunc(itAssetHandler.Update), requireAuth, requireItAssets))
@@ -2561,7 +2563,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	mux.Handle("DELETE /api/survey-photos/{id}", middleware.Chain(http.HandlerFunc(surveyPhotoHandler.Delete), requireAuth))
 	// تدقيق التكرار (ماتركس) — عرض وقرار "مو تكرار" حصراً، بلا حذف/دمج.
 	// تدقيق التكرار: المدير/المالك أو صلاحية duplicate_review (طلب (ع): موظف يدقق بيهن).
-	requireDuplicateReview := middleware.RequireRoleOrPermission(permissionRepo, employeeRepo, notificationRepo, []string{"ADMIN"}, "duplicate_review")
+	requireDuplicateReview := guards.RoleOrPermission([]string{"ADMIN"}, "duplicate_review")
 	mux.Handle("GET /api/duplicate-candidates", middleware.Chain(http.HandlerFunc(duplicateCandidateHandler.List), requireAuth, requireDuplicateReview))
 	mux.Handle("PUT /api/duplicate-candidates/{id}/dismiss", middleware.Chain(http.HandlerFunc(duplicateCandidateHandler.Dismiss), requireAuth, requireDuplicateReview))
 	duplicateCandidateHandler.SetResolvers(duplicateCandidateRepo, bookingDeleteRepo, notificationRepo, employeeRepo)
@@ -2629,7 +2631,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	//
 	// ⚠️ والإضافة **زيادة مو تبديل**: ولا حارس ينضيّق، فما تنكسر
 	// صلاحية ولا موظف شغّال.
-	requireLeaderBasket := middleware.RequireLeaderOrAnyPermission(permissionRepo, employeeRepo, notificationRepo,
+	requireLeaderBasket := guards.LeaderOrAnyPermission(
 		"leader_basket", "finance", "finance_audit", "invoice_gps", "invoice_dashcam", "invoice_internal",
 		// صلاحية «عرض فواتير الليدر» چانت تفتح البند بالقائمة والخادم ما يعرفها — فالشاشة تنرفض.
 		"leader_invoices_view",
@@ -2650,35 +2652,35 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	// المطلوب، حتى مسؤول الجي بي اس ما يفوتر داش كام.
 	mux.Handle("POST /api/leader-invoices/service", middleware.Chain(
 		http.HandlerFunc(leaderInvoiceHandler.CreateServiceInvoice), requireAuth,
-		middleware.RequireRoleOrAnyPermission(permissionRepo, employeeRepo, notificationRepo,
+		guards.RoleOrAnyPermission(
 			[]string{"ADMIN", "OWNER"}, "invoice_gps", "invoice_dashcam")))
 	// فاتورة بكلفة يدوية — شغل برّا جدول الكلفة. صلاحية وحدة معزولة
 	// تنمنح فرد-فرد، لأن السعر الحر يشيل الحارس الوحيد على التسعير.
 	mux.Handle("POST /api/leader-invoices/manual", middleware.Chain(
 		http.HandlerFunc(leaderInvoiceHandler.CreateManualInvoice), requireAuth,
-		middleware.RequireRoleOrAnyPermission(permissionRepo, employeeRepo, notificationRepo,
+		guards.RoleOrAnyPermission(
 			[]string{"ADMIN", "OWNER"}, "invoice_manual")))
 	// ═══ إكسل حجوزات داخل الشركة ═══
 	// المالك والمدير والمحاسب والمراقب (قرار (ع)). و`finance_audit`
 	// جنبهم حتى الي يكمل شغل المحاسب يطلعه الملف بعد.
 	internalExportHandler := handler.NewInternalBookingExportHandler(repository.NewInternalBookingReportRepository(db))
 	mux.Handle("GET /api/internal-bookings/export", middleware.Chain(http.HandlerFunc(internalExportHandler.ExportMonth), requireAuth,
-		middleware.RequireRoleOrAnyPermission(permissionRepo, employeeRepo, notificationRepo,
+		guards.RoleOrAnyPermission(
 			[]string{"ADMIN", "OWNER", "FINANCE", "MONITOR"}, "finance", "finance_audit", "monitoring", "auditing")))
 	// فاتورة الشغل داخل الشركة: صلاحية وحدة ينطيها المالك للليدر
 	// **أو** لإداري الكوادر — إداري الكوادر مو ليدر فحارس الفاتورة
 	// العادية يرفضه، والفاتورة اليدوية تفتح له كل الفواتير الحرة.
 	// قرار (ع) 10-07: تسعير الأعمال الداخلية القديمة (مؤقت) + طابور ورق الإداري.
 	internalBackfillHandler := handler.NewInternalBackfillHandler(db, leaderInvoiceService)
-	requireBackfill := middleware.RequireRoleOrAnyPermission(permissionRepo, employeeRepo, notificationRepo,
+	requireBackfill := guards.RoleOrAnyPermission(
 		[]string{"ADMIN", "FINANCE", "MONITOR"}, "finance", "finance_audit", "monitoring")
 	mux.Handle("GET /api/internal-backfill", middleware.Chain(http.HandlerFunc(internalBackfillHandler.List), requireAuth, requireBackfill))
 	mux.Handle("POST /api/internal-backfill/{id}", middleware.Chain(http.HandlerFunc(internalBackfillHandler.Price), requireAuth, requireBackfill))
 	mux.Handle("GET /api/bookings/internal-paperwork", middleware.Chain(http.HandlerFunc(internalBackfillHandler.CoordinatorQueue), requireAuth,
-		middleware.RequireRoleOrAnyPermission(permissionRepo, employeeRepo, notificationRepo, []string{"ADMIN", "HR_COORDINATOR"}, "coordinator", "invoice_internal")))
+		guards.RoleOrAnyPermission([]string{"ADMIN", "HR_COORDINATOR"}, "coordinator", "invoice_internal")))
 	mux.Handle("POST /api/leader-invoices/internal", middleware.Chain(http.HandlerFunc(leaderInvoiceHandler.CreateInternalInvoice), requireAuth,
 		// (ع) 10-10: نفس الي يشوفون طابور «تنتظر ورقك» يسوّون الحساب من نافذته
-		middleware.RequireRoleOrAnyPermission(permissionRepo, employeeRepo, notificationRepo, []string{"ADMIN", "HR_COORDINATOR"}, "coordinator", "invoice_internal")))
+		guards.RoleOrAnyPermission([]string{"ADMIN", "HR_COORDINATOR"}, "coordinator", "invoice_internal")))
 	// حساب تقريبي بدون حفظ لما زبون يستفسر — نفس صلاحية إنشاء الفاتورة (الليدر)
 	// حساب تكلفة التنصيب للتنفيذ: فقرة رئيسية بكل الحسابات وكل الأدوار،
 	// فما بيها قيد غير تسجيل الدخول — هي حاسبة ما تكشف بيانات أحد
@@ -2783,8 +2785,8 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	// ── الإعلام والعلاقات العامة (قرار (ع) 10-05) ──
 	// التحويل: من إدارة المشاريع. والقراءة والتحديث: دور الإعلام أو صلاحية media
 	// (والمدير والمالك). ومدير المشاريع يشوف التحويلات حتى يتابع.
-	requireMediaView := middleware.RequireRoleOrAnyPermission(permissionRepo, employeeRepo, notificationRepo, []string{"ADMIN", "MEDIA", "PUBLIC_RELATIONS"}, "media", "project_management")
-	requireMedia := middleware.RequireRoleOrPermission(permissionRepo, employeeRepo, notificationRepo, []string{"ADMIN", "MEDIA", "PUBLIC_RELATIONS"}, "media")
+	requireMediaView := guards.RoleOrAnyPermission([]string{"ADMIN", "MEDIA", "PUBLIC_RELATIONS"}, "media", "project_management")
+	requireMedia := guards.RoleOrPermission([]string{"ADMIN", "MEDIA", "PUBLIC_RELATIONS"}, "media")
 	mediaHandler := handler.NewMediaHandler(repository.NewMediaRepository(db), func(msg string) {
 		_ = notificationRepo.CreateForRolesOrPermission([]string{"MEDIA", "PUBLIC_RELATIONS"}, "media", "MEDIA", msg)
 	})
@@ -2885,7 +2887,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	mux.Handle("POST /api/staff-ratings/quality", middleware.Chain(staffScoreHandler.RateQuality(), requireAuth, requireQuality))
 	mux.Handle("GET /api/staff-ratings/periodic", middleware.Chain(http.HandlerFunc(staffScoreHandler.PeriodicState), requireAuth, requireMon["mon_staff"]))
 	mux.Handle("POST /api/staff-ratings/periodic", middleware.Chain(staffScoreHandler.RatePeriodic(), requireAuth, requireMon["mon_staff"]))
-	requireRater := middleware.RequireRoleOrAnyPermission(permissionRepo, employeeRepo, notificationRepo, []string{"ADMIN", "MONITOR"},
+	requireRater := guards.RoleOrAnyPermission([]string{"ADMIN", "MONITOR"},
 		"monitoring", "auditing", "quality_control", "coordinator", "crew_management")
 	mux.Handle("GET /api/staff-ratings/booking/{id}", middleware.Chain(http.HandlerFunc(staffScoreHandler.BookingState), requireAuth, requireRater))
 	// ═══ ماتركس الوكيل (قرار (ع) 10-10): هايكو يفتش بنفسه بأدوات قراءة ═══
@@ -3058,7 +3060,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 				service.NewAnthropicClientFor(service.WaAgentBooking, cfg.AIKeyBooking), cfg.AIModel, 200))
 			aiAgentNames.SetEnabled(waSvc.Enabled)
 			waH := handler.NewWaHandler(waSvc, waClient, permissionRepo)
-			requireWa := middleware.RequireRoleOrAnyPermission(permissionRepo, employeeRepo, notificationRepo, []string{"ADMIN"}, "quality_control", "coordinator")
+			requireWa := guards.RoleOrAnyPermission([]string{"ADMIN"}, "quality_control", "coordinator")
 			mux.Handle("GET /api/wa/webhook", http.HandlerFunc(waH.Verify))
 			mux.Handle("POST /api/wa/webhook", http.HandlerFunc(waH.Receive))
 			mux.Handle("GET /api/wa/conversations", middleware.Chain(http.HandlerFunc(waH.List), requireAuth, requireWa))
@@ -3116,7 +3118,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 			return out
 		})
 		// (دازاي 10-29) محادثة ماتركس لصاحب agent_matrix هم — أدواته حسب صلاحياته
-		requireMatrixChat := middleware.RequireRoleOrAnyPermission(permissionRepo, employeeRepo, notificationRepo, []string{"ADMIN"}, "agent_matrix")
+		requireMatrixChat := guards.RoleOrAnyPermission([]string{"ADMIN"}, "agent_matrix")
 		// 🧠 اقتراحات الذكاء (دازاي 10-28): ماتركس يقترح تطوير نفسه
 		agent.RegisterSuggestTool(db, "MATRIX", func(msg string) {
 			_ = notificationRepo.CreateForRole("OWNER", "AI_SUGGESTION", msg)
@@ -3151,7 +3153,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	mux.Handle("GET /api/network-cost/items", middleware.Chain(http.HandlerFunc(networkCostHandler.ListActive), requireAuth, requireExecutionCost))
 	mux.Handle("POST /api/network-cost/calculate", middleware.Chain(http.HandlerFunc(networkCostHandler.Calculate), requireAuth, requireExecutionCost))
 	// تقرير ١ (B3): صلاحية «أسعار الشبكات» تفتح الشاشة — الخادم يقبلها.
-	requireNetPrices := middleware.RequireRoleOrPermission(permissionRepo, employeeRepo, notificationRepo, []string{"ADMIN"}, "network_prices")
+	requireNetPrices := guards.RoleOrPermission([]string{"ADMIN"}, "network_prices")
 	mux.Handle("GET /api/network-cost/prices", middleware.Chain(http.HandlerFunc(networkCostHandler.ListAll), requireAuth, requireNetPrices))
 	mux.Handle("POST /api/network-cost/prices", middleware.Chain(http.HandlerFunc(networkCostHandler.CreatePrice), requireAuth, requireNetPrices))
 	mux.Handle("PUT /api/network-cost/prices/{id}", middleware.Chain(http.HandlerFunc(networkCostHandler.UpdatePrice), requireAuth, requireNetPrices))
@@ -3192,7 +3194,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	// ويطبع الفاتورة بتعديلاتها.
 	mux.Handle("GET /api/leader-invoices/{id}/adjustments", middleware.Chain(
 		http.HandlerFunc(leaderInvoiceHandler.Adjustments), requireAuth,
-		middleware.RequireRoleOrAnyPermission(permissionRepo, employeeRepo, notificationRepo,
+		guards.RoleOrAnyPermission(
 			[]string{"ADMIN", "OWNER", "FINANCE", "MONITOR"},
 			"leader_invoices_view", "finance", "monitoring", "auditing")))
 
