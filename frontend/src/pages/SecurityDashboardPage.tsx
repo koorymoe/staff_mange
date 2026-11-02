@@ -187,6 +187,33 @@ export default function SecurityDashboardPage() {
             )}
           </div>
 
+          {/* 🚦 طوابير المهام الخلفية (11-02) — الثگيلة وحدة وحدة، وتنطر الموظفين */}
+          <div className="mt-4 overflow-hidden rounded-xl border border-emerald-500/30 bg-black/40">
+            <h3 className="border-b border-emerald-500/20 px-4 py-3 text-xs text-emerald-300/80">
+              🚦 طوابير المهام الخلفية — طلبات شغالة هسه: <b dir="ltr">{data.requestsInFlight ?? 0}</b>
+              {' · '}بالطابور: <b>{(data.backgroundJobs ?? []).filter((j) => j.queued).length}</b>
+              {' · '}شغالة: <b>{(data.backgroundJobs ?? []).filter((j) => j.running).length}</b>
+            </h3>
+            <div className="max-h-72 overflow-y-auto">
+              <table className="w-full text-xs text-emerald-100/80">
+                <thead className="text-emerald-300/60"><tr><th className="px-3 py-2 text-right">المهمة</th><th>الطابور</th><th>الحالة</th><th>آخر مدة</th><th>أطول مدة</th><th>انتظار</th><th>مرات/فشل</th></tr></thead>
+                <tbody>
+                  {(data.backgroundJobs ?? []).map((j) => (
+                    <tr key={j.name} className="border-t border-emerald-500/10">
+                      <td className="px-3 py-1.5">{j.name}</td>
+                      <td className="text-center">{j.lane === 'heavy' ? 'ثگيل' : 'خفيف'}</td>
+                      <td className="text-center">{j.running ? '▶️ شغالة' : j.queued ? '⏳ بالطابور' : '—'}</td>
+                      <td className="text-center" dir="ltr">{(j.lastMs / 1000).toFixed(1)}s</td>
+                      <td className={`text-center ${j.maxMs > 20000 ? 'text-amber-300' : ''}`} dir="ltr">{(j.maxMs / 1000).toFixed(1)}s</td>
+                      <td className="text-center" dir="ltr">{(j.lastWaitMs / 1000).toFixed(1)}s</td>
+                      <td className="text-center">{j.runs}{j.failures ? <span className="text-red-400"> / {j.failures}</span> : ''}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
           {/* الحسابات المحظورة تلقائياً — المالك وحده يفك الحظر */}
           <div className="mt-4 overflow-hidden rounded-xl border border-red-500/30 bg-black/40">
             <h3 className="border-b border-red-500/20 px-4 py-3 text-xs text-red-300/80">

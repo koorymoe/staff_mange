@@ -4165,6 +4165,8 @@ export const api = {
       failedLoginsLastHour: number
       totalRequests: number
       requestsLastMinute: number
+      requestsInFlight?: number
+      backgroundJobs?: { name: string; lane: 'heavy' | 'light'; runs: number; failures: number; running: boolean; queued: boolean; lastStart: string; lastMs: number; lastWaitMs: number; maxMs: number; everySeconds: number }[]
       cpuCount: number
       diskTotalGB: number
       diskUsedGB: number

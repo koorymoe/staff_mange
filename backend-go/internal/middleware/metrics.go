@@ -2,6 +2,8 @@ package middleware
 
 import (
 	"net/http"
+	"staffmange-api/internal/safeguard"
+	"strings"
 	"sync/atomic"
 	"time"
 )
@@ -28,6 +30,12 @@ func Metrics(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		atomic.AddInt64(&totalRequests, 1)
 		atomic.AddInt64(&currentBucket, 1)
+		// طلب موظف شغال — المهام الخلفية الثگيلة تنطره يخلص (safeguard/queue.go)
+		// البث الحي (محادثة ماتركس/إيريس) يطوّل دقايق — ما ينحسب «مشغول».
+		if !strings.HasSuffix(r.URL.Path, "/stream") && r.URL.Query().Get("stream") != "1" {
+			safeguard.RequestStarted()
+			defer safeguard.RequestDone()
+		}
 		next.ServeHTTP(w, r)
 	})
 }

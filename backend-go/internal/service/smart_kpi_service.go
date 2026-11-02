@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math"
 	"sort"
+	"staffmange-api/internal/timeutil"
 	"strconv"
 	"strings"
 	"time"
@@ -22,7 +23,7 @@ func NewSmartKpiService(repo *repository.SmartKpiRepository) *SmartKpiService {
 }
 
 func getMonthRange(month string) (start, end time.Time, year, mon int) {
-	now := time.Now()
+	now := time.Now().In(timeutil.CompanyLocation()) // الشهر الافتراضي بتوقيت بغداد مو السيرفر
 	if month != "" {
 		parts := strings.Split(month, "-")
 		if len(parts) == 2 {

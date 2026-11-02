@@ -213,3 +213,4 @@ git push origin origin/avg:refs/heads/prod     # بعد التأكد إنه fast
 - (لوفي 11-02) DRY ٣أ/٣ب: timeutil.MonthStart لفترة الشهر (org_desk + matrix_score)؛ vehicle_tracking دورة 17→16 مقصودة، وsmart_kpi بتوقيت UTC (ملاحظة، ما انلمس). ui/classes.ts card + inp مرفوع بملفين.
 - (لوفي 11-02) DRY ٣ج: middleware.Guards — 107 حارس بـmain.go صار guards.X(...) بدل تكرار المستودعات الثلاثة؛ مقارنة نصية بعد الإرجاع = مطابق ١٠٠٪.
 - (لوفي 11-02) DRY ٣د: utils/useApi.ts (جلب + alive + خطأ) مطبّق على 4 شاشات كبداية؛ lazyRetry شمل 48 lazy داخلي بـ13 ملف (تصليح التوقف صار كامل).
+- (لوفي 11-02) 🚦 طوابير المهام الخلفية: safeguard.Loop يمر بطابور (ثگيل: عمّال واحد، خفيف <10د: عمّالين)، والثگيل ينطر لحد ما طلبات الموظفين الشغالة ≤6 (حد أقصى دقيقتين). البث الحي ما ينحسب. لوحة الأمان (المالك) تبين الطوابير. متغيرات: BG_HEAVY_WORKERS/BG_LIGHT_WORKERS/BG_YIELD_INFLIGHT. + KPI الشهر الافتراضي بتوقيت بغداد.

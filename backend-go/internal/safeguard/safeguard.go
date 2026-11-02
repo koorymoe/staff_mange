@@ -59,7 +59,8 @@ func Loop(name string, delay, every time.Duration, fn func()) {
 	go func() {
 		time.Sleep(delay)
 		for {
-			Run(name, fn)
+			// (11-02) عبر الطابور: حد للتزامن + الأولوية لطلبات الموظفين (queue.go)
+			runQueued(name, every, fn)
 			time.Sleep(every)
 		}
 	}()

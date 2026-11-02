@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"runtime"
 	"runtime/debug"
+	"staffmange-api/internal/safeguard"
 	"time"
 
 	"github.com/jmoiron/sqlx"
@@ -31,14 +32,17 @@ type SecurityDashboardResponse struct {
 	FailedLoginsLastHour int     `json:"failedLoginsLastHour"`
 	TotalRequests        int64   `json:"totalRequests"`
 	RequestsLastMinute   int64   `json:"requestsLastMinute"`
-	DiskTotalGB          float64 `json:"diskTotalGB"`
-	DiskUsedGB           float64 `json:"diskUsedGB"`
-	DiskFreeGB           float64 `json:"diskFreeGB"`
-	DBSizeMB             float64 `json:"dbSizeMB"`
-	DBConnectionsOpen    int     `json:"dbConnectionsOpen"`
-	DBConnectionsInUse   int     `json:"dbConnectionsInUse"`
-	OnlineEmployees      int     `json:"onlineEmployees"`
-	RecentLogins         any     `json:"recentLogins"`
+	// 🚦 طوابير المهام الخلفية (11-02)
+	RequestsInFlight   int64               `json:"requestsInFlight"`
+	BackgroundJobs     []safeguard.JobStat `json:"backgroundJobs"`
+	DiskTotalGB        float64             `json:"diskTotalGB"`
+	DiskUsedGB         float64             `json:"diskUsedGB"`
+	DiskFreeGB         float64             `json:"diskFreeGB"`
+	DBSizeMB           float64             `json:"dbSizeMB"`
+	DBConnectionsOpen  int                 `json:"dbConnectionsOpen"`
+	DBConnectionsInUse int                 `json:"dbConnectionsInUse"`
+	OnlineEmployees    int                 `json:"onlineEmployees"`
+	RecentLogins       any                 `json:"recentLogins"`
 	// الحسابات المحظورة تلقائياً + آخر الأحداث الأمنية
 	LockedEmployees any `json:"lockedEmployees"`
 	// حسابات المالك/مدير النظام الي تتعرض لتخمين — ما تنحظر تلقائياً
@@ -131,6 +135,8 @@ func (h *SecurityHandler) Dashboard(w http.ResponseWriter, r *http.Request) {
 		FailedLoginsLastHour: failedCount,
 		TotalRequests:        middleware.TotalRequests(),
 		RequestsLastMinute:   middleware.RequestsLastMinute(),
+		RequestsInFlight:     safeguard.InFlight(),
+		BackgroundJobs:       safeguard.Jobs(),
 		DiskTotalGB:          diskTotal,
 		DiskUsedGB:           diskUsed,
 		DiskFreeGB:           diskFree,
