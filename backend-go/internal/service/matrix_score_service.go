@@ -783,8 +783,15 @@ func (s *MatrixScoreService) scoreReportMatch(now time.Time, add func(repository
 		label := "تقرير إنجاز " + m.Day
 		pts := map[string]int{"MATCH": 2, "PARTIAL": 1}[m.Status]
 		why := label + ": " + m.Note
-		if m.Verdict != nil && *m.Verdict == "JUSTIFIED" {
+		switch {
+		case m.Verdict != nil && *m.Verdict == "JUSTIFIED":
 			pts, why = 2, why+" (المراقب: مبرّر)"
+		case m.Verdict != nil && *m.Verdict == "UNJUSTIFIED":
+			pts, why = 0, why+" (المراقب: مو مبرّر)"
+		case m.Status == "NO_TRACE":
+			// (٩.٦) موظف المكتب شغله ورق ومكالمات ما تتسجّل — «بلا أثر» وحده مو دليل.
+			// ما ينحسب لحد ما المراقب يحكم (الإشعار يوصله).
+			continue
 		}
 		add(repository.MatrixScoreRow{EmployeeID: m.EmployeeID, Source: "REPORT", SourceID: m.ID, SourceLabel: &label,
 			Rule: "REPORT_MATCH", Points: pts, MaxPoints: 2, At: m.CreatedAt, Reason: why})

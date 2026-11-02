@@ -41,6 +41,9 @@ func StudyTraining(db *sqlx.DB, empID string) (*TrainingNeed, error) {
 	ev := []string{}
 	sum, cnt := 0.0, 0
 	for _, w := range d.Weak {
+		if !trainableRule(w.Rule) {
+			continue // انضباط مو مهارة — التدريب ما يصلّحه
+		}
 		n.Areas = append(n.Areas, w.Title)
 		n.Rules = append(n.Rules, w.Rule)
 		ev = append(ev, fmt.Sprintf("%s %.0f٪ على %d مرة", w.Title, w.Pct, w.N))
@@ -66,7 +69,7 @@ func StudyTraining(db *sqlx.DB, empID string) (*TrainingNeed, error) {
 		ev = append(ev, "قوي بـ: "+strings.Join(s, "، "))
 	}
 	switch {
-	case len(d.Weak) > 0 || slow || d.Trend == "DOWN":
+	case cnt > 0 || slow || d.Trend == "DOWN":
 		n.Verdict = "NEEDS"
 		if len(n.Areas) == 0 {
 			n.Areas = append(n.Areas, "الأداء العام (منحناه نازل)")
@@ -165,4 +168,13 @@ func TrainingNeedText(label string, n *TrainingNeed) string {
 		s += " بـ: " + strings.Join(n.Areas, "، ")
 	}
 	return s + ". الأدلة: " + n.Evidence
+}
+
+// trainableRule (٩.٦) قواعد الانضباط (التقرير، واجب التقييم، الحضور) مو نقص مهارة.
+func trainableRule(r string) bool {
+	switch r {
+	case "DAILY_REPORT", "REPORT_MATCH", "RATING_DUTY", "ATTENDANCE", "INVENTORY":
+		return false
+	}
+	return true
 }

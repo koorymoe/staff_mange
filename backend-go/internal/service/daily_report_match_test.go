@@ -40,8 +40,8 @@ func TestReportMatchLive(t *testing.T) {
 }
 
 func TestCodeToken(t *testing.T) {
-	got := codeToken.FindAllString("خلصت DT9 و B-12 ورحت للمخزن 2026", -1)
-	if strings.Join(got, ",") != "DT9,B-12" {
+	got := codeToken.FindAllString("خلصت DT9 و B-12 و SIM1A ورحت للمخزن 2026", -1)
+	if strings.Join(got, ",") != "DT9,B-12,SIM1A" {
 		t.Fatalf("got %v", got)
 	}
 }

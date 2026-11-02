@@ -41,7 +41,8 @@ func NewReportMatcher(db *sqlx.DB) *ReportMatcher {
 	return &ReportMatcher{db: db, act: NewEmployeeActivityService(repository.NewEmployeeActivityRepository(db))}
 }
 
-var codeToken = regexp.MustCompile(`[A-Za-z]{1,5}-?[0-9]{1,7}`)
+// الكود ممكن ينتهي بحروف (SIM1A) — نطابق الكلمة كاملة ويا كود حقيقي بالنظام (٩.٦ لگتها).
+var codeToken = regexp.MustCompile(`[A-Za-z]{1,5}-?[0-9]{1,7}[A-Za-z]{0,3}`)
 
 func dayOf(col string) string {
 	return `((b."` + col + `" AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Baghdad')::date = $2::date)`

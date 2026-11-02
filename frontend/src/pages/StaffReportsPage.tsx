@@ -128,7 +128,7 @@ type MatchDetail = { status: string; note: string; claimedCodes: string[]; missi
 const MATCH_BADGE: Record<string, [string, string]> = {
   MATCH: ['✅ يطابق الشغل المسجّل', 'bg-emerald-50 text-emerald-700 ring-emerald-200'],
   PARTIAL: ['⚠️ يطابق جزئياً', 'bg-amber-50 text-amber-700 ring-amber-200'],
-  NO_TRACE: ['❌ بلا أثر بالنظام', 'bg-red-50 text-red-700 ring-red-200'],
+  NO_TRACE: ['❌ بلا أثر بالنظام — ما ينحسب لحد ما تحكم', 'bg-red-50 text-red-700 ring-red-200'],
 }
 
 // ٩.٤ ماتركس يطابق التقرير ويا الشغل المسجّل — والمراقب يحكم على الفرق.
