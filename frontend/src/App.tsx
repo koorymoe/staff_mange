@@ -40,6 +40,7 @@ const SolarPage = lazyRetry(() => import('./pages/SolarPage'))
 // والمسار بالباك إند يرجّع 404 لأي حساب ثاني.
 const OwnerBackups = lazyRetry(() => import('./pages/OwnerBackups'))
 const OwnerIntegrity = lazyRetry(() => import('./pages/OwnerIntegrity'))
+const StaffReportsPage = lazyRetry(() => import('./pages/StaffReportsPage'))
 const CommandCodePage = lazyRetry(() => import('./pages/CommandCodePage'))
 // حجوزات انجز منها جزء وتحتاج يوم جديد — شاشة إداري الحجوزات
 const StageBucketsPage = lazyRetry(() => import('./pages/StageBucketsPage'))
@@ -213,6 +214,7 @@ function App() {
           <Route path="owner-security" element={<SecurityDashboardPage />} />
           <Route path="owner-backups" element={<OwnerBackups />} />
           <Route path="owner-integrity" element={<OwnerIntegrity />} />
+          <Route path="staff-reports" element={<StaffReportsPage />} />
           <Route path="command-code" element={<CommandCodePage />} />
           {/* ⚠️ مكتب المراقب **مسار جديد** والشاشات القديمة تبقى
               بمساراتها: اكو روابط محفوظة بمتصفحات الموظفين، وحذف

@@ -961,6 +961,16 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	// التعديل اليدوي: المالك ومدير النظام بس. requireAdmin يمرّر OWNER أصلاً.
 	mux.Handle("POST /api/discipline/adjust", middleware.Chain(http.HandlerFunc(disciplineHandler.Adjust), requireAuth, requireAdmin))
 	mux.Handle("GET /api/employees/archived", middleware.Chain(http.HandlerFunc(employeeHandler.ListArchived), requireAuth, requireAdmin))
+	// 🧠 بوابة الالتزام (11-02 — تعديلات ٩.١): الاستمارة + تقرير الإنجاز اليومي
+	workGate := handler.NewWorkGateHandler(db, notificationRepo)
+	mux.Handle("GET /api/me/work-gate", middleware.Chain(http.HandlerFunc(workGate.Gate), requireAuth))
+	mux.Handle("POST /api/me/profile-survey", middleware.Chain(http.HandlerFunc(workGate.SubmitSurvey), requireAuth))
+	mux.Handle("POST /api/me/daily-report", middleware.Chain(http.HandlerFunc(workGate.SubmitDaily), requireAuth))
+	requireDailyReports := guards.RoleOrAnyPermission([]string{"ADMIN", "MONITOR", "HR_COORDINATOR"}, "monitoring", "mon_staff", "staff_management")
+	requireSurveys := guards.RoleOrAnyPermission([]string{"ADMIN", "HR_COORDINATOR"}, "staff_management")
+	mux.Handle("GET /api/daily-reports", middleware.Chain(http.HandlerFunc(workGate.ListDaily), requireAuth, requireDailyReports))
+	mux.Handle("GET /api/profile-surveys", middleware.Chain(http.HandlerFunc(workGate.ListSurveys), requireAuth, requireSurveys))
+	mux.Handle("POST /api/profile-surveys/{id}/review", middleware.Chain(http.HandlerFunc(workGate.ReviewSurvey), requireAuth, requireSurveys))
 	// 🩺 سلامة البيانات (11-02 — شبكة الأمان ٢): قراءة بس، للمالك
 	integrityHandler := handler.NewIntegrityHandler(db, notificationRepo)
 	mux.Handle("GET /api/integrity", middleware.Chain(http.HandlerFunc(integrityHandler.Latest), requireAuth, requireOwner))

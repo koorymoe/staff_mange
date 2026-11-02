@@ -1,6 +1,7 @@
 import { Suspense, useState } from 'react'
 import { useSession, isAdminOrOwner } from '../session'
 import { lazyRetry } from '../utils/staleReload'
+import DailyReportBox from '../components/DailyReportBox'
 
 // ═══ «مهامي وإنجازاتي» — ترتيب (ع) 10-04 ═══
 // «مهامي الإضافية» و«إنجازاتي اليوم» شاشة وحدة بتبويبين. نفس الشاشتين بالضبط
@@ -22,6 +23,7 @@ export default function MyWorkPage() {
   const [tab, setTab] = useState<(typeof TABS)[number]['id']>('tasks')
   return (
     <div dir="rtl" className="space-y-4">
+      {!boss && <DailyReportBox />}
       <div className="flex flex-wrap gap-2">
         {TABS.map((t) => (
           <button key={t.id} onClick={() => setTab(t.id)}

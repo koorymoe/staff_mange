@@ -217,6 +217,7 @@ const employeeUpdateSQL = `
 		"isLeader" = :isLeader,
 		"isTrainee" = :isTrainee,
 		salary = :salary,
+		"contractEndDate" = :contractEndDate,
 		shift = :shift,
 		"shiftStart" = :shiftStart,
 		"shiftEnd" = :shiftEnd,

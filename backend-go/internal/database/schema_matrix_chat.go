@@ -1658,5 +1658,39 @@ func matrixChatMigrations() []Migration {
 			);
 			CREATE INDEX IF NOT EXISTS "IntegrityRun_started" ON "IntegrityRun" ("startedAt" DESC);
 		`,
+	}, {
+		// 🧠 (11-02 — تعديلات ٩.١) استمارة معلومات الموظف + تقرير الإنجاز اليومي الإجباري.
+		Version: "0430_profile_survey_daily_report",
+		SQL: `
+			ALTER TABLE "Employee" ADD COLUMN IF NOT EXISTS "contractEndDate" DATE;
+			CREATE TABLE IF NOT EXISTS "EmployeeProfileSurvey" (
+				"employeeId" TEXT PRIMARY KEY REFERENCES "Employee"(id) ON DELETE CASCADE,
+				major TEXT NOT NULL,
+				degree TEXT NOT NULL,
+				"selfSalaryIQD" NUMERIC CHECK ("selfSalaryIQD" IS NULL OR "selfSalaryIQD" >= 0),
+				"monthlyHours" INT CHECK ("monthlyHours" IS NULL OR "monthlyHours" BETWEEN 1 AND 400),
+				"currentJob" TEXT NOT NULL,
+				"companyRating" INT NOT NULL CHECK ("companyRating" BETWEEN 1 AND 5),
+				"companyNote" TEXT NOT NULL DEFAULT '',
+				"contractEnd" DATE,
+				mismatch TEXT,
+				"submittedAt" TIMESTAMPTZ NOT NULL DEFAULT now(),
+				"reviewedById" TEXT REFERENCES "Employee"(id) ON DELETE SET NULL,
+				"reviewedAt" TIMESTAMPTZ
+			);
+			CREATE TABLE IF NOT EXISTS "DailyWorkReport" (
+				id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
+				"employeeId" TEXT NOT NULL REFERENCES "Employee"(id) ON DELETE CASCADE,
+				day DATE NOT NULL,
+				body TEXT NOT NULL CHECK (length(btrim(body)) >= 20),
+				late BOOLEAN NOT NULL DEFAULT false,
+				"createdAt" TIMESTAMPTZ NOT NULL DEFAULT now(),
+				UNIQUE ("employeeId", day)
+			);
+			CREATE INDEX IF NOT EXISTS "DailyWorkReport_day" ON "DailyWorkReport" (day DESC);
+			-- التقرير يُطلب من الأيام الي بعد تشغيل الميزة بس، مو بأثر رجعي
+			INSERT INTO "OrgGovernorState" (key, value) VALUES ('daily_report_since', to_char((now() AT TIME ZONE 'Asia/Baghdad')::date, 'YYYY-MM-DD'))
+			ON CONFLICT (key) DO NOTHING;
+		`,
 	}}
 }

@@ -15,6 +15,7 @@ import { InspectBar } from './InspectBar'
 import LastBookingPrompt from './LastBookingPrompt'
 import AutoCheckoutPrompt from './AutoCheckoutPrompt'
 import JustificationPrompt from './JustificationPrompt'
+import WorkGate from './WorkGate'
 import MyExamBanner from './MyExamBanner'
 import ErrorBoundary from './ErrorBoundary'
 import { api, type Employee } from '../api'
@@ -351,12 +352,14 @@ export default function Layout() {
   useEffect(() => {
     const orgGroup = orgNavigationGroupForPath(location.pathname, { employee, permissions: employeePermissions, gpsServiceId, orgMemberships })
     if (orgGroup) {
-      queueMicrotask(() => setExpandedGroups((prev) => ({ ...prev, [orgGroup]: true })))
+      // (11-02) بلا تغيير إذا مفتوحة أصلاً — كائن جديد بكل مرة چان يسوي حلقة رسم لا نهائية
+      queueMicrotask(() => setExpandedGroups((prev) => (prev[orgGroup] ? prev : { ...prev, [orgGroup]: true })))
     }
     const autoExpand = (items: NavItem[]) => {
       items.forEach((item) => {
         if (item.children && hasActiveChild(item, location.pathname)) {
-          setExpandedGroups((prev) => ({ ...prev, [item.to || item.label]: true }))
+          const key = item.to || item.label
+          setExpandedGroups((prev) => (prev[key] ? prev : { ...prev, [key]: true }))
           autoExpand(item.children)
         }
       })
@@ -886,6 +889,7 @@ export default function Layout() {
           <LastBookingPrompt />
           <AutoCheckoutPrompt />
           <JustificationPrompt />
+          <WorkGate />
 
           {/* Content */}
           <main className="min-w-0 flex-1 overflow-x-hidden overflow-y-auto p-3 sm:p-5 lg:p-8">

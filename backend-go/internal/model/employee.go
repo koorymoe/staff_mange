@@ -56,6 +56,7 @@ type Employee struct {
 	HasDrivingLicense    bool       `db:"hasDrivingLicense" json:"hasDrivingLicense"`
 	HasSafetyCertificate bool       `db:"hasSafetyCertificate" json:"hasSafetyCertificate"`
 	Salary               *float64   `db:"salary" json:"salary"`
+	ContractEndDate      *time.Time `db:"contractEndDate" json:"contractEndDate"`
 	Shift                *string    `db:"shift" json:"shift"`
 	ShiftStart           *string    `db:"shiftStart" json:"shiftStart"`
 	ShiftEnd             *string    `db:"shiftEnd" json:"shiftEnd"`
@@ -173,6 +174,7 @@ type UpdateEmployeeRequest struct {
 	IsTrainee            *bool    `json:"isTrainee"`
 	PhotoURL             *string  `json:"photoUrl"`
 	Salary               *float64 `json:"salary"`
+	ContractEndDate      *string  `json:"contractEndDate"` // YYYY-MM-DD، فارغ = شيل
 	Shift                *string  `json:"shift"`
 	ShiftStart           *string  `json:"shiftStart"`
 	ShiftEnd             *string  `json:"shiftEnd"`

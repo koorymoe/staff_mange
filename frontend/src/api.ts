@@ -139,6 +139,7 @@ export interface Employee {
   isLeader: boolean
   isTrainee: boolean
   salary: number | null
+  contractEndDate?: string | null
   shift: 'MORNING' | 'EVENING' | null
   shiftStart: string | null
   shiftEnd: string | null

@@ -772,6 +772,13 @@ export default function Employees({ embedded }: { embedded?: boolean } = {}) {
                             onBlur={() => handleFieldBlur('salary', Number(editSalary) || 0)} placeholder="0"
                             className="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-3 py-2.5 text-sm outline-none transition-colors focus:border-[#2c5aad] focus:bg-white" />
                         </div>
+                        <div>
+                          {/* (11-02) نهاية العقد — مرجع مطابقة استمارة الموظف */}
+                          <label className="mb-1 block text-xs font-medium text-slate-400">نهاية العقد</label>
+                          <input type="date" defaultValue={(selectedEmployee.contractEndDate ?? '').slice(0, 10)} key={selectedEmployee.id}
+                            onBlur={(e) => { if (e.target.value !== (selectedEmployee.contractEndDate ?? '').slice(0, 10)) void handleFieldBlur('contractEndDate', e.target.value) }}
+                            className="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-3 py-2.5 text-sm outline-none transition-colors focus:border-[#2c5aad] focus:bg-white" />
+                        </div>
                         <div className="sm:col-span-2">
                           <label className="mb-1 block text-xs font-medium text-slate-400">الدوام (من - إلى)</label>
                           <div className="flex items-center gap-2">

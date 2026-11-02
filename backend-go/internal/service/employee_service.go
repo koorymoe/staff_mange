@@ -226,6 +226,14 @@ func (s *EmployeeService) Update(id string, req model.UpdateEmployeeRequest) (*m
 				employee.PhotoURL = req.PhotoURL
 			}
 		}
+		// (11-02) نهاية العقد من الإدارة — مرجع مطابقة استمارة الموظف
+		if req.ContractEndDate != nil {
+			if *req.ContractEndDate == "" {
+				employee.ContractEndDate = nil
+			} else if t, err := time.Parse("2006-01-02", *req.ContractEndDate); err == nil {
+				employee.ContractEndDate = &t
+			}
+		}
 		if req.Salary != nil {
 			employee.Salary = req.Salary
 		}
