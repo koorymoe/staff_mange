@@ -1,6 +1,9 @@
 import { useCallback, useEffect, useState } from 'react'
 import { apiRequest, api, type Service } from '../api'
 
+// (DRY 11-02) چانت مكتوبة جوّا كل نموذج بهالملف
+const inp = 'w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm'
+
 // ═══ «📱 تطبيق الزبائن» — قرار (ع) 10-14 ═══
 // المالك يدير الي يشوفه الزبون بالتطبيق: العروض وصور الأعمال (يدوي، أو
 // ماتركس يقترح مسودة والمالك يوافق قبل النشر)، ويشوف حسابات الزبائن
@@ -63,8 +66,6 @@ export default function CustomerAppAdminPage() {
 
   const live = (promos ?? []).filter((p) => p.active).length
   const drafts = (promos ?? []).filter((p) => !p.active).length
-  const inp = 'w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm'
-
   return (
     <div dir="rtl" className="w-full space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-sky-100 bg-gradient-to-l from-sky-50 to-white p-5 shadow-sm">
@@ -224,7 +225,6 @@ function ServicesTab() {
       setEdit(null); setFile(null); setVer((v) => v + 1); load()
     } catch (e) { setMsg(e instanceof Error ? e.message : 'خطأ') } finally { setBusy(false) }
   }
-  const inp = 'w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm'
   return (
     <div className="space-y-3">
       <p className="text-sm text-slate-500">كل خدمة تطلع بالتطبيق بصورتها ووصفها ومميزاتها. «يبدأ من» يطلع بس إذا كتبته. التقييم يجي من تقييمات الزبائن الحقيقية.</p>
@@ -287,7 +287,6 @@ function BranchesTab() {
     } catch (e) { setMsg(e instanceof Error ? e.message : 'خطأ') }
   }
   const del = async (b: Branch) => { if (confirm(`تحذف فرع «${b.name}» من التطبيق؟`)) { await apiRequest(`/customer-app/branches/${b.id}`, { method: 'DELETE' }).catch(() => {}); load() } }
-  const inp = 'w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm'
   return (
     <div className="space-y-3">
       <button onClick={() => setEdit({})} className="rounded-xl bg-emerald-700 px-4 py-2 text-sm font-bold text-white">+ فرع</button>

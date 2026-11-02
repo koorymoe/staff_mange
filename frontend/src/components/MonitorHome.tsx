@@ -6,13 +6,12 @@ import { api, type FinanceSummary, type MonitorReview, type TodayBoardData } fro
 import { useSession } from '../session'
 import { isPathAllowed } from './navTree'
 import { num as fmt } from '../utils/format'
+import { card } from '../ui/classes'
 
 // ═══ الواجهة الرئيسية للمراقب — بتصميم (ع) 10-04 ═══
 // ترحيب وساعة، أربع بطاقات، حركة الحجوزات، أهم التنبيهات (صندوق المراقب)،
 // أفضل الموظفين، أنشطة سريعة، وإحصائيات. كل رقم من النظام ويودّي لشاشته.
 // (بلا عين بالترحيب — طلب (ع)).
-
-const card = 'rounded-2xl border border-slate-200 bg-white p-4 shadow-sm'
 
 function Clock() {
   const [now, setNow] = useState(() => new Date())

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"staffmange-api/internal/timeutil"
 	"strings"
 	"time"
 
@@ -47,11 +48,11 @@ var baghdad = time.FixedZone("Asia/Baghdad", 3*3600)
 func OrgPeriod(t time.Time) string { return t.In(baghdad).Format("2006-01") }
 
 func periodRange(period string) (time.Time, time.Time, error) {
-	start, err := time.ParseInLocation("2006-01", period, baghdad)
-	if err != nil {
+	from, to, ok := timeutil.MonthStart(period)
+	if !ok {
 		return time.Time{}, time.Time{}, errors.New("الفترة لازم بشكل YYYY-MM")
 	}
-	return start, start.AddDate(0, 1, 0), nil
+	return from, to, nil
 }
 
 // كادر الإدارة بالفترة: كل من چان بيها بأي وكت من الشهر (مو بس الحاليين)

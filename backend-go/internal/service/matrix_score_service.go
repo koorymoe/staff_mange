@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"sort"
+	"staffmange-api/internal/timeutil"
 	"strings"
 	"time"
 
@@ -377,12 +378,11 @@ func ruleTitle(rule string) string {
 
 // MonthRange حدود الشهر بتوقيت بغداد. month = «2026-10» أو فارغ للحالي.
 func MonthRange(month string, now time.Time) (string, time.Time, time.Time) {
-	t := now.In(debriefLoc)
-	if m, err := time.ParseInLocation("2006-01", month, debriefLoc); err == nil {
-		t = m
+	if from, to, ok := timeutil.MonthStart(month); ok {
+		return month, from, to
 	}
-	from := time.Date(t.Year(), t.Month(), 1, 0, 0, 0, 0, debriefLoc)
-	return from.Format("2006-01"), from, from.AddDate(0, 1, 0)
+	from, to, _ := timeutil.MonthStart(now.In(timeutil.CompanyLocation()).Format("2006-01"))
+	return from.Format("2006-01"), from, to
 }
 
 func (s *MatrixScoreService) Board(month string) (*StaffScoreBoard, error) {

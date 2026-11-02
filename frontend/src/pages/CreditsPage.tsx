@@ -2,6 +2,9 @@ import { Fragment, useCallback, useEffect, useState } from 'react'
 import { api, type CreditSale } from '../api'
 import { dinarRound as iqd } from '../utils/format'
 
+// (DRY 11-02) چانت مكتوبة جوّا كل نموذج بهالملف
+const inp = 'w-full rounded-xl border border-slate-300 px-3 py-2 text-sm'
+
 // ═══ سجل الآجل — قرار (ع) 10-14 ═══
 // حجز أو مشروع خلص والفلوس مؤجلة: دفعات أو مبلغ كامل. الحجز يوصل هنا من
 // «التدقيق اليومي» بزر «⏳ الآجل»، والمشروع ينضاف يدوياً. كل دفعة تنسجّل،
@@ -120,7 +123,6 @@ function PayModal({ credit, onClose, onDone }: { credit: CreditSale; onClose: ()
     try { await api.addCreditPayment(credit.id, { amount: Number(amount.replace(/,/g, '')), paidAt, note: note || undefined }); onDone() }
     catch (e) { setErr(e instanceof Error ? e.message : 'خطأ') } finally { setBusy(false) }
   }
-  const inp = 'w-full rounded-xl border border-slate-300 px-3 py-2 text-sm'
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={onClose}>
       <div dir="rtl" className="w-full max-w-md space-y-3 rounded-2xl bg-white p-5 shadow-2xl" onClick={(e) => e.stopPropagation()}>
@@ -151,7 +153,6 @@ function AddModal({ onClose, onDone }: { onClose: () => void; onDone: () => void
       onDone()
     } catch (e) { setErr(e instanceof Error ? e.message : 'خطأ') } finally { setBusy(false) }
   }
-  const inp = 'w-full rounded-xl border border-slate-300 px-3 py-2 text-sm'
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={onClose}>
       <div dir="rtl" className="w-full max-w-md space-y-3 rounded-2xl bg-white p-5 shadow-2xl" onClick={(e) => e.stopPropagation()}>

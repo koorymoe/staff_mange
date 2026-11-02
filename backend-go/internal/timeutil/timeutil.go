@@ -60,3 +60,13 @@ func NormalizeCompanyLocal(value string) string {
 
 // CompanyLocation توقيت الشركة (بغداد) — لكل «اليوم/الساعة» الي تنعرض للناس.
 func CompanyLocation() *time.Location { return companyLoc }
+
+// MonthStart (DRY 11-02) أول الشهر «YYYY-MM» بتوقيت الشركة، ونهايته (أول الشهر الجاي).
+// ok=false لو الصيغة غلط. مصدر واحد لـ«فترة الشهر» — چانت مكتوبة بأكثر من مكان.
+func MonthStart(period string) (from, to time.Time, ok bool) {
+	t, err := time.ParseInLocation("2006-01", period, companyLoc)
+	if err != nil {
+		return time.Time{}, time.Time{}, false
+	}
+	return t, t.AddDate(0, 1, 0), true
+}

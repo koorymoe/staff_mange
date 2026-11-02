@@ -2,6 +2,7 @@ import { lazy, Suspense, useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { api, type Employee, type TcCurriculum, type TcExamReportRow, type TcInsight, type TcPlan, type TcQuestion } from '../api'
 import { ROLE_LABELS, roleLabel } from '../roleLabels'
+import { card } from '../ui/classes'
 
 // ═══ مركز التدريب — قرار (ع) 10-13: «شي إعجازي بالتدريب» ═══
 // ماتركس يحدد منو لازم يتدرّب من شغله الحقيقي (شكاوى، توقف، بطء، خصومات،
@@ -25,7 +26,6 @@ const TABS: { id: Tab; icon: string; label: string }[] = [
   { id: 'programs', icon: '🎓', label: 'البرامج التدريبية' },
 ]
 const ROLES = Object.keys(ROLE_LABELS).filter((r) => r !== 'ADMIN' && r !== 'OWNER')
-const card = 'rounded-2xl border border-slate-200 bg-white p-4 shadow-sm'
 const btn = 'rounded-lg bg-[#0f2040] px-4 py-2 text-sm font-bold text-white hover:bg-[#1e3f7a] disabled:opacity-40'
 const input = 'rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#2c5aad]'
 const thisMonth = () => new Date().toISOString().slice(0, 7)

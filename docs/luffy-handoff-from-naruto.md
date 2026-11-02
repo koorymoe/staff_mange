@@ -210,3 +210,4 @@ git push origin origin/avg:refs/heads/prod     # بعد التأكد إنه fast
 - (لوفي 11-02) DRY المرحلة ١ (الصلاحيات): isAdminOrOwner بالواجهة (47 مكان)، model.IsAdminRole بالخادم (47)، model.HasPermSQL بدل استعلام الصلاحية اليدوي (12). بلا تغيير سلوك.
 - (لوفي 11-02) DRY المرحلة ٢ (التنسيق): frontend/src/utils/format.ts (num/numRound/numIQ/dinar/dinarRound/dinarK/todayBaghdad/hms/dateTimeAr) بدل 29 نسخة محلية؛ today بشاشتين المشاريع صار بتوقيت بغداد. Go: itoa/rankItoa→strconv.Itoa (itoa مال ai_repository چان يغلط فوق 99)، minInt/maxInt→min/max.
 - (لوفي 11-02) DRY الصلاحيات (تكملة): isAdminOrOwner يغطي role=OWNER الخام كمان، و36 فحص جلسة إضافي صار عليه؛ HasPermSQL بـpaperwork_guard وai_action؛ IsAdminRole بـ3 أماكن بمؤشرات.
+- (لوفي 11-02) DRY ٣أ/٣ب: timeutil.MonthStart لفترة الشهر (org_desk + matrix_score)؛ vehicle_tracking دورة 17→16 مقصودة، وsmart_kpi بتوقيت UTC (ملاحظة، ما انلمس). ui/classes.ts card + inp مرفوع بملفين.

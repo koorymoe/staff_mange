@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { api, type ProjectStageStats } from '../api'
+import { card } from '../ui/classes'
 
 // ═══ إحصائيات المشاريع — تصميم (ع) 10-13 ═══
 // بطاقات لكل مرحلة، رسم توزيع، دائرة الإنجاز، أعلى المراحل، تطور ١٢ شهر،
@@ -21,8 +22,6 @@ function metaOf(stage: string): Meta {
 const clean = (s: string) => s.replace(/^\d+\.\s*/, '')
 const MONTHS = ['يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو', 'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر']
 const monthName = (m: string) => MONTHS[Number(m.slice(5, 7)) - 1] ?? m
-const card = 'rounded-2xl border border-slate-200 bg-white p-4 shadow-sm'
-
 export default function ProjectStatsBoard() {
   const [stats, setStats] = useState<ProjectStageStats[] | null>(null)
   const [months, setMonths] = useState<Awaited<ReturnType<typeof api.getProjectMonths>>>([])

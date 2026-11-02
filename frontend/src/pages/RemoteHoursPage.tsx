@@ -3,6 +3,7 @@ import { api, type Employee, type RemoteEntry, type RemoteSummary, type RemoteTi
 import { useSession, isAdminOrOwner } from '../session'
 import { loadFailed } from '../netErrors'
 import { hms, todayBaghdad as today } from '../utils/format'
+import { card } from '../ui/classes'
 
 // ═══ ساعات العمل من البيت ═══
 // صلاحيتان:
@@ -12,8 +13,6 @@ import { hms, todayBaghdad as today } from '../utils/format'
 
 const n = (v: string) => Math.max(0, Math.floor(Number(v) || 0))
 const inp = 'rounded-lg border border-slate-300 px-2 py-1.5 text-sm'
-const card = 'rounded-2xl border border-slate-200 bg-white p-4 shadow-sm'
-
 export default function RemoteHoursPage() {
   const { employee: me, permissions } = useSession()
   const isAdmin = isAdminOrOwner(me)
