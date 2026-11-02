@@ -23,7 +23,7 @@ function Badge({ source }: { source: Source }) {
 export default function VoiceTermsPage() {
   const { employee } = useSession()
   // Keep the request-bearing component unmounted for every other role.
-  return isAdminOrOwner(employee) ? (
+  return employee && isAdminOrOwner(employee) ? (
     <VoiceTerms key={employee.id} />
   ) : (
     <p role="alert">قاموس الأذن للمالك ومدير النظام بس.</p>

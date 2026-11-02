@@ -275,7 +275,7 @@ function IrisIcon({
 
 export default function SecretaryPage() {
   const { employee } = useSession()
-  const allowed = isAdminOrOwner(employee)
+  const allowed = !!employee && isAdminOrOwner(employee)
   return allowed ? (
     <Secretary key={employee.id} />
   ) : (

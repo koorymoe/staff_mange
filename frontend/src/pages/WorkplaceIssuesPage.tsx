@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { api, type MyPeerState, type WorkplaceIssue, type WorkplaceIssueDetail } from '../api'
 import MatrixNote from '../components/MatrixNote'
+import PeerCheckinCard from '../components/PeerCheckinCard'
+import { isAdminOrOwner, useSession } from '../session'
 
 // ═══ المشاكل الوظيفية — قرار (ع) 10-05 ═══
 // المراقب أو المدير يفتح المشكلة، يسجّل إفادة كل طرف، ماتركس يرتّب ويقترح،
@@ -65,6 +67,7 @@ function Detail({ id, people }: { id: string; people: { id: string; name: string
 }
 
 export default function WorkplaceIssuesPage() {
+  const { employee } = useSession()
   const [params, setParams] = useSearchParams()
   const [rows, setRows] = useState<WorkplaceIssue[] | null>(null)
   const [people, setPeople] = useState<MyPeerState['colleagues']>([])
@@ -98,6 +101,8 @@ export default function WorkplaceIssuesPage() {
         </div>
         <button type="button" onClick={() => setForm((f) => ({ ...f, show: !f.show }))} className="rounded-xl bg-[#0f2040] px-4 py-2 text-sm font-bold text-white">+ مشكلة جديدة</button>
       </div>
+      {/* (ع) 11-02: الفورمة الأسبوعية (قيّم زملاءك + المشاكل) تبقى ظاهرة للمدير والمالك هنا */}
+      {isAdminOrOwner(employee) && <PeerCheckinCard />}
       {err && <p className="text-sm text-red-600">{err}</p>}
       {form.show && (
         <div className="space-y-2 rounded-2xl border border-slate-200 bg-white p-4">

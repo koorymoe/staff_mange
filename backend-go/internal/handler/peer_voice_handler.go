@@ -32,6 +32,11 @@ func (h *PeerVoiceHandler) Mine(w http.ResponseWriter, r *http.Request) {
 		WriteError(w, http.StatusInternalServerError, "تعذر")
 		return
 	}
+	// (ع) 11-02: «الفورمة اريدها تضل ظاهرة للمدير والمالك بالمشاكل الوظيفية» —
+	// للإدارة مفتوحة طول الأسبوع، والموظفين يبقون على الخميس والجمعة.
+	if middleware.IsOwner(r) || middleware.RoleFromContext(r) == "ADMIN" {
+		st.Open = true
+	}
 	WriteJSON(w, http.StatusOK, st)
 }
 

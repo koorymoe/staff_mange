@@ -78,7 +78,8 @@ export const DECOR_DATA_ROWS: typeof DATA_ROWS = [
 export const rowsFor = (s: ExecutionSheetData) => (s.kind === 'DECOR' ? DECOR_DATA_ROWS : DATA_ROWS)
 export const checksFor = (s: ExecutionSheetData) => (s.kind === 'DECOR' ? DECOR_CHECKS : CHECKS)
 
-export { todayBaghdad as today } from './format'
+import { todayBaghdad as today } from './format'
+export { today }
 
 export function emptySheet(b: Booking): ExecutionSheetData {
   const crew: SheetCrewRow[] = []

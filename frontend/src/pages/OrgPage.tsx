@@ -102,7 +102,7 @@ export default function OrgPage({
   view?: 'chart' | 'assign'
 }) {
   const { employee } = useSession()
-  return isAdminOrOwner(employee) ? (
+  return employee && isAdminOrOwner(employee) ? (
     <OrgWorkspace key={`${employee.id}:${view}`} view={view} />
   ) : (
     <p role="alert">الهيكل التنظيمي للمالك ومدير النظام بس.</p>
