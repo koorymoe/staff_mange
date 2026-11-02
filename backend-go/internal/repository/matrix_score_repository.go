@@ -212,8 +212,7 @@ func (r *MatrixScoreRepository) DropGoneBookings() error {
 func (r *MatrixScoreRepository) SoleHolder(role, perm string) string {
 	ids := []string{}
 	_ = r.db.Select(&ids, `SELECT DISTINCT e.id FROM "Employee" e WHERE e.status = 'ACTIVE' AND e.role::text NOT IN ('ADMIN', 'OWNER')
-		AND (e.role::text = $1 OR EXISTS (SELECT 1 FROM "EmployeePermission" ep JOIN "Permission" p ON p.id = ep."permissionId"
-		     WHERE ep."employeeId" = e.id AND p.name = $2)
+		AND (e.role::text = $1 OR `+model.HasPermSQL(`e.id`, `= $2`)+`
 		     OR e.id IN `+model.OrgRoleEmployeesSQL(`ARRAY[$1]::text[]`)+`) LIMIT 2`, role, perm)
 	if len(ids) == 1 {
 		return ids[0]

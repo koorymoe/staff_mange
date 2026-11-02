@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { api, type RemoteTimer } from '../api'
-import { useSession } from '../session'
+import { useSession, isAdminOrOwner } from '../session'
 import { pollVisible } from '../utils/poll'
 
 // ═══ عدّاد ساعات البيت بالشريط العلوي — بكل الشاشات ═══
@@ -11,7 +11,7 @@ const hms = (sec: number) => `${Math.floor(sec / 3600)}:${String(Math.floor((sec
 
 export default function RemoteTimerChip() {
   const { employee, permissions } = useSession()
-  const allowed = employee?.role === 'ADMIN' || employee?.actualRole === 'OWNER'
+  const allowed = isAdminOrOwner(employee)
     || permissions.includes('remote_hours_self') || permissions.includes('remote_hours_manage')
   const [timer, setTimer] = useState<RemoteTimer | null>(null)
   const [base, setBase] = useState(0)

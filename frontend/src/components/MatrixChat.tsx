@@ -6,7 +6,7 @@ import {
   type MatrixChatRow,
   type MatrixLesson,
 } from '../api'
-import { useSession } from '../session'
+import { useSession, isAdminOrOwner } from '../session'
 import './MatrixChat.css'
 import ScreenshotRedactor from './ScreenshotRedactor'
 
@@ -102,7 +102,7 @@ function Rich({ text }: { text: string }) {
 
 export default function MatrixChat() {
   const { employee, permissions } = useSession()
-  const admin = employee?.actualRole === 'OWNER' || employee?.role === 'ADMIN'
+  const admin = isAdminOrOwner(employee)
   // (دازاي 10-29) صاحب «محادثة ماتركس» يحاچيه هم — أدواته بحدود صلاحياته (بالخادم)،
   // والتصحيح والدروس تبقى للمدير لأنها تغيّر ماتركس للكل.
   return admin || permissions.includes('agent_matrix') ? (

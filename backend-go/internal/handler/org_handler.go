@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"staffmange-api/internal/model"
 	"time"
 
 	"staffmange-api/internal/middleware"
@@ -34,7 +35,7 @@ func (h *OrgHandler) guard(r *http.Request, target string) string {
 	if target == middleware.EmployeeIDFromContext(r) {
 		return "منصبك إنت يعيّنه المالك بس"
 	}
-	if rl := h.svc.TargetRole(target); rl == "OWNER" || rl == "ADMIN" {
+	if rl := h.svc.TargetRole(target); model.IsAdminRole(rl) {
 		return "مناصب المالك ومدير النظام يعيّنها المالك بس"
 	}
 	return ""

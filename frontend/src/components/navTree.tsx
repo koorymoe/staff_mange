@@ -2,7 +2,7 @@ import { MON_SUBS } from '../utils/monAccess'
 import type { OrgPerson } from '../org'
 import { orgDeskAllowed } from '../orgDeskAccess'
 import type { Employee, EmployeeRole } from '../api'
-import { hasGpsSkill } from '../session'
+import { hasGpsSkill, isAdminOrOwner } from '../session'
 
 // ═══ شجرة القائمة ومنو يشوف شنو ═══
 //
@@ -138,7 +138,7 @@ export const navItems: NavItem[] = [
   { ownerOnly: true, to: '/whatsapp-sandbox', label: 'وضع تجربة الواتساب', icon: <></>, roles: ['ADMIN'] },
   { to: '/service-studies', label: '🧪 دراسات الخدمات', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M9 3h6M10 3v6L4.5 19a1.5 1.5 0 0 0 1.3 2h12.4a1.5 1.5 0 0 0 1.3-2L14 9V3"/></svg>, roles: ['SERVICE_DEVELOPER'] },
   { to: '/car-wash', label: '🧽 غسل السيارات', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M5 17h14l-1.5-6h-11z"/><circle cx="8" cy="18" r="1.5"/><circle cx="16" cy="18" r="1.5"/><path d="M9 7c0-1 1-2 1-3M13 7c0-1 1-2 1-3"/></svg>, roles: ['CAR_WASHER'] },
-  { to: '/attendance', label: 'جدول دوامي', labelFor: (ctx) => (ctx.employee?.role === 'ADMIN' || ctx.employee?.actualRole === 'OWNER' ? 'جدول دوام الموظفين' : 'جدول دوامي'), icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg> },
+  { to: '/attendance', label: 'جدول دوامي', labelFor: (ctx) => (isAdminOrOwner(ctx.employee) ? 'جدول دوام الموظفين' : 'جدول دوامي'), icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg> },
   // ⚠️ مهامي الإضافية بلا قيد دور ولا صلاحية — هاي **مهام الموظف
   // نفسه**، مو مهام غيره. كانت محصورة بشاشة «مهامي» (فنيين فقط)،
   // يعني المدير يوجّه مهمة لإداري أو محاسب وما توصله إلا كإشعار
@@ -151,7 +151,7 @@ export const navItems: NavItem[] = [
   // ترتيب (ع) للمراقب: «مهامي الإضافية» و«إنجازاتي اليوم» شاشة وحدة بتبويبين.
   // قرار (ع) 10-08: نفس الشي لكل الأدوار — خانة وحدة «مهامي وإنجازاتي».
   // (ع) 10-11: المالك والمدير ما عدهم مهام — يشوفون مهام وإنجازات الموظفين
-  { to: '/my-work', label: 'مهامي وإنجازاتي', labelFor: (ctx) => (ctx.employee?.role === 'ADMIN' || ctx.employee?.actualRole === 'OWNER' ? 'مهام وإنجازات الموظفين' : 'مهامي وإنجازاتي'), icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><path d="m9 14 2 2 4-4"/></svg> },
+  { to: '/my-work', label: 'مهامي وإنجازاتي', labelFor: (ctx) => (isAdminOrOwner(ctx.employee) ? 'مهام وإنجازات الموظفين' : 'مهامي وإنجازاتي'), icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><path d="m9 14 2 2 4-4"/></svg> },
   // ساعات البيت لأي موظف عنده الصلاحية (لنفسه أو مسؤول) — بالقائمة الرئيسية حتى الفني يوصلها.
   { monitorMenuHide: true, to: '/remote-hours', label: '🏠 ساعات العمل من البيت', icon: <></>, roles: ['ADMIN'], anyPermission: ['remote_hours_self', 'remote_hours_manage'] },
   // ⚠️ «حساب الكلفة» انشال من القائمة العلوية: كان يطلع مرتين —
@@ -276,7 +276,7 @@ export const navItems: NavItem[] = [
         // منو عنده حق **التسجيل** بس، الشاشة تفتحله «حجز جديد» وبس —
         // فالاسم يگول شغله الحقيقي بدل ما يوهمه بمحطات ما يشوفها.
         labelFor: (ctx) => {
-          const canViewAll = ctx.employee?.role === 'ADMIN' || ctx.employee?.actualRole === 'OWNER'
+          const canViewAll = isAdminOrOwner(ctx.employee)
             || ['HR_COORDINATOR', 'MONITOR', 'FINANCE', 'PROJECT_MANAGER', 'PROCUREMENT_ADMIN']
               .includes(ctx.employee?.role ?? '')
             || ['view_bookings', 'coordinator', 'crew_management', 'mission_tracking',

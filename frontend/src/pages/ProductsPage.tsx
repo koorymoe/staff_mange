@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from 'react'
-import { useSession } from '../session'
+import { useSession, isAdminOrOwner } from '../session'
 import { api, type Product, type ProductAvailability, type Service, fileUrl } from '../api'
 
 const PRIMARY = '#1a237e'
@@ -27,7 +27,7 @@ const needLabel = (v: ProductAvailability) => NEED.find((n) => n.value === v)?.l
 export default function ProductsPage({ embedded }: { embedded?: boolean } = {}) {
   const { employee } = useSession()
   const { permissions } = useSession()
-  const isAdmin = employee?.role === 'ADMIN' || employee?.actualRole === 'OWNER'
+  const isAdmin = isAdminOrOwner(employee)
   // الإضافة والتعديل بصلاحية «محتوى تقني» (نفس حارس الخادم) — غيره يتصفح بس.
   const canEdit = isAdmin || permissions.includes('content_technician')
   const [products, setProducts] = useState<Product[]>([])

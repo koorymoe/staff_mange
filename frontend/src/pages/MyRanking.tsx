@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { type KpiLeaderboardEntry, type StaffScoreDetail } from '../api'
 import { api, type Stats, type RoleKpiLeaderboard } from '../api'
-import { useSession } from '../session'
+import { useSession, isAdminOrOwner } from '../session'
 import { AdministrativeTab as KpiAdministrativeTab } from './KpiPage'
 import { roleLabel as arabicRole } from '../roleLabels'
 import { tracksFor } from '../rankingTracks'
@@ -111,13 +111,13 @@ export default function MyRanking() {
   // «تقييم بين الإداريين» — منو يقارن أبو الكوادر والمراقبين ببعض،
   // مو أبو الكوادر نفسه. نفس حارس الخادم بالضبط
   // (`RequireRole("ADMIN","OWNER","MONITOR")`).
-  const canSeeEvaluators = employee?.role === 'ADMIN' || employee?.actualRole === 'OWNER' || (employee?.role === 'MONITOR' || permissions.includes('monitoring'))
+  const canSeeEvaluators = isAdminOrOwner(employee) || (employee?.role === 'MONITOR' || permissions.includes('monitoring'))
   // ⚠️⚠️ الإداريون العليا (ADMIN/OWNER) ماعندهم تصنيف شخصي — «عندهم
   // كل الصلاحيات بحكم موقعهم، فيطلعون بكل تصنيف ويزاحمون الي يشتغل
   // الشغل فعلاً» (نفس مبدأ استثناء PermissionLeaderboard بالخادم).
   // بلا هذا الشرط، ADMIN بلا `tracksFor` مطابق يسقط لمقارنة كل
   // حسابات ADMIN ببعض بنقاط KPI/حجوزات — مقارنة بلا معنى لعمل إداري.
-  const isTopAdmin = employee?.role === 'ADMIN' || employee?.actualRole === 'OWNER'
+  const isTopAdmin = isAdminOrOwner(employee)
   // (ع) 10-13: «تقييم كي بي اي» تبويب هنا — مو شاشة لحالها
   const canKpi = employee?.role === 'ADMIN' || (employee?.role === 'MONITOR' || permissions.includes('monitoring')) || (permissions ?? []).includes('kpi_management')
   const [view, setView] = useState<'mine' | 'team' | 'evaluators' | 'kpi'>('mine')

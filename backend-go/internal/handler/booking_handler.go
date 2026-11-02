@@ -316,7 +316,7 @@ func (h *BookingHandler) Create(w http.ResponseWriter, r *http.Request) {
 	// يسجّل شغل داخلي، لأنه شغل شركة مو بيع لزبون.
 	if req.BookingType != nil && *req.BookingType == "INTERNAL" {
 		role := middleware.EffectiveRole(r)
-		allowed := role == "ADMIN" || role == "OWNER" || role == "HR_COORDINATOR" || role == "MONITOR"
+		allowed := model.IsAdminRole(role) || role == "HR_COORDINATOR" || role == "MONITOR"
 		if !allowed && h.permissions != nil {
 			if ok, err := h.permissions.HasPermission(middleware.EmployeeIDFromContext(r), "booking_internal"); err == nil && ok {
 				allowed = true

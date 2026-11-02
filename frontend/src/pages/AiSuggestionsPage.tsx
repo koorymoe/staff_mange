@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { apiRequest } from '../api'
-import { useSession } from '../session'
+import { useSession, isAdminOrOwner } from '../session'
 import '../components/AiBrains.css'
 
 type Decision = 'ACCEPTED' | 'REJECTED' | 'DONE'
@@ -27,7 +27,7 @@ const names: Record<string, string> = {
 }
 export default function AiSuggestionsPage() {
   const { employee } = useSession()
-  return employee?.actualRole === 'OWNER' || employee?.role === 'ADMIN' ? (
+  return isAdminOrOwner(employee) ? (
     <Suggestions />
   ) : (
     <p>اقتراحات الذكاء للمالك ومدير النظام فقط.</p>

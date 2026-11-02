@@ -35,7 +35,7 @@ const chatStaffDailyLimit = 30
 
 func isTopRole(r *http.Request) bool {
 	role := middleware.RoleFromContext(r)
-	return role == "OWNER" || role == "ADMIN"
+	return model.IsAdminRole(role)
 }
 
 // toolOpts فلتر الأدوات والأدوات الشخصية حسب منو يحاچي.

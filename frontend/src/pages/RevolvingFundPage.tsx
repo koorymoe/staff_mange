@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { api, type RevolvingFund, type RevolvingFundTxn, type EmployeeFundBalance, type Employee, type ProcurementRequest, fileUrl } from '../api'
-import { useSession } from '../session'
+import { useSession, isAdminOrOwner } from '../session'
 import MyFundBalance from '../components/MyFundBalance'
 
 /**
@@ -20,9 +20,9 @@ export default function RevolvingFundPage() {
   // النظام والمالك، أو لمن ينطونه صلاحية revolving_fund_amount صراحةً.
   // الباقي (الصرف والتدقيق) يبقى بصلاحية revolving_fund مثل ما هو.
   const { permissions, employee } = useSession()
-  const canEditAmount = employee?.role === 'ADMIN' || employee?.actualRole === 'OWNER' || permissions.includes('revolving_fund_amount')
+  const canEditAmount = isAdminOrOwner(employee) || permissions.includes('revolving_fund_amount')
   // التخريج يرجّع فلوس للدوار — صلاحية مستقلة عن التدقيق اليومي
-  const canDischarge = employee?.role === 'ADMIN' || employee?.actualRole === 'OWNER'
+  const canDischarge = isAdminOrOwner(employee)
     || employee?.role === 'FINANCE' || permissions.includes('fund_discharge')
 
   const [tab, setTab] = useState<Tab>('funds')

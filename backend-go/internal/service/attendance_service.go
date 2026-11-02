@@ -212,7 +212,7 @@ func (s *AttendanceService) Gate(employeeID string, now time.Time) (*AttendanceG
 			from, to = pf, pt
 		}
 	}
-	exempt := g.Role == "ADMIN" || g.Role == "OWNER"
+	exempt := model.IsAdminRole(g.Role)
 	out := &AttendanceGate{Open: g.HasOpen, ShiftStart: from, ShiftEnd: to, EndLabel: clockLabel(to),
 		StartLabel: clockLabel(from), Evening: IsEveningShift(from)}
 	// قرار (ع) 10-07: بوقت دوامه إجباري، وبرّاه نسأله بس.

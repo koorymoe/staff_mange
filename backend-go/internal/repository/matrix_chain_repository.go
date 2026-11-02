@@ -1,6 +1,7 @@
 package repository
 
 import (
+	"staffmange-api/internal/model"
 	"time"
 
 	"github.com/jmoiron/sqlx"
@@ -470,8 +471,7 @@ func (r *MatrixChainRepository) MonitorBacklog() (MonitorBacklog, error) {
 func (r *MatrixChainRepository) Monitors() ([]string, error) {
 	ids := []string{}
 	err := r.db.Select(&ids, `SELECT e.id FROM "Employee" e WHERE e.status = 'ACTIVE' AND e.role::text NOT IN ('ADMIN', 'OWNER')
-		AND (e.role::text = 'MONITOR' OR EXISTS (SELECT 1 FROM "EmployeePermission" ep JOIN "Permission" p ON p.id = ep."permissionId"
-		     WHERE ep."employeeId" = e.id AND p.name IN ('monitoring', 'auditing')))`)
+		AND (e.role::text = 'MONITOR' OR `+model.HasPermSQL(`e.id`, `IN ('monitoring', 'auditing')`)+`)`)
 	return ids, err
 }
 

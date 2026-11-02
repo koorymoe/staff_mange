@@ -268,7 +268,7 @@ func RequirePermission(permissions *repository.PermissionRepository, employees *
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			role, _ := r.Context().Value(ContextRole).(string)
-			if role == "ADMIN" || role == "OWNER" {
+			if model.IsAdminRole(role) {
 				next.ServeHTTP(w, r)
 				return
 			}
@@ -300,7 +300,7 @@ func RequireAnyPermission(permissions *repository.PermissionRepository, employee
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			role, _ := r.Context().Value(ContextRole).(string)
-			if role == "ADMIN" || role == "OWNER" {
+			if model.IsAdminRole(role) {
 				next.ServeHTTP(w, r)
 				return
 			}
@@ -329,7 +329,7 @@ func RequireLeader(employees *repository.EmployeeRepository, notifications *repo
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			role, _ := r.Context().Value(ContextRole).(string)
-			if role == "ADMIN" || role == "OWNER" {
+			if model.IsAdminRole(role) {
 				next.ServeHTTP(w, r)
 				return
 			}
@@ -367,7 +367,7 @@ func RequireLeaderOrBookingServiceManager(
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			role, _ := r.Context().Value(ContextRole).(string)
-			if role == "ADMIN" || role == "OWNER" {
+			if model.IsAdminRole(role) {
 				next.ServeHTTP(w, r)
 				return
 			}
@@ -475,7 +475,7 @@ func RequireRoleOrPermission(permissions *repository.PermissionRepository, emplo
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			role, _ := r.Context().Value(ContextRole).(string)
-			if role == "ADMIN" || role == "OWNER" || (allowed[role] || (allowed["MONITOR"] && IsMonitor(r))) || hasOrgRoleIn(r, allowed) {
+			if model.IsAdminRole(role) || (allowed[role] || (allowed["MONITOR"] && IsMonitor(r))) || hasOrgRoleIn(r, allowed) {
 				next.ServeHTTP(w, r)
 				return
 			}
@@ -509,7 +509,7 @@ func RequireRoleOrAnyPermission(permissions *repository.PermissionRepository, em
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			role, _ := r.Context().Value(ContextRole).(string)
-			if role == "ADMIN" || role == "OWNER" || (allowedRoles[role] || (allowedRoles["MONITOR"] && IsMonitor(r))) || hasOrgRoleIn(r, allowedRoles) {
+			if model.IsAdminRole(role) || (allowedRoles[role] || (allowedRoles["MONITOR"] && IsMonitor(r))) || hasOrgRoleIn(r, allowedRoles) {
 				next.ServeHTTP(w, r)
 				return
 			}
@@ -531,7 +531,7 @@ func RequireLeaderOrPermission(permissions *repository.PermissionRepository, emp
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			role, _ := r.Context().Value(ContextRole).(string)
-			if role == "ADMIN" || role == "OWNER" {
+			if model.IsAdminRole(role) {
 				next.ServeHTTP(w, r)
 				return
 			}
@@ -563,7 +563,7 @@ func RequireLeaderOrAnyPermission(permissions *repository.PermissionRepository, 
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			role, _ := r.Context().Value(ContextRole).(string)
-			if role == "ADMIN" || role == "OWNER" {
+			if model.IsAdminRole(role) {
 				next.ServeHTTP(w, r)
 				return
 			}
@@ -608,7 +608,7 @@ func RequireLeaderOrRoleOrAnyPermission(permissions *repository.PermissionReposi
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			role, _ := r.Context().Value(ContextRole).(string)
-			if role == "ADMIN" || role == "OWNER" || (allowedRoles[role] || (allowedRoles["MONITOR"] && IsMonitor(r))) || hasOrgRoleIn(r, allowedRoles) {
+			if model.IsAdminRole(role) || (allowedRoles[role] || (allowedRoles["MONITOR"] && IsMonitor(r))) || hasOrgRoleIn(r, allowedRoles) {
 				next.ServeHTTP(w, r)
 				return
 			}
@@ -668,7 +668,7 @@ type ctxKeyOrgRoles struct{}
 // OrgRoles الأدوار الفعلية من منصب صاحب الطلب (فاضية للمدير/المالك).
 func OrgRoles(r *http.Request) []string {
 	role := RoleFromContext(r)
-	if role == "ADMIN" || role == "OWNER" || orgRolesFn == nil {
+	if model.IsAdminRole(role) || orgRolesFn == nil {
 		return nil
 	}
 	if v, ok := r.Context().Value(ctxKeyOrgRoles{}).([]string); ok {
@@ -706,7 +706,7 @@ func HasRole(r *http.Request, roles ...string) bool {
 // — للفحوصات المبنية على اسم الدور.
 func EffectiveRole(r *http.Request) string {
 	role := RoleFromContext(r)
-	if role == "ADMIN" || role == "OWNER" {
+	if model.IsAdminRole(role) {
 		return role
 	}
 	if IsMonitor(r) {

@@ -526,11 +526,7 @@ func (r *DisciplineRepository) OverdueAudit(hours int) ([]OverduePaperwork, erro
 			WHERE e.status = 'ACTIVE'
 			  AND (
 			    e.role = 'FINANCE'
-			    OR EXISTS (
-			      SELECT 1 FROM "EmployeePermission" ep
-			      JOIN "Permission" p ON p.id = ep."permissionId"
-			      WHERE ep."employeeId" = e.id AND p.name = 'finance'
-			    )
+			    OR `+model.HasPermSQL(`e.id`, `= 'finance'`)+`
 			  )
 		) acc
 		WHERE b.status = 'COMPLETED'

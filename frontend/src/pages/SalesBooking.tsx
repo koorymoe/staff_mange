@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { api, type Customer, type Department, type Service, type SolarSystem } from '../api'
-import { useSession, hasRole } from '../session'
+import { useSession, hasRole, isAdminOrOwner } from '../session'
 import MultiSelect from '../components/MultiSelect'
 import { validateCustomerName, validateCustomerPhone } from '../validation'
 import { LocationPicker } from '../components/MapLazy'
@@ -41,7 +41,7 @@ function SectionHeader({ num, title }: { num: number; title: string }) {
 export default function SalesBooking() {
   const { employee, permissions } = useSession()
   // حجز داخل الشركة للإداري فما فوق — نفس قيد السيرفر بالضبط
-  const canInternal = employee?.role === 'ADMIN' || employee?.actualRole === 'OWNER' ||
+  const canInternal = isAdminOrOwner(employee) ||
     hasRole(employee, 'HR_COORDINATOR') || (employee?.role === 'MONITOR' || permissions.includes('monitoring')) ||
     permissions.includes('booking_internal')
   const [services, setServices] = useState<Service[]>([])

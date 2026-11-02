@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { api, type TechSupplier, type TechSupplierIn } from '../api'
-import { useSession } from '../session'
+import { useSession, isAdminOrOwner } from '../session'
 
 // ═══ 🏪 موردين التقنيين — قرار (ع) 10-06 ═══
 // قائمة ثانية غير موردين الشركة. التقنيين ومسؤولي الخدمات يضيفون موردين،
@@ -139,7 +139,7 @@ function AdminView() {
 
 export default function TechSuppliersPage() {
   const { employee } = useSession()
-  const admin = employee?.role === 'ADMIN' || employee?.actualRole === 'OWNER'
+  const admin = isAdminOrOwner(employee)
   return (
     <div dir="rtl" className="space-y-4">
       <div>

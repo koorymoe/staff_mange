@@ -28,7 +28,7 @@ func NewLeaveRequestHandler(r *repository.LeaveRequestRepository, p *repository.
 // بالصلاحية مو بتعديل الكود.
 func (h *LeaveRequestHandler) routesFor(r *http.Request) []string {
 	role := middleware.RoleFromContext(r)
-	if role == "OWNER" || role == "ADMIN" {
+	if model.IsAdminRole(role) {
 		return model.AllLeaveRoutes()
 	}
 	empID := middleware.EmployeeIDFromContext(r)

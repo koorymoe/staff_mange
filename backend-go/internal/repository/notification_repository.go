@@ -131,10 +131,7 @@ func (r *NotificationRepository) CreateForRolesOrPermission(roles []string, perm
 		SELECT gen_random_uuid()::text, e.id, $3, $4
 		FROM "Employee" e
 		WHERE e.status = 'ACTIVE' AND (
-			e.role::text = ANY($1) OR e.id IN `+model.OrgRoleEmployeesSQL("$1::text[]")+` OR EXISTS (
-				SELECT 1 FROM "EmployeePermission" ep
-				JOIN "Permission" p ON p.id = ep."permissionId"
-				WHERE ep."employeeId" = e.id AND p.name = $2))
+			e.role::text = ANY($1) OR e.id IN `+model.OrgRoleEmployeesSQL("$1::text[]")+` OR `+model.HasPermSQL(`e.id`, `= $2`)+`)
 	`, pq.Array(roles), permissionName, notifType, message)
 	return logFail("CreateForRolesOrPermission", permissionName, notifType, err)
 }

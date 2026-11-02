@@ -287,7 +287,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	// إدارة المشاريع (أو إضافة مشروع فقط). غيرهم يشوف بس المشاريع الموجّهة له.
 	canSeeAllProjects := func(r *http.Request) bool {
 		role, _ := r.Context().Value(middleware.ContextRole).(string)
-		if role == "ADMIN" || role == "OWNER" || role == "PROJECT_MANAGER" || role == "MONITOR" {
+		if model.IsAdminRole(role) || role == "PROJECT_MANAGER" || role == "MONITOR" {
 			return true
 		}
 		id := middleware.EmployeeIDFromContext(r)
@@ -1346,7 +1346,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	// (دازاي 11-01) المطلوب بالشهر وسعر الساعة — الموظف مرة وحدة، والإدارة تعدّل
 	mux.Handle("PUT /api/remote-hours/plan", middleware.Chain(remoteHoursHandler.SetPlan(func(r *http.Request) bool {
 		role := middleware.RoleFromContext(r)
-		if role == "ADMIN" || role == "OWNER" {
+		if model.IsAdminRole(role) {
 			return true
 		}
 		ok, _ := permissionRepo.HasPermission(middleware.EmployeeIDFromContext(r), "remote_hours_manage")

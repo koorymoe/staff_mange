@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
+	"staffmange-api/internal/model"
 	"time"
 
 	"staffmange-api/internal/middleware"
@@ -21,7 +22,7 @@ func NewPeerVoiceHandler(svc *service.PeerVoiceService) *PeerVoiceHandler {
 
 func isAdminRole(r *http.Request) bool {
 	role := middleware.RoleFromContext(r)
-	return role == "ADMIN" || role == "OWNER"
+	return model.IsAdminRole(role)
 }
 
 // GET /api/peer/me

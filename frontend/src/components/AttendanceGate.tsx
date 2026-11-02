@@ -2,7 +2,7 @@ import { positionTitle } from '../roleLabels'
 import { useCallback, useEffect, useState, type ReactNode } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { api, type AttendanceGateState } from '../api'
-import { useSession } from '../session'
+import { useSession, isAdminOrOwner } from '../session'
 import { pollVisible } from '../utils/poll'
 
 // ═══ الحضور الإجباري — قرار (ع) 10-06 ═══
@@ -19,7 +19,7 @@ export default function AttendanceGate({ children }: { children: ReactNode }) {
   const [gate, setGate] = useState<AttendanceGateState | null>(null)
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState('')
-  const exempt = employee?.role === 'ADMIN' || employee?.actualRole === 'OWNER'
+  const exempt = isAdminOrOwner(employee)
 
   const load = useCallback(() => { if (!exempt) void api.getAttendanceGate().then(setGate).catch(() => setGate(null)) }, [exempt])
   useEffect(load, [load])

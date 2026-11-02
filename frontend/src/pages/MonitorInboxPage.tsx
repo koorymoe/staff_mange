@@ -9,7 +9,7 @@ import { matches } from '../utils/search'
 import { useSaveGuard } from '../useSaveGuard'
 import PageHeader from '../components/PageHeader'
 import StatTile from '../components/StatTile'
-import { useSession } from '../session'
+import { useSession, isAdminOrOwner } from '../session'
 import { monCan } from '../utils/monAccess'
 import DuplicateReviewPage from './DuplicateReviewPage'
 import SearchBar from '../components/SearchBar'
@@ -71,7 +71,7 @@ export default function MonitorInboxPage({ embedded }: EmbeddedProps = {}) {
   const [onlyToday, setOnlyToday] = useState(true)
   // ترتيب (ع) 10-04: «تدقيق التكرار» تبويب لحاله جنب «أحكام ماتركس» — نفس الشاشة.
   const { employee, permissions } = useSession()
-  const canDup = employee?.role === 'ADMIN' || employee?.actualRole === 'OWNER' || permissions.includes('duplicate_review')
+  const canDup = isAdminOrOwner(employee) || permissions.includes('duplicate_review')
   const [dupMode, setDupMode] = useState(false)
   // (ع) 10-13: تبريرات الموظفين — ردودهم ترجع هنا والمراقب يحكم
   const [justMode, setJustMode] = useState(false)

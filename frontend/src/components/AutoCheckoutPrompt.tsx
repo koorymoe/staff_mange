@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { api } from '../api'
-import { useSession } from '../session'
+import { useSession, isAdminOrOwner } from '../session'
 
 // ═══ «شنو صار بعد ما خلص دوامك؟» — قرار (ع) 10-06 ═══
 // الي انسكّر انصرافه تلقائياً، أول ما يرجع يفتح النظام ماتركس يسأله:
@@ -17,7 +17,7 @@ export default function AutoCheckoutPrompt() {
   const [msg, setMsg] = useState('')
   const [err, setErr] = useState('')
   const [busy, setBusy] = useState(false)
-  const exempt = employee?.role === 'ADMIN' || employee?.actualRole === 'OWNER'
+  const exempt = isAdminOrOwner(employee)
   useEffect(() => { if (!exempt) void api.getAttendanceGate().then((g) => setInfo(g.autoClosed ?? null)).catch(() => {}) }, [exempt])
   if (!info) return null
 

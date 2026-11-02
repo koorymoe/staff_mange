@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react'
 import type { Employee } from './api'
 import { orgApi, type OrgPerson } from './org'
+import { isAdminOrOwner } from './session'
 
 export const orgAdmin = (e: Employee | null | undefined) =>
-  e?.actualRole === 'OWNER' || e?.role === 'ADMIN'
+  isAdminOrOwner(e)
 export const orgHeads = (items: OrgPerson[] | null | undefined) =>
   (items ?? []).filter(
     (p) => p.position === 'DIRECTOR' || p.position === 'DEPUTY',

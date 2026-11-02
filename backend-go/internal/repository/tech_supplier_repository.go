@@ -1,6 +1,7 @@
 package repository
 
 import (
+	"staffmange-api/internal/model"
 	"time"
 
 	"github.com/jmoiron/sqlx"
@@ -50,8 +51,7 @@ func (r *TechSupplierRepository) CanUse(employeeID string) bool {
 	_ = r.db.Get(&ok, `SELECT EXISTS (SELECT 1 FROM "Employee" e WHERE e.id = $1 AND (
 		e.role::text IN ('ENGINEER', 'TECHNICAL', 'SERVICE_MANAGER', 'ADMIN', 'OWNER')
 		OR EXISTS (SELECT 1 FROM "ServiceManager" sm WHERE sm."employeeId" = e.id)
-		OR EXISTS (SELECT 1 FROM "EmployeePermission" ep JOIN "Permission" p ON p.id = ep."permissionId"
-		           WHERE ep."employeeId" = e.id AND p.name = 'tech_suppliers')))`, employeeID)
+		OR `+model.HasPermSQL(`e.id`, `= 'tech_suppliers'`)+`))`, employeeID)
 	return ok
 }
 
@@ -125,8 +125,7 @@ func (r *TechSupplierRepository) Eligible() ([]TechPerson, error) {
 		FROM "Employee" e WHERE e.status = 'ACTIVE' AND e.role::text NOT IN ('ADMIN', 'OWNER') AND (
 		  e.role::text IN ('ENGINEER', 'TECHNICAL', 'SERVICE_MANAGER')
 		  OR EXISTS (SELECT 1 FROM "ServiceManager" sm WHERE sm."employeeId" = e.id)
-		  OR EXISTS (SELECT 1 FROM "EmployeePermission" ep JOIN "Permission" p ON p.id = ep."permissionId"
-		             WHERE ep."employeeId" = e.id AND p.name = 'tech_suppliers'))
+		  OR `+model.HasPermSQL(`e.id`, `= 'tech_suppliers'`)+`)
 		ORDER BY e.name`)
 	return rows, err
 }

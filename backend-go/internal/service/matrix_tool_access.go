@@ -2,6 +2,7 @@ package service
 
 import (
 	"fmt"
+	"staffmange-api/internal/model"
 
 	"github.com/jmoiron/sqlx"
 )
@@ -36,7 +37,7 @@ var matrixToolAccess = map[string][]string{
 
 // MatrixToolFilter يرجّع فلتر أدوات لموظف؛ nil للمالك والمدير (كلشي).
 func MatrixToolFilter(role string, perms []string) func(string) bool {
-	if role == "OWNER" || role == "ADMIN" {
+	if model.IsAdminRole(role) {
 		return nil
 	}
 	has := map[string]bool{}

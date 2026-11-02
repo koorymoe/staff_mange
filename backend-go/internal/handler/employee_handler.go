@@ -102,7 +102,7 @@ func (h *EmployeeHandler) UpdateIdentity(w http.ResponseWriter, r *http.Request)
 			WriteError(w, http.StatusNotFound, "الموظف غير موجود")
 			return
 		}
-		if target.Role == "ADMIN" || target.Role == "OWNER" {
+		if model.IsAdminRole(target.Role) {
 			WriteError(w, http.StatusForbidden, "حساب المدير والمالك يعدّله المدير بس")
 			return
 		}
@@ -146,7 +146,7 @@ func (h *EmployeeHandler) UpdateProfile(w http.ResponseWriter, r *http.Request) 
 		if target, err := h.service.Get(id); err != nil || target == nil {
 			WriteError(w, http.StatusNotFound, "الموظف غير موجود")
 			return
-		} else if target.Role == "ADMIN" || target.Role == "OWNER" {
+		} else if model.IsAdminRole(target.Role) {
 			WriteError(w, http.StatusForbidden, "ملف المدير والمالك يعدّله المدير بس")
 			return
 		}

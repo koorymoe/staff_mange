@@ -1,6 +1,6 @@
 import { Fragment, useEffect, useMemo, useState, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useSession } from '../session'
+import { useSession, isAdminOrOwner } from '../session'
 import { api, LEAVE_KINDS, type MonthlyAttendanceReport, type EmployeeDailyAttendanceSummary, type OpenSessionResponse, type DailyAttendance, type LeaveRequest, type LeaveKind } from '../api'
 import { countAbsentDays, countLateDays, isLateDay, isWeekend, movementsOf, type Movement } from '../attendanceStats'
 
@@ -68,12 +68,12 @@ export default function AttendancePage({ embedded }: { embedded?: boolean } = {}
   }, [])
   useEffect(() => { loadMyLeaves() }, [loadMyLeaves])
 
-  const isAdmin = employee?.role === 'ADMIN' || employee?.actualRole === 'OWNER' || employee?.role === 'MONITOR' || permissions.includes('monitoring')
+  const isAdmin = isAdminOrOwner(employee) || employee?.role === 'MONITOR' || permissions.includes('monitoring')
   // تصدير جدول الدوام مو لكل موظف — للمراقب ومدير النظام والمالك بس،
   // أو لمن ينطيه المدير صلاحية المراقبة صراحةً.
   const canExport = isAdmin
   // (ع) 10-13: المالك والمدير ما عدهم «جدول دوامي» — يشوفون دوام الموظفين بس
-  const isTop = employee?.role === 'ADMIN' || employee?.actualRole === 'OWNER'
+  const isTop = isAdminOrOwner(employee)
 
   const loadOpenSession = useCallback(() => {
     if (!employee) return

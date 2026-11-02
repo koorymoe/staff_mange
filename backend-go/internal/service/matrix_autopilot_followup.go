@@ -406,7 +406,7 @@ func hasPerm(subj repository.WatchSubject, names ...string) bool {
 // WatchGroup مجموعة الموظف — كل مجموعة إلها عين بلونها وشكلها.
 func WatchGroup(subj repository.WatchSubject) string {
 	switch {
-	case subj.Role == "OWNER" || subj.Role == "ADMIN":
+	case model.IsAdminRole(subj.Role):
 		return "ADMINS"
 	case subj.Role == "MONITOR":
 		return "MONITORS"

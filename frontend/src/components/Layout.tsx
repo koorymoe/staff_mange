@@ -18,7 +18,7 @@ import JustificationPrompt from './JustificationPrompt'
 import MyExamBanner from './MyExamBanner'
 import ErrorBoundary from './ErrorBoundary'
 import { api, type Employee } from '../api'
-import { SessionContext } from '../session'
+import { SessionContext, isAdminOrOwner } from '../session'
 import { roleLabel, roleGradient } from '../roleLabels'
 import { ensureFileToken, isStealthSession } from '../api'
 import Login from '../pages/Login'
@@ -524,7 +524,7 @@ export default function Layout() {
   }
 
   // (دازاي 11-01) مجموعة «الوحدات حسب الهيكل الجديد» = وحدات منصبه بس
-  const orgAllowedUnits: Set<string> | null = (employee?.role === 'ADMIN' || employee?.actualRole === 'OWNER')
+  const orgAllowedUnits: Set<string> | null = (isAdminOrOwner(employee))
     ? null
     : new Set((orgMemberships ?? []).flatMap((m) => m.unitId
       ? [m.unitId]

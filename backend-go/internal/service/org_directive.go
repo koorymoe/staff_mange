@@ -3,6 +3,7 @@ package service
 import (
 	"errors"
 	"fmt"
+	"staffmange-api/internal/model"
 	"strings"
 	"time"
 
@@ -137,7 +138,7 @@ func (s *OrgService) ManagedDirectives(empID, role string) ([]OrgDirective, erro
 	}
 	out := []OrgDirective{}
 	for _, d := range all {
-		ok := role == "OWNER" || role == "ADMIN"
+		ok := model.IsAdminRole(role)
 		if !ok && d.DivisionID != nil {
 			if d.UnitID != nil {
 				ok = s.UnitSee(empID, role, *d.DivisionID, *d.UnitID)

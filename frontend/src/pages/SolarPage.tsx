@@ -5,7 +5,7 @@ import {
   type SolarCategory, type SolarComponent, type SolarInstallation,
   type SolarIronLine, type SolarStats, type SolarSystem, type SolarWiringLine,
 } from '../api'
-import { useSession } from '../session'
+import { useSession, isAdminOrOwner } from '../session'
 import { useNavigate } from 'react-router-dom'
 import { matches } from '../utils/search'
 
@@ -23,7 +23,7 @@ type Tab = 'dashboard' | 'systems' | 'inventory' | 'customers'
 export default function SolarPage() {
   const { employee, permissions } = useSession()
   const canEdit =
-    employee?.role === 'ADMIN' || employee?.actualRole === 'OWNER' || permissions.includes('solar_system')
+    isAdminOrOwner(employee) || permissions.includes('solar_system')
 
   const [tab, setTab] = useState<Tab>('dashboard')
   const [stats, setStats] = useState<SolarStats | null>(null)

@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"staffmange-api/internal/model"
 	"strings"
 
 	"github.com/jmoiron/sqlx"
@@ -55,7 +56,7 @@ func (g *PaperworkGuard) Check(bookingID, employeeID, role string) error {
 		return nil
 	}
 	// المالك والإداري يمرّون دائماً — هما الي يصلّحون العالق.
-	if role == "OWNER" || role == "ADMIN" {
+	if model.IsAdminRole(role) {
 		return nil
 	}
 

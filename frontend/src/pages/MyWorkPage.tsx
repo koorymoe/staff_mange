@@ -1,5 +1,5 @@
 import { lazy, Suspense, useState } from 'react'
-import { useSession } from '../session'
+import { useSession, isAdminOrOwner } from '../session'
 
 // ═══ «مهامي وإنجازاتي» — ترتيب (ع) 10-04 ═══
 // «مهامي الإضافية» و«إنجازاتي اليوم» شاشة وحدة بتبويبين. نفس الشاشتين بالضبط
@@ -17,7 +17,7 @@ const TABS = [
 
 export default function MyWorkPage() {
   const { employee } = useSession()
-  const boss = employee?.role === 'ADMIN' || employee?.actualRole === 'OWNER'
+  const boss = isAdminOrOwner(employee)
   const [tab, setTab] = useState<(typeof TABS)[number]['id']>('tasks')
   return (
     <div dir="rtl" className="space-y-4">

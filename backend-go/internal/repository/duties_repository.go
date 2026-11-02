@@ -188,14 +188,14 @@ func (r *DutiesRepository) position(id string) string {
 		Division string `db:"division"`
 	}
 	if err := r.db.Get(&e, `SELECT `+model.EffectiveRoleSQL(`"Employee".id`, `"Employee".role`)+` AS role, "isLeader",
-		EXISTS (SELECT 1 FROM "EmployeePermission" ep JOIN "Permission" p ON p.id = ep."permissionId" WHERE ep."employeeId" = $1 AND p.name = 'monitoring') AS monitor,
-		EXISTS (SELECT 1 FROM "EmployeePermission" ep JOIN "Permission" p ON p.id = ep."permissionId" WHERE ep."employeeId" = $1 AND p.name = 'coordinator') AS coord,
+		`+model.HasPermSQL(`$1`, `= 'monitoring'`)+` AS monitor,
+		`+model.HasPermSQL(`$1`, `= 'coordinator'`)+` AS coord,
 		COALESCE(division, '') AS division
 		FROM "Employee" WHERE id = $1`, id); err != nil {
 		return "OTHER"
 	}
 	switch {
-	case e.Role == "ADMIN" || e.Role == "OWNER":
+	case model.IsAdminRole(e.Role):
 		// المالك والمدير ما ينقيّمون — الدور بالقاعدة OWNER (ينقلب ADMIN بالجلسة
 		// بس)، فچان المالك يطلع «موظف» وينحاسب على الحضور.
 		return "ADMIN"

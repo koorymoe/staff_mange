@@ -3,7 +3,7 @@ import {
   api, DEPARTMENTS,
   type Employee, type SaveTrainingProgramInput, type SkillWithService, type TrainingProgram,
 } from '../api'
-import { useSession } from '../session'
+import { useSession, isAdminOrOwner } from '../session'
 
 // ═══ برامج التدريب ═══
 //
@@ -23,7 +23,7 @@ const iqd = (n: number) => `${Math.round(n || 0).toLocaleString('en-US')} د.ع`
 export default function TrainingPrograms({ embedded = false }: { embedded?: boolean } = {}) {
   const { employee, permissions } = useSession()
   const canManage =
-    employee?.role === 'ADMIN' || employee?.actualRole === 'OWNER' || employee?.role === 'HR_COORDINATOR' ||
+    isAdminOrOwner(employee) || employee?.role === 'HR_COORDINATOR' ||
     permissions.includes('staff_management') || permissions.includes('content_technician')
 
   const [programs, setPrograms] = useState<TrainingProgram[]>([])

@@ -56,7 +56,7 @@ func (s *QuotationService) List(actorID, role, search string) ([]model.Quotation
 	if err != nil {
 		return nil, err
 	}
-	if role == "ADMIN" || role == "OWNER" {
+	if model.IsAdminRole(role) {
 		return all, nil
 	}
 
@@ -87,7 +87,7 @@ func (s *QuotationService) Get(id, actorID, role string) (*model.Quotation, erro
 	if q == nil {
 		return nil, errors.New("Quotation not found")
 	}
-	if role == "ADMIN" || role == "OWNER" {
+	if model.IsAdminRole(role) {
 		return q, nil
 	}
 	hasManageAll, hasEditOwn, err := s.actorPerms(actorID)

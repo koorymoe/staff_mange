@@ -47,11 +47,7 @@ func (r *ProjectWorkTypeRepository) ListProjectCandidates(engineeringSkills []st
 				JOIN "Skill" s ON s.id = es."skillId"
 				WHERE es."employeeId" = e.id AND es."canPerform" = true AND s.name = ANY($1)
 			) AS "hasEngSkill",
-			EXISTS (
-				SELECT 1 FROM "EmployeePermission" ep
-				JOIN "Permission" p ON p.id = ep."permissionId"
-				WHERE ep."employeeId" = e.id AND p.name = 'content_technician'
-			) AS "isTechPerm"
+			`+model.HasPermSQL(`e.id`, `= 'content_technician'`)+` AS "isTechPerm"
 		FROM "Employee" e
 		-- المتدرب ما ينشال من القائمة: قبل جان ينختفي بالسكوت، فالمدير
 		-- ينطي موظف جديد دور تقني وبعدين ما يلكاه بقائمة التوجيه ولا

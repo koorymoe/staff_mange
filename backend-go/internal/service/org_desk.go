@@ -213,7 +213,7 @@ type OrgDesk struct {
 // الي ما يحق له: نرجّع «مو موجود» (مو 403) — حتى ما تنسجل مخالفة على فضول.
 
 func (s *OrgService) Access(empID, role, divisionID string) (see, edit bool) {
-	if role == "OWNER" || role == "ADMIN" {
+	if model.IsAdminRole(role) {
 		return true, true
 	}
 	rows := []struct {
@@ -266,7 +266,7 @@ func (s *OrgService) UnitSee(empID, role, divisionID, unitID string) bool {
 // planReviewer منو يعتمد الخطة: خطة الوحدة ← مدير/نائب إدارتها (أو الأعلى)؛
 // خطة الإدارة ← مدير «الإدارة» أو المالك/مدير النظام.
 func (s *OrgService) planReviewer(empID, role, divisionID string, unitID *string) bool {
-	if role == "OWNER" || role == "ADMIN" {
+	if model.IsAdminRole(role) {
 		return true
 	}
 	if unitID != nil {

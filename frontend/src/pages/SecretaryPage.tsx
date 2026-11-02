@@ -12,7 +12,7 @@ import {
   type SecretaryToday,
   type ExtraTask,
 } from '../api'
-import { useSession } from '../session'
+import { useSession, isAdminOrOwner } from '../session'
 import './SecretaryPage.css'
 import { irisHonorific } from '../irisIdentity'
 type IrisTrace = {
@@ -275,7 +275,7 @@ function IrisIcon({
 
 export default function SecretaryPage() {
   const { employee } = useSession()
-  const allowed = employee?.actualRole === 'OWNER' || employee?.role === 'ADMIN'
+  const allowed = isAdminOrOwner(employee)
   return allowed ? (
     <Secretary key={employee.id} />
   ) : (

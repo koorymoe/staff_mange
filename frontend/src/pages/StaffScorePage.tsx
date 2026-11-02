@@ -4,7 +4,7 @@ import MatrixNote from '../components/MatrixNote'
 import OwnerSwitch from '../components/OwnerSwitch'
 import { GroupRanking, PairCompare, PendingHumanBadge } from '../components/StaffCompare'
 import { SWITCH_MATRIX_SCORING } from '../systemSwitches'
-import { useSession } from '../session'
+import { useSession, isAdminOrOwner } from '../session'
 import StaffPointsBoard from '../components/StaffPointsBoard'
 
 // ═══ تقييم الموظفين — قرار (ع) 10-05 ═══
@@ -107,7 +107,7 @@ export function ScoreBreakdown({ d, admin, onChange }: { d: StaffScoreDetail; ad
 
 export default function StaffScorePage() {
   const { employee } = useSession()
-  const admin = employee?.role === 'ADMIN' || employee?.actualRole === 'OWNER'
+  const admin = isAdminOrOwner(employee)
   const [month, setMonth] = useState('')
   const [b, setB] = useState<StaffScoreBoard | null>(null)
   const [sel, setSel] = useState<string | null>(null)

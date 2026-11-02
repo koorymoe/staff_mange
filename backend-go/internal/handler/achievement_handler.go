@@ -36,7 +36,7 @@ func (h *AchievementHandler) SetNotifier(n interface {
 // reviewerIsMonitor المراقب (مو المدير/المالك) — ما يراجع إنجازات الإدارة ولا إنجازه.
 func reviewerIsMonitor(r *http.Request) bool { return middleware.RoleFromContext(r) != "ADMIN" }
 
-func isManagementRole(role string) bool { return role == "ADMIN" || role == "OWNER" }
+func isManagementRole(role string) bool { return model.IsAdminRole(role) }
 
 func NewAchievementHandler(s *service.AchievementService) *AchievementHandler {
 	return &AchievementHandler{service: s}

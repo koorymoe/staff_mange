@@ -4,7 +4,7 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import DecorInvoiceForm from '../components/DecorInvoiceForm'
 import InternalDepartmentContacts from '../components/InternalDepartmentContacts'
 import FreeWorkBadge from '../components/FreeWorkBadge'
-import { useSession } from '../session'
+import { useSession, isAdminOrOwner } from '../session'
 import {
   api,
   type CreateMaterialLineRequest,
@@ -53,7 +53,7 @@ export default function LeaderInvoiceNew({ initialMode, handoverOnly = false }: 
   // «هذا ما يرادله تيم وليدر… والي يسوّي الفاتورة هو مسؤول الخدمة
   // نفسها، واني أخلي السعر بكيفي». صلاحيتان منفصلتان: مسؤول الجي بي
   // اس ما يفوتر داش كام.
-  const isTopAdmin = employee?.role === 'ADMIN' || employee?.actualRole === 'OWNER'
+  const isTopAdmin = isAdminOrOwner(employee)
   const canGps = isTopAdmin || permissions.includes('invoice_gps')
   const canDashcam = isTopAdmin || permissions.includes('invoice_dashcam')
   const canServiceInvoice = canGps || canDashcam
@@ -1332,7 +1332,7 @@ export default function LeaderInvoiceNew({ initialMode, handoverOnly = false }: 
               يوصله لمنع. */}
           {serviceMode && pickableBookings.length === 0
             && !services.some((sv) => sv.serviceKind === serviceKind)
-            && (employee?.role === 'ADMIN' || employee?.actualRole === 'OWNER') && (
+            && (isAdminOrOwner(employee)) && (
             <Link
               to="/service-managers"
               className="mt-2 inline-block rounded-lg border border-amber-300 bg-amber-50 px-3 py-1.5 text-xs font-bold text-amber-800 transition-colors hover:bg-amber-100"

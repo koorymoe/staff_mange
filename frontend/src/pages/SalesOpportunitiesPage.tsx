@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { api, type SalesOpportunity } from '../api'
-import { useSession } from '../session'
+import { useSession, isAdminOrOwner } from '../session'
 import BookingCodeChip from '../components/BookingCodeChip'
 import PhoneActions from '../components/PhoneActions'
 
@@ -19,7 +19,7 @@ type ReasonFilter = 'ALL' | SalesOpportunity['reason']
 
 export default function SalesOpportunitiesPage() {
   const { employee, permissions } = useSession()
-  const allowed = employee?.role === 'ADMIN' || employee?.actualRole === 'OWNER'
+  const allowed = isAdminOrOwner(employee)
     || (permissions ?? []).includes('sales_booking')
   const [rows, setRows] = useState<SalesOpportunity[]>([])
   const [loading, setLoading] = useState(true)

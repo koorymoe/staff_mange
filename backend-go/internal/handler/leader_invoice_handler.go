@@ -151,7 +151,7 @@ func (h *LeaderInvoiceHandler) CreateServiceInvoice(w http.ResponseWriter, r *ht
 	}
 	employeeID := middleware.EmployeeIDFromContext(r)
 	role := middleware.RoleFromContext(r)
-	allowed := role == "ADMIN" || role == "OWNER"
+	allowed := model.IsAdminRole(role)
 	if !allowed && h.permissions != nil {
 		if has, err := h.permissions.HasPermission(employeeID, perm); err == nil && has {
 			allowed = true
@@ -305,7 +305,6 @@ func (h *LeaderInvoiceHandler) FreeReasons(w http.ResponseWriter, r *http.Reques
 	}
 	WriteJSON(w, http.StatusOK, rows)
 }
-
 
 // GET /api/leader-invoices/{id}/adjustments — سجل تعديلات المحاسب.
 //

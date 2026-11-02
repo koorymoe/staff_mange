@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { Link, useLocation } from 'react-router-dom'
 import { api, type MatrixWatch } from '../api'
-import { useSession } from '../session'
+import { useSession, isAdminOrOwner } from '../session'
 import { isEnabled, SWITCH_MATRIX_STAFF_EYE } from '../systemSwitches'
 import MatrixEyeGraphic from './MatrixEyeGraphic'
 import { eyeColor, type EyeGroup, type EyeMood } from './matrixEyeColors'
@@ -106,7 +106,7 @@ export default function MatrixEye() {
   const angry = mood === 'ANGRY'
   // المالك والمدير: العين ظاهرة دايماً وتنطيهم تقارير (طلب (ع)) —
   // للموظفين تبقى تطلع عند الإجراء بس.
-  const isBoss = employee?.role === 'ADMIN' || employee?.actualRole === 'OWNER'
+  const isBoss = isAdminOrOwner(employee)
   // رسول ماتركس: العين «مسافرة» عند الموظف — تختفي من هنا
   const [away, setAway] = useState(false)
   const [lidOverride, setLidOverride] = useState<number | null>(null)

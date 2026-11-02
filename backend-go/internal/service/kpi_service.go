@@ -187,7 +187,7 @@ func (s *KpiService) RoleLeaderboard(roles []string, scope repository.Leaderboar
 	// ⚠️ الرفض يفحص **كل** عنصر: بلاه، عائلة فيها ADMIN تمرّر
 	// المالك من الباب الخلفي ويزاحم الي يشتغل الشغل فعلاً.
 	for _, role := range roles {
-		if role == "ADMIN" || role == "OWNER" {
+		if model.IsAdminRole(role) {
 			return nil, errors.New("لا تصنيف شخصي للإداريين العليا")
 		}
 	}

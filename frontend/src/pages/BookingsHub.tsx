@@ -1,7 +1,7 @@
 import { lazy, Suspense, useEffect, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { api } from '../api'
-import { useSession } from '../session'
+import { useSession, isAdminOrOwner } from '../session'
 import BookingsList from './BookingsList'
 import Coordinator from './Coordinator'
 import SalesBooking from './SalesBooking'
@@ -88,7 +88,7 @@ type TabKey = (typeof TABS)[number]['key']
 export default function BookingsHub() {
   const { employee, permissions } = useSession()
   const perms = permissions ?? []
-  const isAdmin = employee?.role === 'ADMIN' || employee?.actualRole === 'OWNER'
+  const isAdmin = isAdminOrOwner(employee)
 
   // ⚠️ التبويب ما يطلع إلا لمن عنده صلاحيته — تبويب يفتح شاشة تگله
   // «ممنوع» أسوأ من تبويب ما موجود.
@@ -155,7 +155,7 @@ export default function BookingsHub() {
   }, [tab, canViewAll, canCoord])
 
   // نفس حارس البند القديم بالقائمة بالضبط — مو حارساً أوسع ولا أضيق.
-  const canDecideDelete = employee?.role === 'ADMIN' || employee?.actualRole === 'OWNER'
+  const canDecideDelete = isAdminOrOwner(employee)
     || (employee?.role === 'MONITOR' || permissions.includes('monitoring')) || permissions.includes('booking_delete_approve')
 
   // مفتاح العدّاد لكل محطة (الي ما إلها عدّاد ما تعرض رقم)
@@ -166,7 +166,7 @@ export default function BookingsHub() {
     awaiting_customer: 'awaitingCustomer',
   }
   // نفس حارس بنود القائمة القديمة بالضبط.
-  const isAdminLike = employee?.role === 'ADMIN' || employee?.actualRole === 'OWNER'
+  const isAdminLike = isAdminOrOwner(employee)
   const canCustomers = isAdminLike || ['HR_COORDINATOR', 'MONITOR'].includes(employee?.role ?? '') || permissions.includes('manage_customers')
   const canArchive = isAdminLike || (employee?.role === 'MONITOR' || permissions.includes('monitoring')) || permissions.includes('bookings_archive')
   // قرار (ع) 10-07: فرص البيع ما تطلع للتقني ومسؤول الخدمة — حتى لو عندهم

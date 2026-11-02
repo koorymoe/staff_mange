@@ -333,7 +333,7 @@ func (h *BookingAuditHandler) ResolveIssue(w http.ResponseWriter, r *http.Reques
 		return
 	}
 	role := middleware.RoleFromContext(r)
-	allowed := role == "ADMIN" || role == "OWNER"
+	allowed := model.IsAdminRole(role)
 	for _, rt := range model.AuditRoutedRoles(kind) {
 		if rt == role {
 			allowed = true

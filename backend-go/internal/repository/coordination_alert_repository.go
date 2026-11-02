@@ -118,8 +118,7 @@ func (r *CoordinationAlertRepository) ShiftOwners(shift string) ([]ShiftOwner, e
 		FROM "Employee" e
 		WHERE e.status = 'ACTIVE' AND e.role::text NOT IN ('ADMIN', 'OWNER', 'MONITOR')
 		  AND COALESCE(e.shift::text, 'MORNING') = $1
-		  AND EXISTS (SELECT 1 FROM "EmployeePermission" ep JOIN "Permission" p ON p.id = ep."permissionId"
-		              WHERE ep."employeeId" = e.id AND p.name = 'coordinator')
+		  AND `+model.HasPermSQL(`e.id`, `= 'coordinator'`)+`
 		ORDER BY e.name`, shift)
 	return out, err
 }

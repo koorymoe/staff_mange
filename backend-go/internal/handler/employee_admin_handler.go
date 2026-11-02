@@ -31,7 +31,7 @@ func NewEmployeeAdminHandler(s *service.EmployeeService, p *repository.Permissio
 	return &EmployeeAdminHandler{service: s, perms: p, repo: r}
 }
 
-func isTop(role string) bool { return role == "ADMIN" || role == "OWNER" }
+func isTop(role string) bool { return model.IsAdminRole(role) }
 
 // guardTarget: يرجّع false ويكتب الخطأ لو الهدف حساب مدير/مالك والطالب مو مدير.
 func (h *EmployeeAdminHandler) guardTarget(w http.ResponseWriter, r *http.Request, id string) bool {
@@ -250,7 +250,9 @@ func adminScopeOf(empID string) []string {
 	return roles
 }
 
-func (h *EmployeeAdminHandler) inScope(r *http.Request, role string) bool { return roleInAdminScope(r, role) }
+func (h *EmployeeAdminHandler) inScope(r *http.Request, role string) bool {
+	return roleInAdminScope(r, role)
+}
 
 func roleInAdminScope(r *http.Request, role string) bool {
 	if isTop(middleware.RoleFromContext(r)) {

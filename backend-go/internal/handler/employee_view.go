@@ -136,5 +136,5 @@ func canSeeOperational(role string) bool {
 }
 
 func isSystemAdmin(role string) bool {
-	return role == "OWNER" || role == "ADMIN"
+	return model.IsAdminRole(role)
 }

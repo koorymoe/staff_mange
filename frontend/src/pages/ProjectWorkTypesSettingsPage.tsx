@@ -4,7 +4,7 @@ import { useSaveGuard } from '../useSaveGuard'
 import SaveError from '../components/SaveError'
 import { loadFailed } from '../netErrors'
 import StageLimitsEditor from '../components/StageLimitsEditor'
-import { useSession } from '../session'
+import { useSession, isAdminOrOwner } from '../session'
 
 // إعدادات وحدة إدارة المشاريع — أنواع الأعمال ("نوع العمل") صارت قابلة
 // للإضافة والحذف براحة المدير، بدل قائمة ثابتة بالكود. أي نوع تضيفه هنا
@@ -88,7 +88,7 @@ export default function ProjectWorkTypesSettingsPage() {
         </div>
       )}
       {/* قرار (ع) 10-10: حدود المراحل — للمدير والمالك بس (المسار requireAdmin) */}
-      {(employee?.role === 'ADMIN' || employee?.actualRole === 'OWNER') && <div className="mt-6"><StageLimitsEditor /></div>}
+      {(isAdminOrOwner(employee)) && <div className="mt-6"><StageLimitsEditor /></div>}
     </div>
     </>
   )

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { api, type Booking } from '../api'
-import { useSession } from '../session'
+import { useSession, isAdminOrOwner } from '../session'
 import BookingLifecycleActions from '../components/BookingLifecycleActions'
 import { matches } from '../utils/search'
 import LocateHint from '../components/LocateHint'
@@ -15,7 +15,7 @@ import BookingCodeChip from '../components/BookingCodeChip'
 // ترجّعه لو الزبون غيّر رأيه.
 export default function BookingsArchive() {
   const { employee } = useSession()
-  const isAdmin = employee?.role === 'ADMIN' || employee?.actualRole === 'OWNER'
+  const isAdmin = isAdminOrOwner(employee)
 
   const [rows, setRows] = useState<Booking[]>([])
   const [loading, setLoading] = useState(true)

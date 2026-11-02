@@ -11,7 +11,7 @@ import {
   type OrgPosition,
   type OrgUnit,
 } from '../org'
-import { useSession } from '../session'
+import { useSession, isAdminOrOwner } from '../session'
 import DirectiveManager from '../components/DirectiveManager'
 import OrgOutputs from '../components/OrgOutputs'
 import OrgAssignmentPreview from '../components/OrgAssignmentPreview'
@@ -102,7 +102,7 @@ export default function OrgPage({
   view?: 'chart' | 'assign'
 }) {
   const { employee } = useSession()
-  return employee?.actualRole === 'OWNER' || employee?.role === 'ADMIN' ? (
+  return isAdminOrOwner(employee) ? (
     <OrgWorkspace key={`${employee.id}:${view}`} view={view} />
   ) : (
     <p role="alert">الهيكل التنظيمي للمالك ومدير النظام بس.</p>

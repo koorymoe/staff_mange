@@ -3,7 +3,7 @@ import { StaffRatingQueue } from '../components/StaffRating'
 import { api, type Booking, type Employee, type CartItem, type Product, type JobDurationEstimate, type VehicleOption, type DelayRisk } from '../api'
 import { formatCustomerCode } from '../utils/identity'
 import { executionStarted } from '../bookingStage'
-import { useSession } from '../session'
+import { useSession, isAdminOrOwner } from '../session'
 import CrewSuggestionChips from '../components/CrewSuggestionChips'
 import { LocationPicker } from '../components/MapLazy'
 import CompletionBadge from '../components/CompletionBadge'
@@ -65,15 +65,15 @@ export default function Coordinator() {
   const { employee: currentUser, permissions } = useSession()
   // منو يكدر يطلب حذف حجز — نفس قائمة شاشة الحجوزات بالضبط، حتى ما
   // يصير الزر يطلع بشاشة ويختفي بالثانية لنفس الموظف.
-  const canRequestDelete = currentUser?.role === 'ADMIN' || currentUser?.actualRole === 'OWNER'
+  const canRequestDelete = isAdminOrOwner(currentUser)
     || currentUser?.role === 'HR_COORDINATOR' || (currentUser?.role === 'MONITOR' || permissions.includes('monitoring'))
     || (permissions ?? []).includes('booking_delete_request')
   // «الزبون ما رد» و«يرجع خبر» = PUT /bookings/{id}/waiting — حارسه صلاحية
   // «coordinator» بس (مو طلب الحذف)، فالزر يطلع بنفس الشرط حتى ما ينحسب مخالفة.
-  const canMarkWaiting = currentUser?.role === 'ADMIN' || currentUser?.actualRole === 'OWNER'
+  const canMarkWaiting = isAdminOrOwner(currentUser)
     || (permissions ?? []).includes('coordinator')
   // الحذف (الأرشفة) قرار إداري — المنسّق يأجّل ويحط بالانتظار، بس ما يحذف
-  const isAdmin = currentUser?.role === 'ADMIN' || currentUser?.actualRole === 'OWNER'
+  const isAdmin = isAdminOrOwner(currentUser)
   // اقتراح ماتركس: نفس حارس الخادم (requireBookingCoord) — حتى المراقب الي يشوف
   // الصفحة ما يضغط زر ينرفض ويتسجّل عليه مخالفة.
   const canMatrixSuggest = isAdmin || (permissions ?? []).some((p) => p === 'coordinator' || p === 'crew_management')

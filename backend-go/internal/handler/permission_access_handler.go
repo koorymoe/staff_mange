@@ -195,7 +195,7 @@ func (h *PermissionAccessHandler) apply(r *http.Request, empID string, version i
 	if middleware.RoleFromContext(r) != "OWNER" {
 		var role string
 		_ = h.db.Get(&role, `SELECT role::text FROM "Employee" WHERE id = $1`, empID)
-		if role == "OWNER" || role == "ADMIN" {
+		if model.IsAdminRole(role) {
 			return http.StatusForbidden, "صلاحيات المالك والمدير يعدّلها المالك بس"
 		}
 	}

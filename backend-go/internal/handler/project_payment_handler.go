@@ -3,6 +3,7 @@ package handler
 import (
 	"encoding/json"
 	"net/http"
+	"staffmange-api/internal/model"
 	"strings"
 	"time"
 
@@ -24,7 +25,7 @@ func NewProjectPaymentHandler(repo *repository.ProjectPaymentRepository, perms *
 
 func (h *ProjectPaymentHandler) has(r *http.Request, roles []string, perms ...string) bool {
 	role := middleware.RoleFromContext(r)
-	if role == "ADMIN" || role == "OWNER" {
+	if model.IsAdminRole(role) {
 		return true
 	}
 	if middleware.HasRole(r, roles...) {

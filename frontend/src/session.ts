@@ -69,3 +69,7 @@ export const canLinkPartialBooking = (role?: string, permissions: string[] = [])
 // ⚠️ **أسماء الأدوار مو هنا**: انتقلن لـ`roleLabels.ts` وياهن ألوان
 // الأدوار — مصدر وحيد بنوع محكوم، حتى الدور الجديد يوقّف البناء
 // إذا انساه أحد بدل ما يعرض رمزاً إنكليزياً لموظف.
+
+/** (DRY 11-02) مدير النظام أو المالك — بدل `role === 'ADMIN' || actualRole === 'OWNER'` المكتوبة بكل شاشة */
+export const isAdminOrOwner = (employee: Pick<Employee, 'role' | 'actualRole'> | null | undefined) =>
+  employee?.role === 'ADMIN' || employee?.actualRole === 'OWNER'

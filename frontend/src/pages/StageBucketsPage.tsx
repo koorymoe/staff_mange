@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { api, type Booking, type StageBucket } from '../api'
 import PhoneActions from '../components/PhoneActions'
-import { useSession } from '../session'
+import { useSession, isAdminOrOwner } from '../session'
 import { copyText } from '../utils/clipboard'
 
 // ═══ سلال المراحل ═══
@@ -152,7 +152,7 @@ export default function StageBucketsPage({ only }: Props = {}) {
   const [deleteAsked, setDeleteAsked] = useState<Record<string, boolean>>({})
   const { employee, permissions } = useSession()
   // «الزبون رد» و«ما رد» = مسارات waiting/resume، حارسها «coordinator» بس.
-  const canMarkWaiting = employee?.role === 'ADMIN' || employee?.actualRole === 'OWNER' || permissions.includes('coordinator')
+  const canMarkWaiting = isAdminOrOwner(employee) || permissions.includes('coordinator')
   /**
    * ⚠️ مطابق لحارس الخادم بالضبط (`requireDeleteRequest`):
    * ADMIN · OWNER · HR_COORDINATOR · MONITOR أو صلاحية

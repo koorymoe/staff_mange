@@ -140,7 +140,7 @@ func (g *OrgGovernor) RegisterUndo(onUndo func(kind string, f func(model.AiActio
 // protected المالك ومدير النظام ما ينحكمون (والي ما نعرف دوره ما نحكم عليه).
 func (g *OrgGovernor) protected(empID string) bool {
 	role := g.org.TargetRole(empID)
-	return role == "" || role == "OWNER" || role == "ADMIN"
+	return role == "" || model.IsAdminRole(role)
 }
 
 // ── الغرامات (كل ساعة) ──

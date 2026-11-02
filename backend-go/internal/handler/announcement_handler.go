@@ -21,7 +21,7 @@ func NewAnnouncementHandler(r *repository.AnnouncementRepository) *AnnouncementH
 // ?all=1 للإدارة: تشمل المخفية.
 func (h *AnnouncementHandler) List(w http.ResponseWriter, r *http.Request) {
 	role := middleware.RoleFromContext(r)
-	if r.URL.Query().Get("all") == "1" && (role == "ADMIN" || role == "OWNER") {
+	if r.URL.Query().Get("all") == "1" && (model.IsAdminRole(role)) {
 		rows, err := h.repo.ListAll()
 		if err != nil {
 			WriteError(w, http.StatusInternalServerError, "تعذر جلب الإعلانات")

@@ -2,6 +2,7 @@ package handler
 
 import (
 	"net/http"
+	"staffmange-api/internal/model"
 	"strings"
 
 	"github.com/jmoiron/sqlx"
@@ -85,8 +86,7 @@ func (h *ProjectDelayHandler) AddReason(w http.ResponseWriter, r *http.Request) 
 	_ = h.db.Get(&allowed, `SELECT EXISTS (SELECT 1 FROM "Project" p WHERE p.id = $1 AND (
 		$2 IN (COALESCE(p."responsibleEmployeeId",''), COALESCE(p."delegatedToEmployeeId",''), COALESCE(p."surveyorEmployeeId",''), COALESCE(p."createdByEmployeeId",''))
 		OR EXISTS (SELECT 1 FROM "Booking" b WHERE b.id = p."bookingId" AND b."projectSupervisorId" = $2)
-		OR EXISTS (SELECT 1 FROM "EmployeePermission" ep JOIN "Permission" pm ON pm.id = ep."permissionId"
-		           WHERE ep."employeeId" = $2 AND pm.name = 'project_management')))`, id, me)
+		OR `+model.HasPermSQL(`$2`, `= 'project_management'`)+`))`, id, me)
 	if !allowed && role != "ADMIN" && role != "OWNER" {
 		WriteError(w, http.StatusForbidden, "ما عندك علاقة بهالمشروع")
 		return
@@ -125,10 +125,9 @@ func (h *ProjectDelayHandler) MyDelays(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	me, role := middleware.EmployeeIDFromContext(r), middleware.RoleFromContext(r)
-	all := role == "ADMIN" || role == "OWNER"
+	all := model.IsAdminRole(role)
 	if !all {
-		_ = h.db.Get(&all, `SELECT EXISTS (SELECT 1 FROM "EmployeePermission" ep JOIN "Permission" pm ON pm.id = ep."permissionId"
-			WHERE ep."employeeId" = $1 AND pm.name = 'project_management')`, me)
+		_ = h.db.Get(&all, `SELECT `+model.HasPermSQL(`$1`, `= 'project_management'`)+``, me)
 	}
 	out := []service.ProjectVerdict{}
 	for _, p := range rep.Projects {

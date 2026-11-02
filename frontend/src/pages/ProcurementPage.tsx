@@ -3,7 +3,7 @@ import PurchaseControlPanel from '../components/PurchaseControlPanel'
 import { purchaseApi } from '../api'
 import { useSearchParams } from 'react-router-dom'
 import { api, procurementTypeLabels, type ProcurementRequest, type ProcurementRequestType, type ProcurementStats, type Booking } from '../api'
-import { SessionContext, hasRole } from '../session'
+import { SessionContext, hasRole, isAdminOrOwner } from '../session'
 import BookingCodeChip from '../components/BookingCodeChip'
 
 const statusLabels: Record<string, string> = {
@@ -23,8 +23,8 @@ export default function ProcurementPage() {
   const { employee, permissions } = useContext(SessionContext)
   // توفير المواد وتحديد حالتها (توفير/رفض) يقتصر على إداري الكميات والأدمن فقط —
   // أي موظف ثاني (فني، مدير مشاريع، مراقب...) يشوف الطلبات وحالتها بس بدون تحكم.
-  const canManageProcurement = employee?.role === 'ADMIN' || employee?.actualRole === 'OWNER' || hasRole(employee, 'PROCUREMENT_ADMIN')
-  const isAdminLike = employee?.role === 'ADMIN' || employee?.actualRole === 'OWNER'
+  const canManageProcurement = isAdminOrOwner(employee) || hasRole(employee, 'PROCUREMENT_ADMIN')
+  const isAdminLike = isAdminOrOwner(employee)
   // كل نوع طلب له صلاحية مستقلة تُمنح يدوياً بصفحة الصلاحيات — ما تنجر مع أي دور.
   // الأدمن/المالك يقدر ينشئ الاثنين دائماً.
   const canCreatePersonal = isAdminLike || permissions.includes('procurement_personal')

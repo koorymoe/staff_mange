@@ -2,6 +2,7 @@ package service
 
 import (
 	"fmt"
+	"staffmange-api/internal/model"
 
 	"staffmange-api/internal/repository"
 )
@@ -96,7 +97,7 @@ var groupRaterStages = map[string]map[string]bool{
 // periodicTargets منو يقيّم منو دورياً: المدير ← المراقبين؛ المراقب ← المجموعات
 // الي ماكو إلها تقييم بمحطة (مو الفنيين ولا الليدرية ولا المراقبين).
 func periodicStage(raterRole string) string {
-	if raterRole == "ADMIN" || raterRole == "OWNER" {
+	if model.IsAdminRole(raterRole) {
 		return "ADMIN_PERIODIC"
 	}
 	return "MONITOR_PERIODIC"

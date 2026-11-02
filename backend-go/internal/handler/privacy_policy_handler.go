@@ -22,7 +22,7 @@ func NewPrivacyPolicyHandler(repo *repository.PrivacyPolicyRepository) *PrivacyP
 // منو أضاف كل نقطة معلومة إدارية — تظهر للمالك ومدير النظام بس.
 func canSeeAuthors(r *http.Request) bool {
 	role := middleware.RoleFromContext(r)
-	return role == "ADMIN" || role == "OWNER"
+	return model.IsAdminRole(role)
 }
 
 func stripAuthors(points []model.PrivacyPolicyPoint) []model.PrivacyPolicyPoint {

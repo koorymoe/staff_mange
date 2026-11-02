@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { api, type CourierMessage } from '../api'
-import { useSession } from '../session'
+import { useSession, isAdminOrOwner } from '../session'
 import MatrixEyeGraphic from './MatrixEyeGraphic'
 import { pollVisible } from '../utils/poll'
 import { COURIER_TRIP_MS, tweenLid } from '../utils/courier'
@@ -20,7 +20,7 @@ const SHOW_MS = 9_000
 
 export default function MatrixCourier() {
   const { employee } = useSession()
-  const isBoss = employee?.role === 'ADMIN' || employee?.actualRole === 'OWNER'
+  const isBoss = isAdminOrOwner(employee)
   const [visit, setVisit] = useState<CourierMessage | null>(null)
   const [lid, setLid] = useState(0)
   const busy = useRef(false)

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math"
 	"sort"
+	"staffmange-api/internal/model"
 	"strings"
 	"time"
 
@@ -19,7 +20,7 @@ import (
 
 // matrixRuleClause قواعد نقاط ماتركس ← فقرة اللائحة (principleNo).
 var matrixRuleClause = map[string]int{
-	"ATTENDANCE": 3,                 // م١/ف٣ مواعيد العمل
+	"ATTENDANCE": 3,                                     // م١/ف٣ مواعيد العمل
 	"MONITOR":    4, "MONITOR_AUDIT": 4, "STAGE_LOG": 4, // م١/ف٤ المسؤولية والمحاسبة
 	"TASK_DUE": 2,                                   // م١/ف٢ الالتزام بالتوجيهات
 	"WORK":     7, "COMPLETE": 7, "PROJECT_WEEK": 7, // م٢/ف١ الدقة والسرعة
@@ -269,7 +270,7 @@ func (a *MatrixAgent) registerOutputsTool() {
 
 // CanSeeOutputs منو يشوف لوحة مخرجات منو.
 func (s *OrgService) CanSeeOutputs(empID, role, employeeID, unitID, divisionID string) bool {
-	if role == "OWNER" || role == "ADMIN" {
+	if model.IsAdminRole(role) {
 		return true
 	}
 	switch {

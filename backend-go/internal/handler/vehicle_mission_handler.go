@@ -55,7 +55,7 @@ func (h *VehicleMissionHandler) DriverRatingSummary(w http.ResponseWriter, r *ht
 }
 
 func isAdminOrMonitor(role string) bool {
-	return role == "ADMIN" || role == "OWNER" || role == "MONITOR"
+	return model.IsAdminRole(role) || role == "MONITOR"
 }
 
 func (h *VehicleMissionHandler) Start(w http.ResponseWriter, r *http.Request) {

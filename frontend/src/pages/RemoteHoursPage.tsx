@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { api, type Employee, type RemoteEntry, type RemoteSummary, type RemoteTimer, type RemotePlan } from '../api'
-import { useSession } from '../session'
+import { useSession, isAdminOrOwner } from '../session'
 import { loadFailed } from '../netErrors'
 
 // ═══ ساعات العمل من البيت ═══
@@ -17,7 +17,7 @@ const card = 'rounded-2xl border border-slate-200 bg-white p-4 shadow-sm'
 
 export default function RemoteHoursPage() {
   const { employee: me, permissions } = useSession()
-  const isAdmin = me?.role === 'ADMIN' || me?.actualRole === 'OWNER'
+  const isAdmin = isAdminOrOwner(me)
   const canManage = isAdmin || permissions.includes('remote_hours_manage')
   const canSelf = isAdmin || permissions.includes('remote_hours_self') || permissions.includes('remote_hours_manage')
   return (
