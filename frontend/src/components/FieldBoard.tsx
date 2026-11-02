@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { api, type Booking } from '../api'
+import { api, apiRequest, type Booking } from '../api'
 import { pollVisible } from '../utils/poll'
 
 // ═══ «بالميدان والمعلّق» — طلب (ع) 10-13 ═══
@@ -19,11 +19,15 @@ const t = (s: string | null | undefined) => s
   ? new Date(s).toLocaleString('ar-IQ', { timeZone: 'Asia/Baghdad', weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
   : '—'
 
-function Card({ b, bucket }: { b: Booking; bucket: string }) {
+// ⏱️ (11-02) أوقات الميدان + تحليل ماتركس
+type FieldTime = { bookingId: string; departedAt: string | null; arrivedAt: string | null; startedAt: string | null; alert: boolean; notes: string[] }
+const hm = (s: string | null) => s ? new Date(s).toLocaleTimeString('ar-IQ', { timeZone: 'Asia/Baghdad', hour: 'numeric', minute: '2-digit' }) : '—'
+
+function Card({ b, bucket, ft }: { b: Booking; bucket: string; ft?: FieldTime }) {
   const crew = (b.assignments ?? []).map((a) => a.employee?.name).filter(Boolean).join('، ')
   const missing = [!b.hasInvoice && 'الفاتورة', !b.hasReport && 'التقرير'].filter(Boolean).join(' و')
   return (
-    <Link to={`/bookings?q=${encodeURIComponent(b.code)}`} className="block rounded-xl border border-slate-200 bg-white p-3 text-sm transition hover:-translate-y-0.5 hover:shadow-md">
+    <Link to={`/bookings?q=${encodeURIComponent(b.code)}`} className={`block rounded-xl border p-3 text-sm transition hover:-translate-y-0.5 hover:shadow-md ${ft?.alert ? 'border-amber-300 bg-amber-50' : 'border-slate-200 bg-white'}`}>
       <div className="flex items-center justify-between gap-2">
         <p className="truncate font-extrabold text-[#0f2040]">{b.customer?.name || '—'}</p>
         <span className="shrink-0 rounded-md bg-slate-100 px-2 py-0.5 text-[11px] text-slate-500">{b.code}</span>
@@ -31,16 +35,19 @@ function Card({ b, bucket }: { b: Booking; bucket: string }) {
       <p className="mt-0.5 truncate text-xs text-slate-500">{b.service?.name || '—'}</p>
       <p className="mt-1 truncate text-xs text-slate-700">👷 {crew || 'بلا كادر مسجّل'}</p>
       <p className="mt-1 text-[11px] text-slate-500">
-        {bucket === 'in_field' && <>📍 طلع: {t(b.startedAt || b.arrivedAt)}</>}
+        {bucket === 'in_field' && !ft && <>📍 طلع: {t(b.startedAt || b.arrivedAt)}</>}
+        {bucket === 'in_field' && ft && <>🚗 انطلق {hm(ft.departedAt)} · 📍 وصل {hm(ft.arrivedAt)} · 🔧 بدأ العمل {hm(ft.startedAt)}</>}
         {bucket === 'stopped' && <>⏸️ توقف: {t(b.workStoppedAt)}</>}
         {bucket === 'partial' && <>🔄 آخر إنجاز جزئي: {t(b.lastPartialAt)} · {b.partialCount} مرة</>}
         {bucket === 'needs_paper' && <>🏁 خلص: {t(b.completedAt)} · <b className="text-violet-700">ناقص {missing}</b></>}
       </p>
+      {bucket === 'in_field' && ft && <p className={`mt-1 text-[11px] font-bold ${ft.alert ? 'text-amber-800' : 'text-slate-600'}`}>🧠 {ft.notes.join(' · ')}</p>}
     </Link>
   )
 }
 
 export default function FieldBoard() {
+  const [timing, setTiming] = useState<Record<string, FieldTime>>({})
   const [data, setData] = useState<Record<string, { items: Booking[]; total: number } | null>>({})
   useEffect(() => {
     let alive = true
@@ -50,8 +57,11 @@ export default function FieldBoard() {
         .catch(() => { if (alive) setData((d) => ({ ...d, [g.bucket]: null })) })
     })
     load()
+    const loadT = () => apiRequest<FieldTime[]>('/field-timing').then((r) => { if (alive) setTiming(Object.fromEntries(r.map((x) => [x.bookingId, x]))) }).catch(() => {})
+    void loadT()
+    const stopT = pollVisible(loadT, 60_000)
     const stop = pollVisible(load, 60_000)
-    return () => { alive = false; stop() }
+    return () => { alive = false; stop(); stopT() }
   }, [])
 
   return (
@@ -69,7 +79,7 @@ export default function FieldBoard() {
               : d.items.length === 0 ? <p className="text-sm text-slate-500">{g.empty}</p>
               : (
                 <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                  {d.items.map((b) => <Card key={b.id} b={b} bucket={g.bucket} />)}
+                  {d.items.map((b) => <Card key={b.id} b={b} bucket={g.bucket} ft={timing[b.id]} />)}
                 </div>
               )}
             {d && d.total > d.items.length && <p className="mt-2 text-[11px] text-slate-500">ينعرض أول {d.items.length} من {d.total}.</p>}

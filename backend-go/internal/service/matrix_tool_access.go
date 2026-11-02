@@ -19,6 +19,7 @@ var matrixToolAccess = map[string][]string{
 	"org_structure": nil, "regulations": nil,
 	// الحجوزات والميدان
 	"late_bookings":    {"view_bookings", "coordinator", "crew_management", "monitoring", "mon_field", "mon_attendance"},
+	"field_timing":     {"view_bookings", "coordinator", "crew_management", "monitoring", "mon_field"},
 	"late_paperwork":   {"monitoring", "mon_reports", "auditing", "finance", "leader_invoices_view", "coordinator"},
 	"attendance_today": {"monitoring", "mon_attendance", "staff_management", "coordinator"},
 	// الزبائن والجودة

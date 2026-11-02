@@ -444,3 +444,14 @@ func (h *WorkGateHandler) ReviewMatch(w http.ResponseWriter, r *http.Request) {
 	}
 	WriteJSON(w, http.StatusOK, map[string]bool{"ok": true})
 }
+
+// GET /api/field-timing — ⏱️ أوقات الميدان + التحليل (أرقام وأكواد بس، بلا أسماء)
+func (h *WorkGateHandler) FieldTiming(w http.ResponseWriter, r *http.Request) {
+	rows, err := service.FieldTiming(h.db, "")
+	if err != nil {
+		log.Printf("[field-timing] %v", err)
+		WriteError(w, http.StatusInternalServerError, "تعذر التحليل")
+		return
+	}
+	WriteJSON(w, http.StatusOK, rows)
+}

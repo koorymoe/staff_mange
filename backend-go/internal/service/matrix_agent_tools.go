@@ -187,6 +187,17 @@ func (a *MatrixAgent) RegisterReadTools(d AgentDeps) {
 			return d.Text(), nil
 		}})
 
+	// ⏱️ (11-02) أوقات الميدان: انطلق، وصل، بدأ العمل — مقابل المعتاد.
+	a.AddTool(agentTool{Name: "field_timing", Desc: "الكوادر بالميدان هسه (أو حجز واحد بكوده): شوكت انطلقوا، شوكت وصلوا، شوكت ضغطوا بدء العمل، ويا تحليل: الطريق مقابل المعتاد، الوصول مقابل الموعد، الانتظار قبل البدء، ومدة الشغل مقابل معتاد الخدمة.",
+		Props: map[string]any{"code": map[string]any{"type": "string", "description": "كود الحجز (اختياري)"}},
+		Run: func(in map[string]any, mask *nameMask) (string, error) {
+			rows, err := FieldTiming(a.db, strArg(in, "code"))
+			if err != nil {
+				return "", err
+			}
+			return FieldTimingText(rows), nil
+		}})
+
 	// 🔎 (11-02 — ٩.٤) تقرير الإنجاز مقابل الشغل المسجّل ليوم.
 	a.AddTool(agentTool{Name: "daily_report_match", Desc: "يطابق تقرير إنجاز موظف ليوم ويا شغله المسجّل بالنظام: شنو كتب، شنو سوّى فعلاً، الحجوزات الي ذكرها وما لمسها والي اشتغل عليها وما ذكرها. استعمله لما تشك بتقرير موظف.",
 		Props: map[string]any{"who": map[string]any{"type": "string", "description": "رمز الموظف مثل موظف#3"}, "day": map[string]any{"type": "string", "description": "YYYY-MM-DD (افتراضي: أمس)"}}, Req: []string{"who"},
