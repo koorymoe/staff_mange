@@ -193,3 +193,41 @@ func (r *RemoteHoursRepository) SetPlan(emp, by string, p RemoteHoursPlan, onlyI
 	n, _ := res.RowsAffected()
 	return n > 0, nil
 }
+
+// ═══ (دازاي 11-02) سجل الأشهر السابقة — للمالك بس ═══
+
+type RemoteMonthTotal struct {
+	Month     string `db:"month" json:"month"`
+	Employees int    `db:"employees" json:"employees"`
+	Days      int    `db:"days" json:"days"`
+	Seconds   int    `db:"seconds" json:"seconds"`
+}
+
+// Months كل شهر بيه دوام من البيت (الأحدث أول).
+func (r *RemoteHoursRepository) Months() ([]RemoteMonthTotal, error) {
+	rows := []RemoteMonthTotal{}
+	err := r.db.Select(&rows, `SELECT to_char("workDate", 'YYYY-MM') AS month, COUNT(DISTINCT "employeeId")::int AS employees,
+		COUNT(DISTINCT ("employeeId", "workDate"))::int AS days, SUM(seconds)::int AS seconds
+		FROM "RemoteWorkEntry" GROUP BY 1 ORDER BY 1 DESC LIMIT 36`)
+	return rows, err
+}
+
+type RemoteMonthRow struct {
+	EmployeeID    string   `db:"employeeId" json:"employeeId"`
+	Name          string   `db:"name" json:"name"`
+	Days          int      `db:"days" json:"days"`
+	Seconds       int      `db:"seconds" json:"seconds"`
+	TargetHours   *int     `db:"targetHours" json:"targetHours"`
+	HourlyRateIQD *float64 `db:"hourlyRateIQD" json:"hourlyRateIQD"`
+}
+
+// MonthDetail كل موظف بالشهر ويا المطلوب وسعر الساعة (الحالي).
+func (r *RemoteHoursRepository) MonthDetail(month string) ([]RemoteMonthRow, error) {
+	rows := []RemoteMonthRow{}
+	err := r.db.Select(&rows, `SELECT r."employeeId", e.name, COUNT(DISTINCT r."workDate")::int AS days, SUM(r.seconds)::int AS seconds,
+		p."targetHours", p."hourlyRateIQD"::float8 AS "hourlyRateIQD"
+		FROM "RemoteWorkEntry" r JOIN "Employee" e ON e.id = r."employeeId" LEFT JOIN "RemoteHoursPlan" p ON p."employeeId" = r."employeeId"
+		WHERE to_char(r."workDate", 'YYYY-MM') = $1
+		GROUP BY r."employeeId", e.name, p."targetHours", p."hourlyRateIQD" ORDER BY seconds DESC`, month)
+	return rows, err
+}

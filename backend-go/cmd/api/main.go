@@ -1380,6 +1380,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	requireRemoteHours := guards.RoleOrPermission([]string{"ADMIN", "OWNER"}, "remote_hours_manage")
 	mux.Handle("POST /api/remote-hours", middleware.Chain(http.HandlerFunc(remoteHoursHandler.Create), requireAuth, requireRemoteHours))
 	mux.Handle("GET /api/remote-hours", middleware.Chain(http.HandlerFunc(remoteHoursHandler.List), requireAuth, requireRemoteHours))
+	mux.Handle("GET /api/remote-hours/history", middleware.Chain(http.HandlerFunc(remoteHoursHandler.History), requireAuth, requireOwner))
 	mux.Handle("GET /api/remote-hours/summary", middleware.Chain(http.HandlerFunc(remoteHoursHandler.Summary), requireAuth, requireRemoteHours))
 	mux.Handle("GET /api/remote-hours/export", middleware.Chain(http.HandlerFunc(remoteHoursHandler.Export), requireAuth, requireRemoteHours))
 	// الموظف لنفسه: صلاحية remote_hours_self (أو المسؤول).

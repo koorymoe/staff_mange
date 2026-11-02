@@ -3913,6 +3913,7 @@ export const api = {
   getRemoteHours: (employeeId = '') =>
     request<{ entries: RemoteEntry[]; totalSeconds: number; plan?: RemotePlan | null }>(`/remote-hours?employeeId=${encodeURIComponent(employeeId)}`),
   getRemoteSummary: () => request<RemoteSummary[]>('/remote-hours/summary'),
+  getRemoteHistory: (month = '', employeeId = '') => request<RemoteHistory>(`/remote-hours/history?month=${month}&employeeId=${encodeURIComponent(employeeId)}`),
   addRemoteHours: (b: { employeeId: string; date: string; hours: number; minutes: number; seconds: number; note?: string }) =>
     request<{ id: string; seconds: number }>('/remote-hours', { method: 'POST', body: JSON.stringify(b) }),
   deleteRemoteHours: (id: string) => request<{ ok: boolean }>(`/remote-hours/${encodeURIComponent(id)}`, { method: 'DELETE' }),
@@ -6376,6 +6377,12 @@ export interface LateFocus {
 export interface RemoteEntry { id: string; employeeId: string; employeeName: string; workDate: string; seconds: number; note: string | null; addedById: string | null; addedBy: string; createdAt: string; source: 'MANUAL' | 'TIMER'; closedAt: string | null }
 export interface RemoteTimer { running: boolean; elapsed: number; startedAt: string | null }
 export interface RemoteSummary { employeeId: string; name: string; days: number; seconds: number }
+export interface RemoteHistory {
+  months: { month: string; employees: number; days: number; seconds: number }[]
+  month?: string
+  rows?: { employeeId: string; name: string; days: number; seconds: number; targetHours: number | null; hourlyRateIQD: number | null }[]
+  entries?: RemoteEntry[]
+}
 
 // ═══ تقييم الموظفين (قرار (ع) 10-05) ═══
 export type StaffRatingStage = 'COORD_LEADER' | 'AUDIT' | 'QUALITY_CALL'

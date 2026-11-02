@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { api, type Employee, type RemoteEntry, type RemoteSummary, type RemoteTimer, type RemotePlan } from '../api'
+import { api, type Employee, type RemoteEntry, type RemoteSummary, type RemoteTimer, type RemotePlan, type RemoteHistory } from '../api'
 import { useSession, isAdminOrOwner } from '../session'
 import { loadFailed } from '../netErrors'
 import { hms, todayBaghdad as today } from '../utils/format'
@@ -26,6 +26,7 @@ export default function RemoteHoursPage() {
       </div>
       {canSelf && <MyHours meId={me?.id ?? ''} />}
       {canManage && <ManageHours meId={me?.id ?? ''} isAdmin={isAdmin} />}
+      {(me?.role === 'OWNER' || me?.actualRole === 'OWNER') && <OwnerHistory />}
     </div>
   )
 }
@@ -426,6 +427,72 @@ function ManageHours({ meId, isAdmin }: { meId: string; isAdmin: boolean }) {
           </table>
         )}
       </section>
+    </div>
+  )
+}
+
+// ═══ 📅 سجل الأشهر السابقة — المالك بس (دازاي 11-02) ═══
+// «اريد اشوف دوام الموظفين للأشهر السابقة شكد جان». الفلوس بسعر الساعة الحالي ولحد المطلوب.
+const monthAr = (m: string) => new Date(m + '-15T12:00:00').toLocaleDateString('ar-IQ', { month: 'long', year: 'numeric' })
+const iqd = (v: number) => `${Math.round(v).toLocaleString('en-US')} دينار`
+
+function OwnerHistory() {
+  const [month, setMonth] = useState('')
+  const [emp, setEmp] = useState('')
+  const [data, setData] = useState<RemoteHistory | null>(null)
+  useEffect(() => { api.getRemoteHistory(month, emp).then(setData).catch(loadFailed) }, [month, emp])
+  if (!data) return null
+  const cur = data.month ?? ''
+  return (
+    <div className={`${card} space-y-3`}>
+      <h2 className="text-lg font-extrabold text-[#0f2040]">📅 سجل الأشهر السابقة <span className="text-xs font-normal text-slate-400">(إلك بس)</span></h2>
+      {data.months.length === 0 ? <p className="text-sm text-slate-400">بعد ماكو دوام من البيت مسجّل.</p> : (
+        <div className="flex flex-wrap gap-2">
+          {data.months.map((m) => (
+            <button key={m.month} onClick={() => { setMonth(m.month); setEmp('') }}
+              className={`rounded-xl px-3 py-2 text-right text-xs ${m.month === cur ? 'bg-[#0f2040] text-white' : 'bg-slate-50 text-slate-700 ring-1 ring-slate-200'}`}>
+              <b className="block text-sm">{monthAr(m.month)}</b>
+              {hms(m.seconds)} · {m.employees} موظف · {m.days} يوم
+            </button>
+          ))}
+        </div>
+      )}
+      {data.rows && data.rows.length > 0 && (
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead className="text-xs text-slate-500"><tr><th className="p-2 text-right">الموظف</th><th>الأيام</th><th>الساعات</th><th>المطلوب</th><th>الإنجاز</th><th>المستحق</th></tr></thead>
+            <tbody>
+              {data.rows.map((r) => {
+                const target = (r.targetHours ?? 0) * 3600
+                const pct = target > 0 ? Math.round((r.seconds / target) * 100) : null
+                const pay = r.hourlyRateIQD ? (Math.min(r.seconds, target || r.seconds) / 3600) * r.hourlyRateIQD : null
+                return (
+                  <tr key={r.employeeId} onClick={() => setEmp(emp === r.employeeId ? '' : r.employeeId)} className={`cursor-pointer border-t border-slate-100 hover:bg-slate-50 ${emp === r.employeeId ? 'bg-sky-50' : ''}`}>
+                    <td className="p-2 font-bold">{r.name}</td>
+                    <td className="p-2 text-center">{r.days}</td>
+                    <td className="p-2 text-center font-mono" dir="ltr">{hms(r.seconds)}</td>
+                    <td className="p-2 text-center">{r.targetHours ? `${r.targetHours} ساعة` : '—'}</td>
+                    <td className={`p-2 text-center font-bold ${pct === null ? '' : pct >= 100 ? 'text-emerald-700' : pct >= 70 ? 'text-amber-700' : 'text-red-700'}`}>{pct === null ? '—' : `${pct}٪`}</td>
+                    <td className="p-2 text-center">{pay === null ? '—' : iqd(pay)}</td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+          <p className="mt-1 text-[11px] text-slate-400">اضغط على موظف تشوف أيامه. المستحق محسوب بسعر الساعة الحالي ولحد الساعات المطلوبة.</p>
+        </div>
+      )}
+      {emp && data.entries && (
+        <div className="rounded-xl bg-slate-50 p-3 text-xs">
+          {data.entries.map((e) => (
+            <div key={e.id} className="flex gap-3 border-b border-slate-100 py-1 last:border-0">
+              <span className="w-24 font-mono text-slate-500" dir="ltr">{e.workDate.slice(0, 10)}</span>
+              <span className="w-20 font-mono font-bold" dir="ltr">{hms(e.seconds)}</span>
+              <span className="text-slate-500">{e.source === 'TIMER' ? '⏱️ عدّاد' : `✍️ ${e.addedBy}`}{e.note && ` — ${e.note}`}</span>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   )
 }

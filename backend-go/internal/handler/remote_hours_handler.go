@@ -511,3 +511,31 @@ func (h *RemoteHoursHandler) SetPlan(canManage func(r *http.Request) bool) http.
 		WriteJSON(w, http.StatusOK, map[string]any{"plan": h.repo.Plan(emp)})
 	}
 }
+
+// GET /api/remote-hours/history?month=&employeeId= — 📅 سجل الأشهر السابقة (المالك بس)
+func (h *RemoteHoursHandler) History(w http.ResponseWriter, r *http.Request) {
+	months, err := h.repo.Months()
+	if err != nil {
+		WriteError(w, http.StatusInternalServerError, "تعذر جلب السجل")
+		return
+	}
+	out := map[string]any{"months": months}
+	month := r.URL.Query().Get("month")
+	if month == "" && len(months) > 0 {
+		month = months[0].Month
+	}
+	if month != "" {
+		out["month"] = month
+		if out["rows"], err = h.repo.MonthDetail(month); err != nil {
+			WriteError(w, http.StatusInternalServerError, "تعذر جلب الشهر")
+			return
+		}
+		if emp := r.URL.Query().Get("employeeId"); emp != "" {
+			if out["entries"], err = h.repo.List(emp, month); err != nil {
+				WriteError(w, http.StatusInternalServerError, "تعذر جلب السجلات")
+				return
+			}
+		}
+	}
+	WriteJSON(w, http.StatusOK, out)
+}
