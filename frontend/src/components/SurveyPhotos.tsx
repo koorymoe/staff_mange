@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { api, type SurveyPhoto, type SurveyPhotoOwner } from '../api'
-import { useSession } from '../session'
+import { useSession, isAdminOrOwner } from '../session'
 
 // صور الكشف — للحجز والمشروع. العرض والتنزيل يقرّرهن الخادم بكل طلب
 // (المراقب، المحاسب، المدير، إداري الحجوزات، والكادر الي رفعها)، فلو
@@ -91,7 +91,7 @@ export default function SurveyPhotos({ owner, canUpload = false, title = '📷 �
   }
 
   if (hidden) return null
-  const canDelete = (p: SurveyPhoto) => p.uploadedById === employee?.id || employee?.role === 'ADMIN'
+  const canDelete = (p: SurveyPhoto) => p.uploadedById === employee?.id || isAdminOrOwner(employee)
 
   return (
     <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50 p-3">

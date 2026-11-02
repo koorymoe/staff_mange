@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { api, type PrivacyPolicyPoint } from '../api'
-import { useSession } from '../session'
+import { useSession, isAdminOrOwner } from '../session'
 
 /**
  * صفحة سياسة الخصوصية — يقراها أي موظف من الإعدادات بأي وقت.
@@ -9,7 +9,7 @@ import { useSession } from '../session'
  */
 export default function PrivacyPolicyPage() {
   const { employee, permissions } = useSession()
-  const isAdmin = employee?.role === 'ADMIN'
+  const isAdmin = isAdminOrOwner(employee)
   const canManage = isAdmin || permissions.includes('privacy_policy_manage')
 
   const [points, setPoints] = useState<PrivacyPolicyPoint[]>([])

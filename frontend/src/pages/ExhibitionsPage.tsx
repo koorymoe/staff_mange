@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { api, type Exhibition, type Employee, type EmployeeRole, fileUrl } from '../api'
-import { useSession } from '../session'
+import { useSession, isAdminOrOwner } from '../session'
 import { loadFailed } from '../netErrors'
 
 function fileToBase64(file: File): Promise<string> {
@@ -42,7 +42,7 @@ function groupNominees(employees: Employee[]) {
 export default function ExhibitionsPage({ embedded }: { embedded?: boolean } = {}) {
   const { permissions, employee } = useSession()
   const canAdd = employee?.role === 'ADMIN' || permissions.includes('unit_technicians')
-  const isAdmin = employee?.role === 'ADMIN'
+  const isAdmin = isAdminOrOwner(employee)
 
   const [items, setItems] = useState<Exhibition[]>([])
   const [employees, setEmployees] = useState<Employee[]>([])

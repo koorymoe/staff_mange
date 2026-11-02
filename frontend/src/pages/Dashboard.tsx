@@ -12,7 +12,7 @@ import AdminHome from '../components/AdminHome'
 import ShiftEndCard from '../components/ShiftEndCard'
 import { api } from '../api'
 import type { Booking, Expense, StaffRequest, LeaveRequest, InventoryCheck, FinanceSummary, DailyAuditReport, TodayPulse, Employee } from '../api'
-import { useSession, hasGpsSkill, hasRole } from '../session'
+import { useSession, hasGpsSkill, hasRole, isAdminOrOwner } from '../session'
 import MeetingRequests from '../components/MeetingRequests'
 import MyDirectives from '../components/MyDirectives'
 import { useOrgMemberships, orgPositionTitle } from '../orgDeskAccess'
@@ -82,7 +82,7 @@ function ProgressRing({ percent, size = 56, stroke = 5, color }: { percent: numb
 export default function Dashboard() {
   const { employee } = useSession()
   // (دازاي 11-01) «مكاني/بنودي/مخرجاتي» ما تطلع بالرئيسية لأي موظف نهائياً
-  if (employee?.role === 'ADMIN') return <><MyDirectives hideWhenEmpty /><AdminHome name={positionTitle(employee)} /></>
+  if (isAdminOrOwner(employee)) return <><MyDirectives hideWhenEmpty /><AdminHome name={positionTitle(employee)} /></>
   return <><MyDirectives hideWhenEmpty /><MeetingRequests /><StaffDashboard /></>
 }
 
@@ -300,7 +300,7 @@ function StaffDashboard() {
 
   if (!employee) return null
 
-  const isAdmin = employee.role === 'ADMIN'
+  const isAdmin = isAdminOrOwner(employee)
   // واجهة المراقب الرئيسية — قرار (ع) 10-04: تنشال «نظرة المراقب» (الأرقام،
   // المنجزة اليوم، تنبيه التدقيق)، و«صلاحيات إضافية»، وجدول الدوام (له شاشته
   // «جدول دوامي»). يبقى: الإجراءات السريعة ونبض اليوم (شكاوى، ميدان، تنسيق، حجوزات).

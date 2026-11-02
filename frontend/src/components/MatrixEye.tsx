@@ -232,7 +232,7 @@ export default function MatrixEye() {
   // يشتغل ويطوّل» (٢٠ ضغطة أو ١٠ دقايق شغل بالجلسة). وأي إجراء ماتركس
   // (راقب فلان، دردشة، قرار) يحوّلها مانغكيو قدّامه شوية وترجع.
   const isOwner = employee?.actualRole === 'OWNER'
-  const isAdminOnly = employee?.role === 'ADMIN' && !isOwner
+  const isAdminOnly = isAdminOrOwner(employee) && !isOwner
   const [awake, setAwake] = useState(() => { try { return sessionStorage.getItem('mx-sharingan') === '1' } catch { return false } })
   const [mangekyo, setMangekyo] = useState(false)
   useEffect(() => {

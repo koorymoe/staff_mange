@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { api, type ServiceStudy, type Employee } from '../api'
-import { useSession } from '../session'
+import { useSession, isAdminOrOwner } from '../session'
 import { loadFailed } from '../netErrors'
 
 function splitList(v: string) {
@@ -12,7 +12,7 @@ function splitList(v: string) {
 export default function ServiceStudiesPage({ embedded }: { embedded?: boolean } = {}) {
   const { permissions, employee } = useSession()
   const canAdd = employee?.role === 'ADMIN' || permissions.includes('unit_technicians')
-  const isAdmin = employee?.role === 'ADMIN'
+  const isAdmin = isAdminOrOwner(employee)
   const employeeId = employee?.id
 
   const [items, setItems] = useState<ServiceStudy[]>([])

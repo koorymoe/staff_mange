@@ -71,5 +71,7 @@ export const canLinkPartialBooking = (role?: string, permissions: string[] = [])
 // إذا انساه أحد بدل ما يعرض رمزاً إنكليزياً لموظف.
 
 /** (DRY 11-02) مدير النظام أو المالك — بدل `role === 'ADMIN' || actualRole === 'OWNER'` المكتوبة بكل شاشة */
+// ⚠️ بالجلسة المالك يتحوّل role=ADMIN + actualRole=OWNER (Layout)، بس صفوف الـAPI
+// (قائمة موظفين…) يجي بيها role=OWNER خام — الثلاث حالات محسوبة.
 export const isAdminOrOwner = (employee: Pick<Employee, 'role' | 'actualRole'> | null | undefined) =>
-  employee?.role === 'ADMIN' || employee?.actualRole === 'OWNER'
+  employee?.role === 'ADMIN' || employee?.role === 'OWNER' || employee?.actualRole === 'OWNER'

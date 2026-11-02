@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { api, type NetworkPriceItem, type NetworkCostResponse } from '../api'
-import { useSession } from '../session'
+import { useSession, isAdminOrOwner } from '../session'
 
 // ═══ حساب كلفة الشبكات ═══
 //
@@ -17,7 +17,7 @@ import { useSession } from '../session'
 //   تنظيم الراك (BRACKET) سعر البورت حسب حجم السويتج — سطر لكل سويتج
 export default function NetworkCostPage() {
   const { employee } = useSession()
-  const isAdmin = employee?.role === 'ADMIN'
+  const isAdmin = isAdminOrOwner(employee)
 
   const [items, setItems] = useState<NetworkPriceItem[]>([])
   const [qty, setQty] = useState<Record<string, string>>({})

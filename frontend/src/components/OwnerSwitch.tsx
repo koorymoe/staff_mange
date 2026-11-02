@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { api } from '../api'
-import { useSession } from '../session'
+import { useSession, isAdminOrOwner } from '../session'
 import { getSwitches, forgetSwitches, SWITCH_ANNOUNCEMENTS, SWITCH_MATRIX_AUTOPILOT, SWITCH_MATRIX_STAFF_EYE, AI_COST_SWITCHES } from '../systemSwitches'
 
 // ═══ زر إطفاء ميزة — للمالك دايماً، ولمدير النظام بمفاتيح معيّنة ═══
@@ -33,7 +33,7 @@ export default function OwnerSwitch({ switchKey, label, hint }: Props) {
   // ⚠️ actualRole ماكو غير للمالك (تطبيع Layout.tsx) — مدير النظام
   // الحقيقي role يبقى 'ADMIN' بلا actualRole، فنفحص role مباشرة
   // ونستثني المالك (مغطّى فوق بـisOwner أصلاً).
-  const isAllowedAdmin = !isOwner && employee?.role === 'ADMIN' && adminAllowedSwitches.has(switchKey)
+  const isAllowedAdmin = !isOwner && isAdminOrOwner(employee) && adminAllowedSwitches.has(switchKey)
   const canToggle = isOwner || isAllowedAdmin
   const [on, setOn] = useState<boolean | null>(null)
   const [busy, setBusy] = useState(false)

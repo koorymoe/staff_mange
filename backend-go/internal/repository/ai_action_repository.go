@@ -587,9 +587,7 @@ func (r *AiActionRepository) LeaderMaterialsPending(id string) []string {
 func (r *AiActionRepository) QualityEngineerForGps() string {
 	var id string
 	_ = r.db.Get(&id, `SELECT e.id FROM "Employee" e
-		WHERE e.status = 'ACTIVE' AND (e.role = 'QUALITY_ENGINEER' OR EXISTS (
-			SELECT 1 FROM "EmployeePermission" ep JOIN "Permission" p ON p.id = ep."permissionId"
-			WHERE ep."employeeId" = e.id AND p.name = 'quality_control' AND e.role NOT IN ('ADMIN','OWNER','MONITOR')))
+		WHERE e.status = 'ACTIVE' AND (e.role = 'QUALITY_ENGINEER' OR (e.role NOT IN ('ADMIN','OWNER','MONITOR') AND `+model.HasPermSQL(`e.id`, `= 'quality_control'`)+`))
 		ORDER BY (SELECT COUNT(*) FROM "AiAction" a WHERE a."targetEmployeeId" = e.id AND a."resolvedAt" IS NULL), e.name
 		LIMIT 1`)
 	return id

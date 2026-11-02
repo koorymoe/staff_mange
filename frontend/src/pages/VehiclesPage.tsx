@@ -1,6 +1,6 @@
 import { useEffect, useState, useMemo } from 'react'
 import { api, fileUrl, type VehicleDocument, type VehiclePart, type VehiclePhoto, type Vehicle, type VehicleLog, type VehicleIncident, type VehicleMonthlyStatus, type VehicleDailyRating, type Employee, type VehicleIncidentAttachment, type VehicleAlert, type VehicleExpenseSummary, type EmployeeFuelStat, type VehicleWashMonthly } from '../api'
-import { useSession } from '../session'
+import { useSession, isAdminOrOwner } from '../session'
 import { useSaveGuard } from '../useSaveGuard'
 import SaveError from '../components/SaveError'
 import type { SaveGuard } from '../useSaveGuard'
@@ -74,7 +74,7 @@ export default function VehiclesPage() {
   // كل حفظ بهاي الشاشة يمر من هنا — الفشل ينعرض بدل ما ينبلع
   const guard = useSaveGuard()
   const { employee } = useSession()
-  const isAdmin = employee?.role === 'ADMIN'
+  const isAdmin = isAdminOrOwner(employee)
   const [vehicles, setVehicles] = useState<Vehicle[]>([])
   const [employees, setEmployees] = useState<Employee[]>([])
   const [selectedId, setSelectedId] = useState<string | null>(null)

@@ -5,7 +5,7 @@ import 'leaflet.heat'
 import { api, type BookingTrack, type CompanyLocation, type FieldMap } from '../api'
 import PageHeader from '../components/PageHeader'
 import LocationPicker from '../components/LocationPicker'
-import { useSession } from '../session'
+import { useSession, isAdminOrOwner } from '../session'
 
 // ═══ خريطة الميدان — قرار (ع) 10-14 ═══
 // للمالك والمدير والمراقب: الشركة، حجوزات اليوم بمواقعها، آخر موقع لكل موظف،
@@ -28,7 +28,7 @@ function diffMin(a?: string | null, b?: string | null) {
 
 export default function FieldMapPage() {
   const { employee } = useSession()
-  const isAdmin = employee?.role === 'ADMIN'
+  const isAdmin = isAdminOrOwner(employee)
   const [from, setFrom] = useState(today())
   const [to, setTo] = useState(today())
   const [mode, setMode] = useState<'map' | 'heat'>('map')

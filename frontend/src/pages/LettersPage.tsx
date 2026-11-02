@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { api, type EmployeeLetter } from '../api'
-import { useSession } from '../session'
+import { useSession, isAdminOrOwner } from '../session'
 import vstripUrl from '../assets/print/quotation-vstrip.png'
 import bannerUrl from '../assets/print/quotation-banner.png'
 
@@ -14,7 +14,7 @@ import bannerUrl from '../assets/print/quotation-banner.png'
 // ينطبع بورقة الشركة (نفس إطار عرض السعر)، ويبقى بالسجل بجوابه.
 export default function LettersPage() {
   const { employee } = useSession()
-  const isAdmin = employee?.role === 'ADMIN'
+  const isAdmin = isAdminOrOwner(employee)
 
   const [tab, setTab] = useState<'mine' | 'inbox'>('mine')
   const [mine, setMine] = useState<EmployeeLetter[]>([])

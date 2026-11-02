@@ -2,7 +2,7 @@ import { useDeferredValue, useEffect, useMemo, useState } from 'react'
 import ProjectPaymentsModal from '../components/ProjectPaymentsModal'
 import { api, apiRequest, type ProjectMoney, type ProjectPaymentsState } from '../api'
 import { useNavigate } from 'react-router-dom'
-import { useSession, hasRole } from '../session'
+import { useSession, hasRole, isAdminOrOwner } from '../session'
 import LocationFields from '../components/LocationFields'
 import ProjectDelayBanner from '../components/ProjectDelayBanner'
 import { matches } from '../utils/search'
@@ -998,7 +998,7 @@ function fileToBase64(file: File): Promise<string> {
 
 function ContractModal({ project, onClose, onSaved }: { project: Project; onClose: () => void; onSaved: () => void }) {
   const { employee } = useSession()
-  const isAdmin = employee?.role === 'ADMIN'
+  const isAdmin = isAdminOrOwner(employee)
   const [saving, setSaving] = useState<'plain' | 'signed' | null>(null)
   const [error, setError] = useState('')
   // ملفات العقد ما تجي بالقائمة (ثقيلة) — نجيبها هنا بس لما تنفتح النافذة.

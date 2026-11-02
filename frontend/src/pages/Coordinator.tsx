@@ -96,7 +96,7 @@ export default function Coordinator() {
   const [delayRisks, setDelayRisks] = useState<Record<string, DelayRisk>>({})
   // ═══ ماتركس: الكادر الأنسب ═══ — نفس حارس PUT /api/bookings/{id}/assign
   // (requireBookingCoord: coordinator أو crew_management؛ ADMIN/OWNER يعبرون).
-  const canCrewSuggest = currentUser?.role === 'ADMIN'
+  const canCrewSuggest = isAdminOrOwner(currentUser)
     || (permissions ?? []).includes('coordinator') || (permissions ?? []).includes('crew_management')
   // الاقتراح المختار ينتظر تثبيت المنسّق — ما يتكلّف بالضغطة.
   const [crewPick, setCrewPick] = useState<{ bookingId: string; employeeId: string; name: string } | null>(null)
@@ -418,7 +418,7 @@ export default function Coordinator() {
   // ⚠️ نفس حارس التكليف بالخادم (coordinator/crew_management): المراقب
   // يشوف هاي الشاشة بدوره بلا الصلاحية، وضغطة تنرفض بالحارس تنحسب
   // عليه مخالفة — فالزر ما يطلعله أصلاً.
-  const canSendToSurvey = currentUser?.role === 'ADMIN'
+  const canSendToSurvey = isAdminOrOwner(currentUser)
     || permissions.includes('coordinator') || permissions.includes('crew_management')
   const [surveyFor, setSurveyFor] = useState<Booking | null>(null)
   // ترحيل للتقني (قرار (ع) 10-07): مشكلة ما يعرفون الفنيين يحلّوها.

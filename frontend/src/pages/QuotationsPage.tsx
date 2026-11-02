@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { api, type Quotation } from '../api'
-import { useSession } from '../session'
+import { useSession, isAdminOrOwner } from '../session'
 import QuotationVersions from '../components/QuotationVersions'
 import QuotationTermsEditor from '../components/QuotationTermsEditor'
 import { numIQ as fmt } from '../utils/format'
@@ -29,9 +29,9 @@ export default function QuotationsPage() {
   const navigate = useNavigate()
   const { employee, permissions } = useSession()
   const [showTerms, setShowTerms] = useState(false)
-  const canTerms = employee?.role === 'ADMIN' || employee?.role === 'OWNER'
+  const canTerms = isAdminOrOwner(employee)
     || ['quotation_create', 'quotation_edit_own', 'quotation_manage_all', 'quotation_system'].some((p) => permissions.includes(p))
-  const isAdmin = employee?.role === 'ADMIN'
+  const isAdmin = isAdminOrOwner(employee)
   const [quotations, setQuotations] = useState<Quotation[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)

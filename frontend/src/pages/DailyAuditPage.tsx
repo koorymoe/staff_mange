@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { api, type DailyAuditReport, type DailyAuditRow, type FreeWorkReason } from '../api'
 import FreeWorkBadge from '../components/FreeWorkBadge'
 import MoneyNoInvoice from '../components/MoneyNoInvoice'
-import { useSession, canAuditFinance } from '../session'
+import { useSession, canAuditFinance, isAdminOrOwner } from '../session'
 import SearchBar from '../components/SearchBar'
 import EmptyState from '../components/EmptyState'
 import { matches } from '../utils/search'
@@ -89,7 +89,7 @@ export default function DailyAuditPage() {
   // إرجاع الحجز للتدقيق: صلاحية مدير النظام حصراً (المالك يتطبّع لمدير
   // بالجلسة، فتشمله تلقائياً).
   const { employee, permissions } = useSession()
-  const isAdmin = employee?.role === 'ADMIN'
+  const isAdmin = isAdminOrOwner(employee)
   // ⚠️ جان `employee?.role === 'MONITOR'` — **دور**، مو قدرة. فلمّا
   // المالك ينطي مفتاح التدقيق لمراقب حتى يكمل بدل المحاسب، الأزرار
   // تبقى مخفية وما ينفع المنح بشي. هسه القرار بالمفتاح:

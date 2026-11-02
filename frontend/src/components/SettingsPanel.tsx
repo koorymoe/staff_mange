@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { api } from '../api'
-import { useSession } from '../session'
+import { useSession, isAdminOrOwner } from '../session'
 
 const ICON_CHOICES = ['😀', '😎', '🦁', '🐺', '🦅', '🐉', '⚡', '🔥', '⭐', '🚀', '🛠️', '🎯']
 
@@ -63,7 +63,7 @@ export default function SettingsPanel({ onClose }: { onClose: () => void }) {
 
   // موافقات مدير النظام على طلبات تعديل الرمز
   const [pendingRequests, setPendingRequests] = useState<Awaited<ReturnType<typeof api.getPendingAttendanceIconRequests>>>([])
-  const isAdmin = employee?.role === 'ADMIN'
+  const isAdmin = isAdminOrOwner(employee)
   useEffect(() => {
     if (isAdmin) api.getPendingAttendanceIconRequests().then(setPendingRequests).catch(() => {})
   }, [isAdmin])
@@ -187,7 +187,7 @@ export default function SettingsPanel({ onClose }: { onClose: () => void }) {
           <div className="mt-4 space-y-2 border-t border-slate-100 pt-4">
             {employee?.actualRole === 'OWNER' && <button onClick={() => { onClose(); navigate('/ai-agents') }} className="flex w-full items-center justify-between rounded-lg border border-slate-200 px-3 py-2.5 text-sm font-bold text-slate-700 hover:bg-slate-50"><span>🤖 وكلاء الذكاء</span><span>←</span></button>}
             {/* (ع) 10-13: الأقسام ومسؤوليها مكانها بالإعدادات — نفس حارس الخادم */}
-            {(employee?.role === 'ADMIN' || employee?.role === 'OWNER' || permissions.includes('departments_manage')) && (
+            {(isAdminOrOwner(employee) || permissions.includes('departments_manage')) && (
               <button
                 onClick={() => { onClose(); navigate('/departments') }}
                 className="flex w-full items-center justify-between rounded-lg border border-slate-200 px-3 py-2.5 text-sm font-bold text-slate-700 hover:bg-slate-50"

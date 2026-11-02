@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { api } from '../api'
 import PageHeader from '../components/PageHeader'
-import { useSession } from '../session'
+import { useSession, isAdminOrOwner } from '../session'
 
 // ═══ علاقات الموردين — قرار (ع) 10-15 ═══
 // العلاقات العامة ووحدة التقنيين: كل مورد (مشتريات أو تقنيين)، صارلنا شكد ما
@@ -18,7 +18,7 @@ const when = (s: string | null) => (s ? new Date(s).toLocaleDateString('en-CA', 
 
 export default function SupplierRelationsPage() {
   const { employee } = useSession()
-  const isAdmin = employee?.role === 'ADMIN'
+  const isAdmin = isAdminOrOwner(employee)
   const [data, setData] = useState<{ rows: Row[]; contactDays: number; kinds: Record<string, string> } | null>(null)
   const [err, setErr] = useState('')
   const [reload, setReload] = useState(0)

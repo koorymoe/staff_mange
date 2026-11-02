@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback, useRef } from 'react'
-import { useSession } from '../session'
+import { useSession, isAdminOrOwner } from '../session'
 import { LocationPicker } from '../components/MapLazy'
 import { MapViewer } from '../components/MapLazy'
 import { matches } from '../utils/search'
@@ -122,7 +122,7 @@ function StarSelector({ value, onChange }: { value: number; onChange: (v: number
 
 export default function SuppliersPage() {
   const { employee, permissions } = useSession()
-  const isAdmin = employee?.role === 'ADMIN'
+  const isAdmin = isAdminOrOwner(employee)
   // التعديل والحذف داخل نفس صلاحية إدارة الموردين — منو يضيف يقدر يعدل ويحذف،
   // حتى إداري الكميات ما يضطر يرجع للأدمن على كل مورد غلط.
   const canManageSuppliers = isAdmin || permissions.includes('suppliers_management')

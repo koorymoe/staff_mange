@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback, useMemo } from 'react'
 import { matches } from '../utils/search'
-import { useSession } from '../session'
+import { useSession, isAdminOrOwner } from '../session'
 import EmptyState from '../components/EmptyState'
 import { api, REVIEW_RATINGS, type BookingAwaitingReview, type CrewReviewState, type ReviewRating } from '../api'
 import BookingCodeChip from '../components/BookingCodeChip'
@@ -59,7 +59,7 @@ export default function PerformanceReviewPage({ embedded }: { embedded?: boolean
   // حجوزات الشركة، والليدر يشوف حجوزاته هو. الشاشة لازم تحچي بلسان
   // النطاق الصحيح وإلا التلميحات تصير كذب على المراقب.
   const seesAll =
-    employee?.role === 'ADMIN' ||
+    isAdminOrOwner(employee) ||
     employee?.actualRole === 'OWNER' ||
     (employee?.role === 'MONITOR' || permissions.includes('monitoring')) ||
     permissions.includes('performance_review')

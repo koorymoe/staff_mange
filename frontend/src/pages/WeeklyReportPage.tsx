@@ -1,7 +1,7 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { api, type WeeklyMover, type WeeklyReport, type WeekTotals } from '../api'
-import { useSession } from '../session'
+import { useSession, isAdminOrOwner } from '../session'
 import { numRound as fmt } from '../utils/format'
 
 /**
@@ -55,7 +55,7 @@ function Movers({ rows, empty }: { rows: WeeklyMover[]; empty: string }) {
 
 export default function WeeklyReportPage() {
   const { employee } = useSession()
-  const allowed = employee?.role === 'ADMIN'
+  const allowed = isAdminOrOwner(employee)
   const [params, setParams] = useSearchParams()
   const week = params.get('week') || ''
   const [data, setData] = useState<WeeklyReport | null>(null)

@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { useSession } from '../session'
+import { useSession, isAdminOrOwner } from '../session'
 
 // يمنع الوصول إلا لـ ADMIN أو موظف عنده الصلاحية المذكورة، حتى لو كتب رابط الصفحة مباشرة
 //
@@ -13,7 +13,7 @@ export default function RequirePermission(
 ) {
   const { employee, permissions } = useSession()
 
-  const allowed = employee?.role === 'ADMIN'
+  const allowed = isAdminOrOwner(employee)
     || (!!employee?.role && (roles ?? []).includes(employee.role))
     || permissions.includes(permission)
     || (anyOf ?? []).some((p) => permissions.includes(p))

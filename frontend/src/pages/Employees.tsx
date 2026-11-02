@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { api, LEADER_SKILLS, type Employee, type Service, type Stats } from '../api'
 import EmployeeHRPanel from '../components/EmployeeHRPanel'
 import EmployeeAvatar from '../components/EmployeeAvatar'
-import { useSession, hasRole } from '../session'
+import { useSession, hasRole, isAdminOrOwner } from '../session'
 import EmployeeHandoverDialog from '../components/EmployeeHandoverDialog'
 import { useSaveGuard } from '../useSaveGuard'
 import SaveError from '../components/SaveError'
@@ -53,7 +53,7 @@ export default function Employees({ embedded }: { embedded?: boolean } = {}) {
   // كل حفظ بهاي الشاشة يمر من هنا — الفشل ينعرض بدل ما ينبلع
   const guard = useSaveGuard()
   const { employee: currentUser, permissions: userPermissions } = useSession()
-  const isAdmin = currentUser?.role === 'ADMIN'
+  const isAdmin = isAdminOrOwner(currentUser)
   // (ع) 10-11: نطاق الأدوار للمفوَّض بتعديل الموظفين
   const [myScope, setMyScope] = useState<string[] | null>(null)
   useEffect(() => {

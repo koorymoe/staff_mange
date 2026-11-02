@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react'
 import MultiSelect from './MultiSelect'
 import { onEnter } from '../utils/enterKey'
 import { api, type Booking, type Service } from '../api'
-import { useSession } from '../session'
+import { useSession, isAdminOrOwner } from '../session'
 import BookingChainView from './BookingChain'
 import { validateCustomerName } from '../validation'
 import { parseAmount } from '../utils/money'
@@ -34,7 +34,7 @@ export default function BookingEditPanel({
   //
   // ⚠️ role يتطبّع لـ'ADMIN' للمالك بالجلسة، فهذا الشرط يغطي الاثنين.
   const { employee, permissions } = useSession()
-  const canChangeType = employee?.role === 'ADMIN'
+  const canChangeType = isAdminOrOwner(employee)
   const [bookingType, setBookingType] = useState(booking.bookingType)
   const [typeBusy, setTypeBusy] = useState(false)
 

@@ -190,10 +190,9 @@ const carryoverMissingSQL = `FROM "Booking" b
 	       OR NOT EXISTS (SELECT 1 FROM "WorkReport" w WHERE w."bookingId" = b.id))`
 
 func (g *PaperworkGuard) holdsCarryover(employeeID string) bool {
-	var n int
-	_ = g.db.Get(&n, `SELECT count(*) FROM "EmployeePermission" ep JOIN "Permission" p ON p.id = ep."permissionId"
-		WHERE ep."employeeId" = $1 AND p.name = 'paperwork_carryover'`, employeeID)
-	return n > 0
+	var ok bool
+	_ = g.db.Get(&ok, `SELECT `+model.HasPermSQL(`$1`, `= 'paperwork_carryover'`), employeeID)
+	return ok
 }
 
 // CarryoverAllowed الموظف عنده الصلاحية، والحجز من حجوزاته وناقصه ورق.

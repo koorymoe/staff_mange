@@ -42,7 +42,7 @@ export default function LeaderInvoiceNew({ initialMode, handoverOnly = false }: 
   // الليدر يشوف المبلغ وبس. هذي أسعار داخلية ما تنعرض لكل من يحسب كلفة.
   // (المالك ينطبّع دوره لـADMIN بالجلسة، فالشرط يغطي الاثنين.)
   const { employee, permissions } = useSession()
-  const canSeeBreakdown = employee?.role === 'ADMIN'
+  const canSeeBreakdown = isAdminOrOwner(employee)
   // ⚠️ **يُقرا قبل كل الحالات**: `serviceMode` و`selectedBookingId`
   // و`mode` كلهن يبدون من الرابط، فتعريفه لازم يسبقهن — وإلا
   // «استُعمل قبل التعريف».

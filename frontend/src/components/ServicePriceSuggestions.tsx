@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { api, type ServicePriceStats, type ServicePriceSuggestion } from '../api'
-import { useSession } from '../session'
+import { useSession, isAdminOrOwner } from '../session'
 import { numRound as fmt } from '../utils/format'
 
 // ═══ أسعار يقترحها النظام ═══
@@ -34,7 +34,7 @@ export default function ServicePriceSuggestions() {
   // والاعتماد لـADMIN/OWNER (`requireAdmin`). و`role` يتطبّع لـADMIN
   // للمالك بالجلسة، فهذا الشرط يغطي الاثنين.
   const canReview = employee?.role === 'ADMIN' || employee?.role === 'FINANCE'
-  const canDecide = employee?.role === 'ADMIN'
+  const canDecide = isAdminOrOwner(employee)
 
   const [rows, setRows] = useState<ServicePriceSuggestion[] | null>(null)
   // 🔴 المبتوت لازم يبقى مرئياً: بلاه، المالك يعتمد سعراً فيختفي

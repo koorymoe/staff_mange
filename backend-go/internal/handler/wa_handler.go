@@ -7,6 +7,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"staffmange-api/internal/model"
 	"strings"
 	"time"
 
@@ -30,7 +31,7 @@ func NewWaHandler(svc *service.WaAgentService, wa *whatsapp.Client, perms *repos
 
 // canAgent المدير والمالك كلشي؛ quality_control للجودة، coordinator للحجوزات.
 func (h *WaHandler) canAgent(r *http.Request, agent string) bool {
-	if middleware.IsOwner(r) || middleware.RoleFromContext(r) == "ADMIN" {
+	if middleware.IsOwner(r) || model.IsAdminRole(middleware.RoleFromContext(r)) {
 		return true
 	}
 	perm := "coordinator"

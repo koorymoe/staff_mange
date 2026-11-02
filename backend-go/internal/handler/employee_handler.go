@@ -112,7 +112,7 @@ func (h *EmployeeHandler) UpdateIdentity(w http.ResponseWriter, r *http.Request)
 			return
 		}
 		if body.Role != nil {
-			if *body.Role == "ADMIN" || *body.Role == "OWNER" {
+			if model.IsAdminRole(*body.Role) {
 				WriteError(w, http.StatusForbidden, "منح دور المدير أو المالك للمدير بس")
 				return
 			}

@@ -1,7 +1,7 @@
 import { Fragment, useEffect, useRef, useState } from 'react'
 import { api, type Booking, type Employee, type VehicleOption } from '../api'
 import { formatCustomerCode } from '../utils/identity'
-import { useSession, hasRole } from '../session'
+import { useSession, hasRole, isAdminOrOwner } from '../session'
 import AgentActionNotice from '../components/AgentActionNotice'
 import { MapViewer } from '../components/MapLazy'
 import { formatScheduleWindow } from '../utils/schedule'
@@ -103,7 +103,7 @@ export default function BookingsList({ bucket = 'all', focus }: { bucket?: Booki
   const [total, setTotal] = useState(0)
   const dateInputRef = useRef<HTMLInputElement>(null)
   const monthInputRef = useRef<HTMLInputElement>(null)
-  const isAdmin = employee?.role === 'ADMIN'
+  const isAdmin = isAdminOrOwner(employee)
   // ═══ التعديل صار بالصلاحية مو بالدور ═══
   //
   // «هنا نحتاج زر تعديل لتفاصيل الحجز، مثلاً الوقت أو الكادر».

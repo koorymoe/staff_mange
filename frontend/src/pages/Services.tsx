@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { api, type Service } from '../api'
-import { useSession } from '../session'
+import { useSession, isAdminOrOwner } from '../session'
 
 export default function Services() {
   const { employee } = useSession()
@@ -82,7 +82,7 @@ export default function Services() {
       <h2 className="text-2xl font-bold text-brand-900">الخدمات</h2>
       <p className="mt-1 text-slate-500">قائمة الخدمات التي تقدمها الشركة.</p>
 
-      {employee?.role === 'ADMIN' && (
+      {isAdminOrOwner(employee) && (
       <form
         onSubmit={handleAdd}
         className="mt-6 grid grid-cols-1 gap-4 rounded-xl border border-white bg-white p-6 shadow-[0_4px_20px_rgba(15,32,64,0.06)] sm:grid-cols-3"
@@ -173,7 +173,7 @@ export default function Services() {
                     {service.division === 'DECOR' ? '🎨 ديكور' : '🔧 هندسية'}
                   </span>
                 </div>
-                {employee?.role === 'ADMIN' && (
+                {isAdminOrOwner(employee) && (
                   <button
                     type="button"
                     onClick={() => handleDelete(service)}
@@ -196,7 +196,7 @@ export default function Services() {
                 ))}
               </div>
 
-              {employee?.role === 'ADMIN' && (
+              {isAdminOrOwner(employee) && (
                 <div className="mt-3 flex gap-2">
                   <input
                     value={skillDraft[service.id] || ''}

@@ -1,7 +1,7 @@
 import { Fragment, useEffect, useState, useMemo } from 'react'
 import { api, type PersonalTool, type VehicleTool, type OnDemandTool, type ToolRequest, type ToolRequestItem, type Employee, type InventoryCheck, type PersonalToolTemplateItem,
   type PersonalToolExemption, type BookingToolCheck, type VehicleToolCheck, type Vehicle, type PersonalToolEvent, type PersonalToolStatus, personalToolStatusLabels, personalToolStatusColors } from '../api'
-import { useSession, hasRole } from '../session'
+import { useSession, hasRole, isAdminOrOwner } from '../session'
 import { roleLabel } from '../roleLabels'
 
 // تطبيع اسم الأداة للمقارنة: قصّ الأطراف وتوحيد المسافات الداخلية.
@@ -69,7 +69,7 @@ function groupTools(tools: PersonalTool[]) {
 
 export default function InventoryPage() {
   const { employee: currentUser, permissions } = useSession()
-  const isAdmin = currentUser?.role === 'ADMIN'
+  const isAdmin = isAdminOrOwner(currentUser)
   // "جرد الأدوات" الآن صلاحية مفعّلة فعلياً بالباك-إند (requireHROrInventory) —
   // أي موظف مُنح صلاحية inventory من صفحة الصلاحيات يقدر يدير الأدوات، حتى لو
   // دوره مختلف عن HR_COORDINATOR (مثلاً PROCUREMENT_ADMIN).

@@ -105,7 +105,7 @@ export default function MyRanking() {
   const { employee, permissions } = useSession()
   // «تقييم الموظفين» ما يطلع إلا لمن يقيّم فعلاً — الليدر أو من عنده
   // الصلاحية. تبويب يفتح شاشة تگله «ممنوع» أسوأ من تبويب ما موجود.
-  const canReviewTeam = employee?.role === 'ADMIN'
+  const canReviewTeam = isAdminOrOwner(employee)
     || !!employee?.isLeader
     || (permissions ?? []).includes('performance_review')
   // «تقييم بين الإداريين» — منو يقارن أبو الكوادر والمراقبين ببعض،

@@ -166,7 +166,7 @@ func (h *ProjectQuoteWatchHandler) Act(w http.ResponseWriter, r *http.Request) {
 			WriteError(w, http.StatusBadRequest, "المشروع ما إله مشرف")
 			return
 		}
-		if p.SupRol != nil && (*p.SupRol == "ADMIN" || *p.SupRol == "OWNER") {
+		if p.SupRol != nil && model.IsAdminRole(*p.SupRol) {
 			WriteError(w, http.StatusBadRequest, "الإدارة العليا ما تنسجل عليها مخالفات")
 			return
 		}
