@@ -1692,5 +1692,24 @@ func matrixChatMigrations() []Migration {
 			INSERT INTO "OrgGovernorState" (key, value) VALUES ('daily_report_since', to_char((now() AT TIME ZONE 'Asia/Baghdad')::date, 'YYYY-MM-DD'))
 			ON CONFLICT (key) DO NOTHING;
 		`,
+	}, {
+		// 📒 (11-02 — تعديلات ٩.٢) واجب التقييم اليومي: سجل الإهمال + بداية الإلزام.
+		Version: "0431_rating_duty_negligence",
+		SQL: `
+			CREATE TABLE IF NOT EXISTS "EmployeeNegligence" (
+				id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
+				"employeeId" TEXT NOT NULL REFERENCES "Employee"(id) ON DELETE CASCADE,
+				day DATE NOT NULL,
+				kind TEXT NOT NULL,
+				detail TEXT NOT NULL DEFAULT '',
+				reason TEXT NOT NULL DEFAULT '',
+				"compensatedAt" TIMESTAMPTZ,
+				"createdAt" TIMESTAMPTZ NOT NULL DEFAULT now(),
+				UNIQUE ("employeeId", day, kind)
+			);
+			CREATE INDEX IF NOT EXISTS "EmployeeNegligence_day" ON "EmployeeNegligence" (day DESC);
+			INSERT INTO "OrgGovernorState" (key, value) VALUES ('rating_duty_since', to_char((now() AT TIME ZONE 'Asia/Baghdad')::date, 'YYYY-MM-DD'))
+			ON CONFLICT (key) DO NOTHING;
+		`,
 	}}
 }

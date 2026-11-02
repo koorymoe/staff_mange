@@ -18,15 +18,16 @@ const yesterday = () => { const d = new Date(todayBaghdad() + 'T12:00:00'); d.se
 export default function StaffReportsPage() {
   const { employee, permissions } = useSession()
   const canSurveys = isAdminOrOwner(employee) || hasRole(employee, 'HR_COORDINATOR') || permissions.includes('staff_management')
-  const [tab, setTab] = useState<'daily' | 'surveys'>('daily')
+  const [tab, setTab] = useState<'daily' | 'surveys' | 'negligence'>('daily')
   return (
     <div dir="rtl" className="space-y-4">
       <h1 className="text-2xl font-extrabold text-[#0f2040]">🧾 تقارير الموظفين</h1>
       <div className="flex gap-2">
         <button onClick={() => setTab('daily')} className={`rounded-xl px-4 py-2 text-sm font-bold ${tab === 'daily' ? 'bg-[#0f2040] text-white' : 'bg-white text-slate-600'}`}>📝 تقارير الإنجاز اليومية</button>
+        <button onClick={() => setTab('negligence')} className={`rounded-xl px-4 py-2 text-sm font-bold ${tab === 'negligence' ? 'bg-[#0f2040] text-white' : 'bg-white text-slate-600'}`}>📒 سجل الإهمال</button>
         {canSurveys && <button onClick={() => setTab('surveys')} className={`rounded-xl px-4 py-2 text-sm font-bold ${tab === 'surveys' ? 'bg-[#0f2040] text-white' : 'bg-white text-slate-600'}`}>🧾 استمارات المعلومات</button>}
       </div>
-      {tab === 'daily' ? <DailyTab /> : canSurveys && <SurveysTab />}
+      {tab === 'daily' ? <DailyTab /> : tab === 'negligence' ? <NegligenceTab /> : canSurveys && <SurveysTab />}
     </div>
   )
 }
@@ -87,6 +88,32 @@ function SurveysTab() {
             ))}
           </tbody>
         </table>
+      </div>
+    </div>
+  )
+}
+
+type Neg = { id: string; employeeName: string; day: string; kind: string; detail: string; reason: string; compensatedAt: string | null }
+
+// ٩.٢ سجل الإهمال: كل مقيّم فاته تقييم — يتسجّل بالتاريخ، ويا سببه ومتى عوّض.
+function NegligenceTab() {
+  const { data, error } = useApi(() => apiRequest<Neg[]>('/negligence'), [])
+  return (
+    <div className={`${card} space-y-2`}>
+      <p className="text-xs text-slate-500">كل مقيّم فاته يقيّم الي عليه بيومه ينكتب هنا. ينزل تقييمه هو بماتركس (عوّض = نص، ما عوّض = صفر) — بلا خصم فلوس ولا نقاط انضباط.</p>
+      {error && <p className="text-sm text-red-600">{error}</p>}
+      <div className="divide-y divide-slate-100">
+        {data?.map((n) => (
+          <div key={n.id} className="flex flex-wrap items-start gap-2 py-2 text-sm">
+            <span className="w-24 shrink-0 font-mono text-xs text-slate-500" dir="ltr">{n.day}</span>
+            <span className="w-40 shrink-0 font-bold text-[#0f2040]">{n.employeeName}</span>
+            <span className="flex-1 text-slate-700">{n.detail}{n.reason && <span className="block text-xs text-slate-500">السبب: {n.reason}</span>}</span>
+            {n.compensatedAt
+              ? <span className="rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-bold text-amber-700 ring-1 ring-amber-200">عوّض متأخر</span>
+              : <span className="rounded-full bg-red-50 px-2 py-0.5 text-[11px] font-bold text-red-700 ring-1 ring-red-200">ما عوّض</span>}
+          </div>
+        ))}
+        {data && data.length === 0 && <p className="py-6 text-center text-emerald-700">✅ ماكو إهمال مسجّل</p>}
       </div>
     </div>
   )

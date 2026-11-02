@@ -134,6 +134,7 @@ func (s *MatrixScoreService) Run(now time.Time) (int, error) {
 	s.scoreProjects(now, add)
 	s.scoreProcurement(now, add)
 	s.scoreMonitorAudit(now, add)
+	s.scoreRatingDuty(now, add)
 	if len(errs) > 0 {
 		return n, errors.New(strings.Join(errs, "; "))
 	}
@@ -342,10 +343,11 @@ var ruleTitles = map[string]string{
 	"ATTENDANCE": "تسجيل الحضور", "TASK_DUE": "المهام المضافة بموعدها", "PROJECT_WEEK": "المشاريع",
 	"PROC_RESPONSE": "الرد على طلبات المواد", "TOOL_RESPONSE": "الرد على طلبات الأدوات",
 	"VEHICLE_DAILY": "متابعة السيارات اليومية", "SHORTAGE_RESOLVE": "حل نواقص الجرد",
-	"STAGE_LOG": "الالتزام بتسجيل المراحل", "MONITOR_AUDIT": "تدقيق المراقب (غير الحجوزات)",
+	"STAGE_LOG": "الالتزام بتسجيل المراحل", "MONITOR_AUDIT": "تدقيق المراقب (غير الحجوزات)", "RATING_DUTY": "واجب التقييم اليومي",
 }
 
 var ruleAdvice = map[string]string{
+	"RATING_DUTY":      "قيّم الي عليك نفس اليوم — الي يفوتك ينكتب بسجل الإهمال.",
 	"ATTENDANCE":       "سجّل حضورك كل يوم دوام أول ما توصل.",
 	"STAGE_LOG":        "دوس كل مرحلة بوقتها وبمكانها (انطلاق بالشركة، وصول عند الزبون) — حتى بلا نت تنحفظ.",
 	"TASK_DUE":         "خلّص المهام قبل موعدها، وإذا ما تلحق گول للي وجّهها قبل الموعد.",
@@ -728,4 +730,21 @@ func (s *MatrixScoreService) Periodic(raterID, raterRole string) (*PeriodicState
 	}
 	out.Mine, err = s.repo.StageRated(raterID, stage, out.Period)
 	return out, err
+}
+
+// scoreRatingDuty (11-02 — ٩.٢) كل يوم فات المقيّم بيه تقييم: عوّض = ١، ما عوّض = ٠ (من ٢).
+func (s *MatrixScoreService) scoreRatingDuty(now time.Time, add func(repository.MatrixScoreRow)) {
+	rows, err := s.repo.Negligence(now.AddDate(0, 0, -scoreLookbackDays))
+	if err != nil {
+		return
+	}
+	for _, n := range rows {
+		label := "واجب تقييم " + n.Day
+		pts, why := 0, label+": ما عوّض التقييمات الفايتة. "+n.Detail
+		if n.CompensatedAt != nil {
+			pts, why = 1, label+": عوّض متأخر. "+n.Detail
+		}
+		add(repository.MatrixScoreRow{EmployeeID: n.EmployeeID, Source: "DUTY", SourceID: n.ID, SourceLabel: &label,
+			Rule: "RATING_DUTY", Points: pts, MaxPoints: 2, At: n.CreatedAt, Reason: why})
+	}
 }

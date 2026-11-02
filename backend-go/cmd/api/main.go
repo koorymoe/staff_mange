@@ -966,9 +966,19 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	mux.Handle("GET /api/me/work-gate", middleware.Chain(http.HandlerFunc(workGate.Gate), requireAuth))
 	mux.Handle("POST /api/me/profile-survey", middleware.Chain(http.HandlerFunc(workGate.SubmitSurvey), requireAuth))
 	mux.Handle("POST /api/me/daily-report", middleware.Chain(http.HandlerFunc(workGate.SubmitDaily), requireAuth))
+	mux.Handle("GET /api/me/rating-duty", middleware.Chain(http.HandlerFunc(workGate.MyDuty), requireAuth))
+	mux.Handle("POST /api/me/rating-duty", middleware.Chain(http.HandlerFunc(workGate.SubmitDuty), requireAuth))
+	safeguard.Loop("واجب التقييم اليومي", 9*time.Minute, time.Hour, func() {
+		if n, err := workGate.Sweep(); err != nil {
+			log.Printf("rating duty: %v", err)
+		} else if n > 0 {
+			log.Printf("rating duty: %d سجل إهمال جديد", n)
+		}
+	})
 	requireDailyReports := guards.RoleOrAnyPermission([]string{"ADMIN", "MONITOR", "HR_COORDINATOR"}, "monitoring", "mon_staff", "staff_management")
 	requireSurveys := guards.RoleOrAnyPermission([]string{"ADMIN", "HR_COORDINATOR"}, "staff_management")
 	mux.Handle("GET /api/daily-reports", middleware.Chain(http.HandlerFunc(workGate.ListDaily), requireAuth, requireDailyReports))
+	mux.Handle("GET /api/negligence", middleware.Chain(http.HandlerFunc(workGate.Negligence), requireAuth, requireDailyReports))
 	mux.Handle("GET /api/profile-surveys", middleware.Chain(http.HandlerFunc(workGate.ListSurveys), requireAuth, requireSurveys))
 	mux.Handle("POST /api/profile-surveys/{id}/review", middleware.Chain(http.HandlerFunc(workGate.ReviewSurvey), requireAuth, requireSurveys))
 	// 🩺 سلامة البيانات (11-02 — شبكة الأمان ٢): قراءة بس، للمالك

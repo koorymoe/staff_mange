@@ -13,7 +13,7 @@ import StaffPointsBoard from '../components/StaffPointsBoard'
 
 const pct = (v: number | null) => (v == null ? '—' : `${Math.round(v)}%`)
 const tone = (v: number | null) => (v == null ? '#94a3b8' : v >= 80 ? '#059669' : v >= 60 ? '#d97706' : '#dc2626')
-const SRC: Record<string, string> = { BOOKING: 'الحجوزات', DAY: 'الحضور', TASK: 'المهام', PROJECT: 'المشاريع', PROCUREMENT: 'المخازن', MONITOR: 'التدقيق' }
+const SRC: Record<string, string> = { BOOKING: 'الحجوزات', DAY: 'الحضور', TASK: 'المهام', PROJECT: 'المشاريع', PROCUREMENT: 'المخازن', MONITOR: 'التدقيق', DUTY: 'واجب التقييم' }
 const STAGE: Record<string, string> = { LEADER_CREW: 'الليدر', COORD_LEADER: 'الإداري', AUDIT: 'المراقب', QUALITY_CALL: 'الجودة', MONITOR_PERIODIC: 'المراقب (دوري)' }
 const ROLE_AR: Record<string, string> = {
   FINANCE: 'محاسب', DESIGNER: 'مصمم', IT_SUPPORT: 'آيتي', TECHNICIAN: 'فني', ENGINEER: 'مهندس', HR_COORDINATOR: 'إداري',

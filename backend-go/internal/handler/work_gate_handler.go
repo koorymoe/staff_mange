@@ -2,6 +2,7 @@ package handler
 
 import (
 	"fmt"
+	"log"
 	"math"
 	"net/http"
 	"strings"
@@ -12,6 +13,7 @@ import (
 	"staffmange-api/internal/middleware"
 	"staffmange-api/internal/model"
 	"staffmange-api/internal/repository"
+	"staffmange-api/internal/service"
 	"staffmange-api/internal/timeutil"
 )
 
@@ -25,10 +27,11 @@ import (
 type WorkGateHandler struct {
 	db    *sqlx.DB
 	notif *repository.NotificationRepository
+	duty  *service.RatingDuty
 }
 
 func NewWorkGateHandler(db *sqlx.DB, n *repository.NotificationRepository) *WorkGateHandler {
-	return &WorkGateHandler{db: db, notif: n}
+	return &WorkGateHandler{db: db, notif: n, duty: service.NewRatingDuty(db)}
 }
 
 type workGate struct {
@@ -37,6 +40,14 @@ type workGate struct {
 	TodayDone   bool    `json:"todayDone"`   // كتب تقرير اليوم
 	JobTitle    string  `json:"jobTitle"`    // للتعبئة المسبقة
 	ReportSince string  `json:"reportSince"` // من وين يبدي الإلزام
+	// ٩.٢: تقييمات فاتته (أقدم يوم خلال ٣ أيام) — تنقفل الشاشات لحد ما يعوّض ويبرّر
+	RatingDuty *ratingDutyGate `json:"ratingDuty"`
+}
+
+type ratingDutyGate struct {
+	Day    string             `json:"day"`
+	Items  []service.DutyItem `json:"items"`
+	Labels map[string]string  `json:"labels"`
 }
 
 func gateExempt(r *http.Request) bool {
@@ -78,6 +89,11 @@ func (h *WorkGateHandler) Gate(w http.ResponseWriter, r *http.Request) {
 	_ = h.db.Get(&g.JobTitle, `SELECT COALESCE("jobTitle", position, '') FROM "Employee" WHERE id = $1`, emp)
 	g.MissingDay, g.ReportSince = h.missingReportDay(emp)
 	_ = h.db.Get(&g.TodayDone, `SELECT EXISTS (SELECT 1 FROM "DailyWorkReport" WHERE "employeeId" = $1 AND day = $2::date)`, emp, companyToday().Format("2006-01-02"))
+	if day, items, err := h.duty.Pending(emp); err != nil {
+		log.Printf("[work-gate] rating duty %s: %v", emp, err) // ما ينبلع بصمت
+	} else if len(items) > 0 {
+		g.RatingDuty = &ratingDutyGate{Day: day, Items: items, Labels: service.DutyStageLabels}
+	}
 	WriteJSON(w, http.StatusOK, g)
 }
 
@@ -269,3 +285,61 @@ func (h *WorkGateHandler) ReviewSurvey(w http.ResponseWriter, r *http.Request) {
 	}
 	WriteJSON(w, http.StatusOK, map[string]bool{"ok": true})
 }
+
+// GET /api/me/rating-duty?day= — الي عليه يقيّمه (اليوم افتراضياً)
+func (h *WorkGateHandler) MyDuty(w http.ResponseWriter, r *http.Request) {
+	day := r.URL.Query().Get("day")
+	if _, err := time.Parse("2006-01-02", day); err != nil {
+		day = companyToday().Format("2006-01-02")
+	}
+	items, err := h.duty.Owed(middleware.EmployeeIDFromContext(r), day)
+	if err != nil {
+		WriteError(w, http.StatusInternalServerError, "تعذر")
+		return
+	}
+	WriteJSON(w, http.StatusOK, map[string]any{"day": day, "items": items, "labels": service.DutyStageLabels})
+}
+
+// POST /api/me/rating-duty {day, reason, ratings[]}
+func (h *WorkGateHandler) SubmitDuty(w http.ResponseWriter, r *http.Request) {
+	var in struct {
+		Day     string               `json:"day"`
+		Reason  string               `json:"reason"`
+		Ratings []service.DutyRating `json:"ratings"`
+	}
+	if err := DecodeJSON(r, &in); err != nil {
+		WriteError(w, http.StatusBadRequest, "طلب غير صالح")
+		return
+	}
+	if _, err := time.Parse("2006-01-02", in.Day); err != nil {
+		WriteError(w, http.StatusBadRequest, "اليوم غلط")
+		return
+	}
+	if err := h.duty.Compensate(middleware.EmployeeIDFromContext(r), in.Day, in.Reason, in.Ratings); err != nil {
+		WriteError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	WriteJSON(w, http.StatusOK, map[string]bool{"ok": true})
+}
+
+type negligenceRow struct {
+	ID            string     `db:"id" json:"id"`
+	EmployeeName  string     `db:"employeeName" json:"employeeName"`
+	Day           string     `db:"day" json:"day"`
+	Kind          string     `db:"kind" json:"kind"`
+	Detail        string     `db:"detail" json:"detail"`
+	Reason        string     `db:"reason" json:"reason"`
+	CompensatedAt *time.Time `db:"compensatedAt" json:"compensatedAt"`
+}
+
+// GET /api/negligence — سجل الإهمال (آخر ٦٠ يوم)
+func (h *WorkGateHandler) Negligence(w http.ResponseWriter, r *http.Request) {
+	rows := []negligenceRow{}
+	_ = h.db.Select(&rows, `SELECT n.id, e.name AS "employeeName", to_char(n.day, 'YYYY-MM-DD') AS day, n.kind, n.detail, n.reason, n."compensatedAt"
+		FROM "EmployeeNegligence" n JOIN "Employee" e ON e.id = n."employeeId"
+		WHERE n.day >= current_date - 60 ORDER BY n.day DESC, e.name LIMIT 300`)
+	WriteJSON(w, http.StatusOK, rows)
+}
+
+// Sweep للحلقة الساعية.
+func (h *WorkGateHandler) Sweep() (int, error) { return h.duty.Sweep() }

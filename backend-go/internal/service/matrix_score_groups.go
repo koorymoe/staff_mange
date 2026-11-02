@@ -79,19 +79,19 @@ func ScoreGroup(p repository.Scorable) string {
 
 // groupRaterStages محطات التقييم البشري الي تنحسب لكل مجموعة.
 var groupRaterStages = map[string]map[string]bool{
-	GroupTechs:       {"LEADER_CREW": true},
-	GroupLeaders:     {"COORD_LEADER": true, "AUDIT": true, "QUALITY_CALL": true},
-	GroupCoordinator: {"AUDIT": true, "QUALITY_CALL": true},
+	GroupTechs:       {"LEADER_CREW": true, "OPS_DAILY": true},
+	GroupLeaders:     {"COORD_LEADER": true, "AUDIT": true, "QUALITY_CALL": true, "OPS_DAILY": true},
+	GroupCoordinator: {"AUDIT": true, "QUALITY_CALL": true, "MONITOR_DAILY": true},
 	GroupMonitors:    {"ADMIN_PERIODIC": true},
-	GroupSales:       {"MONITOR_PERIODIC": true},
-	GroupFinance:     {"MONITOR_PERIODIC": true},
-	GroupTechnical:   {"MONITOR_PERIODIC": true},
-	GroupProcurement: {"MONITOR_PERIODIC": true},
-	GroupOthers:      {"MONITOR_PERIODIC": true},
-	GroupQuality:     {"MONITOR_PERIODIC": true},
-	GroupDesign:      {"MONITOR_PERIODIC": true},
-	GroupIT:          {"MONITOR_PERIODIC": true},
-	GroupDecor:       {"LEADER_CREW": true, "COORD_LEADER": true, "AUDIT": true, "QUALITY_CALL": true},
+	GroupSales:       {"MONITOR_PERIODIC": true, "MONITOR_DAILY": true},
+	GroupFinance:     {"MONITOR_PERIODIC": true, "MONITOR_DAILY": true},
+	GroupTechnical:   {"MONITOR_PERIODIC": true, "MONITOR_DAILY": true},
+	GroupProcurement: {"MONITOR_PERIODIC": true, "MONITOR_DAILY": true},
+	GroupOthers:      {"MONITOR_PERIODIC": true, "MONITOR_DAILY": true},
+	GroupQuality:     {"MONITOR_PERIODIC": true, "MONITOR_DAILY": true},
+	GroupDesign:      {"MONITOR_PERIODIC": true, "MONITOR_DAILY": true},
+	GroupIT:          {"MONITOR_PERIODIC": true, "MONITOR_DAILY": true},
+	GroupDecor:       {"LEADER_CREW": true, "COORD_LEADER": true, "AUDIT": true, "QUALITY_CALL": true, "OPS_DAILY": true},
 }
 
 // periodicTargets منو يقيّم منو دورياً: المدير ← المراقبين؛ المراقب ← المجموعات

@@ -412,3 +412,20 @@ func (r *MatrixScoreRepository) StageLogFacts(ids []string) ([]StageLogFact, err
 		FROM "Booking" b WHERE b.id = ANY($1) AND b.status::text = 'COMPLETED' AND b."departedAt" IS NOT NULL`, pq.Array(ids))
 	return rows, err
 }
+
+// NegligenceRow سجل إهمال (٩.٢).
+type NegligenceRow struct {
+	ID            string     `db:"id"`
+	EmployeeID    string     `db:"employeeId"`
+	Day           string     `db:"day"`
+	Detail        string     `db:"detail"`
+	CompensatedAt *time.Time `db:"compensatedAt"`
+	CreatedAt     time.Time  `db:"createdAt"`
+}
+
+func (r *MatrixScoreRepository) Negligence(since time.Time) ([]NegligenceRow, error) {
+	rows := []NegligenceRow{}
+	err := r.db.Select(&rows, `SELECT id, "employeeId", to_char(day, 'YYYY-MM-DD') AS day, detail, "compensatedAt", "createdAt"
+		FROM "EmployeeNegligence" WHERE kind = 'MISSED_RATINGS' AND "createdAt" >= $1`, since)
+	return rows, err
+}
