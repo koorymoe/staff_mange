@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import { apiRequest } from '../api'
 import { useSession, isAdminOrOwner, hasRole } from '../session'
 import { useApi } from '../utils/useApi'
@@ -9,7 +10,7 @@ import { num, todayBaghdad } from '../utils/format'
 // تقارير الإنجاز اليومية (منو كتب، ومنو داوم وما كتب) + استمارات معلومات
 // الموظفين ويا الفروقات عن ملفهم (للكوادر والمالك بس — بيها رواتب).
 
-type Daily = { day: string; reports: { id: string; employeeName: string; body: string; late: boolean; createdAt: string }[]; missing: { employeeId: string; employeeName: string }[] }
+type Daily = { day: string; reports: { id: string; employeeId: string; employeeName: string; body: string; late: boolean; createdAt: string }[]; missing: { employeeId: string; employeeName: string }[] }
 type Survey = { employeeId: string; employeeName: string; major: string; degree: string; selfSalaryIQD: number | null; fileSalary: number | null; monthlyHours: number | null; currentJob: string; companyRating: number; companyNote: string; contractEnd: string | null; fileContract: string | null; mismatch: string | null; reviewedAt: string | null }
 type Surveys = { surveys: Survey[]; pending: { employeeId: string; employeeName: string }[] }
 
@@ -48,7 +49,7 @@ function DailyTab() {
       <div className="divide-y divide-slate-100">
         {data?.reports.map((r) => (
           <div key={r.id} className="py-2.5">
-            <p className="text-sm font-bold text-[#0f2040]">{r.employeeName} {r.late && <span className="mr-1 rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-bold text-amber-700 ring-1 ring-amber-200">متأخر</span>}</p>
+            <p className="text-sm font-bold text-[#0f2040]"><Link to={`/employee-dossier?id=${r.employeeId}`} className="hover:underline">{r.employeeName}</Link> {r.late && <span className="mr-1 rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-bold text-amber-700 ring-1 ring-amber-200">متأخر</span>}</p>
             <p className="whitespace-pre-wrap text-sm text-slate-700">{r.body}</p>
           </div>
         ))}

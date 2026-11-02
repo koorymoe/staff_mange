@@ -322,6 +322,7 @@ export const navItems: NavItem[] = [
       { monitorMenuHide: true, to: '/project-payments', label: '💰 فلوس المشاريع', icon: <></>, roles: ['ADMIN', 'FINANCE', 'PROJECT_MANAGER', 'MONITOR'], anyPermission: ['finance', 'finance_audit', 'project_management', 'monitoring'] },
       { monitorMenuHide: true, hideForRoles: ['QUALITY_ENGINEER'], to: '/staff-score', label: '🏅 تقييم الموظفين', icon: <></>, roles: ['ADMIN', 'MONITOR'], anyPermission: ['monitoring', 'auditing', 'mon_staff'] },
       { hideForRoles: ['QUALITY_ENGINEER'], to: '/staff-reports', label: '🧾 تقارير الموظفين', icon: <></>, roles: ['ADMIN', 'MONITOR', 'HR_COORDINATOR'], anyPermission: ['monitoring', 'mon_staff', 'staff_management'] },
+      { hideForRoles: ['QUALITY_ENGINEER'], to: '/employee-dossier', label: '📂 ملف الموظف', icon: <></>, roles: ['ADMIN', 'MONITOR', 'HR_COORDINATOR'], anyPermission: ['monitoring', 'mon_staff', 'staff_management'] },
       { monitorMenuHide: true, hideForRoles: ['QUALITY_ENGINEER'], to: '/employee-indicators', label: '📈 مؤشرات أداء الموظف', icon: <></>, roles: ['ADMIN', 'MONITOR'], anyPermission: ['monitoring', 'auditing', 'mon_staff'] },
       { monitorMenuHide: true, hideForRoles: ['QUALITY_ENGINEER'], to: '/peer-voice', label: '🗣️ صوت الموظفين', icon: <></>, roles: ['ADMIN', 'MONITOR'], anyPermission: ['monitoring', 'auditing', 'mon_staff'] },
       { monitorMenuHide: true, hideForRoles: ['QUALITY_ENGINEER'], to: '/workplace-issues', label: '🤝 المشاكل الوظيفية', icon: <></>, roles: ['ADMIN', 'MONITOR'], anyPermission: ['monitoring', 'auditing', 'mon_staff'] },
@@ -835,6 +836,7 @@ export const navItems: NavItem[] = [
       { to: '/weekly-report', label: '📊 التقرير الأسبوعي', icon: <></>, roles: ['ADMIN'] },
       { monitorMenuHide: true, hideForRoles: ['QUALITY_ENGINEER'], to: '/staff-score', label: '🏅 تقييم الموظفين', icon: <></>, roles: ['ADMIN', 'MONITOR'], anyPermission: ['monitoring', 'auditing', 'mon_staff'] },
       { hideForRoles: ['QUALITY_ENGINEER'], to: '/staff-reports', label: '🧾 تقارير الموظفين', icon: <></>, roles: ['ADMIN', 'MONITOR', 'HR_COORDINATOR'], anyPermission: ['monitoring', 'mon_staff', 'staff_management'] },
+      { hideForRoles: ['QUALITY_ENGINEER'], to: '/employee-dossier', label: '📂 ملف الموظف', icon: <></>, roles: ['ADMIN', 'MONITOR', 'HR_COORDINATOR'], anyPermission: ['monitoring', 'mon_staff', 'staff_management'] },
       { monitorMenuHide: true, hideForRoles: ['QUALITY_ENGINEER'], to: '/employee-indicators', label: '📈 مؤشرات أداء الموظف', icon: <></>, roles: ['ADMIN', 'MONITOR'], anyPermission: ['monitoring', 'auditing', 'mon_staff'] },
       { monitorMenuHide: true, hideForRoles: ['QUALITY_ENGINEER'], to: '/peer-voice', label: '🗣️ صوت الموظفين', icon: <></>, roles: ['ADMIN', 'MONITOR'], anyPermission: ['monitoring', 'auditing', 'mon_staff'] },
       { monitorMenuHide: true, hideForRoles: ['QUALITY_ENGINEER'], to: '/workplace-issues', label: '🤝 المشاكل الوظيفية', icon: <></>, roles: ['ADMIN', 'MONITOR'], anyPermission: ['monitoring', 'auditing', 'mon_staff'] },
@@ -914,6 +916,7 @@ const orgNavigationGroups = [
       '/weekly-report',
       '/staff-score',
       '/staff-reports',
+      '/employee-dossier',
       '/employee-indicators',
       '/peer-voice',
       '/workplace-issues',
@@ -1489,6 +1492,7 @@ const ROUTE_RULES: Record<string, RouteRule> = {
   '/org/assign': { roles: ['ADMIN'] },
   '/org/directors-ranking': { roles: ['ADMIN'] },
   '/staff-reports': { roles: ['ADMIN', 'MONITOR', 'HR_COORDINATOR'], anyPermission: ['monitoring', 'mon_staff', 'staff_management'] },
+  '/employee-dossier': { roles: ['ADMIN', 'MONITOR', 'HR_COORDINATOR'], anyPermission: ['monitoring', 'mon_staff', 'staff_management'] },
   '/whatsapp-conversations': { anyPermission: ['quality_control', 'coordinator'] },
   '/booking-delete-requests': { roles: ['OWNER', 'MONITOR'], anyPermission: ['booking_delete_approve'] }, // requireDeleteApprove
   '/extra-tasks': { anyPermission: ['extra_tasks_assign'] }, // requireExtraTaskAssign

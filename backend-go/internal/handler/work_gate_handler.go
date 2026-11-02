@@ -343,3 +343,13 @@ func (h *WorkGateHandler) Negligence(w http.ResponseWriter, r *http.Request) {
 
 // Sweep للحلقة الساعية.
 func (h *WorkGateHandler) Sweep() (int, error) { return h.duty.Sweep() }
+
+// GET /api/employees/{id}/dossier — 📂 ملف الموظف الكامل (٩.٣) — بلا راتب
+func (h *WorkGateHandler) Dossier(w http.ResponseWriter, r *http.Request) {
+	d, err := service.BuildDossier(h.db, r.PathValue("id"))
+	if err != nil {
+		WriteError(w, http.StatusNotFound, "مو موجود")
+		return
+	}
+	WriteJSON(w, http.StatusOK, d)
+}

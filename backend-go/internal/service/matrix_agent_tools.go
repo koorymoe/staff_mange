@@ -171,6 +171,22 @@ func (a *MatrixAgent) RegisterReadTools(d AgentDeps) {
 			return strings.Join(c.lines, "\n"), nil
 		}})
 
+	// 📂 (11-02 — ٩.٣) الملف الكامل: الدراسة والمهارات والتدريب، المنحنى ٦ أشهر (يتقدم/يتراجع)،
+	// أقوى وأضعف شي، السرعة مقابل المعتاد، والالتزام والمشاكل. بلا راتب.
+	a.AddTool(agentTool{Name: "employee_dossier", Desc: "الملف الكامل لموظف: دراسته وشهادته ومنصبه، مهاراته وتدريبه، منحنى أدائه آخر ٦ أشهر (يتقدم لو يتراجع)، أقوى وأضعف شي عنده، سرعته مقابل المعتاد، تقارير إنجازه، إهماله للتقييم، الانضباط والتبريرات والشكاوي والمشاكل. استعمله قبل أي حكم على موظف (تدريب، تقييم، مشكلة).",
+		Props: map[string]any{"who": map[string]any{"type": "string", "description": "رمز الموظف مثل موظف#3"}}, Req: []string{"who"},
+		Run: func(in map[string]any, mask *nameMask) (string, error) {
+			id, _ := mask.Resolve(strArg(in, "who"))
+			if id == "" {
+				return "", fmt.Errorf("ما لگيت الموظف")
+			}
+			d, err := BuildDossier(a.db, id)
+			if err != nil {
+				return "", err
+			}
+			return d.Text(), nil
+		}})
+
 	a.AddTool(agentTool{Name: "employee_profile", Desc: "ملف موظف واحد: دوره، حضوره آخر ١٤ يوم (أيام وتأخير)، حجوزاته آخر ٣٠ يوم (مكلّف، منجز، مفتوح، متأخر)، آخر ٥ حجوزات، وتقييم ماتركس هالشهر. استعمل رمز الموظف (موظف#n) أو اسمه.",
 		Props: map[string]any{"who": map[string]any{"type": "string", "description": "رمز الموظف مثل موظف#3"}}, Req: []string{"who"},
 		Run: func(in map[string]any, mask *nameMask) (string, error) {

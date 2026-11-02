@@ -978,6 +978,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	requireDailyReports := guards.RoleOrAnyPermission([]string{"ADMIN", "MONITOR", "HR_COORDINATOR"}, "monitoring", "mon_staff", "staff_management")
 	requireSurveys := guards.RoleOrAnyPermission([]string{"ADMIN", "HR_COORDINATOR"}, "staff_management")
 	mux.Handle("GET /api/daily-reports", middleware.Chain(http.HandlerFunc(workGate.ListDaily), requireAuth, requireDailyReports))
+	mux.Handle("GET /api/employees/{id}/dossier", middleware.Chain(http.HandlerFunc(workGate.Dossier), requireAuth, requireDailyReports))
 	mux.Handle("GET /api/negligence", middleware.Chain(http.HandlerFunc(workGate.Negligence), requireAuth, requireDailyReports))
 	mux.Handle("GET /api/profile-surveys", middleware.Chain(http.HandlerFunc(workGate.ListSurveys), requireAuth, requireSurveys))
 	mux.Handle("POST /api/profile-surveys/{id}/review", middleware.Chain(http.HandlerFunc(workGate.ReviewSurvey), requireAuth, requireSurveys))
