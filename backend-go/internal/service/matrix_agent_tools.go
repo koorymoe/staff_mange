@@ -187,6 +187,34 @@ func (a *MatrixAgent) RegisterReadTools(d AgentDeps) {
 			return d.Text(), nil
 		}})
 
+	// 🔎 (11-02 — ٩.٤) تقرير الإنجاز مقابل الشغل المسجّل ليوم.
+	a.AddTool(agentTool{Name: "daily_report_match", Desc: "يطابق تقرير إنجاز موظف ليوم ويا شغله المسجّل بالنظام: شنو كتب، شنو سوّى فعلاً، الحجوزات الي ذكرها وما لمسها والي اشتغل عليها وما ذكرها. استعمله لما تشك بتقرير موظف.",
+		Props: map[string]any{"who": map[string]any{"type": "string", "description": "رمز الموظف مثل موظف#3"}, "day": map[string]any{"type": "string", "description": "YYYY-MM-DD (افتراضي: أمس)"}}, Req: []string{"who"},
+		Run: func(in map[string]any, mask *nameMask) (string, error) {
+			id, _ := mask.Resolve(strArg(in, "who"))
+			if id == "" {
+				return "", fmt.Errorf("ما لگيت الموظف")
+			}
+			day := strArg(in, "day")
+			if _, err := time.Parse("2006-01-02", day); err != nil {
+				day = time.Now().In(debriefLoc).AddDate(0, 0, -1).Format("2006-01-02")
+			}
+			m, err := NewReportMatcher(a.db).Match(id, day)
+			if err != nil {
+				return "", err
+			}
+			if m == nil {
+				return "ما كتب تقرير إنجاز لهذا اليوم.", nil
+			}
+			var body string
+			_ = a.db.Get(&body, `SELECT body FROM "DailyWorkReport" WHERE id = $1`, m.ReportID)
+			lines := []string{"يوم " + day + " — النتيجة: " + m.Status + " — " + m.Note, "كتب: " + body, "المسجّل بالنظام:"}
+			for _, l := range m.Activity {
+				lines = append(lines, fmt.Sprintf("- %s %s ×%d", l.At, l.Text, l.Count))
+			}
+			return strings.Join(lines, "\n"), nil
+		}})
+
 	a.AddTool(agentTool{Name: "employee_profile", Desc: "ملف موظف واحد: دوره، حضوره آخر ١٤ يوم (أيام وتأخير)، حجوزاته آخر ٣٠ يوم (مكلّف، منجز، مفتوح، متأخر)، آخر ٥ حجوزات، وتقييم ماتركس هالشهر. استعمل رمز الموظف (موظف#n) أو اسمه.",
 		Props: map[string]any{"who": map[string]any{"type": "string", "description": "رمز الموظف مثل موظف#3"}}, Req: []string{"who"},
 		Run: func(in map[string]any, mask *nameMask) (string, error) {

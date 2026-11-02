@@ -73,6 +73,9 @@ type Dossier struct {
 	Issues90       int `json:"workplaceIssues90"`
 	PeerNotes90    int `json:"peerNotesAbout90"`
 
+	ReportMatchPct int `json:"reportMatchPct"` // ٩.٤ تقارير تطابق الشغل المسجّل آخر ٣٠ يوم
+	ReportMatchN   int `json:"reportMatchN"`
+
 	Flags []string `json:"flags"` // ملاحظات ماتركس الجاهزة
 }
 
@@ -204,6 +207,8 @@ func BuildDossier(db *sqlx.DB, id string) (*Dossier, error) {
 	_ = db.Get(&d.Issues90, `SELECT count(*) FROM "WorkplaceIssue" WHERE ("partyAId" = $1 OR "partyBId" = $1) AND "createdAt" > now() - interval '90 days'`, id)
 	_ = db.Get(&d.PeerNotes90, `SELECT count(*) FROM "PeerNote" WHERE "targetId" = $1 AND "createdAt" > now() - interval '90 days'`, id)
 
+	d.ReportMatchPct, d.ReportMatchN = MatchRate(db, id, 30)
+
 	d.Flags = dossierFlags(d)
 	return d, nil
 }
@@ -250,6 +255,9 @@ func trendOf(ms []DossierMonth) (string, string) {
 
 func dossierFlags(d *Dossier) []string {
 	f := []string{}
+	if d.ReportMatchN >= 3 && d.ReportMatchPct < 60 {
+		f = append(f, fmt.Sprintf("🧾 تقارير إنجازه ما تطابق شغله المسجّل إلا %d٪ (%d تقرير) — يكتب غير الي يسويه؟", d.ReportMatchPct, d.ReportMatchN))
+	}
 	if d.Trend == "DOWN" {
 		f = append(f, "📉 "+d.TrendNote)
 	}
@@ -340,6 +348,9 @@ func (d *Dossier) Text() string {
 		w("السرعة: ماكو حجوزات كافية")
 	}
 	w("آخر ٣٠ يوم: دوام %d يوم، تقارير إنجاز %d (متأخرة %d)", d.Attendance30, d.Reports30, d.ReportsLate30)
+	if d.ReportMatchN > 0 {
+		w("صدق التقارير: %d٪ منها تطابق الشغل المسجّل بالنظام (%d مطابقة)", d.ReportMatchPct, d.ReportMatchN)
+	}
 	w("آخر ٩٠ يوم: إهمال تقييم %d، خصم انضباط %d نقطة، تبريرات %d (مرفوضة %d)، شكاوي %d، مشاكل وظيفية %d، ملاحظات زملاء عنه %d",
 		d.Negligence90, d.Discipline90, d.Justif90, d.JustifRejected, d.Complaints90, d.Issues90, d.PeerNotes90)
 	if len(d.Flags) > 0 {

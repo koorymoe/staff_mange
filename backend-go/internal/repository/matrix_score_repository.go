@@ -429,3 +429,22 @@ func (r *MatrixScoreRepository) Negligence(since time.Time) ([]NegligenceRow, er
 		FROM "EmployeeNegligence" WHERE kind = 'MISSED_RATINGS' AND "createdAt" >= $1`, since)
 	return rows, err
 }
+
+type ReportMatchRow struct {
+	ID         string    `db:"id"`
+	EmployeeID string    `db:"employeeId"`
+	Day        string    `db:"day"`
+	Status     string    `db:"status"`
+	Note       string    `db:"note"`
+	Verdict    *string   `db:"reviewVerdict"`
+	CreatedAt  time.Time `db:"createdAt"`
+}
+
+// ReportMatches نتائج مطابقة تقارير الإنجاز (٩.٤) — بلا الأدمن والمالك.
+func (r *MatrixScoreRepository) ReportMatches(since time.Time) ([]ReportMatchRow, error) {
+	rows := []ReportMatchRow{}
+	err := r.db.Select(&rows, `SELECT m.id, m."employeeId", to_char(m.day, 'YYYY-MM-DD') AS day, m.status, m.note, m."reviewVerdict", m."createdAt"
+		FROM "DailyReportMatch" m JOIN "Employee" e ON e.id = m."employeeId"
+		WHERE m."createdAt" >= $1 AND e.role::text NOT IN ('ADMIN','OWNER')`, since)
+	return rows, err
+}

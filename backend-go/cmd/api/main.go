@@ -977,6 +977,15 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	})
 	requireDailyReports := guards.RoleOrAnyPermission([]string{"ADMIN", "MONITOR", "HR_COORDINATOR"}, "monitoring", "mon_staff", "staff_management")
 	requireSurveys := guards.RoleOrAnyPermission([]string{"ADMIN", "HR_COORDINATOR"}, "staff_management")
+	mux.Handle("GET /api/daily-reports/{id}/match", middleware.Chain(http.HandlerFunc(workGate.MatchDetail), requireAuth, requireDailyReports))
+	mux.Handle("POST /api/daily-reports/{id}/match-review", middleware.Chain(http.HandlerFunc(workGate.ReviewMatch), requireAuth, requireDailyReports))
+	safeguard.Loop("مطابقة تقارير الإنجاز", 13*time.Minute, time.Hour, func() {
+		if n, err := workGate.SweepMatches(); err != nil {
+			log.Printf("report match: %v", err)
+		} else if n > 0 {
+			log.Printf("report match: %d تقرير بيه فرق", n)
+		}
+	})
 	mux.Handle("GET /api/daily-reports", middleware.Chain(http.HandlerFunc(workGate.ListDaily), requireAuth, requireDailyReports))
 	mux.Handle("GET /api/employees/{id}/dossier", middleware.Chain(http.HandlerFunc(workGate.Dossier), requireAuth, requireDailyReports))
 	mux.Handle("GET /api/negligence", middleware.Chain(http.HandlerFunc(workGate.Negligence), requireAuth, requireDailyReports))

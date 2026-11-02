@@ -10,7 +10,7 @@ import { num, todayBaghdad } from '../utils/format'
 // تقارير الإنجاز اليومية (منو كتب، ومنو داوم وما كتب) + استمارات معلومات
 // الموظفين ويا الفروقات عن ملفهم (للكوادر والمالك بس — بيها رواتب).
 
-type Daily = { day: string; reports: { id: string; employeeId: string; employeeName: string; body: string; late: boolean; createdAt: string }[]; missing: { employeeId: string; employeeName: string }[] }
+type Daily = { day: string; reports: { id: string; employeeId: string; employeeName: string; body: string; late: boolean; createdAt: string; matchStatus: string | null; matchNote: string | null; matchVerdict: string | null; matchReview: string | null }[]; missing: { employeeId: string; employeeName: string }[] }
 type Survey = { employeeId: string; employeeName: string; major: string; degree: string; selfSalaryIQD: number | null; fileSalary: number | null; monthlyHours: number | null; currentJob: string; companyRating: number; companyNote: string; contractEnd: string | null; fileContract: string | null; mismatch: string | null; reviewedAt: string | null }
 type Surveys = { surveys: Survey[]; pending: { employeeId: string; employeeName: string }[] }
 
@@ -35,7 +35,8 @@ export default function StaffReportsPage() {
 
 function DailyTab() {
   const [day, setDay] = useState(yesterday())
-  const { data, error } = useApi(() => apiRequest<Daily>(`/daily-reports?day=${day}`), [day])
+  const [reload, setReload] = useState(0)
+  const { data, error } = useApi(() => apiRequest<Daily>(`/daily-reports?day=${day}`), [day, reload])
   return (
     <div className={`${card} space-y-3`}>
       <div className="flex flex-wrap items-center gap-3">
@@ -51,6 +52,7 @@ function DailyTab() {
           <div key={r.id} className="py-2.5">
             <p className="text-sm font-bold text-[#0f2040]"><Link to={`/employee-dossier?id=${r.employeeId}`} className="hover:underline">{r.employeeName}</Link> {r.late && <span className="mr-1 rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-bold text-amber-700 ring-1 ring-amber-200">متأخر</span>}</p>
             <p className="whitespace-pre-wrap text-sm text-slate-700">{r.body}</p>
+            <MatchRow r={r} onDone={() => setReload((n) => n + 1)} />
           </div>
         ))}
         {data && data.reports.length === 0 && <p className="py-4 text-center text-sm text-slate-400">ماكو تقارير لهذا اليوم.</p>}
@@ -116,6 +118,54 @@ function NegligenceTab() {
         ))}
         {data && data.length === 0 && <p className="py-6 text-center text-emerald-700">✅ ماكو إهمال مسجّل</p>}
       </div>
+    </div>
+  )
+}
+
+type Report = Daily['reports'][number]
+type MatchDetail = { status: string; note: string; claimedCodes: string[]; missingCodes: string[]; unclaimedCodes: string[]; activity: { at: string; text: string; count: number }[] }
+
+const MATCH_BADGE: Record<string, [string, string]> = {
+  MATCH: ['✅ يطابق الشغل المسجّل', 'bg-emerald-50 text-emerald-700 ring-emerald-200'],
+  PARTIAL: ['⚠️ يطابق جزئياً', 'bg-amber-50 text-amber-700 ring-amber-200'],
+  NO_TRACE: ['❌ بلا أثر بالنظام', 'bg-red-50 text-red-700 ring-red-200'],
+}
+
+// ٩.٤ ماتركس يطابق التقرير ويا الشغل المسجّل — والمراقب يحكم على الفرق.
+function MatchRow({ r, onDone }: { r: Report; onDone: () => void }) {
+  const [open, setOpen] = useState(false)
+  const [note, setNote] = useState('')
+  const [err, setErr] = useState('')
+  const { data } = useApi(() => apiRequest<MatchDetail>(`/daily-reports/${r.id}/match`), [r.id], { enabled: open })
+  const status = data?.status ?? r.matchStatus
+  if (!status) return <button onClick={() => setOpen(true)} className="mt-1 text-xs text-slate-400 hover:underline">🔎 طابق ويا الشغل المسجّل</button>
+  const [label, cls] = MATCH_BADGE[status] ?? [status, 'bg-slate-50 text-slate-600 ring-slate-200']
+  const review = async (verdict: string) => {
+    setErr('')
+    try { await apiRequest(`/daily-reports/${r.id}/match-review`, { method: 'POST', body: JSON.stringify({ verdict, note }) }); onDone() } catch (e) { setErr(e instanceof Error ? e.message : 'تعذر الحفظ') }
+  }
+  return (
+    <div className="mt-1.5 text-xs">
+      <button onClick={() => setOpen((o) => !o)} className={`rounded-full px-2 py-0.5 font-bold ring-1 ${cls}`}>{label} {open ? '▴' : '▾'}</button>
+      {r.matchVerdict && <span className={`mr-2 font-bold ${r.matchVerdict === 'JUSTIFIED' ? 'text-emerald-700' : 'text-red-700'}`}>المراقب: {r.matchVerdict === 'JUSTIFIED' ? 'مبرّر' : 'مو مبرّر'}{r.matchReview && ` — ${r.matchReview}`}</span>}
+      {open && (
+        <div className="mt-2 space-y-1.5 rounded-xl bg-slate-50 p-3 text-slate-700">
+          <p className="font-bold">{data?.note ?? r.matchNote}</p>
+          {data && data.missingCodes.length > 0 && <p>ذكرها وما لمسها: <b dir="ltr">{data.missingCodes.join('، ')}</b></p>}
+          {data && data.unclaimedCodes.length > 0 && <p>اشتغل عليها وما ذكرها: <b dir="ltr">{data.unclaimedCodes.join('، ')}</b></p>}
+          {data && <div><b>المسجّل بالنظام:</b>{data.activity.length === 0 ? <span className="text-slate-400"> ماكو</span> : (
+            <ul className="mt-1 list-inside list-disc">{data.activity.map((a, i) => <li key={i}><span dir="ltr" className="font-mono text-slate-400">{a.at}</span> {a.text}{a.count > 1 && ` ×${a.count}`}</li>)}</ul>
+          )}</div>}
+          {status !== 'MATCH' && !r.matchVerdict && (
+            <div className="flex flex-wrap items-center gap-2 pt-1">
+              <input value={note} onChange={(e) => setNote(e.target.value)} placeholder="ملاحظة (اختياري)" className="min-w-40 flex-1 rounded-lg border border-slate-300 px-2 py-1" />
+              <button onClick={() => void review('JUSTIFIED')} className="rounded-lg bg-emerald-600 px-3 py-1 font-bold text-white">✓ مبرّر</button>
+              <button onClick={() => void review('UNJUSTIFIED')} className="rounded-lg bg-red-600 px-3 py-1 font-bold text-white">✗ مو مبرّر</button>
+            </div>
+          )}
+          {err && <p className="text-red-600">{err}</p>}
+        </div>
+      )}
     </div>
   )
 }

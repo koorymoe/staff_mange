@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
 	"math"
@@ -28,10 +29,11 @@ type WorkGateHandler struct {
 	db    *sqlx.DB
 	notif *repository.NotificationRepository
 	duty  *service.RatingDuty
+	match *service.ReportMatcher
 }
 
 func NewWorkGateHandler(db *sqlx.DB, n *repository.NotificationRepository) *WorkGateHandler {
-	return &WorkGateHandler{db: db, notif: n, duty: service.NewRatingDuty(db)}
+	return &WorkGateHandler{db: db, notif: n, duty: service.NewRatingDuty(db), match: service.NewReportMatcher(db)}
 }
 
 type workGate struct {
@@ -206,6 +208,13 @@ func (h *WorkGateHandler) SubmitDaily(w http.ResponseWriter, r *http.Request) {
 		WriteError(w, http.StatusBadRequest, "تعذر الحفظ")
 		return
 	}
+	if late { // يوم فات وانكنس — نعيد مطابقته
+		if m, err := h.match.Match(emp, in.Day); err == nil && m != nil {
+			if isNew, err := h.match.Save(m); err == nil && isNew {
+				h.notifyMismatch([]*service.ReportMatch{m})
+			}
+		}
+	}
 	WriteJSON(w, http.StatusOK, map[string]bool{"ok": true, "late": late})
 }
 
@@ -217,6 +226,12 @@ type dailyReportRow struct {
 	Body         string    `db:"body" json:"body"`
 	Late         bool      `db:"late" json:"late"`
 	CreatedAt    time.Time `db:"createdAt" json:"createdAt"`
+	// ٩.٤ المطابقة
+	MatchStatus  *string          `db:"matchStatus" json:"matchStatus"`
+	MatchNote    *string          `db:"matchNote" json:"matchNote"`
+	MatchDetail  *json.RawMessage `db:"matchDetail" json:"matchDetail"`
+	MatchVerdict *string          `db:"matchVerdict" json:"matchVerdict"`
+	MatchReview  *string          `db:"matchReview" json:"matchReview"`
 }
 
 type missingRow struct {
@@ -231,8 +246,10 @@ func (h *WorkGateHandler) ListDaily(w http.ResponseWriter, r *http.Request) {
 		day = companyToday().AddDate(0, 0, -1).Format("2006-01-02")
 	}
 	rows := []dailyReportRow{}
-	_ = h.db.Select(&rows, `SELECT d.id, d."employeeId", e.name AS "employeeName", to_char(d.day, 'YYYY-MM-DD') AS day, d.body, d.late, d."createdAt"
-		FROM "DailyWorkReport" d JOIN "Employee" e ON e.id = d."employeeId" WHERE d.day = $1::date ORDER BY e.name`, day)
+	_ = h.db.Select(&rows, `SELECT d.id, d."employeeId", e.name AS "employeeName", to_char(d.day, 'YYYY-MM-DD') AS day, d.body, d.late, d."createdAt",
+		m.status AS "matchStatus", m.note AS "matchNote", m.detail AS "matchDetail", m."reviewVerdict" AS "matchVerdict", m."reviewNote" AS "matchReview"
+		FROM "DailyWorkReport" d JOIN "Employee" e ON e.id = d."employeeId"
+		LEFT JOIN "DailyReportMatch" m ON m."employeeId" = d."employeeId" AND m.day = d.day WHERE d.day = $1::date ORDER BY e.name`, day)
 	missing := []missingRow{}
 	_ = h.db.Select(&missing, `SELECT DISTINCT e.id AS "employeeId", e.name AS "employeeName" FROM "Attendance" a JOIN "Employee" e ON e.id = a."employeeId"
 		WHERE a.date::date = $1::date AND e.role::text NOT IN ('ADMIN', 'OWNER')
@@ -279,7 +296,11 @@ func (h *WorkGateHandler) ListSurveys(w http.ResponseWriter, r *http.Request) {
 func (h *WorkGateHandler) ReviewSurvey(w http.ResponseWriter, r *http.Request) {
 	res, err := h.db.Exec(`UPDATE "EmployeeProfileSurvey" SET "reviewedById" = $2, "reviewedAt" = now() WHERE "employeeId" = $1`,
 		r.PathValue("id"), middleware.EmployeeIDFromContext(r))
-	if n, _ := res.RowsAffected(); err != nil || n == 0 {
+	if err != nil {
+		WriteError(w, http.StatusBadRequest, "تعذر الحفظ")
+		return
+	}
+	if n, _ := res.RowsAffected(); n == 0 {
 		WriteError(w, http.StatusNotFound, "مو موجود")
 		return
 	}
@@ -352,4 +373,74 @@ func (h *WorkGateHandler) Dossier(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	WriteJSON(w, http.StatusOK, d)
+}
+
+// ═══ ٩.٤ مطابقة التقارير ═══
+
+func (h *WorkGateHandler) notifyMismatch(ms []*service.ReportMatch) {
+	if len(ms) == 0 {
+		return
+	}
+	msg := fmt.Sprintf("🔎 %d تقرير إنجاز ما يطابق الشغل المسجّل (%s) — راجعها بتقارير الموظفين.", len(ms), ms[0].Day)
+	_ = h.notif.CreateForRolesOrPermission([]string{"MONITOR"}, "monitoring", "daily_report_mismatch", msg)
+}
+
+// SweepMatches يطابق تقارير أمس (والي قبله لو انكتب متأخر). للحلقة.
+func (h *WorkGateHandler) SweepMatches() (int, error) {
+	n := 0
+	for back := 1; back <= 2; back++ {
+		day := companyToday().AddDate(0, 0, -back).Format("2006-01-02")
+		flagged, err := h.match.SweepDay(day)
+		if err != nil {
+			return n, err
+		}
+		h.notifyMismatch(flagged)
+		n += len(flagged)
+	}
+	return n, nil
+}
+
+// GET /api/daily-reports/{id}/match — التفصيل (يعيد المطابقة حيّة)
+func (h *WorkGateHandler) MatchDetail(w http.ResponseWriter, r *http.Request) {
+	var rep struct {
+		Emp string `db:"employeeId"`
+		Day string `db:"day"`
+	}
+	if err := h.db.Get(&rep, `SELECT "employeeId", to_char(day, 'YYYY-MM-DD') AS day FROM "DailyWorkReport" WHERE id = $1`, r.PathValue("id")); err != nil {
+		WriteError(w, http.StatusNotFound, "مو موجود")
+		return
+	}
+	m, err := h.match.Match(rep.Emp, rep.Day)
+	if err != nil || m == nil {
+		log.Printf("[report-match] %s %s: %v", rep.Emp, rep.Day, err)
+		WriteError(w, http.StatusNotFound, "مو موجود")
+		return
+	}
+	if _, err := h.match.Save(m); err != nil {
+		log.Printf("[report-match] save: %v", err)
+	}
+	WriteJSON(w, http.StatusOK, m)
+}
+
+// POST /api/daily-reports/{id}/match-review {verdict: JUSTIFIED|UNJUSTIFIED, note}
+func (h *WorkGateHandler) ReviewMatch(w http.ResponseWriter, r *http.Request) {
+	var in struct {
+		Verdict string `json:"verdict"`
+		Note    string `json:"note"`
+	}
+	if err := DecodeJSON(r, &in); err != nil || (in.Verdict != "JUSTIFIED" && in.Verdict != "UNJUSTIFIED") {
+		WriteError(w, http.StatusBadRequest, "طلب غير صالح")
+		return
+	}
+	res, err := h.db.Exec(`UPDATE "DailyReportMatch" SET "reviewVerdict" = $2, "reviewNote" = NULLIF($3, ''), "reviewedById" = $4, "reviewedAt" = now(), "updatedAt" = now()
+		WHERE "reportId" = $1 AND status <> 'MATCH'`, r.PathValue("id"), in.Verdict, strings.TrimSpace(in.Note), middleware.EmployeeIDFromContext(r))
+	if err != nil {
+		WriteError(w, http.StatusBadRequest, "تعذر الحفظ")
+		return
+	}
+	if n, _ := res.RowsAffected(); n == 0 {
+		WriteError(w, http.StatusNotFound, "ماكو فرق ينراجع")
+		return
+	}
+	WriteJSON(w, http.StatusOK, map[string]bool{"ok": true})
 }

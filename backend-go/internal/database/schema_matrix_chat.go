@@ -1711,5 +1711,27 @@ func matrixChatMigrations() []Migration {
 			INSERT INTO "OrgGovernorState" (key, value) VALUES ('rating_duty_since', to_char((now() AT TIME ZONE 'Asia/Baghdad')::date, 'YYYY-MM-DD'))
 			ON CONFLICT (key) DO NOTHING;
 		`,
+	}, {
+		// ٩.٤ — مطابقة تقرير الإنجاز ويا الشغل المسجّل
+		Version: "0432_daily_report_match",
+		SQL: `
+			CREATE TABLE IF NOT EXISTS "DailyReportMatch" (
+				id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
+				"employeeId" TEXT NOT NULL REFERENCES "Employee"(id) ON DELETE CASCADE,
+				day DATE NOT NULL,
+				"reportId" TEXT REFERENCES "DailyWorkReport"(id) ON DELETE CASCADE,
+				status TEXT NOT NULL,
+				note TEXT NOT NULL DEFAULT '',
+				detail JSONB NOT NULL DEFAULT '{}',
+				"reviewVerdict" TEXT,
+				"reviewedById" TEXT REFERENCES "Employee"(id) ON DELETE SET NULL,
+				"reviewNote" TEXT,
+				"reviewedAt" TIMESTAMPTZ,
+				"createdAt" TIMESTAMPTZ NOT NULL DEFAULT now(),
+				"updatedAt" TIMESTAMPTZ NOT NULL DEFAULT now(),
+				UNIQUE ("employeeId", day)
+			);
+			CREATE INDEX IF NOT EXISTS "DailyReportMatch_day_idx" ON "DailyReportMatch" (day);
+		`,
 	}}
 }

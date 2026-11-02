@@ -135,6 +135,7 @@ func (s *MatrixScoreService) Run(now time.Time) (int, error) {
 	s.scoreProcurement(now, add)
 	s.scoreMonitorAudit(now, add)
 	s.scoreRatingDuty(now, add)
+	s.scoreReportMatch(now, add)
 	if len(errs) > 0 {
 		return n, errors.New(strings.Join(errs, "; "))
 	}
@@ -343,11 +344,12 @@ var ruleTitles = map[string]string{
 	"ATTENDANCE": "تسجيل الحضور", "TASK_DUE": "المهام المضافة بموعدها", "PROJECT_WEEK": "المشاريع",
 	"PROC_RESPONSE": "الرد على طلبات المواد", "TOOL_RESPONSE": "الرد على طلبات الأدوات",
 	"VEHICLE_DAILY": "متابعة السيارات اليومية", "SHORTAGE_RESOLVE": "حل نواقص الجرد",
-	"STAGE_LOG": "الالتزام بتسجيل المراحل", "MONITOR_AUDIT": "تدقيق المراقب (غير الحجوزات)", "RATING_DUTY": "واجب التقييم اليومي",
+	"STAGE_LOG": "الالتزام بتسجيل المراحل", "MONITOR_AUDIT": "تدقيق المراقب (غير الحجوزات)", "RATING_DUTY": "واجب التقييم اليومي", "REPORT_MATCH": "صدق تقرير الإنجاز",
 }
 
 var ruleAdvice = map[string]string{
 	"RATING_DUTY":      "قيّم الي عليك نفس اليوم — الي يفوتك ينكتب بسجل الإهمال.",
+	"REPORT_MATCH":     "اكتب بتقريرك الي سويته فعلاً واذكر أكواد الحجوزات الي اشتغلت عليها.",
 	"ATTENDANCE":       "سجّل حضورك كل يوم دوام أول ما توصل.",
 	"STAGE_LOG":        "دوس كل مرحلة بوقتها وبمكانها (انطلاق بالشركة، وصول عند الزبون) — حتى بلا نت تنحفظ.",
 	"TASK_DUE":         "خلّص المهام قبل موعدها، وإذا ما تلحق گول للي وجّهها قبل الموعد.",
@@ -746,5 +748,23 @@ func (s *MatrixScoreService) scoreRatingDuty(now time.Time, add func(repository.
 		}
 		add(repository.MatrixScoreRow{EmployeeID: n.EmployeeID, Source: "DUTY", SourceID: n.ID, SourceLabel: &label,
 			Rule: "RATING_DUTY", Points: pts, MaxPoints: 2, At: n.CreatedAt, Reason: why})
+	}
+}
+
+// scoreReportMatch (11-02 — ٩.٤) تقرير الإنجاز مقابل الشغل المسجّل: مطابق/مبرّر = ٢، جزئي = ١، بلا أثر = ٠.
+func (s *MatrixScoreService) scoreReportMatch(now time.Time, add func(repository.MatrixScoreRow)) {
+	rows, err := s.repo.ReportMatches(now.AddDate(0, 0, -scoreLookbackDays))
+	if err != nil {
+		return
+	}
+	for _, m := range rows {
+		label := "تقرير إنجاز " + m.Day
+		pts := map[string]int{"MATCH": 2, "PARTIAL": 1}[m.Status]
+		why := label + ": " + m.Note
+		if m.Verdict != nil && *m.Verdict == "JUSTIFIED" {
+			pts, why = 2, why+" (المراقب: مبرّر)"
+		}
+		add(repository.MatrixScoreRow{EmployeeID: m.EmployeeID, Source: "REPORT", SourceID: m.ID, SourceLabel: &label,
+			Rule: "REPORT_MATCH", Points: pts, MaxPoints: 2, At: m.CreatedAt, Reason: why})
 	}
 }
