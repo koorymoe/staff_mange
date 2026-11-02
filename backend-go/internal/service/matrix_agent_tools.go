@@ -187,6 +187,27 @@ func (a *MatrixAgent) RegisterReadTools(d AgentDeps) {
 			return d.Text(), nil
 		}})
 
+	// 🎓 (11-02 — ٩.٥) أحد گال «فلان يحتاج تدريب»؟ ادرسه من أرقامه واحسم.
+	a.AddTool(agentTool{Name: "training_study", Desc: "يدرس موظف من أرقامه الحقيقية ويحسم: يحتاج تدريب لو لا، وبأي شي بالضبط (أضعف قواعده، سرعته، منحناه، تدريبه السابق). استعمله لما أحد يگول إن موظف يحتاج تدريب أو مستواه ضعيف.",
+		Props: map[string]any{"who": map[string]any{"type": "string", "description": "رمز الموظف مثل موظف#3"}}, Req: []string{"who"},
+		Run: func(in map[string]any, mask *nameMask) (string, error) {
+			id, _ := mask.Resolve(strArg(in, "who"))
+			if id == "" {
+				return "", fmt.Errorf("ما لگيت الموظف")
+			}
+			n, err := StudyTraining(a.db, id)
+			if err != nil {
+				return "", err
+			}
+			out := TrainingNeedText(strArg(in, "who"), n)
+			var open []string
+			_ = a.db.Select(&open, `SELECT status || ': ' || array_to_string(areas, '، ') || COALESCE(' — ' || "resultNote", '') FROM "TrainingNeed" WHERE "employeeId" = $1 ORDER BY "createdAt" DESC LIMIT 3`, id)
+			if len(open) > 0 {
+				out += "\nدراسات سابقة: " + strings.Join(open, " | ")
+			}
+			return out, nil
+		}})
+
 	// ⏱️ (11-02) أوقات الميدان: انطلق، وصل، بدأ العمل — مقابل المعتاد.
 	a.AddTool(agentTool{Name: "field_timing", Desc: "الكوادر بالميدان هسه (أو حجز واحد بكوده): شوكت انطلقوا، شوكت وصلوا، شوكت ضغطوا بدء العمل، ويا تحليل: الطريق مقابل المعتاد، الوصول مقابل الموعد، الانتظار قبل البدء، ومدة الشغل مقابل معتاد الخدمة.",
 		Props: map[string]any{"code": map[string]any{"type": "string", "description": "كود الحجز (اختياري)"}},

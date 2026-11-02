@@ -35,6 +35,20 @@ function Detail({ id, people }: { id: string; people: { id: string; name: string
       <p className="text-sm text-slate-700">{d.description}</p>
       <p className="text-xs text-slate-500">السياق: اشتغلوا سوة بـ{d.context.sharedBookings} حجز آخر ٣ أشهر · شكاوى زبائن: {d.partyAName} {d.context.aComplaints}{d.partyBName && ` · ${d.partyBName} ${d.context.bComplaints}`}</p>
       {d.aiSummary && <div className="matrix-note whitespace-pre-wrap">🤖 <b className="mx-tag">ماتركس:</b> {d.aiSummary}</div>}
+      {(d.training ?? []).map((t) => {
+        const who = t.employeeId === d.partyAId ? d.partyAName : d.partyBName
+        const tone = t.verdict === 'NEEDS' ? 'border-amber-200 bg-amber-50' : t.verdict === 'NO_NEED' ? 'border-emerald-200 bg-emerald-50' : 'border-slate-200 bg-slate-50'
+        return (
+          <div key={t.id} className={`rounded-xl border p-3 text-xs ${tone}`}>
+            <p className="text-sm font-bold text-[#0f2040]">🎓 {who}: {t.verdict === 'NEEDS' ? `يحتاج تدريب بـ ${t.areas.join('، ')}` : t.verdict === 'NO_NEED' ? 'ما يحتاج تدريب — أرقامه ما تأيد الكلام' : 'ما ينحسم بعد — بياناته قليلة'}</p>
+            <p className="mt-1 text-slate-600">الأدلة: {t.evidence}</p>
+            <p className="mt-1 font-bold text-slate-700">
+              {t.status === 'CLOSED' ? '✓ ما يحتاج متابعة تدريب' : t.status === 'OPEN' ? `⏳ ماتركس يتابعه ويقيس تطوّره ${new Date(t.followUpAt).toLocaleDateString('ar-IQ', { timeZone: 'Asia/Baghdad' })}`
+                : t.status === 'IMPROVED' ? `✅ ${t.resultNote}` : `⚠️ ${t.resultNote}`}
+            </p>
+          </div>
+        )
+      })}
       <button type="button" disabled={busy} onClick={() => void run(() => api.analyzeIssue(id))} className="text-xs font-bold text-violet-700 underline">🔄 خلّي ماتركس يعيد التحليل</button>
       <div className="space-y-1">
         {d.entries.map((e) => (

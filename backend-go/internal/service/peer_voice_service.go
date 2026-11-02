@@ -366,6 +366,8 @@ type IssueDetail struct {
 	repository.WorkplaceIssue
 	Entries []repository.IssueEntry `json:"entries"`
 	Context repository.IssueContext `json:"context"`
+	// ٩.٥ دراسة ماتركس لملف كل طرف: يحتاج تدريب لو لا + المتابعة
+	Training []TrainingNeed `json:"training"`
 }
 
 func (s *PeerVoiceService) Issues() ([]repository.WorkplaceIssue, error) { return s.repo.Issues() }
@@ -380,6 +382,7 @@ func (s *PeerVoiceService) Issue(id string) (*IssueDetail, error) {
 	if d.Entries == nil {
 		d.Entries = []repository.IssueEntry{}
 	}
+	d.Training = IssueTrainingNeeds(s.repo.DB(), id)
 	return d, nil
 }
 
@@ -423,6 +426,7 @@ const issueSystemPrompt = `أنت «ماتركس» بنظام شركة الأم�
 ١. الملخّص (جملتين).
 ٢. نقاط الخلاف (نقاط قصيرة).
 ٣. اقتراحات حل عملية (٢-٣)، بلا عقوبة تلقائية وبلا تحيّز لطرف.
+٤. 🎓 التدريب: عندك «دراسة ملف» كل طرف من أرقامه الحقيقية. طابق الكلام ويا الأرقام: إذا أحد گال «يحتاج تدريب» والأرقام تأيد، احسم بأي شي بالضبط. وإذا الأرقام ما تأيد، گولها صريح (يمكن المشكلة بالتعامل مو بالمهارة). احكم من الأرقام مو من الانطباع، وماتركس راح يتابعه بعد ٣٠ يوم.
 إذا أكو تهديد أو اعتداء، ابدي بـ«🚨 يحتاج تدخّل فوري». بلا مقدمات.`
 
 // Analyze ماتركس يكتب الملخّص ونقاط الخلاف والاقتراحات من الإفادات والسياق.
@@ -453,6 +457,25 @@ func (s *PeerVoiceService) Analyze(id string) error {
 	}
 	c := d.Context
 	fmt.Fprintf(&b, "سياق: اشتغلوا سوة بـ%d حجز آخر ٣ أشهر. شكاوى زبائن على الطرف أ %d وعلى الطرف ب %d.", c.SharedBookings, c.AComplaints, c.BComplaints)
+	// ٩.٥ ماتركس يروح يشوف ملف كل طرف بدل ما يصدّق الكلام
+	study := []string{}
+	parties := []struct{ id, label string }{{d.PartyAID, "الطرف أ"}}
+	if d.PartyBID != nil {
+		parties = append(parties, struct{ id, label string }{*d.PartyBID, "الطرف ب"})
+	}
+	for _, p := range parties {
+		n, err := StudyTraining(s.repo.DB(), p.id)
+		if err != nil {
+			continue
+		}
+		if err := SaveTrainingNeed(s.repo.DB(), id, n); err != nil {
+			return fmt.Errorf("training need: %w", err)
+		}
+		study = append(study, TrainingNeedText(p.label, n))
+	}
+	if len(study) > 0 {
+		fmt.Fprintf(&b, "\n%s\n", strings.Join(study, "\n"))
+	}
 	text := b.String()
 	names := s.names()
 	names = append(names, d.PartyAName)
@@ -465,7 +488,7 @@ func (s *PeerVoiceService) Analyze(id string) error {
 		ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 		defer cancel()
 		resp, err := s.client.Messages.New(ctx, anthropic.MessageNewParams{
-			Model: anthropic.Model(s.model), MaxTokens: 600,
+			Model: anthropic.Model(s.model), MaxTokens: 900,
 			System:   []anthropic.TextBlockParam{{Text: issueSystemPrompt}},
 			Messages: []anthropic.MessageParam{anthropic.NewUserMessage(anthropic.NewTextBlock(clean))},
 		})
@@ -487,6 +510,9 @@ func (s *PeerVoiceService) Analyze(id string) error {
 		}
 		summary = fmt.Sprintf("ملخّص: %s.\nالإفادات المسجّلة: %d. اشتغلوا سوة بـ%d حجز آخر ٣ أشهر.\nالاقتراح: %s",
 			d.Title, statements, c.SharedBookings, ruleIssueSuggestion(text))
+		if len(study) > 0 {
+			summary += "\n🎓 " + strings.Join(study, "\n🎓 ")
+		}
 		if statements < 2 && d.PartyBID != nil {
 			summary += "\nقبل القرار: اسمع إفادة الطرفين كل واحد لحاله وسجّلها هنا."
 		}

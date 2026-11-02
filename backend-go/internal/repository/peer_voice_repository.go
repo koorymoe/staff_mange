@@ -348,3 +348,6 @@ func (r *PeerVoiceRepository) Context(a string, b *string) IssueContext {
 		(SELECT avg(score)::float8 FROM "PeerNote" WHERE "targetId" = $2 AND "createdAt" > now() - interval '60 days') AS "bPeer"`, a, bid)
 	return c
 }
+
+// DB للخدمات الي تحتاج تقرا الملف الشامل (٩.٥).
+func (r *PeerVoiceRepository) DB() *sqlx.DB { return r.db }

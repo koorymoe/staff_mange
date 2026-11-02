@@ -2858,6 +2858,20 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 		})
 	peerVoiceService.EnableModel(cfg.AIKeyMatrix, cfg.AIModel)
 	peerHandler := handler.NewPeerVoiceHandler(peerVoiceService)
+	safeguard.Loop("متابعة احتياج التدريب", 19*time.Minute, 6*time.Hour, func() {
+		up, down, err := service.FollowUpTraining(db)
+		if err != nil {
+			log.Printf("training follow-up: %v", err)
+			return
+		}
+		if down > 0 {
+			_ = notificationRepo.CreateForRolesOrPermission([]string{"MONITOR"}, "monitoring", "training_followup",
+				fmt.Sprintf("🎓 ماتركس — متابعة ٣٠ يوم: %d موظف ما تحسّن بعد احتياج التدريب. شوف «المشاكل الوظيفية».", down))
+		}
+		if up+down > 0 {
+			log.Printf("training follow-up: %d تحسّن، %d لا", up, down)
+		}
+	})
 	mux.Handle("GET /api/peer/me", middleware.Chain(http.HandlerFunc(peerHandler.Mine), requireAuth))
 	mux.Handle("POST /api/peer/me", middleware.Chain(http.HandlerFunc(peerHandler.Submit), requireAuth))
 	mux.Handle("POST /api/peer/notes/{id}/followup", middleware.Chain(http.HandlerFunc(peerHandler.Followup), requireAuth))

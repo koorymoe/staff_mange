@@ -2243,6 +2243,7 @@ export interface WorkplaceIssue {
   decision: string | null; decidedByName: string | null; decidedAt: string | null; followUpAt: string | null; createdAt: string
 }
 export interface WorkplaceIssueDetail extends WorkplaceIssue {
+  training?: { id: string; employeeId: string; verdict: 'NEEDS' | 'NO_NEED' | 'UNKNOWN'; areas: string[]; evidence: string; baselinePct: number | null; followUpAt: string; status: string; currentPct: number | null; resultNote: string | null }[]
   entries: { id: string; authorName: string | null; kind: string; text: string; createdAt: string }[]
   context: { sharedBookings: number; aComplaints: number; bComplaints: number; aPeerAvg: number | null; bPeerAvg: number | null }
 }

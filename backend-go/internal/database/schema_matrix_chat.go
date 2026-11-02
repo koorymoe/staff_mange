@@ -1733,5 +1733,27 @@ func matrixChatMigrations() []Migration {
 			);
 			CREATE INDEX IF NOT EXISTS "DailyReportMatch_day_idx" ON "DailyReportMatch" (day);
 		`,
+	}, {
+		// ٩.٥ — احتياج التدريب من دراسة ملف الموظف + متابعة ٣٠ يوم
+		Version: "0433_training_need",
+		SQL: `
+			CREATE TABLE IF NOT EXISTS "TrainingNeed" (
+				id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
+				"issueId" TEXT REFERENCES "WorkplaceIssue"(id) ON DELETE CASCADE,
+				"employeeId" TEXT NOT NULL REFERENCES "Employee"(id) ON DELETE CASCADE,
+				verdict TEXT NOT NULL,
+				areas TEXT[] NOT NULL DEFAULT '{}',
+				rules TEXT[] NOT NULL DEFAULT '{}',
+				evidence TEXT NOT NULL DEFAULT '',
+				"baselinePct" DOUBLE PRECISION,
+				"followUpAt" TIMESTAMPTZ NOT NULL,
+				status TEXT NOT NULL DEFAULT 'OPEN',
+				"currentPct" DOUBLE PRECISION,
+				"resultNote" TEXT,
+				"createdAt" TIMESTAMPTZ NOT NULL DEFAULT now(),
+				UNIQUE ("issueId", "employeeId")
+			);
+			CREATE INDEX IF NOT EXISTS "TrainingNeed_due_idx" ON "TrainingNeed" (status, "followUpAt");
+		`,
 	}}
 }

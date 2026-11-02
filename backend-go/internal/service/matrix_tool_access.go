@@ -33,6 +33,7 @@ var matrixToolAccess = map[string][]string{
 	// الموظفين وتقييمهم
 	"staff_scores": {"monitoring", "mon_staff", "staff_management", "kpi_management"}, "employee_profile": {"monitoring", "mon_staff", "staff_management"},
 	"employee_dossier":   {"monitoring", "mon_staff", "staff_management"},
+	"training_study":     {"monitoring", "mon_staff", "staff_management"},
 	"daily_report_match": {"monitoring", "mon_staff", "staff_management"},
 	"employee_signals":   {"monitoring", "mon_staff", "staff_management"}, "team_performance": {"monitoring", "mon_staff", "staff_management", "kpi_management"},
 	// query_data / describe_data: مو بالخريطة = للمالك والمدير بس
