@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"net/http"
 	"staffmange-api/internal/authz"
-	"staffmange-api/internal/model"
 	"strings"
 	"time"
 
@@ -24,30 +23,18 @@ func NewProjectPaymentHandler(repo *repository.ProjectPaymentRepository, perms *
 	return &ProjectPaymentHandler{repo: repo, perms: perms}
 }
 
-func (h *ProjectPaymentHandler) has(r *http.Request, roles []string, perms ...string) bool {
-	role := middleware.RoleFromContext(r)
-	if model.IsAdminRole(role) {
-		return true
-	}
-	if middleware.HasRole(r, roles...) {
-		return true
-	}
-	me := middleware.EmployeeIDFromContext(r)
-	for _, p := range perms {
-		if ok, _ := h.perms.HasPermission(me, p); ok {
-			return true
-		}
-	}
-	return false
-}
 
 func (h *ProjectPaymentHandler) isFinance(r *http.Request) bool {
 	return authz.SeeAll(r, h.perms, authz.ProjectPaymentsFinance) // (11-04) محرك الصلاحيات
 }
 
 func (h *ProjectPaymentHandler) canRecord(r *http.Request, projectID string) bool {
-	return h.isFinance(r) || h.has(r, []string{"PROJECT_MANAGER"}, "project_management") ||
-		h.repo.IsSupervisor(projectID, middleware.EmployeeIDFromContext(r))
+	// (11-04 — المرحلة ٤) القاعدة بالمحرك + الملكية (مشرف المشروع)
+	return authz.Can(r, h.perms, authz.ProjectContractValue, h.repo.IsSupervisor(projectID, middleware.EmployeeIDFromContext(r)))
+}
+
+func (h *ProjectPaymentHandler) canValue(r *http.Request) bool {
+	return authz.Can(r, h.perms, authz.ProjectContractValue)
 }
 
 type projectPaymentsOut struct {
@@ -69,14 +56,14 @@ func (h *ProjectPaymentHandler) out(w http.ResponseWriter, r *http.Request, proj
 		return
 	}
 	WriteJSON(w, http.StatusOK, projectPaymentsOut{Money: m, Payments: list, CanVerify: h.isFinance(r),
-		CanValue: h.isFinance(r) || h.has(r, []string{"PROJECT_MANAGER"}, "project_management")})
+		CanValue: h.canValue(r)})
 }
 
 // GET /api/projects/{id}/payments
 func (h *ProjectPaymentHandler) List(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 	if !h.canRecord(r, id) {
-		WriteError(w, http.StatusForbidden, "ما عندك صلاحية على فلوس هالمشروع")
+		authz.Deny(w, r, authz.ProjectContractValue)
 		return
 	}
 	h.out(w, r, id)
@@ -86,7 +73,7 @@ func (h *ProjectPaymentHandler) List(w http.ResponseWriter, r *http.Request) {
 func (h *ProjectPaymentHandler) Add(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 	if !h.canRecord(r, id) {
-		WriteError(w, http.StatusForbidden, "ما عندك صلاحية على فلوس هالمشروع")
+		authz.Deny(w, r, authz.ProjectContractValue)
 		return
 	}
 	var in repository.ProjectPaymentIn
@@ -114,7 +101,7 @@ func (h *ProjectPaymentHandler) Add(w http.ResponseWriter, r *http.Request) {
 // POST /api/project-payments/{id}/verify
 func (h *ProjectPaymentHandler) Verify(w http.ResponseWriter, r *http.Request) {
 	if !h.isFinance(r) {
-		WriteError(w, http.StatusForbidden, "التأكيد للمحاسب")
+		authz.Deny(w, r, authz.ProjectPaymentsFinance)
 		return
 	}
 	pid := h.repo.ProjectOf(r.PathValue("id"))
@@ -128,7 +115,7 @@ func (h *ProjectPaymentHandler) Verify(w http.ResponseWriter, r *http.Request) {
 // POST /api/project-payments/{id}/cancel
 func (h *ProjectPaymentHandler) Cancel(w http.ResponseWriter, r *http.Request) {
 	if !h.isFinance(r) {
-		WriteError(w, http.StatusForbidden, "الإلغاء للمحاسب")
+		authz.Deny(w, r, authz.ProjectPaymentsFinance)
 		return
 	}
 	var in struct {
@@ -149,8 +136,8 @@ func (h *ProjectPaymentHandler) Cancel(w http.ResponseWriter, r *http.Request) {
 
 // PUT /api/projects/{id}/contract-value
 func (h *ProjectPaymentHandler) SetValue(w http.ResponseWriter, r *http.Request) {
-	if !(h.isFinance(r) || h.has(r, []string{"PROJECT_MANAGER"}, "project_management")) {
-		WriteError(w, http.StatusForbidden, "قيمة العقد لإدارة المشاريع والمحاسب")
+	if !h.canValue(r) {
+		authz.Deny(w, r, authz.ProjectContractValue)
 		return
 	}
 	var in struct {
@@ -170,8 +157,8 @@ func (h *ProjectPaymentHandler) SetValue(w http.ResponseWriter, r *http.Request)
 
 // GET /api/project-payments/overview — كل المشاريع بفلوسها (المحاسب وإدارة المشاريع).
 func (h *ProjectPaymentHandler) Overview(w http.ResponseWriter, r *http.Request) {
-	if !(h.isFinance(r) || h.has(r, []string{"PROJECT_MANAGER", "MONITOR"}, "project_management", "monitoring")) {
-		WriteError(w, http.StatusForbidden, "ما عندك صلاحية")
+	if !authz.Can(r, h.perms, authz.ProjectPaymentsOverview) {
+		authz.Deny(w, r, authz.ProjectPaymentsOverview)
 		return
 	}
 	rows, err := h.repo.AllMoney()
@@ -183,12 +170,11 @@ func (h *ProjectPaymentHandler) Overview(w http.ResponseWriter, r *http.Request)
 }
 
 // ═══ سجل الدفعات + تصحيح المبلغ — للمالك بس (ع 10-13) ═══
-func isOwner(r *http.Request) bool { return middleware.RoleFromContext(r) == "OWNER" }
 
 // GET /api/project-payments/audit?by=&since=
 func (h *ProjectPaymentHandler) Audit(w http.ResponseWriter, r *http.Request) {
-	if !isOwner(r) {
-		WriteError(w, http.StatusForbidden, "سجل الدفعات للمالك")
+	if !authz.Can(r, h.perms, authz.ProjectPaymentsAudit) {
+		authz.Deny(w, r, authz.ProjectPaymentsAudit)
 		return
 	}
 	rows, err := h.repo.Audit(r.URL.Query().Get("by"), r.URL.Query().Get("since"))
@@ -201,8 +187,8 @@ func (h *ProjectPaymentHandler) Audit(w http.ResponseWriter, r *http.Request) {
 
 // PUT /api/project-payments/{id}/amount {amount, reason}
 func (h *ProjectPaymentHandler) SetAmount(w http.ResponseWriter, r *http.Request) {
-	if !isOwner(r) {
-		WriteError(w, http.StatusForbidden, "تصحيح الدفعات للمالك")
+	if !authz.Can(r, h.perms, authz.ProjectPaymentsAudit) {
+		authz.Deny(w, r, authz.ProjectPaymentsAudit)
 		return
 	}
 	var in struct {

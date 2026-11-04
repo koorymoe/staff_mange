@@ -46,3 +46,10 @@ func TestSeeAllMatchesOldRules(t *testing.T) {
 		}
 	}
 }
+
+// المرحلة ٤: OwnerOnly — المالك الأصلي بس، حتى مدير النظام لا.
+func TestOwnerOnlyRule(t *testing.T) {
+	if !SeeAllRules[ProjectPaymentsAudit].OwnerOnly {
+		t.Fatal("سجل الدفعات لازم للمالك بس")
+	}
+}

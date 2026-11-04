@@ -7,6 +7,7 @@
 package authz
 
 import (
+	"log"
 	"net/http"
 
 	"staffmange-api/internal/middleware"
@@ -28,6 +29,10 @@ const (
 	FundAmount             Resource = "fund_amount"              // مبلغ الدوار وتعبئته
 	FundDischarge          Resource = "fund_discharge"           // إبراء ذمة الدوار
 	ProjectPaymentsFinance Resource = "project_payments_finance" // تدقيق دفعات المشاريع
+	// المرحلة ٤ (11-04) — قرارات كانت جوّا project_payment_handler
+	ProjectContractValue    Resource = "project_contract_value"    // قيمة العقد + تسجيل دفعة لأي مشروع
+	ProjectPaymentsOverview Resource = "project_payments_overview" // فلوس كل المشاريع
+	ProjectPaymentsAudit    Resource = "project_payments_audit"    // سجل الدفعات وتصحيح المبلغ (المالك)
 )
 
 // Rule منو يشوف كل صفوف النوع: دور فعلي (EffectiveRole — يشمل المنصب بالهيكل)
@@ -40,6 +45,8 @@ type Rule struct {
 	// Guard: نفس منطق حرّاس المسارات بالضبط — الأدمن والمالك (الأصلي) يعبرون،
 	// والدور يطابق الأصلي أو المراقب أو **أي** دور من المنصب (middleware.HasRole).
 	Guard bool
+	// OwnerOnly: المالك (الدور الأصلي) بس — ولا حتى مدير النظام.
+	OwnerOnly bool
 }
 
 // SeeAllRules ⚠️ نُقلت كما هي من الـ handlers (11-04) — لا تغيّرها بلا قرار دازاي.
@@ -65,6 +72,10 @@ var SeeAllRules = map[Resource]Rule{
 	FundDischarge: {Roles: []string{"ADMIN", "OWNER", "FINANCE"}, Perms: []string{"fund_discharge"}, Guard: true},
 	// project_payment_handler.isFinance (has: الأدمن الأصلي + HasRole + الصلاحيات)
 	ProjectPaymentsFinance: {Roles: []string{"FINANCE"}, Perms: []string{"finance", "finance_audit"}, Guard: true},
+	// المرحلة ٤: منقولة كما هي من has(...) بـ project_payment_handler
+	ProjectContractValue:    {Roles: []string{"FINANCE", "PROJECT_MANAGER"}, Perms: []string{"finance", "finance_audit", "project_management"}, Guard: true},
+	ProjectPaymentsOverview: {Roles: []string{"FINANCE", "PROJECT_MANAGER", "MONITOR"}, Perms: []string{"finance", "finance_audit", "project_management", "monitoring"}, Guard: true},
+	ProjectPaymentsAudit:    {OwnerOnly: true},
 }
 
 // PermLister مصدر صلاحيات الموظف (PermissionRepository).
@@ -100,6 +111,9 @@ func Decide(res Resource, effectiveRole, rawRole string, perms []string) bool {
 // SeeAll يشوف كل صفوف النوع؟ خطأ بقراءة الصلاحيات = لا (يضيّق ما يوسّع).
 func SeeAll(r *http.Request, perms PermLister, res Resource) bool {
 	eff, raw := middleware.EffectiveRole(r), middleware.RoleFromContext(r)
+	if SeeAllRules[res].OwnerOnly {
+		return raw == "OWNER"
+	}
 	if rule := SeeAllRules[res]; rule.Guard {
 		if model.IsAdminRole(raw) || (len(rule.Roles) > 0 && middleware.HasRole(r, rule.Roles...)) {
 			return true
@@ -143,6 +157,10 @@ func Capabilities(r *http.Request, perms PermLister) map[Resource]bool {
 		rule := SeeAllRules[res]
 		eff, raw := middleware.EffectiveRole(r), middleware.RoleFromContext(r)
 		ok := false
+		if rule.OwnerOnly {
+			out[res] = raw == "OWNER"
+			continue
+		}
 		if rule.Guard {
 			ok = model.IsAdminRole(raw) || (len(rule.Roles) > 0 && middleware.HasRole(r, rule.Roles...))
 		} else {
@@ -158,4 +176,23 @@ func Capabilities(r *http.Request, perms PermLister) map[Resource]bool {
 		out[res] = ok
 	}
 	return out
+}
+
+// Can (المرحلة ٤) يگدر يسوي العملية؟ نفس جدول القواعد. owns: ملكية الشي نفسه
+// (مثلاً مشرف المشروع) تفتح لو القاعدة ما تفتح.
+func Can(r *http.Request, perms PermLister, res Resource, owns ...bool) bool {
+	for _, o := range owns {
+		if o {
+			return true
+		}
+	}
+	return SeeAll(r, perms, res)
+}
+
+// Deny (المبدأ ٦و) الرفض يرجّع 404 — ما نكشف إن الشي موجود — ويتسجّل بالسجل.
+func Deny(w http.ResponseWriter, r *http.Request, res Resource) {
+	log.Printf("[authz] deny emp=%s role=%s %s %s res=%s", middleware.EmployeeIDFromContext(r), middleware.RoleFromContext(r), r.Method, r.URL.Path, res)
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusNotFound)
+	_, _ = w.Write([]byte(`{"error":"مو موجود"}`))
 }
