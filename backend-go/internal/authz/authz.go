@@ -40,6 +40,7 @@ const (
 	Quotations              Resource = "quotations"                // عروض الأسعار — القاعدة بـ QuotationService (حلقة استيراد)، الرفض من هنا
 	InternalBookings        Resource = "internal_bookings"         // الحجوزات داخل الشركة (كلها)
 	InternalBookingCreate   Resource = "internal_booking_create"   // تسجيل حجز داخل الشركة
+	CustomerBookings        Resource = "customer_bookings"         // (المرحلة ٥) حجز بتطبيق الزبائن مو لهالزبون → «مو موجود»
 	WhatsAppChats           Resource = "whatsapp_chats"            // محادثات الواتساب (حجوزات وجودة) — المالك + من ينطيه الصلاحية بس (دازاي 11-04)
 	ServiceInvoices         Resource = "service_invoices"          // فواتير خدمة جي بي اس/داش كام (الصلاحية حسب النوع بالمعالج)
 )
@@ -219,6 +220,15 @@ func Can(r *http.Request, perms PermLister, res Resource, owns ...bool) bool {
 }
 
 // Deny (المبدأ ٦و) الرفض يرجّع 404 — ما نكشف إن الشي موجود — ويتسجّل بالسجل.
+// DenyCustomer (المرحلة ٥، 11-04) نفس Deny لتطبيق الزبائن: ٤٠٤ «مو موجود» بدل ٤٠٣
+// «هذا الحجز مو إلك» — الرسالة القديمة تكشف إن الرقم موجود لزبون ثاني. وسطر بالسجل.
+func DenyCustomer(w http.ResponseWriter, r *http.Request, res Resource, accountID string) {
+	log.Printf("[authz] deny customer=%s %s %s res=%s", accountID, r.Method, r.URL.Path, res)
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusNotFound)
+	_, _ = w.Write([]byte(`{"error":"مو موجود"}`))
+}
+
 func Deny(w http.ResponseWriter, r *http.Request, res Resource) {
 	log.Printf("[authz] deny emp=%s role=%s %s %s res=%s", middleware.EmployeeIDFromContext(r), middleware.RoleFromContext(r), r.Method, r.URL.Path, res)
 	w.Header().Set("Content-Type", "application/json")

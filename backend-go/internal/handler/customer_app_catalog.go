@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"staffmange-api/internal/authz"
 	"staffmange-api/internal/errlog"
 	"strconv"
 	"strings"
@@ -242,7 +243,7 @@ func (h *CustomerAppHandler) techOf(bookingID string) *appTech {
 func (h *CustomerAppHandler) BookingDetail(w http.ResponseWriter, r *http.Request) {
 	a, id := current(r), r.PathValue("id")
 	if !h.owns(a.ID, id) {
-		WriteError(w, http.StatusForbidden, "هذا الحجز مو إلك")
+		authz.DenyCustomer(w, r, authz.CustomerBookings, a.ID)
 		return
 	}
 	var b struct {
@@ -294,7 +295,7 @@ func (h *CustomerAppHandler) BookingDetail(w http.ResponseWriter, r *http.Reques
 func (h *CustomerAppHandler) TechPhoto(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 	if !h.owns(current(r).ID, id) {
-		http.NotFound(w, r)
+		authz.DenyCustomer(w, r, authz.CustomerBookings, current(r).ID)
 		return
 	}
 	t := h.techOf(id)
@@ -322,7 +323,7 @@ func (h *CustomerAppHandler) TechPhoto(w http.ResponseWriter, r *http.Request) {
 func (h *CustomerAppHandler) Rate(w http.ResponseWriter, r *http.Request) {
 	a, id := current(r), r.PathValue("id")
 	if !h.owns(a.ID, id) {
-		WriteError(w, http.StatusForbidden, "هذا الحجز مو إلك")
+		authz.DenyCustomer(w, r, authz.CustomerBookings, a.ID)
 		return
 	}
 	var b struct {
