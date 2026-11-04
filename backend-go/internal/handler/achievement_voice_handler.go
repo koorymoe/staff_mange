@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"log"
 	"net/http"
+	"staffmange-api/internal/authz"
 	"strconv"
 
 	"staffmange-api/internal/middleware"
@@ -134,7 +135,7 @@ func (h *AchievementHandler) Voice(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if a.EmployeeID != middleware.EmployeeIDFromContext(r) && middleware.RoleFromContext(r) != "ADMIN" && middleware.RoleFromContext(r) != "OWNER" {
-		WriteError(w, http.StatusForbidden, "الفويس لصاحبه والمدير بس")
+		authz.Deny(w, r, authz.AchievementVoice) // (11-04 — ٦و) قراءة شي مو إلك = «مو موجود» + سجل
 		return
 	}
 	v, err := h.voices.Get(id)
@@ -162,7 +163,7 @@ func (h *AchievementHandler) VoiceAnalysis(w http.ResponseWriter, r *http.Reques
 	}
 	role := middleware.RoleFromContext(r)
 	if a.EmployeeID != middleware.EmployeeIDFromContext(r) && role != "ADMIN" && role != "OWNER" {
-		WriteError(w, http.StatusForbidden, "التحليل لصاحبه والمدير بس")
+		authz.Deny(w, r, authz.AchievementVoice) // (11-04 — ٦و) قراءة شي مو إلك = «مو موجود» + سجل
 		return
 	}
 	v, err := h.voices.Analysis(id)

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"staffmange-api/internal/authz"
 	"time"
 
 	"github.com/xuri/excelize/v2"
@@ -131,7 +132,7 @@ func (h *AttendanceHandler) MonthlyReport(w http.ResponseWriter, r *http.Request
 	// نفس فحص التصدير بالضبط — كان مطبّق على التصدير وناسي التقرير نفسه،
 	// يعني أي موظف يبدّل الرقم بالرابط ويقرأ دوام أي زميل.
 	if !h.canViewEmployee(r, r.PathValue("id")) {
-		WriteError(w, http.StatusForbidden, "لا تملك صلاحية الوصول لهذا السجل")
+		authz.Deny(w, r, authz.EmployeeRecords) // (11-04 — ٦و) قراءة شي مو إلك = «مو موجود» + سجل
 		return
 	}
 	report, err := h.service.MonthlyReport(r.PathValue("id"), r.URL.Query().Get("month"))
@@ -194,7 +195,7 @@ func setExcelHeaderStyle(f *excelize.File, sheet string, lastCol string) {
 func (h *AttendanceHandler) ExportEmployeeMonth(w http.ResponseWriter, r *http.Request) {
 	employeeID := r.PathValue("id")
 	if !h.canViewEmployee(r, employeeID) {
-		WriteError(w, http.StatusForbidden, "لا تملك صلاحية الوصول لهذا السجل")
+		authz.Deny(w, r, authz.EmployeeRecords) // (11-04 — ٦و) قراءة شي مو إلك = «مو موجود» + سجل
 		return
 	}
 	report, err := h.service.MonthlyReport(employeeID, r.URL.Query().Get("month"))

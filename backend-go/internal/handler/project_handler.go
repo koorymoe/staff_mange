@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
+	"staffmange-api/internal/authz"
 	"staffmange-api/internal/middleware"
 	"strings"
 
@@ -121,7 +122,7 @@ func (h *ProjectHandler) Get(w http.ResponseWriter, r *http.Request) {
 	if h.canSeeAll != nil && !h.canSeeAll(r) {
 		ok, err := h.service.IsDelegatedTo(id, middleware.EmployeeIDFromContext(r))
 		if err != nil || !ok {
-			WriteError(w, http.StatusForbidden, "لا تملك صلاحية الوصول لهذا المشروع")
+			authz.Deny(w, r, authz.Projects) // (11-04 — ٦و) قراءة شي مو إلك = «مو موجود» + سجل
 			return
 		}
 	}

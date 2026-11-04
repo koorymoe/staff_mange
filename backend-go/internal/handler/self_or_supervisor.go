@@ -2,6 +2,7 @@ package handler
 
 import (
 	"net/http"
+	"staffmange-api/internal/authz"
 
 	"staffmange-api/internal/middleware"
 )
@@ -30,6 +31,6 @@ func requireSelfOrSupervisor(w http.ResponseWriter, r *http.Request, targetEmplo
 	if selfOrSupervisor(r, targetEmployeeID) {
 		return true
 	}
-	WriteError(w, http.StatusForbidden, "ما تكدر تشوف سجل موظف غيرك")
+	authz.Deny(w, r, authz.EmployeeRecords) // (11-04 — ٦و) قراءة شي مو إلك = «مو موجود» + سجل
 	return false
 }

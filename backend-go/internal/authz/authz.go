@@ -33,6 +33,10 @@ const (
 	ProjectContractValue    Resource = "project_contract_value"    // قيمة العقد + تسجيل دفعة لأي مشروع
 	ProjectPaymentsOverview Resource = "project_payments_overview" // فلوس كل المشاريع
 	ProjectPaymentsAudit    Resource = "project_payments_audit"    // سجل الدفعات وتصحيح المبلغ (المالك)
+	SurveyPhotos            Resource = "survey_photos"             // صور الكشف
+	AchievementVoice        Resource = "achievement_voice"         // فويس الإنجاز وتحليله
+	EmployeeRecords         Resource = "employee_records"          // سجلات موظف (دوام، تقارير شهرية)
+	Projects                Resource = "projects"                  // مشروع مو إلك
 	Quotations              Resource = "quotations"                // عروض الأسعار — القاعدة بـ QuotationService (حلقة استيراد)، الرفض من هنا
 	InternalBookings        Resource = "internal_bookings"         // الحجوزات داخل الشركة (كلها)
 	InternalBookingCreate   Resource = "internal_booking_create"   // تسجيل حجز داخل الشركة

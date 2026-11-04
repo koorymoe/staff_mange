@@ -6,6 +6,7 @@ import (
 	"log"
 	"net/http"
 	"net/url"
+	"staffmange-api/internal/authz"
 	"strings"
 
 	"staffmange-api/internal/middleware"
@@ -109,7 +110,7 @@ func (h *SurveyPhotoHandler) List(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if !h.canView(r, bookingID, projectID) {
-		WriteError(w, http.StatusForbidden, "صور الكشف للمراقب والمحاسب والمدير وإداري الحجوزات")
+		authz.Deny(w, r, authz.SurveyPhotos) // (11-04 — ٦و) قراءة شي مو إلك = «مو موجود» + سجل
 		return
 	}
 	var photos []repository.SurveyPhoto
@@ -201,7 +202,7 @@ func (h *SurveyPhotoHandler) File(w http.ResponseWriter, r *http.Request) {
 		projectID = *photo.ProjectID
 	}
 	if !h.canView(r, bookingID, projectID) {
-		WriteError(w, http.StatusForbidden, "صور الكشف للمراقب والمحاسب والمدير وإداري الحجوزات")
+		authz.Deny(w, r, authz.SurveyPhotos) // (11-04 — ٦و) قراءة شي مو إلك = «مو موجود» + سجل
 		return
 	}
 	data, contentType, err := h.store.Get(r.Context(), photo.FileKey)
