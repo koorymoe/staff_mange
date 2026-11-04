@@ -22,6 +22,7 @@ import BookingCodeChip from '../components/BookingCodeChip'
 import ShiftBadge from '../components/ShiftBadge'
 import SurveyPhotos from '../components/SurveyPhotos'
 import MatrixSuggestBox from '../components/MatrixSuggestBox'
+import { askConfirm, askInput } from '../ui/dialogs'
 
 const DELETE_CHANNEL_OPTIONS: [BookingDeleteChannel, string][] =
   (Object.entries(bookingDeleteChannelLabels) as [BookingDeleteChannel, string][])
@@ -383,7 +384,7 @@ export default function Coordinator() {
   // الزبون ما رد: ينزاح الحجز لطابور «ما وصلت للتنفيذ» فوراً بلا
   // موافقة — ويبقى محفوظاً. ما ينحذف ولا ينأرشف.
   const markNoAnswer = async (bookingId: string, code: string) => {
-    const note = prompt(`الزبون ما رد على الحجز ${code}؟ اكتب ملاحظة (اختياري)`, 'اتصلنا وما رد')
+    const note = (await askInput(`الزبون ما رد على الحجز ${code}؟ اكتب ملاحظة (اختياري)`, 'اتصلنا وما رد'))
     if (note === null) return
     try {
       await api.markBookingWaiting(bookingId, note.trim())
@@ -398,10 +399,7 @@ export default function Coordinator() {
   // «الزبون يرجع خبر»: استفسر وطلب وقت يفكر — طابور غير «ما رد»،
   // لأن هذا ننتظر خبره وذاك نلحقه بمكالمة.
   const markAwaitingCustomer = async (bookingId: string, code: string) => {
-    const note = prompt(
-      `الزبون رايح يرجعلك خبر على الحجز ${code}؟ اكتب شنو استفسر عنه (اختياري)`,
-      'استفسر عن السعر ورايح يرجعلنا خبر',
-    )
+    const note = (await askInput(`الزبون رايح يرجعلك خبر على الحجز ${code}؟ اكتب شنو استفسر عنه (اختياري)`, 'استفسر عن السعر ورايح يرجعلنا خبر'))
     if (note === null) return
     try {
       await api.markBookingWaiting(bookingId, note.trim(), 'CUSTOMER_DECISION')
@@ -495,12 +493,10 @@ export default function Coordinator() {
   const isOwner = currentUser?.actualRole === 'OWNER'
 
   const settleLegacy = async (booking: Booking) => {
-    if (!confirm(
-      `تأشير الحجز ${booking.code} «تم الإنجاز بدون تفاصيل»؟\n\n`
+    if (!(await askConfirm(`تأشير الحجز ${booking.code} «تم الإنجاز بدون تفاصيل»؟\n\n`
       + 'راح ينقفل منجزاً بلا كادر ولا مبالغ، وينعلّم كتسوية إدارية '
-      + '(مستثنى من غرامات الفاتورة والتقرير).',
-    )) return
-    const note = prompt('ملاحظة (اختيارية) — مثلاً: حجز قديم قبل النظام') || ''
+      + '(مستثنى من غرامات الفاتورة والتقرير).'))) return
+    const note = (await askInput('ملاحظة (اختيارية) — مثلاً: حجز قديم قبل النظام')) || ''
     try {
       const updated = await api.settleLegacyBooking(booking.id, note.trim())
       setBookings((prev) => prev.filter((b) => b.id !== updated.id))
@@ -559,7 +555,7 @@ export default function Coordinator() {
 
   // إلغاء تكليف موظف من خانة — الحجز يبقى مثبّت بلا كادر.
   const handleUnassign = async (booking: Booking, role: string, name: string) => {
-    if (!confirm(`إلغاء تكليف «${name}» من هذا الحجز؟\nالحجز يبقى مثبّت، بس بلا كادر بهاي الخانة.`)) return
+    if (!(await askConfirm(`إلغاء تكليف «${name}» من هذا الحجز؟\nالحجز يبقى مثبّت، بس بلا كادر بهاي الخانة.`))) return
     await applyUpdate('إلغاء التكليف', () => api.unassignTechnician(booking.id, role))
   }
 
@@ -1033,7 +1029,7 @@ export default function Coordinator() {
                     <span className="font-bold text-violet-900">🤖 ماتركس كلّف كادر هذا الحجز (محد كلّفه لحد المسا)</span>
                     <button type="button" className="rounded-lg border border-rose-300 bg-white px-2 py-0.5 font-bold text-rose-700"
                       onClick={async () => {
-                        if (!window.confirm('تتراجع عن تكليف ماتركس؟ ينشال بس الي كلّفه هو وبعده ما تغيّر.')) return
+                        if (!(await askConfirm('تتراجع عن تكليف ماتركس؟ ينشال بس الي كلّفه هو وبعده ما تغيّر.'))) return
                         try {
                           await api.undoMatrixAutoCrew(autoCrew[booking.id])
                           setSaveError(null)

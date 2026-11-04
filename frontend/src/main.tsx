@@ -11,6 +11,7 @@ import { installInAppAlert } from './utils/dialog.tsx'
 import { startStageSync } from './utils/offlineStages.ts'
 import { startFieldTracker } from './utils/fieldTracker.ts'
 import { installStaleChunkReload } from './utils/staleReload.ts'
+import { DialogHost } from './ui/DialogHost'
 
 // قبل الرندر: أي طلب يفشل بلا معالجة بالشاشة يوصل الموظف برسالة
 // مفهومة بدل ما ينبلع بصمت.
@@ -29,6 +30,7 @@ createRoot(document.getElementById('root')!).render(
     <ErrorBoundary>
       <BrowserRouter basename={import.meta.env.BASE_URL}>
         <App />
+        <DialogHost />
       </BrowserRouter>
     </ErrorBoundary>
   </StrictMode>,

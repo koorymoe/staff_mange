@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { api, type MatrixGuideRule } from '../api'
 import { GROUP_LABEL, type EyeGroup } from './matrixEyeColors'
+import { askConfirm } from '../ui/dialogs'
 
 // ═══ تعليمات ماتركس — «الخطوات التعليمية» ═══
 // المدير يكتب شنو يگول ماتركس بكل شاشة/زر. وإذا مفتاح هايكو موجود، هايكو
@@ -34,7 +35,7 @@ export default function MatrixGuideRules() {
     try { await api.updateGuideRule(r.id, { ...r, enabled: !r.enabled }); setReload((n) => n + 1) } catch (e) { setErr(e instanceof Error ? e.message : 'تعذر') }
   }
   const del = async (r: MatrixGuideRule) => {
-    if (!confirm('تحذف هاي التعليمة؟')) return
+    if (!(await askConfirm('تحذف هاي التعليمة؟'))) return
     try { await api.deleteGuideRule(r.id); setReload((n) => n + 1) } catch (e) { setErr(e instanceof Error ? e.message : 'تعذر') }
   }
 

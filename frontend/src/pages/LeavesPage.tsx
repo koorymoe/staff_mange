@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { api, type LeaveRequest, type LeaveStatus } from '../api'
+import { askConfirm } from '../ui/dialogs'
 
 /**
  * الإجازات.
@@ -95,7 +96,7 @@ export default function LeavesPage() {
   }
 
   const cancel = async (l: LeaveRequest) => {
-    if (!confirm('تسحب طلب الإجازة؟')) return
+    if (!(await askConfirm('تسحب طلب الإجازة؟'))) return
     try { await api.cancelLeave(l.id); load() }
     catch (e) { alert(e instanceof Error ? e.message : 'خطأ') }
   }

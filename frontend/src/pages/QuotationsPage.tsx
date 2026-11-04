@@ -5,6 +5,7 @@ import { useSession, isAdminOrOwner } from '../session'
 import QuotationVersions from '../components/QuotationVersions'
 import QuotationTermsEditor from '../components/QuotationTermsEditor'
 import { numIQ as fmt } from '../utils/format'
+import { askConfirm } from '../ui/dialogs'
 
 const PRIMARY = '#1a237e'
 // ⚠️ نسخة **النص** تنقلب بالوضع الليلي، والأصل يبقى للأسطح:
@@ -60,7 +61,7 @@ export default function QuotationsPage() {
   }, [search, page])
 
   const handleDelete = async (id: string) => {
-    if (!confirm('هل أنت متأكد من حذف عرض السعر؟')) return
+    if (!(await askConfirm('هل أنت متأكد من حذف عرض السعر؟'))) return
     try {
       await api.deleteQuotation(id)
       load(search)

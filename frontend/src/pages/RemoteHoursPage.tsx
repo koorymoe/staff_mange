@@ -4,6 +4,7 @@ import { useSession, isAdminOrOwner } from '../session'
 import { loadFailed } from '../netErrors'
 import { hms, todayBaghdad as today } from '../utils/format'
 import { card } from '../ui/classes'
+import { askConfirm } from '../ui/dialogs'
 
 // ═══ ساعات العمل من البيت ═══
 // صلاحيتان:
@@ -83,7 +84,7 @@ function MyHours({ meId }: { meId: string }) {
     } catch (e) { setMsg({ ok: false, t: e instanceof Error ? e.message : 'تعذّر الحفظ' }) } finally { setBusy(false) }
   }
   const del = async (e: RemoteEntry) => {
-    if (!confirm(`تحذف ${hms(e.seconds)} من يوم ${e.workDate.slice(0, 10)}؟`)) return
+    if (!(await askConfirm(`تحذف ${hms(e.seconds)} من يوم ${e.workDate.slice(0, 10)}؟`))) return
     try { await api.deleteRemoteHours(e.id); load() } catch (err) { alert(err instanceof Error ? err.message : 'تعذّر الحذف') }
   }
 
@@ -332,13 +333,13 @@ function ManageHours({ meId, isAdmin }: { meId: string; isAdmin: boolean }) {
     } catch (e) { setMsg({ ok: false, t: e instanceof Error ? e.message : 'تعذّر الحفظ' }) } finally { setBusy(false) }
   }
   const del = async (e: RemoteEntry) => {
-    if (!confirm(`تحذف ${hms(e.seconds)} من يوم ${e.workDate.slice(0, 10)}؟`)) return
+    if (!(await askConfirm(`تحذف ${hms(e.seconds)} من يوم ${e.workDate.slice(0, 10)}؟`))) return
     try { await api.deleteRemoteHours(e.id); loadEmp(); loadSummary() } catch (err) { alert(err instanceof Error ? err.message : 'تعذّر الحذف') }
   }
   const reset = async () => {
     const all = summary.reduce((s, r) => s + r.seconds, 0)
-    if (!confirm(`تصفّر ساعات كل الموظفين (${summary.length} موظف، ${hms(all)})؟\n\nنزّل الإكسل أول. التصفير ما يحذف — السجلات تبقى بإكسل الشهر، بس العدّادات تبدي من صفر.`)) return
-    if (!confirm('متأكد؟ هالخطوة ما ترجع.')) return
+    if (!(await askConfirm(`تصفّر ساعات كل الموظفين (${summary.length} موظف، ${hms(all)})؟\n\nنزّل الإكسل أول. التصفير ما يحذف — السجلات تبقى بإكسل الشهر، بس العدّادات تبدي من صفر.`))) return
+    if (!(await askConfirm('متأكد؟ هالخطوة ما ترجع.'))) return
     try { const r = await api.resetRemoteHours(); alert(`تصفّرت — ${r.closed} تسجيل انقفل.`); setSel(null); setEntries([]); setTotal(0); loadSummary() } catch (e) { alert(e instanceof Error ? e.message : 'تعذّر التصفير') }
   }
   // (دازاي 10-26) «الزر يطلع فقط للمالك بكل وقت»

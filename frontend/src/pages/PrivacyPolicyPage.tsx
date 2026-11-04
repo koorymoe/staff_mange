@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { api, type PrivacyPolicyPoint } from '../api'
 import { useSession, isAdminOrOwner } from '../session'
+import { askConfirm } from '../ui/dialogs'
 
 /**
  * صفحة سياسة الخصوصية — يقراها أي موظف من الإعدادات بأي وقت.
@@ -63,7 +64,7 @@ export default function PrivacyPolicyPage() {
   }
 
   const removePoint = async (p: PrivacyPolicyPoint) => {
-    if (!confirm('حذف هذي النقطة نهائياً؟')) return
+    if (!(await askConfirm('حذف هذي النقطة نهائياً؟'))) return
     try {
       await api.deletePrivacyPolicyPoint(p.id)
       load()

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { purchaseApi, type ProcurementRequest, type PurchaseAlert, type PurchaseBias, type StandardPrice, type StandardSuggestion, type PurchaseGroup, type PurchaseMonth, type PurchaseControlRow, type PurchasePriceRow, type SupplierReviewInput } from '../api'
 import { dinarRound as iqd, dayBaghdad } from '../utils/format'
+import { askInput } from '../ui/dialogs'
 
 // ═══ رقابة المشتريات — قرار (ع) 10-15 ═══
 // المشتري يسجّل الشراء ويقيّم المورد ببنود (أولها السعر) · المحاسب يثبّت ·
@@ -76,7 +77,7 @@ export default function PurchaseControlPanel({ requests, canBuy, canVerify, canW
     try { await purchaseApi.verify(id); setReload((n) => n + 1) } catch (e) { alert(e instanceof Error ? e.message : 'تعذر التثبيت') }
   }
   const decide = async (a: PurchaseAlert) => {
-    const note = prompt('ملاحظتك على التنبيه (مثلاً: الأرخص ما چان متوفر · تم التنبيه للمشتري):')
+    const note = (await askInput('ملاحظتك على التنبيه (مثلاً: الأرخص ما چان متوفر · تم التنبيه للمشتري):'))
     if (!note?.trim()) return
     try { await purchaseApi.reviewAlert(a.id, note.trim()); setReload((n) => n + 1) } catch (e) { alert(e instanceof Error ? e.message : 'تعذر الحفظ') }
   }
@@ -84,15 +85,15 @@ export default function PurchaseControlPanel({ requests, canBuy, canVerify, canW
   const tabs: [typeof tab, string][] = [['todo', `📋 بانتظاري (${toReview.length + toVerify.length})`], ['prices', '📊 سجل الأسعار']]
   if (canWatch) tabs.push(['alerts', `🚨 تنبيهات ماتركس (${openAlerts.length})`], ['bias', `🔁 الميل لمورد (${bias.length})`], ['month', '📅 التقرير الشهري'], ['std', `📏 الأسعار الستاندرد${std?.suggestions.length ? ` (${std.suggestions.length} اقتراح)` : ''}`])
   const editThreshold = async () => {
-    const v = prompt('حد «العرضين» بالدينار (الشراء فوقه لازم وياه عرض مورد ثاني، 0 = بلا شرط):', String(threshold ?? 500000))
+    const v = (await askInput('حد «العرضين» بالدينار (الشراء فوقه لازم وياه عرض مورد ثاني، 0 = بلا شرط):', String(threshold ?? 500000)))
     if (v == null || isNaN(Number(v))) return
     try { await purchaseApi.setPolicy(Number(v)); setReload((n) => n + 1) } catch (e) { alert(e instanceof Error ? e.message : 'تعذر الحفظ') }
   }
   const stdAct = async (fn: () => Promise<unknown>) => {
     try { await fn(); setReload((n) => n + 1) } catch (e) { alert(e instanceof Error ? e.message : 'تعذر الحفظ') }
   }
-  const editStd = (product: string, cur?: number) => {
-    const v = prompt(`السعر الستاندرد لـ«${product}» (د.ع للوحدة):`, cur ? String(cur) : '')
+  const editStd = async (product: string, cur?: number) => {
+    const v = (await askInput(`السعر الستاندرد لـ«${product}» (د.ع للوحدة):`, cur ? String(cur) : ''))
     if (v && Number(v) > 0) void stdAct(() => purchaseApi.setStandard(product, Number(v)))
   }
   const showQuotes = async (id: string) => {
@@ -273,7 +274,7 @@ export default function PurchaseControlPanel({ requests, canBuy, canVerify, canW
           <p className="text-xs text-slate-500">
             كل مادة إلها سعر مرجعي — أي شراء (موظف المشتريات أو الفني من مورده) فوقه بأكثر من <b>{std.ceilingPct}٪</b> ينبّهك وينبّه المراقب.
             المرجعي التلقائي = أرخص آخر سعر بين الموردين (آخر ٩٠ يوم، بلا الموردين الي تقييم سعرهم ضعيف)، واليدوي يغلب.
-            {canDecide && <button onClick={() => { const v = prompt('السقف المسموح فوق الستاندرد (٪):', String(std.ceilingPct)); if (v != null && !isNaN(Number(v))) void stdAct(() => purchaseApi.setCeiling(Number(v))) }} className="mr-1 text-[#2c5aad] underline">تغيير السقف</button>}
+            {canDecide && <button onClick={async () => { const v = (await askInput('السقف المسموح فوق الستاندرد (٪):', String(std.ceilingPct))); if (v != null && !isNaN(Number(v))) void stdAct(() => purchaseApi.setCeiling(Number(v))) }} className="mr-1 text-[#2c5aad] underline">تغيير السقف</button>}
           </p>
           {std.suggestions.length > 0 && (
             <div className="rounded-lg border border-violet-200 bg-violet-50 p-2">
@@ -294,7 +295,7 @@ export default function PurchaseControlPanel({ requests, canBuy, canVerify, canW
           )}
           <div className="flex gap-2">
             <input value={stdQ} onChange={(e) => setStdQ(e.target.value)} placeholder="دوّر على مادة" className="flex-1 rounded-lg border border-slate-300 px-3 py-2 text-sm" />
-            {canDecide && <button onClick={() => { const p = prompt('اسم المادة:'); if (p?.trim()) editStd(p.trim()) }} className="rounded-lg bg-[#2c5aad] px-3 py-2 text-sm font-bold text-white">+ سعر ستاندرد</button>}
+            {canDecide && <button onClick={async () => { const p = (await askInput('اسم المادة:')); if (p?.trim()) editStd(p.trim()) }} className="rounded-lg bg-[#2c5aad] px-3 py-2 text-sm font-bold text-white">+ سعر ستاندرد</button>}
           </div>
           <table className="w-full text-sm">
             <thead><tr className="text-xs text-slate-400"><th className="text-right">المادة</th><th>الستاندرد</th><th>المصدر</th><th>أرخص بالسوق (٩٠ يوم)</th><th>آخر تحديث</th><th></th></tr></thead>

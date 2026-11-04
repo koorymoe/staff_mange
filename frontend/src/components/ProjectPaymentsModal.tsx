@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { api, type ProjectPaymentsState } from '../api'
 import { todayBaghdad as today } from '../utils/format'
+import { askInput } from '../ui/dialogs'
 
 // ═══ 💰 دفعات المشروع — قرار (ع) 10-06 ═══
 // «من مشروع واحد محصل 500 مليون ليش ماموجوده بالاحصائيات». كل دفعة تنسجّل
@@ -88,7 +89,7 @@ export default function ProjectPaymentsModal({ projectId, title, onClose }: { pr
                     <span className="flex items-center gap-1 text-xs">
                       {p.cancelledAt ? <span>ملغية: {p.cancelReason}</span> : p.verifiedAt ? <span className="text-emerald-700">✔ تأكدت{p.verifiedBy && ` (${p.verifiedBy})`}</span> : <span className="text-amber-600">⏳ تنتظر تأكيد</span>}
                       {st.canVerify && !p.cancelledAt && !p.verifiedAt && <button type="button" disabled={busy} onClick={() => void run(() => api.verifyProjectPayment(p.id))} className="rounded border border-emerald-400 px-1.5 text-emerald-700">✔ وصلت</button>}
-                      {st.canVerify && !p.cancelledAt && <button type="button" disabled={busy} onClick={() => { const r = window.prompt('سبب الإلغاء؟'); if (r) void run(() => api.cancelProjectPayment(p.id, r)) }} className="rounded border border-slate-300 px-1.5">إلغاء</button>}
+                      {st.canVerify && !p.cancelledAt && <button type="button" disabled={busy} onClick={async () => { const r = (await askInput('سبب الإلغاء؟')); if (r) void run(() => api.cancelProjectPayment(p.id, r)) }} className="rounded border border-slate-300 px-1.5">إلغاء</button>}
                     </span>
                   </div>
                   <p className="text-[11px] text-slate-500">سجّلها {p.createdBy ?? '—'}{p.note && ` · ${p.note}`}</p>

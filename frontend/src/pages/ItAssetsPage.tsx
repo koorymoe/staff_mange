@@ -4,6 +4,7 @@ import {
   type Employee, type ItAsset, type ItAssetInput, type ItAssetKind, type ItAssetLog, type ItAssetStatus,
 } from '../api'
 import { matches } from '../utils/search'
+import { askConfirm } from '../ui/dialogs'
 
 // ═══ جرد أجهزة تقنية المعلومات ═══
 // حاسبات ومخدّمات وشبكة وطابعات الشركة: وين كل جهاز، منو يستعمله،
@@ -186,7 +187,7 @@ export default function ItAssetsPage() {
   ), [assets, kind, status, search])
 
   const remove = async (a: ItAsset) => {
-    if (!window.confirm(`حذف «${a.name}» وكل سجله؟ إذا الجهاز بس انستبعد، الأفضل تغيّر حالته لـ«مستبعد».`)) return
+    if (!(await askConfirm(`حذف «${a.name}» وكل سجله؟ إذا الجهاز بس انستبعد، الأفضل تغيّر حالته لـ«مستبعد».`))) return
     try { await api.deleteItAsset(a.id); setReload((n) => n + 1) } catch (e) { alert(e instanceof Error ? e.message : 'تعذر الحذف') }
   }
 

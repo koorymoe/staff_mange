@@ -2,6 +2,7 @@ import { useEffect, useState, useRef } from 'react'
 import { useSession, isAdminOrOwner } from '../session'
 import { api, type Product, type ProductAvailability, type Service, fileUrl } from '../api'
 import { numIQ as fmt } from '../utils/format'
+import { askConfirm } from '../ui/dialogs'
 
 const PRIMARY = '#1a237e'
 // ⚠️ نسخة **النص** تنقلب بالوضع الليلي، والأصل يبقى للأسطح:
@@ -122,7 +123,7 @@ export default function ProductsPage({ embedded }: { embedded?: boolean } = {}) 
   }
 
   const handleDelete = async (id: string) => {
-    if (!confirm('هل أنت متأكد من حذف المنتج؟')) return
+    if (!(await askConfirm('هل أنت متأكد من حذف المنتج؟'))) return
     try {
       await api.deleteProduct(id)
       load()

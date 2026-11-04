@@ -12,6 +12,7 @@ import { openManagerChat } from '../components/openManagerChat'
 import { matches } from '../utils/search'
 import { toIntlPhone } from '../utils/phone'
 import { roleLabel, roleChipColor, ROLE_LABELS, ASSIGNABLE_ROLES, SECONDARY_ASSIGNABLE_ROLES } from '../roleLabels'
+import { askConfirm, askInput } from '../ui/dialogs'
 
 // زرّا واتساب وتلغرام جنب رقم الهاتف — دائماً الاثنان معاً (ماكو
 // حقل بالنظام يحدد أي تطبيق يستخدمه الموظف)، ويظهران بس لمن الهاتف موجود.
@@ -185,7 +186,7 @@ export default function Employees({ embedded }: { embedded?: boolean } = {}) {
   const handleArchive = async (status: 'ARCHIVED' | 'DELETED' | 'ACTIVE') => {
     if (!selectedEmployee) return
     const label = status === 'ARCHIVED' ? 'أرشفة' : status === 'DELETED' ? 'حذف' : 'استرجاع'
-    if (!confirm(`متأكد تريد ${label} الموظف "${selectedEmployee.name}"؟`)) return
+    if (!(await askConfirm(`متأكد تريد ${label} الموظف "${selectedEmployee.name}"؟`))) return
     try {
       await api.updateEmployee(selectedEmployee.id, { status })
       setSelectedId(null)
@@ -615,13 +616,13 @@ export default function Employees({ embedded }: { embedded?: boolean } = {}) {
                         )}
                         {canSuspend && selectedEmployee.id !== currentUser?.id && (selectedEmployee.status === 'ACTIVE' ? (
                           <button onClick={async () => {
-                            const reason = prompt(`سبب إيقاف حساب ${selectedEmployee.name}؟ (مثلاً: ترك الشركة)\nالحساب ما ينحذف — سجله وحجوزاته تبقى، ودخوله ينقطع فوراً.`)
+                            const reason = (await askInput(`سبب إيقاف حساب ${selectedEmployee.name}؟ (مثلاً: ترك الشركة)\nالحساب ما ينحذف — سجله وحجوزاته تبقى، ودخوله ينقطع فوراً.`))
                             if (!reason || !reason.trim()) return
                             if (await guard.run('إيقاف الحساب', () => api.suspendEmployee(selectedEmployee.id, reason.trim()))) { setSelectedId(null); load() }
                           }} className="rounded-lg bg-red-500/20 px-3 py-1.5 text-xs font-bold text-red-100 hover:bg-red-500/30">⛔ إيقاف الحساب</button>
                         ) : (
                           <button onClick={async () => {
-                            if (!confirm(`ترجّع حساب ${selectedEmployee.name} فعّال؟`)) return
+                            if (!(await askConfirm(`ترجّع حساب ${selectedEmployee.name} فعّال؟`))) return
                             if (await guard.run('إعادة التفعيل', () => api.reactivateEmployee(selectedEmployee.id))) { setShowArchived(false); setSelectedId(null); load() }
                           }} className="rounded-lg bg-emerald-500/20 px-3 py-1.5 text-xs font-bold text-emerald-100 hover:bg-emerald-500/30">✅ إعادة تفعيل الحساب</button>
                         ))}

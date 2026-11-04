@@ -6,6 +6,7 @@ import { GroupRanking, PairCompare, PendingHumanBadge } from '../components/Staf
 import { SWITCH_MATRIX_SCORING } from '../systemSwitches'
 import { useSession, isAdminOrOwner } from '../session'
 import StaffPointsBoard from '../components/StaffPointsBoard'
+import { askInput } from '../ui/dialogs'
 
 // ═══ تقييم الموظفين — قرار (ع) 10-05 ═══
 // النهائي = ٦٠٪ ماتركس (نقاط كل حجز ويوم دوام ومهمة ومشروع) + ٤٠٪ البشر
@@ -37,7 +38,7 @@ function ScoreBadge({ v, big }: { v: number | null; big?: boolean }) {
 export function ScoreBreakdown({ d, admin, onChange }: { d: StaffScoreDetail; admin?: boolean; onChange?: () => void }) {
   const [all, setAll] = useState(false)
   const cancel = async (id: string) => {
-    const note = window.prompt('ليش تلغي هالنقطة؟')
+    const note = (await askInput('ليش تلغي هالنقطة؟'))
     if (!note) return
     await api.cancelMatrixScore(id, note)
     onChange?.()

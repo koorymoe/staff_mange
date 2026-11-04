@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { api, type CarWashVehicle } from '../api'
+import { askConfirm } from '../ui/dialogs'
 
 // ═══ 🧽 غسل السيارات — شاشة عامل الغسل (قرار (ع) 10-09) ═══
 // يفتح النظام، يلگه السيارات، والي يغسلها يضغط «تم الغسل». وبعدها أبو
@@ -17,7 +18,7 @@ export default function CarWashPage() {
   useEffect(load, [load])
 
   const toggle = async (v: CarWashVehicle) => {
-    if (v.washedAt && !window.confirm(`تلغي «تم الغسل» عن ${v.name}؟`)) return
+    if (v.washedAt && !(await askConfirm(`تلغي «تم الغسل» عن ${v.name}؟`))) return
     setBusy(v.vehicleId); setErr(null)
     try {
       if (v.washedAt) await api.unmarkCarWashed(v.vehicleId)

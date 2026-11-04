@@ -8,6 +8,7 @@ import Pager from '../components/Pager'
 import SaveError from '../components/SaveError'
 import { useSaveGuard } from '../useSaveGuard'
 import { matches } from '../utils/search'
+import { askConfirm } from '../ui/dialogs'
 
 /**
  * ═══ معرض التصاميم ═══
@@ -92,7 +93,7 @@ export default function DesignGalleryPage() {
 
   const toggleArchive = async (a: DesignAsset) => {
     const archived = !!a.archivedAt
-    if (!archived && !confirm(`أرشفة «${a.title}»؟\nينزاح من المعرض ويبقى محفوظاً، وتكدر ترجّعه.`)) return
+    if (!archived && !(await askConfirm(`أرشفة «${a.title}»؟\nينزاح من المعرض ويبقى محفوظاً، وتكدر ترجّعه.`))) return
     const ok = await guard.run(archived ? 'إرجاع التصميم' : 'أرشفة التصميم',
       () => api.setDesignAssetArchived(a.id, !archived))
     if (ok) load()

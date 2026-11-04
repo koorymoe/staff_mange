@@ -3,6 +3,7 @@ import { useSearchParams } from 'react-router-dom'
 import { api, complaintTypeLabels, type Complaint, type ComplaintCustomerStat, type ComplaintType, type Customer, type Employee } from '../api'
 import { useSession } from '../session'
 import ComplaintsTracking from '../components/ComplaintsTracking'
+import { askConfirm } from '../ui/dialogs'
 
 
 
@@ -179,7 +180,7 @@ export default function ComplaintsPage() {
   // «الزبون ما رد»: ٣ محاولات بينهن ٢٤ ساعة، والثالثة تسقط الشكوى — (ع) 10-19
   const noAnswer = async (c: Complaint) => {
     const left = 3 - (c.noAnswerCount ?? 0)
-    if (!confirm(left <= 1 ? 'هاي ثالث مرة الزبون ما يرد — الشكوى راح تسقط وتنحسب «تواصلنا والزبون ما رد». متأكد؟' : `تسجّل «الزبون ما رد»؟ الشكوى تتأجل ٢٤ ساعة وترجعلك تتصل مرة ثانية (باقي ${left - 1} محاولة قبل ما تسقط).`)) return
+    if (!(await askConfirm(left <= 1 ? 'هاي ثالث مرة الزبون ما يرد — الشكوى راح تسقط وتنحسب «تواصلنا والزبون ما رد». متأكد؟' : `تسجّل «الزبون ما رد»؟ الشكوى تتأجل ٢٤ ساعة وترجعلك تتصل مرة ثانية (باقي ${left - 1} محاولة قبل ما تسقط).`))) return
     setContactBusy(c.id)
     try {
       const updated = await api.complaintNoAnswer(c.id)
@@ -194,7 +195,7 @@ export default function ComplaintsPage() {
 
   // «⛔ سدّها — الزبون ما يرد»: من أول مرة، بلا انتظار الثلاث محاولات — (ع) 10-23
   const closeNoAnswer = async (c: Complaint) => {
-    if (!confirm('تسدّ الشكوى هسه؟ تنحسب «تواصلنا والزبون ما يرد» وتطلع من المفتوحة.')) return
+    if (!(await askConfirm('تسدّ الشكوى هسه؟ تنحسب «تواصلنا والزبون ما يرد» وتطلع من المفتوحة.'))) return
     setContactBusy(c.id)
     try {
       const updated = await api.closeComplaintNoAnswer(c.id)

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { api, type Employee, type OnDemandTool, type ToolRequestItem } from '../api'
+import { askConfirm } from '../ui/dialogs'
 
 // ═══ أدوات المخزن التخصصية — قرار (ع) 10-16 ═══
 // «أبو الكميات يضيف بيها الأدوات التخصصية وعددهن، ومن يصير نقص عند موظف
@@ -86,7 +87,7 @@ export default function StoreToolsPage() {
                     {h.length === 0 ? <span className="text-slate-400">—</span> : h.map((r) => (
                       <span key={r.id} className="mb-1 ml-1 inline-flex items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 text-xs font-bold text-amber-800">
                         {r.employee?.name ?? '—'}
-                        <button disabled={busy} title="رجّعها للمخزن" onClick={() => confirm(`${r.employee?.name ?? 'الموظف'} رجّع «${t.name}»؟`) && run(() => api.returnStoreTool(r.id))}
+                        <button disabled={busy} title="رجّعها للمخزن" onClick={async () => (await askConfirm(`${r.employee?.name ?? 'الموظف'} رجّع «${t.name}»؟`)) && run(() => api.returnStoreTool(r.id))}
                           className="rounded-full bg-white px-1.5 text-[10px] text-slate-600 hover:bg-emerald-100">↩ رجّع</button>
                       </span>
                     ))}

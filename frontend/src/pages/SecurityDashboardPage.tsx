@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { api } from '../api'
 import { useSession } from '../session'
 import { pollVisible } from '../utils/poll'
+import { askConfirm } from '../ui/dialogs'
 
 type DashboardData = Awaited<ReturnType<typeof api.getSecurityDashboard>>
 type LoginRow = DashboardData['recentLogins'][number]
@@ -241,7 +242,7 @@ export default function SecurityDashboardPage() {
                     </div>
                     <button
                       onClick={async () => {
-                        if (!confirm(`فك الحظر عن ${e.name}؟`)) return
+                        if (!(await askConfirm(`فك الحظر عن ${e.name}؟`))) return
                         try {
                           await api.unlockEmployee(e.id)
                           setData(await api.getSecurityDashboard())
@@ -278,7 +279,7 @@ export default function SecurityDashboardPage() {
                     </div>
                     <button
                       onClick={async () => {
-                        if (!confirm(`تصفير عدّاد المحاولات لـ${e.name}؟`)) return
+                        if (!(await askConfirm(`تصفير عدّاد المحاولات لـ${e.name}؟`))) return
                         try {
                           await api.resetLoginAttempts(e.id)
                           setData(await api.getSecurityDashboard())

@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { api, type MatrixProposal } from '../api'
 import { GROUP_LABEL, type EyeGroup } from './matrixEyeColors'
 import { EV_LABEL, SEV, category, evidenceCards, severity } from './matrixEvidence'
+import { askInput } from '../ui/dialogs'
 
 // ═══ اقتراحات ماتركس — هو يقترح، والمدير يقرر ═══
 // الموافَق يصير جزء منه (تعليمة، تعديل، أو تذكير للموظف)، والمرفوض
@@ -61,7 +62,7 @@ export default function MatrixProposals({ onChange }: { onChange?: () => void })
     } catch (e) { setErr(e instanceof Error ? e.message : 'تعذر') } finally { setBusy(null) }
   }
   const reject = async (p: MatrixProposal) => {
-    const note = prompt('ليش ترفضه؟ (اختياري — ماتركس يتعلّم من السبب)') ?? null
+    const note = (await askInput('ليش ترفضه؟ (اختياري — ماتركس يتعلّم من السبب)')) ?? null
     if (note === null) return
     setBusy(p.id); setErr(null)
     try { await api.rejectMatrixProposal(p.id, note); done() } catch (e) { setErr(e instanceof Error ? e.message : 'تعذر') } finally { setBusy(null) }

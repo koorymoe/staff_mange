@@ -14,6 +14,7 @@ import Pager from '../components/Pager'
 import RowActions from '../components/RowActions'
 import PhoneActions from '../components/PhoneActions'
 import { copyText } from '../utils/clipboard'
+import { askConfirm } from '../ui/dialogs'
 
 /**
  * طلبات حذف الحجوزات.
@@ -76,7 +77,7 @@ export default function BookingDeleteRequestsPage({ embedded }: { embedded?: boo
   const setFilter = <T,>(setter: (v: T) => void) => (v: T) => { setter(v); setPage(1) }
 
   const decide = async (r: BookingDeleteRequest, approve: boolean) => {
-    if (approve && !confirm(`تأكيد حذف الحجز ${r.bookingCode}؟ الحذف ما يترد.`)) return
+    if (approve && !(await askConfirm(`تأكيد حذف الحجز ${r.bookingCode}؟ الحذف ما يترد.`))) return
     if (!approve && noteFor !== r.id) { setNoteFor(r.id); setNote(''); return }
     const ok = await guard.run(approve ? 'تنفيذ الحذف' : 'رفض الطلب', () =>
       api.decideBookingDelete(r.id, approve, note || undefined))

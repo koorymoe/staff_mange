@@ -9,6 +9,7 @@ import { useSession, isAdminOrOwner } from '../session'
 import { useNavigate } from 'react-router-dom'
 import { matches } from '../utils/search'
 import { dinarRound as iqd } from '../utils/format'
+import { askConfirm, askInput } from '../ui/dialogs'
 
 // ═══ نظام الطاقة الشمسية ═══
 //
@@ -384,7 +385,7 @@ function Systems({
                     </button>
                     <button
                       onClick={async () => {
-                        if (!confirm(`تريد تحذف منظومة ${s.brand} ${s.capacity}؟`)) return
+                        if (!(await askConfirm(`تريد تحذف منظومة ${s.brand} ${s.capacity}؟`))) return
                         try { await api.deleteSolarSystem(s.id); await onChanged() }
                         catch (e) { alert(e instanceof Error ? e.message : 'تعذر الحذف') }
                       }}
@@ -829,7 +830,7 @@ function Inventory({ components, canEdit, onChanged }: { components: SolarCompon
                         <button onClick={() => setEditing(c)} className="rounded-lg border border-slate-300 px-2 py-1 text-xs">✏️</button>
                         <button
                           onClick={async () => {
-                            if (!confirm(`تريد تحذف ${c.name}؟`)) return
+                            if (!(await askConfirm(`تريد تحذف ${c.name}؟`))) return
                             try { await api.deleteSolarComponent(c.id); await onChanged() }
                             catch (e) { alert(e instanceof Error ? e.message : 'تعذر الحذف') }
                           }}
@@ -1040,7 +1041,7 @@ function Customers({ rows, canEdit, onChanged }: { rows: SolarInstallation[]; ca
                 )}
                 <button
                   onClick={async () => {
-                    const notes = prompt('ملاحظة عن الاتصال (اختيارية):') ?? ''
+                    const notes = (await askInput('ملاحظة عن الاتصال (اختيارية):')) ?? ''
                     try { await api.markSolarContacted(r.id, notes); await onChanged() }
                     catch (e) { alert(e instanceof Error ? e.message : 'تعذر التسجيل') }
                   }}

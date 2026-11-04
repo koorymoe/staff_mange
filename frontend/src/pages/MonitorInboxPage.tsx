@@ -18,6 +18,7 @@ import SaveError from '../components/SaveError'
 import Pager from '../components/Pager'
 import { roleLabel, roleLabelShort } from '../roleLabels'
 import MatrixNote from '../components/MatrixNote'
+import { askConfirm } from '../ui/dialogs'
 
 // ═══ صندوق المراقب ═══
 //
@@ -559,7 +560,7 @@ function ActionMenu({ row, note }: { row: MonitorReview; note: string }) {
   }, [open])
   const run = async (a: typeof ACTIONS[number]) => {
     const who = row.late?.employeeName ? ` (${row.late.employeeName})` : ''
-    if (!confirm(a.confirm + who + (note.trim() ? `\n\nالملاحظة: ${note.trim()}` : ''))) return
+    if (!(await askConfirm(a.confirm + who + (note.trim() ? `\n\nالملاحظة: ${note.trim()}` : '')))) return
     setBusy(true); setOpen(false)
     try { setDone((await api.monitorReviewAction(row.id, a.key, note)).done) } catch (e) { alert(e instanceof Error ? e.message : 'تعذّر') } finally { setBusy(false) }
   }

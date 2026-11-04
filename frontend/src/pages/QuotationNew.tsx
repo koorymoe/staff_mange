@@ -8,6 +8,10 @@ import bannerUrl from '../assets/print/quotation-banner.png'
 import { matches } from '../utils/search'
 import QuotationHistoryPicker from '../components/QuotationHistoryPicker'
 import { numIQ as fmt } from '../utils/format'
+import { askConfirm } from '../ui/dialogs'
+
+/** buildPrintHtml: المجموع صفر وما انطلب السماح — المنادي يسأل */
+const ZERO_TOTAL = '__ZERO_TOTAL__'
 
 interface ItemRow {
   productName: string
@@ -366,7 +370,8 @@ export default function QuotationNew() {
 
   // buildPrintHtml يبني نفس النسخة الي تنطبع بالضبط — نستعملها للطباعة
   // وللمعاينة سوه، حتى المعاينة تكون طبق الأصل للمطبوع مو شي ثاني.
-  const buildPrintHtml = (withImages = true, snap: Quotation | null = null): string | null => {
+  // (11-04 — ٧ب) الدالة تبقى متزامنة: المجموع صفر = ترجّع ZERO_TOTAL، والمنادي يسأل بـ askConfirm ويعيد بـ allowZero
+  const buildPrintHtml = (withImages = true, snap: Quotation | null = null, allowZero = false): string | null => {
     // snap = نسخة قديمة من الهيستوري: نبني طباعتها بنفس الشكل بدون ما نلمس الحالة
     const cur = snap
       ? {
@@ -377,11 +382,17 @@ export default function QuotationNew() {
           items: (snap.items ?? []).map((it): ItemRow => ({ imageBase64: it.imageBase64 || '', productName: it.productName, unit: it.unit || '', quantity: it.quantity, unitPrice: it.unitPrice, totalPrice: it.totalPrice })),
         }
       : { customerName, customerPhone, customerAddress, projectName, quotationNumber, discountPercent, notes, grandTotal, discountValue, netTotal, today, items }
-    return buildPrintHtmlFrom(withImages, cur.customerName, cur.customerPhone, cur.customerAddress, cur.projectName, cur.quotationNumber,
+    return buildPrintHtmlFrom(allowZero, withImages, cur.customerName, cur.customerPhone, cur.customerAddress, cur.projectName, cur.quotationNumber,
       cur.discountPercent, cur.notes, cur.grandTotal, cur.discountValue, cur.netTotal, cur.today, cur.items,
       snap ? (snap.terms?.length ? snap.terms : defaultTerms) : terms)
   }
-  const buildPrintHtmlFrom = (withImages: boolean, customerName: string, customerPhone: string, customerAddress: string,
+  const htmlOrAskZero = async (withImages: boolean, snap: Quotation | null): Promise<string | null> => {
+    const html = buildPrintHtml(withImages, snap)
+    if (html !== ZERO_TOTAL) return html
+    const ok = await askConfirm('المجموع الكلي صفر — يعني كل البنود بلا سعر أو بلا عدد.\n\nمتأكد تريد تطبع العرض هيچي؟ (إضغط إلغاء حتى تراجع الأسعار والأعداد)', { okLabel: 'إي، اطبع' })
+    return ok ? buildPrintHtml(withImages, snap, true) : null
+  }
+  const buildPrintHtmlFrom = (allowZero: boolean, withImages: boolean, customerName: string, customerPhone: string, customerAddress: string,
     projectName: string, quotationNumber: string, discountPercent: number, notes: string,
     grandTotal: number, discountValue: number, netTotal: number, today: string, items: ItemRow[], terms: string[]): string | null => {
     if (!customerName.trim()) {
@@ -396,11 +407,7 @@ export default function QuotationNew() {
     // بس **العرض كله** بصفر يعني نسينا نحط الأسعار أو العدد — وهذا
     // انصار فعلاً: عرض بـ١١ بند وكل الأعمدة صفر انطبع وانرسل.
     if (validItems.length > 0 && grandTotal === 0) {
-      const proceed = window.confirm(
-        'المجموع الكلي صفر — يعني كل البنود بلا سعر أو بلا عدد.\n\n' +
-        'متأكد تريد تطبع العرض هيچي؟ (إضغط إلغاء حتى تراجع الأسعار والأعداد)',
-      )
-      if (!proceed) return null
+      if (!allowZero) return ZERO_TOTAL
     }
 
     // ═══ كم بند يدخل بالصفحة؟ نقيس، ما نخمّن ═══
@@ -704,8 +711,8 @@ ${pageShell(`
   const _IMG_VSTRIP = new URL(vstripUrl, window.location.origin).href
   const _IMG_FBANNER = new URL(bannerUrl, window.location.origin).href
 
-  const handlePrint = (withImages = true, snap: Quotation | null = null) => {
-    const html = buildPrintHtml(withImages, snap)
+  const handlePrint = async (withImages = true, snap: Quotation | null = null) => {
+    const html = await htmlOrAskZero(withImages, snap)
     if (!html) return
     // (ع) 10-14: بنفس النافذة — إطار مخفي بدل تاب about:blank جديد
     const frame = document.createElement('iframe')
@@ -743,7 +750,7 @@ ${pageShell(`
     if (!wantsPreview || loadingQuotation) return
     // نأجّلها لمهمة صغيرة حتى ما نغيّر الحالة داخل جسم الـeffect مباشرةً
     queueMicrotask(() => {
-      const html = buildPrintHtml(true)
+      const html = buildPrintHtml(true, null, true)
       if (html) setPreviewHtml(html)
       setWantsPreview(false)
     })
@@ -751,13 +758,13 @@ ${pageShell(`
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [wantsPreview, loadingQuotation])
 
-  const openPreview = () => {
-    const html = buildPrintHtml(true)
+  const openPreview = async () => {
+    const html = await htmlOrAskZero(true, null)
     if (html) setPreviewHtml(html)
   }
   const pickVersion = (snap: Quotation | null, version: number | null) => {
     setViewSnap(snap && version != null ? { snap, version } : null)
-    const html = buildPrintHtml(true, snap)
+    const html = buildPrintHtml(true, snap, true)
     if (html) setPreviewHtml(html)
   }
 
@@ -809,7 +816,7 @@ ${pageShell(`
   }
 
   const handlePmDelete = async (id: string) => {
-    if (!confirm('حذف المنتج؟')) return
+    if (!(await askConfirm('حذف المنتج؟'))) return
     try {
       await api.deleteProduct(id)
       const prods = await api.getProducts()

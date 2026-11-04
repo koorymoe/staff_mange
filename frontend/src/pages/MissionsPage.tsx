@@ -5,6 +5,7 @@ import FieldBoard from '../components/FieldBoard'
 import MatrixNote from '../components/MatrixNote'
 import { pollVisible } from '../utils/poll'
 import { API_URL } from '../api'
+import { askInput } from '../ui/dialogs'
 
 async function request<T>(path: string, opts?: RequestInit): Promise<T> {
   const token = localStorage.getItem('authToken')
@@ -535,9 +536,9 @@ export default function MissionsPage() {
                       <button onClick={() => advanceStage(m, 'MATERIALS_READY')} className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-bold text-white hover:bg-blue-700">✅ المواد جاهزة</button>
                     )}
                     {m.stage === 'MATERIALS_READY' && (
-                      <button onClick={() => {
-                        const est = prompt('كم دقيقة الوقت المتوقع للوصول؟')
-                        const dist = prompt('كم كيلومتر المسافة؟ (اختياري)')
+                      <button onClick={async () => {
+                        const est = (await askInput('كم دقيقة الوقت المتوقع للوصول؟'))
+                        const dist = (await askInput('كم كيلومتر المسافة؟ (اختياري)'))
                         advanceStage(m, 'EN_ROUTE', { estimatedMinutes: est, distanceKm: dist })
                       }} className="rounded-lg bg-purple-600 px-4 py-2 text-sm font-bold text-white hover:bg-purple-700">🚗 انطلقنا</button>
                     )}
@@ -550,8 +551,8 @@ export default function MissionsPage() {
                     {m.stage === 'WORK_STARTED' && (
                       <>
                         <button onClick={() => advanceStage(m, 'COMPLETED')} className="rounded-lg bg-green-700 px-4 py-2 text-sm font-bold text-white hover:bg-green-800">🏆 تم الإنجاز</button>
-                        <button onClick={() => {
-                          const reason = prompt('سبب التوقف؟')
+                        <button onClick={async () => {
+                          const reason = (await askInput('سبب التوقف؟'))
                           if (reason) advanceStage(m, 'STOPPED', { stopReason: reason })
                         }} className="rounded-lg bg-red-600 px-4 py-2 text-sm font-bold text-white hover:bg-red-700">⏸️ توقف</button>
                       </>

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { api, type Employee, type MatrixMission } from '../api'
+import { askConfirm } from '../ui/dialogs'
 
 // ═══ 🎯 مهام ماتركس «راقب فلان» — قرار (ع) 10-11 ═══
 // تختار موظف وكم يوم: ماتركس يكتب يومية كل ليلة (٨م) وبالنهاية خلاصة.
@@ -65,7 +66,7 @@ export default function MatrixMissions() {
             </div>
             <div className="flex gap-2">
               <button type="button" onClick={() => api.getMatrixMission(m.id).then(setOpen).catch(() => {})} className="rounded-lg border border-violet-300 px-3 py-1.5 text-xs font-bold text-violet-800">اليومية والخلاصة</button>
-              {m.active && <button type="button" onClick={() => { if (window.confirm('توقف المراقبة؟')) api.stopMatrixMission(m.id).then(load) }} className="rounded-lg px-3 py-1.5 text-xs font-bold text-slate-500 hover:text-red-600">إيقاف</button>}
+              {m.active && <button type="button" onClick={async () => { if ((await askConfirm('توقف المراقبة؟'))) api.stopMatrixMission(m.id).then(load) }} className="rounded-lg px-3 py-1.5 text-xs font-bold text-slate-500 hover:text-red-600">إيقاف</button>}
             </div>
           </div>
         ))}

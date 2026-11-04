@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { api, type ServicePriceStats, type ServicePriceSuggestion } from '../api'
 import { useSession, isAdminOrOwner } from '../session'
 import { numRound as fmt } from '../utils/format'
+import { askConfirm, askInput } from '../ui/dialogs'
 
 // ═══ أسعار يقترحها النظام ═══
 //
@@ -134,8 +135,8 @@ export default function ServicePriceSuggestions() {
                   {g.status === 'PROPOSED' && canReview && (
                     <button
                       type="button" disabled={busy === g.id}
-                      onClick={() => {
-                        const note = window.prompt('ملاحظتك على المعدّل (اختيارية)', 'المعدّل معقول')
+                      onClick={async () => {
+                        const note = (await askInput('ملاحظتك على المعدّل (اختيارية)', 'المعدّل معقول'))
                         if (note === null) return
                         void act(g.id, () => api.reviewServicePrice(g.id, note.trim()), 'انتأشرت مراجعة ✓')
                       }}
@@ -145,8 +146,8 @@ export default function ServicePriceSuggestions() {
                   {g.status === 'REVIEWED' && canDecide && (
                     <button
                       type="button" disabled={busy === g.id}
-                      onClick={() => {
-                        if (!window.confirm(`اعتماد ${fmt(g.avgAmount)} د.ع سعراً مقترحاً لـ«${g.serviceName || ''}»؟`)) return
+                      onClick={async () => {
+                        if (!(await askConfirm(`اعتماد ${fmt(g.avgAmount)} د.ع سعراً مقترحاً لـ«${g.serviceName || ''}»؟`))) return
                         void act(g.id, () => api.decideServicePrice(g.id, true), 'انعتمد ✓')
                       }}
                       className="rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-emerald-700 disabled:opacity-50"
@@ -155,8 +156,8 @@ export default function ServicePriceSuggestions() {
                   {(g.status === 'PROPOSED' || g.status === 'REVIEWED') && canDecide && (
                     <button
                       type="button" disabled={busy === g.id}
-                      onClick={() => {
-                        if (!window.confirm('رفض هذا الاقتراح؟ ما يرجع يطلع لهاي الخدمة.')) return
+                      onClick={async () => {
+                        if (!(await askConfirm('رفض هذا الاقتراح؟ ما يرجع يطلع لهاي الخدمة.'))) return
                         void act(g.id, () => api.decideServicePrice(g.id, false), 'انرفض ✓')
                       }}
                       className="rounded-lg border border-red-300 bg-red-50 px-3 py-1.5 text-xs font-bold text-red-700 hover:bg-red-100 disabled:opacity-50"

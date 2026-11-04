@@ -3,6 +3,7 @@ import { api } from '../api'
 import PageHeader from '../components/PageHeader'
 import { useSession, isAdminOrOwner } from '../session'
 import { dayBaghdad } from '../utils/format'
+import { askInput } from '../ui/dialogs'
 
 // ═══ علاقات الموردين — قرار (ع) 10-15 ═══
 // العلاقات العامة ووحدة التقنيين: كل مورد (مشتريات أو تقنيين)، صارلنا شكد ما
@@ -54,7 +55,7 @@ export default function SupplierRelationsPage() {
     catch (e) { alert(e instanceof Error ? e.message : 'تعذر الحفظ') } finally { setBusy(false) }
   }
   const editDays = async () => {
-    const v = prompt('بعد كم يوم بلا تواصل يطلع تذكير؟', String(data?.contactDays ?? 30))
+    const v = (await askInput('بعد كم يوم بلا تواصل يطلع تذكير؟', String(data?.contactDays ?? 30)))
     if (!v || !(Number(v) > 0)) return
     try { await api.setSupplierContactDays(Number(v)); setReload((n) => n + 1) } catch (e) { alert(e instanceof Error ? e.message : 'تعذر') }
   }

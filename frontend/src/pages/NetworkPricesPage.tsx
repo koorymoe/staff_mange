@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { api, type NetworkPriceItem, type NetworkBracket } from '../api'
+import { askConfirm } from '../ui/dialogs'
 
 // ═══ تعديل أسعار الشبكات — المالك ومدير النظام بس ═══
 //
@@ -88,7 +89,7 @@ export default function NetworkPricesPage() {
   }
 
   const deactivate = async (it: NetworkPriceItem) => {
-    if (!window.confirm(`تعطيل «${it.label}»؟\n\nما ينمحي — يختفي من الاستمارة بس والفواتير القديمة تبقى مفهومة.`)) return
+    if (!(await askConfirm(`تعطيل «${it.label}»؟\n\nما ينمحي — يختفي من الاستمارة بس والفواتير القديمة تبقى مفهومة.`))) return
     try { await api.deactivateNetworkPrice(it.id); await load() }
     catch (e) { setErr(e instanceof Error ? e.message : 'تعذر التعطيل') }
   }

@@ -19,6 +19,7 @@ import BookingCodeChip from '../components/BookingCodeChip'
 import ShiftBadge from '../components/ShiftBadge'
 import HandoverDialog, { HandoverBadge } from '../components/HandoverDialog'
 import { loadFailed } from '../netErrors'
+import { askConfirm, askInput } from '../ui/dialogs'
 
 const DELETE_CHANNEL_OPTIONS: [BookingDeleteChannel, string][] =
   (Object.entries(bookingDeleteChannelLabels) as [BookingDeleteChannel, string][])
@@ -126,7 +127,7 @@ export default function BookingsList({ bucket = 'all', focus }: { bucket?: Booki
   // إرجاع حجز «منجز» بالغلط للكادر — نفس حارس PUT /bookings/{id}/reopen.
   const canReopen = isAdmin || employee?.actualRole === 'OWNER' || permissions.includes('booking_reopen')
   const reopen = async (b: Booking) => {
-    const reason = prompt(`ترجّع الحجز ${b.code} للكادر «قيد العمل» حتى يسجّلون إنجاز جزئي؟\nاكتب السبب (مثلاً: انضغط «تم الإنجاز» بالغلط والشغل ما كمل):`)
+    const reason = (await askInput(`ترجّع الحجز ${b.code} للكادر «قيد العمل» حتى يسجّلون إنجاز جزئي؟\nاكتب السبب (مثلاً: انضغط «تم الإنجاز» بالغلط والشغل ما كمل):`))
     if (reason === null) return
     if (reason.trim().length < 3) { alert('اكتب السبب'); return }
     try {
@@ -137,7 +138,7 @@ export default function BookingsList({ bucket = 'all', focus }: { bucket?: Booki
   }
   // «بدء العمل» انضغط بالغلط (مثلاً حجز باچر) — المالك بس، نفس حارس PUT /bookings/{id}/unstart.
   const unstart = async (b: Booking) => {
-    const reason = prompt(`ترجّع الحجز ${b.code} «مثبّت» بموعده وتمسح بدء العمل؟\nاكتب السبب (مثلاً: الحجز باچر وانضغط «بدء العمل» بالغلط):`)
+    const reason = (await askInput(`ترجّع الحجز ${b.code} «مثبّت» بموعده وتمسح بدء العمل؟\nاكتب السبب (مثلاً: الحجز باچر وانضغط «بدء العمل» بالغلط):`))
     if (reason === null) return
     if (reason.trim().length < 3) { alert('اكتب السبب'); return }
     try {
@@ -154,7 +155,7 @@ export default function BookingsList({ bucket = 'all', focus }: { bucket?: Booki
   // الزبون ما رد: ينزاح الحجز لطابور «ما وصلت للتنفيذ» فوراً بلا
   // موافقة — ويبقى محفوظاً. ما ينحذف ولا ينأرشف.
   const markNoAnswer = async (bookingId: string, code: string) => {
-    const note = prompt(`الزبون ما رد على الحجز ${code}؟ اكتب ملاحظة (اختياري)`, 'اتصلنا وما رد')
+    const note = (await askInput(`الزبون ما رد على الحجز ${code}؟ اكتب ملاحظة (اختياري)`, 'اتصلنا وما رد'))
     if (note === null) return
     try {
       await api.markBookingWaiting(bookingId, note.trim())
@@ -167,10 +168,7 @@ export default function BookingsList({ bucket = 'all', focus }: { bucket?: Booki
   // «الزبون يرجع خبر»: استفسر وطلب وقت يفكر. مسار منفصل عن «ما رد»
   // لأنه شغل مختلف — هذا ننتظر خبره، وذاك نلحقه بمكالمة.
   const markAwaitingCustomer = async (bookingId: string, code: string) => {
-    const note = prompt(
-      `الزبون رايح يرجعلك خبر على الحجز ${code}؟ اكتب شنو استفسر عنه (اختياري)`,
-      'استفسر عن السعر ورايح يرجعلنا خبر',
-    )
+    const note = (await askInput(`الزبون رايح يرجعلك خبر على الحجز ${code}؟ اكتب شنو استفسر عنه (اختياري)`, 'استفسر عن السعر ورايح يرجعلنا خبر'))
     if (note === null) return
     try {
       await api.markBookingWaiting(bookingId, note.trim(), 'CUSTOMER_DECISION')
@@ -308,7 +306,7 @@ export default function BookingsList({ bucket = 'all', focus }: { bucket?: Booki
    *  المشاريع (يبقى مقفل عندهم لحد ما يوصل مرحلة التنفيذ). */
   const confirmAndTransfer = async (booking: Booking, toProjects: boolean) => {
     const where = toProjects ? 'إدارة المشاريع' : 'كادر الشد'
-    if (!confirm(`تثبيت الحجز ${booking.code} وترحيله لـ${where}؟`)) return
+    if (!(await askConfirm(`تثبيت الحجز ${booking.code} وترحيله لـ${where}؟`))) return
     setFlowBusy(booking.id)
     try {
       const updated = await api.confirmBooking(booking.id, {
@@ -358,7 +356,7 @@ export default function BookingsList({ bucket = 'all', focus }: { bucket?: Booki
     // ثاني يفرّغ بيه الخانة من هالشاشة. هسه يفرّغها فعلاً.
     if (!employeeId) {
       if (!assignedName) return
-      if (!confirm(`إلغاء تكليف «${assignedName}» من هذا الحجز؟\nالحجز يبقى مثبّت، بس بلا كادر بهاي الخانة.`)) return
+      if (!(await askConfirm(`إلغاء تكليف «${assignedName}» من هذا الحجز؟\nالحجز يبقى مثبّت، بس بلا كادر بهاي الخانة.`))) return
       setAssigning(true)
       try {
         const updated = await api.unassignTechnician(booking.id, role)

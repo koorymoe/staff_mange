@@ -4,6 +4,7 @@ import { api, type DesignForm } from '../api'
 import { useSaveGuard } from '../useSaveGuard'
 import SaveError from '../components/SaveError'
 import { loadFailed } from '../netErrors'
+import { askConfirm } from '../ui/dialogs'
 
 const PRIMARY = '#47528f'
 // ⚠️ نسخة **النص** تنقلب بالوضع الليلي، والأصل يبقى للأسطح:
@@ -79,7 +80,7 @@ export default function DesignFormsListPage() {
   }
 
   const handleDelete = async (id: string) => {
-    if (!confirm('حذف هذه الفورمة نهائياً؟ راح تنحذف كل أسئلتها وأجوبتها معها.')) return
+    if (!(await askConfirm('حذف هذه الفورمة نهائياً؟ راح تنحذف كل أسئلتها وأجوبتها معها.'))) return
     if (!(await guard.run('حذف النموذج', () => api.deleteDesignForm(id)))) return
     load()
   }

@@ -21,6 +21,7 @@ import { pollVisible } from '../utils/poll'
 import { drillTo } from '../utils/drill'
 import { roleLabel } from '../roleLabels'
 import { num as fmt, dinarK as money } from '../utils/format'
+import { askInput } from '../ui/dialogs'
 
 // ═══ رئيسية مدير النظام: لوحتين ═══
 //
@@ -271,7 +272,7 @@ function StockForecastSection() {
   }, [reload])
   // جرد: الرصيد الموجود هسه — ماتركس يطرح المصروف بعده لحاله.
   const count = async (id: string, name: string, current?: number) => {
-    const v = prompt(`جرد «${name}»: شگد موجود هسه بالمخزن؟`, current != null ? String(Math.max(0, Math.round(current))) : '')
+    const v = (await askInput(`جرد «${name}»: شگد موجود هسه بالمخزن؟`, current != null ? String(Math.max(0, Math.round(current))) : ''))
     if (v === null || v.trim() === '' || Number.isNaN(Number(v))) return
     try { await api.setMaterialStock(id, Number(v)); setReload((x) => x + 1) } catch (e) { alert(e instanceof Error ? e.message : 'تعذّر الحفظ') }
   }

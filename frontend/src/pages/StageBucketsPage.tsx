@@ -3,6 +3,7 @@ import { api, type Booking, type StageBucket } from '../api'
 import PhoneActions from '../components/PhoneActions'
 import { useSession, isAdminOrOwner } from '../session'
 import { copyText } from '../utils/clipboard'
+import { askConfirm } from '../ui/dialogs'
 
 // ═══ سلال المراحل ═══
 //
@@ -220,10 +221,8 @@ export default function StageBucketsPage({ only }: Props = {}) {
    */
   const askDelete = async (id: string, name: string, attempts: number) => {
     const reason = `الزبون ما رد بعد ${attempts} محاولات اتصال مسجّلة`
-    if (!confirm(
-      `تطلب حذف حجز «${name}»؟\n\nالسبب المسجّل: ${reason}\n\n`
-      + 'الطلب يروح لطابور «بانتظار قرار الحذف» — المراقب أو المدير هو الي يحذف، مو انت.',
-    )) return
+    if (!(await askConfirm(`تطلب حذف حجز «${name}»؟\n\nالسبب المسجّل: ${reason}\n\n`
+      + 'الطلب يروح لطابور «بانتظار قرار الحذف» — المراقب أو المدير هو الي يحذف، مو انت.'))) return
     setBusyId(id)
     setActionError(null)
     try {
@@ -244,11 +243,9 @@ export default function StageBucketsPage({ only }: Props = {}) {
    *  ويخلّي الحجز بنفس الطابور، فما نحتاج شي خادمي جديد.
    */
   const markNoAnswer = async (id: string, name: string, attempts: number) => {
-    if (!confirm(
-      `تسجّل محاولة جديدة على «${name}»؟\n\n`
+    if (!(await askConfirm(`تسجّل محاولة جديدة على «${name}»؟\n\n`
       + `المحاولات الحالية: ${attempts}. راح تصير ${attempts + 1}، `
-      + 'والحجز يبقى بنفس الطابور.',
-    )) return
+      + 'والحجز يبقى بنفس الطابور.'))) return
     setBusyId(id)
     setActionError(null)
     try {
@@ -268,7 +265,7 @@ export default function StageBucketsPage({ only }: Props = {}) {
    *  قبل الانتظار)، وعدد المحاولات يبقى مسجّل مو ينمسح. */
   const resume = async (id: string, name: string) => {
     // (ع) 10-15: بعد «الزبون رد» مباشرة يسأله — والحجز ينتقل (مو يبقى بمكانين)
-    if (!confirm(`📞 الزبون «${name}» رد.\n\nتريد نرجعه للحجوزات؟`)) return
+    if (!(await askConfirm(`📞 الزبون «${name}» رد.\n\nتريد نرجعه للحجوزات؟`))) return
     setBusyId(id)
     setActionError(null)
     try {

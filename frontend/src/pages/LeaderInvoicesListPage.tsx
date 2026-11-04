@@ -15,6 +15,7 @@ import LocateHint from '../components/LocateHint'
 import FreeWorkBadge from '../components/FreeWorkBadge'
 import ServicePriceSuggestions from '../components/ServicePriceSuggestions'
 import { loadFailed } from '../netErrors'
+import { askInput } from '../ui/dialogs'
 
 // ═══ طباعة فاتورة الليدر ═══
 //
@@ -385,7 +386,7 @@ export default function LeaderInvoicesListPage({ embedded }: EmbeddedProps = {})
 
   /** ⚠️ المالك وحده — والسبب إجباري بالخادم. */
   const returnToAccountant = async (inv: LeaderInvoice) => {
-    const reason = window.prompt('سبب الإرجاع للمحاسب (المحاسب راح يقراه):')
+    const reason = (await askInput('سبب الإرجاع للمحاسب (المحاسب راح يقراه):'))
     if (reason === null) return
     setBusyId(inv.id)
     try { await api.returnInvoiceToAccountant(inv.id, reason.trim()); load() }
@@ -413,7 +414,7 @@ export default function LeaderInvoicesListPage({ embedded }: EmbeddedProps = {})
   }
 
   const revoke = async (inv: LeaderInvoice) => {
-    const reason = prompt(`ليش تسحب اعتماد الفاتورة ${inv.accountingCode}؟\n(السبب إجباري — المراقب والمدير راح يقرونه)`)
+    const reason = (await askInput(`ليش تسحب اعتماد الفاتورة ${inv.accountingCode}؟\n(السبب إجباري — المراقب والمدير راح يقرونه)`))
     if (!reason) return
     setBusyId(inv.id)
     try {

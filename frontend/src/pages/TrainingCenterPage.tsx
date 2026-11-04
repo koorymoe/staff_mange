@@ -4,6 +4,7 @@ import { api, type Employee, type TcCurriculum, type TcExamReportRow, type TcIns
 import { ROLE_LABELS, roleLabel } from '../roleLabels'
 import { card } from '../ui/classes'
 import { lazyRetry } from '../utils/staleReload'
+import { askConfirm } from '../ui/dialogs'
 
 // ═══ مركز التدريب — قرار (ع) 10-13: «شي إعجازي بالتدريب» ═══
 // ماتركس يحدد منو لازم يتدرّب من شغله الحقيقي (شكاوى، توقف، بطء، خصومات،
@@ -235,7 +236,7 @@ function PlanTab({ emps, need }: { emps: Employee[]; need: TcInsight[] }) {
                   {r === 'DONE' ? '✓ انعمل' : r === 'PARTIAL' ? '◐ جزئي' : '✗ ما انعمل'}
                 </button>
               ))}
-              <button onClick={() => { if (confirm('تحذف هالتدريب من الخطة؟')) void api.tcDeletePlan(p.id).then(() => setReload((x) => x + 1)) }} className="text-xs text-slate-400">حذف</button>
+              <button onClick={async () => { if ((await askConfirm('تحذف هالتدريب من الخطة؟'))) void api.tcDeletePlan(p.id).then(() => setReload((x) => x + 1)) }} className="text-xs text-slate-400">حذف</button>
             </div>
           )}
         </div>

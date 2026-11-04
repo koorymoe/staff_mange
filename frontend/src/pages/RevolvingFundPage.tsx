@@ -3,6 +3,7 @@ import { api, type RevolvingFund, type RevolvingFundTxn, type EmployeeFundBalanc
 import { useSession, isAdminOrOwner } from '../session'
 import MyFundBalance from '../components/MyFundBalance'
 import { dinar as money } from '../utils/format'
+import { askConfirm } from '../ui/dialogs'
 
 /**
  * الدوار — شاشة المحاسب.
@@ -103,7 +104,7 @@ export default function RevolvingFundPage() {
   }
 
   const doReview = async (t: RevolvingFundTxn, approve: boolean) => {
-    if (!approve && !reviewNote.trim() && !confirm('ترفض بدون سبب؟')) return
+    if (!approve && !reviewNote.trim() && !(await askConfirm('ترفض بدون سبب؟'))) return
     setBusy(true)
     try { await api.reviewFundSettlement(t.id, approve, reviewNote || undefined); setViewReceipt(null); setReviewNote(''); load() }
     catch (e) { alert(e instanceof Error ? e.message : 'خطأ') } finally { setBusy(false) }

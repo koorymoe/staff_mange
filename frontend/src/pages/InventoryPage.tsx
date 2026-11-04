@@ -3,6 +3,7 @@ import { api, type PersonalTool, type VehicleTool, type OnDemandTool, type ToolR
   type PersonalToolExemption, type BookingToolCheck, type VehicleToolCheck, type Vehicle, type PersonalToolEvent, type PersonalToolStatus, personalToolStatusLabels, personalToolStatusColors } from '../api'
 import { useSession, hasRole, isAdminOrOwner } from '../session'
 import { roleLabel } from '../roleLabels'
+import { askConfirm, askInput } from '../ui/dialogs'
 
 // تطبيع اسم الأداة للمقارنة: قصّ الأطراف وتوحيد المسافات الداخلية.
 // ⚠️ كل مطابقة بهذي الشاشة نصية (ماكو معرّف مشترك بين العدة القياسية
@@ -256,7 +257,7 @@ export default function InventoryPage() {
   }
 
   const handleDeleteTool = async (t: PersonalTool) => {
-    if (!confirm(`حذف «${t.name}» من عدة هذا الموظف؟ (تبقى بسجل الحركة)`)) return
+    if (!(await askConfirm(`حذف «${t.name}» من عدة هذا الموظف؟ (تبقى بسجل الحركة)`))) return
     try {
       await api.deletePersonalTool(t.id)
       load()
@@ -410,7 +411,7 @@ export default function InventoryPage() {
   }
 
   const handleDeleteVehicleTool = async (id: string) => {
-    if (!confirm('حذف هذي الأداة من السيارة؟')) return
+    if (!(await askConfirm('حذف هذي الأداة من السيارة؟'))) return
     try {
       await api.deleteVehicleTool(id)
       load()
@@ -494,7 +495,7 @@ export default function InventoryPage() {
   }
 
   const handleDeleteRequest = async (id: string) => {
-    if (!confirm('حذف طلب الأداة هذا نهائياً؟')) return
+    if (!(await askConfirm('حذف طلب الأداة هذا نهائياً؟'))) return
     try {
       await api.deleteToolRequest(id)
       load()
@@ -755,11 +756,9 @@ export default function InventoryPage() {
                                     <td className="px-4 py-2">
                                       <button
                                         onClick={async () => {
-                                          if (!confirm(
-                                            `تحذف «${m}» من نواقص ${k.employee.name}؟\n\n`
+                                          if (!(await askConfirm(`تحذف «${m}» من نواقص ${k.employee.name}؟\n\n`
                                             + 'ما تنحسب عليه بعدها، وتبقى بالعدة القياسية لباقي الفنيين. '
-                                            + 'وتگدر ترجّعها بضغطة من «مستثناة من نواقصه».',
-                                          )) return
+                                            + 'وتگدر ترجّعها بضغطة من «مستثناة من نواقصه».'))) return
                                           try {
                                             await api.exemptTool(k.employee.id, m)
                                             load()
@@ -804,7 +803,7 @@ export default function InventoryPage() {
                               {name}
                               <button
                                 onClick={async () => {
-                                  if (!confirm(`ترجّع «${name}» لنواقص ${k.employee.name}؟`)) return
+                                  if (!(await askConfirm(`ترجّع «${name}» لنواقص ${k.employee.name}؟`))) return
                                   try {
                                     await api.unexemptTool(k.employee.id, name)
                                     load()
@@ -1085,7 +1084,7 @@ export default function InventoryPage() {
                               <button
                                 type="button"
                                 onClick={async () => {
-                                  const input = prompt(`عدّل الكمية المتاحة لأداة "${t.name}" (الإجمالية: ${t.totalQuantity})`, String(t.availableQuantity))
+                                  const input = (await askInput(`عدّل الكمية المتاحة لأداة "${t.name}" (الإجمالية: ${t.totalQuantity})`, String(t.availableQuantity)))
                                   if (input === null) return
                                   const num = Number(input)
                                   if (Number.isNaN(num) || num < 0) { alert('رقم غير صحيح'); return }

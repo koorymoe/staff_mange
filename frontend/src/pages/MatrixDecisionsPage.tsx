@@ -6,6 +6,7 @@ import MatrixGuideRules from '../components/MatrixGuideRules'
 import MatrixProposals from '../components/MatrixProposals'
 import { SWITCH_MATRIX_AUTOPILOT, SWITCH_MATRIX_STAFF_EYE } from '../systemSwitches'
 import { todayBaghdad } from '../utils/format'
+import { askConfirm } from '../ui/dialogs'
 
 // ═══ صندوق قرارات ماتركس — للمالك ومدير النظام ═══
 // ثلاث أقسام: شنو سوّى لحاله اليوم (تذكيرات بس، ويه زر «لا تسوي هذا»)،
@@ -73,7 +74,7 @@ export default function MatrixDecisionsPage() {
   }, [day, reload])
 
   const undo = async (id: string) => {
-    if (!confirm('ماتركس ما راح يعيد هذا الفعل على نفس الشي لمدة ٣٠ يوم. متأكد؟')) return
+    if (!(await askConfirm('ماتركس ما راح يعيد هذا الفعل على نفس الشي لمدة ٣٠ يوم. متأكد؟'))) return
     setBusy(id)
     try {
       window.dispatchEvent(new Event('matrix-mangekyo'))

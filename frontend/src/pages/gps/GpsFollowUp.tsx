@@ -6,6 +6,7 @@ import {
   type GpsFollowUpStage,
 } from '../../api'
 import { useSession, isAdminOrOwner } from '../../session'
+import { askConfirm } from '../../ui/dialogs'
 
 /**
  * متابعة تجديد اشتراكات الجي بي اس.
@@ -82,7 +83,7 @@ export default function GpsFollowUp({ embedded }: { embedded?: boolean } = {}) {
   const doSim = async (row: GpsSubscriptionFollowUp, action: 'burn' | 'release') => {
     if (!row.simCardId) return
     const word = action === 'burn' ? 'حرق' : 'تحرير'
-    if (!confirm(`متأكد تريد ${word} الشريحة ${row.simNumber}؟`)) return
+    if (!(await askConfirm(`متأكد تريد ${word} الشريحة ${row.simNumber}؟`))) return
     try {
       if (action === 'burn') await api.burnSimCard(row.simCardId)
       else await api.releaseSimCard(row.simCardId)

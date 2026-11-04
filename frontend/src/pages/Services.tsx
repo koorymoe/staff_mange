@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { api, type Service } from '../api'
 import { useSession, isAdminOrOwner } from '../session'
+import { askConfirm } from '../ui/dialogs'
 
 export default function Services() {
   const { employee } = useSession()
@@ -45,7 +46,7 @@ export default function Services() {
   const [deletingId, setDeletingId] = useState<string | null>(null)
 
   const handleDelete = async (service: Service) => {
-    if (!window.confirm(`متأكد تريد حذف خدمة "${service.name}"؟`)) return
+    if (!(await askConfirm(`متأكد تريد حذف خدمة "${service.name}"؟`))) return
     setDeletingId(service.id)
     try {
       await api.deleteService(service.id)

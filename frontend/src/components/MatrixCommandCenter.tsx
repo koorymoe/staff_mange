@@ -18,6 +18,7 @@ import MatrixDialect from './MatrixDialect'
 import MatrixSuggestAccuracyPanel from './MatrixSuggestAccuracy'
 import MatrixAutonomy from './MatrixAutonomy'
 import { pollVisible } from '../utils/poll'
+import { askConfirm } from '../ui/dialogs'
 
 // ═══ مركز قيادة ماتركس — شاشة المدير (تصميم (ع)) ═══
 // كل رقم من بيانات حقيقية؛ لو ما تكفي نگول «بيانات قليلة» بدل رقم وهمي.
@@ -387,7 +388,7 @@ function Discovery({ focus, late, perf, groups, biz, proposal, onDone }: {
   })).filter((m) => m.idx < 75 && m.why.length > 0).sort((a, b) => a.idx - b.idx), [perf])
 
   const approve = async () => {
-    if (!proposal || !confirm(`توافق على اقتراح ماتركس؟\n\n${proposal.title}`)) return
+    if (!proposal || !(await askConfirm(`توافق على اقتراح ماتركس؟\n\n${proposal.title}`))) return
     setBusy(true)
     try { await api.approveMatrixProposal(proposal.id); onDone() } catch (e) { alert(e instanceof Error ? e.message : 'تعذّر التنفيذ') } finally { setBusy(false) }
   }

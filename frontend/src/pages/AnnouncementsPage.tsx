@@ -4,6 +4,7 @@ import { useSaveGuard } from '../useSaveGuard'
 import SaveError from '../components/SaveError'
 import OwnerSwitch from '../components/OwnerSwitch'
 import { SWITCH_ANNOUNCEMENTS } from '../systemSwitches'
+import { askConfirm } from '../ui/dialogs'
 
 /**
  * إدارة الإعلانات — المالك ومدير النظام حصراً.
@@ -46,7 +47,7 @@ export default function AnnouncementsPage() {
   }
 
   const remove = async (a: Announcement) => {
-    if (!confirm('حذف الإعلان نهائياً؟')) return
+    if (!(await askConfirm('حذف الإعلان نهائياً؟'))) return
     if (!(await guard.run('حذف الإعلان', () => api.deleteAnnouncement(a.id)))) return
     load()
   }

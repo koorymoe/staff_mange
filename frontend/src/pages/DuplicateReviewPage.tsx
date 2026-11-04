@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { api, type DuplicateCandidate } from '../api'
 import EntityIdentity from '../components/EntityIdentity'
 import MatrixNote from '../components/MatrixNote'
+import { askConfirm } from '../ui/dialogs'
 
 // ═══ تدقيق التكرار (ماتركس) — حجوزات وزبائن مكررون بالغلط ═══
 //
@@ -60,8 +61,8 @@ export default function DuplicateReviewPage() {
     }
   }
   const dismiss = (id: string) => run(id, async () => { await api.dismissDuplicateCandidate(id); return '✓ انأشّر «مو تكرار».' })
-  const requestDelete = (r: DuplicateCandidate, bookingId: string, code?: string) => {
-    if (!confirm(`تطلب حذف الحجز ${code ?? ''} لأنه مكرر؟\nالطلب يروح للمراقب أو المدير يوافق عليه — ما ينحذف هسه.`)) return
+  const requestDelete = async (r: DuplicateCandidate, bookingId: string, code?: string) => {
+    if (!(await askConfirm(`تطلب حذف الحجز ${code ?? ''} لأنه مكرر؟\nالطلب يروح للمراقب أو المدير يوافق عليه — ما ينحذف هسه.`))) return
     void run(r.id, async () => { const x = await api.requestDuplicateBookingDelete(r.id, bookingId); return `✓ انطلب حذف ${x.bookingCode} — ينتظر موافقة المراقب أو المدير.` })
   }
   const openMerge = async (row: DuplicateCandidate, keepId: string) => {

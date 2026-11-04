@@ -2,6 +2,7 @@ import { Suspense, useEffect, useState } from 'react'
 import { apiRequest } from '../api'
 import { askJustification } from '../utils/justify'
 import { lazyRetry } from '../utils/staleReload'
+import { askInput } from '../ui/dialogs'
 
 // ═══ «⏰ المتأخر» — خانة وحدة لكل تأخير (ع 10-16) ═══
 // «عروض أسعار المشاريع، وتأخير المشاريع، والمتأخرات — كلهن بخانة وحدة اسمها
@@ -61,7 +62,7 @@ function LateInvoices() {
   const ask = async () => {
     if (d.accountants.length === 0) { alert('ماكو محاسب فعّال بالنظام'); return }
     const acc = d.accountants.length === 1 ? d.accountants[0]
-      : d.accountants.find((a) => a.name === prompt(`لمنو؟ ${d.accountants.map((a) => a.name).join(' / ')}`)) 
+      : d.accountants.find(async (a) => a.name === (await askInput(`لمنو؟ ${d.accountants.map((a) => a.name).join(' / ')}`))) 
     if (!acc) return
     try { await askJustification(acc.id, `عندك ${d.rows.length} فاتورة ما تدققت من أكثر من ${d.hours} ساعة — ليش؟`) }
     catch (e) { alert(e instanceof Error ? e.message : 'تعذر الطلب') }

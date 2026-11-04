@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { api, type PaymentAuditRow } from '../api'
+import { askConfirm, askInput } from '../ui/dialogs'
 
 // ═══ سجل دفعات المشاريع — للمالك (ع 10-13) ═══
 // «المدير كتب المستلم مرة ثانية فصار ضعف» — هنا يشوف كل دفعة ومنو سجّلها
@@ -35,7 +36,7 @@ export default function PaymentAuditModal({ onClose, onChanged }: { onClose: () 
 
   const save = async (r: PaymentAuditRow, amount: number) => {
     const reason = amount === 0
-      ? window.prompt('سبب إلغاء الدفعة؟', 'دفعة مكررة') : window.prompt('سبب التعديل؟', 'تصحيح المبلغ المستلم')
+      ? (await askInput('سبب إلغاء الدفعة؟', 'دفعة مكررة')) : (await askInput('سبب التعديل؟', 'تصحيح المبلغ المستلم'))
     if (reason === null) return
     setBusy(r.id); setErr('')
     try { await api.setPaymentAmount(r.id, amount, reason); setEdit((e) => ({ ...e, [r.id]: '' })); setReload((x) => x + 1); onChanged() }
@@ -90,7 +91,7 @@ export default function PaymentAuditModal({ onClose, onChanged }: { onClose: () 
                                   <input inputMode="numeric" placeholder="المبلغ الصح" value={edit[r.id] ?? ''} onChange={(e) => setEdit((x) => ({ ...x, [r.id]: e.target.value.replace(/[^0-9]/g, '') }))}
                                     className="w-28 rounded border border-slate-300 px-2 py-1 text-xs" />
                                   <button disabled={busy === r.id || !edit[r.id]} onClick={() => void save(r, Number(edit[r.id]))} className="rounded bg-[#0f2040] px-2 py-1 text-xs font-bold text-white disabled:opacity-40">حفظ</button>
-                                  <button disabled={busy === r.id} onClick={() => { if (window.confirm(`تلغي دفعة ${money(r.amount)}؟`)) void save(r, 0) }} className="rounded border border-red-300 px-2 py-1 text-xs font-bold text-red-700">إلغاء</button>
+                                  <button disabled={busy === r.id} onClick={async () => { if ((await askConfirm(`تلغي دفعة ${money(r.amount)}؟`))) void save(r, 0) }} className="rounded border border-red-300 px-2 py-1 text-xs font-bold text-red-700">إلغاء</button>
                                 </div>
                               )}
                             </td>

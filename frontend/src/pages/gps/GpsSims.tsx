@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { api, type GpsSimCard, type GpsCustomer } from '../../api'
+import { askConfirm } from '../../ui/dialogs'
 
 // ⚠️ `embedded`: الشاشة تنعرض جوّا تبويب بمدخل موحّد — فترويستها
 // الخاصة تنشال حتى ما تتكرر ترويستان فوگ بعض.
@@ -57,13 +58,13 @@ export default function GpsSims({ embedded }: { embedded?: boolean } = {}) {
   }
 
   const handleRelease = async (sim: GpsSimCard) => {
-    if (!confirm(`تحرير الشريحة ${sim.simNumber}؟ راح تنفك من الزبون وترجع للمتوفر.`)) return
+    if (!(await askConfirm(`تحرير الشريحة ${sim.simNumber}؟ راح تنفك من الزبون وترجع للمتوفر.`))) return
     try { await api.releaseSimCard(sim.id); load() }
     catch (e) { alert(e instanceof Error ? e.message : 'حدث خطأ') }
   }
 
   const handleBurn = async (sim: GpsSimCard) => {
-    if (!confirm(`تأشير إن الشريحة ${sim.simNumber} انحرقت؟`)) return
+    if (!(await askConfirm(`تأشير إن الشريحة ${sim.simNumber} انحرقت؟`))) return
     try { await api.burnSimCard(sim.id); load() }
     catch (e) { alert(e instanceof Error ? e.message : 'حدث خطأ') }
   }

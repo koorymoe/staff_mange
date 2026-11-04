@@ -4,6 +4,7 @@ import { LocationPicker } from '../components/MapLazy'
 import { MapViewer } from '../components/MapLazy'
 import { matches } from '../utils/search'
 import { purchaseApi, type SupplierScore, API_URL } from '../api'
+import { askConfirm } from '../ui/dialogs'
 
 
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
@@ -254,7 +255,7 @@ export default function SuppliersPage() {
   }
 
   const handleDelete = async (id: string) => {
-    if (!confirm('هل أنت متأكد من حذف هذا المورد؟')) return
+    if (!(await askConfirm('هل أنت متأكد من حذف هذا المورد؟'))) return
     try {
       await request(`/suppliers/${id}`, { method: 'DELETE' })
       setDetailSupplier(null); loadData()
@@ -285,7 +286,7 @@ export default function SuppliersPage() {
   }
 
   const handleDeleteSpecialty = async (id: string) => {
-    if (!confirm('هل أنت متأكد من حذف هذا التخصص؟')) return
+    if (!(await askConfirm('هل أنت متأكد من حذف هذا التخصص؟'))) return
     try {
       await request(`/suppliers/specialties/${id}`, { method: 'DELETE' })
       loadData()

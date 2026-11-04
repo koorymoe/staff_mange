@@ -5,6 +5,7 @@ import { useSaveGuard } from '../useSaveGuard'
 import SaveError from '../components/SaveError'
 import type { SaveGuard } from '../useSaveGuard'
 import { loadFailed } from '../netErrors'
+import { askConfirm } from '../ui/dialogs'
 
 function fileToBase64(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -277,7 +278,7 @@ export default function VehiclesPage() {
 
   const handleDeleteVehicle = async () => {
     if (!selectedId || !selectedVehicle) return
-    if (!confirm(`حذف السيارة "${selectedVehicle.name}" (${selectedVehicle.plateNumber}) نهائياً؟ هذا الإجراء لا يمكن التراجع عنه.`)) return
+    if (!(await askConfirm(`حذف السيارة "${selectedVehicle.name}" (${selectedVehicle.plateNumber}) نهائياً؟ هذا الإجراء لا يمكن التراجع عنه.`))) return
     setDeleting(true)
     try {
       await api.deleteVehicle(selectedId)
@@ -363,7 +364,7 @@ export default function VehiclesPage() {
   }
 
   const handleDeleteLog = async (id: string) => {
-    if (!selectedId || !confirm('حذف هذا السجل نهائياً؟')) return
+    if (!selectedId || !(await askConfirm('حذف هذا السجل نهائياً؟'))) return
     try {
       await api.deleteVehicleLog(selectedId, id)
       api.getVehicleLogs(selectedId).then(setLogs)
@@ -1325,7 +1326,7 @@ function VehicleDocumentsTab({ vehicleId, guard }: { vehicleId: string; guard: S
   }
 
   const remove = async (d: DocRow) => {
-    if (!confirm(`حذف مستمسك «${DOC_TYPE_LABELS[d.documentType]}»؟`)) return
+    if (!(await askConfirm(`حذف مستمسك «${DOC_TYPE_LABELS[d.documentType]}»؟`))) return
     if (await guard.run('حذف المستمسك', () => api.deleteVehicleDocument(vehicleId, d.id))) setReload((n) => n + 1)
   }
 
@@ -1431,7 +1432,7 @@ function VehiclePartsTab({ vehicle, guard }: { vehicle: Vehicle; guard: SaveGuar
   }
 
   const replace = async (p: VehiclePart) => {
-    if (!confirm(`تأشير ${PART_TYPE_LABELS[p.partType]} كمبدَّل؟ بعدها سجّل القطعة الجديدة.`)) return
+    if (!(await askConfirm(`تأشير ${PART_TYPE_LABELS[p.partType]} كمبدَّل؟ بعدها سجّل القطعة الجديدة.`))) return
     if (await guard.run('تبديل القطعة', () => api.replaceVehiclePart(p.id))) {
       setForm((f) => ({ ...f, partType: p.partType }))
       setReload((n) => n + 1)
@@ -1545,7 +1546,7 @@ function VehiclePhotosTab({ vehicleId, guard }: { vehicleId: string; guard: Save
   }
 
   const remove = async (p: VehiclePhoto) => {
-    if (!confirm('حذف هاي الصورة؟')) return
+    if (!(await askConfirm('حذف هاي الصورة؟'))) return
     if (await guard.run('حذف الصورة', () => api.deleteVehiclePhoto(vehicleId, p.id))) {
       setView(null)
       setReload((n) => n + 1)

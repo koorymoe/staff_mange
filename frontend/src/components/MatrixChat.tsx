@@ -9,6 +9,7 @@ import {
 import { useSession, isAdminOrOwner } from '../session'
 import './MatrixChat.css'
 import ScreenshotRedactor from './ScreenshotRedactor'
+import { askConfirm } from '../ui/dialogs'
 
 // ═══ 💬 دردشة ماتركس — المالك والمدير (قرار (ع) 10-10) ═══
 // «نسولف ويا ويرد مثل أي ذكاء اصطناعي». ماتركس يتذكر المحادثة، ويفتح أدواته
@@ -449,8 +450,8 @@ function MatrixChatView({ admin }: { admin: boolean }) {
                 type="button"
                 disabled={busy}
                 title="حذف"
-                onClick={() => {
-                  if (window.confirm('تحذف المحادثة؟'))
+                onClick={async () => {
+                  if ((await askConfirm('تحذف المحادثة؟')))
                     api.deleteMatrixChat(c.id).then(() => {
                       if (cur === c.id) newChat()
                       loadChats()
@@ -872,8 +873,8 @@ function MatrixChatView({ admin }: { admin: boolean }) {
                     </span>
                     <button
                       type="button"
-                      onClick={() => {
-                        if (window.confirm('تطفّي هذا الدرس؟'))
+                      onClick={async () => {
+                        if ((await askConfirm('تطفّي هذا الدرس؟')))
                           api
                             .disableMatrixLesson(l.id)
                             .then(() =>

@@ -27,6 +27,7 @@ import { useSaveGuard } from '../useSaveGuard'
 import SaveError from '../components/SaveError'
 import BookingCodeChip from '../components/BookingCodeChip'
 import { loadFailed } from '../netErrors'
+import { askConfirm } from '../ui/dialogs'
 
 // ═══ خيارات «مهامي» ═══
 // الحجوزات = شغلك · فواتيري = فواتير شغلك · تقاريري = تقارير شغلك ·
@@ -302,7 +303,7 @@ export default function MyTasks() {
     if (booking.scheduledAt) {
       const day = (d: Date) => d.toLocaleDateString('en-CA', { timeZone: 'Asia/Baghdad' })
       const when = new Date(booking.scheduledAt)
-      if (day(when) !== day(new Date()) && !confirm(`⚠️ هذا الحجز موعده ${when.toLocaleString('ar-IQ', { timeZone: 'Asia/Baghdad', weekday: 'long', day: 'numeric', month: 'numeric', hour: 'numeric', minute: '2-digit' })} — مو اليوم.\nبدء العمل يسجّل إنك بديت هسه. متأكد؟`)) return
+      if (day(when) !== day(new Date()) && !(await askConfirm(`⚠️ هذا الحجز موعده ${when.toLocaleString('ar-IQ', { timeZone: 'Asia/Baghdad', weekday: 'long', day: 'numeric', month: 'numeric', hour: 'numeric', minute: '2-digit' })} — مو اليوم.\nبدء العمل يسجّل إنك بديت هسه. متأكد؟`))) return
     }
     const r = await guard.run('بدء العمل', () => runStage(booking, 'STARTED', () => api.startBooking(bookingId, missingToolIds), { missingToolIds }))
     if (!r) return

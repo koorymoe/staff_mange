@@ -7,6 +7,7 @@ import { useSession, isAdminOrOwner } from '../session'
 import BookingChainView from './BookingChain'
 import { validateCustomerName } from '../validation'
 import { parseAmount } from '../utils/money'
+import { askConfirm } from '../ui/dialogs'
 
 // ═══ تعديل الحجز بمكان واحد ═══
 //
@@ -49,7 +50,7 @@ export default function BookingEditPanel({
   const changeType = async (value: string) => {
     if (value === booking.bookingType) return
     const label = BOOKING_TYPES.find((t) => t.value === value)?.label || value
-    if (!window.confirm(`تحويل الحجز إلى «${label}»؟\n\nنوع الحجز يأثر على الإحصاءات والعمولات وحساب الصيانة، والتغيير ينتسجّل باسمك.`)) return
+    if (!(await askConfirm(`تحويل الحجز إلى «${label}»؟\n\nنوع الحجز يأثر على الإحصاءات والعمولات وحساب الصيانة، والتغيير ينتسجّل باسمك.`))) return
     setTypeBusy(true)
     try {
       const updated = await api.changeBookingType(booking.id, value as 'REGULAR')

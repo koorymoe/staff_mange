@@ -18,5 +18,14 @@ export default defineConfig([
     languageOptions: {
       globals: globals.browser,
     },
+    rules: {
+      // (11-04 — تعديلات ٧ب، قاعدة دازاي) نوافذ المتصفح ممنوعة: askConfirm/askInput من ui/dialogs
+      'no-restricted-globals': ['error',
+        { name: 'confirm', message: 'ممنوع confirm() — استعمل await askConfirm() من ui/dialogs' },
+        { name: 'prompt', message: 'ممنوع prompt() — استعمل await askInput() من ui/dialogs' }],
+      'no-restricted-properties': ['error',
+        { object: 'window', property: 'confirm', message: 'ممنوع window.confirm — askConfirm' },
+        { object: 'window', property: 'prompt', message: 'ممنوع window.prompt — askInput' }],
+    },
   },
 ])

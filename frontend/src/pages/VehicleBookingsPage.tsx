@@ -4,6 +4,7 @@ import { useSession } from '../session'
 import { useSaveGuard } from '../useSaveGuard'
 import SaveError from '../components/SaveError'
 import { dateTimeAr as fmt } from '../utils/format'
+import { askConfirm } from '../ui/dialogs'
 
 // ═══ حجز المركبات ═══
 //
@@ -92,7 +93,7 @@ export default function VehicleBookingsPage() {
   }
 
   const approve = async (b: Row) => {
-    if (!confirm(`اعتماد حجز ${b.vehicle?.name ?? ''} لـ${b.requestedBy?.name ?? ''}؟`)) return
+    if (!(await askConfirm(`اعتماد حجز ${b.vehicle?.name ?? ''} لـ${b.requestedBy?.name ?? ''}؟`))) return
     if (await guard.run('اعتماد الحجز', () => api.decideVehicleBooking(b.id, { approve: true }))) setReload((n) => n + 1)
   }
 
@@ -106,7 +107,7 @@ export default function VehicleBookingsPage() {
   }
 
   const cancel = async (b: Row) => {
-    if (!confirm('إلغاء هذا الحجز؟')) return
+    if (!(await askConfirm('إلغاء هذا الحجز؟'))) return
     if (await guard.run('إلغاء الحجز', () => api.cancelVehicleBooking(b.id))) setReload((n) => n + 1)
   }
 

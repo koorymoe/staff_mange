@@ -5,6 +5,7 @@ import {
 } from '../api'
 import { useSession, isAdminOrOwner } from '../session'
 import { dinarRound as iqd } from '../utils/format'
+import { askConfirm } from '../ui/dialogs'
 
 // ═══ برامج التدريب ═══
 //
@@ -194,7 +195,7 @@ export default function TrainingPrograms({ embedded = false }: { embedded?: bool
                   {p.status !== 'مكتمل' && (
                     <button
                       onClick={async () => {
-                        if (!confirm(`تكمل «${p.name}»؟\n\nراح تنمنح مهارات البرنامج (${p.skills.length}) لكل المشاركين (${p.participants.length}) بملفاتهم.`)) return
+                        if (!(await askConfirm(`تكمل «${p.name}»؟\n\nراح تنمنح مهارات البرنامج (${p.skills.length}) لكل المشاركين (${p.participants.length}) بملفاتهم.`))) return
                         try { await api.completeTrainingProgram(p.id); await load() }
                         catch (e) { alert(e instanceof Error ? e.message : 'تعذر الإكمال') }
                       }}
@@ -206,7 +207,7 @@ export default function TrainingPrograms({ embedded = false }: { embedded?: bool
                   <button onClick={() => setEditing(p)} className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-bold text-slate-600">✏️ تعديل</button>
                   <button
                     onClick={async () => {
-                      if (!confirm(`تريد تحذف «${p.name}»؟`)) return
+                      if (!(await askConfirm(`تريد تحذف «${p.name}»؟`))) return
                       try { await api.deleteTrainingProgram(p.id); await load() }
                       catch (e) { alert(e instanceof Error ? e.message : 'تعذر الحذف') }
                     }}

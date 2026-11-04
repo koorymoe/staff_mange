@@ -9,6 +9,7 @@ import BookingCodeChip from '../components/BookingCodeChip'
 import EntityIdentity from '../components/EntityIdentity'
 import MoneyNoInvoice from '../components/MoneyNoInvoice'
 import { askForm } from '../utils/dialog'
+import { askInput } from '../ui/dialogs'
 
 export default function Finance() {
   // ⚠️⚠️ هاي الشاشة چانت **بلا أي فحص**: أزرار «مطابق» و«غير مطابق»
@@ -107,7 +108,7 @@ export default function Finance() {
    *  bookings/{id}`) — السبب إجباري بالخادم، والحجز يختفي من هالقائمة
    *  ويبقى بالأرشيف (`/bookings/archived`) لا يُمحى فعلياً. */
   const archiveBooking = async (b: Booking) => {
-    const reason = window.prompt(`سبب حذف الحجز ${b.code} (يُحفظ بالأرشيف):`)
+    const reason = (await askInput(`سبب حذف الحجز ${b.code} (يُحفظ بالأرشيف):`))
     if (reason === null) return
     if (!reason.trim()) { window.alert('اكتب سبب الحذف'); return }
     setArchiveBusyId(b.id)
@@ -127,10 +128,7 @@ export default function Finance() {
    *  ويرفض لو ماكو حجز بهذا الكود أو لو حاول ربط الحجز بنفسه. حقل
    *  فاضي يفك الربط. */
   const setPartialLink = async (b: Booking) => {
-    const code = window.prompt(
-      'كود الحجز الأصلي لنفس الشغلة (اتركه فاضي لإزالة الربط):\nمثال: OLD-355f9a5eb1f1',
-      b.partialJobBooking?.code || '',
-    )
+    const code = (await askInput('كود الحجز الأصلي لنفس الشغلة (اتركه فاضي لإزالة الربط):\nمثال: OLD-355f9a5eb1f1', b.partialJobBooking?.code || ''))
     if (code === null) return
     setPartialLinkBusyId(b.id)
     try {
@@ -149,10 +147,7 @@ export default function Finance() {
    *  موجود). لو الحجز أصلاً كشف، نعدّل الربط بس (نفس مسار الإنجاز
    *  الجزئي) لأن الخادم يرفض تأشير نوع مكرر. */
   const markAsSurvey = async (b: Booking) => {
-    const code = window.prompt(
-      'كشف لأي حجز بالضبط؟ (كود الحجز الحقيقي الي نتج عن هذي المعاينة — اتركه فاضي لو ما صار عمل بعد):',
-      b.partialJobBooking?.code || '',
-    )
+    const code = (await askInput('كشف لأي حجز بالضبط؟ (كود الحجز الحقيقي الي نتج عن هذي المعاينة — اتركه فاضي لو ما صار عمل بعد):', b.partialJobBooking?.code || ''))
     if (code === null) return
     setSurveyMarkBusyId(b.id)
     try {
@@ -196,9 +191,9 @@ export default function Finance() {
     }
     let note: string | undefined
     if (action !== 'VERIFY') {
-      const answer = prompt(action === 'MISMATCH'
+      const answer = (await askInput(action === 'MISMATCH'
         ? 'شنو الفرق بالضبط؟ (يروح للرقابة والجودة)'
-        : 'شنو الغلط بالسعر؟ (يروح للرقابة والإداري)')
+        : 'شنو الغلط بالسعر؟ (يروح للرقابة والإداري)'))
       if (answer === null) return
       note = answer.trim() || undefined
     }

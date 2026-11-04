@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { apiRequest, api, type Service } from '../api'
+import { askConfirm } from '../ui/dialogs'
 
 // (DRY 11-02) چانت مكتوبة جوّا كل نموذج بهالملف
 const inp = 'w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm'
@@ -54,7 +55,7 @@ export default function CustomerAppAdminPage() {
     load()
   }
   const remove = async (p: Promo) => {
-    if (!confirm(`تحذف «${p.title}» من التطبيق؟`)) return
+    if (!(await askConfirm(`تحذف «${p.title}» من التطبيق؟`))) return
     await apiRequest(`/customer-app/promos/${p.id}`, { method: 'DELETE' }).catch((e) => setMsg(e.message))
     load()
   }
@@ -286,7 +287,7 @@ function BranchesTab() {
       setEdit(null); load()
     } catch (e) { setMsg(e instanceof Error ? e.message : 'خطأ') }
   }
-  const del = async (b: Branch) => { if (confirm(`تحذف فرع «${b.name}» من التطبيق؟`)) { await apiRequest(`/customer-app/branches/${b.id}`, { method: 'DELETE' }).catch(() => {}); load() } }
+  const del = async (b: Branch) => { if ((await askConfirm(`تحذف فرع «${b.name}» من التطبيق؟`))) { await apiRequest(`/customer-app/branches/${b.id}`, { method: 'DELETE' }).catch(() => {}); load() } }
   return (
     <div className="space-y-3">
       <button onClick={() => setEdit({})} className="rounded-xl bg-emerald-700 px-4 py-2 text-sm font-bold text-white">+ فرع</button>

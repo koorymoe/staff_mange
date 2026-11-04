@@ -5,6 +5,7 @@ import SaveError from '../components/SaveError'
 import { loadFailed } from '../netErrors'
 import StageLimitsEditor from '../components/StageLimitsEditor'
 import { useSession, isAdminOrOwner } from '../session'
+import { askConfirm } from '../ui/dialogs'
 
 // إعدادات وحدة إدارة المشاريع — أنواع الأعمال ("نوع العمل") صارت قابلة
 // للإضافة والحذف براحة المدير، بدل قائمة ثابتة بالكود. أي نوع تضيفه هنا
@@ -39,7 +40,7 @@ export default function ProjectWorkTypesSettingsPage() {
   }
 
   const handleDelete = async (id: string) => {
-    if (!confirm('حذف نوع العمل هذا؟ المشاريع الي مستخدمينه بيهه ما تتأثر، بس النوع ما يضل يظهر بالقائمة عند إنشاء مشروع جديد.')) return
+    if (!(await askConfirm('حذف نوع العمل هذا؟ المشاريع الي مستخدمينه بيهه ما تتأثر، بس النوع ما يضل يظهر بالقائمة عند إنشاء مشروع جديد.'))) return
     if (!(await guard.run('حذف نوع العمل', () => api.deleteProjectWorkType(id)))) return
     load()
   }

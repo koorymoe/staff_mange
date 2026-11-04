@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { api, fileUrl, type ProductRequest, type ProductProcurement, type PayerKind, type RevolvingFund } from '../api'
 import { useSession, hasRole, isAdminOrOwner } from '../session'
 import { loadFailed } from '../netErrors'
+import { askConfirm } from '../ui/dialogs'
 
 const money = (n: number) => n.toLocaleString('en-IQ')
 
@@ -131,7 +132,7 @@ export default function ProductRequestsPage({ embedded }: { embedded?: boolean }
   }
 
   const settle = async (id: string) => {
-    if (!confirm('تأكيد رجوع المبلغ للدوار؟')) return
+    if (!(await askConfirm('تأكيد رجوع المبلغ للدوار؟'))) return
     setBusyId(id)
     try {
       await api.settleProductProcurement(id)

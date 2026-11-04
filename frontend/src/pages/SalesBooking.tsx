@@ -7,6 +7,7 @@ import { validateCustomerName, validateCustomerPhone } from '../validation'
 import { LocationPicker } from '../components/MapLazy'
 import PhoneActions from '../components/PhoneActions'
 import { loadFailed } from '../netErrors'
+import { askConfirm } from '../ui/dialogs'
 
 type BookingType = 'REGULAR' | 'MAINTENANCE' | 'INTERNAL' | 'SOLAR'
 type Urgency = 'ASAP' | 'BY_PRIORITY' | 'SPECIFIC_DATE'
@@ -333,7 +334,7 @@ export default function SalesBooking() {
 
     // الزبون عنده حجز مفتوح؟ أكثر سبب للتكرار — نسأل قبل ما يصير حجز ثاني.
     const open = existingCustomer?.openBookings ?? []
-    if (open.length > 0 && !confirm(`⚠️ هذا الزبون عنده ${open.length} حجز مفتوح (${open.map((b) => b.code).join('، ')}).\nإذا تريد تصحّح الاسم أو التفاصيل، عدّل على الحجز الموجود — مو حجز جديد.\n\nمتأكد تريد تسوي حجز ثاني؟`)) return
+    if (open.length > 0 && !(await askConfirm(`⚠️ هذا الزبون عنده ${open.length} حجز مفتوح (${open.map((b) => b.code).join('، ')}).\nإذا تريد تصحّح الاسم أو التفاصيل، عدّل على الحجز الموجود — مو حجز جديد.\n\nمتأكد تريد تسوي حجز ثاني؟`))) return
     submitLock.current = true
     setSubmitting(true)
     try {

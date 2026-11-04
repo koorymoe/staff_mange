@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { api, type VipCustomer, type Customer } from '../api'
 import { useSession } from '../session'
+import { askConfirm } from '../ui/dialogs'
 
 // قائمة الشخصيات المهمة — لمدير النظام حصراً (الراوت بالسيرفر محمي بـrequireAdmin).
 // تعرض تفاصيل الزبون ورقمه وشنو طلب من عدنا ومنو الموظف الي علّمه.
@@ -78,7 +79,7 @@ export default function VipCustomersPage() {
   useEffect(load, [isAdmin])
 
   const remove = async (customerId: string) => {
-    if (!confirm('إزالة تعليم "شخصية مهمة" عن هذا الزبون؟')) return
+    if (!(await askConfirm('إزالة تعليم "شخصية مهمة" عن هذا الزبون؟'))) return
     setBusy(customerId)
     try {
       await api.unmarkVipCustomer(customerId)

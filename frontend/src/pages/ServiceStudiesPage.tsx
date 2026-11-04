@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { api, type ServiceStudy, type Employee } from '../api'
 import { useSession, isAdminOrOwner } from '../session'
 import { loadFailed } from '../netErrors'
+import { askInput } from '../ui/dialogs'
 
 function splitList(v: string) {
   return v.split(',').map((s) => s.trim()).filter(Boolean)
@@ -44,7 +45,7 @@ export default function ServiceStudiesPage({ embedded }: { embedded?: boolean } 
 
   const handleAssign = async (id: string, current: string[]) => {
     const options = employees.map((e) => `${e.name} :: ${e.id}`).join('\n')
-    const picked = prompt(`اكتب أسماء التقنيين الموكَّلين مفصولين بفاصلة (اختر من):\n${options}`, current.join(', '))
+    const picked = (await askInput(`اكتب أسماء التقنيين الموكَّلين مفصولين بفاصلة (اختر من):\n${options}`, current.join(', ')))
     if (picked === null) return
     const names = splitList(picked)
     const ids = employees.filter((e) => names.includes(e.name)).map((e) => e.id)

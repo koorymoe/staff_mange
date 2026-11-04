@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { api, type TcMyExam } from '../api'
+import { askConfirm } from '../ui/dialogs'
 
 // ═══ اختباري الشهري — (ع) 10-13 ═══
 // الموظف يسويه من حسابه: يبدي ← الوكت يمشي ← يسلّم ← النتيجة فوراً.
@@ -71,7 +72,7 @@ export default function MyExamPage() {
               </div>
             </div>
           ))}
-          <button disabled={busy} onClick={() => { if (Object.keys(ans).length < (d.questions?.length ?? 0) && !confirm('بعدك ما جاوبت كل الأسئلة — تسلّم؟')) return; void submit() }}
+          <button disabled={busy} onClick={async () => { if (Object.keys(ans).length < (d.questions?.length ?? 0) && !(await askConfirm('بعدك ما جاوبت كل الأسئلة — تسلّم؟'))) return; void submit() }}
             className="w-full rounded-xl bg-[#0f2040] py-3 font-bold text-white disabled:opacity-40">تسليم الاختبار ({Object.keys(ans).length}/{d.questions?.length ?? 0})</button>
         </>
       )}

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { api, type SurveyPhoto, type SurveyPhotoOwner } from '../api'
 import { useSession, isAdminOrOwner } from '../session'
+import { askConfirm } from '../ui/dialogs'
 
 // صور الكشف — للحجز والمشروع. العرض والتنزيل يقرّرهن الخادم بكل طلب
 // (المراقب، المحاسب، المدير، إداري الحجوزات، والكادر الي رفعها)، فلو
@@ -81,7 +82,7 @@ export default function SurveyPhotos({ owner, canUpload = false, title = '📷 �
   }
 
   const remove = async (p: SurveyPhoto) => {
-    if (!window.confirm('حذف هاي الصورة من الكشف؟')) return
+    if (!(await askConfirm('حذف هاي الصورة من الكشف؟'))) return
     try {
       await api.deleteSurveyPhoto(p.id)
       setReload((n) => n + 1)

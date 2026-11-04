@@ -8,6 +8,7 @@ import SearchBar from '../components/SearchBar'
 import EmptyState from '../components/EmptyState'
 import { matches } from '../utils/search'
 import BookingCodeChip from '../components/BookingCodeChip'
+import { askConfirm, askInput } from '../ui/dialogs'
 
 /**
  * التدقيق اليومي.
@@ -129,7 +130,7 @@ export default function DailyAuditPage() {
   // خانة التدقيق كاملة، فأي غلط بالمبلغ يبقى محبوس بالسجل وما ينصلّح.
   // مدير النظام حصراً يكدر يفتحه من جديد ويرجع يدققه.
   const unverify = async (row: DailyAuditRow) => {
-    if (!window.confirm(`ترجّع الحجز ${row.code} للتدقيق من جديد؟`)) return
+    if (!(await askConfirm(`ترجّع الحجز ${row.code} للتدقيق من جديد؟`))) return
     setBusy(row.id)
     try {
       await api.unverifyBooking(row.id)
@@ -168,7 +169,7 @@ export default function DailyAuditPage() {
     // ═══ الآجل (ع) 10-14 ═══ الشغل خلص والفلوس تتأجل — ينسجّل بسجل الآجل
     if (action === 'CREDIT') {
       const owed = typed !== undefined && typed !== '' ? Number(typed) : row.expectedAmount
-      const ans = prompt(`⏳ آجل — المبلغ المستحق على الزبون: ${(owed || 0).toLocaleString('en-US')} د.ع\nملاحظة (مثلاً: يدفع على 3 دفعات، أو كامل آخر الشهر):`)
+      const ans = (await askInput(`⏳ آجل — المبلغ المستحق على الزبون: ${(owed || 0).toLocaleString('en-US')} د.ع\nملاحظة (مثلاً: يدفع على 3 دفعات، أو كامل آخر الشهر):`))
       if (ans === null) return
       setBusy(row.id)
       try {
@@ -185,9 +186,9 @@ export default function DailyAuditPage() {
 
     let note: string | undefined
     if (action !== 'VERIFY') {
-      const answer = prompt(action === 'MISMATCH'
+      const answer = (await askInput(action === 'MISMATCH'
         ? 'شنو الفرق بالضبط؟ (يروح للرقابة والجودة)'
-        : 'شنو الغلط بالسعر؟ (يروح للرقابة والإداري)')
+        : 'شنو الغلط بالسعر؟ (يروح للرقابة والإداري)'))
       if (answer === null) return
       note = answer.trim() || undefined
     }

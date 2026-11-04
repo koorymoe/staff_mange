@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { api, type DesignForm, type DesignFormQuestion, type DesignFormQuestionType } from '../api'
+import { askConfirm } from '../ui/dialogs'
 
 const PRIMARY = '#47528f'
 // ⚠️ نسخة **النص** تنقلب بالوضع الليلي، والأصل يبقى للأسطح:
@@ -93,7 +94,7 @@ export default function DesignFormBuilderPage() {
   }
 
   const handleDelete = async (id: string) => {
-    if (!confirm('حذف هذا السؤال نهائياً؟')) return
+    if (!(await askConfirm('حذف هذا السؤال نهائياً؟'))) return
     setBusyId(id)
     try {
       await api.deleteDesignFormQuestion(id)

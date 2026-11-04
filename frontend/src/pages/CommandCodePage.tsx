@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { api, type Employee } from '../api'
 import { useSession } from '../session'
+import { askConfirm } from '../ui/dialogs'
 
 // ═══ رمز مركز القيادة ═══
 //
@@ -128,8 +129,8 @@ export default function CommandCodePage() {
               <div key={a.id} className="flex items-center justify-between gap-2 border-b border-slate-50 py-1.5 text-sm">
                 <span><b>{a.username}</b> · {a.name}{a.setAt && <span className="ms-2 text-[11px] text-slate-400">{new Date(a.setAt).toLocaleDateString('ar-IQ')}</span>}</span>
                 <button
-                  onClick={() => {
-                    if (!window.confirm(`تسكّر مركز القيادة عن «${a.username}»؟`)) return
+                  onClick={async () => {
+                    if (!(await askConfirm(`تسكّر مركز القيادة عن «${a.username}»؟`))) return
                     api.clearCommandPassword(a.id).then(loadAccounts).catch((e) => setErr(e instanceof Error ? e.message : 'تعذر'))
                   }}
                   className="text-xs font-bold text-red-600 hover:underline"

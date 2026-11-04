@@ -9,6 +9,7 @@ import { matches } from '../utils/search'
 import BookingCodeChip from '../components/BookingCodeChip'
 import SurveyPhotos from '../components/SurveyPhotos'
 import { roleLabelShort } from '../roleLabels'
+import { askConfirm, askInput } from '../ui/dialogs'
 
 // ⚠️ چانت عندها طريقة اتصال خاصة (من أصلها كنظام منفصل) — هسه الموحدة.
 const request = apiRequest
@@ -363,7 +364,7 @@ export default function ProjectsPage({ mode: initialMode = 'all' }: { mode?: 'al
   }
 
   const receiveBooking = async (b: TransferredBooking) => {
-    if (!confirm(`استلام حجز ${b.customer.name} كمشروع جديد؟`)) return
+    if (!(await askConfirm(`استلام حجز ${b.customer.name} كمشروع جديد؟`))) return
     try {
       await request('/projects', {
         method: 'POST',
@@ -429,7 +430,7 @@ export default function ProjectsPage({ mode: initialMode = 'all' }: { mode?: 'al
   const rejectedCount = projects.filter(p => p.stage.includes('مرفوض')).length
 
   const del = async (id: string) => {
-    if (!confirm('حذف المشروع؟')) return
+    if (!(await askConfirm('حذف المشروع؟'))) return
     await request(`/projects/${id}`, { method: 'DELETE' })
     refresh()
   }
@@ -874,7 +875,7 @@ function ProjectCard({ p, canManage, onEdit, onMove, onReport, onDelete, onRefre
             {/* (ع 10-16) المراقب يشوف شوكت تواصل المشرف — قبل عرض السعر */}
             {!p.customerContactedAt && !isRejected && !isCompleted && (
               <button onClick={async () => {
-                const note = prompt('شنو حجيت ويا الزبون؟ (جملة قصيرة)')
+                const note = (await askInput('شنو حجيت ويا الزبون؟ (جملة قصيرة)'))
                 if (!note || note.trim().length < 5) { if (note !== null) alert('اكتب جملة قصيرة على الأقل'); return }
                 try { await apiRequest(`/projects/${p.id}/customer-contacted`, { method: 'POST', body: JSON.stringify({ note: note.trim() }) }); onRefresh() }
                 catch (e) { alert(e instanceof Error ? e.message : 'تعذر التسجيل') }
@@ -1027,7 +1028,7 @@ function ContractModal({ project, onClose, onSaved }: { project: Project; onClos
 
   // حذف العقد المرفوع — لمدير النظام حصراً (والسيرفر يفرضها كمان).
   const removeContract = async (which: 'plain' | 'signed') => {
-    if (!confirm('حذف ملف العقد هذا نهائياً؟')) return
+    if (!(await askConfirm('حذف ملف العقد هذا نهائياً؟'))) return
     setError('')
     try {
       await request(`/projects/${project.id}/contract?which=${which}`, { method: 'DELETE' })
@@ -1671,7 +1672,7 @@ function ReportModal({ type, project: listProject, onClose }: { type: 'survey' |
 
 // إرجاع مشروع مرفوض لمرحلته قبل الرفض — (ع) 10-19
 async function restoreRejected(p: { id: string; name: string }, done: () => void) {
-  const reason = prompt(`ترجّع «${p.name}» للمشاريع؟ يرجع لنفس المرحلة الي چان بيها قبل الرفض.\nاكتب السبب (مثلاً: الزبون رجع واتصل):`)
+  const reason = (await askInput(`ترجّع «${p.name}» للمشاريع؟ يرجع لنفس المرحلة الي چان بيها قبل الرفض.\nاكتب السبب (مثلاً: الزبون رجع واتصل):`))
   if (reason === null) return
   if (reason.trim().length < 3) { alert('اكتب السبب'); return }
   try {
@@ -1687,10 +1688,10 @@ function useCanPurge() {
   return employee?.role === 'ADMIN' || hasRole(employee, 'PROJECT_MANAGER')
 }
 async function purgeRejected(p: { id: string; name: string }, done: () => void) {
-  const reason = prompt(`🗑️ حذف «${p.name}» نهائياً؟ ينشال من كل الشاشات وما يرجع.\nاكتب سبب الحذف:`)
+  const reason = (await askInput(`🗑️ حذف «${p.name}» نهائياً؟ ينشال من كل الشاشات وما يرجع.\nاكتب سبب الحذف:`))
   if (reason === null) return
   if (reason.trim().length < 3) { alert('اكتب سبب الحذف'); return }
-  if (!confirm(`متأكد؟ «${p.name}» ينحذف نهائياً.`)) return
+  if (!(await askConfirm(`متأكد؟ «${p.name}» ينحذف نهائياً.`))) return
   try {
     await api.purgeProject(p.id, reason.trim())
     alert('انحذف المشروع ✅')
