@@ -7,6 +7,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
+	"github.com/lib/pq"
 
 	"staffmange-api/internal/model"
 	"staffmange-api/internal/timeutil"
@@ -231,10 +232,95 @@ func (r *ComplaintRepository) List() ([]model.Complaint, error) {
 	if err := r.db.Select(&complaints, `SELECT * FROM "Complaint" ORDER BY "createdAt" DESC`); err != nil {
 		return nil, err
 	}
-	for i := range complaints {
-		r.hydrate(&complaints[i])
-	}
+	r.hydrateAll(complaints)
 	return complaints, nil
+}
+
+// hydrateAll (بند ٧م، 11-04): نفس hydrate بالضبط بس بعدد ثابت من الاستعلامات.
+// hydrate لوحدها تسوي لحد ٨ استعلامات لكل شكوى — ألف شكوى = ٨٠٠٠ رحلة للقاعدة.
+func (r *ComplaintRepository) hydrateAll(cs []model.Complaint) {
+	if len(cs) == 0 {
+		return
+	}
+	custIDs, bookIDs, empIDs := []string{}, []string{}, []string{}
+	add := func(list *[]string, p *string) {
+		if p != nil && *p != "" {
+			*list = append(*list, *p)
+		}
+	}
+	for i := range cs {
+		c := &cs[i]
+		custIDs = append(custIDs, c.CustomerID)
+		add(&bookIDs, c.BookingID)
+		empIDs = append(empIDs, c.CreatedByEmployeeID)
+		add(&empIDs, c.AssignedToEmployeeID)
+		add(&empIDs, c.RelatedEmployeeID)
+		add(&empIDs, c.AuditedByID)
+		add(&empIDs, c.ContactedByID)
+	}
+	customers := []model.Customer{}
+	errlog.Err(r.db.Select(&customers, `SELECT * FROM "Customer" WHERE id = ANY($1)`, pq.Array(custIDs)))
+	custBy := map[string]*model.Customer{}
+	for i := range customers {
+		custBy[customers[i].ID] = &customers[i]
+	}
+	vips := []struct {
+		ID   string  `db:"id"`
+		Vip  bool    `db:"vip"`
+		Note *string `db:"note"`
+	}{}
+	errlog.Err(r.db.Select(&vips, `SELECT c.id, (EXISTS (SELECT 1 FROM "VipCustomer" x WHERE x."customerId" = c.id) OR COALESCE(btrim(c.position), '') <> '') AS vip,
+		COALESCE((SELECT NULLIF(btrim(x."customerPosition"), '') FROM "VipCustomer" x WHERE x."customerId" = c.id ORDER BY x."createdAt" DESC LIMIT 1),
+			NULLIF(btrim(c.position), '')) AS note
+		FROM "Customer" c WHERE c.id = ANY($1)`, pq.Array(custIDs)))
+	type vipT struct {
+		v bool
+		n *string
+	}
+	vipBy := map[string]vipT{}
+	for _, v := range vips {
+		vipBy[v.ID] = vipT{v.Vip, v.Note}
+	}
+	bookBy := map[string]*model.Booking{}
+	if len(bookIDs) > 0 {
+		books := []model.Booking{}
+		errlog.Err(r.db.Select(&books, `SELECT * FROM "Booking" WHERE id = ANY($1)`, pq.Array(bookIDs)))
+		for i := range books {
+			bookBy[books[i].ID] = &books[i]
+		}
+	}
+	briefs := []model.EmployeeBrief{}
+	errlog.Err(r.db.Select(&briefs, `SELECT id, name FROM "Employee" WHERE id = ANY($1)`, pq.Array(empIDs)))
+	empBy := map[string]model.EmployeeBrief{}
+	for _, b := range briefs {
+		empBy[b.ID] = b
+	}
+	emp := func(id *string) *model.EmployeeBrief {
+		if id == nil {
+			return nil
+		}
+		if b, ok := empBy[*id]; ok {
+			return &b
+		}
+		return nil
+	}
+	for i := range cs {
+		c := &cs[i]
+		c.Customer = custBy[c.CustomerID]
+		v := vipBy[c.CustomerID]
+		c.IsVip, c.VipNote = v.v, v.n
+		if c.BookingID != nil {
+			c.Booking = bookBy[*c.BookingID]
+		}
+		c.CreatedByEmployee = emp(&c.CreatedByEmployeeID)
+		c.AssignedToEmployee = emp(c.AssignedToEmployeeID)
+		c.RelatedEmployee = emp(c.RelatedEmployeeID)
+		c.AuditedBy = emp(c.AuditedByID)
+		if e := emp(c.ContactedByID); e != nil {
+			name := e.Name
+			c.ContactedByName = &name
+		}
+	}
 }
 
 func (r *ComplaintRepository) Create(customerID string, bookingID *string, complaintType, description, createdByEmployeeID string, relatedEmployeeID *string) (*model.Complaint, error) {

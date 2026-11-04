@@ -264,3 +264,4 @@ git push origin origin/avg:refs/heads/prod     # بعد التأكد إنه fast
 - 2026-11-04 لوفي: رفع على prod بطلب دازاي: صلاحية محادثات الواتساب بيد المالك + تصنيف القيادة (التفاصيل، النواب، عرض كامل).
 - 2026-11-04: ٧م — الزبائن صفحات من الخادم (customer_page.go + getCustomersPage)، parity_c.py ٤٣٢ تركيبة = ٠ اختلاف. GET /api/customers/{id} لـSalesBooking، والشكاوي اقتراحات من البحث (٢٠).
 - 2026-11-04 لوفي: رفع ٧م الزبائن على prod بطلب دازاي.
+- 2026-11-04: ٧م — ComplaintRepository.hydrateAll (عدد استعلامات ثابت)، TestComplaintHydrateAllSame_Live.
