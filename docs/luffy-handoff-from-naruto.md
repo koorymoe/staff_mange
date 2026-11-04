@@ -284,3 +284,4 @@ git push origin origin/avg:refs/heads/prod     # بعد التأكد إنه fast
 - 2026-11-04: ٧أ — roles.spec.ts (٦ أدوار، كل روابط القائمة). CORS يسمح X-Requested-With وIdempotency-Key. الخروج عدّاد لحاله (٦٠/د). CI e2e على ubuntu-24.04 (أول تشغيلة فشلت: Playwright ما يدعم 26.04).
 - 2026-11-04 لوفي: رفع ٧أ (الأدوار) + CORS + عدّاد الخروج على prod بطلب دازاي.
 - 2026-11-04: ٧ل — ChecklistRepository.hydrate بلا PDF وبدفعة. ٧ع انفحص (محمي بالمعالج). المهلة وeslint-disable انفحصن.
+- 2026-11-04 لوفي: رفع ٧ل (قائمة البنود) على prod بطلب دازاي.
