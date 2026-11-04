@@ -55,12 +55,24 @@ func (h *PurchaseControlHandler) RefreshStandards() {
 		log.Printf("[standard-price] %v", err)
 		return
 	}
+	// (11-04 — ٧ن) الأسعار المرجعية كلها باستعلام واحد بدل واحد لكل مادة
+	type stdRow struct {
+		Key    string  `db:"key"`
+		Price  float64 `db:"price"`
+		Source string  `db:"source"`
+	}
+	all := []stdRow{}
+	if err := h.db.Select(&all, `SELECT key, price, source FROM "StandardPrice"`); err != nil {
+		log.Printf("[standard-price] %v", err)
+		return
+	}
+	std := make(map[string]stdRow, len(all))
+	for _, x := range all {
+		std[x.Key] = x
+	}
 	for _, m := range rows {
-		var cur struct {
-			Price  float64 `db:"price"`
-			Source string  `db:"source"`
-		}
-		if err := h.db.Get(&cur, `SELECT price, source FROM "StandardPrice" WHERE key = $1`, m.Key); err != nil {
+		cur, ok := std[m.Key]
+		if !ok {
 			_, _ = h.db.Exec(`INSERT INTO "StandardPrice" (key, product, price, source) VALUES ($1,$2,$3,'AUTO') ON CONFLICT DO NOTHING`, m.Key, m.Product, m.Price)
 			continue
 		}

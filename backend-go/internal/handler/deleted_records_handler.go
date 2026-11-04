@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/jmoiron/sqlx"
+	"github.com/lib/pq"
 
 	"staffmange-api/internal/middleware"
 )
@@ -65,6 +66,21 @@ func (h *DeletedRecordsHandler) List(w http.ResponseWriter, r *http.Request) {
 		WriteError(w, http.StatusInternalServerError, "تعذر")
 		return
 	}
+	// (11-04 — ٧ن) «راجع؟» باستعلام واحد لكل نوع، مو واحد لكل سطر
+	idsBy := map[string][]string{}
+	for _, x := range rows {
+		if _, ok := RestorableEntities[x.Entity]; ok && x.EntityID != nil {
+			idsBy[x.Entity] = append(idsBy[x.Entity], *x.EntityID)
+		}
+	}
+	back := map[string]bool{}
+	for ent, ids := range idsBy {
+		found := []string{}
+		_ = h.db.Select(&found, `SELECT id::text FROM "`+ent+`" WHERE id::text = ANY($1)`, pq.Array(ids))
+		for _, id := range found {
+			back[ent+"|"+id] = true
+		}
+	}
 	out := rows[:0]
 	for _, x := range rows {
 		lbl, ok := RestorableEntities[x.Entity]
@@ -72,9 +88,7 @@ func (h *DeletedRecordsHandler) List(w http.ResponseWriter, r *http.Request) {
 			continue
 		}
 		x.Label = lbl
-		if x.EntityID != nil {
-			_ = h.db.Get(&x.Exists, `SELECT EXISTS (SELECT 1 FROM "`+x.Entity+`" WHERE id::text = $1)`, *x.EntityID)
-		}
+		x.Exists = x.EntityID != nil && back[x.Entity+"|"+*x.EntityID]
 		out = append(out, x)
 	}
 	WriteJSON(w, http.StatusOK, map[string]any{"rows": out, "entities": RestorableEntities})
