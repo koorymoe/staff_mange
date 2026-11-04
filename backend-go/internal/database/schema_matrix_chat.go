@@ -1899,5 +1899,35 @@ func matrixChatMigrations() []Migration {
 			DROP TRIGGER IF EXISTS audit_trail_delete ON "LeaderInvoiceAdjustment";
 			CREATE TRIGGER audit_trail_delete AFTER DELETE ON "LeaderInvoiceAdjustment" FOR EACH ROW EXECUTE FUNCTION audit_trail_capture();
 		`,
+	}, {
+		// ٦ح — قواعد حالة الحجز بالقاعدة نفسها: تتفحص **لحظة تغيّر الحالة** بس،
+		// فالصفوف القديمة الغلط ما توقف تعديلاتها العادية. كل الكتّاب بالكود
+		// (Confirm، Start، Complete، SettleLegacy، Reopen، MarkWaiting، Cancel،
+		// PARTIAL) يطابقون هالقواعد — تحقق 11-04. للتصحيح اليدوي من مدير القاعدة:
+		// SET LOCAL app.allow_status_override = 'on'.
+		Version: "0437_booking_status_rules",
+		SQL: `
+			CREATE OR REPLACE FUNCTION booking_status_rules() RETURNS trigger LANGUAGE plpgsql AS $f$
+			BEGIN
+				IF NEW.status IS NOT DISTINCT FROM OLD.status THEN RETURN NEW; END IF;
+				IF current_setting('app.allow_status_override', true) = 'on' THEN RETURN NEW; END IF;
+				IF OLD.status = 'CANCELLED' THEN
+					RAISE EXCEPTION 'حجز ملغي ما يرجع لحالة ثانية (%→%)', OLD.status, NEW.status;
+				END IF;
+				IF NEW.status = 'COMPLETED' AND NEW."completedAt" IS NULL THEN
+					RAISE EXCEPTION 'حجز منجز لازم إله تاريخ إنجاز';
+				END IF;
+				IF NEW.status = 'CANCELLED' AND NEW."cancelledAt" IS NULL THEN
+					RAISE EXCEPTION 'حجز ملغي لازم إله تاريخ إلغاء';
+				END IF;
+				IF NEW.status = 'WAITING' AND NEW."waitingSince" IS NULL THEN
+					RAISE EXCEPTION 'حجز بالانتظار لازم إله تاريخ بداية الانتظار';
+				END IF;
+				RETURN NEW;
+			END $f$;
+			DROP TRIGGER IF EXISTS booking_status_rules ON "Booking";
+			CREATE TRIGGER booking_status_rules BEFORE UPDATE OF status ON "Booking"
+				FOR EACH ROW EXECUTE FUNCTION booking_status_rules();
+		`,
 	}}
 }
