@@ -1,4 +1,5 @@
 import type { MatrixChatMessage } from '../api'
+import { swallow } from './swallow'
 
 export type AIStreamEvent<T> =
   | { type: 'thinking' | 'text'; text: string }
@@ -57,7 +58,7 @@ export async function readAIStream<T>(
     }
     if (!done) throw new Error('انقطع البث قبل حفظ الجواب. نصك رجع للخانة.')
   } finally {
-    await reader.cancel().catch(() => {})
+    await reader.cancel().catch(swallow)
     reader.releaseLock()
   }
 }

@@ -3,6 +3,7 @@ import { api, type DuplicateCandidate } from '../api'
 import EntityIdentity from '../components/EntityIdentity'
 import MatrixNote from '../components/MatrixNote'
 import { askConfirm } from '../ui/dialogs'
+import { swallow } from '../utils/swallow'
 
 // ═══ تدقيق التكرار (ماتركس) — حجوزات وزبائن مكررون بالغلط ═══
 //
@@ -27,7 +28,7 @@ export default function DuplicateReviewPage() {
   // (ع) 10-14: بحث بالكود أو اسم الزبون أو الهاتف أو العنوان أو منو سجّل
   const [q, setQ] = useState('')
   const [report, setReport] = useState<Awaited<ReturnType<typeof api.getDuplicateReport>> | null>(null)
-  useEffect(() => { api.getDuplicateReport().then(setReport).catch(() => {}) }, [msg])
+  useEffect(() => { api.getDuplicateReport().then(setReport).catch(swallow) }, [msg])
   const [merge, setMerge] = useState<{ row: DuplicateCandidate; keepId: string; moves: { label: string; count: number }[] | null } | null>(null)
 
   useEffect(() => {

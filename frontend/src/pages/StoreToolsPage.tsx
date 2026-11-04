@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { api, type Employee, type OnDemandTool, type ToolRequestItem } from '../api'
 import { askConfirm } from '../ui/dialogs'
+import { swallow } from '../utils/swallow'
 
 // ═══ أدوات المخزن التخصصية — قرار (ع) 10-16 ═══
 // «أبو الكميات يضيف بيها الأدوات التخصصية وعددهن، ومن يصير نقص عند موظف
@@ -25,11 +26,11 @@ export default function StoreToolsPage() {
 
   const load = () => {
     api.getOnDemandTools().then(setTools).catch((e) => setErr(e instanceof Error ? e.message : 'تعذر جلب الأدوات'))
-    api.getToolRequests().then((r) => setIssued(r.filter((x) => x.status === 'APPROVED'))).catch(() => {})
+    api.getToolRequests().then((r) => setIssued(r.filter((x) => x.status === 'APPROVED'))).catch(swallow)
   }
   useEffect(() => {
     load()
-    api.getEmployees().then((e) => setEmployees(e.filter((x) => x.status === 'ACTIVE'))).catch(() => {})
+    api.getEmployees().then((e) => setEmployees(e.filter((x) => x.status === 'ACTIVE'))).catch(swallow)
   }, [])
 
   const run = async (fn: () => Promise<unknown>, ok?: string) => {

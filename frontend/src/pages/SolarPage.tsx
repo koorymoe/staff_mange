@@ -10,6 +10,7 @@ import { useNavigate } from 'react-router-dom'
 import { matches } from '../utils/search'
 import { dinarRound as iqd } from '../utils/format'
 import { askConfirm, askInput } from '../ui/dialogs'
+import { swallow } from '../utils/swallow'
 
 // ═══ نظام الطاقة الشمسية ═══
 //
@@ -36,10 +37,10 @@ export default function SolarPage() {
 
   const reload = useCallback(() => {
     return Promise.all([
-      api.getSolarStats().then(setStats).catch(() => {}),
-      api.getSolarComponents().then(setComponents).catch(() => {}),
-      api.getSolarSystems().then(setSystems).catch(() => {}),
-      api.getSolarInstallations().then(setInstallations).catch(() => {}),
+      api.getSolarStats().then(setStats).catch(swallow),
+      api.getSolarComponents().then(setComponents).catch(swallow),
+      api.getSolarSystems().then(setSystems).catch(swallow),
+      api.getSolarInstallations().then(setInstallations).catch(swallow),
     ])
   }, [])
 

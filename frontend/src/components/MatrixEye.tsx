@@ -9,6 +9,7 @@ import { eyeColor, type EyeGroup, type EyeMood } from './matrixEyeColors'
 import { pollVisible } from '../utils/poll'
 import { CourierInbox } from './MatrixCourier'
 import { COURIER_TRIP_MS, tweenLid } from '../utils/courier'
+import { swallow } from '../utils/swallow'
 
 // ═══ عين ماتركس — «عين الرب» ═══
 //
@@ -97,7 +98,7 @@ export default function MatrixEye() {
   const hideT = useRef(0)
   // مفتاح (ع): «عين ماتركس عند الموظفين» — ينطفي ويرجع. المدير والمالك تبقى عندهم.
   const [staffOff, setStaffOff] = useState(false)
-  useEffect(() => { isEnabled(SWITCH_MATRIX_STAFF_EYE).then((on) => setStaffOff(!on)).catch(() => {}) }, [path])
+  useEffect(() => { isEnabled(SWITCH_MATRIX_STAFF_EYE).then((on) => setStaffOff(!on)).catch(swallow) }, [path])
   const sayT = useRef(0)
 
   const group = (watch?.projectMode ? 'SUPERVISORS' : watch?.group ?? 'STAFF') as EyeGroup
@@ -122,7 +123,7 @@ export default function MatrixEye() {
   // الحالة: أول تحميل وكل ٥ دقايق.
   useEffect(() => {
     let alive = true
-    const load = () => api.getMyWatch().then((w) => { if (alive) setWatch(w) }).catch(() => {})
+    const load = () => api.getMyWatch().then((w) => { if (alive) setWatch(w) }).catch(swallow)
     load()
     const stop = pollVisible(load, POLL_MS)
     // بعد كل حفظ: التذكير الي انحل ينسكّر بالخادم، فنعيد الحالة فوراً.

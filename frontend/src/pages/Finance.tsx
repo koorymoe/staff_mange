@@ -10,6 +10,7 @@ import EntityIdentity from '../components/EntityIdentity'
 import MoneyNoInvoice from '../components/MoneyNoInvoice'
 import { askForm } from '../utils/dialog'
 import { askInput } from '../ui/dialogs'
+import { swallow } from '../utils/swallow'
 
 export default function Finance() {
   // ⚠️⚠️ هاي الشاشة چانت **بلا أي فحص**: أزرار «مطابق» و«غير مطابق»
@@ -41,11 +42,11 @@ export default function Finance() {
   const [backfill, setBackfill] = useState<Set<string>>(new Set())
   const loadBackfill = () => {
     if (!canBackfill) return
-    api.getInternalBackfill().then((rows) => setBackfill(new Set(rows.map((r) => r.id)))).catch(() => {})
+    api.getInternalBackfill().then((rows) => setBackfill(new Set(rows.map((r) => r.id)))).catch(swallow)
   }
   useEffect(() => {
     if (!canBackfill) return
-    api.getInternalBackfill().then((rows) => setBackfill(new Set(rows.map((r) => r.id)))).catch(() => {})
+    api.getInternalBackfill().then((rows) => setBackfill(new Set(rows.map((r) => r.id)))).catch(swallow)
   }, [canBackfill])
   const priceOld = async (b: Booking) => {
     const ans = await askForm(`سعّر العمل الداخلي ${b.code} (قديم)`, [

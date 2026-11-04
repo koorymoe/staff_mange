@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { api, type MatrixSuggestAccuracy } from '../api'
 import MatrixNote from './MatrixNote'
+import { swallow } from '../utils/swallow'
 
 // ═══ دقة اقتراحات ماتركس — المرحلة الثانية ═══
 // كم مرة المنسقين مشوا على اقتراحه، وهل الحجوزات الي مشت عليه طلعت بوقتها
@@ -12,7 +13,7 @@ export default function MatrixSuggestAccuracyPanel() {
   const [days, setDays] = useState(30)
   useEffect(() => {
     let alive = true
-    void api.getMatrixSuggestAccuracy(days).then((r) => { if (alive) setA(r) }).catch(() => {})
+    void api.getMatrixSuggestAccuracy(days).then((r) => { if (alive) setA(r) }).catch(swallow)
     return () => { alive = false }
   }, [days])
   if (!a) return null

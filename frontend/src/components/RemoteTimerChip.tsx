@@ -4,6 +4,7 @@ import { api, type RemoteTimer } from '../api'
 import { useSession, isAdminOrOwner } from '../session'
 import { pollVisible } from '../utils/poll'
 import { hms } from '../utils/format'
+import { swallow } from '../utils/swallow'
 
 // ═══ عدّاد ساعات البيت بالشريط العلوي — بكل الشاشات ═══
 // (ع): «أريد عدّاد، أني من أشتغل أحسب وقتي». يطلع لصاحب صلاحية ساعات البيت
@@ -19,7 +20,7 @@ export default function RemoteTimerChip() {
   const [busy, setBusy] = useState(false)
 
   const apply = (t: RemoteTimer) => { setTimer(t); setBase(Date.now()); setTick(0) }
-  const load = useCallback(() => { api.getMyRemote().then((r) => apply(r.timer)).catch(() => {}) }, [])
+  const load = useCallback(() => { api.getMyRemote().then((r) => apply(r.timer)).catch(swallow) }, [])
   useEffect(() => {
     if (!allowed) return
     load()

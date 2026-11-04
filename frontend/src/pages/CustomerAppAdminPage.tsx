@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { apiRequest, api, type Service } from '../api'
 import { askConfirm } from '../ui/dialogs'
+import { swallow } from '../utils/swallow'
 
 // (DRY 11-02) چانت مكتوبة جوّا كل نموذج بهالملف
 const inp = 'w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm'
@@ -32,7 +33,7 @@ export default function CustomerAppAdminPage() {
   const load = useCallback(() => {
     apiRequest<Promo[]>('/customer-app/promos').then(setPromos).catch((e) => { setMsg(e.message); setPromos([]) })
   }, [])
-  useEffect(() => { load(); api.getServices().then(setServices).catch(() => {}) }, [load])
+  useEffect(() => { load(); api.getServices().then(setServices).catch(swallow) }, [load])
   useEffect(() => { if (tab === 'accounts' && !accounts) apiRequest<CAccount[]>('/customer-app/accounts').then(setAccounts).catch(() => setAccounts([])) }, [tab, accounts])
   useEffect(() => { if (chatOf) apiRequest<CMsg[]>(`/customer-app/accounts/${chatOf.id}/chat`).then(setChat).catch(() => setChat([])) }, [chatOf])
 
@@ -287,7 +288,7 @@ function BranchesTab() {
       setEdit(null); load()
     } catch (e) { setMsg(e instanceof Error ? e.message : 'خطأ') }
   }
-  const del = async (b: Branch) => { if ((await askConfirm(`تحذف فرع «${b.name}» من التطبيق؟`))) { await apiRequest(`/customer-app/branches/${b.id}`, { method: 'DELETE' }).catch(() => {}); load() } }
+  const del = async (b: Branch) => { if ((await askConfirm(`تحذف فرع «${b.name}» من التطبيق؟`))) { await apiRequest(`/customer-app/branches/${b.id}`, { method: 'DELETE' }).catch(swallow); load() } }
   return (
     <div className="space-y-3">
       <button onClick={() => setEdit({})} className="rounded-xl bg-emerald-700 px-4 py-2 text-sm font-bold text-white">+ فرع</button>
@@ -352,7 +353,7 @@ function MailStatus() {
   const [to, setTo] = useState('')
   const [busy, setBusy] = useState(false)
   const [res, setRes] = useState<{ ok: boolean; msg: string } | null>(null)
-  useEffect(() => { apiRequest<{ configured: boolean; from: string }>('/customer-app/mail-status').then(setSt).catch(() => {}) }, [])
+  useEffect(() => { apiRequest<{ configured: boolean; from: string }>('/customer-app/mail-status').then(setSt).catch(swallow) }, [])
   const test = async () => {
     setBusy(true); setRes(null)
     try { await apiRequest('/customer-app/mail-test', { method: 'POST', body: JSON.stringify({ to }) }); setRes({ ok: true, msg: `انرسل ✓ — شوف وارد ${to} (أو الـSpam)` }) }

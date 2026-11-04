@@ -5,6 +5,7 @@ import { useSaveGuard } from '../useSaveGuard'
 import SaveError from '../components/SaveError'
 import { dateTimeAr as fmt } from '../utils/format'
 import { askConfirm } from '../ui/dialogs'
+import { swallow } from '../utils/swallow'
 
 // ═══ حجز المركبات ═══
 //
@@ -51,7 +52,7 @@ export default function VehicleBookingsPage() {
 
   useEffect(() => {
     let alive = true
-    api.getVehicleOptions().then((v) => { if (alive) setVehicles(v) }).catch(() => {})
+    api.getVehicleOptions().then((v) => { if (alive) setVehicles(v) }).catch(swallow)
     return () => { alive = false }
   }, [])
 

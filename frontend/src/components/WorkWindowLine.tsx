@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { api } from '../api'
+import { swallow } from '../utils/swallow'
 
 // ═══ «⏱️ وقت العمل» — (ع) 10-16 ═══
 // ثلاث مصادر للوقت (GPS، ضغطات الموظف، ورقة التنفيذ) وماتركس ياخذ الأوثق
@@ -11,7 +12,7 @@ export default function WorkWindowLine({ bookingId }: { bookingId: string }) {
   const [w, setW] = useState<{ startAt: string | null; endAt: string | null; startSrc: string | null; endSrc: string | null } | null>(null)
   useEffect(() => {
     let alive = true
-    api.getBookingWorkWindow(bookingId).then((x) => { if (alive) setW(x) }).catch(() => {})
+    api.getBookingWorkWindow(bookingId).then((x) => { if (alive) setW(x) }).catch(swallow)
     return () => { alive = false }
   }, [bookingId])
   if (!w || (!w.startAt && !w.endAt)) return null

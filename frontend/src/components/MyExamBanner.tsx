@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { api } from '../api'
 import { useSession } from '../session'
+import { swallow } from '../utils/swallow'
 
 // تذكير «عندك اختبار الشهر» — يطلع لحد ما يسلّمه (ع 10-13)
 export default function MyExamBanner() {
@@ -10,7 +11,7 @@ export default function MyExamBanner() {
   const [title, setTitle] = useState<string | null>(null)
   useEffect(() => {
     if (!employee) return
-    api.tcMyExam().then((d) => setTitle(d.exam && !d.attempt?.finishedAt ? d.exam.title : null)).catch(() => {})
+    api.tcMyExam().then((d) => setTitle(d.exam && !d.attempt?.finishedAt ? d.exam.title : null)).catch(swallow)
   }, [employee, loc.pathname])
   if (!title || loc.pathname === '/my-exam') return null
   return (

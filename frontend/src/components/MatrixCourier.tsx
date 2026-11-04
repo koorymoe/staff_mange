@@ -5,6 +5,7 @@ import { useSession, isAdminOrOwner } from '../session'
 import MatrixEyeGraphic from './MatrixEyeGraphic'
 import { pollVisible } from '../utils/poll'
 import { COURIER_TRIP_MS, tweenLid } from '../utils/courier'
+import { swallow } from '../utils/swallow'
 
 // ═══ رسول ماتركس — قرار (ع) 10-13 ═══
 //
@@ -53,11 +54,11 @@ export default function MatrixCourier() {
           window.setTimeout(() => {
             setVisit(null)
             busy.current = false
-            void api.courierDelivered(m.id).catch(() => {})
+            void api.courierDelivered(m.id).catch(swallow)
           }, SHOW_MS)
         }
       }
-    }).catch(() => {})
+    }).catch(swallow)
     load()
     // المدير يحتاج يعرف بسرعة إنه وجّه (حتى العين تروح بوقتها)؛ الموظف أبطأ شوية
     const stop = pollVisible(load, isBoss ? 3000 : 5000)

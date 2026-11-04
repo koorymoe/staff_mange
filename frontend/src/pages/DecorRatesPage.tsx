@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { api, type DecorRate, type Service } from '../api'
+import { swallow } from '../utils/swallow'
 
 // ═══ جدول أسعار الديكور — (ع) 10-16 ═══
 // لكل مهنة بنودها بسعرها (متر/قطعة/يوم). فاتورة الديكور تنحسب منه × القياسات —
@@ -13,8 +14,8 @@ export default function DecorRatesPage() {
   const [f, setF] = useState(empty)
   const [msg, setMsg] = useState('')
   useEffect(() => {
-    api.getDecorRates(true).then(setRows).catch(() => {})
-    api.getServices().then((s) => setServices(s.filter((x) => x.division === 'DECOR'))).catch(() => {})
+    api.getDecorRates(true).then(setRows).catch(swallow)
+    api.getServices().then((s) => setServices(s.filter((x) => x.division === 'DECOR'))).catch(swallow)
   }, [])
   const save = async (x: typeof empty) => {
     setMsg('')

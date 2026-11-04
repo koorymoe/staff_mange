@@ -11,6 +11,7 @@ import BookingDeleteRequestsPage from './BookingDeleteRequestsPage'
 import { pollVisible } from '../utils/poll'
 import ReturnedFromProjects from '../components/ReturnedFromProjects'
 import { lazyRetry } from '../utils/staleReload'
+import { swallow } from '../utils/swallow'
 const Customers = lazyRetry(() => import('./Customers'))
 const BookingsArchive = lazyRetry(() => import('./BookingsArchive'))
 const SalesOpportunitiesPage = lazyRetry(() => import('./SalesOpportunitiesPage'))
@@ -146,9 +147,9 @@ export default function BookingsHub() {
     let alive = true
     const load = () => api.getBookingStationCounts()
       .then((c) => { if (alive) setCounts((prev) => ({ ...prev, ...c, transferred: (c.at_projects ?? 0) + (c.at_tech ?? 0) })) })
-      .catch(() => {})
+      .catch(swallow)
     // عدّاد «رجعت من المشاريع» — نفس حارس التبويب (canCoord) حتى ما ينطلب ممنوع
-    if (canCoord) api.getReturnedFromProjects().then((r) => { if (alive) setCounts((prev) => ({ ...prev, returned: r.length })) }).catch(() => {})
+    if (canCoord) api.getReturnedFromProjects().then((r) => { if (alive) setCounts((prev) => ({ ...prev, returned: r.length })) }).catch(swallow)
     const t = setTimeout(load, 0)
     // ⚠️ تحديث كل دقيقة: الحجز الجديد يوصل والإداري ما يعيد تحميل
     // الصفحة — فيقعد ساعة وهو يظن ماكو شغل جديد.

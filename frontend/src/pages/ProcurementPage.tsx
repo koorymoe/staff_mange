@@ -5,6 +5,7 @@ import { useSearchParams } from 'react-router-dom'
 import { api, procurementTypeLabels, type ProcurementRequest, type ProcurementRequestType, type ProcurementStats, type Booking } from '../api'
 import { SessionContext, hasRole, isAdminOrOwner } from '../session'
 import BookingCodeChip from '../components/BookingCodeChip'
+import { swallow } from '../utils/swallow'
 
 const statusLabels: Record<string, string> = {
   PENDING: 'بانتظار التوفير',
@@ -66,7 +67,7 @@ export default function ProcurementPage() {
   // شرط العرضين: الشراء فوق الحد لازم وياه عرض مورد ثاني
   const [quoteThreshold, setQuoteThreshold] = useState(500000)
   const [quotes, setQuotes] = useState<{ supplierId: string; totalPrice: string }[]>([])
-  useEffect(() => { purchaseApi.policy().then((p) => setQuoteThreshold(p.quoteThreshold)).catch(() => {}) }, [])
+  useEffect(() => { purchaseApi.policy().then((p) => setQuoteThreshold(p.quoteThreshold)).catch(swallow) }, [])
   const canVerifyPurchase = isAdminLike || hasRole(employee, 'FINANCE') || permissions.includes('finance_audit')
   const canWatchPurchase = canVerifyPurchase || employee?.role === 'MONITOR' || permissions.includes('monitoring')
 

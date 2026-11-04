@@ -13,6 +13,7 @@ import { matches } from '../utils/search'
 import { toIntlPhone } from '../utils/phone'
 import { roleLabel, roleChipColor, ROLE_LABELS, ASSIGNABLE_ROLES, SECONDARY_ASSIGNABLE_ROLES } from '../roleLabels'
 import { askConfirm, askInput } from '../ui/dialogs'
+import { swallow } from '../utils/swallow'
 
 // زرّا واتساب وتلغرام جنب رقم الهاتف — دائماً الاثنان معاً (ماكو
 // حقل بالنظام يحدد أي تطبيق يستخدمه الموظف)، ويظهران بس لمن الهاتف موجود.
@@ -191,7 +192,7 @@ export default function Employees({ embedded }: { embedded?: boolean } = {}) {
       await api.updateEmployee(selectedEmployee.id, { status })
       setSelectedId(null)
       load()
-      if (showArchived) api.getArchivedEmployees().then(setArchivedEmployees).catch(() => {})
+      if (showArchived) api.getArchivedEmployees().then(setArchivedEmployees).catch(swallow)
     } catch (err) {
       alert(err instanceof Error ? err.message : 'تعذر تنفيذ العملية')
     }

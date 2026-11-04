@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { api, type Booking, type DecorRate } from '../api'
+import { swallow } from '../utils/swallow'
 
 // ═══ فاتورة الديكور — (ع) 10-16 ═══
 // نفس مسار فاتورة الليدر (المحاسب، التدقيق، المراقب)، بس الأجور من «جدول أسعار
@@ -11,7 +12,7 @@ export default function DecorInvoiceForm({ booking, onBack, onDone }: { booking:
   const [discount, setDiscount] = useState('')
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState('')
-  useEffect(() => { api.getDecorRates().then(setRates).catch(() => {}) }, [])
+  useEffect(() => { api.getDecorRates().then(setRates).catch(swallow) }, [])
   const byId = useMemo(() => new Map(rates.map((r) => [r.id, r])), [rates])
   const labor = lines.reduce((a, l) => a + (byId.get(l.rateId)?.price ?? 0) * (Number(l.qty) || 0), 0)
   const matTotal = mats.reduce((a, m) => a + (Number(m.quantity) || 0) * (Number(m.unitPrice) || 0), 0)

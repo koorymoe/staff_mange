@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { api, isStealthSession, loginSessionKey, type Justification } from '../api'
 import { useSession } from '../session'
 import { pollVisible } from '../utils/poll'
+import { swallow } from '../utils/swallow'
 
 // ═══ «المراقب يطلب تبرير» — (ع) 10-13 ═══
 // يطلع للموظف نفسه أول ما يفتح النظام: يقرا شنو المطلوب ويكتب عذره، والرد
@@ -27,7 +28,7 @@ export default function JustificationPrompt() {
     // 🕶️ المالك بالدخول المتخفي ما تطلعله تبريرات الموظف
     if (!employee || isStealthSession()) return
     let alive = true
-    const load = () => api.getMyJustifications().then((r) => { if (alive) setPending(r.filter((j) => !j.answeredAt)) }).catch(() => {})
+    const load = () => api.getMyJustifications().then((r) => { if (alive) setPending(r.filter((j) => !j.answeredAt)) }).catch(swallow)
     load()
     const stop = pollVisible(load, 60_000)
     return () => { alive = false; stop() }

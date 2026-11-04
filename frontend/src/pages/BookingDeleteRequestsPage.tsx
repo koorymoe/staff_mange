@@ -15,6 +15,7 @@ import RowActions from '../components/RowActions'
 import PhoneActions from '../components/PhoneActions'
 import { copyText } from '../utils/clipboard'
 import { askConfirm } from '../ui/dialogs'
+import { swallow } from '../utils/swallow'
 
 /**
  * طلبات حذف الحجوزات.
@@ -67,7 +68,7 @@ export default function BookingDeleteRequestsPage({ embedded }: { embedded?: boo
   const load = () => {
     Promise.all([api.getBookingDeleteRequests(), api.getBookingDeleteRequestCounts()])
       .then(([r, c]) => { setRows(r); setCounts(c) })
-      .catch(() => {})
+      .catch(swallow)
       .finally(() => setLoading(false))
   }
   useEffect(load, [])

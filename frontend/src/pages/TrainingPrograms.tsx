@@ -6,6 +6,7 @@ import {
 import { useSession, isAdminOrOwner } from '../session'
 import { dinarRound as iqd } from '../utils/format'
 import { askConfirm } from '../ui/dialogs'
+import { swallow } from '../utils/swallow'
 
 // ═══ برامج التدريب ═══
 //
@@ -37,9 +38,9 @@ export default function TrainingPrograms({ embedded = false }: { embedded?: bool
 
   const load = () =>
     Promise.all([
-      api.getTrainingPrograms().then(setPrograms).catch(() => {}),
-      api.getEmployees().then((e) => setEmployees(e.filter((x) => x.status === 'ACTIVE'))).catch(() => {}),
-      api.getSkills().then(setSkills).catch(() => {}),
+      api.getTrainingPrograms().then(setPrograms).catch(swallow),
+      api.getEmployees().then((e) => setEmployees(e.filter((x) => x.status === 'ACTIVE'))).catch(swallow),
+      api.getSkills().then(setSkills).catch(swallow),
     ])
 
   useEffect(() => { load().finally(() => setLoading(false)) }, [])

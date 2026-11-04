@@ -1,5 +1,6 @@
 import { api, isStealthSession } from '../api'
 import { isNetworkError } from './offlineStages'
+import { swallow } from './swallow'
 
 // ═══ تتبع المسار — قرار (ع) 10-14 ═══
 //
@@ -69,7 +70,7 @@ function stopNow() {
   try { localStorage.removeItem(ACTIVE) } catch { /* */ }
   if (watchId !== null) navigator.geolocation.clearWatch(watchId)
   watchId = null
-  void wakeLock?.release().catch(() => {}); wakeLock = null
+  void wakeLock?.release().catch(swallow); wakeLock = null
   void flushTrack()
 }
 

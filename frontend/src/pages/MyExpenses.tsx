@@ -3,6 +3,7 @@ import { api, type Expense, type Booking } from '../api'
 import { useSession } from '../session'
 import BookingCodeChip from '../components/BookingCodeChip'
 import { loadFailed } from '../netErrors'
+import { swallow } from '../utils/swallow'
 
 const statusLabels: Record<string, string> = {
   PENDING: 'بانتظار الاعتماد',
@@ -55,7 +56,7 @@ export default function MyExpenses() {
   useEffect(() => {
     let alive = true
     // ⚠️ نسأل «مسموحلي؟» أول — نداء مرفوض (403) ينحسب مخالفة
-    api.techSuppliersCan().then((c) => { if (c.can) return api.getMyTechSuppliers().then((r) => { if (alive) setTechSuppliers(r) }) }).catch(() => {})
+    api.techSuppliersCan().then((c) => { if (c.can) return api.getMyTechSuppliers().then((r) => { if (alive) setTechSuppliers(r) }) }).catch(swallow)
     return () => { alive = false }
   }, [])
 

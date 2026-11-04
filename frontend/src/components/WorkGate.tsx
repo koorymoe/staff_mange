@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { apiRequest } from '../api'
 import { useSession, isAdminOrOwner } from '../session'
+import { swallow } from '../utils/swallow'
 
 // ═══ 🧠 بوابة الالتزام (دازاي 11-02 — تعديلات ٩.١) ═══
 // ١. استمارة معلومات الموظف — مرة وحدة.
@@ -22,7 +23,7 @@ export default function WorkGate() {
   useEffect(() => {
     if (exempt || !employee) return
     let alive = true
-    apiRequest<Gate>('/me/work-gate').then((g) => { if (alive) setGate(g) }).catch(() => {})
+    apiRequest<Gate>('/me/work-gate').then((g) => { if (alive) setGate(g) }).catch(swallow)
     return () => { alive = false }
   }, [exempt, employee, tick])
   if (exempt || !gate) return null

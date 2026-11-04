@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { api, type Booking } from '../api'
 import BookingCodeChip from './BookingCodeChip'
+import { swallow } from '../utils/swallow'
 
 // ═══ ترحيل الحجز للتقني (قرار (ع) 10-07) ═══
 // الإداري تواصل ويا الزبون والمشكلة ما يعرفون الفنيين يحلّوها: يرحّله لتقني
@@ -11,7 +12,7 @@ export default function HandoverDialog({ booking, onClose, onDone }: { booking: 
   const [why, setWhy] = useState('')
   const [busy, setBusy] = useState(false)
   const [people, setPeople] = useState<{ id: string; name: string; position: string }[]>([])
-  useEffect(() => { void api.getHandoverCandidates().then(setPeople).catch(() => {}) }, [])
+  useEffect(() => { void api.getHandoverCandidates().then(setPeople).catch(swallow) }, [])
   const go = async () => {
     if (!to || !why.trim()) return
     setBusy(true)

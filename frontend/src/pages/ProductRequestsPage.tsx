@@ -3,6 +3,7 @@ import { api, fileUrl, type ProductRequest, type ProductProcurement, type PayerK
 import { useSession, hasRole, isAdminOrOwner } from '../session'
 import { loadFailed } from '../netErrors'
 import { askConfirm } from '../ui/dialogs'
+import { swallow } from '../utils/swallow'
 
 const money = (n: number) => n.toLocaleString('en-IQ')
 
@@ -123,7 +124,7 @@ export default function ProductRequestsPage({ embedded }: { embedded?: boolean }
       setFulfillFor(null)
       setFf(emptyFulfill)
       load()
-      api.getFunds().then((rows) => setFunds(rows ?? [])).catch(() => {})
+      api.getFunds().then((rows) => setFunds(rows ?? [])).catch(swallow)
     } catch (err) {
       alert(err instanceof Error ? err.message : 'تعذر تجهيز الطلب')
     } finally {
@@ -137,7 +138,7 @@ export default function ProductRequestsPage({ embedded }: { embedded?: boolean }
     try {
       await api.settleProductProcurement(id)
       load()
-      api.getFunds().then((rows) => setFunds(rows ?? [])).catch(() => {})
+      api.getFunds().then((rows) => setFunds(rows ?? [])).catch(swallow)
     } catch (err) {
       alert(err instanceof Error ? err.message : 'تعذر تسوية الطلب')
     } finally {

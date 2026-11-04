@@ -122,6 +122,7 @@ import AnnouncementTicker from './AnnouncementTicker'
 import { navItems, isNavVisible, isExtraForMonitor, isPathAllowed, organizeOrgNavigation, orgNavigationGroupForPath, orgGroupUnit, type DisplayNavItem, type NavItem } from './navTree'
 import { pollVisible } from '../utils/poll'
 import { startAgentRebrand } from '../utils/agentBrand'
+import { swallow } from '../utils/swallow'
 
 
 const loadStoredEmployee = (): Employee | null => {
@@ -184,7 +185,7 @@ export default function Layout() {
   useEffect(() => {
     const link = location.pathname
     if (!courierBadges[link]) return
-    api.courierSeen(link).then(() => window.dispatchEvent(new Event('matrix-courier-refresh'))).catch(() => {})
+    api.courierSeen(link).then(() => window.dispatchEvent(new Event('matrix-courier-refresh'))).catch(swallow)
   }, [location.pathname, courierBadges])
 
   // وسم عرض الملفات: ينجاب مرة عند الدخول ويتجدد كل 10 دقائق. بدونه
@@ -254,7 +255,7 @@ export default function Layout() {
     // state tied to the `employee` dependency, not a fetch; safe to keep as-is.
     // eslint-disable-next-line react-hooks/set-state-in-effect
     if (!employee) { setNotifications([]); setUnreadCount(0); return }
-    const load = () => api.getNotifications().then((r) => { setNotifications(r.notifications); setUnreadCount(r.unreadCount) }).catch(() => {})
+    const load = () => api.getNotifications().then((r) => { setNotifications(r.notifications); setUnreadCount(r.unreadCount) }).catch(swallow)
     load()
     const stop = pollVisible(load, 60_000)
     // إشعار تذكير ماتركس يتعلّم مقروء لمن ينحل — العدد ينزل بعد الحفظ مباشرة.

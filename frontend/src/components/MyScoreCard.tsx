@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react'
 import { api, type StaffScoreDetail } from '../api'
 import { ScoreBreakdown } from '../pages/StaffScorePage'
+import { swallow } from '../utils/swallow'
 
 // «🏅 تقييمي هالشهر» — الموظف يشوف رقمه وليش، وشلون يرفعه. ما يشوف غيره.
 export default function MyScoreCard() {
   const [d, setD] = useState<StaffScoreDetail | null>(null)
   const [open, setOpen] = useState(false)
-  useEffect(() => { void api.getMyScore().then((r) => { if (r?.score && r.score.max + r.score.humanCount > 0) setD(r.score) }).catch(() => {}) }, [])
+  useEffect(() => { void api.getMyScore().then((r) => { if (r?.score && r.score.max + r.score.humanCount > 0) setD(r.score) }).catch(swallow) }, [])
   if (!d) return null
   const v = d.final ?? 0
   const color = v >= 80 ? '#059669' : v >= 60 ? '#d97706' : '#dc2626'

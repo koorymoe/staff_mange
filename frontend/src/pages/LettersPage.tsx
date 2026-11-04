@@ -3,6 +3,7 @@ import { api, type EmployeeLetter } from '../api'
 import { useSession, isAdminOrOwner } from '../session'
 import vstripUrl from '../assets/print/quotation-vstrip.png'
 import bannerUrl from '../assets/print/quotation-banner.png'
+import { swallow } from '../utils/swallow'
 
 // ═══ الطلبات — كتاب رسمي من الموظف للإدارة ═══
 //
@@ -42,7 +43,7 @@ export default function LettersPage() {
       api.getLetterAddressees().then((a) => { setAddressees(a); setAddressedTo((cur) => cur || a[0] || '') }),
     ]
     if (isAdmin) jobs.push(api.getLetters().then(setInbox))
-    Promise.all(jobs).catch(() => {}).finally(() => setLoading(false))
+    Promise.all(jobs).catch(swallow).finally(() => setLoading(false))
   }
   useEffect(load, [isAdmin])
 

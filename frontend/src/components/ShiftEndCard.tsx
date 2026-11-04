@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { api } from '../api'
+import { swallow } from '../utils/swallow'
 
 // «خلص دوامك — سجّل انصرافك» — الشي الوحيد من الدوام الي يبقى بالرئيسية
 // (قرار (ع) 10-06). التفاصيل كلها بـ«جدول دوامي».
@@ -7,7 +8,7 @@ export default function ShiftEndCard() {
   const [show, setShow] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [done, setDone] = useState(false)
-  useEffect(() => { void api.getAttendanceGate().then((g) => { if (g.afterShift && g.open) setShow(g.endLabel) }).catch(() => {}) }, [])
+  useEffect(() => { void api.getAttendanceGate().then((g) => { if (g.afterShift && g.open) setShow(g.endLabel) }).catch(swallow) }, [])
   if (!show) return null
   if (done) return <p dir="rtl" className="rounded-2xl bg-emerald-50 p-3 text-sm font-bold text-emerald-800">✅ انسجّل انصرافك. الله وياك.</p>
   const out = async () => { setBusy(true); try { await api.checkOut(); setDone(true) } catch { /* يبقى الزر */ } finally { setBusy(false) } }

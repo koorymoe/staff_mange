@@ -9,6 +9,7 @@ import { api, type Employee } from '../api'
 // نفس التعريف (SECTIONS) للاثنين حتى ما يفترق الترتيب.
 
 import { type SheetCrewRow, type ExecutionSheetData, PROJECT_STATUS, PROGRAMMING, RATINGS, HOURS, MINUTES, DAYS, DECOR_UNITS, rowsFor, checksFor, today, inp } from '../utils/executionSheet'
+import { swallow } from '../utils/swallow'
 
 const Hint = ({ children }: { children: ReactNode }) => <span className="block text-[11px] font-bold text-white/90">{children}</span>
 const Title = ({ children }: { children: ReactNode }) => (
@@ -17,7 +18,7 @@ const Title = ({ children }: { children: ReactNode }) => (
 
 export function ExecutionSheetForm({ value, onChange }: { value: ExecutionSheetData; onChange: (v: ExecutionSheetData) => void }) {
   const [employees, setEmployees] = useState<Employee[]>([])
-  useEffect(() => { api.getEmployees().then((e) => setEmployees(e.filter((x) => x.status === 'ACTIVE'))).catch(() => {}) }, [])
+  useEffect(() => { api.getEmployees().then((e) => setEmployees(e.filter((x) => x.status === 'ACTIVE'))).catch(swallow) }, [])
   const s = value
   const set = <K extends keyof ExecutionSheetData>(k: K, patch: Partial<ExecutionSheetData[K]>) =>
     onChange({ ...s, [k]: { ...(s[k] as object), ...patch } } as ExecutionSheetData)

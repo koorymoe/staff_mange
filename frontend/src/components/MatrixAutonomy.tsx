@@ -3,6 +3,7 @@ import { api, type MatrixAutonomyStatus } from '../api'
 import MatrixNote from './MatrixNote'
 import OwnerSwitch from './OwnerSwitch'
 import { SWITCH_MATRIX_AUTO_CREW, SWITCH_MATRIX_MONITOR_ESCALATE } from '../systemSwitches'
+import { swallow } from '../utils/swallow'
 
 // ═══ المرحلة الثالثة: «🤖 ماتركس ينفّذ» ═══
 // كل فعل: مفتاح المالك (مطفي افتراضياً) + بوابة دقة + سجل + تراجع.
@@ -12,7 +13,7 @@ export default function MatrixAutonomy() {
   const [busy, setBusy] = useState<string | null>(null)
   useEffect(() => {
     let alive = true
-    void api.getMatrixAutonomy().then((r) => { if (alive) setSt(r) }).catch(() => {})
+    void api.getMatrixAutonomy().then((r) => { if (alive) setSt(r) }).catch(swallow)
     return () => { alive = false }
   }, [reload])
   if (!st) return null

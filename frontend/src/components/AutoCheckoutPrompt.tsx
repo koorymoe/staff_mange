@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { api } from '../api'
 import { useSession, isAdminOrOwner } from '../session'
+import { swallow } from '../utils/swallow'
 
 // ═══ «شنو صار بعد ما خلص دوامك؟» — قرار (ع) 10-06 ═══
 // الي انسكّر انصرافه تلقائياً، أول ما يرجع يفتح النظام ماتركس يسأله:
@@ -18,7 +19,7 @@ export default function AutoCheckoutPrompt() {
   const [err, setErr] = useState('')
   const [busy, setBusy] = useState(false)
   const exempt = isAdminOrOwner(employee)
-  useEffect(() => { if (!exempt) void api.getAttendanceGate().then((g) => setInfo(g.autoClosed ?? null)).catch(() => {}) }, [exempt])
+  useEffect(() => { if (!exempt) void api.getAttendanceGate().then((g) => setInfo(g.autoClosed ?? null)).catch(swallow) }, [exempt])
   if (!info) return null
 
   const answer = async (kind: 'ACK' | 'WORKED' | 'BACK') => {

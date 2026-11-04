@@ -20,6 +20,7 @@ import ShiftBadge from '../components/ShiftBadge'
 import HandoverDialog, { HandoverBadge } from '../components/HandoverDialog'
 import { loadFailed } from '../netErrors'
 import { askConfirm, askInput } from '../ui/dialogs'
+import { swallow } from '../utils/swallow'
 
 const DELETE_CHANNEL_OPTIONS: [BookingDeleteChannel, string][] =
   (Object.entries(bookingDeleteChannelLabels) as [BookingDeleteChannel, string][])
@@ -244,7 +245,7 @@ export default function BookingsList({ bucket = 'all', focus }: { bucket?: Booki
     }
   }, [canEditCrew])
 
-  useEffect(() => { api.getVipCustomerIds().then(setVipIds).catch(() => {}) }, [])
+  useEffect(() => { api.getVipCustomerIds().then(setVipIds).catch(swallow) }, [])
 
   // تعليم/إزالة "شخصية مهمة" — التعليم متاح لأي موظف، أما إزالة التعليم
   // فمحصورة بمدير النظام (السيرفر يفرضها كمان).

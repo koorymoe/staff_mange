@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { api, type MatrixEyesReport } from '../api'
 import MatrixNote from './MatrixNote'
 import { useSession, isAdminOrOwner } from '../session'
+import { swallow } from '../utils/swallow'
 
 // ═══ عيون الرقابة — المخزن، السيارات، رأي الزبائن، الآيتي، الطلبات المعلّقة ═══
 // طلب (ع) 10-05: «لازم اكو رقابه بكل مكان» و«تروح للمراقب ويا تحليل ماتركس».
@@ -23,7 +24,7 @@ export default function MatrixWatchEyes({ initialTab = 'REVENUE' }: { initialTab
   const [ran, setRan] = useState('')
   const { employee } = useSession()
   const isBoss = isAdminOrOwner(employee)
-  useEffect(() => { void api.getMatrixEyes().then(setR).catch(() => {}) }, [])
+  useEffect(() => { void api.getMatrixEyes().then(setR).catch(swallow) }, [])
   // «احسب كلشي وخلي يتاكد من كل شي» — نقاط ماتركس + كل العيون من جديد.
   const checkAll = async () => {
     setBusy(true); setRan('')

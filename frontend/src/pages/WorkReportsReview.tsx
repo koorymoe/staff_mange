@@ -8,6 +8,7 @@ import { asSheet } from '../utils/executionSheet'
 import { useSession } from '../session'
 import BookingCodeChip from '../components/BookingCodeChip'
 import { loadFailed } from '../netErrors'
+import { swallow } from '../utils/swallow'
 
 export default function WorkReportsReview() {
   const [reports, setReports] = useState<WorkReport[]>([])
@@ -51,7 +52,7 @@ export default function WorkReportsReview() {
       .then((rs) => { if (alive) setReports(rs) })
       .catch(loadFailed)
       .finally(() => { if (alive) setLoading(false) })
-    if (canReview) api.getWorkReportCounts().then((c) => { if (alive) setCounts(c) }).catch(() => {})
+    if (canReview) api.getWorkReportCounts().then((c) => { if (alive) setCounts(c) }).catch(swallow)
     return () => { alive = false }
   }, [review, reload, canReview])
 

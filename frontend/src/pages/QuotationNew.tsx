@@ -9,6 +9,7 @@ import { matches } from '../utils/search'
 import QuotationHistoryPicker from '../components/QuotationHistoryPicker'
 import { numIQ as fmt } from '../utils/format'
 import { askConfirm } from '../ui/dialogs'
+import { swallow } from '../utils/swallow'
 
 /** buildPrintHtml: المجموع صفر وما انطلب السماح — المنادي يسأل */
 const ZERO_TOTAL = '__ZERO_TOTAL__'
@@ -69,7 +70,7 @@ export default function QuotationNew() {
   const [viewSnap, setViewSnap] = useState<{ snap: Quotation; version: number } | null>(null)
   // الشروط والأحكام من الإعدادات (قرار (ع) 10-08) — الثابتة احتياط إذا ما وصلت.
   const [defaultTerms, setDefaultTerms] = useState<string[]>(DEFAULT_TERMS)
-  useEffect(() => { api.getQuotationTerms().then((r) => { if (r.length) setDefaultTerms(r.map((t) => t.text)) }).catch(() => {}) }, [])
+  useEffect(() => { api.getQuotationTerms().then((r) => { if (r.length) setDefaultTerms(r.map((t) => t.text)) }).catch(swallow) }, [])
   // (ع) 10-14: كل عرض بشروطه — null = يمشي على الافتراضية لحد ما تتعدّل
   const [ownTerms, setOwnTerms] = useState<string[] | null>(null)
   const terms = ownTerms ?? defaultTerms
@@ -138,7 +139,7 @@ export default function QuotationNew() {
       push('الضمان الممتد', 1, sys.price.warranty, 'خدمة')
       if (rows.length > 0) setItems(rows)
       setProjectName((prev) => prev || `منظومة طاقة شمسية ${sys.capacity} — ${sys.brand} ${sys.model}`)
-    }).catch(() => {})
+    }).catch(swallow)
      
   }, [solarSystemId])
   const [discountPercent, setDiscountPercent] = useState(0)
@@ -164,7 +165,7 @@ export default function QuotationNew() {
   }
 
   useEffect(() => {
-    api.getProducts().then((rows) => setProducts(rows ?? [])).catch(() => {})
+    api.getProducts().then((rows) => setProducts(rows ?? [])).catch(swallow)
   }, [])
 
   // من إدارة المشاريع: إذا المشروع عنده عرض نفتحه للتعديل بدل عرض جديد
@@ -173,7 +174,7 @@ export default function QuotationNew() {
     if (id || !pid) return
     api.getQuotationByProject(pid).then((q) => {
       if (q) navigate(`/quotations/${q.id}/edit${returnTo ? `?returnTo=${encodeURIComponent(returnTo)}` : ''}`, { replace: true })
-    }).catch(() => {})
+    }).catch(swallow)
   }, [id, searchParams, navigate, returnTo])
 
   useEffect(() => {

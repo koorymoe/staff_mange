@@ -9,6 +9,7 @@ import EmptyState from '../components/EmptyState'
 import { matches } from '../utils/search'
 import BookingCodeChip from '../components/BookingCodeChip'
 import { askConfirm, askInput } from '../ui/dialogs'
+import { swallow } from '../utils/swallow'
 
 /**
  * التدقيق اليومي.
@@ -84,7 +85,7 @@ export default function DailyAuditPage() {
   // سبب المجانية لكل صف — اختياري، ويُرسل لمّا المحاسب يأشّرها بنفسه.
   const [freeReason, setFreeReason] = useState<Record<string, string>>({})
   const [freeReasons, setFreeReasons] = useState<FreeWorkReason[]>([])
-  useEffect(() => { api.getFreeWorkReasons().then(setFreeReasons).catch(() => {}) }, [])
+  useEffect(() => { api.getFreeWorkReasons().then(setFreeReasons).catch(swallow) }, [])
   const [busy, setBusy] = useState<string | null>(null)
   const [loadErr, setLoadErr] = useState<string | null>(null)
   // إرجاع الحجز للتدقيق: صلاحية مدير النظام حصراً (المالك يتطبّع لمدير

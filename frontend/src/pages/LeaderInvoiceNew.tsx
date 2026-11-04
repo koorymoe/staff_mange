@@ -23,6 +23,7 @@ const fmtServiceTime = (v?: string | null) =>
   v ? new Date(v).toLocaleString('en-GB', { timeZone: 'Asia/Baghdad', hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' }) : '—'
 import EntityIdentity from '../components/EntityIdentity'
 import { loadFailed } from '../netErrors'
+import { swallow } from '../utils/swallow'
 
 // صفحة إنشاء فاتورة ليدر — تحل محل شيت جوجل "تكاليف المشروع" + "انشاء الفواتير":
 // اختيار حتى 3 منظومات، بنود تنفيذ لكل منظومة (عدد/ارتفاع/تسليك/طول كيبل/برمجة)،
@@ -293,7 +294,7 @@ export default function LeaderInvoiceNew({ initialMode, handoverOnly = false }: 
   const [freeReasonId, setFreeReasonId] = useState('')
   const [freeReasonNote, setFreeReasonNote] = useState('')
   const [freeReasons, setFreeReasons] = useState<FreeWorkReason[]>([])
-  useEffect(() => { api.getFreeWorkReasons().then(setFreeReasons).catch(() => {}) }, [])
+  useEffect(() => { api.getFreeWorkReasons().then(setFreeReasons).catch(swallow) }, [])
   const selectedReason = freeReasons.find((r) => r.id === freeReasonId)
   const serviceExtrasTotal = serviceExtras.reduce((n, x) => n + (Number(x.count) || 0) * (readMoney(x.unitPrice).value || 0), 0)
   const [saving, setSaving] = useState(false)

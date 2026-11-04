@@ -19,6 +19,7 @@ import MatrixSuggestAccuracyPanel from './MatrixSuggestAccuracy'
 import MatrixAutonomy from './MatrixAutonomy'
 import { pollVisible } from '../utils/poll'
 import { askConfirm } from '../ui/dialogs'
+import { swallow } from '../utils/swallow'
 
 // ═══ مركز قيادة ماتركس — شاشة المدير (تصميم (ع)) ═══
 // كل رقم من بيانات حقيقية؛ لو ما تكفي نگول «بيانات قليلة» بدل رقم وهمي.
@@ -89,15 +90,15 @@ export default function MatrixCommandCenter() {
       Promise.all(g.filter((x) => x.employees.length > 0).map((x) => api.getGroupPerformance(x.group).catch(() => null)))
         .then((r) => setPerf(r.filter((x): x is GroupPerformance => !!x)))
     }).catch((e) => setErr(e instanceof Error ? e.message : 'تعذر جلب ماتركس'))
-    api.getMatrixFeed().then(setFeed).catch(() => {})
-    api.getLateFocus().then(setLate).catch(() => {})
-    api.getMatrixBusiness().then(setBiz).catch(() => {})
-    api.getMatrixProposals('PENDING').then(setProps).catch(() => {})
-    api.getMatrixEyes().then((r) => { const v = r.eyes.find((e) => e.key === 'VEHICLES'); setVehicles({ n: v?.items.length ?? 0, high: v?.high ?? 0 }) }).catch(() => {})
+    api.getMatrixFeed().then(setFeed).catch(swallow)
+    api.getLateFocus().then(setLate).catch(swallow)
+    api.getMatrixBusiness().then(setBiz).catch(swallow)
+    api.getMatrixProposals('PENDING').then(setProps).catch(swallow)
+    api.getMatrixEyes().then((r) => { const v = r.eyes.find((e) => e.key === 'VEHICLES'); setVehicles({ n: v?.items.length ?? 0, high: v?.high ?? 0 }) }).catch(swallow)
   }, [])
   useEffect(() => {
     loadAll()
-    return pollVisible(() => { api.getMatrixFeed().then(setFeed).catch(() => {}) }, 60_000)
+    return pollVisible(() => { api.getMatrixFeed().then(setFeed).catch(swallow) }, 60_000)
   }, [loadAll])
 
   if (err) return <p className="rounded-lg bg-red-50 p-3 text-red-600">{err}</p>

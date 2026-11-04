@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { api, type Booking, type Service } from '../api'
 import { useSession } from '../session'
+import { swallow } from '../utils/swallow'
 
 // ═══ «🪚 شغل الديكور» — (ع) 10-16 ═══
 // الديكور يطلعون ويا الشعبة الهندسية (حداد يسوي قاعدة الداتا شو…) أو قبلها بيوم.
@@ -25,12 +26,12 @@ export default function DecorPanel({ booking }: { booking: Booking }) {
   useEffect(() => {
     if (isDecor) return
     let alive = true
-    api.getBookingDecor(booking.id).then((x) => { if (alive) setRows(x) }).catch(() => {})
+    api.getBookingDecor(booking.id).then((x) => { if (alive) setRows(x) }).catch(swallow)
     return () => { alive = false }
   }, [booking.id, isDecor])
   useEffect(() => {
     if (!open || services.length) return
-    api.getServices().then((s) => setServices(s.filter((x) => (x as { division?: string }).division === 'DECOR'))).catch(() => {})
+    api.getServices().then((s) => setServices(s.filter((x) => (x as { division?: string }).division === 'DECOR'))).catch(swallow)
   }, [open, services.length])
 
   if (isDecor) {

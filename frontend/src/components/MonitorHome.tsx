@@ -7,6 +7,7 @@ import { useSession } from '../session'
 import { isPathAllowed } from './navTree'
 import { num as fmt } from '../utils/format'
 import { card } from '../ui/classes'
+import { swallow } from '../utils/swallow'
 
 // ═══ الواجهة الرئيسية للمراقب — بتصميم (ع) 10-04 ═══
 // ترحيب وساعة، أربع بطاقات، حركة الحجوزات، أهم التنبيهات (صندوق المراقب)،
@@ -89,18 +90,18 @@ export default function MonitorHome() {
 
   useEffect(() => {
     let alive = true
-    api.getTodayBoard().then((x) => { if (alive) setBoard(x) }).catch(() => {})
+    api.getTodayBoard().then((x) => { if (alive) setBoard(x) }).catch(swallow)
     api.getRoleWatch().then((g) => {
       if (!alive) return
       const people = g.reduce((n, x) => n + x.employees.length, 0)
       const red = g.reduce((n, x) => n + (x.employees.length ? x.red : 0), 0)
       setStability(people ? Math.round(((people - red) / people) * 100) : 100)
-    }).catch(() => {})
-    api.getFinanceSummary().then((x) => { if (alive) setFin(x) }).catch(() => {})
-    api.getDashboardSummary().then((x) => { if (alive) setSummary(x) }).catch(() => {})
+    }).catch(swallow)
+    api.getFinanceSummary().then((x) => { if (alive) setFin(x) }).catch(swallow)
+    api.getDashboardSummary().then((x) => { if (alive) setSummary(x) }).catch(swallow)
     api.getMonitorReviews({ status: 'PENDING', limit: 30 })
-      .then((rows) => { if (alive) setAlerts([...rows].sort((a, b) => Number(b.urgent) - Number(a.urgent)).slice(0, 4)) }).catch(() => {})
-    api.getMonitorReviewCounts().then((c) => { if (alive) setPending(c.reduce((s, x) => s + x.count, 0)) }).catch(() => {})
+      .then((rows) => { if (alive) setAlerts([...rows].sort((a, b) => Number(b.urgent) - Number(a.urgent)).slice(0, 4)) }).catch(swallow)
+    api.getMonitorReviewCounts().then((c) => { if (alive) setPending(c.reduce((s, x) => s + x.count, 0)) }).catch(swallow)
     return () => { alive = false }
   }, [])
 

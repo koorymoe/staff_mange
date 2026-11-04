@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { api, type VoiceAnalysis } from '../api'
 import MatrixNote from './MatrixNote'
+import { swallow } from '../utils/swallow'
 
 // ═══ فويس مسج للإنجاز — طلب (ع) 10-05 ═══
 // يسجّل من المايك (لحد ٣ دقايق) ويبقى بسيرفرنا بس — ما يطلع لأي مزوّد.
@@ -89,7 +90,7 @@ function VoiceAnalysisView({ achievementId }: { achievementId: string }) {
   const [tick, setTick] = useState(0)
   useEffect(() => {
     let alive = true
-    void api.getAchievementVoiceAnalysis(achievementId).then((r) => { if (alive) setRes({ a: r.analysis, enabled: r.enabled }) }).catch(() => {})
+    void api.getAchievementVoiceAnalysis(achievementId).then((r) => { if (alive) setRes({ a: r.analysis, enabled: r.enabled }) }).catch(swallow)
     return () => { alive = false }
   }, [achievementId, tick])
   // ينتظر التحليل؟ نعيد السؤال كل ١٥ ثانية لحد ما يخلص.

@@ -254,3 +254,4 @@ git push origin origin/avg:refs/heads/prod     # بعد التأكد إنه fast
 - (لوفي 11-04) 🗑️ ٧ز: حذف components/MatrixAICost.tsx وapi.runDisciplineSweep (مسار /discipline/run ماله وجود) بموافقة دازاي. الأربع «الميتة» بالتقرير طلعن تبويبات شغّالة.
 - 2026-11-04: ٨أ — منع «ابدأ الشغل» لحجز بلا كادر/ليدر/مسؤول (عدا IN_HOUSE) — booking_repository.StartWithResponseTime + ErrBookingNoCrew. مجرّب محلياً.
 - 2026-11-04: ٧ج (Go) — حزمة internal/errlog؛ ١٠٣ `_, _ = X.Exec` صارت errlog.Exec (تسجيل بدل بلع). codemod: scratchpad/codemod/errlog.
+- 2026-11-04: ٧ج (واجهة) — utils/swallow.ts؛ ١٤٢ .catch(() => {}) → .catch(swallow). tsc/eslint/test خضر.

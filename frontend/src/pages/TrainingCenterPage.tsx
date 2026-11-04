@@ -5,6 +5,7 @@ import { ROLE_LABELS, roleLabel } from '../roleLabels'
 import { card } from '../ui/classes'
 import { lazyRetry } from '../utils/staleReload'
 import { askConfirm } from '../ui/dialogs'
+import { swallow } from '../utils/swallow'
 
 // ═══ مركز التدريب — قرار (ع) 10-13: «شي إعجازي بالتدريب» ═══
 // ماتركس يحدد منو لازم يتدرّب من شغله الحقيقي (شكاوى، توقف، بطء، خصومات،
@@ -39,7 +40,7 @@ export default function TrainingCenterPage() {
   const [emps, setEmps] = useState<Employee[]>([])
   useEffect(() => {
     api.tcInsights().then(setInsights).catch(() => setInsights([]))
-    api.getEmployees().then((r) => setEmps(r.filter((e) => e.status === 'ACTIVE'))).catch(() => {})
+    api.getEmployees().then((r) => setEmps(r.filter((e) => e.status === 'ACTIVE'))).catch(swallow)
   }, [])
   const need = (insights ?? []).filter((x) => x.score > 0)
 
@@ -248,7 +249,7 @@ function PlanTab({ emps, need }: { emps: Employee[]; need: TcInsight[] }) {
 function NewTab({ rows, emps }: { rows: TcInsight[]; emps: Employee[] }) {
   const [mentors, setMentors] = useState<Record<string, { mentorId: string | null; notes: string | null }>>({})
   const [draft, setDraft] = useState<Record<string, { mentorId: string; notes: string }>>({})
-  useEffect(() => { api.tcMentors().then((r) => setMentors(Object.fromEntries(r.map((m) => [m.employeeId, m])))).catch(() => {}) }, [])
+  useEffect(() => { api.tcMentors().then((r) => setMentors(Object.fromEntries(r.map((m) => [m.employeeId, m])))).catch(swallow) }, [])
   if (rows.length === 0) return <p className={`${card} text-center text-slate-500`}>ماكو موظفين جدد (آخر ٩٠ يوم).</p>
   return (
     <div className="space-y-2">
@@ -278,7 +279,7 @@ function CurriculumTab() {
   const [role, setRole] = useState('TECHNICIAN')
   const [title, setTitle] = useState('')
   const [details, setDetails] = useState('')
-  useEffect(() => { api.tcCurriculum().then(setRows).catch(() => {}) }, [])
+  useEffect(() => { api.tcCurriculum().then(setRows).catch(swallow) }, [])
   const mine = rows.filter((r) => r.role === role)
   return (
     <div className={card}>

@@ -8,6 +8,7 @@ import StatTile from '../components/StatTile'
 import EmptyState from '../components/EmptyState'
 import SaveError from '../components/SaveError'
 import SearchBar from '../components/SearchBar'
+import { swallow } from '../utils/swallow'
 
 const statusLabel: Record<string, string> = {
   PENDING: 'قيد الانتظار',
@@ -57,7 +58,7 @@ export default function StaffRequestsPage({ embedded }: { embedded?: boolean } =
       jobs.push(api.getEmployees().then(all => setTechnicians(all.filter(e => e.role === 'TECHNICIAN' && e.status === 'ACTIVE'))))
       // ⚠️ چان fetch خام بهيدر مبني بالإيد — ما تسري عليه معالجة
       // الجلسة والأخطاء الموحّدة. والدالة موجودة أصلاً بـapi.ts.
-      jobs.push(api.getProjectsBrief().then(setProjects).catch(() => {}))
+      jobs.push(api.getProjectsBrief().then(setProjects).catch(swallow))
     }
     Promise.all(jobs).finally(() => setLoading(false))
   }

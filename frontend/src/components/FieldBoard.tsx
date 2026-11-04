@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { api, apiRequest, type Booking } from '../api'
 import { pollVisible } from '../utils/poll'
+import { swallow } from '../utils/swallow'
 
 // ═══ «بالميدان والمعلّق» — طلب (ع) 10-13 ═══
 // من يضغط «الكوادر بالميدان» بلوحة المتابعة: الي طالعين للزبائن هسه، والمتوقفة،
@@ -57,7 +58,7 @@ export default function FieldBoard() {
         .catch(() => { if (alive) setData((d) => ({ ...d, [g.bucket]: null })) })
     })
     load()
-    const loadT = () => apiRequest<FieldTime[]>('/field-timing').then((r) => { if (alive) setTiming(Object.fromEntries(r.map((x) => [x.bookingId, x]))) }).catch(() => {})
+    const loadT = () => apiRequest<FieldTime[]>('/field-timing').then((r) => { if (alive) setTiming(Object.fromEntries(r.map((x) => [x.bookingId, x]))) }).catch(swallow)
     void loadT()
     const stopT = pollVisible(loadT, 60_000)
     const stop = pollVisible(load, 60_000)

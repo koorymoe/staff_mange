@@ -8,6 +8,7 @@ import BookingChainView from './BookingChain'
 import { validateCustomerName } from '../validation'
 import { parseAmount } from '../utils/money'
 import { askConfirm } from '../ui/dialogs'
+import { swallow } from '../utils/swallow'
 
 // ═══ تعديل الحجز بمكان واحد ═══
 //
@@ -90,7 +91,7 @@ export default function BookingEditPanel({
   const [saving, setSaving] = useState(false)
   const [msg, setMsg] = useState<string | null>(null)
 
-  useEffect(() => { api.getServices().then(setServices).catch(() => {}) }, [])
+  useEffect(() => { api.getServices().then(setServices).catch(swallow) }, [])
 
 
   const save = async () => {

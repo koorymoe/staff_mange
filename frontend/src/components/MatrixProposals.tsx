@@ -4,6 +4,7 @@ import { api, type MatrixProposal } from '../api'
 import { GROUP_LABEL, type EyeGroup } from './matrixEyeColors'
 import { EV_LABEL, SEV, category, evidenceCards, severity } from './matrixEvidence'
 import { askInput } from '../ui/dialogs'
+import { swallow } from '../utils/swallow'
 
 // ═══ اقتراحات ماتركس — هو يقترح، والمدير يقرر ═══
 // الموافَق يصير جزء منه (تعليمة، تعديل، أو تذكير للموظف)، والمرفوض
@@ -42,7 +43,7 @@ export default function MatrixProposals({ onChange }: { onChange?: () => void })
   const [approvedToday, setApprovedToday] = useState(0)
   useEffect(() => {
     const today = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Baghdad' })
-    api.getMatrixProposals('APPROVED').then((r) => setApprovedToday(r.filter((p) => p.decidedAt && new Date(p.decidedAt).toLocaleDateString('en-CA', { timeZone: 'Asia/Baghdad' }) === today).length)).catch(() => {})
+    api.getMatrixProposals('APPROVED').then((r) => setApprovedToday(r.filter((p) => p.decidedAt && new Date(p.decidedAt).toLocaleDateString('en-CA', { timeZone: 'Asia/Baghdad' }) === today).length)).catch(swallow)
   }, [reload])
   useEffect(() => {
     let alive = true

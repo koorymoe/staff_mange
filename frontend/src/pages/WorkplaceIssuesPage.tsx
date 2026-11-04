@@ -4,6 +4,7 @@ import { api, type MyPeerState, type WorkplaceIssue, type WorkplaceIssueDetail }
 import MatrixNote from '../components/MatrixNote'
 import PeerCheckinCard from '../components/PeerCheckinCard'
 import { isAdminOrOwner, useSession } from '../session'
+import { swallow } from '../utils/swallow'
 
 // ═══ المشاكل الوظيفية — قرار (ع) 10-05 ═══
 // المراقب أو المدير يفتح المشكلة، يسجّل إفادة كل طرف، ماتركس يرتّب ويقترح،
@@ -93,7 +94,7 @@ export default function WorkplaceIssuesPage() {
   const [err, setErr] = useState('')
   const [reload, setReload] = useState(0)
   useEffect(() => { void api.getWorkplaceIssues().then(setRows).catch((e) => setErr(e instanceof Error ? e.message : 'تعذر')) }, [reload])
-  useEffect(() => { void api.getMyPeer().then((s) => setPeople(s.colleagues)).catch(() => {}) }, [])
+  useEffect(() => { void api.getMyPeer().then((s) => setPeople(s.colleagues)).catch(swallow) }, [])
 
   const create = async () => {
     setErr('')

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { api, apiRequest, type Employee, type Vehicle } from '../api'
 import { roleLabel } from '../roleLabels'
+import { swallow } from '../utils/swallow'
 
 // ═══ «🪪 السواق والبطاقات» — (ع) 10-17 ═══
 // ضمن إدارة المركبات: إجازة سوق كل موظف وانتهاؤها، التعهد وتخويل السياقة،
@@ -103,8 +104,8 @@ function Cards() {
   const [f, setF] = useState(empty)
   useEffect(() => {
     apiRequest<Card[]>('/fuel-cards').then(setRows).catch(() => setRows([]))
-    api.getVehicles().then(setVehicles).catch(() => {})
-    api.getEmployees().then((e) => setEmps(e.filter((x) => x.status === 'ACTIVE'))).catch(() => {})
+    api.getVehicles().then(setVehicles).catch(swallow)
+    api.getEmployees().then((e) => setEmps(e.filter((x) => x.status === 'ACTIVE'))).catch(swallow)
   }, [])
   const save = async (x: typeof empty) => {
     try {

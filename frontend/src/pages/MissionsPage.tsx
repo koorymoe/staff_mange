@@ -6,6 +6,7 @@ import MatrixNote from '../components/MatrixNote'
 import { pollVisible } from '../utils/poll'
 import { API_URL } from '../api'
 import { askInput } from '../ui/dialogs'
+import { swallow } from '../utils/swallow'
 
 async function request<T>(path: string, opts?: RequestInit): Promise<T> {
   const token = localStorage.getItem('authToken')
@@ -234,7 +235,7 @@ export default function MissionsPage() {
           request('/location-pings', {
             method: 'POST',
             body: JSON.stringify({ latitude: pos.coords.latitude, longitude: pos.coords.longitude, bookingId: myEnRoute.bookingId }),
-          }).catch(() => {})
+          }).catch(swallow)
         },
         () => {},
         { enableHighAccuracy: true, timeout: 10000 }

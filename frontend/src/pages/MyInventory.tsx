@@ -8,6 +8,7 @@ import { useSession } from '../session'
 import TeamInventoryCheckPage from './TeamInventoryCheckPage'
 import { acceptedBookings } from '../utils/acceptedBookings'
 import BookingCodeChip from '../components/BookingCodeChip'
+import { swallow } from '../utils/swallow'
 
 type TabKey = 'checklist' | 'team' | 'vehicle' | 'request' | 'my-requests'
 
@@ -143,7 +144,7 @@ export default function MyInventory() {
     api.getPersonalTools(employee.id).then((pt) => {
       setPersonalTools(pt)
       setCheckMap(Object.fromEntries(pt.map((t) => [t.id, true])))
-    }).catch(() => {})
+    }).catch(swallow)
   }
   useEffect(() => {
     const onFocus = () => { if (document.visibilityState === 'visible') refreshTools() }

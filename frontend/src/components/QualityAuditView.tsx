@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { api, type Employee, type QualityFollowUp } from '../api'
 import { askJustification } from '../utils/justify'
 import BookingCodeChip from './BookingCodeChip'
+import { swallow } from '../utils/swallow'
 
 // ═══ «شنو سوّى مهندس الجودة» — (ع) 10-13 ═══
 // بمكتب المراقب: مو شاشة شغل الجودة (أزرار التقرير)، تدقيق بس — منو تواصل
@@ -37,7 +38,7 @@ export default function QualityAuditView() {
   useEffect(() => { api.getQualityFollowUps().then(setItems).catch((e) => { setErr(e instanceof Error ? e.message : 'تعذر'); setItems([]) }) }, [])
   // مهندسين الجودة — للحالات الي محد تواصل بيها (التفسير/التقصير على منو؟)
   const [qes, setQes] = useState<Employee[]>([])
-  useEffect(() => { api.getEmployees().then((es) => setQes(es.filter((e) => e.role === 'QUALITY_ENGINEER'))).catch(() => {}) }, [])
+  useEffect(() => { api.getEmployees().then((es) => setQes(es.filter((e) => e.role === 'QUALITY_ENGINEER'))).catch(swallow) }, [])
   const replace = (x: QualityFollowUp) => setItems((cur) => (cur ?? []).map((i) => (i.id === x.id ? x : i)))
 
   const done = useMemo(() => (items ?? []).filter((i) => i.status !== 'PENDING')

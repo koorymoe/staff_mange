@@ -7,6 +7,7 @@ import { matches } from '../utils/search'
 import { bookingStatusLabel, bookingStatusColor } from '../bookingStatus'
 import BookingCodeChip from '../components/BookingCodeChip'
 import { loadFailed } from '../netErrors'
+import { swallow } from '../utils/swallow'
 
 function splitFullName(fullName: string): [string, string, string, string] {
   const parts = fullName.trim().split(/\s+/).filter(Boolean)
@@ -102,14 +103,14 @@ export default function Customers() {
     const t = setTimeout(() => {
       api.getCustomers({ search: q, limit: 200 })
         .then((rows) => { if (alive) setCustomers(rows) })
-        .catch(() => {})
+        .catch(swallow)
     }, 300)
     return () => { alive = false; clearTimeout(t) }
   }, [search])
 
   useEffect(load, [])
   useEffect(() => {
-    api.getDashboardSummary().then((s) => setTotalCount(s.customerCount)).catch(() => {})
+    api.getDashboardSummary().then((s) => setTotalCount(s.customerCount)).catch(swallow)
   }, [])
 
   const openEdit = (c: Customer) => {

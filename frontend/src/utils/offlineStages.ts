@@ -1,4 +1,5 @@
 import { api, type Booking } from '../api'
+import { swallow } from './swallow'
 
 // ═══ مراحل الحجز بلا نت — قرار (ع) 10-14 ═══
 //
@@ -74,7 +75,7 @@ export async function runStage<T>(booking: Booking, stage: Stage, fn: (pos: Stag
   if (!navigator.onLine) return queue()
   try {
     const result = await fn(pos)
-    api.stageProof(booking.id, { stage, pressedAt, offline: false, ...(pos ?? {}) }).catch(() => {})
+    api.stageProof(booking.id, { stage, pressedAt, offline: false, ...(pos ?? {}) }).catch(swallow)
     return { result, queued: false }
   } catch (e) {
     if (isNetworkError(e)) return queue()

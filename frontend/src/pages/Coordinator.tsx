@@ -23,6 +23,7 @@ import ShiftBadge from '../components/ShiftBadge'
 import SurveyPhotos from '../components/SurveyPhotos'
 import MatrixSuggestBox from '../components/MatrixSuggestBox'
 import { askConfirm, askInput } from '../ui/dialogs'
+import { swallow } from '../utils/swallow'
 
 const DELETE_CHANNEL_OPTIONS: [BookingDeleteChannel, string][] =
   (Object.entries(bookingDeleteChannelLabels) as [BookingDeleteChannel, string][])
@@ -86,7 +87,7 @@ export default function Coordinator() {
     let alive = true
     void api.getMatrixAutoCrew().then((rows) => {
       if (alive) setAutoCrew(Object.fromEntries(rows.map((r) => [r.bookingId, r.actionId])))
-    }).catch(() => {})
+    }).catch(swallow)
     return () => { alive = false }
   }, [canMatrixSuggest, autoCrewTick])
   const [bookings, setBookings] = useState<Booking[]>([])

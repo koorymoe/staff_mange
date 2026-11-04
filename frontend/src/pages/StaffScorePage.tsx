@@ -7,6 +7,7 @@ import { SWITCH_MATRIX_SCORING } from '../systemSwitches'
 import { useSession, isAdminOrOwner } from '../session'
 import StaffPointsBoard from '../components/StaffPointsBoard'
 import { askInput } from '../ui/dialogs'
+import { swallow } from '../utils/swallow'
 
 // ═══ تقييم الموظفين — قرار (ع) 10-05 ═══
 // النهائي = ٦٠٪ ماتركس (نقاط كل حجز ويوم دوام ومهمة ومشروع) + ٤٠٪ البشر
@@ -122,7 +123,7 @@ export default function StaffScorePage() {
   const [cmpB, setCmpB] = useState<string | null>(null)
   const load = useCallback(() => { void api.getStaffScoreBoard(month).then(setB).catch((e) => setErr(e instanceof Error ? e.message : 'تعذر')) }, [month])
   useEffect(load, [load])
-  useEffect(() => { if (sel) void api.getStaffScore(sel, month).then(setD).catch(() => {}) }, [sel, month])
+  useEffect(() => { if (sel) void api.getStaffScore(sel, month).then(setD).catch(swallow) }, [sel, month])
   const reloadDetail = () => { if (sel) void api.getStaffScore(sel, month).then(setD); load() }
   const run = async () => { setBusy(true); try { await api.runStaffScore(); load(); if (sel) reloadDetail() } finally { setBusy(false) } }
 

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { api, parseQuotationSnapshot, type Quotation, type QuotationVersion } from '../api'
+import { swallow } from '../utils/swallow'
 
 // ═══ 🕘 هيستوري عرض السعر (قرار (ع) 10-09) ═══
 // العرض المعدّل هو الي يظهر، ومن هالزر يختار أي نسخة يعرضها ويطبعها.
@@ -14,7 +15,7 @@ export default function QuotationHistoryPicker({ quotationId, selected, onPick }
 
   useEffect(() => {
     let alive = true
-    api.getQuotationVersions(quotationId).then((r) => { if (alive) setRows(r ?? []) }).catch(() => {})
+    api.getQuotationVersions(quotationId).then((r) => { if (alive) setRows(r ?? []) }).catch(swallow)
     return () => { alive = false }
   }, [quotationId])
 

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { api, type DutiesReport } from '../api'
+import { swallow } from '../utils/swallow'
 
 // ═══ «🎯 واجباتك اليوم» — (ع) 10-17 ═══
 // كل منصب اله شغل يومي بالنظام. الكارت يبين شنو سوّى اليوم وشنو بعده ينتظر،
@@ -18,7 +19,7 @@ export default function DutiesCard({ employeeId }: { employeeId?: string }) {
   useEffect(() => {
     let alive = true
     ;(employeeId ? api.getEmployeeDuties(employeeId) : api.getMyDuties())
-      .then((x) => { if (alive) setR(x) }).catch(() => {})
+      .then((x) => { if (alive) setR(x) }).catch(swallow)
     return () => { alive = false }
   }, [employeeId])
   if (!r || !r.duties || r.duties.length === 0) return null

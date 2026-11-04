@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { purchaseApi, type ProcurementRequest, type PurchaseAlert, type PurchaseBias, type StandardPrice, type StandardSuggestion, type PurchaseGroup, type PurchaseMonth, type PurchaseControlRow, type PurchasePriceRow, type SupplierReviewInput } from '../api'
 import { dinarRound as iqd, dayBaghdad } from '../utils/format'
 import { askInput } from '../ui/dialogs'
+import { swallow } from '../utils/swallow'
 
 // ═══ رقابة المشتريات — قرار (ع) 10-15 ═══
 // المشتري يسجّل الشراء ويقيّم المورد ببنود (أولها السعر) · المحاسب يثبّت ·
@@ -41,24 +42,24 @@ export default function PurchaseControlPanel({ requests, canBuy, canVerify, canW
 
   useEffect(() => {
     let alive = true
-    purchaseApi.control().then((r) => { if (alive) setControl(r) }).catch(() => {})
-    if (canWatch) purchaseApi.alerts().then((r) => { if (alive) setAlerts(r) }).catch(() => {})
-    if (canWatch) purchaseApi.bias().then((r) => { if (alive) setBias(r) }).catch(() => {})
-    if (canWatch) purchaseApi.standards().then((r) => { if (alive) setStd(r) }).catch(() => {})
-    purchaseApi.policy().then((p) => { if (alive) setThreshold(p.quoteThreshold) }).catch(() => {})
+    purchaseApi.control().then((r) => { if (alive) setControl(r) }).catch(swallow)
+    if (canWatch) purchaseApi.alerts().then((r) => { if (alive) setAlerts(r) }).catch(swallow)
+    if (canWatch) purchaseApi.bias().then((r) => { if (alive) setBias(r) }).catch(swallow)
+    if (canWatch) purchaseApi.standards().then((r) => { if (alive) setStd(r) }).catch(swallow)
+    purchaseApi.policy().then((p) => { if (alive) setThreshold(p.quoteThreshold) }).catch(swallow)
     return () => { alive = false }
   }, [reload, canWatch, requests])
 
   useEffect(() => {
     if (!canWatch || tab !== 'month') return
     let alive = true
-    purchaseApi.monthly(month).then((m) => { if (alive) setReport(m) }).catch(() => {})
+    purchaseApi.monthly(month).then((m) => { if (alive) setReport(m) }).catch(swallow)
     return () => { alive = false }
   }, [canWatch, tab, month, reload])
 
   useEffect(() => {
     let alive = true
-    const t = setTimeout(() => { purchaseApi.prices(q).then((r) => { if (alive) setPrices(r) }).catch(() => {}) }, 300)
+    const t = setTimeout(() => { purchaseApi.prices(q).then((r) => { if (alive) setPrices(r) }).catch(swallow) }, 300)
     return () => { alive = false; clearTimeout(t) }
   }, [q, reload])
 

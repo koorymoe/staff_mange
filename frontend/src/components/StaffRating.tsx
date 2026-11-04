@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { api, type PendingStaffRating } from '../api'
 import { useRoleTabs } from './RoleSplit'
+import { swallow } from '../utils/swallow'
 
 // ═══ تقييمات البشر بمحطاتها (قرار (ع) 10-05) ═══
 // الإداري يقيّم الليدر لمن يرجع · المراقب يقيّم الليدر والإداري · الجودة بعد
@@ -65,7 +66,7 @@ export function StaffRatingQueue({ kind }: { kind: Kind }) {
 export function BookingStaffRating({ bookingId }: { bookingId: string }) {
   const [st, setSt] = useState<{ parties: PendingStaffRating[]; mine: Record<string, number> } | null>(null)
   const [err, setErr] = useState('')
-  useEffect(() => { void api.getBookingRatingState(bookingId, 'QUALITY_CALL').then(setSt).catch(() => {}) }, [bookingId])
+  useEffect(() => { void api.getBookingRatingState(bookingId, 'QUALITY_CALL').then(setSt).catch(swallow) }, [bookingId])
   if (!st || st.parties.length === 0) return null
   const rate = async (id: string, score: number) => {
     setErr('')

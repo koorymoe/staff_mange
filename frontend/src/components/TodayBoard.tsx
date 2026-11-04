@@ -5,6 +5,7 @@ import EmployeeAvatar from './EmployeeAvatar'
 import { useSession } from '../session'
 import { canDrill, drillTo } from '../utils/drill'
 import { pollVisible } from '../utils/poll'
+import { swallow } from '../utils/swallow'
 
 // ═══ لوحة اليوم ═══
 //
@@ -163,7 +164,7 @@ export default function TodayBoard({ finance }: { finance?: FinanceSummary | nul
 
   useEffect(() => {
     let alive = true
-    const load = () => api.getTodayBoard().then((x) => { if (alive) setD(x) }).catch(() => {})
+    const load = () => api.getTodayBoard().then((x) => { if (alive) setD(x) }).catch(swallow)
     const t = setTimeout(load, 0)
     // يتجدد كل دقيقتين — الأرقام تتغيّر والإداري ما يعيد تحميل الصفحة
     const stop = pollVisible(load, 120_000)

@@ -5,6 +5,7 @@ import { MapViewer } from '../components/MapLazy'
 import { matches } from '../utils/search'
 import { purchaseApi, type SupplierScore, API_URL } from '../api'
 import { askConfirm } from '../ui/dialogs'
+import { swallow } from '../utils/swallow'
 
 
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
@@ -305,7 +306,7 @@ export default function SuppliersPage() {
   const [scores, setScores] = useState<Map<string, SupplierScore>>(new Map())
   useEffect(() => {
     let alive = true
-    purchaseApi.supplierScores().then((r) => { if (alive) setScores(new Map(r.map((x) => [x.supplierId, x]))) }).catch(() => {})
+    purchaseApi.supplierScores().then((r) => { if (alive) setScores(new Map(r.map((x) => [x.supplierId, x]))) }).catch(swallow)
     return () => { alive = false }
   }, [])
   const priceScore = (id: string) => scores.get(id)?.price ?? 0

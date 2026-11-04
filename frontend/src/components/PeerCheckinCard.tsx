@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { api, type MyPeerState, type PeerNote } from '../api'
+import { swallow } from '../utils/swallow'
 
 // ═══ «🤖 ماتركس يسألك» — الفضفضة الأسبوعية (قرار (ع) 10-05) ═══
 // كل أسبوع (من الخميس) ماتركس يسأل: شلونك؟ شي مضايقك؟ شلون زملاؤك وياك؟
@@ -74,7 +75,7 @@ export default function PeerCheckinCard() {
   const [fuText, setFuText] = useState<Record<string, string>>({})
   const [fuDone, setFuDone] = useState<Record<string, boolean>>({})
 
-  useEffect(() => { void api.getMyPeer().then(setSt).catch(() => {}) }, [])
+  useEffect(() => { void api.getMyPeer().then(setSt).catch(swallow) }, [])
   if (!st) return null
 
   const pendingDeep = st.notes.filter((n) => n.needsFollowup && n.accepted == null)

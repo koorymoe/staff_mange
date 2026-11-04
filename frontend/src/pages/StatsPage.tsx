@@ -5,6 +5,7 @@ import type { Employee } from '../api'
 import { useSession } from '../session'
 import { roleLabel } from '../roleLabels'
 import { API_URL } from '../api'
+import { swallow } from '../utils/swallow'
 
 
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
@@ -61,9 +62,9 @@ export default function StatsPage() {
 
   useEffect(() => {
     if (role !== 'ADMIN') return
-    request<StatsData>('/stats').then(setStats).catch(() => {})
-    request<Employee[]>('/employees').then(setEmployees).catch(() => {})
-    request<InventoryItem[]>('/inventory/personal').then(setInventory).catch(() => {})
+    request<StatsData>('/stats').then(setStats).catch(swallow)
+    request<Employee[]>('/employees').then(setEmployees).catch(swallow)
+    request<InventoryItem[]>('/inventory/personal').then(setInventory).catch(swallow)
   }, [role])
 
   if (role !== 'ADMIN') return <div className="p-8 text-center text-gray-500">غير مصرح</div>

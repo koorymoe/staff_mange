@@ -1,4 +1,5 @@
 import { apiRequest } from '../api'
+import { swallow } from './swallow'
 
 // ═══ أسماء الوكلاء (دازاي 10-27) ═══
 // «ماتركس» و«ايريس» مكتوبة بمئات الأماكن. بدل ما نلمسها كلها، إذا المالك غيّر الاسم
@@ -49,5 +50,5 @@ export function startAgentRebrand() {
       })
       observer.observe(document.body, { subtree: true, childList: true, characterData: true })
     })
-    .catch(() => {})
+    .catch(swallow)
 }

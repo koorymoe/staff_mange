@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { api, type PrivacyPolicyPoint } from '../api'
 import { useSession, isAdminOrOwner } from '../session'
 import { askConfirm } from '../ui/dialogs'
+import { swallow } from '../utils/swallow'
 
 /**
  * صفحة سياسة الخصوصية — يقراها أي موظف من الإعدادات بأي وقت.
@@ -26,7 +27,7 @@ export default function PrivacyPolicyPage() {
       .then(setPoints)
       .catch(() => setPoints([]))
       .finally(() => setLoading(false))
-    api.getPrivacyPolicyStatus().then((s) => setAcceptedAt(s.acceptedAt)).catch(() => {})
+    api.getPrivacyPolicyStatus().then((s) => setAcceptedAt(s.acceptedAt)).catch(swallow)
   }
 
   useEffect(load, [canManage])

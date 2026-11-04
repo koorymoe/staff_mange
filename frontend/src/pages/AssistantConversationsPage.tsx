@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { api } from '../api'
 import { useSession } from '../session'
+import { swallow } from '../utils/swallow'
 
 type ConversationRow = Awaited<ReturnType<typeof api.getAssistantConversations>>['conversations'][number]
 
@@ -25,7 +26,7 @@ export default function AssistantConversationsPage() {
     if (!isOwner) return
     api.getAssistantConversationEmployees()
       .then((r) => setEmployees(r.employees))
-      .catch(() => {})
+      .catch(swallow)
   }, [isOwner])
 
   const fetchPage = async (offset: number, replace: boolean) => {

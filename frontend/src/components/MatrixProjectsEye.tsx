@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { api, type ChainLearning, type ProjectChain, type ProjectsReport } from '../api'
 import MatrixNote from './MatrixNote'
 import { CHAIN_TONE } from './chainTone'
+import { swallow } from '../utils/swallow'
 
 // ═══ ماتركس ٢٠٥٠ — عين على المشاريع + «شنو تعلّم ماتركس» ═══
 // أي أحد يتوجهله مشروع (مشرف، تقني، مصمم) عليه رقابة: كم يوم بالمرحلة
@@ -75,7 +76,7 @@ export function MatrixProjectsEye() {
 
 export function MatrixLearning() {
   const [l, setL] = useState<ChainLearning | null>(null)
-  useEffect(() => { void api.getChainLearning().then(setL).catch(() => {}) }, [])
+  useEffect(() => { void api.getChainLearning().then(setL).catch(swallow) }, [])
   if (!l) return null
   return (
     <details dir="rtl" className="rounded-2xl border border-slate-200 bg-white p-3 text-slate-800">

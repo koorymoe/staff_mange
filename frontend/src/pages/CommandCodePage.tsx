@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { api, type Employee } from '../api'
 import { useSession } from '../session'
 import { askConfirm } from '../ui/dialogs'
+import { swallow } from '../utils/swallow'
 
 // ═══ رمز مركز القيادة ═══
 //
@@ -29,10 +30,10 @@ export default function CommandCodePage() {
   const [employees, setEmployees] = useState<Employee[]>([])
   const [target, setTarget] = useState('')
   const [accounts, setAccounts] = useState<{ id: string; name: string; username: string | null; setAt: string | null }[]>([])
-  const loadAccounts = useCallback(() => { api.getCommandAccounts().then(setAccounts).catch(() => {}) }, [])
+  const loadAccounts = useCallback(() => { api.getCommandAccounts().then(setAccounts).catch(swallow) }, [])
   useEffect(() => {
     if (employee?.actualRole !== 'OWNER') return
-    api.getEmployees().then((r) => setEmployees(r.filter((e) => e.status === 'ACTIVE' && e.username))).catch(() => {})
+    api.getEmployees().then((r) => setEmployees(r.filter((e) => e.status === 'ACTIVE' && e.username))).catch(swallow)
     loadAccounts()
   }, [employee?.actualRole, loadAccounts])
 

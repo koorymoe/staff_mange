@@ -4,6 +4,7 @@ import { useSession } from '../session'
 import { useSaveGuard } from '../useSaveGuard'
 import SaveError from '../components/SaveError'
 import { dateTimeAr as fmt } from '../utils/format'
+import { swallow } from '../utils/swallow'
 
 // ═══ مهمات المركبات ═══
 //
@@ -65,8 +66,8 @@ export default function VehicleMissionsPage() {
 
   useEffect(() => {
     let alive = true
-    api.getVehicleOptions().then((v) => { if (alive) setVehicles(v) }).catch(() => {})
-    api.getEmployees().then((e) => { if (alive) setEmployees(e.filter((x) => x.status === 'ACTIVE')) }).catch(() => {})
+    api.getVehicleOptions().then((v) => { if (alive) setVehicles(v) }).catch(swallow)
+    api.getEmployees().then((e) => { if (alive) setEmployees(e.filter((x) => x.status === 'ACTIVE')) }).catch(swallow)
     return () => { alive = false }
   }, [])
 

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { api, type AttendanceGateState } from '../api'
+import { swallow } from '../utils/swallow'
 
 // ═══ «هذا آخر حجز؟» — قرار (ع) 10-06 ═══
 // بعد نهاية الشفت (الصباحي ٤ العصر، المسائي ١٢ بالليل)، كل حجز يخلّصه
@@ -13,7 +14,7 @@ export default function LastBookingPrompt() {
   const [err, setErr] = useState('')
   useEffect(() => {
     const on = () => {
-      void api.getAttendanceGate().then((g) => { if (g.afterShift && g.open) { setStep('ask'); setGate(g) } }).catch(() => {})
+      void api.getAttendanceGate().then((g) => { if (g.afterShift && g.open) { setStep('ask'); setGate(g) } }).catch(swallow)
     }
     window.addEventListener('matrix-booking-done', on)
     return () => window.removeEventListener('matrix-booking-done', on)

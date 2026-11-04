@@ -7,6 +7,7 @@ import { AdministrativeTab as KpiAdministrativeTab } from './KpiPage'
 import { roleLabel as arabicRole } from '../roleLabels'
 import { tracksFor } from '../rankingTracks'
 import PerformanceReviewPage from './PerformanceReviewPage'
+import { swallow } from '../utils/swallow'
 
 const levels = [
   { level: 1, label: 'متدرب', min: 0 },
@@ -128,7 +129,7 @@ export default function MyRanking() {
   const [peers, setPeers] = useState<Map<string, number | null>>(new Map())
   const [myScore, setMyScore] = useState<StaffScoreDetail | null>(null)
   useEffect(() => {
-    api.getStaffScorePeers().then((r) => setPeers(new Map(r.map((x) => [x.id, x.final])))).catch(() => {})
+    api.getStaffScorePeers().then((r) => setPeers(new Map(r.map((x) => [x.id, x.final])))).catch(swallow)
     api.getMyScore().then(async (r) => {
       const cur = r?.score ?? null
       // (11-02) أول الشهر بعده ماكو شغل كافي — نعرض الشهر الماضي بداله، مو «ماكو شغل»
@@ -138,7 +139,7 @@ export default function MyRanking() {
         if (prev?.score && (prev.score.max > 0 || prev.score.humanCount > 0)) { setMyScore(prev.score); return }
       }
       setMyScore(cur)
-    }).catch(() => {})
+    }).catch(swallow)
   }, [])
   const [evalBoard, setEvalBoard] = useState<RoleKpiLeaderboard | null>(null)
   const [evalPeriod, setEvalPeriod] = useState<'weekly' | 'monthly'>('weekly')

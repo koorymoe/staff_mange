@@ -8,6 +8,7 @@ import { LocationPicker } from '../components/MapLazy'
 import PhoneActions from '../components/PhoneActions'
 import { loadFailed } from '../netErrors'
 import { askConfirm } from '../ui/dialogs'
+import { swallow } from '../utils/swallow'
 
 type BookingType = 'REGULAR' | 'MAINTENANCE' | 'INTERNAL' | 'SOLAR'
 type Urgency = 'ASAP' | 'BY_PRIORITY' | 'SPECIFIC_DATE'
@@ -205,7 +206,7 @@ export default function SalesBooking() {
   // يفتح الصفحة وهو أصلاً راح يسوي حجز عادي.
   useEffect(() => {
     if (bookingType !== 'SOLAR' || solarSystems.length > 0) return
-    api.getSolarSystems().then(setSolarSystems).catch(() => {})
+    api.getSolarSystems().then(setSolarSystems).catch(swallow)
   }, [bookingType, solarSystems.length])
 
   const buildNotesString = () => {
@@ -394,7 +395,7 @@ export default function SalesBooking() {
       // الربط ما يوقف نجاح إنشاء الحجز نفسه، بس يبقى غير مربوط
       // (نفس معالجة أي رابط ثانوي بالنظام).
       if (qualityFollowUpId) {
-        api.linkQualityFollowUpBooking(qualityFollowUpId, booking.id).catch(() => {})
+        api.linkQualityFollowUpBooking(qualityFollowUpId, booking.id).catch(swallow)
       }
       if (complaintId) {
         await api.linkComplaintBooking(complaintId, booking.id)

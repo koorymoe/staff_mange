@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { api } from '../api'
 import { pollVisible } from '../utils/poll'
+import { swallow } from '../utils/swallow'
 
 // ═══ التنبيهات الحيّة ═══
 //
@@ -41,7 +42,7 @@ function beep() {
     gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.35)
     osc.start()
     osc.stop(ctx.currentTime + 0.36)
-    setTimeout(() => ctx.close().catch(() => {}), 600)
+    setTimeout(() => ctx.close().catch(swallow), 600)
   } catch { /* الصوت ترف — فشله ما يجوز يوقف شي */ }
 }
 

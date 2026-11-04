@@ -4,6 +4,7 @@ import { api, complaintTypeLabels, type Complaint, type ComplaintCustomerStat, t
 import { useSession } from '../session'
 import ComplaintsTracking from '../components/ComplaintsTracking'
 import { askConfirm } from '../ui/dialogs'
+import { swallow } from '../utils/swallow'
 
 
 
@@ -82,7 +83,7 @@ export default function ComplaintsPage() {
   // تقرير عدد شكاوى كل زبون — منفصل تماماً عن إحصائيات الحجوزات.
   // ينعاد تحميله بعد تأشير الاتصال حتى عمود «الحالة» يتحدث فوراً.
   const loadStats = useCallback(() => {
-    if (canTrack) api.getComplaintStats().then(setStats).catch(() => {})
+    if (canTrack) api.getComplaintStats().then(setStats).catch(swallow)
   }, [canTrack])
 
   useEffect(load, [])

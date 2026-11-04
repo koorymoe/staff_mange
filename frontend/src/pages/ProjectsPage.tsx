@@ -10,6 +10,7 @@ import BookingCodeChip from '../components/BookingCodeChip'
 import SurveyPhotos from '../components/SurveyPhotos'
 import { roleLabelShort } from '../roleLabels'
 import { askConfirm, askInput } from '../ui/dialogs'
+import { swallow } from '../utils/swallow'
 
 // ⚠️ چانت عندها طريقة اتصال خاصة (من أصلها كنظام منفصل) — هسه الموحدة.
 const request = apiRequest
@@ -144,7 +145,7 @@ function candidateLabel(c: ProjectCandidate): string {
 function useProjectCandidates(): ProjectCandidate[] {
   const [staff, setStaff] = useState<ProjectCandidate[]>([])
   useEffect(() => {
-    request<ProjectCandidate[]>('/project-candidates').then(setStaff).catch(() => {})
+    request<ProjectCandidate[]>('/project-candidates').then(setStaff).catch(swallow)
   }, [])
   return staff
 }
@@ -173,7 +174,7 @@ function useProjectWorkTypes(): string[] {
   useEffect(() => {
     request<{ id: string; name: string }[]>('/project-work-types')
       .then((rows) => { if (rows.length > 0) setTypes(rows.map((r) => r.name)) })
-      .catch(() => {})
+      .catch(swallow)
   }, [])
   return types
 }
@@ -1178,7 +1179,7 @@ function ContractValueField({ projectId }: { projectId: string }) {
     void api.getProjectPayments(projectId).then((s) => {
       if (!alive) return
       setState(s); setValue(s.money.contractValue && !s.money.valueFromText ? String(s.money.contractValue) : '')
-    }).catch(() => {})
+    }).catch(swallow)
     return () => { alive = false }
   }, [projectId])
   if (!state) return null
@@ -1329,7 +1330,7 @@ function MediaTransferModal({ project, onClose, onSaved }: { project: Project; o
       if (b.expectedEndAt) setEnd(b.expectedEndAt.slice(0, 10))
       setDuration(b.duration || '')
       setNotes(b.notes || '')
-    }).catch(() => {})
+    }).catch(swallow)
   }, [project.id])
   const save = async () => {
     if (!start) { alert('حدد متى يبدي الشغل حتى الإعلام يعرف يجون يصوّرون.'); return }
@@ -1394,7 +1395,7 @@ function MoveModal({ project, nextStage, onClose, onSaved }: {
   const [unpaidNote, setUnpaidNote] = useState('')
   const [moneyTick, setMoneyTick] = useState(0)
   useEffect(() => {
-    if (toComplete) void api.getProjectPayments(project.id).then((s) => setMoney(s.money)).catch(() => {})
+    if (toComplete) void api.getProjectPayments(project.id).then((s) => setMoney(s.money)).catch(swallow)
   }, [toComplete, project.id, moneyTick])
   const leftToPay = money?.contractValue != null ? money.contractValue - money.paid : null
   const moneyBlock = toComplete && (!money || money.contractValue == null || money.contractValue <= 0 || money.payments === 0)
@@ -1416,7 +1417,7 @@ function MoveModal({ project, nextStage, onClose, onSaved }: {
     if (!toSer) return
     void request<Project>(`/projects/${project.id}`).then((full) => {
       if (full.survey?.length) setSurvey(SURVEY.map((s, i) => full.survey?.[i] || s.opts[0]))
-    }).catch(() => {})
+    }).catch(swallow)
   }, [toSer, project.id])
   const [reason, setReason] = useState('')
   const [otherReason, setOtherReason] = useState('')
@@ -1621,7 +1622,7 @@ function useCanUploadProjectSurvey(project: Project) {
 function ReportModal({ type, project: listProject, onClose }: { type: 'survey' | 'visit'; project: Project; onClose: () => void }) {
   // القائمة بلا استمارة الكشف — نجيب المشروع كامل لمن تنفتح.
   const [full, setFull] = useState<Project | null>(null)
-  useEffect(() => { void request<Project>(`/projects/${listProject.id}`).then(setFull).catch(() => {}) }, [listProject.id])
+  useEffect(() => { void request<Project>(`/projects/${listProject.id}`).then(setFull).catch(swallow) }, [listProject.id])
   const project = full ?? listProject
   const canUpload = useCanUploadProjectSurvey(project)
   return (

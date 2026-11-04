@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { api, type InvoiceDeleteRequest } from '../api'
+import { swallow } from '../utils/swallow'
 
 // ═══ 🗑️ طلبات حذف الفواتير (دازاي 10-25) ═══
 // المحاسب يطلب ويكتب السبب، والمالك وحده يوافق أو يرفض. قبل الحذف تنحفظ نسخة كاملة.
@@ -45,7 +46,7 @@ export default function InvoiceDeleteRequests({ isOwner, onChanged }: { isOwner:
   const [rows, setRows] = useState<InvoiceDeleteRequest[]>([])
   const [busy, setBusy] = useState('')
   const [err, setErr] = useState('')
-  const load = useCallback(() => { api.getInvoiceDeleteRequests('PENDING').then(setRows).catch(() => {}) }, [])
+  const load = useCallback(() => { api.getInvoiceDeleteRequests('PENDING').then(setRows).catch(swallow) }, [])
   useEffect(() => { load() }, [load])
   if (rows.length === 0) return null
   const decide = async (id: string, approve: boolean) => {

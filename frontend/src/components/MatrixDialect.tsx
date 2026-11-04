@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { api } from '../api'
 import MatrixNote from './MatrixNote'
+import { swallow } from '../utils/swallow'
 
 // ═══ «لهجة ماتركس» — العبارات العراقية الي تعلّمها من فويسات الموظفين ═══
 // الصوت تحوّل لنص بسيرفرنا (ما طلع)، والعبارات تنضاف لتوجيهات ماتركس حتى
@@ -9,7 +10,7 @@ type Dialect = Awaited<ReturnType<typeof api.getMatrixDialect>>
 
 export default function MatrixDialect() {
   const [d, setD] = useState<Dialect | null>(null)
-  useEffect(() => { void api.getMatrixDialect().then(setD).catch(() => {}) }, [])
+  useEffect(() => { void api.getMatrixDialect().then(setD).catch(swallow) }, [])
   if (!d) return null
   return (
     <details dir="rtl" className="rounded-2xl border border-slate-200 bg-white p-3 text-slate-800">

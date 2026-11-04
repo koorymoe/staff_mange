@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { api } from '../api'
 import { useSession, isAdminOrOwner } from '../session'
+import { swallow } from '../utils/swallow'
 
 const ICON_CHOICES = ['😀', '😎', '🦁', '🐺', '🦅', '🐉', '⚡', '🔥', '⭐', '🚀', '🛠️', '🎯']
 
@@ -65,7 +66,7 @@ export default function SettingsPanel({ onClose }: { onClose: () => void }) {
   const [pendingRequests, setPendingRequests] = useState<Awaited<ReturnType<typeof api.getPendingAttendanceIconRequests>>>([])
   const isAdmin = isAdminOrOwner(employee)
   useEffect(() => {
-    if (isAdmin) api.getPendingAttendanceIconRequests().then(setPendingRequests).catch(() => {})
+    if (isAdmin) api.getPendingAttendanceIconRequests().then(setPendingRequests).catch(swallow)
   }, [isAdmin])
 
   const handleResolve = async (id: string, approve: boolean) => {

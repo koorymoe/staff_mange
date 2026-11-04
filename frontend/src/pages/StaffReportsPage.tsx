@@ -5,6 +5,7 @@ import { useSession, isAdminOrOwner, hasRole } from '../session'
 import { useApi } from '../utils/useApi'
 import { card } from '../ui/classes'
 import { num, todayBaghdad } from '../utils/format'
+import { swallow } from '../utils/swallow'
 
 // ═══ 🧾 تقارير الموظفين (دازاي 11-02 — تعديلات ٩.١) ═══
 // تقارير الإنجاز اليومية (منو كتب، ومنو داوم وما كتب) + استمارات معلومات
@@ -64,7 +65,7 @@ function DailyTab() {
 function SurveysTab() {
   const [reload, setReload] = useState(0)
   const { data, error } = useApi(() => apiRequest<Surveys>('/profile-surveys'), [reload])
-  const review = async (id: string) => { await apiRequest(`/profile-surveys/${id}/review`, { method: 'POST' }).catch(() => {}); setReload((n) => n + 1) }
+  const review = async (id: string) => { await apiRequest(`/profile-surveys/${id}/review`, { method: 'POST' }).catch(swallow); setReload((n) => n + 1) }
   return (
     <div className={`${card} space-y-3`}>
       {error && <p className="text-sm text-red-600">{error}</p>}

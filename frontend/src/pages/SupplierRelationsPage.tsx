@@ -4,6 +4,7 @@ import PageHeader from '../components/PageHeader'
 import { useSession, isAdminOrOwner } from '../session'
 import { dayBaghdad } from '../utils/format'
 import { askInput } from '../ui/dialogs'
+import { swallow } from '../utils/swallow'
 
 // ═══ علاقات الموردين — قرار (ع) 10-15 ═══
 // العلاقات العامة ووحدة التقنيين: كل مورد (مشتريات أو تقنيين)، صارلنا شكد ما
@@ -43,7 +44,7 @@ export default function SupplierRelationsPage() {
   useEffect(() => {
     if (!open) return
     let alive = true
-    api.supplierTimeline(open.kind, open.id).then((evs) => { if (alive) setTl({ key: `${open.kind}:${open.id}`, evs }) }).catch(() => {})
+    api.supplierTimeline(open.kind, open.id).then((evs) => { if (alive) setTl({ key: `${open.kind}:${open.id}`, evs }) }).catch(swallow)
     return () => { alive = false }
   }, [open, reload])
   const evs = tl?.key === openKey ? tl.evs : null

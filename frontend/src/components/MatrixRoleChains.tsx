@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom'
 import { api, type ChainEmployeeReport, type ChainStationStat, type RoleChainReport } from '../api'
 import MatrixNote from './MatrixNote'
 import { CHAIN_BAR, CHAIN_TONE, chainDuration } from './chainTone'
+import { swallow } from '../utils/swallow'
 
 // ═══ ماتركس ٢٠٥٠ — تقارير الأدوار من «سلسلة الحجز» ═══
 // طلب (ع) 10-05: تصميم أوضح من الجدول، وكلمات عراقية دقيقة.
@@ -219,7 +220,7 @@ export default function MatrixRoleChains() {
   const loading = rep?.k !== key
   const r = loading ? null : rep.r
 
-  useEffect(() => { void api.getRoleChainRoles().then(setRoles).catch(() => {}) }, [])
+  useEffect(() => { void api.getRoleChainRoles().then(setRoles).catch(swallow) }, [])
   useEffect(() => {
     let alive = true
     void api.getRoleChain(role, days).catch(() => null).then((d) => { if (alive) setRep({ k: key, r: d }) })

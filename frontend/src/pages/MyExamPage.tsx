@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { api, type TcMyExam } from '../api'
 import { askConfirm } from '../ui/dialogs'
+import { swallow } from '../utils/swallow'
 
 // ═══ اختباري الشهري — (ع) 10-13 ═══
 // الموظف يسويه من حسابه: يبدي ← الوكت يمشي ← يسلّم ← النتيجة فوراً.
@@ -57,7 +58,7 @@ export default function MyExamPage() {
       ) : !started ? (
         <div className="rounded-2xl bg-white p-8 text-center shadow-sm">
           <p className="text-slate-600">أول ما تبدي يمشي الوكت ({d.exam.minutes} دقيقة). جاوب بنفسك — هذا حتى نعرف شنو تحتاج تدريب.</p>
-          <button onClick={() => api.tcStartExam().then(setD).catch(() => {})} className="mt-4 rounded-xl bg-[#0f2040] px-8 py-3 font-bold text-white">ابدي الاختبار</button>
+          <button onClick={() => api.tcStartExam().then(setD).catch(swallow)} className="mt-4 rounded-xl bg-[#0f2040] px-8 py-3 font-bold text-white">ابدي الاختبار</button>
         </div>
       ) : (
         <>

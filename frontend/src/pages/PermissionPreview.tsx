@@ -1,6 +1,7 @@
 import { useEffect, useState, type ReactElement } from 'react'
 import { api, type Employee } from '../api'
 import { navItems, isNavVisible, type NavItem } from '../components/navTree'
+import { swallow } from '../utils/swallow'
 
 // ═══ شوف النظام بعين الموظف ═══
 //
@@ -26,11 +27,11 @@ export default function PermissionPreview() {
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    api.getEmployees().then((e) => setEmployees(e.filter((x) => x.status === 'ACTIVE'))).catch(() => {})
+    api.getEmployees().then((e) => setEmployees(e.filter((x) => x.status === 'ACTIVE'))).catch(swallow)
     api.getServices().then((svc) => {
       const gps = svc.find((s) => s.name.includes('جي بي') || s.name.toUpperCase().includes('GPS'))
       setGpsServiceId(gps?.id || null)
-    }).catch(() => {})
+    }).catch(swallow)
   }, [])
 
   // ⚠️ `alive` يحمي من سباق الطلبات: لو المدير بدّل الموظف بسرعة،

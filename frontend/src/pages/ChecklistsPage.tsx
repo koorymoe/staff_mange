@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { api, type ProjectChecklist, fileUrl } from '../api'
 import { loadFailed } from '../netErrors'
 import { esc } from '../utils/printIdentity'
+import { swallow } from '../utils/swallow'
 
 function fileToBase64(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -52,7 +53,7 @@ export default function ChecklistsPage() {
     api.getChecklists().then(setChecklists).finally(() => setLoading(false)).catch(loadFailed)
   }
   useEffect(load, [])
-  useEffect(() => { api.getProjectsBrief().then(setProjects).catch(() => {}) }, [])
+  useEffect(() => { api.getProjectsBrief().then(setProjects).catch(swallow) }, [])
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault()

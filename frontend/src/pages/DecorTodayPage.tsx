@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { api, type Booking, type WorkPhoto } from '../api'
 import MyDirectives from '../components/MyDirectives'
 import { todayBaghdad, dayBaghdad } from '../utils/format'
+import { swallow } from '../utils/swallow'
 
 // ═══ 🪚 «شغلي اليوم» — كادر الديكور (دازاي 10-25) ═══
 // أغلبهم ما مكملين مدارس: كلمات قليلة، أزرار كبيرة بالترتيب، وكل زر ينفتح بعد
@@ -53,7 +54,7 @@ function JobCard({ b, onChange }: { b: Booking; onChange: () => void }) {
   const [err, setErr] = useState('')
   const [phase, setPhase] = useState<'BEFORE' | 'AFTER'>('BEFORE')
   const inputId = `wp-${b.id}`
-  useEffect(() => { api.getWorkPhotos(b.id).then(setPhotos).catch(() => {}) }, [b.id])
+  useEffect(() => { api.getWorkPhotos(b.id).then(setPhotos).catch(swallow) }, [b.id])
 
   const hasBefore = photos.some((p) => p.phase === 'BEFORE')
   const hasAfter = photos.some((p) => p.phase === 'AFTER')
