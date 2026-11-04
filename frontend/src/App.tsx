@@ -40,6 +40,7 @@ const SolarPage = lazyRetry(() => import('./pages/SolarPage'))
 // والمسار بالباك إند يرجّع 404 لأي حساب ثاني.
 const OwnerBackups = lazyRetry(() => import('./pages/OwnerBackups'))
 const OwnerIntegrity = lazyRetry(() => import('./pages/OwnerIntegrity'))
+const OwnerDeleted = lazyRetry(() => import('./pages/OwnerDeleted'))
 const StaffReportsPage = lazyRetry(() => import('./pages/StaffReportsPage'))
 const EmployeeDossierPage = lazyRetry(() => import('./pages/EmployeeDossierPage'))
 const CommandCodePage = lazyRetry(() => import('./pages/CommandCodePage'))
@@ -215,6 +216,7 @@ function App() {
           <Route path="owner-security" element={<SecurityDashboardPage />} />
           <Route path="owner-backups" element={<OwnerBackups />} />
           <Route path="owner-integrity" element={<OwnerIntegrity />} />
+          <Route path="owner-deleted" element={<OwnerDeleted />} />
           <Route path="staff-reports" element={<StaffReportsPage />} />
           <Route path="employee-dossier" element={<EmployeeDossierPage />} />
           <Route path="command-code" element={<CommandCodePage />} />

@@ -1836,5 +1836,68 @@ func matrixChatMigrations() []Migration {
 			DROP TRIGGER IF EXISTS audit_trail_row ON "OrgAssignment";
 			CREATE TRIGGER audit_trail_row AFTER INSERT OR UPDATE OR DELETE ON "OrgAssignment" FOR EACH ROW EXECUTE FUNCTION audit_trail_capture();
 		`,
+	}, {
+		// ٦ج — «ماكو حذف»: بيانات الشغل (القسم ١ بـ docs/ماكو-حذف.md) — أي حذف
+		// ينحفظ الصف كامل بسجل التدقيق ويكدر المالك يرجّعه. حذف بس (مو كل تعديل)
+		// حتى السجل ما يتضخم. ما لمسنا ولا استعلام قراءة.
+		Version: "0436_audit_deletes_business_tables",
+		SQL: `
+			DROP TRIGGER IF EXISTS audit_trail_delete ON "Project";
+			CREATE TRIGGER audit_trail_delete AFTER DELETE ON "Project" FOR EACH ROW EXECUTE FUNCTION audit_trail_capture();
+			DROP TRIGGER IF EXISTS audit_trail_delete ON "Quotation";
+			CREATE TRIGGER audit_trail_delete AFTER DELETE ON "Quotation" FOR EACH ROW EXECUTE FUNCTION audit_trail_capture();
+			DROP TRIGGER IF EXISTS audit_trail_delete ON "QuotationItem";
+			CREATE TRIGGER audit_trail_delete AFTER DELETE ON "QuotationItem" FOR EACH ROW EXECUTE FUNCTION audit_trail_capture();
+			DROP TRIGGER IF EXISTS audit_trail_delete ON "Customer";
+			CREATE TRIGGER audit_trail_delete AFTER DELETE ON "Customer" FOR EACH ROW EXECUTE FUNCTION audit_trail_capture();
+			DROP TRIGGER IF EXISTS audit_trail_delete ON "RemoteWorkEntry";
+			CREATE TRIGGER audit_trail_delete AFTER DELETE ON "RemoteWorkEntry" FOR EACH ROW EXECUTE FUNCTION audit_trail_capture();
+			DROP TRIGGER IF EXISTS audit_trail_delete ON "ToolRequest";
+			CREATE TRIGGER audit_trail_delete AFTER DELETE ON "ToolRequest" FOR EACH ROW EXECUTE FUNCTION audit_trail_capture();
+			DROP TRIGGER IF EXISTS audit_trail_delete ON "SurveyPhoto";
+			CREATE TRIGGER audit_trail_delete AFTER DELETE ON "SurveyPhoto" FOR EACH ROW EXECUTE FUNCTION audit_trail_capture();
+			DROP TRIGGER IF EXISTS audit_trail_delete ON "KpiEvaluation";
+			CREATE TRIGGER audit_trail_delete AFTER DELETE ON "KpiEvaluation" FOR EACH ROW EXECUTE FUNCTION audit_trail_capture();
+			DROP TRIGGER IF EXISTS audit_trail_delete ON "VehicleLog";
+			CREATE TRIGGER audit_trail_delete AFTER DELETE ON "VehicleLog" FOR EACH ROW EXECUTE FUNCTION audit_trail_capture();
+			DROP TRIGGER IF EXISTS audit_trail_delete ON "VehicleWashLog";
+			CREATE TRIGGER audit_trail_delete AFTER DELETE ON "VehicleWashLog" FOR EACH ROW EXECUTE FUNCTION audit_trail_capture();
+			DROP TRIGGER IF EXISTS audit_trail_delete ON "VehicleDocument";
+			CREATE TRIGGER audit_trail_delete AFTER DELETE ON "VehicleDocument" FOR EACH ROW EXECUTE FUNCTION audit_trail_capture();
+			DROP TRIGGER IF EXISTS audit_trail_delete ON "VehiclePhoto";
+			CREATE TRIGGER audit_trail_delete AFTER DELETE ON "VehiclePhoto" FOR EACH ROW EXECUTE FUNCTION audit_trail_capture();
+			DROP TRIGGER IF EXISTS audit_trail_delete ON "VehicleIncidentAttachment";
+			CREATE TRIGGER audit_trail_delete AFTER DELETE ON "VehicleIncidentAttachment" FOR EACH ROW EXECUTE FUNCTION audit_trail_capture();
+			DROP TRIGGER IF EXISTS audit_trail_delete ON "Vehicle";
+			CREATE TRIGGER audit_trail_delete AFTER DELETE ON "Vehicle" FOR EACH ROW EXECUTE FUNCTION audit_trail_capture();
+			DROP TRIGGER IF EXISTS audit_trail_delete ON "ItAsset";
+			CREATE TRIGGER audit_trail_delete AFTER DELETE ON "ItAsset" FOR EACH ROW EXECUTE FUNCTION audit_trail_capture();
+			DROP TRIGGER IF EXISTS audit_trail_delete ON "PersonalTool";
+			CREATE TRIGGER audit_trail_delete AFTER DELETE ON "PersonalTool" FOR EACH ROW EXECUTE FUNCTION audit_trail_capture();
+			DROP TRIGGER IF EXISTS audit_trail_delete ON "VehicleTool";
+			CREATE TRIGGER audit_trail_delete AFTER DELETE ON "VehicleTool" FOR EACH ROW EXECUTE FUNCTION audit_trail_capture();
+			DROP TRIGGER IF EXISTS audit_trail_delete ON "Product";
+			CREATE TRIGGER audit_trail_delete AFTER DELETE ON "Product" FOR EACH ROW EXECUTE FUNCTION audit_trail_capture();
+			DROP TRIGGER IF EXISTS audit_trail_delete ON "Service";
+			CREATE TRIGGER audit_trail_delete AFTER DELETE ON "Service" FOR EACH ROW EXECUTE FUNCTION audit_trail_capture();
+			DROP TRIGGER IF EXISTS audit_trail_delete ON "Supplier";
+			CREATE TRIGGER audit_trail_delete AFTER DELETE ON "Supplier" FOR EACH ROW EXECUTE FUNCTION audit_trail_capture();
+			DROP TRIGGER IF EXISTS audit_trail_delete ON "TechSupplier";
+			CREATE TRIGGER audit_trail_delete AFTER DELETE ON "TechSupplier" FOR EACH ROW EXECUTE FUNCTION audit_trail_capture();
+			DROP TRIGGER IF EXISTS audit_trail_delete ON "VipCustomer";
+			CREATE TRIGGER audit_trail_delete AFTER DELETE ON "VipCustomer" FOR EACH ROW EXECUTE FUNCTION audit_trail_capture();
+			DROP TRIGGER IF EXISTS audit_trail_delete ON "ProcurementQuote";
+			CREATE TRIGGER audit_trail_delete AFTER DELETE ON "ProcurementQuote" FOR EACH ROW EXECUTE FUNCTION audit_trail_capture();
+			DROP TRIGGER IF EXISTS audit_trail_delete ON "TrainingProgram";
+			CREATE TRIGGER audit_trail_delete AFTER DELETE ON "TrainingProgram" FOR EACH ROW EXECUTE FUNCTION audit_trail_capture();
+			DROP TRIGGER IF EXISTS audit_trail_delete ON "TrainingProgramParticipant";
+			CREATE TRIGGER audit_trail_delete AFTER DELETE ON "TrainingProgramParticipant" FOR EACH ROW EXECUTE FUNCTION audit_trail_capture();
+			DROP TRIGGER IF EXISTS audit_trail_delete ON "Announcement";
+			CREATE TRIGGER audit_trail_delete AFTER DELETE ON "Announcement" FOR EACH ROW EXECUTE FUNCTION audit_trail_capture();
+			DROP TRIGGER IF EXISTS audit_trail_delete ON "LeaderInvoiceMaterialItem";
+			CREATE TRIGGER audit_trail_delete AFTER DELETE ON "LeaderInvoiceMaterialItem" FOR EACH ROW EXECUTE FUNCTION audit_trail_capture();
+			DROP TRIGGER IF EXISTS audit_trail_delete ON "LeaderInvoiceAdjustment";
+			CREATE TRIGGER audit_trail_delete AFTER DELETE ON "LeaderInvoiceAdjustment" FOR EACH ROW EXECUTE FUNCTION audit_trail_capture();
+		`,
 	}}
 }

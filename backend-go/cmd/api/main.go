@@ -1002,6 +1002,10 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	mux.Handle("POST /api/profile-surveys/{id}/review", middleware.Chain(http.HandlerFunc(workGate.ReviewSurvey), requireAuth, requireSurveys))
 	// 🩺 سلامة البيانات (11-02 — شبكة الأمان ٢): قراءة بس، للمالك
 	integrityHandler := handler.NewIntegrityHandler(db, notificationRepo)
+	// (11-04 — ٦ج) 🗑️ المحذوفات: المالك يشوف ويرجّع
+	deletedRecords := handler.NewDeletedRecordsHandler(db)
+	mux.Handle("GET /api/owner/deleted", middleware.Chain(http.HandlerFunc(deletedRecords.List), requireAuth, requireOwner))
+	mux.Handle("POST /api/owner/deleted/{id}/restore", middleware.Chain(http.HandlerFunc(deletedRecords.Restore), requireAuth, requireOwner))
 	mux.Handle("GET /api/integrity", middleware.Chain(http.HandlerFunc(integrityHandler.Latest), requireAuth, requireOwner))
 	mux.Handle("POST /api/integrity/run", middleware.Chain(http.HandlerFunc(integrityHandler.RunNow), requireAuth, requireOwner))
 	mux.Handle("GET /api/integrity/{key}/sample", middleware.Chain(http.HandlerFunc(integrityHandler.Sample), requireAuth, requireOwner))
