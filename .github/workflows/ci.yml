@@ -141,7 +141,9 @@ jobs:
   # المالك يدخل ويفتح الشاشات المهمة؛ أي خطأ بالصفحة أو رد ٥xx/٤٠٣ يفشّل الخطوة.
   e2e:
     name: E2E smoke (Playwright)
-    runs-on: ubuntu-latest
+    # ⚠️ ubuntu-latest صار 26.04 و Playwright 1.56 ما يدعم كروميوم عليه («does not support
+    # chromium on ubuntu26.04»). نثبّت 24.04 لحد ما نرقّي Playwright.
+    runs-on: ubuntu-24.04
     services:
       postgres:
         image: postgres:16-alpine

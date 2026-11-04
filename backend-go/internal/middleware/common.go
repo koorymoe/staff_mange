@@ -29,7 +29,9 @@ func CORS(allowedOrigins []string) func(http.Handler) http.Handler {
 			// (ماكو preflight)، فالفرق بين «يشتغل بالفحص» و«ما يشتغل
 			// بالواجهة» يضيّع ساعات. انكشف بأول مسار PATCH بالنظام.
 			w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS")
-			w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+			// X-Requested-With: حماية CSRF للكوكي (٧ي)، Idempotency-Key: التكرار الآمن (٦أ) —
+			// بلاهن الطلب التمهيدي ينرفض لأي واجهة على أصل ثاني (مثل بيئة التطوير).
+			w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Requested-With, Idempotency-Key")
 
 			if r.Method == http.MethodOptions {
 				w.WriteHeader(http.StatusNoContent)
