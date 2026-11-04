@@ -1755,5 +1755,21 @@ func matrixChatMigrations() []Migration {
 			);
 			CREATE INDEX IF NOT EXISTS "TrainingNeed_due_idx" ON "TrainingNeed" (status, "followUpAt");
 		`,
+	}, {
+		// ٦أ — التكرار الآمن لطلبات الفلوس
+		Version: "0434_idempotency_key",
+		SQL: `
+			CREATE TABLE IF NOT EXISTS "IdempotencyKey" (
+				key TEXT NOT NULL,
+				"employeeId" TEXT NOT NULL,
+				method TEXT NOT NULL,
+				path TEXT NOT NULL,
+				status INT,
+				response TEXT,
+				"createdAt" TIMESTAMPTZ NOT NULL DEFAULT now(),
+				PRIMARY KEY (key, "employeeId")
+			);
+			CREATE INDEX IF NOT EXISTS "IdempotencyKey_created_idx" ON "IdempotencyKey" ("createdAt");
+		`,
 	}}
 }

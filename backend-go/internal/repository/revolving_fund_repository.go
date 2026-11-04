@@ -180,8 +180,18 @@ func (r *RevolvingFundRepository) submitSettlement(employeeID, createdByID strin
 	if strings.TrimSpace(req.FundID) == "" {
 		return nil, fmt.Errorf("لازم تحدد من أي دوار هاي التسوية")
 	}
-	outstanding, err := r.EmployeeOutstandingInFund(employeeID, req.FundID)
+	// (11-04 — ٦هـ) قفل على (الموظف، الدوار) لحد آخر المعاملة: تسويتين بنفس
+	// اللحظة چانن يعبرن الفحص سوه، لأن المعلّقة ما چانت تنحسب.
+	tx, err := r.db.Beginx()
 	if err != nil {
+		return nil, err
+	}
+	defer tx.Rollback()
+	if _, err := tx.Exec(`SELECT pg_advisory_xact_lock(hashtext('fund-settle:' || $1 || ':' || $2))`, employeeID, req.FundID); err != nil {
+		return nil, err
+	}
+	var outstanding float64
+	if err := tx.Get(&outstanding, outstandingWithPendingSQL, employeeID, req.FundID); err != nil {
 		return nil, err
 	}
 	// ما نخلي الموظف يسوّي أكثر من الي بيده **من هذا الدوار** — وإلا
@@ -216,7 +226,7 @@ func (r *RevolvingFundRepository) submitSettlement(employeeID, createdByID strin
 	}
 
 	var t model.RevolvingFundTxn
-	err = r.db.Get(&t, `
+	err = tx.Get(&t, `
 		INSERT INTO "RevolvingFundTxn"
 			(id, "fundId", "employeeId", kind, "spentAmount", "returnedAmount",
 			 "bookingId", "receiptImage", notes, status, "createdById")
@@ -224,6 +234,9 @@ func (r *RevolvingFundRepository) submitSettlement(employeeID, createdByID strin
 		RETURNING *`, req.FundID, employeeID, req.SpentAmount, req.ReturnedAmount,
 		req.BookingID, req.ReceiptImage, deref(req.Notes), createdByID)
 	if err != nil {
+		return nil, err
+	}
+	if err := tx.Commit(); err != nil {
 		return nil, err
 	}
 	t.KindLabel = model.FundTxnKindLabels[t.Kind]
@@ -271,6 +284,21 @@ func (r *RevolvingFundRepository) ReviewSettlement(id string, req model.ReviewSe
 	// تسوية قديمة بمبلغ سالب (قبل فحص 10-11) ما تنقبل — ترجع بالرفض
 	if req.Approve && (t.SpentAmount < 0 || t.ReturnedAmount < 0) {
 		return nil, fmt.Errorf("التسوية بيها مبلغ سالب — ارفضها وخلي الموظف يرفعها صح")
+	}
+	// (11-04 — ٦هـ) الموافقة ما تتجاوز الي بيده: المعتمد (ويا هاي) ≤ المسلَّم.
+	// نفس القفل مال الرفع، حتى موافقتين بنفس اللحظة ما يعبرن سوه.
+	if req.Approve {
+		if _, err := tx.Exec(`SELECT pg_advisory_xact_lock(hashtext('fund-settle:' || $1 || ':' || $2))`, t.EmployeeID, t.FundID); err != nil {
+			return nil, err
+		}
+		var left float64
+		if err := tx.Get(&left, outstandingSQL, t.EmployeeID, t.FundID); err != nil {
+			return nil, err
+		}
+		// left يشمل هاي التسوية (صارت APPROVED بنفس المعاملة) — لازم ما يصير سالب
+		if left < -0.001 {
+			return nil, fmt.Errorf("الموافقة تخلي الموظف مسدّد أكثر من الي استلمه (%.0f) — يمكن أكو تسوية ثانية لنفس الفلوس", -left)
+		}
 	}
 	// المبلغ المرتجع يرجع للدوار عند الموافقة بس
 	if req.Approve && t.ReturnedAmount > 0 {
@@ -383,13 +411,23 @@ func (r *RevolvingFundRepository) EmployeeFundLines(employeeID string) ([]model.
 // ⚠️ هاي الي تتحقق منها التسوية — لا المجموع. بلاها، موظف أخذ ١٠ من
 // دوار الطاقة يقدر يرفع تسوية ٣٠ ألف عليه (لأن مجموعه ٣٠)، فيرجع
 // لدوار الطاقة ٢٠ ألف ما طلعت منه أصلاً.
-func (r *RevolvingFundRepository) EmployeeOutstandingInFund(employeeID, fundID string) (float64, error) {
-	var v float64
-	err := r.db.Get(&v, `
+const outstandingSQL = `
 		SELECT COALESCE(SUM(CASE WHEN kind = 'DISBURSE' THEN amount ELSE 0 END), 0)
 		     - COALESCE(SUM(CASE WHEN kind = 'SETTLEMENT' AND status = 'APPROVED'
 		                         THEN "spentAmount" + "returnedAmount" ELSE 0 END), 0)
-		FROM "RevolvingFundTxn" WHERE "employeeId" = $1 AND "fundId" = $2`, employeeID, fundID)
+		FROM "RevolvingFundTxn" WHERE "employeeId" = $1 AND "fundId" = $2`
+
+// outstandingWithPendingSQL الي بيده ناقص المعلّق كمان — للرفع، حتى تسويتين
+// ما يغطن نفس الفلوس.
+const outstandingWithPendingSQL = `
+		SELECT COALESCE(SUM(CASE WHEN kind = 'DISBURSE' THEN amount ELSE 0 END), 0)
+		     - COALESCE(SUM(CASE WHEN kind = 'SETTLEMENT' AND status IN ('APPROVED', 'PENDING')
+		                         THEN "spentAmount" + "returnedAmount" ELSE 0 END), 0)
+		FROM "RevolvingFundTxn" WHERE "employeeId" = $1 AND "fundId" = $2`
+
+func (r *RevolvingFundRepository) EmployeeOutstandingInFund(employeeID, fundID string) (float64, error) {
+	var v float64
+	err := r.db.Get(&v, outstandingSQL, employeeID, fundID)
 	return v, err
 }
 

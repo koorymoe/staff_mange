@@ -763,6 +763,8 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	// فالتوسيع هنا **بالقراءة**، والتضييق يبقى **بالقرار**:
 	// `booking_audit_handler.go` يفحص المفتاح للمراقب ويرجّعه ٤٠٣ نظيفاً
 	// بلا مخالفة ولا قفل.
+	// (11-04 — ٦أ) التكرار الآمن لمسارات الفلوس
+	idem := middleware.Idempotent(db)
 	requireVerifyBooking := authz.Guard(guards, authz.Credits) // (11-04) القاعدة بمحرك الصلاحيات
 	// ربط حجزين تاريخيين منفصلين كإنجاز جزئي لنفس الشغلة — صلاحية
 	// مستقلة (نفس فلسفة finance_audit): المالك ينطيها فرد-فرد، مو دور.
@@ -1513,9 +1515,9 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	creditHandler := handler.NewCreditHandler(db)
 	mux.Handle("GET /api/credits", middleware.Chain(http.HandlerFunc(creditHandler.List), requireAuth, requireVerifyBooking))
 	mux.Handle("GET /api/credits/export", middleware.Chain(http.HandlerFunc(creditHandler.Export), requireAuth, requireVerifyBooking))
-	mux.Handle("POST /api/credits", middleware.Chain(http.HandlerFunc(creditHandler.Create), requireAuth, requireVerifyBooking))
+	mux.Handle("POST /api/credits", middleware.Chain(http.HandlerFunc(creditHandler.Create), requireAuth, requireVerifyBooking, idem))
 	mux.Handle("GET /api/credits/{id}/payments", middleware.Chain(http.HandlerFunc(creditHandler.Payments), requireAuth, requireVerifyBooking))
-	mux.Handle("POST /api/credits/{id}/payments", middleware.Chain(http.HandlerFunc(creditHandler.AddPayment), requireAuth, requireVerifyBooking))
+	mux.Handle("POST /api/credits/{id}/payments", middleware.Chain(http.HandlerFunc(creditHandler.AddPayment), requireAuth, requireVerifyBooking, idem))
 	mux.Handle("GET /api/finance/daily-audit", middleware.Chain(http.HandlerFunc(dailyAuditHandler.Day), requireAuth, requireVerifyBooking))
 	mux.Handle("PUT /api/bookings/{id}/audit", middleware.Chain(http.HandlerFunc(bookingAuditHandler.Audit), requireAuth, requireVerifyBooking))
 	// شريط الإعلانات: يقراه كل موظف، وينزّله المالك ومدير النظام بس
@@ -1597,7 +1599,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 
 	// المصاريف — أي موظف يقدر يرسل مصروف، الموافقة/الرفض للمحاسب ومدير النظام فقط
 	mux.Handle("GET /api/expenses", middleware.Chain(http.HandlerFunc(expenseHandler.List), requireAuth))
-	mux.Handle("POST /api/expenses", middleware.Chain(http.HandlerFunc(expenseHandler.Create), requireAuth))
+	mux.Handle("POST /api/expenses", middleware.Chain(http.HandlerFunc(expenseHandler.Create), requireAuth, idem))
 	// صلاحية «إدارة المصاريف (موافقة ورفض)» چانت ما تشتغل — الحارس ما يعرفها.
 	mux.Handle("PUT /api/expenses/{id}/status", middleware.Chain(http.HandlerFunc(expenseHandler.UpdateStatus), requireAuth,
 		guards.RoleOrAnyPermission([]string{"ADMIN", "FINANCE"}, "finance_audit", "expenses_manage")))
@@ -2344,19 +2346,19 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	//
 	mux.Handle("GET /api/funds", middleware.Chain(http.HandlerFunc(revolvingFundHandler.ListFunds), requireAuth, requireFund))
 	mux.Handle("PUT /api/funds/{id}", middleware.Chain(http.HandlerFunc(revolvingFundHandler.UpdateFund), requireAuth, requireFundAmount))
-	mux.Handle("POST /api/funds/{id}/topup", middleware.Chain(http.HandlerFunc(revolvingFundHandler.Topup), requireAuth, requireFundAmount))
-	mux.Handle("POST /api/funds/disburse", middleware.Chain(http.HandlerFunc(revolvingFundHandler.Disburse), requireAuth, requireFund))
+	mux.Handle("POST /api/funds/{id}/topup", middleware.Chain(http.HandlerFunc(revolvingFundHandler.Topup), requireAuth, requireFundAmount, idem))
+	mux.Handle("POST /api/funds/disburse", middleware.Chain(http.HandlerFunc(revolvingFundHandler.Disburse), requireAuth, requireFund, idem))
 	mux.Handle("GET /api/funds/balances", middleware.Chain(http.HandlerFunc(revolvingFundHandler.Balances), requireAuth, requireFund))
 	mux.Handle("GET /api/funds/transactions", middleware.Chain(http.HandlerFunc(revolvingFundHandler.Txns), requireAuth, requireFund))
 	mux.Handle("GET /api/funds/transactions/{id}/receipt", middleware.Chain(http.HandlerFunc(revolvingFundHandler.Receipt), requireAuth, requireFund))
-	mux.Handle("POST /api/funds/settlements/for/{employeeId}", middleware.Chain(http.HandlerFunc(revolvingFundHandler.SubmitSettlementFor), requireAuth, requireFund))
-	mux.Handle("PUT /api/funds/settlements/{id}/review", middleware.Chain(http.HandlerFunc(revolvingFundHandler.ReviewSettlement), requireAuth, requireFund))
-	mux.Handle("PUT /api/funds/settlements/{id}/discharge", middleware.Chain(http.HandlerFunc(revolvingFundHandler.Discharge), requireAuth, requireDischarge))
+	mux.Handle("POST /api/funds/settlements/for/{employeeId}", middleware.Chain(http.HandlerFunc(revolvingFundHandler.SubmitSettlementFor), requireAuth, requireFund, idem))
+	mux.Handle("PUT /api/funds/settlements/{id}/review", middleware.Chain(http.HandlerFunc(revolvingFundHandler.ReviewSettlement), requireAuth, requireFund, idem))
+	mux.Handle("PUT /api/funds/settlements/{id}/discharge", middleware.Chain(http.HandlerFunc(revolvingFundHandler.Discharge), requireAuth, requireDischarge, idem))
 	mux.Handle("GET /api/funds/discharge-accounts", middleware.Chain(http.HandlerFunc(revolvingFundHandler.DischargeAccounts), requireAuth, requireFund))
 
 	mux.Handle("GET /api/funds/my-balance", middleware.Chain(http.HandlerFunc(revolvingFundHandler.MyBalance), requireAuth))
 	mux.Handle("GET /api/funds/my-transactions", middleware.Chain(http.HandlerFunc(revolvingFundHandler.MyTxns), requireAuth))
-	mux.Handle("POST /api/funds/settlements", middleware.Chain(http.HandlerFunc(revolvingFundHandler.SubmitSettlement), requireAuth))
+	mux.Handle("POST /api/funds/settlements", middleware.Chain(http.HandlerFunc(revolvingFundHandler.SubmitSettlement), requireAuth, idem))
 
 	mux.Handle("GET /api/gps/sims", middleware.Chain(http.HandlerFunc(gpsHandler.ListSims), requireAuth, requireGpsData))
 	mux.Handle("POST /api/gps/sims", middleware.Chain(http.HandlerFunc(gpsHandler.CreateSim), requireAuth, requireGpsSystem))
@@ -2690,7 +2692,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	// ⚠️ الليدر مثل اليوم، **وزيادةً** مسؤول خدمة الحجز: بخدمات مثل
 	// الجي بي اس والداش كام الفاتورة على مسؤول الخدمة، وهو مو
 	// بالضرورة ليدر. والي مو الاثنين تنسجّل مخالفته مثل ما چان.
-	mux.Handle("POST /api/leader-invoices", middleware.Chain(http.HandlerFunc(leaderInvoiceHandler.Create), requireAuth, requireLeaderOrServiceManager))
+	mux.Handle("POST /api/leader-invoices", middleware.Chain(http.HandlerFunc(leaderInvoiceHandler.Create), requireAuth, requireLeaderOrServiceManager, idem))
 	// فاتورة الجي بي اس / الداش كام بسعر يدوي — الحارس هنا «أي وحدة
 	// من الصلاحيتين»، والمعالج يفحص **أي** وحدة بالضبط حسب النوع
 	// المطلوب، حتى مسؤول الجي بي اس ما يفوتر داش كام.
@@ -2839,13 +2841,13 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	projectPaymentHandler := handler.NewProjectPaymentHandler(projectPaymentRepo, permissionRepo)
 	projectService.SetPaymentChecker(projectPaymentRepo)
 	mux.Handle("GET /api/projects/{id}/payments", middleware.Chain(http.HandlerFunc(projectPaymentHandler.List), requireAuth))
-	mux.Handle("POST /api/projects/{id}/payments", middleware.Chain(http.HandlerFunc(projectPaymentHandler.Add), requireAuth))
+	mux.Handle("POST /api/projects/{id}/payments", middleware.Chain(http.HandlerFunc(projectPaymentHandler.Add), requireAuth, idem))
 	mux.Handle("PUT /api/projects/{id}/contract-value", middleware.Chain(http.HandlerFunc(projectPaymentHandler.SetValue), requireAuth))
-	mux.Handle("POST /api/project-payments/{id}/verify", middleware.Chain(http.HandlerFunc(projectPaymentHandler.Verify), requireAuth))
-	mux.Handle("POST /api/project-payments/{id}/cancel", middleware.Chain(http.HandlerFunc(projectPaymentHandler.Cancel), requireAuth))
+	mux.Handle("POST /api/project-payments/{id}/verify", middleware.Chain(http.HandlerFunc(projectPaymentHandler.Verify), requireAuth, idem))
+	mux.Handle("POST /api/project-payments/{id}/cancel", middleware.Chain(http.HandlerFunc(projectPaymentHandler.Cancel), requireAuth, idem))
 	mux.Handle("GET /api/project-payments/overview", middleware.Chain(http.HandlerFunc(projectPaymentHandler.Overview), requireAuth))
 	mux.Handle("GET /api/project-payments/audit", middleware.Chain(http.HandlerFunc(projectPaymentHandler.Audit), requireAuth))
-	mux.Handle("PUT /api/project-payments/{id}/amount", middleware.Chain(http.HandlerFunc(projectPaymentHandler.SetAmount), requireAuth))
+	mux.Handle("PUT /api/project-payments/{id}/amount", middleware.Chain(http.HandlerFunc(projectPaymentHandler.SetAmount), requireAuth, idem))
 	mux.Handle("GET /api/projects/media/open", middleware.Chain(http.HandlerFunc(mediaHandler.OpenProjects), requireAuth, requireProjectMgmt))
 	mux.Handle("GET /api/projects/{id}/media", middleware.Chain(http.HandlerFunc(mediaHandler.ForProject), requireAuth, requireProjectMgmt))
 	mux.Handle("POST /api/projects/{id}/media", middleware.Chain(http.HandlerFunc(mediaHandler.Transfer), requireAuth, requireProjectMgmt))
