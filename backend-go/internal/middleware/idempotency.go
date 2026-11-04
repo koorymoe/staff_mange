@@ -23,6 +23,16 @@ import (
 
 const idemWindow = 20 * time.Second
 
+// CleanupIdempotency يمسح المفاتيح الأقدم من يومين. أطول حماية يوم وحد (المفتاح
+// الصريح)، فالأقدم ما إلهن فايدة — بلا هذا الجدول يكبر للأبد ويا كل عملية فلوس.
+func CleanupIdempotency(db *sqlx.DB) (int64, error) {
+	res, err := db.Exec(`DELETE FROM "IdempotencyKey" WHERE "createdAt" < now() - interval '2 days'`)
+	if err != nil {
+		return 0, err
+	}
+	return res.RowsAffected()
+}
+
 type idemRecorder struct {
 	http.ResponseWriter
 	status int

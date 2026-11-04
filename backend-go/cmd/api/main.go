@@ -771,6 +771,17 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	// بلا مخالفة ولا قفل.
 	// (11-04 — ٦أ) التكرار الآمن لمسارات الفلوس
 	idem := middleware.Idempotent(db)
+	// تنظيف مفاتيح التكرار الآمن مرة باليوم (11-04)
+	go func() {
+		for {
+			if n, err := middleware.CleanupIdempotency(db); err != nil {
+				log.Printf("[idempotency] تنظيف: %v", err)
+			} else if n > 0 {
+				log.Printf("[idempotency] انمسح %d مفتاح قديم", n)
+			}
+			time.Sleep(24 * time.Hour)
+		}
+	}()
 	requireVerifyBooking := authz.Guard(guards, authz.Credits) // (11-04) القاعدة بمحرك الصلاحيات
 	// ربط حجزين تاريخيين منفصلين كإنجاز جزئي لنفس الشغلة — صلاحية
 	// مستقلة (نفس فلسفة finance_audit): المالك ينطيها فرد-فرد، مو دور.
