@@ -256,3 +256,4 @@ git push origin origin/avg:refs/heads/prod     # بعد التأكد إنه fast
 - 2026-11-04: ٧ج (Go) — حزمة internal/errlog؛ ١٠٣ `_, _ = X.Exec` صارت errlog.Exec (تسجيل بدل بلع). codemod: scratchpad/codemod/errlog.
 - 2026-11-04: ٧ج (واجهة) — utils/swallow.ts؛ ١٤٢ .catch(() => {}) → .catch(swallow). tsc/eslint/test خضر.
 - 2026-11-04: ٧م — فواتير الليدرية صارت صفحات من الخادم (leader_invoice_page.go + getLeaderInvoicesPage). مطابقة parity.py: ٠ اختلاف؛ مجرّبة بالمتصفح.
+- 2026-11-04 لوفي: رفع على prod بطلب دازاي («ارفع ع برود»): ماتركس ٩.٤–٩.٦، أوقات الميدان، ساعات البيت، محرك الصلاحيات، حماية الفلوس (idempotency/AuditTrail/المحذوفات)، قواعد حالة الحجز والمشروع (0437/0438)، نوافذ الحوار، ٨أ، ٧ج، ٧م (فواتير الليدرية). مجرّب: build/test خضر + بروفة مايگريشنات 0432–0438 على قاعدة جديدة من حالة prod.
