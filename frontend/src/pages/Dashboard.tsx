@@ -1,14 +1,12 @@
 import DutiesCard from '../components/DutiesCard'
 import { positionTitle } from '../roleLabels'
-import { useEffect, useState } from 'react'
+import { Suspense, useEffect, useState } from 'react'
 import { bookingDone } from '../bookingDone'
 import PeerCheckinCard from '../components/PeerCheckinCard'
 import MyScoreCard from '../components/MyScoreCard'
 import { Navigate, useNavigate } from 'react-router-dom'
 import MyFundBalance from '../components/MyFundBalance'
 import TodayBoard from '../components/TodayBoard'
-import MonitorDashboard from '../components/MonitorDashboard'
-import AdminHome from '../components/AdminHome'
 import ShiftEndCard from '../components/ShiftEndCard'
 import { api, API_URL } from '../api'
 import type { Booking, Expense, StaffRequest, LeaveRequest, InventoryCheck, FinanceSummary, DailyAuditReport, TodayPulse, Employee } from '../api'
@@ -23,6 +21,11 @@ import { timeGreeting, GREETING_HOLD_MS } from '../greeting'
 import { MapViewer } from '../components/MapLazy'
 import BookingCodeChip from '../components/BookingCodeChip'
 import { parseAmount } from '../utils/money'
+import { lazyRetry } from '../utils/staleReload'
+
+// (11-04 — ٧ك) واجهة المدير وماتركس (~١٥٠ كيلو) تتحمّل بس للمدير والمالك — مو بكل فتحة رئيسية
+const AdminHome = lazyRetry(() => import('../components/AdminHome'))
+const MonitorDashboard = lazyRetry(() => import('../components/MonitorDashboard'))
 
 function formatTime(): string {
   return new Date().toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' })
@@ -82,7 +85,7 @@ function ProgressRing({ percent, size = 56, stroke = 5, color }: { percent: numb
 export default function Dashboard() {
   const { employee } = useSession()
   // (دازاي 11-01) «مكاني/بنودي/مخرجاتي» ما تطلع بالرئيسية لأي موظف نهائياً
-  if (isAdminOrOwner(employee)) return <><MyDirectives hideWhenEmpty /><AdminHome name={positionTitle(employee)} /></>
+  if (isAdminOrOwner(employee)) return <><MyDirectives hideWhenEmpty /><Suspense fallback={<div className="h-40 animate-pulse rounded-2xl bg-white/60" />}><AdminHome name={positionTitle(employee)} /></Suspense></>
   return <><MyDirectives hideWhenEmpty /><MeetingRequests /><StaffDashboard /></>
 }
 
@@ -433,7 +436,7 @@ function StaffDashboard() {
   ]
 
   // واجهة المراقب الرئيسية بتصميم (ع) — شاشة وحدة مرتبة بدل كل الأقسام.
-  if (isMonitorHome) return <MonitorDashboard />
+  if (isMonitorHome) return <Suspense fallback={<div className="h-40 animate-pulse rounded-2xl bg-white/60" />}><MonitorDashboard /></Suspense>
   // (دازاي 10-25) كادر الديكور: الرئيسية مالته «شغلي اليوم» — بسيطة وكبيرة
   if (!isAdmin && employee.division === 'DECOR') return <Navigate to="/decor-today" replace />
 

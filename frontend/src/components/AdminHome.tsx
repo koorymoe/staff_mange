@@ -1,6 +1,5 @@
-import MatrixCommandCenter from './MatrixCommandCenter'
 import MatrixChat from './MatrixChat'
-import { useEffect, useMemo, useState, type ReactNode } from 'react'
+import { useEffect, useMemo, useState, type ReactNode, Suspense } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import {
   api,
@@ -22,6 +21,10 @@ import { drillTo } from '../utils/drill'
 import { roleLabel } from '../roleLabels'
 import { num as fmt, dinarK as money } from '../utils/format'
 import { askInput } from '../ui/dialogs'
+import { lazyRetry } from '../utils/staleReload'
+
+// (11-04 — ٧ك) مركز قيادة ماتركس يتحمّل لمن تفتح لوحته بس
+const MatrixCommandCenter = lazyRetry(() => import('./MatrixCommandCenter'))
 
 // ═══ رئيسية مدير النظام: لوحتين ═══
 //
@@ -639,7 +642,7 @@ export default function AdminHome({ name }: { name?: string }) {
             <p className="mt-4 text-sm font-bold text-brand-600">افتح ←</p>
           </Link>
         </div>
-      ) : board === 'follow' ? <FollowBoard /> : board === 'actions' ? <ActionsBoard /> : board === 'chat' ? <MatrixChat /> : board === 'missions' ? <MatrixMissions /> : <MatrixCommandCenter />}
+      ) : board === 'follow' ? <FollowBoard /> : board === 'actions' ? <ActionsBoard /> : board === 'chat' ? <MatrixChat /> : board === 'missions' ? <MatrixMissions /> : <Suspense fallback={<div className="h-40 animate-pulse rounded-2xl bg-slate-100" />}><MatrixCommandCenter /></Suspense>}
     </div>
   )
 }
