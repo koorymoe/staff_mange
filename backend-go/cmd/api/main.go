@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"staffmange-api/internal/authz"
+	"strconv"
 
 	"staffmange-api/internal/logredact"
 	"strings"
@@ -3039,6 +3040,23 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 			log.Printf("org seed: %v", err)
 		}
 		orgHandler := handler.NewOrgHandler(orgService, notificationRepo)
+		orgHandler.PersonalScore = func(empID, period string) (*float64, []service.EvidenceLine) {
+			d, err := matrixScoreService.Detail(empID, period)
+			if err != nil || d.Final == nil {
+				return nil, nil
+			}
+			lines := []service.EvidenceLine{}
+			if d.MatrixPct != nil {
+				lines = append(lines, service.EvidenceLine{Label: "نقاط ماتركس", Value: strconv.Itoa(d.Earned) + "/" + strconv.Itoa(d.Max)})
+			}
+			if d.HumanAvg != nil {
+				lines = append(lines, service.EvidenceLine{Label: "التقييم البشري", Value: strconv.FormatFloat(*d.HumanAvg, 'f', 1, 64), Note: strconv.Itoa(d.HumanCount) + " تقييم"})
+			}
+			for _, l := range d.TopLosses {
+				lines = append(lines, service.EvidenceLine{Label: "خسر بـ: " + l.Title, Value: "−" + strconv.Itoa(l.Lost), Note: strconv.Itoa(l.Count) + " مرة"})
+			}
+			return d.Final, lines
+		}
 		// 🏛️ ماتركس الحاكم (دازاي 10-29): الغرامات (كل ساعة) والتقييم الشهري (أول ٣ أيام).
 		// مفتاح الطوارئ org_governor، والتراجع من صفحة قرارات ماتركس يرجّع النقاط/المنصب.
 		orgGovernor := service.NewOrgGovernor(db, orgService, matrixScoreService, disciplineRepo, aiActionRepo, aiRepo,

@@ -260,3 +260,4 @@ git push origin origin/avg:refs/heads/prod     # بعد التأكد إنه fast
 - 2026-11-04: CI — TestOrgActing_Live چان يفشل بقاعدة الـ CI الفاضية (ماكو مالك يستلم تنبيه «ماكو نائب»). الاختبار يزرع مالك تجربة. go test -count=1 -p 1 على قاعدة فاضية = كله أخضر. على avg بس (prod يحتاج إذن).
 - 2026-11-04 لوفي: رفع تصليح اختبار الوكالة (b33ce0ec) على prod بطلب دازاي.
 - 2026-11-04: ٥أ — محادثات الواتساب صارت صلاحية whatsapp_chats بيد المالك (authz.WhatsAppChats + Strict). أدمن بلاها=404. ٥ب انضاف للتعديلات.
+- 2026-11-04: ٥ب — تصنيف القيادة: evidence+formula لكل معيار، تبويب النواب (خليط ٥٠/٣٠/٢٠)، عرض كامل. OrgHandler.PersonalScore من matrixScoreService.Detail.

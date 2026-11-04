@@ -18,6 +18,8 @@ import (
 type OrgHandler struct {
 	svc           *service.OrgService
 	notifications *repository.NotificationRepository
+	// PersonalScore التقييم الشهري للموظف — لتصنيف النواب (يتعبّى من main).
+	PersonalScore service.PersonalScoreFn
 }
 
 func NewOrgHandler(svc *service.OrgService, n *repository.NotificationRepository) *OrgHandler {
@@ -478,7 +480,7 @@ func (h *OrgHandler) DirectorsRanking(w http.ResponseWriter, r *http.Request) {
 	if period == "" {
 		period = service.OrgPeriod(time.Now())
 	}
-	res, err := service.DirectorsRanking(h.svc.DB(), period)
+	res, err := service.DirectorsRanking(h.svc.DB(), period, h.PersonalScore)
 	if err != nil {
 		WriteError(w, http.StatusBadRequest, err.Error())
 		return
