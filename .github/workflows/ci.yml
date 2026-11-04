@@ -78,9 +78,15 @@ jobs:
         working-directory: frontend
         run: npm ci
 
+      # ⚠️ (11-04) «tsc --noEmit» لحاله ما يفحص شي: tsconfig.json بيه files: [] + references.
       - name: TypeScript typecheck
         working-directory: frontend
-        run: npx tsc --noEmit
+        run: npx tsc -p tsconfig.app.json --noEmit
+
+      # (11-04 — تعديلات ٧أ) اختبارات الواجهة: التنسيق، الفلوس، الجلسة، القائمة، النوافذ
+      - name: Frontend unit tests (vitest)
+        working-directory: frontend
+        run: npm test
 
   frontend-lint:
     name: Frontend lint
