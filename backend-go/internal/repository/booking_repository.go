@@ -985,15 +985,33 @@ func (r *BookingRepository) StartWithResponseTime(id string) error {
 				ELSE "responseMinutes"
 			END
 		WHERE id = $1 AND status NOT IN ('COMPLETED', 'CANCELLED')
+		  AND (`+bookingHasCrewSQL+`)
 	`, id)
 	if err != nil {
 		return err
 	}
 	if n, _ := res.RowsAffected(); n == 0 {
-		return errors.New("الحجز منجز أو ملغي — ما يبدي")
+		var finished bool
+		if err := r.db.Get(&finished, `SELECT status IN ('COMPLETED','CANCELLED') FROM "Booking" WHERE id = $1`, id); err != nil {
+			return errors.New("الحجز مو موجود")
+		}
+		if finished {
+			return errors.New("الحجز منجز أو ملغي — ما يبدي")
+		}
+		return ErrBookingNoCrew
 	}
 	return nil
 }
+
+// ErrBookingNoCrew: بند ٨أ — ما نبدي حجز ماكو أحد برقبته (حتى ما يصير «قيد التنفيذ» وما ينحسب لأحد).
+var ErrBookingNoCrew = errors.New("ما تكدر تبدي الشغل — الحجز بعده بلا كادر أو مسؤول. عيّن فريق أولاً")
+
+// bookingHasCrewSQL: الحجز بيه كادر أو ليدر أو مسؤول — أو شغل داخل الشركة (الورشة) ما يحتاج.
+const bookingHasCrewSQL = `"workLocation" = 'IN_HOUSE'
+		  OR EXISTS (SELECT 1 FROM "BookingAssignment" ba WHERE ba."bookingId" = "Booking".id)
+		  OR "projectSupervisorId" IS NOT NULL
+		  OR "expenseResponsibleId" IS NOT NULL
+		  OR "handoverToId" IS NOT NULL`
 
 // MarkArrived يسجّل لحظة وصول الفنيين لموقع الزبون (قبل بدء العمل فعلياً) — يُستخدم
 // لاحقاً كبديل عن startedAt عند حساب عيّنات مدة العمل لو startedAt غير متوفر.
