@@ -318,6 +318,8 @@ export const navItems: NavItem[] = [
       { to: '/ai-insights', label: '🧠 مؤشرات الذكاء الاصطناعي', icon: <></>, roles: ['ADMIN'] },
       // ماتركس — تقرير المالك الأسبوعي: نفس حارس GET /api/ai/weekly-report (ADMIN/OWNER بس).
       { to: '/weekly-report', label: '📊 التقرير الأسبوعي', icon: <></>, roles: ['ADMIN'] },
+      // (ع) 11-04: طلبات الموظفين للمدير — نفس حارس GET /api/manager-requests (ADMIN/OWNER)
+      { to: '/manager-requests', label: '📨 طلبات للمدير', icon: <></>, roles: ['ADMIN'] },
       // قرار (ع) 10-05: كل خصم من أول يوم بالنظام — للمدير والمالك بس.
       { to: '/discipline-record', label: '📒 سجل الانضباط الوظيفي', icon: <></>, roles: ['ADMIN'], hideForRoles: ['ADMIN', 'OWNER'] },
       // قرار (ع) 10-05: الفضفضة والمشاكل الوظيفية — نفس حارس requireMonitor.
@@ -838,6 +840,8 @@ export const navItems: NavItem[] = [
       { to: '/matrix/decisions', label: '🤖 صندوق قرارات ماتركس', icon: <></>, roles: ['ADMIN'] },
       { to: '/ai-insights', label: '🧠 مؤشرات الذكاء الاصطناعي', icon: <></>, roles: ['ADMIN'] },
       { to: '/weekly-report', label: '📊 التقرير الأسبوعي', icon: <></>, roles: ['ADMIN'] },
+      // (ع) 11-04: طلبات الموظفين للمدير — نفس حارس GET /api/manager-requests (ADMIN/OWNER)
+      { to: '/manager-requests', label: '📨 طلبات للمدير', icon: <></>, roles: ['ADMIN'] },
       { monitorMenuHide: true, hideForRoles: ['QUALITY_ENGINEER'], to: '/staff-score', label: '🏅 تقييم الموظفين', icon: <></>, roles: ['ADMIN', 'MONITOR'], anyPermission: ['monitoring', 'auditing', 'mon_staff'] },
       { hideForRoles: ['QUALITY_ENGINEER'], to: '/staff-reports', label: '🧾 تقارير الموظفين', icon: <></>, roles: ['ADMIN', 'MONITOR', 'HR_COORDINATOR'], anyPermission: ['monitoring', 'mon_staff', 'staff_management'] },
       { hideForRoles: ['QUALITY_ENGINEER'], to: '/employee-dossier', label: '📂 ملف الموظف', icon: <></>, roles: ['ADMIN', 'MONITOR', 'HR_COORDINATOR'], anyPermission: ['monitoring', 'mon_staff', 'staff_management'] },
@@ -918,6 +922,7 @@ const orgNavigationGroups = [
       '/matrix/decisions',
       '/ai-insights',
       '/weekly-report',
+      '/manager-requests',
       '/staff-score',
       '/staff-reports',
       '/employee-dossier',

@@ -51,8 +51,59 @@ func (r *InventoryRepository) CreateInventoryCheck(employeeID string, req model.
 	if err != nil {
 		return nil, err
 	}
+	// (ع) 11-04: الجرد الجديد يسكّر النواقص القديمة الي ثبت وجودها
+	if _, err := AutoCloseShortages(r.db, employeeID); err != nil {
+		log.Printf("auto-close shortages: %v", err)
+	}
 	c.Employee = r.loadEmployeeBrief(c.EmployeeID)
 	return &c, nil
+}
+
+// AutoCloseShortagesSQL (ع) 11-04: «إداري الكميات يبلغ إن النواقص انحلت بس تبقى
+// مفتوحة». نقص قديم ينسكّر لحاله إذا **آخر** جرد للموظف نفسه (بعده) أثبت وجود
+// أدواته: إما جرد مكتمل، أو جرد ناقص بس ولا وحدة من أدوات النقص القديم بيه.
+// resolvedById يبقى فاضي — هيچ ينعرف إنه انسكّر تلقائياً مو بإيد أحد.
+// $1 = الموظف (أو NULL للكل — للترحيلة).
+const AutoCloseShortagesSQL = `
+	UPDATE "InventoryCheck" o SET resolved = true, "resolvedAt" = now()
+	WHERE NOT o.complete AND NOT o.resolved
+	  AND ($1::text IS NULL OR o."employeeId" = $1)
+	  AND EXISTS (SELECT 1 FROM (
+	        SELECT n.complete, n."missingItems" FROM "InventoryCheck" n
+	        WHERE n."employeeId" = o."employeeId" AND n."checkedAt" > o."checkedAt"
+	        ORDER BY n."checkedAt" DESC LIMIT 1) latest
+	      WHERE latest.complete OR (
+	        o."missingItems" IS NOT NULL AND btrim(o."missingItems") <> ''
+	        AND NOT (string_to_array(btrim(o."missingItems"), '، ') && string_to_array(btrim(COALESCE(latest."missingItems", '')), '، '))))`
+
+func AutoCloseShortages(db *sqlx.DB, employeeID string) (int64, error) {
+	res, err := db.Exec(AutoCloseShortagesSQL, employeeID)
+	if err != nil {
+		return 0, err
+	}
+	return res.RowsAffected()
+}
+
+// OpenShortages كل نواقص الجرد المفتوحة بكل أعمارها — الأقدم أول.
+func (r *InventoryRepository) OpenShortages() ([]model.InventoryCheck, error) {
+	rows := []struct {
+		model.InventoryCheck
+		EmpName *string `db:"empName"`
+	}{}
+	if err := r.db.Select(&rows, `SELECT c.*, e.name AS "empName" FROM "InventoryCheck" c
+		LEFT JOIN "Employee" e ON e.id = c."employeeId"
+		WHERE NOT c.complete AND NOT c.resolved ORDER BY c."checkedAt" LIMIT 500`); err != nil {
+		return nil, err
+	}
+	out := make([]model.InventoryCheck, 0, len(rows))
+	for _, x := range rows {
+		c := x.InventoryCheck
+		if x.EmpName != nil {
+			c.Employee = &model.EmployeeBrief{ID: c.EmployeeID, Name: *x.EmpName}
+		}
+		out = append(out, c)
+	}
+	return out, nil
 }
 
 // LastInventoryCheck يرجّع آخر جرد سوّاه الموظف نفسه (أو nil لو ما جرد

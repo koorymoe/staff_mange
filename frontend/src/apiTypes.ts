@@ -4028,3 +4028,20 @@ export interface PermissionAuditRow {
 }
 
 export interface RemotePlan { targetHours: number; hourlyRateIQD: number }
+
+/** (ع) 11-04: طلب مرفوع للمدير */
+export interface ManagerRequest {
+  id: string
+  requesterId: string
+  requesterName: string
+  title: string
+  details: string
+  priority: 'NORMAL' | 'HIGH' | 'URGENT'
+  context: string | null
+  source: 'SCREEN' | 'MATRIX'
+  status: 'OPEN' | 'DONE' | 'REJECTED'
+  reply: string | null
+  handledByName: string | null
+  handledAt: string | null
+  createdAt: string
+}

@@ -3,6 +3,7 @@ package service
 import (
 	"fmt"
 	"staffmange-api/internal/model"
+	"staffmange-api/internal/repository"
 
 	"github.com/jmoiron/sqlx"
 )
@@ -14,7 +15,7 @@ import (
 
 var matrixToolAccess = map[string][]string{
 	// للكل (ويا agent_matrix)
-	"system_guide": nil, "lookup_code": nil, "booking_check": nil, "suggest_improvement": nil, "my_stats": nil,
+	"system_guide": nil, "lookup_code": nil, "booking_check": nil, "suggest_improvement": nil, "my_stats": nil, "raise_manager_request": nil,
 	// الهيكل الجديد ولائحة العمل (10-30) — للكل؛ unit_status (تفاصيل الإدارات) للمالك والمدير بس
 	"org_structure": nil, "regulations": nil,
 	// الحجوزات والميدان
@@ -82,9 +83,35 @@ func MatrixSelfTools(db *sqlx.DB, userID string) []agentTool {
 		}}}
 }
 
+// raiseManagerRequestTool (ع) 11-04: ماتركس يرفع طلب للمدير باسم الي يحاچيه —
+// كتابة وحيدة ومحصورة: طلب يسجّل باسمه هو، والمدير يقرر. ما يلمس أي بيانات ثانية.
+func raiseManagerRequestTool(db *sqlx.DB, userID string) agentTool {
+	return agentTool{Name: "raise_manager_request",
+		Desc: "يرفع طلب أو مهمة للمدير باسم الموظف الي يحاچيك (يوصل للمدير والمالك كإشعار، ويبقى مسجّل لحد ما ينحسم). استعملها **بس** لما الموظف يطلب صراحة يرفع شي للمدير، وأكّد وياه العنوان والتفاصيل قبل. attach_inventory=true يرفق أرقام المخازن الحقيقية (طلبات معلّقة، نواقص جرد، سيارات، صيانة).",
+		Props: map[string]any{
+			"title":            map[string]any{"type": "string", "description": "عنوان قصير"},
+			"details":          map[string]any{"type": "string", "description": "شنو المطلوب بالضبط"},
+			"priority":         map[string]any{"type": "string", "enum": []string{"NORMAL", "HIGH", "URGENT"}},
+			"attach_inventory": map[string]any{"type": "boolean"},
+		},
+		Req: []string{"title", "details"},
+		Run: func(in map[string]any, _ *nameMask) (string, error) {
+			s := func(k string) string { v, _ := in[k].(string); return v }
+			ctx := ""
+			if b, _ := in["attach_inventory"].(bool); b {
+				ctx = repository.InventoryContext(db)
+			}
+			if _, err := repository.NewManagerRequestRepository(db, repository.NewNotificationRepository(db)).
+				Create(userID, s("title"), s("details"), s("priority"), ctx, "MATRIX"); err != nil {
+				return "", err
+			}
+			return "انرفع الطلب للمدير وانبعثله إشعار. الموظف يتابعه من «طلباتي للمدير» بشاشة المخازن، ويوصله إشعار لما ينحسم.", nil
+		}}
+}
+
 // StaffTools أدوات خاصة بهالمستخدم: أرقامه هو، وللموظف قراءة بيانات مجاله.
 func (a *MatrixAgent) StaffTools(db *sqlx.DB, userID string, top bool, perms []string) []agentTool {
-	out := MatrixSelfTools(db, userID)
+	out := append(MatrixSelfTools(db, userID), raiseManagerRequestTool(db, userID))
 	if !top {
 		out = append(out, a.ScopedDataTools(MatrixDataScope(perms))...)
 	}

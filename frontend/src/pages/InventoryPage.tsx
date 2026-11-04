@@ -1,6 +1,8 @@
 import { Fragment, useEffect, useState, useMemo } from 'react'
 import { api, type PersonalTool, type VehicleTool, type OnDemandTool, type ToolRequest, type ToolRequestItem, type Employee, type InventoryCheck, type PersonalToolTemplateItem,
   type PersonalToolExemption, type BookingToolCheck, type VehicleToolCheck, type Vehicle, type PersonalToolEvent, type PersonalToolStatus, personalToolStatusLabels, personalToolStatusColors } from '../api'
+import OpenShortagesPanel from '../components/OpenShortagesPanel'
+import ManagerRequestDialog from '../components/ManagerRequestDialog'
 import { useSession, hasRole, isAdminOrOwner } from '../session'
 import { roleLabel } from '../roleLabels'
 import { askConfirm, askInput } from '../ui/dialogs'
@@ -11,10 +13,11 @@ import { askConfirm, askInput } from '../ui/dialogs'
 // «ناقصة» أو «خالصة من المخزن» وهي موجودة.
 const normName = (n: string) => n.trim().replace(/\s+/g, ' ')
 
-type TabKey = 'todaychecks' | 'personal' | 'vehicle' | 'ondemand' | 'requests' | 'template' | 'reports'
+type TabKey = 'todaychecks' | 'openshortages' | 'personal' | 'vehicle' | 'ondemand' | 'requests' | 'template' | 'reports'
 
 const tabs: { key: TabKey; label: string }[] = [
   { key: 'todaychecks', label: 'نتائج جرد اليوم' },
+  { key: 'openshortages', label: 'النواقص المفتوحة' },
   { key: 'personal', label: 'أدوات خاصة' },
   { key: 'vehicle', label: 'أدوات المركبات' },
   { key: 'ondemand', label: 'أدوات حسب الحاجة' },
@@ -102,6 +105,7 @@ export default function InventoryPage() {
   const [toolEvents, setToolEvents] = useState<PersonalToolEvent[]>([])
   const [historyLoading, setHistoryLoading] = useState(false)
   const [resolvingId, setResolvingId] = useState<string | null>(null)
+  const [showManagerReq, setShowManagerReq] = useState(false)
   const handleResolveCheck = async (id: string) => {
     setResolvingId(id)
     try {
@@ -506,8 +510,15 @@ export default function InventoryPage() {
 
   return (
     <div>
-      <h2 className="text-2xl font-bold text-brand-900">إدارة المخزون والأدوات</h2>
-      <p className="mt-1 text-slate-500">تتبع الأدوات الخاصة والمركبات وأدوات حسب الحاجة وطلبات الأدوات.</p>
+      <div className="flex flex-wrap items-start justify-between gap-2">
+        <div>
+          <h2 className="text-2xl font-bold text-brand-900">إدارة المخزون والأدوات</h2>
+          <p className="mt-1 text-slate-500">تتبع الأدوات الخاصة والمركبات وأدوات حسب الحاجة وطلبات الأدوات.</p>
+        </div>
+        {/* (ع) 11-04: «إداري الكميات سأل إذا يكدر يوجّه مهمة للمدير وما عنده طريقة» */}
+        <button type="button" onClick={() => setShowManagerReq(true)} className="rounded-xl bg-[#0f2040] px-4 py-2 text-sm font-bold text-white">📨 رفع طلب للمدير</button>
+      </div>
+      {showManagerReq && <ManagerRequestDialog withInventory={canManageInventory} onClose={() => setShowManagerReq(false)} />}
 
       {/* Tabs */}
       <div className="mt-6 flex gap-1 rounded-xl bg-slate-100 p-1">
@@ -535,6 +546,8 @@ export default function InventoryPage() {
 
       {!loading && !error && (
         <div className="mt-6">
+          {activeTab === 'openshortages' && <OpenShortagesPanel canResolve={canManageInventory} />}
+
           {/* Today's Inventory Checks Tab */}
           {activeTab === 'todaychecks' && (
             <div className="space-y-3">

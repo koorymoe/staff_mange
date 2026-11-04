@@ -1966,5 +1966,41 @@ func matrixChatMigrations() []Migration {
 			FROM "Booking" b
 			WHERE b.id = li."bookingId" AND b.code LIKE 'OLD-%' AND li."auditedAt" IS NULL;
 		`,
+	}, {
+		// (ع) 11-04: «رفع طلب للمدير» — من اقتراح ماتركس (إداري الكميات ما عنده طريقة).
+		Version: "0440_manager_request",
+		SQL: `
+			CREATE TABLE IF NOT EXISTS "ManagerRequest" (
+				id TEXT PRIMARY KEY,
+				"requesterId" TEXT NOT NULL REFERENCES "Employee"(id) ON DELETE CASCADE,
+				title TEXT NOT NULL,
+				details TEXT NOT NULL DEFAULT '',
+				priority TEXT NOT NULL DEFAULT 'NORMAL' CHECK (priority IN ('NORMAL', 'HIGH', 'URGENT')),
+				context TEXT,
+				source TEXT NOT NULL DEFAULT 'SCREEN',
+				status TEXT NOT NULL DEFAULT 'OPEN' CHECK (status IN ('OPEN', 'DONE', 'REJECTED')),
+				reply TEXT,
+				"handledById" TEXT REFERENCES "Employee"(id) ON DELETE SET NULL,
+				"handledAt" TIMESTAMPTZ,
+				"createdAt" TIMESTAMPTZ NOT NULL DEFAULT now()
+			);
+			CREATE INDEX IF NOT EXISTS "ManagerRequest_open_idx" ON "ManagerRequest" (status, "createdAt");
+			CREATE INDEX IF NOT EXISTS "ManagerRequest_requester_idx" ON "ManagerRequest" ("requesterId", "createdAt");
+		`,
+	}, {
+		// (ع) 11-04: نواقص الجرد القديمة الي جرد أحدث للموظف نفسه أثبت وجود أدواتها
+		// تنسكّر (نفس شرط AutoCloseShortagesSQL بالمستودع، للكل).
+		Version: "0441_inventory_shortage_autoclose",
+		SQL: `
+			UPDATE "InventoryCheck" o SET resolved = true, "resolvedAt" = now()
+			WHERE NOT o.complete AND NOT o.resolved
+			  AND EXISTS (SELECT 1 FROM (
+			        SELECT n.complete, n."missingItems" FROM "InventoryCheck" n
+			        WHERE n."employeeId" = o."employeeId" AND n."checkedAt" > o."checkedAt"
+			        ORDER BY n."checkedAt" DESC LIMIT 1) latest
+			      WHERE latest.complete OR (
+			        o."missingItems" IS NOT NULL AND btrim(o."missingItems") <> ''
+			        AND NOT (string_to_array(btrim(o."missingItems"), '، ') && string_to_array(btrim(COALESCE(latest."missingItems", '')), '، '))));
+		`,
 	}}
 }

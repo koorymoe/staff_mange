@@ -80,6 +80,10 @@ func (s *InventoryService) LastInventoryCheck(employeeID string) (*model.Invento
 	return s.repo.LastInventoryCheck(employeeID)
 }
 
+func (s *InventoryService) OpenShortages() ([]model.InventoryCheck, error) {
+	return s.repo.OpenShortages()
+}
+
 func (s *InventoryService) ResolveInventoryCheck(id string, resolvedByID string) (*model.InventoryCheck, error) {
 	return s.repo.ResolveInventoryCheck(id, resolvedByID)
 }

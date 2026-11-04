@@ -82,6 +82,7 @@ const EmployeeIndicatorsPage = lazyRetry(() => import('./pages/EmployeeIndicator
 const TechSuppliersPage = lazyRetry(() => import('./pages/TechSuppliersPage'))
 const ProjectPaymentsPage = lazyRetry(() => import('./pages/ProjectPaymentsPage'))
 const WorkplaceIssuesPage = lazyRetry(() => import('./pages/WorkplaceIssuesPage'))
+const ManagerRequestsPage = lazyRetry(() => import('./pages/ManagerRequestsPage'))
 const ItStatsPage = lazyRetry(() => import('./pages/ItStatsPage'))
 const MyInventory = lazyRetry(() => import('./pages/MyInventory'))
 const DeviceMaintenancePage = lazyRetry(() => import('./pages/DeviceMaintenancePage'))
@@ -244,6 +245,7 @@ function App() {
           <Route path="sales-opportunities" element={<SalesOpportunitiesPage />} />
           {/* التقرير الأسبوعي: ADMIN/OWNER بس (نفس الخادم) */}
           <Route path="weekly-report" element={<RequireAdmin><WeeklyReportPage /></RequireAdmin>} />
+          <Route path="manager-requests" element={<RequireAdmin><ManagerRequestsPage /></RequireAdmin>} />
           <Route path="project-payments" element={<RequirePermission permission="finance" anyOf={['finance_audit', 'project_management', 'monitoring']} roles={['FINANCE', 'PROJECT_MANAGER', 'MONITOR']}><ProjectPaymentsPage /></RequirePermission>} />
           <Route path="tech-suppliers" element={<TechSuppliersPage />} />
           <Route path="employee-indicators" element={<RequirePermission permission="monitoring" anyOf={['auditing']} roles={['MONITOR']}><EmployeeIndicatorsPage /></RequirePermission>} />

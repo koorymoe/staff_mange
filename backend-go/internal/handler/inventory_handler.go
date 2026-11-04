@@ -94,6 +94,16 @@ func (h *InventoryHandler) MyLastInventoryCheck(w http.ResponseWriter, r *http.R
 	WriteJSON(w, http.StatusOK, check)
 }
 
+// GET /api/inventory/checks/open — (ع) 11-04: كل النواقص المفتوحة بكل أعمارها.
+func (h *InventoryHandler) OpenShortages(w http.ResponseWriter, r *http.Request) {
+	rows, err := h.service.OpenShortages()
+	if err != nil {
+		WriteError(w, http.StatusInternalServerError, "تعذر جلب النواقص")
+		return
+	}
+	WriteJSON(w, http.StatusOK, rows)
+}
+
 func (h *InventoryHandler) ResolveInventoryCheck(w http.ResponseWriter, r *http.Request) {
 	check, err := h.service.ResolveInventoryCheck(r.PathValue("id"), middleware.EmployeeIDFromContext(r))
 	if err != nil {

@@ -788,7 +788,6 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	requirePartialLink := guards.Permission("booking_partial_link")
 	requireCoordinator := guards.Permission("coordinator")
 	requireCrewManagement := guards.Permission("crew_management")
-	requireHR := middleware.RequireRole(employeeRepo, notificationRepo, "ADMIN", "HR_COORDINATOR")
 	// تدقيق أمني: مسارات إدارية كانت مفتوحة لأي موظف مسجّل دخول (requireAuth
 	// فقط) — أي فني يقدر يثبّت حجز أو يعدّل زبون أو يضيف أدوات. صارت مربوطة
 	// بصلاحياتها الطبيعية، مع إبقاء المسارات الذاتية (حضور/إشعارات) مفتوحة.
@@ -1660,7 +1659,18 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	// جرد كادر حجز معيّن — الخدمة تتأكد إن الطالب من نفس الحجز، فما
 	// يحتاج حارس دور: الليدر يشوف فريقه، والفني يشوف رفاقه بنفس الشغلة.
 	mux.Handle("GET /api/inventory/checks/booking/{id}", middleware.Chain(http.HandlerFunc(inventoryHandler.BookingCrewInventory), requireAuth))
-	mux.Handle("POST /api/inventory/checks/{id}/resolve", middleware.Chain(http.HandlerFunc(inventoryHandler.ResolveInventoryCheck), requireAuth, requireHR))
+	// (ع) 11-04: چان requireHR بس — إداري الكميات (صلاحية inventory) يشوف الزر وياخذ 403
+	// (وتنحسب عليه مخالفة)، فولا نقص انسكّر بتاريخ النظام. نفس منطق canManageInventory بالواجهة.
+	requireInventoryManage := guards.RoleOrPermission([]string{"ADMIN", "HR_COORDINATOR", "PROCUREMENT_ADMIN"}, "inventory")
+	mux.Handle("POST /api/inventory/checks/{id}/resolve", middleware.Chain(http.HandlerFunc(inventoryHandler.ResolveInventoryCheck), requireAuth, requireInventoryManage))
+	mux.Handle("GET /api/inventory/checks/open", middleware.Chain(http.HandlerFunc(inventoryHandler.OpenShortages), requireAuth, requireInventoryManage))
+	// 📨 رفع طلب للمدير (ع) 11-04
+	managerRequestHandler := handler.NewManagerRequestHandler(db, repository.NewManagerRequestRepository(db, notificationRepo))
+	mux.Handle("POST /api/manager-requests", middleware.Chain(http.HandlerFunc(managerRequestHandler.Create), requireAuth))
+	mux.Handle("GET /api/manager-requests/mine", middleware.Chain(http.HandlerFunc(managerRequestHandler.Mine), requireAuth))
+	mux.Handle("GET /api/manager-requests/inventory-context", middleware.Chain(http.HandlerFunc(managerRequestHandler.InventoryContext), requireAuth, requireInventoryManage))
+	mux.Handle("GET /api/manager-requests", middleware.Chain(http.HandlerFunc(managerRequestHandler.List), requireAuth, requireAdmin))
+	mux.Handle("POST /api/manager-requests/{id}/handle", middleware.Chain(http.HandlerFunc(managerRequestHandler.Handle), requireAuth, requireAdmin))
 
 	mux.Handle("GET /api/inventory/vehicle", middleware.Chain(http.HandlerFunc(inventoryHandler.ListVehicleTools), requireAuth))
 	mux.Handle("POST /api/inventory/vehicle", middleware.Chain(http.HandlerFunc(inventoryHandler.CreateVehicleTool), requireAuth, requireHROrInventory))
