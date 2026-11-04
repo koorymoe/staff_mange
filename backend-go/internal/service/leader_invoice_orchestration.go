@@ -5,6 +5,7 @@ import (
 	"log"
 	"math"
 	"strings"
+	"sync"
 	"time"
 	"unicode/utf8"
 
@@ -104,6 +105,10 @@ func (s *LeaderInvoiceService) Create(employeeID string, req model.CreateLeaderI
 	// الحجز بنفس اليوم — ضغطتين، أو إعادة إرسال بعد ما انقطع النت. هسه تنرفض من
 	// البداية ويا اسم الفاتورة الموجودة، بدل ما المحاسب يكتشفها بعدين.
 	if req.BookingID != nil && *req.BookingID != "" {
+		// (11-04 — ٦هـ) الفحص والحفظ خطوة وحدة لكل حجز: بلا القفل طلبين بنفس
+		// اللحظة يعبرون الفحص سوه وتطلع فاتورتين.
+		unlock := invoiceBookingLock(*req.BookingID)
+		defer unlock()
 		if code := s.invoices.SameDayInvoice(*req.BookingID); code != "" {
 			return nil, fmt.Errorf("هذا الحجز عليه فاتورة اليوم أصلاً (%s) — ما تنرفع فاتورة ثانية لنفس الحجز بنفس اليوم. إذا بيها غلط، كلم المحاسب يعدّلها", code)
 		}
@@ -1131,4 +1136,14 @@ func (s *LeaderInvoiceService) checkFreeReason(id, note *string) error {
 		return fmt.Errorf("سبب «%s» يحتاج توضيح مكتوب", reason.Label)
 	}
 	return nil
+}
+
+// invoiceBookingLock قفل لكل حجز داخل العملية (الخادم نسخة وحدة).
+var invoiceLocks sync.Map
+
+func invoiceBookingLock(bookingID string) func() {
+	m, _ := invoiceLocks.LoadOrStore(bookingID, &sync.Mutex{})
+	mu := m.(*sync.Mutex)
+	mu.Lock()
+	return mu.Unlock
 }
