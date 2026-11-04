@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"staffmange-api/internal/timeutil"
 	"strings"
 	"sync"
 	"time"
@@ -184,7 +185,7 @@ func (s *MatrixGuideService) Guide(employeeID, path, label string) (*GuideResult
 func (s *MatrixGuideService) takeQuota() bool {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	today := time.Now().Format("2006-01-02")
+	today := timeutil.Today()
 	if s.day != today {
 		s.day, s.used = today, 0
 	}

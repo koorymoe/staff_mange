@@ -2,6 +2,7 @@ package service
 
 import (
 	"fmt"
+	"staffmange-api/internal/timeutil"
 	"time"
 
 	"staffmange-api/internal/model"
@@ -235,7 +236,7 @@ func (s *EmployeeMonthlyStatsService) Curve(employeeID string, monthsCount int, 
 		monthsCount = 6
 	}
 	if month == "" {
-		month = time.Now().Format("2006-01")
+		month = timeutil.ThisMonth()
 	}
 	if _, err := time.Parse("2006-01", month); err != nil {
 		return nil, fmt.Errorf("صيغة الشهر يجب أن تكون YYYY-MM")

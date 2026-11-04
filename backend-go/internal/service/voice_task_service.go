@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"regexp"
+	"staffmange-api/internal/timeutil"
 	"strings"
 	"time"
 
@@ -130,7 +131,7 @@ func (s *VoiceAnalysisService) understandTask(ctx context.Context, text string) 
 		return nil, errors.New("ماكو مفتاح هايكو")
 	}
 	s.mu.Lock()
-	today := time.Now().Format("2006-01-02")
+	today := timeutil.Today()
 	if s.day != today {
 		s.day, s.used = today, 0
 	}

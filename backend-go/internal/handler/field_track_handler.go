@@ -5,6 +5,7 @@ import (
 	"log"
 	"net/http"
 	"staffmange-api/internal/errlog"
+	"staffmange-api/internal/timeutil"
 	"time"
 
 	"github.com/google/uuid"
@@ -328,7 +329,7 @@ func (h *FieldTrackHandler) FieldMap(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
 	from, to := q.Get("from"), q.Get("to")
 	if from == "" {
-		from = time.Now().Format("2006-01-02")
+		from = timeutil.Today()
 	}
 	if to == "" {
 		to = from

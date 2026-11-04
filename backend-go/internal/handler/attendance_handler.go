@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/url"
 	"staffmange-api/internal/authz"
+	"staffmange-api/internal/timeutil"
 	"time"
 
 	"github.com/xuri/excelize/v2"
@@ -286,7 +287,7 @@ func (h *AttendanceHandler) ExportToday(w http.ResponseWriter, r *http.Request) 
 	var err error
 	if date == "" {
 		summary, err = h.service.TodaySummary()
-		date = time.Now().Format("2006-01-02")
+		date = timeutil.Today()
 	} else {
 		summary, err = h.service.DaySummary(date)
 	}

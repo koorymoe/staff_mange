@@ -11,6 +11,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"staffmange-api/internal/timeutil"
 	"strings"
 	"sync"
 	"time"
@@ -145,7 +146,7 @@ func NewAssistantService(
 		conversations: conversations,
 		knowledge:     knowledge,
 		roleGuides:    loadRoleGuides(tutorialsDir),
-		resetDate:     time.Now().Format("2006-01-02"),
+		resetDate:     timeutil.Today(),
 	}
 }
 
@@ -155,7 +156,7 @@ var ErrAssistantDailyCapReached = errors.New("وصلنا للحد الأقصى �
 func (s *AssistantService) checkAndIncrementQuota() error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	today := time.Now().Format("2006-01-02")
+	today := timeutil.Today()
 	if today != s.resetDate {
 		s.resetDate = today
 		s.usedToday = 0

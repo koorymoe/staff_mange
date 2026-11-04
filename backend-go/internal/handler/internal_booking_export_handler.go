@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
-	"time"
+	"staffmange-api/internal/timeutil"
 
 	"github.com/xuri/excelize/v2"
 
@@ -33,7 +33,7 @@ var internalExportHeaders = []string{
 func (h *InternalBookingExportHandler) ExportMonth(w http.ResponseWriter, r *http.Request) {
 	month := r.URL.Query().Get("month")
 	if month == "" {
-		month = time.Now().Format("2006-01")
+		month = timeutil.ThisMonth()
 	}
 	rows, err := h.reports.Month(month)
 	if err != nil {

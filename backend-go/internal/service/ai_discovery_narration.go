@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"staffmange-api/internal/timeutil"
 	"strings"
 	"sync"
 	"time"
@@ -75,14 +76,14 @@ func NewModelDiscoveryNarrator(apiKey, modelName string, dailyCap int) *ModelDis
 		model:     modelName,
 		fallback:  DeterministicDiscoveryNarrator{},
 		dailyCap:  dailyCap,
-		resetDate: time.Now().Format("2006-01-02"),
+		resetDate: timeutil.Today(),
 	}
 }
 
 func (n *ModelDiscoveryNarrator) takeQuota() bool {
 	n.mu.Lock()
 	defer n.mu.Unlock()
-	today := time.Now().Format("2006-01-02")
+	today := timeutil.Today()
 	if today != n.resetDate {
 		n.resetDate = today
 		n.usedToday = 0

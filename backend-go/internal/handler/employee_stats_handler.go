@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"staffmange-api/internal/timeutil"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/xuri/excelize/v2"
 
@@ -27,7 +27,7 @@ func NewEmployeeStatsHandler(s *service.EmployeeMonthlyStatsService) *EmployeeSt
 func monthParam(r *http.Request) string {
 	month := r.URL.Query().Get("month")
 	if month == "" {
-		month = time.Now().Format("2006-01")
+		month = timeutil.ThisMonth()
 	}
 	return month
 }

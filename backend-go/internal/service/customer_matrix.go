@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"staffmange-api/internal/model"
+	"staffmange-api/internal/timeutil"
 	"strings"
 	"time"
 
@@ -69,7 +70,7 @@ func customerMatrixSystem(name string) string {
 - عن حجوزاته السابقة استخدم my_bookings.
 - لا تذكر أسماء موظفين، ولا أي معلومة داخلية عن الشركة، ولا تجاوب على شي ما يخص خدمات الشركة (اعتذر بلطف).
 - إذا الزبون زعلان أو عنده شكوى، اعتذر واهتم، واطلب التفاصيل وكلّه فريقنا راح يتابع.
-التاريخ اليوم: ` + time.Now().Format("2006-01-02") + `.`
+التاريخ اليوم: ` + timeutil.Today() + `.`
 }
 
 func (m *CustomerMatrix) tools(accountID string) []agentTool {

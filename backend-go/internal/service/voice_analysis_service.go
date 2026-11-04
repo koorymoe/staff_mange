@@ -12,6 +12,7 @@ import (
 	"net/http"
 	"regexp"
 	"sort"
+	"staffmange-api/internal/timeutil"
 	"strings"
 	"sync"
 	"time"
@@ -274,7 +275,7 @@ func (s *VoiceAnalysisService) understand(ctx context.Context, text string) (*vo
 		return nil, errors.New("ماكو مفتاح هايكو")
 	}
 	s.mu.Lock()
-	today := time.Now().Format("2006-01-02")
+	today := timeutil.Today()
 	if s.day != today {
 		s.day, s.used = today, 0
 	}

@@ -3,6 +3,7 @@ package service
 import (
 	"errors"
 	"sort"
+	"staffmange-api/internal/timeutil"
 	"strconv"
 	"strings"
 	"time"
@@ -478,7 +479,7 @@ func (s *VehicleService) ExpenseSummary(vehicleID, month, year string) (*model.V
 	} else {
 		m := month
 		if m == "" {
-			m = time.Now().Format("2006-01")
+			m = timeutil.ThisMonth()
 		}
 		t, err := time.Parse("2006-01", m)
 		if err != nil {

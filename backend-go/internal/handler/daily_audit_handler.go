@@ -3,8 +3,8 @@ package handler
 import (
 	"log"
 	"net/http"
+	"staffmange-api/internal/timeutil"
 	"strings"
-	"time"
 
 	"staffmange-api/internal/repository"
 )
@@ -35,7 +35,7 @@ func (h *DailyAuditHandler) Day(w http.ResponseWriter, r *http.Request) {
 	}
 	date := r.URL.Query().Get("date")
 	if date == "" {
-		date = time.Now().Format("2006-01-02")
+		date = timeutil.Today()
 	}
 	rep, err := h.repo.Day(date)
 	if err != nil {

@@ -70,3 +70,10 @@ func MonthStart(period string) (from, to time.Time, ok bool) {
 	}
 	return t, t.AddDate(0, 1, 0), true
 }
+
+// Today تاريخ اليوم YYYY-MM-DD بتوقيت الشركة (بغداد). ⚠️ السيرفر يشتغل UTC:
+// time.Now().Format("2006-01-02") يطلع **أمس** من ١٢ الليل لـ ٣ الفجر.
+func Today() string { return time.Now().In(companyLoc).Format("2006-01-02") }
+
+// ThisMonth الشهر YYYY-MM بتوقيت الشركة.
+func ThisMonth() string { return time.Now().In(companyLoc).Format("2006-01") }

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"staffmange-api/internal/timeutil"
 	"strings"
 	"sync"
 	"time"
@@ -76,7 +77,7 @@ func NewModelJudge(apiKey, modelName string, dailyCap int, fallback Judge) *Mode
 		model:     modelName,
 		fallback:  fallback,
 		dailyCap:  dailyCap,
-		resetDate: time.Now().Format("2006-01-02"),
+		resetDate: timeutil.Today(),
 	}
 }
 
@@ -96,7 +97,7 @@ func (j *ModelJudge) UsageToday() (used, cap_ int) {
 func (j *ModelJudge) takeQuota() bool {
 	j.mu.Lock()
 	defer j.mu.Unlock()
-	today := time.Now().Format("2006-01-02")
+	today := timeutil.Today()
 	if today != j.resetDate {
 		j.resetDate = today
 		j.usedToday = 0
