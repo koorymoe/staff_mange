@@ -19,8 +19,10 @@ func TestOrgActing_Live(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer db.Close()
-	const dir, dep = "__act_dir", "__act_dep"
-	emps := []string{dir, dep}
+	// own: مالك تجربة — تنبيه «ماكو نائب» يروح للمشرفين، وبقاعدة الـ CI الفاضية ماكو مالك
+	// فالتنبيه چان يطلع لصفر أحد والاختبار يفشل هناك بس.
+	const dir, dep, own = "__act_dir", "__act_dep", "__act_own"
+	emps := []string{dir, dep, own}
 	cleanup := func() {
 		db.Exec(`DELETE FROM "LeaveRequest" WHERE "employeeId" = ANY($1)`, emps)
 		db.Exec(`DELETE FROM "OrgAssignment" WHERE "employeeId" = ANY($1)`, emps)
@@ -32,7 +34,7 @@ func TestOrgActing_Live(t *testing.T) {
 	}
 	cleanup()
 	defer cleanup()
-	db.MustExec(`INSERT INTO "Employee"(id, name, status, role) VALUES ($1,'مدير تصميم','ACTIVE','TECHNICIAN'),($2,'نائب تصميم','ACTIVE','TECHNICIAN')`, dir, dep)
+	db.MustExec(`INSERT INTO "Employee"(id, name, status, role) VALUES ($1,'مدير تصميم','ACTIVE','TECHNICIAN'),($2,'نائب تصميم','ACTIVE','TECHNICIAN'),($3,'مالك تجربة','ACTIVE','OWNER')`, dir, dep, own)
 	s := NewOrgService(db)
 	if err := s.Seed(); err != nil {
 		t.Fatal(err)
