@@ -50,6 +50,7 @@ type WaBrain interface {
 type waNotifier interface {
 	Create(employeeID, kind, message string) error
 	CreateForRole(role, kind, message string) error
+	CreateForRolesOrPermission(roles []string, permissionName, kind, message string) error
 }
 
 type WaAgentService struct {
@@ -306,10 +307,8 @@ func (s *WaAgentService) handoff(conv *repository.WaConversation, reason string)
 		code = " (حجز " + *conv.BookingCode + ")"
 	}
 	msg := "💬 " + s.name(conv.Agent) + " يحتاج موظف يكمل ويا الزبون" + code + ": " + reason
-	_ = s.notif.CreateForRole("ADMIN", "wa_handoff", msg)
-	if conv.Agent == WaAgentQuality {
-		_ = s.notif.CreateForRole("QUALITY_ENGINEER", "wa_handoff", msg)
-	}
+	// (دازاي 11-04) التنبيه للمالك والي عنده صلاحية المحادثات بس
+	_ = s.notif.CreateForRolesOrPermission([]string{"OWNER"}, "whatsapp_chats", "wa_handoff", msg)
 }
 
 // ── الإلغاء ──

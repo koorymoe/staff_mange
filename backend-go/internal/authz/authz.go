@@ -40,6 +40,7 @@ const (
 	Quotations              Resource = "quotations"                // عروض الأسعار — القاعدة بـ QuotationService (حلقة استيراد)، الرفض من هنا
 	InternalBookings        Resource = "internal_bookings"         // الحجوزات داخل الشركة (كلها)
 	InternalBookingCreate   Resource = "internal_booking_create"   // تسجيل حجز داخل الشركة
+	WhatsAppChats           Resource = "whatsapp_chats"            // محادثات الواتساب (حجوزات وجودة) — المالك + من ينطيه الصلاحية بس (دازاي 11-04)
 	ServiceInvoices         Resource = "service_invoices"          // فواتير خدمة جي بي اس/داش كام (الصلاحية حسب النوع بالمعالج)
 )
 
@@ -84,6 +85,8 @@ var SeeAllRules = map[Resource]Rule{
 	ProjectContractValue:    {Roles: []string{"FINANCE", "PROJECT_MANAGER"}, Perms: []string{"finance", "finance_audit", "project_management"}, Guard: true},
 	ProjectPaymentsOverview: {Roles: []string{"FINANCE", "PROJECT_MANAGER", "MONITOR"}, Perms: []string{"finance", "finance_audit", "project_management", "monitoring"}, Guard: true},
 	ProjectPaymentsAudit:    {OwnerOnly: true},
+	// (دازاي 11-04) «سويها صلاحية اني انطيها للي يعجبني»: ولا حتى الأدمن أو المراقب بلاها.
+	WhatsAppChats: {Roles: []string{"OWNER"}, RawRole: true, Perms: []string{"whatsapp_chats"}},
 	// booking_handler.ListInternal — قرار دازاي: غيرهم يشوف الي توجّه إله بس
 	InternalBookings: {Roles: []string{"ADMIN", "OWNER", "FINANCE", "MONITOR", "HR_COORDINATOR"}},
 	// booking_handler.Create (داخل الشركة)
@@ -157,6 +160,20 @@ func Guard(g *middleware.Guards, res Resource) func(http.Handler) http.Handler {
 		return g.RoleOrPermission(rule.Roles, rule.Perms[0])
 	default:
 		return g.RoleOrAnyPermission(rule.Roles, rule.Perms...)
+	}
+}
+
+// Strict حارس مسار **بلا عبور للأدمن**: يمشي على القاعدة حرفياً (SeeAll)، والرفض ٤٠٤.
+// لـ Guard العادي الأدمن يعبر دائماً؛ هذا للصلاحيات الي المالك يريد يمنحها بيده.
+func Strict(perms PermLister, res Resource) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if !SeeAll(r, perms, res) {
+				Deny(w, r, res)
+				return
+			}
+			next.ServeHTTP(w, r)
+		})
 	}
 }
 

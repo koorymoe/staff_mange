@@ -7,10 +7,10 @@ import (
 	"io"
 	"log"
 	"net/http"
-	"staffmange-api/internal/model"
 	"strings"
 	"time"
 
+	"staffmange-api/internal/authz"
 	"staffmange-api/internal/middleware"
 	"staffmange-api/internal/repository"
 	"staffmange-api/internal/service"
@@ -29,17 +29,10 @@ func NewWaHandler(svc *service.WaAgentService, wa *whatsapp.Client, perms *repos
 	return &WaHandler{svc: svc, wa: wa, perms: perms}
 }
 
-// canAgent المدير والمالك كلشي؛ quality_control للجودة، coordinator للحجوزات.
-func (h *WaHandler) canAgent(r *http.Request, agent string) bool {
-	if middleware.IsOwner(r) || model.IsAdminRole(middleware.RoleFromContext(r)) {
-		return true
-	}
-	perm := "coordinator"
-	if agent == service.WaAgentQuality {
-		perm = "quality_control"
-	}
-	ok, err := h.perms.HasPermission(middleware.EmployeeIDFromContext(r), perm)
-	return err == nil && ok
+// canAgent (دازاي 11-04): المالك، أو الي انطاه المالك صلاحية whatsapp_chats — بس.
+// قبل جانت تنفتح لأي أدمن (والمراقب بالهيكل الجديد) ولصلاحيات الجودة والتنسيق.
+func (h *WaHandler) canAgent(r *http.Request, _ string) bool {
+	return authz.SeeAll(r, h.perms, authz.WhatsAppChats)
 }
 
 func (h *WaHandler) conv(w http.ResponseWriter, r *http.Request) *repository.WaConversation {

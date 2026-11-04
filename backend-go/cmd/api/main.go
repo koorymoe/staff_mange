@@ -3130,7 +3130,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 				service.NewAnthropicClientFor(service.WaAgentBooking, cfg.AIKeyBooking), cfg.AIModel, 200))
 			aiAgentNames.SetEnabled(waSvc.Enabled)
 			waH := handler.NewWaHandler(waSvc, waClient, permissionRepo)
-			requireWa := guards.RoleOrAnyPermission([]string{"ADMIN"}, "quality_control", "coordinator")
+			requireWa := authz.Strict(permissionRepo, authz.WhatsAppChats) // (دازاي 11-04) صلاحية بيد المالك
 			mux.Handle("GET /api/wa/webhook", http.HandlerFunc(waH.Verify))
 			mux.Handle("POST /api/wa/webhook", http.HandlerFunc(waH.Receive))
 			mux.Handle("GET /api/wa/conversations", middleware.Chain(http.HandlerFunc(waH.List), requireAuth, requireWa))
