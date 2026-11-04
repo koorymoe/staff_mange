@@ -39,6 +39,21 @@ func writeError(w http.ResponseWriter, status int, message string) {
 	_ = json.NewEncoder(w).Encode(map[string]string{"error": message})
 }
 
+// SessionCookie اسم كوكي الجلسة (٧ي): HttpOnly — كود الصفحة ما يگدر يقراها.
+const SessionCookie = "sm_session"
+
+// SetSessionCookie يحط الكوكي بعد الدخول (طبقة الموظفين بس).
+func SetSessionCookie(w http.ResponseWriter, r *http.Request, token string) {
+	http.SetCookie(w, &http.Cookie{Name: SessionCookie, Value: token, Path: "/api", HttpOnly: true,
+		Secure: r.TLS != nil || r.Header.Get("X-Forwarded-Proto") == "https", SameSite: http.SameSiteStrictMode, MaxAge: 12 * 3600})
+}
+
+// ClearSessionCookie يمسحها بالخروج.
+func ClearSessionCookie(w http.ResponseWriter, r *http.Request) {
+	http.SetCookie(w, &http.Cookie{Name: SessionCookie, Value: "", Path: "/api", HttpOnly: true,
+		Secure: r.TLS != nil || r.Header.Get("X-Forwarded-Proto") == "https", SameSite: http.SameSiteStrictMode, MaxAge: -1})
+}
+
 // RequireAuth يتحقق من وجود JWT صالح بالطلب ويرفض أي طلب بدونه. كمان يتحقق
 // من حالة الحساب والدور الحقيقيين بقاعدة البيانات بكل طلب (مو بس وقت تسجيل
 // الدخول) — حتى لو التوكن نفسه لسه صالح تقنياً:
@@ -51,12 +66,23 @@ func RequireAuth(auth *service.AuthService, employees *repository.EmployeeReposi
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			header := r.Header.Get("Authorization")
-			if !strings.HasPrefix(header, "Bearer ") {
+			var tokenString string
+			if strings.HasPrefix(header, "Bearer ") {
+				tokenString = strings.TrimPrefix(header, "Bearer ")
+			} else if c, err := r.Cookie(SessionCookie); err == nil && c.Value != "" {
+				// ٧ي (11-04، بالتدريج): الكوكي المحمية بديل الترويسة. حماية CSRF:
+				// أي كتابة بالكوكي لازم وياها ترويسة X-Requested-With (المتصفح ما يحطها
+				// لطلب جاي من موقع ثاني)، وفوقها SameSite=Strict.
+				if r.Method != http.MethodGet && r.Method != http.MethodHead && r.Method != http.MethodOptions &&
+					r.Header.Get("X-Requested-With") == "" {
+					writeError(w, http.StatusForbidden, "طلب مرفوض (CSRF)")
+					return
+				}
+				tokenString = c.Value
+			} else {
 				writeError(w, http.StatusUnauthorized, "يجب تسجيل الدخول")
 				return
 			}
-
-			tokenString := strings.TrimPrefix(header, "Bearer ")
 			claims, err := auth.ParseToken(tokenString)
 			if err != nil {
 				writeError(w, http.StatusUnauthorized, "جلسة الدخول منتهية، الرجاء تسجيل الدخول مجدداً")

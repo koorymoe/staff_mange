@@ -19,6 +19,7 @@ import (
 var publicRoutes = map[string]string{
 	"GET /api/health":                              "فحص الخادم للمراقبة",
 	"POST /api/auth/login":                         "الدخول نفسه (ويا تحديد المحاولات)",
+	"POST /api/auth/logout":                        "الخروج يمسح كوكي الجلسة بس (٧ي) — ما يقرا ولا يكتب بيانات",
 	"GET /api/files/":                              "<img> ما يرسل ترويسة — الوسم الموقّع يتحقق بالمعالج",
 	"GET /api/public/design-forms/{token}":         "استمارة تصميم للزبون برابط موقّع (ويا تحديد)",
 	"POST /api/public/design-forms/{token}/submit": "إرسال الاستمارة برابط موقّع (ويا تحديد)",

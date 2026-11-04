@@ -927,6 +927,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	// كإجراء حماية تلقائي ضدهم لما شافوا محاولات دخول متكررة سريعة.
 	requireLoginRateLimit := middleware.RateLimit(8, time.Minute)
 	mux.Handle("POST /api/auth/login", requireLoginRateLimit(http.HandlerFunc(authHandler.Login)))
+	mux.Handle("POST /api/auth/logout", requireLoginRateLimit(http.HandlerFunc(authHandler.Logout)))
 	// رفع الملفات يحتاج تسجيل دخول. العرض بعد — الملفات تحمل صور وصولات
 	// ووثائق زبائن، وما تنعرض لأي أحد يخمّن الرابط.
 	mux.Handle("POST /api/files", middleware.Chain(http.HandlerFunc(fileHandler.Upload), requireAuth))

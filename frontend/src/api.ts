@@ -2,6 +2,13 @@ import { readAIStream, readMatrixStream, type AIStreamEvent, type MatrixStreamEv
 /** عنوان السيرفر — مكان واحد (DRY 11-04) */
 export const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000/api'
 
+/** ٧ي (11-04): الخروج يمسح كوكي الجلسة بالسيرفر — بلاها تضل الجلسة بالمتصفح بعد الخروج. */
+export function serverLogout(): void {
+  try {
+    void fetch(`${API_URL}/auth/logout`, { method: 'POST', credentials: 'include', keepalive: true, headers: { 'X-Requested-With': 'fetch' } }).catch(() => {})
+  } catch { /* الخروج المحلي يكمل حتى لو السيرفر ما رد */ }
+}
+
 export interface AttendanceRecord {
   id: string
   employeeId: string
@@ -1128,6 +1135,7 @@ export function handleSessionExpired(reason?: string) {
   // وهذا الي كان يخلي النظام يبين "معلّق" وما ينفع معه تحديث.
   if (!currentToken()) return
   sessionExpiredHandled = true
+  serverLogout()
   localStorage.removeItem('authToken')
   localStorage.removeItem('currentEmployee')
   // نمرر السبب لشاشة الدخول بدل alert الي يوقف الصفحة وينتظر ضغطة

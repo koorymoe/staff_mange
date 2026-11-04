@@ -59,7 +59,16 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 	if claims, err := h.auth.ParseToken(token); err == nil && claims.Realm != "" {
 		realm = claims.Realm
 	}
+	if realm == service.RealmStaff {
+		middleware.SetSessionCookie(w, r, token) // ٧ي: الكوكي ويا التوكن — الواجهة تنتقل بالتدريج
+	}
 	WriteJSON(w, http.StatusOK, model.LoginResponse{Employee: *employee, Token: token, Realm: realm})
+}
+
+// POST /api/auth/logout — يمسح كوكي الجلسة (٧ي). بلا دخول: حتى الجلسة المنتهية تنمسح.
+func (h *AuthHandler) Logout(w http.ResponseWriter, r *http.Request) {
+	middleware.ClearSessionCookie(w, r)
+	WriteJSON(w, http.StatusOK, map[string]bool{"ok": true})
 }
 
 // GET /api/v1/auth/me
@@ -98,7 +107,10 @@ func (h *AuthHandler) ChangePassword(w http.ResponseWriter, r *http.Request) {
 		WriteError(w, http.StatusBadRequest, err.Error())
 		return
 	}
-	// الواجهة لازم تخزن التوكن الجديد — القديم انبطل بنفس اللحظة
+	// الواجهة لازم تخزن التوكن الجديد — القديم انبطل بنفس اللحظة (والكوكي تتبدّل وياه)
+	if _, err := r.Cookie(middleware.SessionCookie); err == nil {
+		middleware.SetSessionCookie(w, r, token)
+	}
 	WriteJSON(w, http.StatusOK, map[string]string{"token": token})
 }
 

@@ -21,7 +21,7 @@ import ErrorBoundary from './ErrorBoundary'
 import { api, type Employee } from '../api'
 import { SessionContext, isAdminOrOwner } from '../session'
 import { roleLabel, roleGradient } from '../roleLabels'
-import { ensureFileToken, isStealthSession } from '../api'
+import { ensureFileToken, isStealthSession, serverLogout } from '../api'
 import Login from '../pages/Login'
 import CommandApp from '../command/CommandApp'
 import TrainingPage from '../pages/TrainingPage'
@@ -232,6 +232,7 @@ export default function Layout() {
     if (normalized) {
       localStorage.setItem('currentEmployee', JSON.stringify(normalized))
     } else {
+      serverLogout()
       localStorage.removeItem('currentEmployee')
       localStorage.removeItem('authToken')
     }
