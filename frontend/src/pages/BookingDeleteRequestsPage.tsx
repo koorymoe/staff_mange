@@ -16,6 +16,7 @@ import PhoneActions from '../components/PhoneActions'
 import { copyText } from '../utils/clipboard'
 import { askConfirm } from '../ui/dialogs'
 import { swallow } from '../utils/swallow'
+import { dayBaghdad } from '../utils/format'
 
 /**
  * طلبات حذف الحجوزات.
@@ -105,7 +106,7 @@ export default function BookingDeleteRequestsPage({ embedded }: { embedded?: boo
       })
       .filter((r) => !channelFilter || r.channel === channelFilter)
       .filter((r) => !typeFilter || r.requestType === typeFilter)
-      .filter((r) => !dateFilter || r.createdAt.slice(0, 10) === dateFilter)
+      .filter((r) => !dateFilter || dayBaghdad(r.createdAt) === dateFilter)
       .filter((r) => !query.trim() || matches([r.bookingCode, r.customerName], query))
     out.sort((a, b) => {
       const da = new Date(a.createdAt).getTime()

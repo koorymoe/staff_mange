@@ -7,7 +7,7 @@ import vstripUrl from '../assets/print/quotation-vstrip.png'
 import bannerUrl from '../assets/print/quotation-banner.png'
 import { matches } from '../utils/search'
 import QuotationHistoryPicker from '../components/QuotationHistoryPicker'
-import { numIQ as fmt } from '../utils/format'
+import { numIQ as fmt, todayBaghdad } from '../utils/format'
 import { askConfirm } from '../ui/dialogs'
 import { swallow } from '../utils/swallow'
 
@@ -245,7 +245,7 @@ export default function QuotationNew() {
     }
   }, [activeAutocomplete])
 
-  const today = new Date().toISOString().split('T')[0]
+  const today = todayBaghdad()
 
   const grandTotal = items.reduce((sum, item) => sum + item.totalPrice, 0)
   // ⚠️ بلا Math.round: الخادم يحسبها بلا تقريب، فالتقريب هنا يخلي

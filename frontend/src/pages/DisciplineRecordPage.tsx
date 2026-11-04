@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { api, type DisciplineEntry, type DisciplineRecord } from '../api'
 import MatrixNote from '../components/MatrixNote'
+import { todayBaghdad, dayBaghdad } from '../utils/format'
 
 // ═══ سجل الانضباط الوظيفي — طلب (ع) 10-05 ═══
 // كل الموظفين ويا كل خصم من أول يوم بالنظام: كم مرة، شكد، شنو السبب، متى،
@@ -18,7 +19,7 @@ function csv(rows: DisciplineEntry[]) {
   const blob = new Blob(['﻿' + [head.join(','), ...lines].join('\n')], { type: 'text/csv;charset=utf-8' })
   const a = document.createElement('a')
   a.href = URL.createObjectURL(blob)
-  a.download = `سجل-الانضباط-${new Date().toISOString().slice(0, 10)}.csv`
+  a.download = `سجل-الانضباط-${todayBaghdad()}.csv`
   a.click()
   URL.revokeObjectURL(a.href)
 }
@@ -57,16 +58,16 @@ export default function DisciplineRecordPage() {
     (!emp || e.employeeId === emp) && (src === 'ALL' || e.source === src)
     && (state === 'ALL' || (state === 'RETURNED' ? e.returned : !e.returned))
     && (!q || `${e.employeeName} ${e.reason} ${e.byName ?? ''} ${e.bookingCode ?? ''}`.includes(q))
-    && (!from || e.at.slice(0, 10) >= from) && (!to || e.at.slice(0, 10) <= to)
+    && (!from || dayBaghdad(e.at) >= from) && (!to || dayBaghdad(e.at) <= to)
   ), [rec, emp, src, state, q, from, to])
 
   if (err) return <p className="text-red-600">{err}</p>
   if (!rec) return <p className="text-slate-400">جاري التحميل…</p>
   const sel = rec.employees.find((e) => e.employeeId === emp)
-  const today = new Date().toISOString().slice(0, 10)
+  const today = todayBaghdad()
   const month = today.slice(0, 7)
   const all = rec.entries
-  const todayAmount = all.filter((e) => e.at.slice(0, 10) === today && !e.returned).reduce((n, e) => n + (e.amount || 0), 0)
+  const todayAmount = all.filter((e) => dayBaghdad(e.at) === today && !e.returned).reduce((n, e) => n + (e.amount || 0), 0)
   const pointsLost = all.filter((e) => e.source === 'POINTS' && e.points < 0).reduce((n, e) => n - e.points, 0)
     + all.filter((e) => e.source === 'KPI' && !e.returned).reduce((n, e) => n + (e.points || 0), 0)
   const returnedThisMonth = all.filter((e) => (e.returned && (e.returnedAt ?? e.at).slice(0, 7) === month) || (e.source === 'POINTS' && e.points > 0 && e.at.slice(0, 7) === month)).length

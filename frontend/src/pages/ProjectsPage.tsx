@@ -11,6 +11,7 @@ import SurveyPhotos from '../components/SurveyPhotos'
 import { roleLabelShort } from '../roleLabels'
 import { askConfirm, askInput } from '../ui/dialogs'
 import { swallow } from '../utils/swallow'
+import { todayBaghdad, dayBaghdad } from '../utils/format'
 
 // ⚠️ چانت عندها طريقة اتصال خاصة (من أصلها كنظام منفصل) — هسه الموحدة.
 const request = apiRequest
@@ -1327,7 +1328,7 @@ function MediaTransferModal({ project, onClose, onSaved }: { project: Project; o
       setExisting(b)
       if (b.engineerId) setEngineer(b.engineerId)
       setStart(localDT(b.startAt))
-      if (b.expectedEndAt) setEnd(b.expectedEndAt.slice(0, 10))
+      if (b.expectedEndAt) setEnd(dayBaghdad(b.expectedEndAt))
       setDuration(b.duration || '')
       setNotes(b.notes || '')
     }).catch(swallow)
@@ -1743,7 +1744,7 @@ function RejectionView({ projects, canManage, onRefresh }: { projects: Project[]
     }
     const link = document.createElement('a')
     link.href = encodeURI('data:text/csv;charset=utf-8,' + csv)
-    link.download = `تقرير_رفض_المشاريع_${new Date().toISOString().split('T')[0]}.csv`
+    link.download = `تقرير_رفض_المشاريع_${todayBaghdad()}.csv`
     document.body.appendChild(link); link.click(); document.body.removeChild(link)
   }
 

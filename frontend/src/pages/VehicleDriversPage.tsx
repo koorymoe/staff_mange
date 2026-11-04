@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { api, apiRequest, type Employee, type Vehicle } from '../api'
 import { roleLabel } from '../roleLabels'
 import { swallow } from '../utils/swallow'
+import { todayBaghdad, dayBaghdad } from '../utils/format'
 
 // ═══ «🪪 السواق والبطاقات» — (ع) 10-17 ═══
 // ضمن إدارة المركبات: إجازة سوق كل موظف وانتهاؤها، التعهد وتخويل السياقة،
@@ -33,7 +34,7 @@ function Drivers() {
   const [edit, setEdit] = useState<Driver | null>(null)
   const [q, setQ] = useState('')
   useEffect(() => { apiRequest<Driver[]>('/vehicle-drivers').then(setRows).catch(() => setRows([])) }, [])
-  const [[today, soon]] = useState(() => [new Date().toISOString().slice(0, 10), new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10)])
+  const [[today, soon]] = useState(() => [todayBaghdad(), dayBaghdad(new Date(Date.now() + 30 * 86400000))])
   const save = async () => {
     if (!edit) return
     try {

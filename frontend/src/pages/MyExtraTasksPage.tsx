@@ -2,6 +2,7 @@ import { Fragment, useCallback, useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { api, EXTRA_TASK_STATUS, type ExtraTask } from '../api'
 import { useSession } from '../session'
+import { dayBaghdad } from '../utils/format'
 
 // ═══ مهامي الإضافية — لكل موظف ═══
 //
@@ -169,7 +170,7 @@ export default function MyExtraTasksPage() {
       if (priorityFilter && t.priority !== priorityFilter) return false
       if (dateFilter) {
         if (!t.dueAt) return false
-        if (new Date(t.dueAt).toISOString().slice(0, 10) !== dateFilter) return false
+        if (dayBaghdad(t.dueAt) !== dateFilter) return false
       }
       if (needle) {
         const hay = `${t.title} ${t.description || ''} ${t.assignedByName || ''}`.toLowerCase()

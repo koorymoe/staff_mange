@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { api, type CarWashVehicle, type VehicleTracking, type VehicleTrackRating } from '../api'
+import { todayBaghdad } from '../utils/format'
 
 // ═══ 🚗 متابعة السيارات — نفس ملف إكسل (ع) 10-09 ═══
 // أبو الكميات يعبّي كل يوم جدول لكل السيارات (الغسل + عشر بنود من 0 لـ4 + وصف
@@ -23,7 +24,7 @@ const MEANING = ['سيئ جداً / غير آمن', 'ضعيف', 'متوسط', '�
 
 type Draft = Partial<Record<keyof VehicleTrackRating, number | string | null>>
 
-const todayKey = () => new Date(Date.now() + 3 * 3600_000).toISOString().slice(0, 10)
+const todayKey = () => todayBaghdad()
 const periodOf = (d: string) => {
   const [y, m, day] = d.split('-').map(Number)
   const dt = new Date(Date.UTC(y, m - 1 - (day < 17 ? 1 : 0), 1))

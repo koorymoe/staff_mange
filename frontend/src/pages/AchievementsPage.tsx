@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { api, type Achievement } from '../api'
 import { VoicePlayer } from '../components/VoiceNote'
+import { todayBaghdad } from '../utils/format'
 
 // ═══ الإنجازات (ماتركس) — للمالك والمدير والمراقب (ع) 10-23 ═══
 //
@@ -8,7 +9,7 @@ import { VoicePlayer } from '../components/VoiceNote'
 // أكثر على الموظفين وسلوكهم. المراجعة هنا تقييم بس («زين» أو «يحتاج
 // مراجعة» + ملاحظة)، مو غرامة ولا قرار تلقائي.
 export default function AchievementsPage() {
-  const [day, setDay] = useState(() => new Date().toISOString().slice(0, 10))
+  const [day, setDay] = useState(() => todayBaghdad())
   const [rows, setRows] = useState<Achievement[]>([])
   const [loading, setLoading] = useState(true)
   const [err, setErr] = useState<string | null>(null)

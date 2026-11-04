@@ -8,7 +8,7 @@ import {
 import { useSession, isAdminOrOwner } from '../session'
 import { useNavigate } from 'react-router-dom'
 import { matches } from '../utils/search'
-import { dinarRound as iqd } from '../utils/format'
+import { dinarRound as iqd, todayBaghdad } from '../utils/format'
 import { askConfirm, askInput } from '../ui/dialogs'
 import { swallow } from '../utils/swallow'
 
@@ -695,7 +695,7 @@ function ProcessForm({ system, onClose, onDone }: { system: SolarSystem; onClose
   const [name, setName] = useState('')
   const [phone, setPhone] = useState('')
   const [address, setAddress] = useState('')
-  const [date, setDate] = useState(new Date().toISOString().slice(0, 10))
+  const [date, setDate] = useState(todayBaghdad())
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState<string | null>(null)
 

@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useSession, isAdminOrOwner } from '../session'
 import { api, LEAVE_KINDS, type MonthlyAttendanceReport, type EmployeeDailyAttendanceSummary, type OpenSessionResponse, type DailyAttendance, type LeaveRequest, type LeaveKind } from '../api'
 import { countAbsentDays, countLateDays, isLateDay, isWeekend, movementsOf, type Movement } from '../attendanceStats'
+import { todayBaghdad } from '../utils/format'
 
 /* ───── helpers ───── */
 
@@ -157,7 +158,7 @@ export default function AttendancePage({ embedded }: { embedded?: boolean } = {}
   const todayMinutes = openSession?.totalMinutes ?? 0
 
   // حركات اليوم: من جلسات اليوم نفسه بالتقرير الشهري
-  const todayKey = new Date().toISOString().slice(0, 10)
+  const todayKey = todayBaghdad()
   const todayRecord: DailyAttendance | null =
     report?.days.find((d) => d.date.slice(0, 10) === todayKey) ?? null
   const movements = movementsOf(todayRecord)
@@ -748,7 +749,7 @@ function LeavePanel({ onSubmitted, leaves }: {
   onSubmitted: () => void
   leaves: LeaveRequest[]
 }) {
-  const todayKey = new Date().toISOString().slice(0, 10)
+  const todayKey = todayBaghdad()
   const [kind, setKind] = useState<LeaveKind>('REGULAR')
   const [from, setFrom] = useState(todayKey)
   const [to, setTo] = useState(todayKey)
