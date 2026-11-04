@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { api, type CourierMessage } from '../api'
-import { useSession, isAdminOrOwner } from '../session'
+import { useSession } from '../session'
 import MatrixEyeGraphic from './MatrixEyeGraphic'
 import { pollVisible } from '../utils/poll'
 import { COURIER_TRIP_MS, tweenLid } from '../utils/courier'
@@ -21,7 +21,6 @@ const SHOW_MS = 9_000
 
 export default function MatrixCourier() {
   const { employee } = useSession()
-  const isBoss = isAdminOrOwner(employee)
   const [visit, setVisit] = useState<CourierMessage | null>(null)
   const [lid, setLid] = useState(0)
   const busy = useRef(false)
@@ -60,11 +59,19 @@ export default function MatrixCourier() {
       }
     }).catch(swallow)
     load()
-    // المدير يحتاج يعرف بسرعة إنه وجّه (حتى العين تروح بوقتها)؛ الموظف أبطأ شوية
-    const stop = pollVisible(load, isBoss ? 3000 : 5000)
+    // ٧س (11-04): چان كل ٣ ثواني للمدير و٥ للموظف — ٤٠ من كل ٤٩ طلب بالدقيقتين
+    // من كل تبويب مفتوح. هسه: المدير يعرف إنه وجّه من «matrix-refresh» (ينطلق بعد
+    // ثانيتين من أي حفظ ناجح، api.ts) فالعين تروح بوقتها، والدوري ١٥ ثانية للكل.
+    // العين أصلاً تاخذ ٦ ثواني «بالطريق»، فالمستلم ما يحس بالفرق.
+    const stop = pollVisible(load, 15_000)
     window.addEventListener('matrix-courier-refresh', load)
-    return () => { alive = false; stop(); window.removeEventListener('matrix-courier-refresh', load) }
-  }, [employee, isBoss])
+    window.addEventListener('matrix-refresh', load)
+    return () => {
+      alive = false; stop()
+      window.removeEventListener('matrix-courier-refresh', load)
+      window.removeEventListener('matrix-refresh', load)
+    }
+  }, [employee])
 
   if (!visit) return null
   return (
