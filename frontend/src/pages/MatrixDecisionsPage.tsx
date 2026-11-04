@@ -5,13 +5,13 @@ import OwnerSwitch from '../components/OwnerSwitch'
 import MatrixGuideRules from '../components/MatrixGuideRules'
 import MatrixProposals from '../components/MatrixProposals'
 import { SWITCH_MATRIX_AUTOPILOT, SWITCH_MATRIX_STAFF_EYE } from '../systemSwitches'
+import { todayBaghdad } from '../utils/format'
 
 // ═══ صندوق قرارات ماتركس — للمالك ومدير النظام ═══
 // ثلاث أقسام: شنو سوّى لحاله اليوم (تذكيرات بس، ويه زر «لا تسوي هذا»)،
 // وشنو ينتظر قرارك (أحكامه + حجوزات باچر بلا كادر)، والقرار ياخذه
 // المدير بالشاشة الأصلية بنفس حراسها.
 
-const todayBaghdad = () => new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Baghdad' })
 
 function entityLink(type: string): string | null {
   if (type === 'BOOKING') return '/coordinator'

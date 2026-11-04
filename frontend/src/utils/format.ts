@@ -17,6 +17,8 @@ export const dinarRound = (n: number) => `${Math.round(n || 0).toLocaleString('e
 export const dinarK = (n: number) => `${num(Math.round(n / 1000) * 1000)} د.ع`
 /** تاريخ اليوم بتوقيت بغداد YYYY-MM-DD */
 export const todayBaghdad = () => new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Baghdad' })
+/** (DRY 11-04) تاريخ YYYY-MM-DD لأي وقت بتوقيت بغداد — فاضي إذا ماكو */
+export const dayBaghdad = (iso: string | Date | null | undefined) => (iso ? new Date(iso).toLocaleDateString('en-CA', { timeZone: 'Asia/Baghdad' }) : '')
 /** ثواني ← س:دد:ثث */
 export const hms = (sec: number) => `${Math.floor(sec / 3600)}:${String(Math.floor((sec % 3600) / 60)).padStart(2, '0')}:${String(sec % 60).padStart(2, '0')}`
 /** تاريخ ووقت عربي متوسط */

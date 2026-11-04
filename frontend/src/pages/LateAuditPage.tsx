@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { api } from '../api'
 import PageHeader from '../components/PageHeader'
+import { dayBaghdad } from '../utils/format'
 
 // ═══ فحص المتأخرات — قرار (ع) 10-15 ═══
 // «ليش متأخرات؟ هل بيهن مشكلة؟ وشكد مدة التأخير؟» — نفس تعريف ماتركس، ولكل حجز
@@ -12,7 +13,7 @@ interface Row {
   scheduledAt: string; completedAt: string | null; daysLate: number; cause: string; causeDetail: string
   dataIssues: string[]; leader: string | null; team: string | null; postpones: number; reschedules: number
 }
-const day = (s: string | null) => (s ? new Date(s).toLocaleDateString('en-CA', { timeZone: 'Asia/Baghdad' }) : '—')
+const day = (s: string | null) => dayBaghdad(s) || '—'
 const ago = (n: number) => new Date(Date.now() - n * 86400_000).toLocaleDateString('en-CA', { timeZone: 'Asia/Baghdad' })
 
 export default function LateAuditPage() {

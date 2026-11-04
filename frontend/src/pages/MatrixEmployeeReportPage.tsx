@@ -8,12 +8,12 @@ import { GROUP_LABEL, type EyeGroup } from '../components/matrixEyeColors'
 import { useSession } from '../session'
 import { InspectButton } from '../components/InspectBar'
 import MatrixNote from '../components/MatrixNote'
+import { todayBaghdad } from '../utils/format'
 
 // ═══ تقرير ماتركس عن موظف — بالعراقي، بأرقام حقيقية ═══
 // دوامه مقابل جدوله، وكل حجز بمراحله ومنو أخّر، وإجازاته ونمطها،
 // و«شخصيته بالشغل» من ٣٠ يوم. للمدير والمالك، والمراقب يقراه (بلا أزرار الإدارة).
 
-const todayBaghdad = () => new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Baghdad' })
 const TONE: Record<ReportLine['tone'], string> = {
   OK: 'border-emerald-200 bg-emerald-50 text-emerald-900',
   WARN: 'border-amber-200 bg-amber-50 text-amber-900',

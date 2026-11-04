@@ -4,8 +4,8 @@ import { Link } from 'react-router-dom'
 import ProjectFillInfo from '../components/ProjectFillInfo'
 import PaymentAuditModal from '../components/PaymentAuditModal'
 import { useSession } from '../session'
+import { API_URL } from '../api'
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000/api'
 
 async function request<T>(path: string): Promise<T> {
   const res = await fetch(`${API_URL}${path}`, {

@@ -4,8 +4,8 @@ import { useEffect, useState } from 'react'
 import type { Employee } from '../api'
 import { useSession } from '../session'
 import { roleLabel } from '../roleLabels'
+import { API_URL } from '../api'
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000/api'
 
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
   const token = localStorage.getItem('authToken')

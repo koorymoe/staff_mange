@@ -1,5 +1,6 @@
 import { readAIStream, readMatrixStream, type AIStreamEvent, type MatrixStreamEvent } from './utils/readMatrixStream'
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000/api'
+/** عنوان السيرفر — مكان واحد (DRY 11-04) */
+export const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000/api'
 
 export interface AttendanceRecord {
   id: string

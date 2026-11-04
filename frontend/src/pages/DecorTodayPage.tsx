@@ -2,13 +2,14 @@ import { useCallback, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { api, type Booking, type WorkPhoto } from '../api'
 import MyDirectives from '../components/MyDirectives'
+import { todayBaghdad, dayBaghdad } from '../utils/format'
 
 // ═══ 🪚 «شغلي اليوم» — كادر الديكور (دازاي 10-25) ═══
 // أغلبهم ما مكملين مدارس: كلمات قليلة، أزرار كبيرة بالترتيب، وكل زر ينفتح بعد
 // الي قبله. صورة «قبل» قبل ما يبدي، وصورة «بعد» قبل ما يكول خلصت.
 
-const todayKey = () => new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Baghdad' })
-const dayOf = (iso: string | null) => (iso ? new Date(iso).toLocaleDateString('en-CA', { timeZone: 'Asia/Baghdad' }) : '')
+const todayKey = todayBaghdad
+const dayOf = (iso: string | null) => dayBaghdad(iso)
 const timeOf = (iso: string | null) => (iso ? new Date(iso).toLocaleTimeString('ar-IQ', { timeZone: 'Asia/Baghdad', hour: 'numeric', minute: '2-digit' }) : '')
 
 export default function DecorTodayPage() {

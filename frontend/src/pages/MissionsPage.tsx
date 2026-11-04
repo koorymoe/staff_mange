@@ -4,11 +4,11 @@ import ExtraTasksPage from './ExtraTasksPage'
 import FieldBoard from '../components/FieldBoard'
 import MatrixNote from '../components/MatrixNote'
 import { pollVisible } from '../utils/poll'
+import { API_URL } from '../api'
 
-const API = import.meta.env.VITE_API_URL || 'http://localhost:4000/api'
 async function request<T>(path: string, opts?: RequestInit): Promise<T> {
   const token = localStorage.getItem('authToken')
-  const res = await fetch(`${API}${path}`, {
+  const res = await fetch(`${API_URL}${path}`, {
     ...opts,
     headers: {
       'Content-Type': 'application/json',

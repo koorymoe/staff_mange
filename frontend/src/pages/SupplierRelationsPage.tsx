@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { api } from '../api'
 import PageHeader from '../components/PageHeader'
 import { useSession, isAdminOrOwner } from '../session'
+import { dayBaghdad } from '../utils/format'
 
 // ═══ علاقات الموردين — قرار (ع) 10-15 ═══
 // العلاقات العامة ووحدة التقنيين: كل مورد (مشتريات أو تقنيين)، صارلنا شكد ما
@@ -14,7 +15,7 @@ interface Row {
 }
 interface Ev { at: string; type: string; text: string | null; by: string | null }
 
-const when = (s: string | null) => (s ? new Date(s).toLocaleDateString('en-CA', { timeZone: 'Asia/Baghdad' }) : '—')
+const when = (s: string | null) => dayBaghdad(s) || '—'
 
 export default function SupplierRelationsPage() {
   const { employee } = useSession()

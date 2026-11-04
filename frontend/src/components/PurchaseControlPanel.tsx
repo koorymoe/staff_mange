@@ -1,12 +1,12 @@
 import { useEffect, useState } from 'react'
 import { purchaseApi, type ProcurementRequest, type PurchaseAlert, type PurchaseBias, type StandardPrice, type StandardSuggestion, type PurchaseGroup, type PurchaseMonth, type PurchaseControlRow, type PurchasePriceRow, type SupplierReviewInput } from '../api'
-import { dinarRound as iqd } from '../utils/format'
+import { dinarRound as iqd, dayBaghdad } from '../utils/format'
 
 // ═══ رقابة المشتريات — قرار (ع) 10-15 ═══
 // المشتري يسجّل الشراء ويقيّم المورد ببنود (أولها السعر) · المحاسب يثبّت ·
 // سجل أسعار لكل مادة · وتنبيهات ماتركس: «اشترى من الأغلى» و«المورد رفع سعره».
 
-const day = (s: string) => new Date(s).toLocaleDateString('en-CA', { timeZone: 'Asia/Baghdad' })
+const day = (s: string) => dayBaghdad(s)
 const CRITERIA: [keyof Omit<SupplierReviewInput, 'note'>, string][] = [
   ['price', '💰 السعر'], ['quality', '✅ الجودة'], ['speed', '⚡ سرعة التجهيز'], ['punctuality', '⏰ الالتزام بالموعد'], ['dealing', '🤝 التعامل'],
 ]

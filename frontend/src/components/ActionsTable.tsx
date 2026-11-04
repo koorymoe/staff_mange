@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { api } from '../api'
+import { dayBaghdad } from '../utils/format'
 
 // ═══ لوحة «الإجراءات» — بتصميم (ع) 10-04 ═══
 // كل شي ينتظر قرار أو متابعة بجدول واحد: مهام إضافية، إجازات، طلبات كادر،
@@ -31,7 +32,7 @@ const STATUS: Record<Status, { label: string; cls: string; icon: string }> = {
 
 const DAY = 24 * 3600 * 1000
 const olderThan = (iso: string, days: number, now: number) => now - new Date(iso).getTime() > days * DAY
-const fmtDate = (s: string | null) => (s ? new Date(s).toLocaleDateString('en-CA', { timeZone: 'Asia/Baghdad' }) : '—')
+const fmtDate = (s: string | null) => dayBaghdad(s) || '—'
 const clip = (s: string | null | undefined, n = 90) => { const t = (s ?? '').trim(); return t.length > n ? t.slice(0, n) + '…' : t }
 
 // gate: للمراقب — بس النداءات الي صلاحياته تسمحها (ولا 403 تسجّل مخالفة).

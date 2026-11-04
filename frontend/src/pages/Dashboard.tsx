@@ -10,7 +10,7 @@ import TodayBoard from '../components/TodayBoard'
 import MonitorDashboard from '../components/MonitorDashboard'
 import AdminHome from '../components/AdminHome'
 import ShiftEndCard from '../components/ShiftEndCard'
-import { api } from '../api'
+import { api, API_URL } from '../api'
 import type { Booking, Expense, StaffRequest, LeaveRequest, InventoryCheck, FinanceSummary, DailyAuditReport, TodayPulse, Employee } from '../api'
 import { useSession, hasGpsSkill, hasRole, isAdminOrOwner } from '../session'
 import MeetingRequests from '../components/MeetingRequests'
@@ -271,7 +271,7 @@ function StaffDashboard() {
     // إحصائيات المشاريع للوحة مدير المشاريع (أو الأدمن)
     if (hasRole(employee, 'PROJECT_MANAGER') || employee.role === 'ADMIN' || permissions.includes('project_management')) {
       const token = localStorage.getItem('authToken')
-      fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:4000/api'}/projects`, {
+      fetch(`${API_URL}/projects`, {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
       })
         .then(r => r.ok ? r.json() : null)
