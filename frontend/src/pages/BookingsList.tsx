@@ -646,6 +646,16 @@ export default function BookingsList({ bucket = 'all', focus }: { bucket?: Booki
                           انكلّف كادر عليه، وهل خلّص فاتورته وتقريره. نفس
                           اللغة الي بتنسيق الحجوزات بالضبط. */}
                       <CompletionBadge booking={b} />
+                      {/* (ع) 11-04: المرحلة الي واصلها عند المشاريع/التقني، وأحمر إذا عبر الحد */}
+                      {b.tracking && (
+                        <div className={`mt-1.5 rounded-lg px-2 py-1 text-[11px] font-bold ${b.tracking.late ? 'bg-red-50 text-red-700' : 'bg-sky-50 text-sky-800'}`}>
+                          📍 {b.tracking.stage}
+                          <span className="block font-normal">
+                            {b.tracking.days === 0 ? 'من اليوم' : `صارله ${b.tracking.days} يوم`} · الحد {b.tracking.limit}
+                            {b.tracking.late && ' — ⏰ متأخر'}
+                          </span>
+                        </div>
+                      )}
                     </td>
                     <td className="px-4 py-3">
                       {/* مسار التثبيت — يطلع بسلّة «بانتظار التثبيت» بس،

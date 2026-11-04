@@ -652,6 +652,8 @@ export interface Booking {
   handoverAt?: string | null
   handoverReason?: string | null
   handoverTo?: { id: string; name: string } | null
+  /** (ع) 11-04: وين واصل الحجز المرحّل وشكد صارله — بمحطتي المشاريع والتقنيين بس */
+  tracking?: { kind: 'PROJECT' | 'TECH'; stage: string; since: string; days: number; limit: number; late: boolean } | null
   handoverBy?: { id: string; name: string } | null
   techContactedAt?: string | null
   techDiagnosis?: string | null

@@ -2932,6 +2932,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	// عين ماتركس على المشاريع — المدير والمالك.
 	matrixProjectService := service.NewMatrixProjectService(repository.NewMatrixProjectRepository(db))
 	matrixAutopilotService.SetProjectDuties(matrixProjectService.Report)
+	bookingService.StageLimits = matrixProjectService.Limits
 	matrixProjectHandler := handler.NewMatrixProjectHandler(matrixProjectService)
 	// ⏱️ تأخير المشاريع (قرار (ع) 10-10)
 	projectDelayHandler := handler.NewProjectDelayHandler(db, matrixProjectService)

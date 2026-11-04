@@ -1118,6 +1118,7 @@ func (r *BookingRepository) SettleOldImports() (int64, error) {
 			"awaitingReschedule" = false,
 			"waitingSince" = NULL,
 			"waitingKind" = NULL,
+			"amountVerified" = true, -- (ع) 11-04: OLD يعتبر مدقق
 			"updatedAt" = now()
 		WHERE code LIKE 'OLD-%' AND "settledLegacyAt" IS NULL
 		  AND "archivedAt" IS NULL AND status <> 'CANCELLED'`)

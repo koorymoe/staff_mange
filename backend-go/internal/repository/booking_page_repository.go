@@ -3,6 +3,9 @@ package repository
 import (
 	"fmt"
 	"strings"
+	"time"
+
+	"github.com/lib/pq"
 
 	"staffmange-api/internal/model"
 )
@@ -481,6 +484,34 @@ func (r *BookingRepository) Locate(term string) ([]BookingLocation, error) {
 			}
 		}
 		out = append(out, loc)
+	}
+	return out, nil
+}
+
+// ProjectStage مرحلة آخر مشروع للحجز ووقت دخولها.
+type ProjectStage struct {
+	BookingID string    `db:"bookingId"`
+	Stage     string    `db:"stage"`
+	Since     time.Time `db:"since"`
+}
+
+// ProjectStagesFor مرحلة كل حجز من سجل المراحل (0313)، وإلا آخر تعديل للمشروع.
+func (r *BookingRepository) ProjectStagesFor(ids []string) (map[string]ProjectStage, error) {
+	out := map[string]ProjectStage{}
+	if len(ids) == 0 {
+		return out, nil
+	}
+	rows := []ProjectStage{}
+	if err := r.db.Select(&rows, `
+		SELECT DISTINCT ON (p."bookingId") p."bookingId", p.stage,
+		       COALESCE((SELECT MAX(l."createdAt") FROM "ProjectStageLog" l WHERE l."projectId" = p.id AND l."toStage" = p.stage), p."updatedAt") AS since
+		FROM "Project" p
+		WHERE p."bookingId" = ANY($1)
+		ORDER BY p."bookingId", p."createdAt" DESC`, pq.Array(ids)); err != nil {
+		return nil, err
+	}
+	for _, x := range rows {
+		out[x.BookingID] = x
 	}
 	return out, nil
 }

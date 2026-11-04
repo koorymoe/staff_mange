@@ -15,6 +15,8 @@ import (
 )
 
 type BookingService struct {
+	// StageLimits حدود مراحل المشاريع (من ماتركس المشاريع) — اختياري.
+	StageLimits      func() map[string]int
 	repo             *repository.BookingRepository
 	employees        *repository.EmployeeRepository
 	customers        *repository.CustomerRepository
@@ -1040,7 +1042,61 @@ func (s *BookingService) MarkWaiting(id, note, byEmployeeID, kind string) (*mode
 
 // ListPaged صفحة وحدة من محطة — الفرز والعدّ بالسيرفر.
 func (s *BookingService) ListPaged(q repository.BookingPageQuery) ([]model.Booking, int, error) {
-	return s.repo.ListPaged(q)
+	items, total, err := s.repo.ListPaged(q)
+	if err == nil && (q.Bucket == "at_projects" || q.Bucket == "at_tech") {
+		s.fillTracking(items, q.Bucket)
+	}
+	return items, total, err
+}
+
+// TechHandoverLimitDays حد افتراضي لبقاء الحجز عند التقني قبل ما يطلع متأخر.
+const TechHandoverLimitDays = 3
+
+// fillTracking (ع) 11-04: «من مشرف المشروع ينتقل من مرحلة لمرحلة يطلع وين واصل…
+// حتى لا يضل متأخر». الحسبة بالأيام الكاملة من دخول المرحلة الحالية.
+func (s *BookingService) fillTracking(items []model.Booking, bucket string) {
+	now := time.Now()
+	days := func(t time.Time) int { return int(now.Sub(t).Hours() / 24) }
+	if bucket == "at_tech" {
+		for i := range items {
+			b := &items[i]
+			if b.HandoverAt == nil {
+				continue
+			}
+			d := days(*b.HandoverAt)
+			b.Tracking = &model.BookingTracking{Kind: "TECH", Stage: "عند التقني", Since: *b.HandoverAt, Days: d, Limit: TechHandoverLimitDays, Late: d > TechHandoverLimitDays}
+		}
+		return
+	}
+	ids := make([]string, 0, len(items))
+	for _, b := range items {
+		ids = append(ids, b.ID)
+	}
+	stages, err := s.repo.ProjectStagesFor(ids)
+	if err != nil {
+		log.Printf("tracking: %v", err)
+		return
+	}
+	lim := map[string]int{}
+	if s.StageLimits != nil {
+		lim = s.StageLimits()
+	}
+	for i := range items {
+		st, ok := stages[items[i].ID]
+		if !ok {
+			// انرحّل وما انفتح مشروع بعد
+			since := items[i].UpdatedAt
+			d := days(since)
+			items[i].Tracking = &model.BookingTracking{Kind: "PROJECT", Stage: "بانتظار فتح المشروع", Since: since, Days: d, Limit: 2, Late: d > 2}
+			continue
+		}
+		l := lim[st.Stage]
+		if l == 0 {
+			l = 7 // نفس افتراض ماتركس المشاريع لمرحلة بلا عينات
+		}
+		d := days(st.Since)
+		items[i].Tracking = &model.BookingTracking{Kind: "PROJECT", Stage: st.Stage, Since: st.Since, Days: d, Limit: l, Late: d > l}
+	}
 }
 
 // LocateBookings «وين هذا الحجز؟» — يجاوب بالمحطة الي هو بيها.

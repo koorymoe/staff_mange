@@ -61,6 +61,9 @@ type ProjectsReport struct {
 	Insights []string            `json:"insights"`
 }
 
+// Limits حد أيام كل مرحلة (اليدوي يغلب المتعلَّم) — لمتابعة الحجوزات المرحّلة.
+func (s *MatrixProjectService) Limits() map[string]int { l, _ := s.limits(); return l }
+
 func (s *MatrixProjectService) limits() (map[string]int, map[string]float64) {
 	rows, _ := s.repo.StageDurations()
 	by := map[string][]float64{}

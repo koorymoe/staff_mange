@@ -264,6 +264,8 @@ type Booking struct {
 	TechVisitMoves int            `db:"techVisitMoves" json:"techVisitMoves"`
 	HandoverTo     *EmployeeBrief `db:"-" json:"handoverTo,omitempty"`
 	HandoverBy     *EmployeeBrief `db:"-" json:"handoverBy,omitempty"`
+	// Tracking (ع) 11-04: وين واصل الحجز المرحّل (مشاريع/تقني) وشكد صارله — يطلع بالمحطتين بس.
+	Tracking *BookingTracking `db:"-" json:"tracking,omitempty"`
 
 	Customer *Customer `db:"-" json:"customer,omitempty"`
 	// Service الخدمة الرئيسية (توافق مع الشاشات القديمة)، و Services كل
@@ -549,3 +551,13 @@ type PartialJobBookingLink struct {
 // `booking_service.go` · `booking_repository.go`) — وأي خطأ حرف
 // بواحدة منها يخلي الحجز الداخلي يتعامل معاملة حجز زبون بهدوء.
 const BookingTypeInternal = "INTERNAL"
+
+// BookingTracking متابعة حجز عند إدارة ثانية: المرحلة، من متى، والحد.
+type BookingTracking struct {
+	Kind  string    `json:"kind"` // PROJECT | TECH
+	Stage string    `json:"stage"`
+	Since time.Time `json:"since"`
+	Days  int       `json:"days"`
+	Limit int       `json:"limit"`
+	Late  bool      `json:"late"`
+}

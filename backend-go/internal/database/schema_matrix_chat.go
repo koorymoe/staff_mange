@@ -1951,5 +1951,20 @@ func matrixChatMigrations() []Migration {
 			CREATE TRIGGER project_stage_rules BEFORE INSERT OR UPDATE OF stage ON "Project"
 				FOR EACH ROW EXECUTE FUNCTION project_stage_rules();
 		`,
+	}, {
+		// (ع) 11-04: «اي فاتورة او مبلغ يبدي كوده بـOLD النظام ميبحوش بيه — لازم
+		// يعتبر مدقق، فقط الي يبدن B هذا الي اريده يتابع عليه».
+		// المبلغ ما ينلمس: بس علامة التدقيق، والفاتورة تاخذ ملاحظة توضح ليش.
+		Version: "0439_old_imports_audited",
+		SQL: `
+			UPDATE "Booking" SET "amountVerified" = true
+			WHERE code LIKE 'OLD-%' AND NOT "amountVerified";
+			UPDATE "LeaderInvoice" li SET
+				"auditVerdict" = 'MATCHED',
+				"auditedAt" = now(),
+				"auditNote" = COALESCE(li."auditNote", 'من النظام القديم (OLD) — يعتبر مدقق (قرار دازاي 11-04)')
+			FROM "Booking" b
+			WHERE b.id = li."bookingId" AND b.code LIKE 'OLD-%' AND li."auditedAt" IS NULL;
+		`,
 	}}
 }
