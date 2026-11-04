@@ -6,7 +6,10 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 	"staffmange-api/internal/authz"
+
+	"staffmange-api/internal/logredact"
 	"strings"
 	"sync"
 	"time"
@@ -29,6 +32,8 @@ import (
 )
 
 func main() {
+	// (11-04 — ٦ز) كل سطر بالسجل يمر بفلتر يحجب المفاتيح والتوكنات والباسوردات
+	log.SetOutput(logredact.Writer{W: os.Stderr})
 	startedAt := time.Now()
 	// تحميل ملف .env إذا موجود (بالإنتاج المتغيرات تنجي مباشرة من النظام، فما مشكلة لو الملف مو موجود)
 	_ = godotenv.Load()
