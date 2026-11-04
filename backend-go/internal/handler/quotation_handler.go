@@ -1,7 +1,9 @@
 package handler
 
 import (
+	"errors"
 	"net/http"
+	"staffmange-api/internal/authz"
 	"strconv"
 
 	"staffmange-api/internal/middleware"
@@ -48,6 +50,10 @@ func (h *QuotationHandler) List(w http.ResponseWriter, r *http.Request) {
 // GET /api/quotations/{id}
 func (h *QuotationHandler) Get(w http.ResponseWriter, r *http.Request) {
 	quotation, err := h.service.Get(r.PathValue("id"), middleware.EmployeeIDFromContext(r), middleware.RoleFromContext(r))
+	if errors.Is(err, service.ErrQuotationHidden) {
+		authz.Deny(w, r, authz.Quotations)
+		return
+	}
 	if err != nil {
 		WriteError(w, http.StatusNotFound, err.Error())
 		return
@@ -58,6 +64,10 @@ func (h *QuotationHandler) Get(w http.ResponseWriter, r *http.Request) {
 // GET /api/quotation-by-project/{projectId} — عرض المشروع أو null
 func (h *QuotationHandler) ByProject(w http.ResponseWriter, r *http.Request) {
 	q, err := h.service.ByProject(r.PathValue("projectId"), middleware.EmployeeIDFromContext(r), middleware.RoleFromContext(r))
+	if errors.Is(err, service.ErrQuotationHidden) {
+		authz.Deny(w, r, authz.Quotations)
+		return
+	}
 	if err != nil {
 		WriteError(w, http.StatusNotFound, err.Error())
 		return
@@ -108,6 +118,10 @@ func (h *QuotationHandler) Delete(w http.ResponseWriter, r *http.Request) {
 func (h *QuotationHandler) Versions(w http.ResponseWriter, r *http.Request) {
 	// نفس حماية فتح العرض نفسه: الي ما يكدر يشوف العرض ما يشوف نسخه (فحص 10-11)
 	if _, err := h.service.Get(r.PathValue("id"), middleware.EmployeeIDFromContext(r), middleware.RoleFromContext(r)); err != nil {
+		if errors.Is(err, service.ErrQuotationHidden) {
+			authz.Deny(w, r, authz.Quotations)
+			return
+		}
 		WriteError(w, http.StatusNotFound, "عرض السعر غير موجود")
 		return
 	}

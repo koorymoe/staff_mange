@@ -97,8 +97,12 @@ func (s *QuotationService) Get(id, actorID, role string) (*model.Quotation, erro
 	if hasManageAll || (hasEditOwn && q.CreatedByEmployeeID == actorID) {
 		return q, nil
 	}
-	return nil, errors.New("لا تملك صلاحية الاطلاع على هذا العرض")
+	return nil, ErrQuotationHidden
 }
+
+// ErrQuotationHidden (11-04 — المبدأ ٦و) عرض موجود بس مو إلك: المعالج يرجّع
+// نفس «مو موجود» ويسجّل الرفض — ما نكشف إن العرض موجود.
+var ErrQuotationHidden = errors.New("عرض السعر غير موجود")
 
 func (s *QuotationService) Create(req model.CreateQuotationRequest) (*model.Quotation, error) {
 	if req.CustomerName == "" || req.CreatedByEmployeeID == "" {
