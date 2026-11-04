@@ -3,6 +3,7 @@ package handler
 import (
 	"log"
 	"net/http"
+	"staffmange-api/internal/errlog"
 	"strings"
 	"time"
 
@@ -80,8 +81,8 @@ func (h *JustificationHandler) Answer(w http.ResponseWriter, r *http.Request) {
 	}
 	// (دازاي 11-01) تبرير المشروع المتأخر = سبب تأخيره بلوحة المشاريع هم
 	if projectID != nil {
-		_, _ = h.db.Exec(`INSERT INTO "ProjectDelayReason" (id, "projectId", stage, "employeeId", reason)
-			SELECT gen_random_uuid()::text, p.id, p.stage, $2, $3 FROM "Project" p WHERE p.id = $1`, *projectID, me, answer)
+		errlog.Exec(h.db.Exec(`INSERT INTO "ProjectDelayReason" (id, "projectId", stage, "employeeId", reason)
+			SELECT gen_random_uuid()::text, p.id, p.stage, $2, $3 FROM "Project" p WHERE p.id = $1`, *projectID, me, answer))
 	}
 	msg := "📝 وصل تبرير على: " + question + " — شوفه بصندوق المراقب ← التبريرات"
 	if monitorID != nil {

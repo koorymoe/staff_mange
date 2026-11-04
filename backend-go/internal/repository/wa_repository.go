@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"staffmange-api/internal/errlog"
 	"strings"
 	"time"
 
@@ -142,7 +143,7 @@ func (r *WaRepository) AddMessage(convID, direction, author string, authorID *st
 		}
 		return nil, false, err
 	}
-	_, _ = r.db.Exec(`UPDATE "WaConversation" SET "lastMessageAt" = now() WHERE id = $1`, convID)
+	errlog.Exec(r.db.Exec(`UPDATE "WaConversation" SET "lastMessageAt" = now() WHERE id = $1`, convID))
 	return &m, true, nil
 }
 
@@ -160,7 +161,7 @@ func (r *WaRepository) SetStatus(id, status string, humanBy *string) error {
 }
 
 func (r *WaRepository) MarkRead(id string) {
-	_, _ = r.db.Exec(`UPDATE "WaConversation" SET "lastReadAt" = now() WHERE id = $1`, id)
+	errlog.Exec(r.db.Exec(`UPDATE "WaConversation" SET "lastReadAt" = now() WHERE id = $1`, id))
 }
 
 // NewToday محادثات حقيقية انفتحت اليوم لهذا الوكيل — حد WA_DAILY_NEW.

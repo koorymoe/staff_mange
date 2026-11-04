@@ -2,6 +2,7 @@ package handler
 
 import (
 	"net/http"
+	"staffmange-api/internal/errlog"
 	"strings"
 	"time"
 
@@ -15,7 +16,9 @@ import (
 // إجازة سوق كل موظف وانتهاؤها، التعهد وتخويل السياقة، وبطاقات البنزين.
 type VehicleDriversHandler struct{ db *sqlx.DB }
 
-func NewVehicleDriversHandler(db *sqlx.DB) *VehicleDriversHandler { return &VehicleDriversHandler{db: db} }
+func NewVehicleDriversHandler(db *sqlx.DB) *VehicleDriversHandler {
+	return &VehicleDriversHandler{db: db}
+}
 
 type driverRow struct {
 	EmployeeID         string     `db:"employeeId" json:"employeeId"`
@@ -76,7 +79,7 @@ func (h *VehicleDriversHandler) Save(w http.ResponseWriter, r *http.Request) {
 	}
 	// إجازة السوق المسجّلة تأشّر «عنده إجازة سوق» بملفه
 	if strings.TrimSpace(req.LicenseNumber) != "" {
-		_, _ = h.db.Exec(`UPDATE "Employee" SET "hasDrivingLicense" = true WHERE id = $1`, id)
+		errlog.Exec(h.db.Exec(`UPDATE "Employee" SET "hasDrivingLicense" = true WHERE id = $1`, id))
 	}
 	h.List(w, r)
 }

@@ -1,6 +1,7 @@
 package repository
 
 import (
+	"staffmange-api/internal/errlog"
 	"time"
 
 	"github.com/jmoiron/sqlx"
@@ -14,8 +15,8 @@ func NewEmployeeActivityRepository(db *sqlx.DB) *EmployeeActivityRepository {
 }
 
 func (r *EmployeeActivityRepository) Record(employeeID, method, pattern, path string, status int) {
-	_, _ = r.db.Exec(`INSERT INTO "EmployeeActivity" ("employeeId", method, pattern, path, status) VALUES ($1,$2,$3,$4,$5)`,
-		employeeID, method, pattern, path, status)
+	errlog.Exec(r.db.Exec(`INSERT INTO "EmployeeActivity" ("employeeId", method, pattern, path, status) VALUES ($1,$2,$3,$4,$5)`,
+		employeeID, method, pattern, path, status))
 }
 
 type ActivityRow struct {

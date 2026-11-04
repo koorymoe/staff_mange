@@ -7,6 +7,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"staffmange-api/internal/errlog"
 	"time"
 
 	"github.com/jmoiron/sqlx"
@@ -96,17 +97,19 @@ func Idempotent(db *sqlx.DB) func(http.Handler) http.Handler {
 			rec := &idemRecorder{ResponseWriter: w}
 			next.ServeHTTP(rec, r)
 			if rec.status >= 500 || rec.status == 0 {
-				// فشل بالخادم: نحرر المفتاح حتى إعادة المحاولة تشتغل
-				_, _ = db.Exec(`DELETE FROM "IdempotencyKey" WHERE key = $1 AND "employeeId" = $2`, key, emp)
+				errlog.
+					// فشل بالخادم: نحرر المفتاح حتى إعادة المحاولة تشتغل
+					Exec(db.Exec(`DELETE FROM "IdempotencyKey" WHERE key = $1 AND "employeeId" = $2`, key, emp))
 				return
 			}
 			if rec.status >= 400 {
-				// رفض أو خطأ إدخال: ما نحفظه — الموظف يصحح ويعيد بنفس البيانات
-				_, _ = db.Exec(`DELETE FROM "IdempotencyKey" WHERE key = $1 AND "employeeId" = $2`, key, emp)
+				errlog.
+					// رفض أو خطأ إدخال: ما نحفظه — الموظف يصحح ويعيد بنفس البيانات
+					Exec(db.Exec(`DELETE FROM "IdempotencyKey" WHERE key = $1 AND "employeeId" = $2`, key, emp))
 				return
 			}
-			_, _ = db.Exec(`UPDATE "IdempotencyKey" SET status = $3, response = $4 WHERE key = $1 AND "employeeId" = $2`,
-				key, emp, rec.status, rec.buf.String())
+			errlog.Exec(db.Exec(`UPDATE "IdempotencyKey" SET status = $3, response = $4 WHERE key = $1 AND "employeeId" = $2`,
+				key, emp, rec.status, rec.buf.String()))
 		})
 	}
 }

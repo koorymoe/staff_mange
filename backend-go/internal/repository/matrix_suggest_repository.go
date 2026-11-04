@@ -2,6 +2,7 @@ package repository
 
 import (
 	"encoding/json"
+	"staffmange-api/internal/errlog"
 	"time"
 
 	"github.com/jmoiron/sqlx"
@@ -191,9 +192,9 @@ type SuggestionRow struct {
 // Log يحفظ الاقتراح — ويحدّثه إذا بعده ما انحسم (الاقتراح الأخير هو الي ينقاس).
 func (r *MatrixSuggestRepository) Log(bookingID, kind string, suggested any, reason string) {
 	j, _ := json.Marshal(suggested)
-	_, _ = r.db.Exec(`INSERT INTO "MatrixSuggestion" ("bookingId", kind, suggested, reason) VALUES ($1, $2, $3, $4)
+	errlog.Exec(r.db.Exec(`INSERT INTO "MatrixSuggestion" ("bookingId", kind, suggested, reason) VALUES ($1, $2, $3, $4)
 		ON CONFLICT ("bookingId", kind) DO UPDATE SET suggested = EXCLUDED.suggested, reason = EXCLUDED.reason, "createdAt" = now()
-		WHERE "MatrixSuggestion".outcome = 'PENDING'`, bookingID, kind, j, reason)
+		WHERE "MatrixSuggestion".outcome = 'PENDING'`, bookingID, kind, j, reason))
 }
 
 func (r *MatrixSuggestRepository) Pending() ([]SuggestionRow, error) {
@@ -205,7 +206,7 @@ func (r *MatrixSuggestRepository) Pending() ([]SuggestionRow, error) {
 
 func (r *MatrixSuggestRepository) Decide(id, outcome string, actual any) {
 	j, _ := json.Marshal(actual)
-	_, _ = r.db.Exec(`UPDATE "MatrixSuggestion" SET outcome = $2, actual = $3, "decidedAt" = now() WHERE id = $1`, id, outcome, j)
+	errlog.Exec(r.db.Exec(`UPDATE "MatrixSuggestion" SET outcome = $2, actual = $3, "decidedAt" = now() WHERE id = $1`, id, outcome, j))
 }
 
 // Decided الاقتراحات المحسومة بآخر N يوم ويا نتيجة الحجز بعدين.

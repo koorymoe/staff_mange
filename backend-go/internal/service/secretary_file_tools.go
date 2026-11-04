@@ -5,6 +5,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"staffmange-api/internal/errlog"
 	"strings"
 	"time"
 
@@ -88,7 +89,7 @@ func registerFileTools(a *MatrixAgent, tc *SecretaryTurnCtx) {
 			if err := f.Write(&buf); err != nil {
 				return "", err
 			}
-			_, _ = a.db.Exec(`DELETE FROM "AiFile" WHERE "createdAt" < now() - interval '7 days'`)
+			errlog.Exec(a.db.Exec(`DELETE FROM "AiFile" WHERE "createdAt" < now() - interval '7 days'`))
 			var id string
 			if err := a.db.Get(&id, `INSERT INTO "AiFile" ("employeeId", name, data) VALUES ($1, $2, $3) RETURNING id`,
 				tc.UserID, title+".xlsx", buf.Bytes()); err != nil {
@@ -101,7 +102,7 @@ func registerFileTools(a *MatrixAgent, tc *SecretaryTurnCtx) {
 		}})
 
 	a.AddTool(agentTool{Name: "remember",
-		Desc: "احفظ شي يريده المالك دايماً (طريقة، تفضيل، معلومة ثابتة) — يبقى بذاكرتك بكل محادثة. استعملها من يگول «احفظها/تذكّر/دايماً سوّي هيچ». اكتبها جملة واضحة ومختصرة.",
+		Desc:  "احفظ شي يريده المالك دايماً (طريقة، تفضيل، معلومة ثابتة) — يبقى بذاكرتك بكل محادثة. استعملها من يگول «احفظها/تذكّر/دايماً سوّي هيچ». اكتبها جملة واضحة ومختصرة.",
 		Props: map[string]any{"text": map[string]any{"type": "string"}},
 		Req:   []string{"text"},
 		Run: func(in map[string]any, _ *nameMask) (string, error) {
@@ -121,7 +122,7 @@ func registerFileTools(a *MatrixAgent, tc *SecretaryTurnCtx) {
 		}})
 
 	a.AddTool(agentTool{Name: "forget",
-		Desc: "شيل شي محفوظ بذاكرتك (من يگول «انسى/شيلها/لا تسوي هيچ بعد»). اكتب جزء من نصه.",
+		Desc:  "شيل شي محفوظ بذاكرتك (من يگول «انسى/شيلها/لا تسوي هيچ بعد»). اكتب جزء من نصه.",
 		Props: map[string]any{"text": map[string]any{"type": "string"}},
 		Req:   []string{"text"},
 		Run: func(in map[string]any, _ *nameMask) (string, error) {

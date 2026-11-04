@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"staffmange-api/internal/errlog"
 	"strings"
 	"time"
 
@@ -73,15 +74,15 @@ func (h *PurchaseControlHandler) RefreshStandards() {
 	for _, m := range rows {
 		cur, ok := std[m.Key]
 		if !ok {
-			_, _ = h.db.Exec(`INSERT INTO "StandardPrice" (key, product, price, source) VALUES ($1,$2,$3,'AUTO') ON CONFLICT DO NOTHING`, m.Key, m.Product, m.Price)
+			errlog.Exec(h.db.Exec(`INSERT INTO "StandardPrice" (key, product, price, source) VALUES ($1,$2,$3,'AUTO') ON CONFLICT DO NOTHING`, m.Key, m.Product, m.Price))
 			continue
 		}
 		if cur.Price > 0 && (m.Price > cur.Price*1.05 || m.Price < cur.Price*0.95) {
 			basis := fmt.Sprintf("أرخص سعر بالسوق هسه %s د.ع عند %s (%d شراء بآخر ٩٠ يوم)", money(m.Price), m.Supplier, m.N)
-			_, _ = h.db.Exec(`INSERT INTO "StandardPriceSuggestion" (key, product, current, suggested, basis) VALUES ($1,$2,$3,$4,$5)
-				ON CONFLICT (key) DO UPDATE SET current = $3, suggested = $4, basis = $5, "createdAt" = now()`, m.Key, m.Product, cur.Price, m.Price, basis)
+			errlog.Exec(h.db.Exec(`INSERT INTO "StandardPriceSuggestion" (key, product, current, suggested, basis) VALUES ($1,$2,$3,$4,$5)
+				ON CONFLICT (key) DO UPDATE SET current = $3, suggested = $4, basis = $5, "createdAt" = now()`, m.Key, m.Product, cur.Price, m.Price, basis))
 		} else {
-			_, _ = h.db.Exec(`DELETE FROM "StandardPriceSuggestion" WHERE key = $1`, m.Key)
+			errlog.Exec(h.db.Exec(`DELETE FROM "StandardPriceSuggestion" WHERE key = $1`, m.Key))
 		}
 	}
 }
@@ -187,7 +188,7 @@ func (h *PurchaseControlHandler) SetStandard(w http.ResponseWriter, r *http.Requ
 		WriteError(w, http.StatusInternalServerError, "تعذر الحفظ")
 		return
 	}
-	_, _ = h.db.Exec(`DELETE FROM "StandardPriceSuggestion" WHERE key = $1`, key)
+	errlog.Exec(h.db.Exec(`DELETE FROM "StandardPriceSuggestion" WHERE key = $1`, key))
 	WriteJSON(w, http.StatusOK, map[string]any{"ok": true})
 }
 
@@ -202,10 +203,10 @@ func (h *PurchaseControlHandler) AcceptSuggestion(w http.ResponseWriter, r *http
 		return
 	}
 	if b.Accept {
-		_, _ = h.db.Exec(`UPDATE "StandardPrice" s SET price = x.suggested, source = 'MANUAL', "setById" = $2, "updatedAt" = now()
-			FROM "StandardPriceSuggestion" x WHERE x.key = s.key AND s.key = $1`, b.Key, middleware.EmployeeIDFromContext(r))
+		errlog.Exec(h.db.Exec(`UPDATE "StandardPrice" s SET price = x.suggested, source = 'MANUAL', "setById" = $2, "updatedAt" = now()
+			FROM "StandardPriceSuggestion" x WHERE x.key = s.key AND s.key = $1`, b.Key, middleware.EmployeeIDFromContext(r)))
 	}
-	_, _ = h.db.Exec(`DELETE FROM "StandardPriceSuggestion" WHERE key = $1`, b.Key)
+	errlog.Exec(h.db.Exec(`DELETE FROM "StandardPriceSuggestion" WHERE key = $1`, b.Key))
 	WriteJSON(w, http.StatusOK, map[string]any{"ok": true})
 }
 
@@ -218,6 +219,6 @@ func (h *PurchaseControlHandler) SetCeiling(w http.ResponseWriter, r *http.Reque
 		WriteError(w, http.StatusBadRequest, "نسبة غير صالحة")
 		return
 	}
-	_, _ = h.db.Exec(`UPDATE "PurchasePolicy" SET "ceilingPct" = $1, "updatedAt" = now() WHERE id = 1`, b.CeilingPct)
+	errlog.Exec(h.db.Exec(`UPDATE "PurchasePolicy" SET "ceilingPct" = $1, "updatedAt" = now() WHERE id = 1`, b.CeilingPct))
 	WriteJSON(w, http.StatusOK, b)
 }

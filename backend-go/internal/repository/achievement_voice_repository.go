@@ -2,6 +2,7 @@ package repository
 
 import (
 	"encoding/json"
+	"staffmange-api/internal/errlog"
 	"time"
 
 	"github.com/jmoiron/sqlx"
@@ -92,8 +93,8 @@ func (r *AchievementVoiceRepository) Pending(limit int) ([]AchievementVoice, err
 }
 
 func (r *AchievementVoiceRepository) MarkAttempt(id, errMsg string) {
-	_, _ = r.db.Exec(`UPDATE "AchievementVoice" SET attempts = attempts + 1, "analysisError" = $2,
-		"analysisStatus" = CASE WHEN attempts + 1 >= 3 THEN 'FAILED' ELSE 'PENDING' END WHERE "achievementId" = $1`, id, errMsg)
+	errlog.Exec(r.db.Exec(`UPDATE "AchievementVoice" SET attempts = attempts + 1, "analysisError" = $2,
+		"analysisStatus" = CASE WHEN attempts + 1 >= 3 THEN 'FAILED' ELSE 'PENDING' END WHERE "achievementId" = $1`, id, errMsg))
 }
 
 func (r *AchievementVoiceRepository) SaveAnalysis(id, transcript, summary, style string, tasks []VoiceTask) error {
@@ -109,8 +110,8 @@ func (r *AchievementVoiceRepository) SaveAnalysis(id, transcript, summary, style
 
 // ResetAnalysis فويس جديد (إعادة تسجيل) يرجع ينتظر التحليل.
 func (r *AchievementVoiceRepository) ResetAnalysis(id string) {
-	_, _ = r.db.Exec(`UPDATE "AchievementVoice" SET "analysisStatus" = 'PENDING', attempts = 0, transcript = NULL, summary = NULL,
-		tasks = NULL, style = NULL, "analysisError" = NULL, "analyzedAt" = NULL WHERE "achievementId" = $1`, id)
+	errlog.Exec(r.db.Exec(`UPDATE "AchievementVoice" SET "analysisStatus" = 'PENDING', attempts = 0, transcript = NULL, summary = NULL,
+		tasks = NULL, style = NULL, "analysisError" = NULL, "analyzedAt" = NULL WHERE "achievementId" = $1`, id))
 }
 
 func (r *AchievementVoiceRepository) AnalyzedCount() (done, pending int) {
@@ -145,8 +146,8 @@ type IraqiPhrase struct {
 }
 
 func (r *AchievementVoiceRepository) LearnPhrase(phrase, meaning string) {
-	_, _ = r.db.Exec(`INSERT INTO "IraqiPhrase" (phrase, meaning) VALUES ($1, $2)
-		ON CONFLICT (phrase) DO UPDATE SET uses = "IraqiPhrase".uses + 1, "lastSeen" = now()`, phrase, meaning)
+	errlog.Exec(r.db.Exec(`INSERT INTO "IraqiPhrase" (phrase, meaning) VALUES ($1, $2)
+		ON CONFLICT (phrase) DO UPDATE SET uses = "IraqiPhrase".uses + 1, "lastSeen" = now()`, phrase, meaning))
 }
 
 func (r *AchievementVoiceRepository) Phrases(limit int) ([]IraqiPhrase, error) {

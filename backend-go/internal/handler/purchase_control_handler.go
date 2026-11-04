@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"staffmange-api/internal/errlog"
 	"strings"
 	"time"
 
@@ -256,7 +257,7 @@ func (h *PurchaseControlHandler) ReviewAlert(w http.ResponseWriter, r *http.Requ
 		WriteError(w, http.StatusBadRequest, "اكتب الملاحظة")
 		return
 	}
-	_, _ = h.db.Exec(`UPDATE "ProcurementPriceAlert" SET "reviewedAt" = now(), "reviewNote" = $2 WHERE id = $1`, r.PathValue("id"), strings.TrimSpace(b.Note))
+	errlog.Exec(h.db.Exec(`UPDATE "ProcurementPriceAlert" SET "reviewedAt" = now(), "reviewNote" = $2 WHERE id = $1`, r.PathValue("id"), strings.TrimSpace(b.Note)))
 	WriteJSON(w, http.StatusOK, map[string]any{"ok": true})
 }
 
@@ -321,7 +322,7 @@ func (h *PurchaseControlHandler) BeforeFulfill(procurementID string, req model.F
 		return err
 	}
 	defer func() { _ = tx.Rollback() }()
-	_, _ = tx.Exec(`DELETE FROM "ProcurementQuote" WHERE "procurementId" = $1`, procurementID)
+	errlog.Exec(tx.Exec(`DELETE FROM "ProcurementQuote" WHERE "procurementId" = $1`, procurementID))
 	// العرض المختار نفسه ينحفظ ويّا البقية حتى تصير المقارنة كاملة
 	if _, err := tx.Exec(`INSERT INTO "ProcurementQuote" (id, "procurementId", "supplierId", "totalPrice", chosen) VALUES ($1,$2,$3,$4,true)`,
 		uuid.NewString(), procurementID, *req.SupplierID, total); err != nil {
@@ -383,7 +384,7 @@ func (h *PurchaseControlHandler) SetPolicy(w http.ResponseWriter, r *http.Reques
 		WriteError(w, http.StatusBadRequest, "مبلغ غير صالح")
 		return
 	}
-	_, _ = h.db.Exec(`UPDATE "PurchasePolicy" SET "quoteThreshold" = $1, "updatedAt" = now() WHERE id = 1`, b.QuoteThreshold)
+	errlog.Exec(h.db.Exec(`UPDATE "PurchasePolicy" SET "quoteThreshold" = $1, "updatedAt" = now() WHERE id = 1`, b.QuoteThreshold))
 	WriteJSON(w, http.StatusOK, b)
 }
 

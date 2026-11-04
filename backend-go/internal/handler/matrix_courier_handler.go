@@ -6,6 +6,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"staffmange-api/internal/errlog"
 	"time"
 
 	"github.com/google/uuid"
@@ -154,15 +155,15 @@ func (h *MatrixCourierHandler) Inbox(w http.ResponseWriter, r *http.Request) {
 
 // POST /api/matrix-courier/{id}/delivered — العين سلّمت الرسالة على شاشته.
 func (h *MatrixCourierHandler) Delivered(w http.ResponseWriter, r *http.Request) {
-	_, _ = h.db.Exec(`UPDATE "MatrixCourier" SET "deliveredAt" = now() WHERE id = $1 AND "recipientId" = $2 AND "deliveredAt" IS NULL`,
-		r.PathValue("id"), middleware.EmployeeIDFromContext(r))
+	errlog.Exec(h.db.Exec(`UPDATE "MatrixCourier" SET "deliveredAt" = now() WHERE id = $1 AND "recipientId" = $2 AND "deliveredAt" IS NULL`,
+		r.PathValue("id"), middleware.EmployeeIDFromContext(r)))
 	WriteJSON(w, http.StatusOK, map[string]bool{"ok": true})
 }
 
 // POST /api/matrix-courier/seen?link=/my-projects — فتح البند فينصفّر رقمه.
 func (h *MatrixCourierHandler) Seen(w http.ResponseWriter, r *http.Request) {
-	_, _ = h.db.Exec(`UPDATE "MatrixCourier" SET "seenAt" = now(), "deliveredAt" = COALESCE("deliveredAt", now())
+	errlog.Exec(h.db.Exec(`UPDATE "MatrixCourier" SET "seenAt" = now(), "deliveredAt" = COALESCE("deliveredAt", now())
 		WHERE "recipientId" = $1 AND link = $2 AND "seenAt" IS NULL`,
-		middleware.EmployeeIDFromContext(r), r.URL.Query().Get("link"))
+		middleware.EmployeeIDFromContext(r), r.URL.Query().Get("link")))
 	WriteJSON(w, http.StatusOK, map[string]bool{"ok": true})
 }

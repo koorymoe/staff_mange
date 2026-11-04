@@ -1,6 +1,7 @@
 package repository
 
 import (
+	"staffmange-api/internal/errlog"
 	"time"
 
 	"github.com/jmoiron/sqlx"
@@ -11,13 +12,13 @@ type AiUsageRepository struct{ db *sqlx.DB }
 func NewAiUsageRepository(db *sqlx.DB) *AiUsageRepository { return &AiUsageRepository{db: db} }
 
 func (r *AiUsageRepository) Add(feature, model string, in, out, cacheRead, cacheWrite int64) {
-	_, _ = r.db.Exec(`INSERT INTO "AiUsage" (day, feature, model, calls, "inputTokens", "outputTokens", "cacheRead", "cacheWrite")
+	errlog.Exec(r.db.Exec(`INSERT INTO "AiUsage" (day, feature, model, calls, "inputTokens", "outputTokens", "cacheRead", "cacheWrite")
 		VALUES (baghdad_today(), $1, $2, 1, $3, $4, $5, $6)
 		ON CONFLICT (day, feature, model) DO UPDATE SET calls = "AiUsage".calls + 1,
 		  "inputTokens" = "AiUsage"."inputTokens" + EXCLUDED."inputTokens",
 		  "outputTokens" = "AiUsage"."outputTokens" + EXCLUDED."outputTokens",
 		  "cacheRead" = "AiUsage"."cacheRead" + EXCLUDED."cacheRead",
-		  "cacheWrite" = "AiUsage"."cacheWrite" + EXCLUDED."cacheWrite"`, feature, model, in, out, cacheRead, cacheWrite)
+		  "cacheWrite" = "AiUsage"."cacheWrite" + EXCLUDED."cacheWrite"`, feature, model, in, out, cacheRead, cacheWrite))
 }
 
 type AiUsageRow struct {

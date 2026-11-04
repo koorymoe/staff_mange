@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
+	"staffmange-api/internal/errlog"
 	"strings"
 	"time"
 
@@ -55,7 +56,7 @@ func (r *SecretaryRepository) SaveMessageIn(convID *string, empID, role, text st
 	_, err = r.db.Exec(`INSERT INTO "SecretaryMessage" (id, "employeeId", role, text, transcript, cards, "actionId", "conversationId")
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`, id, empID, role, text, transcript, raw, actionID, convID)
 	if err == nil && convID != nil {
-		_, _ = r.db.Exec(`UPDATE "SecretaryConversation" SET "updatedAt" = now() WHERE id = $1`, *convID)
+		errlog.Exec(r.db.Exec(`UPDATE "SecretaryConversation" SET "updatedAt" = now() WHERE id = $1`, *convID))
 	}
 	return id, err
 }
@@ -165,7 +166,7 @@ func (r *SecretaryRepository) TitleIfNew(convID, text string) {
 	if t == "" {
 		return
 	}
-	_, _ = r.db.Exec(`UPDATE "SecretaryConversation" SET title = $2 WHERE id = $1 AND title = 'محادثة جديدة'`, convID, t)
+	errlog.Exec(r.db.Exec(`UPDATE "SecretaryConversation" SET title = $2 WHERE id = $1 AND title = 'محادثة جديدة'`, convID, t))
 }
 
 // History آخر الرسائل (الأحدث آخراً) ويا حالة المقترح إذا اكو.
@@ -617,7 +618,7 @@ func (r *SecretaryRepository) Agenda(owner string) ([]AgendaItem, error) {
 
 // SaveAudio يحفظ بصمة المالك ويا رسالته (تنمسح ويا الرسالة).
 func (r *SecretaryRepository) SaveAudio(messageID, ct string, data []byte) {
-	_, _ = r.db.Exec(`INSERT INTO "SecretaryAudio" ("messageId", "contentType", data) VALUES ($1, $2, $3)`, messageID, ct, data)
+	errlog.Exec(r.db.Exec(`INSERT INTO "SecretaryAudio" ("messageId", "contentType", data) VALUES ($1, $2, $3)`, messageID, ct, data))
 }
 
 // Audio بصمة رسالة — لصاحبها بس.

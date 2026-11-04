@@ -12,6 +12,7 @@ import (
 	"math/big"
 	"net/http"
 	"regexp"
+	"staffmange-api/internal/errlog"
 	"strings"
 	"time"
 
@@ -161,7 +162,7 @@ func (h *CustomerAppHandler) checkOtp(accountID, purpose, code string) error {
 		return errors.New("محاولات كثيرة — اطلب رمز جديد")
 	}
 	if !hmac.Equal([]byte(h.hashCode(accountID, strings.TrimSpace(code))), []byte(o.CodeHash)) {
-		_, _ = h.db.Exec(`UPDATE "CustomerOtp" SET attempts = attempts + 1 WHERE id = $1`, o.ID)
+		errlog.Exec(h.db.Exec(`UPDATE "CustomerOtp" SET attempts = attempts + 1 WHERE id = $1`, o.ID))
 		return errors.New("الرمز غلط")
 	}
 	_, err = h.db.Exec(`UPDATE "CustomerOtp" SET "usedAt" = now() WHERE id = $1`, o.ID)
@@ -308,7 +309,7 @@ func (h *CustomerAppHandler) Verify(w http.ResponseWriter, r *http.Request) {
 			WriteError(w, http.StatusBadRequest, err.Error())
 			return
 		}
-		_, _ = h.db.Exec(`UPDATE "CustomerAccount" SET "emailVerifiedAt" = now() WHERE id = $1`, a.ID)
+		errlog.Exec(h.db.Exec(`UPDATE "CustomerAccount" SET "emailVerifiedAt" = now() WHERE id = $1`, a.ID))
 		now := time.Now()
 		a.EmailVerifiedAt = &now
 		h.linkCustomer(a)
@@ -322,7 +323,7 @@ func (h *CustomerAppHandler) linkCustomer(a *customerAccount) {
 		return
 	}
 	if c, err := h.customers.FindByPhone(a.Phone); err == nil && c != nil {
-		_, _ = h.db.Exec(`UPDATE "CustomerAccount" SET "customerId" = $2 WHERE id = $1`, a.ID, c.ID)
+		errlog.Exec(h.db.Exec(`UPDATE "CustomerAccount" SET "customerId" = $2 WHERE id = $1`, a.ID, c.ID))
 		a.CustomerID = &c.ID
 	}
 }
@@ -408,7 +409,7 @@ func (h *CustomerAppHandler) Reset(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	hash, _ := bcrypt.GenerateFromPassword([]byte(b.Password), bcrypt.DefaultCost)
-	_, _ = h.db.Exec(`UPDATE "CustomerAccount" SET "passwordHash" = $2, "sessionsInvalidatedAt" = now() - interval '2 seconds' WHERE id = $1`, a.ID, string(hash))
+	errlog.Exec(h.db.Exec(`UPDATE "CustomerAccount" SET "passwordHash" = $2, "sessionsInvalidatedAt" = now() - interval '2 seconds' WHERE id = $1`, a.ID, string(hash)))
 	h.session(w, a)
 }
 
@@ -431,7 +432,7 @@ func (h *CustomerAppHandler) UpdateMe(w http.ResponseWriter, r *http.Request) {
 	if p := strings.TrimSpace(b.Phone); len(p) >= 10 {
 		a.Phone = p
 	}
-	_, _ = h.db.Exec(`UPDATE "CustomerAccount" SET name = $2, phone = $3, city = $4 WHERE id = $1`, a.ID, a.Name, a.Phone, a.City)
+	errlog.Exec(h.db.Exec(`UPDATE "CustomerAccount" SET name = $2, phone = $3, city = $4 WHERE id = $1`, a.ID, a.Name, a.Phone, a.City))
 	h.linkCustomer(a)
 	WriteJSON(w, http.StatusOK, a)
 }
@@ -469,8 +470,9 @@ func (h *CustomerAppHandler) SetMyLocation(w http.ResponseWriter, r *http.Reques
 		WriteError(w, http.StatusInternalServerError, "تعذر حفظ الموقع")
 		return
 	}
-	// الحجوزات المفتوحة تاخذ الموقع الجديد
-	_, _ = h.db.Exec(`UPDATE "Booking" SET "mapLatitude" = $2, "mapLongitude" = $3 WHERE "customerId" = $1 AND "completedAt" IS NULL AND status::text <> 'CANCELLED'`, *a.CustomerID, b.Lat, b.Lng)
+	errlog.
+		// الحجوزات المفتوحة تاخذ الموقع الجديد
+		Exec(h.db.Exec(`UPDATE "Booking" SET "mapLatitude" = $2, "mapLongitude" = $3 WHERE "customerId" = $1 AND "completedAt" IS NULL AND status::text <> 'CANCELLED'`, *a.CustomerID, b.Lat, b.Lng))
 	WriteJSON(w, http.StatusOK, map[string]any{"lat": b.Lat, "lng": b.Lng})
 }
 
@@ -530,7 +532,7 @@ func (h *CustomerAppHandler) Home(w http.ResponseWriter, r *http.Request) {
 
 // POST /api/c/home/seen — شاف العروض الجديدة.
 func (h *CustomerAppHandler) Seen(w http.ResponseWriter, r *http.Request) {
-	_, _ = h.db.Exec(`UPDATE "CustomerAccount" SET "lastSeenPromoAt" = now() WHERE id = $1`, current(r).ID)
+	errlog.Exec(h.db.Exec(`UPDATE "CustomerAccount" SET "lastSeenPromoAt" = now() WHERE id = $1`, current(r).ID))
 	WriteJSON(w, http.StatusOK, map[string]bool{"ok": true})
 }
 
@@ -608,7 +610,7 @@ func (h *CustomerAppHandler) Send(w http.ResponseWriter, r *http.Request) {
 		}
 		history = append(history, service.AgentTurn{Role: role, Text: m.Content})
 	}
-	_, _ = h.db.Exec(`INSERT INTO "CustomerChatMessage" (id, "accountId", role, content) VALUES ($1,$2,'user',$3)`, uuid.NewString(), a.ID, text)
+	errlog.Exec(h.db.Exec(`INSERT INTO "CustomerChatMessage" (id, "accountId", role, content) VALUES ($1,$2,'user',$3)`, uuid.NewString(), a.ID, text))
 	answer, code, err := h.matrix.Chat(a.ID, a.Name, history, text)
 	if err != nil {
 		log.Printf("customer matrix: %v", err)
@@ -624,7 +626,7 @@ func (h *CustomerAppHandler) Send(w http.ResponseWriter, r *http.Request) {
 		bid = &code
 	}
 	m := custChatMsg{ID: uuid.NewString(), Role: "matrix", Content: answer, BookingID: bid, CreatedAt: time.Now()}
-	_, _ = h.db.Exec(`INSERT INTO "CustomerChatMessage" (id, "accountId", role, content, "bookingId") VALUES ($1,$2,'matrix',$3,$4)`, m.ID, a.ID, m.Content, bid)
+	errlog.Exec(h.db.Exec(`INSERT INTO "CustomerChatMessage" (id, "accountId", role, content, "bookingId") VALUES ($1,$2,'matrix',$3,$4)`, m.ID, a.ID, m.Content, bid))
 	WriteJSON(w, http.StatusOK, m)
 }
 
@@ -654,7 +656,7 @@ func (h *CustomerAppHandler) createBookingFromMatrix(accountID string, d service
 		if err != nil {
 			return "", err
 		}
-		_, _ = h.db.Exec(`UPDATE "CustomerAccount" SET "customerId" = $2 WHERE id = $1`, a.ID, c.ID)
+		errlog.Exec(h.db.Exec(`UPDATE "CustomerAccount" SET "customerId" = $2 WHERE id = $1`, a.ID, c.ID))
 		a.CustomerID = &c.ID
 	}
 	notes := "🤖 طلب من تطبيق الزبائن عن طريق ماتركس"
@@ -676,7 +678,7 @@ func (h *CustomerAppHandler) createBookingFromMatrix(accountID string, d service
 	if err != nil {
 		return "", err
 	}
-	_, _ = h.db.Exec(`UPDATE "Booking" SET source = 'matrix_app', "customerAccountId" = $2 WHERE id = $1`, b.ID, a.ID)
+	errlog.Exec(h.db.Exec(`UPDATE "Booking" SET source = 'matrix_app', "customerAccountId" = $2 WHERE id = $1`, b.ID, a.ID))
 	_ = h.notify.CreateForRolesOrPermission([]string{"ADMIN", "MONITOR"}, "sales_booking", "BOOKING",
 		"🤖 ماتركس سجّل حجز جديد من تطبيق الزبائن: "+b.Code+" — "+a.Name)
 	return b.Code, nil
@@ -751,7 +753,7 @@ func (h *CustomerAppHandler) AdminUpdatePromo(w http.ResponseWriter, r *http.Req
 
 // DELETE /api/customer-app/promos/{id}
 func (h *CustomerAppHandler) AdminDeletePromo(w http.ResponseWriter, r *http.Request) {
-	_, _ = h.db.Exec(`DELETE FROM "PromoItem" WHERE id = $1`, r.PathValue("id"))
+	errlog.Exec(h.db.Exec(`DELETE FROM "PromoItem" WHERE id = $1`, r.PathValue("id")))
 	WriteJSON(w, http.StatusOK, map[string]bool{"ok": true})
 }
 
@@ -782,7 +784,7 @@ func (h *CustomerAppHandler) AdminPromoImage(w http.ResponseWriter, r *http.Requ
 		WriteError(w, http.StatusBadGateway, "تعذر رفع الصورة")
 		return
 	}
-	_, _ = h.db.Exec(`UPDATE "PromoItem" SET "imageUrl" = $2 WHERE id = $1`, r.PathValue("id"), key)
+	errlog.Exec(h.db.Exec(`UPDATE "PromoItem" SET "imageUrl" = $2 WHERE id = $1`, r.PathValue("id"), key))
 	WriteJSON(w, http.StatusOK, map[string]bool{"ok": true})
 }
 
@@ -825,7 +827,7 @@ func (h *CustomerAppHandler) AdminSuggest(w http.ResponseWriter, r *http.Request
 		return
 	}
 	id := uuid.NewString()
-	_, _ = h.db.Exec(`INSERT INTO "PromoItem" (id, kind, title, body, active, source) VALUES ($1,'offer',$2,$3,false,'matrix')`, id, title, body)
+	errlog.Exec(h.db.Exec(`INSERT INTO "PromoItem" (id, kind, title, body, active, source) VALUES ($1,'offer',$2,$3,false,'matrix')`, id, title, body))
 	WriteJSON(w, http.StatusOK, map[string]string{"id": id, "title": title, "body": body})
 }
 

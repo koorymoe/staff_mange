@@ -2,6 +2,7 @@ package service
 
 import (
 	"fmt"
+	"staffmange-api/internal/errlog"
 	"strings"
 	"time"
 
@@ -151,7 +152,7 @@ func FollowUpTraining(db *sqlx.DB) (improved, notImproved int, err error) {
 			return
 		}
 		if n.IssueID != nil {
-			_, _ = db.Exec(`INSERT INTO "WorkplaceIssueEntry" ("issueId", kind, text) VALUES ($1, 'MATRIX', $2)`, *n.IssueID, "🎓 متابعة ٣٠ يوم: "+note)
+			errlog.Exec(db.Exec(`INSERT INTO "WorkplaceIssueEntry" ("issueId", kind, text) VALUES ($1, 'MATRIX', $2)`, *n.IssueID, "🎓 متابعة ٣٠ يوم: "+note))
 		}
 	}
 	return

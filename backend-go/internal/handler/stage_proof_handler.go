@@ -3,6 +3,7 @@ package handler
 import (
 	"math"
 	"net/http"
+	"staffmange-api/internal/errlog"
 	"time"
 
 	"github.com/google/uuid"
@@ -95,8 +96,8 @@ func (h *StageProofHandler) Record(w http.ResponseWriter, r *http.Request) {
 		AND "pressedAt" BETWEEN $3::timestamp - interval '5 minutes' AND $3::timestamp + interval '5 minutes'`, emp, bookingID, pressed)
 	if near >= 2 {
 		verdict = "BATCH"
-		_, _ = h.db.Exec(`UPDATE "BookingStageProof" SET verdict = 'BATCH' WHERE "employeeId" = $1 AND verdict = 'OK'
-			AND "pressedAt" BETWEEN $2::timestamp - interval '5 minutes' AND $2::timestamp + interval '5 minutes'`, emp, pressed)
+		errlog.Exec(h.db.Exec(`UPDATE "BookingStageProof" SET verdict = 'BATCH' WHERE "employeeId" = $1 AND verdict = 'OK'
+			AND "pressedAt" BETWEEN $2::timestamp - interval '5 minutes' AND $2::timestamp + interval '5 minutes'`, emp, pressed))
 	}
 	if _, err := h.db.Exec(`INSERT INTO "BookingStageProof" (id, "bookingId", stage, "employeeId", "pressedAt", offline, lat, lng, accuracy, "distanceM", verdict)
 		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)`, uuid.NewString(), bookingID, b.Stage, emp, pressed, b.Offline, b.Lat, b.Lng, b.Accuracy, dist, verdict); err != nil {
@@ -120,7 +121,7 @@ func (h *StageProofHandler) Record(w http.ResponseWriter, r *http.Request) {
 				q += ` AND ("` + c + `" IS NULL OR $2 <= "` + c + `")`
 			}
 		}
-		_, _ = h.db.Exec(q, bookingID, pressed)
+		errlog.Exec(h.db.Exec(q, bookingID, pressed))
 	}
 	WriteJSON(w, http.StatusOK, map[string]any{"ok": true, "verdict": verdict, "distanceM": dist, "pressedAt": pressed})
 }

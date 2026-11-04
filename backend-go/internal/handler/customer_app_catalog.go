@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"staffmange-api/internal/errlog"
 	"strconv"
 	"strings"
 	"time"
@@ -117,12 +118,12 @@ func (h *CustomerAppHandler) Favorites(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *CustomerAppHandler) AddFavorite(w http.ResponseWriter, r *http.Request) {
-	_, _ = h.db.Exec(`INSERT INTO "CustomerFavorite" ("accountId", "serviceId") VALUES ($1, $2) ON CONFLICT DO NOTHING`, current(r).ID, r.PathValue("id"))
+	errlog.Exec(h.db.Exec(`INSERT INTO "CustomerFavorite" ("accountId", "serviceId") VALUES ($1, $2) ON CONFLICT DO NOTHING`, current(r).ID, r.PathValue("id")))
 	WriteJSON(w, http.StatusOK, map[string]bool{"ok": true})
 }
 
 func (h *CustomerAppHandler) RemoveFavorite(w http.ResponseWriter, r *http.Request) {
-	_, _ = h.db.Exec(`DELETE FROM "CustomerFavorite" WHERE "accountId" = $1 AND "serviceId" = $2`, current(r).ID, r.PathValue("id"))
+	errlog.Exec(h.db.Exec(`DELETE FROM "CustomerFavorite" WHERE "accountId" = $1 AND "serviceId" = $2`, current(r).ID, r.PathValue("id")))
 	WriteJSON(w, http.StatusOK, map[string]bool{"ok": true})
 }
 
@@ -180,7 +181,7 @@ func (h *CustomerAppHandler) CreateBooking(w http.ResponseWriter, r *http.Reques
 	}
 	when := strings.TrimSpace(v("date") + " " + v("time"))
 	if a.City == nil || *a.City == "" {
-		_, _ = h.db.Exec(`UPDATE "CustomerAccount" SET city = $2 WHERE id = $1`, a.ID, city)
+		errlog.Exec(h.db.Exec(`UPDATE "CustomerAccount" SET city = $2 WHERE id = $1`, a.ID, city))
 	}
 	notes := v("notes")
 	if len(photos) > 0 {
@@ -195,13 +196,14 @@ func (h *CustomerAppHandler) CreateBooking(w http.ResponseWriter, r *http.Reques
 	}
 	var id string
 	_ = h.db.Get(&id, `SELECT id FROM "Booking" WHERE code = $1`, code)
-	// موقع الزبون الرسمي (الي حدده بالتطبيق) يصير موقع الحجز
-	_, _ = h.db.Exec(`UPDATE "Booking" b SET "mapLatitude" = c.lat, "mapLongitude" = c.lng FROM "Customer" c
-		WHERE b.id = $1 AND c.id = b."customerId" AND c."locationSource" = 'APP' AND c.lat IS NOT NULL AND b."mapLatitude" IS NULL`, id)
+	errlog.
+		// موقع الزبون الرسمي (الي حدده بالتطبيق) يصير موقع الحجز
+		Exec(h.db.Exec(`UPDATE "Booking" b SET "mapLatitude" = c.lat, "mapLongitude" = c.lng FROM "Customer" c
+		WHERE b.id = $1 AND c.id = b."customerId" AND c."locationSource" = 'APP' AND c.lat IS NOT NULL AND b."mapLatitude" IS NULL`, id))
 	for _, p := range photos {
 		key := storage.NewKey("customer-app", p.ct)
 		if err := h.store.Put(r.Context(), key, p.data, p.ct); err == nil {
-			_, _ = h.db.Exec(`INSERT INTO "CustomerBookingPhoto" (id, "bookingId", key) VALUES ($1,$2,$3)`, uuid.NewString(), id, key)
+			errlog.Exec(h.db.Exec(`INSERT INTO "CustomerBookingPhoto" (id, "bookingId", key) VALUES ($1,$2,$3)`, uuid.NewString(), id, key))
 		}
 	}
 	WriteJSON(w, http.StatusOK, map[string]string{"id": id, "code": code})
@@ -425,8 +427,8 @@ func (h *CustomerAppHandler) AdminServiceImage(w http.ResponseWriter, r *http.Re
 		WriteError(w, http.StatusBadRequest, err.Error())
 		return
 	}
-	_, _ = h.db.Exec(`INSERT INTO "ServiceApp" ("serviceId", "imageUrl") VALUES ($1,$2)
-		ON CONFLICT ("serviceId") DO UPDATE SET "imageUrl" = $2, "updatedAt" = now()`, r.PathValue("id"), key)
+	errlog.Exec(h.db.Exec(`INSERT INTO "ServiceApp" ("serviceId", "imageUrl") VALUES ($1,$2)
+		ON CONFLICT ("serviceId") DO UPDATE SET "imageUrl" = $2, "updatedAt" = now()`, r.PathValue("id"), key))
 	WriteJSON(w, http.StatusOK, map[string]bool{"ok": true})
 }
 
@@ -479,7 +481,7 @@ func (h *CustomerAppHandler) AdminSaveBranch(w http.ResponseWriter, r *http.Requ
 }
 
 func (h *CustomerAppHandler) AdminDeleteBranch(w http.ResponseWriter, r *http.Request) {
-	_, _ = h.db.Exec(`DELETE FROM "AppBranch" WHERE id = $1`, r.PathValue("id"))
+	errlog.Exec(h.db.Exec(`DELETE FROM "AppBranch" WHERE id = $1`, r.PathValue("id")))
 	WriteJSON(w, http.StatusOK, map[string]bool{"ok": true})
 }
 

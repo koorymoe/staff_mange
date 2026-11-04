@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"regexp"
 	"sort"
+	"staffmange-api/internal/errlog"
 	"strings"
 	"time"
 
@@ -33,7 +34,9 @@ type TrainingCenterHandler struct {
 	Agent *service.MatrixAgent
 }
 
-func NewTrainingCenterHandler(db *sqlx.DB) *TrainingCenterHandler { return &TrainingCenterHandler{db: db} }
+func NewTrainingCenterHandler(db *sqlx.DB) *TrainingCenterHandler {
+	return &TrainingCenterHandler{db: db}
+}
 
 func month() string { return time.Now().In(baghdadLoc()).Format("2006-01") }
 
@@ -206,7 +209,7 @@ func (h *TrainingCenterHandler) AddCurriculum(w http.ResponseWriter, r *http.Req
 }
 
 func (h *TrainingCenterHandler) DeleteCurriculum(w http.ResponseWriter, r *http.Request) {
-	_, _ = h.db.Exec(`DELETE FROM "TrainingCurriculum" WHERE id = $1`, r.PathValue("id"))
+	errlog.Exec(h.db.Exec(`DELETE FROM "TrainingCurriculum" WHERE id = $1`, r.PathValue("id")))
 	h.Curriculum(w, r)
 }
 
@@ -245,12 +248,12 @@ func (h *TrainingCenterHandler) AddQuestion(w http.ResponseWriter, r *http.Reque
 }
 
 func (h *TrainingCenterHandler) ApproveQuestion(w http.ResponseWriter, r *http.Request) {
-	_, _ = h.db.Exec(`UPDATE "TrainingQuestion" SET approved = true WHERE id = $1`, r.PathValue("id"))
+	errlog.Exec(h.db.Exec(`UPDATE "TrainingQuestion" SET approved = true WHERE id = $1`, r.PathValue("id")))
 	WriteJSON(w, http.StatusOK, map[string]bool{"ok": true})
 }
 
 func (h *TrainingCenterHandler) DeleteQuestion(w http.ResponseWriter, r *http.Request) {
-	_, _ = h.db.Exec(`DELETE FROM "TrainingQuestion" WHERE id = $1`, r.PathValue("id"))
+	errlog.Exec(h.db.Exec(`DELETE FROM "TrainingQuestion" WHERE id = $1`, r.PathValue("id")))
 	WriteJSON(w, http.StatusOK, map[string]bool{"ok": true})
 }
 
@@ -429,9 +432,9 @@ func (h *TrainingCenterHandler) MyExam(w http.ResponseWriter, r *http.Request) {
 // POST /api/training-center/my-exam/start — يبدي الوكت
 func (h *TrainingCenterHandler) StartExam(w http.ResponseWriter, r *http.Request) {
 	me := middleware.EmployeeIDFromContext(r)
-	_, _ = h.db.Exec(`INSERT INTO "TrainingAttempt" (id, "examId", "employeeId")
+	errlog.Exec(h.db.Exec(`INSERT INTO "TrainingAttempt" (id, "examId", "employeeId")
 		SELECT $1, x.id, e.id FROM "TrainingExam" x JOIN "Employee" e ON e.role::text = x.role WHERE e.id = $2 AND x.month = $3
-		ON CONFLICT DO NOTHING`, uuid.NewString(), me, month())
+		ON CONFLICT DO NOTHING`, uuid.NewString(), me, month()))
 	h.MyExam(w, r)
 }
 
@@ -552,13 +555,13 @@ func (h *TrainingCenterHandler) InspectPlan(w http.ResponseWriter, r *http.Reque
 		WriteError(w, http.StatusBadRequest, "اختار نتيجة التفتيش")
 		return
 	}
-	_, _ = h.db.Exec(`UPDATE "TrainingPlan" SET "inspectionResult" = $2, "inspectionNotes" = $3, "inspectorId" = $4, "inspectedAt" = now() WHERE id = $1`,
-		r.PathValue("id"), b.Result, strings.TrimSpace(b.Notes), middleware.EmployeeIDFromContext(r))
+	errlog.Exec(h.db.Exec(`UPDATE "TrainingPlan" SET "inspectionResult" = $2, "inspectionNotes" = $3, "inspectorId" = $4, "inspectedAt" = now() WHERE id = $1`,
+		r.PathValue("id"), b.Result, strings.TrimSpace(b.Notes), middleware.EmployeeIDFromContext(r)))
 	WriteJSON(w, http.StatusOK, map[string]bool{"ok": true})
 }
 
 func (h *TrainingCenterHandler) DeletePlan(w http.ResponseWriter, r *http.Request) {
-	_, _ = h.db.Exec(`DELETE FROM "TrainingPlan" WHERE id = $1`, r.PathValue("id"))
+	errlog.Exec(h.db.Exec(`DELETE FROM "TrainingPlan" WHERE id = $1`, r.PathValue("id")))
 	WriteJSON(w, http.StatusOK, map[string]bool{"ok": true})
 }
 

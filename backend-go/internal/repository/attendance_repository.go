@@ -3,6 +3,7 @@ package repository
 import (
 	"database/sql"
 	"errors"
+	"staffmange-api/internal/errlog"
 	"strings"
 	"time"
 
@@ -480,5 +481,5 @@ func (r *AttendanceRepository) ExtendableAuto() ([]struct {
 }
 
 func (r *AttendanceRepository) NoteAuto(id, reason string) {
-	_, _ = r.db.Exec(`UPDATE "AttendanceAuto" SET reason = $2 WHERE "attendanceId" = $1`, id, reason)
+	errlog.Exec(r.db.Exec(`UPDATE "AttendanceAuto" SET reason = $2 WHERE "attendanceId" = $1`, id, reason))
 }

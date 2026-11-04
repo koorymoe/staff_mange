@@ -3,6 +3,7 @@ package service
 import (
 	"errors"
 	"fmt"
+	"staffmange-api/internal/errlog"
 	"strings"
 	"time"
 
@@ -250,8 +251,8 @@ func (d *RatingDuty) settlePeers(day string) {
 	_ = d.db.Select(&open, `SELECT "employeeId" FROM "EmployeeNegligence" WHERE day = $1::date AND kind = 'MISSED_RATINGS' AND "compensatedAt" IS NULL`, day)
 	for _, emp := range open {
 		if items, err := d.Owed(emp, day); err == nil && len(items) == 0 {
-			_, _ = d.db.Exec(`UPDATE "EmployeeNegligence" SET "compensatedAt" = now(), reason = 'قيّمها زميله بدله (متأخر)'
-				WHERE "employeeId" = $1 AND day = $2::date AND kind = 'MISSED_RATINGS' AND "compensatedAt" IS NULL`, emp, day)
+			errlog.Exec(d.db.Exec(`UPDATE "EmployeeNegligence" SET "compensatedAt" = now(), reason = 'قيّمها زميله بدله (متأخر)'
+				WHERE "employeeId" = $1 AND day = $2::date AND kind = 'MISSED_RATINGS' AND "compensatedAt" IS NULL`, emp, day))
 		}
 	}
 }

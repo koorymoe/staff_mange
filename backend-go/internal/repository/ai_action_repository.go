@@ -3,6 +3,7 @@ package repository
 import (
 	"encoding/json"
 	"errors"
+	"staffmange-api/internal/errlog"
 	"time"
 
 	"github.com/google/uuid"
@@ -600,10 +601,10 @@ func (r *AiActionRepository) ReassignOpenGps(kind, toID, label string) {
 	if label == "" {
 		label = "الجودة"
 	}
-	_, _ = r.db.Exec(`UPDATE "AiAction" a SET "targetEmployeeId" = NULLIF($2, ''), "targetLabel" = $3,
+	errlog.Exec(r.db.Exec(`UPDATE "AiAction" a SET "targetEmployeeId" = NULLIF($2, ''), "targetLabel" = $3,
 		summary = replace(a.summary, 'ذكّر البائع', 'ذكّر الجودة')
 		FROM "Employee" e WHERE e.id = a."targetEmployeeId" AND a.kind = $1 AND a."resolvedAt" IS NULL
-		  AND e.role IN ('ADMIN', 'OWNER')`, kind, toID, label)
+		  AND e.role IN ('ADMIN', 'OWNER')`, kind, toID, label))
 }
 
 // ═══ شغل كل دور بآخر N يوم — ماتركس يقيس كل موظف بشغل دوره هو ═══
@@ -749,7 +750,7 @@ func (r *AiActionRepository) Find(id string) (*model.AiAction, error) {
 
 // Forget يمسح فعل انحجز وفشل تنفيذه — حتى ما يبين بالسجل كأنه صار.
 func (r *AiActionRepository) Forget(kind, entityID, period string) {
-	_, _ = r.db.Exec(`DELETE FROM "AiAction" WHERE kind = $1 AND "entityId" = $2 AND period = $3 AND status = 'DONE'`, kind, entityID, period)
+	errlog.Exec(r.db.Exec(`DELETE FROM "AiAction" WHERE kind = $1 AND "entityId" = $2 AND period = $3 AND status = 'DONE'`, kind, entityID, period))
 }
 
 // RecentOfKinds آخر أفعال أنواع معيّنة.

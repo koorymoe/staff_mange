@@ -2,6 +2,7 @@ package repository
 
 import (
 	"errors"
+	"staffmange-api/internal/errlog"
 	"time"
 
 	"github.com/google/uuid"
@@ -177,10 +178,10 @@ func (r *ComplaintRepository) AddEvent(complaintID, kind string, detail *string,
 			byName = e.Name
 		}
 	}
-	_, _ = r.db.Exec(`
+	errlog.Exec(r.db.Exec(`
 		INSERT INTO "ComplaintEvent" (id, "complaintId", kind, detail, "byEmployeeId", "byName")
 		VALUES ($1, $2, $3, NULLIF($4,''), NULLIF($5,''), NULLIF($6,''))`,
-		uuid.NewString(), complaintID, kind, deref(detail), byID, byName)
+		uuid.NewString(), complaintID, kind, deref(detail), byID, byName))
 }
 
 // Events أحداث الشكوى — الأحدث أولاً.

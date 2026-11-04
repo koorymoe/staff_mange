@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 	"log"
+	"staffmange-api/internal/errlog"
 	"strings"
 
 	"github.com/jmoiron/sqlx"
@@ -176,10 +177,10 @@ func (r *InventoryRepository) GetPersonalTool(id string) (*model.PersonalTool, e
 // logToolEvent يكتب حدث بسجل حركة الأداة. فشل الكتابة ما يفشّل العملية
 // الأساسية — السجل توثيق مساعد، مو شرط لنجاح التعديل.
 func (r *InventoryRepository) logToolEvent(t *model.PersonalTool, eventType string, from, to, note, actorID *string) {
-	_, _ = r.db.Exec(`
+	errlog.Exec(r.db.Exec(`
 		INSERT INTO "PersonalToolEvent" (id, "toolId", "toolName", "employeeId", "eventType", "fromStatus", "toStatus", note, "actorId")
 		VALUES (gen_random_uuid()::text, $1, $2, $3, $4, $5, $6, $7, $8)
-	`, t.ID, t.Name, t.EmployeeID, eventType, from, to, note, actorID)
+	`, t.ID, t.Name, t.EmployeeID, eventType, from, to, note, actorID))
 }
 
 // CreatePersonalTool ينشئ أداة خاصة لموظف محدد.

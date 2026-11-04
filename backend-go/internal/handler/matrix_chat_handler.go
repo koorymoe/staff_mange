@@ -5,6 +5,7 @@ import (
 	"errors"
 	"log"
 	"net/http"
+	"staffmange-api/internal/errlog"
 	"staffmange-api/internal/model"
 	"strings"
 	"sync"
@@ -134,7 +135,7 @@ func (h *MatrixChatHandler) Messages(w http.ResponseWriter, r *http.Request) {
 
 // DELETE /api/matrix/chats/{id}
 func (h *MatrixChatHandler) Delete(w http.ResponseWriter, r *http.Request) {
-	_, _ = h.db.Exec(`DELETE FROM "MatrixTalk" WHERE id = $1 AND "employeeId" = $2`, r.PathValue("id"), middleware.EmployeeIDFromContext(r))
+	errlog.Exec(h.db.Exec(`DELETE FROM "MatrixTalk" WHERE id = $1 AND "employeeId" = $2`, r.PathValue("id"), middleware.EmployeeIDFromContext(r)))
 	WriteJSON(w, http.StatusOK, map[string]bool{"ok": true})
 }
 
@@ -357,7 +358,7 @@ func (h *MatrixChatHandler) save(in *chatTurnIn, run *service.AgentRun) (chatMsg
 	if r := []rune(title); len(r) > 40 {
 		title = string(r[:40]) + "…"
 	}
-	_, _ = tx.Exec(`UPDATE "MatrixTalk" SET "updatedAt" = now(), title = CASE WHEN title = 'محادثة جديدة' THEN $2 ELSE title END WHERE id = $1`, id, title)
+	errlog.Exec(tx.Exec(`UPDATE "MatrixTalk" SET "updatedAt" = now(), title = CASE WHEN title = 'محادثة جديدة' THEN $2 ELSE title END WHERE id = $1`, id, title))
 	if err := tx.Commit(); err != nil {
 		return reply, err
 	}
@@ -442,8 +443,8 @@ func (h *MatrixChatHandler) Correct(w http.ResponseWriter, r *http.Request) {
 		WriteError(w, http.StatusInternalServerError, "تعذر حفظ الدرس")
 		return
 	}
-	_, _ = h.db.Exec(`INSERT INTO "MatrixTalkMessage" (id, "chatId", role, text) VALUES (gen_random_uuid()::text, $1, 'USER', $2)`,
-		id, "تصحيح: "+corr)
+	errlog.Exec(h.db.Exec(`INSERT INTO "MatrixTalkMessage" (id, "chatId", role, text) VALUES (gen_random_uuid()::text, $1, 'USER', $2)`,
+		id, "تصحيح: "+corr))
 	WriteJSON(w, http.StatusOK, map[string]bool{"ok": true})
 }
 
@@ -457,7 +458,7 @@ func (h *MatrixChatHandler) Lessons(w http.ResponseWriter, r *http.Request) {
 
 // DELETE /api/matrix/lessons/{id} — يطفّيه، ما يحذفه
 func (h *MatrixChatHandler) DisableLesson(w http.ResponseWriter, r *http.Request) {
-	_, _ = h.db.Exec(`UPDATE "MatrixLesson" SET active = false WHERE id = $1`, r.PathValue("id"))
+	errlog.Exec(h.db.Exec(`UPDATE "MatrixLesson" SET active = false WHERE id = $1`, r.PathValue("id")))
 	WriteJSON(w, http.StatusOK, map[string]bool{"ok": true})
 }
 
@@ -488,7 +489,7 @@ func (h *MatrixChatHandler) updateMemory(chatID string) {
 		log.Printf("[matrix-memory] %v", err)
 		return
 	}
-	_, _ = h.db.Exec(`UPDATE "MatrixTalk" SET summary = $2, "summarizedUpTo" = $3 WHERE id = $1`, chatID, sum, msgs[len(msgs)-1].CreatedAt)
+	errlog.Exec(h.db.Exec(`UPDATE "MatrixTalk" SET summary = $2, "summarizedUpTo" = $3 WHERE id = $1`, chatID, sum, msgs[len(msgs)-1].CreatedAt))
 }
 
 // staffRoleLabels أسماء الأدوار بالعربي (نفس frontend/src/roleLabels.ts) — للبرومبت.

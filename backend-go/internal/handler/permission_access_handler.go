@@ -3,6 +3,7 @@ package handler
 import (
 	"net/http"
 	"sort"
+	"staffmange-api/internal/errlog"
 	"strconv"
 	"strings"
 	"time"
@@ -185,8 +186,8 @@ func (h *PermissionAccessHandler) Access(w http.ResponseWriter, r *http.Request)
 }
 
 func (h *PermissionAccessHandler) audit(tx *sqlx.Tx, empID, actor, action, perm, reason string) {
-	_, _ = tx.Exec(`INSERT INTO "PermissionAuditLog" ("employeeId", "actorId", action, permission, reason) VALUES ($1, $2, $3, $4, NULLIF($5, ''))`,
-		empID, actor, action, perm, reason)
+	errlog.Exec(tx.Exec(`INSERT INTO "PermissionAuditLog" ("employeeId", "actorId", action, permission, reason) VALUES ($1, $2, $3, $4, NULLIF($5, ''))`,
+		empID, actor, action, perm, reason))
 }
 
 // apply يضيف ويشيل بمعاملة وحدة ويا التحقق من النسخة والقفل والسجل.
@@ -240,7 +241,7 @@ func (h *PermissionAccessHandler) apply(r *http.Request, empID string, version i
 		}
 		if k, _ := res.RowsAffected(); k > 0 {
 			h.audit(tx, empID, actor, "REMOVE", n, reason)
-			_, _ = tx.Exec(`DELETE FROM "PermissionException" WHERE "employeeId" = $1 AND permission = $2`, empID, n)
+			errlog.Exec(tx.Exec(`DELETE FROM "PermissionException" WHERE "employeeId" = $1 AND permission = $2`, empID, n))
 		}
 	}
 	if extra != nil {
@@ -490,13 +491,14 @@ func (h *PermissionAccessHandler) SweepExpired() int {
 			continue
 		}
 		if service.OrgWants(tx, x.EmployeeID, x.Permission) {
-			// المنصب يستحقها — الاستثناء ينتهي بس الصلاحية تبقى وتصير من المنصب
-			_, _ = tx.Exec(`INSERT INTO "OrgPermissionGrant" ("employeeId", permission) VALUES ($1, $2) ON CONFLICT DO NOTHING`, x.EmployeeID, x.Permission)
+			errlog.
+				// المنصب يستحقها — الاستثناء ينتهي بس الصلاحية تبقى وتصير من المنصب
+				Exec(tx.Exec(`INSERT INTO "OrgPermissionGrant" ("employeeId", permission) VALUES ($1, $2) ON CONFLICT DO NOTHING`, x.EmployeeID, x.Permission))
 		} else {
-			_, _ = tx.Exec(`DELETE FROM "EmployeePermission" WHERE "employeeId" = $1 AND "permissionId" = (SELECT id FROM "Permission" WHERE name = $2)`, x.EmployeeID, x.Permission)
+			errlog.Exec(tx.Exec(`DELETE FROM "EmployeePermission" WHERE "employeeId" = $1 AND "permissionId" = (SELECT id FROM "Permission" WHERE name = $2)`, x.EmployeeID, x.Permission))
 		}
-		_, _ = tx.Exec(`DELETE FROM "PermissionException" WHERE "employeeId" = $1 AND permission = $2`, x.EmployeeID, x.Permission)
-		_, _ = tx.Exec(`UPDATE "Employee" SET "accessVersion" = "accessVersion" + 1 WHERE id = $1`, x.EmployeeID)
+		errlog.Exec(tx.Exec(`DELETE FROM "PermissionException" WHERE "employeeId" = $1 AND permission = $2`, x.EmployeeID, x.Permission))
+		errlog.Exec(tx.Exec(`UPDATE "Employee" SET "accessVersion" = "accessVersion" + 1 WHERE id = $1`, x.EmployeeID))
 		h.audit(tx, x.EmployeeID, "", "EXPIRE", x.Permission, "انتهى وقت الصلاحية المؤقتة")
 		if tx.Commit() == nil {
 			n++

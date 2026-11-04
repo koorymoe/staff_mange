@@ -1,6 +1,7 @@
 package repository
 
 import (
+	"staffmange-api/internal/errlog"
 	"time"
 
 	"github.com/jmoiron/sqlx"
@@ -11,8 +12,8 @@ type PresenceRepository struct{ db *sqlx.DB }
 func NewPresenceRepository(db *sqlx.DB) *PresenceRepository { return &PresenceRepository{db: db} }
 
 func (r *PresenceRepository) Touch(employeeID string) {
-	_, _ = r.db.Exec(`INSERT INTO "EmployeePresence" ("employeeId", "lastSeenAt") VALUES ($1, now())
-		ON CONFLICT ("employeeId") DO UPDATE SET "lastSeenAt" = now()`, employeeID)
+	errlog.Exec(r.db.Exec(`INSERT INTO "EmployeePresence" ("employeeId", "lastSeenAt") VALUES ($1, now())
+		ON CONFLICT ("employeeId") DO UPDATE SET "lastSeenAt" = now()`, employeeID))
 }
 
 type PresenceRow struct {

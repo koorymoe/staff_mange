@@ -253,3 +253,4 @@ git push origin origin/avg:refs/heads/prod     # بعد التأكد إنه fast
 - (لوفي 11-04) 🧪 ٧أ: vitest@5.0.5 (--legacy-peer-deps بسبب خلل npm بالـ peers؛ frontend/.npmrc legacy-peer-deps=true حتى npm ci يطابق)، "test": "vitest run". ملفات: utils/format.test.ts، utils/money.test.ts، session.test.ts، ui/dialogs.test.ts، components/navTree.test.ts (١٤). ci.yml: typecheck → tsc -p tsconfig.app.json --noEmit + خطوة npm test. ⚠️ sm-luffy/frontend/node_modules صار نسخة حقيقية (كان رابط لـ sm/) لأن npm مسح الرابط.
 - (لوفي 11-04) 🗑️ ٧ز: حذف components/MatrixAICost.tsx وapi.runDisciplineSweep (مسار /discipline/run ماله وجود) بموافقة دازاي. الأربع «الميتة» بالتقرير طلعن تبويبات شغّالة.
 - 2026-11-04: ٨أ — منع «ابدأ الشغل» لحجز بلا كادر/ليدر/مسؤول (عدا IN_HOUSE) — booking_repository.StartWithResponseTime + ErrBookingNoCrew. مجرّب محلياً.
+- 2026-11-04: ٧ج (Go) — حزمة internal/errlog؛ ١٠٣ `_, _ = X.Exec` صارت errlog.Exec (تسجيل بدل بلع). codemod: scratchpad/codemod/errlog.

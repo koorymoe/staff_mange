@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"math"
+	"staffmange-api/internal/errlog"
 	"strings"
 	"time"
 
@@ -585,7 +586,7 @@ func (g *OrgGovernor) revoke(emp, period string, score float64, comp []byte) boo
 	}
 	if len(ended) != len(ids) {
 		details, _ = json.Marshal(map[string]any{"assignmentIds": ended, "evaluation": json.RawMessage(comp)})
-		_, _ = g.db.Exec(`UPDATE "AiAction" SET details = $3 WHERE kind = $1 AND "entityId" = $2 AND period = $4`, model.AiActionOrgRevoke, orgEvalEntity(emp, period), details, period)
+		errlog.Exec(g.db.Exec(`UPDATE "AiAction" SET details = $3 WHERE kind = $1 AND "entityId" = $2 AND period = $4`, model.AiActionOrgRevoke, orgEvalEntity(emp, period), details, period))
 	}
 	g.say(emp, "ORG_REVOKE", "🏛️ "+reason+" — انسحب منصبك ومخصصه وصلاحياته. تگدر تراجع مديرك.")
 	g.reportToDirector(emp, "🏛️ ماتركس سحب منصب "+name+": "+reason)

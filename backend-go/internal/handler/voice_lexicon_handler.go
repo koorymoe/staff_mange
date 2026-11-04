@@ -2,6 +2,7 @@ package handler
 
 import (
 	"net/http"
+	"staffmange-api/internal/errlog"
 	"strings"
 
 	"github.com/jmoiron/sqlx"
@@ -64,10 +65,10 @@ func (h *VoiceLexiconHandler) Add(w http.ResponseWriter, r *http.Request) {
 // DELETE /api/voice/terms?term= أو ?wrong= — يشيل كلمة أو تصحيح
 func (h *VoiceLexiconHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	if t := r.URL.Query().Get("term"); t != "" {
-		_, _ = h.db.Exec(`DELETE FROM "VoiceTerm" WHERE term = $1`, t)
+		errlog.Exec(h.db.Exec(`DELETE FROM "VoiceTerm" WHERE term = $1`, t))
 	}
 	if t := r.URL.Query().Get("wrong"); t != "" {
-		_, _ = h.db.Exec(`DELETE FROM "VoiceFix" WHERE wrong = $1`, t)
+		errlog.Exec(h.db.Exec(`DELETE FROM "VoiceFix" WHERE wrong = $1`, t))
 	}
 	if service.DefaultVoiceLexicon != nil {
 		service.DefaultVoiceLexicon.Invalidate()

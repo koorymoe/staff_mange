@@ -3,6 +3,7 @@ package service
 import (
 	"fmt"
 	"log"
+	"staffmange-api/internal/errlog"
 	"strings"
 	"time"
 
@@ -134,8 +135,8 @@ func (s *MatrixMissionService) RunIfDue() error {
 		return err
 	}
 	for _, m := range ms {
-		_, _ = s.db.Exec(`INSERT INTO "MatrixMissionLog" (id, "missionId", day, text) VALUES (gen_random_uuid()::text, $1, $2::date, $3)
-			ON CONFLICT ("missionId", day) DO NOTHING`, m.ID, day, s.dayFacts(m.EmployeeID, day))
+		errlog.Exec(s.db.Exec(`INSERT INTO "MatrixMissionLog" (id, "missionId", day, text) VALUES (gen_random_uuid()::text, $1, $2::date, $3)
+			ON CONFLICT ("missionId", day) DO NOTHING`, m.ID, day, s.dayFacts(m.EmployeeID, day)))
 		if day >= m.EndsOn {
 			s.finish(m)
 		}
@@ -162,7 +163,7 @@ func (s *MatrixMissionService) finish(m MatrixMission) {
 			summary = run.Answer
 		}
 	}
-	_, _ = s.db.Exec(`UPDATE "MatrixMission" SET active = false, summary = $2, "summaryAt" = now() WHERE id = $1`, m.ID, summary)
+	errlog.Exec(s.db.Exec(`UPDATE "MatrixMission" SET active = false, summary = $2, "summaryAt" = now() WHERE id = $1`, m.ID, summary))
 	var creator string
 	if err := s.db.Get(&creator, `SELECT "createdById" FROM "MatrixMission" WHERE id = $1`, m.ID); err == nil {
 		_ = s.notif.Create(creator, "AI_MISSION", "🎯 ماتركس خلّص مراقبة "+m.EmployeeName+" — الخلاصة جاهزة بتبويب «مهام ماتركس».")

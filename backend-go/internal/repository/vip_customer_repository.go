@@ -2,6 +2,7 @@ package repository
 
 import (
 	"github.com/jmoiron/sqlx"
+	"staffmange-api/internal/errlog"
 
 	"staffmange-api/internal/model"
 )
@@ -57,7 +58,7 @@ func (r *VipCustomerRepository) markWithSource(id string, req model.MarkVipCusto
 	// المنصب يُخزن بسجل الزبون حتى يبقى معه حتى لو انشال من قائمة الشخصيات
 	// المهمة ورجع انضاف. ولو ما انبعث منصب، ناخذ الي مخزون بسجل الزبون.
 	if req.CustomerPosition != nil && *req.CustomerPosition != "" {
-		_, _ = r.db.Exec(`UPDATE "Customer" SET position = $2 WHERE id = $1`, req.CustomerID, *req.CustomerPosition)
+		errlog.Exec(r.db.Exec(`UPDATE "Customer" SET position = $2 WHERE id = $1`, req.CustomerID, *req.CustomerPosition))
 	} else {
 		var pos *string
 		if err := r.db.Get(&pos, `SELECT position FROM "Customer" WHERE id = $1`, req.CustomerID); err == nil && pos != nil {

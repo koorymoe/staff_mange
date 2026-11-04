@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"staffmange-api/internal/errlog"
 	"time"
 
 	"github.com/google/uuid"
@@ -214,14 +215,14 @@ func (h *FieldTrackHandler) analyzeBooking(b trackBooking) trackResult {
 	if res.ArrivalAt != nil {
 		lat, lng = &res.ArrivalAt.Lat, &res.ArrivalAt.Lng
 	}
-	_, _ = h.db.Exec(`UPDATE "Booking" SET "autoDepartedAt" = $2, "autoArrivedAt" = $3, "autoCompletedAt" = $4,
-		"autoArrivedLat" = $5, "autoArrivedLng" = $6 WHERE id = $1`, b.ID, res.Departed, res.Arrived, res.Completed, lat, lng)
+	errlog.Exec(h.db.Exec(`UPDATE "Booking" SET "autoDepartedAt" = $2, "autoArrivedAt" = $3, "autoCompletedAt" = $4,
+		"autoArrivedLat" = $5, "autoArrivedLng" = $6 WHERE id = $1`, b.ID, res.Departed, res.Arrived, res.Completed, lat, lng))
 	tx, err := h.db.Beginx()
 	if err == nil {
-		_, _ = tx.Exec(`DELETE FROM "BookingRouteStop" WHERE "bookingId" = $1`, b.ID)
+		errlog.Exec(tx.Exec(`DELETE FROM "BookingRouteStop" WHERE "bookingId" = $1`, b.ID))
 		ins := func(kind string, s trackStop) {
-			_, _ = tx.Exec(`INSERT INTO "BookingRouteStop" (id, "bookingId", kind, lat, lng, "startAt", "endAt", minutes) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
-				uuid.NewString(), b.ID, kind, s.Lat, s.Lng, s.Start, s.End, s.Minutes())
+			errlog.Exec(tx.Exec(`INSERT INTO "BookingRouteStop" (id, "bookingId", kind, lat, lng, "startAt", "endAt", minutes) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
+				uuid.NewString(), b.ID, kind, s.Lat, s.Lng, s.Start, s.End, s.Minutes()))
 		}
 		for _, s := range res.RoadStops {
 			ins("ROAD", s)
@@ -236,14 +237,15 @@ func (h *FieldTrackHandler) analyzeBooking(b trackBooking) trackResult {
 		if b.ArrivedAt == nil {
 			if r, err := h.db.Exec(`UPDATE "Booking" SET "arrivedAt" = $2 WHERE id = $1 AND "arrivedAt" IS NULL`, b.ID, *res.Arrived); err == nil {
 				if n, _ := r.RowsAffected(); n > 0 {
-					_, _ = h.db.Exec(`INSERT INTO "BookingStageProof" (id, "bookingId", stage, "pressedAt", offline, lat, lng, verdict)
-						VALUES ($1,$2,'ARRIVED',$3,false,$4,$5,'AUTO')`, uuid.NewString(), b.ID, *res.Arrived, lat, lng)
+					errlog.Exec(h.db.Exec(`INSERT INTO "BookingStageProof" (id, "bookingId", stage, "pressedAt", offline, lat, lng, verdict)
+						VALUES ($1,$2,'ARRIVED',$3,false,$4,$5,'AUTO')`, uuid.NewString(), b.ID, *res.Arrived, lat, lng))
 				}
 			}
 		}
-		// موقع الزبون: إذا ما محدد رسمياً (من التطبيق)، ناخذ مكان التوقف الطويل
-		_, _ = h.db.Exec(`UPDATE "Customer" SET lat = $2, lng = $3, "locationSource" = 'AUTO'
-			WHERE id = $1 AND COALESCE("locationSource", '') <> 'APP'`, b.CustomerID, *lat, *lng)
+		errlog.
+			// موقع الزبون: إذا ما محدد رسمياً (من التطبيق)، ناخذ مكان التوقف الطويل
+			Exec(h.db.Exec(`UPDATE "Customer" SET lat = $2, lng = $3, "locationSource" = 'AUTO'
+			WHERE id = $1 AND COALESCE("locationSource", '') <> 'APP'`, b.CustomerID, *lat, *lng))
 	}
 	return res
 }

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"staffmange-api/internal/errlog"
 	"strings"
 	"time"
 
@@ -184,7 +185,7 @@ func (h *SupplierRelationsHandler) SetPolicy(w http.ResponseWriter, r *http.Requ
 		WriteError(w, http.StatusBadRequest, "عدد أيام غير صالح")
 		return
 	}
-	_, _ = h.db.Exec(`UPDATE "PurchasePolicy" SET "contactDays" = $1 WHERE id = 1`, b.ContactDays)
+	errlog.Exec(h.db.Exec(`UPDATE "PurchasePolicy" SET "contactDays" = $1 WHERE id = 1`, b.ContactDays))
 	WriteJSON(w, http.StatusOK, b)
 }
 

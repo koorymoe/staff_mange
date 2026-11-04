@@ -1,6 +1,7 @@
 package repository
 
 import (
+	"staffmange-api/internal/errlog"
 	"time"
 
 	"github.com/google/uuid"
@@ -107,8 +108,8 @@ func (r *MatrixCommandRepository) AsksToday(employeeID string) int {
 }
 
 func (r *MatrixCommandRepository) LogAsk(employeeID, q, a, source string) {
-	_, _ = r.db.Exec(`INSERT INTO "MatrixChatMessage" (id, "employeeId", question, answer, source) VALUES ($1,$2,$3,$4,$5)`,
-		uuid.NewString(), employeeID, q, a, source)
+	errlog.Exec(r.db.Exec(`INSERT INTO "MatrixChatMessage" (id, "employeeId", question, answer, source) VALUES ($1,$2,$3,$4,$5)`,
+		uuid.NewString(), employeeID, q, a, source))
 }
 
 // LateItem حجز متأخر بآخر ٣ أيام — (ع): «من اضغط يوديني للحجوزات المتأخرة صدك».

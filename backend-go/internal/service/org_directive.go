@@ -3,6 +3,7 @@ package service
 import (
 	"errors"
 	"fmt"
+	"staffmange-api/internal/errlog"
 	"staffmange-api/internal/model"
 	"strings"
 	"time"
@@ -92,7 +93,7 @@ func (s *OrgService) IssueDirective(empID, role string, in DirectiveInput) (stri
 	}
 	// المُصدِر يُحسب مقر
 	if empID != "" {
-		_, _ = s.db.Exec(`INSERT INTO "OrgDirectiveAck" ("directiveId", "employeeId") VALUES ($1, $2) ON CONFLICT DO NOTHING`, id, empID)
+		errlog.Exec(s.db.Exec(`INSERT INTO "OrgDirectiveAck" ("directiveId", "employeeId") VALUES ($1, $2) ON CONFLICT DO NOTHING`, id, empID))
 	}
 	to := []string{}
 	_ = s.db.Select(&to, `SELECT x.id FROM "OrgDirective" d, LATERAL (`+directiveAudienceSQL+`) x WHERE d.id = $1 AND x.id <> $2`, id, empID)

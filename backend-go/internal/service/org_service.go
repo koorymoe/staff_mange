@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"errors"
 	"sort"
+	"staffmange-api/internal/errlog"
 	"strings"
 
 	"github.com/jmoiron/sqlx"
@@ -515,8 +516,8 @@ func syncOrgPermissions(tx *sqlx.Tx, empID, actorID, reason string) error {
 	}
 	sort.Strings(names)
 	audit := func(action, perm string) {
-		_, _ = tx.Exec(`INSERT INTO "PermissionAuditLog" ("employeeId", "actorId", action, permission, reason) VALUES ($1, NULLIF($2, ''), $3, $4, $5)`,
-			empID, actorID, action, perm, reason)
+		errlog.Exec(tx.Exec(`INSERT INTO "PermissionAuditLog" ("employeeId", "actorId", action, permission, reason) VALUES ($1, NULLIF($2, ''), $3, $4, $5)`,
+			empID, actorID, action, perm, reason))
 	}
 	for _, n := range names {
 		h := idx[n]

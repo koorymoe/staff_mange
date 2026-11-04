@@ -3,6 +3,7 @@ package service
 import (
 	"encoding/json"
 	"fmt"
+	"staffmange-api/internal/errlog"
 	"strings"
 	"time"
 
@@ -114,7 +115,7 @@ func SweepWatches(db *sqlx.DB, notify func(ownerID, msg string)) {
 		_ = json.Unmarshal(w.Baseline, &b)
 		rows, err := EmployeeMetrics(db, w.Emp)
 		if err != nil || len(rows) == 0 {
-			_, _ = db.Exec(`UPDATE "AiWatch" SET status = 'CLOSED', "closedAt" = now() WHERE id = $1`, w.ID)
+			errlog.Exec(db.Exec(`UPDATE "AiWatch" SET status = 'CLOSED', "closedAt" = now() WHERE id = $1`, w.ID))
 			continue
 		}
 		c := rows[0]

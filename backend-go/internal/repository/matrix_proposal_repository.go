@@ -2,6 +2,7 @@ package repository
 
 import (
 	"errors"
+	"staffmange-api/internal/errlog"
 
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
@@ -137,10 +138,10 @@ func (r *MatrixProposalRepository) RecentRejections(limit int) ([]model.MatrixPr
 // بصندوق القرارات («منذ ٢٤ ساعة… باقي 410»). وتراجع سرعة بأرقام مستحيلة
 // (أكثر من ×٥ المتوقع) ينتهي هم — بيانات أوقات غلط مو أداء.
 func (r *MatrixProposalRepository) ExpireStalePredictions(today string) {
-	_, _ = r.db.Exec(`UPDATE "MatrixProposal" SET status = 'EXPIRED', "decidedAt" = now(),
+	errlog.Exec(r.db.Exec(`UPDATE "MatrixProposal" SET status = 'EXPIRED', "decidedAt" = now(),
 		note = 'انتهى تلقائياً — توقع يوم فات أو أرقام غير منطقية'
 		WHERE status = 'PENDING' AND (
 		  (signature LIKE 'PRED|%' AND signature NOT LIKE '%|' || $1)
 		  OR (signature LIKE 'DECLINE|%' AND (COALESCE((evidence->>'ratio')::float, 0) > 5 OR COALESCE((evidence->>'prevRatio')::float, 0) > 5))
-		)`, today)
+		)`, today))
 }

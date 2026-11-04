@@ -7,6 +7,7 @@ import (
 	"net/url"
 	"regexp"
 	"sort"
+	"staffmange-api/internal/errlog"
 	"strings"
 	"sync"
 	"time"
@@ -145,8 +146,8 @@ func (l *VoiceLexicon) AddFix(wrong, right, source string) {
 	if wrong == "" || right == "" || wrong == right || len([]rune(wrong)) < 2 {
 		return
 	}
-	_, _ = l.db.Exec(`INSERT INTO "VoiceFix" (wrong, "right", source) VALUES ($1, $2, $3)
-		ON CONFLICT (wrong) DO UPDATE SET "right" = EXCLUDED."right", source = EXCLUDED.source`, wrong, right, source)
+	errlog.Exec(l.db.Exec(`INSERT INTO "VoiceFix" (wrong, "right", source) VALUES ($1, $2, $3)
+		ON CONFLICT (wrong) DO UPDATE SET "right" = EXCLUDED."right", source = EXCLUDED.source`, wrong, right, source))
 	l.invalidate()
 }
 

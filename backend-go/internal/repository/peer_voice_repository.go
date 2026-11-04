@@ -1,6 +1,7 @@
 package repository
 
 import (
+	"staffmange-api/internal/errlog"
 	"time"
 
 	"github.com/jmoiron/sqlx"
@@ -73,7 +74,7 @@ func (r *PeerVoiceRepository) UpsertCheckin(employeeID string, week time.Time, m
 // ReplaceNotes يمسح ملاحظات الأسبوع الي بعدها ما تعمّقت ويكتب الجديدة.
 // (الملاحظة الي انرفع تقريرها تبقى — ما ننمسح شي وصل للمراقب.)
 func (r *PeerVoiceRepository) DropDraftNotes(checkinID string) {
-	_, _ = r.db.Exec(`DELETE FROM "PeerNote" WHERE "checkinId" = $1 AND "reportedAt" IS NULL`, checkinID)
+	errlog.Exec(r.db.Exec(`DELETE FROM "PeerNote" WHERE "checkinId" = $1 AND "reportedAt" IS NULL`, checkinID))
 }
 
 func (r *PeerVoiceRepository) AddNote(checkinID, authorID, targetID string, score int, kind string, text *string, needs bool, severity string) (string, error) {
@@ -293,13 +294,13 @@ func (r *PeerVoiceRepository) Entries(issueID string) ([]IssueEntry, error) {
 func (r *PeerVoiceRepository) AddEntry(issueID string, authorID *string, kind, text string) error {
 	_, err := r.db.Exec(`INSERT INTO "WorkplaceIssueEntry" ("issueId", "authorId", kind, text) VALUES ($1, $2, $3, $4)`, issueID, authorID, kind, text)
 	if err == nil {
-		_, _ = r.db.Exec(`UPDATE "WorkplaceIssue" SET "updatedAt" = now(), status = CASE WHEN status = 'OPEN' THEN 'IN_PROGRESS' ELSE status END WHERE id = $1`, issueID)
+		errlog.Exec(r.db.Exec(`UPDATE "WorkplaceIssue" SET "updatedAt" = now(), status = CASE WHEN status = 'OPEN' THEN 'IN_PROGRESS' ELSE status END WHERE id = $1`, issueID))
 	}
 	return err
 }
 
 func (r *PeerVoiceRepository) SetSummary(id, summary string) {
-	_, _ = r.db.Exec(`UPDATE "WorkplaceIssue" SET "aiSummary" = $2, "updatedAt" = now() WHERE id = $1`, id, summary)
+	errlog.Exec(r.db.Exec(`UPDATE "WorkplaceIssue" SET "aiSummary" = $2, "updatedAt" = now() WHERE id = $1`, id, summary))
 }
 
 func (r *PeerVoiceRepository) Decide(id, decision, by, status string, followUp *time.Time) error {

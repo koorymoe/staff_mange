@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"staffmange-api/internal/errlog"
 	"strings"
 	"time"
 
@@ -223,10 +224,10 @@ func (h *CreditHandler) AddPayment(w http.ResponseWriter, r *http.Request) {
 	}
 	// الفلوس وصلت فعلاً → تنضاف لمستلم الحجز
 	if c.BookingID != nil {
-		_, _ = tx.Exec(`UPDATE "Booking" SET "amountCollected" = COALESCE("amountCollected", 0) + $2 WHERE id = $1`, *c.BookingID, b.Amount)
+		errlog.Exec(tx.Exec(`UPDATE "Booking" SET "amountCollected" = COALESCE("amountCollected", 0) + $2 WHERE id = $1`, *c.BookingID, b.Amount))
 	}
 	if b.Amount >= remaining-0.5 {
-		_, _ = tx.Exec(`UPDATE "CreditSale" SET "settledAt" = now() WHERE id = $1`, id)
+		errlog.Exec(tx.Exec(`UPDATE "CreditSale" SET "settledAt" = now() WHERE id = $1`, id))
 	}
 	if err := tx.Commit(); err != nil {
 		WriteError(w, http.StatusInternalServerError, "تعذر الحفظ")

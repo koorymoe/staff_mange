@@ -2,6 +2,7 @@ package repository
 
 import (
 	"errors"
+	"staffmange-api/internal/errlog"
 	"strings"
 
 	"github.com/google/uuid"
@@ -12,7 +13,9 @@ import (
 
 type MatrixGuideRepository struct{ db *sqlx.DB }
 
-func NewMatrixGuideRepository(db *sqlx.DB) *MatrixGuideRepository { return &MatrixGuideRepository{db: db} }
+func NewMatrixGuideRepository(db *sqlx.DB) *MatrixGuideRepository {
+	return &MatrixGuideRepository{db: db}
+}
 
 func (r *MatrixGuideRepository) List() ([]model.MatrixGuideRule, error) {
 	rows := []model.MatrixGuideRule{}
@@ -76,7 +79,7 @@ func (r *MatrixGuideRepository) Delete(id string) error {
 
 // Hit تعليمة انطبقت — عدّاد الاستعمال (يغذّي التعلّم).
 func (r *MatrixGuideRepository) Hit(id string) {
-	_, _ = r.db.Exec(`UPDATE "MatrixGuideRule" SET hits = hits + 1, "lastHitAt" = now() WHERE id = $1`, id)
+	errlog.Exec(r.db.Exec(`UPDATE "MatrixGuideRule" SET hits = hits + 1, "lastHitAt" = now() WHERE id = $1`, id))
 }
 
 // CreateFrom تعليمة جاية من اقتراح ماتركس — مصدرها ينحفظ.

@@ -3,6 +3,7 @@ package handler
 import (
 	"encoding/json"
 	"net/http"
+	"staffmange-api/internal/errlog"
 	"strconv"
 	"time"
 
@@ -121,7 +122,7 @@ func (h *DeletedRecordsHandler) Restore(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 	defer tx.Rollback()
-	_, _ = tx.Exec(`SELECT set_config('app.actor', $1, true)`, middleware.EmployeeIDFromContext(r))
+	errlog.Exec(tx.Exec(`SELECT set_config('app.actor', $1, true)`, middleware.EmployeeIDFromContext(r)))
 	var exists bool
 	_ = tx.Get(&exists, `SELECT EXISTS (SELECT 1 FROM "`+a.Entity+`" WHERE id::text = $1)`, *a.EntityID)
 	if exists {
