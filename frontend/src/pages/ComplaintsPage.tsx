@@ -70,10 +70,10 @@ export default function ComplaintsPage() {
   const [resolution, setResolution] = useState('')
 
   const load = () => {
-    Promise.all([api.getComplaints(), api.getCustomers(), api.getEmployees()])
-      .then(([comps, custs, emps]) => {
+    // بند ٧م: الزبائن ما تنزل كلها — اقتراحات الاسم تجي من بحث الخادم (تحت)
+    Promise.all([api.getComplaints(), api.getEmployees()])
+      .then(([comps, emps]) => {
         setComplaints(comps)
-        setCustomers(custs)
         setEmployees(emps)
       })
       .catch((e) => setError(e.message))
@@ -113,7 +113,8 @@ export default function ComplaintsPage() {
     }
   }
 
-  // الاسم → يعبّي رقم الهاتف تلقائياً إذا طابق زبون موجود بالضبط
+  // الاسم → يعبّي رقم الهاتف تلقائياً إذا طابق زبون موجود بالضبط.
+  // بند ٧م: الاقتراحات من بحث الخادم (٢٠ نتيجة) بعد ٣٠٠ملي، مو من كل الزبائن.
   const handleNameChange = (value: string) => {
     setName(value)
     const match = customers.find((c) => c.name.trim() === value.trim())
@@ -124,6 +125,25 @@ export default function ComplaintsPage() {
       setFoundCustomer(null)
     }
   }
+  useEffect(() => {
+    const q = name.trim()
+    if (q.length < 2) return
+    let alive = true
+    const t = setTimeout(() => {
+      api.getCustomers({ search: q, limit: 20 })
+        .then((rows) => {
+          if (!alive) return
+          setCustomers(rows)
+          const match = rows.find((c) => c.name.trim() === q)
+          if (match) {
+            setFoundCustomer((cur) => cur ?? match)
+            setPhone((p) => p || match.phone)
+          }
+        })
+        .catch(swallow)
+    }, 300)
+    return () => { alive = false; clearTimeout(t) }
+  }, [name])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -132,7 +152,8 @@ export default function ComplaintsPage() {
     // ممكن المستخدم يعدل الحقلين يدوياً بعد آخر تطابق تلقائي.
     const matched =
       foundCustomer ||
-      customers.find((c) => c.phone.trim() === phone.trim() || c.name.trim() === name.trim())
+      customers.find((c) => c.phone.trim() === phone.trim() || c.name.trim() === name.trim()) ||
+      (/^\d{11}$/.test(phone.trim()) ? await api.lookupCustomer(phone.trim()).catch(() => null) : null)
     if (!matched) {
       alert('تعذر تحديد الزبون — تأكد من رقم الهاتف أو الاسم مطابق لزبون مسجل بالنظام')
       return

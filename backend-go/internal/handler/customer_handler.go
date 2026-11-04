@@ -5,6 +5,7 @@ import (
 	"strconv"
 
 	"staffmange-api/internal/model"
+	"staffmange-api/internal/repository"
 	"staffmange-api/internal/service"
 )
 
@@ -65,6 +66,30 @@ func (h *CustomerHandler) List(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	WriteJSON(w, http.StatusOK, customers)
+}
+
+// GET /api/customers/{id} — زبون واحد (بند ٧م)
+func (h *CustomerHandler) Get(w http.ResponseWriter, r *http.Request) {
+	c, err := h.service.Get(r.PathValue("id"))
+	if err != nil {
+		WriteError(w, http.StatusNotFound, "الزبون مو موجود")
+		return
+	}
+	WriteJSON(w, http.StatusOK, c)
+}
+
+// GET /api/customers/page?q=&location=&kind=&claim=&gps=&page=&perPage= — بند ٧م
+func (h *CustomerHandler) Page(w http.ResponseWriter, r *http.Request) {
+	q := r.URL.Query()
+	page, _ := strconv.Atoi(q.Get("page"))
+	per, _ := strconv.Atoi(q.Get("perPage"))
+	res, err := h.service.Page(repository.CustomerPageQuery{Search: q.Get("q"), Location: q.Get("location"),
+		Kind: q.Get("kind"), Claim: q.Get("claim"), GPS: q.Get("gps") == "1", Page: page, PerPage: per})
+	if err != nil {
+		WriteError(w, http.StatusInternalServerError, "تعذر جلب قائمة العملاء")
+		return
+	}
+	WriteJSON(w, http.StatusOK, res)
 }
 
 // GET /api/v1/customers/lookup?phone=xxx

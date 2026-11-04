@@ -1,13 +1,11 @@
 import { useEffect, useState } from 'react'
 import Pager from '../components/Pager'
-import { api, type Customer, type GpsCustomerListItem, type Booking } from '../api'
+import { api, type Customer, type CustomerPage, type GpsCustomerListItem, type Booking } from '../api'
 import { validateCustomerName, validateCustomerPhone } from '../validation'
-import { matches } from '../utils/search'
 // تسمية الحالة من مصدر واحد للنظام كله
 import { bookingStatusLabel, bookingStatusColor } from '../bookingStatus'
 import BookingCodeChip from '../components/BookingCodeChip'
 import { loadFailed } from '../netErrors'
-import { swallow } from '../utils/swallow'
 
 function splitFullName(fullName: string): [string, string, string, string] {
   const parts = fullName.trim().split(/\s+/).filter(Boolean)
@@ -20,13 +18,8 @@ const serviceLabels: Record<string, string> = {
 
 export default function Customers() {
   const [tab, setTab] = useState<'all' | 'gps'>('all')
-  const [customers, setCustomers] = useState<Customer[]>([])
-  // ⚠️ `customers` محمّلة بحد أعلى (INITIAL_LIMIT) لتسريع الفتح —
-  // فطولها مو العدد الحقيقي الكلي. `totalCount` من مسار خفيف
-  // (COUNT فقط، بلا تنزيل صفوف) يعرض الرقم الصحيح ببطاقة/تبويب
-  // «كل الزبائن»، بدل ما نوهم (ع) إن العدد نقص لمّا هو بس محمَّل جزئياً.
-  const [totalCount, setTotalCount] = useState(0)
-  const [gpsCustomers, setGpsCustomers] = useState<GpsCustomerListItem[]>([])
+  // بند ٧م: الخادم يرجّع صفحة وحدة + أرقام الرأس + المواقع (نفس المنطق القديم حرفياً — customer_page.go)
+  const [pg, setPg] = useState<CustomerPage | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -59,59 +52,22 @@ export default function Customers() {
   const [editMessage, setEditMessage] = useState<string | null>(null)
   const editName = [editFirstName, editFatherName, editGrandfatherName, editFamilyName].map((p) => p.trim()).filter(Boolean).join(' ')
 
-  // ═══ البحث صار بالسيرفر ═══
-  //
-  // كانت الصفحة تنزّل **كل** الزبائن بكل فتحة وتفلترهم بالمتصفح — بـ٥٠٠٠
-  // زبون هذا ١٫٤ ميغا كل مرة، وعلى 4G ثواني ينتظرها الموظف بلا فايدة.
-  //
-  // هسه: نجيب أول دفعة للتصفح، وأول ما يكتب حرفين نسأل السيرفر. السيرفر
-  // يطبّع النص بنفس طريقة الواجهة بالضبط (ar_norm) فالنتيجة وحدة.
-  //
-  // ⚠️ **الحد لازم يغطّي العدد الحقيقي**: كان ٥٠٠، والزبائن الفعليين
-  // صاروا ٢٢٩٠+ — فالتصفّح (Pager) والفلاتر (تصنيف/موقع/بلاغات، وكلهن
-  // يشتغلون بالمتصفح على كل الزبائن المحمَّلين سوا) كانوا يشتغلون على
-  // أول ٥٠٠ بس ويتجاهلون الباقي بصمت. رفعناه لـ٣٠٠٠ (هامش فوگ العدد
-  // الحالي) — الحمل يصير ~٧٠٠ كيلوبايت تقريباً، أقل بكثير من سيناريو
-  // الـ٥٠٠٠/١.٤ ميغا المرفوض فوگ.
-  //
-  // 🔴 **هذا حل مربوط بحجم البيانات الحالي مو حل نهائي**: لو عدد
-  // الزبائن قارب ٥٠٠٠+، لازم مشروع فلترة وترقيم حقيقي من الخادم
-  // (نقل الفلاتر نفسها للسيرفر، مو رفع الحد بلا نهاية).
-  const INITIAL_LIMIT = 3000
+  // ═══ القائمة كلها من الخادم (بند ٧م، 11-04) ═══
+  // قبل: تنزل ٣٠٠٠ زبون والمتصفح يرشّح ويعدّ — وأي زبون بعد الحد يختفي بصمت.
+  // هسه: صفحة وحدة، والبحث والمرشّحات والأرقام كلها بالخادم.
+  const [debSearch, setDebSearch] = useState(search)
+  useEffect(() => {
+    const t = setTimeout(() => setDebSearch(search.trim()), 300)
+    return () => clearTimeout(t)
+  }, [search])
   const load = () => {
-    Promise.all([api.getCustomers({ limit: INITIAL_LIMIT }), api.getCustomersByGpsService()])
-      .then(([all, gps]) => {
-        setCustomers(all)
-        setGpsCustomers(gps)
-      })
+    api.getCustomersPage({ q: debSearch, location: locationFilter, kind: kindFilter, claim: claimFilter,
+      gps: tab === 'gps' ? '1' : '', page, perPage })
+      .then(setPg)
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false))
   }
-
-  // بحث السيرفر — بتأخير ٣٠٠ملي حتى ما نرسل طلب بكل ضغطة زر، ومع إلغاء
-  // الطلب القديم حتى نتيجة متأخرة ما تدوس على نتيجة أحدث.
-  useEffect(() => {
-    const q = search.trim()
-    if (q.length < 2) {
-      // ⚠️ مسح خانة البحث لازم يرجّع القائمة الكاملة — وإلا الشاشة
-      // تبقى عالقة على آخر نتيجة بحث (وبطاقات الملخص فوگ، الي
-      // تُحسب من نفس customers، تنكمش وياها بالغلط).
-      load()
-      return
-    }
-    let alive = true
-    const t = setTimeout(() => {
-      api.getCustomers({ search: q, limit: 200 })
-        .then((rows) => { if (alive) setCustomers(rows) })
-        .catch(swallow)
-    }, 300)
-    return () => { alive = false; clearTimeout(t) }
-  }, [search])
-
-  useEffect(load, [])
-  useEffect(() => {
-    api.getDashboardSummary().then((s) => setTotalCount(s.customerCount)).catch(swallow)
-  }, [])
+  useEffect(load, [debSearch, locationFilter, kindFilter, claimFilter, tab, page, perPage])
 
   const openEdit = (c: Customer) => {
     setEditingCustomer(c)
@@ -166,29 +122,12 @@ export default function Customers() {
       .finally(() => setHistoryLoading(false)).catch(loadFailed)
   }, [selectedId])
 
-  const activeList: Customer[] = tab === 'gps' ? gpsCustomers : customers
-
-  // قائمة المواقع تنبني من الزبائن نفسهم — ماكو جدول مواقع بالنظام،
-  // وكتابتها بالإيد تعني فلتر يفوت مواقع جديدة.
-  const locationOptions = Array.from(
-    new Set(activeList.map((c) => (c.location || '').trim()).filter(Boolean)),
-  ).sort().slice(0, 60)
-
-  // البحث يمر بالتطبيع العربي: «احمد» تلكه «أحمد»، و«٠٧٧٠» تلكه «0770»
-  const filteredCustomers = activeList
-    .filter((c) => (search.trim() ? matches([c.code, c.name, c.phone], search) : true))
-    .filter((c) => (locationFilter ? (c.location || '').trim() === locationFilter : true))
-    .filter((c) => (kindFilter === 'vip' ? !!c.position : kindFilter === 'normal' ? !c.position : true))
-    .filter((c) => (claimFilter === 'false' ? (c.falseClaimCount ?? 0) > 0
-      : claimFilter === 'clean' ? (c.falseClaimCount ?? 0) === 0 : true))
-
+  const locationOptions = pg?.locations ?? []
   const filtersOn = !!(search.trim() || locationFilter || kindFilter || claimFilter)
-
-  // ⚠️ الصفحة تنحصر بالعدد الموجود: بعد التصفية ممكن تكون واقف بصفحة
-  // ٥ وماكو إلا صفحتين، فتشوف جدول فاضي وتظن ماكو زبائن.
-  const pageCount = Math.max(1, Math.ceil(filteredCustomers.length / perPage))
-  const safePage = Math.min(page, pageCount)
-  const pageRows = filteredCustomers.slice((safePage - 1) * perPage, safePage * perPage)
+  const shownTotal = pg?.total ?? 0
+  const tabTotal = tab === 'gps' ? (pg?.gpsCount ?? 0) : (pg?.all ?? 0)
+  const pageRows: GpsCustomerListItem[] = pg?.rows ?? []
+  const safePage = page
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -227,15 +166,10 @@ export default function Customers() {
   // ── أرقام الرأس ──
   // ⚠️ «جدد هذا الشهر» ينحسب من `createdAt` الحقيقي مو من ترتيب
   // القائمة: الترتيب يتغيّر بالبحث، والرقم ينطلع كذب.
-  const monthStart = new Date(); monthStart.setDate(1); monthStart.setHours(0, 0, 0, 0)
-  const newThisMonth = customers.filter((c) => c.createdAt && new Date(c.createdAt) >= monthStart).length
-  const vipCount = customers.filter((c) => !!c.position).length
-  // ⚠️ أثناء بحث نشط، customers.length هو عدد نتائج البحث فعلاً
-  // (صحيح لعرضه). بلا بحث، customers.length مقصوص بحد التحميل —
-  // فنستعمل العدد الحقيقي من totalCount، ونرجع لطول القائمة لو
-  // العدّاد الخفيف لسا ما وصل (فتح أول للشاشة).
-  const isSearching = search.trim().length >= 2
-  const allCount = isSearching ? customers.length : (totalCount || customers.length)
+  // أرقام الرأس من الخادم: على كل الزبائن، أو على نتائج البحث وقت البحث (نفس القديم)
+  const newThisMonth = pg?.newThisMonth ?? 0
+  const vipCount = pg?.vip ?? 0
+  const allCount = pg?.all ?? 0
   const pct = (n: number) => (allCount ? Math.round((n / allCount) * 1000) / 10 : 0)
 
   return (
@@ -341,7 +275,7 @@ export default function Customers() {
                 tab === 'gps' ? 'bg-brand-600 text-white shadow-md' : 'bg-white text-slate-500 hover:bg-slate-100'
               }`}
             >
-              زبائن الجي بي اس ({gpsCustomers.length})
+              زبائن الجي بي اس ({pg?.gpsCount ?? 0})
             </button>
           </div>
 
@@ -397,7 +331,7 @@ export default function Customers() {
             </div>
             {filtersOn && (
               <div className="mt-2.5 flex flex-wrap items-center justify-between gap-2">
-                <p className="text-[11px] text-slate-500">النتائج: {filteredCustomers.length} من {activeList.length}</p>
+                <p className="text-[11px] text-slate-500">النتائج: {shownTotal} من {tabTotal}</p>
                 <button
                   onClick={() => { setSearch(''); setLocationFilter(''); setClaimFilter(''); setKindFilter(''); setPage(1) }}
                   className="rounded-lg border border-slate-300 px-3 py-1.5 text-[11px] font-bold text-slate-600 hover:bg-slate-50"
@@ -516,10 +450,10 @@ export default function Customers() {
                   )}
                   </>
                 ))}
-                {filteredCustomers.length === 0 && (
+                {shownTotal === 0 && (
                   <tr>
                     <td colSpan={9} className="px-4 py-6 text-center text-slate-400">
-                      {activeList.length === 0 ? 'لا يوجد زبائن بعد' : 'لا توجد نتائج مطابقة للبحث'}
+                      {tabTotal === 0 ? 'لا يوجد زبائن بعد' : 'لا توجد نتائج مطابقة للبحث'}
                     </td>
                   </tr>
                 )}
@@ -530,11 +464,11 @@ export default function Customers() {
 
           {/* ═══ الترقيم ═══ */}
           {/* مكوّن مشترك وية شاشة الحجوزات، حتى ما يفترقن أول تعديل */}
-          {filteredCustomers.length > 0 && (
+          {shownTotal > 0 && (
             <Pager
               page={safePage}
               perPage={perPage}
-              total={filteredCustomers.length}
+              total={shownTotal}
               unit="زبون"
               onPage={setPage}
               onPerPage={setPerPage}

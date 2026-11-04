@@ -40,6 +40,48 @@ func (s *CustomerService) Search(search string, limit int) ([]model.CustomerResp
 	return out, nil
 }
 
+// Get زبون واحد بالـ id (بند ٧م: بدل تنزيل كل الزبائن حتى نلگى واحد).
+func (s *CustomerService) Get(id string) (*model.CustomerResponse, error) {
+	c, err := s.repo.FindByID(id)
+	if err != nil {
+		return nil, err
+	}
+	resp := c.ToResponse()
+	return &resp, nil
+}
+
+// CustomerPage — بند ٧م: صفحة الزبائن ويا أرقام الرأس من الخادم.
+type CustomerPage struct {
+	Rows         []model.CustomerGpsResponse `json:"rows"`
+	Total        int                         `json:"total"`
+	All          int                         `json:"all"`
+	NewThisMonth int                         `json:"newThisMonth"`
+	VIP          int                         `json:"vip"`
+	GPSCount     int                         `json:"gpsCount"`
+	Locations    []string                    `json:"locations"`
+}
+
+func (s *CustomerService) Page(q repository.CustomerPageQuery) (*CustomerPage, error) {
+	res, err := s.repo.Page(q)
+	if err != nil {
+		return nil, err
+	}
+	tags, err := s.repo.ServiceTagsByCustomer()
+	if err != nil {
+		return nil, err
+	}
+	out := &CustomerPage{Rows: make([]model.CustomerGpsResponse, len(res.Rows)), Total: res.Total, All: res.All,
+		NewThisMonth: res.NewThisMonth, VIP: res.VIP, GPSCount: res.GPSCount, Locations: res.Locations}
+	for i, r := range res.Rows {
+		resp := r.Customer.ToResponse()
+		if svc, ok := tags[r.ID]; ok {
+			resp.Services = svc
+		}
+		out.Rows[i] = model.CustomerGpsResponse{CustomerResponse: resp, GpsNumber: r.GpsNumber, DeviceID: r.DeviceID, SubscriptionEnd: r.SubscriptionEnd}
+	}
+	return out, nil
+}
+
 func (s *CustomerService) ListGpsCustomers() ([]model.CustomerGpsResponse, error) {
 	return s.repo.ListGpsCustomers()
 }

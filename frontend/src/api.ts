@@ -3768,6 +3768,16 @@ export interface SaveTrainingProgramInput {
 export const DEPARTMENTS = ['الفنية', 'المبيعات', 'الصيانة', 'الإدارة', 'المستودع']
 export const REVIEW_GRADES = ['ممتاز', 'جيد جداً', 'جيد', 'يحتاج تحسين']
 
+export interface CustomerPage {
+  rows: GpsCustomerListItem[]
+  total: number
+  all: number
+  newThisMonth: number
+  vip: number
+  gpsCount: number
+  locations: string[]
+}
+
 export interface LeaderInvoicePage {
   rows: LeaderInvoice[]
   total: number
@@ -4065,6 +4075,10 @@ export const api = {
 
   /** بلا وسائط يجيب الكل (متل ما كان). مع بحث/حد يفلتر بالسيرفر — بـ٥٠٠٠ زبون
    *  كان الجلب الكامل ١٫٤ ميغا بكل فتحة صفحة. */
+  getCustomer: (id: string) => request<Customer>(`/customers/${encodeURIComponent(id)}`),
+  /** بند ٧م: صفحة زبائن وحدة ويا أرقام الرأس من الخادم. */
+  getCustomersPage: (q: { q?: string; location?: string; kind?: string; claim?: string; gps?: string; page: number; perPage: number }) =>
+    request<CustomerPage>(`/customers/page?${new URLSearchParams(Object.entries(q).filter(([, v]) => v !== '' && v !== undefined).map(([k, v]) => [k, String(v)])).toString()}`),
   getCustomers: (opts?: { search?: string; limit?: number }) => {
     const p = new URLSearchParams()
     if (opts?.search) p.set('search', opts.search)

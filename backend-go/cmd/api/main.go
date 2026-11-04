@@ -1145,8 +1145,10 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 		"manage_customers", "sales_booking", "coordinator",
 		"complaints", "quality_control", "monitoring")
 	mux.Handle("GET /api/customers", middleware.Chain(http.HandlerFunc(customerHandler.List), requireAuth, requireCustomerRead))
+	mux.Handle("GET /api/customers/page", middleware.Chain(http.HandlerFunc(customerHandler.Page), requireAuth, requireCustomerRead))
 	mux.Handle("GET /api/customers/gps", middleware.Chain(http.HandlerFunc(customerHandler.ListGps), requireAuth, requireCustomerRead))
 	mux.Handle("GET /api/customers/lookup", middleware.Chain(http.HandlerFunc(customerHandler.Lookup), requireAuth, requireCustomerRead))
+	mux.Handle("GET /api/customers/{id}", middleware.Chain(http.HandlerFunc(customerHandler.Get), requireAuth, requireCustomerRead))
 	mux.Handle("POST /api/customers", middleware.Chain(http.HandlerFunc(customerHandler.FindOrCreate), requireAuth, requireCustomerMgmt))
 	mux.Handle("PUT /api/customers/{id}", middleware.Chain(http.HandlerFunc(customerHandler.Update), requireAuth, requireCustomerMgmt))
 

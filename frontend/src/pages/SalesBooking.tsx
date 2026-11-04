@@ -125,8 +125,8 @@ export default function SalesBooking() {
   useEffect(() => {
     const customerId = searchParams.get('customerId')
     if (!customerId) return
-    api.getCustomers().then((customers) => {
-      const c = customers.find((cust) => cust.id === customerId)
+    // بند ٧م: زبون واحد بالـ id، بدل تنزيل كل الزبائن
+    api.getCustomer(customerId).then((c) => {
       if (c) {
         setPhone(c.phone)
         const [f, fa, gf, fam] = splitFullName(c.name)

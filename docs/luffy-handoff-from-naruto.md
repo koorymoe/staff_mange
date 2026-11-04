@@ -262,3 +262,4 @@ git push origin origin/avg:refs/heads/prod     # بعد التأكد إنه fast
 - 2026-11-04: ٥أ — محادثات الواتساب صارت صلاحية whatsapp_chats بيد المالك (authz.WhatsAppChats + Strict). أدمن بلاها=404. ٥ب انضاف للتعديلات.
 - 2026-11-04: ٥ب — تصنيف القيادة: evidence+formula لكل معيار، تبويب النواب (خليط ٥٠/٣٠/٢٠)، عرض كامل. OrgHandler.PersonalScore من matrixScoreService.Detail.
 - 2026-11-04 لوفي: رفع على prod بطلب دازاي: صلاحية محادثات الواتساب بيد المالك + تصنيف القيادة (التفاصيل، النواب، عرض كامل).
+- 2026-11-04: ٧م — الزبائن صفحات من الخادم (customer_page.go + getCustomersPage)، parity_c.py ٤٣٢ تركيبة = ٠ اختلاف. GET /api/customers/{id} لـSalesBooking، والشكاوي اقتراحات من البحث (٢٠).
