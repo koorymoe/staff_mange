@@ -3,6 +3,7 @@ package handler
 import (
 	"encoding/json"
 	"net/http"
+	"staffmange-api/internal/authz"
 	"time"
 
 	"staffmange-api/internal/middleware"
@@ -24,7 +25,7 @@ func (h *StaffScoreHandler) Board(w http.ResponseWriter, r *http.Request) {
 		WriteError(w, http.StatusInternalServerError, "تعذر حساب التقييم")
 		return
 	}
-	if !isAdminRole(r) {
+	if !authz.SeeAll(r, nil, authz.StaffScores) { // (11-04) محرك الصلاحيات
 		me := middleware.EmployeeIDFromContext(r)
 		kept := b.Staff[:0]
 		for _, s := range b.Staff {
@@ -40,7 +41,7 @@ func (h *StaffScoreHandler) Board(w http.ResponseWriter, r *http.Request) {
 // GET /api/staff-score/{id}
 func (h *StaffScoreHandler) Detail(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
-	if !isAdminRole(r) && id == middleware.EmployeeIDFromContext(r) {
+	if !authz.SeeAll(r, nil, authz.StaffScores) && id == middleware.EmployeeIDFromContext(r) {
 		WriteError(w, http.StatusForbidden, "تقييمك تشوفه من «تقييمي»")
 		return
 	}

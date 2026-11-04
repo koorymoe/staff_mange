@@ -131,3 +131,16 @@ func (r *PermissionRepository) AddMissingForEmployee(employeeID string, permissi
 
 	return tx.Commit()
 }
+
+// Names أسماء صلاحيات الموظف — لمحرك الصلاحيات (authz.PermLister).
+func (r *PermissionRepository) Names(employeeID string) ([]string, error) {
+	rows, err := r.ListForEmployee(employeeID)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]string, 0, len(rows))
+	for _, p := range rows {
+		out = append(out, p.Name)
+	}
+	return out, nil
+}

@@ -2,6 +2,7 @@ package handler
 
 import (
 	"net/http"
+	"staffmange-api/internal/authz"
 	"strings"
 
 	"staffmange-api/internal/middleware"
@@ -36,23 +37,10 @@ func NewExpenseHandler(s *service.ExpenseService, perms *repository.PermissionRe
 // (تدقيق الحسابات ومراجعة المصاريف)، حتى ما ينكسر ولا موظف: الي
 // چان يشوف يبقى يشوف، والي ما إله يشوف مصاريفه هو.
 func (h *ExpenseHandler) canSeeAll(r *http.Request) bool {
-	switch middleware.EffectiveRole(r) {
-	case "ADMIN", "OWNER", "FINANCE", "MONITOR":
-		return true
-	}
 	if h.perms == nil {
-		return false
+		return authz.SeeAll(r, nil, authz.Expenses)
 	}
-	rows, err := h.perms.ListForEmployee(middleware.EmployeeIDFromContext(r))
-	if err != nil {
-		return false
-	}
-	for _, p := range rows {
-		if p.Name == "expenses_manage" || p.Name == "finance" {
-			return true
-		}
-	}
-	return false
+	return authz.SeeAll(r, h.perms, authz.Expenses) // (11-04) محرك الصلاحيات
 }
 
 // GET /api/v1/expenses?employeeId=

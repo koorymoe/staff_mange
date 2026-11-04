@@ -3,6 +3,7 @@ package handler
 import (
 	"encoding/json"
 	"net/http"
+	"staffmange-api/internal/authz"
 
 	"staffmange-api/internal/middleware"
 	"staffmange-api/internal/model"
@@ -70,11 +71,7 @@ func (h *LeaderInvoiceHandler) Get(w http.ResponseWriter, r *http.Request) {
 // ومدير النظام والمالك. الليدر نفسه يشوف مالته بس، وباقي الموظفين
 // (مصمم، مبيعات...) ما إلهم شغل بهذي الشاشة أصلاً.
 func canReviewInvoices(r *http.Request) bool {
-	switch middleware.EffectiveRole(r) {
-	case "ADMIN", "OWNER", "FINANCE", "MONITOR":
-		return true
-	}
-	return false
+	return authz.SeeAll(r, nil, authz.LeaderInvoices) // (11-04) محرك الصلاحيات
 }
 
 // POST /api/leader-invoices

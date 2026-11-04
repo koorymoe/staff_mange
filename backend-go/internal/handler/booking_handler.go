@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"staffmange-api/internal/authz"
 	"strconv"
 	"strings"
 	"sync"
@@ -77,41 +78,12 @@ func (h *BookingHandler) requireAllBookings(w http.ResponseWriter, r *http.Reque
 func (h *BookingHandler) CanSeeAllBookings(r *http.Request) bool { return h.canSeeAllBookings(r) }
 
 func (h *BookingHandler) canSeeAllBookings(r *http.Request) bool {
-	switch middleware.EffectiveRole(r) {
-	case "ADMIN", "OWNER", "HR_COORDINATOR", "MONITOR", "FINANCE",
-		"PROJECT_MANAGER", "PROCUREMENT_ADMIN":
-		return true
-	}
+	// (11-04) القاعدة صارت بمحرك الصلاحيات: authz.SeeAllRules[authz.Bookings]
+	// (sales_booking منشالة عمداً — تسجيل مو قراءة؛ التفاصيل هناك).
 	if h.permissions == nil {
-		return false
+		return authz.SeeAll(r, nil, authz.Bookings)
 	}
-	rows, err := h.permissions.ListForEmployee(middleware.EmployeeIDFromContext(r))
-	if err != nil {
-		// ⚠️ فشل القراءة يضيّق ما يوسّع: خطأ بقاعدة البيانات ما يصير
-		// يفتح كل حجوزات الشركة.
-		return false
-	}
-	for _, p := range rows {
-		switch p.Name {
-		// ⚠️⚠️ `sales_booking` **انشالت من هنا عمداً**: عنوانها بالكتالوگ
-		// «إنشاء حجز جديد» — صلاحية **تسجيل** مو صلاحية **قراءة**. وجودها
-		// هنا چان يخلي أي واحد ينمنح حق تسجيل حجز (مسؤول خدمة، مندوب
-		// مبيعات) يقرا **كل حجوزات الشركة** بأسماء الزبائن وأرقامهم
-		// وعناوينهم، ويشوف عدّادات المحطات وبحث كل الحجوزات.
-		//
-		// «ليش تضهرله الحجوزات؟ مع انو اني ماناطي صلاحية تنسيق حجوزات».
-		//
-		// ⚠️ وما تنكسر شاشة أحد: الثلاث شاشات الي وصفها التعليق فوگ
-		// (حساب الكلفة · طلبات المواد · تقرير عمل الفني) ما وحدة منهن
-		// تعتمد على `sales_booking` — وشاشة «حجز جديد» نموذج إدخال
-		// ما تقرا قائمة أصلاً. والي ينسجّل بلا صلاحية شاملة يضيق
-		// نطاقه لحجوزاته هو، ما ينرفض.
-		case "view_bookings", "coordinator", "crew_management",
-			"mission_tracking", "procurement", "monitoring", "finance":
-			return true
-		}
-	}
-	return false
+	return authz.SeeAll(r, h.permissions, authz.Bookings)
 }
 
 // GET /api/bookings/internal?status=COMPLETED — حجوزات الشغل داخل

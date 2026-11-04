@@ -3,6 +3,7 @@ package handler
 import (
 	"errors"
 	"net/http"
+	"staffmange-api/internal/authz"
 	"strings"
 
 	"staffmange-api/internal/middleware"
@@ -32,22 +33,10 @@ func (h *WorkReportHandler) SetPermissions(p *repository.PermissionRepository) {
 // ضمن الأدوار الإشرافية بـ`canSeeOperational` — فالاعتماد عليها
 // يفرّغ شاشته وهو شغّال اليوم.
 func (h *WorkReportHandler) canReviewReports(r *http.Request) bool {
-	if canSeeOperational(middleware.EffectiveRole(r)) {
-		return true
-	}
 	if h.permissions == nil {
-		return false
+		return authz.SeeAll(r, nil, authz.WorkReports)
 	}
-	rows, err := h.permissions.ListForEmployee(middleware.EmployeeIDFromContext(r))
-	if err != nil {
-		return false
-	}
-	for _, p := range rows {
-		if p.Name == "monitoring" || p.Name == "quality_control" || p.Name == "auditing" || p.Name == "mon_reports" {
-			return true
-		}
-	}
-	return false
+	return authz.SeeAll(r, h.permissions, authz.WorkReports) // (11-04) محرك الصلاحيات
 }
 
 func (h *WorkReportHandler) Create(w http.ResponseWriter, r *http.Request) {
