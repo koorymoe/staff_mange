@@ -47,6 +47,9 @@ export interface NavItem {
   // وانكشف بالقياس إن المراقب **فقد** بنداً چان يشوفه بدوره
   // («بلاغات أخطاء التدقيق»)، لأن الشرط انطبق عليه بلا ما عنده مفتاح.
   unlockAnyPermission?: string[]
+  // capability (11-04 — محرك الصلاحيات، المرحلة ٢): الظهور يقرا جدول `can` من السيرفر
+  // (نفس قاعدة الحارس بالضبط). إذا الجلسة قديمة بلا `can`، يرجع للفحوصات القديمة.
+  capability?: string
   // labelFor: اسم البند يتبدّل حسب الي يشوفه.
   //
   // ⚠️ الحاجة إلها: البند الواحد ممكن يفتح شغلاً مختلفاً حسب الصلاحية.
@@ -448,9 +451,9 @@ export const navItems: NavItem[] = [
           { to: '/finance', label: 'تدقيق الحسابات', icon: <></>, roles: ['ADMIN', 'FINANCE', 'MONITOR'], unlockAnyPermission: ['finance', 'finance_audit'] },
       { to: '/daily-audit', label: '📅 التدقيق اليومي', icon: <></>, roles: ['ADMIN', 'FINANCE', 'MONITOR'], unlockAnyPermission: ['finance', 'finance_audit'] },
       // (ع) 10-14: سجل الآجل — نفس حارس التدقيق
-      { to: '/credits', label: '⏳ الآجل', icon: <></>, roles: ['ADMIN', 'FINANCE', 'MONITOR'], unlockAnyPermission: ['finance', 'finance_audit'] },
+      { to: '/credits', label: '⏳ الآجل', icon: <></>, capability: 'credits', roles: ['ADMIN', 'FINANCE', 'MONITOR'], unlockAnyPermission: ['finance', 'finance_audit'] },
           // فواتير الليدر تترحّل للمحاسب بتفاصيلها حتى يدققها ويعتمدها
-          { to: '/revolving-fund', label: '💵 الدوار', icon: <></>, permission: 'revolving_fund' },
+          { to: '/revolving-fund', label: '💵 الدوار', icon: <></>, capability: 'funds', permission: 'revolving_fund' },
       { to: '/audit-issues', label: '💸 بلاغات أخطاء التدقيق', icon: <></>, roles: ['ADMIN', 'MONITOR', 'QUALITY_ENGINEER', 'FINANCE'], unlockAnyPermission: ['audit_issues', 'finance_audit'] },
       // موجودة بالقائمة الرئيسية كمان — منحطة هنا لأن محلها المنطقي الحسابات
       { to: '/leader-invoices/new', label: '🧮 حساب الكلفة', icon: <></>, permission: 'execution_cost' },
@@ -793,10 +796,10 @@ export const navItems: NavItem[] = [
       { to: '/finance', label: 'تدقيق الحسابات', icon: <></>, roles: ['ADMIN', 'FINANCE', 'MONITOR'], unlockAnyPermission: ['finance', 'finance_audit'] },
       { to: '/daily-audit', label: '📅 التدقيق اليومي', icon: <></>, roles: ['ADMIN', 'FINANCE', 'MONITOR'], unlockAnyPermission: ['finance', 'finance_audit'] },
       // (ع) 10-14: سجل الآجل — نفس حارس التدقيق
-      { to: '/credits', label: '⏳ الآجل', icon: <></>, roles: ['ADMIN', 'FINANCE', 'MONITOR'], unlockAnyPermission: ['finance', 'finance_audit'] },
+      { to: '/credits', label: '⏳ الآجل', icon: <></>, capability: 'credits', roles: ['ADMIN', 'FINANCE', 'MONITOR'], unlockAnyPermission: ['finance', 'finance_audit'] },
       { to: '/audit-issues', label: '💸 بلاغات أخطاء التدقيق', icon: <></>, roles: ['ADMIN', 'MONITOR', 'QUALITY_ENGINEER', 'FINANCE'], unlockAnyPermission: ['audit_issues', 'finance_audit'] },
       { to: '/leader-invoices', label: '🧾 فواتير الليدر', icon: <></>, labelFor: leaderInvoicesLabel, roles: ['ADMIN'], anyPermission: ['leader_invoices_view', 'finance', 'finance_audit', 'leader_basket'] },
-      { to: '/revolving-fund', label: '💵 الدوار', icon: <></>, permission: 'revolving_fund' },
+      { to: '/revolving-fund', label: '💵 الدوار', icon: <></>, capability: 'funds', permission: 'revolving_fund' },
       { to: '/expenses', label: 'إدارة المصاريف', icon: <></>, roles: ['ADMIN', 'FINANCE'], unlockPermission: 'expenses_manage' },
     ],
   },
@@ -1240,6 +1243,11 @@ export function isNavVisible(item: NavItem, ctx: NavContext, unitGranted = false
     if (item.hideIfAnyPermission && item.hideIfAnyPermission.some((p) => ctx.permissions.includes(p))) return false
 
     if (item.divider) return true
+    // (11-04) قاعدة السيرفر نفسها تحسم — ماكو 403 لبند يطلع ولا بند مخفي والسيرفر يسمح
+    if (item.capability && ctx.employee?.can?.[item.capability] !== undefined) {
+      if (item.ownerOnly && ctx.employee?.actualRole !== 'OWNER') return false
+      return !!ctx.employee.can[item.capability]
+    }
     // تقرير ١ (A7): حتى المدير — «العمل» مال الفني يطلعله مجموعة ثالثة اسمها «العمل».
     if (item.fieldStaffOnly && !(role === 'TECHNICIAN' || role === 'TECHNICAL')) return false
 
