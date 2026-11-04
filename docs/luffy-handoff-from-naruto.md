@@ -277,3 +277,4 @@ git push origin origin/avg:refs/heads/prod     # بعد التأكد إنه fast
 - 2026-11-04: authz المرحلة ٥ — تطبيق الزبائن: DenyCustomer (٤٠٤+سجل) بدل ٤٠٣ «مو إلك». القيادة: ماكو مسارات بعد. ٧ي: قرار دازاي «بالتدريج».
 - 2026-11-04: ٧ي خطوة ١ — كوكي sm_session + CSRF عبر X-Requested-With + /api/auth/logout؛ الواجهة تنادي serverLogout. مجرّب بـcurl.
 - 2026-11-04 لوفي: رفع على prod بطلب دازاي: ٧ي خطوة ١، المرحلة ٥، تنظيف IdempotencyKey، ترتيب errlog. أسبوع تجربة ٧ي يبدي من اليوم (لحد 11-11).
+- 2026-11-04: ٧ح — apiTypes.ts (٣٩١ نوع من api.ts). codemod: scratchpad/codemod/split-types.cjs.
