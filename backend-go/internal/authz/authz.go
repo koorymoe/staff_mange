@@ -33,6 +33,9 @@ const (
 	ProjectContractValue    Resource = "project_contract_value"    // قيمة العقد + تسجيل دفعة لأي مشروع
 	ProjectPaymentsOverview Resource = "project_payments_overview" // فلوس كل المشاريع
 	ProjectPaymentsAudit    Resource = "project_payments_audit"    // سجل الدفعات وتصحيح المبلغ (المالك)
+	InternalBookings        Resource = "internal_bookings"         // الحجوزات داخل الشركة (كلها)
+	InternalBookingCreate   Resource = "internal_booking_create"   // تسجيل حجز داخل الشركة
+	ServiceInvoices         Resource = "service_invoices"          // فواتير خدمة جي بي اس/داش كام (الصلاحية حسب النوع بالمعالج)
 )
 
 // Rule منو يشوف كل صفوف النوع: دور فعلي (EffectiveRole — يشمل المنصب بالهيكل)
@@ -76,6 +79,10 @@ var SeeAllRules = map[Resource]Rule{
 	ProjectContractValue:    {Roles: []string{"FINANCE", "PROJECT_MANAGER"}, Perms: []string{"finance", "finance_audit", "project_management"}, Guard: true},
 	ProjectPaymentsOverview: {Roles: []string{"FINANCE", "PROJECT_MANAGER", "MONITOR"}, Perms: []string{"finance", "finance_audit", "project_management", "monitoring"}, Guard: true},
 	ProjectPaymentsAudit:    {OwnerOnly: true},
+	// booking_handler.ListInternal — قرار دازاي: غيرهم يشوف الي توجّه إله بس
+	InternalBookings: {Roles: []string{"ADMIN", "OWNER", "FINANCE", "MONITOR", "HR_COORDINATOR"}},
+	// booking_handler.Create (داخل الشركة)
+	InternalBookingCreate: {Roles: []string{"ADMIN", "OWNER", "HR_COORDINATOR", "MONITOR"}, Perms: []string{"booking_internal"}},
 }
 
 // PermLister مصدر صلاحيات الموظف (PermissionRepository).

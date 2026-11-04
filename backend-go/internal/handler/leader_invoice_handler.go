@@ -61,7 +61,7 @@ func (h *LeaderInvoiceHandler) Get(w http.ResponseWriter, r *http.Request) {
 	}
 	// نفس القاعدة: الليدر ما يفتح فاتورة غيره حتى لو عنده رقمها
 	if !h.canReviewInvoices(r) && inv.EmployeeID != middleware.EmployeeIDFromContext(r) {
-		WriteError(w, http.StatusForbidden, "هذي مو فاتورتك")
+		authz.Deny(w, r, authz.LeaderInvoices) // (11-04) فاتورة غيرك = «مو موجودة»
 		return
 	}
 	WriteJSON(w, http.StatusOK, inv)

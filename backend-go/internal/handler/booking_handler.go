@@ -55,7 +55,7 @@ func (h *BookingHandler) requireAllBookings(w http.ResponseWriter, r *http.Reque
 	if h.canSeeAllBookings(r) {
 		return true
 	}
-	WriteError(w, http.StatusForbidden, "ما عندك صلاحية تشوف حجوزات غيرك")
+	authz.Deny(w, r, authz.Bookings) // (11-04 — المرحلة ٤) 404 + سجل، ما نكشف الوجود
 	return false
 }
 
@@ -106,8 +106,7 @@ func (h *BookingHandler) ListInternal(w http.ResponseWriter, r *http.Request) {
 	// ⚠️ والموظف ينجي من **التوكن** مو من الرابط: بلاها يبدّل الرقم
 	// ويشوف حجوزات غيره (نفس سبب `ManagerPaperwork`).
 	party := middleware.EmployeeIDFromContext(r)
-	switch middleware.EffectiveRole(r) {
-	case "ADMIN", "OWNER", "FINANCE", "MONITOR", "HR_COORDINATOR":
+	if authz.Can(r, nil, authz.InternalBookings) { // (11-04) المحرك
 		party = ""
 	}
 	bookings, err := h.service.ListInternal(r.URL.Query().Get("status"), party, 0)
@@ -133,7 +132,7 @@ func (h *BookingHandler) ServicePaperworkByKind(w http.ResponseWriter, r *http.R
 		return
 	}
 	if !h.mayInvoiceKind(r, kind) {
-		WriteError(w, http.StatusForbidden, "ما عندك صلاحية فواتير هذا النوع")
+		authz.Deny(w, r, authz.ServiceInvoices)
 		return
 	}
 	bookings, err := h.service.ListServicePaperworkByKind(kind)
@@ -287,14 +286,11 @@ func (h *BookingHandler) Create(w http.ResponseWriter, r *http.Request) {
 	// حجز داخل الشركة للإداري فما فوق حصراً — موظف المبيعات ما يقدر
 	// يسجّل شغل داخلي، لأنه شغل شركة مو بيع لزبون.
 	if req.BookingType != nil && *req.BookingType == "INTERNAL" {
-		role := middleware.EffectiveRole(r)
-		allowed := model.IsAdminRole(role) || role == "HR_COORDINATOR" || role == "MONITOR"
-		if !allowed && h.permissions != nil {
-			if ok, err := h.permissions.HasPermission(middleware.EmployeeIDFromContext(r), "booking_internal"); err == nil && ok {
-				allowed = true
-			}
+		var perms authz.PermLister
+		if h.permissions != nil {
+			perms = h.permissions
 		}
-		if !allowed {
+		if !authz.Can(r, perms, authz.InternalBookingCreate) { // (11-04) المحرك
 			WriteError(w, http.StatusForbidden, "حجز داخل الشركة يسجّله الإداري فما فوق")
 			return
 		}

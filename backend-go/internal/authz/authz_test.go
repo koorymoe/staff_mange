@@ -53,3 +53,22 @@ func TestOwnerOnlyRule(t *testing.T) {
 		t.Fatal("سجل الدفعات لازم للمالك بس")
 	}
 }
+
+func TestInternalBookingsRules(t *testing.T) {
+	for _, x := range []struct {
+		res   Resource
+		eff   string
+		perms []string
+		want  bool
+	}{
+		{InternalBookings, "FINANCE", nil, true},
+		{InternalBookings, "SALES", []string{"booking_internal"}, false}, // يشوف الي توجّه إله بس
+		{InternalBookingCreate, "MONITOR", nil, true},
+		{InternalBookingCreate, "FINANCE", nil, false},
+		{InternalBookingCreate, "SALES", []string{"booking_internal"}, true},
+	} {
+		if got := Decide(x.res, x.eff, x.eff, x.perms); got != x.want {
+			t.Errorf("%s %s %v: %v", x.res, x.eff, x.perms, got)
+		}
+	}
+}
