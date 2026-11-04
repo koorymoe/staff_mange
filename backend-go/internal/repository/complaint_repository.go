@@ -227,6 +227,16 @@ func (r *ComplaintRepository) Find(id string) (*model.Complaint, error) {
 	return &c, nil
 }
 
+// ListOpen الشكاوي المفتوحة بس (NEW / IN_PROGRESS) — بند ٧م: للشاشات الي ما تحتاج التاريخ كله.
+func (r *ComplaintRepository) ListOpen() ([]model.Complaint, error) {
+	complaints := []model.Complaint{}
+	if err := r.db.Select(&complaints, `SELECT * FROM "Complaint" WHERE status::text IN ('NEW', 'IN_PROGRESS') ORDER BY "createdAt" DESC`); err != nil {
+		return nil, err
+	}
+	r.hydrateAll(complaints)
+	return complaints, nil
+}
+
 func (r *ComplaintRepository) List() ([]model.Complaint, error) {
 	complaints := []model.Complaint{}
 	if err := r.db.Select(&complaints, `SELECT * FROM "Complaint" ORDER BY "createdAt" DESC`); err != nil {

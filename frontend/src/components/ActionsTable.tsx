@@ -43,7 +43,7 @@ async function load(now: number, gate?: (perm: string) => boolean): Promise<Row[
   const safe = async <T,>(p: Promise<T>): Promise<T | null> => { try { return await p } catch { return null } }
   const [tasks, leaves, staff, deletes, complaints, procurement, matrix, dups, achievements] = await Promise.all([
     can('extra_tasks_assign') ? safe(api.getExtraTasks({})) : skip, safe(api.getLeaveInbox('PENDING')), safe(api.getStaffRequests()),
-    can('booking_delete_approve') ? safe(api.getBookingDeleteRequests('PENDING')) : skip, safe(api.getComplaints()), can('procurement') ? safe(api.getProcurementRequests()) : skip,
+    can('booking_delete_approve') ? safe(api.getBookingDeleteRequests('PENDING')) : skip, safe(api.getComplaints({ open: true })), can('procurement') ? safe(api.getProcurementRequests()) : skip,
     !gate ? safe(api.getMatrixDecisions()) : skip, can('duplicate_review') ? safe(api.getDuplicateCandidates(undefined, 'PENDING')) : skip, !gate ? safe(api.getAchievements({ limit: 200 })) : skip,
   ])
 

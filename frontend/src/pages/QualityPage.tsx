@@ -34,7 +34,7 @@ export default function QualityPage() {
   const [showForm, setShowForm] = useState(false)
   useEffect(() => {
     let alive = true
-    api.getComplaints().then((r) => { if (alive) setComplaints(r) }).catch(() => { if (alive) setComplaints(null) })
+    api.getComplaints({ open: true }).then((r) => { if (alive) setComplaints(r) }).catch(() => { if (alive) setComplaints(null) })
     return () => { alive = false }
   }, [])
   const openComplaints = (complaints ?? []).filter((c) => c.status === 'NEW' || c.status === 'IN_PROGRESS')

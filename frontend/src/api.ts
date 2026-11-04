@@ -5829,7 +5829,7 @@ export const api = {
     request<void>(`/inventory/requests/${id}`, { method: 'DELETE' }),
 
   // Complaints
-  getComplaints: () => request<Complaint[]>('/complaints'),
+  getComplaints: (opts?: { open?: boolean }) => request<Complaint[]>(`/complaints${opts?.open ? '?open=1' : ''}`),
   createComplaint: (data: {
     customerId: string
     bookingId?: string

@@ -18,7 +18,12 @@ func NewComplaintHandler(s *service.ComplaintService) *ComplaintHandler {
 
 // GET /api/v1/complaints
 func (h *ComplaintHandler) List(w http.ResponseWriter, r *http.Request) {
-	complaints, err := h.service.List()
+	// ?open=1 (بند ٧م): المفتوحة بس — للوحات الي تعرض الشغل الحالي
+	list := h.service.List
+	if r.URL.Query().Get("open") == "1" {
+		list = h.service.ListOpen
+	}
+	complaints, err := list()
 	if err != nil {
 		WriteError(w, http.StatusInternalServerError, "تعذر جلب الشكاوى")
 		return

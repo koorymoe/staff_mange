@@ -32,6 +32,10 @@ func NewComplaintService(repo *repository.ComplaintRepository) *ComplaintService
 	return &ComplaintService{repo: repo}
 }
 
+func (s *ComplaintService) ListOpen() ([]model.Complaint, error) {
+	return s.repo.ListOpen()
+}
+
 func (s *ComplaintService) List() ([]model.Complaint, error) {
 	return s.repo.List()
 }
