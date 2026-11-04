@@ -286,3 +286,4 @@ git push origin origin/avg:refs/heads/prod     # بعد التأكد إنه fast
 - 2026-11-04: ٧ل — ChecklistRepository.hydrate بلا PDF وبدفعة. ٧ع انفحص (محمي بالمعالج). المهلة وeslint-disable انفحصن.
 - 2026-11-04 لوفي: رفع ٧ل (قائمة البنود) على prod بطلب دازاي.
 - 2026-11-04: ٧س — MatrixCourier: الدوري ١٥ث + يسمع matrix-refresh؛ ٤٩→١٧ طلب/دقيقتين (scratchpad/idle.cjs).
+- 2026-11-04 لوفي: رفع ٧س على prod بطلب دازاي.
