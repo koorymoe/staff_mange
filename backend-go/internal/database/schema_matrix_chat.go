@@ -1929,5 +1929,27 @@ func matrixChatMigrations() []Migration {
 			CREATE TRIGGER booking_status_rules BEFORE UPDATE OF status ON "Booking"
 				FOR EACH ROW EXECUTE FUNCTION booking_status_rules();
 		`,
+	}, {
+		// ٦ح — مرحلة المشروع لازم من القائمة المعروفة (service.projectStages). التنقل
+		// بين المراحل حر (إعادة التسعير، استرجاع المرفوض) فما نقيّد الاتجاه.
+		// يتفحص عند الإنشاء أو تغيّر المرحلة بس. الاختبار يطابق القائمتين.
+		Version: "0438_project_stage_rules",
+		SQL: `
+			CREATE OR REPLACE FUNCTION project_stage_valid(s TEXT) RETURNS boolean LANGUAGE sql IMMUTABLE AS $f$
+				SELECT s = ANY (ARRAY['1. اتصال بالزبون', '2. مرحلة الكشف', '3. عرض السعر', '🔁 إعادة التسعير', '4. العقد', '📸 الإعلام', '5. تجهيز المنتجات', '6. البدء بالتنفيذ', '7. التسليم والاستلام', '✅ مكتمل', '❌ مرفوض'])
+			$f$;
+			CREATE OR REPLACE FUNCTION project_stage_rules() RETURNS trigger LANGUAGE plpgsql AS $f$
+			BEGIN
+				IF TG_OP = 'UPDATE' AND NEW.stage IS NOT DISTINCT FROM OLD.stage THEN RETURN NEW; END IF;
+				IF current_setting('app.allow_status_override', true) = 'on' THEN RETURN NEW; END IF;
+				IF NEW.stage IS NOT NULL AND NOT project_stage_valid(NEW.stage) THEN
+					RAISE EXCEPTION 'مرحلة مشروع مو معروفة: %', NEW.stage;
+				END IF;
+				RETURN NEW;
+			END $f$;
+			DROP TRIGGER IF EXISTS project_stage_rules ON "Project";
+			CREATE TRIGGER project_stage_rules BEFORE INSERT OR UPDATE OF stage ON "Project"
+				FOR EACH ROW EXECUTE FUNCTION project_stage_rules();
+		`,
 	}}
 }
