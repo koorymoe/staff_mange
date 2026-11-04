@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>دليل مهندس الجودة — نظام إدارة الموظفين</title>
+  <link rel="stylesheet" href="shared-styles.css">
+</head>
+<body>
+
+  <div class="hero">
+    <h1>دليل استخدام النظام — مهندس الجودة</h1>
+    <p class="subtitle">الدليل الشامل لمتابعة جودة الخدمة ورضا العملاء</p>
+    <span class="role-badge">QUALITY_ENGINEER — مهندس الجودة</span>
+  </div>
+
+  <div class="container">
+
+    <!-- جدول المحتويات -->
+    <div class="toc">
+      <h2>محتويات الدليل</h2>
+      <ol>
+        <li><a href="#login">تسجيل الدخول والرئيسية</a></li>
+        <li><a href="#quality">متابعة الجودة</a></li>
+        <li><a href="#sales">تسجيل حجز جديد</a></li>
+        <li><a href="#attendance">الحضور والانصراف</a></li>
+        <li><a href="#ranking">تصنيفي</a></li>
+        <li><a href="#ai">الذكاء الاصطناعي</a></li>
+      </ol>
+    </div>
+
+    <!-- الصفحات المتاحة -->
+    <div class="section">
+      <h2><span class="icon">📋</span> الصفحات المتاحة لك</h2>
+      <div class="pages-grid">
+        <div class="page-card">
+          <div class="page-icon">📊</div>
+          <div class="page-name">لوحة التحكم</div>
+          <div class="page-desc">الصفحة الرئيسية وملخص المهام</div>
+        </div>
+        <div class="page-card">
+          <div class="page-icon">✅</div>
+          <div class="page-name">متابعة الجودة</div>
+          <div class="page-desc">متابعة رضا العملاء بعد الحجوزات</div>
+        </div>
+        <div class="page-card">
+          <div class="page-icon">🛒</div>
+          <div class="page-name">تسجيل حجز جديد</div>
+          <div class="page-desc">إنشاء حجز عند حاجة العميل لخدمة إضافية</div>
+        </div>
+        <div class="page-card">
+          <div class="page-icon">⏰</div>
+          <div class="page-name">الحضور والانصراف</div>
+          <div class="page-desc">تسجيل الحضور والانصراف الخاص بك</div>
+        </div>
+        <div class="page-card">
+          <div class="page-icon">🏆</div>
+          <div class="page-name">تصنيفي</div>
+          <div class="page-desc">ترتيبك وتقييمك بين الزملاء</div>
+        </div>
+        <div class="page-card">
+          <div class="page-icon">🤖</div>
+          <div class="page-name">الذكاء الاصطناعي</div>
+          <div class="page-desc">مساعد ذكي للإجابة على استفساراتك</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 1. تسجيل الدخول -->
+    <div class="section" id="login">
+      <h2><span class="icon">🔐</span> 1. تسجيل الدخول والرئيسية</h2>
+      <div class="steps">
+        <div class="step">
+          <h3>فتح صفحة تسجيل الدخول</h3>
+          <p>افتح رابط النظام في المتصفح، ستظهر لك صفحة تسجيل الدخول.</p>
+        </div>
+        <div class="step">
+          <h3>إدخال بيانات الدخول</h3>
+          <p>أدخل اسم المستخدم وكلمة المرور الخاصة بك، ثم اضغط "تسجيل الدخول".</p>
+        </div>
+        <div class="step">
+          <h3>لوحة التحكم الرئيسية</h3>
+          <p>بعد تسجيل الدخول ستظهر لك لوحة التحكم التي تعرض ملخص المتابعات المعلقة وإحصائيات الجودة.</p>
+        </div>
+      </div>
+      <div class="tip">لوحة التحكم تعرض عدد المتابعات المعلقة (PENDING) التي تحتاج لتواصلك، تابعها يوميا.</div>
+    </div>
+
+    <!-- 2. متابعة الجودة -->
+    <div class="section" id="quality">
+      <h2><span class="icon">✅</span> 2. متابعة الجودة</h2>
+      <p style="margin-bottom: 1rem; color: var(--gray-700);">
+        هذه هي <strong>مهمتك الأساسية</strong>. عند اكتمال أي حجز في النظام، يتم إنشاء سجل متابعة جودة تلقائيا. مهمتك هي التواصل مع العميل للتأكد من رضاه عن الخدمة.
+      </p>
+      <p style="margin-bottom: 1rem;"><span class="nav-path">/quality-follow-ups</span></p>
+
+      <h3 style="margin: 1.5rem 0 0.8rem; color: var(--gray-900); font-size: 1.1rem;">مسار حالة المتابعة:</h3>
+      <div style="background: var(--gray-50); border-radius: 8px; padding: 1.2rem; margin-bottom: 1rem; text-align: center; font-size: 1rem;">
+        <strong style="color: var(--warning);">PENDING</strong>
+        <span style="margin: 0 0.3rem;">(معلقة)</span>
+        <br>
+        <span style="font-size: 1.3rem;">⬇️</span>
+        <br>
+        <strong style="color: var(--success);">CONTACTED_OK</strong>
+        <span style="margin: 0 0.3rem;">(العميل راضٍ)</span>
+        &nbsp;&nbsp;أو&nbsp;&nbsp;
+        <strong style="color: var(--danger);">CONTACTED_ISSUE</strong>
+        <span style="margin: 0 0.3rem;">(العميل لديه مشكلة)</span>
+        <br>
+        <span style="font-size: 1.3rem;">⬇️</span>
+        <br>
+        <strong style="color: var(--primary);">CONVERTED</strong>
+        <span style="margin: 0 0.3rem;">(تم تحويل المشكلة إلى حجز جديد)</span>
+      </div>
+
+      <div class="steps">
+        <div class="step">
+          <h3>فتح صفحة متابعة الجودة</h3>
+          <p>اذهب إلى صفحة "متابعة الجودة" من القائمة الجانبية. ستظهر لك قائمة بجميع سجلات المتابعة.</p>
+        </div>
+        <div class="step">
+          <h3>مراجعة المتابعات المعلقة (PENDING)</h3>
+          <p>ابحث عن السجلات التي حالتها PENDING — هذه هي الحجوزات المكتملة التي لم يتم التواصل مع عملائها بعد.</p>
+        </div>
+        <div class="step">
+          <h3>التواصل مع العميل</h3>
+          <p>اتصل بالعميل هاتفيا أو عبر الوسيلة المتاحة. اسأله عن مدى رضاه عن الخدمة المقدمة وعما إذا كانت لديه أي ملاحظات.</p>
+        </div>
+        <div class="step">
+          <h3>تحديث حالة المتابعة</h3>
+          <p>إذا كان العميل راضيا: غيّر الحالة إلى <strong>CONTACTED_OK</strong>. إذا كان لديه مشكلة أو شكوى: غيّر الحالة إلى <strong>CONTACTED_ISSUE</strong>.</p>
+        </div>
+        <div class="step">
+          <h3>إضافة ملاحظات التواصل</h3>
+          <p>سجّل ملاحظات مفصلة عن المحادثة مع العميل: ماذا قال، ما هي ملاحظاته، وأي تفاصيل مهمة. النظام يسجل تلقائيا من قام بالتواصل ومتى.</p>
+        </div>
+        <div class="step">
+          <h3>تحويل المشكلة إلى حجز (CONVERTED)</h3>
+          <p>إذا اتضح أن العميل يحتاج خدمة إضافية أو إعادة عمل، يمكنك إنشاء حجز جديد من صفحة المبيعات ثم تحديث حالة المتابعة إلى <strong>CONVERTED</strong>.</p>
+        </div>
+      </div>
+
+      <div class="warning">تأكد من التواصل مع جميع العملاء في الوقت المناسب. المتابعات المعلقة لفترة طويلة تؤثر على تقييم جودة الخدمة.</div>
+      <div class="tip">سجّل ملاحظات دقيقة ومفصلة عند كل تواصل — هذه الملاحظات تساعد الإدارة في تحسين جودة الخدمة وتحديد المشكلات المتكررة.</div>
+      <div class="danger-box">لا تغيّر حالة المتابعة إلى CONTACTED_OK أو CONTACTED_ISSUE قبل التواصل الفعلي مع العميل. الدقة في التسجيل ضرورية لمصداقية تقارير الجودة.</div>
+    </div>
+
+    <!-- 3. تسجيل حجز جديد -->
+    <div class="section" id="sales">
+      <h2><span class="icon">🛒</span> 3. تسجيل حجز جديد</h2>
+      <p style="margin-bottom: 1rem;"><span class="nav-path">/sales</span></p>
+      <p style="margin-bottom: 1rem; color: var(--gray-700);">
+        يمكنك إنشاء حجز جديد عندما تكشف متابعة الجودة أن العميل يحتاج خدمة إضافية أو عمل تكميلي. هذه الصلاحية متاحة لك عبر إذن <strong>sales_booking</strong>.
+      </p>
+      <div class="steps">
+        <div class="step">
+          <h3>فتح صفحة المبيعات</h3>
+          <p>اذهب إلى صفحة "تسجيل حجز جديد" من القائمة الجانبية.</p>
+        </div>
+        <div class="step">
+          <h3>إدخال بيانات الحجز</h3>
+          <p>أدخل بيانات العميل وتفاصيل الخدمة المطلوبة بناء على ما اتضح من متابعة الجودة.</p>
+        </div>
+        <div class="step">
+          <h3>تأكيد الحجز</h3>
+          <p>راجع البيانات ثم اضغط على "تأكيد الحجز" لإتمام العملية.</p>
+        </div>
+        <div class="step">
+          <h3>تحديث سجل المتابعة</h3>
+          <p>عد إلى صفحة متابعة الجودة وحدّث حالة المتابعة المرتبطة إلى <strong>CONVERTED</strong> للإشارة إلى أن المشكلة أدت إلى حجز جديد.</p>
+        </div>
+      </div>
+      <div class="tip">عند إنشاء حجز ناتج عن متابعة جودة، سجّل في الملاحظات أن الحجز جاء كنتيجة لمتابعة الجودة لتسهيل التتبع.</div>
+    </div>
+
+    <!-- 4. الحضور والانصراف -->
+    <div class="section" id="attendance">
+      <h2><span class="icon">⏰</span> 4. الحضور والانصراف</h2>
+      <p style="margin-bottom: 1rem;"><span class="nav-path">/attendance</span></p>
+      <div class="steps">
+        <div class="step">
+          <h3>تسجيل الحضور</h3>
+          <p>عند بداية يوم العمل، اذهب إلى صفحة "الحضور والانصراف" واضغط على زر تسجيل الحضور.</p>
+        </div>
+        <div class="step">
+          <h3>تسجيل الانصراف</h3>
+          <p>عند نهاية يوم العمل، اضغط على زر تسجيل الانصراف.</p>
+        </div>
+        <div class="step">
+          <h3>مراجعة سجل الحضور</h3>
+          <p>يمكنك مراجعة سجل حضورك وانصرافك في أي وقت من نفس الصفحة.</p>
+        </div>
+      </div>
+      <div class="warning">تأكد من تسجيل الحضور والانصراف يوميا حيث يؤثر ذلك على تقييمك وتصنيفك.</div>
+    </div>
+
+    <!-- 5. تصنيفي -->
+    <div class="section" id="ranking">
+      <h2><span class="icon">🏆</span> 5. تصنيفي</h2>
+      <p style="margin-bottom: 1rem;"><span class="nav-path">/my-ranking</span></p>
+      <div class="steps">
+        <div class="step">
+          <h3>عرض التصنيف</h3>
+          <p>اذهب إلى صفحة "تصنيفي" لمعرفة ترتيبك الحالي بين زملائك وتقييم أدائك.</p>
+        </div>
+        <div class="step">
+          <h3>مراجعة معايير التقييم</h3>
+          <p>اطلع على المعايير المستخدمة في التقييم مثل عدد المتابعات المنجزة، سرعة التواصل، ورضا العملاء.</p>
+        </div>
+      </div>
+      <div class="tip">كلما زادت سرعتك في التواصل مع العملاء ودقة ملاحظاتك، تحسّن ترتيبك في التصنيف.</div>
+    </div>
+
+    <!-- 6. الذكاء الاصطناعي -->
+    <div class="section" id="ai">
+      <h2><span class="icon">🤖</span> 6. الذكاء الاصطناعي</h2>
+      <div class="steps">
+        <div class="step">
+          <h3>فتح المساعد الذكي</h3>
+          <p>اضغط على أيقونة المساعد الذكي من القائمة للوصول إلى مساعد الذكاء الاصطناعي.</p>
+        </div>
+        <div class="step">
+          <h3>طرح الأسئلة</h3>
+          <p>يمكنك سؤال المساعد عن أي شيء يتعلق بعملك: كيفية التعامل مع شكوى عميل، أفضل طرق التواصل، أو أي استفسار آخر.</p>
+        </div>
+        <div class="step">
+          <h3>الاستفادة من الاقتراحات</h3>
+          <p>المساعد الذكي يمكنه مساعدتك في صياغة ملاحظات التواصل مع العملاء واقتراح حلول للمشكلات المتكررة.</p>
+        </div>
+      </div>
+      <div class="tip">استخدم المساعد الذكي للحصول على نصائح حول كيفية التعامل مع العملاء غير الراضين وتحويل الشكاوى إلى فرص لتحسين الخدمة.</div>
+    </div>
+
+  </div>
+
+  <div class="footer">
+    <p class="company">شركة الأماني — دليل تعليمي للنظام</p>
+    <p>جميع الحقوق محفوظة &copy; 2026</p>
+  </div>
+
+</body>
+</html>

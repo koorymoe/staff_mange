@@ -1,0 +1,59 @@
+@import "tailwindcss";
+
+@font-face { font-family: Cairo; font-weight: 400; font-display: swap; src: url(/fonts/cairo-arabic-400-normal.woff2) format("woff2"); unicode-range: U+0600-06FF, U+0750-077F, U+FB50-FDFF, U+FE70-FEFF; }
+@font-face { font-family: Cairo; font-weight: 600; font-display: swap; src: url(/fonts/cairo-arabic-600-normal.woff2) format("woff2"); unicode-range: U+0600-06FF, U+0750-077F, U+FB50-FDFF, U+FE70-FEFF; }
+@font-face { font-family: Cairo; font-weight: 700; font-display: swap; src: url(/fonts/cairo-arabic-700-normal.woff2) format("woff2"); unicode-range: U+0600-06FF, U+0750-077F, U+FB50-FDFF, U+FE70-FEFF; }
+@font-face { font-family: Cairo; font-weight: 800 900; font-display: swap; src: url(/fonts/cairo-arabic-800-normal.woff2) format("woff2"); unicode-range: U+0600-06FF, U+0750-077F, U+FB50-FDFF, U+FE70-FEFF; }
+@font-face { font-family: Cairo; font-weight: 400 600; font-display: swap; src: url(/fonts/cairo-latin-400-normal.woff2) format("woff2"); unicode-range: U+0000-00FF; }
+@font-face { font-family: Cairo; font-weight: 700 900; font-display: swap; src: url(/fonts/cairo-latin-700-normal.woff2) format("woff2"); unicode-range: U+0000-00FF; }
+
+@theme {
+  --font-sans: Cairo, "Segoe UI", Tahoma, system-ui, sans-serif;
+  --color-navy: #0d3b8c;
+  --color-navy-2: #123f9c;
+  --color-navy-deep: #082a66;
+  --color-gold: #f5b335;
+  --color-ink: #0f1d3a;
+  --color-mute: #6b7792;
+  --color-line: #e6eaf2;
+  --color-page: #f5f7fb;
+}
+
+html, body, #root { min-height: 100%; }
+html { overflow-x: hidden; }
+body {
+  margin: 0;
+  background: radial-gradient(circle at 100% -10%, #e9f0ff 0, transparent 31rem), var(--color-page);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  -webkit-tap-highlight-color: transparent;
+  -webkit-font-smoothing: antialiased;
+  overscroll-behavior-y: none;
+  overflow-x: hidden;
+}
+#root { overflow-x: clip; }
+button { cursor: pointer; }
+.safe-b { padding-bottom: env(safe-area-inset-bottom); }
+.safe-t { padding-top: env(safe-area-inset-top); }
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { scrollbar-width: none; }
+.card { background: rgba(255,255,255,.94); border-radius: 1.1rem; box-shadow: 0 1px 2px rgba(15,29,58,.04), 0 10px 26px -15px rgba(15,29,58,.22); }
+.touch-card { -webkit-tap-highlight-color: transparent; }
+.touch-card:active { transform: scale(.975); }
+.glass { background: rgba(255,255,255,.14); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
+.service-photo { transition: transform .45s cubic-bezier(.2,.8,.2,1), filter .45s ease; }
+.touch-card:hover .service-photo { transform: scale(1.055); filter: saturate(1.08); }
+
+@keyframes page-in { from { opacity: 0; transform: translateX(-14px) } to { opacity: 1; transform: none } }
+.page-in { animation: page-in .28s cubic-bezier(.2,.8,.2,1) both; }
+@keyframes rise { from { opacity: 0; transform: translateY(10px) } to { opacity: 1; transform: none } }
+.rise { animation: rise .35s ease both; }
+@keyframes shimmer { 0% { background-position: -300px 0 } 100% { background-position: 300px 0 } }
+.skel { background: linear-gradient(90deg, #eceff5 0, #f6f8fb 50%, #eceff5 100%); background-size: 600px 100%; animation: shimmer 1.2s infinite linear; }
+@keyframes blink { 0%, 92%, 100% { transform: scaleY(1) } 95% { transform: scaleY(.1) } }
+.blink { animation: blink 4.5s infinite; transform-origin: center; }
+@keyframes dots { 0%, 80%, 100% { opacity: .25 } 40% { opacity: 1 } }
+.dot { animation: dots 1.2s infinite; }
+@keyframes spin { to { transform: rotate(360deg) } }
+@keyframes kenburns { from { transform: scale(1.02) } to { transform: scale(1.1) } }
+.kenburns { animation: kenburns 9s ease-in-out infinite alternate; }

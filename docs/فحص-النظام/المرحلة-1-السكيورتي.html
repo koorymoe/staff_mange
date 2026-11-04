@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>فحص النظام — المرحلة الأولى</title>
+<style>
+:root{
+  --bg:#f7f7f5; --surface:#fff; --border:#e5e3dd; --text:#1a1a18; --muted:#6b6862;
+  --high:#b42318; --high-bg:#fef3f2; --med:#b54708; --med-bg:#fffaeb;
+  --low:#175cd3; --low-bg:#eff8ff; --ok:#067647; --ok-bg:#ecfdf3; --accent:#3a3a36;
+}
+:root:not([data-theme="light"]){@media (prefers-color-scheme:dark){
+  :root{--bg:#141413;--surface:#1c1c1a;--border:#2f2f2c;--text:#ececea;--muted:#9a978f;
+  --high:#f97066;--high-bg:#2d1513;--med:#fdb022;--med-bg:#2b1d0a;
+  --low:#53b1fd;--low-bg:#0f1e30;--ok:#47cd89;--ok-bg:#0d2419;--accent:#d8d6d0;}
+}}
+:root[data-theme="dark"]{--bg:#141413;--surface:#1c1c1a;--border:#2f2f2c;--text:#ececea;--muted:#9a978f;
+--high:#f97066;--high-bg:#2d1513;--med:#fdb022;--med-bg:#2b1d0a;
+--low:#53b1fd;--low-bg:#0f1e30;--ok:#47cd89;--ok-bg:#0d2419;--accent:#d8d6d0;}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);
+ font-family:"Segoe UI","Noto Naskh Arabic",Tahoma,system-ui,sans-serif;line-height:1.75}
+.wrap{max-width:900px;margin:0 auto;padding:48px 16px 80px}
+header{border-bottom:2px solid var(--border);padding-bottom:24px;margin-bottom:36px}
+h1{font-size:2rem;margin:0 0 8px;letter-spacing:-.01em}
+.sub{color:var(--muted);font-size:.95rem;margin:0}
+h2{font-size:1.35rem;margin:48px 0 16px;padding-bottom:8px;border-bottom:1px solid var(--border)}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:12px;margin:28px 0}
+.stat{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px}
+.stat b{display:block;font-size:1.7rem;line-height:1.2;font-variant-numeric:tabular-nums}
+.stat span{color:var(--muted);font-size:.82rem}
+.f{background:var(--surface);border:1px solid var(--border);border-inline-start:4px solid var(--border);
+ border-radius:10px;padding:20px 22px;margin:18px 0}
+.f.high{border-inline-start-color:var(--high)}
+.f.med{border-inline-start-color:var(--med)}
+.f.low{border-inline-start-color:var(--low)}
+.f h3{margin:0 0 6px;font-size:1.08rem;display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.tag{font-size:.72rem;font-weight:700;padding:3px 10px;border-radius:99px;letter-spacing:.02em}
+.tag.high{background:var(--high-bg);color:var(--high)}
+.tag.med{background:var(--med-bg);color:var(--med)}
+.tag.low{background:var(--low-bg);color:var(--low)}
+.f p{margin:10px 0}
+.f .lbl{font-weight:700;color:var(--accent);font-size:.9rem}
+code{background:var(--bg);border:1px solid var(--border);border-radius:5px;
+ padding:1px 6px;font-size:.87em;direction:ltr;display:inline-block;
+ font-family:ui-monospace,"SF Mono",Menlo,monospace}
+pre{background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:14px;
+ overflow-x:auto;direction:ltr;text-align:left;font-size:.84rem;margin:12px 0}
+ul{padding-inline-start:22px;margin:10px 0}
+li{margin:5px 0}
+.clean{background:var(--ok-bg);border:1px solid var(--border);border-radius:10px;padding:20px 24px}
+.clean ul{columns:2;column-gap:32px}
+.clean li{break-inside:avoid;color:var(--text)}
+@media(max-width:640px){.clean ul{columns:1}.wrap{padding:28px 16px 60px}h1{font-size:1.5rem}}
+table{width:100%;border-collapse:collapse;margin:16px 0;font-size:.92rem}
+th,td{text-align:right;padding:9px 12px;border-bottom:1px solid var(--border)}
+th{color:var(--muted);font-weight:600;font-size:.85rem}
+.note{background:var(--low-bg);border:1px solid var(--border);border-radius:10px;padding:16px 20px;margin:24px 0}
+footer{margin-top:56px;padding-top:20px;border-top:1px solid var(--border);color:var(--muted);font-size:.85rem}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <h1>فحص النظام — المرحلة الأولى</h1>
+  <p class="sub">السكيورتي والعمود الفقري · مستودع <code>staff_mange</code> · فرع <code>avg</code> عند <code>f61e401</code> · ١٦ أيلول ٢٠٢٦</p>
+</header>
+
+<p>هذي المرحلة الأولى من أربعة. قريت بيها <strong>سطر سطر</strong>: كل طبقة الحماية (<code>middleware</code>)،
+وخدمة الدخول والتوكن، وطبقة الملفات والتخزين، والإعدادات، وشجرة المسارات كاملة بـ<code>cmd/api/main.go</code> —
+ومسحت كل النظام آلياً على أنماط الثغرات المعروفة. الباك إند والواجهة الكاملين جايين بالمرحلتين الجاية.</p>
+
+<div class="stats">
+  <div class="stat"><b>٦</b><span>ملاحظة مؤكدة</span></div>
+  <div class="stat"><b>٢</b><span>خطورة عالية</span></div>
+  <div class="stat"><b>٣</b><span>خطورة متوسطة</span></div>
+  <div class="stat"><b>١</b><span>خطورة منخفضة</span></div>
+  <div class="stat"><b>١٦</b><span>نقطة نظيفة</span></div>
+</div>
+
+<h2>الملاحظات المؤكدة</h2>
+
+<div class="f high">
+  <h3><span class="tag high">عالي</span> ١. مدير النظام يقدر ينزّل المالك أو يوقف حسابه</h3>
+  <p><span class="lbl">وين:</span> <code>internal/service/employee_service.go:139-156</code> ·
+     المسار <code>PUT /api/employees/{id}</code> بـ<code>cmd/api/main.go:637</code> محروس بـ<code>requireAdmin</code> وبس.</p>
+  <p><span class="lbl">شنو صاير:</span> الكود يمنع صح إن أحد <em>يمنح</em> دور المالك
+     (<code>*req.Role == "OWNER" && employee.Role != "OWNER"</code>)، ويمنع تغيير بيانات الدخول والصورة
+     على غير المالك. بس ماكو أي فحص إن <strong>الهدف نفسه مالك</strong> عند تغيير الدور أو الحالة.</p>
+  <pre>PUT /api/employees/&lt;ownerId&gt;   { "role": "TECHNICIAN" }
+PUT /api/employees/&lt;ownerId&gt;   { "status": "SUSPENDED" }</pre>
+  <p><span class="lbl">الأثر:</span> أي حساب <code>ADMIN</code> يقدر بنداء واحد يشيل المالك من دوره أو يوقف حسابه.
+     و<code>RequireAuth</code> يقرا الدور <strong>طازجاً من القاعدة بكل طلب</strong> — يعني المفعول
+     <strong>فوري</strong>، بلا انتظار انتهاء التوكن. المالك ينقفل عنه: مراقبة النسخ الاحتياطية،
+     فتح الحسابات المحظورة، فتح الحسابات الجديدة، ومركز القيادة.</p>
+  <p><span class="lbl">ليش مهمة:</span> الكود بـ<code>employee_handler.go:97-101</code> يشرح بالضبط إنه
+     يسدّ باب «مدير النظام يستولي على حساب المالك» عن طريق بيانات الدخول. الباب انسدّ —
+     بس الطريق الأقصر (نزّله بس) ضل مفتوح.</p>
+  <p><span class="lbl">الحل:</span> فحص واحد بأول <code>Update</code>: لو <code>employee.Role == "OWNER"</code>
+     ودور المُنفِّذ مو <code>OWNER</code> — ارفض تغيير <code>Role</code> و<code>Status</code>.</p>
+</div>
+
+<div class="f high">
+  <h3><span class="tag high">عالي</span> ٢. وسم الملفات ما يخص لا موظفاً ولا ملفاً</h3>
+  <p><span class="lbl">وين:</span> <code>internal/storage/token.go:26-30</code> ·
+     <code>internal/handler/file_handler.go:76-104</code> · المسار <code>cmd/api/main.go:563</code></p>
+  <p><span class="lbl">شنو صاير:</span> <code>NewFileToken</code> يوقّع <strong>وقت الانتهاء وبس</strong>:</p>
+  <pre>payload := strconv.FormatInt(exp, 10)
+return payload + "." + sign(secret, payload)</pre>
+  <p>ماكو بالوسم لا رقم الموظف ولا مفتاح الملف. و<code>Serve</code> يتحقق من الوسم بس —
+     ماكو ولا فحص «هذا الموظف إله حق يشوف هذا الملف».</p>
+  <p><span class="lbl">الأثر:</span> أي موظف مسجّل — حتى بأوطى دور — يجيب وسماً من
+     <code>GET /api/files/token</code> ويقرا بيه <strong>أي ملف بالنظام</strong> ١٥ دقيقة:
+     وثائق زبائن، وصولات، صور هويات. والوسم يمشي بالـ<code>query string</code>،
+     يعني ينحفظ بسجلات الوصول وبتاريخ المتصفح وبترويسة <code>Referer</code>.</p>
+  <p><span class="lbl">ملاحظة مهمة:</span> الحماية الفعلية الوحيدة هسه إن المفتاح عشوائي
+     (<code>storage.NewKey</code> — ١٦ بايت). وهذا يمنع <em>التخمين</em> فعلاً،
+     مثل ما يقول التعليق بـ<code>main.go:557</code>. بس الخطر مو التخمين:
+     المفاتيح تنرجع بردود API كثيرة، فأي موظف يشوف سجلاً يشوف مفتاح ملفه.</p>
+  <p><span class="lbl">الحل:</span> اربط الوسم بمفتاح الملف وبرقم الموظف — وقّع
+     <code>employeeID + "|" + key + "|" + exp</code> بدل <code>exp</code> لحدها،
+     وخلّي الواجهة تطلب وسماً لكل ملف (لو كثيرة: وسم واحد يشمل قائمة مفاتيح الصفحة).</p>
+</div>
+
+<div class="f med">
+  <h3><span class="tag med">متوسط</span> ٣. سجل حركة الأدوات مفتوح لكل موظف</h3>
+  <p><span class="lbl">وين:</span> <code>internal/handler/inventory_handler.go:207-214</code> ·
+     المسار <code>cmd/api/main.go:950</code> محروس بـ<code>requireAuth</code> وبس.</p>
+  <pre>func (h *InventoryHandler) ToolEvents(w, r) {
+    events, err := h.service.ListToolEvents(
+        r.URL.Query().Get("toolId"),
+        r.URL.Query().Get("employeeId"))   // ← بلا أي فحص</pre>
+  <p><span class="lbl">الأثر:</span> أي موظف يقرا سجل حركة أدوات الشركة كلها —
+     منو فقّد شنو، ومتى، ومنو سجّلها.</p>
+  <p><span class="lbl">ليش تستاهل انتباه:</span> <strong>كل أخواتها بنفس الملف انصلّحن.</strong>
+     <code>ListPersonalTools</code> (سطر ١٠٨) و<code>ListToolRequests</code> (سطر ٣٠٧) عدهن
+     نفس الحارس مكتوب وموثّق. هاي وحدها انفلتت من نفس الجولة — يعني مو نسيان نمط،
+     نسيان ملف واحد بجولة إصلاح صحيحة.</p>
+  <p><span class="lbl">الحل:</span> نفس نمط جيرانها بالضبط:
+     <code>if employeeID != self && !h.canSeeOthersTools(r) { employeeID = self }</code>.</p>
+</div>
+
+<div class="f med">
+  <h3><span class="tag med">متوسط</span> ٤. استعلامان لقاعدة البيانات بكل طلب مُوثَّق</h3>
+  <p><span class="lbl">وين:</span> <code>internal/middleware/auth.go:64</code> ثم
+     <code>internal/service/auth_service.go:200-217</code></p>
+  <p><code>RequireAuth</code> ينادي <code>StatusAndRoleByID</code> (استعلام ١)، وبعدها
+     <code>SessionValid</code> ينادي <code>FindByID</code> (استعلام ٢) — و<code>FindByID</code>
+     يسحب <strong>صف الموظف كامل</strong>، وبيه تجزئة كلمة السر وتجزئة باسورد مركز القيادة،
+     مع إنه ما يحتاج غير عمود واحد: <code>sessionsInvalidatedAt</code>.</p>
+  <p><span class="lbl">الأثر:</span> كل طلب بالنظام = استعلامان، والثاني ثقيل بلا سبب.
+     على سيرفر بيه عشرات الموظفين هذا حِمل مستمر — وسحب تجزئات كلمات السر بذاكرة
+     العملية بكل طلب مو ممارسة زينة حتى لو ما تنطبع.</p>
+  <p><span class="lbl">الحل:</span> استعلام واحد يرجّع <code>status, role, sessionsInvalidatedAt</code>
+     مع بعض، ويتفحصن بالميدل وير سوة.</p>
+</div>
+
+<div class="f med">
+  <h3><span class="tag med">متوسط</span> ٥. تعداد أسماء المستخدمين عبر فرق التوقيت</h3>
+  <p><span class="lbl">وين:</span> <code>internal/service/auth_service.go:57-62</code></p>
+  <pre>employee, err := s.employees.FindByUsername(username)
+if err != nil || employee == nil || employee.Password == nil {
+    return nil, "", ErrInvalidCredentials    // ← رد فوري، بلا bcrypt
+}</pre>
+  <p><span class="lbl">الأثر:</span> يوزر مو موجود يرجع بميلي ثانية وحدة تقريباً،
+     ويوزر موجود يرجع بعد <code>bcrypt</code> (~٦٠–١٠٠ م.ث). الفرق واضح وقابل للقياس،
+     فالمهاجم يميّز الأسماء الصحيحة قبل ما يبدي يخمّن كلمات السر.
+     وتحديد المعدّل (٨ محاولات/دقيقة) ما يوقف هذا — يبطّئه بس.</p>
+  <p><span class="lbl">الحل:</span> لو اليوزر مو موجود، قارن بتجزئة bcrypt وهمية ثابتة
+     حته يتساوى الزمن، وبعدها ارجع نفس الخطأ.</p>
+</div>
+
+<div class="f low">
+  <h3><span class="tag low">منخفض</span> ٦. عدّاد تحديد المعدّل ما ينكتب بمسار الرفض</h3>
+  <p><span class="lbl">وين:</span> <code>internal/middleware/rate_limit.go:69-80</code></p>
+  <pre>recent := attempts[ip][:0]          // ترشيح فوق نفس المصفوفة
+for _, t := range attempts[ip] { if t.After(cutoff) { recent = append(recent, t) } }
+if len(recent) >= maxAttempts {
+    mu.Unlock(); writeError(...); return     // ← رجع بلا attempts[ip] = recent
+}
+attempts[ip] = append(recent, now)</pre>
+  <p><span class="lbl">شنو صاير:</span> الترشيح ينكتب فوق نفس المصفوفة الأصلية،
+     بس بمسار الرفض ما ينحدّث طول الشريحة بالخريطة — فتبقى بالطول القديم
+     وبيها طوابع مكررة بالنهاية.</p>
+  <p><span class="lbl">الأثر:</span> محدود — العدّ ينتفخ داخل النافذة على عنوان محظور أصلاً،
+     والطوابع المكررة تنتهي بنفس وقت أصولها فما يطول الحظر عن النافذة.
+     مو ثغرة، بس سلوك غلط يصير مربكاً لمن أحد يقرا العدّاد.</p>
+  <p><span class="lbl">الحل:</span> <code>attempts[ip] = recent</code> قبل الرجوع.</p>
+</div>
+
+<h2>الي طلع نظيفاً — وتأكدت منه</h2>
+<div class="clean">
+<ul>
+<li>✅ ماكو حقن SQL — ٨ حالات <code>Sprintf</code> بس، كلها <code>$N</code> وأسماء أعمدة ثابتة</li>
+<li>✅ ماكو <code>ORDER BY</code> مبني من مدخلات المستخدم</li>
+<li>✅ ماكو أي سر مكتوب بالكود — <code>config.go</code> كله من البيئة</li>
+<li>✅ <code>JWT_SECRET</code> مفروض بالإقلاع، والسيرفر يرفض يشتغل بدونه</li>
+<li>✅ JWT يثبّت <code>HS256</code> صراحةً — ماكو <code>alg confusion</code></li>
+<li>✅ bcrypt بكل مكان — ماكو md5 ولا sha للكلمات</li>
+<li>✅ <code>hmac.Equal</code> مقارنة ثابتة الزمن بالوسم</li>
+<li>✅ اجتياز المسار (<code>../</code>) مقفول صح بـ<code>local.go:37-44</code></li>
+<li>✅ نوع الملف من محتواه مو من الترويسة + قائمة بيضاء</li>
+<li>✅ إبطال الجلسات عند تغيير كلمة السر شغّال فعلاً</li>
+<li>✅ الدور يُقرأ طازجاً من القاعدة بكل طلب مو من التوكن</li>
+<li>✅ فصل <code>realm</code> (مركز القيادة) محروس بالاتجاهين</li>
+<li>✅ <code>X-Forwarded-For</code> ما ينوثق إلا من بروكسي داخلي</li>
+<li>✅ مهلات <code>http.Server</code> مضبوطة ضد slow-loris</li>
+<li>✅ CSP كامل وصارم بـ<code>nginx.conf:53</code> + ترويسات الحماية بالطرفين</li>
+<li>✅ رفع دور المالك ممنوع بالإنشاء وبالتعديل</li>
+</ul>
+</div>
+
+<div class="note">
+<p><strong>شجرة المسارات:</strong> فحصت كل مسار بالنظام. <strong>أربعة وبس</strong> بلا حارس دخول،
+وكلها مقصودة: <code>GET /api/health</code> · <code>GET /api/files/</code> (بوسم — شوف ملاحظة ٢) ·
+ونموذجان عامان للتصميم، الاثنان بتحديد معدّل مستقل. ماكو ولا مسار إداري منفلت.</p>
+<p><strong>وIDOR:</strong> ١٨٨ موضعاً ياخذ الهوية من سياق الجلسة (الصح) مقابل ١٠ من الرابط.
+فحصت العشرة وحدة وحدة: سبعة عدهن فحص ملكية صريح وموثّق، واثنان محروسان بالدور —
+والعاشر هو ملاحظة ٣.</p>
+</div>
+
+<h2>منو بنى النظام</h2>
+<table>
+<thead><tr><th>المساهم</th><th>الرفعات</th><th>الحصة</th></tr></thead>
+<tbody>
+<tr><td>Claude</td><td>٧٣٩</td><td>٩٤٪</td></tr>
+<tr><td>koorymoe</td><td>٢٤</td><td>٣٪</td></tr>
+<tr><td>Alamani</td><td>٢٠</td><td>٣٪</td></tr>
+</tbody>
+</table>
+<p>٧٨٣ رفعة، من ١١ حزيران لـ١٦ أيلول ٢٠٢٦ — ٩٧ يوماً، بمعدل ٨ رفعات باليوم.
+تحليل جودة الشغل بحسب المساهم ومناطق التغيير المتكرر جاي بالمرحلة الرابعة.</p>
+
+<h2>انطباع عام</h2>
+<p>النظام <strong>مبني زين أمنياً</strong> — وهذا مو مجاملة. أكثر النقاط الي أدور عليها عادة
+بمراجعات مثل هاي كانت مسدودة أصلاً، وقسم منها مسدود بطريقة تبيّن إن أحداً وكع بيها
+وتعلّم منها: التعليقات بالكود تحكي القصة («چان أي موظف يبدّل الرقم بالرابط ويقرا عدة أي زميل»).
+ثقافة التعليق بالعربي وشرح <em>ليش</em> مو <em>شنو</em> — هاي أقوى شي بالمستودع، وتخلّي القراءة
+أسرع ب مرات.</p>
+<p>والملاحظتان العاليتان مالتي <strong>ثنينهن من نفس العائلة</strong>: الحماية انبنت على
+«منو يوصل للمسار» وانبنت زين، بس «منو يوصل للسجل نفسه» ضلت ناقصة بموضعين.
+ملاحظة ١ يمكن تنصلّح بخمس سطور، وملاحظة ٢ تحتاج تعديل بالواجهة وياها.</p>
+
+<footer>
+تقرير المرحلة ١ من ٤ · فرع <code>avg</code> · <code>f61e401</code><br>
+الجاي: المرحلة ٢ — الباك إند كامل (٦٦ ألف سطر: repository · service · handler · database)<br>
+⚠️ ما انرفع أي تعديل على السيرفر — <code>avg</code> و<code>prod</code> مثل ما كانوا.
+</footer>
+
+</div>
+</body>
+</html>

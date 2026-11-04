@@ -1,0 +1,2006 @@
+package database
+
+// ═══ دردشة ماتركس (قرار (ع) 10-10) ═══
+// المالك والمدير يسولفون ويا ماتركس (هايكو). الأسماء تنحفظ حقيقية هنا،
+// وتتبدّل برموز بس وقت ما تطلع للنموذج.
+func matrixChatMigrations() []Migration {
+	return []Migration{{
+		Version: "0344_matrix_talk",
+		SQL: `
+			CREATE TABLE IF NOT EXISTS "MatrixTalk" (
+				id TEXT PRIMARY KEY,
+				"employeeId" TEXT NOT NULL REFERENCES "Employee"(id) ON DELETE CASCADE,
+				title TEXT NOT NULL DEFAULT 'محادثة جديدة',
+				"createdAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+				"updatedAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+			);
+			CREATE INDEX IF NOT EXISTS "MatrixTalk_employee" ON "MatrixTalk"("employeeId", "updatedAt" DESC);
+			CREATE TABLE IF NOT EXISTS "MatrixTalkMessage" (
+				id TEXT PRIMARY KEY,
+				"chatId" TEXT NOT NULL REFERENCES "MatrixTalk"(id) ON DELETE CASCADE,
+				role TEXT NOT NULL CHECK (role IN ('USER', 'ASSISTANT')),
+				text TEXT NOT NULL,
+				steps TEXT,
+				"createdAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+			);
+			CREATE INDEX IF NOT EXISTS "MatrixTalkMessage_chat" ON "MatrixTalkMessage"("chatId", "createdAt");
+		`,
+	}, {
+		// قرار (ع) 10-10: فواتير الشغل داخل الشركة تنعتمد بلا رقم فاتورة محاسبية
+		Version: "0345_internal_invoice_no_number",
+		SQL: `
+			ALTER TABLE "LeaderInvoice" DROP CONSTRAINT IF EXISTS leader_invoice_approved_needs_number;
+			ALTER TABLE "LeaderInvoice" ADD CONSTRAINT leader_invoice_approved_needs_number CHECK (
+				status <> 'APPROVED'
+				OR ("externalInvoiceNumber" IS NOT NULL AND btrim("externalInvoiceNumber") <> '')
+				OR "isFree" OR COALESCE("auditVerdict", '') = 'FREE'
+				OR systems::text LIKE '%شغل داخل الشركة%'
+			) NOT VALID;
+		`,
+	}, {
+		// شكوى (ع) 10-10: حجوزات انثبّتت وهي بالانتظار وبقى بيها waitingSince،
+		// فعالقة بـ«بانتظار موافقة الزبون/ما رد» ومخفية عن الحجوزات
+		Version: "0346_clear_stale_waiting",
+		SQL: `
+			UPDATE "Booking" SET "waitingSince" = NULL, "waitingNote" = NULL, "waitingById" = NULL,
+				"waitingKind" = NULL, "lastWaitingReminderAt" = NULL, "waitingReminderCount" = 0
+			WHERE "waitingSince" IS NOT NULL AND status NOT IN ('WAITING', 'CANCELLED');
+		`,
+	}, {
+		// (ع) 10-10 «النظام صار ثكيل»: فهارس للاستعلامات الي تنضرب كل دقيقة
+		Version: "0347_hot_path_indexes",
+		SQL: `
+			CREATE INDEX IF NOT EXISTS "Notification_unread" ON "Notification"("employeeId") WHERE read = false;
+			CREATE INDEX IF NOT EXISTS "Booking_waitingSince" ON "Booking"("waitingSince") WHERE "waitingSince" IS NOT NULL;
+			CREATE INDEX IF NOT EXISTS "Booking_status_scheduledAt" ON "Booking"(status, "scheduledAt");
+			CREATE INDEX IF NOT EXISTS "Booking_status_createdAt" ON "Booking"(status, "createdAt" DESC);
+			ANALYZE "Booking";
+			ANALYZE "Notification";
+		`,
+	}, {
+		// (ع) 10-11: سكرين بالدردشة + ماتركس يتعلّم من تصحيح المالك
+		Version: "0348_matrix_chat_image_lessons",
+		SQL: `
+			ALTER TABLE "MatrixTalkMessage" ADD COLUMN IF NOT EXISTS image TEXT;
+			CREATE TABLE IF NOT EXISTS "MatrixLesson" (
+				id TEXT PRIMARY KEY,
+				text TEXT NOT NULL,
+				context TEXT,
+				"createdById" TEXT REFERENCES "Employee"(id) ON DELETE SET NULL,
+				active BOOLEAN NOT NULL DEFAULT true,
+				"createdAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+			);
+		`,
+	}, {
+		// (ع) 10-11: «راقب فلان» — مهمة مراقبة بيومية وخلاصة
+		Version: "0349_matrix_missions",
+		SQL: `
+			CREATE TABLE IF NOT EXISTS "MatrixMission" (
+				id TEXT PRIMARY KEY,
+				"employeeId" TEXT NOT NULL REFERENCES "Employee"(id) ON DELETE CASCADE,
+				"createdById" TEXT NOT NULL REFERENCES "Employee"(id) ON DELETE CASCADE,
+				note TEXT,
+				"startsOn" DATE NOT NULL,
+				"endsOn" DATE NOT NULL,
+				active BOOLEAN NOT NULL DEFAULT true,
+				summary TEXT,
+				"summaryAt" TIMESTAMP,
+				"createdAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+			);
+			CREATE TABLE IF NOT EXISTS "MatrixMissionLog" (
+				id TEXT PRIMARY KEY,
+				"missionId" TEXT NOT NULL REFERENCES "MatrixMission"(id) ON DELETE CASCADE,
+				day DATE NOT NULL,
+				text TEXT NOT NULL,
+				"createdAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+				UNIQUE ("missionId", day)
+			);
+		`,
+	}, {
+		// (ع) 10-11: صاحب «إضافة موظف»/«تعديل كل الموظفين» يشتغل بس على
+		// الأدوار الي المالك يحددها إله — بلاها يكدر يفتح حساب محاسب
+		Version: "0350_employee_admin_scope",
+		SQL: `
+			CREATE TABLE IF NOT EXISTS "EmployeeAdminScope" (
+				"employeeId" TEXT PRIMARY KEY REFERENCES "Employee"(id) ON DELETE CASCADE,
+				roles TEXT[] NOT NULL DEFAULT '{}',
+				"updatedById" TEXT REFERENCES "Employee"(id) ON DELETE SET NULL,
+				"updatedAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+			);
+		`,
+	}, {
+		// فحص 10-11: فواتير انسحب اعتمادها ورجعت انعتمدت كانت مختفية من
+		// المجاميع (revokedAt بقى) — نرجّعها؛ ومبالغ تسوية الدوار ما تكون سالبة
+		Version: "0351_reapproved_invoices_fund_nonneg",
+		SQL: `
+			UPDATE "LeaderInvoice" SET "revokedAt" = NULL WHERE status = 'APPROVED' AND "revokedAt" IS NOT NULL;
+			ALTER TABLE "RevolvingFundTxn" DROP CONSTRAINT IF EXISTS fund_txn_nonneg;
+			ALTER TABLE "RevolvingFundTxn" ADD CONSTRAINT fund_txn_nonneg
+				CHECK (COALESCE("spentAmount", 0) >= 0 AND COALESCE("returnedAmount", 0) >= 0) NOT VALID;
+		`,
+	}, {
+		// (ع) 10-13: «رسول ماتركس» — المالك/المدير يوجّه شغل لموظف، وعين
+		// الشارنغان تروح تسلّمه الرسالة على شاشته وترجع. السطر يبقى حتى
+		// الموظف يرجع يقراها من عينه، و"seenAt" يصفّر رقم البند بالقائمة.
+		Version: "0352_matrix_courier",
+		SQL: `
+			CREATE TABLE IF NOT EXISTS "MatrixCourier" (
+				id TEXT PRIMARY KEY,
+				kind TEXT NOT NULL,
+				"senderId" TEXT REFERENCES "Employee"(id) ON DELETE SET NULL,
+				"recipientId" TEXT NOT NULL REFERENCES "Employee"(id) ON DELETE CASCADE,
+				message TEXT NOT NULL,
+				link TEXT NOT NULL,
+				"createdAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+				"deliveredAt" TIMESTAMP,
+				"seenAt" TIMESTAMP
+			);
+			CREATE INDEX IF NOT EXISTS matrix_courier_recipient ON "MatrixCourier" ("recipientId", "createdAt" DESC);
+			CREATE INDEX IF NOT EXISTS matrix_courier_sender ON "MatrixCourier" ("senderId", "createdAt" DESC);
+		`,
+	}, {
+		// (ع) 10-13: «طلب تبرير» من المراقب يروح للموظف نفسه، يكتب عذره،
+		// ويرجع للمراقب يحكم (مقبول/مرفوض) — والنتيجة تنحفظ وتوصل للموظف.
+		Version: "0353_monitor_justification",
+		SQL: `
+			CREATE TABLE IF NOT EXISTS "MonitorJustification" (
+				id TEXT PRIMARY KEY,
+				"reviewId" TEXT,
+				"employeeId" TEXT NOT NULL REFERENCES "Employee"(id) ON DELETE CASCADE,
+				"monitorId" TEXT REFERENCES "Employee"(id) ON DELETE SET NULL,
+				question TEXT NOT NULL,
+				answer TEXT,
+				"answeredAt" TIMESTAMP,
+				verdict TEXT,
+				"verdictNote" TEXT,
+				"decidedAt" TIMESTAMP,
+				"createdAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+			);
+			CREATE INDEX IF NOT EXISTS monitor_justification_emp ON "MonitorJustification" ("employeeId", "createdAt" DESC);
+		`,
+	}, {
+		// (ع) 10-13: مركز التدريب — المنهج لكل دور، بنك أسئلة (يدوي + ماتركس
+		// يقترح والمدرب يعتمد)، اختبار شهري لكل دور يسويه الموظف من حسابه،
+		// خطة شهرية ويا تفتيش، ومشرف لكل موظف جديد. بلا خصم نقاط.
+		Version: "0354_training_center",
+		SQL: `
+			CREATE TABLE IF NOT EXISTS "TrainingCurriculum" (
+				id TEXT PRIMARY KEY, role TEXT NOT NULL, title TEXT NOT NULL, details TEXT,
+				ord INTEGER NOT NULL DEFAULT 0, "createdAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP);
+			CREATE TABLE IF NOT EXISTS "TrainingQuestion" (
+				id TEXT PRIMARY KEY, role TEXT NOT NULL, "curriculumId" TEXT REFERENCES "TrainingCurriculum"(id) ON DELETE SET NULL,
+				text TEXT NOT NULL, options TEXT[] NOT NULL, correct INTEGER NOT NULL,
+				approved BOOLEAN NOT NULL DEFAULT false, source TEXT NOT NULL DEFAULT 'MANUAL',
+				"createdAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP);
+			CREATE TABLE IF NOT EXISTS "TrainingExam" (
+				id TEXT PRIMARY KEY, role TEXT NOT NULL, month TEXT NOT NULL, title TEXT NOT NULL,
+				"questionIds" TEXT[] NOT NULL, minutes INTEGER NOT NULL DEFAULT 15, "passPct" INTEGER NOT NULL DEFAULT 60,
+				"createdById" TEXT REFERENCES "Employee"(id) ON DELETE SET NULL,
+				"createdAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, UNIQUE (role, month));
+			CREATE TABLE IF NOT EXISTS "TrainingAttempt" (
+				id TEXT PRIMARY KEY, "examId" TEXT NOT NULL REFERENCES "TrainingExam"(id) ON DELETE CASCADE,
+				"employeeId" TEXT NOT NULL REFERENCES "Employee"(id) ON DELETE CASCADE,
+				answers INTEGER[], score INTEGER, total INTEGER,
+				"startedAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, "finishedAt" TIMESTAMP,
+				UNIQUE ("examId", "employeeId"));
+			CREATE TABLE IF NOT EXISTS "TrainingPlan" (
+				id TEXT PRIMARY KEY, month TEXT NOT NULL, title TEXT NOT NULL, role TEXT,
+				"employeeIds" TEXT[] NOT NULL DEFAULT '{}', "plannedDate" DATE,
+				"trainerId" TEXT REFERENCES "Employee"(id) ON DELETE SET NULL,
+				"inspectorId" TEXT REFERENCES "Employee"(id) ON DELETE SET NULL,
+				"inspectionResult" TEXT, "inspectionNotes" TEXT, "inspectedAt" TIMESTAMP,
+				"createdAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP);
+			CREATE TABLE IF NOT EXISTS "TrainingMentor" (
+				"employeeId" TEXT PRIMARY KEY REFERENCES "Employee"(id) ON DELETE CASCADE,
+				"mentorId" TEXT REFERENCES "Employee"(id) ON DELETE SET NULL,
+				notes TEXT, "updatedAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP);
+		`,
+	}, {
+		// (ع) 10-14: كل عرض سعر بشروطه وأحكامه — الفارغة (القديمة) تاخذ الافتراضية
+		Version: "0355_quotation_terms",
+		SQL:     `ALTER TABLE "Quotation" ADD COLUMN IF NOT EXISTS terms JSONB;`,
+	}, {
+		// (ع) 10-14: تطبيق الزبائن — حساب يسويه الزبون بنفسه (اسم مستخدم + تأكيد إيميل)،
+		// محادثة ماتركس، محتوى ترويجي، ومصدر الحجز (ماتركس من التطبيق).
+		Version: "0356_customer_app",
+		SQL: `
+			CREATE TABLE IF NOT EXISTS "CustomerAccount" (
+				id TEXT PRIMARY KEY, username TEXT NOT NULL UNIQUE, email TEXT NOT NULL UNIQUE,
+				"passwordHash" TEXT NOT NULL, name TEXT NOT NULL, phone TEXT NOT NULL,
+				"customerId" TEXT REFERENCES "Customer"(id) ON DELETE SET NULL,
+				"emailVerifiedAt" TIMESTAMP, "sessionsInvalidatedAt" TIMESTAMP,
+				"lastSeenPromoAt" TIMESTAMP, "createdAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP);
+			CREATE TABLE IF NOT EXISTS "CustomerOtp" (
+				id TEXT PRIMARY KEY, "accountId" TEXT NOT NULL REFERENCES "CustomerAccount"(id) ON DELETE CASCADE,
+				purpose TEXT NOT NULL, "codeHash" TEXT NOT NULL, attempts INTEGER NOT NULL DEFAULT 0,
+				"expiresAt" TIMESTAMP NOT NULL, "usedAt" TIMESTAMP, "createdAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP);
+			CREATE INDEX IF NOT EXISTS customer_otp_acc ON "CustomerOtp" ("accountId", "createdAt" DESC);
+			CREATE TABLE IF NOT EXISTS "CustomerChatMessage" (
+				id TEXT PRIMARY KEY, "accountId" TEXT NOT NULL REFERENCES "CustomerAccount"(id) ON DELETE CASCADE,
+				role TEXT NOT NULL, content TEXT NOT NULL, "bookingId" TEXT,
+				"createdAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP);
+			CREATE INDEX IF NOT EXISTS customer_chat_acc ON "CustomerChatMessage" ("accountId", "createdAt");
+			CREATE TABLE IF NOT EXISTS "PromoItem" (
+				id TEXT PRIMARY KEY, kind TEXT NOT NULL DEFAULT 'offer', title TEXT NOT NULL, body TEXT,
+				"imageUrl" TEXT, "serviceId" TEXT REFERENCES "Service"(id) ON DELETE SET NULL,
+				active BOOLEAN NOT NULL DEFAULT false, ord INTEGER NOT NULL DEFAULT 0,
+				source TEXT NOT NULL DEFAULT 'manual', "approvedAt" TIMESTAMP,
+				"createdAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP);
+			ALTER TABLE "Booking" ADD COLUMN IF NOT EXISTS source TEXT;
+			ALTER TABLE "Booking" ADD COLUMN IF NOT EXISTS "customerAccountId" TEXT;
+		`,
+	}, {
+		// (ع) 10-14: تطبيق الزبائن بالتصميم الجديد — بطاقة كل خدمة (صورة، وصف،
+		// مميزات، يبدأ من)، خصم العروض، المفضلة، تقييم الزبون، صور الطلب، والفروع.
+		Version: "0357_customer_app_catalog",
+		SQL: `
+			CREATE TABLE IF NOT EXISTS "ServiceApp" (
+				"serviceId" TEXT PRIMARY KEY REFERENCES "Service"(id) ON DELETE CASCADE,
+				"imageUrl" TEXT, description TEXT, features JSONB NOT NULL DEFAULT '[]',
+				"priceFrom" NUMERIC, visible BOOLEAN NOT NULL DEFAULT true, ord INTEGER NOT NULL DEFAULT 100,
+				color TEXT, "updatedAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP);
+			ALTER TABLE "PromoItem" ADD COLUMN IF NOT EXISTS "discountPercent" INTEGER;
+			ALTER TABLE "CustomerAccount" ADD COLUMN IF NOT EXISTS city TEXT;
+			CREATE TABLE IF NOT EXISTS "CustomerFavorite" (
+				"accountId" TEXT NOT NULL REFERENCES "CustomerAccount"(id) ON DELETE CASCADE,
+				"serviceId" TEXT NOT NULL REFERENCES "Service"(id) ON DELETE CASCADE,
+				"createdAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, PRIMARY KEY ("accountId", "serviceId"));
+			CREATE TABLE IF NOT EXISTS "CustomerRating" (
+				id TEXT PRIMARY KEY, "bookingId" TEXT NOT NULL UNIQUE REFERENCES "Booking"(id) ON DELETE CASCADE,
+				"accountId" TEXT NOT NULL REFERENCES "CustomerAccount"(id) ON DELETE CASCADE,
+				stars INTEGER NOT NULL CHECK (stars BETWEEN 1 AND 5), comment TEXT,
+				"createdAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP);
+			CREATE TABLE IF NOT EXISTS "CustomerBookingPhoto" (
+				id TEXT PRIMARY KEY, "bookingId" TEXT NOT NULL REFERENCES "Booking"(id) ON DELETE CASCADE,
+				key TEXT NOT NULL, "createdAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP);
+			CREATE TABLE IF NOT EXISTS "AppBranch" (
+				id TEXT PRIMARY KEY, name TEXT NOT NULL, address TEXT, phone TEXT, "mapUrl" TEXT,
+				ord INTEGER NOT NULL DEFAULT 0, "createdAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP);
+		`,
+	}, {
+		// (ع) 10-14: «الآجل» — حجز أو مشروع خلص والفلوس مؤجلة (دفعات أو مبلغ كامل)
+		Version: "0358_credit_sales",
+		SQL: `
+			CREATE TABLE IF NOT EXISTS "CreditSale" (
+				id TEXT PRIMARY KEY, kind TEXT NOT NULL DEFAULT 'BOOKING',
+				"bookingId" TEXT UNIQUE REFERENCES "Booking"(id) ON DELETE SET NULL,
+				"projectId" TEXT REFERENCES "Project"(id) ON DELETE SET NULL,
+				title TEXT NOT NULL, "customerName" TEXT, phone TEXT,
+				amount NUMERIC NOT NULL CHECK (amount > 0), note TEXT, "dueDate" DATE,
+				"createdById" TEXT, "createdAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, "settledAt" TIMESTAMP);
+			CREATE TABLE IF NOT EXISTS "CreditPayment" (
+				id TEXT PRIMARY KEY, "creditId" TEXT NOT NULL REFERENCES "CreditSale"(id) ON DELETE CASCADE,
+				amount NUMERIC NOT NULL CHECK (amount > 0), "paidAt" DATE NOT NULL DEFAULT CURRENT_DATE,
+				note TEXT, "byId" TEXT, "createdAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP);
+			CREATE INDEX IF NOT EXISTS credit_payment_credit ON "CreditPayment" ("creditId");
+		`,
+	}, {
+		// 🔴 (ع) 10-14: اعتماد «الآجل» بلا رقم چان ينرفض من قيد القاعدة — نضيف CREDIT
+		Version: "0359_credit_approve_no_number",
+		SQL: `
+			ALTER TABLE "LeaderInvoice" DROP CONSTRAINT IF EXISTS leader_invoice_approved_needs_number;
+			ALTER TABLE "LeaderInvoice" ADD CONSTRAINT leader_invoice_approved_needs_number CHECK (
+				status <> 'APPROVED'
+				OR ("externalInvoiceNumber" IS NOT NULL AND btrim("externalInvoiceNumber") <> '')
+				OR "isFree" OR COALESCE("auditVerdict", '') IN ('FREE', 'CREDIT')
+				OR systems::text LIKE '%شغل داخل الشركة%'
+			) NOT VALID;
+		`,
+	}, {
+		// (ع) 10-14: مراحل الحجز بلا نت — وقت الضغطة الحقيقي + موقعها كدليل
+		Version: "0360_booking_stage_proof",
+		SQL: `
+			CREATE TABLE IF NOT EXISTS "BookingStageProof" (
+				id TEXT PRIMARY KEY, "bookingId" TEXT NOT NULL REFERENCES "Booking"(id) ON DELETE CASCADE,
+				stage TEXT NOT NULL, "employeeId" TEXT, "pressedAt" TIMESTAMP NOT NULL,
+				"receivedAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, offline BOOLEAN NOT NULL DEFAULT false,
+				lat DOUBLE PRECISION, lng DOUBLE PRECISION, accuracy DOUBLE PRECISION, "distanceM" DOUBLE PRECISION,
+				verdict TEXT NOT NULL DEFAULT 'OK');
+			CREATE INDEX IF NOT EXISTS stage_proof_booking ON "BookingStageProof" ("bookingId");
+			CREATE INDEX IF NOT EXISTS stage_proof_emp ON "BookingStageProof" ("employeeId", "pressedAt");
+		`,
+	}, {
+		// (ع) 10-14: مراحل الحجز الست + موقع الشركة + تتبع المسار والخوارزمية التلقائية
+		Version: "0361_booking_field_track",
+		SQL: `
+			ALTER TABLE "Booking" ADD COLUMN IF NOT EXISTS "acceptedAt" TIMESTAMP;
+			ALTER TABLE "Booking" ADD COLUMN IF NOT EXISTS "departedAt" TIMESTAMP;
+			ALTER TABLE "Booking" ADD COLUMN IF NOT EXISTS "departOrigin" TEXT;
+			ALTER TABLE "Booking" ADD COLUMN IF NOT EXISTS "autoDepartedAt" TIMESTAMP;
+			ALTER TABLE "Booking" ADD COLUMN IF NOT EXISTS "autoArrivedAt" TIMESTAMP;
+			ALTER TABLE "Booking" ADD COLUMN IF NOT EXISTS "autoCompletedAt" TIMESTAMP;
+			ALTER TABLE "Booking" ADD COLUMN IF NOT EXISTS "autoArrivedLat" DOUBLE PRECISION;
+			ALTER TABLE "Booking" ADD COLUMN IF NOT EXISTS "autoArrivedLng" DOUBLE PRECISION;
+			CREATE TABLE IF NOT EXISTS "CompanyLocation" (
+				id INT PRIMARY KEY DEFAULT 1 CHECK (id = 1),
+				lat DOUBLE PRECISION NOT NULL, lng DOUBLE PRECISION NOT NULL,
+				"radiusM" INT NOT NULL DEFAULT 300, "updatedAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP);
+			ALTER TABLE "LocationPing" ADD COLUMN IF NOT EXISTS accuracy DOUBLE PRECISION;
+			CREATE INDEX IF NOT EXISTS "LocationPing_createdAt_idx" ON "LocationPing" ("createdAt");
+			CREATE TABLE IF NOT EXISTS "BookingRouteStop" (
+				id TEXT PRIMARY KEY, "bookingId" TEXT NOT NULL REFERENCES "Booking"(id) ON DELETE CASCADE,
+				"employeeId" TEXT, kind TEXT NOT NULL, lat DOUBLE PRECISION NOT NULL, lng DOUBLE PRECISION NOT NULL,
+				"startAt" TIMESTAMP NOT NULL, "endAt" TIMESTAMP NOT NULL, minutes INT NOT NULL);
+			CREATE INDEX IF NOT EXISTS route_stop_booking ON "BookingRouteStop" ("bookingId");
+			ALTER TABLE "Customer" ADD COLUMN IF NOT EXISTS lat DOUBLE PRECISION;
+			ALTER TABLE "Customer" ADD COLUMN IF NOT EXISTS lng DOUBLE PRECISION;
+			ALTER TABLE "Customer" ADD COLUMN IF NOT EXISTS "locationSource" TEXT;
+		`,
+	}, {
+		// (ع) 10-15: تكملة المراحل — مدة شغل موثوقة للمتوسطات + تذكير «وصلنا»
+		Version: "0362_reliable_work_minutes",
+		SQL: `
+			ALTER TABLE "Booking" ADD COLUMN IF NOT EXISTS "arriveRemindedAt" TIMESTAMP;
+			-- مدة الشغل بالدقايق: أوقات النظام (من الـGPS) أولاً، وإلا ضغطات الموظف.
+			-- NULL (يعني ما تدخل بالمتوسط) إذا البدء/الإنجاز تسجيل جماعي أو بعيد
+			-- بلا وقت تلقائي يعوّضه، أو المدة أقل من ٥ دقايق (تسجيل بنفس اللحظة).
+			CREATE OR REPLACE FUNCTION booking_work_minutes(bid TEXT, s TIMESTAMP, c TIMESTAMP, aa TIMESTAMP, ac TIMESTAMP)
+			RETURNS DOUBLE PRECISION LANGUAGE plpgsql STABLE AS $$
+			DECLARE st TIMESTAMP := COALESCE(aa, s); en TIMESTAMP := COALESCE(ac, c); m DOUBLE PRECISION;
+			BEGIN
+				IF st IS NULL OR en IS NULL OR en <= st THEN RETURN NULL; END IF;
+				IF (aa IS NULL OR ac IS NULL) AND EXISTS (SELECT 1 FROM "BookingStageProof" p WHERE p."bookingId" = bid
+					AND p.stage IN ('STARTED', 'COMPLETED') AND p.verdict IN ('BATCH', 'FAR')) THEN RETURN NULL; END IF;
+				m := EXTRACT(EPOCH FROM (en - st)) / 60;
+				IF m < 5 OR m > 16 * 60 THEN RETURN NULL; END IF;
+				RETURN m;
+			END $$;
+		`,
+	}, {
+		// (ع) 10-15: رقابة المشتريات — تقييم المورد ببنود · تثبيت المحاسب · تنبيهات الأسعار
+		Version: "0363_purchase_control",
+		SQL: `
+			CREATE TABLE IF NOT EXISTS "SupplierReview" (
+				id TEXT PRIMARY KEY, "supplierId" TEXT NOT NULL REFERENCES "Supplier"(id) ON DELETE CASCADE,
+				"procurementId" TEXT REFERENCES "ProcurementRequest"(id) ON DELETE SET NULL,
+				price INT NOT NULL, quality INT NOT NULL, speed INT NOT NULL, punctuality INT NOT NULL, dealing INT NOT NULL,
+				note TEXT, "ratedById" TEXT NOT NULL, "createdAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP);
+			CREATE UNIQUE INDEX IF NOT EXISTS supplier_review_once ON "SupplierReview" ("procurementId", "ratedById") WHERE "procurementId" IS NOT NULL;
+			CREATE INDEX IF NOT EXISTS supplier_review_sup ON "SupplierReview" ("supplierId");
+			CREATE TABLE IF NOT EXISTS "ProcurementVerify" (
+				"procurementId" TEXT PRIMARY KEY REFERENCES "ProcurementRequest"(id) ON DELETE CASCADE,
+				"verifiedById" TEXT NOT NULL, "verifiedAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, note TEXT);
+			CREATE TABLE IF NOT EXISTS "ProcurementPriceAlert" (
+				id TEXT PRIMARY KEY, "procurementId" TEXT NOT NULL REFERENCES "ProcurementRequest"(id) ON DELETE CASCADE,
+				"itemId" TEXT NOT NULL, kind TEXT NOT NULL, "productName" TEXT NOT NULL,
+				"supplierId" TEXT, "unitPrice" DOUBLE PRECISION NOT NULL, quantity INT NOT NULL,
+				"refSupplierId" TEXT, "refPrice" DOUBLE PRECISION NOT NULL, "lossIqd" DOUBLE PRECISION NOT NULL,
+				"buyerId" TEXT, "createdAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, "reviewedAt" TIMESTAMP, "reviewNote" TEXT);
+			CREATE UNIQUE INDEX IF NOT EXISTS price_alert_once ON "ProcurementPriceAlert" ("itemId", kind);
+			-- اسم المادة الموحّد للمقارنة: حروف صغيرة ومسافة وحدة، ويّا الموديل إذا موجود
+			CREATE OR REPLACE FUNCTION product_key(n TEXT, m TEXT) RETURNS TEXT LANGUAGE sql IMMUTABLE AS $$
+				SELECT lower(btrim(regexp_replace(COALESCE(n, '') || CASE WHEN COALESCE(btrim(m), '') <> '' THEN ' ' || m ELSE '' END, '\s+', ' ', 'g')))
+			$$;
+		`,
+	}, {
+		// (ع) 10-15: رقابة المشتريات ٢ — شرط العرضين للمشتريات الكبيرة
+		Version: "0364_purchase_quotes",
+		SQL: `
+			CREATE TABLE IF NOT EXISTS "PurchasePolicy" (
+				id INT PRIMARY KEY DEFAULT 1 CHECK (id = 1), "quoteThreshold" DOUBLE PRECISION NOT NULL DEFAULT 500000,
+				"updatedAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP);
+			INSERT INTO "PurchasePolicy" (id) VALUES (1) ON CONFLICT DO NOTHING;
+			CREATE TABLE IF NOT EXISTS "ProcurementQuote" (
+				id TEXT PRIMARY KEY, "procurementId" TEXT NOT NULL REFERENCES "ProcurementRequest"(id) ON DELETE CASCADE,
+				"supplierId" TEXT NOT NULL REFERENCES "Supplier"(id), "totalPrice" DOUBLE PRECISION NOT NULL,
+				chosen BOOLEAN NOT NULL DEFAULT false, note TEXT, "createdAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP);
+			CREATE INDEX IF NOT EXISTS procurement_quote_req ON "ProcurementQuote" ("procurementId");
+		`,
+	}, {
+		// (ع) 10-15: رقابة المشتريات ٣ — الأسعار الستاندرد + مشتريات الفنيين من موردينهم
+		Version: "0365_standard_prices",
+		SQL: `
+			ALTER TABLE "PurchasePolicy" ADD COLUMN IF NOT EXISTS "ceilingPct" DOUBLE PRECISION NOT NULL DEFAULT 10;
+			CREATE TABLE IF NOT EXISTS "StandardPrice" (
+				key TEXT PRIMARY KEY, product TEXT NOT NULL, price DOUBLE PRECISION NOT NULL,
+				source TEXT NOT NULL DEFAULT 'AUTO', "setById" TEXT, "updatedAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP);
+			CREATE TABLE IF NOT EXISTS "StandardPriceSuggestion" (
+				key TEXT PRIMARY KEY, product TEXT NOT NULL, current DOUBLE PRECISION NOT NULL, suggested DOUBLE PRECISION NOT NULL,
+				basis TEXT NOT NULL, "createdAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP);
+			-- شراء مواد من مصروف الفني: من أي مورد فنيين، شنو المادة، الكمية والسعر
+			CREATE TABLE IF NOT EXISTS "ExpensePurchase" (
+				"expenseId" TEXT PRIMARY KEY REFERENCES "Expense"(id) ON DELETE CASCADE,
+				"techSupplierId" TEXT REFERENCES "TechSupplier"(id) ON DELETE SET NULL,
+				"productName" TEXT NOT NULL, quantity INT NOT NULL, "unitPrice" DOUBLE PRECISION NOT NULL,
+				"createdAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP);
+			ALTER TABLE "ProcurementPriceAlert" ALTER COLUMN "procurementId" DROP NOT NULL;
+			ALTER TABLE "ProcurementPriceAlert" ADD COLUMN IF NOT EXISTS "expenseId" TEXT REFERENCES "Expense"(id) ON DELETE CASCADE;
+			ALTER TABLE "ProcurementPriceAlert" ADD COLUMN IF NOT EXISTS "techSupplierId" TEXT;
+			-- كل المشتريات بمكان واحد: طلبات المواد (موردين المشتريات) + مصاريف الفنيين (موردين الفنيين)
+			CREATE OR REPLACE VIEW "PurchaseLine" AS
+				SELECT 'PROC' AS source, r.id AS "refId", r.code, product_key(i."productName", i.model) AS key, i."productName" AS product,
+					i.quantity AS qty, i."unitPrice" AS price, r."fulfilledAt" AS at, r."supplierId" AS "supplierId",
+					s."companyName" AS supplier, r."fulfilledById" AS "buyerId"
+				FROM "ProcurementItem" i JOIN "ProcurementRequest" r ON r.id = i."requestId" LEFT JOIN "Supplier" s ON s.id = r."supplierId"
+				WHERE i."unitPrice" > 0 AND r."fulfilledAt" IS NOT NULL
+				UNION ALL
+				SELECT 'TECH', e.id, 'مصروف', product_key(p."productName", NULL), p."productName", p.quantity, p."unitPrice", p."createdAt",
+					p."techSupplierId", COALESCE(t."companyName", 'مورد غير مسجّل'), e."employeeId"
+				FROM "ExpensePurchase" p JOIN "Expense" e ON e.id = p."expenseId" LEFT JOIN "TechSupplier" t ON t.id = p."techSupplierId";
+		`,
+	}, {
+		// (ع) 10-15: توقعات ماتركس — حفظ توقع الحجوزات + الحكم صح/غلط آخر الشهر
+		Version: "0366_forecast_outcome",
+		SQL: `
+			ALTER TABLE "MatrixForecastLog" ADD COLUMN IF NOT EXISTS "expectedJobs" INT;
+			ALTER TABLE "MatrixForecastLog" ADD COLUMN IF NOT EXISTS "mtdJobs" INT;
+			CREATE TABLE IF NOT EXISTS "MatrixForecastOutcome" (
+				month TEXT NOT NULL, kind TEXT NOT NULL, forecast DOUBLE PRECISION NOT NULL, actual DOUBLE PRECISION NOT NULL,
+				"errorPct" DOUBLE PRECISION NOT NULL, verdict TEXT NOT NULL, "snapshotDay" DATE NOT NULL,
+				"evaluatedAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, PRIMARY KEY (month, kind));
+		`,
+	}, {
+		// (ع) 10-15: علاقات الموردين — سجل التواصل ويّا موردين المشتريات والتقنيين + تذكير
+		Version: "0367_supplier_relations",
+		SQL: `
+			ALTER TABLE "PurchasePolicy" ADD COLUMN IF NOT EXISTS "contactDays" INT NOT NULL DEFAULT 30;
+			CREATE TABLE IF NOT EXISTS "SupplierContact" (
+				id TEXT PRIMARY KEY, "supplierKind" TEXT NOT NULL, "supplierId" TEXT NOT NULL,
+				kind TEXT NOT NULL, note TEXT, "byId" TEXT, at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP);
+			CREATE INDEX IF NOT EXISTS supplier_contact_sup ON "SupplierContact" ("supplierKind", "supplierId", at DESC);
+			INSERT INTO "Permission" (id, name, label) VALUES
+				(gen_random_uuid()::text, 'supplier_relations', 'علاقات الموردين (التواصل والتذكير)')
+			ON CONFLICT (name) DO NOTHING;
+		`,
+	}, {
+		// (ع) 10-15: الشكاوى المفتوحة الي ما مكلّف بيها أحد تروح لمهندس الجودة
+		Version: "0368_complaints_to_quality",
+		SQL: `
+			UPDATE "Complaint" c SET "assignedToEmployeeId" = (
+				SELECT e.id FROM "Employee" e WHERE e.role::text = 'QUALITY_ENGINEER' AND e.status::text = 'ACTIVE' ORDER BY e."createdAt" LIMIT 1)
+			WHERE c."assignedToEmployeeId" IS NULL AND c.status::text IN ('NEW', 'IN_PROGRESS');
+		`,
+	}, {
+		// 🔴 (ع) 10-16: «دققوهن وشافو مشكلتهن بس الى الان يضهرن» — قيد الحالة
+		// من 0293 يقبل PENDING/DISMISSED بس، فزر «اطلب حذفه»/الدمج (RESOLVED)
+		// چان يفشل بصمت والزوج يبقى معلّق ينعدّ متأخر على المراقب.
+		Version: "0369_duplicate_resolved_status",
+		SQL: `
+			ALTER TABLE "DuplicateCandidate" DROP CONSTRAINT IF EXISTS "DuplicateCandidate_status_check";
+			ALTER TABLE "DuplicateCandidate" ADD CONSTRAINT "DuplicateCandidate_status_check"
+				CHECK (status IN ('PENDING', 'DISMISSED', 'RESOLVED'));
+		`,
+	}, {
+		// 🔴 (ع) 10-16: الطلعات القديمة الي فاتها ليدر المهمة (استلمها بلا تكليف)
+		// — ينضاف لكل طلعة حتى يطلع اسمه وتنحسبله.
+		Version: "0370_visit_crew_leader",
+		SQL: `
+			INSERT INTO "BookingVisitCrew" (id, "visitId", "employeeId", role, "isLeader")
+			SELECT gen_random_uuid()::text, v.id, l.id, 'LEADER', true
+			FROM "BookingVisit" v
+			JOIN LATERAL (
+			  SELECT DISTINCT m."leaderId" AS id FROM "Mission" m WHERE m."bookingId" = v."bookingId" AND m."leaderId" IS NOT NULL
+			) l ON true
+			JOIN "Employee" e ON e.id = l.id
+			ON CONFLICT ("visitId", "employeeId") DO NOTHING;
+		`,
+	}, {
+		// 🔴 (ع) 10-16 «اكو هواي هيج اخطاء… دور بكل انحاء النظام»: «ليدر الحجز»
+		// چان إله أكثر من ٨ تعريفات (كل شاشة بترتيب)، فنفس الحجز يطلع بليدر
+		// بشاشة و«بلا ليدر» بثانية، والليدر الي مو بالتكليف ما تنحسبله طلعاته.
+		// هسه تعريف واحد بقاعدة البيانات، وكل النظام يناديه.
+		//
+		// booking_leader_id: مشرف الحجز (إذا هو ليدر) ← ليدر بالتكليف (الأقدم)
+		//                    ← ليدر المهمة الميدانية (الأحدث).
+		// booking_crew_ids : كل من اشتغل على الحجز — التكليف + المشرف الليدر +
+		//                    ليدر المهمة وأعضاؤها.
+		Version: "0371_booking_leader_fn",
+		SQL: `
+			CREATE OR REPLACE FUNCTION booking_leader_id(bid TEXT) RETURNS TEXT
+			LANGUAGE sql STABLE AS $f$
+				SELECT COALESCE(
+				  (SELECT b."projectSupervisorId" FROM "Booking" b JOIN "Employee" e ON e.id = b."projectSupervisorId"
+				    WHERE b.id = bid AND e."isLeader"),
+				  (SELECT ba."employeeId" FROM "BookingAssignment" ba JOIN "Employee" e ON e.id = ba."employeeId"
+				    WHERE ba."bookingId" = bid AND e."isLeader" ORDER BY ba."createdAt", ba.role LIMIT 1),
+				  (SELECT m."leaderId" FROM "Mission" m WHERE m."bookingId" = bid AND m."leaderId" IS NOT NULL
+				    ORDER BY m."createdAt" DESC LIMIT 1))
+			$f$;
+			CREATE OR REPLACE FUNCTION booking_crew_ids(bid TEXT) RETURNS SETOF TEXT
+			LANGUAGE sql STABLE AS $f$
+				SELECT ba."employeeId" FROM "BookingAssignment" ba WHERE ba."bookingId" = bid
+				UNION
+				SELECT b."projectSupervisorId" FROM "Booking" b JOIN "Employee" e ON e.id = b."projectSupervisorId"
+				 WHERE b.id = bid AND e."isLeader"
+				UNION
+				SELECT m."leaderId" FROM "Mission" m WHERE m."bookingId" = bid AND m."leaderId" IS NOT NULL
+				UNION
+				SELECT unnest(m."memberIds") FROM "Mission" m WHERE m."bookingId" = bid
+			$f$;
+			-- الطلعات القديمة: ليدر الحجز (بالتعريف الموحّد) ينضاف لكادرها لو فاته
+			INSERT INTO "BookingVisitCrew" (id, "visitId", "employeeId", role, "isLeader")
+			SELECT gen_random_uuid()::text, v.id, l.id, 'LEADER', true
+			FROM "BookingVisit" v
+			JOIN LATERAL (SELECT booking_leader_id(v."bookingId") AS id) l ON l.id IS NOT NULL
+			ON CONFLICT ("visitId", "employeeId") DO NOTHING;
+			-- الدوام المحسوب يتمدد لآخر حجز خلّصه الموظف — والليدر الي مو بالتكليف هم
+			CREATE OR REPLACE FUNCTION att_last_activity(emp TEXT, ci TIMESTAMP, co TIMESTAMP)
+			RETURNS TIMESTAMP LANGUAGE sql STABLE AS $$
+				SELECT max(b."completedAt") FROM "Booking" b
+				WHERE b."completedAt" > ci
+				  AND b."completedAt" <= LEAST(COALESCE(co, NOW() AT TIME ZONE 'UTC'),
+				      date_trunc('day', ci + interval '3 hours') + interval '27 hours')
+				  AND (EXISTS (SELECT 1 FROM "BookingAssignment" ba WHERE ba."bookingId" = b.id AND ba."employeeId" = emp)
+				    OR (b."projectSupervisorId" = emp AND EXISTS (SELECT 1 FROM "Employee" se WHERE se.id = emp AND se."isLeader"))
+				    OR EXISTS (SELECT 1 FROM "Mission" m WHERE m."bookingId" = b.id AND (m."leaderId" = emp OR emp = ANY(m."memberIds"))))
+			$$;
+			UPDATE "BookingVisitCrew" vc SET "isLeader" = true
+			FROM "BookingVisit" v
+			WHERE v.id = vc."visitId" AND vc."employeeId" = booking_leader_id(v."bookingId") AND NOT vc."isLeader";
+		`,
+	}, {
+		// (ع) 10-16: «تقرير تنفيذ المشروع» بنموذج المشرف الأصلي — للحجز وللمشروع اليومي
+		Version: "0372_execution_sheet",
+		SQL: `
+			ALTER TABLE "WorkReport" ADD COLUMN IF NOT EXISTS sheet JSONB;
+			ALTER TABLE "BookingProgressReport" ADD COLUMN IF NOT EXISTS sheet JSONB;
+		`,
+	}, {
+		// (ع) 10-16: «شوكت استلم المشروع، شوكت تواصل ويا الزبون، شوكت سواله عرض سعر»
+		Version: "0373_project_customer_contact",
+		SQL: `
+			ALTER TABLE "Project" ADD COLUMN IF NOT EXISTS "customerContactedAt" TIMESTAMP;
+			ALTER TABLE "Project" ADD COLUMN IF NOT EXISTS "customerContactedById" TEXT;
+			ALTER TABLE "Project" ADD COLUMN IF NOT EXISTS "customerContactNote" TEXT;
+		`,
+	}, {
+		// (ع) 10-16: «كل شكوى تاريخها قبل الشهر الثامن من هاي السنة تعتبر محلولة» —
+		// من النظام القديم. التسوية مكشوفة بعمودها، مو مخلوطة بالحل الحقيقي.
+		Version: "0374_complaint_legacy_settle",
+		SQL: `
+			ALTER TABLE "Complaint" ADD COLUMN IF NOT EXISTS "settledLegacyAt" TIMESTAMP;
+			UPDATE "Complaint"
+			   SET status = 'RESOLVED', "resolvedAt" = COALESCE("resolvedAt", now()),
+			       "settledLegacyAt" = now(),
+			       resolution = COALESCE(NULLIF(resolution, ''), 'محلولة — من النظام القديم')
+			 WHERE "createdAt" < '2026-08-01' AND status NOT IN ('RESOLVED', 'CLOSED');
+		`,
+	}, {
+		// (ع) 10-16: «من يتسجل الحجز بعد الشكوى لازم يتسجل حجز شكوى مو حجز عادي»
+		Version: "0375_complaint_booking",
+		SQL: `
+			ALTER TYPE "BookingType" ADD VALUE IF NOT EXISTS 'COMPLAINT';
+			ALTER TABLE "Booking" ADD COLUMN IF NOT EXISTS "complaintId" TEXT REFERENCES "Complaint"(id) ON DELETE SET NULL;
+			CREATE INDEX IF NOT EXISTS "Booking_complaint_idx" ON "Booking" ("complaintId") WHERE "complaintId" IS NOT NULL;
+		`,
+	}, {
+		// (ع) 10-16: «الشكاوى القديمة يطلعلي كدامهن تم التواصل ومغلقات، والجديدة
+		// مطلوب متابعة». كل شكوى قبل ٢٠٢٦-٠٨-٠١: مغلقة، تواصل مؤشّر، والتدقيق
+		// معتمد بملاحظة «من النظام القديم» — حتى ما تبقى «✕ لا» و«مطلوب متابعة».
+		Version: "0376_complaint_legacy_closed",
+		SQL: `
+			UPDATE "Complaint"
+			   SET status = 'CLOSED',
+			       "contactedAt" = COALESCE("contactedAt", "resolvedAt", "createdAt"),
+			       "resolvedAt" = COALESCE("resolvedAt", now()),
+			       "settledLegacyAt" = COALESCE("settledLegacyAt", now()),
+			       "auditVerdict" = COALESCE("auditVerdict", 'APPROVED'),
+			       "auditNote" = COALESCE(NULLIF("auditNote", ''), 'مغلقة — من النظام القديم'),
+			       "auditedAt" = COALESCE("auditedAt", now())
+			 WHERE "createdAt" < '2026-08-01';
+		`,
+	}, {
+		// (ع) 10-16: المراقب يقيّم شغل مهندس الجودة («تمام / مو تمام»)، ويسجّل
+		// تقصير على الحالات الي ما انتصل بيها — بلا غرامة فلوس.
+		Version: "0377_quality_monitor_verdict",
+		SQL: `
+			ALTER TABLE "QualityFollowUp" ADD COLUMN IF NOT EXISTS "monitorVerdict" TEXT;
+			ALTER TABLE "QualityFollowUp" ADD COLUMN IF NOT EXISTS "monitorNote" TEXT;
+			ALTER TABLE "QualityFollowUp" ADD COLUMN IF NOT EXISTS "monitorById" TEXT REFERENCES "Employee"(id) ON DELETE SET NULL;
+			ALTER TABLE "QualityFollowUp" ADD COLUMN IF NOT EXISTS "monitorAt" TIMESTAMP;
+			ALTER TABLE "QualityFollowUp" ADD COLUMN IF NOT EXISTS "monitorTargetId" TEXT REFERENCES "Employee"(id) ON DELETE SET NULL;
+		`,
+	}, {
+		// (ع) 10-16: «صار عدنا ٣ مدخلات لأوقات العمل — ماتركس يشوفهن كلهن، وإذا غابن
+		// ثنين يعتمد الموجودة». وقت الشغل الموثوق لكل حجز، ومن وين أخذه:
+		//   البداية: GPS (وصل الموقع) ← ضغطة «بدأ العمل» (إذا مو جماعية/بعيدة)
+		//            ← وقت البدء بورقة التنفيذ ← الانطلاق + نص ساعة.
+		//   النهاية: GPS (خلص) ← ضغطة «تم» (إذا مو جماعية/بعيدة) ← وقت الانتهاء بالورقة.
+		// الأعمدة بلا منطقة زمنية = UTC؛ ساعة الورقة بتوقيت بغداد.
+		Version: "0378_booking_work_window",
+		SQL: `
+			CREATE OR REPLACE FUNCTION booking_sheet_time(d TEXT, h TEXT, m TEXT) RETURNS TIMESTAMP
+			LANGUAGE plpgsql IMMUTABLE AS $$
+			BEGIN
+				IF d !~ '^\d{4}-\d{2}-\d{2}$' OR h !~ '^\d{1,2}$' OR m !~ '^\d{1,2}$' THEN RETURN NULL; END IF;
+				RETURN ((d || ' ' || h || ':' || m)::timestamp AT TIME ZONE 'Asia/Baghdad') AT TIME ZONE 'UTC';
+			EXCEPTION WHEN others THEN RETURN NULL;
+			END $$;
+
+			CREATE OR REPLACE FUNCTION booking_work_window(bid TEXT)
+			RETURNS TABLE("startAt" TIMESTAMP, "endAt" TIMESTAMP, "startSrc" TEXT, "endSrc" TEXT)
+			LANGUAGE plpgsql STABLE AS $$
+			DECLARE b RECORD; sh JSONB; bad_s BOOLEAN; bad_e BOOLEAN; ss TIMESTAMP; se TIMESTAMP; dep TIMESTAMP;
+			BEGIN
+				SELECT "autoArrivedAt", "autoCompletedAt", "startedAt", "completedAt", "autoDepartedAt", "departedAt"
+				  INTO b FROM "Booking" WHERE id = bid;
+				IF NOT FOUND THEN RETURN; END IF;
+				bad_s := EXISTS (SELECT 1 FROM "BookingStageProof" p WHERE p."bookingId" = bid AND p.stage = 'STARTED' AND p.verdict IN ('BATCH', 'FAR'));
+				bad_e := EXISTS (SELECT 1 FROM "BookingStageProof" p WHERE p."bookingId" = bid AND p.stage = 'COMPLETED' AND p.verdict IN ('BATCH', 'FAR'));
+				SELECT w.sheet INTO sh FROM "WorkReport" w WHERE w."bookingId" = bid AND w.sheet IS NOT NULL ORDER BY w."createdAt" DESC LIMIT 1;
+				IF sh IS NOT NULL THEN
+					ss := booking_sheet_time(COALESCE(NULLIF(sh->'header'->>'date', ''), sh->'data'->>'startDate'), sh->'time'->>'startH', sh->'time'->>'startM');
+					se := booking_sheet_time(COALESCE(NULLIF(sh->'data'->>'endDate', ''), sh->'header'->>'date'), sh->'time'->>'endH', sh->'time'->>'endM');
+				END IF;
+				dep := COALESCE(b."autoDepartedAt", b."departedAt");
+				"startAt" := CASE WHEN b."autoArrivedAt" IS NOT NULL THEN b."autoArrivedAt"
+				                  WHEN b."startedAt" IS NOT NULL AND NOT bad_s THEN b."startedAt"
+				                  WHEN ss IS NOT NULL THEN ss
+				                  WHEN dep IS NOT NULL THEN dep + interval '30 minutes' END;
+				"startSrc" := CASE WHEN b."autoArrivedAt" IS NOT NULL THEN 'GPS'
+				                   WHEN b."startedAt" IS NOT NULL AND NOT bad_s THEN 'TAP'
+				                   WHEN ss IS NOT NULL THEN 'SHEET'
+				                   WHEN dep IS NOT NULL THEN 'DEPART_30' END;
+				"endAt" := CASE WHEN b."autoCompletedAt" IS NOT NULL THEN b."autoCompletedAt"
+				                WHEN b."completedAt" IS NOT NULL AND NOT bad_e THEN b."completedAt"
+				                WHEN se IS NOT NULL THEN se END;
+				"endSrc" := CASE WHEN b."autoCompletedAt" IS NOT NULL THEN 'GPS'
+				                 WHEN b."completedAt" IS NOT NULL AND NOT bad_e THEN 'TAP'
+				                 WHEN se IS NOT NULL THEN 'SHEET' END;
+				RETURN NEXT;
+			END $$;
+
+			-- نفس التوقيع القديم حتى كل استعلامات ماتركس تستفاد بلا تغيير.
+			CREATE OR REPLACE FUNCTION booking_work_minutes(bid TEXT, s TIMESTAMP, c TIMESTAMP, aa TIMESTAMP, ac TIMESTAMP)
+			RETURNS DOUBLE PRECISION LANGUAGE plpgsql STABLE AS $$
+			DECLARE w RECORD; m DOUBLE PRECISION;
+			BEGIN
+				SELECT * INTO w FROM booking_work_window(bid);
+				IF w."startAt" IS NULL OR w."endAt" IS NULL OR w."endAt" <= w."startAt" THEN RETURN NULL; END IF;
+				m := EXTRACT(EPOCH FROM (w."endAt" - w."startAt")) / 60;
+				IF m < 5 OR m > 16 * 60 THEN RETURN NULL; END IF;
+				RETURN m;
+			END $$;
+		`,
+	}, {
+		// (ع) 10-16: «حجز ديكور مربوط» — الديكور يطلعون ويا الشعبة الهندسية أو قبلها
+		// بيوم يكملون شغل (حداد يسوي قاعدة داتا شو…). حجز مستقل مربوط بالأب.
+		Version: "0379_decor_booking",
+		SQL: `
+			ALTER TYPE "BookingType" ADD VALUE IF NOT EXISTS 'DECOR';
+			ALTER TABLE "Booking" ADD COLUMN IF NOT EXISTS "parentBookingId" TEXT REFERENCES "Booking"(id) ON DELETE SET NULL;
+			ALTER TABLE "Booking" ADD COLUMN IF NOT EXISTS "decorTiming" TEXT;
+			CREATE INDEX IF NOT EXISTS "Booking_parent_idx" ON "Booking" ("parentBookingId") WHERE "parentBookingId" IS NOT NULL;
+		`,
+	}, {
+		// (ع) 10-16: «جدول أسعار للديكور» — لكل مهنة بنود بسعرها (متر/قطعة/يوم)،
+		// والفاتورة تنحسب منه ومن القياسات. ماكو سعر بالإيد، نفس حماية الشعبة.
+		Version: "0380_decor_rates",
+		SQL: `
+			CREATE TABLE IF NOT EXISTS "DecorRate" (
+				id TEXT PRIMARY KEY,
+				"serviceId" TEXT NOT NULL REFERENCES "Service"(id) ON DELETE CASCADE,
+				name TEXT NOT NULL,
+				unit TEXT NOT NULL,
+				price NUMERIC NOT NULL CHECK (price >= 0),
+				active BOOLEAN NOT NULL DEFAULT true,
+				"createdAt" TIMESTAMP NOT NULL DEFAULT now(),
+				"updatedAt" TIMESTAMP NOT NULL DEFAULT now()
+			);
+			CREATE INDEX IF NOT EXISTS "DecorRate_service_idx" ON "DecorRate" ("serviceId");
+		`,
+	}, {
+		// (ع) 10-16: «لازم أكو خيار ينطي تم التدقيق حتى ما يضلن معلّكات» —
+		// تقارير الحجوزات والتقارير اليومية للمشاريع.
+		Version: "0381_report_review",
+		SQL: `
+			ALTER TABLE "WorkReport" ADD COLUMN IF NOT EXISTS "reviewedAt" TIMESTAMP;
+			ALTER TABLE "WorkReport" ADD COLUMN IF NOT EXISTS "reviewedById" TEXT REFERENCES "Employee"(id) ON DELETE SET NULL;
+			ALTER TABLE "WorkReport" ADD COLUMN IF NOT EXISTS "reviewNote" TEXT;
+			ALTER TABLE "BookingProgressReport" ADD COLUMN IF NOT EXISTS "reviewedAt" TIMESTAMP;
+			ALTER TABLE "BookingProgressReport" ADD COLUMN IF NOT EXISTS "reviewedById" TEXT REFERENCES "Employee"(id) ON DELETE SET NULL;
+			ALTER TABLE "BookingProgressReport" ADD COLUMN IF NOT EXISTS "reviewNote" TEXT;
+		`,
+	}, {
+		// (ع) 10-17: «من يطلع موظف، نختار موظف ويترحّل كلشي إله» — سجل التسليم.
+		Version: "0382_employee_handover",
+		SQL: `
+			CREATE TABLE IF NOT EXISTS "EmployeeHandover" (
+				id TEXT PRIMARY KEY,
+				"fromId" TEXT NOT NULL REFERENCES "Employee"(id) ON DELETE CASCADE,
+				"toId" TEXT NOT NULL REFERENCES "Employee"(id) ON DELETE CASCADE,
+				"byId" TEXT REFERENCES "Employee"(id) ON DELETE SET NULL,
+				summary JSONB NOT NULL,
+				"createdAt" TIMESTAMP NOT NULL DEFAULT now()
+			);
+		`,
+	}, {
+		// (ع) 10-17: إدارة المركبات تشمل «إجازات سوق الموظفين، والتعهدات وتخويل
+		// السياقة، وبطاقات البنزين» — الناقصات من الموجود (الوقود والعطلات والتنظيف).
+		Version: "0383_vehicle_drivers_fuel_cards",
+		SQL: `
+			CREATE TABLE IF NOT EXISTS "VehicleDriver" (
+				"employeeId" TEXT PRIMARY KEY REFERENCES "Employee"(id) ON DELETE CASCADE,
+				"licenseNumber" TEXT,
+				"licenseExpiry" DATE,
+				authorized BOOLEAN NOT NULL DEFAULT false,
+				"authorizedVehicles" TEXT,
+				"pledgeSignedAt" DATE,
+				"pledgeNote" TEXT,
+				"updatedById" TEXT REFERENCES "Employee"(id) ON DELETE SET NULL,
+				"updatedAt" TIMESTAMP NOT NULL DEFAULT now()
+			);
+			CREATE TABLE IF NOT EXISTS "FuelCard" (
+				id TEXT PRIMARY KEY,
+				number TEXT NOT NULL,
+				provider TEXT,
+				"vehicleId" TEXT REFERENCES "Vehicle"(id) ON DELETE SET NULL,
+				"holderEmployeeId" TEXT REFERENCES "Employee"(id) ON DELETE SET NULL,
+				"monthlyLimit" NUMERIC,
+				active BOOLEAN NOT NULL DEFAULT true,
+				notes TEXT,
+				"createdAt" TIMESTAMP NOT NULL DEFAULT now(),
+				"updatedAt" TIMESTAMP NOT NULL DEFAULT now()
+			);
+		`,
+	}, {
+		// ═══ «السكرتير» — أول عميل ذكاء داخل النظام (قرار (ع) 10-22، docs/secretary.md) ═══
+		// للمالك ومدير النظام، كل واحد بذاكرته. المحادثة، وكل مقترح تنفيذ
+		// ونتيجته (السجل)، والتفضيلات المعتمدة بس.
+		Version: "0386_secretary",
+		SQL: `
+			CREATE TABLE IF NOT EXISTS "SecretaryMessage" (
+				id TEXT PRIMARY KEY,
+				"employeeId" TEXT NOT NULL REFERENCES "Employee"(id) ON DELETE CASCADE,
+				role TEXT NOT NULL CHECK (role IN ('user', 'assistant')),
+				text TEXT NOT NULL DEFAULT '',
+				transcript TEXT,
+				cards JSONB NOT NULL DEFAULT '[]'::jsonb,
+				"actionId" TEXT,
+				"createdAt" TIMESTAMPTZ NOT NULL DEFAULT now()
+			);
+			CREATE INDEX IF NOT EXISTS "SecretaryMessage_emp_idx" ON "SecretaryMessage" ("employeeId", "createdAt" DESC);
+			CREATE TABLE IF NOT EXISTS "SecretaryAction" (
+				id TEXT PRIMARY KEY,
+				"employeeId" TEXT NOT NULL REFERENCES "Employee"(id) ON DELETE CASCADE,
+				kind TEXT NOT NULL,
+				request TEXT NOT NULL DEFAULT '',
+				summary TEXT NOT NULL DEFAULT '',
+				fields JSONB NOT NULL DEFAULT '{}'::jsonb,
+				status TEXT NOT NULL DEFAULT 'PROPOSED' CHECK (status IN ('PROPOSED', 'SENT', 'CANCELLED', 'FAILED')),
+				result TEXT,
+				"createdAt" TIMESTAMPTZ NOT NULL DEFAULT now(),
+				"decidedAt" TIMESTAMPTZ
+			);
+			CREATE INDEX IF NOT EXISTS "SecretaryAction_emp_idx" ON "SecretaryAction" ("employeeId", "createdAt" DESC);
+			CREATE TABLE IF NOT EXISTS "SecretaryPref" (
+				id TEXT PRIMARY KEY,
+				"employeeId" TEXT NOT NULL REFERENCES "Employee"(id) ON DELETE CASCADE,
+				text TEXT NOT NULL,
+				active BOOLEAN NOT NULL DEFAULT true,
+				"createdAt" TIMESTAMPTZ NOT NULL DEFAULT now()
+			);
+		`,
+	}, {
+		// «تذكيراتي» (دازاي 10-22): الموظف يطلب مقابلة المدير أو يجيب ضيف،
+		// والطلب يوصل لتذكيرات السكرتير — المالك أو المدير يحدد موعد أو يرفض بسبب.
+		Version: "0387_meeting_request",
+		SQL: `
+			CREATE TABLE IF NOT EXISTS "MeetingRequest" (
+				id TEXT PRIMARY KEY,
+				"employeeId" TEXT NOT NULL REFERENCES "Employee"(id) ON DELETE CASCADE,
+				kind TEXT NOT NULL CHECK (kind IN ('MEETING', 'GUEST')),
+				reason TEXT NOT NULL,
+				"guestName" TEXT,
+				"preferredAt" TIMESTAMPTZ,
+				status TEXT NOT NULL DEFAULT 'PENDING' CHECK (status IN ('PENDING', 'SCHEDULED', 'DECLINED')),
+				"scheduledAt" TIMESTAMPTZ,
+				note TEXT,
+				"decidedById" TEXT REFERENCES "Employee"(id) ON DELETE SET NULL,
+				"createdAt" TIMESTAMPTZ NOT NULL DEFAULT now(),
+				"decidedAt" TIMESTAMPTZ
+			);
+			CREATE INDEX IF NOT EXISTS "MeetingRequest_emp_idx" ON "MeetingRequest" ("employeeId", "createdAt" DESC);
+			CREATE INDEX IF NOT EXISTS "MeetingRequest_pending_idx" ON "MeetingRequest" ("createdAt") WHERE status = 'PENDING';
+		`,
+	}, {
+		// «لقطة الواجبات اليومية» (دازاي 10-22): الواجبات چانت تنحسب لحظياً بس،
+		// فماكو تاريخ يحكم عليه ماتركس («الي يكرر ما يسوي واجباته»). كل ليلة
+		// ١١:٥٠ بغداد ينحفظ لكل موظف شنو كمّل — وحدة لكل موظف باليوم.
+		Version: "0388_duty_snapshot",
+		SQL: `
+			CREATE TABLE IF NOT EXISTS "DutySnapshot" (
+				id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
+				"employeeId" TEXT NOT NULL REFERENCES "Employee"(id) ON DELETE CASCADE,
+				day DATE NOT NULL,
+				position TEXT NOT NULL,
+				"doneCount" INT NOT NULL,
+				total INT NOT NULL,
+				verdict TEXT NOT NULL,
+				off TEXT,
+				duties JSONB NOT NULL DEFAULT '[]'::jsonb,
+				"createdAt" TIMESTAMPTZ NOT NULL DEFAULT now(),
+				UNIQUE ("employeeId", day)
+			);
+			CREATE INDEX IF NOT EXISTS "DutySnapshot_day_idx" ON "DutySnapshot" (day);
+		`,
+	}, {
+		// «الحجوزات المرجوعة من إدارة المشاريع وين تروح؟» (دازاي 10-23): چانت
+		// ترجع لمحطتها بلا أثر، والإشعار لدور «إداري الكوادر» بس — فتضيع. هسه
+		// تنعلّم، وتطلع بمحطة «↩️ رجعت من المشاريع» لحد ما المنسّق يستلمها.
+		Version: "0389_booking_returned_from_projects",
+		SQL: `
+			ALTER TABLE "Booking" ADD COLUMN IF NOT EXISTS "returnedFromProjectsAt" TIMESTAMPTZ;
+			ALTER TABLE "Booking" ADD COLUMN IF NOT EXISTS "returnedFromProjectsNote" TEXT;
+			ALTER TABLE "Booking" ADD COLUMN IF NOT EXISTS "returnedFromProjectsById" TEXT;
+			ALTER TABLE "Booking" ADD COLUMN IF NOT EXISTS "returnHandledAt" TIMESTAMPTZ;
+			ALTER TABLE "Booking" ADD COLUMN IF NOT EXISTS "returnHandledById" TEXT;
+			CREATE INDEX IF NOT EXISTS "Booking_returned_open_idx" ON "Booking" ("returnedFromProjectsAt")
+				WHERE "returnedFromProjectsAt" IS NOT NULL AND "returnHandledAt" IS NULL;
+		`,
+	}, {
+		// 🕶️ «الدخول المتخفي» (دازاي 10-23): المالك يدخل بحساب موظف يشتغل بيه.
+		// كل بداية جلسة وكل كتابة تنسجل هنا — الي سوّاه المالك بحساب الموظف
+		// يبقى مثبوت عليه، مو على الموظف.
+		Version: "0390_stealth_log",
+		SQL: `
+			CREATE TABLE IF NOT EXISTS "StealthLog" (
+				id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
+				"ownerId" TEXT NOT NULL,
+				"employeeId" TEXT NOT NULL,
+				method TEXT NOT NULL,
+				path TEXT NOT NULL,
+				status INT NOT NULL DEFAULT 0,
+				"createdAt" TIMESTAMPTZ NOT NULL DEFAULT now()
+			);
+			CREATE INDEX IF NOT EXISTS "StealthLog_employee_idx" ON "StealthLog" ("employeeId", "createdAt" DESC);
+		`,
+	}, {
+		// 📔 «مذكراتي» و«جدول أعمالي» (دازاي 10-23): ملاحظات المالك/المدير الخاصة —
+		// كل واحد يشوف ملاحظاته بس. DIARY مذكرة حرة، AGENDA شي بجدوله بوقت.
+		Version: "0391_secretary_note",
+		SQL: `
+			CREATE TABLE IF NOT EXISTS "SecretaryNote" (
+				id TEXT PRIMARY KEY,
+				"ownerId" TEXT NOT NULL REFERENCES "Employee"(id) ON DELETE CASCADE,
+				kind TEXT NOT NULL CHECK (kind IN ('DIARY', 'AGENDA')),
+				body TEXT NOT NULL,
+				"at" TIMESTAMPTZ,
+				"doneAt" TIMESTAMPTZ,
+				"createdAt" TIMESTAMPTZ NOT NULL DEFAULT now()
+			);
+			CREATE INDEX IF NOT EXISTS "SecretaryNote_owner_idx" ON "SecretaryNote" ("ownerId", kind, "createdAt" DESC);
+		`,
+	}, {
+		// 🤖 أسماء الوكلاء (دازاي 10-23): «ابو الجودة» و«ابو الحجوزات» اسمهم يحدده
+		// المالك من الإعدادات بعدين. ماتركس وايريس ثابتين بالكود.
+		Version: "0392_ai_agent_name",
+		SQL: `
+			CREATE TABLE IF NOT EXISTS "AiAgentName" (
+				agent TEXT PRIMARY KEY CHECK (agent IN ('QUALITY', 'BOOKING')),
+				name TEXT NOT NULL,
+				"updatedById" TEXT REFERENCES "Employee"(id) ON DELETE SET NULL,
+				"updatedAt" TIMESTAMPTZ NOT NULL DEFAULT now()
+			);
+		`,
+	}, {
+		// 💬 وكيلي الجودة والحجوزات عالواتساب (دازاي 10-23 — docs/ai-quality-booking-plan.md).
+		// المحادثة والرسائل، وكل إجراء سواه الوكيل ويا سببه حتى ينراجع وينلغى.
+		// ومتابعة الجودة تاخذ تقييم الزبون للشغل وللكادر.
+		Version: "0393_wa_agents",
+		SQL: `
+			CREATE TABLE IF NOT EXISTS "WaConversation" (
+				id TEXT PRIMARY KEY,
+				agent TEXT NOT NULL CHECK (agent IN ('QUALITY', 'BOOKING')),
+				"customerId" TEXT REFERENCES "Customer"(id) ON DELETE SET NULL,
+				phone TEXT NOT NULL,
+				"bookingId" TEXT REFERENCES "Booking"(id) ON DELETE SET NULL,
+				"followUpId" TEXT REFERENCES "QualityFollowUp"(id) ON DELETE SET NULL,
+				status TEXT NOT NULL DEFAULT 'BOT' CHECK (status IN ('BOT', 'HUMAN', 'CLOSED')),
+				sandbox BOOLEAN NOT NULL DEFAULT false,
+				"humanById" TEXT REFERENCES "Employee"(id) ON DELETE SET NULL,
+				"lastMessageAt" TIMESTAMPTZ NOT NULL DEFAULT now(),
+				"lastReadAt" TIMESTAMPTZ,
+				"createdAt" TIMESTAMPTZ NOT NULL DEFAULT now()
+			);
+			CREATE UNIQUE INDEX IF NOT EXISTS "WaConversation_open_uq" ON "WaConversation" (agent, phone)
+				WHERE status <> 'CLOSED' AND NOT sandbox;
+			CREATE INDEX IF NOT EXISTS "WaConversation_list_idx" ON "WaConversation" (agent, status, "lastMessageAt" DESC);
+			CREATE TABLE IF NOT EXISTS "WaMessage" (
+				id TEXT PRIMARY KEY,
+				"conversationId" TEXT NOT NULL REFERENCES "WaConversation"(id) ON DELETE CASCADE,
+				direction TEXT NOT NULL CHECK (direction IN ('IN', 'OUT')),
+				author TEXT NOT NULL CHECK (author IN ('CUSTOMER', 'AGENT', 'HUMAN')),
+				"authorId" TEXT REFERENCES "Employee"(id) ON DELETE SET NULL,
+				text TEXT NOT NULL,
+				"metaId" TEXT UNIQUE,
+				"createdAt" TIMESTAMPTZ NOT NULL DEFAULT now()
+			);
+			CREATE INDEX IF NOT EXISTS "WaMessage_conv_idx" ON "WaMessage" ("conversationId", "createdAt");
+			CREATE TABLE IF NOT EXISTS "AiAgentAction" (
+				id TEXT PRIMARY KEY,
+				agent TEXT NOT NULL,
+				"conversationId" TEXT REFERENCES "WaConversation"(id) ON DELETE SET NULL,
+				kind TEXT NOT NULL,
+				summary TEXT NOT NULL,
+				reason TEXT NOT NULL DEFAULT '',
+				"targetType" TEXT,
+				"targetId" TEXT,
+				payload JSONB,
+				sandbox BOOLEAN NOT NULL DEFAULT false,
+				"undoneAt" TIMESTAMPTZ,
+				"undoneById" TEXT REFERENCES "Employee"(id) ON DELETE SET NULL,
+				"undoReason" TEXT,
+				"createdAt" TIMESTAMPTZ NOT NULL DEFAULT now()
+			);
+			CREATE INDEX IF NOT EXISTS "AiAgentAction_target_idx" ON "AiAgentAction" ("targetId");
+			CREATE INDEX IF NOT EXISTS "AiAgentAction_conv_idx" ON "AiAgentAction" ("conversationId");
+			ALTER TABLE "QualityFollowUp" ADD COLUMN IF NOT EXISTS "customerRating" INT CHECK ("customerRating" BETWEEN 1 AND 5);
+			ALTER TABLE "QualityFollowUp" ADD COLUMN IF NOT EXISTS "crewRating" INT CHECK ("crewRating" BETWEEN 1 AND 5);
+			ALTER TABLE "QualityFollowUp" ADD COLUMN IF NOT EXISTS "contactedByAgent" TEXT;
+		`,
+	}, {
+		// 💬 محادثات ايريس المتعددة + ذاكرة لكل محادثة (دازاي 10-23: «اريد محادثات مو محادثة
+		// وحدة… كل محادثة إلها ذاكرة حتى ما يصرف أكثر»). الرسائل القديمة تنضم لمحادثة
+		// «المحادثات السابقة». وماتركس عنده محادثات أصلاً (MatrixTalk) — ياخذ الذاكرة بس.
+		Version: "0394_ai_conversations_memory",
+		SQL: `
+			CREATE TABLE IF NOT EXISTS "SecretaryConversation" (
+				id TEXT PRIMARY KEY,
+				"employeeId" TEXT NOT NULL REFERENCES "Employee"(id) ON DELETE CASCADE,
+				title TEXT NOT NULL DEFAULT 'محادثة جديدة',
+				summary TEXT NOT NULL DEFAULT '',
+				"summarizedUpTo" TIMESTAMPTZ,
+				"createdAt" TIMESTAMPTZ NOT NULL DEFAULT now(),
+				"updatedAt" TIMESTAMPTZ NOT NULL DEFAULT now()
+			);
+			CREATE INDEX IF NOT EXISTS "SecretaryConversation_emp_idx" ON "SecretaryConversation" ("employeeId", "updatedAt" DESC);
+			ALTER TABLE "SecretaryMessage" ADD COLUMN IF NOT EXISTS "conversationId" TEXT REFERENCES "SecretaryConversation"(id) ON DELETE CASCADE;
+			INSERT INTO "SecretaryConversation" (id, "employeeId", title, "createdAt", "updatedAt")
+				SELECT 'old-' || m."employeeId", m."employeeId", 'المحادثات السابقة', min(m."createdAt"), max(m."createdAt")
+				FROM "SecretaryMessage" m WHERE m."conversationId" IS NULL GROUP BY m."employeeId"
+				ON CONFLICT (id) DO NOTHING;
+			UPDATE "SecretaryMessage" SET "conversationId" = 'old-' || "employeeId" WHERE "conversationId" IS NULL;
+			CREATE INDEX IF NOT EXISTS "SecretaryMessage_conv_idx" ON "SecretaryMessage" ("conversationId", "createdAt");
+			ALTER TABLE "MatrixTalk" ADD COLUMN IF NOT EXISTS summary TEXT NOT NULL DEFAULT '';
+			ALTER TABLE "MatrixTalk" ADD COLUMN IF NOT EXISTS "summarizedUpTo" TIMESTAMPTZ;
+		`,
+	}, {
+		// (دازاي 10-25) كادر الديكور: صورة «قبل» و«بعد» لكل شغلة بدل التقرير المكتوب
+		// (أغلبهم ما يكتبون). الصورة تنحفظ بالتخزين نفسه، وهنا ربطها بالحجز والمرحلة.
+		Version: "0395_work_photo",
+		SQL: `
+			CREATE TABLE IF NOT EXISTS "WorkPhoto" (
+				id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
+				"bookingId" TEXT NOT NULL REFERENCES "Booking"(id) ON DELETE CASCADE,
+				"employeeId" TEXT REFERENCES "Employee"(id) ON DELETE SET NULL,
+				phase TEXT NOT NULL CHECK (phase IN ('BEFORE', 'AFTER')),
+				"fileKey" TEXT NOT NULL,
+				"contentType" TEXT NOT NULL,
+				"createdAt" TIMESTAMP NOT NULL DEFAULT now()
+			);
+			CREATE INDEX IF NOT EXISTS "WorkPhoto_booking" ON "WorkPhoto"("bookingId", phase);
+		`,
+	}, {
+		// (دازاي 10-25) «اريد خيار للمحاسب انو يطلب حذف الفاتورة… طلبها يوصل للمالك».
+		// الفاتورة ما تنحذف إلا بموافقة المالك، وقبل الحذف تنحفظ نسختها كاملة هنا.
+		Version: "0396_invoice_delete_request",
+		SQL: `
+			CREATE TABLE IF NOT EXISTS "LeaderInvoiceDeleteRequest" (
+				id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
+				"invoiceId" TEXT NOT NULL,
+				"accountingCode" TEXT,
+				"bookingCode" TEXT,
+				"netTotal" NUMERIC,
+				"requestedById" TEXT REFERENCES "Employee"(id) ON DELETE SET NULL,
+				reason TEXT NOT NULL,
+				status TEXT NOT NULL DEFAULT 'PENDING' CHECK (status IN ('PENDING', 'APPROVED', 'REJECTED')),
+				"decidedById" TEXT REFERENCES "Employee"(id) ON DELETE SET NULL,
+				"decidedAt" TIMESTAMP,
+				"decisionNote" TEXT,
+				snapshot JSONB,
+				"createdAt" TIMESTAMP NOT NULL DEFAULT now()
+			);
+			CREATE UNIQUE INDEX IF NOT EXISTS "LeaderInvoiceDeleteRequest_pending"
+				ON "LeaderInvoiceDeleteRequest"("invoiceId") WHERE status = 'PENDING';
+		`,
+	}, {
+		// (دازاي 10-26) «ما اريد نفس اليوزر يتكرر» — قفل بالقاعدة بلا فرق حروف أو فراغات.
+		// ⚠️ إذا اكو تكرار قديم، ما نوكّف الإقلاع: نتركه (الكود يمنع الجديد) ونطلّع ملاحظة.
+		Version: "0397_username_ci_unique",
+		SQL: `
+			DO $$
+			BEGIN
+				IF EXISTS (SELECT 1 FROM "Employee" WHERE username IS NOT NULL
+				           GROUP BY lower(btrim(username)) HAVING count(*) > 1) THEN
+					RAISE NOTICE 'Employee: يوزرات مكررة قديمة — القفل ما انضاف، صلّحها أول';
+				ELSE
+					CREATE UNIQUE INDEX IF NOT EXISTS "Employee_username_ci_key"
+						ON "Employee" (lower(btrim(username))) WHERE username IS NOT NULL;
+				END IF;
+			END $$;
+		`,
+	}, {
+		// (دازاي 10-26) ترتيب الصلاحيات: استثناءات معتمدة (تبقى وكت المطابقة، وممكن
+		// مؤقتة بموعد)، وسجل كل تغيير (منو، شنو، ليش)، ونسخة لكل موظف حتى تعديلين
+		// بنفس الوقت ما يكتب واحد فوق الثاني.
+		Version: "0398_permission_access",
+		SQL: `
+			ALTER TABLE "Employee" ADD COLUMN IF NOT EXISTS "accessVersion" INT NOT NULL DEFAULT 0;
+			CREATE TABLE IF NOT EXISTS "PermissionException" (
+				"employeeId" TEXT NOT NULL REFERENCES "Employee"(id) ON DELETE CASCADE,
+				permission TEXT NOT NULL,
+				reason TEXT NOT NULL,
+				"approvedById" TEXT REFERENCES "Employee"(id) ON DELETE SET NULL,
+				"expiresAt" TIMESTAMP,
+				"createdAt" TIMESTAMP NOT NULL DEFAULT now(),
+				PRIMARY KEY ("employeeId", permission)
+			);
+			CREATE TABLE IF NOT EXISTS "PermissionAuditLog" (
+				id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
+				"employeeId" TEXT NOT NULL,
+				"actorId" TEXT,
+				action TEXT NOT NULL,
+				permission TEXT NOT NULL,
+				reason TEXT,
+				"createdAt" TIMESTAMP NOT NULL DEFAULT now()
+			);
+			CREATE INDEX IF NOT EXISTS "PermissionAuditLog_emp" ON "PermissionAuditLog"("employeeId", "createdAt" DESC);
+		`,
+	}, {
+		// (دازاي 10-26) «أي شي من النظام القديم أريده يعتبر تم» — حجوزات الاستيراد
+		// التاريخي (OLD-) تنسوّى بنفس علامة «تسوية قديم» (settledLegacyAt) الي يستثنيها
+		// كل طابور ورق وانضباط وماتركس. ما نلمس مبالغ ولا نسوّي فواتير ولا نحذف.
+		Version: "0399_settle_old_imports",
+		SQL: `
+			UPDATE "Booking" SET
+				status = 'COMPLETED',
+				"completedAt" = COALESCE("completedAt", "createdAt"),
+				"settledLegacyAt" = now(),
+				"settledLegacyNote" = 'من النظام القديم — يعتبر تم (قرار دازاي 10-26)',
+				"awaitingReschedule" = false,
+				"waitingSince" = NULL,
+				"waitingKind" = NULL,
+				"updatedAt" = now()
+			WHERE code LIKE 'OLD-%' AND "settledLegacyAt" IS NULL
+			  AND "archivedAt" IS NULL AND status <> 'CANCELLED';
+		`,
+	}, {
+		Version: "0400_agent_names_all",
+		SQL: `
+			ALTER TABLE "AiAgentName" DROP CONSTRAINT IF EXISTS "AiAgentName_agent_check";
+			ALTER TABLE "AiAgentName" ADD CONSTRAINT "AiAgentName_agent_check" CHECK (agent IN ('QUALITY', 'BOOKING', 'MATRIX', 'IRIS'));
+		`,
+	}, {
+		Version: "0401_ai_brain_budget",
+		SQL: `
+			CREATE TABLE IF NOT EXISTS "AiBrainBudget" (
+				brain TEXT PRIMARY KEY CHECK (brain IN ('internal', 'external')),
+				"dailyUSD" DOUBLE PRECISION NOT NULL CHECK ("dailyUSD" > 0),
+				"updatedById" TEXT,
+				"updatedAt" TIMESTAMPTZ NOT NULL DEFAULT now()
+			);
+		`,
+	}, {
+		Version: "0402_ai_suggestion",
+		SQL: `
+			CREATE TABLE IF NOT EXISTS "AiSuggestion" (
+				id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
+				agent TEXT NOT NULL,
+				title TEXT NOT NULL,
+				details TEXT NOT NULL DEFAULT '',
+				"needsCode" BOOLEAN NOT NULL DEFAULT false,
+				status TEXT NOT NULL DEFAULT 'NEW' CHECK (status IN ('NEW', 'ACCEPTED', 'REJECTED', 'DONE')),
+				"decidedById" TEXT,
+				"decidedAt" TIMESTAMPTZ,
+				"createdAt" TIMESTAMPTZ NOT NULL DEFAULT now()
+			);
+			CREATE INDEX IF NOT EXISTS "AiSuggestion_status_idx" ON "AiSuggestion" (status, "createdAt" DESC);
+		`,
+	}, {
+		Version: "0403_ai_file",
+		SQL: `
+			CREATE TABLE IF NOT EXISTS "AiFile" (
+				id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
+				"employeeId" TEXT NOT NULL REFERENCES "Employee"(id) ON DELETE CASCADE,
+				name TEXT NOT NULL,
+				data BYTEA NOT NULL,
+				"createdAt" TIMESTAMPTZ NOT NULL DEFAULT now()
+			);
+		`,
+	}, {
+		Version: "0404_ai_reminder",
+		SQL: `
+			CREATE TABLE IF NOT EXISTS "AiReminder" (
+				id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
+				"employeeId" TEXT NOT NULL REFERENCES "Employee"(id) ON DELETE CASCADE,
+				text TEXT NOT NULL,
+				"dueAt" TIMESTAMPTZ NOT NULL,
+				"sentAt" TIMESTAMPTZ,
+				"cancelledAt" TIMESTAMPTZ,
+				"createdAt" TIMESTAMPTZ NOT NULL DEFAULT now()
+			);
+			CREATE INDEX IF NOT EXISTS "AiReminder_due_idx" ON "AiReminder" ("dueAt") WHERE "sentAt" IS NULL AND "cancelledAt" IS NULL;
+		`,
+	}, {
+		Version: "0405_ai_watch",
+		SQL: `
+			CREATE TABLE IF NOT EXISTS "AiWatch" (
+				id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
+				"ownerId" TEXT NOT NULL REFERENCES "Employee"(id) ON DELETE CASCADE,
+				"employeeId" TEXT NOT NULL REFERENCES "Employee"(id) ON DELETE CASCADE,
+				"noteId" TEXT,
+				concern TEXT NOT NULL DEFAULT '',
+				baseline JSONB NOT NULL,
+				status TEXT NOT NULL DEFAULT 'OPEN' CHECK (status IN ('OPEN', 'IMPROVED', 'WORSE', 'CLOSED')),
+				"createdAt" TIMESTAMPTZ NOT NULL DEFAULT now(),
+				"checkedAt" TIMESTAMPTZ,
+				"closedAt" TIMESTAMPTZ
+			);
+			CREATE INDEX IF NOT EXISTS "AiWatch_open_idx" ON "AiWatch" (status, "createdAt");
+		`,
+	}, {
+		Version: "0406_voice_lexicon",
+		SQL: `
+			CREATE TABLE IF NOT EXISTS "VoiceTerm" (
+				term TEXT PRIMARY KEY,
+				meaning TEXT NOT NULL DEFAULT '',
+				category TEXT NOT NULL DEFAULT '',
+				source TEXT NOT NULL DEFAULT 'SEED' CHECK (source IN ('SEED', 'SYSTEM', 'LEARNED', 'OWNER')),
+				uses INT NOT NULL DEFAULT 0,
+				"createdAt" TIMESTAMPTZ NOT NULL DEFAULT now(),
+				"updatedAt" TIMESTAMPTZ NOT NULL DEFAULT now()
+			);
+			CREATE TABLE IF NOT EXISTS "VoiceFix" (
+				wrong TEXT PRIMARY KEY,
+				"right" TEXT NOT NULL,
+				source TEXT NOT NULL DEFAULT 'SEED',
+				uses INT NOT NULL DEFAULT 0,
+				"createdAt" TIMESTAMPTZ NOT NULL DEFAULT now()
+			);
+		`,
+	}, {
+		Version: "0407_secretary_audio",
+		SQL: `
+			CREATE TABLE IF NOT EXISTS "SecretaryAudio" (
+				"messageId" TEXT PRIMARY KEY REFERENCES "SecretaryMessage"(id) ON DELETE CASCADE,
+				"contentType" TEXT NOT NULL,
+				data BYTEA NOT NULL,
+				"createdAt" TIMESTAMPTZ NOT NULL DEFAULT now()
+			);
+		`,
+	}, {
+		// 🏛️ الهيكل الجديد (دازاي 10-29): إدارات ووحدات ومناصب. طبقة فوك الأدوار —
+		// المنصب ينطي حزمة صلاحيات وحدته (مصدر ORG)، والسجل ما ينحذف.
+		Version: "0408_org_structure",
+		SQL: `
+			CREATE TABLE IF NOT EXISTS "OrgDivision" (
+				id TEXT PRIMARY KEY,
+				name TEXT NOT NULL,
+				"parentId" TEXT REFERENCES "OrgDivision"(id),
+				sort INT NOT NULL DEFAULT 0,
+				summary TEXT NOT NULL DEFAULT ''
+			);
+			CREATE TABLE IF NOT EXISTS "OrgUnit" (
+				id TEXT PRIMARY KEY,
+				"divisionId" TEXT NOT NULL REFERENCES "OrgDivision"(id),
+				name TEXT NOT NULL,
+				sort INT NOT NULL DEFAULT 0
+			);
+			-- حزمة الصلاحيات: scope = id الإدارة (لمنصب الإدارة نفسه) أو id الوحدة
+			CREATE TABLE IF NOT EXISTS "OrgBundle" (
+				scope TEXT NOT NULL,
+				permission TEXT NOT NULL,
+				PRIMARY KEY (scope, permission)
+			);
+			CREATE TABLE IF NOT EXISTS "OrgAssignment" (
+				id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
+				"employeeId" TEXT NOT NULL REFERENCES "Employee"(id) ON DELETE CASCADE,
+				"divisionId" TEXT NOT NULL REFERENCES "OrgDivision"(id),
+				"unitId" TEXT REFERENCES "OrgUnit"(id),
+				position TEXT NOT NULL CHECK (position IN ('DIRECTOR', 'DEPUTY', 'MEMBER')),
+				"allowanceIQD" NUMERIC NOT NULL DEFAULT 0,
+				acting BOOLEAN NOT NULL DEFAULT false,
+				"actingUntil" TIMESTAMPTZ,
+				"replacesId" TEXT REFERENCES "OrgAssignment"(id),
+				"startedAt" TIMESTAMPTZ NOT NULL DEFAULT now(),
+				"endedAt" TIMESTAMPTZ,
+				"endedById" TEXT REFERENCES "Employee"(id) ON DELETE SET NULL,
+				"endReason" TEXT,
+				note TEXT,
+				"createdById" TEXT REFERENCES "Employee"(id) ON DELETE SET NULL
+			);
+			-- مدير واحد ونائب واحد (أصليين) لكل إدارة/وحدة بنفس الوكت
+			CREATE UNIQUE INDEX IF NOT EXISTS "OrgAssignment_head_uq" ON "OrgAssignment"
+				("divisionId", COALESCE("unitId", ''), position)
+				WHERE "endedAt" IS NULL AND NOT acting AND position IN ('DIRECTOR', 'DEPUTY');
+			-- موظف ما يتكرر بنفس المكان
+			CREATE UNIQUE INDEX IF NOT EXISTS "OrgAssignment_emp_uq" ON "OrgAssignment"
+				("employeeId", "divisionId", COALESCE("unitId", ''))
+				WHERE "endedAt" IS NULL;
+			CREATE INDEX IF NOT EXISTS "OrgAssignment_emp" ON "OrgAssignment" ("employeeId") WHERE "endedAt" IS NULL;
+			-- الصلاحيات الي انطت بسبب المنصب بس (حتى السحب ما يمس اليدوي)
+			CREATE TABLE IF NOT EXISTS "OrgPermissionGrant" (
+				"employeeId" TEXT NOT NULL REFERENCES "Employee"(id) ON DELETE CASCADE,
+				permission TEXT NOT NULL,
+				"createdAt" TIMESTAMPTZ NOT NULL DEFAULT now(),
+				PRIMARY KEY ("employeeId", permission)
+			);
+			-- مفاتيح وحدات بالقائمة ما چانت موجودة بالخادم (فما چان أحد يگدر ياخذها)
+			INSERT INTO "Permission" (id, name, label) VALUES
+				(gen_random_uuid()::text, 'unit_training', 'وحدة التدريب'),
+				(gen_random_uuid()::text, 'unit_accounts', 'وحدة الحسابات'),
+				(gen_random_uuid()::text, 'unit_fleet', 'وحدة العُدد والمركبات'),
+				(gen_random_uuid()::text, 'unit_matrix', 'وحدة ماتركس')
+			ON CONFLICT (name) DO NOTHING;
+		`,
+	}, {
+		// 🏛️ مكتب المدير (دازاي 10-29): تقرير المشاكل ومضارها، خطة التحسين بنسبة إنجاز
+		// ويا ماتركس (حل المشاكل + تطوير الأقسام)، ملاحظات النائب، وجدول الصلاحيات DOA.
+		Version: "0409_org_desk",
+		SQL: `
+			CREATE TABLE IF NOT EXISTS "OrgIssueReport" (
+				id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
+				"divisionId" TEXT NOT NULL REFERENCES "OrgDivision"(id),
+				"unitId" TEXT REFERENCES "OrgUnit"(id),
+				"authorId" TEXT REFERENCES "Employee"(id) ON DELETE SET NULL,
+				title TEXT NOT NULL,
+				problem TEXT NOT NULL,
+				impact TEXT NOT NULL DEFAULT '',
+				scope TEXT NOT NULL DEFAULT 'SPECIFIC' CHECK (scope IN ('SPECIFIC', 'GENERAL')),
+				principle INT CHECK (principle BETWEEN 1 AND 20),
+				severity TEXT NOT NULL DEFAULT 'MEDIUM' CHECK (severity IN ('LOW', 'MEDIUM', 'HIGH')),
+				status TEXT NOT NULL DEFAULT 'OPEN' CHECK (status IN ('OPEN', 'IN_PROGRESS', 'RESOLVED')),
+				resolution TEXT,
+				"createdAt" TIMESTAMPTZ NOT NULL DEFAULT now(),
+				"resolvedAt" TIMESTAMPTZ
+			);
+			CREATE INDEX IF NOT EXISTS "OrgIssueReport_div" ON "OrgIssueReport" ("divisionId", status, "createdAt" DESC);
+			CREATE TABLE IF NOT EXISTS "OrgPlan" (
+				id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
+				"divisionId" TEXT NOT NULL REFERENCES "OrgDivision"(id),
+				period TEXT NOT NULL,
+				title TEXT NOT NULL DEFAULT '',
+				"createdById" TEXT REFERENCES "Employee"(id) ON DELETE SET NULL,
+				"createdAt" TIMESTAMPTZ NOT NULL DEFAULT now(),
+				UNIQUE ("divisionId", period)
+			);
+			CREATE TABLE IF NOT EXISTS "OrgPlanItem" (
+				id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
+				"planId" TEXT NOT NULL REFERENCES "OrgPlan"(id) ON DELETE CASCADE,
+				kind TEXT NOT NULL CHECK (kind IN ('PROBLEM', 'DEVELOPMENT')),
+				title TEXT NOT NULL,
+				"issueId" TEXT REFERENCES "OrgIssueReport"(id) ON DELETE SET NULL,
+				metric TEXT,
+				baseline NUMERIC,
+				target NUMERIC,
+				"manualProgress" INT NOT NULL DEFAULT 0 CHECK ("manualProgress" BETWEEN 0 AND 100),
+				"createdById" TEXT REFERENCES "Employee"(id) ON DELETE SET NULL,
+				"createdAt" TIMESTAMPTZ NOT NULL DEFAULT now(),
+				"doneAt" TIMESTAMPTZ
+			);
+			CREATE TABLE IF NOT EXISTS "OrgComment" (
+				id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
+				"targetType" TEXT NOT NULL CHECK ("targetType" IN ('ISSUE', 'PLAN_ITEM')),
+				"targetId" TEXT NOT NULL,
+				"authorId" TEXT REFERENCES "Employee"(id) ON DELETE SET NULL,
+				text TEXT NOT NULL,
+				"createdAt" TIMESTAMPTZ NOT NULL DEFAULT now()
+			);
+			CREATE INDEX IF NOT EXISTS "OrgComment_target" ON "OrgComment" ("targetType", "targetId", "createdAt");
+			CREATE TABLE IF NOT EXISTS "OrgAuthority" (
+				id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
+				"divisionId" TEXT NOT NULL REFERENCES "OrgDivision"(id),
+				decision TEXT NOT NULL,
+				mode TEXT NOT NULL DEFAULT 'DECIDE' CHECK (mode IN ('DECIDE', 'ESCALATE')),
+				"limitIQD" NUMERIC,
+				sort INT NOT NULL DEFAULT 0,
+				"updatedById" TEXT REFERENCES "Employee"(id) ON DELETE SET NULL,
+				"updatedAt" TIMESTAMPTZ NOT NULL DEFAULT now()
+			);
+			CREATE INDEX IF NOT EXISTS "OrgAuthority_div" ON "OrgAuthority" ("divisionId", sort);
+		`,
+	}, {
+		// 📜 المبادئ العشرين (دازاي 10-29): تنزرع بسياسة الخصوصية والعمل، وكل موظف يوافق
+		// بـ«قرأت وألتزم». الإصدار صار بصمة النص (تعديل نقطة يطلب موافقة جديدة)، وكل موافقة
+		// تنحفظ بتاريخها بسجل ما ينمسح — ماتركس يرجعله وقت التقييم.
+		Version: "0410_principles_acceptance",
+		SQL: `
+			ALTER TABLE "PrivacyPolicyPoint" ADD COLUMN IF NOT EXISTS "principleNo" INT;
+			CREATE UNIQUE INDEX IF NOT EXISTS "PrivacyPolicyPoint_principle_uq" ON "PrivacyPolicyPoint" ("principleNo") WHERE "principleNo" IS NOT NULL;
+			ALTER TABLE "PrivacyPolicyAcceptance" ADD COLUMN IF NOT EXISTS "pointsHash" TEXT;
+			CREATE TABLE IF NOT EXISTS "PrivacyPolicyAcceptanceLog" (
+				id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
+				"employeeId" TEXT NOT NULL REFERENCES "Employee"(id) ON DELETE CASCADE,
+				"acceptedAt" TIMESTAMPTZ NOT NULL DEFAULT now(),
+				"pointsHash" TEXT NOT NULL,
+				"pointsCount" INT NOT NULL
+			);
+			CREATE INDEX IF NOT EXISTS "PrivacyPolicyAcceptanceLog_emp" ON "PrivacyPolicyAcceptanceLog" ("employeeId", "acceptedAt" DESC);
+			INSERT INTO "PrivacyPolicyPoint" (id, content, "order", "principleNo")
+			-- الترتيب سالب: المبادئ كتلة وحدة بأول السياسة، قبل أي نقطة موجودة أو تنضاف بعدين
+			SELECT gen_random_uuid()::text, 'مبدأ ' || x.n || ': ' || x.t, x.n - 1000, x.n FROM (VALUES
+				(1, 'عمل الكوادر بصورة دقيقة، أفضل من أي منافس بالسوق.'),
+				(2, 'استغلال الكوادر للعمل في جميع المهام الموكلة إليهم.'),
+				(3, 'الحفاظ على العُدد: أعدادها وكمياتها وتنوعها.'),
+				(4, 'جلب أكبر عدد من الحجوزات للشركة.'),
+				(5, 'إكمال أعمال الشركة بصورة آنية.'),
+				(6, 'العمل على أن يكون العمل بأسرع ما يمكن.'),
+				(7, 'العمل على أن تكون كل أدوات ومركبات الشركة في أبهى حلّة.'),
+				(8, 'عدم التأخر في حجوزات الكادر.'),
+				(9, 'المتابعة لكل حجوزات واتصالات الكادر في كل شيء.'),
+				(10, 'العمل وفق المعايير الهندسية والتصميمية وحسب آليات الشركة.'),
+				(11, 'الاحترام المتبادل للعمل ولجميع الكوادر بغض النظر عن المناصب.'),
+				(12, 'العمل وفق نظام المؤسسات ووفق آليات العمل الرسمية.'),
+				(13, 'تكلفة الكوادر للعمل ضمن ضوابط شركة الأماني.'),
+				(14, 'العمل وفق الهيكلية التنفيذية.'),
+				(15, 'الالتزام بالساعات والدوام.'),
+				(16, 'كل شخص له مسؤولية العمل الخاصة به ويُحاسَب عليها.'),
+				(17, 'أخذ جميع توجيهات المدير على محمل الجد.'),
+				(18, 'الحفاظ على سرية العمل في كل مرحلة.'),
+				(19, 'العمل كخلية نحل: كلٌّ عارف بدوره ومؤدٍّ لمهامه.'),
+				(20, 'عند الإجازات تتغير المناصب مؤقتاً وفقاً لمصلحة العمل وحسب رؤية المدير.')
+			) AS x(n, t)
+			WHERE NOT EXISTS (SELECT 1 FROM "PrivacyPolicyPoint" pp WHERE pp."principleNo" = x.n);
+		`,
+	}, {
+		// 🏛️ ماتركس الحاكم (دازاي 10-29): تقييم شهري لكل صاحب منصب (يحدد التنبيه والسحب)،
+		// وتاريخ تشغيله الأول — الغرامات بس على شكاوي بعده (ما نغرّم على الماضي).
+		Version: "0411_org_governor",
+		SQL: `
+			CREATE TABLE IF NOT EXISTS "OrgEvaluation" (
+				"employeeId" TEXT NOT NULL REFERENCES "Employee"(id) ON DELETE CASCADE,
+				period TEXT NOT NULL,
+				score NUMERIC,
+				components JSONB NOT NULL DEFAULT '{}',
+				decision TEXT NOT NULL CHECK (decision IN ('OK', 'WARN', 'REVOKE', 'NODATA')),
+				"createdAt" TIMESTAMPTZ NOT NULL DEFAULT now(),
+				PRIMARY KEY ("employeeId", period)
+			);
+			CREATE TABLE IF NOT EXISTS "OrgGovernorState" (
+				key TEXT PRIMARY KEY,
+				value TEXT NOT NULL,
+				"updatedAt" TIMESTAMPTZ NOT NULL DEFAULT now()
+			);
+		`,
+	}, {
+		// 🏛️ المناصب المؤقتة بالإجازات (المبدأ ٢٠، دازاي 10-30): النائب يمسك «مدير بالوكالة»
+		// بنفس مكانه — فقيد «الموظف ما يتكرر بنفس المكان» ما يشمل الوكالة، ووكالة وحدة لكل منصب.
+		Version: "0412_org_acting",
+		SQL: `
+			DROP INDEX IF EXISTS "OrgAssignment_emp_uq";
+			CREATE UNIQUE INDEX IF NOT EXISTS "OrgAssignment_emp_uq" ON "OrgAssignment"
+				("employeeId", "divisionId", COALESCE("unitId", ''))
+				WHERE "endedAt" IS NULL AND NOT acting;
+			CREATE UNIQUE INDEX IF NOT EXISTS "OrgAssignment_acting_uq" ON "OrgAssignment" ("replacesId")
+				WHERE "endedAt" IS NULL AND acting;
+		`,
+	}, {
+		// 📜 لائحة العمل (دازاي 10-30): المبادئ العشرين صارت خمس مواد بعشرين فقرة بنص دازاي
+		// الرسمي (نفس الأرقام ١-٢٠ — الربط بالمشاكل يبقى). تغيّر النص = موافقة جديدة من الكل.
+		// المادة السادسة (التقييم والعقوبات والاعتراض والبيانات) مسودة مطفية — المالك يفعّلها.
+		Version: "0413_work_regulations",
+		SQL: `
+			ALTER TABLE "PrivacyPolicyPoint" ADD COLUMN IF NOT EXISTS "articleNo" INT;
+			ALTER TABLE "PrivacyPolicyPoint" ADD COLUMN IF NOT EXISTS "clauseTitle" TEXT;
+			CREATE TABLE IF NOT EXISTS "PolicyArticle" (no INT PRIMARY KEY, title TEXT NOT NULL);
+			INSERT INTO "PolicyArticle" (no, title) VALUES
+				(1, 'الانضباط الإداري والهيكلية التنظيمية'),
+				(2, 'الجودة والأداء التشغيلي'),
+				(3, 'إدارة الأصول والممتلكات'),
+				(4, 'خدمة الزبائن وتنمية الأعمال'),
+				(5, 'بيئة العمل وسرية المعلومات'),
+				(6, 'التقييم والمساءلة (مسودة)')
+			ON CONFLICT (no) DO UPDATE SET title = EXCLUDED.title;
+			UPDATE "PrivacyPolicyPoint" SET content = 'م1/ف1 — التراتب الإداري: تخضع جميع العمليات والأنشطة للنظام المؤسسي والهيكلية التنفيذية المعتمدة، وتُعد الإدارة العليا (مدير الشركة ومدير النظام) رأس الهرم الإداري وصاحبة السلطة التقديرية النهائية.', "articleNo" = 1, "clauseTitle" = 'التراتب الإداري', "updatedAt" = now() WHERE "principleNo" = 1;
+			UPDATE "PrivacyPolicyPoint" SET content = 'م1/ف2 — الالتزام بالتوجيهات: يلتزم جميع الموظفين والكوادر بتنفيذ قرارات وتوجيهات الإدارة العامة بكل جدية ودقة وفي المواعيد المحددة.', "articleNo" = 1, "clauseTitle" = 'الالتزام بالتوجيهات', "updatedAt" = now() WHERE "principleNo" = 2;
+			UPDATE "PrivacyPolicyPoint" SET content = 'م1/ف3 — مواعيد العمل: الالتزام التام بساعات الدوام الرسمي المحددة، ويُعد الحضور والانصراف في المواعيد المقررة شرطاً أساسياً للقيام بالواجبات الوظيفية.', "articleNo" = 1, "clauseTitle" = 'مواعيد العمل', "updatedAt" = now() WHERE "principleNo" = 3;
+			UPDATE "PrivacyPolicyPoint" SET content = 'م1/ف4 — المسؤولية والمحاسبة: يستقل كل موظف بمسؤوليات مهامه الوظيفية المحددة، ويخضع للمساءلة والتقييم بناءً على أدائه ومخرجات عمله.', "articleNo" = 1, "clauseTitle" = 'المسؤولية والمحاسبة', "updatedAt" = now() WHERE "principleNo" = 4;
+			UPDATE "PrivacyPolicyPoint" SET content = 'م1/ف5 — إدارة الأزمات والطوارئ: في حالات الإنذارات أو الظروف الاستثنائية، يحق للإدارة إعادة توزيع المهام وتغيير التكليفات الوظيفية وفقاً لمتطلبات العمل ورؤية مدير الشركة.', "articleNo" = 1, "clauseTitle" = 'إدارة الأزمات والطوارئ', "updatedAt" = now() WHERE "principleNo" = 5;
+			UPDATE "PrivacyPolicyPoint" SET content = 'م1/ف6 — المناصب المؤقتة: عند الإجازات تتغير المناصب مؤقتاً وفقاً لمصلحة العمل وحسب رؤية المدير، ويتولى النائب مهام المدير بالوكالة لحين عودته.', "articleNo" = 1, "clauseTitle" = 'المناصب المؤقتة', "updatedAt" = now() WHERE "principleNo" = 6;
+			UPDATE "PrivacyPolicyPoint" SET content = 'م2/ف1 — الدقة والسرعة: إنجاز كافة الأعمال الموكلة للشركة بصورة آنية وبدقة متناهية وبأقصى سرعة ممكنة دون الإخلال بمهنية التنفيذ، للوصول إلى أعلى مستويات المنافسة في السوق.', "articleNo" = 2, "clauseTitle" = 'الدقة والسرعة', "updatedAt" = now() WHERE "principleNo" = 7;
+			UPDATE "PrivacyPolicyPoint" SET content = 'م2/ف2 — المرونة التشغيلية: يلتزم الموظف باستغلال كافة مهاراته للقيام بأي مهام إضافية أو مرنة يُكلَّف بها ضمن نطاق اختصاصه ومصلحة العمل.', "articleNo" = 2, "clauseTitle" = 'المرونة التشغيلية', "updatedAt" = now() WHERE "principleNo" = 8;
+			UPDATE "PrivacyPolicyPoint" SET content = 'م2/ف3 — العمل الجماعي: يُدار العمل بروح الفريق الواحد كخلية نحل، حيث يعي كل موظف دوره بدقة ويتكامل مع بقية أعضاء الكادر.', "articleNo" = 2, "clauseTitle" = 'العمل الجماعي', "updatedAt" = now() WHERE "principleNo" = 9;
+			UPDATE "PrivacyPolicyPoint" SET content = 'م2/ف4 — المعايير الفنية والهندسية: الالتزام الصارم بالمعايير الهندسية والتصميمية والآليات التشغيلية المعتمدة في الشركة.', "articleNo" = 2, "clauseTitle" = 'المعايير الفنية والهندسية', "updatedAt" = now() WHERE "principleNo" = 10;
+			UPDATE "PrivacyPolicyPoint" SET content = 'م3/ف1 — العُدد والمعدات: الحفاظ الكامل على أدوات العمل والمعدات والعُدد، وضمان جردها وكمياتها وتنوعها وتوزيعها بشكل دقيق ومحكم.', "articleNo" = 3, "clauseTitle" = 'العُدد والمعدات', "updatedAt" = now() WHERE "principleNo" = 11;
+			UPDATE "PrivacyPolicyPoint" SET content = 'م3/ف2 — الأصول والمركبات: العناية المستمرة بكافة أدوات ومركبات الشركة وصيانتها لتكون دائماً في أبهى حلة وأعلى جاهزية تشغيلية.', "articleNo" = 3, "clauseTitle" = 'الأصول والمركبات', "updatedAt" = now() WHERE "principleNo" = 12;
+			UPDATE "PrivacyPolicyPoint" SET content = 'م3/ف3 — الضبط المالي: الالتزام بتكاليف ومصروفات الكوادر التشغيلية وفق الضوابط والتعليمات المالية المعتمدة في شركة الأماني.', "articleNo" = 3, "clauseTitle" = 'الضبط المالي', "updatedAt" = now() WHERE "principleNo" = 13;
+			UPDATE "PrivacyPolicyPoint" SET content = 'م4/ف1 — جلب الحجوزات: يسعى جميع أفراد الكادر إلى تعزيز سمعة الشركة واستقطاب وتحقيق أكبر قدر ممكن من الحجوزات والتعاقدات.', "articleNo" = 4, "clauseTitle" = 'جلب الحجوزات', "updatedAt" = now() WHERE "principleNo" = 14;
+			UPDATE "PrivacyPolicyPoint" SET content = 'م4/ف2 — المتابعة والانضباط: الالتزام الصارم بمواعيد الحجوزات وعدم التأخر عنها، مع المتابعة المستمرة والدقيقة لكافة اتصالات الزبائن والكوادر الميدانية.', "articleNo" = 4, "clauseTitle" = 'المتابعة والانضباط', "updatedAt" = now() WHERE "principleNo" = 15;
+			UPDATE "PrivacyPolicyPoint" SET content = 'م4/ف3 — جودة الخدمة: تقديم أفضل تجربة للزبائن والتواصل معهم بأعلى درجات اللباقة والاحترافية.', "articleNo" = 4, "clauseTitle" = 'جودة الخدمة', "updatedAt" = now() WHERE "principleNo" = 16;
+			UPDATE "PrivacyPolicyPoint" SET content = 'م5/ف1 — الاحترام المتبادل: ترسيخ بيئة عمل قائمة على الاحترام المتبادل والمساواة بين جميع الموظفين والكوادر، بغض النظر عن الدرجة الوظيفية أو المسمى الإداري.', "articleNo" = 5, "clauseTitle" = 'الاحترام المتبادل', "updatedAt" = now() WHERE "principleNo" = 17;
+			UPDATE "PrivacyPolicyPoint" SET content = 'م5/ف2 — سرية العمل: الالتزام التام والمطلق بالحفاظ على سرية معلومات وأسرار العمل في جميع المراحل والمشاريع، أثناء فترة الخدمة وبعد انتهائها.', "articleNo" = 5, "clauseTitle" = 'سرية العمل', "updatedAt" = now() WHERE "principleNo" = 18;
+			UPDATE "PrivacyPolicyPoint" SET content = 'م5/ف3 — تضارب المصالح: يمتنع الموظف عن ممارسة أي نشاط تجاري أو مهني ينافس الشركة أو يتعارض مع مصالحها بشكل مباشر أو غير مباشر.', "articleNo" = 5, "clauseTitle" = 'تضارب المصالح', "updatedAt" = now() WHERE "principleNo" = 19;
+			UPDATE "PrivacyPolicyPoint" SET content = 'م5/ف4 — السلامة والصحة المهنية: الالتزام بكل معايير وقواعد السلامة أثناء استخدام المعدات والمركبات أو التواجد في مواقع التنفيذ، للحفاظ على الأرواح والممتلكات.', "articleNo" = 5, "clauseTitle" = 'السلامة والصحة المهنية', "updatedAt" = now() WHERE "principleNo" = 20;
+			INSERT INTO "PrivacyPolicyPoint" (id, content, "order", "principleNo", "articleNo", "clauseTitle", "isActive")
+			SELECT gen_random_uuid()::text, x.content, x.n - 1000, x.n, x.a, x.t, false FROM (VALUES
+				(21, 6, 'التقييم الشهري', 'م6/ف1 — التقييم الشهري: يُقيَّم كل موظف وصاحب منصب شهرياً من قبل نظام ماتركس استناداً إلى بيانات العمل الفعلية في النظام، ويُقيَّم المدراء كذلك على خطط التطوير ونسب إنجازها واستخدامهم للذكاء الاصطناعي في العمل.'),
+				(22, 6, 'الغرامات', 'م6/ف2 — الغرامات: تُفرض غرامة على الموظف عند وجود مشكلة مباشرة مع الزبون، وعلى مدير العمليات عند عدم حل الشكوى خلال ٤٨ ساعة، ويُقدَّر مبلغها حسب حجم المشكلة ويُخصم من رصيد الانضباط.'),
+				(23, 6, 'سحب المنصب والمخصصات', 'م6/ف3 — سحب المنصب والمخصصات: يُسحب المنصب ومخصصاته المالية ممن ينخفض تقييمه عن ٥٠٪ لشهرين متتاليين بعد تنبيه رسمي، أو ممن لا يستطيع تنفيذ مهامه أو حل الخلافات.'),
+				(24, 6, 'حق الاعتراض', 'م6/ف4 — حق الاعتراض: يحق للموظف الاعتراض على أي قرار تقييم أو غرامة أو سحب منصب خلال سبعة أيام من تبليغه، ويُرفع الاعتراض إلى مدير إدارته ثم الإدارة العليا التي يحق لها إلغاء القرار.'),
+				(25, 6, 'البيانات والذكاء الاصطناعي', 'م6/ف5 — البيانات والذكاء الاصطناعي: يوافق الموظف على أن النظام يسجّل بيانات الحضور والمواقع وسير العمل والأداء، وأن الذكاء الاصطناعي يحلّلها للتقييم والمتابعة، مع الحفاظ على سريتها وعدم استخدامها خارج نطاق العمل.')
+			) AS x(n, a, t, content)
+			WHERE NOT EXISTS (SELECT 1 FROM "PrivacyPolicyPoint" pp WHERE pp."principleNo" = x.n);
+			ALTER TABLE "OrgIssueReport" DROP CONSTRAINT IF EXISTS "OrgIssueReport_principle_check";
+			ALTER TABLE "OrgIssueReport" ADD CONSTRAINT "OrgIssueReport_principle_check" CHECK (principle BETWEEN 1 AND 40);
+		`,
+	}, {
+		// 🏛️ تطوير الوحدة (دازاي 10-30): كل مدير وحدة يرفع تشخيصه وخطة تطويره لمدير إدارته.
+		// الخطة صارت لكل وحدة أو للإدارة، بحالة (مسودة ← مرفوعة ← معتمدة/مرجّعة)، والبند
+		// بموعد ومسؤول، والمشكلة بخطة حل.
+		Version: "0414_unit_development",
+		SQL: `
+			ALTER TABLE "OrgPlan" ADD COLUMN IF NOT EXISTS "unitId" TEXT REFERENCES "OrgUnit"(id);
+			ALTER TABLE "OrgPlan" ADD COLUMN IF NOT EXISTS status TEXT NOT NULL DEFAULT 'DRAFT';
+			ALTER TABLE "OrgPlan" ADD COLUMN IF NOT EXISTS "submittedAt" TIMESTAMPTZ;
+			ALTER TABLE "OrgPlan" ADD COLUMN IF NOT EXISTS "reviewedById" TEXT REFERENCES "Employee"(id) ON DELETE SET NULL;
+			ALTER TABLE "OrgPlan" ADD COLUMN IF NOT EXISTS "reviewedAt" TIMESTAMPTZ;
+			ALTER TABLE "OrgPlan" ADD COLUMN IF NOT EXISTS "reviewNote" TEXT;
+			ALTER TABLE "OrgPlan" DROP CONSTRAINT IF EXISTS "OrgPlan_status_check";
+			ALTER TABLE "OrgPlan" ADD CONSTRAINT "OrgPlan_status_check" CHECK (status IN ('DRAFT', 'SUBMITTED', 'APPROVED', 'RETURNED'));
+			ALTER TABLE "OrgPlan" DROP CONSTRAINT IF EXISTS "OrgPlan_divisionId_period_key";
+			CREATE UNIQUE INDEX IF NOT EXISTS "OrgPlan_scope_uq" ON "OrgPlan" ("divisionId", COALESCE("unitId", ''), period);
+			ALTER TABLE "OrgPlanItem" ADD COLUMN IF NOT EXISTS "dueDate" DATE;
+			ALTER TABLE "OrgPlanItem" ADD COLUMN IF NOT EXISTS "ownerId" TEXT REFERENCES "Employee"(id) ON DELETE SET NULL;
+			ALTER TABLE "OrgIssueReport" ADD COLUMN IF NOT EXISTS "solutionPlan" TEXT;
+		`,
+	}, {
+		// 🔎 التشخيص الذكي (دازاي 10-30 — النقطة ٤): ماتركس يفتح مشاكل الوحدات لحاله من
+		// أرقامها (source=MATRIX، signal = نوع الإشارة)، يحدّثها إذا بقت، ويسكّرها إذا انحلت.
+		Version: "0415_org_diagnosis",
+		SQL: `
+			ALTER TABLE "OrgIssueReport" ADD COLUMN IF NOT EXISTS source TEXT NOT NULL DEFAULT 'HUMAN';
+			ALTER TABLE "OrgIssueReport" ADD COLUMN IF NOT EXISTS signal TEXT;
+			ALTER TABLE "OrgIssueReport" ADD COLUMN IF NOT EXISTS "lastSeenAt" TIMESTAMPTZ;
+			CREATE UNIQUE INDEX IF NOT EXISTS "OrgIssueReport_signal_open_uq" ON "OrgIssueReport" (signal)
+				WHERE signal IS NOT NULL AND status <> 'RESOLVED';
+		`,
+	}, {
+		// 🗂️ رأي كمال التنفيذي بكل شخص (دازاي 10-30 — النقطة ٦): كمال يقرا حقائق الموظف من
+		// النظام ويكتب رأيه (تقدير ١-٥ + نقاط قوة/ضعف + توصية) — رأي واحد لكل شهر يتحدّث.
+		Version: "0416_executive_opinion",
+		SQL: `
+			CREATE TABLE IF NOT EXISTS "OrgExecutiveOpinion" (
+				id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
+				"employeeId" TEXT NOT NULL REFERENCES "Employee"(id) ON DELETE CASCADE,
+				period TEXT NOT NULL,
+				rating INT NOT NULL CHECK (rating BETWEEN 1 AND 5),
+				strengths TEXT NOT NULL DEFAULT '',
+				weaknesses TEXT NOT NULL DEFAULT '',
+				recommendation TEXT NOT NULL DEFAULT '',
+				facts JSONB NOT NULL DEFAULT '{}',
+				"requestedById" TEXT REFERENCES "Employee"(id) ON DELETE SET NULL,
+				"updatedAt" TIMESTAMPTZ NOT NULL DEFAULT now(),
+				UNIQUE ("employeeId", period)
+			);
+		`,
+	}, {
+		// 📣 التوجيهات كسياسة عمل (دازاي 10-30 — النقطة ٧): المالك/المدير/رئيس الوحدة يصدر
+		// توجيه لنطاقه (الشركة/إدارة/وحدة) مربوط بفقرة اللائحة، والي بنطاقه يقرون «اطّلعت وألتزم»،
+		// وينحفظ إقرارهم. التوجيه ما ينحذف — يتوقف (archivedAt).
+		Version: "0417_org_directives",
+		SQL: `
+			CREATE TABLE IF NOT EXISTS "OrgDirective" (
+				id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
+				scope TEXT NOT NULL CHECK (scope IN ('COMPANY', 'DIVISION', 'UNIT')),
+				"divisionId" TEXT REFERENCES "OrgDivision"(id),
+				"unitId" TEXT REFERENCES "OrgUnit"(id),
+				title TEXT NOT NULL,
+				body TEXT NOT NULL,
+				clause INT,
+				"issuedById" TEXT REFERENCES "Employee"(id) ON DELETE SET NULL,
+				"issuedAt" TIMESTAMPTZ NOT NULL DEFAULT now(),
+				"archivedAt" TIMESTAMPTZ
+			);
+			CREATE INDEX IF NOT EXISTS "OrgDirective_active" ON "OrgDirective" ("issuedAt" DESC) WHERE "archivedAt" IS NULL;
+			CREATE TABLE IF NOT EXISTS "OrgDirectiveAck" (
+				"directiveId" TEXT NOT NULL REFERENCES "OrgDirective"(id) ON DELETE CASCADE,
+				"employeeId" TEXT NOT NULL REFERENCES "Employee"(id) ON DELETE CASCADE,
+				"ackAt" TIMESTAMPTZ NOT NULL DEFAULT now(),
+				PRIMARY KEY ("directiveId", "employeeId")
+			);
+		`,
+	}, {
+		// 🎯 ربط المهام والـKPI بالمخرجات (دازاي 10-30 — النقطة ٨): المهمة الإضافية ومعيار
+		// الـKPI ينربطون بفقرة من لائحة العمل، حتى لوحة المخرجات تجمع الأداء لكل فقرة.
+		Version: "0418_outputs_link",
+		SQL: `
+			ALTER TABLE "ExtraTask" ADD COLUMN IF NOT EXISTS clause INT;
+			ALTER TABLE "KpiCriterion" ADD COLUMN IF NOT EXISTS clause INT;
+		`,
+	}, {
+		// 🔑 الصلاحيات حسب المنصب (دازاي 10-30): داخل الحزمة، الي headOnly للمدير/النائب
+		// بس، والعضو ياخذ الباقي. التعليم بالبذر (OrgService.Seed) أول مرة لكل حزمة.
+		Version: "0419_org_bundle_head",
+		SQL: `
+			ALTER TABLE "OrgBundle" ADD COLUMN IF NOT EXISTS "headOnly" BOOLEAN NOT NULL DEFAULT false;
+		`,
+	}, {
+		// 🏗️ مراحل المشاريع (دازاي 10-31): «تجهيز المنتجات» (كانت «شراء مواد المشروع»)
+		// صارت ورا العقد وقبل التنفيذ، و«التسليم والاستلام» ورا التنفيذ. تحويل الأسماء المخزونة.
+		Version: "0420_project_stages_reorder",
+		SQL: `
+			DO $$ BEGIN IF to_regclass('"Project"') IS NOT NULL THEN
+				UPDATE "Project" SET stage = CASE stage WHEN '5. البدء بالتنفيذ' THEN '6. البدء بالتنفيذ' WHEN '6. شراء مواد المشروع' THEN '5. تجهيز المنتجات' WHEN '7. تسليم واستلام المنتجات' THEN '7. التسليم والاستلام' END
+				WHERE stage IN ('5. البدء بالتنفيذ', '6. شراء مواد المشروع', '7. تسليم واستلام المنتجات');
+			END IF; END $$;
+			DO $$ BEGIN IF to_regclass('"ProjectStageLog"') IS NOT NULL THEN
+				UPDATE "ProjectStageLog" SET "fromStage" = CASE "fromStage" WHEN '5. البدء بالتنفيذ' THEN '6. البدء بالتنفيذ' WHEN '6. شراء مواد المشروع' THEN '5. تجهيز المنتجات' WHEN '7. تسليم واستلام المنتجات' THEN '7. التسليم والاستلام' END
+				WHERE "fromStage" IN ('5. البدء بالتنفيذ', '6. شراء مواد المشروع', '7. تسليم واستلام المنتجات');
+			END IF; END $$;
+			DO $$ BEGIN IF to_regclass('"ProjectStageLog"') IS NOT NULL THEN
+				UPDATE "ProjectStageLog" SET "toStage" = CASE "toStage" WHEN '5. البدء بالتنفيذ' THEN '6. البدء بالتنفيذ' WHEN '6. شراء مواد المشروع' THEN '5. تجهيز المنتجات' WHEN '7. تسليم واستلام المنتجات' THEN '7. التسليم والاستلام' END
+				WHERE "toStage" IN ('5. البدء بالتنفيذ', '6. شراء مواد المشروع', '7. تسليم واستلام المنتجات');
+			END IF; END $$;
+			DO $$ BEGIN IF to_regclass('"ProjectRestoreLog"') IS NOT NULL THEN
+				UPDATE "ProjectRestoreLog" SET "toStage" = CASE "toStage" WHEN '5. البدء بالتنفيذ' THEN '6. البدء بالتنفيذ' WHEN '6. شراء مواد المشروع' THEN '5. تجهيز المنتجات' WHEN '7. تسليم واستلام المنتجات' THEN '7. التسليم والاستلام' END
+				WHERE "toStage" IN ('5. البدء بالتنفيذ', '6. شراء مواد المشروع', '7. تسليم واستلام المنتجات');
+			END IF; END $$;
+			DO $$ BEGIN IF to_regclass('"ProjectStageLimit"') IS NOT NULL THEN
+				UPDATE "ProjectStageLimit" SET stage = CASE stage WHEN '5. البدء بالتنفيذ' THEN '6. البدء بالتنفيذ' WHEN '6. شراء مواد المشروع' THEN '5. تجهيز المنتجات' WHEN '7. تسليم واستلام المنتجات' THEN '7. التسليم والاستلام' END
+				WHERE stage IN ('5. البدء بالتنفيذ', '6. شراء مواد المشروع', '7. تسليم واستلام المنتجات');
+			END IF; END $$;
+			DO $$ BEGIN IF to_regclass('"ProjectDelayReason"') IS NOT NULL THEN
+				UPDATE "ProjectDelayReason" SET stage = CASE stage WHEN '5. البدء بالتنفيذ' THEN '6. البدء بالتنفيذ' WHEN '6. شراء مواد المشروع' THEN '5. تجهيز المنتجات' WHEN '7. تسليم واستلام المنتجات' THEN '7. التسليم والاستلام' END
+				WHERE stage IN ('5. البدء بالتنفيذ', '6. شراء مواد المشروع', '7. تسليم واستلام المنتجات');
+			END IF; END $$;
+		`,
+	}, {
+		// 🕘 فاتورة الخدمة (دازاي 10-31): وقت بداية ونهاية الشغل من الحجز.
+		Version: "0421_service_invoice_times",
+		SQL: `
+			ALTER TABLE "LeaderInvoice" ADD COLUMN IF NOT EXISTS "serviceStartAt" TIMESTAMP;
+			ALTER TABLE "LeaderInvoice" ADD COLUMN IF NOT EXISTS "serviceEndAt" TIMESTAMP;
+		`,
+	}, {
+		// 👁️ إجراءات المراقب على المشاريع المتأخرة (دازاي 10-31): مهلة ومتابعة، تصعيد لمدير
+		// الإدارة (مشكلة بمكتبها)، وتسجيل مخالفة (نقاط انضباط تنرجع بالتراجع).
+		Version: "0422_project_monitor_actions",
+		SQL: `
+			CREATE TABLE IF NOT EXISTS "ProjectMonitorAction" (
+				id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
+				"projectId" TEXT NOT NULL REFERENCES "Project"(id) ON DELETE CASCADE,
+				"employeeId" TEXT REFERENCES "Employee"(id) ON DELETE SET NULL,
+				action TEXT NOT NULL CHECK (action IN ('FOLLOW_UP', 'ESCALATE', 'VIOLATION')),
+				note TEXT NOT NULL DEFAULT '',
+				"dueAt" TIMESTAMPTZ,
+				points INT NOT NULL DEFAULT 0,
+				"taskId" TEXT,
+				"issueId" TEXT,
+				"byId" TEXT REFERENCES "Employee"(id) ON DELETE SET NULL,
+				"createdAt" TIMESTAMPTZ NOT NULL DEFAULT now(),
+				"revokedAt" TIMESTAMPTZ,
+				"revokedById" TEXT REFERENCES "Employee"(id) ON DELETE SET NULL
+			);
+			CREATE INDEX IF NOT EXISTS "ProjectMonitorAction_project" ON "ProjectMonitorAction"("projectId", "createdAt" DESC);
+		`,
+	}, {
+		// 🎯 العمل من البيت (دازاي 11-01): المطلوب بالشهر (ساعات) وسعر الساعة — العدّاد
+		// التنازلي يحسب الباقي، وبعد ما يعبر يصير وقت إضافي، والراتب = الساعات × السعر.
+		Version: "0423_remote_hours_plan",
+		SQL: `
+			CREATE TABLE IF NOT EXISTS "RemoteHoursPlan" (
+				"employeeId" TEXT PRIMARY KEY REFERENCES "Employee"(id) ON DELETE CASCADE,
+				"targetHours" INT NOT NULL CHECK ("targetHours" > 0 AND "targetHours" <= 400),
+				"hourlyRateIQD" NUMERIC NOT NULL DEFAULT 0 CHECK ("hourlyRateIQD" >= 0),
+				"setById" TEXT REFERENCES "Employee"(id) ON DELETE SET NULL,
+				"setAt" TIMESTAMPTZ NOT NULL DEFAULT now()
+			);
+		`,
+	}, {
+		// 📝 (دازاي 11-01) «كتبنالك التبرير بس ما يطلع»: طلب التبرير الي يطلبه ماتركس على
+		// المشروع المتأخر ما إله مراقب، فالجواب ما يوصل لأحد ولا ينحسب سبب تأخير.
+		// نربطه بالمشروع حتى الجواب ينكتب سبب تأخير ويوصل للمراقبين.
+		Version: "0424_justification_project",
+		SQL: `
+			ALTER TABLE "MonitorJustification" ADD COLUMN IF NOT EXISTS "projectId" TEXT REFERENCES "Project"(id) ON DELETE SET NULL;
+			UPDATE "MonitorJustification" j SET "projectId" = p.id FROM "Project" p
+			WHERE j."projectId" IS NULL AND j."monitorId" IS NULL AND j.question LIKE 'مشروع ' || p.code || ' (%';
+		`,
+	}, {
+		// 🏗️ (دازاي 11-01) مركز القيادة — المشاريع والمقاولات. معزول تماماً عن «Project»
+		// بنظام الشركة: ولا بيانات تنتقل بين الطبقتين.
+		Version: "0425_command_projects",
+		SQL: `
+			CREATE TABLE IF NOT EXISTS "CmdProject" (
+				id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
+				name TEXT NOT NULL,
+				location TEXT NOT NULL DEFAULT '',
+				owner TEXT NOT NULL DEFAULT '',
+				"contractIQD" NUMERIC NOT NULL DEFAULT 0 CHECK ("contractIQD" >= 0),
+				"durationMonths" INT CHECK ("durationMonths" IS NULL OR "durationMonths" BETWEEN 1 AND 240),
+				"startDate" DATE,
+				stage TEXT NOT NULL DEFAULT 'TENDER' CHECK (stage IN ('TENDER', 'SIGNED', 'EXECUTION', 'HANDOVER', 'CLOSED')),
+				progress INT NOT NULL DEFAULT 0 CHECK (progress BETWEEN 0 AND 100),
+				"createdById" TEXT REFERENCES "Employee"(id) ON DELETE SET NULL,
+				"createdAt" TIMESTAMPTZ NOT NULL DEFAULT now(),
+				"updatedAt" TIMESTAMPTZ NOT NULL DEFAULT now()
+			);
+			CREATE UNIQUE INDEX IF NOT EXISTS "CmdProject_name_uq" ON "CmdProject" (lower(name));
+			CREATE TABLE IF NOT EXISTS "CmdProjectLog" (
+				id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
+				"projectId" TEXT REFERENCES "CmdProject"(id) ON DELETE CASCADE,
+				"employeeId" TEXT REFERENCES "Employee"(id) ON DELETE SET NULL,
+				command TEXT NOT NULL,
+				result TEXT NOT NULL,
+				"createdAt" TIMESTAMPTZ NOT NULL DEFAULT now()
+			);
+		`,
+	}, {
+		// (دازاي 11-01) «ارجع الغيلي… بس ردت اجرب» — قسم مشاريع القيادة انشال، وجداوله وياه.
+		// 0425 يبقى بمكانه لأنه انطبق على البرود.
+		Version: "0426_drop_command_projects",
+		SQL: `
+			DROP TABLE IF EXISTS "CmdProjectLog";
+			DROP TABLE IF EXISTS "CmdProject";
+		`,
+	}, {
+		// (دازاي 11-02) أحكام ماتركس بلا «مُلام» (حضور بلا شغل…) چانت تطلع بلا اسم
+		// بصندوق المراقب — صاحبها = الموظف الي الإشارة عليه.
+		Version: "0427_ai_verdict_owner",
+		SQL: `
+			UPDATE "MonitorReview" r SET "ownerEmployeeId" = s."employeeId"
+			FROM "AiVerdict" v JOIN "AiSignal" s ON s.id = v."signalId"
+			WHERE r."entityType" = 'AI_VERDICT' AND r."entityId" = v.id
+			  AND r."ownerEmployeeId" IS NULL AND s."employeeId" IS NOT NULL;
+		`,
+	}, {
+		// 🧪 (11-02 — تعديلات ٦ب) نتيجة تجربة استرجاع النسخة الاحتياطية (verify-restore.sh)
+		Version: "0428_backup_verify",
+		SQL: `
+			ALTER TABLE "BackupRun" ADD COLUMN IF NOT EXISTS verified BOOLEAN NOT NULL DEFAULT false;
+			ALTER TABLE "BackupRun" ADD COLUMN IF NOT EXISTS "verifyNote" TEXT;
+			ALTER TABLE "BackupRun" ADD COLUMN IF NOT EXISTS "verifyRows" BIGINT NOT NULL DEFAULT 0;
+		`,
+	}, {
+		// 🩺 (11-02 — شبكة الأمان ٢) دورات فحص سلامة البيانات (قراءة بس)
+		Version: "0429_integrity_run",
+		SQL: `
+			CREATE TABLE IF NOT EXISTS "IntegrityRun" (
+				id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
+				"startedAt" TIMESTAMPTZ NOT NULL,
+				"finishedAt" TIMESTAMPTZ NOT NULL DEFAULT now(),
+				results JSONB NOT NULL DEFAULT '[]',
+				problems BIGINT NOT NULL DEFAULT 0,
+				critical BIGINT NOT NULL DEFAULT 0,
+				failed INT NOT NULL DEFAULT 0,
+				trigger TEXT NOT NULL DEFAULT 'daily'
+			);
+			CREATE INDEX IF NOT EXISTS "IntegrityRun_started" ON "IntegrityRun" ("startedAt" DESC);
+		`,
+	}, {
+		// 🧠 (11-02 — تعديلات ٩.١) استمارة معلومات الموظف + تقرير الإنجاز اليومي الإجباري.
+		Version: "0430_profile_survey_daily_report",
+		SQL: `
+			ALTER TABLE "Employee" ADD COLUMN IF NOT EXISTS "contractEndDate" DATE;
+			CREATE TABLE IF NOT EXISTS "EmployeeProfileSurvey" (
+				"employeeId" TEXT PRIMARY KEY REFERENCES "Employee"(id) ON DELETE CASCADE,
+				major TEXT NOT NULL,
+				degree TEXT NOT NULL,
+				"selfSalaryIQD" NUMERIC CHECK ("selfSalaryIQD" IS NULL OR "selfSalaryIQD" >= 0),
+				"monthlyHours" INT CHECK ("monthlyHours" IS NULL OR "monthlyHours" BETWEEN 1 AND 400),
+				"currentJob" TEXT NOT NULL,
+				"companyRating" INT NOT NULL CHECK ("companyRating" BETWEEN 1 AND 5),
+				"companyNote" TEXT NOT NULL DEFAULT '',
+				"contractEnd" DATE,
+				mismatch TEXT,
+				"submittedAt" TIMESTAMPTZ NOT NULL DEFAULT now(),
+				"reviewedById" TEXT REFERENCES "Employee"(id) ON DELETE SET NULL,
+				"reviewedAt" TIMESTAMPTZ
+			);
+			CREATE TABLE IF NOT EXISTS "DailyWorkReport" (
+				id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
+				"employeeId" TEXT NOT NULL REFERENCES "Employee"(id) ON DELETE CASCADE,
+				day DATE NOT NULL,
+				body TEXT NOT NULL CHECK (length(btrim(body)) >= 20),
+				late BOOLEAN NOT NULL DEFAULT false,
+				"createdAt" TIMESTAMPTZ NOT NULL DEFAULT now(),
+				UNIQUE ("employeeId", day)
+			);
+			CREATE INDEX IF NOT EXISTS "DailyWorkReport_day" ON "DailyWorkReport" (day DESC);
+			-- التقرير يُطلب من الأيام الي بعد تشغيل الميزة بس، مو بأثر رجعي
+			INSERT INTO "OrgGovernorState" (key, value) VALUES ('daily_report_since', to_char((now() AT TIME ZONE 'Asia/Baghdad')::date, 'YYYY-MM-DD'))
+			ON CONFLICT (key) DO NOTHING;
+		`,
+	}, {
+		// 📒 (11-02 — تعديلات ٩.٢) واجب التقييم اليومي: سجل الإهمال + بداية الإلزام.
+		Version: "0431_rating_duty_negligence",
+		SQL: `
+			CREATE TABLE IF NOT EXISTS "EmployeeNegligence" (
+				id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
+				"employeeId" TEXT NOT NULL REFERENCES "Employee"(id) ON DELETE CASCADE,
+				day DATE NOT NULL,
+				kind TEXT NOT NULL,
+				detail TEXT NOT NULL DEFAULT '',
+				reason TEXT NOT NULL DEFAULT '',
+				"compensatedAt" TIMESTAMPTZ,
+				"createdAt" TIMESTAMPTZ NOT NULL DEFAULT now(),
+				UNIQUE ("employeeId", day, kind)
+			);
+			CREATE INDEX IF NOT EXISTS "EmployeeNegligence_day" ON "EmployeeNegligence" (day DESC);
+			INSERT INTO "OrgGovernorState" (key, value) VALUES ('rating_duty_since', to_char((now() AT TIME ZONE 'Asia/Baghdad')::date, 'YYYY-MM-DD'))
+			ON CONFLICT (key) DO NOTHING;
+		`,
+	}, {
+		// ٩.٤ — مطابقة تقرير الإنجاز ويا الشغل المسجّل
+		Version: "0432_daily_report_match",
+		SQL: `
+			CREATE TABLE IF NOT EXISTS "DailyReportMatch" (
+				id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
+				"employeeId" TEXT NOT NULL REFERENCES "Employee"(id) ON DELETE CASCADE,
+				day DATE NOT NULL,
+				"reportId" TEXT REFERENCES "DailyWorkReport"(id) ON DELETE CASCADE,
+				status TEXT NOT NULL,
+				note TEXT NOT NULL DEFAULT '',
+				detail JSONB NOT NULL DEFAULT '{}',
+				"reviewVerdict" TEXT,
+				"reviewedById" TEXT REFERENCES "Employee"(id) ON DELETE SET NULL,
+				"reviewNote" TEXT,
+				"reviewedAt" TIMESTAMPTZ,
+				"createdAt" TIMESTAMPTZ NOT NULL DEFAULT now(),
+				"updatedAt" TIMESTAMPTZ NOT NULL DEFAULT now(),
+				UNIQUE ("employeeId", day)
+			);
+			CREATE INDEX IF NOT EXISTS "DailyReportMatch_day_idx" ON "DailyReportMatch" (day);
+		`,
+	}, {
+		// ٩.٥ — احتياج التدريب من دراسة ملف الموظف + متابعة ٣٠ يوم
+		Version: "0433_training_need",
+		SQL: `
+			CREATE TABLE IF NOT EXISTS "TrainingNeed" (
+				id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
+				"issueId" TEXT REFERENCES "WorkplaceIssue"(id) ON DELETE CASCADE,
+				"employeeId" TEXT NOT NULL REFERENCES "Employee"(id) ON DELETE CASCADE,
+				verdict TEXT NOT NULL,
+				areas TEXT[] NOT NULL DEFAULT '{}',
+				rules TEXT[] NOT NULL DEFAULT '{}',
+				evidence TEXT NOT NULL DEFAULT '',
+				"baselinePct" DOUBLE PRECISION,
+				"followUpAt" TIMESTAMPTZ NOT NULL,
+				status TEXT NOT NULL DEFAULT 'OPEN',
+				"currentPct" DOUBLE PRECISION,
+				"resultNote" TEXT,
+				"createdAt" TIMESTAMPTZ NOT NULL DEFAULT now(),
+				UNIQUE ("issueId", "employeeId")
+			);
+			CREATE INDEX IF NOT EXISTS "TrainingNeed_due_idx" ON "TrainingNeed" (status, "followUpAt");
+		`,
+	}, {
+		// ٦أ — التكرار الآمن لطلبات الفلوس
+		Version: "0434_idempotency_key",
+		SQL: `
+			CREATE TABLE IF NOT EXISTS "IdempotencyKey" (
+				key TEXT NOT NULL,
+				"employeeId" TEXT NOT NULL,
+				method TEXT NOT NULL,
+				path TEXT NOT NULL,
+				status INT,
+				response TEXT,
+				"createdAt" TIMESTAMPTZ NOT NULL DEFAULT now(),
+				PRIMARY KEY (key, "employeeId")
+			);
+			CREATE INDEX IF NOT EXISTS "IdempotencyKey_created_idx" ON "IdempotencyKey" ("createdAt");
+		`,
+	}, {
+		// ٦د — سجل تدقيق موحّد ما يتغيّر: كل تعديل على جداول الفلوس والصلاحيات
+		// ينكتب تلقائياً (قبل/بعد) من القاعدة نفسها، والسجل ما ينعدّل ولا ينحذف.
+		Version: "0435_audit_trail",
+		SQL: `
+			CREATE TABLE IF NOT EXISTS "AuditTrail" (
+				id BIGSERIAL PRIMARY KEY,
+				at TIMESTAMPTZ NOT NULL DEFAULT now(),
+				entity TEXT NOT NULL,
+				"entityId" TEXT,
+				action TEXT NOT NULL,
+				"actorId" TEXT,
+				before JSONB,
+				after JSONB
+			);
+			CREATE INDEX IF NOT EXISTS "AuditTrail_entity_idx" ON "AuditTrail" (entity, "entityId", at DESC);
+			CREATE INDEX IF NOT EXISTS "AuditTrail_at_idx" ON "AuditTrail" (at DESC);
+
+			CREATE OR REPLACE FUNCTION audit_trail_immutable() RETURNS trigger LANGUAGE plpgsql AS $f$
+			BEGIN
+				RAISE EXCEPTION 'AuditTrail لا يُعدَّل ولا يُحذف';
+			END $f$;
+			DROP TRIGGER IF EXISTS audit_trail_no_change ON "AuditTrail";
+			CREATE TRIGGER audit_trail_no_change BEFORE UPDATE OR DELETE ON "AuditTrail"
+				FOR EACH ROW EXECUTE FUNCTION audit_trail_immutable();
+			DROP TRIGGER IF EXISTS audit_trail_no_truncate ON "AuditTrail";
+			CREATE TRIGGER audit_trail_no_truncate BEFORE TRUNCATE ON "AuditTrail"
+				FOR EACH STATEMENT EXECUTE FUNCTION audit_trail_immutable();
+
+			-- منو سوّاها: من أعمدة الصف نفسه (الي يسجّل/يراجع/يعتمد) — الأحدث أول
+			CREATE OR REPLACE FUNCTION audit_trail_capture() RETURNS trigger LANGUAGE plpgsql AS $f$
+			DECLARE
+				b JSONB := CASE WHEN TG_OP IN ('UPDATE','DELETE') THEN to_jsonb(OLD) END;
+				a JSONB := CASE WHEN TG_OP IN ('INSERT','UPDATE') THEN to_jsonb(NEW) END;
+				r JSONB := COALESCE(a, b);
+			BEGIN
+				IF TG_OP = 'UPDATE' AND b = a THEN RETURN NULL; END IF;
+				INSERT INTO "AuditTrail" (entity, "entityId", action, "actorId", before, after)
+				VALUES (TG_TABLE_NAME, COALESCE(r->>'id', r->>'projectId'), TG_OP,
+					COALESCE(NULLIF(current_setting('app.actor', true), ''), r->>'revokedById', r->>'reviewedById', r->>'approvedByEmployeeId',
+						r->>'cancelledById', r->>'verifiedById', r->>'setById', r->>'grantedById', r->>'createdById', r->>'createdByEmployeeId', r->>'recordedById'),
+					b, a);
+				RETURN NULL;
+			END $f$;
+			DROP TRIGGER IF EXISTS audit_trail_row ON "ProjectPayment";
+			CREATE TRIGGER audit_trail_row AFTER INSERT OR UPDATE OR DELETE ON "ProjectPayment" FOR EACH ROW EXECUTE FUNCTION audit_trail_capture();
+			DROP TRIGGER IF EXISTS audit_trail_row ON "ProjectContractValue";
+			CREATE TRIGGER audit_trail_row AFTER INSERT OR UPDATE OR DELETE ON "ProjectContractValue" FOR EACH ROW EXECUTE FUNCTION audit_trail_capture();
+			DROP TRIGGER IF EXISTS audit_trail_row ON "RevolvingFund";
+			CREATE TRIGGER audit_trail_row AFTER INSERT OR UPDATE OR DELETE ON "RevolvingFund" FOR EACH ROW EXECUTE FUNCTION audit_trail_capture();
+			DROP TRIGGER IF EXISTS audit_trail_row ON "RevolvingFundTxn";
+			CREATE TRIGGER audit_trail_row AFTER INSERT OR UPDATE OR DELETE ON "RevolvingFundTxn" FOR EACH ROW EXECUTE FUNCTION audit_trail_capture();
+			DROP TRIGGER IF EXISTS audit_trail_row ON "CreditSale";
+			CREATE TRIGGER audit_trail_row AFTER INSERT OR UPDATE OR DELETE ON "CreditSale" FOR EACH ROW EXECUTE FUNCTION audit_trail_capture();
+			DROP TRIGGER IF EXISTS audit_trail_row ON "CreditPayment";
+			CREATE TRIGGER audit_trail_row AFTER INSERT OR UPDATE OR DELETE ON "CreditPayment" FOR EACH ROW EXECUTE FUNCTION audit_trail_capture();
+			DROP TRIGGER IF EXISTS audit_trail_row ON "LeaderInvoice";
+			CREATE TRIGGER audit_trail_row AFTER INSERT OR UPDATE OR DELETE ON "LeaderInvoice" FOR EACH ROW EXECUTE FUNCTION audit_trail_capture();
+			DROP TRIGGER IF EXISTS audit_trail_row ON "Expense";
+			CREATE TRIGGER audit_trail_row AFTER INSERT OR UPDATE OR DELETE ON "Expense" FOR EACH ROW EXECUTE FUNCTION audit_trail_capture();
+			DROP TRIGGER IF EXISTS audit_trail_row ON "EmployeePermission";
+			CREATE TRIGGER audit_trail_row AFTER INSERT OR UPDATE OR DELETE ON "EmployeePermission" FOR EACH ROW EXECUTE FUNCTION audit_trail_capture();
+			DROP TRIGGER IF EXISTS audit_trail_row ON "OrgAssignment";
+			CREATE TRIGGER audit_trail_row AFTER INSERT OR UPDATE OR DELETE ON "OrgAssignment" FOR EACH ROW EXECUTE FUNCTION audit_trail_capture();
+		`,
+	}, {
+		// ٦ج — «ماكو حذف»: بيانات الشغل (القسم ١ بـ docs/ماكو-حذف.md) — أي حذف
+		// ينحفظ الصف كامل بسجل التدقيق ويكدر المالك يرجّعه. حذف بس (مو كل تعديل)
+		// حتى السجل ما يتضخم. ما لمسنا ولا استعلام قراءة.
+		Version: "0436_audit_deletes_business_tables",
+		SQL: `
+			DROP TRIGGER IF EXISTS audit_trail_delete ON "Project";
+			CREATE TRIGGER audit_trail_delete AFTER DELETE ON "Project" FOR EACH ROW EXECUTE FUNCTION audit_trail_capture();
+			DROP TRIGGER IF EXISTS audit_trail_delete ON "Quotation";
+			CREATE TRIGGER audit_trail_delete AFTER DELETE ON "Quotation" FOR EACH ROW EXECUTE FUNCTION audit_trail_capture();
+			DROP TRIGGER IF EXISTS audit_trail_delete ON "QuotationItem";
+			CREATE TRIGGER audit_trail_delete AFTER DELETE ON "QuotationItem" FOR EACH ROW EXECUTE FUNCTION audit_trail_capture();
+			DROP TRIGGER IF EXISTS audit_trail_delete ON "Customer";
+			CREATE TRIGGER audit_trail_delete AFTER DELETE ON "Customer" FOR EACH ROW EXECUTE FUNCTION audit_trail_capture();
+			DROP TRIGGER IF EXISTS audit_trail_delete ON "RemoteWorkEntry";
+			CREATE TRIGGER audit_trail_delete AFTER DELETE ON "RemoteWorkEntry" FOR EACH ROW EXECUTE FUNCTION audit_trail_capture();
+			DROP TRIGGER IF EXISTS audit_trail_delete ON "ToolRequest";
+			CREATE TRIGGER audit_trail_delete AFTER DELETE ON "ToolRequest" FOR EACH ROW EXECUTE FUNCTION audit_trail_capture();
+			DROP TRIGGER IF EXISTS audit_trail_delete ON "SurveyPhoto";
+			CREATE TRIGGER audit_trail_delete AFTER DELETE ON "SurveyPhoto" FOR EACH ROW EXECUTE FUNCTION audit_trail_capture();
+			DROP TRIGGER IF EXISTS audit_trail_delete ON "KpiEvaluation";
+			CREATE TRIGGER audit_trail_delete AFTER DELETE ON "KpiEvaluation" FOR EACH ROW EXECUTE FUNCTION audit_trail_capture();
+			DROP TRIGGER IF EXISTS audit_trail_delete ON "VehicleLog";
+			CREATE TRIGGER audit_trail_delete AFTER DELETE ON "VehicleLog" FOR EACH ROW EXECUTE FUNCTION audit_trail_capture();
+			DROP TRIGGER IF EXISTS audit_trail_delete ON "VehicleWashLog";
+			CREATE TRIGGER audit_trail_delete AFTER DELETE ON "VehicleWashLog" FOR EACH ROW EXECUTE FUNCTION audit_trail_capture();
+			DROP TRIGGER IF EXISTS audit_trail_delete ON "VehicleDocument";
+			CREATE TRIGGER audit_trail_delete AFTER DELETE ON "VehicleDocument" FOR EACH ROW EXECUTE FUNCTION audit_trail_capture();
+			DROP TRIGGER IF EXISTS audit_trail_delete ON "VehiclePhoto";
+			CREATE TRIGGER audit_trail_delete AFTER DELETE ON "VehiclePhoto" FOR EACH ROW EXECUTE FUNCTION audit_trail_capture();
+			DROP TRIGGER IF EXISTS audit_trail_delete ON "VehicleIncidentAttachment";
+			CREATE TRIGGER audit_trail_delete AFTER DELETE ON "VehicleIncidentAttachment" FOR EACH ROW EXECUTE FUNCTION audit_trail_capture();
+			DROP TRIGGER IF EXISTS audit_trail_delete ON "Vehicle";
+			CREATE TRIGGER audit_trail_delete AFTER DELETE ON "Vehicle" FOR EACH ROW EXECUTE FUNCTION audit_trail_capture();
+			DROP TRIGGER IF EXISTS audit_trail_delete ON "ItAsset";
+			CREATE TRIGGER audit_trail_delete AFTER DELETE ON "ItAsset" FOR EACH ROW EXECUTE FUNCTION audit_trail_capture();
+			DROP TRIGGER IF EXISTS audit_trail_delete ON "PersonalTool";
+			CREATE TRIGGER audit_trail_delete AFTER DELETE ON "PersonalTool" FOR EACH ROW EXECUTE FUNCTION audit_trail_capture();
+			DROP TRIGGER IF EXISTS audit_trail_delete ON "VehicleTool";
+			CREATE TRIGGER audit_trail_delete AFTER DELETE ON "VehicleTool" FOR EACH ROW EXECUTE FUNCTION audit_trail_capture();
+			DROP TRIGGER IF EXISTS audit_trail_delete ON "Product";
+			CREATE TRIGGER audit_trail_delete AFTER DELETE ON "Product" FOR EACH ROW EXECUTE FUNCTION audit_trail_capture();
+			DROP TRIGGER IF EXISTS audit_trail_delete ON "Service";
+			CREATE TRIGGER audit_trail_delete AFTER DELETE ON "Service" FOR EACH ROW EXECUTE FUNCTION audit_trail_capture();
+			DROP TRIGGER IF EXISTS audit_trail_delete ON "Supplier";
+			CREATE TRIGGER audit_trail_delete AFTER DELETE ON "Supplier" FOR EACH ROW EXECUTE FUNCTION audit_trail_capture();
+			DROP TRIGGER IF EXISTS audit_trail_delete ON "TechSupplier";
+			CREATE TRIGGER audit_trail_delete AFTER DELETE ON "TechSupplier" FOR EACH ROW EXECUTE FUNCTION audit_trail_capture();
+			DROP TRIGGER IF EXISTS audit_trail_delete ON "VipCustomer";
+			CREATE TRIGGER audit_trail_delete AFTER DELETE ON "VipCustomer" FOR EACH ROW EXECUTE FUNCTION audit_trail_capture();
+			DROP TRIGGER IF EXISTS audit_trail_delete ON "ProcurementQuote";
+			CREATE TRIGGER audit_trail_delete AFTER DELETE ON "ProcurementQuote" FOR EACH ROW EXECUTE FUNCTION audit_trail_capture();
+			DROP TRIGGER IF EXISTS audit_trail_delete ON "TrainingProgram";
+			CREATE TRIGGER audit_trail_delete AFTER DELETE ON "TrainingProgram" FOR EACH ROW EXECUTE FUNCTION audit_trail_capture();
+			DROP TRIGGER IF EXISTS audit_trail_delete ON "TrainingProgramParticipant";
+			CREATE TRIGGER audit_trail_delete AFTER DELETE ON "TrainingProgramParticipant" FOR EACH ROW EXECUTE FUNCTION audit_trail_capture();
+			DROP TRIGGER IF EXISTS audit_trail_delete ON "Announcement";
+			CREATE TRIGGER audit_trail_delete AFTER DELETE ON "Announcement" FOR EACH ROW EXECUTE FUNCTION audit_trail_capture();
+			DROP TRIGGER IF EXISTS audit_trail_delete ON "LeaderInvoiceMaterialItem";
+			CREATE TRIGGER audit_trail_delete AFTER DELETE ON "LeaderInvoiceMaterialItem" FOR EACH ROW EXECUTE FUNCTION audit_trail_capture();
+			DROP TRIGGER IF EXISTS audit_trail_delete ON "LeaderInvoiceAdjustment";
+			CREATE TRIGGER audit_trail_delete AFTER DELETE ON "LeaderInvoiceAdjustment" FOR EACH ROW EXECUTE FUNCTION audit_trail_capture();
+		`,
+	}, {
+		// ٦ح — قواعد حالة الحجز بالقاعدة نفسها: تتفحص **لحظة تغيّر الحالة** بس،
+		// فالصفوف القديمة الغلط ما توقف تعديلاتها العادية. كل الكتّاب بالكود
+		// (Confirm، Start، Complete، SettleLegacy، Reopen، MarkWaiting، Cancel،
+		// PARTIAL) يطابقون هالقواعد — تحقق 11-04. للتصحيح اليدوي من مدير القاعدة:
+		// SET LOCAL app.allow_status_override = 'on'.
+		Version: "0437_booking_status_rules",
+		SQL: `
+			CREATE OR REPLACE FUNCTION booking_status_rules() RETURNS trigger LANGUAGE plpgsql AS $f$
+			BEGIN
+				IF NEW.status IS NOT DISTINCT FROM OLD.status THEN RETURN NEW; END IF;
+				IF current_setting('app.allow_status_override', true) = 'on' THEN RETURN NEW; END IF;
+				IF OLD.status = 'CANCELLED' THEN
+					RAISE EXCEPTION 'حجز ملغي ما يرجع لحالة ثانية (%→%)', OLD.status, NEW.status;
+				END IF;
+				IF NEW.status = 'COMPLETED' AND NEW."completedAt" IS NULL THEN
+					RAISE EXCEPTION 'حجز منجز لازم إله تاريخ إنجاز';
+				END IF;
+				IF NEW.status = 'CANCELLED' AND NEW."cancelledAt" IS NULL THEN
+					RAISE EXCEPTION 'حجز ملغي لازم إله تاريخ إلغاء';
+				END IF;
+				IF NEW.status = 'WAITING' AND NEW."waitingSince" IS NULL THEN
+					RAISE EXCEPTION 'حجز بالانتظار لازم إله تاريخ بداية الانتظار';
+				END IF;
+				RETURN NEW;
+			END $f$;
+			DROP TRIGGER IF EXISTS booking_status_rules ON "Booking";
+			CREATE TRIGGER booking_status_rules BEFORE UPDATE OF status ON "Booking"
+				FOR EACH ROW EXECUTE FUNCTION booking_status_rules();
+		`,
+	}, {
+		// ٦ح — مرحلة المشروع لازم من القائمة المعروفة (service.projectStages). التنقل
+		// بين المراحل حر (إعادة التسعير، استرجاع المرفوض) فما نقيّد الاتجاه.
+		// يتفحص عند الإنشاء أو تغيّر المرحلة بس. الاختبار يطابق القائمتين.
+		Version: "0438_project_stage_rules",
+		SQL: `
+			CREATE OR REPLACE FUNCTION project_stage_valid(s TEXT) RETURNS boolean LANGUAGE sql IMMUTABLE AS $f$
+				SELECT s = ANY (ARRAY['1. اتصال بالزبون', '2. مرحلة الكشف', '3. عرض السعر', '🔁 إعادة التسعير', '4. العقد', '📸 الإعلام', '5. تجهيز المنتجات', '6. البدء بالتنفيذ', '7. التسليم والاستلام', '✅ مكتمل', '❌ مرفوض'])
+			$f$;
+			CREATE OR REPLACE FUNCTION project_stage_rules() RETURNS trigger LANGUAGE plpgsql AS $f$
+			BEGIN
+				IF TG_OP = 'UPDATE' AND NEW.stage IS NOT DISTINCT FROM OLD.stage THEN RETURN NEW; END IF;
+				IF current_setting('app.allow_status_override', true) = 'on' THEN RETURN NEW; END IF;
+				IF NEW.stage IS NOT NULL AND NOT project_stage_valid(NEW.stage) THEN
+					RAISE EXCEPTION 'مرحلة مشروع مو معروفة: %', NEW.stage;
+				END IF;
+				RETURN NEW;
+			END $f$;
+			DROP TRIGGER IF EXISTS project_stage_rules ON "Project";
+			CREATE TRIGGER project_stage_rules BEFORE INSERT OR UPDATE OF stage ON "Project"
+				FOR EACH ROW EXECUTE FUNCTION project_stage_rules();
+		`,
+	}, {
+		// (ع) 11-04: «اي فاتورة او مبلغ يبدي كوده بـOLD النظام ميبحوش بيه — لازم
+		// يعتبر مدقق، فقط الي يبدن B هذا الي اريده يتابع عليه».
+		// المبلغ ما ينلمس: بس علامة التدقيق، والفاتورة تاخذ ملاحظة توضح ليش.
+		Version: "0439_old_imports_audited",
+		SQL: `
+			UPDATE "Booking" SET "amountVerified" = true
+			WHERE code LIKE 'OLD-%' AND NOT "amountVerified";
+			UPDATE "LeaderInvoice" li SET
+				"auditVerdict" = 'MATCHED',
+				"auditedAt" = now(),
+				"auditNote" = COALESCE(li."auditNote", 'من النظام القديم (OLD) — يعتبر مدقق (قرار دازاي 11-04)')
+			FROM "Booking" b
+			WHERE b.id = li."bookingId" AND b.code LIKE 'OLD-%' AND li."auditedAt" IS NULL;
+		`,
+	}, {
+		// (ع) 11-04: «رفع طلب للمدير» — من اقتراح ماتركس (إداري الكميات ما عنده طريقة).
+		Version: "0440_manager_request",
+		SQL: `
+			CREATE TABLE IF NOT EXISTS "ManagerRequest" (
+				id TEXT PRIMARY KEY,
+				"requesterId" TEXT NOT NULL REFERENCES "Employee"(id) ON DELETE CASCADE,
+				title TEXT NOT NULL,
+				details TEXT NOT NULL DEFAULT '',
+				priority TEXT NOT NULL DEFAULT 'NORMAL' CHECK (priority IN ('NORMAL', 'HIGH', 'URGENT')),
+				context TEXT,
+				source TEXT NOT NULL DEFAULT 'SCREEN',
+				status TEXT NOT NULL DEFAULT 'OPEN' CHECK (status IN ('OPEN', 'DONE', 'REJECTED')),
+				reply TEXT,
+				"handledById" TEXT REFERENCES "Employee"(id) ON DELETE SET NULL,
+				"handledAt" TIMESTAMPTZ,
+				"createdAt" TIMESTAMPTZ NOT NULL DEFAULT now()
+			);
+			CREATE INDEX IF NOT EXISTS "ManagerRequest_open_idx" ON "ManagerRequest" (status, "createdAt");
+			CREATE INDEX IF NOT EXISTS "ManagerRequest_requester_idx" ON "ManagerRequest" ("requesterId", "createdAt");
+		`,
+	}, {
+		// (ع) 11-04: نواقص الجرد القديمة الي جرد أحدث للموظف نفسه أثبت وجود أدواتها
+		// تنسكّر (نفس شرط AutoCloseShortagesSQL بالمستودع، للكل).
+		Version: "0441_inventory_shortage_autoclose",
+		SQL: `
+			UPDATE "InventoryCheck" o SET resolved = true, "resolvedAt" = now()
+			WHERE NOT o.complete AND NOT o.resolved
+			  AND EXISTS (SELECT 1 FROM (
+			        SELECT n.complete, n."missingItems" FROM "InventoryCheck" n
+			        WHERE n."employeeId" = o."employeeId" AND n."checkedAt" > o."checkedAt"
+			        ORDER BY n."checkedAt" DESC LIMIT 1) latest
+			      WHERE latest.complete OR (
+			        o."missingItems" IS NOT NULL AND btrim(o."missingItems") <> ''
+			        AND NOT (string_to_array(btrim(o."missingItems"), '، ') && string_to_array(btrim(COALESCE(latest."missingItems", '')), '، '))));
+		`,
+	}}
+}

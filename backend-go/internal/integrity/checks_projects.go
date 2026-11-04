@@ -1,0 +1,60 @@
+package integrity
+
+// فحوصات قسم المشاريع (11-04). قراءة بس.
+// «مفتوح» = المرحلة مو «✅ مكتمل» ولا «❌ مرفوض» (project_stage_valid بـ 0438).
+// سجل المراحل ينكتب بالمشغّل project_stage_log (0313) — فأي فرق معناه شي عبر من جوّا.
+
+const projOpen = `p.stage NOT IN ('✅ مكتمل', '❌ مرفوض')`
+
+func init() {
+	Checks = append(Checks,
+		Check{Key: "project_open_responsible_inactive", Domain: "projects", Severity: "high",
+			Title:  "مشاريع مفتوحة مسؤولها موظف مو فعّال",
+			Why:    "المشروع يضل برقبة شخص ما يشوفه، فما يتحرك وماتركس يحاسب الغلط.",
+			Fix:    "نحوّل المشروع لمسؤول فعّال.",
+			Count:  `SELECT count(*)::bigint n FROM "Project" p JOIN "Employee" e ON e.id = p."responsibleEmployeeId" WHERE ` + projOpen + ` AND e.status::text <> 'ACTIVE'`,
+			Sample: `SELECT p.id, COALESCE(p.code,'?')||' «'||p.name||'» '||p.stage||' — المسؤول '||e.name||' ('||e.status::text||')' info FROM "Project" p JOIN "Employee" e ON e.id = p."responsibleEmployeeId" WHERE ` + projOpen + ` AND e.status::text <> 'ACTIVE' LIMIT 20`},
+		Check{Key: "project_open_delegated_inactive", Domain: "projects", Severity: "high",
+			Title:  "مشاريع مفتوحة محوّلة لموظف مو فعّال",
+			Why:    "التحويل يخلي المشروع بشاشة المحوّل له بس — وهو ما يدخل.",
+			Fix:    "نلغي التحويل أو نحوّله لموظف فعّال.",
+			Count:  `SELECT count(*)::bigint n FROM "Project" p JOIN "Employee" e ON e.id = p."delegatedToEmployeeId" WHERE ` + projOpen + ` AND e.status::text <> 'ACTIVE'`,
+			Sample: `SELECT p.id, COALESCE(p.code,'?')||' «'||p.name||'» محوّل لـ '||e.name||' ('||e.status::text||')' info FROM "Project" p JOIN "Employee" e ON e.id = p."delegatedToEmployeeId" WHERE ` + projOpen + ` AND e.status::text <> 'ACTIVE' LIMIT 20`},
+		Check{Key: "project_open_no_owner", Domain: "projects", Severity: "medium",
+			Title:  "مشاريع مفتوحة بلا مسؤول",
+			Why:    "ماكو أحد ينسأل عنها — ما تطلع بشاشة أحد ولا ينحسب تأخيرها على أحد.",
+			Fix:    "نعيّن مسؤول للمشروع.",
+			Count:  `SELECT count(*)::bigint n FROM "Project" p WHERE ` + projOpen + ` AND p."responsibleEmployeeId" IS NULL AND p."delegatedToEmployeeId" IS NULL`,
+			Sample: `SELECT p.id, COALESCE(p.code,'?')||' «'||p.name||'» '||p.stage||' منذ '||(p."createdAt"::date)::text info FROM "Project" p WHERE ` + projOpen + ` AND p."responsibleEmployeeId" IS NULL AND p."delegatedToEmployeeId" IS NULL ORDER BY p."createdAt" LIMIT 20`},
+		Check{Key: "project_contracted_without_value", Domain: "projects", Severity: "high",
+			Title:  "مشاريع بعد العقد بلا قيمة عقد",
+			Why:    "الباقي على الزبون والدفعات ينحسبون من قيمة العقد — بلاها الحسابات تطلع صفر وما يبين إنه مطلوب فلوس.",
+			Fix:    "نسجّل قيمة العقد من العقد الموقّع.",
+			Count:  `SELECT count(*)::bigint n FROM "Project" p WHERE p.stage IN ('4. العقد', '📸 الإعلام', '5. تجهيز المنتجات', '6. البدء بالتنفيذ', '7. التسليم والاستلام', '✅ مكتمل') AND NOT EXISTS (SELECT 1 FROM "ProjectContractValue" v WHERE v."projectId" = p.id)`,
+			Sample: `SELECT p.id, COALESCE(p.code,'?')||' «'||p.name||'» '||p.stage||' بلا قيمة عقد' info FROM "Project" p WHERE p.stage IN ('4. العقد', '📸 الإعلام', '5. تجهيز المنتجات', '6. البدء بالتنفيذ', '7. التسليم والاستلام', '✅ مكتمل') AND NOT EXISTS (SELECT 1 FROM "ProjectContractValue" v WHERE v."projectId" = p.id) LIMIT 20`},
+		Check{Key: "project_completed_unpaid", Domain: "projects", Severity: "high",
+			Title:  "مشاريع مكتملة وبعد عليها فلوس",
+			Why:    "المشروع انسد والزبون بعده مطلوب — يطلع من قوائم المتابعة والفلوس تضيع.",
+			Fix:    "نتابع التحصيل، أو نصحّح قيمة العقد إذا انتفق على خصم.",
+			Count:  `SELECT count(*)::bigint n FROM "Project" p JOIN "ProjectContractValue" v ON v."projectId" = p.id WHERE p.stage = '✅ مكتمل' AND v.amount > COALESCE((SELECT sum(x.amount) FROM "ProjectPayment" x WHERE x."projectId" = p.id AND x."cancelledAt" IS NULL), 0)`,
+			Sample: `SELECT p.id, COALESCE(p.code,'?')||' «'||p.name||'» العقد '||v.amount::text||' والمدفوع '||COALESCE((SELECT sum(x.amount) FROM "ProjectPayment" x WHERE x."projectId" = p.id AND x."cancelledAt" IS NULL), 0)::text info FROM "Project" p JOIN "ProjectContractValue" v ON v."projectId" = p.id WHERE p.stage = '✅ مكتمل' AND v.amount > COALESCE((SELECT sum(x.amount) FROM "ProjectPayment" x WHERE x."projectId" = p.id AND x."cancelledAt" IS NULL), 0) LIMIT 20`},
+		Check{Key: "project_stage_log_mismatch", Domain: "projects", Severity: "medium",
+			Title:  "مرحلة المشروع تختلف عن آخر سطر بسجل المراحل",
+			Why:    "السجل ينكتب تلقائياً بكل تغيير — فالفرق معناه تعديل عبر من جوّا، وتحليل «شكد بقى بكل مرحلة» يطلع غلط.",
+			Fix:    "نضيف سطر للسجل بالمرحلة الحالية ونشوف منو عدّلها.",
+			Count:  `SELECT count(*)::bigint n FROM "Project" p WHERE p.stage IS DISTINCT FROM (SELECT l."toStage" FROM "ProjectStageLog" l WHERE l."projectId" = p.id ORDER BY l."createdAt" DESC, l.id DESC LIMIT 1)`,
+			Sample: `SELECT p.id, COALESCE(p.code,'?')||' الحالية «'||COALESCE(p.stage,'-')||'» والسجل «'||COALESCE((SELECT l."toStage" FROM "ProjectStageLog" l WHERE l."projectId" = p.id ORDER BY l."createdAt" DESC, l.id DESC LIMIT 1),'ماكو')||'»' info FROM "Project" p WHERE p.stage IS DISTINCT FROM (SELECT l."toStage" FROM "ProjectStageLog" l WHERE l."projectId" = p.id ORDER BY l."createdAt" DESC, l.id DESC LIMIT 1) LIMIT 20`},
+		Check{Key: "project_duplicate_booking", Domain: "projects", Severity: "medium",
+			Title:  "أكثر من مشروع على نفس الحجز",
+			Why:    "الحجز يتحوّل لمشروع مرة وحدة — مشروعين يعني تكرار، والدفعات والمتابعة تتوزع بيناتهم.",
+			Fix:    "ندمج المشروعين أو نفك ربط الزايد.",
+			Count:  `SELECT count(*)::bigint n FROM (SELECT "bookingId" FROM "Project" WHERE "bookingId" IS NOT NULL GROUP BY 1 HAVING count(*) > 1) t`,
+			Sample: `SELECT min(id) id, 'حجز '||"bookingId"||' × '||count(*)||': '||string_agg(COALESCE(code,'?'), ', ') info FROM "Project" WHERE "bookingId" IS NOT NULL GROUP BY "bookingId" HAVING count(*) > 1 LIMIT 20`},
+		Check{Key: "project_coords_outside_iraq", Domain: "projects", Severity: "low",
+			Title:  "موقع مشروع برّا العراق",
+			Why:    "إحداثيات مقلوبة أو صفر — الفريق يروح لمكان غلط.",
+			Fix:    "نصحّح الموقع من رابط الخريطة.",
+			Count:  `SELECT count(*)::bigint n FROM "Project" WHERE "mapLatitude" IS NOT NULL AND ("mapLatitude" NOT BETWEEN 29 AND 38 OR "mapLongitude" NOT BETWEEN 38 AND 49)`,
+			Sample: `SELECT id, COALESCE(code,'?')||' lat='||"mapLatitude"::text||' lng='||COALESCE("mapLongitude"::text,'-') info FROM "Project" WHERE "mapLatitude" IS NOT NULL AND ("mapLatitude" NOT BETWEEN 29 AND 38 OR "mapLongitude" NOT BETWEEN 38 AND 49) LIMIT 20`},
+	)
+}

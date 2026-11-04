@@ -1,0 +1,173 @@
+# 🗂️ «السكرتير» — العقد بين ناروتو ولوفي وساسكي (النسخة الأولى)
+
+> قرار دازاي (٢٢ تشرين الأول ٢٠٢٦): أول «عميل ذكاء» داخل النظام. اقرا هذا الملف كامل قبل ما تكتب سطر.
+> أي تغيير بالعقد يمر من ناروتو، حتى محد يكسر شغل الثاني.
+
+## الفكرة
+
+تطبيق مستقل خفيف على التلفون. المستخدم يحچي (بصمة) أو يكتب، والسكرتير يفهم، يدوّر بالنظام، يجاوب
+**ببطاقات قصيرة**، ويحضّر **مسودة مهمة** لموظف — **ما تنرسل إلا بعد «إرسال»** من المستخدم.
+الهيكلة بسيطة: **عقل + تعليمات صفحة وحدة + أدوات**. هو يقرر أي أداة، مو قواعد مبرمجة مثل ماتركس.
+
+## قرارات ثابتة
+
+| | |
+|---|---|
+| **لمنو** | المالك (`actualRole === 'OWNER'`) ومدير النظام (`ADMIN`) بس. كل واحد **بذاكرته المنفصلة**. غيرهم: 403، والواجهة ما تبيّن السكرتير إلهم أصلاً (قاعدة «403 = مخالفة»). |
+| **الأسماء** | **مفتوحة للسكرتير بس** — استثناء مكتوب من دازاي. الاستثناء **لهذا العميل وحده**؛ ماتركس وغيره يبقون على `nameMask`/`redactNames`. |
+| **ممنوع (النسخة الأولى)** | الفلوس (أي تعديل)، الحذف، تغيير المناصب أو الصلاحيات، الغرامات. |
+| **التنفيذ** | أداة تنفيذ وحدة: **مسودة مهمة**. كل تنفيذ = مقترح ← «إرسال» من المستخدم ← ينفّذ. |
+| **السجل** | كل رسالة وكل مقترح ونتيجته تنحفظ (`SecretaryAction`). |
+| **بلا ذكاء** | إذا ماكو مفتاح أو خلص الرصيد: `today` و`history` يشتغلون من النظام نفسه، و`message` يرجّع رسالة واضحة. |
+
+## مسارات الـAPI (ناروتو يبنيها)
+
+كلها `requireAuth` + المالك أو `ADMIN`.
+
+### `POST /api/secretary/message`
+- **نص:** `application/json` → `{ "text": "..." }`
+- **صوت:** `multipart/form-data` → حقل `file` (نفس فحص `maxVoiceBytes` و`sniffAudio` مال `voice_task_handler.go`). الصوت يتحوّل لنص **بسيرفرنا** (Whisper) وما ينحفظ.
+
+الرد:
+```json
+{
+  "messageId": "…",
+  "transcript": "نص البصمة إذا چانت صوت، وإلا null",
+  "reply": "جواب قصير بالعراقي",
+  "cards": [
+    {
+      "kind": "booking | project | customer | employee | attendance | task | summary | info",
+      "title": "حجز 8850 — كرار جعفر",
+      "status": "قيد العمل",
+      "owner": "اسم المسؤول أو null",
+      "updatedAt": "2026-10-22T14:05:00Z أو null",
+      "lines": ["سطر دليل قصير", "…"],
+      "link": "/bookings?focus=8850 أو null"
+    }
+  ],
+  "proposal": null
+}
+```
+`proposal` (لما يحضّر مهمة):
+```json
+{
+  "actionId": "…",
+  "kind": "task",
+  "summary": "فهمت منك: مهمة عاجلة لأحمد خليل — متابعة الحجز 8850 اليوم",
+  "fields": {
+    "employeeId": "…", "employeeName": "أحمد خليل",
+    "title": "…", "description": "…",
+    "priority": "NORMAL | URGENT",
+    "dueAt": "2026-10-22T18:00 أو \"\""
+  },
+  "candidates": [{ "id": "…", "name": "…" }]
+}
+```
+`candidates`: إذا الاسم يطابق أكثر من موظف — الواجهة تخلي المستخدم يختار قبل «إرسال».
+
+### `POST /api/secretary/actions/{id}/confirm`
+الجسم اختياري: `{ "fields": { …نفس الحقول بعد تعديل المستخدم… } }`.
+الرد: `{ "ok": true, "card": { …بطاقة المهمة الي انرسلت… } }`. ينفّذ مرة وحدة بس (الثانية 409).
+
+### `POST /api/secretary/actions/{id}/cancel`
+الرد: `{ "ok": true }`.
+
+### `GET /api/secretary/today`
+```json
+{
+  "greeting": "صباح الخير دازاي",
+  "summary": { "lines": ["٢ حجز متأخر", "…"], "cards": [ … ] },
+  "pending": [
+    {
+      "id": "leave:…", "kind": "leave | invoice | delete_request | justification | …",
+      "question": "إجازة فلان يوم الخميس — توافق؟",
+      "why": "ليش وصلت إلك", "impact": "شنو يصير إذا وافقت/رفضت",
+      "affects": "منو يتأثر", "link": "/leaves", "createdAt": "…"
+    }
+  ]
+}
+```
+⚠️ **النسخة الأولى:** «ينتظر قرارك» **يعرض ويوديك للشاشة** (`link`) + «أجّل». أزرار وافق/ارفض من داخل
+السكرتير **مرحلة ثانية**، لأنها تنفيذ قرار إداري وتحتاج تأكيد مكتوب.
+
+### `GET /api/secretary/history?limit=50`
+```json
+[{ "id": "…", "at": "…", "role": "user | assistant", "text": "…", "transcript": null,
+   "cards": [], "action": { "id": "…", "status": "PROPOSED | SENT | CANCELLED | FAILED", "result": "…" } }]
+```
+
+## 🗓️ «تذكيراتي» (v2 — دازاي 10-22)
+
+بدل قائمة «ينتظر قرارك» الطويلة: زر «تذكيراتي» + العدد، ويفتح شاشة مرتبة بأقسام.
+الموظف يطلب **مقابلة المدير** أو **يجيب ضيف**، والطلب يوصل هنا. المالك أو المدير يحدد موعد أو يرفض بسبب،
+والموظف يوصله إشعار بالحالتين.
+
+| المسار | منو | الجسم / الرد |
+|---|---|---|
+| `POST /api/meeting-requests` | أي موظف | `{kind:"MEETING"\|"GUEST", reason, guestName?, preferredAt? "YYYY-MM-DDTHH:MM"}` — الضيف يحتاج اسم · حد ٣ طلبات مفتوحة (409) |
+| `GET /api/meeting-requests/mine` | الموظف نفسه | `[{id, kind, reason, guestName, preferredAt, status:"PENDING"\|"SCHEDULED"\|"DECLINED", scheduledAt, note, createdAt}]` |
+| `GET /api/secretary/reminders` | المالك والمدير | `{counts:{meeting,guest,delete_request,leave}, items:[{id, kind, title, who, reason, guestName, preferredAt, link, createdAt}]}` |
+| `POST /api/secretary/reminders/{id}/schedule` | المالك والمدير | `{at:"YYYY-MM-DDTHH:MM", note?}` — meeting/guest بس · الثانية 409 |
+| `POST /api/secretary/reminders/{id}/decline` | المالك والمدير | `{reason}` — meeting/guest بس · الثانية 409 |
+
+الحذف والإجازات بـ«تذكيراتي» تبقى «افتح التفاصيل» + «أجّل» (القرار من شاشتها).
+
+## العقل (لوفي) — الواجهة بين الباك إند والعقل
+
+ناروتو يجهّز التخزين والمسارات والأدوات. لوفي يكتب العقل بملف `backend-go/internal/service/secretary_brain.go`:
+
+```go
+// ناروتو يناديها من المسار بعد ما يحفظ رسالة المستخدم ويجيب آخر الرسائل والتفضيلات.
+type SecretaryTurn struct {
+    UserID   string
+    UserName string             // للتحية
+    Text     string             // نص الرسالة أو البصمة بعد Whisper
+    History  []SecretaryHistory // آخر الرسائل (ناروتو يجيبها)
+    Prefs    []string           // تفضيلات معتمدة بس
+}
+type SecretaryResult struct {
+    Reply    string
+    Cards    []SecretaryCard
+    Proposal *SecretaryProposal // nil إذا ماكو تنفيذ
+}
+func (b *SecretaryBrain) Reply(ctx context.Context, t SecretaryTurn) (*SecretaryResult, error)
+```
+- الحلقة على نمط `MatrixAgent.Run` (`matrix_agent.go`) بأدوات السكرتير (`secretary_tools.go` — ناروتو).
+- التعليمات صفحة وحدة (مسودة لوفي: جملتين، ما يخمّن أرقام، يعرض سطر قبل أي تنفيذ).
+- `AIFeatureOn("SECRETARY")` + سقف يومي + `RecordAIUsage("SECRETARY", …)`.
+- ملخص اليوم: لوفي يصيغه فوق الأرقام الي ترجعها أداة `today_facts` (ناروتو).
+
+## الأدوات (ناروتو يكتبها بـ`secretary_tools.go`)
+
+| الأداة | شنو ترجّع |
+|---|---|
+| أدوات ماتركس الموجودة (`matrix_agent_tools.go`) | الفلوس، التأخير، الأداء، ملف الموظف، الحضور، المشاريع، المخازن، التقييم — **بالأسماء** هنا |
+| `find` | بحث بالاسم أو الكود أو الهاتف: حجوزات، زبائن، مشاريع، موظفين |
+| `booking_timeline` | مراحل حجز وأوقاتها ومنو سواها |
+| `attendance_now` | منو مداوم هسه، منو طلع، منو ما وصل |
+| `pending_decisions` | نفس `pending` مال `today` |
+| `today_facts` | أرقام اليوم الخام للملخص |
+| `propose_task` | **مسودة** مهمة (تعيد استعمال `TaskDraft`/`matchEmployees` من `voice_task_service.go`) — ما تنفّذ، ترجّع `proposal` |
+
+## الواجهة (ساسكي)
+
+- مسار مستقل **`/secretary`** بلا القائمة الجانبية، وقابل للتنصيب على التلفون كتطبيق اسمه **«السكرتير»**
+  (manifest خاص بيه). يطلع بس للمالك والمدير.
+- الشاشة: تحية + عدد «ينتظر قرارك» · زر بصمة كبير (ضغطة مطوّلة) · حقل كتابة · ملخص اليوم · ينتظر قرارك ·
+  آخر المحادثات.
+- النص يبين فوراً بعد البصمة (`transcript`)، والجواب **بطاقات** (`cards`).
+- المقترح: «فهمت منك…» + الحقول قابلة للتعديل + **إرسال / تعديل / إلغاء**. وأي اسم أو موعد يبين واضح للتأكيد.
+- ممنوع `window.prompt()`. الوضع الليلي من `index.css` (اقرا «دروس انكوينا بيها» بـ`AGENTS.md`).
+- لحد ما تخلص المسارات: اشتغل على بيانات وهمية **بنفس شكل العقد بالضبط**.
+
+## الفروع والتسليم
+
+- ناروتو `avg-naruto` · لوفي `avg-luffy` · ساسكي `avg-sasuke` — من `avg` الأحدث.
+- كل واحد يرجّع: الفرع + مختصر شنو سوّى + شنو ما خلص. ناروتو يدمج ويفحص ويرفع لـ`avg`.
+- برود بأمر دازاي بس.
+
+## تشغيل الصوت على السيرفر (دازاي — مرة وحدة)
+
+1. بـ`.env` على السيرفر: `ANTHROPIC_API_KEY=…` (ما ينرفع لگيتهب أبداً).
+2. `docker compose up -d --build whisper backend` — خدمة `whisper` موجودة أصلاً بـ`docker-compose.yml`.
+بدونها السكرتير يشتغل بالكتابة بس.
