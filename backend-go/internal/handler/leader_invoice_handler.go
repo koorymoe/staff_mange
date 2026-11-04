@@ -39,7 +39,7 @@ func (h *LeaderInvoiceHandler) List(w http.ResponseWriter, r *http.Request) {
 	// الرابط — يعني أي ليدر يشيله ويشوف فواتير كل الليدرات، أو
 	// يحطّ رقم زميله ويشوف مالته.
 	employeeID := r.URL.Query().Get("employeeId")
-	if !canReviewInvoices(r) {
+	if !h.canReviewInvoices(r) {
 		employeeID = middleware.EmployeeIDFromContext(r)
 	}
 	// ⚠️ المرحلة معامل اختياري: بلاها ترجع الكل — فأي نداء قديم يشتغل
@@ -60,7 +60,7 @@ func (h *LeaderInvoiceHandler) Get(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// نفس القاعدة: الليدر ما يفتح فاتورة غيره حتى لو عنده رقمها
-	if !canReviewInvoices(r) && inv.EmployeeID != middleware.EmployeeIDFromContext(r) {
+	if !h.canReviewInvoices(r) && inv.EmployeeID != middleware.EmployeeIDFromContext(r) {
 		WriteError(w, http.StatusForbidden, "هذي مو فاتورتك")
 		return
 	}
@@ -70,8 +70,11 @@ func (h *LeaderInvoiceHandler) Get(w http.ResponseWriter, r *http.Request) {
 // canReviewInvoices منو يشوف فواتير كل الليدرات: المحاسب والمراقب
 // ومدير النظام والمالك. الليدر نفسه يشوف مالته بس، وباقي الموظفين
 // (مصمم، مبيعات...) ما إلهم شغل بهذي الشاشة أصلاً.
-func canReviewInvoices(r *http.Request) bool {
-	return authz.SeeAll(r, nil, authz.LeaderInvoices) // (11-04) محرك الصلاحيات
+func (h *LeaderInvoiceHandler) canReviewInvoices(r *http.Request) bool {
+	if h.permissions == nil {
+		return authz.SeeAll(r, nil, authz.LeaderInvoices)
+	}
+	return authz.SeeAll(r, h.permissions, authz.LeaderInvoices) // (11-04) محرك الصلاحيات
 }
 
 // POST /api/leader-invoices

@@ -24,14 +24,14 @@ func TestSeeAllMatchesOldRules(t *testing.T) {
 		// فواتير الليدرية (canReviewInvoices — دور بس)
 		{LeaderInvoices, "FINANCE", "FINANCE", nil, true},
 		{LeaderInvoices, "HR_COORDINATOR", "HR_COORDINATOR", nil, false},
-		{LeaderInvoices, "TECHNICIAN", "TECHNICIAN", []string{"finance"}, false},
+		{LeaderInvoices, "TECHNICIAN", "TECHNICIAN", []string{"finance"}, true}, // 11-04 قرار
 		// المصاريف
 		{Expenses, "MONITOR", "MONITOR", nil, true},
 		{Expenses, "SALES", "SALES", []string{"expenses_manage"}, true},
 		{Expenses, "PROJECT_MANAGER", "PROJECT_MANAGER", nil, false},
 		// تقارير العمل
 		{WorkReports, "SERVICE_MANAGER", "SERVICE_MANAGER", nil, true},
-		{WorkReports, "FINANCE", "FINANCE", nil, false},
+		{WorkReports, "FINANCE", "FINANCE", nil, true}, // 11-04 قرار
 		{WorkReports, "QUALITY_ENGINEER", "QUALITY_ENGINEER", []string{"quality_control"}, true},
 		// تقييم الموظفين (الدور الأصلي)
 		{StaffScores, "ADMIN", "OWNER", nil, true},

@@ -39,12 +39,14 @@ var SeeAllRules = map[Resource]Rule{
 	Bookings: {Roles: []string{"ADMIN", "OWNER", "HR_COORDINATOR", "MONITOR", "FINANCE", "PROJECT_MANAGER", "PROCUREMENT_ADMIN"},
 		Perms: []string{"view_bookings", "coordinator", "crew_management", "mission_tracking", "procurement", "monitoring", "finance"}},
 	// leader_invoice_handler.canReviewInvoices — دور بس
-	LeaderInvoices: {Roles: []string{"ADMIN", "OWNER", "FINANCE", "MONITOR"}},
+	// (11-04) + صلاحية finance: نفس المصاريف — صاحب صلاحية المالية يشوف فواتير الليدرية
+	LeaderInvoices: {Roles: []string{"ADMIN", "OWNER", "FINANCE", "MONITOR"}, Perms: []string{"finance"}},
 	// expense_handler.canSeeAll
 	Expenses: {Roles: []string{"ADMIN", "OWNER", "FINANCE", "MONITOR"}, Perms: []string{"expenses_manage", "finance"}},
 	// work_report_handler.canReviewReports (canSeeOperational + صلاحيات المراجعة)
-	WorkReports: {Roles: []string{"OWNER", "ADMIN", "HR_COORDINATOR", "MONITOR", "PROJECT_MANAGER", "SERVICE_MANAGER"},
-		Perms: []string{"monitoring", "quality_control", "auditing", "mon_reports"}},
+	// (11-04) + المحاسب وصلاحية finance: يطابق التقرير ويا الفاتورة مثل باقي الفلوس
+	WorkReports: {Roles: []string{"OWNER", "ADMIN", "HR_COORDINATOR", "MONITOR", "PROJECT_MANAGER", "SERVICE_MANAGER", "FINANCE"},
+		Perms: []string{"monitoring", "quality_control", "auditing", "mon_reports", "finance"}},
 	// staff_score_handler isAdminRole — الأدمن والمالك يشوفون صفّهم؛ الباقي ما يشوف نفسه باللوحة
 	StaffScores: {Roles: []string{"ADMIN", "OWNER"}, RawRole: true},
 }

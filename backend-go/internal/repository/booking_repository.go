@@ -119,13 +119,9 @@ func (r *BookingRepository) ListForAssignedEmployee(employeeID string, limit int
 	// الليدر فني قبل كل شي — لازم يشوف الحجز الي رايح له.
 	bookings := []model.Booking{}
 	err := r.db.Select(&bookings, `
-		SELECT DISTINCT b.* FROM "Booking" b
-		LEFT JOIN "BookingAssignment" ba ON ba."bookingId" = b.id
+		SELECT b.* FROM "Booking" b
 		WHERE b."archivedAt" IS NULL
-		  AND (ba."employeeId" = $1
-		   OR b."projectSupervisorId" = $1
-		   OR b."expenseResponsibleId" = $1
-		   OR b."handoverToId" = $1)
+		  AND `+BookingPartySQL("b", 1)+`
 		ORDER BY b."createdAt" DESC
 		LIMIT $2
 	`, employeeID, limit)
@@ -1636,12 +1632,16 @@ func (r *BookingRepository) HandleReturn(id, byID string) (bool, error) {
 // چان الرقم مثبَّتاً على `$2` فاضطر النادي يحجز `$1` فارغاً، وبوستكرس
 // يرفض استعلاماً يشير لـ`$2` بلا ما يستعمل `$1`: «there is no
 // parameter $2». التمرير يشيل الحيلة من أصلها.
+// (11-04 — محرك الصلاحيات) تعريف واحد لـ«طرف بالحجز»: قائمة «حجوزاتي» و«يگدر
+// يشتغل عليه» صاروا نفس الشرط — قبل جان القائمة تنسى المحوَّل ومشرف الكشف،
+// والشغل ينسى المستلم.
 func BookingPartySQL(q string, n int) string {
 	p := fmt.Sprintf("$%d", n)
 	return `(` + q + `."expenseResponsibleId" = ` + p + `
 			OR ` + q + `."projectSupervisorId" = ` + p + `
 			OR ` + q + `."transferEmployeeId" = ` + p + `
 			OR ` + q + `."inspectionSupervisorId" = ` + p + `
+			OR ` + q + `."handoverToId" = ` + p + `
 			OR EXISTS (
 				SELECT 1 FROM "BookingAssignment" ba
 				WHERE ba."bookingId" = ` + q + `.id AND ba."employeeId" = ` + p + `
