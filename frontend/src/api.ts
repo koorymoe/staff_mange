@@ -3878,7 +3878,6 @@ export const api = {
   getDisciplinePoints: () => request<DisciplinePoints[]>('/discipline'),
   getDisciplineEvents: (employeeId?: string) =>
     request<DisciplineEvent[]>(`/discipline/events${employeeId ? '?employeeId=' + employeeId : ''}`),
-  runDisciplineSweep: () => request<DisciplinePoints[]>('/discipline/run', { method: 'POST' }),
   // تعديل يدوي على رصيد موظف — للمالك ومدير النظام. delta موجب يزيد وسالب ينقص.
   adjustDisciplinePoints: (employeeId: string, delta: number, reason: string) =>
     request<DisciplinePoints>('/discipline/adjust', {
