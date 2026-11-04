@@ -255,3 +255,4 @@ git push origin origin/avg:refs/heads/prod     # بعد التأكد إنه fast
 - 2026-11-04: ٨أ — منع «ابدأ الشغل» لحجز بلا كادر/ليدر/مسؤول (عدا IN_HOUSE) — booking_repository.StartWithResponseTime + ErrBookingNoCrew. مجرّب محلياً.
 - 2026-11-04: ٧ج (Go) — حزمة internal/errlog؛ ١٠٣ `_, _ = X.Exec` صارت errlog.Exec (تسجيل بدل بلع). codemod: scratchpad/codemod/errlog.
 - 2026-11-04: ٧ج (واجهة) — utils/swallow.ts؛ ١٤٢ .catch(() => {}) → .catch(swallow). tsc/eslint/test خضر.
+- 2026-11-04: ٧م — فواتير الليدرية صارت صفحات من الخادم (leader_invoice_page.go + getLeaderInvoicesPage). مطابقة parity.py: ٠ اختلاف؛ مجرّبة بالمتصفح.

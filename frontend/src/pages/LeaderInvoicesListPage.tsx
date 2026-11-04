@@ -1,14 +1,13 @@
 import { useEffect, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { onEnter } from '../utils/enterKey'
-import { api, AUDIT_VERDICTS, type LeaderInvoice, type LeaderInvoiceAdjustment } from '../api'
+import { api, AUDIT_VERDICTS, type LeaderInvoice, type LeaderInvoiceAdjustment, type LeaderInvoicePage } from '../api'
 import { parseAmount } from '../utils/money'
 import EntityIdentity from '../components/EntityIdentity'
 import StatTile from '../components/StatTile'
 import Pager from '../components/Pager'
 import { formatCustomerCode } from '../utils/identity'
 import { useSession, canAuditFinance, hasRole } from '../session'
-import { matches } from '../utils/search'
 import InvoiceDeleteRequests, { RequestInvoiceDelete } from '../components/InvoiceDeleteRequests'
 import { esc, printIdentityCss, printIdentityHtml } from '../utils/printIdentity'
 import LocateHint from '../components/LocateHint'
@@ -170,7 +169,9 @@ export default function LeaderInvoicesListPage({ embedded }: EmbeddedProps = {})
   /** ⚠️ `actualRole` مو `role`: المالك ينوصل كـADMIN بالواجهة،
    *  ودوره الحقيقي بـ`actualRole`. */
   const isOwner = employee?.actualRole === 'OWNER'
-  const [invoices, setInvoices] = useState<LeaderInvoice[]>([])
+  // بند ٧م: الخادم يرجّع صفحة وحدة + العدّادات والمجموع والخيارات (نفس المنطق القديم حرفياً)
+  const [pg, setPg] = useState<LeaderInvoicePage | null>(null)
+  const invoices = pg?.rows ?? []
   const [loading, setLoading] = useState(true)
   const [busyId, setBusyId] = useState<string | null>(null)
   // ═══ رقم الفاتورة المحاسبية ═══
@@ -289,24 +290,10 @@ export default function LeaderInvoicesListPage({ embedded }: EmbeddedProps = {})
     } finally { setBusyId(null) }
   }
 
-  // الفلترة: تبويب + بحث
-  const matchesSearch = (inv: LeaderInvoice) => {
-    return matches([inv.externalInvoiceNumber, inv.accountingCode, inv.customerName, inv.employeeName, inv.bookingCode], search)
-  }
-  /** ⚠️ نفس اشتقاق الخادم بالضبط — المرحلة تنحسب من الحالة والحكم
-   *  سوا، مو من عمود ثالث ينحرف. */
   const audited = (inv: LeaderInvoice) => !!inv.auditVerdict && inv.auditVerdict.trim() !== ''
   /** ⚠️ نفس اشتقاق الخادم: طُلبت ولا انبتّ بيها = عند المراقب الآن. */
   const atMonitor = (inv: LeaderInvoice) => !!inv.monitorRequestedAt && !inv.monitorDecidedAt
-  /**
-   * monitorReviewed: المراقب بتّ بيها فعلاً.
-   *
-   * 🔴 بلا هذا التبويب، أول ما يبتّ المراقب بفاتورة **تختفي منه
-   * تماماً**: `monitorDecidedAt` تنملي فتطلع من «بانتظار تدقيقه»
-   * وترجع لطابور المحاسب — فهو يشتغل وما يبقى ولا أثر يشوفه. يعني
-   * يبتّ بعشر فواتير ويطلع بنص اليوم ما يعرف شنو سوّى.
-   */
-  const monitorReviewed = (inv: LeaderInvoice) => !!inv.monitorDecidedAt
+  // monitorReviewed / inTab / المرشّحات: انتقلت للخادم (leader_invoice_page.go) — بند ٧م.
   /** فاتورة شغل داخل الشركة — نقراها من **نوع الحجز نفسه**، مو من
    *  علم مكرَّر بالفاتورة ينحرف عن الحجز بأول تعديل. */
   const isInternal = (inv: LeaderInvoice) => inv.booking?.bookingType === 'INTERNAL'
@@ -315,53 +302,13 @@ export default function LeaderInvoicesListPage({ embedded }: EmbeddedProps = {})
   const needsAccountingNumber = (inv: LeaderInvoice) =>
     inv.status === 'APPROVED' && !inv.externalInvoiceNumber?.trim()
     && !inv.isFree && inv.auditVerdict !== 'FREE' && !isInternal(inv) && !isInternalInv(inv)
-  const inTab = (inv: LeaderInvoice) => {
-    if (tab === 'INTERNAL') return isInternal(inv)
-    // 🔴 العزل: الداخلي ما يطلع بأي تبويب ثانٍ — ولا بـ«الكل».
-    if (isInternal(inv)) return false
-    if (tab === 'ALL') return true
-    if (tab === 'AUDIT') return inv.status !== 'APPROVED' && !audited(inv)
-    if (tab === 'MONITOR') return inv.status !== 'APPROVED' && atMonitor(inv)
-    if (tab === 'REVIEWED') return monitorReviewed(inv)
-    if (tab === 'PENDING') return inv.status !== 'APPROVED' && audited(inv) && !atMonitor(inv)
-    if (tab === 'APPROVED') return inv.status === 'APPROVED'
-    return needsAccountingNumber(inv)
-  }
-  // ⚠️ المرشّحات تتراكم مع البحث مو تستبدله.
-  const matchesFilters = (i: LeaderInvoice) =>
-    (!fLeader || i.employeeName === fLeader) &&
-    (!fCustomer || i.customerName === fCustomer) &&
-    (!fSystem || (i.systems || []).includes(fSystem)) &&
-    (!fMonth || i.createdAt.slice(0, 7) === fMonth)
-  const shown = invoices.filter((i) => inTab(i) && matchesSearch(i) && matchesFilters(i))
-  /**
-   * 🔴 **العدّادات تنحسب على `external` مو على `invoices`**: تبويب
-   * «الكل» صار **ما يعرض** الفواتير الداخلية (العزل بـ`inTab`)، فلو
-   * بقى العدّاد يعدّهن تطلع البطاقة تقول «٤» والقائمة تعرض «٣».
-   * وهذا انقاس فعلاً قبل الإصلاح.
-   *
-   * 🔴 و«رقم غلط أسوأ من ماكو رقم»: العدّاد لازم يعدّ **نفس** الي
-   * الضغط عليه يعرضه، بلا استثناء.
-   */
-  const external = invoices.filter((i) => !isInternal(i))
-  const counts = {
-    INTERNAL: invoices.filter(isInternal).length,
-    AUDIT: external.filter((i) => i.status !== 'APPROVED' && !audited(i)).length,
-    MONITOR: external.filter((i) => i.status !== 'APPROVED' && atMonitor(i)).length,
-    REVIEWED: external.filter(monitorReviewed).length,
-    PENDING: external.filter((i) => i.status !== 'APPROVED' && audited(i) && !atMonitor(i)).length,
-    NO_NUMBER: external.filter(needsAccountingNumber).length,
-    APPROVED: external.filter((i) => i.status === 'APPROVED').length,
-    ALL: external.length,
-  }
-  const sumShown = shown.reduce((t, i) => t + i.netTotal, 0)
-  const pageStart = (page - 1) * perPage
-  const paged = shown.slice(pageStart, pageStart + perPage)
-
-  // خيارات القوائم تنشتق من المحمّل — بلا مسار ولا معامل خادم.
-  const leaderOptions = Array.from(new Set(invoices.map((i) => i.employeeName).filter(Boolean) as string[])).sort()
-  const customerOptions = Array.from(new Set(invoices.map((i) => i.customerName).filter(Boolean) as string[])).sort()
-  const systemOptions = Array.from(new Set(invoices.flatMap((i) => i.systems || []))).sort()
+  const counts = { INTERNAL: 0, AUDIT: 0, MONITOR: 0, REVIEWED: 0, PENDING: 0, NO_NUMBER: 0, APPROVED: 0, ALL: 0, ...(pg?.counts ?? {}) }
+  const shownTotal = pg?.total ?? 0
+  const sumShown = pg?.sum ?? 0
+  const paged = invoices
+  const leaderOptions = pg?.leaders ?? []
+  const customerOptions = pg?.customers ?? []
+  const systemOptions = pg?.systems ?? []
   /** المحاسب يرسلها للمراقب — الطريق الثالث للشك. */
   const sendToMonitor = async () => {
     if (!monitorFor) return
@@ -429,8 +376,15 @@ export default function LeaderInvoicesListPage({ embedded }: EmbeddedProps = {})
   // سجل تعديلات المحاسب — «شنو كان وشنو صار ومنو غيّره»
   const [adjustments, setAdjustments] = useState<LeaderInvoiceAdjustment[]>([])
 
-  const load = () => { api.getLeaderInvoices().then(setInvoices).finally(() => setLoading(false)).catch(loadFailed) }
-  useEffect(load, [])
+  // البحث يتأخر شوية حتى ما نسأل الخادم بكل حرف
+  const [debSearch, setDebSearch] = useState(search)
+  useEffect(() => { const t = setTimeout(() => { setDebSearch(search); setPage(1) }, 300); return () => clearTimeout(t) }, [search])
+  const load = () => {
+    if (tab === 'PRICES') { setLoading(false); return }
+    api.getLeaderInvoicesPage({ tab, q: debSearch, leader: fLeader, customer: fCustomer, system: fSystem, month: fMonth, page, perPage })
+      .then(setPg).finally(() => setLoading(false)).catch(loadFailed)
+  }
+  useEffect(load, [tab, debSearch, fLeader, fCustomer, fSystem, fMonth, page, perPage])
 
   const handleApprove = async () => {
     if (!approveFor || (!invoiceNo.trim() && !noNumberInv(approveFor))) return
@@ -633,7 +587,7 @@ export default function LeaderInvoicesListPage({ embedded }: EmbeddedProps = {})
 
       <InvoiceDeleteRequests isOwner={employee?.actualRole === 'OWNER'} onChanged={load} />
       <div className={`mt-3 rounded-xl border border-white bg-white px-4 py-3 text-sm shadow-[0_4px_20px_rgba(15,32,64,0.06)] ${tab === 'PRICES' ? 'hidden' : ''}`}>
-        العرض: <b className="text-brand-800">{shown.length}</b> فاتورة
+        العرض: <b className="text-brand-800">{shownTotal}</b> فاتورة
         {/* «من إجمالي» چان ناقصاً — بدونه ما تعرف إذا الرقم كل شي
             لو نتيجة ترشيح. */}
         <span className="text-slate-400"> من إجمالي {counts.ALL} فاتورة</span> ·
@@ -645,7 +599,7 @@ export default function LeaderInvoicesListPage({ embedded }: EmbeddedProps = {})
         )}
       </div>
 
-      <LocateHint query={search} localCount={shown.length} currentRoute="/leader-invoices" />
+      <LocateHint query={search} localCount={shownTotal} currentRoute="/leader-invoices" />
 
       {/* البحث برقم فاتورة المحاسب — هذا سبب أرشفة الرقم: يلكاها بيه */}
       <input
@@ -940,10 +894,10 @@ export default function LeaderInvoicesListPage({ embedded }: EmbeddedProps = {})
           بالخادم هم بلا LIMIT. بـ١٢١ فاتورة تمشي، ما تبقى تمشي.
           الترقيم بالواجهة لأن العدّادات الخمس تنحسب من القائمة
           الكاملة، ولو صار بالخادم تنكسر كلها. */}
-      {shown.length > 0 && (
+      {shownTotal > 0 && (
         <div className="mt-3 rounded-xl border px-4 py-3"
           style={{ backgroundColor: 'var(--sf-card)', borderColor: 'var(--bd-line)' }}>
-          <Pager page={page} perPage={perPage} total={shown.length} unit="فاتورة"
+          <Pager page={page} perPage={perPage} total={shownTotal} unit="فاتورة"
             onPage={setPage} onPerPage={setPerPage} />
         </div>
       )}

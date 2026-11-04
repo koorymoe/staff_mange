@@ -756,6 +756,11 @@ func (s *LeaderInvoiceService) ListByStage(employeeID, stage string) ([]model.Le
 	return s.invoices.ListByStage(employeeID, stage)
 }
 
+// Page — بند ٧م: صفحة وحدة + عدّادات ومجموع من الخادم.
+func (s *LeaderInvoiceService) Page(q repository.LeaderInvoicePageQuery) (*repository.LeaderInvoicePage, error) {
+	return s.invoices.Page(q)
+}
+
 func derefString(p *string) string {
 	if p == nil {
 		return ""

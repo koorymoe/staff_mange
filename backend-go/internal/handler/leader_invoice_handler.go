@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"staffmange-api/internal/authz"
+	"strconv"
 
 	"staffmange-api/internal/middleware"
 	"staffmange-api/internal/model"
@@ -50,6 +51,28 @@ func (h *LeaderInvoiceHandler) List(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	WriteJSON(w, http.StatusOK, invoices)
+}
+
+// GET /api/leader-invoices/page?tab=&q=&leader=&customer=&system=&month=&page=&perPage=
+// بند ٧م: بدل تنزيل كل الفواتير. نفس قاعدة الليدر: يشوف فواتيره بس.
+func (h *LeaderInvoiceHandler) Page(w http.ResponseWriter, r *http.Request) {
+	q := r.URL.Query()
+	employeeID := q.Get("employeeId")
+	if !h.canReviewInvoices(r) {
+		employeeID = middleware.EmployeeIDFromContext(r)
+	}
+	page, _ := strconv.Atoi(q.Get("page"))
+	per, _ := strconv.Atoi(q.Get("perPage"))
+	res, err := h.service.Page(repository.LeaderInvoicePageQuery{
+		EmployeeID: employeeID, Tab: q.Get("tab"), Search: q.Get("q"),
+		Leader: q.Get("leader"), Customer: q.Get("customer"), System: q.Get("system"), Month: q.Get("month"),
+		Page: page, PerPage: per,
+	})
+	if err != nil {
+		WriteError(w, http.StatusInternalServerError, "تعذر جلب فواتير الليدر")
+		return
+	}
+	WriteJSON(w, http.StatusOK, res)
 }
 
 // GET /api/leader-invoices/{id}

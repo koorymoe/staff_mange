@@ -2697,6 +2697,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	mux.Handle("GET /api/system-price-catalog", middleware.Chain(http.HandlerFunc(leaderInvoiceHandler.ListCatalog), requireAuth))
 	mux.Handle("GET /api/materials", middleware.Chain(http.HandlerFunc(leaderInvoiceHandler.ListMaterials), requireAuth))
 	mux.Handle("GET /api/leader-invoices", middleware.Chain(http.HandlerFunc(leaderInvoiceHandler.List), requireAuth, requireLeaderBasket))
+	mux.Handle("GET /api/leader-invoices/page", middleware.Chain(http.HandlerFunc(leaderInvoiceHandler.Page), requireAuth, requireLeaderBasket))
 	mux.Handle("GET /api/leader-invoices/{id}", middleware.Chain(http.HandlerFunc(leaderInvoiceHandler.Get), requireAuth, requireLeaderBasket))
 	// ⚠️ الليدر مثل اليوم، **وزيادةً** مسؤول خدمة الحجز: بخدمات مثل
 	// الجي بي اس والداش كام الفاتورة على مسؤول الخدمة، وهو مو

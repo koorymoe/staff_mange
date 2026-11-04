@@ -3768,6 +3768,16 @@ export interface SaveTrainingProgramInput {
 export const DEPARTMENTS = ['الفنية', 'المبيعات', 'الصيانة', 'الإدارة', 'المستودع']
 export const REVIEW_GRADES = ['ممتاز', 'جيد جداً', 'جيد', 'يحتاج تحسين']
 
+export interface LeaderInvoicePage {
+  rows: LeaderInvoice[]
+  total: number
+  sum: number
+  counts: Partial<Record<'INTERNAL' | 'AUDIT' | 'MONITOR' | 'REVIEWED' | 'PENDING' | 'NO_NUMBER' | 'APPROVED' | 'ALL', number>>
+  leaders: string[]
+  customers: string[]
+  systems: string[]
+}
+
 export const api = {
   // 📊 ملف سوّاه كمال (دازاي 10-28) — الرابط من بطاقة السكرتير
   downloadSecretaryFile: (link: string, name: string) => downloadFile(link, name),
@@ -5186,6 +5196,9 @@ export const api = {
     request<LeaderInvoiceAdjustment[]>(`/leader-invoices/${id}/adjustments`),
   /** يدوّر على الحجز بكل الأماكن ويقول وين هو. */
   locate: (q: string) => request<LocateResult>(`/locate?q=${encodeURIComponent(q)}`),
+  /** بند ٧م: صفحة وحدة من فواتير الليدرية ويا العدّادات والمجموع من الخادم. */
+  getLeaderInvoicesPage: (q: { tab: string; q?: string; leader?: string; customer?: string; system?: string; month?: string; page: number; perPage: number }) =>
+    request<LeaderInvoicePage>(`/leader-invoices/page?${new URLSearchParams(Object.entries(q).filter(([, v]) => v !== '' && v !== undefined).map(([k, v]) => [k, String(v)])).toString()}`),
   getLeaderInvoices: (employeeId?: string) =>
     request<LeaderInvoice[]>(`/leader-invoices${employeeId ? `?employeeId=${encodeURIComponent(employeeId)}` : ''}`),
   createLeaderInvoice: (data: CreateLeaderInvoiceRequest) =>
