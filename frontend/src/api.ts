@@ -119,6 +119,8 @@ export type EmployeeRole =
 export interface Employee {
   /** الأدوار الفعلية من منصبه بالهيكل (دازاي 11-01) — من /auth/me */
   orgRoles?: string[]
+  /** (11-04) جدول «شنو يشوف» من محرك الصلاحيات بالسيرفر (/auth/me) */
+  can?: Record<string, boolean>
   id: string
   name: string
   certificate: string | null

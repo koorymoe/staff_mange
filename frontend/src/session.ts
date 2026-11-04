@@ -26,6 +26,14 @@ export const useSession = () => useContext(SessionContext)
  * إداري كوادر، مدير مشاريع…) — نفس `middleware.HasRole` بالخادم. للفحوصات
  * الي چانت مكتوبة على اسم الدور، حتى صاحب المنصب ياخذ شغل الدور القديم.
  */
+/**
+ * can (11-04 — محرك الصلاحيات، المرحلة ٢): «يشوف كل صفوف هذا النوع؟» محسوبة
+ * بالسيرفر (`authz.SeeAllRules`) — نفس القاعدة الي يطبقها الحارس، فماكو 403 غلط.
+ * ترجّع undefined إذا الجلسة قديمة (قبل الحقل) — المنادي يرجع لحسابه القديم.
+ */
+export const can = (employee: Employee | null | undefined, resource: string): boolean | undefined =>
+  employee?.can?.[resource]
+
 export const hasRole = (employee: Employee | null | undefined, ...roles: string[]) =>
   !!employee && (roles.includes(employee.role) || (employee.orgRoles ?? []).some((r) => roles.includes(r)))
 

@@ -2,6 +2,7 @@ package handler
 
 import (
 	"net/http"
+	"staffmange-api/internal/authz"
 	"strings"
 
 	"staffmange-api/internal/middleware"
@@ -25,7 +26,11 @@ func clientIP(r *http.Request) string {
 type AuthHandler struct {
 	auth       *service.AuthService
 	stealthLog func(ownerID, employeeID, method, path string, status int)
+	perms      authz.PermLister
 }
+
+// SetPerms مصدر الصلاحيات لجدول القدرات (can) بـ/auth/me.
+func (h *AuthHandler) SetPerms(p authz.PermLister) { h.perms = p }
 
 func NewAuthHandler(auth *service.AuthService) *AuthHandler {
 	return &AuthHandler{auth: auth}
@@ -70,6 +75,10 @@ func (h *AuthHandler) Me(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	employee.OrgRoles = middleware.OrgRoles(r)
+	employee.Can = map[string]bool{}
+	for res, ok := range authz.Capabilities(r, h.perms) {
+		employee.Can[string(res)] = ok
+	}
 	WriteJSON(w, http.StatusOK, employee)
 }
 

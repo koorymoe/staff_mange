@@ -1,6 +1,6 @@
 
 import TabHub from '../components/TabHub'
-import { useSession } from '../session'
+import { useSession, can } from '../session'
 import { lazyRetry } from '../utils/staleReload'
 
 const Finance = lazyRetry(() => import('./Finance'))
@@ -21,7 +21,7 @@ export default function FinanceDeskPage() {
       tabs={[
         { id: 'audit', label: 'تدقيق الحسابات', icon: '📊', show: audit, render: () => <Finance /> },
         { id: 'daily', label: 'التدقيق اليومي', icon: '📅', show: audit, render: () => <DailyAuditPage /> },
-        { id: 'fund', label: 'الدوار', icon: '💵', show: has('revolving_fund'), render: () => <RevolvingFundPage /> },
+        { id: 'fund', label: 'الدوار', icon: '💵', show: can(employee, 'funds') ?? has('revolving_fund'), render: () => <RevolvingFundPage /> },
         { id: 'expenses', label: 'إدارة المصاريف', icon: '🧾', show: top || role === 'FINANCE' || has('expenses_manage'), render: () => <ExpensesReview /> },
         { id: 'issues', label: 'أخطاء التدقيق', icon: '💸', show: top || role === 'FINANCE' || has('audit_issues', 'finance_audit'), render: () => <AuditIssuesPage /> },
       ]} />

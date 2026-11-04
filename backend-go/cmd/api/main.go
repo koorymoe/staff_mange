@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"staffmange-api/internal/authz"
 	"strings"
 	"sync"
 	"time"
@@ -234,6 +235,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 
 	// Handlers
 	authHandler := handler.NewAuthHandler(authService)
+	authHandler.SetPerms(permissionRepo) // (11-04) جدول القدرات can
 	employeeHandler := handler.NewEmployeeHandler(employeeService)
 	leaderSkillHandler := handler.NewLeaderSkillHandler(repository.NewLeaderSkillRepository(db))
 	departmentRepo := repository.NewDepartmentRepository(db)
@@ -761,8 +763,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	// فالتوسيع هنا **بالقراءة**، والتضييق يبقى **بالقرار**:
 	// `booking_audit_handler.go` يفحص المفتاح للمراقب ويرجّعه ٤٠٣ نظيفاً
 	// بلا مخالفة ولا قفل.
-	requireVerifyBooking := guards.RoleOrAnyPermission(
-		[]string{"ADMIN", "OWNER", "FINANCE", "MONITOR"}, "finance", "finance_audit")
+	requireVerifyBooking := authz.Guard(guards, authz.Credits) // (11-04) القاعدة بمحرك الصلاحيات
 	// ربط حجزين تاريخيين منفصلين كإنجاز جزئي لنفس الشغلة — صلاحية
 	// مستقلة (نفس فلسفة finance_audit): المالك ينطيها فرد-فرد، مو دور.
 	requirePartialLink := guards.Permission("booking_partial_link")
@@ -871,12 +872,12 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	// إنشاء/تعديل بيانات نظام GPS (عملاء/شرائح/أجهزة/تجديد/صيانة) يقتصر على من
 	// يملك صلاحية "gps_system" فعلياً (نفس الصلاحية الي تفتح كل صفحات نظام GPS
 	// بالواجهة) — مو أي موظف مسجل دخول.
-	requireFund := guards.Permission("revolving_fund")
+	requireFund := authz.Guard(guards, authz.Funds)
 	// قيمة مبالغ الدوار نفسها (تعديل الرصيد والتغذية) — مدير النظام والمالك
 	// فقط، أو أي موظف ينطونه صلاحية revolving_fund_amount صراحةً.
-	requireFundAmount := guards.RoleOrPermission([]string{"ADMIN", "OWNER"}, "revolving_fund_amount")
+	requireFundAmount := authz.Guard(guards, authz.FundAmount)
 	// التخريج يرجّع فلوس للدوار — صلاحية مستقلة عن شغل الدوار اليومي.
-	requireDischarge := guards.RoleOrPermission([]string{"ADMIN", "OWNER", "FINANCE"}, "fund_discharge")
+	requireDischarge := authz.Guard(guards, authz.FundDischarge)
 	// الاتصال بالزبون مو حكر على مهندس الجودة — أي موظف ينطيه المدير
 	// صلاحية complaint_contact يكدر يتصل ويأشر النتيجة باسمه.
 	requireComplaintContact := guards.RoleOrPermission([]string{"ADMIN", "OWNER", "QUALITY_ENGINEER", "MONITOR"}, "complaint_contact")

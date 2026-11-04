@@ -3,6 +3,7 @@ package handler
 import (
 	"encoding/json"
 	"net/http"
+	"staffmange-api/internal/authz"
 	"staffmange-api/internal/model"
 	"strings"
 	"time"
@@ -41,7 +42,7 @@ func (h *ProjectPaymentHandler) has(r *http.Request, roles []string, perms ...st
 }
 
 func (h *ProjectPaymentHandler) isFinance(r *http.Request) bool {
-	return h.has(r, []string{"FINANCE"}, "finance", "finance_audit")
+	return authz.SeeAll(r, h.perms, authz.ProjectPaymentsFinance) // (11-04) محرك الصلاحيات
 }
 
 func (h *ProjectPaymentHandler) canRecord(r *http.Request, projectID string) bool {

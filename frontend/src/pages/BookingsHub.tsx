@@ -1,7 +1,7 @@
 import { Suspense, useEffect, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { api } from '../api'
-import { useSession, isAdminOrOwner } from '../session'
+import { useSession, isAdminOrOwner, can } from '../session'
 import BookingsList from './BookingsList'
 import Coordinator from './Coordinator'
 import SalesBooking from './SalesBooking'
@@ -110,11 +110,12 @@ export default function BookingsHub() {
   // ⚠️ والقائمة هنا **تطابق `canSeeAllBookings` بالسيرفر بالضبط** —
   // بلا `sales_booking` بالاثنين. تبويب يفتح شاشة فارغة أو يرجّع ٤٠٣
   // أسوأ من تبويب ما موجود.
-  const canViewAll = isAdmin
+  // (11-04) القاعدة صارت من السيرفر نفسه (authz) — والحساب القديم احتياط لجلسة قديمة.
+  const canViewAll = can(employee, 'bookings') ?? (isAdmin
     || ['HR_COORDINATOR', 'MONITOR', 'FINANCE', 'PROJECT_MANAGER', 'PROCUREMENT_ADMIN']
       .includes(employee?.role ?? '')
     || ['view_bookings', 'coordinator', 'crew_management', 'mission_tracking',
-      'procurement', 'monitoring', 'finance'].some((p) => perms.includes(p))
+      'procurement', 'monitoring', 'finance'].some((p) => perms.includes(p)))
 
   // نبدي بـ«بانتظار التثبيت» لأنها الي تحتاج تصرّف: «حجز جديد»
   // شاشة إدخال، وفتحها افتراضياً يعني الإداري يفتح النظام ويلگه
