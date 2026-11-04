@@ -290,3 +290,4 @@ git push origin origin/avg:refs/heads/prod     # بعد التأكد إنه fast
 - 2026-11-04: README حقيقي + قرارات WebP/Brotli. قياس الحمل للفني والمراقب: ١٥ طلب/دقيقتين.
 - 2026-11-04: ٧ق — ١٥ مكان «اليوم/يوم الطابع» من UTC صارت todayBaghdad/dayBaghdad (كان يطلع أمس بعد نص الليل).
 - 2026-11-04: ٧ق (سيرفر) — timeutil.Today/ThisMonth بدل time.Now().Format بـ١٧ مكان. time.Local ما تغيّر عمداً.
+- 2026-11-04 لوفي: رفع README + ٧ق (التواريخ واجهة وسيرفر) على prod بطلب دازاي.
