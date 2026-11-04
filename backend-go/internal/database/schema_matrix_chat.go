@@ -1771,5 +1771,70 @@ func matrixChatMigrations() []Migration {
 			);
 			CREATE INDEX IF NOT EXISTS "IdempotencyKey_created_idx" ON "IdempotencyKey" ("createdAt");
 		`,
+	}, {
+		// ٦د — سجل تدقيق موحّد ما يتغيّر: كل تعديل على جداول الفلوس والصلاحيات
+		// ينكتب تلقائياً (قبل/بعد) من القاعدة نفسها، والسجل ما ينعدّل ولا ينحذف.
+		Version: "0435_audit_trail",
+		SQL: `
+			CREATE TABLE IF NOT EXISTS "AuditTrail" (
+				id BIGSERIAL PRIMARY KEY,
+				at TIMESTAMPTZ NOT NULL DEFAULT now(),
+				entity TEXT NOT NULL,
+				"entityId" TEXT,
+				action TEXT NOT NULL,
+				"actorId" TEXT,
+				before JSONB,
+				after JSONB
+			);
+			CREATE INDEX IF NOT EXISTS "AuditTrail_entity_idx" ON "AuditTrail" (entity, "entityId", at DESC);
+			CREATE INDEX IF NOT EXISTS "AuditTrail_at_idx" ON "AuditTrail" (at DESC);
+
+			CREATE OR REPLACE FUNCTION audit_trail_immutable() RETURNS trigger LANGUAGE plpgsql AS $f$
+			BEGIN
+				RAISE EXCEPTION 'AuditTrail لا يُعدَّل ولا يُحذف';
+			END $f$;
+			DROP TRIGGER IF EXISTS audit_trail_no_change ON "AuditTrail";
+			CREATE TRIGGER audit_trail_no_change BEFORE UPDATE OR DELETE ON "AuditTrail"
+				FOR EACH ROW EXECUTE FUNCTION audit_trail_immutable();
+			DROP TRIGGER IF EXISTS audit_trail_no_truncate ON "AuditTrail";
+			CREATE TRIGGER audit_trail_no_truncate BEFORE TRUNCATE ON "AuditTrail"
+				FOR EACH STATEMENT EXECUTE FUNCTION audit_trail_immutable();
+
+			-- منو سوّاها: من أعمدة الصف نفسه (الي يسجّل/يراجع/يعتمد) — الأحدث أول
+			CREATE OR REPLACE FUNCTION audit_trail_capture() RETURNS trigger LANGUAGE plpgsql AS $f$
+			DECLARE
+				b JSONB := CASE WHEN TG_OP IN ('UPDATE','DELETE') THEN to_jsonb(OLD) END;
+				a JSONB := CASE WHEN TG_OP IN ('INSERT','UPDATE') THEN to_jsonb(NEW) END;
+				r JSONB := COALESCE(a, b);
+			BEGIN
+				IF TG_OP = 'UPDATE' AND b = a THEN RETURN NULL; END IF;
+				INSERT INTO "AuditTrail" (entity, "entityId", action, "actorId", before, after)
+				VALUES (TG_TABLE_NAME, COALESCE(r->>'id', r->>'projectId'), TG_OP,
+					COALESCE(NULLIF(current_setting('app.actor', true), ''), r->>'revokedById', r->>'reviewedById', r->>'approvedByEmployeeId',
+						r->>'cancelledById', r->>'verifiedById', r->>'setById', r->>'grantedById', r->>'createdById', r->>'createdByEmployeeId', r->>'recordedById'),
+					b, a);
+				RETURN NULL;
+			END $f$;
+			DROP TRIGGER IF EXISTS audit_trail_row ON "ProjectPayment";
+			CREATE TRIGGER audit_trail_row AFTER INSERT OR UPDATE OR DELETE ON "ProjectPayment" FOR EACH ROW EXECUTE FUNCTION audit_trail_capture();
+			DROP TRIGGER IF EXISTS audit_trail_row ON "ProjectContractValue";
+			CREATE TRIGGER audit_trail_row AFTER INSERT OR UPDATE OR DELETE ON "ProjectContractValue" FOR EACH ROW EXECUTE FUNCTION audit_trail_capture();
+			DROP TRIGGER IF EXISTS audit_trail_row ON "RevolvingFund";
+			CREATE TRIGGER audit_trail_row AFTER INSERT OR UPDATE OR DELETE ON "RevolvingFund" FOR EACH ROW EXECUTE FUNCTION audit_trail_capture();
+			DROP TRIGGER IF EXISTS audit_trail_row ON "RevolvingFundTxn";
+			CREATE TRIGGER audit_trail_row AFTER INSERT OR UPDATE OR DELETE ON "RevolvingFundTxn" FOR EACH ROW EXECUTE FUNCTION audit_trail_capture();
+			DROP TRIGGER IF EXISTS audit_trail_row ON "CreditSale";
+			CREATE TRIGGER audit_trail_row AFTER INSERT OR UPDATE OR DELETE ON "CreditSale" FOR EACH ROW EXECUTE FUNCTION audit_trail_capture();
+			DROP TRIGGER IF EXISTS audit_trail_row ON "CreditPayment";
+			CREATE TRIGGER audit_trail_row AFTER INSERT OR UPDATE OR DELETE ON "CreditPayment" FOR EACH ROW EXECUTE FUNCTION audit_trail_capture();
+			DROP TRIGGER IF EXISTS audit_trail_row ON "LeaderInvoice";
+			CREATE TRIGGER audit_trail_row AFTER INSERT OR UPDATE OR DELETE ON "LeaderInvoice" FOR EACH ROW EXECUTE FUNCTION audit_trail_capture();
+			DROP TRIGGER IF EXISTS audit_trail_row ON "Expense";
+			CREATE TRIGGER audit_trail_row AFTER INSERT OR UPDATE OR DELETE ON "Expense" FOR EACH ROW EXECUTE FUNCTION audit_trail_capture();
+			DROP TRIGGER IF EXISTS audit_trail_row ON "EmployeePermission";
+			CREATE TRIGGER audit_trail_row AFTER INSERT OR UPDATE OR DELETE ON "EmployeePermission" FOR EACH ROW EXECUTE FUNCTION audit_trail_capture();
+			DROP TRIGGER IF EXISTS audit_trail_row ON "OrgAssignment";
+			CREATE TRIGGER audit_trail_row AFTER INSERT OR UPDATE OR DELETE ON "OrgAssignment" FOR EACH ROW EXECUTE FUNCTION audit_trail_capture();
+		`,
 	}}
 }
