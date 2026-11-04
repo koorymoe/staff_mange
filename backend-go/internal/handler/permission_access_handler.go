@@ -491,9 +491,8 @@ func (h *PermissionAccessHandler) SweepExpired() int {
 			continue
 		}
 		if service.OrgWants(tx, x.EmployeeID, x.Permission) {
-			errlog.
-				// المنصب يستحقها — الاستثناء ينتهي بس الصلاحية تبقى وتصير من المنصب
-				Exec(tx.Exec(`INSERT INTO "OrgPermissionGrant" ("employeeId", permission) VALUES ($1, $2) ON CONFLICT DO NOTHING`, x.EmployeeID, x.Permission))
+			// المنصب يستحقها — الاستثناء ينتهي بس الصلاحية تبقى وتصير من المنصب
+			errlog.Exec(tx.Exec(`INSERT INTO "OrgPermissionGrant" ("employeeId", permission) VALUES ($1, $2) ON CONFLICT DO NOTHING`, x.EmployeeID, x.Permission))
 		} else {
 			errlog.Exec(tx.Exec(`DELETE FROM "EmployeePermission" WHERE "employeeId" = $1 AND "permissionId" = (SELECT id FROM "Permission" WHERE name = $2)`, x.EmployeeID, x.Permission))
 		}

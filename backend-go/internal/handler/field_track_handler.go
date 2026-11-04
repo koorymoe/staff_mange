@@ -242,9 +242,8 @@ func (h *FieldTrackHandler) analyzeBooking(b trackBooking) trackResult {
 				}
 			}
 		}
-		errlog.
-			// موقع الزبون: إذا ما محدد رسمياً (من التطبيق)، ناخذ مكان التوقف الطويل
-			Exec(h.db.Exec(`UPDATE "Customer" SET lat = $2, lng = $3, "locationSource" = 'AUTO'
+		// موقع الزبون: إذا ما محدد رسمياً (من التطبيق)، ناخذ مكان التوقف الطويل
+		errlog.Exec(h.db.Exec(`UPDATE "Customer" SET lat = $2, lng = $3, "locationSource" = 'AUTO'
 			WHERE id = $1 AND COALESCE("locationSource", '') <> 'APP'`, b.CustomerID, *lat, *lng))
 	}
 	return res

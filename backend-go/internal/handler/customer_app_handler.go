@@ -470,9 +470,8 @@ func (h *CustomerAppHandler) SetMyLocation(w http.ResponseWriter, r *http.Reques
 		WriteError(w, http.StatusInternalServerError, "تعذر حفظ الموقع")
 		return
 	}
-	errlog.
-		// الحجوزات المفتوحة تاخذ الموقع الجديد
-		Exec(h.db.Exec(`UPDATE "Booking" SET "mapLatitude" = $2, "mapLongitude" = $3 WHERE "customerId" = $1 AND "completedAt" IS NULL AND status::text <> 'CANCELLED'`, *a.CustomerID, b.Lat, b.Lng))
+	// الحجوزات المفتوحة تاخذ الموقع الجديد
+	errlog.Exec(h.db.Exec(`UPDATE "Booking" SET "mapLatitude" = $2, "mapLongitude" = $3 WHERE "customerId" = $1 AND "completedAt" IS NULL AND status::text <> 'CANCELLED'`, *a.CustomerID, b.Lat, b.Lng))
 	WriteJSON(w, http.StatusOK, map[string]any{"lat": b.Lat, "lng": b.Lng})
 }
 

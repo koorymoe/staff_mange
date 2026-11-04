@@ -97,15 +97,13 @@ func Idempotent(db *sqlx.DB) func(http.Handler) http.Handler {
 			rec := &idemRecorder{ResponseWriter: w}
 			next.ServeHTTP(rec, r)
 			if rec.status >= 500 || rec.status == 0 {
-				errlog.
-					// فشل بالخادم: نحرر المفتاح حتى إعادة المحاولة تشتغل
-					Exec(db.Exec(`DELETE FROM "IdempotencyKey" WHERE key = $1 AND "employeeId" = $2`, key, emp))
+				// فشل بالخادم: نحرر المفتاح حتى إعادة المحاولة تشتغل
+				errlog.Exec(db.Exec(`DELETE FROM "IdempotencyKey" WHERE key = $1 AND "employeeId" = $2`, key, emp))
 				return
 			}
 			if rec.status >= 400 {
-				errlog.
-					// رفض أو خطأ إدخال: ما نحفظه — الموظف يصحح ويعيد بنفس البيانات
-					Exec(db.Exec(`DELETE FROM "IdempotencyKey" WHERE key = $1 AND "employeeId" = $2`, key, emp))
+				// رفض أو خطأ إدخال: ما نحفظه — الموظف يصحح ويعيد بنفس البيانات
+				errlog.Exec(db.Exec(`DELETE FROM "IdempotencyKey" WHERE key = $1 AND "employeeId" = $2`, key, emp))
 				return
 			}
 			errlog.Exec(db.Exec(`UPDATE "IdempotencyKey" SET status = $3, response = $4 WHERE key = $1 AND "employeeId" = $2`,
