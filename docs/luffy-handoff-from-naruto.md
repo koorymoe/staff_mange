@@ -266,3 +266,4 @@ git push origin origin/avg:refs/heads/prod     # بعد التأكد إنه fast
 - 2026-11-04 لوفي: رفع ٧م الزبائن على prod بطلب دازاي.
 - 2026-11-04: ٧م — ComplaintRepository.hydrateAll (عدد استعلامات ثابت)، TestComplaintHydrateAllSame_Live.
 - 2026-11-04: ٧م — /complaints?open=1 (ListOpen) لـActionsTable وQualityPage.
+- 2026-11-04 لوفي: رفع تحسينات الشكاوي (hydrateAll + open=1) على prod بطلب دازاي.
