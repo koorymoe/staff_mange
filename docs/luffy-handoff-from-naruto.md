@@ -279,3 +279,4 @@ git push origin origin/avg:refs/heads/prod     # بعد التأكد إنه fast
 - 2026-11-04 لوفي: رفع على prod بطلب دازاي: ٧ي خطوة ١، المرحلة ٥، تنظيف IdempotencyKey، ترتيب errlog. أسبوع تجربة ٧ي يبدي من اليوم (لحد 11-11).
 - 2026-11-04: ٧ح — apiTypes.ts (٣٩١ نوع من api.ts). codemod: scratchpad/codemod/split-types.cjs.
 - 2026-11-04 لوفي: رفع ٧ح (apiTypes) على prod بطلب دازاي.
+- 2026-11-04: ٧أ Playwright — frontend/e2e/smoke.spec.ts + playwright.config.ts + vitest.config.ts (vitest على src بس) + خطوة CI e2e. npm run e2e. main.go تقسيمه مؤجل (السبب بالتعديلات).

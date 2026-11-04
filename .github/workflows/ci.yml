@@ -136,3 +136,86 @@ jobs:
       - name: Production build (npm run build)
         working-directory: frontend
         run: npm run build
+
+  # (11-04 — تعديلات ٧أ) اختبار متصفح: السيرفر الحقيقي على قاعدة فاضية + الواجهة المبنية.
+  # المالك يدخل ويفتح الشاشات المهمة؛ أي خطأ بالصفحة أو رد ٥xx/٤٠٣ يفشّل الخطوة.
+  e2e:
+    name: E2E smoke (Playwright)
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: staffmange
+          POSTGRES_PASSWORD: ci_test_password
+          POSTGRES_DB: staffmange_e2e
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U staffmange"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql://staffmange:ci_test_password@localhost:5432/staffmange_e2e?sslmode=disable
+      JWT_SECRET: ci-e2e-secret-key-at-least-32-characters
+      OWNER_USERNAME: owner
+      OWNER_PASSWORD: Owner-pass-123
+      PORT: "4000"
+      CORS_ORIGIN: http://127.0.0.1:5199
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: backend-go/go.mod
+          cache-dependency-path: backend-go/go.sum
+
+      - name: Start API
+        working-directory: backend-go
+        run: |
+          go build -o /tmp/api ./cmd/api
+          nohup /tmp/api > /tmp/api.log 2>&1 &
+          for i in $(seq 1 60); do curl -sf http://127.0.0.1:4000/api/health && break; sleep 2; done
+          curl -sf http://127.0.0.1:4000/api/health
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies (npm ci)
+        working-directory: frontend
+        run: npm ci
+
+      - name: Install Chromium
+        working-directory: frontend
+        run: npx playwright install --with-deps chromium
+
+      - name: Build + serve frontend
+        working-directory: frontend
+        env:
+          VITE_API_URL: http://127.0.0.1:4000/api
+        run: |
+          npm run build
+          nohup npx vite preview --host 127.0.0.1 --port 5199 --strictPort > /tmp/web.log 2>&1 &
+          for i in $(seq 1 30); do curl -sf http://127.0.0.1:5199/staff_mange/ > /dev/null && break; sleep 1; done
+
+      - name: Playwright
+        working-directory: frontend
+        run: npx playwright test
+
+      - name: Logs on failure
+        if: failure()
+        run: tail -n 80 /tmp/api.log /tmp/web.log || true
+
+      - name: Upload report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: frontend/playwright-report

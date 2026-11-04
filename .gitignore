@@ -24,3 +24,7 @@ data/uploads/
 
 # البرنامج المبني — ينبني من المصدر، ما ينرفع
 backend-go/api
+
+# Playwright (٧أ)
+frontend/test-results/
+frontend/playwright-report/
