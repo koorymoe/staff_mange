@@ -73,7 +73,7 @@ export default function PublicDesignFormPage() {
     return (
       <div style={wrapStyle}>
         <div style={{ background: 'var(--sf-card)', borderRadius: '16px', padding: '32px', maxWidth: '480px', textAlign: 'center', boxShadow: '0 4px 24px rgba(71,82,143,0.12)' }}>
-          <p style={{ color: 'var(--t-danger)', fontWeight: 700, fontSize: '16px' }}>{error}</p>
+          <p className="text-t-danger font-bold text-[16px]">{error}</p>
         </div>
       </div>
     )
@@ -97,20 +97,20 @@ export default function PublicDesignFormPage() {
             <div style={{ fontSize: '12px', fontWeight: 600, color: GOLD_TEXT, marginTop: '4px' }}>
               Al-Amani for General Trading, Real Estate &amp; Commercial Agencies LLC
             </div>
-            <div style={{ marginTop: '14px', fontSize: '20px', fontWeight: 700 }}>{name}</div>
-            <div style={{ fontSize: '13px', color: '#d7dbf0', marginTop: '2px' }}>وحدة التصميم — يرجى تعبئة كل الحقول المطلوبة</div>
+            <div className="mt-3.5 text-[20px] font-bold">{name}</div>
+            <div className="text-[13px] text-[#d7dbf0] mt-0.5">وحدة التصميم — يرجى تعبئة كل الحقول المطلوبة</div>
           </div>
 
           {done ? (
-            <div style={{ padding: '48px 30px', textAlign: 'center' }}>
-              <div style={{ fontSize: '40px' }}>✓</div>
+            <div className="py-12 px-[30px] text-center">
+              <div className="text-[40px]">✓</div>
               <p style={{ color: PRIMARY_TEXT, fontWeight: 700, fontSize: '18px', marginTop: '10px' }}>تم إرسال الفورمة بنجاح</p>
-              <p style={{ color: '#7c85ad', fontSize: '14px', marginTop: '6px' }}>شكراً لك، فريق التصميم بشركة الأماني راح يتواصل معك قريباً.</p>
+              <p className="text-[#7c85ad] text-[14px] mt-1.5">شكراً لك، فريق التصميم بشركة الأماني راح يتواصل معك قريباً.</p>
             </div>
           ) : (
             <form onSubmit={handleSubmit} style={{ padding: '28px 30px', display: 'flex', flexDirection: 'column', gap: '18px' }}>
               {questions.length === 0 && (
-                <p style={{ color: '#9aa0c2', textAlign: 'center' }}>ما اكو أسئلة بهذي الفورمة بعد.</p>
+                <p className="text-[#9aa0c2] text-center">ما اكو أسئلة بهذي الفورمة بعد.</p>
               )}
               {questions.map((q) => (
                 <div key={q.id}>
@@ -146,7 +146,7 @@ export default function PublicDesignFormPage() {
                     </select>
                   )}
                   {q.type === 'CHECKBOX' && (
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
+                    <div className="flex flex-wrap gap-2.5">
                       {q.options.map((o) => (
                         <label key={o} style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', background: PEACH, borderRadius: '8px', padding: '6px 10px', color: PRIMARY_TEXT }}>
                           <input
@@ -160,12 +160,12 @@ export default function PublicDesignFormPage() {
                     </div>
                   )}
                   {q.type === 'FILE' && (
-                    <p style={{ fontSize: '13px', color: '#9aa0c2' }}>إرفاق الملفات غير متاح حالياً بهذا الرابط — يرجى ذكر التفاصيل نصياً أو التواصل المباشر.</p>
+                    <p className="text-[13px] text-[#9aa0c2]">إرفاق الملفات غير متاح حالياً بهذا الرابط — يرجى ذكر التفاصيل نصياً أو التواصل المباشر.</p>
                   )}
                 </div>
               ))}
 
-              {error && <p style={{ color: 'var(--t-danger)', fontSize: '13px' }}>{error}</p>}
+              {error && <p className="text-t-danger text-[13px]">{error}</p>}
 
               {questions.length > 0 && (
                 <button

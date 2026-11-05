@@ -48,7 +48,7 @@ export default function GpsCustomers() {
   return (
     <div dir="rtl">
       {/* Header */}
-      <div className="mb-6 rounded-2xl p-6 shadow-sm" style={{ backgroundColor: '#1a3a5c' }}>
+      <div className="mb-6 rounded-2xl p-6 shadow-sm bg-[#1a3a5c]">
         <h1 className="text-2xl font-bold text-white">👥 إدارة الزبائن</h1>
         <p className="mt-1 text-blue-200 text-sm">إضافة وإدارة زبائن نظام GPS</p>
       </div>

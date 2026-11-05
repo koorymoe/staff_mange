@@ -524,8 +524,8 @@ export default function ComplaintsTracking({
                 </Box>
               </div>
 
-              <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl px-3 py-2"
-                style={{ backgroundColor: 'var(--sf-sunken)' }}>
+              <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl px-3 py-2 bg-sf-sunken"
+               >
                 <p className="text-xs text-t-muted">
                   آخر إجراء:{' '}
                   <b className="text-t-body">

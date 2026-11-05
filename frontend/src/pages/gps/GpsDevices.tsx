@@ -142,11 +142,11 @@ export default function GpsDevices() {
           {requests.map(req => (
             <div key={req.id} className="rounded-xl p-5 flex items-center justify-between"
               style={{ background: 'var(--sf-card)', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
-              <div style={{ flex: 1 }}>
+              <div className="flex-1">
                 <div className="flex items-center gap-3 mb-1">
                   <span className="font-bold text-t-body">{req.customer ? `${req.customer.fullName} ${req.customer.fatherName} ${req.customer.grandfatherName}` : '-'}</span>
-                  <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: 'var(--sf-violet)', color: 'var(--t-violet)' }}>{typeLabel(req.purchaseType)}</span>
-                  {req.subscriptionType && <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: 'var(--sf-info)', color: 'var(--t-info)' }}>{getSubscriptionLabel(req.subscriptionType)}</span>}
+                  <span className="text-xs px-2 py-0.5 rounded-full bg-sf-violet text-t-violet">{typeLabel(req.purchaseType)}</span>
+                  {req.subscriptionType && <span className="text-xs px-2 py-0.5 rounded-full bg-sf-info text-t-info">{getSubscriptionLabel(req.subscriptionType)}</span>}
                 </div>
                 <div className="flex gap-4 text-sm text-t-muted">
                   <span>📞 {req.customer?.phone}</span>
@@ -156,8 +156,8 @@ export default function GpsDevices() {
                 </div>
               </div>
               <button onClick={() => { setSelected(req); setActivationDate(''); setDeviceChecks({ checked: false, activated: false, delivered: false }) }}
-                className="text-sm px-4 py-2 mr-4 rounded-lg font-medium"
-                style={{ background: 'var(--sf-sunken)', color: 'var(--t-title)', border: '1px solid var(--bd-line)', cursor: 'pointer' }}>
+                className="text-sm px-4 py-2 mr-4 rounded-lg font-medium bg-sf-sunken text-t-title border border-bd-line cursor-pointer"
+               >
                 مراجعة ←
               </button>
             </div>
@@ -184,7 +184,7 @@ export default function GpsDevices() {
               </div>
 
               {(selected.purchaseType === 'DEVICE_ONLY' || selected.purchaseType === 'device_only') ? (
-                <div className="rounded-xl p-4" style={{ background: 'var(--sf-success)', border: '1px solid #bbf7d0' }}>
+                <div className="rounded-xl p-4 bg-sf-success border border-[#bbf7d0]">
                   <p className="text-sm font-bold mb-3 text-t-success">تأكيد تسليم الجهاز</p>
                   {[
                     { key: 'checked', label: '✅ تم فحص الجهاز' },
@@ -200,7 +200,7 @@ export default function GpsDevices() {
                   ))}
                 </div>
               ) : selected.subscriptionType ? (
-                <div className="rounded-xl p-4" style={{ background: 'var(--sf-info)', border: '1px solid #bfdbfe' }}>
+                <div className="rounded-xl p-4 bg-sf-info border border-[#bfdbfe]">
                   <label className="block text-sm font-bold mb-2 text-t-info">📅 تاريخ التفعيل (مطلوب) *</label>
                   <input type="date" className="w-full text-sm rounded-xl px-4 py-2.5" style={{ border: '1px solid var(--bd-line)', outline: 'none' }}
                     value={activationDate} onChange={e => setActivationDate(e.target.value)} />
@@ -250,13 +250,13 @@ export default function GpsDevices() {
                 {delivering ? 'جارٍ التفعيل...' : 'تفعيل الجهاز ✅'}
               </button>
               <button onClick={() => handlePrint(selected)}
-                className="px-4 py-3 rounded-lg font-medium"
-                style={{ background: 'var(--sf-sunken)', color: 'var(--t-title)', border: '1px solid var(--bd-line)', cursor: 'pointer' }}>
+                className="px-4 py-3 rounded-lg font-medium bg-sf-sunken text-t-title border border-bd-line cursor-pointer"
+               >
                 🖨️ طباعة
               </button>
               <button onClick={() => setSelected(null)}
-                className="px-6 py-3 rounded-lg font-medium"
-                style={{ border: '1px solid var(--bd-line)', color: 'var(--t-muted)', background: 'var(--sf-card)', cursor: 'pointer' }}>
+                className="px-6 py-3 rounded-lg font-medium border border-bd-line text-t-muted bg-sf-card cursor-pointer"
+               >
                 إغلاق
               </button>
             </div>
@@ -269,13 +269,13 @@ export default function GpsDevices() {
 }
 
 function InfoRow({ label, value }: { label: string; value: string }) {
-  return <div className="flex gap-2"><span className="font-semibold" style={{ color: 'var(--t-muted)', whiteSpace: 'nowrap' }}>{label}:</span><span className="text-t-body">{value}</span></div>
+  return <div className="flex gap-2"><span className="font-semibold text-t-muted whitespace-nowrap">{label}:</span><span className="text-t-body">{value}</span></div>
 }
 
 function DocImage({ url, label }: { url: string; label: string }) {
   return (
-    <div className="rounded-lg overflow-hidden" style={{ border: '1px solid var(--bd-line)' }}>
-      <p className="text-xs p-2" style={{ color: 'var(--t-muted)', background: 'var(--sf-sunken)', borderBottom: '1px solid var(--bd-line)' }}>{label}</p>
+    <div className="rounded-lg overflow-hidden border border-bd-line">
+      <p className="text-xs p-2 text-t-muted bg-sf-sunken border-b border-bd-line">{label}</p>
       <img src={url} alt={label} className="w-full" style={{ objectFit: 'contain', maxHeight: '9rem' }} />
     </div>
   )

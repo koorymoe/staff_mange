@@ -176,7 +176,7 @@ export default function GpsFollowUp({ embedded }: { embedded?: boolean } = {}) {
   return (
     <div dir="rtl" className="space-y-6">
       {!embedded && (
-      <div className="rounded-2xl p-6 shadow-sm" style={{ backgroundColor: '#1a3a5c' }}>
+      <div className="rounded-2xl p-6 shadow-sm bg-[#1a3a5c]">
         <h1 className="text-2xl font-bold text-white">🔄 متابعة تجديد الاشتراكات</h1>
         <p className="mt-1 text-sm text-blue-200">
           بعد ٤٠ يوم من انتهاء الاشتراك يتصل مهندس الجودة بالزبون. إذا ما راد يجدد، ننتظر ٤٠ يوم

@@ -129,7 +129,7 @@ export default function RevolvingFundPage() {
 
   return (
     <div dir="rtl" className="space-y-6">
-      <div className="rounded-2xl p-6 shadow-sm" style={{ backgroundColor: '#1a3a5c' }}>
+      <div className="rounded-2xl p-6 shadow-sm bg-[#1a3a5c]">
         <h1 className="text-2xl font-bold text-white">💵 الدوار</h1>
         <p className="mt-1 text-sm text-blue-200">
           مبلغ دوّار للعمل. الموظف ياخذ، يشتري، يرفع صورة الوصل، ويرجّع الباقي — ورصيده ما يتصفّر إلا بموافقتك.

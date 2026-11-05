@@ -39,7 +39,7 @@ function FormBrandPreview({ name }: { name: string }) {
         <div style={{ fontSize: '8px', fontWeight: 600, color: GOLD_TEXT, marginTop: '2px' }}>
           Al-Amani for General Trading &amp; Real Estate
         </div>
-        <div style={{ marginTop: '8px', fontSize: '14px', fontWeight: 700 }}>{name || 'اسم الفورمة'}</div>
+        <div className="mt-2 text-[14px] font-bold">{name || 'اسم الفورمة'}</div>
       </div>
       <div style={{ background: 'var(--sf-card)', padding: '10px 14px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
         <div style={{ height: '8px', width: '60%', background: 'var(--sf-sunken)', borderRadius: '4px' }} />

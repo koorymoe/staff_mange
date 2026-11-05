@@ -190,8 +190,8 @@ export default function DesignGalleryPage() {
               <div key={a.id} className="overflow-hidden rounded-xl border"
                 style={{ backgroundColor: 'var(--sf-card)', borderColor: 'var(--bd-line)', opacity: a.archivedAt ? 0.6 : 1 }}>
                 <a href={fileUrl(a.fileKey)} target="_blank" rel="noreferrer"
-                  className="block aspect-square overflow-hidden"
-                  style={{ backgroundColor: 'var(--sf-sunken)' }}>
+                  className="block aspect-square overflow-hidden bg-sf-sunken"
+                 >
                   {isImage(a) ? (
                     <img src={fileUrl(a.fileKey)} alt={a.title} className="h-full w-full object-cover" />
                   ) : (

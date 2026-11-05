@@ -147,7 +147,7 @@ export default function ProductsPage({ embedded }: { embedded?: boolean } = {}) 
         background: `linear-gradient(135deg, ${PRIMARY}, #283593)`,
         color: 'white', padding: '20px 30px', borderRadius: '12px', marginBottom: '24px',
       }}>
-        <h1 style={{ margin: 0, fontSize: '24px' }}>إضافة منتج</h1>
+        <h1 className="m-0 text-[24px]">إضافة منتج</h1>
         <span style={{ color: GOLD_TEXT, fontSize: '14px' }}>
           المنتجات الي يضيفها التقنيين — وتظهر تلقائياً بعرض السعر
         </span>
@@ -211,12 +211,12 @@ export default function ProductsPage({ embedded }: { embedded?: boolean } = {}) 
           <div>
             <label style={labelStyle}>صورة المنتج</label>
             <input ref={fileRef} type="file" accept="image/*" onChange={handleImageChange} style={{ ...inputStyle, padding: '7px 12px' }} />
-            {uploading && <span style={{ fontSize: '12px', color: 'var(--t-muted)' }}>جاري رفع الصورة...</span>}
+            {uploading && <span className="text-[12px] text-t-muted">جاري رفع الصورة...</span>}
           </div>
         </div>
 
         {/* المواصفات خانة كبيرة بصف لحالها */}
-        <div style={{ marginTop: '16px' }}>
+        <div className="mt-4">
           <label style={labelStyle}>المواصفات</label>
           <textarea
             value={specs}
@@ -228,7 +228,7 @@ export default function ProductsPage({ embedded }: { embedded?: boolean } = {}) 
         </div>
 
         {imageBase64 && (
-          <div style={{ marginTop: '12px' }}>
+          <div className="mt-3">
             <img src={fileUrl(imageBase64)} alt="معاينة" style={{ width: '80px', height: '80px', objectFit: 'cover', borderRadius: '8px', border: `2px solid ${GOLD}` }} />
           </div>
         )}
@@ -246,9 +246,9 @@ export default function ProductsPage({ embedded }: { embedded?: boolean } = {}) 
         </button>
       </form>}
 
-      {loading && <p style={{ color: 'var(--t-faint)', textAlign: 'center', padding: '40px' }}>جاري التحميل...</p>}
+      {loading && <p className="text-t-faint text-center p-10">جاري التحميل...</p>}
       {error && (
-        <div style={{ background: 'var(--sf-danger)', border: '1px solid #fecaca', borderRadius: '8px', padding: '16px', color: 'var(--t-danger)' }}>
+        <div className="bg-sf-danger border border-[#fecaca] rounded-lg p-4 text-t-danger">
           تعذر الاتصال بالخادم: {error}
         </div>
       )}
@@ -258,7 +258,7 @@ export default function ProductsPage({ embedded }: { embedded?: boolean } = {}) 
           {products.map((product) => (
             <div
               key={product.id}
-              style={{ background: 'var(--sf-card)', border: '2px solid var(--bd-line)', borderRadius: '12px', overflow: 'hidden' }}
+              className="bg-sf-card border-2 border-bd-line rounded-xl overflow-hidden"
             >
               <div style={{
                 height: '140px',
@@ -271,24 +271,24 @@ export default function ProductsPage({ embedded }: { embedded?: boolean } = {}) 
                   <span style={{ color: GOLD_TEXT, fontSize: '40px' }}>&#128230;</span>
                 )}
               </div>
-              <div style={{ padding: '12px 16px' }}>
+              <div className="py-3 px-4">
                 <h4 style={{ margin: '0 0 6px 0', color: PRIMARY_TEXT, fontSize: '15px' }}>
                   {product.name}
-                  {product.modelName && <span style={{ color: 'var(--t-muted)', fontWeight: 'normal' }}> — {product.modelName}</span>}
+                  {product.modelName && <span className="text-t-muted font-normal"> — {product.modelName}</span>}
                 </h4>
-                {product.serviceText && <p style={{ margin: '0 0 2px 0', fontSize: '12px', color: 'var(--t-muted)' }}>الخدمة: {product.serviceText}</p>}
+                {product.serviceText && <p className="mt-0 mr-0 mb-0.5 ml-0 text-[12px] text-t-muted">الخدمة: {product.serviceText}</p>}
                 {product.specs && <p style={{ margin: '0 0 2px 0', fontSize: '12px', color: 'var(--t-muted)', whiteSpace: 'pre-wrap' }}>المواصفات: {product.specs}</p>}
-                {product.source && <p style={{ margin: '0 0 4px 0', fontSize: '12px', color: 'var(--t-muted)' }}>المصدر: {product.source}</p>}
+                {product.source && <p className="mt-0 mr-0 mb-1 ml-0 text-[12px] text-t-muted">المصدر: {product.source}</p>}
                 <p style={{ margin: '0 0 4px 0', fontSize: '16px', fontWeight: 'bold', color: GOLD_TEXT }}>
                   {fmt(product.defaultPrice ?? 0)} د.ع
                 </p>
                 {product.wholesalePrice != null && (
-                  <p style={{ margin: '0 0 10px 0', fontSize: '12px', color: 'var(--t-faint)' }}>
+                  <p className="mt-0 mr-0 mb-2.5 ml-0 text-[12px] text-t-faint">
                     سعر الجملة: {fmt(product.wholesalePrice)} د.ع
                   </p>
                 )}
                 {product.createdByName && (
-                  <p style={{ margin: '0 0 8px 0', fontSize: '12px', color: 'var(--t-body)' }}>
+                  <p className="mt-0 mr-0 mb-2 ml-0 text-[12px] text-t-body">
                     👤 أضافه: {product.createdByName}
                   </p>
                 )}
@@ -314,10 +314,7 @@ export default function ProductsPage({ embedded }: { embedded?: boolean } = {}) 
                 {/* الحذف للمدير بس (نفس حارس الخادم) — ضغطة مرفوضة تنحسب مخالفة. */}
                 {isAdmin && <button
                   onClick={() => handleDelete(product.id)}
-                  style={{
-                    width: '100%', background: 'var(--sf-danger)', color: 'var(--t-danger)', border: 'none',
-                    padding: '8px', borderRadius: '6px', cursor: 'pointer', fontSize: '13px', fontWeight: 'bold',
-                  }}
+                  className="w-full bg-sf-danger text-t-danger border-0 p-2 rounded-md cursor-pointer text-[13px] font-bold"
                 >
                   حذف المنتج
                 </button>}

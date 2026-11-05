@@ -315,7 +315,7 @@ export default function DailyAuditPage() {
                 <span className="text-sm text-slate-500">
                   <b className="text-t-success">{money(rep.verifiedTotal)}</b>
                   {' '}من أصل{' '}
-                  <b style={{ color: '#c8a45a' }}>{money(rep.expectedTotal)}</b>
+                  <b className="text-[#c8a45a]">{money(rep.expectedTotal)}</b>
                 </span>
               </div>
               <div className="h-5 overflow-hidden rounded-full bg-slate-100">

@@ -40,7 +40,7 @@ export default function GpsMaintenance() {
   return (
     <div dir="rtl">
       {/* Header */}
-      <div className="mb-6 rounded-2xl p-6 shadow-sm" style={{ backgroundColor: '#1a3a5c' }}>
+      <div className="mb-6 rounded-2xl p-6 shadow-sm bg-[#1a3a5c]">
         <h1 className="text-2xl font-bold text-white">🔧 طلبات الصيانة</h1>
         <p className="mt-1 text-blue-200 text-sm">إدارة طلبات صيانة أجهزة التتبع</p>
       </div>

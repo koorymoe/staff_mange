@@ -48,12 +48,12 @@ function AnimatedStat({
 
   return (
     <div style={{ background: 'var(--sf-card)', border: '1px solid var(--bd-line)', borderRadius: '12px', padding: '20px', flex: 1, minWidth: '260px' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px' }}>
+      <div className="flex items-center gap-2 mb-2.5">
         <span style={{ width: '10px', height: '10px', borderRadius: '50%', background: color, display: 'inline-block' }} />
         <h4 style={{ margin: 0, fontSize: '14px', color: PRIMARY_TEXT }}>{title}</h4>
       </div>
       <div style={{ fontSize: '32px', fontWeight: 'bold', color, lineHeight: 1.2 }}>
-        {formatValue(displayValue)} <span style={{ fontSize: '14px', color: 'var(--t-faint)', fontWeight: 'normal' }}>{unit}</span>
+        {formatValue(displayValue)} <span className="text-[14px] text-t-faint font-normal">{unit}</span>
       </div>
       <div style={{ marginTop: '14px', height: '8px', borderRadius: '4px', background: 'var(--sf-sunken)', overflow: 'hidden' }}>
         <div style={{ width: `${fillPct}%`, height: '100%', background: color, borderRadius: '4px', transition: 'width 60ms linear' }} />
@@ -84,24 +84,24 @@ export default function PerformanceCurveModal({ employeeId, employeeName, onClos
         style={{ background: 'var(--sf-sunken)', borderRadius: '16px', padding: '20px', width: '100%', maxWidth: '620px', maxHeight: '90vh', overflowY: 'auto', direction: 'rtl' }}
         onClick={(e) => e.stopPropagation()}
       >
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '10px' }}>
+        <div className="flex justify-between items-center mb-4 flex-wrap gap-2.5">
           <h3 style={{ margin: 0, color: PRIMARY_TEXT, fontSize: '18px' }}>📈 أداء {employeeName}</h3>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <label style={{ fontSize: '13px', color: 'var(--t-muted)' }}>الشهر</label>
+          <div className="flex items-center gap-2">
+            <label className="text-[13px] text-t-muted">الشهر</label>
             <input
               type="month" value={month} onChange={(e) => e.target.value && setMonth(e.target.value)}
-              style={{ padding: '6px 10px', border: '1px solid var(--bd-line)', borderRadius: '8px', fontSize: '13px' }}
+              className="py-1.5 px-2.5 border border-bd-line rounded-lg text-[13px]"
             />
             <button onClick={onClose} style={{ background: 'none', border: 'none', fontSize: '22px', color: 'var(--t-faint)', cursor: 'pointer' }}>×</button>
           </div>
         </div>
 
-        {!curve && <p style={{ textAlign: 'center', color: 'var(--t-faint)', padding: '30px' }}>جاري التحميل...</p>}
+        {!curve && <p className="text-center text-t-faint p-[30px]">جاري التحميل...</p>}
 
         {curve && (
           <>
             <p style={{ margin: '0 0 12px', fontSize: '13px', color: 'var(--t-faint)' }}>بيانات شهر {monthLabel(month)} فقط — بدون خلط مع أي شهر آخر.</p>
-            <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
+            <div className="flex gap-4 flex-wrap">
               <AnimatedStat title="نقاط الكي بي اي" unit="نقطة" color={BLUE} value={monthPoints} formatValue={(n) => n.toLocaleString('en-IQ')} />
               <AnimatedStat title="المبالغ المحصّلة نسبة إلى النقاط" unit="د.ع" color={ORANGE} value={monthCommission} formatValue={(n) => n.toLocaleString('en-IQ')} />
             </div>

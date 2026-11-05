@@ -196,7 +196,7 @@ export default function BookingDeleteRequestsPage({ embedded }: { embedded?: boo
                 : `اكو ${rows.length} طلب بالمجموع — امسح البحث أو الفلترة.`} />
           ) : (
             <>
-              <div className="divide-y" style={{ borderColor: 'var(--bd-line)' }}>
+              <div className="divide-y border-bd-line">
                 {paged.map((r) => {
                   const isOpen = expandedId === r.id
                   const decided = r.status !== 'PENDING'
@@ -308,7 +308,7 @@ export default function BookingDeleteRequestsPage({ embedded }: { embedded?: boo
 
                       {isOpen && decided && (
                         <div className="px-4 pb-4">
-                          <div className="rounded-xl p-3 text-xs" style={{ backgroundColor: 'var(--sf-sunken)', color: 'var(--t-muted)' }}>
+                          <div className="rounded-xl p-3 text-xs bg-sf-sunken text-t-muted">
                             <p>القرار: <b className="text-t-title">{r.statusLabel}</b></p>
                             <p className="mt-1">البتّ بواسطة: <b className="text-t-title">{r.decidedByName ?? '—'}</b></p>
                             {r.decisionNote && <p className="mt-1">الملاحظة: {r.decisionNote}</p>}

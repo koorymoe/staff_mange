@@ -46,13 +46,13 @@ function DailyTab() {
 
   return (
     <div>
-      <div style={{ background: 'var(--sf-card)', border: '1px solid var(--bd-line)', borderRadius: '10px', padding: '12px 16px', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '12px' }}>
-        <label style={{ fontSize: '13px', color: 'var(--t-muted)' }}>التاريخ</label>
+      <div className="bg-sf-card border border-bd-line rounded-[10px] py-3 px-4 mb-4 flex items-center gap-3">
+        <label className="text-[13px] text-t-muted">التاريخ</label>
         <input
           type="date"
           value={date}
           onChange={(e) => e.target.value && setDate(e.target.value)}
-          style={{ padding: '8px 10px', border: '1px solid var(--bd-line)', borderRadius: '8px', fontSize: '14px' }}
+          className="py-2 px-2.5 border border-bd-line rounded-lg text-[14px]"
         />
         {date !== todayStr() && (
           <button
@@ -64,8 +64,8 @@ function DailyTab() {
         )}
       </div>
 
-      {err && <p style={{ color: 'var(--t-danger)', textAlign: 'center', padding: '40px' }}>{err}</p>}
-      {!stats && !err && <p style={{ color: 'var(--t-faint)', textAlign: 'center', padding: '40px' }}>جاري التحميل...</p>}
+      {err && <p className="text-t-danger text-center p-10">{err}</p>}
+      {!stats && !err && <p className="text-t-faint text-center p-10">جاري التحميل...</p>}
 
       {stats && (
         <>
@@ -144,11 +144,11 @@ function WeeklyTab() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-      <div style={{ background: 'var(--sf-card)', border: '1px solid var(--bd-line)', borderRadius: '10px', padding: '12px 16px', display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
-        <label style={{ fontSize: '13px', color: 'var(--t-muted)' }}>من</label>
-        <input type="date" value={from} max={to} onChange={(e) => e.target.value && setFrom(e.target.value)} style={{ padding: '8px 10px', border: '1px solid var(--bd-line)', borderRadius: '8px', fontSize: '14px' }} />
-        <label style={{ fontSize: '13px', color: 'var(--t-muted)' }}>إلى</label>
-        <input type="date" value={to} min={from} onChange={(e) => e.target.value && setTo(e.target.value)} style={{ padding: '8px 10px', border: '1px solid var(--bd-line)', borderRadius: '8px', fontSize: '14px' }} />
+      <div className="bg-sf-card border border-bd-line rounded-[10px] py-3 px-4 flex items-center gap-3 flex-wrap">
+        <label className="text-[13px] text-t-muted">من</label>
+        <input type="date" value={from} max={to} onChange={(e) => e.target.value && setFrom(e.target.value)} className="py-2 px-2.5 border border-bd-line rounded-lg text-[14px]" />
+        <label className="text-[13px] text-t-muted">إلى</label>
+        <input type="date" value={to} min={from} onChange={(e) => e.target.value && setTo(e.target.value)} className="py-2 px-2.5 border border-bd-line rounded-lg text-[14px]" />
         <button
           onClick={() => { const r = defaultWeekRange(); setFrom(r.from); setTo(r.to) }}
           style={{ padding: '8px 14px', border: `1px solid ${PRIMARY}`, background: 'var(--sf-card)', color: PRIMARY_TEXT, borderRadius: '8px', fontSize: '13px', fontWeight: 'bold', cursor: 'pointer' }}
@@ -157,8 +157,8 @@ function WeeklyTab() {
         </button>
       </div>
 
-      {err && <p style={{ color: 'var(--t-danger)', textAlign: 'center', padding: '40px' }}>{err}</p>}
-      {!stats && !err && <p style={{ color: 'var(--t-faint)', textAlign: 'center', padding: '40px' }}>جاري التحميل...</p>}
+      {err && <p className="text-t-danger text-center p-10">{err}</p>}
+      {!stats && !err && <p className="text-t-faint text-center p-10">جاري التحميل...</p>}
 
       {stats && (
         <>
@@ -223,37 +223,37 @@ function ServicesTab() {
   const [stats, setStats] = useState<Stats | null>(null)
   useEffect(() => { api.getStats().then(setStats).catch(() => setStats(null)) }, [])
 
-  if (!stats) return <p style={{ color: 'var(--t-faint)', textAlign: 'center', padding: '40px' }}>جاري التحميل...</p>
+  if (!stats) return <p className="text-t-faint text-center p-10">جاري التحميل...</p>
   const rows = stats.serviceBreakdown
   const max = rows[0]?.count || 1
 
   return (
-    <div style={{ background: 'var(--sf-card)', border: '1px solid var(--bd-line)', borderRadius: '12px', padding: '20px' }}>
+    <div className="bg-sf-card border border-bd-line rounded-xl p-5">
       <h3 style={{ color: PRIMARY_TEXT, margin: '0 0 4px 0' }}>أكثر خدمة طلبها الزبائن</h3>
-      <p style={{ color: 'var(--t-faint)', fontSize: '13px', margin: '0 0 16px 0' }}>
+      <p className="text-t-faint text-[13px] mt-0 mr-0 mb-4 ml-0">
         مرتّبة من الأكثر طلباً — من شوكت بدت كل خدمة، وشكد دخّلت مبالغ وأرباح
       </p>
       {rows.map((s, i) => (
-        <div key={s.serviceId || i} style={{ marginBottom: '14px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+        <div key={s.serviceId || i} className="mb-3.5">
+          <div className="flex items-center gap-3">
             <span style={{ fontSize: '13px', width: '140px', color: 'var(--t-body)' }}>{s.name}</span>
             <div style={{ flex: 1, height: '22px', background: 'var(--sf-sunken)', borderRadius: '11px', overflow: 'hidden' }}>
               <div style={{ height: '100%', width: `${(s.count / max) * 100}%`, background: PRIMARY, borderRadius: '11px' }} />
             </div>
             <span style={{ fontSize: '13px', fontWeight: 'bold', width: '40px', color: PRIMARY_TEXT }}>{s.count}</span>
           </div>
-          <div style={{ marginRight: '152px', marginTop: '3px', fontSize: '11px', color: 'var(--t-faint)', display: 'flex', gap: '14px', flexWrap: 'wrap' }}>
+          <div className="mr-[152px] mt-[3px] text-[11px] text-t-faint flex gap-3.5 flex-wrap">
             <span>📅 من {s.firstAt ? new Date(s.firstAt).toLocaleDateString('ar-IQ') : '—'} إلى {s.lastAt ? new Date(s.lastAt).toLocaleDateString('ar-IQ') : '—'}</span>
             <span>💰 دخل: <b style={{ color: PRIMARY_TEXT }}>{fmt(s.revenue)} د.ع</b></span>
             <span>📈 ربح: <b style={{ color: GOLD_TEXT }}>{fmt(s.profit)} د.ع</b></span>
           </div>
         </div>
       ))}
-      <p style={{ marginTop: '12px', fontSize: '11px', color: 'var(--t-faint)' }}>
+      <p className="mt-3 text-[11px] text-t-faint">
         الربح = المستلم ناقص كلفة المواد بسعر الجملة. المواد الي ماكو إلها سعر جملة بالكتالوج
         تُحسب بكلفة صفر، يعني الربح المعروض هو الحد الأعلى.
       </p>
-      {rows.length === 0 && <p style={{ color: 'var(--t-faint)', fontSize: '13px' }}>ماكو بيانات حجوزات بعد</p>}
+      {rows.length === 0 && <p className="text-t-faint text-[13px]">ماكو بيانات حجوزات بعد</p>}
     </div>
   )
 }
@@ -273,13 +273,13 @@ function InternalWorksTab() {
 
   return (
     <div>
-      <div style={{ background: 'var(--sf-card)', border: '1px solid var(--bd-line)', borderRadius: '10px', padding: '12px 16px', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '12px' }}>
-        <label style={{ fontSize: '13px', color: 'var(--t-muted)' }}>الشهر</label>
+      <div className="bg-sf-card border border-bd-line rounded-[10px] py-3 px-4 mb-4 flex items-center gap-3">
+        <label className="text-[13px] text-t-muted">الشهر</label>
         <input type="month" value={month} onChange={(e) => e.target.value && setMonth(e.target.value)}
-          style={{ padding: '8px 10px', border: '1px solid var(--bd-line)', borderRadius: '8px', fontSize: '14px' }} />
+          className="py-2 px-2.5 border border-bd-line rounded-lg text-[14px]" />
       </div>
 
-      {!rep && <p style={{ color: 'var(--t-faint)', textAlign: 'center', padding: '40px' }}>جاري التحميل...</p>}
+      {!rep && <p className="text-t-faint text-center p-10">جاري التحميل...</p>}
 
       {rep && (
         <>
@@ -291,31 +291,31 @@ function InternalWorksTab() {
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '20px' }}>
-            <div style={{ background: 'var(--sf-card)', border: '1px solid var(--bd-line)', borderRadius: '12px', padding: '16px' }}>
+            <div className="bg-sf-card border border-bd-line rounded-xl p-4">
               <h4 style={{ color: PRIMARY_TEXT, margin: '0 0 12px 0', fontSize: '15px' }}>شنو انشتغل جوه</h4>
               {rep.services.map((s) => (
-                <div key={s.name} style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid #f2f2f2', fontSize: '13px' }}>
+                <div key={s.name} className="flex justify-between py-1.5 px-0 border-b border-[#f2f2f2] text-[13px]">
                   <span>{s.name}</span>
                   <span style={{ fontWeight: 'bold', color: PRIMARY_TEXT }}>{s.count} · {fmt(s.amount)} د.ع</span>
                 </div>
               ))}
-              {rep.services.length === 0 && <p style={{ color: 'var(--t-faint)', fontSize: '13px' }}>ماكو شغل داخلي بهذا الشهر</p>}
+              {rep.services.length === 0 && <p className="text-t-faint text-[13px]">ماكو شغل داخلي بهذا الشهر</p>}
             </div>
 
-            <div style={{ background: 'var(--sf-card)', border: '1px solid var(--bd-line)', borderRadius: '12px', padding: '16px' }}>
+            <div className="bg-sf-card border border-bd-line rounded-xl p-4">
               <h4 style={{ color: PRIMARY_TEXT, margin: '0 0 12px 0', fontSize: '15px' }}>منو اشتغل جوه</h4>
               {rep.crew.map((c) => (
-                <div key={c.employeeName} style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid #f2f2f2', fontSize: '13px' }}>
+                <div key={c.employeeName} className="flex justify-between py-1.5 px-0 border-b border-[#f2f2f2] text-[13px]">
                   <span>{c.employeeName}</span>
                   <span style={{ fontWeight: 'bold', color: GOLD_TEXT }}>{c.count} عمل</span>
                 </div>
               ))}
-              {rep.crew.length === 0 && <p style={{ color: 'var(--t-faint)', fontSize: '13px' }}>ماكو كادر مسجّل</p>}
+              {rep.crew.length === 0 && <p className="text-t-faint text-[13px]">ماكو كادر مسجّل</p>}
             </div>
           </div>
 
-          <div style={{ overflowX: 'auto', background: 'var(--sf-card)', borderRadius: '12px', border: '1px solid var(--bd-line)' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+          <div className="overflow-x-auto bg-sf-card rounded-xl border border-bd-line">
+            <table className="w-full border-collapse">
               <thead>
                 <tr>
                   {['الكود', 'الخدمة', 'تاريخ الإنجاز', 'المبلغ'].map((h) => (
@@ -325,17 +325,17 @@ function InternalWorksTab() {
               </thead>
               <tbody>
                 {rep.works.map((w) => (
-                  <tr key={w.code} style={{ borderBottom: '1px solid var(--bd-line)' }}>
-                    <td style={{ padding: '9px 12px', fontSize: '13px' }}><BookingCodeChip code={w.code} /></td>
-                    <td style={{ padding: '9px 12px', fontSize: '13px' }}>{w.serviceName}</td>
-                    <td style={{ padding: '9px 12px', fontSize: '13px' }}>
+                  <tr key={w.code} className="border-b border-bd-line">
+                    <td className="py-[9px] px-3 text-[13px]"><BookingCodeChip code={w.code} /></td>
+                    <td className="py-[9px] px-3 text-[13px]">{w.serviceName}</td>
+                    <td className="py-[9px] px-3 text-[13px]">
                       {w.completedAt ? new Date(w.completedAt).toLocaleDateString('ar-IQ') : '—'}
                     </td>
-                    <td style={{ padding: '9px 12px', fontSize: '13px' }}>{fmt(w.amount)} د.ع</td>
+                    <td className="py-[9px] px-3 text-[13px]">{fmt(w.amount)} د.ع</td>
                   </tr>
                 ))}
                 {rep.works.length === 0 && (
-                  <tr><td colSpan={4} style={{ padding: '30px', textAlign: 'center', color: 'var(--t-faint)' }}>ماكو أعمال داخلية بهذا الشهر</td></tr>
+                  <tr><td colSpan={4} className="p-[30px] text-center text-t-faint">ماكو أعمال داخلية بهذا الشهر</td></tr>
                 )}
               </tbody>
             </table>
@@ -367,11 +367,11 @@ export default function StatsManagementPage() {
         background: `linear-gradient(135deg, ${PRIMARY}, #283593)`,
         color: 'white', padding: '20px 30px', borderRadius: '12px', marginBottom: '20px',
       }}>
-        <h1 style={{ margin: 0, fontSize: '24px' }}>📊 الإحصائيات</h1>
+        <h1 className="m-0 text-[24px]">📊 الإحصائيات</h1>
         <span style={{ color: GOLD_TEXT, fontSize: '14px' }}>يومية، أسبوعية، شهرية، شغل داخل الشركة، أكثر خدمة مطلوبة، ومشاريع — حصراً لمدير النظام</span>
       </div>
 
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '20px' }}>
+      <div className="flex flex-wrap gap-2 mb-5">
         {tabs.map((t) => (
           <button
             key={t.key}

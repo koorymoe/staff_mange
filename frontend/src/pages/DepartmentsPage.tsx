@@ -141,8 +141,8 @@ export default function DepartmentsPage() {
                     </p>
                   )}
                   {heads.map((h) => (
-                    <div key={h.id} className="flex flex-wrap items-center justify-between gap-2 rounded-lg px-2 py-1.5"
-                      style={{ backgroundColor: 'var(--sf-sunken)' }}>
+                    <div key={h.id} className="flex flex-wrap items-center justify-between gap-2 rounded-lg px-2 py-1.5 bg-sf-sunken"
+                     >
                       <span className="text-sm text-t-body">
                         👤 {h.name}
                         {h.phone && <span className="mr-2 font-mono text-xs" dir="ltr">{h.phone}</span>}

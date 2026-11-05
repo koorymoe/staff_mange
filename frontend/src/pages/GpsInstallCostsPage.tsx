@@ -38,7 +38,7 @@ export default function GpsInstallCostsPage() {
   if (rows.length === 0) {
     return (
       <div dir="rtl" className="space-y-6">
-        <div className="rounded-2xl p-6 shadow-sm" style={{ backgroundColor: '#1a3a5c' }}>
+        <div className="rounded-2xl p-6 shadow-sm bg-[#1a3a5c]">
           <h1 className="text-2xl font-bold text-white">🔧 حساب تكاليف الشد</h1>
           <p className="mt-1 text-sm text-blue-200">تكاليف شد أجهزة الجي بي اس — تفصيلي لكل الكوادر</p>
         </div>
@@ -59,7 +59,7 @@ export default function GpsInstallCostsPage() {
 
   return (
     <div dir="rtl" className="space-y-6">
-      <div className="rounded-2xl p-6 shadow-sm" style={{ backgroundColor: '#1a3a5c' }}>
+      <div className="rounded-2xl p-6 shadow-sm bg-[#1a3a5c]">
         <h1 className="text-2xl font-bold text-white">🔧 حساب تكاليف الشد</h1>
         <p className="mt-1 text-sm text-blue-200">تفصيلي لكل الكوادر — يتحدّث تلقائياً مع كل عملية شد</p>
       </div>

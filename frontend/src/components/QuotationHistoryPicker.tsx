@@ -22,7 +22,7 @@ export default function QuotationHistoryPicker({ quotationId, selected, onPick }
   if (rows.length === 0) return null
   const fmt = (n: number) => n.toLocaleString('en-US', { maximumFractionDigits: 0 })
   return (
-    <span style={{ position: 'relative', display: 'inline-block' }}>
+    <span className="relative inline-block">
       <button type="button" onClick={() => setOpen((o) => !o)} style={{
         background: selected == null ? '#455a64' : '#6a1b9a', color: 'white', border: 'none', padding: '10px 18px',
         borderRadius: '8px', cursor: 'pointer', fontWeight: 700, fontFamily: 'inherit',

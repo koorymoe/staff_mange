@@ -400,7 +400,7 @@ export default function MonitorInboxPage({ embedded }: EmbeddedProps = {}) {
                   </div>
                 ) : (
                   row.note && (
-                    <p className="mt-2 rounded-lg px-3 py-2 text-xs" style={{ backgroundColor: 'var(--sf-sunken)', color: 'var(--t-body)' }}>
+                    <p className="mt-2 rounded-lg px-3 py-2 text-xs bg-sf-sunken text-t-body">
                       ملاحظة {row.reviewedBy?.name || 'المراقب'}: {row.note}
                     </p>
                   )

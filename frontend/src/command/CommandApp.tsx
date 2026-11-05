@@ -233,7 +233,7 @@ export default function CommandApp({ onExit }: { onExit: () => void }) {
           <div className="cmd-dots" style={{ marginBottom: 20, justifyContent: 'center' }}>
             <span className="cmd-dot r" /><span className="cmd-dot y" /><span className="cmd-dot g" />
           </div>
-          <div className="cmd-nav" ref={railRef} style={{ flex: 1 }}>
+          <div className="cmd-nav flex-1" ref={railRef}>
             <div
               className="cmd-indicator"
               style={{ transform: `translateY(${rail.y}px)`, height: rail.h, opacity: rail.ready ? 1 : 0 }}
@@ -258,7 +258,7 @@ export default function CommandApp({ onExit }: { onExit: () => void }) {
           <p style={{ margin: 0, fontSize: 21, fontWeight: 800, letterSpacing: -0.3 }}>مركز القيادة</p>
           <div className="cmd-divider" />
 
-          <div className="cmd-nav" ref={navRef} style={{ flex: 1 }}>
+          <div className="cmd-nav flex-1" ref={navRef}>
             <div
               className="cmd-indicator"
               style={{ transform: `translateY(${indicator.y}px)`, height: indicator.h, opacity: indicator.ready ? 1 : 0 }}

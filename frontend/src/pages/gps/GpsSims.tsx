@@ -89,7 +89,7 @@ export default function GpsSims({ embedded }: { embedded?: boolean } = {}) {
   return (
     <div dir="rtl">
       {!embedded && (
-        <div className="mb-6 rounded-2xl p-6 shadow-sm" style={{ backgroundColor: '#1a3a5c' }}>
+        <div className="mb-6 rounded-2xl p-6 shadow-sm bg-[#1a3a5c]">
           <h1 className="text-2xl font-bold text-white">📱 إدارة شرائح SIM</h1>
           <p className="mt-1 text-blue-200 text-sm">إضافة وإدارة شرائح الاتصال</p>
         </div>
@@ -186,7 +186,7 @@ export default function GpsSims({ embedded }: { embedded?: boolean } = {}) {
           <div className="overflow-x-auto">
           <table className="w-full text-right">
             <thead>
-              <tr style={{ backgroundColor: '#1a3a5c' }}>
+              <tr className="bg-[#1a3a5c]">
                 <th className="px-4 py-3 text-sm font-semibold text-white">رقم الشريحة</th>
                 <th className="px-4 py-3 text-sm font-semibold text-white">ICCID</th>
                 <th className="px-4 py-3 text-sm font-semibold text-white">المشغل</th>

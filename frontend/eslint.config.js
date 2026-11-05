@@ -26,6 +26,11 @@ export default defineConfig([
       'no-restricted-properties': ['error',
         { object: 'window', property: 'confirm', message: 'ممنوع window.confirm — askConfirm' },
         { object: 'window', property: 'prompt', message: 'ممنوع window.prompt — askInput' }],
+      // (11-05 — ٧ص) لون ثيم بـ style مفرد ممنوع: الكلاس نفسه موجود وينقلب بالليلي
+      'no-restricted-syntax': ['error', {
+        selector: "JSXAttribute[name.name='style'] > JSXExpressionContainer > ObjectExpression[properties.length=1] > Property[key.name=/^(color|background|backgroundColor)$/][value.value=/^var\\(--(t|sf|bd|tint)-/]",
+        message: 'استعمل الكلاس: text-t-… أو bg-sf-… (index.css @theme) بدل style={{ color: var(--…) }}',
+      }],
     },
   },
 ])

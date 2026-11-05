@@ -697,8 +697,8 @@ export default function LeaderInvoicesListPage({ embedded }: EmbeddedProps = {})
                         المحاسب (محصور بـcanApprove)، فالمراقب يشوف الحكم
                         بلا سببه. حكم بلا سبب ما يفيد أحد. */}
                     {inv.auditNote && (
-                      <span className="mt-1 block rounded-lg px-2 py-1 text-[10.5px] leading-relaxed"
-                        style={{ backgroundColor: 'var(--sf-sunken)', color: 'var(--t-body)' }}>
+                      <span className="mt-1 block rounded-lg px-2 py-1 text-[10.5px] leading-relaxed bg-sf-sunken text-t-body"
+                       >
                         📝 {inv.auditNote}
                       </span>
                     )}

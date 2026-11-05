@@ -84,10 +84,10 @@ export default function QuotationsPage() {
         alignItems: 'center',
       }}>
         <div>
-          <h1 style={{ margin: 0, fontSize: '24px' }}>عروض الأسعار</h1>
+          <h1 className="m-0 text-[24px]">عروض الأسعار</h1>
           <span style={{ color: GOLD_TEXT, fontSize: '14px' }}>إدارة ومتابعة عروض الأسعار</span>
         </div>
-        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+        <div className="flex gap-2 flex-wrap">
         {canTerms && (
           <button onClick={() => setShowTerms(true)}
             style={{ background: 'transparent', color: '#fff', border: '1px solid rgba(255,255,255,.5)', padding: '10px 16px', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', fontSize: '14px' }}>
@@ -114,7 +114,7 @@ export default function QuotationsPage() {
         {showTerms && <QuotationTermsEditor onClose={() => setShowTerms(false)} />}
       </div>
 
-      <div style={{ marginBottom: '20px' }}>
+      <div className="mb-5">
         <input
           type="text"
           value={search}
@@ -127,9 +127,9 @@ export default function QuotationsPage() {
         />
       </div>
 
-      {loading && <p style={{ color: 'var(--t-faint)', textAlign: 'center', padding: '40px' }}>جاري التحميل...</p>}
+      {loading && <p className="text-t-faint text-center p-10">جاري التحميل...</p>}
       {error && (
-        <div style={{ background: 'var(--sf-danger)', border: '1px solid #fecaca', borderRadius: '8px', padding: '16px', color: 'var(--t-danger)' }}>
+        <div className="bg-sf-danger border border-[#fecaca] rounded-lg p-4 text-t-danger">
           تعذر الاتصال بالخادم: {error}
         </div>
       )}
@@ -141,35 +141,35 @@ export default function QuotationsPage() {
           borderRadius: '12px',
           overflow: 'hidden',
         }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+          <table className="w-full border-collapse">
             <thead>
               <tr style={{ background: PRIMARY, color: 'white' }}>
-                <th style={{ padding: '12px 16px', fontSize: '13px', textAlign: 'right' }}>رقم العرض</th>
-                <th style={{ padding: '12px 16px', fontSize: '13px', textAlign: 'right' }}>اسم الزبون</th>
-                <th style={{ padding: '12px 16px', fontSize: '13px', textAlign: 'right' }}>المشروع</th>
-                <th style={{ padding: '12px 16px', fontSize: '13px', textAlign: 'center' }}>المجموع</th>
-                <th style={{ padding: '12px 16px', fontSize: '13px', textAlign: 'center' }}>الخصم</th>
-                <th style={{ padding: '12px 16px', fontSize: '13px', textAlign: 'center' }}>الصافي</th>
-                <th style={{ padding: '12px 16px', fontSize: '13px', textAlign: 'center' }}>الحالة</th>
-                <th style={{ padding: '12px 16px', fontSize: '13px', textAlign: 'center' }}>التاريخ</th>
-                <th style={{ padding: '12px 16px', fontSize: '13px', textAlign: 'center' }}>إجراءات</th>
+                <th className="py-3 px-4 text-[13px] text-right">رقم العرض</th>
+                <th className="py-3 px-4 text-[13px] text-right">اسم الزبون</th>
+                <th className="py-3 px-4 text-[13px] text-right">المشروع</th>
+                <th className="py-3 px-4 text-[13px] text-center">المجموع</th>
+                <th className="py-3 px-4 text-[13px] text-center">الخصم</th>
+                <th className="py-3 px-4 text-[13px] text-center">الصافي</th>
+                <th className="py-3 px-4 text-[13px] text-center">الحالة</th>
+                <th className="py-3 px-4 text-[13px] text-center">التاريخ</th>
+                <th className="py-3 px-4 text-[13px] text-center">إجراءات</th>
               </tr>
             </thead>
             <tbody>
               {quotations.map((q) => {
                 const st = statusConfig[q.status]
                 return (
-                  <tr key={q.id} style={{ borderBottom: '1px solid var(--bd-line)' }}
+                  <tr key={q.id} className="border-b border-bd-line"
                     onMouseEnter={(e) => (e.currentTarget.style.background = '#f8f9ff')}
                     onMouseLeave={(e) => (e.currentTarget.style.background = 'white')}
                   >
                     <td style={{ padding: '12px 16px', fontWeight: 'bold', color: PRIMARY_TEXT }}>{q.quotationNumber}</td>
-                    <td style={{ padding: '12px 16px' }}>{q.customerName}</td>
-                    <td style={{ padding: '12px 16px', color: 'var(--t-muted)' }}>{q.projectName || '-'}</td>
-                    <td style={{ padding: '12px 16px', textAlign: 'center' }}>{fmt(q.grandTotal)} د.ع</td>
-                    <td style={{ padding: '12px 16px', textAlign: 'center', color: 'var(--t-danger)' }}>{fmt(q.discountValue)} د.ع</td>
+                    <td className="py-3 px-4">{q.customerName}</td>
+                    <td className="py-3 px-4 text-t-muted">{q.projectName || '-'}</td>
+                    <td className="py-3 px-4 text-center">{fmt(q.grandTotal)} د.ع</td>
+                    <td className="py-3 px-4 text-center text-t-danger">{fmt(q.discountValue)} د.ع</td>
                     <td style={{ padding: '12px 16px', textAlign: 'center', fontWeight: 'bold', color: PRIMARY_TEXT }}>{fmt(q.netTotal)} د.ع</td>
-                    <td style={{ padding: '12px 16px', textAlign: 'center' }}>
+                    <td className="py-3 px-4 text-center">
                       <span style={{
                         background: st.bg, color: st.color,
                         padding: '4px 12px', borderRadius: '12px',
@@ -178,18 +178,14 @@ export default function QuotationsPage() {
                         {st.label}
                       </span>
                     </td>
-                    <td style={{ padding: '12px 16px', textAlign: 'center', fontSize: '13px', color: 'var(--t-muted)' }}>
+                    <td className="py-3 px-4 text-center text-[13px] text-t-muted">
                       {new Date(q.createdAt).toLocaleDateString('ar-IQ')}
                     </td>
-                    <td style={{ padding: '12px 16px', textAlign: 'center' }}>
-                      <div style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
+                    <td className="py-3 px-4 text-center">
+                      <div className="flex gap-2 justify-center">
                         <button
                           onClick={() => navigate(`/quotations/${q.id}/edit?preview=1`)}
-                          style={{
-                            background: 'var(--sf-violet)', color: 'var(--t-violet)', border: 'none',
-                            padding: '6px 14px', borderRadius: '6px', cursor: 'pointer',
-                            fontSize: '12px', fontWeight: 'bold',
-                          }}
+                          className="bg-sf-violet text-t-violet border-0 py-1.5 px-3.5 rounded-md cursor-pointer text-[12px] font-bold"
                         >
                           👁️ معاينة
                         </button>
@@ -198,32 +194,20 @@ export default function QuotationsPage() {
                             باب ما إله قيمة. */}
                         <button
                           onClick={() => setHistoryId(historyId === q.id ? null : q.id)}
-                          style={{
-                            background: 'var(--sf-sunken)', color: 'var(--t-muted)', border: 'none',
-                            padding: '6px 14px', borderRadius: '6px', cursor: 'pointer',
-                            fontSize: '12px', fontWeight: 'bold',
-                          }}
+                          className="bg-sf-sunken text-t-muted border-0 py-1.5 px-3.5 rounded-md cursor-pointer text-[12px] font-bold"
                         >
                           📚 النسخ القديمة
                         </button>
                         <button
                           onClick={() => navigate(`/quotations/${q.id}/edit`)}
-                          style={{
-                            background: 'var(--sf-info)', color: 'var(--t-info)', border: 'none',
-                            padding: '6px 14px', borderRadius: '6px', cursor: 'pointer',
-                            fontSize: '12px', fontWeight: 'bold',
-                          }}
+                          className="bg-sf-info text-t-info border-0 py-1.5 px-3.5 rounded-md cursor-pointer text-[12px] font-bold"
                         >
                           تعديل
                         </button>
                         {isAdmin && (
                           <button
                             onClick={() => handleDelete(q.id)}
-                            style={{
-                              background: 'var(--sf-danger)', color: 'var(--t-danger)', border: 'none',
-                              padding: '6px 14px', borderRadius: '6px', cursor: 'pointer',
-                              fontSize: '12px', fontWeight: 'bold',
-                            }}
+                            className="bg-sf-danger text-t-danger border-0 py-1.5 px-3.5 rounded-md cursor-pointer text-[12px] font-bold"
                           >
                             حذف
                           </button>
@@ -237,14 +221,14 @@ export default function QuotationsPage() {
                   يقرا الأرقام القديمة وهو يشوف الجديدة بنفس الشاشة. */}
               {historyId && quotations.some((q) => q.id === historyId) && (
                 <tr>
-                  <td colSpan={9} style={{ padding: '12px 16px', background: 'var(--sf-sunken)' }}>
+                  <td colSpan={9} className="py-3 px-4 bg-sf-sunken">
                     <QuotationVersions quotationId={historyId} />
                   </td>
                 </tr>
               )}
               {quotations.length === 0 && (
                 <tr>
-                  <td colSpan={9} style={{ padding: '40px', textAlign: 'center', color: 'var(--t-faint)' }}>
+                  <td colSpan={9} className="p-10 text-center text-t-faint">
                     {search ? 'لا توجد نتائج مطابقة' : 'لا توجد عروض أسعار بعد'}
                   </td>
                 </tr>

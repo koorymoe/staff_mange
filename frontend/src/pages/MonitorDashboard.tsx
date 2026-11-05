@@ -169,8 +169,8 @@ export default function MonitorDashboard() {
               {/* Employee Status Grid */}
               <div className="rounded-2xl bg-white p-5 shadow-[0_4px_20px_rgba(15,32,64,0.04)]">
                 <div className="mb-4 flex items-center gap-2">
-                  <span className="flex h-8 w-8 items-center justify-center rounded-lg text-base"
-                    style={{ backgroundColor: 'var(--sf-info)' }}>👥</span>
+                  <span className="flex h-8 w-8 items-center justify-center rounded-lg text-base bg-sf-info"
+                   >👥</span>
                   <div>
                     <h3 className="text-lg font-bold text-brand-900">حالة الموظفين</h3>
                     <p className="text-[11px] text-slate-400">منو بالدوام الآن، حسب القسم</p>
@@ -266,8 +266,8 @@ export default function MonitorDashboard() {
           {/* ═══ Crews Tab ═══ */}
           {tab === 'crews' && (
             <div className="space-y-4">
-              <div className="rounded-2xl p-5 shadow-[0_4px_20px_rgba(15,32,64,0.04)]" style={{ backgroundColor: 'var(--sf-card)' }}>
-                <h3 className="mb-1 text-lg font-bold" style={{ color: 'var(--t-heading)' }}>الكوادر الميدانية الحالية</h3>
+              <div className="rounded-2xl p-5 shadow-[0_4px_20px_rgba(15,32,64,0.04)] bg-sf-card">
+                <h3 className="mb-1 text-lg font-bold text-t-title">الكوادر الميدانية الحالية</h3>
                 <p className="mb-4 text-sm text-t-faint">الحجوزات المثبتة والجاري تنفيذها مع الكوادر المعينة</p>
 
                 <div className="mb-4">

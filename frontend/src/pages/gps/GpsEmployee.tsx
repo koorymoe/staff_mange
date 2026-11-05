@@ -120,7 +120,7 @@ export default function GpsEmployee() {
   return (
     <div dir="rtl">
       {/* Header */}
-      <div className="mb-6 rounded-2xl p-6 shadow-sm" style={{ backgroundColor: '#1a3a5c' }}>
+      <div className="mb-6 rounded-2xl p-6 shadow-sm bg-[#1a3a5c]">
         <h1 className="text-2xl font-bold text-white">👋 مرحباً {employee?.name || ''}</h1>
         <p className="mt-1 text-blue-200 text-sm">لوحة موظف GPS - اختر الخدمة المطلوبة</p>
       </div>
@@ -275,7 +275,7 @@ export default function GpsEmployee() {
         <div className="overflow-x-auto">
         <table className="w-full text-right">
           <thead>
-            <tr style={{ backgroundColor: '#1a3a5c' }}>
+            <tr className="bg-[#1a3a5c]">
               <th className="px-4 py-3 text-sm font-semibold text-white">النوع</th>
               <th className="px-4 py-3 text-sm font-semibold text-white">الزبون</th>
               <th className="px-4 py-3 text-sm font-semibold text-white">التفاصيل</th>

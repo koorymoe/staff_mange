@@ -154,8 +154,8 @@ export default function GpsRenewals() {
                   <td className="px-4 py-3 text-t-muted">{r.createdAt ? formatDate(r.createdAt) : '-'}</td>
                   <td className="px-4 py-3">
                     <button onClick={() => setSelected(r)}
-                      className="text-sm px-4 py-1.5 rounded-lg font-medium"
-                      style={{ background: 'var(--sf-sunken)', color: 'var(--t-title)', border: '1px solid var(--bd-line)', cursor: 'pointer' }}>
+                      className="text-sm px-4 py-1.5 rounded-lg font-medium bg-sf-sunken text-t-title border border-bd-line cursor-pointer"
+                     >
                       موافقة ومعالجة ←
                     </button>
                   </td>
@@ -170,7 +170,7 @@ export default function GpsRenewals() {
       {selected && (
         <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ background: 'rgba(0,0,0,0.5)' }}>
           <div className="rounded-2xl w-full max-w-lg m-4" style={{ background: 'var(--sf-card)', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)' }}>
-            <div className="p-5 flex items-center justify-between" style={{ borderBottom: '1px solid var(--bd-line)' }}>
+            <div className="p-5 flex items-center justify-between border-b border-bd-line">
               <h2 className="text-xl font-bold text-t-title">تأكيد التجديد</h2>
               <button onClick={() => setSelected(null)} style={{ color: 'var(--t-faint)', fontSize: '1.5rem', background: 'none', border: 'none', cursor: 'pointer' }}>✕</button>
             </div>
@@ -182,19 +182,19 @@ export default function GpsRenewals() {
                 <div><span className="text-t-muted">الاشتراك المطلوب: </span><span className="font-semibold">{getSubscriptionLabel(selected.subscriptionType)}</span></div>
                 <div><span className="text-t-muted">تاريخ انتهاء الحالي: </span><span className="font-semibold text-t-danger">{selected.currentEnd ? formatDate(selected.currentEnd) : '-'}</span></div>
               </div>
-              <div className="text-sm rounded-xl p-4" style={{ background: 'var(--sf-success)', border: '1px solid #bbf7d0', color: 'var(--t-success)' }}>
+              <div className="text-sm rounded-xl p-4 bg-sf-success border border-[#bbf7d0] text-t-success">
                 سيتم تجديد الاشتراك تلقائياً وطباعة الفاتورة عند الموافقة
               </div>
             </div>
-            <div className="p-5 flex gap-3" style={{ borderTop: '1px solid var(--bd-line)' }}>
+            <div className="p-5 flex gap-3 border-t border-bd-line">
               <button onClick={() => handleApprove(selected)} disabled={approving}
                 className="flex-1 py-3 rounded-lg font-semibold text-white"
                 style={{ background: '#1a3a5c', border: 'none', cursor: 'pointer' }}>
                 {approving ? 'جارٍ المعالجة...' : '✅ موافقة وطباعة فاتورة'}
               </button>
               <button onClick={() => setSelected(null)}
-                className="px-6 py-3 rounded-lg font-medium"
-                style={{ border: '1px solid var(--bd-line)', color: 'var(--t-muted)', background: 'var(--sf-card)', cursor: 'pointer' }}>
+                className="px-6 py-3 rounded-lg font-medium border border-bd-line text-t-muted bg-sf-card cursor-pointer"
+               >
                 إغلاق
               </button>
             </div>

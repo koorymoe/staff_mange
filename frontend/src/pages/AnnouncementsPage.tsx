@@ -56,7 +56,7 @@ export default function AnnouncementsPage() {
     <>
       <SaveError message={guard.error} onClose={guard.clear} />
     <div dir="rtl" className="space-y-6">
-      <div className="rounded-2xl p-6 shadow-sm" style={{ backgroundColor: '#1a3a5c' }}>
+      <div className="rounded-2xl p-6 shadow-sm bg-[#1a3a5c]">
         <h1 className="text-2xl font-bold text-white">📢 لوحة الإعلانات</h1>
         <p className="mt-1 text-sm text-blue-200">
           الإعلان الشغّال يمر بشريط متحرك كدام كل الموظفين — وماكو زر إخفاء
