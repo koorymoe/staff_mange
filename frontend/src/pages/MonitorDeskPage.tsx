@@ -19,7 +19,7 @@
 // الموظفين، وحذف مسار يعني صفحة بيضاء بلا تفسير.
 
 import { Suspense, useEffect, useState } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { useLocation, useSearchParams } from 'react-router-dom'
 
 import { api, type MonitorDeskCounts, purchaseApi } from '../api'
 import { useSession } from '../session'
@@ -97,7 +97,9 @@ const COUNT_KEY: Partial<Record<SectionId, keyof MonitorDeskCounts>> = {
 
 export default function MonitorDeskPage() {
   const { employee, permissions } = useSession()
-  const [active, setActive] = useState<SectionId>('inbox')
+  // ٧و (11-05): بند «لوحة المراقبة» انشال — رابطه /monitor يفتح المكتب على تبويب اللوحة
+  const { pathname } = useLocation()
+  const [active, setActive] = useState<SectionId>(pathname.replace(/\/+$/, '').endsWith('/monitor') ? 'board' : 'inbox')
   const [, setParams] = useSearchParams()
   const [issuesKey, setIssuesKey] = useState(0)
   const [counts, setCounts] = useState<MonitorDeskCounts | null>(null)

@@ -89,7 +89,7 @@ for (const role of ROLES) {
     }
     // ٧و (11-05): الشاشات الموحّدة بتبويبات — كل تبويب يطلع لازم ينفتح بلا ٤٠٣.
     // نبدي من «الإجازات» (مفتوحة للكل) ومن أي شاشة موحّدة موجودة بقائمته.
-    const hubs = ['/leaves', '/staff-leaves', '/suppliers', '/tech-suppliers', '/supplier-relations', '/quality-desk']
+    const hubs = ['/leaves', '/staff-leaves', '/suppliers', '/tech-suppliers', '/supplier-relations', '/quality-desk', '/staff-score']
     const starts = hubs.filter((h) => h === '/leaves' || links.some((l) => l.endsWith(h)))
     for (const h of starts) {
       where = `hub ${h}`

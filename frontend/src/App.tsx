@@ -75,8 +75,7 @@ const ItAssetsPage = lazyRetry(() => import('./pages/ItAssetsPage'))
 const MediaPage = lazyRetry(() => import('./pages/MediaPage'))
 const DisciplineRecordPage = lazyRetry(() => import('./pages/DisciplineRecordPage'))
 const PeerVoicePage = lazyRetry(() => import('./pages/PeerVoicePage'))
-const StaffScorePage = lazyRetry(() => import('./pages/StaffScorePage'))
-const EmployeeIndicatorsPage = lazyRetry(() => import('./pages/EmployeeIndicatorsPage'))
+const StaffScoreHub = lazyRetry(() => import('./pages/StaffScoreHub'))
 const SuppliersHub = lazyRetry(() => import('./pages/SuppliersHub'))
 const ProjectPaymentsPage = lazyRetry(() => import('./pages/ProjectPaymentsPage'))
 const WorkplaceIssuesPage = lazyRetry(() => import('./pages/WorkplaceIssuesPage'))
@@ -128,7 +127,6 @@ const GpsMaintenanceReview = lazyRetry(() => import('./pages/gps/GpsMaintenanceR
 const AttendancePage = lazyRetry(() => import('./pages/AttendancePage'))
 
 const WorkReportPage = lazyRetry(() => import('./pages/WorkReportPage'))
-const StatsPage = lazyRetry(() => import('./pages/StatsPage'))
 const ProjectsPage = lazyRetry(() => import('./pages/ProjectsPage'))
 const VipCustomersPage = lazyRetry(() => import('./pages/VipCustomersPage'))
 const PrivacyPolicyPage = lazyRetry(() => import('./pages/PrivacyPolicyPage'))
@@ -149,7 +147,6 @@ const PerformanceReviewPage = lazyRetry(() => import('./pages/PerformanceReviewP
 const MissionsPage = lazyRetry(() => import('./pages/MissionsPage'))
 const ProcurementPage = lazyRetry(() => import('./pages/ProcurementPage'))
 const MapPage = lazyRetry(() => import('./pages/MapPage'))
-const MonitorDashboard = lazyRetry(() => import('./pages/MonitorDashboard'))
 const FieldMapPage = lazyRetry(() => import('./pages/FieldMapPage'))
 const LateAuditPage = lazyRetry(() => import('./pages/LateAuditPage'))
 const MatrixSelfCheckPage = lazyRetry(() => import('./pages/MatrixSelfCheckPage'))
@@ -168,7 +165,6 @@ const WorkReportsReview = lazyRetry(() => import('./pages/WorkReportsReview'))
 const ReportsDeskPage = lazyRetry(() => import('./pages/ReportsDeskPage'))
 const DecorRatesPage = lazyRetry(() => import('./pages/DecorRatesPage'))
 const VehicleDriversPage = lazyRetry(() => import('./pages/VehicleDriversPage'))
-const EmployeeMonthlyStatsPage = lazyRetry(() => import('./pages/EmployeeMonthlyStatsPage'))
 const StatsManagementPage = lazyRetry(() => import('./pages/StatsManagementPage'))
 const CustomerAppAdminPage = lazyRetry(() => import('./pages/CustomerAppAdminPage'))
 const CreditsPage = lazyRetry(() => import('./pages/CreditsPage'))
@@ -244,8 +240,8 @@ function App() {
           <Route path="manager-requests" element={<RequireAdmin><ManagerRequestsPage /></RequireAdmin>} />
           <Route path="project-payments" element={<RequirePermission permission="finance" anyOf={['finance_audit', 'project_management', 'monitoring']} roles={['FINANCE', 'PROJECT_MANAGER', 'MONITOR']}><ProjectPaymentsPage /></RequirePermission>} />
           <Route path="tech-suppliers" element={<SuppliersHub />} />
-          <Route path="employee-indicators" element={<RequirePermission permission="monitoring" anyOf={['auditing']} roles={['MONITOR']}><EmployeeIndicatorsPage /></RequirePermission>} />
-          <Route path="staff-score" element={<RequirePermission permission="monitoring" anyOf={['auditing']} roles={['MONITOR']}><StaffScorePage /></RequirePermission>} />
+          <Route path="employee-indicators" element={<RequirePermission permission="monitoring" anyOf={['auditing']} roles={['MONITOR']}><StaffScoreHub /></RequirePermission>} />
+          <Route path="staff-score" element={<RequirePermission permission="monitoring" anyOf={['auditing']} roles={['MONITOR']}><StaffScoreHub /></RequirePermission>} />
           <Route path="peer-voice" element={<RequirePermission permission="monitoring" anyOf={['auditing']} roles={['MONITOR']}><PeerVoicePage /></RequirePermission>} />
           <Route path="workplace-issues" element={<RequirePermission permission="monitoring" anyOf={['auditing']} roles={['MONITOR']}><WorkplaceIssuesPage /></RequirePermission>} />
           <Route path="discipline-record" element={<RequireAdmin><DisciplineRecordPage /></RequireAdmin>} />
@@ -333,7 +329,7 @@ function App() {
           <Route path="attendance" element={<AttendancePage />} />
           <Route path="work-reports" element={<WorkReportPage />} />
           <Route path="suppliers" element={<SuppliersHub />} />
-          <Route path="stats" element={<StatsPage />} />
+          <Route path="stats" element={<RequirePermission permission="employee_stats"><StatsManagementPage /></RequirePermission>} />
           <Route path="projects" element={<ProjectsPage />} />
           {/* الشخصيات المهمة: مدير النظام، أو أي إداري ينمنح صلاحية الإضافة اليدوية */}
           <Route path="vip-customers" element={<RequirePermission permission="vip_manual_add"><VipCustomersPage /></RequirePermission>} />
@@ -357,13 +353,13 @@ function App() {
           <Route path="unit-pr" element={<Navigate to="/media" replace />} />
           <Route path="staff-requests" element={<StaffRequestsPage />} />
           <Route path="service-managers" element={<RequirePermission permission="service_managers"><ServiceManagersPage /></RequirePermission>} />
-          <Route path="employee-stats" element={<RequirePermission permission="employee_stats"><EmployeeMonthlyStatsPage /></RequirePermission>} />
+          <Route path="employee-stats" element={<RequirePermission permission="employee_stats"><StatsManagementPage /></RequirePermission>} />
           <Route path="stats-management" element={<RequirePermission permission="employee_stats"><StatsManagementPage /></RequirePermission>} />
           <Route path="performance-review" element={<PerformanceReviewPage />} />
           <Route path="missions" element={<MissionsPage />} />
           <Route path="procurement" element={<ProcurementPage />} />
           <Route path="map" element={<MapPage />} />
-          <Route path="monitor" element={<MonitorDashboard />} />
+          <Route path="monitor" element={<MonitorDeskPage />} />
           <Route path="field-map" element={<FieldMapPage />} />
           <Route path="late-audit" element={<LateAuditPage />} />
           <Route path="matrix-selfcheck" element={<MatrixSelfCheckPage />} />

@@ -257,8 +257,6 @@ export const navItems: NavItem[] = [
           // (role !== 'ADMIN')، وكان المراقب يشوف الرابط هنا ويفتح
           // دائماً على «غير مصرح». والخادم (`GET /api/stats`) صار
           // محمياً بـ`requireAdmin` نفسه — القفلان يطابقان القائمة.
-          { to: '/stats', label: 'إحصائيات الموظفين', icon: <></>, roles: ['ADMIN'], hideForRoles: ['ADMIN', 'OWNER'] },
-          { to: '/employee-stats', label: 'إحصائيات الموظفين الشهرية', icon: <></>, roles: ['ADMIN'], unlockPermission: 'employee_stats', hideForRoles: ['ADMIN', 'OWNER'] },
         ],
       },
       // إدارة الإحصائيات — عنصر مستقل مباشر تحت "الإدارة"، مو داخل إدارة
@@ -288,7 +286,7 @@ export const navItems: NavItem[] = [
           return canViewAll ? '📋 الحجوزات' : '＋ إنشاء حجز'
         },
       },
-      { to: '/my-handovers', label: '🛠️ الحجوزات', icon: <></>, roles: TECH_ROLES },
+      { to: '/my-handovers', label: '🛠️ حجوزاتي المسلّمة', icon: <></>, roles: TECH_ROLES },
       // ماتركس — فرص البيع: نفس حارس GET /api/ai/opportunities (ADMIN/OWNER أو sales_booking).
       { monitorMenuHide: true, to: '/sales-opportunities', label: '💡 فرص البيع', icon: <></>, roles: ['ADMIN'], permission: 'sales_booking', hideForRoles: [...TECH_ROLES, 'SALES', 'ADMIN'] }, // قرار (ع) 10-08: ما تطلع للمبيعات
       // قرار (ع) 10-08: طلبات GPS للمبيعات صارت جوّا «العمل».
@@ -329,7 +327,6 @@ export const navItems: NavItem[] = [
       { monitorMenuHide: true, hideForRoles: ['QUALITY_ENGINEER'], to: '/staff-score', label: '🏅 تقييم الموظفين', icon: <></>, roles: ['ADMIN', 'MONITOR'], anyPermission: ['monitoring', 'auditing', 'mon_staff'] },
       { hideForRoles: ['QUALITY_ENGINEER'], to: '/staff-reports', label: '🧾 تقارير الموظفين', icon: <></>, roles: ['ADMIN', 'MONITOR', 'HR_COORDINATOR'], anyPermission: ['monitoring', 'mon_staff', 'staff_management'] },
       { hideForRoles: ['QUALITY_ENGINEER'], to: '/employee-dossier', label: '📂 ملف الموظف', icon: <></>, roles: ['ADMIN', 'MONITOR', 'HR_COORDINATOR'], anyPermission: ['monitoring', 'mon_staff', 'staff_management'] },
-      { monitorMenuHide: true, hideForRoles: ['QUALITY_ENGINEER'], to: '/employee-indicators', label: '📈 مؤشرات أداء الموظف', icon: <></>, roles: ['ADMIN', 'MONITOR'], anyPermission: ['monitoring', 'auditing', 'mon_staff'] },
       { monitorMenuHide: true, hideForRoles: ['QUALITY_ENGINEER'], to: '/peer-voice', label: '🗣️ صوت الموظفين', icon: <></>, roles: ['ADMIN', 'MONITOR'], anyPermission: ['monitoring', 'auditing', 'mon_staff'] },
       { monitorMenuHide: true, hideForRoles: ['QUALITY_ENGINEER'], to: '/workplace-issues', label: '🤝 المشاكل الوظيفية', icon: <></>, roles: ['ADMIN', 'MONITOR'], anyPermission: ['monitoring', 'auditing', 'mon_staff'] },
       // ماتركس — صندوق القرارات: نفس حارس GET /api/ai/decisions (ADMIN/OWNER بس).
@@ -505,7 +502,6 @@ export const navItems: NavItem[] = [
   // المحفوظة والإشعارات.
   // (دازاي 10-26) ليدر سابق يكمّل ورق حجوزاته — يطلع بس لصاحب الصلاحية المؤقتة
   { to: '/my-paperwork', label: '📄 ورق حجوزاتي القديمة', icon: <span>📄</span>, permission: 'paperwork_carryover' },
-  { monitorMenuHide: true, to: '/monitor', label: 'لوحة المراقبة', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>, roles: ['ADMIN', 'MONITOR'], permission: 'monitoring' },
   // "خريطة المواقع" انشالت من القائمة — الفني هسه يشوف طريق مهمته مباشرة
   // من صفحة "مهامي" (بوب-أب داخل نفس الصفحة، بدون تحويل لصفحة ثانية).
   // مدير المشاريع مدير مو فني: ما عنده مهام تنستلم ولا تقييم ولا تصنيف ولا تقارير عمل
@@ -529,8 +525,8 @@ export const navItems: NavItem[] = [
       //
       // (المحاسب والمراقب والمدير إلهم بندهم الخاص بمجموعة الحسابات
       // — ذاك يشوف فواتير **الكل**، وهذا يشوف فواتيره هو.)
-      { to: '/my-tasks', label: 'مهامي', icon: <></>, roles: ['TECHNICIAN', 'TECHNICAL'] },
-      { to: '/my-handovers', label: '🛠️ الحجوزات', icon: <></>, roles: ['TECHNICAL'] },
+      { to: '/my-tasks', label: '🔧 مهام الميدان', icon: <></>, roles: ['TECHNICIAN', 'TECHNICAL'] },
+      { to: '/my-handovers', label: '🛠️ حجوزاتي المسلّمة', icon: <></>, roles: ['TECHNICAL'] },
       // ⚠️ «مصاريفي» انشالت من هنا — صارت خيار جوّا «مهامي» ويّا
       // الحجوزات والفواتير والتقارير. الأربعة يخصّون نفس الشغل:
       // حجزك، وفاتورة حجزك، وتقرير حجزك، ومصاريف حجزك.
@@ -617,7 +613,7 @@ export const navItems: NavItem[] = [
   // الشاشة. والنوع ينختار جوّا الشاشة، وهي **تعرض المسموح وبس**.
   // قرار (ع) 10-07: «الحجوزات» المرحّلة — التقني ومسؤول الخدمة يشوفونها جوّا «العمل»؛
   // هذا البند لمسؤول خدمة دوره غير (ينعرف بصلاحية الفواتير).
-  { to: '/my-handovers', label: '🛠️ الحجوزات', icon: icon('M8 2v4M16 2v4M3 10h18M5 4h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z'), anyPermission: ['invoice_gps', 'invoice_dashcam'], hideForRoles: ['ADMIN', ...TECH_ROLES] },
+  { to: '/my-handovers', label: '🛠️ حجوزاتي المسلّمة', icon: icon('M8 2v4M16 2v4M3 10h18M5 4h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z'), anyPermission: ['invoice_gps', 'invoice_dashcam'], hideForRoles: ['ADMIN', ...TECH_ROLES] },
   // (ع) 10-11: للمدير والمالك هاي بوحدة الخدمة — ما تطلع خانة رئيسية
   { to: '/leader-invoices/new?service=1', label: '🛰️ فاتورة خدمة', icon: icon('M12 2v4M12 18v4M2 12h4M18 12h4M7.8 7.8 4.9 4.9M16.2 7.8l2.9-2.9M7.8 16.2l-2.9 2.9M16.2 16.2l2.9 2.9'), anyPermission: ['invoice_gps', 'invoice_dashcam'], hideForRoles: [...TECH_ROLES, 'ADMIN'] },
   // «فواتير **وتقارير**»: نفس الصلاحيتين يسوّون تقرير حجوزات نوعهم.
@@ -780,7 +776,6 @@ export const navItems: NavItem[] = [
   // كأول تبويب بمكتب المراقب (بخاصية embedded). بندان يودّيان لنفس
   // الشي = تكرار صرف. والمسار `/monitor-inbox` يبقى شغّالاً للروابط
   // المحفوظة والإشعارات.
-      { monitorMenuHide: true, to: '/monitor', label: 'لوحة المراقبة', icon: <></>, roles: ['ADMIN', 'MONITOR'], permission: 'monitoring' },
       { to: '/crew-bookings-audit', label: 'تدقيق تنسيق الحجوزات', icon: <></>, permission: 'crew_management' },
       // إدارة سياسة الخصوصية (إضافة/تعديل النقاط) — صلاحية مستقلة تماماً عن
       // قراءتها. القراءة متاحة لكل موظف من الرابط فوق "تسجيل الخروج".
@@ -843,7 +838,6 @@ export const navItems: NavItem[] = [
       { monitorMenuHide: true, hideForRoles: ['QUALITY_ENGINEER'], to: '/staff-score', label: '🏅 تقييم الموظفين', icon: <></>, roles: ['ADMIN', 'MONITOR'], anyPermission: ['monitoring', 'auditing', 'mon_staff'] },
       { hideForRoles: ['QUALITY_ENGINEER'], to: '/staff-reports', label: '🧾 تقارير الموظفين', icon: <></>, roles: ['ADMIN', 'MONITOR', 'HR_COORDINATOR'], anyPermission: ['monitoring', 'mon_staff', 'staff_management'] },
       { hideForRoles: ['QUALITY_ENGINEER'], to: '/employee-dossier', label: '📂 ملف الموظف', icon: <></>, roles: ['ADMIN', 'MONITOR', 'HR_COORDINATOR'], anyPermission: ['monitoring', 'mon_staff', 'staff_management'] },
-      { monitorMenuHide: true, hideForRoles: ['QUALITY_ENGINEER'], to: '/employee-indicators', label: '📈 مؤشرات أداء الموظف', icon: <></>, roles: ['ADMIN', 'MONITOR'], anyPermission: ['monitoring', 'auditing', 'mon_staff'] },
       { monitorMenuHide: true, hideForRoles: ['QUALITY_ENGINEER'], to: '/peer-voice', label: '🗣️ صوت الموظفين', icon: <></>, roles: ['ADMIN', 'MONITOR'], anyPermission: ['monitoring', 'auditing', 'mon_staff'] },
       { monitorMenuHide: true, hideForRoles: ['QUALITY_ENGINEER'], to: '/workplace-issues', label: '🤝 المشاكل الوظيفية', icon: <></>, roles: ['ADMIN', 'MONITOR'], anyPermission: ['monitoring', 'auditing', 'mon_staff'] },
       { monitorMenuHide: true, to: '/duplicate-review', label: '🤖 ماتركس — التكرار', icon: <></>, roles: ['ADMIN'], permission: 'duplicate_review' },
@@ -1513,6 +1507,9 @@ const ROUTE_RULES: Record<string, RouteRule> = {
   '/quality-follow-ups': { roles: ['MONITOR', 'QUALITY_ENGINEER'], anyPermission: ['quality_control'] },
   // ٧و (11-05): انشال من القائمة (صار تبويب بمركز التدريب) — الرابط يبقى بنفس شرط البند القديم
   '/training-programs': { roles: ['ADMIN', 'OWNER'], anyPermission: ['training_manage'] },
+  // ٧و (11-05): بنود انشالت من القائمة (صارت تبويبات) — روابطها تبقى بنفس شروط البنود القديمة
+  '/employee-indicators': { roles: ['MONITOR'], anyPermission: ['monitoring', 'auditing', 'mon_staff'] },
+  '/monitor': { roles: ['MONITOR'], anyPermission: ['monitoring'] },
   '/monitor-inbox': { roles: ['MONITOR'], anyPermission: ['monitoring', 'auditing', 'mon_inbox', 'mon_justifications'] }, // requireMonitor
   '/matrix-missions': { roles: ['MONITOR'], anyPermission: ['monitoring', 'auditing', 'mon_matrix'] }, // requireMonitor
   '/stage-buckets': { anyPermission: ['coordinator'] }, // requireCoordinator

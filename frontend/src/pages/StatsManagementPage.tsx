@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { api, type DailyStats, type WeeklyStats, type Stats, type InternalWorksReport } from '../api'
 import EmployeeMonthlyStatsPage from './EmployeeMonthlyStatsPage'
+import { useLocation } from 'react-router-dom'
 import MonthCompare from '../components/MonthCompare'
 import BookingCodeChip from '../components/BookingCodeChip'
 import ProjectStatsBoard from '../components/ProjectStatsBoard'
@@ -347,7 +348,9 @@ function InternalWorksTab() {
 }
 
 export default function StatsManagementPage() {
-  const [tab, setTab] = useState<'staff' | 'daily' | 'weekly' | 'monthly' | 'compare' | 'internal' | 'services' | 'projects'>('staff')
+  // ٧و (11-05): /stats و/employee-stats انشالن من القائمة — روابطهن تفتح هنا على تبويبهن
+  const { pathname } = useLocation()
+  const [tab, setTab] = useState<'staff' | 'daily' | 'weekly' | 'monthly' | 'compare' | 'internal' | 'services' | 'projects'>(pathname.replace(/\/+$/, '').endsWith('/employee-stats') ? 'monthly' : 'staff')
 
   const tabs: { key: typeof tab; label: string }[] = [
     // (ع) 10-13: «إحصائيات الموظفين» و«الشهرية» و«إدارة الإحصائيات» صارت واجهة وحدة

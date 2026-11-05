@@ -307,3 +307,4 @@ git push origin origin/avg:refs/heads/prod     # بعد التأكد إنه fast
 - 11-05 ٧ح: تقسيم PermissionsPage لـ pages/permissions/* (الصفحة ١٧ سطر)، مقارنة DOM قبل/بعد لثلاث حالات = مطابقة.
 - 11-05 ٧و: `components/TabbedHub.tsx` + `pages/LeavesHub.tsx` و`pages/SuppliersHub.tsx` (المسارات القديمة تفتح الموحّدة على تبويبها). /quality-follow-ups = QualityDeskPage، و/quality تسمّت «مراجعة تقارير العمل». e2e roles يضغط كل تبويب.
 - 11-05 ٧و: /training-programs انشال من القائمة (بندين)، يفتح TrainingCenterPage على تبويب programs، وانضاف لـ ROUTE_RULES بنفس شرطه. المالية تبقى بقرار.
+- 11-05 ٧و ✅: StaffScoreHub (staff-score + employee-indicators)، /stats و/employee-stats → StatsManagementPage على تبويبهن، /monitor → MonitorDeskPage على board. البنود المشالة بـ ROUTE_RULES بنفس شروطها (/stats و/employee-stats أصلاً بـ SELF_SCOPED). أسماء: «حجوزاتي المسلّمة» و«مهام الميدان».
