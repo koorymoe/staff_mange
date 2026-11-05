@@ -2020,6 +2020,10 @@ export const api = {
     /** الخدمة الي تخص هاي الكلفة — منها يبني النظام معدّل السعر */
     serviceId?: string
     note?: string
+    /** مجانية: السعر يقبل صفر، والسبب إجباري */
+    isFree?: boolean
+    freeReasonId?: string
+    freeReasonNote?: string
   }) => request<LeaderInvoice>('/leader-invoices/manual', { method: 'POST', body: JSON.stringify(data) }),
   /** حجوزات الشغل داخل الشركة — مسار مستقل لأن قائمة الحجوزات
    *  العامة تنضيّق لحجوزات الموظف نفسه بلا صلاحية قراءة شاملة. */

@@ -951,13 +951,21 @@ func (s *LeaderInvoiceService) CreateManualInvoice(employeeID string, req model.
 	if utf8.RuneCountInString(work) < model.ManualWorkMinRunes {
 		return nil, fmt.Errorf("اكتب شنو اشتغلت للزبون بالتفصيل (%d حرف على الأقل)", model.ManualWorkMinRunes)
 	}
-	// ⚠️ السعر حر بس مو سالباً ولا صفراً: فاتورة بصفر تعني «مجاني»
-	// وهذا مسار ثاني إله سببه المكتوب — خلطهما يخفي كلفة الضمان.
+	// ⚠️ السعر حر بس مو سالباً. صفر بس للمجانية وبسببها المكتوب (دازاي 11-05،
+	// نفس فاتورة الخدمة) — المجانية بلا سبب تخفي كلفة الضمان.
 	if err := model.CheckIQD("السعر", req.Price); err != nil {
 		return nil, err
 	}
-	if req.Price <= 0 {
+	if req.Price < 0 || (req.Price == 0 && !req.IsFree) {
 		return nil, fmt.Errorf("اكتب سعر الفاتورة")
+	}
+	discount, netTotal := 0.0, req.Price
+	if req.IsFree {
+		if err := s.checkFreeReason(req.FreeReasonID, req.FreeReasonNote); err != nil {
+			return nil, err
+		}
+		// الكلفة تبقى، والزبون يدفع صفر.
+		discount, netTotal = req.Price, 0
 	}
 
 	// المنظومات للعرض والتصنيف بس — ما تدخل بأي حساب.
@@ -992,11 +1000,15 @@ func (s *LeaderInvoiceService) CreateManualInvoice(employeeID string, req model.
 		// وتعبئتها ببنود وهمية تخلي الفاتورة تكذب.
 		Items:            []model.ExecutionCostItem{},
 		TotalDeviceCount: 0,
-		// السعر كله «تنفيذ»: المواد والخصم مسارهما الفاتورة العادية.
+		// السعر كله «تنفيذ»: المواد والخصم مسارهما الفاتورة العادية
+		// (الخصم هنا بس للمجانية: يساوي السعر كله).
 		ExecutionCost:   req.Price,
 		MaterialsTotal:  0,
-		DiscountValue:   0,
-		NetTotal:        req.Price,
+		DiscountValue:   discount,
+		NetTotal:        netTotal,
+		IsFree:          req.IsFree,
+		FreeReasonID:    req.FreeReasonID,
+		FreeReasonNote:  req.FreeReasonNote,
 		Status:          "SUBMITTED",
 		PricingMode:     model.PricingModeManual,
 		ManualWork:      &work,
@@ -1016,7 +1028,8 @@ func (s *LeaderInvoiceService) CreateManualInvoice(employeeID string, req model.
 	// للأبد.
 	//
 	// ⚠️ الخطأ ينتجاهل بقصد: العيّنة تحسين، والفاتورة شغل الموظف.
-	if s.priceLearning != nil && req.ServiceID != nil && *req.ServiceID != "" {
+	// المجانية ما تنحسب عيّنة: الزبون ما دفع هذا السعر.
+	if s.priceLearning != nil && !req.IsFree && req.ServiceID != nil && *req.ServiceID != "" {
 		_ = s.priceLearning.AddSample(*req.ServiceID, saved.ID, employeeID, req.Price)
 		// وبعد الحد (٥ عيّنات بقرار المالك) يتولّد **اقتراح** —
 		// مو سعراً. واقتراح واحد لكل خدمة بالعمر كله.

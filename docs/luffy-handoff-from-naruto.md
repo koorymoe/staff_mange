@@ -301,3 +301,4 @@ git push origin origin/avg:refs/heads/prod     # بعد التأكد إنه fast
 - 11-05 ٧ف: `migrate_kinds_test.go` — من 0442 كل ترحيل مخطط أو بيانات (`data_`)، مو خليط. القديمة ما تنلمس، والفهرس بـ docs/adr/0009.
 - 11-05 ٧ص: ألوان الثيم بـ `@theme` (index.css) ككلاسات `text-t-*` و`bg-sf-*` و`border-bd-*`. وتحوّل ١٥٤ style لون مفرد، والباقي 617. للجديد: استعمل الكلاس مو `style={{ color: 'var(--t-…)' }}`.
 - 11-05 ٧ص-٢: ١٤٣ style ثابت → كلاسات (scratchpad style2.py: يحوّل بس لو كل خاصية تنترجم)، صفر فرق محسوب. ESLint `no-restricted-syntax` يمنع `style={{ color: var(--t-…) }}`. الباقي 473.
+- 11-05 فواتير: الكلفة اليدوية (`CreateManualInvoice`) تقبل المجانية بسبب إجباري (`checkFreeReason`) — نفس فاتورة الخدمة. والواجهة ترسل isFree وتقبل صفر. المجانية ما تدخل عيّنات priceLearning.

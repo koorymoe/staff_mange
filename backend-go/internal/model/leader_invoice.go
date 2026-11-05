@@ -286,8 +286,13 @@ type CreateManualInvoiceRequest struct {
 	CustomerAddress *string `json:"customerAddress"`
 	// Work شنو انعمل للزبون بالضبط — إجباري.
 	Work string `json:"work"`
-	// Price السعر الي يريده — إجباري وأكبر من صفر.
+	// Price السعر الي يريده — إجباري وأكبر من صفر، إلا المجانية (تقبل صفر).
 	Price float64 `json:"price"`
+	// (دازاي 11-05) المجانية بالكلفة اليدوية — نفس فاتورة الخدمة: السبب إجباري،
+	// والكلفة (لو انكتبت) تبقى والزبون يدفع صفر.
+	IsFree         bool    `json:"isFree"`
+	FreeReasonID   *string `json:"freeReasonId"`
+	FreeReasonNote *string `json:"freeReasonNote"`
 	// Systems المنظومات المشمولة (اختيارية) — للعرض والتصنيف بس،
 	// ما تدخل بأي حساب.
 	Systems []string `json:"systems"`

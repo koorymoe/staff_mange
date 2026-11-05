@@ -652,11 +652,13 @@ export default function LeaderInvoiceNew({ initialMode, handoverOnly = false }: 
         setError(`اكتب شنو اشتغلت للزبون بالتفصيل (${MANUAL_WORK_MIN} حرف على الأقل)`)
         return
       }
-      const price = readMoney(manualPrice).value
-      if (!Number.isFinite(price) || price <= 0) {
+      // (دازاي 11-05) المجانية تقبل صفر (أو فراغ)، بس سببها إجباري — نفس فاتورة الخدمة
+      const price = manualPrice.trim() === '' && isFree ? 0 : readMoney(manualPrice).value
+      if (!Number.isFinite(price) || price < 0 || (price === 0 && !isFree)) {
         setError('اكتب سعر الفاتورة')
         return
       }
+      if (isFree && !freeReasonId) { setError('اختار سبب المجانية'); return }
       setSaving(true)
       try {
         const invoice = await api.createManualInvoice({
@@ -669,6 +671,9 @@ export default function LeaderInvoiceNew({ initialMode, handoverOnly = false }: 
           systems: systems.length > 0 ? systems : undefined,
           serviceId: manualServiceId || undefined,
           note: manualNote.trim() || undefined,
+          isFree,
+          freeReasonId: isFree ? freeReasonId : undefined,
+          freeReasonNote: isFree && freeReasonNote.trim() ? freeReasonNote.trim() : undefined,
         })
         setResult(invoice)
       } catch (e) {
@@ -980,7 +985,7 @@ export default function LeaderInvoiceNew({ initialMode, handoverOnly = false }: 
               </div>
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <div>
-                  <label className="mb-1 block text-xs font-medium text-slate-600">السعر (د.ع) *</label>
+                  <label className="mb-1 block text-xs font-medium text-slate-600">السعر (د.ع) {isFree ? '— مجانية: اكتب الكلفة لو تعرفها، أو خليه فارغ' : '*'}</label>
                   {/* 🔴 چان `replace(/[^\d]/g,'')` — يمحي أي فاصلة،
                       فـ«١.٥» تصير «١٥» و«١٧٠٠٠.٥» تصير «١٧٠٠٠٥».
                       يعني الكسور ما تنكتب أصلاً، و«١.٥ = ألف ونص» ما
