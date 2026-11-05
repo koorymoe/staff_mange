@@ -40,6 +40,7 @@ cd frontend && npm run e2e   # Playwright: المالك + ٦ أدوار، يحت
 - [`ARCHITECTURE.md`](ARCHITECTURE.md): البنية العامة، ووين تلگى أي شي.
 - [`docs/تعديلات.md`](docs/تعديلات.md): البنود المتفق عليها وحالة كل واحد (المرجع الأساسي للشغل).
 - [`docs/luffy-handoff-from-naruto.md`](docs/luffy-handoff-from-naruto.md): سجل التسليم، سطر لكل تعديل.
+- [`docs/adr/`](docs/adr/README.md): سجل القرارات الثابتة وليش انتخذت.
 
 **الصلاحيات والأمان**
 - [`PERMISSIONS.md`](PERMISSIONS.md) و[`docs/الصلاحيات.md`](docs/الصلاحيات.md): كتالوج الصلاحيات ومحرك `internal/authz`.
