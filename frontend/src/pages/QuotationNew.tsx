@@ -782,9 +782,16 @@ ${pageShell(`
   const [pmDrag, setPmDrag] = useState(false)
   const takeImageFile = (file?: File | null) => {
     if (!file || !file.type.startsWith('image/')) return false
+    // (٧ل، 11-05) الصورة ترفع لمخزن الملفات مثل شاشة المنتجات — چانت تنحفظ base64
+    // داخل القاعدة، فكل فتحة لقائمة المنتجات تنزّل صور الكل ويا البيانات.
+    // المعاينة فورية من الجهاز، وبعدين تتبدّل برابط الملف.
     const reader = new FileReader()
-    reader.onload = () => setPmImage(reader.result as string)
+    reader.onload = () => setPmImage((cur) => cur || (reader.result as string))
     reader.readAsDataURL(file)
+    setPmImage('')
+    api.uploadFile(file, 'products')
+      .then((res) => setPmImage(res.url))
+      .catch(() => { /* فشل الرفع: تبقى المعاينة base64 وتنحفظ مثل قبل — ما نضيّع الصورة */ })
     return true
   }
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -1255,7 +1262,7 @@ ${pageShell(`
                     >
                       <input type="file" accept="image/*" onChange={handleImageUpload} style={{ display: 'none' }} />
                       {pmImage
-                        ? <img src={pmImage} alt="" style={{ width: 72, height: 72, objectFit: 'contain', borderRadius: 8, border: '1px solid var(--bd-line)', background: '#fff' }} />
+                        ? <img src={fileUrl(pmImage)} alt="" style={{ width: 72, height: 72, objectFit: 'contain', borderRadius: 8, border: '1px solid var(--bd-line)', background: '#fff' }} />
                         : <span style={{ fontSize: 30 }}>🖼️</span>}
                       <span style={{ fontSize: 13, color: 'var(--t-body)', lineHeight: 1.7 }}>
                         <b>اسحب الصورة هنا</b> أو <b>الصق سكرين شوت (Ctrl+V)</b>

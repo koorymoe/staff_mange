@@ -259,6 +259,14 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	// تخزين الملفات: R2 إذا انضبطت إعداداته، وإلا القرص المحلي. الاثنين
 	// نفس الواجهة فباقي النظام ما يعرف أيهم شغّال.
 	fileStore := buildFileStore(cfg)
+	// (٧ل، 11-05) صور المنتجات القديمة (base64 بالقاعدة) تنتقل لمخزن الملفات مرة وحدة بالخلفية
+	go func() {
+		if n, err := repository.MigrateProductImages(db, fileStore); err != nil {
+			log.Printf("[products] نقل الصور: %v", err)
+		} else if n > 0 {
+			log.Printf("[products] انتقلت %d صورة منتج لمخزن الملفات", n)
+		}
+	}()
 	log.Printf("[storage] تخزين الملفات: %s", fileStore.Kind())
 	{
 		onOff := func(b bool) string {
