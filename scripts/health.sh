@@ -3,6 +3,7 @@
 # مو موجود بالبيئة ينتخطى. المفاتيح من البيئة بس — لا تنطبع ولا تنكتب بملف.
 #
 #   SENTRY_READ_TOKEN + SENTRY_ORG     : أخطاء Sentry غير المحلولة بآخر 24 ساعة
+#   SENTRY_API (اختياري)              : افتراضي https://de.sentry.io (حساب al-amany بأوروبا)
 #   UPTIMEROBOT_API_KEY                : حالة المراقبات (read-only key)
 #   OPS_BASIC (user:pass)              : Netdata عبر https://الدومين/ops/netdata/
 #   BOT_BASE_URL (افتراضي staffmanage.cc)
@@ -16,7 +17,7 @@ echo "   /api/health → $code (الحالة، والوقت بالثواني)"
 if [ -n "${SENTRY_READ_TOKEN:-}" ] && [ -n "${SENTRY_ORG:-}" ]; then
   echo "== Sentry (غير محلولة، آخر 24 ساعة)"
   curl -fsS --max-time 20 -H "Authorization: Bearer $SENTRY_READ_TOKEN" \
-    "https://sentry.io/api/0/organizations/$SENTRY_ORG/issues/?query=is:unresolved&statsPeriod=24h&sort=freq&limit=15" \
+    "${SENTRY_API:-https://de.sentry.io}/api/0/organizations/$SENTRY_ORG/issues/?query=is:unresolved&statsPeriod=24h&sort=freq&limit=15" \
   | python3 -I -c '
 import json,sys
 d=json.load(sys.stdin)
