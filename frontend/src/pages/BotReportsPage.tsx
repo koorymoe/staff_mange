@@ -1,12 +1,17 @@
 import { useCallback, useEffect, useState } from 'react'
 import { api, fileUrl, type BotReport } from '../api'
 import { roleLabel } from '../roleLabels'
+import { useSession } from '../session'
+import { askConfirm } from '../ui/dialogs'
 
 // 📩 بلاغات الموظفين من بوت التلغرام (دازاي 11-05) — للمالك ومن ينطيه الصلاحية.
 // كل تغيير حالة أو رد يوصل للموظف بالبوت فوراً.
 const ORDER = ['NEW', 'NEEDS_INFO', 'IN_PROGRESS', 'DONE', 'NOT_A_BUG', 'REJECTED']
 
 export default function BotReportsPage() {
+  const { employee } = useSession()
+  const isOwner = employee?.actualRole === 'OWNER'
+  const [view, setView] = useState<'reports' | 'links'>('reports')
   const [status, setStatus] = useState('NEW')
   const [data, setData] = useState<{ items: BotReport[]; statuses: Record<string, string> } | null>(null)
   const [err, setErr] = useState('')
@@ -24,6 +29,15 @@ export default function BotReportsPage() {
         <h1 className="text-2xl font-black">📩 بلاغات الموظفين</h1>
         <p className="mt-1 text-sm text-blue-100">مشاكل النظام الي دزها الموظفين لبوت التلغرام (صورة + شرح). أي حالة أو رد تحطه يوصل للموظف بالبوت.</p>
       </div>
+      {isOwner && (
+        <div className="flex gap-2">
+          {([['reports', '📩 البلاغات'], ['links', '🔗 الحسابات المربوطة']] as const).map(([k, l]) => (
+            <button key={k} type="button" onClick={() => setView(k)}
+              className={`rounded-xl px-4 py-2 text-sm font-extrabold ${view === k ? 'bg-[#0f2040] text-white' : 'bg-white text-slate-600 ring-1 ring-slate-200'}`}>{l}</button>
+          ))}
+        </div>
+      )}
+      {view === 'links' && isOwner ? <LinksView /> : <>
       <div className="flex flex-wrap gap-2">
         {[...ORDER, ''].map((s) => (
           <button key={s || 'all'} type="button" onClick={() => setStatus(s)}
@@ -41,6 +55,39 @@ export default function BotReportsPage() {
             onToggle={() => setOpen(open === r.id ? null : r.id)} onSaved={load} />
         ))}
       </div>
+      </>}
+    </div>
+  )
+}
+
+// الحسابات المربوطة بالتلغرام — الفك بس من هنا (دازاي 11-05: «محد يفك الربط الا اني»)
+function LinksView() {
+  const [rows, setRows] = useState<Awaited<ReturnType<typeof api.getTelegramLinks>> | null>(null)
+  const [err, setErr] = useState('')
+  const load = useCallback(() => { api.getTelegramLinks().then((r) => { setErr(''); setRows(r) }).catch((e) => setErr(e instanceof Error ? e.message : 'تعذر الجلب')) }, [])
+  useEffect(() => { load() }, [load])
+  const unlink = async (id: string, name: string) => {
+    if (!(await askConfirm(`تفك ربط ${name} بالتلغرام؟ يوصله إشعار، ويگدر يربط من جديد.`))) return
+    try { await api.ownerUnlinkTelegram(id); load() } catch (e) { setErr(e instanceof Error ? e.message : 'تعذر فك الربط') }
+  }
+  if (err) return <p className="rounded-xl bg-red-50 p-3 text-sm text-red-700">{err}</p>
+  if (!rows) return <p className="py-10 text-center text-slate-400">جاري التحميل…</p>
+  if (!rows.length) return <p className="py-10 text-center text-slate-400">ماكو أحد رابط حسابه بعد.</p>
+  return (
+    <div className="overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-slate-200">
+      <table className="w-full text-sm">
+        <thead className="bg-slate-50 text-xs text-slate-500"><tr><th className="p-3 text-right">الموظف</th><th className="p-3 text-right">التلغرام</th><th className="p-3 text-right">من</th><th /></tr></thead>
+        <tbody>
+          {rows.map((r) => (
+            <tr key={r.employeeId} className="border-t border-slate-100">
+              <td className="p-3 font-bold">{r.name} <span className="text-xs font-normal text-slate-500">({roleLabel(r.role) || r.role}){r.status !== 'ACTIVE' ? ' · مو فعّال' : ''}</span></td>
+              <td className="p-3" dir="ltr">{r.tgUsername ? `@${r.tgUsername}` : '—'}</td>
+              <td className="p-3 text-xs text-slate-500">{new Date(r.linkedAt).toLocaleDateString('ar-IQ', { timeZone: 'Asia/Baghdad' })}</td>
+              <td className="p-3 text-left"><button onClick={() => unlink(r.employeeId, r.name)} className="text-xs font-bold text-red-600 hover:underline">فك الربط</button></td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   )
 }
@@ -64,8 +111,9 @@ function ReportCard({ r, labels, expanded, onToggle, onSaved }: {
     <div className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-200">
       <button type="button" onClick={onToggle} className="flex w-full flex-wrap items-center justify-between gap-2 text-right">
         <span className="font-extrabold text-[#0f2040]">#{r.number} · {r.employeeName} <span className="text-xs font-normal text-slate-500">({roleLabel(r.employeeRole) || r.employeeRole})</span></span>
-        <span className="text-xs text-slate-500">{labels[r.status] ?? r.status} · {when} · 📷 {r.photos.length}</span>
+        <span className="text-xs text-slate-500">{r.source === 'system' ? '🖥️ النظام' : '📱 البوت'} · {labels[r.status] ?? r.status} · {when} · 📷 {r.photos.length}</span>
       </button>
+      {r.page && <p className="mt-1 text-xs text-slate-400">الشاشة: <bdi dir="ltr" className="font-mono">{r.page}</bdi></p>}
       <p className={`mt-2 whitespace-pre-wrap text-sm text-slate-700 ${expanded ? '' : 'line-clamp-2'}`}>{r.body}</p>
       {expanded && (
         <div className="mt-3 space-y-3">

@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { api } from '../api'
-import { askConfirm } from '../ui/dialogs'
 
 // 🔗 ربط حساب الموظف ببوت بلاغات النظام (دازاي 11-05).
+// الربط مرة وحدة، والفك بس من المالك (دازاي 11-05).
 // الزر يفتح التلغرام على البوت بضغطة وحدة، والربط يصير تلقائياً (رمز مرة وحدة، ١٠ دقايق).
 // بلا يوزر وباسورد بالتلغرام: الباسورد يبقى مكتوب بالمحادثة ويطّلع عليه أي أحد يمسك التلفون.
 export default function TelegramLinkCard() {
@@ -36,20 +36,14 @@ export default function TelegramLinkCard() {
     } finally { setBusy(false) }
   }
 
-  const unlink = async () => {
-    if (!(await askConfirm('تفك ربط حسابك بالتلغرام؟ بعدها ما توصلك رسائل البوت.'))) return
-    try { await api.unlinkTelegram(); load() } catch { setErr('تعذر فك الربط') }
-  }
-
   if (!st) return <p className="text-xs text-slate-400">جاري التحميل…</p>
   if (!st.enabled) return <p className="text-sm text-slate-500">بوت التلغرام مو مفعّل بعد.</p>
   if (st.linked) {
     return (
       <div className="space-y-2 text-sm">
         <p className="font-bold text-emerald-700">✅ حسابك مربوط بالتلغرام{st.tgUsername ? ` (@${st.tgUsername})` : ''}</p>
-        <p className="text-xs text-slate-500">إذا واجهتك مشكلة بالنظام، دزها للبوت: صورة + شرح واضح.</p>
-        <button onClick={unlink} className="text-xs font-bold text-red-600 hover:underline">فك الربط</button>
-        {err && <p className="text-xs text-red-600">{err}</p>}
+        <p className="text-xs text-slate-500">إذا واجهتك مشكلة بالنظام، دزها للبوت (صورة + شرح واضح)، أو من زر «🆘 بلّغ» فوق.</p>
+        <p className="text-xs text-slate-400">الربط مرة وحدة. إذا تحتاج تغيّر التلغرام، المالك يفك الربط.</p>
       </div>
     )
   }

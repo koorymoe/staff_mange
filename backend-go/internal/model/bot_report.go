@@ -19,6 +19,9 @@ type BotReport struct {
 	AdminNote    *string        `db:"adminNote" json:"adminNote"`
 	CreatedAt    time.Time      `db:"createdAt" json:"createdAt"`
 	UpdatedAt    time.Time      `db:"updatedAt" json:"updatedAt"`
+	// Source من وين وصل: telegram | system. Page الشاشة الي كان بيها (للي من النظام).
+	Source string  `db:"source" json:"source"`
+	Page   *string `db:"page" json:"page"`
 	// للعرض — من جدول الموظف
 	EmployeeName string `db:"employeeName" json:"employeeName"`
 	EmployeeRole string `db:"employeeRole" json:"employeeRole"`

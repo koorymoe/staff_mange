@@ -163,7 +163,7 @@ func (h *FileHandler) Serve(w http.ResponseWriter, r *http.Request) {
 
 // allowedFolders المجلدات المنطقية المعروفة. أي شي غيرها يروح misc.
 var allowedFolders = map[string]bool{
-	"products": true, "receipts": true, "vehicles": true, "projects": true,
+	"products": true, "receipts": true, "botreports": true, "vehicles": true, "projects": true,
 	"reports": true, "exhibitions": true, "gps": true, "incidents": true,
 	"misc": true, "sim": true,
 }

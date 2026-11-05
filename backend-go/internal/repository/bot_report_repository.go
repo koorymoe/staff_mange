@@ -49,10 +49,15 @@ func (r *BotReportRepository) CreateLinkToken(employeeID string) (string, error)
 	return tok, tx.Commit()
 }
 
-var ErrLinkTokenInvalid = errors.New("رمز الربط منتهي أو مستعمل")
+var (
+	ErrLinkTokenInvalid = errors.New("رمز الربط منتهي أو مستعمل")
+	ErrAlreadyLinked    = errors.New("الحساب مربوط أصلاً")
+	ErrChatTaken        = errors.New("هذا التلغرام مربوط بحساب ثاني")
+)
 
 // LinkWithToken يستهلك الرمز (مرة وحدة، ذرّياً) ويربط المحادثة بالموظف.
-// المحادثة تنربط بموظف واحد، والموظف بمحادثة وحدة: أي ربط قديم لأي طرف ينفك.
+// (دازاي 11-05) **الربط مرة وحدة**: الحساب المربوط ما ينربط بتلغرام ثاني، والتلغرام
+// المربوط ما ياخذ حساب ثاني — الفك بس من المالك. فلو انسرق رابط ربط موظف مربوط، ما يفيد.
 func (r *BotReportRepository) LinkWithToken(token string, chatID int64, username string) (string, error) {
 	tx, err := r.db.Beginx()
 	if err != nil {
@@ -68,8 +73,19 @@ func (r *BotReportRepository) LinkWithToken(token string, chatID int64, username
 	if err != nil {
 		return "", err
 	}
-	if _, err := tx.Exec(`DELETE FROM "TelegramLink" WHERE "chatId" = $1 OR "employeeId" = $2`, chatID, empID); err != nil {
+	var taken struct {
+		Emp  int `db:"emp"`
+		Chat int `db:"chat"`
+	}
+	if err := tx.Get(&taken, `SELECT count(*) FILTER (WHERE "employeeId" = $1) AS emp, count(*) FILTER (WHERE "chatId" = $2) AS chat
+		FROM "TelegramLink" WHERE "employeeId" = $1 OR "chatId" = $2`, empID, chatID); err != nil {
 		return "", err
+	}
+	if taken.Emp > 0 {
+		return "", ErrAlreadyLinked
+	}
+	if taken.Chat > 0 {
+		return "", ErrChatTaken
 	}
 	var un *string
 	if username != "" {
@@ -151,10 +167,37 @@ func (r *BotReportRepository) ClearDraft(chatID int64) error {
 // Create يحفظ البلاغ ويرجع رقمه للموظف.
 func (r *BotReportRepository) Create(rep *model.BotReport) error {
 	rep.ID = uuid.NewString()
-	return r.db.Get(rep, `INSERT INTO "BotReport" (id, "employeeId", "chatId", body, photos, "mediaGroupId")
-		VALUES ($1, $2, $3, $4, $5, $6)
-		RETURNING id, number, "employeeId", "chatId", body, photos, "mediaGroupId", status, "adminNote", "createdAt", "updatedAt", '' AS "employeeName", '' AS "employeeRole"`,
-		rep.ID, rep.EmployeeID, rep.ChatID, rep.Body, pq.StringArray(rep.Photos), rep.MediaGroupID)
+	if rep.Source == "" {
+		rep.Source = "telegram"
+	}
+	return r.db.Get(rep, `INSERT INTO "BotReport" (id, "employeeId", "chatId", body, photos, "mediaGroupId", source, page)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+		RETURNING id, number, "employeeId", "chatId", body, photos, "mediaGroupId", status, "adminNote", "createdAt", "updatedAt", source, page, '' AS "employeeName", '' AS "employeeRole"`,
+		rep.ID, rep.EmployeeID, rep.ChatID, rep.Body, pq.StringArray(rep.Photos), rep.MediaGroupID, rep.Source, rep.Page)
+}
+
+// Employee اسم الموظف ودوره (للبلاغ الي ينكتب من النظام).
+func (r *BotReportRepository) Employee(id string) (*BotLinkedEmployee, error) {
+	var e BotLinkedEmployee
+	err := r.db.Get(&e, `SELECT id, name, role::text AS role, status::text AS status FROM "Employee" WHERE id = $1`, id)
+	return &e, err
+}
+
+// BotLinkRow صف بشاشة المالك: منو مربوط بأي تلغرام.
+type BotLinkRow struct {
+	EmployeeID string    `db:"employeeId" json:"employeeId"`
+	Name       string    `db:"name" json:"name"`
+	Role       string    `db:"role" json:"role"`
+	Status     string    `db:"status" json:"status"`
+	TgUsername *string   `db:"tgUsername" json:"tgUsername"`
+	LinkedAt   time.Time `db:"linkedAt" json:"linkedAt"`
+}
+
+func (r *BotReportRepository) Links() ([]BotLinkRow, error) {
+	out := []BotLinkRow{}
+	err := r.db.Select(&out, `SELECT l."employeeId", e.name, e.role::text AS role, e.status::text AS status, l."tgUsername", l."linkedAt"
+		FROM "TelegramLink" l JOIN "Employee" e ON e.id = l."employeeId" ORDER BY l."linkedAt" DESC`)
+	return out, err
 }
 
 // AttachToGroup ألبوم صور: التلغرام يرسل كل صورة برسالة، وكلها بنفس media_group_id.
@@ -179,7 +222,7 @@ func (r *BotReportRepository) CountLastHour(employeeID string) (int, error) {
 }
 
 const botReportCols = `b.id, b.number, b."employeeId", b."chatId", b.body, b.photos, b."mediaGroupId", b.status, b."adminNote",
-	b."createdAt", b."updatedAt", e.name AS "employeeName", e.role::text AS "employeeRole"`
+	b."createdAt", b."updatedAt", b.source, b.page, e.name AS "employeeName", e.role::text AS "employeeRole"`
 
 // List البلاغات (الأحدث أول). status فاضي = الكل. حد ٣٠٠ (٧م).
 func (r *BotReportRepository) List(status string) ([]model.BotReport, error) {

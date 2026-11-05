@@ -996,12 +996,18 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	mux.Handle("GET /api/me/work-gate", middleware.Chain(http.HandlerFunc(workGate.Gate), requireAuth))
 	// ═══ بوت بلاغات الموظفين — تلغرام (دازاي 11-05) ═══
 	// الـ webhook بلا تسجيل دخول بس محمي برمز سري يرسله التلغرام (بلاه ٤٠٤).
-	tgBot := handler.NewTelegramBotHandler(repository.NewBotReportRepository(db), telegram.New(cfg.TelegramBotToken, cfg.TelegramAPIBase), fileStore, permissionRepo, cfg.JWTSecret)
+	tgBot := handler.NewTelegramBotHandler(repository.NewBotReportRepository(db), telegram.New(cfg.TelegramBotToken, cfg.TelegramAPIBase), fileStore, permissionRepo, notificationRepo, cfg.JWTSecret)
 	tgBot.Start(cfg.TelegramWebhookURL)
 	mux.Handle("POST /api/telegram/webhook", middleware.RateLimit(600, time.Minute)(http.HandlerFunc(tgBot.Webhook)))
 	mux.Handle("GET /api/me/telegram", middleware.Chain(http.HandlerFunc(tgBot.MyLink), requireAuth))
 	mux.Handle("POST /api/me/telegram/link", middleware.Chain(http.HandlerFunc(tgBot.CreateLink), requireAuth))
-	mux.Handle("DELETE /api/me/telegram", middleware.Chain(http.HandlerFunc(tgBot.Unlink), requireAuth))
+	// الربط مرة وحدة: الموظف ما يفك، الفك بس من المالك
+	requireTgOwner := authz.Strict(permissionRepo, authz.TelegramLinks)
+	mux.Handle("GET /api/telegram-links", middleware.Chain(http.HandlerFunc(tgBot.Links), requireAuth, requireTgOwner))
+	mux.Handle("DELETE /api/telegram-links/{employeeId}", middleware.Chain(http.HandlerFunc(tgBot.OwnerUnlink), requireAuth, requireTgOwner))
+	// البلاغ من داخل النظام (أي موظف مسجّل)، وبلاغاته هو بس
+	mux.Handle("POST /api/me/bot-reports", middleware.Chain(http.HandlerFunc(tgBot.SubmitMine), requireAuth))
+	mux.Handle("GET /api/me/bot-reports", middleware.Chain(http.HandlerFunc(tgBot.MyReports), requireAuth))
 	requireBotReports := authz.Strict(permissionRepo, authz.BotReports)
 	mux.Handle("GET /api/bot-reports", middleware.Chain(http.HandlerFunc(tgBot.List), requireAuth, requireBotReports))
 	mux.Handle("PATCH /api/bot-reports/{id}", middleware.Chain(http.HandlerFunc(tgBot.Update), requireAuth, requireBotReports))

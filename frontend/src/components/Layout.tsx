@@ -9,6 +9,7 @@ import MatrixEye from './MatrixEye'
 import MatrixCourier from './MatrixCourier'
 import RemoteTimerChip from './RemoteTimerChip'
 import GlobalSearch from './GlobalSearch'
+import ReportProblemButton from './ReportProblemButton'
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import AttendanceGate from './AttendanceGate'
 import { InspectBar } from './InspectBar'
@@ -799,6 +800,8 @@ export default function Layout() {
                   «أريد توصل إشعارات لأجهزتهم وإشعارات للحاسبات».
                   الزر يطلع لمن ما ينطلب الإذن بعد — وبعدها يختفي. */}
               <LiveAlerts />
+              {/* 🆘 بلاغ مشكلة بالنظام — لكل موظف (دازاي 11-05) */}
+              <ReportProblemButton />
               {/* 🔍 البحث بكل النظام — شاشات (ويا طريقها)، حجوزات، زبائن، موظفين. Ctrl+K */}
               <GlobalSearch />
               {/* عين ماتركس — تتابع وتنتبه لكل إجراء، ولونها حسب الدور والحالة */}

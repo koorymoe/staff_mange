@@ -1738,7 +1738,12 @@ export const api = {
   // ═══ بوت بلاغات الموظفين — تلغرام (دازاي 11-05) ═══
   getMyTelegram: () => request<{ enabled: boolean; linked: boolean; tgUsername?: string | null; linkedAt?: string }>('/me/telegram'),
   createTelegramLink: () => request<{ url: string; expiresInMinutes: number }>('/me/telegram/link', { method: 'POST' }),
-  unlinkTelegram: () => request<{ ok: boolean }>('/me/telegram', { method: 'DELETE' }),
+  // الربط مرة وحدة — الفك بس من المالك
+  getTelegramLinks: () => request<{ employeeId: string; name: string; role: string; status: string; tgUsername: string | null; linkedAt: string }[]>('/telegram-links'),
+  ownerUnlinkTelegram: (employeeId: string) => request<{ ok: boolean }>(`/telegram-links/${employeeId}`, { method: 'DELETE' }),
+  // البلاغ من داخل النظام
+  submitBotReport: (body: { body: string; photos: string[]; page: string }) => request<BotReport>('/me/bot-reports', { method: 'POST', body: JSON.stringify(body) }),
+  getMyBotReports: () => request<{ items: BotReport[]; statuses: Record<string, string> }>('/me/bot-reports'),
   getBotReports: (status = '') =>
     request<{ items: BotReport[]; statuses: Record<string, string> }>(`/bot-reports${status ? `?status=${encodeURIComponent(status)}` : ''}`),
   updateBotReport: (id: string, body: { status?: string; reply?: string }) =>

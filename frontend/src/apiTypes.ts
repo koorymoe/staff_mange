@@ -4059,4 +4059,7 @@ export interface BotReport {
   adminNote: string | null
   createdAt: string
   updatedAt: string
+  /** telegram | system */
+  source: string
+  page: string | null
 }

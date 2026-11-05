@@ -10,7 +10,9 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"mime/multipart"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -75,6 +77,40 @@ func (c *Client) GetMe() (string, error) {
 // SendMessage رسالة نص عادي (بلا تنسيق — حتى نص الموظف ما ينكسر بالرموز).
 func (c *Client) SendMessage(chatID int64, text string) error {
 	return c.call("sendMessage", map[string]any{"chat_id": chatID, "text": text, "disable_web_page_preview": true}, nil)
+}
+
+// SendPhoto يدز صورة (بايتات من مخزن الملفات) ويا تعليق قصير.
+func (c *Client) SendPhoto(chatID int64, data []byte, caption string) error {
+	if !c.Enabled() {
+		return errors.New("telegram: البوت مطفي (ماكو رمز)")
+	}
+	var buf bytes.Buffer
+	mw := multipart.NewWriter(&buf)
+	_ = mw.WriteField("chat_id", strconv.FormatInt(chatID, 10))
+	if caption != "" {
+		_ = mw.WriteField("caption", caption)
+	}
+	fw, err := mw.CreateFormFile("photo", "report.jpg")
+	if err != nil {
+		return err
+	}
+	if _, err := fw.Write(data); err != nil {
+		return err
+	}
+	_ = mw.Close()
+	resp, err := c.http.Post(c.base+"/bot"+c.token+"/sendPhoto", mw.FormDataContentType(), &buf)
+	if err != nil {
+		return fmt.Errorf("%w: sendPhoto: اتصال فشل", errAPI)
+	}
+	defer resp.Body.Close()
+	var env struct {
+		OK          bool   `json:"ok"`
+		Description string `json:"description"`
+	}
+	if err := json.NewDecoder(io.LimitReader(resp.Body, 1<<20)).Decode(&env); err != nil || !env.OK {
+		return fmt.Errorf("%w: sendPhoto: %s", errAPI, env.Description)
+	}
+	return nil
 }
 
 // SetWebhook يسجّل رابط السيرفر ويا رمز سري يرجع بترويسة كل تحديث.

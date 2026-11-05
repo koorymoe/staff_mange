@@ -38,11 +38,20 @@ type TelegramBotHandler struct {
 	tg     *telegram.Client
 	store  storage.Store
 	perms  *repository.PermissionRepository
+	notif  *repository.NotificationRepository // إشعارات داخل النظام (nil بالاختبار)
 	secret string
 }
 
-func NewTelegramBotHandler(repo *repository.BotReportRepository, tg *telegram.Client, store storage.Store, perms *repository.PermissionRepository, jwtSecret string) *TelegramBotHandler {
-	return &TelegramBotHandler{repo: repo, tg: tg, store: store, perms: perms, secret: TelegramWebhookSecret(jwtSecret)}
+func NewTelegramBotHandler(repo *repository.BotReportRepository, tg *telegram.Client, store storage.Store, perms *repository.PermissionRepository, notif *repository.NotificationRepository, jwtSecret string) *TelegramBotHandler {
+	return &TelegramBotHandler{repo: repo, tg: tg, store: store, perms: perms, notif: notif, secret: TelegramWebhookSecret(jwtSecret)}
+}
+
+func (h *TelegramBotHandler) notify(employeeID, msg string) {
+	if h.notif != nil {
+		if err := h.notif.Create(employeeID, "bot_report", msg); err != nil {
+			log.Printf("[telegram] notification: %v", err)
+		}
+	}
 }
 
 // TelegramWebhookSecret الرمز السري للـ webhook — مشتق من JWT_SECRET حتى ما نحتاج إعداد ثاني.
@@ -156,13 +165,27 @@ func (h *TelegramBotHandler) handle(ctx context.Context, m *telegram.Message) {
 			if m.From != nil {
 				username = m.From.Username
 			}
-			if _, err := h.repo.LinkWithToken(arg, chat, username); err != nil {
+			empID, err := h.repo.LinkWithToken(arg, chat, username)
+			switch {
+			case err == repository.ErrAlreadyLinked:
+				h.say(chat, "⚠️ هذا الحساب مربوط أصلاً بتلغرام ثاني.\nالربط مرة وحدة، وفكّه بس من المالك.")
+				return
+			case err == repository.ErrChatTaken:
+				h.say(chat, "⚠️ هذا التلغرام مربوط بحساب موظف ثاني.\nالربط مرة وحدة، وفكّه بس من المالك.")
+				return
+			case err != nil:
 				if err != repository.ErrLinkTokenInvalid {
 					log.Printf("[telegram] link: %v", err)
 				}
 				h.say(chat, "⚠️ رابط الربط انتهى أو انستعمل.\nافتح النظام ← «⚙️ الإعدادات» ← «🔗 التلغرام» ← «اربط حسابي بالتلغرام» واضغط الزر من جديد (الرابط يصلح ١٠ دقايق).")
 				return
 			}
+			// تنبيه داخل النظام: لو أحد غيره ربط حسابه (رابط مسروق) يعرف فوراً ويبلّغ المالك
+			who := "بدون اسم مستخدم"
+			if username != "" {
+				who = "@" + username
+			}
+			h.notify(empID, "🔗 انربط حسابك ببوت التلغرام ("+who+"). إذا مو إنت، بلّغ المالك فوراً حتى يفك الربط.")
 			emp, err := h.repo.ByChat(chat)
 			if err != nil || emp == nil {
 				h.say(chat, "⚠️ صار خلل بالربط، جرّب مرة ثانية.")
@@ -322,10 +345,31 @@ func (h *TelegramBotHandler) notifyOwners(rep *model.BotReport, emp *repository.
 	if utf8.RuneCountInString(body) > 300 {
 		body = string([]rune(body)[:300]) + "…"
 	}
-	msg := fmt.Sprintf("📩 بلاغ جديد #%d\nمن: %s (%s)\n\n%s\n\n📷 صور: %d\nبالنظام: «بلاغات الموظفين»", rep.Number, emp.Name, botRoleLabel(emp.Role), body, len(rep.Photos))
+	src := "📱 من البوت"
+	if rep.Source == "system" {
+		src = "🖥️ من النظام"
+		if rep.Page != nil && *rep.Page != "" {
+			src += " — الشاشة: " + *rep.Page
+		}
+	}
+	msg := fmt.Sprintf("📩 بلاغ جديد #%d\nمن: %s (%s)\n%s\n\n%s\n\n📷 صور: %d\nبالنظام: «بلاغات الموظفين»", rep.Number, emp.Name, botRoleLabel(emp.Role), src, body, len(rep.Photos))
 	for _, c := range chats {
-		if c != rep.ChatID {
-			h.say(c, msg)
+		if c == rep.ChatID && rep.ChatID != 0 {
+			continue
+		}
+		h.say(c, msg)
+		// الصور نفسها توصل ويا الإشعار (أول ٣) — من مخزن الملفات مالتنا
+		for i, p := range rep.Photos {
+			if i == 3 {
+				break
+			}
+			data, _, err := h.store.Get(context.Background(), strings.TrimPrefix(p, "/api/files/"))
+			if err != nil {
+				continue
+			}
+			if err := h.tg.SendPhoto(c, data, fmt.Sprintf("#%d — صورة %d", rep.Number, i+1)); err != nil {
+				log.Printf("[telegram] sendPhoto: %v", err)
+			}
 		}
 	}
 }
@@ -377,6 +421,10 @@ func (h *TelegramBotHandler) CreateLink(w http.ResponseWriter, r *http.Request) 
 			return
 		}
 	}
+	if l, err := h.repo.LinkOf(middleware.EmployeeIDFromContext(r)); err == nil && l != nil {
+		WriteError(w, http.StatusConflict, "حسابك مربوط أصلاً — الربط مرة وحدة، وفكّه بس من المالك")
+		return
+	}
 	tok, err := h.repo.CreateLinkToken(middleware.EmployeeIDFromContext(r))
 	if err != nil {
 		WriteError(w, http.StatusInternalServerError, "تعذر إنشاء رابط الربط")
@@ -385,13 +433,110 @@ func (h *TelegramBotHandler) CreateLink(w http.ResponseWriter, r *http.Request) 
 	WriteJSON(w, http.StatusOK, map[string]any{"url": "https://t.me/" + h.tg.Username + "?start=" + tok, "expiresInMinutes": int(repository.LinkTTL.Minutes())})
 }
 
-// Unlink DELETE /api/me/telegram
-func (h *TelegramBotHandler) Unlink(w http.ResponseWriter, r *http.Request) {
-	if err := h.repo.Unlink(middleware.EmployeeIDFromContext(r)); err != nil {
+// ═══ المالك بس: منو مربوط بأي تلغرام، والفك (دازاي 11-05: «محد يفك الربط الا اني») ═══
+
+// Links GET /api/telegram-links
+func (h *TelegramBotHandler) Links(w http.ResponseWriter, r *http.Request) {
+	list, err := h.repo.Links()
+	if err != nil {
+		WriteError(w, http.StatusInternalServerError, "تعذر جلب الربط")
+		return
+	}
+	WriteJSON(w, http.StatusOK, list)
+}
+
+// OwnerUnlink DELETE /api/telegram-links/{employeeId}
+func (h *TelegramBotHandler) OwnerUnlink(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("employeeId")
+	l, err := h.repo.LinkOf(id)
+	if err != nil {
+		WriteError(w, http.StatusInternalServerError, "تعذر جلب الربط")
+		return
+	}
+	if l == nil {
+		authz.Deny(w, r, authz.TelegramLinks)
+		return
+	}
+	if err := h.repo.Unlink(id); err != nil {
 		WriteError(w, http.StatusInternalServerError, "تعذر فك الربط")
 		return
 	}
+	if h.tg.Enabled() {
+		h.say(l.ChatID, "🔓 المالك فك ربط حسابك بهذا البوت.")
+	}
+	h.notify(id, "🔓 المالك فك ربط حسابك بالتلغرام. تگدر تربطه من جديد من الإعدادات.")
 	WriteJSON(w, http.StatusOK, map[string]any{"ok": true})
+}
+
+// ═══ البلاغ من داخل النظام (دازاي 11-05) — نفس شروط البوت، والموظف معروف من دخوله ═══
+
+// SubmitMine POST /api/me/bot-reports {body, photos, page}
+func (h *TelegramBotHandler) SubmitMine(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		Body   string   `json:"body"`
+		Photos []string `json:"photos"`
+		Page   string   `json:"page"`
+	}
+	if err := DecodeJSON(r, &req); err != nil {
+		WriteError(w, http.StatusBadRequest, "طلب غير صالح")
+		return
+	}
+	empID := middleware.EmployeeIDFromContext(r)
+	body := strings.TrimSpace(req.Body)
+	if utf8.RuneCountInString(body) < botMinBodyRunes || len(strings.Fields(body)) < botMinBodyWords {
+		WriteError(w, http.StatusBadRequest, "اكتب شرح أوضح: بأي شاشة، وشنو جنت تسوي، وشنو طلعلك بالضبط")
+		return
+	}
+	if utf8.RuneCountInString(body) > 4000 {
+		WriteError(w, http.StatusBadRequest, "الشرح طويل (٤٠٠٠ حرف أقصى)")
+		return
+	}
+	photos := []string{}
+	for _, p := range req.Photos {
+		// بس صور انرفعت لمجلد البلاغات بمخزننا — مو أي رابط
+		if strings.HasPrefix(p, "/api/files/"+botFolder+"/") && !strings.Contains(p, "..") {
+			photos = append(photos, p)
+		}
+	}
+	if len(photos) == 0 {
+		WriteError(w, http.StatusBadRequest, "ارفق صورة (لقطة شاشة) للمشكلة")
+		return
+	}
+	if len(photos) > 5 {
+		photos = photos[:5]
+	}
+	if n, err := h.repo.CountLastHour(empID); err == nil && n >= botMaxReportsPerHour {
+		WriteError(w, http.StatusTooManyRequests, "وصلت حد البلاغات بالساعة (١٠). جرّب بعد شوية")
+		return
+	}
+	emp, err := h.repo.Employee(empID)
+	if err != nil {
+		WriteError(w, http.StatusInternalServerError, "تعذر الحفظ")
+		return
+	}
+	var page *string
+	if p := strings.TrimSpace(req.Page); p != "" && utf8.RuneCountInString(p) <= 200 {
+		page = &p
+	}
+	rep := &model.BotReport{EmployeeID: empID, ChatID: 0, Body: body, Photos: photos, Source: "system", Page: page}
+	if err := h.repo.Create(rep); err != nil {
+		WriteError(w, http.StatusInternalServerError, "تعذر الحفظ")
+		return
+	}
+	if h.tg.Enabled() {
+		go h.notifyOwners(rep, emp)
+	}
+	WriteJSON(w, http.StatusCreated, rep)
+}
+
+// MyReports GET /api/me/bot-reports — بلاغات الموظف هو بس.
+func (h *TelegramBotHandler) MyReports(w http.ResponseWriter, r *http.Request) {
+	list, err := h.repo.Mine(middleware.EmployeeIDFromContext(r), 30)
+	if err != nil {
+		WriteError(w, http.StatusInternalServerError, "تعذر جلب بلاغاتك")
+		return
+	}
+	WriteJSON(w, http.StatusOK, map[string]any{"items": list, "statuses": model.BotReportStatusLabel})
 }
 
 // ═══ المالك: شاشة «بلاغات الموظفين» (authz.BotReports — مفتاح مالك) ═══
@@ -456,9 +601,10 @@ func (h *TelegramBotHandler) Update(w http.ResponseWriter, r *http.Request) {
 		if reply != "" {
 			msg += "\n\n" + reply
 		}
-		if h.tg.Enabled() {
+		if h.tg.Enabled() && rep.ChatID != 0 {
 			h.say(rep.ChatID, msg)
 		}
+		h.notify(rep.EmployeeID, msg)
 	}
 	updated, _ := h.repo.Get(rep.ID)
 	WriteJSON(w, http.StatusOK, updated)

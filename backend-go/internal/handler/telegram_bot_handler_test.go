@@ -2,7 +2,9 @@ package handler
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
+	"fmt"
 	"image"
 	"image/png"
 	"net/http"
@@ -11,10 +13,12 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
 
 	"staffmange-api/internal/database"
+	"staffmange-api/internal/middleware"
 	"staffmange-api/internal/repository"
 	"staffmange-api/internal/storage"
 	"staffmange-api/internal/telegram"
@@ -22,9 +26,10 @@ import (
 
 // fakeTelegram يقلّد Telegram Bot API: يسجّل الرسائل المرسلة ويقدّم صورة PNG.
 type fakeTelegram struct {
-	mu   sync.Mutex
-	sent map[int64][]string
-	png  []byte
+	mu     sync.Mutex
+	sent   map[int64][]string
+	photos map[int64]int
+	png    []byte
 }
 
 func (f *fakeTelegram) last(chat int64) string {
@@ -50,6 +55,14 @@ func (f *fakeTelegram) server(t *testing.T, token string) *httptest.Server {
 			_ = json.NewDecoder(r.Body).Decode(&m)
 			f.mu.Lock()
 			f.sent[m.ChatID] = append(f.sent[m.ChatID], m.Text)
+			f.mu.Unlock()
+			ok(true)
+		case "/bot" + token + "/sendPhoto":
+			_ = r.ParseMultipartForm(1 << 20)
+			var chat int64
+			_, _ = fmt.Sscan(r.FormValue("chat_id"), &chat)
+			f.mu.Lock()
+			f.photos[chat]++
 			f.mu.Unlock()
 			ok(true)
 		case "/bot" + token + "/getFile":
@@ -82,7 +95,7 @@ func TestTelegramBotFlow(t *testing.T) {
 
 	var buf bytes.Buffer
 	_ = png.Encode(&buf, image.NewRGBA(image.Rect(0, 0, 4, 4)))
-	fake := &fakeTelegram{sent: map[int64][]string{}, png: buf.Bytes()}
+	fake := &fakeTelegram{sent: map[int64][]string{}, photos: map[int64]int{}, png: buf.Bytes()}
 	const token = "123:TEST"
 	srv := fake.server(t, token)
 	defer srv.Close()
@@ -92,7 +105,7 @@ func TestTelegramBotFlow(t *testing.T) {
 		t.Fatal(err)
 	}
 	repo := repository.NewBotReportRepository(db)
-	h := NewTelegramBotHandler(repo, telegram.New(token, srv.URL), store, nil, "jwt-secret-for-test-32-characters!!")
+	h := NewTelegramBotHandler(repo, telegram.New(token, srv.URL), store, nil, nil, "jwt-secret-for-test-32-characters!!")
 
 	emp, owner := "tg-emp-"+uuid.NewString()[:8], "tg-own-"+uuid.NewString()[:8]
 	if _, err := db.Exec(`INSERT INTO "Employee" (id, name, role, status) VALUES ($1, 'أحمد علي', 'TECHNICIAN', 'ACTIVE'), ($2, 'دازاي', 'OWNER', 'ACTIVE')`, emp, owner); err != nil {
@@ -141,6 +154,25 @@ func TestTelegramBotFlow(t *testing.T) {
 	otok, _ := repo.CreateLinkToken(owner)
 	send(good, ownerChat, "private", map[string]any{"text": "/start " + otok})
 
+	// (٣ب) الربط مرة وحدة: نفس الحساب برابط جديد من تلغرام ثاني = مرفوض، والربط القديم يبقى
+	tok2, _ := repo.CreateLinkToken(emp)
+	send(good, empChat+2, "private", map[string]any{"text": "/start " + tok2})
+	if !strings.Contains(fake.last(empChat+2), "مربوط أصلاً") {
+		t.Fatalf("ربط ثاني لنفس الحساب: %q", fake.last(empChat+2))
+	}
+	// وتلغرام مربوط ما ياخذ حساب ثاني (المالك يحاول يربط على تلغرام الفني)
+	db.Exec(`DELETE FROM "TelegramLink" WHERE "employeeId" = $1`, owner) //nolint:errcheck
+	otok2, _ := repo.CreateLinkToken(owner)
+	send(good, empChat, "private", map[string]any{"text": "/start " + otok2})
+	if !strings.Contains(fake.last(empChat), "مربوط بحساب موظف ثاني") {
+		t.Fatalf("تلغرام مربوط ياخذ حساب ثاني: %q", fake.last(empChat))
+	}
+	if who, _ := repo.ByChat(empChat); who == nil || who.EmployeeID != emp {
+		t.Fatal("الربط القديم انكسر")
+	}
+	otok3, _ := repo.CreateLinkToken(owner)
+	send(good, ownerChat, "private", map[string]any{"text": "/start " + otok3})
+
 	// (٤) الكروب يتجاهله
 	before := len(fake.sent[empChat])
 	send(good, empChat, "group", map[string]any{"text": "شي"})
@@ -159,6 +191,9 @@ func TestTelegramBotFlow(t *testing.T) {
 	}
 	if !strings.Contains(fake.last(ownerChat), "📩 بلاغ جديد") || !strings.Contains(fake.last(ownerChat), "أحمد علي (فني)") {
 		t.Fatalf("إشعار المالك: %q", fake.last(ownerChat))
+	}
+	if fake.photos[ownerChat] != 1 {
+		t.Fatalf("صورة البلاغ ما وصلت للمالك: %d", fake.photos[ownerChat])
 	}
 	// (٧) باقي الألبوم تنضاف لنفس البلاغ بلا رد
 	n := len(fake.sent[empChat])
@@ -192,6 +227,37 @@ func TestTelegramBotFlow(t *testing.T) {
 	h.Update(rec, req)
 	if rec.Code != 200 || !strings.Contains(fake.last(empChat), "قيد العمل") || !strings.Contains(fake.last(empChat), "دنشتغل عليها") {
 		t.Fatalf("تغيير الحالة: %d %q", rec.Code, fake.last(empChat))
+	}
+
+	// (١٠ب) البلاغ من داخل النظام: الموظف معروف من دخوله، ونفس الشروط
+	key := storage.NewKey(botFolder, "image/png")
+	_ = store.Put(context.Background(), key, fake.png, "image/png")
+	sys := func(body string, photos []string) int {
+		b, _ := json.Marshal(map[string]any{"body": body, "photos": photos, "page": "/leader-invoices/new"})
+		req := httptest.NewRequest("POST", "/api/me/bot-reports", bytes.NewReader(b))
+		req = req.WithContext(context.WithValue(req.Context(), middleware.ContextEmployeeID, emp))
+		rec := httptest.NewRecorder()
+		h.SubmitMine(rec, req)
+		return rec.Code
+	}
+	if c := sys("خربانة", []string{"/api/files/" + key}); c != 400 {
+		t.Fatalf("النظام: شرح قصير قبل: %d", c)
+	}
+	if c := sys("شاشة إنشاء الفاتورة تعلّك من أضغط حفظ ويطلع خطأ", nil); c != 400 {
+		t.Fatalf("النظام: بلا صورة قبل: %d", c)
+	}
+	if c := sys("شاشة إنشاء الفاتورة تعلّك من أضغط حفظ ويطلع خطأ", []string{"https://evil.example/x.png"}); c != 400 {
+		t.Fatalf("النظام: رابط صورة خارجي قبل: %d", c)
+	}
+	before = fake.photos[ownerChat]
+	if c := sys("شاشة إنشاء الفاتورة تعلّك من أضغط حفظ ويطلع خطأ", []string{"/api/files/" + key}); c != 201 {
+		t.Fatalf("النظام: البلاغ: %d", c)
+	}
+	for i := 0; i < 50 && fake.photos[ownerChat] == before; i++ {
+		time.Sleep(20 * time.Millisecond) // الإشعار بالخلفية
+	}
+	if !strings.Contains(fake.last(ownerChat), "🖥️ من النظام — الشاشة: /leader-invoices/new") || fake.photos[ownerChat] != before+1 {
+		t.Fatalf("إشعار بلاغ النظام: %q صور=%d", fake.last(ownerChat), fake.photos[ownerChat]-before)
 	}
 
 	// (١١) حد الساعة

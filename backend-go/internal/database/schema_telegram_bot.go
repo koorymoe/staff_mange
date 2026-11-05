@@ -42,5 +42,12 @@ func telegramBotMigrations() []Migration {
 			CREATE INDEX IF NOT EXISTS "BotReport_status_idx" ON "BotReport"(status, "createdAt" DESC);
 			CREATE INDEX IF NOT EXISTS "BotReport_employee_idx" ON "BotReport"("employeeId", "createdAt" DESC);
 		`,
+	}, {
+		// (دازاي 11-05) البلاغ ينكتب من النظام همين (مو بس من البوت). chatId = 0 للي من النظام.
+		Version: "0443_bot_report_source",
+		SQL: `
+			ALTER TABLE "BotReport" ADD COLUMN IF NOT EXISTS source TEXT NOT NULL DEFAULT 'telegram';
+			ALTER TABLE "BotReport" ADD COLUMN IF NOT EXISTS page TEXT;
+		`,
 	}}
 }
