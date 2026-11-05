@@ -2,6 +2,7 @@ package repository
 
 import (
 	"github.com/jmoiron/sqlx"
+	"github.com/lib/pq"
 
 	"staffmange-api/internal/model"
 )
@@ -26,17 +27,45 @@ func (r *ExpenseRepository) List(employeeID string) ([]model.Expense, error) {
 		return nil, err
 	}
 
+	// ٧م (11-05): الأسماء وأكواد الحجوزات بـ**استعلامين** للقائمة كلها بدل
+	// استعلامين لكل مصروف (N+1) — نفس المخرجات بالضبط.
+	empIDs, bookIDs := []string{}, []string{}
+	for _, e := range expenses {
+		empIDs = append(empIDs, e.EmployeeID)
+		if e.BookingID != nil && *e.BookingID != "" {
+			bookIDs = append(bookIDs, *e.BookingID)
+		}
+	}
+	briefs := []model.EmployeeBrief{}
+	if err := r.db.Select(&briefs, `SELECT id, name, position FROM "Employee" WHERE id = ANY($1)`, pq.Array(empIDs)); err != nil {
+		return nil, err
+	}
+	byEmp := make(map[string]model.EmployeeBrief, len(briefs))
+	for _, b := range briefs {
+		byEmp[b.ID] = b
+	}
+	codes := []struct {
+		ID   string `db:"id"`
+		Code string `db:"code"`
+	}{}
+	if len(bookIDs) > 0 {
+		if err := r.db.Select(&codes, `SELECT id, code FROM "Booking" WHERE id = ANY($1)`, pq.Array(bookIDs)); err != nil {
+			return nil, err
+		}
+	}
+	byBook := make(map[string]string, len(codes))
+	for _, c := range codes {
+		byBook[c.ID] = c.Code
+	}
 	for i := range expenses {
-		var brief model.EmployeeBrief
-		if err := r.db.Get(&brief, `SELECT id, name, position FROM "Employee" WHERE id = $1`, expenses[i].EmployeeID); err == nil {
-			expenses[i].Employee = &brief
+		if b, ok := byEmp[expenses[i].EmployeeID]; ok {
+			expenses[i].Employee = &b
 		}
 		// ⚠️ كود الحجز للعرض: الي يعتمد المصروف لازم يعرف **على أي
 		// حجز** ينصرف — «مصروف ٥٠ ألف لفلان» بلا حجز يُعتمد بالثقة
 		// مو بالمراجعة.
-		if expenses[i].BookingID != nil && *expenses[i].BookingID != "" {
-			var code string
-			if err := r.db.Get(&code, `SELECT code FROM "Booking" WHERE id = $1`, *expenses[i].BookingID); err == nil {
+		if expenses[i].BookingID != nil {
+			if code, ok := byBook[*expenses[i].BookingID]; ok {
 				expenses[i].BookingCode = &code
 			}
 		}
