@@ -310,3 +310,4 @@ git push origin origin/avg:refs/heads/prod     # بعد التأكد إنه fast
 - 11-05 ٧و ✅: StaffScoreHub (staff-score + employee-indicators)، /stats و/employee-stats → StatsManagementPage على تبويبهن، /monitor → MonitorDeskPage على board. البنود المشالة بـ ROUTE_RULES بنفس شروطها (/stats و/employee-stats أصلاً بـ SELF_SCOPED). أسماء: «حجوزاتي المسلّمة» و«مهام الميدان».
 - 11-05 ٧م: ExpenseRepository.List بلا N+1 (pq.Array/ANY)، الرد مطابق بايت ببايت قبل/بعد.
 - 11-05 ٧م: ServiceRepository.List المهارات باستعلام واحد (ANY)، مطابق بايت ببايت.
+- 11-05 ٧ك ✅: قياس ختام بالـ sourcemap — الملف الأولي نصّه react-dom، والباقي لازم لأول شاشة. ماكو شي يستاهل lazy بعد.
