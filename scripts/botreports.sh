@@ -4,6 +4,8 @@
 #
 #   BOT_READER_TOKEN=... scripts/botreports.sh [STATUS] [OUT_DIR]
 #   STATUS: NEW (الافتراضي) | NEEDS_INFO | IN_PROGRESS | DONE | NOT_A_BUG | REJECTED | all
+#   SINCE_HOURS=N (اختياري): يعرض بس البلاغات الي انخلقت بآخر N ساعة، والأقدم ينعدّ بس
+#   (للفحص المجدول: كل موعد يشوف الجديد من الموعد الي قبله).
 #
 # ⚠️ الرمز من متغيّر البيئة بس — لا ينكتب بملف ولا ينطبع.
 set -euo pipefail
@@ -13,12 +15,21 @@ STATUS="${1:-NEW}"; [ "$STATUS" = all ] && STATUS=""
 OUT="${2:-./botreports-out}"
 mkdir -p "$OUT"
 curl -fsS -H "X-Bot-Reader-Token: $BOT_READER_TOKEN" "$BASE/api/bot-reader/reports?status=$STATUS" > "$OUT/reports.json"
-python3 -I - "$OUT" <<'PY'
+python3 -I - "$OUT" "${SINCE_HOURS:-}" <<'PY'
 import json, sys, os
+from datetime import datetime, timedelta, timezone
 out = sys.argv[1]
+since = sys.argv[2] if len(sys.argv) > 2 else ''
 d = json.load(open(os.path.join(out, 'reports.json'), encoding='utf-8'))
 items, labels = d.get('items', []), d.get('statuses', {})
-print(f"عدد البلاغات: {len(items)}")
+if since:
+    cut = datetime.now(timezone.utc) - timedelta(hours=float(since))
+    ts = lambda r: datetime.fromisoformat(r['createdAt'].replace('Z', '+00:00'))
+    older = [r for r in items if ts(r) <= cut]
+    items = [r for r in items if ts(r) > cut]
+    print(f"جديد بآخر {since} ساعة: {len(items)} · أقدم بنفس الحالة: {len(older)}" + (f" (أرقامها: {', '.join('#'+str(r['number']) for r in older[:20])})" if older else ''))
+else:
+    print(f"عدد البلاغات: {len(items)}")
 with open(os.path.join(out, 'photos.txt'), 'w') as f:
     for r in items:
         print(f"\n#{r['number']} · {r['employeeName']} ({r['employeeRole']}) · {labels.get(r['status'], r['status'])} · {r['source']} · {r['createdAt'][:16]}")
