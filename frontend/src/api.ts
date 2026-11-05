@@ -146,6 +146,21 @@ export function fileUrl(value?: string | null): string {
   return value
 }
 
+/** storeFile (٧ل): يرفع الملف لمخزن الملفات ويرجّع رابطه (/api/files/…) حتى
+ *  ما ينحفظ base64 بالقاعدة. لو فشل الرفع يرجّع data URL مثل قبل — ما نضيّع الملف. */
+export async function storeFile(file: File, folder: string): Promise<string> {
+  try {
+    return (await api.uploadFile(file, folder)).url
+  } catch {
+    return await new Promise<string>((resolve, reject) => {
+      const r = new FileReader()
+      r.onload = () => resolve(String(r.result || ''))
+      r.onerror = reject
+      r.readAsDataURL(file)
+    })
+  }
+}
+
 export class ApiError extends Error {
   status: number
   constructor(message: string, status: number) { super(message); this.name = 'ApiError'; this.status = status }

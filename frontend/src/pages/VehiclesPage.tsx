@@ -1,5 +1,5 @@
 import { useEffect, useState, useMemo } from 'react'
-import { api, fileUrl, type VehicleDocument, type VehiclePart, type VehiclePhoto, type Vehicle, type VehicleLog, type VehicleIncident, type VehicleMonthlyStatus, type VehicleDailyRating, type Employee, type VehicleIncidentAttachment, type VehicleAlert, type VehicleExpenseSummary, type EmployeeFuelStat, type VehicleWashMonthly } from '../api'
+import { api, fileUrl, storeFile, type VehicleDocument, type VehiclePart, type VehiclePhoto, type Vehicle, type VehicleLog, type VehicleIncident, type VehicleMonthlyStatus, type VehicleDailyRating, type Employee, type VehicleIncidentAttachment, type VehicleAlert, type VehicleExpenseSummary, type EmployeeFuelStat, type VehicleWashMonthly } from '../api'
 import { useSession, isAdminOrOwner } from '../session'
 import { useSaveGuard } from '../useSaveGuard'
 import SaveError from '../components/SaveError'
@@ -724,7 +724,7 @@ export default function VehiclesPage() {
                             type="file" accept="image/*"
                             onChange={async (e) => {
                               const f = e.target.files?.[0]
-                              setLogReceiptPhoto(f ? await fileToBase64(f) : '')
+                              setLogReceiptPhoto(f ? await storeFile(f, 'vehicles') : '')
                             }}
                             className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
                           />
@@ -1248,7 +1248,7 @@ export default function VehiclesPage() {
       {receiptPhotoView && (
         <div onClick={() => setReceiptPhotoView(null)} className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
           <div className="max-h-full max-w-3xl overflow-auto rounded-2xl bg-white p-3">
-            <img src={receiptPhotoView} alt="صورة الوصل" className="max-w-full rounded-lg" />
+            <img src={fileUrl(receiptPhotoView)} alt="صورة الوصل" className="max-w-full rounded-lg" />
             <button onClick={() => setReceiptPhotoView(null)} className="mt-3 w-full rounded-xl border border-slate-300 py-2 font-medium text-slate-600">إغلاق</button>
           </div>
         </div>

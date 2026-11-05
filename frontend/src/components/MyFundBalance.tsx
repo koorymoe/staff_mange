@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { api, type EmployeeFundBalance, type EmployeeFundLine } from '../api'
+import { api, fileUrl, storeFile, type EmployeeFundBalance, type EmployeeFundLine } from '../api'
 import { dinar as money } from '../utils/format'
 
 /**
@@ -52,9 +52,7 @@ export default function MyFundBalance({ forEmployee, onDone }: { forEmployee?: E
   const openFunds = funds.filter((f) => f.outstanding > 0.001)
 
   const pickReceipt = (file: File) => {
-    const reader = new FileReader()
-    reader.onload = () => setReceipt(String(reader.result || ''))
-    reader.readAsDataURL(file)
+    storeFile(file, 'receipts').then(setReceipt).catch(() => setReceipt(''))
   }
 
   const startSettle = (f: EmployeeFundLine) => {
@@ -189,7 +187,7 @@ export default function MyFundBalance({ forEmployee, onDone }: { forEmployee?: E
             <input type="file" accept="image/*"
               onChange={(e) => { const f = e.target.files?.[0]; if (f) pickReceipt(f) }}
               className="w-full rounded-lg border border-gray-300 px-4 py-3 text-right" />
-            {receipt && <img src={receipt} alt="الوصل" className="mt-2 max-h-48 w-full rounded-lg border border-slate-200 object-contain" />}
+            {receipt && <img src={fileUrl(receipt)} alt="الوصل" className="mt-2 max-h-48 w-full rounded-lg border border-slate-200 object-contain" />}
 
             <label className="mt-3 mb-1 block text-sm font-medium text-slate-600">
               على شنو انصرفت الفلوس؟ <span className="text-red-600">*</span>

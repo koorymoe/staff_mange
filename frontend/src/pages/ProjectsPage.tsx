@@ -1,6 +1,6 @@
 import { useDeferredValue, useEffect, useMemo, useState } from 'react'
 import ProjectPaymentsModal from '../components/ProjectPaymentsModal'
-import { api, apiRequest, type ProjectMoney, type ProjectPaymentsState } from '../api'
+import { api, apiRequest, fileUrl, storeFile, type ProjectMoney, type ProjectPaymentsState } from '../api'
 import { useNavigate } from 'react-router-dom'
 import { useSession, hasRole, isAdminOrOwner } from '../session'
 import LocationFields from '../components/LocationFields'
@@ -987,18 +987,6 @@ function ProjectCard({ p, canManage, onEdit, onMove, onReport, onDelete, onRefre
   )
 }
 
-// ---------------------------------------------------------------------------
-// Contract modal — رفع عقد المشروع كـPDF (قبل التوقيع وبعده)
-// ---------------------------------------------------------------------------
-function fileToBase64(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader()
-    reader.onload = () => resolve(reader.result as string)
-    reader.onerror = reject
-    reader.readAsDataURL(file)
-  })
-}
-
 function ContractModal({ project, onClose, onSaved }: { project: Project; onClose: () => void; onSaved: () => void }) {
   const { employee } = useSession()
   const isAdmin = isAdminOrOwner(employee)
@@ -1018,8 +1006,8 @@ function ContractModal({ project, onClose, onSaved }: { project: Project; onClos
     setError('')
     setSaving(field === 'contractPdfBase64' ? 'plain' : 'signed')
     try {
-      const base64 = await fileToBase64(file)
-      await request(`/projects/${project.id}`, { method: 'PUT', body: JSON.stringify({ [field]: base64 }) })
+      const stored = await storeFile(file, 'projects')
+      await request(`/projects/${project.id}`, { method: 'PUT', body: JSON.stringify({ [field]: stored }) })
       onSaved()
     } catch (e) {
       setError((e as Error).message || 'تعذر رفع الملف')
@@ -1053,7 +1041,7 @@ function ContractModal({ project, onClose, onSaved }: { project: Project; onClos
           />
           {files?.contractPdfBase64 && (
             <div className="mt-1 flex items-center gap-3">
-              <a href={files.contractPdfBase64} download={`عقد-${project.code}.pdf`} className="text-xs text-brand-600 hover:underline">
+              <a href={fileUrl(files.contractPdfBase64)} download={`عقد-${project.code}.pdf`} className="text-xs text-brand-600 hover:underline">
                 📄 تحميل الملف المرفوع حالياً
               </a>
               {isAdmin && (
@@ -1074,7 +1062,7 @@ function ContractModal({ project, onClose, onSaved }: { project: Project; onClos
           />
           {files?.signedContractPdfBase64 && (
             <div className="mt-1 flex items-center gap-3">
-              <a href={files.signedContractPdfBase64} download={`عقد-موقّع-${project.code}.pdf`} className="text-xs text-brand-600 hover:underline">
+              <a href={fileUrl(files.signedContractPdfBase64)} download={`عقد-موقّع-${project.code}.pdf`} className="text-xs text-brand-600 hover:underline">
                 📄 تحميل الملف الموقّع حالياً
               </a>
               {isAdmin && (

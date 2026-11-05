@@ -295,3 +295,4 @@ git push origin origin/avg:refs/heads/prod     # بعد التأكد إنه fast
 - 2026-11-05: ٧ل — QuotationNew يرفع صورة المنتج لمخزن الملفات؛ MigrateProductImages ينقل القديم مرة وحدة (حفظ+مقارنة+تبديل).
 
 - 11-05 ٧ج-الباقي: ٣٠٥ `_ = x.Get/Select(...)` → `errlog.Err(...)` (أداة AST)، و`errlog.Err` يتجاهل sql.ErrNoRows وcontext.Canceled + اختبار. build/vet/tests خضرة.
+- 11-05 ٧ل: `storeFile` بالواجهة (العقود، والوصولات، وصور المعارض/الفحوصات/العروض) يرفع لمخزن الملفات، و`repository.MigrateInlineFiles` + `InlineFileColumns` (قائمة وحدة ويا cmd/migratefiles) ينقل القديم بالتشغيل بتأكيد البايتات.

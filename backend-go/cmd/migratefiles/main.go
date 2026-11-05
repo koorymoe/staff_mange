@@ -24,6 +24,7 @@ import (
 
 	"staffmange-api/internal/config"
 	"staffmange-api/internal/database"
+	"staffmange-api/internal/repository"
 	"staffmange-api/internal/storage"
 )
 
@@ -36,20 +37,14 @@ type target struct {
 	array bool
 }
 
-var targets = []target{
-	{"Product", "imageBase64", "products", false},
-	{"ProductProcurement", "receiptImage", "receipts", false},
-	{"RevolvingFundTxn", "receiptImage", "receipts", false},
-	{"VehicleLog", "receiptPhotoBase64", "vehicles", false},
-	{"VehicleDocument", "fileUrl", "vehicles", false},
-	{"Project", "contractPdfBase64", "projects", false},
-	{"Project", "signedContractPdfBase64", "projects", false},
-	{"GpsDeviceRequest", "invoicePhotoUrl", "gps", false},
-	{"Exhibition", "businessCardPhotos", "exhibitions", true},
-	{"ProjectChecklist", "photoUrls", "reports", true},
-	// ملاحظة: WorkReport.tookPhotos عمود منطقي (هل انصورت الشغلة أو لا)
-	// مو مصفوفة صور — اسمه مضلّل. ما يخص الترحيل.
-}
+// القائمة نفسها الي يستعملها الترحيل التلقائي بالسيرفر (repository.InlineFileColumns)
+var targets = func() []target {
+	out := make([]target, 0, len(repository.InlineFileColumns))
+	for _, c := range repository.InlineFileColumns {
+		out = append(out, target{c.Table, c.Column, c.Folder, c.Array})
+	}
+	return out
+}()
 
 func main() {
 	apply := flag.Bool("apply", false, "نفّذ التعديل فعلاً (بدونها تجربة بس)")

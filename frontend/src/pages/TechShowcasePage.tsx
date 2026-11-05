@@ -1,16 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
-import { api, type TechShowcaseItem, fileUrl } from '../api'
+import { api, storeFile, type TechShowcaseItem, fileUrl } from '../api'
 import { useSession } from '../session'
 import { loadFailed } from '../netErrors'
-
-function fileToBase64(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader()
-    reader.onload = () => resolve(reader.result as string)
-    reader.onerror = reject
-    reader.readAsDataURL(file)
-  })
-}
 
 // ⚠️ `embedded`: الشاشة تنعرض جوّا تبويب بمدخل موحّد — فترويستها
 // الخاصة تنشال حتى ما تتكرر ترويستان فوگ بعض.
@@ -50,7 +41,7 @@ export default function TechShowcasePage({ embedded }: { embedded?: boolean } = 
     if (!files || files.length === 0) return
     setUploadingId(id)
     try {
-      const base64s = await Promise.all(Array.from(files).map(fileToBase64))
+      const base64s = await Promise.all(Array.from(files).map((f) => storeFile(f, 'misc')))
       await api.addTechShowcaseMedia(id, base64s)
       load()
     } catch (err) {

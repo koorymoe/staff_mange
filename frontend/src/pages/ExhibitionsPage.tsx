@@ -1,16 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
-import { api, type Exhibition, type Employee, type EmployeeRole, fileUrl } from '../api'
+import { api, storeFile, type Exhibition, type Employee, type EmployeeRole, fileUrl } from '../api'
 import { useSession, isAdminOrOwner } from '../session'
 import { loadFailed } from '../netErrors'
-
-function fileToBase64(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader()
-    reader.onload = () => resolve(reader.result as string)
-    reader.onerror = reject
-    reader.readAsDataURL(file)
-  })
-}
 
 function splitList(v: string) {
   return v.split(',').map((s) => s.trim()).filter(Boolean)
@@ -105,7 +96,7 @@ export default function ExhibitionsPage({ embedded }: { embedded?: boolean } = {
     if (!files || files.length === 0) return
     setBusyId(id)
     try {
-      const base64s = await Promise.all(Array.from(files).map(fileToBase64))
+      const base64s = await Promise.all(Array.from(files).map((f) => storeFile(f, 'exhibitions')))
       await api.addExhibitionPhotos(id, base64s)
       load()
     } finally {

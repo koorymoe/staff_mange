@@ -1,17 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
-import { api, type ProjectChecklist, fileUrl } from '../api'
+import { api, storeFile, type ProjectChecklist, fileUrl } from '../api'
 import { loadFailed } from '../netErrors'
 import { esc } from '../utils/printIdentity'
 import { swallow } from '../utils/swallow'
-
-function fileToBase64(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader()
-    reader.onload = () => resolve(reader.result as string)
-    reader.onerror = reject
-    reader.readAsDataURL(file)
-  })
-}
 
 function printBlankChecklist(rawTitle: string) {
   const title = esc(rawTitle)
@@ -75,7 +66,7 @@ export default function ChecklistsPage() {
     if (!files || files.length === 0) return
     setUploadingId(id)
     try {
-      const base64s = await Promise.all(Array.from(files).map(fileToBase64))
+      const base64s = await Promise.all(Array.from(files).map((f) => storeFile(f, 'reports')))
       await api.addChecklistPhotos(id, base64s)
       load()
     } catch (err) {
