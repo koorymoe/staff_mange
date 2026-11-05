@@ -96,7 +96,7 @@ func (s *OrgService) IssueDirective(empID, role string, in DirectiveInput) (stri
 		errlog.Exec(s.db.Exec(`INSERT INTO "OrgDirectiveAck" ("directiveId", "employeeId") VALUES ($1, $2) ON CONFLICT DO NOTHING`, id, empID))
 	}
 	to := []string{}
-	_ = s.db.Select(&to, `SELECT x.id FROM "OrgDirective" d, LATERAL (`+directiveAudienceSQL+`) x WHERE d.id = $1 AND x.id <> $2`, id, empID)
+	errlog.Err(s.db.Select(&to, `SELECT x.id FROM "OrgDirective" d, LATERAL (`+directiveAudienceSQL+`) x WHERE d.id = $1 AND x.id <> $2`, id, empID))
 	return id, to, nil
 }
 
@@ -120,7 +120,7 @@ func (s *OrgService) MyDirectives(empID string) ([]OrgDirective, error) {
 // AckDirective «اطّلعت وألتزم» — بس إذا التوجيه بنطاقه.
 func (s *OrgService) AckDirective(empID, id string) error {
 	var in bool
-	_ = s.db.Get(&in, `SELECT EXISTS (SELECT 1 FROM "OrgDirective" d WHERE d.id = $1 AND d."archivedAt" IS NULL AND $2 IN (`+directiveAudienceSQL+`))`, id, empID)
+	errlog.Err(s.db.Get(&in, `SELECT EXISTS (SELECT 1 FROM "OrgDirective" d WHERE d.id = $1 AND d."archivedAt" IS NULL AND $2 IN (`+directiveAudienceSQL+`))`, id, empID))
 	if !in {
 		return ErrOrgHidden
 	}
@@ -179,11 +179,11 @@ func directivesBrief(db *sqlx.DB) string {
 		Title string  `db:"title"`
 		Code  *string `db:"code"`
 	}{}
-	_ = db.Select(&rows, `SELECT CASE d.scope WHEN 'COMPANY' THEN 'الشركة' WHEN 'DIVISION' THEN dv.name ELSE dv.name || ' / ' || u.name END AS place,
+	errlog.Err(db.Select(&rows, `SELECT CASE d.scope WHEN 'COMPANY' THEN 'الشركة' WHEN 'DIVISION' THEN dv.name ELSE dv.name || ' / ' || u.name END AS place,
 		d.title, split_part(pp.content, ' — ', 1) AS code
 		FROM "OrgDirective" d LEFT JOIN "OrgDivision" dv ON dv.id = d."divisionId" LEFT JOIN "OrgUnit" u ON u.id = d."unitId"
 		LEFT JOIN "PrivacyPolicyPoint" pp ON pp."principleNo" = d.clause
-		WHERE d."archivedAt" IS NULL ORDER BY d."issuedAt" DESC LIMIT 12`)
+		WHERE d."archivedAt" IS NULL ORDER BY d."issuedAt" DESC LIMIT 12`))
 	if len(rows) == 0 {
 		return ""
 	}
@@ -232,7 +232,7 @@ func registerDirectiveTool(a *MatrixAgent, tc *SecretaryTurnCtx) {
 				clause = &c
 			}
 			var role string
-			_ = a.db.Get(&role, `SELECT role::text FROM "Employee" WHERE id = $1`, tc.UserID)
+			errlog.Err(a.db.Get(&role, `SELECT role::text FROM "Employee" WHERE id = $1`, tc.UserID))
 			id, to, err := org.IssueDirective(tc.UserID, role, DirectiveInput{Scope: strArg(in, "scope"), DivisionID: strArg(in, "division"),
 				UnitID: strArg(in, "unit"), Title: strArg(in, "title"), Body: strArg(in, "body"), Clause: clause})
 			if err != nil {

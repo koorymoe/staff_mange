@@ -2,6 +2,7 @@ package repository
 
 import (
 	"github.com/jmoiron/sqlx"
+	"staffmange-api/internal/errlog"
 
 	"staffmange-api/internal/model"
 )
@@ -51,7 +52,7 @@ func (r *BookingSurveyReportRepository) List(bookingID string) ([]model.BookingS
 // IsBookingParty هل الموظف مكلّف بالحجز (تكليف، أو ليدر/عضو بمهمته).
 func (r *BookingSurveyReportRepository) IsBookingParty(bookingID, employeeID string) bool {
 	var ok bool
-	_ = r.db.Get(&ok, `SELECT EXISTS (SELECT 1 FROM "BookingAssignment" WHERE "bookingId" = $1 AND "employeeId" = $2)
-		OR EXISTS (SELECT 1 FROM "Mission" WHERE "bookingId" = $1 AND ("leaderId" = $2 OR $2 = ANY("memberIds")))`, bookingID, employeeID)
+	errlog.Err(r.db.Get(&ok, `SELECT EXISTS (SELECT 1 FROM "BookingAssignment" WHERE "bookingId" = $1 AND "employeeId" = $2)
+		OR EXISTS (SELECT 1 FROM "Mission" WHERE "bookingId" = $1 AND ("leaderId" = $2 OR $2 = ANY("memberIds")))`, bookingID, employeeID))
 	return ok
 }

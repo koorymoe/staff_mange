@@ -3,6 +3,7 @@ package handler
 import (
 	"encoding/json"
 	"net/http"
+	"staffmange-api/internal/errlog"
 	"strings"
 
 	"github.com/jmoiron/sqlx"
@@ -32,7 +33,7 @@ func NewAiAgentNameHandler(db *sqlx.DB) *AiAgentNameHandler {
 			Agent string `db:"agent"`
 			Name  string `db:"name"`
 		}{}
-		_ = db.Select(&rows, `SELECT agent, name FROM "AiAgentName"`)
+		errlog.Err(db.Select(&rows, `SELECT agent, name FROM "AiAgentName"`))
 		m := map[string]string{}
 		for _, x := range rows {
 			m[x.Agent] = x.Name
@@ -41,7 +42,6 @@ func NewAiAgentNameHandler(db *sqlx.DB) *AiAgentNameHandler {
 	})
 	return h
 }
-
 
 // AgentName اسم الوكيل الحالي — الافتراضي إذا المالك بعده ما سمّاه.
 func (h *AiAgentNameHandler) AgentName(agent string) string {

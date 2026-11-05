@@ -55,8 +55,8 @@ const justSelect = `SELECT j.id, j."employeeId", e.name AS "employeeName", COALE
 // GET /api/justifications/mine — الي مطلوبة مني + آخر النتائج
 func (h *JustificationHandler) Mine(w http.ResponseWriter, r *http.Request) {
 	rows := []justificationRow{}
-	_ = h.db.Select(&rows, justSelect+` WHERE j."employeeId" = $1 AND (j."answeredAt" IS NULL OR j."createdAt" > now() - interval '30 days')
-		ORDER BY (j."answeredAt" IS NULL) DESC, j."createdAt" DESC LIMIT 30`, middleware.EmployeeIDFromContext(r))
+	errlog.Err(h.db.Select(&rows, justSelect+` WHERE j."employeeId" = $1 AND (j."answeredAt" IS NULL OR j."createdAt" > now() - interval '30 days')
+		ORDER BY (j."answeredAt" IS NULL) DESC, j."createdAt" DESC LIMIT 30`, middleware.EmployeeIDFromContext(r)))
 	WriteJSON(w, http.StatusOK, rows)
 }
 
@@ -97,8 +97,8 @@ func (h *JustificationHandler) Answer(w http.ResponseWriter, r *http.Request) {
 // GET /api/justifications — للمراقب: كل الطلبات وحالتها
 func (h *JustificationHandler) List(w http.ResponseWriter, r *http.Request) {
 	rows := []justificationRow{}
-	_ = h.db.Select(&rows, justSelect+` WHERE j."createdAt" > now() - interval '60 days'
-		ORDER BY (j."answeredAt" IS NOT NULL AND j.verdict IS NULL) DESC, j."createdAt" DESC LIMIT 200`)
+	errlog.Err(h.db.Select(&rows, justSelect+` WHERE j."createdAt" > now() - interval '60 days'
+		ORDER BY (j."answeredAt" IS NOT NULL AND j.verdict IS NULL) DESC, j."createdAt" DESC LIMIT 200`))
 	WriteJSON(w, http.StatusOK, rows)
 }
 

@@ -3,6 +3,7 @@ package repository
 import (
 	"fmt"
 	"log"
+	"staffmange-api/internal/errlog"
 	"time"
 
 	"github.com/jmoiron/sqlx"
@@ -375,10 +376,10 @@ func (r *DuplicateCandidateRepository) Report() (*DuplicateReport, error) {
 		log.Printf("duplicate autoclose: %v", err)
 	}
 	rep := &DuplicateReport{ByCreator: []DuplicateByCreator{}}
-	_ = r.db.Get(&rep.PendingBookings, `SELECT COUNT(*) FROM "DuplicateCandidate" WHERE kind = 'BOOKING' AND status = 'PENDING'`)
-	_ = r.db.Get(&rep.PendingCustomers, `SELECT COUNT(*) FROM "DuplicateCandidate" WHERE kind = 'CUSTOMER' AND status = 'PENDING'`)
-	_ = r.db.Get(&rep.Resolved30, `SELECT COUNT(*) FROM "DuplicateCandidate" WHERE status = 'RESOLVED' AND "reviewedAt" > now() - interval '30 days'`)
-	_ = r.db.Get(&rep.Detected30, `SELECT COUNT(*) FROM "DuplicateCandidate" WHERE "detectedAt" > now() - interval '30 days'`)
+	errlog.Err(r.db.Get(&rep.PendingBookings, `SELECT COUNT(*) FROM "DuplicateCandidate" WHERE kind = 'BOOKING' AND status = 'PENDING'`))
+	errlog.Err(r.db.Get(&rep.PendingCustomers, `SELECT COUNT(*) FROM "DuplicateCandidate" WHERE kind = 'CUSTOMER' AND status = 'PENDING'`))
+	errlog.Err(r.db.Get(&rep.Resolved30, `SELECT COUNT(*) FROM "DuplicateCandidate" WHERE status = 'RESOLVED' AND "reviewedAt" > now() - interval '30 days'`))
+	errlog.Err(r.db.Get(&rep.Detected30, `SELECT COUNT(*) FROM "DuplicateCandidate" WHERE "detectedAt" > now() - interval '30 days'`))
 	err := r.db.Select(&rep.ByCreator, `
 		SELECT COALESCE(e.name, 'بلا اسم') AS name, COUNT(*) AS count,
 		       COUNT(*) FILTER (WHERE x.gap <= interval '10 minutes') AS quick

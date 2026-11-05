@@ -95,7 +95,7 @@ func (s *OrgService) Seed() error {
 		for _, r := range model.OrgAuthoritySeed {
 			if _, seen := empty[r.Division]; !seen {
 				var n int
-				_ = s.db.Get(&n, `SELECT count(*) FROM "OrgAuthority" WHERE "divisionId" = $1`, r.Division)
+				errlog.Err(s.db.Get(&n, `SELECT count(*) FROM "OrgAuthority" WHERE "divisionId" = $1`, r.Division))
 				empty[r.Division] = n == 0
 			}
 			if !empty[r.Division] {
@@ -561,14 +561,14 @@ func syncOrgPermissions(tx *sqlx.Tx, empID, actorID, reason string) error {
 // TargetRole دور موظف (لحارس «مناصب المالك والمدير يعيّنها المالك بس»).
 func (s *OrgService) TargetRole(empID string) string {
 	var role string
-	_ = s.db.Get(&role, `SELECT role::text FROM "Employee" WHERE id = $1`, empID)
+	errlog.Err(s.db.Get(&role, `SELECT role::text FROM "Employee" WHERE id = $1`, empID))
 	return role
 }
 
 // AssignmentEmployee صاحب المنصب.
 func (s *OrgService) AssignmentEmployee(id string) string {
 	var emp string
-	_ = s.db.Get(&emp, `SELECT "employeeId" FROM "OrgAssignment" WHERE id = $1`, id)
+	errlog.Err(s.db.Get(&emp, `SELECT "employeeId" FROM "OrgAssignment" WHERE id = $1`, id))
 	return emp
 }
 

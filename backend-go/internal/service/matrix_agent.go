@@ -8,6 +8,7 @@ import (
 	"log"
 	"regexp"
 	"sort"
+	"staffmange-api/internal/errlog"
 	"staffmange-api/internal/model"
 	"strings"
 	"time"
@@ -195,7 +196,7 @@ func (a *MatrixAgent) newMask() *nameMask {
 		Name string `db:"name"`
 	}{}
 	if a.db != nil {
-		_ = a.db.Select(&rows, `SELECT id, name FROM "Employee" WHERE COALESCE(name, '') <> ''`)
+		errlog.Err(a.db.Select(&rows, `SELECT id, name FROM "Employee" WHERE COALESCE(name, '') <> ''`))
 	}
 	for n, id := range a.testNames {
 		rows = append(rows, struct {

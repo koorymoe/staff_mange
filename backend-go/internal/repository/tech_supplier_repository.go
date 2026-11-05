@@ -1,6 +1,7 @@
 package repository
 
 import (
+	"staffmange-api/internal/errlog"
 	"staffmange-api/internal/model"
 	"time"
 
@@ -48,10 +49,10 @@ const techSupplierSelect = `SELECT s.id, s."companyName", s."ownerName", s.phone
 // CanUse تقني (مهندس/تقني/مسؤول خدمة بالدور أو بجدول ServiceManager) أو عنده الصلاحية.
 func (r *TechSupplierRepository) CanUse(employeeID string) bool {
 	var ok bool
-	_ = r.db.Get(&ok, `SELECT EXISTS (SELECT 1 FROM "Employee" e WHERE e.id = $1 AND (
+	errlog.Err(r.db.Get(&ok, `SELECT EXISTS (SELECT 1 FROM "Employee" e WHERE e.id = $1 AND (
 		e.role::text IN ('ENGINEER', 'TECHNICAL', 'SERVICE_MANAGER', 'ADMIN', 'OWNER')
 		OR EXISTS (SELECT 1 FROM "ServiceManager" sm WHERE sm."employeeId" = e.id)
-		OR `+model.HasPermSQL(`e.id`, `= 'tech_suppliers'`)+`))`, employeeID)
+		OR `+model.HasPermSQL(`e.id`, `= 'tech_suppliers'`)+`))`, employeeID))
 	return ok
 }
 

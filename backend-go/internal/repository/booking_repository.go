@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"staffmange-api/internal/errlog"
 	"strings"
 	"time"
 
@@ -2353,12 +2354,12 @@ func (r *BookingRepository) TechVisited(id string) error {
 // للقراءات التفصيلية (التقدّم، الطلعات) لمن ما عنده صلاحية كل الحجوزات.
 func (r *BookingRepository) IsInvolved(bookingID, employeeID string) bool {
 	var ok bool
-	_ = r.db.Get(&ok, `SELECT EXISTS (
+	errlog.Err(r.db.Get(&ok, `SELECT EXISTS (
 		SELECT 1 FROM "Booking" b WHERE b.id = $1 AND (
 			$2 IN (COALESCE(b."createdById", ''), COALESCE(b."handoverToId", ''), COALESCE(b."projectSupervisorId", ''),
 			       COALESCE(b."inspectionSupervisorId", ''), COALESCE(b."confirmedByEmployeeId", ''))
 			OR EXISTS (SELECT 1 FROM "BookingAssignment" ba WHERE ba."bookingId" = b.id AND ba."employeeId" = $2)))`,
-		bookingID, employeeID)
+		bookingID, employeeID))
 	return ok
 }
 

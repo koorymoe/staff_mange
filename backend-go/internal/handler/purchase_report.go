@@ -5,6 +5,7 @@ import (
 	"log"
 	"net/http"
 	"net/url"
+	"staffmange-api/internal/errlog"
 	"time"
 
 	"github.com/xuri/excelize/v2"
@@ -85,8 +86,8 @@ func (h *PurchaseControlHandler) buildMonth(month string) (*purchaseMonth, error
 			T float64 `db:"t"`
 			N int     `db:"n"`
 		}
-		_ = h.db.Get(&x, `SELECT COALESCE(sum(COALESCE(r."totalCost", (SELECT sum(COALESCE(i."totalPrice", i."unitPrice" * i.quantity)) FROM "ProcurementItem" i WHERE i."requestId" = r.id), 0)), 0) AS t,
-			count(*)::int AS n FROM "ProcurementRequest" r WHERE r."fulfilledAt" >= $1 AND r."fulfilledAt" < $2`, a, b)
+		errlog.Err(h.db.Get(&x, `SELECT COALESCE(sum(COALESCE(r."totalCost", (SELECT sum(COALESCE(i."totalPrice", i."unitPrice" * i.quantity)) FROM "ProcurementItem" i WHERE i."requestId" = r.id), 0)), 0) AS t,
+			count(*)::int AS n FROM "ProcurementRequest" r WHERE r."fulfilledAt" >= $1 AND r."fulfilledAt" < $2`, a, b))
 		return x.T, x.N
 	}
 	m.Total, m.Requests = spend(start, end)
@@ -96,9 +97,9 @@ func (h *PurchaseControlHandler) buildMonth(month string) (*purchaseMonth, error
 		prevEnd = now.AddDate(0, -1, 0)
 	}
 	m.PrevTotal, m.PrevCount = spend(start.AddDate(0, -1, 0), prevEnd)
-	_ = h.db.Get(&m.Alerts, `SELECT count(*) FROM "ProcurementPriceAlert" WHERE "createdAt" >= $1 AND "createdAt" < $2`, start, end)
-	_ = h.db.Get(&m.Unverified, `SELECT count(*) FROM "ProcurementRequest" r WHERE r."fulfilledAt" >= $1 AND r."fulfilledAt" < $2
-		AND NOT EXISTS (SELECT 1 FROM "ProcurementVerify" v WHERE v."procurementId" = r.id)`, start, end)
+	errlog.Err(h.db.Get(&m.Alerts, `SELECT count(*) FROM "ProcurementPriceAlert" WHERE "createdAt" >= $1 AND "createdAt" < $2`, start, end))
+	errlog.Err(h.db.Get(&m.Unverified, `SELECT count(*) FROM "ProcurementRequest" r WHERE r."fulfilledAt" >= $1 AND r."fulfilledAt" < $2
+		AND NOT EXISTS (SELECT 1 FROM "ProcurementVerify" v WHERE v."procurementId" = r.id)`, start, end))
 	group := func(key func(purchaseLine) string) []purchaseGroup {
 		idx := map[string]int{}
 		out := []purchaseGroup{}

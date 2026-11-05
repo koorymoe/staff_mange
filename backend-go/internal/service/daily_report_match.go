@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"regexp"
+	"staffmange-api/internal/errlog"
 	"strings"
 
 	"github.com/jmoiron/sqlx"
@@ -139,7 +140,7 @@ func (m *ReportMatcher) Match(emp, day string) (*ReportMatch, error) {
 func (m *ReportMatcher) Save(r *ReportMatch) (bool, error) {
 	detail, _ := json.Marshal(map[string]any{"claimed": r.ClaimedCodes, "missing": r.MissingCodes, "unclaimed": r.UnclaimedCodes, "activityCount": r.ActivityCount})
 	var prev *string
-	_ = m.db.Get(&prev, `SELECT status FROM "DailyReportMatch" WHERE "employeeId" = $1 AND day = $2::date`, r.EmployeeID, r.Day)
+	errlog.Err(m.db.Get(&prev, `SELECT status FROM "DailyReportMatch" WHERE "employeeId" = $1 AND day = $2::date`, r.EmployeeID, r.Day))
 	_, err := m.db.Exec(`INSERT INTO "DailyReportMatch" ("employeeId", day, "reportId", status, note, detail) VALUES ($1, $2::date, $3, $4, $5, $6)
 		ON CONFLICT ("employeeId", day) DO UPDATE SET "reportId" = EXCLUDED."reportId", status = EXCLUDED.status, note = EXCLUDED.note,
 		detail = EXCLUDED.detail, "updatedAt" = now()`, r.EmployeeID, r.Day, r.ReportID, r.Status, r.Note, string(detail))
@@ -179,8 +180,8 @@ func MatchRate(db *sqlx.DB, emp string, days int) (pct int, n int) {
 		N  int `db:"n"`
 		OK int `db:"ok"`
 	}
-	_ = db.Get(&row, `SELECT count(*) AS n, count(*) FILTER (WHERE status = 'MATCH' OR "reviewVerdict" = 'JUSTIFIED') AS ok
-		FROM "DailyReportMatch" WHERE "employeeId" = $1 AND day >= current_date - $2::int`, emp, days)
+	errlog.Err(db.Get(&row, `SELECT count(*) AS n, count(*) FILTER (WHERE status = 'MATCH' OR "reviewVerdict" = 'JUSTIFIED') AS ok
+		FROM "DailyReportMatch" WHERE "employeeId" = $1 AND day >= current_date - $2::int`, emp, days))
 	if row.N == 0 {
 		return 0, 0
 	}

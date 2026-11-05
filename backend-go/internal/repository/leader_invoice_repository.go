@@ -1,6 +1,7 @@
 package repository
 
 import (
+	"staffmange-api/internal/errlog"
 	"time"
 
 	"database/sql"
@@ -435,15 +436,15 @@ func (r *LeaderInvoiceRepository) ApprovedTwin(id string) *ApprovedTwinInfo {
 // ثانية (دازاي 10-25). فاضي = ماكو.
 func (r *LeaderInvoiceRepository) SameDayInvoice(bookingID string) string {
 	var code string
-	_ = r.db.Get(&code, `SELECT COALESCE("accountingCode", id) FROM "LeaderInvoice"
-		WHERE "bookingId" = $1 AND baghdad_date("createdAt") = baghdad_today() ORDER BY "createdAt" LIMIT 1`, bookingID)
+	errlog.Err(r.db.Get(&code, `SELECT COALESCE("accountingCode", id) FROM "LeaderInvoice"
+		WHERE "bookingId" = $1 AND baghdad_date("createdAt") = baghdad_today() ORDER BY "createdAt" LIMIT 1`, bookingID))
 	return code
 }
 
 // HasApprovedTwin هل الفاتورة مكررة لفاتورة معتمدة بنفس اليوم؟
 func (r *LeaderInvoiceRepository) HasApprovedTwin(id string) bool {
 	var twin bool
-	_ = r.db.Get(&twin, `SELECT `+TwinApprovedSQL+` FROM "LeaderInvoice" WHERE id = $1`, id)
+	errlog.Err(r.db.Get(&twin, `SELECT `+TwinApprovedSQL+` FROM "LeaderInvoice" WHERE id = $1`, id))
 	return twin
 }
 
@@ -1116,7 +1117,7 @@ func (r *LeaderInvoiceRepository) ListApprovedWithoutNumber() ([]model.LeaderInv
 // IsInternal فاتورة شغل داخل الشركة؟ (قرار (ع) 10-10: تنعتمد بلا رقم ولا تدقيق)
 func (r *LeaderInvoiceRepository) IsInternal(id string) bool {
 	var ok bool
-	_ = r.db.Get(&ok, `SELECT EXISTS (SELECT 1 FROM "LeaderInvoice" WHERE id = $1 AND systems::text LIKE '%شغل داخل الشركة%')`, id)
+	errlog.Err(r.db.Get(&ok, `SELECT EXISTS (SELECT 1 FROM "LeaderInvoice" WHERE id = $1 AND systems::text LIKE '%شغل داخل الشركة%')`, id))
 	return ok
 }
 

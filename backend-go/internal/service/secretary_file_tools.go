@@ -111,7 +111,7 @@ func registerFileTools(a *MatrixAgent, tc *SecretaryTurnCtx) {
 				return "", fmt.Errorf("اكتبها جملة بين ٣ و٤٠٠ حرف")
 			}
 			var n int
-			_ = a.db.Get(&n, `SELECT count(*) FROM "SecretaryPref" WHERE "employeeId" = $1 AND active`, tc.UserID)
+			errlog.Err(a.db.Get(&n, `SELECT count(*) FROM "SecretaryPref" WHERE "employeeId" = $1 AND active`, tc.UserID))
 			if n >= 60 {
 				return "الذاكرة مليانة (٦٠) — اطلب منه يشيل شي قديم بـforget.", nil
 			}

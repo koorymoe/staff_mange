@@ -86,13 +86,13 @@ func (h *MatrixCourierHandler) record(kind, senderID, pathID string, raw []byte)
 	case "project":
 		recipient = body.EmployeeID
 		var name string
-		_ = h.db.Get(&name, `SELECT name FROM "Project" WHERE id = $1`, pathID)
+		errlog.Err(h.db.Get(&name, `SELECT name FROM "Project" WHERE id = $1`, pathID))
 		message = "المدير وجّهلك مشروع: «" + name + "»"
 		link = "/my-projects"
 	case "booking":
 		recipient = body.EmployeeID
 		var code string
-		_ = h.db.Get(&code, `SELECT code FROM "Booking" WHERE id = $1`, pathID)
+		errlog.Err(h.db.Get(&code, `SELECT code FROM "Booking" WHERE id = $1`, pathID))
 		message = "المدير وجّهلك الحجز " + code
 		link = "/my-tasks"
 	default:
@@ -129,16 +129,16 @@ func (h *MatrixCourierHandler) State(w http.ResponseWriter, r *http.Request) {
 		Incoming []courierRow   `json:"incoming"`
 		Badges   map[string]int `json:"badges"`
 	}{Now: time.Now(), Outgoing: []courierRow{}, Incoming: []courierRow{}, Badges: map[string]int{}}
-	_ = h.db.Select(&out.Outgoing, `SELECT c.id, c.kind, c.message, c.link, c."createdAt", c."deliveredAt", e.name AS "recipientName"
+	errlog.Err(h.db.Select(&out.Outgoing, `SELECT c.id, c.kind, c.message, c.link, c."createdAt", c."deliveredAt", e.name AS "recipientName"
 		FROM "MatrixCourier" c JOIN "Employee" e ON e.id = c."recipientId"
-		WHERE c."senderId" = $1 AND c."createdAt" > now() - interval '60 seconds' ORDER BY c."createdAt"`, me)
-	_ = h.db.Select(&out.Incoming, `SELECT id, kind, message, link, "createdAt", "deliveredAt" FROM "MatrixCourier"
-		WHERE "recipientId" = $1 AND "deliveredAt" IS NULL AND "createdAt" > now() - interval '3 days' ORDER BY "createdAt" LIMIT 5`, me)
+		WHERE c."senderId" = $1 AND c."createdAt" > now() - interval '60 seconds' ORDER BY c."createdAt"`, me))
+	errlog.Err(h.db.Select(&out.Incoming, `SELECT id, kind, message, link, "createdAt", "deliveredAt" FROM "MatrixCourier"
+		WHERE "recipientId" = $1 AND "deliveredAt" IS NULL AND "createdAt" > now() - interval '3 days' ORDER BY "createdAt" LIMIT 5`, me))
 	rows := []struct {
 		Link string `db:"link"`
 		N    int    `db:"n"`
 	}{}
-	_ = h.db.Select(&rows, `SELECT link, count(*) AS n FROM "MatrixCourier" WHERE "recipientId" = $1 AND "seenAt" IS NULL GROUP BY link`, me)
+	errlog.Err(h.db.Select(&rows, `SELECT link, count(*) AS n FROM "MatrixCourier" WHERE "recipientId" = $1 AND "seenAt" IS NULL GROUP BY link`, me))
 	for _, x := range rows {
 		out.Badges[x.Link] = x.N
 	}
@@ -148,8 +148,8 @@ func (h *MatrixCourierHandler) State(w http.ResponseWriter, r *http.Request) {
 // GET /api/matrix-courier/inbox — آخر رسائل ماتركس الي وصلته، حتى يرجع يقراها.
 func (h *MatrixCourierHandler) Inbox(w http.ResponseWriter, r *http.Request) {
 	rows := []courierRow{}
-	_ = h.db.Select(&rows, `SELECT id, kind, message, link, "createdAt", "deliveredAt" FROM "MatrixCourier"
-		WHERE "recipientId" = $1 ORDER BY "createdAt" DESC LIMIT 20`, middleware.EmployeeIDFromContext(r))
+	errlog.Err(h.db.Select(&rows, `SELECT id, kind, message, link, "createdAt", "deliveredAt" FROM "MatrixCourier"
+		WHERE "recipientId" = $1 ORDER BY "createdAt" DESC LIMIT 20`, middleware.EmployeeIDFromContext(r)))
 	WriteJSON(w, http.StatusOK, rows)
 }
 

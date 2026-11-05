@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"staffmange-api/internal/errlog"
 	"staffmange-api/internal/model"
 	"staffmange-api/internal/timeutil"
 	"strings"
@@ -292,9 +293,9 @@ func (m *CustomerMatrix) SuggestPromo() (string, string, error) {
 		return "", "", ErrCustomerMatrixOff
 	}
 	var names []string
-	_ = m.db.Select(&names, `SELECT name FROM "Service" WHERE category IS DISTINCT FROM 'إدارية' ORDER BY random() LIMIT 12`)
+	errlog.Err(m.db.Select(&names, `SELECT name FROM "Service" WHERE category IS DISTINCT FROM 'إدارية' ORDER BY random() LIMIT 12`))
 	var existing []string
-	_ = m.db.Select(&existing, `SELECT title FROM "PromoItem" ORDER BY "createdAt" DESC LIMIT 15`)
+	errlog.Err(m.db.Select(&existing, `SELECT title FROM "PromoItem" ORDER BY "createdAt" DESC LIMIT 15`))
 	ctx, cancel := context.WithTimeout(context.Background(), agentTimeout)
 	defer cancel()
 	resp, err := m.llm.New(ctx, anthropic.MessageNewParams{

@@ -3,6 +3,7 @@ package handler
 import (
 	"encoding/json"
 	"net/http"
+	"staffmange-api/internal/errlog"
 
 	"github.com/jmoiron/sqlx"
 
@@ -29,9 +30,9 @@ type integrityHistory struct {
 // GET /api/integrity — آخر دورة + الدورة الي قبلها (للمقارنة) + آخر ٣٠ للمنحنى
 func (h *IntegrityHandler) Latest(w http.ResponseWriter, r *http.Request) {
 	runs := []integrity.Run{}
-	_ = h.db.Select(&runs, `SELECT * FROM "IntegrityRun" ORDER BY "startedAt" DESC LIMIT 2`)
+	errlog.Err(h.db.Select(&runs, `SELECT * FROM "IntegrityRun" ORDER BY "startedAt" DESC LIMIT 2`))
 	hist := []integrityHistory{}
-	_ = h.db.Select(&hist, `SELECT "startedAt"::text AS "startedAt", problems, critical FROM "IntegrityRun" ORDER BY "startedAt" DESC LIMIT 30`)
+	errlog.Err(h.db.Select(&hist, `SELECT "startedAt"::text AS "startedAt", problems, critical FROM "IntegrityRun" ORDER BY "startedAt" DESC LIMIT 30`))
 	out := map[string]any{"run": nil, "results": []integrity.Result{}, "previous": map[string]int64{}, "history": hist}
 	if len(runs) > 0 {
 		var res []integrity.Result

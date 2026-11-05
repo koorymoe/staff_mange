@@ -45,7 +45,7 @@ func (r *AchievementVoiceRepository) Seconds(ids []string) map[string]int {
 		return out
 	}
 	rows := []AchievementVoice{}
-	_ = r.db.Select(&rows, `SELECT "achievementId", "fileKey", "contentType", seconds FROM "AchievementVoice" WHERE "achievementId" = ANY($1)`, pq.Array(ids))
+	errlog.Err(r.db.Select(&rows, `SELECT "achievementId", "fileKey", "contentType", seconds FROM "AchievementVoice" WHERE "achievementId" = ANY($1)`, pq.Array(ids)))
 	for _, v := range rows {
 		out[v.AchievementID] = v.Seconds
 	}
@@ -115,23 +115,23 @@ func (r *AchievementVoiceRepository) ResetAnalysis(id string) {
 }
 
 func (r *AchievementVoiceRepository) AnalyzedCount() (done, pending int) {
-	_ = r.db.Get(&done, `SELECT count(*) FROM "AchievementVoice" WHERE "analysisStatus" = 'DONE'`)
-	_ = r.db.Get(&pending, `SELECT count(*) FROM "AchievementVoice" WHERE "analysisStatus" = 'PENDING'`)
+	errlog.Err(r.db.Get(&done, `SELECT count(*) FROM "AchievementVoice" WHERE "analysisStatus" = 'DONE'`))
+	errlog.Err(r.db.Get(&pending, `SELECT count(*) FROM "AchievementVoice" WHERE "analysisStatus" = 'PENDING'`))
 	return
 }
 
 // AchievementEmployee صاحب الإنجاز — لشيل اسمه وأسماء زملاؤه من النص.
 func (r *AchievementVoiceRepository) Names() []string {
 	names := []string{}
-	_ = r.db.Select(&names, `SELECT name FROM "Employee" WHERE length(btrim(name)) >= 3`)
+	errlog.Err(r.db.Select(&names, `SELECT name FROM "Employee" WHERE length(btrim(name)) >= 3`))
 	return names
 }
 
 // CustomerNameFor اسم زبون الحجز المربوط بالإنجاز (إذا أكو).
 func (r *AchievementVoiceRepository) CustomerNameFor(achievementID string) string {
 	var n string
-	_ = r.db.Get(&n, `SELECT COALESCE(c.name, '') FROM "Achievement" a JOIN "Booking" b ON b.id = a."bookingId"
-		JOIN "Customer" c ON c.id = b."customerId" WHERE a.id = $1`, achievementID)
+	errlog.Err(r.db.Get(&n, `SELECT COALESCE(c.name, '') FROM "Achievement" a JOIN "Booking" b ON b.id = a."bookingId"
+		JOIN "Customer" c ON c.id = b."customerId" WHERE a.id = $1`, achievementID))
 	return n
 }
 

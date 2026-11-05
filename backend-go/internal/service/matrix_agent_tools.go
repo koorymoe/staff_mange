@@ -3,6 +3,7 @@ package service
 import (
 	"fmt"
 	"regexp"
+	"staffmange-api/internal/errlog"
 	"strings"
 	"time"
 
@@ -146,7 +147,7 @@ func (a *MatrixAgent) RegisterReadTools(d AgentDeps) {
 				}
 				if _, ok := names[r.LeaderID]; !ok {
 					var n string
-					_ = a.db.Get(&n, `SELECT name FROM "Employee" WHERE id = $1`, r.LeaderID)
+					errlog.Err(a.db.Get(&n, `SELECT name FROM "Employee" WHERE id = $1`, r.LeaderID))
 					names[r.LeaderID] = n
 				}
 				miss := []string{}
@@ -201,7 +202,7 @@ func (a *MatrixAgent) RegisterReadTools(d AgentDeps) {
 			}
 			out := TrainingNeedText(strArg(in, "who"), n)
 			var open []string
-			_ = a.db.Select(&open, `SELECT status || ': ' || array_to_string(areas, '، ') || COALESCE(' — ' || "resultNote", '') FROM "TrainingNeed" WHERE "employeeId" = $1 ORDER BY "createdAt" DESC LIMIT 3`, id)
+			errlog.Err(a.db.Select(&open, `SELECT status || ': ' || array_to_string(areas, '، ') || COALESCE(' — ' || "resultNote", '') FROM "TrainingNeed" WHERE "employeeId" = $1 ORDER BY "createdAt" DESC LIMIT 3`, id))
 			if len(open) > 0 {
 				out += "\nدراسات سابقة: " + strings.Join(open, " | ")
 			}
@@ -239,7 +240,7 @@ func (a *MatrixAgent) RegisterReadTools(d AgentDeps) {
 				return "ما كتب تقرير إنجاز لهذا اليوم.", nil
 			}
 			var body string
-			_ = a.db.Get(&body, `SELECT body FROM "DailyWorkReport" WHERE id = $1`, m.ReportID)
+			errlog.Err(a.db.Get(&body, `SELECT body FROM "DailyWorkReport" WHERE id = $1`, m.ReportID))
 			lines := []string{"يوم " + day + " — النتيجة: " + m.Status + " — " + m.Note, "كتب: " + body, "المسجّل بالنظام:"}
 			for _, l := range m.Activity {
 				lines = append(lines, fmt.Sprintf("- %s %s ×%d", l.At, l.Text, l.Count))
@@ -255,7 +256,7 @@ func (a *MatrixAgent) RegisterReadTools(d AgentDeps) {
 				return "", fmt.Errorf("ما لگيت الموظف")
 			}
 			var role string
-			_ = a.db.Get(&role, `SELECT role::text FROM "Employee" WHERE id = $1`, id)
+			errlog.Err(a.db.Get(&role, `SELECT role::text FROM "Employee" WHERE id = $1`, id))
 			var att struct{ Days, LateDays int }
 			_ = a.db.QueryRow(`SELECT count(DISTINCT date), count(DISTINCT date) FILTER (WHERE (("checkIn" AT TIME ZONE 'UTC') + interval '3 hours')::time > time '09:15')
 				FROM "Attendance" WHERE "employeeId" = $1 AND "checkIn" > now() - interval '14 days'`, id).Scan(&att.Days, &att.LateDays)
@@ -273,10 +274,10 @@ func (a *MatrixAgent) RegisterReadTools(d AgentDeps) {
 				At     *time.Time `db:"scheduledAt"`
 				Done   *time.Time `db:"completedAt"`
 			}{}
-			_ = a.db.Select(&recent, `SELECT DISTINCT b.code, b.status::text AS status, b."scheduledAt", b."completedAt"
+			errlog.Err(a.db.Select(&recent, `SELECT DISTINCT b.code, b.status::text AS status, b."scheduledAt", b."completedAt"
 				FROM "Booking" b LEFT JOIN "BookingAssignment" a ON a."bookingId" = b.id
 				WHERE (a."employeeId" = $1 OR b."projectSupervisorId" = $1) AND b."archivedAt" IS NULL
-				ORDER BY b."scheduledAt" DESC NULLS LAST LIMIT 5`, id)
+				ORDER BY b."scheduledAt" DESC NULLS LAST LIMIT 5`, id))
 			var b strings.Builder
 			fmt.Fprintf(&b, "%s (%s): حضر %d يوم بآخر ١٤ يوم، منها %d يوم متأخر. حجوزات ٣٠ يوم: %d (منجز %d، مفتوح %d، متأخر %d).\nآخر الحجوزات:\n",
 				name, role, att.Days, att.LateDays, bk.Total, bk.Done, bk.Open, bk.Late)

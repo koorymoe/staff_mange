@@ -129,8 +129,8 @@ func (h *PurchaseControlHandler) AfterExpensePurchase(expenseID, employeeID stri
 		return
 	}
 	var key, name string
-	_ = h.db.Get(&key, `SELECT product_key($1, NULL)`, p.ProductName)
-	_ = h.db.Get(&name, `SELECT name FROM "Employee" WHERE id = $1`, employeeID)
+	errlog.Err(h.db.Get(&key, `SELECT product_key($1, NULL)`, p.ProductName))
+	errlog.Err(h.db.Get(&name, `SELECT name FROM "Employee" WHERE id = $1`, employeeID))
 	price := p.UnitPrice
 	who := "مصروف الفني " + name
 	if p.TechSupplierID == nil || *p.TechSupplierID == "" {
@@ -163,10 +163,10 @@ func (h *PurchaseControlHandler) Standards(w http.ResponseWriter, r *http.Reques
 		Basis     string  `db:"basis" json:"basis"`
 	}
 	stds, sugs := []std{}, []sug{}
-	_ = h.db.Select(&stds, `SELECT s.key, s.product, s.price, s.source, e.name AS "setBy", s."updatedAt",
+	errlog.Err(h.db.Select(&stds, `SELECT s.key, s.product, s.price, s.source, e.name AS "setBy", s."updatedAt",
 		(SELECT min(price) FROM "PurchaseLine" l WHERE l.key = s.key AND l.at > now() - interval '90 days') AS market
-		FROM "StandardPrice" s LEFT JOIN "Employee" e ON e.id = s."setById" ORDER BY s.product`)
-	_ = h.db.Select(&sugs, `SELECT key, product, current, suggested, basis FROM "StandardPriceSuggestion" ORDER BY "createdAt" DESC`)
+		FROM "StandardPrice" s LEFT JOIN "Employee" e ON e.id = s."setById" ORDER BY s.product`))
+	errlog.Err(h.db.Select(&sugs, `SELECT key, product, current, suggested, basis FROM "StandardPriceSuggestion" ORDER BY "createdAt" DESC`))
 	WriteJSON(w, http.StatusOK, map[string]any{"standards": stds, "suggestions": sugs, "ceilingPct": h.ceiling()})
 }
 
@@ -181,7 +181,7 @@ func (h *PurchaseControlHandler) SetStandard(w http.ResponseWriter, r *http.Requ
 		return
 	}
 	var key string
-	_ = h.db.Get(&key, `SELECT product_key($1, NULL)`, b.Product)
+	errlog.Err(h.db.Get(&key, `SELECT product_key($1, NULL)`, b.Product))
 	if _, err := h.db.Exec(`INSERT INTO "StandardPrice" (key, product, price, source, "setById") VALUES ($1,$2,$3,'MANUAL',$4)
 		ON CONFLICT (key) DO UPDATE SET price = $3, source = 'MANUAL', "setById" = $4, "updatedAt" = now()`,
 		key, strings.TrimSpace(b.Product), b.Price, middleware.EmployeeIDFromContext(r)); err != nil {

@@ -260,7 +260,7 @@ func (h *CustomerAppHandler) Signup(w http.ResponseWriter, r *http.Request) {
 	}
 	// حساب ما تأكد بعد بنفس الاسم والإيميل: نحدّثه ونعيد الرمز (حتى ما ينقفل الاسم)
 	var existing []customerAccount
-	_ = h.db.Select(&existing, `SELECT * FROM "CustomerAccount" WHERE username = $1 OR email = $2`, b.Username, b.Email)
+	errlog.Err(h.db.Select(&existing, `SELECT * FROM "CustomerAccount" WHERE username = $1 OR email = $2`, b.Username, b.Email))
 	var a *customerAccount
 	for i := range existing {
 		e := &existing[i]
@@ -446,7 +446,7 @@ func (h *CustomerAppHandler) MyLocation(w http.ResponseWriter, r *http.Request) 
 		Lng *float64 `db:"lng" json:"lng"`
 	}
 	if a.CustomerID != nil {
-		_ = h.db.Get(&loc, `SELECT lat, lng FROM "Customer" WHERE id = $1 AND "locationSource" = 'APP'`, *a.CustomerID)
+		errlog.Err(h.db.Get(&loc, `SELECT lat, lng FROM "Customer" WHERE id = $1 AND "locationSource" = 'APP'`, *a.CustomerID))
 	}
 	WriteJSON(w, http.StatusOK, loc)
 }
@@ -460,7 +460,7 @@ func (h *CustomerAppHandler) SetMyLocation(w http.ResponseWriter, r *http.Reques
 	}
 	h.linkCustomer(a)
 	if a.CustomerID == nil {
-		_ = h.db.Get(&a.CustomerID, `SELECT "customerId" FROM "CustomerAccount" WHERE id = $1`, a.ID)
+		errlog.Err(h.db.Get(&a.CustomerID, `SELECT "customerId" FROM "CustomerAccount" WHERE id = $1`, a.ID))
 	}
 	if a.CustomerID == nil {
 		WriteError(w, http.StatusBadRequest, "تعذر ربط حسابك — جرّب بعد شوية")
@@ -499,7 +499,7 @@ func (h *CustomerAppHandler) promos(onlyActive bool) []promoItem {
 		q += ` WHERE active`
 	}
 	rows := []promoItem{}
-	_ = h.db.Select(&rows, q+` ORDER BY ord, "createdAt" DESC`)
+	errlog.Err(h.db.Select(&rows, q+` ORDER BY ord, "createdAt" DESC`))
 	for i := range rows {
 		rows[i].HasImage = rows[i].ImageURL != nil && *rows[i].ImageURL != ""
 	}
@@ -522,9 +522,9 @@ func (h *CustomerAppHandler) Home(w http.ResponseWriter, r *http.Request) {
 		Name     string  `db:"name" json:"name"`
 		Category *string `db:"category" json:"category"`
 	}{}
-	_ = h.db.Select(&services, `SELECT id, name, category FROM "Service" WHERE category IS DISTINCT FROM 'إدارية' ORDER BY category NULLS LAST, name`)
+	errlog.Err(h.db.Select(&services, `SELECT id, name, category FROM "Service" WHERE category IS DISTINCT FROM 'إدارية' ORDER BY category NULLS LAST, name`))
 	var done int
-	_ = h.db.Get(&done, `SELECT count(*) FROM "Booking" WHERE status = 'COMPLETED'`)
+	errlog.Err(h.db.Get(&done, `SELECT count(*) FROM "Booking" WHERE status = 'COMPLETED'`))
 	WriteJSON(w, http.StatusOK, map[string]any{"items": items, "services": services, "newCount": newCount, "completedJobs": done,
 		"matrixOn": h.matrix.Enabled()})
 }
@@ -575,8 +575,8 @@ type custChatMsg struct {
 
 func (h *CustomerAppHandler) messages(accountID string, limit int) []custChatMsg {
 	rows := []custChatMsg{}
-	_ = h.db.Select(&rows, `SELECT * FROM (SELECT id, role, content, "bookingId", "createdAt" FROM "CustomerChatMessage"
-		WHERE "accountId" = $1 ORDER BY "createdAt" DESC LIMIT $2) x ORDER BY "createdAt"`, accountID, limit)
+	errlog.Err(h.db.Select(&rows, `SELECT * FROM (SELECT id, role, content, "bookingId", "createdAt" FROM "CustomerChatMessage"
+		WHERE "accountId" = $1 ORDER BY "createdAt" DESC LIMIT $2) x ORDER BY "createdAt"`, accountID, limit))
 	return rows
 }
 
@@ -596,7 +596,7 @@ func (h *CustomerAppHandler) Send(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var today int
-	_ = h.db.Get(&today, `SELECT count(*) FROM "CustomerChatMessage" WHERE "accountId" = $1 AND role = 'user' AND "createdAt" > now() - interval '24 hours'`, a.ID)
+	errlog.Err(h.db.Get(&today, `SELECT count(*) FROM "CustomerChatMessage" WHERE "accountId" = $1 AND role = 'user' AND "createdAt" > now() - interval '24 hours'`, a.ID))
 	if today >= customerDailyChats {
 		WriteError(w, http.StatusTooManyRequests, "وصلت حد الرسائل لليوم — فريقنا راح يتواصل وياك، أو ارجعلنا باچر 🌙")
 		return
@@ -643,7 +643,7 @@ func (h *CustomerAppHandler) createBookingFromMatrix(accountID string, d service
 	}
 	// ماتركس يحجز بس لنفس الزبون — وأقصى 3 حجوزات مفتوحة من التطبيق
 	var open int
-	_ = h.db.Get(&open, `SELECT count(*) FROM "Booking" WHERE "customerAccountId" = $1 AND status = 'PENDING' AND "archivedAt" IS NULL`, accountID)
+	errlog.Err(h.db.Get(&open, `SELECT count(*) FROM "Booking" WHERE "customerAccountId" = $1 AND status = 'PENDING' AND "archivedAt" IS NULL`, accountID))
 	if open >= 3 {
 		return "", errors.New("عندك 3 طلبات بانتظار التثبيت — فريقنا راح يتواصل وياك عليهن أول")
 	}
@@ -801,11 +801,11 @@ func (h *CustomerAppHandler) AdminAccounts(w http.ResponseWriter, r *http.Reques
 		LastChatAt *time.Time `db:"lastChatAt" json:"lastChatAt"`
 		CreatedAt  time.Time  `db:"createdAt" json:"createdAt"`
 	}{}
-	_ = h.db.Select(&rows, `SELECT a.id, a.username, a.name, a.phone, a.email, a."emailVerifiedAt" IS NOT NULL AS verified, a."createdAt",
+	errlog.Err(h.db.Select(&rows, `SELECT a.id, a.username, a.name, a.phone, a.email, a."emailVerifiedAt" IS NOT NULL AS verified, a."createdAt",
 		(SELECT count(*) FROM "CustomerChatMessage" m WHERE m."accountId" = a.id) AS messages,
 		(SELECT max("createdAt") FROM "CustomerChatMessage" m WHERE m."accountId" = a.id) AS "lastChatAt",
 		(SELECT count(*) FROM "Booking" b WHERE b."customerAccountId" = a.id) AS bookings
-		FROM "CustomerAccount" a ORDER BY a."createdAt" DESC LIMIT 500`)
+		FROM "CustomerAccount" a ORDER BY a."createdAt" DESC LIMIT 500`))
 	WriteJSON(w, http.StatusOK, rows)
 }
 

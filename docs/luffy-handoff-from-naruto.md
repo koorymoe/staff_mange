@@ -293,3 +293,5 @@ git push origin origin/avg:refs/heads/prod     # بعد التأكد إنه fast
 - 2026-11-04 لوفي: رفع README + ٧ق (التواريخ واجهة وسيرفر) على prod بطلب دازاي.
 - 2026-11-05: ٥ج — إنجازاتي اليوم = التقرير الإجباري (MirrorAchievement، GET /api/me/daily-reports، todayAt)؛ التاريخ يوم بيوم.
 - 2026-11-05: ٧ل — QuotationNew يرفع صورة المنتج لمخزن الملفات؛ MigrateProductImages ينقل القديم مرة وحدة (حفظ+مقارنة+تبديل).
+
+- 11-05 ٧ج-الباقي: ٣٠٥ `_ = x.Get/Select(...)` → `errlog.Err(...)` (أداة AST)، و`errlog.Err` يتجاهل sql.ErrNoRows وcontext.Canceled + اختبار. build/vet/tests خضرة.

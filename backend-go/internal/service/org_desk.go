@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"staffmange-api/internal/errlog"
 	"staffmange-api/internal/timeutil"
 	"strings"
 	"time"
@@ -222,8 +223,8 @@ func (s *OrgService) Access(empID, role, divisionID string) (see, edit bool) {
 		Unit *string `db:"unitId"`
 		Pos  string  `db:"position"`
 	}{}
-	_ = s.db.Select(&rows, `SELECT "divisionId", "unitId", position FROM "OrgAssignment" WHERE "employeeId" = $1
-		AND "endedAt" IS NULL AND position IN ('DIRECTOR', 'DEPUTY')`, empID)
+	errlog.Err(s.db.Select(&rows, `SELECT "divisionId", "unitId", position FROM "OrgAssignment" WHERE "employeeId" = $1
+		AND "endedAt" IS NULL AND position IN ('DIRECTOR', 'DEPUTY')`, empID))
 	// (دازاي 11-01) النائب يشوف بس وما يقرر — القرار للمدير (والنائب يصير مدير
 	// بالوكالة تلقائياً بإجازة المدير: org_acting يعيّنه DIRECTOR acting).
 	for _, r := range rows {
@@ -248,8 +249,8 @@ func (s *OrgService) UnitAccess(empID, role, divisionID, unitID string) bool {
 		return true
 	}
 	var n int
-	_ = s.db.Get(&n, `SELECT count(*) FROM "OrgAssignment" WHERE "employeeId" = $1 AND "unitId" = $2 AND "divisionId" = $3
-		AND "endedAt" IS NULL AND position = 'DIRECTOR'`, empID, unitID, divisionID)
+	errlog.Err(s.db.Get(&n, `SELECT count(*) FROM "OrgAssignment" WHERE "employeeId" = $1 AND "unitId" = $2 AND "divisionId" = $3
+		AND "endedAt" IS NULL AND position = 'DIRECTOR'`, empID, unitID, divisionID))
 	return n > 0
 }
 
@@ -259,8 +260,8 @@ func (s *OrgService) UnitSee(empID, role, divisionID, unitID string) bool {
 		return true
 	}
 	var n int
-	_ = s.db.Get(&n, `SELECT count(*) FROM "OrgAssignment" WHERE "employeeId" = $1 AND "unitId" = $2 AND "divisionId" = $3
-		AND "endedAt" IS NULL AND position IN ('DIRECTOR', 'DEPUTY')`, empID, unitID, divisionID)
+	errlog.Err(s.db.Get(&n, `SELECT count(*) FROM "OrgAssignment" WHERE "employeeId" = $1 AND "unitId" = $2 AND "divisionId" = $3
+		AND "endedAt" IS NULL AND position IN ('DIRECTOR', 'DEPUTY')`, empID, unitID, divisionID))
 	return n > 0
 }
 
@@ -275,8 +276,8 @@ func (s *OrgService) planReviewer(empID, role, divisionID string, unitID *string
 		return edit
 	}
 	var n int
-	_ = s.db.Get(&n, `SELECT count(*) FROM "OrgAssignment" WHERE "employeeId" = $1 AND "divisionId" = 'admin' AND "unitId" IS NULL
-		AND "endedAt" IS NULL AND position = 'DIRECTOR'`, empID)
+	errlog.Err(s.db.Get(&n, `SELECT count(*) FROM "OrgAssignment" WHERE "employeeId" = $1 AND "divisionId" = 'admin' AND "unitId" IS NULL
+		AND "endedAt" IS NULL AND position = 'DIRECTOR'`, empID))
 	return n > 0 && divisionID != "admin"
 }
 
@@ -472,7 +473,7 @@ func (s *OrgService) SetSolutionPlan(empID, role, id, plan string) error {
 
 func (s *OrgService) issueDivision(id string) string {
 	var d string
-	_ = s.db.Get(&d, `SELECT "divisionId" FROM "OrgIssueReport" WHERE id = $1`, id)
+	errlog.Err(s.db.Get(&d, `SELECT "divisionId" FROM "OrgIssueReport" WHERE id = $1`, id))
 	return d
 }
 
@@ -534,7 +535,7 @@ type orgPlanScope struct {
 
 func (s *OrgService) planScope(planID string) orgPlanScope {
 	var r orgPlanScope
-	_ = s.db.Get(&r, `SELECT "divisionId", "unitId", period, status FROM "OrgPlan" WHERE id = $1`, planID)
+	errlog.Err(s.db.Get(&r, `SELECT "divisionId", "unitId", period, status FROM "OrgPlan" WHERE id = $1`, planID))
 	return r
 }
 
@@ -560,7 +561,7 @@ func (s *OrgService) SubmitPlan(empID, role, planID string) ([]string, error) {
 		return nil, errors.New("الخطة مرفوعة أو معتمدة أصلاً")
 	}
 	var n int
-	_ = s.db.Get(&n, `SELECT count(*) FROM "OrgPlanItem" WHERE "planId" = $1`, planID)
+	errlog.Err(s.db.Get(&n, `SELECT count(*) FROM "OrgPlanItem" WHERE "planId" = $1`, planID))
 	if n == 0 {
 		return nil, errors.New("ضيف بنود للخطة گبل ما ترفعها")
 	}
@@ -570,11 +571,11 @@ func (s *OrgService) SubmitPlan(empID, role, planID string) ([]string, error) {
 	// منو يوصله: مدير/نائب الإدارة لخطة الوحدة، ومدير «الإدارة» لخطة الإدارة
 	to := []string{}
 	if sc.Unit != nil {
-		_ = s.db.Select(&to, `SELECT "employeeId" FROM "OrgAssignment" WHERE "divisionId" = $1 AND "unitId" IS NULL
-			AND position IN ('DIRECTOR', 'DEPUTY') AND "endedAt" IS NULL AND "employeeId" <> $2`, sc.Div, empID)
+		errlog.Err(s.db.Select(&to, `SELECT "employeeId" FROM "OrgAssignment" WHERE "divisionId" = $1 AND "unitId" IS NULL
+			AND position IN ('DIRECTOR', 'DEPUTY') AND "endedAt" IS NULL AND "employeeId" <> $2`, sc.Div, empID))
 	} else {
-		_ = s.db.Select(&to, `SELECT "employeeId" FROM "OrgAssignment" WHERE "divisionId" = 'admin' AND "unitId" IS NULL
-			AND position = 'DIRECTOR' AND "endedAt" IS NULL AND "employeeId" <> $1`, empID)
+		errlog.Err(s.db.Select(&to, `SELECT "employeeId" FROM "OrgAssignment" WHERE "divisionId" = 'admin' AND "unitId" IS NULL
+			AND position = 'DIRECTOR' AND "endedAt" IS NULL AND "employeeId" <> $1`, empID))
 	}
 	return to, nil
 }
@@ -597,7 +598,7 @@ func (s *OrgService) ReviewPlan(empID, role, planID string, approve bool, note s
 		}
 	}
 	var author string
-	_ = s.db.Get(&author, `SELECT COALESCE("createdById", '') FROM "OrgPlan" WHERE id = $1`, planID)
+	errlog.Err(s.db.Get(&author, `SELECT COALESCE("createdById", '') FROM "OrgPlan" WHERE id = $1`, planID))
 	_, err := s.db.Exec(`UPDATE "OrgPlan" SET status = $2, "reviewedById" = $3, "reviewedAt" = now(), "reviewNote" = NULLIF($4, '') WHERE id = $1`,
 		planID, status, empID, note)
 	return author, err
@@ -634,7 +635,7 @@ func (s *OrgService) AddPlanItem(empID, role, planID string, in OrgPlanItemInput
 	}
 	if in.OwnerID != "" {
 		var n int
-		_ = s.db.Get(&n, `SELECT count(*) FROM "OrgAssignment" WHERE "employeeId" = $1 AND "divisionId" = $2 AND "endedAt" IS NULL`, in.OwnerID, div)
+		errlog.Err(s.db.Get(&n, `SELECT count(*) FROM "OrgAssignment" WHERE "employeeId" = $1 AND "divisionId" = $2 AND "endedAt" IS NULL`, in.OwnerID, div))
 		if n == 0 {
 			return "", errors.New("المسؤول لازم من كادر هالإدارة")
 		}
@@ -696,11 +697,11 @@ func (s *OrgService) AddPlanItem(empID, role, planID string, in OrgPlanItemInput
 // UpdatePlanItem نسبة يدوية (للبنود بلا مقياس) أو «خلص».
 func (s *OrgService) UpdatePlanItem(empID, role, itemID string, manual *int, done *bool) error {
 	var planID string
-	_ = s.db.Get(&planID, `SELECT "planId" FROM "OrgPlanItem" WHERE id = $1`, itemID)
+	errlog.Err(s.db.Get(&planID, `SELECT "planId" FROM "OrgPlanItem" WHERE id = $1`, itemID))
 	sc := s.planScope(planID)
 	// المسؤول عن البند يحدّث نسبته هم
 	var isOwner bool
-	_ = s.db.Get(&isOwner, `SELECT COALESCE("ownerId" = $2, false) FROM "OrgPlanItem" WHERE id = $1`, itemID, empID)
+	errlog.Err(s.db.Get(&isOwner, `SELECT COALESCE("ownerId" = $2, false) FROM "OrgPlanItem" WHERE id = $1`, itemID, empID))
 	if !isOwner && !s.planEdit(empID, role, sc) {
 		return ErrOrgHidden
 	}
@@ -728,7 +729,7 @@ func (s *OrgService) AddComment(empID, role, targetType, targetID, text string) 
 		div = s.issueDivision(targetID)
 	case "PLAN_ITEM":
 		var planID string
-		_ = s.db.Get(&planID, `SELECT "planId" FROM "OrgPlanItem" WHERE id = $1`, targetID)
+		errlog.Err(s.db.Get(&planID, `SELECT "planId" FROM "OrgPlanItem" WHERE id = $1`, targetID))
 		div, _ = s.planDivision(planID)
 	default:
 		return errors.New("نوع غير صالح")

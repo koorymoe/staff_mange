@@ -2,6 +2,7 @@ package repository
 
 import (
 	"github.com/lib/pq"
+	"staffmange-api/internal/errlog"
 
 	"github.com/jmoiron/sqlx"
 
@@ -311,7 +312,7 @@ func (r *KpiRepository) RoleLeaderboard(roles []string, since, until string, sco
 // والسجل يبقى. يرجّع عدد التقييمات ومجموع نقاطها.
 func (r *KpiRepository) ResetAllActive() (int64, int, error) {
 	var pts int
-	_ = r.db.Get(&pts, `SELECT COALESCE(SUM(points), 0) FROM "KpiEvaluation" WHERE cancelled = false`)
+	errlog.Err(r.db.Get(&pts, `SELECT COALESCE(SUM(points), 0) FROM "KpiEvaluation" WHERE cancelled = false`))
 	res, err := r.db.Exec(`UPDATE "KpiEvaluation" SET cancelled = true, "cancelledAt" = now(), "cancelNote" = 'MONTHLY_RESET'
 		WHERE cancelled = false`)
 	if err != nil {

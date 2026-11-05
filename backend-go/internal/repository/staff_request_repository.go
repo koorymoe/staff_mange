@@ -3,6 +3,7 @@ package repository
 import (
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
+	"staffmange-api/internal/errlog"
 
 	"staffmange-api/internal/model"
 )
@@ -88,9 +89,9 @@ func (r *StaffRequestRepository) hydrate(sr *model.StaffRequest) {
 		}
 	}
 	sr.Employees = []model.EmployeeBrief{}
-	_ = r.db.Select(&sr.Employees, `
+	errlog.Err(r.db.Select(&sr.Employees, `
 		SELECT e.id, e.name, e.position FROM "StaffRequestEmployee" sre
 		JOIN "Employee" e ON e.id = sre."employeeId"
 		WHERE sre."requestId" = $1 ORDER BY e.name
-	`, sr.ID)
+	`, sr.ID))
 }

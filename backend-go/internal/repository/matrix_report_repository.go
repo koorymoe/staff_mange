@@ -2,6 +2,7 @@ package repository
 
 import (
 	"database/sql"
+	"staffmange-api/internal/errlog"
 	"time"
 
 	"github.com/jmoiron/sqlx"
@@ -46,8 +47,8 @@ func (r *MatrixReportRepository) Attendance(id, day string) ([]DayAttendance, er
 // OnLeave عنده إجازة معتمدة تشمل اليوم؟ (ع 10-13: الي بإجازة مو غايب)
 func (r *MatrixReportRepository) OnLeave(id, day string) bool {
 	var n int
-	_ = r.db.Get(&n, `SELECT COUNT(*) FROM "LeaveRequest" WHERE "employeeId" = $1 AND status = 'APPROVED'
-		AND $2::date BETWEEN "startDate"::date AND "endDate"::date`, id, day)
+	errlog.Err(r.db.Get(&n, `SELECT COUNT(*) FROM "LeaveRequest" WHERE "employeeId" = $1 AND status = 'APPROVED'
+		AND $2::date BETWEEN "startDate"::date AND "endDate"::date`, id, day))
 	return n > 0
 }
 
@@ -158,14 +159,14 @@ func (r *MatrixReportRepository) Achievements(id string) (*AchievementStats, err
 // Complaints شكاوى مرتبطة بشغله (٣٠ يوم).
 func (r *MatrixReportRepository) Complaints(id string) int {
 	var n int
-	_ = r.db.Get(&n, `SELECT COUNT(*) FROM "Complaint" WHERE "relatedEmployeeId" = $1 AND "createdAt" > now() - interval '30 days'`, id)
+	errlog.Err(r.db.Get(&n, `SELECT COUNT(*) FROM "Complaint" WHERE "relatedEmployeeId" = $1 AND "createdAt" > now() - interval '30 days'`, id))
 	return n
 }
 
 // AdjustedInvoices فواتيره الي انعدّلت (٣٠ يوم).
 func (r *MatrixReportRepository) AdjustedInvoices(id string) int {
 	var n int
-	_ = r.db.Get(&n, `SELECT COUNT(*) FROM "LeaderInvoice" WHERE "employeeId" = $1 AND "adjustedAt" IS NOT NULL AND "createdAt" > now() - interval '30 days'`, id)
+	errlog.Err(r.db.Get(&n, `SELECT COUNT(*) FROM "LeaderInvoice" WHERE "employeeId" = $1 AND "adjustedAt" IS NOT NULL AND "createdAt" > now() - interval '30 days'`, id))
 	return n
 }
 
@@ -175,9 +176,9 @@ func (r *MatrixReportRepository) ResponseMinutes(id string) (avg float64, n int)
 		Avg sql.NullFloat64 `db:"avg"`
 		N   int             `db:"n"`
 	}
-	_ = r.db.Get(&row, `SELECT AVG(EXTRACT(EPOCH FROM ("materialsReadyAt" - "assignedAt"))/60) AS avg, COUNT(*) AS n
+	errlog.Err(r.db.Get(&row, `SELECT AVG(EXTRACT(EPOCH FROM ("materialsReadyAt" - "assignedAt"))/60) AS avg, COUNT(*) AS n
 		FROM "Mission" WHERE "leaderId" = $1 AND "assignedAt" > now() - interval '30 days'
-		  AND "materialsReadyAt" IS NOT NULL AND "materialsReadyAt" > "assignedAt"`, id)
+		  AND "materialsReadyAt" IS NOT NULL AND "materialsReadyAt" > "assignedAt"`, id))
 	return row.Avg.Float64, row.N
 }
 
@@ -253,11 +254,11 @@ func (r *MatrixReportRepository) Performance(id string, offsetDays int) (*PerfSt
 	st := &PerfStats{Total: agg.Total, Completed: agg.Completed, Partial: agg.Partial, Timed: agg.Timed, Outliers: agg.Outliers, Unstarted: agg.Unstarted,
 		AvgActual: agg.AvgAct.Float64, AvgExpected: agg.AvgExp.Float64, GroupPartialRate: -1, Slow: []PerfJob{}}
 	if offsetDays == 0 {
-		_ = r.db.Select(&st.Slow, perfJobsCTE+`
+		errlog.Err(r.db.Select(&st.Slow, perfJobsCTE+`
 			SELECT mine.id, mine.code, mine.service, ROUND(actual)::int AS actual, ROUND(med.expected)::int AS expected
 			FROM mine JOIN med ON med."serviceId" = mine."serviceId"
 			WHERE actual >= 5 AND actual < 840 AND actual > med.expected * 1.25
-			ORDER BY actual / NULLIF(med.expected, 0) DESC LIMIT 5`, id, offsetDays)
+			ORDER BY actual / NULLIF(med.expected, 0) DESC LIMIT 5`, id, offsetDays))
 		var rate sql.NullFloat64
 		if r.db.Get(&rate, `SELECT AVG(("partialCount" > 0)::int) FROM "Booking"
 			WHERE "scheduledAt" >= now() - interval '30 days' AND status::text <> 'CANCELLED'`) == nil && rate.Valid {

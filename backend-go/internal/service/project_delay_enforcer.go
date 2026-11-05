@@ -3,6 +3,7 @@ package service
 import (
 	"fmt"
 	"log"
+	"staffmange-api/internal/errlog"
 	"time"
 
 	"github.com/google/uuid"
@@ -38,10 +39,11 @@ func enforceProjectDelays(db *sqlx.DB, report func() (*ProjectsReport, error), n
 			continue
 		}
 		var skip bool
-		// كتب سبب لهاي المرحلة، أو انطلب منه تفسير خلال ٢٤ ساعة؟
-		_ = db.Get(&skip, `SELECT EXISTS (SELECT 1 FROM "ProjectDelayReason" WHERE "projectId" = $1 AND stage = $2)
+		errlog.
+			// كتب سبب لهاي المرحلة، أو انطلب منه تفسير خلال ٢٤ ساعة؟
+			Err(db.Get(&skip, `SELECT EXISTS (SELECT 1 FROM "ProjectDelayReason" WHERE "projectId" = $1 AND stage = $2)
 			OR EXISTS (SELECT 1 FROM "MonitorJustification" WHERE "employeeId" = $3 AND question LIKE $4 AND "createdAt" > now() - interval '24 hours')`,
-			p.ID, p.Stage, p.OwnerID, "%"+p.Code+"%"+p.Stage+"%")
+				p.ID, p.Stage, p.OwnerID, "%"+p.Code+"%"+p.Stage+"%"))
 		if skip {
 			continue
 		}

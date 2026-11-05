@@ -3,6 +3,7 @@ package repository
 import (
 	"database/sql"
 	"errors"
+	"staffmange-api/internal/errlog"
 	"staffmange-api/internal/timeutil"
 	"time"
 
@@ -54,10 +55,10 @@ func (r *BookingReopenRepository) Reopen(bookingID, byName, reason string) (*Reo
 		return nil, err
 	}
 	res := &ReopenResult{Code: b.Code, CrewIDs: []string{}}
-	_ = tx.Get(&res.HasInvoice, `SELECT EXISTS (SELECT 1 FROM "LeaderInvoice" WHERE "bookingId" = $1 AND "revokedAt" IS NULL)`, bookingID)
-	_ = tx.Select(&res.CrewIDs, `SELECT DISTINCT x FROM (
+	errlog.Err(tx.Get(&res.HasInvoice, `SELECT EXISTS (SELECT 1 FROM "LeaderInvoice" WHERE "bookingId" = $1 AND "revokedAt" IS NULL)`, bookingID))
+	errlog.Err(tx.Select(&res.CrewIDs, `SELECT DISTINCT x FROM (
 		SELECT "employeeId" AS x FROM "BookingAssignment" WHERE "bookingId" = $1
-		UNION SELECT "leaderId" FROM "Mission" WHERE "bookingId" = $1 AND "leaderId" IS NOT NULL) t WHERE x IS NOT NULL`, bookingID)
+		UNION SELECT "leaderId" FROM "Mission" WHERE "bookingId" = $1 AND "leaderId" IS NOT NULL) t WHERE x IS NOT NULL`, bookingID))
 	return res, tx.Commit()
 }
 
@@ -104,8 +105,8 @@ func (r *BookingReopenRepository) Unstart(bookingID, byName, reason string) (*Re
 		return nil, err
 	}
 	res := &ReopenResult{Code: b.Code, CrewIDs: []string{}}
-	_ = tx.Select(&res.CrewIDs, `SELECT DISTINCT x FROM (
+	errlog.Err(tx.Select(&res.CrewIDs, `SELECT DISTINCT x FROM (
 		SELECT "employeeId" AS x FROM "BookingAssignment" WHERE "bookingId" = $1
-		UNION SELECT "leaderId" FROM "Mission" WHERE "bookingId" = $1 AND "leaderId" IS NOT NULL) t WHERE x IS NOT NULL`, bookingID)
+		UNION SELECT "leaderId" FROM "Mission" WHERE "bookingId" = $1 AND "leaderId" IS NOT NULL) t WHERE x IS NOT NULL`, bookingID))
 	return res, tx.Commit()
 }

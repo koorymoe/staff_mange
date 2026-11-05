@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"staffmange-api/internal/errlog"
 	"strings"
 	"time"
 	"unicode/utf8"
@@ -154,8 +155,8 @@ func (h *ProjectQuoteWatchHandler) Act(w http.ResponseWriter, r *http.Request) {
 		}
 		issueID = &id
 		heads := []string{}
-		_ = h.db.Select(&heads, `SELECT DISTINCT "employeeId" FROM "OrgAssignment" WHERE "endedAt" IS NULL
-			AND position IN ('DIRECTOR', 'DEPUTY') AND "divisionId" = 'eng' AND ("unitId" IS NULL OR "unitId" = 'eng.projects')`)
+		errlog.Err(h.db.Select(&heads, `SELECT DISTINCT "employeeId" FROM "OrgAssignment" WHERE "endedAt" IS NULL
+			AND position IN ('DIRECTOR', 'DEPUTY') AND "divisionId" = 'eng' AND ("unitId" IS NULL OR "unitId" = 'eng.projects')`))
 		for _, hd := range heads {
 			_ = h.deps.notif.Create(hd, "org_issue", "📌 المراقب صعّد إلك: "+what+" — "+note+". اكتب خطة الحل بمكتب الإدارة.")
 		}

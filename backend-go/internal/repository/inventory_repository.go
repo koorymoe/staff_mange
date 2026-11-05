@@ -331,7 +331,7 @@ func (r *InventoryRepository) ExemptPersonalTool(employeeID, toolName string, no
 	}
 	byName := ""
 	if actorID != nil {
-		_ = r.db.Get(&byName, `SELECT name FROM "Employee" WHERE id = $1`, *actorID)
+		errlog.Err(r.db.Get(&byName, `SELECT name FROM "Employee" WHERE id = $1`, *actorID))
 	}
 	_, err := r.db.Exec(`
 		INSERT INTO "PersonalToolExemption" (id, "employeeId", "toolName", note, "byEmployeeId", "byName")

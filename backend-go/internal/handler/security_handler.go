@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"runtime"
 	"runtime/debug"
+	"staffmange-api/internal/errlog"
 	"staffmange-api/internal/safeguard"
 	"time"
 
@@ -109,7 +110,7 @@ func (h *SecurityHandler) Dashboard(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var dbSizeBytes float64
-	_ = h.db.Get(&dbSizeBytes, `SELECT pg_database_size(current_database())`)
+	errlog.Err(h.db.Get(&dbSizeBytes, `SELECT pg_database_size(current_database())`))
 
 	dbStats := h.db.Stats()
 	diskTotal, diskUsed, diskFree := diskUsage()

@@ -1,6 +1,7 @@
 package repository
 
 import (
+	"staffmange-api/internal/errlog"
 	"staffmange-api/internal/model"
 	"time"
 
@@ -285,7 +286,7 @@ func (r *MatrixChainRepository) PendingRatings(leaderID string) ([]PendingCrewRa
 	}
 	for i := range rows {
 		names := []EmployeeName{}
-		_ = r.db.Select(&names, `SELECT id, name FROM "Employee" WHERE id = ANY($1) ORDER BY name`, rows[i].TechIDs)
+		errlog.Err(r.db.Select(&names, `SELECT id, name FROM "Employee" WHERE id = ANY($1) ORDER BY name`, rows[i].TechIDs))
 		rows[i].Techs = names
 	}
 	return rows, nil
@@ -294,17 +295,17 @@ func (r *MatrixChainRepository) PendingRatings(leaderID string) ([]PendingCrewRa
 // IsBookingLeader الموظف ليدر هذا الحجز؟
 func (r *MatrixChainRepository) IsBookingLeader(bookingID, employeeID string) bool {
 	var ok bool
-	_ = r.db.Get(&ok, `SELECT EXISTS (SELECT 1 FROM "Booking" b JOIN "Employee" se ON se.id = b."projectSupervisorId" AND se."isLeader" WHERE b.id = $1 AND b."projectSupervisorId" = $2)
+	errlog.Err(r.db.Get(&ok, `SELECT EXISTS (SELECT 1 FROM "Booking" b JOIN "Employee" se ON se.id = b."projectSupervisorId" AND se."isLeader" WHERE b.id = $1 AND b."projectSupervisorId" = $2)
 	                OR EXISTS (SELECT 1 FROM "BookingAssignment" a JOIN "Employee" e ON e.id = a."employeeId"
 	                     WHERE a."bookingId" = $1 AND a."employeeId" = $2 AND e."isLeader")
-	                OR EXISTS (SELECT 1 FROM "Mission" m WHERE m."bookingId" = $1 AND m."leaderId" = $2)`, bookingID, employeeID)
+	                OR EXISTS (SELECT 1 FROM "Mission" m WHERE m."bookingId" = $1 AND m."leaderId" = $2)`, bookingID, employeeID))
 	return ok
 }
 
 // IsBookingTech الفني مكلّف بهذا الحجز؟
 func (r *MatrixChainRepository) IsBookingTech(bookingID, employeeID string) bool {
 	var ok bool
-	_ = r.db.Get(&ok, `SELECT EXISTS (SELECT 1 FROM "BookingAssignment" WHERE "bookingId" = $1 AND "employeeId" = $2)`, bookingID, employeeID)
+	errlog.Err(r.db.Get(&ok, `SELECT EXISTS (SELECT 1 FROM "BookingAssignment" WHERE "bookingId" = $1 AND "employeeId" = $2)`, bookingID, employeeID))
 	return ok
 }
 
@@ -431,7 +432,7 @@ func (r *MatrixChainRepository) BookingCodeAndEmployee(bookingID, employeeID str
 		Code string `db:"code"`
 		Name string `db:"name"`
 	}
-	_ = r.db.Get(&row, `SELECT b.code, e.name FROM "Booking" b, "Employee" e WHERE b.id = $1 AND e.id = $2`, bookingID, employeeID)
+	errlog.Err(r.db.Get(&row, `SELECT b.code, e.name FROM "Booking" b, "Employee" e WHERE b.id = $1 AND e.id = $2`, bookingID, employeeID))
 	return row.Code, row.Name
 }
 
@@ -479,6 +480,6 @@ func (r *MatrixChainRepository) Monitors() ([]string, error) {
 // الأقدم ما ينحاسب عليها أحد (الزر ما چان موجود).
 func (r *MatrixChainRepository) ContactFeatureSince() *time.Time {
 	var t *time.Time
-	_ = r.db.Get(&t, `SELECT min("confirmationContactedAt") FROM "Booking"`)
+	errlog.Err(r.db.Get(&t, `SELECT min("confirmationContactedAt") FROM "Booking"`))
 	return t
 }

@@ -16,6 +16,7 @@ import (
 	"log"
 	"os"
 	"sort"
+	"staffmange-api/internal/errlog"
 	"strings"
 
 	"github.com/joho/godotenv"
@@ -73,13 +74,13 @@ func main() {
 		excelSims[norm(s.SimNumber)] = s.Status
 	}
 	var dbSimCount int
-	_ = db.Get(&dbSimCount, `SELECT COUNT(*) FROM "SimCard"`)
+	errlog.Err(db.Get(&dbSimCount, `SELECT COUNT(*) FROM "SimCard"`))
 	dbSims := map[string]string{}
 	rows := []struct {
 		SimNumber string `db:"simNumber"`
 		Status    string `db:"status"`
 	}{}
-	_ = db.Select(&rows, `SELECT "simNumber", status::text AS status FROM "SimCard"`)
+	errlog.Err(db.Select(&rows, `SELECT "simNumber", status::text AS status FROM "SimCard"`))
 	for _, r := range rows {
 		dbSims[norm(r.SimNumber)] = r.Status
 	}
@@ -127,8 +128,8 @@ func main() {
 		}
 	}
 	var dbCust, dbReq int
-	_ = db.Get(&dbCust, `SELECT COUNT(*) FROM "GpsCustomer"`)
-	_ = db.Get(&dbReq, `SELECT COUNT(*) FROM "GpsDeviceRequest"`)
+	errlog.Err(db.Get(&dbCust, `SELECT COUNT(*) FROM "GpsCustomer"`))
+	errlog.Err(db.Get(&dbReq, `SELECT COUNT(*) FROM "GpsDeviceRequest"`))
 
 	fmt.Printf("\n【الزبائن】\n")
 	fmt.Printf("  سطور الإكسل: %d\n", len(f.Customers))

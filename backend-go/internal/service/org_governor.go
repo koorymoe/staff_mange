@@ -73,8 +73,8 @@ func (g *OrgGovernor) say(empID, kind, msg string) {
 // startedAt أول تشغيل — الغرامات بس على شكاوي انفتحت بعده.
 func (g *OrgGovernor) startedAt() time.Time {
 	var v string
-	_ = g.db.Get(&v, `INSERT INTO "OrgGovernorState" (key, value) VALUES ($1, $2)
-		ON CONFLICT (key) DO UPDATE SET key = EXCLUDED.key RETURNING value`, orgGovernorStarted, g.now().UTC().Format(time.RFC3339))
+	errlog.Err(g.db.Get(&v, `INSERT INTO "OrgGovernorState" (key, value) VALUES ($1, $2)
+		ON CONFLICT (key) DO UPDATE SET key = EXCLUDED.key RETURNING value`, orgGovernorStarted, g.now().UTC().Format(time.RFC3339)))
 	t, err := time.Parse(time.RFC3339, v)
 	if err != nil {
 		return g.now()
@@ -204,13 +204,13 @@ func FinePoints(unresolved48 bool, priorOnEmployee, priorFromCustomer int) (int,
 func (g *OrgGovernor) fineFloor(kind string) time.Time {
 	floor := g.startedAt()
 	var on *time.Time
-	_ = g.db.Get(&on, `SELECT "updatedAt" FROM "SystemSwitch" WHERE key = $1 AND enabled`, model.SwitchOrgGovernor)
+	errlog.Err(g.db.Get(&on, `SELECT "updatedAt" FROM "SystemSwitch" WHERE key = $1 AND enabled`, model.SwitchOrgGovernor))
 	if on != nil && on.After(floor) {
 		floor = *on
 	}
 	// النوع انوقف (٣ رفضات) ورجع — ما ننزل المتراكم بالتوقف
 	var resumed *time.Time
-	_ = g.db.Get(&resumed, `SELECT "resumedAt" FROM "AiActionKindPause" WHERE kind = $1 AND "resumedAt" IS NOT NULL`, kind)
+	errlog.Err(g.db.Get(&resumed, `SELECT "resumedAt" FROM "AiActionKindPause" WHERE kind = $1 AND "resumedAt" IS NOT NULL`, kind))
 	if resumed != nil && resumed.After(floor) {
 		floor = *resumed
 	}
@@ -260,29 +260,29 @@ func (g *OrgGovernor) RunFines() {
 			// ننتظر لحد ما كل شكاوي نفس الحجز على نفس الشخص تستحق، والتأخير لو أي وحدة تأخرت
 			var pending, anyLate bool
 			if c.BookingID != nil {
-				_ = g.db.Get(&pending, `SELECT EXISTS (SELECT 1 FROM "Complaint" c WHERE c."bookingId" = $1 AND `+orgComplaintPerson+` = $2
-					AND c.status IN ('NEW', 'IN_PROGRESS') AND c."createdAt" + interval '48 hours' > $3)`, *c.BookingID, *c.Person, now.UTC())
-				_ = g.db.Get(&anyLate, `SELECT EXISTS (SELECT 1 FROM "Complaint" c WHERE c."bookingId" = $1 AND `+orgComplaintPerson+` = $2
+				errlog.Err(g.db.Get(&pending, `SELECT EXISTS (SELECT 1 FROM "Complaint" c WHERE c."bookingId" = $1 AND `+orgComplaintPerson+` = $2
+					AND c.status IN ('NEW', 'IN_PROGRESS') AND c."createdAt" + interval '48 hours' > $3)`, *c.BookingID, *c.Person, now.UTC()))
+				errlog.Err(g.db.Get(&anyLate, `SELECT EXISTS (SELECT 1 FROM "Complaint" c WHERE c."bookingId" = $1 AND `+orgComplaintPerson+` = $2
 					AND c."droppedNoAnswerAt" IS NULL AND NOT (c."nextCallAt" IS NOT NULL AND c."nextCallAt" >= c."createdAt" + interval '48 hours')
 					AND ((c.status IN ('NEW', 'IN_PROGRESS') AND c."createdAt" + interval '48 hours' <= $3) OR c."resolvedAt" > c."createdAt" + interval '48 hours'))`,
-					*c.BookingID, *c.Person, now.UTC())
+					*c.BookingID, *c.Person, now.UTC()))
 			} else {
 				anyLate = late && !c.NoAnswer
 			}
 			if !pending {
 				var priorEmp, priorCust int
-				_ = g.db.Get(&priorEmp, `SELECT count(DISTINCT COALESCE(c."bookingId", c.id)) FROM "Complaint" c
+				errlog.Err(g.db.Get(&priorEmp, `SELECT count(DISTINCT COALESCE(c."bookingId", c.id)) FROM "Complaint" c
 				WHERE c.id <> $1 AND `+orgComplaintPerson+` = $2 AND c."createdAt" >= $4
 				AND c."createdAt" BETWEEN $3::timestamp - interval '30 days' AND $3
 				AND ($5::text IS NULL OR c."bookingId" IS DISTINCT FROM $5)
 				AND c."droppedNoAnswerAt" IS NULL
 				AND NOT EXISTS (SELECT 1 FROM "AiAction" a WHERE a.kind = $6 AND a.status = 'UNDONE'
 					AND a."entityId" = COALESCE('BOOKING:' || c."bookingId" || ':' || $2, 'COMPLAINT:' || c.id))`,
-					c.ID, *c.Person, c.CreatedAt, since.UTC(), c.BookingID, model.AiActionOrgFineCustomer)
-				_ = g.db.Get(&priorCust, `SELECT count(DISTINCT COALESCE("bookingId", id)) FROM "Complaint"
+					c.ID, *c.Person, c.CreatedAt, since.UTC(), c.BookingID, model.AiActionOrgFineCustomer))
+				errlog.Err(g.db.Get(&priorCust, `SELECT count(DISTINCT COALESCE("bookingId", id)) FROM "Complaint"
 				WHERE id <> $1 AND "customerId" = $2 AND "createdAt" < $3 AND "createdAt" >= $4
 				AND ($5::text IS NULL OR "bookingId" IS DISTINCT FROM $5) AND "droppedNoAnswerAt" IS NULL`,
-					c.ID, c.Customer, c.CreatedAt, since.UTC(), c.BookingID)
+					c.ID, c.Customer, c.CreatedAt, since.UTC(), c.BookingID))
 				pts, why := FinePoints(anyLate, priorEmp, priorCust)
 				g.fine(model.AiActionOrgFineCustomer, c, *c.Person, pts, why)
 			}
@@ -291,9 +291,9 @@ func (g *OrgGovernor) RunFines() {
 		// الماسك وقت الاستحقاق: المدير بالوكالة إذا الأصلي بإجازة (المبدأ ٢٠)، وإلا الأصلي
 		var opsDirector string
 		if late && !c.NoAnswer && !due.Before(floorOps) {
-			_ = g.db.Get(&opsDirector, `SELECT "employeeId" FROM "OrgAssignment" WHERE "divisionId" = 'ops' AND "unitId" IS NULL
+			errlog.Err(g.db.Get(&opsDirector, `SELECT "employeeId" FROM "OrgAssignment" WHERE "divisionId" = 'ops' AND "unitId" IS NULL
 				AND position = 'DIRECTOR' AND "startedAt" <= $1 AND ("endedAt" IS NULL OR "endedAt" > $1)
-				ORDER BY acting DESC, "startedAt" DESC LIMIT 1`, due.UTC())
+				ORDER BY acting DESC, "startedAt" DESC LIMIT 1`, due.UTC()))
 		}
 		if opsDirector != "" && !g.protected(opsDirector) {
 			pts := orgFineMinPoints
@@ -351,10 +351,10 @@ func (g *OrgGovernor) fine(kind string, c orgComplaint, empID string, pts int, w
 // reportToDirector «يرفع تقرير بالقرارات للمدير» — مدير إدارة الموظف (ونسخة لمدير الإدارة).
 func (g *OrgGovernor) reportToDirector(empID, msg string) {
 	dirs := []string{}
-	_ = g.db.Select(&dirs, `SELECT DISTINCT d."employeeId" FROM "OrgAssignment" a
+	errlog.Err(g.db.Select(&dirs, `SELECT DISTINCT d."employeeId" FROM "OrgAssignment" a
 		JOIN "OrgAssignment" d ON (d."divisionId" = a."divisionId" OR d."divisionId" = 'admin') AND d."unitId" IS NULL
 			AND d.position = 'DIRECTOR' AND d."endedAt" IS NULL
-		WHERE a."employeeId" = $1 AND a."endedAt" IS NULL AND d."employeeId" <> $1`, empID)
+		WHERE a."employeeId" = $1 AND a."endedAt" IS NULL AND d."employeeId" <> $1`, empID))
 	for _, d := range dirs {
 		g.say(d, "ORG_REPORT", msg)
 	}
@@ -484,7 +484,7 @@ func (g *OrgGovernor) EvaluateMonth(period string) error {
 			}
 		}
 		var accepted bool
-		_ = g.db.Get(&accepted, `SELECT EXISTS (SELECT 1 FROM "PrivacyPolicyAcceptance" WHERE "employeeId" = $1 AND "pointsHash" IS NOT NULL)`, h.Emp)
+		errlog.Err(g.db.Get(&accepted, `SELECT EXISTS (SELECT 1 FROM "PrivacyPolicyAcceptance" WHERE "employeeId" = $1 AND "pointsHash" IS NOT NULL)`, h.Emp))
 		c.Principle = accepted
 		score := OrgScore(c)
 		if noData {
@@ -502,11 +502,11 @@ func (g *OrgGovernor) EvaluateMonth(period string) error {
 				// السحب يحتاج تنبيه وصل فعلاً الشهر الي فات (ما انمنع ولا انلغى)
 				prevPeriod := from.AddDate(0, -1, 0).Format("2006-01")
 				var warned bool
-				_ = g.db.Get(&warned, `SELECT EXISTS (SELECT 1 FROM "AiAction" WHERE kind = $1 AND "entityId" = $2 AND period = $3 AND status = 'DONE')`,
-					model.AiActionOrgWarn, orgEvalEntity(h.Emp, prevPeriod), prevPeriod)
+				errlog.Err(g.db.Get(&warned, `SELECT EXISTS (SELECT 1 FROM "AiAction" WHERE kind = $1 AND "entityId" = $2 AND period = $3 AND status = 'DONE')`,
+					model.AiActionOrgWarn, orgEvalEntity(h.Emp, prevPeriod), prevPeriod))
 				var already bool
-				_ = g.db.Get(&already, `SELECT EXISTS (SELECT 1 FROM "AiAction" WHERE kind = $1 AND "entityId" = $2 AND status = 'DONE')`,
-					model.AiActionOrgWarn, orgEvalEntity(h.Emp, period))
+				errlog.Err(g.db.Get(&already, `SELECT EXISTS (SELECT 1 FROM "AiAction" WHERE kind = $1 AND "entityId" = $2 AND status = 'DONE')`,
+					model.AiActionOrgWarn, orgEvalEntity(h.Emp, period)))
 				switch {
 				case warned && g.revoke(h.Emp, period, *score, comp):
 					decision = "REVOKE"
@@ -531,7 +531,7 @@ func (g *OrgGovernor) EvaluateMonth(period string) error {
 		msg := fmt.Sprintf("🏛️ ماتركس قيّم أصحاب المناصب لشهر %s: %d سليم، %d تنبيه، %d سحب منصب، %d بلا بيانات. التفاصيل بصفحة قرارات ماتركس (وتگدر تتراجع).",
 			period, decisions["OK"], decisions["WARN"], decisions["REVOKE"], decisions["NODATA"])
 		owners := []string{}
-		_ = g.db.Select(&owners, `SELECT id FROM "Employee" WHERE role = 'OWNER' AND status = 'ACTIVE'`)
+		errlog.Err(g.db.Select(&owners, `SELECT id FROM "Employee" WHERE role = 'OWNER' AND status = 'ACTIVE'`))
 		for _, o := range owners {
 			g.say(o, "ORG_REPORT", msg)
 		}

@@ -3,6 +3,7 @@ package repository
 import (
 	"database/sql"
 	"errors"
+	"staffmange-api/internal/errlog"
 	"strings"
 )
 
@@ -30,9 +31,9 @@ func (r *ProjectRepository) Restore(id, byID, reason string) (string, error) {
 		return "", ErrProjectNotRejected
 	}
 	var back sql.NullString
-	_ = tx.Get(&back, `SELECT "fromStage" FROM "ProjectStageLog"
+	errlog.Err(tx.Get(&back, `SELECT "fromStage" FROM "ProjectStageLog"
 		WHERE "projectId" = $1 AND "toStage" LIKE '%مرفوض%' AND "fromStage" IS NOT NULL AND "fromStage" NOT LIKE '%مرفوض%'
-		ORDER BY "createdAt" DESC LIMIT 1`, id)
+		ORDER BY "createdAt" DESC LIMIT 1`, id))
 	to := projectRestoreFallbackStage
 	if back.Valid && strings.TrimSpace(back.String) != "" {
 		to = back.String

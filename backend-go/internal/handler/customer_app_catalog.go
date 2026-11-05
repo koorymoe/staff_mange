@@ -145,8 +145,8 @@ func (h *CustomerAppHandler) CreateBooking(w http.ResponseWriter, r *http.Reques
 		return
 	}
 	var ok bool
-	_ = h.db.Get(&ok, `SELECT EXISTS (SELECT 1 FROM "Service" s LEFT JOIN "ServiceApp" sa ON sa."serviceId" = s.id
-		WHERE s.id = $1 AND `+appServiceFilter+` AND COALESCE(sa.visible, true))`, svc)
+	errlog.Err(h.db.Get(&ok, `SELECT EXISTS (SELECT 1 FROM "Service" s LEFT JOIN "ServiceApp" sa ON sa."serviceId" = s.id
+		WHERE s.id = $1 AND `+appServiceFilter+` AND COALESCE(sa.visible, true))`, svc))
 	if !ok {
 		WriteError(w, http.StatusBadRequest, "الخدمة غير متاحة")
 		return
@@ -196,7 +196,7 @@ func (h *CustomerAppHandler) CreateBooking(w http.ResponseWriter, r *http.Reques
 		return
 	}
 	var id string
-	_ = h.db.Get(&id, `SELECT id FROM "Booking" WHERE code = $1`, code)
+	errlog.Err(h.db.Get(&id, `SELECT id FROM "Booking" WHERE code = $1`, code))
 	// موقع الزبون الرسمي (الي حدده بالتطبيق) يصير موقع الحجز
 	errlog.Exec(h.db.Exec(`UPDATE "Booking" b SET "mapLatitude" = c.lat, "mapLongitude" = c.lng FROM "Customer" c
 		WHERE b.id = $1 AND c.id = b."customerId" AND c."locationSource" = 'APP' AND c.lat IS NOT NULL AND b."mapLatitude" IS NULL`, id))
@@ -213,8 +213,8 @@ func (h *CustomerAppHandler) CreateBooking(w http.ResponseWriter, r *http.Reques
 
 func (h *CustomerAppHandler) owns(accountID, bookingID string) bool {
 	var ok bool
-	_ = h.db.Get(&ok, `SELECT EXISTS (SELECT 1 FROM "Booking" b WHERE b.id = $2 AND b."archivedAt" IS NULL AND (b."customerAccountId" = $1
-		OR b."customerId" = (SELECT "customerId" FROM "CustomerAccount" WHERE id = $1)))`, accountID, bookingID)
+	errlog.Err(h.db.Get(&ok, `SELECT EXISTS (SELECT 1 FROM "Booking" b WHERE b.id = $2 AND b."archivedAt" IS NULL AND (b."customerAccountId" = $1
+		OR b."customerId" = (SELECT "customerId" FROM "CustomerAccount" WHERE id = $1)))`, accountID, bookingID))
 	return ok
 }
 
@@ -268,11 +268,11 @@ func (h *CustomerAppHandler) BookingDetail(w http.ResponseWriter, r *http.Reques
 		return
 	}
 	var services string
-	_ = h.db.Get(&services, `SELECT COALESCE((SELECT string_agg(s.name, '، ') FROM "BookingService" bs JOIN "Service" s ON s.id = bs."serviceId" WHERE bs."bookingId" = $1),
-		(SELECT s.name FROM "Service" s JOIN "Booking" b ON b."serviceId" = s.id WHERE b.id = $1), '')`, id)
+	errlog.Err(h.db.Get(&services, `SELECT COALESCE((SELECT string_agg(s.name, '، ') FROM "BookingService" bs JOIN "Service" s ON s.id = bs."serviceId" WHERE bs."bookingId" = $1),
+		(SELECT s.name FROM "Service" s JOIN "Booking" b ON b."serviceId" = s.id WHERE b.id = $1), '')`, id))
 	var description *string
 	if b.ServiceID != nil {
-		_ = h.db.Get(&description, `SELECT description FROM "ServiceApp" WHERE "serviceId" = $1`, *b.ServiceID)
+		errlog.Err(h.db.Get(&description, `SELECT description FROM "ServiceApp" WHERE "serviceId" = $1`, *b.ServiceID))
 	}
 	var mine *struct {
 		Stars   int     `db:"stars" json:"stars"`
@@ -304,7 +304,7 @@ func (h *CustomerAppHandler) TechPhoto(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var url string
-	_ = h.db.Get(&url, `SELECT COALESCE("photoUrl", '') FROM "Employee" WHERE id = $1`, t.ID)
+	errlog.Err(h.db.Get(&url, `SELECT COALESCE("photoUrl", '') FROM "Employee" WHERE id = $1`, t.ID))
 	key := url
 	if i := strings.Index(key, "/api/files/"); i >= 0 {
 		key = key[i+len("/api/files/"):]
@@ -336,7 +336,7 @@ func (h *CustomerAppHandler) Rate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var status string
-	_ = h.db.Get(&status, `SELECT status FROM "Booking" WHERE id = $1`, id)
+	errlog.Err(h.db.Get(&status, `SELECT status FROM "Booking" WHERE id = $1`, id))
 	if status != "COMPLETED" {
 		WriteError(w, http.StatusBadRequest, "التقييم بعد ما تخلص الخدمة")
 		return
@@ -369,7 +369,7 @@ type appBranch struct {
 
 func (h *CustomerAppHandler) Branches(w http.ResponseWriter, r *http.Request) {
 	rows := []appBranch{}
-	_ = h.db.Select(&rows, `SELECT id, name, address, phone, "mapUrl", ord FROM "AppBranch" ORDER BY ord, name`)
+	errlog.Err(h.db.Select(&rows, `SELECT id, name, address, phone, "mapUrl", ord FROM "AppBranch" ORDER BY ord, name`))
 	WriteJSON(w, http.StatusOK, rows)
 }
 

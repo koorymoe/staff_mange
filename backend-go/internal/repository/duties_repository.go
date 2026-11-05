@@ -1,6 +1,7 @@
 package repository
 
 import (
+	"staffmange-api/internal/errlog"
 	"staffmange-api/internal/model"
 	"strings"
 
@@ -240,7 +241,7 @@ func (r *DutiesRepository) Today(employeeID string) DutiesReport {
 	rep := DutiesReport{EmployeeID: employeeID, Position: positionAr[pos], Duties: []Duty{}, Off: r.dayOff(employeeID)}
 	for _, d := range defs {
 		du := Duty{Key: d.key, Label: d.label, Hint: d.hint, Link: d.link}
-		_ = r.db.Get(&du.Done, r.fill(d.done), employeeID)
+		errlog.Err(r.db.Get(&du.Done, r.fill(d.done), employeeID))
 		switch d.pending {
 		case "":
 			du.Status = "INFO"
@@ -330,10 +331,10 @@ func anyPartial(ds []Duty) bool {
 // dayOff عطلة الموظف اليوم: الجمعة للكل (قرار (ع) 10-22)، أو إجازة معتمدة تغطي اليوم.
 func (r *DutiesRepository) dayOff(employeeID string) string {
 	var off string
-	_ = r.db.Get(&off, `SELECT CASE
+	errlog.Err(r.db.Get(&off, `SELECT CASE
 		WHEN extract(isodow FROM baghdad_today()) = 5 THEN 'FRIDAY'
 		WHEN EXISTS (SELECT 1 FROM "LeaveRequest" l WHERE l."employeeId" = $1 AND l.status = 'APPROVED'
 		  AND baghdad_today() BETWEEN l."startDate" AND l."endDate") THEN 'LEAVE'
-		ELSE '' END`, employeeID)
+		ELSE '' END`, employeeID))
 	return off
 }

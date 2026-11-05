@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
+	"staffmange-api/internal/errlog"
 	"strconv"
 	"time"
 
@@ -312,9 +313,9 @@ func (r *AiRepository) ProcurementSummary(bookingID string, stoppedAt time.Time)
 		return c, "", err
 	}
 	var status sql.NullString
-	_ = r.db.Get(&status, `
+	errlog.Err(r.db.Get(&status, `
 		SELECT status FROM "ProcurementRequest"
-		WHERE "bookingId" = $1 ORDER BY "createdAt" DESC LIMIT 1`, bookingID)
+		WHERE "bookingId" = $1 ORDER BY "createdAt" DESC LIMIT 1`, bookingID))
 	return c, status.String, nil
 }
 
@@ -461,14 +462,14 @@ func (r *AiRepository) FuelAnomalySnapshot(logID string) (*model.FuelAnomalyEvid
 		return nil, err
 	}
 	ev := &model.FuelAnomalyEvidence{NewCost: row.Cost}
-	_ = r.db.Get(&ev.VehiclePlate, `SELECT "plateNumber" FROM "Vehicle" WHERE id = $1`, row.VehicleID)
+	errlog.Err(r.db.Get(&ev.VehiclePlate, `SELECT "plateNumber" FROM "Vehicle" WHERE id = $1`, row.VehicleID))
 	var avg sql.NullFloat64
-	_ = r.db.Get(&avg, `
+	errlog.Err(r.db.Get(&avg, `
 		SELECT AVG(cost) FROM (
 			SELECT cost FROM "VehicleLog"
 			WHERE "vehicleId" = $1 AND type = 'FUEL' AND cost IS NOT NULL AND "createdAt" < $2
 			ORDER BY "createdAt" DESC LIMIT 5
-		) recent`, row.VehicleID, row.CreatedAt)
+		) recent`, row.VehicleID, row.CreatedAt))
 	if avg.Valid && avg.Float64 > 0 {
 		ev.AverageCost = avg.Float64
 		ev.PercentAbove = (row.Cost - avg.Float64) / avg.Float64 * 100
@@ -606,7 +607,7 @@ func (r *AiRepository) RepeatComplaintSnapshot(complaintID, leaderID string, win
 	}
 	ev.Count = len(ev.Complaints)
 	var code sql.NullInt64
-	_ = r.db.Get(&code, `SELECT cu."customerCode" FROM "Complaint" c JOIN "Customer" cu ON cu.id = c."customerId" WHERE c.id = $1`, complaintID)
+	errlog.Err(r.db.Get(&code, `SELECT cu."customerCode" FROM "Complaint" c JOIN "Customer" cu ON cu.id = c."customerId" WHERE c.id = $1`, complaintID))
 	if code.Valid {
 		ev.CustomerCode = model.Customer{CustomerCode: int(code.Int64)}.FormatCode()
 	}

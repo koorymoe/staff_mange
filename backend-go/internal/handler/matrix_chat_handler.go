@@ -95,7 +95,7 @@ type chatMsg struct {
 
 func (h *MatrixChatHandler) own(r *http.Request, id string) bool {
 	var ok bool
-	_ = h.db.Get(&ok, `SELECT EXISTS (SELECT 1 FROM "MatrixTalk" WHERE id = $1 AND "employeeId" = $2)`, id, middleware.EmployeeIDFromContext(r))
+	errlog.Err(h.db.Get(&ok, `SELECT EXISTS (SELECT 1 FROM "MatrixTalk" WHERE id = $1 AND "employeeId" = $2)`, id, middleware.EmployeeIDFromContext(r)))
 	return ok
 }
 
@@ -129,7 +129,7 @@ func (h *MatrixChatHandler) Messages(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	rows := []chatMsg{}
-	_ = h.db.Select(&rows, `SELECT id, role, text, steps, image, "createdAt" FROM "MatrixTalkMessage" WHERE "chatId" = $1 ORDER BY "createdAt"`, id)
+	errlog.Err(h.db.Select(&rows, `SELECT id, role, text, steps, image, "createdAt" FROM "MatrixTalkMessage" WHERE "chatId" = $1 ORDER BY "createdAt"`, id))
 	WriteJSON(w, http.StatusOK, rows)
 }
 
@@ -184,8 +184,8 @@ func (h *MatrixChatHandler) prepare(w http.ResponseWriter, r *http.Request) *cha
 		return nil
 	}
 	var today int
-	_ = h.db.Get(&today, `SELECT count(*) FROM "MatrixTalkMessage" m JOIN "MatrixTalk" c ON c.id = m."chatId"
-		WHERE c."employeeId" = $1 AND m.role = 'USER' AND m."createdAt" > now() - interval '24 hours'`, me)
+	errlog.Err(h.db.Get(&today, `SELECT count(*) FROM "MatrixTalkMessage" m JOIN "MatrixTalk" c ON c.id = m."chatId"
+		WHERE c."employeeId" = $1 AND m.role = 'USER' AND m."createdAt" > now() - interval '24 hours'`, me))
 	limit := chatDailyLimit
 	if !isTopRole(r) {
 		limit = chatStaffDailyLimit
@@ -196,10 +196,10 @@ func (h *MatrixChatHandler) prepare(w http.ResponseWriter, r *http.Request) *cha
 	}
 	// 🧠 الذاكرة (دازاي 10-23): ملخص المحادثة + آخر رسائل بس — الكلفة ثابتة مهما طالت
 	var summary string
-	_ = h.db.Get(&summary, `SELECT summary FROM "MatrixTalk" WHERE id = $1`, id)
+	errlog.Err(h.db.Get(&summary, `SELECT summary FROM "MatrixTalk" WHERE id = $1`, id))
 	hist := []chatMsg{}
-	_ = h.db.Select(&hist, `SELECT * FROM (SELECT id, role, text, steps, image, "createdAt" FROM "MatrixTalkMessage" WHERE "chatId" = $1
-		ORDER BY "createdAt" DESC LIMIT $2) x ORDER BY "createdAt"`, id, service.MemoryKeep)
+	errlog.Err(h.db.Select(&hist, `SELECT * FROM (SELECT id, role, text, steps, image, "createdAt" FROM "MatrixTalkMessage" WHERE "chatId" = $1
+		ORDER BY "createdAt" DESC LIMIT $2) x ORDER BY "createdAt"`, id, service.MemoryKeep))
 	turns := make([]service.AgentTurn, 0, len(hist))
 	for _, m := range hist {
 		t := m.Text
@@ -388,7 +388,7 @@ func parseChatImage(u string) (string, string, bool) {
 
 func (h *MatrixChatHandler) lessonsBlock() string {
 	rows := []string{}
-	_ = h.db.Select(&rows, `SELECT text FROM "MatrixLesson" WHERE active ORDER BY "createdAt" DESC LIMIT 50`)
+	errlog.Err(h.db.Select(&rows, `SELECT text FROM "MatrixLesson" WHERE active ORDER BY "createdAt" DESC LIMIT 50`))
 	if len(rows) == 0 {
 		return ""
 	}
@@ -428,9 +428,9 @@ func (h *MatrixChatHandler) Correct(w http.ResponseWriter, r *http.Request) {
 	}
 	// السياق: سؤال المستخدم الي قبل الرد الغلط
 	var ctx string
-	_ = h.db.Get(&ctx, `SELECT u.text FROM "MatrixTalkMessage" a JOIN "MatrixTalkMessage" u ON u."chatId" = a."chatId"
+	errlog.Err(h.db.Get(&ctx, `SELECT u.text FROM "MatrixTalkMessage" a JOIN "MatrixTalkMessage" u ON u."chatId" = a."chatId"
 		AND u.role = 'USER' AND u."createdAt" < a."createdAt"
-		WHERE a.id = $1 AND a."chatId" = $2 AND a.role = 'ASSISTANT' ORDER BY u."createdAt" DESC LIMIT 1`, r.PathValue("msgId"), id)
+		WHERE a.id = $1 AND a."chatId" = $2 AND a.role = 'ASSISTANT' ORDER BY u."createdAt" DESC LIMIT 1`, r.PathValue("msgId"), id))
 	if ctx == "" {
 		WriteError(w, http.StatusNotFound, "الرد غير موجود")
 		return
@@ -451,8 +451,8 @@ func (h *MatrixChatHandler) Correct(w http.ResponseWriter, r *http.Request) {
 // GET /api/matrix/lessons
 func (h *MatrixChatHandler) Lessons(w http.ResponseWriter, r *http.Request) {
 	rows := []lessonRow{}
-	_ = h.db.Select(&rows, `SELECT l.id, l.text, l.context, e.name AS by, l."createdAt" FROM "MatrixLesson" l
-		LEFT JOIN "Employee" e ON e.id = l."createdById" WHERE l.active ORDER BY l."createdAt" DESC`)
+	errlog.Err(h.db.Select(&rows, `SELECT l.id, l.text, l.context, e.name AS by, l."createdAt" FROM "MatrixLesson" l
+		LEFT JOIN "Employee" e ON e.id = l."createdById" WHERE l.active ORDER BY l."createdAt" DESC`))
 	WriteJSON(w, http.StatusOK, rows)
 }
 

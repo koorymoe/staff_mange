@@ -2,6 +2,7 @@ package repository
 
 import (
 	"github.com/jmoiron/sqlx"
+	"staffmange-api/internal/errlog"
 
 	"staffmange-api/internal/model"
 )
@@ -13,7 +14,7 @@ func OrgEffectiveRoles(db *sqlx.DB, employeeID string) []string {
 	if employeeID == "" {
 		return roles
 	}
-	_ = db.Select(&roles, model.OrgRolesOfEmployeeSQL(), employeeID)
+	errlog.Err(db.Select(&roles, model.OrgRolesOfEmployeeSQL(), employeeID))
 	return roles
 }
 

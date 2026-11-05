@@ -104,8 +104,8 @@ func SaveTrainingNeed(db *sqlx.DB, issueID string, n *TrainingNeed) error {
 
 func IssueTrainingNeeds(db *sqlx.DB, issueID string) []TrainingNeed {
 	rows := []TrainingNeed{}
-	_ = db.Select(&rows, `SELECT id, "issueId", "employeeId", verdict, areas, rules, evidence, "baselinePct", "followUpAt", status, "currentPct", "resultNote", "createdAt"
-		FROM "TrainingNeed" WHERE "issueId" = $1 ORDER BY "createdAt"`, issueID)
+	errlog.Err(db.Select(&rows, `SELECT id, "issueId", "employeeId", verdict, areas, rules, evidence, "baselinePct", "followUpAt", status, "currentPct", "resultNote", "createdAt"
+		FROM "TrainingNeed" WHERE "issueId" = $1 ORDER BY "createdAt"`, issueID))
 	for i := range rows {
 		rows[i].Areas = []string(rows[i].AreasDB)
 	}
@@ -123,11 +123,11 @@ func FollowUpTraining(db *sqlx.DB) (improved, notImproved int, err error) {
 	for _, n := range due {
 		var cur *float64
 		if len(n.Rules) > 0 {
-			_ = db.Get(&cur, `SELECT round(100.0 * sum(points) / NULLIF(sum("maxPoints"), 0), 1)::float8 FROM "MatrixScore"
-				WHERE "employeeId" = $1 AND rule = ANY($2) AND "cancelledAt" IS NULL AND "at" > now() - interval '30 days'`, n.EmployeeID, n.Rules)
+			errlog.Err(db.Get(&cur, `SELECT round(100.0 * sum(points) / NULLIF(sum("maxPoints"), 0), 1)::float8 FROM "MatrixScore"
+				WHERE "employeeId" = $1 AND rule = ANY($2) AND "cancelledAt" IS NULL AND "at" > now() - interval '30 days'`, n.EmployeeID, n.Rules))
 		} else {
-			_ = db.Get(&cur, `SELECT round(100.0 * sum(points) / NULLIF(sum("maxPoints"), 0), 1)::float8 FROM "MatrixScore"
-				WHERE "employeeId" = $1 AND rule NOT IN ('ATTENDANCE','INVENTORY') AND "cancelledAt" IS NULL AND "at" > now() - interval '30 days'`, n.EmployeeID)
+			errlog.Err(db.Get(&cur, `SELECT round(100.0 * sum(points) / NULLIF(sum("maxPoints"), 0), 1)::float8 FROM "MatrixScore"
+				WHERE "employeeId" = $1 AND rule NOT IN ('ATTENDANCE','INVENTORY') AND "cancelledAt" IS NULL AND "at" > now() - interval '30 days'`, n.EmployeeID))
 		}
 		status, note := "", ""
 		switch {

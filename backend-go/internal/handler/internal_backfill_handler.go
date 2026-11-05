@@ -2,6 +2,7 @@ package handler
 
 import (
 	"net/http"
+	"staffmange-api/internal/errlog"
 	"strings"
 
 	"github.com/jmoiron/sqlx"
@@ -62,8 +63,8 @@ func (h *InternalBackfillHandler) Price(w http.ResponseWriter, r *http.Request) 
 	}
 	id := r.PathValue("id")
 	var ok bool
-	_ = h.db.Get(&ok, `SELECT EXISTS (SELECT 1 FROM "Booking" b WHERE b.id = $1 AND `+internalNeedsInvoiceSQL+`
-		AND b."createdAt" < $2::date)`, id, internalBackfillCutoff)
+	errlog.Err(h.db.Get(&ok, `SELECT EXISTS (SELECT 1 FROM "Booking" b WHERE b.id = $1 AND `+internalNeedsInvoiceSQL+`
+		AND b."createdAt" < $2::date)`, id, internalBackfillCutoff))
 	if !ok {
 		WriteError(w, http.StatusBadRequest, "هالزر للأعمال الداخلية القديمة الي بلا فاتورة بس — الجديدة يسوي فاتورتها الإداري")
 		return

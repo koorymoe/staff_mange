@@ -3,6 +3,7 @@ package repository
 import (
 	"errors"
 	"fmt"
+	"staffmange-api/internal/errlog"
 	"strings"
 	"time"
 
@@ -68,7 +69,7 @@ func (r *ManagerRequestRepository) Create(requesterID, title, details, priority,
 	}
 	if r.notif != nil {
 		var name string
-		_ = r.db.Get(&name, `SELECT name FROM "Employee" WHERE id = $1`, requesterID)
+		errlog.Err(r.db.Get(&name, `SELECT name FROM "Employee" WHERE id = $1`, requesterID))
 		msg := fmt.Sprintf("📨 طلب للمدير (%s) من %s: %s", managerRequestPriorities[priority], name, title)
 		_ = r.notif.CreateForRole("ADMIN", "MANAGER_REQUEST", msg)
 		_ = r.notif.CreateForRole("OWNER", "MANAGER_REQUEST", msg)

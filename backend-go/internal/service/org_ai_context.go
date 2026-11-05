@@ -2,6 +2,7 @@ package service
 
 import (
 	"fmt"
+	"staffmange-api/internal/errlog"
 	"strings"
 
 	"github.com/jmoiron/sqlx"
@@ -26,8 +27,8 @@ func OrgBrief(db *sqlx.DB, empID string) string {
 		Summary string `db:"summary"`
 		Units   string `db:"units"`
 	}{}
-	_ = db.Select(&divs, `SELECT d.id, d.name, d.summary, COALESCE(string_agg(u.name, '، ' ORDER BY u.sort), '') AS units
-		FROM "OrgDivision" d LEFT JOIN "OrgUnit" u ON u."divisionId" = d.id GROUP BY d.id, d.name, d.summary, d.sort ORDER BY d.sort`)
+	errlog.Err(db.Select(&divs, `SELECT d.id, d.name, d.summary, COALESCE(string_agg(u.name, '، ' ORDER BY u.sort), '') AS units
+		FROM "OrgDivision" d LEFT JOIN "OrgUnit" u ON u."divisionId" = d.id GROUP BY d.id, d.name, d.summary, d.sort ORDER BY d.sort`))
 	for _, d := range divs {
 		fmt.Fprintf(&b, "- %s (%s): %s\n", d.Name, d.ID, d.Units)
 	}
@@ -35,8 +36,8 @@ func OrgBrief(db *sqlx.DB, empID string) string {
 		Code  string `db:"code"`
 		Title string `db:"title"`
 	}{}
-	_ = db.Select(&clauses, `SELECT split_part(content, ' — ', 1) AS code, "clauseTitle" AS title FROM "PrivacyPolicyPoint"
-		WHERE "isActive" AND "principleNo" IS NOT NULL AND "clauseTitle" IS NOT NULL ORDER BY "principleNo"`)
+	errlog.Err(db.Select(&clauses, `SELECT split_part(content, ' — ', 1) AS code, "clauseTitle" AS title FROM "PrivacyPolicyPoint"
+		WHERE "isActive" AND "principleNo" IS NOT NULL AND "clauseTitle" IS NOT NULL ORDER BY "principleNo"`))
 	if len(clauses) > 0 {
 		parts := make([]string, 0, len(clauses))
 		for _, c := range clauses {
@@ -53,9 +54,9 @@ func OrgBrief(db *sqlx.DB, empID string) string {
 			Unit *string `db:"unit"`
 			Act  bool    `db:"acting"`
 		}{}
-		_ = db.Select(&mine, `SELECT a.position, d.name AS div, u.name AS unit, a.acting FROM "OrgAssignment" a
+		errlog.Err(db.Select(&mine, `SELECT a.position, d.name AS div, u.name AS unit, a.acting FROM "OrgAssignment" a
 			JOIN "OrgDivision" d ON d.id = a."divisionId" LEFT JOIN "OrgUnit" u ON u.id = a."unitId"
-			WHERE a."employeeId" = $1 AND a."endedAt" IS NULL`, empID)
+			WHERE a."employeeId" = $1 AND a."endedAt" IS NULL`, empID))
 		if len(mine) == 0 {
 			b.WriteString("مكان المستخدم بالهيكل: ما انوضع بعد.\n")
 		}
@@ -111,14 +112,14 @@ func (a *MatrixAgent) registerOrgTools() {
 				fmt.Fprintf(&b, "- %s: %s%s — %s\n", place, orgPosAr[r.Pos], act, r.Name)
 			}
 			vac := []string{}
-			_ = a.db.Select(&vac, `SELECT x.place || ' — بلا ' || CASE x.pos WHEN 'DIRECTOR' THEN 'مدير' ELSE 'نائب' END FROM (
+			errlog.Err(a.db.Select(&vac, `SELECT x.place || ' — بلا ' || CASE x.pos WHEN 'DIRECTOR' THEN 'مدير' ELSE 'نائب' END FROM (
 				SELECT d.name AS place, d.id AS div, NULL::text AS unit, d.sort AS s1, -1 AS s2 FROM "OrgDivision" d
 				UNION ALL SELECT d.name || ' / ' || u.name, d.id, u.id, d.sort, u.sort FROM "OrgUnit" u JOIN "OrgDivision" d ON d.id = u."divisionId") p
 				CROSS JOIN (VALUES ('DIRECTOR'), ('DEPUTY')) AS v(pos)
 				CROSS JOIN LATERAL (SELECT p.place, v.pos) x
 				WHERE NOT EXISTS (SELECT 1 FROM "OrgAssignment" a WHERE a."divisionId" = p.div AND a."unitId" IS NOT DISTINCT FROM p.unit
 					AND a.position = v.pos AND a."endedAt" IS NULL)
-				ORDER BY p.s1, p.s2, v.pos`)
+				ORDER BY p.s1, p.s2, v.pos`))
 			if len(vac) > 0 {
 				b.WriteString("الكراسي الفاضية: " + strings.Join(vac, "؛ "))
 			}
@@ -197,13 +198,13 @@ func (a *MatrixAgent) registerOrgTools() {
 				Done   int     `db:"done"`
 				Late   int     `db:"late"`
 			}{}
-			_ = a.db.Select(&plans, `SELECT d.name AS div, u.name AS unit, p.period, p.status,
+			errlog.Err(a.db.Select(&plans, `SELECT d.name AS div, u.name AS unit, p.period, p.status,
 				count(i.id) AS items, count(i."doneAt") AS done,
 				count(i.id) FILTER (WHERE i."doneAt" IS NULL AND i."dueDate" < (now() AT TIME ZONE 'Asia/Baghdad')::date) AS late
 				FROM "OrgPlan" p JOIN "OrgDivision" d ON d.id = p."divisionId" LEFT JOIN "OrgUnit" u ON u.id = p."unitId"
 				LEFT JOIN "OrgPlanItem" i ON i."planId" = p.id
 				WHERE ($1 = '' OR p."divisionId" = $1) AND p.period >= to_char((now() AT TIME ZONE 'Asia/Baghdad') - interval '1 month', 'YYYY-MM')
-				GROUP BY d.name, d.sort, u.name, u.sort, p.period, p.status ORDER BY d.sort, u.sort NULLS FIRST, p.period DESC`, div)
+				GROUP BY d.name, d.sort, u.name, u.sort, p.period, p.status ORDER BY d.sort, u.sort NULLS FIRST, p.period DESC`, div))
 			stAr := map[string]string{"DRAFT": "مسودة", "SUBMITTED": "مرفوعة للاعتماد", "APPROVED": "معتمدة", "RETURNED": "مرجّعة للتعديل"}
 			b.WriteString(fmt.Sprintf("الخطط (الشهر الحالي والي فات، %d):\n", len(plans)))
 			for _, p := range plans {
@@ -219,11 +220,11 @@ func (a *MatrixAgent) registerOrgTools() {
 				Owner *string `db:"owner"`
 				Place string  `db:"place"`
 			}{}
-			_ = a.db.Select(&late, `SELECT i.title, i."dueDate"::text AS due, e.name AS owner, d.name || COALESCE(' / ' || u.name, '') AS place
+			errlog.Err(a.db.Select(&late, `SELECT i.title, i."dueDate"::text AS due, e.name AS owner, d.name || COALESCE(' / ' || u.name, '') AS place
 				FROM "OrgPlanItem" i JOIN "OrgPlan" p ON p.id = i."planId" JOIN "OrgDivision" d ON d.id = p."divisionId"
 				LEFT JOIN "OrgUnit" u ON u.id = p."unitId" LEFT JOIN "Employee" e ON e.id = i."ownerId"
 				WHERE i."doneAt" IS NULL AND i."dueDate" < (now() AT TIME ZONE 'Asia/Baghdad')::date AND ($1 = '' OR p."divisionId" = $1)
-				ORDER BY i."dueDate" LIMIT 20`, div)
+				ORDER BY i."dueDate" LIMIT 20`, div))
 			if len(late) > 0 {
 				b.WriteString("البنود المتأخرة:\n")
 				for _, l := range late {
@@ -239,9 +240,9 @@ func (a *MatrixAgent) registerOrgTools() {
 				Warns   int `db:"warns"`
 				Revokes int `db:"revokes"`
 			}
-			_ = a.db.Get(&gov, `SELECT count(*) FILTER (WHERE kind IN ('ORG_FINE_CUSTOMER', 'ORG_FINE_OPS')) AS fines,
+			errlog.Err(a.db.Get(&gov, `SELECT count(*) FILTER (WHERE kind IN ('ORG_FINE_CUSTOMER', 'ORG_FINE_OPS')) AS fines,
 				count(*) FILTER (WHERE kind = 'ORG_WARN') AS warns, count(*) FILTER (WHERE kind = 'ORG_REVOKE') AS revokes
-				FROM "AiAction" WHERE status = 'DONE' AND "createdAt" > now() - interval '30 days'`)
+				FROM "AiAction" WHERE status = 'DONE' AND "createdAt" > now() - interval '30 days'`))
 			fmt.Fprintf(&b, "قرارات ماتركس الحاكم آخر ٣٠ يوم (كل الشركة): %d غرامة، %d تنبيه، %d سحب منصب.", gov.Fines, gov.Warns, gov.Revokes)
 			return mask.Hide(b.String()), nil
 		}})

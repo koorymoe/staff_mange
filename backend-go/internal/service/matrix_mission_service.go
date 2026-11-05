@@ -146,7 +146,7 @@ func (s *MatrixMissionService) RunIfDue() error {
 
 func (s *MatrixMissionService) finish(m MatrixMission) {
 	logs := []MatrixMissionLog{}
-	_ = s.db.Select(&logs, `SELECT to_char(day, 'YYYY-MM-DD') AS day, text FROM "MatrixMissionLog" WHERE "missionId" = $1 ORDER BY day`, m.ID)
+	errlog.Err(s.db.Select(&logs, `SELECT to_char(day, 'YYYY-MM-DD') AS day, text FROM "MatrixMissionLog" WHERE "missionId" = $1 ORDER BY day`, m.ID))
 	var b strings.Builder
 	for _, l := range logs {
 		fmt.Fprintf(&b, "%s: %s\n", l.Day, l.Text)

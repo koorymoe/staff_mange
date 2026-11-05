@@ -187,7 +187,7 @@ func (r *SecretaryRepository) History(empID string, limit int) ([]SecretaryMessa
 // Prefs التفضيلات المعتمدة بس.
 func (r *SecretaryRepository) Prefs(empID string) []string {
 	out := []string{}
-	_ = r.db.Select(&out, `SELECT text FROM "SecretaryPref" WHERE "employeeId" = $1 AND active ORDER BY "createdAt"`, empID)
+	errlog.Err(r.db.Select(&out, `SELECT text FROM "SecretaryPref" WHERE "employeeId" = $1 AND active ORDER BY "createdAt"`, empID))
 	return out
 }
 

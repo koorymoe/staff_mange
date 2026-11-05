@@ -26,17 +26,17 @@ func (h *VoiceLexiconHandler) List(w http.ResponseWriter, r *http.Request) {
 		Category string `db:"category" json:"category"`
 		Source   string `db:"source" json:"source"`
 	}{}
-	_ = h.db.Select(&terms, `SELECT term, meaning, category, source FROM "VoiceTerm"
+	errlog.Err(h.db.Select(&terms, `SELECT term, meaning, category, source FROM "VoiceTerm"
 		WHERE (term ILIKE $1 OR meaning ILIKE $1) AND ($2 = '' OR source = $2)
-		ORDER BY "updatedAt" DESC LIMIT 500`, q, src)
+		ORDER BY "updatedAt" DESC LIMIT 500`, q, src))
 	fixes := []struct {
 		Wrong  string `db:"wrong" json:"wrong"`
 		Right  string `db:"right" json:"right"`
 		Source string `db:"source" json:"source"`
 	}{}
-	_ = h.db.Select(&fixes, `SELECT wrong, "right", source FROM "VoiceFix" ORDER BY "createdAt" DESC`)
+	errlog.Err(h.db.Select(&fixes, `SELECT wrong, "right", source FROM "VoiceFix" ORDER BY "createdAt" DESC`))
 	var total int
-	_ = h.db.Get(&total, `SELECT count(*) FROM "VoiceTerm"`)
+	errlog.Err(h.db.Get(&total, `SELECT count(*) FROM "VoiceTerm"`))
 	WriteJSON(w, http.StatusOK, map[string]any{"terms": terms, "fixes": fixes, "total": total})
 }
 

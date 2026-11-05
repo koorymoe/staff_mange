@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"errors"
 	"sort"
+	"staffmange-api/internal/errlog"
 	"time"
 
 	"github.com/jmoiron/sqlx"
@@ -322,8 +323,8 @@ func (r *MatrixBusinessRepository) Split() (*CustomerSplit, error) {
 
 // InquiryHistory للزبون: كم مرة استفسر وما نفّذ (لتنبيه الإداري وقت الحجز).
 func (r *MatrixBusinessRepository) InquiryHistory(customerID string) (archived, done int) {
-	_ = r.db.Get(&archived, `SELECT COUNT(*) FROM "Booking" WHERE "customerId" = $1 AND "archivedAt" IS NOT NULL`, customerID)
-	_ = r.db.Get(&done, `SELECT COUNT(*) FROM "Booking" WHERE "customerId" = $1 AND status = 'COMPLETED' AND `+BookingCountableSQL(`"Booking"`), customerID)
+	errlog.Err(r.db.Get(&archived, `SELECT COUNT(*) FROM "Booking" WHERE "customerId" = $1 AND "archivedAt" IS NOT NULL`, customerID))
+	errlog.Err(r.db.Get(&done, `SELECT COUNT(*) FROM "Booking" WHERE "customerId" = $1 AND status = 'COMPLETED' AND `+BookingCountableSQL(`"Booking"`), customerID))
 	return
 }
 

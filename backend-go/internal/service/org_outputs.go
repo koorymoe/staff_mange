@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math"
 	"sort"
+	"staffmange-api/internal/errlog"
 	"staffmange-api/internal/model"
 	"strings"
 	"time"
@@ -70,15 +71,15 @@ func OutputsScorecard(db *sqlx.DB, employeeID, unitID, divisionID, period string
 	case employeeID != "":
 		ids = []string{employeeID}
 		card.Scope = "EMPLOYEE"
-		_ = db.Get(&card.Label, `SELECT name FROM "Employee" WHERE id = $1`, employeeID)
+		errlog.Err(db.Get(&card.Label, `SELECT name FROM "Employee" WHERE id = $1`, employeeID))
 	case unitID != "":
 		card.Scope = "UNIT"
-		_ = db.Get(&card.Label, `SELECT d.name || ' / ' || u.name FROM "OrgUnit" u JOIN "OrgDivision" d ON d.id = u."divisionId" WHERE u.id = $1`, unitID)
-		_ = db.Select(&ids, `SELECT DISTINCT "employeeId" FROM "OrgAssignment" WHERE "unitId" = $1 AND "startedAt" < $3 AND ("endedAt" IS NULL OR "endedAt" >= $2)`, unitID, from, to)
+		errlog.Err(db.Get(&card.Label, `SELECT d.name || ' / ' || u.name FROM "OrgUnit" u JOIN "OrgDivision" d ON d.id = u."divisionId" WHERE u.id = $1`, unitID))
+		errlog.Err(db.Select(&ids, `SELECT DISTINCT "employeeId" FROM "OrgAssignment" WHERE "unitId" = $1 AND "startedAt" < $3 AND ("endedAt" IS NULL OR "endedAt" >= $2)`, unitID, from, to))
 	case divisionID != "":
 		card.Scope = "DIVISION"
-		_ = db.Get(&card.Label, `SELECT name FROM "OrgDivision" WHERE id = $1`, divisionID)
-		_ = db.Select(&ids, `SELECT DISTINCT "employeeId" FROM "OrgAssignment" WHERE "divisionId" = $1 AND "startedAt" < $3 AND ("endedAt" IS NULL OR "endedAt" >= $2)`, divisionID, from, to)
+		errlog.Err(db.Get(&card.Label, `SELECT name FROM "OrgDivision" WHERE id = $1`, divisionID))
+		errlog.Err(db.Select(&ids, `SELECT DISTINCT "employeeId" FROM "OrgAssignment" WHERE "divisionId" = $1 AND "startedAt" < $3 AND ("endedAt" IS NULL OR "endedAt" >= $2)`, divisionID, from, to))
 	default:
 		return nil, errors.New("حدد موظف أو وحدة أو إدارة")
 	}
@@ -103,8 +104,8 @@ func OutputsScorecard(db *sqlx.DB, employeeID, unitID, divisionID, period string
 			P    int    `db:"p"`
 			M    int    `db:"m"`
 		}{}
-		_ = db.Select(&mr, `SELECT rule, sum(points) AS p, sum("maxPoints") AS m FROM "MatrixScore"
-			WHERE "employeeId" = ANY($1) AND "cancelledAt" IS NULL AND "at" >= $2 AND "at" < $3 GROUP BY rule`, pq.Array(ids), from, to)
+		errlog.Err(db.Select(&mr, `SELECT rule, sum(points) AS p, sum("maxPoints") AS m FROM "MatrixScore"
+			WHERE "employeeId" = ANY($1) AND "cancelledAt" IS NULL AND "at" >= $2 AND "at" < $3 GROUP BY rule`, pq.Array(ids), from, to))
 		for _, r := range mr {
 			if c, ok := matrixRuleClause[r.Rule]; ok && rows[c] != nil {
 				rows[c].MatrixEarned += r.P
@@ -118,12 +119,12 @@ func OutputsScorecard(db *sqlx.DB, employeeID, unitID, divisionID, period string
 			Late    int `db:"late"`
 			Overdue int `db:"overdue"`
 		}{}
-		_ = db.Select(&tr, `SELECT clause,
+		errlog.Err(db.Select(&tr, `SELECT clause,
 			count(*) FILTER (WHERE "doneAt" IS NOT NULL AND ("dueAt" IS NULL OR "doneAt" <= "dueAt")) AS ontime,
 			count(*) FILTER (WHERE "doneAt" IS NOT NULL AND "dueAt" IS NOT NULL AND "doneAt" > "dueAt") AS late,
 			count(*) FILTER (WHERE "doneAt" IS NULL AND "cancelledAt" IS NULL AND "dueAt" < now()) AS overdue
 			FROM "ExtraTask" WHERE "assignedToId" = ANY($1) AND clause IS NOT NULL
-			AND COALESCE("dueAt", "createdAt") >= $2 AND COALESCE("dueAt", "createdAt") < $3 GROUP BY clause`, pq.Array(ids), from, to)
+			AND COALESCE("dueAt", "createdAt") >= $2 AND COALESCE("dueAt", "createdAt") < $3 GROUP BY clause`, pq.Array(ids), from, to))
 		for _, r := range tr {
 			if rows[r.Clause] != nil {
 				rows[r.Clause].TasksOnTime, rows[r.Clause].TasksLate, rows[r.Clause].TasksOverdue = r.OnTime, r.Late, r.Overdue
@@ -134,9 +135,9 @@ func OutputsScorecard(db *sqlx.DB, employeeID, unitID, divisionID, period string
 			Clause int `db:"clause"`
 			N      int `db:"n"`
 		}{}
-		_ = db.Select(&kr, `SELECT c.clause, count(*) AS n FROM "KpiEvaluation" e JOIN "KpiCriterion" c ON c.label = e.reason
+		errlog.Err(db.Select(&kr, `SELECT c.clause, count(*) AS n FROM "KpiEvaluation" e JOIN "KpiCriterion" c ON c.label = e.reason
 			WHERE e."employeeId" = ANY($1) AND NOT e.cancelled AND c.clause IS NOT NULL AND e."createdAt" >= $2 AND e."createdAt" < $3
-			GROUP BY c.clause`, pq.Array(ids), from, to)
+			GROUP BY c.clause`, pq.Array(ids), from, to))
 		for _, r := range kr {
 			if rows[r.Clause] != nil {
 				rows[r.Clause].KpiDeducts = r.N
@@ -144,8 +145,8 @@ func OutputsScorecard(db *sqlx.DB, employeeID, unitID, divisionID, period string
 		}
 		// الشكاوي ← م٤/ف٣ جودة الخدمة
 		if rows[16] != nil {
-			_ = db.Get(&rows[16].Complaints, `SELECT count(*) FROM "Complaint" c WHERE `+orgComplaintPerson+` = ANY($1)
-				AND c."createdAt" >= $2 AND c."createdAt" < $3`, pq.Array(ids), from, to)
+			errlog.Err(db.Get(&rows[16].Complaints, `SELECT count(*) FROM "Complaint" c WHERE `+orgComplaintPerson+` = ANY($1)
+				AND c."createdAt" >= $2 AND c."createdAt" < $3`, pq.Array(ids), from, to))
 		}
 	}
 	type weak struct {
@@ -280,9 +281,9 @@ func (s *OrgService) CanSeeOutputs(empID, role, employeeID, unitID, divisionID s
 		}
 		// رئيس يشوف كادر وحداته/إدارته
 		var n int
-		_ = s.db.Get(&n, `SELECT count(*) FROM "OrgAssignment" h JOIN "OrgAssignment" m ON m."endedAt" IS NULL AND m."employeeId" = $2
+		errlog.Err(s.db.Get(&n, `SELECT count(*) FROM "OrgAssignment" h JOIN "OrgAssignment" m ON m."endedAt" IS NULL AND m."employeeId" = $2
 			AND (h."unitId" = m."unitId" OR (h."unitId" IS NULL AND h."divisionId" = m."divisionId"))
-			WHERE h."employeeId" = $1 AND h."endedAt" IS NULL AND h.position IN ('DIRECTOR', 'DEPUTY')`, empID, employeeID)
+			WHERE h."employeeId" = $1 AND h."endedAt" IS NULL AND h.position IN ('DIRECTOR', 'DEPUTY')`, empID, employeeID))
 		return n > 0
 	case unitID != "":
 		var div string

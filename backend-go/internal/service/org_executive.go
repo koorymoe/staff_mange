@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"staffmange-api/internal/errlog"
 	"strings"
 	"time"
 
@@ -44,8 +45,8 @@ func monthPct(db *sqlx.DB, empID string, from, to time.Time) (*float64, int) {
 		M float64 `db:"m"`
 		N int     `db:"n"`
 	}
-	_ = db.Get(&r, `SELECT COALESCE(sum(points), 0) AS p, COALESCE(sum("maxPoints"), 0) AS m, count(*) AS n FROM "MatrixScore"
-		WHERE "employeeId" = $1 AND "cancelledAt" IS NULL AND "at" >= $2 AND "at" < $3`, empID, from, to)
+	errlog.Err(db.Get(&r, `SELECT COALESCE(sum(points), 0) AS p, COALESCE(sum("maxPoints"), 0) AS m, count(*) AS n FROM "MatrixScore"
+		WHERE "employeeId" = $1 AND "cancelledAt" IS NULL AND "at" >= $2 AND "at" < $3`, empID, from, to))
 	if r.M == 0 {
 		return nil, 0
 	}
@@ -65,8 +66,8 @@ func ExecutiveFacts(db *sqlx.DB, empID string) (*ExecFacts, error) {
 		Unit *string `db:"unit"`
 		Act  bool    `db:"acting"`
 	}{}
-	_ = db.Select(&pos, `SELECT a.position, d.name AS div, u.name AS unit, a.acting FROM "OrgAssignment" a
-		JOIN "OrgDivision" d ON d.id = a."divisionId" LEFT JOIN "OrgUnit" u ON u.id = a."unitId" WHERE a."employeeId" = $1 AND a."endedAt" IS NULL`, empID)
+	errlog.Err(db.Select(&pos, `SELECT a.position, d.name AS div, u.name AS unit, a.acting FROM "OrgAssignment" a
+		JOIN "OrgDivision" d ON d.id = a."divisionId" LEFT JOIN "OrgUnit" u ON u.id = a."unitId" WHERE a."employeeId" = $1 AND a."endedAt" IS NULL`, empID))
 	for _, p := range pos {
 		s := orgPosAr[p.Pos]
 		if p.Act {
@@ -85,16 +86,16 @@ func ExecutiveFacts(db *sqlx.DB, empID string) (*ExecFacts, error) {
 	if m, err := EmployeeMetrics(db, empID); err == nil && len(m) == 1 {
 		f.Attendance, f.LateDays, f.DoneBookings = m[0].Att, m[0].Late, m[0].Done
 	}
-	_ = db.Get(&f.Complaints, `SELECT count(*) FROM "Complaint" c WHERE `+orgComplaintPerson+` = $1 AND c."createdAt" > now() - interval '30 days'`, empID)
+	errlog.Err(db.Get(&f.Complaints, `SELECT count(*) FROM "Complaint" c WHERE `+orgComplaintPerson+` = $1 AND c."createdAt" > now() - interval '30 days'`, empID))
 	_ = db.QueryRow(`SELECT count(*), count("doneAt"), count(*) FILTER (WHERE "doneAt" IS NULL AND "dueDate" < (now() AT TIME ZONE 'Asia/Baghdad')::date)
 		FROM "OrgPlanItem" WHERE "ownerId" = $1`, empID).Scan(&f.ItemsTotal, &f.ItemsDone, &f.ItemsLate)
 	_ = db.QueryRow(`SELECT count(*) FILTER (WHERE kind IN ('ORG_FINE_CUSTOMER', 'ORG_FINE_OPS')), count(*) FILTER (WHERE kind = 'ORG_WARN'),
 		count(*) FILTER (WHERE kind = 'ORG_REVOKE') FROM "AiAction" WHERE "targetEmployeeId" = $1 AND status = 'DONE' AND "createdAt" > now() - interval '90 days'`,
 		empID).Scan(&f.Fines, &f.Warnings, &f.Revokes)
-	_ = db.Get(&f.Accepted, `SELECT EXISTS (SELECT 1 FROM "PrivacyPolicyAcceptance" WHERE "employeeId" = $1 AND "pointsHash" IS NOT NULL)`, empID)
-	_ = db.Get(&f.OpenIssues, `SELECT count(*) FROM "OrgIssueReport" i WHERE i.status <> 'RESOLVED' AND EXISTS (
+	errlog.Err(db.Get(&f.Accepted, `SELECT EXISTS (SELECT 1 FROM "PrivacyPolicyAcceptance" WHERE "employeeId" = $1 AND "pointsHash" IS NOT NULL)`, empID))
+	errlog.Err(db.Get(&f.OpenIssues, `SELECT count(*) FROM "OrgIssueReport" i WHERE i.status <> 'RESOLVED' AND EXISTS (
 		SELECT 1 FROM "OrgAssignment" a WHERE a."employeeId" = $1 AND a."endedAt" IS NULL AND a.position IN ('DIRECTOR', 'DEPUTY')
-		AND (a."unitId" = i."unitId" OR (a."unitId" IS NULL AND a."divisionId" = i."divisionId")))`, empID)
+		AND (a."unitId" = i."unitId" OR (a."unitId" IS NULL AND a."divisionId" = i."divisionId")))`, empID))
 	return f, nil
 }
 
@@ -170,7 +171,7 @@ func registerExecutiveTools(a *MatrixAgent, tc *SecretaryTurnCtx) {
 		Run: func(in map[string]any, mask *nameMask) (string, error) {
 			ids := []string{}
 			if u := strings.TrimSpace(strArg(in, "unit")); u != "" {
-				_ = a.db.Select(&ids, `SELECT DISTINCT "employeeId" FROM "OrgAssignment" WHERE "unitId" = $1 AND "endedAt" IS NULL`, u)
+				errlog.Err(a.db.Select(&ids, `SELECT DISTINCT "employeeId" FROM "OrgAssignment" WHERE "unitId" = $1 AND "endedAt" IS NULL`, u))
 				if len(ids) == 0 {
 					return "ماكو أحد معيّن بهالوحدة.", nil
 				}

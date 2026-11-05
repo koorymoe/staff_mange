@@ -2,6 +2,7 @@ package repository
 
 import (
 	"github.com/jmoiron/sqlx"
+	"staffmange-api/internal/errlog"
 
 	"staffmange-api/internal/model"
 )
@@ -22,15 +23,15 @@ func (r *ServiceStudyRepository) hydrate(items []model.ServiceStudy) {
 			s.CreatedBy = &model.EmployeeBrief{ID: creator.ID, Name: creator.Name}
 		}
 		assigned := []model.EmployeeBrief{}
-		_ = r.db.Select(&assigned, `
+		errlog.Err(r.db.Select(&assigned, `
 			SELECT e.id, e.name FROM "ServiceStudyAssignment" a
 			JOIN "Employee" e ON e.id = a."employeeId"
 			WHERE a."serviceStudyId" = $1
-		`, s.ID)
+		`, s.ID))
 		s.AssignedEmployees = assigned
 
 		reports := []model.ServiceStudyReport{}
-		_ = r.db.Select(&reports, `SELECT * FROM "ServiceStudyReport" WHERE "serviceStudyId" = $1 ORDER BY "createdAt" DESC`, s.ID)
+		errlog.Err(r.db.Select(&reports, `SELECT * FROM "ServiceStudyReport" WHERE "serviceStudyId" = $1 ORDER BY "createdAt" DESC`, s.ID))
 		for i := range reports {
 			var emp model.Employee
 			if err := r.db.Get(&emp, `SELECT * FROM "Employee" WHERE id = $1`, reports[i].EmployeeID); err == nil {

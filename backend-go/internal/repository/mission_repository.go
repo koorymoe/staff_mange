@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"staffmange-api/internal/errlog"
 
 	"github.com/jmoiron/sqlx"
 	"github.com/lib/pq"
@@ -123,7 +124,7 @@ func (r *MissionRepository) attachLeaderAndMembers(missions []model.Mission) {
 		ids = append(ids, id)
 	}
 	leaders := []string{}
-	_ = r.db.Select(&leaders, `SELECT id FROM "Employee" WHERE id = ANY($1) AND "isLeader"`, pq.Array(ids))
+	errlog.Err(r.db.Select(&leaders, `SELECT id FROM "Employee" WHERE id = ANY($1) AND "isLeader"`, pq.Array(ids)))
 	isLeader := map[string]bool{}
 	for _, id := range leaders {
 		isLeader[id] = true

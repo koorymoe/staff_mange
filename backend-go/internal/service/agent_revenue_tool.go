@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"regexp"
 	"sort"
+	"staffmange-api/internal/errlog"
 	"strings"
 	"time"
 
@@ -131,7 +132,7 @@ func (a *MatrixAgent) registerRevenueTool() {
 				Name   string `db:"name"`
 				Leader bool   `db:"isLeader"`
 			}{}
-			_ = a.db.Select(&emp, `SELECT id, name, "isLeader" FROM "Employee" WHERE id = ANY($1)`, pq.Array(ids))
+			errlog.Err(a.db.Select(&emp, `SELECT id, name, "isLeader" FROM "Employee" WHERE id = ANY($1)`, pq.Array(ids)))
 			for _, e := range emp {
 				names[e.ID], leader[e.ID] = e.Name, e.Leader
 			}

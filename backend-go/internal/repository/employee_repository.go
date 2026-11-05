@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"errors"
 	"sort"
+	"staffmange-api/internal/errlog"
 	"time"
 
 	"github.com/jmoiron/sqlx"
@@ -120,7 +121,7 @@ func (r *EmployeeRepository) NameByID(id string) (string, error) {
 // وكت التعديل. فاضي = اليوزر متاح.
 func (r *EmployeeRepository) UsernameOwner(username, exceptID string) string {
 	var name string
-	_ = r.db.Get(&name, `SELECT name FROM "Employee" WHERE lower(btrim(username)) = lower(btrim($1)) AND id <> $2 LIMIT 1`, username, exceptID)
+	errlog.Err(r.db.Get(&name, `SELECT name FROM "Employee" WHERE lower(btrim(username)) = lower(btrim($1)) AND id <> $2 LIMIT 1`, username, exceptID))
 	return name
 }
 
@@ -631,8 +632,8 @@ func (r *EmployeeRepository) HandoverCandidates() ([]model.EmployeeBrief, error)
 // IsHandoverTarget تقني أو مسؤول خدمة (بدوره أو مسجّل بجدول مسؤولي الخدمات).
 func (r *EmployeeRepository) IsHandoverTarget(id string) bool {
 	var ok bool
-	_ = r.db.Get(&ok, `SELECT EXISTS (SELECT 1 FROM "Employee" e WHERE e.id = $1 AND e.status = 'ACTIVE'
-		AND (e.role IN ('TECHNICAL', 'SERVICE_MANAGER') OR EXISTS (SELECT 1 FROM "ServiceManager" sm WHERE sm."employeeId" = e.id)))`, id)
+	errlog.Err(r.db.Get(&ok, `SELECT EXISTS (SELECT 1 FROM "Employee" e WHERE e.id = $1 AND e.status = 'ACTIVE'
+		AND (e.role IN ('TECHNICAL', 'SERVICE_MANAGER') OR EXISTS (SELECT 1 FROM "ServiceManager" sm WHERE sm."employeeId" = e.id)))`, id))
 	return ok
 }
 

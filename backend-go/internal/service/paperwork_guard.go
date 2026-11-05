@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"staffmange-api/internal/errlog"
 	"staffmange-api/internal/model"
 	"strings"
 
@@ -117,7 +118,7 @@ func (g *PaperworkGuard) IsBookingManager(employeeID, bookingID string) (bool, e
 	// (دازاي 10-28) الحجز المرحّل لإدارة التقنيين: التقني يكتب فاتورته، وإذا طلب
 	// كادر فليدر الكادر — مو أي ليدر ومو أي تقني. الي انحل بالتلفون بلا فاتورة.
 	var hv int
-	_ = g.db.Get(&hv, `SELECT count(*) FROM "Booking" b WHERE b.id = $1 AND `+handoverInvoicerSQL+` = $2 AND `+handoverNeedsInvoiceSQL, bookingID, employeeID)
+	errlog.Err(g.db.Get(&hv, `SELECT count(*) FROM "Booking" b WHERE b.id = $1 AND `+handoverInvoicerSQL+` = $2 AND `+handoverNeedsInvoiceSQL, bookingID, employeeID))
 	if hv > 0 {
 		return true, nil
 	}
@@ -191,7 +192,7 @@ const carryoverMissingSQL = `FROM "Booking" b
 
 func (g *PaperworkGuard) holdsCarryover(employeeID string) bool {
 	var ok bool
-	_ = g.db.Get(&ok, `SELECT `+model.HasPermSQL(`$1`, `= 'paperwork_carryover'`), employeeID)
+	errlog.Err(g.db.Get(&ok, `SELECT `+model.HasPermSQL(`$1`, `= 'paperwork_carryover'`), employeeID))
 	return ok
 }
 

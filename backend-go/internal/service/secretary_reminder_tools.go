@@ -2,6 +2,7 @@ package service
 
 import (
 	"fmt"
+	"staffmange-api/internal/errlog"
 	"strings"
 	"time"
 
@@ -45,7 +46,7 @@ func registerReminderTools(a *MatrixAgent, tc *SecretaryTurnCtx) {
 				return "", fmt.Errorf("الوقت فات — اختار وقت جاي")
 			}
 			var n int
-			_ = a.db.Get(&n, `SELECT count(*) FROM "AiReminder" WHERE "employeeId" = $1 AND "sentAt" IS NULL AND "cancelledAt" IS NULL`, tc.UserID)
+			errlog.Err(a.db.Get(&n, `SELECT count(*) FROM "AiReminder" WHERE "employeeId" = $1 AND "sentAt" IS NULL AND "cancelledAt" IS NULL`, tc.UserID))
 			if n >= 50 {
 				return "عنده ٥٠ تذكير ينتظر — خلّيه يلغي شي قبل.", nil
 			}

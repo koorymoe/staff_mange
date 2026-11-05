@@ -1,6 +1,7 @@
 package repository
 
 import (
+	"staffmange-api/internal/errlog"
 	"time"
 
 	"github.com/google/uuid"
@@ -58,13 +59,13 @@ func (r *RemoteHoursRepository) Summary(month string) ([]RemoteSummary, error) {
 
 func (r *RemoteHoursRepository) DaySeconds(employeeID, date string) int {
 	var n int
-	_ = r.db.Get(&n, `SELECT COALESCE(SUM(seconds), 0) FROM "RemoteWorkEntry" WHERE "employeeId" = $1 AND "workDate" = $2::date`, employeeID, date)
+	errlog.Err(r.db.Get(&n, `SELECT COALESCE(SUM(seconds), 0) FROM "RemoteWorkEntry" WHERE "employeeId" = $1 AND "workDate" = $2::date`, employeeID, date))
 	return n
 }
 
 func (r *RemoteHoursRepository) EmployeeActive(id string) bool {
 	var ok bool
-	_ = r.db.Get(&ok, `SELECT EXISTS (SELECT 1 FROM "Employee" WHERE id = $1 AND status = 'ACTIVE')`, id)
+	errlog.Err(r.db.Get(&ok, `SELECT EXISTS (SELECT 1 FROM "Employee" WHERE id = $1 AND status = 'ACTIVE')`, id))
 	return ok
 }
 

@@ -3,6 +3,7 @@ package repository
 import (
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
+	"staffmange-api/internal/errlog"
 
 	"staffmange-api/internal/model"
 )
@@ -148,7 +149,7 @@ func (r *CoordinationAlertRepository) PendingShifts() ([]BookingShiftInfo, error
 // StrikesFor مجموع التقصيرات المسجّلة على موظف (كل الوقت).
 func (r *CoordinationAlertRepository) StrikesFor(employeeID string) int {
 	var n int
-	_ = r.db.Get(&n, `SELECT COUNT(*) FROM "CoordinationAlert" WHERE "coordinatorId" = $1`, employeeID)
+	errlog.Err(r.db.Get(&n, `SELECT COUNT(*) FROM "CoordinationAlert" WHERE "coordinatorId" = $1`, employeeID))
 	return n
 }
 

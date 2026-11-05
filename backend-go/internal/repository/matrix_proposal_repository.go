@@ -79,7 +79,7 @@ func (r *MatrixProposalRepository) Decide(id, status, by, note string) error {
 
 func (r *MatrixProposalRepository) PendingCount() int {
 	var n int
-	_ = r.db.Get(&n, `SELECT COUNT(*) FROM "MatrixProposal" WHERE status = 'PENDING'`)
+	errlog.Err(r.db.Get(&n, `SELECT COUNT(*) FROM "MatrixProposal" WHERE status = 'PENDING'`))
 	return n
 }
 

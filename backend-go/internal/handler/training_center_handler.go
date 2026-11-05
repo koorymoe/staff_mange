@@ -189,7 +189,7 @@ type curriculumItem struct {
 
 func (h *TrainingCenterHandler) Curriculum(w http.ResponseWriter, r *http.Request) {
 	rows := []curriculumItem{}
-	_ = h.db.Select(&rows, `SELECT id, role, title, details, ord FROM "TrainingCurriculum" ORDER BY role, ord, "createdAt"`)
+	errlog.Err(h.db.Select(&rows, `SELECT id, role, title, details, ord FROM "TrainingCurriculum" ORDER BY role, ord, "createdAt"`))
 	WriteJSON(w, http.StatusOK, rows)
 }
 
@@ -227,8 +227,8 @@ type trainingQuestion struct {
 
 func (h *TrainingCenterHandler) Questions(w http.ResponseWriter, r *http.Request) {
 	rows := []trainingQuestion{}
-	_ = h.db.Select(&rows, `SELECT id, role, text, options, correct, approved, source FROM "TrainingQuestion"
-		WHERE ($1 = '' OR role = $1) ORDER BY approved, "createdAt" DESC`, r.URL.Query().Get("role"))
+	errlog.Err(h.db.Select(&rows, `SELECT id, role, text, options, correct, approved, source FROM "TrainingQuestion"
+		WHERE ($1 = '' OR role = $1) ORDER BY approved, "createdAt" DESC`, r.URL.Query().Get("role")))
 	WriteJSON(w, http.StatusOK, rows)
 }
 
@@ -279,7 +279,7 @@ func (h *TrainingCenterHandler) GenerateQuestions(w http.ResponseWriter, r *http
 		return
 	}
 	topics := []string{}
-	_ = h.db.Select(&topics, `SELECT title || COALESCE(' — ' || details, '') FROM "TrainingCurriculum" WHERE role = $1 ORDER BY ord`, b.Role)
+	errlog.Err(h.db.Select(&topics, `SELECT title || COALESCE(' — ' || details, '') FROM "TrainingCurriculum" WHERE role = $1 ORDER BY ord`, b.Role))
 	if len(topics) == 0 {
 		WriteError(w, http.StatusBadRequest, "ضيف مفردات المنهج لهذا الدور أول — ماتركس يكتب الأسئلة منها")
 		return
@@ -346,7 +346,7 @@ func (h *TrainingCenterHandler) CreateExam(w http.ResponseWriter, r *http.Reques
 		b.Minutes = 15
 	}
 	ids := []string{}
-	_ = h.db.Select(&ids, `SELECT id FROM "TrainingQuestion" WHERE role = $1 AND approved ORDER BY random() LIMIT $2`, b.Role, b.Count)
+	errlog.Err(h.db.Select(&ids, `SELECT id FROM "TrainingQuestion" WHERE role = $1 AND approved ORDER BY random() LIMIT $2`, b.Role, b.Count))
 	if len(ids) < 3 {
 		WriteError(w, http.StatusBadRequest, "لازم ٣ أسئلة معتمدة على الأقل لهذا الدور")
 		return
@@ -420,7 +420,7 @@ func (h *TrainingCenterHandler) MyExam(w http.ResponseWriter, r *http.Request) {
 	}
 	qs := []q{}
 	if !hasAtt || att.Finished == nil {
-		_ = h.db.Select(&qs, `SELECT id, text, options FROM "TrainingQuestion" WHERE id = ANY($1) ORDER BY array_position($1, id)`, x.QuestionIDs)
+		errlog.Err(h.db.Select(&qs, `SELECT id, text, options FROM "TrainingQuestion" WHERE id = ANY($1) ORDER BY array_position($1, id)`, x.QuestionIDs))
 	}
 	out := map[string]any{"exam": map[string]any{"id": x.ID, "title": x.Title, "minutes": x.Minutes, "passPct": x.PassPct, "count": len(x.QuestionIDs)}, "questions": qs}
 	if hasAtt {
@@ -459,7 +459,7 @@ func (h *TrainingCenterHandler) SubmitExam(w http.ResponseWriter, r *http.Reques
 		Correct int    `db:"correct"`
 	}
 	keys := []key{}
-	_ = h.db.Select(&keys, `SELECT id, correct FROM "TrainingQuestion" WHERE id = ANY($1) ORDER BY array_position($1, id)`, x.QuestionIDs)
+	errlog.Err(h.db.Select(&keys, `SELECT id, correct FROM "TrainingQuestion" WHERE id = ANY($1) ORDER BY array_position($1, id)`, x.QuestionIDs))
 	score := 0
 	ans := make([]int64, len(keys))
 	for i, k := range keys {
@@ -576,8 +576,8 @@ type mentorRow struct {
 
 func (h *TrainingCenterHandler) Mentors(w http.ResponseWriter, r *http.Request) {
 	rows := []mentorRow{}
-	_ = h.db.Select(&rows, `SELECT m."employeeId", m."mentorId", e.name AS "mentorName", m.notes FROM "TrainingMentor" m
-		LEFT JOIN "Employee" e ON e.id = m."mentorId"`)
+	errlog.Err(h.db.Select(&rows, `SELECT m."employeeId", m."mentorId", e.name AS "mentorName", m.notes FROM "TrainingMentor" m
+		LEFT JOIN "Employee" e ON e.id = m."mentorId"`))
 	WriteJSON(w, http.StatusOK, rows)
 }
 

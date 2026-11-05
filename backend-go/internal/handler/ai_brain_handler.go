@@ -2,6 +2,7 @@ package handler
 
 import (
 	"net/http"
+	"staffmange-api/internal/errlog"
 	"strings"
 
 	"github.com/jmoiron/sqlx"
@@ -23,7 +24,7 @@ func (h *AiBrainHandler) LoadBudgets(defaults map[string]float64) {
 		Brain string  `db:"brain"`
 		USD   float64 `db:"dailyUSD"`
 	}{}
-	_ = h.db.Select(&rows, `SELECT brain, "dailyUSD" FROM "AiBrainBudget"`)
+	errlog.Err(h.db.Select(&rows, `SELECT brain, "dailyUSD" FROM "AiBrainBudget"`))
 	saved := map[string]float64{}
 	for _, r := range rows {
 		saved[r.Brain] = r.USD

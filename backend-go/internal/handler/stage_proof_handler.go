@@ -92,8 +92,8 @@ func (h *StageProofHandler) Record(w http.ResponseWriter, r *http.Request) {
 	}
 	// تسجيل جماعي: هالضغطة + ضغطتين أو أكثر من نفس الموظف خلال ٥ دقايق
 	var near int
-	_ = h.db.Get(&near, `SELECT count(*) FROM "BookingStageProof" WHERE "employeeId" = $1 AND "bookingId" <> $2
-		AND "pressedAt" BETWEEN $3::timestamp - interval '5 minutes' AND $3::timestamp + interval '5 minutes'`, emp, bookingID, pressed)
+	errlog.Err(h.db.Get(&near, `SELECT count(*) FROM "BookingStageProof" WHERE "employeeId" = $1 AND "bookingId" <> $2
+		AND "pressedAt" BETWEEN $3::timestamp - interval '5 minutes' AND $3::timestamp + interval '5 minutes'`, emp, bookingID, pressed))
 	if near >= 2 {
 		verdict = "BATCH"
 		errlog.Exec(h.db.Exec(`UPDATE "BookingStageProof" SET verdict = 'BATCH' WHERE "employeeId" = $1 AND verdict = 'OK'

@@ -68,9 +68,9 @@ func companyToday() time.Time {
 // بيه الموظف، وما عنده إجازة معتمدة، وما كتب تقريره.
 func (h *WorkGateHandler) missingReportDay(emp string) (*string, string) {
 	var since string
-	_ = h.db.Get(&since, `SELECT value FROM "OrgGovernorState" WHERE key = 'daily_report_since'`)
+	errlog.Err(h.db.Get(&since, `SELECT value FROM "OrgGovernorState" WHERE key = 'daily_report_since'`))
 	var day *string
-	_ = h.db.Get(&day, `
+	errlog.Err(h.db.Get(&day, `
 		SELECT to_char(max(a.date::date), 'YYYY-MM-DD') FROM "Attendance" a
 		WHERE a."employeeId" = $1
 		  AND a.date::date < $2::date AND a.date::date >= $2::date - 7
@@ -78,7 +78,7 @@ func (h *WorkGateHandler) missingReportDay(emp string) (*string, string) {
 		  AND NOT EXISTS (SELECT 1 FROM "DailyWorkReport" d WHERE d."employeeId" = $1 AND d.day = a.date::date)
 		  AND NOT EXISTS (SELECT 1 FROM "LeaveRequest" l WHERE l."employeeId" = $1 AND l.status = 'APPROVED'
 		                  AND a.date::date BETWEEN l."startDate" AND l."endDate")`,
-		emp, companyToday().Format("2006-01-02"), since)
+		emp, companyToday().Format("2006-01-02"), since))
 	return day, since
 }
 
@@ -90,8 +90,8 @@ func (h *WorkGateHandler) Gate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	emp := middleware.EmployeeIDFromContext(r)
-	_ = h.db.Get(&g.Survey, `SELECT NOT EXISTS (SELECT 1 FROM "EmployeeProfileSurvey" WHERE "employeeId" = $1)`, emp)
-	_ = h.db.Get(&g.JobTitle, `SELECT COALESCE("jobTitle", position, '') FROM "Employee" WHERE id = $1`, emp)
+	errlog.Err(h.db.Get(&g.Survey, `SELECT NOT EXISTS (SELECT 1 FROM "EmployeeProfileSurvey" WHERE "employeeId" = $1)`, emp))
+	errlog.Err(h.db.Get(&g.JobTitle, `SELECT COALESCE("jobTitle", position, '') FROM "Employee" WHERE id = $1`, emp))
 	g.MissingDay, g.ReportSince = h.missingReportDay(emp)
 	errlog.Err(h.db.Get(&g.TodayAt, `SELECT max("createdAt") FROM "DailyWorkReport" WHERE "employeeId" = $1 AND day = $2::date`, emp, companyToday().Format("2006-01-02")))
 	g.TodayDone = g.TodayAt != nil
@@ -152,7 +152,7 @@ func (h *WorkGateHandler) SubmitSurvey(w http.ResponseWriter, r *http.Request) {
 		Salary   *float64   `db:"salary"`
 		Contract *time.Time `db:"contractEndDate"`
 	}
-	_ = h.db.Get(&file, `SELECT name, salary, "contractEndDate" FROM "Employee" WHERE id = $1`, emp)
+	errlog.Err(h.db.Get(&file, `SELECT name, salary, "contractEndDate" FROM "Employee" WHERE id = $1`, emp))
 	diffs := []string{}
 	if in.SelfSalaryIQD != nil && file.Salary != nil && math.Abs(*in.SelfSalaryIQD-*file.Salary) >= 1 {
 		diffs = append(diffs, fmt.Sprintf("الراتب: كتب %.0f والملف %.0f", *in.SelfSalaryIQD, *file.Salary))
@@ -279,16 +279,16 @@ func (h *WorkGateHandler) ListDaily(w http.ResponseWriter, r *http.Request) {
 		day = companyToday().AddDate(0, 0, -1).Format("2006-01-02")
 	}
 	rows := []dailyReportRow{}
-	_ = h.db.Select(&rows, `SELECT d.id, d."employeeId", e.name AS "employeeName", to_char(d.day, 'YYYY-MM-DD') AS day, d.body, d.late, d."createdAt",
+	errlog.Err(h.db.Select(&rows, `SELECT d.id, d."employeeId", e.name AS "employeeName", to_char(d.day, 'YYYY-MM-DD') AS day, d.body, d.late, d."createdAt",
 		m.status AS "matchStatus", m.note AS "matchNote", m.detail AS "matchDetail", m."reviewVerdict" AS "matchVerdict", m."reviewNote" AS "matchReview"
 		FROM "DailyWorkReport" d JOIN "Employee" e ON e.id = d."employeeId"
-		LEFT JOIN "DailyReportMatch" m ON m."employeeId" = d."employeeId" AND m.day = d.day WHERE d.day = $1::date ORDER BY e.name`, day)
+		LEFT JOIN "DailyReportMatch" m ON m."employeeId" = d."employeeId" AND m.day = d.day WHERE d.day = $1::date ORDER BY e.name`, day))
 	missing := []missingRow{}
-	_ = h.db.Select(&missing, `SELECT DISTINCT e.id AS "employeeId", e.name AS "employeeName" FROM "Attendance" a JOIN "Employee" e ON e.id = a."employeeId"
+	errlog.Err(h.db.Select(&missing, `SELECT DISTINCT e.id AS "employeeId", e.name AS "employeeName" FROM "Attendance" a JOIN "Employee" e ON e.id = a."employeeId"
 		WHERE a.date::date = $1::date AND e.role::text NOT IN ('ADMIN', 'OWNER')
 		  AND NOT EXISTS (SELECT 1 FROM "DailyWorkReport" d WHERE d."employeeId" = e.id AND d.day = $1::date)
 		  AND NOT EXISTS (SELECT 1 FROM "LeaveRequest" l WHERE l."employeeId" = e.id AND l.status = 'APPROVED' AND $1::date BETWEEN l."startDate" AND l."endDate")
-		ORDER BY 2`, day)
+		ORDER BY 2`, day))
 	WriteJSON(w, http.StatusOK, map[string]any{"day": day, "reports": rows, "missing": missing})
 }
 
@@ -313,15 +313,15 @@ type surveyRow struct {
 // GET /api/profile-surveys — الاستمارات + منو بعده ما عبّى (إدارة الكوادر)
 func (h *WorkGateHandler) ListSurveys(w http.ResponseWriter, r *http.Request) {
 	rows := []surveyRow{}
-	_ = h.db.Select(&rows, `SELECT s."employeeId", e.name AS "employeeName", s.major, s.degree, s."selfSalaryIQD", e.salary AS "fileSalary",
+	errlog.Err(h.db.Select(&rows, `SELECT s."employeeId", e.name AS "employeeName", s.major, s.degree, s."selfSalaryIQD", e.salary AS "fileSalary",
 			s."monthlyHours", s."currentJob", s."companyRating", s."companyNote", to_char(s."contractEnd", 'YYYY-MM-DD') AS "contractEnd",
 			to_char(e."contractEndDate", 'YYYY-MM-DD') AS "fileContract", s.mismatch, s."submittedAt", s."reviewedAt"
 		FROM "EmployeeProfileSurvey" s JOIN "Employee" e ON e.id = s."employeeId"
-		ORDER BY (s.mismatch IS NOT NULL AND s."reviewedAt" IS NULL) DESC, s."submittedAt" DESC`)
+		ORDER BY (s.mismatch IS NOT NULL AND s."reviewedAt" IS NULL) DESC, s."submittedAt" DESC`))
 	pending := []missingRow{}
-	_ = h.db.Select(&pending, `SELECT e.id AS "employeeId", e.name AS "employeeName" FROM "Employee" e
+	errlog.Err(h.db.Select(&pending, `SELECT e.id AS "employeeId", e.name AS "employeeName" FROM "Employee" e
 		WHERE e.status = 'ACTIVE' AND e.role::text NOT IN ('ADMIN', 'OWNER')
-		  AND NOT EXISTS (SELECT 1 FROM "EmployeeProfileSurvey" s WHERE s."employeeId" = e.id) ORDER BY e.name`)
+		  AND NOT EXISTS (SELECT 1 FROM "EmployeeProfileSurvey" s WHERE s."employeeId" = e.id) ORDER BY e.name`))
 	WriteJSON(w, http.StatusOK, map[string]any{"surveys": rows, "pending": pending})
 }
 
@@ -389,9 +389,9 @@ type negligenceRow struct {
 // GET /api/negligence — سجل الإهمال (آخر ٦٠ يوم)
 func (h *WorkGateHandler) Negligence(w http.ResponseWriter, r *http.Request) {
 	rows := []negligenceRow{}
-	_ = h.db.Select(&rows, `SELECT n.id, e.name AS "employeeName", to_char(n.day, 'YYYY-MM-DD') AS day, n.kind, n.detail, n.reason, n."compensatedAt"
+	errlog.Err(h.db.Select(&rows, `SELECT n.id, e.name AS "employeeName", to_char(n.day, 'YYYY-MM-DD') AS day, n.kind, n.detail, n.reason, n."compensatedAt"
 		FROM "EmployeeNegligence" n JOIN "Employee" e ON e.id = n."employeeId"
-		WHERE n.day >= current_date - 60 ORDER BY n.day DESC, e.name LIMIT 300`)
+		WHERE n.day >= current_date - 60 ORDER BY n.day DESC, e.name LIMIT 300`))
 	WriteJSON(w, http.StatusOK, rows)
 }
 

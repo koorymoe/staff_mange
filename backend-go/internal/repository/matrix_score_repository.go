@@ -1,6 +1,7 @@
 package repository
 
 import (
+	"staffmange-api/internal/errlog"
 	"staffmange-api/internal/model"
 	"time"
 
@@ -211,9 +212,9 @@ func (r *MatrixScoreRepository) DropGoneBookings() error {
 // المحطة الي ما اشتغل عليها أحد تنحسب على صاحب الدور إذا هو وحده المسؤول.
 func (r *MatrixScoreRepository) SoleHolder(role, perm string) string {
 	ids := []string{}
-	_ = r.db.Select(&ids, `SELECT DISTINCT e.id FROM "Employee" e WHERE e.status = 'ACTIVE' AND e.role::text NOT IN ('ADMIN', 'OWNER')
+	errlog.Err(r.db.Select(&ids, `SELECT DISTINCT e.id FROM "Employee" e WHERE e.status = 'ACTIVE' AND e.role::text NOT IN ('ADMIN', 'OWNER')
 		AND (e.role::text = $1 OR `+model.HasPermSQL(`e.id`, `= $2`)+`
-		     OR e.id IN `+model.OrgRoleEmployeesSQL(`ARRAY[$1]::text[]`)+`) LIMIT 2`, role, perm)
+		     OR e.id IN `+model.OrgRoleEmployeesSQL(`ARRAY[$1]::text[]`)+`) LIMIT 2`, role, perm))
 	if len(ids) == 1 {
 		return ids[0]
 	}
@@ -463,6 +464,6 @@ func (r *MatrixScoreRepository) DailyReportsOn(day time.Time) (map[string]bool, 
 		out[x.ID] = x.Late
 	}
 	var since string
-	_ = r.db.Get(&since, `SELECT value FROM "OrgGovernorState" WHERE key = 'daily_report_since'`)
+	errlog.Err(r.db.Get(&since, `SELECT value FROM "OrgGovernorState" WHERE key = 'daily_report_since'`))
 	return out, since, nil
 }

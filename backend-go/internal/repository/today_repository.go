@@ -2,6 +2,7 @@ package repository
 
 import (
 	"github.com/jmoiron/sqlx"
+	"staffmange-api/internal/errlog"
 )
 
 // ═══ لوحة اليوم ═══
@@ -100,12 +101,13 @@ func (r *TodayRepository) Board() (*TodayBoard, error) {
 	b.BookingsToday, b.InField, b.CompletedToday, b.NewToday = row.BookingsToday, row.InField, row.CompletedToday, row.NewToday
 	b.NeedsContact, b.NeedsCrew, b.NeedsPaper, b.NeedsFinish = row.NeedsContact, row.NeedsCrew, row.NeedsPaper, row.NeedsFinish
 	b.WeekTotal, b.WeekCompleted = row.WeekTotal, row.WeekCompleted
+	errlog.
 
-	// ═══ لوحة الشرف ═══
-	// ⚠️ المقياس **الطلعات** مو الحجوزات: هذا الي اتفقنا عليه لمن
-	// صلّحنا الإنتاجية — الحجز الي ياخذ أربع أيام أربع طلعات، وكل
-	// طلعة إلها كادرها.
-	_ = r.db.Select(&b.TopCrew, `
+		// ═══ لوحة الشرف ═══
+		// ⚠️ المقياس **الطلعات** مو الحجوزات: هذا الي اتفقنا عليه لمن
+		// صلّحنا الإنتاجية — الحجز الي ياخذ أربع أيام أربع طلعات، وكل
+		// طلعة إلها كادرها.
+		Err(r.db.Select(&b.TopCrew, `
 		SELECT e.id AS "employeeId", e.name, e."photoUrl",
 		       COUNT(*) AS visits,
 		       COUNT(*) FILTER (WHERE v.outcome = 'DONE') AS done
@@ -116,19 +118,20 @@ func (r *TodayRepository) Board() (*TodayBoard, error) {
 		  AND e.status = 'ACTIVE'
 		GROUP BY e.id, e.name, e."photoUrl"
 		ORDER BY visits DESC, done DESC
-		LIMIT 3`)
+		LIMIT 3`))
+	errlog.
 
-	// ═══ مخطط آخر أربعتعش يوم ═══
-	// ⚠️ `generate_series` يخلّي اليوم الفاضي يطلع صفراً بدل ما ينشال
-	// من المخطط — الخط الي يقفز فوگ الأيام الفاضية يكذب على العين.
-	_ = r.db.Select(&b.Last14, `
+		// ═══ مخطط آخر أربعتعش يوم ═══
+		// ⚠️ `generate_series` يخلّي اليوم الفاضي يطلع صفراً بدل ما ينشال
+		// من المخطط — الخط الي يقفز فوگ الأيام الفاضية يكذب على العين.
+		Err(r.db.Select(&b.Last14, `
 		SELECT to_char(d.day, 'YYYY-MM-DD') AS day,
 		       COUNT(b.id) AS count
 		FROM generate_series(baghdad_date(now()) - interval '13 days', baghdad_date(now()), interval '1 day') AS d(day)
 		LEFT JOIN "Booking" b ON b."archivedAt" IS NULL
 		     AND NOT `+BookingDeletePendingSQL("b")+`
 		     AND baghdad_date(b."createdAt") = d.day::date
-		GROUP BY d.day ORDER BY d.day`)
+		GROUP BY d.day ORDER BY d.day`))
 
 	return b, nil
 }

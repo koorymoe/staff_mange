@@ -89,7 +89,7 @@ func Idempotent(db *sqlx.DB) func(http.Handler) http.Handler {
 					Status   *int    `db:"status"`
 					Response *string `db:"response"`
 				}
-				_ = db.Get(&prev, `SELECT status, response FROM "IdempotencyKey" WHERE key = $1 AND "employeeId" = $2`, key, emp)
+				errlog.Err(db.Get(&prev, `SELECT status, response FROM "IdempotencyKey" WHERE key = $1 AND "employeeId" = $2`, key, emp))
 				w.Header().Set("Content-Type", "application/json")
 				w.Header().Set("Idempotent-Replay", "true")
 				if prev.Status == nil {

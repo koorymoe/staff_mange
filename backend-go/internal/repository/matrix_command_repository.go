@@ -103,7 +103,7 @@ func (r *MatrixCommandRepository) LateWindow(from, to int) (*LateWindow, error) 
 
 func (r *MatrixCommandRepository) AsksToday(employeeID string) int {
 	var n int
-	_ = r.db.Get(&n, `SELECT COUNT(*) FROM "MatrixChatMessage" WHERE "employeeId" = $1 AND "createdAt" >= baghdad_today()::timestamp`, employeeID)
+	errlog.Err(r.db.Get(&n, `SELECT COUNT(*) FROM "MatrixChatMessage" WHERE "employeeId" = $1 AND "createdAt" >= baghdad_today()::timestamp`, employeeID))
 	return n
 }
 

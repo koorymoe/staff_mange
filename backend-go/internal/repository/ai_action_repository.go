@@ -135,7 +135,7 @@ func (r *AiActionRepository) UnstaffedOn(day string) ([]model.UnstaffedBooking, 
 // EmployeeName اسم موظف للعرض — فاضي إذا ماكو.
 func (r *AiActionRepository) EmployeeName(id string) string {
 	var name string
-	_ = r.db.Get(&name, `SELECT name FROM "Employee" WHERE id = $1`, id)
+	errlog.Err(r.db.Get(&name, `SELECT name FROM "Employee" WHERE id = $1`, id))
 	return name
 }
 
@@ -442,7 +442,7 @@ func (r *AiActionRepository) WorkTodayNoCheckIn() ([]NoCheckInRow, error) {
 // TaskAssigner منو كلّف بالمهمة الإضافية — فاضي إذا ماكو.
 func (r *AiActionRepository) TaskAssigner(taskID string) string {
 	var id string
-	_ = r.db.Get(&id, `SELECT COALESCE("assignedById", '') FROM "ExtraTask" WHERE id = $1`, taskID)
+	errlog.Err(r.db.Get(&id, `SELECT COALESCE("assignedById", '') FROM "ExtraTask" WHERE id = $1`, taskID))
 	return id
 }
 
@@ -476,9 +476,9 @@ func (r *AiActionRepository) Subject(id string) (*WatchSubject, error) {
 	if err := r.db.Get(&s, `SELECT id, name, `+model.EffectiveRoleSQL(`"Employee".id`, `"Employee".role`)+` AS role, "isLeader", EXISTS (SELECT 1 FROM "ServiceManager" sm WHERE sm."employeeId" = "Employee".id) AS "isServiceManager" FROM "Employee" WHERE id = $1`, id); err != nil {
 		return nil, err
 	}
-	_ = r.db.Select(&s.Perms, `
+	errlog.Err(r.db.Select(&s.Perms, `
 		SELECT p.name FROM "EmployeePermission" ep JOIN "Permission" p ON p.id = ep."permissionId"
-		WHERE ep."employeeId" = $1`, id)
+		WHERE ep."employeeId" = $1`, id))
 	return &s, nil
 }
 
@@ -493,7 +493,7 @@ func (r *AiActionRepository) ActiveSubjects() ([]WatchSubject, error) {
 		Name       string `db:"name"`
 	}
 	perms := []pr{}
-	_ = r.db.Select(&perms, `SELECT ep."employeeId", p.name FROM "EmployeePermission" ep JOIN "Permission" p ON p.id = ep."permissionId"`)
+	errlog.Err(r.db.Select(&perms, `SELECT ep."employeeId", p.name FROM "EmployeePermission" ep JOIN "Permission" p ON p.id = ep."permissionId"`))
 	idx := map[string]int{}
 	for i := range rows {
 		idx[rows[i].ID] = i
@@ -508,7 +508,7 @@ func (r *AiActionRepository) ActiveSubjects() ([]WatchSubject, error) {
 
 func (r *AiActionRepository) count(q string, args ...any) int {
 	var n int
-	_ = r.db.Get(&n, q, args...)
+	errlog.Err(r.db.Get(&n, q, args...))
 	return n
 }
 
@@ -559,8 +559,8 @@ func (r *AiActionRepository) QualityPending() int {
 
 // CheckedInToday سجّل حضور اليوم؟ وانصرف؟
 func (r *AiActionRepository) CheckedInToday(id string) (in bool, out bool) {
-	_ = r.db.Get(&in, `SELECT EXISTS (SELECT 1 FROM "Attendance" WHERE "employeeId" = $1 AND baghdad_date("checkIn") = baghdad_today())`, id)
-	_ = r.db.Get(&out, `SELECT EXISTS (SELECT 1 FROM "Attendance" WHERE "employeeId" = $1 AND baghdad_date("checkIn") = baghdad_today() AND "checkOut" IS NOT NULL)`, id)
+	errlog.Err(r.db.Get(&in, `SELECT EXISTS (SELECT 1 FROM "Attendance" WHERE "employeeId" = $1 AND baghdad_date("checkIn") = baghdad_today())`, id))
+	errlog.Err(r.db.Get(&out, `SELECT EXISTS (SELECT 1 FROM "Attendance" WHERE "employeeId" = $1 AND baghdad_date("checkIn") = baghdad_today() AND "checkOut" IS NOT NULL)`, id))
 	return
 }
 
@@ -577,9 +577,9 @@ func (r *AiActionRepository) DesignUploadsToday(id string) int {
 // LeaderMaterialsPending حجوزات الليدر اليوم وموادها ما تجهزت بعد — بأكوادها.
 func (r *AiActionRepository) LeaderMaterialsPending(id string) []string {
 	codes := []string{}
-	_ = r.db.Select(&codes, `SELECT b.code FROM "Booking" b JOIN "BookingAssignment" a ON a."bookingId" = b.id
+	errlog.Err(r.db.Select(&codes, `SELECT b.code FROM "Booking" b JOIN "BookingAssignment" a ON a."bookingId" = b.id
 		WHERE a."employeeId" = $1 AND b."scheduledAt" IS NOT NULL AND baghdad_date(b."scheduledAt") = baghdad_today()
-		  AND b.status IN ('CONFIRMED','PENDING') AND b."materialsReadyAt" IS NULL ORDER BY b."scheduledAt"`, id)
+		  AND b.status IN ('CONFIRMED','PENDING') AND b."materialsReadyAt" IS NULL ORDER BY b."scheduledAt"`, id))
 	return codes
 }
 
@@ -587,10 +587,10 @@ func (r *AiActionRepository) LeaderMaterialsPending(id string) []string {
 // تجديد الجي بي اس (قرار (ع): مو للبائع، والبائع بالاشتراكات القديمة هو المالك).
 func (r *AiActionRepository) QualityEngineerForGps() string {
 	var id string
-	_ = r.db.Get(&id, `SELECT e.id FROM "Employee" e
+	errlog.Err(r.db.Get(&id, `SELECT e.id FROM "Employee" e
 		WHERE e.status = 'ACTIVE' AND (e.role = 'QUALITY_ENGINEER' OR (e.role NOT IN ('ADMIN','OWNER','MONITOR') AND `+model.HasPermSQL(`e.id`, `= 'quality_control'`)+`))
 		ORDER BY (SELECT COUNT(*) FROM "AiAction" a WHERE a."targetEmployeeId" = e.id AND a."resolvedAt" IS NULL), e.name
-		LIMIT 1`)
+		LIMIT 1`))
 	return id
 }
 

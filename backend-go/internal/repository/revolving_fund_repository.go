@@ -3,6 +3,7 @@ package repository
 import (
 	"fmt"
 	"math"
+	"staffmange-api/internal/errlog"
 	"strings"
 	"unicode/utf8"
 
@@ -31,18 +32,19 @@ func (r *RevolvingFundRepository) ListFunds() ([]model.RevolvingFund, error) {
 	}
 	// المبلغ الي بيد الموظفين وما انتسوّى — لكل دوار
 	for i := range funds {
-		_ = r.db.Get(&funds[i].OutstandingTotal, `
+		errlog.Err(r.db.Get(&funds[i].OutstandingTotal, `
 			SELECT COALESCE(SUM(d.amount), 0) - COALESCE((
 				SELECT SUM(s."spentAmount" + s."returnedAmount") FROM "RevolvingFundTxn" s
 				WHERE s."fundId" = $1 AND s.kind = 'SETTLEMENT' AND s.status = 'APPROVED'
 			), 0)
 			FROM "RevolvingFundTxn" d
-			WHERE d."fundId" = $1 AND d.kind = 'DISBURSE'`, funds[i].ID)
-		// الي الدوار ناطره من المحاسب: مصروف مدقّق وما انخرّج بعد
-		_ = r.db.Get(&funds[i].AwaitingDischargeTotal, `
+			WHERE d."fundId" = $1 AND d.kind = 'DISBURSE'`, funds[i].ID))
+		errlog.
+			// الي الدوار ناطره من المحاسب: مصروف مدقّق وما انخرّج بعد
+			Err(r.db.Get(&funds[i].AwaitingDischargeTotal, `
 			SELECT COALESCE(SUM("spentAmount"), 0) FROM "RevolvingFundTxn"
 			WHERE "fundId" = $1 AND kind = 'SETTLEMENT' AND status = 'APPROVED'
-			  AND "spentAmount" > 0 AND "dischargedAt" IS NULL`, funds[i].ID)
+			  AND "spentAmount" > 0 AND "dischargedAt" IS NULL`, funds[i].ID))
 	}
 	return funds, nil
 }

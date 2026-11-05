@@ -135,7 +135,7 @@ func (r *PeerVoiceRepository) Colleagues(me string) ([]Colleague, error) {
 
 func (r *PeerVoiceRepository) ActiveEmployee(id string) bool {
 	var ok bool
-	_ = r.db.Get(&ok, `SELECT EXISTS (SELECT 1 FROM "Employee" WHERE id = $1 AND status = 'ACTIVE')`, id)
+	errlog.Err(r.db.Get(&ok, `SELECT EXISTS (SELECT 1 FROM "Employee" WHERE id = $1 AND status = 'ACTIVE')`, id))
 	return ok
 }
 
@@ -321,7 +321,7 @@ func (r *PeerVoiceRepository) FollowupsFor(me string) ([]WorkplaceIssue, error) 
 
 func (r *PeerVoiceRepository) IsParty(issueID, me string) bool {
 	var ok bool
-	_ = r.db.Get(&ok, `SELECT EXISTS (SELECT 1 FROM "WorkplaceIssue" WHERE id = $1 AND ("partyAId" = $2 OR "partyBId" = $2))`, issueID, me)
+	errlog.Err(r.db.Get(&ok, `SELECT EXISTS (SELECT 1 FROM "WorkplaceIssue" WHERE id = $1 AND ("partyAId" = $2 OR "partyBId" = $2))`, issueID, me))
 	return ok
 }
 
@@ -340,13 +340,13 @@ func (r *PeerVoiceRepository) Context(a string, b *string) IssueContext {
 	if b != nil {
 		bid = *b
 	}
-	_ = r.db.Get(&c, `SELECT
+	errlog.Err(r.db.Get(&c, `SELECT
 		(SELECT count(DISTINCT x."bookingId") FROM "BookingAssignment" x JOIN "BookingAssignment" y ON y."bookingId" = x."bookingId"
 		  WHERE x."employeeId" = $1 AND y."employeeId" = $2 AND x."createdAt" > now() - interval '90 days')::int AS shared,
 		(SELECT count(*) FROM "Complaint" WHERE "relatedEmployeeId" = $1 AND "createdAt" > now() - interval '90 days')::int AS "aComplaints",
 		(SELECT count(*) FROM "Complaint" WHERE "relatedEmployeeId" = $2 AND "createdAt" > now() - interval '90 days')::int AS "bComplaints",
 		(SELECT avg(score)::float8 FROM "PeerNote" WHERE "targetId" = $1 AND "createdAt" > now() - interval '60 days') AS "aPeer",
-		(SELECT avg(score)::float8 FROM "PeerNote" WHERE "targetId" = $2 AND "createdAt" > now() - interval '60 days') AS "bPeer"`, a, bid)
+		(SELECT avg(score)::float8 FROM "PeerNote" WHERE "targetId" = $2 AND "createdAt" > now() - interval '60 days') AS "bPeer"`, a, bid))
 	return c
 }
 

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"sort"
+	"staffmange-api/internal/errlog"
 	"strings"
 
 	"github.com/jmoiron/sqlx"
@@ -93,7 +94,7 @@ func (s *StaffPointsService) Month(month string) ([]StaffPoints, error) {
 
 	// ── الكي بي اي: البنود المنخصمة هالشهر لكل موظف ──
 	criteria := []string{}
-	_ = s.db.Select(&criteria, `SELECT label FROM "KpiCriterion" ORDER BY "createdAt"`)
+	errlog.Err(s.db.Select(&criteria, `SELECT label FROM "KpiCriterion" ORDER BY "createdAt"`))
 	deductions := []struct {
 		ID     string `db:"id"`
 		Reason string `db:"reason"`

@@ -149,14 +149,14 @@ func DirectorsRanking(db *sqlx.DB, period string, personal PersonalScoreFn) (*Di
 			Resolved int      `db:"resolved"`
 			AvgDays  *float64 `db:"avgDays"`
 		}
-		_ = db.Get(&is, `SELECT
+		errlog.Err(db.Get(&is, `SELECT
 				count(*) FILTER (WHERE "createdAt" >= $2 AND "createdAt" < $3) AS opened,
 				COALESCE(sum(CASE severity WHEN 'HIGH' THEN 3 WHEN 'MEDIUM' THEN 2 ELSE 1 END)
 					FILTER (WHERE "createdAt" >= $2 AND "createdAt" < $3), 0)::float8 AS weighted,
 				count(*) FILTER (WHERE status = 'RESOLVED' AND "createdAt" >= $2 AND "createdAt" < $3) AS resolved,
 				(avg(EXTRACT(EPOCH FROM ("resolvedAt" - "createdAt")) / 86400)
 					FILTER (WHERE "resolvedAt" >= $2 AND "resolvedAt" < $3))::float8 AS "avgDays"
-			FROM "OrgIssueReport" WHERE "divisionId" = $1`, h.DivisionID, from, to)
+			FROM "OrgIssueReport" WHERE "divisionId" = $1`, h.DivisionID, from, to))
 		issues := issueEvidence(db, h.DivisionID, from, to)
 		var speed, few, solve *float64
 		speedD, solveD := "ما انحلت مشكلة هالشهر", "ماكو مشاكل هالشهر"
@@ -289,14 +289,14 @@ func deputiesRanking(db *sqlx.DB, period string, directors []DirectorRankRow, pe
 		EmployeeID   string `db:"employeeId"`
 		EmployeeName string `db:"employeeName"`
 	}{}
-	_ = db.Select(&deps, `
+	errlog.Err(db.Select(&deps, `
 		SELECT DISTINCT ON (a."divisionId", a."employeeId") a."divisionId", d.name AS "divisionName", a."employeeId", e.name AS "employeeName"
 		FROM "OrgAssignment" a
 		JOIN "OrgDivision" d ON d.id = a."divisionId"
 		JOIN "Employee" e ON e.id = a."employeeId"
 		WHERE a."unitId" IS NULL AND a.position = 'DEPUTY' AND a."endedAt" IS NULL
 		  AND e.role::text NOT IN ('ADMIN', 'OWNER')
-		ORDER BY a."divisionId", a."employeeId"`)
+		ORDER BY a."divisionId", a."employeeId"`))
 	out := []DirectorRankRow{}
 	for _, d := range deps {
 		row := DirectorRankRow{DivisionID: d.DivisionID, DivisionName: d.DivisionName, EmployeeID: d.EmployeeID, EmployeeName: d.EmployeeName}
@@ -322,8 +322,8 @@ func deputiesRanking(db *sqlx.DB, period string, directors []DirectorRankRow, pe
 		ownD := "ماكو بنود خطة برقبته"
 		if len(ownEv) > 0 {
 			var avg float64
-			_ = db.Get(&avg, `SELECT COALESCE(avg(CASE WHEN i."doneAt" IS NOT NULL THEN 100 ELSE i."manualProgress" END), 0)::float8
-				FROM "OrgPlanItem" i JOIN "OrgPlan" p ON p.id = i."planId" WHERE i."ownerId" = $1 AND p.period = $2`, d.EmployeeID, period)
+			errlog.Err(db.Get(&avg, `SELECT COALESCE(avg(CASE WHEN i."doneAt" IS NOT NULL THEN 100 ELSE i."manualProgress" END), 0)::float8
+				FROM "OrgPlanItem" i JOIN "OrgPlan" p ON p.id = i."planId" WHERE i."ownerId" = $1 AND p.period = $2`, d.EmployeeID, period))
 			own = rankPtr(avg)
 			ownD = strconv.Itoa(len(ownEv)) + " بند برقبته"
 		}

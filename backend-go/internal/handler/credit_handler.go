@@ -89,8 +89,8 @@ func (h *CreditHandler) Payments(w http.ResponseWriter, r *http.Request) {
 		Note   *string   `db:"note" json:"note"`
 		By     *string   `db:"byName" json:"byName"`
 	}{}
-	_ = h.db.Select(&rows, `SELECT x.id, x.amount::float8 AS amount, x."paidAt", x.note, e.name AS "byName"
-		FROM "CreditPayment" x LEFT JOIN "Employee" e ON e.id = x."byId" WHERE x."creditId" = $1 ORDER BY x."paidAt", x."createdAt"`, r.PathValue("id"))
+	errlog.Err(h.db.Select(&rows, `SELECT x.id, x.amount::float8 AS amount, x."paidAt", x.note, e.name AS "byName"
+		FROM "CreditPayment" x LEFT JOIN "Employee" e ON e.id = x."byId" WHERE x."creditId" = $1 ORDER BY x."paidAt", x."createdAt"`, r.PathValue("id")))
 	WriteJSON(w, http.StatusOK, rows)
 }
 
@@ -261,9 +261,9 @@ func (h *CreditHandler) Export(w http.ResponseWriter, r *http.Request) {
 		Note   *string   `db:"note"`
 		By     *string   `db:"byName"`
 	}{}
-	_ = h.db.Select(&pays, `SELECT cs.title, cs."customerName", x.amount::float8 AS amount, x."paidAt", x.note, e.name AS "byName"
+	errlog.Err(h.db.Select(&pays, `SELECT cs.title, cs."customerName", x.amount::float8 AS amount, x."paidAt", x.note, e.name AS "byName"
 		FROM "CreditPayment" x JOIN "CreditSale" cs ON cs.id = x."creditId" LEFT JOIN "Employee" e ON e.id = x."byId"
-		WHERE x."paidAt" >= $1 AND x."paidAt" < $2 ORDER BY x."paidAt"`, start, end)
+		WHERE x."paidAt" >= $1 AND x."paidAt" < $2 ORDER BY x."paidAt"`, start, end))
 
 	f := excelize.NewFile()
 	head, _ := f.NewStyle(&excelize.Style{Font: &excelize.Font{Bold: true, Color: "FFFFFF"}, Fill: excelize.Fill{Type: "pattern", Color: []string{"0F2040"}, Pattern: 1},

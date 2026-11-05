@@ -3,6 +3,7 @@ package service
 import (
 	"fmt"
 	"log"
+	"staffmange-api/internal/errlog"
 	"time"
 
 	"github.com/lib/pq"
@@ -83,7 +84,7 @@ func (s *OrgService) collectSignals() []orgSignal {
 	units := []struct {
 		ID string `db:"id"`
 	}{}
-	_ = s.db.Select(&units, `SELECT id FROM "OrgUnit" ORDER BY "divisionId", sort`)
+	errlog.Err(s.db.Select(&units, `SELECT id FROM "OrgUnit" ORDER BY "divisionId", sort`))
 	for _, u := range units {
 		var r struct {
 			Late  int `db:"late"`
@@ -146,7 +147,7 @@ func (s *OrgService) RunDiagnosis(switches *repository.SystemSwitchRepository, n
 		opened++
 		if notify != nil {
 			code := ""
-			_ = s.db.Get(&code, `SELECT split_part(content, ' — ', 1) FROM "PrivacyPolicyPoint" WHERE "principleNo" = $1`, sig.Clause)
+			errlog.Err(s.db.Get(&code, `SELECT split_part(content, ' — ', 1) FROM "PrivacyPolicyPoint" WHERE "principleNo" = $1`, sig.Clause))
 			for _, h := range s.unitHeads(div, sig.Unit) {
 				notify(h, fmt.Sprintf("🔎 ماتركس شخّص مشكلة بوحدتك: «%s» (%s) — %s. اكتب خطة الحل بمكتب الإدارة.", sig.Title, code, sig.Detail))
 			}
@@ -160,8 +161,8 @@ func (s *OrgService) RunDiagnosis(switches *repository.SystemSwitchRepository, n
 		Unit   string `db:"unitId"`
 		Title  string `db:"title"`
 	}{}
-	_ = s.db.Select(&stale, `SELECT id, signal, "divisionId", COALESCE("unitId", '') AS "unitId", title FROM "OrgIssueReport"
-		WHERE source = 'MATRIX' AND status <> 'RESOLVED' AND signal IS NOT NULL AND "lastSeenAt" < $1`, time.Now().Add(-orgDiagnoseResolveAfter))
+	errlog.Err(s.db.Select(&stale, `SELECT id, signal, "divisionId", COALESCE("unitId", '') AS "unitId", title FROM "OrgIssueReport"
+		WHERE source = 'MATRIX' AND status <> 'RESOLVED' AND signal IS NOT NULL AND "lastSeenAt" < $1`, time.Now().Add(-orgDiagnoseResolveAfter)))
 	for _, st := range stale {
 		if seen[st.Signal] {
 			continue
@@ -184,10 +185,10 @@ func (s *OrgService) RunDiagnosis(switches *repository.SystemSwitchRepository, n
 // unitHeads مدير ونائب الوحدة، وإذا ماكو فمدير ونائب الإدارة.
 func (s *OrgService) unitHeads(div, unit string) []string {
 	ids := []string{}
-	_ = s.db.Select(&ids, `SELECT DISTINCT "employeeId" FROM "OrgAssignment" WHERE "unitId" = $1 AND position IN ('DIRECTOR', 'DEPUTY') AND "endedAt" IS NULL`, unit)
+	errlog.Err(s.db.Select(&ids, `SELECT DISTINCT "employeeId" FROM "OrgAssignment" WHERE "unitId" = $1 AND position IN ('DIRECTOR', 'DEPUTY') AND "endedAt" IS NULL`, unit))
 	if len(ids) == 0 {
-		_ = s.db.Select(&ids, `SELECT DISTINCT "employeeId" FROM "OrgAssignment" WHERE "divisionId" = $1 AND "unitId" IS NULL
-			AND position IN ('DIRECTOR', 'DEPUTY') AND "endedAt" IS NULL`, div)
+		errlog.Err(s.db.Select(&ids, `SELECT DISTINCT "employeeId" FROM "OrgAssignment" WHERE "divisionId" = $1 AND "unitId" IS NULL
+			AND position IN ('DIRECTOR', 'DEPUTY') AND "endedAt" IS NULL`, div))
 	}
 	return ids
 }

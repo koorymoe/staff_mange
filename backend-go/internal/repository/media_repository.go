@@ -1,6 +1,7 @@
 package repository
 
 import (
+	"staffmange-api/internal/errlog"
 	"time"
 
 	"github.com/jmoiron/sqlx"
@@ -75,7 +76,7 @@ func (r *MediaRepository) Get(id string) (*MediaBrief, error) {
 // OpenForProject تحويل مفتوح لنفس المشروع (حتى ما يتكرر).
 func (r *MediaRepository) OpenForProject(projectID string) string {
 	var id string
-	_ = r.db.Get(&id, `SELECT id FROM "MediaBrief" WHERE "projectId" = $1 AND status NOT IN ('PUBLISHED', 'CANCELLED') ORDER BY "createdAt" DESC LIMIT 1`, projectID)
+	errlog.Err(r.db.Get(&id, `SELECT id FROM "MediaBrief" WHERE "projectId" = $1 AND status NOT IN ('PUBLISHED', 'CANCELLED') ORDER BY "createdAt" DESC LIMIT 1`, projectID))
 	return id
 }
 
@@ -130,6 +131,6 @@ func (r *MediaRepository) Update(id string, u MediaUpdate) error {
 // ProjectEngineer المهندس المشرف: المسؤول، أو المتوجّه إله، أو منفّذ الكشف.
 func (r *MediaRepository) ProjectEngineer(projectID string) *string {
 	var id *string
-	_ = r.db.Get(&id, `SELECT COALESCE("responsibleEmployeeId", "delegatedToEmployeeId", "surveyorEmployeeId") FROM "Project" WHERE id = $1`, projectID)
+	errlog.Err(r.db.Get(&id, `SELECT COALESCE("responsibleEmployeeId", "delegatedToEmployeeId", "surveyorEmployeeId") FROM "Project" WHERE id = $1`, projectID))
 	return id
 }

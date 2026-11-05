@@ -121,7 +121,7 @@ func (r *ComplaintRepository) NoAnswer(id string) (*model.Complaint, error) {
 		// ثلاث ضغطات ورا بعض تسقط الشكوى بلا ما أحد ينتظر — فالمحاولة
 		// الجاية بس بعد موعدها.
 		var next *time.Time
-		_ = r.db.Get(&next, `SELECT "nextCallAt" FROM "Complaint" WHERE id = $1 AND "nextCallAt" > now()`, id)
+		errlog.Err(r.db.Get(&next, `SELECT "nextCallAt" FROM "Complaint" WHERE id = $1 AND "nextCallAt" > now()`, id))
 		if next != nil {
 			return nil, errors.New("المحاولة الجاية بعد " + next.In(timeutil.CompanyLocation()).Format("2006-01-02 15:04") + " — اتصل بالزبون وكتها")
 		}

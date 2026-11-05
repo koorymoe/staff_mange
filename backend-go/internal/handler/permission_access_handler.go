@@ -140,13 +140,13 @@ func (h *PermissionAccessHandler) state(id string) (*accessEmployee, map[string]
 		have[n] = true
 	}
 	var ex []exceptionRow
-	_ = h.db.Select(&ex, `SELECT permission, reason, "expiresAt" FROM "PermissionException" WHERE "employeeId" = $1`, id)
+	errlog.Err(h.db.Select(&ex, `SELECT permission, reason, "expiresAt" FROM "PermissionException" WHERE "employeeId" = $1`, id))
 	exc := map[string]exceptionRow{}
 	for _, x := range ex {
 		exc[x.Permission] = x
 	}
 	var org []string
-	_ = h.db.Select(&org, `SELECT permission FROM "OrgPermissionGrant" WHERE "employeeId" = $1`, id)
+	errlog.Err(h.db.Select(&org, `SELECT permission FROM "OrgPermissionGrant" WHERE "employeeId" = $1`, id))
 	e.Org = map[string]bool{}
 	for _, n := range org {
 		e.Org[n] = true
@@ -195,7 +195,7 @@ func (h *PermissionAccessHandler) audit(tx *sqlx.Tx, empID, actor, action, perm,
 func (h *PermissionAccessHandler) apply(r *http.Request, empID string, version int, add, remove []string, reason string, extra func(tx *sqlx.Tx, actor string) error) (int, string) {
 	if middleware.RoleFromContext(r) != "OWNER" {
 		var role string
-		_ = h.db.Get(&role, `SELECT role::text FROM "Employee" WHERE id = $1`, empID)
+		errlog.Err(h.db.Get(&role, `SELECT role::text FROM "Employee" WHERE id = $1`, empID))
 		if model.IsAdminRole(role) {
 			return http.StatusForbidden, "صلاحيات المالك والمدير يعدّلها المالك بس"
 		}
@@ -483,7 +483,7 @@ func (h *PermissionAccessHandler) SweepExpired() int {
 		EmployeeID string `db:"employeeId"`
 		Permission string `db:"permission"`
 	}
-	_ = h.db.Select(&rows, `SELECT "employeeId", permission FROM "PermissionException" WHERE "expiresAt" IS NOT NULL AND "expiresAt" < now()`)
+	errlog.Err(h.db.Select(&rows, `SELECT "employeeId", permission FROM "PermissionException" WHERE "expiresAt" IS NOT NULL AND "expiresAt" < now()`))
 	n := 0
 	for _, x := range rows {
 		tx, err := h.db.Beginx()

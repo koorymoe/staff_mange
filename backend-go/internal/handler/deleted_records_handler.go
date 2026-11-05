@@ -77,7 +77,7 @@ func (h *DeletedRecordsHandler) List(w http.ResponseWriter, r *http.Request) {
 	back := map[string]bool{}
 	for ent, ids := range idsBy {
 		found := []string{}
-		_ = h.db.Select(&found, `SELECT id::text FROM "`+ent+`" WHERE id::text = ANY($1)`, pq.Array(ids))
+		errlog.Err(h.db.Select(&found, `SELECT id::text FROM "`+ent+`" WHERE id::text = ANY($1)`, pq.Array(ids)))
 		for _, id := range found {
 			back[ent+"|"+id] = true
 		}
@@ -124,7 +124,7 @@ func (h *DeletedRecordsHandler) Restore(w http.ResponseWriter, r *http.Request) 
 	defer tx.Rollback()
 	errlog.Exec(tx.Exec(`SELECT set_config('app.actor', $1, true)`, middleware.EmployeeIDFromContext(r)))
 	var exists bool
-	_ = tx.Get(&exists, `SELECT EXISTS (SELECT 1 FROM "`+a.Entity+`" WHERE id::text = $1)`, *a.EntityID)
+	errlog.Err(tx.Get(&exists, `SELECT EXISTS (SELECT 1 FROM "`+a.Entity+`" WHERE id::text = $1)`, *a.EntityID))
 	if exists {
 		WriteError(w, http.StatusConflict, "هذا السجل راجع أصلاً")
 		return

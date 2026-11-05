@@ -167,7 +167,7 @@ func (r *WaRepository) MarkRead(id string) {
 // NewToday محادثات حقيقية انفتحت اليوم لهذا الوكيل — حد WA_DAILY_NEW.
 func (r *WaRepository) NewToday(agent string) int {
 	var n int
-	_ = r.db.Get(&n, `SELECT COUNT(*) FROM "WaConversation" WHERE agent = $1 AND NOT sandbox AND baghdad_date("createdAt") = baghdad_today()`, agent)
+	errlog.Err(r.db.Get(&n, `SELECT COUNT(*) FROM "WaConversation" WHERE agent = $1 AND NOT sandbox AND baghdad_date("createdAt") = baghdad_today()`, agent))
 	return n
 }
 

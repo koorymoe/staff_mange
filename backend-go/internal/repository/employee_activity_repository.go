@@ -88,6 +88,6 @@ func (r *EmployeeActivityRepository) Known(employeeID, day string) ([]KnownActio
 // Name / Code لتسمية الشي الي انعدّل («عدّل ملف فلان»، «حجز B-12»).
 func (r *EmployeeActivityRepository) Lookup(table, col, id string) string {
 	var v string
-	_ = r.db.Get(&v, `SELECT COALESCE(`+col+`::text, '') FROM "`+table+`" WHERE id = $1`, id)
+	errlog.Err(r.db.Get(&v, `SELECT COALESCE(`+col+`::text, '') FROM "`+table+`" WHERE id = $1`, id))
 	return v
 }

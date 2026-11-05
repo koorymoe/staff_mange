@@ -47,7 +47,7 @@ const bkDay = `(b."completedAt" AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Baghdad'):
 
 func (d *RatingDuty) since() string {
 	var s string
-	_ = d.db.Get(&s, `SELECT value FROM "OrgGovernorState" WHERE key = 'rating_duty_since'`)
+	errlog.Err(d.db.Get(&s, `SELECT value FROM "OrgGovernorState" WHERE key = 'rating_duty_since'`))
 	return s
 }
 
@@ -61,7 +61,7 @@ var monitorRaterSQL = `(e.role::text = 'MONITOR' OR e.id IN ` + model.OrgRoleEmp
 
 func (d *RatingDuty) is(sqlCond, emp string) bool {
 	var ok bool
-	_ = d.db.Get(&ok, `SELECT EXISTS (SELECT 1 FROM "Employee" e WHERE e.id = $1 AND e.status = 'ACTIVE' AND `+sqlCond+`)`, emp)
+	errlog.Err(d.db.Get(&ok, `SELECT EXISTS (SELECT 1 FROM "Employee" e WHERE e.id = $1 AND e.status = 'ACTIVE' AND `+sqlCond+`)`, emp))
 	return ok
 }
 
@@ -71,8 +71,8 @@ func (d *RatingDuty) Owed(rater, day string) ([]DutyItem, error) {
 		return []DutyItem{}, nil
 	}
 	var exempt bool
-	_ = d.db.Get(&exempt, `SELECT EXISTS (SELECT 1 FROM "Employee" e WHERE e.id = $1 AND e.role::text IN ('ADMIN','OWNER'))
-		OR EXISTS (SELECT 1 FROM "LeaveRequest" l WHERE l."employeeId" = $1 AND l.status = 'APPROVED' AND $2::date BETWEEN l."startDate" AND l."endDate")`, rater, day)
+	errlog.Err(d.db.Get(&exempt, `SELECT EXISTS (SELECT 1 FROM "Employee" e WHERE e.id = $1 AND e.role::text IN ('ADMIN','OWNER'))
+		OR EXISTS (SELECT 1 FROM "LeaveRequest" l WHERE l."employeeId" = $1 AND l.status = 'APPROVED' AND $2::date BETWEEN l."startDate" AND l."endDate")`, rater, day))
 	if exempt {
 		return []DutyItem{}, nil
 	}
@@ -248,7 +248,7 @@ func (d *RatingDuty) Compensate(rater, day, reason string, ratings []DutyRating)
 // لنفس اليوم تنغلق (عوّض متأخر) لأن ما بقى شي يعوّضونه.
 func (d *RatingDuty) settlePeers(day string) {
 	open := []string{}
-	_ = d.db.Select(&open, `SELECT "employeeId" FROM "EmployeeNegligence" WHERE day = $1::date AND kind = 'MISSED_RATINGS' AND "compensatedAt" IS NULL`, day)
+	errlog.Err(d.db.Select(&open, `SELECT "employeeId" FROM "EmployeeNegligence" WHERE day = $1::date AND kind = 'MISSED_RATINGS' AND "compensatedAt" IS NULL`, day))
 	for _, emp := range open {
 		if items, err := d.Owed(emp, day); err == nil && len(items) == 0 {
 			errlog.Exec(d.db.Exec(`UPDATE "EmployeeNegligence" SET "compensatedAt" = now(), reason = 'قيّمها زميله بدله (متأخر)'

@@ -4,6 +4,7 @@ import (
 	"log"
 	"net/http"
 	"net/url"
+	"staffmange-api/internal/errlog"
 	"strconv"
 	"time"
 
@@ -149,8 +150,8 @@ func (h *LateAuditHandler) List(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var total int
-	_ = h.db.Get(&total, `SELECT count(*) FROM "Booking" b WHERE baghdad_date(b."scheduledAt") BETWEEN $1::date AND $2::date
-		AND b.status::text <> 'CANCELLED' AND b."archivedAt" IS NULL AND b."bookingType" IS DISTINCT FROM 'INTERNAL'`, from, to)
+	errlog.Err(h.db.Get(&total, `SELECT count(*) FROM "Booking" b WHERE baghdad_date(b."scheduledAt") BETWEEN $1::date AND $2::date
+		AND b.status::text <> 'CANCELLED' AND b."archivedAt" IS NULL AND b."bookingType" IS DISTINCT FROM 'INTERNAL'`, from, to))
 	for i := range rows {
 		classifyLate(&rows[i], loc)
 	}

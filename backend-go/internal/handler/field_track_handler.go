@@ -87,9 +87,9 @@ func (h *FieldTrackHandler) classifyOrigin(bookingID, emp string, lat, lng *floa
 		Lat *float64 `db:"lat"`
 		Lng *float64 `db:"lng"`
 	}
-	_ = h.db.Select(&prev, `SELECT COALESCE(b."autoArrivedLat", b."mapLatitude") AS lat, COALESCE(b."autoArrivedLng", b."mapLongitude") AS lng
+	errlog.Err(h.db.Select(&prev, `SELECT COALESCE(b."autoArrivedLat", b."mapLatitude") AS lat, COALESCE(b."autoArrivedLng", b."mapLongitude") AS lng
 		FROM "Booking" b WHERE b.id <> $1 AND b."arrivedAt" > now() - interval '12 hours'
-		AND (b."projectSupervisorId" = $2 OR EXISTS (SELECT 1 FROM "BookingAssignment" a WHERE a."bookingId" = b.id AND a."employeeId" = $2))`, bookingID, emp)
+		AND (b."projectSupervisorId" = $2 OR EXISTS (SELECT 1 FROM "BookingAssignment" a WHERE a."bookingId" = b.id AND a."employeeId" = $2))`, bookingID, emp))
 	for _, p := range prev {
 		if p.Lat != nil && p.Lng != nil && haversineM(*lat, *lng, *p.Lat, *p.Lng) <= 1500 {
 			return "PREV_BOOKING"
@@ -181,7 +181,7 @@ func (h *FieldTrackHandler) loadPoints(bookingID string) []trackPoint {
 		Lng float64   `db:"longitude"`
 		At  time.Time `db:"createdAt"`
 	}
-	_ = h.db.Select(&rows, `SELECT latitude, longitude, "createdAt" FROM "LocationPing" WHERE "bookingId" = $1 ORDER BY "createdAt"`, bookingID)
+	errlog.Err(h.db.Select(&rows, `SELECT latitude, longitude, "createdAt" FROM "LocationPing" WHERE "bookingId" = $1 ORDER BY "createdAt"`, bookingID))
 	pts := make([]trackPoint, 0, len(rows))
 	for _, p := range rows {
 		pts = append(pts, trackPoint{p.Lat, p.Lng, p.At})
@@ -295,8 +295,8 @@ func (h *FieldTrackHandler) Track(w http.ResponseWriter, r *http.Request) {
 		Lat             *float64   `db:"mapLatitude" json:"lat"`
 		Lng             *float64   `db:"mapLongitude" json:"lng"`
 	}
-	_ = h.db.Get(&times, `SELECT "acceptedAt", "materialsReadyAt", "departedAt", "departOrigin", "arrivedAt", "startedAt", "completedAt",
-		"autoDepartedAt", "autoArrivedAt", "autoCompletedAt", "mapLatitude", "mapLongitude" FROM "Booking" WHERE id = $1`, id)
+	errlog.Err(h.db.Get(&times, `SELECT "acceptedAt", "materialsReadyAt", "departedAt", "departOrigin", "arrivedAt", "startedAt", "completedAt",
+		"autoDepartedAt", "autoArrivedAt", "autoCompletedAt", "mapLatitude", "mapLongitude" FROM "Booking" WHERE id = $1`, id))
 	type stopRow struct {
 		Kind    string    `db:"kind" json:"kind"`
 		Lat     float64   `db:"lat" json:"lat"`
@@ -306,7 +306,7 @@ func (h *FieldTrackHandler) Track(w http.ResponseWriter, r *http.Request) {
 		Minutes int       `db:"minutes" json:"minutes"`
 	}
 	stops := []stopRow{}
-	_ = h.db.Select(&stops, `SELECT kind, lat, lng, "startAt", "endAt", minutes FROM "BookingRouteStop" WHERE "bookingId" = $1 ORDER BY "startAt"`, id)
+	errlog.Err(h.db.Select(&stops, `SELECT kind, lat, lng, "startAt", "endAt", minutes FROM "BookingRouteStop" WHERE "bookingId" = $1 ORDER BY "startAt"`, id))
 	type proofRow struct {
 		Stage     string    `db:"stage" json:"stage"`
 		PressedAt time.Time `db:"pressedAt" json:"pressedAt"`
@@ -315,7 +315,7 @@ func (h *FieldTrackHandler) Track(w http.ResponseWriter, r *http.Request) {
 		DistanceM *float64  `db:"distanceM" json:"distanceM"`
 	}
 	proofs := []proofRow{}
-	_ = h.db.Select(&proofs, `SELECT stage, "pressedAt", offline, verdict, "distanceM" FROM "BookingStageProof" WHERE "bookingId" = $1 ORDER BY "pressedAt"`, id)
+	errlog.Err(h.db.Select(&proofs, `SELECT stage, "pressedAt", offline, verdict, "distanceM" FROM "BookingStageProof" WHERE "bookingId" = $1 ORDER BY "pressedAt"`, id))
 	pts := h.loadPoints(id)
 	path := make([][2]float64, 0, len(pts))
 	for _, p := range pts {
@@ -371,9 +371,9 @@ func (h *FieldTrackHandler) FieldMap(w http.ResponseWriter, r *http.Request) {
 		BookingID  *string   `db:"bookingId" json:"bookingId"`
 	}
 	latest := []empRow{}
-	_ = h.db.Select(&latest, `SELECT DISTINCT ON (p."employeeId") p."employeeId", e.name, p.latitude, p.longitude, p."createdAt", p."bookingId"
+	errlog.Err(h.db.Select(&latest, `SELECT DISTINCT ON (p."employeeId") p."employeeId", e.name, p.latitude, p.longitude, p."createdAt", p."bookingId"
 		FROM "LocationPing" p JOIN "Employee" e ON e.id = p."employeeId"
-		WHERE baghdad_date(p."createdAt") BETWEEN $1::date AND $2::date ORDER BY p."employeeId", p."createdAt" DESC`, from, to)
+		WHERE baghdad_date(p."createdAt") BETWEEN $1::date AND $2::date ORDER BY p."employeeId", p."createdAt" DESC`, from, to))
 	// نقاط الخريطة الحرارية: التوقفات بوزن مدتها + عيّنة من نقاط المسار
 	heat := [][3]float64{}
 	var stops []struct {
@@ -381,7 +381,7 @@ func (h *FieldTrackHandler) FieldMap(w http.ResponseWriter, r *http.Request) {
 		Lng float64 `db:"lng"`
 		Min int     `db:"minutes"`
 	}
-	_ = h.db.Select(&stops, `SELECT s.lat, s.lng, s.minutes FROM "BookingRouteStop" s WHERE baghdad_date(s."startAt") BETWEEN $1::date AND $2::date`, from, to)
+	errlog.Err(h.db.Select(&stops, `SELECT s.lat, s.lng, s.minutes FROM "BookingRouteStop" s WHERE baghdad_date(s."startAt") BETWEEN $1::date AND $2::date`, from, to))
 	for _, s := range stops {
 		heat = append(heat, [3]float64{s.Lat, s.Lng, float64(s.Min)})
 	}
@@ -389,8 +389,8 @@ func (h *FieldTrackHandler) FieldMap(w http.ResponseWriter, r *http.Request) {
 		Lat float64 `db:"latitude"`
 		Lng float64 `db:"longitude"`
 	}
-	_ = h.db.Select(&pts, `SELECT latitude, longitude FROM "LocationPing" WHERE baghdad_date("createdAt") BETWEEN $1::date AND $2::date
-		ORDER BY random() LIMIT 5000`, from, to)
+	errlog.Err(h.db.Select(&pts, `SELECT latitude, longitude FROM "LocationPing" WHERE baghdad_date("createdAt") BETWEEN $1::date AND $2::date
+		ORDER BY random() LIMIT 5000`, from, to))
 	for _, p := range pts {
 		heat = append(heat, [3]float64{p.Lat, p.Lng, 1})
 	}

@@ -2,6 +2,7 @@ package handler
 
 import (
 	"net/http"
+	"staffmange-api/internal/errlog"
 	"time"
 
 	"github.com/jmoiron/sqlx"
@@ -15,7 +16,9 @@ import (
 
 type AttendanceBoardHandler struct{ db *sqlx.DB }
 
-func NewAttendanceBoardHandler(db *sqlx.DB) *AttendanceBoardHandler { return &AttendanceBoardHandler{db: db} }
+func NewAttendanceBoardHandler(db *sqlx.DB) *AttendanceBoardHandler {
+	return &AttendanceBoardHandler{db: db}
+}
 
 type boardRow struct {
 	ID        string     `db:"id" json:"id"`
@@ -62,9 +65,9 @@ func (h *AttendanceBoardHandler) LeaveDays(employeeID, month string) map[string]
 		D    string `db:"d"`
 		Kind string `db:"kind"`
 	}{}
-	_ = h.db.Select(&rows, `SELECT to_char(g::date, 'YYYY-MM-DD') AS d, l.kind
+	errlog.Err(h.db.Select(&rows, `SELECT to_char(g::date, 'YYYY-MM-DD') AS d, l.kind
 		FROM "LeaveRequest" l, generate_series(l."startDate"::date, l."endDate"::date, interval '1 day') g
-		WHERE l."employeeId" = $1 AND l.status = 'APPROVED' AND to_char(g::date, 'YYYY-MM') = $2`, employeeID, month)
+		WHERE l."employeeId" = $1 AND l.status = 'APPROVED' AND to_char(g::date, 'YYYY-MM') = $2`, employeeID, month))
 	for _, x := range rows {
 		label := model.LeaveKindLabels[x.Kind]
 		if label == "" {

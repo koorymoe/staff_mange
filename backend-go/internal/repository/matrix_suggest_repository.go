@@ -48,10 +48,10 @@ func (r *MatrixSuggestRepository) ServiceDurations() (map[string]int, int) {
 		Minutes   float64 `db:"minutes"`
 		N         int     `db:"n"`
 	}{}
-	_ = r.db.Select(&rows, `SELECT "serviceId", percentile_cont(0.5) WITHIN GROUP (ORDER BY booking_work_minutes(id, "startedAt", "completedAt", "autoArrivedAt", "autoCompletedAt")) AS minutes, count(booking_work_minutes(id, "startedAt", "completedAt", "autoArrivedAt", "autoCompletedAt"))::int AS n
+	errlog.Err(r.db.Select(&rows, `SELECT "serviceId", percentile_cont(0.5) WITHIN GROUP (ORDER BY booking_work_minutes(id, "startedAt", "completedAt", "autoArrivedAt", "autoCompletedAt")) AS minutes, count(booking_work_minutes(id, "startedAt", "completedAt", "autoArrivedAt", "autoCompletedAt"))::int AS n
 		FROM "Booking" WHERE "serviceId" IS NOT NULL AND "startedAt" IS NOT NULL AND "completedAt" > "startedAt"
 		  AND "completedAt" > now() - interval '180 days' AND "completedAt" - "startedAt" < interval '12 hours'
-		GROUP BY "serviceId"`)
+		GROUP BY "serviceId"`))
 	out := map[string]int{}
 	for _, x := range rows {
 		if x.N >= 3 {
@@ -59,9 +59,9 @@ func (r *MatrixSuggestRepository) ServiceDurations() (map[string]int, int) {
 		}
 	}
 	var all float64
-	_ = r.db.Get(&all, `SELECT COALESCE(percentile_cont(0.5) WITHIN GROUP (ORDER BY booking_work_minutes(id, "startedAt", "completedAt", "autoArrivedAt", "autoCompletedAt")), 120)
+	errlog.Err(r.db.Get(&all, `SELECT COALESCE(percentile_cont(0.5) WITHIN GROUP (ORDER BY booking_work_minutes(id, "startedAt", "completedAt", "autoArrivedAt", "autoCompletedAt")), 120)
 		FROM "Booking" WHERE "startedAt" IS NOT NULL AND "completedAt" > "startedAt" AND "completedAt" - "startedAt" < interval '12 hours'
-		  AND "completedAt" > now() - interval '180 days'`)
+		  AND "completedAt" > now() - interval '180 days'`))
 	return out, int(all)
 }
 
@@ -74,9 +74,9 @@ func (r *MatrixSuggestRepository) WorkHours() (from, to int, offDays []int) {
 		P90 *float64 `db:"p90"`
 		N   int      `db:"n"`
 	}
-	_ = r.db.Get(&row, `SELECT percentile_cont(0.1) WITHIN GROUP (ORDER BY h) AS p10, percentile_cont(0.9) WITHIN GROUP (ORDER BY h) AS p90, count(*)::int AS n
+	errlog.Err(r.db.Get(&row, `SELECT percentile_cont(0.1) WITHIN GROUP (ORDER BY h) AS p10, percentile_cont(0.9) WITHIN GROUP (ORDER BY h) AS p90, count(*)::int AS n
 		FROM (SELECT EXTRACT(HOUR FROM "scheduledAt" AT TIME ZONE 'Asia/Baghdad') AS h FROM "Booking"
-		      WHERE "scheduledAt" > now() - interval '180 days' AND "scheduledAt" < now()) x`)
+		      WHERE "scheduledAt" > now() - interval '180 days' AND "scheduledAt" < now()) x`))
 	if row.N >= 20 && row.P10 != nil && row.P90 != nil && *row.P90 > *row.P10 {
 		from, to = int(*row.P10), int(*row.P90)
 	}
@@ -84,8 +84,8 @@ func (r *MatrixSuggestRepository) WorkHours() (from, to int, offDays []int) {
 		D int `db:"d"`
 		N int `db:"n"`
 	}{}
-	_ = r.db.Select(&days, `SELECT EXTRACT(DOW FROM "scheduledAt" AT TIME ZONE 'Asia/Baghdad')::int AS d, count(*)::int AS n
-		FROM "Booking" WHERE "scheduledAt" > now() - interval '180 days' AND "scheduledAt" < now() GROUP BY 1`)
+	errlog.Err(r.db.Select(&days, `SELECT EXTRACT(DOW FROM "scheduledAt" AT TIME ZONE 'Asia/Baghdad')::int AS d, count(*)::int AS n
+		FROM "Booking" WHERE "scheduledAt" > now() - interval '180 days' AND "scheduledAt" < now() GROUP BY 1`))
 	total := 0
 	seen := map[int]int{}
 	for _, d := range days {
@@ -160,11 +160,11 @@ func (r *MatrixSuggestRepository) People(serviceID *string, day time.Time) ([]Su
 // CrewSize عدد الفنيين (بلا الليدر) المعتاد لهالخدمة.
 func (r *MatrixSuggestRepository) CrewSize(serviceID *string) int {
 	var n *float64
-	_ = r.db.Get(&n, `SELECT percentile_disc(0.5) WITHIN GROUP (ORDER BY c) FROM (
+	errlog.Err(r.db.Get(&n, `SELECT percentile_disc(0.5) WITHIN GROUP (ORDER BY c) FROM (
 		SELECT count(a.id) AS c FROM "Booking" b JOIN "BookingAssignment" a ON a."bookingId" = b.id
 		 WHERE b."serviceId" IS NOT DISTINCT FROM $1 AND b."completedAt" > now() - interval '180 days'
 		   AND a."employeeId" IS DISTINCT FROM b."projectSupervisorId"
-		 GROUP BY b.id) x`, serviceID)
+		 GROUP BY b.id) x`, serviceID))
 	if n == nil || *n < 1 {
 		return 1
 	}
@@ -233,7 +233,7 @@ func (r *MatrixSuggestRepository) AssignmentRoles(bookingID string) map[string]s
 		Role string `db:"role"`
 		Emp  string `db:"employeeId"`
 	}{}
-	_ = r.db.Select(&rows, `SELECT role::text AS role, "employeeId" FROM "BookingAssignment" WHERE "bookingId" = $1`, bookingID)
+	errlog.Err(r.db.Select(&rows, `SELECT role::text AS role, "employeeId" FROM "BookingAssignment" WHERE "bookingId" = $1`, bookingID))
 	out := map[string]string{}
 	for _, x := range rows {
 		out[x.Role] = x.Emp

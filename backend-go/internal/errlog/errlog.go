@@ -3,7 +3,9 @@
 package errlog
 
 import (
+	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"log"
 	"runtime"
@@ -17,8 +19,9 @@ func Exec(_ sql.Result, err error) {
 }
 
 // Err يسجّل خطأ أي عملية ثانوية: errlog.Err(doSomething()).
+// «ماكو صف» (sql.ErrNoRows) مو خطأ هنا — أغلب القراءات «إذا موجود»، فما نسجّله.
 func Err(err error) {
-	if err != nil {
+	if err != nil && !errors.Is(err, sql.ErrNoRows) && !errors.Is(err, context.Canceled) {
 		report(err)
 	}
 }

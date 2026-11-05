@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math"
 	"sort"
+	"staffmange-api/internal/errlog"
 	"strings"
 	"time"
 
@@ -108,10 +109,10 @@ func BuildDossier(db *sqlx.DB, id string) (*Dossier, error) {
 	if e.Contract != nil {
 		d.ContractEnd = e.Contract.Format("2006-01-02")
 	}
-	_ = db.Get(&d.Position, `SELECT COALESCE(string_agg(CASE oa.position WHEN 'DIRECTOR' THEN 'مدير ' WHEN 'DEPUTY' THEN 'نائب ' ELSE 'عضو ' END
+	errlog.Err(db.Get(&d.Position, `SELECT COALESCE(string_agg(CASE oa.position WHEN 'DIRECTOR' THEN 'مدير ' WHEN 'DEPUTY' THEN 'نائب ' ELSE 'عضو ' END
 			|| COALESCE(u.name, dv.name) || CASE WHEN oa.acting THEN ' (بالوكالة)' ELSE '' END, '، '), '')
 		FROM "OrgAssignment" oa JOIN "OrgDivision" dv ON dv.id = oa."divisionId" LEFT JOIN "OrgUnit" u ON u.id = oa."unitId"
-		WHERE oa."employeeId" = $1 AND oa."endedAt" IS NULL`, id)
+		WHERE oa."employeeId" = $1 AND oa."endedAt" IS NULL`, id))
 
 	// الاستمارة (٩.١)
 	var sv struct {
@@ -126,12 +127,13 @@ func BuildDossier(db *sqlx.DB, id string) (*Dossier, error) {
 			d.ContractEnd = sv.Contract.Format("2006-01-02")
 		}
 	}
+	errlog.
 
-	// المهارات والتدريب
-	_ = db.Select(&d.Skills, `SELECT s.name FROM "EmployeeSkill" es JOIN "Skill" s ON s.id = es."skillId" WHERE es."employeeId" = $1 AND es."canPerform" ORDER BY s.name LIMIT 40`, id)
-	_ = db.Select(&d.Training, `SELECT p.title || CASE WHEN tp.passed THEN ' ✓' ELSE ' (ما نجح بعد)' END FROM "TrainingProgramParticipant" tp
-		JOIN "TrainingProgram" p ON p.id = tp."programId" WHERE tp."employeeId" = $1 ORDER BY tp."createdAt" DESC LIMIT 15`, id)
-	_ = db.Select(&d.LeaderSkl, `SELECT DISTINCT ON (skill) skill || ': ' || score::text || '/5' FROM "LeaderSkillRating" WHERE "employeeId" = $1 ORDER BY skill, "ratedAt" DESC`, id)
+		// المهارات والتدريب
+		Err(db.Select(&d.Skills, `SELECT s.name FROM "EmployeeSkill" es JOIN "Skill" s ON s.id = es."skillId" WHERE es."employeeId" = $1 AND es."canPerform" ORDER BY s.name LIMIT 40`, id))
+	errlog.Err(db.Select(&d.Training, `SELECT p.title || CASE WHEN tp.passed THEN ' ✓' ELSE ' (ما نجح بعد)' END FROM "TrainingProgramParticipant" tp
+		JOIN "TrainingProgram" p ON p.id = tp."programId" WHERE tp."employeeId" = $1 ORDER BY tp."createdAt" DESC LIMIT 15`, id))
+	errlog.Err(db.Select(&d.LeaderSkl, `SELECT DISTINCT ON (skill) skill || ': ' || score::text || '/5' FROM "LeaderSkillRating" WHERE "employeeId" = $1 ORDER BY skill, "ratedAt" DESC`, id))
 
 	// المنحنى: آخر ٦ أشهر — ماتركس ٪ وتقييم البشر
 	months := []DossierMonth{}
@@ -196,16 +198,17 @@ func BuildDossier(db *sqlx.DB, id string) (*Dossier, error) {
 	if sp.N >= 3 {
 		d.SpeedRatio, d.SpeedN = sp.Ratio, sp.N
 	}
+	errlog.
 
-	// الالتزام والمشاكل
-	_ = db.Get(&d.Attendance30, `SELECT count(DISTINCT date::date) FROM "Attendance" WHERE "employeeId" = $1 AND date::date > current_date - 30`, id)
+		// الالتزام والمشاكل
+		Err(db.Get(&d.Attendance30, `SELECT count(DISTINCT date::date) FROM "Attendance" WHERE "employeeId" = $1 AND date::date > current_date - 30`, id))
 	_ = db.QueryRow(`SELECT count(*), count(*) FILTER (WHERE late) FROM "DailyWorkReport" WHERE "employeeId" = $1 AND day > current_date - 30`, id).Scan(&d.Reports30, &d.ReportsLate30)
-	_ = db.Get(&d.Negligence90, `SELECT count(*) FROM "EmployeeNegligence" WHERE "employeeId" = $1 AND day > current_date - 90`, id)
-	_ = db.Get(&d.Discipline90, `SELECT COALESCE(-sum(delta) FILTER (WHERE delta < 0), 0)::int FROM "DisciplineEvent" WHERE "employeeId" = $1 AND "createdAt" > now() - interval '90 days'`, id)
+	errlog.Err(db.Get(&d.Negligence90, `SELECT count(*) FROM "EmployeeNegligence" WHERE "employeeId" = $1 AND day > current_date - 90`, id))
+	errlog.Err(db.Get(&d.Discipline90, `SELECT COALESCE(-sum(delta) FILTER (WHERE delta < 0), 0)::int FROM "DisciplineEvent" WHERE "employeeId" = $1 AND "createdAt" > now() - interval '90 days'`, id))
 	_ = db.QueryRow(`SELECT count(*), count(*) FILTER (WHERE verdict = 'REJECTED') FROM "MonitorJustification" WHERE "employeeId" = $1 AND "createdAt" > now() - interval '90 days'`, id).Scan(&d.Justif90, &d.JustifRejected)
-	_ = db.Get(&d.Complaints90, `SELECT count(*) FROM "Complaint" WHERE "relatedEmployeeId" = $1 AND "createdAt" > now() - interval '90 days'`, id)
-	_ = db.Get(&d.Issues90, `SELECT count(*) FROM "WorkplaceIssue" WHERE ("partyAId" = $1 OR "partyBId" = $1) AND "createdAt" > now() - interval '90 days'`, id)
-	_ = db.Get(&d.PeerNotes90, `SELECT count(*) FROM "PeerNote" WHERE "targetId" = $1 AND "createdAt" > now() - interval '90 days'`, id)
+	errlog.Err(db.Get(&d.Complaints90, `SELECT count(*) FROM "Complaint" WHERE "relatedEmployeeId" = $1 AND "createdAt" > now() - interval '90 days'`, id))
+	errlog.Err(db.Get(&d.Issues90, `SELECT count(*) FROM "WorkplaceIssue" WHERE ("partyAId" = $1 OR "partyBId" = $1) AND "createdAt" > now() - interval '90 days'`, id))
+	errlog.Err(db.Get(&d.PeerNotes90, `SELECT count(*) FROM "PeerNote" WHERE "targetId" = $1 AND "createdAt" > now() - interval '90 days'`, id))
 
 	d.ReportMatchPct, d.ReportMatchN = MatchRate(db, id, 30)
 

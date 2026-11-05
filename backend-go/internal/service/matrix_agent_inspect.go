@@ -2,6 +2,7 @@ package service
 
 import (
 	"fmt"
+	"staffmange-api/internal/errlog"
 	"strings"
 	"time"
 )
@@ -77,7 +78,7 @@ func (a *MatrixAgent) bookingVerdict(code string) string {
 		Status string    `db:"status"`
 		At     time.Time `db:"at"`
 	}
-	_ = a.db.Select(&twins, `SELECT b2.code, b2.status::text AS status, COALESCE(b2."scheduledAt", b2."createdAt") AS at
+	errlog.Err(a.db.Select(&twins, `SELECT b2.code, b2.status::text AS status, COALESCE(b2."scheduledAt", b2."createdAt") AS at
 		FROM "Booking" b2 WHERE b2."customerId" = $1 AND b2.id <> $2 AND b2."archivedAt" IS NULL
 		  AND b2."partialJobBookingId" IS DISTINCT FROM $2 AND $2 IS DISTINCT FROM (SELECT "partialJobBookingId" FROM "Booking" WHERE id = $2)
 		  AND $3::text IS NOT NULL AND ar_norm(b2.address) = ar_norm($3::text)
@@ -87,12 +88,12 @@ func (a *MatrixAgent) bookingVerdict(code string) string {
 				return *b.Scheduled
 			}
 			return b.CreatedAt
-		}())
+		}()))
 	var flagged []struct {
 		Status     string  `db:"status"`
 		Resolution *string `db:"resolution"`
 	}
-	_ = a.db.Select(&flagged, `SELECT status, resolution FROM "DuplicateCandidate" WHERE kind = 'BOOKING' AND ($1 IN ("entityAId", "entityBId"))`, b.ID)
+	errlog.Err(a.db.Select(&flagged, `SELECT status, resolution FROM "DuplicateCandidate" WHERE kind = 'BOOKING' AND ($1 IN ("entityAId", "entityBId"))`, b.ID))
 	switch {
 	case len(twins) > 0:
 		codes := []string{}
@@ -171,7 +172,7 @@ func (a *MatrixAgent) bookingVerdict(code string) string {
 		Status string `db:"status"`
 		Desc   string `db:"description"`
 	}
-	_ = a.db.Select(&complaints, `SELECT status, description FROM "Complaint" WHERE "bookingId" = $1`, b.ID)
+	errlog.Err(a.db.Select(&complaints, `SELECT status, description FROM "Complaint" WHERE "bookingId" = $1`, b.ID))
 	for _, c := range complaints {
 		issues = append(issues, fmt.Sprintf("شكوى (%s): %s", c.Status, cut(c.Desc, 120)))
 	}
@@ -245,16 +246,16 @@ func (a *MatrixAgent) customerProfile(q string) (string, error) {
 		Name string `db:"name"`
 		N    int    `db:"n"`
 	}
-	_ = a.db.Select(&svc, `SELECT COALESCE(s.name, 'بلا خدمة') AS name, count(*) AS n FROM "Booking" b
-		LEFT JOIN "Service" s ON s.id = b."serviceId" WHERE b."customerId" = $1 GROUP BY 1 ORDER BY 2 DESC`, m.ID)
+	errlog.Err(a.db.Select(&svc, `SELECT COALESCE(s.name, 'بلا خدمة') AS name, count(*) AS n FROM "Booking" b
+		LEFT JOIN "Service" s ON s.id = b."serviceId" WHERE b."customerId" = $1 GROUP BY 1 ORDER BY 2 DESC`, m.ID))
 	parts := []string{}
 	for _, x := range svc {
 		parts = append(parts, fmt.Sprintf("%s ×%d", x.Name, x.N))
 	}
 	fmt.Fprintf(&sb, "【شنو طلب منا】 %d حجز: %s\n", m.N, strings.Join(parts, "، "))
 	var projects []string
-	_ = a.db.Select(&projects, `SELECT p.code || ' «' || p.name || '» (' || p.stage || ')' FROM "Project" p WHERE right(regexp_replace(COALESCE(p.phone, ''), '\D', '', 'g'), 10) <> ''
-		  AND right(regexp_replace(COALESCE(p.phone, ''), '\D', '', 'g'), 10) = right(regexp_replace((SELECT phone FROM "Customer" WHERE id = $1), '\D', '', 'g'), 10) ORDER BY p."createdAt" DESC LIMIT 5`, m.ID)
+	errlog.Err(a.db.Select(&projects, `SELECT p.code || ' «' || p.name || '» (' || p.stage || ')' FROM "Project" p WHERE right(regexp_replace(COALESCE(p.phone, ''), '\D', '', 'g'), 10) <> ''
+		  AND right(regexp_replace(COALESCE(p.phone, ''), '\D', '', 'g'), 10) = right(regexp_replace((SELECT phone FROM "Customer" WHERE id = $1), '\D', '', 'g'), 10) ORDER BY p."createdAt" DESC LIMIT 5`, m.ID))
 	if len(projects) > 0 {
 		fmt.Fprintf(&sb, "مشاريع: %s\n", strings.Join(projects, "، "))
 	}
@@ -269,11 +270,11 @@ func (a *MatrixAgent) customerProfile(q string) (string, error) {
 		Crew    *string    `db:"crew"`
 		Sched   *time.Time `db:"scheduledAt"`
 	}
-	_ = a.db.Select(&recent, `SELECT b.code, b.status::text AS status, s.name AS service, b."createdAt", b."scheduledAt",
+	errlog.Err(a.db.Select(&recent, `SELECT b.code, b.status::text AS status, s.name AS service, b."createdAt", b."scheduledAt",
 			GREATEST(b."createdAt", COALESCE(b."updatedAt", b."createdAt"), COALESCE(b."completedAt", b."createdAt"), COALESCE(b."startedAt", b."createdAt")) AS last,
 			(SELECT string_agg(e.name, '، ') FROM "BookingAssignment" ba JOIN "Employee" e ON e.id = ba."employeeId" WHERE ba."bookingId" = b.id) AS crew
 		FROM "Booking" b LEFT JOIN "Service" s ON s.id = b."serviceId"
-		WHERE b."customerId" = $1 ORDER BY b."createdAt" DESC LIMIT 8`, m.ID)
+		WHERE b."customerId" = $1 ORDER BY b."createdAt" DESC LIMIT 8`, m.ID))
 	if len(recent) > 0 {
 		r := recent[0]
 		crew := "ماكو كادر مسجّل"
@@ -299,7 +300,7 @@ func (a *MatrixAgent) customerProfile(q string) (string, error) {
 		At     time.Time `db:"createdAt"`
 		Rating *int      `db:"customerRating"`
 	}
-	_ = a.db.Select(&comps, `SELECT status, type::text AS type, description, "createdAt", "customerRating" FROM "Complaint" WHERE "customerId" = $1 ORDER BY "createdAt" DESC`, m.ID)
+	errlog.Err(a.db.Select(&comps, `SELECT status, type::text AS type, description, "createdAt", "customerRating" FROM "Complaint" WHERE "customerId" = $1 ORDER BY "createdAt" DESC`, m.ID))
 	if len(comps) == 0 {
 		sb.WriteString("【الشكاوى】 ما سجّل ولا شكوى ✓\n")
 	} else {
@@ -331,14 +332,14 @@ func (a *MatrixAgent) customerProfile(q string) (string, error) {
 		Stopped   int `db:"stopped"`
 		Dups      int `db:"dups"`
 	}
-	_ = a.db.Get(&p, `SELECT
+	errlog.Err(a.db.Get(&p, `SELECT
 			count(*) FILTER (WHERE status::text = 'CANCELLED') AS cancelled,
 			COALESCE(sum("postponeCount"), 0) AS postponed,
 			count(*) FILTER (WHERE COALESCE("contactAttempts", 0) >= 2) AS noanswer,
 			COALESCE(sum("partialCount"), 0) AS partial,
 			count(*) FILTER (WHERE "workStoppedAt" IS NOT NULL) AS stopped,
 			(SELECT count(*) FROM "DuplicateCandidate" d WHERE d.kind = 'BOOKING' AND d."entityAId" IN (SELECT id FROM "Booking" WHERE "customerId" = $1)) AS dups
-		FROM "Booking" WHERE "customerId" = $1`, m.ID)
+		FROM "Booking" WHERE "customerId" = $1`, m.ID))
 	probs := []string{}
 	add := func(n int, s string) {
 		if n > 0 {

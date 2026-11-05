@@ -2,6 +2,7 @@ package service
 
 import (
 	"fmt"
+	"staffmange-api/internal/errlog"
 	"strings"
 
 	"github.com/jmoiron/sqlx"
@@ -41,11 +42,11 @@ func (a *MatrixAgent) RegisterSuggestTool(db *sqlx.DB, agent string, notifyOwner
 				return "", fmt.Errorf("العنوان فارغ")
 			}
 			var today, dup int
-			_ = db.Get(&today, `SELECT count(*) FROM "AiSuggestion" WHERE "createdAt" > now() - interval '24 hours'`)
+			errlog.Err(db.Get(&today, `SELECT count(*) FROM "AiSuggestion" WHERE "createdAt" > now() - interval '24 hours'`))
 			if today >= aiSuggestDailyMax {
 				return "وصلت حد الاقتراحات اليوم — احتفظ بيه لباچر إذا بعده مهم.", nil
 			}
-			_ = db.Get(&dup, `SELECT count(*) FROM "AiSuggestion" WHERE lower(title) = lower($1) AND "createdAt" > now() - interval '30 days'`, title)
+			errlog.Err(db.Get(&dup, `SELECT count(*) FROM "AiSuggestion" WHERE lower(title) = lower($1) AND "createdAt" > now() - interval '30 days'`, title))
 			if dup > 0 {
 				return "هذا الاقتراح مسجّل قبل — ما يحتاج تكرره.", nil
 			}

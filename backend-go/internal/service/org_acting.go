@@ -3,6 +3,7 @@ package service
 import (
 	"fmt"
 	"log"
+	"staffmange-api/internal/errlog"
 	"time"
 )
 
@@ -43,7 +44,7 @@ func (s *OrgService) RunActing(notify func(empID, msg string)) {
 	}
 	for _, r := range rows {
 		var exists int
-		_ = s.db.Get(&exists, `SELECT count(*) FROM "OrgAssignment" WHERE "replacesId" = $1 AND acting AND "endedAt" IS NULL`, r.AssignmentID)
+		errlog.Err(s.db.Get(&exists, `SELECT count(*) FROM "OrgAssignment" WHERE "replacesId" = $1 AND acting AND "endedAt" IS NULL`, r.AssignmentID))
 		if exists > 0 {
 			continue
 		}
@@ -86,12 +87,12 @@ func (s *OrgService) RunActing(notify func(empID, msg string)) {
 		Emp  string `db:"employeeId"`
 		Name string `db:"name"`
 	}{}
-	_ = s.db.Select(&ending, `SELECT a.id, a."employeeId", e.name FROM "OrgAssignment" a
+	errlog.Err(s.db.Select(&ending, `SELECT a.id, a."employeeId", e.name FROM "OrgAssignment" a
 		JOIN "OrgAssignment" o ON o.id = a."replacesId" JOIN "Employee" e ON e.id = o."employeeId"
 		WHERE a.acting AND a."endedAt" IS NULL AND (
 		  a."actingUntil" <= now() OR o."endedAt" IS NOT NULL
 		  OR NOT EXISTS (SELECT 1 FROM "LeaveRequest" l WHERE l."employeeId" = o."employeeId" AND l.status = 'APPROVED'
-		                 AND l."startDate" <= $1::date AND l."endDate" >= $1::date))`, today)
+		                 AND l."startDate" <= $1::date AND l."endDate" >= $1::date))`, today))
 	for _, a := range ending {
 		if _, err := s.End("", a.ID, "انتهت الوكالة — "+a.Name+" رجع من الإجازة"); err == nil && notify != nil {
 			notify(a.Emp, "🏛️ انتهت وكالتك — "+a.Name+" رجع لمكانه. شكراً على الإدارة.")
@@ -102,9 +103,9 @@ func (s *OrgService) RunActing(notify func(empID, msg string)) {
 func (s *OrgService) placeName(div string, unit *string) string {
 	var name string
 	if unit != nil {
-		_ = s.db.Get(&name, `SELECT name FROM "OrgUnit" WHERE id = $1`, *unit)
+		errlog.Err(s.db.Get(&name, `SELECT name FROM "OrgUnit" WHERE id = $1`, *unit))
 	} else {
-		_ = s.db.Get(&name, `SELECT name FROM "OrgDivision" WHERE id = $1`, div)
+		errlog.Err(s.db.Get(&name, `SELECT name FROM "OrgDivision" WHERE id = $1`, div))
 	}
 	return name
 }
@@ -112,9 +113,9 @@ func (s *OrgService) placeName(div string, unit *string) string {
 // supervisors مدير الإدارة (admin) + المالك — الي يقررون البديل.
 func (s *OrgService) supervisors(exclude string) []string {
 	ids := []string{}
-	_ = s.db.Select(&ids, `SELECT DISTINCT id FROM (
+	errlog.Err(s.db.Select(&ids, `SELECT DISTINCT id FROM (
 		SELECT "employeeId" AS id FROM "OrgAssignment" WHERE "divisionId" = 'admin' AND "unitId" IS NULL AND position = 'DIRECTOR' AND "endedAt" IS NULL
-		UNION SELECT id FROM "Employee" WHERE role = 'OWNER' AND status = 'ACTIVE') x WHERE id <> $1`, exclude)
+		UNION SELECT id FROM "Employee" WHERE role = 'OWNER' AND status = 'ACTIVE') x WHERE id <> $1`, exclude))
 	return ids
 }
 

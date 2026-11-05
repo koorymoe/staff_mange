@@ -187,11 +187,11 @@ func (h *PurchaseControlHandler) Control(w http.ResponseWriter, r *http.Request)
 		Alerts     int        `db:"alerts" json:"alerts"`
 	}
 	rows := []row{}
-	_ = h.db.Select(&rows, `SELECT r.id, v."verifiedAt", e.name AS "verifiedBy",
+	errlog.Err(h.db.Select(&rows, `SELECT r.id, v."verifiedAt", e.name AS "verifiedBy",
 		EXISTS (SELECT 1 FROM "SupplierReview" x WHERE x."procurementId" = r.id AND x."ratedById" = $1) AS "myReview",
 		(SELECT count(*) FROM "ProcurementPriceAlert" a WHERE a."procurementId" = r.id)::int AS alerts
 		FROM "ProcurementRequest" r LEFT JOIN "ProcurementVerify" v ON v."procurementId" = r.id LEFT JOIN "Employee" e ON e.id = v."verifiedById"
-		WHERE r."fulfilledAt" > now() - interval '120 days'`, me)
+		WHERE r."fulfilledAt" > now() - interval '120 days'`, me))
 	WriteJSON(w, http.StatusOK, rows)
 }
 
@@ -239,13 +239,13 @@ func (h *PurchaseControlHandler) Alerts(w http.ResponseWriter, r *http.Request) 
 		ReviewNote  *string    `db:"reviewNote" json:"reviewNote"`
 	}
 	rows := []row{}
-	_ = h.db.Select(&rows, `SELECT a.id, a.kind, COALESCE(r.code, 'مصروف فني') AS code, a."productName", s."companyName" AS supplier, a."unitPrice", a.quantity,
+	errlog.Err(h.db.Select(&rows, `SELECT a.id, a.kind, COALESCE(r.code, 'مصروف فني') AS code, a."productName", s."companyName" AS supplier, a."unitPrice", a.quantity,
 		rs."companyName" AS "refSupplier", a."refPrice", a."lossIqd", e.name AS buyer, a."createdAt", a."reviewedAt", a."reviewNote"
 		FROM "ProcurementPriceAlert" a LEFT JOIN "ProcurementRequest" r ON r.id = a."procurementId"
 		LEFT JOIN "Supplier" s0 ON s0.id = a."supplierId" LEFT JOIN "TechSupplier" ts ON ts.id = a."techSupplierId"
 		LEFT JOIN LATERAL (SELECT COALESCE(s0."companyName", ts."companyName", CASE WHEN a."expenseId" IS NOT NULL THEN 'مورد غير مسجّل' END) AS "companyName") s ON true
 		LEFT JOIN "Supplier" rs ON rs.id = a."refSupplierId"
-		LEFT JOIN "Employee" e ON e.id = a."buyerId" ORDER BY a."reviewedAt" IS NOT NULL, a."createdAt" DESC LIMIT 300`)
+		LEFT JOIN "Employee" e ON e.id = a."buyerId" ORDER BY a."reviewedAt" IS NOT NULL, a."createdAt" DESC LIMIT 300`))
 	WriteJSON(w, http.StatusOK, rows)
 }
 
@@ -274,10 +274,10 @@ func (h *PurchaseControlHandler) SupplierScores(w http.ResponseWriter, r *http.R
 		Alerts      int     `db:"alerts" json:"alerts"`
 	}
 	rows := []row{}
-	_ = h.db.Select(&rows, `SELECT s.id AS "supplierId", count(v.id)::int AS n, COALESCE(avg(v.price),0) AS price, COALESCE(avg(v.quality),0) AS quality,
+	errlog.Err(h.db.Select(&rows, `SELECT s.id AS "supplierId", count(v.id)::int AS n, COALESCE(avg(v.price),0) AS price, COALESCE(avg(v.quality),0) AS quality,
 		COALESCE(avg(v.speed),0) AS speed, COALESCE(avg(v.punctuality),0) AS punctuality, COALESCE(avg(v.dealing),0) AS dealing,
 		(SELECT count(*) FROM "ProcurementPriceAlert" a WHERE a."supplierId" = s.id)::int AS alerts
-		FROM "Supplier" s LEFT JOIN "SupplierReview" v ON v."supplierId" = s.id GROUP BY s.id`)
+		FROM "Supplier" s LEFT JOIN "SupplierReview" v ON v."supplierId" = s.id GROUP BY s.id`))
 	WriteJSON(w, http.StatusOK, rows)
 }
 
@@ -397,8 +397,8 @@ func (h *PurchaseControlHandler) Quotes(w http.ResponseWriter, r *http.Request) 
 		Note       *string `db:"note" json:"note"`
 	}
 	rows := []row{}
-	_ = h.db.Select(&rows, `SELECT s."companyName" AS supplier, q."totalPrice", q.chosen, q.note FROM "ProcurementQuote" q
-		JOIN "Supplier" s ON s.id = q."supplierId" WHERE q."procurementId" = $1 ORDER BY q."totalPrice"`, r.PathValue("id"))
+	errlog.Err(h.db.Select(&rows, `SELECT s."companyName" AS supplier, q."totalPrice", q.chosen, q.note FROM "ProcurementQuote" q
+		JOIN "Supplier" s ON s.id = q."supplierId" WHERE q."procurementId" = $1 ORDER BY q."totalPrice"`, r.PathValue("id")))
 	WriteJSON(w, http.StatusOK, rows)
 }
 

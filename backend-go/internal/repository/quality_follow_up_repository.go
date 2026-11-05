@@ -2,6 +2,7 @@ package repository
 
 import (
 	"errors"
+	"staffmange-api/internal/errlog"
 	"strings"
 	"time"
 
@@ -209,18 +210,18 @@ func (r *QualityFollowUpRepository) hydrateMany(items []model.QualityFollowUp) {
 		BookingID string `db:"bid"`
 		model.BookingCrewMember
 	}
-	_ = r.db.Select(&crl, `
+	errlog.Err(r.db.Select(&crl, `
 		SELECT a."bookingId" AS bid, a."employeeId", e.name, a.role::text AS role, e."isLeader"
 		FROM "BookingAssignment" a
 		JOIN "Employee" e ON e.id = a."employeeId"
 		WHERE a."bookingId" = ANY($1)
-		ORDER BY e."isLeader" DESC, a.role ASC`, pq.Array(bookingIDs))
+		ORDER BY e."isLeader" DESC, a.role ASC`, pq.Array(bookingIDs)))
 	for _, c := range crl {
 		crew[c.BookingID] = append(crew[c.BookingID], c.BookingCrewMember)
 	}
 	reports := map[string][]model.BookingProgressReport{}
 	var rl []model.BookingProgressReport
-	_ = r.db.Select(&rl, `SELECT * FROM "BookingProgressReport" WHERE "bookingId" = ANY($1) ORDER BY "dayNumber" ASC`, pq.Array(bookingIDs))
+	errlog.Err(r.db.Select(&rl, `SELECT * FROM "BookingProgressReport" WHERE "bookingId" = ANY($1) ORDER BY "dayNumber" ASC`, pq.Array(bookingIDs)))
 	for _, x := range rl {
 		reports[x.BookingID] = append(reports[x.BookingID], x)
 	}
@@ -381,16 +382,14 @@ func (r *QualityFollowUpRepository) ExecutionOf(bookingID string) *model.Booking
 			d.DurationMinutes = &m
 		}
 	}
-
-	_ = r.db.Select(&d.Crew, `
+	errlog.Err(r.db.Select(&d.Crew, `
 		SELECT a."employeeId", e.name, a.role::text AS role, e."isLeader"
 		FROM "BookingAssignment" a
 		JOIN "Employee" e ON e.id = a."employeeId"
 		WHERE a."bookingId" = $1
-		ORDER BY e."isLeader" DESC, a.role ASC`, bookingID)
-
-	_ = r.db.Select(&d.ProgressReports, `
-		SELECT * FROM "BookingProgressReport" WHERE "bookingId" = $1 ORDER BY "dayNumber" ASC`, bookingID)
+		ORDER BY e."isLeader" DESC, a.role ASC`, bookingID))
+	errlog.Err(r.db.Select(&d.ProgressReports, `
+		SELECT * FROM "BookingProgressReport" WHERE "bookingId" = $1 ORDER BY "dayNumber" ASC`, bookingID))
 
 	return d
 }

@@ -4,6 +4,7 @@ import (
 	"github.com/jmoiron/sqlx"
 	"github.com/lib/pq"
 	"log"
+	"staffmange-api/internal/errlog"
 	"time"
 
 	"staffmange-api/internal/model"
@@ -38,8 +39,8 @@ func SetNotificationRewriter(f func(employeeID, message string) string) { notifR
 // RecentAutopilotMessages آخر رسائل ماتركس للموظف — حتى الصياغة الجديدة ما تكرر.
 func (r *NotificationRepository) RecentAutopilotMessages(employeeID string, n int) []string {
 	out := []string{}
-	_ = r.db.Select(&out, `SELECT message FROM "Notification" WHERE "employeeId" = $1 AND type = 'AI_AUTOPILOT'
-		ORDER BY "createdAt" DESC LIMIT $2`, employeeID, n)
+	errlog.Err(r.db.Select(&out, `SELECT message FROM "Notification" WHERE "employeeId" = $1 AND type = 'AI_AUTOPILOT'
+		ORDER BY "createdAt" DESC LIMIT $2`, employeeID, n))
 	return out
 }
 

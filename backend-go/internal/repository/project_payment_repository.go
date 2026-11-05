@@ -1,6 +1,7 @@
 package repository
 
 import (
+	"staffmange-api/internal/errlog"
 	"time"
 
 	"github.com/jmoiron/sqlx"
@@ -111,7 +112,7 @@ func (r *ProjectPaymentRepository) Add(projectID, byID string, in ProjectPayment
 
 func (r *ProjectPaymentRepository) ProjectOf(paymentID string) string {
 	var id string
-	_ = r.db.Get(&id, `SELECT "projectId" FROM "ProjectPayment" WHERE id = $1`, paymentID)
+	errlog.Err(r.db.Get(&id, `SELECT "projectId" FROM "ProjectPayment" WHERE id = $1`, paymentID))
 	return id
 }
 
@@ -142,11 +143,11 @@ func (r *ProjectPaymentRepository) SetContractValue(projectID, byID string, amou
 // IsSupervisor هل الموظف مشرف هالمشروع (المسؤول أو المتوجّه إله أو المسّاح).
 func (r *ProjectPaymentRepository) IsSupervisor(projectID, employeeID string) bool {
 	var ok bool
-	_ = r.db.Get(&ok, `SELECT EXISTS (SELECT 1 FROM "Project" WHERE id = $1
+	errlog.Err(r.db.Get(&ok, `SELECT EXISTS (SELECT 1 FROM "Project" WHERE id = $1
 		AND ($2 IN (COALESCE("responsibleEmployeeId", ''), COALESCE("delegatedToEmployeeId", ''), COALESCE("surveyorEmployeeId", ''))
 		     -- (ع) 10-09: مشرف الحجز المربوط بالمشروع يرفع فلوسه هم
 		     OR EXISTS (SELECT 1 FROM "Booking" b WHERE b.id = "Project"."bookingId" AND b."projectSupervisorId" = $2)))`,
-		projectID, employeeID)
+		projectID, employeeID))
 	return ok
 }
 

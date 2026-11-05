@@ -187,7 +187,7 @@ func (l *VoiceLexicon) load() {
 	terms := []struct {
 		Term string `db:"term"`
 	}{}
-	_ = l.db.Select(&terms, `SELECT term FROM "VoiceTerm" ORDER BY (source IN ('OWNER', 'LEARNED')) DESC, (category = 'موظف') DESC, (source = 'SEED') DESC, uses DESC, "createdAt" LIMIT $1`, l.maxTerm)
+	errlog.Err(l.db.Select(&terms, `SELECT term FROM "VoiceTerm" ORDER BY (source IN ('OWNER', 'LEARNED')) DESC, (category = 'موظف') DESC, (source = 'SEED') DESC, uses DESC, "createdAt" LIMIT $1`, l.maxTerm))
 	words := make([]string, 0, len(terms))
 	for _, t := range terms {
 		words = append(words, t.Term)
@@ -196,7 +196,7 @@ func (l *VoiceLexicon) load() {
 		Wrong string `db:"wrong"`
 		Right string `db:"right"`
 	}{}
-	_ = l.db.Select(&fixRows, `SELECT wrong, "right" FROM "VoiceFix"`)
+	errlog.Err(l.db.Select(&fixRows, `SELECT wrong, "right" FROM "VoiceFix"`))
 	// الأطول أول حتى «الدش كاب» تنطبق قبل «دش»
 	sort.Slice(fixRows, func(i, j int) bool { return len([]rune(fixRows[i].Wrong)) > len([]rune(fixRows[j].Wrong)) })
 	fixes := make([]voiceFix, 0, len(fixRows))
