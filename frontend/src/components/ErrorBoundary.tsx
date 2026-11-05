@@ -23,6 +23,8 @@ export default class ErrorBoundary extends Component<Props, State> {
 
   componentDidCatch(error: Error, info: ErrorInfo) {
     console.error('ErrorBoundary caught:', error, info)
+    // الخطأ الي انلزم هنا ما يعتبر «غير معالج»، فلازم ندزه لـ Sentry بإيدنا (إذا مفعّل)
+    if (import.meta.env.VITE_SENTRY_DSN) import('../sentry').then((m) => m.captureException(error)).catch(() => {})
   }
 
   render() {

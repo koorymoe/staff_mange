@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"log"
 	"runtime"
+	"staffmange-api/internal/monitor"
 )
 
 // Exec يستلم نتيجة db.Exec / tx.Exec مباشرة: errlog.Exec(db.Exec(...)).
@@ -32,6 +33,7 @@ func report(err error) {
 		where = fmt.Sprintf("%s:%d", short(file), line)
 	}
 	log.Printf("[swallowed-err] %s: %v", where, err)
+	monitor.Error(err, where)
 }
 
 func short(p string) string {

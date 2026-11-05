@@ -26,6 +26,10 @@ installStaleChunkReload()
 // يشوف ومضة بيضا بكل فتحة صفحة — وهاي بالليل تضرب العين فعلاً.
 applyTheme(getTheme())
 
+// Sentry (دازاي 11-05): يتحمّل بملف لحاله بس إذا الـ DSN موجود — بلاه ما يزيد ولا بايت بالصفحة
+const sentryDsn = import.meta.env.VITE_SENTRY_DSN as string | undefined
+if (sentryDsn) import('./sentry').then((m) => m.initSentry(sentryDsn, 'staff')).catch(swallow)
+
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <ErrorBoundary>

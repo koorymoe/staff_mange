@@ -4,6 +4,10 @@ import { BrowserRouter } from 'react-router-dom'
 import './index.css'
 import App from './App'
 
+// Sentry (دازاي 11-05): يتحمّل بس إذا الـ DSN موجود
+const sentryDsn = import.meta.env.VITE_SENTRY_DSN as string | undefined
+if (sentryDsn) import('./sentry').then((m) => m.initSentry(sentryDsn, 'customer')).catch(() => {})
+
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <BrowserRouter>

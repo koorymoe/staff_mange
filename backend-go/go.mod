@@ -3,9 +3,11 @@ module staffmange-api
 go 1.25.0
 
 require (
+	github.com/anthropics/anthropic-sdk-go v1.73.0
 	github.com/aws/aws-sdk-go-v2 v1.43.3
 	github.com/aws/aws-sdk-go-v2/credentials v1.19.33
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.106.4
+	github.com/getsentry/sentry-go v0.31.1
 	github.com/golang-jwt/jwt/v5 v5.3.1
 	github.com/google/uuid v1.6.0
 	github.com/jmoiron/sqlx v1.4.0
@@ -16,7 +18,6 @@ require (
 )
 
 require (
-	github.com/anthropics/anthropic-sdk-go v1.73.0 // indirect
 	github.com/aws/aws-sdk-go-v2/aws/protocol/eventstream v1.7.16 // indirect
 	github.com/aws/aws-sdk-go-v2/internal/configsources v1.4.34 // indirect
 	github.com/aws/aws-sdk-go-v2/internal/endpoints/v2 v2.7.34 // indirect
@@ -43,5 +44,6 @@ require (
 	go.yaml.in/yaml/v4 v4.0.0-rc.2 // indirect
 	golang.org/x/net v0.56.0 // indirect
 	golang.org/x/sync v0.21.0 // indirect
+	golang.org/x/sys v0.46.0 // indirect
 	golang.org/x/text v0.38.0 // indirect
 )

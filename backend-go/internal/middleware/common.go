@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
+	"staffmange-api/internal/monitor"
 	"time"
 )
 
@@ -56,6 +57,7 @@ func Recovery(next http.Handler) http.Handler {
 		defer func() {
 			if err := recover(); err != nil {
 				log.Printf("panic recovered: %v", err)
+				monitor.Panic(err, r.Method+" "+r.URL.Path)
 				w.Header().Set("Content-Type", "application/json")
 				w.WriteHeader(http.StatusInternalServerError)
 				_ = json.NewEncoder(w).Encode(map[string]string{"error": "حدث خطأ غير متوقع بالسيرفر"})

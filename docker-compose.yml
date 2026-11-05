@@ -64,6 +64,7 @@ services:
       TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
       TELEGRAM_WEBHOOK_URL: ${TELEGRAM_WEBHOOK_URL:-}
       BOT_READER_TOKEN: ${BOT_READER_TOKEN:-}
+      SENTRY_DSN_BACKEND: ${SENTRY_DSN_BACKEND:-}
       WA_TOKEN: ${WA_TOKEN:-}
       WA_PHONE_ID: ${WA_PHONE_ID:-}
       WA_APP_SECRET: ${WA_APP_SECRET:-}
@@ -115,7 +116,10 @@ services:
     mem_limit: ${WHISPER_MEM_LIMIT:-1500m}
 
   frontend:
-    build: ./frontend
+    build:
+      context: ./frontend
+      args:
+        VITE_SENTRY_DSN: ${SENTRY_DSN_FRONTEND:-}
     restart: unless-stopped
     depends_on:
       backend:
@@ -130,7 +134,10 @@ services:
 
   # (ع) 10-14: تطبيق الزبائن — واجهة مستقلة على دومينها (CUSTOMER_DOMAIN)
   customer:
-    build: ./customer-app
+    build:
+      context: ./customer-app
+      args:
+        VITE_SENTRY_DSN: ${SENTRY_DSN_CUSTOMER:-}
     restart: unless-stopped
     # معاينة قبل الدومين: http://IP-السيرفر:8082 (يكدر ينشال بعد ما يتوجّه الدومين)
     ports:

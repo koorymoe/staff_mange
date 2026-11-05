@@ -10,6 +10,9 @@ COPY . .
 # الدومين على /api (يتعامل معه nginx كـ reverse proxy)
 ENV VITE_BASE_PATH=/
 ENV VITE_API_URL=/api
+# Sentry (دازاي 11-05): الـ DSN ينقرا وقت البناء (Vite). فاضي = Sentry مطفي.
+ARG VITE_SENTRY_DSN=
+ENV VITE_SENTRY_DSN=$VITE_SENTRY_DSN
 RUN npm run build
 
 # مرحلة التشغيل — nginx يصدّر الملفات الثابتة ويحوّل /api للباك إند

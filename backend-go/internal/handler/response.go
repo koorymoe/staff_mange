@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/http"
 	"regexp"
+	"staffmange-api/internal/monitor"
 
 	"staffmange-api/internal/model"
 )
@@ -46,6 +47,7 @@ func SafeErrorMessage(status int, message string) string {
 	_, _ = rand.Read(b)
 	ref := hex.EncodeToString(b)
 	log.Printf("[error-ref %s] status=%d %s", ref, status, message)
+	monitor.Message(message, ref, status)
 	if status >= 500 {
 		return "صار خطأ بالسيرفر — جرّب مرة ثانية، وإذا تكرر خبّر الدعم بالرمز " + ref
 	}

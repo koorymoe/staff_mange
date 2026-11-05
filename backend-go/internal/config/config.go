@@ -71,7 +71,10 @@ type Config struct {
 	TelegramWebhookURL string
 	TelegramAPIBase    string // للاختبار بس — الافتراضي api.telegram.org
 	// BotReaderToken رمز **قراءة بس** لبلاغات البوت (Claude يقرا البلاغات وصورها). فاضي = مطفي.
-	BotReaderToken    string
+	BotReaderToken string
+	// Sentry (دازاي 11-05) — بلاه مطفي. SENTRY_ENVIRONMENT افتراضياً production.
+	SentryDSN         string
+	SentryEnvironment string
 	WaToken           string
 	WaPhoneID         string
 	WaAppSecret       string
@@ -177,6 +180,8 @@ func load() *Config {
 		TelegramWebhookURL:  getEnv("TELEGRAM_WEBHOOK_URL", ""),
 		TelegramAPIBase:     getEnv("TELEGRAM_API_BASE", ""),
 		BotReaderToken:      getEnv("BOT_READER_TOKEN", ""),
+		SentryDSN:           getEnv("SENTRY_DSN_BACKEND", ""),
+		SentryEnvironment:   getEnv("SENTRY_ENVIRONMENT", "production"),
 		WaToken:             getEnv("WA_TOKEN", ""),
 		WaPhoneID:           getEnv("WA_PHONE_ID", ""),
 		WaAppSecret:         getEnv("WA_APP_SECRET", ""),

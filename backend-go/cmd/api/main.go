@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"staffmange-api/internal/authz"
+	"staffmange-api/internal/monitor"
 	"strconv"
 
 	"staffmange-api/internal/logredact"
@@ -41,6 +42,9 @@ func main() {
 	_ = godotenv.Load()
 
 	cfg := config.Load()
+	// Sentry (دازاي 11-05): يلزم أخطاء السيرفر — بلا SENTRY_DSN_BACKEND مطفي. النصوص تنتنظف قبل الإرسال.
+	monitor.Init(cfg.SentryDSN, cfg.SentryEnvironment, "")
+	defer monitor.Flush()
 	if len(cfg.JWTSecret) < 16 {
 		log.Fatal("JWT_SECRET غير معرّف أو قصير جداً — السيرفر يرفض يشتغل بدون سر تواقيع قوي (16 حرف على الأقل)")
 	}
