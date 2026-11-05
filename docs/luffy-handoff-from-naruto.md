@@ -304,3 +304,4 @@ git push origin origin/avg:refs/heads/prod     # بعد التأكد إنه fast
 - 11-05 فواتير: الكلفة اليدوية (`CreateManualInvoice`) تقبل المجانية بسبب إجباري (`checkFreeReason`) — نفس فاتورة الخدمة. والواجهة ترسل isFree وتقبل صفر. المجانية ما تدخل عيّنات priceLearning.
 - 11-05 ٧ح: تقسيم ProjectsPage لـ pages/projects/* (الصفحة ٤٣٠ سطر). الأداة scratchpad/split.py، والسطور مطابقة للأصل. `resetMediaOpenCache()` بدل التعيين المباشر.
 - 11-05 ٧ح: تقسيم OrgDeskPage لـ pages/orgdesk/* (الصفحة ٤٤ سطر). split.py صار عام (ملف json لكل صفحة)، والـ CSS يبقى بالصفحة الرئيسية بس (tsc ما يفحص مسارات الـ CSS — انلزم بالمتصفح).
+- 11-05 ٧ح: تقسيم PermissionsPage لـ pages/permissions/* (الصفحة ١٧ سطر)، مقارنة DOM قبل/بعد لثلاث حالات = مطابقة.
