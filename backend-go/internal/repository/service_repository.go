@@ -2,6 +2,7 @@ package repository
 
 import (
 	"github.com/jmoiron/sqlx"
+	"github.com/lib/pq"
 
 	"staffmange-api/internal/model"
 )
@@ -20,10 +21,23 @@ func (r *ServiceRepository) List() ([]model.Service, error) {
 		return nil, err
 	}
 
+	// ٧م (11-05): المهارات كلها باستعلام واحد بدل استعلام لكل خدمة — نفس الترتيب والمخرجات.
+	ids := make([]string, len(services))
 	for i := range services {
-		skills := []model.Skill{}
-		if err := r.db.Select(&skills, `SELECT * FROM "Skill" WHERE "serviceId" = $1 ORDER BY name ASC`, services[i].ID); err != nil {
-			return nil, err
+		ids[i] = services[i].ID
+	}
+	all := []model.Skill{}
+	if err := r.db.Select(&all, `SELECT * FROM "Skill" WHERE "serviceId" = ANY($1) ORDER BY name ASC`, pq.Array(ids)); err != nil {
+		return nil, err
+	}
+	bySvc := make(map[string][]model.Skill, len(services))
+	for _, sk := range all {
+		bySvc[sk.ServiceID] = append(bySvc[sk.ServiceID], sk)
+	}
+	for i := range services {
+		skills := bySvc[services[i].ID]
+		if skills == nil {
+			skills = []model.Skill{}
 		}
 		services[i].Skills = skills
 	}
