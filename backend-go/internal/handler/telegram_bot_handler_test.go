@@ -278,3 +278,65 @@ func TestTelegramBotFlow(t *testing.T) {
 		t.Fatalf("الموقوف: %+v %q", l, fake.last(empChat))
 	}
 }
+
+// TestBotReader رمز القراءة بس: بلاه ٤٠٤، والصور من مجلد البلاغات بس، وماكو كتابة.
+func TestBotReader(t *testing.T) {
+	url := os.Getenv("DATABASE_URL")
+	if url == "" {
+		t.Skip("بلا DATABASE_URL")
+	}
+	db, err := database.Connect(url)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
+	if err := database.Migrate(db, "", ""); err != nil {
+		t.Fatal(err)
+	}
+	store, _ := storage.NewLocalStore(t.TempDir())
+	h := NewTelegramBotHandler(repository.NewBotReportRepository(db), telegram.New("", ""), store, nil, nil, "jwt-secret-for-test-32-characters!!")
+	get := func(handler http.HandlerFunc, path, key, tok string) int {
+		req := httptest.NewRequest("GET", path, nil)
+		if key != "" {
+			req.SetPathValue("key", key)
+		}
+		if tok != "" {
+			req.Header.Set("X-Bot-Reader-Token", tok)
+		}
+		rec := httptest.NewRecorder()
+		handler(rec, req)
+		return rec.Code
+	}
+	good := strings.Repeat("a1", 32)
+	// مطفي (ماكو رمز) = ٤٠٤ حتى ويا أي ترويسة
+	if c := get(h.ReaderReports, "/api/bot-reader/reports", "", good); c != 404 {
+		t.Fatalf("مطفي: %d", c)
+	}
+	h.SetReaderToken("short") // رمز قصير يترفض
+	if c := get(h.ReaderReports, "/api/bot-reader/reports", "", "short"); c != 404 {
+		t.Fatalf("رمز قصير: %d", c)
+	}
+	h.SetReaderToken(good)
+	if c := get(h.ReaderReports, "/api/bot-reader/reports", "", ""); c != 404 {
+		t.Fatalf("بلا رمز: %d", c)
+	}
+	if c := get(h.ReaderReports, "/api/bot-reader/reports", "", good+"x"); c != 404 {
+		t.Fatalf("رمز غلط: %d", c)
+	}
+	if c := get(h.ReaderReports, "/api/bot-reader/reports", "", good); c != 200 {
+		t.Fatalf("الرمز الصح: %d", c)
+	}
+	_ = store.Put(context.Background(), "botreports/ok.png", []byte("\x89PNG"), "image/png")
+	_ = store.Put(context.Background(), "receipts/secret.png", []byte("\x89PNG"), "image/png")
+	if c := get(h.ReaderFile, "/x", "botreports/ok.png", good); c != 200 {
+		t.Fatalf("صورة بلاغ: %d", c)
+	}
+	for _, k := range []string{"receipts/secret.png", "botreports/../receipts/secret.png", "botreports/a/b.png"} {
+		if c := get(h.ReaderFile, "/x", k, good); c != 404 {
+			t.Fatalf("ملف خارج البلاغات %s: %d", k, c)
+		}
+	}
+	if c := get(h.ReaderFile, "/x", "botreports/ok.png", ""); c != 404 {
+		t.Fatalf("صورة بلا رمز: %d", c)
+	}
+}

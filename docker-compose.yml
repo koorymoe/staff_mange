@@ -63,6 +63,7 @@ services:
       # بوت بلاغات الموظفين (تلغرام) — بلا الرمز البوت مطفي
       TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
       TELEGRAM_WEBHOOK_URL: ${TELEGRAM_WEBHOOK_URL:-}
+      BOT_READER_TOKEN: ${BOT_READER_TOKEN:-}
       WA_TOKEN: ${WA_TOKEN:-}
       WA_PHONE_ID: ${WA_PHONE_ID:-}
       WA_APP_SECRET: ${WA_APP_SECRET:-}

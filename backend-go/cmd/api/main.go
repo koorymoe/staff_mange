@@ -998,6 +998,10 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	// الـ webhook بلا تسجيل دخول بس محمي برمز سري يرسله التلغرام (بلاه ٤٠٤).
 	tgBot := handler.NewTelegramBotHandler(repository.NewBotReportRepository(db), telegram.New(cfg.TelegramBotToken, cfg.TelegramAPIBase), fileStore, permissionRepo, notificationRepo, cfg.JWTSecret)
 	tgBot.Start(cfg.TelegramWebhookURL)
+	// رمز القراءة بس (Claude يقرا البلاغات وصورها) — بلا كتابة أبداً. فاضي = ٤٠٤.
+	tgBot.SetReaderToken(cfg.BotReaderToken)
+	mux.Handle("GET /api/bot-reader/reports", middleware.RateLimit(60, time.Minute)(http.HandlerFunc(tgBot.ReaderReports)))
+	mux.Handle("GET /api/bot-reader/files/{key...}", middleware.RateLimit(120, time.Minute)(http.HandlerFunc(tgBot.ReaderFile)))
 	mux.Handle("POST /api/telegram/webhook", middleware.RateLimit(600, time.Minute)(http.HandlerFunc(tgBot.Webhook)))
 	mux.Handle("GET /api/me/telegram", middleware.Chain(http.HandlerFunc(tgBot.MyLink), requireAuth))
 	mux.Handle("POST /api/me/telegram/link", middleware.Chain(http.HandlerFunc(tgBot.CreateLink), requireAuth))

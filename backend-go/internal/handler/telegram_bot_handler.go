@@ -40,6 +40,49 @@ type TelegramBotHandler struct {
 	perms  *repository.PermissionRepository
 	notif  *repository.NotificationRepository // إشعارات داخل النظام (nil بالاختبار)
 	secret string
+	// reader رمز القراءة بس (BOT_READER_TOKEN). فاضي = مسارات القارئ مطفية (٤٠٤).
+	reader string
+}
+
+// SetReaderToken يفعّل مسارات «القارئ» (Claude يقرا البلاغات وصورها بس — ماكو كتابة).
+// الرمز القصير يترفض: رمز ضعيف أسوأ من ماكو.
+func (h *TelegramBotHandler) SetReaderToken(tok string) {
+	if tok = strings.TrimSpace(tok); len(tok) >= 32 {
+		h.reader = tok
+	} else if tok != "" {
+		log.Printf("[telegram] BOT_READER_TOKEN قصير (أقل من ٣٢ حرف) — مسارات القارئ مطفية")
+	}
+}
+
+func (h *TelegramBotHandler) readerOK(r *http.Request) bool {
+	got := r.Header.Get("X-Bot-Reader-Token")
+	return h.reader != "" && subtle.ConstantTimeCompare([]byte(got), []byte(h.reader)) == 1
+}
+
+// ReaderReports GET /api/bot-reader/reports?status= — قراءة بس، برمز القارئ.
+func (h *TelegramBotHandler) ReaderReports(w http.ResponseWriter, r *http.Request) {
+	if !h.readerOK(r) {
+		http.NotFound(w, r)
+		return
+	}
+	h.List(w, r)
+}
+
+// ReaderFile GET /api/bot-reader/files/{key...} — صور البلاغات بس (مجلد botreports).
+func (h *TelegramBotHandler) ReaderFile(w http.ResponseWriter, r *http.Request) {
+	key := r.PathValue("key")
+	if !h.readerOK(r) || !strings.HasPrefix(key, botFolder+"/") || strings.Contains(key, "..") || strings.Count(key, "/") != 1 {
+		http.NotFound(w, r)
+		return
+	}
+	data, ct, err := h.store.Get(r.Context(), key)
+	if err != nil {
+		http.NotFound(w, r)
+		return
+	}
+	w.Header().Set("Content-Type", ct)
+	w.Header().Set("Cache-Control", "no-store")
+	_, _ = w.Write(data)
 }
 
 func NewTelegramBotHandler(repo *repository.BotReportRepository, tg *telegram.Client, store storage.Store, perms *repository.PermissionRepository, notif *repository.NotificationRepository, jwtSecret string) *TelegramBotHandler {

@@ -34,6 +34,8 @@ var publicRoutes = map[string]string{
 	"GET /api/wa/webhook":                          "ميتا تتحقق من الويب هوك (رمز التحقق بالمعالج)",
 	"POST /api/wa/webhook":                         "رسائل واتساب من ميتا (التوقيع بالمعالج)",
 	"POST /api/telegram/webhook":                   "رسائل بوت بلاغات الموظفين من التلغرام (الرمز السري بالترويسة يتحقق بالمعالج، وبلاه ٤٠٤)",
+	"GET /api/bot-reader/reports":                  "قراءة بلاغات البوت برمز قراءة بس (BOT_READER_TOKEN بالترويسة، بلاه ٤٠٤) — ماكو كتابة",
+	"GET /api/bot-reader/files/{key...}":           "صور البلاغات بس (مجلد botreports) بنفس رمز القراءة، بلاه ٤٠٤",
 }
 
 func TestEveryRouteIsGuarded(t *testing.T) {

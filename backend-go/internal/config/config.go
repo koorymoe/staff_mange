@@ -70,13 +70,15 @@ type Config struct {
 	TelegramBotToken   string
 	TelegramWebhookURL string
 	TelegramAPIBase    string // للاختبار بس — الافتراضي api.telegram.org
-	WaToken            string
-	WaPhoneID          string
-	WaAppSecret        string
-	WaVerifyToken      string
-	WaTemplateQuality  string // قالب أول رسالة لابو الجودة (موافق عليه من Meta)
-	WaTemplateBooking  string // قالب أول رسالة لابو الحجوزات
-	WaTemplateLng      string
+	// BotReaderToken رمز **قراءة بس** لبلاغات البوت (Claude يقرا البلاغات وصورها). فاضي = مطفي.
+	BotReaderToken    string
+	WaToken           string
+	WaPhoneID         string
+	WaAppSecret       string
+	WaVerifyToken     string
+	WaTemplateQuality string // قالب أول رسالة لابو الجودة (موافق عليه من Meta)
+	WaTemplateBooking string // قالب أول رسالة لابو الحجوزات
+	WaTemplateLng     string
 	// WaPrivacyApproved قرار دازاي المكتوب (الخصوصية · الكلفة · محل المعالجة · مدة الحفظ) —
 	// بلاه ملاحظات الحجز ما تروح للنموذج.
 	WaPrivacyApproved bool
@@ -174,6 +176,7 @@ func load() *Config {
 		TelegramBotToken:    getEnv("TELEGRAM_BOT_TOKEN", ""),
 		TelegramWebhookURL:  getEnv("TELEGRAM_WEBHOOK_URL", ""),
 		TelegramAPIBase:     getEnv("TELEGRAM_API_BASE", ""),
+		BotReaderToken:      getEnv("BOT_READER_TOKEN", ""),
 		WaToken:             getEnv("WA_TOKEN", ""),
 		WaPhoneID:           getEnv("WA_PHONE_ID", ""),
 		WaAppSecret:         getEnv("WA_APP_SECRET", ""),
