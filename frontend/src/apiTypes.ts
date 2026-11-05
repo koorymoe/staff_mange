@@ -4045,3 +4045,18 @@ export interface ManagerRequest {
   handledAt: string | null
   createdAt: string
 }
+
+/** بلاغ موظف من بوت التلغرام (دازاي 11-05) */
+export interface BotReport {
+  id: string
+  number: number
+  employeeId: string
+  employeeName: string
+  employeeRole: string
+  body: string
+  photos: string[]
+  status: string
+  adminNote: string | null
+  createdAt: string
+  updatedAt: string
+}

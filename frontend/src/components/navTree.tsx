@@ -139,6 +139,8 @@ export const navItems: NavItem[] = [
   { to: '/matrix-chat', label: '🤖 محادثة ماتركس', icon: <></>, roles: ['ADMIN'], anyPermission: ['agent_matrix'] },
   // (دازاي 11-04) صلاحية بيد المالك بس — ولا الأدمن ولا المراقب بلاها (السيرفر: authz.WhatsAppChats)
   { to: '/whatsapp-conversations', label: 'محادثات الواتساب', icon: <></>, capability: 'whatsapp_chats', permission: 'whatsapp_chats' },
+  // (دازاي 11-05) بلاغات الموظفين من بوت التلغرام — مفتاح مالك
+  { to: '/bot-reports', label: '📩 بلاغات الموظفين', icon: <></>, capability: 'bot_reports', permission: 'bot_reports' },
   { ownerOnly: true, to: '/whatsapp-sandbox', label: 'وضع تجربة الواتساب', icon: <></>, roles: ['ADMIN'] },
   { to: '/service-studies', label: '🧪 دراسات الخدمات', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M9 3h6M10 3v6L4.5 19a1.5 1.5 0 0 0 1.3 2h12.4a1.5 1.5 0 0 0 1.3-2L14 9V3"/></svg>, roles: ['SERVICE_DEVELOPER'] },
   { to: '/car-wash', label: '🧽 غسل السيارات', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M5 17h14l-1.5-6h-11z"/><circle cx="8" cy="18" r="1.5"/><circle cx="16" cy="18" r="1.5"/><path d="M9 7c0-1 1-2 1-3M13 7c0-1 1-2 1-3"/></svg>, roles: ['CAR_WASHER'] },
@@ -1500,6 +1502,7 @@ const ROUTE_RULES: Record<string, RouteRule> = {
   '/staff-reports': { roles: ['ADMIN', 'MONITOR', 'HR_COORDINATOR'], anyPermission: ['monitoring', 'mon_staff', 'staff_management'] },
   '/employee-dossier': { roles: ['ADMIN', 'MONITOR', 'HR_COORDINATOR'], anyPermission: ['monitoring', 'mon_staff', 'staff_management'] },
   '/whatsapp-conversations': { anyPermission: ['whatsapp_chats'] },
+  '/bot-reports': { anyPermission: ['bot_reports'] },
   '/booking-delete-requests': { roles: ['OWNER', 'MONITOR'], anyPermission: ['booking_delete_approve'] }, // requireDeleteApprove
   '/extra-tasks': { anyPermission: ['extra_tasks_assign'] }, // requireExtraTaskAssign
   // (ع) 10-16: انشالن من القائمة (صارن جوّا «مكتب الجودة») — الروابط الداخلية تبقى تشتغل

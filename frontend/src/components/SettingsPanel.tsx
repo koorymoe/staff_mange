@@ -3,13 +3,14 @@ import { useNavigate } from 'react-router-dom'
 import { api } from '../api'
 import { useSession, isAdminOrOwner } from '../session'
 import { swallow } from '../utils/swallow'
+import TelegramLinkCard from './TelegramLinkCard'
 
 const ICON_CHOICES = ['😀', '😎', '🦁', '🐺', '🦅', '🐉', '⚡', '🔥', '⭐', '🚀', '🛠️', '🎯']
 
 export default function SettingsPanel({ onClose }: { onClose: () => void }) {
   const { employee, permissions } = useSession()
   const navigate = useNavigate()
-  const [tab, setTab] = useState<'password' | 'volume' | 'icon' | 'approvals'>('volume')
+  const [tab, setTab] = useState<'password' | 'volume' | 'icon' | 'approvals' | 'telegram'>('volume')
 
   // تغيير كلمة المرور
   const [currentPassword, setCurrentPassword] = useState('')
@@ -83,6 +84,7 @@ export default function SettingsPanel({ onClose }: { onClose: () => void }) {
     // تغيير كلمة المرور لمدير النظام والمالك بس — كلمات سر الموظفين
     // تنتحدد من «إدارة الموظفين»، حتى تبقى معروفة عند الإدارة.
     ...(isAdmin ? [{ key: 'password' as const, label: 'كلمة المرور' }] : []),
+    { key: 'telegram', label: '🔗 التلغرام' },
     { key: 'volume', label: 'الصوت' },
     { key: 'icon', label: 'رمز الحضور' },
     ...(isAdmin ? [{ key: 'approvals' as const, label: `طلبات الرمز${pendingRequests.length ? ` (${pendingRequests.length})` : ''}` }] : []),
@@ -128,6 +130,8 @@ export default function SettingsPanel({ onClose }: { onClose: () => void }) {
               </button>
             </form>
           )}
+
+          {tab === 'telegram' && <TelegramLinkCard />}
 
           {tab === 'volume' && (
             <div>

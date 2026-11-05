@@ -29,6 +29,7 @@ import (
 	"staffmange-api/internal/safeguard"
 	"staffmange-api/internal/service"
 	"staffmange-api/internal/storage"
+	"staffmange-api/internal/telegram"
 	"staffmange-api/internal/whatsapp"
 )
 
@@ -993,6 +994,17 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	workGate := handler.NewWorkGateHandler(db, notificationRepo)
 	achievementHandler.OnReport = workGate.MirrorAchievement // دازاي 11-05: الإنجاز = تقرير اليوم
 	mux.Handle("GET /api/me/work-gate", middleware.Chain(http.HandlerFunc(workGate.Gate), requireAuth))
+	// ═══ بوت بلاغات الموظفين — تلغرام (دازاي 11-05) ═══
+	// الـ webhook بلا تسجيل دخول بس محمي برمز سري يرسله التلغرام (بلاه ٤٠٤).
+	tgBot := handler.NewTelegramBotHandler(repository.NewBotReportRepository(db), telegram.New(cfg.TelegramBotToken, cfg.TelegramAPIBase), fileStore, permissionRepo, cfg.JWTSecret)
+	tgBot.Start(cfg.TelegramWebhookURL)
+	mux.Handle("POST /api/telegram/webhook", middleware.RateLimit(600, time.Minute)(http.HandlerFunc(tgBot.Webhook)))
+	mux.Handle("GET /api/me/telegram", middleware.Chain(http.HandlerFunc(tgBot.MyLink), requireAuth))
+	mux.Handle("POST /api/me/telegram/link", middleware.Chain(http.HandlerFunc(tgBot.CreateLink), requireAuth))
+	mux.Handle("DELETE /api/me/telegram", middleware.Chain(http.HandlerFunc(tgBot.Unlink), requireAuth))
+	requireBotReports := authz.Strict(permissionRepo, authz.BotReports)
+	mux.Handle("GET /api/bot-reports", middleware.Chain(http.HandlerFunc(tgBot.List), requireAuth, requireBotReports))
+	mux.Handle("PATCH /api/bot-reports/{id}", middleware.Chain(http.HandlerFunc(tgBot.Update), requireAuth, requireBotReports))
 	mux.Handle("POST /api/me/profile-survey", middleware.Chain(http.HandlerFunc(workGate.SubmitSurvey), requireAuth))
 	mux.Handle("POST /api/me/daily-report", middleware.Chain(http.HandlerFunc(workGate.SubmitDaily), requireAuth))
 	mux.Handle("GET /api/me/daily-reports", middleware.Chain(http.HandlerFunc(workGate.MyDaily), requireAuth))

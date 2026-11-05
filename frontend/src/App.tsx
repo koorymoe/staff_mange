@@ -26,6 +26,7 @@ const SecretaryPage = lazyRetry(() => import('./pages/SecretaryPage'))
 const MatrixChatPage = lazyRetry(() => import('./components/MatrixChat'))
 const AiAgentsPage = lazyRetry(() => import('./pages/AiAgentsPage'))
 const WhatsAppPage = lazyRetry(() => import('./pages/WhatsAppPage'))
+const BotReportsPage = lazyRetry(() => import('./pages/BotReportsPage'))
 const WhatsAppSandboxPage = lazyRetry(() => import('./pages/WhatsAppSandboxPage'))
 const Coordinator = lazyRetry(() => import('./pages/Coordinator'))
 const SalesOpportunitiesPage = lazyRetry(() => import('./pages/SalesOpportunitiesPage'))
@@ -231,6 +232,7 @@ function App() {
           <Route path="org/desk/:divisionId" element={<OrgDeskPage />} />
           <Route path="my-org" element={<MyOrgCard />} />
           <Route path="whatsapp-conversations" element={<WhatsAppPage />} />
+          <Route path="bot-reports" element={<BotReportsPage />} />
           <Route path="whatsapp-sandbox" element={<WhatsAppSandboxPage />} />
           <Route path="coordinator" element={<Coordinator />} />
           {/* فرص البيع: الصفحة نفسها تفحص ADMIN/OWNER أو sales_booking (نفس الخادم) */}

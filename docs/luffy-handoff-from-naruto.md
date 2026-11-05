@@ -311,3 +311,4 @@ git push origin origin/avg:refs/heads/prod     # بعد التأكد إنه fast
 - 11-05 ٧م: ExpenseRepository.List بلا N+1 (pq.Array/ANY)، الرد مطابق بايت ببايت قبل/بعد.
 - 11-05 ٧م: ServiceRepository.List المهارات باستعلام واحد (ANY)، مطابق بايت ببايت.
 - 11-05 ٧ك ✅: قياس ختام بالـ sourcemap — الملف الأولي نصّه react-dom، والباقي لازم لأول شاشة. ماكو شي يستاهل lazy بعد.
+- 11-05 بوت تلغرام: `internal/telegram` + `handler/telegram_bot_handler.go` + `repository/bot_report_repository.go` + ترحيل 0442_telegram_bot. واجهة: `TelegramLinkCard` (الإعدادات) و`pages/BotReportsPage.tsx` (/bot-reports، authz.BotReports). تفعيل: TELEGRAM_BOT_TOKEN وTELEGRAM_WEBHOOK_URL. اختبار: TestTelegramBotFlow.

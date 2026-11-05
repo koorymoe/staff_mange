@@ -60,6 +60,9 @@ services:
       AI_IRIS_DAILY_USD: ${AI_IRIS_DAILY_USD:-0.5}
       AI_QUALITY_DAILY_USD: ${AI_QUALITY_DAILY_USD:-0.2}
       AI_BOOKING_DAILY_USD: ${AI_BOOKING_DAILY_USD:-0.2}
+      # بوت بلاغات الموظفين (تلغرام) — بلا الرمز البوت مطفي
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
+      TELEGRAM_WEBHOOK_URL: ${TELEGRAM_WEBHOOK_URL:-}
       WA_TOKEN: ${WA_TOKEN:-}
       WA_PHONE_ID: ${WA_PHONE_ID:-}
       WA_APP_SECRET: ${WA_APP_SECRET:-}

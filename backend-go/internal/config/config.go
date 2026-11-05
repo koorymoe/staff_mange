@@ -65,13 +65,18 @@ type Config struct {
 	AIBookingDailyUSD float64
 	WaDailyNew        int
 	// WhatsApp Business Cloud API (Meta). بلاهن الإرسال الحقيقي مطفي، والتجربة تشتغل.
-	WaToken           string
-	WaPhoneID         string
-	WaAppSecret       string
-	WaVerifyToken     string
-	WaTemplateQuality string // قالب أول رسالة لابو الجودة (موافق عليه من Meta)
-	WaTemplateBooking string // قالب أول رسالة لابو الحجوزات
-	WaTemplateLng     string
+	// بوت بلاغات الموظفين (دازاي 11-05). بلا رمز = البوت مطفي والنظام عادي.
+	// TELEGRAM_WEBHOOK_URL الرابط العام (https://…/api/telegram/webhook) — ينسجّل لحاله بالإقلاع.
+	TelegramBotToken   string
+	TelegramWebhookURL string
+	TelegramAPIBase    string // للاختبار بس — الافتراضي api.telegram.org
+	WaToken            string
+	WaPhoneID          string
+	WaAppSecret        string
+	WaVerifyToken      string
+	WaTemplateQuality  string // قالب أول رسالة لابو الجودة (موافق عليه من Meta)
+	WaTemplateBooking  string // قالب أول رسالة لابو الحجوزات
+	WaTemplateLng      string
 	// WaPrivacyApproved قرار دازاي المكتوب (الخصوصية · الكلفة · محل المعالجة · مدة الحفظ) —
 	// بلاه ملاحظات الحجز ما تروح للنموذج.
 	WaPrivacyApproved bool
@@ -166,6 +171,9 @@ func load() *Config {
 		AIQualityDailyUSD:   getEnvFloat("AI_QUALITY_DAILY_USD", 0.2),
 		AIBookingDailyUSD:   getEnvFloat("AI_BOOKING_DAILY_USD", 0.2),
 		WaDailyNew:          getEnvInt("WA_DAILY_NEW", 10),
+		TelegramBotToken:    getEnv("TELEGRAM_BOT_TOKEN", ""),
+		TelegramWebhookURL:  getEnv("TELEGRAM_WEBHOOK_URL", ""),
+		TelegramAPIBase:     getEnv("TELEGRAM_API_BASE", ""),
 		WaToken:             getEnv("WA_TOKEN", ""),
 		WaPhoneID:           getEnv("WA_PHONE_ID", ""),
 		WaAppSecret:         getEnv("WA_APP_SECRET", ""),

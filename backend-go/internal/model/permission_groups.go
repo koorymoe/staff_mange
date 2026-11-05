@@ -35,7 +35,7 @@ var PermissionGroups = []PermissionGroup{
 		Perms: []string{"inventory", "inventory_follow", "tool_requests", "tool_requests_approve", "procurement", "procurement_personal", "procurement_customer",
 			"procurement_manual", "suppliers_management", "supplier_relations", "tech_suppliers", "leader_basket", "device_maintenance"}},
 	{Key: "vehicles", Title: "🚗 المركبات", Perms: []string{"vehicle_management"}},
-	{Key: "agents", Title: "🤖 الوكلاء", Perms: []string{"agent_matrix", "agent_quality", "agent_booking", "whatsapp_chats"}},
+	{Key: "agents", Title: "🤖 الوكلاء", Perms: []string{"agent_matrix", "agent_quality", "agent_booking", "whatsapp_chats", "bot_reports"}},
 	{Key: "units", Title: "🏢 الوحدات والأقسام",
 		Perms: []string{"unit_technicians", "unit_service", "unit_design", "unit_pr", "unit_quality", "unit_monitoring", "unit_procurement", "unit_finance",
 			"unit_hr", "unit_projects", "unit_it", "design_forms", "design_gallery", "media", "it_assets", "it_stats", "privacy_policy_manage", "work_reports"}},
@@ -45,6 +45,7 @@ var PermissionGroups = []PermissionGroup{
 var PermissionOwnerOnly = map[string]string{
 	"finance_audit":    "مفتاح التدقيق المالي — المالك يمنحه بيده",
 	"whatsapp_chats":   "محادثات الواتساب — المالك يمنحها بيده",
+	"bot_reports":      "بلاغات الموظفين (التلغرام) — المالك يمنحها بيده",
 	"employee_create":  "إضافة موظفين — قرار المالك",
 	"employee_suspend": "إيقاف الحسابات — قرار المالك",
 }

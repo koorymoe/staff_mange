@@ -41,6 +41,7 @@ const (
 	InternalBookings        Resource = "internal_bookings"         // الحجوزات داخل الشركة (كلها)
 	InternalBookingCreate   Resource = "internal_booking_create"   // تسجيل حجز داخل الشركة
 	CustomerBookings        Resource = "customer_bookings"         // (المرحلة ٥) حجز بتطبيق الزبائن مو لهالزبون → «مو موجود»
+	BotReports              Resource = "bot_reports"               // بلاغات الموظفين من بوت التلغرام — المالك + من ينطيه الصلاحية (دازاي 11-05)
 	WhatsAppChats           Resource = "whatsapp_chats"            // محادثات الواتساب (حجوزات وجودة) — المالك + من ينطيه الصلاحية بس (دازاي 11-04)
 	ServiceInvoices         Resource = "service_invoices"          // فواتير خدمة جي بي اس/داش كام (الصلاحية حسب النوع بالمعالج)
 )
@@ -88,6 +89,7 @@ var SeeAllRules = map[Resource]Rule{
 	ProjectPaymentsAudit:    {OwnerOnly: true},
 	// (دازاي 11-04) «سويها صلاحية اني انطيها للي يعجبني»: ولا حتى الأدمن أو المراقب بلاها.
 	WhatsAppChats: {Roles: []string{"OWNER"}, RawRole: true, Perms: []string{"whatsapp_chats"}},
+	BotReports:    {Roles: []string{"OWNER"}, RawRole: true, Perms: []string{"bot_reports"}},
 	// booking_handler.ListInternal — قرار دازاي: غيرهم يشوف الي توجّه إله بس
 	InternalBookings: {Roles: []string{"ADMIN", "OWNER", "FINANCE", "MONITOR", "HR_COORDINATOR"}},
 	// booking_handler.Create (داخل الشركة)
