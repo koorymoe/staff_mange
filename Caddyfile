@@ -1,4 +1,20 @@
 {$DOMAIN} {
+	# ═══ أدوات المراقبة (دازاي 11-05) — محمية بباسورد ═══
+	# /ops/logs = Dozzle (سجلات الحاويات)، /ops/netdata/ = Netdata (الذاكرة والمعالج والقرص).
+	# الباسورد: OPS_USER و OPS_PASS_HASH (bcrypt) بالـ .env. بلاهن: الهاش الافتراضي لباسورد
+	# عشوائي محد يعرفه — يعني الأدوات مقفولة لحد ما تحط باسوردك.
+	handle /ops/* {
+		basic_auth {
+			{$OPS_USER:ops} {$OPS_PASS_HASH:$2a$12$0IBree/3uN4GClDVo7E.e.Ccv0fzrjFdA0KImBgVjEhA4VzkiiX9G}
+		}
+		handle /ops/logs* {
+			reverse_proxy dozzle:8080
+		}
+		handle_path /ops/netdata/* {
+			reverse_proxy netdata:19999
+		}
+		respond 404
+	}
 	reverse_proxy frontend:80
 }
 

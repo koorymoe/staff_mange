@@ -317,3 +317,4 @@ git push origin origin/avg:refs/heads/prod     # بعد التأكد إنه fast
 - 11-05 فحص البلاغات المجدول: scripts/botreports.sh صار يقبل SINCE_HOURS. مهمة مجدولة (جلسة جديدة لكل فحص، إشعار push) بمواعيد دازاي ١٠/١٢/٣/٥/٧/١٠ بغداد. الجلسة المجدولة: تقرا وتحلل وتقترح بس، والتعديل بعد «سويها».
 - 11-05 تنظيف صور البلاغات: `PurgeOldPhotos` يومياً (أقدم من ٧ أيام + مسودّات أقدم من يوم)، ترحيل 0444 (`photosPurgedAt`)، اختبار TestPurgeOldPhotos. بس مجلد botreports.
 - 11-05 Sentry: `internal/monitor` (Init/Error/Message/Panic + Scrub) مربوط بـ errlog وSafeErrorMessage وRecovery. الواجهتين `src/sentry.ts` بتحميل كسول + ErrorBoundary. DSN من .env (الواجهات build args). اختبار TestWhatLeavesIsClean.
+- 11-05 أدوات المراقبة: Dozzle+Netdata بـ profile `ops` خلف `/ops/*` (basic_auth) بالـ Caddyfile، وscripts/health.sh يقرا السيرفر/Sentry/UptimeRobot/Netdata من مفاتيح البيئة. ما انجرّبن بالحاويات هنا — تحقق على السيرفر.

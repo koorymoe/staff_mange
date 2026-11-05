@@ -160,12 +160,54 @@ services:
     environment:
       DOMAIN: ${DOMAIN}
       CUSTOMER_DOMAIN: ${CUSTOMER_DOMAIN:-customer.localhost}
+      # أدوات المراقبة (/ops/*) — باسورد bcrypt. بالـ .env حطه بين علامتي ' ' (بيه $).
+      OPS_USER: ${OPS_USER:-ops}
+      # الافتراضي هاش لباسورد عشوائي محد يعرفه (= مقفول). ($$ = $ بالـ compose)
+      OPS_PASS_HASH: ${OPS_PASS_HASH:-$$2a$$12$$0IBree/3uN4GClDVo7E.e.Ccv0fzrjFdA0KImBgVjEhA4VzkiiX9G}
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile
       - caddy_data:/data
       - caddy_config:/config
 
+  # ═══ أدوات المراقبة (دازاي 11-05) — من خلال caddy بس (/ops/*) وبباسورد ═══
+  # ⚠️ السيرفر ذاكرته ٣.٨ گيگا: كل أداة إلها سقف ذاكرة حتى ما توگّع النظام.
+  # Dozzle: يعرض سجلات الحاويات بالمتصفح (قراءة بس).
+  dozzle:
+    image: amir20/dozzle:v11.3.4
+    restart: unless-stopped
+    environment:
+      DOZZLE_BASE: /ops/logs
+      DOZZLE_NO_ANALYTICS: "true"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    mem_limit: 96m
+    profiles: ["ops"]
+
+  # Netdata: الذاكرة والمعالج والقرص لحظة بلحظة، وتنبيهات إذا قربت تخلص.
+  netdata:
+    image: netdata/netdata:v2.12.1
+    restart: unless-stopped
+    hostname: staffmanage
+    cap_add:
+      - SYS_PTRACE
+    security_opt:
+      - apparmor:unconfined
+    environment:
+      DO_NOT_TRACK: "1"
+      NETDATA_DISABLE_CLOUD: "1"
+    volumes:
+      - netdata_lib:/var/lib/netdata
+      - netdata_cache:/var/cache/netdata
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /etc/os-release:/host/etc/os-release:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    mem_limit: 320m
+    profiles: ["ops"]
+
 volumes:
+  netdata_lib:
+  netdata_cache:
   db_data:
   uploads_data:
   caddy_data:
