@@ -298,3 +298,4 @@ git push origin origin/avg:refs/heads/prod     # بعد التأكد إنه fast
 - 11-05 ٧ل: `storeFile` بالواجهة (العقود، والوصولات، وصور المعارض/الفحوصات/العروض) يرفع لمخزن الملفات، و`repository.MigrateInlineFiles` + `InlineFileColumns` (قائمة وحدة ويا cmd/migratefiles) ينقل القديم بالتشغيل بتأكيد البايتات.
 - 11-05 ٧ر: `docs/adr/` ٨ قرارات + فهرس، ورابط من README.
 - 11-05 سلامة البيانات: فحص `inline_files_left` (checks_system.go) يعدّ ملفات base64 الباقية بالـ ١٠ أعمدة. المجموع ٧٢ فحص.
+- 11-05 ٧ف: `migrate_kinds_test.go` — من 0442 كل ترحيل مخطط أو بيانات (`data_`)، مو خليط. القديمة ما تنلمس، والفهرس بـ docs/adr/0009.
