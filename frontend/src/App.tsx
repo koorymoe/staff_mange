@@ -16,11 +16,10 @@ const Dashboard = lazyRetry(() => import('./pages/Dashboard'))
 const Employees = lazyRetry(() => import('./pages/Employees'))
 const WorkSchedulePage = lazyRetry(() => import('./pages/WorkSchedulePage'))
 const RemoteHoursPage = lazyRetry(() => import('./pages/RemoteHoursPage'))
-const StaffLeavesPage = lazyRetry(() => import('./pages/StaffLeavesPage'))
+const LeavesHub = lazyRetry(() => import('./pages/LeavesHub'))
 const Customers = lazyRetry(() => import('./pages/Customers'))
 const Services = lazyRetry(() => import('./pages/Services'))
 const SalesBooking = lazyRetry(() => import('./pages/SalesBooking'))
-const QualityFollowUpsPage = lazyRetry(() => import('./pages/QualityFollowUpsPage'))
 const SecurityDashboardPage = lazyRetry(() => import('./pages/SecurityDashboardPage'))
 const AssistantConversationsPage = lazyRetry(() => import('./pages/AssistantConversationsPage'))
 const SecretaryPage = lazyRetry(() => import('./pages/SecretaryPage'))
@@ -79,7 +78,7 @@ const DisciplineRecordPage = lazyRetry(() => import('./pages/DisciplineRecordPag
 const PeerVoicePage = lazyRetry(() => import('./pages/PeerVoicePage'))
 const StaffScorePage = lazyRetry(() => import('./pages/StaffScorePage'))
 const EmployeeIndicatorsPage = lazyRetry(() => import('./pages/EmployeeIndicatorsPage'))
-const TechSuppliersPage = lazyRetry(() => import('./pages/TechSuppliersPage'))
+const SuppliersHub = lazyRetry(() => import('./pages/SuppliersHub'))
 const ProjectPaymentsPage = lazyRetry(() => import('./pages/ProjectPaymentsPage'))
 const WorkplaceIssuesPage = lazyRetry(() => import('./pages/WorkplaceIssuesPage'))
 const ManagerRequestsPage = lazyRetry(() => import('./pages/ManagerRequestsPage'))
@@ -128,10 +127,8 @@ const GpsRenewalsReview = lazyRetry(() => import('./pages/gps/GpsRenewalsReview'
 const GpsMaintenanceRequestPage = lazyRetry(() => import('./pages/gps/GpsMaintenanceRequestPage'))
 const GpsMaintenanceReview = lazyRetry(() => import('./pages/gps/GpsMaintenanceReview'))
 const AttendancePage = lazyRetry(() => import('./pages/AttendancePage'))
-const LeavesPage = lazyRetry(() => import('./pages/LeavesPage'))
 
 const WorkReportPage = lazyRetry(() => import('./pages/WorkReportPage'))
-const SuppliersPage = lazyRetry(() => import('./pages/SuppliersPage'))
 const StatsPage = lazyRetry(() => import('./pages/StatsPage'))
 const ProjectsPage = lazyRetry(() => import('./pages/ProjectsPage'))
 const VipCustomersPage = lazyRetry(() => import('./pages/VipCustomersPage'))
@@ -161,7 +158,6 @@ const DrillPage = lazyRetry(() => import('./pages/DrillPage'))
 const StoreToolsPage = lazyRetry(() => import('./pages/StoreToolsPage'))
 const AccountantDeskPage = lazyRetry(() => import('./pages/AccountantDeskPage'))
 const QualityDeskPage = lazyRetry(() => import('./pages/QualityDeskPage'))
-const SupplierRelationsPage = lazyRetry(() => import('./pages/SupplierRelationsPage'))
 const MonitorCrewBookingsPage = lazyRetry(() => import('./pages/MonitorCrewBookingsPage'))
 const TrainingManagement = lazyRetry(() => import('./pages/TrainingManagement'))
 const VehiclesPage = lazyRetry(() => import('./pages/VehiclesPage'))
@@ -209,11 +205,12 @@ function App() {
           <Route path="employees" element={<Employees />} />
           <Route path="work-schedule" element={<WorkSchedulePage />} />
           <Route path="remote-hours" element={<RemoteHoursPage />} />
-          <Route path="staff-leaves" element={<StaffLeavesPage />} />
+          <Route path="staff-leaves" element={<LeavesHub />} />
           <Route path="customers" element={<Customers />} />
           <Route path="services" element={<Services />} />
           <Route path="sales" element={<SalesBooking />} />
-          <Route path="quality-follow-ups" element={<QualityFollowUpsPage />} />
+          {/* ٧و (11-05): نفس «مكتب الجودة» — المسار القديم يبقى بحارسه (روابط المراقب والإشعارات) */}
+          <Route path="quality-follow-ups" element={<QualityDeskPage />} />
           <Route path="owner-security" element={<SecurityDashboardPage />} />
           <Route path="owner-backups" element={<OwnerBackups />} />
           <Route path="owner-integrity" element={<OwnerIntegrity />} />
@@ -247,7 +244,7 @@ function App() {
           <Route path="weekly-report" element={<RequireAdmin><WeeklyReportPage /></RequireAdmin>} />
           <Route path="manager-requests" element={<RequireAdmin><ManagerRequestsPage /></RequireAdmin>} />
           <Route path="project-payments" element={<RequirePermission permission="finance" anyOf={['finance_audit', 'project_management', 'monitoring']} roles={['FINANCE', 'PROJECT_MANAGER', 'MONITOR']}><ProjectPaymentsPage /></RequirePermission>} />
-          <Route path="tech-suppliers" element={<TechSuppliersPage />} />
+          <Route path="tech-suppliers" element={<SuppliersHub />} />
           <Route path="employee-indicators" element={<RequirePermission permission="monitoring" anyOf={['auditing']} roles={['MONITOR']}><EmployeeIndicatorsPage /></RequirePermission>} />
           <Route path="staff-score" element={<RequirePermission permission="monitoring" anyOf={['auditing']} roles={['MONITOR']}><StaffScorePage /></RequirePermission>} />
           <Route path="peer-voice" element={<RequirePermission permission="monitoring" anyOf={['auditing']} roles={['MONITOR']}><PeerVoicePage /></RequirePermission>} />
@@ -336,7 +333,7 @@ function App() {
           <Route path="products" element={<ProductsPage />} />
           <Route path="attendance" element={<AttendancePage />} />
           <Route path="work-reports" element={<WorkReportPage />} />
-          <Route path="suppliers" element={<SuppliersPage />} />
+          <Route path="suppliers" element={<SuppliersHub />} />
           <Route path="stats" element={<StatsPage />} />
           <Route path="projects" element={<ProjectsPage />} />
           {/* الشخصيات المهمة: مدير النظام، أو أي إداري ينمنح صلاحية الإضافة اليدوية */}
@@ -375,14 +372,14 @@ function App() {
           <Route path="store-tools" element={<StoreToolsPage />} />
           <Route path="accountant-desk" element={<AccountantDeskPage />} />
           <Route path="quality-desk" element={<QualityDeskPage />} />
-          <Route path="supplier-relations" element={<SupplierRelationsPage />} />
+          <Route path="supplier-relations" element={<SuppliersHub />} />
           <Route path="gps" element={<GpsDashboard />} />
           <Route path="gps/customers" element={<GpsCustomers />} />
           <Route path="gps/devices" element={<GpsDevices />} />
           <Route path="gps/sims" element={<GpsSims />} />
           <Route path="gps/follow-up" element={<GpsFollowUp />} />
           <Route path="revolving-fund" element={<RevolvingFundPage />} />
-          <Route path="leaves" element={<LeavesPage />} />
+          <Route path="leaves" element={<LeavesHub />} />
           <Route path="booking-delete-requests" element={<BookingDeleteRequestsPage />} />
           <Route path="audit-issues" element={<AuditIssuesPage />} />
           <Route path="daily-audit" element={<DailyAuditPage />} />

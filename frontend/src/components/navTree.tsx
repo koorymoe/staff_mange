@@ -856,7 +856,7 @@ export const navItems: NavItem[] = [
     to: '/unit-quality', label: 'وحدة الجودة والسلامة المهنية', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z"/></svg>,
     unitPermission: 'unit_quality',
     children: [
-      { to: '/quality', label: 'الجودة', icon: <></>, permission: 'quality_control' },
+      { to: '/quality', label: '📝 مراجعة تقارير العمل', icon: <></>, permission: 'quality_control' },
       { to: '/work-reports-review', label: 'مراجعة تقارير العمل', icon: <></>, anyPermission: ['monitoring', 'quality_control'] },
     ],
   },

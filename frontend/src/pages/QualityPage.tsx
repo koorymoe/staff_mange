@@ -65,7 +65,7 @@ export default function QualityPage() {
       <SaveError message={guard.error} onClose={guard.clear} />
     <div dir="rtl" className="space-y-6">
       <div>
-        <h2 className="text-2xl font-bold text-brand-900">الجودة</h2>
+        <h2 className="text-2xl font-bold text-brand-900">📝 مراجعة تقارير العمل</h2>
         <p className="mt-1 text-slate-500">مشاكل التنفيذ الميدانية، ومشاكل الرقابة الإدارية/القيادية والمسؤولين عنها</p>
       </div>
 

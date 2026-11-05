@@ -305,3 +305,4 @@ git push origin origin/avg:refs/heads/prod     # بعد التأكد إنه fast
 - 11-05 ٧ح: تقسيم ProjectsPage لـ pages/projects/* (الصفحة ٤٣٠ سطر). الأداة scratchpad/split.py، والسطور مطابقة للأصل. `resetMediaOpenCache()` بدل التعيين المباشر.
 - 11-05 ٧ح: تقسيم OrgDeskPage لـ pages/orgdesk/* (الصفحة ٤٤ سطر). split.py صار عام (ملف json لكل صفحة)، والـ CSS يبقى بالصفحة الرئيسية بس (tsc ما يفحص مسارات الـ CSS — انلزم بالمتصفح).
 - 11-05 ٧ح: تقسيم PermissionsPage لـ pages/permissions/* (الصفحة ١٧ سطر)، مقارنة DOM قبل/بعد لثلاث حالات = مطابقة.
+- 11-05 ٧و: `components/TabbedHub.tsx` + `pages/LeavesHub.tsx` و`pages/SuppliersHub.tsx` (المسارات القديمة تفتح الموحّدة على تبويبها). /quality-follow-ups = QualityDeskPage، و/quality تسمّت «مراجعة تقارير العمل». e2e roles يضغط كل تبويب.

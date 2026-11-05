@@ -87,6 +87,21 @@ for (const role of ROLES) {
       await page.goto(href)
       await page.waitForLoadState('networkidle')
     }
+    // ٧و (11-05): الشاشات الموحّدة بتبويبات — كل تبويب يطلع لازم ينفتح بلا ٤٠٣.
+    // نبدي من «الإجازات» (مفتوحة للكل) ومن أي شاشة موحّدة موجودة بقائمته.
+    const hubs = ['/leaves', '/staff-leaves', '/suppliers', '/tech-suppliers', '/supplier-relations', '/quality-desk']
+    const starts = hubs.filter((h) => h === '/leaves' || links.some((l) => l.endsWith(h)))
+    for (const h of starts) {
+      where = `hub ${h}`
+      await page.goto(base.replace(/\/$/, '') + h)
+      await page.waitForLoadState('networkidle')
+      const n = await page.locator('main [role=tablist] [role=tab]').count()
+      for (let i = 0; i < n; i++) {
+        where = `hub ${h} tab#${i}`
+        await page.locator('main [role=tablist] [role=tab]').nth(i).click()
+        await page.waitForLoadState('networkidle')
+      }
+    }
     expect(problems, `${role}:\n${problems.join('\n')}`).toEqual([])
   })
 }
