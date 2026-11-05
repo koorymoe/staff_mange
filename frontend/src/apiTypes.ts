@@ -4062,4 +4062,6 @@ export interface BotReport {
   /** telegram | system */
   source: string
   page: string | null
+  /** متى انمسحت الصور من السيرفر (بعد أسبوع) */
+  photosPurgedAt: string | null
 }

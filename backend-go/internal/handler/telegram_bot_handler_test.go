@@ -19,6 +19,7 @@ import (
 
 	"staffmange-api/internal/database"
 	"staffmange-api/internal/middleware"
+	"staffmange-api/internal/model"
 	"staffmange-api/internal/repository"
 	"staffmange-api/internal/storage"
 	"staffmange-api/internal/telegram"
@@ -338,5 +339,67 @@ func TestBotReader(t *testing.T) {
 	}
 	if c := get(h.ReaderFile, "/x", "botreports/ok.png", ""); c != 404 {
 		t.Fatalf("صورة بلا رمز: %d", c)
+	}
+}
+
+// TestPurgeOldPhotos صور البلاغات الأقدم من أسبوع تنمسح (والنص يبقى)، والأحدث تبقى،
+// وأي ملف برّا مجلد البلاغات ما ينلمس.
+func TestPurgeOldPhotos(t *testing.T) {
+	url := os.Getenv("DATABASE_URL")
+	if url == "" {
+		t.Skip("بلا DATABASE_URL")
+	}
+	db, err := database.Connect(url)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
+	if err := database.Migrate(db, "", ""); err != nil {
+		t.Fatal(err)
+	}
+	ctx := context.Background()
+	store, _ := storage.NewLocalStore(t.TempDir())
+	repo := repository.NewBotReportRepository(db)
+	h := NewTelegramBotHandler(repo, telegram.New("", ""), store, nil, nil, "jwt-secret-for-test-32-characters!!")
+	emp := "purge-" + uuid.NewString()[:8]
+	if _, err := db.Exec(`INSERT INTO "Employee" (id, name, role, status) VALUES ($1, 'اختبار', 'TECHNICIAN', 'ACTIVE')`, emp); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		db.Exec(`DELETE FROM "BotReport" WHERE "employeeId" = $1`, emp) //nolint:errcheck
+		db.Exec(`DELETE FROM "Employee" WHERE id = $1`, emp)            //nolint:errcheck
+	})
+	for _, k := range []string{"botreports/old.png", "botreports/new.png", "receipts/keep.png"} {
+		_ = store.Put(ctx, k, []byte("\x89PNG"), "image/png")
+	}
+	old := &model.BotReport{EmployeeID: emp, Body: "قديم", Photos: []string{"/api/files/botreports/old.png", "/api/files/receipts/keep.png"}, Source: "system"}
+	fresh := &model.BotReport{EmployeeID: emp, Body: "جديد", Photos: []string{"/api/files/botreports/new.png"}, Source: "system"}
+	if err := repo.Create(old); err != nil {
+		t.Fatal(err)
+	}
+	if err := repo.Create(fresh); err != nil {
+		t.Fatal(err)
+	}
+	db.Exec(`UPDATE "BotReport" SET "createdAt" = now() - interval '8 days' WHERE id = $1`, old.ID) //nolint:errcheck
+
+	n, err := h.PurgeOldPhotos(ctx)
+	if err != nil || n != 1 {
+		t.Fatalf("المسح: n=%d err=%v", n, err)
+	}
+	if _, _, err := store.Get(ctx, "botreports/old.png"); err == nil {
+		t.Fatal("الصورة القديمة بعدها موجودة")
+	}
+	if _, _, err := store.Get(ctx, "botreports/new.png"); err != nil {
+		t.Fatal("الصورة الجديدة انمسحت")
+	}
+	if _, _, err := store.Get(ctx, "receipts/keep.png"); err != nil {
+		t.Fatal("ملف برّا مجلد البلاغات انمسح")
+	}
+	got, _ := repo.Get(old.ID)
+	if got == nil || len(got.Photos) != 0 || got.PhotosPurgedAt == nil || got.Body != "قديم" {
+		t.Fatalf("البلاغ بعد المسح: %+v", got)
+	}
+	if n, _ := h.PurgeOldPhotos(ctx); n != 0 {
+		t.Fatalf("مسح مرتين: %d", n)
 	}
 }

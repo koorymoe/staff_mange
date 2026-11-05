@@ -49,5 +49,9 @@ func telegramBotMigrations() []Migration {
 			ALTER TABLE "BotReport" ADD COLUMN IF NOT EXISTS source TEXT NOT NULL DEFAULT 'telegram';
 			ALTER TABLE "BotReport" ADD COLUMN IF NOT EXISTS page TEXT;
 		`,
+	}, {
+		// (دازاي 11-05) صور البلاغات تنمسح من السيرفر بعد أسبوع — نص البلاغ يبقى، وهذا العمود يأشّر متى انمسحت.
+		Version: "0444_bot_report_photos_purged",
+		SQL: `ALTER TABLE "BotReport" ADD COLUMN IF NOT EXISTS "photosPurgedAt" TIMESTAMP;`,
 	}}
 }

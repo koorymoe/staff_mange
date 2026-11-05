@@ -117,6 +117,7 @@ function ReportCard({ r, labels, expanded, onToggle, onSaved }: {
       <p className={`mt-2 whitespace-pre-wrap text-sm text-slate-700 ${expanded ? '' : 'line-clamp-2'}`}>{r.body}</p>
       {expanded && (
         <div className="mt-3 space-y-3">
+          {r.photosPurgedAt && <p className="text-xs text-slate-400">🗑️ الصور انمسحت من السيرفر بعد أسبوع (حتى ما يثگل).</p>}
           <div className="flex flex-wrap gap-2">
             {r.photos.map((p, i) => (
               <a key={i} href={fileUrl(p)} target="_blank" rel="noreferrer">

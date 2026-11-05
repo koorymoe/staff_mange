@@ -22,6 +22,8 @@ type BotReport struct {
 	// Source من وين وصل: telegram | system. Page الشاشة الي كان بيها (للي من النظام).
 	Source string  `db:"source" json:"source"`
 	Page   *string `db:"page" json:"page"`
+	// PhotosPurgedAt متى انمسحت الصور من السيرفر (قرار دازاي: كل صورة عمرها أكثر من أسبوع).
+	PhotosPurgedAt *time.Time `db:"photosPurgedAt" json:"photosPurgedAt"`
 	// للعرض — من جدول الموظف
 	EmployeeName string `db:"employeeName" json:"employeeName"`
 	EmployeeRole string `db:"employeeRole" json:"employeeRole"`

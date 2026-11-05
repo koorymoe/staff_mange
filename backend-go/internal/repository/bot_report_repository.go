@@ -172,7 +172,7 @@ func (r *BotReportRepository) Create(rep *model.BotReport) error {
 	}
 	return r.db.Get(rep, `INSERT INTO "BotReport" (id, "employeeId", "chatId", body, photos, "mediaGroupId", source, page)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-		RETURNING id, number, "employeeId", "chatId", body, photos, "mediaGroupId", status, "adminNote", "createdAt", "updatedAt", source, page, '' AS "employeeName", '' AS "employeeRole"`,
+		RETURNING id, number, "employeeId", "chatId", body, photos, "mediaGroupId", status, "adminNote", "createdAt", "updatedAt", source, page, "photosPurgedAt", '' AS "employeeName", '' AS "employeeRole"`,
 		rep.ID, rep.EmployeeID, rep.ChatID, rep.Body, pq.StringArray(rep.Photos), rep.MediaGroupID, rep.Source, rep.Page)
 }
 
@@ -222,7 +222,7 @@ func (r *BotReportRepository) CountLastHour(employeeID string) (int, error) {
 }
 
 const botReportCols = `b.id, b.number, b."employeeId", b."chatId", b.body, b.photos, b."mediaGroupId", b.status, b."adminNote",
-	b."createdAt", b."updatedAt", b.source, b.page, e.name AS "employeeName", e.role::text AS "employeeRole"`
+	b."createdAt", b."updatedAt", b.source, b.page, b."photosPurgedAt", e.name AS "employeeName", e.role::text AS "employeeRole"`
 
 // List البلاغات (الأحدث أول). status فاضي = الكل. حد ٣٠٠ (٧م).
 func (r *BotReportRepository) List(status string) ([]model.BotReport, error) {
@@ -260,5 +260,28 @@ func (r *BotReportRepository) OwnerChats() ([]int64, error) {
 	out := []int64{}
 	err := r.db.Select(&out, `SELECT l."chatId" FROM "TelegramLink" l JOIN "Employee" e ON e.id = l."employeeId"
 		WHERE e.role::text = 'OWNER' AND e.status::text = 'ACTIVE'`)
+	return out, err
+}
+
+// ═══ تنظيف الصور الأسبوعي (دازاي 11-05: «كل اسبوع يتصفن وينحذفن من السيرفر») ═══
+
+// PhotosOlderThanWeek البلاغات الي صورها عمرها أكثر من ٧ أيام وبعدها ما انمسحت.
+func (r *BotReportRepository) PhotosOlderThanWeek() ([]model.BotReport, error) {
+	out := []model.BotReport{}
+	err := r.db.Select(&out, `SELECT id, number, photos FROM "BotReport"
+		WHERE cardinality(photos) > 0 AND "createdAt" < now() - interval '7 days' ORDER BY "createdAt" LIMIT 1000`)
+	return out, err
+}
+
+// MarkPhotosPurged يفرّغ الصور ويأشّر وقت المسح (النص يبقى).
+func (r *BotReportRepository) MarkPhotosPurged(id string) error {
+	_, err := r.db.Exec(`UPDATE "BotReport" SET photos = '{}', "photosPurgedAt" = now() WHERE id = $1`, id)
+	return err
+}
+
+// StaleDrafts المسودّات الأقدم من يوم (صور انرفعت وما كمل البلاغ) — صورها تنمسح ويا المسودّة.
+func (r *BotReportRepository) StaleDrafts() ([]model.BotReportDraft, error) {
+	out := []model.BotReportDraft{}
+	err := r.db.Select(&out, `SELECT * FROM "BotReportDraft" WHERE "updatedAt" < now() - interval '1 day' LIMIT 1000`)
 	return out, err
 }

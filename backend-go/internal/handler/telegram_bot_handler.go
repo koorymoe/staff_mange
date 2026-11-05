@@ -652,3 +652,42 @@ func (h *TelegramBotHandler) Update(w http.ResponseWriter, r *http.Request) {
 	updated, _ := h.repo.Get(rep.ID)
 	WriteJSON(w, http.StatusOK, updated)
 }
+
+// PurgeOldPhotos (دازاي 11-05) يمسح من مخزن الملفات كل صورة بلاغ عمرها أكثر من أسبوع،
+// وصور المسودّات الي ما كملت. نص البلاغ يبقى ويتأشّر «الصور انمسحت». يرجّع عدد الصور.
+// ⚠️ مسح الصور هنا **بقرار صاحب النظام الصريح** (استثناء من «ماكو حذف»: لقطات شاشة مؤقتة، مو بيانات شغل).
+func (h *TelegramBotHandler) PurgeOldPhotos(ctx context.Context) (int, error) {
+	n := 0
+	del := func(url string) {
+		key := strings.TrimPrefix(url, "/api/files/")
+		if !strings.HasPrefix(key, botFolder+"/") { // بس مجلد البلاغات — أي شي ثاني ما ينلمس
+			return
+		}
+		if err := h.store.Delete(ctx, key); err == nil {
+			n++
+		}
+	}
+	reps, err := h.repo.PhotosOlderThanWeek()
+	if err != nil {
+		return n, err
+	}
+	for _, r := range reps {
+		for _, p := range r.Photos {
+			del(p)
+		}
+		if err := h.repo.MarkPhotosPurged(r.ID); err != nil {
+			return n, err
+		}
+	}
+	drafts, err := h.repo.StaleDrafts()
+	if err != nil {
+		return n, err
+	}
+	for _, d := range drafts {
+		for _, p := range d.Photos {
+			del(p)
+		}
+		_ = h.repo.ClearDraft(d.ChatID)
+	}
+	return n, nil
+}

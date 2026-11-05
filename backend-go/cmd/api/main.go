@@ -1000,6 +1000,17 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	tgBot.Start(cfg.TelegramWebhookURL)
 	// رمز القراءة بس (Claude يقرا البلاغات وصورها) — بلا كتابة أبداً. فاضي = ٤٠٤.
 	tgBot.SetReaderToken(cfg.BotReaderToken)
+	// صور البلاغات: كل يوم تنمسح الأقدم من أسبوع (قرار دازاي 11-05 — حتى ما يثگل السيرفر)
+	go func() {
+		for {
+			if n, err := tgBot.PurgeOldPhotos(context.Background()); err != nil {
+				log.Printf("[telegram] تنظيف الصور: %v", err)
+			} else if n > 0 {
+				log.Printf("[telegram] انمسحت %d صورة بلاغ أقدم من أسبوع", n)
+			}
+			time.Sleep(24 * time.Hour)
+		}
+	}()
 	mux.Handle("GET /api/bot-reader/reports", middleware.RateLimit(60, time.Minute)(http.HandlerFunc(tgBot.ReaderReports)))
 	mux.Handle("GET /api/bot-reader/files/{key...}", middleware.RateLimit(120, time.Minute)(http.HandlerFunc(tgBot.ReaderFile)))
 	mux.Handle("POST /api/telegram/webhook", middleware.RateLimit(600, time.Minute)(http.HandlerFunc(tgBot.Webhook)))
