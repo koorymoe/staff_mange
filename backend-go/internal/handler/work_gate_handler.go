@@ -11,6 +11,7 @@ import (
 
 	"github.com/jmoiron/sqlx"
 
+	"staffmange-api/internal/errlog"
 	"staffmange-api/internal/middleware"
 	"staffmange-api/internal/model"
 	"staffmange-api/internal/repository"
@@ -37,11 +38,13 @@ func NewWorkGateHandler(db *sqlx.DB, n *repository.NotificationRepository) *Work
 }
 
 type workGate struct {
-	Survey      bool    `json:"survey"`      // لازم يعبّي الاستمارة
-	MissingDay  *string `json:"missingDay"`  // يوم داوم بيه وما كتب تقريره (YYYY-MM-DD)
-	TodayDone   bool    `json:"todayDone"`   // كتب تقرير اليوم
-	JobTitle    string  `json:"jobTitle"`    // للتعبئة المسبقة
-	ReportSince string  `json:"reportSince"` // من وين يبدي الإلزام
+	Survey     bool    `json:"survey"`     // لازم يعبّي الاستمارة
+	MissingDay *string `json:"missingDay"` // يوم داوم بيه وما كتب تقريره (YYYY-MM-DD)
+	TodayDone  bool    `json:"todayDone"`  // كتب تقرير اليوم
+	// TodayAt وقت رفع تقرير اليوم (دازاي 11-05: «اريد اشوف بيش الساعه رافع»)
+	TodayAt     *time.Time `json:"todayAt"`
+	JobTitle    string     `json:"jobTitle"`    // للتعبئة المسبقة
+	ReportSince string     `json:"reportSince"` // من وين يبدي الإلزام
 	// ٩.٢: تقييمات فاتته (أقدم يوم خلال ٣ أيام) — تنقفل الشاشات لحد ما يعوّض ويبرّر
 	RatingDuty *ratingDutyGate `json:"ratingDuty"`
 }
@@ -90,7 +93,8 @@ func (h *WorkGateHandler) Gate(w http.ResponseWriter, r *http.Request) {
 	_ = h.db.Get(&g.Survey, `SELECT NOT EXISTS (SELECT 1 FROM "EmployeeProfileSurvey" WHERE "employeeId" = $1)`, emp)
 	_ = h.db.Get(&g.JobTitle, `SELECT COALESCE("jobTitle", position, '') FROM "Employee" WHERE id = $1`, emp)
 	g.MissingDay, g.ReportSince = h.missingReportDay(emp)
-	_ = h.db.Get(&g.TodayDone, `SELECT EXISTS (SELECT 1 FROM "DailyWorkReport" WHERE "employeeId" = $1 AND day = $2::date)`, emp, companyToday().Format("2006-01-02"))
+	errlog.Err(h.db.Get(&g.TodayAt, `SELECT max("createdAt") FROM "DailyWorkReport" WHERE "employeeId" = $1 AND day = $2::date`, emp, companyToday().Format("2006-01-02")))
+	g.TodayDone = g.TodayAt != nil
 	if day, items, err := h.duty.Pending(emp); err != nil {
 		log.Printf("[work-gate] rating duty %s: %v", emp, err) // ما ينبلع بصمت
 	} else if len(items) > 0 {
@@ -216,6 +220,35 @@ func (h *WorkGateHandler) SubmitDaily(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	WriteJSON(w, http.StatusOK, map[string]bool{"ok": true, "late": late})
+}
+
+// MirrorAchievement (دازاي 11-05 «ادمجهن بلقديم»): «إنجازاتي اليوم» القديم صار هو
+// تقرير اليوم الإجباري. كل إنجاز ينرفع ينضاف لتقرير اليوم — فيفتح القفل، ويروح
+// لمطابقة ماتركس ولشاشة المدير. أكثر من إنجاز باليوم = تقرير واحد بفقرات.
+// الفويس بلا نص ينكتب سطر يدل عليه (القاعدة تطلب ٢٠ حرف على الأقل).
+func (h *WorkGateHandler) MirrorAchievement(employeeID, text string) {
+	text = strings.TrimSpace(text)
+	if len([]rune(text)) < 20 {
+		note := strings.TrimSpace(strings.TrimPrefix(text, "🎙️ فويس مسج"))
+		text = "🎙️ تقرير صوتي من «إنجازاتي اليوم»"
+		if note != "" {
+			text += " — " + note
+		}
+	}
+	errlog.Exec(h.db.Exec(`INSERT INTO "DailyWorkReport" ("employeeId", day, body, late) VALUES ($1, $2::date, $3, false)
+		ON CONFLICT ("employeeId", day) DO UPDATE SET body = "DailyWorkReport".body || E'\n\n' || EXCLUDED.body`,
+		employeeID, companyToday().Format("2006-01-02"), text))
+}
+
+// GET /api/me/daily-reports — تقاريري يوم بيوم (آخر ٦٠ يوم) ويا وقت الرفع والتأخير ومطابقة ماتركس
+func (h *WorkGateHandler) MyDaily(w http.ResponseWriter, r *http.Request) {
+	rows := []dailyReportRow{}
+	errlog.Err(h.db.Select(&rows, `SELECT d.id, d."employeeId", '' AS "employeeName", to_char(d.day, 'YYYY-MM-DD') AS day, d.body, d.late, d."createdAt",
+		m.status AS "matchStatus", m.note AS "matchNote", NULL::jsonb AS "matchDetail", m."reviewVerdict" AS "matchVerdict", m."reviewNote" AS "matchReview"
+		FROM "DailyWorkReport" d
+		LEFT JOIN "DailyReportMatch" m ON m."employeeId" = d."employeeId" AND m.day = d.day
+		WHERE d."employeeId" = $1 AND d.day > current_date - 60 ORDER BY d.day DESC`, middleware.EmployeeIDFromContext(r)))
+	WriteJSON(w, http.StatusOK, rows)
 }
 
 type dailyReportRow struct {

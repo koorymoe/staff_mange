@@ -984,9 +984,11 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	mux.Handle("GET /api/employees/archived", middleware.Chain(http.HandlerFunc(employeeHandler.ListArchived), requireAuth, requireAdmin))
 	// 🧠 بوابة الالتزام (11-02 — تعديلات ٩.١): الاستمارة + تقرير الإنجاز اليومي
 	workGate := handler.NewWorkGateHandler(db, notificationRepo)
+	achievementHandler.OnReport = workGate.MirrorAchievement // دازاي 11-05: الإنجاز = تقرير اليوم
 	mux.Handle("GET /api/me/work-gate", middleware.Chain(http.HandlerFunc(workGate.Gate), requireAuth))
 	mux.Handle("POST /api/me/profile-survey", middleware.Chain(http.HandlerFunc(workGate.SubmitSurvey), requireAuth))
 	mux.Handle("POST /api/me/daily-report", middleware.Chain(http.HandlerFunc(workGate.SubmitDaily), requireAuth))
+	mux.Handle("GET /api/me/daily-reports", middleware.Chain(http.HandlerFunc(workGate.MyDaily), requireAuth))
 	mux.Handle("GET /api/me/rating-duty", middleware.Chain(http.HandlerFunc(workGate.MyDuty), requireAuth))
 	mux.Handle("POST /api/me/rating-duty", middleware.Chain(http.HandlerFunc(workGate.SubmitDuty), requireAuth))
 	safeguard.Loop("واجب التقييم اليومي", 9*time.Minute, time.Hour, func() {

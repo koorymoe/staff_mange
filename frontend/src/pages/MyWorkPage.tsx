@@ -24,7 +24,7 @@ export default function MyWorkPage() {
   const [tab, setTab] = useState<(typeof TABS)[number]['id']>('tasks')
   return (
     <div dir="rtl" className="space-y-4">
-      {!boss && <DailyReportBox />}
+      {!boss && <DailyReportBox onWrite={() => setTab('achievements')} />}
       {!boss && <TodayRatings />}
       <div className="flex flex-wrap gap-2">
         {TABS.map((t) => (

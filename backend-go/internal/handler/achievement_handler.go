@@ -24,6 +24,8 @@ type AchievementHandler struct {
 	notif    interface {
 		Create(employeeID, kind, message string) error
 	}
+	// OnReport (دازاي 11-05): الإنجاز = تقرير اليوم الإجباري (WorkGateHandler.MirrorAchievement)
+	OnReport func(employeeID, text string)
 }
 
 // SetNotifier الموظف ينبعثله إشعار بالرد على إنجازه.
@@ -52,6 +54,9 @@ func (h *AchievementHandler) Create(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		WriteError(w, http.StatusBadRequest, err.Error())
 		return
+	}
+	if h.OnReport != nil {
+		h.OnReport(a.EmployeeID, a.ReportText)
 	}
 	WriteJSON(w, http.StatusCreated, a)
 }
