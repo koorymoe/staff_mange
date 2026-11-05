@@ -346,7 +346,7 @@ export default function MissionsPage() {
                   {st.icon}
                 </span>
                 <p className="mt-2 text-2xl font-extrabold" style={{ color: st.ink }}>{count}</p>
-                <p className="text-xs" style={{ color: 'var(--t-muted)' }}>{st.label}</p>
+                <p className="text-xs text-t-muted">{st.label}</p>
                 {/* ⚠️ «نشطة: 0» تضليل — لمن يكون صفراً نكول ماكو شي. */}
                 <p className="mt-0.5 text-[10px] font-bold"
                   style={{ color: count > 0 ? st.ink : 'var(--t-faint)' }}>

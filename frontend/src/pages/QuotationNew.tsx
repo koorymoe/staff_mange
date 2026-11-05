@@ -867,7 +867,7 @@ ${pageShell(`
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '16px' }}>
           <div>
             <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: 'var(--t-body)', marginBottom: '6px' }}>
-              <span style={{ color: 'var(--t-danger)' }}>*</span> رقم العرض
+              <span className="text-t-danger">*</span> رقم العرض
             </label>
             <input readOnly value={quotationNumber} style={inputStyle({ bg: '#eceff1', fw: 700, color: 'var(--t-title-alt)' })} placeholder="تلقائي" />
           </div>
@@ -877,7 +877,7 @@ ${pageShell(`
           </div>
           <div>
             <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: 'var(--t-body)', marginBottom: '6px' }}>
-              <span style={{ color: 'var(--t-danger)' }}>*</span> مدة التنفيذ
+              <span className="text-t-danger">*</span> مدة التنفيذ
             </label>
             <input value={duration} onChange={(e) => setDuration(e.target.value)} placeholder="مثال: 10 أيام عمل" style={inputStyle({})} />
           </div>
@@ -898,7 +898,7 @@ ${pageShell(`
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0' }}>
           <div style={customerFieldStyle(true)}>
-            <label style={customerLabelStyle}><span style={{ color: 'var(--t-danger)' }}>*</span> اسم الزبون</label>
+            <label style={customerLabelStyle}><span className="text-t-danger">*</span> اسم الزبون</label>
             <input value={customerName} onChange={(e) => setCustomerName(e.target.value)} placeholder="الاسم الكامل..." style={customerInputStyle} />
           </div>
           <div style={customerFieldStyle(true)}>
@@ -1236,7 +1236,7 @@ ${pageShell(`
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
                   <div>
                     <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: 'var(--t-body)', marginBottom: '6px' }}>
-                      <span style={{ color: 'var(--t-danger)' }}>*</span> اسم المنتج
+                      <span className="text-t-danger">*</span> اسم المنتج
                     </label>
                     <input value={pmName} onChange={(e) => setPmName(e.target.value)} placeholder="مثال: لوح شمسي 400 واط" style={inputStyle({})} />
                   </div>

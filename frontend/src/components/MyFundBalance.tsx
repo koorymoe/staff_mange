@@ -124,7 +124,7 @@ export default function MyFundBalance({ forEmployee, onDone }: { forEmployee?: E
               <div key={f.fundId}
                 className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-amber-200 bg-white px-4 py-3">
                 <div>
-                  <p className="text-sm font-bold" style={{ color: 'var(--t-title)' }}>{f.fundName}</p>
+                  <p className="text-sm font-bold text-t-title">{f.fundName}</p>
                   <p className="mt-0.5 text-xs text-slate-600">
                     بيدك {money(f.outstanding)} · استلمت منه {money(f.totalTaken)}
                     {f.pendingSettlements > 0 && ` · ${f.pendingSettlements} تسوية تنتظر التدقيق`}
@@ -143,7 +143,7 @@ export default function MyFundBalance({ forEmployee, onDone }: { forEmployee?: E
       {target && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={() => setTarget(null)}>
           <div dir="rtl" className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-white p-6 shadow-xl" onClick={(e) => e.stopPropagation()}>
-            <h3 className="text-lg font-bold" style={{ color: 'var(--t-title)' }}>تسوية — {target.fundName}</h3>
+            <h3 className="text-lg font-bold text-t-title">تسوية — {target.fundName}</h3>
             <p className="mt-1 text-sm text-slate-600">
               {who ? `الي بيد ${who} من هذا الدوار:` : 'الي بيدك من هذا الدوار:'} <span className="font-bold">{money(target.outstanding)}</span>
             </p>

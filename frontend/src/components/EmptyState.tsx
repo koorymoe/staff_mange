@@ -17,8 +17,8 @@ export default function EmptyState({
   return (
     <div className="flex flex-col items-center justify-center gap-2 px-6 py-12 text-center">
       <span className="text-4xl">{icon}</span>
-      <p className="text-sm font-bold" style={{ color: 'var(--t-body)' }}>{title}</p>
-      {reason && <p className="max-w-md text-xs" style={{ color: 'var(--t-faint)' }}>{reason}</p>}
+      <p className="text-sm font-bold text-t-body">{title}</p>
+      {reason && <p className="max-w-md text-xs text-t-faint">{reason}</p>}
       {action && <div className="mt-2">{action}</div>}
     </div>
   )

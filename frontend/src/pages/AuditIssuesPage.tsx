@@ -78,17 +78,17 @@ export default function AuditIssuesPage({ embedded }: EmbeddedProps = {}) {
           <div onClick={(e) => e.stopPropagation()}
             className="w-full max-w-md rounded-2xl border p-5"
             style={{ backgroundColor: 'var(--sf-card)', borderColor: 'var(--bd-line)' }}>
-            <h3 className="text-base font-bold" style={{ color: 'var(--t-title)' }}>
+            <h3 className="text-base font-bold text-t-title">
               {auditCloseLabels[closing.action]} — بلاغ {closing.issue.bookingCode}
             </h3>
-            <p className="mt-1 text-xs" style={{ color: 'var(--t-muted)' }}>
+            <p className="mt-1 text-xs text-t-muted">
               {closing.action === 'PENALIZE'
                 ? `المخالفة تنسجّل على ${closing.issue.leaderName || 'ليدر الحجز'}، وتنعرض بلوحة الإعلانات، وتنحط بسجله الانضباطي.`
                 : 'يعني راجعت وتأكدت إن ماكو خطأ فعلاً — والسبب ينحفظ بالبلاغ.'}
             </p>
 
             {closing.action === 'PENALIZE' && (
-              <label className="mt-3 block text-xs font-bold" style={{ color: 'var(--t-body)' }}>
+              <label className="mt-3 block text-xs font-bold text-t-body">
                 نقاط الخصم
                 <select value={points} onChange={(e) => setPoints(Number(e.target.value))}
                   className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm">
@@ -99,7 +99,7 @@ export default function AuditIssuesPage({ embedded }: EmbeddedProps = {}) {
 
             {/* ⚠️ السبب إجباري بالحالتين — بدونه «تأكدت ماكو خطأ»
                 تصير باباً خلفياً للإغلاق الروتيني. */}
-            <label className="mt-3 block text-xs font-bold" style={{ color: 'var(--t-body)' }}>
+            <label className="mt-3 block text-xs font-bold text-t-body">
               السبب (إجباري)
               <textarea value={reason} onChange={(e) => setReason(e.target.value)} rows={3}
                 placeholder={closing.action === 'PENALIZE'

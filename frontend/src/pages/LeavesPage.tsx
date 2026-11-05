@@ -238,7 +238,7 @@ export default function LeavesPage() {
       {open && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={() => setOpen(false)}>
           <div dir="rtl" className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl" onClick={(e) => e.stopPropagation()}>
-            <h3 className="text-lg font-bold" style={{ color: 'var(--t-title)' }}>طلب إجازة</h3>
+            <h3 className="text-lg font-bold text-t-title">طلب إجازة</h3>
             <p className="mt-1 rounded-lg bg-slate-50 p-3 text-xs text-slate-600">
               الإجازة تُطلب قبل يومين على الأقل من تاريخها.
             </p>

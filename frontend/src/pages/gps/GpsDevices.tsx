@@ -129,13 +129,13 @@ export default function GpsDevices() {
 
   return (
     <div dir="rtl">
-      <h1 className="text-2xl font-bold mb-6" style={{ color: 'var(--t-title)' }}>الطلبات المعلقة 📋</h1>
+      <h1 className="text-2xl font-bold mb-6 text-t-title">الطلبات المعلقة 📋</h1>
       {loading ? (
-        <div className="text-center py-20" style={{ color: 'var(--t-faint)' }}>جارٍ التحميل...</div>
+        <div className="text-center py-20 text-t-faint">جارٍ التحميل...</div>
       ) : requests.length === 0 ? (
         <div className="text-center py-16 rounded-2xl" style={{ background: 'var(--sf-card)', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
           <div className="text-5xl mb-4">✅</div>
-          <p className="text-lg" style={{ color: 'var(--t-faint)' }}>لا توجد طلبات معلقة</p>
+          <p className="text-lg text-t-faint">لا توجد طلبات معلقة</p>
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
@@ -144,11 +144,11 @@ export default function GpsDevices() {
               style={{ background: 'var(--sf-card)', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
               <div style={{ flex: 1 }}>
                 <div className="flex items-center gap-3 mb-1">
-                  <span className="font-bold" style={{ color: 'var(--t-body)' }}>{req.customer ? `${req.customer.fullName} ${req.customer.fatherName} ${req.customer.grandfatherName}` : '-'}</span>
+                  <span className="font-bold text-t-body">{req.customer ? `${req.customer.fullName} ${req.customer.fatherName} ${req.customer.grandfatherName}` : '-'}</span>
                   <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: 'var(--sf-violet)', color: 'var(--t-violet)' }}>{typeLabel(req.purchaseType)}</span>
                   {req.subscriptionType && <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: 'var(--sf-info)', color: 'var(--t-info)' }}>{getSubscriptionLabel(req.subscriptionType)}</span>}
                 </div>
-                <div className="flex gap-4 text-sm" style={{ color: 'var(--t-muted)' }}>
+                <div className="flex gap-4 text-sm text-t-muted">
                   <span>📞 {req.customer?.phone}</span>
                   <span>📍 {req.customer?.address}</span>
                   <span>👤 {req.employee?.name || '-'}</span>
@@ -169,7 +169,7 @@ export default function GpsDevices() {
         <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ background: 'rgba(0,0,0,0.5)' }}>
           <div className="rounded-2xl w-full max-w-3xl m-4" style={{ background: 'var(--sf-card)', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)', maxHeight: '90vh', overflowY: 'auto' }}>
             <div className="p-5 flex items-center justify-between" style={{ borderBottom: '1px solid var(--bd-line)', position: 'sticky', top: 0, background: 'var(--sf-card)', zIndex: 1 }}>
-              <h2 className="text-xl font-bold" style={{ color: 'var(--t-title)' }}>مراجعة الطلب</h2>
+              <h2 className="text-xl font-bold text-t-title">مراجعة الطلب</h2>
               <button onClick={() => setSelected(null)} style={{ color: 'var(--t-faint)', fontSize: '1.5rem', background: 'none', border: 'none', cursor: 'pointer' }}>✕</button>
             </div>
             <div className="p-6" style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
@@ -185,7 +185,7 @@ export default function GpsDevices() {
 
               {(selected.purchaseType === 'DEVICE_ONLY' || selected.purchaseType === 'device_only') ? (
                 <div className="rounded-xl p-4" style={{ background: 'var(--sf-success)', border: '1px solid #bbf7d0' }}>
-                  <p className="text-sm font-bold mb-3" style={{ color: 'var(--t-success)' }}>تأكيد تسليم الجهاز</p>
+                  <p className="text-sm font-bold mb-3 text-t-success">تأكيد تسليم الجهاز</p>
                   {[
                     { key: 'checked', label: '✅ تم فحص الجهاز' },
                     { key: 'activated', label: '✅ تم تفعيل الجهاز' },
@@ -195,24 +195,24 @@ export default function GpsDevices() {
                       <input type="checkbox" checked={deviceChecks[key as keyof typeof deviceChecks]}
                         onChange={e => setDeviceChecks(prev => ({ ...prev, [key]: e.target.checked }))}
                         className="w-5 h-5 rounded" />
-                      <span className="text-sm font-medium" style={{ color: 'var(--t-body)' }}>{label}</span>
+                      <span className="text-sm font-medium text-t-body">{label}</span>
                     </label>
                   ))}
                 </div>
               ) : selected.subscriptionType ? (
                 <div className="rounded-xl p-4" style={{ background: 'var(--sf-info)', border: '1px solid #bfdbfe' }}>
-                  <label className="block text-sm font-bold mb-2" style={{ color: 'var(--t-info)' }}>📅 تاريخ التفعيل (مطلوب) *</label>
+                  <label className="block text-sm font-bold mb-2 text-t-info">📅 تاريخ التفعيل (مطلوب) *</label>
                   <input type="date" className="w-full text-sm rounded-xl px-4 py-2.5" style={{ border: '1px solid var(--bd-line)', outline: 'none' }}
                     value={activationDate} onChange={e => setActivationDate(e.target.value)} />
                   {activationDate && (
                     <div className="mt-3 grid grid-cols-2 gap-2 text-sm">
-                      <div className="rounded-lg p-2 text-center" style={{ background: 'var(--sf-card)' }}>
-                        <div className="text-xs" style={{ color: 'var(--t-muted)' }}>تاريخ التفعيل</div>
-                        <div className="font-bold" style={{ color: 'var(--t-success)' }}>{new Date(activationDate).toLocaleDateString('ar-IQ')}</div>
+                      <div className="rounded-lg p-2 text-center bg-sf-card">
+                        <div className="text-xs text-t-muted">تاريخ التفعيل</div>
+                        <div className="font-bold text-t-success">{new Date(activationDate).toLocaleDateString('ar-IQ')}</div>
                       </div>
-                      <div className="rounded-lg p-2 text-center" style={{ background: 'var(--sf-card)' }}>
-                        <div className="text-xs" style={{ color: 'var(--t-muted)' }}>تاريخ الانتهاء</div>
-                        <div className="font-bold" style={{ color: 'var(--t-danger)' }}>{(() => {
+                      <div className="rounded-lg p-2 text-center bg-sf-card">
+                        <div className="text-xs text-t-muted">تاريخ الانتهاء</div>
+                        <div className="font-bold text-t-danger">{(() => {
                           const days = getSubDays(selected.subscriptionType)
                           const d = new Date(activationDate); d.setDate(d.getDate() + days)
                           return d.toLocaleDateString('ar-IQ')
@@ -225,7 +225,7 @@ export default function GpsDevices() {
 
               {selected.customer?.idCardFrontUrl && (
                 <div>
-                  <h4 className="font-semibold mb-3" style={{ color: 'var(--t-title)' }}>وثائق الهوية</h4>
+                  <h4 className="font-semibold mb-3 text-t-title">وثائق الهوية</h4>
                   <div className="grid grid-cols-2 gap-3">
                     {selected.customer.idCardFrontUrl && <DocImage url={selected.customer.idCardFrontUrl} label="الهوية - أمامي" />}
                     {selected.customer.idCardBackUrl && <DocImage url={selected.customer.idCardBackUrl} label="الهوية - خلفي" />}
@@ -237,7 +237,7 @@ export default function GpsDevices() {
 
               {selected.invoicePhotoUrl && (
                 <div>
-                  <h4 className="font-semibold mb-3" style={{ color: 'var(--t-title)' }}>صورة الفاتورة</h4>
+                  <h4 className="font-semibold mb-3 text-t-title">صورة الفاتورة</h4>
                   <img src={selected.invoicePhotoUrl} alt="الفاتورة" className="w-full rounded-xl" style={{ maxHeight: '16rem', objectFit: 'contain', border: '1px solid var(--bd-line)' }} />
                 </div>
               )}
@@ -269,7 +269,7 @@ export default function GpsDevices() {
 }
 
 function InfoRow({ label, value }: { label: string; value: string }) {
-  return <div className="flex gap-2"><span className="font-semibold" style={{ color: 'var(--t-muted)', whiteSpace: 'nowrap' }}>{label}:</span><span style={{ color: 'var(--t-body)' }}>{value}</span></div>
+  return <div className="flex gap-2"><span className="font-semibold" style={{ color: 'var(--t-muted)', whiteSpace: 'nowrap' }}>{label}:</span><span className="text-t-body">{value}</span></div>
 }
 
 function DocImage({ url, label }: { url: string; label: string }) {

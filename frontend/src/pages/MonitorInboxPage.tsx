@@ -263,12 +263,12 @@ export default function MonitorInboxPage({ embedded }: EmbeddedProps = {}) {
       {justMode && <JustificationsPanel />}
       <div className={dupMode || justMode ? 'hidden' : 'contents'}>
       <SearchBar value={query} onChange={(v) => { setQuery(v); setPage(1) }} placeholder="ابحث بالعنوان أو الملخص أو صاحب الشغل...">
-        <label className="flex items-center gap-1.5 text-xs font-bold" style={{ color: 'var(--t-body)' }}>
+        <label className="flex items-center gap-1.5 text-xs font-bold text-t-body">
           <input type="checkbox" checked={showDone} onChange={(e) => { setShowDone(e.target.checked); setPage(1) }} />
           وريني الي انبتّ بيه بعد
         </label>
         {tab === 'BOOKINGS' && (
-          <label className="flex items-center gap-1.5 text-xs font-bold" style={{ color: 'var(--t-body)' }}>
+          <label className="flex items-center gap-1.5 text-xs font-bold text-t-body">
             <input type="checkbox" checked={onlyToday} onChange={(e) => { setOnlyToday(e.target.checked); setPage(1) }} />
             حجوزات اليوم بس
           </label>
@@ -284,7 +284,7 @@ export default function MonitorInboxPage({ embedded }: EmbeddedProps = {}) {
         </select>
       </SearchBar>
 
-      {loading && <p style={{ color: 'var(--t-faint)' }}>جاري التحميل...</p>}
+      {loading && <p className="text-t-faint">جاري التحميل...</p>}
       {!loading && groups.length === 0 && (
         <EmptyState
           icon="✅"
@@ -312,11 +312,11 @@ export default function MonitorInboxPage({ embedded }: EmbeddedProps = {}) {
                         🔴 عاجل — يحتاج قرارك الآن
                       </span>
                     )}
-                    <Link to={linkOf(row)} className="font-bold underline" style={{ color: 'var(--t-title)' }}>{row.title}</Link>
+                    <Link to={linkOf(row)} className="font-bold underline text-t-title">{row.title}</Link>
                     {row.entityType === 'AI_VERDICT'
                       ? <MatrixNote className="mt-1">{row.summary}</MatrixNote>
-                      : <p className="text-xs" style={{ color: 'var(--t-muted)' }}>{row.summary}</p>}
-                    <p className="mt-1 text-[11px]" style={{ color: 'var(--t-faint)' }}>
+                      : <p className="text-xs text-t-muted">{row.summary}</p>}
+                    <p className="mt-1 text-[11px] text-t-faint">
                       {row.ownerRole && <>شغل: {roleLabel(row.ownerRole)} </>}
                       {row.ownerEmployee && <>({row.ownerEmployee.name}) </>}
                       • {new Date(row.createdAt).toLocaleString('en-GB')}

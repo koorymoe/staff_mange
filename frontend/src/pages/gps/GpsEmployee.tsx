@@ -128,7 +128,7 @@ export default function GpsEmployee() {
       {/* Assigned Installs */}
       {assignedInstalls.length > 0 && (
         <div className="mb-6 rounded-2xl bg-white p-6 shadow-sm">
-          <h3 className="mb-4 text-lg font-bold" style={{ color: 'var(--t-title)' }}>🛠️ تركيباتي المجدولة</h3>
+          <h3 className="mb-4 text-lg font-bold text-t-title">🛠️ تركيباتي المجدولة</h3>
           <div className="flex flex-col gap-3">
             {assignedInstalls.map(d => (
               <div key={d.id} className="flex items-center justify-between rounded-xl border border-slate-100 p-4">
@@ -173,7 +173,7 @@ export default function GpsEmployee() {
       {/* Purchase Form */}
       {activeForm === 'purchase' && (
         <div className="mb-6 rounded-2xl bg-white p-6 shadow-sm">
-          <h3 className="mb-4 text-lg font-bold" style={{ color: 'var(--t-title)' }}>📱 طلب شراء جهاز</h3>
+          <h3 className="mb-4 text-lg font-bold text-t-title">📱 طلب شراء جهاز</h3>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>
               <label className="mb-1 block text-sm font-medium text-slate-600">الزبون *</label>
@@ -270,7 +270,7 @@ export default function GpsEmployee() {
       {/* Recent Requests Table */}
       <div className="rounded-2xl bg-white shadow-sm overflow-hidden">
         <div className="p-5 border-b border-slate-100">
-          <h3 className="text-lg font-bold" style={{ color: 'var(--t-title)' }}>📋 آخر الطلبات</h3>
+          <h3 className="text-lg font-bold text-t-title">📋 آخر الطلبات</h3>
         </div>
         <div className="overflow-x-auto">
         <table className="w-full text-right">

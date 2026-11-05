@@ -125,7 +125,7 @@ export default function DesignGalleryPage() {
           <option value="">كل التصنيفات</option>
           {Object.entries(categories).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
         </select>
-        <label className="flex items-center gap-1.5 text-xs font-bold" style={{ color: 'var(--t-body)' }}>
+        <label className="flex items-center gap-1.5 text-xs font-bold text-t-body">
           <input type="checkbox" checked={showArchived}
             onChange={(e) => { setShowArchived(e.target.checked); setPage(1) }} />
           وريني المؤرشف
@@ -141,14 +141,14 @@ export default function DesignGalleryPage() {
           style={{ backgroundColor: 'var(--sf-card)', borderColor: 'var(--bd-line)' }}>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div>
-              <label className="mb-1 block text-xs font-medium" style={{ color: 'var(--t-muted)' }}>عنوان التصميم *</label>
+              <label className="mb-1 block text-xs font-medium text-t-muted">عنوان التصميم *</label>
               <input value={title} onChange={(e) => setTitle(e.target.value)}
                 placeholder="مثال: شعار حملة رمضان"
                 className="w-full rounded-lg border px-3 py-2 text-sm"
                 style={{ borderColor: 'var(--bd-line)', backgroundColor: 'var(--sf-card)', color: 'var(--t-body)' }} />
             </div>
             <div>
-              <label className="mb-1 block text-xs font-medium" style={{ color: 'var(--t-muted)' }}>التصنيف</label>
+              <label className="mb-1 block text-xs font-medium text-t-muted">التصنيف</label>
               <select value={newCat} onChange={(e) => setNewCat(e.target.value)}
                 className="w-full rounded-lg border px-3 py-2 text-sm"
                 style={{ borderColor: 'var(--bd-line)', backgroundColor: 'var(--sf-card)', color: 'var(--t-body)' }}>
@@ -156,16 +156,16 @@ export default function DesignGalleryPage() {
               </select>
             </div>
             <div className="sm:col-span-2">
-              <label className="mb-1 block text-xs font-medium" style={{ color: 'var(--t-muted)' }}>ملاحظة (اختيارية)</label>
+              <label className="mb-1 block text-xs font-medium text-t-muted">ملاحظة (اختيارية)</label>
               <input value={notes} onChange={(e) => setNotes(e.target.value)}
                 placeholder="شنو المطلوب بالضبط، أو لأي زبون"
                 className="w-full rounded-lg border px-3 py-2 text-sm"
                 style={{ borderColor: 'var(--bd-line)', backgroundColor: 'var(--sf-card)', color: 'var(--t-body)' }} />
             </div>
             <div className="sm:col-span-2">
-              <label className="mb-1 block text-xs font-medium" style={{ color: 'var(--t-muted)' }}>الملف *</label>
+              <label className="mb-1 block text-xs font-medium text-t-muted">الملف *</label>
               <input type="file" onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-                className="w-full text-sm" style={{ color: 'var(--t-body)' }} />
+                className="w-full text-sm text-t-body" />
             </div>
           </div>
           <button onClick={upload} disabled={guard.busy || !file || !title.trim()}
@@ -175,7 +175,7 @@ export default function DesignGalleryPage() {
         </div>
       )}
 
-      {loading && <p style={{ color: 'var(--t-faint)' }}>جاري التحميل...</p>}
+      {loading && <p className="text-t-faint">جاري التحميل...</p>}
       {!loading && filtered.length === 0 && (
         <EmptyState icon="🎨" title="ماكو تصاميم"
           reason={list.length === 0
@@ -199,12 +199,12 @@ export default function DesignGalleryPage() {
                   )}
                 </a>
                 <div className="p-2.5">
-                  <p className="truncate text-sm font-bold" style={{ color: 'var(--t-title)' }} title={a.title}>{a.title}</p>
-                  <p className="text-[11px]" style={{ color: 'var(--t-faint)' }}>
+                  <p className="truncate text-sm font-bold text-t-title" title={a.title}>{a.title}</p>
+                  <p className="text-[11px] text-t-faint">
                     {categories[a.category] || a.category}
                     {a.uploadedByName && <> • {a.uploadedByName}</>}
                   </p>
-                  {a.notes && <p className="mt-1 line-clamp-2 text-[11px]" style={{ color: 'var(--t-muted)' }}>{a.notes}</p>}
+                  {a.notes && <p className="mt-1 line-clamp-2 text-[11px] text-t-muted">{a.notes}</p>}
                   <button onClick={() => toggleArchive(a)} disabled={guard.busy}
                     className={`mt-2 rounded-lg px-2 py-0.5 text-[11px] font-bold ${
                       a.archivedAt ? 'text-emerald-700 hover:bg-emerald-50' : 'text-red-600 hover:bg-red-50'}`}>

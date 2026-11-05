@@ -106,7 +106,7 @@ export default function DepartmentsPage() {
         </button>
       </SearchBar>
 
-      {loading && <p style={{ color: 'var(--t-faint)' }}>جاري التحميل...</p>}
+      {loading && <p className="text-t-faint">جاري التحميل...</p>}
       {!loading && filtered.length === 0 && (
         <EmptyState icon="🏢" title="ماكو أقسام"
           reason={list.length === 0 ? 'السجل فاضي — أضف قسماً من فوق.' : 'ماكو قسم يطابق البحث.'} />
@@ -121,8 +121,8 @@ export default function DepartmentsPage() {
               style={{ backgroundColor: 'var(--sf-card)', borderColor: 'var(--bd-line)', opacity: d.active ? 1 : 0.6 }}>
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <button onClick={() => setOpenId(open ? null : d.id)} className="text-right">
-                  <span className="font-bold" style={{ color: 'var(--t-title)' }}>{d.name}</span>
-                  <span className="mr-2 text-xs" style={{ color: 'var(--t-faint)' }}>
+                  <span className="font-bold text-t-title">{d.name}</span>
+                  <span className="mr-2 text-xs text-t-faint">
                     {heads.length > 0 ? `${heads.length} مسؤول` : 'بلا مسؤولين'}
                   </span>
                   {!d.active && <span className="mr-2 rounded-full bg-slate-200 px-2 py-0.5 text-[10.5px] font-bold text-slate-600">معطّل</span>}
@@ -136,14 +136,14 @@ export default function DepartmentsPage() {
               {open && (
                 <div className="mt-3 space-y-2 border-t pt-3" style={{ borderColor: 'var(--bd-line)' }}>
                   {heads.length === 0 && (
-                    <p className="text-xs" style={{ color: 'var(--t-faint)' }}>
+                    <p className="text-xs text-t-faint">
                       ماكو مسؤول مسجّل — طالب الحجز راح ينكتب اسمه ورقمه بالإيد لحد ما تسجّل واحد هنا.
                     </p>
                   )}
                   {heads.map((h) => (
                     <div key={h.id} className="flex flex-wrap items-center justify-between gap-2 rounded-lg px-2 py-1.5"
                       style={{ backgroundColor: 'var(--sf-sunken)' }}>
-                      <span className="text-sm" style={{ color: 'var(--t-body)' }}>
+                      <span className="text-sm text-t-body">
                         👤 {h.name}
                         {h.phone && <span className="mr-2 font-mono text-xs" dir="ltr">{h.phone}</span>}
                         {!h.active && <span className="mr-2 text-[10.5px] text-slate-500">(معطّل)</span>}

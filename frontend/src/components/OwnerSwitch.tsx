@@ -70,10 +70,10 @@ export default function OwnerSwitch({ switchKey, label, hint }: Props) {
     <div className="rounded-xl border p-3" style={{ background: 'var(--sf-card)', borderColor: 'var(--bd-line)' }}>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="min-w-0">
-          <p className="text-sm font-bold" style={{ color: 'var(--t-title)' }}>
+          <p className="text-sm font-bold text-t-title">
             {label} — {on === null ? '…' : on ? 'شغّالة' : '⛔ مطفية'}
           </p>
-          <p className="mt-0.5 text-xs" style={{ color: 'var(--t-muted)' }}>{hint}</p>
+          <p className="mt-0.5 text-xs text-t-muted">{hint}</p>
         </div>
         <button onClick={toggle} disabled={busy || on === null}
           className={`shrink-0 rounded-xl px-4 py-2 text-sm font-bold text-white transition-colors disabled:opacity-50 ${
@@ -85,7 +85,7 @@ export default function OwnerSwitch({ switchKey, label, hint }: Props) {
       {/* ⚠️ الإطفاء يسري على **كل** الموظفين بأول تحميل صفحة عندهم —
           وهاي تنكتب صراحةً حتى (ع) ما يتفاجأ إن موظفاً بعده يشوفها
           بتبويب مفتوح من قبل التبديل. */}
-      <p className="mt-1.5 text-[11px]" style={{ color: 'var(--t-faint)' }}>
+      <p className="mt-1.5 text-[11px] text-t-faint">
         القرار يسري على كل الموظفين — والي عنده النظام مفتوح الآن يشوف
         التغيير بأول تحديث للصفحة.
       </p>

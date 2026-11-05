@@ -140,7 +140,7 @@ export default function RevolvingFundPage() {
         {funds.map((f) => (
           <div key={f.id} className="rounded-2xl bg-white p-5 shadow-sm">
             <p className="text-sm font-medium text-slate-500">{f.name}</p>
-            <p className="mt-1 text-2xl font-bold" style={{ color: 'var(--t-title)' }}>{money(f.balance)}</p>
+            <p className="mt-1 text-2xl font-bold text-t-title">{money(f.balance)}</p>
             <p className="mt-1 text-xs text-amber-700">بيد الموظفين: {money(f.outstandingTotal)}</p>
             {f.awaitingDischargeTotal > 0 && (
               <p className="mt-0.5 text-xs text-violet-700">ناطر التخريج: {money(f.awaitingDischargeTotal)}</p>
@@ -183,7 +183,7 @@ export default function RevolvingFundPage() {
             <div key={f.id} className="rounded-2xl bg-white p-6 shadow-sm">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
-                  <h3 className="text-lg font-bold" style={{ color: 'var(--t-title)' }}>{f.name}</h3>
+                  <h3 className="text-lg font-bold text-t-title">{f.name}</h3>
                   <p className="mt-1 text-sm text-slate-500">الرصيد الحالي: <span className="font-bold text-slate-800">{money(f.balance)}</span></p>
                   <p className="text-sm text-slate-500">بيد الموظفين وما انتسوّى: <span className="font-bold text-amber-700">{money(f.outstandingTotal)}</span></p>
                   <p className="text-sm text-slate-500">ناطر تخريج المحاسب: <span className="font-bold text-violet-700">{money(f.awaitingDischargeTotal || 0)}</span></p>
@@ -257,7 +257,7 @@ export default function RevolvingFundPage() {
         <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/40 p-4" onClick={() => setSettleFor(null)}>
           <div dir="rtl" className="max-h-[90vh] w-full max-w-xl overflow-y-auto rounded-2xl bg-white p-4 shadow-xl" onClick={(e) => e.stopPropagation()}>
             <div className="mb-3 flex items-center justify-between">
-              <h3 className="text-lg font-bold" style={{ color: 'var(--t-title)' }}>🧾 تسوية بدل {settleFor.employeeName}</h3>
+              <h3 className="text-lg font-bold text-t-title">🧾 تسوية بدل {settleFor.employeeName}</h3>
               <button onClick={() => setSettleFor(null)} className="rounded-lg border border-slate-300 px-3 py-1 text-sm">إغلاق</button>
             </div>
             <MyFundBalance forEmployee={settleFor} onDone={() => { setSettleFor(null); load() }} />
@@ -355,7 +355,7 @@ export default function RevolvingFundPage() {
       {dischargeFor && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" dir="rtl">
           <div className="w-full max-w-md space-y-4 rounded-2xl bg-white p-6 shadow-xl">
-            <h3 className="text-lg font-bold" style={{ color: 'var(--t-title)' }}>تخريج مادة — {dischargeFor.employeeName}</h3>
+            <h3 className="text-lg font-bold text-t-title">تخريج مادة — {dischargeFor.employeeName}</h3>
             <p className="rounded-lg bg-violet-50 p-3 text-sm text-violet-900">
               راح يرجع للدوار <b>{money(dischargeFor.spentAmount)}</b>
             </p>
@@ -523,7 +523,7 @@ function Modal({ title, children, onClose, wide }: { title: string; children: Re
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={onClose}>
       <div dir="rtl" className={`w-full ${wide ? 'max-w-2xl' : 'max-w-md'} rounded-2xl bg-white p-6 shadow-xl`} onClick={(e) => e.stopPropagation()}>
-        <h3 className="mb-4 text-lg font-bold" style={{ color: 'var(--t-title)' }}>{title}</h3>
+        <h3 className="mb-4 text-lg font-bold text-t-title">{title}</h3>
         {children}
       </div>
     </div>

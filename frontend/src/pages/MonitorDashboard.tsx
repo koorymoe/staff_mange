@@ -268,7 +268,7 @@ export default function MonitorDashboard() {
             <div className="space-y-4">
               <div className="rounded-2xl p-5 shadow-[0_4px_20px_rgba(15,32,64,0.04)]" style={{ backgroundColor: 'var(--sf-card)' }}>
                 <h3 className="mb-1 text-lg font-bold" style={{ color: 'var(--t-heading)' }}>الكوادر الميدانية الحالية</h3>
-                <p className="mb-4 text-sm" style={{ color: 'var(--t-faint)' }}>الحجوزات المثبتة والجاري تنفيذها مع الكوادر المعينة</p>
+                <p className="mb-4 text-sm text-t-faint">الحجوزات المثبتة والجاري تنفيذها مع الكوادر المعينة</p>
 
                 <div className="mb-4">
                   <SearchBar value={crewSearch} onChange={(v) => { setCrewSearch(v); setCrewPage(1) }} placeholder="بحث بالكود أو اسم الزبون..." />

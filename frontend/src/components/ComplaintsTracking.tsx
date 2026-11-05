@@ -334,22 +334,22 @@ export default function ComplaintsTracking({
                         <tr>
                           <td colSpan={10} className="bg-slate-50 px-4 py-3">
                             <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-xs">
-                              <span style={{ color: 'var(--t-muted)' }}>
-                                شكاوى الزبون: <b style={{ color: 'var(--t-title)' }}>{s.complaintCount}</b>
+                              <span className="text-t-muted">
+                                شكاوى الزبون: <b className="text-t-title">{s.complaintCount}</b>
                               </span>
-                              <span style={{ color: 'var(--t-muted)' }}>
-                                مفتوحة: <b style={{ color: 'var(--t-title)' }}>{s.openCount}</b>
+                              <span className="text-t-muted">
+                                مفتوحة: <b className="text-t-title">{s.openCount}</b>
                               </span>
-                              <span style={{ color: 'var(--t-muted)' }}>
+                              <span className="text-t-muted">
                                 ما انتصل بيها: <b className={s.notContactedCount > 0 ? 'text-red-600' : 'text-emerald-600'}>
                                   {s.notContactedCount}</b>
                               </span>
-                              <span style={{ color: 'var(--t-muted)' }}>
-                                تحتاج تدقيق: <b style={{ color: 'var(--t-title)' }}>{s.needsAuditCount}</b>
+                              <span className="text-t-muted">
+                                تحتاج تدقيق: <b className="text-t-title">{s.needsAuditCount}</b>
                               </span>
                               {latest && (
-                                <span className="truncate" style={{ color: 'var(--t-muted)' }}>
-                                  آخر شكوى: <b style={{ color: 'var(--t-body)' }}>{latest.description}</b>
+                                <span className="truncate text-t-muted">
+                                  آخر شكوى: <b className="text-t-body">{latest.description}</b>
                                 </span>
                               )}
                             </div>
@@ -379,7 +379,7 @@ export default function ComplaintsTracking({
               <button onClick={() => setPanelOpen(!panelOpen)}
                 className="text-slate-400 transition-transform"
                 style={{ transform: panelOpen ? 'rotate(0deg)' : 'rotate(180deg)' }}>▲</button>
-              <h3 className="text-sm font-bold" style={{ color: 'var(--t-title)' }}>
+              <h3 className="text-sm font-bold text-t-title">
                 تفاصيل الشكوى المحددة
               </h3>
             </div>
@@ -393,7 +393,7 @@ export default function ComplaintsTracking({
             <div className="space-y-3 p-4">
               {siblings.length > 1 && (
                 <div className="flex flex-wrap items-center gap-2">
-                  <span className="text-xs" style={{ color: 'var(--t-muted)' }}>
+                  <span className="text-xs text-t-muted">
                     عند الزبون {siblings.length} شكاوى:
                   </span>
                   {siblings.map((c, i) => (
@@ -411,12 +411,12 @@ export default function ComplaintsTracking({
 
               <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-4">
                 <Box label="الزبون">
-                  <p className="font-bold" style={{ color: 'var(--t-title)' }}>{selected.customer?.name}</p>
-                  <p className="text-xs" style={{ color: 'var(--t-muted)' }}>📞 {selected.customer?.phone}</p>
-                  <p className="mt-1 text-xs" style={{ color: 'var(--t-faint)' }}>{selected.description}</p>
+                  <p className="font-bold text-t-title">{selected.customer?.name}</p>
+                  <p className="text-xs text-t-muted">📞 {selected.customer?.phone}</p>
+                  <p className="mt-1 text-xs text-t-faint">{selected.description}</p>
                 </Box>
                 <Box label="مهندس الجودة المسؤول">
-                  <p style={{ color: 'var(--t-body)' }}>{selected.assignedToEmployee?.name || '— ما انكلّف أحد'}</p>
+                  <p className="text-t-body">{selected.assignedToEmployee?.name || '— ما انكلّف أحد'}</p>
                   {canSeeFullDetail && (
                     <select value={selected.assignedToEmployeeId ?? ''}
                       onChange={(e) => onAssign(selected.id, e.target.value)}
@@ -442,7 +442,7 @@ export default function ComplaintsTracking({
                   <p className={`font-bold ${selected.contactedAt ? 'text-emerald-600' : 'text-red-600'}`}>
                     {selected.contactedAt ? `✓ نعم — ${selected.contactedByName ?? ''}` : '✕ لا'}
                   </p>
-                  <p className="text-xs" style={{ color: 'var(--t-faint)' }}>
+                  <p className="text-xs text-t-faint">
                     {selected.contactedAt
                       ? new Date(selected.contactedAt).toLocaleString('ar-IQ')
                       : 'ما انتصل بيه بعد'}
@@ -512,10 +512,10 @@ export default function ComplaintsTracking({
                       </div>
                     </>
                   ) : (
-                    <p className="text-xs" style={{ color: 'var(--t-muted)' }}>
+                    <p className="text-xs text-t-muted">
                       {selected.auditNote || '— ماكو ملاحظة تدقيق'}
                       {selected.auditedBy && (
-                        <span className="block text-[11px]" style={{ color: 'var(--t-faint)' }}>
+                        <span className="block text-[11px] text-t-faint">
                           دقّقها {selected.auditedBy.name}
                         </span>
                       )}
@@ -526,9 +526,9 @@ export default function ComplaintsTracking({
 
               <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl px-3 py-2"
                 style={{ backgroundColor: 'var(--sf-sunken)' }}>
-                <p className="text-xs" style={{ color: 'var(--t-muted)' }}>
+                <p className="text-xs text-t-muted">
                   آخر إجراء:{' '}
-                  <b style={{ color: 'var(--t-body)' }}>
+                  <b className="text-t-body">
                     {selected.resolvedAt ? 'انحلّت'
                       : selected.auditedAt ? `تدقيق — ${auditVerdictLabels[selected.auditVerdict as AuditVerdict] ?? ''}`
                       : selected.contactedAt ? 'تواصل مع الزبون' : 'انفتحت الشكوى'}
@@ -572,7 +572,7 @@ export default function ComplaintsTracking({
                     // ⚠️ سجل فارغ **مو** معناه ماكو أحد اشتغل: السجل
                     // انبنى مؤخراً والشكاوى القديمة ما إلها أحداث.
                     // بلا هذا السطر يستنتج المدقق إهمالاً ما صار.
-                    <p className="text-xs" style={{ color: 'var(--t-muted)' }}>
+                    <p className="text-xs text-t-muted">
                       ماكو أحداث مسجّلة لهذي الشكوى — السجل يبدي من تاريخ تفعيله،
                       والشكاوى الأقدم منه ما إلها أحداث محفوظة.
                     </p>
@@ -580,12 +580,12 @@ export default function ComplaintsTracking({
                     <ol className="space-y-1.5">
                       {events.map((e) => (
                         <li key={e.id} className="flex flex-wrap items-baseline gap-2 text-xs">
-                          <span style={{ color: 'var(--t-faint)' }}>
+                          <span className="text-t-faint">
                             {new Date(e.createdAt).toLocaleString('ar-IQ')}
                           </span>
-                          <b style={{ color: 'var(--t-title)' }}>{eventKindLabels[e.kind] ?? e.kind}</b>
-                          {e.byName && <span style={{ color: 'var(--t-muted)' }}>— {e.byName}</span>}
-                          {e.detail && <span style={{ color: 'var(--t-body)' }}>· {e.detail}</span>}
+                          <b className="text-t-title">{eventKindLabels[e.kind] ?? e.kind}</b>
+                          {e.byName && <span className="text-t-muted">— {e.byName}</span>}
+                          {e.detail && <span className="text-t-body">· {e.detail}</span>}
                         </li>
                       ))}
                     </ol>
@@ -604,7 +604,7 @@ function Box({ label, children }: { label: string; children: React.ReactNode }) 
   return (
     <div className="rounded-xl border p-3"
       style={{ backgroundColor: 'var(--sf-sunken)', borderColor: 'var(--bd-line)' }}>
-      <p className="mb-1 text-[11px] font-bold" style={{ color: 'var(--t-muted)' }}>{label}</p>
+      <p className="mb-1 text-[11px] font-bold text-t-muted">{label}</p>
       {children}
     </div>
   )

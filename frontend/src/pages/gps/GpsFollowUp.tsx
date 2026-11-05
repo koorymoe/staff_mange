@@ -159,7 +159,7 @@ export default function GpsFollowUp({ embedded }: { embedded?: boolean } = {}) {
       <section className="rounded-2xl bg-white p-6 shadow-sm">
         <div className="mb-4 flex items-center justify-between">
           <div>
-            <h2 className="text-lg font-bold" style={{ color: 'var(--t-title)' }}>{st.icon} {title} ({list.length})</h2>
+            <h2 className="text-lg font-bold text-t-title">{st.icon} {title} ({list.length})</h2>
             <p className="mt-0.5 text-sm text-slate-500">{subtitle}</p>
           </div>
         </div>
@@ -210,7 +210,7 @@ export default function GpsFollowUp({ embedded }: { embedded?: boolean } = {}) {
       {callTarget && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={() => setCallTarget(null)}>
           <div dir="rtl" className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-xl" onClick={(e) => e.stopPropagation()}>
-            <h3 className="text-lg font-bold" style={{ color: 'var(--t-title)' }}>نتيجة الاتصال</h3>
+            <h3 className="text-lg font-bold text-t-title">نتيجة الاتصال</h3>
             <p className="mt-1 text-sm text-slate-600">
               {callTarget.customerName} — <span dir="ltr">{callTarget.customerPhone}</span>
               {' · '}صارله {callTarget.daysSinceExpiry} يوم

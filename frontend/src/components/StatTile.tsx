@@ -34,7 +34,7 @@ export default function StatTile({
   const body = (
     <>
       <div className="flex items-start justify-between gap-2">
-        <p className="text-xs font-medium" style={{ color: 'var(--t-muted)' }}>{label}</p>
+        <p className="text-xs font-medium text-t-muted">{label}</p>
         {icon && (
           <span
             className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-lg"
@@ -45,7 +45,7 @@ export default function StatTile({
         )}
       </div>
       <p className="mt-1 text-2xl font-extrabold" style={{ color: t.ink }}>{value}</p>
-      {hint && <p className="mt-0.5 text-[11px]" style={{ color: 'var(--t-faint)' }}>{hint}</p>}
+      {hint && <p className="mt-0.5 text-[11px] text-t-faint">{hint}</p>}
     </>
   )
 

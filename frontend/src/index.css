@@ -15,6 +15,27 @@
 @theme {
   --font-sans: 'Tajawal', system-ui, sans-serif;
 
+  /* ٧ص (11-05): ألوان الثيم ككلاسات Tailwind (text-t-muted، bg-sf-card، border-bd-line…) — تنقلب بالليلي لأنها var() */
+  --color-t-title: var(--t-title);
+  --color-t-title-alt: var(--t-title-alt);
+  --color-t-body: var(--t-body);
+  --color-t-muted: var(--t-muted);
+  --color-t-faint: var(--t-faint);
+  --color-t-danger: var(--t-danger);
+  --color-t-success: var(--t-success);
+  --color-t-warning: var(--t-warning);
+  --color-t-info: var(--t-info);
+  --color-t-violet: var(--t-violet);
+  --color-t-cyan: var(--t-cyan);
+  --color-sf-card: var(--sf-card);
+  --color-sf-sunken: var(--sf-sunken);
+  --color-sf-danger: var(--sf-danger);
+  --color-sf-success: var(--sf-success);
+  --color-sf-info: var(--sf-info);
+  --color-sf-violet: var(--sf-violet);
+  --color-tint-warning: var(--tint-warning);
+  --color-bd-line: var(--bd-line);
+
   --color-brand-50: #eef3fb;
   --color-brand-100: #d6e2f5;
   --color-brand-200: #adc5eb;

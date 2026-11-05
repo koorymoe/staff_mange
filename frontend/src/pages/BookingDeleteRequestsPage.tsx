@@ -184,7 +184,7 @@ export default function BookingDeleteRequestsPage({ embedded }: { embedded?: boo
       </div>
 
       {loading ? (
-        <p className="text-center" style={{ color: 'var(--t-faint)' }}>جاري التحميل...</p>
+        <p className="text-center text-t-faint">جاري التحميل...</p>
       ) : (
         <div className="overflow-hidden rounded-2xl border" style={{ backgroundColor: 'var(--sf-card)', borderColor: 'var(--bd-line)' }}>
           {filtered.length === 0 ? (
@@ -205,9 +205,9 @@ export default function BookingDeleteRequestsPage({ embedded }: { embedded?: boo
                       <div className="p-4">
                         <div className="flex flex-wrap items-start justify-between gap-3">
                           <div className="min-w-0">
-                            <p className="font-bold" style={{ color: 'var(--t-title)' }}>
+                            <p className="font-bold text-t-title">
                               {r.bookingCode}
-                              <span className="mr-2 text-sm font-normal" style={{ color: 'var(--t-muted)' }}>{r.customerName}</span>
+                              <span className="mr-2 text-sm font-normal text-t-muted">{r.customerName}</span>
                             </p>
                             {/* ═══ معلومات الزبون والخدمة ═══
                                 الي يوافق على الحذف يحتاج يتصل بالزبون
@@ -215,15 +215,15 @@ export default function BookingDeleteRequestsPage({ embedded }: { embedded?: boo
                                 الي طلبها — بلاهن القرار على سبب مكتوب
                                 بلا تحقّق. */}
                             <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
-                              <span className="font-bold" style={{ color: 'var(--t-body)' }}>
+                              <span className="font-bold text-t-body">
                                 🧰 {r.serviceNames || '—'}
                               </span>
                               {r.bookingScheduledAt && (
-                                <span style={{ color: 'var(--t-faint)' }}>📅 {fmtDate(r.bookingScheduledAt)}</span>
+                                <span className="text-t-faint">📅 {fmtDate(r.bookingScheduledAt)}</span>
                               )}
                               {r.customerPhone ? (
                                 <>
-                                  <span className="font-bold" dir="ltr" style={{ color: 'var(--t-body)' }}>
+                                  <span className="font-bold text-t-body" dir="ltr">
                                     📱 {r.customerPhone}
                                   </span>
                                   <button
@@ -241,11 +241,11 @@ export default function BookingDeleteRequestsPage({ embedded }: { embedded?: boo
                                   <PhoneActions phone={r.customerPhone} telegram />
                                 </>
                               ) : (
-                                <span style={{ color: 'var(--t-faint)' }}>📱 —</span>
+                                <span className="text-t-faint">📱 —</span>
                               )}
                             </div>
-                            <p className="mt-1 text-sm" style={{ color: 'var(--t-body)' }}>📝 {r.reason}</p>
-                            <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-xs" style={{ color: 'var(--t-faint)' }}>
+                            <p className="mt-1 text-sm text-t-body">📝 {r.reason}</p>
+                            <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-xs text-t-faint">
                               <span>🌐 {r.channelLabel || '—'}</span>
                               <span>🏷️ {r.requestTypeLabel || '—'}</span>
                               <span>🕓 {fmtDate(r.createdAt)}</span>
@@ -309,8 +309,8 @@ export default function BookingDeleteRequestsPage({ embedded }: { embedded?: boo
                       {isOpen && decided && (
                         <div className="px-4 pb-4">
                           <div className="rounded-xl p-3 text-xs" style={{ backgroundColor: 'var(--sf-sunken)', color: 'var(--t-muted)' }}>
-                            <p>القرار: <b style={{ color: 'var(--t-title)' }}>{r.statusLabel}</b></p>
-                            <p className="mt-1">البتّ بواسطة: <b style={{ color: 'var(--t-title)' }}>{r.decidedByName ?? '—'}</b></p>
+                            <p>القرار: <b className="text-t-title">{r.statusLabel}</b></p>
+                            <p className="mt-1">البتّ بواسطة: <b className="text-t-title">{r.decidedByName ?? '—'}</b></p>
                             {r.decisionNote && <p className="mt-1">الملاحظة: {r.decisionNote}</p>}
                             {r.needsInfo && (
                               <p className="mt-1">

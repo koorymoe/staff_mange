@@ -60,7 +60,7 @@ export default function InternalDepartmentContacts({
 
   return (
     <div className="rounded-xl border p-3" style={{ borderColor: 'var(--bd-line)' }}>
-      <p className="mb-2 text-xs font-bold" style={{ color: 'var(--t-muted)' }}>
+      <p className="mb-2 text-xs font-bold text-t-muted">
         📞 مسؤولو القسم {name ? `— ${name}` : ''}
       </p>
       <div className="space-y-1.5">
@@ -71,7 +71,7 @@ export default function InternalDepartmentContacts({
           <Row key={h.id} label={h.name} phone={h.phone} />
         ))}
         {!requesterName && others.length === 0 && (
-          <p className="text-sm" style={{ color: 'var(--t-muted)' }}>—</p>
+          <p className="text-sm text-t-muted">—</p>
         )}
       </div>
     </div>
@@ -82,7 +82,7 @@ function Row({ label, phone, tag }: { label: string; phone?: string | null; tag?
   return (
     <div className="flex items-center justify-between gap-2 text-sm">
       <span className="flex items-center gap-1.5">
-        <span style={{ color: 'var(--t-body)' }}>{label}</span>
+        <span className="text-t-body">{label}</span>
         {tag && (
           <span className="rounded-full bg-brand-50 px-2 py-0.5 text-[10px] font-bold text-brand-700">
             {tag}
@@ -94,7 +94,7 @@ function Row({ label, phone, tag }: { label: string; phone?: string | null; tag?
           {phone}
         </a>
       ) : (
-        <span style={{ color: 'var(--t-muted)' }}>—</span>
+        <span className="text-t-muted">—</span>
       )}
     </div>
   )

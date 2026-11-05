@@ -140,7 +140,7 @@ export default function GpsDashboard() {
 
           {/* Quick Actions */}
           <div className="rounded-2xl bg-white p-6 shadow-sm">
-            <h3 className="mb-4 text-lg font-bold" style={{ color: 'var(--t-title)' }}>⚡ إجراءات سريعة</h3>
+            <h3 className="mb-4 text-lg font-bold text-t-title">⚡ إجراءات سريعة</h3>
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
               {[
                 { label: 'إضافة زبون', icon: '👤', href: '/gps/customers' },
@@ -155,7 +155,7 @@ export default function GpsDashboard() {
                   style={{ borderColor: '#1a3a5c' }}
                 >
                   <span className="text-2xl">{action.icon}</span>
-                  <p className="mt-2 text-sm font-bold" style={{ color: 'var(--t-title)' }}>{action.label}</p>
+                  <p className="mt-2 text-sm font-bold text-t-title">{action.label}</p>
                 </button>
               ))}
             </div>
@@ -241,7 +241,7 @@ export default function GpsDashboard() {
                     style={selectedDevice?.id === d.id ? { '--tw-ring-color': '#1a3a5c' } as React.CSSProperties : {}}
                   >
                     <div className="flex items-center justify-between mb-2">
-                      <span className="font-bold" style={{ color: 'var(--t-title)' }}>{d.customer?.fullName || 'غير معروف'}</span>
+                      <span className="font-bold text-t-title">{d.customer?.fullName || 'غير معروف'}</span>
                       <span
                         className="rounded-full px-3 py-1 text-xs font-bold"
                         style={{ backgroundColor: progressColor + '20', color: progressColor }}
@@ -269,7 +269,7 @@ export default function GpsDashboard() {
             {/* Detail Panel */}
             {selectedDevice && (
               <div className="w-80 rounded-2xl bg-white p-6 shadow-sm">
-                <h3 className="mb-4 text-lg font-bold" style={{ color: 'var(--t-title)' }}>تفاصيل الاشتراك</h3>
+                <h3 className="mb-4 text-lg font-bold text-t-title">تفاصيل الاشتراك</h3>
                 <div className="space-y-3">
                   <div>
                     <span className="text-xs text-slate-500">الزبون</span>

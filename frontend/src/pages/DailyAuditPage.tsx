@@ -313,7 +313,7 @@ export default function DailyAuditPage() {
               <div className="mb-2 flex flex-wrap items-baseline justify-between gap-2">
                 <span className="text-sm font-bold text-slate-700">تقدّم التدقيق اليوم</span>
                 <span className="text-sm text-slate-500">
-                  <b style={{ color: 'var(--t-success)' }}>{money(rep.verifiedTotal)}</b>
+                  <b className="text-t-success">{money(rep.verifiedTotal)}</b>
                   {' '}من أصل{' '}
                   <b style={{ color: '#c8a45a' }}>{money(rep.expectedTotal)}</b>
                 </span>

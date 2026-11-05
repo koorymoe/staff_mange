@@ -55,7 +55,7 @@ export default function GpsMaintenance() {
                 <div className="flex items-center gap-3">
                   <span className="text-2xl">🔧</span>
                   <div>
-                    <h3 className="font-bold" style={{ color: 'var(--t-title)' }}>{r.customer?.fullName || 'غير معروف'}</h3>
+                    <h3 className="font-bold text-t-title">{r.customer?.fullName || 'غير معروف'}</h3>
                     <p className="text-sm text-slate-500">📞 {r.customer?.phone || '-'}</p>
                   </div>
                 </div>
@@ -111,7 +111,7 @@ export default function GpsMaintenance() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
           <div className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-lg">
             <div className="flex items-center justify-between mb-6">
-              <h3 className="text-xl font-bold" style={{ color: 'var(--t-title)' }}>🔧 تفاصيل طلب الصيانة</h3>
+              <h3 className="text-xl font-bold text-t-title">🔧 تفاصيل طلب الصيانة</h3>
               <button onClick={() => setSelectedRequest(null)} className="text-2xl text-slate-400 hover:text-slate-600">&times;</button>
             </div>
 

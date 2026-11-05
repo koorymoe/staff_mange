@@ -115,7 +115,7 @@ export default function PublicDesignFormPage() {
               {questions.map((q) => (
                 <div key={q.id}>
                   <label style={{ display: 'block', fontSize: '14px', fontWeight: 700, color: PRIMARY_TEXT, marginBottom: '6px' }}>
-                    {q.label} {q.required && <span style={{ color: 'var(--t-danger)' }}>*</span>}
+                    {q.label} {q.required && <span className="text-t-danger">*</span>}
                   </label>
                   {q.type === 'TEXTAREA' && (
                     <textarea
