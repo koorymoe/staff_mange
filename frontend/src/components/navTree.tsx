@@ -339,7 +339,6 @@ export const navItems: NavItem[] = [
       { to: '/achievements', label: '📋 الإنجازات', icon: <></>, roles: ['ADMIN'], hideForRoles: ['ADMIN', 'OWNER'] },
       // دليل الأدوار — يوضّح منو يوصل لوين، فمحله عند من يوزّع الصلاحيات
       { to: '/solar', label: '☀️ الطاقة الشمسية', icon: <></>, roles: ['ADMIN', 'OWNER', 'MONITOR', 'TECHNICIAN', 'SERVICE_MANAGER'], permission: 'solar_system' },
-      { to: '/training-programs', label: '🎓 برامج التدريب', icon: <></>, roles: ['ADMIN', 'OWNER'], permission: 'training_manage' },
           { monitorMenuHide: true, to: '/missions', label: 'تتبع المهام', icon: <></>, roles: ['ADMIN', 'HR_COORDINATOR', 'MONITOR'], permission: 'mission_tracking', hideForRoles: ['FINANCE'] },
           // الشكاوى ومتابعة الجودة جانن تحت «إدارة الموظفين» — وهنّ شغل
           // على الزبون مو على ملف الموظف. محلهن هنا مع باقي شغل العمل.
@@ -714,7 +713,6 @@ export const navItems: NavItem[] = [
     children: [
       // (ع) 10-13: مركز التدريب — ماتركس يحدد الواجب تدريبهم، الخطة، الاختبارات
       { to: '/training-center', label: '🧠 مركز التدريب', icon: <></>, roles: ['ADMIN', 'OWNER'], permission: 'training_manage' },
-      { to: '/training-programs', label: '🎓 برامج التدريب', icon: <></>, roles: ['ADMIN', 'OWNER'], permission: 'training_manage' },
     ],
   },
   {
@@ -1513,6 +1511,8 @@ const ROUTE_RULES: Record<string, RouteRule> = {
   // (ع) 10-16: انشالن من القائمة (صارن جوّا «مكتب الجودة») — الروابط الداخلية تبقى تشتغل
   '/complaints': { roles: ['HR_COORDINATOR', 'MONITOR', 'QUALITY_ENGINEER'], anyPermission: ['complaints'] },
   '/quality-follow-ups': { roles: ['MONITOR', 'QUALITY_ENGINEER'], anyPermission: ['quality_control'] },
+  // ٧و (11-05): انشال من القائمة (صار تبويب بمركز التدريب) — الرابط يبقى بنفس شرط البند القديم
+  '/training-programs': { roles: ['ADMIN', 'OWNER'], anyPermission: ['training_manage'] },
   '/monitor-inbox': { roles: ['MONITOR'], anyPermission: ['monitoring', 'auditing', 'mon_inbox', 'mon_justifications'] }, // requireMonitor
   '/matrix-missions': { roles: ['MONITOR'], anyPermission: ['monitoring', 'auditing', 'mon_matrix'] }, // requireMonitor
   '/stage-buckets': { anyPermission: ['coordinator'] }, // requireCoordinator

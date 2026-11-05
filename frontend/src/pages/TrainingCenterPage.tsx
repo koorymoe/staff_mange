@@ -1,5 +1,5 @@
 import { Suspense, useEffect, useMemo, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useLocation } from 'react-router-dom'
 import { api, type Employee, type TcCurriculum, type TcExamReportRow, type TcInsight, type TcPlan, type TcQuestion } from '../api'
 import { ROLE_LABELS, roleLabel } from '../roleLabels'
 import { card } from '../ui/classes'
@@ -35,7 +35,9 @@ const thisMonth = () => new Date().toISOString().slice(0, 7)
 const err = (e: unknown) => alert(e instanceof Error ? e.message : 'تعذّر')
 
 export default function TrainingCenterPage() {
-  const [tab, setTab] = useState<Tab>('need')
+  // ٧و (11-05): «برامج التدريب» انشال من القائمة — رابطه القديم يفتح هنا على تبويبه
+  const { pathname } = useLocation()
+  const [tab, setTab] = useState<Tab>(pathname.replace(/\/+$/, '').endsWith('/training-programs') ? 'programs' : 'need')
   const [insights, setInsights] = useState<TcInsight[] | null>(null)
   const [emps, setEmps] = useState<Employee[]>([])
   useEffect(() => {

@@ -53,7 +53,6 @@ const ExtraTasksPage = lazyRetry(() => import('./pages/ExtraTasksPage'))
 const RolesGuidePage = lazyRetry(() => import('./pages/RolesGuidePage'))
 // الطلبات — كتاب رسمي من الموظف للإدارة، متاح لكل الموظفين
 const LettersPage = lazyRetry(() => import('./pages/LettersPage'))
-const TrainingPrograms = lazyRetry(() => import('./pages/TrainingPrograms'))
 const TrainingCenterPage = lazyRetry(() => import('./pages/TrainingCenterPage'))
 const MyExamPage = lazyRetry(() => import('./pages/MyExamPage'))
 const BookingsHub = lazyRetry(() => import('./pages/BookingsHub'))
@@ -274,7 +273,7 @@ function App() {
           <Route path="roles-guide" element={<RolesGuidePage />} />
           <Route path="letters" element={<LettersPage />} />
           <Route path="solar" element={<SolarPage />} />
-          <Route path="training-programs" element={<TrainingPrograms />} />
+          <Route path="training-programs" element={<TrainingCenterPage />} />
           <Route path="training-center" element={<TrainingCenterPage />} />
           <Route path="my-exam" element={<MyExamPage />} />
           {/* «الحجوزات» صارت مدخل واحد بثلاثة خيارات: حجوزات اليوم ·
