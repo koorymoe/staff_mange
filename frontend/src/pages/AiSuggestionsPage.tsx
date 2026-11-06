@@ -38,9 +38,9 @@ export default function AiSuggestionsPage() {
 }
 function Suggestions() {
   const [filter, setFilter] = useState<
-    'all' | 'code' | 'new' | 'verify' | 'lessons' | 'health'
+    'all' | 'code' | 'new' | 'verify' | 'lessons' | 'health' | 'actions'
   >('all')
-  const extra = filter === 'lessons' || filter === 'health'
+  const extra = filter === 'lessons' || filter === 'health' || filter === 'actions'
   const [items, setItems] = useState<Suggestion[] | null>(null)
   const [reload, setReload] = useState(0)
   const [error, setError] = useState('')
@@ -63,7 +63,7 @@ function Suggestions() {
     }
   }, [pending])
   useEffect(() => {
-    if (filter === 'lessons' || filter === 'health') return
+    if (filter === 'lessons' || filter === 'health' || filter === 'actions') return
     let alive = true
     const query = new URLSearchParams({
       status: filter === 'new' ? 'NEW' : filter === 'verify' ? 'VERIFYING' : '',
@@ -121,6 +121,7 @@ function Suggestions() {
             ['verify', 'ينتظر التأكد'],
             ['lessons', '📘 دروس مقترحة'],
             ['health', '🩺 صحة الوكلاء'],
+            ['actions', '📜 أفعال الوكلاء'],
           ] as const
         ).map(([key, label]) => (
           <button
@@ -157,6 +158,7 @@ function Suggestions() {
       {success && <p role="status">{success}</p>}
       {filter === 'lessons' && <ProposedLessons />}
       {filter === 'health' && <AgentHealth />}
+      {filter === 'actions' && <AgentActions />}
       {!extra && !items && !error && <p role="status">دا أجيب اقتراحات الوكلاء…</p>}
       {!extra && items?.length === 0 && (
         <p className="ai-brain-notice">ماكو اقتراحات بهالفلتر لحد هسه.</p>
@@ -454,6 +456,39 @@ function AgentHealth() {
           </article>
         )
       })}
+    </>
+  )
+}
+
+// 📜 أفعال الوكلاء (دازاي 11-06، فكرة ٦): كل أداة غيّرت أو طلبت شي — منو طلب، شنو انطلب، والنتيجة.
+type AgentAction = { agent: string; tool: string; actor: string | null; input: string; result: string; failed: boolean; at: string }
+function AgentActions() {
+  const [rows, setRows] = useState<AgentAction[] | null>(null)
+  const [err, setErr] = useState('')
+  useEffect(() => {
+    apiRequest<AgentAction[]>('/ai/actions')
+      .then(setRows)
+      .catch((e) => setErr(e.message))
+  }, [])
+  if (err) return <p role="alert" className="ai-brain-notice">{err}</p>
+  if (!rows) return <p role="status">دا أجيب أفعال الوكلاء…</p>
+  if (rows.length === 0) return <p>ماكو أفعال مسجلة بعد. (أدوات القراءة ما تنسجل)</p>
+  return (
+    <>
+      <p>آخر ٢٠٠ فعل — الأسماء مخفية بالمدخلات والنتائج.</p>
+      {rows.map((r, i) => (
+        <article className="ai-suggestion-card" key={i}>
+          <div className="ai-suggestion-meta">
+            <span>{names[r.agent] ?? r.agent}</span>
+            <span className="ai-suggestion-badge">{r.tool}</span>
+            <span className="ai-suggestion-badge">{r.actor ? `طلبه: ${r.actor}` : 'تلقائي'}</span>
+            {r.failed && <span className="ai-suggestion-badge">❌ فشل</span>}
+            <span>{new Date(r.at).toLocaleString('ar-IQ')}</span>
+          </div>
+          <p dir="auto" style={{ whiteSpace: 'pre-wrap' }}>📥 {r.input}</p>
+          <p dir="auto" style={{ whiteSpace: 'pre-wrap' }}>📤 {r.result}</p>
+        </article>
+      ))}
     </>
   )
 }

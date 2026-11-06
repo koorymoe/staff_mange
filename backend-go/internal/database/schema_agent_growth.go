@@ -88,5 +88,21 @@ func agentGrowthMigrations() []Migration {
 				PRIMARY KEY ("bookingId", kind)
 			);
 		`,
+	}, {
+		// سجل أفعال الوكلاء (دازاي 11-06، فكرة ٦): كل أداة مو بقائمة القراءة — منو طلب، شنو انطلب (بلا أسماء)، والنتيجة.
+		Version: "0455_agent_action_log",
+		SQL: `
+			CREATE TABLE IF NOT EXISTS "AgentActionLog" (
+				id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
+				agent TEXT NOT NULL,
+				tool TEXT NOT NULL,
+				"actorId" TEXT REFERENCES "Employee"(id) ON DELETE SET NULL,
+				input TEXT NOT NULL DEFAULT '',
+				result TEXT NOT NULL DEFAULT '',
+				failed BOOLEAN NOT NULL DEFAULT false,
+				"createdAt" TIMESTAMPTZ NOT NULL DEFAULT now()
+			);
+			CREATE INDEX IF NOT EXISTS "AgentActionLog_at" ON "AgentActionLog" ("createdAt" DESC);
+		`,
 	}}
 }

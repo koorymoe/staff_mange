@@ -4,6 +4,7 @@ import (
 	"log"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/jmoiron/sqlx"
 
@@ -23,6 +24,26 @@ type AgentGrowthHandler struct {
 // SetEvaluator امتحان ماتركس (11-06) — للتشغيل اليدوي من شاشة صحة الوكلاء.
 func (h *AgentGrowthHandler) SetEvaluator(f func() (int, error), enabled func() bool) {
 	h.runEval, h.evalOn = f, enabled
+}
+
+// GET /api/ai/actions — آخر أفعال الوكلاء (فكرة ٦): الأداة، منو طلب، شنو انطلب، والنتيجة.
+func (h *AgentGrowthHandler) Actions(w http.ResponseWriter, r *http.Request) {
+	rows := []struct {
+		Agent  string    `db:"agent" json:"agent"`
+		Tool   string    `db:"tool" json:"tool"`
+		Actor  *string   `db:"actor" json:"actor"`
+		Input  string    `db:"input" json:"input"`
+		Result string    `db:"result" json:"result"`
+		Failed bool      `db:"failed" json:"failed"`
+		At     time.Time `db:"createdAt" json:"at"`
+	}{}
+	if err := h.db.Select(&rows, `SELECT l.agent, l.tool, e.name AS actor, l.input, l.result, l.failed, l."createdAt"
+		FROM "AgentActionLog" l LEFT JOIN "Employee" e ON e.id = l."actorId"
+		ORDER BY l."createdAt" DESC LIMIT 200`); err != nil {
+		WriteError(w, http.StatusInternalServerError, "تعذر")
+		return
+	}
+	WriteJSON(w, http.StatusOK, rows)
 }
 
 // POST /api/ai/evals/run — يشغّل الامتحان هسه بالخلفية (ياخذ دقايق).

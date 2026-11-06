@@ -3369,6 +3369,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 		mux.Handle("POST /api/matrix/chats/{id}/messages/{msgId}/feedback", middleware.Chain(http.HandlerFunc(growthHandler.MatrixFeedback), requireAuth, requireMatrixChat))
 		mux.Handle("POST /api/secretary/messages/{msgId}/feedback", middleware.Chain(http.HandlerFunc(growthHandler.SecretaryFeedback), requireAuth, requireAdmin))
 		mux.Handle("GET /api/ai/health", middleware.Chain(http.HandlerFunc(growthHandler.Health), requireAuth, requireAdmin))
+		mux.Handle("GET /api/ai/actions", middleware.Chain(http.HandlerFunc(growthHandler.Actions), requireAuth, requireAdmin))
 		growthHandler.SetEvaluator(matrixEval.RunNow, func() bool { return agent.Enabled("LEARNING") })
 		mux.Handle("POST /api/ai/evals/run", middleware.Chain(http.HandlerFunc(growthHandler.RunEval), requireAuth, requireAdmin))
 		// 🎯 «راقب فلان» — يومية كل ليلة وخلاصة بالنهاية

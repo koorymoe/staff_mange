@@ -134,6 +134,8 @@ type ChatOpts struct {
 	// DryTool (امتحان الوكلاء 11-06): أداة يرجّع لها true تنسجل بالخطوات بس ما تتنفّذ —
 	// حتى الامتحان على بيانات برود ما يكتب شي. وبلا قياس أدوات (AgentToolStat).
 	DryTool func(name string) bool
+	// Actor الموظف الي طلب — ينسجل ويا أفعال الوكيل (فكرة ٦). فارغ = خلفية/نظام.
+	Actor string
 	// ExtraTools أدوات خاصة بهالطلب (مثل my_stats للمستخدم نفسه)
 	ExtraTools []agentTool
 }
@@ -433,6 +435,7 @@ func (a *MatrixAgent) ChatStream(feature, system string, history []AgentTurn, me
 					out = "(امتحان: الأداة انطلبت وما تنفّذت — كمّل جوابك على هالأساس)"
 				} else {
 					out, isErr = a.callTool(byName, b, mask, opts.DryTool == nil)
+					a.logAction(b.Name, opts.Actor, string(b.Input), out, isErr, mask)
 				}
 				run.Steps = append(run.Steps, b.Name)
 				results = append(results, anthropic.NewToolResultBlock(b.ID, out, isErr))
@@ -445,6 +448,26 @@ func (a *MatrixAgent) ChatStream(feature, system string, history []AgentTurn, me
 		msgs = append(msgs, anthropic.NewUserMessage(results...))
 	}
 	return nil, fmt.Errorf("الوكيل وصل حد الخطوات (%d) بلا جواب", agentMaxSteps)
+}
+
+// logAction يسجّل أي أداة مو بقائمة القراءة بـAgentActionLog (فكرة ٦) — المدخلات والنتيجة
+// مخفية الأسماء ومقصوصة. فشل السجل ما يوقف الوكيل.
+func (a *MatrixAgent) logAction(tool, actor, input, out string, failed bool, mask *nameMask) {
+	if a.db == nil || evalReadTools[tool] {
+		return
+	}
+	cut := func(s string, n int) string {
+		if r := []rune(s); len(r) > n {
+			return string(r[:n]) + "…"
+		}
+		return s
+	}
+	name := a.name
+	if name == "" {
+		name = "MATRIX"
+	}
+	_, _ = a.db.Exec(`INSERT INTO "AgentActionLog" (agent, tool, "actorId", input, result, failed) VALUES ($1, $2, NULLIF($3, ''), $4, $5, $6)`,
+		name, tool, actor, cut(mask.Hide(input), 500), cut(out, 500), failed)
 }
 
 // callTool ينفذ أداة ويرجّع مخرجاتها مخفية الأسماء ومقصوصة.

@@ -2,6 +2,7 @@ package service
 
 import (
 	"os"
+	"strings"
 	"testing"
 	"time"
 
@@ -118,5 +119,34 @@ func TestEvalRunNowLive(t *testing.T) {
 	runs, err := LastEvalRuns(db, name, 5)
 	if err != nil || len(runs) != 2 || runs[0]["details"] == nil {
 		t.Fatalf("%v %v", runs, err)
+	}
+}
+
+// فكرة ٦: أداة مو بقائمة القراءة تنسجل بـAgentActionLog ويا منو طلب، والأسماء مخفية؛ وأداة القراءة لا.
+func TestAgentActionLogLive(t *testing.T) {
+	url := os.Getenv("DATABASE_URL")
+	if url == "" {
+		t.Skip("بلا DATABASE_URL")
+	}
+	db := sqlx.MustConnect("postgres", url)
+	t.Cleanup(func() { db.Close() })
+	if err := database.Migrate(db, "", ""); err != nil {
+		t.Fatal(err)
+	}
+	name := "ACTLOGTEST"
+	t.Cleanup(func() { db.Exec(`DELETE FROM "AgentActionLog" WHERE agent = $1`, name) }) //nolint:errcheck
+	a := &MatrixAgent{db: db, llm: &fakeLLM{}, model: "x", name: name, testNames: map[string]string{"علي حسين الليدر": "e1"}}
+	a.AddTool(agentTool{Name: "employee_profile", Run: func(map[string]any, *nameMask) (string, error) { return "علي حسين الليدر تمام", nil }})
+	if _, err := a.ChatStream("TEST", "s", nil, "q", nil, ChatOpts{}); err != nil {
+		t.Fatal(err)
+	}
+	var n int
+	var input, result string
+	_ = db.QueryRow(`SELECT count(*), max(input), max(result) FROM "AgentActionLog" WHERE agent = $1 AND tool = 'employee_profile'`, name).Scan(&n, &input, &result)
+	if n != 1 {
+		t.Fatalf("لازم ينسجل مرة: %d", n)
+	}
+	if strings.Contains(input, "علي") {
+		t.Fatalf("اسم حقيقي بالسجل: %s", input)
 	}
 }

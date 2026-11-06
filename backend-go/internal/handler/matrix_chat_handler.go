@@ -278,7 +278,7 @@ func (h *MatrixChatHandler) Send(w http.ResponseWriter, r *http.Request) {
 	}
 	allow, perms := h.toolOpts(r)
 	run, err := h.agent.ChatStream("CHAT", in.system, in.turns, in.prompt, in.img, service.ChatOpts{Model: h.chatModel,
-		AllowTool: allow, ExtraTools: h.agent.StaffTools(h.db, middleware.EmployeeIDFromContext(r), isTopRole(r), perms)})
+		Actor: middleware.EmployeeIDFromContext(r), AllowTool: allow, ExtraTools: h.agent.StaffTools(h.db, middleware.EmployeeIDFromContext(r), isTopRole(r), perms)})
 	if err != nil || strings.TrimSpace(run.Answer) == "" {
 		WriteError(w, http.StatusBadGateway, chatFailMsg(err))
 		return
@@ -316,7 +316,7 @@ func (h *MatrixChatHandler) Stream(w http.ResponseWriter, r *http.Request) {
 		_ = rc.Flush()
 	}
 	run, err := h.agent.ChatStream("CHAT", in.system, in.turns, in.prompt, in.img, service.ChatOpts{
-		Ctx: r.Context(), Model: h.chatModel, Think: true, Emit: func(e service.AgentEvent) { send(e) },
+		Ctx: r.Context(), Model: h.chatModel, Think: true, Emit: func(e service.AgentEvent) { send(e) }, Actor: middleware.EmployeeIDFromContext(r),
 		AllowTool: allow, ExtraTools: h.agent.StaffTools(h.db, middleware.EmployeeIDFromContext(r), isTopRole(r), perms),
 	})
 	if r.Context().Err() != nil {
