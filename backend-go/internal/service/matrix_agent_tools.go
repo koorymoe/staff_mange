@@ -90,6 +90,19 @@ func (a *MatrixAgent) RegisterReadTools(d AgentDeps) {
 				r.Submitted, r.Audited, r.Approved, r.Free, r.Mismatch, r.PriceErr, r.NoInvoice, money(r.Billed), money(r.Collected)), nil
 		}})
 
+	// 🛠️ صيانة وقائية (دازاي 11-06، فكرة ٧) — بلا تلفونات
+	a.AddTool(agentTool{Name: "maintenance_due", Desc: "كم زبون يستاهل اتصال صيانة وقائية (آخر شغل فات عليه ٦ أشهر، أو شكوتين فما فوق بسنة، وماكو حجز مفتوح) — أرقام حسب الخدمة والسبب بس، بلا أسماء ولا تلفونات (القائمة بالأسماء بمكتب الجودة).",
+		Run: func(map[string]any, *nameMask) (string, error) {
+			rows, err := MaintenanceDueList(a.db, 100)
+			if err != nil {
+				return "", err
+			}
+			if len(rows) == 0 {
+				return "ماكو زبون يستاهل اتصال صيانة هسه.", nil
+			}
+			return maintenanceSummary(rows), nil
+		}})
+
 	// ⏱ مواعيد الالتزام ويا الزبون (دازاي 11-06)
 	a.AddTool(agentTool{Name: "sla_board", Desc: "الحجوزات الي قرب أو فات موعد التزامها ويا الزبون (من تسجيل الحجز + ساعات الخدمة، افتراضي ٤٨). بلا المنتهي والملغي والانتظار.",
 		Run: func(map[string]any, *nameMask) (string, error) {

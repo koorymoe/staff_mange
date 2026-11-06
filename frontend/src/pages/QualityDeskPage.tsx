@@ -1,6 +1,7 @@
 import { Suspense, useState } from 'react'
 import { useSession } from '../session'
 import { lazyRetry } from '../utils/staleReload'
+import MaintenanceDueList from '../components/MaintenanceDueList'
 
 // ═══ مكتب الجودة — قرار (ع) 10-16 ═══
 // شغلتين مختلفات: «متابعة الجودة» (نتواصل ويا الزبون ونتأكد الشغل تم وهو راضي)
@@ -12,7 +13,7 @@ const ComplaintsPage = lazyRetry(() => import('./ComplaintsPage'))
 // يشتغل (يتواصل ويا الزبائن ويحكم)، والمراقب يدقق (شنو سوّى المهندس).
 const QualityFollowUpsPage = lazyRetry(() => import('./QualityFollowUpsPage'))
 
-type View = 'quality' | 'complaints'
+type View = 'quality' | 'complaints' | 'maintenance'
 
 export default function QualityDeskPage() {
   const { employee, permissions } = useSession()
@@ -22,6 +23,9 @@ export default function QualityDeskPage() {
   // (الشكاوى ومتابعة الجودة انشالن من القائمة وصارن هنا بس — ع 10-16)
   const canQuality = isAuditor || role === 'QUALITY_ENGINEER' || permissions.includes('quality_control')
   const canComplaints = isAuditor || role === 'QUALITY_ENGINEER' || role === 'HR_COORDINATOR' || permissions.includes('complaints')
+  // 🛠️ الصيانة الوقائية (11-06): نفس شرط الخادم (requireCustomerRead) حتى ما ينادي شي يرجّع 403
+  const canMaint = role === 'ADMIN' || role === 'OWNER' || role === 'MONITOR' || role === 'HR_COORDINATOR' ||
+    ['complaints', 'quality_control', 'monitoring', 'manage_customers'].some((p) => permissions.includes(p))
   const [picked, setView] = useState<View>(canQuality ? 'quality' : 'complaints')
   const view: View = picked === 'quality' && !canQuality ? 'complaints' : picked
   const btn = (v: View, label: string, hint: string) => (
@@ -40,9 +44,10 @@ export default function QualityDeskPage() {
       <div className="flex flex-col gap-2 sm:flex-row">
         {canQuality && btn('quality', '⭐ متابعة الجودة', 'مهندس الجودة تواصل ويا الزبون وتأكد الشغل تم وهو راضي')}
         {canComplaints && btn('complaints', '⚠️ الشكاوى', 'الشكاوى المفتوحة — هل مهندس الجودة تابعها؟ وشنو صار بيها')}
+        {canMaint && btn('maintenance', '🛠️ صيانة وقائية', 'زبائن فات ٦ أشهر على شغلهم أو عندهم شكاوى — اتصل واعرض صيانة')}
       </div>
       <Suspense fallback={<p className="py-10 text-center text-slate-400">جاري التحميل…</p>}>
-        {view === 'quality' ? (isAuditor ? <QualityAuditView /> : <QualityFollowUpsPage embedded />) : <ComplaintsPage />}
+        {view === 'maintenance' ? <MaintenanceDueList /> : view === 'quality' ? (isAuditor ? <QualityAuditView /> : <QualityFollowUpsPage embedded />) : <ComplaintsPage />}
       </Suspense>
     </div>
   )

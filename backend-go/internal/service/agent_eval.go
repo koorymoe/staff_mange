@@ -52,7 +52,7 @@ var evalReadTools = map[string]bool{
 	"my_performance": true, "regulations": true, "system_guide": true, "procurement_watch": true,
 	"revenue_by_responsible": true, "executive_review": true, "query_data": true, "describe_data": true,
 	"find_booking": true, "booking_check": true, "booking_timeline": true, "field_timing": true,
-	"output_scorecard": true, "sla_board": true, "whoami": true, "get_context": true, "lookup_code": true, "active_offers": true,
+	"output_scorecard": true, "sla_board": true, "maintenance_due": true, "whoami": true, "get_context": true, "lookup_code": true, "active_offers": true,
 }
 
 var writeTools = []string{"create_booking", "confirm_booking", "add_booking_details", "issue_directive", "propose_task",

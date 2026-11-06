@@ -1829,6 +1829,8 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 
 	// الشكاوى
 	mux.Handle("GET /api/complaints", middleware.Chain(http.HandlerFunc(complaintHandler.List), requireAuth, requireCustomerRead))
+	// 🛠️ صيانة وقائية (دازاي 11-06، فكرة ٧)
+	mux.Handle("GET /api/maintenance-due", middleware.Chain(handler.MaintenanceDueHandler(db), requireAuth, requireCustomerRead))
 	mux.Handle("POST /api/complaints", middleware.Chain(http.HandlerFunc(complaintHandler.Create), requireAuth, requireCustomerRead))
 	// تحديث حالة الشكوى وحلّها يقتصران على من يملك صلاحية "quality_control" (نفس
 	// أدوار المتابعة بالواجهة: مهندس الجودة/المراقب/الأدمن) — لا أي موظف مسجل دخول
