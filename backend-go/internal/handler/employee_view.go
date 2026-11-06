@@ -31,6 +31,10 @@ func basePublicFields(e *model.Employee) employeeView {
 		"leaderSkillLevel": e.LeaderSkillLevel,
 		"createdAt":        e.CreatedAt,
 	}
+	// محسوب لشاشة المنسّق (/employees/match): هل عنده مهارة الخدمة — مو سر.
+	if e.HasRequiredSkill != nil {
+		v["hasRequiredSkill"] = *e.HasRequiredSkill
+	}
 	// ⚠️ **الأدوار الثانوية عامة مثل الدور**: هي وصف شغل مو سرّاً —
 	// وإخفاؤها يرجّع نفس المشكلة الي انبنت لإلها: موظف عنده شاشات
 	// ما أحد يعرف ليش عنده. ومصفوفة **دائماً** (فاضية لو ماكو، مو

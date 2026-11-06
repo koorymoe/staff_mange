@@ -224,7 +224,8 @@ func (h *EmployeeHandler) Match(w http.ResponseWriter, r *http.Request) {
 		WriteError(w, http.StatusBadRequest, err.Error())
 		return
 	}
-	WriteJSON(w, http.StatusOK, employees)
+	// (فحص 11-06) چان يرجّع الموظفين خام — الراتب والتلفون لأي موظف. نفس فلتر /employees.
+	WriteJSON(w, http.StatusOK, ViewEmployees(employees, middleware.EffectiveRole(r), middleware.EmployeeIDFromContext(r)))
 }
 
 // PUT /api/v1/employees/{id}/skills
