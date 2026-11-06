@@ -67,16 +67,19 @@ const header = (title: string) => `
     <div class="hdr-co"><div><b>${COMPANY_AR}</b><b>${COMPANY_AR2}</b></div><img src="LOGO" alt=""></div>
     <div class="hdr-t"><small>AL-AMANI / PROJECT CATALOG</small><h2>${esc(title)}</h2></div>
   </div>`
+// رأس الفصل مثل النموذج: رقم كبير شفاف ويا خط برتقالي، و«CHAPTER 0n / …»
+const chHead = (idx: number, desc: string, en = 'EQUIPMENT', big?: number) => `
+    <div class="ch-head"><div><small dir="ltr">CHAPTER ${String(idx).padStart(2, '0')} / ${en}</small><p>${desc}</p></div>${big ? `<div class="bigwrap"><span class="big">${String(big).padStart(2, '0')}</span><i></i></div>` : ''}</div>`
 const footer = (page: number, total: number) => `
   <div class="ftr"><span><b>شركة الأماني</b> · ${PHONE}</span><span>الصور توضيحية، والاعتماد على الأوصاف الفنية المدونة.</span><span class="pg">${String(page).padStart(2, '0')} / ${String(total).padStart(2, '0')}</span></div>`
 
-function card(it: ProjectItem, no: number): string {
+function card(it: ProjectItem, no: number, otherChapter?: string): string {
   const specs = parseSpecs(it.specs)
   const img = it.imageBase64 ? `<img src="${esc(abs(fileUrl(it.imageBase64)))}" alt="">` : illustration(it.category ?? it.productName)
   return `
   <div class="card">
     <div class="card-body">
-      <div class="card-top"><span class="eq">EQUIPMENT / ${String(no).padStart(2, '0')}</span><span class="no">${String(no).padStart(2, '0')}</span></div>
+      <div class="card-top"><span class="eq">EQUIPMENT / ${String(no).padStart(2, '0')}${otherChapter ? ` · ${esc(otherChapter)}` : ''}</span><span class="no">${String(no).padStart(2, '0')}</span></div>
       <h3>${esc(it.productName)}</h3>
       ${it.modelName ? `<div class="model" dir="ltr">${esc(it.modelName)}</div>` : ''}
       <ul class="specs">${specs.map((s) => `<li>${s.label ? `<b>${esc(s.label)}:</b> ` : ''}<bdi>${esc(s.value)}</bdi></li>`).join('')}</ul>
@@ -86,7 +89,7 @@ function card(it: ProjectItem, no: number): string {
         <div><small>الإجمالي د.ع</small><b class="tot">${n(it.quantity * it.unitPrice)}</b></div>
       </div>
     </div>
-    <div class="card-img"><div class="circle">${img}</div><small>${it.imageBase64 ? '' : 'صورة توضيحية للمنتج'}</small></div>
+    <div class="card-img"><div class="circle">${img}</div><span class="dia"></span><small>${it.imageBase64 ? '' : 'صورة توضيحية للمنتج'}</small></div>
   </div>`
 }
 
@@ -102,11 +105,16 @@ export function buildProjectQuoteHtml(q: ProjectQuote, logoUrl: string): string 
     if (!ch) chapters.push((ch = { name, items: [] }))
     ch.items.push({ it, no: i + 1 })
   })
-  // صفحات الفصول: كارتين بالصفحة
-  const chapterPages: { name: string; idx: number; cards: { it: ProjectItem; no: number }[] }[] = []
-  chapters.forEach((ch, ci) => {
-    for (let i = 0; i < ch.items.length; i += 2) chapterPages.push({ name: ch.name, idx: ci + 1, cards: ch.items.slice(i, i + 2) })
-  })
+  // صفحات المنتجات (مثل نموذج دازاي): كارتين بكل صفحة بالتسلسل — حتى لو الفئتين مختلفات، ماكو نص صفحة فاضي.
+  // وإذا العدد فردي، آخر منتج ينعرض فوق جدول الكميات بصفحة العرض المالي.
+  const flat = chapters.flatMap((ch, ci) => ch.items.map((x) => ({ ...x, ch: ch.name, idx: ci + 1 })))
+  const lastAlone = flat.length % 2 === 1 ? flat[flat.length - 1] : null
+  const paged = lastAlone ? flat.slice(0, -1) : flat
+  const chapterPages: { name: string; idx: number; cards: { it: ProjectItem; no: number; ch: string; idx: number }[] }[] = []
+  for (let i = 0; i < paged.length; i += 2) {
+    const pair = paged.slice(i, i + 2)
+    chapterPages.push({ name: pair[0].ch, idx: pair[0].idx, cards: pair })
+  }
   const annexParts = q.annex.filter((p) => p.items.length)
   const totalPages = 2 + chapterPages.length + 1 + annexParts.length
   let page = 1
@@ -116,6 +124,7 @@ export function buildProjectQuoteHtml(q: ProjectQuote, logoUrl: string): string 
 
   const coverPage = `
   <section class="page cover">
+    <svg class="arc" viewBox="0 0 400 400"><circle cx="300" cy="330" r="190" fill="none" stroke="rgba(255,255,255,.07)" stroke-width="46"/></svg>
     <div class="cover-top">
       <div class="hdr-co light"><div><b>${COMPANY_AR}</b><b>${COMPANY_AR2}</b></div><img src="LOGO" alt=""></div>
       <p class="cover-label">${esc(q.cover.label || q.customerName)}</p>
@@ -123,7 +132,8 @@ export function buildProjectQuoteHtml(q: ProjectQuote, logoUrl: string): string 
       <div class="bar"></div>
       ${q.cover.subtitle ? `<p class="cover-sub">${esc(q.cover.subtitle)}</p>` : ''}
     </div>
-    <div class="collage">${collage}</div>
+    <div class="collage"><span class="glow"></span>${collage}</div>
+    <div class="cover-line"></div>
     <div class="cover-bottom">
       <div><h3>ملف التجهيز الفني والتجاري</h3><small>عرض مشاريع | ${items.length} بنداً وملحق فني متكامل${q.quotationNumber ? ` · رقم العرض ${esc(q.quotationNumber)}` : ''}</small></div>
       <div class="prep" dir="ltr"><small>PREPARED BY <b>AL-AMANI</b></small><small>${esc(date)} · ${esc(city)}</small></div>
@@ -150,11 +160,11 @@ export function buildProjectQuoteHtml(q: ProjectQuote, logoUrl: string): string 
   </section>`
   page++
 
-  const chapterHtml = chapterPages.map((cp) => {
+  const chapterHtml = chapterPages.map((cp, pi) => {
     const s = `
   <section class="page">${header(cp.name)}
-    <div class="ch-head"><span class="big">${String(cp.idx).padStart(2, '0')}</span><div><small dir="ltr">CHAPTER ${String(cp.idx).padStart(2, '0')}</small><p>المنتجات والمواصفات الفنية والأسعار - بالدينار العراقي</p></div></div>
-    ${cp.cards.map((c) => card(c.it, c.no)).join('')}
+    ${chHead(cp.idx, 'المنتجات والمواصفات الفنية والأسعار - بالدينار العراقي', 'EQUIPMENT', pi + 1)}
+    ${cp.cards.map((c) => card(c.it, c.no, c.ch !== cp.name ? c.ch : undefined)).join('')}
     ${footer(page, totalPages)}
   </section>`
     page++
@@ -162,7 +172,8 @@ export function buildProjectQuoteHtml(q: ProjectQuote, logoUrl: string): string 
   }).join('')
 
   const summary = `
-  <section class="page">${header('العرض المالي والتجهيز')}
+  <section class="page fin${lastAlone ? ' with-card' : ''}">${header('العرض المالي والتجهيز')}
+    ${lastAlone ? `${chHead(chapters.length + 1, 'البند الأخير والملخص المالي التفصيلي لأسعار المشروع', 'FINANCIAL SUMMARY')}<div class="fin-card">${card(lastAlone.it, lastAlone.no, lastAlone.ch)}</div>` : ''}
     <h3 class="sec">كشف الكميات والأسعار <small dir="ltr">IQD · ${items.length} ITEMS</small></h3>
     <table class="tbl">
       <thead><tr><th>ت</th><th>اسم المنتج</th><th>العدد</th><th>سعر المفرد</th><th>الإجمالي</th></tr></thead>
@@ -239,6 +250,28 @@ body { margin: 0; font-family: 'Tajawal', sans-serif; color: #1e293b; -webkit-pr
 .clause { display: flex; gap: 10px; border: 1px solid #e2e8f0; border-radius: 12px; padding: 8px 12px; margin-bottom: 4mm; background: #fbfcff } .cn { color: #f59e0b; font-weight: 800 } .clause h4 { margin: 0 0 3px; color: #1e3a8a; font-size: 13px } .clause p { margin: 0; font-size: 10.2px; line-height: 1.75; color: #334155; text-align: justify }
 .closing { margin-top: 6mm; background: linear-gradient(160deg, #1e3a8a, #2a4fb0); color: #fff; border-radius: 14px; padding: 8mm; display: flex; justify-content: space-between; align-items: center } .closing h3 { margin: 0 0 6px; line-height: 1.6 } .closing small { opacity: .8 } .closing img { width: 26mm; filter: brightness(0) invert(1) }
 .ftr { position: absolute; bottom: 12mm; left: 14mm; right: 14mm; display: flex; justify-content: space-between; font-size: 9px; color: #94a3b8; border-top: 1px solid #e2e8f0; padding-top: 6px } .ftr b { color: #1e3a8a } .pg { color: #f59e0b; font-weight: 700 }
+
+.hdr-co.light img { filter: brightness(0) invert(1) }
+.cover { position: relative } .arc { position: absolute; top: 0; left: -60mm; width: 190mm; height: 190mm; pointer-events: none }
+.cover-top { position: relative; padding: 16mm 14mm 40mm; min-height: 160mm }
+.cover h1 { font-size: 42px; line-height: 1.4; max-width: 150mm }
+.collage { position: relative; height: 92mm; margin-top: -40mm }
+.glow { position: absolute; width: 70mm; height: 70mm; border-radius: 50%; background: radial-gradient(circle, rgba(245,158,11,.22), transparent 70%); right: 40%; top: 6mm }
+.col-item { position: relative; width: 44mm; height: 52mm } .col-item img { filter: drop-shadow(0 8px 10px rgba(15,23,42,.18)) }
+.cover-line { margin: 10mm 14mm 0; border-top: 1px solid #cbd5e1 }
+.cover-bottom { padding-top: 6mm }
+.ov-hero { padding: 14mm 12mm 26mm } .ov-hero h2 { font-size: 28px; line-height: 1.4 }
+.scope div { border-top: 3px solid #f59e0b; min-height: 36mm }
+.ch-head .bigwrap { position: relative } .ch-head .big { font-size: 78px; color: #e8edf5 } .ch-head .bigwrap i { position: absolute; right: 0; bottom: 6px; width: 44px; height: 3px; background: #f59e0b }
+.card { height: 108mm }
+.card-img { position: relative } .dia { position: absolute; bottom: 14mm; right: 12mm; width: 10mm; height: 10mm; border: 1.5px solid #f6c77a; transform: rotate(45deg); opacity: .8 }
+
+.ch-head { justify-content: space-between } .ch-head .bigwrap i { right: auto; left: 0 }
+.arc { left: -90mm; top: 10mm; width: 230mm; height: 230mm } .arc circle { stroke: rgba(255,255,255,.09) }
+.fin.with-card .fin-card .card { height: 74mm; margin-bottom: 4mm } .fin.with-card .fin-card .specs li { padding: 1px 0; font-size: 9.5px } .fin.with-card .fin-card .circle { width: 36mm; height: 36mm }
+.fin.with-card .tbl { font-size: 9.5px } .fin.with-card .tbl th { padding: 4px } .fin.with-card .tbl td { padding: 3px 6px }
+.fin.with-card .grand { margin-top: 4mm; padding: 5mm 7mm } .fin.with-card .gv b { font-size: 24px } .fin .sec { margin: 2mm 0 }
+.arc { z-index: 1 } .cover-top > * { position: relative; z-index: 2 } .collage { z-index: 2 }
 @media print { body { background: #fff } .page { margin: 0 } }
 </style></head><body>${coverPage}${overview}${chapterHtml}${summary}${annexHtml}</body></html>`.replace(/src="LOGO"/g, `src="${esc(abs(logoUrl))}"`)
 }
