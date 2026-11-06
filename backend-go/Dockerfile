@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1
 # مرحلة البناء
-FROM golang:1.25-alpine AS build
+FROM golang:1.26-alpine AS build
 WORKDIR /app
 COPY go.mod go.sum ./
 # ذاكرة بناء دائمة (10-08): Go يعيد بناء الي تغيّر بس بدل كل الكود كل مرة.

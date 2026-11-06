@@ -28,3 +28,7 @@ backend-go/api
 # Playwright (٧أ)
 frontend/test-results/
 frontend/playwright-report/
+
+# توكنات مؤقتة — ما تنرفع (11-06)
+tok.txt
+*.token
