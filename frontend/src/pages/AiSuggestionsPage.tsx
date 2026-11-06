@@ -345,6 +345,14 @@ type Health = Record<
     bad: number
     badNotes: string[]
     proposedLessons: number
+    /** امتحان الوكيل (11-06): آخر الجولات، والأخيرة بتفاصيلها */
+    evals?: {
+      build: string
+      total: number
+      passed: number
+      at: string
+      details?: { id: string; pass: boolean; why?: string; steps: string[] }[]
+    }[]
   }
 >
 function AgentHealth() {
@@ -355,11 +363,27 @@ function AgentHealth() {
       .then(setH)
       .catch((e) => setErr(e.message))
   }, [])
+  const [evalMsg, setEvalMsg] = useState('')
+  const runEval = async () => {
+    setEvalMsg('')
+    try {
+      const r = await apiRequest<{ status: string }>('/ai/evals/run', { method: 'POST' })
+      setEvalMsg(r.status)
+    } catch (e) {
+      setEvalMsg(e instanceof Error ? e.message : 'تعذر')
+    }
+  }
   if (err) return <p role="alert" className="ai-brain-notice">{err}</p>
   if (!h) return <p role="status">دا أجيب صحة الوكلاء…</p>
   return (
     <>
       <p>آخر ٧ أيام (والأسئلة الي ما انجاوبت آخر ١٤ يوم).</p>
+      <p>
+        <button type="button" className="ai-suggestion-badge" onClick={() => void runEval()}>
+          🧪 امتحن ماتركس هسه
+        </button>{' '}
+        {evalMsg && <span role="status">{evalMsg}</span>}
+      </p>
       {Object.entries(h).map(([agent, a]) => {
         const failing = a.tools.filter((t) => t.failures > 0)
         const total = a.tools.reduce((n, t) => n + t.calls, 0)
@@ -377,6 +401,27 @@ function AgentHealth() {
                 </span>
               )}
             </div>
+            {a.evals && a.evals.length > 0 && (
+              <>
+                <h2>
+                  🧪 الامتحان: {a.evals[0].passed} من {a.evals[0].total} (
+                  {Math.round((a.evals[0].passed * 100) / a.evals[0].total)}٪)
+                </h2>
+                <p>
+                  {a.evals
+                    .map((e) => `${Math.round((e.passed * 100) / e.total)}٪ ${new Date(e.at).toLocaleDateString('ar-IQ')}`)
+                    .join(' ← ')}
+                </p>
+                {(a.evals[0].details ?? [])
+                  .filter((d) => !d.pass)
+                  .map((d) => (
+                    <p key={d.id}>
+                      ❌ {d.id}: {d.why}
+                      {d.steps.length > 0 ? ` (استعمل: ${d.steps.join('، ')})` : ''}
+                    </p>
+                  ))}
+              </>
+            )}
             <h2>أدوات تفشل</h2>
             {failing.length === 0 ? (
               <p>ماكو فشل ✅</p>

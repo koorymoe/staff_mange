@@ -131,6 +131,9 @@ type ChatOpts struct {
 	Emit  func(AgentEvent)
 	// AllowTool يفلتر أدوات الوكيل حسب صلاحيات المستخدم (دازاي 10-29) — nil = كلها
 	AllowTool func(name string) bool
+	// DryTool (امتحان الوكلاء 11-06): أداة يرجّع لها true تنسجل بالخطوات بس ما تتنفّذ —
+	// حتى الامتحان على بيانات برود ما يكتب شي. وبلا قياس أدوات (AgentToolStat).
+	DryTool func(name string) bool
 	// ExtraTools أدوات خاصة بهالطلب (مثل my_stats للمستخدم نفسه)
 	ExtraTools []agentTool
 }
@@ -424,7 +427,13 @@ func (a *MatrixAgent) ChatStream(feature, system string, history []AgentTurn, me
 				text.WriteString(b.Text)
 			case anthropic.ToolUseBlock:
 				emit(AgentEvent{Type: "tool", Name: b.Name})
-				out, isErr := a.callTool(byName, b, mask)
+				var out string
+				var isErr bool
+				if opts.DryTool != nil && opts.DryTool(b.Name) {
+					out = "(امتحان: الأداة انطلبت وما تنفّذت — كمّل جوابك على هالأساس)"
+				} else {
+					out, isErr = a.callTool(byName, b, mask, opts.DryTool == nil)
+				}
 				run.Steps = append(run.Steps, b.Name)
 				results = append(results, anthropic.NewToolResultBlock(b.ID, out, isErr))
 			}
@@ -439,7 +448,7 @@ func (a *MatrixAgent) ChatStream(feature, system string, history []AgentTurn, me
 }
 
 // callTool ينفذ أداة ويرجّع مخرجاتها مخفية الأسماء ومقصوصة.
-func (a *MatrixAgent) callTool(byName map[string]agentTool, b anthropic.ToolUseBlock, mask *nameMask) (string, bool) {
+func (a *MatrixAgent) callTool(byName map[string]agentTool, b anthropic.ToolUseBlock, mask *nameMask, record bool) (string, bool) {
 	t, ok := byName[b.Name]
 	if !ok {
 		return "أداة غير معروفة: " + b.Name, true
@@ -450,7 +459,9 @@ func (a *MatrixAgent) callTool(byName map[string]agentTool, b anthropic.ToolUseB
 	}
 	start := time.Now()
 	out, err := t.Run(in, mask)
-	RecordToolStat(a.db, a.name, b.Name, time.Since(start), err)
+	if record {
+		RecordToolStat(a.db, a.name, b.Name, time.Since(start), err)
+	}
 	if err != nil {
 		log.Printf("matrix agent tool %s: %v", b.Name, err)
 		return "تعذر: " + err.Error(), true

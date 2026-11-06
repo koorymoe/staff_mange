@@ -3322,6 +3322,15 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 				log.Printf("self review: %v", err)
 			}
 		})
+		// 🧪 امتحان ماتركس (دازاي 11-06): أسئلة ثابتة بعد كل نشر، والأدوات الكاتبة ناشفة
+		matrixEval := service.NewAgentEvaluator(db, agent, "MATRIX", chatHandler.EvalSetup, func(msg string) {
+			_ = notificationRepo.CreateForRole("OWNER", "AI_SUGGESTION", msg)
+		})
+		safeguard.Loop("امتحان ماتركس", 7*time.Minute, 20*time.Minute, func() {
+			if err := matrixEval.RunIfDue(); err != nil {
+				log.Printf("agent eval: %v", err)
+			}
+		})
 		suggestVerifier := service.NewSuggestVerifier(db, agent, "MATRIX")
 		safeguard.Loop("تأكد اقتراحات ماتركس", 5*time.Minute, 15*time.Minute, func() {
 			if err := suggestVerifier.RunIfDue(); err != nil {
@@ -3343,6 +3352,8 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 		mux.Handle("POST /api/matrix/chats/{id}/messages/{msgId}/feedback", middleware.Chain(http.HandlerFunc(growthHandler.MatrixFeedback), requireAuth, requireMatrixChat))
 		mux.Handle("POST /api/secretary/messages/{msgId}/feedback", middleware.Chain(http.HandlerFunc(growthHandler.SecretaryFeedback), requireAuth, requireAdmin))
 		mux.Handle("GET /api/ai/health", middleware.Chain(http.HandlerFunc(growthHandler.Health), requireAuth, requireAdmin))
+		growthHandler.SetEvaluator(matrixEval.RunNow, func() bool { return agent.Enabled("LEARNING") })
+		mux.Handle("POST /api/ai/evals/run", middleware.Chain(http.HandlerFunc(growthHandler.RunEval), requireAuth, requireAdmin))
 		// 🎯 «راقب فلان» — يومية كل ليلة وخلاصة بالنهاية
 		missionService := service.NewMatrixMissionService(db, aiRepo, notificationRepo, agent)
 		safeguard.Loop("مهام ماتركس", 5*time.Minute, 30*time.Minute, func() {

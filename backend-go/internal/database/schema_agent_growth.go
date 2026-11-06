@@ -59,5 +59,20 @@ func agentGrowthMigrations() []Migration {
 			ALTER TABLE "OrgPlanItem" ADD COLUMN IF NOT EXISTS "byMatrix" BOOLEAN NOT NULL DEFAULT false;
 			ALTER TABLE "OrgPlanItem" ADD COLUMN IF NOT EXISTS reason TEXT;
 		`,
+	}, {
+		// امتحان الوكلاء (دازاي 11-06، فكرة ٥): نتيجة كل جولة أسئلة ثابتة.
+		Version: "0453_agent_eval_run",
+		SQL: `
+			CREATE TABLE IF NOT EXISTS "AgentEvalRun" (
+				id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
+				agent TEXT NOT NULL,
+				build TEXT NOT NULL,
+				total INT NOT NULL,
+				passed INT NOT NULL,
+				details JSONB NOT NULL DEFAULT '[]'::jsonb,
+				"createdAt" TIMESTAMPTZ NOT NULL DEFAULT now()
+			);
+			CREATE INDEX IF NOT EXISTS "AgentEvalRun_agent_idx" ON "AgentEvalRun" (agent, "createdAt" DESC);
+		`,
 	}}
 }

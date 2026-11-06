@@ -58,6 +58,12 @@ func (h *MatrixChatHandler) toolOpts(r *http.Request) (func(string) bool, []stri
 // SetChatModel موديل المحادثة المباشرة (AI_MODEL_CHAT).
 func (h *MatrixChatHandler) SetChatModel(m string) { h.chatModel = m }
 
+// EvalSetup نفس تعليمات وموديل المحادثة — حتى امتحان الوكلاء يمتحن ماتركس مثل ما يشتغل فعلاً
+// (بلا OrgBrief الشخصي: الامتحان مو باسم موظف).
+func (h *MatrixChatHandler) EvalSetup() (system, model string) {
+	return chatSystemPrompt + h.lessonsBlock(), h.chatModel
+}
+
 func NewMatrixChatHandler(db *sqlx.DB, agent *service.MatrixAgent) *MatrixChatHandler {
 	return &MatrixChatHandler{db: db, agent: agent}
 }

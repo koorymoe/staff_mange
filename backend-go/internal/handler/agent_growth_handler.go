@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"log"
 	"net/http"
 	"strings"
 
@@ -13,7 +14,30 @@ import (
 )
 
 // AgentGrowthHandler (دازاي 11-06): 👍/👎 على أجوبة الوكلاء، وشاشة «صحة الوكلاء».
-type AgentGrowthHandler struct{ db *sqlx.DB }
+type AgentGrowthHandler struct {
+	db      *sqlx.DB
+	runEval func() (int, error)
+	evalOn  func() bool
+}
+
+// SetEvaluator امتحان ماتركس (11-06) — للتشغيل اليدوي من شاشة صحة الوكلاء.
+func (h *AgentGrowthHandler) SetEvaluator(f func() (int, error), enabled func() bool) {
+	h.runEval, h.evalOn = f, enabled
+}
+
+// POST /api/ai/evals/run — يشغّل الامتحان هسه بالخلفية (ياخذ دقايق).
+func (h *AgentGrowthHandler) RunEval(w http.ResponseWriter, r *http.Request) {
+	if h.runEval == nil || (h.evalOn != nil && !h.evalOn()) {
+		WriteError(w, http.StatusServiceUnavailable, "الوكيل مطفي — الامتحان يحتاج مفتاح الذكاء")
+		return
+	}
+	go func() {
+		if _, err := h.runEval(); err != nil {
+			log.Printf("agent eval: %v", err)
+		}
+	}()
+	WriteJSON(w, http.StatusAccepted, map[string]string{"status": "بدأ الامتحان — النتيجة تطلع بعد دقايق"})
+}
 
 func NewAgentGrowthHandler(db *sqlx.DB) *AgentGrowthHandler { return &AgentGrowthHandler{db: db} }
 
@@ -75,7 +99,8 @@ func (h *AgentGrowthHandler) Health(w http.ResponseWriter, r *http.Request) {
 		errlog.Err(h.db.Get(&proposed, `SELECT count(*) FROM "MatrixLesson" WHERE agent = $1 AND status = 'PROPOSED'`, agent))
 		notes := []string{}
 		errlog.Err(h.db.Select(&notes, `SELECT note FROM "AgentFeedback" WHERE agent = $1 AND NOT good AND note <> '' ORDER BY "createdAt" DESC LIMIT 5`, agent))
-		out[agent] = map[string]any{"tools": stats, "gaps": gaps, "good": good, "bad": bad, "badNotes": notes, "proposedLessons": proposed}
+		evals, _ := service.LastEvalRuns(h.db, agent, 5)
+		out[agent] = map[string]any{"tools": stats, "gaps": gaps, "good": good, "bad": bad, "badNotes": notes, "proposedLessons": proposed, "evals": evals}
 	}
 	WriteJSON(w, http.StatusOK, out)
 }
