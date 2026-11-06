@@ -1867,6 +1867,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	mux.Handle("GET /api/missions/monitor/live", middleware.Chain(http.HandlerFunc(missionHandler.MonitorLive), requireAuth, requireMissionView))
 	mux.Handle("GET /api/missions/reports/performance", middleware.Chain(http.HandlerFunc(missionHandler.PerformanceReport), requireAuth, requireMissionView))
 	mux.Handle("GET /api/missions/my/{employeeId}", middleware.Chain(http.HandlerFunc(missionHandler.ListForEmployee), requireAuth))
+	missionHandler.Supervisor = middleware.RoleOrAnyPermissionCheck(permissionRepo, []string{"ADMIN", "HR_COORDINATOR", "MONITOR", "PROJECT_MANAGER"}, "monitoring", "auditing")
 	mux.Handle("GET /api/missions/{id}", middleware.Chain(http.HandlerFunc(missionHandler.Get), requireAuth))
 	mux.Handle("POST /api/missions", middleware.Chain(http.HandlerFunc(missionHandler.Create), requireAuth, requireBookingCoord))
 	// تقدّم مراحل المهمة: إدارة المشاريع أو المراقب — مو أي موظف يحرّك

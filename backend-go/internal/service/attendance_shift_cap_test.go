@@ -31,10 +31,10 @@ func TestCountCapAndLimit(t *testing.T) {
 		in   time.Time
 		want time.Time
 	}{
-		{at(8, 0), base.Add(16 * time.Hour)},  // صباحي: الحد ٤ العصر
+		{at(8, 0), base.Add(16 * time.Hour)}, // صباحي: الحد ٤ العصر
 		{at(14, 59), base.Add(16 * time.Hour)},
 		{at(15, 0), base.Add(24 * time.Hour)}, // مسائي: الحد نص الليل
-		{at(2, 0), base},                     // بعد نص الليل: الحد بداية اليوم
+		{at(2, 0), base},                      // بعد نص الليل: الحد بداية اليوم
 	} {
 		if got := CountCap(c.in); !got.Equal(c.want) {
 			t.Errorf("CountCap(%v) = %v، المتوقع %v", c.in, got, c.want)

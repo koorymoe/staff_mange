@@ -67,7 +67,8 @@ func (h *InventoryHandler) CreateInventoryCheck(w http.ResponseWriter, r *http.R
 func (h *InventoryHandler) BookingCrewInventory(w http.ResponseWriter, r *http.Request) {
 	rows, err := h.service.BookingCrewInventory(r.PathValue("id"), middleware.EmployeeIDFromContext(r))
 	if err != nil {
-		WriteError(w, http.StatusForbidden, err.Error())
+		// (فحص الصلاحيات 11-06) 404 عام: لا يكشف الحجز موجود لو لا، ولا نص خطأ القاعدة
+		WriteError(w, http.StatusNotFound, "مو موجود")
 		return
 	}
 	WriteJSON(w, http.StatusOK, rows)

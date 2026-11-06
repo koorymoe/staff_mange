@@ -2,6 +2,7 @@ package handler
 
 import (
 	"net/http"
+	"staffmange-api/internal/middleware"
 
 	"staffmange-api/internal/model"
 	"staffmange-api/internal/service"
@@ -9,6 +10,8 @@ import (
 
 type MissionHandler struct {
 	service *service.MissionService
+	// Supervisor منو يشوف أي مهمة (المراقبة الميدانية) — بلا تسجيل مخالفة. غيره يشوف مهمته بس (ليدر أو عضو).
+	Supervisor func(*http.Request) bool
 }
 
 func NewMissionHandler(s *service.MissionService) *MissionHandler {
@@ -30,7 +33,17 @@ func (h *MissionHandler) List(w http.ResponseWriter, r *http.Request) {
 func (h *MissionHandler) Get(w http.ResponseWriter, r *http.Request) {
 	mission, err := h.service.Get(r.PathValue("id"))
 	if err != nil {
-		WriteError(w, http.StatusNotFound, err.Error())
+		WriteError(w, http.StatusNotFound, "مو موجود")
+		return
+	}
+	// (فحص الصلاحيات 11-06) كان أي موظف يقرا أي مهمة: عنوان الزبون وإحداثياته والكادر.
+	me := middleware.EmployeeIDFromContext(r)
+	mine := me != "" && mission.LeaderID == me
+	for _, id := range mission.MemberIDs {
+		mine = mine || id == me
+	}
+	if !mine && (h.Supervisor == nil || !h.Supervisor(r)) {
+		WriteError(w, http.StatusNotFound, "مو موجود")
 		return
 	}
 	WriteJSON(w, http.StatusOK, mission)

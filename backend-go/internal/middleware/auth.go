@@ -524,6 +524,21 @@ func RequireRoleOrPermission(permissions *repository.PermissionRepository, emplo
 // (مثلاً إنشاء مشروع: مدير المشاريع، أو صلاحية إدارة المشاريع الكاملة، أو صلاحية
 // "إضافة مشروع فقط" المبسّطة).
 func RequireRoleOrAnyPermission(permissions *repository.PermissionRepository, employees *repository.EmployeeRepository, notifications *repository.NotificationRepository, roles []string, permissionNames ...string) func(http.Handler) http.Handler {
+	ok := RoleOrAnyPermissionCheck(permissions, roles, permissionNames...)
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if ok(r) {
+				next.ServeHTTP(w, r)
+				return
+			}
+			recordViolationAndBlock(w, r, employees, notifications, EmployeeIDFromContext(r))
+		})
+	}
+}
+
+// RoleOrAnyPermissionCheck نفس شرط RequireRoleOrAnyPermission بس بلا تسجيل مخالفة —
+// للفحص داخل الـhandler (مثلاً: صاحب السجل يشوفه، والمراقب يشوف الكل).
+func RoleOrAnyPermissionCheck(permissions *repository.PermissionRepository, roles []string, permissionNames ...string) func(*http.Request) bool {
 	allowedRoles := make(map[string]bool, len(roles))
 	for _, role := range roles {
 		allowedRoles[role] = true
@@ -532,24 +547,19 @@ func RequireRoleOrAnyPermission(permissions *repository.PermissionRepository, em
 	for _, name := range permissionNames {
 		allowedPerms[name] = true
 	}
-	return func(next http.Handler) http.Handler {
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			role, _ := r.Context().Value(ContextRole).(string)
-			if model.IsAdminRole(role) || (allowedRoles[role] || (allowedRoles["MONITOR"] && IsMonitor(r))) || hasOrgRoleIn(r, allowedRoles) {
-				next.ServeHTTP(w, r)
-				return
-			}
-			employeeID := EmployeeIDFromContext(r)
-			if perms, err := permissions.ListForEmployee(employeeID); err == nil {
-				for _, p := range perms {
-					if allowedPerms[p.Name] {
-						next.ServeHTTP(w, r)
-						return
-					}
+	return func(r *http.Request) bool {
+		role, _ := r.Context().Value(ContextRole).(string)
+		if model.IsAdminRole(role) || (allowedRoles[role] || (allowedRoles["MONITOR"] && IsMonitor(r))) || hasOrgRoleIn(r, allowedRoles) {
+			return true
+		}
+		if perms, err := permissions.ListForEmployee(EmployeeIDFromContext(r)); err == nil {
+			for _, p := range perms {
+				if allowedPerms[p.Name] {
+					return true
 				}
 			}
-			recordViolationAndBlock(w, r, employees, notifications, employeeID)
-		})
+		}
+		return false
 	}
 }
 
