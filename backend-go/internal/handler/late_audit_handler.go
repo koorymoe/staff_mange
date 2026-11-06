@@ -46,10 +46,18 @@ type lateRow struct {
 	Team           *string    `db:"team" json:"team"`
 	Note           *string    `db:"note" json:"note"`
 	DaysLate       int        `db:"daysLate" json:"daysLate"`
+	// (دازاي 11-06) بالانتظار: «زبون ما رد» أو «الزبون يقرر» — ما ينحسب متأخر، يطلع بقسم منفصل
+	WaitingSince    *time.Time `db:"waitingSince" json:"waitingSince"`
+	WaitingKind     *string    `db:"waitingKind" json:"waitingKind"`
+	WaitingNote     *string    `db:"waitingNote" json:"waitingNote"`
+	ContactAttempts int        `db:"contactAttempts" json:"contactAttempts"`
 	Cause          string     `db:"-" json:"cause"`
 	CauseDetail    string     `db:"-" json:"causeDetail"`
 	DataIssues     []string   `db:"-" json:"dataIssues"`
 }
+
+// LateMinDays (دازاي 11-06): أقل تأخير ينحسب — يومين على يوم الموعد.
+const LateMinDays = 2
 
 const lateAuditSQL = `
 	SELECT b.id, b.code::text AS code, c.name AS customer, s.name AS service, COALESCE(s.division, 'ENGINEERING') AS division,
@@ -64,14 +72,16 @@ const lateAuditSQL = `
 		(SELECT string_agg(e.name, '، ') FROM "BookingAssignment" a JOIN "Employee" e ON e.id = a."employeeId" WHERE a."bookingId" = b.id) AS team,
 		(SELECT NULLIF(btrim(me.note), '') FROM "Mission" m JOIN "MissionEvent" me ON me."missionId" = m.id
 			WHERE m."bookingId" = b.id AND me.note IS NOT NULL AND btrim(me.note) <> '' ORDER BY me."createdAt" DESC LIMIT 1) AS note,
-		(COALESCE(baghdad_date(b."completedAt"), baghdad_today()) - baghdad_date(b."scheduledAt"))::int AS "daysLate"
+		(COALESCE(baghdad_date(b."completedAt"), baghdad_today()) - baghdad_date(b."scheduledAt"))::int AS "daysLate",
+		b."waitingSince", b."waitingKind", b."waitingNote", b."contactAttempts"
 	FROM "Booking" b
 	LEFT JOIN "Customer" c ON c.id = b."customerId"
 	LEFT JOIN "Service" s ON s.id = b."serviceId"
 	WHERE baghdad_date(b."scheduledAt") BETWEEN $1::date AND $2::date
 	  AND b.status::text <> 'CANCELLED' AND b."archivedAt" IS NULL AND b."bookingType" IS DISTINCT FROM 'INTERNAL'
-	  AND ((b.status = 'COMPLETED' AND baghdad_date(b."completedAt") > baghdad_date(b."scheduledAt"))
-	       OR (b.status::text NOT IN ('COMPLETED','CANCELLED') AND baghdad_date(b."scheduledAt") < baghdad_today()))
+	  -- (دازاي 11-06) المتأخر = عدّى يومين أو أكثر على يوم موعده؛ يوم واحد (موعد ٤ العصر وطلعة نص الليل) مو تأخير
+	  AND ((b.status = 'COMPLETED' AND baghdad_date(b."completedAt") - baghdad_date(b."scheduledAt") >= $3)
+	       OR (b.status::text NOT IN ('COMPLETED','CANCELLED') AND baghdad_today() - baghdad_date(b."scheduledAt") >= $3))
 	ORDER BY "daysLate" DESC, b."scheduledAt"`
 
 // classifyLate السبب المرجّح من الأدلة — بالترتيب: الأقوى دليلاً أول.
@@ -128,7 +138,7 @@ func classifyLate(r *lateRow, loc *time.Location) {
 var lateCauseLabels = map[string]string{
 	"POSTPONED": "🚫 الزبون أجّل", "NO_CREW": "👥 بلا كادر", "NOT_CONFIRMED": "📞 ما انثبّت ويّا الزبون",
 	"MATERIALS": "📦 نقص مواد", "WORK_STOPPED": "⛔ توقف العمل", "MULTI_DAY": "🧩 شغل على أيام",
-	"LATE_START": "🐢 انطلق متأخر", "NOT_STARTED": "⏳ ما انطلق", "UNKNOWN": "❔ ماكو دليل",
+	"LATE_START": "🐢 انطلق متأخر", "NOT_STARTED": "⏳ ما انطلق", "UNKNOWN": "❔ ماكو تفاصيل — اطلب تفسير",
 }
 
 // GET /api/late-audit?from=YYYY-MM-DD&to=YYYY-MM-DD[&format=xlsx]
@@ -144,7 +154,7 @@ func (h *LateAuditHandler) List(w http.ResponseWriter, r *http.Request) {
 		from = time.Now().In(loc).AddDate(0, 0, -30).Format("2006-01-02")
 	}
 	rows := []lateRow{}
-	if err := h.db.Select(&rows, lateAuditSQL, from, to); err != nil {
+	if err := h.db.Select(&rows, lateAuditSQL, from, to, LateMinDays); err != nil {
 		log.Printf("[late-audit] %v", err)
 		WriteError(w, http.StatusInternalServerError, "تعذر الجلب")
 		return
@@ -152,11 +162,19 @@ func (h *LateAuditHandler) List(w http.ResponseWriter, r *http.Request) {
 	var total int
 	errlog.Err(h.db.Get(&total, `SELECT count(*) FROM "Booking" b WHERE baghdad_date(b."scheduledAt") BETWEEN $1::date AND $2::date
 		AND b.status::text <> 'CANCELLED' AND b."archivedAt" IS NULL AND b."bookingType" IS DISTINCT FROM 'INTERNAL'`, from, to))
+	// (دازاي 11-06) الي بالانتظار (زبون ما رد / الزبون يقرر) ينفصلون: مو تأخير، والمحاولات تبين
+	late, waiting := []lateRow{}, []lateRow{}
 	for i := range rows {
 		classifyLate(&rows[i], loc)
+		if rows[i].WaitingSince != nil && rows[i].Status != "COMPLETED" {
+			waiting = append(waiting, rows[i])
+		} else {
+			late = append(late, rows[i])
+		}
 	}
+	rows = late
 	if q.Get("format") != "xlsx" {
-		WriteJSON(w, http.StatusOK, map[string]any{"from": from, "to": to, "total": total, "rows": rows, "causes": lateCauseLabels})
+		WriteJSON(w, http.StatusOK, map[string]any{"from": from, "to": to, "total": total, "rows": rows, "waiting": waiting, "minDays": LateMinDays, "causes": lateCauseLabels})
 		return
 	}
 	f := excelize.NewFile()

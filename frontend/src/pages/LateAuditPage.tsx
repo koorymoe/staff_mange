@@ -12,6 +12,7 @@ interface Row {
   id: string; code: string; customer: string | null; service: string | null; division: string; status: string
   scheduledAt: string; completedAt: string | null; daysLate: number; cause: string; causeDetail: string
   dataIssues: string[]; leader: string | null; team: string | null; postpones: number; reschedules: number
+  waitingSince?: string | null; waitingKind?: string | null; waitingNote?: string | null; contactAttempts?: number
 }
 const day = (s: string | null) => dayBaghdad(s) || '—'
 const ago = (n: number) => new Date(Date.now() - n * 86400_000).toLocaleDateString('en-CA', { timeZone: 'Asia/Baghdad' })
@@ -19,7 +20,7 @@ const ago = (n: number) => new Date(Date.now() - n * 86400_000).toLocaleDateStri
 export default function LateAuditPage() {
   const [from, setFrom] = useState(ago(30))
   const [to, setTo] = useState(ago(0))
-  const [data, setData] = useState<{ total: number; rows: Row[]; causes: Record<string, string> } | null>(null)
+  const [data, setData] = useState<{ total: number; rows: Row[]; waiting?: Row[]; minDays?: number; causes: Record<string, string> } | null>(null)
   const [err, setErr] = useState('')
   const [cause, setCause] = useState('')
   const [div, setDiv] = useState('')
@@ -54,7 +55,7 @@ export default function LateAuditPage() {
 
   return (
     <div dir="rtl" className="space-y-4">
-      <PageHeader title="🔍 فحص المتأخرات" subtitle="كل حجز متأخر: شكد تأخّر، ليش، وهل بياناته صحيحة — نفس تعريف ماتركس بالضبط" />
+      <PageHeader title="🔍 فحص المتأخرات" subtitle={`المتأخر = عدّى ${data?.minDays ?? 2} يوم أو أكثر على يوم موعده (يوم واحد مو تأخير). الي حاطينه «زبون ما رد» أو «الزبون يقرر» بقسم منفصل تحت.`} />
       <div className="flex flex-wrap items-center gap-2 rounded-2xl bg-white p-3 shadow-sm">
         <span className="text-sm text-slate-500">موعدها من</span>
         <input type="date" value={from} onChange={(e) => setFrom(e.target.value)} className="rounded-lg border border-slate-300 px-2 py-1 text-sm" />
@@ -124,6 +125,30 @@ export default function LateAuditPage() {
           </tbody>
         </table>
       </div>
+
+      {/* (دازاي 11-06) بالانتظار: الموظف سجّل «زبون ما رد» أو «الزبون يقرر» — مو تأخير، بس تبين المحاولات */}
+      {data?.waiting && data.waiting.length > 0 && (
+        <div className="rounded-2xl bg-white p-3 shadow-sm">
+          <p className="mb-2 text-sm font-bold text-slate-700">⏸️ بالانتظار — ما تنحسب متأخرة ({data.waiting.length})</p>
+          <table className="min-w-full text-right text-sm">
+            <thead className="bg-slate-50 text-slate-600">
+              <tr><th className="px-3 py-1.5">الحجز</th><th className="px-3 py-1.5">الموعد</th><th className="px-3 py-1.5">السبب</th><th className="px-3 py-1.5">المحاولات</th><th className="px-3 py-1.5">من</th><th className="px-3 py-1.5">ملاحظة</th></tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {data.waiting.map((r) => (
+                <tr key={r.id}>
+                  <td className="px-3 py-1.5"><Link to={`/bookings?focus=${r.id}`} className="font-bold text-brand-700 underline">{r.code}</Link><span className="block text-xs text-slate-500">{r.customer}</span></td>
+                  <td className="px-3 py-1.5 text-xs">{day(r.scheduledAt)}</td>
+                  <td className="px-3 py-1.5 text-xs font-bold">{r.waitingKind === 'CUSTOMER_DECISION' ? '🤔 الزبون يقرر' : '📵 زبون ما رد'}</td>
+                  <td className="px-3 py-1.5 text-xs"><span className={`rounded-full px-2 py-0.5 font-black ${(r.contactAttempts ?? 0) >= 3 ? 'bg-red-100 text-red-700' : 'bg-slate-100 text-slate-700'}`}>{r.contactAttempts ?? 0}</span></td>
+                  <td className="px-3 py-1.5 text-xs">{day(r.waitingSince ?? null)}</td>
+                  <td className="px-3 py-1.5 text-xs text-slate-500">{r.waitingNote ?? ''}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   )
 }
