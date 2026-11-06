@@ -89,7 +89,7 @@ func TestTelegramBotFlow(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer db.Close()
+	t.Cleanup(func() { db.Close() }) // بعد تنظيف الصفوف (defer كان يسد القاعدة قبله فتبقى بلاغات قديمة)
 	if err := database.Migrate(db, "", ""); err != nil {
 		t.Fatal(err)
 	}
@@ -117,7 +117,9 @@ func TestTelegramBotFlow(t *testing.T) {
 		db.Exec(`DELETE FROM "BotReportDraft" WHERE "employeeId" IN ($1, $2)`, emp, owner) //nolint:errcheck
 		db.Exec(`DELETE FROM "Employee" WHERE id IN ($1, $2)`, emp, owner)                 //nolint:errcheck
 	})
-	empChat, ownerChat := int64(900000000+len(emp)*7), int64(910000000+len(owner)*11)
+	// أرقام محادثة عشوائية: بلاغ باقي من تشغيلة سابقة بنفس المحادثة والألبوم كان يبلع الصورة الجديدة
+	base := int64(900000000 + time.Now().UnixNano()%9000000)
+	empChat, ownerChat := base, base+1
 	db.Exec(`DELETE FROM "TelegramLink" WHERE "chatId" IN ($1, $2)`, empChat, ownerChat) //nolint:errcheck
 
 	send := func(secret string, chat int64, chatType string, msg map[string]any) int {
@@ -290,7 +292,7 @@ func TestBotReader(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer db.Close()
+	t.Cleanup(func() { db.Close() }) // بعد تنظيف الصفوف (defer كان يسد القاعدة قبله فتبقى بلاغات قديمة)
 	if err := database.Migrate(db, "", ""); err != nil {
 		t.Fatal(err)
 	}
@@ -353,7 +355,7 @@ func TestPurgeOldPhotos(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer db.Close()
+	t.Cleanup(func() { db.Close() }) // بعد تنظيف الصفوف (defer كان يسد القاعدة قبله فتبقى بلاغات قديمة)
 	if err := database.Migrate(db, "", ""); err != nil {
 		t.Fatal(err)
 	}

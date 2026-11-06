@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"staffmange-api/internal/errlog"
 	"strings"
+	"sync"
+	"time"
 
 	"github.com/jmoiron/sqlx"
 
@@ -167,4 +169,51 @@ func VerifySuggestionForTest(db *sqlx.DB, agent string, notifyOwner func(string)
 	a.registerVerifySuggestionTool(db, agent, notifyOwner)
 	t := a.tools[len(a.tools)-1]
 	return func(in map[string]any) (string, error) { return t.Run(in, nil) }
+}
+
+// ═══ 🌙 التأكد اليومي التلقائي (دازاي 11-06) ═══
+// كل ليلة بعد ١١:٣٠ بغداد، إذا أكو اقتراحات لماتركس تنتظر التأكد، ماتركس يراجعها لحاله
+// بلا ما أحد يسولف وياه. مرة باليوم، وتمشي تحت مفتاح «التعلّم» (LEARNING) وميزانيته.
+
+const suggestVerifyHour, suggestVerifyMinute = 23, 30
+
+// suggestVerifyDue هل حان وقت التأكد اليومي؟ (now بتوقيت بغداد، lastDay آخر يوم اشتغل)
+func suggestVerifyDue(now time.Time, lastDay string) bool {
+	now = now.In(debriefLoc)
+	if now.Hour()*60+now.Minute() < suggestVerifyHour*60+suggestVerifyMinute {
+		return false
+	}
+	return now.Format("2006-01-02") != lastDay
+}
+
+// SuggestVerifier يشغّل ماتركس على اقتراحاته المعلّقة مرة كل ليلة.
+type SuggestVerifier struct {
+	db      *sqlx.DB
+	agent   *MatrixAgent
+	name    string
+	mu      sync.Mutex
+	lastDay string
+}
+
+func NewSuggestVerifier(db *sqlx.DB, agent *MatrixAgent, agentName string) *SuggestVerifier {
+	return &SuggestVerifier{db: db, agent: agent, name: agentName}
+}
+
+// RunIfDue يتأكد بس إذا حان الوقت وأكو شي ينتظر.
+func (v *SuggestVerifier) RunIfDue() error {
+	v.mu.Lock()
+	defer v.mu.Unlock()
+	now := time.Now()
+	if !suggestVerifyDue(now, v.lastDay) || !v.agent.Enabled("LEARNING") {
+		return nil
+	}
+	v.lastDay = now.In(debriefLoc).Format("2006-01-02")
+	var n int
+	if err := v.db.Get(&n, `SELECT count(*) FROM "AiSuggestion" WHERE agent = $1 AND status = 'VERIFYING'`, v.name); err != nil || n == 0 {
+		return err
+	}
+	system := "إنت " + model.AgentName(v.name) + "، وكيل نظام شركة الأماني. هذي مراجعة ليلية تلقائية بلا محادثة: المالك گال «تم» على اقتراحات منك، وشغلك تتأكد إنها صدگ انضافت. استعمل أدوات القراءة بس، ولا تسوي أي تعديل أو إجراء."
+	task := "استدعي verify_suggestion (action=list). لكل اقتراح ينتظر التأكد، تأكد بأدواتك هل الشي موجود ويشتغل، وبعدها سجّل النتيجة بـ verify_suggestion (action=record) ويا ملاحظة دقيقة بشنو شفت. إذا ما تگدر تتأكد بأدواتك، سجّل found=false ووضّح ليش. بالأخير اكتب سطر خلاصة."
+	_, err := v.agent.Run("LEARNING", system, task)
+	return err
 }

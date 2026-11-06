@@ -8,6 +8,19 @@ import { api, fileUrl, type BotReport } from '../api'
 // بالتلغرام ويا صوره. والرد يرجعله إشعار بالنظام.
 const MIN_RUNES = 25, MIN_WORDS = 5, MAX_PHOTOS = 5
 
+// نفس شرط السيرفر (botBodyClear، دازاي 11-06): نشيل الكلمات الي هي حرف واحد مكرر (ggggg)
+// ونختصر التكرار، وبعدين: ٢٥ حرف، ٥ كلمات، ٤ كلمات مختلفة، و٦٠٪ حروف.
+function bodyClear(body: string): boolean {
+  const words = body.toLowerCase().split(/\s+/).filter(Boolean)
+    .map((w) => (new Set([...w]).size === 1 && [...w].length >= 3 ? '' : w.replace(/(.)\1{2,}/gu, '$1$1')))
+    .filter(Boolean)
+  if ([...words.join(' ')].length < MIN_RUNES || words.length < MIN_WORDS) return false
+  const chars = words.flatMap((w) => [...w])
+  const letters = chars.filter((c) => /\p{L}/u.test(c)).length
+  const distinct = new Set(words.filter((w) => [...w].filter((c) => /\p{L}/u.test(c)).length >= 2))
+  return distinct.size >= 4 && letters * 10 >= chars.length * 6
+}
+
 export default function ReportProblemButton() {
   const [open, setOpen] = useState(false)
   return (
@@ -54,8 +67,7 @@ function ReportModal({ onClose }: { onClose: () => void }) {
     if (files.length) { e.preventDefault(); addFiles(files) }
   }
 
-  const words = body.trim().split(/\s+/).filter(Boolean).length
-  const clear = [...body.trim()].length >= MIN_RUNES && words >= MIN_WORDS
+  const clear = bodyClear(body)
   const send = async () => {
     setSending(true); setMsg(null)
     try {

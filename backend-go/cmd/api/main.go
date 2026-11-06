@@ -3283,6 +3283,14 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 		agent.RegisterSuggestTool(db, "MATRIX", func(msg string) {
 			_ = notificationRepo.CreateForRole("OWNER", "AI_SUGGESTION", msg)
 		})
+		agent.RegisterChangelogTool() // 📜 سجل التحديثات (دازاي 11-06)
+		// 🌙 التأكد الليلي من اقتراحات ماتركس الي انگال عليها «تم» (دازاي 11-06)
+		suggestVerifier := service.NewSuggestVerifier(db, agent, "MATRIX")
+		safeguard.Loop("تأكد اقتراحات ماتركس", 5*time.Minute, 15*time.Minute, func() {
+			if err := suggestVerifier.RunIfDue(); err != nil {
+				log.Printf("suggest verify: %v", err)
+			}
+		})
 		mux.Handle("GET /api/matrix/chats", middleware.Chain(http.HandlerFunc(chatHandler.List), requireAuth, requireMatrixChat))
 		mux.Handle("POST /api/matrix/chats", middleware.Chain(http.HandlerFunc(chatHandler.Create), requireAuth, requireMatrixChat))
 		mux.Handle("GET /api/matrix/chats/{id}", middleware.Chain(http.HandlerFunc(chatHandler.Messages), requireAuth, requireMatrixChat))

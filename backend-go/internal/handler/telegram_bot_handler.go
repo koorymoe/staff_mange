@@ -309,7 +309,7 @@ func (h *TelegramBotHandler) handle(ctx context.Context, m *telegram.Message) {
 		return
 	}
 
-	clear := utf8.RuneCountInString(draft.Body) >= botMinBodyRunes && len(strings.Fields(draft.Body)) >= botMinBodyWords
+	clear := botBodyClear(draft.Body)
 	if len(draft.Photos) == 0 || !clear {
 		if err := h.repo.SaveDraft(draft); err != nil {
 			log.Printf("[telegram] save draft: %v", err)
@@ -526,7 +526,7 @@ func (h *TelegramBotHandler) SubmitMine(w http.ResponseWriter, r *http.Request) 
 	}
 	empID := middleware.EmployeeIDFromContext(r)
 	body := strings.TrimSpace(req.Body)
-	if utf8.RuneCountInString(body) < botMinBodyRunes || len(strings.Fields(body)) < botMinBodyWords {
+	if !botBodyClear(body) {
 		WriteError(w, http.StatusBadRequest, "اكتب شرح أوضح: بأي شاشة، وشنو جنت تسوي، وشنو طلعلك بالضبط")
 		return
 	}
