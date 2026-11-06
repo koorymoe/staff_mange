@@ -34,5 +34,5 @@ func (h *SmartKpiHandler) Leaderboard(w http.ResponseWriter, r *http.Request) {
 		WriteError(w, http.StatusBadRequest, err.Error())
 		return
 	}
-	WriteJSON(w, http.StatusOK, results)
+	WriteJSON(w, http.StatusOK, limitSmartKpi(r, results))
 }

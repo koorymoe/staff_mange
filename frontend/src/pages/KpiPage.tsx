@@ -181,7 +181,7 @@ export function TechnicianTab() {
                 </thead>
                 <tbody className="divide-y divide-slate-100">
                   {leaderboard.map((tech, i) => {
-                    const open = expandedId === tech.employeeId
+                    const open = !tech.limited && expandedId === tech.employeeId
                     return (
                     <Fragment key={tech.employeeId}>
                     <tr
@@ -190,13 +190,13 @@ export function TechnicianTab() {
                       <td className="px-4 py-3">{rankBadge(i)}</td>
                       <td className="px-4 py-3 font-medium">{tech.employeeName}</td>
                       <td className="px-4 py-3 text-sm">
-                        {tech.breakdown.completedBookings.count}
+                        {tech.limited ? '—' : <>{tech.breakdown.completedBookings.count}</>}
                       </td>
                       <td className="px-4 py-3 text-sm">
-                        {tech.breakdown.workReports.count}
+                        {tech.limited ? '—' : <>{tech.breakdown.workReports.count}</>}
                       </td>
                       <td className="px-4 py-3 text-sm">
-                        {tech.breakdown.attendance.daysPresent}/{tech.breakdown.attendance.totalDays}
+                        {tech.limited ? '—' : <>{tech.breakdown.attendance.daysPresent}/{tech.breakdown.attendance.totalDays}</>}
                       </td>
                       <td className="px-4 py-3">
                         <span

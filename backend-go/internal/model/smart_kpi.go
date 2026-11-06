@@ -46,4 +46,5 @@ type SmartKpiResult struct {
 	Period       string            `json:"period"`
 	Breakdown    SmartKpiBreakdown `json:"breakdown"`
 	TotalPoints  int               `json:"totalPoints"`
+	Limited      bool              `json:"limited,omitempty"` // (ع 11-06) بلا التفاصيل للموظف العادي
 }

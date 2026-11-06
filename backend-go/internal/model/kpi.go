@@ -71,6 +71,13 @@ type KpiLeaderboardEntry struct {
 	// معناه تحسّن، وعرضه بسهم أحمر يظلم الموظف.
 	PointsDelta int `db:"-" json:"pointsDelta"`
 	RankDelta   int `db:"-" json:"rankDelta"`
+	// Limited (ع 11-06): الموظف العادي يشوف زملاءه بالاسم والمجموع بس — التفاصيل للمشرف.
+	Limited bool `db:"-" json:"limited,omitempty"`
+}
+
+// LimitTo يخلي من الصف الاسم والنقاط والترتيب بس.
+func (e KpiLeaderboardEntry) LimitTo() KpiLeaderboardEntry {
+	return KpiLeaderboardEntry{EmployeeID: e.EmployeeID, EmployeeName: e.EmployeeName, Points: e.Points, PointsDelta: e.PointsDelta, RankDelta: e.RankDelta, Limited: true}
 }
 
 type RoleKpiLeaderboard struct {

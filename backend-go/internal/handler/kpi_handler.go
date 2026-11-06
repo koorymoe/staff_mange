@@ -102,6 +102,9 @@ func (h *KpiHandler) RoleLeaderboard(w http.ResponseWriter, r *http.Request) {
 		WriteError(w, http.StatusInternalServerError, "تعذر جلب لوحة الترتيب")
 		return
 	}
+	if board != nil {
+		board.Weekly, board.Monthly = limitKpiRows(r, board.Weekly), limitKpiRows(r, board.Monthly)
+	}
 	WriteJSON(w, http.StatusOK, board)
 }
 
@@ -114,6 +117,9 @@ func (h *KpiHandler) PermissionLeaderboard(w http.ResponseWriter, r *http.Reques
 	if err != nil {
 		WriteError(w, http.StatusInternalServerError, "تعذر جلب لوحة الترتيب")
 		return
+	}
+	if board != nil {
+		board.Weekly, board.Monthly = limitKpiRows(r, board.Weekly), limitKpiRows(r, board.Monthly)
 	}
 	WriteJSON(w, http.StatusOK, board)
 }

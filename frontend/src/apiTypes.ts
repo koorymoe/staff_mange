@@ -2581,6 +2581,8 @@ export interface KpiLeaderboardEntry {
   employeeId: string
   employeeName: string
   points: number
+  /** (ع 11-06) زميل لموظف عادي: الاسم والمجموع بس — التفاصيل للمشرف */
+  limited?: boolean
   evaluationCount: number
   completedBookings: number
   /** كل الي انكلّف بيه (مو الملغى) — أساس معدل الإنجاز. */
@@ -2675,6 +2677,7 @@ export interface TechnicianKpi {
     manualDeductions: { count: number; points: number }
   }
   totalPoints: number
+  limited?: boolean
 }
 
 export interface CartItem {

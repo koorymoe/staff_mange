@@ -630,15 +630,17 @@ export default function MyRanking() {
                         {e.employeeName}{isMe && <span className="mr-1 text-[10px] text-sky-600">(أنت)</span>}
                       </td>
                       {isSales ? (<>
-                        {custom!.cols.map((c, ci) => <td key={c.label} className={`px-4 py-3 ${ci === 0 ? 'font-black text-slate-800' : 'text-slate-600'}`}>{c.get(e)}</td>)}
+                        {custom!.cols.map((c, ci) => <td key={c.label} className={`px-4 py-3 ${ci === 0 ? 'font-black text-slate-800' : 'text-slate-600'}`}>{e.limited ? '—' : c.get(e)}</td>)}
                       </>) : (<>
                         <td className="px-4 py-3 font-black text-slate-800">{pct(peers.get(e.employeeId))}</td>
-                        <td className="px-4 py-3 text-slate-600">{e.completedBookings}</td>
+                        <td className="px-4 py-3 text-slate-600">{e.limited ? '—' : e.completedBookings}</td>
                       </>)}
                       <td className="px-4 py-3">
-                        <span className={`rounded-md px-2 py-0.5 text-[10px] font-bold ${commit.cls}`} title={`${e.attendedDays} يوم حضور`}>
-                          {commit.text}
-                        </span>
+                        {e.limited ? <span className="text-slate-400">—</span> : (
+                          <span className={`rounded-md px-2 py-0.5 text-[10px] font-bold ${commit.cls}`} title={`${e.attendedDays} يوم حضور`}>
+                            {commit.text}
+                          </span>
+                        )}
                       </td>
                       {!isSales && <td className="px-4 py-3">
                         {e.pointsDelta === 0 ? (
