@@ -10,6 +10,7 @@ import { cacheMyTasks, cachedMyTasks, flushStages, isNetworkError, pendingStages
 import { setTrackingBooking } from '../utils/fieldTracker'
 import PartialCompleteDialog from '../components/PartialCompleteDialog'
 import SurveyReportDialog from '../components/SurveyReportDialog'
+import RoutePlanCard from '../components/RoutePlanCard'
 import BookingProgressTimeline from '../components/BookingProgressTimeline'
 import EntityIdentity from '../components/EntityIdentity'
 import MyExtraTasks from '../components/MyExtraTasks'
@@ -484,6 +485,7 @@ export default function MyTasks() {
           </p>
         </div>
       </div>
+      <RoutePlanCard />
 
       {/* ═══ ثلاثة خيارات جوّا الشاشة مو ثلاث بنود بالقائمة ═══
           «مهامي» و«فواتير الليدر» و«التقارير» كانوا ثلاث بنود منفصلة

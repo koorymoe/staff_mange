@@ -1521,6 +1521,8 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	go selfCheck.RunDaily()
 	mux.Handle("GET /api/matrix-selfcheck", middleware.Chain(http.HandlerFunc(selfCheck.Get), requireAuth, requireOwner))
 	mux.Handle("GET /api/field-map", middleware.Chain(http.HandlerFunc(fieldTrackHandler.FieldMap), requireAuth, requireFieldMonitor))
+	// 🧭 ترتيب مسار اليوم (دازاي 11-06): الموظف لنفسه، والمشرف لأي موظف (الفحص بالـhandler)
+	mux.Handle("GET /api/route-plan", middleware.Chain(http.HandlerFunc(handler.NewRoutePlanHandler(db).Plan), requireAuth))
 	mux.Handle("PUT /api/bookings/{id}/start", middleware.Chain(http.HandlerFunc(bookingHandler.Start), requireAuth, requireBookingParty))
 	mux.Handle("PUT /api/bookings/{id}/arrived", middleware.Chain(http.HandlerFunc(bookingHandler.MarkArrived), requireAuth, requireBookingParty))
 	mux.Handle("PUT /api/bookings/{id}/materials-ready", middleware.Chain(http.HandlerFunc(bookingHandler.SetMaterialsReady), requireAuth, requireBookingParty))
