@@ -11,9 +11,18 @@ export default function WorkPhotoButton({ bookingId }: { bookingId: string }) {
   const [err, setErr] = useState('')
   useEffect(() => {
     const upd = () => void pendingPhotos(bookingId).then((q) => setQueued(q.length))
+    // صورة انرفضت ٣ مرات وانشالت — الفني لازم يدري حتى يصوّر غيرها (مراجعة 11-06)
+    const dropped = (e: Event) => {
+      const d = (e as CustomEvent<{ bookingId: string; reason: string }>).detail
+      if (d?.bookingId === bookingId) setErr(`⚠️ صورة ما انقبلت (${d.reason || 'رفض السيرفر'}) — صوّرها مرة ثانية`)
+    }
     upd()
     window.addEventListener('photo-queue', upd)
-    return () => window.removeEventListener('photo-queue', upd)
+    window.addEventListener('photo-dropped', dropped)
+    return () => {
+      window.removeEventListener('photo-queue', upd)
+      window.removeEventListener('photo-dropped', dropped)
+    }
   }, [bookingId])
   const onFile = async (input: HTMLInputElement) => {
     const f = input.files?.[0]

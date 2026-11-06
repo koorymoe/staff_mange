@@ -173,3 +173,25 @@ func TestLogAgentActionKamalLive(t *testing.T) {
 		t.Fatalf("n=%d len=%d", n, l)
 	}
 }
+
+// (مراجعة 11-06) AllowTool الي ترفض كلشي = ولا أداة تتنفّذ حتى لو النموذج طلبها (زر المواصفات).
+func TestAllowToolNoneBlocksAll(t *testing.T) {
+	a := &MatrixAgent{llm: &fakeLLM{}, model: "x", testNames: map[string]string{}}
+	ran := false
+	a.AddTool(agentTool{Name: "employee_profile", Run: func(map[string]any, *nameMask) (string, error) { ran = true; return "x", nil }})
+	if _, err := a.ChatStream("TEST", "s", nil, "q", nil, ChatOpts{AllowTool: func(string) bool { return false }}); err != nil {
+		t.Fatal(err)
+	}
+	if ran {
+		t.Fatal("أداة تنفّذت رغم المنع")
+	}
+}
+
+func TestGradeEvalPhoneAlways(t *testing.T) {
+	if ok, _ := GradeEval(EvalCase{}, &AgentRun{Answer: "تواصل ويا 07701234567"}); ok {
+		t.Fatal("رقم تلفون لازم يفشل حتى بلا NoPhone")
+	}
+	if ok, _ := GradeEval(EvalCase{WantAny: []string{"ماكو"}}, &AgentRun{Answer: "كانت سنة 1990 بيها 40 حجز"}); ok {
+		t.Fatal("رقم مخترع لازم يفشل")
+	}
+}

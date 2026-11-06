@@ -10,7 +10,7 @@ import (
 )
 
 // ═══ وقت الالتزام ويا الزبون (دازاي 11-06، فكرة ١ — «٤٨ ساعة للكل») ═══
-// الموعد = تسجيل الحجز + slaHours الخدمة. ما ينحسب للمنتهي والملغي والداخلي،
+// الموعد = (تسجيل الحجز أو موعده إذا الزبون اختار يوم بعدين) + slaHours الخدمة. ما ينحسب للمنتهي والملغي والداخلي،
 // ولا للي بالانتظار (زبون ما رد / الزبون يقرر) — نفس روح قاعدة المتأخرات.
 
 // SlaOpenSQL شرط الحجز «المفتوح والمحسوب» — مكان واحد.
@@ -31,14 +31,15 @@ func SlaBoard(db *sqlx.DB, within int) ([]SlaItem, error) {
 	rows := []SlaItem{}
 	err := db.Select(&rows, `
 		SELECT b.id, b.code, c.name AS customer, s.name AS service,
-		       b."createdAt" + make_interval(hours => COALESCE(s."slaHours", 48)) AS "dueAt",
-		       round((extract(epoch FROM (b."createdAt" + make_interval(hours => COALESCE(s."slaHours", 48)) - now())) / 3600)::numeric, 1)::float8 AS "hoursLeft"
+		       GREATEST(b."createdAt", b."scheduledAt") + make_interval(hours => COALESCE(s."slaHours", 48)) AS "dueAt",
+		       round((extract(epoch FROM (GREATEST(b."createdAt", b."scheduledAt") + make_interval(hours => COALESCE(s."slaHours", 48)) - now())) / 3600)::numeric, 1)::float8 AS "hoursLeft"
 		FROM "Booking" b
 		LEFT JOIN "Customer" c ON c.id = b."customerId"
 		LEFT JOIN "Service" s ON s.id = b."serviceId"
 		WHERE `+SlaOpenSQL+`
-		  AND b."createdAt" + make_interval(hours => COALESCE(s."slaHours", 48)) < now() + make_interval(hours => $1)
-		ORDER BY 5 DESC LIMIT 200`, within) // الأقرب للموعد أول، وبعدها الي فات توّه، والقديم بالآخر
+		  AND GREATEST(b."createdAt", b."scheduledAt") + make_interval(hours => COALESCE(s."slaHours", 48)) < now() + make_interval(hours => $1)
+		ORDER BY abs(extract(epoch FROM (GREATEST(b."createdAt", b."scheduledAt") + make_interval(hours => COALESCE(s."slaHours", 48)) - now())))
+		LIMIT 200`, within) // الأقرب للموعد أول (قبله أو بعده)، والقديم جداً بالآخر
 	return rows, err
 }
 

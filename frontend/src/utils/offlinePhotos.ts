@@ -10,23 +10,39 @@ type Queued = { id: string; bookingId: string; phase: 'BEFORE' | 'AFTER'; blob: 
 const DB = 'amani_offline_v1'
 const STORE = 'photos'
 
+// (مراجعة 11-06) اتصال واحد مخزّن — يتسكّر إذا نسخة ثانية من التطبيق طلبت ترقية القاعدة
+let dbp: Promise<IDBDatabase> | null = null
 function open(): Promise<IDBDatabase> {
-  return new Promise((resolve, reject) => {
+  if (dbp) return dbp
+  dbp = new Promise((resolve, reject) => {
     const r = indexedDB.open(DB, 1)
     r.onupgradeneeded = () => r.result.createObjectStore(STORE, { keyPath: 'id' })
-    r.onsuccess = () => resolve(r.result)
-    r.onerror = () => reject(r.error)
+    r.onsuccess = () => {
+      const db = r.result
+      db.onversionchange = () => { db.close(); dbp = null }
+      db.onclose = () => { dbp = null }
+      resolve(db)
+    }
+    r.onerror = () => { dbp = null; reject(r.error) }
   })
+  return dbp
 }
 
+// ينحسب «انحفظ» بس من تكمل المعاملة (oncomplete) — الطلب ممكن ينجح والمعاملة تنلغي (ذاكرة ممتلئة)
 async function tx<T>(mode: IDBTransactionMode, fn: (s: IDBObjectStore) => IDBRequest<T>): Promise<T> {
   const db = await open()
   return new Promise((resolve, reject) => {
-    const req = fn(db.transaction(STORE, mode).objectStore(STORE))
-    req.onsuccess = () => resolve(req.result)
-    req.onerror = () => reject(req.error)
+    const t = db.transaction(STORE, mode)
+    const req = fn(t.objectStore(STORE))
+    let result: T
+    req.onsuccess = () => { result = req.result }
+    t.oncomplete = () => resolve(result)
+    t.onabort = () => reject(t.error ?? new Error('ذاكرة الموبايل ممتلئة — ما انحفظت الصورة'))
+    t.onerror = () => reject(t.error)
   })
 }
+
+const isAuthError = (e: unknown) => e instanceof Error && /401|تسجيل الدخول|الجلسة|انتهت/.test(e.message)
 
 export async function pendingPhotos(bookingId?: string): Promise<Queued[]> {
   try {
@@ -40,7 +56,11 @@ export async function pendingPhotos(bookingId?: string): Promise<Queued[]> {
 /** يرفع الصورة؛ بلا نت ينحفظ بالموبايل ويرجّع queued=true. */
 export async function uploadOrQueue(bookingId: string, phase: 'BEFORE' | 'AFTER', blob: Blob): Promise<{ queued: boolean }> {
   const queue = async () => {
-    await tx('readwrite', (s) => s.put({ id: crypto.randomUUID?.() ?? String(Date.now()), bookingId, phase, blob, at: new Date().toISOString(), tries: 0 }))
+    try {
+      await tx('readwrite', (s) => s.put({ id: crypto.randomUUID?.() ?? String(Date.now()), bookingId, phase, blob, at: new Date().toISOString(), tries: 0 }))
+    } catch {
+      throw new Error('ماكو نت وذاكرة الموبايل ما تشيل الصورة — فرّغ مساحة أو صوّرها من يرجع النت')
+    }
     window.dispatchEvent(new Event('photo-queue'))
     return { queued: true }
   }
@@ -68,9 +88,12 @@ export async function flushPhotos(): Promise<number> {
         await tx('readwrite', (s) => s.delete(it.id))
         sent++
       } catch (e) {
-        if (isNetworkError(e)) break
-        if (it.tries + 1 >= 3) await tx('readwrite', (s) => s.delete(it.id))
-        else await tx('readwrite', (s) => s.put({ ...it, tries: it.tries + 1 }))
+        // بلا نت أو الجلسة منتهية: نوقف ونخليها — ما تنحسب رفض
+        if (isNetworkError(e) || isAuthError(e)) break
+        if (it.tries + 1 >= 3) {
+          await tx('readwrite', (s) => s.delete(it.id))
+          window.dispatchEvent(new CustomEvent('photo-dropped', { detail: { bookingId: it.bookingId, reason: e instanceof Error ? e.message : '' } }))
+        } else await tx('readwrite', (s) => s.put({ ...it, tries: it.tries + 1 }))
       }
     }
   } finally {

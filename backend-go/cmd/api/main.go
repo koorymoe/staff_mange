@@ -3150,7 +3150,8 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 		})
 		orgService.SetTaskCreator(extraTaskRepo.CreateFor)
 		specsSuggest.Ask = func(system, task string) (string, error) {
-			run, err := agent.Run("CHAT", system, task)
+			// (مراجعة 11-06) بلا أي أداة: نص المنتج من موظف — ما ينفّذ أوامر ولا يقرا بيانات
+			run, err := agent.ChatStream("CHAT", system, nil, task, nil, service.ChatOpts{AllowTool: func(string) bool { return false }})
 			if err != nil {
 				return "", err
 			}

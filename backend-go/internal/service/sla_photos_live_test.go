@@ -33,7 +33,7 @@ func TestSlaAndPhotosLive(t *testing.T) {
 	mk := func(key string, createdAgo time.Duration, status string, waiting bool) {
 		id := uuid.NewString()
 		ids[key] = id
-		db.MustExec(`INSERT INTO "Booking" (id, code, "customerId", "serviceId", status, "scheduledAt", "createdAt") VALUES ($1, $2, $3, $4, $5::"BookingStatus", now(), now() - $6::interval)`,
+		db.MustExec(`INSERT INTO "Booking" (id, code, "customerId", "serviceId", status, "scheduledAt", "createdAt") VALUES ($1, $2, $3, $4, $5::"BookingStatus", now() - $6::interval, now() - $6::interval)`,
 			id, "SL"+key+sfx, cust, svc, status, createdAgo.String())
 		if waiting {
 			db.MustExec(`UPDATE "Booking" SET "waitingSince" = now(), "waitingKind" = 'NO_ANSWER' WHERE id = $1`, id)
@@ -44,7 +44,8 @@ func TestSlaAndPhotosLive(t *testing.T) {
 	mk("fresh", 1*time.Hour, "CONFIRMED", false) // باقي ٩ — ما يطلع بالتنبيه (٦)
 	mk("wait", 12*time.Hour, "CONFIRMED", true)  // بالانتظار — برا
 	mk("done", 12*time.Hour, "COMPLETED", false) // منتهي — برا
-	mk("old", 100*time.Hour, "CONFIRMED", false) // فات من زمان — باللوحة بلا تنبيه
+	mk("old", 100*time.Hour, "CONFIRMED", false)
+	mk("future", 1*time.Hour, "CONFIRMED", false) // موعده بعد ٣ أيام — الالتزام يبدي من موعده // فات من زمان — باللوحة بلا تنبيه
 	t.Cleanup(func() {
 		for _, id := range ids {
 			db.Exec(`DELETE FROM "Booking" WHERE id = $1`, id) //nolint:errcheck
@@ -77,6 +78,21 @@ func TestSlaAndPhotosLive(t *testing.T) {
 	})
 	_ = al.Tick()
 	_ = al.Tick() // مرة وحدة بس
+	db.MustExec(`UPDATE "Booking" SET "scheduledAt" = now() + interval '3 days' WHERE id = $1`, ids["future"])
+	board2, _ := SlaBoard(db, 24)
+	for _, it := range board2 {
+		if it.ID == ids["future"] {
+			t.Error("حجز موعده بعد ٣ أيام ما لازم يطلع")
+		}
+	}
+	// الترتيب: الأقرب للموعد (soon −/+ ساعات) قبل القديم جداً
+	pos := map[string]int{}
+	for i, it := range board {
+		pos[it.ID] = i
+	}
+	if pos[ids["soon"]] > pos[ids["old"]] {
+		t.Error("القريب لازم قبل القديم")
+	}
 	if _, ok := got[ids["old"]]; !ok {
 		t.Errorf("القديم لازم يبين باللوحة (%d صف، over=%v)", len(board), got[ids["over"]])
 	}
