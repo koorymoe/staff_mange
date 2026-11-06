@@ -84,7 +84,9 @@ func (h *QuotationAnnexHandler) Save(w http.ResponseWriter, r *http.Request) {
 	var id string
 	var err error
 	if in.ID == "" {
-		err = h.db.Get(&id, `INSERT INTO "QuotationAnnexTemplate" (name, parts, "updatedById") VALUES ($1, $2::jsonb, NULLIF($3, '')) RETURNING id`, in.Name, string(b), emp)
+		// القالب الجديد ينضاف بالآخر — حتى ما يصير هو الافتراضي لكل عرض جديد بدل الأساسي
+		err = h.db.Get(&id, `INSERT INTO "QuotationAnnexTemplate" (name, parts, "updatedById", "sortOrder")
+			VALUES ($1, $2::jsonb, NULLIF($3, ''), (SELECT COALESCE(MAX("sortOrder"), 0) + 1 FROM "QuotationAnnexTemplate")) RETURNING id`, in.Name, string(b), emp)
 	} else {
 		err = h.db.Get(&id, `UPDATE "QuotationAnnexTemplate" SET name = $2, parts = $3::jsonb, "updatedById" = NULLIF($4, ''), "updatedAt" = now() WHERE id = $1 RETURNING id`, in.ID, in.Name, string(b), emp)
 	}
