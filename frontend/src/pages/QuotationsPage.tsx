@@ -94,6 +94,13 @@ export default function QuotationsPage() {
             ⚙️ الشروط الافتراضية
           </button>
         )}
+        {/* (دازاي 11-06) عرض المشاريع بالشكل الجديد — بجانب القديم */}
+        <button
+          onClick={() => navigate('/quotations/project/new')}
+          style={{ background: 'transparent', color: '#fff', border: '1px solid rgba(255,255,255,.7)', padding: '10px 16px', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', fontSize: '14px' }}
+        >
+          📘 عرض مشاريع جديد
+        </button>
         <button
           onClick={() => navigate('/quotations/new')}
           style={{
@@ -184,7 +191,7 @@ export default function QuotationsPage() {
                     <td className="py-3 px-4 text-center">
                       <div className="flex gap-2 justify-center">
                         <button
-                          onClick={() => navigate(`/quotations/${q.id}/edit?preview=1`)}
+                          onClick={() => navigate(q.layout === 'PROJECT' ? `/quotations/project/${q.id}` : `/quotations/${q.id}/edit?preview=1`)}
                           className="bg-sf-violet text-t-violet border-0 py-1.5 px-3.5 rounded-md cursor-pointer text-[12px] font-bold"
                         >
                           👁️ معاينة
@@ -199,7 +206,7 @@ export default function QuotationsPage() {
                           📚 النسخ القديمة
                         </button>
                         <button
-                          onClick={() => navigate(`/quotations/${q.id}/edit`)}
+                          onClick={() => navigate(q.layout === 'PROJECT' ? `/quotations/project/${q.id}` : `/quotations/${q.id}/edit`)}
                           className="bg-sf-info text-t-info border-0 py-1.5 px-3.5 rounded-md cursor-pointer text-[12px] font-bold"
                         >
                           تعديل

@@ -2175,6 +2175,10 @@ export interface QuotationItem {
   totalPrice: number
   /** ترتيب البند بالعرض — محله بالقائمة المحفوظة */
   sortIndex?: number
+  /** (دازاي 11-06) عرض مشاريع: الموديل والمواصفات والفصل */
+  modelName?: string | null
+  specs?: string | null
+  category?: string | null
 }
 
 export interface Quotation {
@@ -2193,6 +2197,10 @@ export interface Quotation {
   duration: string | null
   notes: string | null
   terms?: string[] | null
+  /** (دازاي 11-06) CLASSIC = عرض السعر القديم، PROJECT = عرض مشاريع */
+  layout?: 'CLASSIC' | 'PROJECT'
+  cover?: { label?: string; title?: string; subtitle?: string; city?: string } | null
+  annex?: { title: string; items: { title: string; text: string }[] }[] | null
   status: 'NEW' | 'SENT' | 'ACCEPTED' | 'REJECTED'
   createdAt: string
 }

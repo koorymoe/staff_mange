@@ -196,10 +196,10 @@ func (r *QuotationRepository) insertItems(tx *sqlx.Tx, quotationID string, items
 	for i, item := range items {
 		totalPrice := float64(item.Quantity) * item.UnitPrice
 		if _, err := tx.Exec(`
-			INSERT INTO "QuotationItem" (id, "quotationId", "productName", unit, quantity, "unitPrice", "totalPrice", "imageBase64", "sortIndex")
-			VALUES (gen_random_uuid()::text, $1, $2, $3, $4, $5, $6, NULLIF($7,''), $8)
+			INSERT INTO "QuotationItem" (id, "quotationId", "productName", unit, quantity, "unitPrice", "totalPrice", "imageBase64", "sortIndex", "modelName", specs, category)
+			VALUES (gen_random_uuid()::text, $1, $2, $3, $4, $5, $6, NULLIF($7,''), $8, NULLIF($9,''), NULLIF($10,''), NULLIF($11,''))
 		`, quotationID, item.ProductName, item.Unit, item.Quantity, item.UnitPrice, totalPrice,
-			derefStr(item.ImageBase64), i); err != nil {
+			derefStr(item.ImageBase64), i, derefStr(item.ModelName), derefStr(item.Specs), derefStr(item.Category)); err != nil {
 			return err
 		}
 	}
@@ -236,10 +236,11 @@ func (r *QuotationRepository) Create(req model.CreateQuotationRequest) (*model.Q
 
 	var q model.Quotation
 	err = tx.Get(&q, `
-		INSERT INTO "Quotation" (id, "quotationNumber", "customerName", "customerPhone", "customerAddress", "projectName", "discountPercent", "discountValue", "grandTotal", "netTotal", notes, duration, "createdByEmployeeId", "projectId", terms)
-		VALUES (gen_random_uuid()::text, $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14::jsonb)
+		INSERT INTO "Quotation" (id, "quotationNumber", "customerName", "customerPhone", "customerAddress", "projectName", "discountPercent", "discountValue", "grandTotal", "netTotal", notes, duration, "createdByEmployeeId", "projectId", terms, layout, cover, annex)
+		VALUES (gen_random_uuid()::text, $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14::jsonb, $15, $16::jsonb, $17::jsonb)
 		RETURNING *
-	`, quotationNumber, req.CustomerName, req.CustomerPhone, req.CustomerAddress, req.ProjectName, discountPercent, discountValue, grandTotal, netTotal, req.Notes, req.Duration, req.CreatedByEmployeeID, req.ProjectID, termsJSON(req.Terms))
+	`, quotationNumber, req.CustomerName, req.CustomerPhone, req.CustomerAddress, req.ProjectName, discountPercent, discountValue, grandTotal, netTotal, req.Notes, req.Duration, req.CreatedByEmployeeID, req.ProjectID, termsJSON(req.Terms),
+		quotationLayout(req.Layout), rawJSON(req.Cover), rawJSON(req.Annex))
 	if err != nil {
 		return nil, err
 	}
@@ -349,11 +350,14 @@ func (r *QuotationRepository) Update(id string, req model.UpdateQuotationRequest
 			"grandTotal" = COALESCE($10, "grandTotal"),
 			"discountValue" = COALESCE($11, "discountValue"),
 			"netTotal" = COALESCE($12, "netTotal"),
-			terms = COALESCE($13::jsonb, terms)
+			terms = COALESCE($13::jsonb, terms),
+			cover = COALESCE($14::jsonb, cover),
+			annex = COALESCE($15::jsonb, annex)
 		WHERE id = $1
 		RETURNING *
 	`, id, req.CustomerName, req.CustomerPhone, req.CustomerAddress, req.ProjectName,
-		req.DiscountPercent, req.Notes, req.Duration, req.Status, grandTotal, discountValue, netTotal, termsJSON(req.Terms))
+		req.DiscountPercent, req.Notes, req.Duration, req.Status, grandTotal, discountValue, netTotal, termsJSON(req.Terms),
+		rawJSON(req.Cover), rawJSON(req.Annex))
 	if err != nil {
 		return nil, err
 	}
@@ -463,5 +467,22 @@ func termsJSON(t []string) *string {
 	}
 	b, _ := json.Marshal(clean)
 	s := string(b)
+	return &s
+}
+
+// quotationLayout (دازاي 11-06): PROJECT = «عرض مشاريع»، وأي شي ثاني = العرض الكلاسيكي.
+func quotationLayout(l *string) string {
+	if l != nil && *l == "PROJECT" {
+		return "PROJECT"
+	}
+	return "CLASSIC"
+}
+
+// rawJSON يحوّل JSON خام لنص للقاعدة (nil = ما يتغيّر).
+func rawJSON(r *json.RawMessage) *string {
+	if r == nil || len(*r) == 0 || string(*r) == "null" {
+		return nil
+	}
+	s := string(*r)
 	return &s
 }

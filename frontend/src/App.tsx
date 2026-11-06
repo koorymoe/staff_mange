@@ -96,6 +96,7 @@ const DepartmentsPage = lazyRetry(() => import('./pages/DepartmentsPage'))
 const DesignGalleryPage = lazyRetry(() => import('./pages/DesignGalleryPage'))
 const QuotationsPage = lazyRetry(() => import('./pages/QuotationsPage'))
 const QuotationNew = lazyRetry(() => import('./pages/QuotationNew'))
+const ProjectQuotationPage = lazyRetry(() => import('./pages/ProjectQuotationPage'))
 const LeaderInvoiceNew = lazyRetry(() => import('./pages/LeaderInvoiceNew'))
 const CameraCostPage = lazyRetry(() => import('./pages/CameraCostPage'))
 const NetworkCostPage = lazyRetry(() => import('./pages/NetworkCostPage'))
@@ -310,6 +311,8 @@ function App() {
           <Route path="quotations" element={<QuotationsPage />} />
           <Route path="quotations/new" element={<QuotationNew />} />
           <Route path="quotations/:id/edit" element={<QuotationNew />} />
+          <Route path="quotations/project/new" element={<ProjectQuotationPage />} />
+          <Route path="quotations/project/:id" element={<ProjectQuotationPage />} />
           <Route path="leader-invoices" element={<LeaderInvoicesListPage />} />
           <Route path="leader-invoices/new" element={<LeaderInvoiceNew />} />
           <Route path="matrix-chat" element={<MatrixChatPage />} />

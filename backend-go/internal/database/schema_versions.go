@@ -452,6 +452,7 @@ func versionedMigrations() []Migration {
 	result = append(result, telegramBotMigrations()...)
 	result = append(result, aiSuggestionVerifyMigrations()...)
 	result = append(result, agentGrowthMigrations()...)
+	result = append(result, projectQuotationMigrations()...)
 	return result
 }
 

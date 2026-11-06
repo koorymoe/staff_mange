@@ -21,6 +21,10 @@ type Quotation struct {
 	Duration        *string `db:"duration" json:"duration"`
 	// (ع) 10-14: شروط هذا العرض (مصفوفة نصوص) — null = الشروط الافتراضية
 	Terms               *json.RawMessage `db:"terms" json:"terms"`
+	// (دازاي 11-06) «عرض مشاريع»: الشكل (CLASSIC/PROJECT)، والغلاف، والملحق الفني
+	Layout              string           `db:"layout" json:"layout"`
+	Cover               *json.RawMessage `db:"cover" json:"cover"`
+	Annex               *json.RawMessage `db:"annex" json:"annex"`
 	Status              string           `db:"status" json:"status"`
 	CreatedByEmployeeID string           `db:"createdByEmployeeId" json:"-"`
 	CreatedAt           time.Time        `db:"createdAt" json:"createdAt"`
@@ -43,6 +47,10 @@ type QuotationItem struct {
 	// SortIndex ترتيب البند بالعرض — محله بالقائمة الي انحفظت.
 	// ⚠️ عمود بالجدول → لازم حقل هنا (الجلب SELECT *).
 	SortIndex int `db:"sortIndex" json:"sortIndex"`
+	// (دازاي 11-06) عرض مشاريع: الموديل والمواصفات (نسخة وقت العرض) والفصل
+	ModelName *string `db:"modelName" json:"modelName"`
+	Specs     *string `db:"specs" json:"specs"`
+	Category  *string `db:"category" json:"category"`
 }
 
 type QuotationItemInput struct {
@@ -53,6 +61,9 @@ type QuotationItemInput struct {
 	Unit        *string `json:"unit"`
 	Quantity    int     `json:"quantity"`
 	UnitPrice   float64 `json:"unitPrice"`
+	ModelName   *string `json:"modelName"`
+	Specs       *string `json:"specs"`
+	Category    *string `json:"category"`
 }
 
 type CreateQuotationRequest struct {
@@ -66,6 +77,9 @@ type CreateQuotationRequest struct {
 	Notes               *string              `json:"notes"`
 	Duration            *string              `json:"duration"`
 	Terms               []string             `json:"terms"`
+	Layout              *string              `json:"layout"`
+	Cover               *json.RawMessage     `json:"cover"`
+	Annex               *json.RawMessage     `json:"annex"`
 	CreatedByEmployeeID string               `json:"createdByEmployeeId"`
 }
 
@@ -80,6 +94,8 @@ type UpdateQuotationRequest struct {
 	Status          *string              `json:"status"`
 	Terms           []string             `json:"terms"`
 	Items           []QuotationItemInput `json:"items"`
+	Cover           *json.RawMessage     `json:"cover"`
+	Annex           *json.RawMessage     `json:"annex"`
 }
 
 // ═══ نسخة مؤرشفة من عرض سعر ═══
