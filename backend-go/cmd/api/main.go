@@ -509,6 +509,20 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 			log.Printf("vehicle maintenance alert: %v", err)
 		}
 	})
+	// 📦 ملخص المخازن اليومي (طلبات ماتركس 11-04 — إداري الكميات): طلبات معلّقة، تقييم السيارات، صيانة فايتة
+	warehouseDaily := service.NewWarehouseDaily(db, aiRepo.ClaimDailyMarker, func() ([]string, error) {
+		rows, err := aiRepo.OverdueMaintenanceVehiclesInUse()
+		out := make([]string, 0, len(rows))
+		for _, r := range rows {
+			out = append(out, r.VehicleName+" ("+r.PlateNumber+")")
+		}
+		return out, err
+	}, func(msg string) { _ = notificationRepo.CreateForPermission("inventory", "WAREHOUSE_DAILY", msg) })
+	safeguard.Loop("ملخص المخازن اليومي", 27*time.Minute, 30*time.Minute, func() {
+		if err := warehouseDaily.RunIfDue(time.Now()); err != nil {
+			log.Printf("warehouse daily: %v", err)
+		}
+	})
 	// ═══ صحة الزبون (ماتركس) ═══ — زبائن مخلصين انقطعوا.
 	lapsedCustomerAlertService := service.NewLapsedCustomerAlertService(aiRepo, notificationRepo)
 	safeguard.Loop("تنبيه الزبائن المنقطعين الأسبوعي", 28*time.Minute, 6*time.Hour, func() {

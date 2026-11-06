@@ -90,6 +90,16 @@ func (a *MatrixAgent) RegisterReadTools(d AgentDeps) {
 				r.Submitted, r.Audited, r.Approved, r.Free, r.Mismatch, r.PriceErr, r.NoInvoice, money(r.Billed), money(r.Collected)), nil
 		}})
 
+	// 🚿 غسيل وتقييم السيارات اليوم (طلب ماتركس 11-04 — إداري الكميات)
+	a.AddTool(agentTool{Name: "car_wash_today", Desc: "كم سيارة انغسلت اليوم من الفعّالة، وكم سيارة ما انقيّمت اليوم. أرقام بس.",
+		Run: func(map[string]any, *nameMask) (string, error) {
+			d, err := BuildWarehouseDigest(a.db, nil)
+			if err != nil {
+				return "", err
+			}
+			return carWashText(d), nil
+		}})
+
 	// 🛠️ صيانة وقائية (دازاي 11-06، فكرة ٧) — بلا تلفونات
 	a.AddTool(agentTool{Name: "maintenance_due", Desc: "كم زبون يستاهل اتصال صيانة وقائية (آخر شغل فات عليه ٦ أشهر، أو شكوتين فما فوق بسنة، وماكو حجز مفتوح) — أرقام حسب الخدمة والسبب بس، بلا أسماء ولا تلفونات (القائمة بالأسماء بمكتب الجودة).",
 		Run: func(map[string]any, *nameMask) (string, error) {
