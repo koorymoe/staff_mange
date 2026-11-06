@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { api, apiRequest } from '../api'
 import type { Product, QuotationItem } from '../apiTypes'
 import PageHeader from '../components/PageHeader'
+import AnnexTemplatesManager, { type AnnexTemplate } from '../components/AnnexTemplatesManager'
 import { useSession } from '../session'
 import { arabicAmountWords } from '../utils/arabicWords'
 import {
@@ -18,7 +19,6 @@ import {
 // يكتب الكمية والسعر والغلاف، ويختار قالب الملحق حسب نوع المشروع. الأرقام كلها من الفورمة.
 
 type Row = ProjectItem & { key: number }
-type AnnexTemplate = { id: string; name: string; parts: AnnexPart[] }
 let seq = 0
 const emptyRow = (): Row => ({ key: ++seq, productName: '', quantity: 1, unitPrice: 0, specs: '', modelName: '', category: '', imageBase64: null, unit: 'قطعة' })
 const num = (v: number) => Math.round(v).toLocaleString('en-US')
@@ -39,6 +39,8 @@ export default function ProjectQuotationPage() {
   const [msg, setMsg] = useState<{ t: string; ok: boolean } | null>(null)
   const [busy, setBusy] = useState(false)
   const [openSpecs, setOpenSpecs] = useState<number | null>(null)
+  const [manage, setManage] = useState(false)
+  const reloadTemplates = () => void apiRequest<AnnexTemplate[]>('/quotation-annex-templates').then(setTemplates).catch(() => {})
 
   useEffect(() => {
     void api.getProducts().then(setProducts).catch(() => setProducts([]))
@@ -168,7 +170,9 @@ export default function ProjectQuotationPage() {
             {templates.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
           </select>
           <small className="text-slate-500">البنود تنسخ لهذا العرض وتگدر تعدّلها هنا بس.</small>
+          <button type="button" onClick={() => setManage(true)} className="rounded-lg bg-slate-100 px-2 py-1 text-xs font-bold">⚙️ قوالب الملحق</button>
         </div>
+        {manage && <AnnexTemplatesManager templates={templates} onClose={() => setManage(false)} onSaved={reloadTemplates} />}
         {annex.map((p, pi) => (
           <details key={pi} className="rounded-xl border border-slate-200 p-2" open={pi === 0}>
             <summary className="cursor-pointer font-bold text-[#1e3a8a]">الجزء {pi + 1}: {p.title} ({p.items.length} بند)</summary>
