@@ -72,6 +72,10 @@ type Config struct {
 	TelegramAPIBase    string // للاختبار بس — الافتراضي api.telegram.org
 	// BotReaderToken رمز **قراءة بس** لبلاغات البوت (Claude يقرا البلاغات وصورها). فاضي = مطفي.
 	BotReaderToken string
+	// RemoteHoursAgentToken/Employee (دازاي 11-06، قرار 0011): Claude يسجّل ساعات شغله بسجل
+	// دوام موظف واحد ثابت. فاضي = المسار مطفي (٤٠٤).
+	RemoteHoursAgentToken    string
+	RemoteHoursAgentEmployee string
 	// Sentry (دازاي 11-05) — بلاه مطفي. SENTRY_ENVIRONMENT افتراضياً production.
 	SentryDSN         string
 	SentryEnvironment string
@@ -166,30 +170,32 @@ func load() *Config {
 		// موديل المحادثة المباشرة ويا المالك (ماتركس شات) — فارغ = AI_MODEL
 		AIModelChat: getEnv("AI_MODEL_CHAT", ""),
 		// سقف الدماغين (دازاي 10-28) — الافتراضي، والمالك يغيّره من صفحة الوكلاء
-		AIInternalDailyUSD:  getEnvFloat("AI_INTERNAL_DAILY_USD", 2),
-		AIExternalDailyUSD:  getEnvFloat("AI_EXTERNAL_DAILY_USD", 1),
-		AISecretaryDailyCap: getEnvInt("AI_SECRETARY_DAILY_CAP", 300),
-		AIIrisWebSearch:     getEnv("AI_IRIS_WEB_SEARCH", "true") != "false",
-		AIIrisVoice:         getEnv("AI_IRIS_VOICE", "gemini"),
-		AIMatrixDailyUSD:    getEnvFloat("AI_MATRIX_DAILY_USD", 0.5),
-		AIIrisDailyUSD:      getEnvFloat("AI_IRIS_DAILY_USD", 0.5),
-		AIQualityDailyUSD:   getEnvFloat("AI_QUALITY_DAILY_USD", 0.2),
-		AIBookingDailyUSD:   getEnvFloat("AI_BOOKING_DAILY_USD", 0.2),
-		WaDailyNew:          getEnvInt("WA_DAILY_NEW", 10),
-		TelegramBotToken:    getEnv("TELEGRAM_BOT_TOKEN", ""),
-		TelegramWebhookURL:  getEnv("TELEGRAM_WEBHOOK_URL", ""),
-		TelegramAPIBase:     getEnv("TELEGRAM_API_BASE", ""),
-		BotReaderToken:      getEnv("BOT_READER_TOKEN", ""),
-		SentryDSN:           getEnv("SENTRY_DSN_BACKEND", ""),
-		SentryEnvironment:   getEnv("SENTRY_ENVIRONMENT", "production"),
-		WaToken:             getEnv("WA_TOKEN", ""),
-		WaPhoneID:           getEnv("WA_PHONE_ID", ""),
-		WaAppSecret:         getEnv("WA_APP_SECRET", ""),
-		WaVerifyToken:       getEnv("WA_VERIFY_TOKEN", ""),
-		WaTemplateQuality:   getEnv("WA_TEMPLATE_QUALITY", ""),
-		WaTemplateBooking:   getEnv("WA_TEMPLATE_BOOKING", ""),
-		WaTemplateLng:       getEnv("WA_TEMPLATE_LANG", "ar"),
-		WaPrivacyApproved:   getEnv("WA_PRIVACY_APPROVED", "") == "true",
+		AIInternalDailyUSD:       getEnvFloat("AI_INTERNAL_DAILY_USD", 2),
+		AIExternalDailyUSD:       getEnvFloat("AI_EXTERNAL_DAILY_USD", 1),
+		AISecretaryDailyCap:      getEnvInt("AI_SECRETARY_DAILY_CAP", 300),
+		AIIrisWebSearch:          getEnv("AI_IRIS_WEB_SEARCH", "true") != "false",
+		AIIrisVoice:              getEnv("AI_IRIS_VOICE", "gemini"),
+		AIMatrixDailyUSD:         getEnvFloat("AI_MATRIX_DAILY_USD", 0.5),
+		AIIrisDailyUSD:           getEnvFloat("AI_IRIS_DAILY_USD", 0.5),
+		AIQualityDailyUSD:        getEnvFloat("AI_QUALITY_DAILY_USD", 0.2),
+		AIBookingDailyUSD:        getEnvFloat("AI_BOOKING_DAILY_USD", 0.2),
+		WaDailyNew:               getEnvInt("WA_DAILY_NEW", 10),
+		TelegramBotToken:         getEnv("TELEGRAM_BOT_TOKEN", ""),
+		TelegramWebhookURL:       getEnv("TELEGRAM_WEBHOOK_URL", ""),
+		TelegramAPIBase:          getEnv("TELEGRAM_API_BASE", ""),
+		BotReaderToken:           getEnv("BOT_READER_TOKEN", ""),
+		RemoteHoursAgentToken:    getEnv("REMOTE_HOURS_AGENT_TOKEN", ""),
+		RemoteHoursAgentEmployee: getEnv("REMOTE_HOURS_AGENT_EMPLOYEE", ""),
+		SentryDSN:                getEnv("SENTRY_DSN_BACKEND", ""),
+		SentryEnvironment:        getEnv("SENTRY_ENVIRONMENT", "production"),
+		WaToken:                  getEnv("WA_TOKEN", ""),
+		WaPhoneID:                getEnv("WA_PHONE_ID", ""),
+		WaAppSecret:              getEnv("WA_APP_SECRET", ""),
+		WaVerifyToken:            getEnv("WA_VERIFY_TOKEN", ""),
+		WaTemplateQuality:        getEnv("WA_TEMPLATE_QUALITY", ""),
+		WaTemplateBooking:        getEnv("WA_TEMPLATE_BOOKING", ""),
+		WaTemplateLng:            getEnv("WA_TEMPLATE_LANG", "ar"),
+		WaPrivacyApproved:        getEnv("WA_PRIVACY_APPROVED", "") == "true",
 		// TutorialsDir: مسار مجلد أدلة الاستخدام (tutorial-*.html و guide-*.txt) اللي
 		// يقرأها المساعد الذكي حتى يعرف يشرح للموظف شلون يستخدم النظام فعلياً.
 		// الافتراضي "../tutorials" يناسب التطوير المحلي (تشغيل go run من داخل backend-go

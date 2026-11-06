@@ -19,6 +19,8 @@ import (
 // معيّن، والنظام يجمع، وبنهاية الشهر ينزّل Excel. الحارس بـmain.go.
 type RemoteHoursHandler struct {
 	repo *repository.RemoteHoursRepository
+	// مسار الوكيل (remote_hours_agent.go) — فاضي = مطفي
+	agentToken, agentEmployee string
 }
 
 func NewRemoteHoursHandler(r *repository.RemoteHoursRepository) *RemoteHoursHandler {
@@ -51,6 +53,11 @@ type addBody struct {
 
 // add التحقق والحفظ — مشترك بين المسؤول («لأي موظف») والموظف («لنفسه»).
 func (h *RemoteHoursHandler) add(w http.ResponseWriter, r *http.Request, b addBody) {
+	h.addFrom(w, b, middleware.EmployeeIDFromContext(r), "MANUAL")
+}
+
+// addFrom التحقق والحفظ بمصدر (MANUAL من الشاشة، AGENT من Claude).
+func (h *RemoteHoursHandler) addFrom(w http.ResponseWriter, b addBody, byID, source string) {
 	day, err := time.ParseInLocation("2006-01-02", b.Date, baghdad)
 	if err != nil {
 		WriteError(w, http.StatusBadRequest, "التاريخ مو صحيح")
@@ -81,7 +88,7 @@ func (h *RemoteHoursHandler) add(w http.ResponseWriter, r *http.Request, b addBo
 		n := strings.TrimSpace(*b.Note)
 		b.Note = &n
 	}
-	id, err := h.repo.Create(b.EmployeeID, b.Date, total, b.Note, middleware.EmployeeIDFromContext(r))
+	id, err := h.repo.CreateFrom(b.EmployeeID, b.Date, total, b.Note, byID, source)
 	if err != nil {
 		WriteError(w, http.StatusInternalServerError, "تعذر الحفظ")
 		return

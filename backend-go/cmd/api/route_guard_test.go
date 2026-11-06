@@ -36,7 +36,8 @@ var publicRoutes = map[string]string{
 	"POST /api/telegram/webhook":                   "رسائل بوت بلاغات الموظفين من التلغرام (الرمز السري بالترويسة يتحقق بالمعالج، وبلاه ٤٠٤)",
 	"GET /api/bot-reader/reports":                  "قراءة بلاغات البوت برمز قراءة بس (BOT_READER_TOKEN بالترويسة، بلاه ٤٠٤) — ماكو كتابة",
 	"GET /api/bot-reader/files/{key...}":           "صور البلاغات بس (مجلد botreports) بنفس رمز القراءة، بلاه ٤٠٤",
-	"GET /api/bot-reader/suggestions":             "طلبات تحديث الوكلاء الي وافق عليها المالك (قراءة بس) بنفس رمز القراءة، بلاه ٤٠٤",
+	"POST /api/remote-hours/agent":                 "ساعات Claude برمز وكيل (REMOTE_HOURS_AGENT_TOKEN، بلاه ٤٠٤) لموظف واحد ثابت من الإعدادات، بحدود (قرار 0011)",
+	"GET /api/bot-reader/suggestions":              "طلبات تحديث الوكلاء الي وافق عليها المالك (قراءة بس) بنفس رمز القراءة، بلاه ٤٠٤",
 }
 
 func TestEveryRouteIsGuarded(t *testing.T) {

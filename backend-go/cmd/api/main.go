@@ -1451,6 +1451,8 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	mux.Handle("POST /api/achievements", middleware.Chain(http.HandlerFunc(achievementHandler.Create), requireAuth))
 	// ساعات العمل من البيت — صلاحية «remote_hours_manage».
 	remoteHoursHandler := handler.NewRemoteHoursHandler(repository.NewRemoteHoursRepository(db))
+	remoteHoursHandler.SetAgent(cfg.RemoteHoursAgentToken, cfg.RemoteHoursAgentEmployee) // 🤖 ساعات Claude (قرار 0011)
+	mux.Handle("POST /api/remote-hours/agent", middleware.RateLimit(30, time.Minute)(http.HandlerFunc(remoteHoursHandler.AgentAdd)))
 	requireRemoteHours := guards.RoleOrPermission([]string{"ADMIN", "OWNER"}, "remote_hours_manage")
 	mux.Handle("POST /api/remote-hours", middleware.Chain(http.HandlerFunc(remoteHoursHandler.Create), requireAuth, requireRemoteHours))
 	mux.Handle("GET /api/remote-hours", middleware.Chain(http.HandlerFunc(remoteHoursHandler.List), requireAuth, requireRemoteHours))

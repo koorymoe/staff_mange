@@ -232,3 +232,18 @@ func (r *RemoteHoursRepository) MonthDetail(month string) ([]RemoteMonthRow, err
 		GROUP BY r."employeeId", e.name, p."targetHours", p."hourlyRateIQD" ORDER BY seconds DESC`, month)
 	return rows, err
 }
+
+// AgentDaySeconds مجموع ما سجّله الوكيل (Claude) لموظف بيوم (دازاي 11-06).
+func (r *RemoteHoursRepository) AgentDaySeconds(employeeID, date string) int {
+	var n int
+	errlog.Err(r.db.Get(&n, `SELECT COALESCE(SUM(seconds), 0) FROM "RemoteWorkEntry" WHERE "employeeId" = $1 AND "workDate" = $2::date AND source = 'AGENT'`, employeeID, date))
+	return n
+}
+
+// AgentKeyUsed هل انسجّل سطر بهالمفتاح قبل؟ (المفتاح محفوظ بأول الملاحظة «🤖 Claude [key]»)
+func (r *RemoteHoursRepository) AgentKeyUsed(employeeID, key string) bool {
+	var ok bool
+	errlog.Err(r.db.Get(&ok, `SELECT EXISTS (SELECT 1 FROM "RemoteWorkEntry" WHERE "employeeId" = $1 AND source = 'AGENT' AND starts_with(note, $2))`,
+		employeeID, "🤖 Claude ["+key+"]"))
+	return ok
+}
