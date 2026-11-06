@@ -93,7 +93,7 @@ export default function SettingsPanel({ onClose }: { onClose: () => void }) {
   return (
     <>
       <div className="fixed inset-0 z-40" onClick={onClose} />
-      <div className="absolute left-0 top-12 z-50 w-80 max-w-[90vw] overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl">
+      <div className="fixed inset-x-2 top-16 z-50 overflow-hidden sm:absolute sm:inset-x-auto sm:left-0 sm:top-12 sm:w-80 sm:max-w-[90vw] rounded-2xl border border-slate-200 bg-white shadow-xl">
         <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3">
           <span className="text-sm font-bold text-slate-800">⚙️ الإعدادات</span>
           <button onClick={onClose} className="text-xl text-slate-400 hover:text-slate-600">×</button>

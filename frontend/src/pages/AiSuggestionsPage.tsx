@@ -10,14 +10,17 @@ type Suggestion = {
   title: string
   details: string
   needsCode: boolean
-  status: 'NEW' | Decision
+  status: 'NEW' | 'VERIFYING' | Decision
   createdAt: string
+  verifyResult?: 'FOUND' | 'NOT_FOUND' | null
+  verifyNote?: string | null
 }
 const statuses = {
   NEW: 'جديد',
   ACCEPTED: 'مقبول',
   REJECTED: 'مرفوض',
   DONE: 'منجز',
+  VERIFYING: '⏳ ينتظر تأكد الوكيل',
 }
 const names: Record<string, string> = {
   MATRIX: 'ماتركس',
@@ -34,7 +37,7 @@ export default function AiSuggestionsPage() {
   )
 }
 function Suggestions() {
-  const [filter, setFilter] = useState<'all' | 'code' | 'new'>('all')
+  const [filter, setFilter] = useState<'all' | 'code' | 'new' | 'verify'>('all')
   const [items, setItems] = useState<Suggestion[] | null>(null)
   const [reload, setReload] = useState(0)
   const [error, setError] = useState('')
@@ -58,7 +61,9 @@ function Suggestions() {
   }, [pending])
   useEffect(() => {
     let alive = true
-    const query = new URLSearchParams({ status: filter === 'new' ? 'NEW' : '' })
+    const query = new URLSearchParams({
+      status: filter === 'new' ? 'NEW' : filter === 'verify' ? 'VERIFYING' : '',
+    })
     if (filter === 'code') query.set('needsCode', '1')
     apiRequest<Suggestion[]>(`/ai/suggestions?${query}`)
       .then((rows) => {
@@ -109,6 +114,7 @@ function Suggestions() {
             ['all', 'الكل'],
             ['code', 'يحتاج برمجة'],
             ['new', 'الجديد'],
+            ['verify', 'ينتظر التأكد'],
           ] as const
         ).map(([key, label]) => (
           <button
@@ -167,6 +173,14 @@ function Suggestions() {
           </div>
           <h2>{item.title}</h2>
           <p>{item.details}</p>
+          {item.verifyResult && (
+            <p className="ai-brain-notice" role="note">
+              {item.verifyResult === 'FOUND'
+                ? '✅ الوكيل تأكد إنه منضاف'
+                : '⚠️ الوكيل ما لگاه منضاف — رجع لحالة «مقبول»'}
+              {item.verifyNote ? `: ${item.verifyNote}` : ''}
+            </p>
+          )}
           <div className="ai-suggestion-actions">
             {(
               [
@@ -178,7 +192,11 @@ function Suggestions() {
               <button
                 key={status}
                 className={cls}
-                disabled={busy || item.status === status}
+                disabled={
+                  busy ||
+                  item.status === status ||
+                  (status === 'DONE' && item.status === 'VERIFYING')
+                }
                 onClick={() => {
                   setPending({ item, status })
                   setError('')
@@ -223,7 +241,11 @@ function Suggestions() {
           >
             <h2>تأكيد: {statuses[pending.status]}</h2>
             <p>{pending.item.title}</p>
-            <p>هذا يغيّر حالة الاقتراح فقط. ما ينفّذ برمجة أو إجراء بالنظام.</p>
+            <p>
+              {pending.status === 'DONE'
+                ? 'الاقتراح يصير «ينتظر تأكد الوكيل»: الوكيل صاحبه يتأكد بأول فرصة إنه صدگ انضاف، ويكتب النتيجة هنا.'
+                : 'هذا يغيّر حالة الاقتراح فقط. ما ينفّذ برمجة أو إجراء بالنظام.'}
+            </p>
             {error && <p role="alert">{error}</p>}
             <div className="ai-suggestion-actions">
               <button autoFocus disabled={busy} onClick={() => void decide()}>

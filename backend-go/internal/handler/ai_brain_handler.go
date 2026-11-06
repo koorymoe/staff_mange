@@ -70,11 +70,16 @@ type aiSuggestion struct {
 	NeedsCode bool   `db:"needsCode" json:"needsCode"`
 	Status    string `db:"status" json:"status"`
 	CreatedAt string `db:"createdAt" json:"createdAt"`
+	// (دازاي 11-06، بلاغ #10) نتيجة تأكد الوكيل بعد «تم»: FOUND أو NOT_FOUND
+	VerifyResult *string `db:"verifyResult" json:"verifyResult"`
+	VerifyNote   *string `db:"verifyNote" json:"verifyNote"`
+	VerifiedAt   *string `db:"verifiedAt" json:"verifiedAt"`
 }
 
-// GET /api/ai/suggestions?status=NEW|ACCEPTED|REJECTED|DONE&needsCode=1
+// GET /api/ai/suggestions?status=NEW|ACCEPTED|REJECTED|DONE|VERIFYING&needsCode=1
 func (h *AiBrainHandler) Suggestions(w http.ResponseWriter, r *http.Request) {
-	q := `SELECT id, agent, title, details, "needsCode", status, to_char("createdAt" AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') AS "createdAt"
+	q := `SELECT id, agent, title, details, "needsCode", status, to_char("createdAt" AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') AS "createdAt",
+		"verifyResult", "verifyNote", to_char("verifiedAt" AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') AS "verifiedAt"
 		FROM "AiSuggestion" WHERE ($1 = '' OR status = $1) AND (NOT $2 OR "needsCode") ORDER BY "createdAt" DESC LIMIT 200`
 	rows := []aiSuggestion{}
 	if err := h.db.Select(&rows, q, strings.ToUpper(r.URL.Query().Get("status")), r.URL.Query().Get("needsCode") == "1"); err != nil {
@@ -93,8 +98,14 @@ func (h *AiBrainHandler) Decide(w http.ResponseWriter, r *http.Request) {
 		WriteError(w, http.StatusBadRequest, "الحالة لازم ACCEPTED أو REJECTED أو DONE")
 		return
 	}
-	res, err := h.db.Exec(`UPDATE "AiSuggestion" SET status = $2, "decidedById" = $3, "decidedAt" = now() WHERE id = $1`,
-		r.PathValue("id"), in.Status, middleware.EmployeeIDFromContext(r))
+	// (دازاي 11-06، بلاغ #10) «تم» ما يسكّر مباشرة: يصير VERIFYING والوكيل صاحبه يتأكد إنه انضاف.
+	status := in.Status
+	if status == "DONE" {
+		status = "VERIFYING"
+	}
+	res, err := h.db.Exec(`UPDATE "AiSuggestion" SET status = $2, "decidedById" = $3, "decidedAt" = now(),
+		"verifyResult" = NULL, "verifyNote" = NULL, "verifiedAt" = NULL WHERE id = $1`,
+		r.PathValue("id"), status, middleware.EmployeeIDFromContext(r))
 	if err != nil {
 		WriteError(w, http.StatusInternalServerError, "تعذر")
 		return
@@ -103,5 +114,5 @@ func (h *AiBrainHandler) Decide(w http.ResponseWriter, r *http.Request) {
 		WriteError(w, http.StatusNotFound, "الاقتراح مو موجود")
 		return
 	}
-	WriteJSON(w, http.StatusOK, map[string]bool{"ok": true})
+	WriteJSON(w, http.StatusOK, map[string]any{"ok": true, "status": status})
 }

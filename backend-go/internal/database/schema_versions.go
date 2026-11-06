@@ -450,6 +450,7 @@ func versionedMigrations() []Migration {
 	result = append(result, deletedProjectMigrations()...)
 	result = append(result, complaintNoAnswerMigrations()...)
 	result = append(result, telegramBotMigrations()...)
+	result = append(result, aiSuggestionVerifyMigrations()...)
 	return result
 }
 
