@@ -312,6 +312,8 @@ type OpenWithShift struct {
 	ShiftEnd     *string    `db:"shiftEnd"`
 	LastActivity *time.Time `db:"lastActivity"`
 	Busy         bool       `db:"busy"`
+	// LastSeen آخر طلب للموظف بالنظام (EmployeePresence) — دازاي 11-06: فاتح النظام ويشتغل = ما ينسكر
+	LastSeen *time.Time `db:"lastSeen"`
 }
 
 func (r *AttendanceRepository) OpenWithShift() ([]OpenWithShift, error) {
@@ -321,8 +323,10 @@ func (r *AttendanceRepository) OpenWithShift() ([]OpenWithShift, error) {
 		       att_last_activity(a."employeeId", a."checkIn", NULL) AS "lastActivity",
 		       EXISTS (SELECT 1 FROM "Booking" b -- (ع 10-16) الكادر الموحّد
 		        WHERE `+BookingWorkedBySQL("b", `a."employeeId"`)+` AND b.status = 'IN_PROGRESS'
-		          AND b."updatedAt" >= a."checkIn") AS busy
+		          AND b."updatedAt" >= a."checkIn") AS busy,
+		       p."lastSeenAt" AS "lastSeen"
 		FROM "Attendance" a JOIN "Employee" e ON e.id = a."employeeId"
+		LEFT JOIN "EmployeePresence" p ON p."employeeId" = a."employeeId"
 		WHERE a."checkOut" IS NULL`)
 	return rows, err
 }

@@ -235,7 +235,15 @@ func (s *AttendanceService) Gate(employeeID string, now time.Time) (*AttendanceG
 	return out, nil
 }
 
-// AutoCheckout يسكّر الجلسات المفتوحة بعد نهاية الشفت بـ٣ ساعات.
+// autoCheckoutIdle (دازاي 11-06): إذا الموظف سوّى أي طلب بالنظام خلال هالمدة، يعتبر بعده يشتغل.
+const autoCheckoutIdle = 15 * time.Minute
+
+// StillActive هل الموظف فاتح النظام ويشتغل هسه؟
+func StillActive(lastSeen *time.Time, now time.Time) bool {
+	return lastSeen != nil && now.Sub(*lastSeen) < autoCheckoutIdle
+}
+
+// AutoCheckout يسكّر الجلسات المفتوحة بعد نهاية الشفت بـ٣ ساعات — إلا إذا الموظف بعده فاتح النظام ويشتغل.
 func (s *AttendanceService) AutoCheckout(now time.Time, notify func(employeeID, msg string)) (int, error) {
 	rows, err := s.repo.OpenWithShift()
 	if err != nil {
@@ -251,10 +259,19 @@ func (s *AttendanceService) AutoCheckout(now time.Time, notify func(employeeID, 
 		if r.Busy && now.Before(at.Add(12*time.Hour)) {
 			continue
 		}
+		// (دازاي 11-06) فاتح النظام ويضغط: ما ينسكر خروجه حتى لو عبر وقت دوامه.
+		if StillActive(r.LastSeen, now) {
+			continue
+		}
 		_, _, why := CountedEnd(r.CheckIn, nil, r.LastActivity, now)
 		reason := "ما سجّل انصراف — انسكّر الساعة " + clockLabel(at) + "."
 		if why != "" {
 			reason = why
+		}
+		// سد النظام بعد الحد: الانصراف بوقت آخر ضغطة إله، مو بوقت الحد.
+		if r.LastSeen != nil && r.LastSeen.After(at) && r.LastSeen.After(r.CheckIn) {
+			at = *r.LastSeen
+			reason = "ما سجّل انصراف — انسكّر بوقت آخر نشاط إله بالنظام (" + clockLabel(at) + ")."
 		}
 		if err := s.repo.AutoClose(r.ID, r.EmployeeID, at, reason); err != nil {
 			continue
