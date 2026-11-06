@@ -84,14 +84,21 @@ type LateWindow struct {
 	OpenNow   int `db:"openNow" json:"openNow"`
 }
 
-// LateWindow الحجوزات المجدولة بين (اليوم-from) و(اليوم-to): كم تأخّر عن يومه.
-// المتأخر = خلص بعد يوم موعده، أو بعده مفتوح وموعده فات.
+// LateBookingSQL (دازاي 11-06) تعريف «المتأخر» الموحّد — نفس فحص المتأخرات (handler.LateMinDays):
+// عدّى يومين أو أكثر على يوم موعده (خلص متأخر، أو بعده مفتوح)، والي بالانتظار («زبون ما رد»
+// أو «الزبون يقرر») مو متأخر. يوم واحد (موعد ٤ العصر وطلعة نص الليل) مو تأخير.
+func LateBookingSQL(b string) string {
+	return `((` + b + `.status = 'COMPLETED' AND baghdad_date(` + b + `."completedAt") - baghdad_date(` + b + `."scheduledAt") >= 2)
+		OR (` + b + `.status::text NOT IN ('COMPLETED','CANCELLED') AND ` + b + `."waitingSince" IS NULL
+		    AND baghdad_today() - baghdad_date(` + b + `."scheduledAt") >= 2))`
+}
+
+// LateWindow الحجوزات المجدولة بين (اليوم-from) و(اليوم-to): كم تأخّر (LateBookingSQL).
 func (r *MatrixCommandRepository) LateWindow(from, to int) (*LateWindow, error) {
 	var w LateWindow
 	err := r.db.Get(&w, `
 		SELECT COUNT(*) AS total,
-		  COUNT(*) FILTER (WHERE (b.status = 'COMPLETED' AND baghdad_date(b."completedAt") > baghdad_date(b."scheduledAt"))
-		                      OR (b.status::text NOT IN ('COMPLETED','CANCELLED') AND baghdad_date(b."scheduledAt") < baghdad_today())) AS late,
+		  COUNT(*) FILTER (WHERE `+LateBookingSQL("b")+`) AS late,
 		  COUNT(*) FILTER (WHERE NOT EXISTS (SELECT 1 FROM booking_crew_ids(b.id)) /* (ع 10-16) الكادر الموحّد */) AS unstaffed,
 		  COUNT(*) FILTER (WHERE b."partialCount" > 0) AS partial,
 		  COUNT(*) FILTER (WHERE b.status::text NOT IN ('COMPLETED','CANCELLED') AND baghdad_date(b."scheduledAt") < baghdad_today()) AS "openNow"
@@ -112,7 +119,7 @@ func (r *MatrixCommandRepository) LogAsk(employeeID, q, a, source string) {
 		uuid.NewString(), employeeID, q, a, source))
 }
 
-// LateItem حجز متأخر بآخر ٣ أيام — (ع): «من اضغط يوديني للحجوزات المتأخرة صدك».
+// LateItem حجز متأخر بآخر ٧ أيام (يومين تأخير فما فوق) — (ع): «من اضغط يوديني للحجوزات المتأخرة صدك».
 type LateItem struct {
 	ID          string     `db:"id" json:"id"`
 	Code        string     `db:"code" json:"code"`
@@ -148,8 +155,7 @@ func (r *MatrixCommandRepository) LateItems(from, to, limit int) ([]LateItem, er
 		LEFT JOIN "Service" s ON s.id = b."serviceId"
 		WHERE baghdad_date(b."scheduledAt") BETWEEN baghdad_today() - $1::int AND baghdad_today() - $2::int
 		  AND b.status::text <> 'CANCELLED' AND b."archivedAt" IS NULL AND b."bookingType" IS DISTINCT FROM 'INTERNAL'
-		  AND ((b.status = 'COMPLETED' AND baghdad_date(b."completedAt") > baghdad_date(b."scheduledAt"))
-		       OR (b.status::text NOT IN ('COMPLETED','CANCELLED') AND baghdad_date(b."scheduledAt") < baghdad_today()))
+		  AND (`+LateBookingSQL("b")+`)
 		ORDER BY b."scheduledAt" DESC LIMIT $3`, from, to, limit)
 	return rows, err
 }

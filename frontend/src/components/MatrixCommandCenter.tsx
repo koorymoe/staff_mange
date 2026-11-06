@@ -332,11 +332,11 @@ function Discovery({ focus, late, perf, groups, biz, proposal, onDone }: {
       if (!late) return null
       const ch = late.changePct
       return {
-        title: late.recent.late === 0 ? 'ماكو حجوزات متأخرة بآخر ٣ أيام ✅'
-          : ch != null && ch > 0 ? `زيادة ملحوظة في الحجوزات المتأخرة خلال ٣ أيام الأخيرة` : `${late.recent.late} حجز متأخر بآخر ٣ أيام`,
-        sub: `تأخّر ${late.recent.late} من ${late.recent.total} حجز (${late.recentPct}%)` + (ch != null ? ` — ${ch > 0 ? 'ارتفاع' : 'انخفاض'} ${Math.abs(ch)}% مقارنة بالـ٣ أيام الي قبلها (${late.prevPct}%).` : '.'),
+        title: late.recent.late === 0 ? 'ماكو حجوزات متأخرة بآخر ٧ أيام ✅'
+          : ch != null && ch > 0 ? `زيادة ملحوظة في الحجوزات المتأخرة خلال ٧ أيام الأخيرة` : `${late.recent.late} حجز متأخر بآخر ٧ أيام`,
+        sub: `تأخّر ${late.recent.late} من ${late.recent.total} حجز (${late.recentPct}%)` + (ch != null ? ` — ${ch > 0 ? 'ارتفاع' : 'انخفاض'} ${Math.abs(ch)}% مقارنة بالـ٧ أيام الي قبلها (${late.prevPct}%).` : '.'),
         cause: late.cause, impact: late.impact, suggestion: late.suggestion, severity: late.severity, link: '/bookings',
-        evidence: { 'حجوزات آخر ٣ أيام': late.recent.total, 'متأخرة': late.recent.late, 'مفتوحة وموعدها فات': late.recent.openNow, 'بلا كادر': late.recent.unstaffed, 'جزئية': late.recent.partial, 'نسبة التأخير قبلها': `${late.prevPct}%` } as Record<string, unknown>,
+        evidence: { 'حجوزات آخر ٧ أيام': late.recent.total, 'متأخرة': late.recent.late, 'مفتوحة وموعدها فات': late.recent.openNow, 'بلا كادر': late.recent.unstaffed, 'جزئية': late.recent.partial, 'نسبة التأخير قبلها': `${late.prevPct}%` } as Record<string, unknown>,
       }
     }
     if (focus === 'perf') {
@@ -433,7 +433,7 @@ function Discovery({ focus, late, perf, groups, biz, proposal, onDone }: {
               <div className="max-h-[70vh] overflow-y-auto">
                 {focus === 'late' ? (
                   <>
-                    <h4 className="mb-3 font-extrabold">📋 الحجوزات المتأخرة (آخر ٣ أيام)</h4>
+                    <h4 className="mb-3 font-extrabold">📋 الحجوزات المتأخرة (آخر ٧ أيام)</h4>
                     {(late?.items ?? []).length === 0 ? <p className="text-sm text-[var(--mx-muted)]">ماكو ✅</p> : (
                       <ul className="space-y-2 text-sm">
                         {(late?.items ?? []).map((b) => (
@@ -593,7 +593,7 @@ function Feed({ items }: { items: MatrixFeedItem[] }) {
 function Predictions({ biz, late, props }: { biz: MatrixBusinessData | null; late: LateFocus | null; props: MatrixProposal[] }) {
   const [showHist, setShowHist] = useState(false)
   const items: { text: string; change: number | null; conf: number }[] = []
-  if (late) items.push({ text: `الحجوزات المتأخرة: ${late.recentPct}% من آخر ٣ أيام`, change: late.changePct == null ? null : -late.changePct, conf: confidence(late.recent.total) })
+  if (late) items.push({ text: `الحجوزات المتأخرة: ${late.recentPct}% من آخر ٧ أيام`, change: late.changePct == null ? null : -late.changePct, conf: confidence(late.recent.total) })
   const pred = props.filter((p) => p.kind === 'PREDICTION').length
   if (pred) items.push({ text: `${pred} توقّع ينتظر قرارك (موظفين ما يلحگون شغل اليوم)`, change: null, conf: 72 })
   const fc = biz?.forecast

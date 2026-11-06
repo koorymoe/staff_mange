@@ -90,7 +90,7 @@ func (a *MatrixAgent) RegisterReadTools(d AgentDeps) {
 				r.Submitted, r.Audited, r.Approved, r.Free, r.Mismatch, r.PriceErr, r.NoInvoice, money(r.Billed), money(r.Collected)), nil
 		}})
 
-	a.AddTool(agentTool{Name: "late_bookings", Desc: "التأخير بالحجوزات آخر ٣ أيام مقابل الـ٣ الي قبلها، والحجوزات المتأخرة نفسها (الكود والموعد والحالة).",
+	a.AddTool(agentTool{Name: "late_bookings", Desc: "التأخير بالحجوزات آخر ٧ أيام مقابل الـ٧ الي قبلها، والحجوزات المتأخرة نفسها (الكود والموعد والحالة). المتأخر = عدّى يومين أو أكثر على يوم موعده؛ «زبون ما رد» و«الزبون يقرر» مو تأخير.",
 		Run: func(map[string]any, *nameMask) (string, error) {
 			if d.Command == nil {
 				return "", fmt.Errorf("المصدر مو مربوط")
@@ -100,7 +100,7 @@ func (a *MatrixAgent) RegisterReadTools(d AgentDeps) {
 				return "", err
 			}
 			var b strings.Builder
-			fmt.Fprintf(&b, "آخر ٣ أيام: %d حجز، متأخر %d (%d٪)، مفتوح وموعده فات %d، بلا كادر %d، جزئي %d. الـ٣ أيام الي قبلها: %d٪.\n",
+			fmt.Fprintf(&b, "آخر ٧ أيام: %d حجز، متأخر %d (%d٪)، مفتوح وموعده فات %d، بلا كادر %d، جزئي %d. الـ٧ أيام الي قبلها: %d٪.\n",
 				lf.Recent.Total, lf.Recent.Late, lf.RecentPct, lf.Recent.OpenNow, lf.Recent.Unstaffed, lf.Recent.Partial, lf.PrevPct)
 			// (دازاي 11-01) چانت تنطبع بـ%+v فالليدر والزبون يطلعون عناوين ذاكرة (مؤشرات) —
 			// ماتركس ما يعرف منو الموظف. هسه نص صريح؛ الأسماء تنخفي وترجع بالقناع.

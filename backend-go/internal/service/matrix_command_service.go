@@ -78,7 +78,7 @@ func (s *MatrixCommandService) Feed() ([]repository.FeedRow, error) { return s.r
 
 func (s *MatrixCommandService) Trend() ([]repository.TrendDay, error) { return s.repo.DailyTrend(30) }
 
-// ── تركيز التأخير: آخر ٣ أيام مقابل الـ٣ الي قبلها ──
+// ── تركيز التأخير: آخر ٧ أيام مقابل الـ٧ الي قبلها ──
 
 type LateFocus struct {
 	Recent     *repository.LateWindow `json:"recent"`
@@ -101,16 +101,16 @@ func pct(a, b int) int {
 }
 
 func (s *MatrixCommandService) LateFocus() (*LateFocus, error) {
-	cur, err := s.repo.LateWindow(2, 0)
+	cur, err := s.repo.LateWindow(6, 0) // (دازاي 11-06) التأخير يومين فما فوق → نافذة أسبوع
 	if err != nil {
 		return nil, err
 	}
-	prev, err := s.repo.LateWindow(5, 3)
+	prev, err := s.repo.LateWindow(13, 7)
 	if err != nil {
 		return nil, err
 	}
 	f := &LateFocus{Recent: cur, Previous: prev, RecentPct: pct(cur.Late, cur.Total), PrevPct: pct(prev.Late, prev.Total), Severity: "LOW"}
-	if items, err := s.repo.LateItems(2, 0, 50); err == nil {
+	if items, err := s.repo.LateItems(6, 0, 50); err == nil {
 		f.Items = items
 	} else {
 		f.Items = []repository.LateItem{}
@@ -121,7 +121,7 @@ func (s *MatrixCommandService) LateFocus() (*LateFocus, error) {
 	}
 	switch {
 	case cur.Late == 0:
-		f.Cause, f.Impact, f.Suggestion = "ماكو تأخير بآخر ٣ أيام.", "—", "كمّلوا بنفس الوتيرة."
+		f.Cause, f.Impact, f.Suggestion = "ماكو تأخير بآخر ٧ أيام.", "—", "كمّلوا بنفس الوتيرة."
 	case cur.Unstaffed*2 >= cur.Late:
 		f.Cause = fmt.Sprintf("%d من الحجوزات بلا كادر مكلّف — نقص تغطية بقسم التنسيق.", cur.Unstaffed)
 		f.Suggestion = "كلّف كادر للحجوزات الفارغة، ووزّع المهام على الفترات الأزحم."
@@ -160,7 +160,7 @@ func (s *MatrixCommandService) buildContext() *askContext {
 	ctx := &askContext{}
 	add := func(f string, a ...any) { ctx.lines = append(ctx.lines, fmt.Sprintf(f, a...)) }
 	if lf, err := s.LateFocus(); err == nil {
-		add("الحجوزات آخر ٣ أيام: %d، المتأخر %d (%d٪)، بعده مفتوح وموعده فات %d، بلا كادر %d، جزئي %d. الـ٣ أيام الي قبلها: متأخر %d٪.",
+		add("الحجوزات آخر ٧ أيام: %d، المتأخر %d (%d٪)، بعده مفتوح وموعده فات %d، بلا كادر %d، جزئي %d. الـ٧ أيام الي قبلها: متأخر %d٪.",
 			lf.Recent.Total, lf.Recent.Late, lf.RecentPct, lf.Recent.OpenNow, lf.Recent.Unstaffed, lf.Recent.Partial, lf.PrevPct)
 	}
 	if b, err := s.business.View(); err == nil && b.MTD != nil {

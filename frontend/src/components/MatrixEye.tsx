@@ -397,7 +397,7 @@ function BossReport({ onGo }: { onGo: () => void }) {
       <p className="text-xs font-bold text-slate-500">📊 تقرير ماتركس الآن</p>
       {row('👥', `${r.people} موظف تحت المراقبة — ${r.attention} يحتاجون انتباه${r.red ? ` (${r.red} حمر)` : ''}`, '/?board=matrix', r.red ? 'text-red-700' : 'text-slate-800')}
       {row('💡', r.props ? `${r.props} اقتراح ينتظر قرارك` : 'ماكو اقتراحات تنتظرك', '/matrix/decisions', r.props ? 'text-amber-700' : 'text-slate-800')}
-      {r.latePct != null && row('⏰', `الحجوزات المتأخرة آخر ٣ أيام: ${r.latePct}%${r.lateOpen ? ` — ${r.lateOpen} مفتوحة وموعدها فات` : ''}`, '/?board=matrix', r.latePct >= 30 ? 'text-red-700' : 'text-slate-800')}
+      {r.latePct != null && row('⏰', `الحجوزات المتأخرة آخر ٧ أيام: ${r.latePct}%${r.lateOpen ? ` — ${r.lateOpen} مفتوحة وموعدها فات` : ''}`, '/?board=matrix', r.latePct >= 30 ? 'text-red-700' : 'text-slate-800')}
       {row('👁️', 'افتح مركز قيادة ماتركس', '/?board=matrix', 'font-bold text-brand-700')}
     </div>
   )
