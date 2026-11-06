@@ -11,6 +11,7 @@ import { setTrackingBooking } from '../utils/fieldTracker'
 import PartialCompleteDialog from '../components/PartialCompleteDialog'
 import SurveyReportDialog from '../components/SurveyReportDialog'
 import RoutePlanCard from '../components/RoutePlanCard'
+import WorkPhotoButton from '../components/WorkPhotoButton'
 import BookingProgressTimeline from '../components/BookingProgressTimeline'
 import EntityIdentity from '../components/EntityIdentity'
 import MyExtraTasks from '../components/MyExtraTasks'
@@ -768,6 +769,7 @@ export default function MyTasks() {
                         <div className="mb-2 rounded-lg bg-amber-50 px-3 py-1 text-xs font-bold text-amber-700">
                           🔄 جاري التنفيذ
                         </div>
+                        <WorkPhotoButton bookingId={b.id} />
                         <div className="grid grid-cols-1 gap-2 sm:grid-cols-4">
                           <input
                             type="number"

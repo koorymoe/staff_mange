@@ -87,6 +87,8 @@ let flushing = false
 /** يرسل الضغطات المحفوظة بالترتيب. يشتغل وحده من يرجع النت. */
 export async function flushStages(): Promise<number> {
   if (flushing || !navigator.onLine) return 0
+  // الصور أول (11-06): «تم» يتحقق من عدد الصور، فلازم توصل قبل ضغطة الإنجاز
+  await import('./offlinePhotos').then((m) => m.flushPhotos()).catch(swallow)
   flushing = true
   let sent = 0
   try {
