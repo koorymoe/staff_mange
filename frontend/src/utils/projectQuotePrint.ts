@@ -71,25 +71,30 @@ const header = (title: string) => `
 const chHead = (idx: number, desc: string, en = 'EQUIPMENT', big?: number) => `
     <div class="ch-head"><div><small dir="ltr">CHAPTER ${String(idx).padStart(2, '0')} / ${en}</small><p>${desc}</p></div>${big ? `<div class="bigwrap"><span class="big">${String(big).padStart(2, '0')}</span><i></i></div>` : ''}</div>`
 const footer = (page: number, total: number) => `
-  <div class="ftr"><span><b>شركة الأماني</b> · ${PHONE}</span><span>الصور توضيحية، والاعتماد على الأوصاف الفنية المدونة.</span><span class="pg">${String(page).padStart(2, '0')} / ${String(total).padStart(2, '0')}</span></div>`
+  <div class="ftr"><span><b>شركة الأماني</b> · <bdi dir="ltr">${PHONE}</bdi></span><span>الصور توضيحية، والاعتماد على الأوصاف الفنية المدونة.</span><span class="pg"><bdi dir="ltr">${String(page).padStart(2, '0')} / ${String(total).padStart(2, '0')}</bdi></span></div>`
 
 function card(it: ProjectItem, no: number, otherChapter?: string): string {
   const specs = parseSpecs(it.specs)
   const img = it.imageBase64 ? `<img src="${esc(abs(fileUrl(it.imageBase64)))}" alt="">` : illustration(it.category ?? it.productName)
+  // كثافة المواصفات: قليلة = صفوف أوسع؛ كثيرة = أضيق — حتى البطاقة تمتلي بلا فراغ ولا طفح
+  const dens = specs.length <= 4 ? 'roomy' : specs.length >= 10 ? 'tight' : ''
   return `
-  <div class="card">
+  <div class="card ${dens}">
+    <div class="card-img">
+      <div class="pic">${img}</div>
+      ${it.modelName ? `<bdi class="model-chip" dir="ltr">${esc(it.modelName)}</bdi>` : ''}
+      ${it.imageBase64 ? '' : '<small>صورة توضيحية للمنتج</small>'}
+    </div>
     <div class="card-body">
-      <div class="card-top"><span class="eq">EQUIPMENT / ${String(no).padStart(2, '0')}${otherChapter ? ` · ${esc(otherChapter)}` : ''}</span><span class="no">${String(no).padStart(2, '0')}</span></div>
+      <div class="card-top"><span class="no"><bdi dir="ltr">${String(no).padStart(2, '0')}</bdi></span>${otherChapter ? `<span class="eq">${esc(otherChapter)}</span>` : ''}</div>
       <h3>${esc(it.productName)}</h3>
-      ${it.modelName ? `<div class="model" dir="ltr">${esc(it.modelName)}</div>` : ''}
-      <ul class="specs">${specs.map((s) => `<li>${s.label ? `<b>${esc(s.label)}:</b> ` : ''}<bdi>${esc(s.value)}</bdi></li>`).join('')}</ul>
+      ${specs.length ? `<table class="specs">${specs.map((s) => `<tr>${s.label ? `<th>${esc(s.label)}</th><td dir="auto">${esc(s.value)}</td>` : `<td colspan="2" dir="auto">${esc(s.value)}</td>`}</tr>`).join('')}</table>` : '<div class="specs-empty">—</div>'}
       <div class="money">
-        <div><small>الكمية</small><b>${n(it.quantity)}</b></div>
-        <div><small>السعر المفرد د.ع</small><b>${n(it.unitPrice)}</b></div>
-        <div><small>الإجمالي د.ع</small><b class="tot">${n(it.quantity * it.unitPrice)}</b></div>
+        <div><small>الكمية</small><b><bdi dir="ltr">${n(it.quantity)}</bdi></b></div>
+        <div><small>السعر المفرد</small><b><bdi dir="ltr">${n(it.unitPrice)}</bdi></b></div>
+        <div class="tot"><small>الإجمالي (د.ع)</small><b><bdi dir="ltr">${n(it.quantity * it.unitPrice)}</bdi></b></div>
       </div>
     </div>
-    <div class="card-img"><div class="circle">${img}</div><span class="dia"></span><small>${it.imageBase64 ? '' : 'صورة توضيحية للمنتج'}</small></div>
   </div>`
 }
 
@@ -135,7 +140,7 @@ export function buildProjectQuoteHtml(q: ProjectQuote, logoUrl: string): string 
     <div class="collage"><span class="glow"></span>${collage}</div>
     <div class="cover-line"></div>
     <div class="cover-bottom">
-      <div><h3>ملف التجهيز الفني والتجاري</h3><small>عرض مشاريع | ${items.length} بنداً وملحق فني متكامل${q.quotationNumber ? ` · رقم العرض ${esc(q.quotationNumber)}` : ''}</small></div>
+      <div><h3>ملف التجهيز الفني والتجاري</h3><small>عرض مشاريع · ${items.length} بنداً وملحق فني متكامل</small>${q.quotationNumber ? `<small>رقم العرض <bdi dir="ltr">${esc(q.quotationNumber)}</bdi></small>` : ''}</div>
       <div class="prep" dir="ltr"><small>PREPARED BY <b>AL-AMANI</b></small><small>${esc(date)} · ${esc(city)}</small></div>
     </div>
   </section>`
@@ -176,10 +181,11 @@ export function buildProjectQuoteHtml(q: ProjectQuote, logoUrl: string): string 
     ${lastAlone ? `${chHead(chapters.length + 1, 'البند الأخير والملخص المالي التفصيلي لأسعار المشروع', 'FINANCIAL SUMMARY')}<div class="fin-card">${card(lastAlone.it, lastAlone.no, lastAlone.ch)}</div>` : ''}
     <h3 class="sec">كشف الكميات والأسعار <small dir="ltr">IQD · ${items.length} ITEMS</small></h3>
     <table class="tbl">
-      <thead><tr><th>ت</th><th>اسم المنتج</th><th>العدد</th><th>سعر المفرد</th><th>الإجمالي</th></tr></thead>
-      <tbody>${items.map((it, i) => `<tr><td>${String(i + 1).padStart(2, '0')}</td><td class="nm">${esc(it.productName)}</td><td>${n(it.quantity)}</td><td>${n(it.unitPrice)}</td><td><b>${n(it.quantity * it.unitPrice)}</b></td></tr>`).join('')}</tbody>
+      <thead><tr><th class="c">ت</th><th>اسم المنتج</th><th class="c">العدد</th><th class="num">سعر المفرد</th><th class="num">الإجمالي</th></tr></thead>
+      <tbody>${chapters.map((ch) => `<tr class="grp"><td colspan="5">${esc(ch.name)}</td></tr>` + ch.items.map(({ it, no }) => `<tr><td class="c"><bdi dir="ltr">${String(no).padStart(2, '0')}</bdi></td><td class="nm">${esc(it.productName)}</td><td class="c"><bdi dir="ltr">${n(it.quantity)}</bdi></td><td class="num"><bdi dir="ltr">${n(it.unitPrice)}</bdi></td><td class="num"><b><bdi dir="ltr">${n(it.quantity * it.unitPrice)}</bdi></b></td></tr>`).join('')).join('')}</tbody>
+      <tfoot><tr><td colspan="2">المجموع</td><td class="c"><bdi dir="ltr">${n(units)}</bdi></td><td></td><td class="num"><bdi dir="ltr">${n(total)}</bdi></td></tr></tfoot>
     </table>
-    <div class="grand"><div><h3>القيمة الإجمالية للمشروع</h3><p>${esc(arabicAmountWords(total))}</p></div><div class="gv"><b>${n(total)}</b><small>IQD</small></div></div>
+    <div class="grand"><div><h3>القيمة الإجمالية للمشروع</h3><p>${esc(arabicAmountWords(total))}</p></div><div class="gv"><b><bdi dir="ltr">${n(total)}</bdi></b><small>IQD</small></div></div>
     ${footer(page, totalPages)}
   </section>`
   page++
@@ -272,6 +278,34 @@ body { margin: 0; font-family: 'Tajawal', sans-serif; color: #1e293b; -webkit-pr
 .fin.with-card .tbl { font-size: 9.5px } .fin.with-card .tbl th { padding: 4px } .fin.with-card .tbl td { padding: 3px 6px }
 .fin.with-card .grand { margin-top: 4mm; padding: 5mm 7mm } .fin.with-card .gv b { font-size: 24px } .fin .sec { margin: 2mm 0 }
 .arc { z-index: 1 } .cover-top > * { position: relative; z-index: 2 } .collage { z-index: 2 }
+
+/* ═══ تنسيق v2 (دازاي 11-06: أقوى من النموذج) ═══ */
+.cover h1 { font-size: 44px; text-wrap: balance; max-width: 160mm }
+.arc { left: auto; right: 90mm; top: 40mm; width: 180mm; height: 180mm } .arc circle { stroke: rgba(255,255,255,.12) }
+.cover-bottom h3 { font-size: 18px; margin-bottom: 4px } .cover-bottom small { font-size: 10.5px; line-height: 1.7 }
+.card { display: grid; grid-template-columns: 38% 62%; border: 1px solid #dbe3f0; border-radius: 14px; overflow: hidden; height: 112mm; margin-bottom: 5mm; border-left: 0; box-shadow: 0 2px 10px rgba(15,23,42,.05) }
+.card-img { background: linear-gradient(180deg, #eef2fb, #f8fafc); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; padding: 8mm 6mm; border-left: 1px solid #e2e8f0 }
+.pic { width: 100%; height: 62mm; display: flex; align-items: center; justify-content: center } .pic img, .pic svg { max-width: 100%; max-height: 100%; object-fit: contain; filter: drop-shadow(0 10px 12px rgba(15,23,42,.15)) }
+.model-chip { background: #1e3a8a; color: #fff; font-size: 9px; font-weight: 700; padding: 3px 10px; border-radius: 20px; letter-spacing: .5px; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
+.card-img small { font-size: 8.5px; color: #94a3b8 }
+.card-body { padding: 5mm 6mm 0; display: flex; flex-direction: column; min-width: 0 }
+.card-top { display: flex; align-items: center; gap: 8px; margin-bottom: 2px } .no { background: #f59e0b; color: #fff; font-weight: 800; font-size: 13px; border-radius: 8px; padding: 2px 9px } .eq { background: #eef2ff; color: #1e3a8a; font-size: 9px; padding: 3px 8px; border-radius: 10px }
+.card h3 { margin: 4px 0 8px; color: #0f2a6b; font-size: 16px; line-height: 1.45 }
+table.specs { width: 100%; border-collapse: collapse; margin: 0 0 auto; table-layout: fixed } table.specs th, table.specs td { font-size: 10.5px; padding: 4px 6px; border-bottom: 1px solid #eef2f7; vertical-align: top; text-align: right; word-wrap: break-word }
+table.specs th { width: 34%; color: #1e3a8a; font-weight: 700 } table.specs td { color: #334155 } table.specs tr:nth-child(odd) td, table.specs tr:nth-child(odd) th { background: #f8fafc }
+.card.roomy table.specs th, .card.roomy table.specs td { padding: 11px 8px; font-size: 12.5px } .card.tight table.specs th, .card.tight table.specs td { padding: 2px 6px; font-size: 9.5px }
+.specs-empty { margin: auto 0; color: #cbd5e1 }
+.money { display: grid; grid-template-columns: 1fr 1fr 1.3fr; margin: 4mm -6mm 0; border-top: 1px solid #e2e8f0 } .money div { padding: 3mm 4mm; text-align: center; border-left: 1px solid #eef2f7 } .money div:last-child { border-left: 0 }
+.money small { display: block; font-size: 8.5px; color: #64748b; margin-bottom: 2px } .money b { font-size: 15px; color: #0f172a; font-variant-numeric: tabular-nums }
+.money .tot { background: #1e3a8a } .money .tot small { color: #c7d2fe } .money .tot b { color: #fff; font-size: 16px }
+.fin.with-card .fin-card .card { height: 72mm } .fin.with-card .fin-card .pic { height: 38mm } .fin.with-card .fin-card table.specs th, .fin.with-card .fin-card table.specs td { padding: 1px 6px; font-size: 9px }
+.page.fin { display: flex; flex-direction: column } .page.fin .grand { margin-top: auto; margin-bottom: 14mm }
+.tbl { font-variant-numeric: tabular-nums } .tbl th.num, .tbl td.num { text-align: left; padding-left: 10px } .tbl th.c, .tbl td.c { text-align: center; width: 9% }
+.tbl tr.grp td { background: #eef2fb !important; color: #1e3a8a; font-weight: 700; text-align: right; font-size: 10px; padding: 4px 8px }
+.tbl tfoot td { background: #0f2a6b; color: #fff; font-weight: 800; padding: 6px 8px; text-align: right } .tbl tfoot td.num { text-align: left } .tbl tfoot td.c { text-align: center }
+.ftr .pg bdi, .ftr bdi { unicode-bidi: isolate }
+.card { height: 101mm } table.specs { flex: 0 0 auto; margin: 0 } .money { margin-top: auto }
+.card-body { overflow: hidden }
 @media print { body { background: #fff } .page { margin: 0 } }
 </style></head><body>${coverPage}${overview}${chapterHtml}${summary}${annexHtml}</body></html>`.replace(/src="LOGO"/g, `src="${esc(abs(logoUrl))}"`)
 }
