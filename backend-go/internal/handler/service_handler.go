@@ -92,6 +92,23 @@ func (h *ServiceHandler) SetKind(w http.ResponseWriter, r *http.Request) {
 	WriteJSON(w, http.StatusOK, map[string]string{"kind": req.Kind})
 }
 
+// PUT /api/services/{id}/rules — {slaHours, minPhotos} (دازاي 11-06)
+func (h *ServiceHandler) SetRules(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		SlaHours  int `json:"slaHours"`
+		MinPhotos int `json:"minPhotos"`
+	}
+	if err := DecodeJSON(r, &req); err != nil {
+		WriteError(w, http.StatusBadRequest, "بيانات الطلب غير صحيحة")
+		return
+	}
+	if err := h.service.SetRules(r.PathValue("id"), req.SlaHours, req.MinPhotos); err != nil {
+		WriteError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	WriteJSON(w, http.StatusOK, req)
+}
+
 func (h *ServiceHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	if err := h.service.Delete(r.PathValue("id")); err != nil {
 		WriteError(w, http.StatusBadRequest, err.Error())

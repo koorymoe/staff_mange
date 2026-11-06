@@ -811,6 +811,15 @@ func (s *BookingService) SetMaterialsReady(id, employeeID string) (*model.Bookin
 	return s.repo.FindByID(id)
 }
 
+// requirePhotos (دازاي 11-06، فكرة ٤): «تم» ما يمشي قبل أقل عدد صور «بعد الشغل» تطلبه الخدمة.
+func (s *BookingService) requirePhotos(id string) error {
+	need, have, err := s.repo.PhotosShort(id)
+	if err != nil || need == 0 || have >= need {
+		return nil // خطأ القراءة ما يوقف الشغل
+	}
+	return fmt.Errorf("📷 هالخدمة تحتاج %d صور «بعد الشغل» قبل «تم» — مرفوع %d", need, have)
+}
+
 func (s *BookingService) Complete(id string, req model.CompleteBookingRequest) (*model.Booking, error) {
 	if req.AmountCollected != nil && *req.AmountCollected < 0 {
 		return nil, errors.New("المبلغ المحصّل ما يصير يكون بالسالب")
@@ -822,6 +831,9 @@ func (s *BookingService) Complete(id string, req model.CompleteBookingRequest) (
 		return nil, err
 	}
 	if err := model.CheckIQDPtr("الدفعة المقدمة", req.AdvancePaid); err != nil {
+		return nil, err
+	}
+	if err := s.requirePhotos(id); err != nil {
 		return nil, err
 	}
 	if err := s.repo.Complete(id, req); err != nil {

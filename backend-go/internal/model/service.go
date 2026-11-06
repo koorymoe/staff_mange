@@ -43,6 +43,11 @@ type Service struct {
 	// ⚠️ عمود بالجدول → لازم حقل هنا (SELECT *).
 	ServiceKind *string   `db:"serviceKind" json:"serviceKind"`
 	CreatedAt   time.Time `db:"createdAt" json:"createdAt"`
+	// SlaHours وقت الالتزام ويا الزبون من تسجيل الحجز (دازاي 11-06: ٤٨ للكل افتراضياً).
+	// ⚠️ عمود بالجدول → لازم حقل هنا (SELECT *).
+	SlaHours int `db:"slaHours" json:"slaHours"`
+	// MinPhotos أقل عدد صور قبل «تم» — صفر = بلا شرط.
+	MinPhotos int `db:"minPhotos" json:"minPhotos"`
 	Skills      []Skill   `db:"-" json:"skills"`
 }
 

@@ -90,6 +90,41 @@ func (a *MatrixAgent) RegisterReadTools(d AgentDeps) {
 				r.Submitted, r.Audited, r.Approved, r.Free, r.Mismatch, r.PriceErr, r.NoInvoice, money(r.Billed), money(r.Collected)), nil
 		}})
 
+	// ⏱ مواعيد الالتزام ويا الزبون (دازاي 11-06)
+	a.AddTool(agentTool{Name: "sla_board", Desc: "الحجوزات الي قرب أو فات موعد التزامها ويا الزبون (من تسجيل الحجز + ساعات الخدمة، افتراضي ٤٨). بلا المنتهي والملغي والانتظار.",
+		Run: func(map[string]any, *nameMask) (string, error) {
+			rows, err := SlaBoard(a.db, 24)
+			if err != nil {
+				return "", err
+			}
+			if len(rows) == 0 {
+				return "ماكو حجز قريب من موعد الالتزام ولا فات.", nil
+			}
+			var b strings.Builder
+			over := 0
+			for _, r := range rows {
+				if r.HoursLeft < 0 {
+					over++
+				}
+			}
+			fmt.Fprintf(&b, "%d حجز: %d فات موعده، %d باقيله أقل من ٢٤ ساعة.\n", len(rows), over, len(rows)-over)
+			for i, r := range rows {
+				if i == 25 {
+					break
+				}
+				state := fmt.Sprintf("باقي %.0f ساعة", r.HoursLeft)
+				if r.HoursLeft < 0 {
+					state = fmt.Sprintf("فات بـ%.0f ساعة", -r.HoursLeft)
+				}
+				svc := ""
+				if r.Service != nil {
+					svc = *r.Service
+				}
+				fmt.Fprintf(&b, "- %s %s: %s\n", r.Code, svc, state)
+			}
+			return b.String(), nil
+		}})
+
 	a.AddTool(agentTool{Name: "late_bookings", Desc: "التأخير بالحجوزات آخر ٧ أيام مقابل الـ٧ الي قبلها، والحجوزات المتأخرة نفسها (الكود والموعد والحالة). المتأخر = عدّى يومين أو أكثر على يوم موعده؛ «زبون ما رد» و«الزبون يقرر» مو تأخير.",
 		Run: func(map[string]any, *nameMask) (string, error) {
 			if d.Command == nil {

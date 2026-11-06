@@ -1,3 +1,4 @@
+import ServiceRulesEditor from '../components/ServiceRulesEditor'
 import { useEffect, useState } from 'react'
 import { api, type Employee, type Service, type ServiceManager } from '../api'
 
@@ -164,6 +165,8 @@ export default function ServiceManagersPage() {
           </div>
         )}
       </div>
+
+      <ServiceRulesEditor services={services} />
 
       {loading && <p className="py-16 text-center text-slate-400">جاري التحميل...</p>}
 

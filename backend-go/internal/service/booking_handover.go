@@ -126,6 +126,9 @@ func (s *BookingService) TechResolve(id, empID, notes string) (*model.Booking, e
 	if b.TechDiagnosedAt == nil {
 		return nil, errors.New("اكتب الكشف أول")
 	}
+	if err := s.requirePhotos(id); err != nil {
+		return nil, err
+	}
 	if err := s.repo.TechResolve(id, notes); err != nil {
 		return nil, err
 	}

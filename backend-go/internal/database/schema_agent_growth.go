@@ -74,5 +74,19 @@ func agentGrowthMigrations() []Migration {
 			);
 			CREATE INDEX IF NOT EXISTS "AgentEvalRun_agent_idx" ON "AgentEvalRun" (agent, "createdAt" DESC);
 		`,
+	}, {
+		// (دازاي 11-06، فكرتين ١ و٤) وقت الالتزام ويا الزبون (٤٨ ساعة للكل) وأقل عدد صور قبل «تم» (صفر = بلا شرط)
+		// وجدول تنبيهات الالتزام حتى ما يتكرر التنبيه.
+		Version: "0454_service_sla_min_photos",
+		SQL: `
+			ALTER TABLE "Service" ADD COLUMN IF NOT EXISTS "slaHours" INT NOT NULL DEFAULT 48;
+			ALTER TABLE "Service" ADD COLUMN IF NOT EXISTS "minPhotos" INT NOT NULL DEFAULT 0;
+			CREATE TABLE IF NOT EXISTS "SlaAlert" (
+				"bookingId" TEXT NOT NULL REFERENCES "Booking"(id) ON DELETE CASCADE,
+				kind TEXT NOT NULL,
+				"createdAt" TIMESTAMPTZ NOT NULL DEFAULT now(),
+				PRIMARY KEY ("bookingId", kind)
+			);
+		`,
 	}}
 }

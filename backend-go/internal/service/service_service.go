@@ -2,6 +2,7 @@ package service
 
 import (
 	"errors"
+	"fmt"
 	"strings"
 
 	"github.com/google/uuid"
@@ -31,6 +32,17 @@ func (s *ServiceCatalogService) SetManagerHandlesPaperwork(serviceID string, on 
 //
 // ⚠️ القيمة تنتحقّق هنا: نص حر على العمود يخلي «gps» و«Gps» و«جي بي
 // اس» ثلاث قيم مختلفة، والترشيح يفشل بهدوء بعد شهر.
+// SetRules وقت الالتزام (١–٧٢٠ ساعة) وأقل صور قبل «تم» (٠–٢٠).
+func (s *ServiceCatalogService) SetRules(serviceID string, slaHours, minPhotos int) error {
+	if slaHours < 1 || slaHours > 720 {
+		return fmt.Errorf("وقت الالتزام بين ١ و٧٢٠ ساعة")
+	}
+	if minPhotos < 0 || minPhotos > 20 {
+		return fmt.Errorf("الصور بين ٠ و٢٠")
+	}
+	return s.repo.SetRules(serviceID, slaHours, minPhotos)
+}
+
 func (s *ServiceCatalogService) SetKind(serviceID, kind string) error {
 	if serviceID == "" {
 		return errors.New("معرّف الخدمة مطلوب")

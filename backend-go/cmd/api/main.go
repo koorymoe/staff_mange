@@ -1187,6 +1187,21 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	// نوع الخدمة (جي بي اس / داش كام) — نفس حارس «الورق على المسؤول»:
 	// تأشير كتالوك يخص المالك ومدير النظام.
 	mux.Handle("PUT /api/services/{id}/kind", middleware.Chain(http.HandlerFunc(serviceHandler.SetKind), requireAuth, requireAdmin))
+	mux.Handle("PUT /api/services/{id}/rules", middleware.Chain(http.HandlerFunc(serviceHandler.SetRules), requireAuth, requireAdmin))
+	// ⏱ مواعيد الالتزام ويا الزبون (دازاي 11-06): لوحة للمنسّق + تنبيه مرة وحدة لكل حجز
+	mux.Handle("GET /api/sla/board", middleware.Chain(handler.SlaBoardHandler(db), requireAuth, requireBookingCoord))
+	slaAlerter := service.NewSlaAlerter(db, func(kind, msg string) {
+		if kind == "OVERDUE" {
+			_ = notificationRepo.CreateForRole("ADMIN", "SLA", msg)
+			return
+		}
+		_ = notificationRepo.CreateForPermission("coordinator", "SLA", msg)
+	})
+	safeguard.Loop("تنبيهات الالتزام", 4*time.Minute, 15*time.Minute, func() {
+		if err := slaAlerter.Tick(); err != nil {
+			log.Printf("sla: %v", err)
+		}
+	})
 
 	// العملاء — أي مسجل دخول يقدر يبحث وينشئ عميل (يطابق سلوك المبيعات بالباك إند القديم)
 	// ═══ بيانات الزبائن — أسماء وأرقام هواتف وعناوين ═══

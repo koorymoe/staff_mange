@@ -2317,6 +2317,15 @@ func (r *BookingRepository) TechRequestCrew(id string) error {
 	return err
 }
 
+// PhotosShort كم صورة «بعد الشغل» ناقصة حتى يوصل أقل عدد تطلبه الخدمة (دازاي 11-06).
+// صفر = يكفي (أو الخدمة ما تطلب صور).
+func (r *BookingRepository) PhotosShort(id string) (need, have int, err error) {
+	err = r.db.QueryRow(`SELECT COALESCE(s."minPhotos", 0),
+		(SELECT count(*) FROM "WorkPhoto" w WHERE w."bookingId" = b.id AND w.phase = 'AFTER')
+		FROM "Booking" b LEFT JOIN "Service" s ON s.id = b."serviceId" WHERE b.id = $1`, id).Scan(&need, &have)
+	return
+}
+
 func (r *BookingRepository) TechResolve(id, notes string) error {
 	res, err := r.db.Exec(`UPDATE "Booking" SET status = 'COMPLETED', "completedAt" = now(),
 		"completionNotes" = $2, "updatedAt" = now(),

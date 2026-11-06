@@ -79,6 +79,12 @@ func (r *ServiceRepository) SetKind(serviceID, kind string) error {
 	return err
 }
 
+// SetRules وقت الالتزام وأقل صور لخدمة (دازاي 11-06).
+func (r *ServiceRepository) SetRules(serviceID string, slaHours, minPhotos int) error {
+	_, err := r.db.Exec(`UPDATE "Service" SET "slaHours" = $1, "minPhotos" = $2 WHERE id = $3`, slaHours, minPhotos, serviceID)
+	return err
+}
+
 func (r *ServiceRepository) Create(s *model.Service) error {
 	_, err := r.db.NamedExec(`
 		INSERT INTO "Service" (id, name, category, division)

@@ -77,6 +77,10 @@ export interface Service {
    *  للخدمات الي يكفيها فني واحد — جي بي اس وداش كام.
    *  ⚠️ منفصل عن `requiresDeviceInfo` عمداً: معنيان مختلفان. */
   managerHandlesPaperwork?: boolean
+  /** ساعات الالتزام ويا الزبون من تسجيل الحجز (افتراضي ٤٨) */
+  slaHours?: number
+  /** أقل صور «بعد الشغل» قبل «تم» — صفر = بلا شرط */
+  minPhotos?: number
 }
 
 export interface ServiceManager {
