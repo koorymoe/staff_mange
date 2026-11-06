@@ -150,3 +150,26 @@ func TestAgentActionLogLive(t *testing.T) {
 		t.Fatalf("اسم حقيقي بالسجل: %s", input)
 	}
 }
+
+// كمال (IRIS): الأدوات الكاتبة تنسجل، وأدوات القراءة لا، والطويل ينقص.
+func TestLogAgentActionKamalLive(t *testing.T) {
+	url := os.Getenv("DATABASE_URL")
+	if url == "" {
+		t.Skip("بلا DATABASE_URL")
+	}
+	db := sqlx.MustConnect("postgres", url)
+	t.Cleanup(func() { db.Close() })
+	if err := database.Migrate(db, "", ""); err != nil {
+		t.Fatal(err)
+	}
+	agent := "IRISTEST"
+	t.Cleanup(func() { db.Exec(`DELETE FROM "AgentActionLog" WHERE agent = $1`, agent) }) //nolint:errcheck
+	logAgentAction(db, agent, "set_reminder", "", strings.Repeat("ب", 900), "تم", false)
+	logAgentAction(db, agent, "find_booking", "", "{}", "x", false)
+	logAgentAction(nil, agent, "set_reminder", "", "", "", false) // بلا قاعدة ما يطيح
+	var n, l int
+	_ = db.QueryRow(`SELECT count(*), max(char_length(input)) FROM "AgentActionLog" WHERE agent = $1`, agent).Scan(&n, &l)
+	if n != 1 || l > 501 {
+		t.Fatalf("n=%d len=%d", n, l)
+	}
+}

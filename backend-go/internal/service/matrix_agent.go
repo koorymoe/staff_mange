@@ -453,7 +453,24 @@ func (a *MatrixAgent) ChatStream(feature, system string, history []AgentTurn, me
 // logAction يسجّل أي أداة مو بقائمة القراءة بـAgentActionLog (فكرة ٦) — المدخلات والنتيجة
 // مخفية الأسماء ومقصوصة. فشل السجل ما يوقف الوكيل.
 func (a *MatrixAgent) logAction(tool, actor, input, out string, failed bool, mask *nameMask) {
-	if a.db == nil || evalReadTools[tool] {
+	if evalReadTools[tool] {
+		return
+	}
+	name := a.name
+	if name == "" {
+		name = "MATRIX"
+	}
+	logAgentAction(a.db, name, tool, actor, mask.Hide(input), out, failed)
+}
+
+// agentReadOnly أدوات قراءة بس — ما تنسجل بسجل الأفعال (كل وكيل).
+var agentReadOnly = map[string]bool{"find_booking": true, "booking_timeline": true, "list_reminders": true, "my_notes": true,
+	"pending_decisions": true, "price_lookup": true, "today_facts": true, "whoami": true, "attendance_now": true}
+
+// logAgentAction يكتب سطر بـAgentActionLog (فكرة ٦). المدخلات لازم تجي مخفية الأسماء من الوكيل
+// الي يخفي (ماتركس)؛ كمال يشتغل بالأسماء داخلياً والسجل داخلي (ما يطلع للذكاء).
+func logAgentAction(db *sqlx.DB, agent, tool, actor, input, out string, failed bool) {
+	if db == nil || agentReadOnly[tool] {
 		return
 	}
 	cut := func(s string, n int) string {
@@ -462,12 +479,8 @@ func (a *MatrixAgent) logAction(tool, actor, input, out string, failed bool, mas
 		}
 		return s
 	}
-	name := a.name
-	if name == "" {
-		name = "MATRIX"
-	}
-	_, _ = a.db.Exec(`INSERT INTO "AgentActionLog" (agent, tool, "actorId", input, result, failed) VALUES ($1, $2, NULLIF($3, ''), $4, $5, $6)`,
-		name, tool, actor, cut(mask.Hide(input), 500), cut(out, 500), failed)
+	_, _ = db.Exec(`INSERT INTO "AgentActionLog" (agent, tool, "actorId", input, result, failed) VALUES ($1, $2, NULLIF($3, ''), $4, $5, $6)`,
+		agent, tool, actor, cut(input, 500), cut(out, 500), failed)
 }
 
 // callTool ينفذ أداة ويرجّع مخرجاتها مخفية الأسماء ومقصوصة.

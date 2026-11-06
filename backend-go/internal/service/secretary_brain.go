@@ -283,6 +283,11 @@ func (b *SecretaryBrain) Reply(ctx context.Context, t SecretaryTurn) (*Secretary
 			case anthropic.ToolUseBlock:
 				emit(AgentEvent{Type: "tool", Name: blk.Name})
 				out, isErr := b.callTool(byName, blk, mask, res, seen)
+				actor := ""
+				if tc != nil {
+					actor = tc.UserID
+				}
+				logAgentAction(b.db, "IRIS", blk.Name, actor, string(blk.Input), out, isErr) // 📜 فكرة ٦
 				results = append(results, anthropic.NewToolResultBlock(blk.ID, out, isErr))
 			}
 		}
