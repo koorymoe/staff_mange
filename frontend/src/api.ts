@@ -553,6 +553,8 @@ export const api = {
   addChecklistPhotos: (id: string, photoUrls: string[]) =>
     request<ProjectChecklist>(`/checklists/${id}/photos`, { method: 'PUT', body: JSON.stringify({ photoUrls }) }),
   getServices: () => request<Service[]>('/services'),
+  suggestProductSpecs: (name: string, modelName: string) =>
+    request<{ specs: string }>('/products/specs-suggest', { method: 'POST', body: JSON.stringify({ name, modelName }) }),
   // توقف العمل: الليدر بدأ وما كدر يكمّل. السبب إجباري.
   stopBookingWork: (id: string, reason: string) =>
     request<Booking>(`/bookings/${id}/stop-work`, { method: 'PUT', body: JSON.stringify({ reason }) }),

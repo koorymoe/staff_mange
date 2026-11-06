@@ -41,6 +41,8 @@ export default function ProductsPage({ embedded }: { embedded?: boolean } = {}) 
   const [specs, setSpecs] = useState('')
   const [source, setSource] = useState('')
   const [modelName, setModelName] = useState('')
+  const [specsBusy, setSpecsBusy] = useState(false)
+  const [specsNote, setSpecsNote] = useState('')
   const [availability, setAvailability] = useState<ProductAvailability>('ON_DEMAND')
   const [serviceText, setServiceText] = useState('')
   // خدماتنا تنعرض بقائمة منسدلة، والتقني يكدر يكتب وحدة مو موجودة —
@@ -217,7 +219,32 @@ export default function ProductsPage({ embedded }: { embedded?: boolean } = {}) 
 
         {/* المواصفات خانة كبيرة بصف لحالها */}
         <div className="mt-4">
-          <label style={labelStyle}>المواصفات</label>
+          <div className="flex items-center justify-between gap-2 flex-wrap">
+            <label style={labelStyle}>المواصفات</label>
+            <button
+              type="button"
+              disabled={specsBusy || (!name.trim() && !modelName.trim())}
+              onClick={async () => {
+                setSpecsBusy(true)
+                setSpecsNote('')
+                try {
+                  const r = await api.suggestProductSpecs(name.trim(), modelName.trim())
+                  if (r.specs) {
+                    setSpecs(r.specs)
+                    setSpecsNote('🤖 اقتراح ماتركس — راجعها قبل الحفظ')
+                  } else setSpecsNote('ماتركس ما يعرف هذا الموديل بثقة — اكتبها يدوي')
+                } catch (e) {
+                  setSpecsNote(e instanceof Error ? e.message : 'صار خطأ')
+                } finally {
+                  setSpecsBusy(false)
+                }
+              }}
+              className="text-xs px-2 py-1 rounded-lg border border-t-border disabled:opacity-50"
+            >
+              {specsBusy ? '…ماتركس يكتب' : '🤖 كمّل المواصفات من الموديل'}
+            </button>
+          </div>
+          {specsNote && <p className="text-xs text-t-muted mb-1">{specsNote}</p>}
           <textarea
             value={specs}
             onChange={(e) => setSpecs(e.target.value)}

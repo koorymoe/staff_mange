@@ -2288,6 +2288,8 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	mux.Handle("GET /api/products", middleware.Chain(http.HandlerFunc(productHandler.List), requireAuth))
 	mux.Handle("POST /api/products", middleware.Chain(http.HandlerFunc(productHandler.Create), requireAuth, requireContentTech))
 	mux.Handle("PUT /api/products/{id}", middleware.Chain(http.HandlerFunc(productHandler.Update), requireAuth, requireContentTech))
+	specsSuggest := &handler.ProductSpecsSuggest{}
+	mux.Handle("POST /api/products/specs-suggest", middleware.Chain(http.HandlerFunc(specsSuggest.Suggest), requireAuth, requireContentTech))
 	mux.Handle("DELETE /api/products/{id}", middleware.Chain(http.HandlerFunc(productHandler.Delete), requireAuth, requireAdmin))
 
 	// نظام GPS — عملاء / شرائح SIM / طلبات الأجهزة / التجديد / الصيانة / الأسعار / الإحصائيات
@@ -3127,6 +3129,13 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 			return run.Answer, nil
 		})
 		orgService.SetTaskCreator(extraTaskRepo.CreateFor)
+		specsSuggest.Ask = func(system, task string) (string, error) {
+			run, err := agent.Run("CHAT", system, task)
+			if err != nil {
+				return "", err
+			}
+			return run.Answer, nil
+		}
 		orgHandler := handler.NewOrgHandler(orgService, notificationRepo)
 		orgHandler.PersonalScore = func(empID, period string) (*float64, []service.EvidenceLine) {
 			d, err := matrixScoreService.Detail(empID, period)
