@@ -39,6 +39,7 @@ func NewSecretaryAgent(d SecretaryDeps, tc *SecretaryTurnCtx) *MatrixAgent {
 	registerSecretaryTools(a, d.Repo, tc)
 	a.RegisterSuggestTool(d.DB, "IRIS", d.NotifyOwner)
 	a.RegisterChangelogTool()
+	a.RegisterGrowthTools(d.DB, "IRIS", d.NotifyOwner)
 	registerQuoteTools(a, d.Quotes, tc)
 	registerFileTools(a, tc)
 	registerReminderTools(a, tc)

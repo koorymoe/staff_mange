@@ -37,7 +37,10 @@ export default function AiSuggestionsPage() {
   )
 }
 function Suggestions() {
-  const [filter, setFilter] = useState<'all' | 'code' | 'new' | 'verify'>('all')
+  const [filter, setFilter] = useState<
+    'all' | 'code' | 'new' | 'verify' | 'lessons' | 'health'
+  >('all')
+  const extra = filter === 'lessons' || filter === 'health'
   const [items, setItems] = useState<Suggestion[] | null>(null)
   const [reload, setReload] = useState(0)
   const [error, setError] = useState('')
@@ -60,6 +63,7 @@ function Suggestions() {
     }
   }, [pending])
   useEffect(() => {
+    if (filter === 'lessons' || filter === 'health') return
     let alive = true
     const query = new URLSearchParams({
       status: filter === 'new' ? 'NEW' : filter === 'verify' ? 'VERIFYING' : '',
@@ -115,6 +119,8 @@ function Suggestions() {
             ['code', 'يحتاج برمجة'],
             ['new', 'الجديد'],
             ['verify', 'ينتظر التأكد'],
+            ['lessons', '📘 دروس مقترحة'],
+            ['health', '🩺 صحة الوكلاء'],
           ] as const
         ).map(([key, label]) => (
           <button
@@ -149,11 +155,13 @@ function Suggestions() {
         </p>
       )}
       {success && <p role="status">{success}</p>}
-      {!items && !error && <p role="status">دا أجيب اقتراحات الوكلاء…</p>}
-      {items?.length === 0 && (
+      {filter === 'lessons' && <ProposedLessons />}
+      {filter === 'health' && <AgentHealth />}
+      {!extra && !items && !error && <p role="status">دا أجيب اقتراحات الوكلاء…</p>}
+      {!extra && items?.length === 0 && (
         <p className="ai-brain-notice">ماكو اقتراحات بهالفلتر لحد هسه.</p>
       )}
-      {items?.map((item) => (
+      {!extra && items?.map((item) => (
         <article className="ai-suggestion-card" key={item.id}>
           <div className="ai-suggestion-meta">
             <span>{names[item.agent.toUpperCase()] ?? item.agent}</span>
@@ -259,5 +267,148 @@ function Suggestions() {
         </div>
       )}
     </div>
+  )
+}
+
+// ═══ 📘 دروس اقترحها الوكلاء على نفسهم (دازاي 11-06) — ما تدخل تعليماتهم إلا بموافقة المالك ═══
+type Lesson = {
+  id: string
+  agent: string
+  text: string
+  context: string | null
+  createdAt: string
+}
+function ProposedLessons() {
+  const [rows, setRows] = useState<Lesson[] | null>(null)
+  const [err, setErr] = useState('')
+  const [reload, setReload] = useState(0)
+  useEffect(() => {
+    apiRequest<Lesson[]>('/matrix/lessons?status=PROPOSED')
+      .then(setRows)
+      .catch((e) => setErr(e.message))
+  }, [reload])
+  const act = async (id: string, approve: boolean) => {
+    try {
+      await apiRequest(
+        `/matrix/lessons/${encodeURIComponent(id)}${approve ? '/approve' : ''}`,
+        { method: approve ? 'POST' : 'DELETE' },
+      )
+      setReload((n) => n + 1)
+    } catch (e) {
+      setErr((e as Error).message)
+    }
+  }
+  if (err) return <p role="alert" className="ai-brain-notice">{err}</p>
+  if (!rows) return <p role="status">دا أجيب الدروس…</p>
+  if (rows.length === 0)
+    return <p className="ai-brain-notice">ماكو دروس تنتظر موافقتك.</p>
+  return (
+    <>
+      <p>
+        الوكيل لاحظ غلط بنفسه واقترح هالدرس. «اعتمد» يدخله بتعليماته من الرسالة
+        الجاية، و«ارفض» يشيله.
+      </p>
+      {rows.map((l) => (
+        <article className="ai-suggestion-card" key={l.id}>
+          <div className="ai-suggestion-meta">
+            <span>{names[l.agent.toUpperCase()] ?? l.agent}</span>
+          </div>
+          <h2>{l.text}</h2>
+          {l.context && <p>ليش: {l.context}</p>}
+          <div className="ai-suggestion-actions">
+            <button className="accept" onClick={() => void act(l.id, true)}>
+              اعتمد
+            </button>
+            <button className="reject" onClick={() => void act(l.id, false)}>
+              ارفض
+            </button>
+          </div>
+        </article>
+      ))}
+    </>
+  )
+}
+
+// ═══ 🩺 صحة الوكلاء: الأدوات الفاشلة، الأسئلة الي ما انجاوبت، وتقييم المستخدمين ═══
+type Health = Record<
+  string,
+  {
+    tools: {
+      tool: string
+      calls: number
+      failures: number
+      avgMs: number
+      lastError: string | null
+    }[]
+    gaps: { kind: string; count: number; missing: string }[]
+    good: number
+    bad: number
+    badNotes: string[]
+    proposedLessons: number
+  }
+>
+function AgentHealth() {
+  const [h, setH] = useState<Health | null>(null)
+  const [err, setErr] = useState('')
+  useEffect(() => {
+    apiRequest<Health>('/ai/health')
+      .then(setH)
+      .catch((e) => setErr(e.message))
+  }, [])
+  if (err) return <p role="alert" className="ai-brain-notice">{err}</p>
+  if (!h) return <p role="status">دا أجيب صحة الوكلاء…</p>
+  return (
+    <>
+      <p>آخر ٧ أيام (والأسئلة الي ما انجاوبت آخر ١٤ يوم).</p>
+      {Object.entries(h).map(([agent, a]) => {
+        const failing = a.tools.filter((t) => t.failures > 0)
+        const total = a.tools.reduce((n, t) => n + t.calls, 0)
+        return (
+          <article className="ai-suggestion-card" key={agent}>
+            <div className="ai-suggestion-meta">
+              <span>{names[agent] ?? agent}</span>
+              <span className="ai-suggestion-badge">
+                👍 {a.good} · 👎 {a.bad}
+              </span>
+              <span className="ai-suggestion-badge">{total} نداء أداة</span>
+              {a.proposedLessons > 0 && (
+                <span className="ai-suggestion-badge">
+                  📘 {a.proposedLessons} درس ينتظرك
+                </span>
+              )}
+            </div>
+            <h2>أدوات تفشل</h2>
+            {failing.length === 0 ? (
+              <p>ماكو فشل ✅</p>
+            ) : (
+              failing.slice(0, 8).map((t) => (
+                <p key={t.tool}>
+                  {t.tool}: {t.failures} من {t.calls}
+                  {t.lastError ? ` — ${t.lastError}` : ''}
+                </p>
+              ))
+            )}
+            <h2>أسئلة ما گدر يجاوبها</h2>
+            {a.gaps.length === 0 ? (
+              <p>ماكو ✅</p>
+            ) : (
+              a.gaps.slice(0, 8).map((g) => (
+                <p key={g.kind}>
+                  {g.kind} ×{g.count}: {g.missing}
+                </p>
+              ))
+            )}
+            {a.badNotes.length > 0 && (
+              <>
+                <h2>شنو ما عجب المستخدمين</h2>
+                {a.badNotes.map((n, i) => (
+                  <p key={i}>👎 {n}</p>
+                ))}
+              </>
+            )}
+          </article>
+        )
+      })}
+    </>
   )
 }

@@ -1,4 +1,5 @@
 import { Fragment, useEffect, useRef, useState, type ReactNode } from 'react'
+import AgentFeedback from './AgentFeedback'
 import {
   api,
   streamMatrixChat,
@@ -638,6 +639,11 @@ function MatrixChatView({ admin }: { admin: boolean }) {
                         ''
                       )}
                     </span>
+                    {cur && !m.id.startsWith('fix') && (
+                      <AgentFeedback
+                        path={`/matrix/chats/${cur}/messages/${m.id}/feedback`}
+                      />
+                    )}
                     {!admin ? null : learned.has(m.id) ? (
                       <span className="font-bold text-emerald-600">
                         ✓ ماتركس تعلّم

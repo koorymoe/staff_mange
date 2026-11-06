@@ -68,6 +68,21 @@ func (h *TelegramBotHandler) ReaderReports(w http.ResponseWriter, r *http.Reques
 	h.List(w, r)
 }
 
+// ReaderSuggestions GET /api/bot-reader/suggestions — اقتراحات الوكلاء الي وافق عليها المالك وتحتاج
+// برمجة (دازاي 11-06): الوكيل يطلب، المالك يوافق، Claude يقراها بالفحص وينفذ بموافقة.
+func (h *TelegramBotHandler) ReaderSuggestions(w http.ResponseWriter, r *http.Request) {
+	if !h.readerOK(r) {
+		http.NotFound(w, r)
+		return
+	}
+	rows, err := h.repo.AcceptedCodeSuggestions()
+	if err != nil {
+		WriteError(w, http.StatusInternalServerError, "تعذر")
+		return
+	}
+	WriteJSON(w, http.StatusOK, rows)
+}
+
 // ReaderFile GET /api/bot-reader/files/{key...} — صور البلاغات بس (مجلد botreports).
 func (h *TelegramBotHandler) ReaderFile(w http.ResponseWriter, r *http.Request) {
 	key := r.PathValue("key")

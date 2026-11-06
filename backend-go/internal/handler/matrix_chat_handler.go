@@ -70,6 +70,7 @@ const chatSystemPrompt = `أنت «ماتركس»، الذكاء الاصطنا�
 - جاوب على قد الرسالة: تحية = رد قصير بس، وسؤال محدد = جوابه بس، بلا إضافات ما انطلبت. التحليل والاقتراحات لما يسأل سؤال مفتوح.
 - فكّر بالإنكليزي (التفكير يطلع للمالك)، والجواب بالعراقي.
 - إذا لاحظت نقص حقيقي بأدواتك أو بالنظام (سؤال ما تگدر تجاوبه، شي يتكرر)، سجّله بـsuggest_improvement وكمّل.
+- إذا ما گدرت تجاوب لأن ماكو أداة أو بيانات، سجّلها بـreport_gap (وإذا تكررت تصير طلب تحديث لحالها). وإذا لاحظت غلط بجوابك يتكرر، اقترح درس على نفسك بـpropose_lesson.
 - إذا انسألت شنو انضاف أو تغيّر أو تصلّح بالنظام، جاوب من system_changelog.
 - إذا عندك اقتراحات المالك گال عليها «تم»، شوفها بـverify_suggestion (list) وتأكد بأدواتك إنها صدگ انضافت، وسجّل النتيجة (record). سوّيها بأول فرصة بالمحادثة، بجملة قصيرة للمالك.
 - سولف طبيعي باللهجة العراقية مثل صاحب ذكي: ردود حيّة ومتنوعة، مو قالب. جاوب على أي سؤال، حتى العام.
@@ -389,21 +390,13 @@ func parseChatImage(u string) (string, string, bool) {
 // ── ماتركس يتعلّم: تصحيح المالك يصير درس دائم (قرار (ع) 10-11) ──
 
 func (h *MatrixChatHandler) lessonsBlock() string {
-	rows := []string{}
-	errlog.Err(h.db.Select(&rows, `SELECT text FROM "MatrixLesson" WHERE active ORDER BY "createdAt" DESC LIMIT 50`))
-	if len(rows) == 0 {
-		return ""
-	}
-	var b strings.Builder
-	b.WriteString("\n\nدروس من المالك (صحّحك بيها قبل) — التزم بيها وقدّمها على أي استنتاج ثاني:\n")
-	for _, t := range rows {
-		b.WriteString("- " + t + "\n")
-	}
-	return b.String()
+	return service.LessonsBlock(h.db, "MATRIX")
 }
 
 type lessonRow struct {
 	ID        string    `db:"id" json:"id"`
+	Agent     string    `db:"agent" json:"agent"`
+	Status    string    `db:"status" json:"status"`
 	Text      string    `db:"text" json:"text"`
 	Context   *string   `db:"context" json:"context"`
 	By        *string   `db:"by" json:"by"`
@@ -450,17 +443,36 @@ func (h *MatrixChatHandler) Correct(w http.ResponseWriter, r *http.Request) {
 	WriteJSON(w, http.StatusOK, map[string]bool{"ok": true})
 }
 
-// GET /api/matrix/lessons
+// GET /api/matrix/lessons?status=PROPOSED — المعتمدة (افتراضي) أو المقترحة من الوكلاء، لكل الوكلاء
 func (h *MatrixChatHandler) Lessons(w http.ResponseWriter, r *http.Request) {
 	rows := []lessonRow{}
-	errlog.Err(h.db.Select(&rows, `SELECT l.id, l.text, l.context, e.name AS by, l."createdAt" FROM "MatrixLesson" l
-		LEFT JOIN "Employee" e ON e.id = l."createdById" WHERE l.active ORDER BY l."createdAt" DESC`))
+	cond := `l.active AND l.status = 'ACTIVE'`
+	if r.URL.Query().Get("status") == "PROPOSED" {
+		cond = `l.status = 'PROPOSED'`
+	}
+	errlog.Err(h.db.Select(&rows, `SELECT l.id, l.agent, l.status, l.text, l.context, e.name AS by, l."createdAt" FROM "MatrixLesson" l
+		LEFT JOIN "Employee" e ON e.id = l."createdById" WHERE `+cond+` ORDER BY l."createdAt" DESC`))
 	WriteJSON(w, http.StatusOK, rows)
 }
 
-// DELETE /api/matrix/lessons/{id} — يطفّيه، ما يحذفه
+// DELETE /api/matrix/lessons/{id} — يطفّيه (أو يرفض المقترح)، ما يحذفه
 func (h *MatrixChatHandler) DisableLesson(w http.ResponseWriter, r *http.Request) {
-	errlog.Exec(h.db.Exec(`UPDATE "MatrixLesson" SET active = false WHERE id = $1`, r.PathValue("id")))
+	errlog.Exec(h.db.Exec(`UPDATE "MatrixLesson" SET active = false, status = 'ACTIVE' WHERE id = $1`, r.PathValue("id")))
+	WriteJSON(w, http.StatusOK, map[string]bool{"ok": true})
+}
+
+// POST /api/matrix/lessons/{id}/approve — المالك يوافق على درس اقترحه الوكيل (دازاي 11-06)
+func (h *MatrixChatHandler) ApproveLesson(w http.ResponseWriter, r *http.Request) {
+	res, err := h.db.Exec(`UPDATE "MatrixLesson" SET status = 'ACTIVE', active = true, "createdById" = $2 WHERE id = $1 AND status = 'PROPOSED'`,
+		r.PathValue("id"), middleware.EmployeeIDFromContext(r))
+	if err != nil {
+		WriteError(w, http.StatusInternalServerError, "تعذر")
+		return
+	}
+	if n, _ := res.RowsAffected(); n == 0 {
+		WriteError(w, http.StatusNotFound, "الدرس مو موجود")
+		return
+	}
 	WriteJSON(w, http.StatusOK, map[string]bool{"ok": true})
 }
 

@@ -128,6 +128,7 @@ const secretaryInstructions = `انت «ايريس» — سكرتيرة مدير
 - إذا جواب قديم طلع غلط، صححيه بس لما يرجع لنفس الموضوع — مو بنص تحية أو موضوع ثاني.
 - فكّري بالإنكليزي (التفكير يطلع إله)، والجواب بالعراقي.
 - إذا لاحظتي نقص حقيقي (سؤال ما تگدرين تجاوبينه بأدواتچ، طلب يتكرر)، سجّليه بـsuggest_improvement وكمّلي.
+- إذا ما گدرتي تجاوبين لأن ماكو أداة أو بيانات، سجّليها بـreport_gap. وإذا لاحظتي غلط بجوابچ يتكرر، اقترحي درس على نفسچ بـpropose_lesson.
 - إذا انسألتي شنو انضاف أو تغيّر أو تصلّح بالنظام، جاوبي من system_changelog.
 - إذا عندچ اقتراحات المالك گال عليها «تم»، شوفيها بـverify_suggestion (list) وتأكدي بأدواتچ إنها صدگ انضافت، وسجّلي النتيجة (record).
 - كل رقم أو حالة أو اسم يجي من الأدوات. لا تخمّن ولا تكمّل من عندك. إذا ما لكيت، كول ما لكيت وشنو تحتاج منه.
@@ -164,6 +165,7 @@ func (b *SecretaryBrain) system(t SecretaryTurn) string {
 	s.WriteString("\nالوقت هسه (بغداد): " + time.Now().In(debriefLoc).Format("2006-01-02 15:04 Monday"))
 	// (10-30) الهيكل الجديد ولائحة العمل — النقطة ٢ «الذكاء يفهم النظام»
 	s.WriteString(OrgBrief(b.db, t.UserID))
+	s.WriteString(LessonsBlock(b.db, "IRIS")) // (دازاي 11-06) كمال يشوف دروسه المعتمدة
 	if sm := strings.TrimSpace(t.Summary); sm != "" {
 		s.WriteString("\n\nذاكرة هالمحادثة (ملخص الي صار قبل آخر الرسائل):\n" + sm + "\n")
 	}
@@ -321,7 +323,9 @@ func (b *SecretaryBrain) callTool(byName map[string]agentTool, blk anthropic.Too
 	if len(blk.Input) > 0 {
 		_ = json.Unmarshal(blk.Input, &in)
 	}
+	start := time.Now()
 	out, err := tl.Run(in, mask)
+	RecordToolStat(b.db, "IRIS", blk.Name, time.Since(start), err)
 	if err != nil {
 		log.Printf("secretary tool %s: %v", blk.Name, err)
 		return "تعذر: " + err.Error(), true

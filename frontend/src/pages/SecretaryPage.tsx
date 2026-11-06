@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import AgentFeedback from '../components/AgentFeedback'
 import { useNavigate } from 'react-router-dom'
 import { startAgentRebrand } from '../utils/agentBrand'
 import {
@@ -1544,6 +1545,12 @@ function Secretary() {
                       </p>
                     )}
                     <p>{chat.text}</p>
+                    {chat.role === 'assistant' &&
+                      chat.trace?.phase !== 'live' && (
+                        <AgentFeedback
+                          path={`/secretary/messages/${encodeURIComponent(chat.id)}/feedback`}
+                        />
+                      )}
                     {chat.cards.map((c, i) => (
                       <div className="sec-result" key={i}>
                         <span>{c.status}</span>

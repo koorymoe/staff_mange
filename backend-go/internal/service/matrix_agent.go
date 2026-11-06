@@ -155,6 +155,8 @@ type MatrixAgent struct {
 	// plainNames: الأسماء تطلع كما هي — للسكرتير بس (استثناء مكتوب من (ع)
 	// 10-22، docs/secretary.md). ماتركس وكل عميل ثاني يبقى يخفي.
 	plainNames bool
+	// name اسم الوكيل بالقياس (MATRIX/IRIS) — RegisterGrowthTools يحدده. فارغ = بلا قياس.
+	name string
 }
 
 // ShowNames يطفّي إخفاء الأسماء لهالوكيل — للسكرتير وحده.
@@ -446,7 +448,9 @@ func (a *MatrixAgent) callTool(byName map[string]agentTool, b anthropic.ToolUseB
 	if len(b.Input) > 0 {
 		_ = json.Unmarshal(b.Input, &in)
 	}
+	start := time.Now()
 	out, err := t.Run(in, mask)
+	RecordToolStat(a.db, a.name, b.Name, time.Since(start), err)
 	if err != nil {
 		log.Printf("matrix agent tool %s: %v", b.Name, err)
 		return "تعذر: " + err.Error(), true

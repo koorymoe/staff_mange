@@ -285,3 +285,24 @@ func (r *BotReportRepository) StaleDrafts() ([]model.BotReportDraft, error) {
 	err := r.db.Select(&out, `SELECT * FROM "BotReportDraft" WHERE "updatedAt" < now() - interval '1 day' LIMIT 1000`)
 	return out, err
 }
+
+// ReaderSuggestion اقتراح ذكاء للقارئ (Claude): الي وافق عليها المالك وتحتاج برمجة (دازاي 11-06).
+type ReaderSuggestion struct {
+	ID        string  `db:"id" json:"id"`
+	Agent     string  `db:"agent" json:"agent"`
+	Title     string  `db:"title" json:"title"`
+	Details   string  `db:"details" json:"details"`
+	Status    string  `db:"status" json:"status"`
+	CreatedAt string  `db:"createdAt" json:"createdAt"`
+	DecidedAt *string `db:"decidedAt" json:"decidedAt"`
+}
+
+// AcceptedCodeSuggestions اقتراحات «مقبول» وتحتاج برمجة — طلبات تحديث تنتظر التنفيذ.
+func (r *BotReportRepository) AcceptedCodeSuggestions() ([]ReaderSuggestion, error) {
+	rows := []ReaderSuggestion{}
+	err := r.db.Select(&rows, `SELECT id, agent, title, details, status,
+			to_char("createdAt" AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') AS "createdAt",
+			to_char("decidedAt" AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') AS "decidedAt"
+		FROM "AiSuggestion" WHERE status = 'ACCEPTED' AND "needsCode" ORDER BY "decidedAt" DESC NULLS LAST LIMIT 50`)
+	return rows, err
+}

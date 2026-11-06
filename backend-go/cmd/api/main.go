@@ -1017,6 +1017,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	}()
 	mux.Handle("GET /api/bot-reader/reports", middleware.RateLimit(60, time.Minute)(http.HandlerFunc(tgBot.ReaderReports)))
 	mux.Handle("GET /api/bot-reader/files/{key...}", middleware.RateLimit(120, time.Minute)(http.HandlerFunc(tgBot.ReaderFile)))
+	mux.Handle("GET /api/bot-reader/suggestions", middleware.RateLimit(60, time.Minute)(http.HandlerFunc(tgBot.ReaderSuggestions)))
 	mux.Handle("POST /api/telegram/webhook", middleware.RateLimit(600, time.Minute)(http.HandlerFunc(tgBot.Webhook)))
 	mux.Handle("GET /api/me/telegram", middleware.Chain(http.HandlerFunc(tgBot.MyLink), requireAuth))
 	mux.Handle("POST /api/me/telegram/link", middleware.Chain(http.HandlerFunc(tgBot.CreateLink), requireAuth))
@@ -3284,7 +3285,17 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 			_ = notificationRepo.CreateForRole("OWNER", "AI_SUGGESTION", msg)
 		})
 		agent.RegisterChangelogTool() // 📜 سجل التحديثات (دازاي 11-06)
+		// 🌱 التطوير الذاتي: قياس الأدوات، الفجوات، الدروس المقترحة (دازاي 11-06)
+		agent.RegisterGrowthTools(db, "MATRIX", func(msg string) {
+			_ = notificationRepo.CreateForRole("OWNER", "AI_SUGGESTION", msg)
+		})
 		// 🌙 التأكد الليلي من اقتراحات ماتركس الي انگال عليها «تم» (دازاي 11-06)
+		selfReviewer := service.NewSelfReviewer(db, agent, "MATRIX") // 🪞 مراجعة ذاتية كل جمعة
+		safeguard.Loop("مراجعة ماتركس الذاتية", 6*time.Minute, 15*time.Minute, func() {
+			if err := selfReviewer.RunIfDue(); err != nil {
+				log.Printf("self review: %v", err)
+			}
+		})
 		suggestVerifier := service.NewSuggestVerifier(db, agent, "MATRIX")
 		safeguard.Loop("تأكد اقتراحات ماتركس", 5*time.Minute, 15*time.Minute, func() {
 			if err := suggestVerifier.RunIfDue(); err != nil {
@@ -3300,6 +3311,12 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 		mux.Handle("POST /api/matrix/chats/{id}/messages/{msgId}/correct", middleware.Chain(http.HandlerFunc(chatHandler.Correct), requireAuth, requireAdmin))
 		mux.Handle("GET /api/matrix/lessons", middleware.Chain(http.HandlerFunc(chatHandler.Lessons), requireAuth, requireAdmin))
 		mux.Handle("DELETE /api/matrix/lessons/{id}", middleware.Chain(http.HandlerFunc(chatHandler.DisableLesson), requireAuth, requireAdmin))
+		mux.Handle("POST /api/matrix/lessons/{id}/approve", middleware.Chain(http.HandlerFunc(chatHandler.ApproveLesson), requireAuth, requireAdmin))
+		// 🌱 👍/👎 على أجوبة الوكلاء وصحتهم (دازاي 11-06)
+		growthHandler := handler.NewAgentGrowthHandler(db)
+		mux.Handle("POST /api/matrix/chats/{id}/messages/{msgId}/feedback", middleware.Chain(http.HandlerFunc(growthHandler.MatrixFeedback), requireAuth, requireMatrixChat))
+		mux.Handle("POST /api/secretary/messages/{msgId}/feedback", middleware.Chain(http.HandlerFunc(growthHandler.SecretaryFeedback), requireAuth, requireAdmin))
+		mux.Handle("GET /api/ai/health", middleware.Chain(http.HandlerFunc(growthHandler.Health), requireAuth, requireAdmin))
 		// 🎯 «راقب فلان» — يومية كل ليلة وخلاصة بالنهاية
 		missionService := service.NewMatrixMissionService(db, aiRepo, notificationRepo, agent)
 		safeguard.Loop("مهام ماتركس", 5*time.Minute, 30*time.Minute, func() {
