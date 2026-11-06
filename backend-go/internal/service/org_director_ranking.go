@@ -53,6 +53,8 @@ type DirectorRanking struct {
 	Period   string            `json:"period"`
 	Rows     []DirectorRankRow `json:"rows"`
 	Deputies []DirectorRankRow `json:"deputies"`
+	// (دازاي 11-06) مدراء ونواب الوحدات: على خطة تحسين وحدتهم
+	Units []DirectorRankRow `json:"units"`
 }
 
 // PersonalScoreFn التقييم الشهري للموظف نفسه (MatrixScoreService.Detail): النهائي + أكبر الخسارات.
@@ -134,7 +136,7 @@ func DirectorsRanking(db *sqlx.DB, period string, personal PersonalScoreFn) (*Di
 			Avg *float64 `db:"avg"`
 		}
 		if err := db.Get(&pl, `SELECT count(*) AS n,
-				avg(CASE WHEN i."doneAt" IS NOT NULL THEN 100 ELSE i."manualProgress" END)::float8 AS avg
+				avg(`+planItemScoreSQL+`)::float8 AS avg
 			FROM "OrgPlanItem" i JOIN "OrgPlan" p ON p.id = i."planId"
 			WHERE p."divisionId" = $1 AND p.period = $2`, h.DivisionID, period); err == nil && pl.N > 0 && pl.Avg != nil {
 			plan = rankPtr(*pl.Avg)
@@ -177,7 +179,7 @@ func DirectorsRanking(db *sqlx.DB, period string, personal PersonalScoreFn) (*Di
 		peopleS := strconv.Itoa(row.People)
 		row.Criteria = []DirectorCriterion{
 			{"outputs", "المخرجات", 30, outputs, outD, "معدل درجات فقرات المخرجات الي عليها بيانات (كل فقرة: نقاط ماتركس + المهام بوقتها − الخصومات والشكاوي)", outEv},
-			{"plan", "إنجاز الخطة", 20, plan, planD, "معدل إنجاز بنود خطة الشهر (البند المنجز = ١٠٠، والباقي حسب نسبته المسجّلة)", planEv},
+			{"plan", "إنجاز الخطة", 20, plan, planD, "معدل درجات بنود خطة الشهر: خلص بموعده = ١٠٠، متأخر = −١٠ لكل يوم، وبعده بالموعد = نسبته", planEv},
 			{"speed", "السرعة", 15, speed, speedD, "١٠٠ − (معدل أيام الحل − ٣) × ١٠٠ ÷ ٢٧ — ٣ أيام أو أقل = ١٠٠، و٣٠ يوم أو أكثر = صفر", issues.resolved},
 			{"few", "قلة المشاكل", 10, few, fewD, "١٠٠ − (مجموع أوزان المشاكل ÷ " + peopleS + " موظف) × ٢٥ — الوزن: عالية ٣، متوسطة ٢، واطية ١", issues.opened},
 			{"solve", "حل المشاكل", 15, solve, solveD, "المشاكل الي انحلت ÷ المشاكل الي انفتحت هالشهر × ١٠٠", issues.opened},
@@ -213,6 +215,7 @@ func DirectorsRanking(db *sqlx.DB, period string, personal PersonalScoreFn) (*Di
 		}
 	}
 	out.Deputies = deputiesRanking(db, period, out.Rows, personal)
+	out.Units = unitLeadersRanking(db, period, personal)
 	return out, nil
 }
 
@@ -255,21 +258,45 @@ func issueEvidence(db *sqlx.DB, divisionID string, from, to any) issueEv {
 	return ev
 }
 
-// planEvidence بنود الخطة ونسبة كل واحد ومنو مسؤول عنه.
+// planItemScoreSQL (دازاي 11-06) درجة البند بالالتزام بالموعد، مو بس «خلص لو لا»:
+// خلص بموعده = ١٠٠؛ خلص متأخر = ١٠٠ − ١٠ لكل يوم (أقل شي ٤٠)؛ فات موعده وما خلص =
+// نسبته − ١٠ لكل يوم (أقل شي صفر)؛ بعده بالموعد = نسبته المسجّلة.
+const planItemScoreSQL = `CASE
+	WHEN i."doneAt" IS NOT NULL THEN GREATEST(40, 100 - 10 * GREATEST(0, COALESCE(baghdad_date(i."doneAt") - i."dueDate", 0)))
+	WHEN i."dueDate" IS NOT NULL AND i."dueDate" < baghdad_today() THEN GREATEST(0, i."manualProgress" - 10 * (baghdad_today() - i."dueDate"))
+	ELSE i."manualProgress" END`
+
+// planEvidence بنود الخطة: درجة كل بند، والسبب (بموعده/متأخر كم يوم)، ومنو مسؤول عنه.
 func planEvidence(db *sqlx.DB, where string, args ...any) []EvidenceLine {
 	rows := []struct {
-		Title string  `db:"title"`
-		Pct   float64 `db:"pct"`
-		Owner *string `db:"owner"`
+		Title    string  `db:"title"`
+		Pct      float64 `db:"pct"`
+		Owner    *string `db:"owner"`
+		Done     bool    `db:"done"`
+		LateDays int     `db:"lateDays"`
+		Manual   int     `db:"manualProgress"`
 	}{}
-	errlog.Err(db.Select(&rows, `SELECT i.title, COALESCE(CASE WHEN i."doneAt" IS NOT NULL THEN 100 ELSE i."manualProgress" END, 0)::float8 AS pct, e.name AS owner
+	errlog.Err(db.Select(&rows, `SELECT i.title, COALESCE(`+planItemScoreSQL+`, 0)::float8 AS pct, e.name AS owner,
+			i."doneAt" IS NOT NULL AS done, i."manualProgress",
+			GREATEST(0, COALESCE(COALESCE(baghdad_date(i."doneAt"), baghdad_today()) - i."dueDate", 0))::int AS "lateDays"
 		FROM "OrgPlanItem" i JOIN "OrgPlan" p ON p.id = i."planId" LEFT JOIN "Employee" e ON e.id = i."ownerId"
 		WHERE `+where+` ORDER BY i."createdAt"`, args...))
 	out := []EvidenceLine{}
 	for _, r := range rows {
-		l := EvidenceLine{Label: r.Title, Value: f1(r.Pct) + "٪"}
+		why := ""
+		switch {
+		case r.Done && r.LateDays == 0:
+			why = "خلص بموعده"
+		case r.Done:
+			why = "خلص متأخر " + strconv.Itoa(r.LateDays) + " يوم"
+		case r.LateDays > 0:
+			why = "فات موعده بـ" + strconv.Itoa(r.LateDays) + " يوم وما خلص (نسبته " + strconv.Itoa(r.Manual) + "٪)"
+		default:
+			why = "بعده بموعده (نسبته " + strconv.Itoa(r.Manual) + "٪)"
+		}
+		l := EvidenceLine{Label: r.Title, Value: f1(r.Pct) + "٪", Note: why}
 		if r.Owner != nil {
-			l.Note = "المسؤول: " + *r.Owner
+			l.Note += " · المسؤول: " + *r.Owner
 		}
 		out = append(out, l)
 	}
@@ -322,7 +349,7 @@ func deputiesRanking(db *sqlx.DB, period string, directors []DirectorRankRow, pe
 		ownD := "ماكو بنود خطة برقبته"
 		if len(ownEv) > 0 {
 			var avg float64
-			errlog.Err(db.Get(&avg, `SELECT COALESCE(avg(CASE WHEN i."doneAt" IS NOT NULL THEN 100 ELSE i."manualProgress" END), 0)::float8
+			errlog.Err(db.Get(&avg, `SELECT COALESCE(avg(`+planItemScoreSQL+`), 0)::float8
 				FROM "OrgPlanItem" i JOIN "OrgPlan" p ON p.id = i."planId" WHERE i."ownerId" = $1 AND p.period = $2`, d.EmployeeID, period))
 			own = rankPtr(avg)
 			ownD = strconv.Itoa(len(ownEv)) + " بند برقبته"
@@ -342,7 +369,7 @@ func deputiesRanking(db *sqlx.DB, period string, directors []DirectorRankRow, pe
 		row.Criteria = []DirectorCriterion{
 			{"division", "رقم الإدارة", 50, div, divD, "نفس الرقم النهائي لمدير الإدارة (تفاصيله تحت)", divEv},
 			{"personal", "تقييمه الشهري", 30, pers, persD, "التقييم الشهري النهائي للنائب نفسه", persEv},
-			{"ownplan", "بنوده بالخطة", 20, own, ownD, "معدل إنجاز بنود الخطة الي هو مسؤول عنها", ownEv},
+			{"ownplan", "بنوده بالخطة", 20, own, ownD, "معدل درجات بنود الخطة الي برقبته (خلص بموعده = ١٠٠، متأخر = −١٠ لكل يوم)", ownEv},
 		}
 		sum, w := 0.0, 0.0
 		for _, c := range row.Criteria {
@@ -364,6 +391,95 @@ func deputiesRanking(db *sqlx.DB, period string, directors []DirectorRankRow, pe
 		}
 		if owW > 0 {
 			row.OwnTotal = rankPtr(ow / owW)
+		}
+		out = append(out, row)
+	}
+	sort.SliceStable(out, func(i, j int) bool {
+		a, b := out[i].Total, out[j].Total
+		if a == nil || b == nil {
+			return a != nil
+		}
+		return *a > *b
+	})
+	for i := range out {
+		if t := out[i].Total; t != nil {
+			if i > 0 && out[i-1].Total != nil && *out[i-1].Total == *t {
+				out[i].Rank = out[i-1].Rank
+			} else {
+				out[i].Rank = i + 1
+			}
+		}
+	}
+	return out
+}
+
+// unitLeadersRanking (دازاي 11-06): مدير ونائب كل وحدة بنسبة مئوية وأسباب:
+// ٥٠٪ بنود خطة الوحدة الي برقبته (بالالتزام بالموعد)، ٢٠٪ الخطة كاملة، ٣٠٪ تقييمه الشهري.
+func unitLeadersRanking(db *sqlx.DB, period string, personal PersonalScoreFn) []DirectorRankRow {
+	people := []struct {
+		DivisionName string `db:"divisionName"`
+		UnitID       string `db:"unitId"`
+		UnitName     string `db:"unitName"`
+		EmployeeID   string `db:"employeeId"`
+		EmployeeName string `db:"employeeName"`
+		Position     string `db:"position"`
+		Acting       bool   `db:"acting"`
+	}{}
+	errlog.Err(db.Select(&people, `
+		SELECT d.name AS "divisionName", u.id AS "unitId", u.name AS "unitName", a."employeeId", e.name AS "employeeName", a.position, a.acting
+		FROM "OrgAssignment" a JOIN "OrgUnit" u ON u.id = a."unitId" JOIN "OrgDivision" d ON d.id = a."divisionId"
+		JOIN "Employee" e ON e.id = a."employeeId"
+		WHERE a."unitId" IS NOT NULL AND a.position IN ('DIRECTOR', 'DEPUTY') AND a."endedAt" IS NULL
+		  AND e.role::text NOT IN ('ADMIN', 'OWNER')
+		ORDER BY d.sort, u.sort, a.position`))
+	out := []DirectorRankRow{}
+	for _, p := range people {
+		pos := "مدير"
+		if p.Position == "DEPUTY" {
+			pos = "نائب"
+		}
+		row := DirectorRankRow{DivisionName: p.DivisionName + " · " + p.UnitName + " (" + pos + ")", EmployeeID: p.EmployeeID, EmployeeName: p.EmployeeName, Acting: p.Acting}
+		var own, unit, pers *float64
+		ownEv := planEvidence(db, `i."ownerId" = $1 AND p.period = $2 AND p."unitId" = $3`, p.EmployeeID, period, p.UnitID)
+		ownD := "ماكو بنود برقبته بخطة الوحدة"
+		if len(ownEv) > 0 {
+			var avg float64
+			errlog.Err(db.Get(&avg, `SELECT COALESCE(avg(`+planItemScoreSQL+`), 0)::float8 FROM "OrgPlanItem" i JOIN "OrgPlan" p ON p.id = i."planId"
+				WHERE i."ownerId" = $1 AND p.period = $2 AND p."unitId" = $3`, p.EmployeeID, period, p.UnitID))
+			own = rankPtr(avg)
+			ownD = strconv.Itoa(len(ownEv)) + " بند برقبته"
+		}
+		unitEv := planEvidence(db, `p."unitId" = $1 AND p.period = $2`, p.UnitID, period)
+		unitD := "ماكو خطة للوحدة هالشهر"
+		if len(unitEv) > 0 {
+			var avg float64
+			errlog.Err(db.Get(&avg, `SELECT COALESCE(avg(`+planItemScoreSQL+`), 0)::float8 FROM "OrgPlanItem" i JOIN "OrgPlan" p ON p.id = i."planId"
+				WHERE p."unitId" = $1 AND p.period = $2`, p.UnitID, period))
+			unit = rankPtr(avg)
+			unitD = strconv.Itoa(len(unitEv)) + " بند بخطة الوحدة"
+		}
+		persD, persEv := "ماكو تقييم شهري إله", []EvidenceLine{}
+		if personal != nil {
+			if f, lines := personal(p.EmployeeID, period); f != nil {
+				pers = rankPtr(*f)
+				persD = "تقييمه الشهري"
+				persEv = lines
+			}
+		}
+		row.Criteria = []DirectorCriterion{
+			{"ownplan", "بنوده بخطة الوحدة", 50, own, ownD, "معدل درجات بنوده: خلص بموعده = ١٠٠، متأخر = −١٠ لكل يوم، فات موعده وما خلص = نسبته − ١٠ لكل يوم", ownEv},
+			{"unitplan", "خطة الوحدة كاملة", 20, unit, unitD, "معدل درجات كل بنود خطة الوحدة بنفس القاعدة", unitEv},
+			{"personal", "تقييمه الشهري", 30, pers, persD, "التقييم الشهري النهائي إله", persEv},
+		}
+		sum, w := 0.0, 0.0
+		for _, c := range row.Criteria {
+			if c.Score != nil {
+				sum += *c.Score * c.Weight
+				w += c.Weight
+			}
+		}
+		if w > 0 {
+			row.Total = rankPtr(sum / w)
 		}
 		out = append(out, row)
 	}

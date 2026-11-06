@@ -42,6 +42,10 @@ export type DeskItem = {
   ownerId: string | null
   ownerName: string | null
   overdue: boolean
+  // (دازاي 11-06) بند كتبه ماتركس، وسببه، ومهمته
+  byMatrixDraft?: boolean
+  reason?: string | null
+  taskId?: string | null
 }
 export type DeskPlan = {
   id: string

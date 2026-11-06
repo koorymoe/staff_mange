@@ -51,5 +51,13 @@ func agentGrowthMigrations() []Migration {
 			ALTER TABLE "MatrixLesson" ADD COLUMN IF NOT EXISTS status TEXT NOT NULL DEFAULT 'ACTIVE'
 				CHECK (status IN ('ACTIVE', 'PROPOSED'));
 		`,
+	}, {
+		// (دازاي 11-06) خطة الوحدة: ماتركس يكتب المسودة، والبنود المعتمدة تصير مهام للمدير والنائب
+		Version: "0450_org_plan_item_task",
+		SQL: `
+			ALTER TABLE "OrgPlanItem" ADD COLUMN IF NOT EXISTS "taskId" TEXT REFERENCES "ExtraTask"(id) ON DELETE SET NULL;
+			ALTER TABLE "OrgPlanItem" ADD COLUMN IF NOT EXISTS "byMatrix" BOOLEAN NOT NULL DEFAULT false;
+			ALTER TABLE "OrgPlanItem" ADD COLUMN IF NOT EXISTS reason TEXT;
+		`,
 	}}
 }

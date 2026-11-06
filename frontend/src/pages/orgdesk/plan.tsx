@@ -58,9 +58,9 @@ export function PlanControls({
   unit: boolean
   saved: () => void
 }) {
-  const [action, setAction] = useState<'submit' | 'approve' | 'return' | null>(
-    null,
-  )
+  const [action, setAction] = useState<
+    'submit' | 'approve' | 'return' | 'ai' | null
+  >(null)
   return (
     <section className="org-panel desk-plan-controls">
       <div className="org-toolbar">
@@ -77,6 +77,9 @@ export function PlanControls({
       <div className="org-actions">
         {canEdit && canAddItems(plan) && (
           <>
+            <button className="org-primary" onClick={() => setAction('ai')}>
+              🤖 ماتركس يكتب الخطة
+            </button>
             <button
               disabled={!plan.items?.length}
               onClick={() => setAction('submit')}
@@ -103,14 +106,18 @@ export function PlanControls({
       {action && (
         <DeskForm
           title={
-            action === 'submit'
+            action === 'ai'
+              ? '🤖 ماتركس يكتب خطة التحسين'
+              : action === 'submit'
               ? 'تأكيد رفع الخطة'
               : action === 'approve'
                 ? 'اعتماد الخطة'
                 : 'إرجاع الخطة'
           }
           label={
-            action === 'submit'
+            action === 'ai'
+              ? 'اكتب المسودة'
+              : action === 'submit'
               ? 'تأكيد الرفع'
               : action === 'approve'
                 ? 'تأكيد الاعتماد'
@@ -119,6 +126,11 @@ export function PlanControls({
           close={() => setAction(null)}
           saved={saved}
           submit={async (d) => {
+            if (action === 'ai')
+              return orgDeskWrite(
+                `plans/${encodeURIComponent(plan.id)}/draft-ai`,
+                { guidance: field(d, 'guidance') },
+              )
             if (action === 'submit')
               return orgDeskWrite(
                 `plans/${encodeURIComponent(plan.id)}/submit`,
@@ -134,7 +146,24 @@ export function PlanControls({
           }}
         >
           <p>{plan.title}</p>
-          {action === 'submit' ? (
+          {action === 'ai' ? (
+            <>
+              <p>
+                ماتركس يقرا أرقام الوحدة الحقيقية (المشاكل المفتوحة، والمقاييس،
+                والخطط السابقة) ويكتب ٤–٧ بنود بمواعيد، ويوزعها على المدير
+                والنائب. تگدر تعدّل أو تشيل أي بند قبل الرفع، ومن تنعتمد كل بند
+                يصير مهمة بموعده.
+              </p>
+              <label>
+                توجيهك لماتركس (اختياري)
+                <textarea
+                  name="guidance"
+                  rows={3}
+                  placeholder="مثلاً: ركّز على تأخير التسليم وتدريب الكادر الجديد"
+                />
+              </label>
+            </>
+          ) : action === 'submit' ? (
             <p>
               الرفع يرسل الخطة للمراجعة ويوقف إضافة البنود لحد ما ترجع للتعديل.
             </p>
@@ -467,6 +496,12 @@ export function PlanCard({
             'المشكلة المرتبطة مو متوفرة'}
         </p>
       )}
+      {item.byMatrixDraft && (
+        <p className="desk-meta">
+          🤖 كتبه ماتركس{item.reason ? ` — ليش: ${item.reason}` : ''}
+        </p>
+      )}
+      {item.taskId && <p className="desk-meta">📋 صار مهمة للمسؤول</p>}
       <div className="desk-item-meta">
         <span>المسؤول: {item.ownerName || 'مو محدد'}</span>
         <span>

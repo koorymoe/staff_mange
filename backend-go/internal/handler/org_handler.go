@@ -487,3 +487,18 @@ func (h *OrgHandler) DirectorsRanking(w http.ResponseWriter, r *http.Request) {
 	}
 	WriteJSON(w, http.StatusOK, res)
 }
+
+// POST /api/org/plans/{id}/draft-ai — {guidance} (دازاي 11-06): ماتركس يكتب بنود المسودة من أرقام الوحدة.
+func (h *OrgHandler) DraftPlanAI(w http.ResponseWriter, r *http.Request) {
+	var in struct {
+		Guidance string `json:"guidance"`
+	}
+	_ = DecodeJSON(r, &in)
+	emp, role := who(r)
+	n, err := h.svc.DraftPlanByMatrix(emp, role, r.PathValue("id"), in.Guidance)
+	if err != nil {
+		h.orgErr(w, err)
+		return
+	}
+	WriteJSON(w, http.StatusOK, map[string]int{"added": n})
+}

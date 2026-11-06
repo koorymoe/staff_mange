@@ -157,6 +157,10 @@ type OrgPlanItem struct {
 	OwnerID   *string `db:"ownerId" json:"ownerId"`
 	OwnerName *string `db:"ownerName" json:"ownerName"`
 	Overdue   bool    `db:"-" json:"overdue"`
+	// (دازاي 11-06) مسودة ماتركس والمهمة المربوطة
+	TaskID     *string `db:"taskId" json:"taskId"`
+	Reason     *string `db:"reason" json:"reason"`
+	ByMatrixAI bool    `db:"byMatrix" json:"byMatrixDraft"`
 	// محسوبة
 	Current  *float64 `db:"-" json:"current"`
 	Progress int      `db:"-" json:"progress"`
@@ -359,7 +363,7 @@ func (s *OrgService) planFor(divisionID string, unitID *string, period string) (
 	}
 	p.Items = []OrgPlanItem{}
 	if err := s.db.Select(&p.Items, `SELECT i.id, i."planId", i.kind, i.title, i."issueId", i.metric, i.baseline, i.target, i."manualProgress", i."doneAt",
-		i."dueDate"::text AS "dueDate", i."ownerId", e.name AS "ownerName"
+		i."dueDate"::text AS "dueDate", i."ownerId", e.name AS "ownerName", i."taskId", i.reason, i."byMatrix"
 		FROM "OrgPlanItem" i LEFT JOIN "Employee" e ON e.id = i."ownerId" WHERE i."planId" = $1 ORDER BY i."dueDate" NULLS LAST, i."createdAt"`, p.ID); err != nil {
 		return nil, err
 	}
@@ -601,6 +605,9 @@ func (s *OrgService) ReviewPlan(empID, role, planID string, approve bool, note s
 	errlog.Err(s.db.Get(&author, `SELECT COALESCE("createdById", '') FROM "OrgPlan" WHERE id = $1`, planID))
 	_, err := s.db.Exec(`UPDATE "OrgPlan" SET status = $2, "reviewedById" = $3, "reviewedAt" = now(), "reviewNote" = NULLIF($4, '') WHERE id = $1`,
 		planID, status, empID, note)
+	if err == nil && approve {
+		s.planToTasks(planID, empID) // (دازاي 11-06) البنود المعتمدة تصير مهام للمدير والنائب
+	}
 	return author, err
 }
 

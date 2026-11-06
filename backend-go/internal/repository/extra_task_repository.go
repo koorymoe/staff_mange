@@ -3,6 +3,7 @@ package repository
 import (
 	"errors"
 	"fmt"
+	"staffmange-api/internal/errlog"
 	"strings"
 	"time"
 
@@ -159,6 +160,8 @@ func (r *ExtraTaskRepository) Complete(id, employeeID, doneNote string) error {
 	if n, _ := res.RowsAffected(); n == 0 {
 		return errors.New("المهمة مو إلك أو انخلصت من قبل")
 	}
+	// (دازاي 11-06) مهمة من خطة الوحدة: بندها ينحسب خالص بنفس الوقت
+	errlog.Exec(r.db.Exec(`UPDATE "OrgPlanItem" SET "doneAt" = COALESCE("doneAt", now()) WHERE "taskId" = $1`, id))
 	return nil
 }
 
@@ -245,4 +248,14 @@ func derefStrLocal(s *string) string {
 		return ""
 	}
 	return strings.TrimSpace(*s)
+}
+
+// CreateFor مهمة من النظام نفسه (مثل بنود خطة الوحدة) — يرجّع رقمها.
+func (r *ExtraTaskRepository) CreateFor(title, desc, to, by string, due time.Time) (string, error) {
+	d := due.Format(time.RFC3339)
+	t, err := r.Create(model.CreateExtraTaskRequest{Title: title, Description: &desc, AssignedToID: to, DueAt: &d}, by)
+	if err != nil {
+		return "", err
+	}
+	return t.ID, nil
 }

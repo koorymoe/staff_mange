@@ -3114,6 +3114,15 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 		if err := orgService.Seed(); err != nil {
 			log.Printf("org seed: %v", err)
 		}
+		// (دازاي 11-06) ماتركس يكتب مسودة خطة الوحدة، والبنود المعتمدة تصير مهام
+		orgService.SetPlanDrafter(func(system, task string) (string, error) {
+			run, err := agent.Run("CHAT", system, task)
+			if err != nil {
+				return "", err
+			}
+			return run.Answer, nil
+		})
+		orgService.SetTaskCreator(extraTaskRepo.CreateFor)
 		orgHandler := handler.NewOrgHandler(orgService, notificationRepo)
 		orgHandler.PersonalScore = func(empID, period string) (*float64, []service.EvidenceLine) {
 			d, err := matrixScoreService.Detail(empID, period)
@@ -3163,6 +3172,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 		mux.Handle("POST /api/org/comments", middleware.Chain(http.HandlerFunc(orgHandler.AddComment), requireAuth))
 		mux.Handle("POST /api/org/plans/{id}/submit", middleware.Chain(http.HandlerFunc(orgHandler.SubmitPlan), requireAuth))
 		mux.Handle("POST /api/org/plans/{id}/review", middleware.Chain(http.HandlerFunc(orgHandler.ReviewPlan), requireAuth))
+		mux.Handle("POST /api/org/plans/{id}/draft-ai", middleware.Chain(http.HandlerFunc(orgHandler.DraftPlanAI), requireAuth))
 		mux.Handle("PUT /api/org/issues/{id}/solution", middleware.Chain(http.HandlerFunc(orgHandler.SetSolution), requireAuth))
 		mux.Handle("GET /api/org/people/{id}/executive", middleware.Chain(http.HandlerFunc(orgHandler.Executive), requireAuth, requireAdmin))
 		mux.Handle("POST /api/org/directives", middleware.Chain(http.HandlerFunc(orgHandler.IssueDirective), requireAuth))

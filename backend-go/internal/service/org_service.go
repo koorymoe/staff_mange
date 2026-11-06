@@ -6,6 +6,7 @@ import (
 	"sort"
 	"staffmange-api/internal/errlog"
 	"strings"
+	"time"
 
 	"github.com/jmoiron/sqlx"
 	"github.com/lib/pq"
@@ -18,7 +19,19 @@ import (
 // ونسجّل بـOrgPermissionGrant بس الي انطت بسببه — فسحب المنصب يشيلها وحدها
 // والصلاحيات اليدوية القديمة ما تنمس.
 
-type OrgService struct{ db *sqlx.DB }
+type OrgService struct {
+	db *sqlx.DB
+	// (دازاي 11-06) planDrafter: ماتركس يكتب مسودة خطة الوحدة (system, task) ← الجواب
+	planDrafter func(system, task string) (string, error)
+	// taskCreator: البند المعتمد يصير مهمة (عنوان، وصف، المكلّف، الموجّه، الموعد) ← رقم المهمة
+	taskCreator func(title, desc, to, by string, due time.Time) (string, error)
+}
+
+// SetPlanDrafter وSetTaskCreator يربطون ماتركس ومهام النظام بخطط الوحدات (من main).
+func (s *OrgService) SetPlanDrafter(f func(system, task string) (string, error)) { s.planDrafter = f }
+func (s *OrgService) SetTaskCreator(f func(title, desc, to, by string, due time.Time) (string, error)) {
+	s.taskCreator = f
+}
 
 func NewOrgService(db *sqlx.DB) *OrgService { return &OrgService{db: db} }
 
