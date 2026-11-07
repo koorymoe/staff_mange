@@ -22,9 +22,21 @@ export function uiLanguage(): 'ar' | 'ur' {
 export function trUR(s: string): string | null {
   const t = s.trim()
   if (!t) return null
-  const u = UR[t]
+  const u = UR[t] ?? patternUR(t)
   if (!u) return null
   return s.replace(t, u)
+}
+
+// نصوص فيها رقم أو وقت متغيّر — القاموس ما يطابقها حرفياً، فقواعد صغيرة (11-07)
+const PATTERNS: [RegExp, (m: RegExpMatchArray) => string][] = [
+  [/^(الصباحي|المسائي) من (.*) لـ (.*)$/, (m) => `${m[1] === 'الصباحي' ? 'صبح کی' : 'شام کی'} شفٹ ${m[2]} سے ${m[3]} تک`],
+]
+function patternUR(t: string): string | null {
+  for (const [re, f] of PATTERNS) {
+    const m = t.match(re)
+    if (m) return f(m)
+  }
+  return null
 }
 
 function translateNode(root: Node) {

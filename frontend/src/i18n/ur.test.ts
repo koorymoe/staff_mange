@@ -1,9 +1,10 @@
 import { describe, expect, it } from 'vitest'
 import { UR } from './ur'
+import { trUR } from './translateDom'
 
 // بلاغ #11: كل نص ظاهر بشاشات الفني إله ترجمة أوردو — حتى ما يضيف أحد نص جديد وينسى يترجمه.
-const FILES = ['components/AutoCheckoutPrompt.tsx', 'pages/MyTasks.tsx', 'pages/MyInventory.tsx', 'components/WorkGate.tsx', 'components/ReportProblemButton.tsx', 'components/WorkPhotoButton.tsx', 'components/RoutePlanCard.tsx']
-const SRC = import.meta.glob(['../components/AutoCheckoutPrompt.tsx', '../pages/MyTasks.tsx','../pages/MyInventory.tsx','../components/WorkGate.tsx','../components/ReportProblemButton.tsx','../components/WorkPhotoButton.tsx','../components/RoutePlanCard.tsx'], { query: '?raw', import: 'default', eager: true }) as Record<string, string>
+const FILES = ['components/AttendanceGate.tsx', 'pages/AttendancePage.tsx', 'pages/MyRanking.tsx', 'pages/MyExtraTasksPage.tsx', 'pages/MyAchievementsPage.tsx', 'pages/MyWorkPage.tsx', 'components/AutoCheckoutPrompt.tsx', 'pages/MyTasks.tsx', 'pages/MyInventory.tsx', 'components/WorkGate.tsx', 'components/ReportProblemButton.tsx', 'components/WorkPhotoButton.tsx', 'components/RoutePlanCard.tsx']
+const SRC = import.meta.glob(['../components/AttendanceGate.tsx', '../pages/AttendancePage.tsx', '../pages/MyRanking.tsx', '../pages/MyExtraTasksPage.tsx', '../pages/MyAchievementsPage.tsx', '../pages/MyWorkPage.tsx', '../components/AutoCheckoutPrompt.tsx', '../pages/MyTasks.tsx','../pages/MyInventory.tsx','../components/WorkGate.tsx','../components/ReportProblemButton.tsx','../components/WorkPhotoButton.tsx','../components/RoutePlanCard.tsx'], { query: '?raw', import: 'default', eager: true }) as Record<string, string>
 const strip = (s: string) => s.replace(/\{\/\*[\s\S]*?\*\/\}/g, '').replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/.*/g, '$1')
 const ar = /[؀-ۿ]/
 
@@ -23,5 +24,9 @@ describe('قاموس الأوردو', () => {
   })
   it('ماكو ترجمة فاضية', () => {
     expect(Object.entries(UR).filter(([, v]) => !v.trim())).toEqual([])
+  })
+  it('قواعد النصوص المتغيّرة', () => {
+    expect(trUR('الصباحي من 08:00 لـ 16:00')).toBe('صبح کی شفٹ 08:00 سے 16:00 تک')
+    expect(trUR('نص مو بالقاموس')).toBeNull()
   })
 })
