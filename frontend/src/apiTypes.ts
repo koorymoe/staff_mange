@@ -2208,6 +2208,8 @@ export interface Quotation {
   cover?: { label?: string; title?: string; subtitle?: string; city?: string } | null
   annex?: { title: string; items: { title: string; text: string }[] }[] | null
   status: 'NEW' | 'SENT' | 'ACCEPTED' | 'REJECTED'
+  /** (ع) 11-07: صالح لغاية (فاضي بالعروض القديمة) */
+  validUntil?: string | null
   createdAt: string
 }
 
@@ -4081,4 +4083,23 @@ export interface BotReport {
   page: string | null
   /** متى انمسحت الصور من السيرفر (بعد أسبوع) */
   photosPurgedAt: string | null
+}
+
+/** (ع) 11-07: 🔁 الرجعات — حجز ثاني لنفس الزبون ونفس الخدمة خلال windowDays من الإنجاز */
+export interface RevisitReport {
+  windowDays: number
+  days: number
+  jobs: number
+  revisits: number
+  leaders: { leaderId: string; leaderName: string; jobs: number; revisits: number; rate: number }[]
+  items: { firstId: string; firstCode: string; firstDoneAt: string; secondId: string; secondCode: string; secondCreatedAt: string; gapDays: number; serviceName: string | null; customerName: string | null; leaderName: string | null }[]
+}
+
+/** (ع) 11-07: ✍️ توقيع الزبون عند التسليم */
+export interface CustomerSignature {
+  bookingId: string
+  signerName: string
+  image: string
+  signedAt: string
+  collectedByName: string | null
 }

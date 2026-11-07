@@ -7,6 +7,7 @@ import WorkWindowLine from '../components/WorkWindowLine'
 import { asSheet } from '../utils/executionSheet'
 import { useSession } from '../session'
 import BookingCodeChip from '../components/BookingCodeChip'
+import CustomerSignatureView from '../components/CustomerSignatureView'
 import { loadFailed } from '../netErrors'
 import { swallow } from '../utils/swallow'
 
@@ -142,6 +143,7 @@ export default function WorkReportsReview() {
             </div>
             <div className="p-5">
               {r.bookingId && <div className="mb-3"><WorkWindowLine bookingId={r.bookingId} /></div>}
+              {r.bookingId && <div className="mb-3"><CustomerSignatureView bookingId={r.bookingId} /></div>}
               {r.reviewedAt ? (
                 <p className="mb-3 rounded-lg bg-emerald-50 px-3 py-1.5 text-xs font-bold text-emerald-800">
                   ✅ تم التدقيق{r.reviewedByName ? ` — ${r.reviewedByName}` : ''} · {new Date(r.reviewedAt).toLocaleString('ar-IQ', { timeZone: 'Asia/Baghdad' })}{r.reviewNote ? ` · ${r.reviewNote}` : ''}

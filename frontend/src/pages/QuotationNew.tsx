@@ -144,6 +144,8 @@ export default function QuotationNew() {
   }, [solarSystemId])
   const [discountPercent, setDiscountPercent] = useState(0)
   const [duration, setDuration] = useState('')
+  // (ع) 11-07: صلاحية العرض — فاضي بالإنشاء = ١٥ يوم من اليوم (الخادم يحطها)
+  const [validUntil, setValidUntil] = useState('')
   const [notes, setNotes] = useState('')
   const [quotationNumber, setQuotationNumber] = useState('')
   const [loadingQuotation, setLoadingQuotation] = useState(isEdit)
@@ -191,6 +193,7 @@ export default function QuotationNew() {
         setQuotationNumber(q.quotationNumber)
         setDiscountPercent(q.discountPercent)
         setDuration(q.duration || '')
+        setValidUntil(q.validUntil ? q.validUntil.slice(0, 10) : '')
         setNotes(q.notes || '')
         setOwnTerms(q.terms && q.terms.length ? q.terms : null)
         setItems(q.items.length > 0 ? q.items.map((it) => ({
@@ -311,6 +314,7 @@ export default function QuotationNew() {
           duration: duration || undefined,
           notes: notes || undefined,
           terms: terms.filter((t) => t.trim()),
+          validUntil: validUntil || undefined,
         })
         showStatus('تم حفظ التعديلات بنجاح ✓', 'ok')
       } else {
@@ -329,6 +333,7 @@ export default function QuotationNew() {
           notes: notes || undefined,
           terms: terms.filter((t) => t.trim()),
           createdByEmployeeId: employee?.id,
+          validUntil: validUntil || undefined,
         })
         showStatus('تم الحفظ بنجاح ✓', 'ok')
         // بعد أول حفظ نصير على نفس العرض — الحفظ الثاني يعدّله مو يسوي عرض جديد
@@ -880,6 +885,13 @@ ${pageShell(`
               <span className="text-t-danger">*</span> مدة التنفيذ
             </label>
             <input value={duration} onChange={(e) => setDuration(e.target.value)} placeholder="مثال: 10 أيام عمل" style={inputStyle({})} />
+          </div>
+          <div>
+            <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: 'var(--t-body)', marginBottom: '6px' }}>
+              ⏳ العرض صالح لغاية
+            </label>
+            <input type="date" value={validUntil} onChange={(e) => setValidUntil(e.target.value)} style={inputStyle({})} />
+            {!validUntil && <span style={{ fontSize: '11px', color: 'var(--t-muted)' }}>فاضي = ١٥ يوم من اليوم. قبل الانتهاء بيومين يوصلك تنبيه.</span>}
           </div>
         </div>
       </div>

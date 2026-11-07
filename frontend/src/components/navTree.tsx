@@ -330,6 +330,8 @@ export const navItems: NavItem[] = [
       { hideForRoles: ['QUALITY_ENGINEER'], to: '/staff-reports', label: '🧾 تقارير الموظفين', icon: <></>, roles: ['ADMIN', 'MONITOR', 'HR_COORDINATOR'], anyPermission: ['monitoring', 'mon_staff', 'staff_management'] },
       { hideForRoles: ['QUALITY_ENGINEER'], to: '/employee-dossier', label: '📂 ملف الموظف', icon: <></>, roles: ['ADMIN', 'MONITOR', 'HR_COORDINATOR'], anyPermission: ['monitoring', 'mon_staff', 'staff_management'] },
       { monitorMenuHide: true, hideForRoles: ['QUALITY_ENGINEER'], to: '/peer-voice', label: '🗣️ صوت الموظفين', icon: <></>, roles: ['ADMIN', 'MONITOR'], anyPermission: ['monitoring', 'auditing', 'mon_staff'] },
+      // (ع) 11-07: 🔁 الرجعات — نفس حارس GET /api/revisits (requireMonitor)
+      { hideForRoles: ['QUALITY_ENGINEER'], to: '/revisits', label: '🔁 الرجعات', icon: <></>, roles: ['ADMIN', 'MONITOR'], anyPermission: ['monitoring', 'auditing'] },
       { monitorMenuHide: true, hideForRoles: ['QUALITY_ENGINEER'], to: '/workplace-issues', label: '🤝 المشاكل الوظيفية', icon: <></>, roles: ['ADMIN', 'MONITOR'], anyPermission: ['monitoring', 'auditing', 'mon_staff'] },
       // ماتركس — صندوق القرارات: نفس حارس GET /api/ai/decisions (ADMIN/OWNER بس).
       { to: '/matrix/decisions', label: '🤖 صندوق قرارات ماتركس', icon: <></>, roles: ['ADMIN'] },
@@ -841,6 +843,8 @@ export const navItems: NavItem[] = [
       { hideForRoles: ['QUALITY_ENGINEER'], to: '/staff-reports', label: '🧾 تقارير الموظفين', icon: <></>, roles: ['ADMIN', 'MONITOR', 'HR_COORDINATOR'], anyPermission: ['monitoring', 'mon_staff', 'staff_management'] },
       { hideForRoles: ['QUALITY_ENGINEER'], to: '/employee-dossier', label: '📂 ملف الموظف', icon: <></>, roles: ['ADMIN', 'MONITOR', 'HR_COORDINATOR'], anyPermission: ['monitoring', 'mon_staff', 'staff_management'] },
       { monitorMenuHide: true, hideForRoles: ['QUALITY_ENGINEER'], to: '/peer-voice', label: '🗣️ صوت الموظفين', icon: <></>, roles: ['ADMIN', 'MONITOR'], anyPermission: ['monitoring', 'auditing', 'mon_staff'] },
+      // (ع) 11-07: 🔁 الرجعات — نفس حارس GET /api/revisits (requireMonitor)
+      { hideForRoles: ['QUALITY_ENGINEER'], to: '/revisits', label: '🔁 الرجعات', icon: <></>, roles: ['ADMIN', 'MONITOR'], anyPermission: ['monitoring', 'auditing'] },
       { monitorMenuHide: true, hideForRoles: ['QUALITY_ENGINEER'], to: '/workplace-issues', label: '🤝 المشاكل الوظيفية', icon: <></>, roles: ['ADMIN', 'MONITOR'], anyPermission: ['monitoring', 'auditing', 'mon_staff'] },
       { monitorMenuHide: true, to: '/duplicate-review', label: '🤖 ماتركس — التكرار', icon: <></>, roles: ['ADMIN'], permission: 'duplicate_review' },
     ],
@@ -923,6 +927,7 @@ const orgNavigationGroups = [
       '/employee-indicators',
       '/peer-voice',
       '/workplace-issues',
+      '/revisits',
     ],
   },
   {

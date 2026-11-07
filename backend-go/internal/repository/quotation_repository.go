@@ -216,7 +216,20 @@ func computeTotals(items []model.QuotationItemInput, discountPercent float64) (g
 	return
 }
 
+func validQuoteDate(v *string) error {
+	if v == nil || *v == "" {
+		return nil
+	}
+	if _, err := time.Parse("2006-01-02", *v); err != nil {
+		return errors.New("تاريخ صلاحية العرض غلط")
+	}
+	return nil
+}
+
 func (r *QuotationRepository) Create(req model.CreateQuotationRequest) (*model.Quotation, error) {
+	if err := validQuoteDate(req.ValidUntil); err != nil {
+		return nil, err
+	}
 	year := time.Now().In(timeutil.CompanyLocation()).Year() // (11-07) سنة بغداد — ليلة رأس السنة چان يطلع رقم السنة الماضية
 	quotationNumber, err := r.nextQuotationNumber(year)
 	if err != nil {
@@ -237,11 +250,12 @@ func (r *QuotationRepository) Create(req model.CreateQuotationRequest) (*model.Q
 
 	var q model.Quotation
 	err = tx.Get(&q, `
-		INSERT INTO "Quotation" (id, "quotationNumber", "customerName", "customerPhone", "customerAddress", "projectName", "discountPercent", "discountValue", "grandTotal", "netTotal", notes, duration, "createdByEmployeeId", "projectId", terms, layout, cover, annex)
-		VALUES (gen_random_uuid()::text, $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14::jsonb, $15, $16::jsonb, $17::jsonb)
+		INSERT INTO "Quotation" (id, "quotationNumber", "customerName", "customerPhone", "customerAddress", "projectName", "discountPercent", "discountValue", "grandTotal", "netTotal", notes, duration, "createdByEmployeeId", "projectId", terms, layout, cover, annex, "validUntil")
+		VALUES (gen_random_uuid()::text, $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14::jsonb, $15, $16::jsonb, $17::jsonb,
+		        COALESCE(NULLIF($18, '')::date, baghdad_today() + `+QuotationDefaultValidityDays+`))
 		RETURNING *
 	`, quotationNumber, req.CustomerName, req.CustomerPhone, req.CustomerAddress, req.ProjectName, discountPercent, discountValue, grandTotal, netTotal, req.Notes, req.Duration, req.CreatedByEmployeeID, req.ProjectID, termsJSON(req.Terms),
-		quotationLayout(req.Layout), rawJSON(req.Cover), rawJSON(req.Annex))
+		quotationLayout(req.Layout), rawJSON(req.Cover), rawJSON(req.Annex), derefStr(req.ValidUntil))
 	if err != nil {
 		return nil, err
 	}
@@ -271,6 +285,9 @@ func (r *QuotationRepository) Create(req model.CreateQuotationRequest) (*model.Q
 // فشلت اللقطة ما ينمحي شي. بلا هذا يصير أرشيف لنسخة انحفظت أو
 // تعديل بلا أرشيف — والاثنان أسوأ من ماكو أرشيف.
 func (r *QuotationRepository) Update(id string, req model.UpdateQuotationRequest, editorID string) (*model.Quotation, error) {
+	if err := validQuoteDate(req.ValidUntil); err != nil {
+		return nil, err
+	}
 	existing, err := r.FindByID(id)
 	if err != nil {
 		return nil, err
@@ -353,12 +370,15 @@ func (r *QuotationRepository) Update(id string, req model.UpdateQuotationRequest
 			"netTotal" = COALESCE($12, "netTotal"),
 			terms = COALESCE($13::jsonb, terms),
 			cover = COALESCE($14::jsonb, cover),
-			annex = COALESCE($15::jsonb, annex)
+			annex = COALESCE($15::jsonb, annex),
+			-- تمديد الصلاحية يرجّع التنبيه (حتى ينبّه مرة ثانية قبل الموعد الجديد)
+			"expiryRemindedAt" = CASE WHEN NULLIF($16, '')::date IS DISTINCT FROM "validUntil" AND NULLIF($16, '') IS NOT NULL THEN NULL ELSE "expiryRemindedAt" END,
+			"validUntil" = COALESCE(NULLIF($16, '')::date, "validUntil")
 		WHERE id = $1
 		RETURNING *
 	`, id, req.CustomerName, req.CustomerPhone, req.CustomerAddress, req.ProjectName,
 		req.DiscountPercent, req.Notes, req.Duration, req.Status, grandTotal, discountValue, netTotal, termsJSON(req.Terms),
-		rawJSON(req.Cover), rawJSON(req.Annex))
+		rawJSON(req.Cover), rawJSON(req.Annex), derefStr(req.ValidUntil))
 	if err != nil {
 		return nil, err
 	}
@@ -486,4 +506,30 @@ func rawJSON(r *json.RawMessage) *string {
 	}
 	s := string(*r)
 	return &s
+}
+
+// QuotationDefaultValidityDays صلاحية العرض إذا المنشئ ما حدّدها.
+const QuotationDefaultValidityDays = "15"
+
+// ExpiringQuotation عرض جديد/مرسل قرّب ينتهي وبعده ما انبّه عليه.
+type ExpiringQuotation struct {
+	ID              string    `db:"id"`
+	QuotationNumber string    `db:"quotationNumber"`
+	CustomerName    string    `db:"customerName"`
+	CreatorID       string    `db:"createdByEmployeeId"`
+	ValidUntil      time.Time `db:"validUntil"`
+}
+
+// ClaimExpiringQuotations (ع) 11-07: العروض الي باقي عليها يومين أو أقل (أو انتهت
+// خلال آخر أسبوع) وبعدها ما انقبلت ولا انرفضت. يأشّرها «انبّه» بنفس الاستعلام
+// حتى ما تتكرر الرسالة. القديم من أسبوع وأكثر ما ينبّه (لا نغرق المنشئ بالقديم).
+func (r *QuotationRepository) ClaimExpiringQuotations() ([]ExpiringQuotation, error) {
+	rows := []ExpiringQuotation{}
+	err := r.db.Select(&rows, `
+		UPDATE "Quotation" SET "expiryRemindedAt" = now()
+		WHERE status IN ('NEW', 'SENT') AND "expiryRemindedAt" IS NULL
+		  AND "validUntil" IS NOT NULL
+		  AND "validUntil" <= baghdad_today() + 2 AND "validUntil" >= baghdad_today() - 7
+		RETURNING id, "quotationNumber", "customerName", "createdByEmployeeId", "validUntil"`)
+	return rows, err
 }

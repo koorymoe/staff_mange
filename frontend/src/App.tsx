@@ -81,6 +81,7 @@ const SuppliersHub = lazyRetry(() => import('./pages/SuppliersHub'))
 const ProjectPaymentsPage = lazyRetry(() => import('./pages/ProjectPaymentsPage'))
 const WorkplaceIssuesPage = lazyRetry(() => import('./pages/WorkplaceIssuesPage'))
 const ManagerRequestsPage = lazyRetry(() => import('./pages/ManagerRequestsPage'))
+const RevisitsPage = lazyRetry(() => import('./pages/RevisitsPage'))
 const ItStatsPage = lazyRetry(() => import('./pages/ItStatsPage'))
 const MyInventory = lazyRetry(() => import('./pages/MyInventory'))
 const DeviceMaintenancePage = lazyRetry(() => import('./pages/DeviceMaintenancePage'))
@@ -246,6 +247,7 @@ function App() {
           <Route path="employee-indicators" element={<RequirePermission permission="monitoring" anyOf={['auditing']} roles={['MONITOR']}><StaffScoreHub /></RequirePermission>} />
           <Route path="staff-score" element={<RequirePermission permission="monitoring" anyOf={['auditing']} roles={['MONITOR']}><StaffScoreHub /></RequirePermission>} />
           <Route path="peer-voice" element={<RequirePermission permission="monitoring" anyOf={['auditing']} roles={['MONITOR']}><PeerVoicePage /></RequirePermission>} />
+          <Route path="revisits" element={<RequirePermission permission="monitoring" anyOf={['auditing']} roles={['MONITOR']}><RevisitsPage /></RequirePermission>} />
           <Route path="workplace-issues" element={<RequirePermission permission="monitoring" anyOf={['auditing']} roles={['MONITOR']}><WorkplaceIssuesPage /></RequirePermission>} />
           <Route path="discipline-record" element={<RequireAdmin><DisciplineRecordPage /></RequireAdmin>} />
           <Route path="matrix/decisions" element={<RequireAdmin><MatrixDecisionsPage /></RequireAdmin>} />

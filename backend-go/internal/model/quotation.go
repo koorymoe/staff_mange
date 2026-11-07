@@ -20,14 +20,17 @@ type Quotation struct {
 	Notes           *string `db:"notes" json:"notes"`
 	Duration        *string `db:"duration" json:"duration"`
 	// (ع) 10-14: شروط هذا العرض (مصفوفة نصوص) — null = الشروط الافتراضية
-	Terms               *json.RawMessage `db:"terms" json:"terms"`
+	Terms *json.RawMessage `db:"terms" json:"terms"`
 	// (دازاي 11-06) «عرض مشاريع»: الشكل (CLASSIC/PROJECT)، والغلاف، والملحق الفني
-	Layout              string           `db:"layout" json:"layout"`
-	Cover               *json.RawMessage `db:"cover" json:"cover"`
-	Annex               *json.RawMessage `db:"annex" json:"annex"`
-	Status              string           `db:"status" json:"status"`
-	CreatedByEmployeeID string           `db:"createdByEmployeeId" json:"-"`
-	CreatedAt           time.Time        `db:"createdAt" json:"createdAt"`
+	Layout string           `db:"layout" json:"layout"`
+	Cover  *json.RawMessage `db:"cover" json:"cover"`
+	Annex  *json.RawMessage `db:"annex" json:"annex"`
+	Status string           `db:"status" json:"status"`
+	// (ع) 11-07: صلاحية العرض — بعدها السعر يحتاج تأكيد. وتنبيه للمنشئ قبل يومين.
+	ValidUntil          *time.Time `db:"validUntil" json:"validUntil"`
+	ExpiryRemindedAt    *time.Time `db:"expiryRemindedAt" json:"-"`
+	CreatedByEmployeeID string     `db:"createdByEmployeeId" json:"-"`
+	CreatedAt           time.Time  `db:"createdAt" json:"createdAt"`
 
 	Items             []QuotationItem `db:"-" json:"items"`
 	CreatedByEmployee *EmployeeBrief  `db:"-" json:"createdByEmployee"`
@@ -81,6 +84,8 @@ type CreateQuotationRequest struct {
 	Cover               *json.RawMessage     `json:"cover"`
 	Annex               *json.RawMessage     `json:"annex"`
 	CreatedByEmployeeID string               `json:"createdByEmployeeId"`
+	// ValidUntil YYYY-MM-DD — فاضي = ١٥ يوم من اليوم
+	ValidUntil *string `json:"validUntil"`
 }
 
 type UpdateQuotationRequest struct {
@@ -96,6 +101,7 @@ type UpdateQuotationRequest struct {
 	Items           []QuotationItemInput `json:"items"`
 	Cover           *json.RawMessage     `json:"cover"`
 	Annex           *json.RawMessage     `json:"annex"`
+	ValidUntil      *string              `json:"validUntil"`
 }
 
 // ═══ نسخة مؤرشفة من عرض سعر ═══

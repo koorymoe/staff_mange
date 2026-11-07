@@ -748,6 +748,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	surveyReportHandler := handler.NewBookingSurveyReportHandler(surveyReportService)
 	// مهندس الجودة يراجع تقارير غيره بصلاحيته، مو بدوره.
 	workReportHandler.SetPermissions(permissionRepo)
+	workReportHandler.SetSignatures(repository.NewCustomerSignatureRepository(db))
 	statsHandler := handler.NewStatsHandler(statsService)
 	vehicleHandler := handler.NewVehicleHandler(vehicleService)
 	vehicleMissionHandler := handler.NewVehicleMissionHandler(vehicleMissionService, vehicleMissionRatingService, vehicleBookingService, inventoryService, employeeRepo)
@@ -1750,6 +1751,9 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	mux.Handle("POST /api/manager-requests", middleware.Chain(http.HandlerFunc(managerRequestHandler.Create), requireAuth))
 	mux.Handle("GET /api/manager-requests/mine", middleware.Chain(http.HandlerFunc(managerRequestHandler.Mine), requireAuth))
 	mux.Handle("GET /api/manager-requests/inventory-context", middleware.Chain(http.HandlerFunc(managerRequestHandler.InventoryContext), requireAuth, requireInventoryManage))
+	// 🔁 الرجعات (ع) 11-07 — نفس حارس شغل المراقب
+	revisitHandler := handler.NewRevisitHandler(repository.NewRevisitRepository(db))
+	mux.Handle("GET /api/revisits", middleware.Chain(http.HandlerFunc(revisitHandler.Report), requireAuth, requireMonitor))
 	mux.Handle("GET /api/manager-requests", middleware.Chain(http.HandlerFunc(managerRequestHandler.List), requireAuth, requireAdmin))
 	mux.Handle("POST /api/manager-requests/{id}/handle", middleware.Chain(http.HandlerFunc(managerRequestHandler.Handle), requireAuth, requireAdmin))
 
@@ -2708,6 +2712,9 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	mux.Handle("POST /api/work-reports", middleware.Chain(http.HandlerFunc(workReportHandler.Create), requireAuth))
 	mux.Handle("GET /api/work-reports", middleware.Chain(http.HandlerFunc(workReportHandler.List), requireAuth))
 	mux.Handle("GET /api/work-reports/counts", middleware.Chain(http.HandlerFunc(workReportHandler.Counts), requireAuth))
+	// ✍️ توقيع الزبون عند التسليم (ع) 11-07
+	mux.Handle("POST /api/bookings/{id}/customer-signature", middleware.Chain(http.HandlerFunc(workReportHandler.SaveSignature), requireAuth))
+	mux.Handle("GET /api/bookings/{id}/customer-signature", middleware.Chain(http.HandlerFunc(workReportHandler.GetSignature), requireAuth))
 	mux.Handle("GET /api/work-reports/by-booking", middleware.Chain(http.HandlerFunc(workReportHandler.ByBooking), requireAuth))
 	mux.Handle("PUT /api/work-reports/{id}/review", middleware.Chain(http.HandlerFunc(workReportHandler.Review), requireAuth, requireMon["mon_reports"]))
 	mux.Handle("PUT /api/bookings/{id}/progress/review", middleware.Chain(http.HandlerFunc(bookingProgressHandler.Review), requireAuth, requireMon["mon_reports"]))
@@ -3038,6 +3045,8 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	projectDelayHandler := handler.NewProjectDelayHandler(db, matrixProjectService)
 	// (ع) 10-17: المتأخر بمرحلة مشروع ينطلب منه تفسير تلقائي (مرة كل ٢٤ ساعة لكل مرحلة)
 	service.StartProjectDelayEnforcer(db, matrixProjectService.Report, notificationRepo)
+	// ⏳ صلاحية عروض الأسعار (ع) 11-07
+	service.StartQuotationExpiryReminder(quotationRepo, notificationRepo)
 	mux.Handle("GET /api/projects/stage-limits", middleware.Chain(http.HandlerFunc(projectDelayHandler.StageLimits), requireAuth, requireAdmin))
 	mux.Handle("PUT /api/projects/stage-limits", middleware.Chain(http.HandlerFunc(projectDelayHandler.SetStageLimit), requireAuth, requireAdmin))
 	mux.Handle("POST /api/projects/{id}/delay-reason", middleware.Chain(http.HandlerFunc(projectDelayHandler.AddReason), requireAuth))

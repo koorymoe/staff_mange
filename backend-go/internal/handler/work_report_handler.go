@@ -17,6 +17,57 @@ type WorkReportHandler struct {
 	// permissions: منو يراجع تقارير غيره. اختياري — بدونه المراجعة
 	// تنحصر بالأدوار الإشرافية.
 	permissions *repository.PermissionRepository
+	signatures  *repository.CustomerSignatureRepository
+}
+
+// SetSignatures (ع) 11-07: توقيع الزبون عند التسليم.
+func (h *WorkReportHandler) SetSignatures(s *repository.CustomerSignatureRepository) {
+	h.signatures = s
+}
+
+// POST /api/bookings/{id}/customer-signature — كادر الحجز بس.
+func (h *WorkReportHandler) SaveSignature(w http.ResponseWriter, r *http.Request) {
+	if h.signatures == nil {
+		WriteError(w, http.StatusServiceUnavailable, "التوقيع مو مفعّل")
+		return
+	}
+	id, me := r.PathValue("id"), middleware.EmployeeIDFromContext(r)
+	if !h.signatures.CanCollect(id, me) {
+		WriteError(w, http.StatusForbidden, "التوقيع ياخذه كادر الحجز نفسه")
+		return
+	}
+	var in struct {
+		SignerName string `json:"signerName"`
+		Image      string `json:"image"`
+	}
+	if err := DecodeJSON(r, &in); err != nil {
+		WriteError(w, http.StatusBadRequest, "بيانات غير صحيحة")
+		return
+	}
+	if err := h.signatures.Save(id, me, in.SignerName, in.Image); err != nil {
+		WriteError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	WriteJSON(w, http.StatusOK, map[string]bool{"ok": true})
+}
+
+// GET /api/bookings/{id}/customer-signature — مراجع التقارير أو كادر الحجز.
+func (h *WorkReportHandler) GetSignature(w http.ResponseWriter, r *http.Request) {
+	if h.signatures == nil {
+		WriteJSON(w, http.StatusOK, nil)
+		return
+	}
+	id := r.PathValue("id")
+	if !h.canReviewReports(r) && !h.signatures.CanCollect(id, middleware.EmployeeIDFromContext(r)) {
+		WriteError(w, http.StatusForbidden, "مو مسموح")
+		return
+	}
+	s, err := h.signatures.Get(id)
+	if err != nil {
+		WriteError(w, http.StatusInternalServerError, "تعذر جلب التوقيع")
+		return
+	}
+	WriteJSON(w, http.StatusOK, s)
 }
 
 func NewWorkReportHandler(s *service.WorkReportService) *WorkReportHandler {

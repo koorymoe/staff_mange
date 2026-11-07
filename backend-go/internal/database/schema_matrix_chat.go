@@ -2002,5 +2002,26 @@ func matrixChatMigrations() []Migration {
 			        o."missingItems" IS NOT NULL AND btrim(o."missingItems") <> ''
 			        AND NOT (string_to_array(btrim(o."missingItems"), '، ') && string_to_array(btrim(COALESCE(latest."missingItems", '')), '، '))));
 		`,
+	}, {
+		// (ع) 11-07: صلاحية عرض السعر + تنبيه المنشئ قبل الانتهاء. العروض القديمة
+		// تبقى بلا تاريخ (ما ننبّه على عروض قديمة)، والجديدة تاخذ ١٥ يوم افتراضياً.
+		Version: "0457_quotation_valid_until",
+		SQL: `
+			ALTER TABLE "Quotation" ADD COLUMN IF NOT EXISTS "validUntil" DATE;
+			ALTER TABLE "Quotation" ADD COLUMN IF NOT EXISTS "expiryRemindedAt" TIMESTAMPTZ;
+		`,
+	}, {
+		// (ع) 11-07: توقيع الزبون عند التسليم — جدول مستقل، والعمود يحجبه aiDenyColumn
+		// (signature) عن أدوار الذكاء.
+		Version: "0458_customer_signature",
+		SQL: `
+			CREATE TABLE IF NOT EXISTS "CustomerSignature" (
+				"bookingId" TEXT PRIMARY KEY REFERENCES "Booking"(id) ON DELETE CASCADE,
+				"signerName" TEXT NOT NULL,
+				"signatureImage" TEXT NOT NULL,
+				"collectedById" TEXT REFERENCES "Employee"(id) ON DELETE SET NULL,
+				"signedAt" TIMESTAMPTZ NOT NULL DEFAULT now()
+			);
+		`,
 	}}
 }

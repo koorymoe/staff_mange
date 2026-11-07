@@ -5,6 +5,7 @@ import { useSession } from '../session'
 import EntityIdentity from '../components/EntityIdentity'
 import BookingCodeChip from '../components/BookingCodeChip'
 import { ExecutionSheetForm } from '../components/ExecutionSheet'
+import SignaturePad from '../components/SignaturePad'
 import { emptySheet, sheetMissing, PROJECT_STATUS, type ExecutionSheetData } from '../utils/executionSheet'
 
 export default function WorkReportPage() {
@@ -70,6 +71,8 @@ export default function WorkReportPage() {
   // (ع 10-16) التقرير بنموذج المشرف الأصلي — والأعمدة القديمة تتعبّى منه
   const [sheets, setSheets] = useState<Record<string, ExecutionSheetData>>({})
   const getSheet = (b: Booking) => sheets[b.id] ?? emptySheet(b)
+  // (ع) 11-07: توقيع الزبون عند التسليم — اختياري، وينحفظ بعد ما ينجح التقرير
+  const [sigs, setSigs] = useState<Record<string, { name: string; png: string | null }>>({})
   const handleSheetSubmit = async (b: Booking) => {
     const sh = getSheet(b)
     const miss = sheetMissing(sh)
@@ -90,11 +93,18 @@ export default function WorkReportPage() {
         notes: sh.suggestion || undefined,
         sheet: sh,
       })
+      const sig = sigs[b.id]
+      let sigErr = ''
+      if (sig?.png) {
+        try { await api.saveCustomerSignature(b.id, sig.name.trim() || b.customer?.name || 'الزبون', sig.png) }
+        catch (e) { sigErr = e instanceof Error ? e.message : 'تعذر' }
+      }
+      setSigs((p) => { const n = { ...p }; delete n[b.id]; return n })
       setExpandedId(null)
       setSheets((p) => { const n = { ...p }; delete n[b.id]; return n })
       setReportedBookingIds((prev) => new Set(prev).add(b.id))
       load()
-      alert('تم إرسال التقرير بنجاح ✓')
+      alert(sigErr ? `تم إرسال التقرير ✓ بس التوقيع ما انحفظ: ${sigErr}` : 'تم إرسال التقرير بنجاح ✓')
     } catch (e) {
       alert(e instanceof Error ? e.message : 'تعذر إرسال التقرير')
     } finally {
@@ -176,6 +186,18 @@ export default function WorkReportPage() {
                 <div className="border-t border-slate-100 p-5">
                   {/* (ع 10-16) نموذج «تقرير تنفيذ المشروع» الأصلي — نفس الي يشوفه المراقب */}
                   <ExecutionSheetForm value={getSheet(booking)} onChange={(v) => setSheets((p) => ({ ...p, [booking.id]: v }))} />
+                  {/* (ع) 11-07: ✍️ توقيع الزبون — «استلمت الشغل ومنظومتي تشتغل» */}
+                  <div className="mt-5 space-y-2 rounded-2xl border border-slate-200 p-4">
+                    <p className="text-sm font-extrabold text-brand-900">✍️ توقيع الزبون عند التسليم <span className="font-normal text-slate-400">(اختياري)</span></p>
+                    <p className="text-xs text-slate-500">خلّي الزبون يوقّع: «استلمت الشغل ومنظومتي تشتغل». يحميك إذا صار أي خلاف بعدين.</p>
+                    <input
+                      value={sigs[booking.id]?.name ?? ''}
+                      onChange={(e) => setSigs((p) => ({ ...p, [booking.id]: { name: e.target.value, png: p[booking.id]?.png ?? null } }))}
+                      placeholder={`اسم الي يوقّع${booking.customer?.name ? ` (مثلاً ${booking.customer.name})` : ''}`}
+                      className="w-full rounded-lg border border-slate-200 p-2 text-sm"
+                    />
+                    <SignaturePad onChange={(png) => setSigs((p) => ({ ...p, [booking.id]: { name: p[booking.id]?.name ?? '', png } }))} />
+                  </div>
                   <div className="mt-5">
                     <button
                       onClick={() => handleSheetSubmit(booking)}

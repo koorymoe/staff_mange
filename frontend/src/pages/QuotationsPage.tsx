@@ -4,7 +4,7 @@ import { api, type Quotation } from '../api'
 import { useSession, isAdminOrOwner } from '../session'
 import QuotationVersions from '../components/QuotationVersions'
 import QuotationTermsEditor from '../components/QuotationTermsEditor'
-import { numIQ as fmt } from '../utils/format'
+import { numIQ as fmt, todayBaghdad } from '../utils/format'
 import { askConfirm } from '../ui/dialogs'
 
 const PRIMARY = '#1a237e'
@@ -25,6 +25,15 @@ const statusConfig: Record<Quotation['status'], { label: string; bg: string; col
   REJECTED: { label: 'مرفوض', bg: '#f8d7da', color: 'var(--t-danger)' },
 }
 
+
+// (ع) 11-07: صلاحية العرض — بس للجديد والمرسل (المقبول والمرفوض انحسم)
+function ValidityBadge({ q }: { q: Quotation }) {
+  if (!q.validUntil || (q.status !== 'NEW' && q.status !== 'SENT')) return null
+  const day = q.validUntil.slice(0, 10)
+  const left = Math.round((new Date(day).getTime() - new Date(todayBaghdad()).getTime()) / 86400000)
+  const [txt, cls] = left < 0 ? ['⌛ منتهي', 'bg-red-100 text-red-700'] : left <= 2 ? [`⏳ ينتهي ${left === 0 ? 'اليوم' : `خلال ${left} يوم`}`, 'bg-amber-100 text-amber-800'] : [`صالح لغاية ${day}`, 'text-t-muted']
+  return <span className={`mt-1 block rounded-full px-2 py-0.5 text-[11px] font-bold ${cls}`}>{txt}</span>
+}
 
 export default function QuotationsPage() {
   const navigate = useNavigate()
@@ -184,6 +193,7 @@ export default function QuotationsPage() {
                       }}>
                         {st.label}
                       </span>
+                      <ValidityBadge q={q} />
                     </td>
                     <td className="py-3 px-4 text-center text-[13px] text-t-muted">
                       {new Date(q.createdAt).toLocaleDateString('ar-IQ')}

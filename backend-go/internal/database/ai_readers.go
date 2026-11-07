@@ -24,7 +24,7 @@ const (
 )
 
 var (
-	aiDenyColumn       = regexp.MustCompile(`(?i)(password|codehash|token|secret|otp|apikey|phone|mobile|whatsapp|idcard|residencecard|nationalid)`)
+	aiDenyColumn       = regexp.MustCompile(`(?i)(password|codehash|token|secret|otp|apikey|phone|mobile|whatsapp|idcard|residencecard|nationalid|signature|signer)`)
 	aiDenyMatrixColumn = regexp.MustCompile(`(?i)(address|customername|guestname|locationurl|latitude|longitude|maplat|maplng|maplong|email)`)
 	aiDenyTables       = map[string]bool{"AiFile": true, "AiReminder": true, "AiWatch": true, "SecretaryNote": true, "SecretaryMessage": true, "SecretaryAction": true, "SecretaryPref": true,
 		"StealthLog": true, "schema_migrations": true}
