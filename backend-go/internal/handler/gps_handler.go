@@ -113,6 +113,7 @@ func (h *GpsHandler) CreateDevice(w http.ResponseWriter, r *http.Request) {
 		WriteError(w, http.StatusBadRequest, "بيانات الطلب غير صحيحة")
 		return
 	}
+	ownGpsRequest(r, &req.EmployeeID, &req.AdminID)
 	device, err := h.service.CreateDevice(req)
 	if err != nil {
 		WriteError(w, http.StatusBadRequest, err.Error())
@@ -152,6 +153,7 @@ func (h *GpsHandler) CreateRenewal(w http.ResponseWriter, r *http.Request) {
 		WriteError(w, http.StatusBadRequest, "بيانات الطلب غير صحيحة")
 		return
 	}
+	ownGpsRequest(r, &req.EmployeeID, &req.AdminID)
 	renewal, err := h.service.CreateRenewal(req)
 	if err != nil {
 		WriteError(w, http.StatusBadRequest, err.Error())
@@ -191,6 +193,7 @@ func (h *GpsHandler) CreateMaintenance(w http.ResponseWriter, r *http.Request) {
 		WriteError(w, http.StatusBadRequest, "بيانات الطلب غير صحيحة")
 		return
 	}
+	ownGpsRequest(r, &req.EmployeeID, &req.AdminID)
 	record, err := h.service.CreateMaintenance(req)
 	if err != nil {
 		WriteError(w, http.StatusBadRequest, err.Error())
@@ -354,4 +357,16 @@ func (h *GpsHandler) MonitorSnapshot(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	WriteJSON(w, http.StatusOK, snap)
+}
+
+// ownGpsRequest (11-07): الطلب ينسجّل باسم صاحب الجلسة — الواجهة دائماً ترسل هويته هو،
+// بس السيرفر چان يصدّق أي employeeId/adminId بالجسم، فموظف يسجّل بيعة باسم زميله.
+// الأدمن والمالك ومدير الجي بي اس بس يحددون غيرهم.
+func ownGpsRequest(r *http.Request, employeeID, adminID **string) {
+	if role := middleware.RoleFromContext(r); model.IsAdminRole(role) || role == "GPS_ADMIN" {
+		return
+	}
+	me := middleware.EmployeeIDFromContext(r)
+	*employeeID = &me
+	*adminID = nil
 }
