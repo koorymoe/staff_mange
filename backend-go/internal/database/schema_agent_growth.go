@@ -104,5 +104,11 @@ func agentGrowthMigrations() []Migration {
 			);
 			CREATE INDEX IF NOT EXISTS "AgentActionLog_at" ON "AgentActionLog" ("createdAt" DESC);
 		`,
+	}, {
+		// بلاغ #11 (11-07): لغة واجهة الموظف — شاشات الفني بالأوردو
+		Version: "0456_employee_language",
+		SQL: `
+			ALTER TABLE "Employee" ADD COLUMN IF NOT EXISTS language TEXT NOT NULL DEFAULT 'ar';
+		`,
 	}}
 }

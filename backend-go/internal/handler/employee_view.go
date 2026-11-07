@@ -30,6 +30,7 @@ func basePublicFields(e *model.Employee) employeeView {
 		"isTrainee":        e.IsTrainee,
 		"leaderSkillLevel": e.LeaderSkillLevel,
 		"createdAt":        e.CreatedAt,
+		"language":         e.Language,
 	}
 	// محسوب لشاشة المنسّق (/employees/match): هل عنده مهارة الخدمة — مو سر.
 	if e.HasRequiredSkill != nil {

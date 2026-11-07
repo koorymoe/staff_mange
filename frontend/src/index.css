@@ -1435,3 +1435,6 @@ html.dark .matrix-note b.mx-tag{color:#c4b5fd}
 html.dark .matrix-courier-say{background:#2a0b0e;color:#fecaca;border-color:#7f1d1d}
 @keyframes mx-courier-in{from{opacity:0;transform:translateX(-40px) scale(.6)}to{opacity:1;transform:none}}
 @media (prefers-reduced-motion:reduce){.matrix-courier,.matrix-courier-say{animation:none!important}}
+
+/* بلاغ #11: خط يدعم حروف الأوردو (ٹ ڈ ڑ ں ہ ے) */
+.lang-ur body { font-family: 'Noto Nastaliq Urdu', 'Noto Naskh Arabic', 'Jameel Noori Nastaleeq', Tahoma, sans-serif; line-height: 1.9; }

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { api } from '../api'
+import { api, apiRequest } from '../api'
+import { setUiLanguage, uiLanguage } from '../i18n/translateDom'
 import { useSession, isAdminOrOwner } from '../session'
 import { swallow } from '../utils/swallow'
 import TelegramLinkCard from './TelegramLinkCard'
@@ -97,6 +98,22 @@ export default function SettingsPanel({ onClose }: { onClose: () => void }) {
         <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3">
           <span className="text-sm font-bold text-slate-800">⚙️ الإعدادات</span>
           <button onClick={onClose} className="text-xl text-slate-400 hover:text-slate-600">×</button>
+        </div>
+        {/* 🌐 لغة الواجهة (بلاغ #11): عربي / اردو — شاشات الفني */}
+        <div className="flex items-center justify-between gap-2 border-b border-slate-100 px-4 py-2 text-sm">
+          <span className="text-slate-600">🌐 اللغة · زبان</span>
+          <div className="flex gap-1">
+            {(['ar', 'ur'] as const).map((l) => (
+              <button key={l} type="button" aria-pressed={uiLanguage() === l}
+                onClick={async () => {
+                  try { await apiRequest('/me/language', { method: 'PUT', body: JSON.stringify({ language: l }) }) } catch { /* يتحفظ محلياً على الأقل */ }
+                  setUiLanguage(l)
+                }}
+                className={`rounded-lg px-3 py-1 text-xs font-bold ${uiLanguage() === l ? 'bg-brand-600 text-white' : 'bg-slate-100 text-slate-700'}`}>
+                {l === 'ar' ? 'العربية' : 'اردو'}
+              </button>
+            ))}
+          </div>
         </div>
         <div className="flex flex-wrap gap-1 border-b border-slate-100 p-2">
           {tabs.map((t) => (

@@ -9,6 +9,7 @@ import { installNetworkErrorTrap } from './netErrors.ts'
 import { applyTheme, getTheme } from './utils/theme.ts'
 import { installInAppAlert } from './utils/dialog.tsx'
 import { startStageSync } from './utils/offlineStages.ts'
+import { startUrduIfNeeded } from './i18n/translateDom.ts'
 import { startFieldTracker } from './utils/fieldTracker.ts'
 import { installStaleChunkReload } from './utils/staleReload.ts'
 import { DialogHost } from './ui/DialogHost'
@@ -46,4 +47,5 @@ if ('serviceWorker' in navigator && import.meta.env.PROD) {
   window.addEventListener('load', () => { navigator.serviceWorker.register(`${import.meta.env.BASE_URL}sw.js`).catch(swallow) })
 }
 startStageSync()
+startUrduIfNeeded() // بلاغ #11: شاشات الفني بالأوردو
 startFieldTracker()

@@ -975,6 +975,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 		http.HandlerFunc(systemSwitchHandler.Set), requireAuth))
 
 	mux.Handle("GET /api/auth/me", middleware.Chain(http.HandlerFunc(authHandler.Me), requireAuth))
+	mux.Handle("PUT /api/me/language", middleware.Chain(handler.SetMyLanguage(db), requireAuth)) // بلاغ #11: الأوردو
 	// تغيير كلمة المرور لمدير النظام والمالك بس. الموظف ما يغيّر سره
 	// بنفسه — كلمات السر تنتحدد من «إدارة الموظفين» عند الأدمن، حتى
 	// تبقى معروفة عند الإدارة وما يقفل موظف حسابه على نفسه.

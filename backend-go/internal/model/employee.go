@@ -65,6 +65,8 @@ type Employee struct {
 	LeaderSkillLevel     int        `db:"leaderSkillLevel" json:"leaderSkillLevel"`
 	IsLeader             bool       `db:"isLeader" json:"isLeader"`
 	IsTrainee            bool       `db:"isTrainee" json:"isTrainee"`
+	// Language لغة واجهة الموظف: ar (افتراضي) أو ur — بلاغ #11 (11-07). ⚠️ عمود بالجدول → لازم حقل هنا (SELECT *).
+	Language string `db:"language" json:"language"`
 	// Division تفصل موظفي الشعبة الهندسية (ENGINEERING، الافتراضي) عن موظفي
 	// شعبة الديكور (DECOR) — تحدد أي كتالوج مهارات ينطبق عليهم، انظر
 	// model.DivisionEngineering / model.DivisionDecor.
