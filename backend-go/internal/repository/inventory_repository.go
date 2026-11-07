@@ -700,9 +700,12 @@ func (r *InventoryRepository) RejectToolRequest(id, actorID string) (*model.Tool
 	var req model.ToolRequest
 	err := r.db.Get(&req, `
 		UPDATE "ToolRequest" SET status = 'REJECTED', "rejectedAt" = now(), "rejectedById" = NULLIF($2, '')
-		WHERE id = $1
+		WHERE id = $1 AND status = 'PENDING' -- (11-07) رفض طلب موافَق عليه چان يضيّع وحدة من المخزن للأبد
 		RETURNING *
 	`, id, actorID)
+	if err == sql.ErrNoRows {
+		return nil, fmt.Errorf("الطلب مو معلّق — يمكن انبتّ بيه من قبل")
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -885,9 +888,8 @@ func (r *InventoryRepository) ReturnToolRequest(id string) (*model.ToolRequest, 
 	if err != nil {
 		return nil, err
 	}
-	if err := r.IncrementAvailableQuantity(req.ToolID); err != nil {
-		return nil, err
-	}
+	// (11-07) الكمية ترجع بـ ReturnToolStock بالخدمة (بسقف الكلي). چانت ترجع هنا هم،
+	// فكل إرجاع يزيد المخزن ٢ بدل ١.
 	r.hydrateRequest(&req)
 	return &req, nil
 }
