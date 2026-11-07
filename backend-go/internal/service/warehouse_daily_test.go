@@ -62,4 +62,14 @@ func TestWarehouseDailyOncePerDayLive(t *testing.T) {
 	if sent != 1 { // سيارة فحص فعّالة وما انقيّمت = أكو شي
 		t.Fatalf("لازم مرة وحدة: %d", sent)
 	}
+
+	// (11-07) فشل البناء ما يحجز اليوم — الدورة الجاية تعيد.
+	broken := sqlx.MustConnect("postgres", os.Getenv("DATABASE_URL"))
+	broken.Close()
+	claims := 0
+	w2 := NewWarehouseDaily(broken, func(string, string) (bool, error) { claims++; return true, nil }, nil, nil)
+	if err := w2.RunIfDue(noon); err == nil || claims != 0 {
+		t.Fatalf("بناء فاشل حجز اليوم: err=%v claims=%d", err, claims)
+	}
 }
+

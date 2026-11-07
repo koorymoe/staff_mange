@@ -43,7 +43,7 @@ func MaintenanceDueList(db *sqlx.DB, limit int) ([]MaintenanceDue, error) {
 		JOIN "Customer" c ON c.id = l."customerId"
 		LEFT JOIN comp ON comp."customerId" = l."customerId"
 		WHERE (l."lastDone" < now() - interval '6 months' AND l."lastDone" > now() - interval '3 years' OR COALESCE(comp.n, 0) >= 2)
-		  AND NOT EXISTS (SELECT 1 FROM "Booking" o WHERE o."customerId" = l."customerId" AND o.status::text NOT IN ('COMPLETED','CANCELLED'))
+		  AND NOT EXISTS (SELECT 1 FROM "Booking" o WHERE o."customerId" = l."customerId" AND o.status::text NOT IN ('COMPLETED','CANCELLED') AND o."archivedAt" IS NULL) -- (11-07) حجز مؤرشف مو مفتوح
 		ORDER BY COALESCE(comp.n, 0) DESC, l."lastDone" ASC
 		LIMIT $1`, limit)
 	return rows, err

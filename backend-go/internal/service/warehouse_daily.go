@@ -66,6 +66,7 @@ type WarehouseDaily struct {
 	claim   func(key, day string) (bool, error)
 	overdue func() ([]string, error)
 	notify  func(msg string)
+	doneDay string // يوم انحسم بهاي العملية — حتى ما نعيد البناء كل دورة بعد ما ينرسل
 }
 
 func NewWarehouseDaily(db *sqlx.DB, claim func(key, day string) (bool, error), overdue func() ([]string, error), notify func(string)) *WarehouseDaily {
@@ -77,13 +78,23 @@ func (w *WarehouseDaily) RunIfDue(now time.Time) error {
 	if now.Hour() < 11 {
 		return nil
 	}
-	ok, err := w.claim("WAREHOUSE_DAILY_SENT", now.Format("2006-01-02"))
-	if err != nil || !ok {
-		return err
+	day := now.Format("2006-01-02")
+	if w.doneDay == day {
+		return nil
 	}
+	// (11-07) نبني أول وبعدين نحجز اليوم: چان يحجز أول، فلو فشل البناء (خطأ قاعدة لحظي)
+	// يبقى اليوم محجوز والملخص ما يطلع لباچر.
 	d, err := BuildWarehouseDigest(w.db, w.overdue)
 	if err != nil {
 		return err
+	}
+	ok, err := w.claim("WAREHOUSE_DAILY_SENT", day)
+	if err != nil {
+		return err
+	}
+	w.doneDay = day
+	if !ok {
+		return nil
 	}
 	if msg := d.Message(); msg != "" && w.notify != nil {
 		w.notify(msg)

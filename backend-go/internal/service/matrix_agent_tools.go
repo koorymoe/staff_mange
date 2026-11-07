@@ -103,7 +103,7 @@ func (a *MatrixAgent) RegisterReadTools(d AgentDeps) {
 	// 🛠️ صيانة وقائية (دازاي 11-06، فكرة ٧) — بلا تلفونات
 	a.AddTool(agentTool{Name: "maintenance_due", Desc: "كم زبون يستاهل اتصال صيانة وقائية (آخر شغل فات عليه ٦ أشهر، أو شكوتين فما فوق بسنة، وماكو حجز مفتوح) — أرقام حسب الخدمة والسبب بس، بلا أسماء ولا تلفونات (القائمة بالأسماء بمكتب الجودة).",
 		Run: func(map[string]any, *nameMask) (string, error) {
-			rows, err := MaintenanceDueList(a.db, 100)
+			rows, err := MaintenanceDueList(a.db, 5000) // (11-07) الملخص يعدّ الكل — بـ100 چان يگول «100 زبون» وهم أكثر
 			if err != nil {
 				return "", err
 			}

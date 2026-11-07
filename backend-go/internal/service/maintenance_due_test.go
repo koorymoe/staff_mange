@@ -57,6 +57,8 @@ func TestMaintenanceDueLive(t *testing.T) {
 	cust("busy", 200*day, true, 0)      // عنده حجز مفتوح = لا
 	cust("angry", 30*day, false, 2)     // شكوتين = يطلع
 	cust("ancient", 1500*day, false, 0) // أكثر من ٣ سنين = لا
+	cust("stale", 200*day, true, 0)     // حجزه المفتوح مؤرشف = يطلع (11-07)
+	db.MustExec(`UPDATE "Booking" SET "archivedAt" = now() WHERE code = $1`, "MDostale"+sfx)
 	t.Cleanup(func() {
 		for _, c := range ids {
 			db.Exec(`DELETE FROM "Complaint" WHERE "customerId" = $1`, c) //nolint:errcheck
@@ -76,7 +78,7 @@ func TestMaintenanceDueLive(t *testing.T) {
 	for _, r := range rows {
 		got[r.CustomerID] = r.Reason
 	}
-	for key, want := range map[string]bool{"old": true, "recent": false, "busy": false, "angry": true, "ancient": false} {
+	for key, want := range map[string]bool{"old": true, "recent": false, "busy": false, "angry": true, "ancient": false, "stale": true} {
 		if _, ok := got[ids[key]]; ok != want {
 			t.Errorf("%s: يطلع=%v، المتوقع %v", key, ok, want)
 		}
