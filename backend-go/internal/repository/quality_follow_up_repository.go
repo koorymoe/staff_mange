@@ -455,9 +455,10 @@ func (r *QualityFollowUpRepository) Verdict(id, byEmployeeID string, req model.Q
 		BookingID  string  `db:"bookingId"`
 		ReportType *string `db:"reportType"`
 	}
-	if err = tx.Get(&cur, `SELECT "bookingId", "reportType" FROM "QualityFollowUp" WHERE id = $1`, id); err != nil {
+	if err = tx.Get(&cur, `SELECT "bookingId", "reportType" FROM "QualityFollowUp" WHERE id = $1 FOR UPDATE`, id); err != nil {
 		return "", errors.New("متابعة الجودة مو موجودة")
 	}
+	// (11-07) FOR UPDATE فوگ: بلا القفل طلبين بنفس اللحظة يقرون reportType فاضي سوه ويخصمون مرتين.
 	// ⚠️ الحكم ينكتب مرة وحدة. بدون هذا الفحص، ضغطتين على «تقرير سلبي»
 	// تخصمن نقطتين من الليدر — ولا وحدة منهن غلط بنظر النظام. انكشفت
 	// بفحص حي (انخصمت -٢ بدل -١).
@@ -539,7 +540,7 @@ func (r *QualityFollowUpRepository) Inspect(id, byEmployeeID string, req model.Q
 	}
 	if err = tx.Get(&row, `
 		SELECT "bookingId", "customerId", "inspectionStatus"
-		FROM "QualityFollowUp" WHERE id = $1`, id); err != nil {
+		FROM "QualityFollowUp" WHERE id = $1 FOR UPDATE`, id); err != nil {
 		return "", errors.New("متابعة الجودة مو موجودة")
 	}
 	if row.Inspection != "PENDING" {

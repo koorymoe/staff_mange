@@ -8,6 +8,7 @@ import (
 	"staffmange-api/internal/middleware"
 	"staffmange-api/internal/model"
 	"staffmange-api/internal/repository"
+	"staffmange-api/internal/timeutil"
 )
 
 type LeaveRequestHandler struct {
@@ -100,9 +101,8 @@ func (h *LeaveRequestHandler) Create(w http.ResponseWriter, r *http.Request) {
 	// والقرار يبقى للمدير: النظام يسمح بالتقديم، مو يوافق تلقائياً.
 	needsNotice := kind != model.LeaveKindUrgent
 	if needsNotice {
-		now := time.Now()
-		today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.UTC)
-		minStart := today.AddDate(0, 0, model.LeaveMinNoticeDays)
+		// (11-07) تاريخ اليوم بتوقيت بغداد: بـUTC، من ١٢ لـ ٣ الفجر «اليوم» يطلع أمس، فتنقبل إجازة باچر بإشعار يوم.
+		minStart := leaveMinStart(time.Now())
 		if start.Before(minStart) {
 			WriteError(w, http.StatusBadRequest,
 				"لازم تقدّم طلب الإجازة قبل يومين على الأقل من تاريخها (عدا الطارئة والمرضية)")
@@ -281,7 +281,7 @@ func (h *LeaveRequestHandler) PendingCount(w http.ResponseWriter, r *http.Reques
 func (h *LeaveRequestHandler) Register(w http.ResponseWriter, r *http.Request) {
 	month := r.URL.Query().Get("month")
 	if _, err := time.Parse("2006-01", month); err != nil {
-		month = time.Now().In(time.FixedZone("Asia/Baghdad", 3*3600)).Format("2006-01")
+		month = timeutil.ThisMonth()
 	}
 	items, err := h.repo.Register(month)
 	if err != nil {
@@ -294,4 +294,10 @@ func (h *LeaveRequestHandler) Register(w http.ResponseWriter, r *http.Request) {
 		today = []model.LeaveRequest{}
 	}
 	WriteJSON(w, http.StatusOK, map[string]any{"month": month, "onLeaveToday": today, "items": items})
+}
+
+// leaveMinStart أقرب تاريخ بداية مسموح لإجازة تحتاج إشعار — من تاريخ اليوم **ببغداد** (11-07).
+func leaveMinStart(now time.Time) time.Time {
+	today, _ := time.Parse("2006-01-02", now.In(timeutil.CompanyLocation()).Format("2006-01-02"))
+	return today.AddDate(0, 0, model.LeaveMinNoticeDays)
 }
