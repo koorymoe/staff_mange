@@ -138,7 +138,7 @@ func registerQuoteTools(a *MatrixAgent, quotes *QuotationService, tc *SecretaryT
 			if len(req.Items) == 0 {
 				return "", fmt.Errorf("ماكو بنود بالعرض")
 			}
-			q, err := quotes.Create(req)
+			q, err := quotes.Create(req, req.CreatedByEmployeeID, "OWNER") // ايريس للمالك بس
 			if err != nil {
 				return "", err
 			}

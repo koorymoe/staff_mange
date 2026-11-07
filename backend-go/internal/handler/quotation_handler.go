@@ -82,7 +82,11 @@ func (h *QuotationHandler) Create(w http.ResponseWriter, r *http.Request) {
 		WriteError(w, http.StatusBadRequest, "بيانات الطلب غير صحيحة")
 		return
 	}
-	quotation, err := h.service.Create(req)
+	quotation, err := h.service.Create(req, middleware.EmployeeIDFromContext(r), middleware.RoleFromContext(r))
+	if errors.Is(err, service.ErrQuotationHidden) {
+		authz.Deny(w, r, authz.Quotations)
+		return
+	}
 	if err != nil {
 		WriteError(w, http.StatusBadRequest, err.Error())
 		return

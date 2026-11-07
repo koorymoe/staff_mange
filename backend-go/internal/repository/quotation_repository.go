@@ -11,6 +11,7 @@ import (
 	"github.com/jmoiron/sqlx"
 
 	"staffmange-api/internal/model"
+	"staffmange-api/internal/timeutil"
 )
 
 type QuotationRepository struct {
@@ -216,7 +217,7 @@ func computeTotals(items []model.QuotationItemInput, discountPercent float64) (g
 }
 
 func (r *QuotationRepository) Create(req model.CreateQuotationRequest) (*model.Quotation, error) {
-	year := time.Now().Year()
+	year := time.Now().In(timeutil.CompanyLocation()).Year() // (11-07) سنة بغداد — ليلة رأس السنة چان يطلع رقم السنة الماضية
 	quotationNumber, err := r.nextQuotationNumber(year)
 	if err != nil {
 		return nil, err

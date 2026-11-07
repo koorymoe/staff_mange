@@ -104,14 +104,17 @@ func (s *QuotationService) Get(id, actorID, role string) (*model.Quotation, erro
 // نفس «مو موجود» ويسجّل الرفض — ما نكشف إن العرض موجود.
 var ErrQuotationHidden = errors.New("عرض السعر غير موجود")
 
-func (s *QuotationService) Create(req model.CreateQuotationRequest) (*model.Quotation, error) {
+// Create (11-07): actorID/role من الجلسة — المنشئ ما ينوخذ من جسم الطلب (إلا الأدمن)،
+// و«المشروع عنده عرض» يمر بنفس فحص الاطلاع مال Get (چان يرجّع عرض أي مشروع لأي أحد).
+func (s *QuotationService) Create(req model.CreateQuotationRequest, actorID, role string) (*model.Quotation, error) {
+	if !model.IsAdminRole(role) || req.CreatedByEmployeeID == "" {
+		req.CreatedByEmployeeID = actorID
+	}
 	if req.CustomerName == "" || req.CreatedByEmployeeID == "" {
 		return nil, errors.New("customerName and createdByEmployeeId are required")
 	}
-	for _, item := range req.Items {
-		if item.UnitPrice < 0 {
-			return nil, errors.New("سعر الوحدة ما يصير يكون بالسالب")
-		}
+	if err := validateQuotationAmounts(req.Items, req.DiscountPercent); err != nil {
+		return nil, err
 	}
 	// عرض واحد لكل مشروع: إذا المشروع عنده عرض نرجّعه بدل ما نسوي ثاني.
 	if req.ProjectID != nil && *req.ProjectID != "" {
@@ -120,7 +123,7 @@ func (s *QuotationService) Create(req model.CreateQuotationRequest) (*model.Quot
 			return nil, err
 		}
 		if existing != nil {
-			return existing, nil
+			return s.Get(existing.ID, actorID, role)
 		}
 	}
 	return s.repo.Create(req)
@@ -156,6 +159,9 @@ func (s *QuotationService) Update(id, actorID, role string, req model.UpdateQuot
 			}
 		}
 	}
+	if err := validateQuotationAmounts(req.Items, req.DiscountPercent); err != nil {
+		return nil, err
+	}
 	// actorID ينمرّر حتى النسخة المؤرشفة تعرف منو عدّل — «منو بدّل
 	// السعر» سؤال يجي متأخر ولازم إله جواب.
 	return s.repo.Update(id, req, actorID)
@@ -187,4 +193,21 @@ func (s *QuotationService) ListPage(actorID, role, search string, page, limit in
 		}
 	}
 	return s.repo.ListPage(search, owner, page, limit)
+}
+
+// validateQuotationAmounts (11-07): الخصم بين ٠ و١٠٠، والكمية والسعر مو سالبين — بالإنشاء والتعديل.
+// چان التعديل بلا أي فحص، والخصم بلا حد: خصم ١٥٠٪ يطلّع صافي سالب يدخل بإحصائيات المشاريع.
+func validateQuotationAmounts(items []model.QuotationItemInput, discount *float64) error {
+	if discount != nil && (*discount < 0 || *discount > 100) {
+		return errors.New("نسبة الخصم لازم بين ٠ و ١٠٠")
+	}
+	for _, it := range items {
+		if it.UnitPrice < 0 {
+			return errors.New("سعر الوحدة ما يصير يكون بالسالب")
+		}
+		if it.Quantity < 0 {
+			return errors.New("الكمية ما تصير سالبة")
+		}
+	}
+	return nil
 }
