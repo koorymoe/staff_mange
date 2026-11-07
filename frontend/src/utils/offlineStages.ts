@@ -12,6 +12,8 @@ export type Stage = 'ACCEPTED' | 'MATERIALS' | 'DEPARTED' | 'ARRIVED' | 'STARTED
 
 interface QueuedStage {
   id: string
+  /** (11-07) صاحب الضغطة — موبايل مشترك: ما ننرسلها بجلسة موظف ثاني */
+  employeeId?: string
   bookingId: string
   code: string
   stage: Stage
@@ -33,6 +35,11 @@ function write(q: QueuedStage[]) {
   window.dispatchEvent(new Event('stage-queue'))
 }
 export const pendingStages = () => read()
+
+/** الموظف المسجّل هسه بهذا الموبايل (فاضي = ماكو جلسة). */
+export function currentEmployeeId(): string {
+  try { return (JSON.parse(localStorage.getItem('currentEmployee') || 'null') as { id?: string } | null)?.id ?? '' } catch { return '' }
+}
 
 // الموقع من الأقمار الصناعية — يشتغل بلا نت. مهلة ٨ ثواني وبعدها نكمل بلاه.
 export function currentPosition(): Promise<{ lat: number; lng: number; accuracy: number } | null> {
@@ -69,7 +76,7 @@ export async function runStage<T>(booking: Booking, stage: Stage, fn: (pos: Stag
   const pressedAt = new Date().toISOString()
   const pos = await currentPosition()
   const queue = () => {
-    write([...read(), { id: crypto.randomUUID?.() ?? String(Date.now()), bookingId: booking.id, code: booking.code, stage, pressedAt, ...(pos ?? {}), payload }])
+    write([...read(), { id: crypto.randomUUID?.() ?? String(Date.now()), employeeId: currentEmployeeId(), bookingId: booking.id, code: booking.code, stage, pressedAt, ...(pos ?? {}), payload }])
     return { result: null, queued: true }
   }
   if (!navigator.onLine) return queue()
@@ -83,33 +90,42 @@ export async function runStage<T>(booking: Booking, stage: Stage, fn: (pos: Stag
   }
 }
 
-let flushing = false
+// (مراجعة 11-07) وعد واحد مشترك: چان العلم ينحط بعد انتظار الصور، فنداءين بنفس اللحظة
+// (حدث online + شاشة مهامي) يعبرون الاثنين ويرسلون نفس الضغطات مرتين.
+let inflight: Promise<number> | null = null
 /** يرسل الضغطات المحفوظة بالترتيب. يشتغل وحده من يرجع النت. */
-export async function flushStages(): Promise<number> {
-  if (flushing || !navigator.onLine) return 0
+export function flushStages(): Promise<number> {
+  if (!navigator.onLine) return Promise.resolve(0)
+  if (!inflight) inflight = doFlush().finally(() => { inflight = null })
+  return inflight
+}
+
+async function doFlush(): Promise<number> {
   // الصور أول (11-06): «تم» يتحقق من عدد الصور، فلازم توصل قبل ضغطة الإنجاز
-  await import('./offlinePhotos').then((m) => m.flushPhotos()).catch(swallow)
-  flushing = true
+  const photos = await import('./offlinePhotos').catch(() => null)
+  await photos?.flushPhotos().catch(swallow)
+  const me = currentEmployeeId()
   let sent = 0
-  try {
-    for (const item of read()) {
-      try {
-        await call(item)
-      } catch (e) {
-        if (isNetworkError(e)) break
-        // السيرفر رفض (مثلاً المرحلة انسجّلت أصلاً) — نكمل بالدليل حتى الوقت يتصحّح
-      }
-      try {
-        await api.stageProof(item.bookingId, { stage: item.stage, pressedAt: item.pressedAt, offline: true, lat: item.lat, lng: item.lng, accuracy: item.accuracy })
-      } catch (e) {
-        // بلا نت أو الجلسة منتهية → نوقف ونخلي الضغطة بالطابور (ما تضيع)
-        if (isNetworkError(e) || (e instanceof Error && /تسجيل الدخول|الجلسة|صلاحية/.test(e.message))) break
-      }
-      write(read().filter((x) => x.id !== item.id))
-      sent++
+  for (const item of read()) {
+    // ضغطة موظف ثاني (موبايل مشترك) تبقى لحد ما صاحبها يدخل
+    if (item.employeeId && item.employeeId !== me) continue
+    // (مراجعة 11-07) «تم» ما ينرسل وصور «بعد» هذا الحجز بعدها بالطابور: السيرفر يرفضه
+    // على شرط الصور، والرفض چان يشيل الضغطة من الطابور فيضيع الإنجاز.
+    if (item.stage === 'COMPLETED' && photos && (await photos.pendingPhotos(item.bookingId)).length > 0) break
+    try {
+      await call(item)
+    } catch (e) {
+      if (isNetworkError(e)) break
+      // السيرفر رفض (مثلاً المرحلة انسجّلت أصلاً) — نكمل بالدليل حتى الوقت يتصحّح
     }
-  } finally {
-    flushing = false
+    try {
+      await api.stageProof(item.bookingId, { stage: item.stage, pressedAt: item.pressedAt, offline: true, lat: item.lat, lng: item.lng, accuracy: item.accuracy })
+    } catch (e) {
+      // بلا نت أو الجلسة منتهية → نوقف ونخلي الضغطة بالطابور (ما تضيع)
+      if (isNetworkError(e) || (e instanceof Error && /تسجيل الدخول|الجلسة|صلاحية/.test(e.message))) break
+    }
+    write(read().filter((x) => x.id !== item.id))
+    sent++
   }
   return sent
 }

@@ -368,3 +368,4 @@ git push origin origin/avg:refs/heads/prod     # بعد التأكد إنه fast
 - 11-07: تكملة الأوردو: `language` بـ UpdateEmployeeRequest (ar|ur، غيرها 400)، والـ SQL يحفظ القديمة إذا القيمة فاضية. قائمة «لغة الواجهة» بشاشة الموظفين للإدارة. ١٩ رسالة سيرفر بالقاموس.
 - 11-07: مراجعة: `ReturnToolRequest` بالريبو چان يزيد الكمية والخدمة تزيدها مرة ثانية (+٢)، شلت زيادة الريبو (تبقى `ReturnToolStock` بسقف الكلي). `RejectToolRequest` صار بس للمعلّق. اختبار `TestToolRequestStockLive` يفشل على الكود القديم.
 - 11-07: مراجعة (وكيل مراجعة + تحقق): `maintenance_due.go` صار يستثني الحجوزات المؤرشفة من «مفتوح»، وأداة ماتركس تعدّ لحد 5000. `WarehouseDaily` يبني الملخص قبل ما يحجز اليوم، وعنده `doneDay` بالذاكرة. اختبارات تفشل على الكود القديم.
+- 11-07: مراجعة offline: `flushStages` صار وعد مشترك (`inflight`)، و«تم» يوقف إذا `pendingPhotos(bookingId)` مو فاضي، والطابورين يخزنون `employeeId` ويتخطون غير الموظف الحالي. `offlineStages.test.ts` يفشل على القديم.

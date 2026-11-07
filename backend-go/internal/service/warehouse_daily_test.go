@@ -72,4 +72,3 @@ func TestWarehouseDailyOncePerDayLive(t *testing.T) {
 		t.Fatalf("بناء فاشل حجز اليوم: err=%v claims=%d", err, claims)
 	}
 }
-

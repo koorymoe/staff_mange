@@ -1,11 +1,12 @@
 import { api } from '../api'
-import { isNetworkError } from './offlineStages'
+import { currentEmployeeId, isNetworkError } from './offlineStages'
 
 // ═══ صور الشغل بلا نت (دازاي 11-06، فكرة ٣) ═══
 // الصورة الي ما تنرفع لأن ماكو نت تنحفظ بـIndexedDB (localStorage ما يشيل صور) وترفع وحدها
 // من يرجع النت — وتنرفع **قبل** ضغطات المراحل حتى «تم» ما ينرفض على شرط الصور.
 
-type Queued = { id: string; bookingId: string; phase: 'BEFORE' | 'AFTER'; blob: Blob; at: string; tries: number }
+// employeeId (11-07): صاحب الصورة — بموبايل مشترك ما ترتفع بجلسة زميله
+type Queued = { id: string; employeeId?: string; bookingId: string; phase: 'BEFORE' | 'AFTER'; blob: Blob; at: string; tries: number }
 
 const DB = 'amani_offline_v1'
 const STORE = 'photos'
@@ -57,7 +58,7 @@ export async function pendingPhotos(bookingId?: string): Promise<Queued[]> {
 export async function uploadOrQueue(bookingId: string, phase: 'BEFORE' | 'AFTER', blob: Blob): Promise<{ queued: boolean }> {
   const queue = async () => {
     try {
-      await tx('readwrite', (s) => s.put({ id: crypto.randomUUID?.() ?? String(Date.now()), bookingId, phase, blob, at: new Date().toISOString(), tries: 0 }))
+      await tx('readwrite', (s) => s.put({ id: crypto.randomUUID?.() ?? String(Date.now()), employeeId: currentEmployeeId(), bookingId, phase, blob, at: new Date().toISOString(), tries: 0 }))
     } catch {
       throw new Error('ماكو نت وذاكرة الموبايل ما تشيل الصورة — فرّغ مساحة أو صوّرها من يرجع النت')
     }
@@ -81,8 +82,11 @@ export async function flushPhotos(): Promise<number> {
   flushing = true
   let sent = 0
   try {
+    const me = currentEmployeeId()
     const items = (await pendingPhotos()).sort((a, b) => a.at.localeCompare(b.at))
     for (const it of items) {
+      // صورة زميل (موبايل مشترك): تبقى لحد ما صاحبها يدخل — ما تنرفع باسم غيره ولا تنحسب رفض
+      if (it.employeeId && it.employeeId !== me) continue
       try {
         await api.uploadWorkPhoto(it.bookingId, it.phase, it.blob)
         await tx('readwrite', (s) => s.delete(it.id))
