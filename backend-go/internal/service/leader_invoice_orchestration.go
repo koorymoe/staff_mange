@@ -229,14 +229,7 @@ func (s *LeaderInvoiceService) Create(employeeID string, req model.CreateLeaderI
 	if err := model.CheckIQD("الخصم", req.DiscountValue); err != nil {
 		return nil, err
 	}
-	discount := req.DiscountValue
-	if discount < 0 {
-		discount = 0
-	}
-	netTotal := float64(executionCost) + materialsTotal - discount
-	if netTotal < 0 {
-		netTotal = 0
-	}
+	discount, netTotal := invoiceNet(float64(executionCost), materialsTotal, req.DiscountValue, false)
 
 	// ── الشغل المجاني ──
 	//
@@ -250,8 +243,7 @@ func (s *LeaderInvoiceService) Create(employeeID string, req model.CreateLeaderI
 		if err := s.checkFreeReason(req.FreeReasonID, req.FreeReasonNote); err != nil {
 			return nil, err
 		}
-		discount = float64(executionCost) + materialsTotal
-		netTotal = 0
+		discount, netTotal = invoiceNet(float64(executionCost), materialsTotal, req.DiscountValue, true)
 	}
 
 	inv := &model.LeaderInvoice{
@@ -1164,4 +1156,20 @@ func invoiceBookingLock(bookingID string) func() {
 	mu := m.(*sync.Mutex)
 	mu.Lock()
 	return mu.Unlock
+}
+
+// invoiceNet (11-07، منقول بلا تغيير سلوك حتى ينختبر): الخصم السالب يصير صفر، والصافي ما ينزل تحت الصفر.
+// المجاني: الخصم = الكلفة كلها والصافي صفر — الكلفة الحقيقية تبقى بالفاتورة.
+func invoiceNet(execution, materials, discount float64, free bool) (float64, float64) {
+	if free {
+		return execution + materials, 0
+	}
+	if discount < 0 {
+		discount = 0
+	}
+	net := execution + materials - discount
+	if net < 0 {
+		net = 0
+	}
+	return discount, net
 }
