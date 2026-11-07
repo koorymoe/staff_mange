@@ -458,10 +458,15 @@ func (r *AttendanceRepository) Claim(id string) (*AttendanceClaimRow, error) {
 	return &c, err
 }
 
-func (r *AttendanceRepository) DecideClaim(id, byID, status string) error {
-	_, err := r.db.Exec(`UPDATE "AttendanceClaim" SET status = $3, "decidedById" = $2, "decidedAt" = now()
+// DecideClaim يرجّع false إذا الطلب انحسم قبل (قرارين بنفس اللحظة: واحد بس يعبر).
+func (r *AttendanceRepository) DecideClaim(id, byID, status string) (bool, error) {
+	res, err := r.db.Exec(`UPDATE "AttendanceClaim" SET status = $3, "decidedById" = $2, "decidedAt" = now()
 		WHERE id = $1 AND status = 'PENDING'`, id, byID, status)
-	return err
+	if err != nil {
+		return false, err
+	}
+	n, _ := res.RowsAffected()
+	return n == 1, nil
 }
 
 // ExtendableAuto جلسات انسكّرت تلقائياً بآخر ٢٠ ساعة وماكو جواب — حتى إذا

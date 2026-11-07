@@ -372,11 +372,21 @@ func (s *AttendanceService) DecideClaim(id, byID string, approve bool) error {
 	if err != nil || c.Status != "PENDING" {
 		return errors.New("الطلب مو موجود أو انحسم")
 	}
+	// (11-07) نحسم أول (بشرط PENDING) وبعدين نمدّد الانصراف: چان يمدّد أول، فموافقة ورفض
+	// بنفس اللحظة = الساعات تنمدّ والطلب ينسجّل مرفوض.
+	status := "REJECTED"
 	if approve && c.ClaimedUntil != nil {
-		if err := s.repo.SetCheckOut(c.AttendanceID, *c.ClaimedUntil); err != nil {
-			return err
-		}
-		return s.repo.DecideClaim(id, byID, "APPROVED")
+		status = "APPROVED"
 	}
-	return s.repo.DecideClaim(id, byID, "REJECTED")
+	won, err := s.repo.DecideClaim(id, byID, status)
+	if err != nil {
+		return err
+	}
+	if !won {
+		return errors.New("الطلب مو موجود أو انحسم")
+	}
+	if status == "APPROVED" {
+		return s.repo.SetCheckOut(c.AttendanceID, *c.ClaimedUntil)
+	}
+	return nil
 }
