@@ -184,6 +184,7 @@ type UpdateEmployeeRequest struct {
 	ShiftEnd             *string  `json:"shiftEnd"`
 	MonthlyLeaves        *int     `json:"monthlyLeaves"`
 	JobTitle             *string  `json:"jobTitle"`
+	Language             *string  `json:"language"` // بلاغ #11: ar|ur — الإدارة تحدد لغة واجهة الموظف
 
 	// ملف الموارد البشرية — منقول من نظام الطاقة الشمسية
 	Department      *string  `json:"department"`

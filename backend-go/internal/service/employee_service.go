@@ -252,6 +252,12 @@ func (s *EmployeeService) Update(id string, req model.UpdateEmployeeRequest) (*m
 		if req.JobTitle != nil {
 			employee.JobTitle = req.JobTitle
 		}
+		if req.Language != nil {
+			if *req.Language != "ar" && *req.Language != "ur" {
+				return fmt.Errorf("اللغة لازم ar أو ur")
+			}
+			employee.Language = *req.Language
+		}
 
 		// ═══ ملف الموارد البشرية ═══
 		if req.Department != nil {

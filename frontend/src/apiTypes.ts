@@ -142,6 +142,8 @@ export interface Employee {
   username: string | null
   hasDrivingLicense: boolean
   hasSafetyCertificate: boolean
+  /** بلاغ #11: لغة واجهة الموظف */
+  language?: 'ar' | 'ur'
   isLeader: boolean
   isTrainee: boolean
   salary: number | null

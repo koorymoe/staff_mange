@@ -968,6 +968,20 @@ export default function Employees({ embedded }: { embedded?: boolean } = {}) {
                           </label>
                         </div>
                         <div>
+                          <label className="mb-1 block text-xs font-medium text-slate-400">لغة الواجهة</label>
+                          <select value={selectedEmployee.language ?? 'ar'}
+                            onChange={async (e) => {
+                              const language = e.target.value as 'ar' | 'ur'
+                              const updated = await guard.run('تحديث لغة الواجهة', () => api.updateEmployee(selectedEmployee.id, { language }))
+                              if (!updated) return
+                              setEmployees(prev => prev.map(emp => emp.id === updated.id ? { ...emp, ...updated } : emp))
+                            }}
+                            className="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-3 py-2.5 text-sm">
+                            <option value="ar">العربية</option>
+                            <option value="ur">اردو (للموظف الباكستاني)</option>
+                          </select>
+                        </div>
+                        <div>
                           <label className="mb-1 block text-xs font-medium text-slate-400">السلامة المهنية</label>
                           <label className="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50/50 px-3 py-2.5 text-sm cursor-pointer hover:bg-slate-50 transition-colors">
                             <input type="checkbox" checked={selectedEmployee.hasSafetyCertificate}

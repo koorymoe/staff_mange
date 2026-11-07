@@ -203,6 +203,7 @@ func (r *EmployeeRepository) Create(e *model.Employee) error {
 const employeeUpdateSQL = `
 	UPDATE "Employee" SET
 		name = :name,
+		language = COALESCE(NULLIF(:language, ''), language),
 		certificate = :certificate,
 		"photoUrl" = :photoUrl,
 		position = :position,

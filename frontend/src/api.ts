@@ -1552,7 +1552,7 @@ export const api = {
         | 'isLeader' | 'salary' | 'shift' | 'shiftStart' | 'shiftEnd' | 'monthlyLeaves' | 'jobTitle'
         // ملف الموارد البشرية — careerStatus ما تنرسل: تنحسب بالسيرفر
         | 'department' | 'hireDate' | 'experienceYears' | 'lastReview' | 'jobLevel' | 'nextRole' | 'trainingNeeds'
-        | 'secondaryRoles'
+        | 'secondaryRoles' | 'language'
       >
     > & {
       username?: string

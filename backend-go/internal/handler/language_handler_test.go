@@ -13,6 +13,9 @@ import (
 
 	"staffmange-api/internal/database"
 	"staffmange-api/internal/middleware"
+	"staffmange-api/internal/model"
+	"staffmange-api/internal/repository"
+	"staffmange-api/internal/service"
 )
 
 // بلاغ #11: الموظف يغيّر لغته هو بس، وبس ar أو ur.
@@ -48,5 +51,27 @@ func TestSetMyLanguageLive(t *testing.T) {
 	_ = db.Get(&theirs, `SELECT language FROM "Employee" WHERE id = $1`, other)
 	if mine != "ur" || theirs != "ar" {
 		t.Fatalf("mine=%s theirs=%s", mine, theirs)
+	}
+
+	// الإدارة: تعديل حقل ثاني ما يمسح اللغة، وتگدر تحدد اللغة، وقيمة غلط تنرفض.
+	svc := service.NewEmployeeService(repository.NewEmployeeRepository(db))
+	ph := "0770"
+	if _, err := svc.Update(me, model.UpdateEmployeeRequest{Phone: &ph}); err != nil {
+		t.Fatal(err)
+	}
+	_ = db.Get(&mine, `SELECT language FROM "Employee" WHERE id = $1`, me)
+	if mine != "ur" {
+		t.Fatalf("تعديل الهاتف مسح اللغة: %s", mine)
+	}
+	bad, ar := "xx", "ar"
+	if _, err := svc.Update(me, model.UpdateEmployeeRequest{Language: &bad}); err == nil {
+		t.Fatal("لغة غلط انقبلت")
+	}
+	if _, err := svc.Update(me, model.UpdateEmployeeRequest{Language: &ar}); err != nil {
+		t.Fatal(err)
+	}
+	_ = db.Get(&mine, `SELECT language FROM "Employee" WHERE id = $1`, me)
+	if mine != "ar" {
+		t.Fatalf("الإدارة ما غيّرت اللغة: %s", mine)
 	}
 }
