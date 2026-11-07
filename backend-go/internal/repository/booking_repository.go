@@ -930,7 +930,7 @@ func (r *BookingRepository) MarkConfirmationContacted(id, byEmployeeID string) e
 func (r *BookingRepository) UpdateDetails(id string, req model.UpdateBookingDetailsRequest) error {
 	_, err := r.db.Exec(`
 		UPDATE "Booking" SET
-			"quotedPrice" = $2,
+			"quotedPrice" = CASE WHEN $12::boolean THEN $2 ELSE "quotedPrice" END, -- (11-07) چان يمسحه بكل حفظ
 			address = COALESCE($3, address),
 			"assignedVehicle" = COALESCE($4, "assignedVehicle"),
 			"mapLocation" = COALESCE($5, "mapLocation"),
@@ -945,7 +945,7 @@ func (r *BookingRepository) UpdateDetails(id string, req model.UpdateBookingDeta
 				ELSE $11::"Shift"
 			END
 		WHERE id = $1
-	`, id, req.QuotedPrice, req.Address, req.AssignedVehicle, req.MapLocation, req.MapLatitude, req.MapLongitude, req.ExpenseResponsibleID, req.LocationUrl, req.InternalHrNote, req.Shift)
+	`, id, req.QuotedPrice, req.Address, req.AssignedVehicle, req.MapLocation, req.MapLatitude, req.MapLongitude, req.ExpenseResponsibleID, req.LocationUrl, req.InternalHrNote, req.Shift, req.QuotedPriceSent)
 	return err
 }
 

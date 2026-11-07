@@ -1254,6 +1254,11 @@ func (s *BookingService) CreateDecor(parentID, serviceID, timing string, schedul
 	if err != nil || p == nil {
 		return nil, errors.New("الحجز الأصلي مو موجود")
 	}
+	// (11-07) الموعد الي يكتبه الموظف بتوقيت بغداد — بلا التحويل ينخزن ٣ ساعات غلط (نفس SetSchedule)
+	if scheduledAt != nil && *scheduledAt != "" {
+		n := timeutil.NormalizeCompanyLocal(*scheduledAt)
+		scheduledAt = &n
+	}
 	if scheduledAt == nil || *scheduledAt == "" {
 		if p.ScheduledAt != nil {
 			t := *p.ScheduledAt

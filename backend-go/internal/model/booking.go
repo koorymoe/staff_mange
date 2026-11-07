@@ -1,6 +1,9 @@
 package model
 
-import "time"
+import (
+	"encoding/json"
+	"time"
+)
 
 type Booking struct {
 	ID             string     `db:"id" json:"id"`
@@ -413,6 +416,23 @@ type UpdateBookingDetailsRequest struct {
 	// و«ماكو» هنا معنى حقيقي: حجز قديم ما انتحدّدت فترته، وما نخمّنها
 	// إله. فالنص الفاضي يمسحها ويرجّعها «غير محدَّدة».
 	Shift *string `json:"shift,omitempty"`
+	// QuotedPriceSent (11-07): المفتاح انرسل بالطلب؟ null = امسح المبلغ، وغيابه = لا تلمسه.
+	// بلا هذا كل حفظ لحقل ثاني (السيارة، العنوان، الخريطة) چان يمسح المبلغ المقدّر.
+	QuotedPriceSent bool `json:"-"`
+}
+
+func (r *UpdateBookingDetailsRequest) UnmarshalJSON(b []byte) error {
+	type plain UpdateBookingDetailsRequest
+	var p plain
+	if err := json.Unmarshal(b, &p); err != nil {
+		return err
+	}
+	var keys map[string]json.RawMessage
+	if err := json.Unmarshal(b, &keys); err == nil {
+		_, p.QuotedPriceSent = keys["quotedPrice"]
+	}
+	*r = UpdateBookingDetailsRequest(p)
+	return nil
 }
 
 type CompleteBookingRequest struct {
