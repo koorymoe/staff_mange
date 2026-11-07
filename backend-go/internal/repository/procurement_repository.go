@@ -2,6 +2,7 @@ package repository
 
 import (
 	"database/sql"
+	"errors"
 	"fmt"
 	"regexp"
 	"strconv"
@@ -153,10 +154,15 @@ func (r *ProcurementRepository) Create(req model.CreateProcurementRequestRequest
 func (r *ProcurementRepository) UpdateStatus(id, status, actorID string) (*model.ProcurementRequest, error) {
 	var request model.ProcurementRequest
 	// أول قرار ينسجّل (منو ووكت) — والقرارات الي بعده ما تمسحه
-	err := r.db.Get(&request, `UPDATE "ProcurementRequest" SET status = $2,
-		"decidedAt" = CASE WHEN "decidedAt" IS NULL AND $2 <> 'PENDING' THEN now() ELSE "decidedAt" END,
-		"decidedById" = CASE WHEN "decidedById" IS NULL AND $2 <> 'PENDING' THEN NULLIF($3, '') ELSE "decidedById" END
-		WHERE id = $1 RETURNING *`, id, status, actorID)
+	// 🔴 (11-07) $2 چان enum بـSET ونص بالمقارنة: بوستكرس يرفض («inconsistent types») —
+	// فكل تغيير حالة (جاري التجهيز / رفض) چان يفشل من 10-10. هسه النوع صريح.
+	err := r.db.Get(&request, `UPDATE "ProcurementRequest" SET status = $2::text::"ProcurementRequestStatus",
+		"decidedAt" = CASE WHEN "decidedAt" IS NULL AND $2::text <> 'PENDING' THEN now() ELSE "decidedAt" END,
+		"decidedById" = CASE WHEN "decidedById" IS NULL AND $2::text <> 'PENDING' THEN NULLIF($3, '') ELSE "decidedById" END
+		WHERE id = $1 AND status <> 'FULFILLED' RETURNING *`, id, status, actorID) // (11-07) المجهّز ما يرجع معلّق/مرفوض
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, errors.New("الطلب مو موجود أو انجهّز — المصروف ما يرجع لورا")
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -164,32 +170,45 @@ func (r *ProcurementRepository) UpdateStatus(id, status, actorID string) (*model
 	return &request, nil
 }
 
-// UpdateItem سعر البند وحالته وقت التجهيز.
-func (r *ProcurementRepository) UpdateItem(id string, unitPrice, totalPrice *float64, fulfilled bool) error {
-	_, err := r.db.Exec(`
-		UPDATE "ProcurementItem" SET
-			"unitPrice" = COALESCE($2, "unitPrice"),
-			"totalPrice" = COALESCE($3, "totalPrice"),
-			fulfilled = $4
-		WHERE id = $1
-	`, id, unitPrice, totalPrice, fulfilled)
-	return err
-}
-
+// Fulfill (11-07): معاملة وحدة، والبند لازم من نفس الطلب، والطلب المجهّز أو المرفوض ما يتجهّز.
+// چان: البنود تتعدّل برا المعاملة وقبل فحص الطلب، وأي معرّف بند (حتى من طلب ثاني) ينقبل،
+// والتجهيز ينعاد فوگ المجهّز ويكتب كلفة جديدة.
 func (r *ProcurementRepository) Fulfill(id string, req model.FulfillProcurementRequestRequest) (*model.ProcurementRequest, error) {
+	tx, err := r.db.Beginx()
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Rollback() //nolint:errcheck
+
+	var status string
+	if err := tx.Get(&status, `SELECT status FROM "ProcurementRequest" WHERE id = $1 FOR UPDATE`, id); err != nil {
+		return nil, errors.New("الطلب مو موجود")
+	}
+	if status == "FULFILLED" || status == "REJECTED" {
+		return nil, errors.New("الطلب مجهّز أو مرفوض من قبل — ما يتجهّز")
+	}
 	for _, item := range req.Items {
 		fulfilled := true
 		if item.Fulfilled != nil {
 			fulfilled = *item.Fulfilled
 		}
-		if err := r.UpdateItem(item.ID, item.UnitPrice, item.TotalPrice, fulfilled); err != nil {
+		res, err := tx.Exec(`
+			UPDATE "ProcurementItem" SET
+				"unitPrice" = COALESCE($2, "unitPrice"),
+				"totalPrice" = COALESCE($3, "totalPrice"),
+				fulfilled = $4
+			WHERE id = $1 AND "requestId" = $5`, item.ID, item.UnitPrice, item.TotalPrice, fulfilled, id)
+		if err != nil {
 			return nil, err
+		}
+		if n, _ := res.RowsAffected(); n == 0 {
+			return nil, errors.New("بند مو من هذا الطلب")
 		}
 	}
 
 	now := time.Now()
 	var request model.ProcurementRequest
-	err := r.db.Get(&request, `
+	if err := tx.Get(&request, `
 		UPDATE "ProcurementRequest" SET
 			status = 'FULFILLED',
 			"fulfilledById" = $2,
@@ -201,8 +220,10 @@ func (r *ProcurementRepository) Fulfill(id string, req model.FulfillProcurementR
 			"decidedById" = COALESCE("decidedById", $2)
 		WHERE id = $1
 		RETURNING *
-	`, id, req.FulfilledByID, req.TotalCost, req.FulfillmentNotes, now, req.SupplierID)
-	if err != nil {
+	`, id, req.FulfilledByID, req.TotalCost, req.FulfillmentNotes, now, req.SupplierID); err != nil {
+		return nil, err
+	}
+	if err := tx.Commit(); err != nil {
 		return nil, err
 	}
 	r.hydrate(&request, true)

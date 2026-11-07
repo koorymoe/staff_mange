@@ -96,6 +96,12 @@ func (s *ProcurementService) Create(employeeID, role string, req model.CreatePro
 }
 
 func (s *ProcurementService) UpdateStatus(id string, req model.UpdateProcurementStatusRequest) (*model.ProcurementRequest, error) {
+	// (11-07) «مجهّز» ينسجّل بس من التجهيز (ويا المورد والكلفة)، وقيمة غريبة ترجع رسالة مفهومة مو خطأ قاعدة.
+	switch req.Status {
+	case "PENDING", "IN_PROGRESS", "REJECTED":
+	default:
+		return nil, errors.New("حالة غير صحيحة")
+	}
 	saved, err := s.repo.UpdateStatus(id, req.Status, req.DecidedByID)
 	if err != nil {
 		return nil, err
