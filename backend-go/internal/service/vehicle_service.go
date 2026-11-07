@@ -96,6 +96,9 @@ func (s *VehicleService) CreateLog(vehicleID string, req model.CreateVehicleLogR
 	if req.Type != "FUEL" && req.Type != "CLEANING" && req.Type != "OIL_CHANGE" && req.Type != "MAINTENANCE" {
 		return nil, errors.New("نوع السجل غير صحيح")
 	}
+	if err := nonNegativeLog(req.Cost, req.Liters, req.Odometer); err != nil {
+		return nil, err
+	}
 	// نحسب الشذوذ من تاريخ التعبئات القديم *قبل* إدخال السجل الجديد، وإلا صار السجل
 	// الجديد يدخل بحساب متوسطه هو نفسه ويشوّه النتيجة.
 	var anomaly *model.FuelAnomalyResult
@@ -134,10 +137,24 @@ const FuelAnomalyThresholdPercent = 40.0
 // CheckFuelAnomaly يقارن تكلفة تعبئة وقود جديدة بمتوسط آخر 5 تعبئات للسيارة نفسها؛
 // يعتبرها شذوذاً لو تجاوزت المتوسط بأكثر من FuelAnomalyThresholdPercent%.
 func (s *VehicleService) UpdateLog(id string, req model.UpdateVehicleLogRequest) (*model.VehicleLog, error) {
-	if req.Liters != nil && *req.Liters < 0 {
-		return nil, errors.New("عدد اللترات ما يصير سالب")
+	if err := nonNegativeLog(req.Cost, req.Liters, req.Odometer); err != nil {
+		return nil, err
 	}
 	return s.repo.UpdateLog(id, req)
+}
+
+// nonNegativeLog (11-07): الإضافة چانت تقبل كلفة/لترات/عداد سالب — كلفة سالبة تنقّص مصاريف الأسطول.
+func nonNegativeLog(cost, liters *float64, odometer *int) error {
+	if cost != nil && *cost < 0 {
+		return errors.New("الكلفة ما تصير سالبة")
+	}
+	if liters != nil && *liters < 0 {
+		return errors.New("عدد اللترات ما يصير سالب")
+	}
+	if odometer != nil && *odometer < 0 {
+		return errors.New("قراءة العداد ما تصير سالبة")
+	}
+	return nil
 }
 
 func (s *VehicleService) DeleteLog(id string) error { return s.repo.DeleteLog(id) }
