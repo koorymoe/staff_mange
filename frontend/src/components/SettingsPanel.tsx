@@ -5,6 +5,7 @@ import { setUiLanguage, uiLanguage } from '../i18n/translateDom'
 import { useSession, isAdminOrOwner } from '../session'
 import { swallow } from '../utils/swallow'
 import TelegramLinkCard from './TelegramLinkCard'
+import ThemeToggle from './ThemeToggle'
 
 const ICON_CHOICES = ['😀', '😎', '🦁', '🐺', '🦅', '🐉', '⚡', '🔥', '⭐', '🚀', '🛠️', '🎯']
 
@@ -98,6 +99,11 @@ export default function SettingsPanel({ onClose }: { onClose: () => void }) {
         <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3">
           <span className="text-sm font-bold text-slate-800">⚙️ الإعدادات</span>
           <button onClick={onClose} className="text-xl text-slate-400 hover:text-slate-600">×</button>
+        </div>
+        {/* الوضع الليلي — بالموبايل هنا بدل الشريط العلوي (11-07) */}
+        <div className="flex items-center justify-between gap-2 border-b border-slate-100 px-4 py-2 text-sm sm:hidden">
+          <span className="text-slate-600">🌓 المظهر</span>
+          <ThemeToggle />
         </div>
         {/* 🌐 لغة الواجهة (بلاغ #11): عربي / اردو — شاشات الفني */}
         <div className="flex items-center justify-between gap-2 border-b border-slate-100 px-4 py-2 text-sm">

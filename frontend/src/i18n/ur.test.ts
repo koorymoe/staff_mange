@@ -2,8 +2,8 @@ import { describe, expect, it } from 'vitest'
 import { UR } from './ur'
 
 // بلاغ #11: كل نص ظاهر بشاشات الفني إله ترجمة أوردو — حتى ما يضيف أحد نص جديد وينسى يترجمه.
-const FILES = ['pages/MyTasks.tsx', 'pages/MyInventory.tsx', 'components/WorkGate.tsx', 'components/ReportProblemButton.tsx', 'components/WorkPhotoButton.tsx', 'components/RoutePlanCard.tsx']
-const SRC = import.meta.glob(['../pages/MyTasks.tsx','../pages/MyInventory.tsx','../components/WorkGate.tsx','../components/ReportProblemButton.tsx','../components/WorkPhotoButton.tsx','../components/RoutePlanCard.tsx'], { query: '?raw', import: 'default', eager: true }) as Record<string, string>
+const FILES = ['components/AutoCheckoutPrompt.tsx', 'pages/MyTasks.tsx', 'pages/MyInventory.tsx', 'components/WorkGate.tsx', 'components/ReportProblemButton.tsx', 'components/WorkPhotoButton.tsx', 'components/RoutePlanCard.tsx']
+const SRC = import.meta.glob(['../components/AutoCheckoutPrompt.tsx', '../pages/MyTasks.tsx','../pages/MyInventory.tsx','../components/WorkGate.tsx','../components/ReportProblemButton.tsx','../components/WorkPhotoButton.tsx','../components/RoutePlanCard.tsx'], { query: '?raw', import: 'default', eager: true }) as Record<string, string>
 const strip = (s: string) => s.replace(/\{\/\*[\s\S]*?\*\/\}/g, '').replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/.*/g, '$1')
 const ar = /[؀-ۿ]/
 

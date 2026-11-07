@@ -780,9 +780,11 @@ export default function Layout() {
                 </svg>
               </button>
               <div className="hidden h-8 w-px bg-slate-200 sm:block"/>
-              <span className="truncate text-sm font-extrabold text-[#0f2040] tracking-tight sm:text-lg">نظام شركة الأماني</span>
+              {/* (11-07) بموبايل ٣٧٥ الشريط چان يطلع ٢٢٠px برا الحافة — الجرس والصورة والوضع الليلي ما ينوصلون.
+                  العنوان موجود بالقائمة الجانبية، فيختفي تحت ٤٨٠. */}
+              <span className="hidden truncate text-sm font-extrabold text-[#0f2040] tracking-tight min-[480px]:inline sm:text-lg">نظام شركة الأماني</span>
             </div>
-            <div className="flex items-center gap-2 sm:gap-3">
+            <div className="flex items-center gap-1 sm:gap-3">
               <div className="relative">
                 <button
                   onClick={() => setSettingsOpen((o) => !o)}
@@ -811,7 +813,8 @@ export default function Layout() {
               {/* عدّاد ساعات البيت — لصاحب الصلاحية، بكل الشاشات */}
               <RemoteTimerChip />
               {/* الوضع الليلي — اختياره ينحفظ بالجهاز */}
-              <ThemeToggle />
+              {/* بالموبايل ينتقل للوحة الإعدادات (11-07) */}
+              <div className="hidden sm:block"><ThemeToggle /></div>
               <div className="relative">
                 <button
                   ref={notifBtnRef}
