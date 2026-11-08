@@ -248,6 +248,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	authHandler := handler.NewAuthHandler(authService)
 	authHandler.SetPerms(permissionRepo) // (11-04) جدول القدرات can
 	employeeHandler := handler.NewEmployeeHandler(employeeService)
+	employeeHandler.SetNotifications(notificationRepo)
 	leaderSkillHandler := handler.NewLeaderSkillHandler(repository.NewLeaderSkillRepository(db))
 	departmentRepo := repository.NewDepartmentRepository(db)
 	departmentHandler := handler.NewDepartmentHandler(departmentRepo)

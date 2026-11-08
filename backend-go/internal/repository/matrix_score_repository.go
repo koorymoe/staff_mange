@@ -246,7 +246,9 @@ func (r *MatrixScoreRepository) PendingCoordLeader(raterID string) ([]PendingSta
 		FROM "Booking" b
 		JOIN "Employee" l ON l.id = booking_leader_id(b.id)
 		WHERE b.status::text IN ('COMPLETED', 'PARTIAL') AND l.role::text NOT IN ('ADMIN', 'OWNER')
-		  AND b."updatedAt" >= now() - interval '7 days'
+		  -- (ع) 11-08: «رجعت منجزة» = completedAt مو updatedAt — أي تعديل على حجز قديم (أو تسوية
+		  -- OLD) چان يرجّعه للشاشة «قيّمه». ونفس شرط واجب التقييم (rating_duty): بلا OLD.
+		  AND b."completedAt" >= now() - interval '7 days' AND upper(b.code) NOT LIKE 'OLD%'
 		  AND (b."confirmedByEmployeeId" = $1 OR b."createdById" = $1)
 		  AND l.id <> $1
 		  AND NOT EXISTS (SELECT 1 FROM "StaffRating" s WHERE s."raterId" = $1 AND s."bookingId" = b.id AND s.stage = 'COORD_LEADER')
@@ -327,7 +329,7 @@ func (r *MatrixScoreRepository) PendingAudit(raterID string) ([]PendingStaffRati
 			SELECT e.id, e.name, 'COORDINATOR' FROM "Employee" e WHERE e.id = COALESCE(b."confirmedByEmployeeId", b."createdById") AND e.role::text NOT IN ('ADMIN', 'OWNER')
 		) p ON true
 		WHERE b.status::text IN ('COMPLETED', 'PARTIAL')
-		  AND b."updatedAt" >= now() - interval '7 days'
+		  AND b."completedAt" >= now() - interval '7 days' AND upper(b.code) NOT LIKE 'OLD%'
 		  AND upper(b.code) NOT LIKE 'OLD%'
 		  AND p.id <> $1
 		  AND NOT EXISTS (SELECT 1 FROM "StaffRating" s WHERE s."raterId" = $1 AND s."bookingId" = b.id

@@ -8,6 +8,7 @@ import (
 
 	"staffmange-api/internal/middleware"
 	"staffmange-api/internal/model"
+	"staffmange-api/internal/repository"
 	"staffmange-api/internal/service"
 )
 
@@ -25,7 +26,11 @@ func canSeeSalaries(role string) bool {
 
 type EmployeeHandler struct {
 	service *service.EmployeeService
+	notif   *repository.NotificationRepository
 }
+
+// SetNotifications (ع) 11-08: رقابة على تغيير بيانات الدخول.
+func (h *EmployeeHandler) SetNotifications(n *repository.NotificationRepository) { h.notif = n }
 
 func NewEmployeeHandler(s *service.EmployeeService) *EmployeeHandler {
 	return &EmployeeHandler{service: s}
@@ -209,6 +214,24 @@ func (h *EmployeeHandler) Update(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		WriteError(w, http.StatusBadRequest, err.Error())
 		return
+	}
+	// (ع) 11-08: رقابة — مدير النظام صار يغيّر بيانات الدخول، فالموظف نفسه والمالك
+	// يدرون فوراً (الموظف يكتشف لو أحد غيّرها بلا علمه).
+	if (req.Username != nil || req.Password != nil) && h.notif != nil {
+		if actor, _ := r.Context().Value(middleware.ContextRole).(string); actor != "OWNER" {
+			by := "مدير النظام"
+			if who, err := h.service.Get(middleware.EmployeeIDFromContext(r)); err == nil && who != nil {
+				by = who.Name
+			}
+			what := "كلمة المرور"
+			if req.Username != nil && req.Password != nil {
+				what = "اسم المستخدم وكلمة المرور"
+			} else if req.Username != nil {
+				what = "اسم المستخدم"
+			}
+			_ = h.notif.Create(id, "CREDENTIALS_CHANGED", "🔑 "+what+" مالتك انغيّرت من "+by+". إذا مو انت طالبها، بلّغ المالك فوراً.")
+			_ = h.notif.CreateForRole("OWNER", "CREDENTIALS_CHANGED", "🔑 "+by+" غيّر "+what+" للموظف "+employee.Name+".")
+		}
 	}
 	WriteJSON(w, http.StatusOK, employee)
 }
