@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"strconv"
 	"strings"
 	"time"
 
@@ -41,7 +42,20 @@ func (s *EmployeeService) Get(id string) (*model.Employee, error) {
 	return s.repo.FindByID(id)
 }
 
+// ValidSalary (ع) 11-08: الراتب الشهري بالدينار كامل — 500 يعني 500,000 انكتب بالآلاف.
+// ماكو راتب شهري أقل من ١٠,٠٠٠ دينار، فنرفضه برسالة واضحة بدل ما يخرب المطابقة والحسابات.
+func ValidSalary(v *float64) error {
+	if v != nil && *v > 0 && *v < 10000 {
+		return fmt.Errorf("اكتب الراتب بالدينار كامل — مثلاً %s مو %s",
+			strconv.FormatFloat(*v*1000, 'f', 0, 64), strconv.FormatFloat(*v, 'f', -1, 64))
+	}
+	return nil
+}
+
 func (s *EmployeeService) Create(req model.CreateEmployeeRequest) (*model.Employee, error) {
+	if err := ValidSalary(req.Salary); err != nil {
+		return nil, err
+	}
 	if req.Name == "" {
 		return nil, errors.New("الاسم مطلوب")
 	}
@@ -135,6 +149,9 @@ func (s *EmployeeService) Create(req model.CreateEmployeeRequest) (*model.Employ
 // اللحظة ما يبطل أحدهما الثاني بصمت (شوف تعليق `UpdateWithLock`
 // بـ`employee_repository.go`).
 func (s *EmployeeService) Update(id string, req model.UpdateEmployeeRequest) (*model.Employee, error) {
+	if err := ValidSalary(req.Salary); err != nil {
+		return nil, err
+	}
 	_, err := s.repo.UpdateWithLock(id, func(employee *model.Employee) error {
 		if req.Name != nil {
 			employee.Name = *req.Name
