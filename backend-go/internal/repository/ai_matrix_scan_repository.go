@@ -211,7 +211,14 @@ const workOnDaySQL = `
 	               AND (m."leaderId" = e.id OR e.id = ANY(m."memberIds"))))
 	UNION ALL
 	SELECT b.code FROM "QualityFollowUp" q JOIN "Booking" b ON b.id = q."bookingId"
-	WHERE q."contactedByEmployeeId" = e.id AND baghdad_date(q."contactedAt") = $1::date`
+	WHERE q."contactedByEmployeeId" = e.id AND baghdad_date(q."contactedAt") = $1::date
+	-- (ك) 11-08: بطلب دازاي (بلاغ #25) — المهمة الإضافية هم شغل (الديكور
+	-- شغله بالمهام). تنحسب إذا انكلّف بيها أو بداها أو خلّصها أو موعدها بذاك اليوم.
+	UNION ALL
+	SELECT t.title FROM "ExtraTask" t
+	WHERE t."assignedToId" = e.id AND t.status <> 'CANCELLED'
+	  AND (baghdad_date(t."createdAt") = $1::date OR baghdad_date(t."startedAt") = $1::date
+	       OR baghdad_date(t."doneAt") = $1::date OR baghdad_date(t."dueAt") = $1::date)`
 
 // AttendanceWorkGaps ليوم بغداد day (YYYY-MM-DD). employeeID فارغ = الكل.
 //
