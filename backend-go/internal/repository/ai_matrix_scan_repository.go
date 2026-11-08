@@ -229,6 +229,9 @@ func (r *AiRepository) AttendanceWorkGaps(day string, minMinutes int, employeeID
 			WHERE a.date = $1::date AND a."checkOut" IS NOT NULL
 			  AND e.status = 'ACTIVE' AND (e.role = 'TECHNICIAN' OR e."isLeader")
 			  AND NOT EXISTS (`+workOnDaySQL+`)
+			  -- (ك) 11-08: بطلب دازاي (بلاغ #23) — المجاز بإجازة معتمدة مو «حاضر بلا شغل».
+			  AND NOT EXISTS (SELECT 1 FROM "LeaveRequest" l WHERE l."employeeId" = e.id
+			                  AND l.status = 'APPROVED' AND $1::date BETWEEN l."startDate" AND l."endDate")
 			GROUP BY e.id
 			HAVING SUM(att_counted_minutes(a."employeeId", a."checkIn", a."checkOut")) >= $2
 			UNION ALL
