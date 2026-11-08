@@ -60,8 +60,10 @@ function onRoute(path: string, route: string): boolean {
 
 // جملة ماتركس حسب الموقف — صارمة، برقم، بلا مدح فاضي.
 function speech(w: MatrixWatch, path: string, afterAction: boolean): string | null {
-  if (w.mood === 'ANGRY' && w.items.length > 0) {
-    const esc = w.items.find((i) => i.escalated) ?? w.items[0]
+  // (ك) 11-08: بلاغ #22 — تنبيهات «للعلم» ما تدخل بجملة التذكيرات المفتوحة.
+  const due = w.items.filter((i) => !i.info)
+  if (w.mood === 'ANGRY' && due.length > 0) {
+    const esc = due.find((i) => i.escalated) ?? due[0]
     return w.items.some((i) => i.escalated)
       ? `ذكّرتك وما انحل: ${esc.summary}. القضية وصلت للمدير.`
       : `عندك ${w.open} تذكيرات مفتوحة وما انحلت. أولها: ${esc.summary}.`
@@ -350,7 +352,7 @@ export default function MatrixEye() {
                 <ul className="max-h-52 space-y-1.5 overflow-y-auto">
                   {watch.items.map((it, i) => (
                     <li key={i} className="rounded-lg bg-slate-50 p-2">
-                      <p className="text-slate-800">{it.escalated && '⬆️ '}{it.summary}</p>
+                      <p className="text-slate-800">{it.info ? 'ℹ️ للعلم: ' : it.escalated && '⬆️ '}{it.summary}</p>
                       <p className="text-[11px] text-slate-500">{it.label} · من {new Date(it.since).toLocaleDateString('ar-IQ', { timeZone: 'Asia/Baghdad' })}{it.escalated ? ' · وصل للمدير' : ''}</p>
                     </li>
                   ))}

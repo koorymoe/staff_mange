@@ -3715,7 +3715,8 @@ export interface MatrixWatch {
   name?: string
   id?: string
   open: number
-  items: { summary: string; kind: string; label: string; escalated: boolean; since: string }[]
+  /** (ك) 11-08: info = تنبيه «بلّغ المراقب» للعلم، ما ينحسب بـopen */
+  items: { summary: string; kind: string; label: string; escalated: boolean; since: string; info?: boolean }[]
 }
 
 // تعليمات ماتركس — «الخطوات التعليمية» يعدّلها المدير.

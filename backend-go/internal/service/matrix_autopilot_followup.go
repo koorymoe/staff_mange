@@ -250,7 +250,8 @@ func (s *MatrixAutopilotService) followUp() {
 			_ = s.actions.MarkResolved(a.ID)
 			continue
 		}
-		if a.EscalatedAt == nil && time.Since(a.CreatedAt) >= model.AiActionEscalateAfter {
+		// (ك) 11-08: بلاغ #22 — تنبيه المراقب للعلم، ما يتصعّد عليه.
+		if a.EscalatedAt == nil && !isMonitorNotice(a) && time.Since(a.CreatedAt) >= model.AiActionEscalateAfter {
 			_ = s.actions.MarkEscalated(a.ID)
 			// المهمة المتأخرة: الي كلّفها لازم يدري، مو بس المدير.
 			if a.Kind == model.AiActionExtraTaskOverdue {
@@ -296,7 +297,14 @@ type WatchItem struct {
 	Label     string    `json:"label"`
 	Escalated bool      `json:"escalated"`
 	Since     time.Time `json:"since"`
+	// Info تنبيه «بلّغ المراقب» للعلم بس: ما ينحسب ولا يحمّر ولا يتصعّد.
+	Info bool `json:"info,omitempty"`
 }
+
+// isMonitorNotice تنبيه «بلّغ المراقب»: القرار عند غيره، والمراقب ينبلّغ للعلم.
+// (ك) 11-08: بطلب دازاي (بلاغ #22) — چان ينحسب تذكير مفتوح على المراقب
+// (نقص جرد قراره عند أبو الكميات مثلاً)، فيحمّر عينه ويتصعّد كأنه تأخير منه.
+func isMonitorNotice(a model.AiAction) bool { return a.EntityType == "MONITOR" }
 
 type WatchState struct {
 	Level string `json:"level"` // CALM | ALERT | RED
@@ -348,7 +356,14 @@ func (s *MatrixAutopilotService) watchFor(subj repository.WatchSubject) (*WatchS
 	}
 	out := &WatchState{Level: "CALM", Items: []WatchItem{}, Group: WatchGroup(subj), Workload: s.workload(subj)}
 	escalated := false
+	infos := 0
 	for _, a := range rows {
+		if isMonitorNotice(a) {
+			infos++
+			out.Items = append(out.Items, WatchItem{Summary: a.Summary, Kind: a.Kind,
+				Label: model.AiActionLabels[a.Kind], Since: a.CreatedAt, Info: true})
+			continue
+		}
 		esc := a.EscalatedAt != nil
 		escalated = escalated || esc
 		out.Items = append(out.Items, WatchItem{Summary: a.Summary, Kind: a.Kind,
@@ -365,7 +380,7 @@ func (s *MatrixAutopilotService) watchFor(subj repository.WatchSubject) (*WatchS
 		// وترجع لون دوره من يخلص. المراقبة تبقى على الاثنين.
 		out.ProjectMode = true
 	}
-	out.Open = len(out.Items)
+	out.Open = len(out.Items) - infos
 	switch {
 	case escalated || out.Open >= watchRedOpen:
 		out.Level = "RED"
