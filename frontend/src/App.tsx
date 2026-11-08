@@ -93,6 +93,8 @@ const OrgPage = lazyRetry(() => import('./pages/OrgPage'))
 const OrgDeskPage = lazyRetry(() => import('./pages/OrgDeskPage'))
 const OrgPlansPage = lazyRetry(() => import('./pages/OrgPlansPage'))
 const MaintenanceContractsPage = lazyRetry(() => import('./pages/MaintenanceContractsPage'))
+const DesignSetsPage = lazyRetry(() => import('./pages/DesignSetsPage'))
+const DesignSetPage = lazyRetry(() => import('./pages/DesignSetPage'))
 const DirectorsRankingPage = lazyRetry(() => import('./pages/DirectorsRankingPage'))
 const MyOrgCard = lazyRetry(() => import('./components/MyOrgCard'))
 const DepartmentsPage = lazyRetry(() => import('./pages/DepartmentsPage'))
@@ -232,6 +234,9 @@ function App() {
           <Route path="org" element={<RequireAdmin><OrgPage /></RequireAdmin>} />
           <Route path="org/assign" element={<RequireAdmin><OrgPage view="assign" /></RequireAdmin>} />
           <Route path="org/directors-ranking" element={<RequireAdmin><DirectorsRankingPage /></RequireAdmin>} />
+          {/* (ع) 11-08: 🏗️ صيت التصاميم — الصلاحيات بالخادم (يشوف المصمم المكلّف صيته بس) */}
+          <Route path="design-sets" element={<DesignSetsPage />} />
+          <Route path="design-sets/:id" element={<DesignSetPage />} />
           <Route path="org/plans" element={<RequireAdmin><OrgPlansPage /></RequireAdmin>} />
           <Route path="org/desk" element={<OrgDeskPage />} />
           <Route path="org/desk/:divisionId" element={<OrgDeskPage />} />
