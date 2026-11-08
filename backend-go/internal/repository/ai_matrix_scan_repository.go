@@ -218,7 +218,23 @@ const workOnDaySQL = `
 	SELECT t.title FROM "ExtraTask" t
 	WHERE t."assignedToId" = e.id AND t.status <> 'CANCELLED'
 	  AND (baghdad_date(t."createdAt") = $1::date OR baghdad_date(t."startedAt") = $1::date
-	       OR baghdad_date(t."doneAt") = $1::date OR baghdad_date(t."dueAt") = $1::date)`
+	       OR baghdad_date(t."doneAt") = $1::date OR baghdad_date(t."dueAt") = $1::date)
+	-- (ك) 11-08: بطلب دازاي (بلاغ #26) — شغل حجوزات چان يفلت من الفحص:
+	-- ١. طلعة بحجز طويل (الأيام الوسطانية ما بيها موعد ولا بداية ولا إنجاز).
+	UNION ALL
+	SELECT b.code FROM "BookingVisitCrew" vc JOIN "BookingVisit" v ON v.id = vc."visitId"
+	JOIN "Booking" b ON b.id = v."bookingId"
+	WHERE vc."employeeId" = e.id AND baghdad_date(v."occurredAt") = $1::date
+	-- ٢. حجز محوّل للتقني: تواصل أو قرر أو زار أو كتب الكشف بذاك اليوم.
+	UNION ALL
+	SELECT b.code FROM "Booking" b
+	WHERE b."handoverToId" = e.id
+	  AND (baghdad_date(b."techContactedAt") = $1::date OR baghdad_date(b."techDecidedAt") = $1::date
+	       OR baghdad_date(b."techVisitedAt") = $1::date OR baghdad_date(b."techDiagnosedAt") = $1::date)
+	-- ٣. تقرير جزئي رفعه بذاك اليوم.
+	UNION ALL
+	SELECT b.code FROM "BookingProgressReport" p JOIN "Booking" b ON b.id = p."bookingId"
+	WHERE p."reportedById" = e.id AND baghdad_date(p."createdAt") = $1::date`
 
 // AttendanceWorkGaps ليوم بغداد day (YYYY-MM-DD). employeeID فارغ = الكل.
 //
