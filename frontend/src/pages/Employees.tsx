@@ -1004,8 +1004,8 @@ export default function Employees({ embedded }: { embedded?: boolean } = {}) {
                       والسيرفر يرفضها هم مو الواجهة بس. */}
                   {/* (ع) 10-21: چانت تطلع لصاحب «إضافة موظف» هم، والسيرفر يقبلها من
                       المالك بس — فالحفظ يرجع «لا تملك صلاحية» وينحسب مخالفة. */}
-                  {/* (ع) 11-08: ومدير النظام هم — بس للموظفين العاديين (مو المالك ولا مدير ثاني) */}
-                  {(isOwnerUser || (currentUser?.role === 'ADMIN' && selectedEmployee && selectedEmployee.role !== 'OWNER' && selectedEmployee.role !== 'ADMIN')) && (
+                  {/* (ع) 11-08: ومدير النظام هم — لكل موظف عدا المالك */}
+                  {(isOwnerUser || (currentUser?.role === 'ADMIN' && selectedEmployee && selectedEmployee.role !== 'OWNER')) && (
                     <div className="mt-5">
                       <div className="flex items-center gap-2 mb-3">
                         <div className="h-1.5 w-1.5 rounded-full bg-[#2c5aad]"/>

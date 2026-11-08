@@ -177,18 +177,19 @@ func (h *EmployeeHandler) Update(w http.ResponseWriter, r *http.Request) {
 	//
 	// بقية الحقول (الراتب، الدور، المهارات...) تبقى لمدير النظام مثل
 	// ما كانت — القيد على بيانات الدخول بس.
-	// (ع) 11-08: «مدير النظام تقريباً نفس شغل المالك» — يغيّر يوزر وباسورد الموظفين
-	// العاديين. بس **مو** حساب المالك ولا حساب مدير ثاني: هذا الي يمنع الاستيلاء.
+	// (ع) 11-08: «مدير النظام تقريباً نفس شغل المالك… خليها لكل موظف عدا المالك» —
+	// يغيّر يوزر وباسورد أي موظف، حتى مدير نظام ثاني (قرار المالك نصاً). بس **مو**
+	// حساب المالك: هذا الي يمنع الاستيلاء على النظام.
 	if req.Username != nil || req.Password != nil {
 		role, _ := r.Context().Value(middleware.ContextRole).(string)
 		allowed := role == "OWNER"
 		if role == "ADMIN" {
-			if target, err := h.service.Get(id); err == nil && target != nil && target.Role != "OWNER" && target.Role != "ADMIN" {
+			if target, err := h.service.Get(id); err == nil && target != nil && target.Role != "OWNER" {
 				allowed = true
 			}
 		}
 		if !allowed {
-			WriteError(w, http.StatusForbidden, "تغيير بيانات دخول المالك أو مدير النظام للمالك وحده")
+			WriteError(w, http.StatusForbidden, "تغيير بيانات دخول المالك للمالك وحده")
 			return
 		}
 	}
