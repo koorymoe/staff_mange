@@ -102,3 +102,31 @@ func (r *MatrixScoreRepository) FleetOverdue() ([]string, error) {
 		WHERE d."expiryDate" IS NOT NULL AND d."expiryDate" < now()`)
 	return rows, err
 }
+
+// WashToday (ع) 11-08: «سؤاله عن السيارات المغسولة اليوم ما أكدر أجاوبه» — البيانات
+// موجودة بالتقييم اليومي (بند الغسيل ٠–٤ + تقييم غسل كل فني ٠–٢) بس ماتركس ما چان يقراها.
+type WashToday struct {
+	Rated   int      `db:"rated"`
+	Washed  int      `db:"washed"`
+	AvgWash *float64 `db:"avgWash"`
+	LowCars []string `db:"-"`
+	Techs   []string `db:"-"`
+}
+
+func (r *MatrixScoreRepository) WashToday() (*WashToday, error) {
+	w := &WashToday{}
+	if err := r.db.Get(w, `SELECT count(*)::int AS rated,
+		count(*) FILTER (WHERE x.wash >= 3)::int AS washed,
+		round(avg(x.wash)::numeric, 1)::float8 AS "avgWash"
+		FROM "VehicleDailyRating" x JOIN "Vehicle" v ON v.id = x."vehicleId" AND v."isActive"
+		WHERE x."ratedDate" = baghdad_today()`); err != nil {
+		return nil, err
+	}
+	_ = r.db.Select(&w.LowCars, `SELECT v.name || ' (' || x.wash || '/4)' FROM "VehicleDailyRating" x
+		JOIN "Vehicle" v ON v.id = x."vehicleId" AND v."isActive"
+		WHERE x."ratedDate" = baghdad_today() AND x.wash IS NOT NULL AND x.wash <= 1 ORDER BY x.wash, v.name LIMIT 10`)
+	_ = r.db.Select(&w.Techs, `SELECT e.name || ': ' || round(avg(t.score)::numeric, 1) || '/2 على ' || count(*) || ' سيارة'
+		FROM "VehicleWashRating" t JOIN "VehicleDailyRating" x ON x.id = t."dailyRatingId" JOIN "Employee" e ON e.id = t."employeeId"
+		WHERE x."ratedDate" = baghdad_today() GROUP BY e.name ORDER BY avg(t.score) LIMIT 10`)
+	return w, nil
+}

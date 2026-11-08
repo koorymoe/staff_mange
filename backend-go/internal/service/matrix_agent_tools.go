@@ -423,7 +423,7 @@ func (a *MatrixAgent) RegisterReadTools(d AgentDeps) {
 			return b.String(), nil
 		}})
 
-	a.AddTool(agentTool{Name: "procurement_watch", Desc: "شغل المخازن (إداري الكميات): طلبات المواد والأدوات المعلّقة وأعمارها، نواقص الجرد المفتوحة، السيارات الي ما انقيّمت اليوم، والصيانة الي فات موعدها.",
+	a.AddTool(agentTool{Name: "procurement_watch", Desc: "شغل المخازن (إداري الكميات): طلبات المواد والأدوات المعلّقة وأعمارها، نواقص الجرد المفتوحة، السيارات الي ما انقيّمت اليوم، الصيانة الي فات موعدها، وغسيل السيارات اليوم (كم انغسلت زين، الضعيف، وغسل كل فني).",
 		Run: func(map[string]any, *nameMask) (string, error) {
 			if d.ScoreRepo == nil {
 				return "", fmt.Errorf("المصدر مو مربوط")
@@ -453,6 +453,24 @@ func (a *MatrixAgent) RegisterReadTools(d AgentDeps) {
 			}
 			if f, err := d.ScoreRepo.FleetOverdue(); err == nil {
 				fmt.Fprintf(&b, "صيانة/وثائق فات موعدها: %s\n", strings.Join(f, "؛ "))
+			}
+			// (ع) 11-08: الغسيل اليوم — من التقييم اليومي (بند الغسيل ٠–٤، وغسل كل فني ٠–٢)
+			if w, err := d.ScoreRepo.WashToday(); err == nil {
+				if w.Rated == 0 {
+					b.WriteString("الغسيل اليوم: ماكو سيارة انقيّمت بعد، فما نعرف شكد انغسلت.\n")
+				} else {
+					fmt.Fprintf(&b, "الغسيل اليوم: %d سيارة انقيّمت، منها %d غسلها زين (٣ أو ٤ من ٤)", w.Rated, w.Washed)
+					if w.AvgWash != nil {
+						fmt.Fprintf(&b, "، ومعدل الغسيل %.1f من ٤", *w.AvgWash)
+					}
+					b.WriteString("\n")
+					if len(w.LowCars) > 0 {
+						fmt.Fprintf(&b, "غسيلها ضعيف (١ أو أقل): %s\n", strings.Join(w.LowCars, "؛ "))
+					}
+					if len(w.Techs) > 0 {
+						fmt.Fprintf(&b, "غسل الفنيين اليوم: %s\n", strings.Join(w.Techs, "؛ "))
+					}
+				}
 			}
 			return b.String(), nil
 		}})
