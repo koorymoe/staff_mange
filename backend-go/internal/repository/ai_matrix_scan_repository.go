@@ -200,13 +200,18 @@ type AttendanceGapRow struct {
 
 // workOnDaySQL: حجوزات الموظف (تكليف أو مهمة ليدر/عضو) الي انجدولت أو
 // بدت أو خلصت بيوم بغداد $1. يحتاج e.id بالنطاق.
+// (ك) 11-08: بطلب دازاي (بلاغ #19) — اتصال الجودة بالزبون هم شغل. چان الي
+// يخابر جودة طول يومه يطلع «حاضر بلا شغل» لأن ماتركس يقرا الحجوزات بس.
 const workOnDaySQL = `
 	SELECT b.code FROM "Booking" b
 	WHERE (baghdad_date(b."scheduledAt") = $1::date OR baghdad_date(b."startedAt") = $1::date
 	       OR baghdad_date(b."completedAt") = $1::date)
 	  AND (EXISTS (SELECT 1 FROM "BookingAssignment" ba WHERE ba."bookingId" = b.id AND ba."employeeId" = e.id)
 	    OR EXISTS (SELECT 1 FROM "Mission" m WHERE m."bookingId" = b.id
-	               AND (m."leaderId" = e.id OR e.id = ANY(m."memberIds"))))`
+	               AND (m."leaderId" = e.id OR e.id = ANY(m."memberIds"))))
+	UNION ALL
+	SELECT b.code FROM "QualityFollowUp" q JOIN "Booking" b ON b.id = q."bookingId"
+	WHERE q."contactedByEmployeeId" = e.id AND baghdad_date(q."contactedAt") = $1::date`
 
 // AttendanceWorkGaps ليوم بغداد day (YYYY-MM-DD). employeeID فارغ = الكل.
 //
