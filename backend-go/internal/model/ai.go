@@ -152,6 +152,11 @@ type WorkStopEvidence struct {
 	CartItemsTotal      int `json:"cartItemsTotal"`
 	CartItemsAfterStart int `json:"cartItemsAfterStart"`
 
+	// (ك) 11-08: بطلب دازاي (بلاغ #20) — الفني يكدر يشتري بنفسه من مصروفه،
+	// وهذا ما يطلع بطلبات المواد. مصروفه ما بيه رقم حجز، فنحسب مشترياته
+	// بنفس يوم التوقف (بغداد) حتى ما ننلومه على توقف طلع بيه يشتري.
+	SelfPurchasesSameDay int `json:"selfPurchasesSameDay"`
+
 	// ═══ سجل الموظف ═══
 	// نفس الموظف وقّف كم مرة بآخر ٣٠ يوم؟ مرة = ظرف، خمس مرات = نمط.
 	StopsLast30Days int `json:"stopsLast30Days"`

@@ -340,6 +340,17 @@ func (r *AiRepository) CartSummary(bookingID string, startedAt *time.Time) (int,
 	return total, after, nil
 }
 
+// SelfPurchasesOnDay كم شراء مواد سجّل الموظف من مصروفه بيوم بغداد مال at.
+// (ك) 11-08: بلاغ #20 — المصروف ما مربوط بحجز، فنقارن باليوم.
+func (r *AiRepository) SelfPurchasesOnDay(employeeID string, at time.Time) (int, error) {
+	var n int
+	err := r.db.Get(&n, `
+		SELECT COUNT(*) FROM "ExpensePurchase" p JOIN "Expense" e ON e.id = p."expenseId"
+		WHERE e."employeeId" = $1 AND baghdad_date(p."createdAt") = baghdad_date($2::timestamp)`,
+		employeeID, at.UTC())
+	return n, err
+}
+
 // StopCountForEmployee كم مرة وقّف هذا الموظف الشغل بآخر كذا يوم.
 // مرة = ظرف، خمس مرات = نمط.
 func (r *AiRepository) StopCountForEmployee(employeeID string, days int) (int, error) {
