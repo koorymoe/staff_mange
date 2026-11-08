@@ -133,6 +133,12 @@ func (s *AiEvidenceService) CollectForWorkStop(signal model.AiSignal) (*model.Ai
 
 	// ═══ سجل الموظف: مرة ولا نمط؟ ═══
 	if signal.EmployeeID != nil {
+		// (ك) 11-08: بلاغ #20 — شراء من مصروفه بنفس اليوم يبرّي التوقف.
+		if n, err := s.db.SelfPurchasesOnDay(*signal.EmployeeID, stoppedAt); err != nil {
+			gaps = append(gaps, "ما قدرنا نقرا مشتريات الموظف من مصروفه")
+		} else {
+			ev.SelfPurchasesSameDay = n
+		}
 		n, err := s.db.StopCountForEmployee(*signal.EmployeeID, 30)
 		if err != nil {
 			gaps = append(gaps, "ما قدرنا نقرا سجل توقفات الموظف")

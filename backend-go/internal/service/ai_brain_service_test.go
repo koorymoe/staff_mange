@@ -174,3 +174,27 @@ func TestJudgeLateStart_CleanStreakAddsLenientNote(t *testing.T) {
 		t.Error("فترة ٣ أيام قصيرة — ما تستاهل ملاحظة متساهلة")
 	}
 }
+
+// (ك) 11-08: بلاغ #20 — توقف لشراء مواد ما ينلام بيه الموظف.
+func TestJudgeWorkStop_PurchaseNotBlamed(t *testing.T) {
+	empID := "emp-1"
+	sig := model.AiSignal{ID: "s1", Kind: model.AiSignalWorkStopped, EmployeeID: &empID}
+	cases := map[string]model.WorkStopEvidence{
+		"السبب":  {StopReason: "توقف لشراء منتجات", MinutesToShiftEnd: 300},
+		"المصروف": {SelfPurchasesSameDay: 1, MinutesToShiftEnd: 300},
+	}
+	for name, ev := range cases {
+		v, err := RulesJudge{}.judgeWorkStop(sig, ev)
+		if err != nil {
+			t.Fatalf("%s: %v", name, err)
+		}
+		if v.Headline != "توقف لشراء مواد" || v.BlameEmployeeID != nil {
+			t.Errorf("%s: طلع %q ولوم=%v", name, v.Headline, v.BlameEmployeeID != nil)
+		}
+	}
+	// بلا سبب شراء وبلا مصروف — يبقى على القاعدة القديمة.
+	v, _ := RulesJudge{}.judgeWorkStop(sig, model.WorkStopEvidence{StopReason: "تعبان", MinutesToShiftEnd: 300})
+	if v.Headline != "توقف بلا طلب مادة ولا زيادة بالسلة" {
+		t.Errorf("بلا شراء لازم تبقى القاعدة القديمة، طلع %q", v.Headline)
+	}
+}

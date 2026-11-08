@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"math"
+	"strings"
 	"time"
 
 	"staffmange-api/internal/model"
@@ -314,6 +315,19 @@ func (RulesJudge) judgeWorkStop(sig model.AiSignal, ev model.WorkStopEvidence) (
 		v.Severity = model.AiSeverityWarn
 		v.Confidence = 88
 
+	// ═══ ٢ب. وقّف حتى يشتري بنفسه ═══
+	// (ك) 11-08: بطلب دازاي (بلاغ #20) — «توقف لشراء منتجات» طريق موجود
+	// بالنظام. چان ينلام لأن القاعدة ما تقرا السبب ولا مصروفه.
+	case isPurchaseStopReason(ev.StopReason) || ev.SelfPurchasesSameDay > 0:
+		v.Headline = "توقف لشراء مواد"
+		reason = "الموظف وقّف حتى يشتري مواد"
+		if ev.SelfPurchasesSameDay > 0 {
+			reason += fmt.Sprintf("، وسجّل %d شراء من مصروفه بنفس اليوم", ev.SelfPurchasesSameDay)
+		}
+		reason += " — التوقف إله سبب، مو نسيان."
+		suggestion = "تأكد الشراء انسجّل بمصروفه، وشوف إذا الكشف الأولي كان ناقص."
+		v.Confidence = 75
+
 	// ═══ ٣. ما طلب ولا شي ═══
 	// «لو إنت ناسيها» — ماكو طلب وماكو زيادة بالسلة، يبقى احتمال
 	// النسيان هو الأقوى.
@@ -545,4 +559,10 @@ func (RulesJudge) judgeFuelAnomaly(sig model.AiSignal, ev model.FuelAnomalyEvide
 	v.Reasoning = &reason
 	v.Suggestion = &suggestion
 	return v, nil
+}
+
+// isPurchaseStopReason: سبب التوقف يحچي عن شراء مواد/منتجات؟
+// (ك) 11-08: بلاغ #20 — السبب نص حر، فنفحص الكلمات بس.
+func isPurchaseStopReason(r string) bool {
+	return strings.Contains(r, "شراء") || strings.Contains(r, "اشتري") || strings.Contains(r, "أشتري")
 }
