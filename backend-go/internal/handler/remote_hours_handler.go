@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"net/url"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -504,6 +505,12 @@ func (h *RemoteHoursHandler) SetPlan(canManage func(r *http.Request) bool) http.
 			}
 		} else if b.EmployeeID != "" && b.EmployeeID != me {
 			WriteError(w, http.StatusNotFound, "مو موجود")
+			return
+		}
+		// (ع) 11-08: «سعر ساعتي 2.7 الف دينار بس جاي يحسب بالدينار» — انكتب بالآلاف.
+		// ماكو ساعة أقل من ١٠٠ دينار، فهذا أكيد غلط كتابة: نرفضه برسالة واضحة.
+		if b.HourlyRateIQD > 0 && b.HourlyRateIQD < 100 {
+			WriteError(w, http.StatusBadRequest, fmt.Sprintf("اكتب سعر الساعة بالدينار كامل — مثلاً %s مو %s", strconv.FormatFloat(b.HourlyRateIQD*1000, 'f', 0, 64), strconv.FormatFloat(b.HourlyRateIQD, 'f', -1, 64)))
 			return
 		}
 		saved, err := h.repo.SetPlan(emp, me, repository.RemoteHoursPlan{TargetHours: b.TargetHours, HourlyRateIQD: b.HourlyRateIQD}, onlyIfNew)

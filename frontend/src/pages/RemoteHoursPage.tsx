@@ -104,6 +104,8 @@ function MyHours({ meId }: { meId: string }) {
   const savePlan = async () => {
     const hours = Number(planForm.hours), rate = parseRate(planForm.rate)
     if (!(hours > 0 && hours <= 400) || !(rate >= 0)) { setPlanMsg('اكتب الساعات المطلوبة بالشهر وسعر الساعة'); return }
+    // (ع) 11-08: سعر الساعة بالدينار كامل — 2.7 يعني 2700
+    if (rate > 0 && rate < 100) { setPlanMsg(`اكتب سعر الساعة بالدينار كامل — مثلاً ${(rate * 1000).toLocaleString('en-US')} مو ${rate}`); return }
     try { const r = await api.setRemotePlan({ targetHours: hours, hourlyRateIQD: rate }); setPlan(r.plan); setPlanMsg('') }
     catch (e) { setPlanMsg(e instanceof Error ? e.message : 'تعذر الحفظ') }
   }
@@ -113,7 +115,7 @@ function MyHours({ meId }: { meId: string }) {
       {!plan ? (
         <div className="flex flex-wrap items-end gap-2">
           <label className="text-xs text-slate-600">الساعات المطلوبة بالشهر<input type="number" min={1} max={400} value={planForm.hours} onChange={(e) => setPlanForm({ ...planForm, hours: e.target.value })} className={`${inp} block w-28 text-center`} /></label>
-          <label className="text-xs text-slate-600">سعر الساعة (د.ع)<input inputMode="numeric" value={planForm.rate} onChange={(e) => setPlanForm({ ...planForm, rate: e.target.value })} className={`${inp} block w-32 text-center`} dir="ltr" /></label>
+          <label className="text-xs text-slate-600">سعر الساعة (د.ع)<input inputMode="numeric" value={planForm.rate} onChange={(e) => setPlanForm({ ...planForm, rate: e.target.value })} placeholder="مثلاً 2700" className={`${inp} block w-32 text-center`} dir="ltr" /></label>
           <button onClick={savePlan} className="rounded-lg bg-brand-600 px-4 py-2 text-sm font-bold text-white">حفظ</button>
           {planForm.rate && <p className="w-full text-xs font-bold text-brand-700">يعني: {money(parseRate(planForm.rate), 0)} بالساعة</p>}
           <p className="w-full text-[11px] text-slate-500">تحددها مرة وحدة — بعدها التعديل من إدارة الساعات.</p>
@@ -398,10 +400,11 @@ function ManageHours({ meId, isAdmin }: { meId: string; isAdmin: boolean }) {
               <div className="my-3 flex flex-wrap items-end gap-2 rounded-xl border border-amber-200 bg-amber-50 p-3">
                 <span className="w-full text-xs font-bold text-amber-900">🎯 المطلوب بالشهر وسعر الساعة</span>
                 <label className="text-xs text-slate-600">ساعات<input type="number" min={1} max={400} value={empPlan.hours} onChange={(e) => setEmpPlan({ ...empPlan, hours: e.target.value })} className={`${inp} block w-24 text-center`} /></label>
-                <label className="text-xs text-slate-600">سعر الساعة (دينار)<input value={empPlan.rate} onChange={(e) => setEmpPlan({ ...empPlan, rate: e.target.value })} className={`${inp} block w-32 text-center`} dir="ltr" /></label>
+                <label className="text-xs text-slate-600">سعر الساعة (دينار)<input value={empPlan.rate} onChange={(e) => setEmpPlan({ ...empPlan, rate: e.target.value })} placeholder="مثلاً 2700" className={`${inp} block w-32 text-center`} dir="ltr" /></label>
                 <button className="rounded-lg bg-amber-600 px-3 py-2 text-sm font-bold text-white" onClick={async () => {
                   const hours = Number(empPlan.hours), rate = Number(empPlan.rate.replace(/[,،\s]/g, ''))
                   if (!(hours > 0 && hours <= 400) || !(rate >= 0)) { setPlanNote('اكتب الساعات وسعر الساعة'); return }
+                  if (rate > 0 && rate < 100) { setPlanNote(`اكتب سعر الساعة بالدينار كامل — مثلاً ${(rate * 1000).toLocaleString('en-US')} مو ${rate}`); return }
                   try { await api.setRemotePlan({ employeeId: sel.id, targetHours: hours, hourlyRateIQD: rate }); setPlanNote(`✅ انحفظ: ${rate.toLocaleString('en-US')} دينار بالساعة`) }
                   catch (e) { setPlanNote(e instanceof Error ? e.message : 'تعذر الحفظ') }
                 }}>حفظ</button>
