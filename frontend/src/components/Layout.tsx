@@ -124,6 +124,7 @@ import { navItems, isNavVisible, isExtraForMonitor, isPathAllowed, organizeOrgNa
 import { pollVisible } from '../utils/poll'
 import { startAgentRebrand } from '../utils/agentBrand'
 import { swallow } from '../utils/swallow'
+import PushToggle from './PushToggle'
 
 
 const loadStoredEmployee = (): Employee | null => {
@@ -854,6 +855,8 @@ export default function Layout() {
                           <button onClick={handleMarkAllRead} className="text-xs font-medium text-brand-600 hover:underline">تحديد الكل كمقروء</button>
                         )}
                       </div>
+                      {/* (ع) 11-08: إشعارات حقيقية على الموبايل */}
+                      <PushToggle />
                       <div className="max-h-96 overflow-y-auto">
                         {notifications.length === 0 && (
                           <p className="px-4 py-6 text-center text-sm text-slate-400">ماكو إشعارات</p>

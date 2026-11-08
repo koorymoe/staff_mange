@@ -18,3 +18,26 @@ self.addEventListener('fetch', (e) => {
     return res
   }).catch(() => caches.match(req.mode === 'navigate' ? '/' : req).then((hit) => hit || Response.error())))
 })
+
+// ═══ 🔔 (ع) 11-08: إشعارات حقيقية على الموبايل ═══
+// الخادم يبعث كل إشعار جديد مشفّر، وهنا يطلع على الشاشة حتى والموقع مسدود.
+self.addEventListener('push', (e) => {
+  let d = {}
+  try { d = e.data ? e.data.json() : {} } catch { d = { body: e.data ? e.data.text() : '' } }
+  e.waitUntil(self.registration.showNotification(d.title || 'نظام الأماني', {
+    body: d.body || '',
+    tag: d.tag,
+    dir: 'rtl',
+    lang: 'ar',
+    icon: 'secretary-icon-192.png',
+    badge: 'favicon.png',
+  }))
+})
+self.addEventListener('notificationclick', (e) => {
+  e.notification.close()
+  const scope = self.registration.scope
+  e.waitUntil(self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((list) => {
+    const open = list.find((c) => c.url.startsWith(scope))
+    return open ? open.focus() : self.clients.openWindow(scope)
+  }))
+})

@@ -2031,5 +2031,27 @@ func matrixChatMigrations() []Migration {
 			UPDATE "RemoteHoursPlan" SET "hourlyRateIQD" = "hourlyRateIQD" * 1000
 			WHERE "hourlyRateIQD" > 0 AND "hourlyRateIQD" < 100;
 		`,
+	}, {
+		// (ع) 11-08: 🔔 إشعارات حقيقية على الموبايل (Web Push) — اشتراكات الأجهزة،
+		// ومفاتيح VAPID يولّدها الخادم (محجوبة عن الذكاء)، و«انبعث» على كل إشعار.
+		Version: "0460_web_push",
+		SQL: `
+			CREATE TABLE IF NOT EXISTS "PushSubscription" (
+				endpoint TEXT PRIMARY KEY,
+				"employeeId" TEXT NOT NULL REFERENCES "Employee"(id) ON DELETE CASCADE,
+				p256dh TEXT NOT NULL,
+				auth TEXT NOT NULL,
+				"userAgent" TEXT,
+				"createdAt" TIMESTAMPTZ NOT NULL DEFAULT now()
+			);
+			CREATE INDEX IF NOT EXISTS "PushSubscription_employee_idx" ON "PushSubscription" ("employeeId");
+			CREATE TABLE IF NOT EXISTS "PushVapid" (
+				id INT PRIMARY KEY CHECK (id = 1),
+				"publicKey" TEXT NOT NULL,
+				"vapidSecret" TEXT NOT NULL
+			);
+			ALTER TABLE "Notification" ADD COLUMN IF NOT EXISTS "pushedAt" TIMESTAMPTZ;
+			CREATE INDEX IF NOT EXISTS "Notification_push_pending_idx" ON "Notification" ("createdAt") WHERE "pushedAt" IS NULL;
+		`,
 	}}
 }

@@ -1751,6 +1751,20 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	mux.Handle("POST /api/manager-requests", middleware.Chain(http.HandlerFunc(managerRequestHandler.Create), requireAuth))
 	mux.Handle("GET /api/manager-requests/mine", middleware.Chain(http.HandlerFunc(managerRequestHandler.Mine), requireAuth))
 	mux.Handle("GET /api/manager-requests/inventory-context", middleware.Chain(http.HandlerFunc(managerRequestHandler.InventoryContext), requireAuth, requireInventoryManage))
+	// 🔔 إشعارات حقيقية على الموبايل (ع) 11-08 — كل إشعار ينبعث لأجهزة صاحبه المشتركة
+	pushSubscriber := "mailto:noreply@localhost"
+	if len(cfg.CORSOrigins) > 0 && strings.HasPrefix(cfg.CORSOrigins[0], "https://") {
+		pushSubscriber = cfg.CORSOrigins[0]
+	}
+	if webPush, err := service.NewWebPush(db, pushSubscriber); err != nil {
+		log.Printf("[push] مطفي: %v", err)
+	} else {
+		webPush.Start()
+		pushHandler := handler.NewPushHandler(webPush)
+		mux.Handle("GET /api/push/key", middleware.Chain(http.HandlerFunc(pushHandler.Key), requireAuth))
+		mux.Handle("POST /api/push/subscribe", middleware.Chain(http.HandlerFunc(pushHandler.Subscribe), requireAuth))
+		mux.Handle("POST /api/push/unsubscribe", middleware.Chain(http.HandlerFunc(pushHandler.Unsubscribe), requireAuth))
+	}
 	// 🔁 الرجعات (ع) 11-07 — نفس حارس شغل المراقب
 	revisitHandler := handler.NewRevisitHandler(repository.NewRevisitRepository(db))
 	mux.Handle("GET /api/revisits", middleware.Chain(http.HandlerFunc(revisitHandler.Report), requireAuth, requireMonitor))
