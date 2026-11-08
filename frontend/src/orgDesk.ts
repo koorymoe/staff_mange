@@ -46,6 +46,11 @@ export type DeskItem = {
   byMatrixDraft?: boolean
   reason?: string | null
   taskId?: string | null
+  /** (دازاي 11-08) حالة المهمة المربوطة */
+  taskStatus?: string | null
+  taskDueAt?: string | null
+  taskDoneAt?: string | null
+  taskLateDays?: number
 }
 export type DeskPlan = {
   id: string
@@ -94,6 +99,23 @@ export const orgDeskGet = (id: string, period: string) =>
   apiRequest<OrgDesk>(
     `/org/desk/${encodeURIComponent(id)}?${new URLSearchParams({ period })}`,
   )
+/** (دازاي 11-08) 📋 كل الخطط بمكان واحد — المالك ومدير النظام */
+export type OrgPlanOverviewRow = {
+  divisionId: string
+  divisionName: string
+  unitId: string | null
+  unitName: string | null
+  planId: string | null
+  title: string | null
+  status: 'NONE' | 'DRAFT' | 'SUBMITTED' | 'APPROVED' | 'RETURNED'
+  submittedAt: string | null
+  items: number
+  done: number
+  late: number
+  score: number | null
+}
+export const orgPlansOverview = (period: string) =>
+  apiRequest<OrgPlanOverviewRow[]>(`/org/plans/overview?${new URLSearchParams({ period })}`)
 export const orgDeskWrite = (path: string, body: unknown, method = 'POST') =>
   apiRequest(`/org/${path}`, { method, body: JSON.stringify(body) })
 export const orgMonth = () => {

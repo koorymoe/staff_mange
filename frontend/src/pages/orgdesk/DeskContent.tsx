@@ -27,7 +27,11 @@ export function DeskDirectory({
   const [error, setError] = useState('')
   const [reload, setReload] = useState(0)
   const [period, setPeriod] = useState(orgMonth)
-  const [tab, setTab] = useState<Tab>('issues')
+  // (دازاي 11-08) «📋 الخطط» تفتح الإدارة على تبويب الخطة أو على وحدة معيّنة
+  const [tab, setTab] = useState<Tab>(() => {
+    const t = new URLSearchParams(window.location.search).get('tab')
+    return t === 'plan' || t === 'units' ? t : 'issues'
+  })
   const navigate = useNavigate()
   useEffect(() => {
     if (!admin) return
@@ -150,7 +154,7 @@ export function DeskContent({
   const [reload, setReload] = useState(0)
   const [modal, setModal] = useState<Modal | null>(null)
   const [notice, setNotice] = useState('')
-  const [openedUnit, setOpenedUnit] = useState<string | null>(null)
+  const [openedUnit, setOpenedUnit] = useState<string | null>(() => new URLSearchParams(window.location.search).get('unit'))
   const [regulations, setRegulations] = useState<OrgClause[] | null>(null)
   const [regError, setRegError] = useState('')
   const [regReload, setRegReload] = useState(0)
@@ -376,7 +380,7 @@ export function DeskContent({
                 <div>
                   <h2>{data.plan.title}</h2>
                   <p>خطة {data.plan.period}</p>
-                  {data.canEdit && canAddItems(data.plan) && (
+                  {data.canEdit && canAddItems(data.plan, admin) && (
                     <button
                       className="org-primary"
                       onClick={() => setModal({ kind: 'item' })}
@@ -536,7 +540,7 @@ export function DeskContent({
       {modal?.kind === 'item' &&
         data.canEdit &&
         data.plan &&
-        canAddItems(data.plan) && (
+        canAddItems(data.plan, admin) && (
           <ItemEditor
             planId={data.plan.id}
             issues={issues}

@@ -3,6 +3,7 @@ import { type OrgPerson, type OrgUnit } from '../../org'
 import { orgDeskWrite, type DeskPlan, type DeskComment, type DeskIssue, type DeskItem, type DeskMetric, type OrgDesk } from '../../orgDesk'
 import { canAddItems, dueOrder, teamPeople, number, percent, date, planStatusNames, field } from './shared'
 import { DeskForm } from './editors'
+import { isAdminOrOwner, useSession } from '../../session'
 
 export function SolutionEditor({
   issue,
@@ -58,8 +59,11 @@ export function PlanControls({
   unit: boolean
   saved: () => void
 }) {
+  // (دازاي 11-08) المالك ومدير النظام يرجّعون الخطة للتعديل حتى بعد الاعتماد
+  const { employee } = useSession()
+  const admin = isAdminOrOwner(employee)
   const [action, setAction] = useState<
-    'submit' | 'approve' | 'return' | 'ai' | null
+    'submit' | 'approve' | 'return' | 'ai' | 'reopen' | null
   >(null)
   return (
     <section className="org-panel desk-plan-controls">
@@ -89,6 +93,11 @@ export function PlanControls({
             {!plan.items?.length && <small>ضيف بنود للخطة گبل الرفع.</small>}
           </>
         )}
+        {admin && plan.status === 'APPROVED' && (
+          <button className="org-danger" onClick={() => setAction('reopen')}>
+            ↩️ ارجعها للتعديل
+          </button>
+        )}
         {canReview && plan.status === 'SUBMITTED' && (
           <>
             <button
@@ -112,7 +121,9 @@ export function PlanControls({
               ? 'تأكيد رفع الخطة'
               : action === 'approve'
                 ? 'اعتماد الخطة'
-                : 'إرجاع الخطة'
+                : action === 'reopen'
+                  ? 'إرجاع الخطة المعتمدة للتعديل'
+                  : 'إرجاع الخطة'
           }
           label={
             action === 'ai'
@@ -137,8 +148,10 @@ export function PlanControls({
                 {},
               )
             const note = field(d, 'note')
-            if (action === 'return' && [...note].length < 5)
+            if ((action === 'return' || action === 'reopen') && [...note].length < 5)
               throw new Error('اكتب شنو لازم يتعدل حتى ترجّعها')
+            if (action === 'reopen')
+              return orgDeskWrite(`plans/${encodeURIComponent(plan.id)}/reopen`, { note })
             return orgDeskWrite(`plans/${encodeURIComponent(plan.id)}/review`, {
               approve: action === 'approve',
               note,
@@ -169,11 +182,11 @@ export function PlanControls({
             </p>
           ) : (
             <label>
-              {action === 'return' ? 'ملاحظة الإرجاع' : 'ملاحظة (اختياري)'}
+              {action === 'return' || action === 'reopen' ? 'ملاحظة الإرجاع' : 'ملاحظة (اختياري)'}
               <textarea
                 name="note"
-                required={action === 'return'}
-                minLength={action === 'return' ? 5 : undefined}
+                required={action === 'return' || action === 'reopen'}
+                minLength={action === 'return' || action === 'reopen' ? 5 : undefined}
                 rows={4}
               />
             </label>
@@ -205,6 +218,8 @@ export function UnitDevelopment({
   const unit = units.find((u) => u.id === openedUnit)
   const plan = (data.unitPlans ?? []).find((p) => p.unitId === openedUnit)
   const editable = !!unit && (data.editableUnits ?? []).includes(unit.id)
+  const { employee: viewer } = useSession()
+  const admin = isAdminOrOwner(viewer)
   if (!unit)
     return (
       <div className="desk-cards">
@@ -268,7 +283,7 @@ export function UnitDevelopment({
             <div>
               <h3>{plan.title}</h3>
               <p>{plan.period}</p>
-              {editable && canAddItems(plan) && (
+              {editable && canAddItems(plan, admin) && (
                 <button className="org-primary" onClick={() => setAdd(true)}>
                   + إضافة بند للوحدة
                 </button>
@@ -298,7 +313,7 @@ export function UnitDevelopment({
           {!plan.items?.length && (
             <p className="org-empty">ضيف أول بند وحدد المسؤول والموعد.</p>
           )}
-          {add && editable && canAddItems(plan) && (
+          {add && editable && canAddItems(plan, admin) && (
             <ItemEditor
               planId={plan.id}
               issues={data.issues ?? []}
@@ -501,7 +516,7 @@ export function PlanCard({
           🤖 كتبه ماتركس{item.reason ? ` — ليش: ${item.reason}` : ''}
         </p>
       )}
-      {item.taskId && <p className="desk-meta">📋 صار مهمة للمسؤول</p>}
+      {item.taskId && <TaskChip item={item} />}
       <div className="desk-item-meta">
         <span>المسؤول: {item.ownerName || 'مو محدد'}</span>
         <span>
@@ -740,4 +755,18 @@ export function ItemEditor({
       )}
     </DeskForm>
   )
+}
+
+// (دازاي 11-08) البند كمهمة: حالة المهمة المربوطة بنفس مكان البند
+function TaskChip({ item }: { item: DeskItem }) {
+  const d = (s?: string | null) => (s ? new Date(s).toLocaleDateString('en-GB', { timeZone: 'Asia/Baghdad' }) : '')
+  if (item.taskStatus === 'DONE' || item.taskDoneAt) {
+    return <p className="desk-meta">📋 المهمة: ✅ خلصت {d(item.taskDoneAt)}</p>
+  }
+  if (item.taskStatus === 'CANCELLED') return <p className="desk-meta">📋 المهمة: انلغت</p>
+  const late = item.taskLateDays ?? 0
+  if (late >= 1) {
+    return <p className="desk-meta desk-overdue">📋 المهمة: ⚠️ متأخرة {late} يوم (موعدها {d(item.taskDueAt)})</p>
+  }
+  return <p className="desk-meta">📋 المهمة: ⏳ شغّالة{item.taskDueAt ? ` — موعدها ${d(item.taskDueAt)}` : ''}</p>
 }

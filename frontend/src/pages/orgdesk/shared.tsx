@@ -3,8 +3,9 @@ import { type DeskPlan, type DeskIssue, type DeskItem } from '../../orgDesk'
 
 export type Tab = 'mine' | 'issues' | 'plan' | 'units' | 'authority' | 'team' | 'directives' | 'outputs'
 
-export const canAddItems = (plan: DeskPlan) =>
-  plan.status === 'DRAFT' || plan.status === 'RETURNED'
+// (دازاي 11-08) المالك ومدير النظام يضيفون بأي وقت — حتى على خطة مرفوعة أو معتمدة
+export const canAddItems = (plan: DeskPlan, admin = false) =>
+  admin || plan.status === 'DRAFT' || plan.status === 'RETURNED'
 
 export const dueOrder = (a: DeskItem, b: DeskItem) =>
   !a.dueDate

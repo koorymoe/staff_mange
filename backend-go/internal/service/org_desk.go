@@ -158,9 +158,14 @@ type OrgPlanItem struct {
 	OwnerName *string `db:"ownerName" json:"ownerName"`
 	Overdue   bool    `db:"-" json:"overdue"`
 	// (دازاي 11-06) مسودة ماتركس والمهمة المربوطة
-	TaskID     *string `db:"taskId" json:"taskId"`
-	Reason     *string `db:"reason" json:"reason"`
-	ByMatrixAI bool    `db:"byMatrix" json:"byMatrixDraft"`
+	TaskID *string `db:"taskId" json:"taskId"`
+	// (دازاي 11-08) حالة المهمة المربوطة — الخطة تنشاف كخطة وكمهام
+	TaskStatus *string    `db:"taskStatus" json:"taskStatus"`
+	TaskDueAt  *time.Time `db:"taskDueAt" json:"taskDueAt"`
+	TaskDoneAt *time.Time `db:"taskDoneAt" json:"taskDoneAt"`
+	TaskLate   int        `db:"-" json:"taskLateDays"`
+	Reason     *string    `db:"reason" json:"reason"`
+	ByMatrixAI bool       `db:"byMatrix" json:"byMatrixDraft"`
 	// محسوبة
 	Current  *float64 `db:"-" json:"current"`
 	Progress int      `db:"-" json:"progress"`
@@ -363,8 +368,10 @@ func (s *OrgService) planFor(divisionID string, unitID *string, period string) (
 	}
 	p.Items = []OrgPlanItem{}
 	if err := s.db.Select(&p.Items, `SELECT i.id, i."planId", i.kind, i.title, i."issueId", i.metric, i.baseline, i.target, i."manualProgress", i."doneAt",
-		i."dueDate"::text AS "dueDate", i."ownerId", e.name AS "ownerName", i."taskId", i.reason, i."byMatrix"
-		FROM "OrgPlanItem" i LEFT JOIN "Employee" e ON e.id = i."ownerId" WHERE i."planId" = $1 ORDER BY i."dueDate" NULLS LAST, i."createdAt"`, p.ID); err != nil {
+		i."dueDate"::text AS "dueDate", i."ownerId", e.name AS "ownerName", i."taskId", i.reason, i."byMatrix",
+		t.status AS "taskStatus", t."dueAt" AS "taskDueAt", t."doneAt" AS "taskDoneAt"
+		FROM "OrgPlanItem" i LEFT JOIN "Employee" e ON e.id = i."ownerId" LEFT JOIN "ExtraTask" t ON t.id = i."taskId"
+		WHERE i."planId" = $1 ORDER BY i."dueDate" NULLS LAST, i."createdAt"`, p.ID); err != nil {
 		return nil, err
 	}
 	sum := 0
@@ -383,6 +390,11 @@ func (s *OrgService) planFor(divisionID string, unitID *string, period string) (
 		}
 		if it.DoneAt != nil {
 			it.Progress = 100
+		}
+		if it.TaskDueAt != nil && it.TaskDoneAt == nil && (it.TaskStatus == nil || (*it.TaskStatus != "DONE" && *it.TaskStatus != "CANCELLED")) {
+			if late := int(time.Since(*it.TaskDueAt).Hours() / 24); late > 0 {
+				it.TaskLate = late
+			}
 		}
 		it.Overdue = it.DoneAt == nil && it.DueDate != nil && *it.DueDate < time.Now().In(baghdad).Format("2006-01-02")
 		sum += it.Progress
@@ -629,7 +641,8 @@ func (s *OrgService) AddPlanItem(empID, role, planID string, in OrgPlanItemInput
 	if !s.planEdit(empID, role, sc) {
 		return "", ErrOrgHidden
 	}
-	if sc.Status == "SUBMITTED" || sc.Status == "APPROVED" {
+	// (دازاي 11-08) المالك ومدير النظام يضيفون بأي وقت — حتى على خطة معتمدة
+	if (sc.Status == "SUBMITTED" || sc.Status == "APPROVED") && !model.IsAdminRole(role) {
 		return "", errors.New("الخطة مرفوعة/معتمدة — البنود تنضاف بس بالمسودة أو بعد الإرجاع")
 	}
 	var due, owner any
@@ -698,6 +711,10 @@ func (s *OrgService) AddPlanItem(empID, role, planID string, in OrgPlanItemInput
 	var id string
 	err := s.db.Get(&id, `INSERT INTO "OrgPlanItem" ("planId", kind, title, "issueId", metric, baseline, target, "createdById", "dueDate", "ownerId")
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING id`, planID, in.Kind, in.Title, issue, metric, baseline, target, empID, due, owner)
+	// (دازاي 11-08) بند انضاف على خطة معتمدة (من المالك/مدير النظام) يصير مهمة هسه
+	if err == nil && sc.Status == "APPROVED" {
+		s.planToTasks(planID, empID)
+	}
 	return id, err
 }
 

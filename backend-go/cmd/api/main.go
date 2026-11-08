@@ -3230,6 +3230,9 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 		mux.Handle("POST /api/org/comments", middleware.Chain(http.HandlerFunc(orgHandler.AddComment), requireAuth))
 		mux.Handle("POST /api/org/plans/{id}/submit", middleware.Chain(http.HandlerFunc(orgHandler.SubmitPlan), requireAuth))
 		mux.Handle("POST /api/org/plans/{id}/review", middleware.Chain(http.HandlerFunc(orgHandler.ReviewPlan), requireAuth))
+		// 📋 (دازاي 11-08) كل الخطط بمكان واحد + إرجاع حتى بعد الاعتماد — الخدمة تحصرها بالمالك ومدير النظام
+		mux.Handle("GET /api/org/plans/overview", middleware.Chain(http.HandlerFunc(orgHandler.PlansOverview), requireAuth, requireAdmin))
+		mux.Handle("POST /api/org/plans/{id}/reopen", middleware.Chain(http.HandlerFunc(orgHandler.ReopenPlan), requireAuth, requireAdmin))
 		mux.Handle("POST /api/org/plans/{id}/draft-ai", middleware.Chain(http.HandlerFunc(orgHandler.DraftPlanAI), requireAuth))
 		mux.Handle("PUT /api/org/issues/{id}/solution", middleware.Chain(http.HandlerFunc(orgHandler.SetSolution), requireAuth))
 		mux.Handle("GET /api/org/people/{id}/executive", middleware.Chain(http.HandlerFunc(orgHandler.Executive), requireAuth, requireAdmin))

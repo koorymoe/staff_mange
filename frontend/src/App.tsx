@@ -91,6 +91,7 @@ const AiSuggestionsPage = lazyRetry(() => import('./pages/AiSuggestionsPage'))
 const VoiceTermsPage = lazyRetry(() => import('./pages/VoiceTermsPage'))
 const OrgPage = lazyRetry(() => import('./pages/OrgPage'))
 const OrgDeskPage = lazyRetry(() => import('./pages/OrgDeskPage'))
+const OrgPlansPage = lazyRetry(() => import('./pages/OrgPlansPage'))
 const DirectorsRankingPage = lazyRetry(() => import('./pages/DirectorsRankingPage'))
 const MyOrgCard = lazyRetry(() => import('./components/MyOrgCard'))
 const DepartmentsPage = lazyRetry(() => import('./pages/DepartmentsPage'))
@@ -230,6 +231,7 @@ function App() {
           <Route path="org" element={<RequireAdmin><OrgPage /></RequireAdmin>} />
           <Route path="org/assign" element={<RequireAdmin><OrgPage view="assign" /></RequireAdmin>} />
           <Route path="org/directors-ranking" element={<RequireAdmin><DirectorsRankingPage /></RequireAdmin>} />
+          <Route path="org/plans" element={<RequireAdmin><OrgPlansPage /></RequireAdmin>} />
           <Route path="org/desk" element={<OrgDeskPage />} />
           <Route path="org/desk/:divisionId" element={<OrgDeskPage />} />
           <Route path="my-org" element={<MyOrgCard />} />

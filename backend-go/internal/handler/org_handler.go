@@ -308,6 +308,38 @@ func (h *OrgHandler) ReviewPlan(w http.ResponseWriter, r *http.Request) {
 	WriteJSON(w, http.StatusOK, map[string]bool{"ok": true})
 }
 
+// GET /api/org/plans/overview?period= — (دازاي 11-08) كل الخطط، للمالك ومدير النظام.
+func (h *OrgHandler) PlansOverview(w http.ResponseWriter, r *http.Request) {
+	_, role := who(r)
+	rows, err := h.svc.PlansOverview(role, r.URL.Query().Get("period"))
+	if err != nil {
+		h.orgErr(w, err)
+		return
+	}
+	WriteJSON(w, http.StatusOK, rows)
+}
+
+// POST /api/org/plans/{id}/reopen — {note}: يرجّعها للتعديل حتى بعد الاعتماد.
+func (h *OrgHandler) ReopenPlan(w http.ResponseWriter, r *http.Request) {
+	var in struct {
+		Note string `json:"note"`
+	}
+	if err := DecodeJSON(r, &in); err != nil {
+		WriteError(w, http.StatusBadRequest, "طلب غير صالح")
+		return
+	}
+	emp, role := who(r)
+	author, err := h.svc.ReopenPlan(emp, role, r.PathValue("id"), in.Note)
+	if err != nil {
+		h.orgErr(w, err)
+		return
+	}
+	if h.notifications != nil && author != "" && author != emp {
+		_ = h.notifications.Create(author, "ORG_PLAN_REVIEWED", "↩️ خطتك رجعت للتعديل: "+in.Note)
+	}
+	WriteJSON(w, http.StatusOK, map[string]bool{"ok": true})
+}
+
 // PUT /api/org/issues/{id}/solution — {plan}
 func (h *OrgHandler) SetSolution(w http.ResponseWriter, r *http.Request) {
 	var in struct {
