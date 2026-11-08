@@ -74,7 +74,12 @@ func (h *FileHandler) Token(w http.ResponseWriter, r *http.Request) {
 // المجلد ينجي من ?folder= ويتحدد بقائمة بيضاء — بدونها المستخدم
 // يكتب أي مسار يريده.
 func (h *FileHandler) Upload(w http.ResponseWriter, r *http.Request) {
-	if err := r.ParseMultipartForm(storage.MaxFileBytes); err != nil {
+	folder := safeFolder(r.URL.Query().Get("folder"))
+	maxBytes := int64(storage.MaxFileBytes)
+	if folder == "designs" {
+		maxBytes = storage.MaxDesignFileBytes
+	}
+	if err := r.ParseMultipartForm(maxBytes); err != nil {
 		WriteError(w, http.StatusBadRequest, "تعذر قراءة الملف — يمكن أكبر من الحد المسموح")
 		return
 	}
@@ -85,7 +90,7 @@ func (h *FileHandler) Upload(w http.ResponseWriter, r *http.Request) {
 	}
 	defer file.Close()
 
-	data, err := storage.ReadLimited(file, storage.MaxFileBytes)
+	data, err := storage.ReadLimited(file, maxBytes)
 	if err != nil {
 		WriteError(w, http.StatusRequestEntityTooLarge, err.Error())
 		return
@@ -93,12 +98,16 @@ func (h *FileHandler) Upload(w http.ResponseWriter, r *http.Request) {
 
 	// النوع ينحدد من محتوى الملف نفسه — الترويسة المرسلة تنزوّر بسهولة
 	contentType := storage.SniffContentType(data)
-	if !storage.AllowedContentTypes[contentType] {
+	if !storage.AllowedContentTypes[contentType] && !(folder == "designs" && storage.DesignOnlyContentTypes[contentType]) {
+		if folder == "designs" {
+			WriteError(w, http.StatusBadRequest, "نوع الملف مو مسموح — صور، PDF، مجسّم ثري دي (GLB) أو رسم أوتوكاد (DWG)")
+			return
+		}
 		WriteError(w, http.StatusBadRequest, "نوع الملف مو مسموح — صور (JPG/PNG/WEBP) أو PDF")
 		return
 	}
 
-	key := storage.NewKey(safeFolder(r.URL.Query().Get("folder")), contentType)
+	key := storage.NewKey(folder, contentType)
 	if err := h.store.Put(r.Context(), key, data, contentType); err != nil {
 		log.Printf("file upload: %v", err)
 		WriteError(w, http.StatusInternalServerError, "تعذر حفظ الملف")
@@ -165,7 +174,7 @@ func (h *FileHandler) Serve(w http.ResponseWriter, r *http.Request) {
 var allowedFolders = map[string]bool{
 	"products": true, "receipts": true, "botreports": true, "vehicles": true, "projects": true,
 	"reports": true, "exhibitions": true, "gps": true, "incidents": true,
-	"misc": true, "sim": true,
+	"misc": true, "sim": true, "designs": true,
 }
 
 func safeFolder(f string) string {

@@ -869,9 +869,11 @@ export const navItems: NavItem[] = [
     // ⚠️ `roles: ['ADMIN']` وحده چان يحجب المجموعة كلها عن المصممة
     // مهما انمنحت — فالبنود جوّاها ما تظهر أبداً. `anyPermission`
     // يفتح المجموعة لصاحب أي صلاحية تصميم، والبنود تبقى بحراسها.
-    anyPermission: ['design_forms', 'design_gallery'],
+    anyPermission: ['design_forms', 'design_gallery', 'project_management'],
     unitPermission: 'unit_design',
     children: [
+      // (ع) 11-08: 🏗️ صيت التصاميم — الخادم يحصرها (المالك/المدير، الهندسة ووحدة التصميم، إدارة المشاريع، والمصمم المكلّف)
+      { to: '/design-sets', label: '🏗️ صيت التصاميم', icon: <></> },
       { to: '/design-forms/quick-add', label: 'إضافة سؤال', icon: <></>, roles: ['ADMIN'], unlockPermission: 'design_forms' },
       { to: '/design-forms', label: 'فورمة التصميم', icon: <></>, roles: ['ADMIN'], unlockPermission: 'design_forms' },
       { to: '/design-gallery', label: '🎨 معرض التصاميم', icon: <></>, roles: ['ADMIN'], unlockPermission: 'design_gallery' },
@@ -1049,7 +1051,7 @@ const orgNavigationGroups = [
     to: '/unit-design-group',
     label: 'التصميم',
     legacy: ['/unit-design-group'],
-    paths: ['/design-forms/quick-add', '/design-forms', '/design-gallery'],
+    paths: ['/design-forms/quick-add', '/design-forms', '/design-gallery', '/design-sets'],
   },
   {
     to: '/unit-quality',
@@ -1224,6 +1226,12 @@ export function isNavVisible(item: NavItem, ctx: NavContext, unitGranted = false
   // (دازاي 11-01) صاحب مكتب الإدارة يشوف «مكاني» جوّا المكتب — خيار واحد بالقائمة
   if (item.to === '/my-org') return !!ctx.employee && !!ctx.orgMemberships?.length && !orgDeskAllowed(ctx.employee, ctx.orgMemberships)
   if (item.to === '/org/desk') return orgDeskAllowed(ctx.employee, ctx.orgMemberships)
+  // (ع) 11-08: صيت التصاميم — نفس شرط الخادم تقريباً (والمكلّف من برّا يوصله رابط المهمة)
+  if (item.to === '/design-sets') {
+    return role === 'ADMIN' || ctx.employee?.actualRole === 'OWNER' || role === 'PROJECT_MANAGER'
+      || ['project_management', 'unit_design', 'design_forms', 'design_gallery'].some((p) => ctx.permissions.includes(p))
+      || !!ctx.orgMemberships?.some((m) => m.divisionId === 'eng')
+  }
   // These APIs are admin-only even when a whole unit is granted to staff.
   if (['/voice-terms', '/ai-suggestions', '/org', '/org/assign', '/org/directors-ranking'].includes(item.to) && role !== 'ADMIN' && ctx.employee?.actualRole !== 'OWNER') return false
   const hasMonitor = role === 'MONITOR' || ctx.permissions.includes('monitoring')

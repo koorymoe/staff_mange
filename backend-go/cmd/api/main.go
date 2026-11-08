@@ -1776,6 +1776,28 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	mux.Handle("GET /api/maintenance-contracts", middleware.Chain(http.HandlerFunc(contractHandler.List), requireAuth, requireContracts))
 	mux.Handle("POST /api/maintenance-contracts", middleware.Chain(http.HandlerFunc(contractHandler.Create), requireAuth, requireContracts))
 	mux.Handle("PATCH /api/maintenance-contracts/{id}", middleware.Chain(http.HandlerFunc(contractHandler.Update), requireAuth, requireContracts))
+	// 🏗️ صيت التصاميم (ع) 11-08 — الصلاحيات بالخدمة نفسها
+	designSetHandler := handler.NewDesignSetHandler(service.NewDesignSetService(db, repository.NewExtraTaskRepository(db), notificationRepo), permissionRepo)
+	for _, rt := range []struct {
+		pat string
+		fn  http.HandlerFunc
+	}{
+		{"GET /api/design-sets/meta", designSetHandler.Meta},
+		{"GET /api/design-sets", designSetHandler.List},
+		{"POST /api/design-sets", designSetHandler.Create},
+		{"GET /api/design-sets/{id}", designSetHandler.Get},
+		{"POST /api/design-sets/{id}/archive", designSetHandler.Archive},
+		{"POST /api/design-sets/{id}/sections", designSetHandler.AddSection},
+		{"POST /api/design-sections/{id}/assign", designSetHandler.Assign},
+		{"POST /api/design-sections/{id}/files", designSetHandler.AddFile},
+		{"POST /api/design-sections/{id}/submit", designSetHandler.Submit},
+		{"POST /api/design-sections/{id}/review", designSetHandler.Review},
+		{"DELETE /api/design-files/{id}", designSetHandler.RemoveFile},
+		{"POST /api/design-tools", designSetHandler.SaveTool},
+		{"PUT /api/design-tools/{id}", designSetHandler.SaveTool},
+	} {
+		mux.Handle(rt.pat, middleware.Chain(rt.fn, requireAuth))
+	}
 	// 🔁 الرجعات (ع) 11-07 — نفس حارس شغل المراقب
 	revisitHandler := handler.NewRevisitHandler(repository.NewRevisitRepository(db))
 	mux.Handle("GET /api/revisits", middleware.Chain(http.HandlerFunc(revisitHandler.Report), requireAuth, requireMonitor))

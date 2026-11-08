@@ -1061,8 +1061,8 @@ func (s *BookingService) ListPaged(q repository.BookingPageQuery) ([]model.Booki
 	return items, total, err
 }
 
-// TechHandoverLimitDays حد افتراضي لبقاء الحجز عند التقني قبل ما يطلع متأخر.
-const TechHandoverLimitDays = 3
+// TechHandoverLimitDays (ع) 11-08: «خلي حد التقنيين يومين» — بعدها الحجز عند التقني يطلع متأخر.
+const TechHandoverLimitDays = 2
 
 // fillTracking (ع) 11-04: «من مشرف المشروع ينتقل من مرحلة لمرحلة يطلع وين واصل…
 // حتى لا يضل متأخر». الحسبة بالأيام الكاملة من دخول المرحلة الحالية.

@@ -67,6 +67,10 @@ func extensionFor(contentType string) string {
 		return ".webp"
 	case "application/pdf":
 		return ".pdf"
+	case "model/gltf-binary":
+		return ".glb"
+	case "image/vnd.dwg":
+		return ".dwg"
 	}
 	if exts, err := mime.ExtensionsByType(contentType); err == nil && len(exts) > 0 {
 		return exts[0]
@@ -76,6 +80,15 @@ func extensionFor(contentType string) string {
 
 // AllowedContentTypes الأنواع المسموح رفعها. القائمة بيضاء مو سوداء:
 // نسمح للي نعرفه بس، بدل ما نحاول نعدّ كل شي خطر.
+// (ع) 11-08: ملفات صيت التصاميم — مجسّم ثري دي (GLB) ورسم أوتوكاد (DWG)، بمجلد designs
+// بس (حتى ما تنفتح لكل رفع بالنظام)، وبحد أكبر لأن ملفات التصميم أثقل.
+const MaxDesignFileBytes = 24 << 20
+
+var DesignOnlyContentTypes = map[string]bool{
+	"model/gltf-binary": true,
+	"image/vnd.dwg":     true,
+}
+
 var AllowedContentTypes = map[string]bool{
 	"image/jpeg":      true,
 	"image/png":       true,
@@ -97,6 +110,14 @@ func SniffContentType(data []byte) string {
 	}
 	if len(data) >= 12 && bytes.Equal(data[:4], []byte("RIFF")) && bytes.Equal(data[8:12], []byte("WEBP")) {
 		return "image/webp"
+	}
+	// GLB: «glTF» + نسخة ٢
+	if len(data) >= 12 && bytes.Equal(data[:4], []byte("glTF")) {
+		return "model/gltf-binary"
+	}
+	// DWG: يبدي بـ«AC10xx»
+	if len(data) >= 6 && bytes.Equal(data[:4], []byte("AC10")) {
+		return "image/vnd.dwg"
 	}
 	return ""
 }

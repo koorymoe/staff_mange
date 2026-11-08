@@ -2078,5 +2078,93 @@ func matrixChatMigrations() []Migration {
 		// (ع) 11-08: تذكير طلبات المدير الي بلا رد ٤٨ ساعة
 		Version: "0462_manager_request_reminded",
 		SQL: `ALTER TABLE "ManagerRequest" ADD COLUMN IF NOT EXISTS "remindedAt" TIMESTAMPTZ;`,
+	}, {
+		// (ع) 11-08: 🏗️ صيت التصاميم — كل مشروع وتخصصاته (معماري… طاقة شمسية، مقاولات)،
+		// وأدوات التصميم الخارجية بزر لكل تخصص (قابلة للتعديل من الشاشة).
+		Version: "0463_design_sets",
+		SQL: `
+			CREATE TABLE IF NOT EXISTS "DesignTool" (
+				id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
+				discipline TEXT NOT NULL,
+				name TEXT NOT NULL,
+				url TEXT NOT NULL,
+				"howTo" TEXT NOT NULL DEFAULT '',
+				sort INT NOT NULL DEFAULT 0,
+				active BOOLEAN NOT NULL DEFAULT true
+			);
+			CREATE TABLE IF NOT EXISTS "DesignSet" (
+				id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
+				title TEXT NOT NULL,
+				"projectId" TEXT REFERENCES "Project"(id) ON DELETE SET NULL,
+				"customerId" TEXT REFERENCES "Customer"(id) ON DELETE SET NULL,
+				notes TEXT,
+				"createdById" TEXT REFERENCES "Employee"(id) ON DELETE SET NULL,
+				"createdAt" TIMESTAMPTZ NOT NULL DEFAULT now(),
+				"archivedAt" TIMESTAMPTZ
+			);
+			CREATE TABLE IF NOT EXISTS "DesignSection" (
+				id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
+				"setId" TEXT NOT NULL REFERENCES "DesignSet"(id) ON DELETE CASCADE,
+				discipline TEXT NOT NULL,
+				status TEXT NOT NULL DEFAULT 'TODO' CHECK (status IN ('TODO', 'IN_PROGRESS', 'REVIEW', 'APPROVED', 'RETURNED')),
+				"assigneeId" TEXT REFERENCES "Employee"(id) ON DELETE SET NULL,
+				"dueDate" DATE,
+				"taskId" TEXT REFERENCES "ExtraTask"(id) ON DELETE SET NULL,
+				"submittedAt" TIMESTAMPTZ,
+				"reviewNote" TEXT,
+				"reviewedById" TEXT REFERENCES "Employee"(id) ON DELETE SET NULL,
+				"reviewedAt" TIMESTAMPTZ,
+				UNIQUE ("setId", discipline)
+			);
+			CREATE INDEX IF NOT EXISTS "DesignSection_assignee_idx" ON "DesignSection" ("assigneeId");
+			CREATE TABLE IF NOT EXISTS "DesignFile" (
+				id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
+				"sectionId" TEXT NOT NULL REFERENCES "DesignSection"(id) ON DELETE CASCADE,
+				title TEXT NOT NULL,
+				"fileKey" TEXT,
+				"fileType" TEXT,
+				url TEXT,
+				"toolName" TEXT,
+				"uploadedById" TEXT REFERENCES "Employee"(id) ON DELETE SET NULL,
+				"createdAt" TIMESTAMPTZ NOT NULL DEFAULT now(),
+				"removedAt" TIMESTAMPTZ,
+				"removedById" TEXT REFERENCES "Employee"(id) ON DELETE SET NULL,
+				CHECK (("fileKey" IS NULL) <> (url IS NULL))
+			);
+			CREATE INDEX IF NOT EXISTS "DesignFile_section_idx" ON "DesignFile" ("sectionId");
+		`,
+	}, {
+		// أدوات التصميم الأولية — بيانات (data_)؛ تنضاف مرة وحدة بس إذا الجدول فاضي.
+		Version: "0464_data_design_tools_seed",
+		SQL: `
+			INSERT INTO "DesignTool" (discipline, name, url, "howTo", sort)
+			SELECT * FROM (VALUES
+				('ARCH', 'AutoCAD Web', 'https://web.autocad.com', 'ارسم المخطط المعماري. من File ← Plot صدّره PDF، أو احفظه DWG وارفعه هنا.', 0),
+				('ARCH', 'Autodesk Viewer (مشاهدة DWG/RVT)', 'https://viewer.autodesk.com', 'لعرض ملفات أوتوكاد وريفيت بالمتصفح ومشاركتها. ارفع الملف هناك، واضغط Share والصق الرابط هنا.', 1),
+				('ARCH', 'Floorplanner', 'https://floorplanner.com', 'مخطط سريع للبيت. صدّر صورة أو PDF وارفعها، أو الصق رابط المشاركة.', 2),
+				('STRUCT', 'AutoCAD Web', 'https://web.autocad.com', 'ارسم الهيكل الإنشائي (أعمدة، جسور، أسس). صدّر PDF أو ارفع DWG.', 3),
+				('TOPVIEW', 'Floorplanner', 'https://floorplanner.com', 'المسقط الأفقي (توب فيو) بالقياسات. صدّر صورة عالية الدقة.', 4),
+				('TOPVIEW', 'AutoCAD Web', 'https://web.autocad.com', 'المسقط بالقياسات الدقيقة. صدّر PDF.', 5),
+				('VIEW3D', 'SketchUp Free', 'https://app.sketchup.com', 'المجسّم الثري دي. صدّر صورة (PNG) لكل زاوية، وإذا تكدر صدّر GLB حتى ينفتح ثري دي جوّه نظامنا.', 6),
+				('VIEW3D', 'Planner 5D', 'https://planner5d.com', 'تصميم ثري دي سريع للبيت والديكور. صدّر صور الرندر وارفعها.', 7),
+				('INTERIOR', 'Planner 5D', 'https://planner5d.com', 'الديكور الداخلي والأثاث. صدّر صور الرندر لكل غرفة.', 8),
+				('INTERIOR', 'Roomstyler', 'https://roomstyler.com', 'تنسيق الغرف بقطع حقيقية. صدّر الصور أو الصق رابط المشاركة.', 9),
+				('CERAMIC', 'Planner 5D', 'https://planner5d.com', 'توزيع السيراميك والأرضيات بالغرف. صدّر صور لكل غرفة ويّا القياسات.', 10),
+				('WINDOWS', 'SketchUp Free', 'https://app.sketchup.com', 'تصميم الشبابيك والألمنيوم بالقياسات. صدّر صورة لكل واجهة ويّا جدول القياسات.', 11),
+				('ELECTRICAL', 'AutoCAD Web', 'https://web.autocad.com', 'مخطط الكهرباء (بلكات، إنارة، لوحات). صدّر PDF.', 12),
+				('CAMERAS', 'Dahua Project Design Tool', 'https://www.dahuasecurity.com/products/key-technologies/5e/Dahua-Project-Design-Tool', 'حط الكاميرات على المخطط وشوف التغطية والزوايا العمياء. صدّر التقرير PDF وارفعه.', 13),
+				('CAMERAS', 'IPVM Calculator', 'https://calculator.ipvm.com', 'حساب زاوية الكاميرا والمسافة على المخطط (لكل الماركات). خذ لقطة شاشة أو صدّر وارفع هنا.', 14),
+				('NETWORK', 'TP-Link Omada Design Hub', 'https://design.tplinkcloud.com', 'ارفع المخطط، ارسم الجدران، حط الأجهزة وشوف التغطية. صدّر التقرير (Export Report) PDF وارفعه، والصق رابط المشروع.', 15),
+				('NETWORK', 'Ubiquiti Design Center', 'https://design.ui.com', 'تصميم شبكات يوبيكويتي على المخطط. صدّر الصورة أو الصق رابط المشاركة.', 16),
+				('AUDIO', 'EASE Focus (AFMG)', 'https://www.afmg.eu/en/ease-focus', 'برنامج مجاني (ينزل على الحاسبة) لتوزيع السماعات وتغطية الصوت. صدّر صورة التغطية وارفعها.', 17),
+				('FIRE', 'AutoCAD Web', 'https://web.autocad.com', 'مخطط إنذار الحريق (كواشف، لوحة، صفارات، مسارات). صدّر PDF.', 18),
+				('SMART', 'Floorplanner', 'https://floorplanner.com', 'توزيع الأقفال والحساسات والسمارت هوم على المخطط. صدّر صورة.', 19),
+				('SOLAR', 'PVWatts (NREL)', 'https://pvwatts.nrel.gov', 'حساب إنتاج المنظومة حسب الموقع والزاوية. اطبع النتيجة PDF وارفعها.', 20),
+				('SOLAR', 'Global Solar Atlas', 'https://globalsolaratlas.info', 'الإشعاع الشمسي لموقع المشروع. خذ تقرير الموقع PDF.', 21),
+				('SOLAR', 'SolarEdge Designer', 'https://designer.solaredge.com', 'تصميم توزيع الألواح على السطح. صدّر التقرير وارفعه.', 22),
+				('CONTRACTING', 'Google Sheets', 'https://sheets.google.com', 'جدول الكميات والكلف (BOQ). صدّره PDF وارفعه، أو الصق رابط الجدول.', 23)
+			) v(discipline, name, url, "howTo", sort)
+			WHERE NOT EXISTS (SELECT 1 FROM "DesignTool");
+		`,
 	}}
 }
