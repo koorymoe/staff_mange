@@ -1,4 +1,4 @@
-import { useParams } from 'react-router-dom'
+import { useLocation, useParams } from 'react-router-dom'
 import { useSession } from '../session'
 import { orgAdmin, orgDeskAllowed, orgDeskSeeds, orgHeads, orgSeesAll, useOrgMemberships } from '../orgDeskAccess'
 import './OrgPage.css'
@@ -8,6 +8,7 @@ import { DeskDirectory } from './orgdesk/DeskContent'
 export default function OrgDeskPage() {
   const { employee } = useSession()
   const { divisionId } = useParams()
+  const location = useLocation()
   const membership = useOrgMemberships(employee)
   if (!employee) return <p>سجّل دخولك حتى تفتح المكتب.</p>
   if (!orgAdmin(employee) && membership.error)
@@ -34,7 +35,8 @@ export default function OrgDeskPage() {
       ]
   return (
     <DeskDirectory
-      key={employee.id}
+      // (دازاي 11-08) «📋 خطة الوحدة» من القائمة تغيّر ?tab=&unit= — المفتاح يعيد فتح المكتب عليها
+      key={`${employee.id}:${location.search}`}
       admin={orgAdmin(employee)}
       choices={choices}
       divisionId={divisionId}

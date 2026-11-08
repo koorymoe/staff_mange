@@ -1798,6 +1798,8 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	} {
 		mux.Handle(rt.pat, middleware.Chain(rt.fn, requireAuth))
 	}
+	// 📅 متابعة العقود (ع) 11-08
+	service.StartContractWatch(db, notificationRepo)
 	// 🔁 الرجعات (ع) 11-07 — نفس حارس شغل المراقب
 	revisitHandler := handler.NewRevisitHandler(repository.NewRevisitRepository(db))
 	mux.Handle("GET /api/revisits", middleware.Chain(http.HandlerFunc(revisitHandler.Report), requireAuth, requireMonitor))

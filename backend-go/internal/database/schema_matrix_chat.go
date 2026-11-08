@@ -2166,5 +2166,33 @@ func matrixChatMigrations() []Migration {
 			) v(discipline, name, url, "howTo", sort)
 			WHERE NOT EXISTS (SELECT 1 FROM "DesignTool");
 		`,
+	}, {
+		// (ع) 11-08 «سوّيهن كلهن»: رواتب الملف المكتوبة بالآلاف (500 = 500,000) تتوحّد بالدينار
+		// كامل — ماكو راتب شهري أقل من ١٠,٠٠٠. وبعدها تنعاد مطابقة الاستمارات الي ما انراجعت:
+		// 600 و600,000 نفس الراتب، والملف الفاضي «ما مسجّل» مو اختلاف.
+		Version: "0465_data_salary_thousands",
+		SQL: `
+			UPDATE "Employee" SET salary = salary * 1000 WHERE salary > 0 AND salary < 10000;
+			UPDATE "EmployeeProfileSurvey" s SET mismatch = NULLIF(concat_ws(' · ',
+				CASE WHEN s."selfSalaryIQD" IS NOT NULL AND e.salary > 0
+				      AND abs((CASE WHEN s."selfSalaryIQD" > 0 AND s."selfSalaryIQD" < 10000 THEN s."selfSalaryIQD" * 1000 ELSE s."selfSalaryIQD" END) - e.salary) >= 1
+				     THEN 'الراتب: كتب ' || round(s."selfSalaryIQD")::text || ' والملف ' || round(e.salary)::text END,
+				CASE WHEN s."contractEnd" IS NOT NULL AND e."contractEndDate" IS NOT NULL AND s."contractEnd" <> e."contractEndDate"::date
+				     THEN 'نهاية العقد: كتب ' || to_char(s."contractEnd", 'YYYY-MM-DD') || ' والملف ' || to_char(e."contractEndDate", 'YYYY-MM-DD') END
+			), '')
+			FROM "Employee" e WHERE e.id = s."employeeId" AND s."reviewedAt" IS NULL;
+		`,
+	}, {
+		// (ع) 11-08: تذكير العقود — قبل الانتهاء بشهر، وأسبوعياً بالموظفين الي بلا نهاية عقد
+		Version: "0466_contract_reminder",
+		SQL: `
+			CREATE TABLE IF NOT EXISTS "ContractReminder" (
+				kind TEXT NOT NULL,
+				"employeeId" TEXT NOT NULL DEFAULT '',
+				"forDate" DATE NOT NULL,
+				"createdAt" TIMESTAMPTZ NOT NULL DEFAULT now(),
+				PRIMARY KEY (kind, "employeeId", "forDate")
+			);
+		`,
 	}}
 }

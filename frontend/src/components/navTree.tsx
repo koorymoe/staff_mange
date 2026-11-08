@@ -1129,6 +1129,17 @@ export const orgGroupUnit: Record<string, string> = {
   '/unit-pr': 'contracts.media', '/unit-it': 'it.main',
 }
 
+// (دازاي 11-08) «اريد بداخل كل وحدة تطلع الخطة من ضمن خيارات الوحدة» — أول بند بكل
+// مجموعة وحدة: خطة هالوحدة بمكتب إدارتها. يطلع لمدير/نائب الوحدة أو إدارتها، وللمالك ومدير النظام.
+export const unitPlanPath = (unitId: string) =>
+  `/org/desk/${unitId.split('.')[0]}?tab=units&unit=${encodeURIComponent(unitId)}`
+for (const g of navItems) {
+  const unit = orgGroupUnit[g.to]
+  if (unit && g.children && !g.children.some((c) => c.to.startsWith('/org/desk/'))) {
+    g.children.unshift({ to: unitPlanPath(unit), label: '📋 خطة الوحدة', icon: <></> })
+  }
+}
+
 /** Input MUST already be visibility-filtered. Never call this for authorization.
  * Add copies of visible leaves; preserve ALL original nodes and their positions.
  * Dedup only the NEW shortcuts, never an existing link, heading, button or group.
@@ -1226,6 +1237,14 @@ export function isNavVisible(item: NavItem, ctx: NavContext, unitGranted = false
   // (دازاي 11-01) صاحب مكتب الإدارة يشوف «مكاني» جوّا المكتب — خيار واحد بالقائمة
   if (item.to === '/my-org') return !!ctx.employee && !!ctx.orgMemberships?.length && !orgDeskAllowed(ctx.employee, ctx.orgMemberships)
   if (item.to === '/org/desk') return orgDeskAllowed(ctx.employee, ctx.orgMemberships)
+  // (دازاي 11-08) خطة الوحدة: مدير/نائب الوحدة نفسها أو إدارتها، والمالك ومدير النظام
+  if (item.to.startsWith('/org/desk/') && item.to.includes('unit=')) {
+    const unit = decodeURIComponent(item.to.split('unit=')[1] ?? '')
+    const div = unit.split('.')[0]
+    return role === 'ADMIN' || ctx.employee?.actualRole === 'OWNER'
+      || !!ctx.orgMemberships?.some((m) => (m.position === 'DIRECTOR' || m.position === 'DEPUTY')
+        && (m.unitId === unit || (m.divisionId === div && !m.unitId)))
+  }
   // (ع) 11-08: صيت التصاميم — نفس شرط الخادم تقريباً (والمكلّف من برّا يوصله رابط المهمة)
   if (item.to === '/design-sets') {
     return role === 'ADMIN' || ctx.employee?.actualRole === 'OWNER' || role === 'PROJECT_MANAGER'

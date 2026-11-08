@@ -154,7 +154,8 @@ func (h *WorkGateHandler) SubmitSurvey(w http.ResponseWriter, r *http.Request) {
 	}
 	errlog.Err(h.db.Get(&file, `SELECT name, salary, "contractEndDate" FROM "Employee" WHERE id = $1`, emp))
 	diffs := []string{}
-	if in.SelfSalaryIQD != nil && file.Salary != nil && math.Abs(*in.SelfSalaryIQD-*file.Salary) >= 1 {
+	// (ع) 11-08: 600 و600,000 نفس الراتب (انكتب بالآلاف)، والملف الفاضي (0) «ما مسجّل» مو اختلاف
+	if in.SelfSalaryIQD != nil && file.Salary != nil && *file.Salary > 0 && math.Abs(thousandsIQD(*in.SelfSalaryIQD)-thousandsIQD(*file.Salary)) >= 1 {
 		diffs = append(diffs, fmt.Sprintf("الراتب: كتب %.0f والملف %.0f", *in.SelfSalaryIQD, *file.Salary))
 	}
 	if contract != nil && file.Contract != nil && *contract != file.Contract.Format("2006-01-02") {
@@ -487,4 +488,12 @@ func (h *WorkGateHandler) FieldTiming(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	WriteJSON(w, http.StatusOK, rows)
+}
+
+// thousandsIQD راتب شهري أقل من ١٠,٠٠٠ = مكتوب بالآلاف (600 ← 600,000).
+func thousandsIQD(v float64) float64 {
+	if v > 0 && v < 10000 {
+		return v * 1000
+	}
+	return v
 }
