@@ -2954,6 +2954,13 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	mux.Handle("GET /api/monitor-desk/counts", middleware.Chain(http.HandlerFunc(monitorDeskHandler.Counts), requireAuth, requireMon["mon_inbox"]))
 	// ── ماتركس ٢٠٥٠: سلسلة الحجز (١٤ محطة) + تقارير الأدوار + تقييم الليدر لفنيّيه ──
 	matrixChainService := service.NewMatrixChainService(repository.NewMatrixChainRepository(db), aiActionRepo.EmployeeName)
+	// (ك) 11-08: بلاغ #21 — عدّ «تجهيز المواد» يبدي من بداية دوام يوم الموعد.
+	matrixChainService.SetWorkStartHour(func() int {
+		if w, err := aiRepo.WorkWindow(); err == nil && w != nil {
+			return w.StartHour
+		}
+		return 9
+	})
 	matrixChainHandler := handler.NewMatrixChainHandler(matrixChainService, matrixAutopilotService.ResolveFor)
 	mux.Handle("GET /api/ai/chain/{bookingId}", middleware.Chain(http.HandlerFunc(matrixChainHandler.Chain), requireAuth, requireMon["mon_matrix"]))
 	// تقارير الأدوار فيها «ماتركس على المراقب» — للمدير والمالك بس.

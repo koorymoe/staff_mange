@@ -155,6 +155,48 @@ type MatrixChainService struct {
 	// contactSince أول استعمال لزر التواصل (يتحسب مرة بكل تحديث للحدود).
 	contactSince *time.Time
 	contactAt    time.Time
+	// workStartHour ساعة بداية الدوام (بغداد). nil = ٩ الصبح.
+	// تنحفظ ١٠ دقايق حتى ما نقرا الإعداد لكل حجز بالتقارير.
+	workStartHour func() int
+	whMu          sync.Mutex
+	whVal         int
+	whAt          time.Time
+}
+
+// SetWorkStartHour يربط ساعة بداية الدوام من إعدادات ماتركس.
+func (s *MatrixChainService) SetWorkStartHour(f func() int) { s.workStartHour = f }
+
+func (s *MatrixChainService) startHour() int {
+	if s.workStartHour == nil {
+		return 9
+	}
+	s.whMu.Lock()
+	defer s.whMu.Unlock()
+	if s.whAt.IsZero() || time.Since(s.whAt) > 10*time.Minute {
+		s.whVal, s.whAt = s.workStartHour(), time.Now()
+	}
+	return s.whVal
+}
+
+// receiveStart بداية عدّ «الاستلام وتجهيز المواد».
+// (ك) 11-08: بطلب دازاي (بلاغ #21) — چان العدّ يبدي من تحديد الكادر، فالي
+// ينحدد كادره قبل موعده بأيام يطلع «متأخر» وهو جهّز المواد بيوم الموعد.
+// هسه إذا الكادر انحدد قبل يوم الموعد، العدّ يبدي من بداية دوام يوم الموعد.
+func receiveStart(f *repository.ChainFacts, startHour int) *time.Time {
+	start := firstOf(f.MissionAt, f.FirstAssignAt)
+	if start == nil || f.ScheduledAt == nil {
+		return start
+	}
+	loc := BaghdadLoc()
+	sch := f.ScheduledAt.In(loc)
+	dayStart := time.Date(sch.Year(), sch.Month(), sch.Day(), startHour, 0, 0, 0, loc)
+	if dayStart.After(sch) {
+		dayStart = sch
+	}
+	if start.Before(dayStart) {
+		return &dayStart
+	}
+	return start
 }
 
 func NewMatrixChainService(repo *repository.MatrixChainRepository, names func(string) string) *MatrixChainService {
@@ -175,7 +217,7 @@ func chainMedian(v []int) int {
 }
 
 // rawMinutes قياس المحطة بدون حكم — للوسيط.
-func rawMinutes(f *repository.ChainFacts) map[string]*int {
+func rawMinutes(f *repository.ChainFacts, startHour int) map[string]*int {
 	m := map[string]*int{}
 	m["CONTACT"] = minsBetween(&f.CreatedAt, f.ContactedAt)
 	m["CONFIRM"] = minsBetween(firstOf(f.ContactedAt, &f.CreatedAt), f.ConfirmedAt)
@@ -191,7 +233,7 @@ func rawMinutes(f *repository.ChainFacts) map[string]*int {
 	if f.HandoverAt != nil {
 		m["TECH_FIX"] = minsBetween(firstOf(f.TechDiagnosedAt, f.TechDecidedAt, f.HandoverAt), f.CompletedAt)
 	}
-	m["RECEIVE"] = minsBetween(firstOf(f.MissionAt, f.FirstAssignAt), f.MaterialsAt)
+	m["RECEIVE"] = minsBetween(receiveStart(f, startHour), f.MaterialsAt)
 	m["ROUTE"] = minsBetween(f.ScheduledAt, firstOf(f.DepartedAt, f.StartedAt))
 	m["WORK"] = minsBetween(firstOf(f.WorkStartAt, f.StartedAt, f.ArrivedAt), f.CompletedAt)
 	m["COMPLETE"] = minsBetween(f.ScheduledAt, f.CompletedAt)
@@ -218,7 +260,7 @@ func (s *MatrixChainService) thresholds() (map[string]int, map[string]map[string
 	if err == nil {
 		for i := range facts {
 			f := &facts[i]
-			for k, v := range rawMinutes(f) {
+			for k, v := range rawMinutes(f, s.startHour()) {
 				if v == nil {
 					continue
 				}
@@ -667,7 +709,7 @@ func (s *MatrixChainService) chainOf(f *repository.ChainFacts, now time.Time) *B
 	// ٥. الاستلام والمواد
 	{
 		st := ChainStation{Key: "RECEIVE", Role: fieldRole, Owners: fieldOwner}
-		start := firstOf(f.MissionAt, f.FirstAssignAt)
+		start := receiveStart(f, s.startHour())
 		if f.MaterialsAt == nil && done {
 			st.Status = ChainNA
 			st.Verdict = "الحجز خلص بدون ما ينسجّل وقت استلام المواد."
