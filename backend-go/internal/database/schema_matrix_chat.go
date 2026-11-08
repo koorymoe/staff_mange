@@ -2026,7 +2026,7 @@ func matrixChatMigrations() []Migration {
 	}, {
 		// (ع) 11-08: سعر الساعة انكتب بالآلاف (2.7 بدل 2700) والراتب طلع بالدينار.
 		// ماكو ساعة أقل من ١٠٠ دينار، فالأقل من ١٠٠ يتصحّح ×١٠٠٠. والحفظ صار يرفضه.
-		Version: "0459_remote_rate_thousands",
+		Version: "0459_data_remote_rate_thousands",
 		SQL: `
 			UPDATE "RemoteHoursPlan" SET "hourlyRateIQD" = "hourlyRateIQD" * 1000
 			WHERE "hourlyRateIQD" > 0 AND "hourlyRateIQD" < 100;
