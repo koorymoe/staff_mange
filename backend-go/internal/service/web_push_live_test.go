@@ -13,6 +13,7 @@ import (
 	"github.com/jmoiron/sqlx"
 
 	"staffmange-api/internal/database"
+	"staffmange-api/internal/repository"
 )
 
 // (ع) 11-08: كل إشعار جديد ينبعث لجهاز صاحبه المشترك مرة وحدة، والجهاز الملغي ينشال.
@@ -72,6 +73,10 @@ func TestWebPushSendPending_Live(t *testing.T) {
 		t.Fatal("الاشتراك لازم https")
 	}
 	db.MustExec(`INSERT INTO "Notification"(id, "employeeId", type, message) VALUES (gen_random_uuid()::text, $1, 'TEST', 'إشعار تجربة')`, emp)
+	// ⚠️ (11-08) العمود الجديد pushedAt لازم يكون بالموديل — قائمة الإشعارات SELECT *
+	if _, err := repository.NewNotificationRepository(db).ListForEmployee(emp, 10); err != nil {
+		t.Fatalf("قائمة الإشعارات انكسرت: %v", err)
+	}
 	if n := wp.SendPending(); n != 1 || hits.Load() != 1 {
 		t.Fatalf("لازم ينبعث مرة وحدة: sent=%d hits=%d", n, hits.Load())
 	}

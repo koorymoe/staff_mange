@@ -11,4 +11,6 @@ type Notification struct {
 	Message    string    `db:"message" json:"message"`
 	Read       bool      `db:"read" json:"read"`
 	CreatedAt  time.Time `db:"createdAt" json:"createdAt"`
+	// (ع) 11-08: انبعث للموبايل (Web Push) — ⚠️ عمود بالجدول والاستعلام SELECT *
+	PushedAt *time.Time `db:"pushedAt" json:"-"`
 }

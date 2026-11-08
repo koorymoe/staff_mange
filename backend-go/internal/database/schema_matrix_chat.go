@@ -2053,5 +2053,26 @@ func matrixChatMigrations() []Migration {
 			ALTER TABLE "Notification" ADD COLUMN IF NOT EXISTS "pushedAt" TIMESTAMPTZ;
 			CREATE INDEX IF NOT EXISTS "Notification_push_pending_idx" ON "Notification" ("createdAt") WHERE "pushedAt" IS NULL;
 		`,
+	}, {
+		// (ع) 11-08: 🔄 عقود الصيانة الدورية — قبل الموعد بأسبوع ينفتح حجز الزيارة لحاله
+		Version: "0461_maintenance_contract",
+		SQL: `
+			CREATE TABLE IF NOT EXISTS "MaintenanceContract" (
+				id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
+				"customerId" TEXT NOT NULL REFERENCES "Customer"(id) ON DELETE CASCADE,
+				"serviceId" TEXT NOT NULL REFERENCES "Service"(id),
+				"intervalMonths" INT NOT NULL CHECK ("intervalMonths" BETWEEN 1 AND 24),
+				"nextVisitDate" DATE NOT NULL,
+				address TEXT,
+				notes TEXT,
+				active BOOLEAN NOT NULL DEFAULT true,
+				"lastBookingId" TEXT REFERENCES "Booking"(id) ON DELETE SET NULL,
+				"lastGeneratedAt" TIMESTAMPTZ,
+				"lastError" TEXT,
+				"createdById" TEXT REFERENCES "Employee"(id) ON DELETE SET NULL,
+				"createdAt" TIMESTAMPTZ NOT NULL DEFAULT now()
+			);
+			CREATE INDEX IF NOT EXISTS "MaintenanceContract_due_idx" ON "MaintenanceContract" ("nextVisitDate") WHERE active;
+		`,
 	}}
 }

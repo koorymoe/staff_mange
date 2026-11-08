@@ -1765,6 +1765,14 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 		mux.Handle("POST /api/push/subscribe", middleware.Chain(http.HandlerFunc(pushHandler.Subscribe), requireAuth))
 		mux.Handle("POST /api/push/unsubscribe", middleware.Chain(http.HandlerFunc(pushHandler.Unsubscribe), requireAuth))
 	}
+	// 🔄 عقود الصيانة الدورية (ع) 11-08 — المدير والإداري المنسّق
+	contractSvc := service.NewMaintenanceContractService(db, bookingService, notificationRepo)
+	contractSvc.Start()
+	contractHandler := handler.NewMaintenanceContractHandler(contractSvc)
+	requireContracts := guards.RoleOrPermission([]string{"ADMIN"}, "coordinator")
+	mux.Handle("GET /api/maintenance-contracts", middleware.Chain(http.HandlerFunc(contractHandler.List), requireAuth, requireContracts))
+	mux.Handle("POST /api/maintenance-contracts", middleware.Chain(http.HandlerFunc(contractHandler.Create), requireAuth, requireContracts))
+	mux.Handle("PATCH /api/maintenance-contracts/{id}", middleware.Chain(http.HandlerFunc(contractHandler.Update), requireAuth, requireContracts))
 	// 🔁 الرجعات (ع) 11-07 — نفس حارس شغل المراقب
 	revisitHandler := handler.NewRevisitHandler(repository.NewRevisitRepository(db))
 	mux.Handle("GET /api/revisits", middleware.Chain(http.HandlerFunc(revisitHandler.Report), requireAuth, requireMonitor))

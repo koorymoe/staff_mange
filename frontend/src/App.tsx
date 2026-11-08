@@ -92,6 +92,7 @@ const VoiceTermsPage = lazyRetry(() => import('./pages/VoiceTermsPage'))
 const OrgPage = lazyRetry(() => import('./pages/OrgPage'))
 const OrgDeskPage = lazyRetry(() => import('./pages/OrgDeskPage'))
 const OrgPlansPage = lazyRetry(() => import('./pages/OrgPlansPage'))
+const MaintenanceContractsPage = lazyRetry(() => import('./pages/MaintenanceContractsPage'))
 const DirectorsRankingPage = lazyRetry(() => import('./pages/DirectorsRankingPage'))
 const MyOrgCard = lazyRetry(() => import('./components/MyOrgCard'))
 const DepartmentsPage = lazyRetry(() => import('./pages/DepartmentsPage'))
@@ -239,6 +240,7 @@ function App() {
           <Route path="bot-reports" element={<BotReportsPage />} />
           <Route path="whatsapp-sandbox" element={<WhatsAppSandboxPage />} />
           <Route path="coordinator" element={<Coordinator />} />
+          <Route path="maintenance-contracts" element={<RequirePermission permission="coordinator"><MaintenanceContractsPage /></RequirePermission>} />
           {/* فرص البيع: الصفحة نفسها تفحص ADMIN/OWNER أو sales_booking (نفس الخادم) */}
           <Route path="sales-opportunities" element={<SalesOpportunitiesPage />} />
           {/* التقرير الأسبوعي: ADMIN/OWNER بس (نفس الخادم) */}

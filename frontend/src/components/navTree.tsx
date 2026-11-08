@@ -291,6 +291,8 @@ export const navItems: NavItem[] = [
         },
       },
       { to: '/my-handovers', label: '🛠️ حجوزاتي المسلّمة', icon: <></>, roles: TECH_ROLES },
+      // (ع) 11-08: 🔄 عقود الصيانة الدورية — نفس حارس /api/maintenance-contracts (ADMIN أو coordinator)
+      { to: '/maintenance-contracts', label: '🔄 عقود الصيانة', icon: <></>, roles: ['ADMIN'], permission: 'coordinator' },
       // ماتركس — فرص البيع: نفس حارس GET /api/ai/opportunities (ADMIN/OWNER أو sales_booking).
       { monitorMenuHide: true, to: '/sales-opportunities', label: '💡 فرص البيع', icon: <></>, roles: ['ADMIN'], permission: 'sales_booking', hideForRoles: [...TECH_ROLES, 'SALES', 'ADMIN'] }, // قرار (ع) 10-08: ما تطلع للمبيعات
       // قرار (ع) 10-08: طلبات GPS للمبيعات صارت جوّا «العمل».
