@@ -2074,5 +2074,9 @@ func matrixChatMigrations() []Migration {
 			);
 			CREATE INDEX IF NOT EXISTS "MaintenanceContract_due_idx" ON "MaintenanceContract" ("nextVisitDate") WHERE active;
 		`,
+	}, {
+		// (ع) 11-08: تذكير طلبات المدير الي بلا رد ٤٨ ساعة
+		Version: "0462_manager_request_reminded",
+		SQL: `ALTER TABLE "ManagerRequest" ADD COLUMN IF NOT EXISTS "remindedAt" TIMESTAMPTZ;`,
 	}}
 }

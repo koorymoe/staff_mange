@@ -3,6 +3,7 @@ package repository
 import (
 	"errors"
 	"fmt"
+	"log"
 	"staffmange-api/internal/errlog"
 	"strings"
 	"time"
@@ -167,4 +168,45 @@ func InventoryContext(db *sqlx.DB) string {
 		fmt.Fprintf(&b, "• صيانة/وثائق فات موعدها: %s\n", strings.Join(f, "؛ "))
 	}
 	return strings.TrimSpace(b.String())
+}
+
+// RemindStale (ع) 11-08: الطلب المفتوح أكثر من ٤٨ ساعة بلا رد يرجع يوصل للمدير والمالك،
+// وبعدها كل ٤٨ ساعة لحد ما ينحسم. يأشّر «ذكّرت» بنفس الاستعلام حتى ما يتكرر.
+func (r *ManagerRequestRepository) RemindStale() (int, error) {
+	rows := []struct {
+		Title string    `db:"title"`
+		Name  string    `db:"name"`
+		Prio  string    `db:"priority"`
+		At    time.Time `db:"createdAt"`
+	}{}
+	if err := r.db.Select(&rows, `UPDATE "ManagerRequest" m SET "remindedAt" = now()
+		FROM "Employee" e
+		WHERE e.id = m."requesterId" AND m.status = 'OPEN'
+		  AND m."createdAt" < now() - interval '48 hours'
+		  AND (m."remindedAt" IS NULL OR m."remindedAt" < now() - interval '48 hours')
+		RETURNING m.title, e.name, m.priority, m."createdAt"`); err != nil {
+		return 0, err
+	}
+	if r.notif != nil {
+		for _, x := range rows {
+			days := int(time.Since(x.At).Hours() / 24)
+			msg := fmt.Sprintf("⏰ طلب للمدير (%s) من %s بعده بلا رد من %d يوم: %s — من «📨 طلبات للمدير».", managerRequestPriorities[x.Prio], x.Name, days, x.Title)
+			_ = r.notif.CreateForRole("ADMIN", "MANAGER_REQUEST", msg)
+			_ = r.notif.CreateForRole("OWNER", "MANAGER_REQUEST", msg)
+		}
+	}
+	return len(rows), nil
+}
+
+// StartReminder يفحص كل ساعة.
+func (r *ManagerRequestRepository) StartReminder() {
+	go func() {
+		time.Sleep(5 * time.Minute)
+		for {
+			if n, err := r.RemindStale(); err == nil && n > 0 {
+				log.Printf("[manager-requests] ذكّرت بـ%d طلب بلا رد", n)
+			}
+			time.Sleep(time.Hour)
+		}
+	}()
 }

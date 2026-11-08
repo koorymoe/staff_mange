@@ -1748,7 +1748,9 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	mux.Handle("POST /api/inventory/checks/{id}/resolve", middleware.Chain(http.HandlerFunc(inventoryHandler.ResolveInventoryCheck), requireAuth, requireInventoryManage))
 	mux.Handle("GET /api/inventory/checks/open", middleware.Chain(http.HandlerFunc(inventoryHandler.OpenShortages), requireAuth, requireInventoryManage))
 	// 📨 رفع طلب للمدير (ع) 11-04
-	managerRequestHandler := handler.NewManagerRequestHandler(db, repository.NewManagerRequestRepository(db, notificationRepo))
+	managerRequestRepo := repository.NewManagerRequestRepository(db, notificationRepo)
+	managerRequestRepo.StartReminder() // ⏰ (ع) 11-08: بلا رد ٤٨ ساعة ← يرجع يوصل
+	managerRequestHandler := handler.NewManagerRequestHandler(db, managerRequestRepo)
 	mux.Handle("POST /api/manager-requests", middleware.Chain(http.HandlerFunc(managerRequestHandler.Create), requireAuth))
 	mux.Handle("GET /api/manager-requests/mine", middleware.Chain(http.HandlerFunc(managerRequestHandler.Mine), requireAuth))
 	mux.Handle("GET /api/manager-requests/inventory-context", middleware.Chain(http.HandlerFunc(managerRequestHandler.InventoryContext), requireAuth, requireInventoryManage))
