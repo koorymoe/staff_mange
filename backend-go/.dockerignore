@@ -1,0 +1,6 @@
+uploads
+tmp
+*.test
+.env*
+.git
+data

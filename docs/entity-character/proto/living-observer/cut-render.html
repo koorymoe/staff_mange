@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>تجربة تحريك الصورة المعتمدة</title>
+  <link rel="stylesheet" href="cut-render.css">
+</head>
+<body>
+<main>
+  <header><p class="eyebrow">الأماني · تجربة الصورة المعتمدة</p><h1>نفس الشخصية، بطبقات تتحرك</h1><p>معاينة مستقلة ببيانات تجريبية. اختبر العين والمشي وتسليم الورقة بالحجم الصغير.</p></header>
+  <section class="toolbar" aria-label="اختبارات الحركة">
+    <button id="play">تشغيل قصة تجريبية</button>
+    <button id="gaze">تحريك البؤبؤ</button>
+    <button id="blink">رمش</button>
+    <button id="walk">مشي</button>
+    <button id="reset">إعادة</button>
+    <label><input type="checkbox" id="reduced"> إيقاف الحركة</label>
+    <label><input type="checkbox" id="debug"> إظهار نقاط الدوران</label>
+  </section>
+  <div class="screens">
+    <section class="screen" aria-labelledby="sender-title"><h2 id="sender-title">واجهة المراقب</h2><p>تم تسجيل حدث تجريبي بخصم نقطة.</p><div class="floor"><div id="courier" class="character"></div></div></section>
+    <section class="screen" aria-labelledby="employee-title"><h2 id="employee-title">واجهة الموظف</h2><p id="message" aria-live="polite">بانتظار وصول الرسالة</p><div class="floor"><div id="recipient" class="character"></div></div><button id="ack" disabled>قرأت الرسالة التجريبية</button></section>
+  </div>
+  <div class="status"><b id="state">IDLE</b><span id="pause"></span></div>
+  <ol id="log" aria-label="سجل مراحل القصة" aria-live="polite"></ol>
+  <details open><summary>عدسة فحص الوجه والطبقات</summary><div class="inspector"><div id="face" class="face"></div><div><label for="layer">الطبقة</label><select id="layer"><option value="">كل الطبقات</option></select><p><label><input id="lidHold" type="checkbox"> تثبيت الجفون مغلقة للفحص</label></p><p>العدسة تعرض الوجه من نفس الصورة. البؤبؤ منفصل ومقصوص داخل فتحة العين؛ المقاسات الصغيرة بالأعلى هي أساس قبول الحركة.</p><p>هذا تحريك لقصاصات صورة أمامية. الأسطح المخفية والدوران الكامل غير متوفرة في الأصل.</p><button id="export">تنزيل SVG الطبقي</button></div></div></details>
+  <p class="footnote">الصورتان تمثلان دورين تجريبيين بنفس الأصل، وليستا شخصيتين جديدتين من المكتبة. لا يحدث خصم حقيقي.</p>
+</main>
+<script src="cut-render.js"></script>
+</body>
+</html>
