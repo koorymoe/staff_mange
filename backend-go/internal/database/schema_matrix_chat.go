@@ -2194,5 +2194,14 @@ func matrixChatMigrations() []Migration {
 				PRIMARY KEY (kind, "employeeId", "forDate")
 			);
 		`,
+	}, {
+		// (ك) 11-09: بطلب دازاي — PVWatts انتقل: مختبر NREL غيّر اسمه وانشال دومين nrel.gov
+		// كله، فالزر بالطاقة الشمسية چان يطلع «This site can't be reached». نبدّل بس الي
+		// بعده على الرابط القديم، حتى ما نمسح تعديل أحد سواه من «إدارة الأدوات».
+		Version: "0467_data_pvwatts_url",
+		SQL: `
+			UPDATE "DesignTool" SET url = 'https://pvwatts.nlr.gov', name = 'PVWatts (NLR)'
+			WHERE url IN ('https://pvwatts.nrel.gov', 'https://pvwatts.nrel.gov/');
+		`,
 	}}
 }
