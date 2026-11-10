@@ -26,7 +26,7 @@ export default function PlanSetPage() {
   const [reload, setReload] = useState(0)
   const [err, setErr] = useState('')
   const [busy, setBusy] = useState(false)
-  const [group, setGroup] = useState(0)
+  const [group, setGroup] = useState(1)
   const [type, setType] = useState('')
   const [title, setTitle] = useState('')
   const printed = useRef(false)
@@ -116,91 +116,93 @@ export default function PlanSetPage() {
       </div>
       {err && <p className="rounded-xl bg-red-50 p-2 text-sm text-red-600">{err}</p>}
 
-      {!locked && (
-        <div className="space-y-3 rounded-2xl border-2 border-dashed border-slate-300 bg-white p-5 text-center"
-          onDragOver={(e) => e.preventDefault()}
-          onDrop={(e) => { e.preventDefault(); if (e.dataTransfer.files.length) upload(e.dataTransfer.files) }}>
-          <span className="mx-auto grid h-14 w-14 place-items-center rounded-full bg-slate-100 text-brand-700"><IconUpload size={28} /></span>
-          <p className="font-bold">رفع مخططات جديدة</p>
-          <p className="text-xs text-slate-500">اختار نوع المخطط، وبعدين اسحب الملفات هنا أو اختارها</p>
-          {/* (ك) 11-10: الأقسام كبسولات مثل «التخصصات المطلوبة» بصيت التصاميم — بطلب دازاي «هيج خلي ترتيب الاشكال». */}
-          <div className="space-y-2 text-start">
-            <p className="text-xs font-bold text-slate-600">القسم</p>
-            <div className="flex flex-wrap gap-1.5">
-              {meta.groups.map((g) => (
-                <button key={g.no} type="button" onClick={() => { setGroup(g.no); setType(g.types.length === 1 ? g.types[0].code : '') }}
-                  className={`rounded-full px-3 py-1 text-xs font-bold ${group === g.no ? 'bg-brand-700 text-white' : 'bg-slate-100 text-slate-500'}`}>
-                  {GROUP_ICON[g.no]} {g.name}
-                </button>
-              ))}
+      {/* (ك) 11-10: الأقسام العشرة كروت صغيرة مرتبة، ومن تنطب على وحدة تطلع مخططاتها تحت —
+          بطلب دازاي «تبويبات كروت صغيرة مرتبة… ومن انطب عليهن يطلع المخططات الي بداخلهم». */}
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
+        {meta.groups.map((g) => {
+          const count = g.types.reduce((n, t) => n + (byType.get(t.code)?.length ?? 0), 0)
+          const on = g.no === group
+          return (
+            <button key={g.no} type="button" onClick={() => { setGroup(g.no); setType(g.types.length === 1 ? g.types[0].code : '') }}
+              className={`flex items-center gap-2 rounded-xl border p-2.5 text-start transition ${on ? 'border-brand-700 bg-brand-700 text-white shadow-md' : 'border-slate-200 bg-white hover:border-brand-700'}`}>
+              <span className={`grid h-8 w-8 shrink-0 place-items-center rounded-lg text-sm font-extrabold ${on ? 'bg-white/20 text-white' : 'bg-slate-100 text-brand-700'}`}>{g.no}</span>
+              <span className="min-w-0 flex-1">
+                <b className={`block text-xs leading-snug ${on ? 'text-white' : 'text-slate-800'}`} title={g.name}>{GROUP_ICON[g.no]} {g.name}</b>
+                <span className={`text-[11px] ${on ? 'text-white/80' : 'text-slate-400'}`}>{g.types.length} نوع · {count} ملف</span>
+              </span>
+            </button>
+          )
+        })}
+      </div>
+
+      {current && (
+        <div className="space-y-3 rounded-2xl border border-slate-200 bg-white p-4">
+          <div className="flex flex-wrap items-center gap-3">
+            <span className="grid h-10 w-10 place-items-center rounded-xl bg-brand-700 text-lg font-extrabold text-white">{current.no}</span>
+            <div className="flex-1">
+              <h3 className="text-lg font-extrabold text-brand-900">{GROUP_ICON[current.no]} {current.name}</h3>
+              <p className="text-xs text-slate-400" dir="ltr">{current.en}</p>
             </div>
-            {current && current.types.length > 1 && (
-              <>
-                <p className="pt-1 text-xs font-bold text-slate-600">نوع المخطط</p>
+          </div>
+
+          {!locked && (
+            <div className="space-y-2 rounded-xl border-2 border-dashed border-slate-300 bg-slate-50 p-3"
+              onDragOver={(e) => e.preventDefault()}
+              onDrop={(e) => { e.preventDefault(); if (e.dataTransfer.files.length) upload(e.dataTransfer.files) }}>
+              <p className="flex items-center gap-2 text-sm font-bold text-slate-700"><span className="text-brand-700"><IconUpload size={18} /></span> رفع مخططات لهذا القسم</p>
+              {current.types.length > 1 && (
                 <div className="flex flex-wrap gap-1.5">
                   {current.types.map((t) => (
                     <button key={t.code} type="button" onClick={() => setType(t.code)}
-                      className={`rounded-full px-3 py-1 text-xs font-bold ${type === t.code ? 'bg-amber-500 text-white' : 'bg-slate-100 text-slate-500'}`}>
+                      className={`rounded-full px-3 py-1 text-xs font-bold ${type === t.code ? 'bg-amber-500 text-white' : 'bg-white text-slate-500 border border-slate-200'}`}>
                       {t.code} {t.name}
                     </button>
                   ))}
                 </div>
-              </>
-            )}
-            <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="اسم الملف (اختياري)" className={`w-full ${FIELD}`} />
+              )}
+              <div className="flex flex-wrap items-center gap-2">
+                <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="اسم الملف (اختياري)" className={`min-w-48 flex-1 ${FIELD}`} />
+                <label className={`inline-flex cursor-pointer items-center gap-2 rounded-full px-5 py-2 text-sm font-bold text-white ${type && !busy ? '' : 'pointer-events-none opacity-40'}`} style={{ background: ORANGE }}>
+                  <IconFolder size={18} /> {busy ? 'يرفع…' : type ? `اختيار الملفات (${type})` : 'اختار النوع أول'}
+                  <input type="file" multiple accept="image/png,image/jpeg,image/webp,application/pdf,.dwg" className="hidden" onChange={(e) => { if (e.target.files?.length) upload(e.target.files); e.target.value = '' }} />
+                </label>
+              </div>
+              <p className="text-[11px] text-slate-400">اسحب الملفات هنا أو اختارها · PDF، DWG، JPG، PNG · لحد ٢٤ ميگا</p>
+            </div>
+          )}
+
+          <div className="grid items-start gap-2 md:grid-cols-2">
+            {current.types.map((t) => {
+              const fs = byType.get(t.code) ?? []
+              return (
+                <div key={t.code} className={`rounded-xl border p-3 ${type === t.code ? 'border-amber-500' : 'border-slate-200'}`}>
+                  <div className="flex items-center gap-2">
+                    <span className={`rounded-md px-2 py-0.5 text-[11px] font-bold ${fs.length ? 'bg-emerald-600 text-white' : 'bg-slate-100 text-slate-500'}`} dir="ltr">{t.code}</span>
+                    <b className={`flex-1 text-sm ${fs.length ? 'text-slate-800' : 'text-slate-500'}`}>{t.name}</b>
+                    <span className="text-[11px] text-slate-400">{fs.length ? `${fs.length} ملف` : 'ماكو بعد'}</span>
+                    {!locked && <button type="button" onClick={() => setType(t.code)} className="text-[11px] font-bold text-amber-600">+ رفع</button>}
+                  </div>
+                  {fs.length > 0 && (
+                    <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-3">
+                      {fs.map((f) => (
+                        <div key={f.id} className="overflow-hidden rounded-lg border border-slate-200 bg-white">
+                          <a href={fileUrl(f.fileKey)} target="_blank" rel="noreferrer" className="block h-20 bg-slate-50">
+                            {isImageFile(f) ? <img src={fileUrl(f.fileKey)} alt="" className="h-full w-full object-cover" /> : <span className="grid h-full place-items-center text-xs font-bold text-brand-700">{f.fileType === 'application/pdf' ? '📄 PDF' : '📐 DWG'}</span>}
+                          </a>
+                          <div className="flex items-center justify-between gap-1 p-1.5 text-[11px]">
+                            <span className="truncate text-slate-700" title={f.title}>{f.title}</span>
+                            {d.canManage && !locked && <button type="button" disabled={busy} onClick={() => void run(() => apiRequest(`/plan-files/${f.id}`, { method: 'DELETE' }))} className="shrink-0 text-red-600">شيل</button>}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )
+            })}
           </div>
-          <div className="flex flex-wrap justify-center gap-1 text-[11px] font-bold">
-            {['PDF', 'DWG', 'JPG', 'PNG'].map((x) => <span key={x} className="rounded bg-slate-100 px-2 py-0.5 text-amber-600">{x}</span>)}
-          </div>
-          <label className={`mx-auto inline-flex cursor-pointer items-center gap-2 rounded-full px-6 py-2 text-sm font-bold text-white ${type && !busy ? '' : 'pointer-events-none opacity-40'}`} style={{ background: ORANGE }}>
-            <IconFolder size={18} /> {busy ? 'يرفع…' : 'اختيار الملفات'}
-            <input type="file" multiple accept="image/png,image/jpeg,image/webp,application/pdf,.dwg" className="hidden" onChange={(e) => { if (e.target.files?.length) upload(e.target.files); e.target.value = '' }} />
-          </label>
-          <p className="text-[11px] text-slate-400">لحد ٢٤ ميگا · الصور تطلع صفحات بالـPDF، وPDF وDWG يطلعن بقائمة المرفقات</p>
         </div>
       )}
-
-      <div className="grid items-start gap-3 lg:grid-cols-2">
-        {meta.groups.map((g) => {
-          const count = g.types.reduce((n, t) => n + (byType.get(t.code)?.length ?? 0), 0)
-          return (
-            <details key={g.no} open={count > 0} className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
-              <summary className="flex cursor-pointer items-center gap-3 p-3">
-                <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-brand-700 text-white font-extrabold">{g.no}</span>
-                <span className="flex-1"><b className="block">{g.name}</b><span className="text-[11px] text-slate-400" dir="ltr">{g.en}</span></span>
-                <span className={`rounded-full px-3 py-0.5 text-xs font-bold ${count ? 'bg-amber-500 text-white' : 'bg-slate-100 text-brand-700 text-slate-400'}`}>{count}</span>
-              </summary>
-              <div className="space-y-2 border-t border-slate-200 p-3">
-                {g.types.map((t) => {
-                  const fs = byType.get(t.code) ?? []
-                  return (
-                    <div key={t.code}>
-                      <p className={`flex items-center gap-2 text-sm ${fs.length ? 'font-bold text-slate-800' : 'text-slate-400'}`}>
-                        <span className={`h-2 w-2 rounded-full ${fs.length ? 'bg-emerald-500' : 'bg-slate-200'}`} />{t.code} {t.name}
-                      </p>
-                      {fs.length > 0 && (
-                        <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-3">
-                          {fs.map((f) => (
-                            <div key={f.id} className="overflow-hidden rounded-xl border border-slate-200 bg-white">
-                              <a href={fileUrl(f.fileKey)} target="_blank" rel="noreferrer" className="block h-24 bg-slate-50">
-                                {isImageFile(f) ? <img src={fileUrl(f.fileKey)} alt="" className="h-full w-full object-cover" /> : <span className="grid h-full place-items-center text-sm font-bold text-brand-700">{f.fileType === 'application/pdf' ? '📄 PDF' : '📐 DWG'}</span>}
-                              </a>
-                              <div className="flex items-center justify-between gap-1 p-2 text-xs">
-                                <span className="truncate" title={f.title}>{f.title}</span>
-                                {d.canManage && !locked && <button type="button" disabled={busy} onClick={() => void run(() => apiRequest(`/plan-files/${f.id}`, { method: 'DELETE' }))} className="shrink-0 text-red-600">شيل</button>}
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  )
-                })}
-              </div>
-            </details>
-          )
-        })}
-      </div>
     </div>
   )
 }
