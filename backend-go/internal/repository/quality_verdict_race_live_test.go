@@ -33,11 +33,11 @@ func TestQualityVerdictConcurrentDeductsOnceLive(t *testing.T) {
 	db.MustExec(`INSERT INTO "Booking" (id, code, "customerId", status, "projectSupervisorId") VALUES ($1, $2, $3, 'COMPLETED', $4)`, b, "QV"+sfx, cust, leader)
 	db.MustExec(`INSERT INTO "QualityFollowUp" (id, "bookingId", "customerId") VALUES ($1, $2, $3)`, fu, b, cust)
 	t.Cleanup(func() {
-		db.Exec(`DELETE FROM "QualityFollowUp" WHERE id = $1`, fu)                               //nolint:errcheck
+		db.Exec(`DELETE FROM "QualityFollowUp" WHERE id = $1`, fu)                                        //nolint:errcheck
 		db.Exec(`DELETE FROM "KpiEvaluation" WHERE "employeeId" = $1 OR "evaluatorId" = $2`, leader, eng) //nolint:errcheck
-		db.Exec(`DELETE FROM "Booking" WHERE id = $1`, b)                                        //nolint:errcheck
-		db.Exec(`DELETE FROM "Customer" WHERE id = $1`, cust)                                    //nolint:errcheck
-		db.Exec(`DELETE FROM "Employee" WHERE id IN ($1, $2)`, leader, eng)                      //nolint:errcheck
+		db.Exec(`DELETE FROM "Booking" WHERE id = $1`, b)                                                 //nolint:errcheck
+		db.Exec(`DELETE FROM "Customer" WHERE id = $1`, cust)                                             //nolint:errcheck
+		db.Exec(`DELETE FROM "Employee" WHERE id IN ($1, $2)`, leader, eng)                               //nolint:errcheck
 	})
 	var wg sync.WaitGroup
 	errs := make([]error, 4)

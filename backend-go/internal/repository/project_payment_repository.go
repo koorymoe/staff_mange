@@ -1,6 +1,8 @@
 package repository
 
 import (
+	"database/sql"
+	"errors"
 	"staffmange-api/internal/errlog"
 	"time"
 
@@ -117,15 +119,13 @@ func (r *ProjectPaymentRepository) ProjectOf(paymentID string) string {
 }
 
 func (r *ProjectPaymentRepository) Verify(id, byID string) error {
-	_, err := r.db.Exec(`UPDATE "ProjectPayment" SET "verifiedById" = $2, "verifiedAt" = now()
-		WHERE id = $1 AND "verifiedAt" IS NULL AND "cancelledAt" IS NULL`, id, byID)
-	return err
+	return oneRow(r.db.Exec(`UPDATE "ProjectPayment" SET "verifiedById" = $2, "verifiedAt" = now()
+		WHERE id = $1 AND "verifiedAt" IS NULL AND "cancelledAt" IS NULL`, id, byID))
 }
 
 func (r *ProjectPaymentRepository) Cancel(id, byID, reason string) error {
-	_, err := r.db.Exec(`UPDATE "ProjectPayment" SET "cancelledAt" = now(), "cancelledById" = $2, "cancelReason" = $3
-		WHERE id = $1 AND "cancelledAt" IS NULL`, id, byID, reason)
-	return err
+	return oneRow(r.db.Exec(`UPDATE "ProjectPayment" SET "cancelledAt" = now(), "cancelledById" = $2, "cancelReason" = $3
+		WHERE id = $1 AND "cancelledAt" IS NULL`, id, byID, reason))
 }
 
 // والنص بالمشروع يتحدّث وياها حتى الإحصائيات والبطاقة تشوف نفس الرقم.
@@ -213,9 +213,22 @@ func (r *ProjectPaymentRepository) SetAmount(id, byID string, amount float64, re
 	if amount <= 0 {
 		return r.Cancel(id, byID, "ألغاها المالك: "+reason)
 	}
-	_, err := r.db.Exec(`UPDATE "ProjectPayment"
-		SET note = TRIM(COALESCE(note, '') || ' [عدّلها المالك من ' || amount::text || ' إلى ' || $2::text || ' — ' || $3 || ']'),
-		    amount = $2
-		WHERE id = $1 AND "cancelledAt" IS NULL`, id, amount, reason)
-	return err
+	return oneRow(r.db.Exec(`UPDATE "ProjectPayment"
+		SET note = TRIM(COALESCE(note, '') || ' [عدّلها المالك من ' || amount::text || ' إلى ' || $2::numeric::text || ' — ' || $3 || ']'),
+		    amount = $2::numeric -- 🔴 (11-07) $2 چان نص بالملاحظة ورقم بالمبلغ: بوستكرس يرفض، فالتعديل فشل دائماً من 10-13
+		WHERE id = $1 AND "cancelledAt" IS NULL`, id, amount, reason))
+}
+
+// ErrPaymentUnchanged (11-07): الدفعة انتدققت أو انلغت من قبل (أو مو موجودة) — ما تغيّر شي.
+// چان التدقيق والإلغاء والتعديل يرجّعون «تم» حتى لو ولا صف تغيّر، فالمحاسب يظن دقّق دفعة ملغية.
+var ErrPaymentUnchanged = errors.New("الدفعة انتدققت أو انلغت من قبل — ما تغيّر شي")
+
+func oneRow(res sql.Result, err error) error {
+	if err != nil {
+		return err
+	}
+	if n, _ := res.RowsAffected(); n == 0 {
+		return ErrPaymentUnchanged
+	}
+	return nil
 }

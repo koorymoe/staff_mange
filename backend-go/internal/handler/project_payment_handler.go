@@ -2,6 +2,7 @@ package handler
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
 	"staffmange-api/internal/authz"
 	"strings"
@@ -22,7 +23,6 @@ type ProjectPaymentHandler struct {
 func NewProjectPaymentHandler(repo *repository.ProjectPaymentRepository, perms *repository.PermissionRepository) *ProjectPaymentHandler {
 	return &ProjectPaymentHandler{repo: repo, perms: perms}
 }
-
 
 func (h *ProjectPaymentHandler) isFinance(r *http.Request) bool {
 	return authz.SeeAll(r, h.perms, authz.ProjectPaymentsFinance) // (11-04) محرك الصلاحيات
@@ -106,7 +106,7 @@ func (h *ProjectPaymentHandler) Verify(w http.ResponseWriter, r *http.Request) {
 	}
 	pid := h.repo.ProjectOf(r.PathValue("id"))
 	if err := h.repo.Verify(r.PathValue("id"), middleware.EmployeeIDFromContext(r)); err != nil || pid == "" {
-		WriteError(w, http.StatusBadRequest, "تعذر")
+		WriteError(w, http.StatusBadRequest, paymentErrMsg(err))
 		return
 	}
 	h.out(w, r, pid)
@@ -128,7 +128,7 @@ func (h *ProjectPaymentHandler) Cancel(w http.ResponseWriter, r *http.Request) {
 	}
 	pid := h.repo.ProjectOf(r.PathValue("id"))
 	if err := h.repo.Cancel(r.PathValue("id"), middleware.EmployeeIDFromContext(r), strings.TrimSpace(in.Reason)); err != nil || pid == "" {
-		WriteError(w, http.StatusBadRequest, "تعذر")
+		WriteError(w, http.StatusBadRequest, paymentErrMsg(err))
 		return
 	}
 	h.out(w, r, pid)
@@ -204,8 +204,15 @@ func (h *ProjectPaymentHandler) SetAmount(w http.ResponseWriter, r *http.Request
 		reason = "تصحيح تكرار"
 	}
 	if err := h.repo.SetAmount(r.PathValue("id"), middleware.EmployeeIDFromContext(r), in.Amount, reason); err != nil {
-		WriteError(w, http.StatusBadRequest, "تعذر الحفظ")
+		WriteError(w, http.StatusBadRequest, paymentErrMsg(err))
 		return
 	}
 	WriteJSON(w, http.StatusOK, map[string]bool{"ok": true})
+}
+
+func paymentErrMsg(err error) string {
+	if errors.Is(err, repository.ErrPaymentUnchanged) {
+		return err.Error()
+	}
+	return "تعذر"
 }

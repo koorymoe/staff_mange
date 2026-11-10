@@ -29,7 +29,7 @@ func TestProcurementFulfillGuardsLive(t *testing.T) {
 	db.MustExec(`INSERT INTO "Employee" (id, name, username, role, status) VALUES ($1, 'طالب مواد', $2, 'TECHNICIAN', 'ACTIVE')`, emp, "pr_"+sfx)
 	t.Cleanup(func() {
 		db.Exec(`DELETE FROM "ProcurementRequest" WHERE "requestedById" = $1`, emp) //nolint:errcheck
-		db.Exec(`DELETE FROM "Employee" WHERE id = $1`, emp)                       //nolint:errcheck
+		db.Exec(`DELETE FROM "Employee" WHERE id = $1`, emp)                        //nolint:errcheck
 	})
 	mk := func() *model.ProcurementRequest {
 		r, err := repo.Create(model.CreateProcurementRequestRequest{RequestedByID: emp, RequestType: model.RequestTypePersonalSupply,

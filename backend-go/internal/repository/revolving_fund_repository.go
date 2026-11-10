@@ -272,6 +272,11 @@ func (r *RevolvingFundRepository) ReviewSettlement(id string, req model.ReviewSe
 		byID != nil && maker.CreatedBy != nil && *maker.CreatedBy == *byID && *maker.CreatedBy != maker.EmployeeID {
 		return nil, fmt.Errorf("هاي التسوية انت سوّيتها بدل الموظف — لازم غيرك يدقّقها")
 	}
+	// (11-07) وصاحب الفلوس نفسه ما يدقّق تسويته — محاسب بصلاحية الصناديق چان يرفع تسويته ويوافقها
+	// لحاله، فدَينه ينمسح والراجع يرجع للصندوق بلا عين ثانية.
+	if byID != nil && maker.EmployeeID != "" && *byID == maker.EmployeeID {
+		return nil, fmt.Errorf("ما تدقّق تسويتك انت — لازم غيرك يدقّقها")
+	}
 
 	var t model.RevolvingFundTxn
 	// شرط status='PENDING' يمنع تدقيق نفس التسوية مرتين (ورجوع الفلوس مرتين)
