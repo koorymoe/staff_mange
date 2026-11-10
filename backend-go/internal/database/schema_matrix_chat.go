@@ -2237,5 +2237,19 @@ func matrixChatMigrations() []Migration {
 			);
 			CREATE INDEX IF NOT EXISTS "PlanFile_set_idx" ON "PlanFile" ("setId") WHERE "removedAt" IS NULL;
 		`,
+	}, {
+		// (ل) 11-10: كاكاشي رتّب الأقسام ٦–٩ حسب ورقة Package Contents (6d481e3a)، والرموز
+		// تغيّرت. المخططات الي انرفعت بالترتيب القديم (برود من 0469) لازم تتحوّل، وإلا
+		// «جدول الأبواب» يطلع تحت «تفاصيل البناء». تحويل وحيد بخطوة وحدة (CASE)، والاسم
+		// الي چان نفس الرمز (ما انكتب اسم) يتحوّل وياه.
+		Version: "0472_data_plan_type_renumber",
+		SQL: `
+			UPDATE "PlanFile" SET
+				"typeCode" = CASE "typeCode" WHEN '6.1' THEN '7.1' WHEN '6.2' THEN '7.2' WHEN '6.3' THEN '7.3'
+					WHEN '7.1' THEN '9.1' WHEN '8.1' THEN '6.1' WHEN '9.1' THEN '8.1' END,
+				title = CASE WHEN title = "typeCode" THEN CASE "typeCode" WHEN '6.1' THEN '7.1' WHEN '6.2' THEN '7.2' WHEN '6.3' THEN '7.3'
+					WHEN '7.1' THEN '9.1' WHEN '8.1' THEN '6.1' WHEN '9.1' THEN '8.1' END ELSE title END
+			WHERE "typeCode" IN ('6.1', '6.2', '6.3', '7.1', '8.1', '9.1');
+		`,
 	}}
 }
