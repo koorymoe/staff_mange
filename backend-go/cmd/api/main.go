@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"staffmange-api/internal/apps/org"
 	"staffmange-api/internal/apps/people"
 	"staffmange-api/internal/apps/system"
 	"staffmange-api/internal/authz"
@@ -3287,30 +3288,25 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 			orgGovernor.RunMonthlyIfDue()
 		})
 		mux.Handle("GET /api/org/chart", middleware.Chain(http.HandlerFunc(orgHandler.Chart), requireAuth, requireAdmin))
+		// 🏴‍☠️ ون بيس: كتابات مكتب الإدارات صارت أفعالاً بالنواة (الفحص على الشي بالخدمة)
+		coreRouter.Mount(org.New(org.Deps{
+			AddIssue: orgHandler.AddIssue, UpdateIssue: orgHandler.UpdateIssue, SetSolution: orgHandler.SetSolution,
+			CreatePlan: orgHandler.CreatePlan, AddPlanItem: orgHandler.AddPlanItem, UpdatePlanItem: orgHandler.UpdatePlanItem,
+			SubmitPlan: orgHandler.SubmitPlan, ReviewPlan: orgHandler.ReviewPlan, DraftPlanAI: orgHandler.DraftPlanAI,
+			AddComment: orgHandler.AddComment, IssueDirective: orgHandler.IssueDirective,
+			AckDirective: orgHandler.AckDirective, ArchiveDirective: orgHandler.ArchiveDirective,
+		}))
 		mux.Handle("GET /api/org/me", middleware.Chain(http.HandlerFunc(orgHandler.Me), requireAuth))
 		mux.Handle("POST /api/org/assign", middleware.Chain(http.HandlerFunc(orgHandler.Assign), requireAuth, requireAdmin))
 		mux.Handle("POST /api/org/assignments/{id}/end", middleware.Chain(http.HandlerFunc(orgHandler.End), requireAuth, requireAdmin))
 		// مكتب المدير (المرحلة ٢): الوصول يتحقق بالخدمة حسب المنصب — الي ما يحق له ياخذ 404 مو 403
 		mux.Handle("GET /api/org/desk/{division}", middleware.Chain(http.HandlerFunc(orgHandler.Desk), requireAuth))
-		mux.Handle("POST /api/org/issues", middleware.Chain(http.HandlerFunc(orgHandler.AddIssue), requireAuth))
-		mux.Handle("PATCH /api/org/issues/{id}", middleware.Chain(http.HandlerFunc(orgHandler.UpdateIssue), requireAuth))
-		mux.Handle("POST /api/org/plans", middleware.Chain(http.HandlerFunc(orgHandler.CreatePlan), requireAuth))
-		mux.Handle("POST /api/org/plans/{id}/items", middleware.Chain(http.HandlerFunc(orgHandler.AddPlanItem), requireAuth))
-		mux.Handle("PATCH /api/org/plan-items/{id}", middleware.Chain(http.HandlerFunc(orgHandler.UpdatePlanItem), requireAuth))
-		mux.Handle("POST /api/org/comments", middleware.Chain(http.HandlerFunc(orgHandler.AddComment), requireAuth))
-		mux.Handle("POST /api/org/plans/{id}/submit", middleware.Chain(http.HandlerFunc(orgHandler.SubmitPlan), requireAuth))
-		mux.Handle("POST /api/org/plans/{id}/review", middleware.Chain(http.HandlerFunc(orgHandler.ReviewPlan), requireAuth))
 		// 📋 (دازاي 11-08) كل الخطط بمكان واحد + إرجاع حتى بعد الاعتماد — الخدمة تحصرها بالمالك ومدير النظام
 		mux.Handle("GET /api/org/plans/overview", middleware.Chain(http.HandlerFunc(orgHandler.PlansOverview), requireAuth, requireAdmin))
 		mux.Handle("POST /api/org/plans/{id}/reopen", middleware.Chain(http.HandlerFunc(orgHandler.ReopenPlan), requireAuth, requireAdmin))
-		mux.Handle("POST /api/org/plans/{id}/draft-ai", middleware.Chain(http.HandlerFunc(orgHandler.DraftPlanAI), requireAuth))
-		mux.Handle("PUT /api/org/issues/{id}/solution", middleware.Chain(http.HandlerFunc(orgHandler.SetSolution), requireAuth))
 		mux.Handle("GET /api/org/people/{id}/executive", middleware.Chain(http.HandlerFunc(orgHandler.Executive), requireAuth, requireAdmin))
-		mux.Handle("POST /api/org/directives", middleware.Chain(http.HandlerFunc(orgHandler.IssueDirective), requireAuth))
 		mux.Handle("GET /api/org/directives", middleware.Chain(http.HandlerFunc(orgHandler.ManagedDirectives), requireAuth))
 		mux.Handle("GET /api/org/directives/mine", middleware.Chain(http.HandlerFunc(orgHandler.MyDirectives), requireAuth))
-		mux.Handle("POST /api/org/directives/{id}/ack", middleware.Chain(http.HandlerFunc(orgHandler.AckDirective), requireAuth))
-		mux.Handle("POST /api/org/directives/{id}/archive", middleware.Chain(http.HandlerFunc(orgHandler.ArchiveDirective), requireAuth))
 		service.SetDirectiveDeps(orgService, func(emp, msg string) { _ = notificationRepo.Create(emp, "ORG_DIRECTIVE", msg) })
 		mux.Handle("GET /api/org/outputs", middleware.Chain(http.HandlerFunc(orgHandler.Outputs), requireAuth))
 		mux.Handle("GET /api/org/directors-ranking", middleware.Chain(http.HandlerFunc(orgHandler.DirectorsRanking), requireAuth, requireAdmin))

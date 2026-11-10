@@ -7,7 +7,7 @@ import "testing"
 // مسار للنواة نزّل الرقم هنا.
 const (
 	maxPublic        = 39 // كلها مقصودة: الزبائن، الدخول، روابط الاستقبال، الملفات الموقّعة
-	maxWriteAuthOnly = 63 // الفحص جوّا الـhandler — تنتقل لـpolicy وحدة وحدة
+	maxWriteAuthOnly = 50 // الفحص جوّا الـhandler — تنتقل لـpolicy وحدة وحدة
 )
 
 func TestRouteRatchet(t *testing.T) {
