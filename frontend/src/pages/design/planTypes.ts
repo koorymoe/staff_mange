@@ -20,6 +20,9 @@ export type PlanSetRow = {
   archivedAt: string | null
   files: number
   cover: string | null
+  // (ل) 11-10: نموذج جاهز (للمعاينة والإعلانات والنسخ منه)، وعرض السعر المرتبط
+  isTemplate: boolean
+  quotationId: string | null
 }
 export type PlanFileRow = {
   id: string

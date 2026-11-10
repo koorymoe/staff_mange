@@ -1,11 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Link, useParams, useSearchParams } from 'react-router-dom'
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { api, apiRequest, fileUrl } from '../api'
 import { useSession } from '../session'
 import { buildPlanSetHtml, isImageFile, type PlanPrintQuote } from '../utils/planSetPrint'
 import { printProjectQuote } from '../utils/projectQuotePrint'
 import { ArtCrop, IconCity, IconFolder, IconPdf, IconUpload } from './design/planArt'
-import type { PlanMeta, PlanSetDetail } from './design/planTypes'
+import type { PlanMeta, PlanSetDetail, PlanSetRow } from './design/planTypes'
 
 // ═══ 📐 سيت واحد — (ك) 11-10 بطلب دازاي ═══
 // «تختار الي تريده وتسوي ابلود وترفع صورة أو ملف للمخطط… ينحفظ بالنظام… تسوي تنزيل
@@ -20,6 +20,13 @@ const FIELD ='rounded-lg border border-slate-200 bg-white p-2 text-sm'
 export default function PlanSetPage() {
   const { id = '' } = useParams()
   const [params, setParams] = useSearchParams()
+  const nav = useNavigate()
+  // (ل) 11-10: النسخ من نموذج جاهز
+  const [templates, setTemplates] = useState<PlanSetRow[] | null>(null)
+  const [fromTpl, setFromTpl] = useState('')
+  const [tplDetail, setTplDetail] = useState<PlanSetDetail | null>(null)
+  const [copySecs, setCopySecs] = useState<Set<number>>(new Set())
+  const [msg, setMsg] = useState('')
   const { employee, permissions } = useSession()
   const [meta, setMeta] = useState<PlanMeta | null>(null)
   const [d, setD] = useState<PlanSetDetail | null>(null)
@@ -71,7 +78,7 @@ export default function PlanSetPage() {
       } catch { quoteNote = 'تعذر جلب عرض السعر.' }
     }
     printProjectQuote(buildPlanSetHtml({
-      title: d.title, projectName: d.projectName, groups: meta.groups, files: d.items, quote, quoteNote, date: new Date(),
+      title: d.title, projectName: d.projectName, groups: meta.groups, files: d.items, quote, quoteNote, date: new Date(), noQuote: true,
     }, `${import.meta.env.BASE_URL}apple-touch-icon.png`))
   }, [d, meta, canQuotes])
 
@@ -83,6 +90,32 @@ export default function PlanSetPage() {
       void download()
     }
   }, [params, d, meta, download, setParams])
+
+  // 💰 PDF عرض السعر: العرض المربوط بالسيت (أو عرض المشروع) يفتح بقالبه وينطبع.
+  // ماكو عرض؟ نفتح عرض جديد مربوط بهالسيت — ينحفظ وينربط لحاله.
+  const openQuote = async () => {
+    if (!d) return
+    let qid = d.quotationId
+    if (!qid && d.projectId && canQuotes) {
+      try { qid = (await api.getQuotationByProject(d.projectId))?.id ?? null } catch { qid = null }
+      if (qid) void apiRequest(`/plan-sets/${id}`, { method: 'PUT', body: JSON.stringify({ quotationId: qid }) }).catch(() => undefined)
+    }
+    if (qid) nav(`/quotations/project/${qid}?print=1`)
+    else nav(`/quotations/project/new?planSet=${id}${d.projectId ? `&project=${d.projectId}` : ''}`)
+  }
+  const loadTemplates = () => {
+    if (templates) return
+    apiRequest<PlanSetRow[]>('/plan-sets').then((r) => setTemplates(r.filter((x) => x.isTemplate && !x.archivedAt && x.id !== id))).catch(() => setTemplates([]))
+  }
+  const chooseTpl = (tid: string) => {
+    setFromTpl(tid); setCopySecs(new Set()); setTplDetail(null)
+    if (tid) apiRequest<PlanSetDetail>(`/plan-sets/${tid}`).then(setTplDetail).catch((e: Error) => setErr(e.message))
+  }
+  const doCopy = () => run(async () => {
+    const r = await apiRequest<{ copied: number }>(`/plan-sets/${id}/copy`, { method: 'POST', body: JSON.stringify({ fromSetId: fromTpl, sections: [...copySecs] }) })
+    setMsg(r.copied ? `انسخ ${r.copied} مخطط من النموذج` : 'كلها موجودة أصلاً — ما انسخ شي')
+    setCopySecs(new Set())
+  })
 
   if (!d || !meta) return <p className="rounded-2xl bg-white p-4 text-sm text-slate-500">{err || 'يحمّل…'}</p>
   const byType = new Map<string, typeof d.items>()
@@ -109,12 +142,45 @@ export default function PlanSetPage() {
             </div>
           </div>
           <div className="flex flex-wrap gap-2">
-            <button type="button" disabled={busy || d.items.length === 0} onClick={() => void download()} className="flex items-center gap-2 rounded-full px-5 py-2 text-sm font-bold text-white shadow-lg shadow-orange-900/40 disabled:opacity-50" style={{ background: ORANGE }}><IconPdf size={18} /> تنزيل PDF</button>
+            <button type="button" disabled={busy || d.items.length === 0} onClick={() => void download()} className="flex items-center gap-2 rounded-full px-5 py-2 text-sm font-bold text-white shadow-lg shadow-orange-900/40 disabled:opacity-50" style={{ background: ORANGE }}><IconPdf size={18} /> 📄 PDF التصاميم</button>
+            <button type="button" disabled={busy} onClick={() => void openQuote()} className="rounded-full bg-white px-5 py-2 text-sm font-bold text-[#15215a] shadow">💰 {d.quotationId ? 'PDF عرض السعر' : 'عرض السعر'}</button>
+            {d.canManage && <button type="button" disabled={busy} onClick={() => void run(() => apiRequest(`/plan-sets/${id}`, { method: 'PUT', body: JSON.stringify({ isTemplate: !d.isTemplate }) }))} className="rounded-full border border-white/30 bg-white/10 px-4 py-2 text-sm font-bold">{d.isTemplate ? '⭐ نموذج جاهز — شيله' : '☆ خلّيه نموذج جاهز'}</button>}
             {d.canManage && <button type="button" disabled={busy} onClick={() => void run(() => apiRequest(`/plan-sets/${id}/archive`, { method: 'POST', body: JSON.stringify({ archived: !locked }) }))} className="rounded-full border border-white/30 bg-white/10 px-4 py-2 text-sm font-bold">{locked ? '↩️ رجّعه' : '🗄️ أرشفة'}</button>}
           </div>
         </div>
       </div>
       {err && <p className="rounded-xl bg-red-50 p-2 text-sm text-red-600">{err}</p>}
+      {msg && <p role="status" className="rounded-xl bg-emerald-50 p-2 text-sm font-bold text-emerald-700">{msg}</p>}
+
+      {/* (ل) 11-10 دازاي: «عندي سيتات جاهزة… الزبون طلب الكاميرات والطاقة الشمسية… انسخه واضيفه ع مشروعه» */}
+      {d.canManage && !d.isTemplate && !locked && (
+        <details className="rounded-2xl border border-amber-200 bg-white p-3" onToggle={(e) => { if ((e.target as HTMLDetailsElement).open) loadTemplates() }}>
+          <summary className="cursor-pointer text-sm font-extrabold text-slate-800">📋 خذ من نموذج جاهز</summary>
+          <div className="mt-3 space-y-2">
+            <select id="ps-copy-from" value={fromTpl} onChange={(e) => chooseTpl(e.target.value)} className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm">
+              <option value="">{templates ? (templates.length ? 'اختار النموذج…' : 'ماكو نماذج جاهزة بعد') : 'يحمّل…'}</option>
+              {templates?.map((t) => <option key={t.id} value={t.id}>⭐ {t.title} ({t.files} تصميم)</option>)}
+            </select>
+            {tplDetail && (
+              <>
+                <div className="grid gap-1 sm:grid-cols-2">
+                  {meta.groups.map((g) => {
+                    const n = tplDetail.items.filter((f) => f.typeCode.startsWith(`${g.no}.`)).length
+                    if (!n) return null
+                    return (
+                      <label key={g.no} className="flex items-center gap-2 rounded-lg p-2 text-sm hover:bg-slate-50">
+                        <input id={`cp-${g.no}`} type="checkbox" checked={copySecs.has(g.no)} onChange={() => setCopySecs((s) => { const x = new Set(s); if (x.has(g.no)) x.delete(g.no); else x.add(g.no); return x })} />
+                        {g.no}. {g.name} <span className="text-xs text-slate-500">({n})</span>
+                      </label>
+                    )
+                  })}
+                </div>
+                <button type="button" disabled={busy || copySecs.size === 0} onClick={() => void doCopy()} className="rounded-xl bg-amber-500 px-5 py-2 text-sm font-bold text-white disabled:opacity-50">انسخ الأقسام المختارة لهالسيت</button>
+              </>
+            )}
+          </div>
+        </details>
+      )}
 
       {/* (ك) 11-10: الأقسام العشرة كروت صغيرة مرتبة، ومن تنطب على وحدة تطلع مخططاتها تحت —
           بطلب دازاي «تبويبات كروت صغيرة مرتبة… ومن انطب عليهن يطلع المخططات الي بداخلهم». */}

@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
-import { api, apiRequest } from '../api'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
+import { api, apiRequest, fileUrl } from '../api'
 import type { Product, QuotationItem } from '../apiTypes'
 import PageHeader from '../components/PageHeader'
 import AnnexTemplatesManager, { type AnnexTemplate } from '../components/AnnexTemplatesManager'
@@ -71,6 +71,61 @@ export default function ProjectQuotationPage() {
   const [busy, setBusy] = useState(false)
   const [openSpecs, setOpenSpecs] = useState<number | null>(null)
   const [manage, setManage] = useState(false)
+  // (ل) 11-10 دازاي: صور العرض من مكتبة أنواع العمل — كل عرض صورة غير؛ ونماذج عروض يحفظها ماتركس ويبني عليها
+  const [params] = useSearchParams()
+  const [picBusy, setPicBusy] = useState(false)
+  const [workTypes, setWorkTypes] = useState<{ workTypeId: string; name: string; images: number }[]>([])
+  const [libType, setLibType] = useState('')
+  const [qTemplates, setQTemplates] = useState<{ id: string; name: string; summary: string }[] | null>(null)
+  const printedRef = useRef(false)
+  const pickImages = async (again: boolean, only?: string) => {
+    if (!id) return setMsg({ ok: false, t: 'احفظ العرض أول، بعدين النظام يختار الصور' })
+    setPicBusy(true)
+    try {
+      const out = await apiRequest<Record<string, string>>(`/quotations/${id}/images/pick`, { method: 'POST', body: JSON.stringify({ chapters: only ? [only] : chapterNames, again }) })
+      const got = Object.keys(out).length
+      setCover((c) => {
+        const ch = { ...c.chapters }
+        for (const [k, v] of Object.entries(out)) ch[k] = { ...ch[k], image: v }
+        return { ...c, chapters: ch }
+      })
+      setMsg(got ? { ok: true, t: `اختار ${got} صورة — احفظ حتى تثبت` } : { ok: false, t: 'ماكو صور بالمكتبة لهالفصول — ارفع صور لنوع العمل تحت' })
+    } catch (e) {
+      setMsg({ ok: false, t: (e as Error).message })
+    } finally {
+      setPicBusy(false)
+    }
+  }
+  const uploadLib = async (files: FileList | null) => {
+    if (!files?.length || !libType) return
+    setPicBusy(true)
+    try {
+      const keys: string[] = []
+      for (const f of Array.from(files)) keys.push((await api.uploadFile(f, 'work-type-images')).url)
+      await apiRequest('/work-type-images', { method: 'POST', body: JSON.stringify({ workTypeId: libType, fileKeys: keys }) })
+      setWorkTypes(await apiRequest('/work-type-images').catch(() => workTypes))
+      setMsg({ ok: true, t: `انرفعت ${keys.length} صورة للمكتبة` })
+    } catch (e) {
+      setMsg({ ok: false, t: (e as Error).message })
+    } finally {
+      setPicBusy(false)
+    }
+  }
+  const saveAsTemplate = async () => {
+    if (!id) return setMsg({ ok: false, t: 'احفظ العرض أول' })
+    const name = (cover.title || cover.label || customerName || 'نموذج').trim()
+    try {
+      await apiRequest('/quotation-templates', { method: 'POST', body: JSON.stringify({ quotationId: id, name }) })
+      setMsg({ ok: true, t: `انحفظ كنموذج «${name}» — ماتركس يگدر يبني عليه عروض ثانية` })
+    } catch (e) { setMsg({ ok: false, t: (e as Error).message }) }
+  }
+  const applyTemplate = async (tid: string) => {
+    if (!customerName.trim()) return setMsg({ ok: false, t: 'اكتب اسم الزبون أول' })
+    try {
+      const q = await apiRequest<{ id: string }>(`/quotation-templates/${tid}/use`, { method: 'POST', body: JSON.stringify({ customerName: customerName.trim(), customerPhone: customerPhone.trim(), projectId: params.get('project') ?? '' }) })
+      navigate(`/quotations/project/${q.id}`)
+    } catch (e) { setMsg({ ok: false, t: (e as Error).message }) }
+  }
   const reloadTemplates = () => void apiRequest<AnnexTemplate[]>('/quotation-annex-templates').then(setTemplates).catch(() => {})
 
   useEffect(() => {
@@ -93,6 +148,11 @@ export default function ProjectQuotationPage() {
       setAnnex(q.annex ?? [])
       setRows(q.items.map((it) => ({ key: ++seq, productName: it.productName, quantity: it.quantity, unitPrice: it.unitPrice, specs: it.specs ?? '', modelName: it.modelName ?? '', category: it.category ?? '', imageBase64: it.imageBase64 ?? null, unit: it.unit })))
     }).catch((e: Error) => setMsg({ t: e.message, ok: false }))
+  }, [id])
+
+  useEffect(() => {
+    void apiRequest<{ workTypeId: string; name: string; images: number }[]>('/work-type-images').then(setWorkTypes).catch(() => setWorkTypes([]))
+    if (!id) void apiRequest<{ id: string; name: string; summary: string }[]>('/quotation-templates').then(setQTemplates).catch(() => setQTemplates([]))
   }, [id])
 
   const valid = rows.filter((r) => r.productName.trim())
@@ -128,6 +188,8 @@ export default function ProjectQuotationPage() {
       } else {
         const q = await apiRequest<{ id: string; quotationNumber: string }>('/quotations', { method: 'POST', body: JSON.stringify(payload()) })
         setNumber(q.quotationNumber)
+        const ps = params.get('planSet')
+        if (ps) await apiRequest(`/plan-sets/${ps}`, { method: 'PUT', body: JSON.stringify({ quotationId: q.id }) }).catch(() => undefined)
         navigate(`/quotations/project/${q.id}`, { replace: true })
         setMsg({ t: 'انحفظ ✅', ok: true })
       }
@@ -143,6 +205,13 @@ export default function ProjectQuotationPage() {
     printProjectQuote(buildProjectQuoteHtml({ quotationNumber: number, customerName, cover, items: valid, annex, date: new Date() }, `${import.meta.env.BASE_URL}apple-touch-icon.png`))
   }
 
+  // ?print=1 (من «💰 PDF عرض السعر» بسيت المخططات): ينطبع مرة وحدة بعد ما يحمّل
+  useEffect(() => {
+    if (params.get('print') !== '1' || printedRef.current || !number || !valid.length) return
+    printedRef.current = true
+    print()
+  })
+
   const setAnnexItem = (pi: number, ii: number, patch: Partial<{ title: string; text: string }>) =>
     setAnnex((a) => a.map((p, i) => (i !== pi ? p : { ...p, items: p.items.map((it, j) => (j === ii ? { ...it, ...patch } : it)) })))
 
@@ -150,6 +219,14 @@ export default function ProjectQuotationPage() {
     <div dir="rtl" className="space-y-4 p-4">
       <PageHeader title="📘 عرض مشاريع" subtitle={`ملف تجهيز فني وتجاري بالشكل الجديد${number ? ` · رقم ${number}` : ''} — عرض السعر القديم يبقى مثل ما هو`} />
       {msg && <p role={msg.ok ? 'status' : 'alert'} className={`rounded-xl p-3 text-sm ${msg.ok ? 'bg-emerald-50 text-emerald-800' : 'bg-red-50 text-red-700'}`}>{msg.t}</p>}
+
+      {!id && qTemplates && qTemplates.length > 0 && (
+        <section className="flex flex-wrap items-center gap-2 rounded-2xl bg-white p-4 text-sm shadow-sm">
+          <b>📋 من نموذج:</b>
+          {qTemplates.map((t) => <button key={t.id} type="button" title={t.summary} onClick={() => void applyTemplate(t.id)} className="rounded-full bg-indigo-50 px-3 py-1 text-indigo-800">{t.name}</button>)}
+          <small className="text-slate-500">(اكتب اسم الزبون أول — العرض ينبني بنفس البنود والشروط وتگدر تعدّل)</small>
+        </section>
+      )}
 
       <section className="grid gap-3 rounded-2xl bg-white p-4 shadow-sm md:grid-cols-2">
         <h2 className="text-base font-bold text-slate-700 md:col-span-2">الغلاف والزبون</h2>
@@ -169,6 +246,39 @@ export default function ProjectQuotationPage() {
         <label className="text-sm md:col-span-2">الوصف<input className={input} placeholder="مثلاً: حلول الحوسبة والمختبرات، والطباعة والأرشفة، والشاشات الذكية" value={cover.subtitle ?? ''} onChange={(e) => setCover({ ...cover, subtitle: e.target.value })} /></label>
       </section>
 
+
+      <section className="space-y-3 rounded-2xl border-2 border-dashed border-amber-300 bg-amber-50/40 p-4">
+        <h2 className="text-base font-bold text-slate-700">🖼️ صور العرض — ارفع أو ارفق صور <small className="font-normal text-slate-500">— لكل فصل صورة تناسب شغله، والنظام يختار صورة غير بكل عرض</small></h2>
+        <div className="flex flex-wrap gap-2">
+          <button type="button" disabled={picBusy || !id} onClick={() => void pickImages(false)} className="rounded-xl bg-amber-500 px-4 py-2 text-sm font-bold text-white disabled:opacity-50">✨ اختار صور للفصول</button>
+          {!id && <span className="self-center text-xs text-slate-500">احفظ العرض أول</span>}
+        </div>
+        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+          {chapterNames.map((n) => {
+            const img = cover.chapters?.[n]?.image
+            return (
+              <div key={n} className="flex items-center gap-2 rounded-xl bg-white p-2 shadow-sm">
+                {img ? <img src={fileUrl(img)} alt="" className="h-14 w-20 rounded object-cover" /> : <div className="grid h-14 w-20 place-items-center rounded bg-slate-100 text-xs text-slate-400">بلا صورة</div>}
+                <div className="min-w-0 flex-1"><b className="block truncate text-sm">{n}</b>
+                  <div className="flex gap-1">
+                    <button type="button" disabled={picBusy || !id} onClick={() => void pickImages(true, n)} className="rounded bg-slate-100 px-2 py-0.5 text-xs">🔄 صورة غيرها</button>
+                    {img && <button type="button" onClick={() => setCover((c) => ({ ...c, chapters: { ...c.chapters, [n]: { ...c.chapters?.[n], image: undefined } } }))} className="rounded bg-rose-50 px-2 py-0.5 text-xs text-rose-700">شيلها</button>}
+                  </div>
+                </div>
+              </div>
+            )
+          })}
+        </div>
+        <div className="flex flex-wrap items-center gap-2 border-t border-amber-200 pt-3 text-sm">
+          <span className="font-bold">📤 ارفع صور للمكتبة:</span>
+          <select id="lib-type" value={libType} onChange={(e) => setLibType(e.target.value)} className="rounded-lg border border-slate-300 px-2 py-1 text-sm">
+            <option value="">نوع العمل…</option>
+            {workTypes.map((w) => <option key={w.workTypeId} value={w.workTypeId}>{w.name} ({w.images} صورة)</option>)}
+          </select>
+          <input type="file" multiple accept="image/*" disabled={!libType || picBusy} onChange={(e) => void uploadLib(e.target.files)} className="text-xs" />
+          {picBusy && <span className="text-xs text-slate-500">يشتغل…</span>}
+        </div>
+      </section>
       {chapterNames.length > 0 && (
         <section className="space-y-2 rounded-2xl bg-white p-4 shadow-sm">
           <h2 className="text-base font-bold text-slate-700">الفصول <small className="font-normal text-slate-500">— اختياري: وسم إنگليزي ووصف قصير لكل فصل (يطلعن بالنظرة الشاملة ورأس الفصل)</small></h2>
@@ -251,6 +361,7 @@ export default function ProjectQuotationPage() {
       <div className="flex flex-wrap gap-2">
         <button type="button" disabled={busy} onClick={() => void save()} className="rounded-xl bg-brand-600 px-5 py-2 font-bold text-white disabled:opacity-50">{busy ? 'دا أحفظ…' : '💾 حفظ'}</button>
         <button type="button" onClick={print} className="rounded-xl bg-amber-500 px-5 py-2 font-bold text-white">🖨️ طباعة / PDF</button>
+        {id && <button type="button" onClick={() => void saveAsTemplate()} className="rounded-xl border border-indigo-300 bg-indigo-50 px-5 py-2 font-bold text-indigo-800">💾 حفظ كنموذج</button>}
         <button type="button" onClick={() => navigate('/quotations')} className="rounded-xl border px-5 py-2 text-slate-600">رجوع</button>
       </div>
     </div>
