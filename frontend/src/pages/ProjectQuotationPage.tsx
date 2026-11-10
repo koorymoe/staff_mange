@@ -103,7 +103,7 @@ export default function ProjectQuotationPage() {
       const keys: string[] = []
       for (const f of Array.from(files)) keys.push((await api.uploadFile(f, 'work-type-images')).url)
       await apiRequest('/work-type-images', { method: 'POST', body: JSON.stringify({ workTypeId: libType, fileKeys: keys }) })
-      setWorkTypes(await apiRequest('/work-type-images').catch(() => workTypes))
+      setWorkTypes(await apiRequest<{ workTypeId: string; name: string; images: number }[]>('/work-type-images').catch(() => workTypes))
       setMsg({ ok: true, t: `انرفعت ${keys.length} صورة للمكتبة` })
     } catch (e) {
       setMsg({ ok: false, t: (e as Error).message })
