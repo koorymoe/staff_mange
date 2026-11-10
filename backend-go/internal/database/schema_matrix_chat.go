@@ -2251,5 +2251,17 @@ func matrixChatMigrations() []Migration {
 					WHEN '7.1' THEN '9.1' WHEN '8.1' THEN '6.1' WHEN '9.1' THEN '8.1' END ELSE title END
 			WHERE "typeCode" IN ('6.1', '6.2', '6.3', '7.1', '8.1', '9.1');
 		`,
+	}, {
+		// (ل) 11-10: دازاي قرر الترتيب مثل ورقته: ٦ الأبواب، ٧ الكميات، ٨ تفاصيل البناء،
+		// ٩ المواصفات. يرجّع ترتيب 0472 (كاكاشي) — 6.1←8.1، 7.x←6.x، 8.1←9.1، 9.1←7.1.
+		Version: "0473_data_plan_type_order_sheet",
+		SQL: `
+			UPDATE "PlanFile" SET
+				"typeCode" = CASE "typeCode" WHEN '6.1' THEN '8.1' WHEN '7.1' THEN '6.1' WHEN '7.2' THEN '6.2'
+					WHEN '7.3' THEN '6.3' WHEN '8.1' THEN '9.1' WHEN '9.1' THEN '7.1' END,
+				title = CASE WHEN title = "typeCode" THEN CASE "typeCode" WHEN '6.1' THEN '8.1' WHEN '7.1' THEN '6.1'
+					WHEN '7.2' THEN '6.2' WHEN '7.3' THEN '6.3' WHEN '8.1' THEN '9.1' WHEN '9.1' THEN '7.1' END ELSE title END
+			WHERE "typeCode" IN ('6.1', '7.1', '7.2', '7.3', '8.1', '9.1');
+		`,
 	}}
 }
