@@ -76,8 +76,11 @@ func (r *JobDurationSampleRepository) EmployeeSpeedRatio(employeeID, month strin
 			JOIN "BookingAssignment" ba ON ba."bookingId" = b.id
 			WHERE ba."employeeId" = $1
 			  AND to_char(baghdad_date(j."createdAt"), 'YYYY-MM') = $2
+			  -- (11-10 بلاغ #27) شغل «خلص» بأقل من ٥ دقايق مو قياس حقيقي (ضغط بدأت وتم ورا بعض)
+			  AND j."durationMinutes" >= 5
 		)
-		SELECT AVG(a.avg_effort / NULLIF(m.effort, 0))::float8 AS ratio,
+		-- نسبة المجموع للمجموع، مو معدّل النسب: عيّنة وحدة بدقيقة چانت تطلّع النسبة ٦٦٦ مرة أسرع
+		SELECT (SUM(a.avg_effort) / NULLIF(SUM(m.effort), 0))::float8 AS ratio,
 		       COUNT(*)::int AS samples
 		FROM mine m
 		JOIN averages a ON a."systemName" = m."systemName" AND a."jobType" = m."jobType"
