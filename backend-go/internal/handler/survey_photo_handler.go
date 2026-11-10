@@ -81,6 +81,15 @@ func (h *SurveyPhotoHandler) canView(r *http.Request, bookingID, projectID strin
 	return h.isTeam(r, bookingID, projectID)
 }
 
+// CanUploadReq (ون بيس) نفس شرط Upload من حقول النموذج — تستعمله النواة قبل المعالج.
+func (h *SurveyPhotoHandler) CanUploadReq(r *http.Request) bool {
+	// نفس حد المعالج — القراءة تصير مرة وحدة والمعالج يستعمل نفس النموذج
+	if err := r.ParseMultipartForm(storage.MaxFileBytes); err != nil {
+		return false
+	}
+	return h.canUpload(r, strings.TrimSpace(r.FormValue("bookingId")), strings.TrimSpace(r.FormValue("projectId")))
+}
+
 func (h *SurveyPhotoHandler) canUpload(r *http.Request, bookingID, projectID string) bool {
 	if h.hasAny(r, surveyUploadRoles, surveyUploadPerms) {
 		return true

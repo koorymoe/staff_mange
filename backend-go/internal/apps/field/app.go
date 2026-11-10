@@ -48,6 +48,9 @@ type Deps struct {
 	CanCreateInternal func(r *http.Request) bool
 	CanLeaveDecide    func(r *http.Request, leaveID string) bool
 	CanContractValue  func(r *http.Request) bool
+	// SurveyParty طرف بالحجز حسب تعريف تقرير الكشف (BookingSurveyReportRepository)
+	SurveyParty     func(bookingID, employeeID string) bool
+	CanUploadSurvey func(r *http.Request) bool
 }
 
 // App المعالجات تنحط بمكانها بـmain (Set)، والتسجيل مرة وحدة بالأخير.
@@ -70,6 +73,9 @@ func (a *App) Set(pattern string, act core.Action, h http.HandlerFunc) {
 
 func (*App) Name() string { return "field" }
 
+// ⚠️ field.work_report مقصود يبقى «أي موظف» والفحص بالخدمة: مسؤول الخدمة يكتب
+// ورق حجوزات خدمته وهو مو «طرف بالحجز» — فحص الطرف هنا يكسر شغله.
+//
 // (11-10) فحوص انتقلت من المعالج للنواة — الي ما إله علاقة ياخذ 404 قبل ما يوصل.
 // المعالج يبقى يفحص (دفاع ثاني)، وأدق: التوقيع مثلاً للكادر بس.
 func (a *App) checks() map[core.Action]core.Rule {
@@ -96,6 +102,13 @@ func (a *App) checks() map[core.Action]core.Rule {
 		"field.project_contract_value": {Label: "قيمة عقد المشروع — المالية/مدير المشاريع (authz.ProjectContractValue)", Check: func(_ *core.Actor, r *http.Request) bool {
 			return a.d.CanContractValue(r)
 		}},
+		// نفس شرط BookingSurveyReportService.Create
+		"field.survey_report": {Label: "يرفع تقرير كشف — المنسّق/المراقب أو طرف بالحجز (bookingId من الطلب)", Check: func(x *core.Actor, r *http.Request) bool {
+			return x.HasRole("HR_COORDINATOR", "MONITOR") || a.d.SurveyParty(core.BodyField(r, "bookingId"), x.ID)
+		}},
+		"field.survey_photo_upload": {Label: "يرفع صور كشف — الي طلع للكشف أو فريق المشروع أو الإداري", Check: func(_ *core.Actor, r *http.Request) bool {
+			return a.d.CanUploadSurvey(r)
+		}},
 		"field.project_delay_reason": {Label: "سبب تأخير مشروع — طرف بالمشروع أو صلاحية إدارة المشاريع", Check: func(x *core.Actor, r *http.Request) bool {
 			return x.Can("project_management") || a.d.ProjectParty(r.PathValue("id"), x.ID)
 		}},
@@ -118,7 +131,8 @@ func (a *App) Policies() map[core.Action]core.Rule {
 func (a *App) Routes(r *core.Router) {
 	// فحص ناقص = السيرفر ما يشتغل (أحسن من 500 بأول طلب)
 	if a.d.BookingParty == nil || a.d.ProjectParty == nil || a.d.BookingLeader == nil || a.d.BookingTech == nil ||
-		a.d.SurveyPhotoUploader == nil || a.d.CanCreateInternal == nil || a.d.CanLeaveDecide == nil || a.d.CanContractValue == nil {
+		a.d.SurveyPhotoUploader == nil || a.d.CanCreateInternal == nil || a.d.CanLeaveDecide == nil || a.d.CanContractValue == nil ||
+		a.d.SurveyParty == nil || a.d.CanUploadSurvey == nil {
 		panic("field: فحص ناقص بـDeps")
 	}
 	for _, rt := range a.routes {

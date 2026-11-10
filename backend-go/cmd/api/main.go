@@ -964,6 +964,8 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 		SurveyPhotoUploader: repository.NewSurveyPhotoRepository(db).UploaderOf,
 		CanCreateInternal:   bookingHandler.CanCreateInternal,
 		CanLeaveDecide:      leaveHandler.CanDecide,
+		SurveyParty:         surveyReportRepo.IsBookingParty,
+		CanUploadSurvey:     surveyPhotoHandler.CanUploadReq,
 	})
 
 	mux.HandleFunc("GET /api/health", func(w http.ResponseWriter, r *http.Request) {
