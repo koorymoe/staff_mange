@@ -240,3 +240,32 @@ func TestLeaderRule(t *testing.T) {
 		t.Fatal("الليدر أو الصلاحية بس")
 	}
 }
+
+// المالك ينطي فعل من أفعاله لمدير النظام — بس لهذا الفعل، وبس للمدير، وبس إذا قابل للإنطاء.
+func TestOwnerGrants(t *testing.T) {
+	p := NewPolicies()
+	p.Register("x.backup", Rule{Label: "نسخ", OwnerOnly: true})
+	p.Register("x.grant", Rule{Label: "إنطاء", OwnerOnly: true, NoDelegate: true})
+	p.Register("x.other", Rule{Label: "ثاني", OwnerOnly: true})
+	g := func() map[string]bool { return map[string]bool{"x.backup": true, "x.grant": true} }
+	admin := &Actor{ID: "a", Role: "ADMIN", grantsFn: g}
+	tech := &Actor{ID: "t", Role: "TECHNICIAN", grantsFn: g}
+	plain := &Actor{ID: "b", Role: "ADMIN"}
+	cases := []struct {
+		a    *Actor
+		act  Action
+		want bool
+	}{
+		{admin, "x.backup", true},  // انعطى
+		{admin, "x.other", false},  // ما انعطى
+		{admin, "x.grant", false},  // الإنطاء نفسه ما ينعطى
+		{tech, "x.backup", false},  // بس مدير النظام
+		{plain, "x.backup", false}, // مدير بلا إنطاء
+		{&Actor{ID: "o", Role: "OWNER"}, "x.grant", true},
+	}
+	for _, c := range cases {
+		if got := p.Simulate(c.a, c.act); got != c.want {
+			t.Errorf("%s %s = %v، المطلوب %v", c.a.Role, c.act, got, c.want)
+		}
+	}
+}

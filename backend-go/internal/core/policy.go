@@ -22,6 +22,8 @@ type Rule struct {
 	Label     string // بالعربي — يطلع بمصفوفة الصلاحيات
 	Public    bool
 	OwnerOnly bool
+	// NoDelegate: المالك ما يگدر ينطيه لمدير النظام (مثل إنطاء صلاحيات المالك نفسه)
+	NoDelegate bool
 	// Strict: المدير ما يعبر تلقائياً — القاعدة تنطبق عليه مثل غيره (مثلاً
 	// «إضافة موظف» للمالك أو صاحب الصلاحية بس).
 	Strict bool
@@ -67,11 +69,11 @@ func (p *Policies) Rule(act Action) (Rule, bool) {
 // Allowed القرار. فعل مو مسجّل = لا.
 func (p *Policies) Allowed(a *Actor, act Action, r *http.Request) bool {
 	rule, ok := p.Rule(act)
-	return ok && decide(rule, a, r, false)
+	return ok && decide(act, rule, a, r, false)
 }
 
 // decide القرار الصافي. assumeCheck: الشرط الإضافي يُعتبر متحقق (للمحاكاة).
-func decide(rule Rule, a *Actor, r *http.Request, assumeCheck bool) bool {
+func decide(act Action, rule Rule, a *Actor, r *http.Request, assumeCheck bool) bool {
 	if rule.Public {
 		return true
 	}
@@ -79,7 +81,8 @@ func decide(rule Rule, a *Actor, r *http.Request, assumeCheck bool) bool {
 		return false
 	}
 	if rule.OwnerOnly {
-		return a.Owner()
+		// المالك، أو مدير النظام الي المالك نطاه هالفعل بالذات (OwnerGrant)
+		return a.Owner() || (!rule.NoDelegate && a.Role == "ADMIN" && a.HasOwnerGrant(act))
 	}
 	if a.Admin() && !rule.Strict {
 		return true

@@ -4113,3 +4113,4 @@ export interface CoreMatrixRow { action: string; label: string; public?: boolean
 export interface CoreMatrix { actions: CoreMatrixRow[]; routes: { app: string; pattern: string; action: string }[] }
 export interface CoreTable { name: string; rows: number; columns: number }
 export interface CoreTablePage { table: string; columns: { name: string; type: string }[]; rows: Record<string, unknown>[]; total: number; page: number; size: number }
+export interface OwnerGrants { admins: { id: string; name: string }[]; delegable: { action: string; label: string }[]; grants: Record<string, string[]>; log: { employee: string; action: string; granted: boolean; by: string; at: string }[] }

@@ -8,6 +8,7 @@ type MatrixRow struct {
 	Public    bool     `json:"public,omitempty"`
 	OwnerOnly bool     `json:"ownerOnly,omitempty"`
 	Strict    bool     `json:"strict,omitempty"`
+	Delegable bool     `json:"delegable,omitempty"` // المالك يگدر ينطيه لمدير النظام
 	Anyone    bool     `json:"anyone,omitempty"`
 	Leader    bool     `json:"leader,omitempty"`
 	Roles     []string `json:"roles,omitempty"`
@@ -26,7 +27,7 @@ func (rt *Router) Matrix() []MatrixRow {
 	out := []MatrixRow{}
 	for _, act := range rt.policies.Actions() {
 		rule, _ := rt.policies.Rule(act)
-		out = append(out, MatrixRow{Action: act, Label: rule.Label, Public: rule.Public, OwnerOnly: rule.OwnerOnly, Strict: rule.Strict,
+		out = append(out, MatrixRow{Action: act, Label: rule.Label, Public: rule.Public, OwnerOnly: rule.OwnerOnly, Strict: rule.Strict, Delegable: rule.OwnerOnly && !rule.NoDelegate,
 			Anyone: rule.Anyone, Leader: rule.Leader, Roles: rule.Roles, Perms: rule.Perms, HasCheck: rule.Check != nil,
 			Routes: byAct[act], Unused: len(byAct[act]) == 0})
 	}
@@ -37,5 +38,5 @@ func (rt *Router) Matrix() []MatrixRow {
 // التدقيق. الشرط الإضافي (Check) يُعتبر متحقق: المحاكاة تفحص الدور والصلاحية.
 func (p *Policies) Simulate(a *Actor, act Action) bool {
 	rule, ok := p.Rule(act)
-	return ok && decide(rule, a, nil, true)
+	return ok && decide(act, rule, a, nil, true)
 }

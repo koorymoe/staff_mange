@@ -7,8 +7,9 @@ import { useSession } from '../session'
 // قراءة بس — التعديل بشاشات النظام الي بيها قواعدها. الأسرار تطلع «•••».
 
 export default function CoreAdminPage() {
-  const { employee } = useSession()
-  const isOwner = employee?.actualRole === 'OWNER'
+  const { employee, permissions } = useSession()
+  // المالك، أو مدير نظام نطاه المالك هالشاشة (👑 صلاحيات المالك)
+  const isOwner = employee?.actualRole === 'OWNER' || permissions.includes('owner:system.admin_tables')
   const [tables, setTables] = useState<CoreTable[] | null>(null)
   const [filter, setFilter] = useState('')
   const [table, setTable] = useState('')

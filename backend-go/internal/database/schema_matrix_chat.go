@@ -2237,5 +2237,27 @@ func matrixChatMigrations() []Migration {
 			);
 			CREATE INDEX IF NOT EXISTS "PlanFile_set_idx" ON "PlanFile" ("setId") WHERE "removedAt" IS NULL;
 		`,
+	}, {
+		// 🏴‍☠️ ون بيس (ع) 11-10: «خلي صلاحية للمالك ينطي صلاحياته لمدير النظام» —
+		// صلاحيات المالك نفسه (مو صلاحيات الموظفين). المالك يختار فعل فعل، والإنطاء
+		// نفسه يبقى بيد المالك بس. كل إنطاء/سحب ينسجل.
+		Version: "0470_owner_grants",
+		SQL: `
+			CREATE TABLE IF NOT EXISTS "OwnerGrant" (
+				"employeeId" TEXT NOT NULL REFERENCES "Employee"(id) ON DELETE CASCADE,
+				action TEXT NOT NULL,
+				"grantedById" TEXT,
+				"grantedAt" TIMESTAMPTZ NOT NULL DEFAULT now(),
+				PRIMARY KEY ("employeeId", action)
+			);
+			CREATE TABLE IF NOT EXISTS "OwnerGrantLog" (
+				id BIGSERIAL PRIMARY KEY,
+				"employeeId" TEXT NOT NULL,
+				action TEXT NOT NULL,
+				granted BOOLEAN NOT NULL,
+				"byId" TEXT,
+				"createdAt" TIMESTAMPTZ NOT NULL DEFAULT now()
+			);
+		`,
 	}}
 }

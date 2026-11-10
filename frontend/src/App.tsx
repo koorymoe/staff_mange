@@ -41,6 +41,7 @@ const SolarPage = lazyRetry(() => import('./pages/SolarPage'))
 const OwnerBackups = lazyRetry(() => import('./pages/OwnerBackups'))
 const CoreMatrixPage = lazyRetry(() => import('./pages/CoreMatrixPage'))
 const CoreAdminPage = lazyRetry(() => import('./pages/CoreAdminPage'))
+const OwnerGrantsPage = lazyRetry(() => import('./pages/OwnerGrantsPage'))
 const OwnerIntegrity = lazyRetry(() => import('./pages/OwnerIntegrity'))
 const OwnerDeleted = lazyRetry(() => import('./pages/OwnerDeleted'))
 const StaffReportsPage = lazyRetry(() => import('./pages/StaffReportsPage'))
@@ -222,6 +223,7 @@ function App() {
           {/* 🏴‍☠️ ون بيس (11-10): مصفوفة الصلاحيات ولوحة الأدمن — للمالك */}
           <Route path="core-matrix" element={<CoreMatrixPage />} />
           <Route path="core-admin" element={<CoreAdminPage />} />
+          <Route path="owner-grants" element={<OwnerGrantsPage />} />
           <Route path="owner-integrity" element={<OwnerIntegrity />} />
           <Route path="owner-deleted" element={<OwnerDeleted />} />
           <Route path="staff-reports" element={<StaffReportsPage />} />

@@ -22,8 +22,9 @@ function who(r: CoreMatrixRow): { text: string; tone: string } {
 }
 
 export default function CoreMatrixPage() {
-  const { employee } = useSession()
-  const isOwner = employee?.actualRole === 'OWNER'
+  const { employee, permissions } = useSession()
+  // المالك، أو مدير نظام نطاه المالك هالشاشة (👑 صلاحيات المالك)
+  const isOwner = employee?.actualRole === 'OWNER' || permissions.includes('owner:system.matrix')
   const [data, setData] = useState<CoreMatrix | null>(null)
   const [error, setError] = useState('')
   const [q, setQ] = useState('')

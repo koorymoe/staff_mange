@@ -33,6 +33,22 @@ type Actor struct {
 
 	leaderFn func() bool
 	leader   *bool
+	grantsFn func() map[string]bool
+	grants   map[string]bool
+}
+
+// HasOwnerGrant المالك نطاه هالفعل؟ (ينقرا مرة وحدة بالطلب، ومن القاعدة — السحب فوري)
+func (a *Actor) HasOwnerGrant(act Action) bool {
+	if a == nil || a.grantsFn == nil {
+		return false
+	}
+	if a.grants == nil {
+		a.grants = a.grantsFn()
+		if a.grants == nil {
+			a.grants = map[string]bool{}
+		}
+	}
+	return a.grants[string(act)]
 }
 
 // IsLeader ليدر هسه؟ (IsLeaderFreshByID — من القاعدة، مو من الجلسة) ينحسب مرة وحدة بالطلب.
@@ -94,7 +110,7 @@ func ActorOf(r *http.Request) *Actor {
 
 // resolveActor يبني الـActor من سياق RequireAuth. خطأ بقراءة الصلاحيات = بلا
 // صلاحيات (يضيّق ما يوسّع).
-func resolveActor(r *http.Request, perms PermLister, leader func(string) bool) *Actor {
+func resolveActor(r *http.Request, perms PermLister, leader func(string) bool, grants func(string) map[string]bool) *Actor {
 	id := middleware.EmployeeIDFromContext(r)
 	if id == "" {
 		return nil
@@ -103,6 +119,9 @@ func resolveActor(r *http.Request, perms PermLister, leader func(string) bool) *
 		OrgRoles: middleware.OrgRoles(r), Perms: map[string]bool{}, Stealth: middleware.IsStealth(r)}
 	if leader != nil {
 		a.leaderFn = func() bool { return leader(id) }
+	}
+	if grants != nil {
+		a.grantsFn = func() map[string]bool { return grants(id) }
 	}
 	if perms != nil {
 		if names, err := perms.Names(id); err == nil {

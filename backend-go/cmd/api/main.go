@@ -3508,9 +3508,11 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	secs["job_duration_estimate"].Set("GET /api/job-duration-estimate", "job_duration_estimate.get_root", jobDurationHandler.Estimate)
 
 	// 🏴‍☠️ ون بيس: التطبيقات المنقولة — الحارس صار قاعدة بالنواة (الرفض 404)
+	systemApp := system.New(system.Deps{SetSwitch: systemSwitchHandler.Set, DB: db})
+	coreRouter.SetOwnerGrants(system.GrantsFor(systemApp)) // صلاحيات المالك المنطاة لمدير النظام
 	coreRouter.Mount(
 		meApp, requestsApp, fieldApp, accessApp,
-		system.New(system.Deps{SetSwitch: systemSwitchHandler.Set, DB: db}),
+		systemApp,
 		peopleApp, financeApp, invoicesApp,
 	)
 	coreRouter.Mount(append(sections.Apps(secs), designsApp, trainingCenterApp)...)

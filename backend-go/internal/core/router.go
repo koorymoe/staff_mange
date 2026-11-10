@@ -33,7 +33,14 @@ type Router struct {
 	routes   []RouteInfo
 	onDeny   func(r *http.Request, employeeID string)
 	leader   func(employeeID string) bool
+	grants   func(employeeID string) map[string]bool
 }
+
+// SetOwnerGrants يربط «صلاحيات المالك الي نطاها لمدير النظام» (جدول OwnerGrant).
+func (rt *Router) SetOwnerGrants(f func(employeeID string) map[string]bool) { rt.grants = f }
+
+// Policies القواعد المسجّلة (لشاشة الإنطاء).
+func (rt *Router) Policies() *Policies { return rt.policies }
 
 // SetLeader يربط فحص «ليدر هسه؟» (EmployeeRepository.IsLeaderFreshByID).
 func (rt *Router) SetLeader(f func(employeeID string) bool) { rt.leader = f }
@@ -85,7 +92,7 @@ func (rt *Router) Handle(pattern string, act Action, h http.HandlerFunc, mws ...
 		inner = mws[i](inner)
 	}
 	gate := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		a := resolveActor(r, rt.perms, rt.leader)
+		a := resolveActor(r, rt.perms, rt.leader, rt.grants)
 		if !rt.policies.Allowed(a, act, r) {
 			// المالك-بس ما ينحسب مخالفة (مثل RequireOwner القديم): المدير يفتح صفحة المالك بالغلط مو اعتداء
 			if rt.onDeny != nil && a != nil && !rule.OwnerOnly {

@@ -339,9 +339,12 @@ export default function Layout() {
     // Guard-clause reset when logged out; not part of the fetch itself.
     // eslint-disable-next-line react-hooks/set-state-in-effect
     if (!employee) { setEmployeePermissions([]); return }
-    api.getEmployeePermissions(employee.id)
-      .then((perms) => setEmployeePermissions(perms.map((p) => p.name)))
-      .catch(() => setEmployeePermissions([]))
+    // 👑 ون بيس (11-10): صلاحيات المالك المنطاة لمدير النظام تجي كـ«owner:<فعل>»
+    // ويا صلاحياته — حتى بنود وشاشات المالك الي انعطت إله تطلعله.
+    Promise.all([
+      api.getEmployeePermissions(employee.id).then((perms) => perms.map((p) => p.name)).catch(() => [] as string[]),
+      employee.actualRole === 'ADMIN' || employee.role === 'ADMIN' ? api.getMyOwnerGrants().catch(() => [] as string[]) : Promise.resolve([] as string[]),
+    ]).then(([perms, grants]) => setEmployeePermissions([...perms, ...grants.map((g) => 'owner:' + g)]))
   }, [employee])
 
   useEffect(() => {
