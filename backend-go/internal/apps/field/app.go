@@ -33,10 +33,21 @@ type route struct {
 	h       http.HandlerFunc
 }
 
-// App المعالجات تنحط بمكانها بـmain (Set)، والتسجيل مرة وحدة بالأخير.
-type App struct{ routes []route }
+// Deps فحوص «الشي نفسه» — تعريف واحد يستعمله كل فعل يحتاجه.
+type Deps struct {
+	// BookingParty الموظف طرف بالحجز (repository.BookingPartySQL — نفس تعريف القوائم)
+	BookingParty func(bookingID, employeeID string) bool
+	// ProjectParty مسؤول/مفوّض/كاشف/منشئ المشروع أو مشرف حجزه
+	ProjectParty func(projectID, employeeID string) bool
+}
 
-func New() *App { return &App{} }
+// App المعالجات تنحط بمكانها بـmain (Set)، والتسجيل مرة وحدة بالأخير.
+type App struct {
+	routes []route
+	d      Deps
+}
+
+func New(d Deps) *App { return &App{d: d} }
 
 func (a *App) Set(pattern string, act core.Action, h http.HandlerFunc) {
 	if _, ok := labels[act]; !ok {
@@ -47,9 +58,27 @@ func (a *App) Set(pattern string, act core.Action, h http.HandlerFunc) {
 
 func (*App) Name() string { return "field" }
 
-func (*App) Policies() map[core.Action]core.Rule {
+// (11-10) فحوص انتقلت من المعالج للنواة — الي ما إله علاقة ياخذ 404 قبل ما يوصل.
+// المعالج يبقى يفحص (دفاع ثاني)، وأدق: التوقيع مثلاً للكادر بس.
+func (a *App) checks() map[core.Action]core.Rule {
+	party := func(x *core.Actor, r *http.Request) bool { return a.d.BookingParty(r.PathValue("id"), x.ID) }
+	return map[core.Action]core.Rule{
+		"field.booking_tech_step":  {Label: "خطوة الفني على حجز هو طرف بيه", Check: party},
+		"field.customer_signature": {Label: "ياخذ توقيع الزبون على حجز هو طرف بيه (والمعالج: الكادر بس)", Check: party},
+		"field.project_delay_reason": {Label: "سبب تأخير مشروع — طرف بالمشروع أو صلاحية إدارة المشاريع", Check: func(x *core.Actor, r *http.Request) bool {
+			return x.Can("project_management") || a.d.ProjectParty(r.PathValue("id"), x.ID)
+		}},
+	}
+}
+
+func (a *App) Policies() map[core.Action]core.Rule {
 	out := map[core.Action]core.Rule{}
+	checked := a.checks()
 	for act, l := range labels {
+		if c, ok := checked[act]; ok {
+			out[act] = c
+			continue
+		}
 		out[act] = core.Rule{Label: l + suffix, Anyone: true}
 	}
 	return out
