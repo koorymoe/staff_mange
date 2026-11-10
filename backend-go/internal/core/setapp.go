@@ -3,6 +3,7 @@ package core
 import (
 	"fmt"
 	"net/http"
+	"strings"
 )
 
 // SetApp تطبيق بقواعد ثابتة، ومعالجاته تنربط بمكانها بـmain (Set) — لنقل قسم
@@ -58,4 +59,33 @@ func RolePermRule(label string, roles []string, perms ...string) Rule {
 // LeaderPermRule نفس guards.LeaderOr(Any)Permission: الليدر أو الصلاحية، والمالك والمدير يعبرون.
 func LeaderPermRule(label string, perms ...string) Rule {
 	return Rule{Label: label, Leader: true, Perms: perms}
+}
+
+// ActionFor اسم فعل ثابت من المسار ("POST /api/x/{id}/y" ← app.post_x_by_id_y) — للمسارات
+// الي تتسجّل بحلقة.
+func ActionFor(app, pattern string) Action {
+	method, path, _ := strings.Cut(pattern, " ")
+	parts := []string{}
+	for _, seg := range strings.Split(strings.TrimPrefix(path, "/api/"), "/") {
+		if strings.HasPrefix(seg, "{") {
+			seg = "by_" + strings.Trim(seg, "{}.")
+		}
+		parts = append(parts, strings.Map(func(r rune) rune {
+			if r >= 'a' && r <= 'z' || r >= '0' && r <= '9' || r == '_' {
+				return r
+			}
+			return '_'
+		}, strings.ToLower(seg)))
+	}
+	return Action(app + "." + strings.ToLower(method) + "_" + strings.Join(parts, "_"))
+}
+
+// Add يعرّف فعل ويربط مساره بنفس الخطوة (للحلقات).
+func (a *SetApp) Add(pattern string, rule Rule, h http.HandlerFunc, mws ...func(http.Handler) http.Handler) {
+	act := ActionFor(a.name, pattern)
+	if _, dup := a.rules[act]; dup {
+		panic(fmt.Sprintf("%s: فعل مكرر %q", a.name, act))
+	}
+	a.rules[act] = rule
+	a.Set(pattern, act, h, mws...)
 }

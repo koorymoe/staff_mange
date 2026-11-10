@@ -1,6 +1,10 @@
 package main
 
-import "testing"
+import (
+	"os"
+	"regexp"
+	"testing"
+)
 
 // قفل «ون بيس» (11-10): الأرقام تنزل بس، ما تصعد. أي مسار جديد ينكتب عبر
 // internal/core (فعل + قاعدة)، مو mux.Handle بحارس الدخول وحده. إذا نقلت
@@ -8,7 +12,7 @@ import "testing"
 const (
 	maxPublic        = 39 // كلها مقصودة: الزبائن، الدخول، روابط الاستقبال، الملفات الموقّعة
 	maxWriteAuthOnly = 0  // (11-10) كلها انتقلت للنواة — ولا وحدة جديدة
-	maxLegacy        = 853 // المسارات القديمة (mux.Handle) — الجديد ينكتب بالنواة، والرقم ينزل بس
+	maxLegacy        = 39 // المسارات القديمة (mux.Handle) — الجديد ينكتب بالنواة، والرقم ينزل بس
 )
 
 func TestRouteRatchet(t *testing.T) {
@@ -36,5 +40,17 @@ func TestRouteRatchet(t *testing.T) {
 	}
 	if pub < maxPublic || write < maxWriteAuthOnly {
 		t.Logf("👍 نزل الرقم (عام %d، كتابة %d) — نزّل الحد بهذا الملف", pub, write)
+	}
+}
+
+// (11-10) كل النظام صار على النواة: ممنوع mux.Handle بمسار مو نص ثابت (حلقة/متغير)
+// — هيچ مسارات تفلت من الجرد ومن القفل. سجّلها بـcore (SetApp.Add).
+func TestNoDynamicMuxRoutes(t *testing.T) {
+	b, err := os.ReadFile("../api/main.go")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if m := regexp.MustCompile(`mux\.Handle(Func)?\([^"]`).FindAll(b, -1); len(m) > 0 {
+		t.Fatalf("mux.Handle بمسار متغير (%d) — سجّله عبر internal/core", len(m))
 	}
 }
