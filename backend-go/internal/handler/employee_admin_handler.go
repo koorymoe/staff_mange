@@ -71,6 +71,10 @@ func (h *EmployeeAdminHandler) UpdateAll(w http.ResponseWriter, r *http.Request)
 	if !h.guardTarget(w, r, id) {
 		return
 	}
+	if why := selfPerkEdit(r, id, &req); why != "" {
+		WriteError(w, http.StatusForbidden, why)
+		return
+	}
 	if !isTop(middleware.RoleFromContext(r)) {
 		if req.Role != nil && isTop(*req.Role) {
 			WriteError(w, http.StatusForbidden, "منح دور المدير أو المالك للمدير بس")
@@ -95,7 +99,7 @@ func (h *EmployeeAdminHandler) UpdateAll(w http.ResponseWriter, r *http.Request)
 		WriteError(w, http.StatusBadRequest, err.Error())
 		return
 	}
-	WriteJSON(w, http.StatusOK, emp)
+	writeEmployeeFor(w, r, emp)
 }
 
 // PUT /api/employees/{id}/suspend — {reason}: إيقاف بلا حذف.
@@ -210,7 +214,7 @@ func (h *EmployeeAdminHandler) Schedule(w http.ResponseWriter, r *http.Request) 
 		WriteError(w, http.StatusBadRequest, err.Error())
 		return
 	}
-	WriteJSON(w, http.StatusOK, emp)
+	writeEmployeeFor(w, r, emp)
 }
 
 // GET /api/work-schedule — جدول كل الموظفين الفعّالين وحضورهم اليوم.

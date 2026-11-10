@@ -75,6 +75,21 @@ func (h *PermissionHandler) SetForEmployee(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
+	// (11-10) نفس قفل شاشة الصلاحيات الجديدة: صلاحيات المالك (PermissionOwnerOnly) ما يمنحها
+	// أو يسحبها غير المالك. هذا المسار القديم چان يقبل أي قائمة — أدمن يعطي نفسه أو غيره
+	// «فتح الحسابات» و«محادثات الواتساب» وغيرها.
+	if !isOwnerReq(r) {
+		all, err1 := h.service.ListAll()
+		cur, err2 := h.service.ListForEmployee(employeeID)
+		if err1 != nil || err2 != nil {
+			WriteError(w, http.StatusInternalServerError, "تعذر تحديث صلاحيات الموظف")
+			return
+		}
+		if why := legacyPermLock(r, all, cur, req.PermissionIDs); why != "" {
+			WriteError(w, http.StatusForbidden, why)
+			return
+		}
+	}
 	perms, err := h.service.SetForEmployee(employeeID, req.PermissionIDs)
 	if err != nil {
 		WriteError(w, http.StatusInternalServerError, "تعذر تحديث صلاحيات الموظف")
@@ -134,4 +149,36 @@ func (h *PermissionHandler) AuditDefaults(w http.ResponseWriter, r *http.Request
 		return
 	}
 	WriteJSON(w, http.StatusOK, rows)
+}
+
+// legacyPermLock يرجّع سبب الرفض إذا القائمة الجديدة تضيف أو تشيل صلاحية مقفولة على المالك.
+func legacyPermLock(r *http.Request, all, current []model.Permission, newIDs []string) string {
+	nameOf := map[string]string{}
+	for _, p := range all {
+		nameOf[p.ID] = p.Name
+	}
+	before, after := map[string]bool{}, map[string]bool{}
+	for _, p := range current {
+		before[p.Name] = true
+	}
+	for _, id := range newIDs {
+		if n := nameOf[id]; n != "" {
+			after[n] = true
+		}
+	}
+	for n := range after {
+		if !before[n] {
+			if why := lockFor(r, n); why != "" {
+				return "«" + n + "» مقفولة: " + why
+			}
+		}
+	}
+	for n := range before {
+		if !after[n] {
+			if why := lockFor(r, n); why != "" {
+				return "«" + n + "» مقفولة: " + why
+			}
+		}
+	}
+	return ""
 }

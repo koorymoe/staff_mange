@@ -132,7 +132,7 @@ func (h *EmployeeHandler) UpdateIdentity(w http.ResponseWriter, r *http.Request)
 		WriteError(w, http.StatusBadRequest, err.Error())
 		return
 	}
-	WriteJSON(w, http.StatusOK, employee)
+	writeEmployeeFor(w, r, employee)
 }
 
 // PUT /api/employees/{id}/profile — حقول الملف بس لصاحب صلاحية «تعديل
@@ -147,6 +147,10 @@ func (h *EmployeeHandler) UpdateProfile(w http.ResponseWriter, r *http.Request) 
 	}
 	req.Name, req.Role, req.Status, req.Username, req.Password, req.PhotoURL, req.SecondaryRoles = nil, nil, nil, nil, nil, nil, nil
 	id := r.PathValue("id")
+	if why := selfPerkEdit(r, id, &req); why != "" {
+		WriteError(w, http.StatusForbidden, why)
+		return
+	}
 	if role := middleware.RoleFromContext(r); role != "ADMIN" && role != "OWNER" {
 		if target, err := h.service.Get(id); err != nil || target == nil {
 			WriteError(w, http.StatusNotFound, "الموظف غير موجود")
@@ -161,7 +165,7 @@ func (h *EmployeeHandler) UpdateProfile(w http.ResponseWriter, r *http.Request) 
 		WriteError(w, http.StatusBadRequest, err.Error())
 		return
 	}
-	WriteJSON(w, http.StatusOK, employee)
+	writeEmployeeFor(w, r, employee)
 }
 
 func (h *EmployeeHandler) Update(w http.ResponseWriter, r *http.Request) {
@@ -247,7 +251,8 @@ func (h *EmployeeHandler) Supervisors(w http.ResponseWriter, r *http.Request) {
 		WriteError(w, http.StatusInternalServerError, "تعذر جلب المشرفين")
 		return
 	}
-	WriteJSON(w, http.StatusOK, employees)
+	// (11-10) چان يرجّع الموظفين خام — راتب وتلفون ويوزر كل المشرفين لأي موظف مسجّل.
+	WriteJSON(w, http.StatusOK, ViewEmployees(employees, middleware.EffectiveRole(r), middleware.EmployeeIDFromContext(r)))
 }
 
 // GET /api/v1/employees/match?serviceId=
@@ -273,7 +278,7 @@ func (h *EmployeeHandler) SetSkills(w http.ResponseWriter, r *http.Request) {
 		WriteError(w, http.StatusBadRequest, err.Error())
 		return
 	}
-	WriteJSON(w, http.StatusOK, employee)
+	writeEmployeeFor(w, r, employee)
 }
 
 // LinkHistoricalRecords يربط سجلات تاريخية (حجوزات/شكاوى مستوردة بالاسم) بحساب موظف
@@ -288,4 +293,29 @@ func (h *EmployeeHandler) LinkHistoricalRecords(w http.ResponseWriter, r *http.R
 		"bookingsLinked":   bookingsLinked,
 		"complaintsLinked": complaintsLinked,
 	})
+}
+
+// writeEmployeeFor (11-10): رد التعديل للأدمن كامل مثل قبل (شاشة الموظفين تحتاجه)،
+// ولغيره (صلاحية تعديل مفوّضة) بنفس فلتر ViewEmployee — چان المفوَّض يشوف راتب
+// وتلفون ويوزر الزميل بمجرد ما يعدّل اسمه أو مهاراته.
+func writeEmployeeFor(w http.ResponseWriter, r *http.Request, e *model.Employee) {
+	role := middleware.EffectiveRole(r)
+	if model.IsAdminRole(role) {
+		WriteJSON(w, http.StatusOK, e)
+		return
+	}
+	WriteJSON(w, http.StatusOK, ViewEmployee(e, role, middleware.EmployeeIDFromContext(r)))
+}
+
+// selfPerkEdit (11-10): غير الأدمن ما يعدّل بنفسه على راتبه أو ليدريته أو مستواه أو إجازاته أو نهاية عقده.
+// چان صاحب «تعديل ملف الموظف» (HR والمراقب افتراضياً) أو «تعديل كل البيانات» يرفع راتبه لحاله،
+// أو يأشّر نفسه ليدر فتنفتح إله مسارات الليدر. نفس قاعدة «ما يرقّي نفسه» الي بالكود.
+func selfPerkEdit(r *http.Request, id string, req *model.UpdateEmployeeRequest) string {
+	if model.IsAdminRole(middleware.RoleFromContext(r)) || id != middleware.EmployeeIDFromContext(r) {
+		return ""
+	}
+	if req.Salary != nil || req.IsLeader != nil || req.JobLevel != nil || req.MonthlyLeaves != nil || req.ContractEndDate != nil {
+		return "راتبك وليدريتك ومستواك وإجازاتك وعقدك يعدّلهن غيرك — مو إنت"
+	}
+	return ""
 }
