@@ -7,7 +7,9 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"staffmange-api/internal/apps/system"
 	"staffmange-api/internal/authz"
+	"staffmange-api/internal/core"
 	"staffmange-api/internal/monitor"
 	"strconv"
 
@@ -944,6 +946,10 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 		[]string{"ADMIN", "OWNER", "SALES"}, "gps_system")
 
 	mux := http.NewServeMux()
+	// 🏴‍☠️ «ون بيس» (دازاي 11-10): التطبيقات الجديدة تتسجّل عبر النواة — كل مسار بفعل
+	// وقاعدة، والرفض 404. تعيش جنب المسارات القديمة لحد ما تنتقل وحدة وحدة.
+	coreRouter := core.NewRouter(mux, requireAuth, permissionRepo, core.NewPolicies())
+	coreRouter.Mount(system.New())
 
 	mux.HandleFunc("GET /api/health", func(w http.ResponseWriter, r *http.Request) {
 		handler.WriteJSON(w, http.StatusOK, map[string]string{"status": "ok"})
