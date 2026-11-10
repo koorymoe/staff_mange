@@ -1052,3 +1052,12 @@ func (h *BookingHandler) ReturnHandled(w http.ResponseWriter, r *http.Request) {
 	}
 	WriteJSON(w, http.StatusOK, map[string]bool{"ok": true})
 }
+
+// CanCreateInternal (ون بيس) يسجّل حجز داخل الشركة؟ نفس شرط Create.
+func (h *BookingHandler) CanCreateInternal(r *http.Request) bool {
+	var perms authz.PermLister
+	if h.permissions != nil {
+		perms = h.permissions
+	}
+	return authz.Can(r, perms, authz.InternalBookingCreate)
+}

@@ -44,6 +44,10 @@ type Deps struct {
 	BookingTech   func(bookingID, employeeID string) bool
 	// SurveyPhotoUploader منو رفع صورة الكشف ("" إذا مو موجودة)
 	SurveyPhotoUploader func(photoID string) string
+	// قواعد معقدة تبقى بمكانها بالمعالج — النواة تناديها (تعريف واحد، مو نسختين)
+	CanCreateInternal func(r *http.Request) bool
+	CanLeaveDecide    func(r *http.Request, leaveID string) bool
+	CanContractValue  func(r *http.Request) bool
 }
 
 // App المعالجات تنحط بمكانها بـmain (Set)، والتسجيل مرة وحدة بالأخير.
@@ -51,6 +55,9 @@ type App struct {
 	routes []route
 	d      Deps
 }
+
+// Use يكمّل فحص يتعرّف بعدين بـmain (معالجه ينخلق بعد التطبيق).
+func (a *App) Use(f func(d *Deps)) { f(&a.d) }
 
 func New(d Deps) *App { return &App{d: d} }
 
@@ -80,6 +87,15 @@ func (a *App) checks() map[core.Action]core.Rule {
 			up := a.d.SurveyPhotoUploader(r.PathValue("id"))
 			return up != "" && up == x.ID
 		}},
+		"field.booking_create": {Label: "يسجّل حجز — الحجز الداخلي (bookingType=INTERNAL) بصلاحية الحجز الداخلي", Anyone: true, Check: func(_ *core.Actor, r *http.Request) bool {
+			return core.BodyField(r, "bookingType") != "INTERNAL" || a.d.CanCreateInternal(r)
+		}},
+		"field.leave_preliminary": {Label: "رأي أولي بإجازة — بس المسؤول عن مسار الطلب", Check: func(_ *core.Actor, r *http.Request) bool {
+			return a.d.CanLeaveDecide(r, r.PathValue("id"))
+		}},
+		"field.project_contract_value": {Label: "قيمة عقد المشروع — المالية/مدير المشاريع (authz.ProjectContractValue)", Check: func(_ *core.Actor, r *http.Request) bool {
+			return a.d.CanContractValue(r)
+		}},
 		"field.project_delay_reason": {Label: "سبب تأخير مشروع — طرف بالمشروع أو صلاحية إدارة المشاريع", Check: func(x *core.Actor, r *http.Request) bool {
 			return x.Can("project_management") || a.d.ProjectParty(r.PathValue("id"), x.ID)
 		}},
@@ -100,6 +116,11 @@ func (a *App) Policies() map[core.Action]core.Rule {
 }
 
 func (a *App) Routes(r *core.Router) {
+	// فحص ناقص = السيرفر ما يشتغل (أحسن من 500 بأول طلب)
+	if a.d.BookingParty == nil || a.d.ProjectParty == nil || a.d.BookingLeader == nil || a.d.BookingTech == nil ||
+		a.d.SurveyPhotoUploader == nil || a.d.CanCreateInternal == nil || a.d.CanLeaveDecide == nil || a.d.CanContractValue == nil {
+		panic("field: فحص ناقص بـDeps")
+	}
 	for _, rt := range a.routes {
 		r.Handle(rt.pattern, rt.act, rt.h)
 	}

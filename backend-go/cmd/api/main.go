@@ -962,6 +962,8 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 		BookingLeader:       repository.NewMatrixChainRepository(db).IsBookingLeader,
 		BookingTech:         repository.NewMatrixChainRepository(db).IsBookingTech,
 		SurveyPhotoUploader: repository.NewSurveyPhotoRepository(db).UploaderOf,
+		CanCreateInternal:   bookingHandler.CanCreateInternal,
+		CanLeaveDecide:      leaveHandler.CanDecide,
 	})
 
 	mux.HandleFunc("GET /api/health", func(w http.ResponseWriter, r *http.Request) {
@@ -3055,6 +3057,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	// ── دفعات المشاريع (قرار (ع) 10-06): الصلاحية بالمعالج — المحاسب، إدارة المشاريع، ومشرف المشروع ──
 	projectPaymentRepo := repository.NewProjectPaymentRepository(db)
 	projectPaymentHandler := handler.NewProjectPaymentHandler(projectPaymentRepo, permissionRepo)
+	fieldApp.Use(func(d *field.Deps) { d.CanContractValue = projectPaymentHandler.CanValue })
 	projectService.SetPaymentChecker(projectPaymentRepo)
 	mux.Handle("GET /api/projects/{id}/payments", middleware.Chain(http.HandlerFunc(projectPaymentHandler.List), requireAuth))
 	mux.Handle("POST /api/projects/{id}/payments", middleware.Chain(http.HandlerFunc(projectPaymentHandler.Add), requireAuth, idem))
