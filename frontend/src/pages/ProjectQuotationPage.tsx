@@ -64,6 +64,7 @@ export default function ProjectQuotationPage() {
     }
   }
   const [rows, setRows] = useState<Row[]>([emptyRow()])
+  const chapterNames = useMemo(() => [...new Set(rows.map((r) => (r.category ?? '').trim() || 'التجهيزات').filter((n, i, a) => a.indexOf(n) === i))], [rows])
   const [annex, setAnnex] = useState<AnnexPart[]>([])
   const [number, setNumber] = useState('')
   const [msg, setMsg] = useState<{ t: string; ok: boolean } | null>(null)
@@ -167,6 +168,21 @@ export default function ProjectQuotationPage() {
         </div>
         <label className="text-sm md:col-span-2">الوصف<input className={input} placeholder="مثلاً: حلول الحوسبة والمختبرات، والطباعة والأرشفة، والشاشات الذكية" value={cover.subtitle ?? ''} onChange={(e) => setCover({ ...cover, subtitle: e.target.value })} /></label>
       </section>
+
+      {chapterNames.length > 0 && (
+        <section className="space-y-2 rounded-2xl bg-white p-4 shadow-sm">
+          <h2 className="text-base font-bold text-slate-700">الفصول <small className="font-normal text-slate-500">— اختياري: وسم إنگليزي ووصف قصير لكل فصل (يطلعن بالنظرة الشاملة ورأس الفصل)</small></h2>
+          {chapterNames.map((name) => (
+            <div key={name} className="grid gap-2 md:grid-cols-6">
+              <b className="self-center text-sm text-brand-800 md:col-span-1">{name}</b>
+              <input dir="ltr" className={`${input} md:col-span-2`} placeholder="COMPUTING DEVICES" value={cover.chapters?.[name]?.en ?? ''}
+                onChange={(e) => setCover((c) => ({ ...c, chapters: { ...c.chapters, [name]: { ...c.chapters?.[name], en: e.target.value } } }))} />
+              <input className={`${input} md:col-span-3`} placeholder="مثلاً: حواسيب محمولة، ومحطات مختبرية All-in-One، وحاسبة مخصصة للتصميم" value={cover.chapters?.[name]?.desc ?? ''}
+                onChange={(e) => setCover((c) => ({ ...c, chapters: { ...c.chapters, [name]: { ...c.chapters?.[name], desc: e.target.value } } }))} />
+            </div>
+          ))}
+        </section>
+      )}
 
       <section className="space-y-2 rounded-2xl bg-white p-4 shadow-sm">
         <h2 className="text-base font-bold text-slate-700">المنتجات <small className="font-normal text-slate-500">— اختار من الكتالوج وتنسحب الصورة والموديل والمواصفات والفصل لحالها</small></h2>

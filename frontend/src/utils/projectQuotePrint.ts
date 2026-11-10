@@ -7,7 +7,8 @@ import { fileUrl } from '../api'
 import { arabicAmountWords } from './arabicWords'
 import { esc } from './printIdentity'
 
-export type ProjectCover = { label?: string; title?: string; subtitle?: string; city?: string; image?: string }
+export type ChapterMeta = { en?: string; desc?: string }
+export type ProjectCover = { label?: string; title?: string; subtitle?: string; city?: string; image?: string; chapters?: Record<string, ChapterMeta> }
 export type AnnexItem = { title: string; text: string }
 export type AnnexPart = { title: string; items: AnnexItem[] }
 export type ProjectItem = {
@@ -113,6 +114,9 @@ export function buildProjectQuoteHtml(q: ProjectQuote, logoUrl: string): string 
     if (!ch) chapters.push((ch = { name, items: [] }))
     ch.items.push({ it, no: i + 1 })
   })
+  // (11-10) وسم الفصل بالإنگليزي ووصفه — يكتبهن الموظف لكل فصل، وإلا القيم الافتراضية
+  const meta = (name: string) => q.cover.chapters?.[name] ?? {}
+  const enOf = (name: string, dflt: string) => (meta(name).en?.trim() || dflt).toUpperCase()
   // صفحات المنتجات (مثل نموذج دازاي): كارتين بكل صفحة بالتسلسل — حتى لو الفئتين مختلفات، ماكو نص صفحة فاضي.
   // وإذا العدد فردي، آخر منتج ينعرض فوق جدول الكميات بصفحة العرض المالي.
   const flat = chapters.flatMap((ch, ci) => ch.items.map((x) => ({ ...x, ch: ch.name, idx: ci + 1 })))
@@ -167,7 +171,7 @@ export function buildProjectQuoteHtml(q: ProjectQuote, logoUrl: string): string 
       <div><b>${(total / 1e6).toLocaleString('en-US', { maximumFractionDigits: 3 })}</b><small>مليون دينار عراقي</small></div>
     </div>
     <h3 class="sec">محاور المشروع <small dir="ltr">/ PROJECT SCOPE</small></h3>
-    <div class="scope">${chapters.map((c, i) => `<div><small dir="ltr">${String(i + 1).padStart(2, '0')} / SCOPE</small><h4>${esc(c.name)}</h4><p>${c.items.map((x) => esc(x.it.productName)).slice(0, 3).join('، ')}${c.items.length > 3 ? ` و${c.items.length - 3} غيرها` : ''}</p></div>`).join('')}</div>
+    <div class="scope">${chapters.map((c, i) => `<div><small dir="ltr">${String(i + 1).padStart(2, '0')} / ${esc(enOf(c.name, 'SCOPE'))}</small><h4>${esc(c.name)}</h4><p>${meta(c.name).desc?.trim() ? esc(meta(c.name).desc!.trim()) : `${c.items.map((x) => esc(x.it.productName)).slice(0, 3).join('، ')}${c.items.length > 3 ? ` و${c.items.length - 3} غيرها` : ''}`}</p></div>`).join('')}</div>
     <p class="note">التجهيز والأسعار أدناه يستندان إلى قائمة المنتجات المقدمة، ويُستكملان بالشروط الفنية والتنفيذية في نهاية الملف.</p>
     ${footer(page, totalPages)}
   </section>`
@@ -176,7 +180,7 @@ export function buildProjectQuoteHtml(q: ProjectQuote, logoUrl: string): string 
   const chapterHtml = chapterPages.map((cp, pi) => {
     const s = `
   <section class="page">${header(cp.name)}
-    ${chHead(cp.idx, 'المنتجات والمواصفات الفنية والأسعار - بالدينار العراقي', 'EQUIPMENT', pi + 1)}
+    ${chHead(cp.idx, 'المنتجات والمواصفات الفنية والأسعار - بالدينار العراقي', esc(enOf(cp.name, 'EQUIPMENT')), pi + 1)}
     ${cp.cards.map((c) => card(c.it, c.no, c.ch !== cp.name ? c.ch : undefined)).join('')}
     ${footer(page, totalPages)}
   </section>`
@@ -342,6 +346,11 @@ ul.specs li::before { content: '•'; color: #f59e0b; margin-left: 6px; font-wei
 .money { margin: auto 0 0; border-top: 1px solid #e2e8f0; grid-template-columns: 1fr 1fr 1.3fr } .money div { border-left: 0; padding: 3mm 2mm }
 .money .tot { background: none } .money .tot small { color: #64748b } .money .tot b { color: #f59e0b; font-size: 17px }
 .fin.with-card .fin-card ul.specs li { padding: 0; font-size: 9px }
+
+/* (11-10) فروقات المقارنة الأخيرة: الدائرة يمين الغلاف، وخط أزرق/برتقالي على حافة الكرت */
+.arc { left: auto; right: -70mm; top: 20mm; width: 210mm; height: 210mm } .arc circle { stroke: rgba(255,255,255,.10) }
+.card { border-right: 4px solid #1e3a8a; position: relative } .card::before { content: ''; position: absolute; right: -4px; top: 0; width: 4px; height: 28%; background: #f59e0b }
+.scope div:nth-child(odd) { background: #f5f8ff } .scope div:nth-child(even) { background: #fffaf3 }
 @media print { body { background: #fff } .page { margin: 0 } }
 </style></head><body>${coverPage}${overview}${chapterHtml}${summary}${annexHtml}</body></html>`.replace(/src="LOGO"/g, `src="${esc(abs(logoUrl))}"`)
 }
