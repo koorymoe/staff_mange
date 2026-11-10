@@ -396,3 +396,4 @@ git push origin origin/avg:refs/heads/prod     # بعد التأكد إنه fast
 - 11-10 (لوفي) ون بيس: ٢١ مسار «شغلي أنا» صاروا تطبيق me (Set بمكانها + Mount بالأخير). القفل 29، المصفوفة 37 فعل.
 - 11-10 (لوفي) ون بيس: آخر ٢٩ كتابة انتقلت (me +9، requests 8، field 12). الكتابة بحارس الدخول بس = صفر، القفل maxLegacy=950. المصفوفة 66 فعل. ملاحظة: extra-task seen لمهمة مو موجودة يرد 200 (UPDATE بلا صفوف) — مو ثغرة، بس لازم يصير 404.
 - 11-10 (لوفي) ون بيس: أول فحوص «الشي نفسه» انتقلت للنواة — field.booking_tech_step وfield.customer_signature (طرف بالحجز = IsAssignedTo) وfield.project_delay_reason (طرف بالمشروع = ProjectRepository.IsParty أو project_management). الغريب ياخذ 404. اختبار وحدات + live.
+- 11-10 (لوفي) ون بيس: core.BodyField (يقرا حقل من جسم JSON ويرجّع الجسم للمعالج) + field.crew_rating (ليدر الحجز) وfield.after_check (فني مكلّف) وfield.survey_photo_delete (الي رفعها) بالنواة. مجرّب بحساب فني حقيقي: كلها 404.

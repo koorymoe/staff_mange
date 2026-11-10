@@ -195,17 +195,17 @@ type MonitorDetails struct {
 }
 
 type MonitorInvoiceDetail struct {
-	InvoiceID      string                   `db:"id" json:"invoiceId"`
-	LeaderName     *string                  `db:"leaderName" json:"leaderName"`
-	ExecutionCost  float64                  `db:"executionCost" json:"executionCost"`
-	MaterialsTotal float64                  `db:"materialsTotal" json:"materialsTotal"`
-	DiscountValue  float64                  `db:"discountValue" json:"discountValue"`
-	NetTotal       float64                  `db:"netTotal" json:"netTotal"`
-	IsFree         bool                     `db:"isFree" json:"isFree"`
-	Status         string                   `db:"status" json:"status"`
-	Collected      *float64                 `db:"collected" json:"collected"`
-	ExternalNo     *string                  `db:"externalNo" json:"externalNo"`
-	CreatedAt      time.Time                `db:"createdAt" json:"createdAt"`
+	InvoiceID      string                     `db:"id" json:"invoiceId"`
+	LeaderName     *string                    `db:"leaderName" json:"leaderName"`
+	ExecutionCost  float64                    `db:"executionCost" json:"executionCost"`
+	MaterialsTotal float64                    `db:"materialsTotal" json:"materialsTotal"`
+	DiscountValue  float64                    `db:"discountValue" json:"discountValue"`
+	NetTotal       float64                    `db:"netTotal" json:"netTotal"`
+	IsFree         bool                       `db:"isFree" json:"isFree"`
+	Status         string                     `db:"status" json:"status"`
+	Collected      *float64                   `db:"collected" json:"collected"`
+	ExternalNo     *string                    `db:"externalNo" json:"externalNo"`
+	CreatedAt      time.Time                  `db:"createdAt" json:"createdAt"`
 	Adjustments    []MonitorInvoiceAdjustment `db:"-" json:"adjustments"`
 }
 

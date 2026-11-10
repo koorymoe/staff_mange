@@ -12,7 +12,9 @@ import (
 // QuotationTermsHandler — شروط وأحكام عرض السعر (قرار (ع) 10-08).
 type QuotationTermsHandler struct{ db *sqlx.DB }
 
-func NewQuotationTermsHandler(db *sqlx.DB) *QuotationTermsHandler { return &QuotationTermsHandler{db: db} }
+func NewQuotationTermsHandler(db *sqlx.DB) *QuotationTermsHandler {
+	return &QuotationTermsHandler{db: db}
+}
 
 type quotationTerm struct {
 	ID        string `db:"id" json:"id"`

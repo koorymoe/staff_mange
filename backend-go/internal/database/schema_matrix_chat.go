@@ -2077,7 +2077,7 @@ func matrixChatMigrations() []Migration {
 	}, {
 		// (ع) 11-08: تذكير طلبات المدير الي بلا رد ٤٨ ساعة
 		Version: "0462_manager_request_reminded",
-		SQL: `ALTER TABLE "ManagerRequest" ADD COLUMN IF NOT EXISTS "remindedAt" TIMESTAMPTZ;`,
+		SQL:     `ALTER TABLE "ManagerRequest" ADD COLUMN IF NOT EXISTS "remindedAt" TIMESTAMPTZ;`,
 	}, {
 		// (ع) 11-08: 🏗️ صيت التصاميم — كل مشروع وتخصصاته (معماري… طاقة شمسية، مقاولات)،
 		// وأدوات التصميم الخارجية بزر لكل تخصص (قابلة للتعديل من الشاشة).

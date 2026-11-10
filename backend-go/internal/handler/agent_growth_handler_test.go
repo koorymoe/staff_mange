@@ -36,7 +36,7 @@ func TestAgentFeedbackOwnership(t *testing.T) {
 	t.Cleanup(func() {
 		db.Exec(`DELETE FROM "AgentFeedback" WHERE "messageId" = $1`, msg) //nolint:errcheck
 		db.Exec(`DELETE FROM "MatrixTalk" WHERE id = $1`, chat)            //nolint:errcheck
-		db.Exec(`DELETE FROM "Employee" WHERE id IN ($1, $2)`, me, other) //nolint:errcheck
+		db.Exec(`DELETE FROM "Employee" WHERE id IN ($1, $2)`, me, other)  //nolint:errcheck
 	})
 	h := NewAgentGrowthHandler(db)
 	send := func(emp string) int {

@@ -30,8 +30,8 @@ func TestKamalProjectQuote_Live(t *testing.T) {
 	db.MustExec(`INSERT INTO "Product" (id, name, unit, "defaultPrice", "modelName", specs) VALUES ($1, $2, 'قطعة', 900000, 'LENOVO V15', 'المعالج: i5')`, uuid.NewString(), prod)
 	t.Cleanup(func() {
 		db.Exec(`DELETE FROM "Quotation" WHERE "createdByEmployeeId" = $1`, emp) //nolint:errcheck
-		db.Exec(`DELETE FROM "Product" WHERE name = $1`, prod)                 //nolint:errcheck
-		db.Exec(`DELETE FROM "Employee" WHERE id = $1`, emp)                   //nolint:errcheck
+		db.Exec(`DELETE FROM "Product" WHERE name = $1`, prod)                   //nolint:errcheck
+		db.Exec(`DELETE FROM "Employee" WHERE id = $1`, emp)                     //nolint:errcheck
 	})
 	a := NewMatrixAgent(db, nil, "")
 	tc := &SecretaryTurnCtx{UserID: emp}

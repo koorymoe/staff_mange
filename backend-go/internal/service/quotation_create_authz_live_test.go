@@ -36,8 +36,8 @@ func TestQuotationCreateAuthzLive(t *testing.T) {
 	db.MustExec(`INSERT INTO "Project" (id, code, name) VALUES ($1, $2, $3)`, proj, "PQ"+sfx, "مشروع عرض "+sfx)
 	t.Cleanup(func() {
 		db.Exec(`DELETE FROM "Quotation" WHERE "projectId" = $1 OR "createdByEmployeeId" IN ($2, $3, $4)`, proj, owner, stranger, colleague) //nolint:errcheck
-		db.Exec(`DELETE FROM "Project" WHERE id = $1`, proj)                                                                                    //nolint:errcheck
-		db.Exec(`DELETE FROM "Employee" WHERE id IN ($1, $2, $3)`, owner, stranger, colleague)                                                  //nolint:errcheck
+		db.Exec(`DELETE FROM "Project" WHERE id = $1`, proj)                                                                                 //nolint:errcheck
+		db.Exec(`DELETE FROM "Employee" WHERE id IN ($1, $2, $3)`, owner, stranger, colleague)                                               //nolint:errcheck
 	})
 	items := []model.QuotationItemInput{{ProductName: "كاميرا", Quantity: 1, UnitPrice: 100000}}
 	q, err := svc.Create(model.CreateQuotationRequest{CustomerName: "زبون سري", CreatedByEmployeeID: owner, ProjectID: &proj, Items: items}, owner, "SALES")

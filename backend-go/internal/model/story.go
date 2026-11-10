@@ -24,14 +24,14 @@ const (
 
 // أنواع الأحداث الي تولّد قصة — **السبعة الي قررهم (ع)**.
 const (
-	StoryEventPointDeducted  = "DISCIPLINE_POINT_DEDUCTED"
-	StoryEventPointRestored  = "DISCIPLINE_POINT_RESTORED"
-	StoryEventPaperMissing   = "PAPERWORK_MISSING"
-	StoryEventTaskDue        = "TASK_DUE"
-	StoryEventWorkCompleted  = "WORK_COMPLETED"
-	StoryEventAdminMessage   = "ADMIN_MESSAGE"
-	StoryEventFieldMission   = "FIELD_MISSION"
-	StoryEventPraise         = "PRAISE"
+	StoryEventPointDeducted = "DISCIPLINE_POINT_DEDUCTED"
+	StoryEventPointRestored = "DISCIPLINE_POINT_RESTORED"
+	StoryEventPaperMissing  = "PAPERWORK_MISSING"
+	StoryEventTaskDue       = "TASK_DUE"
+	StoryEventWorkCompleted = "WORK_COMPLETED"
+	StoryEventAdminMessage  = "ADMIN_MESSAGE"
+	StoryEventFieldMission  = "FIELD_MISSION"
+	StoryEventPraise        = "PRAISE"
 )
 
 // StoryPriority أولوية كل نوع.
@@ -207,32 +207,32 @@ const StoryCalmGapMs = 9000
 
 // StoryInstance قصة وحدة بمراحلها.
 type StoryInstance struct {
-	ID                  string          `db:"id" json:"id"`
-	EventID             string          `db:"eventId" json:"eventId"`
-	EventKind           string          `db:"eventKind" json:"eventKind"`
-	StoryType           string          `db:"storyType" json:"storyType"`
-	Version             int             `db:"version" json:"version"`
-	SenderEmployeeID    *string         `db:"senderEmployeeId" json:"senderEmployeeId,omitempty"`
-	SenderName          string          `db:"senderName" json:"senderName"`
+	ID               string  `db:"id" json:"id"`
+	EventID          string  `db:"eventId" json:"eventId"`
+	EventKind        string  `db:"eventKind" json:"eventKind"`
+	StoryType        string  `db:"storyType" json:"storyType"`
+	Version          int     `db:"version" json:"version"`
+	SenderEmployeeID *string `db:"senderEmployeeId" json:"senderEmployeeId,omitempty"`
+	SenderName       string  `db:"senderName" json:"senderName"`
 	// ⚠️ يصير NULL لو انحذف الحساب — **والصف يبقى**. الدليل محفوظ
 	// بـ`RecipientRef` و`RecipientName` تحت.
 	RecipientEmployeeID *string `db:"recipientEmployeeId" json:"recipientEmployeeId,omitempty"`
 	// RecipientRef مرجع ثابت منسوخ وقت الإنشاء — عليه الفهرس الفريد،
 	// حتى ضمانة «نفس الحدث ما ينشئ قصتين» تبقى شغّالة بعد الحذف.
-	RecipientRef  string `db:"recipientRef" json:"recipientRef"`
-	RecipientName string `db:"recipientName" json:"recipientName"`
-	Status              string          `db:"status" json:"status"`
-	Priority            int             `db:"priority" json:"priority"`
-	Physical            bool            `db:"physical" json:"physical"`
-	GroupKey            *string         `db:"groupKey" json:"groupKey,omitempty"`
-	CurrentStep         int             `db:"currentStep" json:"currentStep"`
-	Payload             json.RawMessage `db:"payload" json:"payload"`
-	DeliveredAt         *time.Time      `db:"deliveredAt" json:"deliveredAt,omitempty"`
-	SeenAt              *time.Time      `db:"seenAt" json:"seenAt,omitempty"`
-	OpenedAt            *time.Time      `db:"openedAt" json:"openedAt,omitempty"`
-	AcknowledgedAt      *time.Time      `db:"acknowledgedAt" json:"acknowledgedAt,omitempty"`
-	CreatedAt           time.Time       `db:"createdAt" json:"createdAt"`
-	ExpiresAt           *time.Time      `db:"expiresAt" json:"expiresAt,omitempty"`
+	RecipientRef   string          `db:"recipientRef" json:"recipientRef"`
+	RecipientName  string          `db:"recipientName" json:"recipientName"`
+	Status         string          `db:"status" json:"status"`
+	Priority       int             `db:"priority" json:"priority"`
+	Physical       bool            `db:"physical" json:"physical"`
+	GroupKey       *string         `db:"groupKey" json:"groupKey,omitempty"`
+	CurrentStep    int             `db:"currentStep" json:"currentStep"`
+	Payload        json.RawMessage `db:"payload" json:"payload"`
+	DeliveredAt    *time.Time      `db:"deliveredAt" json:"deliveredAt,omitempty"`
+	SeenAt         *time.Time      `db:"seenAt" json:"seenAt,omitempty"`
+	OpenedAt       *time.Time      `db:"openedAt" json:"openedAt,omitempty"`
+	AcknowledgedAt *time.Time      `db:"acknowledgedAt" json:"acknowledgedAt,omitempty"`
+	CreatedAt      time.Time       `db:"createdAt" json:"createdAt"`
+	ExpiresAt      *time.Time      `db:"expiresAt" json:"expiresAt,omitempty"`
 }
 
 // StoryWithScene القصة ومعها خطواتها الجاهزة — الواجهة ما تبني مشهداً
@@ -250,12 +250,12 @@ type StoryWithScene struct {
 // جديداً كل نداء يعني **الفهرس الفريد ما يمنع التكرار**، وهذا يفرّغ
 // كل ضمانة idempotency من معناها.
 type EmitStoryRequest struct {
-	EventID     string
-	EventKind   string
-	SenderID    *string
-	SenderName  string
+	EventID       string
+	EventKind     string
+	SenderID      *string
+	SenderName    string
 	RecipientID   string
 	RecipientName string
 	GroupKey      *string
-	Payload     map[string]any
+	Payload       map[string]any
 }

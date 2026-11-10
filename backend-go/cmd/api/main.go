@@ -957,8 +957,11 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	meApp := me.New() // «شغلي أنا»: المعالجات تنحط بمكانها، والتسجيل بالأخير
 	requestsApp := requests.New()
 	fieldApp := field.New(field.Deps{
-		BookingParty: func(b, e string) bool { ok, err := bookingRepo.IsAssignedTo(b, e); return err == nil && ok },
-		ProjectParty: repository.NewProjectRepository(db).IsParty,
+		BookingParty:        func(b, e string) bool { ok, err := bookingRepo.IsAssignedTo(b, e); return err == nil && ok },
+		ProjectParty:        repository.NewProjectRepository(db).IsParty,
+		BookingLeader:       repository.NewMatrixChainRepository(db).IsBookingLeader,
+		BookingTech:         repository.NewMatrixChainRepository(db).IsBookingTech,
+		SurveyPhotoUploader: repository.NewSurveyPhotoRepository(db).UploaderOf,
 	})
 
 	mux.HandleFunc("GET /api/health", func(w http.ResponseWriter, r *http.Request) {

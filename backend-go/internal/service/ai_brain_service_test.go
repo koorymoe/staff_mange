@@ -180,7 +180,7 @@ func TestJudgeWorkStop_PurchaseNotBlamed(t *testing.T) {
 	empID := "emp-1"
 	sig := model.AiSignal{ID: "s1", Kind: model.AiSignalWorkStopped, EmployeeID: &empID}
 	cases := map[string]model.WorkStopEvidence{
-		"السبب":  {StopReason: "توقف لشراء منتجات", MinutesToShiftEnd: 300},
+		"السبب":   {StopReason: "توقف لشراء منتجات", MinutesToShiftEnd: 300},
 		"المصروف": {SelfPurchasesSameDay: 1, MinutesToShiftEnd: 300},
 	}
 	for name, ev := range cases {

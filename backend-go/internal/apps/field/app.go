@@ -39,6 +39,11 @@ type Deps struct {
 	BookingParty func(bookingID, employeeID string) bool
 	// ProjectParty مسؤول/مفوّض/كاشف/منشئ المشروع أو مشرف حجزه
 	ProjectParty func(projectID, employeeID string) bool
+	// BookingLeader ليدر الحجز، BookingTech فني مكلّف بيه (matrix_chain_repository)
+	BookingLeader func(bookingID, employeeID string) bool
+	BookingTech   func(bookingID, employeeID string) bool
+	// SurveyPhotoUploader منو رفع صورة الكشف ("" إذا مو موجودة)
+	SurveyPhotoUploader func(photoID string) string
 }
 
 // App المعالجات تنحط بمكانها بـmain (Set)، والتسجيل مرة وحدة بالأخير.
@@ -65,6 +70,16 @@ func (a *App) checks() map[core.Action]core.Rule {
 	return map[core.Action]core.Rule{
 		"field.booking_tech_step":  {Label: "خطوة الفني على حجز هو طرف بيه", Check: party},
 		"field.customer_signature": {Label: "ياخذ توقيع الزبون على حجز هو طرف بيه (والمعالج: الكادر بس)", Check: party},
+		"field.crew_rating": {Label: "يقيّم فنيّي حجز هو ليدره (bookingId من الطلب)", Check: func(x *core.Actor, r *http.Request) bool {
+			return a.d.BookingLeader(core.BodyField(r, "bookingId"), x.ID)
+		}},
+		"field.after_check": {Label: "جرد بعد حجز هو مكلّف بيه (bookingId من الطلب)", Check: func(x *core.Actor, r *http.Request) bool {
+			return a.d.BookingTech(core.BodyField(r, "bookingId"), x.ID)
+		}},
+		"field.survey_photo_delete": {Label: "يحذف صورة كشف هو رفعها (والمدير)", Check: func(x *core.Actor, r *http.Request) bool {
+			up := a.d.SurveyPhotoUploader(r.PathValue("id"))
+			return up != "" && up == x.ID
+		}},
 		"field.project_delay_reason": {Label: "سبب تأخير مشروع — طرف بالمشروع أو صلاحية إدارة المشاريع", Check: func(x *core.Actor, r *http.Request) bool {
 			return x.Can("project_management") || a.d.ProjectParty(r.PathValue("id"), x.ID)
 		}},

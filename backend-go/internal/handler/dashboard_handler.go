@@ -62,16 +62,16 @@ func (h *DashboardHandler) Summary(w http.ResponseWriter, r *http.Request) {
 // الجمع مكانه قاعدة البيانات. هذا المسار يرجّع نفس الأرقام بالضبط —
 // مجاميع كاملة مو مقصوصة — بعشرات البايتات بدل ميغابايتات.
 type financeSummary struct {
-	CompletedCount    int     `db:"completedCount" json:"completedCount"`
-	UnverifiedCount   int     `db:"unverifiedCount" json:"unverifiedCount"`
-	VerifiedCount     int     `db:"verifiedCount" json:"verifiedCount"`
-	TodayCompleted    int     `db:"todayCompleted" json:"todayCompleted"`
-	TodayCreated      int     `db:"todayCreated" json:"todayCreated"`
-	PendingCount      int     `db:"pendingCount" json:"pendingCount"`
-	ConfirmedCount    int     `db:"confirmedCount" json:"confirmedCount"`
-	InProgressCount   int     `db:"inProgressCount" json:"inProgressCount"`
-	ActiveCrewCount   int     `db:"activeCrewCount" json:"activeCrewCount"`
-	TotalCollected    float64 `db:"totalCollected" json:"totalCollected"`
+	CompletedCount  int     `db:"completedCount" json:"completedCount"`
+	UnverifiedCount int     `db:"unverifiedCount" json:"unverifiedCount"`
+	VerifiedCount   int     `db:"verifiedCount" json:"verifiedCount"`
+	TodayCompleted  int     `db:"todayCompleted" json:"todayCompleted"`
+	TodayCreated    int     `db:"todayCreated" json:"todayCreated"`
+	PendingCount    int     `db:"pendingCount" json:"pendingCount"`
+	ConfirmedCount  int     `db:"confirmedCount" json:"confirmedCount"`
+	InProgressCount int     `db:"inProgressCount" json:"inProgressCount"`
+	ActiveCrewCount int     `db:"activeCrewCount" json:"activeCrewCount"`
+	TotalCollected  float64 `db:"totalCollected" json:"totalCollected"`
 	// قرار (ع) 10-09: فصل فلوس الحجوزات عن فلوس المشاريع
 	BookingsCollected float64 `db:"bookingsCollected" json:"bookingsCollected"`
 	ProjectsCollected float64 `db:"projectsCollected" json:"projectsCollected"`

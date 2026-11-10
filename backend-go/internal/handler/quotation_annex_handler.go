@@ -14,7 +14,9 @@ import (
 // نوع المشروع». القالب: اسم وأجزاء، وكل جزء عنوان وبنود (عنوان + نص).
 type QuotationAnnexHandler struct{ db *sqlx.DB }
 
-func NewQuotationAnnexHandler(db *sqlx.DB) *QuotationAnnexHandler { return &QuotationAnnexHandler{db: db} }
+func NewQuotationAnnexHandler(db *sqlx.DB) *QuotationAnnexHandler {
+	return &QuotationAnnexHandler{db: db}
+}
 
 type annexItem struct {
 	Title string `json:"title"`

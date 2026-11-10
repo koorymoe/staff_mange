@@ -47,8 +47,8 @@ type Service struct {
 	// ⚠️ عمود بالجدول → لازم حقل هنا (SELECT *).
 	SlaHours int `db:"slaHours" json:"slaHours"`
 	// MinPhotos أقل عدد صور قبل «تم» — صفر = بلا شرط.
-	MinPhotos int `db:"minPhotos" json:"minPhotos"`
-	Skills      []Skill   `db:"-" json:"skills"`
+	MinPhotos int     `db:"minPhotos" json:"minPhotos"`
+	Skills    []Skill `db:"-" json:"skills"`
 }
 
 type CreateServiceRequest struct {

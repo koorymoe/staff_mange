@@ -232,7 +232,9 @@ func (h *MatrixSuggestHandler) Accuracy(w http.ResponseWriter, r *http.Request) 
 }
 
 // ═══ المرحلة الثالثة: ماتركس ينفّذ ═══
-type MatrixAutonomyHandler struct{ svc *service.MatrixAutonomyService }
+type MatrixAutonomyHandler struct {
+	svc *service.MatrixAutonomyService
+}
 
 func NewMatrixAutonomyHandler(svc *service.MatrixAutonomyService) *MatrixAutonomyHandler {
 	return &MatrixAutonomyHandler{svc: svc}

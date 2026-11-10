@@ -3,6 +3,7 @@ package field
 import (
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"staffmange-api/internal/core"
@@ -63,5 +64,43 @@ func TestFieldChecks(t *testing.T) {
 		if got := req(c.method, c.path, c.a, c.act); got != c.want {
 			t.Errorf("%s: %v، المطلوب %v", c.name, got, c.want)
 		}
+	}
+}
+
+func TestFieldBodyAndPhotoChecks(t *testing.T) {
+	app := New(Deps{
+		BookingParty:        func(string, string) bool { return false },
+		ProjectParty:        func(string, string) bool { return false },
+		BookingLeader:       func(b, e string) bool { return b == "b1" && e == "lead" },
+		BookingTech:         func(b, e string) bool { return b == "b1" && e == "tech" },
+		SurveyPhotoUploader: func(id string) string { return map[string]string{"ph1": "tech"}[id] },
+	})
+	pol := core.NewPolicies()
+	for act, r := range app.Policies() {
+		pol.Register(act, r)
+	}
+	body := func(s string) *http.Request {
+		return httptest.NewRequest("POST", "/x", strings.NewReader(s))
+	}
+	lead := &core.Actor{ID: "lead", Role: "TECHNICIAN", Perms: map[string]bool{}}
+	tech := &core.Actor{ID: "tech", Role: "TECHNICIAN", Perms: map[string]bool{}}
+	if !pol.Allowed(lead, "field.crew_rating", body(`{"bookingId":"b1"}`)) || pol.Allowed(tech, "field.crew_rating", body(`{"bookingId":"b1"}`)) {
+		t.Error("تقييم الكادر لليدر بس")
+	}
+	if pol.Allowed(lead, "field.crew_rating", body(`{"bookingId":"b2"}`)) || pol.Allowed(lead, "field.crew_rating", body(`bad`)) {
+		t.Error("ليدر بحجز ثاني أو جسم خربان")
+	}
+	if !pol.Allowed(tech, "field.after_check", body(`{"bookingId":"b1"}`)) || pol.Allowed(lead, "field.after_check", body(`{"bookingId":"b1"}`)) {
+		t.Error("الجرد بعد الحجز للفني المكلّف")
+	}
+	del := func(id string) *http.Request {
+		mux := http.NewServeMux()
+		var got *http.Request
+		mux.HandleFunc("DELETE /api/survey-photos/{id}", func(_ http.ResponseWriter, r *http.Request) { got = r })
+		mux.ServeHTTP(httptest.NewRecorder(), httptest.NewRequest("DELETE", "/api/survey-photos/"+id, nil))
+		return got
+	}
+	if !pol.Allowed(tech, "field.survey_photo_delete", del("ph1")) || pol.Allowed(lead, "field.survey_photo_delete", del("ph1")) || pol.Allowed(tech, "field.survey_photo_delete", del("nope")) {
+		t.Error("حذف صورة الكشف للي رفعها بس")
 	}
 }

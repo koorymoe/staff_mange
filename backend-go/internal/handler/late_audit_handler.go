@@ -51,9 +51,9 @@ type lateRow struct {
 	WaitingKind     *string    `db:"waitingKind" json:"waitingKind"`
 	WaitingNote     *string    `db:"waitingNote" json:"waitingNote"`
 	ContactAttempts int        `db:"contactAttempts" json:"contactAttempts"`
-	Cause          string     `db:"-" json:"cause"`
-	CauseDetail    string     `db:"-" json:"causeDetail"`
-	DataIssues     []string   `db:"-" json:"dataIssues"`
+	Cause           string     `db:"-" json:"cause"`
+	CauseDetail     string     `db:"-" json:"causeDetail"`
+	DataIssues      []string   `db:"-" json:"dataIssues"`
 }
 
 // LateMinDays (دازاي 11-06): أقل تأخير ينحسب — يومين على يوم الموعد.

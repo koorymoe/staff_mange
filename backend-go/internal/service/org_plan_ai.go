@@ -70,8 +70,8 @@ func (s *OrgService) planFacts(sc orgPlanScope) string {
 		fmt.Fprintf(&b, "- %s (%s): هسه %s، %s\n", m.Key, m.Label, cur, dir)
 	}
 	issues := []struct {
-		Title string `db:"title"`
-		Sev   string `db:"severity"`
+		Title string  `db:"title"`
+		Sev   string  `db:"severity"`
 		Sol   *string `db:"solutionPlan"`
 	}{}
 	errlog.Err(s.db.Select(&issues, `SELECT title, severity, "solutionPlan" FROM "OrgIssueReport"

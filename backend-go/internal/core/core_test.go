@@ -1,6 +1,7 @@
 package core
 
 import (
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -72,7 +73,7 @@ func TestPolicyDecisions(t *testing.T) {
 		{admin, "demo.edit", true}, // المدير يعبر
 		{admin, "demo.secret", false},
 		{owner, "demo.secret", true},
-		{tech, "demo.nope", false}, // فعل مو مسجّل = لا
+		{tech, "demo.nope", false},    // فعل مو مسجّل = لا
 		{admin, "demo.strict", false}, // Strict: المدير بلا الصلاحية ما يعبر
 		{owner, "demo.strict", true},
 		{&Actor{ID: "x", Role: "ADMIN", Perms: map[string]bool{"demo_create": true}}, "demo.strict", true},
@@ -151,5 +152,19 @@ func TestMatrixFlagsUnusedActions(t *testing.T) {
 		if row.Unused {
 			t.Errorf("%s بلا مسار", row.Action)
 		}
+	}
+}
+
+func TestBodyFieldKeepsBody(t *testing.T) {
+	r := httptest.NewRequest("POST", "/x", strings.NewReader(`{"bookingId":"b1","n":2}`))
+	if got := BodyField(r, "bookingId"); got != "b1" {
+		t.Fatalf("الحقل: %q", got)
+	}
+	rest, _ := io.ReadAll(r.Body)
+	if string(rest) != `{"bookingId":"b1","n":2}` {
+		t.Fatalf("الجسم انخرب للمعالج: %q", rest)
+	}
+	if BodyField(httptest.NewRequest("POST", "/x", strings.NewReader(`not json`)), "bookingId") != "" {
+		t.Fatal("جسم مو JSON لازم يرجع فاضي")
 	}
 }

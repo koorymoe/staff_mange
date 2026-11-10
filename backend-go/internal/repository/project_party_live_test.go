@@ -31,9 +31,9 @@ func TestProjectIsPartyLive(t *testing.T) {
 	db.MustExec(`INSERT INTO "Booking" (id, code, "customerId", "projectSupervisorId") VALUES ($1, $2, $3, $4)`, bk, "PB"+sfx, cust, sup)
 	db.MustExec(`INSERT INTO "Project" (id, code, name, "responsibleEmployeeId", "bookingId") VALUES ($1, $2, 'مشروع طرف', $3, $4)`, proj, "PX"+sfx, resp, bk)
 	t.Cleanup(func() {
-		db.Exec(`DELETE FROM "Project" WHERE id = $1`, proj)                          //nolint:errcheck
-		db.Exec(`DELETE FROM "Booking" WHERE id = $1`, bk)                            //nolint:errcheck
-		db.Exec(`DELETE FROM "Customer" WHERE id = $1`, cust)                         //nolint:errcheck
+		db.Exec(`DELETE FROM "Project" WHERE id = $1`, proj)                         //nolint:errcheck
+		db.Exec(`DELETE FROM "Booking" WHERE id = $1`, bk)                           //nolint:errcheck
+		db.Exec(`DELETE FROM "Customer" WHERE id = $1`, cust)                        //nolint:errcheck
 		db.Exec(`DELETE FROM "Employee" WHERE id IN ($1, $2, $3)`, resp, sup, other) //nolint:errcheck
 	})
 	r := NewProjectRepository(db)

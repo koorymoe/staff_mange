@@ -1,8 +1,8 @@
 package handler
 
 import (
-	"staffmange-api/internal/middleware"
 	"net/http"
+	"staffmange-api/internal/middleware"
 
 	"staffmange-api/internal/model"
 	"staffmange-api/internal/service"
