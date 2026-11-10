@@ -2296,5 +2296,21 @@ func matrixChatMigrations() []Migration {
 				PRIMARY KEY ("quotationId", chapter)
 			);
 		`,
+	}, {
+		// (ل) 11-10 دازاي: «احفظ هذا عرض السعر… ادرسه… سويلي واحد مثله لفلان مشروع وغيّر
+		// المنتجات والضوابط». النموذج نسخة من شكل العرض وفصوله وبنوده وشروطه — يدوي وبماتركس.
+		Version: "0476_quotation_templates",
+		SQL: `
+			CREATE TABLE IF NOT EXISTS "QuotationTemplate" (
+				id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
+				name TEXT NOT NULL,
+				"sourceQuotationId" TEXT REFERENCES "Quotation"(id) ON DELETE SET NULL,
+				data JSONB NOT NULL,
+				"styleNotes" TEXT,
+				"createdById" TEXT REFERENCES "Employee"(id) ON DELETE SET NULL,
+				"createdAt" TIMESTAMPTZ NOT NULL DEFAULT now(),
+				"archivedAt" TIMESTAMPTZ
+			);
+		`,
 	}}
 }

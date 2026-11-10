@@ -2395,6 +2395,11 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	mux.Handle("POST /api/work-type-images", middleware.Chain(http.HandlerFunc(wtImages.Add), requireAuth, allowQuotationOrDelegate))
 	mux.Handle("DELETE /api/work-type-images/{id}", middleware.Chain(http.HandlerFunc(wtImages.Remove), requireAuth, allowQuotationOrDelegate))
 	mux.Handle("POST /api/quotations/{id}/images/pick", middleware.Chain(http.HandlerFunc(wtImages.Pick), requireAuth, allowQuotationOrDelegate))
+	// 📋 (ل) 11-10: نماذج عروض الأسعار — يدوي (وماتركس عبر أدواته)
+	qTemplates := handler.NewQuotationTemplateHandler(service.NewQuotationTemplateService(db))
+	mux.Handle("GET /api/quotation-templates", middleware.Chain(http.HandlerFunc(qTemplates.List), requireAuth, allowQuotationOrDelegate))
+	mux.Handle("POST /api/quotation-templates", middleware.Chain(http.HandlerFunc(qTemplates.Save), requireAuth, allowQuotationOrDelegate))
+	mux.Handle("POST /api/quotation-templates/{id}/use", middleware.Chain(http.HandlerFunc(qTemplates.Use), requireAuth, allowQuotationOrDelegate, idem))
 	mux.Handle("PUT /api/quotations/{id}", middleware.Chain(http.HandlerFunc(quotationHandler.Update), requireAuth, allowQuotationOrDelegate))
 	mux.Handle("DELETE /api/quotations/{id}", middleware.Chain(http.HandlerFunc(quotationHandler.Delete), requireAuth, requireAdmin))
 
