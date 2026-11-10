@@ -95,6 +95,8 @@ const OrgPlansPage = lazyRetry(() => import('./pages/OrgPlansPage'))
 const MaintenanceContractsPage = lazyRetry(() => import('./pages/MaintenanceContractsPage'))
 const DesignSetsPage = lazyRetry(() => import('./pages/DesignSetsPage'))
 const DesignSetPage = lazyRetry(() => import('./pages/DesignSetPage'))
+const PlanSetsPage = lazyRetry(() => import('./pages/PlanSetsPage'))
+const PlanSetPage = lazyRetry(() => import('./pages/PlanSetPage'))
 const DirectorsRankingPage = lazyRetry(() => import('./pages/DirectorsRankingPage'))
 const MyOrgCard = lazyRetry(() => import('./components/MyOrgCard'))
 const DepartmentsPage = lazyRetry(() => import('./pages/DepartmentsPage'))
@@ -237,6 +239,9 @@ function App() {
           {/* (ع) 11-08: 🏗️ صيت التصاميم — الصلاحيات بالخادم (يشوف المصمم المكلّف صيته بس) */}
           <Route path="design-sets" element={<DesignSetsPage />} />
           <Route path="design-sets/:id" element={<DesignSetPage />} />
+          {/* (ك) 11-10: 📐 سيت المخططات — الخادم يحصرها (نفس صيت التصاميم) */}
+          <Route path="plan-sets" element={<PlanSetsPage />} />
+          <Route path="plan-sets/:id" element={<PlanSetPage />} />
           <Route path="org/plans" element={<RequireAdmin><OrgPlansPage /></RequireAdmin>} />
           <Route path="org/desk" element={<OrgDeskPage />} />
           <Route path="org/desk/:divisionId" element={<OrgDeskPage />} />

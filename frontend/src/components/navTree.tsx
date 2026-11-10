@@ -874,6 +874,8 @@ export const navItems: NavItem[] = [
     children: [
       // (ع) 11-08: 🏗️ صيت التصاميم — الخادم يحصرها (المالك/المدير، الهندسة ووحدة التصميم، إدارة المشاريع، والمصمم المكلّف)
       { to: '/design-sets', label: '🏗️ صيت التصاميم', icon: <></> },
+      // (ك) 11-10: 📐 سيت المخططات بطلب دازاي — بند جديد، نفس شرط صيت التصاميم
+      { to: '/plan-sets', label: '📐 سيت المخططات', icon: <></> },
       { to: '/design-forms/quick-add', label: 'إضافة سؤال', icon: <></>, roles: ['ADMIN'], unlockPermission: 'design_forms' },
       { to: '/design-forms', label: 'فورمة التصميم', icon: <></>, roles: ['ADMIN'], unlockPermission: 'design_forms' },
       { to: '/design-gallery', label: '🎨 معرض التصاميم', icon: <></>, roles: ['ADMIN'], unlockPermission: 'design_gallery' },
@@ -1246,7 +1248,7 @@ export function isNavVisible(item: NavItem, ctx: NavContext, unitGranted = false
         && (m.unitId === unit || (m.divisionId === div && !m.unitId)))
   }
   // (ع) 11-08: صيت التصاميم — نفس شرط الخادم تقريباً (والمكلّف من برّا يوصله رابط المهمة)
-  if (item.to === '/design-sets') {
+  if (item.to === '/design-sets' || item.to === '/plan-sets') {
     return role === 'ADMIN' || ctx.employee?.actualRole === 'OWNER' || role === 'PROJECT_MANAGER'
       || ['project_management', 'unit_design', 'design_forms', 'design_gallery'].some((p) => ctx.permissions.includes(p))
       || !!ctx.orgMemberships?.some((m) => m.divisionId === 'eng')
