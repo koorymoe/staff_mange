@@ -2271,5 +2271,30 @@ func matrixChatMigrations() []Migration {
 			ALTER TABLE "PlanSet" ADD COLUMN IF NOT EXISTS "isTemplate" BOOLEAN NOT NULL DEFAULT false;
 			ALTER TABLE "PlanSet" ADD COLUMN IF NOT EXISTS "quotationId" TEXT REFERENCES "Quotation"(id) ON DELETE SET NULL;
 		`,
+	}, {
+		// (ل) 11-10 دازاي: «عرض السعر… اكتب طاقة شمسية تطلعلي صور طاقة شمسية». مكتبة صور
+		// لكل نوع عمل يرفعها الكادر (حتى آلاف)، وكل عرض ياخذ صورة غير — الأقل استعمالاً.
+		// الاختيار ينحفظ للعرض حتى نفس العرض يطلع بنفس الصورة كل مرة.
+		Version: "0475_work_type_images",
+		SQL: `
+			CREATE TABLE IF NOT EXISTS "WorkTypeImage" (
+				id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
+				"workTypeId" TEXT NOT NULL REFERENCES "ProjectWorkType"(id) ON DELETE CASCADE,
+				"fileKey" TEXT NOT NULL,
+				"createdById" TEXT REFERENCES "Employee"(id) ON DELETE SET NULL,
+				"createdAt" TIMESTAMPTZ NOT NULL DEFAULT now(),
+				"useCount" INT NOT NULL DEFAULT 0,
+				"lastUsedAt" TIMESTAMPTZ,
+				"removedAt" TIMESTAMPTZ
+			);
+			CREATE INDEX IF NOT EXISTS "WorkTypeImage_pick_idx" ON "WorkTypeImage" ("workTypeId", "useCount") WHERE "removedAt" IS NULL;
+			CREATE TABLE IF NOT EXISTS "QuotationImagePick" (
+				"quotationId" TEXT NOT NULL REFERENCES "Quotation"(id) ON DELETE CASCADE,
+				chapter TEXT NOT NULL,
+				"imageId" TEXT NOT NULL REFERENCES "WorkTypeImage"(id) ON DELETE CASCADE,
+				"pickedAt" TIMESTAMPTZ NOT NULL DEFAULT now(),
+				PRIMARY KEY ("quotationId", chapter)
+			);
+		`,
 	}}
 }

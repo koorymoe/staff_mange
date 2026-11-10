@@ -2389,6 +2389,12 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	mux.Handle("GET /api/quotation-annex-templates", middleware.Chain(http.HandlerFunc(annexHandler.List), requireAuth, allowQuotationOrDelegate))
 	mux.Handle("PUT /api/quotation-annex-templates", middleware.Chain(http.HandlerFunc(annexHandler.Save), requireAuth, requireQuotationAccess))
 	mux.Handle("POST /api/quotations", middleware.Chain(http.HandlerFunc(quotationHandler.Create), requireAuth, allowQuotationOrDelegate))
+	// 🖼️ (ل) 11-10: مكتبة صور أنواع العمل — كل عرض ياخذ صورة غير حسب فصوله
+	wtImages := handler.NewWorkTypeImageHandler(service.NewWorkTypeImageService(db))
+	mux.Handle("GET /api/work-type-images", middleware.Chain(http.HandlerFunc(wtImages.List), requireAuth, allowQuotationOrDelegate))
+	mux.Handle("POST /api/work-type-images", middleware.Chain(http.HandlerFunc(wtImages.Add), requireAuth, allowQuotationOrDelegate))
+	mux.Handle("DELETE /api/work-type-images/{id}", middleware.Chain(http.HandlerFunc(wtImages.Remove), requireAuth, allowQuotationOrDelegate))
+	mux.Handle("POST /api/quotations/{id}/images/pick", middleware.Chain(http.HandlerFunc(wtImages.Pick), requireAuth, allowQuotationOrDelegate))
 	mux.Handle("PUT /api/quotations/{id}", middleware.Chain(http.HandlerFunc(quotationHandler.Update), requireAuth, allowQuotationOrDelegate))
 	mux.Handle("DELETE /api/quotations/{id}", middleware.Chain(http.HandlerFunc(quotationHandler.Delete), requireAuth, requireAdmin))
 
