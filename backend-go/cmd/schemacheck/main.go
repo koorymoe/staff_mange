@@ -20,11 +20,14 @@ import (
 
 	"github.com/jmoiron/sqlx"
 	_ "github.com/lib/pq"
+
+	"staffmange-api/internal/models"
 )
 
-// Tags كل أسماء db:"…" بالكود (أي struct).
+// Tags كل أسماء db:"…" بالكود (أي struct)، ومعها أعمدة الموديلات (internal/models) —
+// من ون بيس (11-10) الموديل هو مكان العمود الرسمي.
 func Tags(root string) (map[string]bool, error) {
-	out := map[string]bool{}
+	out := models.ColumnNames()
 	err := filepath.WalkDir(root, func(p string, d fs.DirEntry, err error) error {
 		if err != nil || d.IsDir() || !strings.HasSuffix(p, ".go") || strings.HasSuffix(p, "_test.go") {
 			return err
@@ -57,7 +60,7 @@ func Check(db *sqlx.DB, tags map[string]bool) ([]Missing, error) {
 	}{}
 	if err := db.Select(&rows, `SELECT c.table_name AS t, c.column_name AS c FROM information_schema.columns c
 		JOIN information_schema.tables t ON t.table_name = c.table_name AND t.table_schema = c.table_schema
-		WHERE c.table_schema = 'public' AND t.table_type = 'BASE TABLE' AND c.table_name NOT LIKE 'schema_%'`); err != nil {
+		WHERE c.table_schema = 'public' AND t.table_type = 'BASE TABLE' AND c.table_name NOT LIKE 'schema_%' AND c.table_name <> 'SchemaMigration'`); err != nil {
 		return nil, err
 	}
 	out := []Missing{}

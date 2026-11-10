@@ -12,7 +12,7 @@ import (
 
 // قفل «ون بيس» (11-10): أعمدة القاعدة الي ماكو إلها مكان بموديلات Go — الرقم ينزل بس.
 // عمود جديد؟ ضيفه لـstruct بوسم db:"…". صلّحت عمود قديم؟ نزّل الحد هنا.
-const maxMissing = 148
+const maxMissing = 0 // (11-10) كل عمود إله موديل بـinternal/models
 
 func TestSchemaColumnsHaveGoModels(t *testing.T) {
 	url := os.Getenv("DATABASE_URL")
