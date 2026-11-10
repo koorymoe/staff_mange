@@ -2077,7 +2077,7 @@ func matrixChatMigrations() []Migration {
 	}, {
 		// (ع) 11-08: تذكير طلبات المدير الي بلا رد ٤٨ ساعة
 		Version: "0462_manager_request_reminded",
-		SQL: `ALTER TABLE "ManagerRequest" ADD COLUMN IF NOT EXISTS "remindedAt" TIMESTAMPTZ;`,
+		SQL:     `ALTER TABLE "ManagerRequest" ADD COLUMN IF NOT EXISTS "remindedAt" TIMESTAMPTZ;`,
 	}, {
 		// (ع) 11-08: 🏗️ صيت التصاميم — كل مشروع وتخصصاته (معماري… طاقة شمسية، مقاولات)،
 		// وأدوات التصميم الخارجية بزر لكل تخصص (قابلة للتعديل من الشاشة).
@@ -2262,6 +2262,14 @@ func matrixChatMigrations() []Migration {
 				title = CASE WHEN title = "typeCode" THEN CASE "typeCode" WHEN '6.1' THEN '8.1' WHEN '7.1' THEN '6.1'
 					WHEN '7.2' THEN '6.2' WHEN '7.3' THEN '6.3' WHEN '8.1' THEN '9.1' WHEN '9.1' THEN '7.1' END ELSE title END
 			WHERE "typeCode" IN ('6.1', '7.1', '7.2', '7.3', '8.1', '9.1');
+		`,
+	}, {
+		// (ل) 11-10 دازاي: «اكدر اسوي نماذج جاهزة… للمعاينة والاعلانات وأخذ منها» —
+		// السيت يصير نموذج، ويرتبط بعرض السعر الي انسوى منه (PDF التصاميم + PDF العرض).
+		Version: "0474_plan_set_template_quote",
+		SQL: `
+			ALTER TABLE "PlanSet" ADD COLUMN IF NOT EXISTS "isTemplate" BOOLEAN NOT NULL DEFAULT false;
+			ALTER TABLE "PlanSet" ADD COLUMN IF NOT EXISTS "quotationId" TEXT REFERENCES "Quotation"(id) ON DELETE SET NULL;
 		`,
 	}}
 }

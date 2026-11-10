@@ -114,4 +114,3 @@ func TestPlansOverviewReopen_Live(t *testing.T) {
 		t.Fatalf("حالة المهمة لازم تطلع بالبنود: %v", err)
 	}
 }
-

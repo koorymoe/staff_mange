@@ -1,7 +1,10 @@
 package service
 
 import (
+	"fmt"
+
 	"errors"
+	"github.com/lib/pq"
 	"strings"
 	"time"
 
@@ -102,6 +105,8 @@ type PlanSet struct {
 	ArchivedAt    *time.Time `db:"archivedAt" json:"archivedAt"`
 	Files         int        `db:"files" json:"files"`
 	Cover         *string    `db:"cover" json:"cover"`
+	IsTemplate    bool       `db:"isTemplate" json:"isTemplate"`
+	QuotationID   *string    `db:"quotationId" json:"quotationId"`
 }
 
 type PlanFile struct {
@@ -151,7 +156,7 @@ func (s *PlanSetService) Projects() []ProjectOption { return s.design.Projects()
 const planImageTypes = `('image/jpeg', 'image/png', 'image/webp')`
 
 const planSetCols = `SELECT d.id, d.title, d."projectId", p.code AS "projectCode", p.name AS "projectName",
-	d.notes, e.name AS "createdByName", d."createdAt", d."archivedAt",
+	d.notes, e.name AS "createdByName", d."createdAt", d."archivedAt", d."isTemplate", d."quotationId",
 	(SELECT count(*) FROM "PlanFile" f WHERE f."setId" = d.id AND f."removedAt" IS NULL)::int AS files,
 	(SELECT f."fileKey" FROM "PlanFile" f WHERE f."setId" = d.id AND f."removedAt" IS NULL
 	   AND f."fileType" IN ` + planImageTypes + ` ORDER BY f."createdAt" LIMIT 1) AS cover
@@ -178,9 +183,10 @@ func (s *PlanSetService) List(emp, role string, perms []string) ([]PlanSet, erro
 }
 
 type PlanSetInput struct {
-	Title     string `json:"title"`
-	ProjectID string `json:"projectId"`
-	Notes     string `json:"notes"`
+	Title      string `json:"title"`
+	ProjectID  string `json:"projectId"`
+	Notes      string `json:"notes"`
+	IsTemplate bool   `json:"isTemplate"`
 }
 
 func (s *PlanSetService) Create(emp, role string, perms []string, in PlanSetInput) (string, error) {
@@ -192,9 +198,9 @@ func (s *PlanSetService) Create(emp, role string, perms []string, in PlanSetInpu
 		return "", errors.New("اكتب اسم السيت (مثلاً: سيت مشروع الجامعة)")
 	}
 	var id string
-	err := s.db.Get(&id, `INSERT INTO "PlanSet" (title, "projectId", notes, "createdById")
-		VALUES ($1, NULLIF($2, ''), NULLIF(btrim($3), ''), $4) RETURNING id`,
-		in.Title, strings.TrimSpace(in.ProjectID), in.Notes, emp)
+	err := s.db.Get(&id, `INSERT INTO "PlanSet" (title, "projectId", notes, "createdById", "isTemplate")
+		VALUES ($1, NULLIF($2, ''), NULLIF(btrim($3), ''), $4, $5) RETURNING id`,
+		in.Title, strings.TrimSpace(in.ProjectID), in.Notes, emp, in.IsTemplate)
 	if err != nil && strings.Contains(err.Error(), "foreign key") {
 		return "", errors.New("المشروع مو موجود")
 	}
@@ -380,4 +386,87 @@ func (s *PlanSetService) Overview() (PlanOverview, error) {
 		  FROM "PlanFile" f JOIN "PlanSet" d ON d.id = f."setId" WHERE f."removedAt" IS NULL
 		) a ORDER BY at DESC LIMIT 6`)
 	return out, err
+}
+
+// ═══ (ل) 11-10 دازاي: نماذج جاهزة، والنسخ منها، والربط بعرض السعر ═══
+
+// PlanSetUpdate تعديل السيت: الاسم، المشروع، نموذج لو لا، وعرض السعر المرتبط.
+// الحقل الي ما ينرسل (nil) ما يتغيّر.
+type PlanSetUpdate struct {
+	Title       *string `json:"title"`
+	ProjectID   *string `json:"projectId"`
+	IsTemplate  *bool   `json:"isTemplate"`
+	QuotationID *string `json:"quotationId"`
+}
+
+func (s *PlanSetService) Update(emp, role string, perms []string, id string, in PlanSetUpdate) error {
+	if !s.CanManage(emp, role, perms) {
+		return ErrDesignHidden
+	}
+	if in.Title != nil {
+		t := strings.TrimSpace(*in.Title)
+		if n := len([]rune(t)); n < 3 || n > 200 {
+			return errors.New("اكتب اسم السيت (٣ حروف على الأقل)")
+		}
+		in.Title = &t
+	}
+	res, err := s.db.Exec(`UPDATE "PlanSet" SET
+		title = COALESCE($2, title),
+		"projectId" = CASE WHEN $3::text IS NULL THEN "projectId" ELSE NULLIF($3, '') END,
+		"isTemplate" = COALESCE($4, "isTemplate"),
+		"quotationId" = CASE WHEN $5::text IS NULL THEN "quotationId" ELSE NULLIF($5, '') END
+		WHERE id = $1`, id, in.Title, in.ProjectID, in.IsTemplate, in.QuotationID)
+	if err != nil {
+		if strings.Contains(err.Error(), "foreign key") {
+			return errors.New("المشروع أو عرض السعر مو موجود")
+		}
+		return err
+	}
+	if n, _ := res.RowsAffected(); n == 0 {
+		return ErrDesignHidden
+	}
+	return nil
+}
+
+// PlanCopyInput ينسخ من سيت (عادةً نموذج جاهز) لسيت ثاني: أقسام كاملة و/أو مخططات معيّنة.
+// النسخة تشير لنفس الملف (ماكو تكرار ملفات)، وتنسجل باسم الي نسخ.
+type PlanCopyInput struct {
+	FromSetID string   `json:"fromSetId"`
+	Sections  []int    `json:"sections"`
+	FileIDs   []string `json:"fileIds"`
+}
+
+func (s *PlanSetService) Copy(emp, role string, perms []string, toSetID string, in PlanCopyInput) (int, error) {
+	if !s.CanManage(emp, role, perms) {
+		return 0, ErrDesignHidden
+	}
+	if in.FromSetID == "" || in.FromSetID == toSetID {
+		return 0, errors.New("اختار السيت الي تنسخ منه")
+	}
+	if len(in.Sections) == 0 && len(in.FileIDs) == 0 {
+		return 0, errors.New("اختار قسم أو مخطط تنسخه")
+	}
+	var archived *time.Time
+	if err := s.db.Get(&archived, `SELECT "archivedAt" FROM "PlanSet" WHERE id = $1`, toSetID); err != nil {
+		return 0, ErrDesignHidden
+	}
+	if archived != nil {
+		return 0, errors.New("السيت مؤرشف — رجّعه أول")
+	}
+	secs := make([]string, 0, len(in.Sections))
+	for _, n := range in.Sections {
+		secs = append(secs, fmt.Sprintf("%d.", n))
+	}
+	res, err := s.db.Exec(`INSERT INTO "PlanFile" ("setId", "typeCode", title, "fileKey", "fileType", "uploadedById")
+		SELECT $2, f."typeCode", f.title, f."fileKey", f."fileType", $3 FROM "PlanFile" f
+		WHERE f."setId" = $1 AND f."removedAt" IS NULL
+		  AND (f.id = ANY($4) OR EXISTS (SELECT 1 FROM unnest($5::text[]) p WHERE f."typeCode" LIKE p || '%'))
+		  AND NOT EXISTS (SELECT 1 FROM "PlanFile" x WHERE x."setId" = $2 AND x."removedAt" IS NULL
+		                  AND x."fileKey" = f."fileKey" AND x."typeCode" = f."typeCode")`,
+		in.FromSetID, toSetID, emp, pq.Array(in.FileIDs), pq.Array(secs))
+	if err != nil {
+		return 0, err
+	}
+	n, _ := res.RowsAffected()
+	return int(n), nil
 }

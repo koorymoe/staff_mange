@@ -707,7 +707,9 @@ func (h *SecretaryHandler) SetSTT(t interface {
 
 func (h *SecretaryHandler) transcribe(ctx context.Context, data []byte, ct string) (string, error) {
 	start := time.Now()
-	defer func() { log.Printf("[iris-voice] %s %dKB بـ%s", ct, len(data)/1024, time.Since(start).Round(100*time.Millisecond)) }()
+	defer func() {
+		log.Printf("[iris-voice] %s %dKB بـ%s", ct, len(data)/1024, time.Since(start).Round(100*time.Millisecond))
+	}()
 	// (دازاي 10-29) Whisper عدنا بطيء (دقايق) وضعيف بالعراقي: إذا المزوّد فشل نگول «عيدها»
 	// خلال ثواني، بدل ما نوگفه ٣ دقايق على Whisper.
 	if len(h.sttAll) > 0 {

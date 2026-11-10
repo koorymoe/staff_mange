@@ -13,7 +13,9 @@ type DecorRateHandler struct {
 	repo *repository.DecorRateRepository
 }
 
-func NewDecorRateHandler(r *repository.DecorRateRepository) *DecorRateHandler { return &DecorRateHandler{repo: r} }
+func NewDecorRateHandler(r *repository.DecorRateRepository) *DecorRateHandler {
+	return &DecorRateHandler{repo: r}
+}
 
 // GET /api/decor-rates — البنود الفعّالة (?all=1 للمدير يشوف المعطّلة هم).
 func (h *DecorRateHandler) List(w http.ResponseWriter, r *http.Request) {

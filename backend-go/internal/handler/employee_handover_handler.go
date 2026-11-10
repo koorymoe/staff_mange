@@ -8,7 +8,9 @@ import (
 )
 
 // EmployeeHandoverHandler «🔁 تسليم شغله لموظف جديد» — للمدير والمالك (ع 10-17).
-type EmployeeHandoverHandler struct{ repo *repository.EmployeeHandoverRepository }
+type EmployeeHandoverHandler struct {
+	repo *repository.EmployeeHandoverRepository
+}
 
 func NewEmployeeHandoverHandler(r *repository.EmployeeHandoverRepository) *EmployeeHandoverHandler {
 	return &EmployeeHandoverHandler{repo: r}

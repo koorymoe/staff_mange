@@ -40,9 +40,9 @@ const (
 
 // SaveNetworkPriceItemRequest إضافة أو تعديل فقرة تسعيرة.
 type SaveNetworkPriceItemRequest struct {
-	Label        string  `json:"label"`
-	Unit         string  `json:"unit"`
-	PricingMode  string  `json:"pricingMode"`
+	Label        string           `json:"label"`
+	Unit         string           `json:"unit"`
+	PricingMode  string           `json:"pricingMode"`
 	BasePrice    float64          `json:"basePrice"`
 	IncludedQty  float64          `json:"includedQty"`
 	ExtraPerUnit float64          `json:"extraPerUnit"`

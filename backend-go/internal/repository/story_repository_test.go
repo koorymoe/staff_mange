@@ -16,10 +16,13 @@ import (
 //
 // ① التكرار: نفس الحدث ينشئ قصتين ← الموظف يستلم نفس الخصم مرتين.
 // ② التجميع: ثلاث أوراق ناقصة بنفس الحجز ← ثلاث ركضات ورا بعض،
-//    والكيان يصير مزعجاً وينتجاهل — ووقتها العقوبة تفقد أثرها.
+//
+//	والكيان يصير مزعجاً وينتجاهل — ووقتها العقوبة تفقد أثرها.
+//
 // ③ الأولوية: التهنئة تسبق التحذير ← موظف متأخر يستلم احتفالاً.
 // ④ المرحلة ما ترجع للورا: استطلاع متأخر يرجّع «أقرّ» لـ«وصل» ←
-//    نخسر حقيقة مسجَّلة، ونعيد عرض مشهد انتهى.
+//
+//	نخسر حقيقة مسجَّلة، ونعيد عرض مشهد انتهى.
 func TestStoryQueue_Live(t *testing.T) {
 	dsn := os.Getenv("DATABASE_URL")
 	if dsn == "" {
@@ -153,7 +156,7 @@ func TestStoryClaim_Live(t *testing.T) {
 	empID := emp
 	if _, err := r.Enqueue(model.StoryInstance{
 		EventID: "claim-ev-1", EventKind: model.StoryEventPointDeducted,
-		StoryType: model.StoryEventPointDeducted,
+		StoryType:           model.StoryEventPointDeducted,
 		RecipientEmployeeID: &empID, RecipientRef: emp, RecipientName: "موظف حجز",
 		Priority: 100, Physical: true,
 	}); err != nil {
@@ -213,7 +216,7 @@ func TestStoryDeleteEmployee_KeepsEvidence(t *testing.T) {
 	empID := emp
 	if _, err := r.Enqueue(model.StoryInstance{
 		EventID: "del-ev-1", EventKind: model.StoryEventPointDeducted,
-		StoryType: model.StoryEventPointDeducted,
+		StoryType:           model.StoryEventPointDeducted,
 		RecipientEmployeeID: &empID, RecipientRef: emp,
 		RecipientName: "موظف راح ينحذف", Priority: 100, Physical: true,
 	}); err != nil {
@@ -247,7 +250,7 @@ func TestStoryDeleteEmployee_KeepsEvidence(t *testing.T) {
 	// الـidempotency لازم تبقى شغّالة حتى بعد ما صار المفتاح NULL
 	created, err := r.Enqueue(model.StoryInstance{
 		EventID: "del-ev-1", EventKind: model.StoryEventPointDeducted,
-		StoryType: model.StoryEventPointDeducted,
+		StoryType:    model.StoryEventPointDeducted,
 		RecipientRef: emp, RecipientName: "موظف راح ينحذف", Priority: 100,
 	})
 	if err != nil {

@@ -10,7 +10,9 @@ import (
 
 // ═══ 📦 شغل المخازن — مكتب المراقب (قرار (ع) 10-10) ═══
 // نفس البنود الي ماتركس يقيّم بيها أبو الكميات ويذكّره عليها.
-type ProcurementWatchHandler struct{ repo *repository.MatrixScoreRepository }
+type ProcurementWatchHandler struct {
+	repo *repository.MatrixScoreRepository
+}
 
 func NewProcurementWatchHandler(db *sqlx.DB) *ProcurementWatchHandler {
 	return &ProcurementWatchHandler{repo: repository.NewMatrixScoreRepository(db)}

@@ -12,7 +12,9 @@ import (
 // ═══ موردين التقنيين — قرار (ع) 10-06 ═══
 // التقني يضيف، والمدير يختار لكل تقني شنو يطلعله. المضاف ما يطلع لصاحبه
 // إلا إذا المدير اختاره إله.
-type TechSupplierHandler struct{ repo *repository.TechSupplierRepository }
+type TechSupplierHandler struct {
+	repo *repository.TechSupplierRepository
+}
 
 func NewTechSupplierHandler(repo *repository.TechSupplierRepository) *TechSupplierHandler {
 	return &TechSupplierHandler{repo: repo}

@@ -35,7 +35,7 @@ func storyFixMigrations() []Migration {
 		},
 		{
 			Version: "0273_story_recipient_ref_required",
-			SQL: `ALTER TABLE "StoryInstance" ALTER COLUMN "recipientRef" SET NOT NULL`,
+			SQL:     `ALTER TABLE "StoryInstance" ALTER COLUMN "recipientRef" SET NOT NULL`,
 		},
 		{
 			// الـFK يصير SET NULL — الصف يبقى، والاسم المنسوخ يخليه

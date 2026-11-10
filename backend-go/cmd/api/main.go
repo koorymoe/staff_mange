@@ -1812,6 +1812,8 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 		{"POST /api/plan-sets", planSetHandler.Create},
 		{"GET /api/plan-sets/{id}", planSetHandler.Get},
 		{"POST /api/plan-sets/{id}/archive", planSetHandler.Archive},
+		{"PUT /api/plan-sets/{id}", planSetHandler.Update},
+		{"POST /api/plan-sets/{id}/copy", planSetHandler.Copy},
 		{"POST /api/plan-sets/{id}/files", planSetHandler.AddFile},
 		{"DELETE /api/plan-files/{id}", planSetHandler.RemoveFile},
 	} {

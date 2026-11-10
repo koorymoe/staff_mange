@@ -138,3 +138,34 @@ func (h *PlanSetHandler) RemoveFile(w http.ResponseWriter, r *http.Request) {
 	}
 	WriteJSON(w, http.StatusOK, map[string]bool{"ok": true})
 }
+
+// PUT /api/plan-sets/{id} — الاسم/المشروع/نموذج جاهز/عرض السعر المرتبط
+func (h *PlanSetHandler) Update(w http.ResponseWriter, r *http.Request) {
+	var in service.PlanSetUpdate
+	if err := DecodeJSON(r, &in); err != nil {
+		WriteError(w, http.StatusBadRequest, "بيانات غير صحيحة")
+		return
+	}
+	me, role, perms := h.who(r)
+	if err := h.svc.Update(me, role, perms, r.PathValue("id"), in); err != nil {
+		h.fail(w, err)
+		return
+	}
+	WriteJSON(w, http.StatusOK, map[string]bool{"ok": true})
+}
+
+// POST /api/plan-sets/{id}/copy — ينسخ أقسام أو مخططات من سيت ثاني (نموذج جاهز)
+func (h *PlanSetHandler) Copy(w http.ResponseWriter, r *http.Request) {
+	var in service.PlanCopyInput
+	if err := DecodeJSON(r, &in); err != nil {
+		WriteError(w, http.StatusBadRequest, "بيانات غير صحيحة")
+		return
+	}
+	me, role, perms := h.who(r)
+	n, err := h.svc.Copy(me, role, perms, r.PathValue("id"), in)
+	if err != nil {
+		h.fail(w, err)
+		return
+	}
+	WriteJSON(w, http.StatusOK, map[string]int{"copied": n})
+}
