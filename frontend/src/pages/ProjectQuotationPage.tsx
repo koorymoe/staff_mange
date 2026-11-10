@@ -33,6 +33,36 @@ export default function ProjectQuotationPage() {
   const [customerName, setCustomerName] = useState('')
   const [customerPhone, setCustomerPhone] = useState('')
   const [cover, setCover] = useState<ProjectCover>({ city: 'Karbala, Iraq' })
+  // (بلاغ #17) المواصفات تطلع لحالها من الموديل — بلا ما يكتبها الموظف سطر سطر
+  const [specsBusy, setSpecsBusy] = useState<number | null>(null)
+  const fillSpecs = async (r: Row) => {
+    const model = (r.modelName ?? '').trim()
+    if (!model || specsBusy !== null) return
+    setSpecsBusy(r.key)
+    try {
+      const out = await api.suggestProductSpecs(r.productName.trim() || model, model)
+      if (out.specs.trim()) set(r.key, { specs: out.specs.trim() })
+      else setMsg({ ok: false, t: 'ما لگينا مواصفات أكيدة لهذا الموديل — اكتبها يدوياً' })
+    } catch (e) {
+      setMsg({ ok: false, t: e instanceof Error ? e.message : 'تعذر جلب المواصفات' })
+    } finally {
+      setSpecsBusy(null)
+    }
+  }
+  // (بلاغ #13) صورة وحدة للواجهة يختارها الموظف (مثلاً مولّدة بالذكاء) بدل تجميع صور المنتجات
+  const [coverBusy, setCoverBusy] = useState(false)
+  const uploadCover = async (file?: File) => {
+    if (!file) return
+    setCoverBusy(true)
+    try {
+      const up = await api.uploadFile(file, 'quotations')
+      setCover((c) => ({ ...c, image: up.url }))
+    } catch (e) {
+      setMsg({ ok: false, t: e instanceof Error ? e.message : 'تعذر رفع الصورة' })
+    } finally {
+      setCoverBusy(false)
+    }
+  }
   const [rows, setRows] = useState<Row[]>([emptyRow()])
   const [annex, setAnnex] = useState<AnnexPart[]>([])
   const [number, setNumber] = useState('')
@@ -127,6 +157,14 @@ export default function ProjectQuotationPage() {
         <label className="text-sm">السطر الصغير فوق العنوان<input className={input} placeholder="مثلاً: مشروع جامعة المكين" value={cover.label ?? ''} onChange={(e) => setCover({ ...cover, label: e.target.value })} /></label>
         <label className="text-sm">المدينة<input className={input} value={cover.city ?? ''} onChange={(e) => setCover({ ...cover, city: e.target.value })} /></label>
         <label className="text-sm md:col-span-2">العنوان الكبير<input className={input} placeholder="مثلاً: مشروع تجهيز وتحديث البنية التحتية الرقمية" value={cover.title ?? ''} onChange={(e) => setCover({ ...cover, title: e.target.value })} /></label>
+        <div className="text-sm md:col-span-2">
+          صورة الواجهة <small className="text-slate-500">(اختياري — صورة وحدة مرتبة للغلاف، وإذا ماكو تنجمع صور المنتجات)</small>
+          <div className="mt-1 flex flex-wrap items-center gap-2">
+            <input type="file" accept="image/*" disabled={coverBusy} onChange={(e) => void uploadCover(e.target.files?.[0])} className="text-xs" />
+            {coverBusy && <span className="text-xs text-slate-500">يرفع…</span>}
+            {cover.image && <><span className="text-xs text-emerald-700">✓ انرفعت</span><button type="button" onClick={() => setCover({ ...cover, image: undefined })} className="rounded bg-rose-50 px-2 py-0.5 text-xs text-rose-700">شيلها</button></>}
+          </div>
+        </div>
         <label className="text-sm md:col-span-2">الوصف<input className={input} placeholder="مثلاً: حلول الحوسبة والمختبرات، والطباعة والأرشفة، والشاشات الذكية" value={cover.subtitle ?? ''} onChange={(e) => setCover({ ...cover, subtitle: e.target.value })} /></label>
       </section>
 
@@ -149,7 +187,13 @@ export default function ProjectQuotationPage() {
             <p className="mt-1 text-xs text-slate-500">الإجمالي: <b>{num(r.quantity * r.unitPrice)}</b> د.ع {r.imageBase64 ? '· 🖼️ بصورته' : '· بدون صورة (تطلع رسمة توضيحية)'}</p>
             {openSpecs === r.key && (
               <div className="mt-2 grid gap-2 md:grid-cols-3">
-                <label className="text-xs">الموديل<input dir="ltr" className={input} value={r.modelName ?? ''} onChange={(e) => set(r.key, { modelName: e.target.value })} /></label>
+                <label className="text-xs">الموديل<input dir="ltr" className={input} value={r.modelName ?? ''} onChange={(e) => set(r.key, { modelName: e.target.value })}
+                  onBlur={() => { if (!(r.specs ?? '').trim()) void fillSpecs(r) }} />
+                  <button type="button" disabled={specsBusy === r.key || !(r.modelName ?? '').trim()} onClick={() => void fillSpecs(r)}
+                    className="mt-1 rounded-lg bg-indigo-50 px-2 py-1 text-xs font-bold text-indigo-700 disabled:opacity-50">
+                    {specsBusy === r.key ? '…' : '🤖 المواصفات من الموديل'}
+                  </button>
+                </label>
                 <label className="text-xs md:col-span-2">المواصفات (كل سطر «العنوان: القيمة»)<textarea rows={5} className={input} value={r.specs ?? ''} onChange={(e) => set(r.key, { specs: e.target.value })} placeholder={'الشاشة: 15.6 بوصة FHD\nالمعالج: Intel Core i5-13420H'} /></label>
               </div>
             )}

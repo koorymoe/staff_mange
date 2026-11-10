@@ -2377,7 +2377,9 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	mux.Handle("POST /api/products", middleware.Chain(http.HandlerFunc(productHandler.Create), requireAuth, requireContentTech))
 	mux.Handle("PUT /api/products/{id}", middleware.Chain(http.HandlerFunc(productHandler.Update), requireAuth, requireContentTech))
 	specsSuggest := &handler.ProductSpecsSuggest{}
-	mux.Handle("POST /api/products/specs-suggest", middleware.Chain(http.HandlerFunc(specsSuggest.Suggest), requireAuth, requireContentTech))
+	// (11-10 بلاغ #17) مؤمل يريد المواصفات تطلع من الموديل وهو يكتب عرض المشاريع — صاحب عروض الأسعار هم.
+	mux.Handle("POST /api/products/specs-suggest", middleware.Chain(http.HandlerFunc(specsSuggest.Suggest), requireAuth,
+		guards.AnyPermission("content_technician", service.QuotationPermCreate, service.QuotationPermEditOwn, service.QuotationPermManageAll, "quotation_system")))
 	mux.Handle("DELETE /api/products/{id}", middleware.Chain(http.HandlerFunc(productHandler.Delete), requireAuth, requireAdmin))
 
 	// نظام GPS — عملاء / شرائح SIM / طلبات الأجهزة / التجديد / الصيانة / الأسعار / الإحصائيات

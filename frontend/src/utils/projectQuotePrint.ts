@@ -7,7 +7,7 @@ import { fileUrl } from '../api'
 import { arabicAmountWords } from './arabicWords'
 import { esc } from './printIdentity'
 
-export type ProjectCover = { label?: string; title?: string; subtitle?: string; city?: string }
+export type ProjectCover = { label?: string; title?: string; subtitle?: string; city?: string; image?: string }
 export type AnnexItem = { title: string; text: string }
 export type AnnexPart = { title: string; items: AnnexItem[] }
 export type ProjectItem = {
@@ -76,24 +76,27 @@ const footer = (page: number, total: number) => `
 function card(it: ProjectItem, no: number, otherChapter?: string): string {
   const specs = parseSpecs(it.specs)
   const img = it.imageBase64 ? `<img src="${esc(abs(fileUrl(it.imageBase64)))}" alt="">` : illustration(it.category ?? it.productName)
-  // كثافة المواصفات: قليلة = صفوف أوسع؛ كثيرة = أضيق — حتى البطاقة تمتلي بلا فراغ ولا طفح
+  // كثافة المواصفات: قليلة = أسطر أوسع؛ كثيرة = أضيق — حتى البطاقة تمتلي بلا فراغ ولا طفح
   const dens = specs.length <= 4 ? 'roomy' : specs.length >= 10 ? 'tight' : ''
+  const nn = String(no).padStart(2, '0')
+  // (بلاغ #17 — مؤمل 11-07) مثل النموذج: الكلام يمين والصورة يسار، والمواصفات نقاط «العنوان: القيمة»
   return `
   <div class="card ${dens}">
-    <div class="card-img">
-      <div class="pic">${img}</div>
-      ${it.modelName ? `<bdi class="model-chip" dir="ltr">${esc(it.modelName)}</bdi>` : ''}
-      ${it.imageBase64 ? '' : '<small>صورة توضيحية للمنتج</small>'}
-    </div>
     <div class="card-body">
-      <div class="card-top"><span class="no"><bdi dir="ltr">${String(no).padStart(2, '0')}</bdi></span>${otherChapter ? `<span class="eq">${esc(otherChapter)}</span>` : ''}</div>
-      <h3>${esc(it.productName)}</h3>
-      ${specs.length ? `<table class="specs">${specs.map((s) => `<tr>${s.label ? `<th>${esc(s.label)}</th><td dir="auto">${esc(s.value)}</td>` : `<td colspan="2" dir="auto">${esc(s.value)}</td>`}</tr>`).join('')}</table>` : '<div class="specs-empty">—</div>'}
+      <div class="card-top"><small class="eq-tag" dir="ltr">EQUIPMENT / ${nn}</small>${otherChapter ? `<span class="eq">${esc(otherChapter)}</span>` : ''}</div>
+      <div class="ttl"><span class="no"><bdi dir="ltr">${nn}</bdi></span><h3>${esc(it.productName)}</h3></div>
+      ${it.modelName ? `<bdi class="model" dir="ltr">${esc(it.modelName)}</bdi>` : ''}
+      ${specs.length ? `<ul class="specs">${specs.map((s) => `<li>${s.label ? `<b>${esc(s.label)}:</b> ` : ''}<span dir="auto">${esc(s.value)}</span></li>`).join('')}</ul>` : '<div class="specs-empty">—</div>'}
       <div class="money">
         <div><small>الكمية</small><b><bdi dir="ltr">${n(it.quantity)}</bdi></b></div>
         <div><small>السعر المفرد</small><b><bdi dir="ltr">${n(it.unitPrice)}</bdi></b></div>
         <div class="tot"><small>الإجمالي (د.ع)</small><b><bdi dir="ltr">${n(it.quantity * it.unitPrice)}</bdi></b></div>
       </div>
+    </div>
+    <div class="card-img">
+      <div class="pic">${img}</div>
+      <span class="dia"></span>
+      ${it.imageBase64 ? '' : '<small>صورة توضيحية للمنتج</small>'}
     </div>
   </div>`
 }
@@ -125,7 +128,12 @@ export function buildProjectQuoteHtml(q: ProjectQuote, logoUrl: string): string 
   let page = 1
   const date = q.date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' }).toUpperCase()
   const city = (q.cover.city || 'KARBALA, IRAQ').toUpperCase()
-  const collage = items.slice(0, 4).map((it) => `<div class="col-item">${it.imageBase64 ? `<img src="${esc(abs(fileUrl(it.imageBase64)))}" alt="">` : illustration(it.category ?? it.productName)}</div>`).join('')
+  // (بلاغ #13) صورة الواجهة: إذا الموظف رفع صورة وحدة تنعرض هي؛ وإلا ٣ منتجات (المصوّرة أول) على «مسرح» والوسطى أكبر
+  const withImg = [...items.filter((i) => i.imageBase64), ...items.filter((i) => !i.imageBase64)].slice(0, 3)
+  const staged = withImg.length === 3 ? [withImg[1], withImg[0], withImg[2]] : withImg
+  const collage = q.cover.image
+    ? `<img class="hero-img" src="${esc(abs(fileUrl(q.cover.image)))}" alt="">`
+    : staged.map((it, i) => `<div class="col-item${staged.length === 3 && i === 1 ? ' main' : ''}">${it.imageBase64 ? `<img src="${esc(abs(fileUrl(it.imageBase64)))}" alt="">` : illustration(it.category ?? it.productName)}</div>`).join('')
 
   const coverPage = `
   <section class="page cover">
@@ -137,7 +145,7 @@ export function buildProjectQuoteHtml(q: ProjectQuote, logoUrl: string): string 
       <div class="bar"></div>
       ${q.cover.subtitle ? `<p class="cover-sub">${esc(q.cover.subtitle)}</p>` : ''}
     </div>
-    <div class="collage"><span class="glow"></span>${collage}</div>
+    <div class="collage${q.cover.image ? ' has-hero' : ''}"><span class="glow"></span>${collage}</div>
     <div class="cover-line"></div>
     <div class="cover-bottom">
       <div><h3>ملف التجهيز الفني والتجاري</h3><small>عرض مشاريع · ${items.length} بنداً وملحق فني متكامل</small>${q.quotationNumber ? `<small>رقم العرض <bdi dir="ltr">${esc(q.quotationNumber)}</bdi></small>` : ''}</div>
@@ -159,7 +167,7 @@ export function buildProjectQuoteHtml(q: ProjectQuote, logoUrl: string): string 
       <div><b>${(total / 1e6).toLocaleString('en-US', { maximumFractionDigits: 3 })}</b><small>مليون دينار عراقي</small></div>
     </div>
     <h3 class="sec">محاور المشروع <small dir="ltr">/ PROJECT SCOPE</small></h3>
-    <div class="scope">${chapters.map((c, i) => `<div><small dir="ltr">${String(i + 1).padStart(2, '0')}</small><h4>${esc(c.name)}</h4><p>${c.items.map((x) => esc(x.it.productName)).slice(0, 4).join('، ')}${c.items.length > 4 ? '…' : ''}</p></div>`).join('')}</div>
+    <div class="scope">${chapters.map((c, i) => `<div><small dir="ltr">${String(i + 1).padStart(2, '0')} / SCOPE</small><h4>${esc(c.name)}</h4><p>${c.items.map((x) => esc(x.it.productName)).slice(0, 3).join('، ')}${c.items.length > 3 ? ` و${c.items.length - 3} غيرها` : ''}</p></div>`).join('')}</div>
     <p class="note">التجهيز والأسعار أدناه يستندان إلى قائمة المنتجات المقدمة، ويُستكملان بالشروط الفنية والتنفيذية في نهاية الملف.</p>
     ${footer(page, totalPages)}
   </section>`
@@ -306,6 +314,34 @@ table.specs th { width: 34%; color: #1e3a8a; font-weight: 700 } table.specs td {
 .ftr .pg bdi, .ftr bdi { unicode-bidi: isolate }
 .card { height: 101mm } table.specs { flex: 0 0 auto; margin: 0 } .money { margin-top: auto }
 .card-body { overflow: hidden }
+
+/* ═══ v3 — ملاحظات مؤمل 11-07 (بلاغات #12–#18) ═══ */
+/* #12 #14: الشعار واسم الشركة يمين الغلاف وأوضح */
+.cover-top .hdr-co { justify-content: flex-start } .cover-top .hdr-co img { width: 58px; height: 58px } .cover-top .hdr-co div { font-size: 13px; line-height: 1.5 }
+.cover-label { margin-top: 26mm } .cover h1 { font-size: 46px; line-height: 1.35 }
+/* #13: مسرح الصور بالواجهة — الوسطى أكبر، والكل على نفس الأرضية؛ أو صورة وحدة مرفوعة */
+.collage { align-items: flex-end; justify-content: center; gap: 6mm; padding: 10mm 12mm 12mm }
+.col-item { width: 46mm; height: 48mm; align-items: flex-end } .col-item.main { width: 62mm; height: 64mm }
+.collage.has-hero { padding: 0; overflow: hidden } .hero-img { width: 100%; height: 100%; object-fit: cover; border-radius: 18px }
+/* #15: النص الطويل سطرين مو سطر واحد ناعم */
+.ov-hero h2 { max-width: 150mm; text-wrap: balance } .ov-hero p { max-width: 128mm; font-size: 13px; line-height: 1.8; text-wrap: balance }
+.stats b { font-size: 30px } .stats div { padding: 14px 10px }
+/* #16: محاور المشروع — وسم صغير، عنوان واضح، ووصف سطرين */
+.scope div { padding: 12px 14px } .scope small { font-size: 10px; letter-spacing: 1.5px } .scope h4 { font-size: 16px; margin: 6px 0 4px }
+.scope p { font-size: 11.5px; line-height: 1.7; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden }
+/* #17: الكلام يمين والصورة يسار، والمواصفات نقاط */
+.card { grid-template-columns: 62% 38% } .card-img { border-left: 0; border-right: 1px solid #e2e8f0; position: relative }
+.card-top { justify-content: space-between } .eq-tag { color: #94a3b8; font-size: 8.5px; letter-spacing: 1.5px }
+.ttl { display: flex; align-items: baseline; gap: 8px } .ttl .no { background: none; color: #f59e0b; font-size: 22px; padding: 0; font-weight: 800 } .ttl h3 { margin: 2px 0 2px; font-size: 17px }
+.card .model { display: block; color: #4f6ed8; font-size: 10px; font-weight: 700; margin-bottom: 6px; text-align: right }
+ul.specs { list-style: none; padding: 0; margin: 0; flex: 0 0 auto } ul.specs li { font-size: 10.5px; padding: 3px 0; border-bottom: 1px dashed #eef2f7; color: #334155; line-height: 1.6 }
+ul.specs li::before { content: '•'; color: #f59e0b; margin-left: 6px; font-weight: 800 } ul.specs b { color: #1e3a8a }
+.card.roomy ul.specs li { font-size: 12.5px; padding: 7px 0 } .card.tight ul.specs li { font-size: 9.5px; padding: 1px 0 }
+.dia { bottom: 10mm; right: auto; left: 10mm }
+/* #18: الأرقام بسطر بسيط مثل النموذج، والإجمالي برتقالي */
+.money { margin: auto 0 0; border-top: 1px solid #e2e8f0; grid-template-columns: 1fr 1fr 1.3fr } .money div { border-left: 0; padding: 3mm 2mm }
+.money .tot { background: none } .money .tot small { color: #64748b } .money .tot b { color: #f59e0b; font-size: 17px }
+.fin.with-card .fin-card ul.specs li { padding: 0; font-size: 9px }
 @media print { body { background: #fff } .page { margin: 0 } }
 </style></head><body>${coverPage}${overview}${chapterHtml}${summary}${annexHtml}</body></html>`.replace(/src="LOGO"/g, `src="${esc(abs(logoUrl))}"`)
 }
