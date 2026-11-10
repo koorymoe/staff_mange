@@ -7,7 +7,8 @@ import "testing"
 // مسار للنواة نزّل الرقم هنا.
 const (
 	maxPublic        = 39 // كلها مقصودة: الزبائن، الدخول، روابط الاستقبال، الملفات الموقّعة
-	maxWriteAuthOnly = 29 // الفحص جوّا الـhandler — تنتقل لـpolicy وحدة وحدة
+	maxWriteAuthOnly = 0  // (11-10) كلها انتقلت للنواة — ولا وحدة جديدة
+	maxLegacy        = 950 // المسارات القديمة (mux.Handle) — الجديد ينكتب بالنواة، والرقم ينزل بس
 )
 
 func TestRouteRatchet(t *testing.T) {
@@ -29,6 +30,9 @@ func TestRouteRatchet(t *testing.T) {
 				t.Errorf("كتابة جديدة بحارس الدخول بس: %s %s (سطر %d) — اكتبها عبر internal/core بقاعدة", r.Method, r.Path, r.Line)
 			}
 		}
+	}
+	if len(routes) > maxLegacy {
+		t.Errorf("مسارات قديمة %d > %d — المسار الجديد ينكتب عبر internal/core (فعل + قاعدة)", len(routes), maxLegacy)
 	}
 	if pub < maxPublic || write < maxWriteAuthOnly {
 		t.Logf("👍 نزل الرقم (عام %d، كتابة %d) — نزّل الحد بهذا الملف", pub, write)

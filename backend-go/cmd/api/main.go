@@ -7,9 +7,11 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"staffmange-api/internal/apps/field"
 	"staffmange-api/internal/apps/me"
 	"staffmange-api/internal/apps/org"
 	"staffmange-api/internal/apps/people"
+	"staffmange-api/internal/apps/requests"
 	"staffmange-api/internal/apps/system"
 	"staffmange-api/internal/authz"
 	"staffmange-api/internal/core"
@@ -953,6 +955,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	// وقاعدة، والرفض 404. تعيش جنب المسارات القديمة لحد ما تنتقل وحدة وحدة.
 	coreRouter := core.NewRouter(mux, requireAuth, permissionRepo, core.NewPolicies())
 	meApp := me.New() // «شغلي أنا»: المعالجات تنحط بمكانها، والتسجيل بالأخير
+	requestsApp, fieldApp := requests.New(), field.New()
 
 	mux.HandleFunc("GET /api/health", func(w http.ResponseWriter, r *http.Request) {
 		handler.WriteJSON(w, http.StatusOK, map[string]string{"status": "ok"})
@@ -967,7 +970,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	mux.Handle("POST /api/auth/logout", middleware.RateLimit(60, time.Minute)(http.HandlerFunc(authHandler.Logout)))
 	// رفع الملفات يحتاج تسجيل دخول. العرض بعد — الملفات تحمل صور وصولات
 	// ووثائق زبائن، وما تنعرض لأي أحد يخمّن الرابط.
-	mux.Handle("POST /api/files", middleware.Chain(http.HandlerFunc(fileHandler.Upload), requireAuth))
+	requestsApp.Set("POST /api/files", "requests.file_upload", fileHandler.Upload)
 	mux.Handle("GET /api/files/token", middleware.Chain(http.HandlerFunc(fileHandler.Token), requireAuth))
 	// العرض ما يمر بـrequireAuth لأن <img> ما يرسل ترويسة Authorization —
 	// التحقق يصير بالوسم الموقّع بالمعالج نفسه.
@@ -1004,7 +1007,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	// ── الطلبات: كتاب رسمي من الموظف للإدارة ──
 	// التقديم وقراءة طلباتك: لكل موظف. البت: للمالك ومدير النظام.
 	mux.Handle("GET /api/letters/addressees", middleware.Chain(http.HandlerFunc(employeeLetterHandler.Addressees), requireAuth))
-	mux.Handle("POST /api/letters", middleware.Chain(http.HandlerFunc(employeeLetterHandler.Create), requireAuth))
+	requestsApp.Set("POST /api/letters", "requests.letter", employeeLetterHandler.Create)
 	mux.Handle("GET /api/letters/mine", middleware.Chain(http.HandlerFunc(employeeLetterHandler.Mine), requireAuth))
 	mux.Handle("GET /api/letters", middleware.Chain(http.HandlerFunc(employeeLetterHandler.Inbox), requireAuth, requireAdmin))
 	mux.Handle("GET /api/letters/pending-count", middleware.Chain(http.HandlerFunc(employeeLetterHandler.PendingCount), requireAuth, requireAdmin))
@@ -1264,7 +1267,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 		guards.RoleOrAnyPermission(
 			[]string{"ADMIN", "OWNER", "FINANCE", "MONITOR", "HR_COORDINATOR"},
 			"invoice_internal", "finance", "finance_audit", "monitoring", "auditing")))
-	mux.Handle("POST /api/bookings", middleware.Chain(http.HandlerFunc(bookingHandler.Create), requireAuth))
+	fieldApp.Set("POST /api/bookings", "field.booking_create", bookingHandler.Create)
 	// (ع) 10-16: حجز ديكور مربوط — المنسق/المدير/المراقب
 	// (ع) 10-17: السواق (إجازة السوق والتعهد والتخويل) وبطاقات البنزين — إدارة المركبات
 	vehicleDriversHandler := handler.NewVehicleDriversHandler(db)
@@ -1389,7 +1392,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	// ترحيل للتقني (قرار (ع) 10-07): الإداري يرحّل، والتقني المرحّل إله بس يكمّل الخطوات.
 	mux.Handle("GET /api/bookings/handover-candidates", middleware.Chain(http.HandlerFunc(bookingHandler.HandoverCandidates), requireAuth, requireBookingCoord))
 	mux.Handle("PUT /api/bookings/{id}/handover", middleware.Chain(http.HandlerFunc(bookingHandler.Handover), requireAuth, requireBookingCoord))
-	mux.Handle("PUT /api/bookings/{id}/tech/{step}", middleware.Chain(http.HandlerFunc(bookingHandler.TechStep), requireAuth))
+	fieldApp.Set("PUT /api/bookings/{id}/tech/{step}", "field.booking_tech_step", bookingHandler.TechStep)
 	// إلغاء تكليف موظف — نفس حارس التكليف: الي يكدر يكلّف يكدر يشيل.
 	// حارس أشد يعني الإداري يكلّف بالغلط وينتظر المدير حتى يصلّحها.
 	mux.Handle("DELETE /api/bookings/{id}/assign", middleware.Chain(http.HandlerFunc(bookingHandler.Unassign), requireAuth, requireBookingCoord))
@@ -1406,9 +1409,9 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	mux.Handle("PUT /api/extra-tasks/{id}/cancel", middleware.Chain(http.HandlerFunc(extraTaskHandler.Cancel), requireAuth, requireExtraTaskAssign))
 	mux.Handle("GET /api/extra-tasks/mine", middleware.Chain(http.HandlerFunc(extraTaskHandler.Mine), requireAuth))
 	mux.Handle("GET /api/extra-tasks/mine/count", middleware.Chain(http.HandlerFunc(extraTaskHandler.MyOpenCount), requireAuth))
-	mux.Handle("PUT /api/extra-tasks/{id}/seen", middleware.Chain(http.HandlerFunc(extraTaskHandler.MarkSeen), requireAuth))
-	mux.Handle("PUT /api/extra-tasks/{id}/start", middleware.Chain(http.HandlerFunc(extraTaskHandler.Start), requireAuth))
-	mux.Handle("PUT /api/extra-tasks/{id}/complete", middleware.Chain(http.HandlerFunc(extraTaskHandler.Complete), requireAuth))
+	meApp.Set("PUT /api/extra-tasks/{id}/seen", "me.extra_task_seen", extraTaskHandler.MarkSeen)
+	meApp.Set("PUT /api/extra-tasks/{id}/start", "me.extra_task_start", extraTaskHandler.Start)
+	meApp.Set("PUT /api/extra-tasks/{id}/complete", "me.extra_task_complete", extraTaskHandler.Complete)
 
 	// ═══ الذكاء الاصطناعي ═══
 	// ⚠️ كلها requireAdmin (يشمل المالك): «التقرير يطلع فقط لمدير
@@ -1748,7 +1751,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	mux.Handle("DELETE /api/inventory/tool-exemptions", middleware.Chain(http.HandlerFunc(inventoryHandler.DeleteToolExemption), requireAuth, requireHROrInventory))
 
 	// جرد يومي: الموظف يؤكد جرد عدته الخاصة، الإداري يشوف نتائج اليوم لكل الموظفين
-	mux.Handle("POST /api/inventory/checks", middleware.Chain(http.HandlerFunc(inventoryHandler.CreateInventoryCheck), requireAuth))
+	requestsApp.Set("POST /api/inventory/checks", "requests.inventory_check", inventoryHandler.CreateInventoryCheck)
 	// نتائج جرد كل الفنيين = شاشة متابعة، مو شغل الفني. جانت مفتوحة لأي
 	// موظف مسجّل دخول، فالفني يشوف نواقص زملاءه. صارت بصلاحية «جرد
 	// الأدوات» — الفني يسوّي جرده هو ويشوف حالته من المسار الي بعده.
@@ -1766,7 +1769,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	managerRequestRepo := repository.NewManagerRequestRepository(db, notificationRepo)
 	managerRequestRepo.StartReminder() // ⏰ (ع) 11-08: بلا رد ٤٨ ساعة ← يرجع يوصل
 	managerRequestHandler := handler.NewManagerRequestHandler(db, managerRequestRepo)
-	mux.Handle("POST /api/manager-requests", middleware.Chain(http.HandlerFunc(managerRequestHandler.Create), requireAuth))
+	requestsApp.Set("POST /api/manager-requests", "requests.manager_request", managerRequestHandler.Create)
 	mux.Handle("GET /api/manager-requests/mine", middleware.Chain(http.HandlerFunc(managerRequestHandler.Mine), requireAuth))
 	mux.Handle("GET /api/manager-requests/inventory-context", middleware.Chain(http.HandlerFunc(managerRequestHandler.InventoryContext), requireAuth, requireInventoryManage))
 	// 🔔 إشعارات حقيقية على الموبايل (ع) 11-08 — كل إشعار ينبعث لأجهزة صاحبه المشتركة
@@ -1892,7 +1895,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	meApp.Set("POST /api/notifications/{id}/read", "me.notification_read", notificationHandler.MarkRead)
 	meApp.Set("POST /api/notifications/read-all", "me.notifications_read_all", notificationHandler.MarkAllRead)
 	mux.Handle("GET /api/kpi-criteria", middleware.Chain(http.HandlerFunc(kpiCriterionHandler.List), requireAuth))
-	mux.Handle("POST /api/assistant/ask", middleware.Chain(http.HandlerFunc(assistantHandler.Ask), requireAuth))
+	requestsApp.Set("POST /api/assistant/ask", "requests.assistant_ask", assistantHandler.Ask)
 	mux.Handle("POST /api/assistant/manager-chat", middleware.Chain(http.HandlerFunc(assistantHandler.ManagerChat), requireAuth, requireMon["mon_matrix"]))
 	mux.Handle("GET /api/assistant/conversations", middleware.Chain(http.HandlerFunc(assistantHandler.ListConversations), requireAuth, requireOwner))
 	mux.Handle("GET /api/assistant/conversations/employees", middleware.Chain(http.HandlerFunc(assistantHandler.ListConversationEmployees), requireAuth, requireOwner))
@@ -1900,8 +1903,8 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	// رقم موظف من الرابط. الهوية من التوكن وحده.
 	mux.Handle("GET /api/stories/next", middleware.Chain(http.HandlerFunc(storyHandler.Next), requireAuth))
 	mux.Handle("GET /api/stories/mine", middleware.Chain(http.HandlerFunc(storyHandler.Mine), requireAuth))
-	mux.Handle("POST /api/stories/{id}/claim", middleware.Chain(http.HandlerFunc(storyHandler.Claim), requireAuth))
-	mux.Handle("POST /api/stories/{id}/advance", middleware.Chain(http.HandlerFunc(storyHandler.Advance), requireAuth))
+	meApp.Set("POST /api/stories/{id}/claim", "me.story_claim", storyHandler.Claim)
+	meApp.Set("POST /api/stories/{id}/advance", "me.story_advance", storyHandler.Advance)
 
 	mux.Handle("POST /api/kpi-criteria", middleware.Chain(http.HandlerFunc(kpiCriterionHandler.Create), requireAuth, requireKpiCriteria))
 	mux.Handle("DELETE /api/kpi-criteria/{id}", middleware.Chain(http.HandlerFunc(kpiCriterionHandler.Delete), requireAuth, requireKpiCriteria))
@@ -2252,7 +2255,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	mux.Handle("GET /api/procurement/stats", middleware.Chain(http.HandlerFunc(procurementHandler.Stats), requireAuth, requireProcurement))
 	// إنشاء الطلب مو مربوط بصلاحية "procurement" العامة (الي تفتح الاطّلاع بس) —
 	// كل نوع طلب (شخصي/زبون) له صلاحية مستقلة تُفحص داخل الهاندلر نفسه.
-	mux.Handle("POST /api/procurement", middleware.Chain(http.HandlerFunc(procurementHandler.Create), requireAuth))
+	requestsApp.Set("POST /api/procurement", "requests.procurement", procurementHandler.Create)
 	mux.Handle("PUT /api/procurement/{id}/status", middleware.Chain(http.HandlerFunc(procurementHandler.UpdateStatus), requireAuth, requireProcurementAdmin))
 	mux.Handle("PUT /api/procurement/{id}/fulfill", middleware.Chain(http.HandlerFunc(procurementHandler.Fulfill), requireAuth, requireProcurementAdmin))
 	// (ع) 10-15: رقابة المشتريات
@@ -2317,7 +2320,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	techSupplierHandler := handler.NewTechSupplierHandler(repository.NewTechSupplierRepository(db))
 	mux.Handle("GET /api/tech-suppliers/can", middleware.Chain(http.HandlerFunc(techSupplierHandler.Can), requireAuth))
 	mux.Handle("GET /api/tech-suppliers/mine", middleware.Chain(http.HandlerFunc(techSupplierHandler.Mine), requireAuth))
-	mux.Handle("POST /api/tech-suppliers", middleware.Chain(http.HandlerFunc(techSupplierHandler.Create), requireAuth))
+	requestsApp.Set("POST /api/tech-suppliers", "requests.tech_supplier", techSupplierHandler.Create)
 	mux.Handle("GET /api/tech-suppliers", middleware.Chain(http.HandlerFunc(techSupplierHandler.All), requireAuth, requireAdmin))
 	mux.Handle("PUT /api/tech-suppliers/{id}", middleware.Chain(http.HandlerFunc(techSupplierHandler.Update), requireAuth, requireAdmin))
 	mux.Handle("DELETE /api/tech-suppliers/{id}", middleware.Chain(http.HandlerFunc(techSupplierHandler.Delete), requireAuth, requireAdmin))
@@ -2428,7 +2431,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	requireLeaveRegister := guards.RoleOrAnyPermission([]string{"ADMIN", "MONITOR"},
 		"staff_management", "monitoring", "leave_approve_morning", "leave_approve_evening")
 	mux.Handle("GET /api/leaves/register", middleware.Chain(http.HandlerFunc(leaveHandler.Register), requireAuth, requireLeaveRegister))
-	mux.Handle("PUT /api/leaves/{id}/preliminary", middleware.Chain(http.HandlerFunc(leaveHandler.Preliminary), requireAuth))
+	fieldApp.Set("PUT /api/leaves/{id}/preliminary", "field.leave_preliminary", leaveHandler.Preliminary)
 	mux.Handle("PUT /api/leaves/{id}/decide", middleware.Chain(http.HandlerFunc(leaveHandler.Decide), requireAuth, courier.Wrap("leave")))
 
 	// أرقام اللوحة الرئيسية بدون سحب أرشيف الشركة كامل
@@ -2775,17 +2778,17 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 			_ = notificationRepo.CreateForRole("OWNER", "PAPERWORK_DONE", "✅ "+d.Name+" خلّص ورق حجوزاته القديمة، وانشالت منه صلاحية «إكمال الورق القديم» تلقائياً.")
 		}
 	})
-	mux.Handle("POST /api/work-reports", middleware.Chain(http.HandlerFunc(workReportHandler.Create), requireAuth))
+	fieldApp.Set("POST /api/work-reports", "field.work_report", workReportHandler.Create)
 	mux.Handle("GET /api/work-reports", middleware.Chain(http.HandlerFunc(workReportHandler.List), requireAuth))
 	mux.Handle("GET /api/work-reports/counts", middleware.Chain(http.HandlerFunc(workReportHandler.Counts), requireAuth))
 	// ✍️ توقيع الزبون عند التسليم (ع) 11-07
-	mux.Handle("POST /api/bookings/{id}/customer-signature", middleware.Chain(http.HandlerFunc(workReportHandler.SaveSignature), requireAuth))
+	fieldApp.Set("POST /api/bookings/{id}/customer-signature", "field.customer_signature", workReportHandler.SaveSignature)
 	mux.Handle("GET /api/bookings/{id}/customer-signature", middleware.Chain(http.HandlerFunc(workReportHandler.GetSignature), requireAuth))
 	mux.Handle("GET /api/work-reports/by-booking", middleware.Chain(http.HandlerFunc(workReportHandler.ByBooking), requireAuth))
 	mux.Handle("PUT /api/work-reports/{id}/review", middleware.Chain(http.HandlerFunc(workReportHandler.Review), requireAuth, requireMon["mon_reports"]))
 	mux.Handle("PUT /api/bookings/{id}/progress/review", middleware.Chain(http.HandlerFunc(bookingProgressHandler.Review), requireAuth, requireMon["mon_reports"]))
 	// تقرير زيارة معاينة («كشف») — أي كادر مكلّف بالحجز يسلّمه، بلا حارس ورق محاسبي.
-	mux.Handle("POST /api/booking-survey-reports", middleware.Chain(http.HandlerFunc(surveyReportHandler.Create), requireAuth))
+	fieldApp.Set("POST /api/booking-survey-reports", "field.survey_report", surveyReportHandler.Create)
 	mux.Handle("GET /api/booking-survey-reports", middleware.Chain(http.HandlerFunc(surveyReportHandler.List), requireAuth))
 	// صور الكشف (حجز أو مشروع): الفحص بالهاندلر نفسه — العرض والتنزيل
 	// للمراقب والمحاسب والمدير وإداري الحجوزات والكادر الي رفعها.
@@ -2802,9 +2805,9 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	mux.Handle("POST /api/it/assets/{id}/logs", middleware.Chain(http.HandlerFunc(itAssetHandler.AddLog), requireAuth, requireItAssets))
 	mux.Handle("GET /api/it/stats", middleware.Chain(http.HandlerFunc(itAssetHandler.Stats), requireAuth, requireItStats))
 	mux.Handle("GET /api/survey-photos", middleware.Chain(http.HandlerFunc(surveyPhotoHandler.List), requireAuth))
-	mux.Handle("POST /api/survey-photos", middleware.Chain(http.HandlerFunc(surveyPhotoHandler.Upload), requireAuth))
+	fieldApp.Set("POST /api/survey-photos", "field.survey_photo_upload", surveyPhotoHandler.Upload)
 	mux.Handle("GET /api/survey-photos/{id}/file", middleware.Chain(http.HandlerFunc(surveyPhotoHandler.File), requireAuth))
-	mux.Handle("DELETE /api/survey-photos/{id}", middleware.Chain(http.HandlerFunc(surveyPhotoHandler.Delete), requireAuth))
+	fieldApp.Set("DELETE /api/survey-photos/{id}", "field.survey_photo_delete", surveyPhotoHandler.Delete)
 	// تدقيق التكرار (ماتركس) — عرض وقرار "مو تكرار" حصراً، بلا حذف/دمج.
 	// تدقيق التكرار: المدير/المالك أو صلاحية duplicate_review (طلب (ع): موظف يدقق بيهن).
 	requireDuplicateReview := guards.RoleOrPermission([]string{"ADMIN"}, "duplicate_review")
@@ -2952,7 +2955,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	justHandler := handler.NewJustificationHandler(db, notificationRepo)
 	monitorActionHandler.Just = justHandler
 	mux.Handle("GET /api/justifications/mine", middleware.Chain(http.HandlerFunc(justHandler.Mine), requireAuth))
-	mux.Handle("POST /api/justifications/{id}/answer", middleware.Chain(http.HandlerFunc(justHandler.Answer), requireAuth))
+	meApp.Set("POST /api/justifications/{id}/answer", "me.justification_answer", justHandler.Answer)
 	mux.Handle("GET /api/justifications", middleware.Chain(http.HandlerFunc(justHandler.List), requireAuth, requireMonJust))
 	mux.Handle("POST /api/justifications/direct", middleware.Chain(http.HandlerFunc(justHandler.Direct), requireAuth, requireMonJust))
 	// (ع) 10-16: «المحاسب متأخر إذا تأخر على التدقيق ٢٤ ساعة» — خانة «المتأخر»
@@ -2987,11 +2990,11 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	mux.Handle("GET /api/ai/role-chain/roles", middleware.Chain(http.HandlerFunc(matrixChainHandler.Roles), requireAuth, requireAdmin))
 	mux.Handle("GET /api/ai/chain-learning", middleware.Chain(http.HandlerFunc(matrixChainHandler.Learning), requireAuth, requireAdmin))
 	mux.Handle("GET /api/crew-ratings/pending", middleware.Chain(http.HandlerFunc(matrixChainHandler.Pending), requireAuth))
-	mux.Handle("POST /api/crew-ratings", middleware.Chain(http.HandlerFunc(matrixChainHandler.Rate), requireAuth))
+	fieldApp.Set("POST /api/crew-ratings", "field.crew_rating", matrixChainHandler.Rate)
 	// جرد العدّة بعد الحجز — الفني على حجزه هو بس، والنقص ينبّه صاحب صلاحية المخزن.
 	matrixChainHandler.SetShortageNotifier(func(msg string) { _ = notificationRepo.CreateForPermission("inventory", "INVENTORY", msg) })
 	mux.Handle("GET /api/inventory/after-checks/pending", middleware.Chain(http.HandlerFunc(matrixChainHandler.AfterPending), requireAuth))
-	mux.Handle("POST /api/inventory/after-checks", middleware.Chain(http.HandlerFunc(matrixChainHandler.AfterSave), requireAuth))
+	fieldApp.Set("POST /api/inventory/after-checks", "field.after_check", matrixChainHandler.AfterSave)
 	// المرحلة الثانية: ماتركس يقترح الموعد والكادر، والمنسق يقرر. كل ساعة يحسم
 	// الاقتراحات الي صار بحجزها قرار (حتى تنقاس دقته).
 	matrixSuggestService := service.NewMatrixSuggestService(repository.NewMatrixSuggestRepository(db))
@@ -3048,7 +3051,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	projectService.SetPaymentChecker(projectPaymentRepo)
 	mux.Handle("GET /api/projects/{id}/payments", middleware.Chain(http.HandlerFunc(projectPaymentHandler.List), requireAuth))
 	mux.Handle("POST /api/projects/{id}/payments", middleware.Chain(http.HandlerFunc(projectPaymentHandler.Add), requireAuth, idem))
-	mux.Handle("PUT /api/projects/{id}/contract-value", middleware.Chain(http.HandlerFunc(projectPaymentHandler.SetValue), requireAuth))
+	fieldApp.Set("PUT /api/projects/{id}/contract-value", "field.project_contract_value", projectPaymentHandler.SetValue)
 	mux.Handle("POST /api/project-payments/{id}/verify", middleware.Chain(http.HandlerFunc(projectPaymentHandler.Verify), requireAuth, idem))
 	mux.Handle("POST /api/project-payments/{id}/cancel", middleware.Chain(http.HandlerFunc(projectPaymentHandler.Cancel), requireAuth, idem))
 	mux.Handle("GET /api/project-payments/overview", middleware.Chain(http.HandlerFunc(projectPaymentHandler.Overview), requireAuth))
@@ -3084,8 +3087,8 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	})
 	mux.Handle("GET /api/peer/me", middleware.Chain(http.HandlerFunc(peerHandler.Mine), requireAuth))
 	meApp.Set("POST /api/peer/me", "me.peer_note", peerHandler.Submit)
-	mux.Handle("POST /api/peer/notes/{id}/followup", middleware.Chain(http.HandlerFunc(peerHandler.Followup), requireAuth))
-	mux.Handle("POST /api/peer/notes/{id}/accept", middleware.Chain(http.HandlerFunc(peerHandler.Accept), requireAuth))
+	meApp.Set("POST /api/peer/notes/{id}/followup", "me.peer_followup", peerHandler.Followup)
+	meApp.Set("POST /api/peer/notes/{id}/accept", "me.peer_accept", peerHandler.Accept)
 	mux.Handle("GET /api/peer/voice", middleware.Chain(http.HandlerFunc(peerHandler.Report), requireAuth, requireMon["mon_staff"]))
 	mux.Handle("GET /api/workplace-issues", middleware.Chain(http.HandlerFunc(peerHandler.Issues), requireAuth, requireMon["mon_staff"]))
 	mux.Handle("POST /api/workplace-issues", middleware.Chain(http.HandlerFunc(peerHandler.OpenIssue), requireAuth, requireMon["mon_staff"]))
@@ -3093,7 +3096,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	mux.Handle("POST /api/workplace-issues/{id}/entries", middleware.Chain(http.HandlerFunc(peerHandler.AddEntry), requireAuth, requireMon["mon_staff"]))
 	mux.Handle("POST /api/workplace-issues/{id}/analyze", middleware.Chain(http.HandlerFunc(peerHandler.Analyze), requireAuth, requireMon["mon_staff"]))
 	mux.Handle("POST /api/workplace-issues/{id}/decide", middleware.Chain(http.HandlerFunc(peerHandler.Decide), requireAuth, requireMon["mon_staff"]))
-	mux.Handle("POST /api/workplace-issues/{id}/party-followup", middleware.Chain(http.HandlerFunc(peerHandler.PartyFollowup), requireAuth))
+	meApp.Set("POST /api/workplace-issues/{id}/party-followup", "me.workplace_party_followup", peerHandler.PartyFollowup)
 	mux.Handle("GET /api/media/briefs", middleware.Chain(http.HandlerFunc(mediaHandler.List), requireAuth, requireMediaView))
 	mux.Handle("PUT /api/media/briefs/{id}", middleware.Chain(http.HandlerFunc(mediaHandler.Update), requireAuth, requireMedia))
 	mux.Handle("GET /api/ai/watch", middleware.Chain(http.HandlerFunc(handler.NewMatrixWatchHandler(matrixWatchService).Report), requireAuth, requireMon["mon_matrix"]))
@@ -3122,7 +3125,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	service.StartQuotationExpiryReminder(quotationRepo, notificationRepo)
 	mux.Handle("GET /api/projects/stage-limits", middleware.Chain(http.HandlerFunc(projectDelayHandler.StageLimits), requireAuth, requireAdmin))
 	mux.Handle("PUT /api/projects/stage-limits", middleware.Chain(http.HandlerFunc(projectDelayHandler.SetStageLimit), requireAuth, requireAdmin))
-	mux.Handle("POST /api/projects/{id}/delay-reason", middleware.Chain(http.HandlerFunc(projectDelayHandler.AddReason), requireAuth))
+	fieldApp.Set("POST /api/projects/{id}/delay-reason", "field.project_delay_reason", projectDelayHandler.AddReason)
 	mux.Handle("GET /api/projects/my-delays", middleware.Chain(http.HandlerFunc(projectDelayHandler.MyDelays), requireAuth))
 	procurementWatchHandler := handler.NewProcurementWatchHandler(db)
 	mux.Handle("GET /api/monitor/procurement-watch", middleware.Chain(http.HandlerFunc(procurementWatchHandler.Get), requireAuth, requireMon["mon_field"]))
@@ -3334,7 +3337,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 		meetingRepo := repository.NewMeetingRequestRepository(db)
 		secHandler.SetMeetings(meetingRepo)
 		meetingHandler := handler.NewMeetingRequestHandler(meetingRepo, notificationRepo)
-		mux.Handle("POST /api/meeting-requests", middleware.Chain(http.HandlerFunc(meetingHandler.Create), requireAuth))
+		requestsApp.Set("POST /api/meeting-requests", "requests.meeting", meetingHandler.Create)
 		mux.Handle("GET /api/meeting-requests/mine", middleware.Chain(http.HandlerFunc(meetingHandler.Mine), requireAuth))
 		mux.Handle("GET /api/secretary/reminders", middleware.Chain(http.HandlerFunc(secHandler.Reminders), requireAuth, requireAdmin))
 		mux.Handle("POST /api/secretary/reminders/{id}/schedule", middleware.Chain(http.HandlerFunc(secHandler.Schedule), requireAuth, requireAdmin))
@@ -3558,7 +3561,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 
 	// 🏴‍☠️ ون بيس: التطبيقات المنقولة — الحارس صار قاعدة بالنواة (الرفض 404)
 	coreRouter.Mount(
-		meApp,
+		meApp, requestsApp, fieldApp,
 		system.New(system.Deps{SetSwitch: systemSwitchHandler.Set}),
 		people.New(people.Deps{Create: employeeAdminHandler.Create}),
 	)
