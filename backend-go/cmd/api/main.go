@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"staffmange-api/internal/apps/access"
 	"staffmange-api/internal/apps/field"
 	"staffmange-api/internal/apps/me"
 	"staffmange-api/internal/apps/org"
@@ -954,8 +955,10 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	// 🏴‍☠️ «ون بيس» (دازاي 11-10): التطبيقات الجديدة تتسجّل عبر النواة — كل مسار بفعل
 	// وقاعدة، والرفض 404. تعيش جنب المسارات القديمة لحد ما تنتقل وحدة وحدة.
 	coreRouter := core.NewRouter(mux, requireAuth, permissionRepo, core.NewPolicies())
+	coreRouter.OnDeny(func(r *http.Request, id string) { middleware.RecordViolation(r, employeeRepo, notificationRepo, id) })
 	meApp := me.New() // «شغلي أنا»: المعالجات تنحط بمكانها، والتسجيل بالأخير
 	requestsApp := requests.New()
+	accessApp := access.New() // الصلاحيات نفسها
 	fieldApp := field.New(field.Deps{
 		BookingParty:        func(b, e string) bool { ok, err := bookingRepo.IsAssignedTo(b, e); return err == nil && ok },
 		ProjectParty:        repository.NewProjectRepository(db).IsParty,
@@ -1151,7 +1154,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	// الصلاحيات — العرض متاح لأي مسجل دخول، التعديل والتطبيق التلقائي محصور بمدير النظام فقط
 	// قائمة كل صلاحيات النظام = خارطة للمهاجم يعرف بيها شنو موجود وشنو
 	// يستهدف. الموظف ما يحتاجها — صلاحياته هو تجي بـ/permissions/employee/{id}
-	mux.Handle("GET /api/permissions", middleware.Chain(http.HandlerFunc(permissionHandler.ListAll), requireAuth, requireAdmin))
+	accessApp.Set("GET /api/permissions", "access.list", permissionHandler.ListAll)
 	// فحص: منو من الموظفين ناقصه صلاحيات دوره. قراءة بس، ما يمنح شي.
 	// تقييم مهارات القيادة — چانت أشرطة ما تنحفظ وتنتقل من موظف لموظف.
 	// ⚠️ القراءة لأي مسجَّل (الموظف يشوف تقييمه)، والكتابة للمالك
@@ -1174,13 +1177,13 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	mux.Handle("PUT /api/departments/{id}", middleware.Chain(http.HandlerFunc(departmentHandler.Update), requireAuth, requireDepartmentsManage))
 	mux.Handle("POST /api/department-heads", middleware.Chain(http.HandlerFunc(departmentHandler.CreateHead), requireAuth, requireDepartmentsManage))
 	mux.Handle("PUT /api/department-heads/{id}", middleware.Chain(http.HandlerFunc(departmentHandler.UpdateHead), requireAuth, requireDepartmentsManage))
-	mux.Handle("GET /api/permissions/audit-defaults", middleware.Chain(http.HandlerFunc(permissionHandler.AuditDefaults), requireAuth, requireAdmin))
-	mux.Handle("GET /api/permissions/role-defaults", middleware.Chain(http.HandlerFunc(permissionHandler.RoleDefaults), requireAuth))
+	accessApp.Set("GET /api/permissions/audit-defaults", "access.audit_defaults", permissionHandler.AuditDefaults)
+	accessApp.Set("GET /api/permissions/role-defaults", "access.role_defaults", permissionHandler.RoleDefaults)
 	// قائمة الموظفين الي يوصلون لصلاحية معيّنة — لتعبئة القوائم المنسدلة
 	// (مثلاً: مين المسؤول عن المشروع، ومين يسوي الكشف)
-	mux.Handle("GET /api/permissions/employees", middleware.Chain(http.HandlerFunc(permissionHandler.EmployeesWithPermission), requireAuth, requireAdmin))
-	mux.Handle("GET /api/permissions/employee/{id}", middleware.Chain(http.HandlerFunc(permissionHandler.ListForEmployee), requireAuth))
-	mux.Handle("PUT /api/permissions/employee/{id}", middleware.Chain(http.HandlerFunc(permissionHandler.SetForEmployee), requireAuth, requireAdmin))
+	accessApp.Set("GET /api/permissions/employees", "access.holders", permissionHandler.EmployeesWithPermission)
+	accessApp.Set("GET /api/permissions/employee/{id}", "access.employee_view", permissionHandler.ListForEmployee)
+	accessApp.Set("PUT /api/permissions/employee/{id}", "access.employee_set", permissionHandler.SetForEmployee)
 	// (ع) 10-17: تسليم شغل موظف لموظف جديد — المنصب والصلاحيات والشغل المفتوح
 	employeeHandoverHandler := handler.NewEmployeeHandoverHandler(repository.NewEmployeeHandoverRepository(db))
 	mux.Handle("GET /api/employees/{id}/handover", middleware.Chain(http.HandlerFunc(employeeHandoverHandler.Preview), requireAuth, requireAdmin))
@@ -1188,21 +1191,21 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	// (دازاي 10-26) «الصلاحيات والوصول»: مجموعات، مصدر كل صلاحية، حفظ بنسخة، مطابقة الصنف،
 	// استثناءات (ومؤقتة)، وسجل — المالك ومدير النظام.
 	accessHandler := handler.NewPermissionAccessHandler(db)
-	mux.Handle("GET /api/permissions/catalog", middleware.Chain(http.HandlerFunc(accessHandler.Catalog), requireAuth, requireAdmin))
+	accessApp.Set("GET /api/permissions/catalog", "access.catalog", accessHandler.Catalog)
 	mux.Handle("GET /api/employees/{id}/access", middleware.Chain(http.HandlerFunc(accessHandler.Access), requireAuth, requireAdmin))
 	mux.Handle("PUT /api/employees/{id}/access", middleware.Chain(http.HandlerFunc(accessHandler.Save), requireAuth, requireAdmin))
-	mux.Handle("GET /api/permissions/role-drift", middleware.Chain(http.HandlerFunc(accessHandler.RoleDrift), requireAuth, requireAdmin))
-	mux.Handle("POST /api/permissions/role-drift/{id}/align", middleware.Chain(http.HandlerFunc(accessHandler.Align), requireAuth, requireAdmin))
-	mux.Handle("POST /api/permissions/exceptions", middleware.Chain(http.HandlerFunc(accessHandler.AddException), requireAuth, requireAdmin))
-	mux.Handle("DELETE /api/permissions/exceptions", middleware.Chain(http.HandlerFunc(accessHandler.RemoveException), requireAuth, requireAdmin))
-	mux.Handle("GET /api/permissions/audit-log", middleware.Chain(http.HandlerFunc(accessHandler.AuditLog), requireAuth, requireAdmin))
+	accessApp.Set("GET /api/permissions/role-drift", "access.role_drift", accessHandler.RoleDrift)
+	accessApp.Set("POST /api/permissions/role-drift/{id}/align", "access.role_drift_fix", accessHandler.Align)
+	accessApp.Set("POST /api/permissions/exceptions", "access.exception_add", accessHandler.AddException)
+	accessApp.Set("DELETE /api/permissions/exceptions", "access.exception_del", accessHandler.RemoveException)
+	accessApp.Set("GET /api/permissions/audit-log", "access.audit_log", accessHandler.AuditLog)
 	safeguard.Loop("الصلاحيات المؤقتة", 6*time.Minute, time.Hour, func() {
 		if n := accessHandler.SweepExpired(); n > 0 {
 			log.Printf("permissions: انشالت %d صلاحية مؤقتة خلص وقتها", n)
 		}
 	})
-	mux.Handle("POST /api/permissions/apply-defaults-all", middleware.Chain(http.HandlerFunc(permissionHandler.ApplyDefaultsAll), requireAuth, requireAdmin))
-	mux.Handle("POST /api/permissions/employee/{id}/apply-defaults", middleware.Chain(http.HandlerFunc(permissionHandler.ApplyDefaults), requireAuth, requireAdmin))
+	accessApp.Set("POST /api/permissions/apply-defaults-all", "access.reset_all", permissionHandler.ApplyDefaultsAll)
+	accessApp.Set("POST /api/permissions/employee/{id}/apply-defaults", "access.employee_reset", permissionHandler.ApplyDefaults)
 
 	// الخدمات والمهارات — القراءة لأي مسجل دخول، الإضافة لمدير النظام فقط
 	mux.Handle("GET /api/services", middleware.Chain(http.HandlerFunc(serviceHandler.List), requireAuth))
@@ -3573,7 +3576,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 
 	// 🏴‍☠️ ون بيس: التطبيقات المنقولة — الحارس صار قاعدة بالنواة (الرفض 404)
 	coreRouter.Mount(
-		meApp, requestsApp, fieldApp,
+		meApp, requestsApp, fieldApp, accessApp,
 		system.New(system.Deps{SetSwitch: systemSwitchHandler.Set}),
 		people.New(people.Deps{Create: employeeAdminHandler.Create}),
 	)

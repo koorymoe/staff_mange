@@ -31,7 +31,12 @@ type Router struct {
 	policies *Policies
 	app      string
 	routes   []RouteInfo
+	onDeny   func(r *http.Request, employeeID string)
 }
+
+// OnDeny يربط تسجيل المخالفات (نفس حراس النظام القديمة: العدّ، الحظر على
+// الكتابات المتكررة، تنبيه الإدارة) — بلاه النقل للنواة يخسّرنا هالحماية.
+func (rt *Router) OnDeny(f func(r *http.Request, employeeID string)) { rt.onDeny = f }
 
 func NewRouter(mux *http.ServeMux, auth func(http.Handler) http.Handler, perms PermLister, p *Policies) *Router {
 	return &Router{mux: mux, auth: auth, perms: perms, policies: p}
@@ -71,6 +76,9 @@ func (rt *Router) Handle(pattern string, act Action, h http.HandlerFunc) {
 	gate := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		a := resolveActor(r, rt.perms)
 		if !rt.policies.Allowed(a, act, r) {
+			if rt.onDeny != nil && a != nil {
+				rt.onDeny(r, a.ID)
+			}
 			NotFound(w)
 			return
 		}

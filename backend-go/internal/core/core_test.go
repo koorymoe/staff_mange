@@ -1,11 +1,14 @@
 package core
 
 import (
+	"context"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
+
+	"staffmange-api/internal/middleware"
 )
 
 type fakePerms map[string][]string
@@ -166,5 +169,34 @@ func TestBodyFieldKeepsBody(t *testing.T) {
 	}
 	if BodyField(httptest.NewRequest("POST", "/x", strings.NewReader(`not json`)), "bookingId") != "" {
 		t.Fatal("جسم مو JSON لازم يرجع فاضي")
+	}
+}
+
+// الرفض بالنواة يتسجّل مخالفة مثل الحراس القديمة (العدّ والحظر وتنبيه الإدارة).
+func TestDenyIsRecorded(t *testing.T) {
+	mux := http.NewServeMux()
+	rt := NewRouter(mux, func(h http.Handler) http.Handler { return h }, nil, NewPolicies())
+	var recorded []string
+	rt.OnDeny(func(_ *http.Request, id string) { recorded = append(recorded, id) })
+	rt.Mount(testApp{})
+	// بلا هوية (Actor nil) ما ينحسب — ماكو منو نسجّل عليه
+	mux.ServeHTTP(httptest.NewRecorder(), httptest.NewRequest("PUT", "/demo", nil))
+	if len(recorded) != 0 {
+		t.Fatalf("انسجّل بلا هوية: %v", recorded)
+	}
+	// فني داخل يحاول يعدّل — 404 وينسجّل عليه
+	req := httptest.NewRequest("PUT", "/demo", nil)
+	ctx := context.WithValue(req.Context(), middleware.ContextEmployeeID, "tech1")
+	ctx = context.WithValue(ctx, middleware.ContextRole, "TECHNICIAN")
+	w := httptest.NewRecorder()
+	mux.ServeHTTP(w, req.WithContext(ctx))
+	if w.Code != 404 || len(recorded) != 1 || recorded[0] != "tech1" {
+		t.Fatalf("الرفض: %d، المسجّل %v", w.Code, recorded)
+	}
+	// المسموح ما ينسجّل
+	req = httptest.NewRequest("GET", "/demo", nil)
+	mux.ServeHTTP(httptest.NewRecorder(), req.WithContext(ctx))
+	if len(recorded) != 1 {
+		t.Fatalf("المسموح انسجّل: %v", recorded)
 	}
 }
