@@ -3510,7 +3510,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	// 🏴‍☠️ ون بيس: التطبيقات المنقولة — الحارس صار قاعدة بالنواة (الرفض 404)
 	coreRouter.Mount(
 		meApp, requestsApp, fieldApp, accessApp,
-		system.New(system.Deps{SetSwitch: systemSwitchHandler.Set}),
+		system.New(system.Deps{SetSwitch: systemSwitchHandler.Set, DB: db}),
 		peopleApp, financeApp, invoicesApp,
 	)
 	coreRouter.Mount(append(sections.Apps(secs), designsApp, trainingCenterApp)...)

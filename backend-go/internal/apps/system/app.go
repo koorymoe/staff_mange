@@ -4,6 +4,7 @@ package system
 
 import (
 	"encoding/json"
+	"github.com/jmoiron/sqlx"
 	"net/http"
 
 	"staffmange-api/internal/core"
@@ -13,6 +14,7 @@ import (
 // Deps معالجات قديمة تنتقل تحت قواعد النواة (المنطق نفسه، الحارس صار هنا).
 type Deps struct {
 	SetSwitch http.HandlerFunc
+	DB        *sqlx.DB // لوحة الأدمن التلقائية (قراءة بس)
 }
 
 type App struct {
@@ -26,7 +28,9 @@ func (*App) Name() string { return "system" }
 
 func (*App) Policies() map[core.Action]core.Rule {
 	return map[core.Action]core.Rule{
-		"system.matrix": {Label: "يشوف مصفوفة الصلاحيات (كل فعل، منو يگدر عليه، ومساراته)", OwnerOnly: true},
+		"system.matrix":       {Label: "يشوف مصفوفة الصلاحيات (كل فعل، منو يگدر عليه، ومساراته)", OwnerOnly: true},
+		"system.admin_tables": {Label: "يشوف جداول قاعدة البيانات (لوحة الأدمن — قراءة بس)", OwnerOnly: true},
+		"system.admin_rows":   {Label: "يتصفّح جدول بقاعدة البيانات (الأسرار مخفية — قراءة بس)", OwnerOnly: true},
 		// المالك دايماً، ومدير النظام بس بالمفاتيح المسموحة له
 		"system.switch_set": {Label: "يشغّل/يطفي مفتاح بالنظام", Strict: true, Check: func(a *core.Actor, r *http.Request) bool {
 			return a.Owner() || (a.Role == "ADMIN" && model.SystemSwitchAdminAllowed(r.PathValue("key")))
@@ -37,6 +41,8 @@ func (*App) Policies() map[core.Action]core.Rule {
 func (a *App) Routes(r *core.Router) {
 	a.router = r
 	r.Handle("PUT /api/system/switches/{key}", "system.switch_set", a.deps.SetSwitch)
+	r.Handle("GET /api/core/admin/tables", "system.admin_tables", a.adminTables)
+	r.Handle("GET /api/core/admin/tables/{table}", "system.admin_rows", a.adminRows)
 	r.Handle("GET /api/core/matrix", "system.matrix", func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		_ = json.NewEncoder(w).Encode(map[string]any{"actions": a.router.Matrix(), "routes": a.router.Routes()})

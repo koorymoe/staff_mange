@@ -4107,3 +4107,9 @@ export interface CustomerSignature {
 
 // (ع) 11-10 بلاغ #30/#31: سطر من «منو سوّى شنو» بالحجز
 export interface BookingHistoryLine { at: string; by: string; text: string }
+
+// ون بيس (11-10): مصفوفة الصلاحيات ولوحة الأدمن التلقائية — للمالك
+export interface CoreMatrixRow { action: string; label: string; public?: boolean; ownerOnly?: boolean; strict?: boolean; anyone?: boolean; leader?: boolean; roles?: string[]; perms?: string[]; hasCheck?: boolean; routes: string[]; unused?: boolean }
+export interface CoreMatrix { actions: CoreMatrixRow[]; routes: { app: string; pattern: string; action: string }[] }
+export interface CoreTable { name: string; rows: number; columns: number }
+export interface CoreTablePage { table: string; columns: { name: string; type: string }[]; rows: Record<string, unknown>[]; total: number; page: number; size: number }
