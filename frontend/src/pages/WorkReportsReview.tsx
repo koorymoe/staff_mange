@@ -68,6 +68,11 @@ export default function WorkReportsReview() {
         <h2 className="text-2xl font-bold text-brand-900">تقارير العمل — مراجعة</h2>
         <p className="mt-1 text-slate-500">كل التقارير اللي يرسلها الفنيون عن الحجوزات اللي اشتغلوا عليها</p>
       </div>
+      {/* (بلاغ #24 — أمير 11-08: «اكو وقت لنزول التقييم؟ ليش يحسب تأخير؟») */}
+      <p className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm leading-7 text-amber-900">
+        ⏰ <b>موعد التقييم:</b> كل كادر يتقيّم <b>بنفس يوم إنجاز حجزه</b> (لحد ١٢ الليل بتوقيت بغداد). الي يفوت يطلع باچر كـ«واجب فايت»:
+        تنقفل الشاشات لحد ما تكتب السبب وتعوّض، وينسجّل تأخير. التقييم نفسه بأي ترتيب — المهم يخلص باليوم.
+      </p>
 
       <div className="flex flex-wrap gap-2">
         {([
