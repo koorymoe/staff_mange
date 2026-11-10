@@ -867,7 +867,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	// الصلاحية الي تفتح صفحة "إدارة الكوادر" بالواجهة للمراقب أيضاً) — مو دور
 	// وظيفي صارم، وإلا نفس بگ "تدقيق الحسابات" يتكرر: زر يطلع بالواجهة، السيرفر
 	// يرفضه، وبعد 3 محاولات ينوقف حساب الموظف تلقائياً.
-	requireStaffManagement := guards.Permission("staff_management")
+	// requireStaffManagement انتقل للنواة (people.skills) — 11-10
 	// ═══ حرّاس الصلاحيات المستقلة ═══
 	//
 	// ⚠️ الإخفاء بالقائمة الجانبية **مو حماية**: الموظف يكتب المسار
@@ -959,6 +959,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	meApp := me.New() // «شغلي أنا»: المعالجات تنحط بمكانها، والتسجيل بالأخير
 	requestsApp := requests.New()
 	accessApp := access.New() // الصلاحيات نفسها
+	peopleApp := people.New() // الموظفين
 	fieldApp := field.New(field.Deps{
 		BookingParty:        func(b, e string) bool { ok, err := bookingRepo.IsAssignedTo(b, e); return err == nil && ok },
 		ProjectParty:        repository.NewProjectRepository(db).IsParty,
@@ -1009,8 +1010,8 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 		middleware.RequireRole(employeeRepo, notificationRepo, "ADMIN", "OWNER")))
 
 	// موظفين — القراءة تحتاج تسجيل دخول فقط، الإنشاء/التعديل الحساس محمي بدور ADMIN
-	mux.Handle("GET /api/employees", middleware.Chain(http.HandlerFunc(employeeHandler.List), requireAuth))
-	mux.Handle("GET /api/employees/supervisors", middleware.Chain(http.HandlerFunc(employeeHandler.Supervisors), requireAuth))
+	peopleApp.Set("GET /api/employees", "people.list", employeeHandler.List)
+	peopleApp.Set("GET /api/employees/supervisors", "people.supervisors", employeeHandler.Supervisors)
 	disciplineHandler := handler.NewDisciplineHandler(disciplineService)
 	employeeLetterHandler := handler.NewEmployeeLetterHandler(employeeLetterRepo, notificationRepo)
 	bookingVisitRepo := repository.NewBookingVisitRepository(db)
@@ -1034,7 +1035,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	mux.Handle("GET /api/discipline/today-headline", middleware.Chain(http.HandlerFunc(disciplineHandler.TodayHeadline), requireAuth))
 	// التعديل اليدوي: المالك ومدير النظام بس. requireAdmin يمرّر OWNER أصلاً.
 	mux.Handle("POST /api/discipline/adjust", middleware.Chain(http.HandlerFunc(disciplineHandler.Adjust), requireAuth, requireAdmin))
-	mux.Handle("GET /api/employees/archived", middleware.Chain(http.HandlerFunc(employeeHandler.ListArchived), requireAuth, requireAdmin))
+	peopleApp.Set("GET /api/employees/archived", "people.archived", employeeHandler.ListArchived)
 	// 🧠 بوابة الالتزام (11-02 — تعديلات ٩.١): الاستمارة + تقرير الإنجاز اليومي
 	workGate := handler.NewWorkGateHandler(db, notificationRepo)
 	achievementHandler.OnReport = workGate.MirrorAchievement // دازاي 11-05: الإنجاز = تقرير اليوم
@@ -1097,7 +1098,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 		}
 	})
 	mux.Handle("GET /api/daily-reports", middleware.Chain(http.HandlerFunc(workGate.ListDaily), requireAuth, requireDailyReports))
-	mux.Handle("GET /api/employees/{id}/dossier", middleware.Chain(http.HandlerFunc(workGate.Dossier), requireAuth, requireDailyReports))
+	peopleApp.Set("GET /api/employees/{id}/dossier", "people.dossier", workGate.Dossier)
 	mux.Handle("GET /api/negligence", middleware.Chain(http.HandlerFunc(workGate.Negligence), requireAuth, requireDailyReports))
 	mux.Handle("GET /api/profile-surveys", middleware.Chain(http.HandlerFunc(workGate.ListSurveys), requireAuth, requireSurveys))
 	mux.Handle("POST /api/profile-surveys/{id}/review", middleware.Chain(http.HandlerFunc(workGate.ReviewSurvey), requireAuth, requireSurveys))
@@ -1119,37 +1120,31 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	mux.Handle("POST /api/security/unlock/{id}", middleware.Chain(http.HandlerFunc(securityHandler.Unlock), requireAuth, requireOwner))
 	mux.Handle("POST /api/security/reset-attempts/{id}", middleware.Chain(http.HandlerFunc(securityHandler.ResetAttempts), requireAuth, requireOwner))
 	mux.Handle("POST /api/security/free-memory", middleware.Chain(http.HandlerFunc(securityHandler.FreeMemory), requireAuth, requireOwner))
-	mux.Handle("GET /api/employees/match", middleware.Chain(http.HandlerFunc(employeeHandler.Match), requireAuth))
-	mux.Handle("GET /api/employees/{id}", middleware.Chain(http.HandlerFunc(employeeHandler.Get), requireAuth))
+	peopleApp.Set("GET /api/employees/match", "people.match", employeeHandler.Match)
+	peopleApp.Set("GET /api/employees/{id}", "people.view", employeeHandler.Get)
 	// فتح حساب جديد = المالك وحده. مدير النظام يدير كلشي بالنظام لكن
 	// **منو يدخل النظام** قرار المالك — وهذا يصير أهم بعد ما يجي
 	// النظام الأكبر ويصير الحساب الواحد يفتح عالمين.
 	// (ع): «إضافة موظف» صارت صلاحية تنطى — المالك أو صاحب employee_create،
 	// والفحص بالمعالج (بلا أدوار عليا لغير المالك).
 	employeeAdminHandler := handler.NewEmployeeAdminHandler(employeeService, permissionRepo, employeeRepo)
+	peopleApp.Set("POST /api/employees", "people.create", employeeAdminHandler.Create)
 	_ = requireOwnerAccounts
-	mux.Handle("GET /api/employees/my-admin-scope", middleware.Chain(http.HandlerFunc(employeeAdminHandler.MyScope), requireAuth))
-	mux.Handle("GET /api/employees/{id}/admin-scope", middleware.Chain(http.HandlerFunc(employeeAdminHandler.GetScope), requireAuth, requireAdmin))
-	mux.Handle("PUT /api/employees/{id}/admin-scope", middleware.Chain(http.HandlerFunc(employeeAdminHandler.SetScope), requireAuth, requireAdmin))
-	mux.Handle("PUT /api/employees/{id}/all", middleware.Chain(http.HandlerFunc(employeeAdminHandler.UpdateAll), requireAuth,
-		guards.RoleOrPermission([]string{"ADMIN"}, "employee_edit_all")))
-	mux.Handle("PUT /api/employees/{id}/suspend", middleware.Chain(http.HandlerFunc(employeeAdminHandler.Suspend), requireAuth,
-		guards.RoleOrPermission([]string{"ADMIN"}, "employee_suspend")))
-	mux.Handle("PUT /api/employees/{id}/reactivate", middleware.Chain(http.HandlerFunc(employeeAdminHandler.Reactivate), requireAuth,
-		guards.RoleOrPermission([]string{"ADMIN"}, "employee_suspend")))
-	mux.Handle("GET /api/employees/suspended", middleware.Chain(http.HandlerFunc(employeeAdminHandler.ListSuspended), requireAuth,
-		guards.RoleOrPermission([]string{"ADMIN"}, "employee_suspend")))
-	mux.Handle("PUT /api/employees/{id}/schedule", middleware.Chain(http.HandlerFunc(employeeAdminHandler.Schedule), requireAuth,
-		guards.RoleOrPermission([]string{"ADMIN"}, "work_schedule_manage")))
+	peopleApp.Set("GET /api/employees/my-admin-scope", "people.my_scope", employeeAdminHandler.MyScope)
+	peopleApp.Set("GET /api/employees/{id}/admin-scope", "people.scope_view", employeeAdminHandler.GetScope)
+	peopleApp.Set("PUT /api/employees/{id}/admin-scope", "people.scope_set", employeeAdminHandler.SetScope)
+	peopleApp.Set("PUT /api/employees/{id}/all", "people.edit_all", employeeAdminHandler.UpdateAll)
+	peopleApp.Set("PUT /api/employees/{id}/suspend", "people.suspend", employeeAdminHandler.Suspend)
+	peopleApp.Set("PUT /api/employees/{id}/reactivate", "people.reactivate", employeeAdminHandler.Reactivate)
+	peopleApp.Set("GET /api/employees/suspended", "people.suspended", employeeAdminHandler.ListSuspended)
+	peopleApp.Set("PUT /api/employees/{id}/schedule", "people.schedule", employeeAdminHandler.Schedule)
 	mux.Handle("GET /api/work-schedule", middleware.Chain(http.HandlerFunc(employeeAdminHandler.WorkSchedule), requireAuth,
 		guards.RoleOrAnyPermission([]string{"ADMIN", "HR_COORDINATOR", "MONITOR"}, "work_schedule_manage", "staff_management")))
-	mux.Handle("PUT /api/employees/{id}", middleware.Chain(http.HandlerFunc(employeeHandler.Update), requireAuth, requireAdmin))
-	mux.Handle("PUT /api/employees/{id}/identity", middleware.Chain(http.HandlerFunc(employeeHandler.UpdateIdentity), requireAuth,
-		guards.RoleOrPermission([]string{"ADMIN"}, "edit_employee_identity")))
-	mux.Handle("PUT /api/employees/{id}/profile", middleware.Chain(http.HandlerFunc(employeeHandler.UpdateProfile), requireAuth,
-		guards.RoleOrPermission([]string{"ADMIN"}, "edit_employee_profile")))
-	mux.Handle("POST /api/employees/{id}/link-historical", middleware.Chain(http.HandlerFunc(employeeHandler.LinkHistoricalRecords), requireAuth, requireAdmin))
-	mux.Handle("PUT /api/employees/{id}/skills", middleware.Chain(http.HandlerFunc(employeeHandler.SetSkills), requireAuth, requireStaffManagement))
+	peopleApp.Set("PUT /api/employees/{id}", "people.update", employeeHandler.Update)
+	peopleApp.Set("PUT /api/employees/{id}/identity", "people.identity", employeeHandler.UpdateIdentity)
+	peopleApp.Set("PUT /api/employees/{id}/profile", "people.profile", employeeHandler.UpdateProfile)
+	peopleApp.Set("POST /api/employees/{id}/link-historical", "people.link_history", employeeHandler.LinkHistoricalRecords)
+	peopleApp.Set("PUT /api/employees/{id}/skills", "people.skills", employeeHandler.SetSkills)
 
 	// الصلاحيات — العرض متاح لأي مسجل دخول، التعديل والتطبيق التلقائي محصور بمدير النظام فقط
 	// قائمة كل صلاحيات النظام = خارطة للمهاجم يعرف بيها شنو موجود وشنو
@@ -1159,9 +1154,8 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	// تقييم مهارات القيادة — چانت أشرطة ما تنحفظ وتنتقل من موظف لموظف.
 	// ⚠️ القراءة لأي مسجَّل (الموظف يشوف تقييمه)، والكتابة للمالك
 	// والمدير وإداري الكوادر بس.
-	mux.Handle("GET /api/employees/{id}/leader-skills", middleware.Chain(http.HandlerFunc(leaderSkillHandler.List), requireAuth))
-	mux.Handle("PUT /api/employees/{id}/leader-skills", middleware.Chain(http.HandlerFunc(leaderSkillHandler.Set), requireAuth,
-		middleware.RequireRole(employeeRepo, notificationRepo, "ADMIN", "OWNER", "HR_COORDINATOR")))
+	peopleApp.Set("GET /api/employees/{id}/leader-skills", "people.leader_skills", leaderSkillHandler.List)
+	peopleApp.Set("PUT /api/employees/{id}/leader-skills", "people.leader_skills_set", leaderSkillHandler.Set)
 	// ═══ سجل الأقسام ومسؤوليها — للحجز داخل الشركة ═══
 	//
 	// ⚠️ القراءة لأي مسجَّل: منتقي القسم بشاشة الحجز يحتاجها، وحصرها
@@ -1186,14 +1180,14 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	accessApp.Set("PUT /api/permissions/employee/{id}", "access.employee_set", permissionHandler.SetForEmployee)
 	// (ع) 10-17: تسليم شغل موظف لموظف جديد — المنصب والصلاحيات والشغل المفتوح
 	employeeHandoverHandler := handler.NewEmployeeHandoverHandler(repository.NewEmployeeHandoverRepository(db))
-	mux.Handle("GET /api/employees/{id}/handover", middleware.Chain(http.HandlerFunc(employeeHandoverHandler.Preview), requireAuth, requireAdmin))
-	mux.Handle("POST /api/employees/{id}/handover", middleware.Chain(http.HandlerFunc(employeeHandoverHandler.Handover), requireAuth, requireAdmin))
+	peopleApp.Set("GET /api/employees/{id}/handover", "people.handover_view", employeeHandoverHandler.Preview)
+	peopleApp.Set("POST /api/employees/{id}/handover", "people.handover", employeeHandoverHandler.Handover)
 	// (دازاي 10-26) «الصلاحيات والوصول»: مجموعات، مصدر كل صلاحية، حفظ بنسخة، مطابقة الصنف،
 	// استثناءات (ومؤقتة)، وسجل — المالك ومدير النظام.
 	accessHandler := handler.NewPermissionAccessHandler(db)
 	accessApp.Set("GET /api/permissions/catalog", "access.catalog", accessHandler.Catalog)
-	mux.Handle("GET /api/employees/{id}/access", middleware.Chain(http.HandlerFunc(accessHandler.Access), requireAuth, requireAdmin))
-	mux.Handle("PUT /api/employees/{id}/access", middleware.Chain(http.HandlerFunc(accessHandler.Save), requireAuth, requireAdmin))
+	peopleApp.Set("GET /api/employees/{id}/access", "people.access_view", accessHandler.Access)
+	peopleApp.Set("PUT /api/employees/{id}/access", "people.access_set", accessHandler.Save)
 	accessApp.Set("GET /api/permissions/role-drift", "access.role_drift", accessHandler.RoleDrift)
 	accessApp.Set("POST /api/permissions/role-drift/{id}/align", "access.role_drift_fix", accessHandler.Align)
 	accessApp.Set("POST /api/permissions/exceptions", "access.exception_add", accessHandler.AddException)
@@ -1903,7 +1897,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	mux.Handle("POST /api/kpi", middleware.Chain(http.HandlerFunc(kpiHandler.Create), requireAuth, requireKpi))
 	mux.Handle("DELETE /api/kpi/{id}", middleware.Chain(http.HandlerFunc(kpiHandler.Delete), requireAuth, requireAdmin))
 	mux.Handle("PUT /api/kpi/{id}/cancel", middleware.Chain(http.HandlerFunc(kpiHandler.Cancel), requireAuth, requireKpi))
-	mux.Handle("POST /api/employees/{id}/complete-training", middleware.Chain(http.HandlerFunc(kpiHandler.CompleteTraining), requireAuth, requireContentTech))
+	peopleApp.Set("POST /api/employees/{id}/complete-training", "people.training_done", kpiHandler.CompleteTraining)
 
 	mux.Handle("GET /api/notifications", middleware.Chain(http.HandlerFunc(notificationHandler.List), requireAuth))
 	meApp.Set("POST /api/notifications/{id}/read", "me.notification_read", notificationHandler.MarkRead)
@@ -2662,7 +2656,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	// فحص أدوات المركبة العامة عند بدء مهمة — حصراً لليدر (نفس requireLeader
 	// المستخدم بصيانة الأجهزة)، الموظف العادي ما يشوف/يستخدم هالراوت إطلاقاً.
 	mux.Handle("POST /api/vehicle-missions/{id}/tool-check", middleware.Chain(http.HandlerFunc(vehicleMissionHandler.CreateToolCheck), requireAuth, requireLeader))
-	mux.Handle("GET /api/employees/{id}/driver-rating-summary", middleware.Chain(http.HandlerFunc(vehicleMissionHandler.DriverRatingSummary), requireAuth, requireVehicleMgmt))
+	peopleApp.Set("GET /api/employees/{id}/driver-rating-summary", "people.vehicle_rating", vehicleMissionHandler.DriverRatingSummary)
 
 	// نظام حجز المركبات (مسبق) — منفصل عن بدء المهمة الفعلي أعلاه.
 	mux.Handle("POST /api/vehicle-bookings", middleware.Chain(http.HandlerFunc(vehicleBookingHandler.Create), requireAuth, requireVehicleMgmt))
@@ -3578,7 +3572,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	coreRouter.Mount(
 		meApp, requestsApp, fieldApp, accessApp,
 		system.New(system.Deps{SetSwitch: systemSwitchHandler.Set}),
-		people.New(people.Deps{Create: employeeAdminHandler.Create}),
+		peopleApp,
 	)
 
 	return middleware.Chain(mux, middleware.Recovery, middleware.SecurityHeaders, middleware.Logging, middleware.Metrics, middleware.CORS(cfg.CORSOrigins), middleware.BodyLimit(middleware.MaxBodyBytes))

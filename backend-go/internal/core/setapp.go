@@ -43,3 +43,12 @@ func (a *SetApp) Routes(r *Router) {
 // AdminRule «مدير النظام» — نفس RequireRole("ADMIN") القديم: المالك والمدير ومن
 // منصبه يعطيه دور ADMIN.
 func AdminRule(label string) Rule { return Rule{Label: label, Roles: []string{"ADMIN"}} }
+
+// PermRule «صلاحية» — نفس guards.Permission القديم: المالك والمدير يعبرون، أو الصلاحية.
+func PermRule(label string, perms ...string) Rule { return Rule{Label: label, Perms: perms} }
+
+// RolePermRule نفس guards.RoleOrAnyPermission القديم: الدور (الأصلي أو المنصب أو
+// المراقب) أو وحدة من الصلاحيات — والمالك والمدير يعبرون.
+func RolePermRule(label string, roles []string, perms ...string) Rule {
+	return Rule{Label: label, Roles: roles, Perms: perms}
+}
