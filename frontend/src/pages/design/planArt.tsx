@@ -92,3 +92,23 @@ export function BlueprintLines({ className = '' }: { className?: string }) {
     </svg>
   )
 }
+
+// (ك) 11-10: دازاي طلب الشكل «بالضبط»، فالصور الحقيقية (العمارة والمشاريع واللفّات) مقصوصة من
+// صورة التصميم نفسها (public/plan-sets/art.webp — 1372×827) بدل الرسم بالكود.
+const ART_W = 1372
+const ART_H = 827
+const CROPS = {
+  banner: [10, 15, 770, 225],
+  card0: [952, 432, 403, 120],
+  card1: [493, 432, 437, 120],
+  card2: [30, 432, 440, 120],
+  rolls: [515, 700, 180, 110],
+} as const
+export function ArtCrop({ part, className = '' }: { part: keyof typeof CROPS; className?: string }) {
+  const [x, y, w, h] = CROPS[part]
+  return (
+    <svg viewBox={`${x} ${y} ${w} ${h}`} preserveAspectRatio="xMidYMid slice" className={className} aria-hidden>
+      <image href={`${import.meta.env.BASE_URL}plan-sets/art.webp`} width={ART_W} height={ART_H} />
+    </svg>
+  )
+}

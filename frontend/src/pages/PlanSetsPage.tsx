@@ -3,8 +3,8 @@ import { Link, useNavigate } from 'react-router-dom'
 import { apiRequest, fileUrl } from '../api'
 import { useSession } from '../session'
 import {
-  BlueprintLines, BuildingArt, IconArrow, IconBolt, IconCal, IconCalc, IconCheck, IconCity, IconClock, IconDoc,
-  IconFolder, IconHeart, IconImage, IconLayers, IconPdf, IconPin, IconUpload, RollsArt,
+  ArtCrop, BlueprintLines, IconArrow, IconBolt, IconCal, IconCalc, IconCheck, IconCity, IconClock, IconDoc,
+  IconFolder, IconHeart, IconImage, IconLayers, IconPdf, IconPin, IconUpload,
 } from './design/planArt'
 import type { PlanMeta, PlanSetRow } from './design/planTypes'
 
@@ -95,7 +95,7 @@ export default function PlanSetsPage() {
       {/* البانر */}
       <div className="relative overflow-hidden rounded-3xl border border-[#2a3a6e] bg-gradient-to-l from-[#0f1a3d] via-[#15215a] to-[#1b2b6b]">
         <div className="absolute inset-y-0 left-0 w-full sm:w-[58%]">
-          <BuildingArt seed={0} className="h-full w-full" />
+          <ArtCrop part="banner" className="h-full w-full" />
           <div className="absolute inset-0 bg-gradient-to-l from-[#15215a] via-transparent to-transparent" />
         </div>
         <BlueprintLines className="absolute left-[38%] top-0 hidden h-full sm:block" />
@@ -168,7 +168,7 @@ export default function PlanSetsPage() {
                   return (
                     <div key={p.projectId} className="overflow-hidden rounded-2xl border border-[#2a3a6e] bg-[#0f1a3a]">
                       <div className="relative h-44">
-                        {p.cover ? <img src={fileUrl(p.cover)} alt="" className="h-full w-full object-cover" /> : <BuildingArt seed={i + 1} className="h-full w-full" />}
+                        {p.cover ? <img src={fileUrl(p.cover)} alt="" className="h-full w-full object-cover" /> : <ArtCrop part={(["card0", "card1", "card2"] as const)[i % 3]} className="h-full w-full" />}
                         <div className="absolute inset-0 bg-gradient-to-t from-[#0f1a3a] via-transparent to-transparent" />
                         <span className={`absolute end-3 top-3 flex items-center gap-1 rounded-full px-3 py-1 text-xs font-bold text-white ${done ? 'bg-emerald-700' : 'bg-amber-600'}`}>
                           {done ? <><IconCheck size={14} /> مكتمل</> : <><span className="h-2 w-2 rounded-full bg-white" /> قيد العمل</>}
@@ -199,7 +199,7 @@ export default function PlanSetsPage() {
                 {shown.map((r, i) => (
                   <div key={r.id} className="overflow-hidden rounded-2xl border border-[#2a3a6e] bg-[#0f1a3a]">
                     <div className="relative h-36">
-                      {r.cover ? <img src={fileUrl(r.cover)} alt="" className="h-full w-full object-cover" /> : <BuildingArt seed={i + 2} className="h-full w-full" />}
+                      {r.cover ? <img src={fileUrl(r.cover)} alt="" className="h-full w-full object-cover" /> : <ArtCrop part={(["card0", "card1", "card2"] as const)[i % 3]} className="h-full w-full" />}
                       <span className="absolute end-3 top-3 rounded-full bg-[#0b1430]/85 px-3 py-1 text-xs font-bold">{r.files} تصاميم</span>
                     </div>
                     <div className="space-y-1 p-3">
@@ -233,7 +233,7 @@ export default function PlanSetsPage() {
         <Panel className="relative overflow-hidden p-4">
           <p className="mb-4 text-center font-bold">خطوات إنشاء سيت جديد</p>
           <div className="flex items-center gap-2">
-            <RollsArt className="hidden w-32 shrink-0 sm:block" />
+            <ArtCrop part="rolls" className="hidden h-24 w-36 shrink-0 rounded-xl sm:block" />
             <ol className="flex flex-1 items-start justify-between">
               {['المشروع', 'اختيار المخططات', 'رفع الملفات', 'عرض السعر'].map((s, i) => (
                 <li key={s} className="relative flex flex-1 flex-col items-center gap-2 text-center text-xs">
