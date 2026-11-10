@@ -13,7 +13,7 @@ type Action string
 // Rule قاعدة السماح لفعل واحد. الترتيب:
 //  1. Public: بلا دخول (نادر — لازم يكون مقصود).
 //  2. OwnerOnly: المالك الأصلي بس.
-//  3. المالك ومدير النظام يعبرون (إلا OwnerOnly).
+//  3. المالك ومدير النظام يعبرون (إلا OwnerOnly أو Strict).
 //  4. Anyone: أي موظف داخل.
 //  5. الدور (أصلي/فعلي/منصب) أو الصلاحية.
 //  6. Check: شرط إضافي على الشي نفسه (مثلاً «طرف بالحجز») — إذا Roles/Perms
@@ -22,10 +22,13 @@ type Rule struct {
 	Label     string // بالعربي — يطلع بمصفوفة الصلاحيات
 	Public    bool
 	OwnerOnly bool
-	Anyone    bool
-	Roles     []string
-	Perms     []string
-	Check     func(a *Actor, r *http.Request) bool
+	// Strict: المدير ما يعبر تلقائياً — القاعدة تنطبق عليه مثل غيره (مثلاً
+	// «إضافة موظف» للمالك أو صاحب الصلاحية بس).
+	Strict bool
+	Anyone bool
+	Roles  []string
+	Perms  []string
+	Check  func(a *Actor, r *http.Request) bool
 }
 
 // Policies سجل القواعد — مكان واحد لكل النظام.
@@ -76,7 +79,7 @@ func decide(rule Rule, a *Actor, r *http.Request, assumeCheck bool) bool {
 	if rule.OwnerOnly {
 		return a.Owner()
 	}
-	if a.Admin() {
+	if a.Admin() && !rule.Strict {
 		return true
 	}
 	onlyCheck := len(rule.Roles) == 0 && len(rule.Perms) == 0 && !rule.Anyone

@@ -19,6 +19,7 @@ func (testApp) Policies() map[Action]Rule {
 		"demo.view":   {Label: "يشوف", Anyone: true},
 		"demo.edit":   {Label: "يعدّل", Roles: []string{"HR_COORDINATOR"}, Perms: []string{"demo_edit"}},
 		"demo.secret": {Label: "سر المالك", OwnerOnly: true},
+		"demo.strict": {Label: "صارم", Strict: true, Roles: []string{"OWNER"}, Perms: []string{"demo_create"}},
 		"demo.own":    {Label: "شغله هو", Check: func(a *Actor, r *http.Request) bool { return r.PathValue("id") == a.ID }},
 	}
 }
@@ -28,6 +29,7 @@ func (testApp) Routes(r *Router) {
 	r.Handle("PUT /demo", "demo.edit", ok)
 	r.Handle("GET /demo/secret", "demo.secret", ok)
 	r.Handle("GET /demo/own/{id}", "demo.own", ok)
+	r.Handle("POST /demo/strict", "demo.strict", ok)
 }
 
 // fakeAuth يقلّد RequireAuth: الهوية من ترويسة X-Emp/X-Role.
@@ -71,6 +73,9 @@ func TestPolicyDecisions(t *testing.T) {
 		{admin, "demo.secret", false},
 		{owner, "demo.secret", true},
 		{tech, "demo.nope", false}, // فعل مو مسجّل = لا
+		{admin, "demo.strict", false}, // Strict: المدير بلا الصلاحية ما يعبر
+		{owner, "demo.strict", true},
+		{&Actor{ID: "x", Role: "ADMIN", Perms: map[string]bool{"demo_create": true}}, "demo.strict", true},
 	}
 	for _, c := range cases {
 		if got := p.Simulate(c.a, c.act); got != c.want {
@@ -139,7 +144,7 @@ func TestStartupRefusesUnsafeApps(t *testing.T) {
 func TestMatrixFlagsUnusedActions(t *testing.T) {
 	rt, _ := setup(t)
 	m := rt.Matrix()
-	if len(m) != 4 {
+	if len(m) != 5 {
 		t.Fatalf("الأفعال: %d", len(m))
 	}
 	for _, row := range m {

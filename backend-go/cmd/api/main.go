@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"staffmange-api/internal/apps/people"
 	"staffmange-api/internal/apps/system"
 	"staffmange-api/internal/authz"
 	"staffmange-api/internal/core"
@@ -949,7 +950,6 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	// 🏴‍☠️ «ون بيس» (دازاي 11-10): التطبيقات الجديدة تتسجّل عبر النواة — كل مسار بفعل
 	// وقاعدة، والرفض 404. تعيش جنب المسارات القديمة لحد ما تنتقل وحدة وحدة.
 	coreRouter := core.NewRouter(mux, requireAuth, permissionRepo, core.NewPolicies())
-	coreRouter.Mount(system.New())
 
 	mux.HandleFunc("GET /api/health", func(w http.ResponseWriter, r *http.Request) {
 		handler.WriteJSON(w, http.StatusOK, map[string]string{"status": "ok"})
@@ -979,8 +979,6 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	// القرار داخل SystemSwitchHandler.Set نفسه مو حارساً واحداً هنا.
 	mux.Handle("GET /api/system/switches", middleware.Chain(
 		http.HandlerFunc(systemSwitchHandler.List), requireAuth))
-	mux.Handle("PUT /api/system/switches/{key}", middleware.Chain(
-		http.HandlerFunc(systemSwitchHandler.Set), requireAuth))
 
 	mux.Handle("GET /api/auth/me", middleware.Chain(http.HandlerFunc(authHandler.Me), requireAuth))
 	mux.Handle("PUT /api/me/language", middleware.Chain(handler.SetMyLanguage(db), requireAuth)) // بلاغ #11: الأوردو
@@ -1110,7 +1108,6 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	// والفحص بالمعالج (بلا أدوار عليا لغير المالك).
 	employeeAdminHandler := handler.NewEmployeeAdminHandler(employeeService, permissionRepo, employeeRepo)
 	_ = requireOwnerAccounts
-	mux.Handle("POST /api/employees", middleware.Chain(http.HandlerFunc(employeeAdminHandler.Create), requireAuth))
 	mux.Handle("GET /api/employees/my-admin-scope", middleware.Chain(http.HandlerFunc(employeeAdminHandler.MyScope), requireAuth))
 	mux.Handle("GET /api/employees/{id}/admin-scope", middleware.Chain(http.HandlerFunc(employeeAdminHandler.GetScope), requireAuth, requireAdmin))
 	mux.Handle("PUT /api/employees/{id}/admin-scope", middleware.Chain(http.HandlerFunc(employeeAdminHandler.SetScope), requireAuth, requireAdmin))
@@ -3560,6 +3557,12 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	// تقدير مدة العمل المتعلَّم (learned baseline) — قراءة فقط، متاح لأي مستخدم
 	// مسجّل دخول (يحتاجها المنسق قبل تثبيت موعد/فريق).
 	mux.Handle("GET /api/job-duration-estimate", middleware.Chain(http.HandlerFunc(jobDurationHandler.Estimate), requireAuth))
+
+	// 🏴‍☠️ ون بيس: التطبيقات المنقولة — الحارس صار قاعدة بالنواة (الرفض 404)
+	coreRouter.Mount(
+		system.New(system.Deps{SetSwitch: systemSwitchHandler.Set}),
+		people.New(people.Deps{Create: employeeAdminHandler.Create}),
+	)
 
 	return middleware.Chain(mux, middleware.Recovery, middleware.SecurityHeaders, middleware.Logging, middleware.Metrics, middleware.CORS(cfg.CORSOrigins), middleware.BodyLimit(middleware.MaxBodyBytes))
 }
