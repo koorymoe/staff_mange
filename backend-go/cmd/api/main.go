@@ -9,6 +9,7 @@ import (
 	"os"
 	"staffmange-api/internal/apps/access"
 	"staffmange-api/internal/apps/field"
+	"staffmange-api/internal/apps/finance"
 	"staffmange-api/internal/apps/me"
 	"staffmange-api/internal/apps/org"
 	"staffmange-api/internal/apps/people"
@@ -927,11 +928,8 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	// يملك صلاحية "gps_system" فعلياً (نفس الصلاحية الي تفتح كل صفحات نظام GPS
 	// بالواجهة) — مو أي موظف مسجل دخول.
 	requireFund := authz.Guard(guards, authz.Funds)
-	// قيمة مبالغ الدوار نفسها (تعديل الرصيد والتغذية) — مدير النظام والمالك
-	// فقط، أو أي موظف ينطونه صلاحية revolving_fund_amount صراحةً.
-	requireFundAmount := authz.Guard(guards, authz.FundAmount)
-	// التخريج يرجّع فلوس للدوار — صلاحية مستقلة عن شغل الدوار اليومي.
-	requireDischarge := authz.Guard(guards, authz.FundDischarge)
+	// (ون بيس 11-10) مبالغ الدوار والتخريج صارن قواعد بالنواة: finance.fund_update/
+	// fund_topup (authz.FundAmount) وfinance.settle_discharge (authz.FundDischarge).
 	// الاتصال بالزبون مو حكر على مهندس الجودة — أي موظف ينطيه المدير
 	// صلاحية complaint_contact يكدر يتصل ويأشر النتيجة باسمه.
 	requireComplaintContact := guards.RoleOrPermission([]string{"ADMIN", "OWNER", "QUALITY_ENGINEER", "MONITOR"}, "complaint_contact")
@@ -958,8 +956,9 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	coreRouter.OnDeny(func(r *http.Request, id string) { middleware.RecordViolation(r, employeeRepo, notificationRepo, id) })
 	meApp := me.New() // «شغلي أنا»: المعالجات تنحط بمكانها، والتسجيل بالأخير
 	requestsApp := requests.New()
-	accessApp := access.New() // الصلاحيات نفسها
-	peopleApp := people.New() // الموظفين
+	accessApp := access.New()   // الصلاحيات نفسها
+	peopleApp := people.New()   // الموظفين
+	financeApp := finance.New() // الفلوس
 	fieldApp := field.New(field.Deps{
 		BookingParty:        func(b, e string) bool { ok, err := bookingRepo.IsAssignedTo(b, e); return err == nil && ok },
 		ProjectParty:        repository.NewProjectRepository(db).IsParty,
@@ -1637,12 +1636,12 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	dailyAuditHandler := handler.NewDailyAuditHandler(repository.NewDailyAuditRepository(db))
 	// (ع) 10-14: سجل الآجل — نفس حارس التدقيق
 	creditHandler := handler.NewCreditHandler(db)
-	mux.Handle("GET /api/credits", middleware.Chain(http.HandlerFunc(creditHandler.List), requireAuth, requireVerifyBooking))
-	mux.Handle("GET /api/credits/export", middleware.Chain(http.HandlerFunc(creditHandler.Export), requireAuth, requireVerifyBooking))
-	mux.Handle("POST /api/credits", middleware.Chain(http.HandlerFunc(creditHandler.Create), requireAuth, requireVerifyBooking, idem))
-	mux.Handle("GET /api/credits/{id}/payments", middleware.Chain(http.HandlerFunc(creditHandler.Payments), requireAuth, requireVerifyBooking))
-	mux.Handle("POST /api/credits/{id}/payments", middleware.Chain(http.HandlerFunc(creditHandler.AddPayment), requireAuth, requireVerifyBooking, idem))
-	mux.Handle("GET /api/finance/daily-audit", middleware.Chain(http.HandlerFunc(dailyAuditHandler.Day), requireAuth, requireVerifyBooking))
+	financeApp.Set("GET /api/credits", "finance.credits", creditHandler.List)
+	financeApp.Set("GET /api/credits/export", "finance.credits_export", creditHandler.Export)
+	financeApp.Set("POST /api/credits", "finance.credit_add", creditHandler.Create, idem)
+	financeApp.Set("GET /api/credits/{id}/payments", "finance.credit_payments", creditHandler.Payments)
+	financeApp.Set("POST /api/credits/{id}/payments", "finance.credit_pay", creditHandler.AddPayment, idem)
+	financeApp.Set("GET /api/finance/daily-audit", "finance.daily_audit", dailyAuditHandler.Day)
 	mux.Handle("PUT /api/bookings/{id}/audit", middleware.Chain(http.HandlerFunc(bookingAuditHandler.Audit), requireAuth, requireVerifyBooking))
 	// شريط الإعلانات: يقراه كل موظف، وينزّله المالك ومدير النظام بس
 	announcementHandler := handler.NewAnnouncementHandler(announcementRepo)
@@ -1731,11 +1730,10 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	mux.Handle("DELETE /api/cart/{id}", middleware.Chain(http.HandlerFunc(cartHandler.Delete), requireAuth, requireCartItemParty))
 
 	// المصاريف — أي موظف يقدر يرسل مصروف، الموافقة/الرفض للمحاسب ومدير النظام فقط
-	mux.Handle("GET /api/expenses", middleware.Chain(http.HandlerFunc(expenseHandler.List), requireAuth))
-	mux.Handle("POST /api/expenses", middleware.Chain(http.HandlerFunc(expenseHandler.Create), requireAuth, idem))
+	financeApp.Set("GET /api/expenses", "finance.expenses", expenseHandler.List)
+	financeApp.Set("POST /api/expenses", "finance.expense_add", expenseHandler.Create, idem)
 	// صلاحية «إدارة المصاريف (موافقة ورفض)» چانت ما تشتغل — الحارس ما يعرفها.
-	mux.Handle("PUT /api/expenses/{id}/status", middleware.Chain(http.HandlerFunc(expenseHandler.UpdateStatus), requireAuth,
-		guards.RoleOrAnyPermission([]string{"ADMIN", "FINANCE"}, "finance_audit", "expenses_manage")))
+	financeApp.Set("PUT /api/expenses/{id}/status", "finance.expense_status", expenseHandler.UpdateStatus)
 
 	// المخزون — أدوات شخصية / مركبات / أدوات مشتركة / طلبات الأدوات
 	mux.Handle("GET /api/inventory/personal", middleware.Chain(http.HandlerFunc(inventoryHandler.ListPersonalTools), requireAuth))
@@ -2424,8 +2422,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	// حساب تكاليف الشد — تفصيلي لكل الكوادر، ضمن خانة الحسابات
 	// صلاحية «حساب تكاليف الشد» تظهر البند بالقائمة — فلازم تفتح المسار كمان،
 	// وإلا الموظف يضغط وينرفض ويتسجّل عليه تجاوز.
-	mux.Handle("GET /api/finance/gps-install-costs", middleware.Chain(http.HandlerFunc(gpsInstallCostHandler.Summary), requireAuth,
-		guards.RoleOrAnyPermission([]string{"ADMIN", "FINANCE"}, "finance_audit", "gps_install_costs")))
+	financeApp.Set("GET /api/finance/gps-install-costs", "finance.gps_costs", gpsInstallCostHandler.Summary)
 
 	// ── الإجازات ──────────────────────────────────────────────────────────────
 	// أي موظف يقدّم ويشوف طلباته. البت بالطلبات محصور بالمخوّل حسب مسار
@@ -2550,21 +2547,21 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 
 	// ═══ مختبر المحاكاة — للمالك وحده ═══
 	//
-	mux.Handle("GET /api/funds", middleware.Chain(http.HandlerFunc(revolvingFundHandler.ListFunds), requireAuth, requireFund))
-	mux.Handle("PUT /api/funds/{id}", middleware.Chain(http.HandlerFunc(revolvingFundHandler.UpdateFund), requireAuth, requireFundAmount))
-	mux.Handle("POST /api/funds/{id}/topup", middleware.Chain(http.HandlerFunc(revolvingFundHandler.Topup), requireAuth, requireFundAmount, idem))
-	mux.Handle("POST /api/funds/disburse", middleware.Chain(http.HandlerFunc(revolvingFundHandler.Disburse), requireAuth, requireFund, idem))
-	mux.Handle("GET /api/funds/balances", middleware.Chain(http.HandlerFunc(revolvingFundHandler.Balances), requireAuth, requireFund))
-	mux.Handle("GET /api/funds/transactions", middleware.Chain(http.HandlerFunc(revolvingFundHandler.Txns), requireAuth, requireFund))
-	mux.Handle("GET /api/funds/transactions/{id}/receipt", middleware.Chain(http.HandlerFunc(revolvingFundHandler.Receipt), requireAuth, requireFund))
-	mux.Handle("POST /api/funds/settlements/for/{employeeId}", middleware.Chain(http.HandlerFunc(revolvingFundHandler.SubmitSettlementFor), requireAuth, requireFund, idem))
-	mux.Handle("PUT /api/funds/settlements/{id}/review", middleware.Chain(http.HandlerFunc(revolvingFundHandler.ReviewSettlement), requireAuth, requireFund, idem))
-	mux.Handle("PUT /api/funds/settlements/{id}/discharge", middleware.Chain(http.HandlerFunc(revolvingFundHandler.Discharge), requireAuth, requireDischarge, idem))
-	mux.Handle("GET /api/funds/discharge-accounts", middleware.Chain(http.HandlerFunc(revolvingFundHandler.DischargeAccounts), requireAuth, requireFund))
+	financeApp.Set("GET /api/funds", "finance.funds", revolvingFundHandler.ListFunds)
+	financeApp.Set("PUT /api/funds/{id}", "finance.fund_update", revolvingFundHandler.UpdateFund)
+	financeApp.Set("POST /api/funds/{id}/topup", "finance.fund_topup", revolvingFundHandler.Topup, idem)
+	financeApp.Set("POST /api/funds/disburse", "finance.fund_disburse", revolvingFundHandler.Disburse, idem)
+	financeApp.Set("GET /api/funds/balances", "finance.fund_balances", revolvingFundHandler.Balances)
+	financeApp.Set("GET /api/funds/transactions", "finance.fund_txns", revolvingFundHandler.Txns)
+	financeApp.Set("GET /api/funds/transactions/{id}/receipt", "finance.fund_receipt", revolvingFundHandler.Receipt)
+	financeApp.Set("POST /api/funds/settlements/for/{employeeId}", "finance.settle_for", revolvingFundHandler.SubmitSettlementFor, idem)
+	financeApp.Set("PUT /api/funds/settlements/{id}/review", "finance.settle_review", revolvingFundHandler.ReviewSettlement, idem)
+	financeApp.Set("PUT /api/funds/settlements/{id}/discharge", "finance.settle_discharge", revolvingFundHandler.Discharge, idem)
+	financeApp.Set("GET /api/funds/discharge-accounts", "finance.discharge_accts", revolvingFundHandler.DischargeAccounts)
 
-	mux.Handle("GET /api/funds/my-balance", middleware.Chain(http.HandlerFunc(revolvingFundHandler.MyBalance), requireAuth))
-	mux.Handle("GET /api/funds/my-transactions", middleware.Chain(http.HandlerFunc(revolvingFundHandler.MyTxns), requireAuth))
-	mux.Handle("POST /api/funds/settlements", middleware.Chain(http.HandlerFunc(revolvingFundHandler.SubmitSettlement), requireAuth, idem))
+	financeApp.Set("GET /api/funds/my-balance", "finance.my_balance", revolvingFundHandler.MyBalance)
+	financeApp.Set("GET /api/funds/my-transactions", "finance.my_txns", revolvingFundHandler.MyTxns)
+	financeApp.Set("POST /api/funds/settlements", "finance.my_settle", revolvingFundHandler.SubmitSettlement, idem)
 
 	mux.Handle("GET /api/gps/sims", middleware.Chain(http.HandlerFunc(gpsHandler.ListSims), requireAuth, requireGpsData))
 	mux.Handle("POST /api/gps/sims", middleware.Chain(http.HandlerFunc(gpsHandler.CreateSim), requireAuth, requireGpsSystem))
@@ -3572,7 +3569,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	coreRouter.Mount(
 		meApp, requestsApp, fieldApp, accessApp,
 		system.New(system.Deps{SetSwitch: systemSwitchHandler.Set}),
-		peopleApp,
+		peopleApp, financeApp,
 	)
 
 	return middleware.Chain(mux, middleware.Recovery, middleware.SecurityHeaders, middleware.Logging, middleware.Metrics, middleware.CORS(cfg.CORSOrigins), middleware.BodyLimit(middleware.MaxBodyBytes))

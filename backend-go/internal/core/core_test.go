@@ -200,3 +200,32 @@ func TestDenyIsRecorded(t *testing.T) {
 		t.Fatalf("المسموح انسجّل: %v", recorded)
 	}
 }
+
+// الطبقات (مثل منع التكرار) تشتغل بعد القاعدة وقبل المعالج — والمرفوض ما يوصلها.
+func TestMiddlewaresRunAfterPolicy(t *testing.T) {
+	mux := http.NewServeMux()
+	rt := NewRouter(mux, func(h http.Handler) http.Handler { return h }, nil, NewPolicies())
+	var order []string
+	mw := func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			order = append(order, "mw")
+			next.ServeHTTP(w, r)
+		})
+	}
+	app := NewSetApp("m", map[Action]Rule{"m.x": {Label: "س", Anyone: true}, "m.y": {Label: "ص", OwnerOnly: true}})
+	app.Set("POST /x", "m.x", func(http.ResponseWriter, *http.Request) { order = append(order, "h") }, mw)
+	app.Set("POST /y", "m.y", func(http.ResponseWriter, *http.Request) { order = append(order, "h") }, mw)
+	rt.Mount(app)
+	req := httptest.NewRequest("POST", "/x", nil)
+	ctx := context.WithValue(req.Context(), middleware.ContextEmployeeID, "e")
+	mux.ServeHTTP(httptest.NewRecorder(), req.WithContext(ctx))
+	if strings.Join(order, ",") != "mw,h" {
+		t.Fatalf("الترتيب: %v", order)
+	}
+	order = nil
+	req = httptest.NewRequest("POST", "/y", nil)
+	mux.ServeHTTP(httptest.NewRecorder(), req.WithContext(ctx))
+	if len(order) != 0 {
+		t.Fatalf("المرفوض وصل الطبقات: %v", order)
+	}
+}

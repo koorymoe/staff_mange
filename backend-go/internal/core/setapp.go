@@ -14,6 +14,7 @@ type SetApp struct {
 		pattern string
 		act     Action
 		h       http.HandlerFunc
+		mws     []func(http.Handler) http.Handler
 	}
 }
 
@@ -21,7 +22,7 @@ func NewSetApp(name string, rules map[Action]Rule) *SetApp {
 	return &SetApp{name: name, rules: rules}
 }
 
-func (a *SetApp) Set(pattern string, act Action, h http.HandlerFunc) {
+func (a *SetApp) Set(pattern string, act Action, h http.HandlerFunc, mws ...func(http.Handler) http.Handler) {
 	if _, ok := a.rules[act]; !ok {
 		panic(fmt.Sprintf("%s: فعل مو معرّف %q", a.name, act))
 	}
@@ -29,14 +30,15 @@ func (a *SetApp) Set(pattern string, act Action, h http.HandlerFunc) {
 		pattern string
 		act     Action
 		h       http.HandlerFunc
-	}{pattern, act, h})
+		mws     []func(http.Handler) http.Handler
+	}{pattern, act, h, mws})
 }
 
 func (a *SetApp) Name() string              { return a.name }
 func (a *SetApp) Policies() map[Action]Rule { return a.rules }
 func (a *SetApp) Routes(r *Router) {
 	for _, rt := range a.routes {
-		r.Handle(rt.pattern, rt.act, rt.h)
+		r.Handle(rt.pattern, rt.act, rt.h, rt.mws...)
 	}
 }
 

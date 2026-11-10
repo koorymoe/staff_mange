@@ -65,13 +65,20 @@ func (rt *Router) Mount(apps ...App) {
 }
 
 // Handle مسار بفعل. الرفض دائماً 404 (قاعدة دازاي): الي ما مسموحله ما يعرف إن الشي موجود.
-func (rt *Router) Handle(pattern string, act Action, h http.HandlerFunc) {
+//
+// mws طبقات بعد القرار (مثل منع التكرار idem) — بنفس ترتيب السلسلة القديمة:
+// الدخول ← القاعدة ← الطبقات ← المعالج.
+func (rt *Router) Handle(pattern string, act Action, h http.HandlerFunc, mws ...func(http.Handler) http.Handler) {
 	rule, ok := rt.policies.Rule(act)
 	if !ok {
 		panic(fmt.Sprintf("core: المسار %q يستعمل فعلاً مو مسجّل %q", pattern, act))
 	}
 	if rt.app != "" && !strings.HasPrefix(string(act), rt.app+".") {
 		panic(fmt.Sprintf("core: التطبيق %q يستعمل فعل تطبيق ثاني %q بـ%q", rt.app, act, pattern))
+	}
+	var inner http.Handler = h
+	for i := len(mws) - 1; i >= 0; i-- {
+		inner = mws[i](inner)
 	}
 	gate := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		a := resolveActor(r, rt.perms)
@@ -82,7 +89,7 @@ func (rt *Router) Handle(pattern string, act Action, h http.HandlerFunc) {
 			NotFound(w)
 			return
 		}
-		h(w, withActor(r, a))
+		inner.ServeHTTP(w, withActor(r, a))
 	})
 	var final http.Handler = gate
 	if !rule.Public {
