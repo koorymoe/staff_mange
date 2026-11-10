@@ -54,3 +54,8 @@ func PermRule(label string, perms ...string) Rule { return Rule{Label: label, Pe
 func RolePermRule(label string, roles []string, perms ...string) Rule {
 	return Rule{Label: label, Roles: roles, Perms: perms}
 }
+
+// LeaderPermRule نفس guards.LeaderOr(Any)Permission: الليدر أو الصلاحية، والمالك والمدير يعبرون.
+func LeaderPermRule(label string, perms ...string) Rule {
+	return Rule{Label: label, Leader: true, Perms: perms}
+}

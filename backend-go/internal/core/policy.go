@@ -26,6 +26,8 @@ type Rule struct {
 	// «إضافة موظف» للمالك أو صاحب الصلاحية بس).
 	Strict bool
 	Anyone bool
+	// Leader: الليدر يعبر (نفس guards.LeaderOr… القديم)
+	Leader bool
 	Roles  []string
 	Perms  []string
 	Check  func(a *Actor, r *http.Request) bool
@@ -49,7 +51,7 @@ func (p *Policies) Register(act Action, rule Rule) {
 	if rule.Label == "" {
 		panic(fmt.Sprintf("core: الفعل %q بلا وصف عربي", act))
 	}
-	if !rule.Public && !rule.OwnerOnly && !rule.Anyone && len(rule.Roles) == 0 && len(rule.Perms) == 0 && rule.Check == nil {
+	if !rule.Public && !rule.OwnerOnly && !rule.Anyone && !rule.Leader && len(rule.Roles) == 0 && len(rule.Perms) == 0 && rule.Check == nil {
 		panic(fmt.Sprintf("core: الفعل %q بلا قاعدة — ما يفتح لأحد غير المدير، اكتبها صريحة", act))
 	}
 	p.rules[act] = rule
@@ -82,8 +84,8 @@ func decide(rule Rule, a *Actor, r *http.Request, assumeCheck bool) bool {
 	if a.Admin() && !rule.Strict {
 		return true
 	}
-	onlyCheck := len(rule.Roles) == 0 && len(rule.Perms) == 0 && !rule.Anyone
-	byRole := rule.Anyone || a.HasRole(rule.Roles...) || a.Can(rule.Perms...)
+	onlyCheck := len(rule.Roles) == 0 && len(rule.Perms) == 0 && !rule.Anyone && !rule.Leader
+	byRole := rule.Anyone || a.HasRole(rule.Roles...) || a.Can(rule.Perms...) || (rule.Leader && a.IsLeader())
 	if rule.Check == nil {
 		return byRole
 	}

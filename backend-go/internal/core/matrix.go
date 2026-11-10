@@ -9,6 +9,7 @@ type MatrixRow struct {
 	OwnerOnly bool     `json:"ownerOnly,omitempty"`
 	Strict    bool     `json:"strict,omitempty"`
 	Anyone    bool     `json:"anyone,omitempty"`
+	Leader    bool     `json:"leader,omitempty"`
 	Roles     []string `json:"roles,omitempty"`
 	Perms     []string `json:"perms,omitempty"`
 	HasCheck  bool     `json:"hasCheck,omitempty"`
@@ -26,7 +27,7 @@ func (rt *Router) Matrix() []MatrixRow {
 	for _, act := range rt.policies.Actions() {
 		rule, _ := rt.policies.Rule(act)
 		out = append(out, MatrixRow{Action: act, Label: rule.Label, Public: rule.Public, OwnerOnly: rule.OwnerOnly, Strict: rule.Strict,
-			Anyone: rule.Anyone, Roles: rule.Roles, Perms: rule.Perms, HasCheck: rule.Check != nil,
+			Anyone: rule.Anyone, Leader: rule.Leader, Roles: rule.Roles, Perms: rule.Perms, HasCheck: rule.Check != nil,
 			Routes: byAct[act], Unused: len(byAct[act]) == 0})
 	}
 	return out

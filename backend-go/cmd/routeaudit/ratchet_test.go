@@ -8,7 +8,7 @@ import "testing"
 const (
 	maxPublic        = 39 // كلها مقصودة: الزبائن، الدخول، روابط الاستقبال، الملفات الموقّعة
 	maxWriteAuthOnly = 0  // (11-10) كلها انتقلت للنواة — ولا وحدة جديدة
-	maxLegacy        = 885 // المسارات القديمة (mux.Handle) — الجديد ينكتب بالنواة، والرقم ينزل بس
+	maxLegacy        = 853 // المسارات القديمة (mux.Handle) — الجديد ينكتب بالنواة، والرقم ينزل بس
 )
 
 func TestRouteRatchet(t *testing.T) {

@@ -32,7 +32,11 @@ type Router struct {
 	app      string
 	routes   []RouteInfo
 	onDeny   func(r *http.Request, employeeID string)
+	leader   func(employeeID string) bool
 }
+
+// SetLeader يربط فحص «ليدر هسه؟» (EmployeeRepository.IsLeaderFreshByID).
+func (rt *Router) SetLeader(f func(employeeID string) bool) { rt.leader = f }
 
 // OnDeny يربط تسجيل المخالفات (نفس حراس النظام القديمة: العدّ، الحظر على
 // الكتابات المتكررة، تنبيه الإدارة) — بلاه النقل للنواة يخسّرنا هالحماية.
@@ -81,9 +85,10 @@ func (rt *Router) Handle(pattern string, act Action, h http.HandlerFunc, mws ...
 		inner = mws[i](inner)
 	}
 	gate := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		a := resolveActor(r, rt.perms)
+		a := resolveActor(r, rt.perms, rt.leader)
 		if !rt.policies.Allowed(a, act, r) {
-			if rt.onDeny != nil && a != nil {
+			// المالك-بس ما ينحسب مخالفة (مثل RequireOwner القديم): المدير يفتح صفحة المالك بالغلط مو اعتداء
+			if rt.onDeny != nil && a != nil && !rule.OwnerOnly {
 				rt.onDeny(r, a.ID)
 			}
 			NotFound(w)

@@ -10,6 +10,7 @@ import (
 	"staffmange-api/internal/apps/access"
 	"staffmange-api/internal/apps/field"
 	"staffmange-api/internal/apps/finance"
+	"staffmange-api/internal/apps/invoices"
 	"staffmange-api/internal/apps/me"
 	"staffmange-api/internal/apps/org"
 	"staffmange-api/internal/apps/people"
@@ -841,8 +842,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	requireLeader := middleware.RequireLeader(employeeRepo, notificationRepo)
 	// تقرير ١ (B2): صلاحية «صيانة الأجهزة» تفتح البند لغير الليدر — الخادم يقبلها هم.
 	requireDeviceMaint := guards.LeaderOrAnyPermission("device_maintenance")
-	requireLeaderOrServiceManager := middleware.RequireLeaderOrBookingServiceManager(
-		employeeRepo, notificationRepo, paperworkGuard.IsBookingManager)
+	// (ون بيس 11-10) الليدر أو مسؤول خدمة الحجز صار invoices.create بالنواة
 	requireInventoryView := guards.Permission("inventory")
 	requireToolRequest := guards.LeaderOrPermission("tool_requests")
 	// حساب كلفة التنفيذ: صلاحية تنعطى وتنسحب، مو دور ثابت
@@ -953,12 +953,14 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	// 🏴‍☠️ «ون بيس» (دازاي 11-10): التطبيقات الجديدة تتسجّل عبر النواة — كل مسار بفعل
 	// وقاعدة، والرفض 404. تعيش جنب المسارات القديمة لحد ما تنتقل وحدة وحدة.
 	coreRouter := core.NewRouter(mux, requireAuth, permissionRepo, core.NewPolicies())
+	coreRouter.SetLeader(func(id string) bool { ok, err := employeeRepo.IsLeaderFreshByID(id); return err == nil && ok })
 	coreRouter.OnDeny(func(r *http.Request, id string) { middleware.RecordViolation(r, employeeRepo, notificationRepo, id) })
 	meApp := me.New() // «شغلي أنا»: المعالجات تنحط بمكانها، والتسجيل بالأخير
 	requestsApp := requests.New()
 	accessApp := access.New()   // الصلاحيات نفسها
 	peopleApp := people.New()   // الموظفين
 	financeApp := finance.New() // الفلوس
+	invoicesApp := invoices.New(invoices.Deps{IsBookingManager: paperworkGuard.IsBookingManager})
 	fieldApp := field.New(field.Deps{
 		BookingParty:        func(b, e string) bool { ok, err := bookingRepo.IsAssignedTo(b, e); return err == nil && ok },
 		ProjectParty:        repository.NewProjectRepository(db).IsParty,
@@ -2883,36 +2885,25 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	//
 	// ⚠️ والإضافة **زيادة مو تبديل**: ولا حارس ينضيّق، فما تنكسر
 	// صلاحية ولا موظف شغّال.
-	requireLeaderBasket := guards.LeaderOrAnyPermission(
-		"leader_basket", "finance", "finance_audit", "invoice_gps", "invoice_dashcam", "invoice_internal",
-		// صلاحية «عرض فواتير الليدر» چانت تفتح البند بالقائمة والخادم ما يعرفها — فالشاشة تنرفض.
-		"leader_invoices_view",
-		// تقرير ١ (B9): تبويب «الفواتير» بمكتب المراقب — قراءة بس.
-		"monitoring")
+	// (ون بيس 11-10) سلة الليدر صارت invoices.list/page/view/by_number بالنواة (basketPerms)
 	// أسباب الشغل المجاني — يقراها أي موظف يسوي فاتورة
 	mux.Handle("GET /api/free-work-reasons", middleware.Chain(http.HandlerFunc(leaderInvoiceHandler.FreeReasons), requireAuth))
 	mux.Handle("GET /api/system-price-catalog", middleware.Chain(http.HandlerFunc(leaderInvoiceHandler.ListCatalog), requireAuth))
 	mux.Handle("GET /api/materials", middleware.Chain(http.HandlerFunc(leaderInvoiceHandler.ListMaterials), requireAuth))
-	mux.Handle("GET /api/leader-invoices", middleware.Chain(http.HandlerFunc(leaderInvoiceHandler.List), requireAuth, requireLeaderBasket))
-	mux.Handle("GET /api/leader-invoices/page", middleware.Chain(http.HandlerFunc(leaderInvoiceHandler.Page), requireAuth, requireLeaderBasket))
-	mux.Handle("GET /api/leader-invoices/{id}", middleware.Chain(http.HandlerFunc(leaderInvoiceHandler.Get), requireAuth, requireLeaderBasket))
+	invoicesApp.Set("GET /api/leader-invoices", "invoices.list", leaderInvoiceHandler.List)
+	invoicesApp.Set("GET /api/leader-invoices/page", "invoices.page", leaderInvoiceHandler.Page)
+	invoicesApp.Set("GET /api/leader-invoices/{id}", "invoices.view", leaderInvoiceHandler.Get)
 	// ⚠️ الليدر مثل اليوم، **وزيادةً** مسؤول خدمة الحجز: بخدمات مثل
 	// الجي بي اس والداش كام الفاتورة على مسؤول الخدمة، وهو مو
 	// بالضرورة ليدر. والي مو الاثنين تنسجّل مخالفته مثل ما چان.
-	mux.Handle("POST /api/leader-invoices", middleware.Chain(http.HandlerFunc(leaderInvoiceHandler.Create), requireAuth, requireLeaderOrServiceManager, idem))
+	invoicesApp.Set("POST /api/leader-invoices", "invoices.create", leaderInvoiceHandler.Create, idem)
 	// فاتورة الجي بي اس / الداش كام بسعر يدوي — الحارس هنا «أي وحدة
 	// من الصلاحيتين»، والمعالج يفحص **أي** وحدة بالضبط حسب النوع
 	// المطلوب، حتى مسؤول الجي بي اس ما يفوتر داش كام.
-	mux.Handle("POST /api/leader-invoices/service", middleware.Chain(
-		http.HandlerFunc(leaderInvoiceHandler.CreateServiceInvoice), requireAuth,
-		guards.RoleOrAnyPermission(
-			[]string{"ADMIN", "OWNER"}, "invoice_gps", "invoice_dashcam")))
+	invoicesApp.Set("POST /api/leader-invoices/service", "invoices.create_service", leaderInvoiceHandler.CreateServiceInvoice)
 	// فاتورة بكلفة يدوية — شغل برّا جدول الكلفة. صلاحية وحدة معزولة
 	// تنمنح فرد-فرد، لأن السعر الحر يشيل الحارس الوحيد على التسعير.
-	mux.Handle("POST /api/leader-invoices/manual", middleware.Chain(
-		http.HandlerFunc(leaderInvoiceHandler.CreateManualInvoice), requireAuth,
-		guards.RoleOrAnyPermission(
-			[]string{"ADMIN", "OWNER"}, "invoice_manual")))
+	invoicesApp.Set("POST /api/leader-invoices/manual", "invoices.create_manual", leaderInvoiceHandler.CreateManualInvoice)
 	// ═══ إكسل حجوزات داخل الشركة ═══
 	// المالك والمدير والمحاسب والمراقب (قرار (ع)). و`finance_audit`
 	// جنبهم حتى الي يكمل شغل المحاسب يطلعه الملف بعد.
@@ -2931,9 +2922,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	mux.Handle("POST /api/internal-backfill/{id}", middleware.Chain(http.HandlerFunc(internalBackfillHandler.Price), requireAuth, requireBackfill))
 	mux.Handle("GET /api/bookings/internal-paperwork", middleware.Chain(http.HandlerFunc(internalBackfillHandler.CoordinatorQueue), requireAuth,
 		guards.RoleOrAnyPermission([]string{"ADMIN", "HR_COORDINATOR"}, "coordinator", "invoice_internal")))
-	mux.Handle("POST /api/leader-invoices/internal", middleware.Chain(http.HandlerFunc(leaderInvoiceHandler.CreateInternalInvoice), requireAuth,
-		// (ع) 10-10: نفس الي يشوفون طابور «تنتظر ورقك» يسوّون الحساب من نافذته
-		guards.RoleOrAnyPermission([]string{"ADMIN", "HR_COORDINATOR"}, "coordinator", "invoice_internal")))
+	invoicesApp.Set("POST /api/leader-invoices/internal", "invoices.create_internal", leaderInvoiceHandler.CreateInternalInvoice)
 	// حساب تقريبي بدون حفظ لما زبون يستفسر — نفس صلاحية إنشاء الفاتورة (الليدر)
 	// حساب تكلفة التنصيب للتنفيذ: فقرة رئيسية بكل الحسابات وكل الأدوار،
 	// فما بيها قيد غير تسجيل الدخول — هي حاسبة ما تكشف بيانات أحد
@@ -2948,8 +2937,9 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 			guarded.ServeHTTP(w, r)
 		})
 	}
-	mux.Handle("POST /api/leader-invoices/estimate", middleware.Chain(http.HandlerFunc(leaderInvoiceHandler.Estimate), requireAuth, requireEstimate))
-	mux.Handle("POST /api/leader-invoices/camera-cost", middleware.Chain(http.HandlerFunc(leaderInvoiceHandler.CameraCost), requireAuth, requireExecutionCost))
+	// شرط «التسليم الناقص» يبقى طبقة بعد القاعدة (requireEstimate يعيد فحص الكلفة — بلا ضرر)
+	invoicesApp.Set("POST /api/leader-invoices/estimate", "invoices.estimate", leaderInvoiceHandler.Estimate, requireEstimate)
+	invoicesApp.Set("POST /api/leader-invoices/camera-cost", "invoices.camera_cost", leaderInvoiceHandler.CameraCost)
 	// ── صندوق المراقب ──
 	// شغل المراقب: يشوف ويأشّر. requireMonitor = ADMIN أو MONITOR،
 	// والمالك داخل بالأدمن.
@@ -2964,7 +2954,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	mux.Handle("GET /api/justifications", middleware.Chain(http.HandlerFunc(justHandler.List), requireAuth, requireMonJust))
 	mux.Handle("POST /api/justifications/direct", middleware.Chain(http.HandlerFunc(justHandler.Direct), requireAuth, requireMonJust))
 	// (ع) 10-16: «المحاسب متأخر إذا تأخر على التدقيق ٢٤ ساعة» — خانة «المتأخر»
-	mux.Handle("GET /api/late-invoices", middleware.Chain(http.HandlerFunc(handler.NewLateInvoicesHandler(db).List), requireAuth, requireMon["mon_inbox"]))
+	invoicesApp.Set("GET /api/late-invoices", "invoices.late", handler.NewLateInvoicesHandler(db).List)
 	mux.Handle("POST /api/justifications/{id}/decide", middleware.Chain(http.HandlerFunc(justHandler.Decide), requireAuth, requireMonJust))
 	mux.Handle("POST /api/monitor-reviews/{id}/action", middleware.Chain(http.HandlerFunc(monitorActionHandler.Act), requireAuth, requireMon["mon_inbox"]))
 	mux.Handle("POST /api/monitor-reviews/{id}/decide", middleware.Chain(http.HandlerFunc(monitorReviewHandler.Decide), requireAuth, requireMon["mon_inbox"]))
@@ -3055,14 +3045,14 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	projectPaymentHandler := handler.NewProjectPaymentHandler(projectPaymentRepo, permissionRepo)
 	fieldApp.Use(func(d *field.Deps) { d.CanContractValue = projectPaymentHandler.CanValue })
 	projectService.SetPaymentChecker(projectPaymentRepo)
-	mux.Handle("GET /api/projects/{id}/payments", middleware.Chain(http.HandlerFunc(projectPaymentHandler.List), requireAuth))
-	mux.Handle("POST /api/projects/{id}/payments", middleware.Chain(http.HandlerFunc(projectPaymentHandler.Add), requireAuth, idem))
+	invoicesApp.Set("GET /api/projects/{id}/payments", "invoices.project_payments", projectPaymentHandler.List)
+	invoicesApp.Set("POST /api/projects/{id}/payments", "invoices.project_payment_add", projectPaymentHandler.Add, idem)
 	fieldApp.Set("PUT /api/projects/{id}/contract-value", "field.project_contract_value", projectPaymentHandler.SetValue)
-	mux.Handle("POST /api/project-payments/{id}/verify", middleware.Chain(http.HandlerFunc(projectPaymentHandler.Verify), requireAuth, idem))
-	mux.Handle("POST /api/project-payments/{id}/cancel", middleware.Chain(http.HandlerFunc(projectPaymentHandler.Cancel), requireAuth, idem))
-	mux.Handle("GET /api/project-payments/overview", middleware.Chain(http.HandlerFunc(projectPaymentHandler.Overview), requireAuth))
-	mux.Handle("GET /api/project-payments/audit", middleware.Chain(http.HandlerFunc(projectPaymentHandler.Audit), requireAuth))
-	mux.Handle("PUT /api/project-payments/{id}/amount", middleware.Chain(http.HandlerFunc(projectPaymentHandler.SetAmount), requireAuth, idem))
+	invoicesApp.Set("POST /api/project-payments/{id}/verify", "invoices.project_payment_ok", projectPaymentHandler.Verify, idem)
+	invoicesApp.Set("POST /api/project-payments/{id}/cancel", "invoices.project_payment_void", projectPaymentHandler.Cancel, idem)
+	invoicesApp.Set("GET /api/project-payments/overview", "invoices.payments_overview", projectPaymentHandler.Overview)
+	invoicesApp.Set("GET /api/project-payments/audit", "invoices.payments_audit", projectPaymentHandler.Audit)
+	invoicesApp.Set("PUT /api/project-payments/{id}/amount", "invoices.payment_amount", projectPaymentHandler.SetAmount, idem)
 	mux.Handle("GET /api/projects/media/open", middleware.Chain(http.HandlerFunc(mediaHandler.OpenProjects), requireAuth, requireProjectMgmt))
 	mux.Handle("GET /api/projects/{id}/media", middleware.Chain(http.HandlerFunc(mediaHandler.ForProject), requireAuth, requireProjectMgmt))
 	mux.Handle("POST /api/projects/{id}/media", middleware.Chain(http.HandlerFunc(mediaHandler.Transfer), requireAuth, requireProjectMgmt))
@@ -3505,45 +3495,40 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	mux.Handle("POST /api/network-cost/prices", middleware.Chain(http.HandlerFunc(networkCostHandler.CreatePrice), requireAuth, requireNetPrices))
 	mux.Handle("PUT /api/network-cost/prices/{id}", middleware.Chain(http.HandlerFunc(networkCostHandler.UpdatePrice), requireAuth, requireNetPrices))
 	mux.Handle("DELETE /api/network-cost/prices/{id}", middleware.Chain(http.HandlerFunc(networkCostHandler.DeactivatePrice), requireAuth, requireNetPrices))
-	mux.Handle("GET /api/leader-invoices/camera-cost/options", middleware.Chain(http.HandlerFunc(leaderInvoiceHandler.CameraCostOptions), requireAuth, requireExecutionCost))
+	invoicesApp.Set("GET /api/leader-invoices/camera-cost/options", "invoices.camera_options", leaderInvoiceHandler.CameraCostOptions)
 	// الاعتماد محصور بمدير/محاسب فقط — الليدر ما يقدر يعتمد فاتورته بنفسه
 	// البحث بالفاتورة المحاسبية — لازم يجي قبل مسار {id} حتى ما ينحسب
 	// "by-number" معرّف فاتورة
-	mux.Handle("GET /api/leader-invoices/by-number", middleware.Chain(http.HandlerFunc(leaderInvoiceHandler.FindByExternalNumber), requireAuth, requireLeaderBasket))
-	mux.Handle("PUT /api/leader-invoices/{id}/approve", middleware.Chain(http.HandlerFunc(leaderInvoiceHandler.Approve), requireAuth, requireFinance))
+	invoicesApp.Set("GET /api/leader-invoices/by-number", "invoices.by_number", leaderInvoiceHandler.FindByExternalNumber)
+	invoicesApp.Set("PUT /api/leader-invoices/{id}/approve", "invoices.approve", leaderInvoiceHandler.Approve)
 	// ربط رقم فاتورة محاسبية بفاتورة معتمدة أصلاً، وتعديل المبالغ —
 	// الاثنين للمحاسب/المدير حصراً
 	// ═══ تدقيق الفاتورة ═══
 	// الحكم قبل الاعتماد، وسحب الاعتماد لما ينصار بالغلط.
-	mux.Handle("PUT /api/leader-invoices/{id}/audit", middleware.Chain(http.HandlerFunc(leaderInvoiceHandler.SetAuditVerdict), requireAuth, requireFinance))
+	invoicesApp.Set("PUT /api/leader-invoices/{id}/audit", "invoices.audit", leaderInvoiceHandler.SetAuditVerdict)
 	// ⚠️ المحاسب يرسل للمراقب — نفس حارس بقية عمليات المحاسب.
-	mux.Handle("PUT /api/leader-invoices/{id}/monitor-request", middleware.Chain(http.HandlerFunc(leaderInvoiceHandler.RequestMonitorReview), requireAuth, requireFinance))
+	invoicesApp.Set("PUT /api/leader-invoices/{id}/monitor-request", "invoices.monitor_request", leaderInvoiceHandler.RequestMonitorReview)
 	// ⚠️ والمراقب يبتّ — حارس المراقب مو المحاسب: المحاسب ما يبتّ
 	// بطلبه بنفسه، وإلا الإرسال للمراقب يصير شكلياً.
-	mux.Handle("PUT /api/leader-invoices/{id}/monitor-decide", middleware.Chain(http.HandlerFunc(leaderInvoiceHandler.DecideMonitorReview), requireAuth, requireMon["mon_inbox"]))
+	invoicesApp.Set("PUT /api/leader-invoices/{id}/monitor-decide", "invoices.monitor_decide", leaderInvoiceHandler.DecideMonitorReview)
 	// ⚠️⚠️ الإرجاع للمحاسب: **المالك وحده ولا حتى الإداري**. هاي تشيل
 	// اعتماداً صار وترجّع فاتورة لأول الطابور — صلاحية بهالوزن بيد
 	// أكثر من واحد تعني إن المالك ما يعرف منو غيّر شنو.
-	mux.Handle("PUT /api/leader-invoices/{id}/return", middleware.Chain(http.HandlerFunc(leaderInvoiceHandler.ReturnToAccountant), requireAuth,
-		middleware.RequireOwnerOnly("إرجاع الفواتير للمحاسب بيد المالك وحده")))
-	mux.Handle("PUT /api/leader-invoices/{id}/revoke", middleware.Chain(http.HandlerFunc(leaderInvoiceHandler.RevokeApproval), requireAuth, requireFinance))
+	invoicesApp.Set("PUT /api/leader-invoices/{id}/return", "invoices.return", leaderInvoiceHandler.ReturnToAccountant)
+	invoicesApp.Set("PUT /api/leader-invoices/{id}/revoke", "invoices.revoke", leaderInvoiceHandler.RevokeApproval)
 	// (دازاي 10-25) طلب حذف فاتورة: المحاسب يطلب، والمالك وحده يوافق (نسخة كاملة قبل الحذف)
 	invoiceDeleteHandler := handler.NewInvoiceDeleteHandler(db, notificationRepo)
-	mux.Handle("POST /api/leader-invoices/{id}/delete-request", middleware.Chain(http.HandlerFunc(invoiceDeleteHandler.Request), requireAuth, requireFinance))
-	mux.Handle("GET /api/leader-invoices/delete-requests", middleware.Chain(http.HandlerFunc(invoiceDeleteHandler.List), requireAuth, requireFinance))
-	mux.Handle("POST /api/leader-invoices/delete-requests/{id}/decide", middleware.Chain(http.HandlerFunc(invoiceDeleteHandler.Decide), requireAuth, middleware.RequireOwner()))
-	mux.Handle("GET /api/leader-invoices/approved-without-number", middleware.Chain(http.HandlerFunc(leaderInvoiceHandler.ApprovedWithoutNumber), requireAuth, requireFinance))
-	mux.Handle("PUT /api/leader-invoices/{id}/external-number", middleware.Chain(http.HandlerFunc(leaderInvoiceHandler.SetExternalNumber), requireAuth, requireFinance))
-	mux.Handle("PUT /api/leader-invoices/{id}/adjust", middleware.Chain(http.HandlerFunc(leaderInvoiceHandler.Adjust), requireAuth, requireFinance))
+	invoicesApp.Set("POST /api/leader-invoices/{id}/delete-request", "invoices.delete_request", invoiceDeleteHandler.Request)
+	invoicesApp.Set("GET /api/leader-invoices/delete-requests", "invoices.delete_requests", invoiceDeleteHandler.List)
+	invoicesApp.Set("POST /api/leader-invoices/delete-requests/{id}/decide", "invoices.delete_decide", invoiceDeleteHandler.Decide)
+	invoicesApp.Set("GET /api/leader-invoices/approved-without-number", "invoices.no_number", leaderInvoiceHandler.ApprovedWithoutNumber)
+	invoicesApp.Set("PUT /api/leader-invoices/{id}/external-number", "invoices.set_number", leaderInvoiceHandler.SetExternalNumber)
+	invoicesApp.Set("PUT /api/leader-invoices/{id}/adjust", "invoices.adjust", leaderInvoiceHandler.Adjust)
 	// ⚠️ الحارس يطابق حارس شاشة فواتير الليدر بالضبط
 	// (`navTree.tsx`: ADMIN·FINANCE·MONITOR + `leader_invoices_view`).
 	// حارس المراقبة وحده **يكسر المحاسب** — وهو الي يدقّق المبالغ
 	// ويطبع الفاتورة بتعديلاتها.
-	mux.Handle("GET /api/leader-invoices/{id}/adjustments", middleware.Chain(
-		http.HandlerFunc(leaderInvoiceHandler.Adjustments), requireAuth,
-		guards.RoleOrAnyPermission(
-			[]string{"ADMIN", "OWNER", "FINANCE", "MONITOR"},
-			"leader_invoices_view", "finance", "monitoring", "auditing")))
+	invoicesApp.Set("GET /api/leader-invoices/{id}/adjustments", "invoices.adjustments", leaderInvoiceHandler.Adjustments)
 
 	// إحصائيات الموظفين الشهرية — حصراً للمالك/الأدمن (requireAdmin يسمح OWNER
 	// تلقائياً لأنه يتخطى أي قيد أدوار بـRequireRole).
@@ -3569,7 +3554,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	coreRouter.Mount(
 		meApp, requestsApp, fieldApp, accessApp,
 		system.New(system.Deps{SetSwitch: systemSwitchHandler.Set}),
-		peopleApp, financeApp,
+		peopleApp, financeApp, invoicesApp,
 	)
 
 	return middleware.Chain(mux, middleware.Recovery, middleware.SecurityHeaders, middleware.Logging, middleware.Metrics, middleware.CORS(cfg.CORSOrigins), middleware.BodyLimit(middleware.MaxBodyBytes))

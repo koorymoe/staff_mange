@@ -229,3 +229,14 @@ func TestMiddlewaresRunAfterPolicy(t *testing.T) {
 		t.Fatalf("المرفوض وصل الطبقات: %v", order)
 	}
 }
+
+func TestLeaderRule(t *testing.T) {
+	p := NewPolicies()
+	p.Register("x.basket", LeaderPermRule("سلة", "leader_basket"))
+	lead := &Actor{ID: "l", Role: "TECHNICIAN", leaderFn: func() bool { return true }}
+	tech := &Actor{ID: "t", Role: "TECHNICIAN", leaderFn: func() bool { return false }}
+	perm := &Actor{ID: "p", Role: "TECHNICIAN", Perms: map[string]bool{"leader_basket": true}}
+	if !p.Simulate(lead, "x.basket") || p.Simulate(tech, "x.basket") || !p.Simulate(perm, "x.basket") {
+		t.Fatal("الليدر أو الصلاحية بس")
+	}
+}

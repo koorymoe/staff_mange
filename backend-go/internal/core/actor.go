@@ -30,6 +30,21 @@ type Actor struct {
 	OrgRoles      []string // أدوار المنصب
 	Perms         map[string]bool
 	Stealth       bool // المالك داخل بحساب موظف (قراءة بس)
+
+	leaderFn func() bool
+	leader   *bool
+}
+
+// IsLeader ليدر هسه؟ (IsLeaderFreshByID — من القاعدة، مو من الجلسة) ينحسب مرة وحدة بالطلب.
+func (a *Actor) IsLeader() bool {
+	if a == nil || a.leaderFn == nil {
+		return false
+	}
+	if a.leader == nil {
+		v := a.leaderFn()
+		a.leader = &v
+	}
+	return *a.leader
 }
 
 // Owner المالك الأصلي.
@@ -79,13 +94,16 @@ func ActorOf(r *http.Request) *Actor {
 
 // resolveActor يبني الـActor من سياق RequireAuth. خطأ بقراءة الصلاحيات = بلا
 // صلاحيات (يضيّق ما يوسّع).
-func resolveActor(r *http.Request, perms PermLister) *Actor {
+func resolveActor(r *http.Request, perms PermLister, leader func(string) bool) *Actor {
 	id := middleware.EmployeeIDFromContext(r)
 	if id == "" {
 		return nil
 	}
 	a := &Actor{ID: id, Role: middleware.RoleFromContext(r), EffectiveRole: middleware.EffectiveRole(r),
 		OrgRoles: middleware.OrgRoles(r), Perms: map[string]bool{}, Stealth: middleware.IsStealth(r)}
+	if leader != nil {
+		a.leaderFn = func() bool { return leader(id) }
+	}
 	if perms != nil {
 		if names, err := perms.Names(id); err == nil {
 			for _, n := range names {
