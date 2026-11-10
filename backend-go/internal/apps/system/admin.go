@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"net/http"
 	"regexp"
+	"staffmange-api/internal/core"
+	"staffmange-api/internal/models"
 	"strconv"
 	"strings"
 	"time"
@@ -123,7 +125,23 @@ func (a *App) adminRows(w http.ResponseWriter, r *http.Request) {
 		}
 		data = append(data, m)
 	}
-	writeJSON(w, map[string]any{"table": name, "columns": cols, "rows": data, "total": total, "page": page, "size": size})
+	// للواجهة: المفتاح الأساسي، وهل يگدر يعدّل، والأعمدة الممنوعة
+	pk, editable, why := []string{}, false, "الجدول مو بالموديلات"
+	if t, ok := models.Get(name); ok {
+		pk = primaryKey(t)
+		editable, why = editAccess(core.ActorOf(r), name)
+		if len(pk) == 0 {
+			editable, why = false, "الجدول بلا مفتاح أساسي"
+		}
+	}
+	locked := []string{}
+	for _, c := range cols {
+		if secretCol.MatchString(c.Name) || ((c.Name == "salary" || ownerOnlyData.MatchString(c.Name)) && !core.ActorOf(r).Owner()) {
+			locked = append(locked, c.Name)
+		}
+	}
+	writeJSON(w, map[string]any{"table": name, "columns": cols, "rows": data, "total": total, "page": page, "size": size,
+		"pk": pk, "editable": editable, "readonlyReason": why, "locked": locked})
 }
 
 func quoteIdent(s string) string { return `"` + strings.ReplaceAll(s, `"`, `""`) + `"` }

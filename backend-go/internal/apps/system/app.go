@@ -31,6 +31,9 @@ func (*App) Policies() map[core.Action]core.Rule {
 		"system.matrix":       {Label: "يشوف مصفوفة الصلاحيات (كل فعل، منو يگدر عليه، ومساراته)", OwnerOnly: true},
 		"system.admin_tables": {Label: "يشوف جداول قاعدة البيانات (لوحة الأدمن — قراءة بس)", OwnerOnly: true},
 		"system.admin_rows":   {Label: "يتصفّح جدول بقاعدة البيانات (الأسرار مخفية — قراءة بس)", OwnerOnly: true},
+		"system.admin_edit":   {Label: "يعدّل صف بقاعدة البيانات من لوحة الأدمن (ينسجل — السجلات ممنوعة، والفلوس للمالك)", OwnerOnly: true},
+		"system.admin_create": {Label: "يضيف صف بقاعدة البيانات من لوحة الأدمن (ينسجل)", OwnerOnly: true},
+		"system.admin_log":    {Label: "يشوف سجل تعديلات لوحة الأدمن", OwnerOnly: true},
 		// الإنطاء نفسه بيد المالك وحده — ما ينعطى
 		"system.my_grants":         {Label: "يشوف صلاحيات المالك المنطاة إله (للواجهة)", Anyone: true},
 		"system.owner_grants_view": {Label: "يشوف صلاحيات المالك المنطاة لمدراء النظام", OwnerOnly: true, NoDelegate: true},
@@ -50,6 +53,9 @@ func (a *App) Routes(r *core.Router) {
 	r.Handle("PUT /api/core/owner-grants/{employeeId}", "system.owner_grants_set", a.grantsSet)
 	r.Handle("GET /api/core/admin/tables", "system.admin_tables", a.adminTables)
 	r.Handle("GET /api/core/admin/tables/{table}", "system.admin_rows", a.adminRows)
+	r.Handle("PUT /api/core/admin/tables/{table}/rows", "system.admin_edit", a.adminUpdate)
+	r.Handle("POST /api/core/admin/tables/{table}/rows", "system.admin_create", a.adminCreate)
+	r.Handle("GET /api/core/admin/log", "system.admin_log", a.adminEditLog)
 	r.Handle("GET /api/core/matrix", "system.matrix", func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		_ = json.NewEncoder(w).Encode(map[string]any{"actions": a.router.Matrix(), "routes": a.router.Routes()})
