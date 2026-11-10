@@ -2209,5 +2209,33 @@ func matrixChatMigrations() []Migration {
 		SQL: `
 			CREATE INDEX IF NOT EXISTS "EmployeeActivity_path_idx" ON "EmployeeActivity" (path text_pattern_ops);
 		`,
+	}, {
+		// (ك) 11-10: 📐 سيت المخططات بطلب دازاي — سيت لكل مشروع، وملفات مخططات بنوعها
+		// (الأقسام العشرة بـservice.PlanCatalog). شيل الملف = removedAt، ماكو حذف فعلي.
+		Version: "0469_plan_sets",
+		SQL: `
+			CREATE TABLE IF NOT EXISTS "PlanSet" (
+				id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
+				title TEXT NOT NULL,
+				"projectId" TEXT REFERENCES "Project"(id) ON DELETE SET NULL,
+				notes TEXT,
+				"createdById" TEXT REFERENCES "Employee"(id) ON DELETE SET NULL,
+				"createdAt" TIMESTAMPTZ NOT NULL DEFAULT now(),
+				"archivedAt" TIMESTAMPTZ
+			);
+			CREATE TABLE IF NOT EXISTS "PlanFile" (
+				id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
+				"setId" TEXT NOT NULL REFERENCES "PlanSet"(id) ON DELETE CASCADE,
+				"typeCode" TEXT NOT NULL,
+				title TEXT NOT NULL,
+				"fileKey" TEXT NOT NULL,
+				"fileType" TEXT,
+				"uploadedById" TEXT REFERENCES "Employee"(id) ON DELETE SET NULL,
+				"createdAt" TIMESTAMPTZ NOT NULL DEFAULT now(),
+				"removedAt" TIMESTAMPTZ,
+				"removedById" TEXT REFERENCES "Employee"(id) ON DELETE SET NULL
+			);
+			CREATE INDEX IF NOT EXISTS "PlanFile_set_idx" ON "PlanFile" ("setId") WHERE "removedAt" IS NULL;
+		`,
 	}}
 }

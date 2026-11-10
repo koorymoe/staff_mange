@@ -1803,7 +1803,10 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	mux.Handle("POST /api/maintenance-contracts", middleware.Chain(http.HandlerFunc(contractHandler.Create), requireAuth, requireContracts))
 	mux.Handle("PATCH /api/maintenance-contracts/{id}", middleware.Chain(http.HandlerFunc(contractHandler.Update), requireAuth, requireContracts))
 	// 🏗️ صيت التصاميم (ع) 11-08 — الصلاحيات بالخدمة نفسها
-	designSetHandler := handler.NewDesignSetHandler(service.NewDesignSetService(db, repository.NewExtraTaskRepository(db), notificationRepo), permissionRepo)
+	designSetService := service.NewDesignSetService(db, repository.NewExtraTaskRepository(db), notificationRepo)
+	designSetHandler := handler.NewDesignSetHandler(designSetService, permissionRepo)
+	// (ك) 11-10: 📐 سيت المخططات بطلب دازاي — نفس صلاحيات صيت التصاميم (بالخدمة)
+	planSetHandler := handler.NewPlanSetHandler(service.NewPlanSetService(db, designSetService), permissionRepo)
 	for _, rt := range []struct {
 		pat string
 		fn  http.HandlerFunc
@@ -1821,6 +1824,13 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 		{"DELETE /api/design-files/{id}", designSetHandler.RemoveFile},
 		{"POST /api/design-tools", designSetHandler.SaveTool},
 		{"PUT /api/design-tools/{id}", designSetHandler.SaveTool},
+		{"GET /api/plan-sets/meta", planSetHandler.Meta},
+		{"GET /api/plan-sets", planSetHandler.List},
+		{"POST /api/plan-sets", planSetHandler.Create},
+		{"GET /api/plan-sets/{id}", planSetHandler.Get},
+		{"POST /api/plan-sets/{id}/archive", planSetHandler.Archive},
+		{"POST /api/plan-sets/{id}/files", planSetHandler.AddFile},
+		{"DELETE /api/plan-files/{id}", planSetHandler.RemoveFile},
 	} {
 		mux.Handle(rt.pat, middleware.Chain(rt.fn, requireAuth))
 	}
