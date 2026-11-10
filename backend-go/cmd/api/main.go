@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"staffmange-api/internal/apps/me"
 	"staffmange-api/internal/apps/org"
 	"staffmange-api/internal/apps/people"
 	"staffmange-api/internal/apps/system"
@@ -951,6 +952,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	// 🏴‍☠️ «ون بيس» (دازاي 11-10): التطبيقات الجديدة تتسجّل عبر النواة — كل مسار بفعل
 	// وقاعدة، والرفض 404. تعيش جنب المسارات القديمة لحد ما تنتقل وحدة وحدة.
 	coreRouter := core.NewRouter(mux, requireAuth, permissionRepo, core.NewPolicies())
+	meApp := me.New() // «شغلي أنا»: المعالجات تنحط بمكانها، والتسجيل بالأخير
 
 	mux.HandleFunc("GET /api/health", func(w http.ResponseWriter, r *http.Request) {
 		handler.WriteJSON(w, http.StatusOK, map[string]string{"status": "ok"})
@@ -1042,22 +1044,22 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	mux.Handle("GET /api/bot-reader/suggestions", middleware.RateLimit(60, time.Minute)(http.HandlerFunc(tgBot.ReaderSuggestions)))
 	mux.Handle("POST /api/telegram/webhook", middleware.RateLimit(600, time.Minute)(http.HandlerFunc(tgBot.Webhook)))
 	mux.Handle("GET /api/me/telegram", middleware.Chain(http.HandlerFunc(tgBot.MyLink), requireAuth))
-	mux.Handle("POST /api/me/telegram/link", middleware.Chain(http.HandlerFunc(tgBot.CreateLink), requireAuth))
+	meApp.Set("POST /api/me/telegram/link", "me.telegram_link", tgBot.CreateLink)
 	// الربط مرة وحدة: الموظف ما يفك، الفك بس من المالك
 	requireTgOwner := authz.Strict(permissionRepo, authz.TelegramLinks)
 	mux.Handle("GET /api/telegram-links", middleware.Chain(http.HandlerFunc(tgBot.Links), requireAuth, requireTgOwner))
 	mux.Handle("DELETE /api/telegram-links/{employeeId}", middleware.Chain(http.HandlerFunc(tgBot.OwnerUnlink), requireAuth, requireTgOwner))
 	// البلاغ من داخل النظام (أي موظف مسجّل)، وبلاغاته هو بس
-	mux.Handle("POST /api/me/bot-reports", middleware.Chain(http.HandlerFunc(tgBot.SubmitMine), requireAuth))
+	meApp.Set("POST /api/me/bot-reports", "me.bot_report", tgBot.SubmitMine)
 	mux.Handle("GET /api/me/bot-reports", middleware.Chain(http.HandlerFunc(tgBot.MyReports), requireAuth))
 	requireBotReports := authz.Strict(permissionRepo, authz.BotReports)
 	mux.Handle("GET /api/bot-reports", middleware.Chain(http.HandlerFunc(tgBot.List), requireAuth, requireBotReports))
 	mux.Handle("PATCH /api/bot-reports/{id}", middleware.Chain(http.HandlerFunc(tgBot.Update), requireAuth, requireBotReports))
-	mux.Handle("POST /api/me/profile-survey", middleware.Chain(http.HandlerFunc(workGate.SubmitSurvey), requireAuth))
-	mux.Handle("POST /api/me/daily-report", middleware.Chain(http.HandlerFunc(workGate.SubmitDaily), requireAuth))
+	meApp.Set("POST /api/me/profile-survey", "me.profile_survey", workGate.SubmitSurvey)
+	meApp.Set("POST /api/me/daily-report", "me.daily_report", workGate.SubmitDaily)
 	mux.Handle("GET /api/me/daily-reports", middleware.Chain(http.HandlerFunc(workGate.MyDaily), requireAuth))
 	mux.Handle("GET /api/me/rating-duty", middleware.Chain(http.HandlerFunc(workGate.MyDuty), requireAuth))
-	mux.Handle("POST /api/me/rating-duty", middleware.Chain(http.HandlerFunc(workGate.SubmitDuty), requireAuth))
+	meApp.Set("POST /api/me/rating-duty", "me.rating_duty", workGate.SubmitDuty)
 	safeguard.Loop("واجب التقييم اليومي", 9*time.Minute, time.Hour, func() {
 		if n, err := workGate.Sweep(); err != nil {
 			log.Printf("rating duty: %v", err)
@@ -1379,8 +1381,8 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	courier := handler.NewMatrixCourierHandler(db)
 	mux.Handle("GET /api/matrix-courier/state", middleware.Chain(http.HandlerFunc(courier.State), requireAuth))
 	mux.Handle("GET /api/matrix-courier/inbox", middleware.Chain(http.HandlerFunc(courier.Inbox), requireAuth))
-	mux.Handle("POST /api/matrix-courier/seen", middleware.Chain(http.HandlerFunc(courier.Seen), requireAuth))
-	mux.Handle("POST /api/matrix-courier/{id}/delivered", middleware.Chain(http.HandlerFunc(courier.Delivered), requireAuth))
+	meApp.Set("POST /api/matrix-courier/seen", "me.courier_seen", courier.Seen)
+	meApp.Set("POST /api/matrix-courier/{id}/delivered", "me.courier_delivered", courier.Delivered)
 	mux.Handle("PUT /api/bookings/{id}/assign", middleware.Chain(http.HandlerFunc(bookingHandler.Assign), requireAuth, requireBookingCoord, courier.Wrap("booking")))
 	// «كشف»: الإداري يطلّع ليدر يعاين الموقع قبل ما يصير مشروع.
 	mux.Handle("PUT /api/bookings/{id}/send-to-survey", middleware.Chain(http.HandlerFunc(bookingHandler.SendToSurvey), requireAuth, requireBookingCoord))
@@ -1484,7 +1486,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	mux.Handle("PUT /api/ai/work-window", middleware.Chain(http.HandlerFunc(aiHandler.SetWorkWindow), requireAuth, requireAdmin))
 	// الإنجازات: أي موظف يرفع تقريره — العرض والمراجعة حصراً لمدير
 	// النظام والمالك (requireAdmin)، لا المراقب.
-	mux.Handle("POST /api/achievements", middleware.Chain(http.HandlerFunc(achievementHandler.Create), requireAuth))
+	meApp.Set("POST /api/achievements", "me.achievement", achievementHandler.Create)
 	// ساعات العمل من البيت — صلاحية «remote_hours_manage».
 	remoteHoursHandler := handler.NewRemoteHoursHandler(repository.NewRemoteHoursRepository(db))
 	remoteHoursHandler.SetAgent(cfg.RemoteHoursAgentToken, cfg.RemoteHoursAgentEmployee) // 🤖 ساعات Claude (قرار 0011)
@@ -1515,7 +1517,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	mux.Handle("PUT /api/remote-hours/{id}", middleware.Chain(http.HandlerFunc(remoteHoursHandler.Update), requireAuth, requireRemoteSelf))
 	mux.Handle("GET /api/achievements/mine", middleware.Chain(http.HandlerFunc(achievementHandler.Mine), requireAuth))
 	// فويس مسج للإنجاز — يبقى بتخزيننا؛ صاحبه يرفع، وصاحبه أو المدير يسمع.
-	mux.Handle("POST /api/achievements/{id}/voice", middleware.Chain(http.HandlerFunc(achievementHandler.UploadVoice), requireAuth))
+	meApp.Set("POST /api/achievements/{id}/voice", "me.achievement_voice", achievementHandler.UploadVoice)
 	mux.Handle("GET /api/achievements/{id}/voice", middleware.Chain(http.HandlerFunc(achievementHandler.Voice), requireAuth))
 	mux.Handle("GET /api/achievements/{id}/voice/analysis", middleware.Chain(http.HandlerFunc(achievementHandler.VoiceAnalysis), requireAuth))
 	mux.Handle("GET /api/ai/dialect", middleware.Chain(http.HandlerFunc(achievementHandler.Dialect), requireAuth, requireAdmin))
@@ -1778,8 +1780,8 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 		webPush.Start()
 		pushHandler := handler.NewPushHandler(webPush)
 		mux.Handle("GET /api/push/key", middleware.Chain(http.HandlerFunc(pushHandler.Key), requireAuth))
-		mux.Handle("POST /api/push/subscribe", middleware.Chain(http.HandlerFunc(pushHandler.Subscribe), requireAuth))
-		mux.Handle("POST /api/push/unsubscribe", middleware.Chain(http.HandlerFunc(pushHandler.Unsubscribe), requireAuth))
+		meApp.Set("POST /api/push/subscribe", "me.push_subscribe", pushHandler.Subscribe)
+		meApp.Set("POST /api/push/unsubscribe", "me.push_unsubscribe", pushHandler.Unsubscribe)
 	}
 	// 🔄 عقود الصيانة الدورية (ع) 11-08 — المدير والإداري المنسّق
 	contractSvc := service.NewMaintenanceContractService(db, bookingService, notificationRepo)
@@ -1856,9 +1858,9 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	mux.Handle("DELETE /api/inventory/requests/{id}", middleware.Chain(http.HandlerFunc(inventoryHandler.DeleteToolRequest), requireAuth, requireAdmin))
 
 	// تقييم الأداء اليدوي (KPI)
-	mux.Handle("POST /api/attendance/checkin", middleware.Chain(http.HandlerFunc(attendanceHandler.CheckIn), requireAuth))
-	mux.Handle("POST /api/attendance/checkout", middleware.Chain(http.HandlerFunc(attendanceHandler.CheckOut), requireAuth))
-	mux.Handle("POST /api/attendance/auto/{id}/answer", middleware.Chain(http.HandlerFunc(attendanceHandler.AnswerAuto), requireAuth))
+	meApp.Set("POST /api/attendance/checkin", "me.checkin", attendanceHandler.CheckIn)
+	meApp.Set("POST /api/attendance/checkout", "me.checkout", attendanceHandler.CheckOut)
+	meApp.Set("POST /api/attendance/auto/{id}/answer", "me.attendance_answer", attendanceHandler.AnswerAuto)
 	mux.Handle("GET /api/attendance/claims", middleware.Chain(http.HandlerFunc(attendanceHandler.Claims), requireAuth, requireMon["mon_attendance"]))
 	mux.Handle("POST /api/attendance/claims/{id}/decide", middleware.Chain(http.HandlerFunc(attendanceHandler.DecideClaim), requireAuth, requireMon["mon_attendance"]))
 	mux.Handle("GET /api/attendance/gate", middleware.Chain(http.HandlerFunc(attendanceHandler.Gate), requireAuth))
@@ -1887,8 +1889,8 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	mux.Handle("POST /api/employees/{id}/complete-training", middleware.Chain(http.HandlerFunc(kpiHandler.CompleteTraining), requireAuth, requireContentTech))
 
 	mux.Handle("GET /api/notifications", middleware.Chain(http.HandlerFunc(notificationHandler.List), requireAuth))
-	mux.Handle("POST /api/notifications/{id}/read", middleware.Chain(http.HandlerFunc(notificationHandler.MarkRead), requireAuth))
-	mux.Handle("POST /api/notifications/read-all", middleware.Chain(http.HandlerFunc(notificationHandler.MarkAllRead), requireAuth))
+	meApp.Set("POST /api/notifications/{id}/read", "me.notification_read", notificationHandler.MarkRead)
+	meApp.Set("POST /api/notifications/read-all", "me.notifications_read_all", notificationHandler.MarkAllRead)
 	mux.Handle("GET /api/kpi-criteria", middleware.Chain(http.HandlerFunc(kpiCriterionHandler.List), requireAuth))
 	mux.Handle("POST /api/assistant/ask", middleware.Chain(http.HandlerFunc(assistantHandler.Ask), requireAuth))
 	mux.Handle("POST /api/assistant/manager-chat", middleware.Chain(http.HandlerFunc(assistantHandler.ManagerChat), requireAuth, requireMon["mon_matrix"]))
@@ -2193,7 +2195,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	}
 
 	// طلبات تغيير أيقونة الحضور — أي موظف يطلب، ومدير النظام بس يوافق/يرفض
-	mux.Handle("POST /api/attendance-icon-requests", middleware.Chain(http.HandlerFunc(attendanceIconRequestHandler.Create), requireAuth))
+	meApp.Set("POST /api/attendance-icon-requests", "me.attendance_icon_request", attendanceIconRequestHandler.Create)
 	mux.Handle("GET /api/attendance-icon-requests", middleware.Chain(http.HandlerFunc(attendanceIconRequestHandler.ListPending), requireAuth, requireAdmin))
 	mux.Handle("PUT /api/attendance-icon-requests/{id}/approve", middleware.Chain(http.HandlerFunc(attendanceIconRequestHandler.Approve), requireAuth, requireAdmin))
 	mux.Handle("PUT /api/attendance-icon-requests/{id}/reject", middleware.Chain(http.HandlerFunc(attendanceIconRequestHandler.Reject), requireAuth, requireAdmin))
@@ -2301,7 +2303,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	requirePrivacyMgmt := guards.Permission("privacy_policy_manage")
 	mux.Handle("GET /api/privacy-policy", middleware.Chain(http.HandlerFunc(privacyPolicyHandler.List), requireAuth))
 	mux.Handle("GET /api/privacy-policy/status", middleware.Chain(http.HandlerFunc(privacyPolicyHandler.Status), requireAuth))
-	mux.Handle("POST /api/privacy-policy/accept", middleware.Chain(http.HandlerFunc(privacyPolicyHandler.Accept), requireAuth))
+	meApp.Set("POST /api/privacy-policy/accept", "me.privacy_accept", privacyPolicyHandler.Accept)
 	// 📜 سجل موافقات المبادئ (دازاي 10-29) — الموظف نفسه أو المالك/مدير النظام
 	mux.Handle("GET /api/privacy-policy/acceptances/{employeeId}", middleware.Chain(http.HandlerFunc(privacyPolicyHandler.Acceptances), requireAuth))
 	mux.Handle("POST /api/privacy-policy", middleware.Chain(http.HandlerFunc(privacyPolicyHandler.Create), requireAuth, requirePrivacyMgmt))
@@ -2417,9 +2419,9 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	// ── الإجازات ──────────────────────────────────────────────────────────────
 	// أي موظف يقدّم ويشوف طلباته. البت بالطلبات محصور بالمخوّل حسب مسار
 	// الكادر (يُتحقق داخل الهاندلر لأنه يعتمد على مسار الطلب نفسه).
-	mux.Handle("POST /api/leaves", middleware.Chain(http.HandlerFunc(leaveHandler.Create), requireAuth))
+	meApp.Set("POST /api/leaves", "me.leave_request", leaveHandler.Create)
 	mux.Handle("GET /api/leaves/mine", middleware.Chain(http.HandlerFunc(leaveHandler.Mine), requireAuth))
-	mux.Handle("DELETE /api/leaves/{id}", middleware.Chain(http.HandlerFunc(leaveHandler.Cancel), requireAuth))
+	meApp.Set("DELETE /api/leaves/{id}", "me.leave_cancel", leaveHandler.Cancel)
 	mux.Handle("GET /api/leaves/inbox", middleware.Chain(http.HandlerFunc(leaveHandler.Inbox), requireAuth))
 	mux.Handle("GET /api/leaves/pending-count", middleware.Chain(http.HandlerFunc(leaveHandler.PendingCount), requireAuth))
 	// 🗓️ «إجازات الموظفين» (ع 10-23) — نفس حارس البند بالقائمة: المدير/المراقب أو إدارة الكوادر أو الموافقة على الإجازات
@@ -3081,7 +3083,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 		}
 	})
 	mux.Handle("GET /api/peer/me", middleware.Chain(http.HandlerFunc(peerHandler.Mine), requireAuth))
-	mux.Handle("POST /api/peer/me", middleware.Chain(http.HandlerFunc(peerHandler.Submit), requireAuth))
+	meApp.Set("POST /api/peer/me", "me.peer_note", peerHandler.Submit)
 	mux.Handle("POST /api/peer/notes/{id}/followup", middleware.Chain(http.HandlerFunc(peerHandler.Followup), requireAuth))
 	mux.Handle("POST /api/peer/notes/{id}/accept", middleware.Chain(http.HandlerFunc(peerHandler.Accept), requireAuth))
 	mux.Handle("GET /api/peer/voice", middleware.Chain(http.HandlerFunc(peerHandler.Report), requireAuth, requireMon["mon_staff"]))
@@ -3556,6 +3558,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 
 	// 🏴‍☠️ ون بيس: التطبيقات المنقولة — الحارس صار قاعدة بالنواة (الرفض 404)
 	coreRouter.Mount(
+		meApp,
 		system.New(system.Deps{SetSwitch: systemSwitchHandler.Set}),
 		people.New(people.Deps{Create: employeeAdminHandler.Create}),
 	)
