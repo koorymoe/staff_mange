@@ -7,6 +7,7 @@ import { MapViewer } from '../components/MapLazy'
 import { formatScheduleWindow } from '../utils/schedule'
 import CompletionBadge from '../components/CompletionBadge'
 import BookingEditPanel from '../components/BookingEditPanel'
+import BookingHistory from '../components/BookingHistory'
 import BookingVisits from '../components/BookingVisits'
 import { BOOKING_STAGES, currentStage } from '../bookingStage'
 import { BUCKET_HEADINGS, DONE_FILTERS, type BookingBucket, type DoneFilter } from './bookingBuckets'
@@ -741,6 +742,7 @@ export default function BookingsList({ bucket = 'all', focus }: { bucket?: Booki
                         <div className="mt-3">
                           <BookingVisits bookingId={b.id} />
                         </div>
+                        <BookingHistory bookingId={b.id} />
 
                         <div className="mt-4 grid grid-cols-1 gap-3 text-sm sm:grid-cols-2 lg:grid-cols-4">
                           <div>

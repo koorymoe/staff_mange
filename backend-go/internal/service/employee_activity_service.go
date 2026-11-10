@@ -232,3 +232,47 @@ func (s *EmployeeActivityService) Day(employeeID, day string) []ActivityLine {
 	}
 	return out
 }
+
+// bookingVerbAr أفعال الحجز بجملة كاملة — «schedule» بالحجز موعد، مو دوام موظف.
+var bookingVerbAr = map[string]string{
+	"accept": "قبل الحجز", "arrived": "سجّل وصول الكادر", "assign": "كلّف كادر", "audit": "دقّق الحجز",
+	"cancel": "ألغى الحجز", "complete": "سجّل الحجز منجز", "confirm": "ثبّت الحجز", "confirmation-contacted": "اتصل بالزبون للتثبيت",
+	"crew-notes": "كتب ملاحظات الكادر", "customer-signature": "أخذ توقيع الزبون", "delete-request": "طلب حذف الحجز",
+	"depart": "سجّل انطلاق الكادر", "details": "عدّل تفاصيل الحجز", "handover": "حوّل الحجز لإدارة التقنيين",
+	"mark-survey": "علّمه كشف", "materials-ready": "جهّز المواد", "partial-complete": "سجّل إنجاز جزئي",
+	"postpone": "أجّل الحجز", "project-notes": "كتب ملاحظات المشروع", "reopen": "رجّع فتح الحجز", "resolve": "حلّ مشكلة الحجز",
+	"restore": "رجّعه من الأرشيف", "resume": "رجّعه للطابور", "resume-work": "رجّع الشغل", "return-handled": "استلم الراجع ورجّعه للحجوزات",
+	"return-to-crew": "رجّعه من إدارة المشاريع", "review": "قيّم الحجز", "schedule": "حدد الموعد", "schedule-continuation": "حدد موعد الإكمال",
+	"send-to-survey": "حوّله لكشف", "settle-legacy": "سوّى الحجز القديم", "start": "بدأ التنفيذ", "stop-work": "وقّف الشغل",
+	"supervisor": "حدد المشرف", "type": "غيّر نوع الحجز", "unstart": "شال البدء", "unverify": "رجّعه للتدقيق", "verify": "دقّقه",
+	"waiting": "حطه بالانتظار", "work-photos": "رفع صور الشغل", "{step}": "حدّث مرحلة",
+}
+
+// BookingLine سطر بتاريخ الحجز: منو سوّى شنو ومتى.
+type BookingLine struct {
+	At   time.Time `json:"at"`
+	By   string    `json:"by"`
+	Text string    `json:"text"`
+}
+
+// BookingHistory كل حفظ مسّ الحجز (الأحدث أولاً)، بالعربي.
+func (s *EmployeeActivityService) BookingHistory(bookingID string) ([]BookingLine, error) {
+	rows, err := s.repo.ForBooking(bookingID)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]BookingLine, 0, len(rows))
+	for _, r := range rows {
+		segs := strings.Split(strings.TrimRight(r.Pattern, "/"), "/")
+		t, ok := bookingVerbAr[segs[len(segs)-1]]
+		if !ok {
+			t, _ = s.describe(r.ActivityRow)
+			// اسم الحجز معروف بالشاشة — نشيله من الجملة
+			if i := strings.Index(t, " «"); i > 0 {
+				t = t[:i]
+			}
+		}
+		out = append(out, BookingLine{At: r.At, By: r.By, Text: t})
+	}
+	return out, nil
+}

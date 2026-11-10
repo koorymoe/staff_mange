@@ -2203,5 +2203,11 @@ func matrixChatMigrations() []Migration {
 			UPDATE "DesignTool" SET url = 'https://pvwatts.nlr.gov', name = 'PVWatts (NLR)'
 			WHERE url IN ('https://pvwatts.nrel.gov', 'https://pvwatts.nrel.gov/');
 		`,
+	}, {
+		// (ع) 11-10 بلاغ #30/#31: سجل الحجز يدوّر بالمسار — فهرس حتى ما يمر على الجدول كله.
+		Version: "0468_activity_path_idx",
+		SQL: `
+			CREATE INDEX IF NOT EXISTS "EmployeeActivity_path_idx" ON "EmployeeActivity" (path text_pattern_ops);
+		`,
 	}}
 }

@@ -4104,3 +4104,6 @@ export interface CustomerSignature {
   signedAt: string
   collectedByName: string | null
 }
+
+// (ع) 11-10 بلاغ #30/#31: سطر من «منو سوّى شنو» بالحجز
+export interface BookingHistoryLine { at: string; by: string; text: string }

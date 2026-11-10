@@ -69,6 +69,9 @@ func bucketCondition(bucket string) string {
 	// حجز عليه كادر مجدول لازم يبقى مرئي بطابور الكادر حتى لو الزبون
 	// ما رد، وإلا الكادر يطلع لموقع ما أحد يعرف بيه.
 	notStuck := ` AND b."waitingSince" IS NULL AND NOT b."awaitingReschedule"`
+	// (ع) 11-10 بلاغ #29: الراجع من إدارة ثانية يبقى بخانة «رجعت من إدارة أخرى» بس، لحد ما
+	// المنسّق يقرر — چان يطلع بنفس الوقت بـ«تم التثبيت» أو «مكلّف» فيضيع بين مكانين.
+	notStuck += ` AND NOT ` + ReturnedOpenSQL
 
 	switch bucket {
 	// ═══ (ع) 10-13: الميدان والمعلّق — تعريف واحد للوحة وتتبع المهام ═══
@@ -83,6 +86,8 @@ func bucketCondition(bucket string) string {
 	// محطة مستقلة: ينتظر قرار المراقب
 	case "delete_pending":
 		return deletePendingSQL
+	case "returned":
+		return ReturnedOpenSQL + ` AND b.status NOT IN ('CANCELLED', 'COMPLETED')`
 	// محطة مستقلة: عند إدارة المشاريع لحد ما يوصل التنفيذ
 	case "at_projects":
 		return atProjectsSQL + ` AND NOT ` + deletePendingSQL
@@ -165,6 +170,9 @@ var StationElsewhereSQL = `(` + deletePendingSQL + ` OR ` + atProjectsSQL + ` OR
 
 // BucketCondition للفحص الذاتي: نفس شرط المحطة.
 func BucketCondition(bucket string) string { return bucketCondition(bucket) }
+
+// ReturnedOpenSQL رجّعته إدارة المشاريع والمنسّق بعد ما قرر عليه — نفس شرط ReturnedFromProjects.
+const ReturnedOpenSQL = `(b."returnedFromProjectsAt" IS NOT NULL AND b."returnHandledAt" IS NULL AND NOT b."transferToProjects")`
 
 const atTechSQL = `(b."handoverToId" IS NOT NULL AND b.status NOT IN ('CANCELLED', 'COMPLETED'))`
 
@@ -423,6 +431,7 @@ func (r *BookingRepository) Locate(term string) ([]BookingLocation, error) {
 		{"delete_pending", "بانتظار قرار الحذف"},
 		{"at_projects", "عند إدارة المشاريع"},
 		{"at_tech", "عند إدارة التقنيين"},
+		{"returned", "رجعت من إدارة أخرى"},
 		{"pending", "بانتظار التثبيت — بحاجة لتنسيق"},
 		{"confirmed", "تم التثبيت — بحاجة لكادر"},
 		{"assigned", "مكلّف — بانتظار التنفيذ"},

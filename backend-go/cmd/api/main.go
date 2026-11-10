@@ -1665,6 +1665,15 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	// ↩️ «رجعت من المشاريع» (ع 10-23): المنسّق يشوفها ويستلمها — نفس حارس «تنسيق الحجوزات» بالواجهة
 	requireReturnedDesk := guards.RoleOrAnyPermission([]string{"ADMIN"}, "coordinator")
 	mux.Handle("GET /api/bookings/returned-from-projects", middleware.Chain(http.HandlerFunc(bookingHandler.ReturnedFromProjects), requireAuth, requireReturnedDesk))
+	// (ع) 11-10 بلاغ #30/#31: «منو وصّل الحجز لهالخانة؟» — سجل كل حفظ مسّ الحجز.
+	mux.Handle("GET /api/bookings/{id}/history", middleware.Chain(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		lines, err := employeeActivityService.BookingHistory(r.PathValue("id"))
+		if err != nil {
+			handler.WriteError(w, http.StatusInternalServerError, "تعذر جلب سجل الحجز")
+			return
+		}
+		handler.WriteJSON(w, http.StatusOK, lines)
+	}), requireAuth, requireBookingCoord))
 	mux.Handle("PUT /api/bookings/{id}/return-handled", middleware.Chain(http.HandlerFunc(bookingHandler.ReturnHandled), requireAuth, requireReturnedDesk))
 	mux.Handle("PUT /api/bookings/{id}/confirmation-contacted", middleware.Chain(http.HandlerFunc(bookingHandler.MarkConfirmationContacted), requireAuth, requireCoordinator))
 	// تدقيق المراقب على الحجوزات الموجّهة قبل التثبيت (crew_management، صلاحية جديدة

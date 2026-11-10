@@ -91,3 +91,20 @@ func (r *EmployeeActivityRepository) Lookup(table, col, id string) string {
 	errlog.Err(r.db.Get(&v, `SELECT COALESCE(`+col+`::text, '') FROM "`+table+`" WHERE id = $1`, id))
 	return v
 }
+
+// BookingActivityRow حفظ ناجح مسّ حجزاً معيّناً — منو ومتى وشنو.
+type BookingActivityRow struct {
+	ActivityRow
+	By string `db:"by"`
+}
+
+// ForBooking (ع) 11-10 بلاغ #30/#31: «منو وصّل الحجز لهالخانة؟ ما يطلع منو عدّلهن».
+// سجل النشاط يحفظ مسار كل حفظ، ومعرّف الحجز بيه — فنلگه بلا جدول جديد.
+func (r *EmployeeActivityRepository) ForBooking(bookingID string) ([]BookingActivityRow, error) {
+	rows := []BookingActivityRow{}
+	err := r.db.Select(&rows, `SELECT a.method, a.pattern, a.path, a."createdAt", COALESCE(e.name, '') AS by
+		FROM "EmployeeActivity" a LEFT JOIN "Employee" e ON e.id = a."employeeId"
+		WHERE a.path LIKE '/api/bookings/' || $1 || '%' AND a.status < 400
+		ORDER BY a."createdAt" DESC LIMIT 200`, bookingID)
+	return rows, err
+}
