@@ -278,3 +278,104 @@ func (s *PlanSetService) RemoveFile(emp, role string, perms []string, fileID str
 	_, err := s.db.Exec(`UPDATE "PlanFile" SET "removedAt" = now(), "removedById" = $2 WHERE id = $1`, fileID, emp)
 	return err
 }
+
+// ═══ واجهة «سيت المخططات» الجديدة — (ك) 11-10 بطلب دازاي «اريد هذا بالضبط» ═══
+// كروت المشاريع، وآخر النشاطات، ونسبة النمو. كل الأرقام محسوبة من الجداول — ماكو رقم وهمي.
+
+// PlanProjectCard مشروع بيه سيتات: الغلاف أول صورة بآخر سيت، والحالة «مكتمل» إذا كل سيتاته مؤرشفة.
+type PlanProjectCard struct {
+	ProjectID string    `db:"projectId" json:"projectId"`
+	Code      string    `db:"code" json:"code"`
+	Name      string    `db:"name" json:"name"`
+	Location  *string   `db:"location" json:"location"`
+	Sets      int       `db:"sets" json:"sets"`
+	OpenSets  int       `db:"openSets" json:"openSets"`
+	LastAt    time.Time `db:"lastAt" json:"lastAt"`
+	Cover     *string   `db:"cover" json:"cover"`
+	LatestSet string    `db:"latestSet" json:"latestSet"`
+}
+
+// PlanActivity آخر شي صار: سيت انفتح أو مخطط انرفع.
+type PlanActivity struct {
+	Kind  string    `db:"kind" json:"kind"` // set | file
+	Title string    `db:"title" json:"title"`
+	Sub   *string   `db:"sub" json:"sub"`
+	SetID string    `db:"setId" json:"setId"`
+	At    time.Time `db:"at" json:"at"`
+}
+
+// PlanGrowth نسبة الي انضاف آخر ٣٠ يوم مقابل الي چان قبلها — nil إذا ماكو أساس للمقارنة.
+type PlanGrowth struct {
+	Projects *float64 `json:"projects"`
+	Sets     *float64 `json:"sets"`
+	Files    *float64 `json:"files"`
+	Pdfs     *float64 `json:"pdfs"`
+}
+
+type PlanOverview struct {
+	Pdfs     int               `json:"pdfs"`
+	Growth   PlanGrowth        `json:"growth"`
+	Projects []PlanProjectCard `json:"projectCards"`
+	Activity []PlanActivity    `json:"activity"`
+}
+
+func growth(newer, older int) *float64 {
+	if older <= 0 {
+		return nil
+	}
+	v := float64(newer) * 100 / float64(older)
+	return &v
+}
+
+func (s *PlanSetService) Overview() (PlanOverview, error) {
+	out := PlanOverview{Projects: []PlanProjectCard{}, Activity: []PlanActivity{}}
+	var g struct {
+		PdfAll  int `db:"pdfAll"`
+		PdfNew  int `db:"pdfNew"`
+		SetAll  int `db:"setAll"`
+		SetNew  int `db:"setNew"`
+		FileAll int `db:"fileAll"`
+		FileNew int `db:"fileNew"`
+		PrjAll  int `db:"prjAll"`
+		PrjNew  int `db:"prjNew"`
+	}
+	const live = `f."removedAt" IS NULL AND d."archivedAt" IS NULL`
+	const recent = `> now() - interval '30 days'`
+	err := s.db.Get(&g, `SELECT
+		(SELECT count(*) FROM "PlanFile" f JOIN "PlanSet" d ON d.id = f."setId" WHERE `+live+` AND f."fileType" = 'application/pdf')::int AS "pdfAll",
+		(SELECT count(*) FROM "PlanFile" f JOIN "PlanSet" d ON d.id = f."setId" WHERE `+live+` AND f."fileType" = 'application/pdf' AND f."createdAt" `+recent+`)::int AS "pdfNew",
+		(SELECT count(*) FROM "PlanSet" d WHERE d."archivedAt" IS NULL)::int AS "setAll",
+		(SELECT count(*) FROM "PlanSet" d WHERE d."archivedAt" IS NULL AND d."createdAt" `+recent+`)::int AS "setNew",
+		(SELECT count(*) FROM "PlanFile" f JOIN "PlanSet" d ON d.id = f."setId" WHERE `+live+`)::int AS "fileAll",
+		(SELECT count(*) FROM "PlanFile" f JOIN "PlanSet" d ON d.id = f."setId" WHERE `+live+` AND f."createdAt" `+recent+`)::int AS "fileNew",
+		(SELECT count(DISTINCT "projectId") FROM "PlanSet" WHERE "archivedAt" IS NULL AND "projectId" IS NOT NULL)::int AS "prjAll",
+		(SELECT count(*) FROM (SELECT "projectId" FROM "PlanSet" WHERE "archivedAt" IS NULL AND "projectId" IS NOT NULL
+		   GROUP BY "projectId" HAVING min("createdAt") `+recent+`) x)::int AS "prjNew"`)
+	if err != nil {
+		return out, err
+	}
+	out.Pdfs = g.PdfAll
+	out.Growth = PlanGrowth{
+		Projects: growth(g.PrjNew, g.PrjAll-g.PrjNew), Sets: growth(g.SetNew, g.SetAll-g.SetNew),
+		Files: growth(g.FileNew, g.FileAll-g.FileNew), Pdfs: growth(g.PdfNew, g.PdfAll-g.PdfNew),
+	}
+	if err := s.db.Select(&out.Projects, `SELECT p.id AS "projectId", p.code, p.name, p.location,
+			count(d.id)::int AS sets, count(d.id) FILTER (WHERE d."archivedAt" IS NULL)::int AS "openSets",
+			max(d."createdAt") AS "lastAt",
+			(SELECT f."fileKey" FROM "PlanFile" f JOIN "PlanSet" d2 ON d2.id = f."setId"
+			  WHERE d2."projectId" = p.id AND f."removedAt" IS NULL AND f."fileType" IN `+planImageTypes+`
+			  ORDER BY f."createdAt" DESC LIMIT 1) AS cover,
+			(SELECT d3.id FROM "PlanSet" d3 WHERE d3."projectId" = p.id ORDER BY (d3."archivedAt" IS NOT NULL), d3."createdAt" DESC LIMIT 1) AS "latestSet"
+		FROM "PlanSet" d JOIN "Project" p ON p.id = d."projectId"
+		GROUP BY p.id ORDER BY max(d."createdAt") DESC LIMIT 12`); err != nil {
+		return out, err
+	}
+	err = s.db.Select(&out.Activity, `SELECT * FROM (
+		SELECT 'set' AS kind, d.title, p.name AS sub, d.id AS "setId", d."createdAt" AS at
+		  FROM "PlanSet" d LEFT JOIN "Project" p ON p.id = d."projectId"
+		UNION ALL
+		SELECT 'file', f.title, d.title, d.id, f."createdAt"
+		  FROM "PlanFile" f JOIN "PlanSet" d ON d.id = f."setId" WHERE f."removedAt" IS NULL
+		) a ORDER BY at DESC LIMIT 6`)
+	return out, err
+}

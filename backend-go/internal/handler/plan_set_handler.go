@@ -50,8 +50,14 @@ func (h *PlanSetHandler) Meta(w http.ResponseWriter, r *http.Request) {
 		WriteError(w, http.StatusInternalServerError, "تعذر")
 		return
 	}
+	ov, err := h.svc.Overview()
+	if err != nil {
+		log.Printf("plan overview: %v", err)
+		WriteError(w, http.StatusInternalServerError, "تعذر")
+		return
+	}
 	manage := h.svc.CanManage(me, role, perms)
-	out := map[string]any{"groups": service.PlanCatalog, "stats": stats, "canManage": manage, "projects": []service.ProjectOption{}}
+	out := map[string]any{"groups": service.PlanCatalog, "stats": stats, "overview": ov, "canManage": manage, "projects": []service.ProjectOption{}}
 	if manage {
 		out["projects"] = h.svc.Projects()
 	}
