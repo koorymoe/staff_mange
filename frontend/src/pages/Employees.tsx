@@ -69,6 +69,9 @@ export default function Employees({ embedded }: { embedded?: boolean } = {}) {
   const canIdentity = isAdmin || userPermissions.includes('edit_employee_identity')
   // (ع): صلاحيات تنطى لأي أحد — كل زر يطلع بس لمن الخادم يقبله.
   const canEditAll = isAdmin || userPermissions.includes('employee_edit_all')
+  // (بلاغ #28 — أمير 11-09) خانات الراتب والإجازات والدوام چانت تنكتب لأي أحد، والخادم يرفض بلا صلاحية
+  // «تعديل ملف الموظف» — فالبيانات ما تنحفظ، وكل رفض ينحسب مخالفة. هسه نفحص قبل الحفظ ونوضّح.
+  const canProfile = isAdmin || userPermissions.includes('edit_employee_profile')
   const canSuspend = isAdmin || userPermissions.includes('employee_suspend')
   const [editAllOpen, setEditAllOpen] = useState(false)
   const [handoverOpen, setHandoverOpen] = useState(false)
@@ -285,6 +288,10 @@ export default function Employees({ embedded }: { embedded?: boolean } = {}) {
   const handleFieldBlur = async <K extends keyof Employee>(field: K, value: Employee[K]) => {
     if (!selectedEmployee) return
     if (field === 'name' && value === selectedEmployee.name) return
+    if (!isAdmin && field !== 'name' && !canProfile) {
+      alert('ما انحفظ: تعديل الراتب والإجازات والدوام يحتاج صلاحية «تعديل ملف الموظف» — اطلبها من المالك أو مدير النظام')
+      return
+    }
     try {
       // 🔴 غير المدير ما يحفظ على مسار المدير: الرفض ينحسب مخالفة وخمسة
       // تقفل الحساب. الاسم على مسار «اسم ودور»، والباقي على مسار الملف.
