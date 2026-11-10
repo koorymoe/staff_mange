@@ -19,6 +19,7 @@ import (
 	"staffmange-api/internal/apps/system"
 	"staffmange-api/internal/authz"
 	"staffmange-api/internal/core"
+	"staffmange-api/internal/models"
 	"staffmange-api/internal/monitor"
 	"strconv"
 
@@ -68,6 +69,16 @@ func main() {
 
 	if err := database.Migrate(db, cfg.OwnerUsername, cfg.OwnerPassword); err != nil {
 		log.Fatalf("failed to run database migrations: %v", err)
+	}
+	// 🏴‍☠️ ون بيس: القاعدة لازم تطابق الموديلات (internal/models). فرق = تحذير واضح
+	// بالسجل (مو توقيف — حتى فرق قديم ما يطفي الخدمة)، والاختبار يمسكه قبل الرفع.
+	if have, haveE, err := models.Introspect(db); err == nil {
+		haveO, _ := models.IntrospectObjects(db)
+		if p := models.DiffAll(models.Tables(), models.Enums(), models.Objects(), have, haveE, haveO); !p.Empty() {
+			log.Printf("⚠️ [models] القاعدة مو مطابقة للموديلات: %d ناقص بالقاعدة، %d زايد/متغيّر — go run ./cmd/makemigration -check", len(p.Safe), len(p.NeedsApproval))
+		} else {
+			log.Printf("✅ [models] القاعدة مطابقة للموديلات (%d جدول)", len(have))
+		}
 	}
 	// 🔎 أدوار قراءة الذكاء — ايريس وماتركس يقرون النظام كله بلا الأسرار (دازاي 10-23)
 	database.EnsureAIReaders(db)
