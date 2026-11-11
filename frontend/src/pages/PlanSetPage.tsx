@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
-import { api, apiRequest, fileUrl } from '../api'
+import { api, apiRequest, ensureFileToken, fileUrl } from '../api'
 import { useSession } from '../session'
 import { buildPlanSetHtml, isImageFile, type PlanPrintQuote } from '../utils/planSetPrint'
 import { printProjectQuote } from '../utils/projectQuotePrint'
@@ -40,7 +40,8 @@ export default function PlanSetPage() {
 
   useEffect(() => {
     let alive = true
-    Promise.all([apiRequest<PlanMeta>('/plan-sets/meta'), apiRequest<PlanSetDetail>(`/plan-sets/${id}`)])
+    // (ل) 11-11: وسم الملفات قبل الرسم — بدونه رابط الصورة يطلع بلا ?ft والسيرفر يرفضه (صورة مكسورة)
+    Promise.all([apiRequest<PlanMeta>('/plan-sets/meta'), apiRequest<PlanSetDetail>(`/plan-sets/${id}`), ensureFileToken()])
       .then(([m, s]) => { if (alive) { setMeta(m); setD(s) } })
       .catch((e) => { if (alive) setErr(e instanceof Error ? e.message : 'تعذر') })
     return () => { alive = false }

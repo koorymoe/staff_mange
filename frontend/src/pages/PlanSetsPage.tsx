@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { apiRequest, fileUrl } from '../api'
+import { apiRequest, ensureFileToken, fileUrl } from '../api'
 import { ArtCrop, IconCal, IconFolder, IconLayers, IconDoc, IconUpload } from './design/planArt'
 import type { PlanMeta, PlanSetRow } from './design/planTypes'
 
@@ -36,7 +36,7 @@ export default function PlanSetsPage() {
 
   useEffect(() => {
     let alive = true
-    Promise.all([apiRequest<PlanMeta>('/plan-sets/meta'), apiRequest<PlanSetRow[]>('/plan-sets')])
+    Promise.all([apiRequest<PlanMeta>('/plan-sets/meta'), apiRequest<PlanSetRow[]>('/plan-sets'), ensureFileToken()])
       .then(([m, r]) => { if (alive) { setMeta(m); setRows(r) } })
       .catch((e) => { if (alive) setErr(e instanceof Error ? e.message : 'تعذر') })
     return () => { alive = false }
