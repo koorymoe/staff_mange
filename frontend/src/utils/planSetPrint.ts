@@ -25,6 +25,8 @@ export type PlanPrintInput = {
   quote: PlanPrintQuote | null
   /** سبب غياب عرض السعر (ماكو مشروع، ماكو عرض، ما عنده صلاحية) */
   quoteNote?: string
+  // (ل) 11-10: «ملفين»: PDF التصاميم بلا عرض السعر (العرض PDF وحده بقالبه)
+  noQuote?: boolean
   date: Date
 }
 
@@ -106,5 +108,5 @@ table { width: 100%; border-collapse: collapse; font-size: 12px } th { backgroun
 .tot { display: flex; gap: 6mm; justify-content: flex-end; font-size: 13px } .tot .net b { color: ${NAVY}; font-size: 16px }
 .foot { position: absolute; bottom: 6mm; left: 12mm; right: 12mm; display: flex; justify-content: space-between; font-size: 10px; color: #94a3b8; border-top: 1px solid #e2e8f0; padding-top: 2mm }
 @media print { body { background: #fff } .page { margin: 0 } }
-</style></head><body>${cover}${contents}${pages}${attach}${quote}</body></html>`.replace(/src="LOGO"/g, `src="${esc(abs(logoUrl))}"`)
+</style></head><body>${cover}${contents}${pages}${attach}${p.noQuote ? '' : quote}</body></html>`.replace(/src="LOGO"/g, `src="${esc(abs(logoUrl))}"`)
 }

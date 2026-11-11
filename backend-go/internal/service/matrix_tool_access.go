@@ -37,6 +37,10 @@ var matrixToolAccess = map[string][]string{
 	"training_study":     {"monitoring", "mon_staff", "staff_management"},
 	"daily_report_match": {"monitoring", "mon_staff", "staff_management"},
 	"employee_signals":   {"monitoring", "mon_staff", "staff_management"}, "team_performance": {"monitoring", "mon_staff", "staff_management", "kpi_management"},
+	// (ل) 11-10 نماذج عروض الأسعار — بصلاحيات العروض نفسها
+	"quotation_template_save": {QuotationPermCreate, QuotationPermEditOwn, QuotationPermManageAll, "quotation_system"},
+	"quotation_template_list": {QuotationPermCreate, QuotationPermEditOwn, QuotationPermManageAll, "quotation_system"},
+	"quotation_from_template": {QuotationPermCreate, QuotationPermEditOwn, QuotationPermManageAll, "quotation_system"},
 	// query_data / describe_data: مو بالخريطة = للمالك والمدير بس
 }
 
@@ -112,6 +116,7 @@ func raiseManagerRequestTool(db *sqlx.DB, userID string) agentTool {
 // StaffTools أدوات خاصة بهالمستخدم: أرقامه هو، وللموظف قراءة بيانات مجاله.
 func (a *MatrixAgent) StaffTools(db *sqlx.DB, userID string, top bool, perms []string) []agentTool {
 	out := append(MatrixSelfTools(db, userID), raiseManagerRequestTool(db, userID))
+	out = append(out, quotationTemplateTools(db, userID, "")...)
 	if !top {
 		out = append(out, a.ScopedDataTools(MatrixDataScope(perms))...)
 	}

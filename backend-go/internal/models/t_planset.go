@@ -13,11 +13,14 @@ func init() {
 			{Name: "createdById", Type: "text"},
 			{Name: "createdAt", Type: "timestamp with time zone", NotNull: true, Default: "now()"},
 			{Name: "archivedAt", Type: "timestamp with time zone"},
+			{Name: "isTemplate", Type: "boolean", NotNull: true, Default: "false"},
+			{Name: "quotationId", Type: "text"},
 		},
 		Constraints: []Constraint{
 			{Name: "PlanSet_createdById_fkey", Def: "FOREIGN KEY (\"createdById\") REFERENCES \"Employee\"(id) ON DELETE SET NULL"},
 			{Name: "PlanSet_pkey", Def: "PRIMARY KEY (id)"},
 			{Name: "PlanSet_projectId_fkey", Def: "FOREIGN KEY (\"projectId\") REFERENCES \"Project\"(id) ON DELETE SET NULL"},
+			{Name: "PlanSet_quotationId_fkey", Def: "FOREIGN KEY (\"quotationId\") REFERENCES \"Quotation\"(id) ON DELETE SET NULL"},
 		},
 	})
 }

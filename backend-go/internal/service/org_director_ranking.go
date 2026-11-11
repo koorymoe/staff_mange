@@ -1,6 +1,9 @@
 package service
 
 import (
+	"time"
+
+	"github.com/lib/pq"
 	"math"
 	"sort"
 	"strconv"
@@ -35,6 +38,11 @@ type EvidenceLine struct {
 func f1(v float64) string { return strconv.FormatFloat(math.Round(v*10)/10, 'f', -1, 64) }
 
 type DirectorRankRow struct {
+	// (ل) 11-11 مراقبة التقييم: Coverage = كم معيار عليه بيانات حقيقية من الكل؛
+	// WeakEvidence = أقل من النص (الرقم ما يتصدّگ لحاله)؛ Unreported = ما بلّغت ولا مشكلة والنظام شايف.
+	Coverage     float64             `json:"coverage"`
+	WeakEvidence bool                `json:"weakEvidence"`
+	Unreported   bool                `json:"unreported"`
 	Rank         int                 `json:"rank"`
 	DivisionID   string              `json:"divisionId"`
 	DivisionName string              `json:"divisionName"`
@@ -167,13 +175,59 @@ func DirectorsRanking(db *sqlx.DB, period string, personal PersonalScoreFn) (*Di
 			speed = rankPtr(100 - (*is.AvgDays-3)*100/27)
 			speedD = "معدل الحل " + strconv.Itoa(int(math.Round(*is.AvgDays))) + " يوم"
 		}
+		// (11-11 دازاي «ليش المدراء ماعدهم مشاكل؟»): قبل، قلة المشاكل چانت من تقارير المدير
+		// نفسه بس — الي ما يبلّغ ياخذ ١٠٠. هسه ينضاف الي شافه النظام وما يگدر أحد يخفيه:
+		// محطات الشغل الي فاتت وما صارت (حجوزات، مشاريع، تقارير) لكادر الإدارة بالشهر.
+		var sysMissed int
+		errlog.Err(db.Get(&sysMissed, `SELECT count(*) FROM "MatrixScore" s
+			WHERE s.source IN ('BOOKING','PROJECT','REPORT') AND s.points = 0 AND s."cancelledAt" IS NULL
+			  AND s."at" >= $2 AND s."at" < $3 AND s."employeeId" IN (`+orgMembersSQL+`)`, h.DivisionID, from, to))
 		if row.People > 0 {
-			few = rankPtr(100 - is.Weighted/float64(row.People)*25)
+			few = rankPtr(100 - (is.Weighted+float64(sysMissed))/float64(row.People)*25)
 		}
-		fewD := strconv.Itoa(is.Opened) + " مشكلة انفتحت"
+		fewD := strconv.Itoa(is.Opened) + " مشكلة انبلّغت · " + strconv.Itoa(sysMissed) + " محطة فاتت شافها النظام"
+		row.Unreported = is.Opened == 0 && sysMissed > 0
+		if sysMissed > 0 {
+			issues.opened = append([]EvidenceLine{{Label: "شافها النظام", Value: strconv.Itoa(sysMissed),
+				Note: "محطات حجوزات/مشاريع/تقارير وقتها فات وما صارت — تنحسب حتى لو الإدارة ما بلّغت"}}, issues.opened...)
+		}
 		if is.Opened > 0 {
 			solve = rankPtr(float64(is.Resolved) * 100 / float64(is.Opened))
 			solveD = strconv.Itoa(is.Resolved) + " من " + strconv.Itoa(is.Opened) + " انحلت"
+		}
+
+		// ٧. انضباط الكادر بالدوام (11-11): معدل درجات الانضباط لكل الإدارة، المدير وياهم
+		var disc *float64
+		discD := "يبدي " + DisciplineStart.Format("2006-01-02")
+		discEv := []EvidenceLine{}
+		members := []string{}
+		errlog.Err(db.Select(&members, orgMembersSQL, h.DivisionID, from, to))
+		if dm, err := Disciplines(db, members, from, to, time.Now()); err == nil && len(dm) > 0 {
+			sum, late, absent := 0.0, 0, 0
+			for _, d := range dm {
+				sum += *d.Score
+				late += d.Late
+				absent += d.Absent
+			}
+			disc = rankPtr(sum / float64(len(dm)))
+			discD = strconv.Itoa(late) + " تأخير بلا عذر · " + strconv.Itoa(absent) + " غياب، على " + strconv.Itoa(len(dm)) + " موظف"
+			names := map[string]string{}
+			rows := []struct{ ID, Name string }{}
+			errlog.Err(db.Select(&rows, `SELECT id AS "id", name AS "name" FROM "Employee" WHERE id = ANY($1)`, pq.Array(members)))
+			for _, r := range rows {
+				names[r.ID] = r.Name
+			}
+			for id, d := range dm {
+				if d.Late+d.Absent > 0 {
+					discEv = append(discEv, EvidenceLine{Label: names[id], Value: f1(*d.Score),
+						Note: "تأخير بلا عذر " + strconv.Itoa(d.Late) + " (" + strconv.Itoa(d.LateMinutes) + " دقيقة) · غياب " + strconv.Itoa(d.Absent) + " · بعذر " + strconv.Itoa(d.LateExcused)})
+				}
+			}
+			sort.Slice(discEv, func(i, j int) bool {
+				a, _ := strconv.ParseFloat(discEv[i].Value, 64)
+				b, _ := strconv.ParseFloat(discEv[j].Value, 64)
+				return a < b
+			})
 		}
 
 		peopleS := strconv.Itoa(row.People)
@@ -181,9 +235,10 @@ func DirectorsRanking(db *sqlx.DB, period string, personal PersonalScoreFn) (*Di
 			{"outputs", "المخرجات", 30, outputs, outD, "معدل درجات فقرات المخرجات الي عليها بيانات (كل فقرة: نقاط ماتركس + المهام بوقتها − الخصومات والشكاوي)", outEv},
 			{"plan", "إنجاز الخطة", 20, plan, planD, "معدل درجات بنود خطة الشهر: خلص بموعده = ١٠٠، متأخر = −١٠ لكل يوم، وبعده بالموعد = نسبته", planEv},
 			{"speed", "السرعة", 15, speed, speedD, "١٠٠ − (معدل أيام الحل − ٣) × ١٠٠ ÷ ٢٧ — ٣ أيام أو أقل = ١٠٠، و٣٠ يوم أو أكثر = صفر", issues.resolved},
-			{"few", "قلة المشاكل", 10, few, fewD, "١٠٠ − (مجموع أوزان المشاكل ÷ " + peopleS + " موظف) × ٢٥ — الوزن: عالية ٣، متوسطة ٢، واطية ١", issues.opened},
+			{"few", "قلة المشاكل", 10, few, fewD, "١٠٠ − ((أوزان المشاكل المبلّغة + المحطات الفايتة الي شافها النظام) ÷ " + peopleS + " موظف) × ٢٥ — الوزن: عالية ٣، متوسطة ٢، واطية ١، المحطة ١", issues.opened},
 			{"solve", "حل المشاكل", 15, solve, solveD, "المشاكل الي انحلت ÷ المشاكل الي انفتحت هالشهر × ١٠٠", issues.opened},
 			{"complaints", "الشكاوي والتأخير", 10, complaints, compD, "١٠٠ − (الشكاوي والمهام المتأخرة ÷ " + peopleS + " موظف) × ٢٠", compEv},
+			{"discipline", "انضباط الكادر بالدوام", 10, disc, discD, "معدل انضباط كل موظف بالإدارة (والمدير وياهم): ١٠٠ − ٢ لكل يوم تأخير بلا عذر − ٥ لكل غياب بلا إجازة", discEv},
 		}
 		sum, w := 0.0, 0.0
 		for _, c := range row.Criteria {
@@ -195,6 +250,14 @@ func DirectorsRanking(db *sqlx.DB, period string, personal PersonalScoreFn) (*Di
 		if w > 0 {
 			row.Total = rankPtr(sum / w)
 		}
+		withData := 0
+		for _, c := range row.Criteria {
+			if c.Score != nil {
+				withData++
+			}
+		}
+		row.Coverage = math.Round(float64(withData)*100/float64(len(row.Criteria))) / 100
+		row.WeakEvidence = withData*2 < len(row.Criteria)
 		out.Rows = append(out.Rows, row)
 	}
 	sort.SliceStable(out.Rows, func(i, j int) bool {

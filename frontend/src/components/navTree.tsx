@@ -138,6 +138,8 @@ export const navItems: NavItem[] = [
   { to: '/ai-suggestions', label: '🧠 اقتراحات الذكاء', icon: <></>, roles: ['ADMIN'] },
   { to: '/org', label: '🏛️ الهيكل التنظيمي', icon: <></>, roles: ['ADMIN'] },
   { to: '/org/directors-ranking', label: '🏆 تصنيف المدراء', icon: <></>, roles: ['ADMIN'] },
+  // (ل) 11-11 دازاي: مراقبة التقييم — نفس حارس تصنيف المدراء وأعذار التأخير (ADMIN/OWNER)
+  { to: '/org/score-monitor', label: '🔍 مراقبة التقييم', icon: <></>, roles: ['ADMIN'] },
   // (دازاي 11-08) كل الخطط بمكان واحد — نفس حارس GET /api/org/plans/overview (ADMIN/OWNER)
   { to: '/org/plans', label: '📋 الخطط', icon: <></>, roles: ['ADMIN'] },
   { to: '/my-org', label: '🏛️ مكاني', icon: <></> },

@@ -1,7 +1,10 @@
 package service
 
 import (
+	"fmt"
+
 	"errors"
+	"github.com/lib/pq"
 	"strings"
 	"time"
 
@@ -57,6 +60,8 @@ var PlanCatalog = []PlanGroup{
 		{"5.7", "مخطط أنظمة الصوت والإذاعة الداخلية"}, {"5.8", "مخطط الشاشات والعرض"},
 		{"5.9", "مخطط التفاصيل التنفيذية"},
 	}},
+	// (ل) 11-10: الترتيب من ٦ لـ٩ حسب ورقة دازاي نفسها (قرار دازاي: «مثل صورتي») —
+	// ٦ الأبواب والشبابيك، ٧ الكميات، ٨ تفاصيل البناء، ٩ المواصفات. التحويل: 0473.
 	{6, "جدول الأبواب والشبابيك والتشطيبات", "Door, Window & Finishes Schedules", []PlanType{
 		{"6.1", "جدول الأبواب"}, {"6.2", "جدول الشبابيك والفتحات"}, {"6.3", "جدول التشطيبات الداخلية"},
 	}},
@@ -100,6 +105,8 @@ type PlanSet struct {
 	ArchivedAt    *time.Time `db:"archivedAt" json:"archivedAt"`
 	Files         int        `db:"files" json:"files"`
 	Cover         *string    `db:"cover" json:"cover"`
+	IsTemplate    bool       `db:"isTemplate" json:"isTemplate"`
+	QuotationID   *string    `db:"quotationId" json:"quotationId"`
 }
 
 type PlanFile struct {
@@ -149,7 +156,7 @@ func (s *PlanSetService) Projects() []ProjectOption { return s.design.Projects()
 const planImageTypes = `('image/jpeg', 'image/png', 'image/webp')`
 
 const planSetCols = `SELECT d.id, d.title, d."projectId", p.code AS "projectCode", p.name AS "projectName",
-	d.notes, e.name AS "createdByName", d."createdAt", d."archivedAt",
+	d.notes, e.name AS "createdByName", d."createdAt", d."archivedAt", d."isTemplate", d."quotationId",
 	(SELECT count(*) FROM "PlanFile" f WHERE f."setId" = d.id AND f."removedAt" IS NULL)::int AS files,
 	(SELECT f."fileKey" FROM "PlanFile" f WHERE f."setId" = d.id AND f."removedAt" IS NULL
 	   AND f."fileType" IN ` + planImageTypes + ` ORDER BY f."createdAt" LIMIT 1) AS cover
@@ -176,9 +183,10 @@ func (s *PlanSetService) List(emp, role string, perms []string) ([]PlanSet, erro
 }
 
 type PlanSetInput struct {
-	Title     string `json:"title"`
-	ProjectID string `json:"projectId"`
-	Notes     string `json:"notes"`
+	Title      string `json:"title"`
+	ProjectID  string `json:"projectId"`
+	Notes      string `json:"notes"`
+	IsTemplate bool   `json:"isTemplate"`
 }
 
 func (s *PlanSetService) Create(emp, role string, perms []string, in PlanSetInput) (string, error) {
@@ -190,9 +198,9 @@ func (s *PlanSetService) Create(emp, role string, perms []string, in PlanSetInpu
 		return "", errors.New("اكتب اسم السيت (مثلاً: سيت مشروع الجامعة)")
 	}
 	var id string
-	err := s.db.Get(&id, `INSERT INTO "PlanSet" (title, "projectId", notes, "createdById")
-		VALUES ($1, NULLIF($2, ''), NULLIF(btrim($3), ''), $4) RETURNING id`,
-		in.Title, strings.TrimSpace(in.ProjectID), in.Notes, emp)
+	err := s.db.Get(&id, `INSERT INTO "PlanSet" (title, "projectId", notes, "createdById", "isTemplate")
+		VALUES ($1, NULLIF($2, ''), NULLIF(btrim($3), ''), $4, $5) RETURNING id`,
+		in.Title, strings.TrimSpace(in.ProjectID), in.Notes, emp, in.IsTemplate)
 	if err != nil && strings.Contains(err.Error(), "foreign key") {
 		return "", errors.New("المشروع مو موجود")
 	}
@@ -277,4 +285,188 @@ func (s *PlanSetService) RemoveFile(emp, role string, perms []string, fileID str
 	}
 	_, err := s.db.Exec(`UPDATE "PlanFile" SET "removedAt" = now(), "removedById" = $2 WHERE id = $1`, fileID, emp)
 	return err
+}
+
+// ═══ واجهة «سيت المخططات» الجديدة — (ك) 11-10 بطلب دازاي «اريد هذا بالضبط» ═══
+// كروت المشاريع، وآخر النشاطات، ونسبة النمو. كل الأرقام محسوبة من الجداول — ماكو رقم وهمي.
+
+// PlanProjectCard مشروع بيه سيتات: الغلاف أول صورة بآخر سيت، والحالة «مكتمل» إذا كل سيتاته مؤرشفة.
+type PlanProjectCard struct {
+	ProjectID string    `db:"projectId" json:"projectId"`
+	Code      string    `db:"code" json:"code"`
+	Name      string    `db:"name" json:"name"`
+	Location  *string   `db:"location" json:"location"`
+	Sets      int       `db:"sets" json:"sets"`
+	OpenSets  int       `db:"openSets" json:"openSets"`
+	LastAt    time.Time `db:"lastAt" json:"lastAt"`
+	Cover     *string   `db:"cover" json:"cover"`
+	LatestSet string    `db:"latestSet" json:"latestSet"`
+}
+
+// PlanActivity آخر شي صار: سيت انفتح أو مخطط انرفع.
+type PlanActivity struct {
+	Kind  string    `db:"kind" json:"kind"` // set | file
+	Title string    `db:"title" json:"title"`
+	Sub   *string   `db:"sub" json:"sub"`
+	SetID string    `db:"setId" json:"setId"`
+	At    time.Time `db:"at" json:"at"`
+}
+
+// PlanGrowth نسبة الي انضاف آخر ٣٠ يوم مقابل الي چان قبلها — nil إذا ماكو أساس للمقارنة.
+type PlanGrowth struct {
+	Projects *float64 `json:"projects"`
+	Sets     *float64 `json:"sets"`
+	Files    *float64 `json:"files"`
+	Pdfs     *float64 `json:"pdfs"`
+}
+
+type PlanOverview struct {
+	Pdfs     int               `json:"pdfs"`
+	Growth   PlanGrowth        `json:"growth"`
+	Projects []PlanProjectCard `json:"projectCards"`
+	Activity []PlanActivity    `json:"activity"`
+}
+
+func growth(newer, older int) *float64 {
+	if older <= 0 {
+		return nil
+	}
+	v := float64(newer) * 100 / float64(older)
+	return &v
+}
+
+func (s *PlanSetService) Overview() (PlanOverview, error) {
+	out := PlanOverview{Projects: []PlanProjectCard{}, Activity: []PlanActivity{}}
+	var g struct {
+		PdfAll  int `db:"pdfAll"`
+		PdfNew  int `db:"pdfNew"`
+		SetAll  int `db:"setAll"`
+		SetNew  int `db:"setNew"`
+		FileAll int `db:"fileAll"`
+		FileNew int `db:"fileNew"`
+		PrjAll  int `db:"prjAll"`
+		PrjNew  int `db:"prjNew"`
+	}
+	const live = `f."removedAt" IS NULL AND d."archivedAt" IS NULL`
+	const recent = `> now() - interval '30 days'`
+	err := s.db.Get(&g, `SELECT
+		(SELECT count(*) FROM "PlanFile" f JOIN "PlanSet" d ON d.id = f."setId" WHERE `+live+` AND f."fileType" = 'application/pdf')::int AS "pdfAll",
+		(SELECT count(*) FROM "PlanFile" f JOIN "PlanSet" d ON d.id = f."setId" WHERE `+live+` AND f."fileType" = 'application/pdf' AND f."createdAt" `+recent+`)::int AS "pdfNew",
+		(SELECT count(*) FROM "PlanSet" d WHERE d."archivedAt" IS NULL)::int AS "setAll",
+		(SELECT count(*) FROM "PlanSet" d WHERE d."archivedAt" IS NULL AND d."createdAt" `+recent+`)::int AS "setNew",
+		(SELECT count(*) FROM "PlanFile" f JOIN "PlanSet" d ON d.id = f."setId" WHERE `+live+`)::int AS "fileAll",
+		(SELECT count(*) FROM "PlanFile" f JOIN "PlanSet" d ON d.id = f."setId" WHERE `+live+` AND f."createdAt" `+recent+`)::int AS "fileNew",
+		(SELECT count(DISTINCT "projectId") FROM "PlanSet" WHERE "archivedAt" IS NULL AND "projectId" IS NOT NULL)::int AS "prjAll",
+		(SELECT count(*) FROM (SELECT "projectId" FROM "PlanSet" WHERE "archivedAt" IS NULL AND "projectId" IS NOT NULL
+		   GROUP BY "projectId" HAVING min("createdAt") `+recent+`) x)::int AS "prjNew"`)
+	if err != nil {
+		return out, err
+	}
+	out.Pdfs = g.PdfAll
+	out.Growth = PlanGrowth{
+		Projects: growth(g.PrjNew, g.PrjAll-g.PrjNew), Sets: growth(g.SetNew, g.SetAll-g.SetNew),
+		Files: growth(g.FileNew, g.FileAll-g.FileNew), Pdfs: growth(g.PdfNew, g.PdfAll-g.PdfNew),
+	}
+	if err := s.db.Select(&out.Projects, `SELECT p.id AS "projectId", p.code, p.name, p.location,
+			count(d.id)::int AS sets, count(d.id) FILTER (WHERE d."archivedAt" IS NULL)::int AS "openSets",
+			max(d."createdAt") AS "lastAt",
+			(SELECT f."fileKey" FROM "PlanFile" f JOIN "PlanSet" d2 ON d2.id = f."setId"
+			  WHERE d2."projectId" = p.id AND f."removedAt" IS NULL AND f."fileType" IN `+planImageTypes+`
+			  ORDER BY f."createdAt" DESC LIMIT 1) AS cover,
+			(SELECT d3.id FROM "PlanSet" d3 WHERE d3."projectId" = p.id ORDER BY (d3."archivedAt" IS NOT NULL), d3."createdAt" DESC LIMIT 1) AS "latestSet"
+		FROM "PlanSet" d JOIN "Project" p ON p.id = d."projectId"
+		GROUP BY p.id ORDER BY max(d."createdAt") DESC LIMIT 12`); err != nil {
+		return out, err
+	}
+	err = s.db.Select(&out.Activity, `SELECT * FROM (
+		SELECT 'set' AS kind, d.title, p.name AS sub, d.id AS "setId", d."createdAt" AS at
+		  FROM "PlanSet" d LEFT JOIN "Project" p ON p.id = d."projectId"
+		UNION ALL
+		SELECT 'file', f.title, d.title, d.id, f."createdAt"
+		  FROM "PlanFile" f JOIN "PlanSet" d ON d.id = f."setId" WHERE f."removedAt" IS NULL
+		) a ORDER BY at DESC LIMIT 6`)
+	return out, err
+}
+
+// ═══ (ل) 11-10 دازاي: نماذج جاهزة، والنسخ منها، والربط بعرض السعر ═══
+
+// PlanSetUpdate تعديل السيت: الاسم، المشروع، نموذج لو لا، وعرض السعر المرتبط.
+// الحقل الي ما ينرسل (nil) ما يتغيّر.
+type PlanSetUpdate struct {
+	Title       *string `json:"title"`
+	ProjectID   *string `json:"projectId"`
+	IsTemplate  *bool   `json:"isTemplate"`
+	QuotationID *string `json:"quotationId"`
+}
+
+func (s *PlanSetService) Update(emp, role string, perms []string, id string, in PlanSetUpdate) error {
+	if !s.CanManage(emp, role, perms) {
+		return ErrDesignHidden
+	}
+	if in.Title != nil {
+		t := strings.TrimSpace(*in.Title)
+		if n := len([]rune(t)); n < 3 || n > 200 {
+			return errors.New("اكتب اسم السيت (٣ حروف على الأقل)")
+		}
+		in.Title = &t
+	}
+	res, err := s.db.Exec(`UPDATE "PlanSet" SET
+		title = COALESCE($2, title),
+		"projectId" = CASE WHEN $3::text IS NULL THEN "projectId" ELSE NULLIF($3, '') END,
+		"isTemplate" = COALESCE($4, "isTemplate"),
+		"quotationId" = CASE WHEN $5::text IS NULL THEN "quotationId" ELSE NULLIF($5, '') END
+		WHERE id = $1`, id, in.Title, in.ProjectID, in.IsTemplate, in.QuotationID)
+	if err != nil {
+		if strings.Contains(err.Error(), "foreign key") {
+			return errors.New("المشروع أو عرض السعر مو موجود")
+		}
+		return err
+	}
+	if n, _ := res.RowsAffected(); n == 0 {
+		return ErrDesignHidden
+	}
+	return nil
+}
+
+// PlanCopyInput ينسخ من سيت (عادةً نموذج جاهز) لسيت ثاني: أقسام كاملة و/أو مخططات معيّنة.
+// النسخة تشير لنفس الملف (ماكو تكرار ملفات)، وتنسجل باسم الي نسخ.
+type PlanCopyInput struct {
+	FromSetID string   `json:"fromSetId"`
+	Sections  []int    `json:"sections"`
+	FileIDs   []string `json:"fileIds"`
+}
+
+func (s *PlanSetService) Copy(emp, role string, perms []string, toSetID string, in PlanCopyInput) (int, error) {
+	if !s.CanManage(emp, role, perms) {
+		return 0, ErrDesignHidden
+	}
+	if in.FromSetID == "" || in.FromSetID == toSetID {
+		return 0, errors.New("اختار السيت الي تنسخ منه")
+	}
+	if len(in.Sections) == 0 && len(in.FileIDs) == 0 {
+		return 0, errors.New("اختار قسم أو مخطط تنسخه")
+	}
+	var archived *time.Time
+	if err := s.db.Get(&archived, `SELECT "archivedAt" FROM "PlanSet" WHERE id = $1`, toSetID); err != nil {
+		return 0, ErrDesignHidden
+	}
+	if archived != nil {
+		return 0, errors.New("السيت مؤرشف — رجّعه أول")
+	}
+	secs := make([]string, 0, len(in.Sections))
+	for _, n := range in.Sections {
+		secs = append(secs, fmt.Sprintf("%d.", n))
+	}
+	res, err := s.db.Exec(`INSERT INTO "PlanFile" ("setId", "typeCode", title, "fileKey", "fileType", "uploadedById")
+		SELECT $2, f."typeCode", f.title, f."fileKey", f."fileType", $3 FROM "PlanFile" f
+		WHERE f."setId" = $1 AND f."removedAt" IS NULL
+		  AND (f.id = ANY($4) OR EXISTS (SELECT 1 FROM unnest($5::text[]) p WHERE f."typeCode" LIKE p || '%'))
+		  AND NOT EXISTS (SELECT 1 FROM "PlanFile" x WHERE x."setId" = $2 AND x."removedAt" IS NULL
+		                  AND x."fileKey" = f."fileKey" AND x."typeCode" = f."typeCode")`,
+		in.FromSetID, toSetID, emp, pq.Array(in.FileIDs), pq.Array(secs))
+	if err != nil {
+		return 0, err
+	}
+	n, _ := res.RowsAffected()
+	return int(n), nil
 }

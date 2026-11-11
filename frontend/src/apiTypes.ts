@@ -2724,7 +2724,13 @@ export interface InventoryCheck {
   resolvedAt: string | null
   employee: { id: string; name: string } | null
   resolvedBy: { id: string; name: string } | null
+  /** (ل) 11-11: الأولوية الفعلية (بالنواقص المفتوحة بس) — يدوية إذا manualPriority موجودة */
+  priority?: ShortagePriority
+  manualPriority?: ShortagePriority | null
+  /** أقرب حجز للفني اليوم أو باچر */
+  nextBookingAt?: string | null
 }
+export type ShortagePriority = 'URGENT' | 'HIGH' | 'NORMAL'
 
 export interface Notification {
   id: string
@@ -3847,7 +3853,12 @@ export interface StaffScore {
   group: string; groupLabel: string
   reliability: number | null; reliabilityParts: { key: string; label: string; pct: number; detail: string }[]
   skills?: number; hasLicense?: boolean; isLeader?: boolean
+  /** (ل) 11-11: الانضباط بالدوام — ١٥٪ من النهائي، يبدي من startsOn */
+  discipline?: Discipline
 }
+export interface DisciplineDay { date: string; status: 'LATE' | 'LATE_EXCUSED' | 'ABSENT'; lateMinutes?: number; checkIn?: string; shiftStart?: string }
+export interface Discipline { score: number | null; days: number; onTime: number; late: number; lateExcused: number; absent: number; lateMinutes: number; startsOn: string; items: DisciplineDay[] }
+export interface LateExcuse { id: string; employeeId: string; employeeName: string; date: string; minutes: number | null; reason: string; status: 'PENDING' | 'APPROVED' | 'REJECTED'; decidedBy: string | null; decidedAt: string | null; decisionNote: string | null; createdAt: string }
 export interface StaffScoreBoard { month: string; on: boolean; staff: StaffScore[]; insights: string[] }
 export interface MatrixScorePoint {
   id: string; employeeId: string; source: string; sourceId: string; sourceLabel: string | null; rule: string

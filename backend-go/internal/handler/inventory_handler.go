@@ -105,6 +105,27 @@ func (h *InventoryHandler) OpenShortages(w http.ResponseWriter, r *http.Request)
 	WriteJSON(w, http.StatusOK, rows)
 }
 
+// PUT /api/inventory/checks/{id}/priority {priority: URGENT|HIGH|NORMAL|""}
+func (h *InventoryHandler) SetShortagePriority(w http.ResponseWriter, r *http.Request) {
+	var in struct {
+		Priority string `json:"priority"`
+	}
+	if err := DecodeJSON(r, &in); err != nil {
+		WriteError(w, http.StatusBadRequest, "بيانات غير صحيحة")
+		return
+	}
+	ok, err := h.service.SetShortagePriority(r.PathValue("id"), in.Priority, middleware.EmployeeIDFromContext(r))
+	if err != nil {
+		WriteError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	if !ok {
+		WriteError(w, http.StatusNotFound, "مو موجود")
+		return
+	}
+	WriteJSON(w, http.StatusOK, map[string]bool{"ok": true})
+}
+
 func (h *InventoryHandler) ResolveInventoryCheck(w http.ResponseWriter, r *http.Request) {
 	check, err := h.service.ResolveInventoryCheck(r.PathValue("id"), middleware.EmployeeIDFromContext(r))
 	if err != nil {

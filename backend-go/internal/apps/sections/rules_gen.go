@@ -548,6 +548,10 @@ func rules() map[string]map[core.Action]core.Rule {
 			}("يقرا /api/internal-bookings/export (دور/صلاحية)"),
 		},
 		"inventory": {
+			// (ل) 11-11 أولوية نواقص الجرد — نفس قاعدة «تم الحل» (requireInventoryManage)
+			"inventory.put_checks_by_id_priority": func(l string) core.Rule {
+				return rolePerm(l, []string{"ADMIN", "HR_COORDINATOR", "PROCUREMENT_ADMIN"}, "inventory")
+			}("يعدّل /api/inventory/checks/{id}/priority (دور/صلاحية)"),
 			"inventory.delete_personal_by_id":          func(l string) core.Rule { return rolePerm(l, []string{"ADMIN", "HR_COORDINATOR"}, "inventory") }("يشيل /api/inventory/personal/{id} (دور/صلاحية)"),
 			"inventory.delete_personal_template_by_id": func(l string) core.Rule { return rolePerm(l, []string{"ADMIN", "HR_COORDINATOR"}, "inventory") }("يشيل /api/inventory/personal-template/{id} (دور/صلاحية)"),
 			"inventory.delete_requests_by_id":          func(l string) core.Rule { return admin(l) }("يشيل /api/inventory/requests/{id} (مدير النظام)"),
@@ -1027,12 +1031,13 @@ func rules() map[string]map[core.Action]core.Rule {
 			"quotation_terms.put_root": func(l string) core.Rule { return any_(l) }("يعدّل /api/quotation-terms (الدخول — الفحص بالمعالج + طبقة: requireQuotationAccess)"),
 		},
 		"quotations": {
-			"quotations.delete_by_id":       func(l string) core.Rule { return admin(l) }("يشيل /api/quotations/{id} (مدير النظام)"),
-			"quotations.get_by_id":          func(l string) core.Rule { return any_(l) }("يقرا /api/quotations/{id} (الدخول — الفحص بالمعالج)"),
-			"quotations.get_by_id_versions": func(l string) core.Rule { return any_(l) }("يقرا /api/quotations/{id}/versions (الدخول — الفحص بالمعالج)"),
-			"quotations.get_root":           func(l string) core.Rule { return any_(l) }("يقرا /api/quotations (الدخول — الفحص بالمعالج)"),
-			"quotations.post_root":          func(l string) core.Rule { return any_(l) }("ينفّذ /api/quotations (الدخول — الفحص بالمعالج + طبقة: allowQuotationOrDelegate)"),
-			"quotations.put_by_id":          func(l string) core.Rule { return any_(l) }("يعدّل /api/quotations/{id} (الدخول — الفحص بالمعالج + طبقة: allowQuotationOrDelegate)"),
+			"quotations.post_by_id_images_pick": func(l string) core.Rule { return any_(l) }("ينفّذ /api/quotations/{id}/images/pick (الدخول — الفحص بالمعالج + طبقة: allowQuotationOrDelegate)"),
+			"quotations.delete_by_id":           func(l string) core.Rule { return admin(l) }("يشيل /api/quotations/{id} (مدير النظام)"),
+			"quotations.get_by_id":              func(l string) core.Rule { return any_(l) }("يقرا /api/quotations/{id} (الدخول — الفحص بالمعالج)"),
+			"quotations.get_by_id_versions":     func(l string) core.Rule { return any_(l) }("يقرا /api/quotations/{id}/versions (الدخول — الفحص بالمعالج)"),
+			"quotations.get_root":               func(l string) core.Rule { return any_(l) }("يقرا /api/quotations (الدخول — الفحص بالمعالج)"),
+			"quotations.post_root":              func(l string) core.Rule { return any_(l) }("ينفّذ /api/quotations (الدخول — الفحص بالمعالج + طبقة: allowQuotationOrDelegate)"),
+			"quotations.put_by_id":              func(l string) core.Rule { return any_(l) }("يعدّل /api/quotations/{id} (الدخول — الفحص بالمعالج + طبقة: allowQuotationOrDelegate)"),
 		},
 		"remote_hours": {
 			"remote_hours.delete_by_id": func(l string) core.Rule {
@@ -1417,6 +1422,22 @@ func rules() map[string]map[core.Action]core.Rule {
 			"workplace_issues.post_root": func(l string) core.Rule {
 				return rolePerm(l, []string{"ADMIN", "MONITOR"}, "monitoring", "auditing", "mon_staff")
 			}("ينفّذ /api/workplace-issues (المراقب)"),
+		},
+		"work_type_images": {
+			"work_type_images.get_root":     func(l string) core.Rule { return any_(l) }("يقرا /api/work-type-images (الدخول + طبقة: allowQuotationOrDelegate)"),
+			"work_type_images.post_root":    func(l string) core.Rule { return any_(l) }("ينفّذ /api/work-type-images (الدخول + طبقة: allowQuotationOrDelegate)"),
+			"work_type_images.delete_by_id": func(l string) core.Rule { return any_(l) }("يشيل /api/work-type-images/{id} (الدخول + طبقة: allowQuotationOrDelegate)"),
+		},
+		"quotation_templates": {
+			"quotation_templates.get_root":       func(l string) core.Rule { return any_(l) }("يقرا /api/quotation-templates (الدخول + طبقة: allowQuotationOrDelegate)"),
+			"quotation_templates.post_root":      func(l string) core.Rule { return any_(l) }("ينفّذ /api/quotation-templates (الدخول + طبقة: allowQuotationOrDelegate)"),
+			"quotation_templates.post_by_id_use": func(l string) core.Rule { return any_(l) }("ينفّذ /api/quotation-templates/{id}/use (الدخول + طبقة: allowQuotationOrDelegate)"),
+		},
+		"late_excuses": {
+			"late_excuses.post_root":         func(l string) core.Rule { return any_(l) }("ينفّذ /api/late-excuses (أي موظف يقدّم عذر إله)"),
+			"late_excuses.get_inbox":         func(l string) core.Rule { return any_(l) }("يقرا /api/late-excuses/inbox (الدخول — الخدمة ترجع الي هو مسؤول عنهم بالهيكل بس)"),
+			"late_excuses.get_audit":         func(l string) core.Rule { return admin(l) }("يقرا /api/late-excuses/audit (مدير النظام)"),
+			"late_excuses.post_by_id_decide": func(l string) core.Rule { return any_(l) }("ينفّذ /api/late-excuses/{id}/decide (الدخول — الخدمة: المسؤول المباشر بس، والغريب 404)"),
 		},
 	}
 }

@@ -2259,5 +2259,107 @@ func matrixChatMigrations() []Migration {
 				"createdAt" TIMESTAMPTZ NOT NULL DEFAULT now()
 			);
 		`,
+	}, {
+		// (ل) 11-10: كاكاشي رتّب الأقسام ٦–٩ حسب ورقة Package Contents (6d481e3a)، والرموز
+		// تغيّرت. المخططات الي انرفعت بالترتيب القديم (برود من 0469) لازم تتحوّل، وإلا
+		// «جدول الأبواب» يطلع تحت «تفاصيل البناء». تحويل وحيد بخطوة وحدة (CASE)، والاسم
+		// الي چان نفس الرمز (ما انكتب اسم) يتحوّل وياه.
+		Version: "0472_data_plan_type_renumber",
+		SQL: `
+			UPDATE "PlanFile" SET
+				"typeCode" = CASE "typeCode" WHEN '6.1' THEN '7.1' WHEN '6.2' THEN '7.2' WHEN '6.3' THEN '7.3'
+					WHEN '7.1' THEN '9.1' WHEN '8.1' THEN '6.1' WHEN '9.1' THEN '8.1' END,
+				title = CASE WHEN title = "typeCode" THEN CASE "typeCode" WHEN '6.1' THEN '7.1' WHEN '6.2' THEN '7.2' WHEN '6.3' THEN '7.3'
+					WHEN '7.1' THEN '9.1' WHEN '8.1' THEN '6.1' WHEN '9.1' THEN '8.1' END ELSE title END
+			WHERE "typeCode" IN ('6.1', '6.2', '6.3', '7.1', '8.1', '9.1');
+		`,
+	}, {
+		// (ل) 11-10: دازاي قرر الترتيب مثل ورقته: ٦ الأبواب، ٧ الكميات، ٨ تفاصيل البناء،
+		// ٩ المواصفات. يرجّع ترتيب 0472 (كاكاشي) — 6.1←8.1، 7.x←6.x، 8.1←9.1، 9.1←7.1.
+		Version: "0473_data_plan_type_order_sheet",
+		SQL: `
+			UPDATE "PlanFile" SET
+				"typeCode" = CASE "typeCode" WHEN '6.1' THEN '8.1' WHEN '7.1' THEN '6.1' WHEN '7.2' THEN '6.2'
+					WHEN '7.3' THEN '6.3' WHEN '8.1' THEN '9.1' WHEN '9.1' THEN '7.1' END,
+				title = CASE WHEN title = "typeCode" THEN CASE "typeCode" WHEN '6.1' THEN '8.1' WHEN '7.1' THEN '6.1'
+					WHEN '7.2' THEN '6.2' WHEN '7.3' THEN '6.3' WHEN '8.1' THEN '9.1' WHEN '9.1' THEN '7.1' END ELSE title END
+			WHERE "typeCode" IN ('6.1', '7.1', '7.2', '7.3', '8.1', '9.1');
+		`,
+	}, {
+		// (ل) 11-10 دازاي: «اكدر اسوي نماذج جاهزة… للمعاينة والاعلانات وأخذ منها» —
+		// السيت يصير نموذج، ويرتبط بعرض السعر الي انسوى منه (PDF التصاميم + PDF العرض).
+		Version: "0474_plan_set_template_quote",
+		SQL: `
+			ALTER TABLE "PlanSet" ADD COLUMN IF NOT EXISTS "isTemplate" BOOLEAN NOT NULL DEFAULT false;
+			ALTER TABLE "PlanSet" ADD COLUMN IF NOT EXISTS "quotationId" TEXT REFERENCES "Quotation"(id) ON DELETE SET NULL;
+		`,
+	}, {
+		// (ل) 11-10 دازاي: «عرض السعر… اكتب طاقة شمسية تطلعلي صور طاقة شمسية». مكتبة صور
+		// لكل نوع عمل يرفعها الكادر (حتى آلاف)، وكل عرض ياخذ صورة غير — الأقل استعمالاً.
+		// الاختيار ينحفظ للعرض حتى نفس العرض يطلع بنفس الصورة كل مرة.
+		Version: "0475_work_type_images",
+		SQL: `
+			CREATE TABLE IF NOT EXISTS "WorkTypeImage" (
+				id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
+				"workTypeId" TEXT NOT NULL REFERENCES "ProjectWorkType"(id) ON DELETE CASCADE,
+				"fileKey" TEXT NOT NULL,
+				"createdById" TEXT REFERENCES "Employee"(id) ON DELETE SET NULL,
+				"createdAt" TIMESTAMPTZ NOT NULL DEFAULT now(),
+				"useCount" INT NOT NULL DEFAULT 0,
+				"lastUsedAt" TIMESTAMPTZ,
+				"removedAt" TIMESTAMPTZ
+			);
+			CREATE INDEX IF NOT EXISTS "WorkTypeImage_pick_idx" ON "WorkTypeImage" ("workTypeId", "useCount") WHERE "removedAt" IS NULL;
+			CREATE TABLE IF NOT EXISTS "QuotationImagePick" (
+				"quotationId" TEXT NOT NULL REFERENCES "Quotation"(id) ON DELETE CASCADE,
+				chapter TEXT NOT NULL,
+				"imageId" TEXT NOT NULL REFERENCES "WorkTypeImage"(id) ON DELETE CASCADE,
+				"pickedAt" TIMESTAMPTZ NOT NULL DEFAULT now(),
+				PRIMARY KEY ("quotationId", chapter)
+			);
+		`,
+	}, {
+		// (ل) 11-10 دازاي: «احفظ هذا عرض السعر… ادرسه… سويلي واحد مثله لفلان مشروع وغيّر
+		// المنتجات والضوابط». النموذج نسخة من شكل العرض وفصوله وبنوده وشروطه — يدوي وبماتركس.
+		Version: "0476_quotation_templates",
+		SQL: `
+			CREATE TABLE IF NOT EXISTS "QuotationTemplate" (
+				id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
+				name TEXT NOT NULL,
+				"sourceQuotationId" TEXT REFERENCES "Quotation"(id) ON DELETE SET NULL,
+				data JSONB NOT NULL,
+				"styleNotes" TEXT,
+				"createdById" TEXT REFERENCES "Employee"(id) ON DELETE SET NULL,
+				"createdAt" TIMESTAMPTZ NOT NULL DEFAULT now(),
+				"archivedAt" TIMESTAMPTZ
+			);
+		`,
+	}, {
+		// (ل) 11-11 طلب المخازن (ماتركس، وافق دازاي): أولوية يدوية لنقص الجرد — فارغ = محسوبة.
+		Version: "0477_inventory_check_priority",
+		SQL: `
+			ALTER TABLE "InventoryCheck" ADD COLUMN IF NOT EXISTS priority TEXT CHECK (priority IN ('URGENT','HIGH','NORMAL'));
+			ALTER TABLE "InventoryCheck" ADD COLUMN IF NOT EXISTS "priorityById" TEXT REFERENCES "Employee"(id) ON DELETE SET NULL;
+		`,
+	}, {
+		// (ل) 11-11 دازاي: «التأخر بالعمل بدون تبرير بدون عذر هاي مشكلة» — عذر تأخير
+		// يقدّمه الموظف ويوافق عليه مسؤوله المباشر. المقبول ما ينحسب عليه بالانضباط.
+		Version: "0478_late_excuse",
+		SQL: `
+			CREATE TABLE IF NOT EXISTS "LateExcuse" (
+				id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
+				"employeeId" TEXT NOT NULL REFERENCES "Employee"(id) ON DELETE CASCADE,
+				date DATE NOT NULL,
+				minutes INT,
+				reason TEXT NOT NULL,
+				status TEXT NOT NULL DEFAULT 'PENDING' CHECK (status IN ('PENDING','APPROVED','REJECTED')),
+				"decidedById" TEXT REFERENCES "Employee"(id) ON DELETE SET NULL,
+				"decidedAt" TIMESTAMPTZ,
+				"decisionNote" TEXT,
+				"createdAt" TIMESTAMPTZ NOT NULL DEFAULT now(),
+				UNIQUE ("employeeId", date)
+			);
+			CREATE INDEX IF NOT EXISTS "LateExcuse_status_idx" ON "LateExcuse"(status) WHERE status = 'PENDING';
+		`,
 	}}
 }

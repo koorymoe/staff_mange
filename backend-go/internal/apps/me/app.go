@@ -31,6 +31,7 @@ var labels = map[core.Action]string{
 	"me.attendance_icon_request":  "يطلب أيقونة حضور",
 	"me.leave_request":            "يقدّم طلب إجازة إله",
 	"me.leave_cancel":             "يلغي طلب إجازته",
+	"me.late_excuses":             "يشوف أعذار تأخيره وانضباطه",
 	"me.peer_note":                "يكتب رأيه بزملائه",
 	"me.achievement":              "يسجّل إنجاز إله",
 	"me.achievement_voice":        "يرفع فويس لإنجازه",

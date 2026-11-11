@@ -4,6 +4,7 @@ export type PlanStats = { types: number; projects: number; sets: number; files: 
 export type PlanMeta = {
   groups: PlanGroup[]
   stats: PlanStats
+  overview: PlanOverview
   canManage: boolean
   projects: { id: string; code: string; name: string }[]
 }
@@ -19,6 +20,9 @@ export type PlanSetRow = {
   archivedAt: string | null
   files: number
   cover: string | null
+  // (ل) 11-10: نموذج جاهز (للمعاينة والإعلانات والنسخ منه)، وعرض السعر المرتبط
+  isTemplate: boolean
+  quotationId: string | null
 }
 export type PlanFileRow = {
   id: string
@@ -31,3 +35,21 @@ export type PlanFileRow = {
   createdAt: string
 }
 export type PlanSetDetail = PlanSetRow & { items: PlanFileRow[]; canManage: boolean }
+export type PlanProjectCard = {
+  projectId: string
+  code: string
+  name: string
+  location: string | null
+  sets: number
+  openSets: number
+  lastAt: string
+  cover: string | null
+  latestSet: string
+}
+export type PlanActivity = { kind: 'set' | 'file'; title: string; sub: string | null; setId: string; at: string }
+export type PlanOverview = {
+  pdfs: number
+  growth: { projects: number | null; sets: number | null; files: number | null; pdfs: number | null }
+  projectCards: PlanProjectCard[]
+  activity: PlanActivity[]
+}

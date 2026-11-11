@@ -1,3 +1,4 @@
+import DisciplineBox from '../components/DisciplineBox'
 import { useCallback, useEffect, useState } from 'react'
 import { api, type StaffScore, type StaffScoreBoard, type StaffScoreDetail } from '../api'
 import MatrixNote from '../components/MatrixNote'
@@ -53,6 +54,7 @@ export function ScoreBreakdown({ d, admin, onChange }: { d: StaffScoreDetail; ad
         <div className="rounded-xl bg-violet-50 p-2"><p className="text-[11px] text-slate-500">ماتركس (٦٠٪)</p><ScoreBadge v={d.matrixPct} /><p className="text-[11px] text-slate-500">{d.earned} من {d.max} نقطة</p></div>
         <div className="rounded-xl bg-amber-50 p-2"><p className="text-[11px] text-slate-500">البشر (٤٠٪)</p><ScoreBadge v={d.humanPct} /><p className="text-[11px] text-slate-500">{d.humanCount ? `${d.humanAvg?.toFixed(1)}★ من ${d.humanCount} تقييم` : 'محد قيّمه بعد'}</p></div>
       </div>
+      {d.discipline && <DisciplineBox d={d.discipline} />}
       {d.reliabilityParts.length > 0 && (
         <div className="rounded-xl border border-sky-200 bg-sky-50/50 p-2">
           <p className="mb-1 flex items-center justify-between text-xs font-extrabold text-sky-900"><span>🛡️ الاعتمادية (رقم منفصل، مو داخل التقييم)</span><ScoreBadge v={d.reliability} /></p>

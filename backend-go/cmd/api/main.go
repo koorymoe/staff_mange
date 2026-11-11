@@ -546,6 +546,13 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 			log.Printf("warehouse daily: %v", err)
 		}
 	})
+	// ⏰ (ل) 11-11: تنبيه التأخير بلا عذر (٣ و٦ و٩ مرات بالشهر) للموظف ومسؤوله
+	disciplineAlerts := service.NewLateExcuseService(db, notificationRepo)
+	safeguard.Loop("تنبيه التأخير بلا عذر", 31*time.Minute, 60*time.Minute, func() {
+		if _, err := disciplineAlerts.DisciplineAlerts(time.Now(), aiRepo.ClaimDailyMarker); err != nil {
+			log.Printf("discipline alerts: %v", err)
+		}
+	})
 	// ═══ صحة الزبون (ماتركس) ═══ — زبائن مخلصين انقطعوا.
 	lapsedCustomerAlertService := service.NewLapsedCustomerAlertService(aiRepo, notificationRepo)
 	safeguard.Loop("تنبيه الزبائن المنقطعين الأسبوعي", 28*time.Minute, 6*time.Hour, func() {
@@ -1763,6 +1770,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	// (ون بيس 11-10) requireInventoryManage انتقل لقاعدة بالنواة (internal/apps/sections)
 	secs["inventory"].Set("POST /api/inventory/checks/{id}/resolve", "inventory.post_checks_by_id_resolve", inventoryHandler.ResolveInventoryCheck)
 	secs["inventory"].Set("GET /api/inventory/checks/open", "inventory.get_checks_open", inventoryHandler.OpenShortages)
+	secs["inventory"].Set("PUT /api/inventory/checks/{id}/priority", "inventory.put_checks_by_id_priority", inventoryHandler.SetShortagePriority)
 	// 📨 رفع طلب للمدير (ع) 11-04
 	managerRequestRepo := repository.NewManagerRequestRepository(db, notificationRepo)
 	managerRequestRepo.StartReminder() // ⏰ (ع) 11-08: بلا رد ٤٨ ساعة ← يرجع يوصل
@@ -1819,6 +1827,8 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 		{"POST /api/plan-sets", planSetHandler.Create},
 		{"GET /api/plan-sets/{id}", planSetHandler.Get},
 		{"POST /api/plan-sets/{id}/archive", planSetHandler.Archive},
+		{"PUT /api/plan-sets/{id}", planSetHandler.Update},
+		{"POST /api/plan-sets/{id}/copy", planSetHandler.Copy},
 		{"POST /api/plan-sets/{id}/files", planSetHandler.AddFile},
 		{"DELETE /api/plan-files/{id}", planSetHandler.RemoveFile},
 	} {
@@ -2378,6 +2388,17 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	secs["quotations"].Set("POST /api/quotations", "quotations.post_root", quotationHandler.Create, allowQuotationOrDelegate)
 	secs["quotations"].Set("PUT /api/quotations/{id}", "quotations.put_by_id", quotationHandler.Update, allowQuotationOrDelegate)
 	secs["quotations"].Set("DELETE /api/quotations/{id}", "quotations.delete_by_id", quotationHandler.Delete)
+	// 🖼️ (ل) 11-10: مكتبة صور أنواع العمل — كل عرض ياخذ صورة غير حسب فصوله
+	wtImages := handler.NewWorkTypeImageHandler(service.NewWorkTypeImageService(db))
+	secs["work_type_images"].Set("GET /api/work-type-images", "work_type_images.get_root", wtImages.List, allowQuotationOrDelegate)
+	secs["work_type_images"].Set("POST /api/work-type-images", "work_type_images.post_root", wtImages.Add, allowQuotationOrDelegate)
+	secs["work_type_images"].Set("DELETE /api/work-type-images/{id}", "work_type_images.delete_by_id", wtImages.Remove, allowQuotationOrDelegate)
+	secs["quotations"].Set("POST /api/quotations/{id}/images/pick", "quotations.post_by_id_images_pick", wtImages.Pick, allowQuotationOrDelegate)
+	// 📋 (ل) 11-10: نماذج عروض الأسعار — يدوي (وماتركس عبر أدواته)
+	qTemplates := handler.NewQuotationTemplateHandler(service.NewQuotationTemplateService(db))
+	secs["quotation_templates"].Set("GET /api/quotation-templates", "quotation_templates.get_root", qTemplates.List, allowQuotationOrDelegate)
+	secs["quotation_templates"].Set("POST /api/quotation-templates", "quotation_templates.post_root", qTemplates.Save, allowQuotationOrDelegate)
+	secs["quotation_templates"].Set("POST /api/quotation-templates/{id}/use", "quotation_templates.post_by_id_use", qTemplates.Use, allowQuotationOrDelegate, idem)
 
 	// المنتجات (products) — التعديل/الحذف محصوران بصلاحية content_technician، والإنشاء
 	// يطابق نفس التعديل (نفس المورد) بدل ما يبقى مفتوح لأي موظف مسجل دخول.
@@ -2415,6 +2436,13 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	meApp.Set("DELETE /api/leaves/{id}", "me.leave_cancel", leaveHandler.Cancel)
 	secs["leaves"].Set("GET /api/leaves/inbox", "leaves.get_inbox", leaveHandler.Inbox)
 	secs["leaves"].Set("GET /api/leaves/pending-count", "leaves.get_pending_count", leaveHandler.PendingCount)
+	// (ل) 11-11 دازاي: أعذار التأخير — الموظف يقدّم، ومسؤوله المباشر بالهيكل يبت (الغريب = 404 من الخدمة)
+	lateExcuse := handler.NewLateExcuseHandler(service.NewLateExcuseService(db, notificationRepo))
+	secs["late_excuses"].Set("POST /api/late-excuses", "late_excuses.post_root", lateExcuse.Submit, idem)
+	meApp.Set("GET /api/late-excuses/mine", "me.late_excuses", lateExcuse.Mine)
+	secs["late_excuses"].Set("GET /api/late-excuses/inbox", "late_excuses.get_inbox", lateExcuse.Inbox)
+	secs["late_excuses"].Set("GET /api/late-excuses/audit", "late_excuses.get_audit", lateExcuse.Audit)
+	secs["late_excuses"].Set("POST /api/late-excuses/{id}/decide", "late_excuses.post_by_id_decide", lateExcuse.Decide)
 	// 🗓️ «إجازات الموظفين» (ع 10-23) — نفس حارس البند بالقائمة: المدير/المراقب أو إدارة الكوادر أو الموافقة على الإجازات
 	// (ون بيس 11-10) requireLeaveRegister انتقل لقاعدة بالنواة (internal/apps/sections)
 	secs["leaves"].Set("GET /api/leaves/register", "leaves.get_register", leaveHandler.Register)

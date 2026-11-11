@@ -14,6 +14,12 @@ type InventoryCheck struct {
 	Resolved     bool       `db:"resolved" json:"resolved"`
 	ResolvedByID *string    `db:"resolvedById" json:"resolvedById"`
 	ResolvedAt   *time.Time `db:"resolvedAt" json:"resolvedAt"`
+	// (ل) 11-11: أولوية يدوية (URGENT/HIGH/NORMAL) — فارغة = محسوبة بـOpenShortages
+	Priority     *string `db:"priority" json:"manualPriority"`
+	PriorityByID *string `db:"priorityById" json:"-"`
+	// محسوبة (مو أعمدة): الأولوية الفعلية، وأقرب حجز للفني اليوم/باچر
+	EffPriority string     `db:"-" json:"priority,omitempty"`
+	NextBooking *time.Time `db:"-" json:"nextBookingAt,omitempty"`
 
 	Employee   *EmployeeBrief `db:"-" json:"employee"`
 	ResolvedBy *EmployeeBrief `db:"-" json:"resolvedBy"`

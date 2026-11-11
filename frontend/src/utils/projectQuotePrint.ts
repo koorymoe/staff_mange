@@ -7,7 +7,8 @@ import { fileUrl } from '../api'
 import { arabicAmountWords } from './arabicWords'
 import { esc } from './printIdentity'
 
-export type ChapterMeta = { en?: string; desc?: string }
+// image: (ل) 11-10 صورة الفصل من مكتبة صور نوع العمل — كل عرض صورة غير، ومتناسقة ويا اسم الفصل
+export type ChapterMeta = { en?: string; desc?: string; image?: string }
 export type ProjectCover = { label?: string; title?: string; subtitle?: string; city?: string; image?: string; chapters?: Record<string, ChapterMeta> }
 export type AnnexItem = { title: string; text: string }
 export type AnnexPart = { title: string; items: AnnexItem[] }
@@ -135,8 +136,10 @@ export function buildProjectQuoteHtml(q: ProjectQuote, logoUrl: string): string 
   // (بلاغ #13) صورة الواجهة: إذا الموظف رفع صورة وحدة تنعرض هي؛ وإلا ٣ منتجات (المصوّرة أول) على «مسرح» والوسطى أكبر
   const withImg = [...items.filter((i) => i.imageBase64), ...items.filter((i) => !i.imageBase64)].slice(0, 3)
   const staged = withImg.length === 3 ? [withImg[1], withImg[0], withImg[2]] : withImg
-  const collage = q.cover.image
-    ? `<img class="hero-img" src="${esc(abs(fileUrl(q.cover.image)))}" alt="">`
+  // الغلاف: صورة الغلاف، وإذا ماكو فصورة أول فصل بيه صورة (حتى «طاقة شمسية» غلافه طاقة شمسية)
+  const heroKey = q.cover.image || chapters.map((c) => meta(c.name).image).find((x) => !!x)
+  const collage = heroKey
+    ? `<img class="hero-img" src="${esc(abs(fileUrl(heroKey)))}" alt="">`
     : staged.map((it, i) => `<div class="col-item${staged.length === 3 && i === 1 ? ' main' : ''}">${it.imageBase64 ? `<img src="${esc(abs(fileUrl(it.imageBase64)))}" alt="">` : illustration(it.category ?? it.productName)}</div>`).join('')
 
   const coverPage = `
@@ -149,7 +152,7 @@ export function buildProjectQuoteHtml(q: ProjectQuote, logoUrl: string): string 
       <div class="bar"></div>
       ${q.cover.subtitle ? `<p class="cover-sub">${esc(q.cover.subtitle)}</p>` : ''}
     </div>
-    <div class="collage${q.cover.image ? ' has-hero' : ''}"><span class="glow"></span>${collage}</div>
+    <div class="collage${heroKey ? ' has-hero' : ''}"><span class="glow"></span>${collage}</div>
     <div class="cover-line"></div>
     <div class="cover-bottom">
       <div><h3>ملف التجهيز الفني والتجاري</h3><small>عرض مشاريع · ${items.length} بنداً وملحق فني متكامل</small>${q.quotationNumber ? `<small>رقم العرض <bdi dir="ltr">${esc(q.quotationNumber)}</bdi></small>` : ''}</div>
@@ -171,7 +174,7 @@ export function buildProjectQuoteHtml(q: ProjectQuote, logoUrl: string): string 
       <div><b>${(total / 1e6).toLocaleString('en-US', { maximumFractionDigits: 3 })}</b><small>مليون دينار عراقي</small></div>
     </div>
     <h3 class="sec">محاور المشروع <small dir="ltr">/ PROJECT SCOPE</small></h3>
-    <div class="scope">${chapters.map((c, i) => `<div><small dir="ltr">${String(i + 1).padStart(2, '0')} / ${esc(enOf(c.name, 'SCOPE'))}</small><h4>${esc(c.name)}</h4><p>${meta(c.name).desc?.trim() ? esc(meta(c.name).desc!.trim()) : `${c.items.map((x) => esc(x.it.productName)).slice(0, 3).join('، ')}${c.items.length > 3 ? ` و${c.items.length - 3} غيرها` : ''}`}</p></div>`).join('')}</div>
+    <div class="scope">${chapters.map((c, i) => `<div>${meta(c.name).image ? `<img class="scope-img" src="${esc(abs(fileUrl(meta(c.name).image!)))}" alt="">` : ''}<small dir="ltr">${String(i + 1).padStart(2, '0')} / ${esc(enOf(c.name, 'SCOPE'))}</small><h4>${esc(c.name)}</h4><p>${meta(c.name).desc?.trim() ? esc(meta(c.name).desc!.trim()) : `${c.items.map((x) => esc(x.it.productName)).slice(0, 3).join('، ')}${c.items.length > 3 ? ` و${c.items.length - 3} غيرها` : ''}`}</p></div>`).join('')}</div>
     <p class="note">التجهيز والأسعار أدناه يستندان إلى قائمة المنتجات المقدمة، ويُستكملان بالشروط الفنية والتنفيذية في نهاية الملف.</p>
     ${footer(page, totalPages)}
   </section>`
@@ -181,6 +184,7 @@ export function buildProjectQuoteHtml(q: ProjectQuote, logoUrl: string): string 
     const s = `
   <section class="page">${header(cp.name)}
     ${chHead(cp.idx, 'المنتجات والمواصفات الفنية والأسعار - بالدينار العراقي', esc(enOf(cp.name, 'EQUIPMENT')), pi + 1)}
+    ${pi === 0 || chapterPages[pi - 1]?.name !== cp.name ? (meta(cp.name).image ? `<img class="ch-img" src="${esc(abs(fileUrl(meta(cp.name).image!)))}" alt="">` : '') : ''}
     ${cp.cards.map((c) => card(c.it, c.no, c.ch !== cp.name ? c.ch : undefined)).join('')}
     ${footer(page, totalPages)}
   </section>`
@@ -352,7 +356,7 @@ ul.specs li::before { content: '•'; color: #f59e0b; margin-left: 6px; font-wei
 .card { border-right: 4px solid #1e3a8a; position: relative } .card::before { content: ''; position: absolute; right: -4px; top: 0; width: 4px; height: 28%; background: #f59e0b }
 .scope div:nth-child(odd) { background: #f5f8ff } .scope div:nth-child(even) { background: #fffaf3 }
 @media print { body { background: #fff } .page { margin: 0 } }
-</style></head><body>${coverPage}${overview}${chapterHtml}${summary}${annexHtml}</body></html>`.replace(/src="LOGO"/g, `src="${esc(abs(logoUrl))}"`)
+.scope-img{display:block;width:100%;height:64px;object-fit:cover;border-radius:8px;margin-bottom:6px}.ch-img{display:block;width:100%;height:110px;object-fit:cover;border-radius:12px;margin:6px 0 10px}</style></head><body>${coverPage}${overview}${chapterHtml}${summary}${annexHtml}</body></html>`.replace(/src="LOGO"/g, `src="${esc(abs(logoUrl))}"`)
 }
 
 /** يطبع العرض بإطار مخفي (نفس طريقة عرض السعر القديم) بعد ما تخلص الصور والخطوط. */

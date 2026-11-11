@@ -1,3 +1,4 @@
+import LateExcusePanel from '../components/LateExcusePanel'
 import { Fragment, useEffect, useMemo, useState, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useSession, isAdminOrOwner } from '../session'
@@ -165,6 +166,7 @@ export default function AttendancePage({ embedded }: { embedded?: boolean } = {}
 
   return (
     <div dir="rtl" className="w-full space-y-5 p-4">
+      {!embedded && <LateExcusePanel />}
       {/* ═══ العنوان ═══ — يختفي لمن الشاشة مضمَّنة (مثلاً بالرئيسية)،
           حتى ما تصير ترويستان فوگ بعض. */}
       {!embedded && (
