@@ -7,7 +7,8 @@ COPY go.mod go.sum ./
 RUN --mount=type=cache,target=/go/pkg/mod go mod download
 COPY . .
 RUN --mount=type=cache,target=/go/pkg/mod --mount=type=cache,target=/root/.cache/go-build \
-    CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w" -o /server ./cmd/api
+    CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w" -o /server ./cmd/api && \
+    CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w" -o /makemigration ./cmd/makemigration
 
 # مرحلة التشغيل — صورة نهائية صغيرة بدون أدوات البناء
 FROM alpine:3.20
@@ -22,6 +23,9 @@ RUN apk add --no-cache ca-certificates tzdata ffmpeg
 RUN adduser -D -u 1000 appuser
 WORKDIR /app
 COPY --from=build /server /app/server
+# 🏴‍☠️ ون بيس (11-11): «docker compose exec backend ./makemigration -check» يطبع الفرق بين
+# الموديلات وقاعدة برود (قراءة بس — بلا -check يحاول يكتب ملف كود وما يگدر هنا).
+COPY --from=build /makemigration /app/makemigration
 # مجلد الملفات المرفوعة: ينمسك من فوليوم دائم بالـcompose، بس ننشئه
 # هنا بملكية appuser حتى يكدر يكتب بيه — بدونه الحاوية كانت تموت عند
 # الإقلاع لأن /app ملك root والمستخدم مو root.
