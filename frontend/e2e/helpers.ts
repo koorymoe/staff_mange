@@ -23,7 +23,8 @@ let ownerToken = ''
 export async function prepare(req: APIRequestContext, role: string) {
   if (!ownerToken) ownerToken = (await login(req, OWNER.username, OWNER.password)).token
   const owner = ownerToken
-  const username = `e2e_${role.toLowerCase()}_${RUN}`
+  // (11-10) RUN ثابت لكل التشغيل — اختبارين بنفس الدور چانوا يتصادمون باسم المستخدم (سبب الفشل المتقطع)
+  const username = `e2e_${role.toLowerCase()}_${RUN}_${Math.random().toString(36).slice(2, 7)}`
   const phone = '079' + String(Math.floor(Math.random() * 1e8)).padStart(8, '0')
   const c = await req.post(`${API}/employees`, {
     headers: { Authorization: `Bearer ${owner}` },

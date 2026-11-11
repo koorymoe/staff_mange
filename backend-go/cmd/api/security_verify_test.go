@@ -172,8 +172,8 @@ func TestRegularEmployeeCannotCreateProject(t *testing.T) {
 		"name": "__test_project_should_be_rejected",
 	})
 	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusForbidden {
-		t.Fatalf("expected 403 for regular employee creating a project, got %d", resp.StatusCode)
+	if resp.StatusCode != http.StatusNotFound /* ون بيس: الرفض 404 */ {
+		t.Fatalf("expected 404 for regular employee creating a project, got %d", resp.StatusCode)
 	}
 }
 
@@ -189,8 +189,8 @@ func TestRegularEmployeeCannotCreateProduct(t *testing.T) {
 		"price": 10,
 	})
 	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusForbidden {
-		t.Fatalf("expected 403 for regular employee creating a product, got %d", resp.StatusCode)
+	if resp.StatusCode != http.StatusNotFound /* ون بيس: الرفض 404 */ {
+		t.Fatalf("expected 404 for regular employee creating a product, got %d", resp.StatusCode)
 	}
 }
 
@@ -219,8 +219,8 @@ func TestRoleDemotionRevokesAccessImmediately(t *testing.T) {
 
 	postResp := doRequest(t, http.MethodGet, srv.URL+"/api/employees/archived", token, nil)
 	defer postResp.Body.Close()
-	if postResp.StatusCode != http.StatusForbidden {
-		t.Fatalf("REGRESSION: expected 403 immediately after role demotion using the SAME old token, got %d", postResp.StatusCode)
+	if postResp.StatusCode != http.StatusNotFound /* ون بيس: الرفض 404 */ {
+		t.Fatalf("REGRESSION: expected 404 immediately after role demotion using the SAME old token, got %d", postResp.StatusCode)
 	}
 }
 
@@ -282,8 +282,8 @@ func TestGpsSystemPermissionGating(t *testing.T) {
 
 	respWithout := doRequest(t, http.MethodPost, srv.URL+"/api/gps/customers", tokenWithout, payload)
 	respWithout.Body.Close()
-	if respWithout.StatusCode != http.StatusForbidden {
-		t.Fatalf("expected 403 without gps_system permission, got %d", respWithout.StatusCode)
+	if respWithout.StatusCode != http.StatusNotFound /* ون بيس: الرفض 404 */ {
+		t.Fatalf("expected 404 without gps_system permission, got %d", respWithout.StatusCode)
 	}
 
 	empIDWith, usernameWith := createTestEmployee(t, db, "TECHNICIAN")
@@ -314,8 +314,8 @@ func TestComplaintResolveRequiresQualityControl(t *testing.T) {
 
 	resp := doRequest(t, http.MethodPut, srv.URL+"/api/complaints/nonexistent-id/resolve", token, map[string]any{})
 	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusForbidden {
-		t.Fatalf("expected 403 for complaint resolve without quality_control, got %d", resp.StatusCode)
+	if resp.StatusCode != http.StatusNotFound /* ون بيس: الرفض 404 */ {
+		t.Fatalf("expected 404 for complaint resolve without quality_control, got %d", resp.StatusCode)
 	}
 }
 

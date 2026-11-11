@@ -27,6 +27,21 @@ func NewLeaveRequestHandler(r *repository.LeaveRequestRepository, p *repository.
 // صلاحياتهم — إداري الكوادر ياخذ صلاحية شفته هو بس، فما يقدر ينطي
 // إجازة لموظف بشفت ثاني. ولو انتقلت المسؤولية من شخص لشخص تنتقل
 // بالصلاحية مو بتعديل الكود.
+// CanDecide (ون بيس) يگدر يبت بطلب الإجازة هذا؟ نفس شرط Preliminary: مسار الطلب
+// ضمن المسارات الي يبت بيها. طلب مو موجود = لا.
+func (h *LeaveRequestHandler) CanDecide(r *http.Request, id string) bool {
+	route, err := h.repo.RouteOf(id)
+	if err != nil {
+		return false
+	}
+	for _, rt := range h.routesFor(r) {
+		if rt == route {
+			return true
+		}
+	}
+	return false
+}
+
 func (h *LeaveRequestHandler) routesFor(r *http.Request) []string {
 	role := middleware.RoleFromContext(r)
 	if model.IsAdminRole(role) {

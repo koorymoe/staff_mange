@@ -91,3 +91,12 @@ func (r *SurveyPhotoRepository) IsProjectSurveyTeam(projectID, employeeID string
 	`, projectID, employeeID)
 	return ok, err
 }
+
+// UploaderOf (ون بيس 11-10) منو رفع الصورة — "" إذا مو موجودة.
+func (r *SurveyPhotoRepository) UploaderOf(id string) string {
+	p, err := r.Get(id)
+	if err != nil || p == nil {
+		return ""
+	}
+	return p.UploadedByID
+}

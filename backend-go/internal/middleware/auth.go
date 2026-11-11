@@ -224,6 +224,16 @@ func recordViolationAndBlock(w http.ResponseWriter, r *http.Request, employees *
 		writeError(w, http.StatusForbidden, "🔍 وضع الفحص — هذا مو مسموح لدور هذا الموظف (ما انحسبت مخالفة)")
 		return
 	}
+	RecordViolation(r, employees, notifications, employeeID)
+	writeError(w, http.StatusForbidden, "لا تملك صلاحية الوصول لهذه العملية")
+}
+
+// RecordViolation يسجّل محاولة وصول مرفوضة (العدّ، الحظر التلقائي على الكتابات،
+// تنبيه الإدارة) **بلا ما يكتب رد** — نواة «ون بيس» ترد 404 بنفسها. المتخفي ما ينحسب.
+func RecordViolation(r *http.Request, employees *repository.EmployeeRepository, notifications *repository.NotificationRepository, employeeID string) {
+	if r != nil && IsStealth(r) {
+		return
+	}
 	if employeeID != "" && employees != nil {
 		if violations, err := employees.RecordAuthzViolation(employeeID); err == nil {
 			name, nameErr := employees.NameByID(employeeID)
@@ -262,7 +272,6 @@ func recordViolationAndBlock(w http.ResponseWriter, r *http.Request, employees *
 			}
 		}
 	}
-	writeError(w, http.StatusForbidden, "لا تملك صلاحية الوصول لهذه العملية")
 }
 
 // RequireRole يمنع الوصول إلا لأصحاب الأدوار المذكورة (يُستخدم بعد RequireAuth).

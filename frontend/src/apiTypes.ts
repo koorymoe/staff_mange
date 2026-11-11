@@ -4118,3 +4118,11 @@ export interface CustomerSignature {
 
 // (ع) 11-10 بلاغ #30/#31: سطر من «منو سوّى شنو» بالحجز
 export interface BookingHistoryLine { at: string; by: string; text: string }
+
+// ون بيس (11-10): مصفوفة الصلاحيات ولوحة الأدمن التلقائية — للمالك
+export interface CoreMatrixRow { action: string; label: string; public?: boolean; ownerOnly?: boolean; strict?: boolean; anyone?: boolean; leader?: boolean; roles?: string[]; perms?: string[]; hasCheck?: boolean; routes: string[]; unused?: boolean }
+export interface CoreMatrix { actions: CoreMatrixRow[]; routes: { app: string; pattern: string; action: string }[] }
+export interface CoreTable { name: string; rows: number; columns: number }
+export interface CoreTablePage { table: string; columns: { name: string; type: string }[]; rows: Record<string, unknown>[]; total: number; page: number; size: number; pk: string[]; editable: boolean; readonlyReason: string; locked: string[] }
+export interface CoreEditLog { table: string; action: string; key: Record<string, unknown>; before: Record<string, unknown> | null; after: Record<string, unknown> | null; by: string; at: string }
+export interface OwnerGrants { admins: { id: string; name: string }[]; delegable: { action: string; label: string }[]; grants: Record<string, string[]>; log: { employee: string; action: string; granted: boolean; by: string; at: string }[] }
