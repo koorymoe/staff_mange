@@ -432,7 +432,7 @@ type NegligenceRow struct {
 func (r *MatrixScoreRepository) Negligence(since time.Time) ([]NegligenceRow, error) {
 	rows := []NegligenceRow{}
 	err := r.db.Select(&rows, `SELECT id, "employeeId", to_char(day, 'YYYY-MM-DD') AS day, detail, "compensatedAt", "createdAt"
-		FROM "EmployeeNegligence" WHERE kind = 'MISSED_RATINGS' AND "createdAt" >= $1`, since)
+		FROM "EmployeeNegligence" WHERE kind = 'MISSED_RATINGS' AND "voidedAt" IS NULL AND "createdAt" >= $1`, since)
 	return rows, err
 }
 

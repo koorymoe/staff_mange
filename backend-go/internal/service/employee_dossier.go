@@ -203,7 +203,7 @@ func BuildDossier(db *sqlx.DB, id string) (*Dossier, error) {
 		// الالتزام والمشاكل
 		Err(db.Get(&d.Attendance30, `SELECT count(DISTINCT date::date) FROM "Attendance" WHERE "employeeId" = $1 AND date::date > current_date - 30`, id))
 	_ = db.QueryRow(`SELECT count(*), count(*) FILTER (WHERE late) FROM "DailyWorkReport" WHERE "employeeId" = $1 AND day > current_date - 30`, id).Scan(&d.Reports30, &d.ReportsLate30)
-	errlog.Err(db.Get(&d.Negligence90, `SELECT count(*) FROM "EmployeeNegligence" WHERE "employeeId" = $1 AND day > current_date - 90`, id))
+	errlog.Err(db.Get(&d.Negligence90, `SELECT count(*) FROM "EmployeeNegligence" WHERE "employeeId" = $1 AND "voidedAt" IS NULL AND day > current_date - 90`, id))
 	errlog.Err(db.Get(&d.Discipline90, `SELECT COALESCE(-sum(delta) FILTER (WHERE delta < 0), 0)::int FROM "DisciplineEvent" WHERE "employeeId" = $1 AND "createdAt" > now() - interval '90 days'`, id))
 	_ = db.QueryRow(`SELECT count(*), count(*) FILTER (WHERE verdict = 'REJECTED') FROM "MonitorJustification" WHERE "employeeId" = $1 AND "createdAt" > now() - interval '90 days'`, id).Scan(&d.Justif90, &d.JustifRejected)
 	errlog.Err(db.Get(&d.Complaints90, `SELECT count(*) FROM "Complaint" WHERE "relatedEmployeeId" = $1 AND "createdAt" > now() - interval '90 days'`, id))

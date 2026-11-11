@@ -2339,5 +2339,13 @@ func matrixChatMigrations() []Migration {
 			);
 			CREATE INDEX IF NOT EXISTS "LateExcuse_status_idx" ON "LateExcuse"(status) WHERE status = 'PENDING';
 		`,
+	}, {
+		// (ل) 11-11 بلاغ #32: إهمال «فاتك تقييم» انكتب على مقيّم والي فاته وصل بعد دوامه —
+		// يتعلّم ملغي (ما ينمسح) ونقاطه ترجع.
+		Version: "0479_negligence_void",
+		SQL: `
+			ALTER TABLE "EmployeeNegligence" ADD COLUMN IF NOT EXISTS "voidedAt" TIMESTAMPTZ;
+			ALTER TABLE "EmployeeNegligence" ADD COLUMN IF NOT EXISTS "voidNote" TEXT;
+		`,
 	}}
 }
