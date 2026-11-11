@@ -98,6 +98,7 @@ const DesignSetPage = lazyRetry(() => import('./pages/DesignSetPage'))
 const PlanSetsPage = lazyRetry(() => import('./pages/PlanSetsPage'))
 const PlanSetPage = lazyRetry(() => import('./pages/PlanSetPage'))
 const DirectorsRankingPage = lazyRetry(() => import('./pages/DirectorsRankingPage'))
+const ScoreMonitorPage = lazyRetry(() => import('./pages/ScoreMonitorPage'))
 const MyOrgCard = lazyRetry(() => import('./components/MyOrgCard'))
 const DepartmentsPage = lazyRetry(() => import('./pages/DepartmentsPage'))
 const DesignGalleryPage = lazyRetry(() => import('./pages/DesignGalleryPage'))
@@ -236,6 +237,7 @@ function App() {
           <Route path="org" element={<RequireAdmin><OrgPage /></RequireAdmin>} />
           <Route path="org/assign" element={<RequireAdmin><OrgPage view="assign" /></RequireAdmin>} />
           <Route path="org/directors-ranking" element={<RequireAdmin><DirectorsRankingPage /></RequireAdmin>} />
+          <Route path="org/score-monitor" element={<RequireAdmin><ScoreMonitorPage /></RequireAdmin>} />
           {/* (ع) 11-08: 🏗️ صيت التصاميم — الصلاحيات بالخادم (يشوف المصمم المكلّف صيته بس) */}
           <Route path="design-sets" element={<DesignSetsPage />} />
           <Route path="design-sets/:id" element={<DesignSetPage />} />

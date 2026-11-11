@@ -524,6 +524,13 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 			log.Printf("warehouse daily: %v", err)
 		}
 	})
+	// ⏰ (ل) 11-11: تنبيه التأخير بلا عذر (٣ و٦ و٩ مرات بالشهر) للموظف ومسؤوله
+	disciplineAlerts := service.NewLateExcuseService(db, notificationRepo)
+	safeguard.Loop("تنبيه التأخير بلا عذر", 31*time.Minute, 60*time.Minute, func() {
+		if _, err := disciplineAlerts.DisciplineAlerts(time.Now(), aiRepo.ClaimDailyMarker); err != nil {
+			log.Printf("discipline alerts: %v", err)
+		}
+	})
 	// ═══ صحة الزبون (ماتركس) ═══ — زبائن مخلصين انقطعوا.
 	lapsedCustomerAlertService := service.NewLapsedCustomerAlertService(aiRepo, notificationRepo)
 	safeguard.Loop("تنبيه الزبائن المنقطعين الأسبوعي", 28*time.Minute, 6*time.Hour, func() {
@@ -2438,6 +2445,13 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	// أي موظف يقدّم ويشوف طلباته. البت بالطلبات محصور بالمخوّل حسب مسار
 	// الكادر (يُتحقق داخل الهاندلر لأنه يعتمد على مسار الطلب نفسه).
 	mux.Handle("POST /api/leaves", middleware.Chain(http.HandlerFunc(leaveHandler.Create), requireAuth))
+	// (ل) 11-11 دازاي: أعذار التأخير — الموظف يقدّم، ومسؤوله المباشر بالهيكل يبت (الغريب = 404)
+	lateExcuse := handler.NewLateExcuseHandler(service.NewLateExcuseService(db, notificationRepo))
+	mux.Handle("POST /api/late-excuses", middleware.Chain(http.HandlerFunc(lateExcuse.Submit), requireAuth, idem))
+	mux.Handle("GET /api/late-excuses/mine", middleware.Chain(http.HandlerFunc(lateExcuse.Mine), requireAuth))
+	mux.Handle("GET /api/late-excuses/inbox", middleware.Chain(http.HandlerFunc(lateExcuse.Inbox), requireAuth))
+	mux.Handle("GET /api/late-excuses/audit", middleware.Chain(http.HandlerFunc(lateExcuse.Audit), requireAuth, requireAdmin))
+	mux.Handle("POST /api/late-excuses/{id}/decide", middleware.Chain(http.HandlerFunc(lateExcuse.Decide), requireAuth))
 	mux.Handle("GET /api/leaves/mine", middleware.Chain(http.HandlerFunc(leaveHandler.Mine), requireAuth))
 	mux.Handle("DELETE /api/leaves/{id}", middleware.Chain(http.HandlerFunc(leaveHandler.Cancel), requireAuth))
 	mux.Handle("GET /api/leaves/inbox", middleware.Chain(http.HandlerFunc(leaveHandler.Inbox), requireAuth))

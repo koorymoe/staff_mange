@@ -14,6 +14,9 @@ import (
 
 type MatrixScoreRepository struct{ db *sqlx.DB }
 
+// DB للحسابات الي تقرا جداول ثانية ويه النقاط (الانضباط بالدوام).
+func (r *MatrixScoreRepository) DB() *sqlx.DB { return r.db }
+
 func NewMatrixScoreRepository(db *sqlx.DB) *MatrixScoreRepository {
 	return &MatrixScoreRepository{db: db}
 }

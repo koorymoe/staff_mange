@@ -2319,5 +2319,25 @@ func matrixChatMigrations() []Migration {
 			ALTER TABLE "InventoryCheck" ADD COLUMN IF NOT EXISTS priority TEXT CHECK (priority IN ('URGENT','HIGH','NORMAL'));
 			ALTER TABLE "InventoryCheck" ADD COLUMN IF NOT EXISTS "priorityById" TEXT REFERENCES "Employee"(id) ON DELETE SET NULL;
 		`,
+	}, {
+		// (ل) 11-11 دازاي: «التأخر بالعمل بدون تبرير بدون عذر هاي مشكلة» — عذر تأخير
+		// يقدّمه الموظف ويوافق عليه مسؤوله المباشر. المقبول ما ينحسب عليه بالانضباط.
+		Version: "0478_late_excuse",
+		SQL: `
+			CREATE TABLE IF NOT EXISTS "LateExcuse" (
+				id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
+				"employeeId" TEXT NOT NULL REFERENCES "Employee"(id) ON DELETE CASCADE,
+				date DATE NOT NULL,
+				minutes INT,
+				reason TEXT NOT NULL,
+				status TEXT NOT NULL DEFAULT 'PENDING' CHECK (status IN ('PENDING','APPROVED','REJECTED')),
+				"decidedById" TEXT REFERENCES "Employee"(id) ON DELETE SET NULL,
+				"decidedAt" TIMESTAMPTZ,
+				"decisionNote" TEXT,
+				"createdAt" TIMESTAMPTZ NOT NULL DEFAULT now(),
+				UNIQUE ("employeeId", date)
+			);
+			CREATE INDEX IF NOT EXISTS "LateExcuse_status_idx" ON "LateExcuse"(status) WHERE status = 'PENDING';
+		`,
 	}}
 }

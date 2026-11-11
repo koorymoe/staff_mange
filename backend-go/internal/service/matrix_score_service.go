@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"sort"
+	"staffmange-api/internal/errlog"
 	"staffmange-api/internal/timeutil"
 	"strings"
 	"time"
@@ -323,6 +324,8 @@ type RuleLoss struct {
 }
 
 type StaffScore struct {
+	// (ل) 11-11: الانضباط بالدوام — ١٥٪ من النهائي (من DisciplineStart)
+	Discipline  *Discipline       `json:"discipline,omitempty"`
 	Group       string            `json:"group"`
 	GroupLabel  string            `json:"groupLabel"`
 	Reliability *float64          `json:"reliability"`
@@ -479,7 +482,17 @@ func (s *MatrixScoreService) compute(people []repository.Scorable, from, to time
 		return nil, err
 	}
 	rel, _ := s.repo.ReliabilityFacts(from, to)
-	return BuildScores(people, pts, hum, rel), nil
+	rows := BuildScores(people, pts, hum, rel)
+	ids := make([]string, 0, len(people))
+	for _, p := range people {
+		ids = append(ids, p.ID)
+	}
+	if disc, err := Disciplines(s.repo.DB(), ids, from, to, time.Now()); err == nil {
+		applyDiscipline(rows, disc)
+	} else {
+		errlog.Err(err)
+	}
+	return rows, nil
 }
 
 // BuildScores يجمع النقاط والتقييمات لكل موظف (منفصلة حتى تنفحص).
