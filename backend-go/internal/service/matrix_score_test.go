@@ -168,11 +168,12 @@ func TestReliability(t *testing.T) {
 	rules := map[string][2]int{"ATTENDANCE": {16, 20}, "INVENTORY": {4, 4}}
 	parts, v := BuildReliability(rules, repository.ReliabilityFact{Sessions: 10, Auto: 2, Complaints: 1})
 	// + الإجازات والزملاء والعدّة والـKPI (قرار 10-08) — كلها ١٠٠ بلا وقائع.
-	if v == nil || len(parts) != 8 {
+	// (دازاي 11-11) الانصراف انشال — ٧ أجزاء بداله ٨
+	if v == nil || len(parts) != 7 {
 		t.Fatalf("parts %d", len(parts))
 	}
-	// (80 + 80 + 100 + 75 + 100×4) / 8
-	if *v < 91.87 || *v > 91.88 {
+	// (80 + 100 + 75 + 100×4) / 7
+	if *v < 93.57 || *v > 93.58 {
 		t.Fatalf("got %v", *v)
 	}
 }

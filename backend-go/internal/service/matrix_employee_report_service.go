@@ -193,8 +193,9 @@ func (s *MatrixEmployeeReportService) Report(employeeID, day string) (*EmployeeR
 				lastOut = hm(a.CheckOut.Time)
 			}
 		}
+		// (دازاي 11-11) الانصراف ما ينحسب — تلقائي بعد الشفت، فما يطلع كتحذير
 		if lastOut == "" {
-			rep.Attendance = append(rep.Attendance, rl("ما سجّل انصراف لحد هسه.", "WARN"))
+			rep.Attendance = append(rep.Attendance, rl("بعده بالدوام (الانصراف يتسجّل تلقائي بعد الشفت).", "OK"))
 		} else {
 			tone := "OK"
 			if worked < shiftMin-30 {
@@ -352,9 +353,7 @@ func (s *MatrixEmployeeReportService) Report(employeeID, day string) (*EmployeeR
 			line += Fmt(" متوسط تأخيره %s.", durText(lateSum/lateN))
 		}
 		rep.Behavior = append(rep.Behavior, rl(line, t))
-		if noOut > 0 {
-			rep.Behavior = append(rep.Behavior, rl(Fmt("ما سجّل انصراف %d يوم من %d.", noOut, days), "WARN"))
-		}
+		_ = noOut // (دازاي 11-11) الانصراف ما ينحسب عليه
 		if lateN >= 3 {
 			var wd time.Weekday
 			top := 0

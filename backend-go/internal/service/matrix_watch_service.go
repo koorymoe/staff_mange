@@ -570,18 +570,7 @@ func (s *MatrixWatchService) revenueEye() EyeGroup {
 			eye.Items = append(eye.Items, it)
 		}
 	}
-	if rows, err := s.repo.AutoCheckouts(); err == nil {
-		for _, a := range rows {
-			sev := WatchLow
-			if a.N >= 3 {
-				sev = WatchMedium
-			}
-			eye.Items = append(eye.Items, EyeItem{Eye: eye.Key, Kind: "AUTO_CHECKOUT", Severity: sev, OwnerID: a.EmployeeID, OwnerName: a.Name,
-				Title:  fmt.Sprintf("%s ما سجّل انصراف %d مرات هالأسبوع", a.Name, a.N),
-				Detail: "النظام سجّله انصراف تلقائي بعد نهاية شفته.",
-				Advice: "ذكّره يسجّل انصرافه بنفسه — ساعات الدوام لازم تكون حقيقية."})
-		}
-	}
+	// (دازاي 11-11) نسيان الانصراف ما يصير تنبيه على الموظف — الانصراف تلقائي بعد الشفت وما ينحسب.
 	return finishEye(eye, "كل الفلوس مسجّلة: ماكو حجز منجز بلا مبلغ ولا مشروع بالتنفيذ بلا دفعات.")
 }
 
