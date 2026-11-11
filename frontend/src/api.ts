@@ -2431,6 +2431,7 @@ export const api = {
   saveCustomerSignature: (bookingId: string, signerName: string, image: string) =>
     request<{ ok: boolean }>(`/bookings/${bookingId}/customer-signature`, { method: 'POST', body: JSON.stringify({ signerName, image }) }),
   getOpenShortages: () => request<InventoryCheck[]>('/inventory/checks/open'),
+  setShortagePriority: (id: string, priority: string) => request<{ ok: boolean }>(`/inventory/checks/${id}/priority`, { method: 'PUT', body: JSON.stringify({ priority }) }),
   // (ع) 11-04: رفع طلب للمدير
   createManagerRequest: (body: { title: string; details: string; priority: ManagerRequest['priority']; attachInventory: boolean }) =>
     request<{ id: string }>('/manager-requests', { method: 'POST', body: JSON.stringify(body) }),

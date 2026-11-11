@@ -1755,6 +1755,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	// (وتنحسب عليه مخالفة)، فولا نقص انسكّر بتاريخ النظام. نفس منطق canManageInventory بالواجهة.
 	requireInventoryManage := guards.RoleOrPermission([]string{"ADMIN", "HR_COORDINATOR", "PROCUREMENT_ADMIN"}, "inventory")
 	mux.Handle("POST /api/inventory/checks/{id}/resolve", middleware.Chain(http.HandlerFunc(inventoryHandler.ResolveInventoryCheck), requireAuth, requireInventoryManage))
+	mux.Handle("PUT /api/inventory/checks/{id}/priority", middleware.Chain(http.HandlerFunc(inventoryHandler.SetShortagePriority), requireAuth, requireInventoryManage))
 	mux.Handle("GET /api/inventory/checks/open", middleware.Chain(http.HandlerFunc(inventoryHandler.OpenShortages), requireAuth, requireInventoryManage))
 	// 📨 رفع طلب للمدير (ع) 11-04
 	managerRequestRepo := repository.NewManagerRequestRepository(db, notificationRepo)

@@ -2724,7 +2724,13 @@ export interface InventoryCheck {
   resolvedAt: string | null
   employee: { id: string; name: string } | null
   resolvedBy: { id: string; name: string } | null
+  /** (ل) 11-11: الأولوية الفعلية (بالنواقص المفتوحة بس) — يدوية إذا manualPriority موجودة */
+  priority?: ShortagePriority
+  manualPriority?: ShortagePriority | null
+  /** أقرب حجز للفني اليوم أو باچر */
+  nextBookingAt?: string | null
 }
+export type ShortagePriority = 'URGENT' | 'HIGH' | 'NORMAL'
 
 export interface Notification {
   id: string

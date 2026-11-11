@@ -6,6 +6,7 @@ import (
 	"log"
 	"staffmange-api/internal/errlog"
 	"strings"
+	"time"
 
 	"github.com/jmoiron/sqlx"
 	"github.com/lib/pq"
@@ -84,15 +85,32 @@ func AutoCloseShortages(db *sqlx.DB, employeeID string) (int64, error) {
 	return res.RowsAffected()
 }
 
-// OpenShortages كل نواقص الجرد المفتوحة بكل أعمارها — الأقدم أول.
+// OpenShortages كل نواقص الجرد المفتوحة بأولويتها (11-11، طلب المخازن):
+//
+//	URGENT: الفني عنده حجز اليوم أو باچر (يطلع بعدة ناقصة)
+//	HIGH:   النقص عمره أكثر من ٧ أيام
+//	NORMAL: غير ذلك
+//
+// الأولوية اليدوية تغلب المحسوبة. الترتيب: العاجل، المهم، العادي — وبكل مستوى الأقدم أول.
 func (r *InventoryRepository) OpenShortages() ([]model.InventoryCheck, error) {
 	rows := []struct {
 		model.InventoryCheck
-		EmpName *string `db:"empName"`
+		EmpName *string    `db:"empName"`
+		Next    *time.Time `db:"nextBooking"`
+		Eff     string     `db:"eff"`
 	}{}
-	if err := r.db.Select(&rows, `SELECT c.*, e.name AS "empName" FROM "InventoryCheck" c
+	if err := r.db.Select(&rows, `SELECT * FROM (
+		SELECT c.*, e.name AS "empName", nb.at AS "nextBooking",
+			COALESCE(c.priority, CASE WHEN nb.at IS NOT NULL THEN 'URGENT'
+				WHEN c."checkedAt" < now() - interval '7 days' THEN 'HIGH' ELSE 'NORMAL' END) AS eff
+		FROM "InventoryCheck" c
 		LEFT JOIN "Employee" e ON e.id = c."employeeId"
-		WHERE NOT c.complete AND NOT c.resolved ORDER BY c."checkedAt" LIMIT 500`); err != nil {
+		LEFT JOIN LATERAL (SELECT min(b."scheduledAt") AS at FROM "BookingAssignment" a
+			JOIN "Booking" b ON b.id = a."bookingId"
+			WHERE a."employeeId" = c."employeeId" AND b."cancelledAt" IS NULL AND b."completedAt" IS NULL AND b."archivedAt" IS NULL
+			  AND baghdad_date(b."scheduledAt") BETWEEN baghdad_today() AND baghdad_today() + 1) nb ON true
+		WHERE NOT c.complete AND NOT c.resolved) x
+		ORDER BY CASE eff WHEN 'URGENT' THEN 0 WHEN 'HIGH' THEN 1 ELSE 2 END, "checkedAt" LIMIT 500`); err != nil {
 		return nil, err
 	}
 	out := make([]model.InventoryCheck, 0, len(rows))
@@ -101,9 +119,29 @@ func (r *InventoryRepository) OpenShortages() ([]model.InventoryCheck, error) {
 		if x.EmpName != nil {
 			c.Employee = &model.EmployeeBrief{ID: c.EmployeeID, Name: *x.EmpName}
 		}
+		c.EffPriority, c.NextBooking = x.Eff, x.Next
 		out = append(out, c)
 	}
 	return out, nil
+}
+
+// SetShortagePriority أولوية يدوية لنقص مفتوح — "" ترجّعها محسوبة. false = مو موجود/مسكّر.
+func (r *InventoryRepository) SetShortagePriority(id, priority, by string) (bool, error) {
+	res, err := r.db.Exec(`UPDATE "InventoryCheck" SET priority = NULLIF($2,''), "priorityById" = NULLIF($3,'')
+		WHERE id = $1 AND NOT complete AND NOT resolved`, id, priority, by)
+	if err != nil {
+		return false, err
+	}
+	n, _ := res.RowsAffected()
+	return n == 1, nil
+}
+
+// UrgentShortages عدد النواقص المفتوحة لفنيين عندهم حجز اليوم/باچر (لملخص المخازن).
+func UrgentShortagesSQL() string {
+	return `SELECT count(*) FROM "InventoryCheck" c WHERE NOT c.complete AND NOT c.resolved AND (c.priority = 'URGENT' OR (c.priority IS NULL AND EXISTS (
+		SELECT 1 FROM "BookingAssignment" a JOIN "Booking" b ON b.id = a."bookingId"
+		WHERE a."employeeId" = c."employeeId" AND b."cancelledAt" IS NULL AND b."completedAt" IS NULL AND b."archivedAt" IS NULL
+		  AND baghdad_date(b."scheduledAt") BETWEEN baghdad_today() AND baghdad_today() + 1)))`
 }
 
 // LastInventoryCheck يرجّع آخر جرد سوّاه الموظف نفسه (أو nil لو ما جرد

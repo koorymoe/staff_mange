@@ -6,6 +6,8 @@ import (
 	"time"
 
 	"github.com/jmoiron/sqlx"
+
+	"staffmange-api/internal/repository"
 )
 
 // ═══ ملخص المخازن اليومي (طلبات ماتركس 11-04، وافق المالك — إداري الكميات) ═══
@@ -19,6 +21,7 @@ type WarehouseDigest struct {
 	Unrated       int
 	WashedToday   int
 	Overdue       []string
+	UrgentShort   int
 }
 
 // BuildWarehouseDigest يجمع الأرقام (بلا أسماء موظفين؛ السيارات بأسمائها/لوحاتها — مو بيانات شخصية).
@@ -36,6 +39,7 @@ func BuildWarehouseDigest(db *sqlx.DB, overdue func() ([]string, error)) (Wareho
 	if err != nil {
 		return d, err
 	}
+	_ = db.QueryRow(repository.UrgentShortagesSQL()).Scan(&d.UrgentShort)
 	if overdue != nil {
 		d.Overdue, _ = overdue()
 	}
@@ -47,6 +51,9 @@ func (d WarehouseDigest) Message() string {
 	parts := []string{}
 	if d.StaleRequests > 0 {
 		parts = append(parts, fmt.Sprintf("⏳ %d طلب أدوات معلّق أكثر من ٣ أيام (الأقدم %d يوم)", d.StaleRequests, d.OldestDays))
+	}
+	if d.UrgentShort > 0 {
+		parts = append(parts, fmt.Sprintf("🔴 عاجل: %d نقص جرد لفنيين عندهم شغل اليوم أو باچر", d.UrgentShort))
 	}
 	if d.Unrated > 0 {
 		parts = append(parts, fmt.Sprintf("🚗 %d سيارة من %d ما انقيّمت اليوم", d.Unrated, d.ActiveCars))
@@ -108,5 +115,12 @@ func carWashText(d WarehouseDigest) string {
 		return "ماكو سيارات فعّالة مسجلة."
 	}
 	return fmt.Sprintf("اليوم انغسلت %d سيارة من %d فعّالة (باقي %d). وما انقيّمت %d سيارة اليوم.",
-		d.WashedToday, d.ActiveCars, d.ActiveCars-d.WashedToday, d.Unrated)
+		d.WashedToday, d.ActiveCars, d.ActiveCars-d.WashedToday, d.Unrated) + urgentText(d.UrgentShort)
+}
+
+func urgentText(n int) string {
+	if n == 0 {
+		return ""
+	}
+	return fmt.Sprintf(" ونواقص جرد عاجلة (فنيين عندهم شغل اليوم أو باچر): %d.", n)
 }

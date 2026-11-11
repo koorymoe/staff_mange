@@ -2312,5 +2312,12 @@ func matrixChatMigrations() []Migration {
 				"archivedAt" TIMESTAMPTZ
 			);
 		`,
+	}, {
+		// (ل) 11-11 طلب المخازن (ماتركس، وافق دازاي): أولوية يدوية لنقص الجرد — فارغ = محسوبة.
+		Version: "0477_inventory_check_priority",
+		SQL: `
+			ALTER TABLE "InventoryCheck" ADD COLUMN IF NOT EXISTS priority TEXT CHECK (priority IN ('URGENT','HIGH','NORMAL'));
+			ALTER TABLE "InventoryCheck" ADD COLUMN IF NOT EXISTS "priorityById" TEXT REFERENCES "Employee"(id) ON DELETE SET NULL;
+		`,
 	}}
 }

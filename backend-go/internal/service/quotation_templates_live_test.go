@@ -66,8 +66,8 @@ func TestQuotationTemplateSaveUseLive(t *testing.T) {
 		t.Fatalf("البنود: %+v", items)
 	}
 	var terms, layout string
-	db.Get(&terms, `SELECT terms::text FROM "Quotation" WHERE id = $1`, nq.ID)  //nolint:errcheck
-	db.Get(&layout, `SELECT layout FROM "Quotation" WHERE id = $1`, nq.ID)      //nolint:errcheck
+	db.Get(&terms, `SELECT terms::text FROM "Quotation" WHERE id = $1`, nq.ID) //nolint:errcheck
+	db.Get(&layout, `SELECT layout FROM "Quotation" WHERE id = $1`, nq.ID)     //nolint:errcheck
 	if !strings.Contains(terms, "٧٠٪") || layout != "PROJECT" {
 		t.Fatalf("الشروط/الشكل: %s %s", terms, layout)
 	}

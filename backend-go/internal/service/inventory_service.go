@@ -2,6 +2,7 @@ package service
 
 import (
 	"errors"
+	"fmt"
 	"log"
 	"strings"
 
@@ -82,6 +83,16 @@ func (s *InventoryService) LastInventoryCheck(employeeID string) (*model.Invento
 
 func (s *InventoryService) OpenShortages() ([]model.InventoryCheck, error) {
 	return s.repo.OpenShortages()
+}
+
+// SetShortagePriority أولوية يدوية لنقص مفتوح (URGENT/HIGH/NORMAL، أو "" = محسوبة).
+func (s *InventoryService) SetShortagePriority(id, priority, by string) (bool, error) {
+	switch priority {
+	case "", "URGENT", "HIGH", "NORMAL":
+	default:
+		return false, fmt.Errorf("أولوية غير صحيحة")
+	}
+	return s.repo.SetShortagePriority(id, priority, by)
 }
 
 func (s *InventoryService) ResolveInventoryCheck(id string, resolvedByID string) (*model.InventoryCheck, error) {
