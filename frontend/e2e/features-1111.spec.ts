@@ -3,6 +3,9 @@ import { API, OWNER, login, prepare, uiLogin } from './helpers'
 
 // ميزات 11-10/11-11 (دازاي): أعذار التأخير (الموظف يقدّم والمالك يقبل)، مراقبة التقييم،
 // وسيت المخططات (نموذج جاهز + زرين PDF + عرض السعر المربوط) — بلا خطأ ولا ٥xx/٤٠٣.
+// الدخول محدود ٨ بالدقيقة: إذا انضرب الحد، helpers.login ينتظر دقيقة ويعيد — فالوقت ٣ دقايق
+// حتى ما يفشل الاختبار من الانتظار (الفشل المتقطع 11-11 چان من هذا، مو من النظام).
+test.describe.configure({ timeout: 180_000 })
 function watch(page: Page) {
   const problems: string[] = []
   page.on('pageerror', (e) => problems.push(`pageerror: ${e.message}`))
