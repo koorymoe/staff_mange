@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { apiRequest } from '../api'
+import PctWhy from '../ui/PctWhy'
 import type { DesignMeta, DesignSetRow } from './design/types'
 
 // ═══ 🏗️ صيت التصاميم — (ع) 11-08 ═══
@@ -76,7 +77,10 @@ export default function DesignSetsPage() {
             <Link key={r.id} to={`/design-sets/${r.id}`} className="block rounded-2xl border border-slate-200 bg-white p-4 transition hover:-translate-y-0.5 hover:shadow-md">
               <div className="flex items-center justify-between gap-2">
                 <p className="font-extrabold text-[#0f2040]">{r.title}</p>
-                <span className="text-sm font-black tabular-nums text-brand-700">{pct}٪</span>
+                <PctWhy title={`اعتماد صيت «${r.title}»`} suffix="٪" className="text-sm font-black tabular-nums text-brand-700"
+                  parts={{ numLabel: 'قسم معتمد', num: r.approved, denLabel: 'قسم بالصيت', den: r.sections }}
+                  meaning={<>شكد من أقسام هالصيت (بناء، هيكل… لحد الطاقة) صار تصميمه معتمد. ١٠٠٪ يعني كل الأقسام اعتمدت؛ القسم الي بعده بالمراجعة{r.inReview > 0 ? ` (هسه ${r.inReview})` : ''} أو ما انرفع ما ينحسب لحد ما يعتمد.</>}
+                  source={<>أقسام صيت التصاميم المسجلة لهالمشروع بالنظام، والمعتمد منها هو الي حالته «معتمد».</>} />
               </div>
               <p className="text-xs text-slate-500">{r.projectCode ? `مشروع ${r.projectCode} · ` : ''}{new Date(r.createdAt).toLocaleDateString('en-GB')}</p>
               <div className="mt-2 h-2 overflow-hidden rounded-full bg-slate-100"><div className="h-full bg-emerald-500" style={{ width: `${pct}%` }} /></div>

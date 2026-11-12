@@ -1,5 +1,23 @@
 import { useEffect, useState } from 'react'
 import { api, AI_METRIC_LABELS, type AiCatalog, type AiMetric, type AiSignal } from '../api'
+import PctWhy from '../ui/PctWhy'
+
+// «كل نسبة لازم الها سبب» — شرح مؤشرات التوقف (ai_metrics_service.go).
+const METRIC_WHY: Record<string, { num: string; meaning: string }> = {
+  MATERIAL_MISS_RATE: { num: 'توقف ماكو بيه طلب مواد ولا زيادة بالسلة', meaning: 'الشغل وقف لأن مادة ناقصة ومحد طلبها قبل. كل ما تقل أحسن — تنزل لمن تنحسب المواد كاملة قبل الخروج.' },
+  SCOPE_CREEP_RATE: { num: 'توقف السلة زادت بيه بعد بدء الشغل', meaning: 'الزبون طلب شغل زيادة بالموقع وهذا وقّف الشغل. ترتفع إذا الكشف الأول ما غطّى كل طلبات الزبون.' },
+  PROCUREMENT_DELAY: { num: 'توقف انطلبت مواده قبله وما انوفّرت', meaning: 'المادة انطلبت بس إداري الكميات ما وفّرها لحد التوقف. كل ما تقل أحسن.' },
+}
+function MetricPct({ m }: { m: AiMetric }) {
+  const d = (m.details ?? {}) as { count?: number; of?: number }
+  const w = METRIC_WHY[m.metricKey]
+  const label = AI_METRIC_LABELS[m.metricKey] || m.metricKey
+  const src = <>إشارات «توقف الشغل» بآخر ٣٠ يوم الي إلها أدلة محفوظة (الإشارة بلا أدلة ما تنحسب) — {m.sampleCount} حالة.</>
+  return w && d.count != null && d.of != null
+    ? <PctWhy title={label} value={Math.round(m.value)} parts={{ numLabel: w.num, num: d.count, denLabel: 'توقف إله أدلة', den: d.of }} meaning={w.meaning} source={src} />
+    : <PctWhy title={label} value={Math.round(m.value)} formula={<>عدد الحالات الي ينطبق عليها المؤشر ÷ {m.sampleCount} حالة × ١٠٠.</>}
+        meaning={<>كل ما تقل النسبة أحسن. انتبه لعدد الحالات: نسبة من حالتين مو مثل نسبة من مئتين.</>} source={src} />
+}
 
 // ═══ إحصائيات ومؤشرات الذكاء الاصطناعي ═══
 //
@@ -157,7 +175,7 @@ export default function AiInsightsPage() {
                 <p className="mt-1 text-2xl font-extrabold text-[#0f2040]">
                   {m.metricKey === 'STOP_MINUTES_AVG'
                     ? `${Math.round(m.value)} دقيقة`
-                    : `${m.value.toFixed(0)}%`}
+                    : <MetricPct m={m} />}
                 </p>
                 {/* ⚠️ عدد العيّنات ينعرض دائماً: «٥٠٪» من عيّنتين مو
                     مثل «٥٠٪» من مئتين، والقرار يختلف. */}
@@ -189,7 +207,11 @@ export default function AiInsightsPage() {
                   <span className="mr-auto text-[11px] text-slate-400">من {m.sampleCount} حالة</span>
                 </div>
                 <p className="mt-2 text-sm leading-6 text-slate-700">
-                  {m.details?.narration || `${m.value.toFixed(0)}% مقابل معدل عام ${(m.details?.overallAvg ?? 0).toFixed(0)}%`}
+                  {m.details?.narration || <>{Math.round(m.value)}% مقابل معدل عام {(m.details?.overallAvg ?? 0).toFixed(0)}%</>}
+                  {' '}<span className="text-xs text-slate-500">(<PctWhy title={`${m.details?.axisLabel ?? ''} — ${m.details?.valueLabel ?? ''}`} value={Math.round(m.value)}
+                    formula={<>نسبة هذي الخانة = الحالات الي صار بيها الحدث ÷ {m.sampleCount} حالة = {Math.round(m.value)}٪، والمعدل العام لكل الخانات بنفس المحور = {Math.round(m.details?.overallAvg ?? 0)}٪.</>}
+                    meaning={<>تنعرض بس إذا الخانة عندها عيّنات كافية وتبعد عن المعدل العام بنسبة كبيرة — يعني نمط شاذ يستاهل نشوفه، مو حكم نهائي.</>}
+                    source={<>الاستكشاف الأسبوعي (كل اثنين): يفحص كل البيانات حسب «{m.details?.axisLabel}» ويقارن كل خانة بالمعدل العام.</>} />)</span>
                 </p>
               </div>
             ))}
@@ -222,7 +244,10 @@ export default function AiInsightsPage() {
                 {/* ⚠️ الثقة الواطية تنقال صراحة — القرار على أساس حكم
                     «مو متأكد» أسوأ من ماكو حكم أصلاً. */}
                 <span className={`mr-auto rounded-lg px-2 py-1 text-[11px] font-bold ${v.confidence >= 70 ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-600'}`}>
-                  {v.confidence >= 70 ? `ثقة ${v.confidence}%` : `مو متأكد (${v.confidence}%)`}
+                  {v.confidence >= 70 ? 'ثقة ' : 'مو متأكد ('}<PctWhy title="ثقة الحكم" value={v.confidence}
+                    formula={<>هذا رقم يقدّره المحلل (الذكاء الاصطناعي أو قاعدة النظام) لنفسه من ٠ لـ١٠٠ — مو بسط ومقام. {v.confidence >= 70 ? 'هو ٧٠ أو أكثر، فيعتبر الحكم موثوق.' : 'هو أقل من ٧٠، فيعتبر الحكم «مو متأكد».'}</>}
+                    meaning={<>شكد الأدلة كافية حتى ينبني عليها الحكم. ترتفع لمن تكون الأدلة كاملة وواضحة، وتنزل لمن أكو فجوات بالأدلة (مكتوبة تحت). الحكم الي «مو متأكد» لا تبني عليه قرار.</>}
+                    source={<>أدلة الإشارة نفسها (الحقائق والفجوات المعروضة بهالبطاقة).</>} />{v.confidence >= 70 ? '' : ')'}
                 </span>
               </div>
 

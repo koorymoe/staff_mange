@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { Link, useLocation } from 'react-router-dom'
 import { api, type MatrixWatch } from '../api'
@@ -10,6 +10,7 @@ import { pollVisible } from '../utils/poll'
 import { CourierInbox } from './MatrixCourier'
 import { COURIER_TRIP_MS, tweenLid } from '../utils/courier'
 import { swallow } from '../utils/swallow'
+import PctWhy from '../ui/PctWhy'
 
 // ═══ عين ماتركس — «عين الرب» ═══
 //
@@ -371,7 +372,7 @@ export default function MatrixEye() {
 
 // ═══ تقرير المالك/المدير من العين — يتجمّع لمن تنفتح بس ═══
 function BossReport({ onGo }: { onGo: () => void }) {
-  const [r, setR] = useState<{ attention: number; red: number; people: number; props: number; latePct: number | null; lateOpen: number } | null>(null)
+  const [r, setR] = useState<{ attention: number; red: number; people: number; props: number; latePct: number | null; lateOpen: number; lateN: number; lateTotal: number } | null>(null)
   useEffect(() => {
     let alive = true
     Promise.all([
@@ -383,13 +384,13 @@ function BossReport({ onGo }: { onGo: () => void }) {
       setR({
         attention: g.reduce((n, x) => n + x.red + x.alert, 0), red: g.reduce((n, x) => n + x.red, 0),
         people: g.reduce((n, x) => n + x.employees.length, 0), props: p.length,
-        latePct: l ? l.recentPct : null, lateOpen: l ? l.recent.openNow : 0,
+        latePct: l ? l.recentPct : null, lateOpen: l ? l.recent.openNow : 0, lateN: l ? l.recent.late : 0, lateTotal: l ? l.recent.total : 0,
       })
     })
     return () => { alive = false }
   }, [])
   if (!r) return <p className="mt-2 text-xs text-slate-400">ماتركس يجمع التقرير…</p>
-  const row = (icon: string, text: string, to: string, tone = 'text-slate-800') => (
+  const row = (icon: string, text: ReactNode, to: string, tone = 'text-slate-800') => (
     <Link to={to} onClick={onGo} className={`flex items-center justify-between gap-2 rounded-lg bg-slate-50 px-2 py-1.5 hover:bg-sky-50 ${tone}`}>
       <span>{icon} {text}</span><span className="text-xs text-sky-700">←</span>
     </Link>
@@ -399,7 +400,9 @@ function BossReport({ onGo }: { onGo: () => void }) {
       <p className="text-xs font-bold text-slate-500">📊 تقرير ماتركس الآن</p>
       {row('👥', `${r.people} موظف تحت المراقبة — ${r.attention} يحتاجون انتباه${r.red ? ` (${r.red} حمر)` : ''}`, '/?board=matrix', r.red ? 'text-red-700' : 'text-slate-800')}
       {row('💡', r.props ? `${r.props} اقتراح ينتظر قرارك` : 'ماكو اقتراحات تنتظرك', '/matrix/decisions', r.props ? 'text-amber-700' : 'text-slate-800')}
-      {r.latePct != null && row('⏰', `الحجوزات المتأخرة آخر ٧ أيام: ${r.latePct}%${r.lateOpen ? ` — ${r.lateOpen} مفتوحة وموعدها فات` : ''}`, '/?board=matrix', r.latePct >= 30 ? 'text-red-700' : 'text-slate-800')}
+      {r.latePct != null && row('⏰', <>الحجوزات المتأخرة آخر ٧ أيام: <PctWhy title="نسبة الحجوزات المتأخرة" value={r.latePct} parts={{ numLabel: 'حجز متأخر', num: r.lateN, denLabel: 'حجز بآخر ٧ أيام', den: r.lateTotal }}
+        meaning={<>شكد من حجوزات الأسبوع تأخرت عن موعدها. كل ما تقل أحسن؛ فوق ٣٠% تطلع حمرة. {r.lateOpen ? `هسه ${r.lateOpen} حجز بعده مفتوح وموعده فات.` : ''}</>}
+        source={<>الحجوزات بآخر ٧ أيام من جدول الحجوزات: موعدها ووقت إنجازها — نفس رقم «الحجوزات المتأخرة» بمركز قيادة ماتركس.</>} />{r.lateOpen ? ` — ${r.lateOpen} مفتوحة وموعدها فات` : ''}</>, '/?board=matrix', r.latePct >= 30 ? 'text-red-700' : 'text-slate-800')}
       {row('👁️', 'افتح مركز قيادة ماتركس', '/?board=matrix', 'font-bold text-brand-700')}
     </div>
   )

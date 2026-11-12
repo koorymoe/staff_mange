@@ -2361,5 +2361,99 @@ func matrixChatMigrations() []Migration {
 			);
 			CREATE INDEX IF NOT EXISTS "LateExcuse_status_idx" ON "LateExcuse"(status) WHERE status = 'PENDING';
 		`,
+	}, {
+		// (ل) 11-11 بلاغ #32: إهمال «فاتك تقييم» انكتب على مقيّم والي فاته وصل بعد دوامه —
+		// يتعلّم ملغي (ما ينمسح) ونقاطه ترجع.
+		Version: "0479_negligence_void",
+		SQL: `
+			ALTER TABLE "EmployeeNegligence" ADD COLUMN IF NOT EXISTS "voidedAt" TIMESTAMPTZ;
+			ALTER TABLE "EmployeeNegligence" ADD COLUMN IF NOT EXISTS "voidNote" TEXT;
+		`,
+	}, {
+		// (ل) 11-12 دازاي: استفسارات الطاقة الشمسية — تسجيل ← تقني يتواصل ← ابو الجودة يتأكد.
+		Version: "0480_solar_inquiry",
+		SQL: `
+			CREATE TABLE IF NOT EXISTS "SolarInquiry" (
+				id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
+				number SERIAL,
+				"customerName" TEXT NOT NULL,
+				phone TEXT NOT NULL,
+				area TEXT,
+				note TEXT,
+				"createdById" TEXT REFERENCES "Employee"(id) ON DELETE SET NULL,
+				"createdAt" TIMESTAMPTZ NOT NULL DEFAULT now(),
+				"techId" TEXT REFERENCES "Employee"(id) ON DELETE SET NULL,
+				"techClaimedAt" TIMESTAMPTZ,
+				"techOutcome" TEXT CHECK ("techOutcome" IN ('JUST_ASKING','WANTS_INSTALL','NO_ANSWER','NOT_INTERESTED')),
+				"techNote" TEXT,
+				"techContactAt" TIMESTAMPTZ,
+				"quoteGiven" BOOLEAN,
+				"quoteAmount" NUMERIC,
+				"qualityById" TEXT REFERENCES "Employee"(id) ON DELETE SET NULL,
+				"qualityAt" TIMESTAMPTZ,
+				"qCustomerReached" BOOLEAN,
+				"qTechCalled" TEXT CHECK ("qTechCalled" IN ('YES','NO','UNSURE')),
+				"qIntent" TEXT CHECK ("qIntent" IN ('JUST_ASKING','WANTS_INSTALL','NOT_INTERESTED')),
+				"qGotQuote" TEXT CHECK ("qGotQuote" IN ('YES','NO','UNSURE')),
+				"qQuoteFair" TEXT CHECK ("qQuoteFair" IN ('YES','NO','UNSURE')),
+				"qNote" TEXT
+			);
+			CREATE INDEX IF NOT EXISTS "SolarInquiry_open_idx" ON "SolarInquiry" ("createdAt" DESC) WHERE "qualityAt" IS NULL;
+		`,
+	}, {
+		// (ل) 11-12 دازاي: وحدة التدريب — المنهج شجرة (الجمهور ← المسار ← ٣ تفرعات)، و«الماتشينغ»
+		// بدل بنك الأسئلة: منو يحتاج تدريب وعلى شنو. مشكلة بحجز = إلزامي، نقص مهارة = اقتراح.
+		Version: "0481_training_matching",
+		SQL: `
+			ALTER TABLE "TrainingCurriculum" ADD COLUMN IF NOT EXISTS "parentId" TEXT REFERENCES "TrainingCurriculum"(id) ON DELETE RESTRICT;
+			ALTER TABLE "TrainingCurriculum" ADD COLUMN IF NOT EXISTS "serviceId" TEXT;
+			CREATE INDEX IF NOT EXISTS "TrainingCurriculum_parent_idx" ON "TrainingCurriculum" ("parentId");
+			ALTER TABLE "CrewRating" ADD COLUMN IF NOT EXISTS "needsTraining" TEXT;
+			CREATE TABLE IF NOT EXISTS "TrainingMatch" (
+				id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
+				"employeeId" TEXT NOT NULL REFERENCES "Employee"(id) ON DELETE CASCADE,
+				kind TEXT NOT NULL CHECK (kind IN ('BOOKING_ISSUE','SKILL_GAP','MANUAL')),
+				"curriculumId" TEXT REFERENCES "TrainingCurriculum"(id) ON DELETE SET NULL,
+				topic TEXT NOT NULL,
+				reason TEXT,
+				"sourceBookingId" TEXT,
+				"sourceRatingId" TEXT,
+				"skillId" TEXT,
+				status TEXT NOT NULL DEFAULT 'OPEN' CHECK (status IN ('OPEN','IN_TRAINING','DONE','DISMISSED')),
+				"dueAt" TIMESTAMPTZ,
+				"overdueNotifiedAt" TIMESTAMPTZ,
+				"dismissNote" TEXT,
+				"startedAt" TIMESTAMPTZ,
+				"doneAt" TIMESTAMPTZ,
+				"reportText" TEXT,
+				"reportScore" INT CHECK ("reportScore" BETWEEN 1 AND 5),
+				"reportedById" TEXT REFERENCES "Employee"(id) ON DELETE SET NULL,
+				"createdById" TEXT REFERENCES "Employee"(id) ON DELETE SET NULL,
+				"createdAt" TIMESTAMPTZ NOT NULL DEFAULT now(),
+				"updatedAt" TIMESTAMPTZ NOT NULL DEFAULT now()
+			);
+			CREATE UNIQUE INDEX IF NOT EXISTS "TrainingMatch_rating_uq" ON "TrainingMatch" ("sourceRatingId") WHERE "sourceRatingId" IS NOT NULL;
+			CREATE UNIQUE INDEX IF NOT EXISTS "TrainingMatch_skill_uq" ON "TrainingMatch" ("employeeId", "skillId") WHERE "skillId" IS NOT NULL;
+			CREATE INDEX IF NOT EXISTS "TrainingMatch_open_idx" ON "TrainingMatch" ("employeeId") WHERE status IN ('OPEN','IN_TRAINING');
+		`,
+	}, {
+		// (ل) 11-12 دازاي: ثقة «التوقعات المعلّقة» تنحسب من دقة التوقعات الي فاتت مو رقم ثابت —
+		// بنهاية الدوام ماتركس يشوف: الموظف الي توقّع ما يخلّص، فعلاً بقى عليه شغل؟
+		Version: "0482_prediction_verdict",
+		SQL: `
+			ALTER TABLE "MatrixProposal" ADD COLUMN IF NOT EXISTS verdict TEXT CHECK (verdict IN ('CORRECT','WRONG'));
+			ALTER TABLE "MatrixProposal" ADD COLUMN IF NOT EXISTS "verifiedAt" TIMESTAMPTZ;
+			ALTER TABLE "MatrixProposal" ADD COLUMN IF NOT EXISTS "leftAtEnd" INT;
+		`,
+	}, {
+		// (ل) 11-12 دازاي: «جوه كل تصميم لازم اكو فورما» — لوغو الأماني + اسم المخطط + الملاحظات +
+		// السكيل + التاريخ. المصممة تختار مكانها (يمين أو جوّه تحت) وتعدّل الباقي.
+		Version: "0483_plan_file_sheet",
+		SQL: `
+			ALTER TABLE "PlanFile" ADD COLUMN IF NOT EXISTS "sheetPos" TEXT NOT NULL DEFAULT 'right' CHECK ("sheetPos" IN ('right','bottom'));
+			ALTER TABLE "PlanFile" ADD COLUMN IF NOT EXISTS "sheetName" TEXT;
+			ALTER TABLE "PlanFile" ADD COLUMN IF NOT EXISTS "sheetNotes" TEXT;
+			ALTER TABLE "PlanFile" ADD COLUMN IF NOT EXISTS "sheetScale" TEXT;
+		`,
 	}}
 }

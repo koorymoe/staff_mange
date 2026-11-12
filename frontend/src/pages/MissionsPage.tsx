@@ -1,4 +1,5 @@
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback, useRef, type ReactNode } from 'react'
+import PctWhy from '../ui/PctWhy'
 import { useSession } from '../session'
 import ExtraTasksPage from './ExtraTasksPage'
 import FieldBoard from '../components/FieldBoard'
@@ -86,7 +87,7 @@ const stageOrder = ['ASSIGNED', 'MATERIALS_PREP', 'MATERIALS_READY', 'EN_ROUTE',
 // `stroke-dasharray` يساوي النسبة من المحيط.
 // شريحة صغيرة بالترويسة — شفافة على المتدرّج الغامق، فالنص أبيض
 // دائماً وما تحتاج رموز الوضع الليلي.
-function HeroChip({ icon, label, value }: { icon: string; label: string; value: string }) {
+function HeroChip({ icon, label, value }: { icon: string; label: string; value: ReactNode }) {
   return (
     <span className="flex items-center gap-2 rounded-xl bg-white/10 px-3 py-2">
       <span className="text-base">{icon}</span>
@@ -98,7 +99,7 @@ function HeroChip({ icon, label, value }: { icon: string; label: string; value: 
   )
 }
 
-function ProgressRing({ pct }: { pct: number }) {
+function ProgressRing({ pct, children }: { pct: number; children?: ReactNode }) {
   const R = 34
   const C = 2 * Math.PI * R
   const safe = Math.max(0, Math.min(100, pct))
@@ -113,7 +114,7 @@ function ProgressRing({ pct }: { pct: number }) {
         />
       </svg>
       <div className="absolute inset-0 flex flex-col items-center justify-center">
-        <span className="text-xl font-extrabold text-white">{Math.round(safe)}%</span>
+        <span className="text-xl font-extrabold text-white">{children ?? `${Math.round(safe)}%`}</span>
         <span className="text-[9px] text-blue-200/80">نسبة الإنجاز</span>
       </div>
     </div>
@@ -283,6 +284,13 @@ export default function MissionsPage() {
     ? (missions.filter(m => m.stage === 'COMPLETED').length / missions.length) * 100
     : 0
 
+  const doneCount = missions.filter(m => m.stage === 'COMPLETED').length
+  const doneWhy = (
+    <PctWhy title="نسبة الإنجاز" parts={{ numLabel: 'مهمة خلصت', num: doneCount, denLabel: 'مهمة بالقائمة', den: missions.length }}
+      meaning={<>شكد من المهام الميدانية الي بهالشاشة وصلت مرحلة «مكتملة». المهمة الموقّفة أو الي بعدها بالطريق/بالشغل ما تنحسب منجزة. نفس تعريف شاشة الإحصائيات: المنجز ÷ المسند.</>}
+      source={<>{isAdmin ? 'كل المهام الميدانية المسجلة بالنظام' : 'مهامك الميدانية المسندة إلك'} (من جدول المهام)، والمنجز هو الي مرحلته COMPLETED. هسه {activeMissions.length} شغالة و{completedMissions.length - doneCount} موقّفة.</>} />
+  )
+
   const getDelayStatus = (m: Mission) => {
     if (!m.estimatedMinutes) return 'normal'
     if (m.stage === 'EN_ROUTE' && m.departedAt) {
@@ -317,12 +325,12 @@ export default function MissionsPage() {
             <p className="mt-1 text-blue-200/80">تتبع جميع المهام وفرق العمل في الميدان لحظة بلحظة</p>
           </div>
           <div className="flex flex-wrap items-center gap-4">
-            <HeroChip icon="📈" label="نسبة الإنجاز" value={`${Math.round(donePct)}%`} />
+            <HeroChip icon="📈" label="نسبة الإنجاز" value={doneWhy} />
             <span className="hidden h-10 w-px bg-white/20 sm:block" />
             <HeroChip icon="🗓️" label="مهام اليوم" value={dayHealth.word} />
             <span className="hidden h-10 w-px bg-white/20 sm:block" />
             <HeroChip icon="📋" label="إجمالي المهام" value={`${missions.length} مهمة`} />
-            <ProgressRing pct={donePct} />
+            <ProgressRing pct={donePct}>{doneWhy}</ProgressRing>
           </div>
         </div>
       </div>

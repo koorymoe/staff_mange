@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { apiRequest } from '../api'
 import { orgDeskWrite, type DeskItem } from '../orgDesk'
 import { useSession } from '../session'
+import PctWhy from '../ui/PctWhy'
 import '../pages/OrgPage.css'
 import '../pages/OrgDeskPage.css'
 
@@ -125,7 +126,12 @@ function OwnItem({
         </span>
         {item.overdue && <span className="desk-overdue">متأخر</span>}
       </div>
-      <p>الإنجاز: {item.progress}٪</p>
+      <p>الإنجاز: <PctWhy title={`إنجاز «${item.title}»`} value={item.progress} suffix="٪"
+        formula={item.doneAt
+          ? <>البند مأشر عليه «خلص» (<bdi>{item.doneAt.slice(0, 10)}</bdi>)، فنسبته <b>١٠٠٪</b> مهما چانت النسبة اليدوية.</>
+          : <>هاي نسبة الإنجاز اليدوية المحفوظة للبند: <b>{item.progress}٪</b> — يحطها مسؤول البند من الشريط تحت. ماكو حسبة ثانية فوگها بهاي الشاشة.</>}
+        meaning={<>شكد خلص من بند الخطة «{item.planTitle}» لفترة <bdi>{item.period}</bdi>. ١٠٠٪ يعني خلص.{item.overdue ? ' موعده فات وبعده ما خلص.' : ''}</>}
+        source={<>بنود خطط الأقسام (الخطة والبند) الي انت مسؤول عنها، من بيانات الهيكل التنظيمي.</>} /></p>
       <progress
         aria-label={`إنجاز ${item.title}`}
         max={100}

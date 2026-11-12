@@ -1,6 +1,7 @@
 import { lazy, Suspense, useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { api, apiRequest, ensureFileToken, fileUrl, type Employee } from '../api'
+import { api, apiRequest, ensureFileToken, fileUrl, type Employee, thumbUrl } from '../api'
+import PctWhy from '../ui/PctWhy'
 import { SECTION_STATUS, type DesignFile, type DesignMeta, type DesignSection, type DesignSetDetail, type DesignTool } from './design/types'
 
 const ModelViewer = lazy(() => import('./design/ModelViewer'))
@@ -23,7 +24,7 @@ function FileCard({ f, canRemove, onRemove }: { f: DesignFile; canRemove: boolea
   const is3d = f.fileType === 'model/gltf-binary'
   return (
     <div className="rounded-xl border border-slate-200 bg-white p-2 text-xs">
-      {isImg && <a href={src} target="_blank" rel="noreferrer"><img src={src} alt={f.title} className="h-28 w-full rounded-lg object-cover" /></a>}
+      {isImg && <a href={src} target="_blank" rel="noreferrer"><img loading="lazy" decoding="async" src={f.fileKey ? thumbUrl(f.fileKey, 480) : src} alt={f.title} className="h-28 w-full rounded-lg object-cover" /></a>}
       {is3d && (open3d
         ? <Suspense fallback={<p className="p-4 text-center text-slate-400">…</p>}><ModelViewer src={src} alt={f.title} /></Suspense>
         : <button type="button" onClick={() => setOpen3d(true)} className="flex h-28 w-full items-center justify-center rounded-lg bg-slate-100 font-bold text-slate-600">🧊 افتح المجسّم ثري دي</button>)}
@@ -241,7 +242,12 @@ export default function DesignSetPage() {
             <p className="text-xs text-slate-500">{d.projectCode ? `مشروع ${d.projectCode} · ` : ''}{d.createdByName ? `فتحه ${d.createdByName} · ` : ''}{new Date(d.createdAt).toLocaleDateString('en-GB')}</p>
             {d.notes && <p className="mt-1 text-sm text-slate-700">{d.notes}</p>}
           </div>
-          <div className="text-center"><p className="text-3xl font-black text-brand-700">{pct}٪</p><p className="text-[11px] text-slate-500">{d.approved} من {d.sections.length} معتمد</p></div>
+          <div className="text-center"><p className="text-3xl font-black text-brand-700"><PctWhy suffix="٪" title="إنجاز الصيت" value={d.sections.length ? pct : null}
+            parts={{ numLabel: 'قسم معتمد', num: d.approved, denLabel: 'قسم بالصيت', den: d.sections.length }}
+            meaning={<>شكد من أقسام الصيت (كل اختصاص قسم) خلص واعتمده المراجع. القسم الي بالتصميم أو ينتظر المراجعة أو رجع للتعديل ما ينحسب لحد ما ينعتمد. تصير ١٠٠٪ لمن كل الأقسام تنعتمد.</>}
+            source={<>أقسام هذا الصيت وحالة كل قسم (مثل ما بالقائمة تحت).</>}>
+            <ul className="text-xs">{d.sections.map((s) => <li key={s.id}>{meta.disciplines.find((x) => x.code === s.discipline)?.name ?? s.discipline}: {SECTION_STATUS[s.status].label}</li>)}</ul>
+          </PctWhy></p><p className="text-[11px] text-slate-500">{d.approved} من {d.sections.length} معتمد</p></div>
         </div>
         {d.canManage && (
           <div className="mt-3 flex flex-wrap items-center gap-2 text-xs">

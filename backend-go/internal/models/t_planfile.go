@@ -16,11 +16,16 @@ func init() {
 			{Name: "createdAt", Type: "timestamp with time zone", NotNull: true, Default: "now()"},
 			{Name: "removedAt", Type: "timestamp with time zone"},
 			{Name: "removedById", Type: "text"},
+			{Name: "sheetPos", Type: "text", NotNull: true, Default: "'right'::text"},
+			{Name: "sheetName", Type: "text"},
+			{Name: "sheetNotes", Type: "text"},
+			{Name: "sheetScale", Type: "text"},
 		},
 		Constraints: []Constraint{
 			{Name: "PlanFile_pkey", Def: "PRIMARY KEY (id)"},
 			{Name: "PlanFile_removedById_fkey", Def: "FOREIGN KEY (\"removedById\") REFERENCES \"Employee\"(id) ON DELETE SET NULL"},
 			{Name: "PlanFile_setId_fkey", Def: "FOREIGN KEY (\"setId\") REFERENCES \"PlanSet\"(id) ON DELETE CASCADE"},
+			{Name: "PlanFile_sheetPos_check", Def: "CHECK ((\"sheetPos\" = ANY (ARRAY['right'::text, 'bottom'::text])))"},
 			{Name: "PlanFile_uploadedById_fkey", Def: "FOREIGN KEY (\"uploadedById\") REFERENCES \"Employee\"(id) ON DELETE SET NULL"},
 		},
 		Indexes: []string{

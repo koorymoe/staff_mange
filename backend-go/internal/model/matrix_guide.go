@@ -42,6 +42,10 @@ type MatrixProposal struct {
 	DecidedAt   *time.Time `db:"decidedAt" json:"decidedAt"`
 	Note        *string    `db:"note" json:"note"`
 	CreatedAt   time.Time  `db:"createdAt" json:"createdAt"`
+	// (ل) 11-12: التحقق من التوقع بنهاية الدوام — صح إذا فعلاً بقى عليه شغل
+	Verdict    *string    `db:"verdict" json:"verdict,omitempty"`
+	VerifiedAt *time.Time `db:"verifiedAt" json:"verifiedAt,omitempty"`
+	LeftAtEnd  *int       `db:"leftAtEnd" json:"leftAtEnd,omitempty"`
 	// الموظف المعني (من payload.employeeId) — للعرض بصندوق القرارات.
 	EmployeeID   *string `db:"employeeId" json:"employeeId,omitempty"`
 	EmployeeName *string `db:"employeeName" json:"employeeName,omitempty"`

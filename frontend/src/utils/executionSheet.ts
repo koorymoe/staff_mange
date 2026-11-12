@@ -44,6 +44,18 @@ export const PROGRAMMING = ['كملت الاعدادات', 'ما كملت', 'م�
 export const RATINGS = ['ممتاز', 'جيد جداً', 'جيد', 'مقبول', 'ضعيف']
 export const HOURS = Array.from({ length: 24 }, (_, i) => String(i).padStart(2, '0'))
 export const MINUTES = Array.from({ length: 12 }, (_, i) => String(i * 5).padStart(2, '0'))
+
+/** ساعة ودقيقة (مقرّبة لأقرب ٥ لتحت حتى تطابق القائمة) بتوقيت بغداد + الوقت بالضبط كملاحظة. فاضي إذا ماكو وقت. */
+export function clockOf(iso?: string | null): { h: string; m: string; note: string } {
+  if (!iso) return { h: '', m: '', note: '' }
+  const d = new Date(iso)
+  if (isNaN(d.getTime())) return { h: '', m: '', note: '' }
+  const parts = new Intl.DateTimeFormat('en-GB', { timeZone: 'Asia/Baghdad', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).formatToParts(d)
+  const h = parts.find((x) => x.type === 'hour')?.value ?? ''
+  const mi = parts.find((x) => x.type === 'minute')?.value ?? ''
+  if (!h || !mi) return { h: '', m: '', note: '' }
+  return { h, m: String(Math.floor(Number(mi) / 5) * 5).padStart(2, '0'), note: `من الحجز: ${h}:${mi}` }
+}
 export const DAYS = Array.from({ length: 30 }, (_, i) => String(i + 1))
 
 export const DECOR_UNITS = ['متر', 'متر مربع', 'قطعة', 'كغم', 'يوم']
@@ -98,7 +110,11 @@ export function emptySheet(b: Booking): ExecutionSheetData {
       location: b.address || '', workType: svc, customerCode: String(b.customer?.customerCode ?? ''),
       responsible: b.leaderName || b.projectSupervisor?.name || '',
     },
-    time: { startH: '', startM: '', startNote: '', endH: '', endM: '', endNote: '' },
+    // بلاغ #34 (مؤمل 11-12): وقت البدء والانتهاء يتعبّى من الحجز نفسه (مو من الفاتورة) — يگدر يعدّله
+    time: (() => {
+      const st = clockOf(b.startedAt || b.arrivedAt), en = clockOf(b.completedAt)
+      return { startH: st.h, startM: st.m, startNote: st.note, endH: en.h, endM: en.m, endNote: en.note }
+    })(),
     data: {
       workDays: '1', landmark: '', startDate: today(), endDate: today(), systemType: svc, devices: '',
       wiringMeters: '', extras: '', obstacles: '', projectStatus: '', programming: '', codeGiven: '',

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { apiRequest, fileUrl } from '../api'
+import { apiRequest, ensureFileToken, thumbUrl } from '../api'
 import { ArtCrop, IconCal, IconFolder, IconLayers, IconDoc, IconUpload } from './design/planArt'
 import type { PlanMeta, PlanSetRow } from './design/planTypes'
 
@@ -36,7 +36,7 @@ export default function PlanSetsPage() {
 
   useEffect(() => {
     let alive = true
-    Promise.all([apiRequest<PlanMeta>('/plan-sets/meta'), apiRequest<PlanSetRow[]>('/plan-sets')])
+    Promise.all([apiRequest<PlanMeta>('/plan-sets/meta'), apiRequest<PlanSetRow[]>('/plan-sets'), ensureFileToken()])
       .then(([m, r]) => { if (alive) { setMeta(m); setRows(r) } })
       .catch((e) => { if (alive) setErr(e instanceof Error ? e.message : 'تعذر') })
     return () => { alive = false }
@@ -130,7 +130,7 @@ export default function PlanSetsPage() {
               {(showAll ? shown : shown.slice(0, 6)).map((r) => (
                 <article key={r.id} className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
                   <Link to={`/plan-sets/${r.id}`} className="relative block h-36 bg-slate-100">
-                    {isImg(r.cover) ? <img src={fileUrl(r.cover!)} alt="" className="h-full w-full object-cover" />
+                    {isImg(r.cover) ? <img loading="lazy" decoding="async" src={thumbUrl(r.cover!, 480)} alt="" className="h-full w-full object-cover" />
                       : <ArtCrop part="card0" className="h-full w-full" />}
                     <span className="absolute start-2 top-2 rounded-lg bg-slate-900/75 px-2 py-0.5 text-xs font-bold text-white">{r.files} تصاميم</span>
                     {r.isTemplate && <span className="absolute end-2 top-2 rounded-lg bg-amber-500 px-2 py-0.5 text-xs font-bold text-white">نموذج</span>}

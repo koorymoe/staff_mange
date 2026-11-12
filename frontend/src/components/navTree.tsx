@@ -137,7 +137,7 @@ export const navItems: NavItem[] = [
   { ownerOnly: true, to: '/owner-grants', label: '👑 صلاحياتي لمدير النظام', icon: <></>, roles: ['ADMIN'] },
   { to: '/ai-suggestions', label: '🧠 اقتراحات الذكاء', icon: <></>, roles: ['ADMIN'] },
   { to: '/org', label: '🏛️ الهيكل التنظيمي', icon: <></>, roles: ['ADMIN'] },
-  { to: '/org/directors-ranking', label: '🏆 تصنيف المدراء', icon: <></>, roles: ['ADMIN'] },
+  { to: '/org/directors-ranking', label: '🏆 تصنيف المدراء والموظفين', icon: <></>, roles: ['ADMIN'] },
   // (ل) 11-11 دازاي: مراقبة التقييم — نفس حارس تصنيف المدراء وأعذار التأخير (ADMIN/OWNER)
   { to: '/org/score-monitor', label: '🔍 مراقبة التقييم', icon: <></>, roles: ['ADMIN'] },
   // (دازاي 11-08) كل الخطط بمكان واحد — نفس حارس GET /api/org/plans/overview (ADMIN/OWNER)
@@ -338,7 +338,7 @@ export const navItems: NavItem[] = [
       // قرار (ع) 10-05: ماتركس ٦٠٪ + البشر ٤٠٪ — نفس حارس GET /api/staff-score (requireMonitor).
       // قرار (ع) 10-06: فلوس المشاريع — نفس حارس GET /api/project-payments/overview.
       { monitorMenuHide: true, to: '/project-payments', label: '💰 فلوس المشاريع', icon: <></>, roles: ['ADMIN', 'FINANCE', 'PROJECT_MANAGER', 'MONITOR'], anyPermission: ['finance', 'finance_audit', 'project_management', 'monitoring'] },
-      { monitorMenuHide: true, hideForRoles: ['QUALITY_ENGINEER'], to: '/staff-score', label: '🏅 تقييم الموظفين', icon: <></>, roles: ['ADMIN', 'MONITOR'], anyPermission: ['monitoring', 'auditing', 'mon_staff'] },
+      { monitorMenuHide: true, hideForRoles: ['QUALITY_ENGINEER', 'ADMIN', 'OWNER'], to: '/staff-score', label: '🏆 تصنيف المدراء والموظفين', icon: <></>, roles: ['ADMIN', 'MONITOR'], anyPermission: ['monitoring', 'auditing', 'mon_staff'] },
       { hideForRoles: ['QUALITY_ENGINEER'], to: '/staff-reports', label: '🧾 تقارير الموظفين', icon: <></>, roles: ['ADMIN', 'MONITOR', 'HR_COORDINATOR'], anyPermission: ['monitoring', 'mon_staff', 'staff_management'] },
       { hideForRoles: ['QUALITY_ENGINEER'], to: '/employee-dossier', label: '📂 ملف الموظف', icon: <></>, roles: ['ADMIN', 'MONITOR', 'HR_COORDINATOR'], anyPermission: ['monitoring', 'mon_staff', 'staff_management'] },
       { monitorMenuHide: true, hideForRoles: ['QUALITY_ENGINEER'], to: '/peer-voice', label: '🗣️ صوت الموظفين', icon: <></>, roles: ['ADMIN', 'MONITOR'], anyPermission: ['monitoring', 'auditing', 'mon_staff'] },
@@ -352,6 +352,8 @@ export const navItems: NavItem[] = [
       { to: '/achievements', label: '📋 الإنجازات', icon: <></>, roles: ['ADMIN'], hideForRoles: ['ADMIN', 'OWNER'] },
       // دليل الأدوار — يوضّح منو يوصل لوين، فمحله عند من يوزّع الصلاحيات
       { to: '/solar', label: '☀️ الطاقة الشمسية', icon: <></>, roles: ['ADMIN', 'OWNER', 'MONITOR', 'TECHNICIAN', 'SERVICE_MANAGER'], permission: 'solar_system' },
+      // (ل) 11-12 دازاي: استفسارات الطاقة الشمسية — نفس حارس /api/solar-inquiries (الخدمة: الصلاحيات الثلاث أو المدير)
+      { to: '/solar-inquiries', label: '📞 استفسارات الطاقة الشمسية', icon: <></>, roles: ['ADMIN', 'QUALITY_ENGINEER'], anyPermission: ['solar_inquiry', 'solar_inquiry_tech', 'quality_control'] },
           { monitorMenuHide: true, to: '/missions', label: 'تتبع المهام', icon: <></>, roles: ['ADMIN', 'HR_COORDINATOR', 'MONITOR'], permission: 'mission_tracking', hideForRoles: ['FINANCE'] },
           // الشكاوى ومتابعة الجودة جانن تحت «إدارة الموظفين» — وهنّ شغل
           // على الزبون مو على ملف الموظف. محلهن هنا مع باقي شغل العمل.
@@ -755,6 +757,8 @@ export const navItems: NavItem[] = [
       { to: '/gps/requests-hub', label: '📥 طلبات GPS', icon: <></>, permission: 'gps_system', hideForRoles: ['MONITOR', ...TECH_ROLES] },
       { to: '/gps/follow-up', label: '🔄 متابعة تجديد الاشتراكات', icon: <></>, permission: 'quality_control', hideForRoles: ['MONITOR'] },
       { to: '/solar', label: '☀️ الطاقة الشمسية', icon: <></>, roles: ['ADMIN', 'OWNER', 'MONITOR', 'TECHNICIAN', 'SERVICE_MANAGER'], permission: 'solar_system' },
+      // (ل) 11-12 دازاي: استفسارات الطاقة الشمسية — نفس حارس /api/solar-inquiries (الخدمة: الصلاحيات الثلاث أو المدير)
+      { to: '/solar-inquiries', label: '📞 استفسارات الطاقة الشمسية', icon: <></>, roles: ['ADMIN', 'QUALITY_ENGINEER'], anyPermission: ['solar_inquiry', 'solar_inquiry_tech', 'quality_control'] },
       { to: '/nav-svc-papers', label: '🧾 أوراق الخدمة', icon: <></>, divider: true, plain: true },
       { to: '/leader-invoices/new?service=1', label: '🛰️ فاتورة خدمة', icon: <></>, roles: ['ADMIN'], anyPermission: ['invoice_gps', 'invoice_dashcam'], hideForRoles: TECH_ROLES },
       { to: '/work-reports', label: '📝 تقرير خدمة', icon: <></>, roles: ['ADMIN'], anyPermission: ['invoice_gps', 'invoice_dashcam'], hideForRoles: TECH_ROLES },
@@ -851,7 +855,7 @@ export const navItems: NavItem[] = [
       { to: '/weekly-report', label: '📊 التقرير الأسبوعي', icon: <></>, roles: ['ADMIN'] },
       // (ع) 11-04: طلبات الموظفين للمدير — نفس حارس GET /api/manager-requests (ADMIN/OWNER)
       { to: '/manager-requests', label: '📨 طلبات للمدير', icon: <></>, roles: ['ADMIN'] },
-      { monitorMenuHide: true, hideForRoles: ['QUALITY_ENGINEER'], to: '/staff-score', label: '🏅 تقييم الموظفين', icon: <></>, roles: ['ADMIN', 'MONITOR'], anyPermission: ['monitoring', 'auditing', 'mon_staff'] },
+      { monitorMenuHide: true, hideForRoles: ['QUALITY_ENGINEER', 'ADMIN', 'OWNER'], to: '/staff-score', label: '🏆 تصنيف المدراء والموظفين', icon: <></>, roles: ['ADMIN', 'MONITOR'], anyPermission: ['monitoring', 'auditing', 'mon_staff'] },
       { hideForRoles: ['QUALITY_ENGINEER'], to: '/staff-reports', label: '🧾 تقارير الموظفين', icon: <></>, roles: ['ADMIN', 'MONITOR', 'HR_COORDINATOR'], anyPermission: ['monitoring', 'mon_staff', 'staff_management'] },
       { hideForRoles: ['QUALITY_ENGINEER'], to: '/employee-dossier', label: '📂 ملف الموظف', icon: <></>, roles: ['ADMIN', 'MONITOR', 'HR_COORDINATOR'], anyPermission: ['monitoring', 'mon_staff', 'staff_management'] },
       { monitorMenuHide: true, hideForRoles: ['QUALITY_ENGINEER'], to: '/peer-voice', label: '🗣️ صوت الموظفين', icon: <></>, roles: ['ADMIN', 'MONITOR'], anyPermission: ['monitoring', 'auditing', 'mon_staff'] },
@@ -1032,6 +1036,7 @@ const orgNavigationGroups = [
       '/gps/requests-hub',
       '/gps/follow-up',
       '/solar',
+      '/solar-inquiries',
       '/service-managers',
       '/network-prices',
       '/gps-install-costs',
@@ -1531,6 +1536,7 @@ const SELF_SCOPED: Record<string, RouteRule> = {
   // (ع) 10-13: «التقييم» انشال من قائمة المدير/المالك — صار جوّا إدارة الموظفين
   '/my-ranking': { roles: ['ADMIN'] },
   '/employee-stats': { roles: ['ADMIN'], anyPermission: ['employee_stats'] },
+  '/staff-numbers': { roles: ['ADMIN'], anyPermission: ['employee_stats'] },
   '/achievements': { roles: ['ADMIN', 'MONITOR'], anyPermission: ['monitoring', 'auditing', 'mon_attendance'] },
   '/kpi': { roles: ['ADMIN', 'MONITOR'], anyPermission: ['kpi_management'] },
   '/staff-requests': { roles: ['ADMIN', 'HR_COORDINATOR'], anyPermission: ['staff_requests'] },

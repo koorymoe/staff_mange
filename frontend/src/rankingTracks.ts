@@ -64,7 +64,9 @@ export const RANKING_FAMILIES: Family[] = [
   { label: 'الرقابة والتدقيق', icon: '👁️', roles: ['MONITOR'] },
   { label: 'تقنية المعلومات', icon: '💻', roles: ['IT_SUPPORT'] },
   { label: 'نظام GPS', icon: '📡', roles: ['GPS_ADMIN'] },
-  { label: 'المهندسون', icon: '📐', roles: ['ENGINEER', 'QUALITY_ENGINEER', 'PROJECT_MANAGER', 'DESIGNER'] },
+  // (ل) 11-12 دازاي: «المصمم چان يتحاسب على الحجوزات — كل واحد يتقيّم حسب شغله» — التصميم عائلة وحده
+  { label: 'المهندسون', icon: '📐', roles: ['ENGINEER', 'QUALITY_ENGINEER', 'PROJECT_MANAGER'] },
+  { label: 'التصميم', icon: '🎨', roles: ['DESIGNER'] },
   { label: 'الكوادر', icon: '👥', roles: ['HR_COORDINATOR'] },
 ]
 

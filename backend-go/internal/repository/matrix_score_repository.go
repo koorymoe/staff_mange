@@ -357,7 +357,8 @@ type ReliabilityFact struct {
 	HasLicense bool `db:"hasLicense"`
 }
 
-func (r *MatrixScoreRepository) ReliabilityFacts(from, to time.Time) (map[string]ReliabilityFact, error) {
+// employeeID فاضي = الكل؛ غير فاضي = هالموظف بس (بطاقة «تقييمي» ما تحسب الشركة كلها — 11-12 البطء).
+func (r *MatrixScoreRepository) ReliabilityFacts(from, to time.Time, employeeID string) (map[string]ReliabilityFact, error) {
 	type row struct {
 		ID string `db:"id"`
 		ReliabilityFact
@@ -379,7 +380,7 @@ func (r *MatrixScoreRepository) ReliabilityFacts(from, to time.Time) (map[string
 		   AND k."createdAt" >= ($1::timestamptz AT TIME ZONE 'UTC') AND k."createdAt" < ($2::timestamptz AT TIME ZONE 'UTC'))::int AS "kpiHits",
 		(SELECT count(*) FROM "EmployeeSkill" es WHERE es."employeeId" = e.id AND es."canPerform")::int AS skills,
 		e."hasDrivingLicense" AS "hasLicense"
-		FROM "Employee" e WHERE e.status = 'ACTIVE'`, from, to)
+		FROM "Employee" e WHERE e.status = 'ACTIVE' AND ($3 = '' OR e.id = $3)`, from, to, employeeID)
 	out := map[string]ReliabilityFact{}
 	for _, x := range rows {
 		out[x.ID] = x.ReliabilityFact
@@ -432,7 +433,7 @@ type NegligenceRow struct {
 func (r *MatrixScoreRepository) Negligence(since time.Time) ([]NegligenceRow, error) {
 	rows := []NegligenceRow{}
 	err := r.db.Select(&rows, `SELECT id, "employeeId", to_char(day, 'YYYY-MM-DD') AS day, detail, "compensatedAt", "createdAt"
-		FROM "EmployeeNegligence" WHERE kind = 'MISSED_RATINGS' AND "createdAt" >= $1`, since)
+		FROM "EmployeeNegligence" WHERE kind = 'MISSED_RATINGS' AND "voidedAt" IS NULL AND "createdAt" >= $1`, since)
 	return rows, err
 }
 
@@ -471,4 +472,27 @@ func (r *MatrixScoreRepository) DailyReportsOn(day time.Time) (map[string]bool, 
 	var since string
 	errlog.Err(r.db.Get(&since, `SELECT value FROM "OrgGovernorState" WHERE key = 'daily_report_since'`))
 	return out, since, nil
+}
+
+// DesignSectionRow قسم تصميم موكّل لمصمم بموعد.
+type DesignSectionRow struct {
+	ID          string     `db:"id"`
+	AssigneeID  string     `db:"assigneeId"`
+	Discipline  string     `db:"discipline"`
+	SetTitle    string     `db:"setTitle"`
+	Status      string     `db:"status"`
+	DueEnd      time.Time  `db:"dueEnd"`
+	SubmittedAt *time.Time `db:"submittedAt"`
+}
+
+// DesignSectionsDue (ل) 11-12: أقسام التصاميم الي موعدها بالفترة (أو تسلّمت بيها) — للتقييم.
+func (r *MatrixScoreRepository) DesignSectionsDue(from, to time.Time) ([]DesignSectionRow, error) {
+	rows := []DesignSectionRow{}
+	err := r.db.Select(&rows, `
+		SELECT s.id, s."assigneeId", s.discipline, COALESCE(d.title, '') AS "setTitle", s.status,
+		       ((s."dueDate" + 1)::timestamp AT TIME ZONE 'Asia/Baghdad') AS "dueEnd", s."submittedAt"
+		  FROM "DesignSection" s JOIN "DesignSet" d ON d.id = s."setId"
+		 WHERE s."assigneeId" IS NOT NULL AND s."dueDate" IS NOT NULL AND d."archivedAt" IS NULL
+		   AND ((s."dueDate" + 1)::timestamp AT TIME ZONE 'Asia/Baghdad') BETWEEN $1::timestamptz AND $2::timestamptz + interval '30 days'`, from, to)
+	return rows, err
 }

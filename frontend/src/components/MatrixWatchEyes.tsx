@@ -4,6 +4,7 @@ import { api, type MatrixEyesReport } from '../api'
 import MatrixNote from './MatrixNote'
 import { useSession, isAdminOrOwner } from '../session'
 import { swallow } from '../utils/swallow'
+import PctWhy from '../ui/PctWhy'
 
 // ═══ عيون الرقابة — المخزن، السيارات، رأي الزبائن، الآيتي، الطلبات المعلّقة ═══
 // طلب (ع) 10-05: «لازم اكو رقابه بكل مكان» و«تروح للمراقب ويا تحليل ماتركس».
@@ -85,11 +86,17 @@ export default function MatrixWatchEyes({ initialTab = 'REVENUE' }: { initialTab
 
       {tab === 'CUSTOMERS' && r.customers.length > 0 && (
         <div className="rounded-xl border border-slate-200 bg-white p-3">
-          <p className="mb-2 text-xs font-extrabold text-slate-700">رضا الزبائن عن كل موظف (آخر ٦٠ يوم){r.teamHappyPct != null && <span className="font-normal text-slate-500"> — الفريق {r.teamHappyPct}%</span>}</p>
+          <p className="mb-2 text-xs font-extrabold text-slate-700">رضا الزبائن عن كل موظف (آخر ٦٠ يوم){r.teamHappyPct != null && <span className="font-normal text-slate-500"> — الفريق <PctWhy title="رضا الزبائن عن الفريق" value={r.teamHappyPct}
+            parts={{ numLabel: 'متابعة الزبون بيها راضي', num: r.customers.reduce((a, c) => a + c.happy, 0), denLabel: 'متابعة (راضي + عنده ملاحظة)', den: r.customers.reduce((a, c) => a + c.happy + c.unhappy, 0) }}
+            meaning={<>مجموع كل الموظفين سوا. نقارن بيها كل موظف: إذا واحد أقل من الفريق بـ٢٠ نقطة أو أكثر (وعنده ٥ متابعات أو أكثر) يطلع تنبيه. الشكاوى ما تدخل بهاي النسبة.</>}
+            source={<>متابعات الجودة (اتصالات قسم الجودة بالزبون) على الحجوزات الي الموظف ليدرها أو بكادرها، بآخر ٦٠ يوم. «راضي» = تواصل وماكو مشكلة أو تقرير إيجابي؛ «عنده ملاحظة» = تواصل وبيه مشكلة، أو تقرير سلبي، أو الفحص طلّع الزبون صاحب حق.</>} /></span>}</p>
           <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
             {r.customers.map((c) => (
               <div key={c.employeeId} className="rounded-lg border border-slate-200 p-2 text-xs">
-                <div className="flex items-center justify-between"><b>{c.name}</b><b style={{ color: c.happyPct == null ? '#94a3b8' : c.happyPct >= 80 ? '#059669' : c.happyPct >= 60 ? '#d97706' : '#dc2626' }}>{c.happyPct == null ? '—' : `${c.happyPct}%`}</b></div>
+                <div className="flex items-center justify-between"><b>{c.name}</b><b style={{ color: c.happyPct == null ? '#94a3b8' : c.happyPct >= 80 ? '#059669' : c.happyPct >= 60 ? '#d97706' : '#dc2626' }}>{c.happyPct == null ? '—' : <PctWhy title={`رضا الزبائن عن ${c.name}`} value={c.happyPct}
+                  parts={{ numLabel: 'متابعة الزبون بيها راضي', num: c.happy, denLabel: 'متابعة (راضي + عنده ملاحظة)', den: c.happy + c.unhappy }}
+                  meaning={<>كل ما تعلى أحسن: ٨٠% فما فوق أخضر، ٦٠–٧٩ برتقالي، أقل أحمر. الشكاوى ({c.complaints}) تنعرض جوّه بس ما تدخل بالنسبة.{r.teamHappyPct != null ? ` الفريق كله ${r.teamHappyPct}%.` : ''}</>}
+                  source={<>متابعات الجودة (اتصالات قسم الجودة بالزبون) على الحجوزات الي الموظف ليدرها أو بكادرها، بآخر ٦٠ يوم. «راضي» = تواصل وماكو مشكلة أو تقرير إيجابي؛ «عنده ملاحظة» = تواصل وبيه مشكلة، أو تقرير سلبي، أو الفحص طلّع الزبون صاحب حق.</>} />}</b></div>
                 <p className="text-slate-500">{c.happy} راضي · {c.unhappy} عنده ملاحظة · {c.complaints} شكوى{c.avgRating != null ? ` · تقييم ${c.avgRating.toFixed(1)}` : ''}</p>
                 {c.notes.map((n, i) => <p key={i} className="text-slate-600">{n}</p>)}
               </div>

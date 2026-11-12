@@ -14,6 +14,8 @@ func init() {
 			{Name: "reason", Type: "text", NotNull: true, Default: "''::text"},
 			{Name: "compensatedAt", Type: "timestamp with time zone"},
 			{Name: "createdAt", Type: "timestamp with time zone", NotNull: true, Default: "now()"},
+			{Name: "voidedAt", Type: "timestamp with time zone"},
+			{Name: "voidNote", Type: "text"},
 		},
 		Constraints: []Constraint{
 			{Name: "EmployeeNegligence_employeeId_day_kind_key", Def: "UNIQUE (\"employeeId\", day, kind)"},

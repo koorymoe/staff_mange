@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { api, type BookingVisit } from '../api'
+import PctWhy from '../ui/PctWhy'
 
 // ═══ طلعات الحجز ═══
 //
@@ -59,7 +60,10 @@ export default function BookingVisits({ bookingId }: { bookingId: string }) {
                 طلعة {v.visitNumber}
               </span>
               <span className={`text-[11px] font-bold ${v.outcome === 'DONE' ? 'text-emerald-700' : 'text-amber-700'}`}>
-                {v.outcome === 'DONE' ? '🏁 خلّصت الحجز' : `⏳ إنجاز جزئي${v.percentDone != null ? ` — ${v.percentDone}%` : ''}`}
+                {v.outcome === 'DONE' ? '🏁 خلّصت الحجز' : <>⏳ إنجاز جزئي{v.percentDone != null && <> — <PctWhy title={`إنجاز الطلعة ${v.visitNumber}`} value={v.percentDone}
+                  formula={<>هاي النسبة ما ينحسبها النظام — الكادر كتبها بإيده بتقرير اليوم لمن سجّل طلعة {v.visitNumber} كإنجاز جزئي: <b>{v.percentDone}%</b> من الشغل خالص.</>}
+                  meaning={<>تقدير الكادر شكد خلص من شغل الحجز لحد هاي الطلعة. ١٠٠% يعني خلص؛ أقل يعني بعد يحتاج طلعة ثانية.</>}
+                  source={<>تقرير الإنجاز اليومي الي يكتبه الكادر للحجز (تقارير أيام الحجز)، ومنه تنسجل الطلعة.</>} /></>}</>}
               </span>
               <span className="text-[11px] text-slate-500">
                 📅 {new Date(v.occurredAt).toLocaleString('ar-IQ', {

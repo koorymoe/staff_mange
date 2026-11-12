@@ -9,6 +9,8 @@ export default function CrewRatingPrompt() {
   const [rows, setRows] = useState<PendingCrewRating[]>([])
   const [scores, setScores] = useState<Record<string, number>>({})
   const [notes, setNotes] = useState<Record<string, string>>({})
+  // (ل) 11-12: «يحتاج تدريب على…» — يروح لوحدة التدريب تدريب إلزامي (الماتشينغ)
+  const [train, setTrain] = useState<Record<string, string>>({})
   const [busy, setBusy] = useState<string | null>(null)
   const [err, setErr] = useState('')
 
@@ -17,7 +19,7 @@ export default function CrewRatingPrompt() {
   if (rows.length === 0) return null
 
   const save = async (b: PendingCrewRating) => {
-    const ratings = b.techs.map((t) => ({ technicianId: t.id, score: scores[b.bookingId + t.id] ?? 0, note: notes[b.bookingId + t.id] || undefined }))
+    const ratings = b.techs.map((t) => ({ technicianId: t.id, score: scores[b.bookingId + t.id] ?? 0, note: notes[b.bookingId + t.id] || undefined, needsTraining: train[b.bookingId + t.id]?.trim() || undefined }))
     if (ratings.some((r) => r.score < 1)) { setErr('قيّم كل فني (نجمة وحدة على الأقل).'); return }
     setBusy(b.bookingId); setErr('')
     try { await api.rateCrew(b.bookingId, ratings); window.dispatchEvent(new Event('matrix-refresh')); load() }
@@ -28,7 +30,7 @@ export default function CrewRatingPrompt() {
   return (
     <div dir="rtl" className="mb-4 rounded-2xl border border-amber-200 bg-amber-50/60 p-4">
       <h3 className="mb-2 text-sm font-extrabold text-[#0f2040]">⭐ قيّم الفنيين الي طلعوا وياك</h3>
-      <MatrixNote className="mb-3">تقييمك يبين بتقرير الفني بس، وما يصير بيه نقاط ولا غرامة. اكتب ملاحظة إذا أكو شي لازم ينعرف.</MatrixNote>
+      <MatrixNote className="mb-3">تقييمك يبين بتقرير الفني بس، وما يصير بيه نقاط ولا غرامة. اكتب ملاحظة إذا أكو شي لازم ينعرف. إذا الفني يحتاج تدريب اكتب على شنو — يروح لوحدة التدريب تدريب إلزامي (وكذلك تقييم نجمة أو نجمتين).</MatrixNote>
       {err && <p className="mb-2 text-xs text-red-600">{err}</p>}
       <div className="space-y-3">
         {rows.map((b) => (
@@ -47,6 +49,8 @@ export default function CrewRatingPrompt() {
                   </span>
                   <input value={notes[k] ?? ''} onChange={(e) => setNotes((s) => ({ ...s, [k]: e.target.value }))}
                     placeholder="ملاحظة (اختياري)" className="min-w-0 flex-1 rounded-lg border border-slate-200 px-2 py-1 text-xs" />
+                  <input value={train[k] ?? ''} onChange={(e) => setTrain((s) => ({ ...s, [k]: e.target.value }))} aria-label={`يحتاج تدريب — ${t.name}`}
+                    placeholder="يحتاج تدريب على… (اختياري)" className="min-w-0 flex-1 rounded-lg border border-red-200 px-2 py-1 text-xs" />
                 </div>
               )
             })}

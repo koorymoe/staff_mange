@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { api, type TodayBoardData, type FinanceSummary } from '../api'
 import EmployeeAvatar from './EmployeeAvatar'
+import PctWhy from '../ui/PctWhy'
 import { useSession } from '../session'
 import { canDrill, drillTo } from '../utils/drill'
 import { pollVisible } from '../utils/poll'
@@ -113,7 +114,12 @@ function MiniChart({ points }: { points: { day: string; count: number }[] }) {
           trendPct >= 0 ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-700'
         }`}>
           <span>{trendPct >= 0 ? '↗' : '↘'}</span>
-          <span>{trendPct >= 0 ? '+' : ''}{trendPct}٪</span>
+          <span>{trendPct >= 0 ? '+' : ''}<PctWhy suffix="٪" title="تغيّر الحجوزات الجديدة" value={trendPct}
+            formula={<>({secondHalf} حجز بآخر {n - half} يوم − {firstHalf} حجز بأول {half} يوم) ÷ {firstHalf} × ١٠٠ = {trendPct >= 0 ? '+' : ''}{trendPct}٪</>}
+            meaning={<>هل الحجوزات الجديدة دا تزيد لو تنقص: موجب يعني النص الثاني من الـ{n} يوم انسجل بيه حجوزات أكثر من النص الأول.</>}
+            source={<>الحجوزات الي انسجلت (تاريخ الإنشاء بتوقيت بغداد) بآخر {n} يوم، بلا المؤرشفة والي تنتظر حذف.</>}>
+            <ul className="text-xs">{points.map((p) => <li key={p.day}>{p.day}: {p.count}</li>)}</ul>
+          </PctWhy></span>
           <span className="font-normal text-slate-400">مقارنة بالفترة السابقة</span>
         </div>
       )}
@@ -202,7 +208,10 @@ export default function TodayBoard({ finance }: { finance?: FinanceSummary | nul
             هذا الأسبوع أصلاً. */}
         <div className="mb-2.5 grid grid-cols-1 gap-2.5 sm:grid-cols-2">
           <StatCard icon="📈" label="نجاح الأسبوع"
-            value={d.weekTotal > 0 ? `${Math.round((d.weekCompleted / d.weekTotal) * 100)}٪` : '—'}
+            value={d.weekTotal > 0 ? <PctWhy suffix="٪" title="نجاح الأسبوع"
+              parts={{ numLabel: 'حجز خلص', num: d.weekCompleted, denLabel: 'حجز انسجّل آخر ٧ أيام', den: d.weekTotal }}
+              meaning={<>من الحجوزات الي انسجلت آخر ٧ أيام، شكد منها صارت «مكتملة». كل ما تعلى أحسن — الحجوزات الي بعدها مفتوحة أو تأجلت أو انلغت تنزّلها.</>}
+              source={<>جدول الحجوزات: الحجوزات الي انسجلت آخر ٧ أيام (نفس قائمة «اضغط تشوف التفاصيل»)، والي حالتها «مكتمل» منها.</>} /> : '—'}
             tone="emerald" to={dl('week')}
             hint={d.weekTotal > 0 ? `خلص ${d.weekCompleted} من ${d.weekTotal} حجز انسجّل آخر ٧ أيام — اضغط تشوف التفاصيل` : 'ماكو حجوزات آخر ٧ أيام'} />
           {finance != null && (

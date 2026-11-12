@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { api, type MatrixDecisions } from '../api'
+import PctWhy from '../ui/PctWhy'
 import OwnerSwitch from '../components/OwnerSwitch'
 import MatrixGuideRules from '../components/MatrixGuideRules'
 import MatrixProposals from '../components/MatrixProposals'
@@ -50,7 +51,6 @@ const WHY_LABELS: Record<string, string> = {
   tool: 'الأداة', available: 'المتوفر', total: 'الكلي', submittedAt: 'رُفعت', days: 'الأيام',
 }
 
-const pct = (a: number, b: number) => (b > 0 ? `${Math.round((a / b) * 100)}٪` : '—')
 
 export default function MatrixDecisionsPage() {
   const [day, setDay] = useState(todayBaghdad())
@@ -210,17 +210,23 @@ export default function MatrixDecisionsPage() {
             <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
               {[
                 ['كل الأفعال', String(data.accuracy.actions)],
-                ['انحلت بعد التذكير', `${data.accuracy.resolved} (${pct(data.accuracy.resolved, data.accuracy.actions)})`],
+                ['انحلت بعد التذكير', <>{data.accuracy.resolved} (<PctWhy title="انحلت بعد التذكير" suffix="٪" parts={{ numLabel: 'فعل انحل', num: data.accuracy.resolved, denLabel: 'فعل سواه ماتركس', den: data.accuracy.actions }}
+                  meaning={<>شكد من تذكيرات ماتركس انحلت مشكلتها بعدها (انسجل إلها وقت حل). كل ما تعلى يعني تذكيراته بمحلها وتنفع.</>}
+                  source={<>جدول أفعال ماتركس (AiAction) — كل الأفعال الي سواها لحاله بآخر ٣٠ يوم.</>} />)</>],
                 ['صعدت إلك', String(data.accuracy.escalated)],
-                ['رفضتها', `${data.accuracy.rejected} (${pct(data.accuracy.rejected, data.accuracy.actions)})`],
-              ].map(([l, v]) => (
-                <div key={l} className="rounded-xl bg-slate-50 p-3"><p className="text-xs text-slate-500">{l}</p><p className="text-lg font-extrabold tabular-nums">{v}</p></div>
+                ['رفضتها', <>{data.accuracy.rejected} (<PctWhy title="الي رفضتها" suffix="٪" parts={{ numLabel: 'فعل رفضته («لا تسوي هذا»)', num: data.accuracy.rejected, denLabel: 'فعل سواه ماتركس', den: data.accuracy.actions }}
+                  meaning={<>شكد من أفعال ماتركس رجّعتها لأنها غلط. كل ما تنزل أحسن — يعني ماتركس يفتهم شغلك صح.</>}
+                  source={<>جدول أفعال ماتركس (AiAction) — كل الأفعال الي سواها لحاله بآخر ٣٠ يوم.</>} />)</>],
+              ].map(([l, v], i) => (
+                <div key={i} className="rounded-xl bg-slate-50 p-3"><p className="text-xs text-slate-500">{l}</p><p className="text-lg font-extrabold tabular-nums">{v}</p></div>
               ))}
             </div>
             <p className="mt-2 text-xs text-slate-600">
               ⏱️ توقّعات التأخير: {data.accuracy.delayPredicted} توقّع
               {data.accuracy.delayChecked > 0
-                ? <> · انفحص منها {data.accuracy.delayChecked} بعد ما خلصت، وصدق {data.accuracy.delayCorrect} ({pct(data.accuracy.delayCorrect, data.accuracy.delayChecked)})</>
+                ? <> · انفحص منها {data.accuracy.delayChecked} بعد ما خلصت، وصدق {data.accuracy.delayCorrect} (<PctWhy title="صدق توقعات التأخير" suffix="٪" parts={{ numLabel: 'توقّع صدق', num: data.accuracy.delayCorrect, denLabel: 'توقّع انفحص', den: data.accuracy.delayChecked }}
+                  meaning={<>ماتركس من يحذّر إن حجز راح يتأخر، يكتب شكد دقيقة متبقية. التوقّع «صدق» إذا الشغل الفعلي (من البدء للإنجاز) طلع أطول من هالدقائق. كل ما تعلى يعني تحذيراته موثوقة.</>}
+                  source={<>تحذيرات التأخير (DELAY_WARNING) بآخر ٣٠ يوم، مربوطة بالحجوزات الي إلها وقت بدء ووقت إنجاز مسجّل.</>} />)</>
                 : <> · بعد ماكو حجوزات خلصت حتى نقيس بيها — الرقم يطلع أول ما ينجزون.</>}
             </p>
           </section>

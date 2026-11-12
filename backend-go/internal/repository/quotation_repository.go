@@ -533,3 +533,76 @@ func (r *QuotationRepository) ClaimExpiringQuotations() ([]ExpiringQuotation, er
 		RETURNING id, "quotationNumber", "customerName", "createdByEmployeeId", "validUntil"`)
 	return rows, err
 }
+
+// ═══ بلاغ #33 (مؤمل 11-12): عرض انسوّى قبل ما الزبون يصعد مشروع — يرتبط بالمشروع بعدين ═══
+
+// LinkCandidate عرض بلا مشروع ينفع يرتبط.
+type LinkCandidate struct {
+	ID              string    `db:"id" json:"id"`
+	QuotationNumber string    `db:"quotationNumber" json:"quotationNumber"`
+	CustomerName    string    `db:"customerName" json:"customerName"`
+	CustomerPhone   *string   `db:"customerPhone" json:"customerPhone"`
+	NetTotal        float64   `db:"netTotal" json:"netTotal"`
+	CreatedAt       time.Time `db:"createdAt" json:"createdAt"`
+	Match           bool      `db:"match" json:"match"`
+}
+
+// ProjectBasics اسم ورقم زبون المشروع (nil إذا ما موجود).
+func (r *QuotationRepository) ProjectBasics(projectID string) (name string, phone string, ok bool) {
+	var row struct {
+		Name  string  `db:"name"`
+		Phone *string `db:"phone"`
+	}
+	if err := r.db.Get(&row, `SELECT name, phone FROM "Project" WHERE id = $1`, projectID); err != nil {
+		return "", "", false
+	}
+	if row.Phone != nil {
+		phone = *row.Phone
+	}
+	return row.Name, phone, true
+}
+
+// LinkCandidates عروض بلا مشروع: نفس الزبون (رقم/اسم) أولاً، ويا بحث برقم العرض أو الاسم.
+// ownerID != "" = يشوف عروضه هو بس.
+func (r *QuotationRepository) LinkCandidates(name, phone, q, ownerID string) ([]LinkCandidate, error) {
+	rows := []LinkCandidate{}
+	digits := func(s string) string {
+		out := []rune{}
+		for _, c := range s {
+			if c >= '0' && c <= '9' {
+				out = append(out, c)
+			}
+		}
+		s = string(out)
+		if len(s) > 10 {
+			s = s[len(s)-10:]
+		}
+		return s
+	}
+	ph := digits(phone)
+	err := r.db.Select(&rows, `
+		SELECT id, "quotationNumber", "customerName", "customerPhone", "netTotal", "createdAt",
+		       ((length($2) >= 7 AND right(regexp_replace(COALESCE("customerPhone",''), '\D', '', 'g'), 10) = $2)
+		        OR lower(trim("customerName")) = lower(trim($1))) AS match
+		  FROM "Quotation"
+		 WHERE "projectId" IS NULL
+		   AND ($4 = '' OR "createdByEmployeeId" = $4)
+		   AND ( (length($2) >= 7 AND right(regexp_replace(COALESCE("customerPhone",''), '\D', '', 'g'), 10) = $2)
+		      OR lower(trim("customerName")) = lower(trim($1))
+		      OR ($3 <> '' AND ("quotationNumber" ILIKE '%' || $3 || '%' OR "customerName" ILIKE '%' || $3 || '%')) )
+		 ORDER BY match DESC, "createdAt" DESC
+		 LIMIT 30`, name, ph, q, ownerID)
+	return rows, err
+}
+
+// LinkToProject يربط العرض بالمشروع بس إذا العرض بعده بلا مشروع والمشروع بلا عرض.
+func (r *QuotationRepository) LinkToProject(quotationID, projectID string) (bool, error) {
+	res, err := r.db.Exec(`UPDATE "Quotation" SET "projectId" = $2
+		WHERE id = $1 AND "projectId" IS NULL
+		  AND NOT EXISTS (SELECT 1 FROM "Quotation" WHERE "projectId" = $2)`, quotationID, projectID)
+	if err != nil {
+		return false, err
+	}
+	n, _ := res.RowsAffected()
+	return n == 1, nil
+}

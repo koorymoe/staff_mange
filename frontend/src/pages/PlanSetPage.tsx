@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
-import { api, apiRequest, fileUrl } from '../api'
+import { api, apiRequest, ensureFileToken, fileUrl, thumbUrl } from '../api'
 import { useSession } from '../session'
 import { buildPlanSetHtml, isImageFile, type PlanPrintQuote } from '../utils/planSetPrint'
 import { printProjectQuote } from '../utils/projectQuotePrint'
 import { ArtCrop, IconCity, IconFolder, IconPdf, IconUpload } from './design/planArt'
-import type { PlanMeta, PlanSetDetail, PlanSetRow } from './design/planTypes'
+import type { PlanFileRow, PlanMeta, PlanSetDetail, PlanSetRow } from './design/planTypes'
+import PlanSheetEditor from './design/PlanSheetEditor'
 
 // ═══ 📐 سيت واحد — (ك) 11-10 بطلب دازاي ═══
 // «تختار الي تريده وتسوي ابلود وترفع صورة أو ملف للمخطط… ينحفظ بالنظام… تسوي تنزيل
@@ -27,6 +28,8 @@ export default function PlanSetPage() {
   const [tplDetail, setTplDetail] = useState<PlanSetDetail | null>(null)
   const [copySecs, setCopySecs] = useState<Set<number>>(new Set())
   const [msg, setMsg] = useState('')
+  // (ل) 11-12: فورما المخطط
+  const [sheetFor, setSheetFor] = useState<{ file: PlanFileRow; typeName: string } | null>(null)
   const { employee, permissions } = useSession()
   const [meta, setMeta] = useState<PlanMeta | null>(null)
   const [d, setD] = useState<PlanSetDetail | null>(null)
@@ -40,7 +43,8 @@ export default function PlanSetPage() {
 
   useEffect(() => {
     let alive = true
-    Promise.all([apiRequest<PlanMeta>('/plan-sets/meta'), apiRequest<PlanSetDetail>(`/plan-sets/${id}`)])
+    // (ل) 11-11: وسم الملفات قبل الرسم — بدونه رابط الصورة يطلع بلا ?ft والسيرفر يرفضه (صورة مكسورة)
+    Promise.all([apiRequest<PlanMeta>('/plan-sets/meta'), apiRequest<PlanSetDetail>(`/plan-sets/${id}`), ensureFileToken()])
       .then(([m, s]) => { if (alive) { setMeta(m); setD(s) } })
       .catch((e) => { if (alive) setErr(e instanceof Error ? e.message : 'تعذر') })
     return () => { alive = false }
@@ -253,10 +257,12 @@ export default function PlanSetPage() {
                       {fs.map((f) => (
                         <div key={f.id} className="overflow-hidden rounded-lg border border-slate-200 bg-white">
                           <a href={fileUrl(f.fileKey)} target="_blank" rel="noreferrer" className="block h-20 bg-slate-50">
-                            {isImageFile(f) ? <img src={fileUrl(f.fileKey)} alt="" className="h-full w-full object-cover" /> : <span className="grid h-full place-items-center text-xs font-bold text-brand-700">{f.fileType === 'application/pdf' ? '📄 PDF' : '📐 DWG'}</span>}
+                            {isImageFile(f) ? <img loading="lazy" decoding="async" src={thumbUrl(f.fileKey, 320)} alt="" className="h-full w-full object-cover" /> : <span className="grid h-full place-items-center text-xs font-bold text-brand-700">{f.fileType === 'application/pdf' ? '📄 PDF' : '📐 DWG'}</span>}
                           </a>
                           <div className="flex items-center justify-between gap-1 p-1.5 text-[11px]">
                             <span className="truncate text-slate-700" title={f.title}>{f.title}</span>
+                            {isImageFile(f) && !locked && <button type="button" onClick={() => setSheetFor({ file: f, typeName: t.name })} title="لوغو، اسم المخطط، ملاحظات، سكيل، تاريخ"
+                              className={`shrink-0 font-bold ${f.sheetName || f.sheetNotes || f.sheetScale ? 'text-emerald-700' : 'text-amber-600'}`}>🗂️ الفورما</button>}
                             {d.canManage && !locked && <button type="button" disabled={busy} onClick={() => void run(() => apiRequest(`/plan-files/${f.id}`, { method: 'DELETE' }))} className="shrink-0 text-red-600">شيل</button>}
                           </div>
                         </div>
@@ -269,6 +275,7 @@ export default function PlanSetPage() {
           </div>
         </div>
       )}
+      {sheetFor && <PlanSheetEditor file={sheetFor.file} typeName={sheetFor.typeName} onClose={() => setSheetFor(null)} onSaved={() => { setSheetFor(null); setReload((n) => n + 1) }} />}
     </div>
   )
 }

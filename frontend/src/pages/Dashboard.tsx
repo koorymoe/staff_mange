@@ -7,6 +7,7 @@ import MyScoreCard from '../components/MyScoreCard'
 import { Navigate, useNavigate } from 'react-router-dom'
 import MyFundBalance from '../components/MyFundBalance'
 import TodayBoard from '../components/TodayBoard'
+import PctWhy from '../ui/PctWhy'
 import ShiftEndCard from '../components/ShiftEndCard'
 import { api, API_URL } from '../api'
 import type { Booking, Expense, StaffRequest, LeaveRequest, InventoryCheck, FinanceSummary, DailyAuditReport, TodayPulse, Employee } from '../api'
@@ -1528,10 +1529,10 @@ function PulseCard({
   const t = active ? tones[tone] : { ring: 'border-slate-200', text: 'text-slate-500', bg: 'bg-white' }
 
   // فرق اليوم عن أمس — الاتجاه يفيد أكثر من الرقم لحاله
-  let delta: { text: string; up: boolean } | null = null
+  let delta: { pct: number; up: boolean } | null = null
   if (compare !== undefined && compare > 0) {
     const diff = Math.round(((value - compare) / compare) * 100)
-    if (diff !== 0) delta = { text: `${Math.abs(diff)}٪ عن ${compareLabel}`, up: diff > 0 }
+    if (diff !== 0) delta = { pct: Math.abs(diff), up: diff > 0 }
   }
 
   return (
@@ -1547,7 +1548,12 @@ function PulseCard({
       {hint && <p className="mt-0.5 text-[11px] text-slate-500">{hint}</p>}
       {delta && (
         <p className={`mt-0.5 text-[11px] font-bold ${delta.up ? 'text-emerald-600' : 'text-slate-500'}`}>
-          {delta.up ? '▲' : '▼'} {delta.text}
+          {delta.up ? '▲' : '▼'}{' '}
+          <PctWhy suffix="٪" title={`${label} مقارنة بـ${compareLabel}`} value={delta.pct}
+            formula={<>({value} {label} − {compare} {compareLabel}) ÷ {compare} × ١٠٠ = {delta.up ? '+' : '−'}{delta.pct}٪</>}
+            meaning={<>شكد زاد أو نقص الرقم عن {compareLabel}. ▲ يعني أكثر، ▼ يعني أقل. ما تنعرض إذا {compareLabel} كان صفر أو الرقمين متساويين.</>}
+            source={<>{hint ?? `نفس عدّاد «${label}»`} — نفس العدّ بس ليوم {compareLabel} (المواعيد بتوقيت بغداد).</>} />
+          {' '}عن {compareLabel}
         </p>
       )}
     </button>

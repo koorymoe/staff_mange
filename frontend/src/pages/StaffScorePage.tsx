@@ -1,5 +1,5 @@
 import DisciplineBox from '../components/DisciplineBox'
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useState, type ReactNode } from 'react'
 import { api, type StaffScore, type StaffScoreBoard, type StaffScoreDetail } from '../api'
 import MatrixNote from '../components/MatrixNote'
 import OwnerSwitch from '../components/OwnerSwitch'
@@ -9,6 +9,7 @@ import { useSession, isAdminOrOwner } from '../session'
 import StaffPointsBoard from '../components/StaffPointsBoard'
 import { askInput } from '../ui/dialogs'
 import { swallow } from '../utils/swallow'
+import PctWhy from '../ui/PctWhy'
 
 // ═══ تقييم الموظفين — قرار (ع) 10-05 ═══
 // النهائي = ٦٠٪ ماتركس (نقاط كل حجز ويوم دوام ومهمة ومشروع) + ٤٠٪ البشر
@@ -37,6 +38,42 @@ function ScoreBadge({ v, big }: { v: number | null; big?: boolean }) {
   return <b className={big ? 'text-3xl' : 'text-lg'} style={{ color: tone(v) }}>{pct(v)}</b>
 }
 
+const r1 = (v: number | null | undefined) => (v == null ? '—' : Math.round(v * 10) / 10)
+const SCORE_SRC = <>نقاط ماتركس للموظف بهذا الشهر (كل حجز ويوم دوام ومهمة ومشروع وطلب مخزن — كل نقطة وياها سببها بالقائمة تحت)، وتقييمات البشر بالنجوم (الليدر، الإداري، المراقب، الجودة).</>
+
+// نفس شكل ScoreBadge بس الرقم ينضغط ويطلّع منين جا.
+function WhyBadge({ d, kind, big }: { d: StaffScoreDetail; kind: 'final' | 'matrix' | 'human' | 'reliability'; big?: boolean }) {
+  const v = kind === 'final' ? d.final : kind === 'matrix' ? d.matrixPct : kind === 'human' ? d.humanPct : d.reliability
+  const cls = big ? 'text-3xl' : 'text-lg'
+  if (v == null) return <ScoreBadge v={null} big={big} />
+  const disc = d.discipline?.score
+  let formula: ReactNode
+  let meaning: ReactNode
+  let title: string
+  if (kind === 'matrix') {
+    title = 'رقم ماتركس'
+    formula = <>أخذ {d.earned} نقطة من أصل {d.max} نقطة ممكنة → {d.earned} ÷ {d.max} × 100 = <b>{pct(v)}</b></>
+    meaning = <>شكد أخذ من النقاط الي جان يگدر ياخذها من شغله الفعلي. كل قاعدة ما التزم بيها تنزّل النقاط (شوف «أكثر شي نزّل تقييمه»). وزنه ٦٠٪ من النهائي.</>
+  } else if (kind === 'human') {
+    title = 'رقم البشر'
+    formula = <>معدل نجومه {r1(d.humanAvg)}★ من {d.humanCount} تقييم، والنجمة = 20 → {r1(d.humanAvg)} × 20 = <b>{pct(v)}</b></>
+    meaning = <>شلون يشوفوه الي يقيّموه (من 5 نجوم). 5★ = 100. وزنه ٤٠٪ من النهائي.</>
+  } else if (kind === 'reliability') {
+    title = 'الاعتمادية'
+    formula = <>معدل {d.reliabilityParts.length} أجزاء (كل جزء من 100): {d.reliabilityParts.map((p) => `${p.label} ${Math.round(p.pct)}`).join(' + ')} ÷ {d.reliabilityParts.length} = <b>{pct(v)}</b></>
+    meaning = <>رقم منفصل عن التقييم: هل تعتمد عليه؟ الحضور والجرد والورق والمهام نسبة من نقاط ماتركس، والشكاوى تنزّل 25 لكل شكوى، والإجازات 10 لكل يوم فوق يومين، والمشاكل ويا الزملاء وضياع العدّة 25 لكل وحدة، ونقاط الـKPI 20 لكل نقطة.</>
+  } else {
+    title = 'التقييم النهائي'
+    const base = d.matrixPct != null && d.humanPct != null
+      ? <>(٦٠٪ × ماتركس {r1(d.matrixPct)}) + (٤٠٪ × البشر {r1(d.humanPct)}) = {r1(0.6 * d.matrixPct + 0.4 * d.humanPct)}</>
+      : d.matrixPct != null ? <>ماكو تقييم بشر بعد، فناخذ ماتركس بس = {r1(d.matrixPct)}</> : <>ماكو نقاط ماتركس، فناخذ البشر بس = {r1(d.humanPct)}</>
+    formula = <>{base}{disc != null && <><br />وبعدها الانضباط ياخذ ١٥٪: (٨٥٪ × الرقم فوگ) + (١٥٪ × الانضباط {r1(disc)})</>} = <b>{pct(v)}</b></>
+    meaning = <>درجة تقييم الموظف بهذا الشهر. 80 وفوق أخضر، 60–80 أصفر، أقل أحمر. تصعد إذا أخذ نقاط ماتركس كاملة ونجوم عالية وحضر بوقته.</>
+  }
+  return <b className={cls} style={{ color: tone(v) }}><PctWhy title={title} value={Math.round(v)} formula={formula} meaning={meaning}
+    source={kind === 'reliability' ? <>نقاط ماتركس للحضور والجرد والورق والمهام، وشكاوى الزبائن، والإجازات، والمشاكل الوظيفية، وضياع العدّة، ونقاط الـKPI لهذا الشهر.</> : SCORE_SRC} /></b>
+}
+
 export function ScoreBreakdown({ d, admin, onChange }: { d: StaffScoreDetail; admin?: boolean; onChange?: () => void }) {
   const [all, setAll] = useState(false)
   const cancel = async (id: string) => {
@@ -50,18 +87,21 @@ export function ScoreBreakdown({ d, admin, onChange }: { d: StaffScoreDetail; ad
   return (
     <div className="space-y-3">
       <div className="grid grid-cols-3 gap-2 text-center">
-        <div className="rounded-xl bg-slate-50 p-2"><p className="text-[11px] text-slate-500">النهائي</p><ScoreBadge v={d.final} big /></div>
-        <div className="rounded-xl bg-violet-50 p-2"><p className="text-[11px] text-slate-500">ماتركس (٦٠٪)</p><ScoreBadge v={d.matrixPct} /><p className="text-[11px] text-slate-500">{d.earned} من {d.max} نقطة</p></div>
-        <div className="rounded-xl bg-amber-50 p-2"><p className="text-[11px] text-slate-500">البشر (٤٠٪)</p><ScoreBadge v={d.humanPct} /><p className="text-[11px] text-slate-500">{d.humanCount ? `${d.humanAvg?.toFixed(1)}★ من ${d.humanCount} تقييم` : 'محد قيّمه بعد'}</p></div>
+        <div className="rounded-xl bg-slate-50 p-2"><p className="text-[11px] text-slate-500">النهائي</p><WhyBadge d={d} kind="final" big /></div>
+        <div className="rounded-xl bg-violet-50 p-2"><p className="text-[11px] text-slate-500">ماتركس (٦٠٪)</p><WhyBadge d={d} kind="matrix" /><p className="text-[11px] text-slate-500">{d.earned} من {d.max} نقطة</p></div>
+        <div className="rounded-xl bg-amber-50 p-2"><p className="text-[11px] text-slate-500">البشر (٤٠٪)</p><WhyBadge d={d} kind="human" /><p className="text-[11px] text-slate-500">{d.humanCount ? `${d.humanAvg?.toFixed(1)}★ من ${d.humanCount} تقييم` : 'محد قيّمه بعد'}</p></div>
       </div>
       {d.discipline && <DisciplineBox d={d.discipline} />}
       {d.reliabilityParts.length > 0 && (
         <div className="rounded-xl border border-sky-200 bg-sky-50/50 p-2">
-          <p className="mb-1 flex items-center justify-between text-xs font-extrabold text-sky-900"><span>🛡️ الاعتمادية (رقم منفصل، مو داخل التقييم)</span><ScoreBadge v={d.reliability} /></p>
+          <p className="mb-1 flex items-center justify-between text-xs font-extrabold text-sky-900"><span>🛡️ الاعتمادية (رقم منفصل، مو داخل التقييم)</span><WhyBadge d={d} kind="reliability" /></p>
           <div className="grid gap-1 sm:grid-cols-2">
             {d.reliabilityParts.map((p) => (
               <p key={p.key} className="flex items-center justify-between gap-2 rounded-lg bg-white px-2 py-1 text-xs">
-                <span>{p.label} <span className="text-slate-400">· {p.detail}</span></span><b style={{ color: tone(p.pct) }}>{Math.round(p.pct)}%</b>
+                <span>{p.label} <span className="text-slate-400">· {p.detail}</span></span><b style={{ color: tone(p.pct) }}><PctWhy title={p.label} value={Math.round(p.pct)}
+                  formula={<>{p.detail} → <b>{Math.round(p.pct)}%</b></>}
+                  meaning={<>جزء من الاعتمادية (من 100). {p.key === 'COMPLAINTS' ? 'كل شكوى زبون تنزّل 25.' : p.key === 'LEAVES' ? 'يومين إجازة بالشهر طبيعي، وكل يوم فوقهن ينزّل 10.' : p.key === 'PEERS' || p.key === 'TOOLS' ? 'كل وحدة تنزّل 25.' : p.key === 'KPI' ? 'كل نقطة KPI عليه تنزّل 20.' : 'النقاط الي أخذها من النقاط الممكنة بهذا البند.'}</>}
+                  source={<>{p.key === 'COMPLAINTS' ? 'شكاوى الزبائن المسجّلة عليه بهذا الشهر.' : p.key === 'LEAVES' ? 'الإجازات والغيابات المسجّلة إله بهذا الشهر.' : p.key === 'PEERS' ? 'المشاكل الوظيفية المسجّلة عليه.' : p.key === 'TOOLS' ? 'سجل العدّة الي ضاعت أو تلفت.' : p.key === 'KPI' ? 'نقاط الـKPI المسجّلة عليه.' : 'نقاط ماتركس لهذا البند بهذا الشهر.'}</>} /></b>
               </p>
             ))}
           </div>

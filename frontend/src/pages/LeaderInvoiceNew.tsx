@@ -19,8 +19,6 @@ import {
 } from '../api'
 import { readMoney } from '../utils/money'
 
-const fmtServiceTime = (v?: string | null) =>
-  v ? new Date(v).toLocaleString('en-GB', { timeZone: 'Asia/Baghdad', hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' }) : '—'
 import EntityIdentity from '../components/EntityIdentity'
 import { loadFailed } from '../netErrors'
 import { swallow } from '../utils/swallow'
@@ -169,8 +167,6 @@ export default function LeaderInvoiceNew({ initialMode, handoverOnly = false }: 
     ? completedBookings
     : completedBookings.filter((b) =>
       internalMode ? b.bookingType === 'INTERNAL' : b.bookingType !== 'INTERNAL')
-  // حجز فاتورة الخدمة — منه وقت البداية والنهاية (دازاي 10-31)
-  const serviceBooking = serviceMode ? completedBookings.find((b) => b.id === selectedBookingId) : undefined
   const internalBooking = completedBookings.find(
     (b) => b.id === selectedBookingId && b.bookingType === 'INTERNAL')
   // (ع) 10-16: حجز الديكور فاتورته من جدول أسعار الديكور — شاشة خاصة
@@ -1079,13 +1075,7 @@ export default function LeaderInvoiceNew({ initialMode, handoverOnly = false }: 
                   placeholder="شنو انركّب بالضبط"
                   className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm outline-none focus:border-sky-500" />
               </div>
-              {serviceBooking && (
-                <div className="rounded-xl border border-sky-200 bg-white px-3 py-2 text-xs text-slate-700 sm:col-span-3">
-                  🕘 وقت الشغل من الحجز: البداية <b dir="ltr">{fmtServiceTime(serviceBooking.startedAt || serviceBooking.arrivedAt)}</b>
-                  {' '}← النهاية <b dir="ltr">{fmtServiceTime(serviceBooking.completedAt)}</b>
-                  <span className="block text-[10px] text-slate-500">ينحفظن ويا الفاتورة تلقائياً من الحجز.</span>
-                </div>
-              )}
+              {/* بلاغ #34 (مؤمل 11-12): وقت الشغل انتقل لتقرير الخدمة (يتعبّى من الحجز) — ما يطلع هنا */}
               <div className="sm:col-span-3">
                 <div className="mb-1 flex items-center justify-between">
                   <label className="text-xs font-bold text-slate-600">➕ الإضافات (مثلاً كيبل إضافي)</label>

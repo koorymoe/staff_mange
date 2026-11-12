@@ -5,6 +5,7 @@ import { loadFailed } from '../netErrors'
 import { hms, todayBaghdad as today } from '../utils/format'
 import { card } from '../ui/classes'
 import { askConfirm } from '../ui/dialogs'
+import PctWhy from '../ui/PctWhy'
 
 // ═══ ساعات العمل من البيت ═══
 // صلاحيتان:
@@ -476,7 +477,12 @@ function OwnerHistory() {
                     <td className="p-2 text-center">{r.days}</td>
                     <td className="p-2 text-center font-mono" dir="ltr">{hms(r.seconds)}</td>
                     <td className="p-2 text-center">{r.targetHours ? `${r.targetHours} ساعة` : '—'}</td>
-                    <td className={`p-2 text-center font-bold ${pct === null ? '' : pct >= 100 ? 'text-emerald-700' : pct >= 70 ? 'text-amber-700' : 'text-red-700'}`}>{pct === null ? '—' : `${pct}٪`}</td>
+                    <td className={`p-2 text-center font-bold ${pct === null ? '' : pct >= 100 ? 'text-emerald-700' : pct >= 70 ? 'text-amber-700' : 'text-red-700'}`}>{pct === null ? '—' : (
+                      <PctWhy title={`إنجاز ساعات ${r.name}`} value={pct} suffix="٪"
+                        formula={<>اشتغل {hms(r.seconds)} من البيت بـ{monthAr(cur)}، والمطلوب {r.targetHours} ساعة ({hms(target)}) → {hms(r.seconds)} ÷ {hms(target)} × 100 = <b>{pct}٪</b></>}
+                        meaning={<>شكد كمّل من الساعات المطلوبة منه بهذا الشهر. 100٪ وفوق أخضر (كمّل)، من 70٪ أصفر، أقل أحمر. المستحق ينحسب على الساعات لحد المطلوب بس.</>}
+                        source={<>جلسات الدوام من البيت المسجّلة للموظف بهذا الشهر (التايمر)، والساعات المطلوبة من خطة الدوام من البيت المكتوبة إله.</>} />
+                    )}</td>
                     <td className="p-2 text-center">{pay === null ? '—' : iqd(pay)}</td>
                   </tr>
                 )

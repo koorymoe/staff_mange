@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { api } from '../api'
+import PctWhy from '../ui/PctWhy'
 import PageHeader from '../components/PageHeader'
 import { dayBaghdad } from '../utils/format'
 
@@ -80,7 +81,9 @@ export default function LateAuditPage() {
           <div className="rounded-2xl bg-white p-4 shadow-sm">
             <p className="text-sm text-slate-500">المتأخرات</p>
             <p className="text-3xl font-black text-red-600">{all.length}<span className="text-base font-bold text-slate-400"> من {data.total}</span></p>
-            <p className="text-xs text-slate-500">{data.total ? Math.round((all.length / data.total) * 100) : 0}٪ من حجوزات الفترة · معدل التأخير {avg} يوم</p>
+            <p className="text-xs text-slate-500"><PctWhy title="نسبة المتأخرات" suffix="٪" parts={{ numLabel: 'حجز متأخر', num: all.length, denLabel: 'حجز موعده بالفترة', den: data.total }}
+              meaning={<>شكد من حجوزات الفترة تأخرت. المتأخر = خلص بعد موعده بيومين أو أكثر، أو بعده مفتوح وعدّى على موعده يومين أو أكثر. كل ما تنزل أحسن. الحجوزات الي بالانتظار (الزبون ما رد / يقرر) ما تنحسب متأخرة.</>}
+              source={<>جدول الحجوزات: كل حجز موعده بين {from} و{to}، بلا الملغية والمؤرشفة والداخلية. معدل التأخير {avg} يوم = مجموع أيام التأخير ÷ عدد المتأخرات.</>} /> من حجوزات الفترة · معدل التأخير {avg} يوم</p>
           </div>
           <div className="rounded-2xl bg-white p-4 shadow-sm lg:col-span-2">
             <p className="mb-1 text-sm font-bold text-slate-600">ليش تأخرت؟</p>

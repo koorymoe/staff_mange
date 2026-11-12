@@ -7,6 +7,7 @@ import { askInput } from '../../ui/dialogs'
 import { type Project, type Stats, STAGES, nextProjectStage, useProjectWorkTypes, STAGE_CARDS, PAGE, useMonitorWatch, WATCH_LABEL, useMediaOpen, restoreRejected, useCanPurge, purgeRejected } from './shared'
 import { ContractModal, MediaTransferModal } from './modals'
 import { Info } from './ui'
+import LinkQuotationModal from './LinkQuotationModal'
 
 export function MainView(props: {
   projects: Project[]
@@ -142,6 +143,7 @@ export function ProjectCard({ p, canManage, onEdit, onMove, onReport, onDelete, 
   const [showContract, setShowContract] = useState(false)
   const [showMedia, setShowMedia] = useState(false)
   const [showPay, setShowPay] = useState(false)
+  const [showLinkQ, setShowLinkQ] = useState(false)
   const inMedia = useMediaOpen().has(p.id)
   const watch = useMonitorWatch()[p.id]
 
@@ -247,6 +249,13 @@ export function ProjectCard({ p, canManage, onEdit, onMove, onReport, onDelete, 
               🧾 عرض السعر
             </button>
           )}
+          {/* بلاغ #33: عرض انسوّى قبل ما الزبون يصير مشروع — يرتبط هنا */}
+          {canManage && (p.stage.includes('كشف') || p.stage.includes('سعر')) && (
+            <button onClick={() => setShowLinkQ(true)}
+              className="text-sm px-3 py-1.5 rounded-lg border border-cyan-600 text-cyan-700 font-medium hover:bg-cyan-50">
+              🔗 ربط عرض موجود
+            </button>
+          )}
           {canManage && (isContractStage || p.hasContract) && (
             <button onClick={() => setShowContract(true)}
               className="text-sm px-3 py-1.5 rounded-lg bg-purple-600 text-white font-medium hover:brightness-110">
@@ -300,6 +309,7 @@ export function ProjectCard({ p, canManage, onEdit, onMove, onReport, onDelete, 
       {showContract && (
         <ContractModal project={p} onClose={() => setShowContract(false)} onSaved={() => { setShowContract(false); onRefresh() }} />
       )}
+      {showLinkQ && <LinkQuotationModal project={p} onClose={() => setShowLinkQ(false)} onLinked={() => { setShowLinkQ(false); onRefresh() }} />}
       {showPay && <ProjectPaymentsModal projectId={p.id} title={p.name} onClose={() => setShowPay(false)} />}
       {showMedia && (
         <MediaTransferModal project={p} onClose={() => setShowMedia(false)} onSaved={() => { setShowMedia(false); onRefresh() }} />

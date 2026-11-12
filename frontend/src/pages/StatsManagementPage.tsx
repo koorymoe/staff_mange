@@ -1,13 +1,11 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { api, type DailyStats, type WeeklyStats, type Stats, type InternalWorksReport } from '../api'
-import EmployeeMonthlyStatsPage from './EmployeeMonthlyStatsPage'
-import { useLocation } from 'react-router-dom'
 import MonthCompare from '../components/MonthCompare'
 import BookingCodeChip from '../components/BookingCodeChip'
 import ProjectStatsBoard from '../components/ProjectStatsBoard'
-import StatsPage from './StatsPage'
 import RoleSplit, { MiniMetric, SummaryCard } from '../components/RoleSplit'
 import { numIQ as fmt } from '../utils/format'
+import PctWhy from '../ui/PctWhy'
 
 const PRIMARY = '#1a237e'
 // ⚠️ نسخة **النص** تنقلب بالوضع الليلي، والأصل يبقى للأسطح:
@@ -26,7 +24,7 @@ function todayStr() {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
 
-function StatCard({ label, value }: { label: string; value: string | number }) {
+function StatCard({ label, value }: { label: string; value: ReactNode }) {
   return <SummaryCard label={label} value={value} />
 }
 
@@ -220,41 +218,62 @@ function monthStr() {
  * أكثر خدمة طلبها الزبائن — انتقلت لهنا من صفحة إحصائيات الموظفين،
  * لأن مكانها الصحيح إدارة الإحصائيات.
  */
+type SvcRow = Stats['serviceBreakdown'][number]
+function SvcBars({ rows, val, total }: { rows: SvcRow[]; val: (s: SvcRow) => number; total: number }) {
+  const max = rows.length ? val(rows[0]) : 1
+  return (
+    <div>
+      {rows.map((s, i) => (
+        <div key={s.serviceId || i} className="mb-2.5" data-testid="svc-row">
+          <div className="flex items-center gap-3">
+            <span className="w-6 text-center text-[13px] font-bold" style={{ color: i < 3 ? GOLD_TEXT : 'var(--t-faint)' }}>{i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : i + 1}</span>
+            <span style={{ fontSize: '13px', width: '140px', color: 'var(--t-body)' }}>{s.name}</span>
+            <div style={{ flex: 1, height: '20px', background: 'var(--sf-sunken)', borderRadius: '10px', overflow: 'hidden' }}>
+              <div style={{ height: '100%', width: `${(val(s) / (max || 1)) * 100}%`, background: PRIMARY, borderRadius: '10px' }} />
+            </div>
+            <span style={{ fontSize: '13px', fontWeight: 'bold', width: '44px', color: PRIMARY_TEXT }}>{val(s)}</span>
+            <span className="w-12 text-[11px] text-t-faint">
+              <PctWhy title={`حصة ${s.name}`} parts={{ numLabel: `طلب ${s.name}`, num: val(s), denLabel: 'طلب لكل الخدمات', den: total }}
+                meaning={<>شكد من الطلبات كانت على هالخدمة بنفس الفترة.</>}
+                source={<>الحجوزات المسجّلة (غير الملغية والمحذوفة) حسب خدمتها، بتاريخ تسجيل الحجز.</>} />
+            </span>
+          </div>
+        </div>
+      ))}
+      {rows.length === 0 && <p className="text-t-faint text-[13px]">ماكو طلبات بهالفترة بعد.</p>}
+    </div>
+  )
+}
+
 function ServicesTab() {
   const [stats, setStats] = useState<Stats | null>(null)
   useEffect(() => { api.getStats().then(setStats).catch(() => setStats(null)) }, [])
 
   if (!stats) return <p className="text-t-faint text-center p-10">جاري التحميل...</p>
-  const rows = stats.serviceBreakdown
-  const max = rows[0]?.count || 1
-
+  // (ل) 11-12 دازاي: «كل خدمة شكد صار عليها طلب هذا الشهر وبالكلي — شنو أكثر الخدمات»
+  const all = [...stats.serviceBreakdown].sort((a, b) => b.count - a.count)
+  const month = [...stats.serviceBreakdown].filter((s) => s.monthCount > 0).sort((a, b) => b.monthCount - a.monthCount)
+  const monthTotal = month.reduce((n, s) => n + s.monthCount, 0)
+  const allTotal = all.reduce((n, s) => n + s.count, 0)
+  const monthName = new Date().toLocaleDateString('ar-IQ', { month: 'long', year: 'numeric', timeZone: 'Asia/Baghdad' })
   return (
-    <div className="bg-sf-card border border-bd-line rounded-xl p-5">
-      <h3 style={{ color: PRIMARY_TEXT, margin: '0 0 4px 0' }}>أكثر خدمة طلبها الزبائن</h3>
-      <p className="text-t-faint text-[13px] mt-0 mr-0 mb-4 ml-0">
-        مرتّبة من الأكثر طلباً — من شوكت بدت كل خدمة، وشكد دخّلت مبالغ وأرباح
-      </p>
-      {rows.map((s, i) => (
-        <div key={s.serviceId || i} className="mb-3.5">
-          <div className="flex items-center gap-3">
-            <span style={{ fontSize: '13px', width: '140px', color: 'var(--t-body)' }}>{s.name}</span>
-            <div style={{ flex: 1, height: '22px', background: 'var(--sf-sunken)', borderRadius: '11px', overflow: 'hidden' }}>
-              <div style={{ height: '100%', width: `${(s.count / max) * 100}%`, background: PRIMARY, borderRadius: '11px' }} />
-            </div>
-            <span style={{ fontSize: '13px', fontWeight: 'bold', width: '40px', color: PRIMARY_TEXT }}>{s.count}</span>
-          </div>
-          <div className="mr-[152px] mt-[3px] text-[11px] text-t-faint flex gap-3.5 flex-wrap">
-            <span>📅 من {s.firstAt ? new Date(s.firstAt).toLocaleDateString('ar-IQ') : '—'} إلى {s.lastAt ? new Date(s.lastAt).toLocaleDateString('ar-IQ') : '—'}</span>
-            <span>💰 دخل: <b style={{ color: PRIMARY_TEXT }}>{fmt(s.revenue)} د.ع</b></span>
-            <span>📈 ربح: <b style={{ color: GOLD_TEXT }}>{fmt(s.profit)} د.ع</b></span>
-          </div>
+    <div className="grid gap-4 lg:grid-cols-2">
+      <div className="bg-sf-card border border-bd-line rounded-xl p-5" data-testid="svc-month">
+        <h3 style={{ color: PRIMARY_TEXT, margin: '0 0 4px 0' }}>📅 هذا الشهر — {monthName}</h3>
+        <p className="text-t-faint text-[13px] mt-0 mb-4">كل خدمة شكد انطلبت من أول الشهر لهسه · المجموع <b>{monthTotal}</b> طلب{month[0] ? <> · الأكثر: <b style={{ color: GOLD_TEXT }}>{month[0].name}</b></> : null}</p>
+        <SvcBars rows={month} val={(s) => s.monthCount} total={monthTotal} />
+      </div>
+      <div className="bg-sf-card border border-bd-line rounded-xl p-5" data-testid="svc-all">
+        <h3 style={{ color: PRIMARY_TEXT, margin: '0 0 4px 0' }}>🗂️ الكلي — من أول النظام</h3>
+        <p className="text-t-faint text-[13px] mt-0 mb-4">المجموع <b>{allTotal}</b> طلب{all[0] ? <> · الأكثر: <b style={{ color: GOLD_TEXT }}>{all[0].name}</b></> : null}</p>
+        <SvcBars rows={all} val={(s) => s.count} total={allTotal} />
+        <div className="mt-4 border-t border-bd-line pt-3 text-[11px] text-t-faint">
+          {all.map((s, i) => (
+            <p key={s.serviceId || i} className="mb-1">{s.name}: 📅 من {s.firstAt ? new Date(s.firstAt).toLocaleDateString('ar-IQ') : '—'} · 💰 دخل <b style={{ color: PRIMARY_TEXT }}>{fmt(s.revenue)}</b> · 📈 ربح <b style={{ color: GOLD_TEXT }}>{fmt(s.profit)}</b> د.ع</p>
+          ))}
+          <p className="mt-2">الربح = المستلم ناقص كلفة المواد بسعر الجملة (المواد بلا سعر جملة تنحسب صفر، فالربح هو الحد الأعلى).</p>
         </div>
-      ))}
-      <p className="mt-3 text-[11px] text-t-faint">
-        الربح = المستلم ناقص كلفة المواد بسعر الجملة. المواد الي ماكو إلها سعر جملة بالكتالوج
-        تُحسب بكلفة صفر، يعني الربح المعروض هو الحد الأعلى.
-      </p>
-      {rows.length === 0 && <p className="text-t-faint text-[13px]">ماكو بيانات حجوزات بعد</p>}
+      </div>
     </div>
   )
 }
@@ -287,7 +306,10 @@ function InternalWorksTab() {
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '12px', marginBottom: '20px' }}>
             <StatCard label="أعمال انخلصت داخل الشركة" value={rep.inHouseCount} />
             <StatCard label="أعمال طلعت للزبون" value={rep.onSiteCount} />
-            <StatCard label="نسبة الشغل الداخلي" value={`${share}%`} />
+            <StatCard label="نسبة الشغل الداخلي" value={<PctWhy title="نسبة الشغل الداخلي" value={share}
+              parts={{ numLabel: 'شغل انخلص داخل الشركة', num: rep.inHouseCount, denLabel: 'حجز مكتمل بهذا الشهر (داخلي + عند الزبون)', den: total }}
+              meaning={<>من كل الحجوزات الي خلصت بهذا الشهر، شكد منها انشغلت بالشركة بدل ما الفريق يطلع للزبون. تصعد كل ما يجيبون أغراض أكثر يتصلحن جوه.</>}
+              source={<>جدول الحجوزات: الحجوزات المكتملة بهذا الشهر (حسب تاريخ الإنجاز)، والي مكان شغلها «داخل الشركة» مقابل الباقي.</>} />} />
             <StatCard label="مبالغ الشغل الداخلي" value={`${fmt(rep.inHouseAmount)} د.ع`} />
           </div>
 
@@ -349,18 +371,15 @@ function InternalWorksTab() {
 
 export default function StatsManagementPage() {
   // ٧و (11-05): /stats و/employee-stats انشالن من القائمة — روابطهن تفتح هنا على تبويبهن
-  const { pathname } = useLocation()
-  const [tab, setTab] = useState<'staff' | 'daily' | 'weekly' | 'monthly' | 'compare' | 'internal' | 'services' | 'projects'>(pathname.replace(/\/+$/, '').endsWith('/employee-stats') ? 'monthly' : 'staff')
+  const [tab, setTab] = useState<'daily' | 'weekly' | 'compare' | 'internal' | 'services' | 'projects'>('services')
 
   const tabs: { key: typeof tab; label: string }[] = [
-    // (ع) 10-13: «إحصائيات الموظفين» و«الشهرية» و«إدارة الإحصائيات» صارت واجهة وحدة
-    { key: 'staff', label: '👥 إحصائيات الموظفين' },
+    // (ل) 11-12 دازاي: تقييمات الموظفين ما تطلع بالإحصائيات — انتقلت لـ«تصنيف المدراء والموظفين»
+    { key: 'services', label: '🛠️ الخدمات المطلوبة (الشهر والكلي)' },
     { key: 'daily', label: 'يومية' },
     { key: 'weekly', label: 'أسبوعية' },
-    { key: 'monthly', label: 'شهرية (لكل موظف)' },
     { key: 'compare', label: '📅 مقارنة الأشهر' },
     { key: 'internal', label: 'داخل الشركة' },
-    { key: 'services', label: 'أكثر خدمة مطلوبة' },
     { key: 'projects', label: 'المشاريع' },
   ]
 
@@ -392,10 +411,8 @@ export default function StatsManagementPage() {
         ))}
       </div>
 
-      {tab === 'staff' && <StatsPage />}
       {tab === 'daily' && <DailyTab />}
       {tab === 'weekly' && <WeeklyTab />}
-      {tab === 'monthly' && <EmployeeMonthlyStatsPage />}
       {tab === 'compare' && <MonthCompare />}
       {tab === 'internal' && <InternalWorksTab />}
       {tab === 'services' && <ServicesTab />}

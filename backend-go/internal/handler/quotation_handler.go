@@ -136,3 +136,42 @@ func (h *QuotationHandler) Versions(w http.ResponseWriter, r *http.Request) {
 	}
 	WriteJSON(w, http.StatusOK, rows)
 }
+
+// GET /api/projects/{projectId}/quotation-candidates?q= — بلاغ #33
+func (h *QuotationHandler) LinkCandidates(w http.ResponseWriter, r *http.Request) {
+	rows, err := h.service.LinkCandidates(r.PathValue("projectId"), r.URL.Query().Get("q"), middleware.EmployeeIDFromContext(r), middleware.RoleFromContext(r))
+	if errors.Is(err, service.ErrQuotationHidden) {
+		authz.Deny(w, r, authz.Quotations)
+		return
+	}
+	if err != nil {
+		WriteError(w, http.StatusInternalServerError, "تعذر جلب العروض")
+		return
+	}
+	WriteJSON(w, http.StatusOK, rows)
+}
+
+// POST /api/projects/{projectId}/link-quotation {quotationId}
+func (h *QuotationHandler) LinkToProject(w http.ResponseWriter, r *http.Request) {
+	var in struct {
+		QuotationID string `json:"quotationId"`
+	}
+	if err := DecodeJSON(r, &in); err != nil || in.QuotationID == "" {
+		WriteError(w, http.StatusBadRequest, "اختار العرض")
+		return
+	}
+	q, err := h.service.LinkToProject(r.PathValue("projectId"), in.QuotationID, middleware.EmployeeIDFromContext(r), middleware.RoleFromContext(r))
+	if errors.Is(err, service.ErrQuotationHidden) {
+		authz.Deny(w, r, authz.Quotations)
+		return
+	}
+	if errors.Is(err, service.ErrLinkTaken) {
+		WriteError(w, http.StatusConflict, err.Error())
+		return
+	}
+	if err != nil {
+		WriteError(w, http.StatusInternalServerError, "تعذر الربط")
+		return
+	}
+	WriteJSON(w, http.StatusOK, q)
+}

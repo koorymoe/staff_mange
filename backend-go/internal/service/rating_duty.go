@@ -65,6 +65,28 @@ func (d *RatingDuty) is(sqlCond, emp string) bool {
 	return ok
 }
 
+// dutyGrace بعد نهاية شفت المقيّم: الي يوصل بعدها ينتقل لواجب اليوم الجاي.
+const dutyGrace = 30 * time.Minute
+
+// cutoffs (بلاغ #32، 11-11): نافذة واجب المقيّم ليوم day = (نهاية شفته باليوم الي قبله، نهاية
+// شفته بذاك اليوم] + ٣٠ دقيقة سماح. التقرير أو الحجز الي يجي بعد ما يطلع من الدوام يصير
+// واجب اليوم الجاي (تقييم عادي) — مو «فاتك» وإهمال.
+func (d *RatingDuty) cutoffs(rater, day string) (time.Time, time.Time) {
+	var sh struct {
+		Shift *string `db:"shift"`
+		Start *string `db:"shiftStart"`
+		End   *string `db:"shiftEnd"`
+	}
+	errlog.Err(d.db.Get(&sh, `SELECT shift::text AS shift, "shiftStart", "shiftEnd" FROM "Employee" WHERE id = $1`, rater))
+	dd, err := time.ParseInLocation("2006-01-02", day, timeutil.CompanyLocation())
+	if err != nil {
+		return time.Time{}, time.Time{}
+	}
+	_, end := ShiftWindow(sh.Shift, sh.Start, sh.End, dd)
+	_, prev := ShiftWindow(sh.Shift, sh.Start, sh.End, dd.AddDate(0, 0, -1))
+	return prev.Add(dutyGrace).UTC(), end.Add(dutyGrace).UTC()
+}
+
 // Owed الي على المقيّم ليوم معيّن (YYYY-MM-DD) وبعده ما انقضى.
 func (d *RatingDuty) Owed(rater, day string) ([]DutyItem, error) {
 	if s := d.since(); s != "" && day < s {
@@ -106,7 +128,8 @@ func (d *RatingDuty) Owed(rater, day string) ([]DutyItem, error) {
 		  AND NOT EXISTS (SELECT 1 FROM "StaffRating" s WHERE s."raterId" = $1 AND s."bookingId" = b.id AND s.stage = 'COORD_LEADER')`, rater, day); err != nil {
 		return nil, err
 	}
-	// ٣. إدارة العمليات ← كل ليدر وفني اشتغل ذاك اليوم (يكفي واحد من المقيّمين)
+	prev, cut := d.cutoffs(rater, day)
+	// ٣. إدارة العمليات ← كل ليدر وفني اشتغل ذاك اليوم (يكفي واحد من المقيّمين) — ضمن دوامه
 	if d.is(opsRaterSQL, rater) {
 		if err := q(`SELECT 'OPS_DAILY' AS stage, '' AS "bookingId", '' AS code, p.id AS "rateeId", p.name AS "rateeName",
 				string_agg(DISTINCT p.code, '، ') AS hint
@@ -114,10 +137,12 @@ func (d *RatingDuty) Owed(rater, day string) ([]DutyItem, error) {
 			      JOIN LATERAL (SELECT a."employeeId" AS id FROM "BookingAssignment" a WHERE a."bookingId" = b.id
 			                    UNION SELECT booking_leader_id(b.id)) w ON w.id IS NOT NULL
 			      JOIN "Employee" e ON e.id = w.id
-			      WHERE b.status::text IN ('COMPLETED', 'PARTIAL') AND b."completedAt" IS NOT NULL AND `+bkDay+` = $2::date
+			      WHERE b.status::text IN ('COMPLETED', 'PARTIAL') AND b."completedAt" IS NOT NULL
+			        AND (b."completedAt" AT TIME ZONE 'UTC') > $3 AND (b."completedAt" AT TIME ZONE 'UTC') <= $4
 			        AND upper(b.code) NOT LIKE 'OLD%' AND e.role::text NOT IN ('ADMIN', 'OWNER') AND e.id <> $1) p
-			WHERE NOT EXISTS (SELECT 1 FROM "StaffRating" s WHERE s."rateeId" = p.id AND s.stage = 'OPS_DAILY' AND s.period = $2::text)
-			GROUP BY p.id, p.name ORDER BY p.name`, rater, day); err != nil {
+			WHERE NOT EXISTS (SELECT 1 FROM "StaffRating" s WHERE s."rateeId" = p.id AND s.stage = 'OPS_DAILY'
+			                  AND (s.period = $2::text OR s."createdAt" > $3))
+			GROUP BY p.id, p.name ORDER BY p.name`, rater, day, prev, cut); err != nil {
 			return nil, err
 		}
 	}
@@ -125,10 +150,12 @@ func (d *RatingDuty) Owed(rater, day string) ([]DutyItem, error) {
 	if d.is(monitorRaterSQL, rater) {
 		if err := q(`SELECT 'MONITOR_DAILY' AS stage, '' AS "bookingId", '' AS code, e.id AS "rateeId", e.name AS "rateeName", left(r.body, 160) AS hint
 			FROM "DailyWorkReport" r JOIN "Employee" e ON e.id = r."employeeId"
-			WHERE r.day = $2::date AND e.id <> $1 AND NOT COALESCE(e."isLeader", false)
+			WHERE r.day <= $2::date AND r."createdAt" > $3 AND r."createdAt" <= $4
+			  AND e.id <> $1 AND NOT COALESCE(e."isLeader", false)
 			  AND `+model.EffectiveRoleSQL(`e.id`, `e.role`)+` NOT IN ('TECHNICIAN', 'MONITOR', 'ADMIN', 'OWNER')
-			  AND NOT EXISTS (SELECT 1 FROM "StaffRating" s WHERE s."rateeId" = e.id AND s.stage = 'MONITOR_DAILY' AND s.period = $2::text)
-			ORDER BY e.name`, rater, day); err != nil {
+			  AND NOT EXISTS (SELECT 1 FROM "StaffRating" s WHERE s."rateeId" = e.id AND s.stage = 'MONITOR_DAILY'
+			                  AND (s.period IN ($2::text, r.day::text) OR s."createdAt" > r."createdAt"))
+			ORDER BY e.name`, rater, day, prev, cut); err != nil {
 			return nil, err
 		}
 	}
@@ -264,9 +291,54 @@ func namesUpTo(xs []string, n int) []string {
 	return xs
 }
 
+// VoidAfterShift (بلاغ #32): سجلات «فاتك تقييم» (آخر ١٤ يوم) الي كل شي «فاته» بيها وصل بعد
+// دوامه — ماكو ولا تقرير/حجز ضمن نافذة دوامه ذاك اليوم، ولا حجز هو ليدره/مثبّته — تتعلّم ملغية،
+// ونقطة «واجب التقييم» مالتها تنلغي. ما ينمسح شي. ترجع عدد الملغية.
+func (d *RatingDuty) VoidAfterShift() (int, error) {
+	rows := []struct {
+		ID  string `db:"id"`
+		Emp string `db:"employeeId"`
+		Day string `db:"day"`
+	}{}
+	if err := d.db.Select(&rows, `SELECT id, "employeeId", to_char(day, 'YYYY-MM-DD') AS day FROM "EmployeeNegligence"
+		WHERE kind = 'MISSED_RATINGS' AND "voidedAt" IS NULL AND day >= current_date - 14`); err != nil {
+		return 0, err
+	}
+	n := 0
+	for _, r := range rows {
+		prev, cut := d.cutoffs(r.Emp, r.Day)
+		var inWindow int
+		errlog.Err(d.db.Get(&inWindow, `SELECT
+			(SELECT count(*) FROM "DailyWorkReport" w JOIN "Employee" e ON e.id = w."employeeId"
+			  WHERE $5 AND w.day <= $2::date AND w."createdAt" > $3 AND w."createdAt" <= $4 AND e.id <> $1
+			    AND NOT COALESCE(e."isLeader", false)
+			    AND `+model.EffectiveRoleSQL(`e.id`, `e.role`)+` NOT IN ('TECHNICIAN', 'MONITOR', 'ADMIN', 'OWNER'))
+			+ (SELECT count(*) FROM "Booking" b WHERE $6 AND b.status::text IN ('COMPLETED', 'PARTIAL') AND upper(b.code) NOT LIKE 'OLD%'
+			    AND (b."completedAt" AT TIME ZONE 'UTC') > $3 AND (b."completedAt" AT TIME ZONE 'UTC') <= $4)
+			+ (SELECT count(*) FROM "Booking" b WHERE b."completedAt" IS NOT NULL AND `+bkDay+` = $2::date
+			    AND (booking_leader_id(b.id) = $1 OR b."confirmedByEmployeeId" = $1 OR b."createdById" = $1))`,
+			r.Emp, r.Day, prev, cut, d.is(monitorRaterSQL, r.Emp), d.is(opsRaterSQL, r.Emp)))
+		if inWindow > 0 {
+			continue
+		}
+		res, err := d.db.Exec(`UPDATE "EmployeeNegligence" SET "voidedAt" = now(),
+			"voidNote" = 'ملغي (بلاغ #32): الي فاته وصل بعد دوامه' WHERE id = $1 AND "voidedAt" IS NULL`, r.ID)
+		if err != nil {
+			return n, err
+		}
+		if k, _ := res.RowsAffected(); k > 0 {
+			n++
+			errlog.Exec(d.db.Exec(`UPDATE "MatrixScore" SET "cancelledAt" = now(), "cancelNote" = 'بلاغ #32: الواجب وصل بعد دوامه'
+				WHERE source = 'DUTY' AND "sourceId" = $1 AND rule = 'RATING_DUTY' AND "cancelledAt" IS NULL`, r.ID))
+		}
+	}
+	return n, nil
+}
+
 // Sweep كل ساعة: يسجّل الإهمال لأيام فاتت (أمس لحد ٣ أيام) حتى لو المقيّم ما فتح
 // النظام — السجل يبقى «ما عوّض» لحد ما يعوّض.
 func (d *RatingDuty) Sweep() (int, error) {
+	_, _ = d.VoidAfterShift()
 	n := 0
 	for off := -3; off <= -1; off++ {
 		day := companyDay(off)

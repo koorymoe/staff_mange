@@ -1458,6 +1458,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	secs["ai"].Set("GET /api/ai/proposals", "ai.get_proposals", matrixLearningHandler.List)
 	secs["ai"].Set("POST /api/ai/proposals/{id}/approve", "ai.post_proposals_by_id_approve", matrixLearningHandler.Approve)
 	secs["ai"].Set("POST /api/ai/proposals/{id}/reject", "ai.post_proposals_by_id_reject", matrixLearningHandler.Reject)
+	secs["ai"].Set("GET /api/ai/prediction-accuracy", "ai.get_prediction_accuracy", matrixLearningHandler.PredictionAccuracy)
 	// المراقب يشوف تقرير الموظف (قراءة بس) — شغله المتابعة، ومن صندوقه يضغط اسم الموظف.
 	secs["ai"].Set("GET /api/ai/employee-report", "ai.get_employee_report", matrixReportHandler.Employee)
 	// (ع) 10-16: «شنو سوّى هذا الموظف» — اليوم/الشهر بالتفصيل، من عيون ماتركس
@@ -1831,6 +1832,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 		{"POST /api/plan-sets/{id}/copy", planSetHandler.Copy},
 		{"POST /api/plan-sets/{id}/files", planSetHandler.AddFile},
 		{"DELETE /api/plan-files/{id}", planSetHandler.RemoveFile},
+		{"PUT /api/plan-files/{id}/sheet", planSetHandler.UpdateSheet},
 	} {
 		// (ون بيس 11-10) الصلاحية بالخدمة (CanSee/CanManage — ErrDesignHidden ← 404)
 		designsApp.Add(rt.pat, core.Rule{Label: rt.pat + " — الفحص بالخدمة (صيت التصاميم/المخططات)", Anyone: true}, rt.fn)
@@ -2388,6 +2390,8 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	secs["quotations"].Set("POST /api/quotations", "quotations.post_root", quotationHandler.Create, allowQuotationOrDelegate)
 	secs["quotations"].Set("PUT /api/quotations/{id}", "quotations.put_by_id", quotationHandler.Update, allowQuotationOrDelegate)
 	secs["quotations"].Set("DELETE /api/quotations/{id}", "quotations.delete_by_id", quotationHandler.Delete)
+	secs["projects"].Set("GET /api/projects/{projectId}/quotation-candidates", "projects.get_by_projectid_quotation_candidates", quotationHandler.LinkCandidates) // الصلاحية بالخدمة: الرفض 404
+	secs["projects"].Set("POST /api/projects/{projectId}/link-quotation", "projects.post_by_projectid_link_quotation", quotationHandler.LinkToProject)            // الصلاحية بالخدمة: الرفض 404
 	// 🖼️ (ل) 11-10: مكتبة صور أنواع العمل — كل عرض ياخذ صورة غير حسب فصوله
 	wtImages := handler.NewWorkTypeImageHandler(service.NewWorkTypeImageService(db))
 	secs["work_type_images"].Set("GET /api/work-type-images", "work_type_images.get_root", wtImages.List, allowQuotationOrDelegate)
@@ -2443,6 +2447,13 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	secs["late_excuses"].Set("GET /api/late-excuses/inbox", "late_excuses.get_inbox", lateExcuse.Inbox)
 	secs["late_excuses"].Set("GET /api/late-excuses/audit", "late_excuses.get_audit", lateExcuse.Audit)
 	secs["late_excuses"].Set("POST /api/late-excuses/{id}/decide", "late_excuses.post_by_id_decide", lateExcuse.Decide)
+	// ☀️ (ل) 11-12 دازاي: استفسارات الطاقة الشمسية — الصلاحيات بالخدمة (solar_inquiry / _tech / quality_control)
+	solarInq := handler.NewSolarInquiryHandler(service.NewSolarInquiryService(db, notificationRepo))
+	secs["solar_inquiries"].Set("GET /api/solar-inquiries", "solar_inquiries.get_root", solarInq.List)
+	secs["solar_inquiries"].Set("POST /api/solar-inquiries", "solar_inquiries.post_root", solarInq.Create, idem)
+	secs["solar_inquiries"].Set("POST /api/solar-inquiries/{id}/claim", "solar_inquiries.post_by_id_claim", solarInq.Claim)
+	secs["solar_inquiries"].Set("POST /api/solar-inquiries/{id}/contact", "solar_inquiries.post_by_id_contact", solarInq.Contact)
+	secs["solar_inquiries"].Set("POST /api/solar-inquiries/{id}/quality", "solar_inquiries.post_by_id_quality", solarInq.Quality)
 	// 🗓️ «إجازات الموظفين» (ع 10-23) — نفس حارس البند بالقائمة: المدير/المراقب أو إدارة الكوادر أو الموافقة على الإجازات
 	// (ون بيس 11-10) requireLeaveRegister انتقل لقاعدة بالنواة (internal/apps/sections)
 	secs["leaves"].Set("GET /api/leaves/register", "leaves.get_register", leaveHandler.Register)
@@ -2479,6 +2490,15 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	secs["training_programs"].Set("GET /api/training-programs", "training_programs.get_root", trainingProgramHandler.List)
 	// ═══ مركز التدريب — قرار (ع) 10-13 ═══
 	trainingCenter := handler.NewTrainingCenterHandler(db)
+	// (ل) 11-12 الماتشينغ: كل ساعة يقرا تقييمات الليدرية والمهارات ويطلّع منو يحتاج تدريب
+	trainingCenter.Match = service.NewTrainingMatching(db, notificationRepo)
+	go func() {
+		time.Sleep(2 * time.Minute)
+		for {
+			trainingCenter.Match.Run()
+			time.Sleep(time.Hour)
+		}
+	}()
 	tcRoute := func(pattern string, f http.HandlerFunc, manage bool) {
 		if manage {
 			trainingCenterApp.Add(pattern, core.PermRule(pattern+" — إدارة التدريب", "training_manage"), f)
@@ -2491,6 +2511,9 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	tcRoute("GET /api/training-center/curriculum", trainingCenter.Curriculum, true)
 	tcRoute("POST /api/training-center/curriculum", trainingCenter.AddCurriculum, true)
 	tcRoute("DELETE /api/training-center/curriculum/{id}", trainingCenter.DeleteCurriculum, true)
+	tcRoute("GET /api/training-center/matching", trainingCenter.Matching, true)
+	tcRoute("POST /api/training-center/needs", trainingCenter.AddNeed, true)
+	tcRoute("POST /api/training-center/needs/{id}/{action}", trainingCenter.NeedAction, true)
 	tcRoute("GET /api/training-center/questions", trainingCenter.Questions, true)
 	tcRoute("POST /api/training-center/questions", trainingCenter.AddQuestion, true)
 	tcRoute("POST /api/training-center/questions/generate", trainingCenter.GenerateQuestions, true)

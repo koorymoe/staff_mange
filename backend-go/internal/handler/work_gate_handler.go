@@ -392,7 +392,7 @@ func (h *WorkGateHandler) Negligence(w http.ResponseWriter, r *http.Request) {
 	rows := []negligenceRow{}
 	errlog.Err(h.db.Select(&rows, `SELECT n.id, e.name AS "employeeName", to_char(n.day, 'YYYY-MM-DD') AS day, n.kind, n.detail, n.reason, n."compensatedAt"
 		FROM "EmployeeNegligence" n JOIN "Employee" e ON e.id = n."employeeId"
-		WHERE n.day >= current_date - 60 ORDER BY n.day DESC, e.name LIMIT 300`))
+		WHERE n.day >= current_date - 60 AND n."voidedAt" IS NULL ORDER BY n.day DESC, e.name LIMIT 300`))
 	WriteJSON(w, http.StatusOK, rows)
 }
 

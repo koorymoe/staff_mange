@@ -97,7 +97,9 @@ func (s *EmployeeMonthlyStatsService) Monthly(month string) ([]model.EmployeeMon
 			stats.KpiPoints = points
 			stats.KpiPointsValue = float64(points) * 10000
 		}
-		if s.smartKpi != nil {
+		// (ل) 11-12 دازاي: «كل واحد يتقيّم حسب شغله» — نقاط الفني الذكية (حجوزات منجزة ×١٠…)
+		// للفنيين والليدرية بس؛ غيرهم (مصمم، حسابات…) ما ينحسبون على حجوزات.
+		if s.smartKpi != nil && string(e.Role) == "TECHNICIAN" {
 			if res, serr := s.smartKpi.CalculateTechnicianKpi(e.ID, month); serr == nil && res != nil {
 				stats.SmartKpiPoints = res.TotalPoints
 			}

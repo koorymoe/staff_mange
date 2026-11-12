@@ -193,9 +193,13 @@ export default function Layout() {
   // وسم عرض الملفات: ينجاب مرة عند الدخول ويتجدد كل 10 دقائق. بدونه
   // الصور المخزّنة برّا القاعدة ترجع 401 لأن <img> ما يرسل ترويسة
   // Authorization.
+  // (ل) 11-11 دازاي «ليش ما تطلع الصور؟»: الشاشة چانت ترسم الصور قبل ما يوصل الوسم، فالرابط
+  // يطلع بلا ?ft ويرجع 401 (صورة مكسورة) لحد ما تنعاد الصفحة. هسه أول ما يوصل الوسم
+  // نعيد رسم الشاشة الحالية مرة وحدة، فكل <img> ياخذ الرابط الصحيح — بكل الشاشات.
+  const [, setFileTokenReady] = useState(false)
   useEffect(() => {
     if (!employee) return
-    void ensureFileToken()
+    void ensureFileToken().then(() => setFileTokenReady(true))
     const timer = setInterval(() => { void ensureFileToken() }, 10 * 60 * 1000)
     return () => clearInterval(timer)
   }, [employee])

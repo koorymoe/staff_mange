@@ -1,6 +1,7 @@
 import { Fragment, useCallback, useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { api, EXTRA_TASK_STATUS, type ExtraTask } from '../api'
+import PctWhy from '../ui/PctWhy'
 import { useSession } from '../session'
 import { dayBaghdad } from '../utils/format'
 
@@ -207,10 +208,14 @@ export default function MyExtraTasksPage() {
 
       {/* ═══ الأرقام الأربعة ═══ */}
       <div className="grid grid-cols-2 gap-2.5 sm:gap-3 lg:grid-cols-4">
-        <StatCard label="مهام اليوم" value={stats.today} of={stats.active} icon="📅" tone="sky" />
-        <StatCard label="قيد التنفيذ" value={stats.inProgress} of={stats.active} icon="🔄" tone="violet" />
-        <StatCard label="بانتظار البدء" value={stats.waiting} of={stats.active} icon="⏱" tone="amber" />
-        <StatCard label="مكتملة هذا الأسبوع" value={stats.doneWeek} of={stats.weekTotal} icon="✅" tone="emerald" />
+        <StatCard label="مهام اليوم" value={stats.today} of={stats.active} icon="📅" tone="sky"
+          why={{ num: 'مهمة مفتوحة موعدها اليوم', den: 'مهمة مفتوحة (جديدة أو قيد التنفيذ)', meaning: 'شكد من مهامك المفتوحة لازم تخلص اليوم. إذا عالية يعني يومك مزحوم.', source: 'مهامك الإضافية المسندة إلك من جدول المهام الإضافية (بلا الملغية والمنجزة).' }} />
+        <StatCard label="قيد التنفيذ" value={stats.inProgress} of={stats.active} icon="🔄" tone="violet"
+          why={{ num: 'مهمة قيد التنفيذ', den: 'مهمة مفتوحة (جديدة أو قيد التنفيذ)', meaning: 'شكد من مهامك المفتوحة بديت بيها فعلاً. كل ما تعلى أحسن — تصعد أول ما تضغط «ابدأ».', source: 'مهامك الإضافية المسندة إلك، حسب حالة كل مهمة.' }} />
+        <StatCard label="بانتظار البدء" value={stats.waiting} of={stats.active} icon="⏱" tone="amber"
+          why={{ num: 'مهمة جديدة ما بديت بيها', den: 'مهمة مفتوحة (جديدة أو قيد التنفيذ)', meaning: 'شكد من مهامك المفتوحة بعدك ما بديت بيها. كل ما تنزل أحسن.', source: 'مهامك الإضافية المسندة إلك، حسب حالة كل مهمة.' }} />
+        <StatCard label="مكتملة هذا الأسبوع" value={stats.doneWeek} of={stats.weekTotal} icon="✅" tone="emerald"
+          why={{ num: 'مهمة خلّصتها بآخر ٧ أيام', den: 'مهمة انطتلك بآخر ٧ أيام (بلا الملغية)', meaning: 'شكد خلّصت مقابل الي انطالك هالأسبوع. كل ما تعلى أحسن. ملاحظة: المنجز يشمل مهام قديمة خلّصتها هالأسبوع، فممكن يعبر المقام.', source: 'مهامك الإضافية: المنجز حسب وقت إنجازها، والمقام حسب وقت إنشائها.' }} />
       </div>
 
       {/* ═══ التصفية ═══
@@ -521,8 +526,9 @@ const TONES: Record<string, string> = {
 
 const BAR: Record<string, string> = { sky: 'bg-sky-500', violet: 'bg-violet-500', amber: 'bg-amber-500', emerald: 'bg-emerald-500' }
 
-function StatCard({ label, value, of, icon, tone }: {
+function StatCard({ label, value, of, icon, tone, why }: {
   label: string; value: number; of: number; icon: string; tone: string
+  why: { num: string; den: string; meaning: string; source: string }
 }) {
   const pct = of > 0 ? Math.min(100, Math.round((value / of) * 100)) : 0
   return (
@@ -539,7 +545,11 @@ function StatCard({ label, value, of, icon, tone }: {
       </div>
       <div className="mt-2 flex items-center gap-2">
         <div className="h-1.5 flex-1 rounded-full bg-slate-100"><div className={`h-1.5 rounded-full ${BAR[tone]}`} style={{ width: `${pct}%` }} /></div>
-        <span className="text-[10px] font-bold text-slate-500 tabular-nums">{pct}%</span>
+        <PctWhy title={label} value={of > 0 ? pct : null} className="text-[10px] font-bold text-slate-500 tabular-nums"
+          formula={of > 0
+            ? <>{value} {why.num} ÷ {of} {why.den} × ١٠٠ = {Math.round((value / of) * 100)}%{value > of ? ' — وتنعرض ١٠٠٪ لأن الشريط ما يعبر الآخر' : ''}.</>
+            : <>ماكو {why.den} هسه، فماكو نسبة.</>}
+          meaning={why.meaning} source={why.source} />
       </div>
     </div>
   )

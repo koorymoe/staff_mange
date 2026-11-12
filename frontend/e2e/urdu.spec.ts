@@ -10,6 +10,10 @@ test('فني أوردو: الجرد بالأوردو والشريط يكفي م�
   const h = { Authorization: `Bearer ${session.token}` }
   const r = await request.put(`${API}/me/language`, { headers: h, data: { language: 'ur' } })
   expect(r.ok(), await r.text()).toBeTruthy()
+  // (11-12) وقت الدوام (٨–٤) الشاشة تطلب تسجيل الحضور قبل أي شي — چان الاختبار يفشل بس بالنهار.
+  // نسجّل حضوره أول حتى نوصل للجرد بأي ساعة.
+  const ci = await request.post(`${API}/attendance/checkin`, { headers: h, data: {} })
+  expect(ci.ok() || ci.status() === 409, `تسجيل الحضور: ${ci.status()} ${await ci.text()}`).toBeTruthy()
   await uiLogin(page, { ...session, employee: { ...(session.employee as object), language: 'ur' } })
 
   await page.goto('./my-inventory')

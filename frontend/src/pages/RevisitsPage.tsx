@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { api, type RevisitReport } from '../api'
 import BookingCodeChip from '../components/BookingCodeChip'
+import PctWhy from '../ui/PctWhy'
 
 // ═══ 🔁 الرجعات — (ع) 11-07 ═══
 // حجز ثاني لنفس الزبون ونفس الخدمة خلال ٣٠ يوم من الإنجاز = الشغل الأول ما انعمل
@@ -42,7 +43,9 @@ export default function RevisitsPage() {
           <div className="grid grid-cols-3 gap-2">
             <div className="rounded-2xl bg-white p-4 shadow-sm"><p className="text-xs text-slate-500">حجوزات انجزت</p><p className="text-2xl font-extrabold">{rep.jobs}</p></div>
             <div className="rounded-2xl bg-white p-4 shadow-sm"><p className="text-xs text-slate-500">رجعت</p><p className="text-2xl font-extrabold text-amber-700">{rep.revisits}</p></div>
-            <div className="rounded-2xl bg-white p-4 shadow-sm"><p className="text-xs text-slate-500">نسبة الرجعة</p><p className="text-2xl font-extrabold">{rate}٪</p></div>
+            <div className="rounded-2xl bg-white p-4 shadow-sm"><p className="text-xs text-slate-500">نسبة الرجعة</p><p className="text-2xl font-extrabold"><PctWhy title="نسبة الرجعة" value={rate} suffix="٪" parts={{ numLabel: 'حجز رجع', num: rep.revisits, denLabel: 'حجز انجز', den: rep.jobs }}
+              meaning={<>من كل 100 حجز انجز، شكد واحد رجع الزبون فتح حجز ثاني لنفس الخدمة خلال {rep.windowDays} يوم — يعني الشغل الأول يمكن ما انعمل صح. كل ما تكون أقل أحسن.</>}
+              source={<>جدول الحجوزات: كل حجز حالته «مكتمل» انجز خلال المدة المختارة (بدون الاستيراد القديم OLD- والشغل الداخلي والمحذوف). وبعدها ندور حجز ثاني لنفس الزبون ونفس الخدمة انفتح خلال {rep.windowDays} يوم من الإنجاز ومو ملغي.</>} /></p></div>
           </div>
 
           <div className="overflow-x-auto rounded-2xl bg-white shadow-sm">
@@ -55,7 +58,9 @@ export default function RevisitsPage() {
                     <td className="p-3 font-bold">{l.leaderName}</td>
                     <td className="p-3 text-center tabular-nums">{l.jobs}</td>
                     <td className="p-3 text-center tabular-nums">{l.revisits}</td>
-                    <td className="p-3 text-center"><span className={`rounded-full px-2 py-0.5 text-xs font-bold ${l.rate >= 15 ? 'bg-red-100 text-red-700' : l.rate >= 7 ? 'bg-amber-100 text-amber-800' : 'bg-emerald-100 text-emerald-700'}`}>{l.rate}٪</span></td>
+                    <td className="p-3 text-center"><span className={`rounded-full px-2 py-0.5 text-xs font-bold ${l.rate >= 15 ? 'bg-red-100 text-red-700' : l.rate >= 7 ? 'bg-amber-100 text-amber-800' : 'bg-emerald-100 text-emerald-700'}`}><PctWhy title={`نسبة رجعة ${l.leaderName}`} value={l.rate} suffix="٪" parts={{ numLabel: 'حجز رجع', num: l.revisits, denLabel: 'حجز انجز وهو ليدره', den: l.jobs }}
+                      meaning={<>من الحجوزات الي هذا الليدر كان ليدرها وانجزت، شكد منها رجع الزبون عليها خلال {rep.windowDays} يوم. فوق 15٪ أحمر، من 7٪ لـ15٪ أصفر، أقل من 7٪ أخضر.</>}
+                      source={<>جدول الحجوزات: كل حجز حالته «مكتمل» انجز خلال المدة المختارة (بدون الاستيراد القديم OLD- والشغل الداخلي والمحذوف). وبعدها ندور حجز ثاني لنفس الزبون ونفس الخدمة انفتح خلال {rep.windowDays} يوم من الإنجاز ومو ملغي.</>} /></span></td>
                   </tr>
                 ))}
               </tbody>

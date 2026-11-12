@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { api, type CarWashVehicle, type VehicleTracking, type VehicleTrackRating } from '../api'
 import { todayBaghdad } from '../utils/format'
+import PctWhy from '../ui/PctWhy'
 
 // ═══ 🚗 متابعة السيارات — نفس ملف إكسل (ع) 10-09 ═══
 // أبو الكميات يعبّي كل يوم جدول لكل السيارات (الغسل + عشر بنود من 0 لـ4 + وصف
@@ -43,6 +44,47 @@ function dailyScore(d: Draft): number | null {
   return den ? (num / den) * 100 : null
 }
 const pct = (v: number | null | undefined) => (v == null ? '—' : `${v.toFixed(1)}%`)
+const p1 = (v: number) => Number(v.toFixed(1))
+const SRC_DAILY = <>جدول متابعة السيارات اليومي: كل يوم أبو الكميات يعطي كل بند درجة من 0 لـ4 (0 = سيئ جداً، 4 = ممتاز).</>
+const SRC_PERIOD = <>كل تقييمات هذي السيارة اليومية بالفترة الشهرية المختارة (من ١٧ لـ١٦) بجدول متابعة السيارات.</>
+type TrackStat = VehicleTracking['stats'][number]
+
+// نسبة اليوم الموزونة لسيارة وحدة — من الدرجات الي انعطت.
+function DailyWhy({ d, s, title, className }: { d: Draft; s: number | null; title: string; className?: string }) {
+  if (s == null) return <>{pct(s)}</>
+  const used = ITEMS.filter((it) => typeof d[it.key] === 'number')
+  return (
+    <PctWhy title={title} value={p1(s)} className={className}
+      formula={<>كل بند: (درجته ÷ 4) × وزنه، ونجمعهن ونقسم على مجموع أوزان البنود الي انعطت درجة ({Math.round(used.reduce((a, it) => a + it.w, 0) * 100)}%) = <b>{pct(s)}</b></>}
+      meaning={<>شكد حالة السيارة زينة بهذا اليوم. الأعطال الفنية أثقل بند (25%). 80 وفوق أخضر، 60–80 أصفر، أقل أحمر. الغسل ما يدخل بنسبة اليوم.</>}
+      source={SRC_DAILY}>
+      <ul className="space-y-0.5 text-xs">{used.map((it) => <li key={it.key}>{it.label}: {d[it.key] as number} من 4 × وزن {Math.round(it.w * 100)}%</li>)}</ul>
+    </PctWhy>
+  )
+}
+
+function StatWhy({ s, kind, item }: { s: TrackStat; kind: 'raw' | 'wash' | 'item' | 'weighted'; item?: (typeof ITEMS)[number] }) {
+  const v = kind === 'raw' ? s.rawPct : kind === 'wash' ? s.washPct : kind === 'weighted' ? s.weighted : s.items[item!.key]
+  if (v == null) return <>{pct(v)}</>
+  if (kind === 'raw') return <PctWhy title={`النسبة الخام — ${s.vehicleName}`} value={p1(v)}
+    parts={{ numLabel: 'نقطة أخذتها', num: s.rawSum, denLabel: 'نقطة ممكنة (كل درجة من 4)', den: s.rawMax }}
+    meaning={<>مجموع درجات كل البنود العشرة بكل الأيام بالفترة، بدون أوزان — كل بند إله نفس القيمة.</>} source={SRC_PERIOD} />
+  if (kind === 'wash') return <PctWhy title={`الغسل — ${s.vehicleName}`} value={p1(v)}
+    formula={<>معدل درجة الغسل ÷ 4 بكل يوم انسجل بيه الغسل ({s.washDone + s.washNot} يوم: {s.washDone} تم، {s.washNot} لم يتم) = <b>{pct(v)}</b></>}
+    meaning={<>شكد السيارة انغسلت بالأيام الي انسجلت. يدخل بالنتيجة الموزونة الشهرية بوزن 8%.</>} source={SRC_PERIOD} />
+  if (kind === 'item') return <PctWhy title={`${item!.label} — ${s.vehicleName}`} value={p1(v)}
+    formula={<>مجموع درجات «{item!.label}» بالفترة ÷ (عدد الأيام الي انعطى بيها × 4) = <b>{pct(v)}</b></>}
+    meaning={<>معدل هذا البند لوحده بالفترة. وزنه بالنتيجة الموزونة {Math.round(item!.w * 100)}%. 80 وفوق أخضر، أقل من 60 أحمر.</>} source={SRC_PERIOD} />
+  return <PctWhy title={`النتيجة الموزونة — ${s.vehicleName}`} value={p1(v)}
+    formula={<>كل بند نسبته × وزنه، والغسل × 8%، ونجمعهن ونقسم على مجموع أوزان الي إلها بيانات = <b>{pct(v)}</b></>}
+    meaning={<>الرقم الرئيسي للسيارة بالفترة، ومنه يطلع التقدير: ممتاز 90+ · جيد جداً 80+ · جيد 70+ · مقبول 60+ · ضعيف.</>} source={SRC_PERIOD}>
+    <ul className="space-y-0.5 text-xs">
+      {s.washPct != null && <li>الغسل: {pct(s.washPct)} × 8%</li>}
+      {ITEMS.map((it) => s.items[it.key] != null && <li key={it.key}>{it.label}: {pct(s.items[it.key])} × {Math.round(it.w * 100)}%</li>)}
+    </ul>
+  </PctWhy>
+}
+
 const scoreTone = (v: number | null) => (v == null ? 'text-slate-400' : v >= 80 ? 'text-emerald-700' : v >= 60 ? 'text-amber-700' : 'text-red-700')
 const GRADE_CLS: Record<string, string> = {
   'ممتاز': 'bg-emerald-100 text-emerald-800', 'جيد جداً': 'bg-lime-100 text-lime-800', 'جيد': 'bg-sky-100 text-sky-800',
@@ -217,7 +259,7 @@ export default function VehicleTrackingPage() {
                 <div key={v.id} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
                   <div className="flex items-center justify-between gap-2">
                     <p className="text-base font-extrabold text-[#0f2040]">🚙 {v.name}</p>
-                    <span className={`text-xl font-black ${scoreTone(s)}`}>{pct(s)}</span>
+                    <span className={`text-xl font-black ${scoreTone(s)}`}><DailyWhy d={d} s={s} title={`نسبة اليوم — ${v.name}`} /></span>
                   </div>
                   {washes[v.id]?.washedAt && (
                     <p className="mt-1 text-xs font-bold text-cyan-700">
@@ -268,10 +310,10 @@ export default function VehicleTrackingPage() {
                   <td className="whitespace-nowrap px-3 py-2.5 font-bold text-slate-800">{s.vehicleName}</td>
                   <td className="px-3 py-2.5">{s.completed}</td>
                   <td className="whitespace-nowrap px-3 py-2.5">{s.rawSum} / {s.rawMax}</td>
-                  <td className="px-3 py-2.5">{pct(s.rawPct)}</td>
-                  <td className="px-3 py-2.5">{pct(s.washPct)}</td>
-                  {ITEMS.map((it) => <td key={it.key} className={`px-3 py-2.5 ${scoreTone(s.items[it.key] ?? null)}`}>{pct(s.items[it.key])}</td>)}
-                  <td className={`px-3 py-2.5 text-sm font-black ${scoreTone(s.weighted)}`}>{pct(s.weighted)}</td>
+                  <td className="px-3 py-2.5"><StatWhy s={s} kind="raw" /></td>
+                  <td className="px-3 py-2.5"><StatWhy s={s} kind="wash" /></td>
+                  {ITEMS.map((it) => <td key={it.key} className={`px-3 py-2.5 ${scoreTone(s.items[it.key] ?? null)}`}><StatWhy s={s} kind="item" item={it} /></td>)}
+                  <td className={`px-3 py-2.5 text-sm font-black ${scoreTone(s.weighted)}`}><StatWhy s={s} kind="weighted" /></td>
                   <td className="px-3 py-2.5">{s.grade && <span className={`whitespace-nowrap rounded-lg px-2 py-0.5 font-bold ${GRADE_CLS[s.grade]}`}>{s.grade}</span>}</td>
                   <td className="px-3 py-2.5 text-emerald-700">{s.washDone}</td>
                   <td className="px-3 py-2.5 text-red-600">{s.washNot}</td>
@@ -305,7 +347,7 @@ export default function VehicleTrackingPage() {
                         return <td key={it.key} className="px-2 py-2 text-center">{v == null ? '—' : <span className={`inline-block h-6 w-6 rounded-md leading-6 text-white ${SCORE_CLS[v]}`}>{v}</span>}</td>
                       })}
                       <td className="max-w-[14rem] truncate px-3 py-2 text-slate-500" title={r.faultDescription ?? ''}>{r.faultDescription ?? ''}</td>
-                      <td className={`px-3 py-2 font-black ${scoreTone(r.score)}`}>{pct(r.score)}</td>
+                      <td className={`px-3 py-2 font-black ${scoreTone(r.score)}`}><DailyWhy d={r as unknown as Draft} s={r.score} title={`الموزون — ${day}`} /></td>
                     </tr>
                   ))}
                 </tbody>

@@ -2,6 +2,7 @@ import { Fragment, useEffect, useMemo, useState } from 'react'
 import { api, apiRequest } from '../api'
 import type { LateExcuse, StaffScore } from '../apiTypes'
 import DisciplineBox from '../components/DisciplineBox'
+import PctWhy from '../ui/PctWhy'
 
 // ═══ 🔍 مراقبة التقييم (دازاي 11-11) ═══
 // «اريد اعرف شلون النظام جاي يحسب… المدراء ماعدهم مشاكل ع شنو يعتمد؟»
@@ -78,7 +79,12 @@ export default function ScoreMonitorPage() {
                 <td className="p-1 font-bold">{r.employeeName}{r.unreported && ' 🚩'}</td>
                 <td>{r.divisionName}</td>
                 <td className={`font-black ${tone(r.total)}`}>{f(r.total)}</td>
-                <td className={r.weakEvidence ? 'font-bold text-amber-700' : ''}>{Math.round((r.coverage ?? 0) * 100)}٪{r.weakEvidence && ' ⚠️'}</td>
+                <td className={r.weakEvidence ? 'font-bold text-amber-700' : ''}><PctWhy title={`تغطية بيانات ${r.employeeName}`} suffix="٪" value={Math.round((r.coverage ?? 0) * 100)}
+                  parts={{ numLabel: 'معيار عليه بيانات حقيقية', num: r.criteria.filter((c) => c.score != null).length, denLabel: 'معيار بالتقييم', den: r.criteria.length }}
+                  meaning={<>شكد من معايير رقم المدير انحسبت من بيانات فعلية. المعيار الي ماكو عليه بيانات ما يدخل بالرقم، فإذا أقل من النص من المعايير عليها بيانات ينعلّم ⚠️ «ضعيف الأدلة» — يعني الرقم ما يتصدّگ لحاله.</>}
+                  source={<>معايير تصنيف المدراء لهذا الشهر (نفس الي بصفحة «تصنيف المدراء»): كل معيار إله درجة إذا لگينا بياناته، و«—» إذا ماكو.</>}>
+                  <ul className="space-y-1">{r.criteria.map((c) => <li key={c.key}>{c.score != null ? '✅' : '⬜'} {c.label}: {f(c.score)}{c.detail ? ` — ${c.detail}` : ''}</li>)}</ul>
+                </PctWhy>{r.weakEvidence && ' ⚠️'}</td>
                 {r.criteria.map((c) => <td key={c.key} title={c.detail} className={tone(c.score)}>{f(c.score)}</td>)}
               </tr>
             ))}

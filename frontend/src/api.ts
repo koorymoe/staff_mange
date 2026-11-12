@@ -1,6 +1,6 @@
 import { readAIStream, readMatrixStream, type AIStreamEvent, type MatrixStreamEvent } from './utils/readMatrixStream'
 /** عنوان السيرفر — مكان واحد (DRY 11-04) */
-import type { AttendanceRecord, AttendanceBoardRow, MonthlyAttendanceReport, OpenSessionResponse, EmployeeDailyAttendanceSummary, Skill, Division, Service, ServiceManager, EmployeeRole, Employee, AttendanceIconRequest, GpsCustomer, GpsStats, RevolvingFund, RevolvingFundTxn, EmployeeFundBalance, GpsInstallCostSummary, StockIntake, LeaveKind, LeaveRequest, ReturnedFromProjects, GpsSimCard, GpsFollowUpOutcome, GpsSubscriptionFollowUp, GpsRenewalFollowUp, GpsDeviceRequest, StaffRequest, BookingAwaitingReview, ReviewRating, PerformanceReview, GpsRenewalRequest, GpsMaintenanceRequest, TrainingMaterial, Booking, BookingVisit, TodayBoardData, JobDurationEstimate, DelayRisk, SalesOpportunity, CrewRecommendation, NewEmployeeCurve, StockForecast, ReplacementSuggestions, WeeklyReport, InternalWorksReport, Stats, Expense, Customer, GpsCustomerListItem, AuditVerdict, ComplaintEvent, LeaderSkillRating, AuditCloseAction, MissingRoleDefault, ComplaintCustomerStat, QualityFollowUp, SecretaryCard, SecretaryProposal, SecretaryConversation, SecretaryReply, SecretaryChat, SecretaryToday, Product, ProductInput, EmployeeMonthlyStats, EmployeePerformanceCurve, DesignFormQuestionType, DesignForm, DesignFormQuestion, DesignFormSubmission, DailyStats, WeeklyStats, ProjectStageStats, SystemPriceCatalog, ExecutionCostItem, LocateResult, LeaderInvoice, CreditSale, BookingDeleteChannel, BookingDeleteRequestType, BookingDeleteRequest, BookingDeleteRequestCounts, CoordinationAlert, CoordinationAlertSummary, ItAssetKind, ItAssetStatus, ItAsset, ItAssetInput, ItAssetLog, ItStats, SurveyPhotoOwner, SurveyPhoto, DailyAuditReport, AuditIssue, Announcement, VipCustomer, ProjectWorkType, EstimateExecutionCostResponse, DirectedProject, MonitorStage, StageBucket, AiSignal, AiCatalog, AiMetric, ExtraTask, BookingChain, RoleChainReport, ChainLearning, ProjectsReport, ProjectChain, MatrixBookingSuggestion, MatrixSuggestAccuracy, MatrixAutonomyStatus, AIUsageReport, MatrixEyesReport, MediaBrief, DisciplineRecord, PeerNote, WorkplaceIssue, WorkplaceIssueDetail, MyPeerState, PeerVoiceReport, PendingCrewRating, BookingTimeline, MonitorDeskCounts, DesignAsset, DepartmentHead, Department, MonitorReview, NetworkPriceItem, NetworkCostResponse, CameraCostRequest, CameraCostResponse, DecorRate, CreateLeaderInvoiceRequest, ServicePriceStats, ServicePriceSuggestion, QuotationItem, Quotation, QuotationVersion, LeaderInvoiceAdjustment, Permission, VehicleOption, Vehicle, VehicleDocument, VehiclePhoto, VehicleMissionRating, VehicleMission, DriverRatingSummary, VehicleBooking, VehicleLog, EmployeeFuelStat, VehicleIncidentAttachment, VehiclePart, VehicleAlert, FuelAnomalyResult, VehicleExpenseSummary, FleetDashboardSummary, VehicleDailyRating, VehicleScoreSummary, TechnicianWashSummary, VehicleWashMonthly, VehicleIncident, VehicleMonthlyStatus, QualityIssue, RoleKpiLeaderboard, KpiEvaluation, KpiCriterion, EmployeeLedger, WorkReport, TechnicianKpi, CartItem, BookingCrewInventoryState, InventoryCheck, Notification, PersonalTool, BookingToolCheck, VehicleTool, OnDemandTool, PersonalToolTemplateItem, PersonalToolExemption, VehicleToolCheck, DeviceMaintenanceTicket, TeamInventoryCheck, ToolRequestItem, PrivacyPolicyPoint, PrivacyPolicyStatus, PersonalToolStatus, PersonalToolEvent, ToolRequestReason, ComplaintType, Complaint, ProcurementRequestType, ProcurementRequest, ProcurementStats, ProjectChecklist, TechShowcaseItem, Exhibition, ProductRequest, ProductProcurement, FulfillProductInput, ServiceStudyReport, ServiceStudy, DisciplinePoints, DisciplineEvent, TodayPulse, FinanceSummary, SolarCategory, SolarComponent, SolarSystem, SolarInstallation, SolarStats, SaveSolarSystemInput, SkillWithService, TrainingProgram, SaveTrainingProgramInput, CustomerPage, LeaderInvoicePage, BackupOverview, PartialCompleteBody, ProgressRecentRow, BookingProgressReport, SurveyReportBody, BookingSurveyReport, DuplicateCandidate, Achievement, VoiceAnalysis, SuggestedCrewMember, FreeWorkReason, EmployeeLetter, GpsMonitorSnapshot, MatrixDecisions, TcInsight, TcCurriculum, TcQuestion, TcExamReportRow, TcPlan, TcMyExam, Justification, PaymentAuditRow, CourierMessage, CourierState, MatrixWatch, MatrixGuideRule, MatrixProposal, EmployeeReport, MatrixBusiness, WorkScheduleRow, GroupPerformance, MatrixFeedItem, MatrixTrendDay, LateFocus, RemoteEntry, RemoteTimer, RemoteSummary, RemoteHistory, StaffRatingStage, PendingStaffRating, StaffScoreBoard, StaffScoreDetail, AttendanceGateState, AttendanceClaim, ProjectMoney, ProjectPaymentsState, TechSupplierIn, TechSupplier, VehicleTracking, CarWashVehicle, MonthStats, ProjectDelay, StageLimitRow, ProcurementWatch, MatrixChatRow, MatrixChatMessage, MatrixMission, StaffPointsRow, MatrixLesson, DepartOrigin, CompanyLocation, BookingTrack, FieldMap, PurchaseControlRow, PurchasePriceRow, PurchaseAlert, SupplierScore, SupplierReviewInput, StandardPrice, StandardSuggestion, PurchaseMonth, PurchaseBias, DrillResult, DutiesReport, WorkPhoto, InvoiceDeleteRequest, CarryoverItem, AccessGroup, EmployeeAccess, RoleDriftRow, PermissionAuditRow, RemotePlan, ManagerRequest, BotReport, RevisitReport, CustomerSignature, BookingHistoryLine, CoreMatrix, CoreTable, CoreTablePage, OwnerGrants, CoreEditLog } from './apiTypes'
+import type { AttendanceRecord, AttendanceBoardRow, MonthlyAttendanceReport, OpenSessionResponse, EmployeeDailyAttendanceSummary, Skill, Division, Service, ServiceManager, EmployeeRole, Employee, AttendanceIconRequest, GpsCustomer, GpsStats, RevolvingFund, RevolvingFundTxn, EmployeeFundBalance, GpsInstallCostSummary, StockIntake, LeaveKind, LeaveRequest, ReturnedFromProjects, GpsSimCard, GpsFollowUpOutcome, GpsSubscriptionFollowUp, GpsRenewalFollowUp, GpsDeviceRequest, StaffRequest, BookingAwaitingReview, ReviewRating, PerformanceReview, GpsRenewalRequest, GpsMaintenanceRequest, TrainingMaterial, Booking, BookingVisit, TodayBoardData, JobDurationEstimate, DelayRisk, SalesOpportunity, CrewRecommendation, NewEmployeeCurve, StockForecast, ReplacementSuggestions, WeeklyReport, InternalWorksReport, Stats, Expense, Customer, GpsCustomerListItem, AuditVerdict, ComplaintEvent, LeaderSkillRating, AuditCloseAction, MissingRoleDefault, ComplaintCustomerStat, QualityFollowUp, SecretaryCard, SecretaryProposal, SecretaryConversation, SecretaryReply, SecretaryChat, SecretaryToday, Product, ProductInput, EmployeeMonthlyStats, EmployeePerformanceCurve, DesignFormQuestionType, DesignForm, DesignFormQuestion, DesignFormSubmission, DailyStats, WeeklyStats, ProjectStageStats, SystemPriceCatalog, ExecutionCostItem, LocateResult, LeaderInvoice, CreditSale, BookingDeleteChannel, BookingDeleteRequestType, BookingDeleteRequest, BookingDeleteRequestCounts, CoordinationAlert, CoordinationAlertSummary, ItAssetKind, ItAssetStatus, ItAsset, ItAssetInput, ItAssetLog, ItStats, SurveyPhotoOwner, SurveyPhoto, DailyAuditReport, AuditIssue, Announcement, VipCustomer, ProjectWorkType, EstimateExecutionCostResponse, DirectedProject, MonitorStage, StageBucket, AiSignal, AiCatalog, AiMetric, ExtraTask, BookingChain, RoleChainReport, ChainLearning, ProjectsReport, ProjectChain, MatrixBookingSuggestion, MatrixSuggestAccuracy, MatrixAutonomyStatus, AIUsageReport, MatrixEyesReport, MediaBrief, DisciplineRecord, PeerNote, WorkplaceIssue, WorkplaceIssueDetail, MyPeerState, PeerVoiceReport, PendingCrewRating, BookingTimeline, MonitorDeskCounts, DesignAsset, DepartmentHead, Department, MonitorReview, NetworkPriceItem, NetworkCostResponse, CameraCostRequest, CameraCostResponse, DecorRate, CreateLeaderInvoiceRequest, ServicePriceStats, ServicePriceSuggestion, QuotationItem, Quotation, QuotationVersion, LeaderInvoiceAdjustment, Permission, VehicleOption, Vehicle, VehicleDocument, VehiclePhoto, VehicleMissionRating, VehicleMission, DriverRatingSummary, VehicleBooking, VehicleLog, EmployeeFuelStat, VehicleIncidentAttachment, VehiclePart, VehicleAlert, FuelAnomalyResult, VehicleExpenseSummary, FleetDashboardSummary, VehicleDailyRating, VehicleScoreSummary, TechnicianWashSummary, VehicleWashMonthly, VehicleIncident, VehicleMonthlyStatus, QualityIssue, RoleKpiLeaderboard, KpiEvaluation, KpiCriterion, EmployeeLedger, WorkReport, TechnicianKpi, CartItem, BookingCrewInventoryState, InventoryCheck, Notification, PersonalTool, BookingToolCheck, VehicleTool, OnDemandTool, PersonalToolTemplateItem, PersonalToolExemption, VehicleToolCheck, DeviceMaintenanceTicket, TeamInventoryCheck, ToolRequestItem, PrivacyPolicyPoint, PrivacyPolicyStatus, PersonalToolStatus, PersonalToolEvent, ToolRequestReason, ComplaintType, Complaint, ProcurementRequestType, ProcurementRequest, ProcurementStats, ProjectChecklist, TechShowcaseItem, Exhibition, ProductRequest, ProductProcurement, FulfillProductInput, ServiceStudyReport, ServiceStudy, DisciplinePoints, DisciplineEvent, TodayPulse, FinanceSummary, SolarCategory, SolarComponent, SolarSystem, SolarInstallation, SolarStats, SaveSolarSystemInput, SkillWithService, TrainingProgram, SaveTrainingProgramInput, CustomerPage, LeaderInvoicePage, BackupOverview, PartialCompleteBody, ProgressRecentRow, BookingProgressReport, SurveyReportBody, BookingSurveyReport, DuplicateCandidate, Achievement, VoiceAnalysis, SuggestedCrewMember, FreeWorkReason, EmployeeLetter, GpsMonitorSnapshot, MatrixDecisions, TcInsight, TcCurriculum, TcQuestion, TcExamReportRow, TcPlan, TcMyExam, Justification, PaymentAuditRow, CourierMessage, CourierState, MatrixWatch, MatrixGuideRule, MatrixProposal, EmployeeReport, MatrixBusiness, WorkScheduleRow, GroupPerformance, MatrixFeedItem, MatrixTrendDay, LateFocus, RemoteEntry, RemoteTimer, RemoteSummary, RemoteHistory, StaffRatingStage, PendingStaffRating, StaffScoreBoard, StaffScoreDetail, AttendanceGateState, AttendanceClaim, ProjectMoney, ProjectPaymentsState, TechSupplierIn, TechSupplier, VehicleTracking, CarWashVehicle, MonthStats, ProjectDelay, StageLimitRow, ProcurementWatch, MatrixChatRow, MatrixChatMessage, MatrixMission, StaffPointsRow, MatrixLesson, DepartOrigin, CompanyLocation, BookingTrack, FieldMap, PurchaseControlRow, PurchasePriceRow, PurchaseAlert, SupplierScore, SupplierReviewInput, StandardPrice, StandardSuggestion, PurchaseMonth, PurchaseBias, DrillResult, DutiesReport, WorkPhoto, InvoiceDeleteRequest, CarryoverItem, AccessGroup, EmployeeAccess, RoleDriftRow, PermissionAuditRow, RemotePlan, ManagerRequest, BotReport, RevisitReport, CustomerSignature, BookingHistoryLine, CoreMatrix, CoreTable, CoreTablePage, OwnerGrants, CoreEditLog, TcNeed } from './apiTypes'
 export type * from './apiTypes'
 
 export const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000/api'
@@ -136,15 +136,19 @@ export async function ensureFileToken(): Promise<string> {
  *
  *  يتعامل مع الثلاثة: data: URL قديمة، مسار /api/files/ جديد، ورابط
  *  خارجي كامل. الشاشات تنادي هذي بدل ما تحط القيمة مباشرة بـsrc. */
-export function fileUrl(value?: string | null): string {
+export function fileUrl(value?: string | null, width?: 160 | 320 | 480 | 800): string {
   if (!value) return ''
   if (value.startsWith('data:') || value.startsWith('http')) return value
   if (value.startsWith('/api/files/')) {
     const base = API_URL.replace(/\/api$/, '')
-    return `${base}${value}${fileToken ? `?ft=${encodeURIComponent(fileToken)}` : ''}`
+    const q = [fileToken ? `ft=${encodeURIComponent(fileToken)}` : '', width ? `w=${width}` : ''].filter(Boolean).join('&')
+    return `${base}${value}${q ? `?${q}` : ''}`
   }
   return value
 }
+
+/** (11-12) نسخة مصغّرة للعرض بمربع — السيرفر يصغّرها مرة وحدة. للفتح الكامل استعمل fileUrl بلا عرض. */
+export const thumbUrl = (value?: string | null, width: 160 | 320 | 480 | 800 = 480) => fileUrl(value, width)
 
 /** storeFile (٧ل): يرفع الملف لمخزن الملفات ويرجّع رابطه (/api/files/…) حتى
  *  ما ينحفظ base64 بالقاعدة. لو فشل الرفع يرجّع data URL مثل قبل — ما نضيّع الملف. */
@@ -166,6 +170,8 @@ export class ApiError extends Error {
   constructor(message: string, status: number) { super(message); this.name = 'ApiError'; this.status = status }
 }
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
+  // أي تعديل على الخدمات أو مهاراتها يمسح قائمة الخدمات المحفوظة (11-12)
+  if (options?.method && options.method !== 'GET' && (path.startsWith('/services') || path.startsWith('/skills'))) servicesCache = null
   const token = currentToken()
   const res = await fetch(`${API_URL}${path}`, {
     headers: {
@@ -201,6 +207,9 @@ let refreshTimer = 0
 // apiRequest نفس طريقة الاتصال الموحدة (الجلسة المنتهية، رسائل الأخطاء بالعراقي،
 // تحديث عين ماتركس) — للشاشات الي چانت عندها طريقة خاصة بيها.
 export const apiRequest = request
+let servicesCache: { at: number; p: Promise<Service[]> } | null = null
+/** يمسح قائمة الخدمات المحفوظة (بعد أي تعديل على خدمة أو مهارة). */
+export function clearServicesCache() { servicesCache = null }
 
 export async function streamMatrixChat(id: string, text: string, image: string | undefined, emit: (event: MatrixStreamEvent) => void, signal: AbortSignal) {
   const token = currentToken()
@@ -552,7 +561,15 @@ export const api = {
     request<ProjectChecklist>('/checklists', { method: 'POST', body: JSON.stringify(data) }),
   addChecklistPhotos: (id: string, photoUrls: string[]) =>
     request<ProjectChecklist>(`/checklists/${id}/photos`, { method: 'PUT', body: JSON.stringify({ photoUrls }) }),
-  getServices: () => request<Service[]>('/services'),
+  // (11-12 «النظام بطيء»): قائمة الخدمات ويا مهاراتها چانت تنطلب بكل فتحة صفحة (الإطار يدور
+  // بيها على GPS). هسه تنحفظ ٥ دقايق وتتشارك بين الشاشات، وأي تعديل على خدمة يمسحها.
+  getServices: () => {
+    if (servicesCache && Date.now() - servicesCache.at < 5 * 60_000) return servicesCache.p
+    const p = request<Service[]>('/services')
+    servicesCache = { at: Date.now(), p }
+    p.catch(() => { servicesCache = null })
+    return p
+  },
   suggestProductSpecs: (name: string, modelName: string) =>
     request<{ specs: string }>('/products/specs-suggest', { method: 'POST', body: JSON.stringify({ name, modelName }) }),
   // توقف العمل: الليدر بدأ وما كدر يكمّل. السبب إجباري.
@@ -1282,7 +1299,7 @@ export const api = {
   rateStaff: (stage: 'coord' | 'audit' | 'quality' | 'periodic', body: { bookingId?: string; rateeId: string; score: number; note?: string }) =>
     request<{ ok: boolean }>(`/staff-ratings/${stage}`, { method: 'POST', body: JSON.stringify(body) }),
   getPendingCrewRatings: () => request<PendingCrewRating[]>('/crew-ratings/pending'),
-  rateCrew: (bookingId: string, ratings: { technicianId: string; score: number; note?: string }[]) =>
+  rateCrew: (bookingId: string, ratings: { technicianId: string; score: number; note?: string; needsTraining?: string }[]) =>
     request<{ ok: boolean }>('/crew-ratings', { method: 'POST', body: JSON.stringify({ bookingId, ratings }) }),
 
   // ═══ المهام الإضافية ═══
@@ -2131,8 +2148,12 @@ export const api = {
   tcInsights: () => request<TcInsight[]>('/training-center/insights'),
   tcTracks: () => request<{ id: string; name: string; division: string; materials: number; skills: number; masters: number; assigned: number; programs: number }[]>('/training-center/tracks'),
   tcCurriculum: () => request<TcCurriculum[]>('/training-center/curriculum'),
-  tcAddCurriculum: (b: { role: string; title: string; details?: string }) => request<TcCurriculum[]>('/training-center/curriculum', { method: 'POST', body: JSON.stringify(b) }),
+  tcAddCurriculum: (b: { role?: string; title: string; details?: string; parentId?: string; serviceId?: string }) => request<TcCurriculum[]>('/training-center/curriculum', { method: 'POST', body: JSON.stringify(b) }),
   tcDeleteCurriculum: (id: string) => request<TcCurriculum[]>(`/training-center/curriculum/${id}`, { method: 'DELETE' }),
+  tcMatching: (status: '' | 'done' | 'dismissed' = '', refresh = false) => request<TcNeed[]>(`/training-center/matching?status=${status}${refresh ? '&refresh=1' : ''}`),
+  tcAddNeed: (b: { employeeId: string; topic: string; curriculumId?: string; reason?: string }) => request<TcNeed>('/training-center/needs', { method: 'POST', body: JSON.stringify(b) }),
+  tcNeedAction: (id: string, action: 'start' | 'complete' | 'dismiss', b: { report?: string; score?: number; note?: string } = {}) =>
+    request<TcNeed>(`/training-center/needs/${id}/${action}`, { method: 'POST', body: JSON.stringify(b) }),
   tcQuestions: (role = '') => request<TcQuestion[]>(`/training-center/questions?role=${encodeURIComponent(role)}`),
   tcAddQuestion: (b: { role: string; text: string; options: string[]; correct: number }) => request<{ ok: boolean }>('/training-center/questions', { method: 'POST', body: JSON.stringify(b) }),
   tcGenerateQuestions: (role: string, roleLabel: string, count: number) => request<{ added: number }>('/training-center/questions/generate', { method: 'POST', body: JSON.stringify({ role, roleLabel, count }) }),
@@ -2620,6 +2641,8 @@ export const api = {
   getEmployeeReport: (employeeId: string, day?: string) =>
     request<EmployeeReport>(`/ai/employee-report?employeeId=${encodeURIComponent(employeeId)}${day ? `&day=${day}` : ''}`),
   getMatrixBusiness: () => request<MatrixBusiness>('/ai/business'),
+  // (ل) 11-12: دقة توقعات «ما راح يخلّص اليوم» — كل توقع ينحكم بنهاية الدوام
+  getPredictionAccuracy: () => request<{ days: number; correct: number; judged: number; pct: number | null; recent: { title: string; verdict: 'CORRECT' | 'WRONG'; leftAtEnd: number | null; createdAt: string }[] }>('/ai/prediction-accuracy'),
   getMatrixProposals: (status = 'PENDING') => request<MatrixProposal[]>(`/ai/proposals?status=${encodeURIComponent(status)}`),
   approveMatrixProposal: (id: string, payload?: unknown) =>
     request<{ ok: boolean }>(`/ai/proposals/${encodeURIComponent(id)}/approve`, { method: 'POST', body: JSON.stringify({ payload: payload ?? null }) }),

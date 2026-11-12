@@ -92,6 +92,7 @@ func (h *StaffScoreHandler) Cancel(w http.ResponseWriter, r *http.Request) {
 		WriteError(w, http.StatusBadRequest, "اكتب ليش تلغيها")
 		return
 	}
+	defer service.InvalidateBoard()
 	if err := h.svc.Repo().Cancel(r.PathValue("id"), middleware.EmployeeIDFromContext(r), in.Note); err != nil {
 		WriteError(w, http.StatusInternalServerError, "تعذر")
 		return

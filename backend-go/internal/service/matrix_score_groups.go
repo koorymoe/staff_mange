@@ -137,14 +137,9 @@ func BuildReliability(rules map[string][2]int, f repository.ReliabilityFact) ([]
 	}
 	a := rules["ATTENDANCE"]
 	add(ratioPart("ATTENDANCE", "يسجّل حضوره", a[0], a[1], "يوم سجّل"))
-	if f.Sessions > 0 {
-		self := f.Sessions - f.Auto
-		if self < 0 {
-			self = 0
-		}
-		parts = append(parts, ReliabilityPart{Key: "CHECKOUT", Label: "يسجّل انصرافه بنفسه",
-			Pct: float64(self) * 100 / float64(f.Sessions), Detail: fmt.Sprintf("%d من %d مرة بنفسه", self, f.Sessions)})
-	}
+	// (دازاي 11-11): «ما يتحاسب ع الانصراف، يتحاسب بس ع الحضور» — عدنا انصراف تلقائي
+	// بعد نهاية الشفت، فنسيان الانصراف ما ينزّل الاعتمادية. والحساب حي من البيانات،
+	// فكل الأشهر السابقة رجعت لحالها بلا هذا الجزء.
 	i := rules["INVENTORY"]
 	add(ratioPart("INVENTORY", "يجرد عدّته", i[0], i[1], "مرة"))
 	pw := rules["PAPER"]

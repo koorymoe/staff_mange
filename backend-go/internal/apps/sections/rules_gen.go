@@ -22,6 +22,7 @@ func rules() map[string]map[core.Action]core.Rule {
 			}("يعدّل /api/achievements/{id}/review (المراقب)"),
 		},
 		"ai": {
+			"ai.get_prediction_accuracy":  func(l string) core.Rule { return admin(l) }("يقرا /api/ai/prediction-accuracy (مدير النظام)"),
 			"ai.delete_guide_rules_by_id": func(l string) core.Rule { return admin(l) }("يشيل /api/ai/guide-rules/{id} (مدير النظام)"),
 			"ai.get_actions":              func(l string) core.Rule { return admin(l) }("يقرا /api/ai/actions (مدير النظام)"),
 			"ai.get_agent_names":          func(l string) core.Rule { return any_(l) }("يقرا /api/ai/agent-names (الدخول — الفحص بالمعالج)"),
@@ -962,11 +963,13 @@ func rules() map[string]map[core.Action]core.Rule {
 			}("ينفّذ /api/project-work-types (دور/صلاحية)"),
 		},
 		"projects": {
-			"projects.delete_by_id":             func(l string) core.Rule { return roles(l, "ADMIN", "PROJECT_MANAGER") }("يشيل /api/projects/{id} (دور)"),
-			"projects.delete_by_id_contract":    func(l string) core.Rule { return admin(l) }("يشيل /api/projects/{id}/contract (مدير النظام)"),
-			"projects.delete_by_id_purge":       func(l string) core.Rule { return roles(l, "ADMIN", "PROJECT_MANAGER") }("يشيل /api/projects/{id}/purge (دور)"),
-			"projects.get_by_id":                func(l string) core.Rule { return any_(l) }("يقرا /api/projects/{id} (الدخول — الفحص بالمعالج)"),
-			"projects.get_by_id_delegation_log": func(l string) core.Rule { return roles(l, "ADMIN", "PROJECT_MANAGER") }("يقرا /api/projects/{id}/delegation-log (دور)"),
+			"projects.get_by_projectid_quotation_candidates": func(l string) core.Rule { return any_(l) }("يقرا /api/projects/{projectId}/quotation-candidates (الدخول — الفحص بالمعالج)"),
+			"projects.post_by_projectid_link_quotation":      func(l string) core.Rule { return any_(l) }("ينفّذ /api/projects/{projectId}/link-quotation (الدخول — الفحص بالمعالج)"),
+			"projects.delete_by_id":                          func(l string) core.Rule { return roles(l, "ADMIN", "PROJECT_MANAGER") }("يشيل /api/projects/{id} (دور)"),
+			"projects.delete_by_id_contract":                 func(l string) core.Rule { return admin(l) }("يشيل /api/projects/{id}/contract (مدير النظام)"),
+			"projects.delete_by_id_purge":                    func(l string) core.Rule { return roles(l, "ADMIN", "PROJECT_MANAGER") }("يشيل /api/projects/{id}/purge (دور)"),
+			"projects.get_by_id":                             func(l string) core.Rule { return any_(l) }("يقرا /api/projects/{id} (الدخول — الفحص بالمعالج)"),
+			"projects.get_by_id_delegation_log":              func(l string) core.Rule { return roles(l, "ADMIN", "PROJECT_MANAGER") }("يقرا /api/projects/{id}/delegation-log (دور)"),
 			"projects.get_by_id_media": func(l string) core.Rule {
 				return rolePerm(l, []string{"ADMIN", "PROJECT_MANAGER"}, "project_management")
 			}("يقرا /api/projects/{id}/media (دور/صلاحية)"),
@@ -1432,6 +1435,13 @@ func rules() map[string]map[core.Action]core.Rule {
 			"quotation_templates.get_root":       func(l string) core.Rule { return any_(l) }("يقرا /api/quotation-templates (الدخول + طبقة: allowQuotationOrDelegate)"),
 			"quotation_templates.post_root":      func(l string) core.Rule { return any_(l) }("ينفّذ /api/quotation-templates (الدخول + طبقة: allowQuotationOrDelegate)"),
 			"quotation_templates.post_by_id_use": func(l string) core.Rule { return any_(l) }("ينفّذ /api/quotation-templates/{id}/use (الدخول + طبقة: allowQuotationOrDelegate)"),
+		},
+		"solar_inquiries": {
+			"solar_inquiries.get_root":           func(l string) core.Rule { return any_(l) }("يقرا /api/solar-inquiries (الدخول — الفحص بالمعالج)"),
+			"solar_inquiries.post_root":          func(l string) core.Rule { return any_(l) }("ينفّذ /api/solar-inquiries (الدخول — الفحص بالمعالج)"),
+			"solar_inquiries.post_by_id_claim":   func(l string) core.Rule { return any_(l) }("ينفّذ /api/solar-inquiries/{id}/claim (الدخول — الفحص بالمعالج)"),
+			"solar_inquiries.post_by_id_contact": func(l string) core.Rule { return any_(l) }("ينفّذ /api/solar-inquiries/{id}/contact (الدخول — الفحص بالمعالج)"),
+			"solar_inquiries.post_by_id_quality": func(l string) core.Rule { return any_(l) }("ينفّذ /api/solar-inquiries/{id}/quality (الدخول — الفحص بالمعالج)"),
 		},
 		"late_excuses": {
 			"late_excuses.post_root":         func(l string) core.Rule { return any_(l) }("ينفّذ /api/late-excuses (أي موظف يقدّم عذر إله)"),

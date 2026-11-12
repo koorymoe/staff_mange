@@ -19,10 +19,14 @@ func init() {
 			{Name: "decidedAt", Type: "timestamp with time zone"},
 			{Name: "note", Type: "text"},
 			{Name: "createdAt", Type: "timestamp with time zone", NotNull: true, Default: "now()"},
+			{Name: "verdict", Type: "text"},
+			{Name: "verifiedAt", Type: "timestamp with time zone"},
+			{Name: "leftAtEnd", Type: "integer"},
 		},
 		Constraints: []Constraint{
 			{Name: "MatrixProposal_decidedById_fkey", Def: "FOREIGN KEY (\"decidedById\") REFERENCES \"Employee\"(id) ON DELETE SET NULL"},
 			{Name: "MatrixProposal_pkey", Def: "PRIMARY KEY (id)"},
+			{Name: "MatrixProposal_verdict_check", Def: "CHECK ((verdict = ANY (ARRAY['CORRECT'::text, 'WRONG'::text])))"},
 		},
 		Indexes: []string{
 			"CREATE UNIQUE INDEX \"MatrixProposal_pending_sig\" ON public.\"MatrixProposal\" USING btree (signature) WHERE (status = 'PENDING'::text)",

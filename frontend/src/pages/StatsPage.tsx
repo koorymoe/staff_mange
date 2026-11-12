@@ -6,6 +6,7 @@ import { useSession } from '../session'
 import { roleLabel } from '../roleLabels'
 import { API_URL } from '../api'
 import { swallow } from '../utils/swallow'
+import PctWhy from '../ui/PctWhy'
 
 
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
@@ -181,7 +182,9 @@ export default function StatsPage() {
                   <td className="p-3">{s.thisMonth}</td>
                   <td className="p-3">
                     <span className={`font-medium ${s.totalTransferred ? (s.confirmed / s.totalTransferred > 0.5 ? 'text-green-600' : 'text-amber-600') : 'text-gray-400'}`}>
-                      {s.totalTransferred ? `${Math.round((s.confirmed / s.totalTransferred) * 100)}%` : '-'}
+                      {s.totalTransferred ? <PctWhy title={`نسبة نجاح ${s.name}`} parts={{ numLabel: 'حجز تأكد (مو معلّق ولا ملغي)', num: s.confirmed, denLabel: 'حجز حوّله هذا الموظف', den: s.totalTransferred }}
+                        meaning={<>من كل الحجوزات الي هذا الموظف حوّلها، شكد منها مشت (تأكدت أو انجزت) بدل ما تبقى معلّقة أو تنلغي. فوق 50% أخضر. تنزل إذا هواي حجوزات تنلغي أو تبقى معلّقة.</>}
+                        source={<>جدول الحجوزات: كل حجز مسجّل عليه إنه «محوّل من» هذا الموظف، من البداية لحد هسه (بدون المحذوف والمؤرشف).</>} /> : '-'}
                     </span>
                   </td>
                 </tr>
@@ -224,7 +227,9 @@ export default function StatsPage() {
                   <td className="p-3">{t.revenueHandled.toLocaleString()} د.ع</td>
                   <td className="p-3">
                     <span className={`font-medium ${t.totalAssigned ? (t.completed / t.totalAssigned > 0.5 ? 'text-green-600' : 'text-amber-600') : 'text-gray-400'}`}>
-                      {t.totalAssigned ? `${Math.round((t.completed / t.totalAssigned) * 100)}%` : '-'}
+                      {t.totalAssigned ? <PctWhy title={`نسبة إنجاز ${t.name}`} parts={{ numLabel: 'طلعة طلعها (بحجز مو ملغي)', num: t.completed, denLabel: 'حجز مربوط بيه هسه', den: t.totalAssigned }}
+                        meaning={<>مقارنة بين الطلعات الي طلعها الفني ويا الكادر والحجوزات المربوطة بيه. ⚠️ «مكتملة» تعدّ الطلعات مو الحجوزات — حجز ياخذ أربع أيام = أربع طلعات — فالنسبة ممكن تعبر 100%. فوق 50% أخضر.</>}
+                        source={<>المكتملة: سجل كادر كل طلعة (الزيارات) للحجوزات الي مو ملغية. المهام: ربط الفنيين بالحجوزات الحالي. من البداية لحد هسه.</>} /> : '-'}
                     </span>
                   </td>
                 </tr>

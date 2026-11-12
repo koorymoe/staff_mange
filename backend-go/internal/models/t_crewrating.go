@@ -13,6 +13,7 @@ func init() {
 			{Name: "score", Type: "integer", NotNull: true},
 			{Name: "note", Type: "text"},
 			{Name: "createdAt", Type: "timestamp with time zone", NotNull: true, Default: "now()"},
+			{Name: "needsTraining", Type: "text"},
 		},
 		Constraints: []Constraint{
 			{Name: "CrewRating_bookingId_fkey", Def: "FOREIGN KEY (\"bookingId\") REFERENCES \"Booking\"(id) ON DELETE CASCADE"},
