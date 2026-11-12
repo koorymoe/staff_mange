@@ -33,6 +33,11 @@ export type PlanFileRow = {
   fileType: string | null
   uploadedByName: string | null
   createdAt: string
+  // (ل) 11-12: فورما المخطط — المكان والاسم والملاحظات والسكيل (اللوغو والتاريخ ثابتين)
+  sheetPos: 'right' | 'bottom'
+  sheetName: string | null
+  sheetNotes: string | null
+  sheetScale: string | null
 }
 export type PlanSetDetail = PlanSetRow & { items: PlanFileRow[]; canManage: boolean }
 export type PlanProjectCard = {

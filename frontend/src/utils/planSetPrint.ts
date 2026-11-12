@@ -8,7 +8,16 @@ import { fileUrl } from '../api'
 import { esc } from './printIdentity'
 
 export type PlanPrintGroup = { no: number; name: string; en: string; types: { code: string; name: string }[] }
-export type PlanPrintFile = { typeCode: string; title: string; fileKey: string; fileType?: string | null }
+export type PlanPrintFile = {
+  typeCode: string; title: string; fileKey: string; fileType?: string | null
+  // (ل) 11-12: فورما المخطط + تاريخه
+  createdAt?: string; sheetPos?: 'right' | 'bottom'; sheetName?: string | null; sheetNotes?: string | null; sheetScale?: string | null
+}
+
+/** تاريخ المخطط بالفورما = يوم رفعه (بتوقيت بغداد) */
+export function sheetDate(f: { createdAt?: string }, fallback = new Date()) {
+  return (f.createdAt ? new Date(f.createdAt) : fallback).toLocaleDateString('en-GB', { timeZone: 'Asia/Baghdad' })
+}
 export type PlanPrintQuote = {
   quotationNumber: string
   customerName: string
@@ -63,11 +72,31 @@ export function buildPlanSetHtml(p: PlanPrintInput, logoUrl: string): string {
     ${p.groups.map((g) => `<li class="${g.types.some((t) => present.has(t.code)) ? 'on' : ''}"><b>${g.no}</b><span dir="ltr">${esc(g.en)}</span><span>${esc(g.name)}</span></li>`).join('')}
   </ol>${foot(page++)}</section>`
 
-  const pages = images.map((f) => {
+  // (ل) 11-12 دازاي: «قبل كل تصميم غلاف يوضح هذا تصميم شنو — مرتب وحلو، بألوان فخمة، وبيه اسم المخطط»،
+  // و«جوه كل تصميم فورما: لوغو الأماني، اسم المخطط، الملاحظات، السكيل، التاريخ» — مكانها تختاره المصممة.
+  const pages = images.map((f, i) => {
     const t = typeName.get(f.typeCode)
-    return `<section class="page">${band}
-      <div class="ph"><span class="tag">${esc(f.typeCode)}</span><div><b>${esc(t?.name ?? f.typeCode)}</b><small>${esc(t ? `${t.group.no}. ${t.group.name}` : '')}${f.title && f.title !== f.typeCode ? ` · ${esc(f.title)}` : ''}</small></div></div>
-      <div class="img"><img src="${esc(abs(fileUrl(f.fileKey)))}" alt=""></div>${foot(page++)}</section>`
+    const name = (f.sheetName || '').trim() || t?.name || f.title || f.typeCode
+    const group = t ? `${t.group.no}. ${t.group.name}` : ''
+    const date = sheetDate(f, p.date)
+    const cover = `<section class="page land pcover">
+      <div class="pc-frame"></div><div class="pc-glow"></div>
+      <div class="pc-top"><img src="LOGO" alt=""><div><b>شركة الأماني المتحدة</b><small dir="ltr">AL-AMANI · PLANS</small></div>
+        <span class="pc-no" dir="ltr">${String(i + 1).padStart(2, '0')} / ${String(images.length).padStart(2, '0')}</span></div>
+      <div class="pc-body"><span class="pc-code" dir="ltr">${esc(f.typeCode)}</span>
+        <h2>${esc(name)}</h2>${group ? `<p class="pc-group">${esc(group)}${t?.group.en ? ` · <bdi dir="ltr">${esc(t.group.en)}</bdi>` : ''}</p>` : ''}
+        <div class="pc-line"></div>
+        <p class="pc-meta">${esc(p.title)}${p.projectName ? ` · ${esc(p.projectName)}` : ''}</p></div>
+      <div class="pc-foot"><span>${esc(date)}</span><span>${COMPANY}</span></div>
+      ${foot(page++)}</section>`
+    const cells = [['اسم المخطط', name], ['الملاحظات', (f.sheetNotes || '').trim() || '—'], ['السكيل', (f.sheetScale || '').trim() || '—'], ['التاريخ', date]]
+    const block = `<div class="tb"><div class="tb-logo"><img src="LOGO" alt=""><small>الأماني</small></div>
+      ${cells.map(([k, v]) => `<div class="tb-cell"><b>${k}</b><span${k === 'السكيل' || k === 'التاريخ' ? ' dir="ltr"' : ''}>${esc(v)}</span></div>`).join('')}</div>`
+    const pos = f.sheetPos === 'bottom' ? 'bottom' : 'right'
+    const sheet = `<section class="page land plan sheet-${pos}">
+      ${pos === 'right' ? block : ''}<div class="img"><img src="${esc(abs(fileUrl(f.fileKey)))}" alt=""></div>${pos === 'bottom' ? block : ''}
+      ${foot(page++)}</section>`
+    return cover + sheet
   }).join('')
 
   const attach = others.length ? `<section class="page">${band}<div class="box">ملفات مرفقة (PDF / أوتوكاد)</div>
@@ -107,6 +136,37 @@ body { margin: 0; font-family: 'Tajawal', sans-serif; color: #1e293b; -webkit-pr
 table { width: 100%; border-collapse: collapse; font-size: 12px } th { background: ${NAVY}; color: #fff; padding: 2mm } td { border-bottom: 1px solid #e2e8f0; padding: 2mm; text-align: center }
 .tot { display: flex; gap: 6mm; justify-content: flex-end; font-size: 13px } .tot .net b { color: ${NAVY}; font-size: 16px }
 .foot { position: absolute; bottom: 6mm; left: 12mm; right: 12mm; display: flex; justify-content: space-between; font-size: 10px; color: #94a3b8; border-top: 1px solid #e2e8f0; padding-top: 2mm }
+@page land { size: A4 landscape; margin: 0 }
+.page.land { page: land; width: 297mm; height: 210mm; padding: 10mm 10mm 14mm }
+/* ── غلاف المخطط: كحلي غامق وذهبي ── */
+.page.land.pcover { background: radial-gradient(120% 90% at 85% 10%, #3a43a0 0%, #1d2360 45%, #0e1238 100%); color: #fff; justify-content: space-between; padding: 16mm 18mm 18mm }
+.pc-frame { position: absolute; inset: 7mm; border: 0.6mm solid #c9a24b; border-radius: 4mm; pointer-events: none }
+.pc-frame::after { content: ''; position: absolute; inset: 2.2mm; border: 0.25mm solid rgba(201,162,75,.45); border-radius: 3mm }
+.pc-glow { position: absolute; width: 140mm; height: 140mm; left: -40mm; bottom: -60mm; border-radius: 50%; background: radial-gradient(circle, rgba(201,162,75,.28), transparent 65%) }
+.pc-top { position: relative; display: flex; align-items: center; gap: 5mm }
+.pc-top img { width: 20mm; height: 20mm; border-radius: 50%; background: #fff; padding: 1.5mm; box-shadow: 0 0 0 0.8mm #c9a24b }
+.pc-top b { display: block; font-size: 15px } .pc-top small { letter-spacing: 3px; color: #e8cf8a; font-size: 9px }
+.pc-no { margin-inline-start: auto; font-size: 13px; letter-spacing: 2px; color: #e8cf8a }
+.pc-body { position: relative; text-align: center }
+.pc-code { display: inline-block; border: 0.4mm solid #c9a24b; color: #e8cf8a; border-radius: 10mm; padding: 1mm 6mm; font-weight: 700; letter-spacing: 2px }
+.pc-body h2 { font-size: 40px; margin: 6mm 0 3mm; line-height: 1.25; text-shadow: 0 2px 12px rgba(0,0,0,.35) }
+.pc-group { color: #cbd5f5; font-size: 15px; margin: 0 }
+.pc-line { width: 60mm; height: 0.6mm; margin: 6mm auto; background: linear-gradient(90deg, transparent, #c9a24b, transparent) }
+.pc-meta { color: #e2e8f0; font-size: 14px; margin: 0 }
+.pc-foot { position: relative; display: flex; justify-content: space-between; gap: 6mm; font-size: 9.5px; color: #cbd5f5 }
+.pcover .foot { display: none }
+/* ── صفحة المخطط ويا الفورما ── */
+.plan { gap: 4mm } .plan.sheet-right { flex-direction: row } .plan.sheet-bottom { flex-direction: column }
+.plan .img { flex: 1; min-width: 0 }
+.tb { display: flex; border: 0.5mm solid ${NAVY}; border-radius: 2mm; overflow: hidden; background: #fff; font-size: 10px }
+.sheet-right .tb { flex-direction: column; width: 46mm } .sheet-bottom .tb { flex-direction: row; height: 26mm }
+.tb-logo { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1mm; padding: 2mm; background: ${NAVY}; color: #fff; font-weight: 700; font-size: 12px }
+.tb-logo img { width: 15mm; height: 15mm; border-radius: 50%; background: #fff; padding: 1mm }
+.sheet-bottom .tb-logo { width: 30mm }
+.tb-cell { flex: 1; padding: 2mm 2.5mm; display: flex; flex-direction: column; gap: 1mm; min-width: 0 }
+.sheet-right .tb-cell { border-top: 0.3mm solid ${NAVY} } .sheet-bottom .tb-cell { border-inline-start: 0.3mm solid ${NAVY} }
+.sheet-right .tb-cell:nth-child(3) { flex: 2 } .sheet-bottom .tb-cell:nth-child(3) { flex: 2 }
+.tb-cell b { color: ${NAVY}; font-size: 10.5px } .tb-cell span { font-size: 12px; white-space: pre-wrap; overflow-wrap: anywhere; color: #1e293b }
 @media print { body { background: #fff } .page { margin: 0 } }
 </style></head><body>${cover}${contents}${pages}${attach}${p.noQuote ? '' : quote}</body></html>`.replace(/src="LOGO"/g, `src="${esc(abs(logoUrl))}"`)
 }

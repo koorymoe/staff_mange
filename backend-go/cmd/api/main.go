@@ -1825,6 +1825,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 		{"POST /api/plan-sets/{id}/copy", planSetHandler.Copy},
 		{"POST /api/plan-sets/{id}/files", planSetHandler.AddFile},
 		{"DELETE /api/plan-files/{id}", planSetHandler.RemoveFile},
+		{"PUT /api/plan-files/{id}/sheet", planSetHandler.UpdateSheet},
 	} {
 		mux.Handle(rt.pat, middleware.Chain(rt.fn, requireAuth))
 	}

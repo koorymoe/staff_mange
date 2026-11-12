@@ -35,8 +35,8 @@ func TestPredictionVerdict_Live(t *testing.T) {
 		db.MustExec(`INSERT INTO "MatrixProposal"(id, kind, title, evidence, payload, signature, status)
 			VALUES ($1, 'PREDICTION', $1, $2::jsonb, '{"employeeId":"pv-mon"}'::jsonb, $3, 'EXPIRED')`, id, ev, sig)
 	}
-	add("pv-1", "PRED|pv-mon|NOPE|"+day, `{"key":"NOPE","share":1}`)    // شغلة ما باقي بيها شي = غلط
-	add("pv-2", "PRED|pv-old|X|"+day, `{"done":1}`)                       // توقع قديم بلا مفتاح = ما ينحكم
+	add("pv-1", "PRED|pv-mon|NOPE|"+day, `{"key":"NOPE","share":1}`)       // شغلة ما باقي بيها شي = غلط
+	add("pv-2", "PRED|pv-old|X|"+day, `{"done":1}`)                        // توقع قديم بلا مفتاح = ما ينحكم
 	add("pv-3", "PRED|pv-mon|NOPE|2000-01-01", `{"key":"NOPE","share":1}`) // يوم ثاني = مو هسه
 	props := repository.NewMatrixProposalRepository(db)
 	watch := NewMatrixAutopilotService(repository.NewAiActionRepository(db), repository.NewAiRepository(db),

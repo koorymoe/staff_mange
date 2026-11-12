@@ -118,6 +118,11 @@ type PlanFile struct {
 	FileType       *string   `db:"fileType" json:"fileType"`
 	UploadedByName *string   `db:"uploadedByName" json:"uploadedByName"`
 	CreatedAt      time.Time `db:"createdAt" json:"createdAt"`
+	// (ل) 11-12: فورما المخطط (اللوغو والتاريخ ثابتين؛ الباقي المصممة تعدّله)
+	SheetPos   string  `db:"sheetPos" json:"sheetPos"`
+	SheetName  *string `db:"sheetName" json:"sheetName"`
+	SheetNotes *string `db:"sheetNotes" json:"sheetNotes"`
+	SheetScale *string `db:"sheetScale" json:"sheetScale"`
 }
 
 type PlanSetDetail struct {
@@ -216,7 +221,7 @@ func (s *PlanSetService) Detail(emp, role string, perms []string, id string) (*P
 		return nil, ErrDesignHidden
 	}
 	err := s.db.Select(&d.Items, `SELECT f.id, f."setId", f."typeCode", f.title, f."fileKey", f."fileType",
-		e.name AS "uploadedByName", f."createdAt"
+		e.name AS "uploadedByName", f."createdAt", f."sheetPos", f."sheetName", f."sheetNotes", f."sheetScale"
 		FROM "PlanFile" f LEFT JOIN "Employee" e ON e.id = f."uploadedById"
 		WHERE f."setId" = $1 AND f."removedAt" IS NULL ORDER BY f."createdAt"`, id)
 	return d, err
@@ -457,8 +462,8 @@ func (s *PlanSetService) Copy(emp, role string, perms []string, toSetID string, 
 	for _, n := range in.Sections {
 		secs = append(secs, fmt.Sprintf("%d.", n))
 	}
-	res, err := s.db.Exec(`INSERT INTO "PlanFile" ("setId", "typeCode", title, "fileKey", "fileType", "uploadedById")
-		SELECT $2, f."typeCode", f.title, f."fileKey", f."fileType", $3 FROM "PlanFile" f
+	res, err := s.db.Exec(`INSERT INTO "PlanFile" ("setId", "typeCode", title, "fileKey", "fileType", "uploadedById", "sheetPos", "sheetName", "sheetNotes", "sheetScale")
+		SELECT $2, f."typeCode", f.title, f."fileKey", f."fileType", $3, f."sheetPos", f."sheetName", f."sheetNotes", f."sheetScale" FROM "PlanFile" f
 		WHERE f."setId" = $1 AND f."removedAt" IS NULL
 		  AND (f.id = ANY($4) OR EXISTS (SELECT 1 FROM unnest($5::text[]) p WHERE f."typeCode" LIKE p || '%'))
 		  AND NOT EXISTS (SELECT 1 FROM "PlanFile" x WHERE x."setId" = $2 AND x."removedAt" IS NULL
@@ -469,4 +474,34 @@ func (s *PlanSetService) Copy(emp, role string, perms []string, toSetID string, 
 	}
 	n, _ := res.RowsAffected()
 	return int(n), nil
+}
+
+// ═══ (ل) 11-12: فورما المخطط ═══
+
+type PlanSheetInput struct {
+	Pos   string `json:"pos"`
+	Name  string `json:"name"`
+	Notes string `json:"notes"`
+	Scale string `json:"scale"`
+}
+
+// UpdateSheet المصممة (الي رفعت المخطط) أو الي يدير تعدّل الفورما.
+func (s *PlanSetService) UpdateSheet(emp, role string, perms []string, fileID string, in PlanSheetInput) error {
+	var up *string
+	if err := s.db.Get(&up, `SELECT "uploadedById" FROM "PlanFile" WHERE id = $1 AND "removedAt" IS NULL`, fileID); err != nil {
+		return ErrDesignHidden
+	}
+	if !s.CanManage(emp, role, perms) && (up == nil || *up != emp || !s.CanSee(emp, role, perms)) {
+		return ErrDesignHidden
+	}
+	if in.Pos != "bottom" {
+		in.Pos = "right"
+	}
+	in.Name, in.Notes, in.Scale = strings.TrimSpace(in.Name), strings.TrimSpace(in.Notes), strings.TrimSpace(in.Scale)
+	if len([]rune(in.Name)) > 120 || len([]rune(in.Notes)) > 600 || len([]rune(in.Scale)) > 40 {
+		return errors.New("النص طويل هواية")
+	}
+	_, err := s.db.Exec(`UPDATE "PlanFile" SET "sheetPos" = $2, "sheetName" = NULLIF($3, ''), "sheetNotes" = NULLIF($4, ''), "sheetScale" = NULLIF($5, '')
+		WHERE id = $1`, fileID, in.Pos, in.Name, in.Notes, in.Scale)
+	return err
 }

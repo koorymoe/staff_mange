@@ -169,3 +169,18 @@ func (h *PlanSetHandler) Copy(w http.ResponseWriter, r *http.Request) {
 	}
 	WriteJSON(w, http.StatusOK, map[string]int{"copied": n})
 }
+
+// PUT /api/plan-files/{id}/sheet — (ل) 11-12 فورما المخطط
+func (h *PlanSetHandler) UpdateSheet(w http.ResponseWriter, r *http.Request) {
+	var in service.PlanSheetInput
+	if err := DecodeJSON(r, &in); err != nil {
+		WriteError(w, http.StatusBadRequest, "بيانات غير صحيحة")
+		return
+	}
+	me, role, perms := h.who(r)
+	if err := h.svc.UpdateSheet(me, role, perms, r.PathValue("id"), in); err != nil {
+		h.fail(w, err)
+		return
+	}
+	WriteJSON(w, http.StatusOK, map[string]bool{"ok": true})
+}

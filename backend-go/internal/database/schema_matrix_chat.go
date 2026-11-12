@@ -2423,5 +2423,15 @@ func matrixChatMigrations() []Migration {
 			ALTER TABLE "MatrixProposal" ADD COLUMN IF NOT EXISTS "verifiedAt" TIMESTAMPTZ;
 			ALTER TABLE "MatrixProposal" ADD COLUMN IF NOT EXISTS "leftAtEnd" INT;
 		`,
+	}, {
+		// (ل) 11-12 دازاي: «جوه كل تصميم لازم اكو فورما» — لوغو الأماني + اسم المخطط + الملاحظات +
+		// السكيل + التاريخ. المصممة تختار مكانها (يمين أو جوّه تحت) وتعدّل الباقي.
+		Version: "0483_plan_file_sheet",
+		SQL: `
+			ALTER TABLE "PlanFile" ADD COLUMN IF NOT EXISTS "sheetPos" TEXT NOT NULL DEFAULT 'right' CHECK ("sheetPos" IN ('right','bottom'));
+			ALTER TABLE "PlanFile" ADD COLUMN IF NOT EXISTS "sheetName" TEXT;
+			ALTER TABLE "PlanFile" ADD COLUMN IF NOT EXISTS "sheetNotes" TEXT;
+			ALTER TABLE "PlanFile" ADD COLUMN IF NOT EXISTS "sheetScale" TEXT;
+		`,
 	}}
 }
