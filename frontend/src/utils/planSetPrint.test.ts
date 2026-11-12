@@ -13,13 +13,15 @@ describe('PDF سيت المخططات: الغلاف والفورما', () => {
       { typeCode: '7.1', title: 'a.png', fileKey: '/api/files/designs/a', fileType: 'image/png', createdAt: '2026-11-10T09:00:00Z' },
       { typeCode: '7.1', title: 'b.png', fileKey: '/api/files/designs/b', fileType: 'image/png', sheetPos: 'bottom', sheetName: 'الطابق الأرضي: أبواب وشبابيك', sheetNotes: 'القياسات بالمتر', sheetScale: '1:100' },
     ] }, '/logo.png')
-    expect(html.match(/class="page land pcover"/g)).toHaveLength(2)
+    // صورتين من نفس النوع = غلاف واحد قبلهن
+    expect(html.match(/class="page land pcover"/g)).toHaveLength(1)
+    expect(html).toContain('2 لوحات')
     expect(html.match(/class="page land plan sheet-right"/g)).toHaveLength(1)
     expect(html.match(/class="page land plan sheet-bottom"/g)).toHaveLength(1)
     // الغلاف قبل مخططه
     expect(html.indexOf('class="page land pcover"')).toBeLessThan(html.indexOf('class="page land plan sheet-right"'))
     expect(html).toContain('<h2>مخطط الأبواب</h2>')
-    expect(html).toContain('<h2>الطابق الأرضي: أبواب وشبابيك</h2>')
+    expect(html).toContain('<span>الطابق الأرضي: أبواب وشبابيك</span>')
     expect(html).toContain('1:100')
     expect(html).toContain('القياسات بالمتر')
     expect(html).toContain('10/11/2026') // تاريخ رفع المخطط
@@ -29,5 +31,14 @@ describe('PDF سيت المخططات: الغلاف والفورما', () => {
   it('PDF و DWG ما يطلعلهن غلاف (ما ينطبعن)', () => {
     const html = buildPlanSetHtml({ ...base, files: [{ typeCode: '7.1', title: 'x.pdf', fileKey: '/api/files/designs/x', fileType: 'application/pdf' }] }, '/logo.png')
     expect(html).not.toContain('class="page land pcover"')
+  })
+  it('الترقيم يتسلسل بالملف: 10.2 و10.4 يصيرن 10.1 و10.2، والقسم يبقى', () => {
+    const g = [{ no: 10, name: 'حزمة العرض', en: 'Boards', types: [{ code: '10.1', name: 'أ' }, { code: '10.2', name: 'اللقطات الرئيسية' }, { code: '10.3', name: 'ج' }, { code: '10.4', name: 'اللقطات المنظورية' }] }]
+    const img = (c: string) => ({ typeCode: c, title: c, fileKey: '/api/files/designs/' + c, fileType: 'image/png' })
+    const html = buildPlanSetHtml({ ...base, groups: g, files: [img('10.4'), img('10.2'), img('10.2')] }, '/logo.png')
+    const codes = [...html.matchAll(/class="pc-code" dir="ltr">([^<]+)</g)].map((m) => m[1])
+    expect(codes).toEqual(['10.1', '10.2'])
+    expect(html.indexOf('اللقطات الرئيسية')).toBeLessThan(html.indexOf('اللقطات المنظورية'))
+    expect(html).toContain('01 / 02')
   })
 })

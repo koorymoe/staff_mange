@@ -86,27 +86,46 @@ export function buildPlanSetHtml(p: PlanPrintInput, logoUrl: string): string {
 
   // (ل) 11-12 دازاي: «قبل كل تصميم غلاف يوضح هذا تصميم شنو — مرتب وحلو، بألوان فخمة، وبيه اسم المخطط»،
   // و«جوه كل تصميم فورما: لوغو الأماني، اسم المخطط، الملاحظات، السكيل، التاريخ» — مكانها تختاره المصممة.
-  const pages = images.map((f, i) => {
-    const t = typeName.get(f.typeCode)
-    const name = (f.sheetName || '').trim() || t?.name || f.title || f.typeCode
+  // (ل) 11-12 دازاي: «غلاف قبل كل نوع مو قبل كل صورة» — صور النوع الواحد (مثلاً ٧ لقطات رئيسية)
+  // ورا غلاف واحد. و«الترقيم بالـPDF يتسلسل»: رقم القسم يبقى، والنوع يتسلسل حسب الموجود
+  // بالملف (10.2 و10.4 ← 10.1 و10.2) — مو أرقام النظام الداخلية.
+  const typeOrder: string[] = []
+  const byType = new Map<string, PlanPrintFile[]>()
+  for (const f of images) {
+    if (!byType.has(f.typeCode)) { byType.set(f.typeCode, []); typeOrder.push(f.typeCode) }
+    byType.get(f.typeCode)!.push(f)
+  }
+  const seqInGroup = new Map<number, number>()
+  const pages = typeOrder.map((code, i) => {
+    const fs = byType.get(code)!
+    const t = typeName.get(code)
+    const gno = t?.group.no
+    const k = gno == null ? 0 : (seqInGroup.get(gno) ?? 0) + 1
+    if (gno != null) seqInGroup.set(gno, k)
+    const seq = gno == null ? code : `${gno}.${k}`
+    const coverName = (fs.length === 1 && (fs[0].sheetName || '').trim()) || t?.name || fs[0].title || code
     const group = t ? `${t.group.no}. ${t.group.name}` : ''
-    const date = sheetDate(f, p.date)
     const cover = `<section class="page land pcover">${WAVES}
       <div class="pc-top"><img src="LOGO" alt=""><div><b>شركة الأماني</b><small dir="ltr">Al-Amani Company</small></div>
-        <span class="pc-no" dir="ltr">${String(i + 1).padStart(2, '0')} / ${String(images.length).padStart(2, '0')}</span></div>
-      <div class="pc-body"><span class="pc-code" dir="ltr">${esc(f.typeCode)}</span>
-        <h2>${esc(name)}</h2>${group ? `<p class="pc-group">${esc(group)}${t?.group.en ? ` · <bdi dir="ltr">${esc(t.group.en)}</bdi>` : ''}</p>` : ''}
+        <span class="pc-no" dir="ltr">${String(i + 1).padStart(2, '0')} / ${String(typeOrder.length).padStart(2, '0')}</span></div>
+      <div class="pc-body"><span class="pc-code" dir="ltr">${esc(seq)}</span>
+        <h2>${esc(coverName)}</h2>${group ? `<p class="pc-group">${esc(group)}${t?.group.en ? ` · <bdi dir="ltr">${esc(t.group.en)}</bdi>` : ''}</p>` : ''}
+        ${fs.length > 1 ? `<p class="pc-count">${fs.length} لوحات</p>` : ''}
         <p class="pc-tag"><i></i><span>${esc(p.title)}${p.projectName ? ` · ${esc(p.projectName)}` : ''}</span><i></i></p></div>
-      <div class="pc-foot"><span dir="ltr">${esc(date)}</span><span>معاً .. نحو مستقبل أفضل</span></div>
+      <div class="pc-foot"><span dir="ltr">${esc(sheetDate(fs[0], p.date))}</span><span>معاً .. نحو مستقبل أفضل</span></div>
       ${foot(page++)}</section>`
-    const cells = [['اسم المخطط', name], ['الملاحظات', (f.sheetNotes || '').trim() || '—'], ['السكيل', (f.sheetScale || '').trim() || '—'], ['التاريخ', date]]
-    const block = `<div class="tb"><div class="tb-logo"><img src="LOGO" alt=""><small>الأماني</small></div>
-      ${cells.map(([k, v]) => `<div class="tb-cell"><b>${k}</b><span${k === 'السكيل' || k === 'التاريخ' ? ' dir="ltr"' : ''}>${esc(v)}</span></div>`).join('')}</div>`
-    const pos = f.sheetPos === 'bottom' ? 'bottom' : 'right'
-    const sheet = `<section class="page land plan sheet-${pos}">
-      ${pos === 'right' ? block : ''}<div class="img"><img src="${esc(abs(fileUrl(f.fileKey)))}" alt=""></div>${pos === 'bottom' ? block : ''}
-      ${foot(page++)}</section>`
-    return cover + sheet
+    const sheets = fs.map((f, j) => {
+      const name = (f.sheetName || '').trim() || (fs.length > 1 ? `${t?.name ?? code} ${j + 1}` : t?.name || f.title || code)
+      const date = sheetDate(f, p.date)
+      const cells = [['اسم المخطط', name], ['الملاحظات', (f.sheetNotes || '').trim() || '—'], ['السكيل', (f.sheetScale || '').trim() || '—'], ['التاريخ', date]]
+      const block = `<div class="tb"><div class="tb-logo"><img src="LOGO" alt=""><small>الأماني</small><small dir="ltr">${esc(seq)}${fs.length > 1 ? `-${j + 1}` : ''}</small></div>
+        ${cells.map(([kk, v]) => `<div class="tb-cell"><b>${kk}</b><span${kk === 'السكيل' || kk === 'التاريخ' ? ' dir="ltr"' : ''}>${esc(v)}</span></div>`).join('')}</div>`
+      const pos = f.sheetPos === 'bottom' ? 'bottom' : 'right'
+      return `<section class="page land plan sheet-${pos}">
+        ${pos === 'right' ? block : ''}<div class="img"><img src="${esc(abs(fileUrl(f.fileKey)))}" alt=""></div>${pos === 'bottom' ? block : ''}
+        ${foot(page++)}</section>`
+    }).join('')
+    return cover + sheets
   }).join('')
 
   const attach = others.length ? `<section class="page">${band}<div class="box">ملفات مرفقة (PDF / أوتوكاد)</div>
@@ -160,7 +179,7 @@ table { width: 100%; border-collapse: collapse; font-size: 15px } th { backgroun
 .pc-body { text-align: center; margin-top: -10mm }
 .pc-code { display: inline-block; background: ${GOLD}; color: ${NAVY}; border-radius: 10mm; padding: 1.5mm 9mm; font-size: 20px; font-weight: 800; letter-spacing: 2px }
 .pc-body h2 { font-size: 62px; margin: 6mm 0 3mm; line-height: 1.25; text-shadow: 0 2px 14px rgba(0,0,0,.35) }
-.pc-group { color: ${GOLD}; font-size: 22px; margin: 0; font-weight: 700 }
+.pc-count { color: #e2e8f0; font-size: 18px; margin: 3mm 0 0 } .pc-group { color: ${GOLD}; font-size: 22px; margin: 0; font-weight: 700 }
 .pc-tag { display: flex; align-items: center; justify-content: center; gap: 5mm; margin: 9mm 0 0; color: #e2e8f0; font-size: 19px }
 .pc-tag i { width: 22mm; height: 0.5mm; background: ${GOLD} }
 .pc-foot { display: flex; justify-content: space-between; gap: 6mm; font-size: 15px; color: #fff; font-weight: 700 }
