@@ -2347,5 +2347,36 @@ func matrixChatMigrations() []Migration {
 			ALTER TABLE "EmployeeNegligence" ADD COLUMN IF NOT EXISTS "voidedAt" TIMESTAMPTZ;
 			ALTER TABLE "EmployeeNegligence" ADD COLUMN IF NOT EXISTS "voidNote" TEXT;
 		`,
+	}, {
+		// (ل) 11-12 دازاي: استفسارات الطاقة الشمسية — تسجيل ← تقني يتواصل ← ابو الجودة يتأكد.
+		Version: "0480_solar_inquiry",
+		SQL: `
+			CREATE TABLE IF NOT EXISTS "SolarInquiry" (
+				id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
+				number SERIAL,
+				"customerName" TEXT NOT NULL,
+				phone TEXT NOT NULL,
+				area TEXT,
+				note TEXT,
+				"createdById" TEXT REFERENCES "Employee"(id) ON DELETE SET NULL,
+				"createdAt" TIMESTAMPTZ NOT NULL DEFAULT now(),
+				"techId" TEXT REFERENCES "Employee"(id) ON DELETE SET NULL,
+				"techClaimedAt" TIMESTAMPTZ,
+				"techOutcome" TEXT CHECK ("techOutcome" IN ('JUST_ASKING','WANTS_INSTALL','NO_ANSWER','NOT_INTERESTED')),
+				"techNote" TEXT,
+				"techContactAt" TIMESTAMPTZ,
+				"quoteGiven" BOOLEAN,
+				"quoteAmount" NUMERIC,
+				"qualityById" TEXT REFERENCES "Employee"(id) ON DELETE SET NULL,
+				"qualityAt" TIMESTAMPTZ,
+				"qCustomerReached" BOOLEAN,
+				"qTechCalled" TEXT CHECK ("qTechCalled" IN ('YES','NO','UNSURE')),
+				"qIntent" TEXT CHECK ("qIntent" IN ('JUST_ASKING','WANTS_INSTALL','NOT_INTERESTED')),
+				"qGotQuote" TEXT CHECK ("qGotQuote" IN ('YES','NO','UNSURE')),
+				"qQuoteFair" TEXT CHECK ("qQuoteFair" IN ('YES','NO','UNSURE')),
+				"qNote" TEXT
+			);
+			CREATE INDEX IF NOT EXISTS "SolarInquiry_open_idx" ON "SolarInquiry" ("createdAt" DESC) WHERE "qualityAt" IS NULL;
+		`,
 	}}
 }

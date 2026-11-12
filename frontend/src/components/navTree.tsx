@@ -346,6 +346,8 @@ export const navItems: NavItem[] = [
       { to: '/achievements', label: '📋 الإنجازات', icon: <></>, roles: ['ADMIN'], hideForRoles: ['ADMIN', 'OWNER'] },
       // دليل الأدوار — يوضّح منو يوصل لوين، فمحله عند من يوزّع الصلاحيات
       { to: '/solar', label: '☀️ الطاقة الشمسية', icon: <></>, roles: ['ADMIN', 'OWNER', 'MONITOR', 'TECHNICIAN', 'SERVICE_MANAGER'], permission: 'solar_system' },
+      // (ل) 11-12 دازاي: استفسارات الطاقة الشمسية — نفس حارس /api/solar-inquiries (الخدمة: الصلاحيات الثلاث أو المدير)
+      { to: '/solar-inquiries', label: '📞 استفسارات الطاقة الشمسية', icon: <></>, roles: ['ADMIN', 'QUALITY_ENGINEER'], anyPermission: ['solar_inquiry', 'solar_inquiry_tech', 'quality_control'] },
           { monitorMenuHide: true, to: '/missions', label: 'تتبع المهام', icon: <></>, roles: ['ADMIN', 'HR_COORDINATOR', 'MONITOR'], permission: 'mission_tracking', hideForRoles: ['FINANCE'] },
           // الشكاوى ومتابعة الجودة جانن تحت «إدارة الموظفين» — وهنّ شغل
           // على الزبون مو على ملف الموظف. محلهن هنا مع باقي شغل العمل.
@@ -749,6 +751,8 @@ export const navItems: NavItem[] = [
       { to: '/gps/requests-hub', label: '📥 طلبات GPS', icon: <></>, permission: 'gps_system', hideForRoles: ['MONITOR', ...TECH_ROLES] },
       { to: '/gps/follow-up', label: '🔄 متابعة تجديد الاشتراكات', icon: <></>, permission: 'quality_control', hideForRoles: ['MONITOR'] },
       { to: '/solar', label: '☀️ الطاقة الشمسية', icon: <></>, roles: ['ADMIN', 'OWNER', 'MONITOR', 'TECHNICIAN', 'SERVICE_MANAGER'], permission: 'solar_system' },
+      // (ل) 11-12 دازاي: استفسارات الطاقة الشمسية — نفس حارس /api/solar-inquiries (الخدمة: الصلاحيات الثلاث أو المدير)
+      { to: '/solar-inquiries', label: '📞 استفسارات الطاقة الشمسية', icon: <></>, roles: ['ADMIN', 'QUALITY_ENGINEER'], anyPermission: ['solar_inquiry', 'solar_inquiry_tech', 'quality_control'] },
       { to: '/nav-svc-papers', label: '🧾 أوراق الخدمة', icon: <></>, divider: true, plain: true },
       { to: '/leader-invoices/new?service=1', label: '🛰️ فاتورة خدمة', icon: <></>, roles: ['ADMIN'], anyPermission: ['invoice_gps', 'invoice_dashcam'], hideForRoles: TECH_ROLES },
       { to: '/work-reports', label: '📝 تقرير خدمة', icon: <></>, roles: ['ADMIN'], anyPermission: ['invoice_gps', 'invoice_dashcam'], hideForRoles: TECH_ROLES },
@@ -1026,6 +1030,7 @@ const orgNavigationGroups = [
       '/gps/requests-hub',
       '/gps/follow-up',
       '/solar',
+      '/solar-inquiries',
       '/service-managers',
       '/network-prices',
       '/gps-install-costs',

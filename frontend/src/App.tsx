@@ -36,6 +36,7 @@ const MatrixMissions = lazyRetry(() => import('./components/MatrixMissions'))
 const MatrixEmployeeReportPage = lazyRetry(() => import('./pages/MatrixEmployeeReportPage'))
 const BookingsArchive = lazyRetry(() => import('./pages/BookingsArchive'))
 const SolarPage = lazyRetry(() => import('./pages/SolarPage'))
+const SolarInquiriesPage = lazyRetry(() => import('./pages/SolarInquiriesPage'))
 // مراقبة النسخ الاحتياطية — الصفحة نفسها تتحقق من actualRole === 'OWNER'
 // والمسار بالباك إند يرجّع 404 لأي حساب ثاني.
 const OwnerBackups = lazyRetry(() => import('./pages/OwnerBackups'))
@@ -290,6 +291,7 @@ function App() {
           <Route path="roles-guide" element={<RolesGuidePage />} />
           <Route path="letters" element={<LettersPage />} />
           <Route path="solar" element={<SolarPage />} />
+          <Route path="solar-inquiries" element={<RequirePermission permission="solar_inquiry" anyOf={['solar_inquiry_tech', 'quality_control']} roles={['QUALITY_ENGINEER']}><SolarInquiriesPage /></RequirePermission>} />
           <Route path="training-programs" element={<TrainingCenterPage />} />
           <Route path="training-center" element={<TrainingCenterPage />} />
           <Route path="my-exam" element={<MyExamPage />} />
