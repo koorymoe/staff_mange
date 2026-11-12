@@ -165,7 +165,9 @@ table { width: 100%; border-collapse: collapse; font-size: 12px } th { backgroun
 .pc-foot { display: flex; justify-content: space-between; gap: 6mm; font-size: 11px; color: #fff; font-weight: 700 }
 .pcover .foot { display: none }
 /* ── صفحة المخطط ويا الفورما ── */
-.plan { gap: 4mm } .plan.sheet-right { flex-direction: row } .plan.sheet-bottom { flex-direction: column }
+.plan { gap: 4mm } .plan.sheet-right { flex-direction: row }
+/* ⚠️ grid مو flex-column: ويا flex-column كروم يطبع صفحة الفورما-تحت بالطول (portrait) ويقص المخطط */
+.plan.sheet-bottom { display: grid; grid-template-rows: minmax(0, 1fr) 26mm; gap: 4mm }
 .plan .img { flex: 1; min-width: 0 }
 .tb { display: flex; border: 0.5mm solid ${NAVY}; border-radius: 2mm; overflow: hidden; background: #fff; font-size: 10px }
 .sheet-right .tb { flex-direction: column; width: 46mm } .sheet-bottom .tb { flex-direction: row; height: 26mm }
