@@ -35,6 +35,19 @@ func TestRatingDutyShiftWindow_Live(t *testing.T) {
 	}
 	clean()
 	defer clean()
+	// قاعدة جديدة (CI): «الواجب يبدي من» = يوم إنشاء القاعدة، فأيام الاختبار (أمس وقبل ٣ أيام) تطلع
+	// قبله وما ينحسب عليها شي. نرجّعه أسبوعين للاختبار ونرجّع القيمة الأصلية بالأخير.
+	var since string
+	_ = db.Get(&since, `SELECT value FROM "OrgGovernorState" WHERE key = 'rating_duty_since'`)
+	db.MustExec(`INSERT INTO "OrgGovernorState"(key, value) VALUES ('rating_duty_since', to_char(current_date - 14, 'YYYY-MM-DD'))
+		ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value`)
+	defer func() {
+		if since == "" {
+			db.Exec(`DELETE FROM "OrgGovernorState" WHERE key = 'rating_duty_since'`)
+		} else {
+			db.Exec(`UPDATE "OrgGovernorState" SET value = $1 WHERE key = 'rating_duty_since'`, since)
+		}
+	}()
 	db.MustExec(`INSERT INTO "Employee"(id, name, role, "shiftStart", "shiftEnd") VALUES
 		('rd-mon','مراقب تجربة','MONITOR','09:00','16:00'),('rd-early','موظف صباحي','SALES','09:00','16:00'),('rd-late','موظف مسائي','SALES','09:00','16:00')`)
 	loc := timeutil.CompanyLocation()
