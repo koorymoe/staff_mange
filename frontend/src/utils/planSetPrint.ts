@@ -40,7 +40,19 @@ export type PlanPrintInput = {
 }
 
 const COMPANY = 'شركة الأماني المتحدة للتجارة والخدمات العامة والمقاولات والاستثمارات والتطوير العقاري محدودة المسؤولية'
-const NAVY = '#2b3074'
+// (ل) 11-12: ألوان دليل الهوية الي دزه دازاي — كحلي أساسي، ذهبي، أزرق ثانوي، خلفية، نص
+const NAVY = '#0B2D5B'
+const GOLD = '#D4AF37'
+const BLUE = '#1E4A8A'
+// موجات الغلاف (نفس بانر الهوية): كحلي غامق وموجة ذهبية تحت
+const WAVES = `<svg class="pc-waves" viewBox="0 0 1123 794" preserveAspectRatio="none" aria-hidden="true">
+  <defs><linearGradient id="g" x1="0" x2="1"><stop offset="0" stop-color="#f3dc8a"/><stop offset=".5" stop-color="${GOLD}"/><stop offset="1" stop-color="#9c7a1e"/></linearGradient>
+  <linearGradient id="b" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${BLUE}" stop-opacity=".55"/><stop offset="1" stop-color="${NAVY}" stop-opacity="0"/></linearGradient></defs>
+  <path d="M0 0 H1123 V170 C900 260 700 120 470 180 C270 232 120 160 0 210 Z" fill="url(#b)"/>
+  <path d="M0 640 C220 560 430 700 700 650 C880 616 1010 560 1123 590 V794 H0 Z" fill="#071f42"/>
+  <path d="M0 655 C230 575 430 715 700 665 C880 631 1010 575 1123 605" fill="none" stroke="url(#g)" stroke-width="7"/>
+  <path d="M0 690 C250 620 470 745 760 700 C930 674 1040 630 1123 650" fill="none" stroke="url(#g)" stroke-width="2" opacity=".7"/>
+</svg>`
 const IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp']
 
 const n = (v: number) => Math.round(v).toLocaleString('en-US')
@@ -79,15 +91,13 @@ export function buildPlanSetHtml(p: PlanPrintInput, logoUrl: string): string {
     const name = (f.sheetName || '').trim() || t?.name || f.title || f.typeCode
     const group = t ? `${t.group.no}. ${t.group.name}` : ''
     const date = sheetDate(f, p.date)
-    const cover = `<section class="page land pcover">
-      <div class="pc-frame"></div><div class="pc-glow"></div>
-      <div class="pc-top"><img src="LOGO" alt=""><div><b>شركة الأماني المتحدة</b><small dir="ltr">AL-AMANI · PLANS</small></div>
+    const cover = `<section class="page land pcover">${WAVES}
+      <div class="pc-top"><img src="LOGO" alt=""><div><b>شركة الأماني</b><small dir="ltr">Al-Amani Company</small></div>
         <span class="pc-no" dir="ltr">${String(i + 1).padStart(2, '0')} / ${String(images.length).padStart(2, '0')}</span></div>
       <div class="pc-body"><span class="pc-code" dir="ltr">${esc(f.typeCode)}</span>
         <h2>${esc(name)}</h2>${group ? `<p class="pc-group">${esc(group)}${t?.group.en ? ` · <bdi dir="ltr">${esc(t.group.en)}</bdi>` : ''}</p>` : ''}
-        <div class="pc-line"></div>
-        <p class="pc-meta">${esc(p.title)}${p.projectName ? ` · ${esc(p.projectName)}` : ''}</p></div>
-      <div class="pc-foot"><span>${esc(date)}</span><span>${COMPANY}</span></div>
+        <p class="pc-tag"><i></i><span>${esc(p.title)}${p.projectName ? ` · ${esc(p.projectName)}` : ''}</span><i></i></p></div>
+      <div class="pc-foot"><span dir="ltr">${esc(date)}</span><span>معاً .. نحو مستقبل أفضل</span></div>
       ${foot(page++)}</section>`
     const cells = [['اسم المخطط', name], ['الملاحظات', (f.sheetNotes || '').trim() || '—'], ['السكيل', (f.sheetScale || '').trim() || '—'], ['التاريخ', date]]
     const block = `<div class="tb"><div class="tb-logo"><img src="LOGO" alt=""><small>الأماني</small></div>
@@ -139,28 +149,27 @@ table { width: 100%; border-collapse: collapse; font-size: 12px } th { backgroun
 @page land { size: A4 landscape; margin: 0 }
 .page.land { page: land; width: 297mm; height: 210mm; padding: 10mm 10mm 14mm }
 /* ── غلاف المخطط: كحلي غامق وذهبي ── */
-.page.land.pcover { background: radial-gradient(120% 90% at 85% 10%, #3a43a0 0%, #1d2360 45%, #0e1238 100%); color: #fff; justify-content: space-between; padding: 16mm 18mm 18mm }
-.pc-frame { position: absolute; inset: 7mm; border: 0.6mm solid #c9a24b; border-radius: 4mm; pointer-events: none }
-.pc-frame::after { content: ''; position: absolute; inset: 2.2mm; border: 0.25mm solid rgba(201,162,75,.45); border-radius: 3mm }
-.pc-glow { position: absolute; width: 140mm; height: 140mm; left: -40mm; bottom: -60mm; border-radius: 50%; background: radial-gradient(circle, rgba(201,162,75,.28), transparent 65%) }
-.pc-top { position: relative; display: flex; align-items: center; gap: 5mm }
-.pc-top img { width: 20mm; height: 20mm; border-radius: 50%; background: #fff; padding: 1.5mm; box-shadow: 0 0 0 0.8mm #c9a24b }
-.pc-top b { display: block; font-size: 15px } .pc-top small { letter-spacing: 3px; color: #e8cf8a; font-size: 9px }
-.pc-no { margin-inline-start: auto; font-size: 13px; letter-spacing: 2px; color: #e8cf8a }
-.pc-body { position: relative; text-align: center }
-.pc-code { display: inline-block; border: 0.4mm solid #c9a24b; color: #e8cf8a; border-radius: 10mm; padding: 1mm 6mm; font-weight: 700; letter-spacing: 2px }
-.pc-body h2 { font-size: 40px; margin: 6mm 0 3mm; line-height: 1.25; text-shadow: 0 2px 12px rgba(0,0,0,.35) }
-.pc-group { color: #cbd5f5; font-size: 15px; margin: 0 }
-.pc-line { width: 60mm; height: 0.6mm; margin: 6mm auto; background: linear-gradient(90deg, transparent, #c9a24b, transparent) }
-.pc-meta { color: #e2e8f0; font-size: 14px; margin: 0 }
-.pc-foot { position: relative; display: flex; justify-content: space-between; gap: 6mm; font-size: 9.5px; color: #cbd5f5 }
+.page.land.pcover { background: linear-gradient(135deg, #123a70 0%, ${NAVY} 45%, #071f42 100%); color: #fff; justify-content: space-between; padding: 14mm 18mm 16mm }
+.pc-waves { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 0 }
+.pcover > *:not(.pc-waves) { position: relative; z-index: 1 }
+.pc-top { display: flex; align-items: center; gap: 5mm }
+.pc-top img { width: 20mm; height: 20mm; border-radius: 50%; background: #fff; padding: 1.5mm; box-shadow: 0 0 0 0.8mm ${GOLD} }
+.pc-top b { display: block; font-size: 16px } .pc-top small { color: ${GOLD}; font-size: 11px; font-weight: 700 }
+.pc-no { margin-inline-start: auto; font-size: 13px; letter-spacing: 2px; color: ${GOLD} }
+.pc-body { text-align: center; margin-top: -10mm }
+.pc-code { display: inline-block; background: ${GOLD}; color: ${NAVY}; border-radius: 10mm; padding: 1mm 7mm; font-weight: 800; letter-spacing: 2px }
+.pc-body h2 { font-size: 42px; margin: 6mm 0 3mm; line-height: 1.25; text-shadow: 0 2px 14px rgba(0,0,0,.35) }
+.pc-group { color: ${GOLD}; font-size: 16px; margin: 0; font-weight: 700 }
+.pc-tag { display: flex; align-items: center; justify-content: center; gap: 4mm; margin: 7mm 0 0; color: #e2e8f0; font-size: 14px }
+.pc-tag i { width: 22mm; height: 0.5mm; background: ${GOLD} }
+.pc-foot { display: flex; justify-content: space-between; gap: 6mm; font-size: 11px; color: #fff; font-weight: 700 }
 .pcover .foot { display: none }
 /* ── صفحة المخطط ويا الفورما ── */
 .plan { gap: 4mm } .plan.sheet-right { flex-direction: row } .plan.sheet-bottom { flex-direction: column }
 .plan .img { flex: 1; min-width: 0 }
 .tb { display: flex; border: 0.5mm solid ${NAVY}; border-radius: 2mm; overflow: hidden; background: #fff; font-size: 10px }
 .sheet-right .tb { flex-direction: column; width: 46mm } .sheet-bottom .tb { flex-direction: row; height: 26mm }
-.tb-logo { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1mm; padding: 2mm; background: ${NAVY}; color: #fff; font-weight: 700; font-size: 12px }
+.tb-logo { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1mm; padding: 2mm; background: ${NAVY}; border-bottom: 1mm solid ${GOLD}; color: #fff; font-weight: 700; font-size: 12px }
 .tb-logo img { width: 15mm; height: 15mm; border-radius: 50%; background: #fff; padding: 1mm }
 .sheet-bottom .tb-logo { width: 30mm }
 .tb-cell { flex: 1; padding: 2mm 2.5mm; display: flex; flex-direction: column; gap: 1mm; min-width: 0 }
