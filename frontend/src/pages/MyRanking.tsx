@@ -241,7 +241,24 @@ export default function MyRanking() {
   // قرار (ع) 10-08: المبيعات يتقيّمون على الحجوزات الي رحّلوها للشعبة الهندسية،
   // والالتزام بالحضور، والمهام الإضافية — بس. بلا نقاط KPI ولا حجوزات منجزة.
   // وكل دور يتقيّم على شغله هو: المراقب على تدقيقه (قرار 10-08).
-  const custom = activeTrack?.strictRoles?.length === 1 ? CUSTOM_BOARDS[activeTrack.strictRoles[0]] : undefined
+  // (ل) 11-12 دازاي: «المصمم جاي يتحاسب على عدد الحجوزات — هذا غلط، كل واحد يتقيّم حسب شغله».
+  // الحجوزات المنجزة ومعدل إنجازها شغل الفنيين والليدرية بس. باقي الأدوار (تصميم، حسابات،
+  // كوادر، IT، جودة…) يترتّبون على تقييم ماتركس — الي يحسب شغل كل دور بقواعده هو.
+  const fieldTrack = !!activeTrack?.strictRoles?.includes('TECHNICIAN')
+  const matrixBoard = {
+    cols: [
+      { label: 'تقييم ماتركس (شغل دورك)', icon: '🎯', get: (e: KpiLeaderboardEntry) => Math.round(peers.get(e.employeeId) ?? 0) },
+      { label: 'المهام الإضافية', icon: '📋', get: (e: KpiLeaderboardEntry) => e.extraTasksDone ?? 0 },
+    ],
+    explain: [
+      ['🎯 تقييم ماتركس', 'محسوب على شغل دورك أنت — مو على الحجوزات: الدوام، تقرير الإنجاز اليومي، مهامك بمواعيدها، ومحطات شغلك (مثلاً المصمم: أقسام التصاميم سلّمها بموعدها، الحسابات: اعتماد الفواتير، الكوادر: توجيه الكوادر)، + تقييم مسؤوليك.'] as [string, string],
+      ['📋 المهام الإضافية', 'المهام الي توجّهت إلك وخلّصتها.'] as [string, string],
+      ['🕐 الالتزام بالدوام', 'من بصمات حضورك وانصرافك.'] as [string, string],
+    ],
+    sortNote: 'الترتيب على تقييم ماتركس لشغل دورك، وبعدها المهام، وعند التساوي الالتزام بالدوام.',
+  }
+  const custom = (activeTrack?.strictRoles?.length === 1 ? CUSTOM_BOARDS[activeTrack.strictRoles[0]] : undefined)
+    ?? (activeTrack && !fieldTrack ? matrixBoard : undefined)
   const isSales = !!custom
   const rawList = board ? (period === 'weekly' ? board.weekly : board.monthly) : []
   const list = custom

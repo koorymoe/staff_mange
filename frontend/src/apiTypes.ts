@@ -925,7 +925,7 @@ export interface Stats {
     completed: number
     revenueHandled: number
   }[]
-  serviceBreakdown: { serviceId: string | null; name: string; count: number; firstAt: string | null; lastAt: string | null; revenue: number; profit: number }[]
+  serviceBreakdown: { serviceId: string | null; name: string; count: number; monthCount: number; firstAt: string | null; lastAt: string | null; revenue: number; profit: number }[]
   roleCounts: { role: EmployeeRole; count: number }[]
   recentBookings: {
     id: string

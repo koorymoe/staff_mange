@@ -473,3 +473,26 @@ func (r *MatrixScoreRepository) DailyReportsOn(day time.Time) (map[string]bool, 
 	errlog.Err(r.db.Get(&since, `SELECT value FROM "OrgGovernorState" WHERE key = 'daily_report_since'`))
 	return out, since, nil
 }
+
+// DesignSectionRow قسم تصميم موكّل لمصمم بموعد.
+type DesignSectionRow struct {
+	ID          string     `db:"id"`
+	AssigneeID  string     `db:"assigneeId"`
+	Discipline  string     `db:"discipline"`
+	SetTitle    string     `db:"setTitle"`
+	Status      string     `db:"status"`
+	DueEnd      time.Time  `db:"dueEnd"`
+	SubmittedAt *time.Time `db:"submittedAt"`
+}
+
+// DesignSectionsDue (ل) 11-12: أقسام التصاميم الي موعدها بالفترة (أو تسلّمت بيها) — للتقييم.
+func (r *MatrixScoreRepository) DesignSectionsDue(from, to time.Time) ([]DesignSectionRow, error) {
+	rows := []DesignSectionRow{}
+	err := r.db.Select(&rows, `
+		SELECT s.id, s."assigneeId", s.discipline, COALESCE(d.title, '') AS "setTitle", s.status,
+		       ((s."dueDate" + 1)::timestamp AT TIME ZONE 'Asia/Baghdad') AS "dueEnd", s."submittedAt"
+		  FROM "DesignSection" s JOIN "DesignSet" d ON d.id = s."setId"
+		 WHERE s."assigneeId" IS NOT NULL AND s."dueDate" IS NOT NULL AND d."archivedAt" IS NULL
+		   AND ((s."dueDate" + 1)::timestamp AT TIME ZONE 'Asia/Baghdad') BETWEEN $1::timestamptz AND $2::timestamptz + interval '30 days'`, from, to)
+	return rows, err
+}

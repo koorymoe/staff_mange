@@ -78,7 +78,7 @@ func (h *TrainingCenterHandler) Insights(w http.ResponseWriter, r *http.Request)
 			SELECT ba."employeeId" AS id, b.id AS bid, b."serviceId",
 			       EXTRACT(EPOCH FROM (b."completedAt" - COALESCE(b."startedAt", b."arrivedAt"))) / 60 AS mins
 			FROM "BookingAssignment" ba JOIN "Booking" b ON b.id = ba."bookingId"
-			WHERE b.status = 'COMPLETED' AND b."completedAt" > now() - interval '60 days'
+			WHERE b.status = 'COMPLETED' AND b."completedAt" > now() - interval '15 days'
 			  AND COALESCE(b."startedAt", b."arrivedAt") IS NOT NULL AND b."completedAt" > COALESCE(b."startedAt", b."arrivedAt")
 		), svc AS (SELECT "serviceId", AVG(mins) AS m FROM jobs WHERE mins BETWEEN 5 AND 1440 GROUP BY 1)
 		SELECT e.id, e.name, e.role::text AS role,
@@ -87,13 +87,13 @@ func (h *TrainingCenterHandler) Insights(w http.ResponseWriter, r *http.Request)
 		       (SELECT AVG(j.mins) FROM jobs j WHERE j.id = e.id AND j.mins BETWEEN 5 AND 1440)::float8 AS "avgMinutes",
 		       (SELECT AVG(s.m) FROM jobs j JOIN svc s ON s."serviceId" = j."serviceId" WHERE j.id = e.id AND j.mins BETWEEN 5 AND 1440)::float8 AS "teamMinutes",
 		       (SELECT COUNT(*) FROM "Complaint" c JOIN "BookingAssignment" ba ON ba."bookingId" = c."bookingId"
-		         WHERE ba."employeeId" = e.id AND c."createdAt" > now() - interval '60 days')::int AS complaints,
+		         WHERE ba."employeeId" = e.id AND c."createdAt" > now() - interval '15 days')::int AS complaints,
 		       (SELECT COUNT(*) FROM "Booking" b JOIN "BookingAssignment" ba ON ba."bookingId" = b.id
-		         WHERE ba."employeeId" = e.id AND b."workStoppedAt" > now() - interval '60 days')::int AS stops,
+		         WHERE ba."employeeId" = e.id AND b."workStoppedAt" > now() - interval '15 days')::int AS stops,
 		       (SELECT COUNT(*) FROM "Booking" b JOIN "BookingAssignment" ba ON ba."bookingId" = b.id
-		         WHERE ba."employeeId" = e.id AND b."lastPartialAt" > now() - interval '60 days')::int AS partials,
+		         WHERE ba."employeeId" = e.id AND b."lastPartialAt" > now() - interval '15 days')::int AS partials,
 		       (SELECT COUNT(*) FROM "KpiEvaluation" k WHERE k."employeeId" = e.id AND NOT k.cancelled AND k.points < 0
-		         AND k."createdAt" > now() - interval '60 days')::int AS deductions,
+		         AND k."createdAt" > now() - interval '15 days')::int AS deductions,
 		       (SELECT COUNT(*) FROM "EmployeeSkill" es WHERE es."employeeId" = e.id AND es."canPerform")::int AS skills,
 		       (SELECT (a.score * 100 / NULLIF(a.total, 0)) FROM "TrainingAttempt" a WHERE a."employeeId" = e.id AND a."finishedAt" IS NOT NULL
 		         ORDER BY a."finishedAt" DESC LIMIT 1)::int AS "lastExamPct"

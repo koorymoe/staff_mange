@@ -49,13 +49,15 @@ type TechnicianStat struct {
 // إلها سعر جملة بالكتالوج تُحسب بكلفة صفر — يعني الربح المعروض هو
 // *الحد الأعلى*، مو رقم مؤكد. أفضل من إخفاء الرقم كلياً.
 type ServiceBreakdownEntry struct {
-	ServiceID *string    `json:"serviceId"`
-	Name      string     `json:"name"`
-	Count     int        `json:"count"`
-	FirstAt   *time.Time `json:"firstAt"`
-	LastAt    *time.Time `json:"lastAt"`
-	Revenue   float64    `json:"revenue"`
-	Profit    float64    `json:"profit"`
+	ServiceID *string `json:"serviceId"`
+	Name      string  `json:"name"`
+	Count     int     `json:"count"`
+	// (ل) 11-12 دازاي: «كل خدمة شكد صار عليها طلب هذا الشهر» — الشهر الحالي بتوقيت بغداد
+	MonthCount int        `json:"monthCount"`
+	FirstAt    *time.Time `json:"firstAt"`
+	LastAt     *time.Time `json:"lastAt"`
+	Revenue    float64    `json:"revenue"`
+	Profit     float64    `json:"profit"`
 }
 
 type RoleCount struct {

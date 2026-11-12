@@ -223,6 +223,7 @@ func (r *StatsRepository) ServiceBreakdown() ([]model.ServiceBreakdownEntry, err
 		ServiceID *string    `db:"serviceId"`
 		Name      *string    `db:"name"`
 		Count     int        `db:"count"`
+		Month     int        `db:"month"`
 		FirstAt   *time.Time `db:"firstAt"`
 		LastAt    *time.Time `db:"lastAt"`
 		Revenue   float64    `db:"revenue"`
@@ -246,6 +247,7 @@ func (r *StatsRepository) ServiceBreakdown() ([]model.ServiceBreakdownEntry, err
 		)
 		SELECT pb."serviceId", s.name,
 		       COUNT(*) AS count,
+		       COUNT(*) FILTER (WHERE (pb."createdAt" AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Baghdad') >= date_trunc('month', now() AT TIME ZONE 'Asia/Baghdad')) AS month,
 		       MIN(pb."createdAt") AS "firstAt",
 		       MAX(pb."createdAt") AS "lastAt",
 		       COALESCE(SUM(pb.collected), 0) AS revenue,
@@ -264,7 +266,7 @@ func (r *StatsRepository) ServiceBreakdown() ([]model.ServiceBreakdownEntry, err
 			name = *rw.Name
 		}
 		entries = append(entries, model.ServiceBreakdownEntry{
-			ServiceID: rw.ServiceID, Name: name, Count: rw.Count,
+			ServiceID: rw.ServiceID, Name: name, Count: rw.Count, MonthCount: rw.Month,
 			FirstAt: rw.FirstAt, LastAt: rw.LastAt,
 			Revenue: rw.Revenue, Profit: rw.Revenue - rw.Cost,
 		})

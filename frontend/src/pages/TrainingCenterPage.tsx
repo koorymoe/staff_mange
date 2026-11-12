@@ -99,10 +99,10 @@ function Priority({ score }: { score: number }) {
 
 function NeedTab({ rows, loading }: { rows: TcInsight[]; loading: boolean }) {
   if (loading) return <p className="py-8 text-center text-slate-400">ماتركس يحسب…</p>
-  if (rows.length === 0) return <p className={`${card} text-center text-slate-500`}>ماكو أحد يحتاج تدريب حسب شغل آخر ٦٠ يوم ✅</p>
+  if (rows.length === 0) return <p className={`${card} text-center text-slate-500`}>ماكو أحد يحتاج تدريب حسب شغل آخر ١٥ يوم ✅</p>
   return (
     <div className="space-y-2">
-      <p className="text-xs text-slate-500">🧮 النقاط من آخر ٦٠ يوم: شكوى ×٣ · توقف ×٢ · خصم كي بي اي ×٢ · أبطأ من زملائه ٤٠٪+ = ٣ · مهارات أقل من ٣ = ٢ · رسوب بالاختبار = ٣ · جديد = ١. كل سبب مكتوب تحت اسمه.</p>
+      <p className="text-xs text-slate-500">🧮 النقاط من آخر ١٥ يوم: شكوى ×٣ · توقف ×٢ · خصم كي بي اي ×٢ · أبطأ من زملائه ٤٠٪+ = ٣ · مهارات أقل من ٣ = ٢ · رسوب بالاختبار = ٣ · جديد = ١. كل سبب مكتوب تحت اسمه.</p>
       <div className="grid gap-3 lg:grid-cols-2">
         {rows.map((x) => (
           <div key={x.id} className={card}>
@@ -123,7 +123,7 @@ function NotesTab({ rows }: { rows: TcInsight[] | null }) {
   if (!rows) return <p className="py-8 text-center text-slate-400">جاري التحميل…</p>
   return (
     <div className={`${card} overflow-x-auto`}>
-      <p className="mb-2 text-xs text-slate-500">مدة الشغلة = من بدء العمل لحد الإنجاز (آخر ٦٠ يوم)، ومعدل الفريق = نفس الخدمات الي اشتغلها.</p>
+      <p className="mb-2 text-xs text-slate-500">مدة الشغلة = من بدء العمل لحد الإنجاز (آخر ١٥ يوم)، ومعدل الفريق = نفس الخدمات الي اشتغلها.</p>
       <table className="w-full min-w-[900px] text-sm">
         <thead><tr className="border-b text-[12px] text-slate-500">
           {['الموظف', 'الدور', 'حجوزات', 'مدته', 'معدل الفريق', 'شكاوى', 'توقف', 'جزئي', 'مهارات', 'آخر اختبار', 'ملاحظة ماتركس'].map((h) => <th key={h} className="py-2 text-right font-bold">{h}</th>)}

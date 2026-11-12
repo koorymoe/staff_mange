@@ -98,7 +98,6 @@ const DesignSetsPage = lazyRetry(() => import('./pages/DesignSetsPage'))
 const DesignSetPage = lazyRetry(() => import('./pages/DesignSetPage'))
 const PlanSetsPage = lazyRetry(() => import('./pages/PlanSetsPage'))
 const PlanSetPage = lazyRetry(() => import('./pages/PlanSetPage'))
-const DirectorsRankingPage = lazyRetry(() => import('./pages/DirectorsRankingPage'))
 const ScoreMonitorPage = lazyRetry(() => import('./pages/ScoreMonitorPage'))
 const MyOrgCard = lazyRetry(() => import('./components/MyOrgCard'))
 const DepartmentsPage = lazyRetry(() => import('./pages/DepartmentsPage'))
@@ -237,7 +236,7 @@ function App() {
           <Route path="voice-terms" element={<RequireAdmin><VoiceTermsPage /></RequireAdmin>} />
           <Route path="org" element={<RequireAdmin><OrgPage /></RequireAdmin>} />
           <Route path="org/assign" element={<RequireAdmin><OrgPage view="assign" /></RequireAdmin>} />
-          <Route path="org/directors-ranking" element={<RequireAdmin><DirectorsRankingPage /></RequireAdmin>} />
+          <Route path="org/directors-ranking" element={<RequireAdmin><StaffScoreHub /></RequireAdmin>} />
           <Route path="org/score-monitor" element={<RequireAdmin><ScoreMonitorPage /></RequireAdmin>} />
           {/* (ع) 11-08: 🏗️ صيت التصاميم — الصلاحيات بالخادم (يشوف المصمم المكلّف صيته بس) */}
           <Route path="design-sets" element={<DesignSetsPage />} />
@@ -378,7 +377,8 @@ function App() {
           <Route path="unit-pr" element={<Navigate to="/media" replace />} />
           <Route path="staff-requests" element={<StaffRequestsPage />} />
           <Route path="service-managers" element={<RequirePermission permission="service_managers"><ServiceManagersPage /></RequirePermission>} />
-          <Route path="employee-stats" element={<RequirePermission permission="employee_stats"><StatsManagementPage /></RequirePermission>} />
+          <Route path="employee-stats" element={<RequirePermission permission="employee_stats"><StaffScoreHub /></RequirePermission>} />
+          <Route path="staff-numbers" element={<RequirePermission permission="employee_stats"><StaffScoreHub /></RequirePermission>} />
           <Route path="stats-management" element={<RequirePermission permission="employee_stats"><StatsManagementPage /></RequirePermission>} />
           <Route path="performance-review" element={<PerformanceReviewPage />} />
           <Route path="missions" element={<MissionsPage />} />

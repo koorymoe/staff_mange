@@ -139,6 +139,7 @@ func (s *MatrixScoreService) Run(now time.Time) (int, error) {
 	s.scoreMonitorAudit(now, add)
 	s.scoreRatingDuty(now, add)
 	s.scoreReportMatch(now, add)
+	s.scoreDesign(now, add)
 	if len(errs) > 0 {
 		return n, errors.New(strings.Join(errs, "; "))
 	}
@@ -350,7 +351,13 @@ type StaffScore struct {
 	Skills     int  `json:"skills"`
 	HasLicense bool `json:"hasLicense"`
 	IsLeader   bool `json:"isLeader"`
+	// (ل) 11-12 دازاي: «النظام يعرف شغل كل واحد، وماتركس ينبّهني إذا التقييم مو صحيح».
+	// false = كل نقاطه من الدوام والتقارير والمهام بس — ماكو ولا نقطة من شغل دوره نفسه.
+	RoleWork bool `json:"roleWork"`
 }
+
+// genericRules قواعد تنطبق على الكل — ما تثبت إن ماتركس يقرا شغل الدور نفسه.
+var genericRules = map[string]bool{"ATTENDANCE": true, "DAILY_REPORT": true, "REPORT_MATCH": true, "TASK_DUE": true, "RATING_DUTY": true, "INVENTORY": true}
 
 type StaffScoreBoard struct {
 	Month    string       `json:"month"`
@@ -368,7 +375,8 @@ type StaffScoreDetail struct {
 
 var ruleTitles = map[string]string{
 	"ATTENDANCE": "تسجيل الحضور", "TASK_DUE": "المهام المضافة بموعدها", "PROJECT_WEEK": "المشاريع",
-	"PROC_RESPONSE": "الرد على طلبات المواد", "TOOL_RESPONSE": "الرد على طلبات الأدوات",
+	"DESIGN_SECTION": "تسليم أقسام التصاميم بموعدها",
+	"PROC_RESPONSE":  "الرد على طلبات المواد", "TOOL_RESPONSE": "الرد على طلبات الأدوات",
 	"VEHICLE_DAILY": "متابعة السيارات اليومية", "SHORTAGE_RESOLVE": "حل نواقص الجرد",
 	"STAGE_LOG": "الالتزام بتسجيل المراحل", "MONITOR_AUDIT": "تدقيق المراقب (غير الحجوزات)", "RATING_DUTY": "واجب التقييم اليومي", "REPORT_MATCH": "صدق تقرير الإنجاز", "DAILY_REPORT": "تقرير الإنجاز اليومي",
 }
@@ -604,6 +612,12 @@ func BuildScores(people []repository.Scorable, pts []repository.MatrixScoreRow, 
 		g := groupOf[p.ID]
 		s := StaffScore{ID: p.ID, Name: p.Name, Role: p.Role, Earned: a.earned, Max: a.max, HumanCount: a.hN,
 			TopLosses: []RuleLoss{}, BySource: a.src, Group: g, GroupLabel: ScoreGroupLabels[g]}
+		for r := range a.rules {
+			if !genericRules[r] {
+				s.RoleWork = true
+				break
+			}
+		}
 		s.RelParts, s.Reliability = BuildReliability(a.rules, rel[p.ID])
 		s.Skills, s.HasLicense, s.IsLeader = rel[p.ID].Skills, rel[p.ID].HasLicense, p.IsLeader
 		if a.max > 0 {
@@ -641,10 +655,13 @@ func BuildScores(people []repository.Scorable, pts []repository.MatrixScoreRow, 
 func boardInsights(rows []StaffScore) []string {
 	out := []string{}
 	scored := 0
-	var low, pending []string
+	var low, pending, noWork []string
 	for _, r := range rows {
 		if r.Final == nil {
 			continue
+		}
+		if !r.RoleWork {
+			noWork = append(noWork, r.Name+" ("+r.GroupLabel+")")
 		}
 		scored++
 		// رقم ماتركس لحاله ناقص — ما يتسمّى «تحت ٦٠٪» قبل ما يقيّمه إنسان.
@@ -675,6 +692,14 @@ func boardInsights(rows []StaffScore) []string {
 			pending = pending[:4]
 		}
 		out = append(out, "بانتظار تقييم بشري (رقمهم من ماتركس بس): "+strings.Join(pending, "، ")+more+".")
+	}
+	if len(noWork) > 0 {
+		more := ""
+		if len(noWork) > 4 {
+			more = fmt.Sprintf(" و%d غيرهم", len(noWork)-4)
+			noWork = noWork[:4]
+		}
+		out = append(out, "⚠️ تقييم مو كامل: "+strings.Join(noWork, "، ")+more+" — نقاطهم بس من الدوام والتقارير والمهام، ماتركس ما لگى شغل محسوب من دورهم نفسه هالشهر. راجع إذا شغلهم يتسجّل بالنظام.")
 	}
 	return out
 }
@@ -857,4 +882,38 @@ func (s *MatrixScoreService) scoreReportMatch(now time.Time, add func(repository
 		add(repository.MatrixScoreRow{EmployeeID: m.EmployeeID, Source: "REPORT", SourceID: m.ID, SourceLabel: &label,
 			Rule: "REPORT_MATCH", Points: pts, MaxPoints: 2, At: m.CreatedAt, Reason: why})
 	}
+}
+
+// scoreDesign (ل) 11-12 دازاي: «المصمم چان يتحاسب على عدد الحجوزات — كل واحد يتقيّم حسب شغله».
+// شغل المصمم الحقيقي = أقسام صيت التصاميم الموكّلة إله بموعد: سلّمها للمراجعة بموعدها = ٢،
+// متأخر = ١، فات الموعد وما سلّم = ٠، ورجعت من المراجعة للتعديل = ١ («بيها غلط»).
+func (s *MatrixScoreService) scoreDesign(now time.Time, add func(repository.MatrixScoreRow)) {
+	rows, err := s.repo.DesignSectionsDue(now.AddDate(0, 0, -scoreLookbackDays), now)
+	if err != nil {
+		return
+	}
+	for _, r := range rows {
+		pts, why, ok := DesignSectionPoints(r.Status, r.DueEnd, r.SubmittedAt, now)
+		if !ok {
+			continue
+		}
+		label := "تصميم «" + r.SetTitle + " · " + r.Discipline + "»"
+		add(repository.MatrixScoreRow{EmployeeID: r.AssigneeID, Source: "DESIGN", SourceID: r.ID, SourceLabel: &label,
+			Rule: "DESIGN_SECTION", Points: pts, MaxPoints: 2, At: r.DueEnd, Reason: label + ": " + why})
+	}
+}
+
+// DesignSectionPoints نقاط قسم تصميم. dueEnd = نهاية يوم الموعد (بغداد). ok=false = بعد ما ينحكم.
+func DesignSectionPoints(status string, dueEnd time.Time, submitted *time.Time, now time.Time) (int, string, bool) {
+	switch {
+	case status == "RETURNED":
+		return 1, "رجع من المراجعة للتعديل.", true
+	case submitted != nil && !submitted.After(dueEnd):
+		return 2, "سلّمه للمراجعة بموعده.", true
+	case submitted != nil:
+		return 1, "سلّمه بس بعد الموعد.", true
+	case now.After(dueEnd):
+		return 0, "فات موعده وما تسلّم.", true
+	}
+	return 0, "", false
 }
