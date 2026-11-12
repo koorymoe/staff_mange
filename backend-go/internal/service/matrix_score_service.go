@@ -8,6 +8,7 @@ import (
 	"staffmange-api/internal/errlog"
 	"staffmange-api/internal/timeutil"
 	"strings"
+	"sync"
 	"time"
 
 	"staffmange-api/internal/model"
@@ -113,6 +114,7 @@ func (s *MatrixScoreService) RunIfDue() error {
 
 // Run يحسب كل الي ما انحسب — الإعادة آمنة (الفريد يمنع التكرار).
 func (s *MatrixScoreService) Run(now time.Time) (int, error) {
+	defer InvalidateBoard()
 	n := 0
 	var errs []string
 	add := func(r repository.MatrixScoreRow) {
@@ -414,7 +416,45 @@ func MonthRange(month string, now time.Time) (string, time.Time, time.Time) {
 	return from.Format("2006-01"), from, to
 }
 
+// boardTTL (11-12 «النظام بطيء»): لوحة الترتيب (والأقران) تنحسب للشركة كلها مرتين (الشهر والي
+// قبله) — هسه تنحفظ دقيقتين. تنمسح أول ما ينحسب شي جديد (Run/تقييم/إلغاء نقطة).
+const boardTTL = 2 * time.Minute
+
+type boardCacheEntry struct {
+	at    time.Time
+	board *StaffScoreBoard
+}
+
+var (
+	boardMu    sync.Mutex
+	boardCache = map[string]boardCacheEntry{}
+)
+
+// InvalidateBoard يمسح لوحات الترتيب المحفوظة.
+func InvalidateBoard() {
+	boardMu.Lock()
+	boardCache = map[string]boardCacheEntry{}
+	boardMu.Unlock()
+}
+
 func (s *MatrixScoreService) Board(month string) (*StaffScoreBoard, error) {
+	key, _, _ := MonthRange(month, time.Now())
+	boardMu.Lock()
+	if e, ok := boardCache[key]; ok && time.Since(e.at) < boardTTL {
+		boardMu.Unlock()
+		return e.board, nil
+	}
+	boardMu.Unlock()
+	b, err := s.board(month)
+	if err == nil {
+		boardMu.Lock()
+		boardCache[key] = boardCacheEntry{at: time.Now(), board: b}
+		boardMu.Unlock()
+	}
+	return b, err
+}
+
+func (s *MatrixScoreService) board(month string) (*StaffScoreBoard, error) {
 	key, from, to := MonthRange(month, time.Now())
 	people, err := s.repo.Scorables()
 	if err != nil {
@@ -473,15 +513,21 @@ func (s *MatrixScoreService) Detail(employeeID, month string) (*StaffScoreDetail
 }
 
 func (s *MatrixScoreService) compute(people []repository.Scorable, from, to time.Time) ([]StaffScore, error) {
-	pts, err := s.repo.Scores(from, to, "")
+	// (11-12 «النظام بطيء»): لموظف واحد نجيب نقاطه هو بس — قبل چانت بطاقة «تقييمي» تسحب نقاط
+	// الشركة كلها للشهر بكل فتحة صفحة وتفلتر بالأخير. النتيجة نفسها لأن كل موظف ينحسب لحاله.
+	emp := ""
+	if len(people) == 1 {
+		emp = people[0].ID
+	}
+	pts, err := s.repo.Scores(from, to, emp)
 	if err != nil {
 		return nil, err
 	}
-	hum, err := s.repo.Human(from, to, "")
+	hum, err := s.repo.Human(from, to, emp)
 	if err != nil {
 		return nil, err
 	}
-	rel, _ := s.repo.ReliabilityFacts(from, to)
+	rel, _ := s.repo.ReliabilityFacts(from, to, emp)
 	rows := BuildScores(people, pts, hum, rel)
 	ids := make([]string, 0, len(people))
 	for _, p := range people {
@@ -660,6 +706,7 @@ func validScore(score int) error {
 
 // RateOnBooking تقييم بمحطة حجز — الطرف لازم يكون فعلاً ليدر/إداري الحجز.
 func (s *MatrixScoreService) RateOnBooking(stage, raterID, bookingID, rateeID string, score int, note *string) error {
+	defer InvalidateBoard()
 	roles, ok := ratingStages[stage]
 	if !ok {
 		return errors.New("محطة تقييم غير معروفة")
@@ -701,6 +748,7 @@ func (s *MatrixScoreService) RateOnBooking(stage, raterID, bookingID, rateeID st
 
 // RatePeriodic المراقب يقيّم المكاتب (المحاسب، المصممة، التقنيين…) كل نص شهر.
 func (s *MatrixScoreService) RatePeriodic(raterID, raterRole, rateeID string, score int, note *string) error {
+	defer InvalidateBoard()
 	if err := validScore(score); err != nil {
 		return err
 	}

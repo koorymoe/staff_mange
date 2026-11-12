@@ -357,7 +357,8 @@ type ReliabilityFact struct {
 	HasLicense bool `db:"hasLicense"`
 }
 
-func (r *MatrixScoreRepository) ReliabilityFacts(from, to time.Time) (map[string]ReliabilityFact, error) {
+// employeeID فاضي = الكل؛ غير فاضي = هالموظف بس (بطاقة «تقييمي» ما تحسب الشركة كلها — 11-12 البطء).
+func (r *MatrixScoreRepository) ReliabilityFacts(from, to time.Time, employeeID string) (map[string]ReliabilityFact, error) {
 	type row struct {
 		ID string `db:"id"`
 		ReliabilityFact
@@ -379,7 +380,7 @@ func (r *MatrixScoreRepository) ReliabilityFacts(from, to time.Time) (map[string
 		   AND k."createdAt" >= ($1::timestamptz AT TIME ZONE 'UTC') AND k."createdAt" < ($2::timestamptz AT TIME ZONE 'UTC'))::int AS "kpiHits",
 		(SELECT count(*) FROM "EmployeeSkill" es WHERE es."employeeId" = e.id AND es."canPerform")::int AS skills,
 		e."hasDrivingLicense" AS "hasLicense"
-		FROM "Employee" e WHERE e.status = 'ACTIVE'`, from, to)
+		FROM "Employee" e WHERE e.status = 'ACTIVE' AND ($3 = '' OR e.id = $3)`, from, to, employeeID)
 	out := map[string]ReliabilityFact{}
 	for _, x := range rows {
 		out[x.ID] = x.ReliabilityFact

@@ -166,6 +166,8 @@ export class ApiError extends Error {
   constructor(message: string, status: number) { super(message); this.name = 'ApiError'; this.status = status }
 }
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
+  // أي تعديل على الخدمات أو مهاراتها يمسح قائمة الخدمات المحفوظة (11-12)
+  if (options?.method && options.method !== 'GET' && (path.startsWith('/services') || path.startsWith('/skills'))) servicesCache = null
   const token = currentToken()
   const res = await fetch(`${API_URL}${path}`, {
     headers: {
@@ -201,6 +203,9 @@ let refreshTimer = 0
 // apiRequest نفس طريقة الاتصال الموحدة (الجلسة المنتهية، رسائل الأخطاء بالعراقي،
 // تحديث عين ماتركس) — للشاشات الي چانت عندها طريقة خاصة بيها.
 export const apiRequest = request
+let servicesCache: { at: number; p: Promise<Service[]> } | null = null
+/** يمسح قائمة الخدمات المحفوظة (بعد أي تعديل على خدمة أو مهارة). */
+export function clearServicesCache() { servicesCache = null }
 
 export async function streamMatrixChat(id: string, text: string, image: string | undefined, emit: (event: MatrixStreamEvent) => void, signal: AbortSignal) {
   const token = currentToken()
@@ -552,7 +557,15 @@ export const api = {
     request<ProjectChecklist>('/checklists', { method: 'POST', body: JSON.stringify(data) }),
   addChecklistPhotos: (id: string, photoUrls: string[]) =>
     request<ProjectChecklist>(`/checklists/${id}/photos`, { method: 'PUT', body: JSON.stringify({ photoUrls }) }),
-  getServices: () => request<Service[]>('/services'),
+  // (11-12 «النظام بطيء»): قائمة الخدمات ويا مهاراتها چانت تنطلب بكل فتحة صفحة (الإطار يدور
+  // بيها على GPS). هسه تنحفظ ٥ دقايق وتتشارك بين الشاشات، وأي تعديل على خدمة يمسحها.
+  getServices: () => {
+    if (servicesCache && Date.now() - servicesCache.at < 5 * 60_000) return servicesCache.p
+    const p = request<Service[]>('/services')
+    servicesCache = { at: Date.now(), p }
+    p.catch(() => { servicesCache = null })
+    return p
+  },
   suggestProductSpecs: (name: string, modelName: string) =>
     request<{ specs: string }>('/products/specs-suggest', { method: 'POST', body: JSON.stringify({ name, modelName }) }),
   // توقف العمل: الليدر بدأ وما كدر يكمّل. السبب إجباري.
