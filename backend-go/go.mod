@@ -16,6 +16,7 @@ require (
 	github.com/lib/pq v1.12.3
 	github.com/xuri/excelize/v2 v2.11.1
 	golang.org/x/crypto v0.58.0
+	golang.org/x/image v0.44.0
 )
 
 require (

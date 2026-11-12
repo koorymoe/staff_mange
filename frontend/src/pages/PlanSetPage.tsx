@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
-import { api, apiRequest, ensureFileToken, fileUrl } from '../api'
+import { api, apiRequest, ensureFileToken, fileUrl, thumbUrl } from '../api'
 import { useSession } from '../session'
 import { buildPlanSetHtml, isImageFile, type PlanPrintQuote } from '../utils/planSetPrint'
 import { printProjectQuote } from '../utils/projectQuotePrint'
@@ -254,7 +254,7 @@ export default function PlanSetPage() {
                       {fs.map((f) => (
                         <div key={f.id} className="overflow-hidden rounded-lg border border-slate-200 bg-white">
                           <a href={fileUrl(f.fileKey)} target="_blank" rel="noreferrer" className="block h-20 bg-slate-50">
-                            {isImageFile(f) ? <img src={fileUrl(f.fileKey)} alt="" className="h-full w-full object-cover" /> : <span className="grid h-full place-items-center text-xs font-bold text-brand-700">{f.fileType === 'application/pdf' ? '📄 PDF' : '📐 DWG'}</span>}
+                            {isImageFile(f) ? <img loading="lazy" decoding="async" src={thumbUrl(f.fileKey, 320)} alt="" className="h-full w-full object-cover" /> : <span className="grid h-full place-items-center text-xs font-bold text-brand-700">{f.fileType === 'application/pdf' ? '📄 PDF' : '📐 DWG'}</span>}
                           </a>
                           <div className="flex items-center justify-between gap-1 p-1.5 text-[11px]">
                             <span className="truncate text-slate-700" title={f.title}>{f.title}</span>

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
-import { api, apiRequest, ensureFileToken, fileUrl } from '../api'
+import { api, apiRequest, ensureFileToken, thumbUrl } from '../api'
 import type { Product, QuotationItem } from '../apiTypes'
 import PageHeader from '../components/PageHeader'
 import AnnexTemplatesManager, { type AnnexTemplate } from '../components/AnnexTemplatesManager'
@@ -261,7 +261,7 @@ export default function ProjectQuotationPage() {
             const img = cover.chapters?.[n]?.image
             return (
               <div key={n} className="flex items-center gap-2 rounded-xl bg-white p-2 shadow-sm">
-                {img && ftReady ? <img src={fileUrl(img)} alt="" className="h-14 w-20 rounded object-cover" /> : <div className="grid h-14 w-20 place-items-center rounded bg-slate-100 text-xs text-slate-400">بلا صورة</div>}
+                {img && ftReady ? <img loading="lazy" decoding="async" src={thumbUrl(img, 160)} alt="" className="h-14 w-20 rounded object-cover" /> : <div className="grid h-14 w-20 place-items-center rounded bg-slate-100 text-xs text-slate-400">بلا صورة</div>}
                 <div className="min-w-0 flex-1"><b className="block truncate text-sm">{n}</b>
                   <div className="flex gap-1">
                     <button type="button" disabled={picBusy || !id} onClick={() => void pickImages(true, n)} className="rounded bg-slate-100 px-2 py-0.5 text-xs">🔄 صورة غيرها</button>

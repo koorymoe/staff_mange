@@ -3,6 +3,7 @@ package handler
 import (
 	"log"
 	"net/http"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -151,6 +152,27 @@ func (h *FileHandler) Serve(w http.ResponseWriter, r *http.Request) {
 		WriteError(w, http.StatusForbidden, "هذا الملف يفتح من شاشته بس")
 		return
 	}
+	// 🖼️ (11-12) ?w=… = نسخة مصغّرة للعرض (تنحفظ مرة وحدة). أي خلل = الأصلية.
+	if wq := r.URL.Query().Get("w"); wq != "" && !strings.HasPrefix(key, "thumbs/") {
+		if tw, err := strconv.Atoi(wq); err == nil && storage.ThumbWidths[tw] {
+			tk := storage.ThumbKey(key, tw)
+			if td, _, err := h.store.Get(r.Context(), tk); err == nil {
+				serveFileBytes(w, td, "image/jpeg")
+				return
+			}
+			if orig, ct, err := h.store.Get(r.Context(), key); err == nil && storage.IsThumbable(ct) {
+				if td, err := storage.MakeThumb(orig, tw); err == nil {
+					if perr := h.store.Put(r.Context(), tk, td, "image/jpeg"); perr != nil {
+						log.Printf("thumb put %q: %v", tk, perr)
+					}
+					serveFileBytes(w, td, "image/jpeg")
+					return
+				}
+				serveFileBytes(w, orig, ct)
+				return
+			}
+		}
+	}
 	data, contentType, err := h.store.Get(r.Context(), key)
 	if err != nil {
 		if err == storage.ErrNotFound {
@@ -161,6 +183,10 @@ func (h *FileHandler) Serve(w http.ResponseWriter, r *http.Request) {
 		WriteError(w, http.StatusInternalServerError, "تعذر جلب الملف")
 		return
 	}
+	serveFileBytes(w, data, contentType)
+}
+
+func serveFileBytes(w http.ResponseWriter, data []byte, contentType string) {
 	w.Header().Set("Content-Type", contentType)
 	// المفتاح عشوائي وما يتغيّر محتواه أبداً — فالتخزين المؤقت آمن وطويل
 	w.Header().Set("Cache-Control", "private, max-age=31536000, immutable")

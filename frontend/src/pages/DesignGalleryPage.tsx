@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { api, fileUrl, ensureFileToken, type DesignAsset } from '../api'
+import { api, fileUrl, ensureFileToken, type DesignAsset, thumbUrl } from '../api'
 import PageHeader from '../components/PageHeader'
 import StatTile from '../components/StatTile'
 import EmptyState from '../components/EmptyState'
@@ -193,7 +193,7 @@ export default function DesignGalleryPage() {
                   className="block aspect-square overflow-hidden bg-sf-sunken"
                  >
                   {isImage(a) ? (
-                    <img src={fileUrl(a.fileKey)} alt={a.title} className="h-full w-full object-cover" />
+                    <img loading="lazy" decoding="async" src={thumbUrl(a.fileKey, 480)} alt={a.title} className="h-full w-full object-cover" />
                   ) : (
                     <span className="flex h-full w-full items-center justify-center text-3xl">📄</span>
                   )}

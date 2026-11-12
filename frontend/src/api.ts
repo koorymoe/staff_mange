@@ -136,15 +136,19 @@ export async function ensureFileToken(): Promise<string> {
  *
  *  يتعامل مع الثلاثة: data: URL قديمة، مسار /api/files/ جديد، ورابط
  *  خارجي كامل. الشاشات تنادي هذي بدل ما تحط القيمة مباشرة بـsrc. */
-export function fileUrl(value?: string | null): string {
+export function fileUrl(value?: string | null, width?: 160 | 320 | 480 | 800): string {
   if (!value) return ''
   if (value.startsWith('data:') || value.startsWith('http')) return value
   if (value.startsWith('/api/files/')) {
     const base = API_URL.replace(/\/api$/, '')
-    return `${base}${value}${fileToken ? `?ft=${encodeURIComponent(fileToken)}` : ''}`
+    const q = [fileToken ? `ft=${encodeURIComponent(fileToken)}` : '', width ? `w=${width}` : ''].filter(Boolean).join('&')
+    return `${base}${value}${q ? `?${q}` : ''}`
   }
   return value
 }
+
+/** (11-12) نسخة مصغّرة للعرض بمربع — السيرفر يصغّرها مرة وحدة. للفتح الكامل استعمل fileUrl بلا عرض. */
+export const thumbUrl = (value?: string | null, width: 160 | 320 | 480 | 800 = 480) => fileUrl(value, width)
 
 /** storeFile (٧ل): يرفع الملف لمخزن الملفات ويرجّع رابطه (/api/files/…) حتى
  *  ما ينحفظ base64 بالقاعدة. لو فشل الرفع يرجّع data URL مثل قبل — ما نضيّع الملف. */

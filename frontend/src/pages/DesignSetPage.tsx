@@ -1,6 +1,6 @@
 import { lazy, Suspense, useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { api, apiRequest, ensureFileToken, fileUrl, type Employee } from '../api'
+import { api, apiRequest, ensureFileToken, fileUrl, type Employee, thumbUrl } from '../api'
 import { SECTION_STATUS, type DesignFile, type DesignMeta, type DesignSection, type DesignSetDetail, type DesignTool } from './design/types'
 
 const ModelViewer = lazy(() => import('./design/ModelViewer'))
@@ -23,7 +23,7 @@ function FileCard({ f, canRemove, onRemove }: { f: DesignFile; canRemove: boolea
   const is3d = f.fileType === 'model/gltf-binary'
   return (
     <div className="rounded-xl border border-slate-200 bg-white p-2 text-xs">
-      {isImg && <a href={src} target="_blank" rel="noreferrer"><img src={src} alt={f.title} className="h-28 w-full rounded-lg object-cover" /></a>}
+      {isImg && <a href={src} target="_blank" rel="noreferrer"><img loading="lazy" decoding="async" src={f.fileKey ? thumbUrl(f.fileKey, 480) : src} alt={f.title} className="h-28 w-full rounded-lg object-cover" /></a>}
       {is3d && (open3d
         ? <Suspense fallback={<p className="p-4 text-center text-slate-400">…</p>}><ModelViewer src={src} alt={f.title} /></Suspense>
         : <button type="button" onClick={() => setOpen3d(true)} className="flex h-28 w-full items-center justify-center rounded-lg bg-slate-100 font-bold text-slate-600">🧊 افتح المجسّم ثري دي</button>)}
