@@ -31,6 +31,14 @@ test('نسب الرئيسية: كل نسبة تنضغط وتشرح نفسها', 
   page.on('pageerror', (e) => problems.push(e.message))
   page.on('console', (m) => { if (m.type() === 'error' && /validateDOMNesting|cannot be a descendant/.test(m.text())) problems.push(m.text()) })
   const owner = await login(request, OWNER.username, OWNER.password)
+  // قاعدة CI فاضية: بلا حجوزات ماكو نسب تنعرض — نسجّل زبون وحجز حتى تطلع «نجاح الأسبوع»
+  const h = { Authorization: `Bearer ${owner.token}` }
+  const phone = '0790' + String(Math.floor(Math.random() * 1e7)).padStart(7, '0')
+  const cu = await request.post(`${API}/customers`, { headers: h, data: { name: `زبون نسب ${Date.now().toString(36)}`, phone } })
+  expect(cu.ok(), await cu.text()).toBeTruthy()
+  const cust = await cu.json() as { id?: string; customer?: { id: string } }
+  const bk = await request.post(`${API}/bookings`, { headers: h, data: { customerId: cust.id ?? cust.customer?.id } })
+  expect(bk.ok(), await bk.text()).toBeTruthy()
   await uiLogin(page, owner)
   await page.goto('./')
   await page.getByRole('button', { name: /المتابعة/ }).first().click()
