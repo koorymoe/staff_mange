@@ -197,4 +197,8 @@ func TestJudgeWorkStop_PurchaseNotBlamed(t *testing.T) {
 	if v.Headline != "توقف بلا طلب مادة ولا زيادة بالسلة" {
 		t.Errorf("بلا شراء لازم تبقى القاعدة القديمة، طلع %q", v.Headline)
 	}
+	// بلاغ #36: النص يگول صراحة منو المقصود (الليدر وكادره، مو إداري الكميات)
+	if v.Reasoning == nil || !strings.Contains(*v.Reasoning, "الليدر وكادره ما طلبوا مواد") || !strings.Contains(*v.Reasoning, "إداري الكميات بس يستلم") {
+		t.Errorf("النص لازم يوضح منو يطلب ويضيف بالسلة: %v", v.Reasoning)
+	}
 }
