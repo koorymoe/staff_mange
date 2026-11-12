@@ -2455,5 +2455,13 @@ func matrixChatMigrations() []Migration {
 			ALTER TABLE "PlanFile" ADD COLUMN IF NOT EXISTS "sheetNotes" TEXT;
 			ALTER TABLE "PlanFile" ADD COLUMN IF NOT EXISTS "sheetScale" TEXT;
 		`,
+	}, {
+		// (ل) 11-12 دازاي: رقم الزبون — FindOrCreateByPhone چان «أكبر رقم + ١» فالتسلسل تأخر عن
+		// الأرقام الموجودة. نقدّمه لأكبر رقم (بيانات بس، ولا رقم زبون يتغيّر)، وبعدها الكل من التسلسل.
+		Version: "0484_customer_code_seq",
+		SQL: `
+			SELECT setval('"Customer_customerCode_seq"',
+				GREATEST((SELECT COALESCE(MAX("customerCode"), 0) FROM "Customer"), (SELECT last_value FROM "Customer_customerCode_seq"), 1));
+		`,
 	}}
 }

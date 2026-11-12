@@ -236,12 +236,12 @@ func (r *CustomerRepository) FindOrCreateByPhone(phone, name string) (*model.Cus
 	if name == "" {
 		name = phone
 	}
-	// customerCode عمود رقمي — ناخذ أكبر رقم موجود ونزيد واحد
+	// (ل) 11-12 دازاي: customerCode من تسلسل القاعدة (افتراضي العمود) — ذرّي. چان «أكبر رقم + ١»
+	// فزبونين بنفس اللحظة ياخذون نفس الرقم وواحد يطلعله «ما انحفظ»، والتسلسل يتأخر عن الأرقام
+	// فشاشات الزبائن الثانية (الي تاخذ من التسلسل) تصطدم هي هم. 0484 قدّم التسلسل لأكبر رقم.
 	err := r.db.Get(&c, `
-		INSERT INTO "Customer" (id, "customerCode", name, phone)
-		VALUES (gen_random_uuid()::text,
-			COALESCE((SELECT MAX("customerCode") FROM "Customer"), 0) + 1,
-			$1, $2)
+		INSERT INTO "Customer" (id, name, phone)
+		VALUES (gen_random_uuid()::text, $1, $2)
 		RETURNING *`, name, phone)
 	if err != nil {
 		return nil, err
