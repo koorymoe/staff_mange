@@ -453,6 +453,8 @@ func versionedMigrations() []Migration {
 	result = append(result, aiSuggestionVerifyMigrations()...)
 	result = append(result, agentGrowthMigrations()...)
 	result = append(result, projectQuotationMigrations()...)
+	// 🏴‍☠️ ون بيس: التحديثات المولّدة من الموديلات — دائماً بالأخير
+	result = append(result, autoMigrations()...)
 	return result
 }
 
@@ -467,4 +469,13 @@ func fmt4Digits(n int) string {
 		s = "0" + s
 	}
 	return s
+}
+
+// AllVersions أسماء كل التحديثات (لـcmd/makemigration يحسب الرقم الجاي).
+func AllVersions() []string {
+	out := []string{}
+	for _, m := range versionedMigrations() {
+		out = append(out, m.Version)
+	}
+	return out
 }

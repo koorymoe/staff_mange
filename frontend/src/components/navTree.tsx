@@ -61,6 +61,8 @@ export interface NavItem {
   labelFor?: (ctx: NavContext) => string
   // ownerOnly: الاستثناء الوحيد الي المنح ما يكسره — شاشات المالك.
   ownerOnly?: boolean
+  // 👑 ون بيس: فعل النواة الي يفتح هالبند — المالك يگدر ينطيه لمدير النظام
+  ownerAction?: string
   // strict: حارس البند ينفحص حتى لو الوحدة ممنوحة — صلاحية الوحدة ما تفتحه وحدها (10-13)
   strict?: boolean
   // hideForRoles: منع صريح لدور معيّن — يشتغل **قبل** كل شي، حتى قبل
@@ -129,6 +131,10 @@ export const navItems: NavItem[] = [
   // (ع) 10-23: «الرابط مال السكرتير وين؟» — تطبيق مستقل بلا قائمة، فزر يوديله للمالك بس.
   { ownerOnly: true, to: '/secretary', label: '🗂️ ايريس', icon: icon('M12 3a4 4 0 100 8 4 4 0 000-8zM4 21v-1a6 6 0 016-6h4a6 6 0 016 6v1'), roles: ['ADMIN'] },
   { ownerOnly: true, to: '/ai-agents', label: '🤖 وكلاء الذكاء', icon: <></>, roles: ['ADMIN'] },
+  // 🏴‍☠️ ون بيس (11-10): تدقيق الصلاحيات ولوحة الأدمن التلقائية
+  { ownerOnly: true, ownerAction: 'system.matrix', to: '/core-matrix', label: '🏴‍☠️ مصفوفة الصلاحيات', icon: <></>, roles: ['ADMIN'] },
+  { ownerOnly: true, ownerAction: 'system.admin_tables', to: '/core-admin', label: '🗄️ لوحة الأدمن', icon: <></>, roles: ['ADMIN'] },
+  { ownerOnly: true, to: '/owner-grants', label: '👑 صلاحياتي لمدير النظام', icon: <></>, roles: ['ADMIN'] },
   { to: '/ai-suggestions', label: '🧠 اقتراحات الذكاء', icon: <></>, roles: ['ADMIN'] },
   { to: '/org', label: '🏛️ الهيكل التنظيمي', icon: <></>, roles: ['ADMIN'] },
   { to: '/org/directors-ranking', label: '🏆 تصنيف المدراء والموظفين', icon: <></>, roles: ['ADMIN'] },
@@ -1241,6 +1247,11 @@ export type NavContext = {
   gpsServiceId: string | null
 }
 
+// 👑 المالك، أو مدير نظام نطاه المالك فعل هالبند (owner:<فعل> — من /core/my-grants)
+function ownerAllowed(item: NavItem, ctx: NavContext): boolean {
+  return ctx.employee?.actualRole === 'OWNER' || (!!item.ownerAction && ctx.permissions.includes('owner:' + item.ownerAction))
+}
+
 export function isNavVisible(item: NavItem, ctx: NavContext, unitGranted = false): boolean {
   const role = ctx.employee?.role
   // (دازاي 11-01) صاحب مكتب الإدارة يشوف «مكاني» جوّا المكتب — خيار واحد بالقائمة
@@ -1290,7 +1301,7 @@ export function isNavVisible(item: NavItem, ctx: NavContext, unitGranted = false
     if (item.divider) return true
     // (11-04) قاعدة السيرفر نفسها تحسم — ماكو 403 لبند يطلع ولا بند مخفي والسيرفر يسمح
     if (item.capability && ctx.employee?.can?.[item.capability] !== undefined) {
-      if (item.ownerOnly && ctx.employee?.actualRole !== 'OWNER') return false
+      if (item.ownerOnly && !ownerAllowed(item, ctx)) return false
       return !!ctx.employee.can[item.capability]
     }
     // تقرير ١ (A7): حتى المدير — «العمل» مال الفني يطلعله مجموعة ثالثة اسمها «العمل».
@@ -1314,7 +1325,7 @@ export function isNavVisible(item: NavItem, ctx: NavContext, unitGranted = false
         (!!item.unitPermission && !item.children && ctx.permissions.includes(item.unitPermission))
       if (grantedExplicitly) return true
     }
-    if (item.ownerOnly && ctx.employee?.actualRole !== 'OWNER') return false
+    if (item.ownerOnly && !ownerAllowed(item, ctx)) return false
     // كادر الميدان (فني أو ليدر): باب «الإدارة» ما يطلع لهم أبداً. شغل
     // الليدر الإداري موجود بمجموعة «العمل» مالته.
     if (item.hideFromFieldStaff && (role === 'TECHNICIAN' || role === 'TECHNICAL') && !hasOrgRole) return false

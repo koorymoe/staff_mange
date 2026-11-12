@@ -245,3 +245,13 @@ func (r *ProjectRepository) CustomerIDForBooking(bookingID string) (string, erro
 	err := r.db.Get(&id, `SELECT "customerId" FROM "Booking" WHERE id = $1`, bookingID)
 	return id, err
 }
+
+// IsParty (ون بيس 11-10) الموظف طرف بالمشروع: مسؤوله أو المفوّض أو الكاشف أو المنشئ أو
+// مشرف حجزه. نفس شرط سبب التأخير (project_delay_handler) — بلا الصلاحية (تنفحص بالنواة).
+func (r *ProjectRepository) IsParty(projectID, employeeID string) bool {
+	var ok bool
+	_ = r.db.Get(&ok, `SELECT EXISTS (SELECT 1 FROM "Project" p WHERE p.id = $1 AND (
+		$2 IN (COALESCE(p."responsibleEmployeeId",''), COALESCE(p."delegatedToEmployeeId",''), COALESCE(p."surveyorEmployeeId",''), COALESCE(p."createdByEmployeeId",''))
+		OR EXISTS (SELECT 1 FROM "Booking" b WHERE b.id = p."bookingId" AND b."projectSupervisorId" = $2)))`, projectID, employeeID)
+	return ok
+}

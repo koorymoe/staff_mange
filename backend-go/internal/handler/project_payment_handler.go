@@ -33,6 +33,9 @@ func (h *ProjectPaymentHandler) canRecord(r *http.Request, projectID string) boo
 	return authz.Can(r, h.perms, authz.ProjectContractValue, h.repo.IsSupervisor(projectID, middleware.EmployeeIDFromContext(r)))
 }
 
+// CanValue (ون بيس) نفس قاعدة canValue — تستعملها النواة قبل المعالج.
+func (h *ProjectPaymentHandler) CanValue(r *http.Request) bool { return h.canValue(r) }
+
 func (h *ProjectPaymentHandler) canValue(r *http.Request) bool {
 	return authz.Can(r, h.perms, authz.ProjectContractValue)
 }
