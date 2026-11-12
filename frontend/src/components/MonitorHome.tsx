@@ -2,12 +2,13 @@ import { positionTitle } from '../roleLabels'
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { drillTo } from '../utils/drill'
-import { api, type FinanceSummary, type MonitorReview, type TodayBoardData } from '../api'
+import { api, type FinanceSummary, type MatrixWatch, type MonitorReview, type TodayBoardData } from '../api'
 import { useSession } from '../session'
 import { isPathAllowed } from './navTree'
 import { num as fmt } from '../utils/format'
 import { card } from '../ui/classes'
 import { swallow } from '../utils/swallow'
+import MatrixProofModal from './MatrixProofModal'
 
 // ═══ الواجهة الرئيسية للمراقب — بتصميم (ع) 10-04 ═══
 // ترحيب وساعة، أربع بطاقات، حركة الحجوزات، أهم التنبيهات (صندوق المراقب)،
@@ -28,7 +29,7 @@ function Clock() {
   )
 }
 
-function StatCard({ label, value, to, tone, icon }: { label: string; value: number | string; to: string | null; tone: 'blue' | 'green' | 'amber' | 'red'; icon: string }) {
+function StatCard({ label, value, to, tone, icon, onClick }: { label: string; value: number | string; to: string | null; tone: 'blue' | 'green' | 'amber' | 'red'; icon: string; onClick?: () => void }) {
   const t = {
     blue: 'border-sky-200 bg-sky-50/60 text-sky-700',
     green: 'border-emerald-200 bg-emerald-50/60 text-emerald-700',
@@ -40,12 +41,13 @@ function StatCard({ label, value, to, tone, icon }: { label: string; value: numb
       <div>
         <p className="text-sm font-bold text-slate-700">{label}</p>
         <p className="mt-1 text-3xl font-extrabold tabular-nums">{value}</p>
-        {to && <p className="mt-2 text-xs font-bold opacity-80 group-hover:underline">← عرض التفاصيل</p>}
+        {(to || onClick) && <p className="mt-2 text-xs font-bold opacity-80 group-hover:underline">{onClick ? '← منين جات النسبة؟' : '← عرض التفاصيل'}</p>}
       </div>
       <span className="grid h-12 w-12 place-items-center rounded-full bg-white text-2xl shadow-sm">{icon}</span>
     </>
   )
   const cls = `group flex items-center justify-between rounded-2xl border p-4 transition ${t}`
+  if (onClick) return <button type="button" onClick={onClick} className={`${cls} w-full text-right hover:shadow-md`}>{body}</button>
   return to ? <Link to={to} className={`${cls} hover:shadow-md`}>{body}</Link> : <div className={cls}>{body}</div>
 }
 
@@ -87,12 +89,16 @@ export default function MonitorHome() {
   const [pending, setPending] = useState<number | null>(null)
   // استقرار النظام = الي مو بالأحمر ÷ كل الموظفين تحت المراقبة (نفس مركز قيادة ماتركس)
   const [stability, setStability] = useState<number | null>(null)
+  // (ل) 11-12 دازاي: «من اضغط عليه يطلعلي منين جاب هاي النسبة»
+  const [watch, setWatch] = useState<{ group: string; employees: MatrixWatch[]; red: number; alert: number }[]>([])
+  const [proof, setProof] = useState(false)
 
   useEffect(() => {
     let alive = true
     api.getTodayBoard().then((x) => { if (alive) setBoard(x) }).catch(swallow)
     api.getRoleWatch().then((g) => {
       if (!alive) return
+      setWatch(g.filter((x) => x.employees.length > 0))
       const people = g.reduce((n, x) => n + x.employees.length, 0)
       const red = g.reduce((n, x) => n + (x.employees.length ? x.red : 0), 0)
       setStability(people ? Math.round(((people - red) / people) * 100) : 100)
@@ -130,6 +136,7 @@ export default function MonitorHome() {
 
   return (
     <div dir="rtl" className="space-y-4">
+      {proof && <MatrixProofModal kind="stability" groups={watch} onClose={() => setProof(false)} />}
       <section className="flex flex-wrap items-center justify-between gap-4 rounded-3xl bg-gradient-to-l from-[#0f2040] via-[#1e3a8a] to-[#1e40af] p-6 text-white shadow-lg">
         <div>
           <span className="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-3 py-0.5 text-xs"><i className="h-2 w-2 rounded-full bg-emerald-400" /> متصل</span>
@@ -149,7 +156,7 @@ export default function MonitorHome() {
         <StatCard label="نجاح الأسبوع"
           value={board ? (board.weekTotal > 0 ? `${Math.round((board.weekCompleted / board.weekTotal) * 100)}٪` : '—') : '…'}
           to={drillTo('week')} tone="green" icon="📈" />
-        <StatCard label="استقرار النظام" to={null} value={stability == null ? '…' : `${stability}٪`} tone="blue" icon="〰️" />
+        <StatCard label="استقرار النظام" to={null} value={stability == null ? '…' : `${stability}٪`} tone="blue" icon="〰️" onClick={stability == null ? undefined : () => setProof(true)} />
       </div>
 
       <div className="grid gap-4 lg:grid-cols-5">
