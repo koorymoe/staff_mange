@@ -52,3 +52,13 @@ func (h *MatrixLearningHandler) Reject(w http.ResponseWriter, r *http.Request) {
 	}
 	WriteJSON(w, http.StatusOK, map[string]bool{"ok": true})
 }
+
+// GET /api/ai/prediction-accuracy — (ل) 11-12: ثقة التوقعات من دقتها الحقيقية.
+func (h *MatrixLearningHandler) PredictionAccuracy(w http.ResponseWriter, r *http.Request) {
+	out, err := h.svc.PredictionAccuracy()
+	if err != nil {
+		WriteError(w, http.StatusInternalServerError, "تعذر حساب الدقة")
+		return
+	}
+	WriteJSON(w, http.StatusOK, out)
+}

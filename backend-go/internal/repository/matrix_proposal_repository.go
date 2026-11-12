@@ -3,6 +3,7 @@ package repository
 import (
 	"errors"
 	"staffmange-api/internal/errlog"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
@@ -144,4 +145,51 @@ func (r *MatrixProposalRepository) ExpireStalePredictions(today string) {
 		  (signature LIKE 'PRED|%' AND signature NOT LIKE '%|' || $1)
 		  OR (signature LIKE 'DECLINE|%' AND (COALESCE((evidence->>'ratio')::float, 0) > 5 OR COALESCE((evidence->>'prevRatio')::float, 0) > 5))
 		)`, today))
+}
+
+// ═══ (ل) 11-12: دقة توقعات «ما راح يخلّص اليوم» ═══
+
+// PredictionToCheck توقع يوم معيّن بعده ما انحكم.
+type PredictionToCheck struct {
+	ID       string         `db:"id"`
+	Evidence model.NullJSON `db:"evidence"`
+	Payload  model.NullJSON `db:"payload"`
+}
+
+// PredictionsToVerify توقعات اليوم (أي حالة: انوافق عليها، انرفضت، أو انتهت) الي ما انحكمت.
+func (r *MatrixProposalRepository) PredictionsToVerify(day string) ([]PredictionToCheck, error) {
+	rows := []PredictionToCheck{}
+	err := r.db.Select(&rows, `SELECT id, evidence, payload FROM "MatrixProposal"
+		WHERE kind = 'PREDICTION' AND signature LIKE 'PRED|%|' || $1 AND verdict IS NULL`, day)
+	return rows, err
+}
+
+func (r *MatrixProposalRepository) SetPredictionVerdict(id string, correct bool, leftAtEnd int) {
+	v := "WRONG"
+	if correct {
+		v = "CORRECT"
+	}
+	errlog.Exec(r.db.Exec(`UPDATE "MatrixProposal" SET verdict = $2, "verifiedAt" = now(), "leftAtEnd" = $3 WHERE id = $1`, id, v, leftAtEnd))
+}
+
+// PredictionVerdictRow توقع انحكم — للإثبات بالشاشة.
+type PredictionVerdictRow struct {
+	Title     string    `db:"title" json:"title"`
+	Verdict   string    `db:"verdict" json:"verdict"`
+	LeftAtEnd *int      `db:"leftAtEnd" json:"leftAtEnd"`
+	CreatedAt time.Time `db:"createdAt" json:"createdAt"`
+}
+
+// PredictionAccuracy آخر `days` يوم: كم توقع صح من كم انحكم + آخر ٢٠ للإثبات.
+func (r *MatrixProposalRepository) PredictionAccuracy(days int) (correct, judged int, recent []PredictionVerdictRow, err error) {
+	err = r.db.QueryRow(`SELECT count(*) FILTER (WHERE verdict = 'CORRECT'), count(*) FROM "MatrixProposal"
+		WHERE kind = 'PREDICTION' AND verdict IS NOT NULL AND "createdAt" > now() - make_interval(days => $1)`, days).Scan(&correct, &judged)
+	if err != nil {
+		return
+	}
+	recent = []PredictionVerdictRow{}
+	err = r.db.Select(&recent, `SELECT title, verdict, "leftAtEnd", "createdAt" FROM "MatrixProposal"
+		WHERE kind = 'PREDICTION' AND verdict IS NOT NULL AND "createdAt" > now() - make_interval(days => $1)
+		ORDER BY "createdAt" DESC LIMIT 20`, days)
+	return
 }

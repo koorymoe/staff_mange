@@ -1441,6 +1441,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	mux.Handle("POST /api/ai/guide-rules", middleware.Chain(http.HandlerFunc(matrixGuideHandler.Create), requireAuth, requireAdmin))
 	mux.Handle("PUT /api/ai/guide-rules/{id}", middleware.Chain(http.HandlerFunc(matrixGuideHandler.Update), requireAuth, requireAdmin))
 	mux.Handle("DELETE /api/ai/guide-rules/{id}", middleware.Chain(http.HandlerFunc(matrixGuideHandler.Delete), requireAuth, requireAdmin))
+	mux.Handle("GET /api/ai/prediction-accuracy", middleware.Chain(http.HandlerFunc(matrixLearningHandler.PredictionAccuracy), requireAuth, requireAdmin))
 	mux.Handle("GET /api/ai/proposals", middleware.Chain(http.HandlerFunc(matrixLearningHandler.List), requireAuth, requireAdmin))
 	mux.Handle("POST /api/ai/proposals/{id}/approve", middleware.Chain(http.HandlerFunc(matrixLearningHandler.Approve), requireAuth, requireAdmin))
 	mux.Handle("POST /api/ai/proposals/{id}/reject", middleware.Chain(http.HandlerFunc(matrixLearningHandler.Reject), requireAuth, requireAdmin))

@@ -2414,5 +2414,14 @@ func matrixChatMigrations() []Migration {
 			CREATE UNIQUE INDEX IF NOT EXISTS "TrainingMatch_skill_uq" ON "TrainingMatch" ("employeeId", "skillId") WHERE "skillId" IS NOT NULL;
 			CREATE INDEX IF NOT EXISTS "TrainingMatch_open_idx" ON "TrainingMatch" ("employeeId") WHERE status IN ('OPEN','IN_TRAINING');
 		`,
+	}, {
+		// (ل) 11-12 دازاي: ثقة «التوقعات المعلّقة» تنحسب من دقة التوقعات الي فاتت مو رقم ثابت —
+		// بنهاية الدوام ماتركس يشوف: الموظف الي توقّع ما يخلّص، فعلاً بقى عليه شغل؟
+		Version: "0482_prediction_verdict",
+		SQL: `
+			ALTER TABLE "MatrixProposal" ADD COLUMN IF NOT EXISTS verdict TEXT CHECK (verdict IN ('CORRECT','WRONG'));
+			ALTER TABLE "MatrixProposal" ADD COLUMN IF NOT EXISTS "verifiedAt" TIMESTAMPTZ;
+			ALTER TABLE "MatrixProposal" ADD COLUMN IF NOT EXISTS "leftAtEnd" INT;
+		`,
 	}}
 }

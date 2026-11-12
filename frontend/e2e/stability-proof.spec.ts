@@ -47,3 +47,16 @@ test('نسب الرئيسية: كل نسبة تنضغط وتشرح نفسها', 
   }
   expect(problems).toEqual([])
 })
+
+// (ل) 11-12: ثقة التوقعات المعلّقة صارت من دقتها الحقيقية — للمالك بس، والغريب ما يشوفها.
+test('دقة توقعات ماتركس: رقم محسوب مو ثابت', async ({ request }) => {
+  const owner = await login(request, OWNER.username, OWNER.password)
+  const r = await request.get(`${API}/ai/prediction-accuracy`, { headers: { Authorization: `Bearer ${owner.token}` } })
+  expect(r.ok()).toBeTruthy()
+  const a = await r.json() as { days: number; correct: number; judged: number; pct: number | null; recent: unknown[] }
+  expect(a.days).toBe(30)
+  expect(a.pct).toBe(a.judged > 0 ? Math.round((a.correct * 100) / a.judged) : null)
+  const tech = await prepare(request, 'TECHNICIAN')
+  const t = await request.get(`${API}/ai/prediction-accuracy`, { headers: { Authorization: `Bearer ${tech.token}` } })
+  expect(t.ok()).toBeFalsy()
+})

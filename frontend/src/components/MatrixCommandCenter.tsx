@@ -526,13 +526,27 @@ function Feed({ items }: { items: MatrixFeedItem[] }) {
 // والثقة **حقيقية** (نسبة توقعاته الصح بالأشهر المحكومة)، وسجل صح/غلط يتعلّم منه.
 function Predictions({ biz, late, props }: { biz: MatrixBusinessData | null; late: LateFocus | null; props: MatrixProposal[] }) {
   const [showHist, setShowHist] = useState(false)
-  const items: { text: string; change: number | null; conf: number; changeWhy?: ReactNode; confWhy: ReactNode }[] = []
+  // (ل) 11-12 دازاي: ثقة «التوقعات المعلّقة» من دقة التوقعات الي فاتت — مو رقم ثابت
+  const [acc, setAcc] = useState<Awaited<ReturnType<typeof api.getPredictionAccuracy>> | null>(null)
+  useEffect(() => { api.getPredictionAccuracy().then(setAcc).catch(swallow) }, [])
+  const items: { text: string; change: number | null; conf: number | null; changeWhy?: ReactNode; confWhy: ReactNode; confMeaning?: ReactNode; confSource?: ReactNode; confProof?: ReactNode }[] = []
   if (late) items.push({ text: `الحجوزات المتأخرة: ${late.recentPct}% من آخر ٧ أيام (${late.recent.late} من ${late.recent.total})`, change: late.changePct == null ? null : -late.changePct, conf: confidence(late.recent.total),
     changeWhy: <>نسبة التأخير هسه {late.recentPct}% ({late.recent.late} من {late.recent.total}) وقبلها بأسبوع {late.prevPct}% ({late.previous.late} من {late.previous.total}). التغيّر = ({late.recentPct} − {late.prevPct}) ÷ {late.prevPct} × ١٠٠ = {late.changePct}%، ونقلب إشارته هنا حتى الموجب (الأخضر) يعني التأخير قلّ.</>,
     confWhy: <>تنحسب من عدد حجوزات آخر ٧ أيام ({late.recent.total}): ٢٠ أو أكثر = ٨٧%، من ٨ لـ١٩ = ٧٢%، أقل من ٨ = ٥٠%. يعني كل ما البيانات أكثر الثقة أعلى — مو حكم على صحة توقع سابق.</> })
   const pred = props.filter((p) => p.kind === 'PREDICTION').length
-  if (pred) items.push({ text: `${pred} توقّع ينتظر قرارك (موظفين ما يلحگون شغل اليوم)`, change: null, conf: 72,
-    confWhy: <>هاي ٧٢% رقم ثابت بالشاشة لهذا النوع، مو محسوب من بيانات — بس حتى يبين إنها توقعات تحتاج قرارك. عددها {pred} اقتراح «توقع» بصندوق القرارات.</> })
+  if (pred) items.push({ text: `${pred} توقّع ينتظر قرارك (موظفين ما يلحگون شغل اليوم)`, change: null, conf: acc?.pct ?? null,
+    confWhy: acc && acc.judged > 0
+      ? <>بآخر {acc.days} يوم ماتركس توقّع {acc.judged} مرة إن موظف ما راح يخلّص شغله. طلع صح بـ<b>{acc.correct}</b> منهن (بنهاية الدوام فعلاً بقى عليه شغل) = {acc.correct} ÷ {acc.judged} = <b>{acc.pct}%</b>.</>
+      : <>بعد ماكو توقع انحكم عليه — أول حكم يصير بنهاية دوام اليوم (الساعة ٥)، وبعدها الثقة تنحسب.</>,
+    confMeaning: <>شكد توقعات ماتركس من هالنوع تطلع صح. كل توقع ينحكم بنهاية الدوام: نشوف نفس الشغلة عند نفس الموظف — إذا بعد باقي عليه منها = <b>صح</b>، إذا خلّصها = <b>غلط</b>. ⚠️ إذا وافقت على التوقع وانرسل للموظف تذكير وخلّص بسببه، ينحسب «غلط» — يعني الثقة الحقيقية ممكن تكون أعلى شوية.</>,
+    confSource: <>اقتراحات «توقع» بصندوق القرارات بآخر ٣٠ يوم، ويا حكم كل واحد بنهاية يومه (حتى الي انرفضت أو انتهت).</>,
+    confProof: acc && acc.recent.length > 0 && (
+      <ul className="space-y-1 text-[12px]">
+        {acc.recent.map((r, i) => (
+          <li key={i}>{r.verdict === 'CORRECT' ? '✓ صح' : '✗ غلط'} · {new Date(r.createdAt).toLocaleDateString('en-GB')} · {r.title}{r.leftAtEnd != null && <span className="text-slate-500"> — بنهاية الدوام باقي {r.leftAtEnd}</span>}</li>
+        ))}
+      </ul>
+    ) })
   const fc = biz?.forecast
   const hist = fc?.history ?? []
   const okN = hist.filter((h) => h.verdict === 'CORRECT').length
@@ -599,8 +613,8 @@ function Predictions({ biz, late, props }: { biz: MatrixBusinessData | null; lat
               </span>
               <span className="flex-1 text-[12px] text-[var(--mx-text)]">{it.text}</span>
               <span className="rounded-full border border-[var(--mx-border)] px-1.5 py-0.5 text-[10px] text-[var(--mx-accent)]" title="الثقة حسب كمية البيانات"><PctWhy title="الثقة" value={it.conf} formula={it.confWhy}
-                meaning={<>شكد نعتمد على هذا الرقم. ٥٠% أو أقل = بيانات قليلة، خذه بحذر.</>}
-                source={<>عدد السجلات الي انبنى عليها الرقم بالنظام.</>} />{it.conf <= 50 && ' · بيانات قليلة'}</span>
+                meaning={it.confMeaning ?? <>شكد نعتمد على هذا الرقم. ٥٠% أو أقل = بيانات قليلة، خذه بحذر.</>}
+                source={it.confSource ?? <>عدد السجلات الي انبنى عليها الرقم بالنظام.</>}>{it.confProof}</PctWhy>{it.conf != null && it.conf <= 50 && ' · بيانات قليلة'}</span>
             </li>
           ))}
         </ul>

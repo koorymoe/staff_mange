@@ -2628,6 +2628,8 @@ export const api = {
   getEmployeeReport: (employeeId: string, day?: string) =>
     request<EmployeeReport>(`/ai/employee-report?employeeId=${encodeURIComponent(employeeId)}${day ? `&day=${day}` : ''}`),
   getMatrixBusiness: () => request<MatrixBusiness>('/ai/business'),
+  // (ل) 11-12: دقة توقعات «ما راح يخلّص اليوم» — كل توقع ينحكم بنهاية الدوام
+  getPredictionAccuracy: () => request<{ days: number; correct: number; judged: number; pct: number | null; recent: { title: string; verdict: 'CORRECT' | 'WRONG'; leftAtEnd: number | null; createdAt: string }[] }>('/ai/prediction-accuracy'),
   getMatrixProposals: (status = 'PENDING') => request<MatrixProposal[]>(`/ai/proposals?status=${encodeURIComponent(status)}`),
   approveMatrixProposal: (id: string, payload?: unknown) =>
     request<{ ok: boolean }>(`/ai/proposals/${encodeURIComponent(id)}/approve`, { method: 'POST', body: JSON.stringify({ payload: payload ?? null }) }),

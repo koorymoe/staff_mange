@@ -96,6 +96,12 @@ func (s *MatrixLearningService) RunIfDue() error {
 			}
 		}
 	}
+	// (ل) 11-12: بنهاية الدوام نحكم على توقعات اليوم — صح إذا فعلاً بقى عليه شغل.
+	if float64(now.Hour()) >= workdayEnd {
+		if ok, err := s.aiRepo.ClaimDailyMarker("DAILY_MATRIX_PREDICT_VERIFY", now.Format("2006-01-02")); err == nil && ok {
+			s.VerifyPredictions(now.Format("2006-01-02"))
+		}
+	}
 	if now.Hour() >= declineHour {
 		if ok, err := s.aiRepo.ClaimDailyMarker("DAILY_MATRIX_DECLINE", now.Format("2006-01-02")); err == nil && ok {
 			if n := s.detectDeclines(); n > 0 {
@@ -187,7 +193,9 @@ func (s *MatrixLearningService) predict(now time.Time) int {
 				Kind: model.ProposalPrediction, Source: "RULES",
 				Title:     title,
 				Rationale: fmt.Sprintf("الوتيرة %.1f بالساعة، والدوام باقيله %.0f ساعة — راح يبقى %d من «%s».", pace, remaining, gap, w.Label),
-				Evidence:  toJSON(map[string]any{"done": w.Done, "left": w.Left, "hoursElapsed": elapsed, "hoursRemaining": remaining, "pace": math.Round(pace*10) / 10, "expected": expected}),
+				Evidence: toJSON(map[string]any{"done": w.Done, "left": w.Left, "hoursElapsed": elapsed, "hoursRemaining": remaining, "pace": math.Round(pace*10) / 10, "expected": expected,
+					// (ل) 11-12: حتى بنهاية الدوام نتحقق نفس الشغلة ونفس الحصة
+					"key": w.Key, "share": predShare(isShared, holders[w.Key])}),
 				Payload: toJSON(map[string]any{"employeeId": sub.ID, "route": w.Route,
 					"message": fmt.Sprintf("🤖 ماتركس — باقي عليك %d من «%s»، وبوتيرتك الحالية ما راح تخلّصها اليوم. ركّز عليها هسه.", w.Left, w.Label)}),
 				Signature: fmt.Sprintf("PRED|%s|%s|%s", sub.ID, w.Key, now.Format("2006-01-02")),
@@ -437,4 +445,74 @@ func uniqueStrings(xs []string) []string {
 		}
 	}
 	return out
+}
+
+func predShare(shared bool, holders int) int {
+	if shared && holders > 1 {
+		return holders
+	}
+	return 1
+}
+
+// VerifyPredictions (ل) 11-12 دازاي: «خليها تنحسب من دقة التوقعات». بنهاية الدوام، لكل توقع
+// «ما راح يخلّص» من اليوم: نشوف نفس الشغلة عند نفس الموظف — إذا بعد بيها باقي (بحصته) = التوقع صح،
+// إذا خلّصها = غلط. ⚠️ إذا المدير وافق وانرسل تذكير والموظف خلّص بسببه، يبين «غلط» — نگولها بالشاشة.
+func (s *MatrixLearningService) VerifyPredictions(day string) (correct, wrong int) {
+	rows, err := s.props.PredictionsToVerify(day)
+	if err != nil || len(rows) == 0 {
+		return 0, 0
+	}
+	subs, err := s.actions.ActiveSubjects()
+	if err != nil {
+		return 0, 0
+	}
+	byID := map[string]int{}
+	for i, sub := range subs {
+		byID[sub.ID] = i
+	}
+	for _, r := range rows {
+		var ev struct {
+			Key   string `json:"key"`
+			Share int    `json:"share"`
+		}
+		var pl struct {
+			EmployeeID string `json:"employeeId"`
+		}
+		_ = json.Unmarshal([]byte(r.Evidence), &ev)
+		_ = json.Unmarshal([]byte(r.Payload), &pl)
+		i, ok := byID[pl.EmployeeID]
+		if ev.Key == "" || !ok {
+			continue // توقع قديم بلا مفتاح، أو الموظف مو فعّال — ما نحكم عليه
+		}
+		left := 0
+		for _, w := range s.watch.workload(subs[i]) {
+			if w.Key == ev.Key {
+				left = w.Left
+			}
+		}
+		if ev.Share > 1 {
+			left = (left + ev.Share - 1) / ev.Share
+		}
+		s.props.SetPredictionVerdict(r.ID, left > 0, left)
+		if left > 0 {
+			correct++
+		} else {
+			wrong++
+		}
+	}
+	return correct, wrong
+}
+
+// PredictionAccuracy دقة آخر ٣٠ يوم.
+func (s *MatrixLearningService) PredictionAccuracy() (map[string]any, error) {
+	c, j, recent, err := s.props.PredictionAccuracy(30)
+	if err != nil {
+		return nil, err
+	}
+	var pct *int
+	if j > 0 {
+		v := int(math.Round(float64(c) * 100 / float64(j)))
+		pct = &v
+	}
+	return map[string]any{"days": 30, "correct": c, "judged": j, "pct": pct, "recent": recent}, nil
 }
