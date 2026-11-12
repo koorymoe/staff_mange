@@ -3,6 +3,7 @@ import { useSearchParams } from 'react-router-dom'
 import { api, type WeeklyMover, type WeeklyReport, type WeekTotals } from '../api'
 import { useSession, isAdminOrOwner } from '../session'
 import { numRound as fmt } from '../utils/format'
+import PctWhy from '../ui/PctWhy'
 
 /**
  * ═══ 📊 تقرير المالك الأسبوعي (ماتركس) ═══
@@ -22,12 +23,16 @@ const METRICS: { key: keyof WeekTotals; label: string; money?: boolean; higherIs
   { key: 'latePaperwork', label: 'ورق متأخر (+٤٨ ساعة)', higherIsBetter: false },
 ]
 
-function Delta({ cur, prev, higherIsBetter }: { cur: number; prev: number; higherIsBetter: boolean }) {
+function Delta({ cur, prev, higherIsBetter, label, money }: { cur: number; prev: number; higherIsBetter: boolean; label: string; money?: boolean }) {
   if (cur === prev) return <span className="text-xs text-slate-400">نفسه</span>
   const up = cur > prev
   const good = up === higherIsBetter
-  const pct = prev > 0 ? ` (${up ? '+' : ''}${Math.round(((cur - prev) / prev) * 100)}٪)` : ''
-  return <span className={`text-xs font-bold ${good ? 'text-emerald-600' : 'text-red-600'}`}>{up ? '▲' : '▼'} {fmt(Math.abs(cur - prev))}{pct}</span>
+  const p = prev > 0 ? Math.round(((cur - prev) / prev) * 100) : null
+  const u = money ? ' د.ع' : ''
+  return <span className={`text-xs font-bold ${good ? 'text-emerald-600' : 'text-red-600'}`}>{up ? '▲' : '▼'} {fmt(Math.abs(cur - prev))}{p != null && <> ({up ? '+' : ''}<PctWhy title={`تغيّر «${label}» عن الأسبوع الي فات`} value={p} suffix="٪"
+    formula={<>(هذا الأسبوع {fmt(cur)}{u} − الأسبوع الي فات {fmt(prev)}{u}) ÷ {fmt(prev)}{u} × 100 = <b>{up ? '+' : ''}{p}٪</b></>}
+    meaning={<>شكد «{label}» زاد أو نقص مقارنة بالأسبوع الي قبله. {higherIsBetter ? 'هنا الزيادة زينة (خضرة) والنقصان مو زين (أحمر).' : 'هنا النقصان هو الزين (أخضر) والزيادة مو زينة (حمرة).'}</>}
+    source={<>نفس أرقام هذا التقرير: مجموع «{label}» لهذا الأسبوع ومجموعه للأسبوع الي قبله.</>} />)</>}</span>
 }
 
 function Card({ title, children }: { title: string; children: ReactNode }) {
@@ -102,7 +107,7 @@ export default function WeeklyReportPage() {
               <div key={m.key} className="rounded-2xl border border-slate-200 bg-white p-3">
                 <p className="text-xs text-slate-500">{m.label}</p>
                 <p className="mt-1 text-xl font-extrabold tabular-nums text-slate-800">{fmt(data.this[m.key])}{m.money ? ' د.ع' : ''}</p>
-                <p className="mt-0.5 text-[11px] text-slate-400">قبل: {fmt(data.last[m.key])}{m.money ? ' د.ع' : ''} · <Delta cur={data.this[m.key]} prev={data.last[m.key]} higherIsBetter={m.higherIsBetter} /></p>
+                <p className="mt-0.5 text-[11px] text-slate-400">قبل: {fmt(data.last[m.key])}{m.money ? ' د.ع' : ''} · <Delta cur={data.this[m.key]} prev={data.last[m.key]} higherIsBetter={m.higherIsBetter} label={m.label} money={m.money} /></p>
               </div>
             ))}
           </div>

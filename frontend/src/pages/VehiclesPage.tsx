@@ -6,6 +6,7 @@ import SaveError from '../components/SaveError'
 import type { SaveGuard } from '../useSaveGuard'
 import { loadFailed } from '../netErrors'
 import { askConfirm } from '../ui/dialogs'
+import PctWhy from '../ui/PctWhy'
 
 function fileToBase64(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -315,7 +316,7 @@ export default function VehiclesPage() {
     if (!result) return
     if (result.fuelAnomaly?.isAnomaly) {
       setFuelAnomalyWarning(
-        `⚠️ هذا المبلغ أعلى من المعدل المعتاد لهذي السيارة بـ ${Math.round(result.fuelAnomaly.percentAboveAvg)}%`
+        `⚠️ هذا المبلغ أعلى من المعدل المعتاد لهذي السيارة بـ ${Math.round(result.fuelAnomaly.percentAboveAvg)}% — المبلغ ${Math.round(result.fuelAnomaly.newCost).toLocaleString('en-US')} د.ع، ومعدل آخر تعبئات وقودها (لحد 5) ${Math.round(result.fuelAnomaly.averageCost).toLocaleString('en-US')} د.ع، والفرق ÷ المعدل × 100`
       )
     }
     setLogOdometer(''); setLogCost(''); setLogNextDue(''); setLogNextDueOdometer(''); setLogNotes('')
@@ -1163,7 +1164,10 @@ export default function VehiclesPage() {
                             <span className="text-sm font-bold text-slate-700">{new Date(r.ratedDate).toLocaleDateString('ar-IQ')}</span>
                             {grade && (
                               <span className={`rounded-full px-3 py-1 text-xs font-bold ${grade.color}`}>
-                                {grade.label} — {Math.round(r.weightedScore! * 100)}%
+                                {grade.label} — <PctWhy title="تقييم السيارة لهذا اليوم" value={Math.round(r.weightedScore! * 100)}
+                                  formula={<>كل بند (عدا الغسل) درجته من 0 لـ4 × وزنه، ونقسم المجموع على (4 × مجموع أوزان البنود الي انعطت درجة) = <b>{Math.round(r.weightedScore! * 100)}%</b></>}
+                                  meaning={<>شكد حالة السيارة زينة بهذا اليوم. الأعطال الفنية أثقل بند (25%)، والبند الي ما انعطى درجة ما ينحسب. الغسل ما يدخل بنسبة اليوم.</>}
+                                  source={<>تقييم السيارة اليومي المحفوظ بهذا التاريخ: درجات البنود (الهيكل، الإطارات، الزجاج، اللايتات، الأعطال، النظافة الداخلية، الكراسي، الأوساخ، الرائحة).</>} />
                               </span>
                             )}
                           </div>

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { api, type DailyStats, type WeeklyStats, type Stats, type InternalWorksReport } from '../api'
 import EmployeeMonthlyStatsPage from './EmployeeMonthlyStatsPage'
 import { useLocation } from 'react-router-dom'
@@ -8,6 +8,7 @@ import ProjectStatsBoard from '../components/ProjectStatsBoard'
 import StatsPage from './StatsPage'
 import RoleSplit, { MiniMetric, SummaryCard } from '../components/RoleSplit'
 import { numIQ as fmt } from '../utils/format'
+import PctWhy from '../ui/PctWhy'
 
 const PRIMARY = '#1a237e'
 // ⚠️ نسخة **النص** تنقلب بالوضع الليلي، والأصل يبقى للأسطح:
@@ -26,7 +27,7 @@ function todayStr() {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
 
-function StatCard({ label, value }: { label: string; value: string | number }) {
+function StatCard({ label, value }: { label: string; value: ReactNode }) {
   return <SummaryCard label={label} value={value} />
 }
 
@@ -287,7 +288,10 @@ function InternalWorksTab() {
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '12px', marginBottom: '20px' }}>
             <StatCard label="أعمال انخلصت داخل الشركة" value={rep.inHouseCount} />
             <StatCard label="أعمال طلعت للزبون" value={rep.onSiteCount} />
-            <StatCard label="نسبة الشغل الداخلي" value={`${share}%`} />
+            <StatCard label="نسبة الشغل الداخلي" value={<PctWhy title="نسبة الشغل الداخلي" value={share}
+              parts={{ numLabel: 'شغل انخلص داخل الشركة', num: rep.inHouseCount, denLabel: 'حجز مكتمل بهذا الشهر (داخلي + عند الزبون)', den: total }}
+              meaning={<>من كل الحجوزات الي خلصت بهذا الشهر، شكد منها انشغلت بالشركة بدل ما الفريق يطلع للزبون. تصعد كل ما يجيبون أغراض أكثر يتصلحن جوه.</>}
+              source={<>جدول الحجوزات: الحجوزات المكتملة بهذا الشهر (حسب تاريخ الإنجاز)، والي مكان شغلها «داخل الشركة» مقابل الباقي.</>} />} />
             <StatCard label="مبالغ الشغل الداخلي" value={`${fmt(rep.inHouseAmount)} د.ع`} />
           </div>
 

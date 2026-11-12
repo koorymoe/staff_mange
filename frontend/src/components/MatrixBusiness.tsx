@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { api, type MatrixBusiness as Biz } from '../api'
 import { dinarRound as iqd } from '../utils/format'
+import PctWhy from '../ui/PctWhy'
 
 // ═══ أرقام الشركة بعين ماتركس ═══
 
@@ -26,7 +27,10 @@ export default function MatrixBusiness() {
           <p className="text-xs text-slate-500">هالشهر لحد اليوم</p>
           <p className="text-xl font-extrabold tabular-nums">{iqd(b.mtd.revenue)}</p>
           <p className="text-xs text-slate-500">{b.mtd.bookings} حجز منجز · الشهر الماضي بنفس الفترة {iqd(b.mtd.lastRevenue)}
-            {delta !== null && <b className={delta >= 0 ? ' text-emerald-700' : ' text-red-700'}> ({delta >= 0 ? '+' : ''}{delta}٪)</b>}</p>
+            {delta !== null && <b className={delta >= 0 ? ' text-emerald-700' : ' text-red-700'}> ({delta >= 0 ? '+' : ''}<PctWhy title="الفرق عن الشهر الماضي" value={delta} suffix="٪"
+              formula={<>({iqd(b.mtd.revenue)} هالشهر − {iqd(b.mtd.lastRevenue)} الشهر الماضي) ÷ {iqd(b.mtd.lastRevenue)} × ١٠٠ = <b>{delta >= 0 ? '+' : ''}{delta}٪</b></>}
+              meaning={<>شكد زاد أو نقص إيراد الحجوزات المنجزة هالشهر لحد اليوم، مقارنة بنفس الأيام من الشهر الماضي (من أوله لنفس التاريخ). موجب يعني أحسن.</>}
+              source={<>الحجوزات المنجزة (المحسوبة) من جدول الحجوزات حسب تاريخ إنجازها بتوقيت بغداد، ومبلغ كل حجز الصافي — هالشهر {b.mtd.bookings} حجز.</>} />)</b>}</p>
         </div>
         <div className="rounded-xl bg-violet-50 p-3">
           <p className="text-xs text-violet-700">🔮 توقع نهاية الشهر</p>
@@ -40,7 +44,9 @@ export default function MatrixBusiness() {
         <div className="rounded-xl bg-slate-50 p-3">
           <p className="text-xs text-slate-500">الزبائن</p>
           <p className="text-sm"><b className="text-emerald-700">{c.actual}</b> فعلي (نفّذ) · <b className="text-amber-700">{c.inquiry}</b> استفسار بس · <b>{c.openOnly}</b> حجزه مفتوح</p>
-          {totalCust > 0 && <p className="text-xs text-slate-500">نسبة الفعلي {Math.round((c.actual / totalCust) * 100)}٪ · <b className="text-red-700">{c.repeat}</b> مستفسر متكرر</p>}
+          {totalCust > 0 && <p className="text-xs text-slate-500">نسبة الفعلي <PctWhy title="نسبة الزبائن الفعليين" parts={{ numLabel: 'زبون نفّذ حجز واحد على الأقل', num: c.actual, denLabel: 'زبون (فعلي + استفسار بس + حجزه مفتوح)', den: totalCust }} suffix="٪"
+            meaning={<>من كل الزبائن الي عندهم حجز بالنظام، شكد منهم فعلاً نفّذوا شغل. الباقين: {c.inquiry} استفسروا بس (حجزهم انأرشف بلا تنفيذ) و{c.openOnly} حجزهم بعده مفتوح. تعلى لمن الاستفسارات تتحول لحجوزات منجزة.</>}
+            source={<>جدول الزبائن ويا حجوزاتهم: منجزة، مؤرشفة، أو مفتوحة.</>} /> · <b className="text-red-700">{c.repeat}</b> مستفسر متكرر</p>}
         </div>
       </div>
       <div className="mt-4">

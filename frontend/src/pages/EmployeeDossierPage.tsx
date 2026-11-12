@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { api, apiRequest } from '../api'
 import { useApi } from '../utils/useApi'
+import PctWhy from '../ui/PctWhy'
 import { card } from '../ui/classes'
 
 // ═══ 📂 ملف الموظف الكامل (دازاي 11-02 — تعديلات ٩.٣) ═══
@@ -73,8 +74,14 @@ export default function EmployeeDossierPage() {
             </div>
             <div className={card}>
               <h3 className="mb-2 font-bold text-[#0f2040]">💪 أقوى / 🔻 أضعف (٦٠ يوم)</h3>
-              {d.strong.map((r) => <p key={r.rule} className="text-sm text-emerald-700">✓ {r.title} — {r.pct.toFixed(0)}٪ <span className="text-xs text-slate-400">({r.n})</span></p>)}
-              {d.weak.map((r) => <p key={r.rule} className="text-sm text-red-700">✗ {r.title} — {r.pct.toFixed(0)}٪ <span className="text-xs text-slate-400">({r.n})</span></p>)}
+              {d.strong.map((r) => <p key={r.rule} className="text-sm text-emerald-700">✓ {r.title} — <PctWhy title={`قاعدة «${r.title}»`} suffix="٪" value={Math.round(r.pct)}
+                formula={<>مجموع النقاط الي أخذها بهالقاعدة ÷ مجموع أعلى نقاط ممكنة إلها، على {r.n} مرة انحسبت عليه بآخر ٦٠ يوم = {r.pct.toFixed(0)}٪.</>}
+                meaning={<>شكد يجيب من حق هالقاعدة. «أقوى» = ٨٠٪ أو أكثر (أعلى ٣)، «أضعف» = أقل من ٦٠٪ (أوطى ٣). القاعدة الي انحسبت أقل من ٣ مرات ما تطلع هنا.</>}
+                source={<>نقاط ماتركس المسجلة على هالموظف (بلا الملغية، وبلا الحضور والجرد) بآخر ٦٠ يوم.</>} /> <span className="text-xs text-slate-400">({r.n})</span></p>)}
+              {d.weak.map((r) => <p key={r.rule} className="text-sm text-red-700">✗ {r.title} — <PctWhy title={`قاعدة «${r.title}»`} suffix="٪" value={Math.round(r.pct)}
+                formula={<>مجموع النقاط الي أخذها بهالقاعدة ÷ مجموع أعلى نقاط ممكنة إلها، على {r.n} مرة انحسبت عليه بآخر ٦٠ يوم = {r.pct.toFixed(0)}٪.</>}
+                meaning={<>شكد يجيب من حق هالقاعدة. «أقوى» = ٨٠٪ أو أكثر (أعلى ٣)، «أضعف» = أقل من ٦٠٪ (أوطى ٣). القاعدة الي انحسبت أقل من ٣ مرات ما تطلع هنا.</>}
+                source={<>نقاط ماتركس المسجلة على هالموظف (بلا الملغية، وبلا الحضور والجرد) بآخر ٦٠ يوم.</>} /> <span className="text-xs text-slate-400">({r.n})</span></p>)}
               {d.strong.length + d.weak.length === 0 && <p className="text-sm text-slate-400">بعد ماكو بيانات كافية.</p>}
               <p className="mt-2 text-sm"><b>السرعة:</b> {d.speedRatio === null ? 'ماكو حجوزات كافية' : `${d.speedRatio.toFixed(2)} من المعتاد على ${d.speedN} حجز ${d.speedRatio >= 1.4 ? '🐢' : d.speedRatio <= 0.7 ? '⚡' : ''}`}</p>
             </div>

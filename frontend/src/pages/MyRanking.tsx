@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
+import PctWhy from '../ui/PctWhy'
 import { type KpiLeaderboardEntry, type StaffScoreDetail } from '../api'
 import { api, type Stats, type RoleKpiLeaderboard } from '../api'
 import { useSession, isAdminOrOwner } from '../session'
@@ -57,7 +58,28 @@ const CUSTOM_BOARDS: Record<string, { cols: BoardCol[]; explain: [string, string
   },
 }
 
-const pct = (v: number | null | undefined) => (v == null ? '—' : `${Math.round(v)}%`)
+/** تقييم ماتركس النهائي ويا «منين جا» — نفس FinalScore بالسيرفر (matrix_score_service.go). */
+function MatrixPct({ v, s, who, className }: { v: number | null | undefined; s?: StaffScoreDetail | null; who?: string; className?: string }) {
+  const r = (n: number) => Math.round(n)
+  let formula: ReactNode = <>ماكو نقاط ماتركس ولا تقييم مسؤولين بالشهر، فماكو نسبة.</>
+  if (v != null && s) {
+    const m = s.matrixPct, h = s.humanPct
+    formula = m != null && h != null
+      ? <>نسبة ماتركس {r(m)}% (انحسبلك {r(s.earned / 2)} من {r(s.max / 2)}) × ٦٠٪ + تقييم مسؤوليك {r(h)}% (معدل {s.humanAvg?.toFixed(1)} من ٥ × ٢٠، على {s.humanCount} تقييم) × ٤٠٪ = {r(v)}%.</>
+      : m != null
+        ? <>ماكو تقييم من مسؤوليك بعد، فالنسبة = نسبة ماتركس وحدها: {r(s.earned / 2)} من {r(s.max / 2)} = {r(v)}%.</>
+        : <>ماكو نقاط ماتركس بعد، فالنسبة = تقييم مسؤوليك وحده: معدل {s.humanAvg?.toFixed(1)} من ٥ × ٢٠ = {r(v)}%.</>
+  } else if (v != null) {
+    formula = <>{who ? `تقييم ${who}` : 'التقييم'} = نسبة نقاط ماتركس × ٦٠٪ + تقييم المسؤولين (المعدل من ٥ × ٢٠) × ٤٠٪ = {r(v)}%. إذا واحد منهن ماكو، تنحسب من الثاني وحده.</>
+  }
+  return (
+    <PctWhy title={who ? `تقييم ماتركس — ${who}` : 'تقييم ماتركس'} value={v == null ? null : r(v)} className={className} formula={formula}
+      meaning={<>تقييم الشغل بالشهر: نقاط ماتركس (الحضور، الجرد، الورق، المهام، الحجوزات…) ويا تقييم المسؤولين. كل ما تعلى أحسن، وكل تقصير ينسجل يخسّر نقاط.</>}
+      source={<>نقاط ماتركس المسجلة بالشهر (بلا الملغية) وتقييمات المسؤولين المسموحين لكل مجموعة.</>}>
+      {s && s.topLosses.length > 0 && <ul className="space-y-1 text-xs">{s.topLosses.slice(0, 5).map((l) => <li key={l.rule}>• {l.title}: {l.count} مرة</li>)}</ul>}
+    </PctWhy>
+  )
+}
 
 /** «؟» صغيرة — تفتح طريقة الحساب مختصرة (قرار (ع) 10-08). */
 function HelpDot({ lines }: { lines: string[] }) {
@@ -82,7 +104,7 @@ function MatrixMine({ score }: { score: StaffScoreDetail | null }) {
     <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
       <div className="flex items-center justify-between">
         <h3 className="text-sm font-extrabold text-[#0f2040]">🤖 ماتركس يقيّمك</h3>
-        <span className="text-2xl font-black text-sky-700">{pct(score.final)}</span>
+        <span className="text-2xl font-black text-sky-700"><MatrixPct v={score.final} s={score} /></span>
       </div>
       <p className="mt-1 text-[11px] text-slate-500">
         {score.month !== todayBaghdad().slice(0, 7) && <b className="text-amber-700">تقييم الشهر الماضي ({score.month}) — هالشهر بعده بأوله · </b>}
@@ -241,6 +263,11 @@ export default function MyRanking() {
   const completionRate = myEntry && myEntry.assignedBookings > 0
     ? Math.round((myEntry.completedBookings / myEntry.assignedBookings) * 100)
     : null
+  const completionWhy = myEntry && completionRate !== null ? (
+    <PctWhy title="معدل الإنجاز" parts={{ numLabel: 'حجز خلّصته', num: myEntry.completedBookings, denLabel: 'حجز انكلّفت بيه', den: myEntry.assignedBookings }}
+      meaning={<>شكد من الحجوزات الي انكلّفت بيها بالفترة خلّصتها. ٨٠٪ وفوگ زين. الحجز الي بعده مفتوح ينزّلها، والملغي ما ينحسب.</>}
+      source={<>جدول الحجوزات: المكلّف = الحجوزات الي انت بكادرها (أو ليدرها) وانسجلت بالفترة بلا الملغية والمؤرشفة؛ المنجز = الي اكتملت بالفترة.</>} />
+  ) : '—'
   const periodDays = period === 'weekly' ? 7 : 30
   const periodLabel = period === 'weekly' ? 'الأسبوع الماضي' : 'الشهر الماضي'
   const top3 = list.slice(0, 3)
@@ -461,7 +488,7 @@ export default function MyRanking() {
         </>) : (<>
         <RankCard
           icon="🤖" label="تقييم ماتركس"
-          value={pct(myScore?.final ?? (employee ? peers.get(employee.id) : null))}
+          value={<MatrixPct v={myScore?.final ?? (employee ? peers.get(employee.id) : null)} s={myScore} />}
           tone="amber"
         />
         <RankCard
@@ -472,7 +499,7 @@ export default function MyRanking() {
         />
         <RankCard
           icon="📈" label="معدل الإنجاز"
-          value={completionRate !== null ? `${completionRate}%` : '—'}
+          value={completionWhy}
           tone="violet"
           note={completionRate === null ? 'ماكو حجوزات بالفترة' : undefined}
           bar={completionRate ?? undefined}
@@ -521,7 +548,7 @@ export default function MyRanking() {
                   </p>
                   <div className="shrink-0 text-left sm:text-center">
                     <p className={`text-2xl font-black leading-none ${place === 1 ? 'text-amber-600' : 'text-slate-600'} sm:mt-1`}>
-                      {custom ? custom.cols[0].get(e) : pct(peers.get(e.employeeId))}
+                      {custom ? custom.cols[0].get(e) : <MatrixPct v={peers.get(e.employeeId)} who={e.employeeName} />}
                     </p>
                     {!isSales && e.pointsDelta !== 0 && (
                       <p className={`text-[10px] font-bold ${e.pointsDelta > 0 ? 'text-emerald-600' : 'text-red-500'}`}>
@@ -632,7 +659,7 @@ export default function MyRanking() {
                       {isSales ? (<>
                         {custom!.cols.map((c, ci) => <td key={c.label} className={`px-4 py-3 ${ci === 0 ? 'font-black text-slate-800' : 'text-slate-600'}`}>{e.limited ? '—' : c.get(e)}</td>)}
                       </>) : (<>
-                        <td className="px-4 py-3 font-black text-slate-800">{pct(peers.get(e.employeeId))}</td>
+                        <td className="px-4 py-3 font-black text-slate-800"><MatrixPct v={peers.get(e.employeeId)} who={e.employeeName} /></td>
                         <td className="px-4 py-3 text-slate-600">{e.limited ? '—' : e.completedBookings}</td>
                       </>)}
                       <td className="px-4 py-3">
@@ -686,7 +713,7 @@ export default function MyRanking() {
                 </>) : (<>
                 <Achievement
                   icon="⚡" label="معدل الإنجاز"
-                  value={completionRate !== null ? `${completionRate}%` : '—'}
+                  value={completionWhy}
                   ok={(completionRate ?? 0) >= 80}
                 />
                 <Achievement
@@ -708,7 +735,7 @@ export default function MyRanking() {
 /* ───── بطاقة رقم بأعلى الصفحة ───── */
 
 function RankCard({ icon, label, value, tone, delta, deltaSuffix, note, bar }: {
-  icon: string; label: string; value: string
+  icon: string; label: string; value: ReactNode
   tone: 'emerald' | 'amber' | 'sky' | 'violet'
   delta?: number; deltaSuffix?: string; note?: string; bar?: number
 }) {
@@ -744,7 +771,7 @@ function RankCard({ icon, label, value, tone, delta, deltaSuffix, note, bar }: {
 /* ───── إنجاز صغير ───── */
 
 function Achievement({ icon, label, value, ok }: {
-  icon: string; label: string; value: string; ok: boolean
+  icon: string; label: string; value: ReactNode; ok: boolean
 }) {
   return (
     <div className={`rounded-xl border p-2.5 text-center ${ok ? 'border-emerald-200 bg-emerald-50/60' : 'border-slate-200 bg-slate-50'}`}>

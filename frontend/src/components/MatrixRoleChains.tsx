@@ -1,10 +1,11 @@
-import { Fragment, useEffect, useMemo, useState } from 'react'
+import { Fragment, useEffect, useMemo, useState, type ReactNode } from 'react'
 import BookingChainView from './BookingChain'
 import { Link } from 'react-router-dom'
 import { api, type ChainEmployeeReport, type ChainStationStat, type RoleChainReport } from '../api'
 import MatrixNote from './MatrixNote'
 import { CHAIN_BAR, CHAIN_TONE, chainDuration } from './chainTone'
 import { swallow } from '../utils/swallow'
+import PctWhy from '../ui/PctWhy'
 
 // ═══ ماتركس ٢٠٥٠ — تقارير الأدوار من «سلسلة الحجز» ═══
 // طلب (ع) 10-05: تصميم أوضح من الجدول، وكلمات عراقية دقيقة.
@@ -14,7 +15,7 @@ import { swallow } from '../utils/swallow'
 
 const tone = (p: number) => (p >= 80 ? '#059669' : p >= 60 ? '#d97706' : '#dc2626')
 
-function Ring({ pct, size = 64, label }: { pct: number | null; size?: number; label?: string }) {
+function Ring({ pct, size = 64, label, why }: { pct: number | null; size?: number; label?: string; why?: ReactNode }) {
   const r = size / 2 - 6, c = 2 * Math.PI * r
   const v = pct ?? 0
   return (
@@ -25,7 +26,7 @@ function Ring({ pct, size = 64, label }: { pct: number | null; size?: number; la
           strokeDasharray={`${(v / 100) * c} ${c}`} />}
       </svg>
       <div className="absolute inset-0 grid place-items-center text-center leading-none">
-        <span className="font-black" style={{ fontSize: size / 4.2, color: pct == null ? '#94a3b8' : tone(v) }}>{pct == null ? '—' : `${v}%`}</span>
+        <span className="font-black" style={{ fontSize: size / 4.2, color: pct == null ? '#94a3b8' : tone(v) }}>{pct == null ? '—' : why ?? `${v}%`}</span>
         {label && <span className="mt-0.5 text-[9px] text-slate-400">{label}</span>}
       </div>
     </div>
@@ -167,12 +168,19 @@ function EmployeeCard({ e, open, onToggle }: { e: ChainEmployeeReport; open: boo
   return (
     <div className={`rounded-2xl border ${unknown ? 'border-dashed border-slate-300 bg-slate-50' : 'border-slate-200 bg-white'} ${open ? 'ring-2 ring-sky-200' : ''}`}>
       <button type="button" onClick={onToggle} className="flex w-full items-center gap-3 p-3 text-right">
-        <Ring pct={e.total ? e.onTimePct : null} size={56} label="بوقتها" />
+        <Ring pct={e.total ? e.onTimePct : null} size={56} label="بوقتها"
+          why={<PctWhy title={`خطوات ${unknown ? 'ما معروف مسؤولها' : e.name} بوقتها`} value={e.onTimePct}
+            parts={{ numLabel: 'خطوة صارت بوقتها (منها بيها نقص)', num: sum.ok, denLabel: 'خطوة عليه بالفترة (بوقتها + متأخرة + ما صارت)', den: sum.ok + sum.late + sum.missed }}
+            meaning={<>شكد من خطوات دوره بسلسلة الحجز سوّاها بوقتها. التفصيل: بوقتها نظيفة {Math.max(sum.ok - sum.issue, 0)} · بوقتها بس بيها نقص {sum.issue} · متأخرة {sum.late} · ما صارت {sum.missed}. تنزل كل ما خطوة تتأخر أو ما تصير.{e.prevPct != null ? ` الفترة الفاتت چانت ${e.prevPct}%.` : ''}</>}
+            source={<>خطوات «سلسلة الحجز» المسجّلة على الحجوزات (منو سوّى كل خطوة ووكتها مقابل الوقت المطلوب) بالفترة المختارة.</>} />} />
         <div className="min-w-0 flex-1">
           <p className="truncate text-sm font-extrabold text-slate-800">{unknown ? 'خطوات ما معروف منو مسؤولها' : e.name}</p>
           <p className="text-[11px] text-slate-500">
             {e.total} خطوة
-            {diff != null && <> · الفترة الفاتت {e.prevPct}% <b style={{ color: diff >= 0 ? '#059669' : '#dc2626' }}>{diff >= 0 ? `▲${diff}` : `▼${-diff}`}</b></>}
+            {diff != null && <> · الفترة الفاتت <PctWhy title="بوقتها بالفترة الفاتت" value={e.prevPct}
+              formula={<>نفس الحسبة (خطوات بوقتها ÷ كل خطواته) بس على الفترة الي قبل هاي وبنفس الطول. الفرق هسه {e.onTimePct}% − {e.prevPct}% = {diff >= 0 ? '+' : ''}{diff}.</>}
+              meaning={<>حتى تعرف إذا تحسّن (▲) أو تراجع (▼) عن قبل.</>}
+              source={<>خطوات سلسلة الحجز المسجّلة بالفترة الي قبل الفترة المختارة.</>} /> <b style={{ color: diff >= 0 ? '#059669' : '#dc2626' }}>{diff >= 0 ? `▲${diff}` : `▼${-diff}`}</b></>}
             {e.ratingAvg != null && <> · تقييم الليدرية {e.ratingAvg}/5</>}
           </p>
           {e.worst && <p className="text-[11px] text-slate-600">يتعثّر أكثر بـ: <b>{e.worst}</b></p>}
@@ -252,11 +260,21 @@ export default function MatrixRoleChains() {
       {loading ? <p className="text-xs text-slate-400">ماتركس يحلّل…</p> : !r ? <p className="text-xs text-red-600">ما گدرت أجيب التقرير</p> : (
         <>
           <div className="flex flex-wrap items-center gap-4 rounded-2xl border border-slate-200 bg-white p-4">
-            <Ring pct={r.stations.length ? r.teamPct : null} size={88} label="بوقتها" />
+            <Ring pct={r.stations.length ? r.teamPct : null} size={88} label="بوقتها"
+              why={(() => {
+                const t = r.stations.reduce((a, s) => ({ ok: a.ok + s.ok, issue: a.issue + s.issue, late: a.late + s.late, missed: a.missed + s.missed }), { ok: 0, issue: 0, late: 0, missed: 0 })
+                return <PctWhy title={`${r.title}: الخطوات بوقتها`} value={r.teamPct}
+                  parts={{ numLabel: 'خطوة صارت بوقتها (منها بيها نقص)', num: t.ok, denLabel: 'خطوة لهذا الدور (بوقتها + متأخرة + ما صارت)', den: t.ok + t.late + t.missed }}
+                  meaning={<>شكد من خطوات هذا الدور بكل الحجوزات ({r.bookings} حجز بآخر {r.days} يوم) صارت بوقتها. التفصيل: بيها نقص {t.issue} · متأخرة {t.late} · ما صارت {t.missed}. فوق ٨٠% أخضر، ٦٠–٧٩ برتقالي، أقل أحمر.</>}
+                  source={<>خطوات «سلسلة الحجز» المسجّلة على الحجوزات لهذا الدور بالفترة المختارة — نفس الأرقام الي بالبطاقات تحت.</>} />
+              })()} />
             <div className="min-w-[14rem] flex-1">
               <p className="text-lg font-black text-slate-800">{r.title}</p>
               <p className="text-xs text-slate-500">{r.bookings} حجز بآخر {r.days} يوم
-                {teamDiff != null && <> · الفترة الفاتت {r.prevPct}% <b style={{ color: teamDiff >= 0 ? '#059669' : '#dc2626' }}>{teamDiff >= 0 ? `▲${teamDiff}` : `▼${-teamDiff}`}</b></>}
+                {teamDiff != null && <> · الفترة الفاتت <PctWhy title="بوقتها بالفترة الفاتت" value={r.prevPct}
+                  formula={<>نفس الحسبة على الـ{r.days} يوم الي قبل هاي الفترة. الفرق هسه {r.teamPct}% − {r.prevPct}% = {teamDiff >= 0 ? '+' : ''}{teamDiff}.</>}
+                  meaning={<>حتى تعرف الدور تحسّن (▲) لو تراجع (▼).</>}
+                  source={<>خطوات سلسلة الحجز المسجّلة بالفترة الي قبل الفترة المختارة.</>} /> <b style={{ color: teamDiff >= 0 ? '#059669' : '#dc2626' }}>{teamDiff >= 0 ? `▲${teamDiff}` : `▼${-teamDiff}`}</b></>}
               </p>
               <MatrixNote className="mt-2">{r.insights.join(' ')}</MatrixNote>
             </div>

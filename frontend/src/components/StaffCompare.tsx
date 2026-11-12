@@ -1,4 +1,6 @@
+import { type ReactNode } from 'react'
 import { type StaffScore } from '../api'
+import PctWhy from '../ui/PctWhy'
 
 // ═══ مقارنة الموظفين — قرار (ع) 10-10 ═══
 // «ماتركس يسوي مقارنة حسب التقييم والإحصائيات والاعتمادية… كأنو نفرز الأسوأ
@@ -13,13 +15,68 @@ const srcPct = (s: StaffScore, k: string) => {
   return v && v[1] > 0 ? (v[0] / v[1]) * 100 : null
 }
 
-function Bar({ v }: { v: number | null }) {
+// «كل نسبة لازم الها سبب» — شرح كل رقم بلوحة المقارنة من نفس بيانات الموظف.
+type WhyKind = 'final' | 'matrix' | 'human' | 'rel' | { src: string } | { part: string }
+const r1 = (v: number) => Math.round(v * 10) / 10
+const SCORE_SRC = <>نقاط ماتركس المسجلة للموظف بهذا الشهر (كل نقطة إلها «مكسوب» و«أقصى»)، وتقييمات البشر الي انطت إله بنفس الشهر من المقيّمين المسموحين لمجموعته.</>
+function staffWhy(s: StaffScore, kind: WhyKind, v: number | null): { title: string; formula: ReactNode; meaning: ReactNode; source: ReactNode } {
+  if (kind === 'final') return {
+    title: `التقييم النهائي — ${s.name}`,
+    formula: s.matrixPct != null && s.humanPct != null
+      ? <>٦٠٪ × ماتركس {r1(s.matrixPct)}٪ + ٤٠٪ × البشر {r1(s.humanPct)}٪ = <b>{v != null ? r1(v) : '—'}٪</b></>
+      : s.matrixPct != null ? <>ماكو تقييم بشري بعد، فالنهائي = نسبة ماتركس لحالها ({r1(s.matrixPct)}٪).</>
+      : s.humanPct != null ? <>ماكو نقاط ماتركس، فالنهائي = تقييم البشر لحاله ({r1(s.humanPct)}٪).</> : <>ماكو بيانات.</>,
+    meaning: <>الرقم الي ينرتب عليه الموظف. ٨٠٪ وفوق زين، ٦٠–٨٠ وسط، تحت ٦٠ ضعيف. يرتفع لمن يكسب نقاط ماتركس أكثر وياخذ تقييمات بشر أعلى.</>,
+    source: SCORE_SRC,
+  }
+  if (kind === 'matrix') return {
+    title: `ماتركس — ${s.name}`,
+    formula: s.max > 0 ? <>{s.earned} نقطة مكسوبة ÷ {s.max} نقطة أقصى × ١٠٠ = <b>{v != null ? r1(v) : '—'}٪</b></> : <>ماكو نقاط ماتركس بهذا الشهر.</>,
+    meaning: <>شكد التزم بالي مطلوب منه بوقته (حضور، مهام، حجوزات، مراحل…). كل بند يفوته أو يتأخر بيه ينقص من المكسوب. وزنه ٦٠٪ من النهائي.</>,
+    source: <>نقاط ماتركس المسجلة تلقائياً للموظف بهذا الشهر.</>,
+  }
+  if (kind === 'human') return {
+    title: `تقييم البشر — ${s.name}`,
+    formula: s.humanAvg != null ? <>معدل {s.humanCount} تقييم = {r1(s.humanAvg)} من ٥ × ٢٠ = <b>{v != null ? r1(v) : '—'}٪</b></> : <>ماكو تقييم بشري بعد.</>,
+    meaning: <>رأي المسؤولين والمقيّمين بيه (كل تقييم من ١ لـ٥ نجوم). وزنه ٤٠٪ من النهائي.</>,
+    source: <>تقييمات البشر للموظف بهذا الشهر — بس من المقيّمين المسموحين لمجموعته.</>,
+  }
+  if (kind === 'rel') return {
+    title: `الاعتمادية — ${s.name}`,
+    formula: s.reliabilityParts.length ? <>معدل {s.reliabilityParts.length} بند: {s.reliabilityParts.map((p) => `${p.label} ${Math.round(p.pct)}٪`).join(' + ')} ÷ {s.reliabilityParts.length} = <b>{v != null ? r1(v) : '—'}٪</b></> : <>ماكو بيانات كافية.</>,
+    meaning: <>رقم منفصل ما يدخل بالنهائي: يگول شكد تكدر تعتمد عليه (حضور، جرد، ورق، مهام، شكاوى، إجازات، مشاكل، عدّة، KPI). كل شكوى تنزّل ٢٥، وكل يوم إجازة فوق اليومين بالشهر ينزّل ١٠.</>,
+    source: <>نقاط ماتركس (الحضور، الجرد، الورق، المهام) ووقائع الشهر: الشكاوى، الإجازات، المشاكل الوظيفية، ضياع العدّة، نقاط الـKPI.</>,
+  }
+  if ('src' in kind) {
+    const b = s.bySource?.[kind.src]
+    return {
+      title: `نقاط ${SRC[kind.src]} — ${s.name}`,
+      formula: b && b[1] > 0 ? <>{b[0]} مكسوبة ÷ {b[1]} أقصى × ١٠٠ = <b>{v != null ? r1(v) : '—'}٪</b></> : <>ماكو نقاط من هذا المصدر.</>,
+      meaning: <>جزء ماتركس الي جاي من {SRC[kind.src]} بس — يبين وين قوي ووين ضعيف.</>,
+      source: <>نقاط ماتركس المسجلة للموظف بهذا الشهر من مصدر «{SRC[kind.src]}».</>,
+    }
+  }
+  const p = s.reliabilityParts.find((x) => x.key === kind.part)
+  return {
+    title: `${p?.label ?? 'بند الاعتمادية'} — ${s.name}`,
+    formula: p ? <>{p.detail} ← <b>{Math.round(p.pct)}٪</b></> : <>ماكو بيانات.</>,
+    meaning: <>بند من بنود الاعتمادية. بنود الحضور/الجرد/الورق/المهام = المكسوب ÷ الأقصى؛ والباقي يبدي من ١٠٠ وينقص لكل واقعة (شكوى/مشكلة/ضياع عدّة ٢٥، نقطة KPI ٢٠، يوم إجازة فوق اليومين ١٠).</>,
+    source: <>نقاط ماتركس ووقائع الموظف بهذا الشهر.</>,
+  }
+}
+function StaffPct({ s, kind, v, color }: { s: StaffScore; kind: WhyKind; v: number | null | undefined; color?: string }) {
+  if (v == null) return <>—</>
+  const w = staffWhy(s, kind, v)
+  return <span style={{ color }}><PctWhy title={w.title} value={Math.round(v)} formula={w.formula} meaning={w.meaning} source={w.source} /></span>
+}
+
+function Bar({ v, s, kind }: { v: number | null; s: StaffScore; kind: WhyKind }) {
   return (
     <div className="flex items-center gap-2">
       <div className="h-2 flex-1 overflow-hidden rounded-full bg-slate-100">
         <div className="h-full rounded-full" style={{ width: `${Math.max(0, Math.min(100, v ?? 0))}%`, background: tone(v) }} />
       </div>
-      <b className="w-10 text-left text-xs" style={{ color: tone(v) }}>{pct(v)}</b>
+      <b className="w-10 text-left text-xs" style={{ color: tone(v) }}><StaffPct s={s} kind={kind} v={v} /></b>
     </div>
   )
 }
@@ -47,9 +104,9 @@ export function GroupRanking({ staff }: { staff: StaffScore[] }) {
       <div className="rounded-2xl border border-violet-200 bg-violet-50/60 p-3 text-sm leading-relaxed text-violet-950">
         <b>🤖 ماتركس يقارن:</b>{' '}
         {best ? <>
-          الأفضل <b>{best.name}</b> ({pct(best.final)})
-          {judged.length > 1 && <> والأضعف <b>{worst.name}</b> ({pct(worst.final)}) — الفرق {Math.round((best.final ?? 0) - (worst.final ?? 0))} نقطة.</>}
-          {' '}معدّل المجموعة {pct(avg)}، و{judged.filter((s) => (s.final ?? 0) < avg).length} تحت المعدّل.
+          الأفضل <b>{best.name}</b> (<StaffPct s={best} kind="final" v={best.final} />)
+          {judged.length > 1 && <> والأضعف <b>{worst.name}</b> (<StaffPct s={worst} kind="final" v={worst.final} />) — الفرق {Math.round((best.final ?? 0) - (worst.final ?? 0))} نقطة.</>}
+          {' '}معدّل المجموعة <PctWhy title="معدّل المجموعة" value={Math.round(avg)} formula={<>مجموع التقييم النهائي لـ{judged.length} موظف عندهم تقييم بشري ({r1(judged.reduce((a, s) => a + (s.final ?? 0), 0))}) ÷ {judged.length} = <b>{r1(avg)}٪</b></>} meaning={<>المعدل الي نقارن بيه: الي فوقه «فوق المعدّل» والي تحته «تحت المعدّل». الموظفين الي بس عندهم رقم ماتركس ما دخلوا.</>} source={SCORE_SRC}><ul className="text-xs">{judged.map((s) => <li key={s.id}>{s.name}: {Math.round(s.final ?? 0)}٪</li>)}</ul></PctWhy>، و{judged.filter((s) => (s.final ?? 0) < avg).length} تحت المعدّل.
           {weakest && judged.length > 1 && <> أكثر شي نزّل {worst.name}: «{weakest.title}» ({weakest.count} مرة) — {weakest.advice}</>}
         </> : <>ماكو أحد بهالمجموعة قيّمه إنسان بعد، فما أحكم منو الأفضل والأضعف.</>}
         {pending > 0 && <> {pending} موظف بانتظار تقييم بشري — ما دخلوا بالمقارنة.</>}
@@ -73,10 +130,10 @@ export function GroupRanking({ staff }: { staff: StaffScore[] }) {
                 <tr key={s.id}>
                   <td className="p-2 text-xs text-slate-400">{i + 1}</td>
                   <td className="p-2 font-bold">{s.name}{s.noHuman && <PendingHumanBadge />}</td>
-                  <td className="p-2"><Bar v={s.final} /></td>
-                  <td className="p-2"><Bar v={s.matrixPct} /></td>
-                  <td className="p-2"><Bar v={s.humanPct} /></td>
-                  <td className="p-2"><Bar v={s.reliability} /></td>
+                  <td className="p-2"><Bar v={s.final} s={s} kind="final" /></td>
+                  <td className="p-2"><Bar v={s.matrixPct} s={s} kind="matrix" /></td>
+                  <td className="p-2"><Bar v={s.humanPct} s={s} kind="human" /></td>
+                  <td className="p-2"><Bar v={s.reliability} s={s} kind="rel" /></td>
                   <td className="p-2">{verdict ? <span className={`whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-bold ${verdict[1]}`}>{verdict[0]}</span> : <PendingHumanBadge />}</td>
                 </tr>
               )
@@ -93,17 +150,17 @@ export function GroupRanking({ staff }: { staff: StaffScore[] }) {
 export function PairCompare({ a, b, peers, onPick, onClose }: {
   a: StaffScore; b: StaffScore | null; peers: StaffScore[]; onPick: (id: string) => void; onClose: () => void
 }) {
-  type Row = { label: string; va: number | null; vb: number | null; text?: [string, string] }
+  type Row = { label: string; kind: WhyKind; va: number | null; vb: number | null; text?: [string, string] }
   const rows: Row[] = b ? [
-    { label: 'التقييم النهائي', va: a.final, vb: b.final },
-    { label: 'ماتركس (٦٠٪)', va: a.matrixPct, vb: b.matrixPct },
-    { label: 'تقييم البشر (٤٠٪)', va: a.humanPct, vb: b.humanPct },
-    { label: 'الاعتمادية', va: a.reliability, vb: b.reliability },
+    { label: 'التقييم النهائي', kind: 'final', va: a.final, vb: b.final },
+    { label: 'ماتركس (٦٠٪)', kind: 'matrix', va: a.matrixPct, vb: b.matrixPct },
+    { label: 'تقييم البشر (٤٠٪)', kind: 'human', va: a.humanPct, vb: b.humanPct },
+    { label: 'الاعتمادية', kind: 'rel', va: a.reliability, vb: b.reliability },
     ...Object.keys(SRC).filter((k) => a.bySource?.[k] || b.bySource?.[k])
-      .map((k) => ({ label: `نقاط ${SRC[k]}`, va: srcPct(a, k), vb: srcPct(b, k) })),
+      .map((k): Row => ({ label: `نقاط ${SRC[k]}`, kind: { src: k }, va: srcPct(a, k), vb: srcPct(b, k) })),
     ...a.reliabilityParts.map((p) => {
       const q = b.reliabilityParts.find((x) => x.key === p.key)
-      return { label: `🛡️ ${p.label}`, va: p.pct, vb: q?.pct ?? null, text: [p.detail, q?.detail ?? '—'] as [string, string] }
+      return { label: `🛡️ ${p.label}`, kind: { part: p.key }, va: p.pct, vb: q?.pct ?? null, text: [p.detail, q?.detail ?? '—'] as [string, string] }
     }),
   ] : []
   const wins = rows.reduce((acc, r) => {
@@ -146,11 +203,11 @@ export function PairCompare({ a, b, peers, onPick, onClose }: {
                     <tr key={r.label}>
                       <td className="p-2 text-xs text-slate-600">{r.label}</td>
                       <td className={`p-2 ${aw ? 'bg-emerald-50' : ''}`}>
-                        <b style={{ color: tone(r.va) }}>{pct(r.va)}</b>{aw && ' ✓'}
+                        <b style={{ color: tone(r.va) }}><StaffPct s={a} kind={r.kind} v={r.va} /></b>{aw && ' ✓'}
                         {r.text && <span className="block text-[10px] text-slate-400">{r.text[0]}</span>}
                       </td>
                       <td className={`p-2 ${bw ? 'bg-emerald-50' : ''}`}>
-                        <b style={{ color: tone(r.vb) }}>{pct(r.vb)}</b>{bw && ' ✓'}
+                        <b style={{ color: tone(r.vb) }}><StaffPct s={b} kind={r.kind} v={r.vb} /></b>{bw && ' ✓'}
                         {r.text && <span className="block text-[10px] text-slate-400">{r.text[1]}</span>}
                       </td>
                     </tr>

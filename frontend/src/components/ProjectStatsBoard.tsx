@@ -1,6 +1,20 @@
 import { useEffect, useState } from 'react'
 import { api, type ProjectStageStats } from '../api'
 import { card } from '../ui/classes'
+import PctWhy from '../ui/PctWhy'
+
+// «كل نسبة لازم الها سبب» — نسبة مرحلة = عدد مشاريعها ÷ كل المشاريع.
+const PROJ_SRC = <>كل المشاريع المسجلة بالنظام (صفحة المشاريع)، كل مشروع ينحسب بمرحلته الحالية — بلا فلتر تاريخ.</>
+function StagePct({ label, n, total, stats, className }: { label: string; n: number; total: number; stats: ProjectStageStats[]; className?: string }) {
+  return (
+    <PctWhy title={`نسبة ${label}`} className={className}
+      parts={{ numLabel: `مشروع ${label}`, num: n, denLabel: 'مشروع بكل المراحل', den: total }}
+      meaning={<>شكد حصة «{label}» من كل المشاريع هسه. تتغير كلما مشروع ينتقل من مرحلة لمرحلة أو ينضاف مشروع جديد.</>}
+      source={PROJ_SRC}>
+      <ul className="text-xs">{stats.map((r) => <li key={r.stage}>{clean(r.stage)}: {r.count}</li>)}</ul>
+    </PctWhy>
+  )
+}
 
 // ═══ إحصائيات المشاريع — تصميم (ع) 10-13 ═══
 // بطاقات لكل مرحلة، رسم توزيع، دائرة الإنجاز، أعلى المراحل، تطور ١٢ شهر،
@@ -56,7 +70,7 @@ export default function ProjectStatsBoard() {
           const m = metaOf(r.stage)
           return (
             <div key={r.stage} className={`flex items-center justify-between rounded-2xl border p-4 shadow-sm ${m.tint}`}>
-              <div><p className="text-xs font-bold" style={{ color: m.color }}>{clean(r.stage)}</p><p className="text-3xl font-black text-[#0f2040]">{r.count}</p><p className="text-[11px] text-slate-500">{pct(r.count)}% من الإجمالي</p></div>
+              <div><p className="text-xs font-bold" style={{ color: m.color }}>{clean(r.stage)}</p><p className="text-3xl font-black text-[#0f2040]">{r.count}</p><p className="text-[11px] text-slate-500"><StagePct label={clean(r.stage)} n={r.count} total={total} stats={stats} /> من الإجمالي</p></div>
               <span className="grid h-12 w-12 place-items-center rounded-2xl bg-white text-2xl">{m.icon}</span>
             </div>
           )
@@ -87,7 +101,7 @@ export default function ProjectStatsBoard() {
               {[['المشاريع المكتملة', done, '#22c55e'], ['قيد التنفيذ', open, '#3b82f6'], ['المشاريع المرفوضة', rejected, '#f43f5e']].map(([l, v, c]) => (
                 <li key={l as string} className="flex items-center justify-between gap-2">
                   <span className="flex items-center gap-1.5"><i className="h-2.5 w-2.5 rounded-full" style={{ background: c as string }} />{l}</span>
-                  <span className="tabular-nums"><b style={{ color: c as string }}>{pct(v as number)}%</b> · {v}</span>
+                  <span className="tabular-nums"><b style={{ color: c as string }}><StagePct label={l as string} n={v as number} total={total} stats={stats} /></b> · {v}</span>
                 </li>
               ))}
             </ul>
@@ -127,8 +141,8 @@ export default function ProjectStatsBoard() {
           <h3 className="mb-3 font-extrabold text-[#0f2040]">🧾 ملخص سريع</h3>
           <div className="grid grid-cols-2 gap-2">
             {[['📈', 'أعلى شهر بمشاريع جديدة', best ? `${monthName(best.month)} (${best.new})` : '—'], ['📊', 'متوسط المشاريع الجديدة شهرياً', avg.toFixed(1)],
-              ['🎯', 'نسبة الإنجاز', `${pct(done)}%`], ['📉', 'أقل شهر بمشاريع جديدة', worst ? `${monthName(worst.month)} (${worst.new})` : '—']].map(([i, l, v]) => (
-              <div key={l} className="rounded-xl border border-slate-100 bg-slate-50 p-3">
+              ['🎯', 'نسبة الإنجاز', <StagePct key="d" label="المشاريع المكتملة" n={done} total={total} stats={stats} />], ['📉', 'أقل شهر بمشاريع جديدة', worst ? `${monthName(worst.month)} (${worst.new})` : '—']].map(([i, l, v]) => (
+              <div key={l as string} className="rounded-xl border border-slate-100 bg-slate-50 p-3">
                 <p className="text-[11px] text-slate-500">{i} {l}</p><p className="mt-1 text-lg font-black text-[#0f2040]">{v}</p>
               </div>
             ))}
@@ -149,7 +163,7 @@ export default function ProjectStatsBoard() {
                   <td className="px-3 py-2 text-slate-400">{i + 1}</td>
                   <td className="px-3 font-bold">{m.icon} {clean(r.stage)}</td>
                   <td className="px-3 tabular-nums">{r.count}</td>
-                  <td className="px-3 tabular-nums">{pct(r.count)}%</td>
+                  <td className="px-3 tabular-nums"><StagePct label={clean(r.stage)} n={r.count} total={total} stats={stats} /></td>
                   <td className="px-3"><div className="h-2 w-40 rounded-full bg-slate-100"><div className="h-2 rounded-full" style={{ width: `${pct(r.count)}%`, background: m.color }} /></div></td>
                 </tr>
               )

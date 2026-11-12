@@ -6,8 +6,10 @@ import {
   getOutputs,
   useOutputRegulations,
   type OutputCard,
+  type OutputRow,
   type OutputTarget,
 } from '../orgOutputs'
+import PctWhy from '../ui/PctWhy'
 import '../pages/OrgPage.css'
 import './OrgOutputs.css'
 
@@ -207,7 +209,7 @@ function OutputData({
                       <strong className="outputs-score">
                         {row.score == null
                           ? 'ماكو بيانات'
-                          : `${row.score.toLocaleString('ar-IQ')}٪`}
+                          : <ScoreWhy row={row} />}
                       </strong>
                     </header>
                     {row.score != null && (
@@ -223,7 +225,7 @@ function OutputData({
                         <dd>
                           {row.matrixPct == null
                             ? 'غير متوفر'
-                            : `${row.matrixPct.toLocaleString('ar-IQ')}٪`}
+                            : <MatrixWhy row={row} />}
                         </dd>
                       </div>
                       <div>
@@ -257,5 +259,39 @@ function OutputData({
         <p className="org-empty">ماكو فقرات راجعة بهالفترة.</p>
       )}
     </>
+  )
+}
+
+// «كل نسبة لازم الها سبب» — نفس حسبة السيرفر (org_outputs.go) بأرقام الفقرة.
+type RowWithPts = OutputRow & { matrixEarned?: number; matrixMax?: number }
+const OUT_SRC = <>نقاط ماتركس للأشخاص المشمولين بهالفترة (حسب قاعدة كل نقطة)، والمهام الإضافية المربوطة بالفقرة، وتقييمات الـKPI المربوطة بمعيار الفقرة، والشكاوي (لفقرة جودة الخدمة بس).</>
+function MatrixWhy({ row }: { row: RowWithPts }) {
+  return (
+    <PctWhy suffix="٪" title={`ماتركس — ${row.code}`} value={row.matrixPct}
+      formula={row.matrixEarned != null && row.matrixMax
+        ? <>{row.matrixEarned} نقطة مكسوبة ÷ {row.matrixMax} نقطة أقصى × ١٠٠ = <b>{row.matrixPct}٪</b></>
+        : <>النقاط المكسوبة ÷ النقاط القصوى بقواعد ماتركس الي تنتمي لهالفقرة × ١٠٠.</>}
+      meaning={<>شكد الأشخاص التزموا بقواعد ماتركس التابعة لهالفقرة. كل بند فايت أو متأخر ينزّلها.</>}
+      source={<>نقاط ماتركس (غير الملغية) للأشخاص المشمولين بهالفترة، الي قاعدتها مربوطة بفقرة «{row.title}».</>} />
+  )
+}
+function ScoreWhy({ row }: { row: RowWithPts }) {
+  const n = row.tasksOnTime + row.tasksLate + row.tasksOverdue
+  const taskPct = n > 0 ? Math.round((row.tasksOnTime / n) * 1000) / 10 : null
+  const hasM = row.matrixPct != null
+  const base = hasM && taskPct != null ? Math.round((row.matrixPct! * 0.7 + taskPct * 0.3) * 10) / 10 : hasM ? row.matrixPct! : taskPct ?? 100
+  const ded = row.kpiDeductions + row.complaints
+  return (
+    <PctWhy suffix="٪" title={`درجة الفقرة ${row.code}`} value={row.score}
+      formula={<>
+        <p>الأساس: {hasM && taskPct != null ? <>٧٠٪ × ماتركس {row.matrixPct}٪ + ٣٠٪ × مهام بوقتها {taskPct}٪ ({row.tasksOnTime} من {n})</>
+          : hasM ? <>ماتركس {row.matrixPct}٪ (ماكو مهام مربوطة)</>
+          : taskPct != null ? <>مهام بوقتها {taskPct}٪ ({row.tasksOnTime} من {n})</>
+          : <>ماكو نقاط ولا مهام، فالأساس ١٠٠</>} = {base}</p>
+        <p>ناقص ١٠ لكل خصم KPI أو شكوى: ({row.kpiDeductions} + {row.complaints}) × ١٠ = {ded * 10}</p>
+        <p>= <b>{row.score}٪</b> (ما تنزل تحت الصفر)</p>
+      </>}
+      meaning={<>درجة الفقرة من ١٠٠. ٨٠ وفوق زينة، ٥٠–٨٠ وسط، تحت ٥٠ ضعيفة. ترتفع بالالتزام بقواعد ماتركس وإنجاز المهام بوقتها، وتنزل بالتأخير وخصومات الـKPI والشكاوي.</>}
+      source={OUT_SRC} />
   )
 }

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { api, type EmployeeMonthlyStats } from '../api'
+import PctWhy from '../ui/PctWhy'
 import KpiBreakdownChart from '../components/KpiBreakdownChart'
 import PerformanceCurveModal from '../components/PerformanceCurveModal'
 import { roleChipColor, roleGradient, roleLabel } from '../roleLabels'
@@ -128,7 +129,10 @@ export default function EmployeeMonthlyStatsPage() {
             <Summary label="عدد الموظفين" value={String(shown.length)} />
             <Summary label="متوسط نقاط الكي بي اي" value={String(avgKpi)} tone={avgKpi >= 100 ? 'good' : avgKpi >= 50 ? 'mid' : 'bad'} />
             <Summary label="المبالغ الي دخّلوها" value={`${fmt(sum((r) => r.revenueBrought))} د.ع`} />
-            <Summary label="تغطية رواتبهم" value={coverage === null ? '—' : `${coverage.toFixed(0)}%`} tone={coverage === null ? undefined : coverage >= 100 ? 'good' : 'bad'} />
+            <Summary label="تغطية رواتبهم" value={<PctWhy title="تغطية رواتبهم" value={coverage === null ? null : Math.round(coverage)}
+              formula={coverage === null ? <>ماكو راتب مسجّل لموظفين هالدور، فماكو نسبة.</> : <>المبالغ الي دخّلها أصحاب الرواتب {fmt(revenueOfSalaried)} د.ع ÷ مجموع رواتبهم {fmt(salarySum)} د.ع × ١٠٠ = {coverage.toFixed(0)}%.</>}
+              meaning={<>هل الي دخّلوه هالدور يغطي رواتبهم. ١٠٠٪ أو أكثر يعني غطّوا رواتبهم (أخضر)، أقل يعني بعد ما غطّوها. الموظف الي ما مسجّل إله راتب ما يدخل لا بالبسط ولا بالمقام.</>}
+              source={<>صافي فواتير الليدر الي رفعها كل موظف بهالشهر، ورواتبهم المسجلة بملفاتهم.</>} />} tone={coverage === null ? undefined : coverage >= 100 ? 'good' : 'bad'} />
             <Summary label="العمولات" value={`${fmt(sum((r) => r.totalCommission))} د.ع`} />
           </div>
 
@@ -155,7 +159,7 @@ export default function EmployeeMonthlyStatsPage() {
 
 const TONE: Record<string, string> = { good: 'text-emerald-700', mid: 'text-amber-700', bad: 'text-red-700' }
 
-function Summary({ label, value, tone }: { label: string; value: string; tone?: 'good' | 'mid' | 'bad' }) {
+function Summary({ label, value, tone }: { label: string; value: React.ReactNode; tone?: 'good' | 'mid' | 'bad' }) {
   return (
     <div className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
       <p className="text-xs text-slate-500">{label}</p>
@@ -218,7 +222,10 @@ function EmployeeCard({ r, onKpi, onCurve }: { r: EmployeeMonthlyStats; onKpi: (
       <Group title="الفلوس">
         <Metric label="المبالغ الي دخّلها" value={`${fmt(r.revenueBrought)} د.ع`} hint="صافي فواتير الليدر الي رفعها هو بهذا الشهر" />
         <Metric label="راتبه" value={r.salary === null ? '—' : `${fmt(r.salary)} د.ع`} />
-        <Metric label="تغطية الراتب" value={cov === null ? '—' : `${cov.toFixed(0)}%`} hint="الإيراد ÷ الراتب — والمطلوب يعبر ١٠٠٪" tone={cov === null ? undefined : cov >= 100 ? 'good' : 'bad'} />
+        <Metric label="تغطية الراتب" value={<PctWhy title="تغطية الراتب" value={cov === null ? null : Math.round(cov)}
+          formula={cov === null ? <>ماكو راتب مسجّل إله، فماكو نسبة.</> : <>المبالغ الي دخّلها {fmt(r.revenueBrought)} د.ع ÷ راتبه {fmt(r.salary ?? 0)} د.ع × ١٠٠ = {cov.toFixed(0)}%.</>}
+          meaning={<>هل الي دخّله يغطي راتبه. المطلوب يعبر ١٠٠٪؛ تعلى كل ما يرفع فواتير أكثر بهالشهر.</>}
+          source={<>صافي فواتير الليدر الي رفعها هو بهذا الشهر، وراتبه المسجّل بملفه.</>} />} hint="الإيراد ÷ الراتب — والمطلوب يعبر ١٠٠٪" tone={cov === null ? undefined : cov >= 100 ? 'good' : 'bad'} />
         <Metric label="العمولة" value={`${fmt(r.totalCommission)} د.ع`} />
         <Metric label="تقييم يدوي" value={r.kpiPoints > 0 ? `+${r.kpiPoints}` : r.kpiPoints} tone={r.kpiPoints > 0 ? 'good' : r.kpiPoints < 0 ? 'bad' : undefined} />
         <Metric label="قيمة النقاط اليدوية" value={`${fmt(r.kpiPointsValue)} د.ع`} />

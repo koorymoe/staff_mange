@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
+import PctWhy from '../ui/PctWhy'
 import { api, type Booking, type BookingProgressReport, type SuggestedCrewMember } from '../api'
 import BookingCodeChip from '../components/BookingCodeChip'
 
@@ -30,7 +31,7 @@ interface Row {
 }
 
 /** حلقة التقدّم — النسبة تنقرا بلمحة بدل ما تنقرا رقم بسطر. */
-function ProgressRing({ percent }: { percent: number }) {
+function ProgressRing({ percent, children }: { percent: number; children?: ReactNode }) {
   const p = Math.max(0, Math.min(100, percent))
   // ⚠️ اللون يتبع النسبة مو ثابت: ٩٠٪ و٣٥٪ ما ينفع يطلعون بنفس
   // الشكل — الإداري يفرز بالنظر منو قريب من الخلاص.
@@ -45,7 +46,7 @@ function ProgressRing({ percent }: { percent: number }) {
         />
       </svg>
       <div className="absolute inset-0 flex flex-col items-center justify-center leading-none">
-        <span className="text-[11px] font-black" style={{ color }}>{p}%</span>
+        <span className="text-[11px] font-black" style={{ color }}>{children ?? `${p}%`}</span>
         <span className="text-[8px] text-slate-400">منجز</span>
       </div>
     </div>
@@ -197,7 +198,16 @@ export default function PartialBookings() {
                   ✓ انجدول
                 </span>
               )}
-              <ProgressRing percent={r.last?.percentDone ?? 0} />
+              <ProgressRing percent={r.last?.percentDone ?? 0}>
+                <PctWhy title="نسبة الإنجاز" value={r.last ? r.last.percentDone : null}
+                  formula={r.last
+                    ? <>هاي النسبة مو محسوبة بالنظام — كتبها {r.last.reportedBy?.name || 'الكادر'} بتقرير اليوم {r.last.dayNumber} ({new Date(r.last.createdAt).toLocaleDateString('en-GB')}) = {r.last.percentDone}%. وهذا آخر تقرير من {r.days} تقرير للحجز.</>
+                    : <>ماكو تقرير تقدّم للحجز بعد، فماكو نسبة.</>}
+                  meaning={<>شكد خلص من شغل الحجز حسب تقدير الكادر بآخر يوم شغل. ٨٠٪ وفوگ قريب يخلص (أخضر)، أقل من ٥٠٪ بعده بعيد. تتحدث ويا كل تقرير يوم جديد.</>}
+                  source={<>تقارير التقدّم اليومية للحجز (الي يرفعها الكادر من يقفل يوم شغل والحجز ما خلص).</>}>
+                  {r.last && <div className="space-y-1 text-xs"><p>✅ انسوّى: {r.last.workDone || '—'}</p><p>⏳ باقي: {r.last.remainingWork || '—'}</p></div>}
+                </PctWhy>
+              </ProgressRing>
             </div>
 
             {/* ═══ الأسئلة الأربعة ═══

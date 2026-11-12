@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import {
   api, type GroupPerformance, type LateFocus, type MatrixBusiness as MatrixBusinessData, type MatrixFeedItem,
@@ -18,6 +18,7 @@ import MatrixDialect from './MatrixDialect'
 import MatrixSuggestAccuracyPanel from './MatrixSuggestAccuracy'
 import MatrixAutonomy from './MatrixAutonomy'
 import MatrixProofModal, { type ProofKind } from './MatrixProofModal'
+import PctWhy from '../ui/PctWhy'
 import { pollVisible } from '../utils/poll'
 import { askConfirm } from '../ui/dialogs'
 import { swallow } from '../utils/swallow'
@@ -308,7 +309,7 @@ function Discovery({ focus, late, perf, groups, biz, proposal, onDone }: {
       const done = (m.metrics ?? []).filter((x) => x.label !== 'عمليات بالنظام').reduce((a, x) => a + x.value, 0)
       if ((m.metrics ?? []).length > 1 && done === 0) why.push('النظام ما لگى شغل مسجّل إله بآخر ٣٠ يوم (شغله برّا النظام؟)')
     }
-    return { ...m, group: g.group, idx: perfIndex(m, field), why }
+    return { ...m, group: g.group, idx: perfIndex(m, field), field, why }
   })).filter((m) => m.idx < 75 && m.why.length > 0).sort((a, b) => a.idx - b.idx), [perf])
 
   const approve = async () => {
@@ -413,7 +414,17 @@ function Discovery({ focus, late, perf, groups, biz, proposal, onDone }: {
                           <li key={m.id} className="rounded-lg bg-[var(--mx-sunken)] p-2">
                             <div className="flex flex-wrap items-center justify-between gap-2">
                               <Link to={`/matrix/employee/${m.id}`} className="font-extrabold text-[var(--mx-accent)] hover:underline">👤 {m.name} — تقريره ←</Link>
-                              <span className="text-xs text-[var(--mx-muted)]">{GROUP_LABEL[m.group as EyeGroup] ?? m.group} · مؤشر {m.idx}%</span>
+                              <span className="text-xs text-[var(--mx-muted)]">{GROUP_LABEL[m.group as EyeGroup] ?? m.group} · مؤشر <PctWhy title={`مؤشر أداء ${m.name}`} value={m.idx}
+                                formula={m.field ? (
+                                  <>({m.completed} حجز خلص + نص {m.partial} جزئي) ÷ {m.jobs - (m.unstarted ?? 0)} حجز انقاس (من أصل {m.jobs}، ناقص {m.unstarted ?? 0} ما بدا بيها أحد) × ١٠٠
+                                    {m.absent ? ' − ١٥ لأنه غايب اليوم' : m.late > 0 ? ` − ${Math.round(Math.min(20, m.late / 3))} عن تأخيره اليوم ${m.late} دقيقة (الدقايق ÷ ٣، أكثر شي ٢٠)` : ''}
+                                    {m.speed != null && m.speed > 1.15 ? ` − ${Math.round(Math.min(25, (m.speed - 1) * 40))} لأنه أبطأ من المتوقع (×${m.speed.toFixed(2)})` : ''} = <b>{m.idx}%</b>. إذا ماكو ولا حجز انقاس نبدي من ٩٠.</>
+                                ) : (
+                                  <>هذا موظف مو ميداني: يبدي من ٩٠ إذا عنده شغل دور مسجّل بآخر ٣٠ يوم ({(m.metrics ?? []).reduce((a, x) => a + x.value, 0)} شغلة)، ومن ٥٥ إذا ماكو
+                                    {m.absent ? '، − ١٥ لأنه غايب اليوم' : m.late > 0 ? `، − ${Math.round(Math.min(20, m.late / 3))} عن تأخيره اليوم ${m.late} دقيقة` : ''} = <b>{m.idx}%</b>.</>
+                                )}
+                                meaning={<>رقم للعرض بس حتى نعرف منو يحتاج متابعة — مو نقاط ولا تقييم رسمي ولا غرامة. الي تحت ٧٥% وعنده سبب واضح يطلع بهاي القائمة. يعلى لمن يخلّص حجوزاته ويحضر بوقته.</>}
+                                source={<>حجوزات الموظف وتقارير إنجازها، وحضوره اليوم مقابل جدوله، وسرعته مقارنة بالوقت المتوقع لنفس الخدمة — من شاشة أداء المجموعة.</>} /></span>
                             </div>
                             <ul className="mt-1 list-inside list-disc text-xs">{m.why.map((w) => <li key={w}>{w}</li>)}</ul>
                           </li>
@@ -515,10 +526,13 @@ function Feed({ items }: { items: MatrixFeedItem[] }) {
 // والثقة **حقيقية** (نسبة توقعاته الصح بالأشهر المحكومة)، وسجل صح/غلط يتعلّم منه.
 function Predictions({ biz, late, props }: { biz: MatrixBusinessData | null; late: LateFocus | null; props: MatrixProposal[] }) {
   const [showHist, setShowHist] = useState(false)
-  const items: { text: string; change: number | null; conf: number }[] = []
-  if (late) items.push({ text: `الحجوزات المتأخرة: ${late.recentPct}% من آخر ٧ أيام`, change: late.changePct == null ? null : -late.changePct, conf: confidence(late.recent.total) })
+  const items: { text: string; change: number | null; conf: number; changeWhy?: ReactNode; confWhy: ReactNode }[] = []
+  if (late) items.push({ text: `الحجوزات المتأخرة: ${late.recentPct}% من آخر ٧ أيام (${late.recent.late} من ${late.recent.total})`, change: late.changePct == null ? null : -late.changePct, conf: confidence(late.recent.total),
+    changeWhy: <>نسبة التأخير هسه {late.recentPct}% ({late.recent.late} من {late.recent.total}) وقبلها بأسبوع {late.prevPct}% ({late.previous.late} من {late.previous.total}). التغيّر = ({late.recentPct} − {late.prevPct}) ÷ {late.prevPct} × ١٠٠ = {late.changePct}%، ونقلب إشارته هنا حتى الموجب (الأخضر) يعني التأخير قلّ.</>,
+    confWhy: <>تنحسب من عدد حجوزات آخر ٧ أيام ({late.recent.total}): ٢٠ أو أكثر = ٨٧%، من ٨ لـ١٩ = ٧٢%، أقل من ٨ = ٥٠%. يعني كل ما البيانات أكثر الثقة أعلى — مو حكم على صحة توقع سابق.</> })
   const pred = props.filter((p) => p.kind === 'PREDICTION').length
-  if (pred) items.push({ text: `${pred} توقّع ينتظر قرارك (موظفين ما يلحگون شغل اليوم)`, change: null, conf: 72 })
+  if (pred) items.push({ text: `${pred} توقّع ينتظر قرارك (موظفين ما يلحگون شغل اليوم)`, change: null, conf: 72,
+    confWhy: <>هاي ٧٢% رقم ثابت بالشاشة لهذا النوع، مو محسوب من بيانات — بس حتى يبين إنها توقعات تحتاج قرارك. عددها {pred} اقتراح «توقع» بصندوق القرارات.</> })
   const fc = biz?.forecast
   const hist = fc?.history ?? []
   const okN = hist.filter((h) => h.verdict === 'CORRECT').length
@@ -547,10 +561,16 @@ function Predictions({ biz, late, props }: { biz: MatrixBusinessData | null; lat
               <div className="mb-1 flex items-center gap-2">
                 <span className="text-[12px] font-bold text-[var(--mx-text)]">{r.title}</span>
                 <span className={`rounded-lg px-1.5 py-0.5 text-[10px] font-bold ${ch == null ? 'text-[var(--mx-muted)]' : ch >= 0 ? 'bg-emerald-500/15 text-[var(--mx-ok)]' : 'bg-red-500/15 text-[var(--mx-bad)]'}`}>
-                  {ch == null ? '—' : `${ch >= 0 ? '↗ +' : '↘ '}${ch}% عن الشهر السابق`}
+                  {ch == null ? '—' : <>{ch >= 0 ? '↗ +' : '↘ '}<PctWhy title={`${r.title}: الفرق عن الشهر السابق`} value={ch}
+                    formula={<>({r.now} لحد اليوم − {r.last} الشهر السابق لنفس اليوم) ÷ {r.last} × ١٠٠ = <b>{ch}%</b></>}
+                    meaning={<>شكد هالشهر لحد اليوم أعلى أو أقل من نفس الأيام بالشهر الماضي. موجب = أحسن. دفعات المشاريع مطروحة من الإيراد لأنها تنسجّل بالجملة وتخرّب المقارنة.</>}
+                    source={<>الحجوزات المنجزة من جدول الحجوزات حسب تاريخ إنجازها (بتوقيت بغداد) ومبلغها الصافي.</>} /> عن الشهر السابق</>}
                 </span>
                 <span className="mr-auto rounded-full border border-[var(--mx-border)] px-1.5 py-0.5 text-[10px] text-[var(--mx-accent)]" title="نسبة توقعات ماتركس الصح بآخر ٦ أشهر محكومة">
-                  {r.conf == null ? 'ثقة: جديد — لسه يتعلّم' : `ثقة حقيقية ${r.conf}%`}
+                  {r.conf == null ? 'ثقة: جديد — لسه يتعلّم' : <>ثقة حقيقية <PctWhy title={`ثقة توقع ${r.title}`} value={r.conf}
+                    formula={<>من آخر الأشهر المحكومة (لحد ٦ أشهر) لهذا التوقع: عدد الأشهر الي طلع توقعه «صح» ÷ عدد الأشهر المحكومة × ١٠٠ = <b>{r.conf}%</b>. سجل الدقة تحت يبين كل شهر.</>}
+                    meaning={<>«صح» يعني توقع يوم ١٥ طلع ضمن ±١٠٪ من النتيجة الحقيقية آخر الشهر. كل ما تعلى يعني توقعاته تنصدق أكثر. تحتاج شهرين محكومين على الأقل وإلا تطلع «جديد».</>}
+                    source={<>سجل أحكام التوقعات الي ماتركس يحفظه أول كل شهر (التوقع مقابل الحجوزات المنجزة فعلاً).</>} /></>}
                 </span>
               </div>
               <div className="grid grid-cols-3 gap-1 text-center">
@@ -559,7 +579,10 @@ function Predictions({ biz, late, props }: { biz: MatrixBusinessData | null; lat
                 <div className="rounded-lg bg-[var(--mx-card)] p-1 ring-1 ring-[var(--mx-accent)]"><p className="text-[10px] text-[var(--mx-muted)]">المتوقع لآخر الشهر</p><p className="text-[13px] font-bold text-[var(--mx-accent)]">{r.exp}</p>
                   {r.range && <p className="text-[9px] text-[var(--mx-muted)]">{r.range}</p>}</div>
               </div>
-              {r.calib !== 0 && <p className="mt-1 text-[10px] text-[var(--mx-muted)]">🧠 مصحّح حسب أخطائه السابقة ({r.calib > 0 ? `چان يبالغ ${Math.round(r.calib)}٪` : `چان يقلّل ${Math.round(-r.calib)}٪`})</p>}
+              {r.calib !== 0 && <p className="mt-1 text-[10px] text-[var(--mx-muted)]">🧠 مصحّح حسب أخطائه السابقة ({r.calib > 0 ? 'چان يبالغ ' : 'چان يقلّل '}<PctWhy title="تصحيح التوقع" value={Math.round(Math.abs(r.calib))} suffix="٪"
+                formula={<>معدّل خطأ آخر ٣ أحكام لنفس التوقع (يحتاج حكمين على الأقل)، وكل خطأ = (التوقع − الحقيقي) ÷ الحقيقي × ١٠٠. المعدّل هسه {Math.round(r.calib)}٪ (محصور بين −٣٠ و+٣٠).</>}
+                meaning={<>إذا موجب يعني چان يتوقع أكثر من الي يصير فينزّل توقعه، وإذا سالب يعلّيه. التصحيح ينطبق على الجزء الي بعده ما صار من الشهر بس — المنجز لحد اليوم ثابت.</>}
+                source={<>سجل أحكام التوقعات الشهرية (سجل دقة ماتركس تحت).</>} />)</p>}
             </div>
           )
         })}
@@ -570,10 +593,14 @@ function Predictions({ biz, late, props }: { biz: MatrixBusinessData | null; lat
           {items.map((it, i) => (
             <li key={i} className="flex items-center gap-2 rounded-xl border border-[var(--mx-border)] bg-[var(--mx-sunken)] p-2">
               <span className={`min-w-[60px] rounded-lg px-2 py-1 text-center text-xs font-bold ${it.change == null ? 'bg-slate-600/30 text-[var(--mx-text)]' : it.change >= 0 ? 'bg-emerald-500/15 text-[var(--mx-ok)]' : 'bg-red-500/15 text-[var(--mx-bad)]'}`}>
-                {it.change == null ? '—' : `${it.change >= 0 ? '↗ +' : '↘ '}${it.change}%`}
+                {it.change == null ? '—' : <>{it.change >= 0 ? '↗ +' : '↘ '}<PctWhy title="تغيّر التأخير" value={it.change} formula={it.changeWhy}
+                  meaning={<>مقارنة آخر ٧ أيام بالـ٧ أيام الي قبلها. أخضر موجب = التأخير نزل، أحمر = زاد. ما تنحسب إلا إذا الأسبوع الي قبله بيه ٣ حجوزات أو أكثر ونسبة تأخير فوق الصفر.</>}
+                  source={<>الحجوزات بآخر ١٤ يوم من جدول الحجوزات: موعدها ووقت إنجازها.</>} /></>}
               </span>
               <span className="flex-1 text-[12px] text-[var(--mx-text)]">{it.text}</span>
-              <span className="rounded-full border border-[var(--mx-border)] px-1.5 py-0.5 text-[10px] text-[var(--mx-accent)]" title="الثقة حسب كمية البيانات">{it.conf}%{it.conf <= 50 && ' · بيانات قليلة'}</span>
+              <span className="rounded-full border border-[var(--mx-border)] px-1.5 py-0.5 text-[10px] text-[var(--mx-accent)]" title="الثقة حسب كمية البيانات"><PctWhy title="الثقة" value={it.conf} formula={it.confWhy}
+                meaning={<>شكد نعتمد على هذا الرقم. ٥٠% أو أقل = بيانات قليلة، خذه بحذر.</>}
+                source={<>عدد السجلات الي انبنى عليها الرقم بالنظام.</>} />{it.conf <= 50 && ' · بيانات قليلة'}</span>
             </li>
           ))}
         </ul>
@@ -589,7 +616,10 @@ function Predictions({ biz, late, props }: { biz: MatrixBusinessData | null; lat
               <b>{m}</b>
               {hist.filter((h) => h.month === m).map((h) => (
                 <p key={h.kind} className={h.verdict === 'CORRECT' ? 'text-[var(--mx-ok)]' : 'text-[var(--mx-bad)]'}>
-                  {h.verdict === 'CORRECT' ? '✓ صح' : '✗ غلط'} · {h.kind === 'JOBS' ? 'الحجوزات' : 'الإيراد'}: توقّع {h.kind === 'JOBS' ? Math.round(h.forecast) : fmtIQD(h.forecast)} — طلع {h.kind === 'JOBS' ? Math.round(h.actual) : fmtIQD(h.actual)} ({h.errorPct > 0 ? '+' : ''}{Math.round(h.errorPct)}٪)
+                  {h.verdict === 'CORRECT' ? '✓ صح' : '✗ غلط'} · {h.kind === 'JOBS' ? 'الحجوزات' : 'الإيراد'}: توقّع {h.kind === 'JOBS' ? Math.round(h.forecast) : fmtIQD(h.forecast)} — طلع {h.kind === 'JOBS' ? Math.round(h.actual) : fmtIQD(h.actual)} ({h.errorPct > 0 ? '+' : ''}<PctWhy title={`خطأ توقع ${h.month}`} value={Math.round(h.errorPct)} suffix="٪"
+                    formula={<>({h.kind === 'JOBS' ? Math.round(h.forecast) : fmtIQD(h.forecast)} توقّع − {h.kind === 'JOBS' ? Math.round(h.actual) : fmtIQD(h.actual)} طلع) ÷ {h.kind === 'JOBS' ? Math.round(h.actual) : fmtIQD(h.actual)} × ١٠٠ = <b>{Math.round(h.errorPct)}٪</b></>}
+                    meaning={<>موجب = توقع أكثر من الي صار، سالب = أقل. ضمن ±١٠٪ ينحسب «صح». إذا الشهر ما بيه شي منجز وتوقع شي، ينحسب خطأ ١٠٠٪.</>}
+                    source={<>توقع يوم ١٥ المحفوظ لهذا الشهر، مقابل الحجوزات المنجزة فعلاً بنفس الشهر من جدول الحجوزات.</>} />)
                 </p>
               ))}
             </div>

@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
+import PctWhy from '../ui/PctWhy'
 import { purchaseApi, type ProcurementRequest, type PurchaseAlert, type PurchaseBias, type StandardPrice, type StandardSuggestion, type PurchaseGroup, type PurchaseMonth, type PurchaseControlRow, type PurchasePriceRow, type SupplierReviewInput } from '../api'
 import { dinarRound as iqd, dayBaghdad } from '../utils/format'
 import { askInput } from '../ui/dialogs'
@@ -183,7 +184,7 @@ export default function PurchaseControlPanel({ requests, canBuy, canVerify, canW
               </p>
               <p className="mt-0.5">
                 {a.kind === 'OVER_STD'
-                  ? <>انشترت من <b>{a.supplier ?? '—'}</b> بـ<b>{iqd(a.unitPrice)}</b> — والستاندرد <b>{iqd(a.refPrice)}</b> (+{Math.round((a.unitPrice / a.refPrice - 1) * 100)}٪)</>
+                  ? <>انشترت من <b>{a.supplier ?? '—'}</b> بـ<b>{iqd(a.unitPrice)}</b> — والستاندرد <b>{iqd(a.refPrice)}</b> (+<PctWhy suffix="٪" title="الزيادة على الستاندرد" value={Math.round((a.unitPrice / a.refPrice - 1) * 100)} formula={<>({iqd(a.unitPrice)} سعر الشراء ÷ {iqd(a.refPrice)} السعر الستاندرد − ١) × ١٠٠</>} meaning={<>شكد انشترت المادة أغلى من سعرها المرجعي. كل ما تكبر، الخسارة أكبر (الفرق × الكمية = {iqd(a.loss)}).</>} source={<>سعر الوحدة بطلب الشراء {a.code}، والسعر الستاندرد المسجل للمادة بتبويب «الأسعار المرجعية».</>} />)</>
                   : a.kind === 'QUOTE'
                   ? <>اختار عرض <b>{a.supplier}</b> بـ<b>{iqd(a.unitPrice)}</b> — وعرض <b>{a.refSupplier}</b> چان <b>{iqd(a.refPrice)}</b></>
                   : a.kind === 'PRICIER'
@@ -204,7 +205,7 @@ export default function PurchaseControlPanel({ requests, canBuy, canVerify, canW
           {bias.length === 0 && <p className="text-sm text-slate-400">ماكو ميل واضح لمورد واحد ✓</p>}
           {bias.map((b, i) => (
             <div key={i} className={`rounded-lg border px-3 py-2 text-sm ${b.extra > 0 ? 'border-red-200 bg-red-50' : 'border-amber-200 bg-amber-50'}`}>
-              <p className="font-bold">🔁 {b.buyer} ← {b.supplier}: {Math.round(b.share * 100)}٪ من مشترياته ({b.n} من {b.total})</p>
+              <p className="font-bold">🔁 {b.buyer} ← {b.supplier}: <PctWhy suffix="٪" title="ميل المشتري للمورد" parts={{ numLabel: `شراء من ${b.supplier}`, num: b.n, denLabel: 'شراء سواه هذا المشتري', den: b.total }} meaning={<>شكد من مشتريات {b.buyer} راحت لنفس المورد. ٧٠٪ وفوق (من ٥ مشتريات فأكثر) تنعرض هنا كميل واضح — مو بالضرورة غلط، بس لازم تنشاف ويا الزيادة بالسعر.</>} source={<>طلبات الشراء الي نفذها المشتري بآخر ٩٠ يوم من سجل المشتريات.</>} /> من مشترياته ({b.n} من {b.total})</p>
               <p className="mt-0.5">
                 {b.extra > 0 ? <>دفع زيادة <b className="text-red-700">{iqd(b.extra)}</b> عن أرخص سعر — وبـ{b.cheaperAvailable} مادة چان أكو مورد أرخص.</> : 'أسعاره بنفس مستوى الأرخص — الميل بلا خسارة لحد هسه.'}
               </p>
@@ -224,10 +225,10 @@ export default function PurchaseControlPanel({ requests, canBuy, canVerify, canW
               <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
                 {(() => {
                   const diff = report.prevTotal > 0 ? Math.round((report.total / report.prevTotal - 1) * 100) : null
-                  const tiles: [string, string, string][] = [
+                  const tiles: [string, ReactNode, ReactNode][] = [
                     ['💸 المصروف', iqd(report.total), `${report.requests} شراء · ${report.count} مادة`],
-                    ['📆 الشهر السابق لنفس اليوم', iqd(report.prevTotal), diff == null ? '—' : `${diff > 0 ? '▲' : '▼'} ${Math.abs(diff)}٪ ${diff > 0 ? 'أكثر' : 'أقل'}`],
-                    ['💡 چان ممكن نوفّر', iqd(report.saving), report.total > 0 ? `${Math.round((report.saving / report.total) * 100)}٪ من المصروف` : ''],
+                    ['📆 الشهر السابق لنفس اليوم', iqd(report.prevTotal), diff == null ? '—' : <>{diff > 0 ? '▲' : '▼'} <PctWhy suffix="٪" title="الفرق عن الشهر السابق" value={Math.abs(diff)} formula={<>({iqd(report.total)} مصروف هذا الشهر ÷ {iqd(report.prevTotal)} مصروف الشهر السابق − ١) × ١٠٠ = {diff > 0 ? '+' : ''}{diff}٪</>} meaning={<>شكد صرفنا أكثر أو أقل من الشهر الي قبله. إذا الشهر بعده ما خلص، نقارن ويا نفس الأيام من الشهر السابق حتى تكون المقارنة عادلة.</>} source={<>طلبات الشراء المنفّذة (تاريخ التنفيذ) بالشهرين — التكلفة الكلية للطلب إذا مسجلة، وإلا مجموع أسعار مواده.</>} /> {diff > 0 ? 'أكثر' : 'أقل'}</>],
+                    ['💡 چان ممكن نوفّر', iqd(report.saving), report.total > 0 ? <><PctWhy suffix="٪" title="التوفير الممكن" value={Math.round((report.saving / report.total) * 100)} formula={<>{iqd(report.saving)} چان ممكن نوفّر ÷ {iqd(report.total)} المصروف × ١٠٠</>} meaning={<>لو كل مادة انشترت بأرخص سعر إلها عند مورد ثاني (بآخر ١٨٠ يوم)، شكد چان وفّرنا من مصروف الشهر. كل ما تقل أحسن.</>} source={<>لكل مادة انشترت هذا الشهر: (سعرها − أرخص سعر لنفس المادة عند مورد ثاني بآخر ١٨٠ يوم) × الكمية، من سجل المشتريات.</>} /> من المصروف</> : ''],
                     ['🚨 تنبيهات · ⏳ بلا تثبيت', `${report.alerts} · ${report.unverified}`, 'تنبيه ماتركس · شراء ما ثبّته المحاسب'],
                   ]
                   return tiles.map(([l, v, sub]) => (

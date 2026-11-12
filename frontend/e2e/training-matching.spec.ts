@@ -22,7 +22,8 @@ test('وحدة التدريب: شجرة المنهج + الماتشينغ + تق
   const track = `داش كام ${tag}`
   await page.getByPlaceholder('عنوان المسار (مثلاً: داش كام)').fill(track)
   await page.getByRole('button', { name: '+ مسار جديد' }).click()
-  const levels: [string, string, string][] = [[track, '+ تفرع أول', 'قفل باب'], ['قفل باب', '+ تفرع ثاني', 'تنصيب قفل باب'], ['تنصيب قفل باب', '+ تفرع ثالث', 'الحفر']]
+  const [b1, b2, b3] = [`قفل باب ${tag}`, `تنصيب قفل باب ${tag}`, `الحفر ${tag}`]
+  const levels: [string, string, string][] = [[track, '+ تفرع أول', b1], [b1, '+ تفرع ثاني', b2], [b2, '+ تفرع ثالث', b3]]
   for (const [parent, button, child] of levels) {
     const row = page.locator('li > div', { has: page.getByText(parent, { exact: true }) }).last()
     await row.getByRole('button', { name: button }).click()
@@ -31,7 +32,7 @@ test('وحدة التدريب: شجرة المنهج + الماتشينغ + تق
     await expect(page.getByText(child, { exact: true })).toBeVisible()
   }
   // التفرع الثالث ما تنزل تحته شي، والي بيه تفرعات ما ينحذف
-  const third = page.locator('li > div', { has: page.getByText('الحفر', { exact: true }) }).last()
+  const third = page.locator('li > div', { has: page.getByText(b3, { exact: true }) }).last()
   await expect(third.getByRole('button', { name: /^\+/ })).toHaveCount(0)
   const trackRow = page.locator('li > div', { has: page.getByText(track, { exact: true }) }).first()
   await expect(trackRow.getByRole('button', { name: 'حذف' })).toHaveCount(0)

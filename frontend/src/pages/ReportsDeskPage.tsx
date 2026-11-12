@@ -2,6 +2,7 @@ import { Suspense, useEffect, useState } from 'react'
 import { api, type ProgressRecentRow } from '../api'
 import BookingProgressTimeline from '../components/BookingProgressTimeline'
 import { lazyRetry } from '../utils/staleReload'
+import PctWhy from '../ui/PctWhy'
 
 // ═══ «📑 تقارير الحجوزات والمشاريع» — (ع) 10-16 ═══
 // «وين المراقب يشوف التقارير مال الحجوزات ومال المشاريع؟» — بمكان واحد:
@@ -60,7 +61,10 @@ function ProjectReports() {
             <span className="text-sm text-slate-600">{r.customerName ?? '—'}</span>
             {r.leaderName && <span className="text-xs text-slate-500">👷 الليدر: {r.leaderName}</span>}
             <span className="rounded-full bg-sky-50 px-2 py-0.5 text-xs font-bold text-sky-700">{r.reports} تقرير · آخرها اليوم {r.lastDay}</span>
-            <span className={`rounded-full px-2 py-0.5 text-xs font-bold ${r.lastPercent >= 100 ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'}`}>{r.lastPercent}%</span>
+            <span className={`rounded-full px-2 py-0.5 text-xs font-bold ${r.lastPercent >= 100 ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'}`}><PctWhy title={`إنجاز ${r.bookingCode}`} value={r.lastPercent}
+              formula={<>هذي مو حسبة — هي «نسبة الإنجاز» الي كتبها الفريق بآخر تقرير يومي (اليوم {r.lastDay}) لهذا الحجز. انكتب للحجز {r.reports} تقرير لحد هسه.</>}
+              meaning={<>شكد خلص من الشغل حسب تقدير الفريق بالموقع. 100% يعني خلص (تطلع خضرة)، أقل يعني بعده شغّال (تطلع صفرة). {r.unreviewed > 0 ? `بعد ${r.unreviewed} تقرير ما متدقّق، فالرقم ما مأكد من الإدارة.` : 'كل تقاريره متدقّقة.'}</>}
+              source={<>جدول التقارير اليومية للحجوزات: نأخذ نسبة الإنجاز من أحدث تقرير انكتب لهذا الحجز.</>} /></span>
             {r.unreviewed > 0
               ? <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-bold text-amber-800">⏳ {r.unreviewed} تنتظر التدقيق</span>
               : <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-bold text-emerald-700">✅ متدقّقة</span>}

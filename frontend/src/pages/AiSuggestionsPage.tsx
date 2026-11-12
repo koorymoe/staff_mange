@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { apiRequest } from '../api'
 import { useSession, isAdminOrOwner } from '../session'
+import PctWhy from '../ui/PctWhy'
 import '../components/AiBrains.css'
 
 type Decision = 'ACCEPTED' | 'REJECTED' | 'DONE'
@@ -407,12 +408,15 @@ function AgentHealth() {
               <>
                 <h2>
                   🧪 الامتحان: {a.evals[0].passed} من {a.evals[0].total} (
-                  {Math.round((a.evals[0].passed * 100) / a.evals[0].total)}٪)
+                  <PctWhy suffix="٪" title="نتيجة آخر امتحان" parts={{ numLabel: 'سؤال نجح', num: a.evals[0].passed, denLabel: 'سؤال بالامتحان', den: a.evals[0].total }} meaning={<>شكد سؤال من أسئلة الامتحان الثابتة جاوبه الوكيل صح. كل سؤال ينجح إذا استعمل الأداة الصح، وجوابه بيه الي لازم يكون، وما بيه شي ممنوع. تنزل إذا تغيّر شي بالوكيل وخرّب جواب كان صح.</>} source={<>امتحان الوكلاء: أسئلة ثابتة تشتغل بعد كل نشر (ومرة بالأسبوع على الأقل)، ونتيجة كل جولة تنحفظ بتاريخها.</>} />)
                 </h2>
                 <p>
-                  {a.evals
-                    .map((e) => `${Math.round((e.passed * 100) / e.total)}٪ ${new Date(e.at).toLocaleDateString('ar-IQ')}`)
-                    .join(' ← ')}
+                  {a.evals.map((e, i) => (
+                    <span key={e.at}>
+                      {i > 0 && ' ← '}
+                      <PctWhy suffix="٪" title={`امتحان ${new Date(e.at).toLocaleDateString('ar-IQ')}`} parts={{ numLabel: 'سؤال نجح', num: e.passed, denLabel: 'سؤال بالامتحان', den: e.total }} meaning={<>شكد سؤال من أسئلة الامتحان الثابتة جاوبه الوكيل صح. كل سؤال ينجح إذا استعمل الأداة الصح، وجوابه بيه الي لازم يكون، وما بيه شي ممنوع. تنزل إذا تغيّر شي بالوكيل وخرّب جواب كان صح.</>} source={<>امتحان الوكلاء: أسئلة ثابتة تشتغل بعد كل نشر (ومرة بالأسبوع على الأقل)، ونتيجة كل جولة تنحفظ بتاريخها.</>} /> {new Date(e.at).toLocaleDateString('ar-IQ')}
+                    </span>
+                  ))}
                 </p>
                 {(a.evals[0].details ?? [])
                   .filter((d) => !d.pass)

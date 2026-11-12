@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { api, type StaffScore } from '../api'
+import PctWhy from '../ui/PctWhy'
 import RoleSplit, { SummaryCard } from '../components/RoleSplit'
 
 // ═══ 📈 مؤشرات أداء الموظف — طلب (ع) 10-08 ═══
@@ -11,29 +12,52 @@ import RoleSplit, { SummaryCard } from '../components/RoleSplit'
 const tone = (v: number | null) => (v == null ? 'text-slate-400' : v >= 85 ? 'text-emerald-600' : v >= 65 ? 'text-amber-600' : 'text-red-600')
 const bar = (v: number) => (v >= 85 ? 'bg-emerald-500' : v >= 65 ? 'bg-amber-500' : 'bg-red-500')
 
+// شلون ينحسب كل مؤشر بالسيرفر (BuildReliability بـ matrix_score_groups.go)
+const PART_WHY: Record<string, string> = {
+  ATTENDANCE: 'نقاط ماتركس الي أخذها على تسجيل الحضور ÷ أعلى نقاط ممكنة بالشهر (كل يوم دوام إله نقاط).',
+  INVENTORY: 'نقاط ماتركس الي أخذها على جرد عدّته ÷ أعلى نقاط ممكنة (كل جرد مطلوب إله نقاط).',
+  PAPER: 'نقاط ماتركس على تخليص ورق الحجز (تقرير/فاتورة) بوقته ÷ أعلى نقاط ممكنة.',
+  TASK_DUE: 'نقاط ماتركس على تخليص المهام والتوجيهات بوقتها ÷ أعلى نقاط ممكنة.',
+  COMPLAINTS: 'تبدي ١٠٠ وتنقص ٢٥ عن كل شكوى زبون عليه بالشهر (أوطى شي صفر).',
+  LEAVES: 'تبدي ١٠٠؛ أول يومين إجازة بالشهر طبيعي، وكل يوم زايد ينقص ١٠ (أوطى شي صفر).',
+  PEERS: 'تبدي ١٠٠ وتنقص ٢٥ عن كل مشكلة وظيفية ويا زملائه.',
+  TOOLS: 'تبدي ١٠٠ وتنقص ٢٥ عن كل عدّة ضاعت أو تلفت عليه.',
+  KPI: 'تبدي ١٠٠ وتنقص ٢٠ عن كل نقطة KPI عليه.',
+}
+
 function Card({ s }: { s: StaffScore }) {
   const [open, setOpen] = useState(false)
   const r = s.reliability
   return (
     <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-      <button type="button" onClick={() => setOpen((o) => !o)} className="flex w-full items-center justify-between gap-3 text-right">
-        <div className="min-w-0">
+      <div className="flex w-full items-center justify-between gap-3 text-right">
+        <button type="button" onClick={() => setOpen((o) => !o)} className="min-w-0 flex-1 text-right">
           <p className="truncate text-base font-extrabold text-slate-800">{s.name}</p>
           <div className="mt-1 flex flex-wrap gap-1 text-[11px]">
             {s.isLeader && <span className="rounded-full bg-indigo-100 px-2 py-0.5 font-bold text-indigo-700">👑 ليدر</span>}
             <span className={`rounded-full px-2 py-0.5 font-bold ${s.hasLicense ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-500'}`}>{s.hasLicense ? '🚗 عنده إجازة سوق' : '🚫 بلا إجازة سوق'}</span>
             <span className="rounded-full bg-sky-50 px-2 py-0.5 font-bold text-sky-700">🧰 {s.skills ?? 0} مهارة/خدمة</span>
           </div>
-        </div>
+        </button>
         <div className="shrink-0 text-center">
-          <p className={`text-3xl font-black tabular-nums ${tone(r)}`}>{r == null ? '—' : `${Math.round(r)}%`}</p>
+          <p className={`text-3xl font-black tabular-nums ${tone(r)}`}>
+            <PctWhy title={`اعتمادية ${s.name}`} value={r == null ? null : Math.round(r)}
+              formula={r == null ? <>ماكو بيانات كافية هالشهر حتى تنحسب.</> : <>معدل بسيط لـ {s.reliabilityParts.length} مؤشر: ({s.reliabilityParts.map((p) => Math.round(p.pct)).join(' + ')}) ÷ {s.reliabilityParts.length} = {Math.round(r)}%.</>}
+              meaning={<>شكد تكدر تعتمد على هالموظف بالتزامه. ٨٥ وفوگ عالية (أخضر)، ٦٥–٨٥ وسط، أقل من ٦٥ تحتاج متابعة. أي مؤشر ينزل (غياب، شكوى، ورق متأخر…) يسحب المعدل وياه. المهارات وإجازة السوق والليدرية ما تدخل بيها.</>}
+              source={<>نقاط ماتركس للشهر (الحضور، الجرد، الورق، المهام) + الشكاوى والإجازات والمشاكل وضياع العدّة ونقاط الـKPI المسجلة عليه بالنظام.</>}>
+              <ul className="space-y-1 text-xs">{s.reliabilityParts.map((p) => <li key={p.key}>• {p.label}: <b>{Math.round(p.pct)}%</b> — {p.detail}</li>)}</ul>
+            </PctWhy>
+          </p>
           <p className="text-[10px] text-slate-400">الاعتمادية</p>
         </div>
-      </button>
+      </div>
       <div className="mt-3 space-y-1.5">
         {(open ? s.reliabilityParts : s.reliabilityParts.slice().sort((a, b) => a.pct - b.pct).slice(0, 3)).map((p) => (
           <div key={p.key}>
-            <div className="flex justify-between text-xs"><span className="text-slate-600">{p.label}</span><span className="font-bold tabular-nums">{Math.round(p.pct)}%</span></div>
+            <div className="flex justify-between text-xs"><span className="text-slate-600">{p.label}</span><PctWhy title={p.label} value={Math.round(p.pct)} className="font-bold tabular-nums"
+              formula={<>{PART_WHY[p.key] ?? 'تنحسب بالسيرفر من سجلات هالموظف.'} هسه: {p.detail} → {Math.round(p.pct)}%.</>}
+              meaning={<>جزء من نسبة الاعتمادية؛ كل ما يعلى أحسن، وينزل وية كل تقصير ينحسب بهالمؤشر.</>}
+              source={<>سجلات هالموظف بالشهر المختار (نقاط ماتركس أو الشكاوى/الإجازات/المشاكل/العدّة/الـKPI حسب المؤشر).</>} /></div>
             <div className="h-1.5 rounded-full bg-slate-100"><div className={`h-1.5 rounded-full ${bar(p.pct)}`} style={{ width: `${Math.max(2, p.pct)}%` }} /></div>
             {open && <p className="text-[11px] text-slate-400">{p.detail}</p>}
           </div>
@@ -67,7 +91,10 @@ export default function EmployeeIndicatorsPage() {
         <>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
             <SummaryCard label="موظفين" value={rows?.length ?? 0} />
-            <SummaryCard label="معدل الاعتمادية" value={avg == null ? '—' : `${Math.round(avg)}%`} tone={avg == null ? undefined : avg >= 85 ? 'good' : avg >= 65 ? 'mid' : 'bad'} />
+            <SummaryCard label="معدل الاعتمادية" value={<PctWhy title="معدل الاعتمادية" value={avg == null ? null : Math.round(avg)}
+              formula={<>مجموع اعتمادية {rated.length} موظف عنده نسبة ÷ {rated.length} = {avg == null ? '—' : Math.round(avg)}%. الموظف الي ماعنده بيانات كافية ما يدخل.</>}
+              meaning={<>معدل التزام الكادر كله بالشهر. ٨٥ وفوگ زين، أقل من ٦٥ يحتاج وقفة.</>}
+              source={<>نسب الاعتمادية الي بالبطاقات جوة (بلا المدراء والمالك).</>} />} tone={avg == null ? undefined : avg >= 85 ? 'good' : avg >= 65 ? 'mid' : 'bad'} />
             <SummaryCard label="اعتمادية عالية (٨٥+)" value={rated.filter((s) => (s.reliability ?? 0) >= 85).length} tone="good" />
             <SummaryCard label="تحتاج متابعة (<٦٥)" value={rated.filter((s) => (s.reliability ?? 0) < 65).length} tone="bad" />
           </div>

@@ -3,6 +3,7 @@ import { matches } from '../../utils/search'
 import { todayBaghdad } from '../../utils/format'
 import { type Project, CATEGORIES, categoryColor, parseRejection, restoreRejected, useCanPurge, purgeRejected } from './shared'
 import { RejStat } from './ui'
+import PctWhy from '../../ui/PctWhy'
 
 // ---------------------------------------------------------------------------
 // Rejection analytics view
@@ -15,7 +16,6 @@ export function RejectionView({ projects, canManage, onRefresh }: { projects: Pr
   const [expanded, setExpanded] = useState<string | null>(null)
 
   const rejected = projects.filter(p => p.stage.includes('مرفوض'))
-  const total = projects.length || 1
 
   const grouped = useMemo(() => {
     const map: Record<string, { reason: string; category: string; projects: Project[]; lastDate: string | null }> = {}
@@ -63,7 +63,15 @@ export function RejectionView({ projects, canManage, onRefresh }: { projects: Pr
       {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <RejStat label="إجمالي المرفوضات" value={rejected.length} color="from-red-500 to-red-700" />
-        <RejStat label="نسبة الرفض" value={`${Math.round((rejected.length / total) * 100)}%`} color="from-amber-400 to-orange-500" />
+        {/* نفس شكل RejStat، بس الرقم ينضغط ويطلّع منين جا */}
+        <div className="bg-gradient-to-br from-amber-400 to-orange-500 text-white rounded-xl p-4 text-center">
+          <div className="font-bold text-3xl my-1">
+            <PctWhy title="نسبة الرفض" parts={{ numLabel: 'مشروع مرفوض', num: rejected.length, denLabel: 'مشروع بالقائمة (كل المراحل)', den: projects.length }}
+              meaning={<>من كل المشاريع المسجّلة، شكد منها مرحلته «مرفوض». كل ما أقل أحسن — تصعد إذا هواي زبائن يرفضون بعد الكشف أو السعر.</>}
+              source={<>قائمة المشاريع المحمّلة بهذي الصفحة: نعدّ المشاريع الي مرحلتها «مرفوض» ونقسمها على عدد كل المشاريع.</>} />
+          </div>
+          <div className="text-xs opacity-90">نسبة الرفض</div>
+        </div>
         <RejStat label="الفئات المختلفة" value={new Set(rejected.map(p => parseRejection(p.task).category)).size} color="from-gray-500 to-gray-700" />
         <RejStat label="آخر رفض" value={lastDate} color="from-cyan-500 to-cyan-700" small />
       </div>

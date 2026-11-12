@@ -18,6 +18,7 @@ import MatrixMissions from './MatrixMissions'
 import ReplacementSuggestionsPanel from './ReplacementSuggestionsPanel'
 import { pollVisible } from '../utils/poll'
 import { drillTo } from '../utils/drill'
+import PctWhy, { type PctParts } from '../ui/PctWhy'
 import { roleLabel } from '../roleLabels'
 import { num as fmt, dinarK as money } from '../utils/format'
 import { askInput } from '../ui/dialogs'
@@ -89,7 +90,8 @@ const TONE: Record<Tone, { card: string; ink: string; chip: string }> = {
 // بطاقة رقم بتصميم (ع) 10-04: لون خفيف، أيقونة بدائرة، والرقم كبير.
 // (ع): «من اضغط ع شي يوديني عليه» — كل بطاقة تفتح الشاشة الي تفصّلها (to).
 // تصميم (ع) 10-13: سهم ‹ تحت لكل بطاقة تودّي لتفاصيلها، وشريط نسبة اختياري.
-function Stat({ label, value, hint, tone = 'slate', to, icon, big, pct, onClick, active }: { label: string; value: ReactNode; hint?: ReactNode; tone?: Tone; to?: string; icon?: string; big?: boolean; pct?: number | null; onClick?: () => void; active?: boolean }) {
+type StatWhy = { title: string; parts: PctParts; meaning: ReactNode; source: ReactNode }
+function Stat({ label, value, hint, tone = 'slate', to, icon, big, pct, why, onClick, active }: { label: string; value: ReactNode; hint?: ReactNode; tone?: Tone; to?: string; icon?: string; big?: boolean; pct?: number | null; why?: StatWhy; onClick?: () => void; active?: boolean }) {
   const t = TONE[tone]
   const p = pct == null || !isFinite(pct) ? null : Math.max(0, Math.min(100, Math.round(pct)))
   const body = (
@@ -109,7 +111,9 @@ function Stat({ label, value, hint, tone = 'slate', to, icon, big, pct, onClick,
       {p != null && (
         <div className="mt-2 flex items-center gap-2">
           <div className="h-2 flex-1 rounded-full bg-white/80"><div className={`h-2 rounded-full ${tone === 'blue' ? 'bg-sky-500' : tone === 'amber' ? 'bg-amber-500' : 'bg-emerald-500'}`} style={{ width: `${p}%` }} /></div>
-          <span className={`text-[11px] font-extrabold tabular-nums ${t.ink}`}>{p}%</span>
+          {why
+            ? <PctWhy title={why.title} value={p} parts={why.parts} meaning={why.meaning} source={why.source} className={`text-[11px] font-extrabold tabular-nums ${t.ink}`} />
+            : <span className={`text-[11px] font-extrabold tabular-nums ${t.ink}`}>{p}%</span>}
         </div>
       )}
     </>
@@ -386,10 +390,19 @@ export function FollowBoard({ monitor = false }: { monitor?: boolean } = {}) {
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                   {/* قرار (ع) 10-09: فلوس الحجوزات مفصولة عن فلوس المشاريع. النِّسب كلها من نفس الأرقام */}
                   {!monitor && <>
-                  <Stat icon="💳" label="المقبوض من الحجوزات" to="/finance" value={money(booked)} hint={`نصيبها من كل المقبوض ${money(finance.totalCollected)}`} tone="green" pct={finance.totalCollected ? (booked / finance.totalCollected) * 100 : null} />
-                  <Stat icon="🏗️" label="المقبوض من المشاريع" to="/project-payments" value={money(projects)} hint={`نصيبها من كل المقبوض ${money(finance.totalCollected)}`} tone="green" pct={finance.totalCollected ? (projects / finance.totalCollected) * 100 : null} />
+                  <Stat icon="💳" label="المقبوض من الحجوزات" to="/finance" value={money(booked)} hint={`نصيبها من كل المقبوض ${money(finance.totalCollected)}`} tone="green" pct={finance.totalCollected ? (booked / finance.totalCollected) * 100 : null}
+                    why={{ title: 'نصيب الحجوزات من المقبوض', parts: { numLabel: 'دينار مقبوض من الحجوزات', num: Math.round(booked), denLabel: 'دينار كل المقبوض (حجوزات + مشاريع)', den: Math.round(finance.totalCollected) },
+                      meaning: <>شكد من الفلوس الي دخلت جاية من الحجوزات. الباقي جاي من دفعات المشاريع. تزيد كل ما ينقبض مبلغ حجز أكثر.</>,
+                      source: <>مبالغ الحجوزات المقبوضة من جدول الحجوزات، ودفعات المشاريع غير الملغية من جدول دفعات المشاريع — كل الأيام.</> }} />
+                  <Stat icon="🏗️" label="المقبوض من المشاريع" to="/project-payments" value={money(projects)} hint={`نصيبها من كل المقبوض ${money(finance.totalCollected)}`} tone="green" pct={finance.totalCollected ? (projects / finance.totalCollected) * 100 : null}
+                    why={{ title: 'نصيب المشاريع من المقبوض', parts: { numLabel: 'دينار دفعات مشاريع', num: Math.round(projects), denLabel: 'دينار كل المقبوض (حجوزات + مشاريع)', den: Math.round(finance.totalCollected) },
+                      meaning: <>شكد من الفلوس الي دخلت جاية من دفعات المشاريع. تزيد كل ما تنسجل دفعة مشروع.</>,
+                      source: <>دفعات المشاريع غير الملغية من جدول دفعات المشاريع، مقسومة على كل المقبوض (حجوزات + مشاريع) — كل الأيام.</> }} />
                   </>}
-                  <Stat icon="🪙" tone="blue" label="مدقّق" to={drillTo('verified')} value={money(finance.verifiedAmount)} hint={`${fmt(finance.verifiedCount)} حجز المحاسب دقّق مبلغه · من أصل ${money(audited)} — كل الأيام`} pct={audited ? (finance.verifiedAmount / audited) * 100 : null} />
+                  <Stat icon="🪙" tone="blue" label="مدقّق" to={drillTo('verified')} value={money(finance.verifiedAmount)} hint={`${fmt(finance.verifiedCount)} حجز المحاسب دقّق مبلغه · من أصل ${money(audited)} — كل الأيام`} pct={audited ? (finance.verifiedAmount / audited) * 100 : null}
+                    why={{ title: 'نسبة المدقّق', parts: { numLabel: 'دينار المحاسب دقّقه', num: Math.round(finance.verifiedAmount), denLabel: 'دينار مقبوض من الحجوزات (مدقّق + بانتظار التدقيق)', den: Math.round(audited) },
+                      meaning: <>شكد من فلوس الحجوزات المقبوضة المحاسب تأكد منها. كل ما تقرب لـ100% أحسن؛ تنزل لمن تتراكم حجوزات منجزة بلا تدقيق ({fmt(finance.unverifiedCount)} حجز هسه).</>,
+                      source: <>الحجوزات المقبوضة من جدول الحجوزات: الي مأشر عليها «مدقّق» ({fmt(finance.verifiedCount)} حجز) مقابل الي بعدها — كل الأيام.</> }} />
                   <Stat icon="⏰" label="بانتظار التدقيق" to={drillTo('unverified')} value={money(finance.unverifiedAmount)} hint={`${fmt(finance.unverifiedCount)} حجز منجز بعده ما تدقّق — كل الأيام`} tone={finance.unverifiedCount ? 'amber' : 'slate'} />
                 </div>
               )

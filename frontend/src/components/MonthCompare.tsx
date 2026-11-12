@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { api, type MonthStats } from '../api'
 import { numRound as fmt, dinarK as money } from '../utils/format'
+import PctWhy from '../ui/PctWhy'
 
 // ═══ مقارنة الأشهر — قرار (ع) 10-10 ═══
 // «شهر التاسع جان بي ٢٠ مشروع و٢٠٠ حجز والمبالغ ٤٠٠ مليون، وشهر العاشر…».
@@ -59,7 +60,10 @@ export default function MonthCompare() {
           <div className="rounded-2xl border border-violet-200 bg-violet-50/60 p-4 text-sm leading-relaxed text-violet-950">
             <b>🤖 الخلاصة:</b> {AR_MONTH(a)} جان بي {fmt(A.projectsCreated)} مشروع و{fmt(A.bookingsCreated)} حجز وفلوس {money(totalA)}.
             {' '}أما {AR_MONTH(b)} فبي {fmt(B.projectsCreated)} مشروع و{fmt(B.bookingsCreated)} حجز وفلوس {money(totalB)}
-            {totalA > 0 && <> — الفلوس {totalB >= totalA ? 'زادت' : 'نزلت'} {Math.abs(Math.round(((totalB - totalA) / totalA) * 100))}%</>}.
+            {totalA > 0 && <> — الفلوس {totalB >= totalA ? 'زادت' : 'نزلت'} <PctWhy title="فرق الفلوس بين الشهرين" value={Math.abs(Math.round(((totalB - totalA) / totalA) * 100))}
+              formula={<>({money(totalB)} {AR_MONTH(b)} − {money(totalA)} {AR_MONTH(a)}) ÷ {money(totalA)} × ١٠٠. وكل شهر = فلوس الحجوزات + فلوس المشاريع.</>}
+              meaning={<>شكد الفلوس الداخلة {totalB >= totalA ? 'زادت' : 'نزلت'} بـ{AR_MONTH(b)} مقارنة بـ{AR_MONTH(a)}.{b === now ? ' الشهر الحالي بعده ما خلص، فالمقارنة ممكن تتغير.' : ''} المصاريف ما تنطرح منها.</>}
+              source={<>نفس أرقام الجدول تحت («فلوس الحجوزات» و«فلوس المشاريع») من الخادم، بنفس تعريفها بباقي النظام.</>} /></>}.
             {b === now && <span className="block text-xs text-violet-700">⏳ {AR_MONTH(b)} بعده ما خلص، فأرقامه لحد اليوم.</span>}
           </div>
           <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-sm">
@@ -74,14 +78,17 @@ export default function MonthCompare() {
                   const diff = vb - va
                   const up = diff > 0
                   const better = diff === 0 ? null : up === r.good
-                  const pctTxt = va > 0 ? ` (${up ? '+' : ''}${Math.round((diff / va) * 100)}%)` : ''
+                  const pctV = va > 0 ? Math.round((diff / va) * 100) : null
                   return (
                     <tr key={r.key}>
                       <td className="p-3 text-slate-700">{r.label}</td>
                       <td className="p-3 font-bold">{r.money ? money(va) : fmt(va)}</td>
                       <td className="p-3 font-bold">{r.money ? money(vb) : fmt(vb)}</td>
                       <td className={`p-3 text-xs font-extrabold ${better == null ? 'text-slate-400' : better ? 'text-emerald-700' : 'text-red-600'}`}>
-                        {diff === 0 ? 'نفسه' : `${up ? '▲' : '▼'} ${r.money ? money(Math.abs(diff)) : fmt(Math.abs(diff))}${pctTxt}`}
+                        {diff === 0 ? 'نفسه' : <>{up ? '▲' : '▼'} {r.money ? money(Math.abs(diff)) : fmt(Math.abs(diff))}{pctV != null && <> ({up ? '+' : ''}<PctWhy title={`فرق «${r.label}»`} value={pctV}
+                          formula={<>({r.money ? money(vb) : fmt(vb)} − {r.money ? money(va) : fmt(va)}) ÷ {r.money ? money(va) : fmt(va)} × ١٠٠ = <b>{pctV}%</b></>}
+                          meaning={<>شكد تغيّر هذا البند بـ{AR_MONTH(b)} نسبةً لـ{AR_MONTH(a)}. {r.good ? 'زيادته شي زين (أخضر).' : 'زيادته مو زينة (حمرة) — نقصانه أحسن.'}</>}
+                          source={<>أرقام الشهرين من الخادم لهذا البند، بنفس تعريفه بباقي النظام.</>} />)</>}</>}
                       </td>
                     </tr>
                   )

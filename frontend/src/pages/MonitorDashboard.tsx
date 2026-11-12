@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import { api, type Booking, type Employee, type Stats, type VehicleScoreSummary, type TechnicianWashSummary, type FinanceSummary } from '../api'
 import { useSession } from '../session'
+import PctWhy from '../ui/PctWhy'
 import StatTile from '../components/StatTile'
 import SearchBar from '../components/SearchBar'
 import Pager from '../components/Pager'
@@ -679,7 +680,10 @@ export default function MonitorDashboard() {
                               v.averageScore >= 0.85 ? 'bg-emerald-100 text-emerald-700' :
                               v.averageScore >= 0.7 ? 'bg-lime-100 text-lime-700' :
                               v.averageScore >= 0.5 ? 'bg-amber-100 text-amber-700' : 'bg-red-100 text-red-700'
-                            }`}>{Math.round(v.averageScore * 100)}%</span>
+                            }`}><PctWhy title={`نتيجة ${v.vehicleName}`} value={Math.round(v.averageScore * 100)}
+                              formula={<>معدل نتائج {v.ratingsCount} تقييم يومي للسيارة بآخر ٣٠ يوم = {Math.round(v.averageScore * 100)}%. نتيجة كل يوم = مجموع (درجة كل بند من ٤ × وزنه) ÷ مجموع (٤ × وزن البنود المقيّمة).</>}
+                              meaning={<>شكد السيارة نظيفة وسليمة حسب تقييم المراقب اليومي (البرّا، الإطارات، الزجاج، الأضوية، الأعطال، الداخل، المقاعد، الريحة…). ٨٥٪ وفوگ ممتاز، أقل من ٥٠٪ سيئة. الغسل ما يدخل بنتيجة اليوم.</>}
+                              source={<>التقييمات اليومية للسيارات المسجلة بالنظام (من شاشة تقييم السيارة) من آخر ٣٠ يوم.</>} /></span>
                           </td>
                         </tr>
                       ))}

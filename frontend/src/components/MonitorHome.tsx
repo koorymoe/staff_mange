@@ -1,5 +1,5 @@
 import { positionTitle } from '../roleLabels'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { drillTo } from '../utils/drill'
 import { api, type FinanceSummary, type MatrixWatch, type MonitorReview, type TodayBoardData } from '../api'
@@ -9,6 +9,7 @@ import { num as fmt } from '../utils/format'
 import { card } from '../ui/classes'
 import { swallow } from '../utils/swallow'
 import MatrixProofModal from './MatrixProofModal'
+import PctWhy from '../ui/PctWhy'
 
 // ═══ الواجهة الرئيسية للمراقب — بتصميم (ع) 10-04 ═══
 // ترحيب وساعة، أربع بطاقات، حركة الحجوزات، أهم التنبيهات (صندوق المراقب)،
@@ -29,7 +30,7 @@ function Clock() {
   )
 }
 
-function StatCard({ label, value, to, tone, icon, onClick }: { label: string; value: number | string; to: string | null; tone: 'blue' | 'green' | 'amber' | 'red'; icon: string; onClick?: () => void }) {
+function StatCard({ label, value, to, tone, icon, onClick }: { label: string; value: ReactNode; to: string | null; tone: 'blue' | 'green' | 'amber' | 'red'; icon: string; onClick?: () => void }) {
   const t = {
     blue: 'border-sky-200 bg-sky-50/60 text-sky-700',
     green: 'border-emerald-200 bg-emerald-50/60 text-emerald-700',
@@ -132,7 +133,6 @@ export default function MonitorHome() {
     const a = p.slice(0, 7).reduce((s, x) => s + x.count, 0), b = p.slice(7).reduce((s, x) => s + x.count, 0)
     return a > 0 ? Math.round(((b - a) / a) * 100) : null
   }, [board])
-  const success = board && board.weekTotal > 0 ? Math.round((board.weekCompleted / board.weekTotal) * 100) : null
 
   return (
     <div dir="rtl" className="space-y-4">
@@ -154,7 +154,8 @@ export default function MonitorHome() {
         {/* (ع) 10-19: «استقرارية النظام ونسبة نجاح الأسبوع لازم تطلع عد المراقب» —
             نفس حساب لوحة المدير بالضبط (TodayBoard وMatrixCommandCenter). */}
         <StatCard label="نجاح الأسبوع"
-          value={board ? (board.weekTotal > 0 ? `${Math.round((board.weekCompleted / board.weekTotal) * 100)}٪` : '—') : '…'}
+          value={board ? <PctWhy title="نجاح الأسبوع" suffix="٪" parts={{ numLabel: 'حجز مكتمل', num: board.weekCompleted, denLabel: 'حجز انسجّل بآخر ٧ أيام', den: board.weekTotal }}
+            meaning={<>من كل الحجوزات الي انسجّلت بآخر ٧ أيام (اليوم و٦ أيام قبله)، شكد منها صار «مكتمل». تعلى لمن الكادر يخلّص الحجوزات؛ تنزل لمن تتأجل أو تبقى مفتوحة أو تنلغي. نفس حسبة لوحة المدير.</>} source={<>جدول الحجوزات: الحجوزات المنسجّلة خلال آخر ٧ أيام وحالتها هسه — نفس قائمة «حجوزات آخر ٧ أيام».</>} /> : '…'}
           to={drillTo('week')} tone="green" icon="📈" />
         <StatCard label="استقرار النظام" to={null} value={stability == null ? '…' : `${stability}٪`} tone="blue" icon="〰️" onClick={stability == null ? undefined : () => setProof(true)} />
       </div>
@@ -163,7 +164,11 @@ export default function MonitorHome() {
         <section className={`${card} lg:col-span-3`}>
           <div className="mb-2 flex items-center justify-between">
             <h3 className="font-extrabold text-[#0f2040]">حركة الحجوزات — آخر ١٤ يوم</h3>
-            {change != null && <span className={`rounded-full px-2.5 py-0.5 text-xs font-bold ${change >= 0 ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-700'}`}>{change >= 0 ? '↗' : '↘'} {Math.abs(change)}% مقارنة بالأسبوع السابق</span>}
+            {change != null && <span className={`rounded-full px-2.5 py-0.5 text-xs font-bold ${change >= 0 ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-700'}`}>{change >= 0 ? '↗' : '↘'} <PctWhy title="حركة الحجوزات" value={Math.abs(change)}
+              formula={(() => { const p = board?.last14 ?? []; const a = p.slice(0, 7).reduce((x, d) => x + d.count, 0), b = p.slice(7).reduce((x, d) => x + d.count, 0)
+                return <>حجوزات انسجّلت بآخر ٧ أيام {b}، وبالـ٧ أيام الي قبلها {a}. ({b} − {a}) ÷ {a} × ١٠٠ = <b>{change >= 0 ? '+' : '−'}{Math.abs(change)}%</b></> })()}
+              meaning={<>{change >= 0 ? 'زيادة' : 'نقص'} بعدد الحجوزات الجديدة المنسجّلة هالأسبوع مقارنة بالأسبوع الي قبله — يعني شكد الطلب على الشغل. ما تقيس الإنجاز.</>}
+              source={<>جدول الحجوزات: عدد الحجوزات المنسجّلة بكل يوم من آخر ١٤ يوم (بتوقيت بغداد) — نفس المخطط تحت.</>} /> مقارنة بالأسبوع السابق</span>}
           </div>
           <Chart points={board?.last14 ?? []} />
         </section>
@@ -202,7 +207,9 @@ export default function MonitorHome() {
                     <span className="text-lg">{['🥇', '🥈', '🥉'][i]}</span>
                     <Link to={`/matrix/employee/${c.employeeId}`} className="w-28 truncate text-sm font-bold text-slate-800 hover:underline">{c.name}</Link>
                     <div className="h-2 flex-1 rounded-full bg-slate-100"><div className="h-2 rounded-full bg-gradient-to-l from-emerald-500 to-sky-500" style={{ width: `${pct}%` }} /></div>
-                    <span className="w-16 text-left text-xs text-slate-500"><b className="text-slate-800">{c.visits}</b> حجز · {pct}%</span>
+                    <span className="w-16 text-left text-xs text-slate-500"><b className="text-slate-800">{c.visits}</b> حجز · <PctWhy title={`طلعات ${c.name} المخلّصة`} parts={{ numLabel: 'طلعة خلّص بيها الحجز', num: c.done, denLabel: 'طلعة طلعها هالشهر', den: c.visits }}
+                      meaning={<>من كل طلعات هالشهر الي هو بكادرها، شكد منها خلّص الحجز بنفس الطلعة (مو إنجاز جزئي). الترتيب هنا حسب عدد الطلعات أول شي.</>}
+                      source={<>طلعات الحجوزات المسجّلة هالشهر (بتوقيت بغداد) ويا كادر كل طلعة — للموظفين الفعّالين.</>} /></span>
                   </li>
                 )
               })}
@@ -226,7 +233,8 @@ export default function MonitorHome() {
           <ul className="divide-y divide-slate-100 text-sm">
             <li className="flex items-center justify-between py-2.5"><span>👥 عدد العملاء</span><b className="text-lg">{summary ? fmt(summary.customerCount) : '…'}</b></li>
             <li className="flex items-center justify-between py-2.5"><span>💵 إجمالي الإيرادات</span><b className="text-lg">{fin ? `${fmt(Math.round(fin.totalCollected))} د.ع` : '…'}</b></li>
-            <li className="flex items-center justify-between py-2.5"><span>🎯 نسبة النجاح (أسبوع)</span><b className="text-lg">{success != null ? `${success}%` : '—'}</b></li>
+            <li className="flex items-center justify-between py-2.5"><span>🎯 نسبة النجاح (أسبوع)</span><b className="text-lg">{board ? <PctWhy title="نسبة النجاح (أسبوع)" parts={{ numLabel: 'حجز مكتمل', num: board.weekCompleted, denLabel: 'حجز انسجّل بآخر ٧ أيام', den: board.weekTotal }}
+              meaning={<>من كل الحجوزات الي انسجّلت بآخر ٧ أيام (اليوم و٦ أيام قبله)، شكد منها صار «مكتمل». تعلى لمن الكادر يخلّص الحجوزات؛ تنزل لمن تتأجل أو تبقى مفتوحة أو تنلغي. نفس حسبة لوحة المدير.</>} source={<>جدول الحجوزات: الحجوزات المنسجّلة خلال آخر ٧ أيام وحالتها هسه — نفس قائمة «حجوزات آخر ٧ أيام».</>} /> : '—'}</b></li>
           </ul>
         </section>
       </div>

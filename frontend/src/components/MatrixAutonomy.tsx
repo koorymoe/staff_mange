@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { api, type MatrixAutonomyStatus } from '../api'
 import MatrixNote from './MatrixNote'
+import PctWhy from '../ui/PctWhy'
 import OwnerSwitch from './OwnerSwitch'
 import { SWITCH_MATRIX_AUTO_CREW, SWITCH_MATRIX_MONITOR_ESCALATE } from '../systemSwitches'
 import { swallow } from '../utils/swallow'
@@ -33,7 +34,9 @@ export default function MatrixAutonomy() {
         <b className="text-sm">👷 يكلّف كادر حجز باچر ما انحدد</b>
         <p className="mt-1 text-slate-600">الساعة ٦ المسا: حجز مثبّت باچر وبلا كادر ← ماتركس يكلّف اقتراحه الكامل ويبلّغ المنسق والكادر. المنسق يتراجع من «تنسيق الحجوزات».</p>
         <p className={`mt-2 font-bold ${c.eligible ? 'text-emerald-700' : 'text-amber-700'}`}>
-          بوابة الدقة: {c.decided} اقتراح كادر انحسم بآخر ٣٠ يوم، قبول {c.decided ? `${c.pct}%` : '—'} —
+          بوابة الدقة: {c.decided} اقتراح كادر انحسم بآخر ٣٠ يوم، قبول <PctWhy title="قبول اقتراحات الكادر" value={c.decided ? c.pct : null} parts={{ numLabel: 'اقتراح كادر المنسق اعتمده كامل', num: c.accepted, denLabel: 'اقتراح كادر انحسم بآخر ٣٠ يوم', den: c.decided }}
+            meaning={<>شكد مرة المنسق مشى على اقتراح ماتركس للكادر بدون تغيير. «اعتمد جزء منه» أو «غيّره» ما تنحسب قبول. ماتركس ما يكلّف لحاله إلا إذا صار عنده {c.needDecided} اقتراح منحسم أو أكثر وقبول {c.needPct}% أو أكثر.</>}
+            source={<>اقتراحات الكادر الي ماتركس سجّلها على الحجوزات وقرار المنسق عليها (اعتمده / جزء / غيّره) بآخر ٣٠ يوم.</>} /> —
           {c.eligible ? ' ✅ مؤهل' : ` بعده مو مؤهل (يحتاج ${c.needDecided} اقتراح وقبول ${c.needPct}%)`}
         </p>
         <div className="mt-2"><OwnerSwitch switchKey={SWITCH_MATRIX_AUTO_CREW} label="ماتركس يكلّف لحاله" hint="حتى لو شغّال، ما ينفّذ إلا إذا البوابة مؤهلة." /></div>

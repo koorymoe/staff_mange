@@ -3,6 +3,7 @@ import { type OrgPerson, type OrgUnit } from '../../org'
 import { orgDeskWrite, type DeskPlan, type DeskComment, type DeskIssue, type DeskItem, type DeskMetric, type OrgDesk } from '../../orgDesk'
 import { canAddItems, dueOrder, teamPeople, number, percent, date, planStatusNames, field } from './shared'
 import { DeskForm } from './editors'
+import PctWhy from '../../ui/PctWhy'
 import { isAdminOrOwner, useSession } from '../../session'
 
 export function SolutionEditor({
@@ -233,7 +234,7 @@ export function UnitDevelopment({
                   <span className={`desk-plan-status plan-${p.status}`}>
                     {planStatusNames[p.status] ?? 'حالة غير معروفة'}
                   </span>
-                  <p>الإنجاز: {number(p.progress)}٪</p>
+                  <p>الإنجاز: <PlanPct value={p.progress} items={p.items} title={`إنجاز خطة ${u.name}`} /></p>
                   <progress
                     max={100}
                     value={percent(p.progress)}
@@ -279,7 +280,7 @@ export function UnitDevelopment({
       {plan ? (
         <>
           <section className="org-panel desk-plan-heading">
-            <ProgressRing value={plan.progress} />
+            <ProgressRing value={plan.progress} items={plan.items} />
             <div>
               <h3>{plan.title}</h3>
               <p>{plan.period}</p>
@@ -345,7 +346,31 @@ export function UnitDevelopment({
   )
 }
 
-export function ProgressRing({ value }: { value: number }) {
+const PLAN_SRC = <>بنود خطة الوحدة لهذي الفترة. البند المربوط بمؤشر يطلع رقمه الحالي من بيانات النظام لهذي الفترة، والباقي من النسبة اليدوية الي حطها المسؤول.</>
+
+// إنجاز بند وحد: يدوي، أو من المؤشر (البداية → الهدف)، أو 100 إذا انعلّم خلص.
+export function ItemPct({ item }: { item: DeskItem }) {
+  const formula = item.doneAt
+    ? <>البند انعلّم «خلص»، فإنجازه = <b>100٪</b> مهما جان المؤشر.</>
+    : item.byMatrix && item.current != null && item.baseline != null && item.target != null
+      ? <>(الحالي {number(item.current)} − البداية {number(item.baseline)}) ÷ (الهدف {number(item.target)} − البداية {number(item.baseline)}) × 100 = <b>{number(item.progress)}٪</b> (ما تنزل تحت 0 ولا تصعد فوق 100)</>
+      : <>نسبة يدوية حطها المسؤول على البند: <b>{number(item.progress)}٪</b>{item.metric ? ' — البند مربوط بمؤشر بس ماكو رقم حالي أو بداية/هدف كاملة، فناخذ اليدوي.' : '.'}</>
+  return <PctWhy title={`إنجاز «${item.title}»`} value={item.progress} suffix="٪" formula={formula}
+    meaning={<>شكد مشى هذا البند من الطريق للهدف. 100٪ يعني وصل الهدف أو انعلّم خلص.</>} source={PLAN_SRC} />
+}
+
+// إنجاز الخطة = معدل إنجاز بنودها.
+export function PlanPct({ value, items, title = 'إنجاز الخطة' }: { value: number; items?: DeskItem[]; title?: string }) {
+  return <PctWhy title={title} value={value} suffix="٪"
+    formula={items && items.length > 0
+      ? <>معدل إنجاز {items.length} بند: ({items.map((i) => number(i.progress)).join(' + ')}) ÷ {items.length} = <b>{number(value)}٪</b></>
+      : <>معدل إنجاز كل بنود الخطة (كل البنود نفس الوزن) = <b>{number(value)}٪</b>. إذا ماكو بنود تبقى 0.</>}
+    meaning={<>شكد الوحدة مشت بخطتها لهذي الفترة. تصعد كل ما بند يتقدّم نحو هدفه أو ينعلّم خلص.</>} source={PLAN_SRC}>
+    {items && items.length > 0 && <ul className="space-y-0.5 text-xs">{items.map((i) => <li key={i.id}>{i.title}: {number(i.progress)}٪{i.doneAt ? ' (خلص)' : i.byMatrix ? ' (من المؤشر)' : ' (يدوي)'}</li>)}</ul>}
+  </PctWhy>
+}
+
+export function ProgressRing({ value, items }: { value: number; items?: DeskItem[] }) {
   const progress = percent(value)
   return (
     <div
@@ -365,7 +390,7 @@ export function ProgressRing({ value }: { value: number }) {
         />
       </svg>
       <span>
-        {number(progress)}٪<small>إنجاز الخطة</small>
+        <PlanPct value={progress} items={items} /><small>إنجاز الخطة</small>
       </span>
     </div>
   )
@@ -497,7 +522,7 @@ export function PlanCard({
     <article className="org-panel desk-plan-card">
       <div className="org-toolbar">
         <h3>{item.title}</h3>
-        <strong>{number(item.progress)}٪</strong>
+        <strong><ItemPct item={item} /></strong>
       </div>
       <progress
         aria-label={`إنجاز ${item.title}`}

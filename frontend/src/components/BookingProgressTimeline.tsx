@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { api, type Booking, type BookingProgressReport } from '../api'
 import EntityIdentity from './EntityIdentity'
+import PctWhy from '../ui/PctWhy'
 import { ExecutionSheetView } from './ExecutionSheet'
 import { asSheet } from '../utils/executionSheet'
 
@@ -37,7 +38,11 @@ export default function BookingProgressTimeline({ bookingId, booking }: { bookin
           📋 وين وصل الشغل — {rows.length} {rows.length === 1 ? 'يوم' : 'أيام'}
         </h4>
         <span className="rounded-full bg-amber-200/70 px-2.5 py-0.5 text-xs font-bold text-amber-900">
-          منجز {last.percentDone}٪
+          منجز <PctWhy title="وين وصل الشغل" value={last.percentDone} suffix="٪"
+            formula={<>هاي نسبة آخر تقرير (اليوم {last.dayNumber} من {rows.length}) — الكادر كتبها بإيده: <b>{last.percentDone}٪</b>. ما تنجمع ولا تنحسب من الأيام الثانية.</>}
+            meaning={<>تقدير الكادر شكد خلص من شغل الحجز لحد هذا اليوم. ١٠٠٪ يعني خلص؛ أقل يعني بعد باقي شغل (مكتوب بخانة «الباقي»).</>} source={<>تقرير الإنجاز اليومي الي يرفعه الكادر لهذا الحجز (تقارير أيام الحجز).</>}>
+            <ul className="list-disc pr-4 text-xs">{rows.map((r) => <li key={r.id}>اليوم {r.dayNumber}: {r.percentDone}٪</li>)}</ul>
+          </PctWhy>
         </span>
       </div>
 
@@ -57,7 +62,9 @@ export default function BookingProgressTimeline({ bookingId, booking }: { bookin
               <span className="text-slate-400">
                 {new Date(r.createdAt).toLocaleDateString('ar-IQ', { weekday: 'long', day: 'numeric', month: 'numeric' })}
               </span>
-              <span className="font-bold text-slate-600">{r.percentDone}٪</span>
+              <PctWhy title={`إنجاز اليوم ${r.dayNumber}`} value={r.percentDone} suffix="٪" className="font-bold text-slate-600"
+                formula={<>الكادر كتبها بإيده بتقرير اليوم {r.dayNumber}: <b>{r.percentDone}٪</b> من الشغل خالص لحد ذاك اليوم.</>}
+                meaning={<>تقدير الكادر شكد خلص من شغل الحجز لحد هذا اليوم. ١٠٠٪ يعني خلص؛ أقل يعني بعد باقي شغل (مكتوب بخانة «الباقي»).</>} source={<>تقرير الإنجاز اليومي الي يرفعه الكادر لهذا الحجز (تقارير أيام الحجز).</>} />
               {r.crewSnapshot && <span className="text-slate-500">👷 {r.crewSnapshot}</span>}
             </div>
             <p className="mt-1.5">

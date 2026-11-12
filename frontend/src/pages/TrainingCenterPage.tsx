@@ -7,6 +7,7 @@ import { lazyRetry } from '../utils/staleReload'
 import { CurriculumTree, MatchingTab, TrainingReportsTab } from './TrainingMatching'
 import { askConfirm } from '../ui/dialogs'
 import { swallow } from '../utils/swallow'
+import PctWhy from '../ui/PctWhy'
 
 // ═══ مركز التدريب — قرار (ع) 10-13: «شي إعجازي بالتدريب» ═══
 // ماتركس يحدد منو لازم يتدرّب من شغله الحقيقي (شكاوى، توقف، بطء، خصومات،
@@ -141,7 +142,10 @@ function NotesTab({ rows }: { rows: TcInsight[] | null }) {
                 <td className={x.stops ? 'font-bold text-amber-600' : 'text-slate-400'}>{x.stops}</td>
                 <td className="text-slate-500">{x.partials}</td>
                 <td>{x.skills}</td>
-                <td>{x.lastExamPct != null ? `${x.lastExamPct}%` : '—'}</td>
+                <td>{x.lastExamPct != null ? <PctWhy title={`آخر اختبار ${x.name}`} value={x.lastExamPct}
+                  formula={<>درجته بآخر اختبار خلّصه ÷ الدرجة الكاملة لذاك الاختبار × 100 = <b>{x.lastExamPct}%</b> (الكسر ينشال).</>}
+                  meaning={<>شكد جاوب صح بآخر اختبار تدريبي سواه — كل ما أعلى يعني فاهم المادة أكثر. هذا آخر اختبار بس، مو معدل كل اختباراته.</>}
+                  source={<>محاولات الاختبار بمركز التدريب: آخر محاولة خلّصها هذا الموظف (حسب وقت الإنهاء).</>} /> : '—'}</td>
                 <td className="text-xs">{[...x.strengths.map((s) => `💪 ${s}`), ...x.reasons.slice(0, 2).map((r) => `⚠️ ${r}`)].join(' · ') || 'مستقر'}</td>
               </tr>
             )

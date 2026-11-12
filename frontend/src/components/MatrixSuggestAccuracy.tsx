@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { api, type MatrixSuggestAccuracy } from '../api'
 import MatrixNote from './MatrixNote'
+import PctWhy from '../ui/PctWhy'
 import { swallow } from '../utils/swallow'
 
 // ═══ دقة اقتراحات ماتركس — المرحلة الثانية ═══
@@ -30,10 +31,18 @@ export default function MatrixSuggestAccuracyPanel() {
         {a.kinds.map((k) => (
           <div key={k.kind} className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs">
             <b className="text-sm">{k.title}</b>
-            <p className="mt-1 text-2xl font-black text-violet-700">{k.decided ? `${k.acceptPct}%` : <span className="text-sm font-bold text-slate-400">بعد ماكو قرارات</span>}</p>
+            <p className="mt-1 text-2xl font-black text-violet-700">{k.decided ? <PctWhy title={`قبول ${k.title}`} value={k.acceptPct} parts={{ numLabel: 'اقتراح اعتمده المنسق كامل', num: k.accepted, denLabel: 'اقتراح انحسم', den: k.decided }}
+              meaning={<>شكد مرة المنسق مشى على {k.title} بدون تغيير بآخر {a.days} يوم. «اعتمد جزء منه» ({k.partial}) و«غيّره» ({k.changed}) ما ينحسبن قبول. كل ما تعلى يعني اقتراحاته صايبة أكثر.</>}
+              source={<>اقتراحات ماتركس المسجّلة على الحجوزات وقرار المنسق عليها، بآخر {a.days} يوم.</>} /> : <span className="text-sm font-bold text-slate-400">بعد ماكو قرارات</span>}</p>
             <p>✅ اعتمده {k.accepted} · 🟡 اعتمد جزء منه {k.partial} · ✏️ غيّره {k.changed}</p>
             {(k.onTimeAccepted != null || k.onTimeChanged != null) && (
-              <p className="mt-1 text-slate-600">طلع بوقته: لمن اعتمدوه {k.onTimeAccepted ?? '—'}% ({k.sampleAccepted}) · لمن انغيّر {k.onTimeChanged ?? '—'}% ({k.sampleChanged})</p>
+              <p className="mt-1 text-slate-600">طلع بوقته: لمن اعتمدوه <PctWhy title="طلع بوقته لمن اعتمدوا الاقتراح" value={k.onTimeAccepted ?? null}
+                formula={<>من {k.sampleAccepted} حجز اعتمدوا بيه {k.title} وعنده وقت بداية مسجّل، الي بدا خلال ٣٠ دقيقة من موعده ÷ {k.sampleAccepted} = <b>{k.onTimeAccepted ?? '—'}%</b>.</>}
+                meaning={<>إذا هاي أعلى من نسبة «لمن انغيّر» ({k.onTimeChanged ?? '—'}%) يعني المشي على اقتراح ماتركس يطلّع الشغل بوقته أكثر.</>}
+                source={<>الحجوزات الي انحسم اقتراحها «اعتمده» بآخر {a.days} يوم: موعدها المحدد ووقت ما بدا الكادر الشغل فعلاً.</>} /> ({k.sampleAccepted}) · لمن انغيّر <PctWhy title="طلع بوقته لمن انغيّر الاقتراح" value={k.onTimeChanged ?? null}
+                formula={<>من {k.sampleChanged} حجز غيّروا بيه {k.title} وعنده وقت بداية مسجّل، الي بدا خلال ٣٠ دقيقة من موعده ÷ {k.sampleChanged} = <b>{k.onTimeChanged ?? '—'}%</b>.</>}
+                meaning={<>نقارنها ويا «لمن اعتمدوه» ({k.onTimeAccepted ?? '—'}%): إذا هاي أعلى، يعني تغيير المنسق چان أحسن من اقتراح ماتركس.</>}
+                source={<>الحجوزات الي انحسم اقتراحها «غيّره» بآخر {a.days} يوم: موعدها ووقت بداية الشغل الفعلي.</>} /> ({k.sampleChanged})</p>
             )}
           </div>
         ))}

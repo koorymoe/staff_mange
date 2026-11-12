@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { api } from '../api'
+import PctWhy from '../ui/PctWhy'
 import { useSession } from '../session'
 import { canDrill } from '../utils/drill'
 import { useApi } from '../utils/useApi'
@@ -41,7 +42,9 @@ export default function DrillPage() {
         </div>
         {d?.extra && d.extra.total > 0 && (
           <p className="mt-3 rounded-xl bg-white/10 px-3 py-2 text-sm">
-            📈 نجاح الأسبوع: خلص <b>{d.extra.completed}</b> من أصل <b>{d.extra.total}</b> حجز = <b>{Math.round((d.extra.completed / d.extra.total) * 100)}٪</b>
+            📈 نجاح الأسبوع: خلص <b>{d.extra.completed}</b> من أصل <b>{d.extra.total}</b> حجز = <b><PctWhy title="نجاح الأسبوع" suffix="٪" parts={{ numLabel: 'حجز خلص', num: d.extra.completed, denLabel: 'حجز بهالقائمة', den: d.extra.total }}
+              meaning={<>شكد من حجوزات هالأسبوع وصلت لحالة «مكتمل». كل ما تعلى أحسن؛ الحجز المفتوح أو الي بالانتظار ينزّلها، وتصعد أول ما يتسكّر الحجز.</>}
+              source={<>نفس الحجوزات الي بالقائمة جوة (جدول الحجوزات بنفس شرط بطاقة «نجاح الأسبوع» باللوحة)، والمكتمل منها هو الي حالته COMPLETED.</>} /></b>
             {' '}— الباقي ({d.extra.total - d.extra.completed}) تشوف حالة كل واحد بعمود «وين واكف».
           </p>
         )}

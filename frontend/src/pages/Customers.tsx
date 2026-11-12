@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import Pager from '../components/Pager'
+import PctWhy from '../ui/PctWhy'
 import { api, type Customer, type CustomerPage, type GpsCustomerListItem, type Booking } from '../api'
 import { validateCustomerName, validateCustomerPhone } from '../validation'
 // تسمية الحالة من مصدر واحد للنظام كله
@@ -188,8 +189,12 @@ export default function Customers() {
       {/* ═══ الأرقام ═══ */}
       <div className="mt-4 grid grid-cols-1 gap-2.5 sm:grid-cols-3 sm:gap-3">
         <StatCard icon="👥" tone="sky" label="كل الزبائن" value={allCount} hint="100% من إجمالي الزبائن" />
-        <StatCard icon="🧑‍💼" tone="emerald" label="جدد هذا الشهر" value={newThisMonth} hint={`${pct(newThisMonth)}% من إجمالي الزبائن`} />
-        <StatCard icon="👑" tone="amber" label="شخصيات مهمة / VIP" value={vipCount} hint={`${pct(vipCount)}% من إجمالي الزبائن`} />
+        <StatCard icon="🧑‍💼" tone="emerald" label="جدد هذا الشهر" value={newThisMonth} hint={<><PctWhy title="الزبائن الجدد هذا الشهر" value={pct(newThisMonth)} parts={{ numLabel: 'زبون انضاف من أول هذا الشهر', num: newThisMonth, denLabel: 'زبون بالنظام', den: allCount }}
+          meaning={<>شكد من الزبائن انضافوا هذا الشهر (من يوم ١ بتوقيت بغداد لهسه). ترتفع كلما ينسجل زبون جديد، وتبدي من جديد أول كل شهر.</>}
+          source={<>جدول الزبائن: تاريخ إضافة كل زبون. وقت البحث، الأرقام على نتائج البحث بس — وما تتأثر بالتبويب ولا بالمرشّحات.</>} /> من إجمالي الزبائن</>} />
+        <StatCard icon="👑" tone="amber" label="شخصيات مهمة / VIP" value={vipCount} hint={<><PctWhy title="نسبة الشخصيات المهمة" value={pct(vipCount)} parts={{ numLabel: 'زبون مسجّل إله منصب', num: vipCount, denLabel: 'زبون بالنظام', den: allCount }}
+          meaning={<>الزبون ينحسب VIP إذا حقل «المنصب» بملفه مو فارغ. ترتفع كلما ينكتب منصب لزبون.</>}
+          source={<>جدول الزبائن: حقل المنصب. وقت البحث، الأرقام على نتائج البحث بس — وما تتأثر بالتبويب ولا بالمرشّحات.</>} /> من إجمالي الزبائن</>} />
       </div>
 
       {/* ═══ إضافة زبون ═══
@@ -554,7 +559,7 @@ export default function Customers() {
 
 // بطاقة رقم بالرأس
 function StatCard({ icon, tone, label, value, hint }: {
-  icon: string; tone: 'sky' | 'emerald' | 'amber'; label: string; value: number; hint: string
+  icon: string; tone: 'sky' | 'emerald' | 'amber'; label: string; value: number; hint: React.ReactNode
 }) {
   const tones: Record<string, string> = {
     sky: 'bg-sky-50 text-sky-600',

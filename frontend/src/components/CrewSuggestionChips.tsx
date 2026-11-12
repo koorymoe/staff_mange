@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { api, type CrewRecommendation, type CrewSuggestion } from '../api'
 import MatrixNote from './MatrixNote'
+import PctWhy from '../ui/PctWhy'
 
 // ═══ ماتركس — «مقترح ماتركس» للكادر ═══
 // ⚠️ الأب يرسمه بس لمن يعبر حارس التكليف (ADMIN/OWNER أو coordinator
@@ -33,7 +34,10 @@ export default function CrewSuggestionChips({ bookingId, onPick }: { bookingId: 
           {s.name}
           <span className="mr-1 font-normal text-violet-500">
             {s.doneCount > 0 ? `${s.doneCount} منجز` : 'بلا خبرة مسجّلة'}
-            {s.problemRatePct != null ? ` · مشاكل ${s.problemRatePct}٪` : ''}
+            {s.problemRatePct != null && <> · مشاكل <PctWhy title={`نسبة مشاكل ${s.name}`} value={s.problemRatePct} suffix="٪"
+              formula={<>من أصل {s.doneCount} حجز منجز من نفس الخدمة بآخر سنة (وهو بكادرها)، الي عليها إشارة توقف شغل أو شكوى ÷ {s.doneCount} = <b>{s.problemRatePct}٪</b>. التفصيل: {s.reasons.find((x) => x.startsWith('توقف/شكوى')) ?? '—'}</>}
+              meaning={<>كل ما تقل أحسن — تعني شغله نادراً يتوقف أو ينشكى عليه. هاي النسبة تنزّل نقاطه بالاقتراح. ما تنحسب إلا إذا عنده ٥ حجوزات منجزة أو أكثر من هالخدمة.</>}
+              source={<>الحجوزات المنجزة من جدول الحجوزات لنفس الخدمة بآخر ٣٦٥ يوم الي هو ضمن كادرها، والي منها عليها توقف شغل أو شكوى زبون.</>} /></>}
             {` · ${s.dayLoad ? `${s.dayLoad} حجز باليوم` : 'فاضي'}`}
           </span>
         </button>

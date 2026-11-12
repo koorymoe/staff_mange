@@ -1,4 +1,5 @@
 import type { BookingExecutionDetail } from '../api'
+import PctWhy from '../ui/PctWhy'
 
 // ═══ «شنو صار بهذا الحجز فعلاً» ═══
 //
@@ -85,7 +86,9 @@ export default function BookingExecutionSummary({ exec }: { exec: BookingExecuti
           </p>
           {exec.progressReports.map((r) => (
             <div key={r.id} className="mt-1.5 text-xs">
-              <span className="font-bold text-amber-800">اليوم {r.dayNumber} ({r.percentDone}٪): </span>
+              <span className="font-bold text-amber-800">اليوم {r.dayNumber} (<PctWhy title={`إنجاز اليوم ${r.dayNumber}`} value={r.percentDone} suffix="٪"
+                formula={<>ما ينحسب بالنظام — الكادر كتبه بإيده بتقرير اليوم {r.dayNumber}: <b>{r.percentDone}٪</b> من الشغل خالص لحد ذاك اليوم.</>}
+                meaning={<>تقدير الكادر شكد خلص من شغل الحجز لحد هذا اليوم. ١٠٠٪ يعني خلص؛ أقل يعني بعد باقي شغل (مكتوب بخانة «الباقي»).</>} source={<>تقرير الإنجاز اليومي الي يرفعه الكادر لهذا الحجز (تقارير أيام الحجز).</>} />): </span>
               <span className="text-slate-700">{r.workDone}</span>
               {r.blockers && <span className="text-red-700"> — عرقلة: {r.blockers}</span>}
             </div>

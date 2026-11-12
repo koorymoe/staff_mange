@@ -1,6 +1,7 @@
 import { Fragment, useEffect, useState, useMemo } from 'react'
 import { api, type PersonalTool, type VehicleTool, type OnDemandTool, type ToolRequest, type ToolRequestItem, type Employee, type InventoryCheck, type PersonalToolTemplateItem,
   type PersonalToolExemption, type BookingToolCheck, type VehicleToolCheck, type Vehicle, type PersonalToolEvent, type PersonalToolStatus, personalToolStatusLabels, personalToolStatusColors } from '../api'
+import PctWhy from '../ui/PctWhy'
 import OpenShortagesPanel from '../components/OpenShortagesPanel'
 import ManagerRequestDialog from '../components/ManagerRequestDialog'
 import { useSession, hasRole, isAdminOrOwner } from '../session'
@@ -712,7 +713,11 @@ export default function InventoryPage() {
                               ناقص: {k.missing.length}
                             </span>
                             <span className="rounded-full bg-brand-50 px-3 py-1 text-brand-700">
-                              الاكتمال: {Math.round(((templateNames.size - k.missing.length) / Math.max(1, templateNames.size)) * 100)}%
+                              الاكتمال: <PctWhy title="اكتمال العدة القياسية" parts={{ numLabel: 'أداة موجودة عنده', num: templateNames.size - k.missing.length, denLabel: 'أداة بالعدة القياسية', den: templateNames.size }}
+                                meaning={<>شكد من العدة القياسية الي لازم تكون عند كل موظف موجودة عنده فعلاً. ١٠٠٪ يعني ماكو نقص؛ كل أداة ناقصة تنزّلها، وتصعد أول ما تنصرفله.</>}
+                                source={<>قالب العدة الشخصية القياسية بالنظام مقابل العدة الشخصية المسجلة على هالموظف (الأداة المعفى منها تنحسب موجودة).</>}>
+                                {k.missing.length > 0 && <p className="text-xs">الناقص: {k.missing.join('، ')}</p>}
+                              </PctWhy>
                             </span>
                           </div>
                         </div>

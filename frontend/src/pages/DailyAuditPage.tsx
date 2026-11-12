@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { api, type DailyAuditReport, type DailyAuditRow, type FreeWorkReason } from '../api'
 import FreeWorkBadge from '../components/FreeWorkBadge'
+import PctWhy from '../ui/PctWhy'
 import MoneyNoInvoice from '../components/MoneyNoInvoice'
 import { useSession, canAuditFinance, isAdminOrOwner } from '../session'
 import SearchBar from '../components/SearchBar'
@@ -329,7 +330,10 @@ export default function DailyAuditPage() {
               </div>
               <div className="mt-2 flex flex-wrap justify-between gap-2 text-xs text-slate-500">
                 <span>
-                  {Math.min(100, Math.round((rep.verifiedTotal / rep.expectedTotal) * 100))}% مدقق
+                  <PctWhy title="نسبة المدقق" value={Math.min(100, Math.round((rep.verifiedTotal / rep.expectedTotal) * 100))}
+                    formula={<>{money(rep.verifiedTotal)} مدقق ÷ {money(rep.expectedTotal)} الإجمالي المتوقع لليوم × ١٠٠ (ما تعبر ١٠٠٪)</>}
+                    meaning={<>شكد واصل المحاسب بتدقيق مبالغ اليوم. تزيد كل ما يدقق حجز، و١٠٠٪ يعني كل المتوقع انستلم وتدقق. إذا المستلم صار أكثر من المتوقع تبقى ١٠٠٪.</>}
+                    source={<>حجوزات اليوم المكتملة: المبلغ المستلم من الحجوزات الي المحاسب دققها، مقابل المبلغ المتوقع من فواتير الليدرز وتقديرات الإداري.</>} /> مدقق
                 </span>
                 <span>
                   باقي: <b className="text-amber-700">{money(Math.max(0, rep.expectedTotal - rep.verifiedTotal))}</b>
