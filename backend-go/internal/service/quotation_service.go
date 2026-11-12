@@ -1,6 +1,7 @@
 package service
 
 import (
+	"strings"
 	"errors"
 
 	"staffmange-api/internal/model"
@@ -210,4 +211,62 @@ func validateQuotationAmounts(items []model.QuotationItemInput, discount *float6
 		}
 	}
 	return nil
+}
+
+// ═══ بلاغ #33: ربط عرض موجود بمشروع ═══
+
+var (
+	ErrLinkTaken = errors.New("المشروع عنده عرض، أو العرض مربوط بمشروع ثاني")
+)
+
+// linkScope: "" = يشوف كل العروض، id = عروضه هو بس، ErrQuotationHidden = ماعنده عروض.
+func (s *QuotationService) linkScope(actorID, role string) (string, error) {
+	if model.IsAdminRole(role) {
+		return "", nil
+	}
+	all, own, err := s.actorPerms(actorID)
+	if err != nil {
+		return "", err
+	}
+	if all {
+		return "", nil
+	}
+	if own {
+		return actorID, nil
+	}
+	return "", ErrQuotationHidden
+}
+
+// LinkCandidates عروض بلا مشروع تنفع لهذا المشروع (نفس الزبون أولاً) + بحث.
+func (s *QuotationService) LinkCandidates(projectID, q, actorID, role string) ([]repository.LinkCandidate, error) {
+	scope, err := s.linkScope(actorID, role)
+	if err != nil {
+		return nil, err
+	}
+	name, phone, ok := s.repo.ProjectBasics(projectID)
+	if !ok {
+		return nil, ErrQuotationHidden
+	}
+	return s.repo.LinkCandidates(name, phone, strings.TrimSpace(q), scope)
+}
+
+// LinkToProject يربط عرض موجود (يشوفه الموظف) بمشروع ما عنده عرض.
+func (s *QuotationService) LinkToProject(projectID, quotationID, actorID, role string) (*model.Quotation, error) {
+	if _, err := s.linkScope(actorID, role); err != nil {
+		return nil, err
+	}
+	if _, _, ok := s.repo.ProjectBasics(projectID); !ok {
+		return nil, ErrQuotationHidden
+	}
+	if _, err := s.Get(quotationID, actorID, role); err != nil {
+		return nil, ErrQuotationHidden
+	}
+	ok, err := s.repo.LinkToProject(quotationID, projectID)
+	if err != nil {
+		return nil, err
+	}
+	if !ok {
+		return nil, ErrLinkTaken
+	}
+	return s.Get(quotationID, actorID, role)
 }
