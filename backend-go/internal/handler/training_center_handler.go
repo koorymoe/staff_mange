@@ -2,6 +2,7 @@ package handler
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
@@ -32,6 +33,7 @@ import (
 type TrainingCenterHandler struct {
 	db    *sqlx.DB
 	Agent *service.MatrixAgent
+	Match *service.TrainingMatching
 }
 
 func NewTrainingCenterHandler(db *sqlx.DB) *TrainingCenterHandler {
@@ -180,27 +182,61 @@ func (h *TrainingCenterHandler) Tracks(w http.ResponseWriter, r *http.Request) {
 // ── ٣) المنهج لكل دور ──
 
 type curriculumItem struct {
-	ID      string  `db:"id" json:"id"`
-	Role    string  `db:"role" json:"role"`
-	Title   string  `db:"title" json:"title"`
-	Details *string `db:"details" json:"details"`
-	Ord     int     `db:"ord" json:"ord"`
+	ID        string  `db:"id" json:"id"`
+	Role      string  `db:"role" json:"role"`
+	Title     string  `db:"title" json:"title"`
+	Details   *string `db:"details" json:"details"`
+	Ord       int     `db:"ord" json:"ord"`
+	ParentID  *string `db:"parentId" json:"parentId"`
+	ServiceID *string `db:"serviceId" json:"serviceId"`
 }
+
+// (ل) 11-12 دازاي: المنهج شجرة — الجمهور (فني/ليدر/مهندس) ← المسار (مثلاً داش كام) ← تفرع أول ← ثاني ← ثالث.
+const curriculumMaxDepth = 3 // تفرعات تحت المسار
 
 func (h *TrainingCenterHandler) Curriculum(w http.ResponseWriter, r *http.Request) {
 	rows := []curriculumItem{}
-	errlog.Err(h.db.Select(&rows, `SELECT id, role, title, details, ord FROM "TrainingCurriculum" ORDER BY role, ord, "createdAt"`))
+	errlog.Err(h.db.Select(&rows, `SELECT id, role, title, details, ord, "parentId", "serviceId" FROM "TrainingCurriculum" ORDER BY role, ord, "createdAt"`))
 	WriteJSON(w, http.StatusOK, rows)
 }
 
 func (h *TrainingCenterHandler) AddCurriculum(w http.ResponseWriter, r *http.Request) {
 	var b curriculumItem
-	if err := DecodeJSON(r, &b); err != nil || strings.TrimSpace(b.Title) == "" || b.Role == "" {
-		WriteError(w, http.StatusBadRequest, "اكتب الدور والعنوان")
+	if err := DecodeJSON(r, &b); err != nil || strings.TrimSpace(b.Title) == "" {
+		WriteError(w, http.StatusBadRequest, "اكتب العنوان")
 		return
 	}
-	_, err := h.db.Exec(`INSERT INTO "TrainingCurriculum" (id, role, title, details, ord) VALUES ($1,$2,$3,$4,
-		(SELECT COALESCE(MAX(ord), 0) + 1 FROM "TrainingCurriculum" WHERE role = $2))`, uuid.NewString(), b.Role, strings.TrimSpace(b.Title), b.Details)
+	if b.ParentID != nil && *b.ParentID != "" {
+		// الفرع ياخذ جمهور أبوه، وما ينزل أكثر من ٣ تفرعات تحت المسار
+		var depth int
+		var role string
+		err := h.db.QueryRow(`WITH RECURSIVE up AS (
+				SELECT id, "parentId", role, 0 AS d FROM "TrainingCurriculum" WHERE id = $1
+				UNION ALL SELECT c.id, c."parentId", c.role, up.d + 1 FROM "TrainingCurriculum" c JOIN up ON c.id = up."parentId")
+			SELECT max(d), (SELECT role FROM "TrainingCurriculum" WHERE id = $1) FROM up`, *b.ParentID).Scan(&depth, &role)
+		if err != nil || role == "" {
+			WriteError(w, http.StatusNotFound, "مو موجود")
+			return
+		}
+		if depth+1 > curriculumMaxDepth {
+			WriteError(w, http.StatusBadRequest, "أقصى شي ٣ تفرعات تحت المسار")
+			return
+		}
+		b.Role = role
+		b.ServiceID = nil
+	} else {
+		b.ParentID = nil
+		if b.Role == "" {
+			WriteError(w, http.StatusBadRequest, "اختار فني أو ليدر أو مهندس")
+			return
+		}
+		if b.ServiceID != nil && *b.ServiceID == "" {
+			b.ServiceID = nil
+		}
+	}
+	_, err := h.db.Exec(`INSERT INTO "TrainingCurriculum" (id, role, title, details, ord, "parentId", "serviceId") VALUES ($1,$2,$3,$4,
+		(SELECT COALESCE(MAX(ord), 0) + 1 FROM "TrainingCurriculum" WHERE role = $2 AND "parentId" IS NOT DISTINCT FROM $5), $5, $6)`,
+		uuid.NewString(), b.Role, strings.TrimSpace(b.Title), b.Details, b.ParentID, b.ServiceID)
 	if err != nil {
 		WriteError(w, http.StatusBadRequest, "تعذر الحفظ")
 		return
@@ -209,8 +245,88 @@ func (h *TrainingCenterHandler) AddCurriculum(w http.ResponseWriter, r *http.Req
 }
 
 func (h *TrainingCenterHandler) DeleteCurriculum(w http.ResponseWriter, r *http.Request) {
+	var kids int
+	errlog.Err(h.db.Get(&kids, `SELECT count(*) FROM "TrainingCurriculum" WHERE "parentId" = $1`, r.PathValue("id")))
+	if kids > 0 {
+		WriteError(w, http.StatusConflict, "بيها تفرعات — احذفهن أول")
+		return
+	}
 	errlog.Exec(h.db.Exec(`DELETE FROM "TrainingCurriculum" WHERE id = $1`, r.PathValue("id")))
 	h.Curriculum(w, r)
+}
+
+// ── 🎯 الماتشينغ (11-12): منو يحتاج تدريب وعلى شنو + تقرير مسؤول التدريب للمالك ──
+
+func (h *TrainingCenterHandler) needErr(w http.ResponseWriter, err error) {
+	switch {
+	case errors.Is(err, service.ErrNeedNotFound):
+		WriteError(w, http.StatusNotFound, "مو موجود")
+	case errors.Is(err, service.ErrNeedMandatory), errors.Is(err, service.ErrNeedState), errors.Is(err, service.ErrNeedReport):
+		WriteError(w, http.StatusBadRequest, err.Error())
+	default:
+		log.Printf("training need: %v", err)
+		WriteError(w, http.StatusInternalServerError, "تعذر الحفظ")
+	}
+}
+
+func (h *TrainingCenterHandler) Matching(w http.ResponseWriter, r *http.Request) {
+	if r.URL.Query().Get("refresh") == "1" {
+		if _, _, err := h.Match.Generate(); err != nil {
+			log.Printf("matching refresh: %v", err)
+		}
+	}
+	rows, err := h.Match.List(r.URL.Query().Get("status"))
+	if err != nil {
+		h.needErr(w, err)
+		return
+	}
+	WriteJSON(w, http.StatusOK, rows)
+}
+
+func (h *TrainingCenterHandler) AddNeed(w http.ResponseWriter, r *http.Request) {
+	var in struct {
+		EmployeeID   string  `json:"employeeId"`
+		Topic        string  `json:"topic"`
+		CurriculumID *string `json:"curriculumId"`
+		Reason       string  `json:"reason"`
+	}
+	if err := DecodeJSON(r, &in); err != nil {
+		WriteError(w, http.StatusBadRequest, "بيانات ناقصة")
+		return
+	}
+	x, err := h.Match.Add(middleware.EmployeeIDFromContext(r), in.EmployeeID, in.Topic, in.CurriculumID, in.Reason)
+	if err != nil {
+		h.needErr(w, err)
+		return
+	}
+	WriteJSON(w, http.StatusOK, x)
+}
+
+func (h *TrainingCenterHandler) NeedAction(w http.ResponseWriter, r *http.Request) {
+	var in struct {
+		Report string `json:"report"`
+		Score  int    `json:"score"`
+		Note   string `json:"note"`
+	}
+	_ = DecodeJSON(r, &in)
+	id := r.PathValue("id")
+	var x *service.TrainingNeedRow
+	var err error
+	switch r.PathValue("action") {
+	case "start":
+		x, err = h.Match.Start(id)
+	case "complete":
+		x, err = h.Match.Complete(middleware.EmployeeIDFromContext(r), id, in.Report, in.Score)
+	case "dismiss":
+		x, err = h.Match.Dismiss(id, in.Note)
+	default:
+		err = service.ErrNeedNotFound
+	}
+	if err != nil {
+		h.needErr(w, err)
+		return
+	}
+	WriteJSON(w, http.StatusOK, x)
 }
 
 // ── ٤) بنك الأسئلة ──

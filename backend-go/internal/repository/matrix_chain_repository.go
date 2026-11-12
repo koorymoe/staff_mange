@@ -309,11 +309,15 @@ func (r *MatrixChainRepository) IsBookingTech(bookingID, employeeID string) bool
 	return ok
 }
 
-func (r *MatrixChainRepository) SaveRating(bookingID, leaderID, techID string, score int, note *string) error {
-	_, err := r.db.Exec(`INSERT INTO "CrewRating" (id, "bookingId", "leaderId", "technicianId", score, note)
-		VALUES (gen_random_uuid()::text, $1, $2, $3, $4, $5)
+func (r *MatrixChainRepository) SaveRating(bookingID, leaderID, techID string, score int, note *string, needsTraining ...*string) error {
+	var nt *string
+	if len(needsTraining) > 0 && needsTraining[0] != nil && *needsTraining[0] != "" {
+		nt = needsTraining[0]
+	}
+	_, err := r.db.Exec(`INSERT INTO "CrewRating" (id, "bookingId", "leaderId", "technicianId", score, note, "needsTraining")
+		VALUES (gen_random_uuid()::text, $1, $2, $3, $4, $5, $6)
 		ON CONFLICT ("bookingId", "technicianId") DO UPDATE SET score = EXCLUDED.score, note = EXCLUDED.note,
-		  "leaderId" = EXCLUDED."leaderId", "createdAt" = now()`, bookingID, leaderID, techID, score, note)
+		  "needsTraining" = EXCLUDED."needsTraining", "leaderId" = EXCLUDED."leaderId", "createdAt" = now()`, bookingID, leaderID, techID, score, note, nt)
 	return err
 }
 

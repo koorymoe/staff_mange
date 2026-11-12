@@ -2378,5 +2378,41 @@ func matrixChatMigrations() []Migration {
 			);
 			CREATE INDEX IF NOT EXISTS "SolarInquiry_open_idx" ON "SolarInquiry" ("createdAt" DESC) WHERE "qualityAt" IS NULL;
 		`,
+	}, {
+		// (ل) 11-12 دازاي: وحدة التدريب — المنهج شجرة (الجمهور ← المسار ← ٣ تفرعات)، و«الماتشينغ»
+		// بدل بنك الأسئلة: منو يحتاج تدريب وعلى شنو. مشكلة بحجز = إلزامي، نقص مهارة = اقتراح.
+		Version: "0481_training_matching",
+		SQL: `
+			ALTER TABLE "TrainingCurriculum" ADD COLUMN IF NOT EXISTS "parentId" TEXT REFERENCES "TrainingCurriculum"(id) ON DELETE RESTRICT;
+			ALTER TABLE "TrainingCurriculum" ADD COLUMN IF NOT EXISTS "serviceId" TEXT;
+			CREATE INDEX IF NOT EXISTS "TrainingCurriculum_parent_idx" ON "TrainingCurriculum" ("parentId");
+			ALTER TABLE "CrewRating" ADD COLUMN IF NOT EXISTS "needsTraining" TEXT;
+			CREATE TABLE IF NOT EXISTS "TrainingMatch" (
+				id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
+				"employeeId" TEXT NOT NULL REFERENCES "Employee"(id) ON DELETE CASCADE,
+				kind TEXT NOT NULL CHECK (kind IN ('BOOKING_ISSUE','SKILL_GAP','MANUAL')),
+				"curriculumId" TEXT REFERENCES "TrainingCurriculum"(id) ON DELETE SET NULL,
+				topic TEXT NOT NULL,
+				reason TEXT,
+				"sourceBookingId" TEXT,
+				"sourceRatingId" TEXT,
+				"skillId" TEXT,
+				status TEXT NOT NULL DEFAULT 'OPEN' CHECK (status IN ('OPEN','IN_TRAINING','DONE','DISMISSED')),
+				"dueAt" TIMESTAMPTZ,
+				"overdueNotifiedAt" TIMESTAMPTZ,
+				"dismissNote" TEXT,
+				"startedAt" TIMESTAMPTZ,
+				"doneAt" TIMESTAMPTZ,
+				"reportText" TEXT,
+				"reportScore" INT CHECK ("reportScore" BETWEEN 1 AND 5),
+				"reportedById" TEXT REFERENCES "Employee"(id) ON DELETE SET NULL,
+				"createdById" TEXT REFERENCES "Employee"(id) ON DELETE SET NULL,
+				"createdAt" TIMESTAMPTZ NOT NULL DEFAULT now(),
+				"updatedAt" TIMESTAMPTZ NOT NULL DEFAULT now()
+			);
+			CREATE UNIQUE INDEX IF NOT EXISTS "TrainingMatch_rating_uq" ON "TrainingMatch" ("sourceRatingId") WHERE "sourceRatingId" IS NOT NULL;
+			CREATE UNIQUE INDEX IF NOT EXISTS "TrainingMatch_skill_uq" ON "TrainingMatch" ("employeeId", "skillId") WHERE "skillId" IS NOT NULL;
+			CREATE INDEX IF NOT EXISTS "TrainingMatch_open_idx" ON "TrainingMatch" ("employeeId") WHERE status IN ('OPEN','IN_TRAINING');
+		`,
 	}}
 }

@@ -46,8 +46,8 @@ func TestQuotationLinkToProject_Live(t *testing.T) {
 			VALUES ($1,$2,$3,NULLIF($4,''),$5,100,100)`, id, num, name, phone, by)
 	}
 	q("ql-a", "QL-Q-1", "ابو احمد", "+964 781 117 7720", "ql-own") // نفس الرقم
-	q("ql-b", "QL-Q-2", "شخص ثاني", "", "ql-own")                    // بالبحث بس
-	q("ql-c", "QL-Q-3", "احمد محمد", "", "ql-other")                 // عرض غيري
+	q("ql-b", "QL-Q-2", "شخص ثاني", "", "ql-own")                  // بالبحث بس
+	q("ql-c", "QL-Q-3", "احمد محمد", "", "ql-other")               // عرض غيري
 	s := NewQuotationService(repository.NewQuotationRepository(db), repository.NewPermissionRepository(db))
 
 	if _, err := s.LinkCandidates("ql-p1", "", "ql-out", "SALES"); err != ErrQuotationHidden {

@@ -3669,7 +3669,15 @@ export interface TcInsight {
   avgMinutes: number | null; teamMinutes: number | null; complaints: number; stops: number; partials: number
   deductions: number; skills: number; lastExamPct: number | null; score: number; reasons: string[]; strengths: string[]
 }
-export interface TcCurriculum { id: string; role: string; title: string; details: string | null; ord: number }
+export interface TcCurriculum { id: string; role: string; title: string; details: string | null; ord: number; parentId: string | null; serviceId: string | null }
+// (ل) 11-12 الماتشينغ: منو يحتاج تدريب وعلى شنو
+export interface TcNeed {
+  id: string; employeeId: string; employeeName: string; employeeRole: string
+  kind: 'BOOKING_ISSUE' | 'SKILL_GAP' | 'MANUAL'; curriculumId: string | null; path: string | null
+  topic: string; reason: string | null; bookingId: string | null
+  status: 'OPEN' | 'IN_TRAINING' | 'DONE' | 'DISMISSED'; dueAt: string | null; dismissNote: string | null
+  startedAt: string | null; doneAt: string | null; reportText: string | null; reportScore: number | null; reportedBy: string | null; createdAt: string
+}
 export interface TcQuestion { id: string; role: string; text: string; options: string[]; correct: number; approved: boolean; source: 'MANUAL' | 'AI' }
 export interface TcExamReportRow { examId: string; role: string; month: string; title: string; passPct: number; employeeId: string; employeeName: string; score: number | null; total: number | null; finishedAt: string | null }
 export interface TcPlan {

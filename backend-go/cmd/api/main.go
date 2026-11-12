@@ -2398,7 +2398,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	mux.Handle("PUT /api/quotation-annex-templates", middleware.Chain(http.HandlerFunc(annexHandler.Save), requireAuth, requireQuotationAccess))
 	mux.Handle("POST /api/quotations", middleware.Chain(http.HandlerFunc(quotationHandler.Create), requireAuth, allowQuotationOrDelegate))
 	mux.Handle("GET /api/projects/{projectId}/quotation-candidates", middleware.Chain(http.HandlerFunc(quotationHandler.LinkCandidates), requireAuth)) // الصلاحية بالخدمة: الرفض 404
-	mux.Handle("POST /api/projects/{projectId}/link-quotation", middleware.Chain(http.HandlerFunc(quotationHandler.LinkToProject), requireAuth)) // الصلاحية بالخدمة: الرفض 404
+	mux.Handle("POST /api/projects/{projectId}/link-quotation", middleware.Chain(http.HandlerFunc(quotationHandler.LinkToProject), requireAuth))       // الصلاحية بالخدمة: الرفض 404
 	// 🖼️ (ل) 11-10: مكتبة صور أنواع العمل — كل عرض ياخذ صورة غير حسب فصوله
 	wtImages := handler.NewWorkTypeImageHandler(service.NewWorkTypeImageService(db))
 	mux.Handle("GET /api/work-type-images", middleware.Chain(http.HandlerFunc(wtImages.List), requireAuth, allowQuotationOrDelegate))
@@ -2508,6 +2508,15 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	mux.Handle("GET /api/training-programs", middleware.Chain(http.HandlerFunc(trainingProgramHandler.List), requireAuth))
 	// ═══ مركز التدريب — قرار (ع) 10-13 ═══
 	trainingCenter := handler.NewTrainingCenterHandler(db)
+	// (ل) 11-12 الماتشينغ: كل ساعة يقرا تقييمات الليدرية والمهارات ويطلّع منو يحتاج تدريب
+	trainingCenter.Match = service.NewTrainingMatching(db, notificationRepo)
+	go func() {
+		time.Sleep(2 * time.Minute)
+		for {
+			trainingCenter.Match.Run()
+			time.Sleep(time.Hour)
+		}
+	}()
 	tcRoute := func(pattern string, f http.HandlerFunc, manage bool) {
 		if manage {
 			mux.Handle(pattern, middleware.Chain(f, requireAuth, requireTrainingManage))
@@ -2520,6 +2529,9 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	tcRoute("GET /api/training-center/curriculum", trainingCenter.Curriculum, true)
 	tcRoute("POST /api/training-center/curriculum", trainingCenter.AddCurriculum, true)
 	tcRoute("DELETE /api/training-center/curriculum/{id}", trainingCenter.DeleteCurriculum, true)
+	tcRoute("GET /api/training-center/matching", trainingCenter.Matching, true)
+	tcRoute("POST /api/training-center/needs", trainingCenter.AddNeed, true)
+	tcRoute("POST /api/training-center/needs/{id}/{action}", trainingCenter.NeedAction, true)
 	tcRoute("GET /api/training-center/questions", trainingCenter.Questions, true)
 	tcRoute("POST /api/training-center/questions", trainingCenter.AddQuestion, true)
 	tcRoute("POST /api/training-center/questions/generate", trainingCenter.GenerateQuestions, true)

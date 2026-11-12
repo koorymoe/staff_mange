@@ -75,6 +75,8 @@ type crewRatingInput struct {
 		TechnicianID string  `json:"technicianId"`
 		Score        int     `json:"score"`
 		Note         *string `json:"note"`
+		// (ل) 11-12: الليدر يحدد «يحتاج تدريب على…» — يصير تدريب إلزامي بالماتشينغ
+		NeedsTraining *string `json:"needsTraining"`
 	} `json:"ratings"`
 }
 
@@ -102,7 +104,11 @@ func (h *MatrixChainHandler) Rate(w http.ResponseWriter, r *http.Request) {
 			t := strings.TrimSpace(*x.Note)
 			x.Note = &t
 		}
-		if err := repo.SaveRating(in.BookingID, me, x.TechnicianID, x.Score, x.Note); err != nil {
+		if x.NeedsTraining != nil {
+			t := strings.TrimSpace(*x.NeedsTraining)
+			x.NeedsTraining = &t
+		}
+		if err := repo.SaveRating(in.BookingID, me, x.TechnicianID, x.Score, x.Note, x.NeedsTraining); err != nil {
 			log.Printf("save rating: %v", err)
 			WriteError(w, http.StatusInternalServerError, "تعذر حفظ التقييم")
 			return

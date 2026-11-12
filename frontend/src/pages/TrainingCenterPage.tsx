@@ -1,9 +1,10 @@
-import { Suspense, useEffect, useMemo, useState } from 'react'
+import { Suspense, useEffect, useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
-import { api, type Employee, type TcCurriculum, type TcExamReportRow, type TcInsight, type TcPlan, type TcQuestion } from '../api'
+import { api, type Employee, type TcInsight, type TcPlan } from '../api'
 import { ROLE_LABELS, roleLabel } from '../roleLabels'
 import { card } from '../ui/classes'
 import { lazyRetry } from '../utils/staleReload'
+import { CurriculumTree, MatchingTab, TrainingReportsTab } from './TrainingMatching'
 import { askConfirm } from '../ui/dialogs'
 import { swallow } from '../utils/swallow'
 
@@ -16,7 +17,7 @@ import { swallow } from '../utils/swallow'
 
 const TrainingPrograms = lazyRetry(() => import('./TrainingPrograms'))
 
-type Tab = 'need' | 'notes' | 'tracks' | 'plan' | 'new' | 'curriculum' | 'questions' | 'report' | 'programs'
+type Tab = 'need' | 'notes' | 'tracks' | 'plan' | 'new' | 'curriculum' | 'matching' | 'reports' | 'programs'
 const TABS: { id: Tab; icon: string; label: string }[] = [
   { id: 'need', icon: '🎯', label: 'الواجب تدريبهم' },
   { id: 'notes', icon: '⚡', label: 'ملاحظات ماتركس (السرعة والعمل)' },
@@ -24,8 +25,9 @@ const TABS: { id: Tab; icon: string; label: string }[] = [
   { id: 'plan', icon: '📅', label: 'الخطة الشهرية والتفتيش' },
   { id: 'new', icon: '🌱', label: 'الموظفين الجدد' },
   { id: 'curriculum', icon: '📚', label: 'مفردات المنهج' },
-  { id: 'questions', icon: '❓', label: 'بنك الأسئلة والاختبار' },
-  { id: 'report', icon: '📝', label: 'تقرير الاختبارات الشهري' },
+  // (ل) 11-12 دازاي: بنك الأسئلة والاختبار ما نريده — بداله الماتشينغ وتقارير التدريب
+  { id: 'matching', icon: '🎯', label: 'الماتشينغ' },
+  { id: 'reports', icon: '📋', label: 'تقارير التدريب' },
   { id: 'programs', icon: '🎓', label: 'البرامج التدريبية' },
 ]
 const ROLES = Object.keys(ROLE_LABELS).filter((r) => r !== 'ADMIN' && r !== 'OWNER')
@@ -81,9 +83,9 @@ export default function TrainingCenterPage() {
       {tab === 'tracks' && <TracksTab />}
       {tab === 'plan' && <PlanTab emps={emps} need={need} />}
       {tab === 'new' && <NewTab rows={(insights ?? []).filter((x) => x.daysIn <= 90)} emps={emps} />}
-      {tab === 'curriculum' && <CurriculumTab />}
-      {tab === 'questions' && <QuestionsTab />}
-      {tab === 'report' && <ReportTab />}
+      {tab === 'curriculum' && <CurriculumTree />}
+      {tab === 'matching' && <MatchingTab emps={emps} />}
+      {tab === 'reports' && <TrainingReportsTab />}
       {tab === 'programs' && <Suspense fallback={<p className="text-slate-400">جاري التحميل…</p>}><TrainingPrograms embedded /></Suspense>}
     </div>
   )
@@ -276,136 +278,3 @@ function NewTab({ rows, emps }: { rows: TcInsight[]; emps: Employee[] }) {
   )
 }
 
-function CurriculumTab() {
-  const [rows, setRows] = useState<TcCurriculum[]>([])
-  const [role, setRole] = useState('TECHNICIAN')
-  const [title, setTitle] = useState('')
-  const [details, setDetails] = useState('')
-  useEffect(() => { api.tcCurriculum().then(setRows).catch(swallow) }, [])
-  const mine = rows.filter((r) => r.role === role)
-  return (
-    <div className={card}>
-      <div className="mb-3 flex flex-wrap items-center gap-2">
-        <h3 className="font-extrabold text-[#0f2040]">📚 مفردات المنهج التدريبي لكل دور</h3>
-        <select value={role} onChange={(e) => setRole(e.target.value)} className={input}>{ROLES.map((r) => <option key={r} value={r}>{roleLabel(r)} ({rows.filter((x) => x.role === r).length})</option>)}</select>
-      </div>
-      <ol className="space-y-1.5">
-        {mine.map((r, i) => (
-          <li key={r.id} className="flex items-start justify-between gap-2 rounded-lg bg-slate-50 px-3 py-2 text-sm">
-            <span><b className="text-[#2c5aad]">{i + 1}.</b> <b>{r.title}</b>{r.details && <span className="text-slate-500"> — {r.details}</span>}</span>
-            <button onClick={() => api.tcDeleteCurriculum(r.id).then(setRows).catch(err)} className="text-xs text-slate-400">حذف</button>
-          </li>
-        ))}
-        {mine.length === 0 && <li className="text-sm text-slate-500">ماكو مفردات لهذا الدور بعد.</li>}
-      </ol>
-      <div className="mt-3 flex flex-wrap gap-2">
-        <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="المفردة (مثلاً: توصيل PoE)" className={`${input} flex-1`} />
-        <input value={details} onChange={(e) => setDetails(e.target.value)} placeholder="تفاصيل (اختياري)" className={`${input} flex-1`} />
-        <button disabled={!title.trim()} onClick={() => api.tcAddCurriculum({ role, title, details }).then((r) => { setRows(r); setTitle(''); setDetails('') }).catch(err)} className={btn}>إضافة</button>
-      </div>
-    </div>
-  )
-}
-
-function QuestionsTab() {
-  const [role, setRole] = useState('TECHNICIAN')
-  const [rows, setRows] = useState<TcQuestion[]>([])
-  const [reload, setReload] = useState(0)
-  const [busy, setBusy] = useState(false)
-  const [q, setQ] = useState({ text: '', options: ['', '', '', ''], correct: 0 })
-  const [exam, setExam] = useState({ count: 10, minutes: 15 })
-  useEffect(() => { api.tcQuestions(role).then(setRows).catch(() => setRows([])) }, [role, reload])
-  const approved = rows.filter((r) => r.approved).length
-  const gen = async () => {
-    setBusy(true)
-    try { const r = await api.tcGenerateQuestions(role, roleLabel(role), 8); alert(`ماتركس كتب ${r.added} سؤال — راجعهن واعتمدهن`); setReload((x) => x + 1) } catch (e) { err(e) } finally { setBusy(false) }
-  }
-  return (
-    <div className="space-y-3">
-      <div className={`${card} flex flex-wrap items-center gap-2`}>
-        <select value={role} onChange={(e) => setRole(e.target.value)} className={input}>{ROLES.map((r) => <option key={r} value={r}>{roleLabel(r)}</option>)}</select>
-        <span className="text-sm text-slate-600">معتمدة: <b>{approved}</b> · تنتظر اعتماد: <b className="text-amber-700">{rows.length - approved}</b></span>
-        <button disabled={busy} onClick={() => void gen()} className="rounded-lg bg-[#b91c1c] px-4 py-2 text-sm font-bold text-white disabled:opacity-40">{busy ? 'ماتركس يكتب…' : '🤖 ماتركس يقترح أسئلة من المنهج'}</button>
-        <span className="ms-auto flex items-center gap-1 text-sm">
-          أسئلة <input type="number" value={exam.count} onChange={(e) => setExam({ ...exam, count: +e.target.value })} className={`${input} w-16`} />
-          دقايق <input type="number" value={exam.minutes} onChange={(e) => setExam({ ...exam, minutes: +e.target.value })} className={`${input} w-16`} />
-          <button onClick={() => api.tcCreateExam({ role, ...exam }).then((r) => alert(`انفتح اختبار الشهر لـ${roleLabel(role)} بـ${r.questions} سؤال — يطلع لكل موظف بهالدور`)).catch(err)} className={btn}>📝 افتح اختبار الشهر</button>
-        </span>
-      </div>
-      <div className={card}>
-        <h3 className="mb-2 font-extrabold text-[#0f2040]">✍️ سؤال بإيدك</h3>
-        <input value={q.text} onChange={(e) => setQ({ ...q, text: e.target.value })} placeholder="السؤال" className={`${input} w-full`} />
-        <div className="mt-2 grid gap-2 sm:grid-cols-2">
-          {q.options.map((o, i) => (
-            <label key={i} className="flex items-center gap-2 text-sm">
-              <input type="radio" checked={q.correct === i} onChange={() => setQ({ ...q, correct: i })} title="الجواب الصح" />
-              <input value={o} onChange={(e) => setQ({ ...q, options: q.options.map((x, j) => (j === i ? e.target.value : x)) })} placeholder={`خيار ${i + 1}${q.correct === i ? ' (الصح)' : ''}`} className={`${input} flex-1`} />
-            </label>
-          ))}
-        </div>
-        <button disabled={!q.text.trim() || q.options.filter((o) => o.trim()).length < 2 || !q.options[q.correct]?.trim()}
-          onClick={() => api.tcAddQuestion({ role, text: q.text, options: q.options.filter((o) => o.trim()), correct: q.options.slice(0, q.correct).filter((o) => o.trim()).length }).then(() => { setQ({ text: '', options: ['', '', '', ''], correct: 0 }); setReload((x) => x + 1) }).catch(err)}
-          className={`${btn} mt-2`}>حفظ السؤال</button>
-      </div>
-      <div className="space-y-2">
-        {rows.map((r) => (
-          <div key={r.id} className={`${card} ${r.approved ? '' : 'border-amber-300 bg-amber-50/40'}`}>
-            <div className="flex items-start justify-between gap-2">
-              <p className="font-bold text-[#0f2040]">{r.source === 'AI' && '🤖 '}{r.text}</p>
-              <div className="flex shrink-0 gap-1">
-                {!r.approved && <button onClick={() => api.tcApproveQuestion(r.id).then(() => setReload((x) => x + 1))} className="rounded bg-emerald-700 px-2 py-1 text-xs font-bold text-white">✓ اعتمد</button>}
-                <button onClick={() => api.tcDeleteQuestion(r.id).then(() => setReload((x) => x + 1))} className="rounded border border-slate-300 px-2 py-1 text-xs text-slate-500">حذف</button>
-              </div>
-            </div>
-            <ol className="mt-1 grid gap-1 text-sm sm:grid-cols-2">{r.options.map((o, i) => <li key={i} className={i === r.correct ? 'font-bold text-emerald-700' : 'text-slate-600'}>{i === r.correct ? '✓' : '○'} {o}</li>)}</ol>
-          </div>
-        ))}
-      </div>
-    </div>
-  )
-}
-
-function ReportTab() {
-  const [month, setMonth] = useState(thisMonth())
-  const [rows, setRows] = useState<TcExamReportRow[] | null>(null)
-  useEffect(() => { api.tcExamReport(month).then(setRows).catch(() => setRows([])) }, [month])
-  const byRole = useMemo(() => {
-    const m = new Map<string, TcExamReportRow[]>()
-    for (const r of rows ?? []) m.set(r.role, [...(m.get(r.role) ?? []), r])
-    return [...m.entries()]
-  }, [rows])
-  return (
-    <div className="space-y-3">
-      <input type="month" value={month} onChange={(e) => setMonth(e.target.value)} className={input} />
-      {rows && byRole.length === 0 && <p className={`${card} text-center text-slate-500`}>ماكو اختبار بشهر {month}. افتحه من «بنك الأسئلة والاختبار».</p>}
-      {byRole.map(([role, rs]) => {
-        const done = rs.filter((r) => r.finishedAt)
-        const pass = done.filter((r) => r.total && (r.score ?? 0) * 100 / r.total >= r.passPct)
-        const avg = done.length ? Math.round(done.reduce((n, r) => n + ((r.score ?? 0) * 100) / (r.total || 1), 0) / done.length) : null
-        return (
-          <div key={role} className={card}>
-            <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-              <h3 className="font-extrabold text-[#0f2040]">{roleLabel(role)} — {rs[0].title}</h3>
-              <span className="text-xs text-slate-600">سوّوه {done.length}/{rs.length} · نجح {pass.length} · المعدل {avg != null ? `${avg}%` : '—'}</span>
-            </div>
-            <table className="w-full text-sm">
-              <tbody>
-                {rs.map((r) => {
-                  const pct = r.finishedAt && r.total ? Math.round(((r.score ?? 0) * 100) / r.total) : null
-                  return (
-                    <tr key={r.employeeId} className="border-t border-slate-100">
-                      <td className="py-1.5 font-bold">{r.employeeName}</td>
-                      <td className="tabular-nums">{pct != null ? `${r.score}/${r.total}` : '—'}</td>
-                      <td>{pct == null ? <span className="text-xs text-slate-400">⏳ ما سوّاه</span>
-                        : <span className={`rounded-full px-2 py-0.5 text-[11px] font-bold ${pct >= r.passPct ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}`}>{pct}% {pct >= r.passPct ? 'ناجح' : 'يحتاج تدريب'}</span>}</td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
-          </div>
-        )
-      })}
-    </div>
-  )
-}
