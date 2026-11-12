@@ -87,6 +87,16 @@ func TestJudgePriceOutlier(t *testing.T) {
 	if v.Severity != model.AiSeverityWatch {
 		t.Fatalf("متوقع WATCH: %s", v.Severity)
 	}
+	// بلاغ #37: النص يگول صراحة ناقصة/زايدة وشكد، بأرقام مفصولة
+	low, _ := RulesJudge{}.judgePriceOutlier(model.AiSignal{}, model.PriceOutlierEvidence{NetTotal: 14000, Median: 56000, Samples: 142, Ratio: 0.25, Direction: "LOW"})
+	for _, w := range []string{"الفاتورة ناقصة", "14,000", "56,000", "142 فاتورة", "أقل بـ42,000", "25٪"} {
+		if low.Reasoning == nil || !strings.Contains(*low.Reasoning, w) {
+			t.Fatalf("النص لازم بيه %q: %v", w, *low.Reasoning)
+		}
+	}
+	if !strings.Contains(*v.Reasoning, "الفاتورة زايدة") || !strings.Contains(*v.Reasoning, "أكثر بـ200") {
+		t.Fatalf("الزيادة: %s", *v.Reasoning)
+	}
 	assertNoBlame(t, v)
 }
 

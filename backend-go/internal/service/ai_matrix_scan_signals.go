@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"math"
 	"strings"
 	"time"
 
@@ -395,12 +396,17 @@ func (RulesJudge) judgePriceOutlier(sig model.AiSignal, ev model.PriceOutlierEvi
 		Severity:   model.AiSeverityWatch,
 		Confidence: 50,
 	}
-	word := "أعلى"
+	// بلاغ #37 (أمير 11-12): «المبلغ زيادة لو نقصان؟» — النص چان «أقل بوضوح من وسيط 56000» ومحد
+	// يفتهمه. هسه يگول صراحة ناقصة/زايدة، وشكد، وشنو المعتاد، بأرقام مفصولة.
+	diff := math.Abs(ev.NetTotal - ev.Median)
+	var reason string
 	if ev.Direction == "LOW" {
-		word = "أقل"
+		reason = fmt.Sprintf("الفاتورة ناقصة عن المعتاد: صافيها %s د.ع، والمعتاد لهالخدمة %s د.ع (من %d فاتورة سابقة) — يعني أقل بـ%s د.ع (حوالي %d٪ من المعتاد).",
+			fmtIQD(ev.NetTotal), fmtIQD(ev.Median), ev.Samples, fmtIQD(diff), int(math.Round(ev.Ratio*100)))
+	} else {
+		reason = fmt.Sprintf("الفاتورة زايدة عن المعتاد: صافيها %s د.ع، والمعتاد لهالخدمة %s د.ع (من %d فاتورة سابقة) — يعني أكثر بـ%s د.ع (حوالي %.1f أضعاف المعتاد).",
+			fmtIQD(ev.NetTotal), fmtIQD(ev.Median), ev.Samples, fmtIQD(diff), ev.Ratio)
 	}
-	reason := fmt.Sprintf("صافي الفاتورة %.0f %s بوضوح من وسيط %.0f لفواتير نفس الخدمة (%d عيّنة، النسبة %.2f×).",
-		ev.NetTotal, word, ev.Median, ev.Samples, ev.Ratio)
 	if ev.AccountingCode != "" {
 		reason += " الفاتورة: " + ev.AccountingCode + "."
 	}
