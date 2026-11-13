@@ -11,10 +11,34 @@ import PctWhy from '../ui/PctWhy'
 // كل بند: شنو الغلط بالأرقام، منو يخصه، وشنو يقترح ماتركس.
 
 const ICON: Record<string, string> = { REVENUE: '💰', INTEGRITY: '🧮', STOCK: '📦', VEHICLES: '🚗', CUSTOMERS: '⭐', IT: '🖥️', PENDING: '⏳' }
-const SEV: Record<string, { cls: string; label: string }> = {
-  HIGH: { cls: 'border-red-300 bg-red-50', label: '🔴 مهم' },
-  MEDIUM: { cls: 'border-amber-300 bg-amber-50', label: '🟠 يحتاج متابعة' },
-  LOW: { cls: 'border-slate-200 bg-slate-50', label: '🔵 للعلم' },
+// (دازاي 11-13) «الطريقة الي جاي تطلع بيها المعلومات صعبة ع الفهم» — كل بند بطاقة مرتبة:
+// خط لون الأهمية، عنوان، «شنو صار»، «شنو لازم يصير»، وتحت منو يخصه ومتى وزر الحجز.
+// والبنود مقسّمة أقسام حسب الأهمية، المهم فوك.
+const SEV: Record<string, { label: string; bar: string; pill: string; head: string }> = {
+  HIGH: { label: '🔴 مهم', bar: 'border-r-red-500', pill: 'bg-red-100 text-red-800', head: 'text-red-800' },
+  MEDIUM: { label: '🟠 يحتاج متابعة', bar: 'border-r-amber-400', pill: 'bg-amber-100 text-amber-800', head: 'text-amber-800' },
+  LOW: { label: '🔵 للعلم', bar: 'border-r-sky-400', pill: 'bg-sky-100 text-sky-800', head: 'text-sky-800' },
+}
+const SEV_ORDER = ['HIGH', 'MEDIUM', 'LOW'] as const
+
+type EyeItem = MatrixEyesReport['eyes'][number]['items'][number]
+
+function EyeCard({ it }: { it: EyeItem }) {
+  const sev = SEV[it.severity] ?? SEV.LOW
+  return (
+    <div className={`rounded-xl border border-slate-200 border-r-4 bg-white p-3 shadow-sm dark:border-slate-700 dark:bg-slate-800 ${sev.bar}`}>
+      <p className="text-sm font-extrabold leading-6 text-slate-900 dark:text-slate-100">{it.title}</p>
+      <div className="mt-2 grid gap-1.5 text-xs leading-5">
+        {it.detail && <p className="text-slate-700 dark:text-slate-300"><span className="font-bold text-slate-500 dark:text-slate-400">📌 شنو صار: </span>{it.detail}</p>}
+        {it.advice && <p className="rounded-lg bg-violet-50 px-2 py-1 text-violet-900 dark:bg-violet-950/40 dark:text-violet-200"><span className="font-bold">✅ شنو لازم يصير: </span>{it.advice}</p>}
+      </div>
+      <div className="mt-2 flex flex-wrap items-center gap-2 border-t border-slate-100 pt-2 text-[11px] text-slate-500 dark:border-slate-700">
+        {it.ownerName && <span className="rounded-full bg-slate-100 px-2 py-0.5">👤 <b className="text-slate-700">{it.ownerName}</b></span>}
+        {it.at && <span className="rounded-full bg-slate-100 px-2 py-0.5">📅 {new Date(it.at).toLocaleDateString('en-GB')}</span>}
+        {it.bookingId && <Link to={`/bookings?focus=${it.bookingId}`} className="mr-auto rounded-lg bg-[#0f2040] px-2.5 py-1 font-bold text-white hover:bg-[#1a3a6c]">افتح الحجز ←</Link>}
+      </div>
+    </div>
+  )
 }
 
 export default function MatrixWatchEyes({ initialTab = 'REVENUE' }: { initialTab?: string } = {}) {
@@ -39,7 +63,6 @@ export default function MatrixWatchEyes({ initialTab = 'REVENUE' }: { initialTab
   }
   if (!r) return <p className="text-xs text-slate-400">ماتركس يفحص…</p>
   const eye = r.eyes.find((e) => e.key === tab) ?? r.eyes[0]
-  const items = all ? eye.items : eye.items.slice(0, 12)
 
   return (
     <div dir="rtl" className="space-y-3 rounded-2xl border border-slate-200 bg-slate-50/60 p-3 text-slate-800 sm:p-4">
@@ -62,27 +85,28 @@ export default function MatrixWatchEyes({ initialTab = 'REVENUE' }: { initialTab
         ))}
       </div>
 
-      <p className="text-xs text-slate-600">{eye.summary}</p>
-      <div className="space-y-2">
-        {items.map((it, i) => (
-          <div key={i} className={`rounded-xl border p-3 ${SEV[it.severity].cls}`}>
-            <div className="flex flex-wrap items-start justify-between gap-2">
-              <p className="text-sm font-bold text-slate-800">{it.title}</p>
-              <span className="shrink-0 text-[11px] font-bold">{SEV[it.severity].label}</span>
+      <p className="rounded-lg bg-white px-3 py-2 text-xs text-slate-600 ring-1 ring-slate-200">{eye.summary}</p>
+      {eye.items.length === 0 && <p className="rounded-xl bg-emerald-50 p-4 text-center text-sm font-bold text-emerald-700">✅ ماكو شي يحتاج انتباه هنا</p>}
+      {SEV_ORDER.map((k) => {
+        const group = eye.items.filter((x) => x.severity === k)
+        if (!group.length) return null
+        const shown = all ? group : group.slice(0, k === 'HIGH' ? 8 : 6)
+        return (
+          <details key={k} open={k !== 'LOW'} className="group space-y-2">
+            <summary className={`flex cursor-pointer list-none items-center gap-2 text-sm font-extrabold ${SEV[k].head}`}>
+              <span className={`rounded-full px-2.5 py-0.5 ${SEV[k].pill}`}>{SEV[k].label}</span>
+              <span>{group.length} بند</span>
+              <span className="text-[11px] font-normal text-slate-400 group-open:hidden">(اضغط حتى تفتحها)</span>
+            </summary>
+            <div className="grid gap-2 lg:grid-cols-2">
+              {shown.map((it, i) => <EyeCard key={i} it={it} />)}
             </div>
-            <p className="mt-1 text-xs text-slate-700">{it.detail}</p>
-            <p className="mt-1 text-xs text-violet-800">🤖 {it.advice}</p>
-            <p className="mt-1 text-[11px] text-slate-500">
-              {it.ownerName && <>يخص: <b>{it.ownerName}</b> · </>}
-              {it.at && new Date(it.at).toLocaleDateString('en-GB')}
-              {it.bookingId && <> · <Link to={`/bookings?focus=${it.bookingId}`} className="text-sky-700 underline">افتح الحجز</Link></>}
-            </p>
-          </div>
-        ))}
-        {eye.items.length > 12 && !all && (
-          <button type="button" onClick={() => setAll(true)} className="text-xs font-bold text-sky-700 hover:underline">عرض كل البنود ({eye.items.length})</button>
-        )}
-      </div>
+            {shown.length < group.length && (
+              <button type="button" onClick={() => setAll(true)} className="text-xs font-bold text-sky-700 hover:underline">عرض الكل ({group.length})</button>
+            )}
+          </details>
+        )
+      })}
 
       {tab === 'CUSTOMERS' && r.customers.length > 0 && (
         <div className="rounded-xl border border-slate-200 bg-white p-3">
