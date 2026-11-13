@@ -284,12 +284,13 @@ type GateInfo struct {
 	// (دازاي 10-25) الديكور: الحضور إجباري بأي يوم عنده بيه شغل، مو بس بوقت الشفت.
 	Division string `db:"division"`
 	JobToday bool   `db:"jobToday"`
+	Flexible bool   `db:"flexible"`
 }
 
 func (r *AttendanceRepository) Gate(employeeID string) (*GateInfo, error) {
 	var g GateInfo
 	err := r.db.Get(&g, `
-		SELECT e.role::text AS role, e.shift::text AS shift, e."shiftStart", e."shiftEnd",
+		SELECT e.role::text AS role, e.shift::text AS shift, e."shiftStart", e."shiftEnd", e."flexibleHours" AS flexible,
 		       EXISTS (SELECT 1 FROM "Attendance" a WHERE a."employeeId" = e.id AND a."checkOut" IS NULL) AS "hasOpen",
 		       EXISTS (SELECT 1 FROM "Attendance" a WHERE a."employeeId" = e.id AND a.date = baghdad_today()) AS "hadToday",
 		       EXISTS (SELECT 1 FROM "LeaveRequest" l WHERE l."employeeId" = e.id AND l.status = 'APPROVED'
@@ -314,6 +315,7 @@ type OpenWithShift struct {
 	Busy         bool       `db:"busy"`
 	// LastSeen آخر طلب للموظف بالنظام (EmployeePresence) — دازاي 11-06: فاتح النظام ويشتغل = ما ينسكر
 	LastSeen *time.Time `db:"lastSeen"`
+	Flexible bool       `db:"flexible"`
 }
 
 func (r *AttendanceRepository) OpenWithShift() ([]OpenWithShift, error) {
@@ -324,7 +326,7 @@ func (r *AttendanceRepository) OpenWithShift() ([]OpenWithShift, error) {
 		       EXISTS (SELECT 1 FROM "Booking" b -- (ع 10-16) الكادر الموحّد
 		        WHERE `+BookingWorkedBySQL("b", `a."employeeId"`)+` AND b.status = 'IN_PROGRESS'
 		          AND b."updatedAt" >= a."checkIn") AS busy,
-		       p."lastSeenAt" AS "lastSeen"
+		       p."lastSeenAt" AS "lastSeen", e."flexibleHours" AS flexible
 		FROM "Attendance" a JOIN "Employee" e ON e.id = a."employeeId"
 		LEFT JOIN "EmployeePresence" p ON p."employeeId" = a."employeeId"
 		WHERE a."checkOut" IS NULL`)

@@ -59,12 +59,15 @@ type Employee struct {
 	ContractEndDate      *time.Time `db:"contractEndDate" json:"contractEndDate"`
 	Shift                *string    `db:"shift" json:"shift"`
 	ShiftStart           *string    `db:"shiftStart" json:"shiftStart"`
-	ShiftEnd             *string    `db:"shiftEnd" json:"shiftEnd"`
-	MonthlyLeaves        int        `db:"monthlyLeaves" json:"monthlyLeaves"`
-	JobTitle             *string    `db:"jobTitle" json:"jobTitle"`
-	LeaderSkillLevel     int        `db:"leaderSkillLevel" json:"leaderSkillLevel"`
-	IsLeader             bool       `db:"isLeader" json:"isLeader"`
-	IsTrainee            bool       `db:"isTrainee" json:"isTrainee"`
+	// (دازاي 11-13) بدون جدول محدد: ما يتحاسب على تأخير؛ من يسجّل حضور تنحسبله ٨ ساعات
+	// وبعدها انصراف تلقائي — إلا إذا بعده فاتح النظام ويشتغل.
+	FlexibleHours    bool    `db:"flexibleHours" json:"flexibleHours"`
+	ShiftEnd         *string `db:"shiftEnd" json:"shiftEnd"`
+	MonthlyLeaves    int     `db:"monthlyLeaves" json:"monthlyLeaves"`
+	JobTitle         *string `db:"jobTitle" json:"jobTitle"`
+	LeaderSkillLevel int     `db:"leaderSkillLevel" json:"leaderSkillLevel"`
+	IsLeader         bool    `db:"isLeader" json:"isLeader"`
+	IsTrainee        bool    `db:"isTrainee" json:"isTrainee"`
 	// Language لغة واجهة الموظف: ar (افتراضي) أو ur — بلاغ #11 (11-07). ⚠️ عمود بالجدول → لازم حقل هنا (SELECT *).
 	Language string `db:"language" json:"language"`
 	// Division تفصل موظفي الشعبة الهندسية (ENGINEERING، الافتراضي) عن موظفي
@@ -182,6 +185,7 @@ type UpdateEmployeeRequest struct {
 	Shift                *string  `json:"shift"`
 	ShiftStart           *string  `json:"shiftStart"`
 	ShiftEnd             *string  `json:"shiftEnd"`
+	FlexibleHours        *bool    `json:"flexibleHours"`
 	MonthlyLeaves        *int     `json:"monthlyLeaves"`
 	JobTitle             *string  `json:"jobTitle"`
 	Language             *string  `json:"language"` // بلاغ #11: ar|ur — الإدارة تحدد لغة واجهة الموظف

@@ -850,7 +850,7 @@ export default function Employees({ embedded }: { embedded?: boolean } = {}) {
                           { label: 'المنصب / التخصص', value: selectedEmployee.position || '-' },
                           { label: 'الشهادة', value: selectedEmployee.certificate || '-' },
                           { label: 'الراتب', value: selectedEmployee.salary ?? '-' },
-                          { label: 'الدوام', value: selectedEmployee.shiftStart && selectedEmployee.shiftEnd ? `${selectedEmployee.shiftStart} - ${selectedEmployee.shiftEnd}` : '-' },
+                          { label: 'الدوام', value: selectedEmployee.flexibleHours ? '⏱️ بدون جدول (٨ ساعات من الحضور)' : selectedEmployee.shiftStart && selectedEmployee.shiftEnd ? `${selectedEmployee.shiftStart} - ${selectedEmployee.shiftEnd}` : '-' },
                           { label: 'الإجازات الشهرية', value: selectedEmployee.monthlyLeaves ?? '-' },
                           { label: 'العنوان الوظيفي', value: selectedEmployee?.jobTitle || '-' },
                         ].map(f => (

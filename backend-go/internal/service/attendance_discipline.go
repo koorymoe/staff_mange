@@ -89,10 +89,11 @@ func Disciplines(db *sqlx.DB, ids []string, from, to, now time.Time) (map[string
 		ShiftEnd   *string    `db:"shiftEnd"`
 		CheckIn    *time.Time `db:"checkIn"`
 		Excused    bool       `db:"excused"`
+		Flexible   bool       `db:"flexible"`
 	}{}
 	err := db.Select(&days, `
 		SELECT s."employeeId", baghdad_date(s."at")::timestamp AS day, s.points,
-		       e.shift::text AS shift, e."shiftStart", e."shiftEnd",
+		       e.shift::text AS shift, e."shiftStart", e."shiftEnd", e."flexibleHours" AS flexible,
 		       (SELECT min(a."checkIn") FROM "Attendance" a WHERE a."employeeId" = s."employeeId"
 		         AND baghdad_date(a."checkIn") = baghdad_date(s."at")) AS "checkIn",
 		       EXISTS (SELECT 1 FROM "LateExcuse" x WHERE x."employeeId" = s."employeeId"
@@ -118,8 +119,10 @@ func Disciplines(db *sqlx.DB, ids []string, from, to, now time.Time) (map[string
 		case d.Points == 0:
 			x.Absent++
 			item.Status = "ABSENT"
-		case d.CheckIn == nil:
-			x.OnTime++ // انحسب حاضر بماتركس (تصحيح يدوي/إجازة) — ما نحكم بلا وقت
+		case d.CheckIn == nil || d.Flexible:
+			// انحسب حاضر بماتركس (تصحيح يدوي/إجازة) — ما نحكم بلا وقت.
+			// وبدون جدول محدد (دازاي 11-13): ماكو تأخير أصلاً.
+			x.OnTime++
 			continue
 		default:
 			from, _ := ShiftWindow(d.Shift, d.ShiftStart, d.ShiftEnd, date)

@@ -285,6 +285,7 @@ func (s *MatrixMorningService) MonitorDaily(day string) string {
 		SELECT e.name || ' (' || to_char(min(a."checkIn") AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Baghdad', 'HH24:MI') || ')'
 		FROM "Attendance" a JOIN "Employee" e ON e.id = a."employeeId"
 		WHERE baghdad_date(a."checkIn") = $1::date AND e.status = 'ACTIVE' AND e.role NOT IN ('ADMIN', 'OWNER')
+		  AND NOT e."flexibleHours" -- بدون جدول: ماكو تأخير (11-13)
 		GROUP BY e.id, e.name, e."shiftStart"
 		HAVING (min(a."checkIn") AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Baghdad')::time
 			> COALESCE(NULLIF(e."shiftStart", ''), '08:00')::time + interval '10 minutes'

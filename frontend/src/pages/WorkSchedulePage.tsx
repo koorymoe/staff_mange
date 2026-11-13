@@ -38,7 +38,7 @@ function ScheduleTab() {
     const e = edits[r.id]
     if (!e) return
     try {
-      await api.setEmployeeSchedule(r.id, { shift: e.shift ?? r.shift, shiftStart: e.shiftStart ?? r.shiftStart, shiftEnd: e.shiftEnd ?? r.shiftEnd })
+      await api.setEmployeeSchedule(r.id, { shift: e.shift ?? r.shift, shiftStart: e.shiftStart ?? r.shiftStart, shiftEnd: e.shiftEnd ?? r.shiftEnd, flexibleHours: e.flexibleHours ?? !!r.flexibleHours })
       setEdits((x) => { const n = { ...x }; delete n[r.id]; return n })
       setMsg(`انحفظ جدول ${r.name}`)
       load()
@@ -82,12 +82,13 @@ function ScheduleTab() {
       <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-sm">
         <table className="w-full min-w-[860px] text-sm">
           <thead className="bg-slate-50 text-xs text-slate-500">
-            <tr><th className="p-3 text-right">الموظف</th><th className="p-3 text-right">الدور الوظيفي</th><th className="p-3">الوجبة</th><th className="p-3">يبدأ</th><th className="p-3">ينتهي</th><th className="p-3">حالة اليوم</th>{canEdit && <th className="p-3">إجراءات</th>}</tr>
+            <tr><th className="p-3 text-right">الموظف</th><th className="p-3 text-right">الدور الوظيفي</th><th className="p-3">الوجبة</th><th className="p-3">يبدأ</th><th className="p-3">ينتهي</th><th className="p-3" title="بدون جدول محدد: يسجّل شوكت ما يبدي، تنحسبله ٨ ساعات وبعدها انصراف تلقائي — إلا إذا بعده يشتغل بالنظام. ما عليه تأخير.">⏱️ بدون جدول</th><th className="p-3">حالة اليوم</th>{canEdit && <th className="p-3">إجراءات</th>}</tr>
           </thead>
           <tbody>
             {shown.map((r) => {
               const e = edits[r.id] ?? {}
-              const set = (k: keyof WorkScheduleRow, v: string) => setEdits((x) => ({ ...x, [r.id]: { ...x[r.id], [k]: v } }))
+              const set = (k: keyof WorkScheduleRow, v: string | boolean) => setEdits((x) => ({ ...x, [r.id]: { ...x[r.id], [k]: v } }))
+              const flex = e.flexibleHours ?? !!r.flexibleHours
               return (
                 <tr key={r.id} className="border-t border-slate-100 hover:bg-slate-50/50">
                   <td className="p-2.5"><span className="flex items-center gap-2 font-bold text-[#0f2040]"><span className="grid h-8 w-8 place-items-center rounded-full bg-sky-50 text-[11px] text-[#2c5aad]">{initials(r.name)}</span>{r.name}{r.isLeader && <span className="text-[10px] text-amber-600">قائد</span>}</span></td>
@@ -97,8 +98,14 @@ function ScheduleTab() {
                       <option value="MORNING">صباحي</option><option value="EVENING">مسائي</option>
                     </select>
                   </td>
-                  <td className="p-2.5 text-center"><input type="time" disabled={!canEdit} className={inp} value={e.shiftStart ?? r.shiftStart ?? ''} onChange={(ev) => set('shiftStart', ev.target.value)} /></td>
-                  <td className="p-2.5 text-center"><input type="time" disabled={!canEdit} className={inp} value={e.shiftEnd ?? r.shiftEnd ?? ''} onChange={(ev) => set('shiftEnd', ev.target.value)} /></td>
+                  <td className="p-2.5 text-center"><input type="time" disabled={!canEdit || flex} className={inp} value={e.shiftStart ?? r.shiftStart ?? ''} onChange={(ev) => set('shiftStart', ev.target.value)} /></td>
+                  <td className="p-2.5 text-center"><input type="time" disabled={!canEdit || flex} className={inp} value={e.shiftEnd ?? r.shiftEnd ?? ''} onChange={(ev) => set('shiftEnd', ev.target.value)} /></td>
+                  <td className="p-2.5 text-center">
+                    <label className="inline-flex cursor-pointer items-center gap-1 text-xs">
+                      <input type="checkbox" disabled={!canEdit} checked={flex} onChange={(ev) => set('flexibleHours', ev.target.checked)} aria-label={`${r.name} بدون جدول محدد`} />
+                      {flex && <span className="rounded-full bg-sky-50 px-2 py-0.5 font-bold text-sky-700">٨ ساعات</span>}
+                    </label>
+                  </td>
                   <td className="p-2.5 text-center">{pill(dayKind(r), r)}</td>
                   {canEdit && <td className="p-2.5 text-center">{edits[r.id] ? <button onClick={() => save(r)} className="rounded-lg bg-[#0f2040] px-3 py-1 text-xs font-bold text-white">حفظ</button> : <span className="text-slate-300">⋮</span>}</td>}
                 </tr>
@@ -117,6 +124,8 @@ const LeavesPage = lazyRetry(() => import('./LeavesPage'))
 function nowMin() { const d = new Date(); return d.getHours() * 60 + d.getMinutes() }
 // حالة اليوم بكلمة وحدة (للبطاقات والفلتر)
 function dayKind(r: WorkScheduleRow): 'present' | 'late' | 'absent' | 'notyet' {
+  // بدون جدول: حضر = حاضر، وما حضر = بعده (ماكو تأخير ولا «غائب» بساعة معيّنة)
+  if (r.flexibleHours) return r.checkIn ? 'present' : 'notyet'
   const start = minutes(r.shiftStart)
   if (r.checkIn) {
     const inAt = minutes(new Date(r.checkIn).toTimeString().slice(0, 5))

@@ -131,6 +131,40 @@ func CountedEnd(checkIn time.Time, checkOut *time.Time, lastActivity *time.Time,
 	return lim, true, why + " — انحسبله لحد " + clockLabel(lim) + "."
 }
 
+// ═══ موظف بدون جدول محدد — دازاي 11-13 ═══
+// «شوكت ما يسجّلون حضور يبدي يحسب الهم النظام وقت لحد ٨ ساعات ويسجّل انصراف،
+// إذا بعدهم يشتغلون وفاتحين النظام ما يسجّلهم انصراف». فلا تأخير عليه، والانصراف
+// الي يسجّله بنفسه ينحسب مثل ما هو.
+const FlexibleDay = 8 * time.Hour
+
+// flexibleSanity أطول جلسة تنحسب لموظف بلا جدول إذا نسى الانصراف وظل النظام فاتح.
+const flexibleSanity = 16 * time.Hour
+
+// FlexibleAutoCheckoutAt متى ينسكر انصراف الموظف بلا جدول: بعد ٨ ساعات من الحضور
+// (أو لحد آخر حجز خلّصه إذا بعدها).
+func FlexibleAutoCheckoutAt(checkIn time.Time, lastActivity *time.Time, now time.Time) (time.Time, bool) {
+	lim := checkIn.Add(FlexibleDay)
+	if lastActivity != nil && lastActivity.After(lim) {
+		lim = *lastActivity
+	}
+	return lim, !now.Before(lim)
+}
+
+// FlexibleCountedEnd نهاية الجلسة المحسوبة لموظف بلا جدول: انصرافه مثل ما هو.
+func FlexibleCountedEnd(checkIn time.Time, checkOut *time.Time, now time.Time) (time.Time, bool, string) {
+	end := now
+	if checkOut != nil {
+		end = *checkOut
+	}
+	if end.Before(checkIn) {
+		return checkIn, false, ""
+	}
+	if end.Sub(checkIn) > flexibleSanity {
+		return checkIn.Add(FlexibleDay), true, "جلسة أطول من ١٦ ساعة — انحسبتله ٨ ساعات."
+	}
+	return end, false, ""
+}
+
 // AutoCheckoutAt وقت الانصراف التلقائي: حد الساعات المحسوبة. ok=false لحد
 // ما تفوت ٣ ساعات سماح بعد الحد.
 func AutoCheckoutAt(checkIn time.Time, lastActivity *time.Time, now time.Time) (time.Time, bool) {

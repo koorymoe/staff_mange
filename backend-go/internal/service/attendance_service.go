@@ -58,8 +58,12 @@ func (s *AttendanceService) TodaySessions(employeeID string) ([]model.Attendance
 	total := 0
 	open := false
 	now := time.Now()
+	flex := false
+	if g, gerr := s.repo.Gate(employeeID); gerr == nil && g != nil {
+		flex = g.Flexible
+	}
 	for i := range sessions {
-		total += countSession(&sessions[i], now)
+		total += countSession(&sessions[i], now, flex)
 		if sessions[i].CheckOut == nil {
 			open = true
 		}
@@ -90,13 +94,13 @@ func (s *AttendanceService) MonthlyReport(employeeID, month string) (*model.Mont
 	report := &model.MonthlyAttendanceReport{
 		EmployeeID: employeeID,
 		Month:      start.Format("2006-01"),
-		Days:       groupByCalendarDate(records),
 	}
 	g, _ := s.repo.Gate(employeeID)
+	report.Days = groupByCalendarDate(records, g != nil && g.Flexible)
 	for i := range report.Days {
 		day := &report.Days[i]
 		report.TotalMinutes += day.TotalMinutes
-		if g != nil && (g.ShiftStart != nil || g.Shift != nil) {
+		if g != nil && !g.Flexible && (g.ShiftStart != nil || g.Shift != nil) {
 			if d, err := time.ParseInLocation("2006-01-02", day.Date, debriefLoc); err == nil {
 				from, _ := ShiftWindow(g.Shift, g.ShiftStart, g.ShiftEnd, d)
 				late := day.FirstCheckIn.After(from.Add(lateGrace))
@@ -109,7 +113,7 @@ func (s *AttendanceService) MonthlyReport(employeeID, month string) (*model.Mont
 }
 
 // countSession يحسب دقايق الجلسة بالقاعدة ويعلّمها إذا انقطع منها شي.
-func countSession(a *model.Attendance, now time.Time) int {
+func countSession(a *model.Attendance, now time.Time, flexible ...bool) int {
 	if a.ApprovedOut && a.CheckOut != nil {
 		// انصراف معتمد (دليل، موافقة المراقب، أو تصحيح يدوي) — ينحسب مثل ما هو.
 		a.CountedMinutes = int(a.CheckOut.Sub(a.CheckIn).Minutes())
@@ -119,6 +123,9 @@ func countSession(a *model.Attendance, now time.Time) int {
 		return a.CountedMinutes
 	}
 	end, assumed, why := CountedEnd(a.CheckIn, a.CheckOut, a.LastActivity, now)
+	if len(flexible) > 0 && flexible[0] {
+		end, assumed, why = FlexibleCountedEnd(a.CheckIn, a.CheckOut, now)
+	}
 	a.CountedMinutes = int(end.Sub(a.CheckIn).Minutes())
 	if assumed {
 		a.AssumedNote = why
@@ -131,7 +138,7 @@ const lateGrace = 10 * time.Minute
 
 // groupByCalendarDate يجمّع صفوف الحضور (ممكن أكثر من صف باليوم الواحد بعد
 // دعم الجلسات المتعددة) بصف واحد لكل تاريخ تقويمي.
-func groupByCalendarDate(records []model.Attendance) []model.DailyAttendance {
+func groupByCalendarDate(records []model.Attendance, flexible bool) []model.DailyAttendance {
 	order := []string{}
 	byDate := map[string]*model.DailyAttendance{}
 	now := time.Now()
@@ -155,7 +162,7 @@ func groupByCalendarDate(records []model.Attendance) []model.DailyAttendance {
 		} else {
 			day.StillOpen = true
 		}
-		day.TotalMinutes += countSession(&day.Sessions[len(day.Sessions)-1], now)
+		day.TotalMinutes += countSession(&day.Sessions[len(day.Sessions)-1], now, flexible)
 		if day.Sessions[len(day.Sessions)-1].AssumedNote != "" {
 			day.Assumed = true
 		}
@@ -220,6 +227,10 @@ func (s *AttendanceService) Gate(employeeID string, now time.Time) (*AttendanceG
 	// قرار (ع) 10-08: ماكو إجازة أسبوعية — الدوام يومي والإجازات بالطلب بس.
 	in := InShift(from, to, now)
 	out.Required = need && in
+	// بدون جدول: ما ينطلب بوقت معيّن — يسجّل شوكت ما يبدي، والبوابة تسأله بس.
+	if g.Flexible {
+		out.Required = false
+	}
 	// (دازاي 10-25) الديكور: «تسجيل الحضور إجباري» — دوامهم يمشي ويا الشغل، فأي
 	// يوم عنده بيه شغل، البوابة تقفل لحد ما يسجّل حتى لو برّا الشفت المكتوب.
 	if g.Division == "DECOR" && g.JobToday {
@@ -252,6 +263,9 @@ func (s *AttendanceService) AutoCheckout(now time.Time, notify func(employeeID, 
 	n := 0
 	for _, r := range rows {
 		at, ok := AutoCheckoutAt(r.CheckIn, r.LastActivity, now)
+		if r.Flexible {
+			at, ok = FlexibleAutoCheckoutAt(r.CheckIn, r.LastActivity, now)
+		}
 		if !ok {
 			continue
 		}
@@ -264,6 +278,9 @@ func (s *AttendanceService) AutoCheckout(now time.Time, notify func(employeeID, 
 			continue
 		}
 		_, _, why := CountedEnd(r.CheckIn, nil, r.LastActivity, now)
+		if r.Flexible {
+			why = "بدون جدول محدد — انحسبتله ٨ ساعات من حضوره وانسكّر الساعة " + clockLabel(at) + "."
+		}
 		reason := "ما سجّل انصراف — انسكّر الساعة " + clockLabel(at) + "."
 		if why != "" {
 			reason = why

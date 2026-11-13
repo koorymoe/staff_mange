@@ -2474,5 +2474,9 @@ func matrixChatMigrations() []Migration {
 				(SELECT COALESCE(MAX(substring(code FROM '^B([0-9]+)$')::bigint), 0) FROM "Booking"),
 				(SELECT last_value FROM "Booking_seq"), 1));
 		`,
+	}, {
+		// (دازاي 11-13) موظف بدون جدول محدد: ٨ ساعات من الحضور، بلا تأخير.
+		Version: "0486_employee_flexible_hours",
+		SQL:     `ALTER TABLE "Employee" ADD COLUMN IF NOT EXISTS "flexibleHours" BOOLEAN NOT NULL DEFAULT false;`,
 	}}
 }

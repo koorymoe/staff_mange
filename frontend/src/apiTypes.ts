@@ -151,6 +151,8 @@ export interface Employee {
   shift: 'MORNING' | 'EVENING' | null
   shiftStart: string | null
   shiftEnd: string | null
+  /** (دازاي 11-13) بدون جدول محدد */
+  flexibleHours?: boolean
   monthlyLeaves: number
   jobTitle: string | null
   division: Division
@@ -3812,6 +3814,8 @@ export interface WorkScheduleRow {
   name: string
   role: Employee['role']
   isLeader: boolean
+  /** (دازاي 11-13) بدون جدول محدد: ٨ ساعات من الحضور، بلا تأخير */
+  flexibleHours?: boolean
   shift: string
   shiftStart: string
   shiftEnd: string

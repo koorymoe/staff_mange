@@ -128,9 +128,9 @@ func (s *StaffPointsService) Month(month string) ([]StaffPoints, error) {
 			GROUP BY 1, 2
 		)
 		SELECT d.id,
-			count(*) FILTER (WHERE (d.first AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Baghdad')::time
+			count(*) FILTER (WHERE e."flexibleHours" OR (d.first AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Baghdad')::time
 				<= (COALESCE(NULLIF(e."shiftStart", ''), '08:00')::time + interval '10 minutes')) AS ontime,
-			count(*) FILTER (WHERE (d.first AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Baghdad')::time
+			count(*) FILTER (WHERE NOT e."flexibleHours" AND (d.first AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Baghdad')::time
 				> (COALESCE(NULLIF(e."shiftStart", ''), '08:00')::time + interval '10 minutes')) AS late
 		FROM d JOIN "Employee" e ON e.id = d.id GROUP BY d.id`, month); err != nil {
 		log.Printf("staff points attendance: %v", err)
