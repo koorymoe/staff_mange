@@ -31,45 +31,64 @@ func drillBase() string { return BookingCountableSQL("b") }
 const openMissionSQL = `EXISTS (SELECT 1 FROM "Mission" m WHERE m."bookingId" = b.id
 	AND (` + missionStageExpr + `) NOT IN ('COMPLETED','STOPPED'))`
 
-// ═══ «المتأخرات» — تعريف (ع) 10-23 ═══
-// «تصنيف كلمة متأخر هو شنو؟» — التأخير لكل مرحلة من لحظتها، مو من موعد الحجز وبس:
+// ═══ «المتأخرات» — تعريف دازاي 11-13 (بدل تعريف 10-23) ═══
+// «ما ينحسب متأخر بيوم واحد. يتأخر من احدّدله موعد وما يطلعوله بنفس يوم الموعد،
+// أو من يجيني حجز واتأخر يومين بالتثبيت مالته». فالمتأخر حالتين بس:
 //
-//	١ تواصل: حجز جديد فات عليه ساعتين والزبون بعده ما انتواصل وياه.
-//	٢ انطلاق: الموعد فات بنص ساعة والكادر ما طلع («الليدر مجهزليه بالأربع ويطلع بالخمس»).
-//	٣ تنفيذ: الشغل بدا وطوّل أكثر من ٢٤ ساعة وما خلص.
-//	٤ ورق: من «تم الإنجاز» يبدي يحسب — فات ٢٤ ساعة وناقصه فاتورة أو تقرير.
+//	١ موعد: يوم الموعد خلص (بتوقيت بغداد) والكادر ما طلع.
+//	٢ تثبيت: حجز جديد صارله يومين وما تثبّت.
 //
-// و«بانتظار قرار الزبون» **مو متأخر** (محطته وحدها، ويتأرشف استفسار بعد ٥ أيام).
-// الحجز الي موعده بعدين **مو متأخر** لحد ما يجي موعده.
+// و«خلص وناقصه ورق» و«التنفيذ طوّل» مو تأخير — راحن لقائمة «ورق ناقص» (paper_missing).
+// حجوزات المشاريع (المرحّلة لإدارة المشاريع) مو هنا — إلها «متابعة المشاريع».
 var (
-	lateContactSQL = `(` + bucketCondition("pending") + `) AND b."confirmationContactedAt" IS NULL
-		AND b."createdAt" < (now() AT TIME ZONE 'UTC') - interval '2 hours'`
+	lateConfirmSQL = `(` + bucketCondition("pending") + `) AND NOT ` + atProjectsSQL + `
+		AND b."createdAt" < (now() AT TIME ZONE 'UTC') - interval '48 hours'`
 	lateDepartSQL = `(` + bucketCondition("assigned") + `) AND NOT ` + startedSQL + ` AND b."departedAt" IS NULL
-		AND b."scheduledAt" IS NOT NULL AND b."scheduledAt" < (now() AT TIME ZONE 'UTC') - interval '30 minutes'`
+		AND b."scheduledAt" IS NOT NULL AND baghdad_date(b."scheduledAt") < baghdad_today()`
 	lateExecSQL = `(` + bucketCondition("assigned") + `) AND ` + startedSQL + `
 		AND COALESCE(b."startedAt", b."arrivedAt", b."departedAt") < (now() AT TIME ZONE 'UTC') - interval '24 hours'`
 	latePaperSQL = `(` + bucketCondition("needs_paper") + `)
 		AND b."completedAt" < (now() AT TIME ZONE 'UTC') - interval '24 hours'
 		AND b."completedAt" > (now() AT TIME ZONE 'UTC') - interval '60 days'`
-	overdueSQL = `((` + lateContactSQL + `) OR (` + lateDepartSQL + `) OR (` + lateExecSQL + `) OR (` + latePaperSQL + `))`
-	// overdueKindSQL نوع التأخير — يطلع بعمود «وين واكف» بصفحة المتأخرات.
+	overdueSQL = `((` + lateConfirmSQL + `) OR (` + lateDepartSQL + `))`
+	paperMissingSQL = `((` + lateExecSQL + `) OR (` + latePaperSQL + `))`
+	// overdueKindSQL «وين واكف» ويا التفاصيل: شنو فات، ومن يمته، وبكم يوم.
 	overdueKindSQL = `CASE
-		WHEN ` + lateContactSQL + ` THEN '📞 تأخير تواصل — الزبون بعده ما انتواصل وياه'
-		WHEN ` + lateDepartSQL + ` THEN '🚚 الكادر ما طلع — الموعد فات'
-		WHEN ` + lateExecSQL + ` THEN '⏳ التنفيذ طوّل أكثر من ٢٤ ساعة'
-		WHEN ` + latePaperSQL + ` THEN '🧾 خلص وناقصه ' || concat_ws(' و',
+		WHEN ` + lateConfirmSQL + ` THEN '📞 ما تثبّت — وصل ' || to_char(b."createdAt" + interval '3 hours', 'YYYY-MM-DD') || ' وصارله '
+			|| (baghdad_today() - baghdad_date(b."createdAt")) || ' يوم بلا تثبيت (المسموح يومين)'
+		WHEN ` + lateDepartSQL + ` THEN '🚚 الكادر ما طلع — الموعد چان ' || to_char(b."scheduledAt" + interval '3 hours', 'YYYY-MM-DD HH24:MI')
+			|| '، وفات ' || (baghdad_today() - baghdad_date(b."scheduledAt")) || ' يوم'
+		WHEN ` + lateExecSQL + ` THEN '⏳ التنفيذ طوّل — بدا ' || to_char(COALESCE(b."startedAt", b."arrivedAt", b."departedAt") + interval '3 hours', 'YYYY-MM-DD HH24:MI') || ' وما خلص'
+		WHEN ` + latePaperSQL + ` THEN '🧾 خلص ' || to_char(b."completedAt" + interval '3 hours', 'YYYY-MM-DD') || ' وناقصه ' || concat_ws(' و',
 			CASE WHEN NOT EXISTS (SELECT 1 FROM "LeaderInvoice" li WHERE li."bookingId" = b.id AND li."revokedAt" IS NULL) THEN 'فاتورة' END,
 			CASE WHEN NOT EXISTS (SELECT 1 FROM "WorkReport" w WHERE w."bookingId" = b.id) THEN 'تقرير' END)
 		END`
 	// overdueSinceSQL من يمته يحسب التأخير — حسب نوعه.
 	overdueSinceSQL = `CASE
-		WHEN ` + lateContactSQL + ` THEN b."createdAt"
+		WHEN ` + lateConfirmSQL + ` THEN b."createdAt"
 		WHEN ` + lateDepartSQL + ` THEN b."scheduledAt"
 		WHEN ` + lateExecSQL + ` THEN COALESCE(b."startedAt", b."arrivedAt", b."departedAt")
 		ELSE b."completedAt" END`
 )
 
-const needsCoordSQL = `b.status = 'CONFIRMED' AND (b."scheduledAt" IS NULL OR NOT ` + hasCrewSQL + `)`
+// (دازاي 11-13) حجوزات المشاريع مو «تنتظر تنسيق» — إلها «متابعة المشاريع».
+var needsCoordSQL = `b.status = 'CONFIRMED' AND (b."scheduledAt" IS NULL OR NOT ` + hasCrewSQL + `) AND NOT ` + atProjectsSQL
+
+// ═══ «متابعة المشاريع» — دازاي 11-13 ═══
+// «ماريدهن يطلعن وي الحجوزات، خليها هنا اسمها متابعة المشاريع… المشروع ياخذ مدته شهر
+// لو شهرين… النظام لازم يعرف منو الي انرفضن ومنو الي بدوا بيهن ومشوا». فلكل حجز
+// مرحّل للمشاريع: مشروعه ومرحلته وآخر حركة إله. المرفوض ما يطلع (انسكر). «صارله» =
+// من آخر حركة للمشروع، مو من يوم الترحيل — المشروع الي يمشي ما يبين قديم.
+
+var projectsFollowSQL = atProjectsSQL + ` AND NOT EXISTS (SELECT 1 FROM "Project" p WHERE p."bookingId" = b.id AND p.stage LIKE '❌%')`
+
+const projectLastMoveSQL = `COALESCE((SELECT GREATEST(p."updatedAt", (SELECT max(l."createdAt") FROM "ProjectStageLog" l WHERE l."projectId" = p.id))
+	FROM "Project" p WHERE p."bookingId" = b.id ORDER BY p."createdAt" DESC LIMIT 1), b."confirmedAt", b."createdAt")`
+
+var projectStateSQL = `COALESCE((SELECT '🏗️ ' || p.code || ' · ' || COALESCE(p.stage, 'بلا مرحلة')
+		FROM "Project" p WHERE p."bookingId" = b.id ORDER BY p."createdAt" DESC LIMIT 1),
+	'⚠️ ما انفتحله مشروع بعد') || CASE WHEN (baghdad_today() - baghdad_date(` + projectLastMoveSQL + `)) >= 30
+	THEN ' — 🔻 واكف بلا تقدم من ' || (baghdad_today() - baghdad_date(` + projectLastMoveSQL + `)) || ' يوم' ELSE ' — ✅ يمشي' END`
 
 const weekSQL = `baghdad_date(b."createdAt") BETWEEN baghdad_today() - 6 AND baghdad_today()`
 
@@ -90,11 +109,17 @@ var drillDefs = []DrillDef{
 		Explain: "حجوزات عليها مهمة ميدانية بعدها ما خلصت ولا توقفت — من أول ما تنسند لحد الإنجاز. (كل الفترات، مو اليوم بس.)",
 		Where:   openMissionSQL},
 	{Key: "overdue", Title: "المتأخرات", AgeFrom: `"scheduledAt"`,
-		Explain: "كل مرحلة تتأخر من لحظتها: حجز جديد بلا تواصل +ساعتين · الموعد فات والكادر ما طلع · التنفيذ طوّل +٢٤ ساعة · خلص وناقصه فاتورة أو تقرير +٢٤ ساعة. بانتظار قرار الزبون مو متأخر.",
+		Explain: "حالتين بس: يوم الموعد خلص والكادر ما طلع، أو حجز جديد صارله يومين وما تثبّت. يوم واحد مو تأخير، وحجوزات المشاريع إلها «متابعة المشاريع»، والورق الناقص إله «ورق ناقص».",
 		Where:   overdueSQL},
+	{Key: "paper_missing", Title: "ورق ناقص", AgeFrom: `"completedAt"`,
+		Explain: "الشغل خلص من أكثر من ٢٤ ساعة وناقصه فاتورة أو تقرير، أو التنفيذ بدا وطوّل أكثر من ٢٤ ساعة وما خلص.",
+		Where:   paperMissingSQL},
 	{Key: "needs_coord", Title: "حجوزات تنتظر تنسيق", AgeFrom: `"confirmedAt"`,
 		Explain: "حجوزات حالتها «مثبّتة» بس ناقصها موعد أو كادر. عمود «وين واكف» يگلك ليش ما تنسّقت (الزبون ما رد، عند المشاريع، مؤجل…). المسؤول: الإداري المنسّق.",
 		Where:   needsCoordSQL},
+	{Key: "projects_follow", Title: "متابعة المشاريع", AgeFrom: `"confirmedAt"`,
+		Explain: "الحجوزات المرحّلة لإدارة المشاريع: مشروعها ومرحلتها، و«صارله» من آخر حركة للمشروع. المشروع ياخذ مدته فما ينحسب متأخر؛ الي ما تحرّك ٣٠ يوم يطلع «واكف بلا تقدم»، والي ما انفتحله مشروع ينبيّن. المرفوض ما يطلع. المسؤول: مدير المشاريع.",
+		Where:   projectsFollowSQL},
 	{Key: "needs_contact", Title: "ينتظرون تواصل وتثبيت", AgeFrom: `"createdAt"`,
 		Explain: "انسجّلت وما أحد ثبّتها ويا الزبون بعد — محطة «بانتظار التثبيت» بالحجوزات.",
 		Where:   bucketCondition("pending")},
@@ -227,8 +252,11 @@ func Drill(db *sqlx.DB, key string, limit int) (*DrillResult, error) {
 		return nil, err
 	}
 	ageExpr, stationExpr, orderExpr := `b.`+d.AgeFrom, stationCaseSQL(), `b.`+d.AgeFrom
-	if d.Key == "overdue" {
+	if d.Key == "overdue" || d.Key == "paper_missing" {
 		ageExpr, stationExpr, orderExpr = overdueSinceSQL, overdueKindSQL, overdueSinceSQL
+	}
+	if d.Key == "projects_follow" {
+		ageExpr, stationExpr, orderExpr = projectLastMoveSQL, projectStateSQL, projectLastMoveSQL
 	}
 	q := `
 		SELECT b.id, b.code, c.name AS customer, c.phone, s.name AS service, b.status::text AS status,

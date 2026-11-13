@@ -372,7 +372,8 @@ export function FollowBoard({ monitor = false }: { monitor?: boolean } = {}) {
             <Stat big icon="📅" tone="blue" label="حجوزات اليوم" to={drillTo('today_scheduled')} value={fmt(pulse.todayBookings)} hint={`موعدها اليوم · أمس جانت ${fmt(pulse.yesterdayBookings)}`} />
             <Stat big icon="📄" tone="blue" label="المهام المفتوحة" to={drillTo('open_missions')} value={fmt(pulse.openMissions)} hint="حجوزات عليها مهمة بعدها ما خلصت — كل الفترات" />
             <Stat big icon="⚠️" tone={pulse.newComplaints ? 'red' : 'slate'} label="الشكاوى الجديدة" to="/complaints?status=NEW" value={fmt(pulse.newComplaints)} hint="شكاوى بعد ما أحد اشتغل عليها" />
-            <Stat big icon="⏳" tone={pulse.overdueMissions ? 'amber' : 'slate'} label="المتأخرات" to={drillTo('overdue')} value={fmt(pulse.overdueMissions)} hint="تواصل +ساعتين · كادر ما طلع · تنفيذ طوّل · ورق ناقص +٢٤ ساعة" />
+            <Stat big icon="⏳" tone={pulse.overdueMissions ? 'amber' : 'slate'} label="المتأخرات" to={drillTo('overdue')} value={fmt(pulse.overdueMissions)} hint="يوم الموعد خلص والكادر ما طلع · حجز جديد صارله يومين بلا تثبيت" />
+            <Stat icon="🧾" tone={pulse.paperMissing ? 'amber' : 'slate'} label="ورق ناقص" to={drillTo('paper_missing')} value={fmt(pulse.paperMissing ?? 0)} hint="خلص وناقصه فاتورة أو تقرير +٢٤ ساعة · تنفيذ طوّل" />
             <Stat big icon="👷" tone="green" label="الكوادر بالميدان" to={monitor ? drillTo('in_field') : '/missions?tab=field'} value={fmt(pulse.crewInField)} hint="عدد الموظفين الطالعين هسه — القائمة بالحجوزات الي طالعين عليها" />
           </div>
         )}
@@ -555,6 +556,8 @@ export function FollowBoard({ monitor = false }: { monitor?: boolean } = {}) {
           <Section title="🕐 تنتظر تنسيق">
             <Stat icon="🕐" label="حجوزات تنتظر تنسيق" to={drillTo('needs_coord')} value={fmt(pulse.needsCoordination)} tone={pulse.needsCoordination ? 'amber' : 'slate'}
               hint="مثبّتة وناقصها موعد أو كادر — اضغط تشوف كل وحدة وين واكفة وليش" />
+            <Stat icon="🏗️" label="متابعة المشاريع" to={drillTo('projects_follow')} value={fmt(pulse.projectsFollow ?? 0)} tone="slate"
+              hint="حجوزات عند إدارة المشاريع: مرحلة كل مشروع وآخر حركة إله — الواكف ٣٠ يوم يبين" />
           </Section>
         )}
       </div>

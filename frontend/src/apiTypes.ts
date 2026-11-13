@@ -3157,6 +3157,9 @@ export interface TodayPulse {
   newComplaints: number
   /** مثبّتة بس بلا موعد أو بلا كادر — شغل ينتظر الإداري. */
   needsCoordination: number
+  /** (دازاي 11-13) */
+  paperMissing?: number
+  projectsFollow?: number
   /** ليدرات بالميدان هسه (طلعوا وما خلصوا). */
   crewInField: number
   /** مهام مفتوحة من أكثر من ٢٤ ساعة. */

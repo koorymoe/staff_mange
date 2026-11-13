@@ -171,6 +171,9 @@ type todayPulse struct {
 	NeedsCoordination int `db:"needsCoordination" json:"needsCoordination"`
 	CrewInField       int `db:"crewInField"    json:"crewInField"`
 	OverdueMissions   int `db:"overdueMissions" json:"overdueMissions"`
+	// (دازاي 11-13) قائمتين انفصلن عن المتأخرات و«تنتظر تنسيق»
+	PaperMissing   int `db:"paperMissing" json:"paperMissing"`
+	ProjectsFollow int `db:"projectsFollow" json:"projectsFollow"`
 }
 
 // GET /api/dashboard/today-pulse
@@ -203,7 +206,9 @@ func (h *DashboardHandler) TodayPulse(w http.ResponseWriter, r *http.Request) {
 			    WHERE m."leaderId" IS NOT NULL AND `+repository.InFieldSQL+repository.NotDeletePendingSQL("b")+`
 			 ) x)                                                                    AS "crewInField",
 			-- متأخرة = مفتوحة وموعد حجزها فات بأكثر من ٢٤ ساعة
-			(SELECT `+repository.DrillCountSQL("overdue")+` FROM "Booking" b WHERE `+repository.BookingCountableSQL("b")+`) AS "overdueMissions"`)
+			(SELECT `+repository.DrillCountSQL("overdue")+` FROM "Booking" b WHERE `+repository.BookingCountableSQL("b")+`) AS "overdueMissions",
+			(SELECT `+repository.DrillCountSQL("paper_missing")+` FROM "Booking" b WHERE `+repository.BookingCountableSQL("b")+`) AS "paperMissing",
+			(SELECT `+repository.DrillCountSQL("projects_follow")+` FROM "Booking" b WHERE `+repository.BookingCountableSQL("b")+`) AS "projectsFollow"`)
 	if err != nil {
 		log.Printf("today pulse: %v", err)
 		WriteError(w, http.StatusInternalServerError, "تعذر جلب نبض اليوم")

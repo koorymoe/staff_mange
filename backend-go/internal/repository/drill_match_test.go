@@ -33,7 +33,7 @@ func TestBoardCountsUseDrillDefs(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, key := range []string{"today_scheduled", "open_missions", "needs_coord", "overdue"} {
+	for _, key := range []string{"today_scheduled", "open_missions", "needs_coord", "overdue", "paper_missing", "projects_follow"} {
 		if !strings.Contains(string(dash), `DrillCountSQL("`+key+`")`) {
 			t.Errorf("نبض الإدارة: %q ما ينحسب من DrillCountSQL", key)
 		}
