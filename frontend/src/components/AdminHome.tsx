@@ -14,7 +14,7 @@ import {
 } from '../api'
 import TodayBoard from './TodayBoard'
 import ActionsTable from './ActionsTable'
-import MatrixMissions from './MatrixMissions'
+import MatrixOrders from './MatrixOrders'
 import ReplacementSuggestionsPanel from './ReplacementSuggestionsPanel'
 import { pollVisible } from '../utils/poll'
 import { drillTo } from '../utils/drill'
@@ -39,7 +39,7 @@ const MatrixCommandCenter = lazyRetry(() => import('./MatrixCommandCenter'))
 // ⚠️ كل قسم يجيب بياناته لحاله ويفشل لحاله: لو مسار وحد تعطّل، باقي
 // اللوحة تبقى تشتغل، والقسم يگول «ما وصل» بدل رقم صفر يكذب.
 
-type Board = 'follow' | 'actions' | 'matrix' | 'chat' | 'missions'
+type Board = 'follow' | 'actions' | 'matrix' | 'chat'
 
 // قرار (ع) 10-09: المبالغ تقريبية لأقرب ألف — بلا كسور مثل ٨٣٢
 const monthKey = () => new Date().toISOString().slice(0, 7)
@@ -607,7 +607,8 @@ export default function AdminHome({ name }: { name?: string }) {
   const [params, setParams] = useSearchParams()
   const raw = params.get('board')
   // «مكتب المدير»: بلا اختيار ينفتح على الثلاثة سوية، وواحنا نختار.
-  const board: Board | 'desk' = raw === 'actions' || raw === 'matrix' || raw === 'follow' || raw === 'chat' || raw === 'missions' ? raw : 'desk'
+  // (دازاي 11-13) «مهام ماتركس يصير وي ماتركس» — الرابط القديم ?board=missions يفتح ماتركس.
+  const board: Board | 'desk' = raw === 'missions' ? 'matrix' : raw === 'actions' || raw === 'matrix' || raw === 'follow' || raw === 'chat' ? raw : 'desk'
   const tab = (b: Board | 'desk', label: string) => (
     <button type="button" onClick={() => setParams({ board: b })}
       className={`rounded-xl px-4 py-2 text-sm font-extrabold transition-colors ${board === b ? 'bg-[#0f2040] text-white' : 'bg-white text-slate-600 ring-1 ring-slate-200 hover:bg-slate-50'}`}>
@@ -627,7 +628,6 @@ export default function AdminHome({ name }: { name?: string }) {
           {tab('actions', '⚡ الإجراءات')}
           {tab('matrix', '👁️ ماتركس')}
           {tab('chat', '💬 دردشة ماتركس')}
-          {tab('missions', '🎯 مهام ماتركس')}
           <Link to="/ai-suggestions" className="rounded-xl bg-white px-4 py-2 text-sm font-extrabold text-slate-600 ring-1 ring-slate-200">🧠 اقتراحات الذكاء</Link>
           <Link to="/org" className="rounded-xl bg-white px-4 py-2 text-sm font-extrabold text-slate-600 ring-1 ring-slate-200">🏛️ الهيكل التنظيمي</Link>
           <Link to="/org/desk" className="rounded-xl bg-white px-4 py-2 text-sm font-extrabold text-slate-600 ring-1 ring-slate-200">🏛️ مكتب الإدارة</Link>
@@ -639,9 +639,8 @@ export default function AdminHome({ name }: { name?: string }) {
           {([
             ['follow', '📊', 'المتابعة', 'الشركة بالأرقام، ومتابعة اليوم، والحسابات، والدوام، وترتيب الأداء.', 'from-sky-500 to-indigo-600'],
             ['actions', '⚡', 'الإجراءات', 'كل شي ينتظر قرارك أو متابعة — بجدول واحد ويودّيك لشاشته.', 'from-amber-500 to-orange-600'],
-            ['matrix', '👁️', 'ماتركس', 'مركز قيادة ماتركس: شنو اكتشف، وعيون الموظفين، والتوقعات.', 'from-violet-500 to-fuchsia-600'],
+            ['matrix', '👁️', 'ماتركس', 'وجّه ماتركس بأمر («اخصم فلان نقطة»، «سويلي عرض سعر»)، وشنو اكتشف، والمراقبة، والتوقعات.', 'from-violet-500 to-fuchsia-600'],
             ['chat', '💬', 'دردشة ماتركس', 'سولف ويا ماتركس: يفتش بالنظام بنفسه ويجاوبك مثل أي ذكاء اصطناعي.', 'from-fuchsia-500 to-pink-600'],
-            ['missions', '🎯', 'مهام ماتركس', 'كلّف ماتركس يراقب موظف أيام: يومية كل ليلة وخلاصة بالنهاية.', 'from-emerald-500 to-teal-600'],
           ] as const).map(([b, icon, title, desc, grad]) => (
             <button key={b} type="button" onClick={() => setParams({ board: b })}
               className="group rounded-3xl border border-slate-200 bg-white p-6 text-right shadow-sm transition hover:-translate-y-1 hover:shadow-lg">
@@ -658,7 +657,7 @@ export default function AdminHome({ name }: { name?: string }) {
             <p className="mt-4 text-sm font-bold text-brand-600">افتح ←</p>
           </Link>
         </div>
-      ) : board === 'follow' ? <FollowBoard /> : board === 'actions' ? <ActionsBoard /> : board === 'chat' ? <MatrixChat /> : board === 'missions' ? <MatrixMissions /> : <Suspense fallback={<div className="h-40 animate-pulse rounded-2xl bg-slate-100" />}><MatrixCommandCenter /></Suspense>}
+      ) : board === 'follow' ? <FollowBoard /> : board === 'actions' ? <ActionsBoard /> : board === 'chat' ? <MatrixChat /> : <div className="space-y-4"><MatrixOrders /><Suspense fallback={<div className="h-40 animate-pulse rounded-2xl bg-slate-100" />}><MatrixCommandCenter /></Suspense></div>}
     </div>
   )
 }

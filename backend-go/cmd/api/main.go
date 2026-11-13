@@ -3515,6 +3515,14 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 		secs["matrix"].Set("POST /api/matrix/missions", "matrix.post_missions", missionHandler.Create)
 		secs["matrix"].Set("GET /api/matrix/missions/{id}", "matrix.get_missions_by_id", missionHandler.Get)
 		secs["matrix"].Set("DELETE /api/matrix/missions/{id}", "matrix.delete_missions_by_id", missionHandler.Stop)
+		// 🎯 أوامر ماتركس: «اخصم فلان نقطة»، «سويلي عرض سعر» — يقترح وما ينفّذ إلا بـ«نفّذ»
+		orderService := service.NewMatrixOrderService(db, agent, service.OrderDeps{Kpi: kpiService, Tasks: extraTaskRepo,
+			Notif: notificationRepo, Missions: missionService, Quotations: quotationService, Templates: service.NewQuotationTemplateService(db)})
+		orderHandler := handler.NewMatrixOrderHandler(orderService)
+		secs["matrix"].Set("GET /api/matrix/orders", "matrix.get_orders", orderHandler.List)
+		secs["matrix"].Set("POST /api/matrix/orders", "matrix.post_orders", orderHandler.Propose)
+		secs["matrix"].Set("POST /api/matrix/orders/{id}/run", "matrix.post_orders_by_id_run", orderHandler.Run)
+		secs["matrix"].Set("POST /api/matrix/orders/{id}/cancel", "matrix.post_orders_by_id_cancel", orderHandler.Cancel)
 	}
 
 	// ── تكلفة الشبكات ──

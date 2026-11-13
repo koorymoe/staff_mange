@@ -3962,6 +3962,14 @@ export interface ProcurementWatch {
 export interface MatrixChatRow { id: string; title: string; updatedAt: string }
 export interface MatrixChatMessage { id: string; role: 'USER' | 'ASSISTANT'; text: string; steps: string | null; image?: string | null; createdAt: string }
 export interface MatrixMission { id: string; employeeId: string; employeeName: string; note: string | null; startsOn: string; endsOn: string; active: boolean; summary: string | null; createdAt: string; summaryAt: string | null }
+export interface MatrixOrderItem { productName: string; quantity: number; unitPrice: number; unit?: string }
+export interface MatrixOrderAction {
+  kind: 'points' | 'task' | 'notify' | 'watch' | 'quotation'
+  employeeId?: string; employeeName?: string; points?: number; reason?: string; title?: string; message?: string; days?: number
+  customerName?: string; projectName?: string; template?: string; items?: MatrixOrderItem[]
+  done?: boolean; result?: string; link?: string; error?: string; skip?: boolean
+}
+export interface MatrixOrder { id: string; text: string; status: 'PROPOSED' | 'RUNNING' | 'DONE' | 'CANCELLED' | 'FAILED'; actions: MatrixOrderAction[]; reply: string | null; createdAt: string; doneAt: string | null }
 export interface StaffPointsRow { id: string; name: string; role: string; group: string; groupLabel: string; kpi: number; kpiLost: string[]; attendance: number; work: number; total: number; lines: { label: string; count: number; each: number; points: number }[] }
 export interface MatrixLesson { id: string; text: string; context: string | null; by: string | null; createdAt: string }
 

@@ -40,6 +40,23 @@ func autoMigrations() []Migration {
 			ALTER TABLE "PermissionRevoke" ADD CONSTRAINT "PermissionRevoke_employeeId_fkey" FOREIGN KEY ("employeeId") REFERENCES "Employee"(id) ON DELETE CASCADE;
 		`,
 		},
+		{
+			Version: "0488_add_matrix_order",
+			SQL: `
+			CREATE TABLE IF NOT EXISTS "MatrixOrder" (
+	"id" text NOT NULL,
+	"actorId" text NOT NULL,
+	"text" text NOT NULL,
+	"status" text DEFAULT 'PROPOSED'::text NOT NULL,
+	"actions" jsonb DEFAULT '[]'::jsonb NOT NULL,
+	"reply" text,
+	"createdAt" timestamp without time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
+	"doneAt" timestamp without time zone
+);
+			ALTER TABLE "MatrixOrder" ADD CONSTRAINT "MatrixOrder_pkey" PRIMARY KEY (id);
+			ALTER TABLE "MatrixOrder" ADD CONSTRAINT "MatrixOrder_actorId_fkey" FOREIGN KEY ("actorId") REFERENCES "Employee"(id) ON DELETE CASCADE;
+		`,
+		},
 		// ‹makemigration› — التحديثات الجديدة تنضاف فوگ هالسطر
 	}
 }

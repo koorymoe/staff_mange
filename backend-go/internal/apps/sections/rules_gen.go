@@ -700,6 +700,11 @@ func rules() map[string]map[core.Action]core.Rule {
 			"matrix.get_chats":       func(l string) core.Rule { return rolePerm(l, []string{"ADMIN"}, "agent_matrix") }("يقرا /api/matrix/chats (دور/صلاحية)"),
 			"matrix.get_chats_by_id": func(l string) core.Rule { return rolePerm(l, []string{"ADMIN"}, "agent_matrix") }("يقرا /api/matrix/chats/{id} (دور/صلاحية)"),
 			"matrix.get_lessons":     func(l string) core.Rule { return admin(l) }("يقرا /api/matrix/lessons (مدير النظام)"),
+			// 🎯 أوامر ماتركس (دازاي 11-13) — المالك والمدير بس
+			"matrix.get_orders":               func(l string) core.Rule { return admin(l) }("يقرا /api/matrix/orders (مدير النظام)"),
+			"matrix.post_orders":              func(l string) core.Rule { return admin(l) }("ينفّذ /api/matrix/orders (مدير النظام)"),
+			"matrix.post_orders_by_id_run":    func(l string) core.Rule { return admin(l) }("ينفّذ /api/matrix/orders/{id}/run (مدير النظام)"),
+			"matrix.post_orders_by_id_cancel": func(l string) core.Rule { return admin(l) }("ينفّذ /api/matrix/orders/{id}/cancel (مدير النظام)"),
 			"matrix.get_missions": func(l string) core.Rule {
 				return rolePerm(l, []string{"ADMIN", "MONITOR"}, "monitoring", "auditing", "mon_matrix")
 			}("يقرا /api/matrix/missions (المراقب)"),
