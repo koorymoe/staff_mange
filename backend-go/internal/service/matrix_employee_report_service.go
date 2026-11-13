@@ -22,7 +22,7 @@ import (
 // ⚠️ بلا توقعات شخصية (مرض، سفر…) — قراره الصريح. أرقام وأنماط بس.
 // ⚠️ للمدير والمالك بس. ولو هايكو يصيغ الخلاصة: بلا اسم.
 
-const lateGraceMin = 10
+const lateGraceMin = model.LateGraceMinutes // دازاي 11-13: نص ساعة
 
 type ReportLine struct {
 	Text  string   `json:"text"`

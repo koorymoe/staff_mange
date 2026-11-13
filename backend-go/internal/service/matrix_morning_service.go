@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"sort"
+	"staffmange-api/internal/model"
 	"strings"
 	"time"
 
@@ -288,7 +289,7 @@ func (s *MatrixMorningService) MonitorDaily(day string) string {
 		  AND NOT e."flexibleHours" -- بدون جدول: ماكو تأخير (11-13)
 		GROUP BY e.id, e.name, e."shiftStart"
 		HAVING (min(a."checkIn") AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Baghdad')::time
-			> COALESCE(NULLIF(e."shiftStart", ''), '08:00')::time + interval '10 minutes'
+			> COALESCE(NULLIF(e."shiftStart", ''), '08:00')::time + `+model.LateGraceSQL+`
 		ORDER BY e.name LIMIT 15`)
 	absent := names("absent", `
 		SELECT e.name FROM "Employee" e

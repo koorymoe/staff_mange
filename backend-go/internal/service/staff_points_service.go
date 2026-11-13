@@ -5,6 +5,7 @@ import (
 	"log"
 	"sort"
 	"staffmange-api/internal/errlog"
+	"staffmange-api/internal/model"
 	"strings"
 
 	"github.com/jmoiron/sqlx"
@@ -129,9 +130,9 @@ func (s *StaffPointsService) Month(month string) ([]StaffPoints, error) {
 		)
 		SELECT d.id,
 			count(*) FILTER (WHERE e."flexibleHours" OR (d.first AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Baghdad')::time
-				<= (COALESCE(NULLIF(e."shiftStart", ''), '08:00')::time + interval '10 minutes')) AS ontime,
+				<= (COALESCE(NULLIF(e."shiftStart", ''), '08:00')::time + `+model.LateGraceSQL+`)) AS ontime,
 			count(*) FILTER (WHERE NOT e."flexibleHours" AND (d.first AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Baghdad')::time
-				> (COALESCE(NULLIF(e."shiftStart", ''), '08:00')::time + interval '10 minutes')) AS late
+				> (COALESCE(NULLIF(e."shiftStart", ''), '08:00')::time + `+model.LateGraceSQL+`)) AS late
 		FROM d JOIN "Employee" e ON e.id = d.id GROUP BY d.id`, month); err != nil {
 		log.Printf("staff points attendance: %v", err)
 	}

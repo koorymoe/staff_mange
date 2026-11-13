@@ -121,6 +121,9 @@ function ScheduleTab() {
 // ═══ (ع) 10-13: جدول الدوام بثلاث واجهات — الجدول، دوام الموظفين (يوم/شهر)، طلبات الإجازات ═══
 const LeavesPage = lazyRetry(() => import('./LeavesPage'))
 
+// (دازاي 11-13) سماحية التأخير نص ساعة — نفس السيرفر (model.LateGraceMinutes)
+const LATE_GRACE = 30
+
 function nowMin() { const d = new Date(); return d.getHours() * 60 + d.getMinutes() }
 // حالة اليوم بكلمة وحدة (للبطاقات والفلتر)
 function dayKind(r: WorkScheduleRow): 'present' | 'late' | 'absent' | 'notyet' {
@@ -129,7 +132,7 @@ function dayKind(r: WorkScheduleRow): 'present' | 'late' | 'absent' | 'notyet' {
   const start = minutes(r.shiftStart)
   if (r.checkIn) {
     const inAt = minutes(new Date(r.checkIn).toTimeString().slice(0, 5))
-    return start != null && inAt != null && inAt - start > 10 && inAt - start <= 180 ? 'late' : 'present'
+    return start != null && inAt != null && inAt - start > LATE_GRACE && inAt - start <= 180 ? 'late' : 'present'
   }
   return start != null && nowMin() > start + 60 ? 'absent' : 'notyet'
 }
@@ -181,7 +184,7 @@ function AttendanceBoard() {
     if (r.leaveKind) return 'leave'
     if (!r.firstIn) return 'absent'
     const s = minutes(r.shiftStart), i = minutes(new Date(r.firstIn).toTimeString().slice(0, 5))
-    return s != null && i != null && i - s > 10 && i - s <= 180 ? 'late' : 'present'
+    return s != null && i != null && i - s > LATE_GRACE && i - s <= 180 ? 'late' : 'present'
   }
   const list = all.filter((r) => (!q || r.name.includes(q)) && (!fRole || r.role === fRole) && (!fState || kind(r) === fState))
   const ks = all.map(kind)

@@ -17,7 +17,7 @@ export default function DisciplineBox({ d, title = '⏰ الانضباط بال�
       <p className="text-xs text-slate-600">
         {d.days} يوم دوام · بوقته {d.onTime} · <b className="text-red-700">بلا عذر {d.late}</b> ({d.lateMinutes} دقيقة) · بعذر {d.lateExcused} · <b className="text-rose-800">غياب {d.absent}</b>
       </p>
-      <p className="text-[11px] text-slate-500">الدرجة = ١٠٠ − ٢ لكل تأخير بلا عذر − ٥ لكل غياب. السماح ١٠ دقايق، والعذر المقبول والإجازة ما يضرّون.</p>
+      <p className="text-[11px] text-slate-500">الدرجة = ١٠٠ − ٢ لكل تأخير بلا عذر − ٥ لكل غياب. السماح نص ساعة، والعذر المقبول والإجازة ما يضرّون.</p>
       {d.items.length > 0 && (
         <ul className="mt-1 space-y-0.5 text-xs">
           {d.items.map((x) => (

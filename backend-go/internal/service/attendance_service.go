@@ -133,8 +133,8 @@ func countSession(a *model.Attendance, now time.Time, flexible ...bool) int {
 	return a.CountedMinutes
 }
 
-// lateGrace نفس سماحية الواجهة: ١٠ دقايق.
-const lateGrace = 10 * time.Minute
+// lateGrace سماحية التأخير — model.LateGraceMinutes (دازاي 11-13: نص ساعة).
+const lateGrace = model.LateGraceMinutes * time.Minute
 
 // groupByCalendarDate يجمّع صفوف الحضور (ممكن أكثر من صف باليوم الواحد بعد
 // دعم الجلسات المتعددة) بصف واحد لكل تاريخ تقويمي.

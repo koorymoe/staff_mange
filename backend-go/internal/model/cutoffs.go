@@ -14,3 +14,11 @@ const (
 	// ContactButtonSince: زر «تواصلت» بالمشاريع انضاف هذا اليوم.
 	ContactButtonSince = "2026-10-16"
 )
+
+// LateGraceMinutes (دازاي 11-13) سماحية التأخير: «الحضور مو بصمة حقيقية، بس نتأكد
+// إنهم موجودين ويشتغلون» — موظف دوامه ٨ يسجّل لحد ٨:٣٠ بلا ما ينحسب متأخر ولا يكتب
+// عليه ماتركس حكم. رقم واحد لكل حسابات التأخير (چانت ١٠ دقايق بستة أماكن).
+const LateGraceMinutes = 30
+
+// LateGraceSQL نفس السماحية كـinterval بالـSQL.
+const LateGraceSQL = "interval '30 minutes'"
