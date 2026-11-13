@@ -254,7 +254,7 @@ func (s *MatrixAutopilotService) followUp() {
 		if a.EscalatedAt == nil && !isMonitorNotice(a) && time.Since(a.CreatedAt) >= model.AiActionEscalateAfter {
 			_ = s.actions.MarkEscalated(a.ID)
 			// المهمة المتأخرة: الي كلّفها لازم يدري، مو بس المدير.
-			if a.Kind == model.AiActionExtraTaskOverdue {
+			if a.Kind == model.AiActionExtraTaskOverdue && !s.actions.EscalatedBefore(a.Kind, a.EntityID, a.ID) {
 				if by := s.actions.TaskAssigner(a.EntityID); by != "" {
 					_ = s.notif.Create(by, "AI_AUTOPILOT",
 						fmt.Sprintf("🤖 ماتركس — %s، وذكّرته من %d يوم وبعدها ما انحلت.", a.Summary, int(time.Since(a.CreatedAt).Hours()/24)))
@@ -899,7 +899,9 @@ func (s *MatrixAutopilotService) procurementWatch(today, week string, dayStart t
 		if old := older(open, 48*time.Hour); len(old) > 0 {
 			msg := fmt.Sprintf("🤖 ماتركس — %d نقص جرد مفتوح من أكثر من يومين (أقدمها: %s). حلّه وأشّره «انحل».", len(old), old[0].Label)
 			notify(model.AiActionShortageOpen, "EMPLOYEE", today, fmt.Sprintf("ذكّر أبو الكميات: %d نقص جرد مفتوح", len(old)), msg, admins)
-			notify(model.AiActionShortageOpen, "MONITOR", today, fmt.Sprintf("بلّغ المراقب: %d نقص جرد مفتوح", len(old)), msg, monitors)
+			// المراقب للعلم بس — حل النقص قرار أبو الكميات، مو المراقب (11-13).
+			notify(model.AiActionShortageOpen, "MONITOR", today, fmt.Sprintf("بلّغ المراقب: %d نقص جرد مفتوح", len(old)),
+				fmt.Sprintf("🤖 ماتركس — للعلم: %d نقص جرد مفتوح عند إداري الكميات من أكثر من يومين (أقدمها: %s). التفاصيل بـ«📦 شغل المخازن» بمكتب المراقب.", len(old), old[0].Label), monitors)
 		}
 	}
 

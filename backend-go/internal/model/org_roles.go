@@ -84,3 +84,11 @@ func EffectiveRoleSQL(idExpr, roleExpr string) string {
 		WHERE oa."endedAt" IS NULL AND oa."employeeId" = ` + idExpr + `
 		ORDER BY array_position(` + prio + `, om.role) LIMIT 1), ` + roleExpr + `::text) END`
 }
+
+// CoordRaterSQL شرط «هذا المقيّم إداري، مو فني» لواجب تقييم الليدر (COORD_LEADER).
+// (دازاي 11-12/11-13) الفني الي سجّل حجز لا يتطالب بتقييم الليدر ولا ينحسب عليه
+// إهمال — تقييم الكادر شغل الليدر، والليدر يقيّمه المثبّت الإداري بس.
+func CoordRaterSQL(idExpr string) string {
+	return `EXISTS (SELECT 1 FROM "Employee" ce WHERE ce.id = ` + idExpr + ` AND NOT ce."isLeader"
+		AND (` + EffectiveRoleSQL("ce.id", "ce.role") + `) <> 'TECHNICIAN')`
+}

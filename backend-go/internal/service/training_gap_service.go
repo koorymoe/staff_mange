@@ -55,5 +55,7 @@ func (s *TrainingGapService) RunWeeklyIfDue() error {
 	msg := fmt.Sprintf(
 		"🎓 ماتركس — فجوة تدريب محتملة: %s. ما عندهم برنامج تدريب ناجح يغطّي هذي الخدمة — يمكن الفجوة بالتدريب مو تقصير.",
 		joinArabicAnd(lines))
-	return notifyOwnerAndAdmin(s.notifRepo, "AI_TRAINING_GAP", msg)
+	// (دازاي 11-12) تقييم الموظفين للتدريب شغل مسؤول وحدة التدريب — فيوصله هو
+	// (صلاحية training_manage)، والمالك يبقى يشوفه. چان يروح للمالك والأدمن بس.
+	return s.notifRepo.CreateForRolesOrPermission([]string{"OWNER"}, "training_manage", "AI_TRAINING_GAP", msg)
 }

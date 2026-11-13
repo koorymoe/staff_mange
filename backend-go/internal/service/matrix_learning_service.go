@@ -88,8 +88,9 @@ func (s *MatrixLearningService) RunIfDue() error {
 	s.props.ExpireStalePredictions(now.Format("2006-01-02"))
 	if now.Hour() >= predictHour {
 		if ok, err := s.aiRepo.ClaimDailyMarker("DAILY_MATRIX_PREDICT", now.Format("2006-01-02")); err == nil && ok {
-			n := s.predict(now)
-			if n > 0 {
+			// العدد = موظفين مميّزين، مو مقترحات (كل موظف عنده مقترح لكل نوع شغل) — 11-13.
+			if s.predict(now) > 0 {
+				n := len(uniqueStrings(s.lastPredicted))
 				_ = s.notif.CreateForRolesOrPermission([]string{"OWNER", "ADMIN"}, "", "AI_DECISIONS",
 					fmt.Sprintf("🤖 ماتركس — توقّعت %d موظف ما راح يخلّصون شغل اليوم بوتيرتهم: %s. اضغط حتى تشوف منو وليش، والقرار إلك.",
 						n, strings.Join(firstN(uniqueStrings(s.lastPredicted), 4), "، ")))

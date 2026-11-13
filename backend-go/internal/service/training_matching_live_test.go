@@ -2,7 +2,9 @@ package service
 
 import (
 	"os"
+	"strings"
 	"testing"
+	"time"
 
 	"github.com/jmoiron/sqlx"
 	_ "github.com/lib/pq"
@@ -124,6 +126,31 @@ func TestTrainingMatching_Live(t *testing.T) {
 	db.Get(&n, `SELECT count(*) FROM "Notification" WHERE "employeeId" = 'tm-lead'`)
 	if n != 0 {
 		t.Fatal("الليدر ما يوصله شي من الماتشينغ")
+	}
+
+	// (11-13) النص يطابق الي صار: ٤/٥ مع «ما يعرف» ما ينكتب «قيّمه ٤/٥».
+	if strings.Contains(*t1[0].Reason, "قيّمه") || !strings.Contains(*t2[0].Reason, "طلب يتدرب على «الحفر»") {
+		t.Fatalf("نص السبب: %q / %q", *t1[0].Reason, *t2[0].Reason)
+	}
+	if t1[0].DueAt.Before(time.Now().Add(6 * 24 * time.Hour)) {
+		t.Fatal("المهلة من هسه")
+	}
+	// (11-13) نفس الموظف ونفس الموضوع بحجز ثاني وبعده مفتوح = ما يتكرر ولا تنبيه ثاني.
+	db.MustExec(`INSERT INTO "Booking"(id, code, "customerId", status, "serviceId", "completedAt") VALUES ('tm-b3', 'TM-3', 'tm-cu', 'COMPLETED', 'tm-dash', now())`)
+	db.MustExec(`INSERT INTO "BookingAssignment"(id, "bookingId", "employeeId", role) VALUES (gen_random_uuid()::text, 'tm-b3', 'tm-t2', 'TECH_1')`)
+	if err := chain.SaveRating("tm-b3", "tm-lead", "tm-t2", 5, nil, &want); err != nil {
+		t.Fatal(err)
+	}
+	if _, _, err := m.Generate(); err != nil {
+		t.Fatal(err)
+	}
+	db.Get(&n, `SELECT count(*) FROM "TrainingMatch" WHERE "employeeId" = 'tm-t2' AND kind = 'BOOKING_ISSUE'`)
+	if n != 1 {
+		t.Fatalf("نفس الموضوع ما يتكرر: %d", n)
+	}
+	db.Get(&n, `SELECT count(*) FROM "Notification" WHERE "employeeId" = 'tm-head' AND type = 'TRAINING_NEED'`)
+	if n != 2 {
+		t.Fatalf("ما يوصل تنبيه ثاني: %d", n)
 	}
 
 	if _, err := m.Dismiss(t1[0].ID, "سبب"); err != ErrNeedMandatory {

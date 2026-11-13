@@ -253,7 +253,7 @@ func (r *MatrixScoreRepository) PendingCoordLeader(raterID string) ([]PendingSta
 		  -- OLD) چان يرجّعه للشاشة «قيّمه». ونفس شرط واجب التقييم (rating_duty): بلا OLD.
 		  AND b."completedAt" >= now() - interval '7 days' AND upper(b.code) NOT LIKE 'OLD%'
 		  AND (b."confirmedByEmployeeId" = $1 OR b."createdById" = $1)
-		  AND l.id <> $1
+		  AND l.id <> $1 AND `+model.CoordRaterSQL("$1")+`
 		  AND NOT EXISTS (SELECT 1 FROM "StaffRating" s WHERE s."raterId" = $1 AND s."bookingId" = b.id AND s.stage = 'COORD_LEADER')
 		ORDER BY b."updatedAt" DESC LIMIT 20`, raterID)
 	return rows, err

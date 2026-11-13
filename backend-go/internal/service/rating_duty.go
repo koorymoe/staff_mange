@@ -115,7 +115,7 @@ func (d *RatingDuty) Owed(rater, day string) ([]DutyItem, error) {
 		  AND upper(b.code) NOT LIKE 'OLD%'
 		  AND ((b."projectSupervisorId" = $1 AND EXISTS (SELECT 1 FROM "Employee" se WHERE se.id = $1 AND se."isLeader"))
 		       OR EXISTS (SELECT 1 FROM "BookingAssignment" la JOIN "Employee" le ON le.id = la."employeeId" WHERE la."bookingId" = b.id AND la."employeeId" = $1 AND le."isLeader")
-		       OR EXISTS (SELECT 1 FROM "Mission" m WHERE m."bookingId" = b.id AND m."leaderId" = $1))
+		       OR EXISTS (SELECT 1 FROM "Mission" m JOIN "Employee" me ON me.id = m."leaderId" WHERE m."bookingId" = b.id AND m."leaderId" = $1 AND me."isLeader"))
 		  AND NOT EXISTS (SELECT 1 FROM "CrewRating" r WHERE r."bookingId" = b.id AND r."technicianId" = t.id)`, rater, day); err != nil {
 		return nil, err
 	}
@@ -124,7 +124,7 @@ func (d *RatingDuty) Owed(rater, day string) ([]DutyItem, error) {
 		FROM "Booking" b JOIN "Employee" l ON l.id = booking_leader_id(b.id)
 		WHERE b.status::text IN ('COMPLETED', 'PARTIAL') AND b."completedAt" IS NOT NULL AND `+bkDay+` = $2::date
 		  AND l.role::text NOT IN ('ADMIN', 'OWNER') AND upper(b.code) NOT LIKE 'OLD%'
-		  AND (b."confirmedByEmployeeId" = $1 OR b."createdById" = $1) AND l.id <> $1
+		  AND (b."confirmedByEmployeeId" = $1 OR b."createdById" = $1) AND l.id <> $1 AND `+model.CoordRaterSQL("$1")+`
 		  AND NOT EXISTS (SELECT 1 FROM "StaffRating" s WHERE s."raterId" = $1 AND s."bookingId" = b.id AND s.stage = 'COORD_LEADER')`, rater, day); err != nil {
 		return nil, err
 	}

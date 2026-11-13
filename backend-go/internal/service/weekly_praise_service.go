@@ -55,6 +55,10 @@ func (s *WeeklyPraiseService) RunWeeklyIfDue() error {
 	twoWeeksAgo := now.Add(-14 * 24 * time.Hour)
 
 	for _, e := range employees {
+		// المالك والأدمن ما ينحسبون، فما ينمدحون (11-13).
+		if model.IsAdminRole(string(e.Role)) || e.Role == "OWNER" {
+			continue
+		}
 		lines := s.praiseLinesFor(e.ID, now, weekAgo, twoWeeksAgo)
 		if len(lines) == 0 {
 			continue

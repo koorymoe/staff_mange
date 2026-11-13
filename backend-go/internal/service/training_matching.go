@@ -10,6 +10,7 @@ import (
 
 	"github.com/jmoiron/sqlx"
 
+	"staffmange-api/internal/errlog"
 	"staffmange-api/internal/repository"
 )
 
@@ -149,11 +150,30 @@ func (m *TrainingMatching) Generate() (mandatory, suggested int, err error) {
 			track = m.trackForService(*r.ServiceID)
 		}
 		cur := m.nodeForTopic(topic, track)
-		reason := fmt.Sprintf("الليدر قيّمه %d/5 بحجز %s (%s)", r.Score, r.BookingCode, svc)
+		// (11-13) نص السبب يطابق الي صار فعلاً: «قيّمه X/5» بس إذا التقييم واطي؛
+		// وإلا الي حرّكه هو طلب الليدر أو ملاحظته — چان يگول «قيّمه ٥/٥» ويسميه إلزامي.
+		var reason string
+		switch {
+		case r.Score <= badRatingMax:
+			reason = fmt.Sprintf("الليدر قيّمه %d/5 بحجز %s (%s)", r.Score, r.BookingCode, svc)
+		case want != "":
+			reason = fmt.Sprintf("الليدر طلب يتدرب على «%s» بحجز %s (%s)", want, r.BookingCode, svc)
+		default:
+			reason = fmt.Sprintf("الليدر كتب بملاحظته إنه يحتاج تدريب بحجز %s (%s)", r.BookingCode, svc)
+		}
 		if note != "" {
 			reason += " — «" + note + "»"
 		}
-		due := r.CreatedAt.Add(mandatoryDue)
+		// (11-13) ما يتكرر: نفس الموظف ونفس الموضوع وبعده مفتوح، أو انتدرب عليه
+		// بعد هذا التقييم — ما ينفتح تدريب ثاني ولا يوصل تنبيه ثاني لمسؤول التدريب.
+		var dup bool
+		errlog.Err(m.db.Get(&dup, `SELECT EXISTS (SELECT 1 FROM "TrainingMatch" n WHERE n."employeeId" = $1 AND n.kind = 'BOOKING_ISSUE'
+			AND lower(trim(n.topic)) = lower(trim($2)) AND (n.status IN ('OPEN','IN_TRAINING') OR n."createdAt" >= $3))`, r.TechnicianID, topic, r.CreatedAt))
+		if dup {
+			continue
+		}
+		// المهلة من هسه مو من يوم التقييم: تقييم عمره أسبوعين چان يوصل «متأخر» بنفس الساعة.
+		due := time.Now().Add(mandatoryDue)
 		res, e := m.db.Exec(`INSERT INTO "TrainingMatch" ("employeeId", kind, "curriculumId", topic, reason, "sourceBookingId", "sourceRatingId", "dueAt")
 			VALUES ($1,'BOOKING_ISSUE',$2,$3,$4,$5,$6,$7) ON CONFLICT DO NOTHING`, r.TechnicianID, cur, topic, reason, r.BookingID, r.ID, due)
 		if e != nil {

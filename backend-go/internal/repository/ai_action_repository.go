@@ -166,6 +166,15 @@ func (r *AiActionRepository) MarkResolved(id string) error {
 	return err
 }
 
+// EscalatedBefore هل نفس الشي (نوع + كيان) تصعّد قبل بأي فترة؟ التذكير اليومي
+// ينخلق كل يوم بصف جديد، فبلا هذا كل صف يتصعّد لحاله — الي كلّف المهمة چان
+// توصله رسالة تصعيد كل يوم من اليوم الثالث (11-13).
+func (r *AiActionRepository) EscalatedBefore(kind, entityID, exceptID string) bool {
+	var ok bool
+	_ = r.db.Get(&ok, `SELECT EXISTS (SELECT 1 FROM "AiAction" WHERE kind = $1 AND "entityId" = $2 AND id <> $3 AND "escalatedAt" IS NOT NULL)`, kind, entityID, exceptID)
+	return ok
+}
+
 func (r *AiActionRepository) MarkEscalated(id string) error {
 	_, err := r.db.Exec(`UPDATE "AiAction" SET "escalatedAt" = now() WHERE id = $1 AND "escalatedAt" IS NULL`, id)
 	return err
