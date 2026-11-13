@@ -47,6 +47,10 @@ var ScoreGroupOrder = []string{GroupLeaders, GroupTechs, GroupDecor, GroupCoordi
 // والمبيعات بالدور.
 func ScoreGroup(p repository.Scorable) string {
 	switch {
+	// (دازاي 11-13) منسّق الحجوزات (دوره SALES بس عنده صلاحية التنسيق) شغله تثبيت
+	// وتعيين كادر — ينحسب ويا الإداريين، مو ويا البياعين.
+	case p.Role == "SALES" && p.IsCoordinator:
+		return GroupCoordinator
 	case p.Role == "SALES":
 		return GroupSales
 	case p.Role == "MONITOR":
@@ -128,7 +132,15 @@ func ratioPart(key, label string, earned, max int, unit string) *ReliabilityPart
 
 // BuildReliability من نقاط ماتركس (الحضور، الجرد، الورق، المهام) ووقائع
 // الانصراف والشكاوى.
-func BuildReliability(rules map[string][2]int, f repository.ReliabilityFact) ([]ReliabilityPart, *float64) {
+func BuildReliability(rules map[string][2]int, f repository.ReliabilityFact, group ...string) ([]ReliabilityPart, *float64) {
+	// (دازاي 11-13) العدّة والجرد شغل الميدان، والشكوى من زبون لمن يتعامل ويا الزبون —
+	// المصمم والمحاسب چانوا ياخذون ١٠٠٪ «محافظ على عدّته» على شي مو شغلهم.
+	g := ""
+	if len(group) > 0 {
+		g = group[0]
+	}
+	field := g == "" || fieldGroups[g] || g == GroupTechnical
+	customerFacing := field || officeBookingGroups[g] || g == GroupQuality
 	parts := []ReliabilityPart{}
 	add := func(p *ReliabilityPart) {
 		if p != nil {
@@ -140,21 +152,25 @@ func BuildReliability(rules map[string][2]int, f repository.ReliabilityFact) ([]
 	// (دازاي 11-11): «ما يتحاسب ع الانصراف، يتحاسب بس ع الحضور» — عدنا انصراف تلقائي
 	// بعد نهاية الشفت، فنسيان الانصراف ما ينزّل الاعتمادية. والحساب حي من البيانات،
 	// فكل الأشهر السابقة رجعت لحالها بلا هذا الجزء.
-	i := rules["INVENTORY"]
-	add(ratioPart("INVENTORY", "يجرد عدّته", i[0], i[1], "مرة"))
+	if field {
+		i := rules["INVENTORY"]
+		add(ratioPart("INVENTORY", "يجرد عدّته", i[0], i[1], "مرة"))
+	}
 	pw := rules["PAPER"]
 	add(ratioPart("PAPER", "يخلّص ورقه بوقته", pw[0], pw[1], "حجز"))
 	t := rules["TASK_DUE"]
 	add(ratioPart("TASK_DUE", "يلتزم بتوجيهات مسؤوليه ومهامه بوقتها", t[0], t[1], "مهمة"))
-	c := 100 - 25*f.Complaints
-	if c < 0 {
-		c = 0
+	if customerFacing {
+		c := 100 - 25*f.Complaints
+		if c < 0 {
+			c = 0
+		}
+		detail := "ماكو عليه ولا شكوى"
+		if f.Complaints > 0 {
+			detail = fmt.Sprintf("%d شكوى من زبون", f.Complaints)
+		}
+		parts = append(parts, ReliabilityPart{Key: "COMPLAINTS", Label: "بلا شكاوى", Pct: float64(c), Detail: detail})
 	}
-	detail := "ماكو عليه ولا شكوى"
-	if f.Complaints > 0 {
-		detail = fmt.Sprintf("%d شكوى من زبون", f.Complaints)
-	}
-	parts = append(parts, ReliabilityPart{Key: "COMPLAINTS", Label: "بلا شكاوى", Pct: float64(c), Detail: detail})
 	// قرار (ع) 10-08: الغيابات والإجازات، المشاكل ويا الزملاء، العدّة، الـKPI.
 	penalty := func(key, label string, n, per int, zero, unit string) {
 		v := 100 - per*n
@@ -178,7 +194,9 @@ func BuildReliability(rules map[string][2]int, f repository.ReliabilityFact) ([]
 	parts = append(parts, ReliabilityPart{Key: "LEAVES", Label: "ماعنده غيابات وإجازات كثيرة",
 		Pct: float64(max(0, 100-10*extraLeave)), Detail: leaveDetail})
 	penalty("PEERS", "ماعنده مشاكل ويا زملائه", f.Issues, 25, "ماكو مشاكل", "مشكلة وظيفية")
-	penalty("TOOLS", "محافظ على عدّته", f.ToolLosses, 25, "ماكو ضياع ولا تلف", "عدّة ضاعت أو تلفت")
+	if field {
+		penalty("TOOLS", "محافظ على عدّته", f.ToolLosses, 25, "ماكو ضياع ولا تلف", "عدّة ضاعت أو تلفت")
+	}
 	penalty("KPI", "تقييم الـKPI", f.KpiHits, 20, "ماكو عليه نقاط", "نقطة KPI عليه")
 	if len(parts) <= 1 && f.Complaints == 0 && a[1] == 0 {
 		return parts, nil // ماكو بيانات كافية
@@ -189,4 +207,40 @@ func BuildReliability(rules map[string][2]int, f repository.ReliabilityFact) ([]
 	}
 	v := sum / float64(len(parts))
 	return parts, &v
+}
+
+// ═══ «محد يتقيّم ع شغل مو شغله» — دازاي 11-13 ═══
+// كل محطة بالحجز إلها أهلها. إذا واحد من غير أهلها سوّاها (فني سجّل حجز،
+// بياع ثبّت…) ما تنحسب له ولا عليه — لا تنزّله ولا ترفعه. القواعد العامة
+// (الحضور، التقرير اليومي، المهام…) والقواعد الخاصة بدور واحد تنحسب عادي.
+var fieldGroups = map[string]bool{GroupLeaders: true, GroupTechs: true, GroupDecor: true}
+var officeBookingGroups = map[string]bool{GroupSales: true, GroupCoordinator: true, GroupTechnical: true}
+
+var ruleGroups = map[string]map[string]bool{
+	"CREATE":       officeBookingGroups,
+	"CONTACT":      {GroupCoordinator: true, GroupTechnical: true},
+	"HANDOFF":      {GroupCoordinator: true, GroupTechnical: true},
+	"CONFIRM":      {GroupCoordinator: true, GroupTechnical: true},
+	"CREW":         {GroupCoordinator: true, GroupTechnical: true},
+	"TECH_CONTACT": {GroupTechnical: true},
+	"TECH_DECIDE":  {GroupTechnical: true},
+	"TECH_VISIT":   {GroupTechnical: true},
+	"TECH_DIAG":    {GroupTechnical: true},
+	"TECH_FIX":     {GroupTechnical: true},
+	"RECEIVE":      fieldGroups,
+	"ROUTE":        fieldGroups,
+	"WORK":         fieldGroups,
+	"COMPLETE":     fieldGroups,
+	"PAPER":        fieldGroups,
+	"STAGE_LOG":    fieldGroups,
+	"RATING":       {GroupLeaders: true, GroupDecor: true},
+	"ACCOUNT":      {GroupFinance: true},
+	"QUALITY":      {GroupQuality: true},
+	"MONITOR":      {GroupMonitors: true},
+}
+
+// RuleFitsGroup هل هالقاعدة من شغل هالمجموعة؟ قاعدة مو بالجدول = تنطبق.
+func RuleFitsGroup(rule, group string) bool {
+	g, ok := ruleGroups[rule]
+	return !ok || group == "" || g[group]
 }

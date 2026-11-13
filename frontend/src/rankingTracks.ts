@@ -126,7 +126,9 @@ export const RANKING_TRACKS: RankingTrack[] = [
 const FAMILY_OWNED_PERMISSIONS = ['sales_booking', 'finance', 'monitoring']
 
 export function tracksFor(permissions: string[], role?: string, isLeader?: boolean, division?: string): RankingTrack[] {
-  const family = familyForRole(role, isLeader, division)
+  // (دازاي 11-13) منسّق الحجوزات دوره SALES — يترتّب ويا الكوادر، مو ويا البياعين.
+  const effRole = role === 'SALES' && permissions.includes('coordinator') ? 'HR_COORDINATOR' : role
+  const family = familyForRole(effRole, isLeader, division)
   const byWork = RANKING_TRACKS.filter(
     (t) => permissions.includes(t.permission) && !FAMILY_OWNED_PERMISSIONS.includes(t.permission),
   )

@@ -299,7 +299,10 @@ func (r *KpiRepository) RoleLeaderboard(roles []string, since, until string, sco
 		      AND k."createdAt" >= $2::timestamp
 		      AND ($3 = '' OR k."createdAt" < $3::timestamp)
 		      AND k.cancelled = false
-		WHERE e.role = ANY($1) AND e.status = 'ACTIVE'
+		-- (دازاي 11-13) منسّق الحجوزات (SALES + صلاحية التنسيق) يترتّب ويا الكوادر مو ويا البياعين.
+		WHERE (CASE WHEN e.role::text = 'SALES' AND EXISTS (SELECT 1 FROM "EmployeePermission" ep JOIN "Permission" pm ON pm.id = ep."permissionId"
+		             WHERE ep."employeeId" = e.id AND pm.name = 'coordinator') THEN 'HR_COORDINATOR' ELSE e.role::text END) = ANY($1)
+		  AND e.status = 'ACTIVE'
 		  AND ($4 = '' OR e."isLeader" = ($4 = '1'))
 		  AND ($5 = '' OR COALESCE(NULLIF(e.division, ''), 'ENGINEERING') = $5)
 		GROUP BY e.id, e.name

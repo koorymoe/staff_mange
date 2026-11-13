@@ -576,6 +576,9 @@ func BuildScores(people []repository.Scorable, pts []repository.MatrixScoreRow, 
 		if p.CancelledAt != nil {
 			continue
 		}
+		if !RuleFitsGroup(p.Rule, groupOf[p.EmployeeID]) {
+			continue
+		}
 		a := get(p.EmployeeID)
 		rv := a.rules[p.Rule]
 		a.rules[p.Rule] = [2]int{rv[0] + p.Points, rv[1] + p.MaxPoints}
@@ -618,7 +621,7 @@ func BuildScores(people []repository.Scorable, pts []repository.MatrixScoreRow, 
 				break
 			}
 		}
-		s.RelParts, s.Reliability = BuildReliability(a.rules, rel[p.ID])
+		s.RelParts, s.Reliability = BuildReliability(a.rules, rel[p.ID], g)
 		s.Skills, s.HasLicense, s.IsLeader = rel[p.ID].Skills, rel[p.ID].HasLicense, p.IsLeader
 		if a.max > 0 {
 			v := float64(a.earned) * 100 / float64(a.max)

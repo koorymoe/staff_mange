@@ -56,13 +56,13 @@ func TestFinalScore(t *testing.T) {
 
 func TestBuildScores(t *testing.T) {
 	now := time.Now()
-	people := []repository.Scorable{{ID: "a", Name: "A"}, {ID: "b", Name: "B"}}
+	people := []repository.Scorable{{ID: "a", Name: "A", Role: "TECHNICIAN"}, {ID: "b", Name: "B"}}
 	pts := []repository.MatrixScoreRow{
 		{EmployeeID: "a", Source: "BOOKING", Rule: "PAPER", Points: 1, MaxPoints: 2},
 		{EmployeeID: "a", Source: "DAY", Rule: "ATTENDANCE", Points: 2, MaxPoints: 2},
 		{EmployeeID: "a", Source: "DAY", Rule: "ATTENDANCE", Points: 0, MaxPoints: 2, CancelledAt: &now},
 	}
-	hum := []repository.HumanRow{{RateeID: "a", Score: 4, Stage: "MONITOR_PERIODIC"}, {RateeID: "a", Score: 2, Stage: "MONITOR_PERIODIC"}, {RateeID: "a", Score: 1, Stage: "LEADER_CREW"}}
+	hum := []repository.HumanRow{{RateeID: "a", Score: 4, Stage: "LEADER_CREW"}, {RateeID: "a", Score: 2, Stage: "LEADER_CREW"}, {RateeID: "a", Score: 1, Stage: "MONITOR_PERIODIC"}}
 	out := BuildScores(people, pts, hum, nil)
 	a := out[0]
 	// الحضور يدخل بالاعتمادية بس، مو بالتقييم (قرار (ع) 10-06).
@@ -205,5 +205,43 @@ func TestBoardInsightsNoHumanNotLow(t *testing.T) {
 	}
 	if !strings.Contains(got, "بانتظار تقييم بشري (رقمهم من ماتركس بس): علي.") {
 		t.Fatalf("علي لازم يطلع بانتظار تقييم بشري: %s", got)
+	}
+}
+
+// (دازاي 11-13) «محد يتقيّم ع شغل مو شغله»: محطة حجز سوّاها واحد من غير أهلها
+// ما تنحسب له ولا عليه؛ والعدّة ما تدخل باعتمادية موظف المكتب.
+func TestScoreOnlyOwnWork(t *testing.T) {
+	people := []repository.Scorable{
+		{ID: "tech", Role: "TECHNICIAN"}, {ID: "des", Role: "DESIGNER"}, {ID: "sale", Role: "SALES"},
+		{ID: "coord", Role: "SALES", IsCoordinator: true},
+	}
+	pts := []repository.MatrixScoreRow{
+		{EmployeeID: "tech", Source: "BOOKING", Rule: "CREATE", Points: 0, MaxPoints: 2},  // فني سجّل حجز
+		{EmployeeID: "tech", Source: "BOOKING", Rule: "WORK", Points: 2, MaxPoints: 2},    // شغله
+		{EmployeeID: "des", Source: "BOOKING", Rule: "PAPER", Points: 0, MaxPoints: 2},    // مو شغله
+		{EmployeeID: "sale", Source: "BOOKING", Rule: "CONFIRM", Points: 0, MaxPoints: 2}, // التثبيت شغل المنسّق
+		{EmployeeID: "sale", Source: "BOOKING", Rule: "CREATE", Points: 2, MaxPoints: 2},
+		{EmployeeID: "coord", Source: "BOOKING", Rule: "CONFIRM", Points: 2, MaxPoints: 2},
+	}
+	by := map[string]StaffScore{}
+	for _, s := range BuildScores(people, pts, nil, nil) {
+		by[s.ID] = s
+	}
+	if s := by["tech"]; s.Earned != 2 || s.Max != 2 {
+		t.Fatalf("الفني ينحسب على شغله الميداني بس: %d/%d", s.Earned, s.Max)
+	}
+	if s := by["des"]; s.Max != 0 {
+		t.Fatalf("المصمم ما ينحسب على ورق حجز: %d", s.Max)
+	}
+	if s := by["sale"]; s.Earned != 2 || s.Max != 2 || s.Group != GroupSales {
+		t.Fatalf("البياع على التسجيل بس: %+v", s)
+	}
+	if s := by["coord"]; s.Group != GroupCoordinator || s.Max != 2 {
+		t.Fatalf("المنسّق ويا الإداريين: %+v", s)
+	}
+	for _, p := range by["des"].RelParts {
+		if p.Key == "TOOLS" || p.Key == "INVENTORY" || p.Key == "COMPLAINTS" {
+			t.Fatalf("المصمم ما ينحسب على %s", p.Key)
+		}
 	}
 }
