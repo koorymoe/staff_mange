@@ -57,6 +57,12 @@ func autoMigrations() []Migration {
 			ALTER TABLE "MatrixOrder" ADD CONSTRAINT "MatrixOrder_actorId_fkey" FOREIGN KEY ("actorId") REFERENCES "Employee"(id) ON DELETE CASCADE;
 		`,
 		},
+		{
+			Version: "0489_employee_off_system_work",
+			SQL: `
+			ALTER TABLE "Employee" ADD COLUMN IF NOT EXISTS "offSystemWork" boolean DEFAULT false NOT NULL;
+		`,
+		},
 		// ‹makemigration› — التحديثات الجديدة تنضاف فوگ هالسطر
 	}
 }

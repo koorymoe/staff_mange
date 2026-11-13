@@ -62,6 +62,9 @@ type Employee struct {
 	// (دازاي 11-13) بدون جدول محدد: ما يتحاسب على تأخير؛ من يسجّل حضور تنحسبله ٨ ساعات
 	// وبعدها انصراف تلقائي — إلا إذا بعده فاتح النظام ويشتغل.
 	FlexibleHours    bool    `db:"flexibleHours" json:"flexibleHours"`
+	// OffSystemWork (دازاي 11-13) شغله برّا النظام (مبرمج، تطوير…): ما يتقيّم على
+	// حجوزات وشغل بالنظام — بس على تقرير إنجازه وحضوره ومهامه الموجّهة.
+	OffSystemWork bool `db:"offSystemWork" json:"offSystemWork"`
 	ShiftEnd         *string `db:"shiftEnd" json:"shiftEnd"`
 	MonthlyLeaves    int     `db:"monthlyLeaves" json:"monthlyLeaves"`
 	JobTitle         *string `db:"jobTitle" json:"jobTitle"`
@@ -186,6 +189,7 @@ type UpdateEmployeeRequest struct {
 	ShiftStart           *string  `json:"shiftStart"`
 	ShiftEnd             *string  `json:"shiftEnd"`
 	FlexibleHours        *bool    `json:"flexibleHours"`
+	OffSystemWork        *bool    `json:"offSystemWork"`
 	MonthlyLeaves        *int     `json:"monthlyLeaves"`
 	JobTitle             *string  `json:"jobTitle"`
 	Language             *string  `json:"language"` // بلاغ #11: ar|ur — الإدارة تحدد لغة واجهة الموظف

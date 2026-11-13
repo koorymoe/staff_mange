@@ -55,6 +55,7 @@ func init() {
 			{Name: "contractEndDate", Type: "date"},
 			{Name: "language", Type: "text", NotNull: true, Default: "'ar'::text"},
 			{Name: "flexibleHours", Type: "boolean", NotNull: true, Default: "false"},
+			{Name: "offSystemWork", Type: "boolean", NotNull: true, Default: "false"},
 		},
 		Constraints: []Constraint{
 			{Name: "Employee_pkey", Def: "PRIMARY KEY (id)"},

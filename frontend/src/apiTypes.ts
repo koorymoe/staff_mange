@@ -3821,6 +3821,8 @@ export interface WorkScheduleRow {
   isLeader: boolean
   /** (دازاي 11-13) بدون جدول محدد: ٨ ساعات من الحضور، بلا تأخير */
   flexibleHours?: boolean
+  /** (دازاي 11-13) شغله برّا النظام: يتقيّم بالتقرير والحضور والمهام بس */
+  offSystemWork?: boolean
   shift: string
   shiftStart: string
   shiftEnd: string

@@ -26,6 +26,7 @@ const (
 	GroupFinance     = "FINANCE"
 	GroupTechnical   = "TECHNICAL"
 	GroupCoordinator = "COORDINATORS"
+	GroupOffSystem   = "OFF_SYSTEM"
 	GroupOthers      = "OTHERS"
 	GroupProcurement = "PROCUREMENT"
 	// (ع) 10-11: الجودة والتصميم والآيتي كل وحدة مجموعة، والديكور منعزل عن الهندسية
@@ -40,16 +41,20 @@ const (
 
 var ScoreGroupLabels = map[string]string{
 	GroupTechs: "الفنيين", GroupLeaders: "الليدرية", GroupSales: "المبيعات", GroupMonitors: "المراقبين",
-	GroupFinance: "المحاسبة", GroupTechnical: "التقنيين ومسؤولي الخدمات", GroupCoordinator: "الإداريين", GroupProcurement: "المخازن والأسطول", GroupOthers: "بقية الأقسام",
+	GroupFinance: "المحاسبة", GroupTechnical: "التقنيين ومسؤولي الخدمات", GroupCoordinator: "الإداريين", GroupProcurement: "المخازن والأسطول", GroupOffSystem: "شغل برّا النظام (تقرير + حضور + مهام)", GroupOthers: "بقية الأقسام",
 	GroupQuality: "الجودة", GroupDesign: "التصميم", GroupIT: "تقنية المعلومات", GroupDecor: "شعبة الديكور", GroupProjects: "إدارة المشاريع",
 }
 
-var ScoreGroupOrder = []string{GroupLeaders, GroupTechs, GroupDecor, GroupCoordinator, GroupSales, GroupTechnical, GroupFinance, GroupProcurement, GroupMonitors, GroupQuality, GroupDesign, GroupIT, GroupProjects, GroupOthers}
+var ScoreGroupOrder = []string{GroupLeaders, GroupTechs, GroupDecor, GroupCoordinator, GroupSales, GroupTechnical, GroupFinance, GroupProcurement, GroupMonitors, GroupQuality, GroupDesign, GroupIT, GroupProjects, GroupOffSystem, GroupOthers}
 
 // ScoreGroup مجموعة الموظف بالتقييم. الليدر ينفصل عن الفنيين بعلامة الليدر،
 // والمبيعات بالدور.
 func ScoreGroup(p repository.Scorable) string {
 	switch {
+	// (دازاي 11-13) «اني شغلي ماموجود بالنظام… لازم اتقيم ع تقرير الانجاز والحضور
+	// والمهام الموجهة» — شغله برّا النظام يغلب الدور.
+	case p.OffSystem:
+		return GroupOffSystem
 	// (دازاي 11-13) منسّق الحجوزات (دوره SALES بس عنده صلاحية التنسيق) شغله تثبيت
 	// وتعيين كادر — ينحسب ويا الإداريين، مو ويا البياعين.
 	case p.Role == "SALES" && p.IsCoordinator:
@@ -101,6 +106,7 @@ var groupRaterStages = map[string]map[string]bool{
 	GroupDesign:      {"MONITOR_PERIODIC": true, "MONITOR_DAILY": true},
 	GroupIT:          {"MONITOR_PERIODIC": true, "MONITOR_DAILY": true},
 	GroupProjects:    {"MONITOR_PERIODIC": true, "MONITOR_DAILY": true},
+	GroupOffSystem:   {"MONITOR_PERIODIC": true, "MONITOR_DAILY": true},
 	GroupDecor:       {"LEADER_CREW": true, "COORD_LEADER": true, "AUDIT": true, "QUALITY_CALL": true, "OPS_DAILY": true},
 }
 
@@ -253,8 +259,15 @@ const (
 	ExtraBonusMax = 5.0
 )
 
+var offSystemSkip = map[string]bool{"REPORT_MATCH": true, "STAGE_LOG": true, "RATING_DUTY": true, "DESIGN_SECTION": true, "PROJECT_WEEK": true}
+
 // RuleFitsGroup هل هالقاعدة من شغل هالمجموعة؟ قاعدة مو بالجدول = تنطبق.
 func RuleFitsGroup(rule, group string) bool {
+	// شغل برّا النظام: التقرير اليومي والحضور والمهام الموجّهة (والتقييم البشري) بس —
+	// ومطابقة التقرير ويا شغل النظام ما تنطبق عليه (شغله مو بالنظام أصلاً).
+	if group == GroupOffSystem && offSystemSkip[rule] {
+		return false
+	}
 	g, ok := ruleGroups[rule]
 	return !ok || group == "" || g[group]
 }

@@ -63,12 +63,13 @@ type Scorable struct {
 	IsLeader         bool      `db:"isLeader" json:"isLeader"`
 	IsServiceManager bool      `db:"isServiceManager" json:"isServiceManager"`
 	IsCoordinator    bool      `db:"isCoordinator" json:"isCoordinator"`
+	OffSystem        bool      `db:"offSystemWork" json:"offSystemWork"`
 	Division         string    `db:"division" json:"division"`
 }
 
 func (r *MatrixScoreRepository) Scorables() ([]Scorable, error) {
 	rows := []Scorable{}
-	err := r.db.Select(&rows, `SELECT id, name, `+model.EffectiveRoleSQL(`"Employee".id`, `"Employee".role`)+` AS role, "createdAt", COALESCE("isLeader", false) AS "isLeader", COALESCE(division, 'ENGINEERING') AS division,
+	err := r.db.Select(&rows, `SELECT id, name, `+model.EffectiveRoleSQL(`"Employee".id`, `"Employee".role`)+` AS role, "createdAt", COALESCE("isLeader", false) AS "isLeader", COALESCE(division, 'ENGINEERING') AS division, "offSystemWork",
 		EXISTS (SELECT 1 FROM "ServiceManager" sm WHERE sm."employeeId" = "Employee".id) AS "isServiceManager",
 		EXISTS (SELECT 1 FROM "EmployeePermission" ep JOIN "Permission" pm ON pm.id = ep."permissionId"
 		        WHERE ep."employeeId" = "Employee".id AND pm.name = 'coordinator') AS "isCoordinator"

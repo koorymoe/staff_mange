@@ -197,6 +197,8 @@ func (h *EmployeeAdminHandler) Schedule(w http.ResponseWriter, r *http.Request) 
 		ShiftEnd   *string `json:"shiftEnd"`
 		// (دازاي 11-13) بدون جدول محدد
 		FlexibleHours *bool `json:"flexibleHours"`
+		// (دازاي 11-13) شغله برّا النظام — يتقيّم بالتقرير والحضور والمهام بس
+		OffSystemWork *bool `json:"offSystemWork"`
 	}
 	if err := DecodeJSON(r, &body); err != nil {
 		WriteError(w, http.StatusBadRequest, "بيانات الطلب غير صحيحة")
@@ -211,7 +213,7 @@ func (h *EmployeeAdminHandler) Schedule(w http.ResponseWriter, r *http.Request) 
 	if !h.guardTarget(w, r, id) {
 		return
 	}
-	emp, err := h.service.Update(id, model.UpdateEmployeeRequest{Shift: body.Shift, ShiftStart: body.ShiftStart, ShiftEnd: body.ShiftEnd, FlexibleHours: body.FlexibleHours})
+	emp, err := h.service.Update(id, model.UpdateEmployeeRequest{Shift: body.Shift, ShiftStart: body.ShiftStart, ShiftEnd: body.ShiftEnd, FlexibleHours: body.FlexibleHours, OffSystemWork: body.OffSystemWork})
 	if err != nil {
 		WriteError(w, http.StatusBadRequest, err.Error())
 		return

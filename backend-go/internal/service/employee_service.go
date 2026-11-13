@@ -263,6 +263,9 @@ func (s *EmployeeService) Update(id string, req model.UpdateEmployeeRequest) (*m
 		if req.ShiftEnd != nil {
 			employee.ShiftEnd = req.ShiftEnd
 		}
+		if req.OffSystemWork != nil {
+			employee.OffSystemWork = *req.OffSystemWork
+		}
 		if req.FlexibleHours != nil {
 			employee.FlexibleHours = *req.FlexibleHours
 		}

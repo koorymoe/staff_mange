@@ -224,6 +224,7 @@ const employeeUpdateSQL = `
 		"shiftStart" = :shiftStart,
 		"shiftEnd" = :shiftEnd,
 		"flexibleHours" = :flexibleHours,
+		"offSystemWork" = :offSystemWork,
 		"monthlyLeaves" = :monthlyLeaves,
 		"jobTitle" = :jobTitle,
 		"authzViolations" = :authzViolations,
@@ -588,6 +589,7 @@ type ScheduleRow struct {
 	Role       string         `db:"role" json:"role"`
 	IsLeader   bool           `db:"isLeader" json:"isLeader"`
 	Flexible   bool           `db:"flexibleHours" json:"flexibleHours"`
+	OffSystem  bool           `db:"offSystemWork" json:"offSystemWork"`
 	Shift      sql.NullString `db:"shift" json:"-"`
 	ShiftStart sql.NullString `db:"shiftStart" json:"-"`
 	ShiftEnd   sql.NullString `db:"shiftEnd" json:"-"`
@@ -604,7 +606,7 @@ type ScheduleRow struct {
 // WorkSchedule جدول كل الفعّالين + أول حضور وآخر انصراف اليوم.
 func (r *EmployeeRepository) WorkSchedule() ([]ScheduleRow, error) {
 	rows := []ScheduleRow{}
-	err := r.db.Select(&rows, `SELECT e.id, e.name, e.role::text AS role, e."isLeader", e."flexibleHours", e.shift::text AS shift, e."shiftStart", e."shiftEnd",
+	err := r.db.Select(&rows, `SELECT e.id, e.name, e.role::text AS role, e."isLeader", e."flexibleHours", e."offSystemWork", e.shift::text AS shift, e."shiftStart", e."shiftEnd",
 		(SELECT MIN("checkIn") FROM "Attendance" a WHERE a."employeeId" = e.id AND baghdad_date(a."checkIn") = baghdad_today()) AS "checkIn",
 		(SELECT MAX("checkOut") FROM "Attendance" a WHERE a."employeeId" = e.id AND baghdad_date(a."checkIn") = baghdad_today()) AS "checkOut"
 		FROM "Employee" e WHERE e.status = 'ACTIVE' AND e.role::text <> 'OWNER' ORDER BY e.role, e.name`)
