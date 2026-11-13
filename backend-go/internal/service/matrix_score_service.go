@@ -360,6 +360,12 @@ type StaffScore struct {
 	ExtraJobs  int      `json:"extraJobs"`
 	ExtraBonus float64  `json:"extraBonus"`
 	ExtraList  []string `json:"extraList"`
+	// (دازاي 11-13) الفلوس الي دخّلها وتغطية راتبه (نسبة، بلا الراتب نفسه)
+	Revenue        float64  `json:"revenue"`
+	RevenueJobs    int      `json:"revenueJobs"`
+	RevenueKind    string   `json:"revenueKind,omitempty"`
+	SalaryCoverage *float64 `json:"salaryCoverage"`
+	RevenueAdj     float64  `json:"revenueAdj"`
 }
 
 // genericRules قواعد تنطبق على الكل — ما تثبت إن ماتركس يقرا شغل الدور نفسه.
@@ -543,6 +549,12 @@ func (s *MatrixScoreService) compute(people []repository.Scorable, from, to time
 	}
 	rel, _ := s.repo.ReliabilityFacts(from, to, emp)
 	rows := BuildScores(people, pts, hum, rel)
+	if rev, err := s.repo.Revenue(from, to, emp); err == nil {
+		sal, _ := s.repo.Salaries(emp)
+		ApplyRevenue(rows, rev, sal, from, to, time.Now())
+	} else {
+		errlog.Err(err)
+	}
 	ids := make([]string, 0, len(people))
 	for _, p := range people {
 		ids = append(ids, p.ID)

@@ -3869,6 +3869,8 @@ export interface StaffScore {
   discipline?: Discipline
   /** (دازاي 11-13) شغل برّا دوره: ينكتب بسجله ويزيد النهائي نقطة لكل شغلة (لحد ٥) */
   extraJobs?: number; extraBonus?: number; extraList?: string[]
+  /** (دازاي 11-13) الفلوس الي دخّلها من مصدر شغله، وتغطية راتبه (نسبة بلا الراتب) */
+  revenue?: number; revenueJobs?: number; revenueKind?: 'BOOKED' | 'WORK' | 'PROJECT'; salaryCoverage?: number | null; revenueAdj?: number
 }
 export interface DisciplineDay { date: string; status: 'LATE' | 'LATE_EXCUSED' | 'ABSENT'; lateMinutes?: number; checkIn?: string; shiftStart?: string }
 export interface Discipline { score: number | null; days: number; onTime: number; late: number; lateExcused: number; absent: number; lateMinutes: number; startsOn: string; items: DisciplineDay[] }

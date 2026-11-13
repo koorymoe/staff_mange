@@ -16,6 +16,7 @@ import (
 // تقدير مدة التنفيذ)، نظافة السيارة (يعيد استخدام "تقييم السائقين بعد المهمة"
 // الموجود أصلاً)، الشكاوى، المبيعات، الحجوزات المكتملة، ومجموع العمولات.
 type EmployeeMonthlyStatsService struct {
+	revenue              *repository.MatrixScoreRepository
 	employees            *repository.EmployeeRepository
 	kpi                  *repository.KpiRepository
 	complaints           *repository.ComplaintRepository
@@ -31,6 +32,36 @@ type EmployeeMonthlyStatsService struct {
 
 // SetSmartKpi يربط حاسبة النقاط الكاملة. منفصلة عن الباني حتى ما
 // نكسر أي مستدعي موجود.
+// SetRevenue (دازاي 11-13) «المبالغ الي دخّلها» بنفس حساب التقييم: كل دور من مصدر شغله
+// (البياع من الحجوزات الي سجّلها، الفني من حصته بالشغل…) — چانت فواتير الي كتبها بس،
+// فالبياع دائماً صفر.
+func (s *EmployeeMonthlyStatsService) SetRevenue(r *repository.MatrixScoreRepository) { s.revenue = r }
+
+func (s *EmployeeMonthlyStatsService) revenueFor(e model.Employee, month string) (float64, bool) {
+	if s.revenue == nil {
+		return 0, false
+	}
+	from, err := time.ParseInLocation("2006-01", month, debriefLoc)
+	if err != nil {
+		return 0, false
+	}
+	kind, ok := revenueKindOf[ScoreGroup(repository.Scorable{Role: string(e.Role), IsLeader: e.IsLeader, Division: e.Division})]
+	if !ok {
+		return 0, true
+	}
+	rows, err := s.revenue.Revenue(from.UTC(), from.AddDate(0, 1, 0).UTC(), e.ID)
+	if err != nil {
+		return 0, false
+	}
+	sum := 0.0
+	for _, r := range rows {
+		if r.Kind == kind {
+			sum += r.Amount
+		}
+	}
+	return sum, true
+}
+
 func (s *EmployeeMonthlyStatsService) SetSmartKpi(k *SmartKpiService) {
 	s.smartKpi = k
 }
@@ -148,7 +179,9 @@ func (s *EmployeeMonthlyStatsService) monthlyFor(e model.Employee, month string)
 		// ⚠️ الترتيب مهم: الراتب يُقرأ من الموظف نفسه (قابل للفراغ)،
 		// والنسبة **ما تُحسب إلا إذا الراتب موجود وأكبر من صفر** —
 		// وإلا تطلع لا نهاية أو صفراً كاذباً.
-		if rev, rerr := s.leaderInvoices.SumNetTotalForEmployeeMonth(e.ID, month); rerr == nil {
+		if rev, ok := s.revenueFor(e, month); ok {
+			stats.RevenueBrought = rev
+		} else if rev, rerr := s.leaderInvoices.SumNetTotalForEmployeeMonth(e.ID, month); rerr == nil {
 			stats.RevenueBrought = rev
 		}
 		stats.Salary = e.Salary

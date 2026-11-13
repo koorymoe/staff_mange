@@ -722,6 +722,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	// النقاط الكاملة بجدول الإحصاءات تجي من نفس حاسبة المخطط، حتى
 	// الرقم بالجدول والرقم بالمخطط ما يختلفون.
 	employeeMonthlyStatsService.SetSmartKpi(smartKpiService)
+	employeeMonthlyStatsService.SetRevenue(repository.NewMatrixScoreRepository(db))
 	// ═══ مؤشر الطاقة المستخدمة الشهري (ماتركس) ═══ — مين استخدم طاقة
 	// أعلى من زملائه هذا الشهر (حجوزات + ساعات دوام + صيانات)، للمالك
 	// ومدير النظام حصراً.
