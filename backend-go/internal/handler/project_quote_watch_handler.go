@@ -10,6 +10,7 @@ import (
 	"github.com/jmoiron/sqlx"
 
 	"staffmange-api/internal/middleware"
+	"staffmange-api/internal/model"
 )
 
 // ═══ رقابة مشرفي المشاريع على عرض السعر — قرار (ع) 10-16 ═══
@@ -114,7 +115,7 @@ func (h *ProjectQuoteWatchHandler) List(w http.ResponseWriter, r *http.Request) 
 		       -- ماتركس: سوّى عرض سعر (أو عبر المرحلة) بلا ما يسجّل تواصل — ما ماشي بالنظام.
 		       -- بس للمشاريع الي استلمها بعد ما انضاف زر التواصل (10-16)، حتى ما نظلم القديم.
 		       (b.contacted IS NULL AND (b.quoted IS NOT NULL OR b."pastContact")
-		        AND b.recv >= '2026-10-16'::timestamp) AS "offSystem"
+		        AND b.recv >= '`+model.ContactButtonSince+`'::timestamp) AS "offSystem"
 		FROM base b LEFT JOIN "Employee" e ON e.id = b.sup
 		ORDER BY (b.quoted IS NULL AND NOT b."pastQuote") DESC, b.recv ASC
 		LIMIT 400`, quoteWatchContactHours, quoteWatchQuoteHours)

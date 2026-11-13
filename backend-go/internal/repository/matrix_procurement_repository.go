@@ -1,11 +1,15 @@
 package repository
 
-import "time"
+import (
+	"time"
+
+	"staffmange-api/internal/model"
+)
 
 // ═══ شغل أبو الكميات بعين ماتركس (قرار (ع) 10-10) ═══
 // «كل شغلة يشتغلها لازم تكون موجودة بالنظام». البنود من تاريخ التفعيل وطالع —
 // الماضي ما ينحسب على أحد لأن القرارات وقتها ما چانت تنسجّل.
-const ProcurementWatchStart = "2026-10-10"
+const ProcurementWatchStart = model.ProcurementWatchSince
 
 // ProcDecision طلب (مواد أو أداة) وقرار أبو الكميات عليه.
 type ProcDecision struct {

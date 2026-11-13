@@ -37,6 +37,10 @@ func (r *BookingProgressRepository) PartialComplete(bookingID, reportedByID stri
 
 	// رقم اليوم = الي قبله + ١. نحسبه من التقارير مو من partialCount حتى
 	// لو انحذف تقرير يدوياً ما ينكسر الترقيم.
+	// (11-13) قفل صف الحجز قبل «أكبر رقم + ١»: طلبين بنفس اللحظة چانوا ياخذون نفس الرقم.
+	if _, err := tx.Exec(`SELECT 1 FROM "Booking" WHERE id = $1 FOR UPDATE`, bookingID); err != nil {
+		return nil, err
+	}
 	var dayNumber int
 	if err = tx.Get(&dayNumber, `
 		SELECT COALESCE(MAX("dayNumber"), 0) + 1 FROM "BookingProgressReport" WHERE "bookingId" = $1

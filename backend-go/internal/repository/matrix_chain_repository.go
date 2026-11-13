@@ -457,7 +457,7 @@ func (r *MatrixChainRepository) InternalNoInvoice() ([]string, error) {
 	err := r.db.Select(&codes, `
 		SELECT b.code FROM "Booking" b
 		WHERE b."bookingType" = 'INTERNAL' AND b.status = 'COMPLETED' AND b."archivedAt" IS NULL
-		  AND b."createdAt" >= '2026-10-08'::date
+		  AND b."createdAt" >= '`+model.InternalInvoiceSince+`'::date
 		  AND b."completedAt" < now() - interval '24 hours'
 		  AND NOT EXISTS (SELECT 1 FROM "LeaderInvoice" li WHERE li."bookingId" = b.id AND li."revokedAt" IS NULL
 		                  AND li.systems::text LIKE '%شغل داخل الشركة%')

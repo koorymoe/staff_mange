@@ -1,5 +1,14 @@
+# (11-13) سجلات الحاويات چانت تكبر بلا حد لحد ما يتعبّى القرص — كل خدمة
+# تحتفظ بـ٥ ملفات × ٢٠ ميغا بالكثير.
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "20m"
+    max-file: "5"
+
 services:
   db:
+    logging: *default-logging
     image: postgres:16-alpine
     restart: unless-stopped
     environment:
@@ -15,6 +24,7 @@ services:
       retries: 10
 
   backend:
+    logging: *default-logging
     build: ./backend-go
     restart: unless-stopped
     depends_on:
@@ -110,6 +120,7 @@ services:
   # بلا ports: يوصله الباك اند بس على الشبكة الداخلية. الحجم: WHISPER_MODEL
   # (small افتراضي ~١GB رام، base أخف). إذا ما اشتغل، الفويس يبقى محفوظ بلا تحليل.
   whisper:
+    logging: *default-logging
     build:
       context: ./whisper
       args:
@@ -118,6 +129,7 @@ services:
     mem_limit: ${WHISPER_MEM_LIMIT:-1500m}
 
   frontend:
+    logging: *default-logging
     build:
       context: ./frontend
       args:
@@ -136,6 +148,7 @@ services:
 
   # (ع) 10-14: تطبيق الزبائن — واجهة مستقلة على دومينها (CUSTOMER_DOMAIN)
   customer:
+    logging: *default-logging
     build:
       context: ./customer-app
       args:
@@ -151,6 +164,7 @@ services:
   # عكس-وكيل (reverse proxy) بشهادة أمان تلقائية مجانية (HTTPS) عن طريق
   # الدومين — Caddy يجدد الشهادة تلقائياً بدون أي تدخل يدوي (بخلاف certbot).
   caddy:
+    logging: *default-logging
     image: caddy:2-alpine
     restart: unless-stopped
     depends_on:
@@ -175,6 +189,7 @@ services:
   # ⚠️ السيرفر ذاكرته ٣.٨ گيگا: كل أداة إلها سقف ذاكرة حتى ما توگّع النظام.
   # Dozzle: يعرض سجلات الحاويات بالمتصفح (قراءة بس).
   dozzle:
+    logging: *default-logging
     image: amir20/dozzle:v11.3.4
     restart: unless-stopped
     environment:
@@ -187,6 +202,7 @@ services:
 
   # Netdata: الذاكرة والمعالج والقرص لحظة بلحظة، وتنبيهات إذا قربت تخلص.
   netdata:
+    logging: *default-logging
     image: netdata/netdata:v2.12.1
     restart: unless-stopped
     hostname: staffmanage

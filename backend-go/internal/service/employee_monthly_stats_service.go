@@ -3,6 +3,7 @@ package service
 import (
 	"fmt"
 	"staffmange-api/internal/timeutil"
+	"sync"
 	"time"
 
 	"staffmange-api/internal/model"
@@ -67,8 +68,25 @@ func (s *EmployeeMonthlyStatsService) Monthly(month string) ([]model.EmployeeMon
 		return nil, err
 	}
 
-	result := make([]model.EmployeeMonthlyStats, 0, len(employees))
-	for _, e := range employees {
+	// (11-13) ~١٥ استعلام لكل موظف — بالتسلسل چانت الصفحة تاخذ ثانية بـ٥٥ موظف
+	// وتكبر ويا الشركة. هسه ٨ موظفين سوة، والترتيب يبقى نفسه.
+	result := make([]model.EmployeeMonthlyStats, len(employees))
+	sem := make(chan struct{}, 8)
+	var wg sync.WaitGroup
+	for i, e := range employees {
+		wg.Add(1)
+		sem <- struct{}{}
+		go func(i int, e model.Employee) {
+			defer func() { <-sem; wg.Done() }()
+			result[i] = s.monthlyFor(e, month)
+		}(i, e)
+	}
+	wg.Wait()
+	return result, nil
+}
+
+func (s *EmployeeMonthlyStatsService) monthlyFor(e model.Employee, month string) model.EmployeeMonthlyStats {
+	{
 		stats := model.EmployeeMonthlyStats{
 			EmployeeID:   e.ID,
 			EmployeeName: e.Name,
@@ -162,10 +180,8 @@ func (s *EmployeeMonthlyStatsService) Monthly(month string) ([]model.EmployeeMon
 			}
 		}
 
-		result = append(result, stats)
+		return stats
 	}
-
-	return result, nil
 }
 
 // Range يبني نفس صفوف Monthly (نقاط الكي بي اي، الشكاوى، المبيعات، الحجوزات،

@@ -29,6 +29,10 @@ func NewBookingVisitRepository(db *sqlx.DB) *BookingVisitRepository {
 // الكادر ينلقط من `BookingAssignment` **بلحظته** — لأن الإداري يجوز
 // يبدّله للطلعة الجاية، والطلعة لازم تحتفظ بمنو طلع بيها هي.
 func recordVisitTx(tx *sqlx.Tx, bookingID, outcome string, percentDone *int, progressReportID *string) (string, error) {
+	// (11-13) قفل صف الحجز قبل «أكبر رقم + ١»: طلبين بنفس اللحظة چانوا ياخذون نفس الرقم.
+	if _, err := tx.Exec(`SELECT 1 FROM "Booking" WHERE id = $1 FOR UPDATE`, bookingID); err != nil {
+		return "", err
+	}
 	var visitNumber int
 	if err := tx.Get(&visitNumber, `
 		SELECT COALESCE(MAX("visitNumber"), 0) + 1 FROM "BookingVisit" WHERE "bookingId" = $1

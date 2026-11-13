@@ -269,7 +269,7 @@ func (r *BookingRepository) ListServicePaperworkByKind(kind string, limit int) (
 		          -- (دازاي 10-29) «كل حجز يبدي بـB اريده يضهر لمسؤول الخدمة، وكل
 		          -- حجز يبدي بـOLD نعتبره منجز»: حجوزات النظام (B…) تطالب بتقرير مهما
 		          -- قدمت، والاستيراد القديم (OLD-) ينشال فوك أصلاً.
-		          (b."completedAt" IS NULL OR b."completedAt" >= '2026-09-27' OR b.code LIKE 'B%')
+		          (b."completedAt" IS NULL OR b."completedAt" >= '`+model.ReportRequiredSince+`' OR b.code LIKE 'B%')
 		          AND NOT EXISTS (SELECT 1 FROM "WorkReport" wr WHERE wr."bookingId" = b.id)
 		      )
 		  )

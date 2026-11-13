@@ -316,6 +316,10 @@ func (r *QuotationRepository) Update(id string, req model.UpdateQuotationRequest
 	}
 	// رقم النسخة: التالي لأعلى رقم مؤرشف. COALESCE حتى أول أرشفة
 	// تصير ١ مو صفراً.
+	// (11-13) قفل العرض قبل «أكبر رقم + ١» حتى تعديلين بنفس اللحظة ما ياخذون نفس رقم النسخة.
+	if _, err := tx.Exec(`SELECT 1 FROM "Quotation" WHERE id = $1 FOR UPDATE`, id); err != nil {
+		return nil, err
+	}
 	var nextVersion int
 	if err := tx.Get(&nextVersion, `
 		SELECT COALESCE(MAX(version), 0) + 1 FROM "QuotationVersion" WHERE "quotationId" = $1`, id); err != nil {

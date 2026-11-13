@@ -1074,6 +1074,20 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 			time.Sleep(24 * time.Hour)
 		}
 	}()
+	// (11-13) النسخة الاحتياطية: إذا وقفت أو ما انتصبت أصلاً، المالك يدري مرة باليوم.
+	// چانت الحالة تبين بس إذا فتح شاشة النسخ — والنسخة الواكفة ما تبين إلا يوم الحاجة.
+	go func() {
+		time.Sleep(10 * time.Minute)
+		for {
+			if h, err := backupRunRepo.Health(); err == nil && h.Status != "OK" {
+				day := time.Now().In(time.FixedZone("Baghdad", 3*3600)).Format("2006-01-02")
+				if ok, _ := aiRepo.ClaimDailyMarker("BACKUP_ALERT", day); ok {
+					_ = notificationRepo.CreateForRole("OWNER", "SYSTEM_BACKUP", "💾 النسخة الاحتياطية: "+h.Message)
+				}
+			}
+			time.Sleep(6 * time.Hour)
+		}
+	}()
 	mux.Handle("GET /api/bot-reader/reports", middleware.RateLimit(60, time.Minute)(http.HandlerFunc(tgBot.ReaderReports)))
 	mux.Handle("GET /api/bot-reader/files/{key...}", middleware.RateLimit(120, time.Minute)(http.HandlerFunc(tgBot.ReaderFile)))
 	mux.Handle("GET /api/bot-reader/suggestions", middleware.RateLimit(60, time.Minute)(http.HandlerFunc(tgBot.ReaderSuggestions)))
