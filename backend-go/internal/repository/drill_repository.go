@@ -50,7 +50,7 @@ var (
 	latePaperSQL = `(` + bucketCondition("needs_paper") + `)
 		AND b."completedAt" < (now() AT TIME ZONE 'UTC') - interval '24 hours'
 		AND b."completedAt" > (now() AT TIME ZONE 'UTC') - interval '60 days'`
-	overdueSQL = `((` + lateConfirmSQL + `) OR (` + lateDepartSQL + `))`
+	overdueSQL      = `((` + lateConfirmSQL + `) OR (` + lateDepartSQL + `))`
 	paperMissingSQL = `((` + lateExecSQL + `) OR (` + latePaperSQL + `))`
 	// overdueKindSQL «وين واكف» ويا التفاصيل: شنو فات، ومن يمته، وبكم يوم.
 	overdueKindSQL = `CASE
