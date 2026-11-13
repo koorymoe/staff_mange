@@ -169,7 +169,7 @@ func DirectorsRanking(db *sqlx.DB, period string, personal PersonalScoreFn) (*Di
 			FROM "OrgIssueReport" WHERE "divisionId" = $1`, h.DivisionID, from, to))
 		issues := issueEvidence(db, h.DivisionID, from, to)
 		var speed, few, solve *float64
-		speedD, solveD := "ما انحلت مشكلة هالشهر", "ماكو مشاكل هالشهر"
+		speedD, solveD := "ما انحلت مشكلة هالشهر", "ماكو مشاكل ولا شغل فايت هالشهر"
 		if is.AvgDays != nil {
 			// ٣ أيام أو أقل = ١٠٠، ٣٠ يوم أو أكثر = صفر
 			speed = rankPtr(100 - (*is.AvgDays-3)*100/27)
@@ -191,9 +191,18 @@ func DirectorsRanking(db *sqlx.DB, period string, personal PersonalScoreFn) (*Di
 			issues.opened = append([]EvidenceLine{{Label: "شافها النظام", Value: strconv.Itoa(sysMissed),
 				Note: "محطات حجوزات/مشاريع/تقارير وقتها فات وما صارت — تنحسب حتى لو الإدارة ما بلّغت"}}, issues.opened...)
 		}
-		if is.Opened > 0 {
-			solve = rankPtr(float64(is.Resolved) * 100 / float64(is.Opened))
-			solveD = strconv.Itoa(is.Resolved) + " من " + strconv.Itoa(is.Opened) + " انحلت"
+		// (دازاي 11-13) الشغل الفايت الي شافه النظام يدخل بالحل هم: انسوّى بعدين (متأخر،
+		// نقطة وحدة) = انحل، وبعده ما انسوّى (صفر) = ما انحل. چان «قلة المشاكل» تعدّه و«حل
+		// المشاكل» تگول «ماكو مشاكل» — مدير بإدارته ٦ محطات فايتة يبين ما عنده شي يحله.
+		var sysLate int
+		errlog.Err(db.Get(&sysLate, `SELECT count(*) FROM "MatrixScore" s
+			WHERE s.source IN ('BOOKING','PROJECT','REPORT') AND s.points > 0 AND s.points < s."maxPoints" AND s."cancelledAt" IS NULL
+			  AND s."at" >= $2 AND s."at" < $3 AND s."employeeId" IN (`+orgMembersSQL+`)`, h.DivisionID, from, to))
+		if total := is.Opened + sysMissed + sysLate; total > 0 {
+			done := is.Resolved + sysLate
+			solve = rankPtr(float64(done) * 100 / float64(total))
+			solveD = strconv.Itoa(done) + " من " + strconv.Itoa(total) + " انحلت (" + strconv.Itoa(is.Resolved) + " مبلّغة + " +
+				strconv.Itoa(sysLate) + " شغل فايت انسوّى بعدين؛ " + strconv.Itoa(sysMissed) + " بعده ما انسوّى)"
 		}
 
 		// ٧. انضباط الكادر بالدوام (11-11): معدل درجات الانضباط لكل الإدارة، المدير وياهم
@@ -235,8 +244,8 @@ func DirectorsRanking(db *sqlx.DB, period string, personal PersonalScoreFn) (*Di
 			{"outputs", "المخرجات", 30, outputs, outD, "معدل درجات فقرات المخرجات الي عليها بيانات (كل فقرة: نقاط ماتركس + المهام بوقتها − الخصومات والشكاوي)", outEv},
 			{"plan", "إنجاز الخطة", 20, plan, planD, "معدل درجات بنود خطة الشهر: خلص بموعده = ١٠٠، متأخر = −١٠ لكل يوم، وبعده بالموعد = نسبته", planEv},
 			{"speed", "السرعة", 15, speed, speedD, "١٠٠ − (معدل أيام الحل − ٣) × ١٠٠ ÷ ٢٧ — ٣ أيام أو أقل = ١٠٠، و٣٠ يوم أو أكثر = صفر", issues.resolved},
-			{"few", "قلة المشاكل", 10, few, fewD, "١٠٠ − ((أوزان المشاكل المبلّغة + المحطات الفايتة الي شافها النظام) ÷ " + peopleS + " موظف) × ٢٥ — الوزن: عالية ٣، متوسطة ٢، واطية ١، المحطة ١", issues.opened},
-			{"solve", "حل المشاكل", 15, solve, solveD, "المشاكل الي انحلت ÷ المشاكل الي انفتحت هالشهر × ١٠٠", issues.opened},
+			{"few", "المشاكل والشغل الفايت", 10, few, fewD, "١٠٠ − ((أوزان المشاكل المبلّغة + الشغل الفايت الي شافه النظام) ÷ " + peopleS + " موظف) × ٢٥ — الوزن: عالية ٣، متوسطة ٢، واطية ١، الشغل الفايت ١. كل ما قلّت أحسن.", issues.opened},
+			{"solve", "شكد انحل منها", 15, solve, solveD, "(المشاكل المبلّغة الي انحلت + الشغل الفايت الي انسوّى بعدين) ÷ (كل المشاكل المبلّغة + كل الشغل الفايت) × ١٠٠", issues.opened},
 			{"complaints", "الشكاوي والتأخير", 10, complaints, compD, "١٠٠ − (الشكاوي والمهام المتأخرة ÷ " + peopleS + " موظف) × ٢٠", compEv},
 			{"discipline", "انضباط الكادر بالدوام", 10, disc, discD, "معدل انضباط كل موظف بالإدارة (والمدير وياهم): ١٠٠ − ٢ لكل يوم تأخير بلا عذر − ٥ لكل غياب بلا إجازة", discEv},
 		}

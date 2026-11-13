@@ -42,10 +42,10 @@ func TestOverdueRules_Live(t *testing.T) {
 		}
 	}
 	utc := `(now() AT TIME ZONE 'UTC')`
-	ins("__od_contact", "OD-1", `"createdAt" = `+utc+` - interval '3 hours'`)
+	ins("__od_contact", "OD-1", `"createdAt" = `+utc+` - interval '3 days'`)
 	ins("__od_fresh", "OD-2", `"createdAt" = `+utc+` - interval '1 hour'`)
 	ins("__od_wait", "OD-3", `"createdAt" = `+utc+` - interval '3 days', "waitingSince" = now() - interval '2 days', "waitingKind" = 'CUSTOMER_DECISION', status = 'WAITING'`)
-	ins("__od_depart", "OD-4", `status = 'CONFIRMED', "confirmedAt" = `+utc+`, "scheduledAt" = `+utc+` - interval '2 hours'`)
+	ins("__od_depart", "OD-4", `status = 'CONFIRMED', "confirmedAt" = `+utc+`, "scheduledAt" = `+utc+` - interval '30 hours'`)
 	ins("__od_future", "OD-5", `status = 'CONFIRMED', "confirmedAt" = `+utc+`, "scheduledAt" = `+utc+` + interval '1 day'`)
 	ins("__od_paper", "OD-6", `status = 'COMPLETED', "completedAt" = `+utc+` - interval '30 hours'`)
 	ins("__od_inq", "OD-7", `"waitingSince" = now() - interval '6 days', "waitingKind" = 'CUSTOMER_DECISION', status = 'WAITING'`)
@@ -71,14 +71,26 @@ func TestOverdueRules_Live(t *testing.T) {
 	for _, r := range res.Rows {
 		got[r.Code] = r
 	}
-	want := map[string]string{"OD-1": "تواصل", "OD-4": "ما طلع", "OD-6": "فاتورة"}
+	// (دازاي 11-13) المتأخر حالتين بس؛ الورق الناقص صار بقائمة «ورق ناقص».
+	want := map[string]string{"OD-1": "ما تثبّت", "OD-4": "ما طلع"}
 	for code, kind := range want {
 		r, ok := got[code]
 		if !ok || !strings.Contains(r.Station, kind) {
 			t.Fatalf("%s لازم يطلع متأخر «%s»: %+v", code, kind, r)
 		}
 	}
-	for _, code := range []string{"OD-2", "OD-3", "OD-5", "OD-7"} {
+	paper, err := Drill(db, "paper_missing", 500)
+	if err != nil {
+		t.Fatal(err)
+	}
+	inPaper := false
+	for _, r := range paper.Rows {
+		inPaper = inPaper || (r.Code == "OD-6" && strings.Contains(r.Station, "فاتورة"))
+	}
+	if !inPaper {
+		t.Fatal("OD-6 خلص وناقصه ورق لازم يطلع بـ«ورق ناقص»")
+	}
+	for _, code := range []string{"OD-2", "OD-3", "OD-5", "OD-6", "OD-7"} {
 		if _, ok := got[code]; ok {
 			t.Fatalf("%s مو متأخر", code)
 		}

@@ -104,7 +104,7 @@ func TestLateExcuseDiscipline_Live(t *testing.T) {
 	}
 	// تنبيه ماتركس عند ٣ تأخيرات بلا عذر — مرة وحدة للعتبة (نحتاج الأيام بنفس الشهر)
 	if n.Day() >= 8 {
-		att(6, 2, "09:30")
+		att(6, 2, "09:45") // (11-13) السماحية نص ساعة
 		att(7, 2, "09:50")
 		claimed := map[string]bool{}
 		claim := func(k, d string) (bool, error) {
