@@ -510,13 +510,15 @@ func syncOrgPermissions(tx *sqlx.Tx, empID, actorID, reason string) error {
 		ViaOrg  bool   `db:"viaOrg"`
 		Granted bool   `db:"granted"`
 		Pinned  bool   `db:"pinned"`
+		Revoked bool   `db:"revoked"`
 	}
 	cur := []held{}
 	if err := tx.Select(&cur, `
 		SELECT p.name,
 		       EXISTS (SELECT 1 FROM "OrgPermissionGrant" g WHERE g."employeeId" = $1 AND g.permission = p.name) AS "viaOrg",
 		       EXISTS (SELECT 1 FROM "EmployeePermission" ep WHERE ep."employeeId" = $1 AND ep."permissionId" = p.id) AS granted,
-		       EXISTS (SELECT 1 FROM "PermissionException" x WHERE x."employeeId" = $1 AND x.permission = p.name) AS pinned
+		       EXISTS (SELECT 1 FROM "PermissionException" x WHERE x."employeeId" = $1 AND x.permission = p.name) AS pinned,
+		       EXISTS (SELECT 1 FROM "PermissionRevoke" rv WHERE rv."employeeId" = $1 AND rv.permission = p.name) AS revoked
 		FROM "Permission" p`, empID); err != nil {
 		return err
 	}
@@ -535,7 +537,7 @@ func syncOrgPermissions(tx *sqlx.Tx, empID, actorID, reason string) error {
 	for _, n := range names {
 		h := idx[n]
 		switch {
-		case desired[n] && !h.Granted && !h.ViaOrg:
+		case desired[n] && !h.Granted && !h.ViaOrg && !h.Revoked:
 			// يستحقها ومو عنده — ننطيها ونسجّل إنها من المنصب.
 			// (ViaOrg ويا مو عنده = الأدمن شالها بيده: نحترم قراره وما نرجّعها)
 			if _, err := tx.Exec(`INSERT INTO "EmployeePermission" (id, "employeeId", "permissionId")

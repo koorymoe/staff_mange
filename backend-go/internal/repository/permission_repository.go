@@ -73,6 +73,19 @@ func (r *PermissionRepository) ReplaceForEmployee(employeeID string, permissionI
 	}
 	defer tx.Rollback()
 
+	// (دازاي 11-13) الي انشال بهالحفظ = «انشال بقصد» (ما ترجّعه الصلاحيات الافتراضية ولا
+	// الهيكلة)، والي انضاف = ينمسح منعه.
+	if _, err := tx.Exec(`
+		INSERT INTO "PermissionRevoke" ("employeeId", permission)
+		SELECT $1, p.name FROM "EmployeePermission" ep JOIN "Permission" p ON p.id = ep."permissionId"
+		WHERE ep."employeeId" = $1 AND NOT (p.id = ANY($2))
+		ON CONFLICT DO NOTHING`, employeeID, pq.Array(permissionIDs)); err != nil {
+		return err
+	}
+	if _, err := tx.Exec(`DELETE FROM "PermissionRevoke" WHERE "employeeId" = $1
+		AND permission IN (SELECT name FROM "Permission" WHERE id = ANY($2))`, employeeID, pq.Array(permissionIDs)); err != nil {
+		return err
+	}
 	if _, err := tx.Exec(`DELETE FROM "EmployeePermission" WHERE "employeeId" = $1`, employeeID); err != nil {
 		return err
 	}
@@ -92,6 +105,19 @@ func (r *PermissionRepository) ReplaceForEmployee(employeeID string, permissionI
 		return err
 	}
 	return tx.Commit()
+}
+
+// RevokedNames (دازاي 11-13) الصلاحيات الي انشالت من الموظف بقصد — ما ترجع لحالها.
+func (r *PermissionRepository) RevokedNames(employeeID string) (map[string]bool, error) {
+	names := []string{}
+	if err := r.db.Select(&names, `SELECT permission FROM "PermissionRevoke" WHERE "employeeId" = $1`, employeeID); err != nil {
+		return nil, err
+	}
+	out := make(map[string]bool, len(names))
+	for _, n := range names {
+		out[n] = true
+	}
+	return out, nil
 }
 
 // HasPermission يتحقق مباشرة إذا كان الموظف عنده صلاحية معينة بالاسم — يُستخدم

@@ -27,6 +27,19 @@ func autoMigrations() []Migration {
 			ALTER SEQUENCE "AdminEditLog_id_seq" OWNED BY "AdminEditLog"."id";
 		`,
 		},
+		{
+			Version: "0487_permission_revoke",
+			SQL: `
+			CREATE TABLE IF NOT EXISTS "PermissionRevoke" (
+	"employeeId" text NOT NULL,
+	"permission" text NOT NULL,
+	"revokedById" text,
+	"createdAt" timestamp with time zone DEFAULT now() NOT NULL
+);
+			ALTER TABLE "PermissionRevoke" ADD CONSTRAINT "PermissionRevoke_pkey" PRIMARY KEY ("employeeId", permission);
+			ALTER TABLE "PermissionRevoke" ADD CONSTRAINT "PermissionRevoke_employeeId_fkey" FOREIGN KEY ("employeeId") REFERENCES "Employee"(id) ON DELETE CASCADE;
+		`,
+		},
 		// ‹makemigration› — التحديثات الجديدة تنضاف فوگ هالسطر
 	}
 }

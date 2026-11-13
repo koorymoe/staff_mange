@@ -232,11 +232,19 @@ func (h *PermissionAccessHandler) apply(r *http.Request, empID string, version i
 		if _, err := tx.Exec(`DELETE FROM "OrgPermissionGrant" WHERE "employeeId" = $1 AND permission = $2`, empID, n); err != nil {
 			return http.StatusInternalServerError, "تعذر الحفظ"
 		}
+		if _, err := tx.Exec(`DELETE FROM "PermissionRevoke" WHERE "employeeId" = $1 AND permission = $2`, empID, n); err != nil {
+			return http.StatusInternalServerError, "تعذر الحفظ"
+		}
 	}
 	// الشيل اليدوي يخلي علامة المنصب (إن وجدت) كـ«رفض» — المزامنة ما ترجّعها لحالها
 	for _, n := range remove {
 		res, err := tx.Exec(`DELETE FROM "EmployeePermission" WHERE "employeeId" = $1 AND "permissionId" = (SELECT id FROM "Permission" WHERE name = $2)`, empID, n)
 		if err != nil {
+			return http.StatusInternalServerError, "تعذر الحفظ"
+		}
+		// (دازاي 11-13) انشالت بقصد: الصلاحيات الافتراضية (كل ٦ ساعات) والهيكلة ما يرجّعوها.
+		if _, err := tx.Exec(`INSERT INTO "PermissionRevoke" ("employeeId", permission, "revokedById") VALUES ($1, $2, NULLIF($3, ''))
+			ON CONFLICT DO NOTHING`, empID, n, actor); err != nil {
 			return http.StatusInternalServerError, "تعذر الحفظ"
 		}
 		if k, _ := res.RowsAffected(); k > 0 {

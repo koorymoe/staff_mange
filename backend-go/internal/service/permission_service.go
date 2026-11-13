@@ -77,9 +77,16 @@ func (s *PermissionService) ApplyDefaults(employeeID string) ([]model.Permission
 		return nil, err
 	}
 
+	revoked, err := s.permissions.RevokedNames(employeeID)
+	if err != nil {
+		return nil, err
+	}
 	defaultSet := make(map[string]bool, len(defaults))
 	for _, name := range defaults {
-		defaultSet[name] = true
+		// (دازاي 11-13) الي انشال بقصد ما يرجع — چانت الدورة كل ٦ ساعات ترجّعها.
+		if !revoked[name] {
+			defaultSet[name] = true
+		}
 	}
 
 	var defaultIDs []string
@@ -178,6 +185,12 @@ func (s *PermissionService) AuditRoleDefaults() ([]MissingRoleDefault, error) {
 		haveSet := make(map[string]bool, len(have))
 		for _, p := range have {
 			haveSet[p.Name] = true
+		}
+		// الي انشال بقصد مو «ناقص» (دازاي 11-13).
+		if revoked, rerr := s.permissions.RevokedNames(e.ID); rerr == nil {
+			for n := range revoked {
+				haveSet[n] = true
+			}
 		}
 		var missing, labels, notSeeded []string
 		for _, name := range defaults {
