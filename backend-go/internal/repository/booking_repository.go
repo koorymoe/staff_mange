@@ -216,7 +216,12 @@ func (r *BookingRepository) ListServicePaperworkByKind(kind string, limit int) (
 	err := r.db.Select(&bookings, `
 		SELECT b.* FROM "Booking" b
 		WHERE b."archivedAt" IS NULL
-		  AND b.status = 'COMPLETED'
+		  -- بلاغ #38 (11-13): «عملت فاتورة لحجز ولم يظهر لي بالتقارير». الفاتورة
+		  -- ما تشترط حالة الحجز، فحجز انفوتر وهو بعده مو «منجز» چان يختفي من
+		  -- الطرفين: ما يطلع للفاتورة (مسوّية) ولا للتقرير (مو منجز). فالمفوتر
+		  -- يطلع لتقريره مهما چانت حالته، إلا الملغي.
+		  AND (b.status = 'COMPLETED' OR (b.status <> 'CANCELLED' AND EXISTS (
+		      SELECT 1 FROM "LeaderInvoice" li0 WHERE li0."bookingId" = b.id AND li0.status <> 'DRAFT')))
 		  -- ⚠️ الحجز المسوّى كـ«قديم» ينشال: (ع) «حجوزات قديمه جدا
 		  -- من النظام القديم ماريدهني ضهرن، المفروض نرفع اكسل
 		  -- يعادل الوضعيه». فالي انتسوّى حسابه ماعاد يستحق فاتورة.
@@ -264,7 +269,7 @@ func (r *BookingRepository) ListServicePaperworkByKind(kind string, limit int) (
 		          -- (دازاي 10-29) «كل حجز يبدي بـB اريده يضهر لمسؤول الخدمة، وكل
 		          -- حجز يبدي بـOLD نعتبره منجز»: حجوزات النظام (B…) تطالب بتقرير مهما
 		          -- قدمت، والاستيراد القديم (OLD-) ينشال فوك أصلاً.
-		          (b."completedAt" >= '2026-09-27' OR b.code LIKE 'B%')
+		          (b."completedAt" IS NULL OR b."completedAt" >= '2026-09-27' OR b.code LIKE 'B%')
 		          AND NOT EXISTS (SELECT 1 FROM "WorkReport" wr WHERE wr."bookingId" = b.id)
 		      )
 		  )
