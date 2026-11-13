@@ -37,21 +37,21 @@ type EmployeeMonthlyStatsService struct {
 // فالبياع دائماً صفر.
 func (s *EmployeeMonthlyStatsService) SetRevenue(r *repository.MatrixScoreRepository) { s.revenue = r }
 
-func (s *EmployeeMonthlyStatsService) revenueFor(e model.Employee, month string) (float64, bool) {
+func (s *EmployeeMonthlyStatsService) revenueFor(e model.Employee, month string) (float64, string, bool) {
 	if s.revenue == nil {
-		return 0, false
+		return 0, "", false
 	}
 	from, err := time.ParseInLocation("2006-01", month, debriefLoc)
 	if err != nil {
-		return 0, false
+		return 0, "", false
 	}
 	kind, ok := revenueKindOf[ScoreGroup(repository.Scorable{Role: string(e.Role), IsLeader: e.IsLeader, Division: e.Division})]
 	if !ok {
-		return 0, true
+		return 0, "", true
 	}
 	rows, err := s.revenue.Revenue(from.UTC(), from.AddDate(0, 1, 0).UTC(), e.ID)
 	if err != nil {
-		return 0, false
+		return 0, "", false
 	}
 	sum := 0.0
 	for _, r := range rows {
@@ -59,7 +59,7 @@ func (s *EmployeeMonthlyStatsService) revenueFor(e model.Employee, month string)
 			sum += r.Amount
 		}
 	}
-	return sum, true
+	return sum, kind, true
 }
 
 func (s *EmployeeMonthlyStatsService) SetSmartKpi(k *SmartKpiService) {
@@ -179,13 +179,14 @@ func (s *EmployeeMonthlyStatsService) monthlyFor(e model.Employee, month string)
 		// ⚠️ الترتيب مهم: الراتب يُقرأ من الموظف نفسه (قابل للفراغ)،
 		// والنسبة **ما تُحسب إلا إذا الراتب موجود وأكبر من صفر** —
 		// وإلا تطلع لا نهاية أو صفراً كاذباً.
-		if rev, ok := s.revenueFor(e, month); ok {
-			stats.RevenueBrought = rev
+		if rev, kind, ok := s.revenueFor(e, month); ok {
+			stats.RevenueBrought, stats.RevenueSource = rev, kind
 		} else if rev, rerr := s.leaderInvoices.SumNetTotalForEmployeeMonth(e.ID, month); rerr == nil {
 			stats.RevenueBrought = rev
 		}
 		stats.Salary = e.Salary
-		if e.Salary != nil && *e.Salary > 0 {
+		// دور ما يدخّل فلوس (إداري، محاسب…) ← ماكو تغطية راتب أصلاً.
+		if e.Salary != nil && *e.Salary > 0 && (s.revenue == nil || stats.RevenueSource != "") {
 			pct := stats.RevenueBrought / *e.Salary * 100
 			stats.SalaryCoverage = &pct
 		}

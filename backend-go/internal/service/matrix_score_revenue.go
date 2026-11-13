@@ -17,7 +17,9 @@ import (
 // الأدوار الي ما تدخّل فلوس مباشرة (محاسبة، مراقبة، آيتي…) ما تنحسب عليها.
 
 var revenueKindOf = map[string]string{
-	GroupSales: "BOOKED", GroupCoordinator: "BOOKED",
+	// (دازاي 11-13) الإداريين/المنسّقين ينسّقون بس — مو مصدر فلوس، فما ينحسب عليهم
+	// إيراد ولا تغطية راتب؛ ينقيّمون بشغل التنسيق نفسه.
+	GroupSales: "BOOKED",
 	GroupTechs: "WORK", GroupLeaders: "WORK", GroupDecor: "WORK", GroupTechnical: "WORK",
 	GroupProjects: "PROJECT", GroupDesign: "PROJECT",
 }

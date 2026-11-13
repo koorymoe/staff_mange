@@ -63,6 +63,8 @@ type DirectorRanking struct {
 	Deputies []DirectorRankRow `json:"deputies"`
 	// (دازاي 11-06) مدراء ونواب الوحدات: على خطة تحسين وحدتهم
 	Units []DirectorRankRow `json:"units"`
+	// (دازاي 11-13) بقية الموظفين بنفس المعايير، و«اتباع الخطة والتعليمات» بدل إنجاز الخطة
+	Staff []DirectorRankRow `json:"staff"`
 }
 
 // PersonalScoreFn التقييم الشهري للموظف نفسه (MatrixScoreService.Detail): النهائي + أكبر الخسارات.
@@ -288,6 +290,7 @@ func DirectorsRanking(db *sqlx.DB, period string, personal PersonalScoreFn) (*Di
 	}
 	out.Deputies = deputiesRanking(db, period, out.Rows, personal)
 	out.Units = unitLeadersRanking(db, period, personal)
+	out.Staff = staffRanking(db, period, personal)
 	return out, nil
 }
 

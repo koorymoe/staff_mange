@@ -24,7 +24,7 @@ type Row = {
   divisionTotal?: number | null
   ownTotal?: number | null
 }
-type Ranking = { period: string; rows: Row[]; deputies: Row[]; units?: Row[] }
+type Ranking = { period: string; rows: Row[]; deputies: Row[]; units?: Row[]; staff?: Row[] }
 
 const thisMonth = () => new Date().toISOString().slice(0, 7)
 const tone = (v: number | null | undefined) =>
@@ -93,7 +93,7 @@ function EvidencePanel({ c }: { c: Criterion }) {
   )
 }
 
-function PersonCard({ r, deputy, unit }: { r: Row; deputy: boolean; unit?: boolean }) {
+function PersonCard({ r, deputy, unit, staff }: { r: Row; deputy: boolean; unit?: boolean; staff?: boolean }) {
   const [open, setOpen] = useState<string | null>(null)
   const openC = r.criteria.find((c) => c.key === open)
   return (
@@ -104,7 +104,7 @@ function PersonCard({ r, deputy, unit }: { r: Row; deputy: boolean; unit?: boole
           <b className="text-slate-800">{r.employeeName}</b>
           {r.acting && <span className="ms-2 text-xs text-amber-600">بالوكالة</span>}
           <div className="text-xs text-slate-500">
-            {unit ? r.divisionName : deputy ? `نائب ${r.divisionName}` : `مدير ${r.divisionName} · ${r.people} موظف`}
+            {unit || staff ? r.divisionName : deputy ? `نائب ${r.divisionName}` : `مدير ${r.divisionName} · ${r.people} موظف`}
           </div>
         </div>
         {deputy && (
@@ -127,7 +127,7 @@ function PersonCard({ r, deputy, unit }: { r: Row; deputy: boolean; unit?: boole
 
 export default function DirectorsRankingPage() {
   const [period, setPeriod] = useState(thisMonth())
-  const [tab, setTab] = useState<'directors' | 'deputies' | 'units'>('directors')
+  const [tab, setTab] = useState<'directors' | 'deputies' | 'units' | 'staff'>('directors')
   const [data, setData] = useState<Ranking | null>(null)
   const [error, setError] = useState('')
   useEffect(() => {
@@ -139,7 +139,7 @@ export default function DirectorsRankingPage() {
       alive = false
     }
   }, [period])
-  const rows = (tab === 'directors' ? data?.rows : tab === 'deputies' ? data?.deputies : data?.units) ?? []
+  const rows = (tab === 'directors' ? data?.rows : tab === 'deputies' ? data?.deputies : tab === 'staff' ? data?.staff : data?.units) ?? []
   return (
     <div className="w-full px-4 py-4 md:px-6">
       <div className="flex flex-wrap items-center gap-3">
@@ -161,6 +161,7 @@ export default function DirectorsRankingPage() {
               ['directors', `المدراء (${data?.rows.length ?? 0})`],
               ['deputies', `النواب (${data?.deputies?.length ?? 0})`],
               ['units', `مدراء ونواب الوحدات (${data?.units?.length ?? 0})`],
+              ['staff', `الموظفين (${data?.staff?.length ?? 0})`],
             ] as const
           ).map(([k, l]) => (
             <button
@@ -179,17 +180,19 @@ export default function DirectorsRankingPage() {
           ? 'مدير كل إدارة مقابل الباقين، حسب: المخرجات ٣٠٪ · إنجاز الخطة ٢٠٪ · السرعة ١٥٪ · شكد انحل منها ١٥٪ · المشاكل والشغل الفايت ١٠٪ · الشكاوي والتأخير ١٠٪.'
           : tab === 'deputies'
             ? 'النائب: نص الرقم من إدارته (٥٠٪)، ونصه من شغله هو: تقييمه الشهري ٣٠٪ وبنود الخطة الي برقبته ٢٠٪.'
-            : 'مدير ونائب كل وحدة على خطة تحسين وحدتهم: بنوده بالخطة ٥٠٪ (خلص بموعده = ١٠٠، متأخر = −١٠ لكل يوم) · الخطة كاملة ٢٠٪ · تقييمه الشهري ٣٠٪.'}{' '}
+            : tab === 'staff'
+              ? 'كل موظف بنفس طريقة المدراء، على شغله هو: المخرجات (تقييمه الشهري) ٣٠٪ · اتباع الخطة والتعليمات (بنوده بالخطة + المهام الي انطاها إياه مديره) ٢٠٪ · السرعة ١٥٪ · شكد انحل منها ١٥٪ · المشاكل والشغل الفايت ١٠٪ · الشكاوي والتأخير ١٠٪ · الانضباط ١٠٪.'
+              : 'مدير ونائب كل وحدة على خطة تحسين وحدتهم: بنوده بالخطة ٥٠٪ (خلص بموعده = ١٠٠، متأخر = −١٠ لكل يوم) · الخطة كاملة ٢٠٪ · تقييمه الشهري ٣٠٪.'}{' '}
         المعيار الي ماله بيانات ما ينحسب عليه. الأدمن والمالك ما ينقيّمون. <b>اضغط على أي معيار حتى تشوف على شنو اعتمد.</b>
       </p>
       {error && <div className="error">{error}</div>}
       {!data && !error && <div className="mt-4 text-slate-400">جاري التحميل…</div>}
       {data && rows.length === 0 && (
-        <div className="mt-4 text-slate-500">{tab === 'directors' ? 'ماكو مدراء إدارات معيّنين بالهيكل بعد.' : tab === 'deputies' ? 'ماكو نواب إدارات معيّنين بالهيكل بعد.' : 'ماكو مدراء أو نواب وحدات معيّنين بالهيكل بعد.'}</div>
+        <div className="mt-4 text-slate-500">{tab === 'directors' ? 'ماكو مدراء إدارات معيّنين بالهيكل بعد.' : tab === 'deputies' ? 'ماكو نواب إدارات معيّنين بالهيكل بعد.' : tab === 'staff' ? 'ماكو موظفين.' : 'ماكو مدراء أو نواب وحدات معيّنين بالهيكل بعد.'}</div>
       )}
       <div className="mt-4 grid gap-3">
         {rows.map((r) => (
-          <PersonCard key={`${tab}-${r.divisionName}-${r.employeeName}`} r={r} deputy={tab === 'deputies'} unit={tab === 'units'} />
+          <PersonCard key={`${tab}-${r.divisionName}-${r.employeeName}`} r={r} deputy={tab === 'deputies'} unit={tab === 'units'} staff={tab === 'staff'} />
         ))}
       </div>
     </div>

@@ -64,8 +64,9 @@ export default function EmployeeMonthlyStatsPage() {
   const sum = (f: (r: EmployeeMonthlyStats) => number) => shown.reduce((t, r) => t + f(r), 0)
   // ⚠️ الرواتب الفاضية تنطرح من المجموع **ومن المقام سوا** — لو جمعناها
   // صفراً تطلع نسبة تغطية كاذبة عالية.
-  const salarySum = sum((r) => r.salary ?? 0)
-  const revenueOfSalaried = sum((r) => (r.salary ? r.revenueBrought : 0))
+  // والأدوار الي ما تدخّل فلوس (إداري…) ما تدخل بالتغطية أصلاً.
+  const salarySum = sum((r) => (noRevenue(r) ? 0 : r.salary ?? 0))
+  const revenueOfSalaried = sum((r) => (r.salary && !noRevenue(r) ? r.revenueBrought : 0))
   const coverage = salarySum > 0 ? (revenueOfSalaried / salarySum) * 100 : null
   const avgKpi = shown.length ? Math.round(sum((r) => r.smartKpiPoints) / shown.length) : 0
 
@@ -128,7 +129,7 @@ export default function EmployeeMonthlyStatsPage() {
           <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
             <Summary label="عدد الموظفين" value={String(shown.length)} />
             <Summary label="متوسط نقاط الكي بي اي" value={String(avgKpi)} tone={avgKpi >= 100 ? 'good' : avgKpi >= 50 ? 'mid' : 'bad'} />
-            <Summary label="المبالغ الي دخّلوها" value={`${fmt(sum((r) => r.revenueBrought))} د.ع`} />
+            <Summary label="المبالغ الي دخّلوها" value={shown.length && shown.every(noRevenue) ? 'مو من دورهم' : `${fmt(sum((r) => r.revenueBrought))} د.ع`} />
             <Summary label="تغطية رواتبهم" value={<PctWhy title="تغطية رواتبهم" value={coverage === null ? null : Math.round(coverage)}
               formula={coverage === null ? <>ماكو راتب مسجّل لموظفين هالدور، فماكو نسبة.</> : <>المبالغ الي دخّلها أصحاب الرواتب {fmt(revenueOfSalaried)} د.ع ÷ مجموع رواتبهم {fmt(salarySum)} د.ع × ١٠٠ = {coverage.toFixed(0)}%.</>}
               meaning={<>هل الي دخّلوه هالدور يغطي رواتبهم. ١٠٠٪ أو أكثر يعني غطّوا رواتبهم (أخضر)، أقل يعني بعد ما غطّوها. الموظف الي ما مسجّل إله راتب ما يدخل لا بالبسط ولا بالمقام.</>}
@@ -186,6 +187,14 @@ function Group({ title, children }: { title: string; children: React.ReactNode }
   )
 }
 
+// (دازاي 11-13) «كلمن يتقيم حسب دوره» — كل دور فلوسه من مصدر شغله.
+const REVENUE_HINT: Record<string, string> = {
+  BOOKED: 'صافي فواتير الحجوزات الي هو سجّلها، بهذا الشهر',
+  WORK: 'حصته من صافي فواتير الحجوزات الي اشتغلها (الفاتورة تنقسم على الكادر)، بهذا الشهر',
+  PROJECT: 'دفعات المشاريع الي هو مسؤولها، بهذا الشهر',
+}
+const noRevenue = (r: EmployeeMonthlyStats) => r.revenueSource === ''
+
 function EmployeeCard({ r, onKpi, onCurve }: { r: EmployeeMonthlyStats; onKpi: () => void; onCurve: () => void }) {
   const kpiTone = r.smartKpiPoints >= 100 ? 'bg-emerald-100 text-emerald-800' : r.smartKpiPoints >= 50 ? 'bg-amber-100 text-amber-800' : 'bg-red-100 text-red-800'
   const cov = r.salaryCoverage
@@ -220,12 +229,14 @@ function EmployeeCard({ r, onKpi, onCurve }: { r: EmployeeMonthlyStats; onKpi: (
       </Group>
 
       <Group title="الفلوس">
-        <Metric label="المبالغ الي دخّلها" value={`${fmt(r.revenueBrought)} د.ع`} hint="صافي فواتير الليدر الي رفعها هو بهذا الشهر" />
+        {noRevenue(r)
+          ? <Metric label="المبالغ الي دخّلها" value="مو من دوره" hint="دوره ما يدخّل فلوس مباشرة (تنسيق/إدارة) — ينقيّم بشغل دوره، مو بالمبالغ" />
+          : <Metric label="المبالغ الي دخّلها" value={`${fmt(r.revenueBrought)} د.ع`} hint={REVENUE_HINT[r.revenueSource ?? ''] ?? 'صافي فواتير الليدر الي رفعها هو بهذا الشهر'} />}
         <Metric label="راتبه" value={r.salary === null ? '—' : `${fmt(r.salary)} د.ع`} />
         <Metric label="تغطية الراتب" value={<PctWhy title="تغطية الراتب" value={cov === null ? null : Math.round(cov)}
-          formula={cov === null ? <>ماكو راتب مسجّل إله، فماكو نسبة.</> : <>المبالغ الي دخّلها {fmt(r.revenueBrought)} د.ع ÷ راتبه {fmt(r.salary ?? 0)} د.ع × ١٠٠ = {cov.toFixed(0)}%.</>}
+          formula={cov === null ? <>{noRevenue(r) ? 'دوره ما يدخّل فلوس مباشرة، فماكو تغطية راتب.' : 'ماكو راتب مسجّل إله، فماكو نسبة.'}</> : <>المبالغ الي دخّلها {fmt(r.revenueBrought)} د.ع ÷ راتبه {fmt(r.salary ?? 0)} د.ع × ١٠٠ = {cov.toFixed(0)}%.</>}
           meaning={<>هل الي دخّله يغطي راتبه. المطلوب يعبر ١٠٠٪؛ تعلى كل ما يرفع فواتير أكثر بهالشهر.</>}
-          source={<>صافي فواتير الليدر الي رفعها هو بهذا الشهر، وراتبه المسجّل بملفه.</>} />} hint="الإيراد ÷ الراتب — والمطلوب يعبر ١٠٠٪" tone={cov === null ? undefined : cov >= 100 ? 'good' : 'bad'} />
+          source={<>{REVENUE_HINT[r.revenueSource ?? ''] ?? 'صافي فواتير الليدر الي رفعها هو بهذا الشهر'}، وراتبه المسجّل بملفه.</>} />} hint="الإيراد ÷ الراتب — والمطلوب يعبر ١٠٠٪" tone={cov === null ? undefined : cov >= 100 ? 'good' : 'bad'} />
         <Metric label="العمولة" value={`${fmt(r.totalCommission)} د.ع`} />
         <Metric label="تقييم يدوي" value={r.kpiPoints > 0 ? `+${r.kpiPoints}` : r.kpiPoints} tone={r.kpiPoints > 0 ? 'good' : r.kpiPoints < 0 ? 'bad' : undefined} />
         <Metric label="قيمة النقاط اليدوية" value={`${fmt(r.kpiPointsValue)} د.ع`} />

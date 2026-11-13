@@ -23,6 +23,10 @@ type EmployeeMonthlyStats struct {
 	// ⚠️ **بلا تكرار**: الفاتورة إلها صاحب واحد، فمجموع الموظفين =
 	// مجموع الفواتير بالضبط.
 	RevenueBrought float64 `json:"revenueBrought"`
+	// RevenueSource (دازاي 11-13) مصدر فلوس دوره: BOOKED (حجوزات سجّلها — المبيعات)،
+	// WORK (حصته من فواتير شغله)، PROJECT (دفعات مشاريعه). فاضي = دوره ما يدخّل
+	// فلوس مباشرة (إداري، محاسب…) فماكو مبالغ ولا تغطية راتب.
+	RevenueSource string `json:"revenueSource"`
 	// Salary راتبه الشهري — ⚠️ **مؤشّر لأنه قابل للفراغ**:
 	// موظف بلا راتب مكتوب يعني **ماكو مقارنة**، مو راتب صفر.
 	Salary *float64 `json:"salary"`

@@ -1169,6 +1169,8 @@ export interface EmployeeMonthlyStats {
   completedBookingsCount: number
   /** المبالغ الي دخّلها فعلاً — صافي فواتير الليدر الي رفعها هو بالشهر */
   revenueBrought: number
+  /** مصدر فلوس دوره — فاضي = دوره ما يدخّل فلوس مباشرة (إداري، محاسب…) */
+  revenueSource?: '' | 'BOOKED' | 'WORK' | 'PROJECT'
   /** راتبه الشهري — ⚠️ `null` يعني ماكو راتب مكتوب، **مو راتب صفر** */
   salary: number | null
   /**
