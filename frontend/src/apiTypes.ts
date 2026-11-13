@@ -3863,6 +3863,8 @@ export interface StaffScore {
   skills?: number; hasLicense?: boolean; isLeader?: boolean
   /** (ل) 11-11: الانضباط بالدوام — ١٥٪ من النهائي، يبدي من startsOn */
   discipline?: Discipline
+  /** (دازاي 11-13) شغل برّا دوره: ينكتب بسجله ويزيد النهائي نقطة لكل شغلة (لحد ٥) */
+  extraJobs?: number; extraBonus?: number; extraList?: string[]
 }
 export interface DisciplineDay { date: string; status: 'LATE' | 'LATE_EXCUSED' | 'ABSENT'; lateMinutes?: number; checkIn?: string; shiftStart?: string }
 export interface Discipline { score: number | null; days: number; onTime: number; late: number; lateExcused: number; absent: number; lateMinutes: number; startsOn: string; items: DisciplineDay[] }

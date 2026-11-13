@@ -33,15 +33,18 @@ const (
 	GroupDesign  = "DESIGN"
 	GroupIT      = "IT"
 	GroupDecor   = "DECOR"
+	// (دازاي 11-13) إدارة المشاريع مجموعة وحدها: متابعة المشروع شغلهم، والمصمم
+	// الي يصير مشرف مشروع ينضافله «شغل إضافي» مو يتقيّم مثلهم.
+	GroupProjects = "PROJECTS"
 )
 
 var ScoreGroupLabels = map[string]string{
 	GroupTechs: "الفنيين", GroupLeaders: "الليدرية", GroupSales: "المبيعات", GroupMonitors: "المراقبين",
 	GroupFinance: "المحاسبة", GroupTechnical: "التقنيين ومسؤولي الخدمات", GroupCoordinator: "الإداريين", GroupProcurement: "المخازن والأسطول", GroupOthers: "بقية الأقسام",
-	GroupQuality: "الجودة", GroupDesign: "التصميم", GroupIT: "تقنية المعلومات", GroupDecor: "شعبة الديكور",
+	GroupQuality: "الجودة", GroupDesign: "التصميم", GroupIT: "تقنية المعلومات", GroupDecor: "شعبة الديكور", GroupProjects: "إدارة المشاريع",
 }
 
-var ScoreGroupOrder = []string{GroupLeaders, GroupTechs, GroupDecor, GroupCoordinator, GroupSales, GroupTechnical, GroupFinance, GroupProcurement, GroupMonitors, GroupQuality, GroupDesign, GroupIT, GroupOthers}
+var ScoreGroupOrder = []string{GroupLeaders, GroupTechs, GroupDecor, GroupCoordinator, GroupSales, GroupTechnical, GroupFinance, GroupProcurement, GroupMonitors, GroupQuality, GroupDesign, GroupIT, GroupProjects, GroupOthers}
 
 // ScoreGroup مجموعة الموظف بالتقييم. الليدر ينفصل عن الفنيين بعلامة الليدر،
 // والمبيعات بالدور.
@@ -66,6 +69,8 @@ func ScoreGroup(p repository.Scorable) string {
 		return GroupQuality
 	case p.Role == "DESIGNER":
 		return GroupDesign
+	case p.Role == "PROJECT_MANAGER":
+		return GroupProjects
 	case p.Role == "IT_SUPPORT":
 		return GroupIT
 	// شعبة الديكور (فنيها وليدرها) منعزلة عن الهندسية
@@ -95,6 +100,7 @@ var groupRaterStages = map[string]map[string]bool{
 	GroupQuality:     {"MONITOR_PERIODIC": true, "MONITOR_DAILY": true},
 	GroupDesign:      {"MONITOR_PERIODIC": true, "MONITOR_DAILY": true},
 	GroupIT:          {"MONITOR_PERIODIC": true, "MONITOR_DAILY": true},
+	GroupProjects:    {"MONITOR_PERIODIC": true, "MONITOR_DAILY": true},
 	GroupDecor:       {"LEADER_CREW": true, "COORD_LEADER": true, "AUDIT": true, "QUALITY_CALL": true, "OPS_DAILY": true},
 }
 
@@ -237,7 +243,15 @@ var ruleGroups = map[string]map[string]bool{
 	"ACCOUNT":      {GroupFinance: true},
 	"QUALITY":      {GroupQuality: true},
 	"MONITOR":      {GroupMonitors: true},
+	"PROJECT_WEEK": {GroupProjects: true},
 }
+
+// ExtraBonusPer وExtraBonusMax: كل شغلة إضافية (حجز/مشروع برّا دوره سوّاها زين)
+// تزيد النهائي نقطة، لحد ٥ — «الشغل الإضافي يزيدله تقييمه» وما ينقّصه أبداً.
+const (
+	ExtraBonusPer = 1.0
+	ExtraBonusMax = 5.0
+)
 
 // RuleFitsGroup هل هالقاعدة من شغل هالمجموعة؟ قاعدة مو بالجدول = تنطبق.
 func RuleFitsGroup(rule, group string) bool {

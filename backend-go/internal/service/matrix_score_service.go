@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"math"
 	"sort"
 	"staffmange-api/internal/errlog"
 	"staffmange-api/internal/timeutil"
@@ -354,6 +355,11 @@ type StaffScore struct {
 	// (ل) 11-12 دازاي: «النظام يعرف شغل كل واحد، وماتركس ينبّهني إذا التقييم مو صحيح».
 	// false = كل نقاطه من الدوام والتقارير والمهام بس — ماكو ولا نقطة من شغل دوره نفسه.
 	RoleWork bool `json:"roleWork"`
+	// (دازاي 11-13) شغل برّا دوره (آيتي طلع حجز، مصممة أشرفت على مشروع…): ما
+	// يتقيّم عليه مثل أهله — ينكتب بسجله ويزيد تقييمه بس.
+	ExtraJobs  int      `json:"extraJobs"`
+	ExtraBonus float64  `json:"extraBonus"`
+	ExtraList  []string `json:"extraList"`
 }
 
 // genericRules قواعد تنطبق على الكل — ما تثبت إن ماتركس يقرا شغل الدور نفسه.
@@ -564,11 +570,13 @@ func BuildScores(people []repository.Scorable, pts []repository.MatrixScoreRow, 
 		src         map[string][2]int
 		rules       map[string][2]int
 		hSum, hN    int
+		extra       map[string]string // مصدر ← اسمه، الشغل الإضافي الي انسوّى زين
+		extraBad    map[string]bool
 	}
 	by := map[string]*acc{}
 	get := func(id string) *acc {
 		if by[id] == nil {
-			by[id] = &acc{loss: map[string]*RuleLoss{}, src: map[string][2]int{}, rules: map[string][2]int{}}
+			by[id] = &acc{loss: map[string]*RuleLoss{}, src: map[string][2]int{}, rules: map[string][2]int{}, extra: map[string]string{}, extraBad: map[string]bool{}}
 		}
 		return by[id]
 	}
@@ -577,6 +585,22 @@ func BuildScores(people []repository.Scorable, pts []repository.MatrixScoreRow, 
 			continue
 		}
 		if !RuleFitsGroup(p.Rule, groupOf[p.EmployeeID]) {
+			// شغل إضافي: ينحسب حجزاً/مشروعاً واحداً، ويعدّ إذا كل خطواته الي سوّاها مو صفر.
+			a := get(p.EmployeeID)
+			key := p.Source + ":" + p.SourceID
+			if p.Source == "PROJECT" {
+				if i := strings.Index(p.SourceID, "@"); i > 0 {
+					key = "PROJECT:" + p.SourceID[:i]
+				}
+			}
+			if p.Points == 0 {
+				a.extraBad[key] = true
+			}
+			label := key
+			if p.SourceLabel != nil {
+				label = *p.SourceLabel
+			}
+			a.extra[key] = label
 			continue
 		}
 		a := get(p.EmployeeID)
@@ -640,6 +664,19 @@ func BuildScores(people []repository.Scorable, pts []repository.MatrixScoreRow, 
 			hp = *s.HumanPct
 		}
 		if f, ok := FinalScore(mp, s.MatrixPct != nil, hp, s.HumanPct != nil); ok {
+			s.Final = &f
+		}
+		s.ExtraList = []string{}
+		for k, label := range a.extra {
+			if !a.extraBad[k] {
+				s.ExtraJobs++
+				s.ExtraList = append(s.ExtraList, label)
+			}
+		}
+		sort.Strings(s.ExtraList)
+		if s.ExtraJobs > 0 && s.Final != nil {
+			s.ExtraBonus = math.Min(float64(s.ExtraJobs)*ExtraBonusPer, ExtraBonusMax)
+			f := math.Min(100, *s.Final+s.ExtraBonus)
 			s.Final = &f
 		}
 		s.NoHuman = s.MatrixPct != nil && s.HumanPct == nil

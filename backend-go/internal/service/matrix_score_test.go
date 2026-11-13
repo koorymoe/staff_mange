@@ -245,3 +245,35 @@ func TestScoreOnlyOwnWork(t *testing.T) {
 		}
 	}
 }
+
+// (دازاي 11-13) «الآيتي طلع حجز، المصممة صارت مشرفة مشروع» — ما يتقيّمون مثل الفني
+// ومدير المشاريع؛ ينكتب بسجلهم شغل إضافي ويزيد النهائي بس (ولا ينقصه لو ما خلص زين).
+func TestExtraWorkAddsOnly(t *testing.T) {
+	lbl := func(s string) *string { return &s }
+	people := []repository.Scorable{{ID: "it", Role: "IT_SUPPORT"}, {ID: "des", Role: "DESIGNER"}, {ID: "pm", Role: "PROJECT_MANAGER"}}
+	pts := []repository.MatrixScoreRow{
+		{EmployeeID: "it", Source: "TASK", SourceID: "t1", Rule: "TASK_DUE", Points: 1, MaxPoints: 2},
+		{EmployeeID: "it", Source: "BOOKING", SourceID: "b1", SourceLabel: lbl("حجز B1"), Rule: "WORK", Points: 2, MaxPoints: 2},
+		{EmployeeID: "it", Source: "BOOKING", SourceID: "b1", SourceLabel: lbl("حجز B1"), Rule: "COMPLETE", Points: 2, MaxPoints: 2},
+		{EmployeeID: "it", Source: "BOOKING", SourceID: "b2", SourceLabel: lbl("حجز B2"), Rule: "PAPER", Points: 0, MaxPoints: 2},
+		{EmployeeID: "des", Source: "TASK", SourceID: "t2", Rule: "TASK_DUE", Points: 2, MaxPoints: 2},
+		{EmployeeID: "des", Source: "PROJECT", SourceID: "p1@2026-W46", SourceLabel: lbl("مشروع P1"), Rule: "PROJECT_WEEK", Points: 2, MaxPoints: 2},
+		{EmployeeID: "des", Source: "PROJECT", SourceID: "p1@2026-W45", SourceLabel: lbl("مشروع P1"), Rule: "PROJECT_WEEK", Points: 2, MaxPoints: 2},
+		{EmployeeID: "pm", Source: "PROJECT", SourceID: "p2@2026-W46", Rule: "PROJECT_WEEK", Points: 1, MaxPoints: 2},
+	}
+	by := map[string]StaffScore{}
+	for _, s := range BuildScores(people, pts, nil, nil) {
+		by[s.ID] = s
+	}
+	it := by["it"]
+	if it.Max != 2 || it.ExtraJobs != 1 || it.ExtraBonus != 1 || *it.Final != 51 {
+		t.Fatalf("الآيتي: مهامه بس + حجز واحد زين إضافي (+١)، والحجز الناقص ما ينحسب عليه: %+v", it)
+	}
+	des := by["des"]
+	if des.Group != GroupDesign || des.Max != 2 || des.ExtraJobs != 1 || *des.Final != 100 {
+		t.Fatalf("المصممة: المشروع شغلة إضافية وحدة ولا يتجاوز ١٠٠: %+v", des)
+	}
+	if pm := by["pm"]; pm.Group != GroupProjects || pm.Max != 2 || pm.ExtraJobs != 0 {
+		t.Fatalf("مدير المشاريع يتقيّم على متابعة مشاريعه: %+v", pm)
+	}
+}

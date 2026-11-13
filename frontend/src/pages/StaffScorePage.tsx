@@ -24,13 +24,14 @@ const ROLE_AR: Record<string, string> = {
   SALES: 'مبيعات', MEDIA: 'إعلام', PUBLIC_RELATIONS: 'علاقات عامة', QUALITY_ENGINEER: 'جودة', MONITOR: 'مراقب', PROJECT_MANAGER: 'مدير مشاريع', PROCUREMENT_ADMIN: 'إداري كميات',
 }
 
-const GROUP_ORDER = ['LEADERS', 'TECHS', 'DECOR', 'COORDINATORS', 'SALES', 'TECHNICAL', 'FINANCE', 'PROCUREMENT', 'MONITORS', 'QUALITY', 'DESIGN', 'IT', 'OTHERS']
+const GROUP_ORDER = ['LEADERS', 'TECHS', 'DECOR', 'COORDINATORS', 'SALES', 'TECHNICAL', 'FINANCE', 'PROCUREMENT', 'MONITORS', 'QUALITY', 'DESIGN', 'IT', 'PROJECTS', 'OTHERS']
 const RATERS: Record<string, string> = {
   TECHS: 'الليدر مالتهم بعد كل حجز', LEADERS: 'المراقب + الإداري + الجودة', COORDINATORS: 'المراقب + الجودة',
   SALES: 'المراقب (كل نص شهر)', TECHNICAL: 'المراقب (كل نص شهر)', FINANCE: 'المراقب (كل نص شهر)',
   PROCUREMENT: 'المراقب (كل نص شهر) + ماتركس على الطلبات والسيارات والجرد',
   MONITORS: 'المدير والمالك (كل نص شهر) + ماتركس على سرعة التدقيق', OTHERS: 'المراقب (كل نص شهر)',
   QUALITY: 'المراقب (كل نص شهر)', DESIGN: 'المراقب (كل نص شهر)', IT: 'المراقب (كل نص شهر)',
+  PROJECTS: 'المراقب (كل نص شهر) + ماتركس على متابعة المشاريع',
   DECOR: 'الليدر مالتهم بعد كل حجز (والليدر: المراقب + الإداري + الجودة)',
 }
 
@@ -67,7 +68,7 @@ function WhyBadge({ d, kind, big }: { d: StaffScoreDetail; kind: 'final' | 'matr
     const base = d.matrixPct != null && d.humanPct != null
       ? <>(٦٠٪ × ماتركس {r1(d.matrixPct)}) + (٤٠٪ × البشر {r1(d.humanPct)}) = {r1(0.6 * d.matrixPct + 0.4 * d.humanPct)}</>
       : d.matrixPct != null ? <>ماكو تقييم بشر بعد، فناخذ ماتركس بس = {r1(d.matrixPct)}</> : <>ماكو نقاط ماتركس، فناخذ البشر بس = {r1(d.humanPct)}</>
-    formula = <>{base}{disc != null && <><br />وبعدها الانضباط ياخذ ١٥٪: (٨٥٪ × الرقم فوگ) + (١٥٪ × الانضباط {r1(disc)})</>} = <b>{pct(v)}</b></>
+    formula = <>{base}{!!d.extraBonus && <><br />+ {r1(d.extraBonus)} نقطة شغل إضافي برّا دوره ({d.extraJobs} شغلة، نقطة لكل وحدة لحد ٥)</>}{disc != null && <><br />وبعدها الانضباط ياخذ ١٥٪: (٨٥٪ × الرقم فوگ) + (١٥٪ × الانضباط {r1(disc)})</>} = <b>{pct(v)}</b></>
     meaning = <>درجة تقييم الموظف بهذا الشهر. 80 وفوق أخضر، 60–80 أصفر، أقل أحمر. تصعد إذا أخذ نقاط ماتركس كاملة ونجوم عالية وحضر بوقته.</>
   }
   return <b className={cls} style={{ color: tone(v) }}><PctWhy title={title} value={Math.round(v)} formula={formula} meaning={meaning}
@@ -112,6 +113,13 @@ export function ScoreBreakdown({ d, admin, onChange }: { d: StaffScoreDetail; ad
           <span key={k} className="rounded-full bg-slate-100 px-2 py-1">{SRC[k] ?? k}: <b>{e}/{m}</b></span>
         ))}
       </div>
+      {!!d.extraJobs && (
+        <div className="rounded-xl border border-emerald-100 bg-emerald-50/60 p-2 text-xs" data-testid="extra-work">
+          <p className="mb-1 font-extrabold text-emerald-800">➕ شغل إضافي برّا دوره: {d.extraJobs} (+{r1(d.extraBonus)} نقطة)</p>
+          <p className="mb-1 text-slate-600">ما يتقيّم عليه مثل أهل هالشغل — ينكتب هنا ويزيد تقييمه بس.</p>
+          {(d.extraList ?? []).slice(0, 10).map((x) => <p key={x}>• {x}</p>)}
+        </div>
+      )}
       {d.topLosses.length > 0 && (
         <div className="rounded-xl border border-red-100 bg-red-50/50 p-2 text-xs">
           <p className="mb-1 font-extrabold text-red-800">أكثر شي نزّل تقييمه</p>
