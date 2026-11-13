@@ -2463,5 +2463,16 @@ func matrixChatMigrations() []Migration {
 			SELECT setval('"Customer_customerCode_seq"',
 				GREATEST((SELECT COALESCE(MAX("customerCode"), 0) FROM "Customer"), (SELECT last_value FROM "Customer_customerCode_seq"), 1));
 		`,
+	}, {
+		// (11-13) رقم الحجز من sequence مو MAX+1: ١٠ حجوزات سوة چان ٦ منها يفشلن
+		// (Booking_code_key). يبدي بعد أكبر رقم مستعمل بالعمود أو بكود B<رقم>.
+		Version: "0485_booking_seq",
+		SQL: `
+			CREATE SEQUENCE IF NOT EXISTS "Booking_seq";
+			SELECT setval('"Booking_seq"', GREATEST(
+				(SELECT COALESCE(MAX("sequenceNumber"), 0) FROM "Booking"),
+				(SELECT COALESCE(MAX(substring(code FROM '^B([0-9]+)$')::bigint), 0) FROM "Booking"),
+				(SELECT last_value FROM "Booking_seq"), 1));
+		`,
 	}}
 }

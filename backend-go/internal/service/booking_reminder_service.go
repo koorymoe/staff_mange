@@ -73,7 +73,7 @@ func (s *BookingReminderService) RunWaitingReminderSweep() (int, error) {
 
 	msg := fmt.Sprintf("📞 عدك %d حجز بالانتظار يحتاج معاودة اتصال:\n%s",
 		len(rows), strings.Join(lines, "\n"))
-	if err := s.notifications.CreateForRole("HR_COORDINATOR", "waiting_callback_reminder", msg); err != nil {
+	if err := s.notifications.CreateForRolesOrPermission([]string{"HR_COORDINATOR"}, "coordinator", "waiting_callback_reminder", msg); err != nil {
 		return 0, err
 	}
 

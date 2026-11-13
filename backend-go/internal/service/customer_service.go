@@ -90,6 +90,11 @@ func (s *CustomerService) Update(id string, req model.UpdateCustomerRequest) (*m
 	if req.Name == "" || req.Phone == "" {
 		return nil, errors.New("الاسم ورقم الهاتف مطلوبان")
 	}
+	// (11-13) الرقم ينحفظ موحّد، والي ما بيه أرقام كافية ينرفض.
+	req.Phone = model.LocalPhone(req.Phone)
+	if len(req.Phone) < 7 {
+		return nil, errors.New("رقم الهاتف غير صحيح")
+	}
 	c, err := s.repo.Update(id, req)
 	if err != nil {
 		return nil, err
@@ -125,6 +130,11 @@ func (s *CustomerService) FindOrCreate(req model.CreateCustomerRequest) (*model.
 	if req.Name == "" || req.Phone == "" {
 		return nil, errors.New("الاسم ورقم الهاتف مطلوبان")
 	}
+	// (11-13) الرقم ينحفظ موحّد، والي ما بيه أرقام كافية ينرفض.
+	req.Phone = model.LocalPhone(req.Phone)
+	if len(req.Phone) < 7 {
+		return nil, errors.New("رقم الهاتف غير صحيح")
+	}
 
 	existing, err := s.repo.FindByPhone(req.Phone)
 	if err != nil {
@@ -139,6 +149,13 @@ func (s *CustomerService) FindOrCreate(req model.CreateCustomerRequest) (*model.
 
 	created, err := s.repo.Create(req.Name, req.Phone, req.Location, req.MapLatitude, req.MapLongitude)
 	if err != nil {
+		// (11-13) نفس الرقم انضاف بنفس اللحظة من شاشة ثانية — نرجّع الموجود مو خطأ.
+		if again, ferr := s.repo.FindByPhone(req.Phone); ferr == nil && again != nil {
+			resp := again.ToResponse()
+			existed := true
+			resp.Existed = &existed
+			return &resp, nil
+		}
 		return nil, err
 	}
 	resp := created.ToResponse()

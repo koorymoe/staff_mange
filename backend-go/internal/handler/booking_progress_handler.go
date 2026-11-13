@@ -111,7 +111,7 @@ func (h *BookingProgressHandler) PartialComplete(w http.ResponseWriter, r *http.
 		if booking != nil {
 			code = booking.Code
 		}
-		_ = h.notify.CreateForRole("HR_COORDINATOR", "booking_partial",
+		_ = h.notify.CreateForRolesOrPermission([]string{"HR_COORDINATOR"}, "coordinator", "booking_partial",
 			"🔄 الحجز "+code+" انجز جزئياً ("+strconv.Itoa(report.PercentDone)+"٪) ويحتاج تنسيق ليوم جديد")
 		_ = h.notify.CreateForRole("ADMIN", "booking_partial",
 			"🔄 الحجز "+code+" انجز جزئياً ("+strconv.Itoa(report.PercentDone)+"٪) ويحتاج تنسيق ليوم جديد")

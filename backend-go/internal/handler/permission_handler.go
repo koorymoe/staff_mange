@@ -1,7 +1,9 @@
 package handler
 
 import (
+	"errors"
 	"fmt"
+	"github.com/lib/pq"
 	"net/http"
 	"strings"
 
@@ -92,6 +94,12 @@ func (h *PermissionHandler) SetForEmployee(w http.ResponseWriter, r *http.Reques
 	}
 	perms, err := h.service.SetForEmployee(employeeID, req.PermissionIDs)
 	if err != nil {
+		// (11-13) صلاحية مو موجودة = طلب غلط (٤٠٠)، مو عطل بالسيرفر.
+		var pe *pq.Error
+		if errors.As(err, &pe) && pe.Code == "23503" {
+			WriteError(w, http.StatusBadRequest, "صلاحية غير موجودة بالطلب")
+			return
+		}
 		WriteError(w, http.StatusInternalServerError, "تعذر تحديث صلاحيات الموظف")
 		return
 	}

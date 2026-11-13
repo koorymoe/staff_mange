@@ -289,6 +289,15 @@ func (s *ProjectService) Create(req model.CreateProjectRequest, createdBy *strin
 	// الكود يُبنى من أكبر رقم موجود مو من عدد الصفوف، ومع ذلك يبقى احتمال تضارب
 	// لو موظفين ضافوا مشروع بنفس اللحظة — فنعيد المحاولة عدة مرات على خطأ
 	// التكرار (23505) بدل ما نطلّع الخطأ بوجه المستخدم.
+	// (11-13) حجز واحد = مشروع واحد. الواجهة بس چانت تمنع، والضغط مرتين (أو
+	// شاشتين) يطلّع PRJ-0001 وPRJ-0002 لنفس الحجز.
+	if req.BookingID != nil && *req.BookingID != "" {
+		if taken, err := s.repo.BookingHasProject(*req.BookingID); err != nil {
+			return nil, err
+		} else if taken {
+			return nil, errors.New("هذا الحجز إله مشروع من قبل")
+		}
+	}
 	next, err := s.repo.NextCodeNumber()
 	if err != nil {
 		return nil, err

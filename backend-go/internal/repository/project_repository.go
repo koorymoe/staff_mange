@@ -159,6 +159,13 @@ func (r *ProjectRepository) GetByID(id string) (*model.Project, error) {
 	return &p, nil
 }
 
+// BookingHasProject هل انفتح مشروع من هذا الحجز قبل؟
+func (r *ProjectRepository) BookingHasProject(bookingID string) (bool, error) {
+	var ok bool
+	err := r.db.Get(&ok, `SELECT EXISTS (SELECT 1 FROM "Project" WHERE "bookingId" = $1)`, bookingID)
+	return ok, err
+}
+
 // NextCodeNumber يرجّع أكبر رقم مستخدم بأكواد المشاريع (PRJ-0007 -> 7).
 // نعتمد على أكبر رقم موجود مو على عدد الصفوف: لو انحذف مشروع، العدد ينقص بينما
 // الكود القديم يبقى مستخدَم — وهذا الي كان يسبب خطأ

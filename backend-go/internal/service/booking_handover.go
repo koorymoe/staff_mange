@@ -109,7 +109,7 @@ func (s *BookingService) TechRequestCrew(id, empID, note string) (*model.Booking
 		if n := strings.TrimSpace(note); n != "" {
 			msg += " — " + n
 		}
-		_ = s.notifications.CreateForRole("HR_COORDINATOR", "booking_tech_crew", msg)
+		_ = s.notifications.CreateForRolesOrPermission([]string{"HR_COORDINATOR"}, "coordinator", "booking_tech_crew", msg)
 	}
 	return s.repo.FindByID(id)
 }
@@ -125,6 +125,11 @@ func (s *BookingService) TechResolve(id, empID, notes string) (*model.Booking, e
 	}
 	if b.TechDiagnosedAt == nil {
 		return nil, errors.New("اكتب الكشف أول")
+	}
+	// (11-13) طلب كادر وانعيّن = الحجز صار بطريق الكادر؛ التقني ما يسكّره من
+	// يمّه — چان ينغلق «منجز» والكادر المعيّن ما يگدر يبدي.
+	if b.TechCrewRequestedAt != nil && len(b.Assignments) > 0 {
+		return nil, errors.New("هذا الحجز انطلب له كادر وانعيّن — يخلص من الكادر")
 	}
 	if err := s.requirePhotos(id); err != nil {
 		return nil, err
@@ -191,7 +196,7 @@ func (s *BookingService) TechDecide(id, empID, decision, text, visitAt string) (
 			return nil, err
 		}
 		if s.notifications != nil {
-			_ = s.notifications.CreateForRole("HR_COORDINATOR", "booking_tech_visit",
+			_ = s.notifications.CreateForRolesOrPermission([]string{"HR_COORDINATOR"}, "coordinator", "booking_tech_visit",
 				fmt.Sprintf("🔍 التقني حدد زيارة كشف للحجز %s يوم %s", b.Code, at.In(debriefLoc).Format("2006-01-02 15:04")))
 		}
 		return s.repo.FindByID(id)

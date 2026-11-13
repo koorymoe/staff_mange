@@ -25,8 +25,9 @@ func TestServicePaperworkInvoicedNotCompletedLive(t *testing.T) {
 	clean := func() {
 		db.Exec(`DELETE FROM "WorkReport" WHERE "bookingId" LIKE 'sp38-%'`)
 		db.Exec(`DELETE FROM "LeaderInvoice" WHERE "bookingId" LIKE 'sp38-%'`)
+		db.Exec(`DELETE FROM "BookingService" WHERE "bookingId" LIKE 'sp38-%'`)
 		db.Exec(`DELETE FROM "Booking" WHERE id LIKE 'sp38-%'`)
-		db.Exec(`DELETE FROM "Service" WHERE id = 'sp38-svc'`)
+		db.Exec(`DELETE FROM "Service" WHERE id IN ('sp38-svc', 'sp38-gps')`)
 		db.Exec(`DELETE FROM "Customer" WHERE id = 'sp38-cu'`)
 		db.Exec(`DELETE FROM "Employee" WHERE id = 'sp38-emp'`)
 	}
@@ -63,6 +64,21 @@ func TestServicePaperworkInvoicedNotCompletedLive(t *testing.T) {
 	}
 	if m["sp38-noinv"] {
 		t.Fatal("الجاري بلا فاتورة ما يطلع")
+	}
+	// (11-13) مختلط جي بي اس + داش كام: فاتورة الجي بي اس ما تشيله من قائمة الداش كام.
+	db.MustExec(`INSERT INTO "Service"(id, name, "serviceKind") VALUES ('sp38-gps', 'sp38 جي بي اس', 'GPS')`)
+	db.MustExec(`INSERT INTO "Booking"(id, code, "customerId", status, "serviceId", "completedAt") VALUES ('sp38-mix', 'Bsp38-mix', 'sp38-cu', 'COMPLETED', 'sp38-gps', '2026-09-01')`)
+	db.MustExec(`INSERT INTO "BookingService"(id, "bookingId", "serviceId") VALUES (gen_random_uuid()::text, 'sp38-mix', 'sp38-svc')`)
+	db.MustExec(`INSERT INTO "LeaderInvoice"(id, "bookingId", "employeeId", systems, items, "netTotal", "accountingCode", status)
+		VALUES ('sp38-mix-i', 'sp38-mix', 'sp38-emp', '["فاتورة الجي بي اس"]', '[]', 1000, 'sp38-mix-c', 'SUBMITTED')`)
+	db.MustExec(`INSERT INTO "WorkReport"(id, "bookingId", "employeeId", "workStatus") VALUES ('sp38-mix-wr', 'sp38-mix', 'sp38-emp', 'COMPLETED')`)
+	if !has()["sp38-mix"] {
+		t.Fatal("المختلط يبقى بقائمة الداش كام لحد فاتورتها")
+	}
+	db.MustExec(`INSERT INTO "LeaderInvoice"(id, "bookingId", "employeeId", systems, items, "netTotal", "accountingCode", status)
+		VALUES ('sp38-mix-i2', 'sp38-mix', 'sp38-emp', '["فاتورة الداش كام"]', '[]', 1000, 'sp38-mix-c2', 'SUBMITTED')`)
+	if has()["sp38-mix"] {
+		t.Fatal("بعد فاتورة الداش كام ينشال")
 	}
 	db.MustExec(`INSERT INTO "WorkReport"(id, "bookingId", "employeeId", "workStatus") VALUES ('sp38-wr', 'sp38-run', 'sp38-emp', 'COMPLETED')`)
 	if has()["sp38-run"] {

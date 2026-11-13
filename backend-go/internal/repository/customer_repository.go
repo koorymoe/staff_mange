@@ -75,7 +75,12 @@ func (r *CustomerRepository) Search(search string, limit int) ([]model.Customer,
 
 func (r *CustomerRepository) FindByPhone(phone string) (*model.Customer, error) {
 	var c model.Customer
-	err := r.db.Get(&c, `SELECT * FROM "Customer" WHERE phone = $1`, phone)
+	// (11-13) نفس الرقم بأي صيغة: المطابق حرفياً أولاً، وبعدين آخر ١٠ أرقام
+	// (7xxxxxxxxx) — يمسك المحفوظ قديماً بـ+964 أو بمسافات.
+	norm := model.LocalPhone(phone)
+	err := r.db.Get(&c, `SELECT * FROM "Customer" WHERE phone = $1 OR phone = $2
+		OR (length($2) = 11 AND right(regexp_replace(phone, '\D', '', 'g'), 10) = right($2, 10))
+		ORDER BY (phone = $1) DESC, (phone = $2) DESC, "customerCode" LIMIT 1`, phone, norm)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, nil
 	}

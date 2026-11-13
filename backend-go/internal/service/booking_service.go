@@ -323,11 +323,12 @@ func (s *BookingService) Confirm(id string, req model.ConfirmBookingRequest) (*m
 		if booking.Customer != nil {
 			customerName = booking.Customer.Name
 		}
-		_ = s.notifications.CreateForRole("HR_COORDINATOR", "booking_confirmed",
+		_ = s.notifications.CreateForRolesOrPermission([]string{"HR_COORDINATOR"}, "coordinator", "booking_confirmed",
 			fmt.Sprintf("📌 حجز جديد مثبّت (%s) للزبون %s — يحتاج تحديد الكادر المناسب له", booking.Code, customerName))
 	}
 	if s.monitor != nil {
-		s.monitor.BookingStage(model.MonitorStageBookingAfterConfirm, booking, "HR_COORDINATOR", nil)
+		// (11-13) ملاحظة المراقب توصل للي ثبّت فعلاً، مو بس للأدمن.
+		s.monitor.BookingStage(model.MonitorStageBookingAfterConfirm, booking, "HR_COORDINATOR", booking.ConfirmedByEmployeeID)
 	}
 	return booking, nil
 }
@@ -452,6 +453,10 @@ func (s *BookingService) Unassign(id, role string) (*model.Booking, error) {
 	if err := s.repo.RemoveAssignment(id, role); err != nil {
 		return nil, err
 	}
+	// (11-13) الي انشال ما يبقى «مسؤول المصاريف» — وإلا يبقى يشتغل على الحجز.
+	if err := s.repo.ReconcileExpenseResponsible(id); err != nil {
+		return nil, err
+	}
 	return s.repo.FindByID(id)
 }
 
@@ -488,6 +493,12 @@ func (s *BookingService) Assign(id string, req model.AssignBookingRequest, edito
 		return nil, errors.New("هذا الموظف غير متاح حالياً (خارج الدوام)")
 	}
 
+	// (11-13) نفس الموظف ما ياخذ خانتين بنفس الحجز.
+	for _, a := range booking.Assignments {
+		if a.EmployeeID == req.EmployeeID && string(a.Role) != req.Role {
+			return nil, errors.New("هذا الموظف مكلّف بخانة ثانية بنفس الحجز")
+		}
+	}
 	if err := s.repo.UpsertAssignment(id, req.EmployeeID, req.Role, editorID); err != nil {
 		return nil, err
 	}
@@ -563,30 +574,10 @@ func (s *BookingService) Assign(id string, req model.AssignBookingRequest, edito
 		}
 	}
 
-	// تعيين المسؤول عن المصاريف تلقائياً: الليدر أولاً، وإلا الفني الوحيد المعيّن
-	if booking.ExpenseResponsibleID == nil {
-		if employee.IsLeader {
-			if err := s.repo.SetExpenseResponsible(id, req.EmployeeID); err != nil {
-				return nil, err
-			}
-		} else {
-			assignments, err := s.repo.ListAssignments(id)
-			if err == nil {
-				hasLeader := false
-				for _, a := range assignments {
-					emp, _ := s.employees.FindByID(a.EmployeeID)
-					if emp != nil && emp.IsLeader {
-						hasLeader = true
-						break
-					}
-				}
-				if !hasLeader && len(assignments) == 1 {
-					if err := s.repo.SetExpenseResponsible(id, assignments[0].EmployeeID); err != nil {
-						return nil, err
-					}
-				}
-			}
-		}
+	// المسؤول عن المصاريف: الليدر أولاً، وإلا الفني الوحيد المعيّن. (11-13) يتحدّث
+	// ويا كل تبديل — چان ينحط مرة وحدة، فالفني الي انبدّل يبقى «طرف» ويشتغل عليه.
+	if err := s.repo.ReconcileExpenseResponsible(id); err != nil {
+		return nil, err
 	}
 
 	_ = s.repo.TouchLastEdited(id, editorID)
@@ -675,7 +666,7 @@ func (s *BookingService) MarkProjectExecution(bookingID string) error {
 	}
 	// بدون الإشعار الحجز ينفتح بالسكوت والمنسّق ما يدري — يعني نفس
 	// المشكلة القديمة بس بشكل ثاني.
-	_ = s.notifications.CreateForRole("HR_COORDINATOR", "project_booking_ready",
+	_ = s.notifications.CreateForRolesOrPermission([]string{"HR_COORDINATOR"}, "coordinator", "project_booking_ready",
 		fmt.Sprintf("🏗️ حجز المشاريع %s (%s) وصل مرحلة التنفيذ — جاهز للتنسيق بكادر الشد", b.Code, customerName))
 	return nil
 }
@@ -850,7 +841,12 @@ func (s *BookingService) Complete(id string, req model.CompleteBookingRequest) (
 	}
 	// بعد الإنجاز: المراقب يشوف شنو انعمل فعلاً قبل ما تصير فاتورة.
 	if s.monitor != nil {
-		s.monitor.BookingStage(model.MonitorStageBookingAfterComplete, booking, "TECHNICIAN", booking.ProjectSupervisorID)
+		// (11-13) الحجز العادي ما بيه مشرف — فالمسؤول الليدر (مسؤول المصاريف).
+		owner := booking.ProjectSupervisorID
+		if owner == nil {
+			owner = booking.ExpenseResponsibleID
+		}
+		s.monitor.BookingStage(model.MonitorStageBookingAfterComplete, booking, "TECHNICIAN", owner)
 	}
 
 	// ⚠️ قصة «شغل انخلص» **لكل عضو بالكادر المكلَّف** — مو للّيدر بس.

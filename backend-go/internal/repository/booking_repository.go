@@ -264,6 +264,14 @@ func (r *BookingRepository) ListServicePaperworkByKind(kind string, limit int) (
 		      NOT EXISTS (
 		          SELECT 1 FROM "LeaderInvoice" li
 		          WHERE li."bookingId" = b.id AND li.status <> 'DRAFT'
+		            -- (11-13) حجز مختلط (جي بي اس + داش كام، أو ويا خدمة ثانية): فاتورة
+		            -- نوع ثاني ما تغطي هذا النوع — چانت فاتورة الجي بي اس تشيل الحجز من
+		            -- قائمة الداش كام. فبالمختلط بس فاتورة هذا النوع تشيله.
+		            AND (li.systems @> jsonb_build_array($3::text)
+		                 OR NOT EXISTS (
+		                     SELECT 1 FROM "Service" so
+		                     WHERE (so.id = b."serviceId" OR EXISTS (SELECT 1 FROM "BookingService" bso WHERE bso."bookingId" = b.id AND bso."serviceId" = so.id))
+		                       AND so."serviceKind" IS DISTINCT FROM $1))
 		      )
 		      OR (
 		          -- (دازاي 10-29) «كل حجز يبدي بـB اريده يضهر لمسؤول الخدمة، وكل
@@ -283,7 +291,7 @@ func (r *BookingRepository) ListServicePaperworkByKind(kind string, limit int) (
 		NotDeletePendingSQL(`b`)+`
 		ORDER BY b."completedAt" DESC NULLS LAST
 		LIMIT $2
-	`, kind, limit)
+	`, kind, limit, model.ServiceInvoiceKindLabel[kind])
 	if err != nil {
 		return nil, err
 	}
@@ -808,15 +816,12 @@ func (r *BookingRepository) hydrateAll(bookings []*model.Booking) error {
 }
 
 func (r *BookingRepository) NextSequenceNumber() (int, error) {
-	var seq sql.NullInt64
-	err := r.db.Get(&seq, `SELECT MAX("sequenceNumber") FROM "Booking"`)
-	if err != nil {
-		return 1, err
+	// (11-13) من sequence (0485): ما يتكرر حتى لو انحجزت عشرة بنفس اللحظة.
+	var seq int64
+	if err := r.db.Get(&seq, `SELECT nextval('"Booking_seq"')`); err != nil {
+		return 0, err
 	}
-	if !seq.Valid {
-		return 1, nil
-	}
-	return int(seq.Int64) + 1, nil
+	return int(seq), nil
 }
 
 // Create يحفظ الحجز.
@@ -1671,6 +1676,30 @@ func BookingPartySQL(q string, n int) string {
 				SELECT 1 FROM "BookingAssignment" ba
 				WHERE ba."bookingId" = ` + q + `.id AND ba."employeeId" = ` + p + `
 			))`
+}
+
+// ReconcileExpenseResponsible يرجّع «المسؤول عن المصاريف» للي فعلاً بالكادر:
+// الليدر المكلّف أولاً، وإلا الفني الوحيد، وإلا يبقى فاضي. ما يلمس المشرف
+// (SetSupervisor يحطه بقصد) ولا مسؤولاً بعده مكلّف وماكو ليدر أحق منه.
+func (r *BookingRepository) ReconcileExpenseResponsible(id string) error {
+	_, err := r.db.Exec(`
+		WITH want AS (
+			SELECT COALESCE(
+				(SELECT a."employeeId" FROM "BookingAssignment" a JOIN "Employee" e ON e.id = a."employeeId"
+				  WHERE a."bookingId" = $1 AND e."isLeader" ORDER BY a.role LIMIT 1),
+				(SELECT min(a."employeeId") FROM "BookingAssignment" a WHERE a."bookingId" = $1
+				  HAVING count(*) = 1)) AS id
+		)
+		UPDATE "Booking" b SET "expenseResponsibleId" = (SELECT id FROM want)
+		WHERE b.id = $1
+		  AND b."expenseResponsibleId" IS DISTINCT FROM (SELECT id FROM want)
+		  AND (b."expenseResponsibleId" IS NULL
+		       OR (b."expenseResponsibleId" IS DISTINCT FROM b."projectSupervisorId"
+		           AND (NOT EXISTS (SELECT 1 FROM "BookingAssignment" a WHERE a."bookingId" = b.id AND a."employeeId" = b."expenseResponsibleId")
+		                OR NOT EXISTS (SELECT 1 FROM "Employee" e WHERE e.id = b."expenseResponsibleId" AND e."isLeader"))))
+		  AND ((SELECT id FROM want) IS NOT NULL
+		       OR NOT EXISTS (SELECT 1 FROM "BookingAssignment" a WHERE a."bookingId" = b.id AND a."employeeId" = b."expenseResponsibleId"))`, id)
+	return err
 }
 
 // IsAssignedTo يفحص إذا الموظف مكلّف فعلاً بهذا الحجز — أساس التحقق قبل أي
