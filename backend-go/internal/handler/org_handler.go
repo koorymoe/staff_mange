@@ -183,13 +183,15 @@ func (h *OrgHandler) CreatePlan(w http.ResponseWriter, r *http.Request) {
 		UnitID     string `json:"unitId"`
 		Period     string `json:"period"`
 		Title      string `json:"title"`
+		// (بلاغ #40) true = خطة جديدة جنب خطة الشهر الموجودة
+		Extra bool `json:"extra"`
 	}
 	if err := DecodeJSON(r, &in); err != nil {
 		WriteError(w, http.StatusBadRequest, "طلب غير صالح")
 		return
 	}
 	emp, role := who(r)
-	id, err := h.svc.CreatePlan(emp, role, in.DivisionID, in.UnitID, in.Period, in.Title)
+	id, err := h.svc.CreatePlan(emp, role, in.DivisionID, in.UnitID, in.Period, in.Title, in.Extra)
 	if err != nil {
 		h.orgErr(w, err)
 		return

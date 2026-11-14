@@ -331,13 +331,11 @@ func (s *OrgService) Desk(empID, role, divisionID, period string) (*OrgDesk, err
 		if s.UnitAccess(empID, role, divisionID, u.ID) {
 			desk.EditableUnits = append(desk.EditableUnits, u.ID)
 		}
-		up, err := s.planFor(divisionID, &u.ID, period)
+		ups, err := s.plansFor(divisionID, &u.ID, period)
 		if err != nil {
 			return nil, err
 		}
-		if up != nil {
-			desk.UnitPlans = append(desk.UnitPlans, up)
-		}
+		desk.UnitPlans = append(desk.UnitPlans, ups...)
 	}
 	if err := s.db.Select(&desk.Comments, `SELECT c.id, c."targetType", c."targetId", e.name AS "authorName", c.text, c."createdAt"
 		FROM "OrgComment" c LEFT JOIN "Employee" e ON e.id = c."authorId"
@@ -358,12 +356,35 @@ func (s *OrgService) plan(divisionID, period string) (*OrgPlan, error) {
 }
 
 func (s *OrgService) planFor(divisionID string, unitID *string, period string) (*OrgPlan, error) {
+	ps, err := s.plansFor(divisionID, unitID, period)
+	if err != nil || len(ps) == 0 {
+		return nil, err // ماكو خطة لهالشهر بعد
+	}
+	return ps[0], nil
+}
+
+// plansFor كل خطط الوحدة/الإدارة بالشهر، الأقدم أول (بلاغ #40: أكثر من خطة).
+func (s *OrgService) plansFor(divisionID string, unitID *string, period string) ([]*OrgPlan, error) {
+	ids := []string{}
+	if err := s.db.Select(&ids, `SELECT id FROM "OrgPlan" WHERE "divisionId" = $1 AND "unitId" IS NOT DISTINCT FROM $2 AND period = $3
+		ORDER BY "createdAt", id`, divisionID, unitID, period); err != nil {
+		return nil, err
+	}
+	out := []*OrgPlan{}
+	for _, id := range ids {
+		p, err := s.planByID(divisionID, id, period)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, p)
+	}
+	return out, nil
+}
+
+func (s *OrgService) planByID(divisionID, id, period string) (*OrgPlan, error) {
 	var p OrgPlan
 	if err := s.db.Get(&p, `SELECT id, "divisionId", "unitId", period, title, status, "submittedAt", "reviewedAt", "reviewNote"
-		FROM "OrgPlan" WHERE "divisionId" = $1 AND "unitId" IS NOT DISTINCT FROM $2 AND period = $3`, divisionID, unitID, period); err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return nil, nil // ماكو خطة لهالشهر بعد
-		}
+		FROM "OrgPlan" WHERE id = $1`, id); err != nil {
 		return nil, err
 	}
 	p.Items = []OrgPlanItem{}
@@ -510,7 +531,7 @@ func (s *OrgService) UpdateIssue(empID, role, id, status, resolution string) err
 	return err
 }
 
-func (s *OrgService) CreatePlan(empID, role, divisionID, unitID, period, title string) (string, error) {
+func (s *OrgService) CreatePlan(empID, role, divisionID, unitID, period, title string, extra ...bool) (string, error) {
 	var unit any
 	if unitID != "" {
 		var div string
@@ -530,10 +551,25 @@ func (s *OrgService) CreatePlan(empID, role, divisionID, unitID, period, title s
 	if _, _, err := periodRange(period); err != nil {
 		return "", err
 	}
+	title = strings.TrimSpace(title)
 	var id string
+	// بلا extra: نفس السلوك القديم — خطة الشهر الموجودة (أول وحدة) تنفتح ويتحدث عنوانها.
+	// ويا extra (بلاغ #40): خطة جديدة جنبها، ولازم عنوان يميّزها.
+	if len(extra) == 0 || !extra[0] {
+		err := s.db.Get(&id, `UPDATE "OrgPlan" SET title = CASE WHEN $4 <> '' THEN $4 ELSE title END
+			WHERE id = (SELECT id FROM "OrgPlan" WHERE "divisionId" = $1 AND COALESCE("unitId", '') = COALESCE($2::text, '') AND period = $3
+				ORDER BY "createdAt", id LIMIT 1) RETURNING id`, divisionID, unit, period, title)
+		if err == nil {
+			return id, nil
+		}
+		if !errors.Is(err, sql.ErrNoRows) {
+			return "", err
+		}
+	} else if title == "" {
+		return "", errors.New("اكتب عنوان للخطة الجديدة")
+	}
 	err := s.db.Get(&id, `INSERT INTO "OrgPlan" ("divisionId", "unitId", period, title, "createdById") VALUES ($1, $2, $3, $4, $5)
-		ON CONFLICT ("divisionId", COALESCE("unitId", ''), period) DO UPDATE SET title = CASE WHEN EXCLUDED.title <> '' THEN EXCLUDED.title ELSE "OrgPlan".title END
-		RETURNING id`, divisionID, unit, period, strings.TrimSpace(title), empID)
+		RETURNING id`, divisionID, unit, period, title, empID)
 	return id, err
 }
 

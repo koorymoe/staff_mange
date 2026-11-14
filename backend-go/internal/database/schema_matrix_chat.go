@@ -2478,5 +2478,13 @@ func matrixChatMigrations() []Migration {
 		// (دازاي 11-13) موظف بدون جدول محدد: ٨ ساعات من الحضور، بلا تأخير.
 		Version: "0486_employee_flexible_hours",
 		SQL:     `ALTER TABLE "Employee" ADD COLUMN IF NOT EXISTS "flexibleHours" BOOLEAN NOT NULL DEFAULT false;`,
+	}, {
+		// (بلاغ #40، دازاي 11-14 «حل بلا عبد الله») أكثر من خطة للوحدة بنفس الشهر:
+		// القفل الفريد ينشال ويصير فهرس عادي. ماكو بيانات تنحذف.
+		Version: "0490_org_plan_many",
+		SQL: `
+			DROP INDEX IF EXISTS "OrgPlan_scope_uq";
+			CREATE INDEX IF NOT EXISTS "OrgPlan_scope_idx" ON "OrgPlan" ("divisionId", COALESCE("unitId", ''), period);
+		`,
 	}}
 }

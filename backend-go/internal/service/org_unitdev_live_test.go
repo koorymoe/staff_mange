@@ -126,6 +126,23 @@ func TestUnitDevelopment_Live(t *testing.T) {
 	if !it.Overdue || it.OwnerName == nil || it.Progress != 40 {
 		t.Fatalf("البند: متأخر=%v مسؤول=%v نسبة=%d", it.Overdue, it.OwnerName, it.Progress)
 	}
+	// (بلاغ #40) أكثر من خطة للوحدة بنفس الشهر: بلا extra نفس الخطة، ويا extra خطة جديدة.
+	if again, err := s.CreatePlan(head, "TECHNICIAN", "eng", "eng.projects", "", ""); err != nil || again != plan {
+		t.Fatalf("بلا extra لازم ترجع نفس الخطة: %v %s", err, again)
+	}
+	if _, err := s.CreatePlan(head, "TECHNICIAN", "eng", "eng.projects", "", "", true); err == nil {
+		t.Fatal("الخطة الثانية لازم إلها عنوان")
+	}
+	second, err := s.CreatePlan(head, "TECHNICIAN", "eng", "eng.projects", "", "خطة التدريب", true)
+	if err != nil || second == plan {
+		t.Fatalf("خطة ثانية: %v", err)
+	}
+	if _, err := s.CreatePlan(other, "TECHNICIAN", "eng", "eng.projects", "", "y", true); !errors.Is(err, ErrOrgHidden) {
+		t.Fatal("رئيس وحدة ثانية سوّى خطة ثانية لغير وحدته")
+	}
+	if d2, _ := s.Desk(dir, "TECHNICIAN", "eng", ""); len(d2.UnitPlans) != 2 || d2.UnitPlans[0].ID != plan || d2.UnitPlans[1].Title != "خطة التدريب" {
+		t.Fatalf("المكتب لازم يشوف الخطتين، الأولى أول: %+v", d2.UnitPlans)
+	}
 	dh, _ := s.Desk(head, "TECHNICIAN", "eng", "")
 	if len(dh.EditableUnits) != 1 || dh.EditableUnits[0] != "eng.projects" || dh.CanEdit {
 		t.Fatalf("رئيس الوحدة يعدّل وحدته بس: %+v canEdit=%v", dh.EditableUnits, dh.CanEdit)

@@ -214,10 +214,14 @@ export function UnitDevelopment({
   saved: () => void
 }) {
   const [create, setCreate] = useState(false),
-    [add, setAdd] = useState(false)
+    [extra, setExtra] = useState(false),
+    [add, setAdd] = useState(false),
+    [pick, setPick] = useState<string | null>(null)
   const units = data.division.units ?? []
   const unit = units.find((u) => u.id === openedUnit)
-  const plan = (data.unitPlans ?? []).find((p) => p.unitId === openedUnit)
+  // (بلاغ #40، 11-14) الوحدة تكدر يكون عدها أكثر من خطة بالشهر — تختار بيناتهن.
+  const plans = (data.unitPlans ?? []).filter((p) => p.unitId === openedUnit)
+  const plan = plans.find((p) => p.id === pick) ?? plans[0]
   const editable = !!unit && (data.editableUnits ?? []).includes(unit.id)
   const { employee: viewer } = useSession()
   const admin = isAdminOrOwner(viewer)
@@ -225,7 +229,8 @@ export function UnitDevelopment({
     return (
       <div className="desk-cards">
         {units.map((u) => {
-          const p = (data.unitPlans ?? []).find((p) => p.unitId === u.id)
+          const ups = (data.unitPlans ?? []).filter((p) => p.unitId === u.id)
+          const p = ups[0]
           return (
             <section className="org-panel desk-unit-summary" key={u.id}>
               <h2>{u.name}</h2>
@@ -234,6 +239,7 @@ export function UnitDevelopment({
                   <span className={`desk-plan-status plan-${p.status}`}>
                     {planStatusNames[p.status] ?? 'حالة غير معروفة'}
                   </span>
+                  {ups.length > 1 && <p className="desk-meta">{ups.length} خطط هالشهر — الإنجاز هنا للأولى، افتح الوحدة تشوف كلها</p>}
                   <p>الإنجاز: <PlanPct value={p.progress} items={p.items} title={`إنجاز خطة ${u.name}`} /></p>
                   <progress
                     max={100}
@@ -270,7 +276,9 @@ export function UnitDevelopment({
         <button
           onClick={() => {
             setCreate(false)
+            setExtra(false)
             setAdd(false)
+            setPick(null)
             openUnit(null)
           }}
         >
@@ -279,6 +287,24 @@ export function UnitDevelopment({
       </div>
       {plan ? (
         <>
+          {(plans.length > 1 || editable) && (
+            <div className="org-toolbar" role="tablist" aria-label="خطط الوحدة">
+              {plans.map((p) => (
+                <button key={p.id} role="tab" aria-selected={p.id === plan.id}
+                  className={p.id === plan.id ? 'org-primary' : undefined}
+                  onClick={() => { setPick(p.id); setAdd(false) }}>
+                  {p.title || 'خطة'} · {p.progress}٪
+                </button>
+              ))}
+              {editable && (
+                <button onClick={() => { setExtra(true); setAdd(false) }}>➕ خطة ثانية</button>
+              )}
+            </div>
+          )}
+          {extra && editable && (
+            <CreatePlan id={data.division.id} unit={unit} period={period} extra
+              close={() => setExtra(false)} saved={saved} />
+          )}
           <section className="org-panel desk-plan-heading">
             <ProgressRing value={plan.progress} items={plan.items} />
             <div>
@@ -637,18 +663,21 @@ export function CreatePlan({
   id,
   period,
   unit,
+  extra,
   close,
   saved,
 }: {
   id: string
   period: string
   unit?: OrgUnit
+  /** (بلاغ #40) خطة جديدة جنب خطة الشهر الموجودة */
+  extra?: boolean
   close: () => void
   saved: () => void
 }) {
   return (
     <DeskForm
-      title={unit ? 'ابدي خطة الوحدة' : 'ابدي خطة هالشهر'}
+      title={extra ? 'خطة ثانية لهالشهر' : unit ? 'ابدي خطة الوحدة' : 'ابدي خطة هالشهر'}
       close={close}
       saved={saved}
       submit={(d) =>
@@ -656,6 +685,7 @@ export function CreatePlan({
           divisionId: id,
           period,
           ...(unit ? { unitId: unit.id } : {}),
+          ...(extra ? { extra: true } : {}),
           title: field(d, 'title'),
         })
       }
@@ -666,7 +696,8 @@ export function CreatePlan({
         <input
           name="title"
           required
-          defaultValue={`خطة ${unit?.name || 'التحسين'} ${period}`}
+          defaultValue={extra ? '' : `خطة ${unit?.name || 'التحسين'} ${period}`}
+          placeholder={extra ? 'مثلاً: خطة التوظيف، خطة التدريب…' : undefined}
         />
       </label>
     </DeskForm>

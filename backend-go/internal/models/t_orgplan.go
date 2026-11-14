@@ -28,7 +28,8 @@ func init() {
 			{Name: "OrgPlan_unitId_fkey", Def: "FOREIGN KEY (\"unitId\") REFERENCES \"OrgUnit\"(id)"},
 		},
 		Indexes: []string{
-			"CREATE UNIQUE INDEX \"OrgPlan_scope_uq\" ON public.\"OrgPlan\" USING btree (\"divisionId\", COALESCE(\"unitId\", ''::text), period)",
+			// (بلاغ #40، 11-14) أكثر من خطة للوحدة/الإدارة بنفس الشهر — الفهرس صار مو فريد.
+			"CREATE INDEX \"OrgPlan_scope_idx\" ON public.\"OrgPlan\" USING btree (\"divisionId\", COALESCE(\"unitId\", ''::text), period)",
 		},
 	})
 }
