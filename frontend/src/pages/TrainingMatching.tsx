@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { api, type Employee, type Service, type TcCurriculum, type TcNeed } from '../api'
 import { roleLabel } from '../roleLabels'
 import { card } from '../ui/classes'
+import { askConfirm } from '../ui/dialogs'
 import { swallow } from '../utils/swallow'
 
 // ═══ وحدة التدريب (دازاي 11-12) ═══
@@ -92,7 +93,10 @@ export function CurriculumTree() {
         </span>
         <span className="flex w-36 shrink-0 justify-end gap-2">
           {depth < 3 && <button onClick={() => { setAddUnder(n.id); setChild('') }} className="text-xs font-bold text-[#2c5aad]">+ {LEVEL[depth + 1]}</button>}
-          {!kids.has(n.id) && <button onClick={() => run(api.tcDeleteCurriculum(n.id))} className="text-xs text-slate-400">حذف</button>}
+          <button onClick={async () => {
+            if (kids.has(n.id)) { setError(`«${n.title}» بيه تفرعات — احذفهن أول`); return }
+            if (await askConfirm(`حذف «${n.title}»؟`, { danger: true, okLabel: 'حذف' })) run(api.tcDeleteCurriculum(n.id))
+          }} className="text-xs font-bold text-red-600">حذف</button>
         </span>
       </div>
       {addUnder === n.id && (
