@@ -144,7 +144,7 @@ export function CurriculumTree({ emps }: { emps: Employee[] }) {
               <button key={a.id} type="button" onClick={() => { setPick(open ? null : { id: n.id, g: a.id }); setQ('') }} aria-pressed={on} aria-expanded={open}
                 title={n.assignees === null && on ? 'ماخذ من الي فوكه — اضغط حتى تختار لهذا السطر' : ''}
                 className={`inline-flex w-[4.5rem] items-center justify-center gap-0.5 rounded-full px-2 py-0.5 text-[11px] font-bold ${on ? (n.assignees === null ? 'bg-[#2c5aad]/50 text-white' : 'bg-[#2c5aad] text-white shadow-sm') : 'bg-slate-100 text-slate-400'} ${open ? 'ring-2 ring-[#2c5aad]/40' : ''}`}>
-                {a.label}{count > 0 ? ` ${count}` : ''} <span aria-hidden className={`text-[9px] transition ${open ? 'rotate-180' : ''}`}>▾</span>
+                {a.label} <span aria-hidden className={`text-[9px] transition ${open ? 'rotate-180' : ''}`}>▴</span>
               </button>
             )
           })}
