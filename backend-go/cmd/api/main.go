@@ -3157,6 +3157,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	secs["projects"].Set("GET /api/projects/stage-limits", "projects.get_stage_limits", projectDelayHandler.StageLimits)
 	secs["projects"].Set("PUT /api/projects/stage-limits", "projects.put_stage_limits", projectDelayHandler.SetStageLimit)
 	fieldApp.Set("POST /api/projects/{id}/delay-reason", "field.project_delay_reason", projectDelayHandler.AddReason)
+	fieldApp.Set("POST /api/projects/{id}/waiting", "field.project_waiting", projectDelayHandler.SetWaiting)
 	secs["projects"].Set("GET /api/projects/my-delays", "projects.get_my_delays", projectDelayHandler.MyDelays)
 	procurementWatchHandler := handler.NewProcurementWatchHandler(db)
 	secs["monitor"].Set("GET /api/monitor/procurement-watch", "monitor.get_procurement_watch", procurementWatchHandler.Get)

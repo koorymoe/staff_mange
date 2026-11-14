@@ -63,6 +63,14 @@ func autoMigrations() []Migration {
 			ALTER TABLE "Employee" ADD COLUMN IF NOT EXISTS "offSystemWork" boolean DEFAULT false NOT NULL;
 		`,
 		},
+		{
+			Version: "0491_project_waiting_customer",
+			SQL: `
+			ALTER TABLE "Project" ADD COLUMN IF NOT EXISTS "waitingCustomerSince" timestamp without time zone;
+			ALTER TABLE "Project" ADD COLUMN IF NOT EXISTS "waitingCustomerNote" text;
+			ALTER TABLE "Project" ADD COLUMN IF NOT EXISTS "waitingCustomerById" text;
+		`,
+		},
 		// ‹makemigration› — التحديثات الجديدة تنضاف فوگ هالسطر
 	}
 }

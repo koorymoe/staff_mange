@@ -178,7 +178,29 @@ export function ProjectCard({ p, canManage, onEdit, onMove, onReport, onDelete, 
         {p.priority === 'عاجل جداً' && <span className="bg-red-600 text-white text-xs px-2 py-0.5 rounded-full animate-pulse">عاجل 🔥</span>}
         <span className="text-xs text-gray-400 font-normal">{p.code}</span>
       </h3>
-      {!isRejected && !isCompleted && <ProjectDelayBanner projectId={p.id} />}
+      {!isRejected && !isCompleted && (p.waitingCustomerSince ? (
+        // (بلاغ #41، 11-14) المشروع واكف من الزبون — ما ينحسب تأخير على مسؤوله لحد ما يرجع أو تتغيّر المرحلة.
+        <div className="mt-3 flex flex-wrap items-center gap-2 rounded-xl border border-sky-200 bg-sky-50 p-3 text-sm text-sky-900">
+          <b>⏸️ بانتظار الزبون</b>
+          <span>من {new Date(p.waitingCustomerSince).toLocaleDateString('en-GB')}{p.waitingCustomerNote ? ` — ${p.waitingCustomerNote}` : ''}</span>
+          <span className="text-xs text-sky-700">(ما ينحسب تأخير عليك؛ ينشال وحده من تتغيّر المرحلة)</span>
+          <button onClick={async () => {
+            try { await apiRequest(`/projects/${p.id}/waiting`, { method: 'POST', body: JSON.stringify({ waiting: false }) }); onRefresh() }
+            catch (e) { alert(e instanceof Error ? e.message : 'تعذر الحفظ') }
+          }} className="mr-auto rounded-lg bg-white px-3 py-1 text-xs font-bold text-sky-800 ring-1 ring-sky-200">▶️ الزبون رد — رجّعه</button>
+        </div>
+      ) : (
+        <>
+          <ProjectDelayBanner projectId={p.id} />
+          <button onClick={async () => {
+            const note = await askInput('شنو ننتظر من الزبون؟ (مثلاً: ينتظر يوقّع العقد، يرد على عرض السعر)')
+            if (!note || note.trim().length < 5) { if (note !== null) alert('اكتب جملة قصيرة على الأقل'); return }
+            try { await apiRequest(`/projects/${p.id}/waiting`, { method: 'POST', body: JSON.stringify({ waiting: true, note: note.trim() }) }); onRefresh() }
+            catch (e) { alert(e instanceof Error ? e.message : 'تعذر الحفظ') }
+          }} className="mt-2 rounded-lg border border-sky-300 px-3 py-1 text-xs font-bold text-sky-700 hover:bg-sky-50"
+            title="المشروع واكف من الزبون (العقد ما انمضى، ما رد على العرض…): ما ينحسب عليك تأخير بالتقييم">⏸️ بانتظار الزبون</button>
+        </>
+      ))}
 
       <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-2 mt-4">
         <Info icon="📞" value={p.phone} />

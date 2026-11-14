@@ -94,6 +94,9 @@ type Project struct {
 	CustomerContactedAt   *time.Time `db:"customerContactedAt" json:"customerContactedAt"`
 	CustomerContactedByID *string    `db:"customerContactedById" json:"customerContactedById"`
 	CustomerContactNote   *string    `db:"customerContactNote" json:"customerContactNote"`
+	// (بلاغ #41) ⏸️ بانتظار الزبون — ما ينحسب تأخير على المسؤول
+	WaitingCustomerSince *time.Time `db:"waitingCustomerSince" json:"waitingCustomerSince"`
+	WaitingCustomerNote  *string    `db:"waitingCustomerNote" json:"waitingCustomerNote"`
 }
 
 // DelegateProjectRequest طلب تسليم المشروع لموظف (أو سحبه لو employeeId فاضي).

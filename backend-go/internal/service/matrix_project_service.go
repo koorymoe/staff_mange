@@ -127,6 +127,13 @@ func (s *MatrixProjectService) StageLimits(stages []string) []StageLimitRow {
 	return out
 }
 
+// CustomerStageMinDays أقل حد لمرحلتي عرض السعر والعقد — الزبون هو الي يقرر (بلاغ #41).
+const CustomerStageMinDays = 30
+
+func customerStage(st string) bool {
+	return strings.HasPrefix(st, "3.") || strings.HasPrefix(st, "4.") || strings.Contains(st, "إعادة التسعير")
+}
+
 func (s *MatrixProjectService) judge(f repository.ProjectFacts, lim map[string]int, now time.Time) ProjectVerdict {
 	v := ProjectVerdict{ProjectFacts: f, Problems: []string{}}
 	switch {
@@ -154,9 +161,24 @@ func (s *MatrixProjectService) judge(f repository.ProjectFacts, lim map[string]i
 	if v.StageLimit == 0 {
 		v.StageLimit = 7 // ماكو عينات بعد: أسبوع
 	}
+	// (بلاغ #41) عرض السعر والعقد بإيد الزبون — حدّها ٣٠ يوم على الأقل (الحد اليدوي الأعلى يبقى).
+	if customerStage(f.Stage) && v.StageLimit < CustomerStageMinDays {
+		v.StageLimit = CustomerStageMinDays
+	}
 	if projectFinal(f.Stage) {
 		v.Status = ChainNA
 		v.Verdict = "المشروع " + strings.TrimSpace(strings.TrimLeft(f.Stage, "✅❌ ")) + "."
+		return v
+	}
+	// (بلاغ #41) ⏸️ بانتظار الزبون: مؤشّر من المسؤول ويا سبب — ما ينحسب عليه تأخير ولا «ماكو حركة».
+	// يبقى ينشاف بالمتابعة بس ما يدخل بتقييمه (ChainNA). ينشال تلقائي من تتغيّر المرحلة.
+	if f.WaitingSince != nil && (f.StageSince == nil || !f.WaitingSince.Before(*f.StageSince)) {
+		v.Status = ChainNA
+		note := ""
+		if f.WaitingNote != nil && *f.WaitingNote != "" {
+			note = ": " + *f.WaitingNote
+		}
+		v.Verdict = fmt.Sprintf("⏸️ بانتظار الزبون من %d يوم%s (بمرحلة «%s» %d يوم).", int(now.Sub(*f.WaitingSince).Hours()/24), note, f.Stage, v.DaysInStage)
 		return v
 	}
 	if v.OwnerID == "" {

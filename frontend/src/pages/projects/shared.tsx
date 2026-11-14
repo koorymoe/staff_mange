@@ -12,6 +12,9 @@ export const request = apiRequest
 // Types & constants
 // ---------------------------------------------------------------------------
 export interface Project {
+  /** (بلاغ #41) ⏸️ بانتظار الزبون — ما ينحسب تأخير على المسؤول */
+  waitingCustomerSince?: string | null
+  waitingCustomerNote?: string | null
   id: string
   code: string
   name: string

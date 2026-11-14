@@ -39,6 +39,10 @@ func init() {
 			{Name: "customerContactedAt", Type: "timestamp without time zone"},
 			{Name: "customerContactedById", Type: "text"},
 			{Name: "customerContactNote", Type: "text"},
+			// (بلاغ #41، 11-14) ⏸️ بانتظار الزبون: المشروع واكف من الزبون (عقد/رد على العرض) — ما ينحسب تأخير على مسؤوله
+			{Name: "waitingCustomerSince", Type: "timestamp without time zone"},
+			{Name: "waitingCustomerNote", Type: "text"},
+			{Name: "waitingCustomerById", Type: "text"},
 		},
 		Constraints: []Constraint{
 			{Name: "Project_bookingId_fkey", Def: "FOREIGN KEY (\"bookingId\") REFERENCES \"Booking\"(id) ON DELETE SET NULL"},

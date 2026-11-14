@@ -48,6 +48,9 @@ type ProjectFacts struct {
 	DelayReason   *string    `db:"delayReason" json:"delayReason"`
 	DelayReasonBy *string    `db:"delayReasonBy" json:"delayReasonBy"`
 	DelayReasonAt *time.Time `db:"delayReasonAt" json:"delayReasonAt"`
+	// (بلاغ #41) ⏸️ بانتظار الزبون
+	WaitingSince *time.Time `db:"waitingCustomerSince" json:"waitingCustomerSince"`
+	WaitingNote  *string    `db:"waitingCustomerNote" json:"waitingCustomerNote"`
 }
 
 const projectFactsSQL = `
@@ -61,7 +64,8 @@ SELECT p.id, p.code, p.name, p.stage, p."workType", p."deliveryDate", p."created
        (SELECT max(l."createdAt") FROM "ProjectStageLog" l WHERE l."projectId" = p.id) AS "stageSince",
        act."lastAt" AS "lastActivityAt", ae.name AS "lastActivityBy", COALESCE(act.n, 0) AS touchers,
        (SELECT count(*) FROM "ProjectChecklist" c WHERE c."projectId" = p.id)::int AS "checklistCount",
-       dr.reason AS "delayReason", dre.name AS "delayReasonBy", dr."createdAt" AS "delayReasonAt"
+       dr.reason AS "delayReason", dre.name AS "delayReasonBy", dr."createdAt" AS "delayReasonAt",
+       p."waitingCustomerSince", p."waitingCustomerNote"
 FROM "Project" p
 LEFT JOIN LATERAL (SELECT reason, "employeeId", "createdAt" FROM "ProjectDelayReason" d
 	WHERE d."projectId" = p.id AND d.stage = p.stage ORDER BY d."createdAt" DESC LIMIT 1) dr ON true

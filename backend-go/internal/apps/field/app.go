@@ -25,6 +25,7 @@ var labels = map[core.Action]string{
 	"field.leave_preliminary":      "رأي أولي بإجازة (المسؤول المباشر بس)",
 	"field.project_contract_value": "قيمة عقد المشروع (authz.ProjectContractValue أو مشرفه)",
 	"field.project_delay_reason":   "سبب تأخير مشروع (مشرفه أو صلاحية إدارة المشاريع)",
+	"field.project_waiting":        "⏸️ مشروع بانتظار الزبون (مشرفه أو صلاحية إدارة المشاريع)",
 }
 
 type route struct {
@@ -110,6 +111,9 @@ func (a *App) checks() map[core.Action]core.Rule {
 			return a.d.CanUploadSurvey(r)
 		}},
 		"field.project_delay_reason": {Label: "سبب تأخير مشروع — طرف بالمشروع أو صلاحية إدارة المشاريع", Check: func(x *core.Actor, r *http.Request) bool {
+			return x.Can("project_management") || a.d.ProjectParty(r.PathValue("id"), x.ID)
+		}},
+		"field.project_waiting": {Label: "⏸️ بانتظار الزبون — طرف بالمشروع أو صلاحية إدارة المشاريع", Check: func(x *core.Actor, r *http.Request) bool {
 			return x.Can("project_management") || a.d.ProjectParty(r.PathValue("id"), x.ID)
 		}},
 	}

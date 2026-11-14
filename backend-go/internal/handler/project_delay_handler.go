@@ -138,3 +138,44 @@ func (h *ProjectDelayHandler) MyDelays(w http.ResponseWriter, r *http.Request) {
 	}
 	WriteJSON(w, http.StatusOK, out)
 }
+
+// POST /api/projects/{id}/waiting {waiting, note} — (بلاغ #41، 11-14) ⏸️ بانتظار الزبون.
+// المشروع الواكف من الزبون (عقد ما انمضى، رد على عرض السعر) ما ينحسب تأخير على مسؤوله.
+// لازم سبب؛ وينشال تلقائياً من تتغيّر المرحلة. نفس حارس سبب التأخير (طرف بالمشروع أو إدارة المشاريع).
+func (h *ProjectDelayHandler) SetWaiting(w http.ResponseWriter, r *http.Request) {
+	var in struct {
+		Waiting bool   `json:"waiting"`
+		Note    string `json:"note"`
+	}
+	if err := DecodeJSON(r, &in); err != nil {
+		WriteError(w, http.StatusBadRequest, "بيانات غير صالحة")
+		return
+	}
+	note := strings.TrimSpace(in.Note)
+	if in.Waiting && len([]rune(note)) < 5 {
+		WriteError(w, http.StatusBadRequest, "اكتب شنو ننتظر من الزبون (مثلاً: ينتظر يوقّع العقد)")
+		return
+	}
+	id, me := r.PathValue("id"), middleware.EmployeeIDFromContext(r)
+	var res interface{ RowsAffected() (int64, error) }
+	var err error
+	if in.Waiting {
+		res, err = h.db.Exec(`UPDATE "Project" SET "waitingCustomerSince" = now(), "waitingCustomerNote" = $2, "waitingCustomerById" = $3
+			WHERE id = $1 AND stage NOT LIKE '✅%' AND stage NOT LIKE '❌%'`, id, note, me)
+	} else {
+		res, err = h.db.Exec(`UPDATE "Project" SET "waitingCustomerSince" = NULL, "waitingCustomerNote" = NULL, "waitingCustomerById" = NULL WHERE id = $1`, id)
+	}
+	if err != nil {
+		WriteError(w, http.StatusInternalServerError, "تعذر الحفظ")
+		return
+	}
+	if n, _ := res.RowsAffected(); n == 0 {
+		WriteError(w, http.StatusNotFound, "المشروع غير موجود أو منتهي")
+		return
+	}
+	if in.Waiting {
+		errlog.Exec(h.db.Exec(`INSERT INTO "ProjectDelayReason" (id, "projectId", stage, "employeeId", reason)
+			SELECT gen_random_uuid()::text, p.id, p.stage, $2, '⏸️ بانتظار الزبون: ' || $3 FROM "Project" p WHERE p.id = $1`, id, me, note))
+	}
+	WriteJSON(w, http.StatusOK, map[string]bool{"ok": true})
+}

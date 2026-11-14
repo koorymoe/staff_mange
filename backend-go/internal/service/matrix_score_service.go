@@ -311,7 +311,17 @@ func (s *MatrixScoreService) scoreProjects(now time.Time, add func(repository.Ma
 			continue
 		}
 		label := "مشروع «" + p.Name + "»"
-		add(repository.MatrixScoreRow{EmployeeID: p.OwnerID, Source: "PROJECT", SourceID: p.ID + "@" + week, SourceLabel: &label,
+		// (بلاغ #41) المشروع الواكف ينخصم عليه مرة وحدة لكل وقفة بالمرحلة، مو كل أسبوع من جديد:
+		// المفتاح ياخذ بداية المرحلة بدل الأسبوع، فتكرار الأسبوع الجاي ما يضيف خصم.
+		key := p.ID + "@" + week
+		if pts < 2 {
+			since := p.CreatedAt
+			if p.StageSince != nil {
+				since = *p.StageSince
+			}
+			key = p.ID + "@stuck:" + since.UTC().Format("2006-01-02T15:04")
+		}
+		add(repository.MatrixScoreRow{EmployeeID: p.OwnerID, Source: "PROJECT", SourceID: key, SourceLabel: &label,
 			Rule: "PROJECT_WEEK", Points: pts, MaxPoints: 2, At: now,
 			Reason: fmt.Sprintf("%s (أسبوع %s): %s", label, week, p.Verdict)})
 	}
