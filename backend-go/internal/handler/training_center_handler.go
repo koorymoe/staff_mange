@@ -191,6 +191,8 @@ type curriculumItem struct {
 	ServiceID *string `db:"serviceId" json:"serviceId"`
 	// (ك) 11-14: منو يشمل السطر — nil = ياخذ من الي فوكه (والمسار من دوره القديم)
 	Audiences pq.StringArray `db:"audiences" json:"audiences"`
+	// (ك) 11-14: الموظفين المختارين على السطر — nil = ياخذ من الي فوكه
+	Assignees pq.StringArray `db:"assignees" json:"assignees"`
 }
 
 // (ل) 11-12 دازاي: المنهج شجرة — الجمهور (فني/ليدر/مهندس) ← المسار (مثلاً داش كام) ← تفرع أول ← ثاني ← ثالث.
@@ -198,7 +200,7 @@ const curriculumMaxDepth = 3 // تفرعات تحت المسار
 
 func (h *TrainingCenterHandler) Curriculum(w http.ResponseWriter, r *http.Request) {
 	rows := []curriculumItem{}
-	errlog.Err(h.db.Select(&rows, `SELECT id, role, title, details, ord, "parentId", "serviceId", audiences FROM "TrainingCurriculum" ORDER BY role, ord, "createdAt"`))
+	errlog.Err(h.db.Select(&rows, `SELECT id, role, title, details, ord, "parentId", "serviceId", audiences, assignees FROM "TrainingCurriculum" ORDER BY role, ord, "createdAt"`))
 	WriteJSON(w, http.StatusOK, rows)
 }
 
@@ -259,14 +261,31 @@ var curriculumAudiences = map[string]bool{"TECHNICIAN": true, "LEADER": true, "E
 func (h *TrainingCenterHandler) SetCurriculumAudiences(w http.ResponseWriter, r *http.Request) {
 	var b struct {
 		Audiences []string `json:"audiences"`
+		Assignees []string `json:"assignees"` // (ك) 11-14: موظفين بالاسم
 		Inherit   bool     `json:"inherit"`
 	}
 	if err := DecodeJSON(r, &b); err != nil {
 		WriteError(w, http.StatusBadRequest, "طلب غلط")
 		return
 	}
-	var val any // NULL = ياخذ من الي فوكه
+	var val, people any // NULL = ياخذ من الي فوكه
 	if !b.Inherit {
+		ids := pq.StringArray{}
+		seenID := map[string]bool{}
+		for _, id := range b.Assignees {
+			if id != "" && !seenID[id] {
+				seenID[id] = true
+				ids = append(ids, id)
+			}
+		}
+		if len(ids) > 0 {
+			var n int
+			if err := h.db.Get(&n, `SELECT COUNT(*) FROM "Employee" WHERE id = ANY($1) AND status = 'ACTIVE'`, ids); err != nil || n != len(ids) {
+				WriteError(w, http.StatusBadRequest, "موظف مو موجود")
+				return
+			}
+		}
+		people = ids
 		seen := map[string]bool{}
 		out := pq.StringArray{}
 		for _, a := range b.Audiences {
@@ -281,7 +300,7 @@ func (h *TrainingCenterHandler) SetCurriculumAudiences(w http.ResponseWriter, r 
 		}
 		val = out
 	}
-	res, err := h.db.Exec(`UPDATE "TrainingCurriculum" SET audiences = $2 WHERE id = $1`, r.PathValue("id"), val)
+	res, err := h.db.Exec(`UPDATE "TrainingCurriculum" SET audiences = $2, assignees = $3 WHERE id = $1`, r.PathValue("id"), val, people)
 	if err != nil {
 		WriteError(w, http.StatusBadRequest, "تعذر الحفظ")
 		return
