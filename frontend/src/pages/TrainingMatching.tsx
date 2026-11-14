@@ -85,9 +85,6 @@ export function CurriculumTree() {
           })}
           {/* خانة ثابتة العرض حتى الكبسولات تصف وحدة جوّه الثانية */}
           <span className="w-16 text-center">
-            {n.parentId && n.audiences !== null && (
-              <button type="button" onClick={() => run(api.tcSetCurriculumAudiences(n.id, { inherit: true }))} className="text-[10px] text-slate-400 underline">مثل الي فوكه</button>
-            )}
             {!n.parentId && (eff.get(n.id) ?? []).length === 0 && <span className="text-[10px] font-bold text-amber-600">حدد الفئة</span>}
           </span>
         </span>
