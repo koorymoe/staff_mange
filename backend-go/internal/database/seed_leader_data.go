@@ -205,7 +205,7 @@ func seedSystemPriceCatalog(db *sqlx.DB) error {
 		if _, err := db.Exec(`
 			INSERT INTO "SystemPriceCatalog" (id, "systemName", "itemName", category, value)
 			VALUES ($1, $2, $3, $4, $5)
-			ON CONFLICT ("systemName", "itemName", category) DO UPDATE SET value = EXCLUDED.value
+			ON CONFLICT ("systemName", "itemName", category) DO NOTHING -- (11-15) تعديل المدير ما ينمسح
 		`, id, row.SystemName, row.ItemName, row.Category, row.Value); err != nil {
 			return err
 		}
@@ -221,7 +221,7 @@ func seedMaterialArchive(db *sqlx.DB) error {
 		if _, err := db.Exec(`
 			INSERT INTO "Material" (id, name, code, "sellPrice", "profitPerUnit")
 			VALUES ($1, $2, $3, $4, $5)
-			ON CONFLICT (code) DO UPDATE SET name = EXCLUDED.name, "sellPrice" = EXCLUDED."sellPrice", "profitPerUnit" = EXCLUDED."profitPerUnit"
+			ON CONFLICT (code) DO NOTHING -- (11-15) تعديل المدير ما ينمسح
 		`, id, row.Name, row.Code, row.SellPrice, row.ProfitPerUnit); err != nil {
 			return err
 		}

@@ -41,7 +41,7 @@ func (s *DuplicateCandidateService) List(kind, status string) ([]model.Duplicate
 
 func (s *DuplicateCandidateService) Dismiss(id, byEmployeeID string) error {
 	if id == "" {
-		return errors.New("id مطلوب")
+		return errors.New("المعرّف ناقص")
 	}
 	return s.repo.Dismiss(id, byEmployeeID)
 }

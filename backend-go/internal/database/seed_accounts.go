@@ -3,6 +3,7 @@ package database
 import (
 	"github.com/jmoiron/sqlx"
 	"golang.org/x/crypto/bcrypt"
+	"os"
 )
 
 // seedOwnerAccount يزرع/يحدّث حساب مالك النظام، حساب واحد فوق كل شي حتى فوق ADMIN
@@ -22,10 +23,21 @@ func seedOwnerAccount(db *sqlx.DB, username, password string) error {
 	if err != nil {
 		return err
 	}
+	// (دازاي 11-15) چان يرجّع الباسورد والحالة لقيمة الإعدادات بكل تشغيل — فتغيير الباسورد من
+	// التطبيق ينمحي. هسه: ينزرع إذا ماكو حساب بس. الإنقاذ (نسيت الباسورد): OWNER_FORCE_RESET=1
+	// بالإعدادات وأعد التشغيل مرة، وبعدها شيله.
+	if os.Getenv("OWNER_FORCE_RESET") == "1" {
+		_, err = db.Exec(`
+			INSERT INTO "Employee" (id, name, username, password, role, status, "jobTitle")
+			VALUES ('owner_root', 'المالك', $1, $2, 'OWNER', 'ACTIVE', 'مالك النظام')
+			ON CONFLICT (id) DO UPDATE SET username = $1, password = $2, role = 'OWNER', status = 'ACTIVE'
+		`, username, string(hashed))
+		return err
+	}
 	_, err = db.Exec(`
 		INSERT INTO "Employee" (id, name, username, password, role, status, "jobTitle")
 		VALUES ('owner_root', 'المالك', $1, $2, 'OWNER', 'ACTIVE', 'مالك النظام')
-		ON CONFLICT (id) DO UPDATE SET username = $1, password = $2, role = 'OWNER', status = 'ACTIVE'
+		ON CONFLICT (id) DO NOTHING
 	`, username, string(hashed))
 	return err
 }

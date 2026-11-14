@@ -374,7 +374,7 @@ func (h *BookingHandler) Schedule(w http.ResponseWriter, r *http.Request) {
 		ChangedByID string `json:"-"`
 	}
 	if err := DecodeJSON(r, &body); err != nil || body.ScheduledAt == "" {
-		WriteError(w, http.StatusBadRequest, "scheduledAt is required")
+		WriteError(w, http.StatusBadRequest, "حدد موعد الحجز")
 		return
 	}
 	booking, err := h.service.SetSchedule(r.PathValue("id"), middleware.EmployeeIDFromContext(r), body.ScheduledAt)

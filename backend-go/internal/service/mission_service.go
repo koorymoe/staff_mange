@@ -58,7 +58,7 @@ func parseIntPtr(s *string) *int {
 
 func (s *MissionService) Create(req model.CreateMissionRequest) (*model.Mission, error) {
 	if req.BookingID == "" || req.LeaderID == "" {
-		return nil, errors.New("bookingId و leaderId مطلوبين")
+		return nil, errors.New("اختار الحجز والليدر")
 	}
 	count, err := s.repo.CountAll()
 	if err != nil {
@@ -85,7 +85,7 @@ func (s *MissionService) EnsureForBooking(
 	bookingID, leaderID string, memberIDs []string, address *string, lat, lng *float64,
 ) error {
 	if bookingID == "" || leaderID == "" {
-		return errors.New("bookingId و leaderId مطلوبين")
+		return errors.New("اختار الحجز والليدر")
 	}
 	exists, err := s.repo.ExistsForBooking(bookingID)
 	if err != nil {
@@ -120,7 +120,7 @@ func (s *MissionService) BackfillOnce() {
 
 func (s *MissionService) UpdateStage(id string, req model.UpdateMissionStageRequest) (*model.Mission, error) {
 	if req.Stage == "" || req.EmployeeID == "" {
-		return nil, errors.New("stage و employeeId مطلوبين")
+		return nil, errors.New("اختار المرحلة والموظف")
 	}
 	existing, err := s.repo.FindByID(id)
 	if err != nil {

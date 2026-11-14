@@ -513,3 +513,76 @@ func (h *PermissionAccessHandler) SweepExpired() int {
 	}
 	return n
 }
+
+// ═══ «منين جاية» — الأدوار الجاية من المنصب (دازاي 11-15) ═══
+// «شلت منها الصلاحيات وبعدهن يرجعن»: الموظف بمنصب بالهيكل (مثلاً وحدة المراقبة) ياخذ دور
+// كامل (مراقب) يفتح الشاشات بدون أي صلاحية — فشيل الصلاحيات ما چان يأثر. هسه الشاشة تبين
+// كل دور ومنين جاي، والمدير يكدر يشيله (PermissionRevoke "role:X") أو يرجّعه.
+
+type orgRoleSource struct {
+	Role         string    `db:"role" json:"role"`
+	AssignmentID string    `db:"assignmentId" json:"assignmentId"`
+	DivisionName string    `db:"divisionName" json:"divisionName"`
+	UnitName     string    `db:"unitName" json:"unitName"`
+	Position     string    `db:"position" json:"position"`
+	Acting       bool      `db:"acting" json:"acting"`
+	StartedAt    time.Time `db:"startedAt" json:"startedAt"`
+	Revoked      bool      `db:"revoked" json:"revoked"`
+}
+
+// GET /api/employees/{id}/access/roles
+func (h *PermissionAccessHandler) OrgRoles(w http.ResponseWriter, r *http.Request) {
+	rows := []orgRoleSource{}
+	if err := h.db.Select(&rows, model.OrgRoleSourcesSQL(), r.PathValue("id")); err != nil {
+		WriteError(w, http.StatusInternalServerError, "تعذر جلب الأدوار")
+		return
+	}
+	WriteJSON(w, http.StatusOK, rows)
+}
+
+// POST /api/employees/{id}/access/roles {role, remove, reason}
+func (h *PermissionAccessHandler) SetOrgRole(w http.ResponseWriter, r *http.Request) {
+	var in struct {
+		Role   string `json:"role"`
+		Remove bool   `json:"remove"`
+		Reason string `json:"reason"`
+	}
+	if err := DecodeJSON(r, &in); err != nil || in.Role == "" {
+		WriteError(w, http.StatusBadRequest, "اختار الدور")
+		return
+	}
+	known := false
+	for _, x := range model.OrgRolePriority {
+		known = known || x == in.Role
+	}
+	if !known {
+		WriteError(w, http.StatusBadRequest, "دور غير معروف")
+		return
+	}
+	empID, actor := r.PathValue("id"), middleware.EmployeeIDFromContext(r)
+	key := model.RoleRevokeKey(in.Role)
+	tx, err := h.db.Beginx()
+	if err != nil {
+		WriteError(w, http.StatusInternalServerError, "تعذر الحفظ")
+		return
+	}
+	defer tx.Rollback()
+	action := "ROLE_RESTORE"
+	if in.Remove {
+		action = "ROLE_REVOKE"
+		_, err = tx.Exec(`INSERT INTO "PermissionRevoke" ("employeeId", permission, "revokedById") VALUES ($1, $2, NULLIF($3, ''))
+			ON CONFLICT ("employeeId", permission) DO NOTHING`, empID, key, actor)
+	} else {
+		_, err = tx.Exec(`DELETE FROM "PermissionRevoke" WHERE "employeeId" = $1 AND permission = $2`, empID, key)
+	}
+	if err != nil {
+		WriteError(w, http.StatusBadRequest, "تعذر الحفظ — تأكد من الموظف")
+		return
+	}
+	h.audit(tx, empID, actor, action, key, in.Reason)
+	if err := tx.Commit(); err != nil {
+		WriteError(w, http.StatusInternalServerError, "تعذر الحفظ")
+		return
+	}
+	h.OrgRoles(w, r)
+}

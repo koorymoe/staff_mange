@@ -92,7 +92,10 @@ func (r *EmployeeHandoverRepository) Handover(fromID, toID, byID string) (Handov
 			FROM "Employee" f WHERE t.id = $2 AND f.id = $1`},
 		// ٢) الصلاحيات ونطاق الإدارة
 		{&s.Permissions, `INSERT INTO "EmployeePermission" (id, "employeeId", "permissionId")
-			SELECT gen_random_uuid()::text, $2, "permissionId" FROM "EmployeePermission" WHERE "employeeId" = $1
+			SELECT gen_random_uuid()::text, $2, ep."permissionId" FROM "EmployeePermission" ep JOIN "Permission" p ON p.id = ep."permissionId"
+			WHERE ep."employeeId" = $1
+			  -- (دازاي 11-15) الصلاحية الي المدير شالها من المستلم بإيده ما ترجعله بالتسليم
+			  AND NOT EXISTS (SELECT 1 FROM "PermissionRevoke" rv WHERE rv."employeeId" = $2 AND rv.permission = p.name)
 			ON CONFLICT ("employeeId", "permissionId") DO NOTHING`},
 		{nil, `INSERT INTO "EmployeeAdminScope" ("employeeId", roles, "updatedById", "updatedAt")
 			SELECT $2, roles, NULL, now() FROM "EmployeeAdminScope" WHERE "employeeId" = $1

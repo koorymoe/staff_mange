@@ -46,7 +46,7 @@ func (s *ComplaintService) StatsByCustomer() ([]model.ComplaintCustomerStat, err
 
 func (s *ComplaintService) Create(req model.CreateComplaintRequest) (*model.Complaint, error) {
 	if req.CustomerID == "" || req.CreatedByEmployeeID == "" {
-		return nil, errors.New("customerId و createdByEmployeeId مطلوبين")
+		return nil, errors.New("اختار الزبون")
 	}
 	if req.Type == "" {
 		req.Type = "OTHER"

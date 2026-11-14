@@ -71,6 +71,32 @@ func autoMigrations() []Migration {
 			ALTER TABLE "Project" ADD COLUMN IF NOT EXISTS "waitingCustomerById" text;
 		`,
 		},
+		{
+			Version: "0492_seed_once",
+			SQL: `
+			CREATE TABLE IF NOT EXISTS "SeedOnce" (
+	"key" text NOT NULL,
+	"doneAt" timestamp with time zone DEFAULT now() NOT NULL
+);
+			ALTER TABLE "SeedOnce" ADD CONSTRAINT "SeedOnce_pkey" PRIMARY KEY (key);
+		`,
+		},
+		{
+			Version: "0493_delete_log",
+			SQL: `
+			CREATE TABLE IF NOT EXISTS "DeleteLog" (
+	"id" text NOT NULL,
+	"tableName" text NOT NULL,
+	"rowId" text NOT NULL,
+	"actorId" text,
+	"route" text NOT NULL,
+	"data" jsonb NOT NULL,
+	"createdAt" timestamp with time zone DEFAULT now() NOT NULL
+);
+			ALTER TABLE "DeleteLog" ADD CONSTRAINT "DeleteLog_pkey" PRIMARY KEY (id);
+			CREATE INDEX IF NOT EXISTS "DeleteLog_table_row_idx" ON public."DeleteLog" USING btree ("tableName", "rowId");
+		`,
+		},
 		// ‹makemigration› — التحديثات الجديدة تنضاف فوگ هالسطر
 	}
 }

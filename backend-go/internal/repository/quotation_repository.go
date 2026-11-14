@@ -293,7 +293,7 @@ func (r *QuotationRepository) Update(id string, req model.UpdateQuotationRequest
 		return nil, err
 	}
 	if existing == nil {
-		return nil, errors.New("Quotation not found")
+		return nil, errors.New("عرض السعر مو موجود")
 	}
 
 	discountPercent := existing.DiscountPercent

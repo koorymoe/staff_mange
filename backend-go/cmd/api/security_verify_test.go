@@ -239,8 +239,8 @@ func TestQuotationSystemPermissionGating(t *testing.T) {
 
 	respWithout := doRequest(t, http.MethodPost, srv.URL+"/api/quotations", tokenWithout, payload)
 	respWithout.Body.Close()
-	if respWithout.StatusCode != http.StatusForbidden {
-		t.Fatalf("expected 403 without quotation_system permission, got %d", respWithout.StatusCode)
+	if respWithout.StatusCode != http.StatusNotFound {
+		t.Fatalf("expected 404 without quotation_system permission, got %d", respWithout.StatusCode)
 	}
 
 	empIDWith, usernameWith := createTestEmployee(t, db, "TECHNICIAN")

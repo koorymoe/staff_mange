@@ -57,7 +57,7 @@ func (s *KpiService) ListForEmployee(employeeID string) ([]model.KpiEvaluation, 
 // المتصدر بالترتيب الشهري بعد هذا التقييم — إعلام بس، بدون أي تغيير تلقائي بالراتب.
 func (s *KpiService) Create(req model.CreateKpiEvaluationRequest) (*model.KpiEvaluation, error) {
 	if req.EmployeeID == "" || req.EvaluatorID == "" || req.Points == nil {
-		return nil, errors.New("employeeId, evaluatorId, and points are required")
+		return nil, errors.New("اختار الموظف والمقيّم والنقاط")
 	}
 
 	employee, empErr := s.employees.FindByID(req.EmployeeID)

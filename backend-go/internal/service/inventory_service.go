@@ -196,7 +196,7 @@ func (s *InventoryService) ListOnDemandTools() ([]model.OnDemandTool, error) {
 
 func (s *InventoryService) CreateOnDemandTool(req model.CreateOnDemandToolRequest) (*model.OnDemandTool, error) {
 	if req.Name == "" || req.Barcode == "" {
-		return nil, errors.New("name and barcode are required")
+		return nil, errors.New("اكتب الاسم والباركود")
 	}
 	// أداة جديدة توها ننضافت مو مسحوبة من قبل أي موظف بعد — لازم كل الكمية
 	// تكون متوفرة فوراً. الواجهة ما ترسل availableQuantity وقت الإضافة أصلاً
@@ -215,7 +215,7 @@ func (s *InventoryService) ListToolRequests(employeeID string) ([]model.ToolRequ
 
 func (s *InventoryService) CreateToolRequest(req model.CreateToolRequestRequest) (*model.ToolRequest, error) {
 	if req.EmployeeID == "" || req.ToolID == "" {
-		return nil, errors.New("employeeId and toolId are required")
+		return nil, errors.New("اختار الموظف والأداة")
 	}
 	if req.Reason == "" {
 		return nil, errors.New("لازم تختار سبب الطلب")
@@ -240,7 +240,7 @@ func (s *InventoryService) DeleteToolRequest(id string) error {
 
 func (s *InventoryService) ApproveToolRequest(id string, req model.ApproveToolRequestRequest) (*model.ToolRequest, error) {
 	if req.ApprovedByID == "" {
-		return nil, errors.New("approvedById is required")
+		return nil, errors.New("لازم يكون أكو موافق على الطلب")
 	}
 	existing, err := s.repo.GetToolRequest(id)
 	if err != nil {

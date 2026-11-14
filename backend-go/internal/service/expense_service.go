@@ -22,7 +22,7 @@ func (s *ExpenseService) List(employeeID string) ([]model.Expense, error) {
 
 func (s *ExpenseService) Create(req model.CreateExpenseRequest) (*model.Expense, error) {
 	if req.EmployeeID == "" || req.Amount == nil {
-		return nil, errors.New("employeeId and amount are required")
+		return nil, errors.New("اختار الموظف واكتب المبلغ")
 	}
 	if *req.Amount < 0 {
 		return nil, errors.New("مبلغ المصروف ما يصير يكون بالسالب")
@@ -55,7 +55,7 @@ func (s *ExpenseService) Create(req model.CreateExpenseRequest) (*model.Expense,
 
 func (s *ExpenseService) UpdateStatus(id string, req model.UpdateExpenseStatusRequest) (*model.Expense, error) {
 	if req.Status != "APPROVED" && req.Status != "REJECTED" {
-		return nil, errors.New("status must be APPROVED or REJECTED")
+		return nil, errors.New("القرار لازم يكون موافقة أو رفض")
 	}
 	return s.repo.UpdateStatus(id, req.Status)
 }

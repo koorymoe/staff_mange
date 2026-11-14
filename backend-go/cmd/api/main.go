@@ -1219,6 +1219,8 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	accessApp.Set("GET /api/permissions/catalog", "access.catalog", accessHandler.Catalog)
 	peopleApp.Set("GET /api/employees/{id}/access", "people.access_view", accessHandler.Access)
 	peopleApp.Set("PUT /api/employees/{id}/access", "people.access_set", accessHandler.Save)
+	peopleApp.Set("GET /api/employees/{id}/access/roles", "people.access_view", accessHandler.OrgRoles)
+	peopleApp.Set("POST /api/employees/{id}/access/roles", "people.access_set", accessHandler.SetOrgRole)
 	accessApp.Set("GET /api/permissions/role-drift", "access.role_drift", accessHandler.RoleDrift)
 	accessApp.Set("POST /api/permissions/role-drift/{id}/align", "access.role_drift_fix", accessHandler.Align)
 	accessApp.Set("POST /api/permissions/exceptions", "access.exception_add", accessHandler.AddException)
@@ -1238,7 +1240,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	secs["skills"].Set("GET /api/skills", "skills.get_root", serviceHandler.ListSkills)
 	secs["services"].Set("POST /api/services", "services.post_root", serviceHandler.Create)
 	secs["services"].Set("POST /api/services/{id}/skills", "services.post_by_id_skills", serviceHandler.CreateSkill)
-	secs["services"].Set("DELETE /api/services/{id}", "services.delete_by_id", serviceHandler.Delete)
+	secs["services"].Set("DELETE /api/services/{id}", "services.delete_by_id", serviceHandler.Delete, handler.DeleteLogged(db, "Service", "id"))
 	// ⚠️ إداري بس: هذا يحدد **منو مسؤول عن ورق** خدمة كاملة — قرار
 	// تنظيمي مو تفضيل شخصي.
 	// ⚠️ `requireAuth` بس ومقصود: الاستعلام محصور بالبناء على خدمات
@@ -1668,7 +1670,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	secs["announcements"].Set("GET /api/announcements", "announcements.get_root", announcementHandler.List)
 	secs["announcements"].Set("POST /api/announcements", "announcements.post_root", announcementHandler.Create)
 	secs["announcements"].Set("PUT /api/announcements/{id}/active", "announcements.put_by_id_active", announcementHandler.SetActive)
-	secs["announcements"].Set("DELETE /api/announcements/{id}", "announcements.delete_by_id", announcementHandler.Delete)
+	secs["announcements"].Set("DELETE /api/announcements/{id}", "announcements.delete_by_id", announcementHandler.Delete, handler.DeleteLogged(db, "Announcement", "id"))
 	// ⚠️⚠️ قبل هذا السطر ماكو حارس صلاحية إطلاقاً هنا — أي موظف مسجّل
 	// دخول (حتى فني بالميدان) يقدر يستدعي المسار ويشوف كل البلاغات،
 	// لأن `ListIssues` تفلتر حسب الدور بس (جودة/كوادر/محاسب) وتترك
@@ -1921,7 +1923,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	secs["kpi"].Set("GET /api/kpi/leaderboard/{role}", "kpi.get_leaderboard_by_role", kpiHandler.RoleLeaderboard)
 	secs["kpi"].Set("GET /api/kpi/leaderboard-by-permission/{permission}", "kpi.get_leaderboard_by_permission_by_permission", kpiHandler.PermissionLeaderboard)
 	secs["kpi"].Set("POST /api/kpi", "kpi.post_root", kpiHandler.Create)
-	secs["kpi"].Set("DELETE /api/kpi/{id}", "kpi.delete_by_id", kpiHandler.Delete)
+	secs["kpi"].Set("DELETE /api/kpi/{id}", "kpi.delete_by_id", kpiHandler.Delete, handler.DeleteLogged(db, "KpiEvaluation", "id"))
 	secs["kpi"].Set("PUT /api/kpi/{id}/cancel", "kpi.put_by_id_cancel", kpiHandler.Cancel)
 	peopleApp.Set("POST /api/employees/{id}/complete-training", "people.training_done", kpiHandler.CompleteTraining)
 
@@ -1941,7 +1943,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	meApp.Set("POST /api/stories/{id}/advance", "me.story_advance", storyHandler.Advance)
 
 	secs["kpi_criteria"].Set("POST /api/kpi-criteria", "kpi_criteria.post_root", kpiCriterionHandler.Create)
-	secs["kpi_criteria"].Set("DELETE /api/kpi-criteria/{id}", "kpi_criteria.delete_by_id", kpiCriterionHandler.Delete)
+	secs["kpi_criteria"].Set("DELETE /api/kpi-criteria/{id}", "kpi_criteria.delete_by_id", kpiCriterionHandler.Delete, handler.DeleteLogged(db, "KpiCriterion", "id"))
 
 	// تقييم الأداء التلقائي (Smart KPI) — الرانك الأسبوعي/الشهري للفنيين
 	secs["smart_kpi"].Set("GET /api/smart-kpi/technician/{employeeId}", "smart_kpi.get_technician_by_employeeid", smartKpiHandler.Technician)
@@ -1993,7 +1995,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	secs["training"].Set("GET /api/training/materials", "training.get_materials", trainingHandler.ListMaterials)
 	secs["training"].Set("POST /api/training/materials", "training.post_materials", trainingHandler.CreateMaterial)
 	secs["training"].Set("PUT /api/training/materials/{id}", "training.put_materials_by_id", trainingHandler.UpdateMaterial)
-	secs["training"].Set("DELETE /api/training/materials/{id}", "training.delete_materials_by_id", trainingHandler.DeleteMaterial)
+	secs["training"].Set("DELETE /api/training/materials/{id}", "training.delete_materials_by_id", trainingHandler.DeleteMaterial, handler.DeleteLogged(db, "TrainingMaterial", "id"))
 
 	// تتبع المهام (missions)
 	// (فحص 10-11) كل المهمات (مواقع الزبائن والحركة) لأهل المتابعة بس — الفني يشوف مهامه بـ/my
@@ -2060,7 +2062,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	secs["projects"].Set("GET /api/projects/monitor-watch", "projects.get_monitor_watch", quoteWatch.WatchList)
 	secs["projects"].Set("DELETE /api/projects/{id}", "projects.delete_by_id", projectHandler.Delete)
 	// (ع) 10-19: حذف نهائي للمرفوض بسبب — نفس حارس الحذف، ونسخته تنحفظ بـ"DeletedProject".
-	secs["projects"].Set("DELETE /api/projects/{id}/purge", "projects.delete_by_id_purge", projectHandler.Purge)
+	secs["projects"].Set("DELETE /api/projects/{id}/purge", "projects.delete_by_id_purge", projectHandler.Purge, handler.DeleteLogged(db, "Project", "id"))
 	// حذف ملف العقد المرفوع — لمدير النظام حصراً
 	secs["projects"].Set("DELETE /api/projects/{id}/contract", "projects.delete_by_id_contract", projectHandler.DeleteContract)
 
@@ -2081,7 +2083,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	secs["vip_customers"].Set("POST /api/vip-customers", "vip_customers.post_root", vipCustomerHandler.Mark)
 	secs["vip_customers"].Set("DELETE /api/vip-customers/{customerId}", "vip_customers.delete_by_customerid", vipCustomerHandler.Unmark)
 	secs["project_work_types"].Set("POST /api/project-work-types", "project_work_types.post_root", projectWorkTypeHandler.Create)
-	secs["project_work_types"].Set("DELETE /api/project-work-types/{id}", "project_work_types.delete_by_id", projectWorkTypeHandler.Delete)
+	secs["project_work_types"].Set("DELETE /api/project-work-types/{id}", "project_work_types.delete_by_id", projectWorkTypeHandler.Delete, handler.DeleteLogged(db, "ProjectWorkType", "id"))
 
 	// الكشوفات: فورمات فارغة يطبعها المهندس، يمليها بالموقع، وبعدين يرفع صور
 	// الفورمة المالية — أي موظف مسجل دخول يقدر ينشئ/يرفع (مو حصراً مدير مشاريع).
@@ -2152,7 +2154,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 		[]string{"ADMIN", "OWNER"}, "design_forms")
 	secs["design_forms"].Set("GET /api/design-forms", "design_forms.get_root", designFormHandler.ListForms, requireDesignForms)
 	secs["design_forms"].Set("POST /api/design-forms", "design_forms.post_root", designFormHandler.CreateForm, requireDesignForms)
-	secs["design_forms"].Set("DELETE /api/design-forms/{id}", "design_forms.delete_by_id", designFormHandler.DeleteForm, requireDesignForms)
+	secs["design_forms"].Set("DELETE /api/design-forms/{id}", "design_forms.delete_by_id", designFormHandler.DeleteForm, requireDesignForms, handler.DeleteLogged(db, "DesignForm", "id"))
 	secs["design_forms"].Set("GET /api/design-forms/{formId}/submissions", "design_forms.get_by_formid_submissions", designFormHandler.ListSubmissions, requireDesignForms)
 	secs["design_forms"].Set("GET /api/design-forms/{formId}/questions", "design_forms.get_by_formid_questions", designFormHandler.List, requireDesignForms)
 	secs["design_forms"].Set("POST /api/design-forms/{formId}/questions", "design_forms.post_by_formid_questions", designFormHandler.Create, requireDesignForms)
@@ -2332,7 +2334,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	secs["privacy_policy"].Set("GET /api/privacy-policy/acceptances/{employeeId}", "privacy_policy.get_acceptances_by_employeeid", privacyPolicyHandler.Acceptances)
 	secs["privacy_policy"].Set("POST /api/privacy-policy", "privacy_policy.post_root", privacyPolicyHandler.Create)
 	secs["privacy_policy"].Set("PUT /api/privacy-policy/{id}", "privacy_policy.put_by_id", privacyPolicyHandler.Update)
-	secs["privacy_policy"].Set("DELETE /api/privacy-policy/{id}", "privacy_policy.delete_by_id", privacyPolicyHandler.Delete)
+	secs["privacy_policy"].Set("DELETE /api/privacy-policy/{id}", "privacy_policy.delete_by_id", privacyPolicyHandler.Delete, handler.DeleteLogged(db, "PrivacyPolicyPoint", "id"))
 
 	// بحث المناطق يمر من سيرفرنا — خدمة الخرائط تحجب المتصفحات
 	secs["geo"].Set("GET /api/geo/search", "geo.get_search", geoHandler.Search)
@@ -2344,14 +2346,14 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	requestsApp.Set("POST /api/tech-suppliers", "requests.tech_supplier", techSupplierHandler.Create)
 	secs["tech_suppliers"].Set("GET /api/tech-suppliers", "tech_suppliers.get_root", techSupplierHandler.All)
 	secs["tech_suppliers"].Set("PUT /api/tech-suppliers/{id}", "tech_suppliers.put_by_id", techSupplierHandler.Update)
-	secs["tech_suppliers"].Set("DELETE /api/tech-suppliers/{id}", "tech_suppliers.delete_by_id", techSupplierHandler.Delete)
+	secs["tech_suppliers"].Set("DELETE /api/tech-suppliers/{id}", "tech_suppliers.delete_by_id", techSupplierHandler.Delete, handler.DeleteLogged(db, "TechSupplier", "id"))
 	secs["tech_suppliers"].Set("PUT /api/tech-suppliers/access/{employeeId}", "tech_suppliers.put_access_by_employeeid", techSupplierHandler.SetAccess)
 	secs["suppliers"].Set("GET /api/suppliers", "suppliers.get_root", supplierHandler.List)
 	secs["suppliers"].Set("POST /api/suppliers", "suppliers.post_root", supplierHandler.Create)
 	secs["suppliers"].Set("PUT /api/suppliers/{id}", "suppliers.put_by_id", supplierHandler.Update)
 	// الحذف داخل نفس صلاحية إدارة الموردين — منو يقدر يضيف ويعدل يقدر يحذف،
 	// حتى ما يضطر يرجع للأدمن على كل مورد غلط.
-	secs["suppliers"].Set("DELETE /api/suppliers/{id}", "suppliers.delete_by_id", supplierHandler.Delete)
+	secs["suppliers"].Set("DELETE /api/suppliers/{id}", "suppliers.delete_by_id", supplierHandler.Delete, handler.DeleteLogged(db, "Supplier", "id"))
 	secs["suppliers"].Set("POST /api/suppliers/{id}/rate", "suppliers.post_by_id_rate", supplierHandler.Rate)
 
 	// عروض الأسعار (quotations)
@@ -2404,7 +2406,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	secs["quotation_annex_templates"].Set("PUT /api/quotation-annex-templates", "quotation_annex_templates.put_root", annexHandler.Save, requireQuotationAccess)
 	secs["quotations"].Set("POST /api/quotations", "quotations.post_root", quotationHandler.Create, allowQuotationOrDelegate)
 	secs["quotations"].Set("PUT /api/quotations/{id}", "quotations.put_by_id", quotationHandler.Update, allowQuotationOrDelegate)
-	secs["quotations"].Set("DELETE /api/quotations/{id}", "quotations.delete_by_id", quotationHandler.Delete)
+	secs["quotations"].Set("DELETE /api/quotations/{id}", "quotations.delete_by_id", quotationHandler.Delete, handler.DeleteLogged(db, "Quotation", "id"))
 	secs["projects"].Set("GET /api/projects/{projectId}/quotation-candidates", "projects.get_by_projectid_quotation_candidates", quotationHandler.LinkCandidates) // الصلاحية بالخدمة: الرفض 404
 	secs["projects"].Set("POST /api/projects/{projectId}/link-quotation", "projects.post_by_projectid_link_quotation", quotationHandler.LinkToProject)            // الصلاحية بالخدمة: الرفض 404
 	// 🖼️ (ل) 11-10: مكتبة صور أنواع العمل — كل عرض ياخذ صورة غير حسب فصوله
@@ -2427,7 +2429,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	specsSuggest := &handler.ProductSpecsSuggest{}
 	// (11-10 بلاغ #17) مؤمل يريد المواصفات تطلع من الموديل وهو يكتب عرض المشاريع — صاحب عروض الأسعار هم.
 	secs["products"].Set("POST /api/products/specs-suggest", "products.post_specs_suggest", specsSuggest.Suggest, guards.AnyPermission("content_technician", service.QuotationPermCreate, service.QuotationPermEditOwn, service.QuotationPermManageAll, "quotation_system"))
-	secs["products"].Set("DELETE /api/products/{id}", "products.delete_by_id", productHandler.Delete)
+	secs["products"].Set("DELETE /api/products/{id}", "products.delete_by_id", productHandler.Delete, handler.DeleteLogged(db, "Product", "id"))
 
 	// نظام GPS — عملاء / شرائح SIM / طلبات الأجهزة / التجديد / الصيانة / الأسعار / الإحصائيات
 	// الإنشاء/التعديل بكل موارد GPS يتطلب صلاحية "gps_system" فعلياً (نفس الصلاحية
@@ -2549,7 +2551,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	secs["training_programs"].Set("POST /api/training-programs", "training_programs.post_root", trainingProgramHandler.Create)
 	secs["training_programs"].Set("PUT /api/training-programs/{id}", "training_programs.put_by_id", trainingProgramHandler.Update)
 	secs["training_programs"].Set("PUT /api/training-programs/{id}/complete", "training_programs.put_by_id_complete", trainingProgramHandler.Complete)
-	secs["training_programs"].Set("DELETE /api/training-programs/{id}", "training_programs.delete_by_id", trainingProgramHandler.Delete)
+	secs["training_programs"].Set("DELETE /api/training-programs/{id}", "training_programs.delete_by_id", trainingProgramHandler.Delete, handler.DeleteLogged(db, "TrainingProgram", "id"))
 
 	// تقرير ١ (B12): تركيبات الزبائن وأسعارها والمخزن — لأصحاب الطاقة الشمسية بس.
 	// (كتالوج المنظومات /solar/systems يبقى مفتوح لأن الحجز وعرض السعر يقرونه.)
@@ -2568,13 +2570,13 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	secs["solar"].Set("GET /api/solar/components", "solar.get_components", solarHandler.ListComponents)
 	secs["solar"].Set("POST /api/solar/components", "solar.post_components", solarHandler.CreateComponent)
 	secs["solar"].Set("PUT /api/solar/components/{id}", "solar.put_components_by_id", solarHandler.UpdateComponent)
-	secs["solar"].Set("DELETE /api/solar/components/{id}", "solar.delete_components_by_id", solarHandler.DeleteComponent)
+	secs["solar"].Set("DELETE /api/solar/components/{id}", "solar.delete_components_by_id", solarHandler.DeleteComponent, handler.DeleteLogged(db, "SolarComponent", "id"))
 
 	secs["solar"].Set("GET /api/solar/systems", "solar.get_systems", solarHandler.ListSystems)
 	secs["solar"].Set("GET /api/solar/systems/{id}", "solar.get_systems_by_id", solarHandler.GetSystem)
 	secs["solar"].Set("POST /api/solar/systems", "solar.post_systems", solarHandler.CreateSystem)
 	secs["solar"].Set("PUT /api/solar/systems/{id}", "solar.put_systems_by_id", solarHandler.UpdateSystem)
-	secs["solar"].Set("DELETE /api/solar/systems/{id}", "solar.delete_systems_by_id", solarHandler.DeleteSystem)
+	secs["solar"].Set("DELETE /api/solar/systems/{id}", "solar.delete_systems_by_id", solarHandler.DeleteSystem, handler.DeleteLogged(db, "SolarSystem", "id"))
 
 	// التجهيز يخصم من المخزن فعلياً — صلاحية إجبارية
 	secs["solar"].Set("POST /api/solar/systems/{id}/process", "solar.post_systems_by_id_process", solarHandler.ProcessSystem)
@@ -2675,7 +2677,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	// أضيق من صلاحية "إدارة المركبات" العامة (vehicle_management) المستخدمة لبقية
 	// عمليات السيارة (سجلات، وثائق، صور...)، بناءً على طلب صريح من مالك النظام.
 	secs["vehicles"].Set("PUT /api/vehicles/{id}", "vehicles.put_by_id", vehicleHandler.Update)
-	secs["vehicles"].Set("DELETE /api/vehicles/{id}", "vehicles.delete_by_id", vehicleHandler.Delete)
+	secs["vehicles"].Set("DELETE /api/vehicles/{id}", "vehicles.delete_by_id", vehicleHandler.Delete, handler.DeleteLogged(db, "Vehicle", "id"))
 
 	// ملف السيارة الكامل: وثائق وصور
 	secs["vehicles"].Set("GET /api/vehicles/{id}/documents", "vehicles.get_by_id_documents", vehicleHandler.ListDocuments)
@@ -2846,7 +2848,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	secs["it"].Set("GET /api/it/assets", "it.get_assets", itAssetHandler.List)
 	secs["it"].Set("POST /api/it/assets", "it.post_assets", itAssetHandler.Create)
 	secs["it"].Set("PUT /api/it/assets/{id}", "it.put_assets_by_id", itAssetHandler.Update)
-	secs["it"].Set("DELETE /api/it/assets/{id}", "it.delete_assets_by_id", itAssetHandler.Delete)
+	secs["it"].Set("DELETE /api/it/assets/{id}", "it.delete_assets_by_id", itAssetHandler.Delete, handler.DeleteLogged(db, "ItAsset", "id"))
 	secs["it"].Set("GET /api/it/assets/{id}/logs", "it.get_assets_by_id_logs", itAssetHandler.Logs)
 	secs["it"].Set("POST /api/it/assets/{id}/logs", "it.post_assets_by_id_logs", itAssetHandler.AddLog)
 	secs["it"].Set("GET /api/it/stats", "it.get_stats", itAssetHandler.Stats)

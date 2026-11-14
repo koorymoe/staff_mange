@@ -26,7 +26,7 @@ func (s *ProductService) ListAdded() ([]model.Product, error) {
 
 func (s *ProductService) Create(req model.CreateProductRequest, createdByID string) (*model.Product, error) {
 	if req.Name == "" {
-		return nil, errors.New("name is required")
+		return nil, errors.New("اكتب الاسم")
 	}
 	if req.DefaultPrice != nil && *req.DefaultPrice < 0 {
 		return nil, errors.New("السعر الافتراضي ما يصير يكون بالسالب")

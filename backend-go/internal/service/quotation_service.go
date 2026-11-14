@@ -86,7 +86,7 @@ func (s *QuotationService) Get(id, actorID, role string) (*model.Quotation, erro
 		return nil, err
 	}
 	if q == nil {
-		return nil, errors.New("Quotation not found")
+		return nil, errors.New("عرض السعر مو موجود")
 	}
 	if model.IsAdminRole(role) {
 		return q, nil
@@ -112,7 +112,7 @@ func (s *QuotationService) Create(req model.CreateQuotationRequest, actorID, rol
 		req.CreatedByEmployeeID = actorID
 	}
 	if req.CustomerName == "" || req.CreatedByEmployeeID == "" {
-		return nil, errors.New("customerName and createdByEmployeeId are required")
+		return nil, errors.New("اكتب اسم الزبون")
 	}
 	if err := validateQuotationAmounts(req.Items, req.DiscountPercent); err != nil {
 		return nil, err
@@ -147,7 +147,7 @@ func (s *QuotationService) Update(id, actorID, role string, req model.UpdateQuot
 		return nil, err
 	}
 	if existing == nil {
-		return nil, errors.New("Quotation not found")
+		return nil, errors.New("عرض السعر مو موجود")
 	}
 	if role != "ADMIN" && role != "OWNER" {
 		hasManageAll, hasEditOwn, err := s.actorPerms(actorID)

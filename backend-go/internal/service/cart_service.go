@@ -21,7 +21,7 @@ func (s *CartService) ListForBooking(bookingID string) ([]model.CartItem, error)
 
 func (s *CartService) Create(bookingID string, req model.CreateCartItemRequest) (*model.CartItem, error) {
 	if req.ProductName == "" || req.Quantity == nil || req.UnitPrice == nil {
-		return nil, errors.New("productName, quantity, and unitPrice are required")
+		return nil, errors.New("اكتب اسم المنتج والكمية والسعر")
 	}
 	return s.repo.Create(bookingID, req.ProductName, *req.Quantity, *req.UnitPrice, req.Notes)
 }

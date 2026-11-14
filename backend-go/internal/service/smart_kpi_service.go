@@ -72,10 +72,10 @@ func (s *SmartKpiService) CalculateTechnicianKpi(employeeID, month string) (*mod
 
 	employee, err := s.repo.GetEmployeeForKpi(employeeID)
 	if err != nil {
-		return nil, errors.New("Employee not found")
+		return nil, errors.New("الموظف مو موجود")
 	}
 	if employee.Role != "TECHNICIAN" {
-		return nil, errors.New("Employee is not a technician")
+		return nil, errors.New("الموظف مو فني")
 	}
 
 	// 1. Completed bookings via assignments

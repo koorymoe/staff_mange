@@ -68,20 +68,23 @@ func Migrate(db *sqlx.DB, ownerUsername, ownerPassword string) error {
 	if err := migrateGpsEngineersToSkill(db); err != nil {
 		return err
 	}
-	if err := seedEngineeringSkills(db); err != nil {
+	if err := adoptLegacySeeds(db); err != nil {
 		return err
 	}
-	if err := seedLegacySkills(db); err != nil {
+	if err := seedOnce(db, "engineering_skills", seedEngineeringSkills); err != nil {
+		return err
+	}
+	if err := seedOnce(db, "legacy_skills", seedLegacySkills); err != nil {
 		return err
 	}
 	if err := seedDefaultSkillForServices(db); err != nil {
 		return err
 	}
-	if err := seedDecorSkills(db); err != nil {
+	if err := seedOnce(db, "decor_skills", seedDecorSkills); err != nil {
 		return err
 	}
 	// مهارات نظام الطاقة الشمسية المنقول — الجديدة بس، والموجودة تضل مثل ما هي
-	if err := seedSolarSkills(db); err != nil {
+	if err := seedOnce(db, "solar_skills", seedSolarSkills); err != nil {
 		return err
 	}
 	// مختبر المحاكاة — محتوى المرحلة الأولى.
@@ -181,13 +184,13 @@ func Migrate(db *sqlx.DB, ownerUsername, ownerPassword string) error {
 	if err := seedOwnerAccount(db, ownerUsername, ownerPassword); err != nil {
 		return err
 	}
-	if err := seedKpiCriteria(db); err != nil {
+	if err := seedOnce(db, "kpi_criteria", seedKpiCriteria); err != nil {
 		return err
 	}
-	if err := seedSystemPriceCatalog(db); err != nil {
+	if err := seedOnce(db, "system_price_catalog", seedSystemPriceCatalog); err != nil {
 		return err
 	}
-	if err := seedMaterialArchive(db); err != nil {
+	if err := seedOnce(db, "material_archive", seedMaterialArchive); err != nil {
 		return err
 	}
 	return dropAttendanceDailyUniqueConstraint(db)

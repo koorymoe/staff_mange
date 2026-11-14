@@ -225,7 +225,8 @@ func recordViolationAndBlock(w http.ResponseWriter, r *http.Request, employees *
 		return
 	}
 	RecordViolation(r, employees, notifications, employeeID)
-	writeError(w, http.StatusForbidden, "لا تملك صلاحية الوصول لهذه العملية")
+	// (دازاي 11-15) قاعدة النظام: الرفض = 404 — الي ما مسموحله ما يعرف حتى إن الشي موجود.
+	writeError(w, http.StatusNotFound, "لا تملك صلاحية الوصول لهذه العملية")
 }
 
 // RecordViolation يسجّل محاولة وصول مرفوضة (العدّ، الحظر التلقائي على الكتابات،
@@ -484,7 +485,7 @@ func RequireOwnerOnly(message string) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			if role, _ := r.Context().Value(ContextRole).(string); role != "OWNER" {
-				writeError(w, http.StatusForbidden, message)
+				writeError(w, http.StatusNotFound, message) // (11-15) الرفض = 404
 				return
 			}
 			next.ServeHTTP(w, r)

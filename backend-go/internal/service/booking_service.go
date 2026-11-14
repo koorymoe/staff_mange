@@ -140,7 +140,7 @@ func (s *BookingService) ListManagerPaperwork(employeeID string) ([]model.Bookin
 
 func (s *BookingService) Create(req model.CreateBookingRequest) (*model.Booking, error) {
 	if req.CustomerID == "" {
-		return nil, errors.New("customerId is required")
+		return nil, errors.New("اختار الزبون")
 	}
 
 	seq, err := s.repo.NextSequenceNumber()
@@ -380,7 +380,7 @@ func (s *BookingService) SetSchedule(id, changedByID, scheduledAt string) (*mode
 		return nil, err
 	}
 	if existing == nil {
-		return nil, errors.New("Booking not found")
+		return nil, errors.New("الحجز مو موجود")
 	}
 
 	var oldTime *string
@@ -429,7 +429,7 @@ func (s *BookingService) ensureNotProjectLocked(id string) error {
 		return err
 	}
 	if b == nil {
-		return errors.New("Booking not found")
+		return errors.New("الحجز مو موجود")
 	}
 	if b.TransferToProjects && b.ProjectExecutionAt == nil {
 		return errors.New("هذا الحجز عند إدارة المشاريع — ما تكدر تنسّقه لحد ما يوصل مرحلة التنفيذ")
@@ -465,7 +465,7 @@ func (s *BookingService) Assign(id string, req model.AssignBookingRequest, edito
 		return nil, err
 	}
 	if req.EmployeeID == "" || req.Role == "" {
-		return nil, errors.New("employeeId and role are required")
+		return nil, errors.New("اختار الموظف ودوره")
 	}
 
 	booking, err := s.repo.FindByID(id)
@@ -473,7 +473,7 @@ func (s *BookingService) Assign(id string, req model.AssignBookingRequest, edito
 		return nil, err
 	}
 	if booking == nil {
-		return nil, errors.New("Booking not found")
+		return nil, errors.New("الحجز مو موجود")
 	}
 
 	skillWarning := false

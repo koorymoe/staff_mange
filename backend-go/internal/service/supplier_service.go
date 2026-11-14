@@ -21,7 +21,7 @@ func (s *SupplierService) ListSpecialties() ([]model.SupplierSpecialty, error) {
 
 func (s *SupplierService) CreateSpecialty(req model.CreateSupplierSpecialtyRequest) (*model.SupplierSpecialty, error) {
 	if req.Name == "" {
-		return nil, errors.New("name is required")
+		return nil, errors.New("اكتب الاسم")
 	}
 	exists, err := s.repo.SpecialtyExists(req.Name)
 	if err != nil {

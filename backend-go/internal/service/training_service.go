@@ -37,7 +37,7 @@ func (s *TrainingService) Assignments(employeeID string) ([]model.Service, error
 
 func (s *TrainingService) SetAssignments(employeeID string, req model.SetTrainingAssignmentsRequest) ([]model.Service, error) {
 	if req.ServiceIDs == nil {
-		return nil, errors.New("serviceIds must be an array")
+		return nil, errors.New("الخدمات لازم تكون قائمة")
 	}
 	if err := s.repo.SetAssignments(employeeID, req.ServiceIDs); err != nil {
 		return nil, err
@@ -51,7 +51,7 @@ func (s *TrainingService) ListMaterials(serviceID string) ([]model.TrainingMater
 
 func (s *TrainingService) CreateMaterial(req model.CreateTrainingMaterialRequest) (*model.TrainingMaterial, error) {
 	if req.ServiceID == "" || req.Title == "" || req.URL == "" {
-		return nil, errors.New("serviceId, title and url are required")
+		return nil, errors.New("اختار الخدمة واكتب العنوان والرابط")
 	}
 	materialType := "VIDEO"
 	if req.Type != nil {
