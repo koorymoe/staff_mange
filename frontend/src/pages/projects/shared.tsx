@@ -5,6 +5,7 @@ import { roleLabelShort } from '../../roleLabels'
 import { askConfirm, askInput } from '../../ui/dialogs'
 import { swallow } from '../../utils/swallow'
 
+import { notify } from '../../ui/notify'
 // ⚠️ چانت عندها طريقة اتصال خاصة (من أصلها كنظام منفصل) — هسه الموحدة.
 export const request = apiRequest
 
@@ -299,12 +300,12 @@ export function useCanUploadProjectSurvey(project: Project) {
 export async function restoreRejected(p: { id: string; name: string }, done: () => void) {
   const reason = (await askInput(`ترجّع «${p.name}» للمشاريع؟ يرجع لنفس المرحلة الي چان بيها قبل الرفض.\nاكتب السبب (مثلاً: الزبون رجع واتصل):`))
   if (reason === null) return
-  if (reason.trim().length < 3) { alert('اكتب السبب'); return }
+  if (reason.trim().length < 3) { notify('اكتب السبب'); return }
   try {
     const r = await api.restoreProject(p.id, reason.trim())
-    alert(`رجع المشروع ✅ — مرحلته هسه: ${r.stage}`)
+    notify(`رجع المشروع ✅ — مرحلته هسه: ${r.stage}`, 'success')
     done()
-  } catch (e) { alert(e instanceof Error ? e.message : 'تعذّر الإرجاع') }
+  } catch (e) { notify(e instanceof Error ? e.message : 'تعذّر الإرجاع') }
 }
 
 // حذف نهائي للمرفوض — (ع) 10-19: «مع طلب السبب». نفس حارس الخادم (ADMIN/PROJECT_MANAGER).
@@ -316,11 +317,11 @@ export function useCanPurge() {
 export async function purgeRejected(p: { id: string; name: string }, done: () => void) {
   const reason = (await askInput(`🗑️ حذف «${p.name}» نهائياً؟ ينشال من كل الشاشات وما يرجع.\nاكتب سبب الحذف:`))
   if (reason === null) return
-  if (reason.trim().length < 3) { alert('اكتب سبب الحذف'); return }
+  if (reason.trim().length < 3) { notify('اكتب سبب الحذف'); return }
   if (!(await askConfirm(`متأكد؟ «${p.name}» ينحذف نهائياً.`))) return
   try {
     await api.purgeProject(p.id, reason.trim())
-    alert('انحذف المشروع ✅')
+    notify('انحذف المشروع ✅', 'success')
     done()
-  } catch (e) { alert(e instanceof Error ? e.message : 'تعذّر الحذف') }
+  } catch (e) { notify(e instanceof Error ? e.message : 'تعذّر الحذف') }
 }

@@ -73,7 +73,7 @@ export default function CoreAdminPage() {
   return (
     <div className="space-y-4 p-4" dir="rtl">
       <header className="space-y-1">
-        <h1 className="text-xl font-extrabold text-slate-900">🗄️ لوحة الأدمن</h1>
+        <h1 className="text-xl font-extrabold text-slate-900">🗄️ لوحة مدير النظام</h1>
         <p className="text-sm text-slate-600">كل جداول قاعدة البيانات — تصفّح وبحث{canEdit ? '، وتعديل' : ''}{canCreate ? ' وإضافة' : ''}. ماكو حذف، والسجلات ما تتعدّل، وكلمات السر والتوكنات مخفية دائماً.</p>
         {canLog && (
           <button type="button" onClick={() => (log ? setLog(null) : api.getCoreEditLog().then(setLog).catch((e: Error) => setError(e.message)))}

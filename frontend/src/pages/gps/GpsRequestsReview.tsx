@@ -3,6 +3,7 @@ import { api, type Employee, type GpsDeviceRequest, type GpsSimCard } from '../.
 import { useSession, hasGpsSkill } from '../../session'
 import { escDeep } from '../../utils/printIdentity'
 
+import { notify } from '../../ui/notify'
 const subLabel = (t: string) => t === 'THREE_MONTHS' ? '3 أشهر' : t === 'SIX_MONTHS' ? '6 أشهر' : 'سنوي'
 const subDays = (t: string) => t === 'THREE_MONTHS' ? 90 : t === 'SIX_MONTHS' ? 180 : 365
 
@@ -57,11 +58,11 @@ export default function GpsRequestsReview({ embedded }: { embedded?: boolean } =
   const activate = async () => {
     if (!selected) return
     if (selected.purchaseType === 'DEVICE_ONLY' && (!checks.checked || !checks.activated || !checks.delivered)) {
-      alert('يرجى تأكيد جميع الخطوات أولاً'); return
+      notify('يرجى تأكيد جميع الخطوات أولاً'); return
     }
-    if (!activationDate) { alert('يرجى إدخال تاريخ التفعيل أولاً'); return }
-    if (!credentialsMessage.trim()) { alert('يرجى كتابة اليوزر والباسورد الخاص بالزبون أولاً'); return }
-    if (needsSim && !simCardId) { alert('اختر شريحة من الشرائح المتوفرة أولاً'); return }
+    if (!activationDate) { notify('يرجى إدخال تاريخ التفعيل أولاً'); return }
+    if (!credentialsMessage.trim()) { notify('يرجى كتابة اليوزر والباسورد الخاص بالزبون أولاً'); return }
+    if (needsSim && !simCardId) { notify('اختر شريحة من الشرائح المتوفرة أولاً'); return }
 
     setSaving(true)
     try {
@@ -84,7 +85,7 @@ export default function GpsRequestsReview({ embedded }: { embedded?: boolean } =
       setSelected(null)
       load()
     } catch (e) {
-      alert(e instanceof Error ? e.message : 'حدث خطأ أثناء التفعيل')
+      notify(e instanceof Error ? e.message : 'حدث خطأ أثناء التفعيل')
     } finally {
       setSaving(false)
     }
@@ -137,7 +138,7 @@ export default function GpsRequestsReview({ embedded }: { embedded?: boolean } =
         <h2 className="mb-6 text-2xl font-bold text-brand-900">طلبات GPS المعلقة 📋</h2>
       )}
 
-      {loading && <p className="py-20 text-center text-slate-400">جاري التحميل...</p>}
+      {loading && <p className="py-20 text-center text-slate-400">جاري التحميل…</p>}
       {!loading && requests.length === 0 && (
         <div className="rounded-2xl bg-white py-16 text-center shadow-sm">
           <div className="mb-4 text-5xl">✅</div>

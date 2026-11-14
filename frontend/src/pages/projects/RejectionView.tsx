@@ -5,6 +5,7 @@ import { type Project, CATEGORIES, categoryColor, parseRejection, restoreRejecte
 import { RejStat } from './ui'
 import PctWhy from '../../ui/PctWhy'
 
+import { notify } from '../../ui/notify'
 // ---------------------------------------------------------------------------
 // Rejection analytics view
 // ---------------------------------------------------------------------------
@@ -37,7 +38,7 @@ export function RejectionView({ projects, canManage, onRefresh }: { projects: Pr
   }, [rejected, category, search, sort])
 
   const exportCsv = () => {
-    if (rejected.length === 0) { alert('لا توجد مشاريع مرفوضة لتصديرها!'); return }
+    if (rejected.length === 0) { notify('لا توجد مشاريع مرفوضة لتصديرها!'); return }
     let csv = '﻿الفئة,السبب,اسم المشروع,الموقع,الهاتف,التاريخ,ملاحظات\n'
     for (const p of rejected) {
       const { reason, notes, category: cat } = parseRejection(p.task)

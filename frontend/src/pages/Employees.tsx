@@ -15,6 +15,7 @@ import { roleLabel, roleChipColor, ROLE_LABELS, ASSIGNABLE_ROLES, SECONDARY_ASSI
 import { askConfirm, askInput } from '../ui/dialogs'
 import { swallow } from '../utils/swallow'
 
+import { notify } from '../ui/notify'
 // زرّا واتساب وتلغرام جنب رقم الهاتف — دائماً الاثنان معاً (ماكو
 // حقل بالنظام يحدد أي تطبيق يستخدمه الموظف)، ويظهران بس لمن الهاتف موجود.
 function PhoneContactLinks({ phone }: { phone: string | null | undefined }) {
@@ -86,7 +87,7 @@ export default function Employees({ embedded }: { embedded?: boolean } = {}) {
       // القائمة يكفي — ولو خزّناه بحالة ثانية نفتح باب اختلافهن.
       setEmployees((prev) => prev.map((e) => (e.id === updated.id ? { ...e, photoUrl: updated.photoUrl } : e)))
     } catch (e) {
-      alert(e instanceof Error ? e.message : 'تعذر حفظ الصورة')
+      notify(e instanceof Error ? e.message : 'تعذر حفظ الصورة')
     }
   }
   // فتح حساب جديد = المالك وحده. `role` ينزّل OWNER لـADMIN حتى تشتغل
@@ -197,7 +198,7 @@ export default function Employees({ embedded }: { embedded?: boolean } = {}) {
       load()
       if (showArchived) api.getArchivedEmployees().then(setArchivedEmployees).catch(swallow)
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'تعذر تنفيذ العملية')
+      notify(err instanceof Error ? err.message : 'تعذر تنفيذ العملية')
     }
   }
   const compareEmployee = employees.find((emp) => emp.id === compareId) || null
@@ -216,12 +217,12 @@ export default function Employees({ embedded }: { embedded?: boolean } = {}) {
     try {
       const result = await api.linkHistoricalRecords(selectedEmployee.id)
       if (result.bookingsLinked === 0 && result.complaintsLinked === 0) {
-        alert('ماكو سجلات تاريخية بنفس اسم هذا الموظف بالضبط')
+        notify('ماكو سجلات تاريخية بنفس اسم هذا الموظف بالضبط')
       } else {
-        alert(`تم ربط ${result.bookingsLinked} حجز و ${result.complaintsLinked} شكوى بحساب هذا الموظف`)
+        notify(`تم ربط ${result.bookingsLinked} حجز و ${result.complaintsLinked} شكوى بحساب هذا الموظف`, 'success')
       }
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'تعذر ربط السجلات التاريخية')
+      notify(err instanceof Error ? err.message : 'تعذر ربط السجلات التاريخية')
     } finally {
       setLinkingHistorical(false)
     }
@@ -281,7 +282,7 @@ export default function Employees({ embedded }: { embedded?: boolean } = {}) {
       })
       setEmployees((prev) => prev.map((emp) => (emp.id === updated.id ? { ...emp, ...updated } : emp)))
       setCredPassword('')
-    } catch (e) { alert(e instanceof Error ? e.message : 'حدث خطأ') }
+    } catch (e) { notify(e instanceof Error ? e.message : 'حدث خطأ') }
     finally { setSavingCreds(false) }
   }
 
@@ -289,7 +290,7 @@ export default function Employees({ embedded }: { embedded?: boolean } = {}) {
     if (!selectedEmployee) return
     if (field === 'name' && value === selectedEmployee.name) return
     if (!isAdmin && field !== 'name' && !canProfile) {
-      alert('ما انحفظ: تعديل الراتب والإجازات والدوام يحتاج صلاحية «تعديل ملف الموظف» — اطلبها من المالك أو مدير النظام')
+      notify('ما انحفظ: تعديل الراتب والإجازات والدوام يحتاج صلاحية «تعديل ملف الموظف» — اطلبها من المالك أو مدير النظام')
       return
     }
     try {
@@ -302,7 +303,7 @@ export default function Employees({ embedded }: { embedded?: boolean } = {}) {
           : await api.updateEmployeeProfile(selectedEmployee.id, { [field]: value })
       setEmployees((prev) => prev.map((emp) => (emp.id === updated.id ? { ...emp, ...updated } : emp)))
     } catch (e) {
-      alert(e instanceof Error ? e.message : 'تعذر الحفظ')
+      notify(e instanceof Error ? e.message : 'تعذر الحفظ')
     }
   }
 
@@ -398,7 +399,7 @@ export default function Employees({ embedded }: { embedded?: boolean } = {}) {
       {/* Add Employee Wizard */}
       {handoverOpen && selectedEmployee && (
         <EmployeeHandoverDialog from={selectedEmployee} employees={employees} onClose={() => setHandoverOpen(false)}
-          onDone={() => { setHandoverOpen(false); setSelectedId(null); load(); alert('انسلّم الشغل ✓ — المستلم صار عنده كلشي، والقديم توقّف حسابه') }} />
+          onDone={() => { setHandoverOpen(false); setSelectedId(null); load(); notify('انسلّم الشغل ✓ — المستلم صار عنده كلشي، والقديم توقّف حسابه') }} />
       )}
       {editAllOpen && selectedEmployee && (
         <EditAllModal employee={selectedEmployee} allowRole={isAdmin || canIdentity}
@@ -890,7 +891,7 @@ export default function Employees({ embedded }: { embedded?: boolean } = {}) {
                                 : await api.updateEmployeeIdentity(selectedEmployee.id, { role: nextRole })
                               setEmployees(prev => prev.map(emp => emp.id === updated.id ? { ...emp, ...updated } : emp))
                             } catch (err) {
-                              alert(err instanceof Error ? err.message : 'تعذر تغيير الدور')
+                              notify(err instanceof Error ? err.message : 'تعذر تغيير الدور')
                             }
                           }}
                           className="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-3 py-2.5 text-sm outline-none transition-colors focus:border-[#2c5aad] focus:bg-white">

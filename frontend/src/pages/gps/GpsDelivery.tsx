@@ -4,6 +4,7 @@ import { api, type GpsDeviceRequest } from '../../api'
 import { matches } from '../../utils/search'
 import { loadFailed } from '../../netErrors'
 
+import { notify } from '../../ui/notify'
 const subLabel = (t: string) => t === 'THREE_MONTHS' ? '3 أشهر' : t === 'SIX_MONTHS' ? '6 أشهر' : 'سنوي'
 
 function printAgreement(rawReq: GpsDeviceRequest) {
@@ -110,7 +111,7 @@ export default function GpsDelivery() {
       printAgreement(req)
       load()
     } catch (e) {
-      alert(e instanceof Error ? e.message : 'حدث خطأ أثناء التسليم')
+      notify(e instanceof Error ? e.message : 'حدث خطأ أثناء التسليم')
     } finally {
       setDeliveringId(null)
     }
@@ -145,7 +146,7 @@ export default function GpsDelivery() {
               className="flex-1 rounded-xl border border-slate-200 px-4 py-2.5 text-sm" />
           </div>
 
-          {loading && <p className="py-20 text-center text-slate-400">جاري التحميل...</p>}
+          {loading && <p className="py-20 text-center text-slate-400">جاري التحميل…</p>}
           {!loading && filtered.length === 0 && <p className="py-20 text-center text-slate-400">لا توجد أجهزة بانتظار التسليم</p>}
 
           <div className="flex flex-col gap-3">

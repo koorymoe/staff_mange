@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
-import { useParams, Link } from 'react-router-dom'
+import { useParams } from 'react-router-dom'
 import { api, type DesignForm, type DesignFormQuestion, type DesignFormSubmission } from '../api'
+import { BackLink } from '../ui/BackLink'
 
 // ⚠️ نسخة **النص** تنقلب بالوضع الليلي، والأصل يبقى للأسطح:
 // نفس اللون يخدم عنواناً غامقاً على أبيض، ورأس جدول كحلي عليه نص أبيض.
@@ -26,12 +27,12 @@ export default function DesignFormSubmissionsPage() {
 
   return (
     <div dir="rtl">
-      <Link to="/design-forms" className="text-sm font-bold" style={{ color: PRIMARY_TEXT }}>← رجوع لكل الفورمات</Link>
+      <BackLink to="/design-forms" />
       <h2 className="mt-2 text-2xl font-bold" style={{ color: PRIMARY_TEXT }}>
         الأجوبة المستلمة{currentForm ? ` — ${currentForm.name}` : ''}
       </h2>
 
-      {loading && <p className="mt-6 text-slate-400">جاري التحميل...</p>}
+      {loading && <p className="mt-6 text-slate-400">جاري التحميل…</p>}
       {!loading && submissions.length === 0 && (
         <div className="mt-6 rounded-xl border border-white bg-white p-8 text-center shadow-sm">
           <p className="text-slate-400">ما وصل أي جواب على هذي الفورمة لحد الآن.</p>

@@ -19,6 +19,7 @@ import type { DirectiveTarget } from '../orgDirectives'
 import { roleLabel } from '../roleLabels'
 import { matches } from '../utils/search'
 import './OrgPage.css'
+import { money as fmtMoney } from '../utils/money'
 
 type Selection = {
   employeeId?: string
@@ -32,7 +33,7 @@ type Loaded = {
   catalog: AccessGroup[] | null
   errors: string[]
 }
-const money = (n: number) => new Intl.NumberFormat('en-US').format(n)
+const money = (n: number) => fmtMoney(n) // (دازاي 11-15) من utils/money.ts
 function Avatar({ name, photo }: { name: string; photo?: string | null }) {
   const [failed, setFailed] = useState(false)
   return (

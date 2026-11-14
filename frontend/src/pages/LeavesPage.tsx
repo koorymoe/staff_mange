@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react'
 import { api, type LeaveRequest, type LeaveStatus } from '../api'
 import { askConfirm } from '../ui/dialogs'
 
+import { notify } from '../ui/notify'
+import { fmtDate } from '../utils/date'
 /**
  * الإجازات.
  *
@@ -18,7 +20,8 @@ const STATUS_STYLE: Record<LeaveStatus, string> = {
   CANCELLED: 'bg-slate-200 text-slate-600',
 }
 
-const fmt = (d: string) => new Date(d).toLocaleDateString('ar-IQ', { year: 'numeric', month: 'long', day: 'numeric' })
+// (دازاي 11-15) التاريخ من utils/date.ts (عربي، توقيت بغداد)
+const fmt = (d: string) => fmtDate(d)
 const iso = (d: Date) => d.toISOString().slice(0, 10)
 
 export default function LeavesPage() {
@@ -56,15 +59,15 @@ export default function LeavesPage() {
   const [minDate] = useState(() => iso(new Date(Date.now() + 2 * 24 * 60 * 60 * 1000)))
 
   const submit = async () => {
-    if (!start) { alert('اختر تاريخ الإجازة'); return }
+    if (!start) { notify('اختر تاريخ الإجازة'); return }
     setBusy(true)
     try {
       await api.createLeave({ startDate: start, endDate: end || undefined, reason: reason || null })
       setOpen(false); setStart(''); setEnd(''); setReason('')
       load()
-      alert('انرفع طلب الإجازة — راح يوصلك إشعار بالقرار')
+      notify('انرفع طلب الإجازة — راح يوصلك إشعار بالقرار', 'success')
     } catch (e) {
-      alert(e instanceof Error ? e.message : 'تعذر تقديم الطلب')
+      notify(e instanceof Error ? e.message : 'تعذر تقديم الطلب')
     } finally { setBusy(false) }
   }
 
@@ -77,7 +80,7 @@ export default function LeavesPage() {
       setNoteFor(null); setNote('')
       load()
     } catch (e) {
-      alert(e instanceof Error ? e.message : 'تعذر إعطاء الموافقة الأولية')
+      notify(e instanceof Error ? e.message : 'تعذر إعطاء الموافقة الأولية')
     } finally { setBusy(false) }
   }
 
@@ -91,14 +94,14 @@ export default function LeavesPage() {
       setNoteFor(null); setNote('')
       load()
     } catch (e) {
-      alert(e instanceof Error ? e.message : 'تعذر تنفيذ القرار')
+      notify(e instanceof Error ? e.message : 'تعذر تنفيذ القرار')
     } finally { setBusy(false) }
   }
 
   const cancel = async (l: LeaveRequest) => {
     if (!(await askConfirm('تسحب طلب الإجازة؟'))) return
     try { await api.cancelLeave(l.id); load() }
-    catch (e) { alert(e instanceof Error ? e.message : 'خطأ') }
+    catch (e) { notify(e instanceof Error ? e.message : 'خطأ') }
   }
 
   const ini = (n: string) => n.split(/\s+/).slice(0, 2).map((w) => w[0]).join(' ')
@@ -172,7 +175,7 @@ export default function LeavesPage() {
     </div>
   )
 
-  if (loading) return <div dir="rtl" className="p-8 text-center text-slate-500">جاري التحميل...</div>
+  if (loading) return <div dir="rtl" className="p-8 text-center text-slate-500">جاري التحميل…</div>
 
   // المفتوح = جديد + موافقة أولية. الموافقة الأولية تبقى بالعد حتى
   // ما ينتسى الطلب بنص الطريق.

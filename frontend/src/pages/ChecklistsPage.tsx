@@ -4,6 +4,7 @@ import { loadFailed } from '../netErrors'
 import { esc } from '../utils/printIdentity'
 import { swallow } from '../utils/swallow'
 
+import { notify } from '../ui/notify'
 function printBlankChecklist(rawTitle: string) {
   const title = esc(rawTitle)
   const win = window.open('', '_blank')
@@ -56,7 +57,7 @@ export default function ChecklistsPage() {
       setProjectId('')
       load()
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'تعذر إنشاء الكشف')
+      notify(err instanceof Error ? err.message : 'تعذر إنشاء الكشف')
     } finally {
       setCreating(false)
     }
@@ -70,7 +71,7 @@ export default function ChecklistsPage() {
       await api.addChecklistPhotos(id, base64s)
       load()
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'تعذر رفع الصور')
+      notify(err instanceof Error ? err.message : 'تعذر رفع الصور')
     } finally {
       setUploadingId(null)
     }
@@ -100,7 +101,7 @@ export default function ChecklistsPage() {
         </button>
       </form>
 
-      {loading && <p className="mt-6 text-slate-400">جاري التحميل...</p>}
+      {loading && <p className="mt-6 text-slate-400">جاري التحميل…</p>}
 
       <div className="mt-6 flex flex-col gap-3">
         {!loading && checklists.length === 0 && <p className="text-slate-400">لا توجد كشوفات بعد.</p>}

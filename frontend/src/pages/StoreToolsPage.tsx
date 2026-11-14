@@ -3,6 +3,7 @@ import { api, type Employee, type OnDemandTool, type ToolRequestItem } from '../
 import { askConfirm } from '../ui/dialogs'
 import { swallow } from '../utils/swallow'
 
+import { notify } from '../ui/notify'
 // ═══ أدوات المخزن التخصصية — قرار (ع) 10-16 ═══
 // «أبو الكميات يضيف بيها الأدوات التخصصية وعددهن، ومن يصير نقص عند موظف
 // ينطي من عدهن». نفس جدول «أدوات حسب الحاجة» (OnDemandTool) — مو مخزن
@@ -35,7 +36,7 @@ export default function StoreToolsPage() {
 
   const run = async (fn: () => Promise<unknown>, ok?: string) => {
     setBusy(true); setErr('')
-    try { await fn(); load(); if (ok) alert(ok) } catch (e) { setErr(e instanceof Error ? e.message : 'تعذر الحفظ') } finally { setBusy(false) }
+    try { await fn(); load(); if (ok) notify(ok) } catch (e) { setErr(e instanceof Error ? e.message : 'تعذر الحفظ') } finally { setBusy(false) }
   }
 
   const shown = tools.filter((t) => !q.trim() || t.name.includes(q.trim()))

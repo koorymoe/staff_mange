@@ -259,3 +259,15 @@ func (r *ExtraTaskRepository) CreateFor(title, desc, to, by string, due time.Tim
 	}
 	return t.ID, nil
 }
+
+// Extend (دازاي 11-15) يمدّد موعد مهمة مفتوحة — من «لوحة الإجراءات» بدل ما يروح لشاشتها.
+func (r *ExtraTaskRepository) Extend(id string, due time.Time) error {
+	res, err := r.db.Exec(`UPDATE "ExtraTask" SET "dueAt" = $2, "updatedAt" = now() WHERE id = $1 AND status IN ('NEW','IN_PROGRESS')`, id, due)
+	if err != nil {
+		return err
+	}
+	if n, _ := res.RowsAffected(); n == 0 {
+		return errors.New("المهمة منجزة أو ملغاة من قبل")
+	}
+	return nil
+}

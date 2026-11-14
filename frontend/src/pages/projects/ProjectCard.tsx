@@ -9,6 +9,7 @@ import { ContractModal, MediaTransferModal } from './modals'
 import { Info } from './ui'
 import LinkQuotationModal from './LinkQuotationModal'
 
+import { notify } from '../../ui/notify'
 export function MainView(props: {
   projects: Project[]
   totalCount: number
@@ -149,7 +150,7 @@ export function ProjectCard({ p, canManage, onEdit, onMove, onReport, onDelete, 
 
   const handleAdvance = () => {
     if (isContractStage && !p.hasContract) {
-      alert('ارفع ملف العقد (PDF) الأول قبل الترحيل لمرحلة تجهيز المنتجات.')
+      notify('ارفع ملف العقد (PDF) الأول قبل الترحيل لمرحلة تجهيز المنتجات.')
       setShowContract(true)
       return
     }
@@ -186,7 +187,7 @@ export function ProjectCard({ p, canManage, onEdit, onMove, onReport, onDelete, 
           <span className="text-xs text-sky-700">(ما ينحسب تأخير عليك؛ ينشال وحده من تتغيّر المرحلة)</span>
           <button onClick={async () => {
             try { await apiRequest(`/projects/${p.id}/waiting`, { method: 'POST', body: JSON.stringify({ waiting: false }) }); onRefresh() }
-            catch (e) { alert(e instanceof Error ? e.message : 'تعذر الحفظ') }
+            catch (e) { notify(e instanceof Error ? e.message : 'تعذر الحفظ') }
           }} className="mr-auto rounded-lg bg-white px-3 py-1 text-xs font-bold text-sky-800 ring-1 ring-sky-200">▶️ الزبون رد — رجّعه</button>
         </div>
       ) : (
@@ -194,9 +195,9 @@ export function ProjectCard({ p, canManage, onEdit, onMove, onReport, onDelete, 
           <ProjectDelayBanner projectId={p.id} />
           <button onClick={async () => {
             const note = await askInput('شنو ننتظر من الزبون؟ (مثلاً: ينتظر يوقّع العقد، يرد على عرض السعر)')
-            if (!note || note.trim().length < 5) { if (note !== null) alert('اكتب جملة قصيرة على الأقل'); return }
+            if (!note || note.trim().length < 5) { if (note !== null) notify('اكتب جملة قصيرة على الأقل'); return }
             try { await apiRequest(`/projects/${p.id}/waiting`, { method: 'POST', body: JSON.stringify({ waiting: true, note: note.trim() }) }); onRefresh() }
-            catch (e) { alert(e instanceof Error ? e.message : 'تعذر الحفظ') }
+            catch (e) { notify(e instanceof Error ? e.message : 'تعذر الحفظ') }
           }} className="mt-2 rounded-lg border border-sky-300 px-3 py-1 text-xs font-bold text-sky-700 hover:bg-sky-50"
             title="المشروع واكف من الزبون (العقد ما انمضى، ما رد على العرض…): ما ينحسب عليك تأخير بالتقييم">⏸️ بانتظار الزبون</button>
         </>
@@ -223,9 +224,9 @@ export function ProjectCard({ p, canManage, onEdit, onMove, onReport, onDelete, 
             {!p.customerContactedAt && !isRejected && !isCompleted && (
               <button onClick={async () => {
                 const note = (await askInput('شنو حجيت ويا الزبون؟ (جملة قصيرة)'))
-                if (!note || note.trim().length < 5) { if (note !== null) alert('اكتب جملة قصيرة على الأقل'); return }
+                if (!note || note.trim().length < 5) { if (note !== null) notify('اكتب جملة قصيرة على الأقل'); return }
                 try { await apiRequest(`/projects/${p.id}/customer-contacted`, { method: 'POST', body: JSON.stringify({ note: note.trim() }) }); onRefresh() }
-                catch (e) { alert(e instanceof Error ? e.message : 'تعذر التسجيل') }
+                catch (e) { notify(e instanceof Error ? e.message : 'تعذر التسجيل') }
               }}
                 className="text-sm px-3 py-1.5 rounded-lg bg-emerald-600 text-white font-bold hover:bg-emerald-700">📞 تواصلت ويا الزبون</button>
             )}

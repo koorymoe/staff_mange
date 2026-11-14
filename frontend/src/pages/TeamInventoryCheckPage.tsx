@@ -49,7 +49,7 @@ export default function TeamInventoryCheckPage({ embedded }: { embedded?: boolea
   const doneCount = crew.filter((c) => c.checkedAt).length
   const shortCount = crew.filter((c) => c.checkedAt && !c.complete).length
 
-  if (loading) return <p className="p-6 text-center text-slate-400">جارٍ التحميل...</p>
+  if (loading) return <p className="p-6 text-center text-slate-400">جاري التحميل…</p>
 
   return (
     <div dir="rtl" className={`space-y-4 w-full`}>

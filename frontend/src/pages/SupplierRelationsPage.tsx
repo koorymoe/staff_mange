@@ -6,6 +6,7 @@ import { dayBaghdad } from '../utils/format'
 import { askInput } from '../ui/dialogs'
 import { swallow } from '../utils/swallow'
 
+import { notify } from '../ui/notify'
 // ═══ علاقات الموردين — قرار (ع) 10-15 ═══
 // العلاقات العامة ووحدة التقنيين: كل مورد (مشتريات أو تقنيين)، صارلنا شكد ما
 // تواصلنا وياه، وآخر حركة (تواصل أو شراء) شنو ومتى ومنو. وتذكير يومي للي عبر الحد.
@@ -53,12 +54,12 @@ export default function SupplierRelationsPage() {
     if (!open) return
     setBusy(true)
     try { await api.addSupplierContact(open.kind, open.id, cType, cNote); setCNote(''); setReload((n) => n + 1) }
-    catch (e) { alert(e instanceof Error ? e.message : 'تعذر الحفظ') } finally { setBusy(false) }
+    catch (e) { notify(e instanceof Error ? e.message : 'تعذر الحفظ') } finally { setBusy(false) }
   }
   const editDays = async () => {
     const v = (await askInput('بعد كم يوم بلا تواصل يطلع تذكير؟', String(data?.contactDays ?? 30)))
     if (!v || !(Number(v) > 0)) return
-    try { await api.setSupplierContactDays(Number(v)); setReload((n) => n + 1) } catch (e) { alert(e instanceof Error ? e.message : 'تعذر') }
+    try { await api.setSupplierContactDays(Number(v)); setReload((n) => n + 1) } catch (e) { notify(e instanceof Error ? e.message : 'تعذر') }
   }
 
   const rows = (data?.rows ?? [])

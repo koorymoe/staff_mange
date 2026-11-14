@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { api, type GpsSimCard, type GpsCustomer } from '../../api'
 import { askConfirm } from '../../ui/dialogs'
 
+import { notify } from '../../ui/notify'
 // ⚠️ `embedded`: الشاشة تنعرض جوّا تبويب بمدخل موحّد — فترويستها
 // الخاصة تنشال حتى ما تتكرر ترويستان فوگ بعض.
 export default function GpsSims({ embedded }: { embedded?: boolean } = {}) {
@@ -39,7 +40,7 @@ export default function GpsSims({ embedded }: { embedded?: boolean } = {}) {
       setShowForm(false)
       load()
     } catch (e) {
-      alert(e instanceof Error ? e.message : 'حدث خطأ')
+      notify(e instanceof Error ? e.message : 'حدث خطأ')
     } finally {
       setSubmitting(false)
     }
@@ -53,20 +54,20 @@ export default function GpsSims({ embedded }: { embedded?: boolean } = {}) {
       setAssignTarget(null); setAssignCustomerId('')
       load()
     } catch (e) {
-      alert(e instanceof Error ? e.message : 'حدث خطأ')
+      notify(e instanceof Error ? e.message : 'حدث خطأ')
     }
   }
 
   const handleRelease = async (sim: GpsSimCard) => {
     if (!(await askConfirm(`تحرير الشريحة ${sim.simNumber}؟ راح تنفك من الزبون وترجع للمتوفر.`))) return
     try { await api.releaseSimCard(sim.id); load() }
-    catch (e) { alert(e instanceof Error ? e.message : 'حدث خطأ') }
+    catch (e) { notify(e instanceof Error ? e.message : 'حدث خطأ') }
   }
 
   const handleBurn = async (sim: GpsSimCard) => {
     if (!(await askConfirm(`تأشير إن الشريحة ${sim.simNumber} انحرقت؟`))) return
     try { await api.burnSimCard(sim.id); load() }
-    catch (e) { alert(e instanceof Error ? e.message : 'حدث خطأ') }
+    catch (e) { notify(e instanceof Error ? e.message : 'حدث خطأ') }
   }
 
   const statusStyle: Record<string, string> = {
@@ -177,7 +178,7 @@ export default function GpsSims({ embedded }: { embedded?: boolean } = {}) {
         </div>
       )}
 
-      {loading && <div className="flex items-center justify-center p-12"><div className="text-lg text-slate-500">جاري التحميل...</div></div>}
+      {loading && <div className="flex items-center justify-center p-12"><div className="text-lg text-slate-500">جاري التحميل…</div></div>}
       {error && <div className="rounded-2xl bg-red-50 p-6 text-red-600 shadow-sm">{error}</div>}
 
       {/* SIM Table */}

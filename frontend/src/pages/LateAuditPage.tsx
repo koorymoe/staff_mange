@@ -5,6 +5,7 @@ import PctWhy from '../ui/PctWhy'
 import PageHeader from '../components/PageHeader'
 import { dayBaghdad } from '../utils/format'
 
+import { notify } from '../ui/notify'
 // ═══ فحص المتأخرات — قرار (ع) 10-15 ═══
 // «ليش متأخرات؟ هل بيهن مشكلة؟ وشكد مدة التأخير؟» — نفس تعريف ماتركس، ولكل حجز
 // سبب مرجّح من الأدلة، والحجوزات الي بياناتها مشكوكة معلّمة.
@@ -52,7 +53,7 @@ export default function LateAuditPage() {
   const byLeader = count((r) => r.leader ?? 'بلا ليدر')
   const issues = all.filter((r) => r.dataIssues.length > 0).length
 
-  const excel = () => api.lateAuditExcel(from, to).catch((e) => alert(e instanceof Error ? e.message : 'تعذر'))
+  const excel = () => api.lateAuditExcel(from, to).catch((e) => notify(e instanceof Error ? e.message : 'تعذر'))
 
   return (
     <div dir="rtl" className="space-y-4">

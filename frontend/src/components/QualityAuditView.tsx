@@ -33,7 +33,7 @@ const dt = (s: string | null) => s ? new Date(s).toLocaleString('ar-IQ', { timeZ
 export default function QualityAuditView() {
   const [items, setItems] = useState<QualityFollowUp[] | null>(null)
   const [err, setErr] = useState('')
-  const [tab, setTab] = useState<'done' | 'pending'>('done')
+  const [tab, setTab] = useState<'review' | 'reviewed' | 'pending'>('review')
   const [q, setQ] = useState('')
   useEffect(() => { api.getQualityFollowUps().then(setItems).catch((e) => { setErr(e instanceof Error ? e.message : 'تعذر'); setItems([]) }) }, [])
   // مهندسين الجودة — للحالات الي محد تواصل بيها (التفسير/التقصير على منو؟)
@@ -44,7 +44,11 @@ export default function QualityAuditView() {
   const done = useMemo(() => (items ?? []).filter((i) => i.status !== 'PENDING')
     .sort((a, b) => new Date(b.contactedAt || b.createdAt).getTime() - new Date(a.contactedAt || a.createdAt).getTime()), [items])
   const pending = useMemo(() => (items ?? []).filter((i) => i.status === 'PENDING'), [items])
-  const list = (tab === 'done' ? done : pending).filter((i) => !q || `${i.customer?.name} ${i.customer?.phone} ${i.booking?.code} ${i.contactedByEmployee?.name}`.includes(q))
+  // (دازاي 11-15) «جاي يطلعلي كلهن ماضاغط عليهن تمام»: المدقّقة (عليها حكم المراقب) تنفصل
+  // عن الي تنتظر تدقيق، وتنتقل فوراً من يضغط — والعدّاد ينقص قدامه.
+  const toReview = useMemo(() => done.filter((i) => !i.monitorVerdict), [done])
+  const reviewed = useMemo(() => done.filter((i) => i.monitorVerdict), [done])
+  const list = (tab === 'review' ? toReview : tab === 'reviewed' ? reviewed : pending).filter((i) => !q || `${i.customer?.name} ${i.customer?.phone} ${i.booking?.code} ${i.contactedByEmployee?.name}`.includes(q))
   const byQe = useMemo(() => {
     const m = new Map<string, number>()
     for (const i of done) { const n = i.contactedByEmployee?.name || '—'; m.set(n, (m.get(n) ?? 0) + 1) }
@@ -60,7 +64,8 @@ export default function QualityAuditView() {
       </div>
       {err && <p className="text-sm text-red-600">{err}</p>}
       <div className="flex flex-wrap items-center gap-2">
-        <button onClick={() => setTab('done')} className={`rounded-lg px-4 py-2 text-sm font-bold ${tab === 'done' ? 'bg-[#0f2040] text-white' : 'border border-slate-300 text-slate-600'}`}>📞 تواصل وأخذ تقرير ({done.length})</button>
+        <button onClick={() => setTab('review')} className={`rounded-lg px-4 py-2 text-sm font-bold ${tab === 'review' ? 'bg-[#0f2040] text-white' : 'border border-slate-300 text-slate-600'}`}>🔎 تواصل وتنتظر تدقيقك ({toReview.length})</button>
+        <button onClick={() => setTab('reviewed')} className={`rounded-lg px-4 py-2 text-sm font-bold ${tab === 'reviewed' ? 'bg-emerald-600 text-white' : 'border border-slate-300 text-slate-600'}`}>✅ دقّقتها ({reviewed.length})</button>
         <button onClick={() => setTab('pending')} className={`rounded-lg px-4 py-2 text-sm font-bold ${tab === 'pending' ? 'bg-amber-600 text-white' : 'border border-slate-300 text-slate-600'}`}>⏳ لسه ما تواصل ({pending.length})</button>
         {byQe.length > 0 && <span className="text-xs text-slate-500">· {byQe.map(([n, c]) => `${n}: ${c}`).join(' · ')}</span>}
       </div>
@@ -108,6 +113,8 @@ function MonitorActions({ item: i, qes, onDone }: { item: QualityFollowUp; qes: 
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState('')
   const pending = i.status === 'PENDING'
+  const [change, setChange] = useState(false)
+  const decided = !!i.monitorVerdict && !change
   const who = target || i.contactedByEmployee?.id || (qes.length === 1 ? qes[0].id : '')
   const send = async (verdict: 'OK' | 'NOT_OK' | 'SHORTCOMING') => {
     if (verdict !== 'OK' && !note.trim()) { setErr('اكتب السبب'); return }
@@ -115,6 +122,7 @@ function MonitorActions({ item: i, qes, onDone }: { item: QualityFollowUp; qes: 
     setBusy(true); setErr('')
     try {
       onDone(await api.setQualityMonitorVerdict(i.id, { verdict, note: note.trim() || undefined, targetEmployeeId: who || undefined }))
+      setChange(false)
       setMode(null); setNote('')
     } catch (e) { setErr(e instanceof Error ? e.message : 'تعذر') } finally { setBusy(false) }
   }
@@ -148,10 +156,11 @@ function MonitorActions({ item: i, qes, onDone }: { item: QualityFollowUp; qes: 
               {qes.map((e) => <option key={e.id} value={e.id}>{e.name}</option>)}
             </select>
           )}
-          {!pending && <button disabled={busy} onClick={() => send('OK')} className="rounded bg-emerald-600 px-2.5 py-1 font-bold text-white disabled:opacity-50">👍 تمام</button>}
-          {!pending && <button disabled={busy} onClick={() => setMode('NOT_OK')} className="rounded bg-red-600 px-2.5 py-1 font-bold text-white disabled:opacity-50">👎 مو تمام</button>}
-          <button disabled={busy} onClick={ask} className="rounded bg-sky-600 px-2.5 py-1 font-bold text-white disabled:opacity-50">📝 اطلب تفسير</button>
-          <button disabled={busy} onClick={() => setMode('SHORTCOMING')} className="rounded border border-red-300 bg-white px-2.5 py-1 font-bold text-red-700 disabled:opacity-50">⚠️ سجّل تقصير</button>
+          {decided && <button onClick={() => setChange(true)} className="rounded border border-slate-300 bg-white px-2.5 py-1 font-bold text-slate-600">✏️ غيّر الحكم</button>}
+          {!decided && !pending && <button disabled={busy} onClick={() => send('OK')} className="rounded bg-emerald-600 px-2.5 py-1 font-bold text-white disabled:opacity-50">👍 تمام</button>}
+          {!decided && !pending && <button disabled={busy} onClick={() => setMode('NOT_OK')} className="rounded bg-red-600 px-2.5 py-1 font-bold text-white disabled:opacity-50">👎 مو تمام</button>}
+          {!decided && <button disabled={busy} onClick={ask} className="rounded bg-sky-600 px-2.5 py-1 font-bold text-white disabled:opacity-50">📝 اطلب تفسير</button>}
+          {!decided && <button disabled={busy} onClick={() => setMode('SHORTCOMING')} className="rounded border border-red-300 bg-white px-2.5 py-1 font-bold text-red-700 disabled:opacity-50">⚠️ سجّل تقصير</button>}
         </span>
       </div>
       {mode && (

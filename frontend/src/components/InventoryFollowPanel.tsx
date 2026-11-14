@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { apiRequest } from '../api'
+import { fmtDateTime } from '../utils/date'
 
 // ═══ متابعة الجرد الحقيقي — (ع) 10-16 ═══
 // الجرد الي يسوّيه الموظف من «جردي» أو قبل الطلعة من «مهامي». كل بطاقة
@@ -12,7 +13,8 @@ interface NotChecked { employeeId: string; name: string; bookings: string }
 interface Data { days: number; checks: Check[]; notCheckedToday: NotChecked[] }
 type F = 'today' | 'missing' | 'incomplete' | 'all'
 
-const fmt = (s: string) => new Date(s.endsWith('Z') ? s : s + 'Z').toLocaleString('ar-IQ', { timeZone: 'Asia/Baghdad', dateStyle: 'short', timeStyle: 'short' })
+// (دازاي 11-15) التاريخ من utils/date.ts (عربي، توقيت بغداد)
+const fmt = (s: string) => fmtDateTime(s, { naiveUtc: true, dateStyle: 'short', timeStyle: 'short' })
 
 export default function InventoryFollowPanel() {
   const [d, setD] = useState<Data | null>(null)

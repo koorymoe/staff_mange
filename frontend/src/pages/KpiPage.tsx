@@ -11,6 +11,7 @@ import SearchBar from '../components/SearchBar'
 import { matches } from '../utils/search'
 import { useRoleTabs } from '../components/RoleSplit'
 
+import { notify } from '../ui/notify'
 // ═══ الخصم سالب دائماً — فحص السيرفر 10-23 ═══
 // چانت الصفحة تجمع النقاط كما هي، والخصم اليدوي القديم موجب وخصم الجودة
 // سالب، فالجودة تنقّص «انخصم» والموظف يطلع ٩ من ٨. «انخصم» = مقدار السالب
@@ -159,7 +160,7 @@ export function TechnicianTab() {
       </div>
 
       {loading ? (
-        <p className="mt-6 text-slate-400">جاري التحميل...</p>
+        <p className="mt-6 text-slate-400">جاري التحميل…</p>
       ) : leaderboard.length === 0 ? (
         <p className="mt-6 text-center text-slate-400">لا يوجد فنيون لعرض النتائج</p>
       ) : (
@@ -486,7 +487,7 @@ export function AdministrativeTab() {
       setAnnounceDeduction(false)
       load()
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'حدث خطأ')
+      notify(err instanceof Error ? err.message : 'حدث خطأ')
     } finally {
       setSubmitting(false)
     }
@@ -498,7 +499,7 @@ export function AdministrativeTab() {
       await api.deleteKpiEvaluation(id)
       load()
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'حدث خطأ')
+      notify(err instanceof Error ? err.message : 'حدث خطأ')
     }
   }
 
@@ -509,7 +510,7 @@ export function AdministrativeTab() {
       await api.cancelKpiEvaluation(id)
       load()
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'حدث خطأ')
+      notify(err instanceof Error ? err.message : 'حدث خطأ')
     }
   }
 
@@ -520,7 +521,7 @@ export function AdministrativeTab() {
       setNewCriterionLabel('')
       load()
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'حدث خطأ')
+      notify(err instanceof Error ? err.message : 'حدث خطأ')
     }
   }
 
@@ -530,11 +531,11 @@ export function AdministrativeTab() {
       await api.deleteKpiCriterion(id)
       load()
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'حدث خطأ')
+      notify(err instanceof Error ? err.message : 'حدث خطأ')
     }
   }
 
-  if (loading) return <p className="mt-6 text-slate-400">جاري التحميل...</p>
+  if (loading) return <p className="mt-6 text-slate-400">جاري التحميل…</p>
   if (error)
     return (
       <p className="mt-6 rounded-lg bg-red-50 p-4 text-red-600">

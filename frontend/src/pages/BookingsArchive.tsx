@@ -5,6 +5,7 @@ import BookingLifecycleActions from '../components/BookingLifecycleActions'
 import { matches } from '../utils/search'
 import LocateHint from '../components/LocateHint'
 import BookingCodeChip from '../components/BookingCodeChip'
+import { fmtDateTime } from '../utils/date'
 
 // ═══ أرشيف الحجوزات ═══
 //
@@ -47,8 +48,7 @@ export default function BookingsArchive() {
     }).length
   }, [rows])
 
-  const fmt = (iso: string | null) =>
-    iso ? new Date(iso).toLocaleString('ar-IQ', { dateStyle: 'medium', timeStyle: 'short' }) : '—'
+  const fmt = (iso: string | null) => fmtDateTime(iso) // (دازاي 11-15) التاريخ من utils/date.ts (عربي، توقيت بغداد)
 
   return (
     <div className="space-y-4">
@@ -83,7 +83,7 @@ export default function BookingsArchive() {
         />
       </div>
 
-      {loading && <div className="rounded-2xl bg-white p-8 text-center text-sm text-slate-500">جاري التحميل...</div>}
+      {loading && <div className="rounded-2xl bg-white p-8 text-center text-sm text-slate-500">جاري التحميل…</div>}
       {error && <div className="rounded-2xl bg-red-50 p-4 text-sm font-bold text-red-700">{error}</div>}
 
       {!loading && !error && filtered.length === 0 && (

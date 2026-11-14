@@ -3,6 +3,7 @@ import { api, storeFile, type TechShowcaseItem, fileUrl } from '../api'
 import { useSession } from '../session'
 import { loadFailed } from '../netErrors'
 
+import { notify } from '../ui/notify'
 // ⚠️ `embedded`: الشاشة تنعرض جوّا تبويب بمدخل موحّد — فترويستها
 // الخاصة تنشال حتى ما تتكرر ترويستان فوگ بعض.
 export default function TechShowcasePage({ embedded }: { embedded?: boolean } = {}) {
@@ -31,7 +32,7 @@ export default function TechShowcasePage({ embedded }: { embedded?: boolean } = 
       setDescription('')
       load()
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'تعذر إضافة العمل')
+      notify(err instanceof Error ? err.message : 'تعذر إضافة العمل')
     } finally {
       setCreating(false)
     }
@@ -45,7 +46,7 @@ export default function TechShowcasePage({ embedded }: { embedded?: boolean } = 
       await api.addTechShowcaseMedia(id, base64s)
       load()
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'تعذر رفع الوسائط')
+      notify(err instanceof Error ? err.message : 'تعذر رفع الوسائط')
     } finally {
       setUploadingId(null)
     }
@@ -81,7 +82,7 @@ export default function TechShowcasePage({ embedded }: { embedded?: boolean } = 
         </form>
       )}
 
-      {loading && <p className="mt-6 text-slate-400">جاري التحميل...</p>}
+      {loading && <p className="mt-6 text-slate-400">جاري التحميل…</p>}
 
       <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {!loading && items.length === 0 && <p className="text-slate-400">لا توجد أعمال بعد.</p>}

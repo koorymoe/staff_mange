@@ -3,13 +3,14 @@ import { Link } from 'react-router-dom'
 import { api, type DisciplineEntry, type DisciplineRecord } from '../api'
 import MatrixNote from '../components/MatrixNote'
 import { todayBaghdad, dayBaghdad } from '../utils/format'
+import { money as fmtMoney } from '../utils/money'
 
 // ═══ سجل الانضباط الوظيفي — طلب (ع) 10-05 ═══
 // كل الموظفين ويا كل خصم من أول يوم بالنظام: كم مرة، شكد، شنو السبب، متى،
 // منو خصمه، وانرجع لو لا. للمدير والمالك بس.
 
 const SRC: Record<DisciplineEntry['source'], string> = { KPI: '💸 خصم', POINTS: '📉 نقاط انضباط', LEDGER: '🧾 تسوية عهدة' }
-const money = (n: number) => `${Math.round(n).toLocaleString('en-US')} د.ع`
+const money = (n: number) => `${fmtMoney(Math.round(n))} د.ع` // (دازاي 11-15) من utils/money.ts
 const date = (s: string) => new Date(s).toLocaleDateString('en-GB')
 
 function csv(rows: DisciplineEntry[]) {

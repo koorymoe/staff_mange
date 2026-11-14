@@ -1,13 +1,15 @@
 import { useState } from 'react'
 import { api, type Booking } from '../api'
 import EntityIdentity from './EntityIdentity'
+import { fmtDateTime } from '../utils/date'
 
 // ═══ «حجوزات مرحّلة إلك» — قرار (ع) 10-07 ═══
 // الإداري رحّل الحجز لأن المشكلة ما يعرفون الفنيين يحلّوها. هسه برقبتك:
 // تتواصل ويا الزبون، تكتب الكشف، وتعالج بنفسك أو تطلب طاقم. ماتركس يحسب
 // وقت كل خطوة عليك.
 
-const fmt = (s?: string | null) => (s ? new Date(s).toLocaleString('en-GB', { timeZone: 'Asia/Baghdad', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }) : '')
+// (دازاي 11-15) التاريخ من utils/date.ts (عربي، توقيت بغداد)
+const fmt = (s?: string | null) => fmtDateTime(s, { empty: '', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })
 
 function Step({ done, n, title, at }: { done: boolean; n: number; title: string; at?: string | null }) {
   return (

@@ -4,6 +4,7 @@ import { api, type Product, type ProductAvailability, type Service, fileUrl } fr
 import { numIQ as fmt } from '../utils/format'
 import { askConfirm } from '../ui/dialogs'
 
+import { notify } from '../ui/notify'
 const PRIMARY = '#1a237e'
 // ⚠️ نسخة **النص** تنقلب بالوضع الليلي، والأصل يبقى للأسطح:
 // نفس اللون يخدم عنواناً غامقاً على أبيض، ورأس جدول كحلي عليه نص أبيض.
@@ -72,7 +73,7 @@ export default function ProductsPage({ embedded }: { embedded?: boolean } = {}) 
       const updated = await api.updateProduct(id, data)
       setProducts((prev) => prev.map((p) => (p.id === id ? updated : p)))
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'تعذر التعديل')
+      notify(err instanceof Error ? err.message : 'تعذر التعديل')
     } finally {
       setBusyId(null)
     }
@@ -89,7 +90,7 @@ export default function ProductsPage({ embedded }: { embedded?: boolean } = {}) 
       const res = await api.uploadFile(file, 'products')
       setImageBase64(res.url)
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'تعذر رفع الصورة')
+      notify(err instanceof Error ? err.message : 'تعذر رفع الصورة')
       if (fileRef.current) fileRef.current.value = ''
     } finally {
       setUploading(false)
@@ -118,7 +119,7 @@ export default function ProductsPage({ embedded }: { embedded?: boolean } = {}) 
       if (fileRef.current) fileRef.current.value = ''
       load()
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'حدث خطأ')
+      notify(err instanceof Error ? err.message : 'حدث خطأ')
     } finally {
       setSubmitting(false)
     }
@@ -130,7 +131,7 @@ export default function ProductsPage({ embedded }: { embedded?: boolean } = {}) 
       await api.deleteProduct(id)
       load()
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'حدث خطأ')
+      notify(err instanceof Error ? err.message : 'حدث خطأ')
     }
   }
 
@@ -273,7 +274,7 @@ export default function ProductsPage({ embedded }: { embedded?: boolean } = {}) 
         </button>
       </form>}
 
-      {loading && <p className="text-t-faint text-center p-10">جاري التحميل...</p>}
+      {loading && <p className="text-t-faint text-center p-10">جاري التحميل…</p>}
       {error && (
         <div className="bg-sf-danger border border-[#fecaca] rounded-lg p-4 text-t-danger">
           تعذر الاتصال بالخادم: {error}

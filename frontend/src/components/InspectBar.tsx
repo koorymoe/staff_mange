@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { api, isStealthSession } from '../api'
 import { useSession } from '../session'
 
+import { notify } from '../ui/notify'
 // ═══ 🔍 وضع الفحص — (ع) 10-23 ═══
 // «نفس المعلومات الي تضهرله تضهرلي بحسابه، بس اي اجراء اسوي ما اريده ينحسب».
 // الخادم يحميه: المالك وحده، ساعتين، بلا حضور ولا «متصل»، وأي تعديل ينرفض
@@ -29,7 +30,7 @@ export function InspectButton({ employeeId, name }: { employeeId: string; name?:
   if (employee?.actualRole !== 'OWNER' || isStealthSession() || !employeeId || employeeId === employee.id) return null
   const go = async () => {
     setBusy(true)
-    try { await api.inspectEnter(employeeId) } catch (e) { alert(e instanceof Error ? e.message : 'تعذّر الفتح'); setBusy(false) }
+    try { await api.inspectEnter(employeeId) } catch (e) { notify(e instanceof Error ? e.message : 'تعذّر الفتح'); setBusy(false) }
   }
   return (
     <button type="button" disabled={busy} onClick={() => void go()} title={name ? `تشوف حساب ${name} مثل ما يشوفه — قراءة بس` : undefined}

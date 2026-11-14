@@ -7,6 +7,7 @@ import SearchBar from '../components/SearchBar'
 import Pager from '../components/Pager'
 import { matches } from '../utils/search'
 import InventoryFollowPanel from '../components/InventoryFollowPanel'
+import { crewRoleLabel } from '../roleLabels'
 
 /**
  * ═══ متابعة الجرد — للمراقب ═══
@@ -27,9 +28,7 @@ const REASON_LABELS: Record<TeamInventoryShortageReason, string> = {
   DAMAGED: 'تلف — تحتاج بديل',
   UNKNOWN: 'ما يعرف',
 }
-const ROLE_LABELS: Record<string, string> = {
-  LEADER: 'الليدر', EMPLOYEE1: 'الموظف الأول', EMPLOYEE2: 'الموظف الثاني',
-}
+// (دازاي 11-15) أسماء الأدوار من roleLabels.ts — جانت خريطة محلية
 const PAGE = 10
 const fmt = (v: string) => new Date(v).toLocaleString('en-CA', { hour12: false }).slice(0, 16)
 
@@ -148,7 +147,7 @@ export default function MonitorInventoryPage({ embedded }: { embedded?: boolean 
                             {missing.map((it) => (
                               <tr key={it.id}>
                                 <td className="py-1.5 font-medium text-slate-700">{it.toolName}</td>
-                                <td className="py-1.5 text-slate-600">{ROLE_LABELS[it.personRole] || it.personRole}</td>
+                                <td className="py-1.5 text-slate-600">{crewRoleLabel(it.personRole)}</td>
                                 <td className="py-1.5 text-slate-600">
                                   {it.reason ? REASON_LABELS[it.reason] : '—'}
                                 </td>

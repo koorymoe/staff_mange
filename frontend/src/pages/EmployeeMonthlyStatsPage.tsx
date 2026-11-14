@@ -8,6 +8,7 @@ import { numIQ as fmt } from '../utils/format'
 
 
 
+import { notify } from '../ui/notify'
 function getCurrentMonth(): string {
   const now = new Date()
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
@@ -42,7 +43,7 @@ export default function EmployeeMonthlyStatsPage() {
     try {
       await api.exportEmployeeMonthlyStats(month)
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'تعذر تصدير الملف')
+      notify(err instanceof Error ? err.message : 'تعذر تصدير الملف')
     } finally {
       setExporting(false)
     }

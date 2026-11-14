@@ -112,7 +112,7 @@ export default function StatsPage() {
             <Card title="إجمالي الموظفين" value={totalEmp} color="blue" />
             <Card title="في الخدمة" value={activeEmp} color="green" />
             <Card title="خارج الخدمة" value={totalEmp - activeEmp} color="red" />
-            <Card title="إجمالي العملاء" value={stats.totals.totalCustomers} color="purple" />
+            <Card title="إجمالي الزبائن" value={stats.totals.totalCustomers} color="purple" />
           </div>
 
           {/* Role distribution */}

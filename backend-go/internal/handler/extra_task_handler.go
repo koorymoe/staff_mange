@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
+	"time"
 	"unicode/utf8"
 
 	"staffmange-api/internal/middleware"
@@ -197,4 +198,40 @@ func (h *ExtraTaskHandler) respondTask(w http.ResponseWriter, id string) {
 		return
 	}
 	WriteJSON(w, http.StatusOK, task)
+}
+
+// PUT /api/extra-tasks/{id}/extend {days} — (دازاي 11-15) قرار من لوحة الإجراءات: مدّد الموعد.
+func (h *ExtraTaskHandler) Extend(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		Days int `json:"days"`
+	}
+	if err := DecodeJSON(r, &req); err != nil || req.Days < 1 || req.Days > 60 {
+		WriteError(w, http.StatusBadRequest, "اختار كم يوم (١–٦٠)")
+		return
+	}
+	id := r.PathValue("id")
+	due := time.Now().AddDate(0, 0, req.Days)
+	if err := h.repo.Extend(id, due); err != nil {
+		WriteError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	if task, err := h.repo.FindByID(id); err == nil && task != nil && h.notifications != nil {
+		_ = h.notifications.Create(task.AssignedToID, "extra_task_extended",
+			fmt.Sprintf("⏰ انمدّ موعد المهمة «%s» %d يوم — موعدها الجديد %s", task.Title, req.Days, due.In(baghdadLoc()).Format("2006-01-02")))
+	}
+	h.respondTask(w, id)
+}
+
+// POST /api/extra-tasks/{id}/remind — (دازاي 11-15) قرار من لوحة الإجراءات: ذكّر الموظف.
+func (h *ExtraTaskHandler) Remind(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("id")
+	task, err := h.repo.FindByID(id)
+	if err != nil || task == nil || (task.Status != "NEW" && task.Status != "IN_PROGRESS") {
+		WriteError(w, http.StatusNotFound, "المهمة مو موجودة أو خالصة")
+		return
+	}
+	if h.notifications != nil {
+		_ = h.notifications.Create(task.AssignedToID, "extra_task_reminder", fmt.Sprintf("🔔 تذكير من الإدارة: المهمة «%s» تنتظرك", task.Title))
+	}
+	h.respondTask(w, id)
 }

@@ -6,6 +6,7 @@ import {
 import { matches } from '../utils/search'
 import { askConfirm } from '../ui/dialogs'
 
+import { notify } from '../ui/notify'
 // ═══ جرد أجهزة تقنية المعلومات ═══
 // حاسبات ومخدّمات وشبكة وطابعات الشركة: وين كل جهاز، منو يستعمله،
 // حالته، ضمانه، وسجل كل تصليح أو صيانة انسوّت عليه.
@@ -120,7 +121,7 @@ function AssetLogs({ asset, onClose }: { asset: ItAsset; onClose: () => void }) 
       await api.addItAssetLog(asset.id, { kind, note: note.trim(), cost: cost ? Number(cost) : null })
       setNote(''); setCost(''); setReload((n) => n + 1)
     } catch (e) {
-      alert(e instanceof Error ? e.message : 'تعذر الحفظ')
+      notify(e instanceof Error ? e.message : 'تعذر الحفظ')
     } finally { setBusy(false) }
   }
 
@@ -188,14 +189,14 @@ export default function ItAssetsPage() {
 
   const remove = async (a: ItAsset) => {
     if (!(await askConfirm(`حذف «${a.name}» وكل سجله؟ إذا الجهاز بس انستبعد، الأفضل تغيّر حالته لـ«مستبعد».`))) return
-    try { await api.deleteItAsset(a.id); setReload((n) => n + 1) } catch (e) { alert(e instanceof Error ? e.message : 'تعذر الحذف') }
+    try { await api.deleteItAsset(a.id); setReload((n) => n + 1) } catch (e) { notify(e instanceof Error ? e.message : 'تعذر الحذف') }
   }
 
   return (
     <div dir="rtl" className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h2 className="text-2xl font-bold text-brand-900">🖥️ جرد أجهزة تقنية المعلومات</h2>
+          <h2 className="text-2xl font-bold text-brand-900">🖥️ جرد الأجهزة</h2>
           <p className="text-sm text-slate-500">كل جهاز بالشركة: وين هو، منو يستعمله، حالته، ضمانه، وسجل تصليحه.</p>
         </div>
         <button onClick={() => setEditing('new')} className="rounded-xl bg-brand-600 px-4 py-2.5 text-sm font-bold text-white hover:bg-brand-700">➕ جهاز جديد</button>

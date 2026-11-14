@@ -1,3 +1,4 @@
+import { notify } from './ui/notify'
 // ═══ مصيدة أخطاء الشبكة ═══
 //
 // أكثر من ٢٠ شاشة تنادي الـAPI بـ.then() بلا .catch(). لمن يفشل الطلب،
@@ -44,7 +45,7 @@ function show(reason: unknown, tag: string) {
   if (msg === lastShown && now - lastShownAt < QUIET_MS) return
   lastShown = msg
   lastShownAt = now
-  alert(msg)
+  notify(msg)
 }
 
 /**

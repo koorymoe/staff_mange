@@ -85,7 +85,7 @@ export default function ExpensesReview() {
         </div>
       </div>
 
-      {loading && <p className="mt-6 text-slate-400">جاري التحميل...</p>}
+      {loading && <p className="mt-6 text-slate-400">جاري التحميل…</p>}
       {loadErr && <p className="mt-6 rounded-lg bg-red-50 p-3 text-sm text-red-700">{loadErr}</p>}
 
       {/* Expenses list */}

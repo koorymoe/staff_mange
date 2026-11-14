@@ -3,6 +3,7 @@ import { api, type Employee, type Service, type TrainingMaterial } from '../api'
 import { useSaveGuard } from '../useSaveGuard'
 import SaveError from '../components/SaveError'
 import { loadFailed } from '../netErrors'
+import { DeleteButton } from '../ui/DeleteButton'
 
 // ⚠️ `embedded`: الشاشة تنعرض جوّا تبويب بمدخل موحّد — فترويستها
 // الخاصة تنشال حتى ما تتكرر ترويستان فوگ بعض.
@@ -148,8 +149,8 @@ export default function TrainingManagement({ embedded }: { embedded?: boolean } 
                   <option value="VIDEO">فيديو</option>
                   <option value="DOCUMENT">مستند</option>
                 </select>
-                <button onClick={addMaterial}
-                  className="rounded-lg bg-emerald-500 py-2 text-sm font-bold text-white hover:bg-emerald-700">
+                <button onClick={addMaterial} disabled={guard.busy}
+                  className="disabled:opacity-50 rounded-lg bg-emerald-500 py-2 text-sm font-bold text-white hover:bg-emerald-700">
                   + إضافة مادة
                 </button>
               </div>
@@ -157,7 +158,7 @@ export default function TrainingManagement({ embedded }: { embedded?: boolean } 
               <div className="mt-3 flex flex-col gap-2">
                 {materials.map(m => (
                   <div key={m.id} className="flex items-center justify-between rounded-lg border border-slate-200 px-3 py-2 text-sm">
-                    <button onClick={() => removeMaterial(m.id)} className="text-xs font-bold text-red-500 hover:underline">حذف</button>
+                    <DeleteButton confirm={`تحذف المادة التدريبية «${m.title}»؟`} onConfirm={() => removeMaterial(m.id)} />
                     <span className="font-bold text-brand-900">{m.title}</span>
                   </div>
                 ))}

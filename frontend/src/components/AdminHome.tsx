@@ -24,6 +24,7 @@ import { num as fmt, dinarK as money } from '../utils/format'
 import { askInput } from '../ui/dialogs'
 import { lazyRetry } from '../utils/staleReload'
 
+import { notify } from '../ui/notify'
 // (11-04 — ٧ك) مركز قيادة ماتركس يتحمّل لمن تفتح لوحته بس
 const MatrixCommandCenter = lazyRetry(() => import('./MatrixCommandCenter'))
 
@@ -281,7 +282,7 @@ function StockForecastSection() {
   const count = async (id: string, name: string, current?: number) => {
     const v = (await askInput(`جرد «${name}»: شگد موجود هسه بالمخزن؟`, current != null ? String(Math.max(0, Math.round(current))) : ''))
     if (v === null || v.trim() === '' || Number.isNaN(Number(v))) return
-    try { await api.setMaterialStock(id, Number(v)); setReload((x) => x + 1) } catch (e) { alert(e instanceof Error ? e.message : 'تعذّر الحفظ') }
+    try { await api.setMaterialStock(id, Number(v)); setReload((x) => x + 1) } catch (e) { notify(e instanceof Error ? e.message : 'تعذّر الحفظ') }
   }
   return (
     <Section title="📦 ماتركس — المواد قبل ما تخلص" to="/procurement" linkLabel="طلبات المواد ←">
@@ -545,7 +546,7 @@ export function FollowBoard({ monitor = false }: { monitor?: boolean } = {}) {
         {summary === undefined ? <Loading /> : summary === null ? <Missing /> : (
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-2">
             <Stat icon="👥" tone="violet" label="الموظفين" hint="موظف وموظفة — يفتح «إدارة الموظفين»" to="/staff-management-desk" value={fmt(summary.employeeCount)} />
-            <Stat icon="🤝" tone="blue" label="العملاء" hint="عميل بالنظام" to="/customers" value={fmt(summary.customerCount)} />
+            <Stat icon="🤝" tone="blue" label="الزبائن" hint="زبون بالنظام" to="/customers" value={fmt(summary.customerCount)} />
             <Stat icon="📦" tone="green" label="الحجوزات" hint="حجز بالنظام" to="/bookings" value={fmt(summary.bookingCount)} />
             <Stat icon="📡" tone="amber" label="أجهزة الجي بي اس" hint="جهاز مسجّل" to="/gps/devices" value={fmt(summary.gpsDeviceCount)} />
           </div>

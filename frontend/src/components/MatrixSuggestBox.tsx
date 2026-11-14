@@ -1,12 +1,14 @@
 import { useState } from 'react'
 import { api, type MatrixBookingSuggestion } from '../api'
 import MatrixNote from './MatrixNote'
+import { fmtDateTime } from '../utils/date'
 
 // ═══ المرحلة الثانية: ماتركس يقترح والمنسق يقرر ═══
 // بالطلب (زر) — ماتركس يقترح موعد وكادر ويشرح ليش. المنسق يطبّقه بضغطة أو
 // يختار غيره؛ ماتركس يسجّل شنو صار حتى تنقاس دقته. ماكو تنفيذ تلقائي.
 
-const fmt = (iso: string) => new Date(iso).toLocaleString('ar-IQ', { weekday: 'long', day: 'numeric', month: 'numeric', hour: '2-digit', minute: '2-digit' })
+// (دازاي 11-15) التاريخ من utils/date.ts (عربي، توقيت بغداد)
+const fmt = (iso: string) => fmtDateTime(iso, { weekday: 'long', day: 'numeric', month: 'numeric', hour: '2-digit', minute: '2-digit' })
 const toLocal = (iso: string) => {
   const d = new Date(iso)
   const p = (n: number) => String(n).padStart(2, '0')

@@ -7,6 +7,8 @@ import { printProjectQuote } from '../utils/projectQuotePrint'
 import { ArtCrop, IconCity, IconFolder, IconPdf, IconUpload } from './design/planArt'
 import type { PlanFileRow, PlanMeta, PlanSetDetail, PlanSetRow } from './design/planTypes'
 import PlanSheetEditor from './design/PlanSheetEditor'
+import { DeleteButton } from '../ui/DeleteButton'
+import { BackLink } from '../ui/BackLink'
 
 // ═══ 📐 سيت واحد — (ك) 11-10 بطلب دازاي ═══
 // «تختار الي تريده وتسوي ابلود وترفع صورة أو ملف للمخطط… ينحفظ بالنظام… تسوي تنزيل
@@ -140,6 +142,7 @@ export default function PlanSetPage() {
           <div className="flex items-center gap-3">
             <span className="text-amber-400"><IconCity size={40} /></span>
             <div>
+              <BackLink to="/plan-sets" className="mb-2" />
               <h2 className="text-2xl font-extrabold">{d.title}</h2>
               <p className="text-xs text-white/70">{d.projectCode ? `${d.projectCode} — ${d.projectName ?? ''} · ` : ''}{d.items.length} مخطط{d.createdByName ? ` · فتحه ${d.createdByName}` : ''}{locked ? ' · مؤرشف' : ''}</p>
               {d.notes && <p className="mt-1 text-sm text-white/80">{d.notes}</p>}
@@ -263,7 +266,7 @@ export default function PlanSetPage() {
                             <span className="truncate text-slate-700" title={f.title}>{f.title}</span>
                             {isImageFile(f) && !locked && <button type="button" onClick={() => setSheetFor({ file: f, typeName: t.name })} title="لوغو، اسم المخطط، ملاحظات، سكيل، تاريخ"
                               className={`shrink-0 font-bold ${f.sheetName || f.sheetNotes || f.sheetScale ? 'text-emerald-700' : 'text-amber-600'}`}>🗂️ الفورما</button>}
-                            {d.canManage && !locked && <button type="button" disabled={busy} onClick={() => void run(() => apiRequest(`/plan-files/${f.id}`, { method: 'DELETE' }))} className="shrink-0 text-red-600">شيل</button>}
+                            {d.canManage && !locked && <DeleteButton disabled={busy} confirm={`تحذف المخطط «${f.title}» من السيت؟`} onConfirm={() => run(() => apiRequest(`/plan-files/${f.id}`, { method: 'DELETE' }))} className="shrink-0 !px-1.5 !py-0.5 !text-[11px]" />}
                           </div>
                         </div>
                       ))}

@@ -3,6 +3,7 @@ import { api, type Service } from '../api'
 import { useSession, isAdminOrOwner } from '../session'
 import { askConfirm } from '../ui/dialogs'
 
+import { notify } from '../ui/notify'
 export default function Services() {
   const { employee } = useSession()
   const [services, setServices] = useState<Service[]>([])
@@ -37,7 +38,7 @@ export default function Services() {
       setSkillDraft((prev) => ({ ...prev, [serviceId]: '' }))
       load()
     } catch (e) {
-      alert(e instanceof Error ? e.message : 'حدث خطأ')
+      notify(e instanceof Error ? e.message : 'حدث خطأ')
     } finally {
       setSkillSubmitting(null)
     }
@@ -52,7 +53,7 @@ export default function Services() {
       await api.deleteService(service.id)
       load()
     } catch (e) {
-      alert(e instanceof Error ? e.message : 'تعذر حذف الخدمة')
+      notify(e instanceof Error ? e.message : 'تعذر حذف الخدمة')
     } finally {
       setDeletingId(null)
     }
@@ -61,7 +62,7 @@ export default function Services() {
   const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!division) {
-      alert('اختار شعبة الخدمة أول: هندسية (شد) أو ديكور')
+      notify('اختار شعبة الخدمة أول: هندسية (شد) أو ديكور')
       return
     }
     setSubmitting(true)
@@ -72,7 +73,7 @@ export default function Services() {
       setDivision('')
       load()
     } catch (e) {
-      alert(e instanceof Error ? e.message : 'حدث خطأ')
+      notify(e instanceof Error ? e.message : 'حدث خطأ')
     } finally {
       setSubmitting(false)
     }
@@ -142,7 +143,7 @@ export default function Services() {
       </form>
       )}
 
-      {loading && <p className="mt-6 text-slate-400">جاري التحميل...</p>}
+      {loading && <p className="mt-6 text-slate-400">جاري التحميل…</p>}
       {error && (
         <p className="mt-6 rounded-lg bg-red-50 p-4 text-red-600">
           تعذر الاتصال بالخادم: {error}

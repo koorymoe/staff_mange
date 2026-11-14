@@ -4,6 +4,7 @@ import { askJustification } from '../utils/justify'
 import { lazyRetry } from '../utils/staleReload'
 import { askInput } from '../ui/dialogs'
 
+import { notify } from '../ui/notify'
 // ═══ «⏰ المتأخر» — خانة وحدة لكل تأخير (ع 10-16) ═══
 // «عروض أسعار المشاريع، وتأخير المشاريع، والمتأخرات — كلهن بخانة وحدة اسمها
 // المتأخر. يدخل ويختار وين يريد: المشاريع، الحجوزات، الفواتير، المحاسب».
@@ -60,12 +61,12 @@ function LateInvoices() {
   if (err) return <p className="rounded-xl bg-red-50 p-3 text-sm text-red-700">{err}</p>
   if (!d) return <p className="py-10 text-center text-slate-400">جاري التحميل…</p>
   const ask = async () => {
-    if (d.accountants.length === 0) { alert('ماكو محاسب فعّال بالنظام'); return }
+    if (d.accountants.length === 0) { notify('ماكو محاسب فعّال بالنظام'); return }
     const acc = d.accountants.length === 1 ? d.accountants[0]
       : d.accountants.find(async (a) => a.name === (await askInput(`لمنو؟ ${d.accountants.map((a) => a.name).join(' / ')}`))) 
     if (!acc) return
     try { await askJustification(acc.id, `عندك ${d.rows.length} فاتورة ما تدققت من أكثر من ${d.hours} ساعة — ليش؟`) }
-    catch (e) { alert(e instanceof Error ? e.message : 'تعذر الطلب') }
+    catch (e) { notify(e instanceof Error ? e.message : 'تعذر الطلب') }
   }
   return (
     <div className="space-y-3">

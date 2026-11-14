@@ -23,6 +23,8 @@ import { loadFailed } from '../netErrors'
 import { askConfirm, askInput } from '../ui/dialogs'
 import { swallow } from '../utils/swallow'
 
+import { notify } from '../ui/notify'
+import { bookingServiceLabel } from '../bookingServiceLabel'
 const DELETE_CHANNEL_OPTIONS: [BookingDeleteChannel, string][] =
   (Object.entries(bookingDeleteChannelLabels) as [BookingDeleteChannel, string][])
 // ⚠️ «الزبون ما رد» خيار بنفس القائمة بس **مو طلب حذف** — يُعالَج
@@ -35,11 +37,8 @@ const DELETE_TYPE_OPTIONS: [DeleteTypeChoice, string][] = [
 
 export type { BookingBucket } from './bookingBuckets'
 
-// أسماء كل خدمات الحجز (الزبون ممكن يطلب أكثر من منظومة بنفس الحجز)
-function serviceNames(b: { service?: { name: string } | null; services?: { name: string }[] }): string {
-  if (b.services && b.services.length > 0) return b.services.map((s) => s.name).join(' + ')
-  return b.service?.name || 'بدون خدمة محددة'
-}
+// (دازاي 11-15) اسم الخدمة من bookingServiceLabel.ts — جانت نسخة محلية هنا
+const serviceNames = bookingServiceLabel
 
 const techRoles: { key: 'TECH_1' | 'TECH_2' | 'TECH_3'; label: string }[] = [
   { key: 'TECH_1', label: 'الفني الأول' },
@@ -131,23 +130,23 @@ export default function BookingsList({ bucket = 'all', focus }: { bucket?: Booki
   const reopen = async (b: Booking) => {
     const reason = (await askInput(`ترجّع الحجز ${b.code} للكادر «قيد العمل» حتى يسجّلون إنجاز جزئي؟\nاكتب السبب (مثلاً: انضغط «تم الإنجاز» بالغلط والشغل ما كمل):`))
     if (reason === null) return
-    if (reason.trim().length < 3) { alert('اكتب السبب'); return }
+    if (reason.trim().length < 3) { notify('اكتب السبب'); return }
     try {
       const r = await api.reopenBooking(b.id, reason.trim())
-      alert(`رجع الحجز ${r.code} للكادر ✅ — انبلّغ ${r.notified} من الكادر.${r.warning ? '\n\n' + r.warning : ''}`)
+      notify(`رجع الحجز ${r.code} للكادر ✅ — انبلّغ ${r.notified} من الكادر.${r.warning ? '\n\n' + r.warning : ''}`, 'success')
       setBookings((prev) => prev.map((x) => (x.id === b.id ? { ...x, status: 'IN_PROGRESS', completedAt: null } : x)))
-    } catch (e) { alert(e instanceof Error ? e.message : 'تعذّر الإرجاع') }
+    } catch (e) { notify(e instanceof Error ? e.message : 'تعذّر الإرجاع') }
   }
   // «بدء العمل» انضغط بالغلط (مثلاً حجز باچر) — المالك بس، نفس حارس PUT /bookings/{id}/unstart.
   const unstart = async (b: Booking) => {
     const reason = (await askInput(`ترجّع الحجز ${b.code} «مثبّت» بموعده وتمسح بدء العمل؟\nاكتب السبب (مثلاً: الحجز باچر وانضغط «بدء العمل» بالغلط):`))
     if (reason === null) return
-    if (reason.trim().length < 3) { alert('اكتب السبب'); return }
+    if (reason.trim().length < 3) { notify('اكتب السبب'); return }
     try {
       const r = await api.unstartBooking(b.id, reason.trim())
-      alert(`رجع الحجز ${r.code} «مثبّت» ✅ — انبلّغ ${r.notified} من الكادر.`)
+      notify(`رجع الحجز ${r.code} «مثبّت» ✅ — انبلّغ ${r.notified} من الكادر.`, 'success')
       setBookings((prev) => prev.map((x) => (x.id === b.id ? { ...x, status: 'CONFIRMED', startedAt: null } : x)))
-    } catch (e) { alert(e instanceof Error ? e.message : 'تعذّر التراجع') }
+    } catch (e) { notify(e instanceof Error ? e.message : 'تعذّر التراجع') }
   }
   const canMarkWaiting = isAdmin || employee?.actualRole === 'OWNER' || permissions.includes('coordinator')
   const canRequestDelete = isAdmin || employee?.actualRole === 'OWNER' ||
@@ -161,9 +160,9 @@ export default function BookingsList({ bucket = 'all', focus }: { bucket?: Booki
     if (note === null) return
     try {
       await api.markBookingWaiting(bookingId, note.trim())
-      alert('تأشّر «الزبون ما رد» — الحجز انزاح لطابور «ما وصلت للتنفيذ»، ترجّعه أو تحذفه من هناك')
+      notify('تأشّر «الزبون ما رد» — الحجز انزاح لطابور «ما وصلت للتنفيذ»، ترجّعه أو تحذفه من هناك', 'success')
     } catch (e) {
-      alert(e instanceof Error ? e.message : 'تعذر تأشير «الزبون ما رد»')
+      notify(e instanceof Error ? e.message : 'تعذر تأشير «الزبون ما رد»')
     }
   }
 
@@ -174,9 +173,9 @@ export default function BookingsList({ bucket = 'all', focus }: { bucket?: Booki
     if (note === null) return
     try {
       await api.markBookingWaiting(bookingId, note.trim(), 'CUSTOMER_DECISION')
-      alert('انزاح لطابور «بانتظار موافقة الزبون» — أول ما يوافق اضغط «الزبون رد» فيرجع للطابور')
+      notify('انزاح لطابور «بانتظار موافقة الزبون» — أول ما يوافق اضغط «الزبون رد» فيرجع للطابور', 'success')
     } catch (e) {
-      alert(e instanceof Error ? e.message : 'تعذر تأشير «الزبون يرجع خبر»')
+      notify(e instanceof Error ? e.message : 'تعذر تأشير «الزبون يرجع خبر»')
     }
   }
 
@@ -194,20 +193,20 @@ export default function BookingsList({ bucket = 'all', focus }: { bucket?: Booki
     // «الزبون ما رد» مسار مختلف تماماً: ما ينفتح طلب حذف ولا ينطر
     // قرار المراقب — الحجز ينزاح فوراً لطابور الانتظار الموجود أصلاً.
     if (requestType === BOOKING_NO_ANSWER_CHOICE) {
-      if (!canMarkWaiting) { alert('تأشير «الزبون ما رد» للمنسّق — اختار نوع طلب ثاني أو بلّغ التنسيق'); return }
+      if (!canMarkWaiting) { notify('تأشير «الزبون ما رد» للمنسّق — اختار نوع طلب ثاني أو بلّغ التنسيق'); return }
       try {
         await api.markBookingWaiting(bookingId, reason.trim())
-      alert('تأشّر «الزبون ما رد» — الحجز انزاح لطابور الانتظار، ترجّعه يدوياً وقت ما تريد')
+      notify('تأشّر «الزبون ما رد» — الحجز انزاح لطابور الانتظار، ترجّعه يدوياً وقت ما تريد', 'success')
       } catch (e) {
-      alert(e instanceof Error ? e.message : 'تعذر تأشير «الزبون ما رد»')
+      notify(e instanceof Error ? e.message : 'تعذر تأشير «الزبون ما رد»')
       }
       return
     }
     try {
       await api.requestBookingDelete(bookingId, reason.trim(), channel, requestType)
-      alert('انرفع طلب الحذف — المراقب أو مدير النظام راح يبت بيه')
+      notify('انرفع طلب الحذف — المراقب أو مدير النظام راح يبت بيه', 'success')
     } catch (e) {
-      alert(e instanceof Error ? e.message : 'تعذر رفع الطلب')
+      notify(e instanceof Error ? e.message : 'تعذر رفع الطلب')
     }
   }
   const [technicians, setTechnicians] = useState<Employee[]>([])
@@ -255,7 +254,7 @@ export default function BookingsList({ bucket = 'all', focus }: { bucket?: Booki
     if (!customerId) return
     const already = vipIds.includes(customerId)
     if (already && !isAdmin) {
-      alert('إزالة التعليم متاحة لمدير النظام فقط')
+      notify('إزالة التعليم متاحة لمدير النظام فقط')
       return
     }
     setVipBusy(customerId)
@@ -272,7 +271,7 @@ export default function BookingsList({ bucket = 'all', focus }: { bucket?: Booki
         setVipIds((prev) => [...prev, customerId])
       }
     } catch (e) {
-      alert(e instanceof Error ? e.message : 'تعذر تنفيذ العملية')
+      notify(e instanceof Error ? e.message : 'تعذر تنفيذ العملية')
     } finally {
       setVipBusy(null)
     }
@@ -300,7 +299,7 @@ export default function BookingsList({ bucket = 'all', focus }: { bucket?: Booki
       const updated = await api.markConfirmationContacted(booking.id)
       setBookings((prev) => prev.map((b) => (b.id === updated.id ? updated : b)))
     } catch (e) {
-      alert(e instanceof Error ? e.message : 'تعذر تسجيل التواصل')
+      notify(e instanceof Error ? e.message : 'تعذر تسجيل التواصل')
     } finally { setFlowBusy(null) }
   }
 
@@ -318,7 +317,7 @@ export default function BookingsList({ bucket = 'all', focus }: { bucket?: Booki
       })
       setBookings((prev) => prev.map((b) => (b.id === updated.id ? updated : b)))
     } catch (e) {
-      alert(e instanceof Error ? e.message : 'تعذر التثبيت')
+      notify(e instanceof Error ? e.message : 'تعذر التثبيت')
     } finally { setFlowBusy(null) }
   }
 
@@ -328,7 +327,7 @@ export default function BookingsList({ bucket = 'all', focus }: { bucket?: Booki
       const updated = await api.updateBookingDetails(booking.id, { assignedVehicle })
       setBookings((prev) => prev.map((b) => (b.id === updated.id ? updated : b)))
     } catch (e) {
-      alert(e instanceof Error ? e.message : 'تعذر تعديل السيارة')
+      notify(e instanceof Error ? e.message : 'تعذر تعديل السيارة')
     } finally {
       setAssigning(false)
     }
@@ -342,7 +341,7 @@ export default function BookingsList({ bucket = 'all', focus }: { bucket?: Booki
       const updated = await api.assignSupervisor(booking.id, employeeId || null)
       setBookings((prev) => prev.map((b) => (b.id === updated.id ? updated : b)))
     } catch (e) {
-      alert(e instanceof Error ? e.message : 'تعذر تعيين الليدر')
+      notify(e instanceof Error ? e.message : 'تعذر تعيين الليدر')
     } finally {
       setAssigning(false)
     }
@@ -364,7 +363,7 @@ export default function BookingsList({ bucket = 'all', focus }: { bucket?: Booki
         const updated = await api.unassignTechnician(booking.id, role)
         setBookings((prev) => prev.map((b) => (b.id === updated.id ? updated : b)))
       } catch (e) {
-        alert(e instanceof Error ? e.message : 'تعذر إلغاء التكليف')
+        notify(e instanceof Error ? e.message : 'تعذر إلغاء التكليف')
       } finally {
         setAssigning(false)
       }
@@ -375,7 +374,7 @@ export default function BookingsList({ bucket = 'all', focus }: { bucket?: Booki
       const updated = await api.assignTechnician(booking.id, { employeeId, role })
       setBookings((prev) => prev.map((b) => (b.id === updated.id ? updated : b)))
     } catch (e) {
-      alert(e instanceof Error ? e.message : 'تعذر تعديل التكليف')
+      notify(e instanceof Error ? e.message : 'تعذر تعديل التكليف')
     } finally {
       setAssigning(false)
     }
@@ -598,7 +597,7 @@ export default function BookingsList({ bucket = 'all', focus }: { bucket?: Booki
         )}
       </div>
 
-      {loading && <p className="mt-6 text-slate-400">جاري التحميل...</p>}
+      {loading && <p className="mt-6 text-slate-400">جاري التحميل…</p>}
       {error && (
         <p className="mt-6 rounded-lg bg-red-50 p-4 text-red-600">
           تعذر الاتصال بالخادم: {error}

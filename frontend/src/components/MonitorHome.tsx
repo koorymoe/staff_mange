@@ -124,7 +124,7 @@ export default function MonitorHome() {
     { to: '/monitor-inbox', icon: '📝', label: 'ملاحظات المراقب' },
     // (ع) 10-11: المراقب يكلّف ماتركس يراقب موظف
     { to: '/matrix-missions', icon: '🎯', label: 'مهام ماتركس' },
-    { to: '/complaints', icon: '💬', label: 'شكاوى العملاء' },
+    { to: '/complaints', icon: '💬', label: 'شكاوى الزبائن' },
   ].filter((t) => isPathAllowed(t.to, ctx) !== false)
 
   const change = useMemo(() => {
@@ -231,7 +231,7 @@ export default function MonitorHome() {
         <section className={card}>
           <h3 className="mb-3 font-extrabold text-[#0f2040]">📊 إحصائيات سريعة</h3>
           <ul className="divide-y divide-slate-100 text-sm">
-            <li className="flex items-center justify-between py-2.5"><span>👥 عدد العملاء</span><b className="text-lg">{summary ? fmt(summary.customerCount) : '…'}</b></li>
+            <li className="flex items-center justify-between py-2.5"><span>👥 عدد الزبائن</span><b className="text-lg">{summary ? fmt(summary.customerCount) : '…'}</b></li>
             <li className="flex items-center justify-between py-2.5"><span>💵 إجمالي الإيرادات</span><b className="text-lg">{fin ? `${fmt(Math.round(fin.totalCollected))} د.ع` : '…'}</b></li>
             <li className="flex items-center justify-between py-2.5"><span>🎯 نسبة النجاح (أسبوع)</span><b className="text-lg">{board ? <PctWhy title="نسبة النجاح (أسبوع)" parts={{ numLabel: 'حجز مكتمل', num: board.weekCompleted, denLabel: 'حجز انسجّل بآخر ٧ أيام', den: board.weekTotal }}
               meaning={<>من كل الحجوزات الي انسجّلت بآخر ٧ أيام (اليوم و٦ أيام قبله)، شكد منها صار «مكتمل». تعلى لمن الكادر يخلّص الحجوزات؛ تنزل لمن تتأجل أو تبقى مفتوحة أو تنلغي. نفس حسبة لوحة المدير.</>} source={<>جدول الحجوزات: الحجوزات المنسجّلة خلال آخر ٧ أيام وحالتها هسه — نفس قائمة «حجوزات آخر ٧ أيام».</>} /> : '—'}</b></li>

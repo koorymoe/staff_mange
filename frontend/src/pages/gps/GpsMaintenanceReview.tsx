@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { api, type GpsMaintenanceRequest } from '../../api'
 import { loadFailed } from '../../netErrors'
 
+import { notify } from '../../ui/notify'
 const statusMap: Record<string, { label: string; className: string }> = {
   PENDING: { label: 'معلق', className: 'bg-amber-50 text-amber-700' },
   IN_PROGRESS: { label: 'قيد المعالجة', className: 'bg-violet-50 text-violet-700' },
@@ -33,7 +34,7 @@ export default function GpsMaintenanceReview({ embedded }: { embedded?: boolean 
       setSelected(null)
       load()
     } catch (e) {
-      alert(e instanceof Error ? e.message : 'حدث خطأ')
+      notify(e instanceof Error ? e.message : 'حدث خطأ')
     } finally {
       setSaving(false)
     }
@@ -45,7 +46,7 @@ export default function GpsMaintenanceReview({ embedded }: { embedded?: boolean 
         <h2 className="mb-6 text-2xl font-bold text-brand-900">طلبات الصيانة 🔧</h2>
       )}
 
-      {loading && <p className="py-20 text-center text-slate-400">جاري التحميل...</p>}
+      {loading && <p className="py-20 text-center text-slate-400">جاري التحميل…</p>}
       {!loading && requests.length === 0 && (
         <div className="rounded-2xl bg-white py-16 text-center shadow-sm">
           <p className="text-lg text-slate-400">لا توجد طلبات صيانة</p>

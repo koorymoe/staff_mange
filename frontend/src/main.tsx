@@ -13,6 +13,7 @@ import { startUrduIfNeeded } from './i18n/translateDom.ts'
 import { startFieldTracker } from './utils/fieldTracker.ts'
 import { installStaleChunkReload } from './utils/staleReload.ts'
 import { DialogHost } from './ui/DialogHost'
+import { NotifyHost } from './ui/NotifyHost'
 import { swallow } from './utils/swallow'
 
 // قبل الرندر: أي طلب يفشل بلا معالجة بالشاشة يوصل الموظف برسالة
@@ -37,6 +38,7 @@ createRoot(document.getElementById('root')!).render(
       <BrowserRouter basename={import.meta.env.BASE_URL}>
         <App />
         <DialogHost />
+        <NotifyHost />
       </BrowserRouter>
     </ErrorBoundary>
   </StrictMode>,

@@ -8,6 +8,7 @@ import { askConfirm } from '../ui/dialogs'
 import { swallow } from '../utils/swallow'
 
 
+import { notify } from '../ui/notify'
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
   const token = localStorage.getItem('authToken')
   const res = await fetch(`${API_URL}${path}`, {
@@ -251,7 +252,7 @@ export default function SuppliersPage() {
       }
       setShowForm(false); loadData()
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'حدث خطأ')
+      notify(err instanceof Error ? err.message : 'حدث خطأ')
     } finally { setFormSubmitting(false) }
   }
 
@@ -260,7 +261,7 @@ export default function SuppliersPage() {
     try {
       await request(`/suppliers/${id}`, { method: 'DELETE' })
       setDetailSupplier(null); loadData()
-    } catch (err) { alert(err instanceof Error ? err.message : 'حدث خطأ') }
+    } catch (err) { notify(err instanceof Error ? err.message : 'حدث خطأ') }
   }
 
   const handleRate = async (e: React.FormEvent) => {
@@ -274,7 +275,7 @@ export default function SuppliersPage() {
       })
       setShowRatingModal(false); setRatingValue(0); setRatingNote('')
       loadData()
-    } catch (err) { alert(err instanceof Error ? err.message : 'حدث خطأ') }
+    } catch (err) { notify(err instanceof Error ? err.message : 'حدث خطأ') }
     finally { setRatingSubmitting(false) }
   }
 
@@ -283,7 +284,7 @@ export default function SuppliersPage() {
     try {
       await request('/suppliers/specialties', { method: 'POST', body: JSON.stringify({ name: newSpecialtyName.trim() }) })
       setNewSpecialtyName(''); loadData()
-    } catch (err) { alert(err instanceof Error ? err.message : 'حدث خطأ') }
+    } catch (err) { notify(err instanceof Error ? err.message : 'حدث خطأ') }
   }
 
   const handleDeleteSpecialty = async (id: string) => {
@@ -291,7 +292,7 @@ export default function SuppliersPage() {
     try {
       await request(`/suppliers/specialties/${id}`, { method: 'DELETE' })
       loadData()
-    } catch (err) { alert(err instanceof Error ? err.message : 'حدث خطأ') }
+    } catch (err) { notify(err instanceof Error ? err.message : 'حدث خطأ') }
   }
 
   const toggleTraderType = (t: string) => {
@@ -434,7 +435,7 @@ export default function SuppliersPage() {
       </div>
 
       {/* Loading/error */}
-      {loading && <p className="mt-6 text-slate-400">جاري التحميل...</p>}
+      {loading && <p className="mt-6 text-slate-400">جاري التحميل…</p>}
       {error && <p className="mt-6 rounded-lg bg-red-50 p-4 text-red-600">تعذر الاتصال بالخادم: {error}</p>}
 
       {/* Supplier cards grid */}

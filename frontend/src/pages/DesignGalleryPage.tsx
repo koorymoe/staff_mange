@@ -175,7 +175,7 @@ export default function DesignGalleryPage() {
         </div>
       )}
 
-      {loading && <p className="text-t-faint">جاري التحميل...</p>}
+      {loading && <p className="text-t-faint">جاري التحميل…</p>}
       {!loading && filtered.length === 0 && (
         <EmptyState icon="🎨" title="ماكو تصاميم"
           reason={list.length === 0

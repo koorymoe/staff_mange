@@ -2,6 +2,8 @@ import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { api } from '../api'
 import { dayBaghdad } from '../utils/format'
+import { askInput } from '../ui/dialogs'
+import { notify } from '../ui/notify'
 
 // ═══ لوحة «الإجراءات» — بتصميم (ع) 10-04 ═══
 // كل شي ينتظر قرار أو متابعة بجدول واحد: مهام إضافية، إجازات، طلبات كادر،
@@ -21,6 +23,9 @@ interface Row {
   status: Status
   to: string
   act: string
+  /** (دازاي 11-15) «يطلعلي قرر… بس شنو الإجراء الي ممكن اسوي؟» — شرح القرار، وأزرار مباشرة إذا أكو */
+  hint?: string
+  taskId?: string
 }
 
 const STATUS: Record<Status, { label: string; cls: string; icon: string }> = {
@@ -53,52 +58,54 @@ async function load(now: number, gate?: (perm: string) => boolean): Promise<Row[
     if (t.status === 'DONE' && (!t.doneAt || olderThan(t.doneAt, 7, now))) continue
     const status: Status = t.status === 'DONE' ? 'DONE' : t.overdue ? 'LATE' : t.status === 'IN_PROGRESS' ? 'PROGRESS' : 'FOLLOW'
     rows.push({ key: 'task' + t.id, type: 'مهمة إضافية', icon: '📋', desc: clip(t.title + (t.description ? ` — ${t.description}` : '')),
-      who: t.assignedToName ?? '—', dept: 'المهام', due: t.dueAt ?? null, status, to: '/extra-tasks', act: status === 'DONE' ? 'شوف' : 'تابع' })
+      who: t.assignedToName ?? '—', dept: 'المهام', due: t.dueAt ?? null, status, to: '/extra-tasks', act: status === 'DONE' ? 'شوف' : 'تابع',
+      taskId: status === 'DONE' ? undefined : t.id,
+      hint: status === 'DONE' ? 'خلصها — شوف شنو كتب' : status === 'LATE' ? 'فات موعدها: ذكّره، أو مدّد الموعد، أو ألغها' : 'ذكّره إذا تحتاج' })
   }
   for (const l of leaves ?? []) {
     rows.push({ key: 'leave' + l.id, type: 'طلب إجازة', icon: '🌴', desc: clip(`${l.kind === 'URGENT' ? 'عاجلة · ' : ''}${fmtDate(l.startDate)} ← ${fmtDate(l.endDate)}${l.reason ? ` — ${l.reason}` : ''}`),
-      who: l.employeeName, dept: 'الموارد البشرية', due: l.startDate, status: new Date(l.startDate).getTime() < now ? 'LATE' : 'FOLLOW', to: '/leaves', act: 'قرّر' })
+      who: l.employeeName, dept: 'الموارد البشرية', due: l.startDate, status: new Date(l.startDate).getTime() < now ? 'LATE' : 'FOLLOW', to: '/leaves', act: 'قرّر', hint: 'وافق أو ارفض الإجازة' })
   }
   for (const s of staff ?? []) {
     if (s.status !== 'PENDING') continue
     rows.push({ key: 'staff' + s.id, type: 'طلب كادر', icon: '👷', desc: clip(`${s.projectName ?? 'مشروع'}${s.notes ? ` — ${s.notes}` : ''}`),
-      who: s.requester?.name ?? '—', dept: 'المشاريع', due: s.createdAt, status: olderThan(s.createdAt, 2, now) ? 'LATE' : 'FOLLOW', to: '/staff-requests', act: 'وفّر' })
+      who: s.requester?.name ?? '—', dept: 'المشاريع', due: s.createdAt, status: olderThan(s.createdAt, 2, now) ? 'LATE' : 'FOLLOW', to: '/staff-requests', act: 'وفّر', hint: 'عيّن الكادر المطلوب للمشروع' })
   }
   for (const d of deletes ?? []) {
     rows.push({ key: 'del' + d.id, type: 'طلب حذف حجز', icon: '🗑️', desc: clip(`${d.bookingCode} — ${d.reason}`),
-      who: d.requestedByName, dept: 'الحجوزات', due: d.createdAt, status: olderThan(d.createdAt, 2, now) ? 'LATE' : 'FOLLOW', to: '/booking-delete-requests', act: 'قرّر' })
+      who: d.requestedByName, dept: 'الحجوزات', due: d.createdAt, status: olderThan(d.createdAt, 2, now) ? 'LATE' : 'FOLLOW', to: '/booking-delete-requests', act: 'قرّر', hint: 'وافق على حذف الحجز أو ارفضه' })
   }
   for (const c of complaints ?? []) {
     if (c.status !== 'NEW' && c.status !== 'IN_PROGRESS') continue
     // الشخصية المهمة مهلتها يوم واحد (ع) 10-15
     const status: Status = olderThan(c.createdAt, c.isVip ? 1 : 3, now) ? 'LATE' : c.status === 'IN_PROGRESS' ? 'PROGRESS' : 'FOLLOW'
     rows.push({ key: 'cmp' + c.id, type: c.isVip ? 'شكوى شخصية مهمة' : 'شكوى زبون', icon: c.isVip ? '👑' : '🎧', desc: clip(`${c.customer?.name ?? ''}${c.vipNote ? ` (${c.vipNote})` : ''} — ${c.description}`),
-      who: c.assignedToEmployee?.name ?? (c.createdByEmployee?.name ? `${c.createdByEmployee.name} (سجّلها)` : '—'), dept: 'خدمة الزبائن', due: c.createdAt, status, to: `/complaints?q=${encodeURIComponent(c.customer?.phone ?? '')}`, act: 'تابع' })
+      who: c.assignedToEmployee?.name ?? (c.createdByEmployee?.name ? `${c.createdByEmployee.name} (سجّلها)` : '—'), dept: 'خدمة الزبائن', due: c.createdAt, status, to: `/complaints?q=${encodeURIComponent(c.customer?.phone ?? '')}`, act: 'تابع', hint: 'تأكد إن أحد متواصل ويا الزبون وإنها تنحل' })
   }
   for (const p of procurement ?? []) {
     if (p.status !== 'PENDING' && p.status !== 'IN_PROGRESS') continue
     const items = (p.items ?? []).map((i) => i.productName).filter(Boolean).slice(0, 3).join('، ')
     const status: Status = olderThan(p.createdAt, 3, now) ? 'LATE' : p.status === 'IN_PROGRESS' ? 'PROGRESS' : 'FOLLOW'
     rows.push({ key: 'pr' + p.id, type: 'شراء مواد', icon: '🛒', desc: clip(`${p.code}${items ? ` — ${items}` : ''}`),
-      who: p.requestedBy?.name ?? '—', dept: 'المشتريات', due: p.createdAt, status, to: '/procurement', act: 'جهّز' })
+      who: p.requestedBy?.name ?? '—', dept: 'المشتريات', due: p.createdAt, status, to: '/procurement', act: 'جهّز', hint: 'اعتمد الشراء أو جهّز المواد' })
   }
   for (const m of matrix?.pending ?? []) {
     rows.push({ key: 'mx' + m.id, type: 'قرار ماتركس', icon: '🤖', desc: clip(`${m.title}${m.bookingCode ? ` (${m.bookingCode})` : ''}`),
-      who: m.employeeName ?? '—', dept: 'ماتركس', due: m.createdAt, status: olderThan(m.createdAt, 3, now) ? 'LATE' : 'FOLLOW', to: '/matrix/decisions', act: 'قرّر' })
+      who: m.employeeName ?? '—', dept: 'ماتركس', due: m.createdAt, status: olderThan(m.createdAt, 3, now) ? 'LATE' : 'FOLLOW', to: '/matrix/decisions', act: 'قرّر', hint: 'ماتركس لكى شي: وافق على اقتراحه، أو ارفضه، أو صحّحه' })
   }
   for (const u of matrix?.unstaffed ?? []) {
     rows.push({ key: 'un' + u.id, type: 'حجز بلا كادر', icon: '📅', desc: `${u.code} — موعده قريب وما عليه كادر`,
-      who: 'منسق الحجوزات', dept: 'الحجوزات', due: u.scheduledAt, status: new Date(u.scheduledAt).getTime() < now ? 'LATE' : 'FOLLOW', to: '/coordinator', act: 'كلّف' })
+      who: 'منسق الحجوزات', dept: 'الحجوزات', due: u.scheduledAt, status: new Date(u.scheduledAt).getTime() < now ? 'LATE' : 'FOLLOW', to: '/coordinator', act: 'كلّف', hint: 'كلّف كادر للحجز قبل موعده' })
   }
   for (const d of dups ?? []) {
     const a = d.bookingA?.code ?? d.customerA?.name ?? '', b = d.bookingB?.code ?? d.customerB?.name ?? ''
     rows.push({ key: 'dup' + d.id, type: 'تكرار مشتبه', icon: '👯', desc: clip(`${a} و${b} — ${d.matchReason}`),
-      who: d.bookingB?.createdByName ?? d.bookingA?.createdByName ?? '—', dept: 'ماتركس', due: d.detectedAt, status: 'FOLLOW', to: '/duplicate-review', act: 'دقّق' })
+      who: d.bookingB?.createdByName ?? d.bookingA?.createdByName ?? '—', dept: 'ماتركس', due: d.detectedAt, status: 'FOLLOW', to: '/duplicate-review', act: 'دقّق', hint: 'هل هذا نفس الحجز/الزبون؟ ادمج أو علّمه مو مكرر' })
   }
   for (const a of achievements ?? []) {
     if (a.reviewStatus !== 'PENDING') continue
     rows.push({ key: 'ach' + a.id, type: 'إنجاز بلا تقييم', icon: '📝', desc: clip(a.reportText),
-      who: a.employeeName ?? '—', dept: 'الموظفين', due: a.createdAt, status: olderThan(a.createdAt, 2, now) ? 'LATE' : 'FOLLOW', to: '/achievements', act: 'قيّم' })
+      who: a.employeeName ?? '—', dept: 'الموظفين', due: a.createdAt, status: olderThan(a.createdAt, 2, now) ? 'LATE' : 'FOLLOW', to: '/achievements', act: 'قيّم', hint: 'قيّم تقرير الإنجاز: زين أو يحتاج مراقبة' })
   }
   const order: Record<Status, number> = { LATE: 0, FOLLOW: 1, PROGRESS: 2, DONE: 3 }
   return rows.sort((x, y) => order[x.status] - order[y.status] || (x.due ?? '').localeCompare(y.due ?? ''))
@@ -200,12 +207,13 @@ export default function ActionsTable({ gate }: { gate?: (perm: string) => boolea
                     <tr key={r.key} className="border-b border-slate-100">
                       <td className="p-2 text-slate-400">{(cur - 1) * PAGE + i + 1}</td>
                       <td className="whitespace-nowrap p-2 font-bold text-slate-700">{r.icon} {r.type}</td>
-                      <td className="p-2 text-slate-600">{r.desc}</td>
+                      <td className="p-2 text-slate-600">{r.desc}{r.hint && <span className="mt-0.5 block text-[11px] font-bold text-violet-700">💡 المطلوب منك: {r.hint}</span>}</td>
                       <td className="whitespace-nowrap p-2 text-slate-700">👤 {r.who}</td>
                       <td className="whitespace-nowrap p-2 text-slate-500">{r.dept}</td>
                       <td className={`whitespace-nowrap p-2 tabular-nums ${r.status === 'LATE' ? 'font-bold text-red-600' : 'text-slate-600'}`}>📅 {fmtDate(r.due)}</td>
                       <td className="p-2"><span className={`whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-bold ${st.cls}`}>{st.icon} {st.label}</span></td>
                       <td className="p-2">
+                        {r.taskId && <TaskQuick id={r.taskId} late={r.status === 'LATE'} onDone={() => setRows((cur) => (cur ?? []).filter((x) => x.key !== r.key || r.status !== 'LATE'))} />}
                         <Link to={r.to} className={`whitespace-nowrap rounded-lg px-3 py-1.5 text-xs font-bold ${r.status === 'DONE' ? 'bg-slate-100 text-slate-700' : 'bg-brand-600 text-white hover:bg-brand-700'}`}>
                           {r.status === 'DONE' ? '👁' : '▶'} {r.act}
                         </Link>
@@ -227,6 +235,37 @@ export default function ActionsTable({ gate }: { gate?: (perm: string) => boolea
           </div>
         )}
       </section>
+    </div>
+  )
+}
+
+// (دازاي 11-15) قرارات المهمة مباشرة من اللوحة — بدل «قرر» الي يوديك لشاشة وما يگلك شتسوي.
+function TaskQuick({ id, late, onDone }: { id: string; late: boolean; onDone: () => void }) {
+  const [busy, setBusy] = useState(false)
+  const run = async (f: () => Promise<unknown>, ok: string) => {
+    setBusy(true)
+    try { await f(); notify(ok, 'success'); onDone() } catch (e) { notify(e instanceof Error ? e.message : 'تعذر') } finally { setBusy(false) }
+  }
+  const btn = 'whitespace-nowrap rounded-lg px-2 py-1 text-[11px] font-bold disabled:opacity-50'
+  return (
+    <div className="mb-1.5 flex flex-wrap gap-1">
+      <button type="button" disabled={busy} className={`${btn} bg-amber-100 text-amber-800`}
+        onClick={() => void run(() => api.remindExtraTask(id), '🔔 وصله تذكير')}>🔔 ذكّره</button>
+      {late && <button type="button" disabled={busy} className={`${btn} bg-sky-100 text-sky-800`}
+        onClick={async () => {
+          const d = await askInput('كم يوم تمدّد الموعد؟ (١–٦٠)', '3')
+          const n = Number(d)
+          if (d === null) return
+          if (!Number.isInteger(n) || n < 1 || n > 60) { notify('اكتب رقم من ١ لـ٦٠'); return }
+          await run(() => api.extendExtraTask(id, n), `⏰ انمدّ ${n} يوم ووصله إشعار`)
+        }}>⏰ مدّد</button>}
+      <button type="button" disabled={busy} className={`${btn} bg-red-100 text-red-800`}
+        onClick={async () => {
+          const why = await askInput('ليش تلغي المهمة؟ (يوصل للموظف)')
+          if (why === null) return
+          if (why.trim().length < 3) { notify('اكتب السبب'); return }
+          await run(() => api.cancelExtraTask(id, why.trim()), '✖️ انلغت ووصله إشعار')
+        }}>✖️ ألغِ</button>
     </div>
   )
 }

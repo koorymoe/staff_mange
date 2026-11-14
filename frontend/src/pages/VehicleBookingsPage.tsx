@@ -7,6 +7,7 @@ import { dateTimeAr as fmt } from '../utils/format'
 import { askConfirm } from '../ui/dialogs'
 import { swallow } from '../utils/swallow'
 
+import { notify } from '../ui/notify'
 // ═══ حجز المركبات ═══
 //
 // ⚠️ حراس الباك (main.go):
@@ -79,7 +80,7 @@ export default function VehicleBookingsPage() {
   const submit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (form.endAt <= form.startAt) {
-      alert('وقت النهاية لازم يكون بعد البداية')
+      notify('وقت النهاية لازم يكون بعد البداية')
       return
     }
     const ok = await guard.run('إرسال طلب الحجز', () => api.createVehicleBooking({
@@ -185,7 +186,7 @@ export default function VehicleBookingsPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {bookings === null && <tr><td colSpan={6} className="p-4 text-center text-slate-400">جاري التحميل...</td></tr>}
+              {bookings === null && <tr><td colSpan={6} className="p-4 text-center text-slate-400">جاري التحميل…</td></tr>}
               {bookings?.length === 0 && <tr><td colSpan={6} className="p-4 text-center text-slate-400">ماكو حجوزات</td></tr>}
               {bookings?.map((b) => {
                 const st = STATUS_LABELS[b.status]

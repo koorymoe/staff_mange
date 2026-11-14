@@ -69,7 +69,7 @@ export default function ProjectWorkTypesSettingsPage() {
       </form>
       {error && <p className="mt-2 text-sm font-bold text-red-600">{error}</p>}
 
-      {loading && <p className="mt-6 text-slate-400">جاري التحميل...</p>}
+      {loading && <p className="mt-6 text-slate-400">جاري التحميل…</p>}
 
       {!loading && (
         <div className="mt-6 flex flex-wrap gap-2">

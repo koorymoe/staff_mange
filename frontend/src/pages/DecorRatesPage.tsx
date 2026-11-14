@@ -12,17 +12,20 @@ export default function DecorRatesPage() {
   const [rows, setRows] = useState<DecorRate[]>([])
   const [services, setServices] = useState<Service[]>([])
   const [f, setF] = useState(empty)
+  const [busy, setBusy] = useState(false) // (دازاي 11-15) قفل الحفظ المزدوج — الزر ينقفل لحد ما يرجع الجواب
   const [msg, setMsg] = useState('')
   useEffect(() => {
     api.getDecorRates(true).then(setRows).catch(swallow)
     api.getServices().then((s) => setServices(s.filter((x) => x.division === 'DECOR'))).catch(swallow)
   }, [])
   const save = async (x: typeof empty) => {
+    if (busy) return
     setMsg('')
+    setBusy(true)
     try {
       setRows(await api.saveDecorRate({ ...x, price: Number(x.price) }))
       setF(empty); setMsg('انحفظ ✓')
-    } catch (e) { setMsg(e instanceof Error ? e.message : 'تعذر') }
+    } catch (e) { setMsg(e instanceof Error ? e.message : 'تعذر') } finally { setBusy(false) }
   }
   return (
     <div className="space-y-4" dir="rtl">
@@ -37,7 +40,7 @@ export default function DecorRatesPage() {
         <input value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} placeholder="البند (مثلاً قاعدة حديد)" className="rounded-lg border border-slate-300 px-2 py-2 text-sm" />
         <select value={f.unit} onChange={(e) => setF({ ...f, unit: e.target.value })} className="rounded-lg border border-slate-300 px-2 py-2 text-sm">{UNITS.map((u) => <option key={u}>{u}</option>)}</select>
         <input type="number" min={0} value={f.price} onChange={(e) => setF({ ...f, price: e.target.value })} placeholder="السعر د.ع" className="rounded-lg border border-slate-300 px-2 py-2 text-sm" />
-        <button type="button" onClick={() => save(f)} className="rounded-lg bg-orange-600 px-4 py-2 text-sm font-bold text-white">{f.id ? 'حفظ التعديل' : '＋ أضف'}</button>
+        <button type="button" disabled={busy} onClick={() => save(f)} className="disabled:opacity-50 rounded-lg bg-orange-600 px-4 py-2 text-sm font-bold text-white">{f.id ? 'حفظ التعديل' : '＋ أضف'}</button>
       </div>
       {msg && <p className="text-sm font-bold text-slate-600">{msg}</p>}
       <div className="overflow-x-auto rounded-2xl bg-white ring-1 ring-slate-200">
@@ -52,7 +55,7 @@ export default function DecorRatesPage() {
                 <td className="p-2 text-center">{r.active ? 'فعّال' : 'معطّل'}</td>
                 <td className="p-2 text-center">
                   <button type="button" onClick={() => setF({ id: r.id, serviceId: r.serviceId, name: r.name, unit: r.unit, price: String(r.price), active: r.active })} className="text-xs font-bold text-brand-700">تعديل</button>
-                  <button type="button" onClick={() => save({ id: r.id, serviceId: r.serviceId, name: r.name, unit: r.unit, price: String(r.price), active: !r.active })} className="ms-3 text-xs font-bold text-slate-500">{r.active ? 'عطّل' : 'فعّل'}</button>
+                  <button type="button" onClick={() => save({ id: r.id, serviceId: r.serviceId, name: r.name, unit: r.unit, price: String(r.price), active: !r.active })} disabled={busy} className="disabled:opacity-50 ms-3 text-xs font-bold text-slate-500">{r.active ? 'عطّل' : 'فعّل'}</button>
                 </td>
               </tr>
             ))}

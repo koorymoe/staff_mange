@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { onEnter } from '../utils/enterKey'
 import { api, AUDIT_VERDICTS, type LeaderInvoice, type LeaderInvoiceAdjustment, type LeaderInvoicePage } from '../api'
-import { parseAmount } from '../utils/money'
+import { money as fmtMoney, parseAmount } from '../utils/money'
 import EntityIdentity from '../components/EntityIdentity'
 import StatTile from '../components/StatTile'
 import Pager from '../components/Pager'
@@ -16,6 +16,7 @@ import ServicePriceSuggestions from '../components/ServicePriceSuggestions'
 import { loadFailed } from '../netErrors'
 import { askInput } from '../ui/dialogs'
 
+import { notify } from '../ui/notify'
 // ═══ طباعة فاتورة الليدر ═══
 //
 // هاي أكثر ورقة تطلع للزبون، وكانت **ماكو بيها طباعة أصلاً** — المحاسب
@@ -30,7 +31,7 @@ import { askInput } from '../ui/dialogs'
 // ⚠️ سجل التعديلات ينطبع هو هم: الورقة الي تعرض الرقم الجديد بلا ما
 // تگول إنه انتعدّل تخلي القارئ يظن إنه الأصلي.
 function printInvoice(inv: LeaderInvoice, adjustments: LeaderInvoiceAdjustment[]) {
-  const money = (n: number) => `${Number(n || 0).toLocaleString('en-US')} د.ع`
+  const money = (n: number) => `${fmtMoney(Number(n || 0))} د.ع` // (دازاي 11-15) من utils/money.ts
   const identity = printIdentityHtml({
     bookingCode: inv.bookingCode || undefined,
     customerCode: formatCustomerCode(inv.booking?.customer) || undefined,
@@ -117,7 +118,7 @@ function printInvoice(inv: LeaderInvoice, adjustments: LeaderInvoiceAdjustment[]
   const w = window.open('', '_blank')
   // مانع النوافذ ممكن يرجّع null — بلا هذا الفحص الطباعة تطيح بصمت
   if (!w) {
-    alert('المتصفح منع فتح نافذة الطباعة — سمح النوافذ المنبثقة لهذا الموقع')
+    notify('المتصفح منع فتح نافذة الطباعة — سمح النوافذ المنبثقة لهذا الموقع')
     return
   }
   w.document.write(html)
@@ -337,7 +338,7 @@ export default function LeaderInvoicesListPage({ embedded }: EmbeddedProps = {})
     if (reason === null) return
     setBusyId(inv.id)
     try { await api.returnInvoiceToAccountant(inv.id, reason.trim()); load() }
-    catch (e) { window.alert(e instanceof Error ? e.message : 'تعذر الإرجاع') }
+    catch (e) { notify(e instanceof Error ? e.message : 'تعذر الإرجاع') }
     finally { setBusyId(null) }
   }
 
@@ -368,7 +369,7 @@ export default function LeaderInvoicesListPage({ embedded }: EmbeddedProps = {})
       await api.revokeInvoiceApproval(inv.id, reason)
       load()
     } catch (e) {
-      alert(e instanceof Error ? e.message : 'تعذر سحب الاعتماد')
+      notify(e instanceof Error ? e.message : 'تعذر سحب الاعتماد')
     } finally { setBusyId(null) }
   }
 
@@ -619,7 +620,7 @@ export default function LeaderInvoicesListPage({ embedded }: EmbeddedProps = {})
         </div>
       )}
 
-      {loading && tab !== 'PRICES' && <p className="mt-6 text-slate-400">جاري التحميل...</p>}
+      {loading && tab !== 'PRICES' && <p className="mt-6 text-slate-400">جاري التحميل…</p>}
 
       {!loading && tab !== 'PRICES' && (
         <div className="mt-6 overflow-x-auto rounded-xl border border-white bg-white shadow-[0_4px_20px_rgba(15,32,64,0.06)]">

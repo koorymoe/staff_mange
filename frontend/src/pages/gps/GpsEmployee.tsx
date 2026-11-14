@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { api, type GpsCustomer, type GpsDeviceRequest, type GpsRenewalRequest, type GpsMaintenanceRequest } from '../../api'
 import { useSession } from '../../session'
 
+import { notify } from '../../ui/notify'
 type ActiveForm = null | 'purchase' | 'renewal' | 'maintenance'
 type RecentRequest =
   | (GpsDeviceRequest & { type: 'device' })
@@ -55,7 +56,7 @@ export default function GpsEmployee() {
       ].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()).slice(0, 10)
       setRecentRequests(allRequests)
     } catch (e) {
-      alert(e instanceof Error ? e.message : 'حدث خطأ')
+      notify(e instanceof Error ? e.message : 'حدث خطأ')
     }
     setLoading(false)
   }
@@ -67,42 +68,42 @@ export default function GpsEmployee() {
   useEffect(() => { load() }, [])
 
   const handlePurchase = async () => {
-    if (!customerId || !employee) return alert('اختر الزبون')
+    if (!customerId || !employee) return notify('اختر الزبون')
     setSubmitting(true)
     try {
       await api.createGpsDevice({ customerId, employeeId: employee.id, purchaseType, subscriptionType, notes })
       setCustomerId(''); setNotes(''); setActiveForm(null)
       load()
-    } catch (e) { alert(e instanceof Error ? e.message : 'حدث خطأ') }
+    } catch (e) { notify(e instanceof Error ? e.message : 'حدث خطأ') }
     setSubmitting(false)
   }
 
   const handleRenewal = async () => {
-    if (!renewCustomerId || !renewDeviceId || !employee) return alert('اختر الزبون والجهاز')
+    if (!renewCustomerId || !renewDeviceId || !employee) return notify('اختر الزبون والجهاز')
     setSubmitting(true)
     try {
       await api.createGpsRenewal({ customerId: renewCustomerId, deviceRequestId: renewDeviceId, employeeId: employee.id, subscriptionType: renewSubType })
       setRenewCustomerId(''); setRenewDeviceId(''); setActiveForm(null)
       load()
-    } catch (e) { alert(e instanceof Error ? e.message : 'حدث خطأ') }
+    } catch (e) { notify(e instanceof Error ? e.message : 'حدث خطأ') }
     setSubmitting(false)
   }
 
   const handleMaintenance = async () => {
-    if (!maintCustomerId || !employee) return alert('اختر الزبون')
-    if (!problemDescription) return alert('اكتب وصف المشكلة')
+    if (!maintCustomerId || !employee) return notify('اختر الزبون')
+    if (!problemDescription) return notify('اكتب وصف المشكلة')
     setSubmitting(true)
     try {
       await api.createGpsMaintenance({ customerId: maintCustomerId, employeeId: employee.id, problemDescription })
       setMaintCustomerId(''); setProblemDescription(''); setActiveForm(null)
       load()
-    } catch (e) { alert(e instanceof Error ? e.message : 'حدث خطأ') }
+    } catch (e) { notify(e instanceof Error ? e.message : 'حدث خطأ') }
     setSubmitting(false)
   }
 
   const statusLabel: Record<string, string> = {
     PENDING: 'قيد الانتظار', APPROVED: 'موافق عليه', REJECTED: 'مرفوض',
-    DELIVERED: 'تم التسليم', IN_PROGRESS: 'قيد المعالجة', COMPLETED: 'مكتمل',
+    DELIVERED: 'تم التسليم', IN_PROGRESS: 'جاري التنفيذ', COMPLETED: 'منجز', // (دازاي 11-15) نفس كلمات bookingStatus.ts
   }
   const statusColor: Record<string, { color: string; bg: string }> = {
     PENDING: { color: 'var(--t-warning)', bg: '#fffbeb' },
@@ -115,7 +116,7 @@ export default function GpsEmployee() {
   const typeLabel: Record<string, string> = { device: 'شراء جهاز', renewal: 'تجديد', maintenance: 'صيانة' }
   const subLabel: Record<string, string> = { THREE_MONTHS: '3 أشهر', SIX_MONTHS: '6 أشهر', YEARLY: 'سنوي' }
 
-  if (loading) return <div className="flex items-center justify-center p-12"><div className="text-lg text-slate-500">جاري التحميل...</div></div>
+  if (loading) return <div className="flex items-center justify-center p-12"><div className="text-lg text-slate-500">جاري التحميل…</div></div>
 
   return (
     <div dir="rtl">

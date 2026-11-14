@@ -10,6 +10,7 @@ import { loadFailed } from '../netErrors'
 import { askConfirm } from '../ui/dialogs'
 import { swallow } from '../utils/swallow'
 
+import { notify } from '../ui/notify'
 type BookingType = 'REGULAR' | 'MAINTENANCE' | 'INTERNAL' | 'SOLAR'
 type Urgency = 'ASAP' | 'BY_PRIORITY' | 'SPECIFIC_DATE'
 type MaintenanceType = 'EXECUTION_ERROR' | 'DEVICE_ISSUE' | 'UPKEEP'
@@ -114,7 +115,7 @@ export default function SalesBooking() {
 
   useEffect(() => {
     // بلا الخدمات ما ينحجز شي — الفشل لازم يبين، مو قائمة فاضية ساكتة.
-    api.getServices().then(setServices).catch((e) => alert(`تعذّر جلب الخدمات: ${e instanceof Error ? e.message : ''} — حدّث الصفحة.`))
+    api.getServices().then(setServices).catch((e) => notify(`تعذّر جلب الخدمات: ${e instanceof Error ? e.message : ''} — حدّث الصفحة.`))
     // الأقسام الفعّالة بس — ما ينحجز لقسم انلغى.
     // ⚠️ الفشل ما ينبلع: بلا الأقسام، منتقي «حجز داخل الشركة» يطلع
     // فارغاً والموظف يظن ماكو أقسام بينما السجل مليان.

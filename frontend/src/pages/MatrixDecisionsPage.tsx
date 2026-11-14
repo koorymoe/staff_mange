@@ -9,6 +9,7 @@ import { SWITCH_MATRIX_AUTOPILOT, SWITCH_MATRIX_STAFF_EYE } from '../systemSwitc
 import { todayBaghdad } from '../utils/format'
 import { askConfirm } from '../ui/dialogs'
 
+import { notify } from '../ui/notify'
 // ═══ صندوق قرارات ماتركس — للمالك ومدير النظام ═══
 // ثلاث أقسام: شنو سوّى لحاله اليوم (تذكيرات بس، ويه زر «لا تسوي هذا»)،
 // وشنو ينتظر قرارك (أحكامه + حجوزات باچر بلا كادر)، والقرار ياخذه
@@ -81,7 +82,7 @@ export default function MatrixDecisionsPage() {
       await api.undoMatrixAction(id)
       load()
     } catch (e) {
-      alert(e instanceof Error ? e.message : 'تعذر الرفض')
+      notify(e instanceof Error ? e.message : 'تعذر الرفض')
     } finally {
       setBusy(null)
     }
@@ -93,7 +94,7 @@ export default function MatrixDecisionsPage() {
       await api.resumeMatrixKind(kind)
       load()
     } catch (e) {
-      alert(e instanceof Error ? e.message : 'تعذر الترجيع')
+      notify(e instanceof Error ? e.message : 'تعذر الترجيع')
     } finally {
       setBusy(null)
     }

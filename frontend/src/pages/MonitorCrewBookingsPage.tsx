@@ -101,7 +101,7 @@ export default function MonitorCrewBookingsPage({ embedded }: EmbeddedProps = {}
 
       <SaveError message={guard.error} onClose={guard.clear} />
 
-      {loading && <p className="mt-6 text-slate-400">جاري التحميل...</p>}
+      {loading && <p className="mt-6 text-slate-400">جاري التحميل…</p>}
       {error && <p className="mt-6 rounded-lg bg-red-50 p-4 text-red-600">تعذر الاتصال بالخادم: {error}</p>}
 
       {!loading && !error && (
@@ -198,7 +198,7 @@ export default function MonitorCrewBookingsPage({ embedded }: EmbeddedProps = {}
                 {isLogOpen && (
                   <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
                     {log === null ? (
-                      <p className="text-xs text-slate-400">جاري التحميل...</p>
+                      <p className="text-xs text-slate-400">جاري التحميل…</p>
                     ) : log.length === 0 ? (
                       <p className="text-xs text-slate-400">ماكو تنبيهات مسجّلة على هذا الحجز.</p>
                     ) : (

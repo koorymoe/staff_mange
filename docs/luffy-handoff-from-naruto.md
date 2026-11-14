@@ -457,3 +457,12 @@ git push origin origin/avg:refs/heads/prod     # بعد التأكد إنه fast
 - 11-14 (لوفي) بلاغ #40: أكثر من خطة للوحدة بالشهر — 0490 يشيل OrgPlan_scope_uq (فهرس عادي OrgPlan_scope_idx)؛ plansFor/planByID، Desk.UnitPlans كل الخطط (الأقدم أول)؛ CreatePlan(..., extra) — بلا extra يفتح خطة الشهر الأولى مثل قبل، ويا extra خطة جديدة بعنوان؛ الواجهة UnitDevelopment: تبويبات الخطط + «➕ خطة ثانية». اختبار بـTestUnitDevelopment_Live.
 - 11-14 (لوفي) بلاغ #41: Project.waitingCustomerSince/Note/ById (0491)؛ POST /api/projects/{id}/waiting (field.project_waiting = نفس حارس سبب التأخير)؛ judge: الانتظار (بعد بداية المرحلة) → ChainNA بلا نقاط، وعرض السعر/إعادة التسعير/العقد حدّها ≥ CustomerStageMinDays=30؛ scoreProjects: الخصم مفتاحه بداية المرحلة (@stuck:) فينحسب مرة وحدة لكل وقفة؛ ProjectCard زر ⏸️/▶️. اختبار TestProjectWaitingCustomer.
 - 11-15 (لوفي) الصلاحيات المشالة ترجع: منح الأدوار بكل تشغيل (grantRolePermission، grantLeaderBasketToLeaders، procurement_manual بـmigrate.go) صار يتجاوز PermissionRevoke. اختبار TestRevokedPermissionSurvivesRestartLive. تدقيق توحيد الواجهات: docs/تدقيق-توحيد-الواجهات.md.
+- 11-15 (لوفي) م٠–م١ + توحيد الواجهات + طلبات دازاي:
+  - البذور مرة وحدة (SeedOnce 0492 + adoptLegacySeeds)، الأسعار ما تنكتب فوك التعديل، حساب المالك يتصفّر بس بـOWNER_FORCE_RESET=1.
+  - DeleteLog (0493) + handler.DeleteLogged على ١٨ مسار حذف (نسخة كاملة jsonb، تنشال إذا الحذف ما صار).
+  - أدوار المنصب تنشال: PermissionRevoke "role:X" بكل استعلامات OrgRoles/EffectiveRole؛ GET/POST /api/employees/{id}/access/roles + OrgRolesPanel بشاشة الوصول. التسليم يحترم المشال. الرفض بالحارس 404. رسائل الخطأ عربي.
+  - الأرقام الحمراء: BookingAssignment.seenAt (0494) + PUT /api/bookings/{id}/seen، شارات حية بـcourier State (/my-work، /my-extra-tasks، /my-tasks)، المهمة تنعلّم بفتحها هي بس، الحجز بعد ١.٥ ثانية قدام العين (useSeenOnView)، صوت لما يزيد المجموع (ui/beep).
+  - لوحة الإجراءات: «💡 المطلوب منك» لكل صف + ذكّره/مدّد/ألغِ للمهام (PUT extend، POST remind).
+  - تقرير الشغل: «📝 ملاحظات الليدر الإضافية» (sheet.leaderNotes + notes).
+  - مكتب الجودة: «تنتظر تدقيقك / دقّقتها» + غيّر الحكم.
+  - الواجهات (وكيل): notify بدل ٢٩٠ alert، DeleteButton + تأكيد ٧ حذوفات، قفل الحفظ، BackLink، كلمات موحّدة وأسماء القوائم، bookingServiceLabel (#42)، utils/date، «جاري التحميل…».

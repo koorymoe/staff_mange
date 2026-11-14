@@ -5,6 +5,7 @@ import { dinarRound as iqd, dayBaghdad } from '../utils/format'
 import { askInput } from '../ui/dialogs'
 import { swallow } from '../utils/swallow'
 
+import { notify } from '../ui/notify'
 // ═══ رقابة المشتريات — قرار (ع) 10-15 ═══
 // المشتري يسجّل الشراء ويقيّم المورد ببنود (أولها السعر) · المحاسب يثبّت ·
 // سجل أسعار لكل مادة · وتنبيهات ماتركس: «اشترى من الأغلى» و«المورد رفع سعره».
@@ -76,12 +77,12 @@ export default function PurchaseControlPanel({ requests, canBuy, canVerify, canW
   for (const p of prices) groups.set(p.key, [...(groups.get(p.key) ?? []), p])
 
   const verify = async (id: string) => {
-    try { await purchaseApi.verify(id); setReload((n) => n + 1) } catch (e) { alert(e instanceof Error ? e.message : 'تعذر التثبيت') }
+    try { await purchaseApi.verify(id); setReload((n) => n + 1) } catch (e) { notify(e instanceof Error ? e.message : 'تعذر التثبيت') }
   }
   const decide = async (a: PurchaseAlert) => {
     const note = (await askInput('ملاحظتك على التنبيه (مثلاً: الأرخص ما چان متوفر · تم التنبيه للمشتري):'))
     if (!note?.trim()) return
-    try { await purchaseApi.reviewAlert(a.id, note.trim()); setReload((n) => n + 1) } catch (e) { alert(e instanceof Error ? e.message : 'تعذر الحفظ') }
+    try { await purchaseApi.reviewAlert(a.id, note.trim()); setReload((n) => n + 1) } catch (e) { notify(e instanceof Error ? e.message : 'تعذر الحفظ') }
   }
 
   const tabs: [typeof tab, string][] = [['todo', `📋 بانتظاري (${toReview.length + toVerify.length})`], ['prices', '📊 سجل الأسعار']]
@@ -89,10 +90,10 @@ export default function PurchaseControlPanel({ requests, canBuy, canVerify, canW
   const editThreshold = async () => {
     const v = (await askInput('حد «العرضين» بالدينار (الشراء فوقه لازم وياه عرض مورد ثاني، 0 = بلا شرط):', String(threshold ?? 500000)))
     if (v == null || isNaN(Number(v))) return
-    try { await purchaseApi.setPolicy(Number(v)); setReload((n) => n + 1) } catch (e) { alert(e instanceof Error ? e.message : 'تعذر الحفظ') }
+    try { await purchaseApi.setPolicy(Number(v)); setReload((n) => n + 1) } catch (e) { notify(e instanceof Error ? e.message : 'تعذر الحفظ') }
   }
   const stdAct = async (fn: () => Promise<unknown>) => {
-    try { await fn(); setReload((n) => n + 1) } catch (e) { alert(e instanceof Error ? e.message : 'تعذر الحفظ') }
+    try { await fn(); setReload((n) => n + 1) } catch (e) { notify(e instanceof Error ? e.message : 'تعذر الحفظ') }
   }
   const editStd = async (product: string, cur?: number) => {
     const v = (await askInput(`السعر الستاندرد لـ«${product}» (د.ع للوحدة):`, cur ? String(cur) : ''))
@@ -218,7 +219,7 @@ export default function PurchaseControlPanel({ requests, canBuy, canVerify, canW
         <div className="space-y-4">
           <div className="flex flex-wrap items-center gap-2">
             <input type="month" value={month} onChange={(e) => setMonth(e.target.value)} className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm" />
-            <button onClick={() => purchaseApi.monthlyExcel(month).catch((e) => alert(e.message))} className="rounded-lg bg-emerald-700 px-3 py-1.5 text-sm font-bold text-white">⬇️ إكسل</button>
+            <button onClick={() => purchaseApi.monthlyExcel(month).catch((e) => notify(e.message))} className="rounded-lg bg-emerald-700 px-3 py-1.5 text-sm font-bold text-white">⬇️ إكسل</button>
           </div>
           {!report || report.month !== month ? <p className="text-sm text-slate-400">جاري الجلب...</p> : (
             <>
@@ -330,7 +331,7 @@ function ReviewModal({ req, onClose, onSaved }: { req: ProcurementRequest; onClo
   const ready = CRITERIA.every(([k]) => v[k] > 0)
   const save = async () => {
     setBusy(true)
-    try { await purchaseApi.review(req.id, { ...v, note: note.trim() || undefined }); onSaved() } catch (e) { alert(e instanceof Error ? e.message : 'تعذر الحفظ') } finally { setBusy(false) }
+    try { await purchaseApi.review(req.id, { ...v, note: note.trim() || undefined }); onSaved() } catch (e) { notify(e instanceof Error ? e.message : 'تعذر الحفظ') } finally { setBusy(false) }
   }
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" dir="rtl">

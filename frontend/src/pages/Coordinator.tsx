@@ -26,6 +26,9 @@ import MatrixSuggestBox from '../components/MatrixSuggestBox'
 import { askConfirm, askInput } from '../ui/dialogs'
 import { swallow } from '../utils/swallow'
 
+import { notify } from '../ui/notify'
+import { DeleteButton } from '../ui/DeleteButton'
+import { bookingServiceLabel } from '../bookingServiceLabel'
 const DELETE_CHANNEL_OPTIONS: [BookingDeleteChannel, string][] =
   (Object.entries(bookingDeleteChannelLabels) as [BookingDeleteChannel, string][])
 // ⚠️ «الزبون ما رد» خيار بنفس القائمة بس **مو طلب حذف** — يُعالَج
@@ -36,11 +39,8 @@ const DELETE_TYPE_OPTIONS: [DeleteTypeChoice, string][] = [
   [BOOKING_NO_ANSWER_CHOICE, bookingNoAnswerLabel],
 ]
 
-// أسماء كل خدمات الحجز (الزبون ممكن يطلب أكثر من منظومة بنفس الحجز)
-function serviceNames(b: { service?: { name: string } | null; services?: { name: string }[] }): string {
-  if (b.services && b.services.length > 0) return b.services.map((s) => s.name).join(' + ')
-  return b.service?.name || 'بدون خدمة محددة'
-}
+// (دازاي 11-15) اسم الخدمة من bookingServiceLabel.ts — جانت نسخة محلية هنا
+const serviceNames = bookingServiceLabel
 
 // Convert an ISO date string to the local "YYYY-MM-DDTHH:mm" format expected by datetime-local inputs
 const toLocalInput = (iso: string) => {
@@ -391,7 +391,7 @@ export default function Coordinator() {
     try {
       await api.markBookingWaiting(bookingId, note.trim())
       setSaveError(null)
-      alert('تأشّر «الزبون ما رد» — الحجز انزاح لطابور «ما وصلت للتنفيذ»، ترجّعه أو تحذفه من هناك')
+      notify('تأشّر «الزبون ما رد» — الحجز انزاح لطابور «ما وصلت للتنفيذ»، ترجّعه أو تحذفه من هناك', 'success')
       load()
     } catch (e) {
       setSaveError(`تعذر تأشير «الزبون ما رد»: ${e instanceof Error ? e.message : 'خطأ غير متوقع'}`)
@@ -406,7 +406,7 @@ export default function Coordinator() {
     try {
       await api.markBookingWaiting(bookingId, note.trim(), 'CUSTOMER_DECISION')
       setSaveError(null)
-      alert('انزاح لطابور «بانتظار موافقة الزبون» — أول ما يوافق اضغط «الزبون رد» فيرجع للطابور')
+      notify('انزاح لطابور «بانتظار موافقة الزبون» — أول ما يوافق اضغط «الزبون رد» فيرجع للطابور', 'success')
       load()
     } catch (e) {
       setSaveError(`تعذر تأشير «الزبون يرجع خبر»: ${e instanceof Error ? e.message : 'خطأ غير متوقع'}`)
@@ -432,12 +432,12 @@ export default function Coordinator() {
     try {
       await api.sendBookingToSurvey(surveyFor.id, surveyLeader)
       setSaveError(null)
-      alert(`الحجز ${surveyFor.code} صار «كشف» وانرسل لمهام الليدر`)
+      notify(`الحجز ${surveyFor.code} صار «كشف» وانرسل لمهام الليدر`, 'success')
       setSurveyFor(null)
       setSurveyLeader('')
       load()
     } catch (e) {
-      alert(e instanceof Error ? e.message : 'تعذر إرسال الحجز للكشف')
+      notify(e instanceof Error ? e.message : 'تعذر إرسال الحجز للكشف')
     } finally {
       setSurveyBusy(false)
     }
@@ -460,7 +460,7 @@ export default function Coordinator() {
       try {
         await api.markBookingWaiting(booking.id, reason.trim())
       setSaveError(null)
-      alert('تأشّر «الزبون ما رد» — الحجز انزاح لطابور الانتظار، ترجّعه يدوياً وقت ما تريد')
+      notify('تأشّر «الزبون ما رد» — الحجز انزاح لطابور الانتظار، ترجّعه يدوياً وقت ما تريد', 'success')
       } catch (e) {
       setSaveError(`تعذر تأشير «الزبون ما رد»: ${e instanceof Error ? e.message : 'خطأ غير متوقع'}`)
       }
@@ -469,7 +469,7 @@ export default function Coordinator() {
     try {
       await api.requestBookingDelete(booking.id, reason.trim(), channel, requestType)
       setSaveError(null)
-      alert('انرفع طلب الحذف — المراقب أو مدير النظام راح يبت بيه')
+      notify('انرفع طلب الحذف — المراقب أو مدير النظام راح يبت بيه', 'success')
     } catch (e) {
       setSaveError(`تعذر رفع طلب الحذف: ${e instanceof Error ? e.message : 'خطأ غير متوقع'}`)
     }
@@ -715,7 +715,7 @@ export default function Coordinator() {
         الفنيين المتاحين (اختياري الآن، يمكن تحديدهم لاحقاً).
       </p>
 
-      {loading && <p className="mt-6 text-slate-400">جاري التحميل...</p>}
+      {loading && <p className="mt-6 text-slate-400">جاري التحميل…</p>}
       {error && (
         <p className="mt-6 rounded-lg bg-red-50 p-4 text-red-600">تعذر الاتصال بالخادم: {error}</p>
       )}
@@ -1405,12 +1405,7 @@ export default function Coordinator() {
                                   <td className="py-2 pr-2 font-bold text-violet-700">{item.totalPrice.toLocaleString()}</td>
                                   <td className="py-2 pr-2 text-xs text-slate-500">{item.notes || '-'}</td>
                                   <td className="py-2">
-                                    <button
-                                      onClick={() => removeCartItem(booking.id, item.id)}
-                                      className="rounded p-1 text-red-400 transition-colors hover:bg-red-50 hover:text-red-600"
-                                    >
-                                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
-                                    </button>
+                                    <DeleteButton confirm={`تحذف «${item.productName}» من سلة الحجز؟`} onConfirm={() => removeCartItem(booking.id, item.id)} />
                                   </td>
                                 </tr>
                               ))}

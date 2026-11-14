@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { api, type TechSupplier, type TechSupplierIn } from '../api'
 import { useSession, isAdminOrOwner } from '../session'
+import { DeleteButton } from '../ui/DeleteButton'
 
 // ═══ 🏪 موردين التقنيين — قرار (ع) 10-06 ═══
 // قائمة ثانية غير موردين الشركة. التقنيين ومسؤولي الخدمات يضيفون موردين،
@@ -77,6 +78,7 @@ function AdminView() {
   const [picked, setPicked] = useState<Set<string>>(new Set())
   const [saved, setSaved] = useState('')
   const [q, setQ] = useState('')
+  const [saving, setSaving] = useState(false) // (دازاي 11-15) قفل الحفظ المزدوج — الزر ينقفل لحد ما يرجع الجواب
   const load = () => { void api.getAllTechSuppliers().then(setD) }
   useEffect(load, [])
   const pick = (id: string) => {
@@ -87,7 +89,9 @@ function AdminView() {
   if (!d) return <p className="text-slate-400">…</p>
   const list = d.suppliers.filter((s) => !q || `${s.companyName} ${s.specialty ?? ''} ${s.ownerName ?? ''}`.includes(q))
   const save = async () => {
-    await api.setTechSupplierAccess(who, [...picked])
+    if (saving) return
+    setSaving(true)
+    try { await api.setTechSupplierAccess(who, [...picked]) } finally { setSaving(false) }
     setSaved('✅ انحفظ — هالموردين يطلعون لهالتقني هسه.'); load()
   }
   const del = async (id: string) => { await api.deleteTechSupplier(id); load() }
@@ -120,7 +124,7 @@ function AdminView() {
                 </label>
               )}
               <span className="text-slate-400">أضافه {s.createdBy ?? '—'} · يطلع لـ{s.assignedTo.length}</span>
-              <button type="button" onClick={() => void del(s.id)} className="text-red-600 underline">حذف</button>
+              <DeleteButton confirm={`تحذف المورد «${s.companyName}»؟ يختفي من كل التقنيين.`} onConfirm={() => del(s.id)} />
             </div>
           </Card>
         ))}
@@ -128,7 +132,7 @@ function AdminView() {
       {who && (
         <div className="sticky bottom-2 flex items-center justify-between gap-2 rounded-xl bg-[#0f2040] p-3 text-white shadow-lg">
           <span className="text-sm">{picked.size} مورّد مختار لـ{d.people.find((p) => p.id === who)?.name}</span>
-          <button type="button" onClick={() => void save()} className="rounded-lg bg-emerald-500 px-4 py-1.5 text-sm font-bold">احفظ</button>
+          <button type="button" disabled={saving} onClick={() => void save()} className="rounded-lg bg-emerald-500 px-4 py-1.5 text-sm font-bold disabled:opacity-50">احفظ</button>
         </div>
       )}
       {saved && <p className="text-sm font-bold text-emerald-700">{saved}</p>}

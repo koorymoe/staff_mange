@@ -7,6 +7,7 @@ import { swallow } from '../utils/swallow'
 import TelegramLinkCard from './TelegramLinkCard'
 import ThemeToggle from './ThemeToggle'
 
+import { notify } from '../ui/notify'
 const ICON_CHOICES = ['😀', '😎', '🦁', '🐺', '🦅', '🐉', '⚡', '🔥', '⭐', '🚀', '🛠️', '🎯']
 
 export default function SettingsPanel({ onClose }: { onClose: () => void }) {
@@ -78,7 +79,7 @@ export default function SettingsPanel({ onClose }: { onClose: () => void }) {
       else await api.rejectAttendanceIconRequest(id)
       setPendingRequests((prev) => prev.filter((r) => r.id !== id))
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'تعذر تنفيذ الإجراء')
+      notify(err instanceof Error ? err.message : 'تعذر تنفيذ الإجراء')
     }
   }
 

@@ -96,7 +96,7 @@ export default function PerformanceCurveModal({ employeeId, employeeName, onClos
           </div>
         </div>
 
-        {!curve && <p className="text-center text-t-faint p-[30px]">جاري التحميل...</p>}
+        {!curve && <p className="text-center text-t-faint p-[30px]">جاري التحميل…</p>}
 
         {curve && (
           <>

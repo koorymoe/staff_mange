@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { api, type EmployeeLedger as Ledger } from '../api'
+import { fmtDateTime } from '../utils/date'
 
 // ═══ «📒 الحصيلة» — شنو سوّى هذا الموظف اليوم/هذا الشهر بالتفصيل (ع 10-16) ═══
 // كل قسم من الجداول نفسها: أي حجز طلع وشنو خدمته ومراحله، جرد، حضور، تقييم،
 // فواتير، تقارير… والمراقب شنو دقّق. القسم الفارغ ما يطلع.
-const fmt = (s: string) => new Date(s.endsWith('Z') ? s : s + 'Z').toLocaleString('ar-IQ', { timeZone: 'Asia/Baghdad', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
+// (دازاي 11-15) التاريخ من utils/date.ts (عربي، توقيت بغداد)
+const fmt = (s: string) => fmtDateTime(s, { naiveUtc: true, day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
 
 export default function EmployeeLedger({ employeeId, day }: { employeeId: string; day: string }) {
   const [period, setPeriod] = useState<'day' | 'month'>('day')

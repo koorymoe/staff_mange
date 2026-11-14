@@ -12,6 +12,8 @@ func init() {
 			{Name: "role", Type: "\"TechnicianRole\"", NotNull: true},
 			{Name: "createdAt", Type: "timestamp without time zone", NotNull: true, Default: "CURRENT_TIMESTAMP"},
 			{Name: "assignedById", Type: "text"},
+			// (دازاي 11-15) «يطلعلي رقم بالأحمر وما يروح إلا أفتحهن» — شوكت فتح الموظف الحجز الموجّه إله
+			{Name: "seenAt", Type: "timestamp with time zone"},
 		},
 		Constraints: []Constraint{
 			{Name: "BookingAssignment_bookingId_fkey", Def: "FOREIGN KEY (\"bookingId\") REFERENCES \"Booking\"(id) ON DELETE CASCADE"},

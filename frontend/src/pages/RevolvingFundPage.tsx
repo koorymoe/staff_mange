@@ -5,6 +5,7 @@ import MyFundBalance from '../components/MyFundBalance'
 import { dinar as money } from '../utils/format'
 import { askConfirm } from '../ui/dialogs'
 
+import { notify } from '../ui/notify'
 /**
  * الدوار — شاشة المحاسب.
  *
@@ -80,18 +81,18 @@ export default function RevolvingFundPage() {
     if (!topupFor || !Number(topupAmount)) return
     setBusy(true)
     try { await api.topupFund(topupFor.id, Number(topupAmount)); setTopupFor(null); setTopupAmount(''); load() }
-    catch (e) { alert(e instanceof Error ? e.message : 'خطأ') } finally { setBusy(false) }
+    catch (e) { notify(e instanceof Error ? e.message : 'خطأ') } finally { setBusy(false) }
   }
 
   const doEdit = async () => {
     if (!editFor) return
     setBusy(true)
     try { await api.updateFund(editFor.id, { balance: Number(editBalance) }); setEditFor(null); load() }
-    catch (e) { alert(e instanceof Error ? e.message : 'خطأ') } finally { setBusy(false) }
+    catch (e) { notify(e instanceof Error ? e.message : 'خطأ') } finally { setBusy(false) }
   }
 
   const doDisburse = async () => {
-    if (!dFund || !dEmployee || !Number(dAmount)) { alert('اختر الدوار والموظف واكتب المبلغ'); return }
+    if (!dFund || !dEmployee || !Number(dAmount)) { notify('اختر الدوار والموظف واكتب المبلغ'); return }
     setBusy(true)
     try {
       await api.disburseFund({
@@ -100,26 +101,26 @@ export default function RevolvingFundPage() {
       })
       setDisburseOpen(false); setDAmount(''); setDNotes(''); setDEmployee(''); setDRequestId('')
       load()
-    } catch (e) { alert(e instanceof Error ? e.message : 'خطأ') } finally { setBusy(false) }
+    } catch (e) { notify(e instanceof Error ? e.message : 'خطأ') } finally { setBusy(false) }
   }
 
   const doReview = async (t: RevolvingFundTxn, approve: boolean) => {
     if (!approve && !reviewNote.trim() && !(await askConfirm('ترفض بدون سبب؟'))) return
     setBusy(true)
     try { await api.reviewFundSettlement(t.id, approve, reviewNote || undefined); setViewReceipt(null); setReviewNote(''); load() }
-    catch (e) { alert(e instanceof Error ? e.message : 'خطأ') } finally { setBusy(false) }
+    catch (e) { notify(e instanceof Error ? e.message : 'خطأ') } finally { setBusy(false) }
   }
 
   const doDischarge = async () => {
-    if (!dischargeFor || !dischargeAccount.trim()) { alert('حدد على أي حساب انخرجت المادة'); return }
+    if (!dischargeFor || !dischargeAccount.trim()) { notify('حدد على أي حساب انخرجت المادة'); return }
     setBusy(true)
     try {
       await api.dischargeSettlement(dischargeFor.id, { account: dischargeAccount.trim(), note: dischargeNote || null })
       setDischargeFor(null); setDischargeAccount(''); setDischargeNote(''); load()
-    } catch (e) { alert(e instanceof Error ? e.message : 'خطأ') } finally { setBusy(false) }
+    } catch (e) { notify(e instanceof Error ? e.message : 'خطأ') } finally { setBusy(false) }
   }
 
-  if (loading) return <div dir="rtl" className="p-8 text-center text-slate-500">جاري التحميل...</div>
+  if (loading) return <div dir="rtl" className="p-8 text-center text-slate-500">جاري التحميل…</div>
   if (error) return <div dir="rtl" className="rounded-xl bg-red-50 p-6 text-center text-red-700">{error}</div>
 
   const totalOutstanding = balances.reduce((s, b) => s + b.outstanding, 0)

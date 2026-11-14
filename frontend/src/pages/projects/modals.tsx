@@ -11,6 +11,7 @@ import { dayBaghdad } from '../../utils/format'
 import { request, type Project, type ProjectCandidate, candidateLabel, useProjectCandidates, useProjectWorkTypes, SURVEY, REJECTION_REASONS, CATEGORIES, resetMediaOpenCache, type OpenBrief, localDT, useCanUploadProjectSurvey } from './shared'
 import { EmployeeOptions, Modal, Field } from './ui'
 
+import { notify } from '../../ui/notify'
 export function ContractModal({ project, onClose, onSaved }: { project: Project; onClose: () => void; onSaved: () => void }) {
   const { employee } = useSession()
   const isAdmin = isAdminOrOwner(employee)
@@ -116,7 +117,7 @@ export function AddModal({ onClose, onSaved }: { onClose: () => void; onSaved: (
   const set = (k: string, v: string) => setForm(f => ({ ...f, [k]: v }))
 
   const save = async () => {
-    if (!form.name.trim()) { alert('اسم المؤسسة مطلوب'); return }
+    if (!form.name.trim()) { notify('اسم المؤسسة مطلوب'); return }
     setSaving(true)
     try {
       await request('/projects', {
@@ -124,7 +125,7 @@ export function AddModal({ onClose, onSaved }: { onClose: () => void; onSaved: (
         body: JSON.stringify({ ...form, mapLatitude: mapPoint?.lat, mapLongitude: mapPoint?.lng, locationUrl: locationUrl || undefined }),
       })
       onSaved()
-    } catch (e) { alert((e as Error).message); setSaving(false) }
+    } catch (e) { notify((e as Error).message); setSaving(false) }
   }
 
   return (
@@ -230,7 +231,7 @@ export function EditModal({ project, onClose, onSaved }: { project: Project; onC
   const set = (k: string, v: string) => setForm(f => ({ ...f, [k]: v }))
 
   const save = async () => {
-    if (!form.name.trim()) { alert('اسم المؤسسة مطلوب'); return }
+    if (!form.name.trim()) { notify('اسم المؤسسة مطلوب'); return }
     setSaving(true)
     try {
       await request(`/projects/${project.id}`, {
@@ -238,7 +239,7 @@ export function EditModal({ project, onClose, onSaved }: { project: Project; onC
         body: JSON.stringify({ ...form, mapLatitude: mapPoint?.lat, mapLongitude: mapPoint?.lng, locationUrl: locationUrl || null }),
       })
       onSaved()
-    } catch (e) { alert((e as Error).message); setSaving(false) }
+    } catch (e) { notify((e as Error).message); setSaving(false) }
   }
 
   return (
@@ -304,7 +305,7 @@ export function MediaTransferModal({ project, onClose, onSaved }: { project: Pro
     }).catch(swallow)
   }, [project.id])
   const save = async () => {
-    if (!start) { alert('حدد متى يبدي الشغل حتى الإعلام يعرف يجون يصوّرون.'); return }
+    if (!start) { notify('حدد متى يبدي الشغل حتى الإعلام يعرف يجون يصوّرون.'); return }
     setSaving(true)
     try {
       await request(`/projects/${project.id}/media`, { method: 'POST', body: JSON.stringify({
@@ -312,7 +313,7 @@ export function MediaTransferModal({ project, onClose, onSaved }: { project: Pro
       }) })
       resetMediaOpenCache()
       onSaved()
-    } catch (e) { alert((e as Error).message); setSaving(false) }
+    } catch (e) { notify((e as Error).message); setSaving(false) }
   }
   return (
     <Modal onClose={onClose} title={`📸 إعلام: ${project.name}`}>
@@ -396,9 +397,9 @@ export function MoveModal({ project, nextStage, onClose, onSaved }: {
   const [saving, setSaving] = useState(false)
 
   const save = async () => {
-    if (isReject && !reason) { alert('اختر سبب الرفض!'); return }
+    if (isReject && !reason) { notify('اختر سبب الرفض!'); return }
     if (toMedia) {
-      if (!mediaStart) { alert('حدد متى يبدي الشغل حتى الإعلام يعرف يجون يصوّرون.'); return }
+      if (!mediaStart) { notify('حدد متى يبدي الشغل حتى الإعلام يعرف يجون يصوّرون.'); return }
       setSaving(true)
       try {
         await request(`/projects/${project.id}/media`, { method: 'POST', body: JSON.stringify({
@@ -406,7 +407,7 @@ export function MoveModal({ project, nextStage, onClose, onSaved }: {
           duration: mediaDuration || null, notes: notes || null,
         }) })
         onSaved()
-      } catch (e) { alert((e as Error).message); setSaving(false) }
+      } catch (e) { notify((e as Error).message); setSaving(false) }
       return
     }
     const payload: Record<string, unknown> = { stage: nextStage }
@@ -431,7 +432,7 @@ export function MoveModal({ project, nextStage, onClose, onSaved }: {
     try {
       await request(`/projects/${project.id}`, { method: 'PUT', body: JSON.stringify(payload) })
       onSaved()
-    } catch (e) { alert((e as Error).message); setSaving(false) }
+    } catch (e) { notify((e as Error).message); setSaving(false) }
   }
 
   return (

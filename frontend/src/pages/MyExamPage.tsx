@@ -3,6 +3,7 @@ import { api, type TcMyExam } from '../api'
 import { askConfirm } from '../ui/dialogs'
 import { swallow } from '../utils/swallow'
 
+import { notify } from '../ui/notify'
 // ═══ اختباري الشهري — (ع) 10-13 ═══
 // الموظف يسويه من حسابه: يبدي ← الوكت يمشي ← يسلّم ← النتيجة فوراً.
 // بلا خصم نقاط — الي ما ينجح ينضاف لقائمة التدريب بس.
@@ -22,7 +23,7 @@ export default function MyExamPage() {
     if (sent.current) return
     sent.current = true
     setBusy(true)
-    try { setResult(await api.tcSubmitExam(ansRef.current)) } catch (e) { sent.current = false; alert(e instanceof Error ? e.message : 'تعذّر') } finally { setBusy(false) }
+    try { setResult(await api.tcSubmitExam(ansRef.current)) } catch (e) { sent.current = false; notify(e instanceof Error ? e.message : 'تعذّر') } finally { setBusy(false) }
   }
   const submitRef = useRef(submit)
   useEffect(() => { submitRef.current = submit })

@@ -8,6 +8,8 @@ import { useSession, hasRole, isAdminOrOwner } from '../session'
 import { roleLabel } from '../roleLabels'
 import { askConfirm, askInput } from '../ui/dialogs'
 
+import { notify } from '../ui/notify'
+import { DeleteButton } from '../ui/DeleteButton'
 // تطبيع اسم الأداة للمقارنة: قصّ الأطراف وتوحيد المسافات الداخلية.
 // ⚠️ كل مطابقة بهذي الشاشة نصية (ماكو معرّف مشترك بين العدة القياسية
 // وعدة الموظف ومخزن الكميات) — ففرق مسافة وحدة يخلي الأداة تطلع
@@ -255,7 +257,7 @@ export default function InventoryPage() {
       setToolEdit(null)
       load()
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'تعذر حفظ التعديل')
+      notify(err instanceof Error ? err.message : 'تعذر حفظ التعديل')
     } finally {
       setToolSaving(false)
     }
@@ -267,7 +269,7 @@ export default function InventoryPage() {
       await api.deletePersonalTool(t.id)
       load()
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'تعذر الحذف')
+      notify(err instanceof Error ? err.message : 'تعذر الحذف')
     }
   }
 
@@ -329,7 +331,7 @@ export default function InventoryPage() {
   const handleAddTemplateItem = async (e: React.FormEvent) => {
     e.preventDefault()
     if (addToolKind === 'private' && !addToolEmployeeId) {
-      alert('اختر الموظف الي عنده هاي الأداة الخاصة')
+      notify('اختر الموظف الي عنده هاي الأداة الخاصة')
       return
     }
     setTemplateSubmitting(true)
@@ -346,7 +348,7 @@ export default function InventoryPage() {
       setTemplateName('')
       setAddToolEmployeeId('')
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'حدث خطأ')
+      notify(err instanceof Error ? err.message : 'حدث خطأ')
     }
     finally { setTemplateSubmitting(false) }
   }
@@ -367,7 +369,7 @@ export default function InventoryPage() {
       setShowPersonalForm(false)
       load()
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'حدث خطأ')
+      notify(err instanceof Error ? err.message : 'حدث خطأ')
     } finally {
       setSubmitting(false)
     }
@@ -382,7 +384,7 @@ export default function InventoryPage() {
       setShowVehicleForm(false)
       load()
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'حدث خطأ')
+      notify(err instanceof Error ? err.message : 'حدث خطأ')
     } finally {
       setSubmitting(false)
     }
@@ -409,7 +411,7 @@ export default function InventoryPage() {
       setVtEdit(null)
       load()
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'حدث خطأ')
+      notify(err instanceof Error ? err.message : 'حدث خطأ')
     } finally {
       setSubmitting(false)
     }
@@ -421,12 +423,12 @@ export default function InventoryPage() {
       await api.deleteVehicleTool(id)
       load()
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'حدث خطأ')
+      notify(err instanceof Error ? err.message : 'حدث خطأ')
     }
   }
 
   const handleAddStock = async () => {
-    if (!stockTarget || !Number(stockQty)) { alert('اكتب الكمية'); return }
+    if (!stockTarget || !Number(stockQty)) { notify('اكتب الكمية'); return }
     try {
       await api.addStockIntake({
         toolId: stockTarget.id, quantity: Number(stockQty),
@@ -434,7 +436,7 @@ export default function InventoryPage() {
       })
       setStockTarget(null); setStockQty(''); setStockPrice(''); setStockSupplier('')
       load()
-    } catch (e) { alert(e instanceof Error ? e.message : 'حدث خطأ') }
+    } catch (e) { notify(e instanceof Error ? e.message : 'حدث خطأ') }
   }
 
   const handleAddOnDemandTool = async (e: React.FormEvent) => {
@@ -446,7 +448,7 @@ export default function InventoryPage() {
       setShowOnDemandForm(false)
       load()
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'حدث خطأ')
+      notify(err instanceof Error ? err.message : 'حدث خطأ')
     } finally {
       setSubmitting(false)
     }
@@ -486,7 +488,7 @@ export default function InventoryPage() {
       await api.rejectToolRequest(id)
       load()
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'حدث خطأ')
+      notify(err instanceof Error ? err.message : 'حدث خطأ')
     }
   }
 
@@ -495,7 +497,7 @@ export default function InventoryPage() {
       await api.returnToolRequest(id)
       load()
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'حدث خطأ')
+      notify(err instanceof Error ? err.message : 'حدث خطأ')
     }
   }
 
@@ -505,7 +507,7 @@ export default function InventoryPage() {
       await api.deleteToolRequest(id)
       load()
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'حدث خطأ')
+      notify(err instanceof Error ? err.message : 'حدث خطأ')
     }
   }
 
@@ -513,7 +515,7 @@ export default function InventoryPage() {
     <div>
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div>
-          <h2 className="text-2xl font-bold text-brand-900">إدارة المخزون والأدوات</h2>
+          <h2 className="text-2xl font-bold text-brand-900">جرد الأدوات</h2>
           <p className="mt-1 text-slate-500">تتبع الأدوات الخاصة والمركبات وأدوات حسب الحاجة وطلبات الأدوات.</p>
         </div>
         {/* (ع) 11-04: «إداري الكميات سأل إذا يكدر يوجّه مهمة للمدير وما عنده طريقة» */}
@@ -538,7 +540,7 @@ export default function InventoryPage() {
         ))}
       </div>
 
-      {loading && <p className="mt-6 text-slate-400">جاري التحميل...</p>}
+      {loading && <p className="mt-6 text-slate-400">جاري التحميل…</p>}
       {error && (
         <p className="mt-6 rounded-lg bg-red-50 p-4 text-red-600">
           تعذر الاتصال بالخادم: {error}
@@ -1105,12 +1107,12 @@ export default function InventoryPage() {
                                   const input = (await askInput(`عدّل الكمية المتاحة لأداة "${t.name}" (الإجمالية: ${t.totalQuantity})`, String(t.availableQuantity)))
                                   if (input === null) return
                                   const num = Number(input)
-                                  if (Number.isNaN(num) || num < 0) { alert('رقم غير صحيح'); return }
+                                  if (Number.isNaN(num) || num < 0) { notify('رقم غير صحيح'); return }
                                   try {
                                     const updated = await api.updateOnDemandTool(t.id, { availableQuantity: num })
                                     setOnDemandTools((prev) => prev.map((x) => (x.id === updated.id ? updated : x)))
                                   } catch (e) {
-                                    alert(e instanceof Error ? e.message : 'تعذر التعديل')
+                                    notify(e instanceof Error ? e.message : 'تعذر التعديل')
                                   }
                                 }}
                                 className="rounded-lg bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600 hover:bg-slate-200"
@@ -1337,12 +1339,7 @@ export default function InventoryPage() {
                           <td className="px-4 py-3 font-medium">{item.name}</td>
                           {canManageInventory && (
                             <td className="px-4 py-3">
-                              <button
-                                onClick={() => handleDeleteTemplateItem(item.id)}
-                                className="rounded-lg bg-red-100 px-3 py-1 text-xs font-medium text-red-700 hover:bg-red-200"
-                              >
-                                حذف
-                              </button>
+                              <DeleteButton confirm={`تحذف «${item.name}» من قالب الأدوات؟`} onConfirm={() => handleDeleteTemplateItem(item.id)} />
                             </td>
                           )}
                         </tr>
@@ -1467,7 +1464,7 @@ export default function InventoryPage() {
             <p className="mt-1 text-sm text-slate-400">{historyTool.employee?.name || ''}</p>
 
             {historyLoading ? (
-              <p className="mt-6 text-slate-400">جاري التحميل...</p>
+              <p className="mt-6 text-slate-400">جاري التحميل…</p>
             ) : toolEvents.length === 0 ? (
               <p className="mt-6 rounded-xl bg-slate-50 p-4 text-center text-slate-400">ما اكو حركات مسجلة لهذي الأداة</p>
             ) : (

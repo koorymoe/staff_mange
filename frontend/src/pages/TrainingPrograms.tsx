@@ -8,6 +8,7 @@ import { dinarRound as iqd } from '../utils/format'
 import { askConfirm } from '../ui/dialogs'
 import { swallow } from '../utils/swallow'
 
+import { notify } from '../ui/notify'
 // ═══ برامج التدريب ═══
 //
 // منقولة من نظام الطاقة الشمسية، بس على موظفي الشركة كلهم ومهاراتها
@@ -108,7 +109,7 @@ export default function TrainingPrograms({ embedded = false }: { embedded?: bool
         />
       )}
 
-      {loading && <div className="rounded-2xl bg-white p-8 text-center text-sm text-slate-500">جاري التحميل...</div>}
+      {loading && <div className="rounded-2xl bg-white p-8 text-center text-sm text-slate-500">جاري التحميل…</div>}
 
       {!loading && shown.length === 0 && (
         <div className="rounded-2xl bg-white p-10 text-center">
@@ -198,7 +199,7 @@ export default function TrainingPrograms({ embedded = false }: { embedded?: bool
                       onClick={async () => {
                         if (!(await askConfirm(`تكمل «${p.name}»؟\n\nراح تنمنح مهارات البرنامج (${p.skills.length}) لكل المشاركين (${p.participants.length}) بملفاتهم.`))) return
                         try { await api.completeTrainingProgram(p.id); await load() }
-                        catch (e) { alert(e instanceof Error ? e.message : 'تعذر الإكمال') }
+                        catch (e) { notify(e instanceof Error ? e.message : 'تعذر الإكمال') }
                       }}
                       className="rounded-lg bg-emerald-700 px-3 py-1.5 text-xs font-bold text-white"
                     >
@@ -210,7 +211,7 @@ export default function TrainingPrograms({ embedded = false }: { embedded?: bool
                     onClick={async () => {
                       if (!(await askConfirm(`تريد تحذف «${p.name}»؟`))) return
                       try { await api.deleteTrainingProgram(p.id); await load() }
-                      catch (e) { alert(e instanceof Error ? e.message : 'تعذر الحذف') }
+                      catch (e) { notify(e instanceof Error ? e.message : 'تعذر الحذف') }
                     }}
                     className="rounded-lg border border-red-300 px-3 py-1.5 text-xs font-bold text-red-600"
                   >🗑️</button>

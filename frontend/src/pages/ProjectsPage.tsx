@@ -9,6 +9,7 @@ import { MainView } from './projects/ProjectCard'
 import { AddModal, EditModal, MoveModal, ReportModal, DelegateModal } from './projects/modals'
 import { RejectionView } from './projects/RejectionView'
 
+import { notify } from '../ui/notify'
 // ---------------------------------------------------------------------------
 // Component
 // ---------------------------------------------------------------------------
@@ -92,7 +93,7 @@ export default function ProjectsPage({ mode: initialMode = 'all' }: { mode?: 'al
     // السبب إجباري — إداري الكوادر لازم يعرف ليش رجع له الحجز حتى يتصرف،
     // وإلا يرجع له بلا معلومة ويضيع.
     if (!returnNote.trim()) {
-      alert('لازم تكتب سبب الإرجاع — إداري الكوادر يحتاجه حتى يعرف شنو يسوي بالحجز')
+      notify('لازم تكتب سبب الإرجاع — إداري الكوادر يحتاجه حتى يعرف شنو يسوي بالحجز')
       return
     }
     setReturning(true)
@@ -106,7 +107,7 @@ export default function ProjectsPage({ mode: initialMode = 'all' }: { mode?: 'al
       setDetailBooking(null)
       setReturnNote('')
     } catch (e) {
-      alert(e instanceof Error ? e.message : 'تعذر إرجاع الحجز')
+      notify(e instanceof Error ? e.message : 'تعذر إرجاع الحجز')
     } finally {
       setReturning(false)
     }
@@ -128,7 +129,7 @@ export default function ProjectsPage({ mode: initialMode = 'all' }: { mode?: 'al
       })
       refresh()
     } catch (e) {
-      alert(e instanceof Error ? e.message : 'تعذر استلام الحجز')
+      notify(e instanceof Error ? e.message : 'تعذر استلام الحجز')
     }
   }
 
@@ -201,7 +202,7 @@ export default function ProjectsPage({ mode: initialMode = 'all' }: { mode?: 'al
           اضغط هنا لإضافة مشروع
         </button>
 
-        {showAdd && <AddModal onClose={() => setShowAdd(false)} onSaved={() => { setShowAdd(false); alert('تم إضافة المشروع بنجاح ✅') }} />}
+        {showAdd && <AddModal onClose={() => setShowAdd(false)} onSaved={() => { setShowAdd(false); notify('تم إضافة المشروع بنجاح ✅', 'success') }} />}
       </div>
     )
   }

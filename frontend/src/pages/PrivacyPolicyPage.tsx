@@ -4,6 +4,7 @@ import { useSession, isAdminOrOwner } from '../session'
 import { askConfirm } from '../ui/dialogs'
 import { swallow } from '../utils/swallow'
 
+import { notify } from '../ui/notify'
 /**
  * صفحة سياسة الخصوصية — يقراها أي موظف من الإعدادات بأي وقت.
  * صاحب صلاحية privacy_policy_manage يقدر يضيف/يعدّل/يحذف النقاط.
@@ -40,21 +41,22 @@ export default function PrivacyPolicyPage() {
       setNewPoint('')
       load()
     } catch (e) {
-      alert(e instanceof Error ? e.message : 'تعذر إضافة النقطة')
+      notify(e instanceof Error ? e.message : 'تعذر إضافة النقطة')
     } finally {
       setSaving(false)
     }
   }
 
   const saveEdit = async (id: string) => {
-    if (!editText.trim()) return
+    if (!editText.trim() || saving) return
+    setSaving(true) // (دازاي 11-15) قفل الحفظ المزدوج
     try {
       await api.updatePrivacyPolicyPoint(id, { content: editText.trim() })
       setEditId(null)
       load()
     } catch (e) {
-      alert(e instanceof Error ? e.message : 'تعذر التعديل')
-    }
+      notify(e instanceof Error ? e.message : 'تعذر التعديل')
+    } finally { setSaving(false) }
   }
 
   const toggleActive = async (p: PrivacyPolicyPoint) => {
@@ -108,7 +110,7 @@ export default function PrivacyPolicyPage() {
       )}
 
       {loading ? (
-        <p className="mt-6 text-slate-400">جاري التحميل...</p>
+        <p className="mt-6 text-slate-400">جاري التحميل…</p>
       ) : points.length === 0 ? (
         <div className="mt-6 rounded-xl bg-white p-10 text-center shadow-[0_4px_20px_rgba(15,32,64,0.06)]">
           <p className="text-slate-400">ما اكو نقاط مضافة لسياسة الخصوصية بعد</p>
@@ -136,7 +138,7 @@ export default function PrivacyPolicyPage() {
                         className="w-full rounded-lg border border-slate-300 px-3 py-2 outline-none focus:border-brand-500"
                       />
                       <div className="mt-2 flex gap-2">
-                        <button onClick={() => saveEdit(p.id)} className="rounded-lg bg-brand-600 px-4 py-1.5 text-xs font-bold text-white">حفظ</button>
+                        <button onClick={() => saveEdit(p.id)} disabled={saving} className="disabled:opacity-50 rounded-lg bg-brand-600 px-4 py-1.5 text-xs font-bold text-white">حفظ</button>
                         <button onClick={() => setEditId(null)} className="rounded-lg border border-slate-300 px-4 py-1.5 text-xs font-bold text-slate-600">إلغاء</button>
                       </div>
                     </>

@@ -8,6 +8,7 @@ import { ExecutionSheetForm } from '../components/ExecutionSheet'
 import SignaturePad from '../components/SignaturePad'
 import { emptySheet, sheetMissing, PROJECT_STATUS, type ExecutionSheetData } from '../utils/executionSheet'
 
+import { notify } from '../ui/notify'
 export default function WorkReportPage() {
   const { employee: currentUser, permissions } = useSession()
   // «فواتير وتقارير الجي بي اس/الداش كام»: صاحب الصلاحية يسوي تقرير
@@ -76,7 +77,7 @@ export default function WorkReportPage() {
   const handleSheetSubmit = async (b: Booking) => {
     const sh = getSheet(b)
     const miss = sheetMissing(sh)
-    if (miss) { alert(miss); return }
+    if (miss) { notify(miss); return }
     const stopped = sh.data.projectStatus === PROJECT_STATUS[2]
     const has = (k: keyof ExecutionSheetData['checks']) => sh.checks[k]
     setSubmitting(true)
@@ -90,7 +91,8 @@ export default function WorkReportPage() {
         gaveInfo: has('explained'),
         tookPhotos: has('photosDevices') || has('photosWiring') || has('photosController'),
         stopReason: stopped ? sh.data.obstacles : undefined,
-        notes: sh.suggestion || undefined,
+        // (11-15) ملاحظات الليدر تنحفظ ويا الورقة، وتنضاف للملاحظات حتى تبين بكل مكان يقرا التقرير
+        notes: [sh.suggestion && `اقتراح الزبون: ${sh.suggestion}`, sh.leaderNotes?.trim() && `ملاحظات الليدر: ${sh.leaderNotes.trim()}`].filter(Boolean).join(' · ') || undefined,
         sheet: sh,
       })
       const sig = sigs[b.id]
@@ -104,9 +106,9 @@ export default function WorkReportPage() {
       setSheets((p) => { const n = { ...p }; delete n[b.id]; return n })
       setReportedBookingIds((prev) => new Set(prev).add(b.id))
       load()
-      alert(sigErr ? `تم إرسال التقرير ✓ بس التوقيع ما انحفظ: ${sigErr}` : 'تم إرسال التقرير بنجاح ✓')
+      notify(sigErr ? `تم إرسال التقرير ✓ بس التوقيع ما انحفظ: ${sigErr}` : 'تم إرسال التقرير بنجاح ✓', 'success')
     } catch (e) {
-      alert(e instanceof Error ? e.message : 'تعذر إرسال التقرير')
+      notify(e instanceof Error ? e.message : 'تعذر إرسال التقرير')
     } finally {
       setSubmitting(false)
     }
@@ -117,7 +119,7 @@ export default function WorkReportPage() {
   }
 
 
-  if (loading) return <p className="mt-6 text-slate-400">جاري التحميل...</p>
+  if (loading) return <p className="mt-6 text-slate-400">جاري التحميل…</p>
   if (error)
     return (
       <p className="mt-6 rounded-lg bg-red-50 p-4 text-red-600">
@@ -239,7 +241,7 @@ export default function WorkReportPage() {
         <div className="flex items-center gap-3">
           <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-sky-50 text-lg sm:h-11 sm:w-11 sm:text-xl">📄</span>
           <div className="min-w-0">
-            <h2 className="text-xl font-black text-[#0f2040] sm:text-2xl">تقرير العمل</h2>
+            <h2 className="text-xl font-black text-[#0f2040] sm:text-2xl">📝 تقرير خدمة</h2>
             <p className="text-[11px] text-slate-500 sm:text-xs">ارفع تقرير الحجوزات المنجزة وتابع الي بانتظار الرفع</p>
           </div>
         </div>

@@ -6,6 +6,7 @@ import SaveError from '../components/SaveError'
 import { dateTimeAr as fmt } from '../utils/format'
 import { swallow } from '../utils/swallow'
 
+import { notify } from '../ui/notify'
 // ═══ مهمات المركبات ═══
 //
 // ⚠️ حراس الباك (main.go + الهاندلر):
@@ -136,7 +137,7 @@ export default function VehicleMissionsPage() {
   const end = async () => {
     if (!ending || endForm.endOdometer === '') return
     if (Number(endForm.endOdometer) < ending.startOdometer) {
-      alert('عداد النهاية لازم يكون أكبر أو يساوي عداد البداية')
+      notify('عداد النهاية لازم يكون أكبر أو يساوي عداد البداية')
       return
     }
     const id = ending.id
@@ -180,7 +181,7 @@ export default function VehicleMissionsPage() {
         <div className={CARD}>
           <h3 className="mb-3 font-bold text-slate-700">🚦 {isAdminOrMonitor ? 'المهمات الجارية' : 'مهمتي الجارية'}</h3>
           {active === null ? (
-            <p className="text-sm text-slate-400">جاري التحميل...</p>
+            <p className="text-sm text-slate-400">جاري التحميل…</p>
           ) : active.length === 0 ? (
             <p className="text-sm text-slate-400">ماكو مهمة جارية</p>
           ) : (
@@ -256,7 +257,7 @@ export default function VehicleMissionsPage() {
               <button onClick={() => { setSummaryFor(null); setSummary(null) }} className="text-xs text-slate-400">✕ إغلاق</button>
             </div>
             {!summary ? (
-              <p className="text-sm text-slate-400">جاري التحميل...</p>
+              <p className="text-sm text-slate-400">جاري التحميل…</p>
             ) : summary.ratingsCount === 0 ? (
               <p className="text-sm text-slate-400">ما عنده تقييمات بعد</p>
             ) : (
@@ -305,7 +306,7 @@ export default function VehicleMissionsPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {history === null && <tr><td colSpan={6} className="p-4 text-center text-slate-400">جاري التحميل...</td></tr>}
+                {history === null && <tr><td colSpan={6} className="p-4 text-center text-slate-400">جاري التحميل…</td></tr>}
                 {history?.length === 0 && <tr><td colSpan={6} className="p-4 text-center text-slate-400">ماكو مهمات</td></tr>}
                 {history?.map((m) => (
                   <tr key={m.id}>
@@ -393,7 +394,7 @@ export default function VehicleMissionsPage() {
               <p className="mt-1 text-sm text-slate-500">أشّر الأدوات الناقصة — إذا كلشي موجود احفظ بلا تأشير</p>
               <div className="mt-4 max-h-72 space-y-1 overflow-auto">
                 {tools === null ? (
-                  <p className="text-sm text-slate-400">جاري التحميل...</p>
+                  <p className="text-sm text-slate-400">جاري التحميل…</p>
                 ) : tools.length === 0 ? (
                   <p className="text-sm text-slate-400">ماكو أدوات مسجلة لهاي السيارة</p>
                 ) : tools.map((t) => (

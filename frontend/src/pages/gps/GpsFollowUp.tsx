@@ -8,6 +8,7 @@ import {
 import { useSession, isAdminOrOwner } from '../../session'
 import { askConfirm } from '../../ui/dialogs'
 
+import { notify } from '../../ui/notify'
 /**
  * متابعة تجديد اشتراكات الجي بي اس.
  *
@@ -76,7 +77,7 @@ export default function GpsFollowUp({ embedded }: { embedded?: boolean } = {}) {
       setCallTarget(null); setNotes(''); setOutcome('WILL_RENEW')
       load()
     } catch (e) {
-      alert(e instanceof Error ? e.message : 'تعذر تسجيل الاتصال')
+      notify(e instanceof Error ? e.message : 'تعذر تسجيل الاتصال')
     } finally { setSaving(false) }
   }
 
@@ -89,7 +90,7 @@ export default function GpsFollowUp({ embedded }: { embedded?: boolean } = {}) {
       else await api.releaseSimCard(row.simCardId)
       load()
     } catch (e) {
-      alert(e instanceof Error ? e.message : `تعذر ${word} الشريحة`)
+      notify(e instanceof Error ? e.message : `تعذر ${word} الشريحة`)
     }
   }
 
@@ -170,7 +171,7 @@ export default function GpsFollowUp({ embedded }: { embedded?: boolean } = {}) {
     )
   }
 
-  if (loading) return <div dir="rtl" className="p-8 text-center text-slate-500">جاري التحميل...</div>
+  if (loading) return <div dir="rtl" className="p-8 text-center text-slate-500">جاري التحميل…</div>
   if (error) return <div dir="rtl" className="rounded-xl bg-red-50 p-6 text-center text-red-700">{error}</div>
 
   return (

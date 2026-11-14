@@ -2,6 +2,8 @@ import { useState, useEffect, useRef } from 'react'
 import { api, type GpsDeviceRequest } from '../../api'
 import { escDeep } from '../../utils/printIdentity'
 
+import { notify } from '../../ui/notify'
+import { fmtDate } from '../../utils/date'
 // Some legacy records store purchaseType/subscriptionType in lowercase, so we widen
 // those two fields to `string` here rather than reusing the strict literal unions.
 type DeviceRequest = Omit<GpsDeviceRequest, 'purchaseType' | 'subscriptionType'> & {
@@ -9,10 +11,8 @@ type DeviceRequest = Omit<GpsDeviceRequest, 'purchaseType' | 'subscriptionType'>
   subscriptionType: string
 }
 
-function formatDate(d: string) {
-  if (!d) return '-'
-  try { return new Date(d).toLocaleDateString('ar-IQ') } catch { return d }
-}
+// (دازاي 11-15) التاريخ من utils/date.ts (عربي، توقيت بغداد)
+const formatDate = (d: string) => fmtDate(d, { empty: '-' })
 
 function getSubscriptionLabel(t: string) {
   switch (t) {
@@ -52,10 +52,10 @@ export default function GpsDevices() {
   async function handleDeliver(req: DeviceRequest) {
     if (req.purchaseType === 'DEVICE_ONLY') {
       if (!deviceChecks.checked || !deviceChecks.activated || !deviceChecks.delivered) {
-        alert('يرجى تأكيد جميع الخطوات أولاً'); return
+        notify('يرجى تأكيد جميع الخطوات أولاً'); return
       }
     } else if (req.subscriptionType && !activationDate) {
-      alert('يرجى إدخال تاريخ التفعيل أولاً'); return
+      notify('يرجى إدخال تاريخ التفعيل أولاً'); return
     }
     setDelivering(true)
     try {
@@ -71,7 +71,7 @@ export default function GpsDevices() {
       setDeviceChecks({ checked: false, activated: false, delivered: false })
       load()
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'حدث خطأ أثناء التفعيل')
+      notify(err instanceof Error ? err.message : 'حدث خطأ أثناء التفعيل')
     } finally { setDelivering(false) }
   }
 
@@ -131,7 +131,7 @@ export default function GpsDevices() {
     <div dir="rtl">
       <h1 className="text-2xl font-bold mb-6 text-t-title">الطلبات المعلقة 📋</h1>
       {loading ? (
-        <div className="text-center py-20 text-t-faint">جارٍ التحميل...</div>
+        <div className="text-center py-20 text-t-faint">جاري التحميل…</div>
       ) : requests.length === 0 ? (
         <div className="text-center py-16 rounded-2xl" style={{ background: 'var(--sf-card)', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
           <div className="text-5xl mb-4">✅</div>

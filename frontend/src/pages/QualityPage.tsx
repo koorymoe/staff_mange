@@ -117,7 +117,7 @@ export default function QualityPage() {
         </select>
         <input required placeholder="عنوان المشكلة" value={title} onChange={(e) => setTitle(e.target.value)} className="rounded-lg border border-slate-300 px-3 py-2 sm:col-span-2" />
         <textarea placeholder="تفاصيل إضافية (اختياري)" value={description} onChange={(e) => setDescription(e.target.value)} rows={2} className="rounded-lg border border-slate-300 px-3 py-2 sm:col-span-2" />
-        <button type="submit" className="sm:col-span-2 rounded-lg bg-gradient-to-l from-brand-500 to-brand-800 px-5 py-2 font-medium text-white shadow-md">تسجيل المشكلة</button>
+        <button type="submit" disabled={guard.busy} className="disabled:opacity-50 sm:col-span-2 rounded-lg bg-gradient-to-l from-brand-500 to-brand-800 px-5 py-2 font-medium text-white shadow-md">تسجيل المشكلة</button>
       </form>}
 
       <div className="flex gap-2">

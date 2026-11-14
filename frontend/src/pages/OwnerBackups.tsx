@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { api, type BackupOverview, type BackupRun } from '../api'
 import { useSession } from '../session'
+import { fmtDateTime } from '../utils/date'
 
 // ═══ النسخ الاحتياطية — شاشة المالك وحده ═══
 //
@@ -59,8 +60,7 @@ export default function OwnerBackups() {
   }
   const icon: Record<string, string> = { OK: '✅', WARN: '⚠️', CRITICAL: '🔴', UNKNOWN: '❔' }
 
-  const fmt = (iso: string | null) =>
-    iso ? new Date(iso).toLocaleString('ar-IQ', { dateStyle: 'medium', timeStyle: 'short' }) : '—'
+  const fmt = (iso: string | null) => fmtDateTime(iso) // (دازاي 11-15) التاريخ من utils/date.ts (عربي، توقيت بغداد)
   const mb = (b: number) => (b > 0 ? `${(b / 1024 / 1024).toFixed(1)} م.ب` : '—')
   const since = (hours: number | null) => {
     if (hours == null) return '—'

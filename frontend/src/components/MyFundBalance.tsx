@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { api, fileUrl, storeFile, type EmployeeFundBalance, type EmployeeFundLine } from '../api'
 import { dinar as money } from '../utils/format'
 
+import { notify } from '../ui/notify'
 /**
  * رصيد الدوار مال الموظف — يظهر باللوحة الرئيسية حتى يشوف شكد مطلوب منه
  * للمحاسب، ويقدر يسوّي من نفس المكان.
@@ -63,20 +64,20 @@ export default function MyFundBalance({ forEmployee, onDone }: { forEmployee?: E
     if (!target) return
     const s = Number(spent) || 0
     const r = Number(returned) || 0
-    if (s + r <= 0) { alert('اكتب المبلغ المصروف أو المرتجع'); return }
-    if (s > 0 && !receipt) { alert('لازم ترفع صورة الوصل للمبلغ المصروف'); return }
+    if (s + r <= 0) { notify('اكتب المبلغ المصروف أو المرتجع'); return }
+    if (s > 0 && !receipt) { notify('لازم ترفع صورة الوصل للمبلغ المصروف'); return }
     // ═══ بيان الصرف إجباري ═══
     // الوصل يثبت إن الفلوس انصرفت بس ما يگول **على شنو**. بدونه
     // المحاسب لازم يتصل يسأل، وبعد أسبوع الموظف ما يتذكر.
     // ⚠️ الطول بالحروف مو بالبايتات — العربي حرفه بايتين وأكثر.
     if (s > 0 && [...notes.trim()].length < 5) {
-      alert('اكتب على شنو انصرفت الفلوس — بيان مختصر يكفي')
+      notify('اكتب على شنو انصرفت الفلوس — بيان مختصر يكفي')
       return
     }
     // ⚠️ ما نجمع أكثر من رصيد **هذا الدوار** — الخادم يرفضها هم،
     // بس نمنعها هنا حتى ما يضيع وقت الموظف بتعبئة نموذج كامل.
     if (s + r > target.outstanding + 0.001) {
-      alert(`المبلغ أكبر من الي بيدك من ${target.fundName} (${money(target.outstanding)})`)
+      notify(`المبلغ أكبر من الي بيدك من ${target.fundName} (${money(target.outstanding)})`)
       return
     }
     setBusy(true)
@@ -89,9 +90,9 @@ export default function MyFundBalance({ forEmployee, onDone }: { forEmployee?: E
       else await api.submitFundSettlement(data)
       setTarget(null)
       load()
-      alert('انرفعت التسوية — تنتظر تدقيق المحاسب')
+      notify('انرفعت التسوية — تنتظر تدقيق المحاسب', 'success')
     } catch (e) {
-      alert(e instanceof Error ? e.message : 'تعذر رفع التسوية')
+      notify(e instanceof Error ? e.message : 'تعذر رفع التسوية')
     } finally { setBusy(false) }
   }
 

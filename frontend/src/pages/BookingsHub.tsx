@@ -79,7 +79,7 @@ const TABS = [
   // «الحجوزات الي ينحذفن أريدهن يترحّلن بعد، ما أريد يضلن بمكان واحد».
   { key: 'deleting' as const, label: 'بانتظار قرار الحذف', icon: '🗑️' },
   // ترتيب (ع) 10-04: العملاء والأرشيف وفرص البيع ويا الحجوزات بشاشة وحدة.
-  { key: 'customers' as const, label: 'العملاء', icon: '👤' },
+  { key: 'customers' as const, label: 'الزبائن', icon: '👤' },
   { key: 'archive' as const, label: 'أرشيف الحجوزات', icon: '🗄️' },
   { key: 'opportunities' as const, label: 'فرص البيع', icon: '💡' },
 ]

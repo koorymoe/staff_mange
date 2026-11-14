@@ -12,6 +12,7 @@ import { askForm } from '../utils/dialog'
 import { askInput } from '../ui/dialogs'
 import { swallow } from '../utils/swallow'
 
+import { notify } from '../ui/notify'
 export default function Finance() {
   // ⚠️⚠️ هاي الشاشة چانت **بلا أي فحص**: أزرار «مطابق» و«غير مطابق»
   // و«خطأ بالسعر» تُعرض لأي واحد يفتحها، والرفض يجي من الخادم بعد
@@ -55,12 +56,12 @@ export default function Finance() {
     ], 'سوّي الفاتورة')
     if (!ans) return
     const price = Number(String(ans.price).replace(/[^0-9.]/g, ''))
-    if (!price || price <= 0) { alert('اكتب سعر صحيح أكبر من صفر'); return }
+    if (!price || price <= 0) { notify('اكتب سعر صحيح أكبر من صفر'); return }
     try {
       await api.priceInternalBackfill(b.id, ans.work, price)
-      alert(`انسوّت فاتورة الحجز ${b.code}`)
+      notify(`انسوّت فاتورة الحجز ${b.code}`, 'success')
       loadBackfill(); load()
-    } catch (e) { alert(e instanceof Error ? e.message : 'تعذر') }
+    } catch (e) { notify(e instanceof Error ? e.message : 'تعذر') }
   }
   // قرار (ع) 10-07: حجز زبون انحسب «داخل الشركة» بالغلط — المالك بس يرجّعه.
   const returnToCustomer = async (b: Booking) => {
@@ -70,9 +71,9 @@ export default function Finance() {
     if (!ok) return
     try {
       await api.changeBookingType(b.id, 'REGULAR')
-      alert(`الحجز ${b.code} رجع حجز زبون`)
+      notify(`الحجز ${b.code} رجع حجز زبون`, 'success')
       load()
-    } catch (e) { alert(e instanceof Error ? e.message : 'تعذر') }
+    } catch (e) { notify(e instanceof Error ? e.message : 'تعذر') }
   }
   // مشكوك إنه حجز زبون: ماكو قسم، أو عليه مبلغ مستلم من زبون.
   const looksLikeCustomer = (b: Booking) =>
@@ -111,13 +112,13 @@ export default function Finance() {
   const archiveBooking = async (b: Booking) => {
     const reason = (await askInput(`سبب حذف الحجز ${b.code} (يُحفظ بالأرشيف):`))
     if (reason === null) return
-    if (!reason.trim()) { window.alert('اكتب سبب الحذف'); return }
+    if (!reason.trim()) { notify('اكتب سبب الحذف'); return }
     setArchiveBusyId(b.id)
     try {
       await api.archiveBooking(b.id, reason.trim())
       setBookings((prev) => prev.filter((x) => x.id !== b.id))
     } catch (e) {
-      window.alert(e instanceof Error ? e.message : 'تعذر حذف الحجز')
+      notify(e instanceof Error ? e.message : 'تعذر حذف الحجز')
     } finally {
       setArchiveBusyId(null)
     }
@@ -136,7 +137,7 @@ export default function Finance() {
       const updated = await api.setPartialJobLink(b.id, code.trim())
       setBookings((prev) => prev.map((x) => (x.id === b.id ? updated : x)))
     } catch (e) {
-      window.alert(e instanceof Error ? e.message : 'تعذر ربط الحجز')
+      notify(e instanceof Error ? e.message : 'تعذر ربط الحجز')
     } finally {
       setPartialLinkBusyId(null)
     }
@@ -157,7 +158,7 @@ export default function Finance() {
         : await api.markBookingAsSurvey(b.id, code.trim())
       setBookings((prev) => prev.map((x) => (x.id === b.id ? updated : x)))
     } catch (e) {
-      window.alert(e instanceof Error ? e.message : 'تعذر تأشير الحجز ككشف')
+      notify(e instanceof Error ? e.message : 'تعذر تأشير الحجز ككشف')
     } finally {
       setSurveyMarkBusyId(null)
     }
@@ -179,7 +180,7 @@ export default function Finance() {
         await api.auditBooking(b.id, { action })
         load()
       } catch (e) {
-        alert(e instanceof Error ? e.message : 'تعذر تأشير الصيانة المجانية')
+        notify(e instanceof Error ? e.message : 'تعذر تأشير الصيانة المجانية')
       } finally {
         setAuditBusy(null)
       }
@@ -187,7 +188,7 @@ export default function Finance() {
     }
 
     if (action === 'VERIFY' && amountFor(b) <= 0) {
-      alert('اكتب المبلغ من الفاتورة أول — ما ينفع تدقق حجز بلا مبلغ')
+      notify('اكتب المبلغ من الفاتورة أول — ما ينفع تدقق حجز بلا مبلغ')
       return
     }
     let note: string | undefined
@@ -203,7 +204,7 @@ export default function Finance() {
     try {
       await api.auditBooking(b.id, { action, amountCollected: amount, note })
       if (action !== 'VERIFY') {
-        alert('انسجّل البلاغ وانوجّه للمعني — الحجز يبقى غير مدقق لحد ما ينحسم')
+        notify('انسجّل البلاغ وانوجّه للمعني — الحجز يبقى غير مدقق لحد ما ينحسم', 'success')
       }
       setInvoiceAmounts((prev) => ({ ...prev, [b.id]: '' }))
       // ⚠️ **إعادة تحميل مو ترقيع محلي**: الترقيع يحدّث الحجز بس،
@@ -211,7 +212,7 @@ export default function Finance() {
       // إجمالياً محسوباً على بيانات عمرها ساعات ويقرّر عليه.
       load()
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'تعذر تنفيذ التدقيق')
+      notify(err instanceof Error ? err.message : 'تعذر تنفيذ التدقيق')
     } finally {
       setAuditBusy(null)
     }
@@ -420,7 +421,7 @@ export default function Finance() {
         )}
       </div>
 
-      {loading && <p className="mt-6 text-slate-400">جاري التحميل...</p>}
+      {loading && <p className="mt-6 text-slate-400">جاري التحميل…</p>}
       {error && (
         <p className="mt-6 rounded-lg bg-red-50 p-4 text-red-600">
           تعذر الاتصال بالخادم: {error}

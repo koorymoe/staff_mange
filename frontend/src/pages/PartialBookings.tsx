@@ -2,6 +2,7 @@ import { useEffect, useState, type ReactNode } from 'react'
 import PctWhy from '../ui/PctWhy'
 import { api, type Booking, type BookingProgressReport, type SuggestedCrewMember } from '../api'
 import BookingCodeChip from '../components/BookingCodeChip'
+import { crewRoleLabel as crewRoleShort } from '../roleLabels'
 
 // ═══ حجوزات تحتاج إكمال ═══
 //
@@ -73,14 +74,8 @@ function lines(text?: string | null): string[] {
 
 // اسم الدور بلغة الشغل — الإداري يلازمه يعرف منو الليدر من الشريحة
 // نفسها مو من التلميح لما يوقف عليها بالماوس.
-const CREW_ROLE_LABELS: Record<string, string> = {
-  LEADER: 'ليدر',
-  TECH_1: 'فني ١',
-  TECH_2: 'فني ٢',
-  TECH_3: 'فني ٣',
-  REPORTER: 'كتب تقرير',
-}
-const crewRoleLabel = (role: string) => CREW_ROLE_LABELS[role] ?? role
+// (دازاي 11-15) الأسماء صارت بـ roleLabels.ts — هنا المختصر
+const crewRoleLabel = (role: string) => crewRoleShort(role, true)
 
 // ⚠️ ما نگول «اشتغل صفر يوم» لأنه كذب: المعروف عندنا كم
 // تقرير كتبه هو، مو كم يوم طلع. واللي ماكو إله تقرير
@@ -168,7 +163,7 @@ export default function PartialBookings() {
         ))}
       </div>
 
-      {loading && <p className="text-slate-400">جاري التحميل...</p>}
+      {loading && <p className="text-slate-400">جاري التحميل…</p>}
       {!loading && rows.length === 0 && (
         <p className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm font-bold text-emerald-800">
           ✅ ماكو ولا حجز ناقص — كل الحجوزات إما مكتملة أو مجدولة.

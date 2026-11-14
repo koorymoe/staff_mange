@@ -12,6 +12,8 @@ import { dinarRound as iqd, todayBaghdad } from '../utils/format'
 import { askConfirm, askInput } from '../ui/dialogs'
 import { swallow } from '../utils/swallow'
 
+import { notify } from '../ui/notify'
+import { fmtDate as fmtDay } from '../utils/date'
 // ═══ نظام الطاقة الشمسية ═══
 //
 // كان نظام منفصل على Google Sheets، وصار جزء من النظام: نفس الموظفين
@@ -85,7 +87,7 @@ export default function SolarPage() {
         ))}
       </div>
 
-      {loading && <div className="rounded-2xl bg-white p-8 text-center text-sm text-slate-500">جاري التحميل...</div>}
+      {loading && <div className="rounded-2xl bg-white p-8 text-center text-sm text-slate-500">جاري التحميل…</div>}
       {error && <div className="rounded-2xl bg-red-50 p-4 text-sm font-bold text-red-700">{error}</div>}
 
       {!loading && tab === 'dashboard' && <Dashboard stats={stats} components={components} />}
@@ -388,7 +390,7 @@ function Systems({
                       onClick={async () => {
                         if (!(await askConfirm(`تريد تحذف منظومة ${s.brand} ${s.capacity}؟`))) return
                         try { await api.deleteSolarSystem(s.id); await onChanged() }
-                        catch (e) { alert(e instanceof Error ? e.message : 'تعذر الحذف') }
+                        catch (e) { notify(e instanceof Error ? e.message : 'تعذر الحذف') }
                       }}
                       className="rounded-lg border border-red-300 px-3 py-1.5 text-xs font-bold text-red-600"
                     >
@@ -833,7 +835,7 @@ function Inventory({ components, canEdit, onChanged }: { components: SolarCompon
                           onClick={async () => {
                             if (!(await askConfirm(`تريد تحذف ${c.name}؟`))) return
                             try { await api.deleteSolarComponent(c.id); await onChanged() }
-                            catch (e) { alert(e instanceof Error ? e.message : 'تعذر الحذف') }
+                            catch (e) { notify(e instanceof Error ? e.message : 'تعذر الحذف') }
                           }}
                           className="rounded-lg border border-red-300 px-2 py-1 text-xs text-red-600"
                         >🗑️</button>
@@ -954,7 +956,7 @@ function Customers({ rows, canEdit, onChanged }: { rows: SolarInstallation[]; ca
       return matches([r.customer?.name, r.customer?.phone, r.system?.brand, r.system?.capacity], search)
     })
 
-  const fmtDate = (s: string) => new Date(s).toLocaleDateString('ar-IQ', { dateStyle: 'medium' })
+  const fmtDate = (s: string) => fmtDay(s, { dateStyle: 'medium' }) // (دازاي 11-15) التاريخ من utils/date.ts (عربي، توقيت بغداد)
 
   return (
     <div className="space-y-4">
@@ -1044,7 +1046,7 @@ function Customers({ rows, canEdit, onChanged }: { rows: SolarInstallation[]; ca
                   onClick={async () => {
                     const notes = (await askInput('ملاحظة عن الاتصال (اختيارية):')) ?? ''
                     try { await api.markSolarContacted(r.id, notes); await onChanged() }
-                    catch (e) { alert(e instanceof Error ? e.message : 'تعذر التسجيل') }
+                    catch (e) { notify(e instanceof Error ? e.message : 'تعذر التسجيل') }
                   }}
                   className="flex-1 rounded-lg bg-emerald-700 px-3 py-2 text-xs font-bold text-white"
                 >

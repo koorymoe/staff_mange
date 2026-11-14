@@ -5,7 +5,9 @@ import { loadFailed } from '../netErrors'
 import { askConfirm } from '../ui/dialogs'
 import { swallow } from '../utils/swallow'
 
-const money = (n: number) => n.toLocaleString('en-IQ')
+import { notify } from '../ui/notify'
+import { money as fmtMoney } from '../utils/money'
+const money = (n: number) => fmtMoney(n) // (دازاي 11-15) من utils/money.ts
 
 type SupplierOption = { id: string; companyName: string; ownerName: string }
 
@@ -72,7 +74,7 @@ export default function ProductRequestsPage({ embedded }: { embedded?: boolean }
       setShowForm(false)
       load()
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'تعذر إضافة الطلب')
+      notify(err instanceof Error ? err.message : 'تعذر إضافة الطلب')
     } finally {
       setSaving(false)
     }
@@ -103,7 +105,7 @@ export default function ProductRequestsPage({ embedded }: { embedded?: boolean }
       const res = await api.uploadFile(file, 'receipts')
       setFf((v) => ({ ...v, receiptImage: res.url }))
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'تعذر رفع صورة الوصل')
+      notify(err instanceof Error ? err.message : 'تعذر رفع صورة الوصل')
     }
   }
 
@@ -126,7 +128,7 @@ export default function ProductRequestsPage({ embedded }: { embedded?: boolean }
       load()
       api.getFunds().then((rows) => setFunds(rows ?? [])).catch(swallow)
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'تعذر تجهيز الطلب')
+      notify(err instanceof Error ? err.message : 'تعذر تجهيز الطلب')
     } finally {
       setSaving(false)
     }
@@ -140,7 +142,7 @@ export default function ProductRequestsPage({ embedded }: { embedded?: boolean }
       load()
       api.getFunds().then((rows) => setFunds(rows ?? [])).catch(swallow)
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'تعذر تسوية الطلب')
+      notify(err instanceof Error ? err.message : 'تعذر تسوية الطلب')
     } finally {
       setBusyId(null)
     }
@@ -182,7 +184,7 @@ export default function ProductRequestsPage({ embedded }: { embedded?: boolean }
         </div>
       )}
 
-      {loading && <p className="text-slate-400">جاري التحميل...</p>}
+      {loading && <p className="text-slate-400">جاري التحميل…</p>}
       {!loading && items.length === 0 && <p className="text-slate-400">لا توجد طلبات منتجات بعد.</p>}
 
       <div className="overflow-x-auto rounded-xl border border-white bg-white shadow-sm">

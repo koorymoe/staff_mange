@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { api, type DeviceMaintenanceTicket } from '../api'
 
+import { notify } from '../ui/notify'
 const statusLabels: Record<string, string> = {
   NEW: 'جديدة',
   IN_PROGRESS: 'قيد الصيانة',
@@ -43,7 +44,7 @@ export default function DeviceMaintenancePage() {
     e.preventDefault()
     const code = parseInt(customerCode, 10)
     if (!code || !deviceTypeName.trim() || !problem.trim()) {
-      alert('كود الزبون ونوع الجهاز والمشكلة حقول مطلوبة')
+      notify('كود الزبون ونوع الجهاز والمشكلة حقول مطلوبة')
       return
     }
     setSubmitting(true)
@@ -62,7 +63,7 @@ export default function DeviceMaintenancePage() {
       setDeviceSerial('')
       await load()
     } catch (e) {
-      alert(e instanceof Error ? e.message : 'تعذر حفظ التذكرة')
+      notify(e instanceof Error ? e.message : 'تعذر حفظ التذكرة')
     } finally {
       setSubmitting(false)
     }
@@ -73,7 +74,7 @@ export default function DeviceMaintenancePage() {
       await api.updateDeviceMaintenanceTicket(id, { markReceived: true })
       await load()
     } catch (e) {
-      alert(e instanceof Error ? e.message : 'تعذر التحديث')
+      notify(e instanceof Error ? e.message : 'تعذر التحديث')
     }
   }
 
@@ -82,7 +83,7 @@ export default function DeviceMaintenancePage() {
       await api.updateDeviceMaintenanceTicket(id, { markDelivered: true })
       await load()
     } catch (e) {
-      alert(e instanceof Error ? e.message : 'تعذر التحديث')
+      notify(e instanceof Error ? e.message : 'تعذر التحديث')
     }
   }
 
@@ -125,7 +126,7 @@ export default function DeviceMaintenancePage() {
         </div>
       </form>
 
-      {loading && <p className="mt-6 text-slate-400">جاري التحميل...</p>}
+      {loading && <p className="mt-6 text-slate-400">جاري التحميل…</p>}
       {error && <p className="mt-6 rounded-lg bg-red-50 p-4 text-red-600">تعذر الاتصال بالخادم: {error}</p>}
 
       {!loading && !error && (

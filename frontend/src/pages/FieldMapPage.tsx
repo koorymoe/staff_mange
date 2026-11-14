@@ -7,6 +7,7 @@ import PageHeader from '../components/PageHeader'
 import LocationPicker from '../components/LocationPicker'
 import { useSession, isAdminOrOwner } from '../session'
 
+import { notify } from '../ui/notify'
 // ═══ خريطة الميدان — قرار (ع) 10-14 ═══
 // للمالك والمدير والمراقب: الشركة، حجوزات اليوم بمواقعها، آخر موقع لكل موظف،
 // منين انطلق كل حجز، والخريطة الحرارية (وين تتجمع الحركة والتوقفات).
@@ -110,7 +111,7 @@ export default function FieldMapPage() {
   }, [data, mode, track])
 
   const saveCompany = async (c: CompanyLocation) => {
-    try { await api.setCompanyLocation(c); setEditCompany(false); setReload((n) => n + 1) } catch (e) { alert(e instanceof Error ? e.message : 'تعذر الحفظ') }
+    try { await api.setCompanyLocation(c); setEditCompany(false); setReload((n) => n + 1) } catch (e) { notify(e instanceof Error ? e.message : 'تعذر الحفظ') }
   }
 
   const t = track?.times

@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useState } from 'react'
 import { api, type PaymentAuditRow } from '../api'
 import { askConfirm, askInput } from '../ui/dialogs'
+import { money as fmtMoney } from '../utils/money'
 
 // ═══ سجل دفعات المشاريع — للمالك (ع 10-13) ═══
 // «المدير كتب المستلم مرة ثانية فصار ضعف» — هنا يشوف كل دفعة ومنو سجّلها
 // ووكتها، والمكرر المحتمل بالأحمر، ويصحّح المبلغ أو يلغي الدفعة.
-const money = (n: number) => n.toLocaleString('en-US')
+const money = (n: number) => fmtMoney(n) // (دازاي 11-15) من utils/money.ts
 const dt = (s: string) => new Date(s).toLocaleString('ar-IQ', { timeZone: 'Asia/Baghdad', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
 
 export default function PaymentAuditModal({ onClose, onChanged }: { onClose: () => void; onChanged: () => void }) {

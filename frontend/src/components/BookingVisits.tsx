@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { api, type BookingVisit } from '../api'
 import PctWhy from '../ui/PctWhy'
+import { crewRoleLabel } from '../roleLabels'
 
 // ═══ طلعات الحجز ═══
 //
@@ -13,12 +14,7 @@ import PctWhy from '../ui/PctWhy'
 // هنا تنعرض الطلعات كلهن: منو طلع بكل وحدة، ومتى، وشكد أنجز.
 // الطلعة الي راحت **ما تنمحي** لمن يتبدّل الكادر — هي واقعة صارت.
 
-const ROLE_LABELS: Record<string, string> = {
-  TECH_1: 'الفني الأول',
-  TECH_2: 'الفني الثاني',
-  TECH_3: 'الفني الثالث',
-  LEADER: 'الليدر',
-}
+// (دازاي 11-15) أسماء الأدوار من roleLabels.ts — جانت خريطة محلية
 
 export default function BookingVisits({ bookingId }: { bookingId: string }) {
   const [visits, setVisits] = useState<BookingVisit[]>([])
@@ -81,7 +77,7 @@ export default function BookingVisits({ bookingId }: { bookingId: string }) {
                     className="rounded-lg bg-white px-2 py-0.5 text-[11px] font-bold text-slate-700 shadow-sm"
                   >
                     {c.isLeader && '👑 '}{c.name}
-                    <span className="font-normal text-slate-400"> · {ROLE_LABELS[c.role] || c.role}</span>
+                    <span className="font-normal text-slate-400"> · {crewRoleLabel(c.role)}</span>
                   </span>
                 ))}
               </div>

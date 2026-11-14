@@ -4,6 +4,7 @@ import { useSession } from '../session'
 import { pollVisible } from '../utils/poll'
 import { askConfirm } from '../ui/dialogs'
 
+import { notify } from '../ui/notify'
 type DashboardData = Awaited<ReturnType<typeof api.getSecurityDashboard>>
 type LoginRow = DashboardData['recentLogins'][number]
 
@@ -85,7 +86,7 @@ export default function SecurityDashboardPage() {
       const res = await api.freeServerMemory()
       setData((prev) => (prev ? { ...prev, memoryUsedMB: res.memoryUsedMB } : prev))
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'تعذر تحرير الذاكرة')
+      notify(err instanceof Error ? err.message : 'تعذر تحرير الذاكرة')
     } finally {
       setFreeing(false)
     }
@@ -247,7 +248,7 @@ export default function SecurityDashboardPage() {
                           await api.unlockEmployee(e.id)
                           setData(await api.getSecurityDashboard())
                         } catch (err) {
-                          alert(err instanceof Error ? err.message : 'تعذر فك الحظر')
+                          notify(err instanceof Error ? err.message : 'تعذر فك الحظر')
                         }
                       }}
                       className="rounded-lg border border-emerald-500/40 px-3 py-1.5 text-xs font-medium text-emerald-300 hover:bg-emerald-500/10"
@@ -284,7 +285,7 @@ export default function SecurityDashboardPage() {
                           await api.resetLoginAttempts(e.id)
                           setData(await api.getSecurityDashboard())
                         } catch (err) {
-                          alert(err instanceof Error ? err.message : 'تعذر تصفير العدّاد')
+                          notify(err instanceof Error ? err.message : 'تعذر تصفير العدّاد')
                         }
                       }}
                       className="rounded-lg border border-amber-500/40 px-3 py-1.5 text-xs font-medium text-amber-300 hover:bg-amber-500/10"

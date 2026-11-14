@@ -3,6 +3,8 @@ import { api, storeFile, type Exhibition, type Employee, type EmployeeRole, file
 import { useSession, isAdminOrOwner } from '../session'
 import { loadFailed } from '../netErrors'
 
+import { notify } from '../ui/notify'
+import { askConfirm } from '../ui/dialogs'
 function splitList(v: string) {
   return v.split(',').map((s) => s.trim()).filter(Boolean)
 }
@@ -67,7 +69,7 @@ export default function ExhibitionsPage({ embedded }: { embedded?: boolean } = {
       setShowForm(false)
       load()
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'تعذر إضافة المعرض')
+      notify(err instanceof Error ? err.message : 'تعذر إضافة المعرض')
     } finally {
       setSaving(false)
     }
@@ -120,13 +122,15 @@ export default function ExhibitionsPage({ embedded }: { embedded?: boolean } = {
       await api.generateExhibitionReport(id)
       load()
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'تعذر توليد التقرير')
+      notify(err instanceof Error ? err.message : 'تعذر توليد التقرير')
     } finally {
       setBusyId(null)
     }
   }
 
   const handleArchive = async (id: string) => {
+    // الأرشفة تشيل المعرض من القائمة الفعّالة — نسأل قبل (دازاي 11-15)
+    if (!(await askConfirm('تأرشف هذا المعرض؟ يختفي من المعارض الفعّالة.', { okLabel: 'أرشفة' }))) return
     setBusyId(id)
     try {
       await api.archiveExhibition(id)
@@ -171,7 +175,7 @@ export default function ExhibitionsPage({ embedded }: { embedded?: boolean } = {
         </div>
       )}
 
-      {loading && <p className="text-slate-400">جاري التحميل...</p>}
+      {loading && <p className="text-slate-400">جاري التحميل…</p>}
       {!loading && items.length === 0 && <p className="text-slate-400">لا توجد معارض بعد.</p>}
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">

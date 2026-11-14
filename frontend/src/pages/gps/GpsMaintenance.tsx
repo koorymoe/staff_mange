@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { api, type GpsMaintenanceRequest } from '../../api'
 
+import { notify } from '../../ui/notify'
 const statusConfig: Record<string, { label: string; color: string; bg: string }> = {
   PENDING: { label: 'معلق', color: 'var(--t-warning)', bg: '#fffbeb' },
   IN_PROGRESS: { label: 'قيد المعالجة', color: 'var(--t-violet)', bg: '#f5f3ff' },
@@ -30,11 +31,11 @@ export default function GpsMaintenance() {
       setAdminNotes('')
       load()
     } catch (e) {
-      alert(e instanceof Error ? e.message : 'حدث خطأ')
+      notify(e instanceof Error ? e.message : 'حدث خطأ')
     }
   }
 
-  if (loading) return <div className="flex items-center justify-center p-12"><div className="text-lg text-slate-500">جاري التحميل...</div></div>
+  if (loading) return <div className="flex items-center justify-center p-12"><div className="text-lg text-slate-500">جاري التحميل…</div></div>
   if (error) return <div className="rounded-2xl bg-red-50 p-6 text-red-600 shadow-sm">{error}</div>
 
   return (

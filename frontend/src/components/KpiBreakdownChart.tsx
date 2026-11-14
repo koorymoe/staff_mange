@@ -66,7 +66,7 @@ export default function KpiBreakdownChart({
           )}
         </div>
 
-        {loading && <p className="mt-6 text-center text-slate-400">جاري التحميل...</p>}
+        {loading && <p className="mt-6 text-center text-slate-400">جاري التحميل…</p>}
         {error && <p className="mt-6 rounded-lg bg-red-50 p-3 text-sm font-bold text-red-700">{error}</p>}
 
         {data && (

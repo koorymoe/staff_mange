@@ -106,7 +106,7 @@ export default function DepartmentsPage() {
         </button>
       </SearchBar>
 
-      {loading && <p className="text-t-faint">جاري التحميل...</p>}
+      {loading && <p className="text-t-faint">جاري التحميل…</p>}
       {!loading && filtered.length === 0 && (
         <EmptyState icon="🏢" title="ماكو أقسام"
           reason={list.length === 0 ? 'السجل فاضي — أضف قسماً من فوق.' : 'ماكو قسم يطابق البحث.'} />

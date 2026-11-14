@@ -3,6 +3,7 @@ import { api, type VipCustomer, type Customer } from '../api'
 import { useSession } from '../session'
 import { askConfirm } from '../ui/dialogs'
 
+import { notify } from '../ui/notify'
 // قائمة الشخصيات المهمة — لمدير النظام حصراً (الراوت بالسيرفر محمي بـrequireAdmin).
 // تعرض تفاصيل الزبون ورقمه وشنو طلب من عدنا ومنو الموظف الي علّمه.
 export default function VipCustomersPage() {
@@ -46,7 +47,7 @@ export default function VipCustomersPage() {
 
   const addManual = async () => {
     // موجود بالنظام → نعلّمه. مو موجود → لازم اسم حتى ننشئ سجله.
-    if (!found && !newName.trim()) { alert('اكتب اسم الشخصية أول'); return }
+    if (!found && !newName.trim()) { notify('اكتب اسم الشخصية أول'); return }
     setAdding(true)
     try {
       await api.markVipCustomer({
@@ -63,7 +64,7 @@ export default function VipCustomersPage() {
       setNewName(''); setNewLocation(''); setNewLocationUrl(''); setBoughtFromUs(true)
       load()
     } catch (e) {
-      alert(e instanceof Error ? e.message : 'تعذرت الإضافة')
+      notify(e instanceof Error ? e.message : 'تعذرت الإضافة')
     } finally {
       setAdding(false)
     }
@@ -180,7 +181,7 @@ export default function VipCustomersPage() {
         )}
       </div>
 
-      {loading && <p className="mt-6 text-slate-400">جاري التحميل...</p>}
+      {loading && <p className="mt-6 text-slate-400">جاري التحميل…</p>}
       {error && <p className="mt-4 rounded-lg bg-red-50 p-4 text-red-600">{error}</p>}
 
       {!isAdmin && (

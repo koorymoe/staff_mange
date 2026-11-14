@@ -23,6 +23,8 @@ import { pollVisible } from '../utils/poll'
 import { askConfirm } from '../ui/dialogs'
 import { swallow } from '../utils/swallow'
 
+import { notify } from '../ui/notify'
+import { money as fmtMoney } from '../utils/money'
 // ═══ مركز قيادة ماتركس — شاشة المدير (تصميم (ع)) ═══
 // كل رقم من بيانات حقيقية؛ لو ما تكفي نگول «بيانات قليلة» بدل رقم وهمي.
 // «تنفيذ» = موافقة على اقتراح معلّق (نفس صندوق القرارات) — ماكو شي ينفّذ بلا ضغطة.
@@ -31,7 +33,7 @@ type GroupRep = { group: string; employees: MatrixWatch[]; red: number; alert: n
 type Focus = 'late' | 'perf' | 'profit'
 
 const card = 'rounded-2xl border border-[var(--mx-border)] bg-[var(--mx-card)] shadow-[var(--mx-glow)]'
-const fmtIQD = (n: number) => `${Math.round(n).toLocaleString('en-US')} د.ع`
+const fmtIQD = (n: number) => `${fmtMoney(Math.round(n))} د.ع` // (دازاي 11-15) من utils/money.ts
 
 function groupMood(g: GroupRep): EyeMood {
   if (g.red > 0) return 'ANGRY'
@@ -315,7 +317,7 @@ function Discovery({ focus, late, perf, groups, biz, proposal, onDone }: {
   const approve = async () => {
     if (!proposal || !(await askConfirm(`توافق على اقتراح ماتركس؟\n\n${proposal.title}`))) return
     setBusy(true)
-    try { await api.approveMatrixProposal(proposal.id); onDone() } catch (e) { alert(e instanceof Error ? e.message : 'تعذّر التنفيذ') } finally { setBusy(false) }
+    try { await api.approveMatrixProposal(proposal.id); onDone() } catch (e) { notify(e instanceof Error ? e.message : 'تعذّر التنفيذ') } finally { setBusy(false) }
   }
 
   const sev = view?.severity === 'HIGH' ? ['أهمية عالية', 'border-red-400/40 text-[var(--mx-bad)]'] : view?.severity === 'MEDIUM' ? ['أهمية متوسطة', 'border-amber-400/40 text-[var(--mx-warn)]'] : ['أهمية منخفضة', 'border-emerald-400/40 text-[var(--mx-ok)]']

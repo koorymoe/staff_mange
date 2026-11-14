@@ -8,6 +8,8 @@ import { loadFailed } from '../netErrors'
 import { askConfirm } from '../ui/dialogs'
 import PctWhy from '../ui/PctWhy'
 
+import { notify } from '../ui/notify'
+import { DeleteButton } from '../ui/DeleteButton'
 function fileToBase64(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader()
@@ -286,7 +288,7 @@ export default function VehiclesPage() {
       setSelectedId(null)
       loadVehicles()
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'حدث خطأ')
+      notify(err instanceof Error ? err.message : 'حدث خطأ')
     } finally {
       setDeleting(false)
     }
@@ -358,7 +360,7 @@ export default function VehiclesPage() {
       api.getVehicleExpenseSummary(selectedId, { month: expenseMonth }).then(setExpenseSummary)
       api.getEmployeeFuelStats({ vehicleId: selectedId, month: expenseMonth }).then(setFuelStats).catch(() => setFuelStats([]))
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'تعذر حفظ التعديل')
+      notify(err instanceof Error ? err.message : 'تعذر حفظ التعديل')
     } finally {
       setSavingLog(false)
     }
@@ -372,7 +374,7 @@ export default function VehiclesPage() {
       api.getVehicleExpenseSummary(selectedId, { month: expenseMonth }).then(setExpenseSummary)
       api.getEmployeeFuelStats({ vehicleId: selectedId, month: expenseMonth }).then(setFuelStats).catch(() => setFuelStats([]))
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'تعذر الحذف')
+      notify(err instanceof Error ? err.message : 'تعذر الحذف')
     }
   }
 
@@ -381,9 +383,9 @@ export default function VehiclesPage() {
     try {
       const res = await api.getVehicleLogReceiptPhoto(selectedId, l.id)
       if (res.receiptPhotoBase64) setReceiptPhotoView(res.receiptPhotoBase64)
-      else alert('ما اكو صورة وصل لهذا السجل')
+      else notify('ما اكو صورة وصل لهذا السجل')
     } catch {
-      alert('تعذر جلب صورة الوصل')
+      notify('تعذر جلب صورة الوصل')
     }
   }
 
@@ -483,7 +485,7 @@ export default function VehiclesPage() {
       setWashTechId(''); setWashScore(''); setWashTechId2(''); setWashScore2('')
       api.getVehicleDailyRatings(selectedId).then(setDailyRatings)
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'تعذر حفظ التقييم')
+      notify(err instanceof Error ? err.message : 'تعذر حفظ التقييم')
     } finally {
       setSavingRating(false)
     }
@@ -558,7 +560,7 @@ export default function VehiclesPage() {
             <option value="تحتاج صيانة">تحتاج صيانة</option>
             <option value="معطلة">معطلة</option>
           </select>
-          <button type="submit" className="sm:col-span-4 rounded-lg bg-brand-600 px-5 py-2 font-medium text-white">حفظ السيارة</button>
+          <button type="submit" disabled={guard.busy} className="disabled:opacity-50 sm:col-span-4 rounded-lg bg-brand-600 px-5 py-2 font-medium text-white">حفظ السيارة</button>
         </form>
       )}
 
@@ -638,7 +640,7 @@ export default function VehiclesPage() {
                   <input placeholder="عداد الكيلومترات" type="number" value={editDraft.currentOdometer ?? ''} onChange={(e) => setEditDraft((p) => ({ ...p, currentOdometer: e.target.value ? Number(e.target.value) : undefined }))} className="rounded-lg border border-slate-300 px-3 py-2" />
                   <input placeholder="الحالة" value={editDraft.condition || ''} onChange={(e) => setEditDraft((p) => ({ ...p, condition: e.target.value }))} className="rounded-lg border border-slate-300 px-3 py-2" />
                   <div className="flex gap-2 sm:col-span-3">
-                    <button type="submit" className="rounded-lg bg-brand-600 px-4 py-2 text-sm font-bold text-white hover:bg-brand-700">حفظ التعديلات</button>
+                    <button type="submit" disabled={guard.busy} className="disabled:opacity-50 rounded-lg bg-brand-600 px-4 py-2 text-sm font-bold text-white hover:bg-brand-700">حفظ التعديلات</button>
                     <button type="button" onClick={() => setShowEditVehicle(false)} className="rounded-lg bg-slate-100 px-4 py-2 text-sm font-bold text-slate-600 hover:bg-slate-200">إلغاء</button>
                   </div>
                 </form>
@@ -734,7 +736,7 @@ export default function VehiclesPage() {
                       </>
                     )}
                     <input placeholder="ملاحظات" value={logNotes} onChange={(e) => setLogNotes(e.target.value)} className="rounded-lg border border-slate-300 px-3 py-2 sm:col-span-2" />
-                    <button type="submit" className="sm:col-span-3 rounded-lg bg-brand-600 px-5 py-2 font-medium text-white">تسجيل</button>
+                    <button type="submit" disabled={guard.busy} className="disabled:opacity-50 sm:col-span-3 rounded-lg bg-brand-600 px-5 py-2 font-medium text-white">تسجيل</button>
                     {fuelAnomalyWarning && (
                       <p className="sm:col-span-3 rounded-lg bg-amber-50 px-3 py-2 text-sm font-bold text-amber-700">{fuelAnomalyWarning}</p>
                     )}
@@ -758,7 +760,7 @@ export default function VehiclesPage() {
                         )}
                       </div>
                     ) : (
-                      <p className="text-sm text-slate-400">جاري التحميل...</p>
+                      <p className="text-sm text-slate-400">جاري التحميل…</p>
                     )}
                   </div>
 
@@ -880,7 +882,7 @@ export default function VehiclesPage() {
                         <input type="number" placeholder="تكلفة الإصلاح (اختياري)" value={incRepairCost} onChange={(e) => setIncRepairCost(e.target.value)} className="rounded-lg border border-slate-300 px-3 py-2" />
                       </>
                     )}
-                    <button type="submit" className="rounded-lg bg-brand-600 px-5 py-2 font-medium text-white">تسجيل</button>
+                    <button type="submit" disabled={guard.busy} className="disabled:opacity-50 rounded-lg bg-brand-600 px-5 py-2 font-medium text-white">تسجيل</button>
                   </form>
 
                   <div className="space-y-3">
@@ -934,12 +936,8 @@ export default function VehiclesPage() {
                                       <img src={att.url} alt="مرفق" className="h-20 w-full object-cover" />
                                     </a>
                                   )}
-                                  <button
-                                    onClick={() => handleDeleteIncidentAttachment(inc.id, att.id)}
-                                    className="absolute left-1 top-1 rounded-lg bg-red-600/90 px-1.5 py-0.5 text-[10px] font-bold text-white opacity-0 transition-opacity group-hover:opacity-100"
-                                  >
-                                    حذف
-                                  </button>
+                                  <DeleteButton confirm="تحذف هذا المرفق من الحادث؟" onConfirm={() => handleDeleteIncidentAttachment(inc.id, att.id)}
+                                    className="absolute left-1 top-1 !px-1.5 !py-0.5 !text-[10px] opacity-0 transition-opacity group-hover:opacity-100 focus:opacity-100" />
                                 </div>
                               ))}
                             </div>
@@ -966,7 +964,7 @@ export default function VehiclesPage() {
                       تمت المعالجة
                     </label>
                     <input placeholder="ملاحظات" value={monNotes} onChange={(e) => setMonNotes(e.target.value)} className="rounded-lg border border-slate-300 px-3 py-2" />
-                    <button type="submit" className="sm:col-span-2 rounded-lg bg-brand-600 px-5 py-2 font-medium text-white">حفظ حالة الشهر</button>
+                    <button type="submit" disabled={guard.busy} className="disabled:opacity-50 sm:col-span-2 rounded-lg bg-brand-600 px-5 py-2 font-medium text-white">حفظ حالة الشهر</button>
                   </form>
 
                   <div className="overflow-hidden rounded-xl border border-white bg-white shadow-[0_4px_20px_rgba(15,32,64,0.06)]">
@@ -1033,7 +1031,7 @@ export default function VehiclesPage() {
                           try {
                             await api.exportVehicleWashMonthly(washMonth)
                           } catch (e) {
-                            alert(e instanceof Error ? e.message : 'تعذر تصدير الملف')
+                            notify(e instanceof Error ? e.message : 'تعذر تصدير الملف')
                           } finally {
                             setWashExporting(false)
                           }
@@ -1372,7 +1370,7 @@ function VehicleDocumentsTab({ vehicleId, guard }: { vehicleId: string; guard: S
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
-            {docs === null && <tr><td colSpan={6} className="p-4 text-center text-slate-400">جاري التحميل...</td></tr>}
+            {docs === null && <tr><td colSpan={6} className="p-4 text-center text-slate-400">جاري التحميل…</td></tr>}
             {docs?.length === 0 && <tr><td colSpan={6} className="p-4 text-center text-slate-400">ماكو مستمسكات مسجلة</td></tr>}
             {docs?.map((d) => {
               const expired = d.daysLeft != null && d.daysLeft < 0
@@ -1464,7 +1462,7 @@ function VehiclePartsTab({ vehicle, guard }: { vehicle: Vehicle; guard: SaveGuar
         <input type="number" min="0" placeholder="العمر المتوقع (أشهر)" value={form.lifeMonths} onChange={(e) => setForm({ ...form, lifeMonths: e.target.value })} className={INPUT} />
         <input type="number" min="0" placeholder="الكلفة" value={form.cost} onChange={(e) => setForm({ ...form, cost: e.target.value })} className={INPUT} />
         <input placeholder="ملاحظات" value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} className={`${INPUT} sm:col-span-3`} />
-        <button type="submit" className="sm:col-span-3 rounded-lg bg-brand-600 px-5 py-2 font-medium text-white">+ تسجيل قطعة</button>
+        <button type="submit" disabled={guard.busy} className="disabled:opacity-50 sm:col-span-3 rounded-lg bg-brand-600 px-5 py-2 font-medium text-white">+ تسجيل قطعة</button>
       </form>
 
       <div className="overflow-hidden rounded-xl border border-white bg-white shadow-[0_4px_20px_rgba(15,32,64,0.06)]">
@@ -1486,7 +1484,7 @@ function VehiclePartsTab({ vehicle, guard }: { vehicle: Vehicle; guard: SaveGuar
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
-            {parts === null && <tr><td colSpan={6} className="p-4 text-center text-slate-400">جاري التحميل...</td></tr>}
+            {parts === null && <tr><td colSpan={6} className="p-4 text-center text-slate-400">جاري التحميل…</td></tr>}
             {parts !== null && visible.length === 0 && <tr><td colSpan={6} className="p-4 text-center text-slate-400">ماكو قطع مسجلة</td></tr>}
             {visible.map((p) => (
               <tr key={p.id} className={p.replacedAt ? 'text-slate-400' : p.dueSoon ? 'bg-amber-50' : ''}>
@@ -1569,7 +1567,7 @@ function VehiclePhotosTab({ vehicleId, guard }: { vehicleId: string; guard: Save
 
       <div className={CARD}>
         {photos === null ? (
-          <p className="text-center text-sm text-slate-400">جاري التحميل...</p>
+          <p className="text-center text-sm text-slate-400">جاري التحميل…</p>
         ) : photos.length === 0 ? (
           <p className="text-center text-sm text-slate-400">ماكو صور لهاي السيارة</p>
         ) : (

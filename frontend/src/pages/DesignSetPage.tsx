@@ -1,8 +1,10 @@
 import { lazy, Suspense, useEffect, useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { useParams } from 'react-router-dom'
 import { api, apiRequest, ensureFileToken, fileUrl, type Employee, thumbUrl } from '../api'
 import PctWhy from '../ui/PctWhy'
 import { SECTION_STATUS, type DesignFile, type DesignMeta, type DesignSection, type DesignSetDetail, type DesignTool } from './design/types'
+import { DeleteButton } from '../ui/DeleteButton'
+import { BackLink } from '../ui/BackLink'
 
 const ModelViewer = lazy(() => import('./design/ModelViewer'))
 
@@ -17,7 +19,7 @@ const RETURN_STEPS = [
   'لمن تخلّص كل الملفات اضغط «📤 للمراجعة».',
 ]
 
-function FileCard({ f, canRemove, onRemove }: { f: DesignFile; canRemove: boolean; onRemove: () => void }) {
+function FileCard({ f, canRemove, onRemove }: { f: DesignFile; canRemove: boolean; onRemove: () => Promise<unknown> }) {
   const [open3d, setOpen3d] = useState(false)
   const src = f.fileKey ? fileUrl(f.fileKey) : ''
   const isImg = (f.fileType || '').startsWith('image/') && f.fileType !== 'image/vnd.dwg'
@@ -35,7 +37,7 @@ function FileCard({ f, canRemove, onRemove }: { f: DesignFile; canRemove: boolea
       )}
       <p className="mt-1 truncate font-bold text-slate-700" title={f.title}>{f.title}</p>
       <p className="truncate text-slate-400">{f.toolName ? `${f.toolName} · ` : ''}{f.uploadedByName ?? ''}</p>
-      {canRemove && <button type="button" onClick={onRemove} className="text-[11px] text-slate-400 underline">شيله</button>}
+      {canRemove && <DeleteButton confirm={`تحذف الملف «${f.title}» من السيت؟`} onConfirm={onRemove} className="mt-1" />}
     </div>
   )
 }
@@ -105,7 +107,7 @@ function SectionCard({ s, d, meta, tools, people, reload }: {
           {/* الملفات */}
           {s.files.length > 0 && (
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-              {s.files.map((f) => <FileCard key={f.id} f={f} canRemove={!locked} onRemove={() => void run(() => apiRequest(`/design-files/${f.id}`, { method: 'DELETE' }))} />)}
+              {s.files.map((f) => <FileCard key={f.id} f={f} canRemove={!locked} onRemove={() => run(() => apiRequest(`/design-files/${f.id}`, { method: 'DELETE' }))} />)}
             </div>
           )}
           {/* الرفع */}
@@ -171,14 +173,17 @@ function ToolsManager({ meta, close, saved }: { meta: DesignMeta; close: () => v
   const [rows, setRows] = useState(meta.tools)
   const [err, setErr] = useState('')
   const empty = { id: '', discipline: meta.disciplines[0]?.code ?? 'ARCH', name: '', url: '', howTo: '', sort: 0, active: true }
+  const [busy, setBusy] = useState(false) // (دازاي 11-15) قفل الحفظ المزدوج
   const save = async (t: DesignTool) => {
+    if (busy) return
     setErr('')
+    setBusy(true)
     try {
       const body = JSON.stringify({ discipline: t.discipline, name: t.name, url: t.url, howTo: t.howTo, active: t.active })
       await apiRequest(t.id ? `/design-tools/${t.id}` : '/design-tools', { method: t.id ? 'PUT' : 'POST', body })
       saved()
       if (!t.id) setRows((r) => r.filter((x) => x !== t))
-    } catch (e) { setErr(e instanceof Error ? e.message : 'تعذر') }
+    } catch (e) { setErr(e instanceof Error ? e.message : 'تعذر') } finally { setBusy(false) }
   }
   const set = (i: number, k: keyof DesignTool, v: string | boolean) => setRows((r) => r.map((x, j) => (j === i ? { ...x, [k]: v } : x)))
   return (
@@ -193,7 +198,7 @@ function ToolsManager({ meta, close, saved }: { meta: DesignMeta; close: () => v
             <input value={t.name} onChange={(e) => set(i, 'name', e.target.value)} placeholder="الاسم" className="rounded border border-slate-200 p-1" />
             <input value={t.url} onChange={(e) => set(i, 'url', e.target.value)} placeholder="https://…" dir="ltr" className="rounded border border-slate-200 p-1 sm:col-span-2" />
             <label className="flex items-center gap-1"><input type="checkbox" checked={t.active} onChange={(e) => set(i, 'active', e.target.checked)} /> فعّالة</label>
-            <button type="button" onClick={() => void save(t)} className="rounded bg-emerald-700 px-2 font-bold text-white">احفظ</button>
+            <button type="button" disabled={busy} onClick={() => void save(t)} className="rounded bg-emerald-700 px-2 font-bold text-white disabled:opacity-50">احفظ</button>
             <input value={t.howTo} onChange={(e) => set(i, 'howTo', e.target.value)} placeholder="طريقة الإرجاع للمصمم" className="rounded border border-slate-200 p-1 sm:col-span-6" />
           </div>
         ))}
@@ -234,7 +239,7 @@ export default function DesignSetPage() {
 
   return (
     <div dir="rtl" className="space-y-4">
-      <Link to="/design-sets" className="text-xs text-slate-500 underline">← كل الصيتات</Link>
+      <BackLink to="/design-sets" />
       <div className="rounded-2xl bg-white p-4 shadow-sm">
         <div className="flex flex-wrap items-start justify-between gap-2">
           <div>
@@ -242,10 +247,10 @@ export default function DesignSetPage() {
             <p className="text-xs text-slate-500">{d.projectCode ? `مشروع ${d.projectCode} · ` : ''}{d.createdByName ? `فتحه ${d.createdByName} · ` : ''}{new Date(d.createdAt).toLocaleDateString('en-GB')}</p>
             {d.notes && <p className="mt-1 text-sm text-slate-700">{d.notes}</p>}
           </div>
-          <div className="text-center"><p className="text-3xl font-black text-brand-700"><PctWhy suffix="٪" title="إنجاز الصيت" value={d.sections.length ? pct : null}
-            parts={{ numLabel: 'قسم معتمد', num: d.approved, denLabel: 'قسم بالصيت', den: d.sections.length }}
-            meaning={<>شكد من أقسام الصيت (كل اختصاص قسم) خلص واعتمده المراجع. القسم الي بالتصميم أو ينتظر المراجعة أو رجع للتعديل ما ينحسب لحد ما ينعتمد. تصير ١٠٠٪ لمن كل الأقسام تنعتمد.</>}
-            source={<>أقسام هذا الصيت وحالة كل قسم (مثل ما بالقائمة تحت).</>}>
+          <div className="text-center"><p className="text-3xl font-black text-brand-700"><PctWhy suffix="٪" title="إنجاز السيت" value={d.sections.length ? pct : null}
+            parts={{ numLabel: 'قسم معتمد', num: d.approved, denLabel: 'قسم بالسيت', den: d.sections.length }}
+            meaning={<>شكد من أقسام السيت (كل اختصاص قسم) خلص واعتمده المراجع. القسم الي بالتصميم أو ينتظر المراجعة أو رجع للتعديل ما ينحسب لحد ما ينعتمد. تصير ١٠٠٪ لمن كل الأقسام تنعتمد.</>}
+            source={<>أقسام هذا السيت وحالة كل قسم (مثل ما بالقائمة تحت).</>}>
             <ul className="text-xs">{d.sections.map((s) => <li key={s.id}>{meta.disciplines.find((x) => x.code === s.discipline)?.name ?? s.discipline}: {SECTION_STATUS[s.status].label}</li>)}</ul>
           </PctWhy></p><p className="text-[11px] text-slate-500">{d.approved} من {d.sections.length} معتمد</p></div>
         </div>

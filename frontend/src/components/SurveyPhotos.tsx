@@ -3,6 +3,7 @@ import { api, type SurveyPhoto, type SurveyPhotoOwner } from '../api'
 import { useSession, isAdminOrOwner } from '../session'
 import { askConfirm } from '../ui/dialogs'
 
+import { notify } from '../ui/notify'
 // صور الكشف — للحجز والمشروع. العرض والتنزيل يقرّرهن الخادم بكل طلب
 // (المراقب، المحاسب، المدير، إداري الحجوزات، والكادر الي رفعها)، فلو
 // رجع ٤٠٣ المكوّن يختفي بهدوء بدل ما يطلّع خطأ لموظف ما يخصّه.
@@ -59,7 +60,7 @@ export default function SurveyPhotos({ owner, canUpload = false, title = '📷 �
       a.remove()
       setTimeout(() => URL.revokeObjectURL(u), 1000)
     } catch (e) {
-      alert(e instanceof Error ? e.message : 'تعذر تنزيل الصورة')
+      notify(e instanceof Error ? e.message : 'تعذر تنزيل الصورة')
     }
   }
 
@@ -78,7 +79,7 @@ export default function SurveyPhotos({ owner, canUpload = false, title = '📷 �
     }
     setBusy(false)
     setReload((n) => n + 1)
-    if (errors.length) alert(errors.join('\n'))
+    if (errors.length) notify(errors.join('\n'))
   }
 
   const remove = async (p: SurveyPhoto) => {
@@ -87,7 +88,7 @@ export default function SurveyPhotos({ owner, canUpload = false, title = '📷 �
       await api.deleteSurveyPhoto(p.id)
       setReload((n) => n + 1)
     } catch (e) {
-      alert(e instanceof Error ? e.message : 'تعذر حذف الصورة')
+      notify(e instanceof Error ? e.message : 'تعذر حذف الصورة')
     }
   }
 

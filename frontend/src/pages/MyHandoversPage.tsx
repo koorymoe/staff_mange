@@ -13,7 +13,7 @@ export default function MyHandoversPage() {
   const done = mine.filter((b) => b.status === 'COMPLETED')
   return (
     <div dir="rtl" className="space-y-4">
-      <h1 className="text-2xl font-bold text-brand-900">الحجوزات</h1>
+      <h1 className="text-2xl font-bold text-brand-900">🛠️ حجوزاتي المسلّمة</h1>
       <p className="text-sm text-slate-500">الحجوزات الي رحّلها الإداري إلك. تواصل ويا الزبون، اكتب الكشف، وعالج — ماتركس يحسب وقت كل خطوة.</p>
       {err && <p className="text-sm text-red-600">{err}</p>}
       {!rows && !err && <p className="text-sm text-slate-400">…</p>}

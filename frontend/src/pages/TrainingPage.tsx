@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { api, type Service, type TrainingMaterial } from '../api'
 import { useSession } from '../session'
 
+import { notify } from '../ui/notify'
 function toEmbedUrl(url: string) {
   const yt = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([\w-]+)/)
   if (yt) return `https://www.youtube.com/embed/${yt[1]}`
@@ -22,7 +23,7 @@ export default function TrainingPage() {
       setServices(services)
       setMaterials(materials)
       if (services[0]) setActiveServiceId(services[0].id)
-    }).catch((e) => alert(e instanceof Error ? e.message : 'تعذّر جلب التدريب')).finally(() => setLoading(false))
+    }).catch((e) => notify(e instanceof Error ? e.message : 'تعذّر جلب التدريب')).finally(() => setLoading(false))
   }, [employee])
 
   const visibleMaterials = materials.filter(m => m.serviceId === activeServiceId)
@@ -34,7 +35,7 @@ export default function TrainingPage() {
         <p className="mt-1 text-blue-100">أنت الآن في مرحلة التدريب. تابع المواد التدريبية المخصصة لك أدناه.</p>
       </div>
 
-      {loading && <p className="mt-6 text-slate-400">جاري التحميل...</p>}
+      {loading && <p className="mt-6 text-slate-400">جاري التحميل…</p>}
 
       {!loading && services.length === 0 && (
         <div className="mt-6 rounded-2xl border border-amber-200 bg-amber-50 p-6 text-center text-amber-700">

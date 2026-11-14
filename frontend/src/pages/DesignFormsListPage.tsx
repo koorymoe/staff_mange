@@ -6,6 +6,7 @@ import SaveError from '../components/SaveError'
 import { loadFailed } from '../netErrors'
 import { askConfirm } from '../ui/dialogs'
 
+import { notify } from '../ui/notify'
 const PRIMARY = '#47528f'
 // ⚠️ نسخة **النص** تنقلب بالوضع الليلي، والأصل يبقى للأسطح:
 // نفس اللون يخدم عنواناً غامقاً على أبيض، ورأس جدول كحلي عليه نص أبيض.
@@ -73,7 +74,7 @@ export default function DesignFormsListPage() {
       load()
       navigate(`/design-forms/${form.id}`)
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'تعذر إنشاء الفورمة')
+      notify(err instanceof Error ? err.message : 'تعذر إنشاء الفورمة')
     } finally {
       setCreating(false)
     }
@@ -95,7 +96,7 @@ export default function DesignFormsListPage() {
     <>
       <SaveError message={guard.error} onClose={guard.clear} />
     <div dir="rtl">
-      <h2 className="text-2xl font-bold" style={{ color: PRIMARY_TEXT }}>وحدة التصميم — فورمة التصميم</h2>
+      <h2 className="text-2xl font-bold" style={{ color: PRIMARY_TEXT }}>فورمة التصميم</h2>
       <p className="mt-1 text-slate-500">
         كل فورمة مستقلة بأسئلتها الخاصة ورابطها العام — كلهن بنفس الهوية البصرية لشركة الأماني، وترسلها للزبون مباشرة بدون ما يشوف أي شي ثاني من النظام.
       </p>
@@ -119,7 +120,7 @@ export default function DesignFormsListPage() {
         </form>
       </div>
 
-      {loading && <p className="mt-6 text-slate-400">جاري التحميل...</p>}
+      {loading && <p className="mt-6 text-slate-400">جاري التحميل…</p>}
       {!loading && forms.length === 0 && (
         <div className="mt-6 rounded-xl border border-white bg-white p-8 text-center shadow-sm">
           <p className="text-slate-400">ما عندك أي فورمة بعد — سوّي فورمة جديدة وابدأ تضيفلها الأسئلة.</p>

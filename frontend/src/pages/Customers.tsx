@@ -256,7 +256,7 @@ export default function Customers() {
         </div>
       </form>
 
-      {loading && <p className="mt-6 text-slate-400">جاري التحميل...</p>}
+      {loading && <p className="mt-6 text-slate-400">جاري التحميل…</p>}
       {error && (
         <p className="mt-6 rounded-lg bg-red-50 p-4 text-red-600">
           تعذر الاتصال بالخادم: {error}
@@ -611,7 +611,7 @@ function CustomerDetails({ customer, history, loading }: {
       </DetailBox>
 
       <DetailBox icon="🕐" title="آخر حجز">
-        {loading ? <p className="text-slate-400">جاري التحميل...</p> : last ? (
+        {loading ? <p className="text-slate-400">جاري التحميل…</p> : last ? (
           <>
             <p><span className="text-slate-400">الكود: </span><span className="font-mono font-bold">{last.code}</span></p>
             <p><span className="text-slate-400">التاريخ: </span>{new Date(last.createdAt).toLocaleDateString('ar-IQ')}</p>
@@ -625,7 +625,7 @@ function CustomerDetails({ customer, history, loading }: {
       </DetailBox>
 
       <DetailBox icon="👥" title="الكادر المكلّف">
-        {loading ? <p className="text-slate-400">جاري التحميل...</p> : crew.length > 0 ? (
+        {loading ? <p className="text-slate-400">جاري التحميل…</p> : crew.length > 0 ? (
           <ul className="space-y-0.5">
             {crew.map((n, i) => <li key={i}>• {n}</li>)}
           </ul>
@@ -633,7 +633,7 @@ function CustomerDetails({ customer, history, loading }: {
       </DetailBox>
 
       <DetailBox icon="🔧" title="الخدمات المطلوبة">
-        {loading ? <p className="text-slate-400">جاري التحميل...</p> : services.length > 0 ? (
+        {loading ? <p className="text-slate-400">جاري التحميل…</p> : services.length > 0 ? (
           <ul className="space-y-0.5">
             {services.map((n) => <li key={n}>• {n}</li>)}
           </ul>
@@ -645,7 +645,7 @@ function CustomerDetails({ customer, history, loading }: {
         <p className="mb-2 text-xs font-bold text-[#0f2040]">
           📋 سجل الحجوزات {history.length > 0 && <span className="text-slate-400">({history.length})</span>}
         </p>
-        {loading && <p className="text-xs text-slate-400">جاري التحميل...</p>}
+        {loading && <p className="text-xs text-slate-400">جاري التحميل…</p>}
         {!loading && history.length === 0 && (
           <p className="rounded-xl border border-dashed border-slate-200 bg-white px-3 py-4 text-center text-xs text-slate-400">
             ماكو حجوزات لهذا الزبون.

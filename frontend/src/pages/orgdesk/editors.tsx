@@ -126,7 +126,7 @@ export function DeskForm({
             </p>
           )}
           <div className="org-actions">
-            <button type="submit" className="org-primary">
+            <button type="submit" className="org-primary" disabled={busy}>
               {busy ? 'دا أحفظ…' : label}
             </button>
             <button type="button" onClick={close}>

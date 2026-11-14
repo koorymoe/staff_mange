@@ -2,10 +2,10 @@ import { useState, useEffect } from 'react'
 import { api, type GpsRenewalRequest } from '../../api'
 import { escDeep } from '../../utils/printIdentity'
 
-function formatDate(d: string) {
-  if (!d) return '-'
-  try { return new Date(d).toLocaleDateString('ar-IQ') } catch { return d }
-}
+import { notify } from '../../ui/notify'
+import { fmtDate } from '../../utils/date'
+// (دازاي 11-15) التاريخ من utils/date.ts (عربي، توقيت بغداد)
+const formatDate = (d: string) => fmtDate(d, { empty: '-' })
 
 function getSubscriptionLabel(t: string) {
   switch (t) {
@@ -62,7 +62,7 @@ export default function GpsRenewals() {
       printRenewalInvoice(renewal)
       setSelected(null)
       load()
-    } catch (e) { console.error(e); alert('حدث خطأ') }
+    } catch (e) { console.error(e); notify('حدث خطأ') }
     setApproving(false)
   }
 
@@ -122,7 +122,7 @@ export default function GpsRenewals() {
     <div dir="rtl">
       <h1 className="text-2xl font-bold mb-6 text-t-title">طلبات تجديد الاشتراك 🔄</h1>
       {loading ? (
-        <div className="text-center py-20 text-t-faint">جارٍ التحميل...</div>
+        <div className="text-center py-20 text-t-faint">جاري التحميل…</div>
       ) : renewals.length === 0 ? (
         <div className="text-center py-16 rounded-2xl" style={{ background: 'var(--sf-card)', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
           <div className="text-5xl mb-4">✅</div>

@@ -8,6 +8,7 @@ import { swallow } from '../utils/swallow'
 
 
 
+import { notify } from '../ui/notify'
 // أبو الجودة والمراقب المدقق (والأدمن) يشوفون متابعة/إدارة الشكاوى بس —
 // باقي الأدوار الي عندها صلاحية الشكاوى (مثلاً المبيعات) تشوف تسجيل شكوى
 // جديدة بس، بدون واجهة المتابعة والإدارة.
@@ -155,7 +156,7 @@ export default function ComplaintsPage() {
       customers.find((c) => c.phone.trim() === phone.trim() || c.name.trim() === name.trim()) ||
       (/^\d{11}$/.test(phone.trim()) ? await api.lookupCustomer(phone.trim()).catch(() => null) : null)
     if (!matched) {
-      alert('تعذر تحديد الزبون — تأكد من رقم الهاتف أو الاسم مطابق لزبون مسجل بالنظام')
+      notify('تعذر تحديد الزبون — تأكد من رقم الهاتف أو الاسم مطابق لزبون مسجل بالنظام')
       return
     }
     setSubmitting(true)
@@ -176,7 +177,7 @@ export default function ComplaintsPage() {
       setShowForm(false)
       load()
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'حدث خطأ')
+      notify(err instanceof Error ? err.message : 'حدث خطأ')
     } finally {
       setSubmitting(false)
     }
@@ -193,7 +194,7 @@ export default function ComplaintsPage() {
       setComplaints((prev) => prev.map((x) => (x.id === c.id ? updated : x)))
       loadStats()
     } catch (e) {
-      alert(e instanceof Error ? e.message : 'تعذر تحديث حالة الاتصال')
+      notify(e instanceof Error ? e.message : 'تعذر تحديث حالة الاتصال')
     } finally {
       setContactBusy(null)
     }
@@ -209,7 +210,7 @@ export default function ComplaintsPage() {
       setComplaints((prev) => prev.map((x) => (x.id === c.id ? updated : x)))
       loadStats()
     } catch (e) {
-      alert(e instanceof Error ? e.message : 'تعذر التسجيل')
+      notify(e instanceof Error ? e.message : 'تعذر التسجيل')
     } finally {
       setContactBusy(null)
     }
@@ -224,7 +225,7 @@ export default function ComplaintsPage() {
       setComplaints((prev) => prev.map((x) => (x.id === c.id ? updated : x)))
       loadStats()
     } catch (e) {
-      alert(e instanceof Error ? e.message : 'تعذر السد')
+      notify(e instanceof Error ? e.message : 'تعذر السد')
     } finally {
       setContactBusy(null)
     }
@@ -236,7 +237,7 @@ export default function ComplaintsPage() {
       const updated = await api.setComplaintNotes(c.id, value.trim())
       setComplaints((prev) => prev.map((x) => (x.id === c.id ? updated : x)))
     } catch (e) {
-      alert(e instanceof Error ? e.message : 'تعذر حفظ الملاحظات')
+      notify(e instanceof Error ? e.message : 'تعذر حفظ الملاحظات')
     }
   }
 
@@ -245,7 +246,7 @@ export default function ComplaintsPage() {
       await api.updateComplaint(complaintId, { assignedToEmployeeId: employeeId })
       load()
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'حدث خطأ')
+      notify(err instanceof Error ? err.message : 'حدث خطأ')
     }
   }
 
@@ -254,7 +255,7 @@ export default function ComplaintsPage() {
       await api.updateComplaint(complaintId, { status })
       load()
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'حدث خطأ')
+      notify(err instanceof Error ? err.message : 'حدث خطأ')
     }
   }
 
@@ -266,7 +267,7 @@ export default function ComplaintsPage() {
       setResolution('')
       load()
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'حدث خطأ')
+      notify(err instanceof Error ? err.message : 'حدث خطأ')
     }
   }
 
@@ -309,7 +310,7 @@ export default function ComplaintsPage() {
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-bold text-brand-900">شكاوى الصيانة</h2>
-          <p className="mt-1 text-slate-500">إدارة شكاوى العملاء ومتابعة حالتها.</p>
+          <p className="mt-1 text-slate-500">إدارة شكاوى الزبائن ومتابعة حالتها.</p>
         </div>
         {!canTrack && (
           <button
@@ -446,7 +447,7 @@ export default function ComplaintsPage() {
         </div>
       )}
 
-      {loading && <p className="mt-6 text-slate-400">جاري التحميل...</p>}
+      {loading && <p className="mt-6 text-slate-400">جاري التحميل…</p>}
       {error && (
         <p className="mt-6 rounded-lg bg-red-50 p-4 text-red-600">
           تعذر الاتصال بالخادم: {error}

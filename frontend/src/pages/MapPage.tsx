@@ -8,6 +8,8 @@ import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import BookingCodeChip from '../components/BookingCodeChip'
 
+import { notify } from '../ui/notify'
+import { BOOKING_STATUS_LABELS } from '../bookingStatus'
 const KARBALA: [number, number] = [32.6160, 44.0249]
 
 const MARKER_COLORS: Record<string, string> = {
@@ -20,14 +22,8 @@ const MARKER_COLORS: Record<string, string> = {
   WAITING: '#64748b',
 }
 
-const STATUS_LABELS: Record<string, string> = {
-  PENDING: 'بانتظار التأكيد',
-  CONFIRMED: 'مؤكد',
-  IN_PROGRESS: 'جاري التنفيذ',
-  COMPLETED: 'مكتمل',
-  CANCELLED: 'ملغي',
-  WAITING: 'في الانتظار',
-}
+// (دازاي 11-15) كلمات حالة الحجز من مكان واحد (bookingStatus.ts) — جان هنا خريطة محلية بكلمات ثانية
+const STATUS_LABELS: Record<string, string> = BOOKING_STATUS_LABELS
 
 function createMarkerIcon(color: string, isSelected = false) {
   const size = isSelected ? 16 : 12
@@ -183,11 +179,11 @@ export default function MapPage() {
     // الزر "ميتفاعل" بصمت بدون أي رسالة توضح ليش. لازم دومين + شهادة SSL
     // حتى يشتغل تحديد الموقع.
     if (!window.isSecureContext) {
-      alert('تحديد الموقع الجغرافي يحتاج اتصال آمن (HTTPS) — هذا النظام لسه شغال بدون HTTPS. لازم نربط دومين ونضيف شهادة أمان حتى تشتغل هذي الميزة.')
+      notify('تحديد الموقع الجغرافي يحتاج اتصال آمن (HTTPS) — هذا النظام لسه شغال بدون HTTPS. لازم نربط دومين ونضيف شهادة أمان حتى تشتغل هذي الميزة.')
       return
     }
     if (!navigator.geolocation) {
-      alert('المتصفح ما يدعم تحديد الموقع الجغرافي')
+      notify('المتصفح ما يدعم تحديد الموقع الجغرافي')
       return
     }
     setLocatingMe(true)
@@ -212,7 +208,7 @@ export default function MapPage() {
           2: 'تعذر تحديد موقعك حالياً — تأكد خدمة تحديد الموقع مفعّلة بجهازك',
           3: 'انتهت مهلة تحديد الموقع — جرب مرة ثانية',
         }
-        alert(reasons[err.code] || 'تعذر تحديد موقعك')
+        notify(reasons[err.code] || 'تعذر تحديد موقعك')
       },
       { enableHighAccuracy: true, timeout: 10000 }
     )

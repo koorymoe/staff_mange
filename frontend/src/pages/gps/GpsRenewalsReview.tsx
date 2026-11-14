@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import { api, type GpsRenewalRequest } from '../../api'
 import { loadFailed } from '../../netErrors'
 
+import { notify } from '../../ui/notify'
 const subLabel = (t: string) => t === 'THREE_MONTHS' ? '3 أشهر' : t === 'SIX_MONTHS' ? '6 أشهر' : 'سنوي'
 const subDays = (t: string) => t === 'THREE_MONTHS' ? 90 : t === 'SIX_MONTHS' ? 180 : 365
 
@@ -76,7 +77,7 @@ export default function GpsRenewalsReview({ embedded }: { embedded?: boolean } =
       setSelected(null)
       load()
     } catch (e) {
-      alert(e instanceof Error ? e.message : 'حدث خطأ أثناء المعالجة')
+      notify(e instanceof Error ? e.message : 'حدث خطأ أثناء المعالجة')
     } finally {
       setApproving(false)
     }
@@ -88,7 +89,7 @@ export default function GpsRenewalsReview({ embedded }: { embedded?: boolean } =
         <h2 className="mb-6 text-2xl font-bold text-brand-900">طلبات تجديد الاشتراك 🔄</h2>
       )}
 
-      {loading && <p className="py-20 text-center text-slate-400">جاري التحميل...</p>}
+      {loading && <p className="py-20 text-center text-slate-400">جاري التحميل…</p>}
       {!loading && renewals.length === 0 && (
         <div className="rounded-2xl bg-white py-16 text-center shadow-sm">
           <div className="mb-4 text-5xl">✅</div>

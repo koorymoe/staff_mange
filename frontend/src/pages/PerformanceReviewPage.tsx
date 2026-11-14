@@ -107,7 +107,7 @@ export default function PerformanceReviewPage({ embedded }: { embedded?: boolean
       return matches([b.code, b.customerName, b.serviceName], q)
     })
 
-  if (loading) return <p className="p-6 text-center text-slate-400">جارٍ التحميل...</p>
+  if (loading) return <p className="p-6 text-center text-slate-400">جاري التحميل…</p>
 
   return (
     <div dir="rtl" className="w-full space-y-4">

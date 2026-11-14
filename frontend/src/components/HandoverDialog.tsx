@@ -3,6 +3,7 @@ import { api, type Booking } from '../api'
 import BookingCodeChip from './BookingCodeChip'
 import { swallow } from '../utils/swallow'
 
+import { notify } from '../ui/notify'
 // ═══ ترحيل الحجز للتقني (قرار (ع) 10-07) ═══
 // الإداري تواصل ويا الزبون والمشكلة ما يعرفون الفنيين يحلّوها: يرحّله لتقني
 // أو مسؤول خدمة. من هنا الحجز برقبة التقني — يتواصل، يكشف، ويعالج.
@@ -18,10 +19,10 @@ export default function HandoverDialog({ booking, onClose, onDone }: { booking: 
     setBusy(true)
     try {
       const b = await api.handoverBooking(booking.id, to, why.trim())
-      alert(`الحجز ${booking.code} انرحّل — صار برقبة التقني`)
+      notify(`الحجز ${booking.code} انرحّل — صار برقبة التقني`, 'success')
       onDone(b)
     } catch (e) {
-      alert(e instanceof Error ? e.message : 'تعذر الترحيل')
+      notify(e instanceof Error ? e.message : 'تعذر الترحيل')
     } finally {
       setBusy(false)
     }

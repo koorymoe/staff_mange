@@ -142,6 +142,18 @@ func (h *MatrixCourierHandler) State(w http.ResponseWriter, r *http.Request) {
 	for _, x := range rows {
 		out.Badges[x.Link] = x.N
 	}
+	// (دازاي 11-15) «عشر مهام يطلعلي عليها رقم عشرة بالأحمر… فتحت وحدة ينقص واحد»: رقم حي لكل
+	// شي موجّه وبعده ما انفتح — ينقص وحدة وحدة من يفتح كل مهمة/حجز، مو كله سوا من يفتح الصفحة.
+	var tasks, jobs int
+	errlog.Err(h.db.Get(&tasks, `SELECT count(*) FROM "ExtraTask" WHERE "assignedToId" = $1 AND "seenAt" IS NULL
+		AND "cancelledAt" IS NULL AND status NOT IN ('DONE', 'CANCELLED')`, me))
+	errlog.Err(h.db.Get(&jobs, `SELECT count(*) FROM "BookingAssignment" a JOIN "Booking" b ON b.id = a."bookingId"
+		WHERE a."employeeId" = $1 AND a."seenAt" IS NULL AND a."createdAt" > now() - interval '30 days'
+		  AND b.status::text NOT IN ('COMPLETED', 'CANCELLED') AND b."archivedAt" IS NULL`, me))
+	// المهام الإضافية تنفتح من «مهامي وإنجازاتي» (/my-work)، والحجوزات من «مهام الميدان» (/my-tasks)
+	out.Badges["/my-work"] = tasks
+	out.Badges["/my-extra-tasks"] = tasks
+	out.Badges["/my-tasks"] = jobs
 	WriteJSON(w, http.StatusOK, out)
 }
 

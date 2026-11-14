@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { useSeenOnView } from '../ui/useSeenOnView'
 import { bookingDone } from '../bookingDone'
 import { useNavigate } from 'react-router-dom'
 import L from 'leaflet'
@@ -31,6 +32,7 @@ import BookingCodeChip from '../components/BookingCodeChip'
 import { loadFailed } from '../netErrors'
 import { askConfirm } from '../ui/dialogs'
 
+import { notify } from '../ui/notify'
 // ═══ خيارات «مهامي» ═══
 // الحجوزات = شغلك · فواتيري = فواتير شغلك · تقاريري = تقارير شغلك ·
 // مصاريفي = مصاريف شغلك. الأربعة يخصّون نفس الشي، فمكانهن واحد.
@@ -381,7 +383,7 @@ export default function MyTasks() {
       }
       setToolsModalBooking(null)
     } catch (e) {
-      alert(e instanceof Error ? e.message : 'تعذر تأكيد الاستلام')
+      notify(e instanceof Error ? e.message : 'تعذر تأكيد الاستلام')
     } finally {
       setSubmittingAccept(false)
     }
@@ -460,7 +462,7 @@ export default function MyTasks() {
       setStopFor(null)
       setStopReason('')
     } catch (e) {
-      alert(e instanceof Error ? e.message : 'تعذر تسجيل توقف العمل')
+      notify(e instanceof Error ? e.message : 'تعذر تسجيل توقف العمل')
     } finally {
       setStopping(false)
     }
@@ -480,7 +482,7 @@ export default function MyTasks() {
       <div className="flex items-center gap-3">
         <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-50 text-lg sm:h-11 sm:w-11 sm:text-xl">☑️</span>
         <div className="min-w-0">
-          <h2 className="text-xl font-black text-[#0f2040] sm:text-2xl">مهامي</h2>
+          <h2 className="text-xl font-black text-[#0f2040] sm:text-2xl">🔧 مهام الميدان</h2>
           <p className="text-[11px] text-slate-500 sm:text-xs">
             المهام المكلّف بيها حالياً وإجراءات التنفيذ المعتمدة
           </p>
@@ -552,7 +554,7 @@ export default function MyTasks() {
       {tab === 'reports' && <div className="mt-4"><WorkReportPage /></div>}
       {tab === 'expenses' && <div className="mt-4"><MyExpenses /></div>}
 
-      {loading && tab === 'bookings' && <p className="mt-6 text-slate-400">جاري التحميل...</p>}
+      {loading && tab === 'bookings' && <p className="mt-6 text-slate-400">جاري التحميل…</p>}
 
       {/* ═══ الأرقام — ٢×٢ بالموبايل ═══
           ⚠️ هاي شاشة **الميدان**: الفني يفتحها من تلفونه وهو بالسيارة
@@ -603,8 +605,9 @@ export default function MyTasks() {
               {myTasks.map((b) => {
                 const myRole = b.assignments.find((a) => a.employee.id === employee?.id)?.role
                 return (
-                  <div
+                  <SeenCard
                     key={b.id}
+                    id={b.id}
                     className="rounded-xl border border-white bg-white p-4 shadow-[0_4px_20px_rgba(15,32,64,0.06)]"
                   >
                     {/* هوية كاملة: الفني كان يشوف كود الحجز بس */}
@@ -862,7 +865,7 @@ export default function MyTasks() {
                         🧰 اطلب مادة ناقصة لهذا الحجز
                       </button>
                     )}
-                  </div>
+                  </SeenCard>
                 )
               })}
               {myTasks.length === 0 && (
@@ -884,7 +887,7 @@ export default function MyTasks() {
             </p>
 
             {toolsLoading ? (
-              <p className="mt-4 text-slate-400">جاري التحميل...</p>
+              <p className="mt-4 text-slate-400">جاري التحميل…</p>
             ) : (
               <div className="mt-4 max-h-64 space-y-2 overflow-y-auto">
                 {personalTools.map((tool) => (
@@ -1207,4 +1210,10 @@ function StageSteps({ b }: { b: Booking }) {
       ))}
     </div>
   )
+}
+
+// (دازاي 11-15) بطاقة الحجز الموجّه: من تبقى قدام الموظف ثانية ونص تنحسب «انفتحت» وينقص الرقم الأحمر.
+function SeenCard({ id, className, children }: { id: string; className?: string; children: React.ReactNode }) {
+  const ref = useSeenOnView<HTMLDivElement>(id, api.markBookingSeen)
+  return <div ref={ref} className={className}>{children}</div>
 }

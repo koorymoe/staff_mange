@@ -10,6 +10,7 @@ import { matches } from '../utils/search'
 import { Link, useNavigate } from 'react-router-dom'
 import BookingCodeChip from '../components/BookingCodeChip'
 import DutiesCard from '../components/DutiesCard'
+import { bookingStatusLabel } from '../bookingStatus'
 
 const PAGE_SIZE = 10
 
@@ -121,7 +122,7 @@ export default function MonitorDashboard() {
         </button>
       </div>
 
-      {loading && <p className="text-slate-400">جاري التحميل...</p>}
+      {loading && <p className="text-slate-400">جاري التحميل…</p>}
 
       {!loading && (
         <>
@@ -225,12 +226,7 @@ export default function MonitorDashboard() {
                             b.status === 'IN_PROGRESS' ? 'bg-violet-100 text-violet-700' :
                             b.status === 'COMPLETED' ? 'bg-emerald-100 text-emerald-700' :
                             'bg-red-100 text-red-700'
-                          }`}>{
-                            b.status === 'PENDING' ? 'بانتظار' :
-                            b.status === 'CONFIRMED' ? 'مثبت' :
-                            b.status === 'IN_PROGRESS' ? 'جاري' :
-                            b.status === 'COMPLETED' ? 'مكتمل' : 'ملغي'
-                          }</span>
+                          }`}>{bookingStatusLabel(b.status) /* (دازاي 11-15) كلمة الحالة من bookingStatus.ts */}</span>
                           <span className="text-[11px] text-slate-400">{new Date(b.createdAt).toLocaleDateString('ar-IQ')}</span>
                         </div>
                       </div>
@@ -248,7 +244,7 @@ export default function MonitorDashboard() {
                 <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
                   {[
                     { label: 'إجمالي الحجوزات', value: stats.totals.totalBookings },
-                    { label: 'إجمالي العملاء', value: stats.totals.totalCustomers },
+                    { label: 'إجمالي الزبائن', value: stats.totals.totalCustomers },
                     { label: 'المنجزة', value: stats.totals.completedBookings },
                     { label: 'إجمالي الإيرادات', value: `${(finance?.totalCollected || 0).toLocaleString('ar-IQ')} د.ع` },
                     { label: 'إيرادات غير مدققة', value: `${(finance?.unverifiedAmount || 0).toLocaleString('ar-IQ')} د.ع` },

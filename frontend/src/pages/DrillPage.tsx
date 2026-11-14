@@ -1,17 +1,17 @@
 import { useState } from 'react'
-import { Link, useNavigate, useParams } from 'react-router-dom'
+import { Link, useParams } from 'react-router-dom'
 import { api } from '../api'
 import PctWhy from '../ui/PctWhy'
 import { useSession } from '../session'
 import { canDrill } from '../utils/drill'
 import { useApi } from '../utils/useApi'
+import { BackLink } from '../ui/BackLink'
 // ═══ «الرقم = القائمة» — قرار (ع) 10-16 ═══
 // صفحة وحدة لكل بطاقة رقم باللوحة: العنوان نفس اسم البطاقة، والعدد
 // نفس رقمها، والشرح يگول شنو هذا الرقم ومن يا فترة. الخادم يعدّ ويطلّع
 // القائمة بنفس الشرط (drill_repository.go)، فالرقمان ما يفترقان.
 export default function DrillPage() {
   const { key = '' } = useParams()
-  const navigate = useNavigate()
   const { employee, permissions } = useSession()
   const allowed = canDrill(employee, permissions)
   const [q, setQ] = useState('')
@@ -29,7 +29,7 @@ export default function DrillPage() {
       <div className="rounded-2xl bg-gradient-to-l from-[#0f2040] to-[#2c5aad] p-5 text-white shadow">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <button onClick={() => navigate(-1)} className="mb-2 rounded-lg bg-white/15 px-3 py-1 text-xs font-bold hover:bg-white/25">→ رجوع</button>
+            <BackLink to="/" className="mb-2" />
             <h1 className="text-2xl font-black">{d?.title ?? '…'}</h1>
             {d && <p className="mt-1 max-w-3xl text-sm text-blue-100">{d.explain}</p>}
           </div>

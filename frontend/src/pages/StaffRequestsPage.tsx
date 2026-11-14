@@ -217,7 +217,7 @@ export default function StaffRequestsPage({ embedded }: { embedded?: boolean } =
         </div>
       )}
 
-      {loading && <p className="py-16 text-center text-slate-400">جاري التحميل...</p>}
+      {loading && <p className="py-16 text-center text-slate-400">جاري التحميل…</p>}
       {!loading && shown.length === 0 && (
         <div className="rounded-2xl border" style={{ backgroundColor: 'var(--sf-card)', borderColor: 'var(--bd-line)' }}>
           <EmptyState
