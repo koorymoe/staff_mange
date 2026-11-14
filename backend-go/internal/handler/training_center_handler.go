@@ -189,6 +189,10 @@ type curriculumItem struct {
 	Ord       int     `db:"ord" json:"ord"`
 	ParentID  *string `db:"parentId" json:"parentId"`
 	ServiceID *string `db:"serviceId" json:"serviceId"`
+	// (ك) 11-14: منو يشمل السطر — nil = ياخذ من الي فوكه (والمسار من دوره القديم)
+	Audiences pq.StringArray `db:"audiences" json:"audiences"`
+	// (ك) 11-14: الموظفين المختارين على السطر — nil = ياخذ من الي فوكه
+	Assignees pq.StringArray `db:"assignees" json:"assignees"`
 }
 
 // (ل) 11-12 دازاي: المنهج شجرة — الجمهور (فني/ليدر/مهندس) ← المسار (مثلاً داش كام) ← تفرع أول ← ثاني ← ثالث.
@@ -196,7 +200,7 @@ const curriculumMaxDepth = 3 // تفرعات تحت المسار
 
 func (h *TrainingCenterHandler) Curriculum(w http.ResponseWriter, r *http.Request) {
 	rows := []curriculumItem{}
-	errlog.Err(h.db.Select(&rows, `SELECT id, role, title, details, ord, "parentId", "serviceId" FROM "TrainingCurriculum" ORDER BY role, ord, "createdAt"`))
+	errlog.Err(h.db.Select(&rows, `SELECT id, role, title, details, ord, "parentId", "serviceId", audiences, assignees FROM "TrainingCurriculum" ORDER BY role, ord, "createdAt"`))
 	WriteJSON(w, http.StatusOK, rows)
 }
 
@@ -226,19 +230,83 @@ func (h *TrainingCenterHandler) AddCurriculum(w http.ResponseWriter, r *http.Req
 		b.ServiceID = nil
 	} else {
 		b.ParentID = nil
+		// (ك) 11-14 دازاي: المسار ينبني بلا فئة، وهي تأشّر فني/ليدر/مهندس بعدين على كل سطر.
+		// role عمود قديم إجباري: يبقى TECHNICIAN، والفئات الفعلية بـaudiences (فاضية لحد ما تختار).
 		if b.Role == "" {
-			WriteError(w, http.StatusBadRequest, "اختار فني أو ليدر أو مهندس")
-			return
+			b.Role = "TECHNICIAN"
+			b.Audiences = pq.StringArray{}
 		}
 		if b.ServiceID != nil && *b.ServiceID == "" {
 			b.ServiceID = nil
 		}
 	}
-	_, err := h.db.Exec(`INSERT INTO "TrainingCurriculum" (id, role, title, details, ord, "parentId", "serviceId") VALUES ($1,$2,$3,$4,
-		(SELECT COALESCE(MAX(ord), 0) + 1 FROM "TrainingCurriculum" WHERE role = $2 AND "parentId" IS NOT DISTINCT FROM $5), $5, $6)`,
-		uuid.NewString(), b.Role, strings.TrimSpace(b.Title), b.Details, b.ParentID, b.ServiceID)
+	if b.ParentID != nil {
+		b.Audiences = nil // الفرع ياخذ من أبوه لحد ما تختار
+	}
+	_, err := h.db.Exec(`INSERT INTO "TrainingCurriculum" (id, role, title, details, ord, "parentId", "serviceId", audiences) VALUES ($1,$2,$3,$4,
+		(SELECT COALESCE(MAX(ord), 0) + 1 FROM "TrainingCurriculum" WHERE role = $2 AND "parentId" IS NOT DISTINCT FROM $5), $5, $6, $7)`,
+		uuid.NewString(), b.Role, strings.TrimSpace(b.Title), b.Details, b.ParentID, b.ServiceID, b.Audiences)
 	if err != nil {
 		WriteError(w, http.StatusBadRequest, "تعذر الحفظ")
+		return
+	}
+	h.Curriculum(w, r)
+}
+
+// curriculumAudiences الفئات المسموحة على سطر المنهج.
+var curriculumAudiences = map[string]bool{"TECHNICIAN": true, "LEADER": true, "ENGINEER": true}
+
+// SetCurriculumAudiences (ك) 11-14 دازاي: «اني اتحكم بي» — تأشّر على كل سطر منو يشمله
+// (فني، ليدر، مهندس، أو أكثر من واحد). inherit=true يرجّعه ياخذ من الي فوكه.
+func (h *TrainingCenterHandler) SetCurriculumAudiences(w http.ResponseWriter, r *http.Request) {
+	var b struct {
+		Audiences []string `json:"audiences"`
+		Assignees []string `json:"assignees"` // (ك) 11-14: موظفين بالاسم
+		Inherit   bool     `json:"inherit"`
+	}
+	if err := DecodeJSON(r, &b); err != nil {
+		WriteError(w, http.StatusBadRequest, "طلب غلط")
+		return
+	}
+	var val, people any // NULL = ياخذ من الي فوكه
+	if !b.Inherit {
+		ids := pq.StringArray{}
+		seenID := map[string]bool{}
+		for _, id := range b.Assignees {
+			if id != "" && !seenID[id] {
+				seenID[id] = true
+				ids = append(ids, id)
+			}
+		}
+		if len(ids) > 0 {
+			var n int
+			if err := h.db.Get(&n, `SELECT COUNT(*) FROM "Employee" WHERE id = ANY($1) AND status = 'ACTIVE'`, ids); err != nil || n != len(ids) {
+				WriteError(w, http.StatusBadRequest, "موظف مو موجود")
+				return
+			}
+		}
+		people = ids
+		seen := map[string]bool{}
+		out := pq.StringArray{}
+		for _, a := range b.Audiences {
+			if !curriculumAudiences[a] {
+				WriteError(w, http.StatusBadRequest, "فئة غلط")
+				return
+			}
+			if !seen[a] {
+				seen[a] = true
+				out = append(out, a)
+			}
+		}
+		val = out
+	}
+	res, err := h.db.Exec(`UPDATE "TrainingCurriculum" SET audiences = $2, assignees = $3 WHERE id = $1`, r.PathValue("id"), val, people)
+	if err != nil {
+		WriteError(w, http.StatusBadRequest, "تعذر الحفظ")
+		return
+	}
+	if n, _ := res.RowsAffected(); n == 0 {
+		WriteError(w, http.StatusNotFound, "مو موجود")
 		return
 	}
 	h.Curriculum(w, r)
@@ -395,7 +463,8 @@ func (h *TrainingCenterHandler) GenerateQuestions(w http.ResponseWriter, r *http
 		return
 	}
 	topics := []string{}
-	errlog.Err(h.db.Select(&topics, `SELECT title || COALESCE(' — ' || details, '') FROM "TrainingCurriculum" WHERE role = $1 ORDER BY ord`, b.Role))
+	errlog.Err(h.db.Select(&topics, service.CurriculumAudienceCTE+`SELECT c.title || COALESCE(' — ' || c.details, '') FROM "TrainingCurriculum" c JOIN eff ON eff.id = c.id
+		WHERE $1 = ANY(eff.aud) ORDER BY c.ord`, b.Role))
 	if len(topics) == 0 {
 		WriteError(w, http.StatusBadRequest, "ضيف مفردات المنهج لهذا الدور أول — ماتركس يكتب الأسئلة منها")
 		return

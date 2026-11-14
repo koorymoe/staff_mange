@@ -3676,7 +3676,7 @@ export interface TcInsight {
   avgMinutes: number | null; teamMinutes: number | null; complaints: number; stops: number; partials: number
   deductions: number; skills: number; lastExamPct: number | null; score: number; reasons: string[]; strengths: string[]
 }
-export interface TcCurriculum { id: string; role: string; title: string; details: string | null; ord: number; parentId: string | null; serviceId: string | null }
+export interface TcCurriculum { id: string; role: string; title: string; details: string | null; ord: number; parentId: string | null; serviceId: string | null; audiences: string[] | null; assignees: string[] | null }
 // (ل) 11-12 الماتشينغ: منو يحتاج تدريب وعلى شنو
 export interface TcNeed {
   id: string; employeeId: string; employeeName: string; employeeRole: string

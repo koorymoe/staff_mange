@@ -103,6 +103,18 @@ func autoMigrations() []Migration {
 			ALTER TABLE "BookingAssignment" ADD COLUMN IF NOT EXISTS "seenAt" timestamp with time zone;
 		`,
 		},
+		{
+			Version: "0495_training_curriculum_audiences",
+			SQL: `
+			ALTER TABLE "TrainingCurriculum" ADD COLUMN IF NOT EXISTS "audiences" text[];
+		`,
+		},
+		{
+			Version: "0496_training_curriculum_assignees",
+			SQL: `
+			ALTER TABLE "TrainingCurriculum" ADD COLUMN IF NOT EXISTS "assignees" text[];
+		`,
+		},
 		// ‹makemigration› — التحديثات الجديدة تنضاف فوگ هالسطر
 	}
 }

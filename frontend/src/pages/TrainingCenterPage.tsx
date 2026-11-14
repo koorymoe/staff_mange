@@ -85,7 +85,7 @@ export default function TrainingCenterPage() {
       {tab === 'tracks' && <TracksTab />}
       {tab === 'plan' && <PlanTab emps={emps} need={need} />}
       {tab === 'new' && <NewTab rows={(insights ?? []).filter((x) => x.daysIn <= 90)} emps={emps} />}
-      {tab === 'curriculum' && <CurriculumTree />}
+      {tab === 'curriculum' && <CurriculumTree emps={emps} />}
       {tab === 'matching' && <MatchingTab emps={emps} />}
       {tab === 'reports' && <TrainingReportsTab />}
       {tab === 'programs' && <Suspense fallback={<p className="text-slate-400">جاري التحميل…</p>}><TrainingPrograms embedded /></Suspense>}

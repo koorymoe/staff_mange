@@ -63,11 +63,19 @@ func NewTrainingMatching(db *sqlx.DB, notif *repository.NotificationRepository) 
 	return &TrainingMatching{db: db, notif: notif, now: time.Now}
 }
 
+// CurriculumAudienceCTE (ك) 11-14: فئات كل سطر بالمنهج (eff.aud) — السطر الي ما إله اختيار ياخذ
+// من الي فوكه، والمسار بلا اختيار ياخذ دوره القديم (role).
+const CurriculumAudienceCTE = `WITH RECURSIVE eff AS (
+	SELECT id, COALESCE(audiences, ARRAY[role]) AS aud FROM "TrainingCurriculum" WHERE "parentId" IS NULL
+	UNION ALL SELECT c.id, COALESCE(c.audiences, eff.aud) FROM "TrainingCurriculum" c JOIN eff ON c."parentId" = eff.id)
+`
+
 // trackForService أول مسار بالمنهج مربوط بالخدمة (للفني).
 func (m *TrainingMatching) trackForService(serviceID string) *string {
 	var id string
-	if err := m.db.Get(&id, `SELECT id FROM "TrainingCurriculum" WHERE "parentId" IS NULL AND "serviceId" = $1
-		ORDER BY (role = 'TECHNICIAN') DESC, ord LIMIT 1`, serviceID); err != nil {
+	if err := m.db.Get(&id, CurriculumAudienceCTE+`SELECT c.id FROM "TrainingCurriculum" c JOIN eff ON eff.id = c.id
+		WHERE c."parentId" IS NULL AND c."serviceId" = $1
+		ORDER BY ('TECHNICIAN' = ANY(eff.aud)) DESC, c.ord LIMIT 1`, serviceID); err != nil {
 		return nil
 	}
 	return &id
