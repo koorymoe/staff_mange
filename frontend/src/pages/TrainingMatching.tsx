@@ -133,6 +133,7 @@ export function CurriculumTree({ emps }: { emps: Employee[] }) {
       <div className={`flex items-center gap-2 rounded-lg px-3 py-2 text-sm ${depth === 0 ? 'bg-[#0f2040]/5 font-extrabold' : 'bg-slate-50'}`}>
         <span className="text-[10px] font-bold text-slate-400">{LEVEL[depth]}</span>
         <b className={`min-w-0 truncate ${depth === 0 ? 'text-[#0f2040]' : ''}`} title={n.title}>{n.title}</b>
+        {!n.parentId && (eff.get(n.id) ?? []).length === 0 && <span className="shrink-0 text-[10px] font-bold text-amber-600">حدد الفئة</span>}
         {depth === 0 && n.serviceId && <span className="rounded bg-cyan-100 px-1.5 text-[10px] text-cyan-800">{services.find((s) => s.id === n.serviceId)?.name ?? 'خدمة'}</span>}
         <span className="ms-auto flex shrink-0 items-center gap-1" data-testid="aud-chips">
           {[...AUDIENCES, { id: 'OTHER', label: 'أخرى' }].map((a) => {
@@ -148,13 +149,9 @@ export function CurriculumTree({ emps }: { emps: Employee[] }) {
               </button>
             )
           })}
-          {/* خانة ثابتة العرض حتى الكبسولات تصف وحدة جوّه الثانية */}
-          <span className="w-12 shrink-0 text-center">
-            {!n.parentId && (eff.get(n.id) ?? []).length === 0 && <span className="text-[10px] font-bold text-amber-600">حدد الفئة</span>}
-          </span>
         </span>
-        <span className="flex w-36 shrink-0 items-center justify-end gap-2 whitespace-nowrap">
-          {depth < 3 && <button onClick={() => { setAddUnder(n.id); setChild('') }} className="text-xs font-bold text-[#2c5aad]">+ {LEVEL[depth + 1]}</button>}
+        <span className="flex w-32 shrink-0 items-center justify-start gap-2 whitespace-nowrap">
+          <span className="w-[4.5rem]">{depth < 3 && <button onClick={() => { setAddUnder(n.id); setChild('') }} className="text-xs font-bold text-[#2c5aad]">+ {LEVEL[depth + 1]}</button>}</span>
           <button onClick={async () => {
             if (kids.has(n.id)) { setError(`«${n.title}» بيه تفرعات — احذفهن أول`); return }
             if (await askConfirm(`حذف «${n.title}»؟`, { danger: true, okLabel: 'حذف' })) run(api.tcDeleteCurriculum(n.id))
