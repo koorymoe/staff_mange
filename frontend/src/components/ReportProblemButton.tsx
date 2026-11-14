@@ -1,3 +1,4 @@
+import Modal from '../ui/Modal'
 import { useCallback, useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useLocation } from 'react-router-dom'
@@ -80,12 +81,8 @@ function ReportModal({ onClose }: { onClose: () => void }) {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/40 p-4" onClick={onClose}>
-      <div dir="rtl" className="mt-10 w-full max-w-lg space-y-3 rounded-2xl bg-white p-5 shadow-xl" onClick={(e) => e.stopPropagation()} onPaste={onPaste}>
-        <div className="flex items-center justify-between">
-          <h2 className="text-lg font-black text-[#0f2040]">🆘 بلّغ عن مشكلة بالنظام</h2>
-          <button onClick={onClose} className="text-2xl text-slate-400 hover:text-slate-600">×</button>
-        </div>
+    <Modal title={<>🆘 بلّغ عن مشكلة بالنظام</>} onClose={onClose} size="md" busy={sending}>
+      <div className="space-y-3" onPaste={onPaste}>
         <p className="text-xs text-slate-500">اكتب بأي شاشة صارت، وشنو جنت تسوي، وشنو طلعلك بالضبط — ويا صورة للشاشة. الشاشة الحالية تنسجّل لحالها: <bdi dir="ltr" className="font-mono">{page}</bdi></p>
         <textarea value={body} onChange={(e) => setBody(e.target.value)} rows={4} maxLength={4000}
           placeholder="مثلاً: بشاشة فاتورة الليدر، من أضغط «حفظ» يطلع «خطأ» وما تنحفظ الفاتورة"
@@ -126,6 +123,6 @@ function ReportModal({ onClose }: { onClose: () => void }) {
           </div>
         )}
       </div>
-    </div>
+    </Modal>
   )
 }

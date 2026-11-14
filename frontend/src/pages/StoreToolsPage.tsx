@@ -1,3 +1,4 @@
+import Modal from '../ui/Modal'
 import { useEffect, useMemo, useState } from 'react'
 import { api, type Employee, type OnDemandTool, type ToolRequestItem } from '../api'
 import { askConfirm } from '../ui/dialogs'
@@ -109,9 +110,7 @@ export default function StoreToolsPage() {
       </div>
 
       {giveFor && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={() => setGiveFor(null)}>
-          <div className="w-full max-w-md rounded-2xl bg-white p-5" onClick={(e) => e.stopPropagation()}>
-            <h3 className="text-lg font-bold text-[#0f2040]">🤝 انطي «{giveFor.name}»</h3>
+        <Modal title={<>🤝 انطي «{giveFor.name}»</>} onClose={() => setGiveFor(null)} size="md" busy={busy}>
             <p className="mt-1 text-xs text-slate-500">بالمخزن {giveFor.availableQuantity} — راح ينقص واحد.</p>
             <select value={giveTo} onChange={(e) => setGiveTo(e.target.value)} className="mt-3 w-full rounded-xl border border-slate-300 px-3 py-2 text-sm">
               <option value="">— اختار الموظف —</option>
@@ -123,22 +122,18 @@ export default function StoreToolsPage() {
                 className="flex-1 rounded-xl bg-[#0f2040] py-2 text-sm font-bold text-white disabled:opacity-40">سلّمه</button>
               <button onClick={() => setGiveFor(null)} className="rounded-xl border border-slate-300 px-4 text-sm">إلغاء</button>
             </div>
-          </div>
-        </div>
+        </Modal>
       )}
 
       {addFor && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={() => setAddFor(null)}>
-          <div className="w-full max-w-sm rounded-2xl bg-white p-5" onClick={(e) => e.stopPropagation()}>
-            <h3 className="text-lg font-bold text-[#0f2040]">➕ زيد عدد «{addFor.name}»</h3>
+        <Modal title={<>➕ زيد عدد «{addFor.name}»</>} onClose={() => setAddFor(null)} size="sm" busy={busy}>
             <input type="number" min={1} value={addQty} onChange={(e) => setAddQty(e.target.value)} className="mt-3 w-full rounded-xl border border-slate-300 px-3 py-2 text-sm" />
             <div className="mt-4 flex gap-2">
               <button disabled={busy || !(Number(addQty) > 0)} onClick={() => run(() => api.addStockIntake({ toolId: addFor.id, quantity: Math.round(Number(addQty)) })).then(() => setAddFor(null))}
                 className="flex-1 rounded-xl bg-[#0f2040] py-2 text-sm font-bold text-white disabled:opacity-40">ضيف للمخزن</button>
               <button onClick={() => setAddFor(null)} className="rounded-xl border border-slate-300 px-4 text-sm">إلغاء</button>
             </div>
-          </div>
-        </div>
+        </Modal>
       )}
     </div>
   )

@@ -1,3 +1,4 @@
+import Modal from '../ui/Modal'
 import { useState, useEffect, useCallback, useRef, type ReactNode } from 'react'
 import PctWhy from '../ui/PctWhy'
 import SharedRing from '../ui/ProgressRing'
@@ -627,12 +628,7 @@ export default function MissionsPage() {
 
       {/* Detail Modal */}
       {selectedMission && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={() => setSelectedMission(null)}>
-          <div className="mx-4 max-h-[80vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-white p-6 shadow-xl" onClick={e => e.stopPropagation()}>
-            <div className="mb-4 flex items-center justify-between">
-              <h3 className="text-lg font-bold">📊 تفاصيل المهمة {selectedMission.code}</h3>
-              <button onClick={() => setSelectedMission(null)} className="text-slate-400 hover:text-slate-600">✕</button>
-            </div>
+        <Modal title={<>📊 تفاصيل المهمة {selectedMission.code}</>} onClose={() => setSelectedMission(null)} size="md" bodyClassName="p-6">
             <div className="space-y-3 text-sm">
               <div className="rounded-lg bg-slate-50 p-3">
                 <p className="font-bold">{selectedMission.booking.customer.name}</p>
@@ -662,8 +658,7 @@ export default function MissionsPage() {
                 </div>
               </div>
             </div>
-          </div>
-        </div>
+        </Modal>
       )}
 
       {pathMission && <LivePathModal mission={pathMission} onClose={() => setPathMission(null)} />}
@@ -721,17 +716,11 @@ function LivePathModal({ mission, onClose }: { mission: Mission; onClose: () => 
   }, [points])
 
   return (
-    <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/50 p-4" onClick={onClose}>
-      <div className="w-full max-w-2xl overflow-hidden rounded-2xl bg-white shadow-xl" onClick={e => e.stopPropagation()}>
-        <div className="flex items-center justify-between border-b border-slate-100 p-4">
-          <h3 className="text-lg font-bold text-purple-700">🗺️ المسار الحي — {mission.leader?.name || 'الفريق'}</h3>
-          <button onClick={onClose} className="text-slate-400 hover:text-slate-600">✕</button>
-        </div>
+    <Modal title={<>🗺️ المسار الحي — {mission.leader?.name || 'الفريق'}</>} onClose={onClose} size="lg" layer="z-[70]" bodyClassName="p-0">
         <div ref={el => { mapRef.current = el }} style={{ height: 420 }} />
         <div className="p-3 text-center text-xs text-slate-400">
           {points.length > 0 ? `${points.length} نقطة موقع مسجلة — يتحدث تلقائياً كل 15 ثانية` : 'ما وصلت أي نقطة موقع بعد — تأكد إن الفني فاتح النظام بموبايله'}
         </div>
-      </div>
-    </div>
+    </Modal>
   )
 }

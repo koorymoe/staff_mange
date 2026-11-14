@@ -1,3 +1,4 @@
+import Modal from '../ui/Modal'
 import { useEffect, useMemo, useState } from 'react'
 import { api, type VehicleBooking, type VehicleOption } from '../api'
 import { useSession } from '../session'
@@ -222,17 +223,14 @@ export default function VehicleBookingsPage() {
         </div>
 
         {rejecting && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-            <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl">
-              <h3 className="text-lg font-bold text-brand-900">رفض حجز {rejecting.vehicle?.name}</h3>
+          <Modal title={<>رفض حجز {rejecting.vehicle?.name}</>} onClose={() => setRejecting(null)} size="md" busy={guard.busy} closeOnBackdrop={false}>
               <p className="mt-1 text-sm text-slate-500">{rejecting.requestedBy?.name} · {rejecting.purpose}</p>
               <textarea autoFocus value={rejectReason} onChange={(e) => setRejectReason(e.target.value)} placeholder="سبب الرفض (إجباري)" className={`mt-4 h-24 w-full ${INPUT}`} />
               <div className="mt-4 flex gap-3">
                 <button onClick={reject} disabled={!rejectReason.trim() || guard.busy} className="flex-1 rounded-xl bg-red-600 py-2.5 font-bold text-white disabled:opacity-50">تأكيد الرفض</button>
                 <button onClick={() => setRejecting(null)} className="rounded-xl border border-slate-300 px-6 py-2.5 font-medium text-slate-600">إلغاء</button>
               </div>
-            </div>
-          </div>
+          </Modal>
         )}
       </div>
     </>

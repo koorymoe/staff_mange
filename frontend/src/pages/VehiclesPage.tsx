@@ -1,3 +1,4 @@
+import Modal from '../ui/Modal'
 import { useEffect, useState, useMemo } from 'react'
 import { api, fileUrl, storeFile, type VehicleDocument, type VehiclePart, type VehiclePhoto, type Vehicle, type VehicleLog, type VehicleIncident, type VehicleMonthlyStatus, type VehicleDailyRating, type Employee, type VehicleIncidentAttachment, type VehicleAlert, type VehicleExpenseSummary, type EmployeeFuelStat, type VehicleWashMonthly } from '../api'
 import { useSession, isAdminOrOwner } from '../session'
@@ -1194,9 +1195,7 @@ export default function VehiclesPage() {
       </div>
 
       {editLog && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl">
-            <h3 className="text-lg font-bold text-brand-900">تعديل سجل — {LOG_TYPE_LABELS[editLog.type]}</h3>
+        <Modal title={<>تعديل سجل — {LOG_TYPE_LABELS[editLog.type]}</>} onClose={() => setEditLog(null)} size="md" busy={savingLog} closeOnBackdrop={false}>
             <p className="mt-1 text-sm text-slate-400">{new Date(editLog.performedAt).toLocaleDateString('ar-IQ')}</p>
 
             <div className="mt-4 grid grid-cols-2 gap-3">
@@ -1243,17 +1242,14 @@ export default function VehiclesPage() {
               </button>
               <button onClick={() => setEditLog(null)} className="rounded-xl border border-slate-300 px-6 py-2.5 font-medium text-slate-600 hover:bg-slate-50">إلغاء</button>
             </div>
-          </div>
-        </div>
+        </Modal>
       )}
 
       {receiptPhotoView && (
-        <div onClick={() => setReceiptPhotoView(null)} className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
-          <div className="max-h-full max-w-3xl overflow-auto rounded-2xl bg-white p-3">
+        <Modal title="صورة الوصل" onClose={() => setReceiptPhotoView(null)} size="xl" bodyClassName="p-3">
             <img src={fileUrl(receiptPhotoView)} alt="صورة الوصل" className="max-w-full rounded-lg" />
             <button onClick={() => setReceiptPhotoView(null)} className="mt-3 w-full rounded-xl border border-slate-300 py-2 font-medium text-slate-600">إغلاق</button>
-          </div>
-        </div>
+        </Modal>
       )}
     </div>
     </>
@@ -1588,13 +1584,11 @@ function VehiclePhotosTab({ vehicleId, guard }: { vehicleId: string; guard: Save
       </div>
 
       {view && (
-        <div onClick={() => setView(null)} className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
-          <div className="max-h-full max-w-3xl overflow-auto rounded-2xl bg-white p-3">
+        <Modal title={view.caption || 'صورة السيارة'} onClose={() => setView(null)} size="xl" bodyClassName="p-3">
             <img src={fileUrl(view.url)} alt={view.caption || 'صورة السيارة'} className="max-w-full rounded-lg" />
             {view.caption && <p className="mt-2 text-sm text-slate-600">{view.caption}</p>}
             <button onClick={() => setView(null)} className="mt-3 w-full rounded-xl border border-slate-300 py-2 font-medium text-slate-600">إغلاق</button>
-          </div>
-        </div>
+        </Modal>
       )}
     </div>
   )

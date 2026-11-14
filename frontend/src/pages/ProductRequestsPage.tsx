@@ -1,3 +1,4 @@
+import Modal from '../ui/Modal'
 import { useEffect, useState } from 'react'
 import { api, fileUrl, type ProductRequest, type ProductProcurement, type PayerKind, type RevolvingFund } from '../api'
 import { useSession, hasRole, isAdminOrOwner } from '../session'
@@ -240,17 +241,11 @@ export default function ProductRequestsPage({ embedded }: { embedded?: boolean }
 
       {/* فورم التجهيز — يظهر بس للي عنده صلاحية الدوار */}
       {fulfillFor && (
-        <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/40 p-4">
-          <form onSubmit={submitFulfill} className="mt-10 w-full max-w-2xl rounded-xl bg-white p-6 shadow-xl">
-            <div className="flex items-start justify-between">
-              <div>
-                <h3 className="text-lg font-bold text-brand-900">تجهيز الطلب: {fulfillFor.productName}</h3>
-                <p className="mt-1 text-sm text-slate-500">
-                  المبلغ ينخصم من الدوار الحين، والطلب يبقى معلّق لحد ما المحاسب يرجّع المبلغ.
-                </p>
-              </div>
-              <button type="button" onClick={() => setFulfillFor(null)} className="text-2xl leading-none text-slate-400">×</button>
-            </div>
+        <Modal title={<>تجهيز الطلب: {fulfillFor.productName}</>} onClose={() => setFulfillFor(null)} size="lg" busy={saving} closeOnBackdrop={false} bodyClassName="p-6">
+          <form onSubmit={submitFulfill}>
+            <p className="text-sm text-slate-500">
+              المبلغ ينخصم من الدوار الحين، والطلب يبقى معلّق لحد ما المحاسب يرجّع المبلغ.
+            </p>
 
             <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
               <label className="flex flex-col gap-1 text-sm text-slate-600">
@@ -316,7 +311,7 @@ export default function ProductRequestsPage({ embedded }: { embedded?: boolean }
               <button type="button" onClick={() => setFulfillFor(null)} className="rounded-lg border border-slate-300 px-4 py-2 text-sm">إلغاء</button>
             </div>
           </form>
-        </div>
+        </Modal>
       )}
 
       {/* التجهيزات: المعلّق يعني الدوار ناقص */}

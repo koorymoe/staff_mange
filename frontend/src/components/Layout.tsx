@@ -1,3 +1,4 @@
+import Modal from '../ui/Modal'
 import { useState, useEffect, useRef } from 'react'
 import { useAutoRefresh } from '../useAutoRefresh'
 import { useOrgMemberships, orgPositionTitle } from '../orgDeskAccess'
@@ -774,12 +775,10 @@ export default function Layout() {
       {/* سياسة الخصوصية: تنعرض أول دخول ولما تنضاف نقاط جديدة */}
       <PrivacyPolicyGate />
       {notifFull && (
-        <div dir="rtl" className="fixed inset-0 z-[80] flex items-center justify-center bg-black/40 p-4" onClick={() => setNotifFull(null)}>
-          <div className="w-full max-w-md rounded-2xl bg-white p-5 text-sm leading-relaxed text-slate-800 shadow-xl" onClick={(e) => e.stopPropagation()}>
+        <Modal onClose={() => setNotifFull(null)} size="md" layer="z-[80]" bodyClassName="p-5 text-sm leading-relaxed text-slate-800">
             <p className="whitespace-pre-wrap">{notifFull}</p>
             <button type="button" onClick={() => setNotifFull(null)} className="mt-4 w-full rounded-xl bg-[#0f2040] py-2 font-bold text-white">تمام</button>
-          </div>
-        </div>
+        </Modal>
       )}
       <div dir="ltr" className="app-shell flex bg-[#f0f4f9]">
 

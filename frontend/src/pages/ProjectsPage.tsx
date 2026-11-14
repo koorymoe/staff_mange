@@ -1,3 +1,4 @@
+import Modal from '../ui/Modal'
 import { useDeferredValue, useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useSession } from '../session'
@@ -354,9 +355,7 @@ export default function ProjectsPage({ mode: initialMode = 'all' }: { mode?: 'al
 
       {/* تفاصيل الحجز المحوّل — يقررمنها: يستلمه كمشروع أو يرجعه لكادر الشد */}
       {detailBooking && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" dir="rtl">
-          <div className="max-h-[88vh] w-full max-w-lg overflow-auto rounded-2xl bg-white p-6 shadow-2xl">
-            <h3 className="text-lg font-bold text-violet-900">تفاصيل الحجز</h3>
+        <Modal title="تفاصيل الحجز" onClose={() => { setDetailBooking(null); setReturnNote('') }} size="md" busy={returning} closeOnBackdrop={false}>
             <p className="mt-1 text-sm text-slate-400"><BookingCodeChip code={detailBooking.code} /></p>
 
             <div className="mt-4 space-y-2 rounded-xl bg-slate-50 p-4 text-sm">
@@ -423,8 +422,7 @@ export default function ProjectsPage({ mode: initialMode = 'all' }: { mode?: 'al
                 إغلاق
               </button>
             </div>
-          </div>
-        </div>
+        </Modal>
       )}
     </div>
   )

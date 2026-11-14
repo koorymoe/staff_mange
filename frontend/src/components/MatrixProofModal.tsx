@@ -1,3 +1,4 @@
+import Modal from '../ui/Modal'
 import { Link } from 'react-router-dom'
 import type { MatrixWatch } from '../api'
 import { GROUP_LABEL, type EyeGroup } from './matrixEyeColors'
@@ -111,16 +112,10 @@ export default function MatrixProofModal({ kind, groups, onClose }: { kind: Proo
     body = withWork.length ? <ul className="space-y-1.5">{withWork.map((e) => emp(e, work(e)))}</ul> : <p>ماكو شغل محسوب اليوم.</p>
   }
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/50 p-4" onClick={onClose}>
-      <div dir="rtl" className="w-full max-w-3xl rounded-2xl bg-[var(--mx-bg)] p-5 text-[var(--mx-text)] shadow-2xl" onClick={(e) => e.stopPropagation()}>
-        <div className="mb-2 flex items-center justify-between">
-          <h3 className="text-lg font-extrabold text-[var(--mx-title)]">{title}</h3>
-          <button onClick={onClose} className="text-2xl text-[var(--mx-muted)]">×</button>
-        </div>
+    <Modal title={<>{title}</>} onClose={onClose} size="xl" bodyClassName="bg-[var(--mx-bg)] p-5 text-[var(--mx-text)]">
         <p className="mb-3 rounded-lg bg-[var(--mx-sunken)] px-3 py-2 text-[12px]">🧮 {how}</p>
         <div className="max-h-[70vh] overflow-y-auto">{body}</div>
-      </div>
-    </div>
+    </Modal>
   )
 }
 

@@ -1,3 +1,4 @@
+import Modal from '../../ui/Modal'
 import { useState } from 'react'
 import { apiRequest, thumbUrl } from '../../api'
 import type { PlanFileRow } from './planTypes'
@@ -44,13 +45,8 @@ export default function PlanSheetEditor({ file, typeName, onClose, onSaved }: {
     </div>
   )
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/50 p-4" onClick={onClose}>
-      <div dir="rtl" className="w-full max-w-3xl rounded-2xl bg-white p-5 shadow-2xl" onClick={(e) => e.stopPropagation()} data-testid="sheet-editor">
-        <div className="mb-3 flex items-center justify-between">
-          <h3 className="text-lg font-extrabold" style={{ color: NAVY }}>🗂️ فورما المخطط — {typeName}</h3>
-          <button type="button" onClick={onClose} className="text-2xl text-slate-400" aria-label="سد">×</button>
-        </div>
-        <div className="grid gap-4 md:grid-cols-[1fr_1.2fr]">
+    <Modal title={<>🗂️ فورما المخطط — {typeName}</>} onClose={onClose} size="xl" busy={busy}>
+        <div data-testid="sheet-editor" className="grid gap-4 md:grid-cols-[1fr_1.2fr]">
           <div className="space-y-3 text-sm">
             <fieldset>
               <legend className="mb-1 font-bold text-slate-700">مكان الفورما</legend>
@@ -85,7 +81,6 @@ export default function PlanSheetEditor({ file, typeName, onClose, onSaved }: {
             </div>
           </div>
         </div>
-      </div>
-    </div>
+    </Modal>
   )
 }

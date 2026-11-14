@@ -1,3 +1,4 @@
+import Modal from '../ui/Modal'
 import { useEffect, useState } from 'react'
 import { api, type PrivacyPolicyPoint } from '../api'
 
@@ -58,8 +59,8 @@ export default function PrivacyPolicyGate() {
   if (!open) return null
 
   return (
-    <div className="fixed inset-0 z-[3000] flex items-center justify-center bg-black/60 p-4" dir="rtl">
-      <div className="flex max-h-[88vh] w-full max-w-2xl flex-col rounded-2xl bg-white shadow-2xl">
+    // (دازاي 11-15) موافقة إجبارية: لا Esc ولا ضغطة برّا — تنسد بس بـ«قرأت وألتزم»
+    <Modal onClose={() => {}} size="lg" busy={accepting} dismissible={false} showClose={false} layer="z-[3000]" bodyClassName="flex flex-col p-0">
         <div className="border-b border-slate-100 p-6">
           <h2 className="text-xl font-bold text-brand-900">📜 مبادئ العمل وسياسة الخصوصية</h2>
           <p className="mt-1 text-sm text-slate-500">
@@ -70,7 +71,7 @@ export default function PrivacyPolicyGate() {
         </div>
 
         <div
-          className="flex-1 overflow-auto p-6"
+          className="min-h-0 flex-1 overflow-auto p-6"
           onScroll={(e) => {
             // ما نفعّل زر الموافقة إلا بعد ما يوصل لآخر النص فعلاً
             const el = e.currentTarget
@@ -111,7 +112,6 @@ export default function PrivacyPolicyGate() {
             تكدر ترجع تقراها بأي وقت من الإعدادات.
           </p>
         </div>
-      </div>
-    </div>
+    </Modal>
   )
 }

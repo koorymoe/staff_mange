@@ -1,3 +1,4 @@
+import Modal from '../ui/Modal'
 import { useState } from 'react'
 
 // نافذة أسئلة من النظام — تنستعمل من utils/dialog (askForm).
@@ -9,9 +10,7 @@ export default function FormDialog({ title, fields, ok, onDone }: { title: strin
   const [vals, setVals] = useState<Record<string, string>>({})
   const missing = fields.some((f) => f.required !== false && !(vals[f.key] ?? '').trim())
   return (
-    <div dir="rtl" className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-4" onClick={() => onDone(null)}>
-      <div className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-2xl bg-white p-5 shadow-xl" onClick={(e) => e.stopPropagation()}>
-        <h3 className="text-lg font-bold text-[#0f2040]">{title}</h3>
+    <Modal title={<>{title}</>} onClose={() => onDone(null)} size="md" layer="z-[100]">
         <div className="mt-3 space-y-4">
           {fields.map((f) => (
             <div key={f.key}>
@@ -38,7 +37,6 @@ export default function FormDialog({ title, fields, ok, onDone }: { title: strin
             className="flex-1 rounded-lg bg-[#0f2040] px-4 py-2.5 text-sm font-bold text-white disabled:opacity-50">{ok}</button>
           <button type="button" onClick={() => onDone(null)} className="rounded-lg border border-slate-300 px-4 py-2.5 text-sm font-bold text-slate-600">إلغاء</button>
         </div>
-      </div>
-    </div>
+    </Modal>
   )
 }

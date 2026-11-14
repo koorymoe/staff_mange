@@ -1,3 +1,4 @@
+import Modal from '../ui/Modal'
 import { useEffect, useState } from 'react'
 import { api, auditCloseLabels, type AuditCloseAction, type AuditIssue } from '../api'
 import { useSaveGuard } from '../useSaveGuard'
@@ -73,14 +74,7 @@ export default function AuditIssuesPage({ embedded }: EmbeddedProps = {}) {
       <SaveError message={guard.error} onClose={guard.clear} />
 
       {closing && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
-          onClick={() => setClosing(null)}>
-          <div onClick={(e) => e.stopPropagation()}
-            className="w-full max-w-md rounded-2xl border p-5"
-            style={{ backgroundColor: 'var(--sf-card)', borderColor: 'var(--bd-line)' }}>
-            <h3 className="text-base font-bold text-t-title">
-              {auditCloseLabels[closing.action]} — بلاغ {closing.issue.bookingCode}
-            </h3>
+        <Modal title={<>{auditCloseLabels[closing.action]} — بلاغ {closing.issue.bookingCode}</>} onClose={() => setClosing(null)} size="md" busy={busy === closing.issue.id}>
             <p className="mt-1 text-xs text-t-muted">
               {closing.action === 'PENALIZE'
                 ? `المخالفة تنسجّل على ${closing.issue.leaderName || 'ليدر الحجز'}، وتنعرض بلوحة الإعلانات، وتنحط بسجله الانضباطي.`
@@ -122,8 +116,7 @@ export default function AuditIssuesPage({ embedded }: EmbeddedProps = {}) {
                 {busy === closing.issue.id ? 'جاري...' : 'أكّد وأغلق البلاغ'}
               </button>
             </div>
-          </div>
-        </div>
+        </Modal>
       )}
       {!embedded && (
         <div

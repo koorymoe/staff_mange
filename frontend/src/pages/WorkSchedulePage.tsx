@@ -1,3 +1,4 @@
+import Modal from '../ui/Modal'
 import { Suspense, useCallback, useEffect, useState } from 'react'
 import { api, type AttendanceBoardRow, type WorkScheduleRow } from '../api'
 import { useSession, hasRole } from '../session'
@@ -256,10 +257,8 @@ function MonthModal({ emp, onClose }: { emp: AttendanceBoardRow; onClose: () => 
   const [rep, setRep] = useState<Awaited<ReturnType<typeof api.getMonthlyAttendance>> | null>(null)
   useEffect(() => { api.getMonthlyAttendance(emp.id, month).then(setRep).catch(() => setRep(null)) }, [emp.id, month])
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/40 p-4" onClick={onClose}>
-      <div dir="rtl" className="w-full max-w-2xl rounded-2xl bg-white p-5 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+    <Modal title={<>📅 دوام {emp.name}</>} onClose={onClose} size="lg">
         <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-          <h3 className="text-lg font-extrabold text-[#0f2040]">📅 دوام {emp.name}</h3>
           <div className="flex items-center gap-2">
             <input type="month" value={month} onChange={(e) => setMonth(e.target.value)} className="rounded-lg border border-slate-300 px-2 py-1 text-sm" />
             <button onClick={() => void api.exportEmployeeAttendance(emp.id, month)} className="rounded-lg bg-[#0f2040] px-3 py-1.5 text-xs font-bold text-white">⬇️ Excel (بيه أيام الإجازة)</button>
@@ -285,7 +284,6 @@ function MonthModal({ emp, onClose }: { emp: AttendanceBoardRow; onClose: () => 
             </tbody>
           </table>
         </div>
-      </div>
-    </div>
+    </Modal>
   )
 }

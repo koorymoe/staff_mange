@@ -1,3 +1,4 @@
+import Modal from '../ui/Modal'
 import { useState } from 'react'
 import { apiRequest } from '../api'
 import type { AnnexPart } from '../utils/projectQuotePrint'
@@ -37,12 +38,7 @@ export default function AnnexTemplatesManager({ templates, onClose, onSaved }: {
   }
 
   return (
-    <div className="fixed inset-0 z-[90] flex items-start justify-center overflow-y-auto bg-black/40 p-4" role="dialog" aria-label="قوالب الملحق">
-      <div className="w-full max-w-3xl space-y-3 rounded-2xl bg-white p-4 shadow-xl">
-        <div className="flex items-center justify-between">
-          <h2 className="text-base font-bold text-slate-700">⚙️ قوالب الملحق</h2>
-          <button type="button" onClick={onClose} className="rounded-lg bg-slate-100 px-3 py-1 text-sm">سد</button>
-        </div>
+    <Modal title="⚙️ قوالب الملحق" onClose={onClose} size="xl" busy={busy} closeOnBackdrop={false} layer="z-[90]" bodyClassName="space-y-3 p-4">
         <div className="flex flex-wrap gap-2">
           {templates.map((t) => (
             <button key={t.id} type="button" onClick={() => pick(t)}
@@ -84,7 +80,6 @@ export default function AnnexTemplatesManager({ templates, onClose, onSaved }: {
             </div>
           </>
         )}
-      </div>
-    </div>
+    </Modal>
   )
 }

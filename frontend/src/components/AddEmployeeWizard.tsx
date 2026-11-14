@@ -1,3 +1,4 @@
+import Modal from '../ui/Modal'
 import { useEffect, useState } from 'react'
 import { api, type Division, type Employee, type EmployeeRole, type Permission } from '../api'
 import { ROLE_LABELS, ASSIGNABLE_ROLES, SECONDARY_ASSIGNABLE_ROLES } from '../roleLabels'
@@ -145,8 +146,7 @@ export default function AddEmployeeWizard({ onClose, onCreated, limited = false 
   }
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 p-4">
-      <div className="w-full max-w-xl rounded-2xl bg-white shadow-2xl overflow-hidden">
+    <Modal onClose={onClose} size="lg" closeOnBackdrop={false} bodyClassName="p-0">
         {/* Progress header */}
         <div className="bg-gradient-to-l from-[#2c5aad] to-[#1e3f7a] p-5 text-white">
           <div className="flex items-center justify-between mb-3">
@@ -362,7 +362,6 @@ export default function AddEmployeeWizard({ onClose, onCreated, limited = false 
             </button>
           )}
         </div>
-      </div>
-    </div>
+    </Modal>
   )
 }

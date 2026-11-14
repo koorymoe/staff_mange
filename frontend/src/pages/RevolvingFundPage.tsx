@@ -1,3 +1,4 @@
+import Modal from '../ui/Modal'
 import { useEffect, useState } from 'react'
 import { api, type RevolvingFund, type RevolvingFundTxn, type EmployeeFundBalance, type Employee, type ProcurementRequest, fileUrl } from '../api'
 import { useSession, isAdminOrOwner } from '../session'
@@ -255,15 +256,9 @@ export default function RevolvingFundPage() {
       )}
 
       {settleFor && (
-        <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/40 p-4" onClick={() => setSettleFor(null)}>
-          <div dir="rtl" className="max-h-[90vh] w-full max-w-xl overflow-y-auto rounded-2xl bg-white p-4 shadow-xl" onClick={(e) => e.stopPropagation()}>
-            <div className="mb-3 flex items-center justify-between">
-              <h3 className="text-lg font-bold text-t-title">🧾 تسوية بدل {settleFor.employeeName}</h3>
-              <button onClick={() => setSettleFor(null)} className="rounded-lg border border-slate-300 px-3 py-1 text-sm">إغلاق</button>
-            </div>
+        <Modal title={<>🧾 تسوية بدل {settleFor.employeeName}</>} onClose={() => setSettleFor(null)} size="lg" bodyClassName="p-4">
             <MyFundBalance forEmployee={settleFor} onDone={() => { setSettleFor(null); load() }} />
-          </div>
-        </div>
+        </Modal>
       )}
 
       {tab === 'review' && (
@@ -354,9 +349,7 @@ export default function RevolvingFundPage() {
 
       {/* نافذة التخريج: الحساب يتكتب أو ينتخب من الحسابات المستخدمة سابقاً */}
       {dischargeFor && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" dir="rtl">
-          <div className="w-full max-w-md space-y-4 rounded-2xl bg-white p-6 shadow-xl">
-            <h3 className="text-lg font-bold text-t-title">تخريج مادة — {dischargeFor.employeeName}</h3>
+        <Modal title={<>تخريج مادة — {dischargeFor.employeeName}</>} onClose={() => setDischargeFor(null)} size="md" busy={busy} closeOnBackdrop={false} bodyClassName="space-y-4 p-5">
             <p className="rounded-lg bg-violet-50 p-3 text-sm text-violet-900">
               راح يرجع للدوار <b>{money(dischargeFor.spentAmount)}</b>
             </p>
@@ -389,8 +382,7 @@ export default function RevolvingFundPage() {
                 {busy ? 'جاري...' : 'تأكيد التخريج'}
               </button>
             </div>
-          </div>
-        </div>
+        </Modal>
       )}
 
       {tab === 'log' && (
@@ -435,7 +427,7 @@ export default function RevolvingFundPage() {
 
       {/* تغذية */}
       {topupFor && (
-        <Modal onClose={() => setTopupFor(null)} title={`تغذية ${topupFor.name}`}>
+        <Modal onClose={() => setTopupFor(null)} title={`تغذية ${topupFor.name}`} busy={busy}>
           <input type="number" value={topupAmount} onChange={(e) => setTopupAmount(e.target.value)}
             placeholder="المبلغ" className="w-full rounded-lg border border-gray-300 px-4 py-3 text-right outline-none focus:border-brand-500" />
           <ModalActions busy={busy} onConfirm={doTopup} onCancel={() => setTopupFor(null)} confirmLabel="تغذية" />
@@ -444,7 +436,7 @@ export default function RevolvingFundPage() {
 
       {/* تعديل المبلغ */}
       {editFor && (
-        <Modal onClose={() => setEditFor(null)} title={`تعديل رصيد ${editFor.name}`}>
+        <Modal onClose={() => setEditFor(null)} title={`تعديل رصيد ${editFor.name}`} busy={busy}>
           <input type="number" value={editBalance} onChange={(e) => setEditBalance(e.target.value)}
             className="w-full rounded-lg border border-gray-300 px-4 py-3 text-right outline-none focus:border-brand-500" />
           <ModalActions busy={busy} onConfirm={doEdit} onCancel={() => setEditFor(null)} confirmLabel="حفظ" />
@@ -453,7 +445,7 @@ export default function RevolvingFundPage() {
 
       {/* تسليم لموظف */}
       {disburseOpen && (
-        <Modal onClose={() => setDisburseOpen(false)} title="تسليم مبلغ لموظف">
+        <Modal onClose={() => setDisburseOpen(false)} title="تسليم مبلغ لموظف" busy={busy}>
           <label className="mb-1 block text-sm font-medium text-slate-600">الدوار</label>
           <select value={dFund} onChange={(e) => setDFund(e.target.value)}
             className="mb-3 w-full rounded-lg border border-gray-300 px-4 py-3 text-right outline-none focus:border-brand-500">
@@ -499,7 +491,7 @@ export default function RevolvingFundPage() {
 
       {/* عرض الوصل + التدقيق */}
       {viewReceipt && (
-        <Modal onClose={() => setViewReceipt(null)} title={`وصل ${viewReceipt.employeeName}`} wide>
+        <Modal onClose={() => setViewReceipt(null)} title={`وصل ${viewReceipt.employeeName}`} size="lg" busy={busy}>
           <p className="mb-3 text-sm text-slate-600">
             المبلغ المصروف: <span className="font-bold">{money(viewReceipt.spentAmount)}</span>
             {' · '}المرتجع: <span className="font-bold">{money(viewReceipt.returnedAmount)}</span>
@@ -520,16 +512,6 @@ export default function RevolvingFundPage() {
   )
 }
 
-function Modal({ title, children, onClose, wide }: { title: string; children: React.ReactNode; onClose: () => void; wide?: boolean }) {
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={onClose}>
-      <div dir="rtl" className={`w-full ${wide ? 'max-w-2xl' : 'max-w-md'} rounded-2xl bg-white p-6 shadow-xl`} onClick={(e) => e.stopPropagation()}>
-        <h3 className="mb-4 text-lg font-bold text-t-title">{title}</h3>
-        {children}
-      </div>
-    </div>
-  )
-}
 
 function ModalActions({ busy, onConfirm, onCancel, confirmLabel }: { busy: boolean; onConfirm: () => void; onCancel: () => void; confirmLabel: string }) {
   return (

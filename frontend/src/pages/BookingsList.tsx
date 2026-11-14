@@ -1,3 +1,4 @@
+import Modal from '../ui/Modal'
 import { Fragment, useEffect, useRef, useState } from 'react'
 import { api, type Booking, type Employee, type VehicleOption } from '../api'
 import { formatCustomerCode } from '../utils/identity'
@@ -1055,15 +1056,9 @@ export default function BookingsList({ bucket = 'all', focus }: { bucket?: Booki
       )}
 
       {mapBooking && mapBooking.mapLatitude != null && mapBooking.mapLongitude != null && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={() => setMapBooking(null)}>
-          <div className="w-full max-w-2xl rounded-2xl bg-white p-4 shadow-xl" onClick={(e) => e.stopPropagation()}>
-            <div className="mb-3 flex items-center justify-between">
-              <h3 className="font-bold text-brand-900">موقع الحجز <BookingCodeChip code={mapBooking.code} /></h3>
-              <button onClick={() => setMapBooking(null)} className="rounded-lg px-3 py-1 text-sm text-slate-500 hover:bg-slate-100">✕ إغلاق</button>
-            </div>
+        <Modal title={<>موقع الحجز <BookingCodeChip code={mapBooking.code} /></>} onClose={() => setMapBooking(null)} size="lg" bodyClassName="p-4">
             <MapViewer lat={mapBooking.mapLatitude} lng={mapBooking.mapLongitude} height={380} />
-          </div>
-        </div>
+        </Modal>
       )}
     </div>
   )

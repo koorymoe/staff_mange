@@ -1,3 +1,4 @@
+import Modal from '../ui/Modal'
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import {
@@ -353,8 +354,7 @@ function Discovery({ focus, late, perf, groups, biz, proposal, onDone }: {
         </>
       )}
       {modal && view && (
-        <div className="fixed inset-0 z-50 grid place-items-center bg-black/60 p-4" onClick={() => setModal(null)}>
-          <div className="w-full max-w-lg rounded-2xl bg-[var(--mx-card)] p-5 text-[var(--mx-text)]" dir="rtl" onClick={(e) => e.stopPropagation()}>
+        <Modal onClose={() => setModal(null)} size="md" bodyClassName="bg-[var(--mx-card)] p-5 text-[var(--mx-text)]">
             {modal === 'details' ? (
               <div className="max-h-[70vh] overflow-y-auto">
                 {focus === 'late' ? (
@@ -474,8 +474,7 @@ function Discovery({ focus, late, perf, groups, biz, proposal, onDone }: {
               </>
             )}
             <button onClick={() => setModal(null)} className="mt-4 rounded-lg border border-[var(--mx-border)] px-4 py-1.5 text-sm">سكّر</button>
-          </div>
-        </div>
+        </Modal>
       )}
     </section>
   )

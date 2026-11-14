@@ -1,3 +1,4 @@
+import Modal from '../ui/Modal'
 import { useEffect, useState } from 'react'
 import { api, type Employee } from '../api'
 import { roleLabel } from '../roleLabels'
@@ -25,9 +26,7 @@ export default function EmployeeHandoverDialog({ from, employees, onClose, onDon
     try { await api.handoverEmployee(from.id, to); onDone() } catch (e) { setErr(e instanceof Error ? e.message : 'تعذر') } finally { setBusy(false) }
   }
   return (
-    <div className="fixed inset-0 z-50 grid place-items-center bg-black/40 p-4" dir="rtl" onClick={onClose}>
-      <div className="w-full max-w-md rounded-2xl bg-white p-5 shadow-xl" onClick={(e) => e.stopPropagation()}>
-        <h3 className="text-lg font-extrabold text-[#0f2040]">🔁 تسليم شغل {from.name} لموظف جديد</h3>
+    <Modal title={<>🔁 تسليم شغل {from.name} لموظف جديد</>} onClose={onClose} size="md" busy={busy}>
         <p className="mt-1 text-xs text-slate-500">ينتقل للمستلم كلشي، و{from.name} يتوقّف حسابه — ما ينحذف، سجله وفواتيره تبقى باسمه.</p>
         <select value={to} onChange={(e) => setTo(e.target.value)} className="mt-3 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm">
           <option value="">— اختار المستلم —</option>
@@ -44,7 +43,6 @@ export default function EmployeeHandoverDialog({ from, employees, onClose, onDon
           <button type="button" disabled={busy || !to} onClick={go} className="flex-1 rounded-lg bg-[#0f2040] py-2 text-sm font-bold text-white disabled:opacity-50">{busy ? 'جاري التسليم…' : 'سلّم الشغل'}</button>
           <button type="button" onClick={onClose} className="rounded-lg border border-slate-300 px-4 py-2 text-sm">إلغاء</button>
         </div>
-      </div>
-    </div>
+    </Modal>
   )
 }

@@ -1,3 +1,4 @@
+import Modal from '../ui/Modal'
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { api } from '../api'
@@ -66,9 +67,7 @@ function QuickCost({ row, onClose, onSaved }: { row: Row; onClose: () => void; o
   }
   const input = 'w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-indigo-500'
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={onClose}>
-      <div dir="rtl" className="w-full max-w-md space-y-3 rounded-2xl bg-white p-5 shadow-xl" onClick={(e) => e.stopPropagation()}>
-        <p className="text-base font-extrabold text-indigo-900">🧾 حساب الكلفة — {row.code}{row.department && <span className="text-sm font-bold text-slate-500"> · {row.department}</span>}</p>
+    <Modal title={<>🧾 حساب الكلفة — {row.code}{row.department && <span className="text-sm font-bold text-slate-500"> · {row.department}</span>}</>} onClose={onClose} size="md" busy={busy} bodyClassName="space-y-3 p-5">
         <label className="block text-xs font-bold text-slate-600">شنو انعمل بالتفصيل *
           <textarea value={work} onChange={(e) => setWork(e.target.value)} rows={3} placeholder="مثلاً: شد 4 كاميرات بمخزن القسم + تمديد 60 متر" className={`mt-1 ${input}`} />
         </label>
@@ -83,7 +82,6 @@ function QuickCost({ row, onClose, onSaved }: { row: Row; onClose: () => void; o
           <button type="button" disabled={busy} onClick={save} className="flex-1 rounded-lg bg-[#0f2040] px-4 py-2 text-sm font-bold text-white disabled:opacity-50">حفظ</button>
           <button type="button" onClick={onClose} className="rounded-lg border px-4 py-2 text-sm text-slate-600">إلغاء</button>
         </div>
-      </div>
-    </div>
+    </Modal>
   )
 }

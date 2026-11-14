@@ -1,3 +1,4 @@
+import Modal from '../ui/Modal'
 import { useEffect, useState } from 'react'
 import { api, type Booking } from '../api'
 import BookingCodeChip from './BookingCodeChip'
@@ -28,9 +29,7 @@ export default function HandoverDialog({ booking, onClose, onDone }: { booking: 
     }
   }
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={() => !busy && onClose()}>
-      <div dir="rtl" className="w-full max-w-md rounded-2xl bg-white p-5 text-right shadow-xl" onClick={(e) => e.stopPropagation()}>
-        <h3 className="text-lg font-bold text-[#0f2040]">🛠️ رحّل للتقني — حجز <BookingCodeChip code={booking.code} /></h3>
+    <Modal title={<>🛠️ رحّل للتقني — حجز <BookingCodeChip code={booking.code} /></>} onClose={() => onClose()} size="md" busy={busy}>
         <p className="mt-1 text-xs text-slate-500">
           الحجز يطلع من مسؤوليتك ويصير برقبة التقني: يتواصل ويا الزبون، يكتب الكشف، ويعالج.
           إنت تنحسب على سرعة تواصلك وسرعة الترحيل. {booking.confirmationContactedAt ? '' : '⚠️ لازم تضغط «تواصلت ويا الزبون» أول.'}
@@ -48,8 +47,7 @@ export default function HandoverDialog({ booking, onClose, onDone }: { booking: 
           </button>
           <button onClick={onClose} disabled={busy} className="rounded-lg border border-slate-300 px-4 py-2.5 text-sm font-bold text-slate-600">إلغاء</button>
         </div>
-      </div>
-    </div>
+    </Modal>
   )
 }
 

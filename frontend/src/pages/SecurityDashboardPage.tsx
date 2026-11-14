@@ -1,3 +1,4 @@
+import Modal from '../ui/Modal'
 import { useEffect, useState } from 'react'
 import { api } from '../api'
 import { useSession } from '../session'
@@ -385,16 +386,8 @@ export default function SecurityDashboardPage() {
 
       {/* تفاصيل الجهاز */}
       {selectedLogin && (
-        <div
-          className="fixed inset-0 z-[70] flex items-center justify-center bg-black/70 p-4"
-          onClick={() => setSelectedLogin(null)}
-        >
-          <div
-            onClick={(e) => e.stopPropagation()}
-            className="w-full max-w-lg rounded-xl border border-emerald-500/30 bg-black p-6 font-mono text-emerald-100"
-          >
-            <h3 className="text-sm font-bold text-emerald-400">DEVICE DETAILS</h3>
-            <div className="mt-4 space-y-2 text-xs">
+        <Modal title="DEVICE DETAILS" onClose={() => setSelectedLogin(null)} size="md" layer="z-[70]" bodyClassName="bg-black p-6 font-mono text-emerald-100">
+            <div className="space-y-2 text-xs">
               <p><span className="text-emerald-200/40">User:</span> {selectedLogin.employee?.name || selectedLogin.username}</p>
               <p><span className="text-emerald-200/40">Result:</span> {selectedLogin.success ? 'SUCCESS' : 'FAILED'}</p>
               <p><span className="text-emerald-200/40">IP Address:</span> {selectedLogin.ipAddress || '—'}</p>
@@ -412,8 +405,7 @@ export default function SecurityDashboardPage() {
             >
               إغلاق
             </button>
-          </div>
-        </div>
+        </Modal>
       )}
     </div>
   )

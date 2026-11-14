@@ -1,3 +1,4 @@
+import Modal from '../ui/Modal'
 import { Fragment, useEffect, useState, useMemo } from 'react'
 import { api, type PersonalTool, type VehicleTool, type OnDemandTool, type ToolRequest, type ToolRequestItem, type Employee, type InventoryCheck, type PersonalToolTemplateItem,
   type PersonalToolExemption, type BookingToolCheck, type VehicleToolCheck, type Vehicle, type PersonalToolEvent, type PersonalToolStatus, personalToolStatusLabels, personalToolStatusColors } from '../api'
@@ -1424,9 +1425,7 @@ export default function InventoryPage() {
       )}
 
       {toolEdit && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" dir="rtl">
-          <div className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl">
-            <h3 className="text-lg font-bold text-brand-900">تعديل أداة</h3>
+        <Modal title="تعديل أداة" onClose={() => setToolEdit(null)} size="md" busy={toolSaving} closeOnBackdrop={false}>
             <p className="mt-1 text-sm text-slate-400">{toolEdit.employee?.name || ''}</p>
 
             <label className="mt-5 block text-sm font-semibold text-slate-700">اسم الأداة</label>
@@ -1453,14 +1452,11 @@ export default function InventoryPage() {
               </button>
               <button onClick={() => setToolEdit(null)} className="rounded-xl border border-slate-300 px-6 py-2.5 font-medium text-slate-600 hover:bg-slate-50">إلغاء</button>
             </div>
-          </div>
-        </div>
+        </Modal>
       )}
 
       {historyTool && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" dir="rtl">
-          <div className="max-h-[85vh] w-full max-w-2xl overflow-auto rounded-2xl bg-white p-6 shadow-2xl">
-            <h3 className="text-lg font-bold text-brand-900">سجل حركة: {historyTool.name}</h3>
+        <Modal title={<>سجل حركة: {historyTool.name}</>} onClose={() => setHistoryTool(null)} size="lg" closeOnBackdrop={false}>
             <p className="mt-1 text-sm text-slate-400">{historyTool.employee?.name || ''}</p>
 
             {historyLoading ? (
@@ -1497,14 +1493,11 @@ export default function InventoryPage() {
             )}
 
             <button onClick={() => setHistoryTool(null)} className="mt-6 w-full rounded-xl border border-slate-300 py-2.5 font-medium text-slate-600 hover:bg-slate-50">إغلاق</button>
-          </div>
-        </div>
+        </Modal>
       )}
 
       {vtEdit && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" dir="rtl">
-          <div className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl">
-            <h3 className="text-lg font-bold text-brand-900">تعديل أداة مركبة</h3>
+        <Modal title="تعديل أداة مركبة" onClose={() => setVtEdit(null)} size="md" busy={submitting} closeOnBackdrop={false}>
 
             <label className="mt-5 block text-sm font-semibold text-slate-700">السيارة</label>
             <select
@@ -1561,16 +1554,13 @@ export default function InventoryPage() {
                 إلغاء
               </button>
             </div>
-          </div>
-        </div>
+        </Modal>
       )}
 
       {approveTarget && (() => {
         const inStock = (approveTarget.tool?.availableQuantity ?? 0) > 0
         return (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" dir="rtl">
-            <div className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl">
-              <h3 className="text-lg font-bold text-brand-900">موافقة على طلب أداة</h3>
+          <Modal title="موافقة على طلب أداة" onClose={() => setApproveTarget(null)} size="md" busy={approving} closeOnBackdrop={false}>
 
               <div className="mt-4 space-y-2 rounded-xl bg-slate-50 p-4 text-sm">
                 <div className="flex justify-between"><span className="text-slate-500">الموظف</span><span className="font-medium">{approveTarget.employee?.name || '-'}</span></div>
@@ -1624,14 +1614,11 @@ export default function InventoryPage() {
                   إلغاء
                 </button>
               </div>
-            </div>
-          </div>
+          </Modal>
         )
       })()}
       {stockTarget && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={() => setStockTarget(null)}>
-          <div dir="rtl" className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl" onClick={(e) => e.stopPropagation()}>
-            <h3 className="text-lg font-bold text-t-title">إضافة كمية</h3>
+        <Modal title="إضافة كمية" onClose={() => setStockTarget(null)} size="md">
             <p className="mt-1 text-sm text-slate-600">
               {stockTarget.name} — الكمية الحالية: <span className="font-bold">{stockTarget.availableQuantity}</span> من {stockTarget.totalQuantity}
             </p>
@@ -1648,8 +1635,7 @@ export default function InventoryPage() {
               <button onClick={handleAddStock} className="flex-1 rounded-lg px-4 py-3 font-medium text-white" style={{ backgroundColor: '#1a3a5c' }}>إضافة</button>
               <button onClick={() => setStockTarget(null)} className="rounded-lg border border-slate-300 px-4 py-3 font-medium text-slate-700">إلغاء</button>
             </div>
-          </div>
-        </div>
+        </Modal>
       )}
 
     </div>

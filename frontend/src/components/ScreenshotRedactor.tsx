@@ -1,3 +1,4 @@
+import Modal from '../ui/Modal'
 import { useRef, useState } from 'react'
 
 // ═══ تغطية صور الموظفين قبل ما يطلع السكرين لهايكو ═══
@@ -55,11 +56,9 @@ export default function ScreenshotRedactor({ src, onDone, onCancel }: {
   const shown = drag ? [...boxes, norm(drag)] : boxes
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-      <div dir="rtl" className="flex max-h-full w-full max-w-3xl flex-col gap-3 overflow-y-auto rounded-2xl bg-white p-4 shadow-xl">
+    <Modal title="🛡️ غطِّ صور الموظفين قبل الإرسال" onClose={onCancel} size="xl" closeOnBackdrop={false} bodyClassName="flex flex-col gap-3 p-4">
         <div>
-          <p className="text-base font-extrabold text-[#0f2040]">🛡️ غطِّ صور الموظفين قبل الإرسال</p>
-          <p className="mt-1 text-xs text-slate-600">
+          <p className="text-xs text-slate-600">
             السكرين يروح لنموذج خارجي، وصور الموظفين ما تطلع برّا الشركة. اسحب مستطيل على كل صورة موظف ظاهرة —
             التغطية تصير بجهازك، والي ينرسل هي النسخة المغطّاة بس.
           </p>
@@ -95,7 +94,6 @@ export default function ScreenshotRedactor({ src, onDone, onCancel }: {
           <button type="button" disabled={!confirmed} onClick={() => void approve()}
             className="rounded-xl bg-gradient-to-l from-violet-600 to-fuchsia-600 px-4 py-2 text-sm font-bold text-white disabled:opacity-40">اعتمد الصورة</button>
         </div>
-      </div>
-    </div>
+    </Modal>
   )
 }

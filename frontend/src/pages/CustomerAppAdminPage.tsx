@@ -1,3 +1,4 @@
+import Modal from '../ui/Modal'
 import { useCallback, useEffect, useState } from 'react'
 import { apiRequest, api, type Service } from '../api'
 import { askConfirm } from '../ui/dialogs'
@@ -152,9 +153,7 @@ export default function CustomerAppAdminPage() {
       )}
 
       {edit && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={() => setEdit(null)}>
-          <div dir="rtl" className="w-full max-w-lg space-y-3 rounded-2xl bg-white p-5 shadow-2xl" onClick={(e) => e.stopPropagation()}>
-            <h3 className="text-lg font-extrabold text-[#0f2040]">{edit.id ? 'تعديل' : 'إضافة'} للتطبيق</h3>
+        <Modal title={<>{edit.id ? 'تعديل' : 'إضافة'} للتطبيق</>} onClose={() => setEdit(null)} size="md" busy={busy} bodyClassName="space-y-3 p-5">
             <label className="block text-xs text-slate-500">النوع
               <select className={`${inp} mt-1`} value={edit.kind} onChange={(e) => setEdit({ ...edit, kind: e.target.value as Promo['kind'] })}>
                 <option value="offer">🎁 عرض (بالبانر المتحرك)</option><option value="work">🏗️ من أعمالنا (صورة عمل منجز)</option><option value="service">🛠️ خدمة مميزة</option>
@@ -177,14 +176,11 @@ export default function CustomerAppAdminPage() {
               <button disabled={busy || !edit.title.trim()} onClick={save} className="flex-1 rounded-xl bg-[#0f2040] py-2.5 font-bold text-white disabled:opacity-50">{busy ? '…' : 'حفظ'}</button>
               <button onClick={() => setEdit(null)} className="rounded-xl border border-slate-300 px-4">إلغاء</button>
             </div>
-          </div>
-        </div>
+        </Modal>
       )}
 
       {chatOf && (
-        <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/40 p-4" onClick={() => setChatOf(null)}>
-          <div dir="rtl" className="w-full max-w-xl rounded-2xl bg-slate-50 p-4 shadow-2xl" onClick={(e) => e.stopPropagation()}>
-            <div className="mb-3 flex items-center justify-between"><h3 className="font-extrabold text-[#0f2040]">💬 {chatOf.name} ويّا ماتركس</h3><button onClick={() => setChatOf(null)} className="text-2xl text-slate-400">×</button></div>
+        <Modal title={<>💬 {chatOf.name} ويّا ماتركس</>} onClose={() => setChatOf(null)} size="lg" bodyClassName="bg-slate-50 p-4">
             <div className="max-h-[70vh] space-y-2 overflow-y-auto">
               {chat === null && <p className="text-center text-slate-400">…</p>}
               {chat?.map((m) => (
@@ -196,8 +192,7 @@ export default function CustomerAppAdminPage() {
                 </div>
               ))}
             </div>
-          </div>
-        </div>
+        </Modal>
       )}
     </div>
   )
@@ -245,9 +240,7 @@ function ServicesTab() {
         ))}
       </div>
       {edit && (
-        <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/40 p-4" onClick={() => setEdit(null)}>
-          <div dir="rtl" className="w-full max-w-lg space-y-3 rounded-2xl bg-white p-5 shadow-2xl" onClick={(e) => e.stopPropagation()}>
-            <h3 className="text-lg font-extrabold text-[#0f2040]">🛠️ {edit.name} بالتطبيق</h3>
+        <Modal title={<>🛠️ {edit.name} بالتطبيق</>} onClose={() => setEdit(null)} size="md" busy={busy} bodyClassName="space-y-3 p-5">
             <label className="block text-xs text-slate-500">الصورة<input type="file" accept="image/jpeg,image/png,image/webp" className="mt-1 block text-sm" onChange={(e) => setFile(e.target.files?.[0] ?? null)} /></label>
             <label className="block text-xs text-slate-500">الوصف<textarea rows={3} className={`${inp} mt-1`} value={edit.description ?? ''} onChange={(e) => setEdit({ ...edit, description: e.target.value })} placeholder="نوفر أحدث أنظمة … مع تركيب احترافي وضمان شامل" /></label>
             <div className="text-xs text-slate-500">المميزات (أيقونة + نص)
@@ -267,8 +260,7 @@ function ServicesTab() {
               <button disabled={busy} onClick={save} className="flex-1 rounded-xl bg-[#0f2040] py-2.5 font-bold text-white disabled:opacity-50">{busy ? '…' : 'حفظ'}</button>
               <button onClick={() => setEdit(null)} className="rounded-xl border border-slate-300 px-4">إلغاء</button>
             </div>
-          </div>
-        </div>
+        </Modal>
       )}
     </div>
   )
@@ -307,16 +299,13 @@ function BranchesTab() {
         ))}
       </div>
       {edit && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={() => setEdit(null)}>
-          <div dir="rtl" className="w-full max-w-md space-y-3 rounded-2xl bg-white p-5 shadow-2xl" onClick={(e) => e.stopPropagation()}>
-            <h3 className="text-lg font-extrabold text-[#0f2040]">{edit.id ? 'تعديل فرع' : 'فرع جديد'}</h3>
+        <Modal title={<>{edit.id ? 'تعديل فرع' : 'فرع جديد'}</>} onClose={() => setEdit(null)} size="md" busy={busy} bodyClassName="space-y-3 p-5">
             {(['name', 'address', 'phone', 'mapUrl'] as const).map((k) => (
               <label key={k} className="block text-xs text-slate-500">{{ name: 'اسم الفرع', address: 'العنوان', phone: 'الهاتف', mapUrl: 'رابط الخريطة (كوكل ماب)' }[k]}
                 <input className={`${inp} mt-1`} dir={k === 'name' || k === 'address' ? 'rtl' : 'ltr'} value={(edit[k] as string) ?? ''} onChange={(e) => setEdit({ ...edit, [k]: e.target.value })} /></label>
             ))}
             <div className="flex gap-2"><button onClick={save} disabled={busy} className="flex-1 rounded-xl bg-[#0f2040] py-2.5 font-bold text-white disabled:opacity-50">حفظ</button><button onClick={() => setEdit(null)} className="rounded-xl border border-slate-300 px-4">إلغاء</button></div>
-          </div>
-        </div>
+        </Modal>
       )}
     </div>
   )

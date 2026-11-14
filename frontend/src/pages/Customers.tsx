@@ -1,3 +1,4 @@
+import Modal from '../ui/Modal'
 import { useEffect, useState } from 'react'
 import SharedStat from '../ui/StatCard'
 import Pager from '../components/Pager'
@@ -484,12 +485,8 @@ export default function Customers() {
       )}
 
       {editingCustomer && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <form
-            onSubmit={handleEditSubmit}
-            className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl"
-          >
-            <h3 className="text-lg font-bold text-brand-900">تعديل بيانات الزبون {editingCustomer.code}</h3>
+        <Modal title={<>تعديل بيانات الزبون {editingCustomer.code}</>} onClose={() => setEditingCustomer(null)} size="md" busy={editSubmitting} closeOnBackdrop={false} bodyClassName="p-6">
+          <form onSubmit={handleEditSubmit}>
             <div className="mt-4 flex flex-col gap-4">
               <div>
                 <label className="mb-1 block text-sm font-medium text-slate-600">الاسم الرباعي</label>
@@ -550,7 +547,7 @@ export default function Customers() {
               </div>
             </div>
           </form>
-        </div>
+        </Modal>
       )}
     </div>
   )

@@ -1,3 +1,4 @@
+import Modal from '../ui/Modal'
 import { useEffect, useState } from 'react'
 import { api, type ProjectPaymentsState } from '../api'
 import { todayBaghdad as today } from '../utils/format'
@@ -39,12 +40,7 @@ export default function ProjectPaymentsModal({ projectId, title, onClose }: { pr
   const pct = m?.contractValue ? Math.min(100, Math.round((m.paid / m.contractValue) * 100)) : null
 
   return (
-    <div dir="rtl" className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-3" onClick={onClose}>
-      <div className="max-h-[92vh] w-full max-w-xl overflow-y-auto rounded-2xl bg-white p-4 shadow-2xl" onClick={(e) => e.stopPropagation()}>
-        <div className="mb-3 flex items-center justify-between">
-          <p className="text-lg font-extrabold text-[#0f2040]">💰 دفعات: {title}</p>
-          <button type="button" onClick={onClose} className="text-2xl text-slate-400">×</button>
-        </div>
+    <Modal title={<>💰 دفعات: {title}</>} onClose={onClose} size="lg" busy={busy}>
         {err && <p className="mb-2 rounded-lg bg-red-50 p-2 text-sm text-red-700">{err}</p>}
         {!st ? <p className="text-sm text-slate-400">…</p> : (
           <div className="space-y-3">
@@ -99,7 +95,6 @@ export default function ProjectPaymentsModal({ projectId, title, onClose }: { pr
             </div>
           </div>
         )}
-      </div>
-    </div>
+    </Modal>
   )
 }

@@ -1,3 +1,4 @@
+import Modal from '../ui/Modal'
 import { useEffect, useState } from 'react'
 import { useSession } from '../session'
 import { waApi, allowedWaAgents, type AiAgentAction } from '../waApi'
@@ -97,21 +98,14 @@ export default function AgentActionNotice({
         </div>
       ))}
       {selected && (
-        <div className="fixed inset-0 z-[80] overflow-y-auto bg-black/40 p-4">
+        <Modal title="إلغاء إجراء الوكيل؟" onClose={() => setSelected(null)} size="md" busy={busy} layer="z-[80]">
           <form
-            role="dialog"
-            aria-modal="true"
-            aria-label="إلغاء إجراء الوكيل"
-            className="mx-auto mt-12 max-w-md rounded-2xl bg-white p-5"
             onSubmit={(e) => {
               e.preventDefault()
               void undo()
             }}
           >
-            <h3 className="text-lg font-bold text-slate-800">
-              إلغاء إجراء الوكيل؟
-            </h3>
-            <p className="mt-2 text-sm text-slate-500">{selected.summary}</p>
+            <p className="text-sm text-slate-500">{selected.summary}</p>
             {selected.kind === 'CREATE_BOOKING' && (
               <p className="mt-3 text-sm text-amber-700">
                 الإلغاء يرفع طلب حذف عادي للحجز، مو حذف مباشر.
@@ -148,7 +142,7 @@ export default function AgentActionNotice({
               </button>
             </div>
           </form>
-        </div>
+        </Modal>
       )}
     </div>
   )

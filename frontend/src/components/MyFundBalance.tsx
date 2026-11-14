@@ -1,3 +1,4 @@
+import Modal from '../ui/Modal'
 import { useEffect, useState } from 'react'
 import { api, fileUrl, storeFile, type EmployeeFundBalance, type EmployeeFundLine } from '../api'
 import { dinar as money } from '../utils/format'
@@ -142,9 +143,7 @@ export default function MyFundBalance({ forEmployee, onDone }: { forEmployee?: E
       </div>
 
       {target && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={() => setTarget(null)}>
-          <div dir="rtl" className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-white p-6 shadow-xl" onClick={(e) => e.stopPropagation()}>
-            <h3 className="text-lg font-bold text-t-title">تسوية — {target.fundName}</h3>
+        <Modal title={<>تسوية — {target.fundName}</>} onClose={() => setTarget(null)} size="md" busy={busy}>
             <p className="mt-1 text-sm text-slate-600">
               {who ? `الي بيد ${who} من هذا الدوار:` : 'الي بيدك من هذا الدوار:'} <span className="font-bold">{money(target.outstanding)}</span>
             </p>
@@ -204,8 +203,7 @@ export default function MyFundBalance({ forEmployee, onDone }: { forEmployee?: E
               </button>
               <button onClick={() => setTarget(null)} className="rounded-lg border border-slate-300 px-4 py-3 font-medium text-slate-700">إلغاء</button>
             </div>
-          </div>
-        </div>
+        </Modal>
       )}
     </>
   )

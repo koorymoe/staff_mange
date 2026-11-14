@@ -1,3 +1,4 @@
+import Modal from '../ui/Modal'
 import { useCallback, useEffect, useState } from 'react'
 import { api, type InvoiceDeleteRequest } from '../api'
 import { swallow } from '../utils/swallow'
@@ -21,9 +22,7 @@ export function RequestInvoiceDelete({ invoiceId, code, onDone }: { invoiceId: s
       <button type="button" onClick={() => setOpen(true)}
         className="rounded-lg border border-red-200 px-3 py-1.5 text-xs font-bold text-red-600 hover:bg-red-50">🗑️ اطلب حذف</button>
       {open && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" dir="rtl" onClick={() => setOpen(false)}>
-          <div className="w-full max-w-md rounded-2xl bg-white p-5 shadow-xl" onClick={(e) => e.stopPropagation()}>
-            <h3 className="text-lg font-bold text-[#0f2040]">🗑️ طلب حذف الفاتورة {code}</h3>
+        <Modal title={<>🗑️ طلب حذف الفاتورة {code}</>} onClose={() => setOpen(false)} size="md" busy={busy}>
             <p className="mt-1 text-xs text-slate-500">الطلب يروح للمالك، وما تنحذف إلا بموافقته. اكتب السبب بوضوح.</p>
             <textarea value={reason} onChange={(e) => setReason(e.target.value)} rows={3} autoFocus
               placeholder="مثلاً: فاتورة مكررة لنفس الحجز بنفس اليوم"
@@ -34,8 +33,7 @@ export function RequestInvoiceDelete({ invoiceId, code, onDone }: { invoiceId: s
                 className="flex-1 rounded-xl bg-red-600 px-4 py-2.5 text-sm font-bold text-white disabled:opacity-50">{busy ? '…' : 'أرسل الطلب للمالك'}</button>
               <button type="button" onClick={() => setOpen(false)} className="rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-bold text-slate-600">رجوع</button>
             </div>
-          </div>
-        </div>
+        </Modal>
       )}
     </>
   )

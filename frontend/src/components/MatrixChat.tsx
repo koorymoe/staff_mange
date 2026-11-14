@@ -1,3 +1,4 @@
+import Modal from '../ui/Modal'
 import { Fragment, useEffect, useRef, useState, type ReactNode } from 'react'
 import AgentFeedback from './AgentFeedback'
 import {
@@ -830,27 +831,7 @@ function MatrixChatView({ admin }: { admin: boolean }) {
       )}
 
       {lessons && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
-          onClick={() => setLessons(null)}
-        >
-          <div
-            dir="rtl"
-            className="max-h-[80vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-white p-5 shadow-xl"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="mb-3 flex items-center justify-between">
-              <p className="text-base font-extrabold text-violet-900">
-                🧠 دروس ماتركس ({lessons.length})
-              </p>
-              <button
-                type="button"
-                onClick={() => setLessons(null)}
-                className="text-xs font-bold text-slate-500"
-              >
-                ✕ سكّر
-              </button>
-            </div>
+        <Modal title={<>🧠 دروس ماتركس ({lessons.length})</>} onClose={() => setLessons(null)} size="md">
             <p className="mb-3 text-xs text-slate-500">
               كل تصحيح تكتبه يصير درس، وماتركس يلتزم بيه بكل محادثة جاية. إذا
               درس صار قديم أو غلط، طفّيه.
@@ -897,8 +878,7 @@ function MatrixChatView({ admin }: { admin: boolean }) {
                 </div>
               ))}
             </div>
-          </div>
-        </div>
+        </Modal>
       )}
     </div>
   )

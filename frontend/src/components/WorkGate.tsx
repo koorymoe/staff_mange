@@ -1,3 +1,4 @@
+import Modal from '../ui/Modal'
 import { useEffect, useState } from 'react'
 import { apiRequest } from '../api'
 import { useSession, isAdminOrOwner } from '../session'
@@ -35,9 +36,8 @@ export default function WorkGate() {
 
 function Shell({ children }: { children: React.ReactNode }) {
   return (
-    <div dir="rtl" className="fixed inset-0 z-[90] flex items-center justify-center overflow-y-auto bg-[#0f2040]/80 p-4 backdrop-blur-sm">
-      <div className="my-6 w-full max-w-lg rounded-3xl bg-white p-6 shadow-2xl">{children}</div>
-    </div>
+    // (دازاي 11-15) بوابة إجبارية: ماكو غلق — تنسد بس لمن تخلص الاستمارة
+    <Modal onClose={() => {}} size="md" dismissible={false} showClose={false} layer="z-[90]" bodyClassName="p-6">{children}</Modal>
   )
 }
 

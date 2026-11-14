@@ -1,3 +1,4 @@
+import Modal from './Modal'
 import { useEffect, useState } from 'react'
 import { onDialog, pendingDialogs, type DialogReq } from './dialogs'
 
@@ -21,11 +22,9 @@ function Dialog({ req, done }: { req: DialogReq; done: () => void }) {
     done()
   }
   return (
-    <div dir="rtl" className="fixed inset-0 z-[200] flex items-center justify-center bg-black/40 p-4" onKeyDown={(e) => {
-      if (e.key === 'Escape') close(false)
-      if (e.key === 'Enter' && !(req.kind === 'input' && req.multiline)) close(true)
-    }}>
-      <div role="dialog" aria-modal="true" className="w-full max-w-md rounded-2xl bg-white p-5 shadow-2xl dark:bg-slate-800">
+    // (دازاي 11-15) Esc يجي من Modal نفسه (= إلغاء)، هنا بس Enter = موافق
+    <Modal onClose={() => close(false)} size="md" closeOnBackdrop={false} layer="z-[200]" bodyClassName="p-5 dark:bg-slate-800">
+      <div onKeyDown={(e) => { if (e.key === 'Enter' && !(req.kind === 'input' && req.multiline)) close(true) }}>
         <p className="whitespace-pre-wrap text-sm leading-7 text-slate-800 dark:text-slate-100">{req.message}</p>
         {req.kind === 'input' && (req.multiline
           ? <textarea autoFocus value={text} onChange={(e) => setText(e.target.value)} rows={3} className="mt-3 w-full rounded-lg border border-slate-300 p-2 text-sm dark:bg-slate-700" />
@@ -38,6 +37,6 @@ function Dialog({ req, done }: { req: DialogReq; done: () => void }) {
           <button onClick={() => close(false)} className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-bold text-slate-600 dark:text-slate-200">إلغاء</button>
         </div>
       </div>
-    </div>
+    </Modal>
   )
 }

@@ -1,3 +1,4 @@
+import Modal from '../ui/Modal'
 import { useEffect, useMemo, useState } from 'react'
 import { api, type PaymentAuditRow } from '../api'
 import { askConfirm, askInput } from '../ui/dialogs'
@@ -47,12 +48,7 @@ export default function PaymentAuditModal({ onClose, onChanged }: { onClose: () 
 
   const dupCount = (rows ?? []).filter((r) => r.duplicate).length
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/40 p-4" dir="rtl" onClick={onClose}>
-      <div className="w-full max-w-5xl rounded-2xl bg-white p-5 shadow-2xl" onClick={(e) => e.stopPropagation()}>
-        <div className="mb-3 flex items-center justify-between">
-          <h2 className="text-xl font-extrabold text-[#0f2040]">🧾 سجل دفعات المشاريع</h2>
-          <button onClick={onClose} className="text-2xl text-slate-400 hover:text-slate-600">×</button>
-        </div>
+    <Modal title={<>🧾 سجل دفعات المشاريع</>} onClose={onClose} size="xl" busy={!!busy}>
         <div className="mb-3 flex flex-wrap items-center gap-2 text-sm">
           <select value={by} onChange={(e) => setBy(e.target.value)} className="rounded-lg border border-slate-300 px-3 py-1.5">
             <option value="">سجّلها: الكل</option>
@@ -105,7 +101,6 @@ export default function PaymentAuditModal({ onClose, onChanged }: { onClose: () 
               })}
             </div>
           )}
-      </div>
-    </div>
+    </Modal>
   )
 }

@@ -1,3 +1,4 @@
+import Modal from '../ui/Modal'
 import { useEffect, useState } from 'react'
 import { api, type ManagerRequest } from '../api'
 import { PRIORITY, STATUS } from '../utils/managerRequest'
@@ -40,12 +41,7 @@ export default function ManagerRequestDialog({ onClose, withInventory }: { onClo
   }
 
   return (
-    <div dir="rtl" className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={onClose}>
-      <div className="max-h-[90vh] w-full max-w-lg space-y-3 overflow-y-auto rounded-2xl bg-white p-5 shadow-xl" onClick={(e) => e.stopPropagation()}>
-        <div className="flex items-center justify-between">
-          <h3 className="text-lg font-bold text-brand-900">📨 رفع طلب للمدير</h3>
-          <button type="button" onClick={onClose} className="text-slate-400 hover:text-slate-700">✕</button>
-        </div>
+    <Modal title="📨 رفع طلب للمدير" onClose={onClose} size="md" busy={busy} bodyClassName="space-y-3 p-5">
         <input value={title} onChange={(e) => setTitle(e.target.value)} maxLength={200} placeholder="العنوان (مثلاً: نحتاج موافقة على شراء دريلات)" className="w-full rounded-lg border border-slate-200 p-2 text-sm" />
         <textarea value={details} onChange={(e) => setDetails(e.target.value)} rows={4} placeholder="شنو المطلوب بالضبط؟" className="w-full rounded-lg border border-slate-200 p-2 text-sm" />
         <div className="flex flex-wrap gap-2">
@@ -79,7 +75,6 @@ export default function ManagerRequestDialog({ onClose, withInventory }: { onClo
             ))}
           </div>
         )}
-      </div>
-    </div>
+    </Modal>
   )
 }

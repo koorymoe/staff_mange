@@ -1,3 +1,4 @@
+import Modal from '../ui/Modal'
 import { Fragment, useCallback, useEffect, useState } from 'react'
 import { api, type CreditSale } from '../api'
 import { dinarRound as iqd } from '../utils/format'
@@ -125,9 +126,7 @@ function PayModal({ credit, onClose, onDone }: { credit: CreditSale; onClose: ()
     catch (e) { setErr(e instanceof Error ? e.message : 'خطأ') } finally { setBusy(false) }
   }
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={onClose}>
-      <div dir="rtl" className="w-full max-w-md space-y-3 rounded-2xl bg-white p-5 shadow-2xl" onClick={(e) => e.stopPropagation()}>
-        <h3 className="text-lg font-extrabold text-[#0f2040]">💵 دفعة — {credit.title}</h3>
+    <Modal title={<>💵 دفعة — {credit.title}</>} onClose={onClose} size="md" busy={busy} bodyClassName="space-y-3 p-5">
         <p className="text-sm text-slate-600">الباقي: <b className="text-violet-700">{iqd(left)}</b></p>
         <div className="flex gap-2">
           <input inputMode="numeric" dir="ltr" placeholder="المبلغ" value={amount} onChange={(e) => setAmount(e.target.value.replace(/[^\d,]/g, ''))} className={inp} />
@@ -137,8 +136,7 @@ function PayModal({ credit, onClose, onDone }: { credit: CreditSale; onClose: ()
         <input placeholder="ملاحظة (اختياري)" value={note} onChange={(e) => setNote(e.target.value)} className={inp} />
         {err && <p className="text-sm text-rose-600">{err}</p>}
         <div className="flex gap-2"><button disabled={busy || !Number(amount.replace(/,/g, ''))} onClick={save} className="flex-1 rounded-xl bg-emerald-700 py-2.5 font-bold text-white disabled:opacity-50">تسجيل الدفعة</button><button onClick={onClose} className="rounded-xl border border-slate-300 px-4">إلغاء</button></div>
-      </div>
-    </div>
+    </Modal>
   )
 }
 
@@ -155,9 +153,7 @@ function AddModal({ onClose, onDone }: { onClose: () => void; onDone: () => void
     } catch (e) { setErr(e instanceof Error ? e.message : 'خطأ') } finally { setBusy(false) }
   }
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={onClose}>
-      <div dir="rtl" className="w-full max-w-md space-y-3 rounded-2xl bg-white p-5 shadow-2xl" onClick={(e) => e.stopPropagation()}>
-        <h3 className="text-lg font-extrabold text-[#0f2040]">+ آجل جديد</h3>
+    <Modal title="+ آجل جديد" onClose={onClose} size="md" busy={busy} bodyClassName="space-y-3 p-5">
         <p className="text-xs text-slate-500">للمشروع اكتب كوده (PRJ-…). الحجز الأفضل يدخل من «التدقيق اليومي»، بس تكدر تضيفه هنا بكوده.</p>
         <div className="grid grid-cols-2 gap-2">
           <input dir="ltr" placeholder="كود المشروع PRJ-0042" value={f.projectCode} onChange={set('projectCode')} className={inp} />
@@ -173,7 +169,6 @@ function AddModal({ onClose, onDone }: { onClose: () => void; onDone: () => void
         <input placeholder="ملاحظة: مثلاً 3 دفعات شهرية" value={f.note} onChange={set('note')} className={inp} />
         {err && <p className="text-sm text-rose-600">{err}</p>}
         <div className="flex gap-2"><button disabled={busy || !Number(f.amount.replace(/,/g, ''))} onClick={save} className="flex-1 rounded-xl bg-[#0f2040] py-2.5 font-bold text-white disabled:opacity-50">حفظ</button><button onClick={onClose} className="rounded-xl border border-slate-300 px-4">إلغاء</button></div>
-      </div>
-    </div>
+    </Modal>
   )
 }

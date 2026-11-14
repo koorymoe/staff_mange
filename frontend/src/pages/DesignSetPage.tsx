@@ -1,3 +1,4 @@
+import Modal from '../ui/Modal'
 import { lazy, Suspense, useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { api, apiRequest, ensureFileToken, fileUrl, type Employee, thumbUrl } from '../api'
@@ -187,9 +188,7 @@ function ToolsManager({ meta, close, saved }: { meta: DesignMeta; close: () => v
   }
   const set = (i: number, k: keyof DesignTool, v: string | boolean) => setRows((r) => r.map((x, j) => (j === i ? { ...x, [k]: v } : x)))
   return (
-    <div dir="rtl" className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={close}>
-      <div className="max-h-[90vh] w-full max-w-3xl space-y-2 overflow-y-auto rounded-2xl bg-white p-4" onClick={(e) => e.stopPropagation()}>
-        <div className="flex items-center justify-between"><h3 className="font-bold text-brand-900">🧰 أدوات التصميم</h3><button type="button" onClick={close}>✕</button></div>
+    <Modal title="🧰 أدوات التصميم" onClose={close} size="xl" busy={busy} bodyClassName="space-y-2 p-4">
         <p className="text-xs text-slate-500">كل أداة تطلع زر بتخصصها. «طريقة الإرجاع» تطلع للمصمم بالشرح.</p>
         {err && <p className="text-xs text-red-600">{err}</p>}
         {rows.map((t, i) => (
@@ -203,8 +202,7 @@ function ToolsManager({ meta, close, saved }: { meta: DesignMeta; close: () => v
           </div>
         ))}
         <button type="button" onClick={() => setRows((r) => [...r, { ...empty }])} className="rounded-lg bg-slate-800 px-3 py-1.5 text-xs font-bold text-white">+ أداة جديدة</button>
-      </div>
-    </div>
+    </Modal>
   )
 }
 

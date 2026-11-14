@@ -1,3 +1,4 @@
+import Modal from '../ui/Modal'
 import { useEffect, useState, useCallback, useRef } from 'react'
 import { useSession, isAdminOrOwner } from '../session'
 import { LocationPicker } from '../components/MapLazy'
@@ -88,18 +89,6 @@ function parseCoordsFromUrl(url: string): { lat: number; lng: number } | null {
     }
   }
   return null
-}
-
-// Modal backdrop — module-level so it has a stable identity across parent re-renders
-// (a new function identity per render would remount children and drop input focus).
-function Modal({ children, onClose }: { children: React.ReactNode; onClose: () => void }) {
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={onClose}>
-      <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl bg-white p-6 shadow-2xl" onClick={(e) => e.stopPropagation()}>
-        {children}
-      </div>
-    </div>
-  )
 }
 
 function Stars({ value, size = 'text-lg' }: { value: number; size?: string }) {
@@ -512,8 +501,7 @@ export default function SuppliersPage() {
 
       {/* Add/Edit Modal */}
       {showForm && (
-        <Modal onClose={() => setShowForm(false)}>
-          <h3 className="text-xl font-bold text-brand-800 mb-4">{editingSupplier ? 'تعديل المورد' : 'إضافة مورد جديد'}</h3>
+        <Modal title={editingSupplier ? 'تعديل المورد' : 'إضافة مورد جديد'} onClose={() => setShowForm(false)} size="lg" busy={formSubmitting} bodyClassName="p-6">
           <form onSubmit={handleSubmitForm} className="space-y-4">
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div>
@@ -669,7 +657,7 @@ export default function SuppliersPage() {
 
       {/* Detail Modal */}
       {detailSupplier && (
-        <Modal onClose={() => setDetailSupplier(null)}>
+        <Modal onClose={() => setDetailSupplier(null)} size="lg" bodyClassName="p-6">
           <div className="flex items-start justify-between">
             <h3 className="text-xl font-bold text-brand-800">{detailSupplier.companyName}</h3>
             <Stars value={detailSupplier.avgRating} />
@@ -751,8 +739,7 @@ export default function SuppliersPage() {
 
       {/* Rating Modal */}
       {showRatingModal && ratingTarget && (
-        <Modal onClose={() => setShowRatingModal(false)}>
-          <h3 className="text-xl font-bold text-brand-800 mb-4">تقييم {ratingTarget.companyName}</h3>
+        <Modal title={<>تقييم {ratingTarget.companyName}</>} onClose={() => setShowRatingModal(false)} size="lg" busy={ratingSubmitting} bodyClassName="p-6">
           <form onSubmit={handleRate} className="space-y-4">
             <div>
               <label className="mb-2 block text-sm font-medium text-slate-600">التقييم</label>
@@ -779,7 +766,7 @@ export default function SuppliersPage() {
 
       {/* الخريطة تنفتح داخل النظام، مو برابط خارجي بتاب جديد */}
       {mapSupplier && mapSupplier.lat != null && mapSupplier.lng != null && (
-        <Modal onClose={() => setMapSupplier(null)}>
+        <Modal onClose={() => setMapSupplier(null)} size="lg" bodyClassName="p-6">
           <div className="mb-3 flex items-center justify-between">
             <div>
               <h3 className="font-bold text-brand-900">موقع {mapSupplier.companyName}</h3>

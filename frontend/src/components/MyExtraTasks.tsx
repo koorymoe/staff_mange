@@ -1,3 +1,4 @@
+import Modal from '../ui/Modal'
 import { useCallback, useEffect, useState } from 'react'
 import { api, type ExtraTask } from '../api'
 
@@ -135,9 +136,7 @@ export default function MyExtraTasks() {
       {/* ⚠️ الإنجاز يطلب وصف: «تم» بلا شرح ترجّع المدير يسأل بالتلفون
           — وهاي نفس المكالمة الي بنينا الميزة حتى نلغيها. */}
       {doneFor && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={() => setDoneFor(null)}>
-          <div dir="rtl" className="w-full max-w-md rounded-2xl bg-white p-5" onClick={(e) => e.stopPropagation()}>
-            <h3 className="font-bold text-[#0f2040]">✓ إنهاء: {doneFor.title}</h3>
+        <Modal title={<>✓ إنهاء: {doneFor.title}</>} onClose={() => setDoneFor(null)} size="md" busy={busy !== null}>
             <label className="mb-1 mt-3 block text-xs font-bold text-slate-500">
               شنو سويت بالضبط؟ <span className="text-red-600">*</span>
             </label>
@@ -161,8 +160,7 @@ export default function MyExtraTasks() {
                 رجوع
               </button>
             </div>
-          </div>
-        </div>
+        </Modal>
       )}
     </div>
   )

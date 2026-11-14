@@ -1,3 +1,4 @@
+import Modal from '../ui/Modal'
 import { useCallback, useEffect, useState } from 'react'
 import { api, type Employee, type MatrixMission } from '../api'
 import { askConfirm } from '../ui/dialogs'
@@ -74,12 +75,7 @@ export default function MatrixMissions() {
       </div>
 
       {open && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={() => setOpen(null)}>
-          <div className="max-h-[80vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-white p-5 shadow-xl" onClick={(e) => e.stopPropagation()}>
-            <div className="mb-3 flex items-center justify-between">
-              <p className="text-base font-extrabold text-violet-900">🎯 {open.mission.employeeName}</p>
-              <button type="button" onClick={() => setOpen(null)} className="text-xs font-bold text-slate-500">✕ سكّر</button>
-            </div>
+        <Modal title={<>🎯 {open.mission.employeeName}</>} onClose={() => setOpen(null)} size="md">
             {open.mission.summary && (
               <div className="mb-3 whitespace-pre-wrap rounded-xl border border-violet-200 bg-violet-50/60 p-3 text-sm leading-relaxed text-violet-950">
                 <b>🤖 خلاصة ماتركس:</b>{'\n'}{open.mission.summary}
@@ -90,8 +86,7 @@ export default function MatrixMissions() {
             <div className="space-y-1">
               {open.logs.map((l) => <p key={l.day} className="rounded-lg bg-slate-50 px-3 py-1.5 text-xs text-slate-700"><b>{l.day}</b> — {l.text}</p>)}
             </div>
-          </div>
-        </div>
+        </Modal>
       )}
     </div>
   )

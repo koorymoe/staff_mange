@@ -1,3 +1,4 @@
+import Modal from './Modal'
 import { useState, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { pctOf } from './pct'
@@ -55,13 +56,9 @@ export default function PctWhy({
       </span>
       {/* portal: الشباك برّا البطاقة — لو جوّا رابط، الضغط داخله چان يفتح الرابط */}
       {open && createPortal(
-        <div className="fixed inset-0 z-[60] flex items-start justify-center overflow-y-auto bg-black/50 p-4" onClick={(e) => { e.stopPropagation(); setOpen(false) }}>
-          <div dir="rtl" role="dialog" aria-label={`منين جات ${title}`} onClick={(e) => e.stopPropagation()}
-            className="mt-10 w-full max-w-xl rounded-2xl bg-white p-5 text-right text-sm font-normal text-slate-800 shadow-2xl dark:bg-slate-800 dark:text-slate-100">
-            <div className="mb-3 flex items-center justify-between gap-2">
-              <h3 className="text-lg font-extrabold">{title}: {shown}</h3>
-              <button type="button" onClick={() => setOpen(false)} className="text-2xl leading-none text-slate-400" aria-label="سد">×</button>
-            </div>
+        // (دازاي 11-15) الضغط جوّا النافذة ما يوصل للصف الي وراها (الـportal يمرّر الأحداث بشجرة React)
+        <div onClick={(e) => e.stopPropagation()}>
+          <Modal title={<>{title}: {shown}</>} onClose={() => setOpen(false)} size="lg" bodyClassName="p-5 text-sm font-normal text-slate-800 dark:bg-slate-800 dark:text-slate-100">
             <div className="space-y-3">
               <div className="rounded-lg bg-slate-100 px-3 py-2 dark:bg-slate-700" data-testid="pct-formula">
                 <p className="mb-0.5 text-[11px] font-bold text-slate-500 dark:text-slate-300">🧮 الحسبة</p>
@@ -81,7 +78,7 @@ export default function PctWhy({
               </div>
               {children && <div className="max-h-[50vh] overflow-y-auto border-t border-slate-200 pt-3 dark:border-slate-600">{children}</div>}
             </div>
-          </div>
+          </Modal>
         </div>,
         document.body,
       )}

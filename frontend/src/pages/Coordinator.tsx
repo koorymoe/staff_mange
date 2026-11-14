@@ -1,3 +1,4 @@
+import Modal from '../ui/Modal'
 import SlaBoardCard from '../components/SlaBoardCard'
 import { useEffect, useRef, useState } from 'react'
 import { StaffRatingQueue } from '../components/StaffRating'
@@ -1492,9 +1493,7 @@ export default function Coordinator() {
       )}
       {handFor && <HandoverDialog booking={handFor} onClose={() => setHandFor(null)} onDone={() => { setHandFor(null); load() }} />}
       {surveyFor && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={() => !surveyBusy && setSurveyFor(null)}>
-          <div className="w-full max-w-md rounded-2xl bg-white p-5 shadow-xl" onClick={(e) => e.stopPropagation()}>
-            <h3 className="text-lg font-bold text-[#0f2040]">🔍 كشف على الموقع — حجز <BookingCodeChip code={surveyFor.code} /></h3>
+        <Modal title={<>🔍 كشف على الموقع — حجز <BookingCodeChip code={surveyFor.code} /></>} onClose={() => setSurveyFor(null)} size="md" busy={surveyBusy}>
             <p className="mt-1 text-xs text-slate-500">
               الحجز يصير «كشف» (بلا فاتورة ولا عُدّة) وينرسل لمهام الليدر. الليدر يكتب نتائج المعاينة ويرفق صور،
               والمراقب والمحاسب والمدير وإداري الحجوزات يشوفونها وينزّلونها.
@@ -1522,8 +1521,7 @@ export default function Coordinator() {
                 إلغاء
               </button>
             </div>
-          </div>
-        </div>
+        </Modal>
       )}
     </div>
   )

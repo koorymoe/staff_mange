@@ -1,3 +1,4 @@
+import Modal from '../../ui/Modal'
 import { useEffect, useMemo, useState } from 'react'
 import {
   api,
@@ -209,9 +210,7 @@ export default function GpsFollowUp({ embedded }: { embedded?: boolean } = {}) {
       {renderSection('RESOLVED', 'تم الحسم', 'راح يجدد أو يحرّك')}
 
       {callTarget && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={() => setCallTarget(null)}>
-          <div dir="rtl" className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-xl" onClick={(e) => e.stopPropagation()}>
-            <h3 className="text-lg font-bold text-t-title">نتيجة الاتصال</h3>
+        <Modal title="نتيجة الاتصال" onClose={() => setCallTarget(null)} size="md" busy={saving}>
             <p className="mt-1 text-sm text-slate-600">
               {callTarget.customerName} — <span dir="ltr">{callTarget.customerPhone}</span>
               {' · '}صارله {callTarget.daysSinceExpiry} يوم
@@ -257,8 +256,7 @@ export default function GpsFollowUp({ embedded }: { embedded?: boolean } = {}) {
                 إلغاء
               </button>
             </div>
-          </div>
-        </div>
+        </Modal>
       )}
     </div>
   )

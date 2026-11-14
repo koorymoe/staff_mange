@@ -1,3 +1,4 @@
+import Modal from '../ui/Modal'
 import { useEffect, useState, type ReactNode } from 'react'
 import PctWhy from '../ui/PctWhy'
 import { purchaseApi, type ProcurementRequest, type PurchaseAlert, type PurchaseBias, type StandardPrice, type StandardSuggestion, type PurchaseGroup, type PurchaseMonth, type PurchaseControlRow, type PurchasePriceRow, type SupplierReviewInput } from '../api'
@@ -334,9 +335,7 @@ function ReviewModal({ req, onClose, onSaved }: { req: ProcurementRequest; onClo
     try { await purchaseApi.review(req.id, { ...v, note: note.trim() || undefined }); onSaved() } catch (e) { notify(e instanceof Error ? e.message : 'تعذر الحفظ') } finally { setBusy(false) }
   }
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" dir="rtl">
-      <div className="w-full max-w-md space-y-3 rounded-2xl bg-white p-5">
-        <p className="text-lg font-bold">⭐ قيّم المورد: {req.supplier?.name}</p>
+    <Modal onClose={onClose} size="md" busy={busy} closeOnBackdrop={false} bodyClassName="space-y-3 p-5" title={<>⭐ قيّم المورد: {req.supplier?.name}</>}>
         <p className="text-xs text-slate-500">طلب {req.code} — التقييم يساعد ماتركس يعرف منو أرخص وأحسن مورد لكل مادة.</p>
         {CRITERIA.map(([k, label]) => (
           <div key={k} className="flex items-center justify-between">
@@ -353,8 +352,7 @@ function ReviewModal({ req, onClose, onSaved }: { req: ProcurementRequest; onClo
           <button disabled={!ready || busy} onClick={save} className="flex-1 rounded-lg bg-[#2c5aad] py-2 font-bold text-white disabled:opacity-50">حفظ التقييم</button>
           <button onClick={onClose} className="rounded-lg px-4 py-2 text-sm text-slate-600 hover:bg-slate-100">بعدين</button>
         </div>
-      </div>
-    </div>
+    </Modal>
   )
 }
 

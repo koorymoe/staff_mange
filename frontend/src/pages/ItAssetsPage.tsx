@@ -1,3 +1,4 @@
+import Modal from '../ui/Modal'
 import { useEffect, useMemo, useState } from 'react'
 import {
   api, IT_KIND_LABELS, IT_LOG_LABELS, IT_STATUS_LABELS,
@@ -56,9 +57,7 @@ function AssetForm({ initial, employees, onSaved, onClose }: {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={() => !busy && onClose()}>
-      <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl bg-white p-5 shadow-xl" onClick={(e) => e.stopPropagation()}>
-        <h3 className="text-lg font-bold text-[#0f2040]">{initial ? '✏️ تعديل جهاز' : '➕ جهاز جديد'}</h3>
+    <Modal title={<>{initial ? '✏️ تعديل جهاز' : '➕ جهاز جديد'}</>} onClose={() => onClose()} size="lg" busy={busy}>
         <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
           <label className="text-sm font-bold text-slate-700 sm:col-span-2">اسم الجهاز *
             <input className={inp} placeholder="مثال: حاسبة المحاسبة ١" value={f.name} onChange={(e) => set('name', e.target.value)} />
@@ -95,8 +94,7 @@ function AssetForm({ initial, employees, onSaved, onClose }: {
           </button>
           <button onClick={onClose} disabled={busy} className="rounded-lg border border-slate-300 px-4 py-2.5 text-sm font-bold text-slate-600">إلغاء</button>
         </div>
-      </div>
-    </div>
+    </Modal>
   )
 }
 
@@ -126,9 +124,7 @@ function AssetLogs({ asset, onClose }: { asset: ItAsset; onClose: () => void }) 
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={onClose}>
-      <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-white p-5 shadow-xl" onClick={(e) => e.stopPropagation()}>
-        <h3 className="text-lg font-bold text-[#0f2040]">🧾 سجل «{asset.name}»</h3>
+    <Modal title={<>🧾 سجل «{asset.name}»</>} onClose={onClose} size="md" busy={busy}>
         <div className="mt-3 grid grid-cols-3 gap-2">
           <select className={inp} value={kind} onChange={(e) => setKind(e.target.value)}>
             {['REPAIR', 'MAINTENANCE', 'NOTE'].map((k) => <option key={k} value={k}>{IT_LOG_LABELS[k]}</option>)}
@@ -154,8 +150,7 @@ function AssetLogs({ asset, onClose }: { asset: ItAsset; onClose: () => void }) 
               ))}
         </div>
         <button onClick={onClose} className="mt-4 w-full rounded-lg border border-slate-300 px-4 py-2 text-sm font-bold text-slate-600">إغلاق</button>
-      </div>
-    </div>
+    </Modal>
   )
 }
 

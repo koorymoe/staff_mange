@@ -1,3 +1,4 @@
+import Modal from '../ui/Modal'
 import { useEffect, useState } from 'react'
 import { api, type AttendanceGateState } from '../api'
 import { swallow } from '../utils/swallow'
@@ -25,9 +26,9 @@ export default function LastBookingPrompt() {
     setBusy(true); setErr('')
     try { await api.checkOut(); setStep('done'); window.dispatchEvent(new Event('matrix-refresh')) } catch (e) { setErr(e instanceof Error ? e.message : 'تعذر') } finally { setBusy(false) }
   }
+  // (دازاي 11-15) بخطوة «سجّل انصرافي» ماكو رجعة — فلا Esc ولا ضغطة برّا
   return (
-    <div dir="rtl" className="fixed inset-0 z-[80] flex items-end justify-center bg-black/40 p-3 sm:items-center">
-      <div className="w-full max-w-sm rounded-3xl bg-white p-5 text-center shadow-2xl">
+    <Modal onClose={close} size="sm" busy={busy} dismissible={step !== 'out'} closeOnBackdrop={false} layer="z-[80]" bodyClassName="p-5 text-center">
         <div className="text-4xl">🤖</div>
         {step === 'ask' && (
           <>
@@ -54,7 +55,6 @@ export default function LastBookingPrompt() {
             <button type="button" onClick={close} className="mt-4 w-full rounded-xl border border-slate-300 py-2.5 font-bold">تمام</button>
           </>
         )}
-      </div>
-    </div>
+    </Modal>
   )
 }

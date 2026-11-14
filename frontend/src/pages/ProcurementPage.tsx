@@ -1,3 +1,4 @@
+import Modal from '../ui/Modal'
 import { Fragment, useState, useEffect, useContext } from 'react'
 import PurchaseControlPanel from '../components/PurchaseControlPanel'
 import { purchaseApi } from '../api'
@@ -538,12 +539,7 @@ export default function ProcurementPage() {
 
       {/* Fulfill Modal */}
       {fulfillModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-lg mx-4 max-h-[90vh] overflow-y-auto p-6 space-y-4" dir="rtl">
-            <div className="flex items-center justify-between">
-              <h2 className="text-lg font-bold text-[#0f2040]">تنفيذ الطلب - {fulfillModal.code}</h2>
-              <button onClick={() => setFulfillModal(null)} className="text-slate-400 hover:text-slate-600 text-xl">×</button>
-            </div>
+        <Modal title={<>تنفيذ الطلب - {fulfillModal.code}</>} onClose={() => setFulfillModal(null)} size="md" busy={fulfilling} closeOnBackdrop={false} bodyClassName="space-y-4 p-6">
 
             <div className="space-y-3">
               <p className="text-sm font-semibold text-slate-600">المواد:</p>
@@ -672,8 +668,7 @@ export default function ProcurementPage() {
                 {fulfilling ? 'جاري التنفيذ...' : 'تأكيد التوفير'}
               </button>
             </div>
-          </div>
-        </div>
+        </Modal>
       )}
     </div>
   )

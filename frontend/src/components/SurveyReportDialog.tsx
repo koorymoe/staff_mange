@@ -1,3 +1,4 @@
+import Modal from '../ui/Modal'
 import { useState } from 'react'
 import { api, type Booking, type BookingSurveyReport } from '../api'
 import BookingCodeChip from './BookingCodeChip'
@@ -43,11 +44,7 @@ export default function SurveyReportDialog({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-      <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-white p-5 shadow-xl">
-        <h3 className="text-lg font-bold text-[#0f2040]">
-          🔍 نتائج المعاينة — حجز <BookingCodeChip code={booking.code} />
-        </h3>
+    <Modal title={<>🔍 نتائج المعاينة — حجز <BookingCodeChip code={booking.code} /></>} onClose={onClose} size="md" busy={busy} closeOnBackdrop={false}>
         <p className="mt-1 text-xs text-slate-500">
           هذا حجز كشف — بلا فاتورة وبلا تقرير عمل، بس نتائج المعاينة لازم توصل.
         </p>
@@ -105,7 +102,6 @@ export default function SurveyReportDialog({
             إلغاء
           </button>
         </div>
-      </div>
-    </div>
+    </Modal>
   )
 }

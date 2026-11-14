@@ -1,3 +1,4 @@
+import Modal from '../ui/Modal'
 import { useEffect, useState } from 'react'
 import {
   api, toolRequestReasonLabels,
@@ -546,9 +547,7 @@ export default function MyInventory() {
       )}
 
       {reasonTool && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" dir="rtl">
-          <div className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl">
-            <h3 className="text-lg font-bold text-brand-900">طلب أداة: {reasonTool.name}</h3>
+        <Modal title={<>طلب أداة: {reasonTool.name}</>} onClose={() => setReasonTool(null)} size="md" busy={requesting} closeOnBackdrop={false}>
             <p className="mt-1 text-sm text-slate-500">
               {reasonTool.availableQuantity > 0
                 ? 'الأداة متوفرة بالمخزن. وضّح سبب الطلب حتى إداري الكميات يوافق.'
@@ -594,8 +593,7 @@ export default function MyInventory() {
                 إلغاء
               </button>
             </div>
-          </div>
-        </div>
+        </Modal>
       )}
     </div>
   )

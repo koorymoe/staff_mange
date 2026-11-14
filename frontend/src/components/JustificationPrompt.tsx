@@ -1,3 +1,4 @@
+import Modal from '../ui/Modal'
 import { useEffect, useState } from 'react'
 import { api, isStealthSession, loginSessionKey, type Justification } from '../api'
 import { useSession } from '../session'
@@ -43,9 +44,7 @@ export default function JustificationPrompt() {
     finally { setBusy(false) }
   }
   return (
-    <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/40 p-4" dir="rtl">
-      <div className="w-full max-w-md rounded-2xl bg-white p-5 shadow-2xl">
-        <h3 className="text-lg font-extrabold text-[#0f2040]">📝 المراقب يطلب تبرير</h3>
+    <Modal title="📝 المراقب يطلب تبرير" onClose={postpone} size="md" busy={busy} closeOnBackdrop={false} layer="z-[70]">
         <p className="mt-1 text-[11px] text-slate-500">من {cur.monitorName || 'المراقب'} · {new Date(cur.createdAt).toLocaleString('ar-IQ', { timeZone: 'Asia/Baghdad' })}{pending.length > 1 ? ` · عندك ${pending.length} طلبات` : ''}</p>
         <p className="mt-3 rounded-xl bg-amber-50 px-3 py-2 text-sm text-amber-900">{cur.question}</p>
         <textarea value={text} onChange={(e) => setText(e.target.value)} rows={4} placeholder="اكتب عذرك أو شنو صار بالضبط…"
@@ -56,7 +55,6 @@ export default function JustificationPrompt() {
           <button onClick={postpone} className="rounded-xl border border-slate-300 px-4 text-sm text-slate-600">بعدين</button>
         </div>
         <p className="mt-2 text-[10px] text-slate-400">هذا توثيق ومتابعة — ماكو غرامة.</p>
-      </div>
-    </div>
+    </Modal>
   )
 }

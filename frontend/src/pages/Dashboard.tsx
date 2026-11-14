@@ -1,3 +1,4 @@
+import Modal from '../ui/Modal'
 import DutiesCard from '../components/DutiesCard'
 import { positionTitle } from '../roleLabels'
 import { Suspense, useEffect, useState } from 'react'
@@ -1456,15 +1457,9 @@ function StaffDashboard() {
       )}
 
       {mapTask && mapTask.mapLatitude != null && mapTask.mapLongitude != null && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={() => setMapTask(null)}>
-          <div className="w-full max-w-2xl rounded-2xl bg-white p-4 shadow-xl" onClick={(e) => e.stopPropagation()}>
-            <div className="mb-3 flex items-center justify-between">
-              <h3 className="font-bold text-brand-900">موقع المهمة <BookingCodeChip code={mapTask.code} /></h3>
-              <button onClick={() => setMapTask(null)} className="rounded-lg px-3 py-1 text-sm text-slate-500 hover:bg-slate-100">✕ إغلاق</button>
-            </div>
+        <Modal title={<>موقع المهمة <BookingCodeChip code={mapTask.code} /></>} onClose={() => setMapTask(null)} size="lg" bodyClassName="p-4">
             <MapViewer lat={mapTask.mapLatitude} lng={mapTask.mapLongitude} height={380} />
-          </div>
-        </div>
+        </Modal>
       )}
     </div>
     </>

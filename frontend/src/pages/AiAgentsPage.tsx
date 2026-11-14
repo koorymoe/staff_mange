@@ -1,3 +1,4 @@
+import Modal from '../ui/Modal'
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { apiRequest } from '../api'
@@ -275,16 +276,7 @@ function OwnerAgents() {
         </Link>
       </div>
       {pending && (
-        <div className="fixed inset-0 z-[70] overflow-y-auto bg-black/40 p-4">
-          <div
-            role="dialog"
-            aria-modal="true"
-            aria-label="تغيير تشغيل الوكيل"
-            className="mx-auto mt-12 max-w-md rounded-2xl bg-white p-5"
-          >
-            <h2 className="text-lg font-bold text-slate-800">
-              {pending.enabled ? 'تطفي' : 'تشغّل'} {pending.name}؟
-            </h2>
+        <Modal title={<>{pending.enabled ? 'تطفي' : 'تشغّل'} {pending.name}؟</>} onClose={() => setPending(null)} size="md" busy={!!busy} layer="z-[70]">
             <p className="mt-3 text-sm text-slate-500">
               التشغيل الحي يخضع لربط الواتساب وموافقات الخصوصية بالخادم.
             </p>
@@ -309,8 +301,7 @@ function OwnerAgents() {
                 رجوع
               </button>
             </div>
-          </div>
-        </div>
+        </Modal>
       )}
     </div>
   )

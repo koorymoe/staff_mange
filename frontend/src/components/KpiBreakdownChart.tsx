@@ -1,3 +1,4 @@
+import Modal from '../ui/Modal'
 import { useEffect, useState } from 'react'
 import { api, type TechnicianKpi } from '../api'
 
@@ -48,14 +49,9 @@ export default function KpiBreakdownChart({
   const maxAbs = Math.max(20, ...bars.map((b) => Math.abs(b.points)))
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={onClose}>
-      <div
-        className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-2xl bg-white p-5 shadow-xl"
-        onClick={(e) => e.stopPropagation()}
-      >
+    <Modal title={<>📊 نقاط الكي بي اي — {employeeName}</>} onClose={onClose} size="xl">
         <div className="flex items-start justify-between gap-3">
           <div>
-            <h3 className="text-lg font-extrabold text-[#0f2040]">📊 نقاط الكي بي اي — {employeeName}</h3>
             {data && <p className="text-xs text-slate-500">الفترة: {data.period}</p>}
           </div>
           {data && (
@@ -116,7 +112,6 @@ export default function KpiBreakdownChart({
         >
           إغلاق
         </button>
-      </div>
-    </div>
+    </Modal>
   )
 }

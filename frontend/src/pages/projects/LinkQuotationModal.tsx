@@ -1,3 +1,4 @@
+import Modal from '../../ui/Modal'
 import { useEffect, useState } from 'react'
 import { apiRequest } from '../../api'
 import type { Project } from './shared'
@@ -40,13 +41,8 @@ export default function LinkQuotationModal({ project, onClose, onLinked }: { pro
   }
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4" onClick={onClose}>
-      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-lg max-h-[85vh] flex flex-col" onClick={e => e.stopPropagation()} data-testid="link-quotation">
-        <div className="p-4 border-b flex items-center justify-between">
-          <h3 className="font-bold">🔗 ربط عرض سعر موجود — {project.name}</h3>
-          <button onClick={onClose} className="text-gray-500 text-xl leading-none">×</button>
-        </div>
-        <div className="p-4 space-y-3 overflow-y-auto">
+    <Modal title={<>🔗 ربط عرض سعر موجود — {project.name}</>} onClose={onClose} size="md" busy={busy} bodyClassName="p-0">
+        <div className="p-4 space-y-3" data-testid="link-quotation">
           {linked ? (
             <p className="text-sm bg-green-50 text-green-800 rounded-lg p-3">هذا المشروع مربوط بعرض <b>{linked.quotationNumber}</b>. ما يحتاج ربط.</p>
           ) : (
@@ -71,7 +67,6 @@ export default function LinkQuotationModal({ project, onClose, onLinked }: { pro
             </>
           )}
         </div>
-      </div>
-    </div>
+    </Modal>
   )
 }

@@ -1,3 +1,4 @@
+import Modal from '../ui/Modal'
 import { useState } from 'react'
 import { bookingDone } from '../bookingDone'
 import { api, type Booking, type BookingProgressReport } from '../api'
@@ -66,11 +67,7 @@ export default function PartialCompleteDialog({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-      <div className="max-h-[90vh] w-full max-w-4xl overflow-y-auto rounded-2xl bg-white p-5 shadow-xl">
-        <h3 className="text-lg font-bold text-[#0f2040]">
-          🔄 إنجاز جزئي — حجز <BookingCodeChip code={booking.code} />
-        </h3>
+    <Modal title={<>🔄 إنجاز جزئي — حجز <BookingCodeChip code={booking.code} /></>} onClose={onClose} size="xl" busy={busy} closeOnBackdrop={false}>
         <p className="mt-1 text-xs text-slate-500">
           الحجز راح يرجع لإداري الحجوزات حتى ينسّق يوم جديد، وتقريرك هذا يوصل للكادر الي يكمّل.
         </p>
@@ -154,7 +151,6 @@ export default function PartialCompleteDialog({
             إلغاء
           </button>
         </div>
-      </div>
-    </div>
+    </Modal>
   )
 }

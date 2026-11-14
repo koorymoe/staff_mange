@@ -1,3 +1,4 @@
+import Modal from '../ui/Modal'
 import { useEffect, useState } from 'react'
 import { api, type DuplicateCandidate } from '../api'
 import EntityIdentity from '../components/EntityIdentity'
@@ -216,14 +217,12 @@ export default function DuplicateReviewPage() {
       </div>
 
       {merge && (
-        <div className="fixed inset-0 z-50 grid place-items-center bg-black/50 p-4" onClick={() => setMerge(null)}>
-          <div dir="rtl" className="w-full max-w-md rounded-2xl bg-white p-5" onClick={(e) => e.stopPropagation()}>
+        <Modal title="🔀 دمج الزبونين" onClose={() => setMerge(null)} size="md">
             {(() => {
               const keep = merge.row.customerA?.id === merge.keepId ? merge.row.customerA : merge.row.customerB
               const drop = keep === merge.row.customerA ? merge.row.customerB : merge.row.customerA
               return (
                 <>
-                  <h3 className="mb-2 text-lg font-extrabold text-[#0f2040]">🔀 دمج الزبونين</h3>
                   <p className="text-sm">الأصلي يبقى: <b>{custCode(keep?.customerCode)} {keep?.name}</b> ({keep?.phone})</p>
                   <p className="text-sm">ينشال: <b className="text-red-700">{custCode(drop?.customerCode)} {drop?.name}</b> ({drop?.phone})</p>
                   <div className="mt-3 rounded-lg bg-slate-50 p-3 text-sm">
@@ -240,8 +239,7 @@ export default function DuplicateReviewPage() {
                 </>
               )
             })()}
-          </div>
-        </div>
+        </Modal>
       )}
     </div>
   )

@@ -1,3 +1,4 @@
+import Modal from '../ui/Modal'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { api, complaintTypeLabels, type Complaint, type ComplaintCustomerStat, type ComplaintType, type Customer, type Employee } from '../api'
@@ -419,9 +420,7 @@ export default function ComplaintsPage() {
 
       {/* Resolution modal */}
       {canTrack && resolvingId && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-          <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl">
-            <h3 className="mb-4 text-lg font-bold text-brand-800">حل الشكوى</h3>
+        <Modal title="حل الشكوى" onClose={() => { setResolvingId(null); setResolution('') }} size="md" closeOnBackdrop={false}>
             <textarea
               value={resolution}
               onChange={(e) => setResolution(e.target.value)}
@@ -443,8 +442,7 @@ export default function ComplaintsPage() {
                 إلغاء
               </button>
             </div>
-          </div>
-        </div>
+        </Modal>
       )}
 
       {loading && <p className="mt-6 text-slate-400">جاري التحميل…</p>}

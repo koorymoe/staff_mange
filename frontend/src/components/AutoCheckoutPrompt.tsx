@@ -1,3 +1,4 @@
+import Modal from '../ui/Modal'
 import { useEffect, useState } from 'react'
 import { api } from '../api'
 import { useSession, isAdminOrOwner } from '../session'
@@ -39,9 +40,9 @@ export default function AutoCheckoutPrompt() {
     } catch (e) { setErr(e instanceof Error ? e.message : 'تعذر') } finally { setBusy(false) }
   }
 
+  // (دازاي 11-15) قرار لازم يتاخذ — النافذة ما تنسد إلا بجوابه
   return (
-    <div dir="rtl" className="fixed inset-0 z-[85] flex items-end justify-center bg-black/40 p-3 sm:items-center">
-      <div className="w-full max-w-md rounded-3xl bg-white p-5 shadow-2xl">
+    <Modal onClose={() => setInfo(null)} size="md" busy={busy} dismissible={false} layer="z-[85]">
         <div className="text-center text-4xl">🤖</div>
         {step === 'ask' && (
           <>
@@ -74,7 +75,6 @@ export default function AutoCheckoutPrompt() {
           </>
         )}
         {err && step === 'ask' && <p className="mt-2 text-center text-sm text-red-600">{err}</p>}
-      </div>
-    </div>
+    </Modal>
   )
 }

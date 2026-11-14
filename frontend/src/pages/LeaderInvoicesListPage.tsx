@@ -1,3 +1,4 @@
+import Modal from '../ui/Modal'
 import { useEffect, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { onEnter } from '../utils/enterKey'
@@ -906,9 +907,7 @@ export default function LeaderInvoicesListPage({ embedded }: EmbeddedProps = {})
       {/* تفاصيل الفاتورة — كل الي يحتاجه المحاسب بمكان واحد */}
       {/* ═══ ربط رقم فاتورة بفاتورة معتمدة أصلاً ═══ */}
       {linkFor && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 p-4">
-          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl">
-            <h3 className="text-lg font-bold text-[#0f2040]">🔗 ربط رقم الفاتورة المحاسبية</h3>
+        <Modal title="🔗 ربط رقم الفاتورة المحاسبية" onClose={() => setLinkFor(null)} size="md" busy={busyId === linkFor.id} closeOnBackdrop={false}>
             <p className="mt-1 text-xs text-slate-500">
               هاي فاتورة انعتمدت قبل ما يصير الرقم إجبارياً — اربطها برقمها حتى يكتمل الأرشيف.
               <br />كود المحاسبة: <span className="font-mono font-bold text-brand-700">{linkFor.accountingCode}</span>
@@ -934,15 +933,12 @@ export default function LeaderInvoicesListPage({ embedded }: EmbeddedProps = {})
                 رجوع
               </button>
             </div>
-          </div>
-        </div>
+        </Modal>
       )}
 
       {/* ═══ تعديل المحاسب على المبالغ ═══ */}
       {adjustFor && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center overflow-y-auto bg-black/40 p-4">
-          <div className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl">
-            <h3 className="text-lg font-bold text-[#0f2040]">✏️ تعديل مبالغ الفاتورة</h3>
+        <Modal title="✏️ تعديل مبالغ الفاتورة" onClose={() => setAdjustFor(null)} size="md" busy={busyId === adjustFor.id} closeOnBackdrop={false}>
             <p className="mt-1 text-xs text-slate-500">
               كود المحاسبة: <span className="font-mono font-bold text-brand-700">{adjustFor.accountingCode}</span>
               {adjustFor.booking && (
@@ -1008,8 +1004,7 @@ export default function LeaderInvoicesListPage({ embedded }: EmbeddedProps = {})
                 رجوع
               </button>
             </div>
-          </div>
-        </div>
+        </Modal>
       )}
 
       {/* ═══ الاعتماد يمر برقم الفاتورة المحاسبية ═══ */}
@@ -1019,9 +1014,7 @@ export default function LeaderInvoicesListPage({ embedded }: EmbeddedProps = {})
           غير مطابق = يختلف.
           خطأ بالسعر = الموظف جاب أعلى أو أوطى من الفاتورة. */}
       {auditFor && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={() => setAuditFor(null)}>
-          <div dir="rtl" className="w-full max-w-md rounded-2xl bg-white p-5" onClick={(e) => e.stopPropagation()}>
-            <h3 className="font-bold text-[#0f2040]">🔍 تدقيق الفاتورة {auditFor.accountingCode}</h3>
+        <Modal title={<>🔍 تدقيق الفاتورة {auditFor.accountingCode}</>} onClose={() => setAuditFor(null)} size="md" busy={busyId !== null}>
             <p className="mt-1 text-xs text-slate-500">
               مبلغ الفاتورة: <b>{auditFor.netTotal.toLocaleString()} د.ع</b>
             </p>
@@ -1081,15 +1074,12 @@ export default function LeaderInvoicesListPage({ embedded }: EmbeddedProps = {})
                 رجوع
               </button>
             </div>
-          </div>
-        </div>
+        </Modal>
       )}
 
       {/* ═══ إرسال للمراقب ═══ */}
       {monitorFor && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={() => setMonitorFor(null)}>
-          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl" onClick={(e) => e.stopPropagation()}>
-            <h3 className="text-lg font-bold text-[#0f2040]">👁️ إرسال للمراقب</h3>
+        <Modal title="👁️ إرسال للمراقب" onClose={() => setMonitorFor(null)} size="md" busy={busyId === monitorFor.id}>
             <p className="mt-1 text-sm text-slate-600">
               الفاتورة راح تنتقل لطابور المراقب حتى يراجعها ويدققها، وترجعلك بحكمه.
               حكمك ({AUDIT_VERDICTS.find((v) => v.key === monitorFor.auditVerdict)?.label ?? '—'}) يبقى محفوظاً.
@@ -1112,15 +1102,12 @@ export default function LeaderInvoicesListPage({ embedded }: EmbeddedProps = {})
               <button onClick={() => setMonitorFor(null)}
                 className="rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-bold text-slate-500">إلغاء</button>
             </div>
-          </div>
-        </div>
+        </Modal>
       )}
 
       {/* ═══ المراقب يبتّ ═══ */}
       {decideFor && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={() => setDecideFor(null)}>
-          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl" onClick={(e) => e.stopPropagation()}>
-            <h3 className="text-lg font-bold text-[#0f2040]">👁️ مراجعة المراقب</h3>
+        <Modal title="👁️ مراجعة المراقب" onClose={() => setDecideFor(null)} size="md" busy={busyId === decideFor.id}>
             <p className="mt-1 text-sm text-slate-600">
               فاتورة <b>{decideFor.accountingCode}</b> — {(decideFor.netTotal ?? 0).toLocaleString()} د.ع
             </p>
@@ -1160,14 +1147,11 @@ export default function LeaderInvoicesListPage({ embedded }: EmbeddedProps = {})
               <button onClick={() => setDecideFor(null)}
                 className="rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-bold text-slate-500">إلغاء</button>
             </div>
-          </div>
-        </div>
+        </Modal>
       )}
 
       {approveFor && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 p-4">
-          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl">
-            <h3 className="text-lg font-bold text-[#0f2040]">اعتماد الفاتورة</h3>
+        <Modal title="اعتماد الفاتورة" onClose={() => setApproveFor(null)} size="md" busy={busyId === approveFor.id} closeOnBackdrop={false}>
             <p className="mt-1 text-xs text-slate-500">
               كود المحاسبة: <span className="font-mono font-bold text-brand-700">{approveFor.accountingCode}</span>
               {' · '}المجموع: <b>{approveFor.netTotal.toLocaleString()} د.ع</b>
@@ -1227,16 +1211,13 @@ export default function LeaderInvoicesListPage({ embedded }: EmbeddedProps = {})
                 رجوع
               </button>
             </div>
-          </div>
-        </div>
+        </Modal>
       )}
 
       {details && (
-        <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/40 p-4" onClick={() => setDetails(null)}>
-          <div dir="rtl" className="my-8 w-full max-w-3xl rounded-2xl bg-white p-6 shadow-xl" onClick={(e) => e.stopPropagation()}>
+        <Modal title="تفاصيل الفاتورة" onClose={() => setDetails(null)} size="xl">
             <div className="flex items-start justify-between">
               <div>
-                <h3 className="text-lg font-bold text-brand-900">تفاصيل الفاتورة</h3>
                 <p className="font-mono text-sm text-brand-700">{details.accountingCode}</p>
               </div>
               <div className="flex items-center gap-1">
@@ -1246,7 +1227,6 @@ export default function LeaderInvoicesListPage({ embedded }: EmbeddedProps = {})
                 >
                   🖨️ طباعة
                 </button>
-                <button onClick={() => setDetails(null)} className="rounded-lg px-3 py-1 text-slate-400 hover:bg-slate-100">✕</button>
               </div>
             </div>
 
@@ -1402,8 +1382,7 @@ export default function LeaderInvoicesListPage({ embedded }: EmbeddedProps = {})
                 <b className="text-brand-800">{details.netTotal.toLocaleString()} د.ع</b>
               </div>
             </section>
-          </div>
-        </div>
+        </Modal>
       )}
     </div>
   )

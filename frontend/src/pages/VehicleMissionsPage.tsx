@@ -1,3 +1,4 @@
+import Modal from '../ui/Modal'
 import { useEffect, useState } from 'react'
 import { api, type DriverRatingSummary, type Employee, type VehicleMission, type VehicleOption, type VehicleTool } from '../api'
 import { useSession } from '../session'
@@ -348,9 +349,7 @@ export default function VehicleMissionsPage() {
         </div>
 
         {ending && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-            <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl">
-              <h3 className="text-lg font-bold text-brand-900">إنهاء مهمة {ending.vehicle?.name}</h3>
+          <Modal title={<>إنهاء مهمة {ending.vehicle?.name}</>} onClose={() => setEnding(null)} size="md" busy={guard.busy} closeOnBackdrop={false}>
               <p className="mt-1 text-sm text-slate-500">عداد البداية: {ending.startOdometer.toLocaleString()}</p>
               <input autoFocus type="number" min={ending.startOdometer} placeholder="عداد النهاية" value={endForm.endOdometer} onChange={(e) => setEndForm({ ...endForm, endOdometer: e.target.value })} className={`mt-4 w-full ${INPUT}`} />
               <textarea placeholder="ملاحظات (اختياري)" value={endForm.notes} onChange={(e) => setEndForm({ ...endForm, notes: e.target.value })} className={`mt-3 h-20 w-full ${INPUT}`} />
@@ -358,14 +357,11 @@ export default function VehicleMissionsPage() {
                 <button onClick={end} disabled={endForm.endOdometer === '' || guard.busy} className="flex-1 rounded-xl bg-gradient-to-l from-brand-500 to-brand-800 py-2.5 font-bold text-white disabled:opacity-50">إنهاء المهمة</button>
                 <button onClick={() => setEnding(null)} className="rounded-xl border border-slate-300 px-6 py-2.5 font-medium text-slate-600">إلغاء</button>
               </div>
-            </div>
-          </div>
+          </Modal>
         )}
 
         {rating && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-            <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl">
-              <h3 className="text-lg font-bold text-brand-900">تقييم {rating.driver?.name} — {rating.vehicle?.name}</h3>
+          <Modal title={<>تقييم {rating.driver?.name} — {rating.vehicle?.name}</>} onClose={() => setRating(null)} size="md" busy={guard.busy} closeOnBackdrop={false}>
               <div className="mt-4 space-y-3">
                 {RATING_FIELDS.map((f) => (
                   <div key={f.key} className="flex items-center justify-between gap-3">
@@ -383,14 +379,11 @@ export default function VehicleMissionsPage() {
                 <button onClick={submitRating} disabled={guard.busy} className="flex-1 rounded-xl bg-gradient-to-l from-brand-500 to-brand-800 py-2.5 font-bold text-white disabled:opacity-50">حفظ التقييم</button>
                 <button onClick={() => setRating(null)} className="rounded-xl border border-slate-300 px-6 py-2.5 font-medium text-slate-600">إلغاء</button>
               </div>
-            </div>
-          </div>
+          </Modal>
         )}
 
         {toolCheck && canToolCheck && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-            <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl">
-              <h3 className="text-lg font-bold text-brand-900">🧰 فحص أدوات {toolCheck.vehicle?.name}</h3>
+          <Modal title={<>🧰 فحص أدوات {toolCheck.vehicle?.name}</>} onClose={() => setToolCheck(null)} size="md" busy={guard.busy} closeOnBackdrop={false}>
               <p className="mt-1 text-sm text-slate-500">أشّر الأدوات الناقصة — إذا كلشي موجود احفظ بلا تأشير</p>
               <div className="mt-4 max-h-72 space-y-1 overflow-auto">
                 {tools === null ? (
@@ -415,8 +408,7 @@ export default function VehicleMissionsPage() {
                 </button>
                 <button onClick={() => setToolCheck(null)} className="rounded-xl border border-slate-300 px-6 py-2.5 font-medium text-slate-600">لاحقاً</button>
               </div>
-            </div>
-          </div>
+          </Modal>
         )}
       </div>
     </>

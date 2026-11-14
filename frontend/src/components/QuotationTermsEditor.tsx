@@ -1,3 +1,4 @@
+import Modal from '../ui/Modal'
 import { useEffect, useState } from 'react'
 import { api } from '../api'
 import { askChoice } from '../utils/dialog'
@@ -25,9 +26,7 @@ export default function QuotationTermsEditor({ onClose }: { onClose: () => void 
   }
 
   return (
-    <div dir="rtl" className="fixed inset-0 z-[90] flex items-center justify-center bg-black/50 p-4" onClick={onClose}>
-      <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl bg-white p-5 shadow-xl" onClick={(e) => e.stopPropagation()}>
-        <h3 className="text-lg font-bold text-[#0f2040]">⚙️ الشروط والأحكام بعرض السعر</h3>
+    <Modal title="⚙️ الشروط والأحكام بعرض السعر" onClose={onClose} size="lg" busy={busy} layer="z-[90]">
         <p className="mt-1 text-xs text-slate-500">تطلع بكل عرض سعر جديد بنفس هالترتيب. العروض الي انطبعت قبل تبقى مثل ما هي.</p>
         {terms === null ? <p className="mt-4 text-slate-400">جاري التحميل…</p> : (
           <div className="mt-4 space-y-2">
@@ -50,7 +49,6 @@ export default function QuotationTermsEditor({ onClose }: { onClose: () => void 
           <button type="button" onClick={onClose} className="rounded-lg border border-slate-200 px-4 py-2 text-sm">إلغاء</button>
           <button type="button" disabled={busy || terms === null} onClick={() => void save()} className="rounded-lg bg-[#1a237e] px-4 py-2 text-sm font-bold text-white disabled:opacity-50">💾 احفظ</button>
         </div>
-      </div>
-    </div>
+    </Modal>
   )
 }

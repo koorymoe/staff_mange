@@ -1,3 +1,4 @@
+import Modal from '../ui/Modal'
 import { useEffect, useRef, useState } from 'react'
 import { useSeenOnView } from '../ui/useSeenOnView'
 import { bookingDone } from '../bookingDone'
@@ -72,12 +73,7 @@ function DirectionsModal({ booking, onClose }: { booking: Booking; onClose: () =
   }, [lat, lng])
 
   return (
-    <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/50 p-4">
-      <div className="w-full max-w-lg rounded-2xl bg-white shadow-2xl">
-        <div className="flex items-center justify-between border-b border-slate-100 p-4">
-          <h3 className="font-bold text-brand-900">🗺️ الطريق لموقع الزبون</h3>
-          <button onClick={onClose} className="text-2xl text-slate-400 hover:text-slate-600">×</button>
-        </div>
+    <Modal title="🗺️ الطريق لموقع الزبون" onClose={onClose} size="md" closeOnBackdrop={false} layer="z-[70]" bodyClassName="p-0">
         <div className="p-4">
           <p className="mb-3 text-sm text-slate-500">{booking.address || booking.customer?.location || 'بدون عنوان محدد'}</p>
           {lat != null && lng != null ? (
@@ -98,8 +94,7 @@ function DirectionsModal({ booking, onClose }: { booking: Booking; onClose: () =
           )}
           <button onClick={onClose} className="rounded-lg border border-slate-200 px-6 py-2.5 text-sm font-bold text-slate-600 hover:bg-slate-50">إغلاق</button>
         </div>
-      </div>
-    </div>
+    </Modal>
   )
 }
 
@@ -878,10 +873,8 @@ export default function MyTasks() {
       )}
 
       {toolsModalBooking && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl">
+        <Modal title={<>{toolsOnly ? '📋 جرد العدّة' : '🛠️ بدء العمل — أكّد عدّتك'} <BookingCodeChip code={toolsModalBooking.code} /></>} onClose={() => setToolsModalBooking(null)} size="md" busy={submittingAccept} closeOnBackdrop={false}>
             {/* (ع) 10-19: چانت «تأكيد استلام الحجز» وهي تبدي العمل — الفني يحسب نفسه يستلم */}
-            <h3 className="text-lg font-bold text-brand-900">{toolsOnly ? '📋 جرد العدّة' : '🛠️ بدء العمل — أكّد عدّتك'} <BookingCodeChip code={toolsModalBooking.code} /></h3>
             <p className="mt-1 text-sm font-medium text-amber-700">
               علّم فقط الأداة الناقصة عندك — الباقي مؤشر مسبقاً كموجود.
             </p>
@@ -924,8 +917,7 @@ export default function MyTasks() {
                 {submittingAccept ? 'جارٍ التأكيد...' : toolsOnly ? 'تم' : 'ابدأ العمل'}
               </button>
             </div>
-          </div>
-        </div>
+        </Modal>
       )}
 
       {partialFor && (
@@ -954,9 +946,7 @@ export default function MyTasks() {
 
       {/* ═══ سبب توقف العمل — إجباري ═══ */}
       {stopFor && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl">
-            <h3 className="text-lg font-bold text-[#0f2040]">⏸ توقف العمل — حجز <BookingCodeChip code={stopFor.code} /></h3>
+        <Modal title={<>⏸ توقف العمل — حجز <BookingCodeChip code={stopFor.code} /></>} onClose={() => setStopFor(null)} size="md" busy={stopping} closeOnBackdrop={false}>
             <p className="mt-1 text-xs text-slate-500">
               اكتب سبب التوقف. بدونه ما ينفع لا للمتابعة ولا للتقرير.
             </p>
@@ -982,18 +972,13 @@ export default function MyTasks() {
                 رجوع
               </button>
             </div>
-          </div>
-        </div>
+        </Modal>
       )}
 
       {/* ═══ بعد الإنجاز أو التوقف: الورق الباقي ═══
           مو إجباري — يكدر يأجله بـ«بعدين». بس ما يختفي بالسكوت مثل قبل. */}
       {paperwork && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl">
-            <h3 className="text-lg font-bold text-[#0f2040]">
-              {paperwork.stopped ? '⏸ العمل توقف' : '✅ تم الإنجاز'} — حجز <BookingCodeChip code={paperwork.booking.code} />
-            </h3>
+        <Modal title={<>{paperwork.stopped ? '⏸ العمل توقف' : '✅ تم الإنجاز'} — حجز <BookingCodeChip code={paperwork.booking.code} /></>} onClose={() => setPaperwork(null)} size="md" closeOnBackdrop={false}>
             <p className="mt-1 text-sm text-slate-600">
               {paperwork.stopped
                 ? 'باقي عليك تقرير يوضّح شنو صار ووين وقف الشغل.'
@@ -1045,8 +1030,7 @@ export default function MyTasks() {
             <p className="mt-3 text-[11px] leading-relaxed text-amber-700">
               ⚠ الحجز راح يبقى مؤشّر «منجز بدون فاتورة/تقرير» بتنسيق الحجوزات لين تخلّصهن.
             </p>
-          </div>
-        </div>
+        </Modal>
       )}
 
       {/* ═══ شغلي الي خلّصته ═══
