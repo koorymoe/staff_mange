@@ -96,7 +96,7 @@ export function CurriculumTree() {
           <button onClick={async () => {
             if (kids.has(n.id)) { setError(`«${n.title}» بيه تفرعات — احذفهن أول`); return }
             if (await askConfirm(`حذف «${n.title}»؟`, { danger: true, okLabel: 'حذف' })) run(api.tcDeleteCurriculum(n.id))
-          }} className="text-xs font-bold text-red-600">حذف</button>
+          }} className="rounded-full bg-red-100 px-2 py-0.5 text-[11px] font-bold text-red-700">حذف</button>
         </span>
       </div>
       {addUnder === n.id && (
