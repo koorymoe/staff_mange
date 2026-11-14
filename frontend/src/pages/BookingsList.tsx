@@ -680,7 +680,7 @@ export default function BookingsList({ bucket = 'all', focus }: { bucket?: Booki
                               <button
                                 onClick={() => confirmAndTransfer(b, false)}
                                 disabled={flowBusy === b.id}
-                                className="rounded-lg bg-brand-600 px-2.5 py-1 text-[11px] font-bold text-white hover:bg-brand-700 disabled:opacity-50"
+                                className="rounded-lg bg-[#0f2040] px-2.5 py-1 text-[11px] font-bold text-white hover:bg-[#1a3a6c] disabled:opacity-50"
                               >
                                 ✅ ثبّت ورحّل لكادر الشد
                               </button>

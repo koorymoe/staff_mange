@@ -1,4 +1,6 @@
 import { Fragment, useCallback, useEffect, useMemo, useState } from 'react'
+import Modal from '../ui/Modal'
+import SharedStat from '../ui/StatCard'
 import { useNavigate } from 'react-router-dom'
 import { api, EXTRA_TASK_STATUS, type ExtraTask } from '../api'
 import PctWhy from '../ui/PctWhy'
@@ -490,9 +492,7 @@ export default function MyExtraTasksPage() {
       {/* ⚠️ الإنجاز يطلب وصف: «تم» بلا شرح ترجّع المدير يسأل بالتلفون
           — وهاي نفس المكالمة الي بنينا الميزة حتى نلغيها. */}
       {doneFor && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={() => setDoneFor(null)}>
-          <div dir="rtl" className="w-full max-w-md rounded-2xl bg-white p-5" onClick={(e) => e.stopPropagation()}>
-            <h3 className="font-bold text-[#0f2040]">✓ إنهاء: {doneFor.title}</h3>
+        <Modal title={<>✓ إنهاء: {doneFor.title}</>} onClose={() => setDoneFor(null)} size="md" bodyClassName="p-5">
             <label className="mb-1 mt-3 block text-xs font-bold text-slate-500">
               شنو سويت بالضبط؟ <span className="text-red-600">*</span>
             </label>
@@ -516,8 +516,7 @@ export default function MyExtraTasksPage() {
                 رجوع
               </button>
             </div>
-          </div>
-        </div>
+</Modal>
       )}
     </div>
   )
@@ -525,41 +524,20 @@ export default function MyExtraTasksPage() {
 
 /* ───── بطاقة رقم ───── */
 
-const TONES: Record<string, string> = {
-  sky: 'bg-sky-50 text-sky-600',
-  violet: 'bg-violet-50 text-violet-600',
-  amber: 'bg-amber-50 text-amber-600',
-  emerald: 'bg-emerald-50 text-emerald-600',
-}
-
-const BAR: Record<string, string> = { sky: 'bg-sky-500', violet: 'bg-violet-500', amber: 'bg-amber-500', emerald: 'bg-emerald-500' }
-
+// (دازاي 11-15) صارت بطاقة مشتركة (ui/StatCard) — هنا بس نحوّل الأسماء.
 function StatCard({ label, value, of, icon, tone, why }: {
   label: string; value: number; of: number; icon: string; tone: string
   why: { num: string; den: string; meaning: string; source: string }
 }) {
   const pct = of > 0 ? Math.min(100, Math.round((value / of) * 100)) : 0
+  const t = tone === 'sky' ? 'blue' : tone === 'emerald' ? 'green' : tone === 'violet' ? 'violet' : 'amber'
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-3 shadow-[0_2px_12px_rgba(15,32,64,0.05)] sm:p-4">
-      <div className="flex items-start justify-between gap-2">
-        <div className="min-w-0">
-          <p className="truncate text-[10px] font-bold text-slate-500 sm:text-[11px]">{label}</p>
-          <p className="mt-1 text-2xl font-black text-[#0f2040] sm:text-3xl">{value}</p>
-          <p className="text-[10px] text-slate-400">من {of} مهمة</p>
-        </div>
-        <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-xl text-sm sm:h-10 sm:w-10 sm:text-base ${TONES[tone]}`}>
-          {icon}
-        </span>
-      </div>
-      <div className="mt-2 flex items-center gap-2">
-        <div className="h-1.5 flex-1 rounded-full bg-slate-100"><div className={`h-1.5 rounded-full ${BAR[tone]}`} style={{ width: `${pct}%` }} /></div>
-        <PctWhy title={label} value={of > 0 ? pct : null} className="text-[10px] font-bold text-slate-500 tabular-nums"
-          formula={of > 0
-            ? <>{value} {why.num} ÷ {of} {why.den} × ١٠٠ = {Math.round((value / of) * 100)}%{value > of ? ' — وتنعرض ١٠٠٪ لأن الشريط ما يعبر الآخر' : ''}.</>
-            : <>ماكو {why.den} هسه، فماكو نسبة.</>}
-          meaning={why.meaning} source={why.source} />
-      </div>
-    </div>
+    <SharedStat label={label} value={value} hint={`من ${of} مهمة`} icon={icon} tone={t} pct={pct}
+      pctLabel={<PctWhy title={label} value={of > 0 ? pct : null} className="text-[11px] font-extrabold tabular-nums text-slate-600"
+        formula={of > 0
+          ? <>{value} {why.num} ÷ {of} {why.den} × ١٠٠ = {Math.round((value / of) * 100)}%{value > of ? ' — وتنعرض ١٠٠٪ لأن الشريط ما يعبر الآخر' : ''}.</>
+          : <>ماكو {why.den} هسه، فماكو نسبة.</>}
+        meaning={why.meaning} source={why.source} />} />
   )
 }
 

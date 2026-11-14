@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import Modal from '../ui/Modal'
 import { api, LEADER_SKILLS, type Employee, type Service, type Stats } from '../api'
 import EmployeeHRPanel from '../components/EmployeeHRPanel'
 import EmployeeAvatar from '../components/EmployeeAvatar'
@@ -1271,9 +1272,7 @@ function EditAllModal({ employee, allowRole, onClose, onSave }: {
   )
   void allowRole
   return (
-    <div className="fixed inset-0 z-50 grid place-items-center bg-black/40 p-4" dir="rtl" onClick={onClose}>
-      <div className="w-full max-w-lg rounded-2xl bg-white p-5 shadow-xl" onClick={(e) => e.stopPropagation()}>
-        <h3 className="mb-3 text-lg font-extrabold text-[#0f2040]">✏️ تعديل بيانات {employee.name}</h3>
+    <Modal title={<>✏️ تعديل بيانات {employee.name}</>} onClose={onClose} size="lg" bodyClassName="p-5">
         <div className="grid gap-2 sm:grid-cols-2">
           {field('الاسم الكامل', 'name')}
           {field('الهاتف', 'phone')}
@@ -1300,9 +1299,8 @@ function EditAllModal({ employee, allowRole, onClose, onSave }: {
             position: f.position.trim() || null, jobTitle: f.jobTitle.trim() || null, shift: f.shift,
             shiftStart: f.shiftStart || null, shiftEnd: f.shiftEnd || null,
             monthlyLeaves: Number(f.monthlyLeaves) || 0, hasDrivingLicense: f.hasDrivingLicense,
-          })} className="rounded-lg bg-brand-600 px-4 py-1.5 text-sm font-bold text-white">حفظ</button>
+          })} className="rounded-lg bg-[#0f2040] px-4 py-1.5 text-sm font-bold text-white">حفظ</button>
         </div>
-      </div>
-    </div>
+</Modal>
   )
 }

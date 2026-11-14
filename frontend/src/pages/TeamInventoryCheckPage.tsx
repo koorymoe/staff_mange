@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import StatCard from '../ui/StatCard'
 import { api, type Booking, type BookingCrewInventoryState } from '../api'
 import { acceptedBookings } from '../utils/acceptedBookings'
 import BookingCodeChip from '../components/BookingCodeChip'
@@ -108,7 +109,7 @@ export default function TeamInventoryCheckPage({ embedded }: { embedded?: boolea
                     key={b.id}
                     onClick={() => setSelected(b.id)}
                     className={`rounded-lg px-2 py-1 text-[10px] font-bold transition ${
-                      b.id === selected ? 'bg-brand-700 text-white' : 'border border-slate-300 bg-white text-slate-600 hover:bg-slate-50'
+                      b.id === selected ? 'bg-[#0f2040] text-white' : 'border border-slate-300 bg-white text-slate-600 hover:bg-slate-50'
                     }`}
                   >
                     {b.code || b.customer?.name || 'حجز'}
@@ -190,16 +191,7 @@ export default function TeamInventoryCheckPage({ embedded }: { embedded?: boolea
   )
 }
 
+// (دازاي 11-15) صارت بطاقة مشتركة (ui/StatCard) — هنا بس نحوّل الأسماء.
 function Stat({ label, value, tone }: { label: string; value: number; tone: 'slate' | 'emerald' | 'red' }) {
-  const tones: Record<string, string> = {
-    slate: 'text-slate-700',
-    emerald: 'text-emerald-700',
-    red: 'text-red-700',
-  }
-  return (
-    <div className="flex flex-col justify-center rounded-2xl border border-slate-200 bg-white p-3 text-center shadow-sm">
-      <p className={`text-2xl font-black ${tones[tone]}`}>{value}</p>
-      <p className="text-[10px] text-slate-500">{label}</p>
-    </div>
-  )
+  return <StatCard label={label} value={value} tone={tone === 'emerald' ? 'green' : tone} />
 }

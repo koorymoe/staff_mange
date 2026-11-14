@@ -96,7 +96,7 @@ export default function ChecklistsPage() {
           <option value="">-- مشروع (اختياري) --</option>
           {projects.map((p) => <option key={p.id} value={p.id}>{p.code} - {p.name}</option>)}
         </select>
-        <button type="submit" disabled={creating} className="rounded-lg bg-brand-500 px-4 py-2 text-sm font-bold text-white hover:bg-brand-600 disabled:opacity-50">
+        <button type="submit" disabled={creating} className="rounded-lg bg-brand-500 px-4 py-2 text-sm font-bold text-white hover:bg-[#1a3a6c] disabled:opacity-50">
           {creating ? 'جاري الإنشاء...' : '+ كشف جديد'}
         </button>
       </form>

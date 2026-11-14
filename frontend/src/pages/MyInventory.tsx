@@ -284,7 +284,7 @@ export default function MyInventory() {
                           onClick={() => pickBooking(b.id)}
                           className={`rounded-lg px-2 py-1 text-[10px] font-bold transition ${
                             b.id === forBooking
-                              ? 'bg-brand-700 text-white'
+                              ? 'bg-[#0f2040] text-white'
                               : 'border border-slate-300 bg-white text-slate-600 hover:bg-slate-50'
                           }`}
                         >

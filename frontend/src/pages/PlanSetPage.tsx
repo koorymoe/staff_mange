@@ -197,7 +197,7 @@ export default function PlanSetPage() {
           const on = g.no === group
           return (
             <button key={g.no} type="button" onClick={() => { setGroup(g.no); setType(g.types.length === 1 ? g.types[0].code : '') }}
-              className={`flex items-center gap-2 rounded-xl border p-2.5 text-start transition ${on ? 'border-brand-700 bg-brand-700 text-white shadow-md' : 'border-slate-200 bg-white hover:border-brand-700'}`}>
+              className={`flex items-center gap-2 rounded-xl border p-2.5 text-start transition ${on ? 'border-brand-700 bg-[#0f2040] text-white shadow-md' : 'border-slate-200 bg-white hover:border-brand-700'}`}>
               <span className={`grid h-8 w-8 shrink-0 place-items-center rounded-lg text-sm font-extrabold ${on ? 'bg-white/20 text-white' : 'bg-slate-100 text-brand-700'}`}>{g.no}</span>
               <span className="min-w-0 flex-1">
                 <b className={`block text-xs leading-snug ${on ? 'text-white' : 'text-slate-800'}`} title={g.name}>{GROUP_ICON[g.no]} {g.name}</b>

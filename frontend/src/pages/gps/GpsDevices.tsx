@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
+import Modal from '../../ui/Modal'
 import { api, type GpsDeviceRequest } from '../../api'
 import { escDeep } from '../../utils/printIdentity'
 
@@ -166,12 +167,7 @@ export default function GpsDevices() {
       )}
 
       {selected && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ background: 'rgba(0,0,0,0.5)' }}>
-          <div className="rounded-2xl w-full max-w-3xl m-4" style={{ background: 'var(--sf-card)', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)', maxHeight: '90vh', overflowY: 'auto' }}>
-            <div className="p-5 flex items-center justify-between" style={{ borderBottom: '1px solid var(--bd-line)', position: 'sticky', top: 0, background: 'var(--sf-card)', zIndex: 1 }}>
-              <h2 className="text-xl font-bold text-t-title">مراجعة الطلب</h2>
-              <button onClick={() => setSelected(null)} style={{ color: 'var(--t-faint)', fontSize: '1.5rem', background: 'none', border: 'none', cursor: 'pointer' }}>✕</button>
-            </div>
+        <Modal title="مراجعة الطلب" onClose={() => setSelected(null)} size="xl" bodyClassName="p-0">
             <div className="p-6" style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
               <div className="grid grid-cols-2 gap-3 text-sm">
                 <InfoRow label="الاسم الكامل" value={`${selected.customer?.fullName || ''} ${selected.customer?.fatherName || ''} ${selected.customer?.grandfatherName || ''}`} />
@@ -260,8 +256,7 @@ export default function GpsDevices() {
                 إغلاق
               </button>
             </div>
-          </div>
-        </div>
+</Modal>
       )}
       <div ref={printRef} />
     </div>

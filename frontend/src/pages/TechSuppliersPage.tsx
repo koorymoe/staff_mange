@@ -102,7 +102,7 @@ function AdminView() {
         <div className="mt-2 flex flex-wrap gap-2">
           {d.people.map((p) => (
             <button key={p.id} type="button" onClick={() => pick(p.id)}
-              className={`rounded-full px-3 py-1 text-sm ${who === p.id ? 'bg-violet-700 text-white' : 'bg-white text-slate-700 ring-1 ring-slate-200'}`}>
+              className={`rounded-full px-3 py-1 text-sm ${who === p.id ? 'bg-[#0f2040] text-white' : 'bg-white text-slate-700 ring-1 ring-slate-200'}`}>
               {p.name} <span className="text-[11px] opacity-70">· {p.kind}</span>
             </button>
           ))}

@@ -235,7 +235,7 @@ export default function MonitorInboxPage({ embedded }: EmbeddedProps = {}) {
             onClick={() => { setTab(st.key); setPage(1); setDupMode(false); setJustMode(false) }}
             title={st.hint}
             className={`rounded-lg border px-3 py-2 text-xs font-bold transition-colors ${
-              tab === st.key && !dupMode && !justMode ? 'border-brand-600 bg-brand-600 text-white' : ''
+              tab === st.key && !dupMode && !justMode ? 'border-brand-600 bg-[#0f2040] text-white' : ''
             }`}
             style={tab === st.key && !dupMode && !justMode ? undefined : { borderColor: 'var(--bd-line)', backgroundColor: 'var(--sf-card)', color: 'var(--t-body)' }}
           >

@@ -127,7 +127,7 @@ export default function GpsFollowUp({ embedded }: { embedded?: boolean } = {}) {
           {canCall && row.stage !== 'RESOLVED' && (
             <button
               onClick={() => { setCallTarget(row); setOutcome('WILL_RENEW'); setNotes('') }}
-              className="rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700"
+              className="rounded-lg bg-[#0f2040] px-4 py-2 text-sm font-medium text-white hover:bg-[#1a3a6c]"
             >
               📞 سجّل نتيجة الاتصال
             </button>
@@ -246,7 +246,7 @@ export default function GpsFollowUp({ embedded }: { embedded?: boolean } = {}) {
             <div className="mt-4 flex gap-3">
               <button
                 onClick={submitCall} disabled={saving}
-                className="flex-1 rounded-lg bg-brand-600 px-4 py-3 font-medium text-white hover:bg-brand-700 disabled:opacity-50"
+                className="flex-1 rounded-lg bg-[#0f2040] px-4 py-3 font-medium text-white hover:bg-[#1a3a6c] disabled:opacity-50"
               >
                 {saving ? 'جاري الحفظ...' : 'حفظ'}
               </button>

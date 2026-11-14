@@ -154,7 +154,7 @@ export default function DeviceMaintenancePage() {
                 <div className="mt-3 flex gap-2">
                   {!t.receivedAt && (
                     <button onClick={() => markReceived(t.id)}
-                      className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-bold text-white">استلام الجهاز من الزبون</button>
+                      className="rounded-lg bg-[#0f2040] px-4 py-2 text-sm font-bold text-white">استلام الجهاز من الزبون</button>
                   )}
                   {t.receivedAt && !t.deliveredAt && (
                     <button onClick={() => markDelivered(t.id)}

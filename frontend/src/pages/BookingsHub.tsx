@@ -282,7 +282,7 @@ export default function BookingsHub() {
           <div className="flex flex-wrap gap-2">
             {([['at_projects', '🏗️ إدارة المشاريع'], ['at_tech', '🛠️ إدارة التقنيين']] as const).map(([k, label]) => (
               <button key={k} type="button" onClick={() => setDept(k)}
-                className={`rounded-xl px-4 py-2 text-sm font-bold transition ${dept === k ? 'bg-brand-700 text-white shadow' : 'border border-slate-200 bg-white text-slate-700 hover:bg-slate-50'}`}>
+                className={`rounded-xl px-4 py-2 text-sm font-bold transition ${dept === k ? 'bg-[#0f2040] text-white shadow' : 'border border-slate-200 bg-white text-slate-700 hover:bg-slate-50'}`}>
                 {label}{counts[k] != null && <span className="ms-1.5 rounded-full bg-white/25 px-1.5 text-xs tabular-nums">{counts[k]}</span>}
               </button>
             ))}

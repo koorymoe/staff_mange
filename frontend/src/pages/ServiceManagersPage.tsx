@@ -217,7 +217,7 @@ export default function ServiceManagersPage() {
             </div>
 
             <button onClick={save} disabled={saving || !selectedEmployeeId}
-              className="mt-5 w-full rounded-xl bg-brand-500 py-3 text-sm font-bold text-white hover:bg-brand-600 disabled:opacity-50">
+              className="mt-5 w-full rounded-xl bg-brand-500 py-3 text-sm font-bold text-white hover:bg-[#1a3a6c] disabled:opacity-50">
               {saving ? 'جاري الحفظ...' : 'حفظ المسؤولية'}
             </button>
           </div>

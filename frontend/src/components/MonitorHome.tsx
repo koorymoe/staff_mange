@@ -1,4 +1,5 @@
 import { positionTitle } from '../roleLabels'
+import SharedStat from '../ui/StatCard'
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { drillTo } from '../utils/drill'
@@ -30,26 +31,10 @@ function Clock() {
   )
 }
 
+// (دازاي 11-15) صارت بطاقة مشتركة (ui/StatCard) — هنا بس نحوّل الأسماء.
 function StatCard({ label, value, to, tone, icon, onClick }: { label: string; value: ReactNode; to: string | null; tone: 'blue' | 'green' | 'amber' | 'red'; icon: string; onClick?: () => void }) {
-  const t = {
-    blue: 'border-sky-200 bg-sky-50/60 text-sky-700',
-    green: 'border-emerald-200 bg-emerald-50/60 text-emerald-700',
-    amber: 'border-amber-200 bg-amber-50/60 text-amber-700',
-    red: 'border-red-200 bg-red-50/60 text-red-700',
-  }[tone]
-  const body = (
-    <>
-      <div>
-        <p className="text-sm font-bold text-slate-700">{label}</p>
-        <p className="mt-1 text-3xl font-extrabold tabular-nums">{value}</p>
-        {(to || onClick) && <p className="mt-2 text-xs font-bold opacity-80 group-hover:underline">{onClick ? '← منين جات النسبة؟' : '← عرض التفاصيل'}</p>}
-      </div>
-      <span className="grid h-12 w-12 place-items-center rounded-full bg-white text-2xl shadow-sm">{icon}</span>
-    </>
-  )
-  const cls = `group flex items-center justify-between rounded-2xl border p-4 transition ${t}`
-  if (onClick) return <button type="button" onClick={onClick} className={`${cls} w-full text-right hover:shadow-md`}>{body}</button>
-  return to ? <Link to={to} className={`${cls} hover:shadow-md`}>{body}</Link> : <div className={cls}>{body}</div>
+  return <SharedStat label={label} value={value} to={to ?? undefined} tone={tone} icon={icon} onClick={onClick} big
+    cta={(to || onClick) ? (onClick ? '← منين جات النسبة؟' : '← عرض التفاصيل') : undefined} />
 }
 
 function Chart({ points }: { points: { day: string; count: number }[] }) {

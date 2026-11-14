@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import Modal from '../../ui/Modal'
 import { api, type GpsMaintenanceRequest } from '../../api'
 
 import { notify } from '../../ui/notify'
@@ -109,12 +110,7 @@ export default function GpsMaintenance() {
 
       {/* Detail Modal */}
       {selectedRequest && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-lg">
-            <div className="flex items-center justify-between mb-6">
-              <h3 className="text-xl font-bold text-t-title">🔧 تفاصيل طلب الصيانة</h3>
-              <button onClick={() => setSelectedRequest(null)} className="text-2xl text-slate-400 hover:text-slate-600">&times;</button>
-            </div>
+        <Modal title="🔧 تفاصيل طلب الصيانة" onClose={() => setSelectedRequest(null)} size="lg" bodyClassName="p-6">
 
             {/* Customer Info Grid */}
             <div className="grid grid-cols-2 gap-4 mb-4">
@@ -185,8 +181,7 @@ export default function GpsMaintenance() {
                 إغلاق
               </button>
             </div>
-          </div>
-        </div>
+</Modal>
       )}
     </div>
   )

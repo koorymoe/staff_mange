@@ -1,4 +1,5 @@
 import { escDeep } from '../../utils/printIdentity'
+import Modal from '../../ui/Modal'
 import { useEffect, useState } from 'react'
 import { api, type GpsRenewalRequest } from '../../api'
 import { loadFailed } from '../../netErrors'
@@ -117,7 +118,7 @@ export default function GpsRenewalsReview({ embedded }: { embedded?: boolean } =
                   <td className="px-4 py-3 text-slate-600">{r.customer.phone}</td>
                   <td className="px-4 py-3 text-slate-600">{r.deviceRequest.subscriptionEnd ? new Date(r.deviceRequest.subscriptionEnd).toLocaleDateString('ar-IQ') : '-'}</td>
                   <td className="px-4 py-3 text-slate-600">{subLabel(r.subscriptionType)}</td>
-                  <td className="px-4 py-3"><button onClick={() => setSelected(r)} className="rounded-lg bg-brand-500 px-4 py-1.5 text-xs font-bold text-white hover:bg-brand-600">موافقة ومعالجة ←</button></td>
+                  <td className="px-4 py-3"><button onClick={() => setSelected(r)} className="rounded-lg bg-brand-500 px-4 py-1.5 text-xs font-bold text-white hover:bg-[#1a3a6c]">موافقة ومعالجة ←</button></td>
                 </tr>
               ))}
             </tbody>
@@ -127,12 +128,7 @@ export default function GpsRenewalsReview({ embedded }: { embedded?: boolean } =
       )}
 
       {selected && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 p-4">
-          <div className="w-full max-w-lg rounded-2xl bg-white shadow-2xl">
-            <div className="flex items-center justify-between border-b border-slate-100 p-5">
-              <h3 className="text-lg font-bold text-brand-900">تأكيد التجديد</h3>
-              <button onClick={() => setSelected(null)} className="text-2xl text-slate-400 hover:text-slate-600">×</button>
-            </div>
+        <Modal title="تأكيد التجديد" onClose={() => setSelected(null)} size="lg" bodyClassName="p-0">
             <div className="space-y-4 p-6 text-sm">
               <div className="grid grid-cols-2 gap-3 rounded-xl bg-slate-50 p-4">
                 <p><span className="text-slate-500">الاسم: </span><b>{selected.customer.fullName} {selected.customer.fatherName} {selected.customer.grandfatherName}</b></p>
@@ -143,13 +139,12 @@ export default function GpsRenewalsReview({ embedded }: { embedded?: boolean } =
               <div className="rounded-xl bg-emerald-50 p-4 text-emerald-800">سيتم تجديد الاشتراك تلقائياً وطباعة الفاتورة عند الموافقة</div>
             </div>
             <div className="flex gap-3 border-t border-slate-100 p-5">
-              <button onClick={() => handleApprove(selected)} disabled={approving} className="flex-1 rounded-lg bg-brand-500 py-3 text-sm font-bold text-white hover:bg-brand-600 disabled:opacity-50">
+              <button onClick={() => handleApprove(selected)} disabled={approving} className="flex-1 rounded-lg bg-brand-500 py-3 text-sm font-bold text-white hover:bg-[#1a3a6c] disabled:opacity-50">
                 {approving ? 'جاري المعالجة...' : '✅ موافقة وطباعة فاتورة'}
               </button>
               <button onClick={() => setSelected(null)} className="rounded-lg border border-slate-200 px-6 py-3 text-sm font-bold text-slate-600 hover:bg-slate-50">إغلاق</button>
             </div>
-          </div>
-        </div>
+</Modal>
       )}
     </div>
   )

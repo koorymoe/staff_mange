@@ -1003,7 +1003,7 @@ export default function SalesBooking() {
                     onClick={() => setRemembersCrew(true)}
                     className={`rounded-xl px-5 py-2 text-sm font-medium transition-all ${
                       remembersCrew
-                        ? 'bg-brand-600 text-white shadow-md'
+                        ? 'bg-[#0f2040] text-white shadow-md'
                         : 'bg-white text-slate-600 border border-slate-300 hover:border-brand-400'
                     }`}
                   >
@@ -1014,7 +1014,7 @@ export default function SalesBooking() {
                     onClick={() => setRemembersCrew(false)}
                     className={`rounded-xl px-5 py-2 text-sm font-medium transition-all ${
                       !remembersCrew
-                        ? 'bg-brand-600 text-white shadow-md'
+                        ? 'bg-[#0f2040] text-white shadow-md'
                         : 'bg-white text-slate-600 border border-slate-300 hover:border-brand-400'
                     }`}
                   >

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import StatCard from '../ui/StatCard'
 import { Link, useNavigate } from 'react-router-dom'
 import { apiRequest, ensureFileToken, thumbUrl } from '../api'
 import { ArtCrop, IconCal, IconFolder, IconLayers, IconDoc, IconUpload } from './design/planArt'
@@ -12,13 +13,9 @@ import type { PlanMeta, PlanSetRow } from './design/planTypes'
 const day = (s: string) => new Date(s).toLocaleDateString('en-CA', { timeZone: 'Asia/Baghdad' }).replace(/-/g, '/')
 const isImg = (k: string | null) => !!k && /\.(png|jpe?g|webp|gif)(\?|$)/i.test(k)
 
+// (دازاي 11-15) صارت بطاقة مشتركة (ui/StatCard) — هنا بس نحوّل الأسماء.
 function Stat({ n, label, icon }: { n: number | string; label: string; icon: React.ReactNode }) {
-  return (
-    <div className="flex items-center justify-between rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-      <div><div className="text-3xl font-extrabold tabular-nums text-slate-900">{n}</div><div className="text-sm text-slate-500">{label}</div></div>
-      <div className="grid h-14 w-14 place-items-center rounded-2xl bg-indigo-50 text-indigo-600">{icon}</div>
-    </div>
-  )
+  return <StatCard label={label} value={n} icon={icon} tone="blue" big />
 }
 
 export default function PlanSetsPage() {

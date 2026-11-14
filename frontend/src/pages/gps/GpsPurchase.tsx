@@ -95,7 +95,7 @@ export default function GpsPurchase() {
         <p className="mb-6 text-slate-500">تم إرسال الطلب للإداري للمراجعة والتفعيل</p>
         <div className="flex justify-center gap-3">
           <button onClick={() => navigate('/')} className="rounded-lg bg-slate-100 px-5 py-2.5 text-sm font-bold text-slate-600 hover:bg-slate-200">الرئيسية</button>
-          <button onClick={resetForm} className="rounded-lg bg-brand-500 px-5 py-2.5 text-sm font-bold text-white hover:bg-brand-600">طلب جديد</button>
+          <button onClick={resetForm} className="rounded-lg bg-brand-500 px-5 py-2.5 text-sm font-bold text-white hover:bg-[#1a3a6c]">طلب جديد</button>
         </div>
       </div>
     )
@@ -186,7 +186,7 @@ export default function GpsPurchase() {
 
           {error && <p className="rounded-lg bg-red-50 p-3 text-center text-sm text-red-600">{error}</p>}
           <button onClick={handleSubmit} disabled={loading}
-            className="rounded-xl bg-brand-500 py-3 text-sm font-bold text-white hover:bg-brand-600 disabled:opacity-50">
+            className="rounded-xl bg-brand-500 py-3 text-sm font-bold text-white hover:bg-[#1a3a6c] disabled:opacity-50">
             {loading ? 'جاري الإرسال...' : 'إرسال الطلب للإداري ←'}
           </button>
         </div>

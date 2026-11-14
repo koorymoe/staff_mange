@@ -52,7 +52,7 @@ export default function CreditsPage() {
 
       <div className="flex flex-wrap items-center gap-2">
         {([['open', 'المفتوحة'], ['settled', 'المسدّدة'], ['all', 'الكل']] as const).map(([k, l]) => (
-          <button key={k} onClick={() => setStatus(k)} className={`rounded-xl px-4 py-2 text-sm font-bold ${status === k ? 'bg-violet-700 text-white' : 'border border-slate-200 bg-white text-slate-600'}`}>{l}</button>
+          <button key={k} onClick={() => setStatus(k)} className={`rounded-xl px-4 py-2 text-sm font-bold ${status === k ? 'bg-[#0f2040] text-white' : 'border border-slate-200 bg-white text-slate-600'}`}>{l}</button>
         ))}
         <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="🔍 كود الحجز/المشروع، الزبون، الهاتف…" className="min-w-[240px] flex-1 rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm" />
       </div>

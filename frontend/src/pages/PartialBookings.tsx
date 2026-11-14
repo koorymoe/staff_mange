@@ -1,5 +1,7 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import PctWhy from '../ui/PctWhy'
+import SharedRing from '../ui/ProgressRing'
+import { ringColor } from '../ui/pct'
 import { api, type Booking, type BookingProgressReport, type SuggestedCrewMember } from '../api'
 import BookingCodeChip from '../components/BookingCodeChip'
 import { crewRoleLabel as crewRoleShort } from '../roleLabels'
@@ -32,25 +34,13 @@ interface Row {
 }
 
 /** حلقة التقدّم — النسبة تنقرا بلمحة بدل ما تنقرا رقم بسطر. */
+// (دازاي 11-15) الحلقة صارت مشتركة (ui/ProgressRing) — هنا بس نلبّسها لون الرقم وكلمة «منجز».
 function ProgressRing({ percent, children }: { percent: number; children?: ReactNode }) {
   const p = Math.max(0, Math.min(100, percent))
-  // ⚠️ اللون يتبع النسبة مو ثابت: ٩٠٪ و٣٥٪ ما ينفع يطلعون بنفس
-  // الشكل — الإداري يفرز بالنظر منو قريب من الخلاص.
-  const color = p >= 80 ? '#16a34a' : p >= 50 ? '#f59e0b' : '#fb923c'
   return (
-    <div className="relative h-14 w-14 shrink-0">
-      <svg viewBox="0 0 36 36" className="h-14 w-14 -rotate-90">
-        <circle cx="18" cy="18" r="15.5" fill="none" stroke="#eef2f7" strokeWidth="3.5" />
-        <circle
-          cx="18" cy="18" r="15.5" fill="none" stroke={color} strokeWidth="3.5" strokeLinecap="round"
-          strokeDasharray={`${(p / 100) * 97.4} 97.4`}
-        />
-      </svg>
-      <div className="absolute inset-0 flex flex-col items-center justify-center leading-none">
-        <span className="text-[11px] font-black" style={{ color }}>{children ?? `${p}%`}</span>
-        <span className="text-[8px] text-slate-400">منجز</span>
-      </div>
-    </div>
+    <SharedRing percent={p} size={56} stroke={5.5} label="منجز">
+      <span className="text-[11px] font-black" style={{ color: ringColor(p) }}>{children ?? `${p}%`}</span>
+    </SharedRing>
   )
 }
 

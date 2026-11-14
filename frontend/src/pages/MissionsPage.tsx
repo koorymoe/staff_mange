@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef, type ReactNode } from 'react'
 import PctWhy from '../ui/PctWhy'
+import SharedRing from '../ui/ProgressRing'
 import { useSession } from '../session'
 import ExtraTasksPage from './ExtraTasksPage'
 import FieldBoard from '../components/FieldBoard'
@@ -99,25 +100,13 @@ function HeroChip({ icon, label, value }: { icon: string; label: string; value: 
   )
 }
 
+// (دازاي 11-15) الحلقة صارت مشتركة (ui/ProgressRing) — هنا بس ألوان الرأس الغامق.
 function ProgressRing({ pct, children }: { pct: number; children?: ReactNode }) {
-  const R = 34
-  const C = 2 * Math.PI * R
   const safe = Math.max(0, Math.min(100, pct))
   return (
-    <div className="relative shrink-0" style={{ width: 84, height: 84 }}>
-      <svg width="84" height="84" viewBox="0 0 84 84" style={{ transform: 'rotate(-90deg)' }}>
-        <circle cx="42" cy="42" r={R} fill="none" stroke="rgba(255,255,255,0.18)" strokeWidth="8" />
-        <circle
-          cx="42" cy="42" r={R} fill="none" stroke="#4ade80" strokeWidth="8"
-          strokeLinecap="round"
-          strokeDasharray={`${(safe / 100) * C} ${C}`}
-        />
-      </svg>
-      <div className="absolute inset-0 flex flex-col items-center justify-center">
-        <span className="text-xl font-extrabold text-white">{children ?? `${Math.round(safe)}%`}</span>
-        <span className="text-[9px] text-blue-200/80">نسبة الإنجاز</span>
-      </div>
-    </div>
+    <SharedRing percent={safe} size={84} stroke={8} color="#4ade80" track="rgba(255,255,255,0.18)" label="نسبة الإنجاز" labelClassName="mt-1 text-[9px] text-blue-200/80">
+      <span className="text-xl font-extrabold text-white">{children ?? `${Math.round(safe)}%`}</span>
+    </SharedRing>
   )
 }
 
@@ -542,7 +531,7 @@ export default function MissionsPage() {
                       <button onClick={() => advanceStage(m, 'MATERIALS_PREP')} className="rounded-lg bg-amber-500 px-4 py-2 text-sm font-bold text-white hover:bg-amber-600">📦 بدأ تجهيز المواد</button>
                     )}
                     {m.stage === 'MATERIALS_PREP' && isLeader && (
-                      <button onClick={() => advanceStage(m, 'MATERIALS_READY')} className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-bold text-white hover:bg-blue-700">✅ المواد جاهزة</button>
+                      <button onClick={() => advanceStage(m, 'MATERIALS_READY')} className="rounded-lg bg-[#0f2040] px-4 py-2 text-sm font-bold text-white hover:bg-[#1a3a6c]">✅ المواد جاهزة</button>
                     )}
                     {m.stage === 'MATERIALS_READY' && (
                       <button onClick={async () => {

@@ -66,7 +66,7 @@ export default function MatrixSuggestBox({ bookingId, onSchedule, onLeader, onTe
           <p className="font-bold">📅 الموعد: {fmt(s.schedule.at)}</p>
           <ul className="mt-1 list-inside list-disc text-xs text-slate-600">{s.scheduleWhy.map((w, i) => <li key={i}>{w}</li>)}</ul>
           <button type="button" disabled={busy || done.schedule} onClick={async () => { setBusy(true); try { await onSchedule(toLocal(s.schedule!.at)); setDone((d) => ({ ...d, schedule: true })) } finally { setBusy(false) } }}
-            className="mt-2 rounded-lg bg-violet-700 px-3 py-1 text-xs font-bold text-white disabled:opacity-50">{done.schedule ? '✓ انطبّق' : 'طبّق الموعد'}</button>
+            className="mt-2 rounded-lg bg-[#0f2040] px-3 py-1 text-xs font-bold text-white disabled:opacity-50">{done.schedule ? '✓ انطبّق' : 'طبّق الموعد'}</button>
         </div>
       ) : s.scheduleWhy.length > 0 && <p className="text-xs text-slate-600">📅 {s.scheduleWhy.join(' ')}</p>}
       {s.crew ? (
@@ -80,7 +80,7 @@ export default function MatrixSuggestBox({ bookingId, onSchedule, onLeader, onTe
           <ul className="mt-1 list-inside list-disc text-xs text-slate-600">{s.crewWhy.map((w, i) => <li key={i}>{w}</li>)}</ul>
           {(s.crew.leader || s.crew.techs.length > 0) && (
             <button type="button" disabled={busy || done.crew} onClick={() => void applyCrew()}
-              className="mt-2 rounded-lg bg-violet-700 px-3 py-1 text-xs font-bold text-white disabled:opacity-50">{done.crew ? '✓ انطبّق' : 'طبّق الكادر'}</button>
+              className="mt-2 rounded-lg bg-[#0f2040] px-3 py-1 text-xs font-bold text-white disabled:opacity-50">{done.crew ? '✓ انطبّق' : 'طبّق الكادر'}</button>
           )}
         </div>
       ) : s.crewWhy.length > 0 && <p className="text-xs text-slate-600">👷 {s.crewWhy.join(' ')}</p>}

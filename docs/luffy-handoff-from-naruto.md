@@ -466,3 +466,4 @@ git push origin origin/avg:refs/heads/prod     # بعد التأكد إنه fast
   - تقرير الشغل: «📝 ملاحظات الليدر الإضافية» (sheet.leaderNotes + notes).
   - مكتب الجودة: «تنتظر تدقيقك / دقّقتها» + غيّر الحكم.
   - الواجهات (وكيل): notify بدل ٢٩٠ alert، DeleteButton + تأكيد ٧ حذوفات، قفل الحفظ، BackLink، كلمات موحّدة وأسماء القوائم، bookingServiceLabel (#42)، utils/date، «جاري التحميل…».
+- 11-15 (لوفي) جولة ٢: الرفض 404 بكل المعالجات (عدا webhook الواتساب وتأكيد إيميل تطبيق الزبائن)، baghdad بالتواريخ الباقية، LIMIT للقوائم الكبيرة، دمج الزبائن بـDeleteLog. الواجهة (وكيل): ui/classes BTN_* ولون كحلي موحّد (١٧٠ زر)، ui/StatCard + ui/ProgressRing، ui/Modal (١٢ نافذة + projects/permissions)، الوضع الليلي: كحلي أفتح + رؤوس الجداول + تدرّجات white.

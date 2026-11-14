@@ -18,7 +18,7 @@ import MatrixOrders from './MatrixOrders'
 import ReplacementSuggestionsPanel from './ReplacementSuggestionsPanel'
 import { pollVisible } from '../utils/poll'
 import { drillTo } from '../utils/drill'
-import PctWhy, { type PctParts } from '../ui/PctWhy'
+import StatCard from '../ui/StatCard'
 import { roleLabel } from '../roleLabels'
 import { num as fmt, dinarK as money } from '../utils/format'
 import { askInput } from '../ui/dialogs'
@@ -78,53 +78,8 @@ function Section({ title, to, linkLabel = 'التفاصيل ←', children }: { 
 
 // (ع): «من اضغط ع شي يوديني عليه حتى أشوف بصورة صحيحة» — كل مربع رقم يفتح
 // الشاشة الي تفصّله (to).
-type Tone = 'slate' | 'green' | 'amber' | 'red' | 'blue' | 'violet'
-const TONE: Record<Tone, { card: string; ink: string; chip: string }> = {
-  slate: { card: 'border-slate-200 bg-slate-50/70', ink: 'text-slate-800', chip: 'bg-white text-slate-500' },
-  blue: { card: 'border-sky-100 bg-sky-50/70', ink: 'text-sky-800', chip: 'bg-sky-100 text-sky-600' },
-  green: { card: 'border-emerald-100 bg-emerald-50/70', ink: 'text-emerald-700', chip: 'bg-emerald-100 text-emerald-600' },
-  amber: { card: 'border-amber-100 bg-amber-50/70', ink: 'text-amber-700', chip: 'bg-amber-100 text-amber-600' },
-  red: { card: 'border-red-100 bg-red-50/70', ink: 'text-red-700', chip: 'bg-red-100 text-red-600' },
-  violet: { card: 'border-violet-100 bg-violet-50/70', ink: 'text-violet-700', chip: 'bg-violet-100 text-violet-600' },
-}
-
-// بطاقة رقم بتصميم (ع) 10-04: لون خفيف، أيقونة بدائرة، والرقم كبير.
-// (ع): «من اضغط ع شي يوديني عليه» — كل بطاقة تفتح الشاشة الي تفصّلها (to).
-// تصميم (ع) 10-13: سهم ‹ تحت لكل بطاقة تودّي لتفاصيلها، وشريط نسبة اختياري.
-type StatWhy = { title: string; parts: PctParts; meaning: ReactNode; source: ReactNode }
-function Stat({ label, value, hint, tone = 'slate', to, icon, big, pct, why, onClick, active }: { label: string; value: ReactNode; hint?: ReactNode; tone?: Tone; to?: string; icon?: string; big?: boolean; pct?: number | null; why?: StatWhy; onClick?: () => void; active?: boolean }) {
-  const t = TONE[tone]
-  const p = pct == null || !isFinite(pct) ? null : Math.max(0, Math.min(100, Math.round(pct)))
-  const body = (
-    <>
-      <div className="flex items-start justify-between gap-2">
-        <div className="min-w-0">
-          <p className={`text-[13px] font-extrabold leading-snug ${tone === 'slate' ? 'text-slate-700' : t.ink}`}>{label}</p>
-          <p className={`mt-1 font-extrabold tabular-nums text-[#0f2040] ${big ? 'text-3xl' : 'text-2xl'}`}>{value}</p>
-          {/* (ع) 10-16: سطر الشرح ينقرا كامل — مو مقصوص */}
-          {hint && <p className="mt-0.5 text-[11px] leading-snug text-slate-500">{hint}</p>}
-        </div>
-        <div className="flex shrink-0 flex-col items-center gap-2">
-          {icon && <span className={`grid place-items-center rounded-2xl ${big ? 'h-14 w-14 text-2xl' : 'h-12 w-12 text-xl'} ${t.chip}`}>{icon}</span>}
-          {(to || onClick) && <span className="grid h-6 w-6 place-items-center rounded-full bg-white text-xs text-slate-500 shadow-sm">‹</span>}
-        </div>
-      </div>
-      {p != null && (
-        <div className="mt-2 flex items-center gap-2">
-          <div className="h-2 flex-1 rounded-full bg-white/80"><div className={`h-2 rounded-full ${tone === 'blue' ? 'bg-sky-500' : tone === 'amber' ? 'bg-amber-500' : 'bg-emerald-500'}`} style={{ width: `${p}%` }} /></div>
-          {why
-            ? <PctWhy title={why.title} value={p} parts={why.parts} meaning={why.meaning} source={why.source} className={`text-[11px] font-extrabold tabular-nums ${t.ink}`} />
-            : <span className={`text-[11px] font-extrabold tabular-nums ${t.ink}`}>{p}%</span>}
-        </div>
-      )}
-    </>
-  )
-  const cls = `block rounded-2xl border p-3.5 transition ${t.card}${active ? ' ring-2 ring-brand-500' : ''}`
-  if (onClick) return <button type="button" onClick={onClick} className={`${cls} w-full text-right hover:-translate-y-0.5 hover:shadow-md`}>{body}</button>
-  return to
-    ? <Link to={to} className={`${cls} hover:-translate-y-0.5 hover:shadow-md`}>{body}</Link>
-    : <div className={cls}>{body}</div>
-}
+// (دازاي 11-15) البطاقة صارت مشتركة بـui/StatCard — نفس الشكل والسلوك.
+const Stat = StatCard
 
 function Missing() {
   return <p className="text-xs text-slate-400">ما وصلت البيانات — افتح التفاصيل.</p>

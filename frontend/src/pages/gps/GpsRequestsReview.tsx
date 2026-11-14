@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import Modal from '../../ui/Modal'
 import { api, type Employee, type GpsDeviceRequest, type GpsSimCard } from '../../api'
 import { useSession, hasGpsSkill } from '../../session'
 import { escDeep } from '../../utils/printIdentity'
@@ -161,18 +162,13 @@ export default function GpsRequestsReview({ embedded }: { embedded?: boolean } =
                 <span>👤 {req.employee.name}</span>
               </div>
             </div>
-            <button onClick={() => openReview(req)} className="rounded-lg bg-brand-500 px-4 py-2 text-sm font-bold text-white hover:bg-brand-600">مراجعة ←</button>
+            <button onClick={() => openReview(req)} className="rounded-lg bg-brand-500 px-4 py-2 text-sm font-bold text-white hover:bg-[#1a3a6c]">مراجعة ←</button>
           </div>
         ))}
       </div>
 
       {selected && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 p-4">
-          <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl bg-white shadow-2xl">
-            <div className="sticky top-0 flex items-center justify-between border-b border-slate-100 bg-white p-5">
-              <h3 className="text-lg font-bold text-brand-900">مراجعة الطلب</h3>
-              <button onClick={() => setSelected(null)} className="text-2xl text-slate-400 hover:text-slate-600">×</button>
-            </div>
+        <Modal title="مراجعة الطلب" onClose={() => setSelected(null)} size="lg" bodyClassName="p-0">
             <div className="space-y-5 p-6">
               <div className="grid grid-cols-2 gap-3 text-sm">
                 <p><b className="text-slate-500">الاسم:</b> {selected.customer.fullName} {selected.customer.fatherName} {selected.customer.grandfatherName}</p>
@@ -287,14 +283,13 @@ export default function GpsRequestsReview({ embedded }: { embedded?: boolean } =
             <div className="sticky bottom-0 flex gap-3 border-t border-slate-100 bg-white p-5">
               <button onClick={activate} disabled={saving || !canActivate}
                 title={!canActivate ? 'حدد تاريخ التفعيل واكتب بيانات الدخول أولاً' : undefined}
-                className="flex-1 rounded-lg bg-brand-500 py-3 text-sm font-bold text-white hover:bg-brand-600 disabled:opacity-50">
+                className="flex-1 rounded-lg bg-brand-500 py-3 text-sm font-bold text-white hover:bg-[#1a3a6c] disabled:opacity-50">
                 {saving ? 'جاري التفعيل...' : 'تفعيل الجهاز ✅'}
               </button>
               <button onClick={printRequest} className="rounded-lg border border-slate-200 px-6 py-3 text-sm font-bold text-slate-600 hover:bg-slate-50">🖨️ طباعة</button>
               <button onClick={() => setSelected(null)} className="rounded-lg border border-slate-200 px-6 py-3 text-sm font-bold text-slate-600 hover:bg-slate-50">إغلاق</button>
             </div>
-          </div>
-        </div>
+</Modal>
       )}
     </div>
   )

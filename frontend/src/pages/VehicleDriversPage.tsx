@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import Modal from '../ui/Modal'
 import { api, apiRequest, type Employee, type Vehicle } from '../api'
 import { roleLabel } from '../roleLabels'
 import { swallow } from '../utils/swallow'
@@ -80,9 +81,7 @@ function Drivers() {
         </table>
       </div>
       {edit && (
-        <div className="fixed inset-0 z-50 grid place-items-center bg-black/40 p-4" onClick={() => setEdit(null)}>
-          <div className="w-full max-w-md space-y-2 rounded-2xl bg-white p-5 text-sm" onClick={(e) => e.stopPropagation()}>
-            <h3 className="text-lg font-extrabold text-[#0f2040]">🪪 {edit.name}</h3>
+        <Modal title={<>🪪 {edit.name}</>} onClose={() => setEdit(null)} size="md" bodyClassName="space-y-2 p-5 text-sm">
             <label className="block">رقم إجازة السوق<input value={edit.licenseNumber ?? ''} onChange={(e) => setEdit({ ...edit, licenseNumber: e.target.value })} className="mt-1 w-full rounded-lg border border-slate-300 px-2 py-1.5" /></label>
             <label className="block">تاريخ انتهاء الإجازة<input type="date" value={day(edit.licenseExpiry)} onChange={(e) => setEdit({ ...edit, licenseExpiry: e.target.value })} className="mt-1 w-full rounded-lg border border-slate-300 px-2 py-1.5" /></label>
             <label className="block">تاريخ توقيع التعهد<input type="date" value={day(edit.pledgeSignedAt)} onChange={(e) => setEdit({ ...edit, pledgeSignedAt: e.target.value })} className="mt-1 w-full rounded-lg border border-slate-300 px-2 py-1.5" /></label>
@@ -93,8 +92,7 @@ function Drivers() {
               <button type="button" disabled={busy} onClick={save} className="flex-1 rounded-lg bg-[#0f2040] py-2 font-bold text-white disabled:opacity-50">حفظ</button>
               <button type="button" onClick={() => setEdit(null)} className="rounded-lg border border-slate-300 px-4 py-2">إلغاء</button>
             </div>
-          </div>
-        </div>
+</Modal>
       )}
     </div>
   )

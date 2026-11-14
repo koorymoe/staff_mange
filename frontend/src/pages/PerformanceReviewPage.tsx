@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback, useMemo } from 'react'
+import StatCard from '../ui/StatCard'
 import { matches } from '../utils/search'
 import { useSession, isAdminOrOwner } from '../session'
 import EmptyState from '../components/EmptyState'
@@ -497,25 +498,9 @@ function AvgChip({ label, value }: { label: string; value: string | null }) {
   )
 }
 
+// (دازاي 11-15) صارت بطاقة مشتركة (ui/StatCard) — هنا بس نحوّل الأسماء.
 function Stat({ icon, label, hint, value, tone }: {
   icon: string; label: string; hint: string; value: number; tone: 'amber' | 'emerald' | 'violet' | 'sky'
 }) {
-  const tones: Record<string, string> = {
-    amber: 'text-amber-700 bg-amber-50',
-    emerald: 'text-emerald-700 bg-emerald-50',
-    violet: 'text-violet-700 bg-violet-50',
-    sky: 'text-sky-700 bg-sky-50',
-  }
-  return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm sm:p-4">
-      <div className="flex items-start justify-between gap-2">
-        <div className="min-w-0">
-          <p className="truncate text-[10px] font-medium text-slate-500 sm:text-[11px]">{label}</p>
-          <p className={`mt-1 text-2xl font-black sm:text-3xl ${tones[tone].split(' ')[0]}`}>{value}</p>
-          <p className="text-[10px] text-slate-400">{hint}</p>
-        </div>
-        <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-sm ${tones[tone]}`}>{icon}</span>
-      </div>
-    </div>
-  )
+  return <StatCard icon={icon} label={label} hint={hint} value={value} tone={tone === 'emerald' ? 'green' : tone === 'sky' ? 'blue' : tone} />
 }

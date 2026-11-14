@@ -96,7 +96,7 @@ export default function ServiceStudiesPage({ embedded }: { embedded?: boolean } 
       {canAdd && (
         <form onSubmit={handleCreate} className="mt-4 mb-4 flex gap-2 rounded-xl border border-white bg-white p-4 shadow-sm">
           <input value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="اسم الخدمة المراد فتحها" className="flex-1 rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand-500" />
-          <button type="submit" disabled={saving} className="rounded-lg bg-brand-500 px-4 py-2 text-sm font-bold text-white hover:bg-brand-600 disabled:opacity-50">
+          <button type="submit" disabled={saving} className="rounded-lg bg-brand-500 px-4 py-2 text-sm font-bold text-white hover:bg-[#1a3a6c] disabled:opacity-50">
             {saving ? 'جاري...' : '+ إضافة'}
           </button>
         </form>
@@ -144,7 +144,7 @@ export default function ServiceStudiesPage({ embedded }: { embedded?: boolean } 
                     rows={2}
                     className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand-500"
                   />
-                  <button onClick={() => handleAddReport(s.id)} disabled={busyId === s.id} className="mt-1 rounded-lg bg-brand-500 px-3 py-1.5 text-xs font-bold text-white hover:bg-brand-600 disabled:opacity-50">
+                  <button onClick={() => handleAddReport(s.id)} disabled={busyId === s.id} className="mt-1 rounded-lg bg-brand-500 px-3 py-1.5 text-xs font-bold text-white hover:bg-[#1a3a6c] disabled:opacity-50">
                     رفع التقرير
                   </button>
                 </div>

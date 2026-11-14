@@ -69,7 +69,7 @@ export default function MatrixWatchEyes({ initialTab = 'REVENUE' }: { initialTab
       <div>
         <div className="flex flex-wrap items-center justify-between gap-2">
           <p className="text-base font-extrabold text-[#0f2040]">👁️ عيون الرقابة</p>
-          {isBoss && <button type="button" disabled={busy} onClick={() => void checkAll()} className="rounded-lg bg-violet-700 px-3 py-1.5 text-xs font-bold text-white disabled:opacity-50">{busy ? 'ماتركس يحسب…' : '🧮 احسب وافحص كلشي هسه'}</button>}
+          {isBoss && <button type="button" disabled={busy} onClick={() => void checkAll()} className="rounded-lg bg-[#0f2040] px-3 py-1.5 text-xs font-bold text-white disabled:opacity-50">{busy ? 'ماتركس يحسب…' : '🧮 احسب وافحص كلشي هسه'}</button>}
         </div>
         {ran && <p className="mt-1 text-xs font-bold text-emerald-700">{ran}</p>}
         <p className="text-[11px] text-slate-500">الفلوس والإيرادات، تطابق الأرقام، المخزن، السيارات، رأي الزبائن، الآيتي، والطلبات المعلّقة. ماتركس يفحصها كل يوم بالقواعد (بلا كلفة).</p>

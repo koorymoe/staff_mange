@@ -165,7 +165,7 @@ export default function ProductRequestsPage({ embedded }: { embedded?: boolean }
 
       {canAdd && (
         <div className="mt-4 mb-4">
-          <button onClick={() => setShowForm((v) => !v)} className="rounded-lg bg-brand-500 px-4 py-2 text-sm font-bold text-white hover:bg-brand-600">
+          <button onClick={() => setShowForm((v) => !v)} className="rounded-lg bg-brand-500 px-4 py-2 text-sm font-bold text-white hover:bg-[#1a3a6c]">
             {showForm ? '× إغلاق' : '+ طلب منتج جديد'}
           </button>
           {showForm && (
@@ -176,7 +176,7 @@ export default function ProductRequestsPage({ embedded }: { embedded?: boolean }
               <input value={form.model} onChange={(e) => setForm({ ...form, model: e.target.value })} placeholder="الموديل" className={inputCls} />
               <input value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} placeholder="التصنيف/الدورة" className={inputCls} />
               <input value={form.price} type="number" onChange={(e) => setForm({ ...form, price: e.target.value })} placeholder="السعر" className={inputCls} />
-              <button type="submit" disabled={saving} className="rounded-lg bg-brand-500 px-4 py-2 text-sm font-bold text-white hover:bg-brand-600 disabled:opacity-50 sm:col-span-3">
+              <button type="submit" disabled={saving} className="rounded-lg bg-brand-500 px-4 py-2 text-sm font-bold text-white hover:bg-[#1a3a6c] disabled:opacity-50 sm:col-span-3">
                 {saving ? 'جاري الحفظ...' : 'إرسال الطلب'}
               </button>
             </form>
@@ -310,7 +310,7 @@ export default function ProductRequestsPage({ embedded }: { embedded?: boolean }
             )}
 
             <div className="mt-5 flex gap-2">
-              <button type="submit" disabled={saving} className="flex-1 rounded-lg bg-brand-500 px-4 py-2 text-sm font-bold text-white hover:bg-brand-600 disabled:opacity-50">
+              <button type="submit" disabled={saving} className="flex-1 rounded-lg bg-brand-500 px-4 py-2 text-sm font-bold text-white hover:bg-[#1a3a6c] disabled:opacity-50">
                 {saving ? 'جاري التجهيز...' : 'جهّز واصرف من الدوار'}
               </button>
               <button type="button" onClick={() => setFulfillFor(null)} className="rounded-lg border border-slate-300 px-4 py-2 text-sm">إلغاء</button>

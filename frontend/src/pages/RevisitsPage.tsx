@@ -33,7 +33,7 @@ export default function RevisitsPage() {
       <div className="flex gap-2">
         {RANGES.map((d) => (
           <button key={d} type="button" onClick={() => { if (d !== days) { setRep(null); setDays(d) } }}
-            className={`rounded-full px-3 py-1 text-xs font-bold ${days === d ? 'bg-brand-700 text-white' : 'bg-slate-100 text-slate-600'}`}>آخر {d} يوم</button>
+            className={`rounded-full px-3 py-1 text-xs font-bold ${days === d ? 'bg-[#0f2040] text-white' : 'bg-slate-100 text-slate-600'}`}>آخر {d} يوم</button>
         ))}
       </div>
       {err && <p className="text-sm text-red-600">{err}</p>}

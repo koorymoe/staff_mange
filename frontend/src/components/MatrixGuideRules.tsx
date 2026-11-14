@@ -70,7 +70,7 @@ export default function MatrixGuideRules() {
         <label className="flex items-center gap-2 text-xs"><input type="checkbox" checked={!!form.onlyIfPending} onChange={(e) => setForm({ ...form, onlyIfPending: e.target.checked })} /> بس إذا عنده شغل باقي</label>
         <div className="flex gap-2 md:col-span-3 md:justify-end">
           {editId && <button onClick={() => { setForm(EMPTY); setEditId(null) }} className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs">إلغاء</button>}
-          <button onClick={save} disabled={busy} className="rounded-lg bg-brand-600 px-4 py-1.5 text-xs font-bold text-white disabled:opacity-50">{editId ? 'حفظ التعديل' : '➕ إضافة تعليمة'}</button>
+          <button onClick={save} disabled={busy} className="rounded-lg bg-[#0f2040] px-4 py-1.5 text-xs font-bold text-white disabled:opacity-50">{editId ? 'حفظ التعديل' : '➕ إضافة تعليمة'}</button>
         </div>
       </div>
 

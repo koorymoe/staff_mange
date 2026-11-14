@@ -73,7 +73,7 @@ export default function PushToggle() {
       {state === 'unsupported' && <p className="text-slate-500">📵 هالمتصفح ما يدعم إشعارات الموبايل. بالآيفون: ضيف الموقع للشاشة الرئيسية أول.</p>}
       {state === 'denied' && <p className="text-slate-500">🔕 الإشعارات مقفولة من إعدادات المتصفح — فعّلها من هناك.</p>}
       {(state === 'off' || state === 'busy') && (
-        <button type="button" disabled={state === 'busy'} onClick={() => void enable()} className="w-full rounded-lg bg-brand-600 px-3 py-1.5 font-bold text-white disabled:opacity-50">
+        <button type="button" disabled={state === 'busy'} onClick={() => void enable()} className="w-full rounded-lg bg-[#0f2040] px-3 py-1.5 font-bold text-white disabled:opacity-50">
           🔔 فعّل الإشعارات على هالجهاز
         </button>
       )}

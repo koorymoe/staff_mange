@@ -338,7 +338,7 @@ export default function MapPage() {
           <button
             onClick={locateMe}
             disabled={locatingMe}
-            className="flex items-center gap-1.5 rounded-lg bg-brand-600 px-2.5 py-1.5 text-xs font-medium text-white hover:bg-brand-700 disabled:opacity-50 sm:px-3 sm:text-sm"
+            className="flex items-center gap-1.5 rounded-lg bg-[#0f2040] px-2.5 py-1.5 text-xs font-medium text-white hover:bg-[#1a3a6c] disabled:opacity-50 sm:px-3 sm:text-sm"
           >
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <circle cx="12" cy="12" r="3" /><path d="M12 2v4M12 18v4M2 12h4M18 12h4" />
@@ -424,7 +424,7 @@ export default function MapPage() {
                 <button
                   onClick={() => saveLocation(showLinkInput)}
                   disabled={!linkValue || !parseLocationLink(linkValue.trim())}
-                  className="flex-1 rounded-lg bg-brand-600 px-3 py-1.5 text-sm text-white hover:bg-brand-700 disabled:opacity-50"
+                  className="flex-1 rounded-lg bg-[#0f2040] px-3 py-1.5 text-sm text-white hover:bg-[#1a3a6c] disabled:opacity-50"
                 >
                   حفظ الموقع
                 </button>
@@ -487,7 +487,7 @@ export default function MapPage() {
                 {myLocation && booking.mapLatitude && booking.mapLongitude && (
                   <button
                     onClick={e => { e.stopPropagation(); showRoute(booking) }}
-                    className="mt-1.5 w-full flex items-center justify-center gap-1 rounded bg-brand-600 px-2 py-1 text-xs text-white hover:bg-brand-700"
+                    className="mt-1.5 w-full flex items-center justify-center gap-1 rounded bg-[#0f2040] px-2 py-1 text-xs text-white hover:bg-[#1a3a6c]"
                   >
                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                       <path d="M3 11l19-9-9 19-2-8-8-2z" />

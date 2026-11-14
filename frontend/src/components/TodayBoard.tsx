@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import SharedStat from '../ui/StatCard'
 import { Link } from 'react-router-dom'
 import { api, type TodayBoardData, type FinanceSummary } from '../api'
 import EmployeeAvatar from './EmployeeAvatar'
@@ -25,30 +26,11 @@ const NUMBERS = 'tabular-nums'
 
 // تصميم (ع) 10-13: العنوان ملوّن فوگ، الرقم كبير، سطر تحته، الأيقونة
 // بمربع ملوّن، وسهم ‹ لمن البطاقة تودّي لتفاصيلها.
+// (دازاي 11-15) صارت بطاقة مشتركة (ui/StatCard) — هنا بس نحوّل الأسماء.
 function StatCard({ icon, label, value, tone, hint, to }: {
   icon: string; label: string; value: React.ReactNode; tone: 'blue' | 'amber' | 'emerald' | 'violet'; hint?: string; to?: string
 }) {
-  const tones = {
-    blue: { card: 'border-sky-200 bg-sky-50/70', ink: 'text-sky-800', chip: 'bg-sky-100' },
-    amber: { card: 'border-amber-200 bg-amber-50/70', ink: 'text-amber-800', chip: 'bg-amber-100' },
-    emerald: { card: 'border-emerald-200 bg-emerald-50/70', ink: 'text-emerald-800', chip: 'bg-emerald-100' },
-    violet: { card: 'border-violet-200 bg-violet-50/70', ink: 'text-violet-800', chip: 'bg-violet-100' },
-  }[tone]
-  const body = (
-    <>
-      <div className="min-w-0 flex-1">
-        <p className={`text-[12px] font-extrabold ${tones.ink}`}>{label}</p>
-        <p className={`mt-0.5 text-3xl font-black leading-tight text-[#0f2040] ${NUMBERS}`}>{value}</p>
-        {hint && <p className="text-[11px] text-slate-500">{hint}</p>}
-      </div>
-      <div className="flex flex-col items-center gap-2">
-        <span className={`grid h-11 w-11 place-items-center rounded-xl text-xl ${tones.chip}`}>{icon}</span>
-        {to && <span className="grid h-6 w-6 place-items-center rounded-full bg-white text-xs text-slate-500 shadow-sm">‹</span>}
-      </div>
-    </>
-  )
-  const cls = `flex items-center justify-between gap-3 rounded-2xl border px-4 py-3 ${tones.card}`
-  return to ? <Link to={to} className={`${cls} transition hover:-translate-y-0.5 hover:shadow-md`}>{body}</Link> : <div className={cls}>{body}</div>
+  return <SharedStat icon={icon} label={label} value={value} tone={tone === 'emerald' ? 'green' : tone} hint={hint} to={to} big />
 }
 
 /** بطاقة شغل — تنضغط وتروح لمحطتها. */

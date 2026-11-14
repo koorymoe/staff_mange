@@ -560,7 +560,7 @@ export default function VehiclesPage() {
             <option value="تحتاج صيانة">تحتاج صيانة</option>
             <option value="معطلة">معطلة</option>
           </select>
-          <button type="submit" disabled={guard.busy} className="disabled:opacity-50 sm:col-span-4 rounded-lg bg-brand-600 px-5 py-2 font-medium text-white">حفظ السيارة</button>
+          <button type="submit" disabled={guard.busy} className="disabled:opacity-50 sm:col-span-4 rounded-lg bg-[#0f2040] px-5 py-2 font-medium text-white">حفظ السيارة</button>
         </form>
       )}
 
@@ -640,7 +640,7 @@ export default function VehiclesPage() {
                   <input placeholder="عداد الكيلومترات" type="number" value={editDraft.currentOdometer ?? ''} onChange={(e) => setEditDraft((p) => ({ ...p, currentOdometer: e.target.value ? Number(e.target.value) : undefined }))} className="rounded-lg border border-slate-300 px-3 py-2" />
                   <input placeholder="الحالة" value={editDraft.condition || ''} onChange={(e) => setEditDraft((p) => ({ ...p, condition: e.target.value }))} className="rounded-lg border border-slate-300 px-3 py-2" />
                   <div className="flex gap-2 sm:col-span-3">
-                    <button type="submit" disabled={guard.busy} className="disabled:opacity-50 rounded-lg bg-brand-600 px-4 py-2 text-sm font-bold text-white hover:bg-brand-700">حفظ التعديلات</button>
+                    <button type="submit" disabled={guard.busy} className="disabled:opacity-50 rounded-lg bg-[#0f2040] px-4 py-2 text-sm font-bold text-white hover:bg-[#1a3a6c]">حفظ التعديلات</button>
                     <button type="button" onClick={() => setShowEditVehicle(false)} className="rounded-lg bg-slate-100 px-4 py-2 text-sm font-bold text-slate-600 hover:bg-slate-200">إلغاء</button>
                   </div>
                 </form>
@@ -664,7 +664,7 @@ export default function VehiclesPage() {
                   <button
                     key={t.key}
                     onClick={() => { setTab(t.key); if (t.key === 'oil') setLogType('OIL_CHANGE') }}
-                    className={`flex-1 rounded-lg px-3 py-2 text-sm font-bold transition-colors ${tab === t.key ? 'bg-brand-600 text-white' : 'text-slate-600 hover:bg-slate-50'}`}
+                    className={`flex-1 rounded-lg px-3 py-2 text-sm font-bold transition-colors ${tab === t.key ? 'bg-[#0f2040] text-white' : 'text-slate-600 hover:bg-slate-50'}`}
                   >
                     {t.label}
                   </button>
@@ -736,7 +736,7 @@ export default function VehiclesPage() {
                       </>
                     )}
                     <input placeholder="ملاحظات" value={logNotes} onChange={(e) => setLogNotes(e.target.value)} className="rounded-lg border border-slate-300 px-3 py-2 sm:col-span-2" />
-                    <button type="submit" disabled={guard.busy} className="disabled:opacity-50 sm:col-span-3 rounded-lg bg-brand-600 px-5 py-2 font-medium text-white">تسجيل</button>
+                    <button type="submit" disabled={guard.busy} className="disabled:opacity-50 sm:col-span-3 rounded-lg bg-[#0f2040] px-5 py-2 font-medium text-white">تسجيل</button>
                     {fuelAnomalyWarning && (
                       <p className="sm:col-span-3 rounded-lg bg-amber-50 px-3 py-2 text-sm font-bold text-amber-700">{fuelAnomalyWarning}</p>
                     )}
@@ -882,7 +882,7 @@ export default function VehiclesPage() {
                         <input type="number" placeholder="تكلفة الإصلاح (اختياري)" value={incRepairCost} onChange={(e) => setIncRepairCost(e.target.value)} className="rounded-lg border border-slate-300 px-3 py-2" />
                       </>
                     )}
-                    <button type="submit" disabled={guard.busy} className="disabled:opacity-50 rounded-lg bg-brand-600 px-5 py-2 font-medium text-white">تسجيل</button>
+                    <button type="submit" disabled={guard.busy} className="disabled:opacity-50 rounded-lg bg-[#0f2040] px-5 py-2 font-medium text-white">تسجيل</button>
                   </form>
 
                   <div className="space-y-3">
@@ -964,7 +964,7 @@ export default function VehiclesPage() {
                       تمت المعالجة
                     </label>
                     <input placeholder="ملاحظات" value={monNotes} onChange={(e) => setMonNotes(e.target.value)} className="rounded-lg border border-slate-300 px-3 py-2" />
-                    <button type="submit" disabled={guard.busy} className="disabled:opacity-50 sm:col-span-2 rounded-lg bg-brand-600 px-5 py-2 font-medium text-white">حفظ حالة الشهر</button>
+                    <button type="submit" disabled={guard.busy} className="disabled:opacity-50 sm:col-span-2 rounded-lg bg-[#0f2040] px-5 py-2 font-medium text-white">حفظ حالة الشهر</button>
                   </form>
 
                   <div className="overflow-hidden rounded-xl border border-white bg-white shadow-[0_4px_20px_rgba(15,32,64,0.06)]">
@@ -1148,7 +1148,7 @@ export default function VehiclesPage() {
                       />
                     </div>
 
-                    <button type="submit" disabled={savingRating} className="w-full rounded-lg bg-brand-600 px-5 py-2 font-medium text-white disabled:opacity-50">
+                    <button type="submit" disabled={savingRating} className="w-full rounded-lg bg-[#0f2040] px-5 py-2 font-medium text-white disabled:opacity-50">
                       {savingRating ? 'جاري الحفظ...' : 'حفظ تقييم اليوم'}
                     </button>
                   </form>
@@ -1352,7 +1352,7 @@ function VehicleDocumentsTab({ vehicleId, guard }: { vehicleId: string; guard: S
           <label className="mb-1 block text-xs text-slate-500">صورة/ملف (اختياري)</label>
           <input type="file" accept="image/*,application/pdf" onChange={(e) => setFile(e.target.files?.[0] ?? null)} className={`w-full ${INPUT} text-sm`} />
         </div>
-        <button type="submit" disabled={saving} className="sm:col-span-3 rounded-lg bg-brand-600 px-5 py-2 font-medium text-white disabled:opacity-50">
+        <button type="submit" disabled={saving} className="sm:col-span-3 rounded-lg bg-[#0f2040] px-5 py-2 font-medium text-white disabled:opacity-50">
           {saving ? 'جاري الحفظ...' : '+ إضافة مستمسك'}
         </button>
       </form>
@@ -1462,7 +1462,7 @@ function VehiclePartsTab({ vehicle, guard }: { vehicle: Vehicle; guard: SaveGuar
         <input type="number" min="0" placeholder="العمر المتوقع (أشهر)" value={form.lifeMonths} onChange={(e) => setForm({ ...form, lifeMonths: e.target.value })} className={INPUT} />
         <input type="number" min="0" placeholder="الكلفة" value={form.cost} onChange={(e) => setForm({ ...form, cost: e.target.value })} className={INPUT} />
         <input placeholder="ملاحظات" value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} className={`${INPUT} sm:col-span-3`} />
-        <button type="submit" disabled={guard.busy} className="disabled:opacity-50 sm:col-span-3 rounded-lg bg-brand-600 px-5 py-2 font-medium text-white">+ تسجيل قطعة</button>
+        <button type="submit" disabled={guard.busy} className="disabled:opacity-50 sm:col-span-3 rounded-lg bg-[#0f2040] px-5 py-2 font-medium text-white">+ تسجيل قطعة</button>
       </form>
 
       <div className="overflow-hidden rounded-xl border border-white bg-white shadow-[0_4px_20px_rgba(15,32,64,0.06)]">
@@ -1560,7 +1560,7 @@ function VehiclePhotosTab({ vehicleId, guard }: { vehicleId: string; guard: Save
       <form onSubmit={submit} className={`${CARD} grid grid-cols-1 gap-3 sm:grid-cols-3`}>
         <input required type="file" accept="image/*" onChange={(e) => setFile(e.target.files?.[0] ?? null)} className={`${INPUT} text-sm`} />
         <input placeholder="وصف الصورة (اختياري)" value={caption} onChange={(e) => setCaption(e.target.value)} className={INPUT} />
-        <button type="submit" disabled={uploading || !file} className="rounded-lg bg-brand-600 px-5 py-2 font-medium text-white disabled:opacity-50">
+        <button type="submit" disabled={uploading || !file} className="rounded-lg bg-[#0f2040] px-5 py-2 font-medium text-white disabled:opacity-50">
           {uploading ? 'جاري الرفع...' : '📷 رفع صورة'}
         </button>
       </form>

@@ -445,7 +445,7 @@ export default function MonitorDashboard() {
                   </div>
                   {unverifiedBookings.length > 0 && (
                     <Link to="/daily-audit"
-                      className="shrink-0 rounded-lg bg-brand-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-brand-700">
+                      className="shrink-0 rounded-lg bg-[#0f2040] px-3 py-1.5 text-xs font-bold text-white hover:bg-[#1a3a6c]">
                       دقّقهن ({unverifiedBookings.length}) ←
                     </Link>
                   )}

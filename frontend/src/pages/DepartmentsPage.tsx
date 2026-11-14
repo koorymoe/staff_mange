@@ -101,7 +101,7 @@ export default function DepartmentsPage() {
           style={{ borderColor: 'var(--bd-line)', backgroundColor: 'var(--sf-card)', color: 'var(--t-body)' }}
         />
         <button onClick={addDept} disabled={guard.busy || !newDept.trim()}
-          className="rounded-lg bg-brand-600 px-3 py-1.5 text-xs font-bold text-white disabled:opacity-50">
+          className="rounded-lg bg-[#0f2040] px-3 py-1.5 text-xs font-bold text-white disabled:opacity-50">
           ＋ أضف قسماً
         </button>
       </SearchBar>
@@ -164,7 +164,7 @@ export default function DepartmentsPage() {
                       className="w-40 rounded-lg border px-3 py-1.5 text-xs"
                       style={{ borderColor: 'var(--bd-line)', backgroundColor: 'var(--sf-card)', color: 'var(--t-body)' }} />
                     <button onClick={() => addHead(d.id)} disabled={guard.busy || !headName.trim()}
-                      className="rounded-lg bg-brand-600 px-3 py-1.5 text-xs font-bold text-white disabled:opacity-50">
+                      className="rounded-lg bg-[#0f2040] px-3 py-1.5 text-xs font-bold text-white disabled:opacity-50">
                       ＋ أضف مسؤولاً
                     </button>
                   </div>

@@ -57,7 +57,7 @@ export default function DesignSetsPage() {
             <div className="flex flex-wrap gap-1.5">
               {meta.disciplines.map((d) => (
                 <button key={d.code} type="button" onClick={() => toggle(d.code)}
-                  className={`rounded-full px-3 py-1 text-xs font-bold ${form.disciplines.includes(d.code) ? 'bg-brand-700 text-white' : 'bg-slate-100 text-slate-500'}`}>{d.icon} {d.name}</button>
+                  className={`rounded-full px-3 py-1 text-xs font-bold ${form.disciplines.includes(d.code) ? 'bg-[#0f2040] text-white' : 'bg-slate-100 text-slate-500'}`}>{d.icon} {d.name}</button>
               ))}
             </div>
           </div>
@@ -65,8 +65,8 @@ export default function DesignSetsPage() {
         </div>
       )}
       <div className="flex gap-2 text-xs">
-        <button type="button" onClick={() => setArchived(false)} className={`rounded-full px-3 py-1 font-bold ${!archived ? 'bg-brand-700 text-white' : 'bg-slate-100 text-slate-600'}`}>الشغّالة</button>
-        <button type="button" onClick={() => setArchived(true)} className={`rounded-full px-3 py-1 font-bold ${archived ? 'bg-brand-700 text-white' : 'bg-slate-100 text-slate-600'}`}>المؤرشفة</button>
+        <button type="button" onClick={() => setArchived(false)} className={`rounded-full px-3 py-1 font-bold ${!archived ? 'bg-[#0f2040] text-white' : 'bg-slate-100 text-slate-600'}`}>الشغّالة</button>
+        <button type="button" onClick={() => setArchived(true)} className={`rounded-full px-3 py-1 font-bold ${archived ? 'bg-[#0f2040] text-white' : 'bg-slate-100 text-slate-600'}`}>المؤرشفة</button>
       </div>
       {!rows && !err && <p className="text-slate-400">جاري التحميل…</p>}
       {rows && shown.length === 0 && <p className="rounded-xl bg-white p-8 text-center text-slate-400">ماكو سيتات {archived ? 'مؤرشفة' : 'بعد'}.</p>}

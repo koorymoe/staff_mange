@@ -24,7 +24,7 @@ export default function FormDialog({ title, fields, ok, onDone }: { title: strin
                 <div className="flex flex-col gap-1.5">
                   {f.options.map(([k, label]) => (
                     <button key={k} type="button" onClick={() => setVals((v) => ({ ...v, [f.key]: k }))}
-                      className={`rounded-lg border px-3 py-2 text-right text-sm font-bold transition ${vals[f.key] === k ? 'border-brand-600 bg-brand-600 text-white' : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50'}`}>
+                      className={`rounded-lg border px-3 py-2 text-right text-sm font-bold transition ${vals[f.key] === k ? 'border-brand-600 bg-[#0f2040] text-white' : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50'}`}>
                       {label}
                     </button>
                   ))}
@@ -35,7 +35,7 @@ export default function FormDialog({ title, fields, ok, onDone }: { title: strin
         </div>
         <div className="mt-5 flex gap-2">
           <button type="button" disabled={missing} onClick={() => onDone(vals)}
-            className="flex-1 rounded-lg bg-brand-700 px-4 py-2.5 text-sm font-bold text-white disabled:opacity-50">{ok}</button>
+            className="flex-1 rounded-lg bg-[#0f2040] px-4 py-2.5 text-sm font-bold text-white disabled:opacity-50">{ok}</button>
           <button type="button" onClick={() => onDone(null)} className="rounded-lg border border-slate-300 px-4 py-2.5 text-sm font-bold text-slate-600">إلغاء</button>
         </div>
       </div>

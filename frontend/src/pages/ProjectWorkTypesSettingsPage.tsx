@@ -62,7 +62,7 @@ export default function ProjectWorkTypesSettingsPage() {
         />
         <button
           type="submit" disabled={saving}
-          className="rounded-lg bg-brand-600 px-5 py-2 text-sm font-bold text-white hover:bg-brand-700 disabled:opacity-50"
+          className="rounded-lg bg-[#0f2040] px-5 py-2 text-sm font-bold text-white hover:bg-[#1a3a6c] disabled:opacity-50"
         >
           {saving ? 'جاري الإضافة...' : '+ إضافة نوع عمل'}
         </button>

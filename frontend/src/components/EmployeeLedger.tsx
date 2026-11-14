@@ -27,7 +27,7 @@ export default function EmployeeLedger({ employeeId, day }: { employeeId: string
         <div className="flex gap-1">
           {(['day', 'month'] as const).map((p) => (
             <button key={p} type="button" onClick={() => setPeriod(p)}
-              className={`rounded-lg px-3 py-1.5 text-sm font-bold ${period === p ? 'bg-violet-700 text-white' : 'border border-slate-300 text-slate-600'}`}>
+              className={`rounded-lg px-3 py-1.5 text-sm font-bold ${period === p ? 'bg-[#0f2040] text-white' : 'border border-slate-300 text-slate-600'}`}>
               {p === 'day' ? 'اليوم' : 'الشهر'}
             </button>
           ))}
@@ -41,7 +41,7 @@ export default function EmployeeLedger({ employeeId, day }: { employeeId: string
           <div className="mt-3 flex flex-wrap gap-2">
             {d.sections.map((s) => (
               <button key={s.key} type="button" onClick={() => setOpen(open === s.key ? null : s.key)}
-                className={`rounded-xl px-3 py-2 text-sm font-bold ${open === s.key ? 'bg-violet-700 text-white' : 'bg-violet-50 text-violet-900 hover:bg-violet-100'}`}>
+                className={`rounded-xl px-3 py-2 text-sm font-bold ${open === s.key ? 'bg-[#0f2040] text-white' : 'bg-violet-50 text-violet-900 hover:bg-violet-100'}`}>
                 {s.title} <span className="tabular-nums">({s.count})</span>
               </button>
             ))}

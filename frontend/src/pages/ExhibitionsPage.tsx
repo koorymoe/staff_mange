@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import Modal from '../ui/Modal'
 import { api, storeFile, type Exhibition, type Employee, type EmployeeRole, fileUrl } from '../api'
 import { useSession, isAdminOrOwner } from '../session'
 import { loadFailed } from '../netErrors'
@@ -149,7 +150,7 @@ export default function ExhibitionsPage({ embedded }: { embedded?: boolean } = {
 
       {canAdd && (
         <div className="mt-4 mb-4">
-          <button onClick={() => setShowForm((v) => !v)} className="rounded-lg bg-brand-500 px-4 py-2 text-sm font-bold text-white hover:bg-brand-600">
+          <button onClick={() => setShowForm((v) => !v)} className="rounded-lg bg-brand-500 px-4 py-2 text-sm font-bold text-white hover:bg-[#1a3a6c]">
             {showForm ? '× إغلاق' : '+ إضافة معرض جديد'}
           </button>
           {showForm && (
@@ -167,7 +168,7 @@ export default function ExhibitionsPage({ embedded }: { embedded?: boolean } = {
               </label>
               <input value={form.companies} onChange={(e) => setForm({ ...form, companies: e.target.value })} placeholder="الشركات الموجودة بالمعرض (مفصولة بفاصلة)" className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand-500 sm:col-span-2" />
               <input value={form.productsToShow} onChange={(e) => setForm({ ...form, productsToShow: e.target.value })} placeholder="المنتجات المراد عرضها (مفصولة بفاصلة)" className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand-500 sm:col-span-2" />
-              <button type="submit" disabled={saving} className="rounded-lg bg-brand-500 px-4 py-2 text-sm font-bold text-white hover:bg-brand-600 disabled:opacity-50 sm:col-span-2">
+              <button type="submit" disabled={saving} className="rounded-lg bg-brand-500 px-4 py-2 text-sm font-bold text-white hover:bg-[#1a3a6c] disabled:opacity-50 sm:col-span-2">
                 {saving ? 'جاري الحفظ...' : 'حفظ المعرض'}
               </button>
             </form>
@@ -236,7 +237,7 @@ export default function ExhibitionsPage({ embedded }: { embedded?: boolean } = {
                   <button onClick={() => handleSaveFindings(ex.id)} disabled={busyId === ex.id} className="rounded-lg bg-slate-100 px-3 py-1.5 text-xs font-bold text-slate-700 hover:bg-slate-200 disabled:opacity-50">
                     حفظ الملاحظات
                   </button>
-                  <button onClick={() => handleGenerateReport(ex.id)} disabled={busyId === ex.id} className="rounded-lg bg-brand-500 px-3 py-1.5 text-xs font-bold text-white hover:bg-brand-600 disabled:opacity-50">
+                  <button onClick={() => handleGenerateReport(ex.id)} disabled={busyId === ex.id} className="rounded-lg bg-brand-500 px-3 py-1.5 text-xs font-bold text-white hover:bg-[#1a3a6c] disabled:opacity-50">
                     {busyId === ex.id ? 'جاري التوليد...' : '🤖 توليد تقرير الزيارة'}
                   </button>
                 </div>
@@ -255,12 +256,7 @@ export default function ExhibitionsPage({ embedded }: { embedded?: boolean } = {
 
       {/* قائمة ترشيح الموظفين — مجمّعة بالترتيب: تقنيين ومهندسين، مصممين، الباقي */}
       {nominateFor && (
-        <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/40 p-4">
-          <div className="mt-10 w-full max-w-lg rounded-xl bg-white p-5 shadow-xl">
-            <div className="flex items-start justify-between">
-              <h3 className="text-lg font-bold text-brand-900">ترشيح موظفين للمعرض</h3>
-              <button onClick={() => setNominateFor(null)} className="text-2xl leading-none text-slate-400">×</button>
-            </div>
+        <Modal title="ترشيح موظفين للمعرض" onClose={() => setNominateFor(null)} size="lg" bodyClassName="p-5">
             <p className="mt-1 text-sm text-slate-500">اختر من القائمة — تكدر تختار أكثر من واحد.</p>
 
             <div className="mt-3 max-h-80 overflow-y-auto rounded-lg border border-slate-200">
@@ -285,13 +281,12 @@ export default function ExhibitionsPage({ embedded }: { embedded?: boolean } = {
             </div>
 
             <div className="mt-4 flex gap-2">
-              <button onClick={saveNominate} disabled={busyId === nominateFor} className="flex-1 rounded-lg bg-brand-500 px-4 py-2 text-sm font-bold text-white hover:bg-brand-600 disabled:opacity-50">
+              <button onClick={saveNominate} disabled={busyId === nominateFor} className="flex-1 rounded-lg bg-brand-500 px-4 py-2 text-sm font-bold text-white hover:bg-[#1a3a6c] disabled:opacity-50">
                 {busyId === nominateFor ? 'جاري الحفظ...' : `حفظ الترشيح (${nominatePicked.length})`}
               </button>
               <button onClick={() => setNominateFor(null)} className="rounded-lg border border-slate-300 px-4 py-2 text-sm">إلغاء</button>
             </div>
-          </div>
-        </div>
+</Modal>
       )}
     </div>
   )

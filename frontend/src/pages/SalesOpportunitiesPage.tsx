@@ -76,7 +76,7 @@ export default function SalesOpportunitiesPage() {
           <button
             key={t.key}
             onClick={() => setReason(t.key)}
-            className={`rounded-full px-3 py-1 text-sm font-semibold ${reason === t.key ? 'bg-brand-600 text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}
+            className={`rounded-full px-3 py-1 text-sm font-semibold ${reason === t.key ? 'bg-[#0f2040] text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}
           >
             {t.label} ({counts[t.key]})
           </button>
@@ -110,7 +110,7 @@ export default function SalesOpportunitiesPage() {
               <div className="mt-3">
                 <Link
                   to={`/sales?customerId=${encodeURIComponent(o.customerId)}`}
-                  className="inline-block rounded-lg bg-brand-600 px-3 py-1.5 text-sm font-bold text-white hover:bg-brand-700"
+                  className="inline-block rounded-lg bg-[#0f2040] px-3 py-1.5 text-sm font-bold text-white hover:bg-[#1a3a6c]"
                 >
                   احجز
                 </Link>

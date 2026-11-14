@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import Modal from '../../ui/Modal'
 import { api, type GpsRenewalRequest } from '../../api'
 import { escDeep } from '../../utils/printIdentity'
 
@@ -168,12 +169,7 @@ export default function GpsRenewals() {
       )}
 
       {selected && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ background: 'rgba(0,0,0,0.5)' }}>
-          <div className="rounded-2xl w-full max-w-lg m-4" style={{ background: 'var(--sf-card)', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)' }}>
-            <div className="p-5 flex items-center justify-between border-b border-bd-line">
-              <h2 className="text-xl font-bold text-t-title">تأكيد التجديد</h2>
-              <button onClick={() => setSelected(null)} style={{ color: 'var(--t-faint)', fontSize: '1.5rem', background: 'none', border: 'none', cursor: 'pointer' }}>✕</button>
-            </div>
+        <Modal title="تأكيد التجديد" onClose={() => setSelected(null)} size="lg" bodyClassName="p-0">
             <div className="p-6 text-sm" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
               <div className="grid grid-cols-2 gap-3 p-4 rounded-xl bg-sf-sunken">
                 <div><span className="text-t-muted">الاسم: </span><span className="font-semibold">{selected.customer ? `${selected.customer.fullName} ${selected.customer.fatherName} ${selected.customer.grandfatherName}` : '-'}</span></div>
@@ -198,8 +194,7 @@ export default function GpsRenewals() {
                 إغلاق
               </button>
             </div>
-          </div>
-        </div>
+</Modal>
       )}
     </div>
   )

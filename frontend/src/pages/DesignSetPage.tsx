@@ -159,7 +159,7 @@ function SectionCard({ s, d, meta, tools, people, reload }: {
                 </select>
               </label>
               <label>موعد التسليم<input type="date" value={assign.due} onChange={(e) => setAssign({ ...assign, due: e.target.value })} className="block rounded-lg border border-slate-200 p-1.5" /></label>
-              <button type="button" disabled={busy || !assign.who || !assign.due} onClick={() => void run(() => apiRequest(`/design-sections/${s.id}/assign`, { method: 'POST', body: JSON.stringify({ assigneeId: assign.who, dueDate: assign.due }) }))} className="rounded-lg bg-brand-700 px-3 py-1.5 font-bold text-white disabled:opacity-50">{s.assigneeId ? 'غيّر' : 'كلّف'} (تصير مهمة)</button>
+              <button type="button" disabled={busy || !assign.who || !assign.due} onClick={() => void run(() => apiRequest(`/design-sections/${s.id}/assign`, { method: 'POST', body: JSON.stringify({ assigneeId: assign.who, dueDate: assign.due }) }))} className="rounded-lg bg-[#0f2040] px-3 py-1.5 font-bold text-white disabled:opacity-50">{s.assigneeId ? 'غيّر' : 'كلّف'} (تصير مهمة)</button>
             </div>
           )}
           {err && <p className="text-xs font-bold text-red-600">{err}</p>}
@@ -260,7 +260,7 @@ export default function DesignSetPage() {
             {missing.length > 0 && (
               <>
                 <select value={add} onChange={(e) => setAdd(e.target.value)} className="rounded-lg border border-slate-200 p-1.5"><option value="">+ تخصص ثاني</option>{missing.map((x) => <option key={x.code} value={x.code}>{x.icon} {x.name}</option>)}</select>
-                {add && <button type="button" onClick={() => void apiRequest(`/design-sets/${d.id}/sections`, { method: 'POST', body: JSON.stringify({ discipline: add }) }).then(() => { setAdd(''); refresh() })} className="rounded-lg bg-brand-700 px-3 py-1.5 font-bold text-white">ضيف</button>}
+                {add && <button type="button" onClick={() => void apiRequest(`/design-sets/${d.id}/sections`, { method: 'POST', body: JSON.stringify({ discipline: add }) }).then(() => { setAdd(''); refresh() })} className="rounded-lg bg-[#0f2040] px-3 py-1.5 font-bold text-white">ضيف</button>}
               </>
             )}
             <button type="button" onClick={() => void apiRequest(`/design-sets/${d.id}/archive`, { method: 'POST', body: JSON.stringify({ archived: !d.archivedAt }) }).then(refresh)} className="rounded-lg border border-slate-200 px-3 py-1.5">{d.archivedAt ? '↩️ رجّعه من الأرشيف' : '🗄️ أرشفة'}</button>

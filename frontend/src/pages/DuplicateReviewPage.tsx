@@ -128,7 +128,7 @@ export default function DuplicateReviewPage() {
             key={t}
             onClick={() => { setTab(t); setMsg(null) }}
             className={`rounded-xl px-4 py-2 text-sm font-bold transition ${
-              tab === t ? 'bg-brand-700 text-white' : 'bg-white text-slate-600 shadow-sm'
+              tab === t ? 'bg-[#0f2040] text-white' : 'bg-white text-slate-600 shadow-sm'
             }`}
           >
             {t === 'BOOKING' ? '📋 حجوزات مكررة' : t === 'CUSTOMER' ? '👤 زبائن مكررون' : '✅ المحلولة'}

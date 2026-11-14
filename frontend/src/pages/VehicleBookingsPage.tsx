@@ -153,7 +153,7 @@ export default function VehicleBookingsPage() {
             <button
               key={t.key}
               onClick={() => setView(t.key)}
-              className={`flex-1 rounded-lg px-3 py-2 text-sm font-bold transition-colors ${view === t.key ? 'bg-brand-600 text-white' : 'text-slate-600 hover:bg-slate-50'}`}
+              className={`flex-1 rounded-lg px-3 py-2 text-sm font-bold transition-colors ${view === t.key ? 'bg-[#0f2040] text-white' : 'text-slate-600 hover:bg-slate-50'}`}
             >
               {t.label}{t.key === 'pending' && view === 'pending' && bookings ? ` (${pendingCount})` : ''}
             </button>

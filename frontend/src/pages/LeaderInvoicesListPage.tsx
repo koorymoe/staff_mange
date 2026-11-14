@@ -544,7 +544,7 @@ export default function LeaderInvoicesListPage({ embedded }: EmbeddedProps = {})
               finally { setExpBusy(false) }
             }}
             disabled={expBusy}
-            className="rounded-xl bg-indigo-600 px-4 py-2 text-sm font-bold text-white hover:bg-indigo-700 disabled:opacity-50"
+            className="rounded-xl bg-[#0f2040] px-4 py-2 text-sm font-bold text-white hover:bg-[#1a3a6c] disabled:opacity-50"
           >
             {expBusy ? 'جاري التحضير…' : '⬇ تنزيل إكسل الشهر'}
           </button>
@@ -793,7 +793,7 @@ export default function LeaderInvoicesListPage({ embedded }: EmbeddedProps = {})
                         <button
                           onClick={() => { setApproveFor(inv); setInvoiceNo(''); setApproveErr(null) }}
                           disabled={busyId === inv.id}
-                          className="rounded-lg bg-brand-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-brand-700 disabled:opacity-50"
+                          className="rounded-lg bg-[#0f2040] px-3 py-1.5 text-xs font-bold text-white hover:bg-[#1a3a6c] disabled:opacity-50"
                         >
                           {busyId === inv.id ? 'جاري الاعتماد...' : 'اعتماد'}
                         </button>
@@ -817,7 +817,7 @@ export default function LeaderInvoicesListPage({ embedded }: EmbeddedProps = {})
                         <button
                           onClick={() => { setDecideFor(inv); setDecideVerdict('OK'); setDecideNote(''); setDecideErr(null) }}
                           disabled={busyId === inv.id}
-                          className="rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-indigo-700 disabled:opacity-50"
+                          className="rounded-lg bg-[#0f2040] px-3 py-1.5 text-xs font-bold text-white hover:bg-[#1a3a6c] disabled:opacity-50"
                         >
                           👁️ راجعها
                         </button>
@@ -1073,7 +1073,7 @@ export default function LeaderInvoicesListPage({ embedded }: EmbeddedProps = {})
               <button
                 onClick={saveAudit}
                 disabled={busyId !== null}
-                className="flex-1 rounded-xl bg-brand-600 px-4 py-2.5 text-sm font-bold text-white disabled:opacity-50"
+                className="flex-1 rounded-xl bg-[#0f2040] px-4 py-2.5 text-sm font-bold text-white disabled:opacity-50"
               >
                 احفظ الحكم
               </button>
@@ -1106,7 +1106,7 @@ export default function LeaderInvoicesListPage({ embedded }: EmbeddedProps = {})
             {monitorErr && <p className="mt-2 rounded-lg bg-red-50 px-3 py-2 text-xs font-bold text-red-700">{monitorErr}</p>}
             <div className="mt-4 flex gap-2">
               <button onClick={sendToMonitor} disabled={busyId === monitorFor.id}
-                className="flex-1 rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-bold text-white disabled:opacity-50">
+                className="flex-1 rounded-xl bg-[#0f2040] px-4 py-2.5 text-sm font-bold text-white disabled:opacity-50">
                 👁️ أرسلها للمراقب
               </button>
               <button onClick={() => setMonitorFor(null)}
@@ -1133,7 +1133,7 @@ export default function LeaderInvoicesListPage({ embedded }: EmbeddedProps = {})
               {([['OK', '✅ سليمة'], ['FLAGGED', '⚠️ عندي ملاحظة']] as const).map(([k, lbl]) => (
                 <button key={k} onClick={() => setDecideVerdict(k)}
                   className={`flex-1 rounded-xl px-3 py-2.5 text-sm font-bold transition ${
-                    decideVerdict === k ? 'bg-indigo-600 text-white' : 'border border-slate-300 text-slate-600 hover:bg-slate-50'}`}>
+                    decideVerdict === k ? 'bg-[#0f2040] text-white' : 'border border-slate-300 text-slate-600 hover:bg-slate-50'}`}>
                   {lbl}
                 </button>
               ))}
@@ -1154,7 +1154,7 @@ export default function LeaderInvoicesListPage({ embedded }: EmbeddedProps = {})
             </p>
             <div className="mt-3 flex gap-2">
               <button onClick={decideMonitor} disabled={busyId === decideFor.id}
-                className="flex-1 rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-bold text-white disabled:opacity-50">
+                className="flex-1 rounded-xl bg-[#0f2040] px-4 py-2.5 text-sm font-bold text-white disabled:opacity-50">
                 سجّل حكمي
               </button>
               <button onClick={() => setDecideFor(null)}
@@ -1242,7 +1242,7 @@ export default function LeaderInvoicesListPage({ embedded }: EmbeddedProps = {})
               <div className="flex items-center gap-1">
                 <button
                   onClick={() => printInvoice(details, adjustments)}
-                  className="rounded-lg bg-brand-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-brand-700"
+                  className="rounded-lg bg-[#0f2040] px-3 py-1.5 text-xs font-bold text-white hover:bg-[#1a3a6c]"
                 >
                   🖨️ طباعة
                 </button>

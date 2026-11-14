@@ -214,7 +214,7 @@ export default function ActionsTable({ gate }: { gate?: (perm: string) => boolea
                       <td className="p-2"><span className={`whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-bold ${st.cls}`}>{st.icon} {st.label}</span></td>
                       <td className="p-2">
                         {r.taskId && <TaskQuick id={r.taskId} late={r.status === 'LATE'} onDone={() => setRows((cur) => (cur ?? []).filter((x) => x.key !== r.key || r.status !== 'LATE'))} />}
-                        <Link to={r.to} className={`whitespace-nowrap rounded-lg px-3 py-1.5 text-xs font-bold ${r.status === 'DONE' ? 'bg-slate-100 text-slate-700' : 'bg-brand-600 text-white hover:bg-brand-700'}`}>
+                        <Link to={r.to} className={`whitespace-nowrap rounded-lg px-3 py-1.5 text-xs font-bold ${r.status === 'DONE' ? 'bg-slate-100 text-slate-700' : 'bg-[#0f2040] text-white hover:bg-[#1a3a6c]'}`}>
                           {r.status === 'DONE' ? '👁' : '▶'} {r.act}
                         </Link>
                       </td>
@@ -229,7 +229,7 @@ export default function ActionsTable({ gate }: { gate?: (perm: string) => boolea
           <div className="mt-3 flex items-center justify-center gap-1">
             <button disabled={cur === 1} onClick={() => setPage(1)} className="rounded-lg border px-2.5 py-1 text-xs disabled:opacity-40">الأول</button>
             {Array.from({ length: pages }, (_, i) => i + 1).filter((p) => Math.abs(p - cur) <= 2).map((p) => (
-              <button key={p} onClick={() => setPage(p)} className={`rounded-lg px-3 py-1 text-xs font-bold ${p === cur ? 'bg-brand-600 text-white' : 'border'}`}>{p}</button>
+              <button key={p} onClick={() => setPage(p)} className={`rounded-lg px-3 py-1 text-xs font-bold ${p === cur ? 'bg-[#0f2040] text-white' : 'border'}`}>{p}</button>
             ))}
             <button disabled={cur === pages} onClick={() => setPage(pages)} className="rounded-lg border px-2.5 py-1 text-xs disabled:opacity-40">الأخير</button>
           </div>

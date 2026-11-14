@@ -207,7 +207,7 @@ export default function StaffScorePage() {
         </div>
         <div className="flex items-center gap-2">
           <input type="month" value={month || b.month} onChange={(e) => setMonth(e.target.value)} className="rounded-lg border border-slate-200 px-2 py-1 text-sm" />
-          {admin && <button type="button" disabled={busy} onClick={() => void run()} className="rounded-lg bg-violet-700 px-3 py-1.5 text-xs font-bold text-white disabled:opacity-50">🔄 احسب هسه</button>}
+          {admin && <button type="button" disabled={busy} onClick={() => void run()} className="rounded-lg bg-[#0f2040] px-3 py-1.5 text-xs font-bold text-white disabled:opacity-50">🔄 احسب هسه</button>}
         </div>
       </div>
       {admin && <OwnerSwitch switchKey={SWITCH_MATRIX_SCORING} label="ماتركس يقيّم الموظفين بالنقاط لحاله" hint="شغّال = يحسب كل ساعة. مطفي = ما يحسب لحاله (تقدر تحسب يدوي بزر «احسب هسه» حتى تجرّب)." />}
@@ -224,7 +224,7 @@ export default function StaffScorePage() {
       <div className="flex gap-1.5">
         {([['points', '🏅 رصيد النقاط'], ['list', '📋 التقييم'], ['compare', '⚖️ المقارنة']] as const).map(([k, l]) => (
           <button key={k} type="button" onClick={() => setView(k)}
-            className={`rounded-lg px-3 py-1.5 text-sm font-bold ${view === k ? 'bg-violet-700 text-white' : 'bg-white text-slate-700 ring-1 ring-slate-200'}`}>{l}</button>
+            className={`rounded-lg px-3 py-1.5 text-sm font-bold ${view === k ? 'bg-[#0f2040] text-white' : 'bg-white text-slate-700 ring-1 ring-slate-200'}`}>{l}</button>
         ))}
       </div>
       {view === 'compare' && <GroupRanking staff={shown} />}

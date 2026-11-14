@@ -62,7 +62,7 @@ export default function ManagerRequestDialog({ onClose, withInventory }: { onClo
         )}
         {msg && <p className="text-sm font-bold text-slate-700">{msg}</p>}
         <button type="button" disabled={busy || title.trim().length < 3} onClick={() => void send()}
-          className="w-full rounded-lg bg-brand-700 py-2 text-sm font-bold text-white disabled:opacity-50">{busy ? 'جاري…' : 'ارفع الطلب'}</button>
+          className="w-full rounded-lg bg-[#0f2040] py-2 text-sm font-bold text-white disabled:opacity-50">{busy ? 'جاري…' : 'ارفع الطلب'}</button>
 
         {mine.length > 0 && (
           <div className="space-y-1.5 border-t border-slate-100 pt-3">

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import Modal from '../ui/Modal'
 import { api, type LeaveRequest, type LeaveStatus } from '../api'
 import { askConfirm } from '../ui/dialogs'
 
@@ -239,9 +240,7 @@ export default function LeavesPage() {
       </div>
 
       {open && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={() => setOpen(false)}>
-          <div dir="rtl" className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl" onClick={(e) => e.stopPropagation()}>
-            <h3 className="text-lg font-bold text-t-title">طلب إجازة</h3>
+        <Modal title="طلب إجازة" onClose={() => setOpen(false)} size="md" bodyClassName="p-6">
             <p className="mt-1 rounded-lg bg-slate-50 p-3 text-xs text-slate-600">
               الإجازة تُطلب قبل يومين على الأقل من تاريخها.
             </p>
@@ -265,8 +264,7 @@ export default function LeavesPage() {
               </button>
               <button onClick={() => setOpen(false)} className="rounded-lg border border-slate-300 px-4 py-3 font-medium text-slate-700">إلغاء</button>
             </div>
-          </div>
-        </div>
+</Modal>
       )}
     </div>
   )

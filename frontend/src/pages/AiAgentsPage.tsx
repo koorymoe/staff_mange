@@ -174,7 +174,7 @@ function OwnerAgents() {
                   </label>
                   <button
                     disabled={!!busy}
-                    className="self-end rounded-xl bg-brand-600 px-4 py-2 font-bold text-white disabled:opacity-50"
+                    className="self-end rounded-xl bg-[#0f2040] px-4 py-2 font-bold text-white disabled:opacity-50"
                   >
                     {busy === agent.agent ? 'دا أحفظ…' : 'حفظ'}
                   </button>
@@ -268,7 +268,7 @@ function OwnerAgents() {
           محادثات الواتساب ←
         </Link>
         <Link
-          className="rounded-xl bg-brand-600 px-4 py-3 font-bold text-white"
+          className="rounded-xl bg-[#0f2040] px-4 py-3 font-bold text-white"
           to="/whatsapp-sandbox"
         >
           افتح وضع التجربة ←
@@ -297,7 +297,7 @@ function OwnerAgents() {
               <button
                 disabled={!!busy}
                 onClick={() => void toggle()}
-                className="rounded-xl bg-brand-600 px-4 py-2 font-bold text-white"
+                className="rounded-xl bg-[#0f2040] px-4 py-2 font-bold text-white"
               >
                 تأكيد
               </button>

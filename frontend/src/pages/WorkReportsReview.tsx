@@ -96,7 +96,7 @@ export default function WorkReportsReview() {
           <button
             key={t.key}
             onClick={() => setFilter(t.key)}
-            className={`rounded-lg px-4 py-2 text-sm font-bold transition-colors ${filter === t.key ? 'bg-brand-600 text-white' : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'}`}
+            className={`rounded-lg px-4 py-2 text-sm font-bold transition-colors ${filter === t.key ? 'bg-[#0f2040] text-white' : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'}`}
           >
             {t.label}
           </button>

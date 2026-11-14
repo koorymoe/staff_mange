@@ -123,7 +123,7 @@ export default function MyAchievementsPage() {
         <button
           onClick={submit}
           disabled={saving}
-          className="rounded-xl bg-brand-700 px-5 py-2.5 text-sm font-bold text-white transition hover:bg-brand-800 disabled:opacity-50"
+          className="rounded-xl bg-[#0f2040] px-5 py-2.5 text-sm font-bold text-white transition hover:bg-brand-800 disabled:opacity-50"
         >
           {saving ? 'جاري الإرسال...' : '📤 إرسال التقرير'}
         </button>

@@ -8,6 +8,7 @@ import { Navigate, useNavigate } from 'react-router-dom'
 import MyFundBalance from '../components/MyFundBalance'
 import TodayBoard from '../components/TodayBoard'
 import PctWhy from '../ui/PctWhy'
+import SharedRing from '../ui/ProgressRing'
 import ShiftEndCard from '../components/ShiftEndCard'
 import { api, API_URL } from '../api'
 import type { Booking, Expense, StaffRequest, LeaveRequest, InventoryCheck, FinanceSummary, DailyAuditReport, TodayPulse, Employee } from '../api'
@@ -66,19 +67,10 @@ function AnimatedNumber({ value, loading }: { value: number; loading: boolean })
   return <>{display.toLocaleString('ar-SA')}</>
 }
 
-/* ───── Progress Ring ───── */
-function ProgressRing({ percent, size = 56, stroke = 5, color }: { percent: number; size?: number; stroke?: number; color: string }) {
-  const r = (size - stroke) / 2
-  const circ = 2 * Math.PI * r
-  const offset = circ - (percent / 100) * circ
-  return (
-    <svg width={size} height={size} className="-rotate-90">
-      <circle cx={size/2} cy={size/2} r={r} fill="none" stroke="currentColor" strokeWidth={stroke} className="text-slate-100" />
-      <circle cx={size/2} cy={size/2} r={r} fill="none" stroke={color} strokeWidth={stroke}
-        strokeDasharray={circ} strokeDashoffset={offset} strokeLinecap="round"
-        className="transition-all duration-1000 ease-out" />
-    </svg>
-  )
+/* ───── Progress Ring ─────
+   (دازاي 11-15) صارت مشتركة (ui/ProgressRing) — نفس الحجم والسماكة والحركة. */
+function ProgressRing({ percent, color }: { percent: number; color: string }) {
+  return <SharedRing percent={percent} color={color} track="#f1f5f9" animate />
 }
 
 // مدير النظام له رئيسية خاصة (المتابعة + الإجراءات). الفحص بغلاف منفصل

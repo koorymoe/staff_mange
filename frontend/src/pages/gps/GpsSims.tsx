@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import Modal from '../../ui/Modal'
 import { api, type GpsSimCard, type GpsCustomer } from '../../api'
 import { askConfirm } from '../../ui/dialogs'
 
@@ -248,9 +249,7 @@ export default function GpsSims({ embedded }: { embedded?: boolean } = {}) {
       )}
 
       {assignTarget && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={() => setAssignTarget(null)}>
-          <div dir="rtl" className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl" onClick={(e) => e.stopPropagation()}>
-            <h3 className="text-lg font-bold text-t-title">ربط الشريحة بزبون</h3>
+        <Modal title="ربط الشريحة بزبون" onClose={() => setAssignTarget(null)} size="md" bodyClassName="p-6">
             <p className="mt-1 text-sm text-slate-600">الشريحة: <span dir="ltr">{assignTarget.simNumber}</span></p>
             <label className="mt-4 mb-1 block text-sm font-medium text-slate-600">اختر الزبون</label>
             <select
@@ -273,8 +272,7 @@ export default function GpsSims({ embedded }: { embedded?: boolean } = {}) {
                 إلغاء
               </button>
             </div>
-          </div>
-        </div>
+</Modal>
       )}
     </div>
   )

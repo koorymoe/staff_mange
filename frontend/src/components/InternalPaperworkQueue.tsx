@@ -32,7 +32,7 @@ export default function InternalPaperworkQueue() {
             <span className="flex gap-2">
               {r.hasInvoice
                 ? <span className="rounded-lg bg-emerald-50 px-2 py-1 text-xs font-bold text-emerald-700">✓ الفاتورة</span>
-                : <button type="button" onClick={() => setOpen(r)} className="rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-bold text-white">🧾 سوّي الحساب</button>}
+                : <button type="button" onClick={() => setOpen(r)} className="rounded-lg bg-[#0f2040] px-3 py-1.5 text-xs font-bold text-white">🧾 سوّي الحساب</button>}
               {r.hasReport
                 ? <span className="rounded-lg bg-emerald-50 px-2 py-1 text-xs font-bold text-emerald-700">✓ التقرير</span>
                 : <Link to={`/work-reports?bookingId=${r.id}`} className="rounded-lg border border-indigo-300 bg-white px-3 py-1.5 text-xs font-bold text-indigo-800">📝 سوّي التقرير</Link>}
@@ -80,7 +80,7 @@ function QuickCost({ row, onClose, onSaved }: { row: Row; onClose: () => void; o
         </label>
         {err && <p className="text-xs font-bold text-red-700">{err}</p>}
         <div className="flex gap-2">
-          <button type="button" disabled={busy} onClick={save} className="flex-1 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-bold text-white disabled:opacity-50">حفظ</button>
+          <button type="button" disabled={busy} onClick={save} className="flex-1 rounded-lg bg-[#0f2040] px-4 py-2 text-sm font-bold text-white disabled:opacity-50">حفظ</button>
           <button type="button" onClick={onClose} className="rounded-lg border px-4 py-2 text-sm text-slate-600">إلغاء</button>
         </div>
       </div>

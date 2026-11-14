@@ -364,7 +364,7 @@ export default function ProjectQuotationPage() {
       </section>
 
       <div className="flex flex-wrap gap-2">
-        <button type="button" disabled={busy} onClick={() => void save()} className="rounded-xl bg-brand-600 px-5 py-2 font-bold text-white disabled:opacity-50">{busy ? 'دا أحفظ…' : '💾 حفظ'}</button>
+        <button type="button" disabled={busy} onClick={() => void save()} className="rounded-xl bg-[#0f2040] px-5 py-2 font-bold text-white disabled:opacity-50">{busy ? 'دا أحفظ…' : '💾 حفظ'}</button>
         <button type="button" onClick={print} className="rounded-xl bg-amber-500 px-5 py-2 font-bold text-white">🖨️ طباعة / PDF</button>
         {id && <button type="button" disabled={busy} onClick={() => void saveAsTemplate()} className="disabled:opacity-50 rounded-xl border border-indigo-300 bg-indigo-50 px-5 py-2 font-bold text-indigo-800">💾 حفظ كنموذج</button>}
         <button type="button" onClick={() => navigate('/quotations')} className="rounded-xl border px-5 py-2 text-slate-600">رجوع</button>

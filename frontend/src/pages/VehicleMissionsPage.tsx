@@ -197,7 +197,7 @@ export default function VehicleMissionsPage() {
                     </div>
                     <div className="flex shrink-0 flex-col gap-1">
                       {canEnd(m) && (
-                        <button onClick={() => { setEnding(m); setEndForm({ endOdometer: '', notes: '' }) }} className="rounded-lg bg-brand-600 px-3 py-1.5 text-xs font-bold text-white">🏁 إنهاء</button>
+                        <button onClick={() => { setEnding(m); setEndForm({ endOdometer: '', notes: '' }) }} className="rounded-lg bg-[#0f2040] px-3 py-1.5 text-xs font-bold text-white">🏁 إنهاء</button>
                       )}
                       {canToolCheck && (
                         <button onClick={() => openToolCheck(m)} className="rounded-lg bg-white px-3 py-1.5 text-xs font-bold text-brand-700 border border-brand-200">🧰 فحص الأدوات</button>
@@ -337,7 +337,7 @@ export default function VehicleMissionsPage() {
                       ) : m.status === 'COMPLETED' ? (
                         <button onClick={() => { setRating(m); setRatingForm({ commitment: 5, vehicleCare: 5, driving: 5, cleanliness: 5, notes: '' }) }} className="rounded-lg bg-brand-50 px-2 py-1 text-xs font-bold text-brand-700 hover:bg-brand-100">⭐ تقييم</button>
                       ) : canEnd(m) ? (
-                        <button onClick={() => { setEnding(m); setEndForm({ endOdometer: '', notes: '' }) }} className="rounded-lg bg-brand-600 px-2 py-1 text-xs font-bold text-white">🏁 إنهاء</button>
+                        <button onClick={() => { setEnding(m); setEndForm({ endOdometer: '', notes: '' }) }} className="rounded-lg bg-[#0f2040] px-2 py-1 text-xs font-bold text-white">🏁 إنهاء</button>
                       ) : '-'}
                     </td>
                   </tr>

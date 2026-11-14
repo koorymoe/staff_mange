@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import StatCard from '../ui/StatCard'
 import { Link } from 'react-router-dom'
 import { api, type MatrixProposal } from '../api'
 import { GROUP_LABEL, type EyeGroup } from './matrixEyeColors'
@@ -23,13 +24,10 @@ function ago(at: string) {
 }
 const initials = (n: string) => n.trim().split(/\s+/).slice(0, 2).map((w) => w[0]).join(' ')
 
+// (دازاي 11-15) صارت بطاقة مشتركة (ui/StatCard) — هنا بس نحوّل الأسماء.
 function Stat({ icon, value, label, sub, tone }: { icon: string; value: number | string; label: string; sub: string; tone: string }) {
-  return (
-    <div className={`flex items-center justify-between gap-2 rounded-xl border p-3 ${tone}`}>
-      <div><p className="text-xs font-bold opacity-80">{label}</p><b className="text-2xl">{value}</b><p className="text-[10px] opacity-70">{sub}</p></div>
-      <span className="grid h-10 w-10 place-items-center rounded-xl bg-white/70 text-lg">{icon}</span>
-    </div>
-  )
+  const t = /red/.test(tone) ? 'red' : /amber/.test(tone) ? 'amber' : /emerald/.test(tone) ? 'green' : /sky/.test(tone) ? 'blue' : 'slate'
+  return <StatCard icon={icon} value={value} label={label} hint={sub} tone={t} />
 }
 
 export default function MatrixProposals({ onChange }: { onChange?: () => void }) {

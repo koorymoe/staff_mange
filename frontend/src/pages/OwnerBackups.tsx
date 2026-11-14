@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import StatCard from '../ui/StatCard'
 import { api, type BackupOverview, type BackupRun } from '../api'
 import { useSession } from '../session'
 import { fmtDateTime } from '../utils/date'
@@ -184,11 +185,7 @@ export default function OwnerBackups() {
   )
 }
 
+// (دازاي 11-15) صارت بطاقة مشتركة (ui/StatCard) — هنا بس نحوّل الأسماء.
 function Stat({ label, value, tone }: { label: string; value: string; tone?: 'bad' }) {
-  return (
-    <div className="rounded-2xl bg-white p-4 shadow-[0_2px_12px_rgba(0,0,0,0.06)]">
-      <p className="text-xs text-slate-500">{label}</p>
-      <p className={`mt-1 text-xl font-extrabold ${tone === 'bad' ? 'text-red-600' : 'text-[#0f2040]'}`}>{value}</p>
-    </div>
-  )
+  return <StatCard label={label} value={tone === 'bad' ? <span className="text-red-600">{value}</span> : value} tone={tone === 'bad' ? 'red' : 'slate'} />
 }

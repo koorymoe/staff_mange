@@ -122,7 +122,7 @@ function MyHours({ meId }: { meId: string }) {
         <div className="flex flex-wrap items-end gap-2">
           <label className="text-xs text-slate-600">الساعات المطلوبة بالشهر<input type="number" min={1} max={400} value={planForm.hours} onChange={(e) => setPlanForm({ ...planForm, hours: e.target.value })} className={`${inp} block w-28 text-center`} /></label>
           <label className="text-xs text-slate-600">سعر الساعة (د.ع)<input inputMode="numeric" value={planForm.rate} onChange={(e) => setPlanForm({ ...planForm, rate: e.target.value })} placeholder="مثلاً 2700" className={`${inp} block w-32 text-center`} dir="ltr" /></label>
-          <button onClick={savePlan} disabled={planSaving} className="rounded-lg bg-brand-600 px-4 py-2 text-sm font-bold text-white disabled:opacity-50">حفظ</button>
+          <button onClick={savePlan} disabled={planSaving} className="rounded-lg bg-[#0f2040] px-4 py-2 text-sm font-bold text-white disabled:opacity-50">حفظ</button>
           {planForm.rate && <p className="w-full text-xs font-bold text-brand-700">يعني: {money(parseRate(planForm.rate), 0)} بالساعة</p>}
           <p className="w-full text-[11px] text-slate-500">تحددها مرة وحدة — بعدها التعديل من إدارة الساعات.</p>
           {planMsg && <p className="w-full text-sm font-bold text-red-600">{planMsg}</p>}
@@ -172,7 +172,7 @@ function MyHours({ meId }: { meId: string }) {
           {timer?.running
             ? <button disabled={busy} onClick={() => act('pause')} className="rounded-xl bg-amber-500 py-2.5 font-extrabold text-white disabled:opacity-50">⏸️ توقّف</button>
             : <button disabled={busy} onClick={() => act('start')} className="rounded-xl bg-emerald-600 py-2.5 font-extrabold text-white disabled:opacity-50">▶️ {shown > 0 ? 'كمّل' : 'ابدأ'}</button>}
-          <button disabled={busy || shown === 0} onClick={() => setConfirmFinish(true)} className="col-span-2 rounded-xl bg-brand-600 py-2.5 font-extrabold text-white disabled:opacity-40">✅ إنهاء وحفظ بالجدول</button>
+          <button disabled={busy || shown === 0} onClick={() => setConfirmFinish(true)} className="col-span-2 rounded-xl bg-[#0f2040] py-2.5 font-extrabold text-white disabled:opacity-40">✅ إنهاء وحفظ بالجدول</button>
         </div>
         {confirmFinish && (
           <div className="mt-3 rounded-xl border border-brand-200 bg-brand-50 p-3">
@@ -180,7 +180,7 @@ function MyHours({ meId }: { meId: string }) {
             <input value={finishNote} onChange={(e) => setFinishNote(e.target.value)} placeholder="شنو اشتغلت (اختياري)"
               className="mt-2 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm" />
             <div className="mt-2 flex gap-2">
-              <button disabled={busy} onClick={() => act('finish')} className="flex-1 rounded-lg bg-brand-600 py-2 text-sm font-extrabold text-white disabled:opacity-50">{busy ? 'جاري الحفظ…' : '✅ إي، احفظ'}</button>
+              <button disabled={busy} onClick={() => act('finish')} className="flex-1 rounded-lg bg-[#0f2040] py-2 text-sm font-extrabold text-white disabled:opacity-50">{busy ? 'جاري الحفظ…' : '✅ إي، احفظ'}</button>
               <button disabled={busy} onClick={() => setConfirmFinish(false)} className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-bold text-slate-600">إلغاء</button>
             </div>
             {msg && !msg.ok && <p className="mt-2 text-sm font-bold text-red-600">{msg.t}</p>}
@@ -283,7 +283,7 @@ function EntriesTable({ entries, canDelete, onDelete, onSaved, showWho }: { entr
                 className="w-full rounded-lg border border-slate-300 p-2.5 text-base" />
               {editErr && <p className="text-sm font-bold text-red-600">{editErr}</p>}
               <div className="flex gap-2">
-                <button type="button" disabled={saving} onClick={saveEdit} className="min-h-11 flex-1 rounded-xl bg-brand-600 px-4 text-base font-extrabold text-white disabled:opacity-50">{saving ? 'جاري الحفظ…' : '✅ احفظ'}</button>
+                <button type="button" disabled={saving} onClick={saveEdit} className="min-h-11 flex-1 rounded-xl bg-[#0f2040] px-4 text-base font-extrabold text-white disabled:opacity-50">{saving ? 'جاري الحفظ…' : '✅ احفظ'}</button>
                 <button type="button" disabled={saving} onClick={() => setEditing(null)} className="min-h-11 rounded-xl border border-slate-300 px-5 text-base font-bold text-slate-600">إلغاء</button>
               </div>
             </div>
@@ -386,7 +386,7 @@ function ManageHours({ meId, isAdmin }: { meId: string; isAdmin: boolean }) {
                 ))}
               </div>
               <input value={form.note} onChange={(e) => setForm({ ...form, note: e.target.value })} placeholder="ملاحظة (اختياري) — شنو اشتغل" className={`${inp} w-full`} />
-              <button disabled={busy} onClick={add} className="rounded-lg bg-brand-600 px-4 py-2 text-sm font-bold text-white disabled:opacity-50">➕ أضف</button>
+              <button disabled={busy} onClick={add} className="rounded-lg bg-[#0f2040] px-4 py-2 text-sm font-bold text-white disabled:opacity-50">➕ أضف</button>
               {msg && <p className={`text-sm ${msg.ok ? 'text-emerald-700' : 'text-red-600'}`}>{msg.t}</p>}
             </div>
           )}

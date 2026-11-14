@@ -91,7 +91,7 @@ export default function StaffLeavesPage() {
         <section key={g.key}>
           <div className="mb-2 flex items-center justify-between">
             <h2 className="font-extrabold text-slate-800">{g.label} ({g.rows.length})</h2>
-            {g.key === 'open' && <Link to="/leaves" className="rounded-lg bg-brand-600 px-3 py-2 text-sm font-bold text-white">افتح طلبات الإجازات ←</Link>}
+            {g.key === 'open' && <Link to="/leaves" className="rounded-lg bg-[#0f2040] px-3 py-2 text-sm font-bold text-white">افتح طلبات الإجازات ←</Link>}
           </div>
           <ul className="space-y-2">{g.rows.map(card)}</ul>
         </section>

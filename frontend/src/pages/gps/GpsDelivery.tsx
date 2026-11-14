@@ -163,7 +163,7 @@ export default function GpsDelivery() {
                     </div>
                   </div>
                   <button onClick={() => handleDeliver(req)} disabled={deliveringId === req.id}
-                    className="rounded-lg bg-brand-500 px-4 py-2 text-sm font-bold text-white hover:bg-brand-600 disabled:opacity-50">
+                    className="rounded-lg bg-brand-500 px-4 py-2 text-sm font-bold text-white hover:bg-[#1a3a6c] disabled:opacity-50">
                     {deliveringId === req.id ? 'جاري...' : 'تسليم وطباعة 🖨️'}
                   </button>
                 </div>

@@ -608,7 +608,7 @@ export default function Finance() {
                       )}
                       {canBackfill && backfill.has(b.id) && (
                         <button type="button" onClick={() => void priceOld(b)}
-                          className="rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-bold text-white">💰 سعّر (قديم)</button>
+                          className="rounded-lg bg-[#0f2040] px-3 py-1.5 text-xs font-bold text-white">💰 سعّر (قديم)</button>
                       )}
                       {isOwner && (
                         <button type="button" onClick={() => void returnToCustomer(b)}
