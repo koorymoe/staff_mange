@@ -71,7 +71,7 @@ export function CurriculumTree() {
         <span className="text-[10px] font-bold text-slate-400">{LEVEL[depth]}</span>
         <b className={depth === 0 ? 'text-[#0f2040]' : ''}>{n.title}</b>
         {depth === 0 && n.serviceId && <span className="rounded bg-cyan-100 px-1.5 text-[10px] text-cyan-800">{services.find((s) => s.id === n.serviceId)?.name ?? 'خدمة'}</span>}
-        <span className="flex flex-wrap items-center gap-1" data-testid="aud-chips">
+        <span className="ms-auto flex flex-wrap items-center gap-1" data-testid="aud-chips">
           {AUDIENCES.map((a) => {
             const on = (eff.get(n.id) ?? []).includes(a.id)
             return (
@@ -82,12 +82,15 @@ export function CurriculumTree() {
               </button>
             )
           })}
-          {n.parentId && n.audiences !== null && (
-            <button type="button" onClick={() => run(api.tcSetCurriculumAudiences(n.id, { inherit: true }))} className="text-[10px] text-slate-400 underline">مثل الي فوكه</button>
-          )}
-          {!n.parentId && (eff.get(n.id) ?? []).length === 0 && <span className="text-[10px] font-bold text-amber-600">حدد الفئة</span>}
+          {/* خانة ثابتة العرض حتى الكبسولات تصف وحدة جوّه الثانية */}
+          <span className="w-16 text-center">
+            {n.parentId && n.audiences !== null && (
+              <button type="button" onClick={() => run(api.tcSetCurriculumAudiences(n.id, { inherit: true }))} className="text-[10px] text-slate-400 underline">مثل الي فوكه</button>
+            )}
+            {!n.parentId && (eff.get(n.id) ?? []).length === 0 && <span className="text-[10px] font-bold text-amber-600">حدد الفئة</span>}
+          </span>
         </span>
-        <span className="ms-auto flex gap-2">
+        <span className="flex w-36 shrink-0 justify-end gap-2">
           {depth < 3 && <button onClick={() => { setAddUnder(n.id); setChild('') }} className="text-xs font-bold text-[#2c5aad]">+ {LEVEL[depth + 1]}</button>}
           {!kids.has(n.id) && <button onClick={() => run(api.tcDeleteCurriculum(n.id))} className="text-xs text-slate-400">حذف</button>}
         </span>
