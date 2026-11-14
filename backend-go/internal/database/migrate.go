@@ -132,6 +132,7 @@ func Migrate(db *sqlx.DB, ownerUsername, ownerPassword string) error {
 		SELECT gen_random_uuid()::text, e.id, p.id
 		FROM "Employee" e CROSS JOIN "Permission" p
 		WHERE p.name = 'procurement_manual' AND e."isLeader" = true
+		  AND NOT EXISTS (SELECT 1 FROM "PermissionRevoke" rv WHERE rv."employeeId" = e.id AND rv.permission = p.name)
 		  AND NOT EXISTS (
 			SELECT 1 FROM "EmployeePermission" ep
 			WHERE ep."employeeId" = e.id AND ep."permissionId" = p.id

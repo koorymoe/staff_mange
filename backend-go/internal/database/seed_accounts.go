@@ -55,6 +55,8 @@ func grantLeaderBasketToLeaders(db *sqlx.DB) error {
 		SELECT gen_random_uuid()::text, e.id, p.id
 		FROM "Employee" e, "Permission" p
 		WHERE e."isLeader" = true AND p.name = 'leader_basket'
+		  -- (دازاي 11-15) «شلت منها الصلاحيات وثاني يوم يرجعن»: المشالة بالإيد ما ترجع بإعادة التشغيل
+		  AND NOT EXISTS (SELECT 1 FROM "PermissionRevoke" rv WHERE rv."employeeId" = e.id AND rv.permission = p.name)
 		ON CONFLICT ("employeeId", "permissionId") DO NOTHING
 	`)
 	return err
@@ -76,6 +78,8 @@ func grantRolePermission(db *sqlx.DB, role, permissionName, permissionLabel stri
 		SELECT gen_random_uuid()::text, e.id, p.id
 		FROM "Employee" e, "Permission" p
 		WHERE e.role = $1 AND p.name = $2
+		  -- (دازاي 11-15) هذا ينعاد بكل تشغيل للسيرفر — المشالة بالإيد (PermissionRevoke) ما ترجع
+		  AND NOT EXISTS (SELECT 1 FROM "PermissionRevoke" rv WHERE rv."employeeId" = e.id AND rv.permission = p.name)
 		ON CONFLICT ("employeeId", "permissionId") DO NOTHING
 	`, role, permissionName)
 	return err
