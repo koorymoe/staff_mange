@@ -130,11 +130,11 @@ export function CurriculumTree({ emps }: { emps: Employee[] }) {
 
   const node = (n: TcCurriculum, depth: number): React.ReactNode => (
     <li key={n.id} className="mt-1.5">
-      <div className={`flex flex-wrap items-center gap-2 rounded-lg px-3 py-2 text-sm ${depth === 0 ? 'bg-[#0f2040]/5 font-extrabold' : 'bg-slate-50'}`}>
+      <div className={`flex items-center gap-2 rounded-lg px-3 py-2 text-sm ${depth === 0 ? 'bg-[#0f2040]/5 font-extrabold' : 'bg-slate-50'}`}>
         <span className="text-[10px] font-bold text-slate-400">{LEVEL[depth]}</span>
-        <b className={depth === 0 ? 'text-[#0f2040]' : ''}>{n.title}</b>
+        <b className={`min-w-0 truncate ${depth === 0 ? 'text-[#0f2040]' : ''}`} title={n.title}>{n.title}</b>
         {depth === 0 && n.serviceId && <span className="rounded bg-cyan-100 px-1.5 text-[10px] text-cyan-800">{services.find((s) => s.id === n.serviceId)?.name ?? 'خدمة'}</span>}
-        <span className="ms-auto flex flex-wrap items-center gap-1" data-testid="aud-chips">
+        <span className="ms-auto flex shrink-0 items-center gap-1" data-testid="aud-chips">
           {[...AUDIENCES, { id: 'OTHER', label: 'أخرى' }].map((a) => {
             const people = (effPeople.get(n.id) ?? []).map((id) => empById.get(id)).filter((e): e is Employee => !!e)
             const count = a.id === 'OTHER' ? people.filter((e) => !groupOf(e)).length : people.filter((e) => inGroup(e, a.id)).length
@@ -143,17 +143,17 @@ export function CurriculumTree({ emps }: { emps: Employee[] }) {
             return (
               <button key={a.id} type="button" onClick={() => { setPick(open ? null : { id: n.id, g: a.id }); setQ('') }} aria-pressed={on} aria-expanded={open}
                 title={n.assignees === null && on ? 'ماخذ من الي فوكه — اضغط حتى تختار لهذا السطر' : ''}
-                className={`inline-flex w-[4.5rem] items-center justify-center gap-0.5 rounded-full px-2 py-0.5 text-[11px] font-bold ${on ? (n.assignees === null ? 'bg-[#2c5aad]/50 text-white' : 'bg-[#2c5aad] text-white shadow-sm') : 'bg-slate-100 text-slate-400'} ${open ? 'ring-2 ring-[#2c5aad]/40' : ''}`}>
+                className={`inline-flex w-14 items-center justify-center gap-0.5 rounded-full px-1.5 py-0.5 text-[10px] font-bold ${on ? (n.assignees === null ? 'bg-[#2c5aad]/50 text-white' : 'bg-[#2c5aad] text-white shadow-sm') : 'bg-slate-100 text-slate-400'} ${open ? 'ring-2 ring-[#2c5aad]/40' : ''}`}>
                 {a.label} <span aria-hidden className={`text-[9px] transition ${open ? 'rotate-180' : ''}`}>▴</span>
               </button>
             )
           })}
           {/* خانة ثابتة العرض حتى الكبسولات تصف وحدة جوّه الثانية */}
-          <span className="w-16 text-center">
+          <span className="w-12 shrink-0 text-center">
             {!n.parentId && (eff.get(n.id) ?? []).length === 0 && <span className="text-[10px] font-bold text-amber-600">حدد الفئة</span>}
           </span>
         </span>
-        <span className="flex w-36 shrink-0 justify-end gap-2">
+        <span className="flex w-36 shrink-0 items-center justify-end gap-2 whitespace-nowrap">
           {depth < 3 && <button onClick={() => { setAddUnder(n.id); setChild('') }} className="text-xs font-bold text-[#2c5aad]">+ {LEVEL[depth + 1]}</button>}
           <button onClick={async () => {
             if (kids.has(n.id)) { setError(`«${n.title}» بيه تفرعات — احذفهن أول`); return }
