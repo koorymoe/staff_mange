@@ -2528,6 +2528,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	tcRoute("GET /api/training-center/curriculum", trainingCenter.Curriculum, true)
 	tcRoute("POST /api/training-center/curriculum", trainingCenter.AddCurriculum, true)
 	tcRoute("DELETE /api/training-center/curriculum/{id}", trainingCenter.DeleteCurriculum, true)
+	tcRoute("POST /api/training-center/curriculum/{id}/audiences", trainingCenter.SetCurriculumAudiences, true) // (ك) 11-14
 	tcRoute("GET /api/training-center/matching", trainingCenter.Matching, true)
 	tcRoute("POST /api/training-center/needs", trainingCenter.AddNeed, true)
 	tcRoute("POST /api/training-center/needs/{id}/{action}", trainingCenter.NeedAction, true)

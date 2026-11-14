@@ -5,7 +5,9 @@ import { card } from '../ui/classes'
 import { swallow } from '../utils/swallow'
 
 // ═══ وحدة التدريب (دازاي 11-12) ═══
-// ١) مفردات المنهج شجرة: الجمهور (فني/ليدر/مهندس) ← المسار (مثلاً داش كام) ← تفرع أول ← ثاني ← ثالث.
+// ١) مفردات المنهج شجرة: المسار (مثلاً داش كام) ← تفرع أول ← ثاني ← ثالث.
+//    (ك) 11-14 دازاي: الفئة (فني/ليدر/مهندس) مو تبويب فوك — تأشّرها هي على كل سطر بعد ما تبني،
+//    وتگدر تختار أكثر من وحدة. السطر الي ما تأشّر عليه ياخذ من الي فوكه.
 // ٢) الماتشينغ بدل بنك الأسئلة: اسم الموظف والأشياء الي يحتاج يتدرب عليها.
 //    مشكلة بحجز = إلزامي ومشدّد (موعد، ما ينلغي). نقص مهارة = اقتراح (ينلغي بسبب).
 //    مسؤول وحدة التدريب يبدي التدريب، ولمن يخلص يكتب التقرير ويقيّم — التقرير يوصل للمالك.
@@ -25,7 +27,6 @@ const LEVEL = ['المسار', 'تفرع أول', 'تفرع ثاني', 'تفرع
 export function CurriculumTree() {
   const [rows, setRows] = useState<TcCurriculum[]>([])
   const [services, setServices] = useState<Service[]>([])
-  const [aud, setAud] = useState('TECHNICIAN')
   const [title, setTitle] = useState('')
   const [svc, setSvc] = useState('')
   const [addUnder, setAddUnder] = useState<string | null>(null)
@@ -40,7 +41,27 @@ export function CurriculumTree() {
     for (const r of rows) if (r.parentId) m.set(r.parentId, [...(m.get(r.parentId) ?? []), r])
     return m
   }, [rows])
-  const tracks = rows.filter((r) => !r.parentId && r.role === aud)
+  const tracks = rows.filter((r) => !r.parentId)
+  // الفئات الفعلية لكل سطر: اختياره هو، وإلا الي فوكه، والمسار القديم بلا اختيار ياخذ دوره.
+  const eff = useMemo(() => {
+    const byId = new Map(rows.map((r) => [r.id, r]))
+    const memo = new Map<string, string[]>()
+    const get = (r: TcCurriculum): string[] => {
+      const hit = memo.get(r.id)
+      if (hit) return hit
+      const parent = r.parentId ? byId.get(r.parentId) : undefined
+      const v = r.audiences ?? (parent ? get(parent) : [r.role])
+      memo.set(r.id, v)
+      return v
+    }
+    for (const r of rows) get(r)
+    return memo
+  }, [rows])
+  const toggleAud = (n: TcCurriculum, id: string) => {
+    const cur = eff.get(n.id) ?? []
+    const next = cur.includes(id) ? cur.filter((x) => x !== id) : [...cur, id]
+    run(api.tcSetCurriculumAudiences(n.id, { audiences: AUDIENCES.map((a) => a.id).filter((x) => next.includes(x)) }))
+  }
   const run = (p: Promise<TcCurriculum[]>, after?: () => void) =>
     p.then((r) => { setRows(r); setError(''); after?.() }).catch((e) => setError(msg(e)))
 
@@ -50,6 +71,22 @@ export function CurriculumTree() {
         <span className="text-[10px] font-bold text-slate-400">{LEVEL[depth]}</span>
         <b className={depth === 0 ? 'text-[#0f2040]' : ''}>{n.title}</b>
         {depth === 0 && n.serviceId && <span className="rounded bg-cyan-100 px-1.5 text-[10px] text-cyan-800">{services.find((s) => s.id === n.serviceId)?.name ?? 'خدمة'}</span>}
+        <span className="flex flex-wrap items-center gap-1" data-testid="aud-chips">
+          {AUDIENCES.map((a) => {
+            const on = (eff.get(n.id) ?? []).includes(a.id)
+            return (
+              <button key={a.id} type="button" onClick={() => toggleAud(n, a.id)} aria-pressed={on}
+                title={n.audiences === null ? 'ماخذ من الي فوكه — اضغط حتى تحدد لهذا السطر' : ''}
+                className={`rounded-full px-2 py-0.5 text-[11px] font-bold ${on ? (n.audiences === null ? 'bg-[#2c5aad]/50 text-white' : 'bg-[#2c5aad] text-white shadow-sm') : 'bg-slate-100 text-slate-400'}`}>
+                {a.label}
+              </button>
+            )
+          })}
+          {n.parentId && n.audiences !== null && (
+            <button type="button" onClick={() => run(api.tcSetCurriculumAudiences(n.id, { inherit: true }))} className="text-[10px] text-slate-400 underline">مثل الي فوكه</button>
+          )}
+          {!n.parentId && (eff.get(n.id) ?? []).length === 0 && <span className="text-[10px] font-bold text-amber-600">حدد الفئة</span>}
+        </span>
         <span className="ms-auto flex gap-2">
           {depth < 3 && <button onClick={() => { setAddUnder(n.id); setChild('') }} className="text-xs font-bold text-[#2c5aad]">+ {LEVEL[depth + 1]}</button>}
           {!kids.has(n.id) && <button onClick={() => run(api.tcDeleteCurriculum(n.id))} className="text-xs text-slate-400">حذف</button>}
@@ -70,26 +107,18 @@ export function CurriculumTree() {
     <div className={card}>
       <div className="mb-3 flex flex-wrap items-center gap-2">
         <h3 className="font-extrabold text-[#0f2040]">📚 مفردات المنهج</h3>
-        <div className="flex gap-1 rounded-xl bg-slate-100 p-1">
-          {AUDIENCES.map((a) => (
-            <button key={a.id} onClick={() => setAud(a.id)}
-              className={`rounded-lg px-3 py-1 text-xs font-bold ${aud === a.id ? 'bg-[#0f2040] text-white' : 'text-slate-600'}`}>
-              {a.label} ({rows.filter((r) => !r.parentId && r.role === a.id).length})
-            </button>
-          ))}
-        </div>
       </div>
-      <p className="mb-2 text-xs text-slate-500">المسار (مثلاً داش كام) ← تفرع أول ← تفرع ثاني ← تفرع ثالث. اربط المسار بخدمته حتى الماتشينغ يعرف منين يدرّب.</p>
+      <p className="mb-2 text-xs text-slate-500">المسار (مثلاً داش كام) ← تفرع أول ← تفرع ثاني ← تفرع ثالث. اربط المسار بخدمته حتى الماتشينغ يعرف منين يدرّب. وبعد ما تبني، أشّر على كل سطر منو يشمله: فني، ليدر، مهندس (تگدر أكثر من وحدة) — السطر الي ما تأشّر عليه ياخذ من الي فوكه.</p>
       {error && <p className="mb-2 text-sm text-red-600">{error}</p>}
       <ul>{tracks.map((t) => <Node key={t.id} n={t} depth={0} />)}</ul>
-      {tracks.length === 0 && <p className="text-sm text-slate-500">ماكو مسارات لـ{AUDIENCES.find((a) => a.id === aud)?.label} بعد.</p>}
+      {tracks.length === 0 && <p className="text-sm text-slate-500">ماكو مسارات بعد.</p>}
       <div className="mt-3 flex flex-wrap gap-2 border-t border-slate-100 pt-3">
         <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="عنوان المسار (مثلاً: داش كام)" className={`${input} flex-1`} />
         <select value={svc} onChange={(e) => setSvc(e.target.value)} className={input}>
           <option value="">— الخدمة (اختياري) —</option>
           {services.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
         </select>
-        <button disabled={!title.trim()} onClick={() => run(api.tcAddCurriculum({ role: aud, title, serviceId: svc || undefined }), () => { setTitle(''); setSvc('') })} className={btn}>+ مسار جديد</button>
+        <button disabled={!title.trim()} onClick={() => run(api.tcAddCurriculum({ title, serviceId: svc || undefined }), () => { setTitle(''); setSvc('') })} className={btn}>+ مسار جديد</button>
       </div>
     </div>
   )

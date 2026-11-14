@@ -14,6 +14,9 @@ func init() {
 			{Name: "createdAt", Type: "timestamp without time zone", NotNull: true, Default: "CURRENT_TIMESTAMP"},
 			{Name: "parentId", Type: "text"},
 			{Name: "serviceId", Type: "text"},
+			// (ك) 11-14 دازاي: منو يشمل السطر (فني/ليدر/مهندس) — هي تختار بعد ما تبني الشجرة.
+			// فاضي (NULL) = ياخذ من الي فوكه، والمسار بلا اختيار ياخذ دوره القديم (role).
+			{Name: "audiences", Type: "text[]"},
 		},
 		Constraints: []Constraint{
 			{Name: "TrainingCurriculum_parentId_fkey", Def: "FOREIGN KEY (\"parentId\") REFERENCES \"TrainingCurriculum\"(id) ON DELETE RESTRICT"},

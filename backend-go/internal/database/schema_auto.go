@@ -97,6 +97,12 @@ func autoMigrations() []Migration {
 			CREATE INDEX IF NOT EXISTS "DeleteLog_table_row_idx" ON public."DeleteLog" USING btree ("tableName", "rowId");
 		`,
 		},
+		{
+			Version: "0494_training_curriculum_audiences",
+			SQL: `
+			ALTER TABLE "TrainingCurriculum" ADD COLUMN IF NOT EXISTS "audiences" text[];
+		`,
+		},
 		// ‹makemigration› — التحديثات الجديدة تنضاف فوگ هالسطر
 	}
 }
