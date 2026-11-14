@@ -64,7 +64,7 @@ func (a *App) adminWrite(w http.ResponseWriter, r *http.Request, create bool) {
 		return
 	}
 	if ok, why := editAccess(actor, name); !ok {
-		writeErr(w, http.StatusForbidden, why)
+		writeErr(w, http.StatusNotFound, why)
 		return
 	}
 	var in editIn
@@ -93,7 +93,7 @@ func (a *App) adminWrite(w http.ResponseWriter, r *http.Request, create bool) {
 			return
 		}
 		if secretCol.MatchString(k) {
-			writeErr(w, http.StatusForbidden, "عمود سري — ما ينعدّل من اللوحة: "+k)
+			writeErr(w, http.StatusNotFound, "عمود سري — ما ينعدّل من اللوحة: "+k)
 			return
 		}
 		if !create && isPK[k] {
@@ -101,7 +101,7 @@ func (a *App) adminWrite(w http.ResponseWriter, r *http.Request, create bool) {
 			return
 		}
 		if (k == "salary" || ownerOnlyData.MatchString(k)) && !actor.Owner() {
-			writeErr(w, http.StatusForbidden, "عمود فلوس — تعديله للمالك بس: "+k)
+			writeErr(w, http.StatusNotFound, "عمود فلوس — تعديله للمالك بس: "+k)
 			return
 		}
 		args = append(args, sqlValue(v))

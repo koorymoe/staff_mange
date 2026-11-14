@@ -42,7 +42,7 @@ func (h *StaffScoreHandler) Board(w http.ResponseWriter, r *http.Request) {
 func (h *StaffScoreHandler) Detail(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 	if !authz.SeeAll(r, nil, authz.StaffScores) && id == middleware.EmployeeIDFromContext(r) {
-		WriteError(w, http.StatusForbidden, "تقييمك تشوفه من «تقييمي»")
+		WriteError(w, http.StatusNotFound, "تقييمك تشوفه من «تقييمي»")
 		return
 	}
 	d, err := h.svc.Detail(id, r.URL.Query().Get("month"))

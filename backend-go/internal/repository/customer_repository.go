@@ -214,6 +214,7 @@ func (r *CustomerRepository) ListGpsCustomers() ([]model.CustomerGpsResponse, er
 		JOIN "CustomerServiceTag" t ON t."customerId" = c.id AND t.service = 'GPS'
 		LEFT JOIN "CustomerGpsInfo" gi ON gi."customerId" = c.id
 		ORDER BY c."customerCode" ASC
+		LIMIT 5000 -- (11-15) حد أمان
 	`)
 	if err != nil {
 		return nil, err

@@ -297,7 +297,7 @@ func (s *MatrixOrderService) exec(actor, role string, a OrderAction) (string, st
 		if _, err := s.deps.Tasks.CreateFor(a.Title, a.Message, a.EmployeeID, actor, due); err != nil {
 			return "", "", err
 		}
-		return fmt.Sprintf("انطت مهمة «%s» لـ%s (موعدها %s)", a.Title, a.EmployeeName, due.Format("2006-01-02")), "/extra-tasks", nil
+		return fmt.Sprintf("انطت مهمة «%s» لـ%s (موعدها %s)", a.Title, a.EmployeeName, due.In(baghdad).Format("2006-01-02")), "/extra-tasks", nil
 	case "notify":
 		if err := s.deps.Notif.Create(a.EmployeeID, "MATRIX_ORDER", "🎯 من الإدارة: "+a.Message); err != nil {
 			return "", "", err

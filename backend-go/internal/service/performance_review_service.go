@@ -255,7 +255,7 @@ func (s *PerformanceReviewService) BookingsAwaitingReview(
 		return nil, errors.New("تعذر تحديد هوية المستخدم")
 	}
 	if from == "" && to == "" {
-		from = time.Now().AddDate(0, 0, -30).Format("2006-01-02")
+		from = time.Now().In(baghdad).AddDate(0, 0, -30).Format("2006-01-02") // (11-15) بتوقيت بغداد
 	}
 	return s.repo.BookingsAwaitingReview(viewerID, s.hasMonitorAccess(viewer), from, to)
 }

@@ -211,7 +211,7 @@ func (h *RemoteHoursHandler) TimerAction(w http.ResponseWriter, r *http.Request)
 func (h *RemoteHoursHandler) Reset(w http.ResponseWriter, r *http.Request) {
 	// (دازاي 10-26) التصفير للمالك وحده، وبأي يوم
 	if middleware.RoleFromContext(r) != "OWNER" {
-		WriteError(w, http.StatusForbidden, "تصفير الساعات للمالك بس")
+		WriteError(w, http.StatusNotFound, "تصفير الساعات للمالك بس")
 		return
 	}
 	n, err := h.repo.CloseAll(middleware.EmployeeIDFromContext(r))
@@ -272,7 +272,7 @@ func (h *RemoteHoursHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	}
 	role := middleware.RoleFromContext(r)
 	if role != "ADMIN" && role != "OWNER" && by != middleware.EmployeeIDFromContext(r) {
-		WriteError(w, http.StatusForbidden, "تحذف بس الساعات الي إنت سجّلتها")
+		WriteError(w, http.StatusNotFound, "تحذف بس الساعات الي إنت سجّلتها")
 		return
 	}
 	if err := h.repo.Delete(id); err != nil {
@@ -291,7 +291,7 @@ func (h *RemoteHoursHandler) Update(w http.ResponseWriter, r *http.Request) {
 	}
 	role := middleware.RoleFromContext(r)
 	if role != "ADMIN" && role != "OWNER" && (e.AddedByID == nil || *e.AddedByID != middleware.EmployeeIDFromContext(r)) {
-		WriteError(w, http.StatusForbidden, "تعدّل بس الساعات الي إنت سجّلتها")
+		WriteError(w, http.StatusNotFound, "تعدّل بس الساعات الي إنت سجّلتها")
 		return
 	}
 	var b addBody

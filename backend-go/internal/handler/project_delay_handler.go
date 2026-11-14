@@ -89,7 +89,7 @@ func (h *ProjectDelayHandler) AddReason(w http.ResponseWriter, r *http.Request) 
 		OR EXISTS (SELECT 1 FROM "Booking" b WHERE b.id = p."bookingId" AND b."projectSupervisorId" = $2)
 		OR `+model.HasPermSQL(`$2`, `= 'project_management'`)+`))`, id, me))
 	if !allowed && role != "ADMIN" && role != "OWNER" {
-		WriteError(w, http.StatusForbidden, "ما عندك علاقة بهالمشروع")
+		WriteError(w, http.StatusNotFound, "ما عندك علاقة بهالمشروع")
 		return
 	}
 	if _, err := h.db.Exec(`INSERT INTO "ProjectDelayReason" (id, "projectId", stage, "employeeId", reason)

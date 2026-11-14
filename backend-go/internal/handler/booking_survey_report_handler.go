@@ -27,7 +27,7 @@ func (h *BookingSurveyReportHandler) Create(w http.ResponseWriter, r *http.Reque
 	report, err := h.service.Create(middleware.EmployeeIDFromContext(r), middleware.EffectiveRole(r), req)
 	if errors.Is(err, service.ErrSurveyNotParty) {
 		// رفض بالهاندلر — ما ينحسب مخالفة (الزر أصلاً ما يطلع لغير المكلّف).
-		WriteError(w, http.StatusForbidden, err.Error())
+		WriteError(w, http.StatusNotFound, err.Error())
 		return
 	}
 	if err != nil {

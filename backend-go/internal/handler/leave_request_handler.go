@@ -73,7 +73,7 @@ func (h *LeaveRequestHandler) blockSelfDecision(w http.ResponseWriter, r *http.R
 		return false
 	}
 	if leaveOwnerID != "" && leaveOwnerID == middleware.EmployeeIDFromContext(r) {
-		WriteError(w, http.StatusForbidden, "ما تكدر تبت بطلب إجازتك إنت — لازم يوافق عليه المالك أو مخوّل ثاني")
+		WriteError(w, http.StatusNotFound, "ما تكدر تبت بطلب إجازتك إنت — لازم يوافق عليه المالك أو مخوّل ثاني")
 		return true
 	}
 	return false
@@ -157,7 +157,7 @@ func (h *LeaveRequestHandler) Mine(w http.ResponseWriter, r *http.Request) {
 func (h *LeaveRequestHandler) Inbox(w http.ResponseWriter, r *http.Request) {
 	routes := h.routesFor(r)
 	if len(routes) == 0 {
-		WriteError(w, http.StatusForbidden, "ما عندك صلاحية الموافقة على الإجازات")
+		WriteError(w, http.StatusNotFound, "ما عندك صلاحية الموافقة على الإجازات")
 		return
 	}
 	rows, err := h.repo.ListForApprover(routes, r.URL.Query().Get("status"))
@@ -194,7 +194,7 @@ func (h *LeaveRequestHandler) Preliminary(w http.ResponseWriter, r *http.Request
 		}
 	}
 	if !allowed {
-		WriteError(w, http.StatusForbidden, "ما عندك صلاحية البت بطلبات "+model.LeaveRouteLabels[route])
+		WriteError(w, http.StatusNotFound, "ما عندك صلاحية البت بطلبات "+model.LeaveRouteLabels[route])
 		return
 	}
 
@@ -240,7 +240,7 @@ func (h *LeaveRequestHandler) Decide(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	if !allowed {
-		WriteError(w, http.StatusForbidden, "ما عندك صلاحية البت بطلبات "+model.LeaveRouteLabels[route])
+		WriteError(w, http.StatusNotFound, "ما عندك صلاحية البت بطلبات "+model.LeaveRouteLabels[route])
 		return
 	}
 

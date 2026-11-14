@@ -288,6 +288,11 @@ func (r *DuplicateCandidateRepository) MergeCustomers(keepID, dropID string) (ma
 		  AND NOT ("entityAId" = $2 OR "entityBId" = $2)`, dropID, keepID); err != nil {
 		return nil, err
 	}
+	// (دازاي 11-15) «لازم كلشي يتسجل»: نسخة كاملة من الزبون المكرر قبل حذفه، ويا لمنو اندمج.
+	if _, err := tx.Exec(`INSERT INTO "DeleteLog"(id, "tableName", "rowId", route, data)
+		SELECT gen_random_uuid()::text, 'Customer', c.id, 'دمج مكرر ← ' || $2, to_jsonb(c) FROM "Customer" c WHERE c.id = $1`, dropID, keepID); err != nil {
+		return nil, err
+	}
 	if _, err := tx.Exec(`DELETE FROM "Customer" WHERE id = $1`, dropID); err != nil {
 		return nil, fmt.Errorf("حذف المكرر: %w", err)
 	}

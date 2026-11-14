@@ -84,7 +84,7 @@ func (h *StaffRequestHandler) UpdateStatus(w http.ResponseWriter, r *http.Reques
 	}
 	handlerID := middleware.EmployeeIDFromContext(r)
 	if current.RequesterID == handlerID {
-		WriteError(w, http.StatusForbidden, "ما تكدر توافق على طلب الكادر الي طلبته انت نفسك")
+		WriteError(w, http.StatusNotFound, "ما تكدر توافق على طلب الكادر الي طلبته انت نفسك")
 		return
 	}
 	allowedTransitions := map[string]map[string]bool{

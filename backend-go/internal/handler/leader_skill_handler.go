@@ -46,7 +46,7 @@ func (h *LeaderSkillHandler) Set(w http.ResponseWriter, r *http.Request) {
 	target := r.PathValue("id")
 	// ⚠️ ما يقيّم نفسه: التقييم الذاتي يفرّغ التقييم من معناه.
 	if target == middleware.EmployeeIDFromContext(r) {
-		WriteError(w, http.StatusForbidden, "ما تكدر تقيّم نفسك")
+		WriteError(w, http.StatusNotFound, "ما تكدر تقيّم نفسك")
 		return
 	}
 	if err := h.repo.SetRatings(target, req.Scores, middleware.EmployeeIDFromContext(r)); err != nil {

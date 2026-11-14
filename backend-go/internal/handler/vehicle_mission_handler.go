@@ -67,7 +67,7 @@ func (h *VehicleMissionHandler) Start(w http.ResponseWriter, r *http.Request) {
 	actorID := middleware.EmployeeIDFromContext(r)
 	// موظف عادي يقدر يبدأ مهمة لنفسه بس — تعيين سائق ثاني مسموح فقط للإداري/المراقب.
 	if req.DriverID != nil && *req.DriverID != "" && *req.DriverID != actorID && !isAdminOrMonitor(middleware.EffectiveRole(r)) {
-		WriteError(w, http.StatusForbidden, "لا تملك صلاحية بدء مهمة نيابة عن موظف آخر")
+		WriteError(w, http.StatusNotFound, "لا تملك صلاحية بدء مهمة نيابة عن موظف آخر")
 		return
 	}
 	mission, err := h.service.StartMission(actorID, req)
@@ -127,7 +127,7 @@ func (h *VehicleMissionHandler) End(w http.ResponseWriter, r *http.Request) {
 	}
 	actorID := middleware.EmployeeIDFromContext(r)
 	if mission.DriverID != actorID && !isAdminOrMonitor(middleware.EffectiveRole(r)) {
-		WriteError(w, http.StatusForbidden, "لا تملك صلاحية إنهاء هذه المهمة")
+		WriteError(w, http.StatusNotFound, "لا تملك صلاحية إنهاء هذه المهمة")
 		return
 	}
 	updated, err := h.service.EndMission(missionID, req)

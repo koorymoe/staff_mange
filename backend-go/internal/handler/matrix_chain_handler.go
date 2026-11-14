@@ -90,7 +90,7 @@ func (h *MatrixChainHandler) Rate(w http.ResponseWriter, r *http.Request) {
 	}
 	repo := h.svc.Repo()
 	if !repo.IsBookingLeader(in.BookingID, me) {
-		WriteError(w, http.StatusForbidden, "تگدر تقيّم بس فنيّي حجز إنت ليدره")
+		WriteError(w, http.StatusNotFound, "تگدر تقيّم بس فنيّي حجز إنت ليدره")
 		return
 	}
 	for _, x := range in.Ratings {
@@ -180,7 +180,7 @@ func (h *MatrixChainHandler) AfterSave(w http.ResponseWriter, r *http.Request) {
 	}
 	repo := h.svc.Repo()
 	if !repo.IsBookingTech(in.BookingID, me) {
-		WriteError(w, http.StatusForbidden, "تگدر تجرد بس بعد حجز إنت مكلّف بيه")
+		WriteError(w, http.StatusNotFound, "تگدر تجرد بس بعد حجز إنت مكلّف بيه")
 		return
 	}
 	var missing *string

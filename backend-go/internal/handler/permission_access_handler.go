@@ -197,12 +197,12 @@ func (h *PermissionAccessHandler) apply(r *http.Request, empID string, version i
 		var role string
 		errlog.Err(h.db.Get(&role, `SELECT role::text FROM "Employee" WHERE id = $1`, empID))
 		if model.IsAdminRole(role) {
-			return http.StatusForbidden, "صلاحيات المالك والمدير يعدّلها المالك بس"
+			return http.StatusNotFound, "صلاحيات المالك والمدير يعدّلها المالك بس"
 		}
 	}
 	for _, n := range append(append([]string{}, add...), remove...) {
 		if why := lockFor(r, n); why != "" {
-			return http.StatusForbidden, "«" + n + "» مقفولة: " + why
+			return http.StatusNotFound, "«" + n + "» مقفولة: " + why
 		}
 	}
 	actor := middleware.EmployeeIDFromContext(r)
@@ -440,7 +440,7 @@ func (h *PermissionAccessHandler) RemoveException(w http.ResponseWriter, r *http
 	}
 	perm := q.Get("permission")
 	if why := lockFor(r, perm); why != "" {
-		WriteError(w, http.StatusForbidden, "«"+perm+"» مقفولة: "+why)
+		WriteError(w, http.StatusNotFound, "«"+perm+"» مقفولة: "+why)
 		return
 	}
 	if code, msg := h.apply(r, q.Get("employeeId"), version, nil, nil, "", func(tx *sqlx.Tx, actor string) error {

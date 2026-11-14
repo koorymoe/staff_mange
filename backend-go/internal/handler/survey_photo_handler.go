@@ -150,7 +150,7 @@ func (h *SurveyPhotoHandler) Upload(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if !h.canUpload(r, bookingID, projectID) {
-		WriteError(w, http.StatusForbidden, "رفع صور الكشف للي طلع للكشف أو الإداري")
+		WriteError(w, http.StatusNotFound, "رفع صور الكشف للي طلع للكشف أو الإداري")
 		return
 	}
 	file, header, err := r.FormFile("file")
@@ -242,7 +242,7 @@ func (h *SurveyPhotoHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	}
 	role := middleware.RoleFromContext(r)
 	if photo.UploadedByID != middleware.EmployeeIDFromContext(r) && role != "ADMIN" && role != "OWNER" {
-		WriteError(w, http.StatusForbidden, "الحذف للي رفع الصورة أو المدير")
+		WriteError(w, http.StatusNotFound, "الحذف للي رفع الصورة أو المدير")
 		return
 	}
 	if err := h.repo.Delete(photo.ID); err != nil {

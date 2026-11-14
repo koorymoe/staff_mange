@@ -19,9 +19,9 @@ func (r *ExpenseRepository) List(employeeID string) ([]model.Expense, error) {
 	expenses := []model.Expense{}
 	var err error
 	if employeeID != "" {
-		err = r.db.Select(&expenses, `SELECT * FROM "Expense" WHERE "employeeId" = $1 ORDER BY "createdAt" DESC`, employeeID)
+		err = r.db.Select(&expenses, `SELECT * FROM "Expense" WHERE "employeeId" = $1 ORDER BY "createdAt" DESC LIMIT 2000`, employeeID)
 	} else {
-		err = r.db.Select(&expenses, `SELECT * FROM "Expense" ORDER BY "createdAt" DESC`)
+		err = r.db.Select(&expenses, `SELECT * FROM "Expense" ORDER BY "createdAt" DESC LIMIT 2000`)
 	}
 	if err != nil {
 		return nil, err

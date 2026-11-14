@@ -33,7 +33,7 @@ func (h *WorkReportHandler) SaveSignature(w http.ResponseWriter, r *http.Request
 	}
 	id, me := r.PathValue("id"), middleware.EmployeeIDFromContext(r)
 	if !h.signatures.CanCollect(id, me) {
-		WriteError(w, http.StatusForbidden, "التوقيع ياخذه كادر الحجز نفسه")
+		WriteError(w, http.StatusNotFound, "التوقيع ياخذه كادر الحجز نفسه")
 		return
 	}
 	var in struct {
@@ -59,7 +59,7 @@ func (h *WorkReportHandler) GetSignature(w http.ResponseWriter, r *http.Request)
 	}
 	id := r.PathValue("id")
 	if !h.canReviewReports(r) && !h.signatures.CanCollect(id, middleware.EmployeeIDFromContext(r)) {
-		WriteError(w, http.StatusForbidden, "مو مسموح")
+		WriteError(w, http.StatusNotFound, "مو مسموح")
 		return
 	}
 	s, err := h.signatures.Get(id)
@@ -102,7 +102,7 @@ func (h *WorkReportHandler) Create(w http.ResponseWriter, r *http.Request) {
 		// بينهما، و«بيانات الطلب غير صحيحة» على منع صلاحية تخلّي
 		// الفني يعيد كتابة تقريره عشر مرات بلا فايدة.
 		if errors.Is(err, service.ErrPaperworkNotYours) || strings.Contains(err.Error(), "مسؤول الخدمة") {
-			WriteError(w, http.StatusForbidden, err.Error())
+			WriteError(w, http.StatusNotFound, err.Error())
 			return
 		}
 		WriteError(w, http.StatusBadRequest, err.Error())

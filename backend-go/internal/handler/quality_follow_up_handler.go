@@ -55,7 +55,7 @@ func (h *QualityFollowUpHandler) blockMonitorWrite(w http.ResponseWriter, r *htt
 		}
 	}
 	if blocked {
-		WriteError(w, http.StatusForbidden,
+		WriteError(w, http.StatusNotFound,
 			"المراقب يشوف ويدقّق — التواصل مع الزبون وتسجيل الحكم لمهندس الجودة")
 		return true
 	}
