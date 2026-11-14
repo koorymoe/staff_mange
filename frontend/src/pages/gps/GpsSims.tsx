@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react'
+import Modal from '../../ui/Modal'
 import { api, type GpsSimCard, type GpsCustomer } from '../../api'
 import { askConfirm } from '../../ui/dialogs'
 
+import { notify } from '../../ui/notify'
 // ⚠️ `embedded`: الشاشة تنعرض جوّا تبويب بمدخل موحّد — فترويستها
 // الخاصة تنشال حتى ما تتكرر ترويستان فوگ بعض.
 export default function GpsSims({ embedded }: { embedded?: boolean } = {}) {
@@ -39,7 +41,7 @@ export default function GpsSims({ embedded }: { embedded?: boolean } = {}) {
       setShowForm(false)
       load()
     } catch (e) {
-      alert(e instanceof Error ? e.message : 'حدث خطأ')
+      notify(e instanceof Error ? e.message : 'حدث خطأ')
     } finally {
       setSubmitting(false)
     }
@@ -53,20 +55,20 @@ export default function GpsSims({ embedded }: { embedded?: boolean } = {}) {
       setAssignTarget(null); setAssignCustomerId('')
       load()
     } catch (e) {
-      alert(e instanceof Error ? e.message : 'حدث خطأ')
+      notify(e instanceof Error ? e.message : 'حدث خطأ')
     }
   }
 
   const handleRelease = async (sim: GpsSimCard) => {
     if (!(await askConfirm(`تحرير الشريحة ${sim.simNumber}؟ راح تنفك من الزبون وترجع للمتوفر.`))) return
     try { await api.releaseSimCard(sim.id); load() }
-    catch (e) { alert(e instanceof Error ? e.message : 'حدث خطأ') }
+    catch (e) { notify(e instanceof Error ? e.message : 'حدث خطأ') }
   }
 
   const handleBurn = async (sim: GpsSimCard) => {
     if (!(await askConfirm(`تأشير إن الشريحة ${sim.simNumber} انحرقت؟`))) return
     try { await api.burnSimCard(sim.id); load() }
-    catch (e) { alert(e instanceof Error ? e.message : 'حدث خطأ') }
+    catch (e) { notify(e instanceof Error ? e.message : 'حدث خطأ') }
   }
 
   const statusStyle: Record<string, string> = {
@@ -177,7 +179,7 @@ export default function GpsSims({ embedded }: { embedded?: boolean } = {}) {
         </div>
       )}
 
-      {loading && <div className="flex items-center justify-center p-12"><div className="text-lg text-slate-500">جاري التحميل...</div></div>}
+      {loading && <div className="flex items-center justify-center p-12"><div className="text-lg text-slate-500">جاري التحميل…</div></div>}
       {error && <div className="rounded-2xl bg-red-50 p-6 text-red-600 shadow-sm">{error}</div>}
 
       {/* SIM Table */}
@@ -247,9 +249,7 @@ export default function GpsSims({ embedded }: { embedded?: boolean } = {}) {
       )}
 
       {assignTarget && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={() => setAssignTarget(null)}>
-          <div dir="rtl" className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl" onClick={(e) => e.stopPropagation()}>
-            <h3 className="text-lg font-bold text-t-title">ربط الشريحة بزبون</h3>
+        <Modal title="ربط الشريحة بزبون" onClose={() => setAssignTarget(null)} size="md" bodyClassName="p-6">
             <p className="mt-1 text-sm text-slate-600">الشريحة: <span dir="ltr">{assignTarget.simNumber}</span></p>
             <label className="mt-4 mb-1 block text-sm font-medium text-slate-600">اختر الزبون</label>
             <select
@@ -272,8 +272,7 @@ export default function GpsSims({ embedded }: { embedded?: boolean } = {}) {
                 إلغاء
               </button>
             </div>
-          </div>
-        </div>
+</Modal>
       )}
     </div>
   )

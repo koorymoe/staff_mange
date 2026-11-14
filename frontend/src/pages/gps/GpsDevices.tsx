@@ -1,7 +1,10 @@
 import { useState, useEffect, useRef } from 'react'
+import Modal from '../../ui/Modal'
 import { api, type GpsDeviceRequest } from '../../api'
 import { escDeep } from '../../utils/printIdentity'
 
+import { notify } from '../../ui/notify'
+import { fmtDate } from '../../utils/date'
 // Some legacy records store purchaseType/subscriptionType in lowercase, so we widen
 // those two fields to `string` here rather than reusing the strict literal unions.
 type DeviceRequest = Omit<GpsDeviceRequest, 'purchaseType' | 'subscriptionType'> & {
@@ -9,10 +12,8 @@ type DeviceRequest = Omit<GpsDeviceRequest, 'purchaseType' | 'subscriptionType'>
   subscriptionType: string
 }
 
-function formatDate(d: string) {
-  if (!d) return '-'
-  try { return new Date(d).toLocaleDateString('ar-IQ') } catch { return d }
-}
+// (دازاي 11-15) التاريخ من utils/date.ts (عربي، توقيت بغداد)
+const formatDate = (d: string) => fmtDate(d, { empty: '-' })
 
 function getSubscriptionLabel(t: string) {
   switch (t) {
@@ -52,10 +53,10 @@ export default function GpsDevices() {
   async function handleDeliver(req: DeviceRequest) {
     if (req.purchaseType === 'DEVICE_ONLY') {
       if (!deviceChecks.checked || !deviceChecks.activated || !deviceChecks.delivered) {
-        alert('يرجى تأكيد جميع الخطوات أولاً'); return
+        notify('يرجى تأكيد جميع الخطوات أولاً'); return
       }
     } else if (req.subscriptionType && !activationDate) {
-      alert('يرجى إدخال تاريخ التفعيل أولاً'); return
+      notify('يرجى إدخال تاريخ التفعيل أولاً'); return
     }
     setDelivering(true)
     try {
@@ -71,7 +72,7 @@ export default function GpsDevices() {
       setDeviceChecks({ checked: false, activated: false, delivered: false })
       load()
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'حدث خطأ أثناء التفعيل')
+      notify(err instanceof Error ? err.message : 'حدث خطأ أثناء التفعيل')
     } finally { setDelivering(false) }
   }
 
@@ -131,7 +132,7 @@ export default function GpsDevices() {
     <div dir="rtl">
       <h1 className="text-2xl font-bold mb-6 text-t-title">الطلبات المعلقة 📋</h1>
       {loading ? (
-        <div className="text-center py-20 text-t-faint">جارٍ التحميل...</div>
+        <div className="text-center py-20 text-t-faint">جاري التحميل…</div>
       ) : requests.length === 0 ? (
         <div className="text-center py-16 rounded-2xl" style={{ background: 'var(--sf-card)', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
           <div className="text-5xl mb-4">✅</div>
@@ -166,12 +167,7 @@ export default function GpsDevices() {
       )}
 
       {selected && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ background: 'rgba(0,0,0,0.5)' }}>
-          <div className="rounded-2xl w-full max-w-3xl m-4" style={{ background: 'var(--sf-card)', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)', maxHeight: '90vh', overflowY: 'auto' }}>
-            <div className="p-5 flex items-center justify-between" style={{ borderBottom: '1px solid var(--bd-line)', position: 'sticky', top: 0, background: 'var(--sf-card)', zIndex: 1 }}>
-              <h2 className="text-xl font-bold text-t-title">مراجعة الطلب</h2>
-              <button onClick={() => setSelected(null)} style={{ color: 'var(--t-faint)', fontSize: '1.5rem', background: 'none', border: 'none', cursor: 'pointer' }}>✕</button>
-            </div>
+        <Modal title="مراجعة الطلب" onClose={() => setSelected(null)} size="xl" bodyClassName="p-0">
             <div className="p-6" style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
               <div className="grid grid-cols-2 gap-3 text-sm">
                 <InfoRow label="الاسم الكامل" value={`${selected.customer?.fullName || ''} ${selected.customer?.fatherName || ''} ${selected.customer?.grandfatherName || ''}`} />
@@ -260,8 +256,7 @@ export default function GpsDevices() {
                 إغلاق
               </button>
             </div>
-          </div>
-        </div>
+</Modal>
       )}
       <div ref={printRef} />
     </div>

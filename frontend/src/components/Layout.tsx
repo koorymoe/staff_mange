@@ -4,6 +4,7 @@ import { useOrgMemberships, orgPositionTitle } from '../orgDeskAccess'
 import PrivacyPolicyGate from './PrivacyPolicyGate'
 import EmployeeAvatar from './EmployeeAvatar'
 import LiveAlerts from './LiveAlerts'
+import { beep } from '../ui/beep'
 import ThemeToggle from './ThemeToggle'
 import MatrixEye from './MatrixEye'
 import MatrixCourier from './MatrixCourier'
@@ -171,7 +172,15 @@ export default function Layout() {
   // أرقام رسول ماتركس على البنود — عدد الي توجّهله وما فتحه بعد (من الخادم)
   const [courierBadges, setCourierBadges] = useState<Record<string, number>>({})
   useEffect(() => {
-    const on = (e: Event) => setCourierBadges((e as CustomEvent<Record<string, number>>).detail || {})
+    // (دازاي 11-15) «يوصلهم إشعار صوتي»: من يزيد مجموع الأرقام الحمراء (شي جديد توجّهله) يطلع صوت.
+    let last = -1
+    const on = (e: Event) => {
+      const d = (e as CustomEvent<Record<string, number>>).detail || {}
+      const total = Object.values(d).reduce((a, n) => a + (n || 0), 0)
+      if (last >= 0 && total > last) beep()
+      last = total
+      setCourierBadges(d)
+    }
     window.addEventListener('matrix-courier-badges', on)
     return () => window.removeEventListener('matrix-courier-badges', on)
   }, [])

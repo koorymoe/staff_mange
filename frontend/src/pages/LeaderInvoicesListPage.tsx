@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { onEnter } from '../utils/enterKey'
 import { api, AUDIT_VERDICTS, type LeaderInvoice, type LeaderInvoiceAdjustment, type LeaderInvoicePage } from '../api'
-import { parseAmount } from '../utils/money'
+import { money as fmtMoney, parseAmount } from '../utils/money'
 import EntityIdentity from '../components/EntityIdentity'
 import StatTile from '../components/StatTile'
 import Pager from '../components/Pager'
@@ -16,6 +16,7 @@ import ServicePriceSuggestions from '../components/ServicePriceSuggestions'
 import { loadFailed } from '../netErrors'
 import { askInput } from '../ui/dialogs'
 
+import { notify } from '../ui/notify'
 // ═══ طباعة فاتورة الليدر ═══
 //
 // هاي أكثر ورقة تطلع للزبون، وكانت **ماكو بيها طباعة أصلاً** — المحاسب
@@ -30,7 +31,7 @@ import { askInput } from '../ui/dialogs'
 // ⚠️ سجل التعديلات ينطبع هو هم: الورقة الي تعرض الرقم الجديد بلا ما
 // تگول إنه انتعدّل تخلي القارئ يظن إنه الأصلي.
 function printInvoice(inv: LeaderInvoice, adjustments: LeaderInvoiceAdjustment[]) {
-  const money = (n: number) => `${Number(n || 0).toLocaleString('en-US')} د.ع`
+  const money = (n: number) => `${fmtMoney(Number(n || 0))} د.ع` // (دازاي 11-15) من utils/money.ts
   const identity = printIdentityHtml({
     bookingCode: inv.bookingCode || undefined,
     customerCode: formatCustomerCode(inv.booking?.customer) || undefined,
@@ -117,7 +118,7 @@ function printInvoice(inv: LeaderInvoice, adjustments: LeaderInvoiceAdjustment[]
   const w = window.open('', '_blank')
   // مانع النوافذ ممكن يرجّع null — بلا هذا الفحص الطباعة تطيح بصمت
   if (!w) {
-    alert('المتصفح منع فتح نافذة الطباعة — سمح النوافذ المنبثقة لهذا الموقع')
+    notify('المتصفح منع فتح نافذة الطباعة — سمح النوافذ المنبثقة لهذا الموقع')
     return
   }
   w.document.write(html)
@@ -337,7 +338,7 @@ export default function LeaderInvoicesListPage({ embedded }: EmbeddedProps = {})
     if (reason === null) return
     setBusyId(inv.id)
     try { await api.returnInvoiceToAccountant(inv.id, reason.trim()); load() }
-    catch (e) { window.alert(e instanceof Error ? e.message : 'تعذر الإرجاع') }
+    catch (e) { notify(e instanceof Error ? e.message : 'تعذر الإرجاع') }
     finally { setBusyId(null) }
   }
 
@@ -368,7 +369,7 @@ export default function LeaderInvoicesListPage({ embedded }: EmbeddedProps = {})
       await api.revokeInvoiceApproval(inv.id, reason)
       load()
     } catch (e) {
-      alert(e instanceof Error ? e.message : 'تعذر سحب الاعتماد')
+      notify(e instanceof Error ? e.message : 'تعذر سحب الاعتماد')
     } finally { setBusyId(null) }
   }
 
@@ -543,7 +544,7 @@ export default function LeaderInvoicesListPage({ embedded }: EmbeddedProps = {})
               finally { setExpBusy(false) }
             }}
             disabled={expBusy}
-            className="rounded-xl bg-indigo-600 px-4 py-2 text-sm font-bold text-white hover:bg-indigo-700 disabled:opacity-50"
+            className="rounded-xl bg-[#0f2040] px-4 py-2 text-sm font-bold text-white hover:bg-[#1a3a6c] disabled:opacity-50"
           >
             {expBusy ? 'جاري التحضير…' : '⬇ تنزيل إكسل الشهر'}
           </button>
@@ -619,7 +620,7 @@ export default function LeaderInvoicesListPage({ embedded }: EmbeddedProps = {})
         </div>
       )}
 
-      {loading && tab !== 'PRICES' && <p className="mt-6 text-slate-400">جاري التحميل...</p>}
+      {loading && tab !== 'PRICES' && <p className="mt-6 text-slate-400">جاري التحميل…</p>}
 
       {!loading && tab !== 'PRICES' && (
         <div className="mt-6 overflow-x-auto rounded-xl border border-white bg-white shadow-[0_4px_20px_rgba(15,32,64,0.06)]">
@@ -792,7 +793,7 @@ export default function LeaderInvoicesListPage({ embedded }: EmbeddedProps = {})
                         <button
                           onClick={() => { setApproveFor(inv); setInvoiceNo(''); setApproveErr(null) }}
                           disabled={busyId === inv.id}
-                          className="rounded-lg bg-brand-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-brand-700 disabled:opacity-50"
+                          className="rounded-lg bg-[#0f2040] px-3 py-1.5 text-xs font-bold text-white hover:bg-[#1a3a6c] disabled:opacity-50"
                         >
                           {busyId === inv.id ? 'جاري الاعتماد...' : 'اعتماد'}
                         </button>
@@ -816,7 +817,7 @@ export default function LeaderInvoicesListPage({ embedded }: EmbeddedProps = {})
                         <button
                           onClick={() => { setDecideFor(inv); setDecideVerdict('OK'); setDecideNote(''); setDecideErr(null) }}
                           disabled={busyId === inv.id}
-                          className="rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-indigo-700 disabled:opacity-50"
+                          className="rounded-lg bg-[#0f2040] px-3 py-1.5 text-xs font-bold text-white hover:bg-[#1a3a6c] disabled:opacity-50"
                         >
                           👁️ راجعها
                         </button>
@@ -1072,7 +1073,7 @@ export default function LeaderInvoicesListPage({ embedded }: EmbeddedProps = {})
               <button
                 onClick={saveAudit}
                 disabled={busyId !== null}
-                className="flex-1 rounded-xl bg-brand-600 px-4 py-2.5 text-sm font-bold text-white disabled:opacity-50"
+                className="flex-1 rounded-xl bg-[#0f2040] px-4 py-2.5 text-sm font-bold text-white disabled:opacity-50"
               >
                 احفظ الحكم
               </button>
@@ -1105,7 +1106,7 @@ export default function LeaderInvoicesListPage({ embedded }: EmbeddedProps = {})
             {monitorErr && <p className="mt-2 rounded-lg bg-red-50 px-3 py-2 text-xs font-bold text-red-700">{monitorErr}</p>}
             <div className="mt-4 flex gap-2">
               <button onClick={sendToMonitor} disabled={busyId === monitorFor.id}
-                className="flex-1 rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-bold text-white disabled:opacity-50">
+                className="flex-1 rounded-xl bg-[#0f2040] px-4 py-2.5 text-sm font-bold text-white disabled:opacity-50">
                 👁️ أرسلها للمراقب
               </button>
               <button onClick={() => setMonitorFor(null)}
@@ -1132,7 +1133,7 @@ export default function LeaderInvoicesListPage({ embedded }: EmbeddedProps = {})
               {([['OK', '✅ سليمة'], ['FLAGGED', '⚠️ عندي ملاحظة']] as const).map(([k, lbl]) => (
                 <button key={k} onClick={() => setDecideVerdict(k)}
                   className={`flex-1 rounded-xl px-3 py-2.5 text-sm font-bold transition ${
-                    decideVerdict === k ? 'bg-indigo-600 text-white' : 'border border-slate-300 text-slate-600 hover:bg-slate-50'}`}>
+                    decideVerdict === k ? 'bg-[#0f2040] text-white' : 'border border-slate-300 text-slate-600 hover:bg-slate-50'}`}>
                   {lbl}
                 </button>
               ))}
@@ -1153,7 +1154,7 @@ export default function LeaderInvoicesListPage({ embedded }: EmbeddedProps = {})
             </p>
             <div className="mt-3 flex gap-2">
               <button onClick={decideMonitor} disabled={busyId === decideFor.id}
-                className="flex-1 rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-bold text-white disabled:opacity-50">
+                className="flex-1 rounded-xl bg-[#0f2040] px-4 py-2.5 text-sm font-bold text-white disabled:opacity-50">
                 سجّل حكمي
               </button>
               <button onClick={() => setDecideFor(null)}
@@ -1241,7 +1242,7 @@ export default function LeaderInvoicesListPage({ embedded }: EmbeddedProps = {})
               <div className="flex items-center gap-1">
                 <button
                   onClick={() => printInvoice(details, adjustments)}
-                  className="rounded-lg bg-brand-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-brand-700"
+                  className="rounded-lg bg-[#0f2040] px-3 py-1.5 text-xs font-bold text-white hover:bg-[#1a3a6c]"
                 >
                   🖨️ طباعة
                 </button>

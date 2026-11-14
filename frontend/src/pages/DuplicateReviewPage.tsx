@@ -128,7 +128,7 @@ export default function DuplicateReviewPage() {
             key={t}
             onClick={() => { setTab(t); setMsg(null) }}
             className={`rounded-xl px-4 py-2 text-sm font-bold transition ${
-              tab === t ? 'bg-brand-700 text-white' : 'bg-white text-slate-600 shadow-sm'
+              tab === t ? 'bg-[#0f2040] text-white' : 'bg-white text-slate-600 shadow-sm'
             }`}
           >
             {t === 'BOOKING' ? '📋 حجوزات مكررة' : t === 'CUSTOMER' ? '👤 زبائن مكررون' : '✅ المحلولة'}
@@ -141,7 +141,7 @@ export default function DuplicateReviewPage() {
 
       {msg && <p className="rounded-lg bg-emerald-50 p-3 text-sm font-bold text-emerald-800">{msg}</p>}
       {err && <p className="rounded-lg bg-red-50 p-4 text-red-600">{err}</p>}
-      {loading && <p className="text-slate-400">جاري التحميل...</p>}
+      {loading && <p className="text-slate-400">جاري التحميل…</p>}
       {!loading && rows.length > 0 && shown.length === 0 && <p className="rounded-xl bg-white p-6 text-center text-slate-400">ماكو نتيجة لـ«{q}»</p>}
       {!loading && rows.length === 0 && (
         <p className="rounded-xl border border-white bg-white p-8 text-center text-slate-400">

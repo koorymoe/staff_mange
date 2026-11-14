@@ -104,6 +104,9 @@ export function ExecutionSheetForm({ value, onChange }: { value: ExecutionSheetD
           <textarea rows={3} className="w-full p-2 text-sm outline-none" value={s.suggestion} onChange={(e) => onChange({ ...s, suggestion: e.target.value })} /></label>
         <label className="block rounded-lg border border-slate-300"><span className="block bg-cyan-500 px-2 py-1.5 text-center text-sm font-black text-white">المبلغ المستلم من الزبون</span>
           <input type="number" min={0} className="w-full p-2 text-sm outline-none" value={s.amountReceived} onChange={(e) => onChange({ ...s, amountReceived: e.target.value })} placeholder="معلومة للمراقب — الحسابات تبقى بالفاتورة" /></label>
+        {/* (دازاي 11-15) «الليدر يكتب ملاحظات إضافية ع التقرير» */}
+        <label className="block rounded-lg border border-slate-300 sm:col-span-2"><span className="block bg-[#0f2040] px-2 py-1.5 text-center text-sm font-black text-white">📝 ملاحظات الليدر الإضافية</span>
+          <textarea rows={3} className="w-full p-2 text-sm outline-none" value={s.leaderNotes ?? ''} onChange={(e) => onChange({ ...s, leaderNotes: e.target.value })} placeholder="أي شي صار بالشغل تريد الإدارة تعرفه (اختياري)" /></label>
       </div>
     </div>
   )
@@ -172,6 +175,7 @@ export function ExecutionSheetView({ sheet }: { sheet: ExecutionSheetData }) {
       <div className="grid gap-2 text-sm sm:grid-cols-2">
         <div className="rounded-lg border border-slate-300"><span className="block bg-cyan-500 px-2 py-1 text-center font-black text-white">اقتراح تنصيب من الزبون</span><p className="p-2">{dash(s.suggestion)}</p></div>
         <div className="rounded-lg border border-slate-300"><span className="block bg-cyan-500 px-2 py-1 text-center font-black text-white">المبلغ المستلم من الزبون</span><p className="p-2 tabular-nums">{s.amountReceived ? `${Number(s.amountReceived).toLocaleString('en-US')} د.ع` : '—'}</p></div>
+        {s.leaderNotes?.trim() && <div className="rounded-lg border border-slate-300 sm:col-span-2"><span className="block bg-[#0f2040] px-2 py-1 text-center font-black text-white">📝 ملاحظات الليدر الإضافية</span><p className="whitespace-pre-wrap p-2">{s.leaderNotes}</p></div>}
       </div>
     </div>
   )

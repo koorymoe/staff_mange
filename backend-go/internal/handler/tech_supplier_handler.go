@@ -22,7 +22,7 @@ func NewTechSupplierHandler(repo *repository.TechSupplierRepository) *TechSuppli
 
 func (h *TechSupplierHandler) guard(w http.ResponseWriter, r *http.Request) bool {
 	if !h.repo.CanUse(middleware.EmployeeIDFromContext(r)) {
-		WriteError(w, http.StatusForbidden, "موردين التقنيين للتقنيين ومسؤولي الخدمات")
+		WriteError(w, http.StatusNotFound, "موردين التقنيين للتقنيين ومسؤولي الخدمات")
 		return false
 	}
 	return true

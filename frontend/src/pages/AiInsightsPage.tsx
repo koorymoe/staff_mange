@@ -219,7 +219,7 @@ export default function AiInsightsPage() {
         </div>
       )}
 
-      {loading && <p className="text-slate-400">جاري التحميل...</p>}
+      {loading && <p className="text-slate-400">جاري التحميل…</p>}
       {!loading && analyzed.length === 0 && (
         <p className="rounded-xl border border-white bg-white p-8 text-center text-slate-400">
           ماكو تحليلات بعد — الإشارات تتراكم مع الشغل، واضغط «حلّل» حتى تطلع النتيجة.

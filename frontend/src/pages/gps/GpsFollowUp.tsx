@@ -8,6 +8,7 @@ import {
 import { useSession, isAdminOrOwner } from '../../session'
 import { askConfirm } from '../../ui/dialogs'
 
+import { notify } from '../../ui/notify'
 /**
  * متابعة تجديد اشتراكات الجي بي اس.
  *
@@ -76,7 +77,7 @@ export default function GpsFollowUp({ embedded }: { embedded?: boolean } = {}) {
       setCallTarget(null); setNotes(''); setOutcome('WILL_RENEW')
       load()
     } catch (e) {
-      alert(e instanceof Error ? e.message : 'تعذر تسجيل الاتصال')
+      notify(e instanceof Error ? e.message : 'تعذر تسجيل الاتصال')
     } finally { setSaving(false) }
   }
 
@@ -89,7 +90,7 @@ export default function GpsFollowUp({ embedded }: { embedded?: boolean } = {}) {
       else await api.releaseSimCard(row.simCardId)
       load()
     } catch (e) {
-      alert(e instanceof Error ? e.message : `تعذر ${word} الشريحة`)
+      notify(e instanceof Error ? e.message : `تعذر ${word} الشريحة`)
     }
   }
 
@@ -126,7 +127,7 @@ export default function GpsFollowUp({ embedded }: { embedded?: boolean } = {}) {
           {canCall && row.stage !== 'RESOLVED' && (
             <button
               onClick={() => { setCallTarget(row); setOutcome('WILL_RENEW'); setNotes('') }}
-              className="rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700"
+              className="rounded-lg bg-[#0f2040] px-4 py-2 text-sm font-medium text-white hover:bg-[#1a3a6c]"
             >
               📞 سجّل نتيجة الاتصال
             </button>
@@ -170,7 +171,7 @@ export default function GpsFollowUp({ embedded }: { embedded?: boolean } = {}) {
     )
   }
 
-  if (loading) return <div dir="rtl" className="p-8 text-center text-slate-500">جاري التحميل...</div>
+  if (loading) return <div dir="rtl" className="p-8 text-center text-slate-500">جاري التحميل…</div>
   if (error) return <div dir="rtl" className="rounded-xl bg-red-50 p-6 text-center text-red-700">{error}</div>
 
   return (
@@ -245,7 +246,7 @@ export default function GpsFollowUp({ embedded }: { embedded?: boolean } = {}) {
             <div className="mt-4 flex gap-3">
               <button
                 onClick={submitCall} disabled={saving}
-                className="flex-1 rounded-lg bg-brand-600 px-4 py-3 font-medium text-white hover:bg-brand-700 disabled:opacity-50"
+                className="flex-1 rounded-lg bg-[#0f2040] px-4 py-3 font-medium text-white hover:bg-[#1a3a6c] disabled:opacity-50"
               >
                 {saving ? 'جاري الحفظ...' : 'حفظ'}
               </button>

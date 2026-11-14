@@ -146,7 +146,7 @@ export default function MultiSelect({
               <button
                 type="button"
                 onClick={() => setOpen(false)}
-                className="rounded-lg bg-brand-600 px-3 py-1 text-[11px] font-bold text-white hover:bg-brand-700"
+                className="rounded-lg bg-[#0f2040] px-3 py-1 text-[11px] font-bold text-white hover:bg-[#1a3a6c]"
               >
                 تم
               </button>

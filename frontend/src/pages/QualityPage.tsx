@@ -73,7 +73,7 @@ export default function QualityPage() {
         <section className="rounded-xl border border-white bg-white p-5 shadow-[0_4px_20px_rgba(15,32,64,0.06)]">
           <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
             <h3 className="font-extrabold text-brand-900">🎧 شكاوى الزبائن المفتوحة <span className="rounded-full bg-red-100 px-2 py-0.5 text-xs text-red-700">{openComplaints.length}</span></h3>
-            <Link to="/complaints" className="rounded-lg bg-brand-600 px-3 py-1.5 text-xs font-bold text-white hover:brightness-110">افتح متابعة الشكاوى وعالجها ←</Link>
+            <Link to="/complaints" className="rounded-lg bg-[#0f2040] px-3 py-1.5 text-xs font-bold text-white hover:brightness-110">افتح متابعة الشكاوى وعالجها ←</Link>
           </div>
           {openComplaints.length === 0 ? (
             <p className="text-sm text-emerald-700">ماكو شكوى مفتوحة ✓</p>
@@ -117,7 +117,7 @@ export default function QualityPage() {
         </select>
         <input required placeholder="عنوان المشكلة" value={title} onChange={(e) => setTitle(e.target.value)} className="rounded-lg border border-slate-300 px-3 py-2 sm:col-span-2" />
         <textarea placeholder="تفاصيل إضافية (اختياري)" value={description} onChange={(e) => setDescription(e.target.value)} rows={2} className="rounded-lg border border-slate-300 px-3 py-2 sm:col-span-2" />
-        <button type="submit" className="sm:col-span-2 rounded-lg bg-gradient-to-l from-brand-500 to-brand-800 px-5 py-2 font-medium text-white shadow-md">تسجيل المشكلة</button>
+        <button type="submit" disabled={guard.busy} className="disabled:opacity-50 sm:col-span-2 rounded-lg bg-gradient-to-l from-brand-500 to-brand-800 px-5 py-2 font-medium text-white shadow-md">تسجيل المشكلة</button>
       </form>}
 
       <div className="flex gap-2">
@@ -129,7 +129,7 @@ export default function QualityPage() {
           <button
             key={t.key}
             onClick={() => setFilter(t.key)}
-            className={`rounded-lg px-4 py-2 text-sm font-bold transition-colors ${filter === t.key ? 'bg-brand-600 text-white' : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'}`}
+            className={`rounded-lg px-4 py-2 text-sm font-bold transition-colors ${filter === t.key ? 'bg-[#0f2040] text-white' : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'}`}
           >
             {t.label}
           </button>

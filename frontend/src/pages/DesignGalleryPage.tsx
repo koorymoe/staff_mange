@@ -131,7 +131,7 @@ export default function DesignGalleryPage() {
           وريني المؤرشف
         </label>
         <button onClick={() => setOpen((o) => !o)}
-          className="rounded-lg bg-brand-600 px-3 py-1.5 text-xs font-bold text-white">
+          className="rounded-lg bg-[#0f2040] px-3 py-1.5 text-xs font-bold text-white">
           {open ? '✕ سكّر' : '＋ ارفع تصميماً'}
         </button>
       </SearchBar>
@@ -169,13 +169,13 @@ export default function DesignGalleryPage() {
             </div>
           </div>
           <button onClick={upload} disabled={guard.busy || !file || !title.trim()}
-            className="mt-3 rounded-lg bg-brand-600 px-4 py-2 text-sm font-bold text-white disabled:opacity-50">
+            className="mt-3 rounded-lg bg-[#0f2040] px-4 py-2 text-sm font-bold text-white disabled:opacity-50">
             {guard.busy ? 'جاري الرفع...' : 'ارفعه للمعرض'}
           </button>
         </div>
       )}
 
-      {loading && <p className="text-t-faint">جاري التحميل...</p>}
+      {loading && <p className="text-t-faint">جاري التحميل…</p>}
       {!loading && filtered.length === 0 && (
         <EmptyState icon="🎨" title="ماكو تصاميم"
           reason={list.length === 0

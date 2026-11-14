@@ -88,7 +88,7 @@ func (h *PermissionHandler) SetForEmployee(w http.ResponseWriter, r *http.Reques
 			return
 		}
 		if why := legacyPermLock(r, all, cur, req.PermissionIDs); why != "" {
-			WriteError(w, http.StatusForbidden, why)
+			WriteError(w, http.StatusNotFound, why)
 			return
 		}
 	}

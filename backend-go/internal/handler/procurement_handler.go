@@ -52,7 +52,7 @@ func (h *ProcurementHandler) Create(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		status := http.StatusBadRequest
 		if errors.Is(err, service.ErrForbiddenRequestType) {
-			status = http.StatusForbidden
+			status = http.StatusNotFound
 		}
 		WriteError(w, status, err.Error())
 		return

@@ -103,7 +103,7 @@ export default function MediaPage() {
   return (
     <div dir="rtl" className="space-y-4">
       <div className="rounded-2xl bg-gradient-to-l from-pink-600 to-fuchsia-700 p-5 text-white shadow">
-        <h2 className="text-2xl font-extrabold">📸 الإعلام والعلاقات العامة</h2>
+        <h2 className="text-2xl font-extrabold">📸 مشاريع للتصوير</h2>
         <p className="mt-1 text-sm text-pink-50">المشاريع المرحّلة إلكم بكل تفاصيلها — احجزوا موعد التصوير، وبعدها «صوّرنا»، وبالأخير «نشرنا» ويا الرابط.</p>
         <p className="mt-1 text-xs text-pink-100">ℹ️ الترحيل إلكم فرع من المشروع: صاحب المشروع يكمل للتنفيذ عادي، وانتم تنسّقون موعدكم وياه.</p>
       </div>

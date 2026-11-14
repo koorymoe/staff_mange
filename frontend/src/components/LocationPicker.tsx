@@ -263,7 +263,7 @@ export default function LocationPicker({ value, onChange }: Props) {
           type="button"
           onClick={handleSearch}
           disabled={searching}
-          className="rounded-xl bg-brand-600 px-5 py-2.5 text-sm font-bold text-white hover:bg-brand-700 disabled:opacity-50"
+          className="rounded-xl bg-[#0f2040] px-5 py-2.5 text-sm font-bold text-white hover:bg-[#1a3a6c] disabled:opacity-50"
         >
           {searching ? 'جارٍ البحث...' : 'بحث'}
         </button>

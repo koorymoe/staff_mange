@@ -10,6 +10,7 @@ import QuotationHistoryPicker from '../components/QuotationHistoryPicker'
 import { numIQ as fmt, todayBaghdad } from '../utils/format'
 import { askConfirm } from '../ui/dialogs'
 import { swallow } from '../utils/swallow'
+import { BackLink } from '../ui/BackLink'
 
 /** buildPrintHtml: المجموع صفر وما انطلب السماح — المنادي يسأل */
 const ZERO_TOTAL = '__ZERO_TOTAL__'
@@ -154,6 +155,7 @@ export default function QuotationNew() {
   const [activeAutocomplete, setActiveAutocomplete] = useState<number | null>(null)
   const [showProductModal, setShowProductModal] = useState(false)
   const [pmName, setPmName] = useState('')
+  const [pmSaving, setPmSaving] = useState(false) // (دازاي 11-15) قفل الحفظ المزدوج — الزر ينقفل لحد ما يرجع الجواب
   const [pmUnit, setPmUnit] = useState('قطعة')
   const [pmPrice, setPmPrice] = useState(0)
   const [pmImage, setPmImage] = useState('')
@@ -816,6 +818,8 @@ ${pageShell(`
 
   const handlePmSave = async () => {
     if (!pmName.trim()) { setPmStatus('⚠ أدخل اسم المنتج'); return }
+    if (pmSaving) return
+    setPmSaving(true)
     setPmStatus('⏳ جاري الحفظ...')
     try {
       await api.createProduct({ name: pmName, unit: pmUnit, defaultPrice: pmPrice, imageBase64: pmImage || undefined })
@@ -825,7 +829,7 @@ ${pageShell(`
       setProducts(prods ?? [])
     } catch {
       setPmStatus('✕ فشل الحفظ')
-    }
+    } finally { setPmSaving(false) }
   }
 
   const handlePmDelete = async (id: string) => {
@@ -841,6 +845,7 @@ ${pageShell(`
 
   return (
     <div style={{ direction: 'rtl', fontFamily: "'Cairo', 'Tajawal', sans-serif", maxWidth: '1000px', margin: '0 auto' }}>
+      <BackLink to="/quotations" className="mb-2" />
 
       {/* ===== App Header ===== */}
       <div style={{
@@ -1289,8 +1294,8 @@ ${pageShell(`
                     </label>
                   </div>
                 </div>
-                <button onClick={handlePmSave} style={{
-                  width: '100%', padding: '13px', marginTop: '14px',
+                <button onClick={handlePmSave} disabled={pmSaving} style={{
+                  width: '100%', padding: '13px', marginTop: '14px', opacity: pmSaving ? 0.5 : 1,
                   background: 'linear-gradient(135deg, #1a237e, #283593)', color: '#fff', border: 'none',
                   borderRadius: '8px', fontSize: '14px', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
                 }}>💾 حفظ المنتج في القاعدة</button>

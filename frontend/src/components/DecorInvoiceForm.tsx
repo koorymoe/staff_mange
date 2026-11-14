@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { api, type Booking, type DecorRate } from '../api'
 import { swallow } from '../utils/swallow'
+import { money as fmtMoney } from '../utils/money'
 
 // ═══ فاتورة الديكور — (ع) 10-16 ═══
 // نفس مسار فاتورة الليدر (المحاسب، التدقيق، المراقب)، بس الأجور من «جدول أسعار
@@ -17,7 +18,7 @@ export default function DecorInvoiceForm({ booking, onBack, onDone }: { booking:
   const labor = lines.reduce((a, l) => a + (byId.get(l.rateId)?.price ?? 0) * (Number(l.qty) || 0), 0)
   const matTotal = mats.reduce((a, m) => a + (Number(m.quantity) || 0) * (Number(m.unitPrice) || 0), 0)
   const net = Math.max(0, labor + matTotal - (Number(discount) || 0))
-  const money = (n: number) => `${Math.round(n).toLocaleString('en-US')} د.ع`
+  const money = (n: number) => `${fmtMoney(Math.round(n))} د.ع` // (دازاي 11-15) من utils/money.ts
 
   const submit = async () => {
     const dl = lines.filter((l) => l.rateId && Number(l.qty) > 0)

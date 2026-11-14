@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react'
+import Modal from '../../ui/Modal'
 import { api, type GpsRenewalRequest } from '../../api'
 import { escDeep } from '../../utils/printIdentity'
 
-function formatDate(d: string) {
-  if (!d) return '-'
-  try { return new Date(d).toLocaleDateString('ar-IQ') } catch { return d }
-}
+import { notify } from '../../ui/notify'
+import { fmtDate } from '../../utils/date'
+// (دازاي 11-15) التاريخ من utils/date.ts (عربي، توقيت بغداد)
+const formatDate = (d: string) => fmtDate(d, { empty: '-' })
 
 function getSubscriptionLabel(t: string) {
   switch (t) {
@@ -62,7 +63,7 @@ export default function GpsRenewals() {
       printRenewalInvoice(renewal)
       setSelected(null)
       load()
-    } catch (e) { console.error(e); alert('حدث خطأ') }
+    } catch (e) { console.error(e); notify('حدث خطأ') }
     setApproving(false)
   }
 
@@ -122,7 +123,7 @@ export default function GpsRenewals() {
     <div dir="rtl">
       <h1 className="text-2xl font-bold mb-6 text-t-title">طلبات تجديد الاشتراك 🔄</h1>
       {loading ? (
-        <div className="text-center py-20 text-t-faint">جارٍ التحميل...</div>
+        <div className="text-center py-20 text-t-faint">جاري التحميل…</div>
       ) : renewals.length === 0 ? (
         <div className="text-center py-16 rounded-2xl" style={{ background: 'var(--sf-card)', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
           <div className="text-5xl mb-4">✅</div>
@@ -168,12 +169,7 @@ export default function GpsRenewals() {
       )}
 
       {selected && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ background: 'rgba(0,0,0,0.5)' }}>
-          <div className="rounded-2xl w-full max-w-lg m-4" style={{ background: 'var(--sf-card)', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)' }}>
-            <div className="p-5 flex items-center justify-between border-b border-bd-line">
-              <h2 className="text-xl font-bold text-t-title">تأكيد التجديد</h2>
-              <button onClick={() => setSelected(null)} style={{ color: 'var(--t-faint)', fontSize: '1.5rem', background: 'none', border: 'none', cursor: 'pointer' }}>✕</button>
-            </div>
+        <Modal title="تأكيد التجديد" onClose={() => setSelected(null)} size="lg" bodyClassName="p-0">
             <div className="p-6 text-sm" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
               <div className="grid grid-cols-2 gap-3 p-4 rounded-xl bg-sf-sunken">
                 <div><span className="text-t-muted">الاسم: </span><span className="font-semibold">{selected.customer ? `${selected.customer.fullName} ${selected.customer.fatherName} ${selected.customer.grandfatherName}` : '-'}</span></div>
@@ -198,8 +194,7 @@ export default function GpsRenewals() {
                 إغلاق
               </button>
             </div>
-          </div>
-        </div>
+</Modal>
       )}
     </div>
   )

@@ -124,7 +124,7 @@ export default function MeetingRequests() {
                 !reason.trim() ||
                 (kind === 'GUEST' && !guestName.trim())
               }
-              className="rounded-xl bg-brand-600 px-4 py-3 font-bold text-white disabled:opacity-50"
+              className="rounded-xl bg-[#0f2040] px-4 py-3 font-bold text-white disabled:opacity-50"
             >
               {busy ? 'دا أرسل…' : 'إرسال الطلب'}
             </button>

@@ -7,15 +7,18 @@ export default function ServiceRulesEditor({ services }: { services: Service[] }
   const [vals, setVals] = useState<Record<string, { sla: number; photos: number }>>({})
   const [msg, setMsg] = useState<Record<string, string>>({})
   const [q, setQ] = useState('')
+  const [savingId, setSavingId] = useState<string | null>(null) // (دازاي 11-15) قفل الحفظ المزدوج — الزر ينقفل لحد ما يرجع الجواب
   const get = (s: Service) => vals[s.id] ?? { sla: s.slaHours ?? 48, photos: s.minPhotos ?? 0 }
   const save = async (s: Service) => {
     const v = get(s)
+    if (savingId) return
+    setSavingId(s.id)
     try {
       await apiRequest(`/services/${s.id}/rules`, { method: 'PUT', body: JSON.stringify({ slaHours: v.sla, minPhotos: v.photos }) })
       setMsg((m) => ({ ...m, [s.id]: '✅' }))
     } catch (e) {
       setMsg((m) => ({ ...m, [s.id]: e instanceof Error ? e.message : 'تعذر' }))
-    }
+    } finally { setSavingId(null) }
   }
   if (services.length === 0) return null
   return (
@@ -48,7 +51,7 @@ export default function ServiceRulesEditor({ services }: { services: Service[] }
                     className="w-12 rounded border border-slate-300 px-1 py-0.5" />
                   صور
                 </label>
-                <button type="button" onClick={() => void save(s)} className="rounded-lg bg-slate-100 px-2 py-0.5 text-xs font-bold">حفظ</button>
+                <button type="button" disabled={savingId === s.id} onClick={() => void save(s)} className="disabled:opacity-50 rounded-lg bg-slate-100 px-2 py-0.5 text-xs font-bold">حفظ</button>
                 {msg[s.id] && <span className="text-xs">{msg[s.id]}</span>}
               </div>
             )

@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react'
-import { useParams, useNavigate, Link } from 'react-router-dom'
+import { useParams, useNavigate } from 'react-router-dom'
 import { api, type DesignForm, type DesignFormQuestion, type DesignFormQuestionType } from '../api'
 import { askConfirm } from '../ui/dialogs'
 
+import { notify } from '../ui/notify'
+import { BackLink } from '../ui/BackLink'
 const PRIMARY = '#47528f'
 // ⚠️ نسخة **النص** تنقلب بالوضع الليلي، والأصل يبقى للأسطح:
 // نفس اللون يخدم عنواناً غامقاً على أبيض، ورأس جدول كحلي عليه نص أبيض.
@@ -87,7 +89,7 @@ export default function DesignFormBuilderPage() {
       setEditingId(null)
       refresh()
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'تعذر حفظ السؤال')
+      notify(err instanceof Error ? err.message : 'تعذر حفظ السؤال')
     } finally {
       setSaving(false)
     }
@@ -121,9 +123,9 @@ export default function DesignFormBuilderPage() {
 
   return (
     <div dir="rtl">
-      <Link to="/design-forms" className="text-sm font-bold" style={{ color: PRIMARY_TEXT }}>← رجوع لكل الفورمات</Link>
+      <BackLink to="/design-forms" />
       <h2 className="mt-2 text-2xl font-bold" style={{ color: PRIMARY_TEXT }}>
-        {currentForm ? `أسئلة فورمة: ${currentForm.name}` : 'جاري التحميل...'}
+        {currentForm ? `أسئلة فورمة: ${currentForm.name}` : 'جاري التحميل…'}
       </h2>
       <p className="mt-1 text-slate-500">
         أضف الأسئلة الي تريدها بنفسك (نص، رقم، تاريخ، اختيارات...) ورتّبها — هذي الأسئلة خاصة بهذي الفورمة بس، وما تنعرض بأي فورمة ثانية.
@@ -175,7 +177,7 @@ export default function DesignFormBuilderPage() {
         </form>
       )}
 
-      {loading && <p className="mt-6 text-slate-400">جاري التحميل...</p>}
+      {loading && <p className="mt-6 text-slate-400">جاري التحميل…</p>}
       {!loading && questions.length === 0 && (
         <div className="mt-6 rounded-xl border border-white bg-white p-8 text-center shadow-sm">
           <p className="text-slate-400">ما أضفت أي أسئلة بهذي الفورمة بعد — اضغط "+ إضافة سؤال جديد" وابدأ ببناء الاستمارة.</p>

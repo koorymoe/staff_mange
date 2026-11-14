@@ -93,7 +93,7 @@ export default function EmployeeAvatar({
               type="button"
               onClick={() => inputRef.current?.click()}
               disabled={busy}
-              className="absolute -bottom-1 -left-1 flex h-6 w-6 items-center justify-center rounded-full border-2 border-white bg-brand-600 text-[10px] text-white shadow hover:bg-brand-700 disabled:opacity-50"
+              className="absolute -bottom-1 -left-1 flex h-6 w-6 items-center justify-center rounded-full border-2 border-white bg-[#0f2040] text-[10px] text-white shadow hover:bg-[#1a3a6c] disabled:opacity-50"
               title={src ? 'تبديل الصورة' : 'إضافة صورة'}
             >
               {busy ? '…' : '📷'}

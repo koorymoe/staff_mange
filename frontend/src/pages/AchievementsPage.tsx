@@ -68,7 +68,7 @@ export default function AchievementsPage() {
       </div>
 
       {err && <p className="rounded-lg bg-red-50 p-4 text-red-600">{err}</p>}
-      {loading && <p className="text-slate-400">جاري التحميل...</p>}
+      {loading && <p className="text-slate-400">جاري التحميل…</p>}
       {!loading && rows.length === 0 && (
         <p className="rounded-xl border border-white bg-white p-8 text-center text-slate-400">ماكو تقارير بهذا اليوم.</p>
       )}

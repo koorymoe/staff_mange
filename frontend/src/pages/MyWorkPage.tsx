@@ -29,7 +29,7 @@ export default function MyWorkPage() {
       <div className="flex flex-wrap gap-2">
         {TABS.map((t) => (
           <button key={t.id} onClick={() => setTab(t.id)}
-            className={`rounded-xl px-4 py-2 text-sm font-bold transition ${tab === t.id ? 'bg-brand-700 text-white' : 'bg-white text-slate-600 shadow-sm'}`}>
+            className={`rounded-xl px-4 py-2 text-sm font-bold transition ${tab === t.id ? 'bg-[#0f2040] text-white' : 'bg-white text-slate-600 shadow-sm'}`}>
             {boss ? (t.id === 'tasks' ? '📋 مهام الموظفين' : '📝 إنجازات الموظفين') : t.label}
           </button>
         ))}

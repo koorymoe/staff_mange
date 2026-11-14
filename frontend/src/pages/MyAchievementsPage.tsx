@@ -123,7 +123,7 @@ export default function MyAchievementsPage() {
         <button
           onClick={submit}
           disabled={saving}
-          className="rounded-xl bg-brand-700 px-5 py-2.5 text-sm font-bold text-white transition hover:bg-brand-800 disabled:opacity-50"
+          className="rounded-xl bg-[#0f2040] px-5 py-2.5 text-sm font-bold text-white transition hover:bg-brand-800 disabled:opacity-50"
         >
           {saving ? 'جاري الإرسال...' : '📤 إرسال التقرير'}
         </button>
@@ -132,7 +132,7 @@ export default function MyAchievementsPage() {
       {/* (دازاي 11-05) يوم بيوم كتقرير مرتب: اليوم، وساعة الرفع، والتأخير، وحكم ماتركس، وكل الي انكتب */}
       <div>
         <h3 className="mb-2 text-sm font-bold text-slate-600">تقاريري السابقة — يوم بيوم</h3>
-        {loading && <p className="text-slate-400">جاري التحميل...</p>}
+        {loading && <p className="text-slate-400">جاري التحميل…</p>}
         {!loading && days.length === 0 && (
           <p className="rounded-xl border border-white bg-white p-6 text-center text-slate-400">ماكو تقارير سابقة.</p>
         )}

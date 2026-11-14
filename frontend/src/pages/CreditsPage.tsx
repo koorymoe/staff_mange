@@ -2,6 +2,7 @@ import { Fragment, useCallback, useEffect, useState } from 'react'
 import { api, type CreditSale } from '../api'
 import { dinarRound as iqd } from '../utils/format'
 
+import { notify } from '../ui/notify'
 // (DRY 11-02) چانت مكتوبة جوّا كل نموذج بهالملف
 const inp = 'w-full rounded-xl border border-slate-300 px-3 py-2 text-sm'
 
@@ -44,14 +45,14 @@ export default function CreditsPage() {
         <div className="flex flex-wrap items-center gap-2">
           <span className="rounded-xl bg-white px-4 py-2 text-center text-xs shadow-sm">الباقي على الزبائن<b className="block text-lg text-violet-700">{iqd(owed)}</b></span>
           <input type="month" value={month} onChange={(e) => setMonth(e.target.value)} className="rounded-xl border border-slate-300 px-2 py-2 text-sm" />
-          <button onClick={() => api.exportCredits(month).catch((e) => alert(e.message))} className="rounded-xl bg-emerald-700 px-4 py-2 text-sm font-bold text-white">⬇️ إكسل الشهر</button>
+          <button onClick={() => api.exportCredits(month).catch((e) => notify(e.message))} className="rounded-xl bg-emerald-700 px-4 py-2 text-sm font-bold text-white">⬇️ إكسل الشهر</button>
           <button onClick={() => setAdding(true)} className="rounded-xl bg-[#0f2040] px-4 py-2 text-sm font-bold text-white">+ آجل مشروع / يدوي</button>
         </div>
       </div>
 
       <div className="flex flex-wrap items-center gap-2">
         {([['open', 'المفتوحة'], ['settled', 'المسدّدة'], ['all', 'الكل']] as const).map(([k, l]) => (
-          <button key={k} onClick={() => setStatus(k)} className={`rounded-xl px-4 py-2 text-sm font-bold ${status === k ? 'bg-violet-700 text-white' : 'border border-slate-200 bg-white text-slate-600'}`}>{l}</button>
+          <button key={k} onClick={() => setStatus(k)} className={`rounded-xl px-4 py-2 text-sm font-bold ${status === k ? 'bg-[#0f2040] text-white' : 'border border-slate-200 bg-white text-slate-600'}`}>{l}</button>
         ))}
         <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="🔍 كود الحجز/المشروع، الزبون، الهاتف…" className="min-w-[240px] flex-1 rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm" />
       </div>

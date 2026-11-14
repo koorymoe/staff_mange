@@ -18,7 +18,7 @@ const TAB_HITS: { title: string; path: string; to: string; words?: string }[] = 
   { title: 'المتصلين هسه', path: 'مكتب المدير ← المتابعة ← المتصلين هسه', to: '/?board=follow', words: 'متصل نشط فاتح اونلاين' },
   { title: 'الإجراءات', path: 'مكتب المدير ← الإجراءات', to: '/?board=actions' },
   { title: 'مركز قيادة ماتركس', path: 'مكتب المدير ← ماتركس', to: '/?board=matrix', words: 'ماتركس عين' },
-  { title: 'العملاء', path: 'العمل ← الحجوزات ← تبويب العملاء', to: '/bookings', words: 'زبائن زبون' },
+  { title: 'الزبائن', path: 'العمل ← الحجوزات ← تبويب الزبائن', to: '/bookings', words: 'زبائن زبون' },
   { title: 'أرشيف الحجوزات', path: 'العمل ← الحجوزات ← تبويب الأرشيف', to: '/bookings' },
   { title: 'فرص البيع', path: 'العمل ← الحجوزات ← تبويب فرص البيع', to: '/bookings' },
   { title: 'تتبع المهام', path: 'مكتب المراقب ← تتبع المهام', to: '/monitor-desk', words: 'مهام ميدان' },
@@ -109,7 +109,7 @@ export default function GlobalSearch() {
         hits.push({ key: 'b' + b.id, icon: '📋', title: `${b.code} — ${b.customer?.name ?? ''}`, path: 'العمل ← الحجوزات', to: `/bookings?focus=${b.id}`, group: 'الحجوزات' })
       }
       for (const c of (cs ?? []).slice(0, 5)) {
-        hits.push({ key: 'c' + c.id, icon: '👤', title: `${c.name} · ${c.phone}`, path: 'العمل ← الحجوزات ← تبويب العملاء', to: `/customers?q=${encodeURIComponent(c.phone || c.name)}`, group: 'الزبائن' })
+        hits.push({ key: 'c' + c.id, icon: '👤', title: `${c.name} · ${c.phone}`, path: 'العمل ← الحجوزات ← تبويب الزبائن', to: `/customers?q=${encodeURIComponent(c.phone || c.name)}`, group: 'الزبائن' })
       }
       const nt = norm(term)
       for (const e of (em ?? []).filter((x) => norm(x.name).includes(nt)).slice(0, 5)) {

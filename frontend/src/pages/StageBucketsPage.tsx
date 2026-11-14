@@ -5,6 +5,8 @@ import { useSession, isAdminOrOwner } from '../session'
 import { copyText } from '../utils/clipboard'
 import { askConfirm } from '../ui/dialogs'
 
+import { notify } from '../ui/notify'
+import { bookingServiceLabel } from '../bookingServiceLabel'
 // ═══ سلال المراحل ═══
 //
 // «حجوزات مؤجلة وزبون ما رد وزبون ألغى — هاي تصير بيها حالتين: قبل
@@ -109,10 +111,8 @@ function colorOf(seed: string) {
   return AVATAR_COLORS[h % AVATAR_COLORS.length]
 }
 
-function serviceNames(b: Booking) {
-  if (b.services && b.services.length > 0) return b.services.map((s) => s.name).join(' + ')
-  return b.service?.name || 'بدون خدمة محددة'
-}
+// (دازاي 11-15) اسم الخدمة من bookingServiceLabel.ts — جانت نسخة محلية هنا
+const serviceNames = bookingServiceLabel
 
 /** التاريخ واليوم منفصلين — الإداري يقرا اليوم أسرع من الرقم. */
 function dateParts(iso?: string | null) {
@@ -271,7 +271,7 @@ export default function StageBucketsPage({ only }: Props = {}) {
     try {
       const back = await api.resumeBooking(id)
       setRows((prev) => prev.filter((b) => b.id !== id))
-      alert(`✓ رجع للحجوزات — محطة «${back.confirmedAt ? 'تم التثبيت' : 'بانتظار التثبيت'}». وما يبقى هنا.`)
+      notify(`✓ رجع للحجوزات — محطة «${back.confirmedAt ? 'تم التثبيت' : 'بانتظار التثبيت'}». وما يبقى هنا.`, 'success')
       setCounts((c) => ({ ...c, [bucket]: Math.max(0, (c[bucket] || 1) - 1) }))
     } catch (e) {
       setActionError(e instanceof Error ? e.message : 'تعذر إرجاع الحجز')
@@ -375,7 +375,7 @@ export default function StageBucketsPage({ only }: Props = {}) {
           <p className="mx-5 mt-4 rounded-lg bg-red-50 px-3 py-2 text-xs font-bold text-red-700">{actionError}</p>
         )}
 
-        {loading && <p className="px-5 py-10 text-center text-slate-400">جاري التحميل...</p>}
+        {loading && <p className="px-5 py-10 text-center text-slate-400">جاري التحميل…</p>}
 
         {!loading && rows.length === 0 && (
           <p className="px-5 py-12 text-center text-slate-400">ماكو حجوزات بـ«{group.label}{group.buckets.length > 1 ? ` — ${subLabel}` : ''}» ✓</p>

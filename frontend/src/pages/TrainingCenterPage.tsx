@@ -9,6 +9,7 @@ import { askConfirm } from '../ui/dialogs'
 import { swallow } from '../utils/swallow'
 import PctWhy from '../ui/PctWhy'
 
+import { notify } from '../ui/notify'
 // ═══ مركز التدريب — قرار (ع) 10-13: «شي إعجازي بالتدريب» ═══
 // ماتركس يحدد منو لازم يتدرّب من شغله الحقيقي (شكاوى، توقف، بطء، خصومات،
 // مهارات، اختبار) — بالأرقام مو بالتخمين، وكل سبب مكتوب. ويا المسارات
@@ -35,7 +36,7 @@ const ROLES = Object.keys(ROLE_LABELS).filter((r) => r !== 'ADMIN' && r !== 'OWN
 const btn = 'rounded-lg bg-[#0f2040] px-4 py-2 text-sm font-bold text-white hover:bg-[#1e3f7a] disabled:opacity-40'
 const input = 'rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#2c5aad]'
 const thisMonth = () => new Date().toISOString().slice(0, 7)
-const err = (e: unknown) => alert(e instanceof Error ? e.message : 'تعذّر')
+const err = (e: unknown) => notify(e instanceof Error ? e.message : 'تعذّر')
 
 export default function TrainingCenterPage() {
   // ٧و (11-05): «برامج التدريب» انشال من القائمة — رابطه القديم يفتح هنا على تبويبه
@@ -53,7 +54,7 @@ export default function TrainingCenterPage() {
     <div dir="rtl" className="w-full space-y-4">
       <div className="relative overflow-hidden rounded-2xl bg-gradient-to-l from-[#0f2040] to-[#1a3a6c] p-6 text-white">
         <span aria-hidden className="pointer-events-none absolute -left-4 top-1/2 -translate-y-1/2 text-[120px] opacity-10">🎓</span>
-        <h1 className="text-2xl font-extrabold">🎓 مركز التدريب</h1>
+        <h1 className="text-2xl font-extrabold">🧠 مركز التدريب</h1>
         <p className="mt-1 text-sm text-blue-200/80">ماتركس يحدد منو يحتاج تدريب من شغله الحقيقي — والخطة والتفتيش والاختبارات بمكان واحد</p>
         <div className="mt-4 flex flex-wrap gap-3">
           {[

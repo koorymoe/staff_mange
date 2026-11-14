@@ -115,10 +115,12 @@ export default function ProjectQuotationPage() {
   const saveAsTemplate = async () => {
     if (!id) return setMsg({ ok: false, t: 'احفظ العرض أول' })
     const name = (cover.title || cover.label || customerName || 'نموذج').trim()
+    if (busy) return
+    setBusy(true) // (دازاي 11-15) قفل الحفظ المزدوج — الزر ينقفل لحد ما يرجع الجواب
     try {
       await apiRequest('/quotation-templates', { method: 'POST', body: JSON.stringify({ quotationId: id, name }) })
       setMsg({ ok: true, t: `انحفظ كنموذج «${name}» — ماتركس يگدر يبني عليه عروض ثانية` })
-    } catch (e) { setMsg({ ok: false, t: (e as Error).message }) }
+    } catch (e) { setMsg({ ok: false, t: (e as Error).message }) } finally { setBusy(false) }
   }
   const applyTemplate = async (tid: string) => {
     if (!customerName.trim()) return setMsg({ ok: false, t: 'اكتب اسم الزبون أول' })
@@ -220,7 +222,7 @@ export default function ProjectQuotationPage() {
 
   return (
     <div dir="rtl" className="space-y-4 p-4">
-      <PageHeader title="📘 عرض مشاريع" subtitle={`ملف تجهيز فني وتجاري بالشكل الجديد${number ? ` · رقم ${number}` : ''} — عرض السعر القديم يبقى مثل ما هو`} />
+      <PageHeader back="/quotations" title="📘 عرض مشاريع" subtitle={`ملف تجهيز فني وتجاري بالشكل الجديد${number ? ` · رقم ${number}` : ''} — عرض السعر القديم يبقى مثل ما هو`} />
       {msg && <p role={msg.ok ? 'status' : 'alert'} className={`rounded-xl p-3 text-sm ${msg.ok ? 'bg-emerald-50 text-emerald-800' : 'bg-red-50 text-red-700'}`}>{msg.t}</p>}
 
       {!id && qTemplates && qTemplates.length > 0 && (
@@ -362,9 +364,9 @@ export default function ProjectQuotationPage() {
       </section>
 
       <div className="flex flex-wrap gap-2">
-        <button type="button" disabled={busy} onClick={() => void save()} className="rounded-xl bg-brand-600 px-5 py-2 font-bold text-white disabled:opacity-50">{busy ? 'دا أحفظ…' : '💾 حفظ'}</button>
+        <button type="button" disabled={busy} onClick={() => void save()} className="rounded-xl bg-[#0f2040] px-5 py-2 font-bold text-white disabled:opacity-50">{busy ? 'دا أحفظ…' : '💾 حفظ'}</button>
         <button type="button" onClick={print} className="rounded-xl bg-amber-500 px-5 py-2 font-bold text-white">🖨️ طباعة / PDF</button>
-        {id && <button type="button" onClick={() => void saveAsTemplate()} className="rounded-xl border border-indigo-300 bg-indigo-50 px-5 py-2 font-bold text-indigo-800">💾 حفظ كنموذج</button>}
+        {id && <button type="button" disabled={busy} onClick={() => void saveAsTemplate()} className="disabled:opacity-50 rounded-xl border border-indigo-300 bg-indigo-50 px-5 py-2 font-bold text-indigo-800">💾 حفظ كنموذج</button>}
         <button type="button" onClick={() => navigate('/quotations')} className="rounded-xl border px-5 py-2 text-slate-600">رجوع</button>
       </div>
     </div>

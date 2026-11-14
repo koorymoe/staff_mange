@@ -1,6 +1,6 @@
 import DutiesCard from '../components/DutiesCard'
 import { useEffect, useState } from 'react'
-import { Link, useNavigate, useParams } from 'react-router-dom'
+import { Link, useParams } from 'react-router-dom'
 import EmployeeLedger from '../components/EmployeeLedger'
 import { api, type EmployeeReport, type ReportLine } from '../api'
 import MatrixEyeGraphic from '../components/MatrixEyeGraphic'
@@ -10,6 +10,8 @@ import { InspectButton } from '../components/InspectBar'
 import MatrixNote from '../components/MatrixNote'
 import { todayBaghdad } from '../utils/format'
 
+import { notify } from '../ui/notify'
+import { BackLink } from '../ui/BackLink'
 // ═══ تقرير ماتركس عن موظف — بالعراقي، بأرقام حقيقية ═══
 // دوامه مقابل جدوله، وكل حجز بمراحله ومنو أخّر، وإجازاته ونمطها،
 // و«شخصيته بالشغل» من ٣٠ يوم. للمدير والمالك، والمراقب يقراه (بلا أزرار الإدارة).
@@ -33,7 +35,7 @@ function Lines({ lines, group }: { lines: ReportLine[]; group?: string }) {
     try {
       await api.createGuideRule({ route: '/', match: '', groups: group ?? '', text: fix, enabled: false, priority: 5, onlyIfPending: false })
       setSaved((x) => ({ ...x, [fix]: true }))
-    } catch { alert('تعذّر الحفظ') }
+    } catch { notify('تعذّر الحفظ') }
   }
   return (
     <ul className="space-y-1.5">
@@ -73,7 +75,6 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 
 export default function MatrixEmployeeReportPage() {
   const { id = '' } = useParams()
-  const navigate = useNavigate()
   const isAdmin = useSession().employee?.role === 'ADMIN'
   const [day, setDay] = useState(todayBaghdad())
   const [rep, setRep] = useState<EmployeeReport | null>(null)
@@ -99,9 +100,7 @@ export default function MatrixEmployeeReportPage() {
         </div>
         <div className="flex items-center gap-2">
           <InspectButton employeeId={id} name={rep?.name} />
-          {isAdmin
-            ? <Link to="/?board=matrix" className="text-sm text-brand-700 underline">← عيون ماتركس</Link>
-            : <button onClick={() => navigate(-1)} className="text-sm text-brand-700 underline">← رجوع</button>}
+          <BackLink to={isAdmin ? '/?board=matrix' : '/'} />
           <input type="date" value={day} onChange={(e) => setDay(e.target.value)} className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm" />
         </div>
       </div>

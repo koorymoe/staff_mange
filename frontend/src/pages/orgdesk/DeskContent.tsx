@@ -11,6 +11,7 @@ import { orgDeskGet, orgMonth, orgRegulations, type OrgClause, type OrgDesk } fr
 import { type Tab, canAddItems, dueOrder, teamPeople, number, statuses, date, type Modal } from './shared'
 import { SolutionEditor, PlanControls, UnitDevelopment, ProgressRing, Comments, PlanCard, CreatePlan, ItemEditor } from './plan'
 import { Team, IssueEditor, StatusEditor, AuthorityEditor } from './editors'
+import { BackLink } from '../../ui/BackLink'
 
 export function DeskDirectory({
   admin,
@@ -60,6 +61,7 @@ export function DeskDirectory({
     <main className="org-ui desk-page" dir="rtl">
       <header className="org-toolbar">
         <div>
+          <BackLink to="/org" className="mb-2" />
           <p className="org-kicker">الأماني · مسؤولية وخطة ونتيجة</p>
           <h1>🏛️ مكتب الإدارة</h1>
         </div>

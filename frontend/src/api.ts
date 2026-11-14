@@ -1355,6 +1355,11 @@ export const api = {
   /** مهامي أنا — المعرّف من التوكن، ما ينرسل بالطلب */
   getMyExtraTasks: (includeDone = false) =>
     request<ExtraTask[]>(`/extra-tasks/mine${includeDone ? '?includeDone=1' : ''}`),
+  /** (دازاي 11-15) الحجز الموجّه انفتح — الرقم الأحمر ينقص وحدة */
+  markBookingSeen: (id: string) => request<void>(`/bookings/${id}/seen`, { method: 'PUT' }),
+  /** (دازاي 11-15) قرارات من لوحة الإجراءات */
+  extendExtraTask: (id: string, days: number) => request<ExtraTask>(`/extra-tasks/${id}/extend`, { method: 'PUT', body: JSON.stringify({ days }) }),
+  remindExtraTask: (id: string) => request<ExtraTask>(`/extra-tasks/${id}/remind`, { method: 'POST' }),
   markExtraTaskSeen: (id: string) =>
     request<{ ok: boolean }>(`/extra-tasks/${id}/seen`, { method: 'PUT' }),
   startExtraTask: (id: string) =>

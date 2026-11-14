@@ -6,6 +6,7 @@ import OwnerSwitch from '../components/OwnerSwitch'
 import { SWITCH_ANNOUNCEMENTS } from '../systemSwitches'
 import { askConfirm } from '../ui/dialogs'
 
+import { notify } from '../ui/notify'
 /**
  * إدارة الإعلانات — المالك ومدير النظام حصراً.
  *
@@ -35,7 +36,7 @@ export default function AnnouncementsPage() {
       setBody('')
       load()
     } catch (e) {
-      alert(e instanceof Error ? e.message : 'تعذر النشر')
+      notify(e instanceof Error ? e.message : 'تعذر النشر')
     } finally {
       setBusy(false)
     }
@@ -90,7 +91,7 @@ export default function AnnouncementsPage() {
         </button>
       </div>
 
-      {loading && <p className="text-center text-slate-400">جاري التحميل...</p>}
+      {loading && <p className="text-center text-slate-400">جاري التحميل…</p>}
 
       <div className="space-y-3">
         {items.map((a) => (

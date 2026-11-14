@@ -279,14 +279,16 @@ function BranchesTab() {
   const [rows, setRows] = useState<Branch[] | null>(null)
   const [edit, setEdit] = useState<Partial<Branch> | null>(null)
   const [msg, setMsg] = useState('')
+  const [busy, setBusy] = useState(false) // (دازاي 11-15) قفل الحفظ المزدوج — الزر ينقفل لحد ما يرجع الجواب
   const load = useCallback(() => { apiRequest<Branch[]>('/customer-app/branches').then(setRows).catch(() => setRows([])) }, [])
   useEffect(load, [load])
   const save = async () => {
-    if (!edit?.name?.trim()) return
+    if (!edit?.name?.trim() || busy) return
+    setBusy(true)
     try {
       await apiRequest(edit.id ? `/customer-app/branches/${edit.id}` : '/customer-app/branches', { method: edit.id ? 'PUT' : 'POST', body: JSON.stringify({ ord: 0, ...edit }) })
       setEdit(null); load()
-    } catch (e) { setMsg(e instanceof Error ? e.message : 'خطأ') }
+    } catch (e) { setMsg(e instanceof Error ? e.message : 'خطأ') } finally { setBusy(false) }
   }
   const del = async (b: Branch) => { if ((await askConfirm(`تحذف فرع «${b.name}» من التطبيق؟`))) { await apiRequest(`/customer-app/branches/${b.id}`, { method: 'DELETE' }).catch(swallow); load() } }
   return (
@@ -312,7 +314,7 @@ function BranchesTab() {
               <label key={k} className="block text-xs text-slate-500">{{ name: 'اسم الفرع', address: 'العنوان', phone: 'الهاتف', mapUrl: 'رابط الخريطة (كوكل ماب)' }[k]}
                 <input className={`${inp} mt-1`} dir={k === 'name' || k === 'address' ? 'rtl' : 'ltr'} value={(edit[k] as string) ?? ''} onChange={(e) => setEdit({ ...edit, [k]: e.target.value })} /></label>
             ))}
-            <div className="flex gap-2"><button onClick={save} className="flex-1 rounded-xl bg-[#0f2040] py-2.5 font-bold text-white">حفظ</button><button onClick={() => setEdit(null)} className="rounded-xl border border-slate-300 px-4">إلغاء</button></div>
+            <div className="flex gap-2"><button onClick={save} disabled={busy} className="flex-1 rounded-xl bg-[#0f2040] py-2.5 font-bold text-white disabled:opacity-50">حفظ</button><button onClick={() => setEdit(null)} className="rounded-xl border border-slate-300 px-4">إلغاء</button></div>
           </div>
         </div>
       )}

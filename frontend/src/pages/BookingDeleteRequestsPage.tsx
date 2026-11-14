@@ -17,6 +17,7 @@ import { copyText } from '../utils/clipboard'
 import { askConfirm } from '../ui/dialogs'
 import { swallow } from '../utils/swallow'
 import { dayBaghdad } from '../utils/format'
+import { fmtDateTime } from '../utils/date'
 
 /**
  * طلبات حذف الحجوزات.
@@ -38,9 +39,8 @@ const STATUS_STYLE: Record<string, string> = {
 type TileFilter = 'ALL' | 'APPROVED' | 'NEEDS_INFO' | 'AWAITING' | 'REJECTED'
 type SortOrder = 'newest' | 'oldest'
 
-function fmtDate(iso: string) {
-  return new Date(iso).toLocaleString('ar-IQ', { dateStyle: 'short', timeStyle: 'short' })
-}
+// (دازاي 11-15) التاريخ من utils/date.ts (عربي، توقيت بغداد)
+const fmtDate = (iso: string) => fmtDateTime(iso, { dateStyle: 'short', timeStyle: 'short' })
 
 export default function BookingDeleteRequestsPage({ embedded }: { embedded?: boolean } = {}) {
   const [rows, setRows] = useState<BookingDeleteRequest[]>([])
@@ -184,7 +184,7 @@ export default function BookingDeleteRequestsPage({ embedded }: { embedded?: boo
       </div>
 
       {loading ? (
-        <p className="text-center text-t-faint">جاري التحميل...</p>
+        <p className="text-center text-t-faint">جاري التحميل…</p>
       ) : (
         <div className="overflow-hidden rounded-2xl border" style={{ backgroundColor: 'var(--sf-card)', borderColor: 'var(--bd-line)' }}>
           {filtered.length === 0 ? (

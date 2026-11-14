@@ -2,6 +2,7 @@ import ServiceRulesEditor from '../components/ServiceRulesEditor'
 import { useEffect, useState } from 'react'
 import { api, type Employee, type Service, type ServiceManager } from '../api'
 
+import { notify } from '../ui/notify'
 // مسؤول خدمة عام — تعميم فكرة "أبو الجي بي اس" لأي مجموعة خدمات: موظف واحد
 // يمكن يكون مسؤول عن أكثر من خدمة سوا (مثال: GPS + منظومات الصوت + الحريق).
 export default function ServiceManagersPage() {
@@ -37,14 +38,14 @@ export default function ServiceManagersPage() {
     setSelectedServiceIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id])
 
   const save = async () => {
-    if (!selectedEmployeeId) return alert('اختر الموظف أول')
+    if (!selectedEmployeeId) return notify('اختر الموظف أول')
     setSaving(true)
     try {
       await api.setServiceManagers(selectedEmployeeId, selectedServiceIds)
       setSelectedEmployeeId(''); setSelectedServiceIds([])
       load()
     } catch (e) {
-      alert(e instanceof Error ? e.message : 'تعذر الحفظ')
+      notify(e instanceof Error ? e.message : 'تعذر الحفظ')
     } finally {
       setSaving(false)
     }
@@ -143,7 +144,7 @@ export default function ServiceManagersPage() {
                         await api.setServiceKind(sv.id, next)
                         setServices((prev) => prev.map((x) => (x.id === sv.id ? { ...x, serviceKind: next || null } : x)))
                       } catch (err) {
-                        alert(err instanceof Error ? err.message : 'تعذر حفظ نوع الخدمة')
+                        notify(err instanceof Error ? err.message : 'تعذر حفظ نوع الخدمة')
                       } finally { setKindBusy(null) }
                     }}
                     className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-[12.5px] outline-none focus:border-sky-500 disabled:opacity-50"
@@ -168,7 +169,7 @@ export default function ServiceManagersPage() {
 
       <ServiceRulesEditor services={services} />
 
-      {loading && <p className="py-16 text-center text-slate-400">جاري التحميل...</p>}
+      {loading && <p className="py-16 text-center text-slate-400">جاري التحميل…</p>}
 
       {!loading && (
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
@@ -216,7 +217,7 @@ export default function ServiceManagersPage() {
             </div>
 
             <button onClick={save} disabled={saving || !selectedEmployeeId}
-              className="mt-5 w-full rounded-xl bg-brand-500 py-3 text-sm font-bold text-white hover:bg-brand-600 disabled:opacity-50">
+              className="mt-5 w-full rounded-xl bg-brand-500 py-3 text-sm font-bold text-white hover:bg-[#1a3a6c] disabled:opacity-50">
               {saving ? 'جاري الحفظ...' : 'حفظ المسؤولية'}
             </button>
           </div>

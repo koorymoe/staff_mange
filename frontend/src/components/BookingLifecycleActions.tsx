@@ -247,7 +247,7 @@ function Actions({
           onClick={onSave}
           disabled={busy || disabled}
           className={`rounded-lg px-4 py-2 text-sm font-bold text-white disabled:opacity-50 ${
-            danger ? 'bg-red-600' : 'bg-brand-700'
+            danger ? 'bg-red-600' : 'bg-[#0f2040]'
           }`}
         >
           {busy ? 'جاري...' : label}

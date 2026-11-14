@@ -20,6 +20,8 @@ import { roleLabel, roleLabelShort } from '../roleLabels'
 import MatrixNote from '../components/MatrixNote'
 import { askConfirm } from '../ui/dialogs'
 
+import { notify } from '../ui/notify'
+import { money as fmtMoney } from '../utils/money'
 // ═══ صندوق المراقب ═══
 //
 // قبلها المراقب عنده وصول لأغلب الشاشات بس ماكو شي «يوصله»: لازم
@@ -233,7 +235,7 @@ export default function MonitorInboxPage({ embedded }: EmbeddedProps = {}) {
             onClick={() => { setTab(st.key); setPage(1); setDupMode(false); setJustMode(false) }}
             title={st.hint}
             className={`rounded-lg border px-3 py-2 text-xs font-bold transition-colors ${
-              tab === st.key && !dupMode && !justMode ? 'border-brand-600 bg-brand-600 text-white' : ''
+              tab === st.key && !dupMode && !justMode ? 'border-brand-600 bg-[#0f2040] text-white' : ''
             }`}
             style={tab === st.key && !dupMode && !justMode ? undefined : { borderColor: 'var(--bd-line)', backgroundColor: 'var(--sf-card)', color: 'var(--t-body)' }}
           >
@@ -284,7 +286,7 @@ export default function MonitorInboxPage({ embedded }: EmbeddedProps = {}) {
         </select>
       </SearchBar>
 
-      {loading && <p className="text-t-faint">جاري التحميل...</p>}
+      {loading && <p className="text-t-faint">جاري التحميل…</p>}
       {!loading && groups.length === 0 && (
         <EmptyState
           icon="✅"
@@ -503,7 +505,7 @@ function JustificationsPanel() {
   const [reload, setReload] = useState(0)
   useEffect(() => { api.getJustifications().then(setRows).catch(() => setRows([])) }, [reload])
   const decide = async (id: string, verdict: 'ACCEPTED' | 'REJECTED') => {
-    try { await api.decideJustification(id, verdict, notes[id] || ''); setReload((x) => x + 1) } catch (e) { alert(e instanceof Error ? e.message : 'تعذّر') }
+    try { await api.decideJustification(id, verdict, notes[id] || ''); setReload((x) => x + 1) } catch (e) { notify(e instanceof Error ? e.message : 'تعذّر') }
   }
   if (!rows) return <p className="py-8 text-center text-slate-400">جاري التحميل…</p>
   if (rows.length === 0) return <p className="py-8 text-center text-slate-500">ماكو طلبات تبرير بعد. اطلبها من «⚡ اتخاذ إجراء ← طلب تبرير».</p>
@@ -562,7 +564,7 @@ function ActionMenu({ row, note }: { row: MonitorReview; note: string }) {
     const who = row.late?.employeeName ? ` (${row.late.employeeName})` : ''
     if (!(await askConfirm(a.confirm + who + (note.trim() ? `\n\nالملاحظة: ${note.trim()}` : '')))) return
     setBusy(true); setOpen(false)
-    try { setDone((await api.monitorReviewAction(row.id, a.key, note)).done) } catch (e) { alert(e instanceof Error ? e.message : 'تعذّر') } finally { setBusy(false) }
+    try { setDone((await api.monitorReviewAction(row.id, a.key, note)).done) } catch (e) { notify(e instanceof Error ? e.message : 'تعذّر') } finally { setBusy(false) }
   }
   return (
     <div ref={ref} className="relative">
@@ -583,7 +585,7 @@ function ActionMenu({ row, note }: { row: MonitorReview; note: string }) {
 }
 
 // ═══ تفاصيل الفاتورة والحجز بجهة وحدة — (ع) 10-16 ═══
-const money = (n?: number | null) => (n == null ? '—' : `${Math.round(n).toLocaleString('en-US')} د.ع`)
+const money = (n?: number | null) => (n == null ? '—' : `${fmtMoney(Math.round(n))} د.ع`) // (دازاي 11-15) من utils/money.ts
 function InvoiceDetailBlock({ d }: { d: NonNullable<NonNullable<MonitorReview['details']>['invoice']> }) {
   const changed = d.adjustments.length > 0
   return (

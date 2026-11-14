@@ -556,6 +556,28 @@ html.dark .app-sidebar .text-slate-300 { color: #cbd5e1; }
 html.dark .app-sidebar .text-slate-400 { color: #94a3b8; }
 html.dark .app-sidebar .text-slate-500 { color: #64748b; }
 
+/* ═══ (دازاي 11-15) الزر الرئيسي الكحلي بالليل ═══
+   الزر الموحّد صار `bg-[#0f2040]` بكل النظام، وهذا الكحلي يذوب بخلفية
+   الليل (#131a2a) — فالزر يختفي حدّه. نفتّحه شوية (#1e3a6b) بس للأزرار
+   والروابط، مو للقائمة الجانبية والرؤوس الي هي أسطح غامقة بالوضعين. */
+html.dark button.bg-\[\#0f2040\],
+html.dark a.bg-\[\#0f2040\] { background-color: #1e3a6b; }
+html.dark button.hover\:bg-\[\#1a3a6c\]:hover:not(:disabled),
+html.dark a.hover\:bg-\[\#1a3a6c\]:hover { background-color: #2a4d86; }
+html.dark .app-sidebar button.bg-\[\#0f2040\],
+html.dark .app-sidebar a.bg-\[\#0f2040\] { background-color: #0f2040; }
+
+/* (دازاي 11-15) رؤوس الجداول والخطوط الفاصلة: المتغيّرات تقلبها، بس
+   `thead` بلا صنف چان يطلع بلون المتصفح — نثبّته على سطح أغمق شوية. */
+html.dark thead:not([class*="bg-"]) { background-color: #161d2e; }
+html.dark table { border-color: #26304a; }
+
+/* (دازاي 11-15) التدرّجات الي تنتهي بالأبيض (`to-white`/`via-white`) چانت
+   تطلع شريط أبيض ناصع بطرف رؤوس الصفحات بالليل — نفس فخّ `--color-white`. */
+html.dark .from-white { --tw-gradient-from: #131a2a; }
+html.dark .via-white { --tw-gradient-via: #131a2a; }
+html.dark .to-white { --tw-gradient-to: #131a2a; }
+
 /* الرأس الملوّن بأعلى الصفحة الرئيسية — نفس الحالة: غامق بالوضعين */
 html.dark .bg-\[\#0f2040\] .text-slate-300 { color: #cbd5e1; }
 

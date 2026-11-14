@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { api, type ProjectDelay } from '../api'
 
+import { notify } from '../ui/notify'
 // ═══ شريط «تجاوز حد المرحلة — اكتب سبب التأخير» (قرار (ع) 10-10) ═══
 // طلب واحد للصفحة كلها (مو لكل بطاقة)، ويتحدّث بعد ما ينكتب سبب.
 let cache: Promise<ProjectDelay[]> | null = null
@@ -30,7 +31,7 @@ export default function ProjectDelayBanner({ projectId }: { projectId: string })
   const save = async () => {
     setBusy(true)
     try { await api.addProjectDelayReason(projectId, text.trim()); setText(''); setEditing(false); refresh() }
-    catch (e) { alert(e instanceof Error ? e.message : 'تعذر الحفظ') } finally { setBusy(false) }
+    catch (e) { notify(e instanceof Error ? e.message : 'تعذر الحفظ') } finally { setBusy(false) }
   }
   const over = d.daysInStage - d.stageLimit
   return (

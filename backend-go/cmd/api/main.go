@@ -1439,9 +1439,17 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	secs["extra_tasks"].Set("POST /api/extra-tasks/voice-draft", "extra_tasks.post_voice_draft", handler.NewVoiceTaskHandler(voiceAnalysisService, employeeRepo).Draft)
 	secs["extra_tasks"].Set("GET /api/extra-tasks", "extra_tasks.get_root", extraTaskHandler.List)
 	secs["extra_tasks"].Set("PUT /api/extra-tasks/{id}/cancel", "extra_tasks.put_by_id_cancel", extraTaskHandler.Cancel)
+	secs["extra_tasks"].Set("PUT /api/extra-tasks/{id}/extend", "extra_tasks.put_by_id_extend", extraTaskHandler.Extend)
+	secs["extra_tasks"].Set("POST /api/extra-tasks/{id}/remind", "extra_tasks.post_by_id_remind", extraTaskHandler.Remind)
 	secs["extra_tasks"].Set("GET /api/extra-tasks/mine", "extra_tasks.get_mine", extraTaskHandler.Mine)
 	secs["extra_tasks"].Set("GET /api/extra-tasks/mine/count", "extra_tasks.get_mine_count", extraTaskHandler.MyOpenCount)
 	meApp.Set("PUT /api/extra-tasks/{id}/seen", "me.extra_task_seen", extraTaskHandler.MarkSeen)
+	// (دازاي 11-15) الحجز الموجّه للموظف: فتحه = ينقص الرقم الأحمر وحدة (شرط إنه بكادره بس)
+	meApp.Set("PUT /api/bookings/{id}/seen", "me.booking_seen", func(w http.ResponseWriter, r *http.Request) {
+		_, _ = db.Exec(`UPDATE "BookingAssignment" SET "seenAt" = now() WHERE "bookingId" = $1 AND "employeeId" = $2 AND "seenAt" IS NULL`,
+			r.PathValue("id"), middleware.EmployeeIDFromContext(r))
+		w.WriteHeader(http.StatusNoContent)
+	})
 	meApp.Set("PUT /api/extra-tasks/{id}/start", "me.extra_task_start", extraTaskHandler.Start)
 	meApp.Set("PUT /api/extra-tasks/{id}/complete", "me.extra_task_complete", extraTaskHandler.Complete)
 

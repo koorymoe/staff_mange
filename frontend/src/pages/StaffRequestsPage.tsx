@@ -129,7 +129,7 @@ export default function StaffRequestsPage({ embedded }: { embedded?: boolean } =
       {embedded && canRequest && (
         <div className="flex justify-end">
           <button onClick={() => setShowForm(f => !f)}
-            className="rounded-xl bg-brand-600 px-5 py-2.5 text-sm font-bold text-white hover:bg-brand-700">
+            className="rounded-xl bg-[#0f2040] px-5 py-2.5 text-sm font-bold text-white hover:bg-[#1a3a6c]">
             {showForm ? 'إغلاق' : '+ طلب كادر جديد'}
           </button>
         </div>
@@ -211,13 +211,13 @@ export default function StaffRequestsPage({ embedded }: { embedded?: boolean } =
             className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-brand-500" />
 
           <button onClick={submit} disabled={saving}
-            className="mt-4 rounded-xl bg-brand-500 px-8 py-3 text-sm font-bold text-white hover:bg-brand-600 disabled:opacity-50">
+            className="mt-4 rounded-xl bg-brand-500 px-8 py-3 text-sm font-bold text-white hover:bg-[#1a3a6c] disabled:opacity-50">
             {saving ? 'جاري الإرسال...' : '📤 إرسال الطلب لإدارة الكوادر'}
           </button>
         </div>
       )}
 
-      {loading && <p className="py-16 text-center text-slate-400">جاري التحميل...</p>}
+      {loading && <p className="py-16 text-center text-slate-400">جاري التحميل…</p>}
       {!loading && shown.length === 0 && (
         <div className="rounded-2xl border" style={{ backgroundColor: 'var(--sf-card)', borderColor: 'var(--bd-line)' }}>
           <EmptyState

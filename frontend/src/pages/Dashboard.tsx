@@ -8,6 +8,7 @@ import { Navigate, useNavigate } from 'react-router-dom'
 import MyFundBalance from '../components/MyFundBalance'
 import TodayBoard from '../components/TodayBoard'
 import PctWhy from '../ui/PctWhy'
+import SharedRing from '../ui/ProgressRing'
 import ShiftEndCard from '../components/ShiftEndCard'
 import { api, API_URL } from '../api'
 import type { Booking, Expense, StaffRequest, LeaveRequest, InventoryCheck, FinanceSummary, DailyAuditReport, TodayPulse, Employee } from '../api'
@@ -66,19 +67,10 @@ function AnimatedNumber({ value, loading }: { value: number; loading: boolean })
   return <>{display.toLocaleString('ar-SA')}</>
 }
 
-/* ───── Progress Ring ───── */
-function ProgressRing({ percent, size = 56, stroke = 5, color }: { percent: number; size?: number; stroke?: number; color: string }) {
-  const r = (size - stroke) / 2
-  const circ = 2 * Math.PI * r
-  const offset = circ - (percent / 100) * circ
-  return (
-    <svg width={size} height={size} className="-rotate-90">
-      <circle cx={size/2} cy={size/2} r={r} fill="none" stroke="currentColor" strokeWidth={stroke} className="text-slate-100" />
-      <circle cx={size/2} cy={size/2} r={r} fill="none" stroke={color} strokeWidth={stroke}
-        strokeDasharray={circ} strokeDashoffset={offset} strokeLinecap="round"
-        className="transition-all duration-1000 ease-out" />
-    </svg>
-  )
+/* ───── Progress Ring ─────
+   (دازاي 11-15) صارت مشتركة (ui/ProgressRing) — نفس الحجم والسماكة والحركة. */
+function ProgressRing({ percent, color }: { percent: number; color: string }) {
+  return <SharedRing percent={percent} color={color} track="#f1f5f9" animate />
 }
 
 // مدير النظام له رئيسية خاصة (المتابعة + الإجراءات). الفحص بغلاف منفصل
@@ -428,7 +420,7 @@ function StaffDashboard() {
   const kpiCards = [
     { title: 'الموظفين', value: employeeCount, color: 'var(--t-info)', bg: 'from-blue-500/10 to-blue-500/5', ring: 75, path: '/staff-management-desk',
       icon: <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2M9 7a4 4 0 100-8 4 4 0 000 8zM23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75" /> },
-    { title: 'العملاء', value: customerCount, color: 'var(--t-success)', bg: 'from-emerald-500/10 to-emerald-500/5', ring: 60, path: '/customers',
+    { title: 'الزبائن', value: customerCount, color: 'var(--t-success)', bg: 'from-emerald-500/10 to-emerald-500/5', ring: 60, path: '/customers',
       icon: <><path d="M16 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" /><circle cx="8.5" cy="7" r="4" /><line x1="20" y1="8" x2="20" y2="14" /><line x1="23" y1="11" x2="17" y2="11" /></> },
     { title: 'الحجوزات', value: bookingCount, color: 'var(--t-violet)', bg: 'from-violet-500/10 to-violet-500/5', ring: 45, path: '/bookings',
       icon: <><rect x="3" y="4" width="18" height="18" rx="2" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" /></> },
@@ -1431,7 +1423,7 @@ function StaffDashboard() {
           <SystemPanel title="المبيعات والمالية" color="#3b82f6" dotColor="bg-blue-400" actionLabel="عرض الكل" onAction={() => navigate('/finance')}>
             <div className="grid grid-cols-2 gap-3">
               <MiniKPI label="الحجوزات" value={bookingCount} ink="var(--t-info)" tint="var(--sf-info)" />
-              <MiniKPI label="العملاء" value={customerCount} ink="var(--t-success)" tint="var(--sf-success)" />
+              <MiniKPI label="الزبائن" value={customerCount} ink="var(--t-success)" tint="var(--sf-success)" />
               <MiniKPI label="عروض الأسعار" value={0} ink="var(--t-violet)" tint="var(--sf-violet)" />
               <MiniKPI label="المعاملات" value={0} ink="var(--t-warning)" tint="var(--tint-warning)" />
             </div>

@@ -36,6 +36,7 @@ var labels = map[core.Action]string{
 	"me.achievement":              "يسجّل إنجاز إله",
 	"me.achievement_voice":        "يرفع فويس لإنجازه",
 	"me.extra_task_seen":          "يعلّم مهمة إضافية إله مشافة",
+	"me.booking_seen":             "يعلّم حجز موجّه إله مشاف (الرقم الأحمر ينقص)",
 	"me.extra_task_start":         "يبدي مهمة إضافية مكلّف بيها",
 	"me.extra_task_complete":      "يخلّص مهمة إضافية مكلّف بيها",
 	"me.justification_answer":     "يجاوب تبرير مطلوب منه",

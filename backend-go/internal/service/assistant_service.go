@@ -194,7 +194,8 @@ func (s *AssistantService) Ask(employeeID, message string) (string, error) {
 
 	kpiPointsThisMonth := 0
 	for _, ev := range kpiEvals {
-		if !ev.Cancelled && ev.CreatedAt.Month() == time.Now().Month() {
+		// (11-15) الشهر بتوقيت بغداد، ونفس السنة (چان يجمع نفس الشهر من سنة فاتت)
+		if nb := time.Now().In(baghdad); !ev.Cancelled && ev.CreatedAt.In(baghdad).Month() == nb.Month() && ev.CreatedAt.In(baghdad).Year() == nb.Year() {
 			kpiPointsThisMonth += ev.Points
 		}
 	}

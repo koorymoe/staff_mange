@@ -1,3 +1,4 @@
+import SharedModal from '../../ui/Modal'
 import { type ProjectCandidate, candidateLabel } from './shared'
 
 // EmployeeOptions يرسم <optgroup> لكل مجموعة بنفس ترتيب وصولها من السيرفر.
@@ -40,18 +41,9 @@ export function RejStat({ label, value, color, small }: { label: string; value: 
 // ---------------------------------------------------------------------------
 // Shared UI bits
 // ---------------------------------------------------------------------------
+// (دازاي 11-15) صارت النافذة الموحّدة (ui/Modal) — نفس الاسم حتى ما تتغيّر الاستدعاءات.
 export function Modal({ children, title, onClose, wide }: { children: React.ReactNode; title: string; onClose: () => void; wide?: boolean }) {
-  return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/50 overflow-y-auto py-8 px-4" onClick={onClose}>
-      <div className={`bg-white rounded-2xl shadow-xl w-full ${wide ? 'max-w-2xl' : 'max-w-md'} p-6`} onClick={e => e.stopPropagation()}>
-        <div className="flex items-center justify-between border-b pb-3 mb-4">
-          <h3 className="text-lg font-bold text-[var(--color-brand-900)]">{title}</h3>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-700 text-xl">✕</button>
-        </div>
-        {children}
-      </div>
-    </div>
-  )
+  return <SharedModal title={title} onClose={onClose} size={wide ? 'lg' : 'md'} bodyClassName="p-6">{children}</SharedModal>
 }
 
 export function Field({ label, children }: { label: string; children: React.ReactNode }) {

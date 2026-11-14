@@ -6,6 +6,7 @@ import { dayBaghdad } from '../utils/format'
 import { askInput } from '../ui/dialogs'
 import { swallow } from '../utils/swallow'
 
+import { notify } from '../ui/notify'
 // ═══ علاقات الموردين — قرار (ع) 10-15 ═══
 // العلاقات العامة ووحدة التقنيين: كل مورد (مشتريات أو تقنيين)، صارلنا شكد ما
 // تواصلنا وياه، وآخر حركة (تواصل أو شراء) شنو ومتى ومنو. وتذكير يومي للي عبر الحد.
@@ -53,12 +54,12 @@ export default function SupplierRelationsPage() {
     if (!open) return
     setBusy(true)
     try { await api.addSupplierContact(open.kind, open.id, cType, cNote); setCNote(''); setReload((n) => n + 1) }
-    catch (e) { alert(e instanceof Error ? e.message : 'تعذر الحفظ') } finally { setBusy(false) }
+    catch (e) { notify(e instanceof Error ? e.message : 'تعذر الحفظ') } finally { setBusy(false) }
   }
   const editDays = async () => {
     const v = (await askInput('بعد كم يوم بلا تواصل يطلع تذكير؟', String(data?.contactDays ?? 30)))
     if (!v || !(Number(v) > 0)) return
-    try { await api.setSupplierContactDays(Number(v)); setReload((n) => n + 1) } catch (e) { alert(e instanceof Error ? e.message : 'تعذر') }
+    try { await api.setSupplierContactDays(Number(v)); setReload((n) => n + 1) } catch (e) { notify(e instanceof Error ? e.message : 'تعذر') }
   }
 
   const rows = (data?.rows ?? [])
@@ -75,7 +76,7 @@ export default function SupplierRelationsPage() {
       {err && <p className="rounded-xl bg-red-50 p-3 text-sm text-red-700">{err}</p>}
       <div className="flex flex-wrap items-center gap-2 rounded-2xl bg-white p-3 shadow-sm">
         {([['', 'الكل'], ['PROC', '🏬 موردين المشتريات'], ['TECH', '🏪 موردين التقنيين']] as const).map(([k, l]) => (
-          <button key={k} onClick={() => setKind(k)} className={`rounded-lg px-3 py-1.5 text-sm font-bold ${kind === k ? 'bg-brand-600 text-white' : 'bg-slate-100 text-slate-600'}`}>{l}</button>
+          <button key={k} onClick={() => setKind(k)} className={`rounded-lg px-3 py-1.5 text-sm font-bold ${kind === k ? 'bg-[#0f2040] text-white' : 'bg-slate-100 text-slate-600'}`}>{l}</button>
         ))}
         <button onClick={() => setOnlyOverdue((v) => !v)} className={`rounded-lg px-3 py-1.5 text-sm font-bold ${onlyOverdue ? 'bg-red-600 text-white' : 'bg-red-50 text-red-700'}`}>⏰ صارلهم أكثر من {data?.contactDays ?? 30} يوم ({overdueN})</button>
         <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="بحث: اسم، رقم، تخصص" className="min-w-[180px] flex-1 rounded-lg border border-slate-300 px-3 py-1.5 text-sm" />
@@ -117,11 +118,11 @@ export default function SupplierRelationsPage() {
                 <p className="text-xs font-bold text-slate-500">سجّل تواصل</p>
                 <div className="flex flex-wrap gap-1">
                   {Object.entries(data?.kinds ?? {}).map(([k, l]) => (
-                    <button key={k} onClick={() => setCType(k)} className={`rounded-lg px-2 py-1 text-xs font-bold ${cType === k ? 'bg-brand-600 text-white' : 'bg-slate-100'}`}>{l}</button>
+                    <button key={k} onClick={() => setCType(k)} className={`rounded-lg px-2 py-1 text-xs font-bold ${cType === k ? 'bg-[#0f2040] text-white' : 'bg-slate-100'}`}>{l}</button>
                   ))}
                 </div>
                 <textarea value={cNote} onChange={(e) => setCNote(e.target.value)} rows={2} placeholder="شنو صار؟ (عروض جديدة، أسعار، مشكلة…)" className="w-full rounded-lg border border-slate-300 px-2 py-1.5 text-sm" />
-                <button disabled={busy} onClick={save} className="w-full rounded-lg bg-brand-600 py-1.5 text-sm font-bold text-white disabled:opacity-50">حفظ</button>
+                <button disabled={busy} onClick={save} className="w-full rounded-lg bg-[#0f2040] py-1.5 text-sm font-bold text-white disabled:opacity-50">حفظ</button>
               </div>
               <p className="text-xs font-bold text-slate-500">آخر الحركات</p>
               {!evs && <p className="text-xs text-slate-400">جاري الجلب...</p>}

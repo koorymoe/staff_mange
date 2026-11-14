@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { api, type PendingStaffRating } from '../api'
 import { useRoleTabs } from './RoleSplit'
 import { swallow } from '../utils/swallow'
+import { roleLabelShort } from '../roleLabels'
 
 // ═══ تقييمات البشر بمحطاتها (قرار (ع) 10-05) ═══
 // الإداري يقيّم الليدر لمن يرجع · المراقب يقيّم الليدر والإداري · الجودة بعد
@@ -89,11 +90,7 @@ export function BookingStaffRating({ bookingId }: { bookingId: string }) {
   )
 }
 
-const ROLE_AR: Record<string, string> = {
-  FINANCE: 'محاسب', DESIGNER: 'مصمم', IT_SUPPORT: 'آيتي', TECHNICIAN: 'فني', ENGINEER: 'مهندس', HR_COORDINATOR: 'إداري',
-  SALES: 'مبيعات', MEDIA: 'إعلام', PUBLIC_RELATIONS: 'علاقات عامة', QUALITY_ENGINEER: 'جودة', MONITOR: 'مراقب', PROJECT_MANAGER: 'مدير مشاريع',
-  SERVICE_MANAGER: 'مسؤول خدمة', GPS_ADMIN: 'جي بي اس', GPS_ENGINEER: 'جي بي اس',
-}
+// (دازاي 11-15) أسماء الأدوار من roleLabels.ts — جانت خريطة محلية
 
 /** تقييم المراقب الدوري — كل نص شهر لكل الموظفين حسب شغلهم. */
 export function PeriodicRatings() {
@@ -123,7 +120,7 @@ export function PeriodicRatings() {
         <div className="grid gap-1.5 sm:grid-cols-2">
           {roleTabs.list.map((p) => (
             <div key={p.id} className={`flex items-center justify-between gap-2 rounded-xl border px-3 py-2 text-sm ${st.mine[p.id] ? 'border-emerald-200 bg-emerald-50/50' : 'border-slate-200'}`}>
-              <span><b>{p.name}</b> <span className="text-xs text-slate-500">{ROLE_AR[p.role] ?? p.role}</span></span>
+              <span><b>{p.name}</b> <span className="text-xs text-slate-500">{roleLabelShort(p.role)}</span></span>
               <Stars value={st.mine[p.id] ?? 0} onPick={(n) => void rate(p.id, n)} />
             </div>
           ))}

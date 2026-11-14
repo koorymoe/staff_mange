@@ -1857,7 +1857,8 @@ func (r *BookingRepository) ListPostponed() ([]model.Booking, error) {
 		WHERE "archivedAt" IS NULL
 		  AND "awaitingReschedule"
 		  AND status NOT IN ('COMPLETED', 'CANCELLED')
-		ORDER BY "lastPostponedAt" ASC`)
+		ORDER BY "lastPostponedAt" ASC
+		LIMIT 1000`) // (11-15) حد أمان
 	if err != nil {
 		return nil, err
 	}

@@ -30,7 +30,7 @@ export default function FleetDashboardPage() {
         </button>
       </div>
 
-      {loading && <p className="text-slate-400">جاري التحميل...</p>}
+      {loading && <p className="text-slate-400">جاري التحميل…</p>}
       {!loading && error && <p className="text-red-500">{error}</p>}
 
       {!loading && !error && data && (

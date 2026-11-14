@@ -108,21 +108,21 @@ func (h *EmployeeHandler) UpdateIdentity(w http.ResponseWriter, r *http.Request)
 			return
 		}
 		if model.IsAdminRole(target.Role) {
-			WriteError(w, http.StatusForbidden, "حساب المدير والمالك يعدّله المدير بس")
+			WriteError(w, http.StatusNotFound, "حساب المدير والمالك يعدّله المدير بس")
 			return
 		}
 		// (ع) 10-11: نفس نطاق الأدوار الي يحدده المالك للمفوَّض
 		if !roleInAdminScope(r, target.Role) || (body.Role != nil && !roleInAdminScope(r, *body.Role)) {
-			WriteError(w, http.StatusForbidden, "ما مسموحلك تعدّل هذا الدور — المالك يحدد الأدوار الي تعدّلها")
+			WriteError(w, http.StatusNotFound, "ما مسموحلك تعدّل هذا الدور — المالك يحدد الأدوار الي تعدّلها")
 			return
 		}
 		if body.Role != nil {
 			if model.IsAdminRole(*body.Role) {
-				WriteError(w, http.StatusForbidden, "منح دور المدير أو المالك للمدير بس")
+				WriteError(w, http.StatusNotFound, "منح دور المدير أو المالك للمدير بس")
 				return
 			}
 			if id == middleware.EmployeeIDFromContext(r) {
-				WriteError(w, http.StatusForbidden, "ما تكدر تغيّر دورك إنت")
+				WriteError(w, http.StatusNotFound, "ما تكدر تغيّر دورك إنت")
 				return
 			}
 		}
@@ -148,7 +148,7 @@ func (h *EmployeeHandler) UpdateProfile(w http.ResponseWriter, r *http.Request) 
 	req.Name, req.Role, req.Status, req.Username, req.Password, req.PhotoURL, req.SecondaryRoles = nil, nil, nil, nil, nil, nil, nil
 	id := r.PathValue("id")
 	if why := selfPerkEdit(r, id, &req); why != "" {
-		WriteError(w, http.StatusForbidden, why)
+		WriteError(w, http.StatusNotFound, why)
 		return
 	}
 	if role := middleware.RoleFromContext(r); role != "ADMIN" && role != "OWNER" {
@@ -156,7 +156,7 @@ func (h *EmployeeHandler) UpdateProfile(w http.ResponseWriter, r *http.Request) 
 			WriteError(w, http.StatusNotFound, "الموظف غير موجود")
 			return
 		} else if model.IsAdminRole(target.Role) {
-			WriteError(w, http.StatusForbidden, "ملف المدير والمالك يعدّله المدير بس")
+			WriteError(w, http.StatusNotFound, "ملف المدير والمالك يعدّله المدير بس")
 			return
 		}
 	}
@@ -198,7 +198,7 @@ func (h *EmployeeHandler) Update(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 		if !allowed {
-			WriteError(w, http.StatusForbidden, "تغيير بيانات دخول المالك للمالك وحده")
+			WriteError(w, http.StatusNotFound, "تغيير بيانات دخول المالك للمالك وحده")
 			return
 		}
 	}
@@ -209,7 +209,7 @@ func (h *EmployeeHandler) Update(w http.ResponseWriter, r *http.Request) {
 	// نداءً مباشراً بيد أي حساب ADMIN.
 	if req.PhotoURL != nil {
 		if role, _ := r.Context().Value(middleware.ContextRole).(string); role != "OWNER" {
-			WriteError(w, http.StatusForbidden, "تغيير صورة الموظف للمالك وحده")
+			WriteError(w, http.StatusNotFound, "تغيير صورة الموظف للمالك وحده")
 			return
 		}
 	}

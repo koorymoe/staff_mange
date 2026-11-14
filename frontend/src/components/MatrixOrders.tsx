@@ -88,7 +88,7 @@ function OrderCard({ o, onChange }: { o: MatrixOrder; onChange: (o: MatrixOrder)
       {pending && (
         <div className="mt-3 flex flex-wrap items-center gap-2">
           <button type="button" disabled={busy || left === 0} onClick={() => void run()}
-            className="rounded-xl bg-violet-700 px-4 py-2 text-sm font-extrabold text-white disabled:opacity-50">
+            className="rounded-xl bg-[#0f2040] px-4 py-2 text-sm font-extrabold text-white disabled:opacity-50">
             {busy ? 'ينفّذ…' : `✅ نفّذ (${left})`}
           </button>
           <button type="button" disabled={busy} onClick={() => void cancel()} className="rounded-xl bg-white px-4 py-2 text-sm font-bold text-slate-600 ring-1 ring-slate-200">إلغاء</button>

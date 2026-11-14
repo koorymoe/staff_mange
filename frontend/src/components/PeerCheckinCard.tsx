@@ -41,7 +41,7 @@ function Deepen({ note, onDone }: { note: PeerNote; onDone: (n: PeerNote) => voi
           <textarea value={wish} onChange={(e) => setWish(e.target.value)} rows={2} className="mt-1 w-full rounded-lg border border-slate-200 p-2 text-sm font-normal" /></label>
         {err && <p className="text-xs text-red-600">{err}</p>}
         <button type="button" disabled={busy || !what.trim()} onClick={() => void run(() => api.peerFollowup(note.id, what, why, wish))}
-          className="rounded-lg bg-violet-700 px-4 py-1.5 text-xs font-bold text-white disabled:opacity-50">{busy ? 'ماتركس يفكّر…' : 'كمّل'}</button>
+          className="rounded-lg bg-[#0f2040] px-4 py-1.5 text-xs font-bold text-white disabled:opacity-50">{busy ? 'ماتركس يفكّر…' : 'كمّل'}</button>
       </div>
     )
   }
@@ -169,7 +169,7 @@ export default function PeerCheckinCard() {
           </div>
           {err && <p className="text-xs text-red-600">{err}</p>}
           <div className="flex flex-wrap gap-2">
-            <button type="button" disabled={busy} onClick={() => void submit(false)} className="rounded-lg bg-violet-700 px-4 py-2 text-sm font-bold text-white disabled:opacity-50">{busy ? '…' : 'أرسل'}</button>
+            <button type="button" disabled={busy} onClick={() => void submit(false)} className="rounded-lg bg-[#0f2040] px-4 py-2 text-sm font-bold text-white disabled:opacity-50">{busy ? '…' : 'أرسل'}</button>
             <button type="button" disabled={busy} onClick={() => void submit(true)} className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-bold text-slate-600 disabled:opacity-50">ماكو شي، كلشي زين 👍</button>
           </div>
         </div>

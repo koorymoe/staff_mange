@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Navigate, Link } from 'react-router-dom'
 import { api, type DesignForm } from '../api'
 import { loadFailed } from '../netErrors'
+import { BackLink } from '../ui/BackLink'
 
 const PRIMARY = '#47528f'
 // ⚠️ نسخة **النص** تنقلب بالوضع الليلي، والأصل يبقى للأسطح:
@@ -17,7 +18,7 @@ export default function DesignFormQuickAddPage() {
 
   useEffect(() => { api.getDesignForms().then(setForms).catch(loadFailed) }, [])
 
-  if (forms === null) return <p className="mt-6 text-slate-400">جاري التحميل...</p>
+  if (forms === null) return <p className="mt-6 text-slate-400">جاري التحميل…</p>
 
   if (forms.length === 0) {
     return (
@@ -36,7 +37,8 @@ export default function DesignFormQuickAddPage() {
 
   return (
     <div dir="rtl">
-      <h2 className="text-2xl font-bold" style={{ color: PRIMARY_TEXT }}>لأي فورمة تريد تضيف السؤال؟</h2>
+      <BackLink to="/design-forms" />
+      <h2 className="mt-2 text-2xl font-bold" style={{ color: PRIMARY_TEXT }}>لأي فورمة تريد تضيف السؤال؟</h2>
       <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
         {forms.map((f) => (
           <Link key={f.id} to={`/design-forms/${f.id}`} className="rounded-xl border border-white bg-white p-4 font-bold shadow-sm hover:shadow-md" style={{ color: PRIMARY_TEXT }}>

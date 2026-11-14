@@ -18,6 +18,8 @@ export interface ExecutionSheetData {
   crew: SheetCrewRow[]
   checks: Record<CheckKey, boolean>
   suggestion: string
+  /** (دازاي 11-15) ملاحظات الليدر الإضافية على الشغل — أي شي يريد يوصله للإدارة والمراقب */
+  leaderNotes?: string
   amountReceived: string
 }
 

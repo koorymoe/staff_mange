@@ -2,6 +2,8 @@ import { useEffect, useMemo, useState } from 'react'
 import { apiRequest } from '../api'
 import { askJustification } from '../utils/justify'
 
+import { notify } from '../ui/notify'
+import { fmtDateTime } from '../utils/date'
 // ═══ رقابة مشرفي المشاريع على عرض السعر — (ع) 10-16 ═══
 // «شوكت استلم المشروع، شوكت تواصل وي الزبون، شوكت سواله عرض سعر».
 interface Row {
@@ -19,7 +21,8 @@ const ACT_LABEL: Record<ActKind, string> = { FOLLOW_UP: '⏰ مهلة', ESCALATE
 interface Data { rows: Row[]; contactHours: number; quoteHours: number }
 
 // الأوقات ترجع UTC — نعرضها بتوقيت بغداد
-const fmt = (s: string | null) => (s ? new Date(s).toLocaleString('ar-IQ', { timeZone: 'Asia/Baghdad', dateStyle: 'short', timeStyle: 'short' }) : '—')
+// (دازاي 11-15) التاريخ من utils/date.ts (عربي، توقيت بغداد)
+const fmt = (s: string | null) => fmtDateTime(s, { dateStyle: 'short', timeStyle: 'short' })
 const hrs = (h: number | null) => (h == null ? '—' : h < 24 ? `${Math.round(h)} ساعة` : `${(h / 24).toFixed(1)} يوم`)
 
 export default function ProjectQuoteWatchPanel() {
@@ -102,7 +105,7 @@ export default function ProjectQuoteWatchPanel() {
                 <td className="p-2">{r.contactedAt ? <>{fmt(r.contactedAt)}<span className="block text-[11px] text-slate-500">بعد {hrs(r.contactHours)}{r.contactNote ? ` — ${r.contactNote}` : ''}</span></> : (r.stage.startsWith('1.') ? <span className="text-red-700">لهسه ما تواصل</span> : <span className="text-slate-500">عبر المرحلة (ما مسجّل بالنظام)</span>)}</td>
                 <td className="p-2">{r.quotedAt ? <>{fmt(r.quotedAt)}<span className="block text-[11px] text-slate-500">بعد {hrs(r.quoteHours)} من الاستلام</span></> : (/^[45]\.|الإعلام/.test(r.stage) ? <span className="text-slate-500">عبر المرحلة (برّا النظام)</span> : <span className="text-amber-700">ماكو عرض سعر · صارله {hrs(r.waitingHours)}</span>)}</td>
                 <td className="p-2">{r.late && r.supervisorId && (
-                  <button onClick={() => askJustification(r.supervisorId!, `مشروع ${r.code} (${r.name}): ${r.lateWhy} — صارله ${hrs(r.waitingHours)} من استلمته. ليش؟`).catch((e) => alert(e instanceof Error ? e.message : 'تعذر'))}
+                  <button onClick={() => askJustification(r.supervisorId!, `مشروع ${r.code} (${r.name}): ${r.lateWhy} — صارله ${hrs(r.waitingHours)} من استلمته. ليش؟`).catch((e) => notify(e instanceof Error ? e.message : 'تعذر'))}
                     className="mb-1 block rounded-lg bg-red-600 px-2 py-1 text-[11px] font-bold text-white">📝 اطلب تفسير</button>
                 )}
                 {r.late && (

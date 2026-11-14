@@ -1,4 +1,5 @@
 import { positionTitle } from '../roleLabels'
+import SharedStat from '../ui/StatCard'
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { drillTo } from '../utils/drill'
@@ -30,26 +31,10 @@ function Clock() {
   )
 }
 
+// (دازاي 11-15) صارت بطاقة مشتركة (ui/StatCard) — هنا بس نحوّل الأسماء.
 function StatCard({ label, value, to, tone, icon, onClick }: { label: string; value: ReactNode; to: string | null; tone: 'blue' | 'green' | 'amber' | 'red'; icon: string; onClick?: () => void }) {
-  const t = {
-    blue: 'border-sky-200 bg-sky-50/60 text-sky-700',
-    green: 'border-emerald-200 bg-emerald-50/60 text-emerald-700',
-    amber: 'border-amber-200 bg-amber-50/60 text-amber-700',
-    red: 'border-red-200 bg-red-50/60 text-red-700',
-  }[tone]
-  const body = (
-    <>
-      <div>
-        <p className="text-sm font-bold text-slate-700">{label}</p>
-        <p className="mt-1 text-3xl font-extrabold tabular-nums">{value}</p>
-        {(to || onClick) && <p className="mt-2 text-xs font-bold opacity-80 group-hover:underline">{onClick ? '← منين جات النسبة؟' : '← عرض التفاصيل'}</p>}
-      </div>
-      <span className="grid h-12 w-12 place-items-center rounded-full bg-white text-2xl shadow-sm">{icon}</span>
-    </>
-  )
-  const cls = `group flex items-center justify-between rounded-2xl border p-4 transition ${t}`
-  if (onClick) return <button type="button" onClick={onClick} className={`${cls} w-full text-right hover:shadow-md`}>{body}</button>
-  return to ? <Link to={to} className={`${cls} hover:shadow-md`}>{body}</Link> : <div className={cls}>{body}</div>
+  return <SharedStat label={label} value={value} to={to ?? undefined} tone={tone} icon={icon} onClick={onClick} big
+    cta={(to || onClick) ? (onClick ? '← منين جات النسبة؟' : '← عرض التفاصيل') : undefined} />
 }
 
 function Chart({ points }: { points: { day: string; count: number }[] }) {
@@ -124,7 +109,7 @@ export default function MonitorHome() {
     { to: '/monitor-inbox', icon: '📝', label: 'ملاحظات المراقب' },
     // (ع) 10-11: المراقب يكلّف ماتركس يراقب موظف
     { to: '/matrix-missions', icon: '🎯', label: 'مهام ماتركس' },
-    { to: '/complaints', icon: '💬', label: 'شكاوى العملاء' },
+    { to: '/complaints', icon: '💬', label: 'شكاوى الزبائن' },
   ].filter((t) => isPathAllowed(t.to, ctx) !== false)
 
   const change = useMemo(() => {
@@ -231,7 +216,7 @@ export default function MonitorHome() {
         <section className={card}>
           <h3 className="mb-3 font-extrabold text-[#0f2040]">📊 إحصائيات سريعة</h3>
           <ul className="divide-y divide-slate-100 text-sm">
-            <li className="flex items-center justify-between py-2.5"><span>👥 عدد العملاء</span><b className="text-lg">{summary ? fmt(summary.customerCount) : '…'}</b></li>
+            <li className="flex items-center justify-between py-2.5"><span>👥 عدد الزبائن</span><b className="text-lg">{summary ? fmt(summary.customerCount) : '…'}</b></li>
             <li className="flex items-center justify-between py-2.5"><span>💵 إجمالي الإيرادات</span><b className="text-lg">{fin ? `${fmt(Math.round(fin.totalCollected))} د.ع` : '…'}</b></li>
             <li className="flex items-center justify-between py-2.5"><span>🎯 نسبة النجاح (أسبوع)</span><b className="text-lg">{board ? <PctWhy title="نسبة النجاح (أسبوع)" parts={{ numLabel: 'حجز مكتمل', num: board.weekCompleted, denLabel: 'حجز انسجّل بآخر ٧ أيام', den: board.weekTotal }}
               meaning={<>من كل الحجوزات الي انسجّلت بآخر ٧ أيام (اليوم و٦ أيام قبله)، شكد منها صار «مكتمل». تعلى لمن الكادر يخلّص الحجوزات؛ تنزل لمن تتأجل أو تبقى مفتوحة أو تنلغي. نفس حسبة لوحة المدير.</>} source={<>جدول الحجوزات: الحجوزات المنسجّلة خلال آخر ٧ أيام وحالتها هسه — نفس قائمة «حجوزات آخر ٧ أيام».</>} /> : '—'}</b></li>

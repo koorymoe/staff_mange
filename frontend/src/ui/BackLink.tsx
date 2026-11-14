@@ -1,0 +1,19 @@
+import { useNavigate } from 'react-router-dom'
+
+// ═══ → رجوع — زر رجوع واحد بكل النظام (دازاي 11-15) ═══
+// يرجع للصفحة الي جاي منها؛ وإذا فتح الرابط مباشرة (ماكو تاريخ) يروح لـ`to`.
+// نفس الشكل بكل مكان — فوگ الخلفية الفاتحة وفوگ الترويسة الغامقة.
+export function BackLink({ to = '/', label = '→ رجوع', className = '' }: { to?: string; label?: string; className?: string }) {
+  const navigate = useNavigate()
+  const back = () => {
+    const idx = (window.history.state as { idx?: number } | null)?.idx ?? 0
+    if (idx > 0) navigate(-1)
+    else navigate(to)
+  }
+  return (
+    <button type="button" onClick={back}
+      className={`inline-flex items-center gap-1 rounded-lg border border-slate-300 bg-white/90 px-3 py-1 text-xs font-bold text-slate-700 hover:bg-white dark:border-slate-600 dark:bg-slate-800/90 dark:text-slate-100 ${className}`}>
+      {label}
+    </button>
+  )
+}

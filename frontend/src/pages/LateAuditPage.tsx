@@ -5,6 +5,7 @@ import PctWhy from '../ui/PctWhy'
 import PageHeader from '../components/PageHeader'
 import { dayBaghdad } from '../utils/format'
 
+import { notify } from '../ui/notify'
 // ═══ فحص المتأخرات — قرار (ع) 10-15 ═══
 // «ليش متأخرات؟ هل بيهن مشكلة؟ وشكد مدة التأخير؟» — نفس تعريف ماتركس، ولكل حجز
 // سبب مرجّح من الأدلة، والحجوزات الي بياناتها مشكوكة معلّمة.
@@ -52,7 +53,7 @@ export default function LateAuditPage() {
   const byLeader = count((r) => r.leader ?? 'بلا ليدر')
   const issues = all.filter((r) => r.dataIssues.length > 0).length
 
-  const excel = () => api.lateAuditExcel(from, to).catch((e) => alert(e instanceof Error ? e.message : 'تعذر'))
+  const excel = () => api.lateAuditExcel(from, to).catch((e) => notify(e instanceof Error ? e.message : 'تعذر'))
 
   return (
     <div dir="rtl" className="space-y-4">
@@ -89,7 +90,7 @@ export default function LateAuditPage() {
             <p className="mb-1 text-sm font-bold text-slate-600">ليش تأخرت؟</p>
             <div className="flex flex-wrap gap-1">
               {byCause.map(([k, n]) => (
-                <button key={k} onClick={() => setCause(cause === k ? '' : k)} className={`rounded-lg px-2 py-1 text-xs font-bold ${cause === k ? 'bg-brand-600 text-white' : 'bg-slate-100 text-slate-700'}`}>{data.causes[k] ?? k}: {n}</button>
+                <button key={k} onClick={() => setCause(cause === k ? '' : k)} className={`rounded-lg px-2 py-1 text-xs font-bold ${cause === k ? 'bg-[#0f2040] text-white' : 'bg-slate-100 text-slate-700'}`}>{data.causes[k] ?? k}: {n}</button>
               ))}
             </div>
           </div>
@@ -97,7 +98,7 @@ export default function LateAuditPage() {
             <p className="mb-1 text-sm font-bold text-slate-600">حسب الليدر</p>
             <div className="flex max-h-24 flex-wrap gap-1 overflow-auto">
               {byLeader.map(([k, n]) => (
-                <button key={k} onClick={() => setLeader(leader === k ? '' : k)} className={`rounded-lg px-2 py-1 text-xs ${leader === k ? 'bg-brand-600 text-white' : 'bg-slate-100'}`}>{k}: {n}</button>
+                <button key={k} onClick={() => setLeader(leader === k ? '' : k)} className={`rounded-lg px-2 py-1 text-xs ${leader === k ? 'bg-[#0f2040] text-white' : 'bg-slate-100'}`}>{k}: {n}</button>
               ))}
             </div>
           </div>

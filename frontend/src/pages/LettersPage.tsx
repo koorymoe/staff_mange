@@ -5,6 +5,7 @@ import vstripUrl from '../assets/print/quotation-vstrip.png'
 import bannerUrl from '../assets/print/quotation-banner.png'
 import { swallow } from '../utils/swallow'
 
+import { notify } from '../ui/notify'
 // ═══ الطلبات — كتاب رسمي من الموظف للإدارة ═══
 //
 // الموظف الي يريد شي (سلفة، نقل، شكوى، اقتراح) كان يفتح الوورد
@@ -64,7 +65,7 @@ export default function LettersPage() {
   const decide = async (id: string, approve: boolean) => {
     const note = (noteDraft[id] || '').trim()
     if (!approve && note.length < 5) {
-      alert('اكتب سبب الرفض — الموظف لازم يعرف ليش')
+      notify('اكتب سبب الرفض — الموظف لازم يعرف ليش')
       return
     }
     try {
@@ -72,7 +73,7 @@ export default function LettersPage() {
       setNoteDraft({ ...noteDraft, [id]: '' })
       load()
     } catch (e) {
-      alert(e instanceof Error ? e.message : 'تعذر تسجيل القرار')
+      notify(e instanceof Error ? e.message : 'تعذر تسجيل القرار')
     }
   }
 
@@ -242,7 +243,7 @@ body { background: #fff; font-family: 'Cairo', sans-serif; direction: rtl; -webk
         </div>
       )}
 
-      {loading && <p className="text-slate-400">جاري التحميل...</p>}
+      {loading && <p className="text-slate-400">جاري التحميل…</p>}
       {!loading && list.length === 0 && (
         <p className="rounded-2xl bg-white p-5 text-center text-sm text-slate-400">ماكو طلبات بعد.</p>
       )}

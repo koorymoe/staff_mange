@@ -6,6 +6,7 @@ import {
 import { matches } from '../utils/search'
 import { askConfirm } from '../ui/dialogs'
 
+import { notify } from '../ui/notify'
 // ═══ جرد أجهزة تقنية المعلومات ═══
 // حاسبات ومخدّمات وشبكة وطابعات الشركة: وين كل جهاز، منو يستعمله،
 // حالته، ضمانه، وسجل كل تصليح أو صيانة انسوّت عليه.
@@ -89,7 +90,7 @@ function AssetForm({ initial, employees, onSaved, onClose }: {
         </div>
         {err && <p className="mt-3 rounded-lg bg-red-50 p-2 text-sm font-bold text-red-700">{err}</p>}
         <div className="mt-4 flex gap-2">
-          <button onClick={save} disabled={busy} className="flex-1 rounded-lg bg-brand-600 px-4 py-2.5 text-sm font-bold text-white disabled:opacity-50">
+          <button onClick={save} disabled={busy} className="flex-1 rounded-lg bg-[#0f2040] px-4 py-2.5 text-sm font-bold text-white disabled:opacity-50">
             {busy ? 'جاري الحفظ…' : 'حفظ'}
           </button>
           <button onClick={onClose} disabled={busy} className="rounded-lg border border-slate-300 px-4 py-2.5 text-sm font-bold text-slate-600">إلغاء</button>
@@ -120,7 +121,7 @@ function AssetLogs({ asset, onClose }: { asset: ItAsset; onClose: () => void }) 
       await api.addItAssetLog(asset.id, { kind, note: note.trim(), cost: cost ? Number(cost) : null })
       setNote(''); setCost(''); setReload((n) => n + 1)
     } catch (e) {
-      alert(e instanceof Error ? e.message : 'تعذر الحفظ')
+      notify(e instanceof Error ? e.message : 'تعذر الحفظ')
     } finally { setBusy(false) }
   }
 
@@ -135,7 +136,7 @@ function AssetLogs({ asset, onClose }: { asset: ItAsset; onClose: () => void }) 
           <input className={`${inp} col-span-2`} type="number" placeholder="الكلفة (اختياري)" value={cost} onChange={(e) => setCost(e.target.value)} />
           <textarea className={`${inp} col-span-3`} rows={2} placeholder="شنو انسوّى؟ مثال: تبديل هارد SSD" value={note} onChange={(e) => setNote(e.target.value)} />
         </div>
-        <button onClick={add} disabled={busy || !note.trim()} className="mt-2 w-full rounded-lg bg-brand-600 px-4 py-2 text-sm font-bold text-white disabled:opacity-50">
+        <button onClick={add} disabled={busy || !note.trim()} className="mt-2 w-full rounded-lg bg-[#0f2040] px-4 py-2 text-sm font-bold text-white disabled:opacity-50">
           {busy ? 'جاري الحفظ…' : '➕ أضف للسجل'}
         </button>
         <div className="mt-4 space-y-2">
@@ -188,17 +189,17 @@ export default function ItAssetsPage() {
 
   const remove = async (a: ItAsset) => {
     if (!(await askConfirm(`حذف «${a.name}» وكل سجله؟ إذا الجهاز بس انستبعد، الأفضل تغيّر حالته لـ«مستبعد».`))) return
-    try { await api.deleteItAsset(a.id); setReload((n) => n + 1) } catch (e) { alert(e instanceof Error ? e.message : 'تعذر الحذف') }
+    try { await api.deleteItAsset(a.id); setReload((n) => n + 1) } catch (e) { notify(e instanceof Error ? e.message : 'تعذر الحذف') }
   }
 
   return (
     <div dir="rtl" className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h2 className="text-2xl font-bold text-brand-900">🖥️ جرد أجهزة تقنية المعلومات</h2>
+          <h2 className="text-2xl font-bold text-brand-900">🖥️ جرد الأجهزة</h2>
           <p className="text-sm text-slate-500">كل جهاز بالشركة: وين هو، منو يستعمله، حالته، ضمانه، وسجل تصليحه.</p>
         </div>
-        <button onClick={() => setEditing('new')} className="rounded-xl bg-brand-600 px-4 py-2.5 text-sm font-bold text-white hover:bg-brand-700">➕ جهاز جديد</button>
+        <button onClick={() => setEditing('new')} className="rounded-xl bg-[#0f2040] px-4 py-2.5 text-sm font-bold text-white hover:bg-[#1a3a6c]">➕ جهاز جديد</button>
       </div>
 
       <div className="flex flex-wrap gap-2 rounded-2xl border border-slate-200 bg-white p-3">

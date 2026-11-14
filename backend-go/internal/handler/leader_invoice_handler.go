@@ -181,7 +181,7 @@ func (h *LeaderInvoiceHandler) CreateServiceInvoice(w http.ResponseWriter, r *ht
 		}
 	}
 	if !allowed {
-		WriteError(w, http.StatusForbidden, "ما عندك صلاحية «"+model.ServiceInvoiceKindLabel[req.Kind]+"»")
+		WriteError(w, http.StatusNotFound, "ما عندك صلاحية «"+model.ServiceInvoiceKindLabel[req.Kind]+"»")
 		return
 	}
 	inv, err := h.service.CreateServiceInvoice(employeeID, req)

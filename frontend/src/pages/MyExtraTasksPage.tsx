@@ -1,10 +1,13 @@
 import { Fragment, useCallback, useEffect, useMemo, useState } from 'react'
+import Modal from '../ui/Modal'
+import SharedStat from '../ui/StatCard'
 import { useNavigate } from 'react-router-dom'
 import { api, EXTRA_TASK_STATUS, type ExtraTask } from '../api'
 import PctWhy from '../ui/PctWhy'
 import { useSession } from '../session'
 import { dayBaghdad } from '../utils/format'
 
+import { notify } from '../ui/notify'
 // ═══ مهامي الإضافية — لكل موظف ═══
 //
 // المهام الإضافية كانت تنعرض جوّا شاشة «مهامي»، وهاي محصورة بالفنيين
@@ -101,17 +104,21 @@ export default function MyExtraTasksPage() {
 
   useEffect(load, [load])
 
-  // نأشّر «شافها» أول ما تنعرض — يقطع نقاش «ما وصلني».
-  // ⚠️ للجديدة بس: إعادة التأشير على كل تحميل تدوس على الوقت الأول.
-  useEffect(() => {
-    tasks.filter((t) => t.status === 'NEW' && !t.seenAt)
-      .forEach((t) => { void api.markExtraTaskSeen(t.id).catch(() => undefined) })
-  }, [tasks])
+  // (دازاي 11-15) «عشر مهام يطلعلي رقم عشرة بالأحمر… فتحت وحدة ينقص واحد»: چانت كل المهام
+  // تنعلّم «شافها» أول ما تنفتح الصفحة. هسه كل مهمة جديدة تبقى مسكّرة لحد ما يفتحها هي بالذات،
+  // وفتحها يعلّمها ويحدّث الرقم الأحمر بالقائمة.
+  const openTask = (t: ExtraTask) => {
+    if (t.seenAt) return
+    setTasks((cur) => cur.map((x) => (x.id === t.id ? { ...x, seenAt: new Date().toISOString() } : x)))
+    api.markExtraTaskSeen(t.id)
+      .then(() => window.dispatchEvent(new Event('matrix-courier-refresh')))
+      .catch(() => undefined)
+  }
 
   const start = async (t: ExtraTask) => {
     setBusy(t.id)
     try { await api.startExtraTask(t.id); load() }
-    catch (e) { alert(e instanceof Error ? e.message : 'تعذر البدء') }
+    catch (e) { notify(e instanceof Error ? e.message : 'تعذر البدء') }
     finally { setBusy(null) }
   }
 
@@ -289,7 +296,7 @@ export default function MyExtraTasksPage() {
             )}
           </div>
 
-          {loading && <p className="py-8 text-center text-sm text-slate-400">جاري التحميل...</p>}
+          {loading && <p className="py-8 text-center text-sm text-slate-400">جاري التحميل…</p>}
 
           {!loading && filtered.length === 0 && (
             <p className="rounded-xl border border-dashed border-slate-200 bg-slate-50/60 px-3 py-10 text-center text-sm text-slate-400">
@@ -322,7 +329,9 @@ export default function MyExtraTasksPage() {
                         <td className="px-3 py-3 font-bold text-[#0f2040]">
                           {t.title}
                           {t.overdue && <span className="mr-1.5 rounded-md bg-red-600 px-1.5 py-0.5 text-[9px] font-bold text-white">فات موعدها</span>}
-                          {t.description && <p className="mt-1 whitespace-pre-wrap text-xs font-normal text-slate-600">{t.description}</p>}
+                          {!t.seenAt && t.status === 'NEW'
+                            ? <button type="button" onClick={() => openTask(t)} className="mr-2 rounded-lg bg-red-600 px-2 py-0.5 text-[11px] font-bold text-white">📩 افتح المهمة</button>
+                            : t.description && <p className="mt-1 whitespace-pre-wrap text-xs font-normal text-slate-600">{t.description}</p>}
                         </td>
                         <td className="whitespace-nowrap px-3 py-3 text-xs text-slate-500">⏳ {t.dueAt ? new Date(t.dueAt).toLocaleString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—'}</td>
                         <td className="px-3 py-3">
@@ -362,6 +371,7 @@ export default function MyExtraTasksPage() {
                 busy={busy === t.id}
                 onStart={() => start(t)}
                 onComplete={() => { setDoneFor(t); setDoneNote(''); setErr(null) }}
+                onOpen={() => openTask(t)}
               />
             ))}
           </div>
@@ -482,9 +492,7 @@ export default function MyExtraTasksPage() {
       {/* ⚠️ الإنجاز يطلب وصف: «تم» بلا شرح ترجّع المدير يسأل بالتلفون
           — وهاي نفس المكالمة الي بنينا الميزة حتى نلغيها. */}
       {doneFor && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={() => setDoneFor(null)}>
-          <div dir="rtl" className="w-full max-w-md rounded-2xl bg-white p-5" onClick={(e) => e.stopPropagation()}>
-            <h3 className="font-bold text-[#0f2040]">✓ إنهاء: {doneFor.title}</h3>
+        <Modal title={<>✓ إنهاء: {doneFor.title}</>} onClose={() => setDoneFor(null)} size="md" bodyClassName="p-5">
             <label className="mb-1 mt-3 block text-xs font-bold text-slate-500">
               شنو سويت بالضبط؟ <span className="text-red-600">*</span>
             </label>
@@ -508,8 +516,7 @@ export default function MyExtraTasksPage() {
                 رجوع
               </button>
             </div>
-          </div>
-        </div>
+</Modal>
       )}
     </div>
   )
@@ -517,41 +524,20 @@ export default function MyExtraTasksPage() {
 
 /* ───── بطاقة رقم ───── */
 
-const TONES: Record<string, string> = {
-  sky: 'bg-sky-50 text-sky-600',
-  violet: 'bg-violet-50 text-violet-600',
-  amber: 'bg-amber-50 text-amber-600',
-  emerald: 'bg-emerald-50 text-emerald-600',
-}
-
-const BAR: Record<string, string> = { sky: 'bg-sky-500', violet: 'bg-violet-500', amber: 'bg-amber-500', emerald: 'bg-emerald-500' }
-
+// (دازاي 11-15) صارت بطاقة مشتركة (ui/StatCard) — هنا بس نحوّل الأسماء.
 function StatCard({ label, value, of, icon, tone, why }: {
   label: string; value: number; of: number; icon: string; tone: string
   why: { num: string; den: string; meaning: string; source: string }
 }) {
   const pct = of > 0 ? Math.min(100, Math.round((value / of) * 100)) : 0
+  const t = tone === 'sky' ? 'blue' : tone === 'emerald' ? 'green' : tone === 'violet' ? 'violet' : 'amber'
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-3 shadow-[0_2px_12px_rgba(15,32,64,0.05)] sm:p-4">
-      <div className="flex items-start justify-between gap-2">
-        <div className="min-w-0">
-          <p className="truncate text-[10px] font-bold text-slate-500 sm:text-[11px]">{label}</p>
-          <p className="mt-1 text-2xl font-black text-[#0f2040] sm:text-3xl">{value}</p>
-          <p className="text-[10px] text-slate-400">من {of} مهمة</p>
-        </div>
-        <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-xl text-sm sm:h-10 sm:w-10 sm:text-base ${TONES[tone]}`}>
-          {icon}
-        </span>
-      </div>
-      <div className="mt-2 flex items-center gap-2">
-        <div className="h-1.5 flex-1 rounded-full bg-slate-100"><div className={`h-1.5 rounded-full ${BAR[tone]}`} style={{ width: `${pct}%` }} /></div>
-        <PctWhy title={label} value={of > 0 ? pct : null} className="text-[10px] font-bold text-slate-500 tabular-nums"
-          formula={of > 0
-            ? <>{value} {why.num} ÷ {of} {why.den} × ١٠٠ = {Math.round((value / of) * 100)}%{value > of ? ' — وتنعرض ١٠٠٪ لأن الشريط ما يعبر الآخر' : ''}.</>
-            : <>ماكو {why.den} هسه، فماكو نسبة.</>}
-          meaning={why.meaning} source={why.source} />
-      </div>
-    </div>
+    <SharedStat label={label} value={value} hint={`من ${of} مهمة`} icon={icon} tone={t} pct={pct}
+      pctLabel={<PctWhy title={label} value={of > 0 ? pct : null} className="text-[11px] font-extrabold tabular-nums text-slate-600"
+        formula={of > 0
+          ? <>{value} {why.num} ÷ {of} {why.den} × ١٠٠ = {Math.round((value / of) * 100)}%{value > of ? ' — وتنعرض ١٠٠٪ لأن الشريط ما يعبر الآخر' : ''}.</>
+          : <>ماكو {why.den} هسه، فماكو نسبة.</>}
+        meaning={why.meaning} source={why.source} />} />
   )
 }
 
@@ -559,8 +545,8 @@ function StatCard({ label, value, of, icon, tone, why }: {
    ⚠️ مكوّن **برّا** المكوّن الأب مو جوّاه: التعريف جوّا الأب يخلي React
    يحسبه نوع جديد بكل رندر، فيهدم الصف ويعيد بناءه — والنتيجة إن أي
    خانة كتابة جوّاه تفقد التركيز بعد أول حرف. */
-function TaskRow({ task: t, now, busy, onStart, onComplete, defaultOpen = false }: {
-  task: ExtraTask; now: Date; busy: boolean; onStart: () => void; onComplete: () => void; defaultOpen?: boolean
+function TaskRow({ task: t, now, busy, onStart, onComplete, onOpen, defaultOpen = false }: {
+  task: ExtraTask; now: Date; busy: boolean; onStart: () => void; onComplete: () => void; onOpen?: () => void; defaultOpen?: boolean
 }) {
   const [open, setOpen] = useState(defaultOpen)
   const actionable = t.status === 'NEW' || t.status === 'IN_PROGRESS'
@@ -586,7 +572,9 @@ function TaskRow({ task: t, now, busy, onStart, onComplete, defaultOpen = false 
             )}
           </div>
 
-          {t.description && <p className="mt-1 text-[11px] leading-relaxed text-slate-500">{t.description}</p>}
+          {!t.seenAt && t.status === 'NEW' && onOpen
+            ? <button type="button" onClick={onOpen} className="mt-1 rounded-lg bg-red-600 px-2 py-0.5 text-[11px] font-bold text-white">📩 افتح المهمة</button>
+            : t.description && <p className="mt-1 text-[11px] leading-relaxed text-slate-500">{t.description}</p>}
 
           <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-1 text-[10px] text-slate-400">
             {t.assignedByName && <span>👤 المدير: {t.assignedByName}</span>}

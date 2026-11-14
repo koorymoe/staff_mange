@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import SharedStat from '../ui/StatCard'
 import Pager from '../components/Pager'
 import PctWhy from '../ui/PctWhy'
 import { api, type Customer, type CustomerPage, type GpsCustomerListItem, type Booking } from '../api'
@@ -256,7 +257,7 @@ export default function Customers() {
         </div>
       </form>
 
-      {loading && <p className="mt-6 text-slate-400">جاري التحميل...</p>}
+      {loading && <p className="mt-6 text-slate-400">جاري التحميل…</p>}
       {error && (
         <p className="mt-6 rounded-lg bg-red-50 p-4 text-red-600">
           تعذر الاتصال بالخادم: {error}
@@ -269,7 +270,7 @@ export default function Customers() {
             <button
               onClick={() => setTab('all')}
               className={`rounded-lg px-4 py-2 text-sm font-bold transition-colors ${
-                tab === 'all' ? 'bg-brand-600 text-white shadow-md' : 'bg-white text-slate-500 hover:bg-slate-100'
+                tab === 'all' ? 'bg-[#0f2040] text-white shadow-md' : 'bg-white text-slate-500 hover:bg-slate-100'
               }`}
             >
               كل الزبائن ({allCount})
@@ -277,7 +278,7 @@ export default function Customers() {
             <button
               onClick={() => setTab('gps')}
               className={`rounded-lg px-4 py-2 text-sm font-bold transition-colors ${
-                tab === 'gps' ? 'bg-brand-600 text-white shadow-md' : 'bg-white text-slate-500 hover:bg-slate-100'
+                tab === 'gps' ? 'bg-[#0f2040] text-white shadow-md' : 'bg-white text-slate-500 hover:bg-slate-100'
               }`}
             >
               زبائن الجي بي اس ({pg?.gpsCount ?? 0})
@@ -425,7 +426,7 @@ export default function Customers() {
                           onClick={(e) => { e.stopPropagation(); setSelectedId(selectedId === c.id ? null : c.id) }}
                           title="عرض التفاصيل"
                           className={`rounded-lg px-2.5 py-1.5 text-xs font-bold transition ${
-                            selectedId === c.id ? 'bg-brand-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                            selectedId === c.id ? 'bg-[#0f2040] text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
                           }`}
                         >
                           👁 تفاصيل
@@ -558,26 +559,11 @@ export default function Customers() {
 /* ───── قطع الشاشة ───── */
 
 // بطاقة رقم بالرأس
+// (دازاي 11-15) صارت بطاقة مشتركة (ui/StatCard) — هنا بس نحوّل الأسماء.
 function StatCard({ icon, tone, label, value, hint }: {
   icon: string; tone: 'sky' | 'emerald' | 'amber'; label: string; value: number; hint: React.ReactNode
 }) {
-  const tones: Record<string, string> = {
-    sky: 'bg-sky-50 text-sky-600',
-    emerald: 'bg-emerald-50 text-emerald-600',
-    amber: 'bg-amber-50 text-amber-600',
-  }
-  return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-[0_2px_12px_rgba(15,32,64,0.05)]">
-      <div className="flex items-start justify-between gap-2">
-        <div className="min-w-0">
-          <p className="truncate text-[11px] font-bold text-slate-500">{label}</p>
-          <p className="mt-1 text-3xl font-black text-[#0f2040]">{value}</p>
-          <p className="text-[10px] text-slate-400">{hint}</p>
-        </div>
-        <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-lg ${tones[tone]}`}>{icon}</span>
-      </div>
-    </div>
-  )
+  return <SharedStat icon={icon} tone={tone === 'sky' ? 'blue' : tone === 'emerald' ? 'green' : 'amber'} label={label} value={value} hint={hint} big />
 }
 
 // ⚠️ `PageBtn` و`pageWindow` انشالن من هنا: صارن جوّا `Pager`
@@ -611,7 +597,7 @@ function CustomerDetails({ customer, history, loading }: {
       </DetailBox>
 
       <DetailBox icon="🕐" title="آخر حجز">
-        {loading ? <p className="text-slate-400">جاري التحميل...</p> : last ? (
+        {loading ? <p className="text-slate-400">جاري التحميل…</p> : last ? (
           <>
             <p><span className="text-slate-400">الكود: </span><span className="font-mono font-bold">{last.code}</span></p>
             <p><span className="text-slate-400">التاريخ: </span>{new Date(last.createdAt).toLocaleDateString('ar-IQ')}</p>
@@ -625,7 +611,7 @@ function CustomerDetails({ customer, history, loading }: {
       </DetailBox>
 
       <DetailBox icon="👥" title="الكادر المكلّف">
-        {loading ? <p className="text-slate-400">جاري التحميل...</p> : crew.length > 0 ? (
+        {loading ? <p className="text-slate-400">جاري التحميل…</p> : crew.length > 0 ? (
           <ul className="space-y-0.5">
             {crew.map((n, i) => <li key={i}>• {n}</li>)}
           </ul>
@@ -633,7 +619,7 @@ function CustomerDetails({ customer, history, loading }: {
       </DetailBox>
 
       <DetailBox icon="🔧" title="الخدمات المطلوبة">
-        {loading ? <p className="text-slate-400">جاري التحميل...</p> : services.length > 0 ? (
+        {loading ? <p className="text-slate-400">جاري التحميل…</p> : services.length > 0 ? (
           <ul className="space-y-0.5">
             {services.map((n) => <li key={n}>• {n}</li>)}
           </ul>
@@ -645,7 +631,7 @@ function CustomerDetails({ customer, history, loading }: {
         <p className="mb-2 text-xs font-bold text-[#0f2040]">
           📋 سجل الحجوزات {history.length > 0 && <span className="text-slate-400">({history.length})</span>}
         </p>
-        {loading && <p className="text-xs text-slate-400">جاري التحميل...</p>}
+        {loading && <p className="text-xs text-slate-400">جاري التحميل…</p>}
         {!loading && history.length === 0 && (
           <p className="rounded-xl border border-dashed border-slate-200 bg-white px-3 py-4 text-center text-xs text-slate-400">
             ماكو حجوزات لهذا الزبون.

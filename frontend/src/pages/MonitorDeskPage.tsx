@@ -26,6 +26,7 @@ import { useSession } from '../session'
 import { isFullMonitor, monCan, type MonSub } from '../utils/monAccess'
 import { lazyRetry } from '../utils/staleReload'
 
+import { notify } from '../ui/notify'
 const MonitorInboxPage = lazyRetry(() => import('./MonitorInboxPage'))
 const MonitorCrewBookingsPage = lazyRetry(() => import('./MonitorCrewBookingsPage'))
 const MonitorGpsPage = lazyRetry(() => import('./MonitorGpsPage'))
@@ -243,7 +244,7 @@ export default function MonitorDeskPage() {
               <input type="month" defaultValue={new Date().toISOString().slice(0, 7)} id="mon-purchase-month" className="rounded-lg border border-slate-300 px-2 py-1 text-sm" />
               <button type="button" onClick={() => {
                 const m = (document.getElementById('mon-purchase-month') as HTMLInputElement | null)?.value || new Date().toISOString().slice(0, 7)
-                purchaseApi.monthlyExcel(m).catch((e) => alert(e instanceof Error ? e.message : 'تعذر'))
+                purchaseApi.monthlyExcel(m).catch((e) => notify(e instanceof Error ? e.message : 'تعذر'))
               }} className="rounded-lg bg-emerald-700 px-3 py-1.5 text-sm font-bold text-white">نزّل</button>
             </div>
           </div>

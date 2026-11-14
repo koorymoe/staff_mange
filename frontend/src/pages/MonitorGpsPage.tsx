@@ -3,6 +3,7 @@ import { api, type GpsMonitorSnapshot } from '../api'
 import PageHeader from '../components/PageHeader'
 import StatTile from '../components/StatTile'
 import EmptyState from '../components/EmptyState'
+import { fmtDate as fmtDay } from '../utils/date'
 
 /**
  * ═══ نتائج الجي بي اس — للمراقب ═══
@@ -18,8 +19,8 @@ import EmptyState from '../components/EmptyState'
  * ⚠️ **قراءة فقط**: المراقب يشوف ويحاسب، ما ينفّذ. نفس مبدأ «يشوف
  * الجودة كاملة بلا ما يتصل بالزبون».
  */
-const fmtDate = (v?: string | null) =>
-  v ? new Date(v).toLocaleDateString('en-CA') : '—'
+// (دازاي 11-15) التاريخ من utils/date.ts (عربي، توقيت بغداد)
+const fmtDate = (v?: string | null) => fmtDay(v)
 
 export default function MonitorGpsPage({ embedded }: { embedded?: boolean } = {}) {
   // null = لسه ما انجاب · الكائن = انجاب.

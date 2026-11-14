@@ -168,7 +168,7 @@ export default function DirectorsRankingPage() {
               key={k}
               type="button"
               onClick={() => setTab(k)}
-              className={`rounded-lg px-4 py-1.5 text-sm font-semibold ${tab === k ? 'bg-brand-600 text-white shadow' : 'text-slate-600'}`}
+              className={`rounded-lg px-4 py-1.5 text-sm font-semibold ${tab === k ? 'bg-[#0f2040] text-white shadow' : 'text-slate-600'}`}
             >
               {l}
             </button>

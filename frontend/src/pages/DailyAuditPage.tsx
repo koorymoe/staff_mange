@@ -12,6 +12,9 @@ import BookingCodeChip from '../components/BookingCodeChip'
 import { askConfirm, askInput } from '../ui/dialogs'
 import { swallow } from '../utils/swallow'
 
+import { notify } from '../ui/notify'
+import { bookingStatusLabel } from '../bookingStatus'
+import { money as fmtMoney } from '../utils/money'
 /**
  * التدقيق اليومي.
  *
@@ -23,20 +26,14 @@ import { swallow } from '../utils/swallow'
  * و«مطابق» ترحّل فاتورة الحجز لطابور الاعتماد بشاشة فواتير الليدر.
  */
 
-const money = (n: number) => n.toLocaleString('en-IQ') + ' د.ع'
+const money = (n: number) => fmtMoney(n) + ' د.ع' // (دازاي 11-15) من utils/money.ts
 
 function todayStr() {
   const d = new Date()
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
 
-const STATUS_LABEL: Record<string, string> = {
-  COMPLETED: 'مكتمل',
-  PENDING: 'معلّق',
-  CONFIRMED: 'مثبّت',
-  IN_PROGRESS: 'قيد التنفيذ',
-  CANCELLED: 'ملغى',
-}
+// (دازاي 11-15) كلمات حالة الحجز من مكان واحد (bookingStatus.ts) — جان هنا خريطة محلية بكلمات ثانية
 
 /**
  * بطاقة رقم.
@@ -100,7 +97,7 @@ export default function DailyAuditPage() {
   const canDecide = canAuditFinance(employee?.role, permissions, employee?.orgRoles)
 
   // ⚠️ الخطأ چان ينبلع وrep تنرجع null — وnull هي **نفس** حالة ما
-  // قبل التحميل، فأي رفض صلاحية أو خطأ خادم يطلع «جاري التحميل...»
+  // قبل التحميل، فأي رفض صلاحية أو خطأ خادم يطلع «جاري التحميل…»
   // للأبد. الموظف ينتظر بيانات وصلت أصلاً برفض.
   // ⚠️ ماكو setState بجسم الدالة قبل الطلب: هاي تنستدعى من useEffect،
   // وReact يمنع setState متزامناً هناك. التصفير يصير بالنتيجة.
@@ -138,7 +135,7 @@ export default function DailyAuditPage() {
       await api.unverifyBooking(row.id)
       load(date)
     } catch (e) {
-      alert(e instanceof Error ? e.message : 'تعذر إرجاع الحجز للتدقيق')
+      notify(e instanceof Error ? e.message : 'تعذر إرجاع الحجز للتدقيق')
     } finally {
       setBusy(null)
     }
@@ -161,7 +158,7 @@ export default function DailyAuditPage() {
         setFreeReason((prev) => ({ ...prev, [row.id]: '' }))
         load(date)
       } catch (e) {
-        alert(e instanceof Error ? e.message : 'تعذر تأشير الصيانة المجانية')
+        notify(e instanceof Error ? e.message : 'تعذر تأشير الصيانة المجانية')
       } finally {
         setBusy(null)
       }
@@ -179,7 +176,7 @@ export default function DailyAuditPage() {
         setAmounts((prev) => ({ ...prev, [row.id]: '' }))
         load(date)
       } catch (e) {
-        alert(e instanceof Error ? e.message : 'تعذر تسجيل الآجل')
+        notify(e instanceof Error ? e.message : 'تعذر تسجيل الآجل')
       } finally {
         setBusy(null)
       }
@@ -200,7 +197,7 @@ export default function DailyAuditPage() {
       setAmounts((prev) => ({ ...prev, [row.id]: '' }))
       load(date)
     } catch (e) {
-      alert(e instanceof Error ? e.message : 'تعذر التدقيق')
+      notify(e instanceof Error ? e.message : 'تعذر التدقيق')
     } finally {
       setBusy(null)
     }
@@ -285,7 +282,7 @@ export default function DailyAuditPage() {
           <p className="mt-0.5 text-xs text-red-700">{loadErr}</p>
         </div>
       )}
-      {!rep && !loadErr && <p className="py-10 text-center text-slate-400">جاري التحميل...</p>}
+      {!rep && !loadErr && <p className="py-10 text-center text-slate-400">جاري التحميل…</p>}
 
       {rep && (
         <>
@@ -382,7 +379,7 @@ export default function DailyAuditPage() {
                     </p>
                     <p className="mt-1 text-xs text-slate-400" dir="ltr">{row.customerPhone}</p>
                     <p className="mt-1 text-sm text-slate-600">
-                      {row.serviceName} · <span className="text-slate-400">{STATUS_LABEL[row.status] || row.status}</span>
+                      {row.serviceName} · <span className="text-slate-400">{bookingStatusLabel(row.status)}</span>
                     </p>
                     <p className="mt-2 text-sm text-slate-600">
                       المستلم: <b>{money(row.collected)}</b>

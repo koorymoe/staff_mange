@@ -149,7 +149,7 @@ func (h *FileHandler) Serve(w http.ResponseWriter, r *http.Request) {
 	// صور الكشف لها مسارها المحمي بالأدوار (/api/survey-photos/{id}/file)
 	// — المسار العام ما يفتحها إلا للمدير، حتى ما ينلف عليها حارسها.
 	if strings.HasPrefix(key, "surveys/") && role != "ADMIN" && role != "OWNER" {
-		WriteError(w, http.StatusForbidden, "هذا الملف يفتح من شاشته بس")
+		WriteError(w, http.StatusNotFound, "هذا الملف يفتح من شاشته بس")
 		return
 	}
 	// 🖼️ (11-12) ?w=… = نسخة مصغّرة للعرض (تنحفظ مرة وحدة). أي خلل = الأصلية.

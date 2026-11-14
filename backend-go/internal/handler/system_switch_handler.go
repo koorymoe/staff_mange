@@ -46,7 +46,7 @@ func (h *SystemSwitchHandler) Set(w http.ResponseWriter, r *http.Request) {
 	}
 	role, _ := r.Context().Value(middleware.ContextRole).(string)
 	if role != "OWNER" && !(role == "ADMIN" && model.SystemSwitchAdminAllowed(key)) {
-		WriteError(w, http.StatusForbidden, "هذا المفتاح للمالك حصراً")
+		WriteError(w, http.StatusNotFound, "هذا المفتاح للمالك حصراً")
 		return
 	}
 	var body struct {

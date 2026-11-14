@@ -306,7 +306,7 @@ function DirectiveDialog({
             </p>
           )}
           <div className="org-actions">
-            <button className="org-primary" type="submit">
+            <button className="org-primary" type="submit" disabled={busy}>
               {busy ? 'دا أحفظ…' : label}
             </button>
             <button type="button" onClick={close}>

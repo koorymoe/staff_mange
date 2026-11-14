@@ -81,7 +81,7 @@ func (h *AchievementHandler) UploadVoice(w http.ResponseWriter, r *http.Request)
 		return
 	}
 	if a.EmployeeID != me {
-		WriteError(w, http.StatusForbidden, "تگدر ترفق فويس لإنجازك إنت بس")
+		WriteError(w, http.StatusNotFound, "تگدر ترفق فويس لإنجازك إنت بس")
 		return
 	}
 	r.Body = http.MaxBytesReader(w, r.Body, maxVoiceBytes+64<<10)

@@ -9,6 +9,8 @@ import AgentActionNotice from '../components/AgentActionNotice'
 import { useSession, hasRole } from '../session'
 import BookingCodeChip from '../components/BookingCodeChip'
 
+import { notify } from '../ui/notify'
+import { bookingServiceLabel } from '../bookingServiceLabel'
 const statusLabels: Record<QualityFollowUp['status'], string> = {
   PENDING: 'بانتظار التواصل',
   CONTACTED_OK: 'تم التواصل - كله تمام',
@@ -78,7 +80,7 @@ export default function QualityFollowUpsPage({ embedded }: EmbeddedProps = {}) {
   const verdict = async (id: string, reportType: 'POSITIVE' | 'NEGATIVE' | 'STUBBORN', needsInspection = false) => {
     const notes = (notesDraft[id] || '').trim()
     if (reportType === 'NEGATIVE' && notes.length < 5) {
-      alert('اكتب شنو كالك الزبون — التقرير السلبي يخصم نقطة من الليدر')
+      notify('اكتب شنو كالك الزبون — التقرير السلبي يخصم نقطة من الليدر')
       return
     }
     setBusy(id)
@@ -86,19 +88,19 @@ export default function QualityFollowUpsPage({ embedded }: EmbeddedProps = {}) {
       setItems(await api.qualityVerdict(id, { reportType, notes, needsInspection }))
       setNotesDraft({ ...notesDraft, [id]: '' })
     } catch (e) {
-      alert(e instanceof Error ? e.message : 'تعذر تسجيل التقرير')
+      notify(e instanceof Error ? e.message : 'تعذر تسجيل التقرير')
     } finally { setBusy(null) }
   }
 
   const inspect = async (id: string, result: 'CUSTOMER_RIGHT' | 'CUSTOMER_WRONG') => {
     const notes = (notesDraft[id] || '').trim()
-    if (notes.length < 5) { alert('اكتب شنو شفت بالكشف — هذا الي يعتمد عليه القرار'); return }
+    if (notes.length < 5) { notify('اكتب شنو شفت بالكشف — هذا الي يعتمد عليه القرار'); return }
     setBusy(id)
     try {
       setItems(await api.qualityInspect(id, { result, notes }))
       setNotesDraft({ ...notesDraft, [id]: '' })
     } catch (e) {
-      alert(e instanceof Error ? e.message : 'تعذر تسجيل نتيجة الكشف')
+      notify(e instanceof Error ? e.message : 'تعذر تسجيل نتيجة الكشف')
     } finally { setBusy(null) }
   }
 
@@ -107,7 +109,7 @@ export default function QualityFollowUpsPage({ embedded }: EmbeddedProps = {}) {
       await api.updateQualityFollowUp(id, { status, contactNotes: notesDraft[id] })
       load()
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'حدث خطأ')
+      notify(err instanceof Error ? err.message : 'حدث خطأ')
     }
   }
 
@@ -129,7 +131,7 @@ export default function QualityFollowUpsPage({ embedded }: EmbeddedProps = {}) {
             <p className="mt-1 text-slate-500">تقرير عام — التواصل مع الزبائن مسؤولية مهندس الجودة.</p>
           </>
         )}
-        {loading && <p className="mt-6 text-slate-400">جاري التحميل...</p>}
+        {loading && <p className="mt-6 text-slate-400">جاري التحميل…</p>}
         {!loading && (
           <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div className="rounded-xl border border-white bg-white p-6 text-center shadow-[0_4px_20px_rgba(15,32,64,0.06)]">
@@ -155,7 +157,7 @@ export default function QualityFollowUpsPage({ embedded }: EmbeddedProps = {}) {
         </>
       )}
 
-      {loading && <p className="mt-6 text-slate-400">جاري التحميل...</p>}
+      {loading && <p className="mt-6 text-slate-400">جاري التحميل…</p>}
       {error && (
         <p className="mt-6 rounded-lg bg-red-50 p-4 text-red-600">تعذر الاتصال بالخادم: {error}</p>
       )}
@@ -170,7 +172,7 @@ export default function QualityFollowUpsPage({ embedded }: EmbeddedProps = {}) {
                     {item.customer.name} — {item.customer.phone}
                   </p>
                   <p className="text-sm text-slate-500">
-                    الحجز: <BookingCodeChip code={item.booking.code} /> — {item.booking.service?.name || 'بدون خدمة محددة'}
+                    الحجز: <BookingCodeChip code={item.booking.code} /> — {bookingServiceLabel(item.booking)}
                   </p>
                   {/* هوية كاملة: مهندس الجودة كان يشوف كود الحجز والخدمة بس */}
                   <EntityIdentity

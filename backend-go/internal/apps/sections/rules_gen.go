@@ -461,12 +461,14 @@ func rules() map[string]map[core.Action]core.Rule {
 			"exhibitions.put_by_id_photos":   func(l string) core.Rule { return perm(l, "unit_technicians") }("يعدّل /api/exhibitions/{id}/photos (صلاحية)"),
 		},
 		"extra_tasks": {
-			"extra_tasks.get_mine":         func(l string) core.Rule { return any_(l) }("يقرا /api/extra-tasks/mine (الدخول — الفحص بالمعالج)"),
-			"extra_tasks.get_mine_count":   func(l string) core.Rule { return any_(l) }("يقرا /api/extra-tasks/mine/count (الدخول — الفحص بالمعالج)"),
-			"extra_tasks.get_root":         func(l string) core.Rule { return perm(l, "extra_tasks_assign") }("يقرا /api/extra-tasks (صلاحية)"),
-			"extra_tasks.post_root":        func(l string) core.Rule { return perm(l, "extra_tasks_assign") }("ينفّذ /api/extra-tasks (صلاحية + طبقة: courier.Wrap('extra_task'))"),
-			"extra_tasks.post_voice_draft": func(l string) core.Rule { return perm(l, "extra_tasks_assign") }("ينفّذ /api/extra-tasks/voice-draft (صلاحية)"),
-			"extra_tasks.put_by_id_cancel": func(l string) core.Rule { return perm(l, "extra_tasks_assign") }("يعدّل /api/extra-tasks/{id}/cancel (صلاحية)"),
+			"extra_tasks.get_mine":          func(l string) core.Rule { return any_(l) }("يقرا /api/extra-tasks/mine (الدخول — الفحص بالمعالج)"),
+			"extra_tasks.get_mine_count":    func(l string) core.Rule { return any_(l) }("يقرا /api/extra-tasks/mine/count (الدخول — الفحص بالمعالج)"),
+			"extra_tasks.get_root":          func(l string) core.Rule { return perm(l, "extra_tasks_assign") }("يقرا /api/extra-tasks (صلاحية)"),
+			"extra_tasks.post_root":         func(l string) core.Rule { return perm(l, "extra_tasks_assign") }("ينفّذ /api/extra-tasks (صلاحية + طبقة: courier.Wrap('extra_task'))"),
+			"extra_tasks.post_voice_draft":  func(l string) core.Rule { return perm(l, "extra_tasks_assign") }("ينفّذ /api/extra-tasks/voice-draft (صلاحية)"),
+			"extra_tasks.put_by_id_cancel":  func(l string) core.Rule { return perm(l, "extra_tasks_assign") }("يعدّل /api/extra-tasks/{id}/cancel (صلاحية)"),
+			"extra_tasks.put_by_id_extend":  func(l string) core.Rule { return perm(l, "extra_tasks_assign") }("يمدّد موعد مهمة (صلاحية) — دازاي 11-15"),
+			"extra_tasks.post_by_id_remind": func(l string) core.Rule { return perm(l, "extra_tasks_assign") }("يذكّر الموظف بمهمة (صلاحية) — دازاي 11-15"),
 		},
 		"field_map": {
 			"field_map.get_root": func(l string) core.Rule {

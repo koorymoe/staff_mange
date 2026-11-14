@@ -73,7 +73,7 @@ func (h *OrgHandler) Assign(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if why := h.guard(r, in.EmployeeID); why != "" {
-		WriteError(w, http.StatusForbidden, why)
+		WriteError(w, http.StatusNotFound, why)
 		return
 	}
 	a, err := h.svc.Assign(middleware.EmployeeIDFromContext(r), in)
@@ -102,7 +102,7 @@ func (h *OrgHandler) End(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if why := h.guard(r, h.svc.AssignmentEmployee(r.PathValue("id"))); why != "" {
-		WriteError(w, http.StatusForbidden, why)
+		WriteError(w, http.StatusNotFound, why)
 		return
 	}
 	a, err := h.svc.End(middleware.EmployeeIDFromContext(r), r.PathValue("id"), in.Reason)

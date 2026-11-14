@@ -28,6 +28,8 @@ function ScheduleTab() {
   const [fRole, setFRole] = useState('')
   const [fState, setFState] = useState('')
   const [msg, setMsg] = useState('')
+  // (دازاي 11-15) الصف الي دا ينحفظ — زره ينقفل حتى ما ينضغط مرتين
+  const [savingId, setSavingId] = useState<string | null>(null)
 
   const load = useCallback(() => { api.getWorkSchedule().then(setRows).catch(() => setMsg('تعذّر جلب الجدول')) }, [])
   useEffect(() => { if (canView) load() }, [canView, load])
@@ -36,13 +38,14 @@ function ScheduleTab() {
 
   const save = async (r: WorkScheduleRow) => {
     const e = edits[r.id]
-    if (!e) return
+    if (!e || savingId) return
+    setSavingId(r.id)
     try {
       await api.setEmployeeSchedule(r.id, { shift: e.shift ?? r.shift, shiftStart: e.shiftStart ?? r.shiftStart, shiftEnd: e.shiftEnd ?? r.shiftEnd, flexibleHours: e.flexibleHours ?? !!r.flexibleHours, offSystemWork: e.offSystemWork ?? !!r.offSystemWork })
       setEdits((x) => { const n = { ...x }; delete n[r.id]; return n })
       setMsg(`انحفظ جدول ${r.name}`)
       load()
-    } catch (err) { setMsg(err instanceof Error ? err.message : 'تعذّر الحفظ') }
+    } catch (err) { setMsg(err instanceof Error ? err.message : 'تعذّر الحفظ') } finally { setSavingId(null) }
   }
 
   const shown = rows.filter((r) => (!q || r.name.includes(q)) && (!fShift || (r.shift || 'MORNING') === fShift)
@@ -92,7 +95,7 @@ function ScheduleTab() {
               const off = e.offSystemWork ?? !!r.offSystemWork
               return (
                 <tr key={r.id} className="border-t border-slate-100 hover:bg-slate-50/50">
-                  <td className="p-2.5"><span className="flex items-center gap-2 font-bold text-[#0f2040]"><span className="grid h-8 w-8 place-items-center rounded-full bg-sky-50 text-[11px] text-[#2c5aad]">{initials(r.name)}</span>{r.name}{r.isLeader && <span className="text-[10px] text-amber-600">قائد</span>}</span></td>
+                  <td className="p-2.5"><span className="flex items-center gap-2 font-bold text-[#0f2040]"><span className="grid h-8 w-8 place-items-center rounded-full bg-sky-50 text-[11px] text-[#2c5aad]">{initials(r.name)}</span>{r.name}{r.isLeader && <span className="text-[10px] text-amber-600">ليدر</span>}</span></td>
                   <td className="p-2.5 text-xs text-slate-500">{roleLabel(r.role)}</td>
                   <td className="p-2.5 text-center">
                     <select disabled={!canEdit} className={`${inp} ${(e.shift ?? r.shift) === 'EVENING' ? 'bg-violet-50' : ''}`} value={e.shift ?? r.shift ?? 'MORNING'} onChange={(ev) => set('shift', ev.target.value)}>
@@ -114,7 +117,7 @@ function ScheduleTab() {
                     </label>
                   </td>
                   <td className="p-2.5 text-center">{pill(dayKind(r), r)}</td>
-                  {canEdit && <td className="p-2.5 text-center">{edits[r.id] ? <button onClick={() => save(r)} className="rounded-lg bg-[#0f2040] px-3 py-1 text-xs font-bold text-white">حفظ</button> : <span className="text-slate-300">⋮</span>}</td>}
+                  {canEdit && <td className="p-2.5 text-center">{edits[r.id] ? <button onClick={() => save(r)} disabled={savingId === r.id} className="rounded-lg bg-[#0f2040] px-3 py-1 text-xs font-bold text-white disabled:opacity-50">حفظ</button> : <span className="text-slate-300">⋮</span>}</td>}
                 </tr>
               )
             })}

@@ -98,13 +98,19 @@ func autoMigrations() []Migration {
 		`,
 		},
 		{
-			Version: "0494_training_curriculum_audiences",
+			Version: "0494_booking_assignment_seen",
+			SQL: `
+			ALTER TABLE "BookingAssignment" ADD COLUMN IF NOT EXISTS "seenAt" timestamp with time zone;
+		`,
+		},
+		{
+			Version: "0495_training_curriculum_audiences",
 			SQL: `
 			ALTER TABLE "TrainingCurriculum" ADD COLUMN IF NOT EXISTS "audiences" text[];
 		`,
 		},
 		{
-			Version: "0495_training_curriculum_assignees",
+			Version: "0496_training_curriculum_assignees",
 			SQL: `
 			ALTER TABLE "TrainingCurriculum" ADD COLUMN IF NOT EXISTS "assignees" text[];
 		`,

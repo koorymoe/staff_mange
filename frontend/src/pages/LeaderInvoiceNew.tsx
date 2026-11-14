@@ -23,6 +23,8 @@ import EntityIdentity from '../components/EntityIdentity'
 import { loadFailed } from '../netErrors'
 import { swallow } from '../utils/swallow'
 
+import { notify } from '../ui/notify'
+import { BackLink } from '../ui/BackLink'
 // صفحة إنشاء فاتورة ليدر — تحل محل شيت جوجل "تكاليف المشروع" + "انشاء الفواتير":
 // اختيار حتى 3 منظومات، بنود تنفيذ لكل منظومة (عدد/ارتفاع/تسليك/طول كيبل/برمجة)،
 // مواد بالكود أو يدوية، خصم، وحساب المجموع الصافي وكود المحاسبة عند الحفظ
@@ -559,7 +561,7 @@ export default function LeaderInvoiceNew({ initialMode, handoverOnly = false }: 
   const shareResult = async (txt: string) => {
     try {
       if (navigator.share) await navigator.share({ text: txt })
-      else { await navigator.clipboard.writeText(txt); alert('انتنسخ النص — تكدر تلصقه بالواتساب') }
+      else { await navigator.clipboard.writeText(txt); notify('انتنسخ النص — تكدر تلصقه بالواتساب', 'success') }
     } catch { /* الموظف ألغى المشاركة — مو خطأ */ }
   }
 
@@ -902,10 +904,11 @@ export default function LeaderInvoiceNew({ initialMode, handoverOnly = false }: 
   return (
     // ترتيب (ع) 10-08: تملي شاشة الحاسبة، ومبسّطة بالموبايل.
     <div className="mx-auto w-full max-w-7xl" dir="rtl">
+      <BackLink to="/leader-invoices" className="mb-2" />
       <div className="flex items-center gap-3">
         <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-sky-50 text-lg sm:h-11 sm:w-11 sm:text-xl">🧮</span>
         <div className="min-w-0">
-          <h2 className="text-xl font-black text-[#0f2040] sm:text-2xl">حساب الكلفة</h2>
+          <h2 className="text-xl font-black text-[#0f2040] sm:text-2xl">{handoverOnly ? '🧾 فواتير حجوزاتي المرحّلة' : 'حساب الكلفة'}</h2>
           <p className="text-[11px] text-slate-500 sm:text-xs">نفس محرك الحساب — تختار إذا استفسار لو مربوط بحجز</p>
         </div>
       </div>

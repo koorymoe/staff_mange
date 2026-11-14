@@ -291,7 +291,7 @@ func (h *BookingHandler) Create(w http.ResponseWriter, r *http.Request) {
 			perms = h.permissions
 		}
 		if !authz.Can(r, perms, authz.InternalBookingCreate) { // (11-04) المحرك
-			WriteError(w, http.StatusForbidden, "حجز داخل الشركة يسجّله الإداري فما فوق")
+			WriteError(w, http.StatusNotFound, "حجز داخل الشركة يسجّله الإداري فما فوق")
 			return
 		}
 	}
@@ -956,7 +956,7 @@ func (h *BookingHandler) Timeline(w http.ResponseWriter, r *http.Request) {
 
 func (h *BookingHandler) handoverReply(w http.ResponseWriter, b *model.Booking, err error) {
 	if errors.Is(err, service.ErrNotHandoverOwner) {
-		WriteError(w, http.StatusForbidden, err.Error())
+		WriteError(w, http.StatusNotFound, err.Error())
 		return
 	}
 	if err != nil {

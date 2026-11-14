@@ -62,7 +62,7 @@ function Sandbox() {
     <div className="wa-page">
       <header className="wa-page-heading">
         <div>
-          <h1>وضع التجربة</h1>
+          <h1>وضع تجربة الواتساب</h1>
           <p>اكتب كأنك زبون، وراجع رد الوكيل وإجراءاته.</p>
         </div>
       </header>

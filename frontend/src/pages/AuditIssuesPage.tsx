@@ -154,7 +154,7 @@ export default function AuditIssuesPage({ embedded }: EmbeddedProps = {}) {
         </div>
       )}
 
-      {loading && <p className="text-center text-slate-400">جاري التحميل...</p>}
+      {loading && <p className="text-center text-slate-400">جاري التحميل…</p>}
 
       <div className="space-y-3">
         {items.map((i) => (

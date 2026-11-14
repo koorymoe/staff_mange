@@ -2,14 +2,15 @@ import { useEffect, useState } from 'react'
 import { api, type Booking, type Service } from '../api'
 import { useSession } from '../session'
 import { swallow } from '../utils/swallow'
+import { bookingStatusLabel } from '../bookingStatus'
+import { fmtDateTime } from '../utils/date'
 
 // ═══ «🪚 شغل الديكور» — (ع) 10-16 ═══
 // الديكور يطلعون ويا الشعبة الهندسية (حداد يسوي قاعدة الداتا شو…) أو قبلها بيوم.
 // من حجز الشعبة ينسجل «حجز ديكور» مربوط بيه: كادره من الديكور، وتقريره وفاتورته إله.
-const STATUS: Record<string, string> = {
-  PENDING: 'معلّق', CONFIRMED: 'مثبّت', IN_PROGRESS: 'قيد التنفيذ', COMPLETED: 'خالص ✅', CANCELLED: 'ملغي', WAITING: 'منتظر',
-}
-const fmt = (s?: string | null) => (s ? new Date(s).toLocaleString('ar-IQ', { timeZone: 'Asia/Baghdad', weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : 'بلا موعد')
+// (دازاي 11-15) كلمات حالة الحجز من مكان واحد (bookingStatus.ts) — جان هنا خريطة محلية بكلمات ثانية
+// (دازاي 11-15) التاريخ من utils/date.ts (عربي، توقيت بغداد)
+const fmt = (s?: string | null) => fmtDateTime(s, { empty: 'بلا موعد', weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
 
 export default function DecorPanel({ booking }: { booking: Booking }) {
   const { employee, permissions } = useSession()
@@ -65,7 +66,7 @@ export default function DecorPanel({ booking }: { booking: Booking }) {
         const notDone = d.status !== 'COMPLETED' && d.status !== 'CANCELLED'
         return (
           <p key={d.id} className="mt-1.5 text-xs text-slate-700">
-            <b>{d.code}</b> · {d.decorTiming === 'BEFORE' ? 'قبل الشعبة' : 'ويا الشعبة'} · {fmt(d.scheduledAt)} · {STATUS[d.status] ?? d.status}
+            <b>{d.code}</b> · {d.decorTiming === 'BEFORE' ? 'قبل الشعبة' : 'ويا الشعبة'} · {fmt(d.scheduledAt)} · {bookingStatusLabel(d.status)}
             {notDone && d.decorTiming === 'BEFORE' && <span className="ms-1 font-bold text-red-700">⚠️ الديكور بعدهم ما خلصوا</span>}
           </p>
         )

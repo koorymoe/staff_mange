@@ -67,7 +67,7 @@ export default function GpsDashboard() {
   }
 
 
-  if (loading) return <div className="flex items-center justify-center p-12"><div className="text-lg text-slate-500">جاري التحميل...</div></div>
+  if (loading) return <div className="flex items-center justify-center p-12"><div className="text-lg text-slate-500">جاري التحميل…</div></div>
   if (error) return <div className="rounded-2xl bg-red-50 p-6 text-red-600 shadow-sm">{error}</div>
 
   const tabs = [
@@ -95,7 +95,7 @@ export default function GpsDashboard() {
       {/* ⚠️ الترويسة المشتركة بدل نسخة يدوية بلون مكتوب بالإيد —
           نفس ترويسة باقي الشاشات، فتتوحّد الشاشة مع النظام. */}
       <div className="mb-6">
-        <PageHeader title="📡 لوحة المراقبة" subtitle="نظام تتبع المركبات GPS" />
+        <PageHeader title="📡 نظام GPS" subtitle="لوحة مراقبة تتبع المركبات" />
       </div>
 
       {/* Tabs */}

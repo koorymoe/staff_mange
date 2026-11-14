@@ -44,7 +44,7 @@ func (h *EmployeeAdminHandler) guardTarget(w http.ResponseWriter, r *http.Reques
 		return false
 	}
 	if isTop(t.Role) {
-		WriteError(w, http.StatusForbidden, "حساب المدير والمالك يعدّله المدير بس")
+		WriteError(w, http.StatusNotFound, "حساب المدير والمالك يعدّله المدير بس")
 		return false
 	}
 	return true
@@ -72,25 +72,25 @@ func (h *EmployeeAdminHandler) UpdateAll(w http.ResponseWriter, r *http.Request)
 		return
 	}
 	if why := selfPerkEdit(r, id, &req); why != "" {
-		WriteError(w, http.StatusForbidden, why)
+		WriteError(w, http.StatusNotFound, why)
 		return
 	}
 	if !isTop(middleware.RoleFromContext(r)) {
 		if req.Role != nil && isTop(*req.Role) {
-			WriteError(w, http.StatusForbidden, "منح دور المدير أو المالك للمدير بس")
+			WriteError(w, http.StatusNotFound, "منح دور المدير أو المالك للمدير بس")
 			return
 		}
 		if req.Role != nil && id == middleware.EmployeeIDFromContext(r) {
-			WriteError(w, http.StatusForbidden, "ما تكدر تغيّر دورك إنت")
+			WriteError(w, http.StatusNotFound, "ما تكدر تغيّر دورك إنت")
 			return
 		}
 		req.SecondaryRoles = nil
 		if t, err := h.service.Get(id); err == nil && t != nil && !h.inScope(r, t.Role) {
-			WriteError(w, http.StatusForbidden, "ما مسموحلك تعدّل موظف بهذا الدور — المالك يحدد الأدوار الي تعدّلها")
+			WriteError(w, http.StatusNotFound, "ما مسموحلك تعدّل موظف بهذا الدور — المالك يحدد الأدوار الي تعدّلها")
 			return
 		}
 		if req.Role != nil && !h.inScope(r, *req.Role) {
-			WriteError(w, http.StatusForbidden, "ما مسموحلك تحوّل الموظف لهذا الدور")
+			WriteError(w, http.StatusNotFound, "ما مسموحلك تحوّل الموظف لهذا الدور")
 			return
 		}
 	}
@@ -114,7 +114,7 @@ func (h *EmployeeAdminHandler) Suspend(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if id == middleware.EmployeeIDFromContext(r) {
-		WriteError(w, http.StatusForbidden, "ما تكدر توقف حسابك إنت")
+		WriteError(w, http.StatusNotFound, "ما تكدر توقف حسابك إنت")
 		return
 	}
 	if !h.guardTarget(w, r, id) {
@@ -156,7 +156,7 @@ func (h *EmployeeAdminHandler) Create(w http.ResponseWriter, r *http.Request) {
 	if role != "OWNER" {
 		ok, _ := h.perms.HasPermission(middleware.EmployeeIDFromContext(r), "employee_create")
 		if !ok {
-			WriteError(w, http.StatusForbidden, "إضافة الموظفين للمالك أو لصاحب صلاحية «إضافة موظف جديد»")
+			WriteError(w, http.StatusNotFound, "إضافة الموظفين للمالك أو لصاحب صلاحية «إضافة موظف جديد»")
 			return
 		}
 	}
@@ -167,7 +167,7 @@ func (h *EmployeeAdminHandler) Create(w http.ResponseWriter, r *http.Request) {
 	}
 	if role != "OWNER" {
 		if req.Role != nil && isTop(*req.Role) {
-			WriteError(w, http.StatusForbidden, "حساب مدير أو مالك يفتحه المالك بس")
+			WriteError(w, http.StatusNotFound, "حساب مدير أو مالك يفتحه المالك بس")
 			return
 		}
 		newRole := "EMPLOYEE"
@@ -175,7 +175,7 @@ func (h *EmployeeAdminHandler) Create(w http.ResponseWriter, r *http.Request) {
 			newRole = *req.Role
 		}
 		if !h.inScope(r, newRole) {
-			WriteError(w, http.StatusForbidden, "ما مسموحلك تضيف موظف بهذا الدور — المالك يحدد الأدوار الي تضيفها")
+			WriteError(w, http.StatusNotFound, "ما مسموحلك تضيف موظف بهذا الدور — المالك يحدد الأدوار الي تضيفها")
 			return
 		}
 		req.SecondaryRoles = nil

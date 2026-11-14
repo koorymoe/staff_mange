@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import StatCard from '../ui/StatCard'
 import { apiRequest } from '../api'
 import { useApi } from '../utils/useApi'
 import { card } from '../ui/classes'
@@ -121,11 +122,7 @@ export default function OwnerIntegrity() {
   )
 }
 
+// (دازاي 11-15) صارت بطاقة مشتركة (ui/StatCard) — هنا بس نحوّل الأسماء.
 function Stat({ k, v, bad }: { k: string; v: string; bad?: boolean }) {
-  return (
-    <div className="rounded-xl bg-slate-50 p-3">
-      <p className="text-[11px] text-slate-500">{k}</p>
-      <p className={`text-lg font-black ${bad ? 'text-red-600' : 'text-[#0f2040]'}`}>{v}</p>
-    </div>
-  )
+  return <StatCard label={k} value={bad ? <span className="text-red-600">{v}</span> : v} tone={bad ? 'red' : 'slate'} />
 }

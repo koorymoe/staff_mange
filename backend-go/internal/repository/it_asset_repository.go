@@ -266,7 +266,7 @@ func (r *ItAssetRepository) Stats() (*ItStats, error) {
 	s.WarrantySoon = []ItAsset{}
 	if err := r.db.Select(&s.WarrantySoon, itAssetSelect+`
 		WHERE a.status <> 'RETIRED' AND a."warrantyUntil" IS NOT NULL
-		  AND a."warrantyUntil" <= CURRENT_DATE + 60
+		  AND a."warrantyUntil" <= baghdad_today() + 60
 		ORDER BY a."warrantyUntil" LIMIT 20`); err != nil {
 		return nil, err
 	}

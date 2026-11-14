@@ -7,6 +7,7 @@ import QuotationTermsEditor from '../components/QuotationTermsEditor'
 import { numIQ as fmt, todayBaghdad } from '../utils/format'
 import { askConfirm } from '../ui/dialogs'
 
+import { notify } from '../ui/notify'
 const PRIMARY = '#1a237e'
 // ⚠️ نسخة **النص** تنقلب بالوضع الليلي، والأصل يبقى للأسطح:
 // نفس اللون يخدم عنواناً غامقاً على أبيض، ورأس جدول كحلي عليه نص أبيض.
@@ -75,7 +76,7 @@ export default function QuotationsPage() {
       await api.deleteQuotation(id)
       load(search)
     } catch (e) {
-      alert(e instanceof Error ? e.message : 'حدث خطأ')
+      notify(e instanceof Error ? e.message : 'حدث خطأ')
     }
   }
 
@@ -143,7 +144,7 @@ export default function QuotationsPage() {
         />
       </div>
 
-      {loading && <p className="text-t-faint text-center p-10">جاري التحميل...</p>}
+      {loading && <p className="text-t-faint text-center p-10">جاري التحميل…</p>}
       {error && (
         <div className="bg-sf-danger border border-[#fecaca] rounded-lg p-4 text-t-danger">
           تعذر الاتصال بالخادم: {error}

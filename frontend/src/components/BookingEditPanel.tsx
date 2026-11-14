@@ -10,6 +10,7 @@ import { parseAmount } from '../utils/money'
 import { askConfirm } from '../ui/dialogs'
 import { swallow } from '../utils/swallow'
 
+import { notify } from '../ui/notify'
 // ═══ تعديل الحجز بمكان واحد ═══
 //
 // التعديل جان موزّع: السعر والعنوان بتنسيق الحجوزات، والموعد بمكان
@@ -58,7 +59,7 @@ export default function BookingEditPanel({
       setBookingType(updated.bookingType)
       onSaved(updated)
     } catch (e) {
-      alert(e instanceof Error ? e.message : 'تعذر تغيير نوع الحجز')
+      notify(e instanceof Error ? e.message : 'تعذر تغيير نوع الحجز')
       setBookingType(booking.bookingType)
     } finally { setTypeBusy(false) }
   }

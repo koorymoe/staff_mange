@@ -16,6 +16,7 @@ import {
 import { useSession, isAdminOrOwner } from '../session'
 import './SecretaryPage.css'
 import { irisHonorific } from '../irisIdentity'
+import { notify } from '../ui/notify'
 type IrisTrace = {
   text: string
   tools: number
@@ -1576,7 +1577,7 @@ function Secretary() {
                                       c.link!,
                                       c.title.replace(/^📊\s*/, '') + '.xlsx',
                                     )
-                                    .catch((e: Error) => window.alert(e.message))
+                                    .catch((e: Error) => notify(e.message))
                                 : navigate(c.link!)
                             }
                           >

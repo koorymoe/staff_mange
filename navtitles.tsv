@@ -1,0 +1,201 @@
+/secretary	🗂️ ايريس	ايريس	pages/SecretaryPage.tsx:1418
+/ai-agents	🤖 وكلاء الذكاء	🤖 وكلاء الذكاء	pages/AiAgentsPage.tsx:115
+/core-matrix	🏴‍☠️ مصفوفة الصلاحيات	🏴‍☠️ مصفوفة الصلاحيات	pages/CoreMatrixPage.tsx:57
+/core-admin	🗄️ لوحة الأدمن	🗄️ لوحة الأدمن	pages/CoreAdminPage.tsx:76
+/owner-grants	👑 صلاحياتي لمدير النظام	👑 صلاحيات المالك لمدير النظام	pages/OwnerGrantsPage.tsx:41
+/ai-suggestions	🧠 اقتراحات الذكاء	🧠 اقتراحات الذكاء	pages/AiSuggestionsPage.tsx:110
+/org	🏛️ الهيكل التنظيمي	-	pages/OrgPage.tsx:0
+/org/directors-ranking	🏆 تصنيف المدراء والموظفين	🏆 تصنيف المدراء والموظفين	pages/StaffScoreHub.tsx:18
+/org/score-monitor	🔍 مراقبة التقييم	🔍 مراقبة التقييم	pages/ScoreMonitorPage.tsx:58
+/org/plans	📋 الخطط	📋 خطط الإدارات والوحدات	pages/OrgPlansPage.tsx:36
+/my-org	🏛️ مكاني	-	components/MyOrgCard.tsx:0
+/org/desk	🏛️ مكتب الإدارة	-	pages/OrgDeskPage.tsx:0
+/voice-terms	👂 قاموس الأذن	👂 قاموس الأذن	pages/VoiceTermsPage.tsx:174
+/matrix-chat	🤖 محادثة ماتركس	-	components/MatrixChat.tsx:0
+/whatsapp-conversations	محادثات الواتساب	محادثات الواتساب	pages/WhatsAppPage.tsx:120
+/bot-reports	📩 بلاغات الموظفين	📩 بلاغات الموظفين	pages/BotReportsPage.tsx:29
+/whatsapp-sandbox	وضع تجربة الواتساب	وضع التجربة	pages/WhatsAppSandboxPage.tsx:65
+/service-studies	🧪 دراسات الخدمات	إدارة الخدمات	pages/ServiceStudiesPage.tsx:89
+/car-wash	🧽 غسل السيارات	🧽 غسل السيارات	pages/CarWashPage.tsx:34
+/attendance	جدول دوامي	شكراً! تم تسجيل حضورك	pages/AttendancePage.tsx:147
+/my-work	مهامي وإنجازاتي	-	pages/MyWorkPage.tsx:0
+/remote-hours	🏠 ساعات العمل من البيت	🏠 ساعات العمل من البيت	pages/RemoteHoursPage.tsx:26
+/my-ranking	التقييم	التقييم	pages/MyRanking.tsx:301
+/finance-desk	🧾 التدقيق والدوار	-	pages/FinanceDeskPage.tsx:0
+/cost-calc	🧮 حساب الكلفة	-	pages/CostCalcPage.tsx:0
+/leader-invoices	🧾 فواتير الليدر	فاتورة ليدر	pages/LeaderInvoicesListPage.tsx:98
+/monitor-desk	🗂️ مكتب المراقب	🗂️ مكتب المراقب	pages/MonitorDeskPage.tsx:169
+/accountant-desk	🧾 مكتب المحاسب	🧾 مكتب المحاسب	pages/AccountantDeskPage.tsx:14
+/quality-desk	⭐ مكتب الجودة	⭐ مكتب الجودة	pages/QualityDeskPage.tsx:41
+/reports-desk	📑 تقارير الحجوزات والمشاريع	📑 تقارير الحجوزات والمشاريع	pages/ReportsDeskPage.tsx:27
+/achievements	📝 الإنجازات اليومية	📋 الإنجازات	pages/AchievementsPage.tsx:54
+/field-map	🗺️ خريطة الميدان	🗺️ خريطة الميدان	pages/FieldMapPage.tsx:124
+/late-audit	🔍 فحص المتأخرات	🔍 فحص المتأخرات	pages/LateAuditPage.tsx:59
+/matrix-selfcheck	🧪 فحص دقة ماتركس	🧪 فحص دقة ماتركس	pages/MatrixSelfCheckPage.tsx:21
+/remote-hours	🏠 ساعات العمل من البيت	🏠 ساعات العمل من البيت	pages/RemoteHoursPage.tsx:26
+/my-ranking	⭐ التقييم	التقييم	pages/MyRanking.tsx:301
+/staff-management-desk	إدارة الموظفين	إدارة الموظفين	pages/StaffManagementDeskPage.tsx:87
+/leaves	🗓️ طلبات الإجازات	-	pages/LeavesHub.tsx:0
+/stats-management	إدارة الإحصائيات	📊 الإحصائيات	pages/StatsManagementPage.tsx:392
+/bookings	📋 الحجوزات	-	pages/BookingsHub.tsx:0
+/my-handovers	🛠️ حجوزاتي المسلّمة	الحجوزات	pages/MyHandoversPage.tsx:16
+/maintenance-contracts	🔄 عقود الصيانة	🔄 عقود الصيانة الدورية	pages/MaintenanceContractsPage.tsx:63
+/sales-opportunities	💡 فرص البيع	💡 فرص البيع	pages/SalesOpportunitiesPage.tsx:61
+/gps/purchase	طلب GPS جديد	تم إرسال الطلب!	pages/gps/GpsPurchase.tsx:94
+/gps/delivery	تسليم أجهزة GPS	تسليم أجهزة GPS 📦	pages/gps/GpsDelivery.tsx:128
+/gps/renewal	طلب تجديد GPS	تم إرسال طلب التجديد للإداري	pages/gps/GpsRenewal.tsx:62
+/gps/maintenance-request	طلب صيانة GPS	تم إرسال طلب الصيانة!	pages/gps/GpsMaintenanceRequestPage.tsx:64
+/customers	العملاء	الزبائن	pages/Customers.tsx:183
+/bookings-archive	أرشيف الحجوزات	🗄️ أرشيف الحجوزات	pages/BookingsArchive.tsx:58
+/ai-insights	🧠 مؤشرات الذكاء الاصطناعي	🧠 إحصائيات ومؤشرات الذكاء الاصطناعي	pages/AiInsightsPage.tsx:107
+/weekly-report	📊 التقرير الأسبوعي	📊 التقرير الأسبوعي	pages/WeeklyReportPage.tsx:84
+/manager-requests	📨 طلبات للمدير	📨 طلبات للمدير	pages/ManagerRequestsPage.tsx:58
+/discipline-record	📒 سجل الانضباط الوظيفي	📒 سجل الانضباط الوظيفي	pages/DisciplineRecordPage.tsx:81
+/project-payments	💰 فلوس المشاريع	💰 فلوس المشاريع	pages/ProjectPaymentsPage.tsx:34
+/staff-score	🏆 تصنيف المدراء والموظفين	🏆 تصنيف المدراء والموظفين	pages/StaffScoreHub.tsx:18
+/staff-reports	🧾 تقارير الموظفين	🧾 تقارير الموظفين	pages/StaffReportsPage.tsx:26
+/employee-dossier	📂 ملف الموظف	📂 ملف الموظف	pages/EmployeeDossierPage.tsx:37
+/peer-voice	🗣️ صوت الموظفين	🗣️ صوت الموظفين	pages/PeerVoicePage.tsx:41
+/revisits	🔁 الرجعات	🔁 الرجعات	pages/RevisitsPage.tsx:27
+/workplace-issues	🤝 المشاكل الوظيفية	🤝 المشاكل الوظيفية	pages/WorkplaceIssuesPage.tsx:114
+/matrix/decisions	🤖 صندوق قرارات ماتركس	🤖 صندوق قرارات ماتركس	pages/MatrixDecisionsPage.tsx:108
+/duplicate-review	🤖 ماتركس — التكرار	🤖 ماتركس — تدقيق التكرار	pages/DuplicateReviewPage.tsx:92
+/achievements	📋 الإنجازات	📋 الإنجازات	pages/AchievementsPage.tsx:54
+/solar	☀️ الطاقة الشمسية	☀️ نظام الطاقة الشمسية	pages/SolarPage.tsx:63
+/solar-inquiries	📞 استفسارات الطاقة الشمسية	📞 استفسارات الطاقة الشمسية	pages/SolarInquiriesPage.tsx:85
+/missions	تتبع المهام	نظام تتبع المهام الميدانية 🎯	pages/MissionsPage.tsx:324
+/gps	📡 نظام GPS	📡 لوحة المراقبة	pages/gps/GpsDashboard.tsx:98
+/gps	📡 جي بي اس	📡 لوحة المراقبة	pages/gps/GpsDashboard.tsx:98
+/gps/employee	📍 لوحتي GPS	👋 مرحباً	pages/gps/GpsEmployee.tsx:124
+/gps/requests-hub	📥 طلبات GPS	📥 طلبات GPS	pages/gps/GpsRequestsHub.tsx:33
+/work-reports	📝 تقرير خدمة	تقرير العمل	pages/WorkReportPage.tsx:242
+/leader-invoices	🧾 فواتير الخدمة مالتي	فاتورة ليدر	pages/LeaderInvoicesListPage.tsx:98
+/gps/follow-up	🔄 متابعة تجديد الاشتراكات	🔄 متابعة تجديد الاشتراكات	pages/gps/GpsFollowUp.tsx:180
+/service-managers	مسؤولو الخدمات	مسؤولو الخدمات 🛠️	pages/ServiceManagersPage.tsx:55
+/network-prices	أسعار الشبكات	أسعار الشبكات	pages/NetworkPricesPage.tsx:102
+/projects	🏗️ المشاريع	➕ إضافة مشروع جديد	pages/ProjectsPage.tsx:192
+/project-work-types	إعدادات: أنواع الأعمال	إعدادات إدارة المشاريع — أنواع الأعمال	pages/ProjectWorkTypesSettingsPage.tsx:52
+/project-statistics	📊 إحصائيات المشاريع	📊 إحصائيات المشاريع	pages/ProjectStatisticsPage.tsx:110
+/checklists	الكشوفات	الكشوفات	pages/ChecklistsPage.tsx:81
+/staff-requests	طلبات الكادر	👷 طلبات الكادر	pages/StaffRequestsPage.tsx:118
+/quotations	عروض الأسعار	عروض الأسعار	pages/QuotationsPage.tsx:96
+/products	📦 المنتجات	إضافة منتج	pages/ProductsPage.tsx:152
+/quotations	📄 عروض الأسعار	عروض الأسعار	pages/QuotationsPage.tsx:96
+/products	📦 المنتجات	إضافة منتج	pages/ProductsPage.tsx:152
+/my-projects	📥 المشاريع الموجّهة لي	➕ إضافة مشروع جديد	pages/ProjectsPage.tsx:192
+/my-projects	المشاريع الموجّهة لي	➕ إضافة مشروع جديد	pages/ProjectsPage.tsx:192
+/tech-suppliers	🏪 موردين التقنيين	-	pages/SuppliersHub.tsx:0
+/finance	تدقيق الحسابات	📊 تدقيق الحسابات	pages/Finance.tsx:325
+/daily-audit	📅 التدقيق اليومي	📅 التدقيق اليومي	pages/DailyAuditPage.tsx:224
+/credits	⏳ الآجل	⏳ الآجل	pages/CreditsPage.tsx:41
+/revolving-fund	💵 الدوار	💵 الدوار	pages/RevolvingFundPage.tsx:133
+/audit-issues	💸 بلاغات أخطاء التدقيق		pages/AuditIssuesPage.tsx:140
+/leader-invoices/new	🧮 حساب الكلفة	الكلفة التقريبية	pages/LeaderInvoiceNew.tsx:736
+/decor-rates	🪚 أسعار الديكور	🪚 جدول أسعار الديكور	pages/DecorRatesPage.tsx:30
+/gps-install-costs	🔧 حساب تكاليف الشد	🔧 حساب تكاليف الشد	pages/GpsInstallCostsPage.tsx:42
+/leader-invoices	🧾 فواتير الليدر	فاتورة ليدر	pages/LeaderInvoicesListPage.tsx:98
+/expenses	إدارة المصاريف	إدارة المصاريف	pages/ExpensesReview.tsx:49
+/procurement	طلبات المواد	طلبات المواد والمشتريات	pages/ProcurementPage.tsx:255
+/inventory	جرد الأدوات	إدارة المخزون والأدوات	pages/InventoryPage.tsx:516
+/store-tools	🧰 أدوات المخزن	🧰 أدوات المخزن التخصصية	pages/StoreToolsPage.tsx:51
+/suppliers	الموردون	-	pages/SuppliersHub.tsx:0
+/vehicles	إدارة المركبات	إدارة المركبات	pages/VehiclesPage.tsx:498
+/vehicle-drivers	🪪 السواق وبطاقات البنزين	🪪 السواق وبطاقات البنزين	pages/VehicleDriversPage.tsx:19
+/vehicle-tracking	🚗 متابعة السيارات	🚗 متابعة السيارات	pages/VehicleTrackingPage.tsx:203
+/fleet-dashboard	لوحة تحكم الأسطول	لوحة التحكم الشاملة للأسطول	pages/FleetDashboardPage.tsx:23
+/vehicle-bookings	حجز المركبات	حجز المركبات	pages/VehicleBookingsPage.tsx:124
+/vehicle-missions	مهمات المركبات	مهمات المركبات	pages/VehicleMissionsPage.tsx:175
+/my-paperwork	📄 ورق حجوزاتي القديمة	📄 ورق حجوزاتي القديمة	pages/MyPaperworkPage.tsx:15
+/my-expenses	مصاريفي	مصاريفي	pages/MyExpenses.tsx:113
+/gps/employee	📍 لوحتي GPS	👋 مرحباً	pages/gps/GpsEmployee.tsx:124
+/tech-suppliers	🏪 موردين التقنيين	-	pages/SuppliersHub.tsx:0
+/my-tasks	🔧 مهام الميدان	مهامي	pages/MyTasks.tsx:483
+/my-handovers	🛠️ حجوزاتي المسلّمة	الحجوزات	pages/MyHandoversPage.tsx:16
+/leader-invoices/new	🧮 حساب الكلفة	الكلفة التقريبية	pages/LeaderInvoiceNew.tsx:736
+/handover-invoices	🧾 فواتير حجوزاتي المرحّلة	الكلفة التقريبية	pages/LeaderInvoiceNew.tsx:736
+/device-maintenance	صيانة الأجهزة	صيانة الأجهزة	pages/DeviceMaintenancePage.tsx:91
+/procurement	طلبات المواد	طلبات المواد والمشتريات	pages/ProcurementPage.tsx:255
+/my-inventory	الجرد	جرد الأدوات والمعدات	pages/MyInventory.tsx:224
+/my-projects	🏗️ المشاريع	➕ إضافة مشروع جديد	pages/ProjectsPage.tsx:192
+/my-handovers	🛠️ حجوزاتي المسلّمة	الحجوزات	pages/MyHandoversPage.tsx:16
+/work-reports	📝 تقرير خدمة	تقرير العمل	pages/WorkReportPage.tsx:242
+/leader-invoices	🧾 فواتير الخدمة مالتي	فاتورة ليدر	pages/LeaderInvoicesListPage.tsx:98
+/bookings	الحجوزات	-	pages/BookingsHub.tsx:0
+/missions	تتبع المهام	نظام تتبع المهام الميدانية 🎯	pages/MissionsPage.tsx:324
+/customers	العملاء	الزبائن	pages/Customers.tsx:183
+/staff-management-desk	إدارة الموظفين	إدارة الموظفين	pages/StaffManagementDeskPage.tsx:87
+/work-schedule	🕘 جدول الدوام	🕘 جدول الدوام	pages/WorkSchedulePage.tsx:63
+/remote-hours	🏠 ساعات العمل من البيت	🏠 ساعات العمل من البيت	pages/RemoteHoursPage.tsx:26
+/staff-leaves	🗓️ إجازات الموظفين	-	pages/LeavesHub.tsx:0
+/stats-management	📊 الإحصائيات	📊 الإحصائيات	pages/StatsManagementPage.tsx:392
+/tech-bookings	🛠️ حجوزات التقنيين	🛠️ حجوزات التقنيين	pages/TechBookingsPage.tsx:78
+/tech-products	📦 المنتجات والمعارض	-	pages/TechProductsHub.tsx:0
+/tech-content	📚 المحتوى التقني	-	pages/TechContentHub.tsx:0
+/tech-suppliers	🏪 موردين التقنيين	-	pages/SuppliersHub.tsx:0
+/supplier-relations	🤝 علاقات الموردين	-	pages/SuppliersHub.tsx:0
+/training-center	🧠 مركز التدريب	🎓 مركز التدريب	pages/TrainingCenterPage.tsx:56
+/projects	🏗️ المشاريع	➕ إضافة مشروع جديد	pages/ProjectsPage.tsx:192
+/project-work-types	إعدادات: أنواع الأعمال	إعدادات إدارة المشاريع — أنواع الأعمال	pages/ProjectWorkTypesSettingsPage.tsx:52
+/project-statistics	📊 إحصائيات المشاريع	📊 إحصائيات المشاريع	pages/ProjectStatisticsPage.tsx:110
+/checklists	الكشوفات	الكشوفات	pages/ChecklistsPage.tsx:81
+/quotations	عروض الأسعار	عروض الأسعار	pages/QuotationsPage.tsx:96
+/products	📦 المنتجات	إضافة منتج	pages/ProductsPage.tsx:152
+/project-payments	💰 فلوس المشاريع	💰 فلوس المشاريع	pages/ProjectPaymentsPage.tsx:34
+/my-projects	المشاريع الموجّهة لي	➕ إضافة مشروع جديد	pages/ProjectsPage.tsx:192
+/gps	📡 نظام GPS	📡 لوحة المراقبة	pages/gps/GpsDashboard.tsx:98
+/gps/requests-hub	📥 طلبات GPS	📥 طلبات GPS	pages/gps/GpsRequestsHub.tsx:33
+/gps/follow-up	🔄 متابعة تجديد الاشتراكات	🔄 متابعة تجديد الاشتراكات	pages/gps/GpsFollowUp.tsx:180
+/solar	☀️ الطاقة الشمسية	☀️ نظام الطاقة الشمسية	pages/SolarPage.tsx:63
+/solar-inquiries	📞 استفسارات الطاقة الشمسية	📞 استفسارات الطاقة الشمسية	pages/SolarInquiriesPage.tsx:85
+/work-reports	📝 تقرير خدمة	تقرير العمل	pages/WorkReportPage.tsx:242
+/leader-invoices/new	🧮 حساب الكلفة	الكلفة التقريبية	pages/LeaderInvoiceNew.tsx:736
+/service-managers	مسؤولو الخدمات	مسؤولو الخدمات 🛠️	pages/ServiceManagersPage.tsx:55
+/network-prices	أسعار الشبكات	أسعار الشبكات	pages/NetworkPricesPage.tsx:102
+/gps-install-costs	🔧 حساب تكاليف الشد	🔧 حساب تكاليف الشد	pages/GpsInstallCostsPage.tsx:42
+/vip-customers	⭐ الشخصيات المهمة	⭐ الشخصيات المهمة	pages/VipCustomersPage.tsx:94
+/supplier-relations	🤝 علاقات الموردين	-	pages/SuppliersHub.tsx:0
+/media	📸 مشاريع للتصوير	📸 الإعلام والعلاقات العامة	pages/MediaPage.tsx:106
+/customer-app	📱 تطبيق الزبائن	📱 تطبيق الزبائن	pages/CustomerAppAdminPage.tsx:75
+/monitor-desk	🗂️ مكتب المراقب	🗂️ مكتب المراقب	pages/MonitorDeskPage.tsx:169
+/field-map	🗺️ خريطة الميدان	🗺️ خريطة الميدان	pages/FieldMapPage.tsx:124
+/late-audit	🔍 فحص المتأخرات	🔍 فحص المتأخرات	pages/LateAuditPage.tsx:59
+/matrix-selfcheck	🧪 فحص دقة ماتركس	🧪 فحص دقة ماتركس	pages/MatrixSelfCheckPage.tsx:21
+/crew-bookings-audit	تدقيق تنسيق الحجوزات	تدقيق تنسيق الحجوزات	pages/MonitorCrewBookingsPage.tsx:94
+/privacy-policy	🔒 إدارة سياسة الخصوصية	🔒 سياسة الخصوصية	pages/PrivacyPolicyPage.tsx:77
+/finance	تدقيق الحسابات	📊 تدقيق الحسابات	pages/Finance.tsx:325
+/daily-audit	📅 التدقيق اليومي	📅 التدقيق اليومي	pages/DailyAuditPage.tsx:224
+/credits	⏳ الآجل	⏳ الآجل	pages/CreditsPage.tsx:41
+/audit-issues	💸 بلاغات أخطاء التدقيق		pages/AuditIssuesPage.tsx:140
+/leader-invoices	🧾 فواتير الليدر	فاتورة ليدر	pages/LeaderInvoicesListPage.tsx:98
+/revolving-fund	💵 الدوار	💵 الدوار	pages/RevolvingFundPage.tsx:133
+/expenses	إدارة المصاريف	إدارة المصاريف	pages/ExpensesReview.tsx:49
+/procurement	طلبات المواد	طلبات المواد والمشتريات	pages/ProcurementPage.tsx:255
+/suppliers	الموردون	-	pages/SuppliersHub.tsx:0
+/vehicles	إدارة المركبات	إدارة المركبات	pages/VehiclesPage.tsx:498
+/vehicle-tracking	🚗 متابعة السيارات	🚗 متابعة السيارات	pages/VehicleTrackingPage.tsx:203
+/fleet-dashboard	لوحة تحكم الأسطول	لوحة التحكم الشاملة للأسطول	pages/FleetDashboardPage.tsx:23
+/vehicle-bookings	حجز المركبات	حجز المركبات	pages/VehicleBookingsPage.tsx:124
+/vehicle-missions	مهمات المركبات	مهمات المركبات	pages/VehicleMissionsPage.tsx:175
+/inventory	جرد الأدوات	إدارة المخزون والأدوات	pages/InventoryPage.tsx:516
+/store-tools	🧰 أدوات المخزن	🧰 أدوات المخزن التخصصية	pages/StoreToolsPage.tsx:51
+/matrix/decisions	🤖 صندوق قرارات ماتركس	🤖 صندوق قرارات ماتركس	pages/MatrixDecisionsPage.tsx:108
+/ai-insights	🧠 مؤشرات الذكاء الاصطناعي	🧠 إحصائيات ومؤشرات الذكاء الاصطناعي	pages/AiInsightsPage.tsx:107
+/weekly-report	📊 التقرير الأسبوعي	📊 التقرير الأسبوعي	pages/WeeklyReportPage.tsx:84
+/manager-requests	📨 طلبات للمدير	📨 طلبات للمدير	pages/ManagerRequestsPage.tsx:58
+/staff-score	🏆 تصنيف المدراء والموظفين	🏆 تصنيف المدراء والموظفين	pages/StaffScoreHub.tsx:18
+/staff-reports	🧾 تقارير الموظفين	🧾 تقارير الموظفين	pages/StaffReportsPage.tsx:26
+/employee-dossier	📂 ملف الموظف	📂 ملف الموظف	pages/EmployeeDossierPage.tsx:37
+/peer-voice	🗣️ صوت الموظفين	🗣️ صوت الموظفين	pages/PeerVoicePage.tsx:41
+/revisits	🔁 الرجعات	🔁 الرجعات	pages/RevisitsPage.tsx:27
+/workplace-issues	🤝 المشاكل الوظيفية	🤝 المشاكل الوظيفية	pages/WorkplaceIssuesPage.tsx:114
+/duplicate-review	🤖 ماتركس — التكرار	🤖 ماتركس — تدقيق التكرار	pages/DuplicateReviewPage.tsx:92
+/quality	📝 مراجعة تقارير العمل	📝 مراجعة تقارير العمل	pages/QualityPage.tsx:68
+/work-reports-review	مراجعة تقارير العمل	تقارير العمل — مراجعة	pages/WorkReportsReview.tsx:68
+/design-sets	🏗️ صيت التصاميم	🏗️ صيت التصاميم	pages/DesignSetsPage.tsx:41
+/plan-sets	📐 سيت المخططات	سيت المخططات	pages/PlanSetsPage.tsx:68
+/design-forms/quick-add	إضافة سؤال	لأي فورمة تريد تضيف السؤال؟	pages/DesignFormQuickAddPage.tsx:39
+/design-forms	فورمة التصميم	وحدة التصميم — فورمة التصميم	pages/DesignFormsListPage.tsx:98
+/design-gallery	🎨 معرض التصاميم	🎨 معرض التصاميم	pages/DesignGalleryPage.tsx:107
+/it-assets	🖥️ جرد الأجهزة	🖥️ جرد أجهزة تقنية المعلومات	pages/ItAssetsPage.tsx:198
+/it-stats	📊 إحصائيات الـIT	📊 إحصائيات تقنية المعلومات	pages/ItStatsPage.tsx:34
+/media	📸 مشاريع للتصوير	📸 الإعلام والعلاقات العامة	pages/MediaPage.tsx:106

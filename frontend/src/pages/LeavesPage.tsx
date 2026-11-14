@@ -1,7 +1,10 @@
 import { useEffect, useState } from 'react'
+import Modal from '../ui/Modal'
 import { api, type LeaveRequest, type LeaveStatus } from '../api'
 import { askConfirm } from '../ui/dialogs'
 
+import { notify } from '../ui/notify'
+import { fmtDate } from '../utils/date'
 /**
  * الإجازات.
  *
@@ -18,7 +21,8 @@ const STATUS_STYLE: Record<LeaveStatus, string> = {
   CANCELLED: 'bg-slate-200 text-slate-600',
 }
 
-const fmt = (d: string) => new Date(d).toLocaleDateString('ar-IQ', { year: 'numeric', month: 'long', day: 'numeric' })
+// (دازاي 11-15) التاريخ من utils/date.ts (عربي، توقيت بغداد)
+const fmt = (d: string) => fmtDate(d)
 const iso = (d: Date) => d.toISOString().slice(0, 10)
 
 export default function LeavesPage() {
@@ -56,15 +60,15 @@ export default function LeavesPage() {
   const [minDate] = useState(() => iso(new Date(Date.now() + 2 * 24 * 60 * 60 * 1000)))
 
   const submit = async () => {
-    if (!start) { alert('اختر تاريخ الإجازة'); return }
+    if (!start) { notify('اختر تاريخ الإجازة'); return }
     setBusy(true)
     try {
       await api.createLeave({ startDate: start, endDate: end || undefined, reason: reason || null })
       setOpen(false); setStart(''); setEnd(''); setReason('')
       load()
-      alert('انرفع طلب الإجازة — راح يوصلك إشعار بالقرار')
+      notify('انرفع طلب الإجازة — راح يوصلك إشعار بالقرار', 'success')
     } catch (e) {
-      alert(e instanceof Error ? e.message : 'تعذر تقديم الطلب')
+      notify(e instanceof Error ? e.message : 'تعذر تقديم الطلب')
     } finally { setBusy(false) }
   }
 
@@ -77,7 +81,7 @@ export default function LeavesPage() {
       setNoteFor(null); setNote('')
       load()
     } catch (e) {
-      alert(e instanceof Error ? e.message : 'تعذر إعطاء الموافقة الأولية')
+      notify(e instanceof Error ? e.message : 'تعذر إعطاء الموافقة الأولية')
     } finally { setBusy(false) }
   }
 
@@ -91,14 +95,14 @@ export default function LeavesPage() {
       setNoteFor(null); setNote('')
       load()
     } catch (e) {
-      alert(e instanceof Error ? e.message : 'تعذر تنفيذ القرار')
+      notify(e instanceof Error ? e.message : 'تعذر تنفيذ القرار')
     } finally { setBusy(false) }
   }
 
   const cancel = async (l: LeaveRequest) => {
     if (!(await askConfirm('تسحب طلب الإجازة؟'))) return
     try { await api.cancelLeave(l.id); load() }
-    catch (e) { alert(e instanceof Error ? e.message : 'خطأ') }
+    catch (e) { notify(e instanceof Error ? e.message : 'خطأ') }
   }
 
   const ini = (n: string) => n.split(/\s+/).slice(0, 2).map((w) => w[0]).join(' ')
@@ -172,7 +176,7 @@ export default function LeavesPage() {
     </div>
   )
 
-  if (loading) return <div dir="rtl" className="p-8 text-center text-slate-500">جاري التحميل...</div>
+  if (loading) return <div dir="rtl" className="p-8 text-center text-slate-500">جاري التحميل…</div>
 
   // المفتوح = جديد + موافقة أولية. الموافقة الأولية تبقى بالعد حتى
   // ما ينتسى الطلب بنص الطريق.
@@ -236,9 +240,7 @@ export default function LeavesPage() {
       </div>
 
       {open && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={() => setOpen(false)}>
-          <div dir="rtl" className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl" onClick={(e) => e.stopPropagation()}>
-            <h3 className="text-lg font-bold text-t-title">طلب إجازة</h3>
+        <Modal title="طلب إجازة" onClose={() => setOpen(false)} size="md" bodyClassName="p-6">
             <p className="mt-1 rounded-lg bg-slate-50 p-3 text-xs text-slate-600">
               الإجازة تُطلب قبل يومين على الأقل من تاريخها.
             </p>
@@ -262,8 +264,7 @@ export default function LeavesPage() {
               </button>
               <button onClick={() => setOpen(false)} className="rounded-lg border border-slate-300 px-4 py-3 font-medium text-slate-700">إلغاء</button>
             </div>
-          </div>
-        </div>
+</Modal>
       )}
     </div>
   )

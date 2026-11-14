@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { api, type ExtraTask } from '../api'
 
+import { notify } from '../ui/notify'
 // ═══ مهامي الإضافية — شاشة الموظف ═══
 //
 // «هاي راح تطلع يم منو؟ يم الموظف الي انتوجّه له العمل».
@@ -43,7 +44,7 @@ export default function MyExtraTasks() {
   const start = async (t: ExtraTask) => {
     setBusy(t.id)
     try { await api.startExtraTask(t.id); load() }
-    catch (e) { alert(e instanceof Error ? e.message : 'تعذر البدء') }
+    catch (e) { notify(e instanceof Error ? e.message : 'تعذر البدء') }
     finally { setBusy(null) }
   }
 

@@ -45,7 +45,7 @@ export default function OwnerGrantsPage() {
       <div className="flex flex-wrap gap-2">
         {data.admins.map((a) => (
           <button key={a.id} type="button" onClick={() => choose(a.id)} aria-pressed={who === a.id}
-            className={`rounded-xl px-4 py-2 text-sm font-bold ring-1 ${who === a.id ? 'bg-brand-700 text-white ring-brand-700' : 'bg-white text-slate-800 ring-slate-200'}`}>
+            className={`rounded-xl px-4 py-2 text-sm font-bold ring-1 ${who === a.id ? 'bg-[#0f2040] text-white ring-brand-700' : 'bg-white text-slate-800 ring-slate-200'}`}>
             {a.name} <span className="ms-1 text-xs opacity-75">({(data.grants[a.id] ?? []).length})</span>
           </button>
         ))}
@@ -68,7 +68,7 @@ export default function OwnerGrantsPage() {
             ))}
           </ul>
           <div className="flex items-center gap-3">
-            <button type="button" disabled={busy} onClick={save} className="min-h-11 rounded-xl bg-brand-700 px-6 text-sm font-extrabold text-white disabled:opacity-50">{busy ? '…' : 'احفظ'}</button>
+            <button type="button" disabled={busy} onClick={save} className="min-h-11 rounded-xl bg-[#0f2040] px-6 text-sm font-extrabold text-white disabled:opacity-50">{busy ? '…' : 'احفظ'}</button>
             {msg && <span role="status" className="text-sm font-bold text-emerald-700">{msg}</span>}
             {error && <span role="alert" className="text-sm font-bold text-red-700">{error}</span>}
           </div>

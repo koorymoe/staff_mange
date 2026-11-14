@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react'
+import Modal from '../../ui/Modal'
 import { api, type GpsMaintenanceRequest } from '../../api'
 import { loadFailed } from '../../netErrors'
 
+import { notify } from '../../ui/notify'
 const statusMap: Record<string, { label: string; className: string }> = {
   PENDING: { label: 'معلق', className: 'bg-amber-50 text-amber-700' },
   IN_PROGRESS: { label: 'قيد المعالجة', className: 'bg-violet-50 text-violet-700' },
@@ -33,7 +35,7 @@ export default function GpsMaintenanceReview({ embedded }: { embedded?: boolean 
       setSelected(null)
       load()
     } catch (e) {
-      alert(e instanceof Error ? e.message : 'حدث خطأ')
+      notify(e instanceof Error ? e.message : 'حدث خطأ')
     } finally {
       setSaving(false)
     }
@@ -45,7 +47,7 @@ export default function GpsMaintenanceReview({ embedded }: { embedded?: boolean 
         <h2 className="mb-6 text-2xl font-bold text-brand-900">طلبات الصيانة 🔧</h2>
       )}
 
-      {loading && <p className="py-20 text-center text-slate-400">جاري التحميل...</p>}
+      {loading && <p className="py-20 text-center text-slate-400">جاري التحميل…</p>}
       {!loading && requests.length === 0 && (
         <div className="rounded-2xl bg-white py-16 text-center shadow-sm">
           <p className="text-lg text-slate-400">لا توجد طلبات صيانة</p>
@@ -70,19 +72,14 @@ export default function GpsMaintenanceReview({ embedded }: { embedded?: boolean 
                 </div>
               </div>
               <button onClick={() => { setSelected(req); setNotes(req.adminNotes || '') }}
-                className="rounded-lg bg-brand-500 px-4 py-2 text-sm font-bold text-white hover:bg-brand-600">تفاصيل ←</button>
+                className="rounded-lg bg-brand-500 px-4 py-2 text-sm font-bold text-white hover:bg-[#1a3a6c]">تفاصيل ←</button>
             </div>
           )
         })}
       </div>
 
       {selected && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 p-4">
-          <div className="w-full max-w-xl rounded-2xl bg-white shadow-2xl">
-            <div className="flex items-center justify-between border-b border-slate-100 p-5">
-              <h3 className="text-lg font-bold text-brand-900">تفاصيل طلب الصيانة</h3>
-              <button onClick={() => setSelected(null)} className="text-2xl text-slate-400 hover:text-slate-600">×</button>
-            </div>
+        <Modal title="تفاصيل طلب الصيانة" onClose={() => setSelected(null)} size="lg" bodyClassName="p-0">
             <div className="space-y-4 p-6">
               <div className="grid grid-cols-2 gap-3 rounded-xl bg-slate-50 p-4 text-sm">
                 <p><span className="text-slate-500">الاسم: </span><b>{selected.customer.fullName} {selected.customer.fatherName} {selected.customer.grandfatherName}</b></p>
@@ -104,8 +101,7 @@ export default function GpsMaintenanceReview({ embedded }: { embedded?: boolean 
               <button onClick={() => handleUpdate('IN_PROGRESS')} disabled={saving} className="flex-1 rounded-lg bg-violet-50 py-2.5 text-sm font-bold text-violet-700 hover:bg-violet-100 disabled:opacity-50">قيد المعالجة</button>
               <button onClick={() => handleUpdate('COMPLETED')} disabled={saving} className="flex-1 rounded-lg bg-emerald-50 py-2.5 text-sm font-bold text-emerald-700 hover:bg-emerald-100 disabled:opacity-50">✅ مكتمل</button>
             </div>
-          </div>
-        </div>
+</Modal>
       )}
     </div>
   )

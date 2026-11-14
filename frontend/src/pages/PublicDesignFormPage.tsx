@@ -66,7 +66,7 @@ export default function PublicDesignFormPage() {
   }
 
   if (loading) {
-    return <div style={wrapStyle}><p style={{ color: PRIMARY_TEXT, fontWeight: 700 }}>جاري التحميل...</p></div>
+    return <div style={wrapStyle}><p style={{ color: PRIMARY_TEXT, fontWeight: 700 }}>جاري التحميل…</p></div>
   }
 
   if (error && !done) {

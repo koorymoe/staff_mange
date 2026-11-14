@@ -64,7 +64,7 @@ function DailyTab() {
       </div>
 
       {err && <p className="text-t-danger text-center p-10">{err}</p>}
-      {!stats && !err && <p className="text-t-faint text-center p-10">جاري التحميل...</p>}
+      {!stats && !err && <p className="text-t-faint text-center p-10">جاري التحميل…</p>}
 
       {stats && (
         <>
@@ -157,7 +157,7 @@ function WeeklyTab() {
       </div>
 
       {err && <p className="text-t-danger text-center p-10">{err}</p>}
-      {!stats && !err && <p className="text-t-faint text-center p-10">جاري التحميل...</p>}
+      {!stats && !err && <p className="text-t-faint text-center p-10">جاري التحميل…</p>}
 
       {stats && (
         <>
@@ -249,7 +249,7 @@ function ServicesTab() {
   const [stats, setStats] = useState<Stats | null>(null)
   useEffect(() => { api.getStats().then(setStats).catch(() => setStats(null)) }, [])
 
-  if (!stats) return <p className="text-t-faint text-center p-10">جاري التحميل...</p>
+  if (!stats) return <p className="text-t-faint text-center p-10">جاري التحميل…</p>
   // (ل) 11-12 دازاي: «كل خدمة شكد صار عليها طلب هذا الشهر وبالكلي — شنو أكثر الخدمات»
   const all = [...stats.serviceBreakdown].sort((a, b) => b.count - a.count)
   const month = [...stats.serviceBreakdown].filter((s) => s.monthCount > 0).sort((a, b) => b.monthCount - a.monthCount)
@@ -299,7 +299,7 @@ function InternalWorksTab() {
           className="py-2 px-2.5 border border-bd-line rounded-lg text-[14px]" />
       </div>
 
-      {!rep && <p className="text-t-faint text-center p-10">جاري التحميل...</p>}
+      {!rep && <p className="text-t-faint text-center p-10">جاري التحميل…</p>}
 
       {rep && (
         <>

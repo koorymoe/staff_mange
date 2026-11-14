@@ -4,6 +4,7 @@ import BookingProgressTimeline from '../components/BookingProgressTimeline'
 import { lazyRetry } from '../utils/staleReload'
 import PctWhy from '../ui/PctWhy'
 
+import { notify } from '../ui/notify'
 // ═══ «📑 تقارير الحجوزات والمشاريع» — (ع) 10-16 ═══
 // «وين المراقب يشوف التقارير مال الحجوزات ومال المشاريع؟» — بمكان واحد:
 // تقرير العمل لكل حجز منجز، والتقرير اليومي لكل مشروع (يوم يوم) — نفس
@@ -76,7 +77,7 @@ function ProjectReports() {
               {r.unreviewed > 0 && (
                 <button type="button" onClick={async () => {
                   try { await api.reviewProjectReports(r.bookingId); setRows((rs) => (rs ?? []).map((x) => (x.bookingId === r.bookingId ? { ...x, unreviewed: 0 } : x))) }
-                  catch (e) { alert(e instanceof Error ? e.message : 'تعذر') }
+                  catch (e) { notify(e instanceof Error ? e.message : 'تعذر') }
                 }} className="mb-3 rounded-lg bg-emerald-600 px-4 py-1.5 text-sm font-bold text-white">✅ تم التدقيق ({r.unreviewed} تقرير)</button>
               )}
               <BookingProgressTimeline bookingId={r.bookingId} />

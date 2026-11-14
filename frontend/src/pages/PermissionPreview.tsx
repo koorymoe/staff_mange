@@ -150,7 +150,7 @@ export default function PermissionPreview() {
           )}
 
           {loading ? (
-            <p className="text-slate-400">جاري التحميل...</p>
+            <p className="text-slate-400">جاري التحميل…</p>
           ) : (
             <div className="space-y-1 rounded-xl border border-white bg-white p-4 shadow-[0_4px_20px_rgba(15,32,64,0.06)]">
               {walk(navItems)}

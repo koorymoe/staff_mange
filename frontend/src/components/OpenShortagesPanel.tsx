@@ -56,14 +56,14 @@ export default function OpenShortagesPanel({ canResolve }: { canResolve: boolean
       <div className="flex flex-wrap items-center gap-2">
         {AGES.map((a) => (
           <button key={a.key} type="button" onClick={() => setMinAge(a.key)}
-            className={`rounded-full px-3 py-1 text-xs font-bold ${minAge === a.key ? 'bg-brand-700 text-white' : 'bg-slate-100 text-slate-600'}`}>
+            className={`rounded-full px-3 py-1 text-xs font-bold ${minAge === a.key ? 'bg-[#0f2040] text-white' : 'bg-slate-100 text-slate-600'}`}>
             {a.label}
           </button>
         ))}
         <span className="mx-1 h-4 w-px bg-slate-300" />
         {[['', 'كل الأولويات'], ['URGENT', PRI.URGENT.label], ['HIGH', PRI.HIGH.label], ['NORMAL', PRI.NORMAL.label]].map(([k, l]) => (
           <button key={k} type="button" onClick={() => setPri(k)}
-            className={`rounded-full px-3 py-1 text-xs font-bold ${pri === k ? 'bg-brand-700 text-white' : 'bg-slate-100 text-slate-600'}`}>
+            className={`rounded-full px-3 py-1 text-xs font-bold ${pri === k ? 'bg-[#0f2040] text-white' : 'bg-slate-100 text-slate-600'}`}>
             {l}{k && rows ? ` (${rows.filter((c) => c.priority === k).length})` : ''}
           </button>
         ))}

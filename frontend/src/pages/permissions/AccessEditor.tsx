@@ -1,3 +1,4 @@
+import { OrgRolesPanel } from './OrgRolesPanel'
 import { useEffect, useLayoutEffect, useState } from 'react'
 import { accessApi, type AccessAgent, type AccessGroup, type AccessState, type AccessAudit } from '../../permissionAccess'
 import { roleLabel } from '../../roleLabels'
@@ -311,6 +312,7 @@ export function AccessEditor({
           {success}
         </p>
       )}
+      <OrgRolesPanel employeeId={id} />
       {!state ? (
         !error && <p role="status">دا أجيب صلاحيات الموظف…</p>
       ) : (

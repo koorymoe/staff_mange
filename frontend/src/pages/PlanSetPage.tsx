@@ -7,6 +7,8 @@ import { printProjectQuote } from '../utils/projectQuotePrint'
 import { ArtCrop, IconCity, IconFolder, IconPdf, IconUpload } from './design/planArt'
 import type { PlanFileRow, PlanMeta, PlanSetDetail, PlanSetRow } from './design/planTypes'
 import PlanSheetEditor from './design/PlanSheetEditor'
+import { DeleteButton } from '../ui/DeleteButton'
+import { BackLink } from '../ui/BackLink'
 
 // ═══ 📐 سيت واحد — (ك) 11-10 بطلب دازاي ═══
 // «تختار الي تريده وتسوي ابلود وترفع صورة أو ملف للمخطط… ينحفظ بالنظام… تسوي تنزيل
@@ -140,6 +142,7 @@ export default function PlanSetPage() {
           <div className="flex items-center gap-3">
             <span className="text-amber-400"><IconCity size={40} /></span>
             <div>
+              <BackLink to="/plan-sets" className="mb-2" />
               <h2 className="text-2xl font-extrabold">{d.title}</h2>
               <p className="text-xs text-white/70">{d.projectCode ? `${d.projectCode} — ${d.projectName ?? ''} · ` : ''}{d.items.length} مخطط{d.createdByName ? ` · فتحه ${d.createdByName}` : ''}{locked ? ' · مؤرشف' : ''}</p>
               {d.notes && <p className="mt-1 text-sm text-white/80">{d.notes}</p>}
@@ -194,7 +197,7 @@ export default function PlanSetPage() {
           const on = g.no === group
           return (
             <button key={g.no} type="button" onClick={() => { setGroup(g.no); setType(g.types.length === 1 ? g.types[0].code : '') }}
-              className={`flex items-center gap-2 rounded-xl border p-2.5 text-start transition ${on ? 'border-brand-700 bg-brand-700 text-white shadow-md' : 'border-slate-200 bg-white hover:border-brand-700'}`}>
+              className={`flex items-center gap-2 rounded-xl border p-2.5 text-start transition ${on ? 'border-brand-700 bg-[#0f2040] text-white shadow-md' : 'border-slate-200 bg-white hover:border-brand-700'}`}>
               <span className={`grid h-8 w-8 shrink-0 place-items-center rounded-lg text-sm font-extrabold ${on ? 'bg-white/20 text-white' : 'bg-slate-100 text-brand-700'}`}>{g.no}</span>
               <span className="min-w-0 flex-1">
                 <b className={`block text-xs leading-snug ${on ? 'text-white' : 'text-slate-800'}`} title={g.name}>{GROUP_ICON[g.no]} {g.name}</b>
@@ -263,7 +266,7 @@ export default function PlanSetPage() {
                             <span className="truncate text-slate-700" title={f.title}>{f.title}</span>
                             {isImageFile(f) && !locked && <button type="button" onClick={() => setSheetFor({ file: f, typeName: t.name })} title="لوغو، اسم المخطط، ملاحظات، سكيل، تاريخ"
                               className={`shrink-0 font-bold ${f.sheetName || f.sheetNotes || f.sheetScale ? 'text-emerald-700' : 'text-amber-600'}`}>🗂️ الفورما</button>}
-                            {d.canManage && !locked && <button type="button" disabled={busy} onClick={() => void run(() => apiRequest(`/plan-files/${f.id}`, { method: 'DELETE' }))} className="shrink-0 text-red-600">شيل</button>}
+                            {d.canManage && !locked && <DeleteButton disabled={busy} confirm={`تحذف المخطط «${f.title}» من السيت؟`} onConfirm={() => run(() => apiRequest(`/plan-files/${f.id}`, { method: 'DELETE' }))} className="shrink-0 !px-1.5 !py-0.5 !text-[11px]" />}
                           </div>
                         </div>
                       ))}

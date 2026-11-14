@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { api, type GpsCustomer } from '../../api'
 import { matches } from '../../utils/search'
 
+import { notify } from '../../ui/notify'
 export default function GpsCustomers() {
   const [customers, setCustomers] = useState<GpsCustomer[]>([])
   const [loading, setLoading] = useState(true)
@@ -35,7 +36,7 @@ export default function GpsCustomers() {
       setShowForm(false)
       load()
     } catch (e) {
-      alert(e instanceof Error ? e.message : 'حدث خطأ')
+      notify(e instanceof Error ? e.message : 'حدث خطأ')
     } finally {
       setSubmitting(false)
     }
@@ -110,7 +111,7 @@ export default function GpsCustomers() {
         </div>
       )}
 
-      {loading && <div className="flex items-center justify-center p-12"><div className="text-lg text-slate-500">جاري التحميل...</div></div>}
+      {loading && <div className="flex items-center justify-center p-12"><div className="text-lg text-slate-500">جاري التحميل…</div></div>}
       {error && <div className="rounded-2xl bg-red-50 p-6 text-red-600 shadow-sm">{error}</div>}
 
       {/* Customer Cards */}

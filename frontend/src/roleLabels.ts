@@ -82,7 +82,30 @@ const SHORT_LABELS: Partial<Record<EmployeeRole, string>> = {
  */
 export function roleLabel(role: string | null | undefined): string {
   if (!role) return '—'
-  return ROLE_LABELS[role as EmployeeRole] ?? role
+  return ROLE_LABELS[role as EmployeeRole] ?? LEGACY_LABELS[role] ?? role
+}
+
+// (دازاي 11-15) رموز قديمة مو بالنوع بس بعدها تجي من السيرفر — جانت بخريطة StaffRating لحالها
+const LEGACY_LABELS: Record<string, string> = { GPS_ENGINEER: 'جي بي اس' }
+
+/**
+ * (دازاي 11-15) دور الشخص **بكادر الحجز/الفحص** (مو دوره بالنظام) — جان مكتوب بثلاث ملفات:
+ * زيارات الحجز، الحجوزات الجزئية، وجرد الفريق. هسه من هنا.
+ */
+export const CREW_ROLE_LABELS: Record<string, string> = {
+  LEADER: 'الليدر',
+  TECH_1: 'الفني الأول',
+  TECH_2: 'الفني الثاني',
+  TECH_3: 'الفني الثالث',
+  EMPLOYEE1: 'الموظف الأول',
+  EMPLOYEE2: 'الموظف الثاني',
+  REPORTER: 'كتب تقرير',
+}
+const CREW_ROLE_SHORT: Record<string, string> = { LEADER: 'ليدر', TECH_1: 'فني ١', TECH_2: 'فني ٢', TECH_3: 'فني ٣' }
+
+/** اسم دور الكادر — `short` للشرائح الضيّقة. الرمز المجهول يرجع كما هو. */
+export function crewRoleLabel(role: string, short = false): string {
+  return (short ? CREW_ROLE_SHORT[role] : undefined) ?? CREW_ROLE_LABELS[role] ?? role
 }
 
 /**

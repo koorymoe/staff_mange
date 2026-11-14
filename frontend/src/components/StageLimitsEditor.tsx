@@ -8,9 +8,13 @@ export default function StageLimitsEditor() {
   const [rows, setRows] = useState<StageLimitRow[] | null>(null)
   const [draft, setDraft] = useState<Record<string, string>>({})
   const [err, setErr] = useState('')
+  const [busy, setBusy] = useState(false) // (دازاي 11-15) قفل الحفظ المزدوج — الزر ينقفل لحد ما يرجع الجواب
   useEffect(() => { api.getStageLimits().then(setRows).catch((e) => setErr(e instanceof Error ? e.message : 'تعذر')) }, [])
-  const save = (stage: string, days: number | null) =>
-    api.setStageLimit(stage, days).then((r) => { setRows(r); setDraft((d) => ({ ...d, [stage]: '' })) }).catch((e) => setErr(e instanceof Error ? e.message : 'تعذر'))
+  const save = (stage: string, days: number | null) => {
+    if (busy) return
+    setBusy(true)
+    return api.setStageLimit(stage, days).then((r) => { setRows(r); setDraft((d) => ({ ...d, [stage]: '' })) }).catch((e) => setErr(e instanceof Error ? e.message : 'تعذر')).finally(() => setBusy(false))
+  }
   if (err) return <p className="text-sm text-red-600">{err}</p>
   if (!rows) return null
   return (
@@ -27,9 +31,9 @@ export default function StageLimitsEditor() {
             <input type="number" min={1} max={365} value={draft[r.stage] ?? ''} placeholder="يدوي"
               onChange={(e) => setDraft({ ...draft, [r.stage]: e.target.value })}
               className="w-20 rounded-lg border border-slate-300 px-2 py-1 text-sm" />
-            <button type="button" disabled={!Number(draft[r.stage])} onClick={() => void save(r.stage, Number(draft[r.stage]))}
+            <button type="button" disabled={busy || !Number(draft[r.stage])} onClick={() => void save(r.stage, Number(draft[r.stage]))}
               className="rounded-lg bg-[#2c5aad] px-3 py-1 text-xs font-bold text-white disabled:opacity-40">احفظ</button>
-            {r.manual != null && <button type="button" onClick={() => void save(r.stage, null)} className="text-xs font-bold text-slate-500 underline">رجّع لماتركس</button>}
+            {r.manual != null && <button type="button" disabled={busy} onClick={() => void save(r.stage, null)} className="text-xs font-bold text-slate-500 underline">رجّع لماتركس</button>}
           </div>
         ))}
       </div>

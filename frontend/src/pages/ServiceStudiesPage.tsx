@@ -2,8 +2,9 @@ import { useEffect, useState } from 'react'
 import { api, type ServiceStudy, type Employee } from '../api'
 import { useSession, isAdminOrOwner } from '../session'
 import { loadFailed } from '../netErrors'
-import { askInput } from '../ui/dialogs'
+import { askConfirm, askInput } from '../ui/dialogs'
 
+import { notify } from '../ui/notify'
 function splitList(v: string) {
   return v.split(',').map((s) => s.trim()).filter(Boolean)
 }
@@ -37,7 +38,7 @@ export default function ServiceStudiesPage({ embedded }: { embedded?: boolean } 
       setNewName('')
       load()
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'تعذر إضافة الخدمة')
+      notify(err instanceof Error ? err.message : 'تعذر إضافة الخدمة')
     } finally {
       setSaving(false)
     }
@@ -67,13 +68,15 @@ export default function ServiceStudiesPage({ embedded }: { embedded?: boolean } 
       setReportDraft((d) => ({ ...d, [id]: '' }))
       load()
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'تعذر رفع التقرير')
+      notify(err instanceof Error ? err.message : 'تعذر رفع التقرير')
     } finally {
       setBusyId(null)
     }
   }
 
   const handleArchive = async (id: string) => {
+    // الأرشفة تشيل الدراسة من القائمة الفعّالة — نسأل قبل (دازاي 11-15)
+    if (!(await askConfirm('تأرشف هذي الدراسة؟ تختفي من الدراسات الفعّالة.', { okLabel: 'أرشفة' }))) return
     setBusyId(id)
     try {
       await api.archiveServiceStudy(id)
@@ -86,20 +89,20 @@ export default function ServiceStudiesPage({ embedded }: { embedded?: boolean } 
   return (
     <div>
       {!embedded && (
-        <h2 className="text-2xl font-bold text-brand-900">إدارة الخدمات</h2>
+        <h2 className="text-2xl font-bold text-brand-900">🧪 دراسات الخدمات</h2>
       )}
       <p className="mt-1 text-slate-500">خدمة جديدة مقترحة تحتاج دراسة — المدير يوكّل تقنيين محددين، وكل موكَّل يرفع تقارير.</p>
 
       {canAdd && (
         <form onSubmit={handleCreate} className="mt-4 mb-4 flex gap-2 rounded-xl border border-white bg-white p-4 shadow-sm">
           <input value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="اسم الخدمة المراد فتحها" className="flex-1 rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand-500" />
-          <button type="submit" disabled={saving} className="rounded-lg bg-brand-500 px-4 py-2 text-sm font-bold text-white hover:bg-brand-600 disabled:opacity-50">
+          <button type="submit" disabled={saving} className="rounded-lg bg-brand-500 px-4 py-2 text-sm font-bold text-white hover:bg-[#1a3a6c] disabled:opacity-50">
             {saving ? 'جاري...' : '+ إضافة'}
           </button>
         </form>
       )}
 
-      {loading && <p className="text-slate-400">جاري التحميل...</p>}
+      {loading && <p className="text-slate-400">جاري التحميل…</p>}
       {!loading && items.length === 0 && <p className="text-slate-400">لا توجد خدمات مقترحة بعد.</p>}
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
@@ -141,7 +144,7 @@ export default function ServiceStudiesPage({ embedded }: { embedded?: boolean } 
                     rows={2}
                     className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand-500"
                   />
-                  <button onClick={() => handleAddReport(s.id)} disabled={busyId === s.id} className="mt-1 rounded-lg bg-brand-500 px-3 py-1.5 text-xs font-bold text-white hover:bg-brand-600 disabled:opacity-50">
+                  <button onClick={() => handleAddReport(s.id)} disabled={busyId === s.id} className="mt-1 rounded-lg bg-brand-500 px-3 py-1.5 text-xs font-bold text-white hover:bg-[#1a3a6c] disabled:opacity-50">
                     رفع التقرير
                   </button>
                 </div>

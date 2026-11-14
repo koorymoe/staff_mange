@@ -62,7 +62,7 @@ export default function CoreMatrixPage() {
           ['anyone', 'أي موظف', count((r) => !!r.anyone && !r.roles?.length && !r.perms?.length)], ['owner', 'المالك بس', count((r) => !!r.ownerOnly)],
           ['unused', 'بلا مسار', count((r) => !!r.unused)]] as const).map(([k, l, n]) => (
           <button key={k} type="button" onClick={() => setKind(k)} aria-pressed={kind === k}
-            className={`rounded-xl p-3 text-start ring-1 ${kind === k ? 'bg-brand-700 text-white ring-brand-700' : 'bg-white text-slate-800 ring-slate-200'}`}>
+            className={`rounded-xl p-3 text-start ring-1 ${kind === k ? 'bg-[#0f2040] text-white ring-brand-700' : 'bg-white text-slate-800 ring-slate-200'}`}>
             <div className="text-2xl font-extrabold tabular-nums">{n}</div><div className="text-xs">{l}</div>
           </button>
         ))}

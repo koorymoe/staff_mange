@@ -16,6 +16,7 @@ export default function MatrixGuideRules() {
   const [editId, setEditId] = useState<string | null>(null)
   const [err, setErr] = useState<string | null>(null)
   const [reload, setReload] = useState(0)
+  const [busy, setBusy] = useState(false) // (دازاي 11-15) قفل الحفظ المزدوج — الزر ينقفل لحد ما يرجع الجواب
 
   useEffect(() => {
     let alive = true
@@ -24,12 +25,14 @@ export default function MatrixGuideRules() {
   }, [reload])
 
   const save = async () => {
+    if (busy) return
     setErr(null)
+    setBusy(true)
     try {
       if (editId) await api.updateGuideRule(editId, form)
       else await api.createGuideRule(form)
       setForm(EMPTY); setEditId(null); setReload((n) => n + 1)
-    } catch (e) { setErr(e instanceof Error ? e.message : 'تعذر الحفظ') }
+    } catch (e) { setErr(e instanceof Error ? e.message : 'تعذر الحفظ') } finally { setBusy(false) }
   }
   const toggle = async (r: MatrixGuideRule) => {
     try { await api.updateGuideRule(r.id, { ...r, enabled: !r.enabled }); setReload((n) => n + 1) } catch (e) { setErr(e instanceof Error ? e.message : 'تعذر') }
@@ -67,7 +70,7 @@ export default function MatrixGuideRules() {
         <label className="flex items-center gap-2 text-xs"><input type="checkbox" checked={!!form.onlyIfPending} onChange={(e) => setForm({ ...form, onlyIfPending: e.target.checked })} /> بس إذا عنده شغل باقي</label>
         <div className="flex gap-2 md:col-span-3 md:justify-end">
           {editId && <button onClick={() => { setForm(EMPTY); setEditId(null) }} className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs">إلغاء</button>}
-          <button onClick={save} className="rounded-lg bg-brand-600 px-4 py-1.5 text-xs font-bold text-white">{editId ? 'حفظ التعديل' : '➕ إضافة تعليمة'}</button>
+          <button onClick={save} disabled={busy} className="rounded-lg bg-[#0f2040] px-4 py-1.5 text-xs font-bold text-white disabled:opacity-50">{editId ? 'حفظ التعديل' : '➕ إضافة تعليمة'}</button>
         </div>
       </div>
 

@@ -65,7 +65,7 @@ export default function GpsMaintenanceRequestPage() {
         <p className="mb-6 text-slate-500">سيتم مراجعته من قبل الموظف الإداري</p>
         <div className="flex justify-center gap-3">
           <button onClick={() => navigate('/')} className="rounded-lg bg-slate-100 px-5 py-2.5 text-sm font-bold text-slate-600 hover:bg-slate-200">الرئيسية</button>
-          <button onClick={resetForm} className="rounded-lg bg-brand-500 px-5 py-2.5 text-sm font-bold text-white hover:bg-brand-600">طلب جديد</button>
+          <button onClick={resetForm} className="rounded-lg bg-brand-500 px-5 py-2.5 text-sm font-bold text-white hover:bg-[#1a3a6c]">طلب جديد</button>
         </div>
       </div>
     )
@@ -103,7 +103,7 @@ export default function GpsMaintenanceRequestPage() {
       </div>
 
       {error && <p className="mb-4 rounded-lg bg-red-50 p-3 text-center text-sm text-red-600">{error}</p>}
-      <button onClick={handleSubmit} disabled={loading} className="w-full rounded-xl bg-brand-500 py-3 text-sm font-bold text-white hover:bg-brand-600 disabled:opacity-50">
+      <button onClick={handleSubmit} disabled={loading} className="w-full rounded-xl bg-brand-500 py-3 text-sm font-bold text-white hover:bg-[#1a3a6c] disabled:opacity-50">
         {loading ? 'جاري الإرسال...' : 'إرسال طلب الصيانة ←'}
       </button>
     </div>

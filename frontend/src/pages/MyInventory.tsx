@@ -10,6 +10,7 @@ import { acceptedBookings } from '../utils/acceptedBookings'
 import BookingCodeChip from '../components/BookingCodeChip'
 import { swallow } from '../utils/swallow'
 
+import { notify } from '../ui/notify'
 type TabKey = 'checklist' | 'team' | 'vehicle' | 'request' | 'my-requests'
 
 // ═══ «الجرد» مدخل واحد ═══
@@ -182,7 +183,7 @@ export default function MyInventory() {
       setCheckDone(true)
       if (forBooking) loadCrew(forBooking)
     } catch (e) {
-      alert(e instanceof Error ? e.message : 'تعذر تسجيل الجرد')
+      notify(e instanceof Error ? e.message : 'تعذر تسجيل الجرد')
     } finally {
       setSubmittingCheck(false)
     }
@@ -242,7 +243,7 @@ export default function MyInventory() {
         ))}
       </div>
 
-      {loading && <p className="mt-6 text-slate-400">جاري التحميل...</p>}
+      {loading && <p className="mt-6 text-slate-400">جاري التحميل…</p>}
       {error && <p className="mt-6 rounded-lg bg-red-50 p-4 text-red-600">تعذر الاتصال بالخادم: {error}</p>}
 
       {!loading && !error && (
@@ -283,7 +284,7 @@ export default function MyInventory() {
                           onClick={() => pickBooking(b.id)}
                           className={`rounded-lg px-2 py-1 text-[10px] font-bold transition ${
                             b.id === forBooking
-                              ? 'bg-brand-700 text-white'
+                              ? 'bg-[#0f2040] text-white'
                               : 'border border-slate-300 bg-white text-slate-600 hover:bg-slate-50'
                           }`}
                         >

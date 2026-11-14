@@ -11,6 +11,7 @@ import StaffPointsBoard from '../components/StaffPointsBoard'
 import { askInput } from '../ui/dialogs'
 import { swallow } from '../utils/swallow'
 import PctWhy from '../ui/PctWhy'
+import { roleLabelShort } from '../roleLabels'
 
 // ═══ تقييم الموظفين — قرار (ع) 10-05 ═══
 // النهائي = ٦٠٪ ماتركس (نقاط كل حجز ويوم دوام ومهمة ومشروع) + ٤٠٪ البشر
@@ -20,10 +21,7 @@ const pct = (v: number | null) => (v == null ? '—' : `${Math.round(v)}%`)
 const tone = (v: number | null) => (v == null ? '#94a3b8' : v >= 80 ? '#059669' : v >= 60 ? '#d97706' : '#dc2626')
 const SRC: Record<string, string> = { BOOKING: 'الحجوزات', DAY: 'الحضور', TASK: 'المهام', PROJECT: 'المشاريع', PROCUREMENT: 'المخازن', MONITOR: 'التدقيق', DUTY: 'واجب التقييم', REPORT: 'تقرير الإنجاز' }
 const STAGE: Record<string, string> = { LEADER_CREW: 'الليدر', COORD_LEADER: 'الإداري', AUDIT: 'المراقب', QUALITY_CALL: 'الجودة', MONITOR_PERIODIC: 'المراقب (دوري)' }
-const ROLE_AR: Record<string, string> = {
-  FINANCE: 'محاسب', DESIGNER: 'مصمم', IT_SUPPORT: 'آيتي', TECHNICIAN: 'فني', ENGINEER: 'مهندس', HR_COORDINATOR: 'إداري',
-  SALES: 'مبيعات', MEDIA: 'إعلام', PUBLIC_RELATIONS: 'علاقات عامة', QUALITY_ENGINEER: 'جودة', MONITOR: 'مراقب', PROJECT_MANAGER: 'مدير مشاريع', PROCUREMENT_ADMIN: 'إداري كميات',
-}
+// (دازاي 11-15) أسماء الأدوار من roleLabels.ts — جانت خريطة محلية
 
 const GROUP_ORDER = ['LEADERS', 'TECHS', 'DECOR', 'COORDINATORS', 'SALES', 'TECHNICAL', 'FINANCE', 'PROCUREMENT', 'MONITORS', 'QUALITY', 'DESIGN', 'IT', 'PROJECTS', 'OTHERS']
 const REV_SRC: Record<string, string> = { BOOKED: 'الي سجّلها', WORK: 'الي اشتغلها (حصته من الكادر)', PROJECT: 'دفعات المشاريع الي هو مسؤولها' }
@@ -209,7 +207,7 @@ export default function StaffScorePage() {
         </div>
         <div className="flex items-center gap-2">
           <input type="month" value={month || b.month} onChange={(e) => setMonth(e.target.value)} className="rounded-lg border border-slate-200 px-2 py-1 text-sm" />
-          {admin && <button type="button" disabled={busy} onClick={() => void run()} className="rounded-lg bg-violet-700 px-3 py-1.5 text-xs font-bold text-white disabled:opacity-50">🔄 احسب هسه</button>}
+          {admin && <button type="button" disabled={busy} onClick={() => void run()} className="rounded-lg bg-[#0f2040] px-3 py-1.5 text-xs font-bold text-white disabled:opacity-50">🔄 احسب هسه</button>}
         </div>
       </div>
       {admin && <OwnerSwitch switchKey={SWITCH_MATRIX_SCORING} label="ماتركس يقيّم الموظفين بالنقاط لحاله" hint="شغّال = يحسب كل ساعة. مطفي = ما يحسب لحاله (تقدر تحسب يدوي بزر «احسب هسه» حتى تجرّب)." />}
@@ -226,7 +224,7 @@ export default function StaffScorePage() {
       <div className="flex gap-1.5">
         {([['points', '🏅 رصيد النقاط'], ['list', '📋 التقييم'], ['compare', '⚖️ المقارنة']] as const).map(([k, l]) => (
           <button key={k} type="button" onClick={() => setView(k)}
-            className={`rounded-lg px-3 py-1.5 text-sm font-bold ${view === k ? 'bg-violet-700 text-white' : 'bg-white text-slate-700 ring-1 ring-slate-200'}`}>{l}</button>
+            className={`rounded-lg px-3 py-1.5 text-sm font-bold ${view === k ? 'bg-[#0f2040] text-white' : 'bg-white text-slate-700 ring-1 ring-slate-200'}`}>{l}</button>
         ))}
       </div>
       {view === 'compare' && <GroupRanking staff={shown} />}
@@ -240,7 +238,7 @@ export default function StaffScorePage() {
               className={`flex w-full items-center justify-between gap-2 rounded-xl border px-3 py-2 text-right ${sel === s.id ? 'border-[#0f2040] bg-white shadow' : 'border-slate-200 bg-white/80 hover:bg-white'}`}>
               <span className="flex items-center gap-2">
                 <span className="w-5 text-xs text-slate-400">{s.final == null ? '' : i + 1}</span>
-                <span><b className="text-sm">{s.name}</b> <span className="text-xs text-slate-500">{ROLE_AR[s.role] ?? s.role}</span>
+                <span><b className="text-sm">{s.name}</b> <span className="text-xs text-slate-500">{roleLabelShort(s.role)}</span>
                   {s.noHuman && <PendingHumanBadge />}</span>
               </span>
               <span className="flex items-center gap-3 text-xs">

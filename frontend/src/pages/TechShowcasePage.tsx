@@ -3,6 +3,7 @@ import { api, storeFile, type TechShowcaseItem, fileUrl } from '../api'
 import { useSession } from '../session'
 import { loadFailed } from '../netErrors'
 
+import { notify } from '../ui/notify'
 // ⚠️ `embedded`: الشاشة تنعرض جوّا تبويب بمدخل موحّد — فترويستها
 // الخاصة تنشال حتى ما تتكرر ترويستان فوگ بعض.
 export default function TechShowcasePage({ embedded }: { embedded?: boolean } = {}) {
@@ -31,7 +32,7 @@ export default function TechShowcasePage({ embedded }: { embedded?: boolean } = 
       setDescription('')
       load()
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'تعذر إضافة العمل')
+      notify(err instanceof Error ? err.message : 'تعذر إضافة العمل')
     } finally {
       setCreating(false)
     }
@@ -45,7 +46,7 @@ export default function TechShowcasePage({ embedded }: { embedded?: boolean } = 
       await api.addTechShowcaseMedia(id, base64s)
       load()
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'تعذر رفع الوسائط')
+      notify(err instanceof Error ? err.message : 'تعذر رفع الوسائط')
     } finally {
       setUploadingId(null)
     }
@@ -75,13 +76,13 @@ export default function TechShowcasePage({ embedded }: { embedded?: boolean } = 
             placeholder="وصف مختصر (اختياري)"
             className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand-500"
           />
-          <button type="submit" disabled={creating} className="rounded-lg bg-brand-500 px-4 py-2 text-sm font-bold text-white hover:bg-brand-600 disabled:opacity-50">
+          <button type="submit" disabled={creating} className="rounded-lg bg-brand-500 px-4 py-2 text-sm font-bold text-white hover:bg-[#1a3a6c] disabled:opacity-50">
             {creating ? 'جاري الإضافة...' : '+ إضافة عمل جديد'}
           </button>
         </form>
       )}
 
-      {loading && <p className="mt-6 text-slate-400">جاري التحميل...</p>}
+      {loading && <p className="mt-6 text-slate-400">جاري التحميل…</p>}
 
       <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {!loading && items.length === 0 && <p className="text-slate-400">لا توجد أعمال بعد.</p>}

@@ -133,7 +133,7 @@ export const navItems: NavItem[] = [
   { ownerOnly: true, to: '/ai-agents', label: '🤖 وكلاء الذكاء', icon: <></>, roles: ['ADMIN'] },
   // 🏴‍☠️ ون بيس (11-10): تدقيق الصلاحيات ولوحة الأدمن التلقائية
   { ownerOnly: true, ownerAction: 'system.matrix', to: '/core-matrix', label: '🏴‍☠️ مصفوفة الصلاحيات', icon: <></>, roles: ['ADMIN'] },
-  { ownerOnly: true, ownerAction: 'system.admin_tables', to: '/core-admin', label: '🗄️ لوحة الأدمن', icon: <></>, roles: ['ADMIN'] },
+  { ownerOnly: true, ownerAction: 'system.admin_tables', to: '/core-admin', label: '🗄️ لوحة مدير النظام', icon: <></>, roles: ['ADMIN'] },
   { ownerOnly: true, to: '/owner-grants', label: '👑 صلاحياتي لمدير النظام', icon: <></>, roles: ['ADMIN'] },
   { to: '/ai-suggestions', label: '🧠 اقتراحات الذكاء', icon: <></>, roles: ['ADMIN'] },
   { to: '/org', label: '🏛️ الهيكل التنظيمي', icon: <></>, roles: ['ADMIN'] },
@@ -141,7 +141,7 @@ export const navItems: NavItem[] = [
   // (ل) 11-11 دازاي: مراقبة التقييم — نفس حارس تصنيف المدراء وأعذار التأخير (ADMIN/OWNER)
   { to: '/org/score-monitor', label: '🔍 مراقبة التقييم', icon: <></>, roles: ['ADMIN'] },
   // (دازاي 11-08) كل الخطط بمكان واحد — نفس حارس GET /api/org/plans/overview (ADMIN/OWNER)
-  { to: '/org/plans', label: '📋 الخطط', icon: <></>, roles: ['ADMIN'] },
+  { to: '/org/plans', label: '📋 خطط الإدارات والوحدات', icon: <></>, roles: ['ADMIN'] },
   { to: '/my-org', label: '🏛️ مكاني', icon: <></> },
   { to: '/org/desk', label: '🏛️ مكتب الإدارة', icon: <></> },
   { to: '/voice-terms', label: '👂 قاموس الأذن', icon: <></>, roles: ['ADMIN'] },
@@ -210,7 +210,7 @@ export const navItems: NavItem[] = [
       { to: '/quality-desk', label: '⭐ مكتب الجودة', icon: <></>, roles: ['ADMIN', 'QUALITY_ENGINEER'], anyPermission: ['quality_control', 'complaints'] },
       { to: '/reports-desk', label: '📑 تقارير الحجوزات والمشاريع', icon: <></>, roles: ['ADMIN', 'MONITOR'], anyPermission: ['monitoring', 'mon_reports'], hideForRoles: ['QUALITY_ENGINEER'] },
       // (ع) 10-23: الإنجازات اليومية «تطلع للمدير والمالك والمراقب» — المدير يوصلها من الإجراءات
-      { to: '/achievements', label: '📝 الإنجازات اليومية', icon: <></>, roles: ['ADMIN', 'MONITOR'], anyPermission: ['monitoring', 'mon_attendance'], hideForRoles: ['ADMIN', 'OWNER'] },
+      { to: '/achievements', label: '📋 الإنجازات', icon: <></>, roles: ['ADMIN', 'MONITOR'], anyPermission: ['monitoring', 'mon_attendance'], hideForRoles: ['ADMIN', 'OWNER'] },
       // قرار (ع) 10-15: الخريطة وفحص المتأخرات تبويبات بمكتب المراقب · فحص الدقة للمالك بس.
       { monitorMenuHide: true, to: '/field-map', label: '🗺️ خريطة الميدان', icon: <></>, roles: ['ADMIN', 'MONITOR'], anyPermission: ['monitoring', 'mon_field'] },
       { monitorMenuHide: true, to: '/late-audit', label: '🔍 فحص المتأخرات', icon: <></>, roles: ['ADMIN', 'MONITOR'], permission: 'monitoring' },
@@ -273,7 +273,7 @@ export const navItems: NavItem[] = [
       },
       // إدارة الإحصائيات — عنصر مستقل مباشر تحت "الإدارة"، مو داخل إدارة
       // الموظفين، حصراً لمدير النظام.
-      { to: '/stats-management', label: 'إدارة الإحصائيات', icon: <></>, roles: ['ADMIN'], unlockPermission: 'employee_stats', hideForRoles: ['ADMIN', 'OWNER'] },
+      { to: '/stats-management', label: '📊 الإحصائيات', icon: <></>, roles: ['ADMIN'], unlockPermission: 'employee_stats', hideForRoles: ['ADMIN', 'OWNER'] },
       // ═══ «إدارة العمل» انفكّت ═══
       // كانت مجموعة جوّا مجموعة: تضغط «الإدارة» فتنفتح «إدارة العمل»
       // فتنفتح الشاشات — ثلاث ضغطات. هسه محتوياتها مباشرة تحت «العمل».
@@ -314,7 +314,7 @@ export const navItems: NavItem[] = [
           { to: '/gps/maintenance-request', label: 'طلب صيانة GPS', icon: <></>, roles: ['SALES'], unlockPermission: 'gps_requests' },
         ],
       },
-      { monitorMenuHide: true, to: '/customers', label: 'العملاء', icon: <></>, roles: ['ADMIN', 'HR_COORDINATOR', 'MONITOR'], permission: 'manage_customers' },
+      { monitorMenuHide: true, to: '/customers', label: 'الزبائن', icon: <></>, roles: ['ADMIN', 'HR_COORDINATOR', 'MONITOR'], permission: 'manage_customers' },
       // ⚠️ «📅 الحجوزات المؤجلة» انشالت: نفس حجوزاتها تطلع بسلّة
       // «حجوزات مؤجّلة» جوّا «ما وصلت للتنفيذ» بشاشة الحجوزات، مع
       // نفس إمكانية تحديد موعد جديد.
@@ -399,7 +399,7 @@ export const navItems: NavItem[] = [
           // ومسارتها القديمة باقية شغّالة فما ينكسر رابط محفوظ.
           { to: '/gps', label: '📡 نظام GPS', icon: <></>, permission: 'gps_system', hideForRoles: ['MONITOR', ...TECH_ROLES] },
           // للتقني ومسؤول الخدمة: بند واحد «جي بي اس» — الطلبات صارت تبويب جوّاه.
-          { to: '/gps', label: '📡 جي بي اس', icon: <></>, permission: 'gps_system', roles: TECH_ROLES, hideForRoles: ['MONITOR'] }, // المراقب: الجي بي اس تبويب بمكتبه
+          { to: '/gps', label: '📡 نظام GPS', icon: <></>, permission: 'gps_system', roles: TECH_ROLES, hideForRoles: ['MONITOR'] }, // المراقب: الجي بي اس تبويب بمكتبه
           // (دازاي 11-01) «لوحتي GPS» جوّا خدمة الجي بي اس — مو خيار وحده بالقائمة
           { to: '/gps/employee', label: '📍 لوحتي GPS', icon: <></>, roles: ['TECHNICIAN'], gpsSkillOnly: true },
           { to: '/gps/requests-hub', label: '📥 طلبات GPS', icon: <></>, permission: 'gps_system', hideForRoles: ['MONITOR', ...TECH_ROLES] },
@@ -673,7 +673,7 @@ export const navItems: NavItem[] = [
       { to: '/nav-hr-bookings', label: '📋 الحجوزات', icon: <></>, divider: true, plain: true },
       { to: '/bookings', label: 'الحجوزات', icon: <></>, roles: ['ADMIN', 'HR_COORDINATOR', 'MONITOR', 'FINANCE'], permission: 'view_bookings' },
       { monitorMenuHide: true, to: '/missions', label: 'تتبع المهام', icon: <></>, roles: ['ADMIN', 'HR_COORDINATOR', 'MONITOR'], permission: 'mission_tracking', hideForRoles: ['FINANCE'] },
-      { monitorMenuHide: true, to: '/customers', label: 'العملاء', icon: <></>, roles: ['ADMIN', 'HR_COORDINATOR', 'MONITOR'], permission: 'manage_customers' },
+      { monitorMenuHide: true, to: '/customers', label: 'الزبائن', icon: <></>, roles: ['ADMIN', 'HR_COORDINATOR', 'MONITOR'], permission: 'manage_customers' },
       // البنود المنقولة strict: صلاحية الوحدة ما تفتحها، كل وحدة بحارسها.
       { to: '/nav-hr-staff', label: '👥 الموظفين', icon: <></>, divider: true, plain: true },
       { strict: true, to: '/staff-management-desk', label: 'إدارة الموظفين', icon: <></>, roles: ['ADMIN', 'MONITOR'], anyPermission: ['staff_management', 'kpi_management', 'performance_review', 'staff_requests'] },
@@ -885,7 +885,7 @@ export const navItems: NavItem[] = [
     unitPermission: 'unit_design',
     children: [
       // (ع) 11-08: 🏗️ صيت التصاميم — الخادم يحصرها (المالك/المدير، الهندسة ووحدة التصميم، إدارة المشاريع، والمصمم المكلّف)
-      { to: '/design-sets', label: '🏗️ صيت التصاميم', icon: <></> },
+      { to: '/design-sets', label: '🏗️ سيت التصاميم', icon: <></> },
       // (ك) 11-10: 📐 سيت المخططات بطلب دازاي — بند جديد، نفس شرط صيت التصاميم
       { to: '/plan-sets', label: '📐 سيت المخططات', icon: <></> },
       { to: '/design-forms/quick-add', label: 'إضافة سؤال', icon: <></>, roles: ['ADMIN'], unlockPermission: 'design_forms' },

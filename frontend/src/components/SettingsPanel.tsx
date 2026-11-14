@@ -7,6 +7,7 @@ import { swallow } from '../utils/swallow'
 import TelegramLinkCard from './TelegramLinkCard'
 import ThemeToggle from './ThemeToggle'
 
+import { notify } from '../ui/notify'
 const ICON_CHOICES = ['😀', '😎', '🦁', '🐺', '🦅', '🐉', '⚡', '🔥', '⭐', '🚀', '🛠️', '🎯']
 
 export default function SettingsPanel({ onClose }: { onClose: () => void }) {
@@ -78,7 +79,7 @@ export default function SettingsPanel({ onClose }: { onClose: () => void }) {
       else await api.rejectAttendanceIconRequest(id)
       setPendingRequests((prev) => prev.filter((r) => r.id !== id))
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'تعذر تنفيذ الإجراء')
+      notify(err instanceof Error ? err.message : 'تعذر تنفيذ الإجراء')
     }
   }
 
@@ -115,7 +116,7 @@ export default function SettingsPanel({ onClose }: { onClose: () => void }) {
                   try { await apiRequest('/me/language', { method: 'PUT', body: JSON.stringify({ language: l }) }) } catch { /* يتحفظ محلياً على الأقل */ }
                   setUiLanguage(l)
                 }}
-                className={`rounded-lg px-3 py-1 text-xs font-bold ${uiLanguage() === l ? 'bg-brand-600 text-white' : 'bg-slate-100 text-slate-700'}`}>
+                className={`rounded-lg px-3 py-1 text-xs font-bold ${uiLanguage() === l ? 'bg-[#0f2040] text-white' : 'bg-slate-100 text-slate-700'}`}>
                 {l === 'ar' ? 'العربية' : 'اردو'}
               </button>
             ))}
@@ -148,7 +149,7 @@ export default function SettingsPanel({ onClose }: { onClose: () => void }) {
               />
               <p className="text-xs text-slate-400">٤ محارف على الأقل — أرقام أو حروف، براحتك.</p>
               {pwMsg && <p className={`text-xs ${pwMsg.ok ? 'text-emerald-600' : 'text-red-600'}`}>{pwMsg.text}</p>}
-              <button type="submit" disabled={pwSaving} className="rounded-lg bg-brand-500 py-2 text-sm font-bold text-white hover:bg-brand-600 disabled:opacity-50">
+              <button type="submit" disabled={pwSaving} className="rounded-lg bg-brand-500 py-2 text-sm font-bold text-white hover:bg-[#1a3a6c] disabled:opacity-50">
                 {pwSaving ? 'جاري الحفظ...' : 'تغيير كلمة المرور'}
               </button>
             </form>
@@ -185,7 +186,7 @@ export default function SettingsPanel({ onClose }: { onClose: () => void }) {
               <button
                 onClick={handleRequestIcon}
                 disabled={!selectedIcon || iconSubmitting}
-                className="mt-3 w-full rounded-lg bg-brand-500 py-2 text-sm font-bold text-white hover:bg-brand-600 disabled:opacity-50"
+                className="mt-3 w-full rounded-lg bg-brand-500 py-2 text-sm font-bold text-white hover:bg-[#1a3a6c] disabled:opacity-50"
               >
                 {iconSubmitting ? 'جاري الإرسال...' : 'إرسال طلب التعديل'}
               </button>

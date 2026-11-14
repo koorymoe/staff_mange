@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { api, type EmployeeLedger as Ledger } from '../api'
+import { fmtDateTime } from '../utils/date'
 
 // ═══ «📒 الحصيلة» — شنو سوّى هذا الموظف اليوم/هذا الشهر بالتفصيل (ع 10-16) ═══
 // كل قسم من الجداول نفسها: أي حجز طلع وشنو خدمته ومراحله، جرد، حضور، تقييم،
 // فواتير، تقارير… والمراقب شنو دقّق. القسم الفارغ ما يطلع.
-const fmt = (s: string) => new Date(s.endsWith('Z') ? s : s + 'Z').toLocaleString('ar-IQ', { timeZone: 'Asia/Baghdad', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
+// (دازاي 11-15) التاريخ من utils/date.ts (عربي، توقيت بغداد)
+const fmt = (s: string) => fmtDateTime(s, { naiveUtc: true, day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
 
 export default function EmployeeLedger({ employeeId, day }: { employeeId: string; day: string }) {
   const [period, setPeriod] = useState<'day' | 'month'>('day')
@@ -25,7 +27,7 @@ export default function EmployeeLedger({ employeeId, day }: { employeeId: string
         <div className="flex gap-1">
           {(['day', 'month'] as const).map((p) => (
             <button key={p} type="button" onClick={() => setPeriod(p)}
-              className={`rounded-lg px-3 py-1.5 text-sm font-bold ${period === p ? 'bg-violet-700 text-white' : 'border border-slate-300 text-slate-600'}`}>
+              className={`rounded-lg px-3 py-1.5 text-sm font-bold ${period === p ? 'bg-[#0f2040] text-white' : 'border border-slate-300 text-slate-600'}`}>
               {p === 'day' ? 'اليوم' : 'الشهر'}
             </button>
           ))}
@@ -39,7 +41,7 @@ export default function EmployeeLedger({ employeeId, day }: { employeeId: string
           <div className="mt-3 flex flex-wrap gap-2">
             {d.sections.map((s) => (
               <button key={s.key} type="button" onClick={() => setOpen(open === s.key ? null : s.key)}
-                className={`rounded-xl px-3 py-2 text-sm font-bold ${open === s.key ? 'bg-violet-700 text-white' : 'bg-violet-50 text-violet-900 hover:bg-violet-100'}`}>
+                className={`rounded-xl px-3 py-2 text-sm font-bold ${open === s.key ? 'bg-[#0f2040] text-white' : 'bg-violet-50 text-violet-900 hover:bg-violet-100'}`}>
                 {s.title} <span className="tabular-nums">({s.count})</span>
               </button>
             ))}

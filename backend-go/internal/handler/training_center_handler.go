@@ -82,7 +82,7 @@ func (h *TrainingCenterHandler) Insights(w http.ResponseWriter, r *http.Request)
 			  AND COALESCE(b."startedAt", b."arrivedAt") IS NOT NULL AND b."completedAt" > COALESCE(b."startedAt", b."arrivedAt")
 		), svc AS (SELECT "serviceId", AVG(mins) AS m FROM jobs WHERE mins BETWEEN 5 AND 1440 GROUP BY 1)
 		SELECT e.id, e.name, e.role::text AS role,
-		       GREATEST(0, (CURRENT_DATE - COALESCE(e."hireDate"::date, e."createdAt"::date)))::int AS "daysIn",
+		       GREATEST(0, (baghdad_today() - COALESCE(e."hireDate"::date, e."createdAt"::date)))::int AS "daysIn",
 		       (SELECT COUNT(DISTINCT j.bid) FROM jobs j WHERE j.id = e.id)::int AS jobs,
 		       (SELECT AVG(j.mins) FROM jobs j WHERE j.id = e.id AND j.mins BETWEEN 5 AND 1440)::float8 AS "avgMinutes",
 		       (SELECT AVG(s.m) FROM jobs j JOIN svc s ON s."serviceId" = j."serviceId" WHERE j.id = e.id AND j.mins BETWEEN 5 AND 1440)::float8 AS "teamMinutes",

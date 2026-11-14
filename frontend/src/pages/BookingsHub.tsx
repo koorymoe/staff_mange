@@ -79,7 +79,7 @@ const TABS = [
   // «الحجوزات الي ينحذفن أريدهن يترحّلن بعد، ما أريد يضلن بمكان واحد».
   { key: 'deleting' as const, label: 'بانتظار قرار الحذف', icon: '🗑️' },
   // ترتيب (ع) 10-04: العملاء والأرشيف وفرص البيع ويا الحجوزات بشاشة وحدة.
-  { key: 'customers' as const, label: 'العملاء', icon: '👤' },
+  { key: 'customers' as const, label: 'الزبائن', icon: '👤' },
   { key: 'archive' as const, label: 'أرشيف الحجوزات', icon: '🗄️' },
   { key: 'opportunities' as const, label: 'فرص البيع', icon: '💡' },
 ]
@@ -282,7 +282,7 @@ export default function BookingsHub() {
           <div className="flex flex-wrap gap-2">
             {([['at_projects', '🏗️ إدارة المشاريع'], ['at_tech', '🛠️ إدارة التقنيين']] as const).map(([k, label]) => (
               <button key={k} type="button" onClick={() => setDept(k)}
-                className={`rounded-xl px-4 py-2 text-sm font-bold transition ${dept === k ? 'bg-brand-700 text-white shadow' : 'border border-slate-200 bg-white text-slate-700 hover:bg-slate-50'}`}>
+                className={`rounded-xl px-4 py-2 text-sm font-bold transition ${dept === k ? 'bg-[#0f2040] text-white shadow' : 'border border-slate-200 bg-white text-slate-700 hover:bg-slate-50'}`}>
                 {label}{counts[k] != null && <span className="ms-1.5 rounded-full bg-white/25 px-1.5 text-xs tabular-nums">{counts[k]}</span>}
               </button>
             ))}

@@ -7,6 +7,7 @@ import { useOutputRegulations } from '../orgOutputs'
 import OutputClauseBinding from '../components/OutputClauseBinding'
 import { useInlineQuestion } from '../useInlineQuestion'
 
+import { notify } from '../ui/notify'
 // ═══ المهام الإضافية — شاشة المدير ═══
 //
 // «يجي المدير يوجّه أحد الموظفين شيسوي؟ يختار موظف ويوجّهله عمل يطلعله
@@ -113,7 +114,7 @@ export default function ExtraTasksPage({ embedded }: { embedded?: boolean } = {}
       await api.cancelExtraTask(t.id, reason)
       setReload((n) => n + 1)
     } catch (e) {
-      alert(e instanceof Error ? e.message : 'تعذر الإلغاء')
+      notify(e instanceof Error ? e.message : 'تعذر الإلغاء')
     }
   }
 
@@ -246,7 +247,7 @@ export default function ExtraTasksPage({ embedded }: { embedded?: boolean } = {}
         <span className="mr-auto text-xs text-slate-500">{open.length} مهمة مفتوحة</span>
       </div>
 
-      {loading && <p className="text-slate-400">جاري التحميل...</p>}
+      {loading && <p className="text-slate-400">جاري التحميل…</p>}
       {!loading && tasks.length === 0 && (
         <p className="rounded-xl border border-white bg-white p-8 text-center text-slate-400">ماكو مهام بهذا الفلتر.</p>
       )}

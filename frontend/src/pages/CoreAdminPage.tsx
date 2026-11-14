@@ -73,7 +73,7 @@ export default function CoreAdminPage() {
   return (
     <div className="space-y-4 p-4" dir="rtl">
       <header className="space-y-1">
-        <h1 className="text-xl font-extrabold text-slate-900">🗄️ لوحة الأدمن</h1>
+        <h1 className="text-xl font-extrabold text-slate-900">🗄️ لوحة مدير النظام</h1>
         <p className="text-sm text-slate-600">كل جداول قاعدة البيانات — تصفّح وبحث{canEdit ? '، وتعديل' : ''}{canCreate ? ' وإضافة' : ''}. ماكو حذف، والسجلات ما تتعدّل، وكلمات السر والتوكنات مخفية دائماً.</p>
         {canLog && (
           <button type="button" onClick={() => (log ? setLog(null) : api.getCoreEditLog().then(setLog).catch((e: Error) => setError(e.message)))}
@@ -118,7 +118,7 @@ export default function CoreAdminPage() {
               <form className="flex gap-2" onSubmit={(e) => { e.preventDefault(); setPage(1); setSearch(q) }}>
                 <input id="core-admin-q" value={q} onChange={(e) => setQ(e.target.value)} placeholder={`دوّر بـ${table}…`}
                   className="min-w-0 flex-1 rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm" />
-                <button type="submit" className="rounded-xl bg-brand-700 px-4 text-sm font-bold text-white">بحث</button>
+                <button type="submit" className="rounded-xl bg-[#0f2040] px-4 text-sm font-bold text-white">بحث</button>
               </form>
               {data && (
                 <>
@@ -145,7 +145,7 @@ export default function CoreAdminPage() {
                       </div>
                       {formErr && <p role="alert" className="text-sm font-bold text-red-700">{formErr}</p>}
                       <div className="flex gap-2">
-                        <button type="button" disabled={saving} onClick={save} className="rounded-xl bg-brand-700 px-5 py-2 text-sm font-bold text-white disabled:opacity-50">{saving ? '…' : 'احفظ'}</button>
+                        <button type="button" disabled={saving} onClick={save} className="rounded-xl bg-[#0f2040] px-5 py-2 text-sm font-bold text-white disabled:opacity-50">{saving ? '…' : 'احفظ'}</button>
                         <button type="button" onClick={() => setForm(null)} className="rounded-xl px-5 py-2 text-sm ring-1 ring-slate-300">إلغاء</button>
                       </div>
                     </div>

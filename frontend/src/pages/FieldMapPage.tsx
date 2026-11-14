@@ -7,6 +7,7 @@ import PageHeader from '../components/PageHeader'
 import LocationPicker from '../components/LocationPicker'
 import { useSession, isAdminOrOwner } from '../session'
 
+import { notify } from '../ui/notify'
 // ═══ خريطة الميدان — قرار (ع) 10-14 ═══
 // للمالك والمدير والمراقب: الشركة، حجوزات اليوم بمواقعها، آخر موقع لكل موظف،
 // منين انطلق كل حجز، والخريطة الحرارية (وين تتجمع الحركة والتوقفات).
@@ -110,7 +111,7 @@ export default function FieldMapPage() {
   }, [data, mode, track])
 
   const saveCompany = async (c: CompanyLocation) => {
-    try { await api.setCompanyLocation(c); setEditCompany(false); setReload((n) => n + 1) } catch (e) { alert(e instanceof Error ? e.message : 'تعذر الحفظ') }
+    try { await api.setCompanyLocation(c); setEditCompany(false); setReload((n) => n + 1) } catch (e) { notify(e instanceof Error ? e.message : 'تعذر الحفظ') }
   }
 
   const t = track?.times
@@ -129,7 +130,7 @@ export default function FieldMapPage() {
         <label className="text-sm text-slate-500">إلى</label>
         <input type="date" value={to} onChange={(e) => setTo(e.target.value)} className="rounded-lg border border-slate-300 px-2 py-1.5 text-sm" />
         <div className="mr-auto flex gap-1">
-          <button onClick={() => setMode('map')} className={`rounded-lg px-3 py-1.5 text-sm font-bold ${mode === 'map' ? 'bg-brand-600 text-white' : 'bg-slate-100 text-slate-600'}`}>📍 خريطة المواقع</button>
+          <button onClick={() => setMode('map')} className={`rounded-lg px-3 py-1.5 text-sm font-bold ${mode === 'map' ? 'bg-[#0f2040] text-white' : 'bg-slate-100 text-slate-600'}`}>📍 خريطة المواقع</button>
           <button onClick={() => setMode('heat')} className={`rounded-lg px-3 py-1.5 text-sm font-bold ${mode === 'heat' ? 'bg-red-600 text-white' : 'bg-slate-100 text-slate-600'}`}>🔥 الخريطة الحرارية</button>
           <button onClick={() => setReload((n) => n + 1)} className="rounded-lg bg-slate-100 px-3 py-1.5 text-sm">↻</button>
           {isAdmin && <button onClick={() => setEditCompany((v) => !v)} className="rounded-lg border border-brand-300 px-3 py-1.5 text-sm font-bold text-brand-700">🏢 موقع الشركة</button>}
@@ -225,7 +226,7 @@ function CompanyEditor({ initial, onSave }: { initial: CompanyLocation | null; o
       <div className="flex items-center gap-2">
         <label className="text-sm">نصف القطر (متر)</label>
         <input type="number" min={50} max={3000} value={radius} onChange={(e) => setRadius(Number(e.target.value))} className="w-28 rounded-lg border border-slate-300 px-2 py-1.5 text-sm" />
-        <button disabled={!pt} onClick={() => pt && onSave({ lat: pt.lat, lng: pt.lng, radiusM: radius })} className="mr-auto rounded-lg bg-brand-600 px-4 py-2 text-sm font-bold text-white disabled:opacity-50">حفظ</button>
+        <button disabled={!pt} onClick={() => pt && onSave({ lat: pt.lat, lng: pt.lng, radiusM: radius })} className="mr-auto rounded-lg bg-[#0f2040] px-4 py-2 text-sm font-bold text-white disabled:opacity-50">حفظ</button>
       </div>
     </div>
   )

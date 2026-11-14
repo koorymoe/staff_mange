@@ -136,7 +136,7 @@ func (h *BookingAuditHandler) Audit(w http.ResponseWriter, r *http.Request) {
 	//
 	// 🔴 والافتراضي يبقى الرفض: المراقب بلا مفتاح **يشوف ولا يقرّر**.
 	if middleware.RoleFromContext(r) == "MONITOR" && !h.hasAuditKey(empID) {
-		WriteError(w, http.StatusForbidden,
+		WriteError(w, http.StatusNotFound,
 			"المراقب يراجع قرارات التدقيق ولا يصدرها — القرار للمحاسب، إلا إذا المالك نطاه صلاحية «تدقيق ومطابقة الحسابات»")
 		return
 	}
@@ -341,7 +341,7 @@ func (h *BookingAuditHandler) ResolveIssue(w http.ResponseWriter, r *http.Reques
 		}
 	}
 	if !allowed {
-		WriteError(w, http.StatusForbidden, "هذا البلاغ ما ينغلق إلا من "+model.AuditRoutedLabel(kind))
+		WriteError(w, http.StatusNotFound, "هذا البلاغ ما ينغلق إلا من "+model.AuditRoutedLabel(kind))
 		return
 	}
 	// ⚠️⚠️ ما ينغلق إلا بإجراء. قبلها چان سطراً واحداً يأشّره

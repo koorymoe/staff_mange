@@ -5,6 +5,7 @@ import ProjectFillInfo from '../components/ProjectFillInfo'
 import PaymentAuditModal from '../components/PaymentAuditModal'
 import { useSession } from '../session'
 import { API_URL } from '../api'
+import { money as fmtMoney } from '../utils/money'
 
 
 async function request<T>(path: string): Promise<T> {
@@ -49,7 +50,7 @@ interface StatsResponse {
   employees: EmployeeRow[]
 }
 
-const money = (v: number) => Math.round(v).toLocaleString('en-US')
+const money = (v: number) => fmtMoney(Math.round(v)) // (دازاي 11-15) من utils/money.ts
 
 const STAGE_ORDER = ['اتصال', 'كشف', 'سعر', 'عقد', 'تنفيذ', 'مكتمل', 'مرفوض'] as const
 const STAGE_ICON: Record<string, string> = {
@@ -95,7 +96,7 @@ export default function ProjectStatisticsPage() {
     return [...data.employees].sort((a, b) => Number(b[empSort]) - Number(a[empSort]))
   }, [data, empSort])
 
-  if (loading) return <p className="p-6 text-slate-400" dir="rtl">جاري التحميل...</p>
+  if (loading) return <p className="p-6 text-slate-400" dir="rtl">جاري التحميل…</p>
   if (error) return <p className="m-6 rounded-lg bg-red-50 p-4 text-red-600" dir="rtl">{error}</p>
   if (!data) return null
 

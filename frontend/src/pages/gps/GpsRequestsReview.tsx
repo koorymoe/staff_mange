@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react'
+import Modal from '../../ui/Modal'
 import { api, type Employee, type GpsDeviceRequest, type GpsSimCard } from '../../api'
 import { useSession, hasGpsSkill } from '../../session'
 import { escDeep } from '../../utils/printIdentity'
 
+import { notify } from '../../ui/notify'
 const subLabel = (t: string) => t === 'THREE_MONTHS' ? '3 أشهر' : t === 'SIX_MONTHS' ? '6 أشهر' : 'سنوي'
 const subDays = (t: string) => t === 'THREE_MONTHS' ? 90 : t === 'SIX_MONTHS' ? 180 : 365
 
@@ -57,11 +59,11 @@ export default function GpsRequestsReview({ embedded }: { embedded?: boolean } =
   const activate = async () => {
     if (!selected) return
     if (selected.purchaseType === 'DEVICE_ONLY' && (!checks.checked || !checks.activated || !checks.delivered)) {
-      alert('يرجى تأكيد جميع الخطوات أولاً'); return
+      notify('يرجى تأكيد جميع الخطوات أولاً'); return
     }
-    if (!activationDate) { alert('يرجى إدخال تاريخ التفعيل أولاً'); return }
-    if (!credentialsMessage.trim()) { alert('يرجى كتابة اليوزر والباسورد الخاص بالزبون أولاً'); return }
-    if (needsSim && !simCardId) { alert('اختر شريحة من الشرائح المتوفرة أولاً'); return }
+    if (!activationDate) { notify('يرجى إدخال تاريخ التفعيل أولاً'); return }
+    if (!credentialsMessage.trim()) { notify('يرجى كتابة اليوزر والباسورد الخاص بالزبون أولاً'); return }
+    if (needsSim && !simCardId) { notify('اختر شريحة من الشرائح المتوفرة أولاً'); return }
 
     setSaving(true)
     try {
@@ -84,7 +86,7 @@ export default function GpsRequestsReview({ embedded }: { embedded?: boolean } =
       setSelected(null)
       load()
     } catch (e) {
-      alert(e instanceof Error ? e.message : 'حدث خطأ أثناء التفعيل')
+      notify(e instanceof Error ? e.message : 'حدث خطأ أثناء التفعيل')
     } finally {
       setSaving(false)
     }
@@ -137,7 +139,7 @@ export default function GpsRequestsReview({ embedded }: { embedded?: boolean } =
         <h2 className="mb-6 text-2xl font-bold text-brand-900">طلبات GPS المعلقة 📋</h2>
       )}
 
-      {loading && <p className="py-20 text-center text-slate-400">جاري التحميل...</p>}
+      {loading && <p className="py-20 text-center text-slate-400">جاري التحميل…</p>}
       {!loading && requests.length === 0 && (
         <div className="rounded-2xl bg-white py-16 text-center shadow-sm">
           <div className="mb-4 text-5xl">✅</div>
@@ -160,18 +162,13 @@ export default function GpsRequestsReview({ embedded }: { embedded?: boolean } =
                 <span>👤 {req.employee.name}</span>
               </div>
             </div>
-            <button onClick={() => openReview(req)} className="rounded-lg bg-brand-500 px-4 py-2 text-sm font-bold text-white hover:bg-brand-600">مراجعة ←</button>
+            <button onClick={() => openReview(req)} className="rounded-lg bg-brand-500 px-4 py-2 text-sm font-bold text-white hover:bg-[#1a3a6c]">مراجعة ←</button>
           </div>
         ))}
       </div>
 
       {selected && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 p-4">
-          <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl bg-white shadow-2xl">
-            <div className="sticky top-0 flex items-center justify-between border-b border-slate-100 bg-white p-5">
-              <h3 className="text-lg font-bold text-brand-900">مراجعة الطلب</h3>
-              <button onClick={() => setSelected(null)} className="text-2xl text-slate-400 hover:text-slate-600">×</button>
-            </div>
+        <Modal title="مراجعة الطلب" onClose={() => setSelected(null)} size="lg" bodyClassName="p-0">
             <div className="space-y-5 p-6">
               <div className="grid grid-cols-2 gap-3 text-sm">
                 <p><b className="text-slate-500">الاسم:</b> {selected.customer.fullName} {selected.customer.fatherName} {selected.customer.grandfatherName}</p>
@@ -286,14 +283,13 @@ export default function GpsRequestsReview({ embedded }: { embedded?: boolean } =
             <div className="sticky bottom-0 flex gap-3 border-t border-slate-100 bg-white p-5">
               <button onClick={activate} disabled={saving || !canActivate}
                 title={!canActivate ? 'حدد تاريخ التفعيل واكتب بيانات الدخول أولاً' : undefined}
-                className="flex-1 rounded-lg bg-brand-500 py-3 text-sm font-bold text-white hover:bg-brand-600 disabled:opacity-50">
+                className="flex-1 rounded-lg bg-brand-500 py-3 text-sm font-bold text-white hover:bg-[#1a3a6c] disabled:opacity-50">
                 {saving ? 'جاري التفعيل...' : 'تفعيل الجهاز ✅'}
               </button>
               <button onClick={printRequest} className="rounded-lg border border-slate-200 px-6 py-3 text-sm font-bold text-slate-600 hover:bg-slate-50">🖨️ طباعة</button>
               <button onClick={() => setSelected(null)} className="rounded-lg border border-slate-200 px-6 py-3 text-sm font-bold text-slate-600 hover:bg-slate-50">إغلاق</button>
             </div>
-          </div>
-        </div>
+</Modal>
       )}
     </div>
   )
