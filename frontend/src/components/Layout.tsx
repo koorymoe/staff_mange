@@ -1,4 +1,6 @@
 import Modal from '../ui/Modal'
+import { GlobalBack } from '../ui/BackLink'
+import { GlobalBackContext } from '../ui/backContext'
 import { useState, useEffect, useRef } from 'react'
 import { useAutoRefresh } from '../useAutoRefresh'
 import { useOrgMemberships, orgPositionTitle } from '../orgDeskAccess'
@@ -922,12 +924,15 @@ export default function Layout() {
             <InspectBar />
             <MyExamBanner />
             {/* خطأ بشاشة وحدة يبقى بيها — القائمة تبقى شغّالة */}
+            <GlobalBack path={location.pathname} />
+            <GlobalBackContext.Provider value={true}>
             <ErrorBoundary inline key={location.pathname}>
               {/* حارس الرابط: نفس قرار القائمة — الشاشة الي ما تطلعلك بالقائمة ما تنفتح بالرابط */}
               {employee?.actualRole !== 'OWNER' && isPathAllowed(location.pathname, { employee, permissions: employeePermissions, gpsServiceId, orgMemberships }) === false
                 ? <NoAccess />
                 : <AttendanceGate><Outlet /></AttendanceGate>}
             </ErrorBoundary>
+            </GlobalBackContext.Provider>
           </main>
         </div>
 
