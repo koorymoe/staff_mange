@@ -97,6 +97,7 @@ type Project struct {
 	// (بلاغ #41) ⏸️ بانتظار الزبون — ما ينحسب تأخير على المسؤول
 	WaitingCustomerSince *time.Time `db:"waitingCustomerSince" json:"waitingCustomerSince"`
 	WaitingCustomerNote  *string    `db:"waitingCustomerNote" json:"waitingCustomerNote"`
+	WaitingCustomerByID  *string    `db:"waitingCustomerById" json:"waitingCustomerById,omitempty"`
 }
 
 // DelegateProjectRequest طلب تسليم المشروع لموظف (أو سحبه لو employeeId فاضي).

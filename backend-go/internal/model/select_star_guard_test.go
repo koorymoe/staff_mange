@@ -13,7 +13,7 @@ import (
 // هالاختبار يتأكد إن كل عمود بالجداول الي تنقرا بـSELECT * إله حقل db بالـstruct.
 func TestSelectStarModelsCoverAllColumns(t *testing.T) {
 	cases := map[string]any{
-		"Employee": Employee{}, "Booking": Booking{}, "Customer": Customer{}, "BookingAssignment": BookingAssignment{},
+		"Employee": Employee{}, "Booking": Booking{}, "Customer": Customer{}, "BookingAssignment": BookingAssignment{}, "Project": Project{},
 		"LeaderInvoice": LeaderInvoice{}, "Quotation": Quotation{}, "ExtraTask": ExtraTask{}, "QualityFollowUp": QualityFollowUp{},
 		"Complaint": Complaint{}, "Service": Service{}, "Vehicle": Vehicle{}, "AiAction": AiAction{},
 	}
