@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { api, type AttendanceClaim } from '../api'
+import { BTN_DANGER_SOFT } from '../ui/classes'
 
 // ═══ طلبات تصحيح الانصراف — للمراقب ═══
 // موظف انسجّل انصرافه تلقائياً وگال «چنت أشتغل لحد كذا» وماتركس ما لگى دليل
@@ -24,7 +25,7 @@ export default function AttendanceClaims() {
           <p className="text-xs text-violet-800">🤖 {c.evidence ? `آخر دليل بالنظام: ${c.evidence} (${t(c.evidenceAt)}) — صحّحت لحده.` : 'ما لگيت أي شغل مسجّل بالنظام بعد الانصراف التلقائي.'}</p>
           <div className="mt-2 flex gap-2">
             <button type="button" onClick={() => void decide(c.id, true)} className="rounded-lg bg-emerald-700 px-3 py-1 text-xs font-bold text-white">✔ وافق</button>
-            <button type="button" onClick={() => void decide(c.id, false)} className="rounded-lg border border-slate-300 px-3 py-1 text-xs font-bold">✕ ارفض</button>
+            <button type="button" onClick={() => void decide(c.id, false)} className={BTN_DANGER_SOFT}>✕ ارفض</button>
           </div>
         </div>
       ))}

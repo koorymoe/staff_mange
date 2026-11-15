@@ -269,10 +269,7 @@ func (h *BookingAuditHandler) Audit(w http.ResponseWriter, r *http.Request) {
 			if issue.Note != nil && *issue.Note != "" {
 				msg += ": " + *issue.Note
 			}
-			for _, role := range model.AuditRoutedRoles(req.Action) {
-				_ = h.notify.CreateForRole(role, "audit_issue", msg)
-			}
-			_ = h.notify.CreateForRole("OWNER", "audit_issue", msg)
+			_ = h.notify.CreateForRoles(append(model.AuditRoutedRoles(req.Action), "OWNER"), "audit_issue", msg)
 		}
 		WriteJSON(w, http.StatusCreated, issue)
 		return

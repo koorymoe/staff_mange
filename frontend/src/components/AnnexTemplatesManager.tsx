@@ -41,12 +41,12 @@ export default function AnnexTemplatesManager({ templates, onClose, onSaved }: {
     <Modal title="⚙️ قوالب الملحق" onClose={onClose} size="xl" busy={busy} closeOnBackdrop={false} layer="z-[90]" bodyClassName="space-y-3 p-4">
         <div className="flex flex-wrap gap-2">
           {templates.map((t) => (
-            <button key={t.id} type="button" onClick={() => pick(t)}
+            <button key={t.id} type="button" disabled={busy} onClick={() => pick(t)}
               className={`rounded-lg px-3 py-1 text-sm ${draft?.id === t.id ? 'bg-slate-800 text-white' : 'bg-slate-100'}`}>{t.name}</button>
           ))}
           {draft && (
-            <button type="button" onClick={() => { setDraft({ id: '', name: `${draft.name} (نسخة)`, parts: clone(draft.parts) }); setMsg({ t: 'هاي نسخة جديدة — غيّر اسمها واحفظ', ok: true }) }}
-              className="rounded-lg bg-amber-50 px-3 py-1 text-sm text-amber-800">📄 نسخ كقالب جديد</button>
+            <button type="button" disabled={busy} onClick={() => { setDraft({ id: '', name: `${draft.name} (نسخة)`, parts: clone(draft.parts) }); setMsg({ t: 'هاي نسخة جديدة — غيّر اسمها واحفظ', ok: true }) }}
+              className="rounded-lg bg-amber-50 px-3 py-1 text-sm text-amber-800 disabled:opacity-50">📄 نسخ كقالب جديد</button>
           )}
         </div>
         {!draft ? <p className="text-sm text-slate-500">ماكو قوالب.</p> : (

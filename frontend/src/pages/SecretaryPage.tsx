@@ -1619,7 +1619,7 @@ function Secretary() {
                   >
                     إعادة إرسال البصمة
                   </button>
-                  <button
+                  <button className="sec-danger-soft"
                     type="button"
                     disabled={streaming}
                     onClick={() => setRetryAudio(null)}
@@ -1667,7 +1667,7 @@ function Secretary() {
                     key={draftUrl}
                     load={() => Promise.resolve(draftAudio as Blob)}
                   />
-                  <button type="button" onClick={() => setDraftAudio(null)}>
+                  <button className="sec-danger-soft" type="button" onClick={() => setDraftAudio(null)}>
                     احذف
                   </button>
                 </div>
@@ -1917,7 +1917,7 @@ function Secretary() {
                                   {item.doneAt ? '↶ رجّع للمعلّق' : '✓ خلص'}
                                 </button>
                                 <button
-                                  className="sec-danger"
+                                  className="sec-danger-soft"
                                   onClick={() => setDeleteId(item.id)}
                                 >
                                   حذف
@@ -2048,7 +2048,7 @@ function Secretary() {
                               <small>{clock(item.createdAt)}</small>
                               <p className="sec-diary-body">{item.body}</p>
                               <button
-                                className="sec-delete-note"
+                                className="sec-delete-note sec-danger-soft"
                                 onClick={() => setDeleteId(item.id)}
                               >
                                 حذف

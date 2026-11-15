@@ -4,6 +4,7 @@ import { api, auditCloseLabels, type AuditCloseAction, type AuditIssue } from '.
 import { useSaveGuard } from '../useSaveGuard'
 import SaveError from '../components/SaveError'
 import { useSession, hasRole } from '../session'
+import { BTN_GHOST, BTN_PRIMARY, BTN_SUCCESS } from '../ui/classes'
 
 /**
  * بلاغات أخطاء التدقيق.
@@ -104,15 +105,14 @@ export default function AuditIssuesPage({ embedded }: EmbeddedProps = {}) {
 
             <div className="mt-4 flex justify-end gap-2">
               <button onClick={() => setClosing(null)}
-                className="rounded-lg border px-4 py-2 text-sm font-bold"
+                className={BTN_GHOST}
                 style={{ borderColor: 'var(--bd-line)', color: 'var(--t-body)' }}>
                 إلغاء
               </button>
               <button
                 disabled={!reason.trim() || busy === closing.issue.id}
                 onClick={resolve}
-                className={`rounded-lg px-4 py-2 text-sm font-bold text-white disabled:opacity-50 ${
-                  closing.action === 'PENALIZE' ? 'bg-red-600' : 'bg-emerald-700'}`}>
+                className={closing.action === 'PENALIZE' ? BTN_PRIMARY : BTN_SUCCESS}>
                 {busy === closing.issue.id ? 'جاري...' : 'أكّد وأغلق البلاغ'}
               </button>
             </div>

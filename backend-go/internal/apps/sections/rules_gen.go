@@ -362,6 +362,9 @@ func rules() map[string]map[core.Action]core.Rule {
 			"daily_reports.get_by_id_match": func(l string) core.Rule {
 				return rolePerm(l, []string{"ADMIN", "MONITOR", "HR_COORDINATOR"}, "monitoring", "mon_staff", "staff_management")
 			}("يقرا /api/daily-reports/{id}/match (دور/صلاحية)"),
+			"daily_reports.get_by_id_analysis": func(l string) core.Rule {
+				return rolePerm(l, []string{"ADMIN", "MONITOR", "HR_COORDINATOR"}, "monitoring", "mon_staff", "staff_management")
+			}("يقرا /api/daily-reports/{id}/analysis (دور/صلاحية)"),
 			"daily_reports.get_root": func(l string) core.Rule {
 				return rolePerm(l, []string{"ADMIN", "MONITOR", "HR_COORDINATOR"}, "monitoring", "mon_staff", "staff_management")
 			}("يقرا /api/daily-reports (دور/صلاحية)"),
@@ -734,12 +737,13 @@ func rules() map[string]map[core.Action]core.Rule {
 			"matrix_selfcheck.get_root": func(l string) core.Rule { return strictRoles(l, "OWNER") }("يقرا /api/matrix-selfcheck (دور (بلا المدير))"),
 		},
 		"me_x": {
-			"me_x.get_bot_reports":   func(l string) core.Rule { return any_(l) }("يقرا /api/me/bot-reports (الدخول — الفحص بالمعالج)"),
-			"me_x.get_daily_reports": func(l string) core.Rule { return any_(l) }("يقرا /api/me/daily-reports (الدخول — الفحص بالمعالج)"),
-			"me_x.get_rating_duty":   func(l string) core.Rule { return any_(l) }("يقرا /api/me/rating-duty (الدخول — الفحص بالمعالج)"),
-			"me_x.get_telegram":      func(l string) core.Rule { return any_(l) }("يقرا /api/me/telegram (الدخول — الفحص بالمعالج)"),
-			"me_x.get_work_gate":     func(l string) core.Rule { return any_(l) }("يقرا /api/me/work-gate (الدخول — الفحص بالمعالج)"),
-			"me_x.put_language":      func(l string) core.Rule { return any_(l) }("يعدّل /api/me/language (الدخول — الفحص بالمعالج)"),
+			"me_x.get_bot_reports":                  func(l string) core.Rule { return any_(l) }("يقرا /api/me/bot-reports (الدخول — الفحص بالمعالج)"),
+			"me_x.get_daily_reports":                func(l string) core.Rule { return any_(l) }("يقرا /api/me/daily-reports (الدخول — الفحص بالمعالج)"),
+			"me_x.get_daily_reports_by_id_analysis": func(l string) core.Rule { return any_(l) }("يقرا /api/me/daily-reports/{id}/analysis (الدخول — الفحص بالمعالج)"),
+			"me_x.get_rating_duty":                  func(l string) core.Rule { return any_(l) }("يقرا /api/me/rating-duty (الدخول — الفحص بالمعالج)"),
+			"me_x.get_telegram":                     func(l string) core.Rule { return any_(l) }("يقرا /api/me/telegram (الدخول — الفحص بالمعالج)"),
+			"me_x.get_work_gate":                    func(l string) core.Rule { return any_(l) }("يقرا /api/me/work-gate (الدخول — الفحص بالمعالج)"),
+			"me_x.put_language":                     func(l string) core.Rule { return any_(l) }("يعدّل /api/me/language (الدخول — الفحص بالمعالج)"),
 		},
 		"media": {
 			"media.get_briefs": func(l string) core.Rule {

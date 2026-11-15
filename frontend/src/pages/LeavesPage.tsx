@@ -111,7 +111,7 @@ export default function LeavesPage() {
       <p className="text-[11px] text-slate-500">{title}</p>
       {name ? <>
         <p className="mt-0.5 text-sm font-bold text-[#0f2040]">{name}</p>
-        <span className={`mt-1 inline-block rounded-lg px-2 py-0.5 text-[11px] font-bold ${rejected ? 'bg-rose-50 text-rose-700' : 'bg-emerald-50 text-emerald-700'}`}>{rejected ? '✕ تم الرفض' : '✓ تمت الموافقة'}</span>
+        <span className={`mt-1 inline-block rounded-lg px-2 py-0.5 text-[11px] font-bold ${rejected ? 'bg-red-50 text-red-700' : 'bg-emerald-50 text-emerald-700'}`}>{rejected ? '✕ تم الرفض' : '✓ تمت الموافقة'}</span>
         {note && <p className="mt-1 text-[11px] text-slate-500">{note}</p>}
       </> : <p className="mt-1 text-xs text-slate-400">بالانتظار</p>}
     </div>

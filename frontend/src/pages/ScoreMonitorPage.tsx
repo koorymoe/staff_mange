@@ -126,7 +126,7 @@ export default function ScoreMonitorPage() {
           <>
             <div className="flex flex-wrap gap-2 text-sm">{audit.approvers.map((a) => <span key={a.name} className="rounded-full bg-slate-100 px-3 py-1">{a.name}: قبل {a.approved} · رفض {a.rejected}</span>)}</div>
             <ul className="space-y-1 text-sm">{audit.excuses.map((x) => (
-              <li key={x.id}><b>{x.employeeName}</b> · {x.date.slice(0, 10)} · {x.reason} · <span className="text-slate-600">{x.status === 'PENDING' ? 'بانتظار' : `${x.status === 'APPROVED' ? 'قبله' : 'رفضه'} ${x.decidedBy ?? ''}`}</span></li>
+              <li key={x.id}><b>{x.employeeName}</b> · {x.date.slice(0, 10)} · {x.reason} · <span className={x.status === 'PENDING' ? 'text-slate-600' : x.status === 'APPROVED' ? 'text-emerald-700' : 'text-red-700'}>{x.status === 'PENDING' ? 'بانتظار' : `${x.status === 'APPROVED' ? 'قبله' : 'رفضه'} ${x.decidedBy ?? ''}`}</span></li>
             ))}</ul>
           </>
         )}

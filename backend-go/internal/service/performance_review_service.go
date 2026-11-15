@@ -184,8 +184,7 @@ func (s *PerformanceReviewService) Create(evaluatorID string, req model.CreatePe
 				model.ReviewRatingLabels[req.Rating], name, byName, req.Reason)
 			// يروح لإداري الكوادر وللمراقب: الاثنين مخوّلين بالإجراء،
 			// وواحد بس يخلي البلاغ ينتظر لو كان بإجازة.
-			_ = s.notifications.CreateForRole("HR_COORDINATOR", "review_flag", msg)
-			_ = s.notifications.CreateForRole("MONITOR", "review_flag", msg)
+			_ = s.notifications.CreateForRoles([]string{"HR_COORDINATOR", "MONITOR"}, "review_flag", msg)
 		}
 	}
 	return review, nil

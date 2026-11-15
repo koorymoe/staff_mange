@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { api, type CameraCostRow, type CameraCostExtras, type CameraCostResponse } from '../api'
+import { BTN_DANGER_SOFT } from '../ui/classes'
 
 // استمارة "حساب تكلفة التنفيذ" — منقولة من شيت مستقل بالاكسل خاص بمنظومة
 // كاميرات المراقبة. معادلتها مختلفة تماماً عن "تكاليف المشروع": سعر أساس من
@@ -163,7 +164,7 @@ export default function CameraCostPage() {
                 {rows.length > 1 && (
                   <button
                     onClick={() => setRows((p) => p.filter((_, idx) => idx !== i))}
-                    className="text-xs text-red-500"
+                    className={BTN_DANGER_SOFT}
                   >
                     حذف
                   </button>

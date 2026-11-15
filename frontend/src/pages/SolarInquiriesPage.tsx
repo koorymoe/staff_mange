@@ -153,7 +153,7 @@ export default function SolarInquiriesPage() {
               )}
               {open === r.id + 'q' && (
                 <div className="mt-2 space-y-2 rounded-lg bg-emerald-50/60 p-3">
-                  {r.techOutcome === 'NO_ANSWER' && <p className="text-xs font-bold text-amber-800">التقني كاتب «ما رد» — اسأل الزبون: اتصل بيك التقني؟</p>}
+                  {r.techOutcome === 'NO_ANSWER' && <p className="rounded-lg bg-amber-50 text-amber-800 ring-1 ring-amber-200 px-2 py-1 text-xs font-bold">التقني كاتب «ما رد» — اسأل الزبون: اتصل بيك التقني؟</p>}
                   {!r.techOutcome && <p className="text-xs font-bold text-amber-800">التقني بعده ما سجّل اتصال — اسأل الزبون إذا أحد تواصل وياه</p>}
                   <Choice id={`qc-r-${r.number}`} label="رد عليك الزبون؟" value={qc.reached} onChange={(v) => setQc({ ...qc, reached: v })} opts={{ YES: 'إي', NO: 'لا' }} />
                   {qc.reached === 'YES' && (

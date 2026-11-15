@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { ReportAnalysisBox } from '../components/ReportAnalysisBox'
 import { useSession } from '../session'
 import { api, apiRequest, type Achievement } from '../api'
 import { dayBaghdad } from '../utils/format'
@@ -170,6 +171,7 @@ export default function MyAchievementsPage() {
                     </div>
                   ))}
                   {rep?.matchReview && <p className="py-2 text-[12px] text-slate-600">ملاحظة المراقب: {rep.matchReview}</p>}
+                  {rep && <div className="py-2"><ReportAnalysisBox reportId={rep.id} own /></div>}
                 </div>
               </div>
             )

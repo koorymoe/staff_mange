@@ -11,6 +11,8 @@ import { askConfirm, askInput } from '../ui/dialogs'
 
 import { notify } from '../ui/notify'
 import { DeleteButton } from '../ui/DeleteButton'
+import { BTN_DANGER_SOFT } from '../ui/classes'
+import { STATUS_LABELS } from '../statusLabels'
 // تطبيع اسم الأداة للمقارنة: قصّ الأطراف وتوحيد المسافات الداخلية.
 // ⚠️ كل مطابقة بهذي الشاشة نصية (ماكو معرّف مشترك بين العدة القياسية
 // وعدة الموظف ومخزن الكميات) — ففرق مسافة وحدة يخلي الأداة تطلع
@@ -31,9 +33,9 @@ const tabs: { key: TabKey; label: string }[] = [
 ]
 
 const requestStatusLabels: Record<ToolRequest['status'], string> = {
-  PENDING: 'معلّق',
-  APPROVED: 'موافق عليه',
-  REJECTED: 'مرفوض',
+  PENDING: STATUS_LABELS.PENDING,
+  APPROVED: STATUS_LABELS.APPROVED,
+  REJECTED: STATUS_LABELS.REJECTED,
   RETURNED: 'مسترجع',
 }
 
@@ -1235,7 +1237,7 @@ export default function InventoryPage() {
                               {canDeleteRequests && (
                                 <button
                                   onClick={() => handleDeleteRequest(r.id)}
-                                  className="rounded-lg bg-slate-100 px-3 py-1 text-xs font-medium text-slate-600 hover:bg-slate-200"
+                                  className={BTN_DANGER_SOFT}
                                 >
                                   حذف
                                 </button>

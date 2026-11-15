@@ -45,6 +45,7 @@ type WaMessage struct {
 	AuthorID       *string   `db:"authorId" json:"-"`
 	AuthorName     *string   `db:"authorName" json:"authorName,omitempty"`
 	Text           string    `db:"text" json:"text"`
+	MetaID         *string   `db:"metaId" json:"-"`
 	CreatedAt      time.Time `db:"createdAt" json:"createdAt"`
 }
 

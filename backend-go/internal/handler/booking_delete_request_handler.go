@@ -46,9 +46,7 @@ func (h *BookingDeleteRequestHandler) Create(w http.ResponseWriter, r *http.Requ
 	}
 	if h.notify != nil {
 		msg := "🗑️ طلب حذف الحجز " + out.BookingCode + " من " + out.RequestedByName + " — السبب: " + out.Reason
-		_ = h.notify.CreateForRole("MONITOR", "booking_delete_request", msg)
-		_ = h.notify.CreateForRole("ADMIN", "booking_delete_request", msg)
-		_ = h.notify.CreateForRole("OWNER", "booking_delete_request", msg)
+		_ = h.notify.CreateForRoles([]string{"MONITOR", "ADMIN", "OWNER"}, "booking_delete_request", msg)
 	}
 	WriteJSON(w, http.StatusCreated, out)
 }

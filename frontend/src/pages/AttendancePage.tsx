@@ -5,6 +5,7 @@ import { useSession, isAdminOrOwner } from '../session'
 import { api, LEAVE_KINDS, type MonthlyAttendanceReport, type EmployeeDailyAttendanceSummary, type OpenSessionResponse, type DailyAttendance, type LeaveRequest, type LeaveKind } from '../api'
 import { countAbsentDays, countLateDays, isLateDay, isWeekend, movementsOf, type Movement } from '../attendanceStats'
 import { todayBaghdad } from '../utils/format'
+import { BTN_SUCCESS } from '../ui/classes'
 
 /* ───── helpers ───── */
 
@@ -267,7 +268,7 @@ export default function AttendancePage({ embedded }: { embedded?: boolean } = {}
                 ) : (
                   <button
                     onClick={handleCheckIn}
-                    className="rounded-xl bg-emerald-700 px-5 py-2.5 text-sm font-bold text-white shadow-md transition hover:bg-emerald-800"
+                    className={BTN_SUCCESS}
                   >
                     ✅ تسجيل الحضور
                   </button>

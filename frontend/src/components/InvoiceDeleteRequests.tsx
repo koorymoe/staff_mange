@@ -2,6 +2,7 @@ import Modal from '../ui/Modal'
 import { useCallback, useEffect, useState } from 'react'
 import { api, type InvoiceDeleteRequest } from '../api'
 import { swallow } from '../utils/swallow'
+import { BTN_DANGER, BTN_DANGER_SOFT } from '../ui/classes'
 
 // ═══ 🗑️ طلبات حذف الفواتير (دازاي 10-25) ═══
 // المحاسب يطلب ويكتب السبب، والمالك وحده يوافق أو يرفض. قبل الحذف تنحفظ نسخة كاملة.
@@ -66,9 +67,9 @@ export default function InvoiceDeleteRequests({ isOwner, onChanged }: { isOwner:
             {isOwner && (
               <span className="ms-auto flex gap-2">
                 <button type="button" disabled={!!busy} onClick={() => void decide(r.id, true)}
-                  className="rounded-lg bg-red-600 px-3 py-1.5 text-xs font-bold text-white disabled:opacity-50">احذفها</button>
+                  className={BTN_DANGER}>احذفها</button>
                 <button type="button" disabled={!!busy} onClick={() => void decide(r.id, false)}
-                  className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-bold text-slate-600 disabled:opacity-50">ارفض</button>
+                  className={BTN_DANGER_SOFT}>ارفض</button>
               </span>
             )}
           </li>

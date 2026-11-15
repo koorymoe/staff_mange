@@ -459,7 +459,7 @@ function MatrixChatView({ admin }: { admin: boolean }) {
                       loadChats()
                     })
                 }}
-                className="hidden text-xs text-slate-400 hover:text-red-600 group-hover:block"
+                className="hidden text-xs rounded px-1 bg-red-50 text-red-700 ring-1 ring-red-200 hover:bg-red-100 group-hover:block"
               >
                 ✕
               </button>

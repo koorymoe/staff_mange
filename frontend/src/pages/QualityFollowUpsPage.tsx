@@ -11,6 +11,7 @@ import BookingCodeChip from '../components/BookingCodeChip'
 
 import { notify } from '../ui/notify'
 import { bookingServiceLabel } from '../bookingServiceLabel'
+import { BTN_WARN_SOFT } from '../ui/classes'
 const statusLabels: Record<QualityFollowUp['status'], string> = {
   PENDING: 'بانتظار التواصل',
   CONTACTED_OK: 'تم التواصل - كله تمام',
@@ -282,7 +283,7 @@ export default function QualityFollowUpsPage({ embedded }: EmbeddedProps = {}) {
                     <button
                       onClick={() => verdict(item.id, 'STUBBORN')}
                       disabled={busy === item.id || !canContact}
-                      className="rounded-lg border border-slate-400 bg-slate-100 px-4 py-2 text-sm font-bold text-slate-700 hover:bg-slate-200 disabled:opacity-50"
+                      className={BTN_WARN_SOFT}
                     >
                       🗿 الزبون مارد — ما يتعاون
                     </button>
@@ -331,7 +332,7 @@ export default function QualityFollowUpsPage({ embedded }: EmbeddedProps = {}) {
                 <div className="mt-3 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs">
                   <span className={`font-bold ${
                     item.reportType === 'POSITIVE' ? 'text-emerald-700'
-                      : item.reportType === 'STUBBORN' ? 'text-slate-600' : 'text-red-700'
+                      : item.reportType === 'STUBBORN' ? 'text-amber-800' : 'text-red-700'
                   }`}>
                     {item.reportType === 'POSITIVE' ? '✅ تقرير إيجابي'
                       : item.reportType === 'STUBBORN' ? '🗿 الزبون مارد — ما تعاون' : '⛔ تقرير سلبي'}

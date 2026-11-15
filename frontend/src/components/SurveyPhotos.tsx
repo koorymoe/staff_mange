@@ -131,7 +131,7 @@ export default function SurveyPhotos({ owner, canUpload = false, title = '📷 �
                 <span className="flex gap-1">
                   <button type="button" onClick={() => download(p)} title="تنزيل" className="text-xs text-slate-600 hover:text-slate-900">⬇</button>
                   {canDelete(p) && (
-                    <button type="button" onClick={() => remove(p)} title="حذف" className="text-xs text-red-500 hover:text-red-700">✕</button>
+                    <button type="button" onClick={() => remove(p)} title="حذف" className="rounded px-1 text-xs bg-red-50 text-red-700 ring-1 ring-red-200 hover:bg-red-100">✕</button>
                   )}
                 </span>
               </div>

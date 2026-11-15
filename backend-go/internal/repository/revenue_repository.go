@@ -39,7 +39,7 @@ func (r *MatrixScoreRepository) Revenue(from, to time.Time, emp string) ([]Reven
 			UNION ALL
 			SELECT p."responsibleEmployeeId", 'PROJECT', sum(pp.amount)::float8, count(DISTINCT p.id)::int
 			FROM "ProjectPayment" pp JOIN "Project" p ON p.id = pp."projectId"
-			WHERE p."responsibleEmployeeId" IS NOT NULL AND COALESCE(pp."paidAt", pp."createdAt") >= $1 AND COALESCE(pp."paidAt", pp."createdAt") < $2
+			WHERE p."responsibleEmployeeId" IS NOT NULL AND pp."cancelledAt" IS NULL AND COALESCE(pp."paidAt", pp."createdAt") >= $1 AND COALESCE(pp."paidAt", pp."createdAt") < $2
 			GROUP BY 1
 		) x WHERE "employeeId" IS NOT NULL AND ($3 = '' OR "employeeId" = $3)`, from, to, emp)
 	return rows, err

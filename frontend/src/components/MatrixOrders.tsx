@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { api, type MatrixOrder, type MatrixOrderAction } from '../api'
 import MatrixMissions from './MatrixMissions'
+import { STATUS_LABELS } from '../statusLabels'
 
 // ═══ 🎯 أوامر ماتركس (دازاي 11-13) ═══
 // «مهام ماتركس اكدر اوجه لماتركس مهمه — اكله روح سويلي عرض سعر، اكله روح اخصم هذا الموظف نقطه».
@@ -24,7 +25,7 @@ const KIND: Record<MatrixOrderAction['kind'], { icon: string; label: string; ton
 }
 
 const STATUS: Record<MatrixOrder['status'], string> = {
-  PROPOSED: '⏳ ينتظر موافقتك', RUNNING: '⚙️ يتنفّذ', DONE: '✅ انفّذ', CANCELLED: '✖️ ملغي', FAILED: '⚠️ ما انفّذ',
+  PROPOSED: '⏳ ينتظر موافقتك', RUNNING: '⚙️ يتنفّذ', DONE: '✅ انفّذ', CANCELLED: `✖️ ${STATUS_LABELS.CANCELLED}`, FAILED: '⚠️ ما انفّذ',
 }
 
 function describe(a: MatrixOrderAction): string {

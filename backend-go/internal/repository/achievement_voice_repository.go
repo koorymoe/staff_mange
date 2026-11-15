@@ -14,6 +14,16 @@ type AchievementVoice struct {
 	FileKey       string `db:"fileKey"`
 	ContentType   string `db:"contentType"`
 	Seconds       int    `db:"seconds"`
+	// باقي الأعمدة — حتى SELECT * ما يفشل.
+	CreatedAt      time.Time  `db:"createdAt"`
+	AnalysisStatus string     `db:"analysisStatus"`
+	Attempts       int        `db:"attempts"`
+	Transcript     *string    `db:"transcript"`
+	Summary        *string    `db:"summary"`
+	Tasks          []byte     `db:"tasks"`
+	Style          *string    `db:"style"`
+	AnalysisError  *string    `db:"analysisError"`
+	AnalyzedAt     *time.Time `db:"analyzedAt"`
 }
 
 type AchievementVoiceRepository struct{ db *sqlx.DB }

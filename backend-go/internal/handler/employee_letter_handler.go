@@ -55,8 +55,7 @@ func (h *EmployeeLetterHandler) Create(w http.ResponseWriter, r *http.Request) {
 			name = letter.Employee.Name
 		}
 		msg := "📄 طلب جديد من " + name + ": " + req.Subject
-		_ = h.notify.CreateForRole("ADMIN", "employee_letter", msg)
-		_ = h.notify.CreateForRole("OWNER", "employee_letter", msg)
+		_ = h.notify.CreateForRoles([]string{"ADMIN", "OWNER"}, "employee_letter", msg)
 	}
 	WriteJSON(w, http.StatusOK, letter)
 }

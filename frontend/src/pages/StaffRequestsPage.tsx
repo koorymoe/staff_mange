@@ -9,11 +9,13 @@ import EmptyState from '../components/EmptyState'
 import SaveError from '../components/SaveError'
 import SearchBar from '../components/SearchBar'
 import { swallow } from '../utils/swallow'
+import { BTN_DANGER_SOFT, BTN_SUCCESS } from '../ui/classes'
+import { STATUS_LABELS } from '../statusLabels'
 
 const statusLabel: Record<string, string> = {
-  PENDING: 'قيد الانتظار',
-  APPROVED: 'تمت الموافقة',
-  REJECTED: 'مرفوض',
+  PENDING: STATUS_LABELS.PENDING,
+  APPROVED: STATUS_LABELS.APPROVED,
+  REJECTED: STATUS_LABELS.REJECTED,
   FULFILLED: 'تم التلبية',
 }
 const STATUS_ORDER = ['PENDING', 'APPROVED', 'FULFILLED', 'REJECTED'] as const
@@ -261,9 +263,9 @@ export default function StaffRequestsPage({ embedded }: { embedded?: boolean } =
                 {req.status === 'PENDING' && (
                   <>
                     <button onClick={() => setStatus(req.id, 'APPROVED')}
-                      className="rounded-lg bg-blue-500 px-4 py-2 text-xs font-bold text-white hover:bg-blue-600">موافقة ✔</button>
+                      className={BTN_SUCCESS}>موافقة ✔</button>
                     <button onClick={() => setStatus(req.id, 'REJECTED')}
-                      className="rounded-lg border border-red-200 px-4 py-2 text-xs font-bold text-red-600 hover:bg-red-50">رفض ✖</button>
+                      className={BTN_DANGER_SOFT}>رفض ✖</button>
                   </>
                 )}
                 {req.status === 'APPROVED' && (

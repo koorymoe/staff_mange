@@ -7,6 +7,7 @@ import { dinar as money } from '../utils/format'
 import { askConfirm } from '../ui/dialogs'
 
 import { notify } from '../ui/notify'
+import { BTN_GHOST, BTN_PRIMARY } from '../ui/classes'
 /**
  * الدوار — شاشة المحاسب.
  *
@@ -376,9 +377,9 @@ export default function RevolvingFundPage() {
             </div>
             <div className="flex justify-end gap-2">
               <button onClick={() => setDischargeFor(null)}
-                className="rounded-lg px-4 py-2 text-sm text-slate-600 hover:bg-slate-100">إلغاء</button>
+                className={BTN_GHOST}>إلغاء</button>
               <button disabled={busy} onClick={doDischarge}
-                className="rounded-lg bg-violet-600 px-6 py-2 text-sm font-bold text-white hover:bg-violet-700 disabled:opacity-50">
+                className={BTN_PRIMARY}>
                 {busy ? 'جاري...' : 'تأكيد التخريج'}
               </button>
             </div>

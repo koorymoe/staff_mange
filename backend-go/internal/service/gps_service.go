@@ -121,7 +121,12 @@ func (s *GpsService) CreateRenewal(req model.UpsertGpsRenewalRequest) (*model.Gp
 	return s.repo.CreateRenewal(req)
 }
 
+// UpdateRenewal — الموافقة (status=APPROVED) تمدد اشتراك الجهاز بالسيرفر
+// بمعاملة وحدة؛ تاريخ النهاية ينحسب هنا ومو من الواجهة.
 func (s *GpsService) UpdateRenewal(id string, req model.UpsertGpsRenewalRequest) (*model.GpsRenewalRequest, error) {
+	if req.Status != nil && *req.Status == "APPROVED" {
+		return s.repo.ApproveRenewal(id, req.AdminID)
+	}
 	return s.repo.UpdateRenewal(id, req)
 }
 

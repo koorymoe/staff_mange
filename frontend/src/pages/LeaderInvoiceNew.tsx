@@ -25,6 +25,7 @@ import { swallow } from '../utils/swallow'
 
 import { notify } from '../ui/notify'
 import { BackLink } from '../ui/BackLink'
+import { BTN_DANGER_SOFT, BTN_GHOST, BTN_PRIMARY } from '../ui/classes'
 // صفحة إنشاء فاتورة ليدر — تحل محل شيت جوجل "تكاليف المشروع" + "انشاء الفواتير":
 // اختيار حتى 3 منظومات، بنود تنفيذ لكل منظومة (عدد/ارتفاع/تسليك/طول كيبل/برمجة)،
 // مواد بالكود أو يدوية، خصم، وحساب المجموع الصافي وكود المحاسبة عند الحفظ
@@ -1194,7 +1195,7 @@ export default function LeaderInvoiceNew({ initialMode, handoverOnly = false }: 
             </button>
             <button
               onClick={() => { try { localStorage.removeItem(DRAFT_KEY) } catch { /* بلا تخزين */ } setHasDraft(false) }}
-              className="rounded-lg border border-amber-300 px-3 py-1 text-[11px] font-bold text-amber-800 hover:bg-amber-100"
+              className={BTN_DANGER_SOFT}
             >
               احذفها
             </button>
@@ -1480,7 +1481,7 @@ export default function LeaderInvoiceNew({ initialMode, handoverOnly = false }: 
                   <button
                     onClick={() => removeItem(it.key)}
                     aria-label="حذف البند"
-                    className="shrink-0 rounded-lg px-1.5 py-0.5 text-sm text-red-500 hover:bg-red-50"
+                    className="shrink-0 rounded-lg px-1.5 py-0.5 text-sm bg-red-50 text-red-700 ring-1 ring-red-200 hover:bg-red-100"
                   >
                     🗑
                   </button>
@@ -1821,14 +1822,14 @@ export default function LeaderInvoiceNew({ initialMode, handoverOnly = false }: 
         <button
           onClick={saveDraft}
           disabled={items.length === 0}
-          className="rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-bold text-slate-700 transition hover:bg-slate-50 disabled:opacity-40"
+          className={BTN_GHOST}
         >
           {draftSaved ? '✅ انحفظت المسودة' : '💾 حفظ كمسودة'}
         </button>
         <button
           onClick={handleSave}
           disabled={saving}
-          className="rounded-xl bg-gradient-to-l from-brand-500 to-brand-800 px-6 py-2.5 text-sm font-bold text-white shadow-md disabled:opacity-50"
+          className={BTN_PRIMARY}
         >
           {saving
             ? 'جاري الحساب...'

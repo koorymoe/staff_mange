@@ -1,19 +1,20 @@
 import { useEffect, useMemo, useState } from 'react'
 import { api, type Booking } from '../api'
 import BookingsList from './BookingsList'
+import { STATUS_LABELS } from '../statusLabels'
 
 // ═══ حجوزات التقنيين — للمالك والمدير بوحدة التقنيين (قرار (ع) 10-09) ═══
 // كل حجز رحّله الإداري لتقني: وين وصل (تواصل · كشف · قرار · زيارة · خلص)
 // حتى نتابع شغل التقنيين. للاطلاع بس — الشغل نفسه يمّ التقني.
 
 const STATUS: Record<Booking['status'], [string, string]> = {
-  PENDING: ['بالانتظار', 'bg-slate-100 text-slate-700'],
-  CONFIRMED: ['مؤكد', 'bg-sky-100 text-sky-800'],
-  IN_PROGRESS: ['قيد العمل', 'bg-amber-100 text-amber-800'],
+  PENDING: [STATUS_LABELS.PENDING, 'bg-slate-100 text-slate-700'],
+  CONFIRMED: [STATUS_LABELS.CONFIRMED, 'bg-sky-100 text-sky-800'],
+  IN_PROGRESS: [STATUS_LABELS.IN_PROGRESS, 'bg-amber-100 text-amber-800'],
   WAITING: ['معلّق', 'bg-orange-100 text-orange-800'],
   PARTIAL: ['جزئي', 'bg-violet-100 text-violet-800'],
-  COMPLETED: ['خلص', 'bg-emerald-100 text-emerald-800'],
-  CANCELLED: ['ملغي', 'bg-red-100 text-red-700'],
+  COMPLETED: [STATUS_LABELS.COMPLETED, 'bg-emerald-100 text-emerald-800'],
+  CANCELLED: [STATUS_LABELS.CANCELLED, 'bg-red-100 text-red-700'],
 }
 const d = (s?: string | null) => (s ? new Date(s).toLocaleString('ar-IQ', { month: 'numeric', day: 'numeric', hour: 'numeric', minute: '2-digit' }) : '')
 

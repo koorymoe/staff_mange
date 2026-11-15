@@ -453,6 +453,8 @@ func versionedMigrations() []Migration {
 	result = append(result, aiSuggestionVerifyMigrations()...)
 	result = append(result, agentGrowthMigrations()...)
 	result = append(result, projectQuotationMigrations()...)
+	// 0499: 🧠 تحليل ماتركس لتقرير الإنجاز
+	result = append(result, dailyReportAnalysisMigrations()...)
 	// 🏴‍☠️ ون بيس: التحديثات المولّدة من الموديلات — دائماً بالأخير
 	result = append(result, autoMigrations()...)
 	return result

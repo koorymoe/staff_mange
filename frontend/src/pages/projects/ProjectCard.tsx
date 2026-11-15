@@ -10,6 +10,7 @@ import { Info } from './ui'
 import LinkQuotationModal from './LinkQuotationModal'
 
 import { notify } from '../../ui/notify'
+import { BTN_DANGER_SOFT } from '../../ui/classes'
 export function MainView(props: {
   projects: Project[]
   totalCount: number
@@ -143,6 +144,7 @@ export function ProjectCard({ p, canManage, onEdit, onMove, onReport, onDelete, 
   const nextStage = nextProjectStage(p.stage)
   const [showContract, setShowContract] = useState(false)
   const [showMedia, setShowMedia] = useState(false)
+  const [resuming, setResuming] = useState(false)
   const [showPay, setShowPay] = useState(false)
   const [showLinkQ, setShowLinkQ] = useState(false)
   const inMedia = useMediaOpen().has(p.id)
@@ -185,10 +187,12 @@ export function ProjectCard({ p, canManage, onEdit, onMove, onReport, onDelete, 
           <b>⏸️ بانتظار الزبون</b>
           <span>من {new Date(p.waitingCustomerSince).toLocaleDateString('en-GB')}{p.waitingCustomerNote ? ` — ${p.waitingCustomerNote}` : ''}</span>
           <span className="text-xs text-sky-700">(ما ينحسب تأخير عليك؛ ينشال وحده من تتغيّر المرحلة)</span>
-          <button onClick={async () => {
+          <button disabled={resuming} onClick={async () => {
+            setResuming(true)
             try { await apiRequest(`/projects/${p.id}/waiting`, { method: 'POST', body: JSON.stringify({ waiting: false }) }); onRefresh() }
             catch (e) { notify(e instanceof Error ? e.message : 'تعذر الحفظ') }
-          }} className="mr-auto rounded-lg bg-white px-3 py-1 text-xs font-bold text-sky-800 ring-1 ring-sky-200">▶️ الزبون رد — رجّعه</button>
+            finally { setResuming(false) }
+          }} className="mr-auto rounded-lg bg-white px-3 py-1 text-xs font-bold text-sky-800 ring-1 ring-sky-200 disabled:opacity-50">▶️ الزبون رد — رجّعه</button>
         </div>
       ) : (
         <>
@@ -303,7 +307,7 @@ export function ProjectCard({ p, canManage, onEdit, onMove, onReport, onDelete, 
           )}
           {canManage && !isRejected && !isCompleted && (
             <button onClick={() => onMove(p, '❌ مرفوض')}
-              className="text-sm px-3 py-1.5 rounded-lg bg-gray-500 text-white font-medium hover:brightness-110">رفض</button>
+              className={BTN_DANGER_SOFT}>رفض</button>
           )}
           {canManage && isRejected && (
             <button onClick={() => void restoreRejected(p, onRefresh)}

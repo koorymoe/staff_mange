@@ -10,6 +10,7 @@ import { swallow } from '../utils/swallow'
 
 
 import { notify } from '../ui/notify'
+import { BTN_GHOST, BTN_PRIMARY } from '../ui/classes'
 // أبو الجودة والمراقب المدقق (والأدمن) يشوفون متابعة/إدارة الشكاوى بس —
 // باقي الأدوار الي عندها صلاحية الشكاوى (مثلاً المبيعات) تشوف تسجيل شكوى
 // جديدة بس، بدون واجهة المتابعة والإدارة.
@@ -69,6 +70,7 @@ export default function ComplaintsPage() {
 
   // Resolution modal
   const [resolvingId, setResolvingId] = useState<string | null>(null)
+  const [resolveSaving, setResolveSaving] = useState(false)
   const [resolution, setResolution] = useState('')
 
   const load = () => {
@@ -261,7 +263,8 @@ export default function ComplaintsPage() {
   }
 
   const handleResolve = async () => {
-    if (!resolvingId || !resolution.trim()) return
+    if (!resolvingId || !resolution.trim() || resolveSaving) return
+    setResolveSaving(true)
     try {
       await api.resolveComplaint(resolvingId, resolution)
       setResolvingId(null)
@@ -269,6 +272,8 @@ export default function ComplaintsPage() {
       load()
     } catch (err) {
       notify(err instanceof Error ? err.message : 'حدث خطأ')
+    } finally {
+      setResolveSaving(false)
     }
   }
 
@@ -431,13 +436,14 @@ export default function ComplaintsPage() {
             <div className="mt-4 flex gap-3">
               <button
                 onClick={handleResolve}
-                className="rounded-lg bg-gradient-to-l from-brand-500 to-brand-800 px-6 py-2 font-medium text-white shadow-md"
+                disabled={resolveSaving || !resolution.trim()}
+                className={BTN_PRIMARY}
               >
-                حفظ الحل
+                {resolveSaving ? 'جاري الحفظ…' : 'حفظ الحل'}
               </button>
               <button
                 onClick={() => { setResolvingId(null); setResolution('') }}
-                className="rounded-lg border border-slate-300 px-6 py-2 font-medium text-slate-600"
+                className={BTN_GHOST}
               >
                 إلغاء
               </button>
@@ -488,8 +494,8 @@ export default function ComplaintsPage() {
           <button onClick={() => setFl('late', fl.late ? '' : '1')} className={`rounded-lg px-3 py-1.5 text-sm font-bold ${fl.late ? 'bg-red-600 text-white' : 'bg-red-50 text-red-700'}`}>⏰ المتأخرة ({lateCount})</button>
           <button onClick={() => setFl('vip', fl.vip === '1' ? '' : '1')} className={`rounded-lg px-3 py-1.5 text-sm font-bold ${fl.vip === '1' ? 'bg-amber-500 text-white' : 'bg-amber-50 text-amber-800'}`}>👑 مفتوحة لشخصيات مهمة ({vipCount})</button>
           {anyFilter && <button onClick={() => setParams({}, { replace: true })} className="text-sm text-slate-500 underline">مسح الفلاتر</button>}
-          <span className="rounded-lg bg-amber-50 px-3 py-1.5 text-xs font-bold text-amber-800" title="الزبون ما رد — تنتظر الاتصال الجاي (مو عاجلة)">📵 تنتظر إعادة اتصال ({complaints.filter((c) => !c.contactedAt && !c.droppedNoAnswerAt && c.nextCallAt && new Date(c.nextCallAt) > new Date()).length})</span>
-          <span className="rounded-lg bg-slate-100 px-3 py-1.5 text-xs font-bold text-slate-700" title="تواصلنا ٣ مرات والزبون ما رد — الشكوى سقطت">🔕 سقطت لأن الزبون ما رد ({complaints.filter((c) => c.droppedNoAnswerAt).length})</span>
+          <span className="rounded-lg bg-amber-50 text-amber-800 ring-1 ring-amber-200 px-3 py-1.5 text-xs font-bold" title="الزبون ما رد — تنتظر الاتصال الجاي (مو عاجلة)">📵 تنتظر إعادة اتصال ({complaints.filter((c) => !c.contactedAt && !c.droppedNoAnswerAt && c.nextCallAt && new Date(c.nextCallAt) > new Date()).length})</span>
+          <span className="rounded-lg bg-amber-50 text-amber-800 ring-1 ring-amber-200 px-3 py-1.5 text-xs font-bold" title="تواصلنا ٣ مرات والزبون ما رد — الشكوى سقطت">🔕 سقطت لأن الزبون ما رد ({complaints.filter((c) => c.droppedNoAnswerAt).length})</span>
           <span className="mr-auto text-xs text-slate-500">{filtered.length} من {complaints.length} شكوى</span>
         </div>
                 }

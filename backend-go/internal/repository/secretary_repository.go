@@ -538,6 +538,7 @@ func (r *SecretaryRepository) MarkFailed(id, empID, result string) error {
 
 type SecretaryNote struct {
 	ID        string     `db:"id" json:"id"`
+	OwnerID   string     `db:"ownerId" json:"-"`
 	Kind      string     `db:"kind" json:"kind"` // DIARY | AGENDA
 	Body      string     `db:"body" json:"body"`
 	At        *time.Time `db:"at" json:"at"`

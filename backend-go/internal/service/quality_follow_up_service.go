@@ -73,8 +73,7 @@ func (s *QualityFollowUpService) notifyUnattributed(notes string) {
 	}
 	msg := "⚠️ شكوى زبون مثبتة بس الحجز ما بيه ليدر مكلّف — ما انخصمت نقطة من أحد. حدد المسؤول: " +
 		strings.TrimSpace(notes)
-	_ = s.notifications.CreateForRole("ADMIN", "quality_unattributed", msg)
-	_ = s.notifications.CreateForRole("OWNER", "quality_unattributed", msg)
+	_ = s.notifications.CreateForRoles([]string{"ADMIN", "OWNER"}, "quality_unattributed", msg)
 }
 
 func (s *QualityFollowUpService) notifyPenalty(employeeID, headline, notes string) {

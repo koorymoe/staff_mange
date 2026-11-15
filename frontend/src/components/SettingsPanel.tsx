@@ -8,6 +8,7 @@ import TelegramLinkCard from './TelegramLinkCard'
 import ThemeToggle from './ThemeToggle'
 
 import { notify } from '../ui/notify'
+import { BTN_DANGER_SOFT, BTN_SUCCESS } from '../ui/classes'
 const ICON_CHOICES = ['😀', '😎', '🦁', '🐺', '🦅', '🐉', '⚡', '🔥', '⭐', '🚀', '🛠️', '🎯']
 
 export default function SettingsPanel({ onClose }: { onClose: () => void }) {
@@ -19,6 +20,7 @@ export default function SettingsPanel({ onClose }: { onClose: () => void }) {
   const [currentPassword, setCurrentPassword] = useState('')
   const [newPassword, setNewPassword] = useState('')
   const [pwSaving, setPwSaving] = useState(false)
+  const [langSaving, setLangSaving] = useState(false)
   const [pwMsg, setPwMsg] = useState<{ text: string; ok: boolean } | null>(null)
 
   const handleChangePassword = async (e: React.FormEvent) => {
@@ -111,12 +113,13 @@ export default function SettingsPanel({ onClose }: { onClose: () => void }) {
           <span className="text-slate-600">🌐 اللغة · زبان</span>
           <div className="flex gap-1">
             {(['ar', 'ur'] as const).map((l) => (
-              <button key={l} type="button" aria-pressed={uiLanguage() === l}
+              <button key={l} type="button" aria-pressed={uiLanguage() === l} disabled={langSaving}
                 onClick={async () => {
-                  try { await apiRequest('/me/language', { method: 'PUT', body: JSON.stringify({ language: l }) }) } catch { /* يتحفظ محلياً على الأقل */ }
+                  setLangSaving(true)
+                  try { await apiRequest('/me/language', { method: 'PUT', body: JSON.stringify({ language: l }) }) } catch { /* يتحفظ محلياً على الأقل */ } finally { setLangSaving(false) }
                   setUiLanguage(l)
                 }}
-                className={`rounded-lg px-3 py-1 text-xs font-bold ${uiLanguage() === l ? 'bg-[#0f2040] text-white' : 'bg-slate-100 text-slate-700'}`}>
+                className={`rounded-lg px-3 py-1 text-xs font-bold disabled:opacity-50 ${uiLanguage() === l ? 'bg-[#0f2040] text-white' : 'bg-slate-100 text-slate-700'}`}>
                 {l === 'ar' ? 'العربية' : 'اردو'}
               </button>
             ))}
@@ -204,8 +207,8 @@ export default function SettingsPanel({ onClose }: { onClose: () => void }) {
                     <span className="text-sm font-bold text-slate-700">{r.employee?.name}</span>
                   </div>
                   <div className="flex gap-1">
-                    <button onClick={() => handleResolve(r.id, true)} className="rounded-md bg-emerald-50 px-2 py-1 text-xs font-bold text-emerald-700 hover:bg-emerald-100">✔ موافقة</button>
-                    <button onClick={() => handleResolve(r.id, false)} className="rounded-md bg-red-50 px-2 py-1 text-xs font-bold text-red-700 hover:bg-red-100">✘ رفض</button>
+                    <button onClick={() => handleResolve(r.id, true)} className={BTN_SUCCESS}>✔ موافقة</button>
+                    <button onClick={() => handleResolve(r.id, false)} className={BTN_DANGER_SOFT}>✘ رفض</button>
                   </div>
                 </div>
               ))}

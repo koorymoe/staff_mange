@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { api, type Booking } from '../api'
+import { BTN_WARN_SOFT } from '../ui/classes'
 
 // ═══ قرارات الحجز الثلاثة ═══
 //
@@ -112,7 +113,7 @@ export default function BookingLifecycleActions({
           {!isWaiting && (
             <button
               onClick={() => setOpen('waiting')}
-              className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-bold text-slate-600"
+              className={BTN_WARN_SOFT}
             >
               📞 الزبون ما رد
             </button>

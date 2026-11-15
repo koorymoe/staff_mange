@@ -774,7 +774,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	designFormRepo := repository.NewDesignFormRepository(db)
 	designFormService := service.NewDesignFormService(designFormRepo)
 	designFormHandler := handler.NewDesignFormHandler(designFormService)
-	gpsHandler := handler.NewGpsHandler(gpsService)
+	gpsHandler := handler.NewGpsHandler(gpsService, permissionRepo)
 	workReportHandler := handler.NewWorkReportHandler(workReportService)
 	surveyReportHandler := handler.NewBookingSurveyReportHandler(surveyReportService)
 	// مهندس الجودة يراجع تقارير غيره بصلاحيته، مو بدوره.
@@ -1121,6 +1121,8 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	// (ون بيس 11-10) requireSurveys انتقل لقاعدة بالنواة (internal/apps/sections)
 	secs["field_timing"].Set("GET /api/field-timing", "field_timing.get_root", workGate.FieldTiming)
 	secs["daily_reports"].Set("GET /api/daily-reports/{id}/match", "daily_reports.get_by_id_match", workGate.MatchDetail)
+	secs["daily_reports"].Set("GET /api/daily-reports/{id}/analysis", "daily_reports.get_by_id_analysis", workGate.ReportAnalysis)
+	secs["me_x"].Set("GET /api/me/daily-reports/{id}/analysis", "me_x.get_daily_reports_by_id_analysis", workGate.MyReportAnalysis)
 	secs["daily_reports"].Set("POST /api/daily-reports/{id}/match-review", "daily_reports.post_by_id_match_review", workGate.ReviewMatch)
 	safeguard.Loop("مطابقة تقارير الإنجاز", 13*time.Minute, time.Hour, func() {
 		if n, err := workGate.SweepMatches(); err != nil {
@@ -3213,6 +3215,10 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 			Scores: matrixScoreService.Board, ScoreRepo: matrixScoreService.Repo(),
 		})
 		matrixCommandService.SetAgent(agent)
+		// 🧠 تحليل ماتركس لتقارير الإنجاز — نفس العميل والحد اليومي، والمناقض يروح للمراقب
+		service.SetReportAnalyzer(service.NewReportAnalyzer(db, agent, func(msg string) {
+			_ = notificationRepo.CreateForRolesOrPermission([]string{"MONITOR"}, "monitoring", "daily_report_mismatch", msg)
+		}))
 		trainingCenter.Agent = agent
 		// 🗂️ السكرتير (قرار (ع) 10-22): المالك والمدير بس، كل واحد بذاكرته — docs/secretary.md
 		secRepo := repository.NewSecretaryRepository(db)

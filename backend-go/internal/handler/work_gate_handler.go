@@ -213,6 +213,8 @@ func (h *WorkGateHandler) SubmitDaily(w http.ResponseWriter, r *http.Request) {
 		WriteError(w, http.StatusBadRequest, "تعذر الحفظ")
 		return
 	}
+	// 🧠 تحليل ماتركس بالخلفية
+	service.AnalyzeReportSoon(emp, in.Day)
 	if late { // يوم فات وانكنس — نعيد مطابقته
 		if m, err := h.match.Match(emp, in.Day); err == nil && m != nil {
 			if isNew, err := h.match.Save(m); err == nil && isNew {
@@ -239,6 +241,7 @@ func (h *WorkGateHandler) MirrorAchievement(employeeID, text string) {
 	errlog.Exec(h.db.Exec(`INSERT INTO "DailyWorkReport" ("employeeId", day, body, late) VALUES ($1, $2::date, $3, false)
 		ON CONFLICT ("employeeId", day) DO UPDATE SET body = "DailyWorkReport".body || E'\n\n' || EXCLUDED.body`,
 		employeeID, companyToday().Format("2006-01-02"), text))
+	service.AnalyzeReportSoon(employeeID, companyToday().Format("2006-01-02"))
 }
 
 // GET /api/me/daily-reports — تقاريري يوم بيوم (آخر ٦٠ يوم) ويا وقت الرفع والتأخير ومطابقة ماتركس
@@ -430,6 +433,12 @@ func (h *WorkGateHandler) SweepMatches() (int, error) {
 		}
 		h.notifyMismatch(flagged)
 		n += len(flagged)
+		// 🧠 تحليل ماتركس للتقارير الي ما انحللت (أو انعدلت) — يطفى ويا مفتاح الذكاء
+		if k, err := service.SweepReportAnalyses(day); err != nil {
+			log.Printf("[report-analysis] sweep %s: %v", day, err)
+		} else if k > 0 {
+			log.Printf("[report-analysis] %s: %d تقرير انحلّل", day, k)
+		}
 	}
 	return n, nil
 }

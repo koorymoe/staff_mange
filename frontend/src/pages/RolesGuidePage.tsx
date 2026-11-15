@@ -146,13 +146,13 @@ export default function RolesGuidePage() {
         <div className="rounded-2xl border border-emerald-200 bg-white p-4">
           <h3 className="mb-2 font-bold text-emerald-800">✅ يكدر يوصل ({visible.length})</h3>
           <div className="space-y-1">
-            {visible.map((i) => {
+            {visible.map((i, idx) => {
               const tags = sensitiveOf(i.to || '')
               return (
-                <p key={i.to} className="flex flex-wrap items-center gap-1.5 text-xs text-slate-700">
+                <p key={`${i.to}-${idx}`} className="flex flex-wrap items-center gap-1.5 text-xs text-slate-700">
                   <span>{i.label}</span>
-                  {tags.map((t) => (
-                    <span key={t} className="rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] font-bold text-amber-800">{t}</span>
+                  {tags.map((t, ti) => (
+                    <span key={`${t}-${ti}`} className="rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] font-bold text-amber-800">{t}</span>
                   ))}
                 </p>
               )
@@ -166,13 +166,13 @@ export default function RolesGuidePage() {
         <div className="rounded-2xl border border-slate-200 bg-white p-4">
           <h3 className="mb-2 font-bold text-slate-700">🚫 ما يكدر يوصل ({hidden.length})</h3>
           <div className="max-h-[420px] space-y-1 overflow-y-auto">
-            {hidden.map((i) => {
+            {hidden.map((i, idx) => {
               const tags = sensitiveOf(i.to || '')
               return (
-                <p key={i.to} className="flex flex-wrap items-center gap-1.5 text-xs text-slate-500">
+                <p key={`${i.to}-${idx}`} className="flex flex-wrap items-center gap-1.5 text-xs text-slate-500">
                   <span>{i.label}</span>
-                  {tags.map((t) => (
-                    <span key={t} className="rounded-full bg-slate-100 px-1.5 py-0.5 text-[10px] font-bold text-slate-500">{t}</span>
+                  {tags.map((t, ti) => (
+                    <span key={`${t}-${ti}`} className="rounded-full bg-slate-100 px-1.5 py-0.5 text-[10px] font-bold text-slate-500">{t}</span>
                   ))}
                 </p>
               )

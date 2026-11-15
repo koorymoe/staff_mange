@@ -58,7 +58,7 @@ func (a *MatrixAgent) registerRevenueTool() {
 					  AND (b."completedAt" AT TIME ZONE 'Asia/Baghdad')::date BETWEEN $1::date AND $2::date
 				), inv AS (
 					SELECT DISTINCT ON (li."bookingId") li."bookingId", li."employeeId", COALESCE(li."netTotal", 0) AS net
-					FROM "LeaderInvoice" li WHERE li."bookingId" IN (SELECT id FROM bk)
+					FROM "LeaderInvoice" li WHERE li."bookingId" IN (SELECT id FROM bk) AND li."revokedAt" IS NULL AND li.status <> 'DRAFT'
 					ORDER BY li."bookingId", li."createdAt" DESC
 				)
 				SELECT bk.code, bk."bookingType", bk.kind, inv."employeeId" AS "invBy", COALESCE(inv.net, 0) AS net,

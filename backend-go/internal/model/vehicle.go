@@ -155,7 +155,7 @@ type VehicleLog struct {
 	// صورة الوصل تنحفظ base64 وهيه ثقيلة — القوائم ترجع العلم فقط،
 	// والصورة نفسها تنجلب بطلب مستقل لما المستخدم يضغط عليها.
 	HasReceiptPhoto    bool    `db:"hasReceiptPhoto" json:"hasReceiptPhoto"`
-	ReceiptPhotoBase64 *string `db:"-" json:"receiptPhotoBase64,omitempty"`
+	ReceiptPhotoBase64 *string `db:"receiptPhotoBase64" json:"-"` // ثقيلة — تنجلب بطلب مستقل
 }
 
 // VehicleLogCreateResult نتيجة إنشاء سجل سيارة، مع نتيجة فحص شذوذ الوقود إن كان النوع FUEL.

@@ -7,12 +7,14 @@ import { api, procurementTypeLabels, type ProcurementRequest, type ProcurementRe
 import { SessionContext, hasRole, isAdminOrOwner } from '../session'
 import BookingCodeChip from '../components/BookingCodeChip'
 import { swallow } from '../utils/swallow'
+import { BTN_DANGER_SOFT, BTN_GHOST, BTN_SUCCESS } from '../ui/classes'
+import { STATUS_LABELS } from '../statusLabels'
 
 const statusLabels: Record<string, string> = {
   PENDING: 'بانتظار التوفير',
   IN_PROGRESS: 'جاري التوفير',
   FULFILLED: 'تم التوفير',
-  REJECTED: 'مرفوض',
+  REJECTED: STATUS_LABELS.REJECTED,
 }
 const statusColors: Record<string, string> = {
   PENDING: 'bg-amber-100 text-amber-700',
@@ -491,7 +493,7 @@ export default function ProcurementPage() {
                           {req.status === 'PENDING' && (
                             <>
                               <button onClick={() => handleStatusUpdate(req.id, 'IN_PROGRESS')} className="px-2 py-1 text-xs bg-blue-100 text-blue-700 rounded hover:bg-blue-200 transition">جاري التوفير</button>
-                              <button onClick={() => handleStatusUpdate(req.id, 'REJECTED')} className="px-2 py-1 text-xs bg-red-100 text-red-700 rounded hover:bg-red-200 transition">رفض</button>
+                              <button onClick={() => handleStatusUpdate(req.id, 'REJECTED')} className={BTN_DANGER_SOFT}>رفض</button>
                             </>
                           )}
                           {(req.status === 'PENDING' || req.status === 'IN_PROGRESS') && (
@@ -658,12 +660,12 @@ export default function ProcurementPage() {
               />
             </div>
 
-            <div className="flex gap-2 justify-end">
+            <div className={BTN_GHOST}>
               <button onClick={() => setFulfillModal(null)} className="px-4 py-2 text-sm text-slate-600 hover:bg-slate-100 rounded-lg transition">إلغاء</button>
               <button
                 onClick={handleFulfill}
                 disabled={fulfilling}
-                className="px-6 py-2 text-sm bg-emerald-700 text-white rounded-lg font-medium hover:bg-emerald-800 disabled:opacity-50 transition"
+                className={BTN_SUCCESS}
               >
                 {fulfilling ? 'جاري التنفيذ...' : 'تأكيد التوفير'}
               </button>

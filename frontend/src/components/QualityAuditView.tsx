@@ -3,6 +3,7 @@ import { api, type Employee, type QualityFollowUp } from '../api'
 import { askJustification } from '../utils/justify'
 import BookingCodeChip from './BookingCodeChip'
 import { swallow } from '../utils/swallow'
+import { fmtDateTime } from '../utils/date'
 
 // ═══ «شنو سوّى مهندس الجودة» — (ع) 10-13 ═══
 // بمكتب المراقب: مو شاشة شغل الجودة (أزرار التقرير)، تدقيق بس — منو تواصل
@@ -10,7 +11,7 @@ import { swallow } from '../utils/swallow'
 const REPORT: Record<string, { t: string; c: string }> = {
   POSITIVE: { t: '✅ تقرير إيجابي', c: 'bg-emerald-100 text-emerald-800' },
   NEGATIVE: { t: '⛔ تقرير سلبي', c: 'bg-red-100 text-red-800' },
-  STUBBORN: { t: '🗿 الزبون مارد', c: 'bg-slate-200 text-slate-700' },
+  STUBBORN: { t: '🗿 الزبون مارد', c: 'bg-amber-50 text-amber-800 ring-1 ring-amber-200' },
 }
 const STATUS: Record<string, string> = {
   PENDING: '⏳ ينتظر التواصل', CONTACTED_OK: 'تواصل — تمام', CONTACTED_ISSUE: 'تواصل — أكو مشكلة',
@@ -28,7 +29,7 @@ const VERDICT: Record<string, { t: string; c: string }> = {
   NOT_OK: { t: '👎 المراقب: مو تمام', c: 'bg-red-100 text-red-800' },
   SHORTCOMING: { t: '⚠️ تقصير مسجّل', c: 'bg-red-100 text-red-800' },
 }
-const dt = (s: string | null) => s ? new Date(s).toLocaleString('ar-IQ', { timeZone: 'Asia/Baghdad', weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : '—'
+const dt = (s: string | null) => fmtDateTime(s, { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) // (دازاي 11-15) من utils
 
 export default function QualityAuditView() {
   const [items, setItems] = useState<QualityFollowUp[] | null>(null)

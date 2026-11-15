@@ -1254,8 +1254,9 @@ export default function Employees({ embedded }: { embedded?: boolean } = {}) {
 
 // ═══ تعديل كل بيانات الموظف — صلاحية «employee_edit_all» ═══
 function EditAllModal({ employee, allowRole, onClose, onSave }: {
-  employee: Employee; allowRole: boolean; onClose: () => void; onSave: (data: Record<string, unknown>) => void
+  employee: Employee; allowRole: boolean; onClose: () => void; onSave: (data: Record<string, unknown>) => void | Promise<void>
 }) {
+  const [saving, setSaving] = useState(false)
   const [f, setF] = useState({
     name: employee.name ?? '', phone: employee.phone ?? '', certificate: employee.certificate ?? '',
     position: employee.position ?? '', jobTitle: (employee as { jobTitle?: string | null }).jobTitle ?? '',
@@ -1294,12 +1295,12 @@ function EditAllModal({ employee, allowRole, onClose, onSave }: {
         <p className="mt-2 text-[11px] text-slate-400">الدور وبيانات الدخول والصورة تبقى بمساراتها الخاصة.</p>
         <div className="mt-4 flex justify-end gap-2">
           <button onClick={onClose} className="rounded-lg border border-slate-300 px-4 py-1.5 text-sm">إلغاء</button>
-          <button onClick={() => onSave({
+          <button disabled={saving} onClick={async () => { setSaving(true); try { await onSave({
             name: f.name.trim(), phone: f.phone.trim() || null, certificate: f.certificate.trim() || null,
             position: f.position.trim() || null, jobTitle: f.jobTitle.trim() || null, shift: f.shift,
             shiftStart: f.shiftStart || null, shiftEnd: f.shiftEnd || null,
             monthlyLeaves: Number(f.monthlyLeaves) || 0, hasDrivingLicense: f.hasDrivingLicense,
-          })} className="rounded-lg bg-[#0f2040] px-4 py-1.5 text-sm font-bold text-white">حفظ</button>
+          }) } finally { setSaving(false) } }} className="rounded-lg bg-[#0f2040] px-4 py-1.5 text-sm font-bold text-white disabled:opacity-50">{saving ? 'جاري الحفظ…' : 'حفظ'}</button>
         </div>
 </Modal>
   )

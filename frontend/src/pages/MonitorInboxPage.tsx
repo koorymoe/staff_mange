@@ -522,7 +522,7 @@ function JustificationsPanel() {
           </div>
           <p className="mt-1 text-slate-700">📝 {r.question}</p>
           {!r.answeredAt
-            ? <p className="mt-2 text-xs font-bold text-slate-500">⏳ لسه الموظف ما رد</p>
+            ? <p className="mt-2 inline-block rounded-lg bg-amber-50 text-amber-800 ring-1 ring-amber-200 px-2 py-1 text-xs font-bold">⏳ لسه الموظف ما رد</p>
             : <p className="mt-2 rounded-lg bg-sky-50 px-3 py-2 text-sky-900">💬 عذره: «{r.answer}» <span className="text-[11px] text-slate-500">— {fmt(r.answeredAt)}</span></p>}
           {r.verdict && (
             <p className={`mt-2 text-xs font-bold ${r.verdict === 'ACCEPTED' ? 'text-emerald-700' : 'text-red-700'}`}>

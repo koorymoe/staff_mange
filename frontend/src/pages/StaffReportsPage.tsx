@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { apiRequest } from '../api'
 import { useSession, isAdminOrOwner, hasRole } from '../session'
 import { useApi } from '../utils/useApi'
+import { ReportAnalysisBox } from '../components/ReportAnalysisBox'
 import { card } from '../ui/classes'
 import { num, todayBaghdad } from '../utils/format'
 import { swallow } from '../utils/swallow'
@@ -54,6 +55,7 @@ function DailyTab() {
             <p className="text-sm font-bold text-[#0f2040]"><Link to={`/employee-dossier?id=${r.employeeId}`} className="hover:underline">{r.employeeName}</Link> {r.late && <span className="mr-1 rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-bold text-amber-700 ring-1 ring-amber-200">متأخر</span>}</p>
             <p className="whitespace-pre-wrap text-sm text-slate-700">{r.body}</p>
             <MatchRow r={r} onDone={() => setReload((n) => n + 1)} />
+            <ReportAnalysisBox reportId={r.id} />
           </div>
         ))}
         {data && data.reports.length === 0 && <p className="py-4 text-center text-sm text-slate-400">ماكو تقارير لهذا اليوم.</p>}

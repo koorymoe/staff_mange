@@ -87,7 +87,6 @@ export default function GpsDevices() {
       const d = new Date(activationDate); d.setDate(d.getDate() + days)
       return d.toLocaleDateString('ar-IQ')
     })() : '-'
-    const price = req.price ? req.price.toLocaleString() + ' د.ع' : '-'
 
     const makeCopy = (copyLabel: string) => `
       <div style="width:100%;height:100%;box-sizing:border-box;font-family:'Segoe UI',Arial,sans-serif;direction:rtl;background:white;">
@@ -102,7 +101,6 @@ export default function GpsDevices() {
               <tr><td style="padding:3px 6px;color:#444;border-bottom:1px solid #f0e8d0;background:#f8f4ee;font-weight:600;">رقم الهاتف</td><td style="padding:3px 6px;font-weight:bold;border-bottom:1px solid #f0e8d0;">${req.customer?.phone || '-'}</td></tr>
               <tr><td style="padding:3px 6px;color:#444;border-bottom:1px solid #f0e8d0;background:#f8f4ee;font-weight:600;">العنوان</td><td style="padding:3px 6px;border-bottom:1px solid #f0e8d0;">${req.customer?.address || '-'}</td></tr>
               <tr><td style="padding:3px 6px;color:#444;border-bottom:1px solid #f0e8d0;background:#f8f4ee;font-weight:600;">نوع الاشتراك</td><td style="padding:3px 6px;font-weight:bold;border-bottom:1px solid #f0e8d0;">${subLabel}</td></tr>
-              <tr><td style="padding:3px 6px;color:#444;border-bottom:1px solid #f0e8d0;background:#f8f4ee;font-weight:600;">المبلغ المدفوع</td><td style="padding:3px 6px;font-weight:bold;color:#b8974a;font-size:12px;border-bottom:1px solid #f0e8d0;">${price}</td></tr>
               <tr><td style="padding:3px 6px;color:#444;border-bottom:1px solid #f0e8d0;background:#f8f4ee;font-weight:600;">تاريخ الشراء</td><td style="padding:3px 6px;border-bottom:1px solid #f0e8d0;">${purchaseDate}</td></tr>
               <tr><td style="padding:3px 6px;color:#444;border-bottom:1px solid #f0e8d0;background:#f8f4ee;font-weight:600;">تاريخ التفعيل</td><td style="padding:3px 6px;font-weight:bold;color:#16a34a;border-bottom:1px solid #f0e8d0;">${actDate}</td></tr>
               <tr><td style="padding:3px 6px;color:#444;background:#f8f4ee;font-weight:600;">تاريخ الانتهاء</td><td style="padding:3px 6px;font-weight:bold;color:#dc2626;">${expDate}</td></tr>
@@ -175,7 +173,6 @@ export default function GpsDevices() {
                 <InfoRow label="العنوان" value={selected.customer?.address || '-'} />
                 <InfoRow label="نوع الشراء" value={typeLabel(selected.purchaseType)} />
                 {selected.subscriptionType && <InfoRow label="نوع الاشتراك" value={getSubscriptionLabel(selected.subscriptionType)} />}
-                {selected.price ? <InfoRow label="المبلغ" value={`${selected.price.toLocaleString()} د.ع`} /> : null}
                 <InfoRow label="تاريخ الطلب" value={formatDate(selected.createdAt)} />
               </div>
 

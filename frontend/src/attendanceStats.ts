@@ -30,7 +30,7 @@ function minutesOfIso(iso: string | null): number | null {
  * وهذا يخلي عدّاد التأخير يمتلئ بأرقام ما إلها معنى إداري، فينتجاهل
  * كله. السماحية تخلي الرقم يعني «تأخر فعلاً» مو «ما ضبط الثانية».
  */
-export const LATE_GRACE_MINUTES = 10
+export const LATE_GRACE_MINUTES = 30 // نفس LateGraceMinutes بالسيرفر
 
 /** هل هذا اليوم تأخير؟ يحتاج وقت بداية دوام معرّف للموظف. */
 export function isLateDay(day: DailyAttendance, shiftStart: string | null): boolean {

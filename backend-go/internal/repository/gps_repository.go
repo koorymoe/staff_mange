@@ -13,6 +13,7 @@ package repository
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/jmoiron/sqlx"
 	"github.com/lib/pq"
@@ -482,6 +483,47 @@ func (r *GpsRepository) UpdateRenewal(id string, req model.UpsertGpsRenewalReque
 		RETURNING *
 	`, id, req.CustomerID, req.DeviceRequestID, req.EmployeeID, req.AdminID, req.SubscriptionType, req.NewEndDate, req.Status)
 	if err != nil {
+		return nil, err
+	}
+	r.hydrateRenewal(&rn)
+	return &rn, nil
+}
+
+// ApproveRenewal يوافق على طلب التجديد ويمدد اشتراك الجهاز بنفس المعاملة:
+// النهاية الجديدة = max(النهاية الحالية، اليوم) + مدة الاشتراك — فالزبون
+// ما يخسر الأيام الباقية. Idempotent: إذا الطلب موافق عليه من قبل ما نمدد مرة ثانية.
+func (r *GpsRepository) ApproveRenewal(id string, adminID *string) (*model.GpsRenewalRequest, error) {
+	tx, err := r.db.Beginx()
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Rollback()
+
+	var rn model.GpsRenewalRequest
+	if err := tx.Get(&rn, `SELECT * FROM "GpsRenewalRequest" WHERE id = $1 FOR UPDATE`, id); err != nil {
+		return nil, err
+	}
+	if rn.Status != "APPROVED" {
+		days := model.GpsSubscriptionDays(rn.SubscriptionType)
+		var newEnd time.Time
+		if err := tx.Get(&newEnd, `
+			UPDATE "GpsDeviceRequest" SET
+				"subscriptionEnd" = GREATEST(COALESCE("subscriptionEnd", now()::timestamp), now()::timestamp) + make_interval(days => $2),
+				"subscriptionType" = $3,
+				"subscriptionStatus" = 'ACTIVE'
+			WHERE id = $1
+			RETURNING "subscriptionEnd"
+		`, rn.DeviceRequestID, days, rn.SubscriptionType); err != nil {
+			return nil, err
+		}
+		if err := tx.Get(&rn, `
+			UPDATE "GpsRenewalRequest" SET status = 'APPROVED', "newEndDate" = $2, "adminId" = COALESCE($3, "adminId")
+			WHERE id = $1 RETURNING *
+		`, id, newEnd, adminID); err != nil {
+			return nil, err
+		}
+	}
+	if err := tx.Commit(); err != nil {
 		return nil, err
 	}
 	r.hydrateRenewal(&rn)

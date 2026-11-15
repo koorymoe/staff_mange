@@ -316,6 +316,7 @@ function ManageHours({ meId, isAdmin }: { meId: string; isAdmin: boolean }) {
   // (دازاي 11-01) إدارة الساعات تعدّل المطلوب وسعر الساعة لأي موظف
   const [empPlan, setEmpPlan] = useState({ hours: '', rate: '' })
   const [planNote, setPlanNote] = useState('')
+  const [planSaving, setPlanSaving] = useState(false)
 
   useEffect(() => { api.getEmployees().then((l) => setEmployees(l.filter((e) => e.status === 'ACTIVE'))).catch(loadFailed) }, [])
   const loadSummary = useCallback(() => { api.getRemoteSummary().then(setSummary).catch(loadFailed) }, [])
@@ -407,13 +408,15 @@ function ManageHours({ meId, isAdmin }: { meId: string; isAdmin: boolean }) {
                 <span className="w-full text-xs font-bold text-amber-900">🎯 المطلوب بالشهر وسعر الساعة</span>
                 <label className="text-xs text-slate-600">ساعات<input type="number" min={1} max={400} value={empPlan.hours} onChange={(e) => setEmpPlan({ ...empPlan, hours: e.target.value })} className={`${inp} block w-24 text-center`} /></label>
                 <label className="text-xs text-slate-600">سعر الساعة (دينار)<input value={empPlan.rate} onChange={(e) => setEmpPlan({ ...empPlan, rate: e.target.value })} placeholder="مثلاً 2700" className={`${inp} block w-32 text-center`} dir="ltr" /></label>
-                <button className="rounded-lg bg-amber-600 px-3 py-2 text-sm font-bold text-white" onClick={async () => {
+                <button disabled={planSaving} className="rounded-lg bg-amber-600 px-3 py-2 text-sm font-bold text-white disabled:opacity-50" onClick={async () => {
                   const hours = Number(empPlan.hours), rate = Number(empPlan.rate.replace(/[,،\s]/g, ''))
                   if (!(hours > 0 && hours <= 400) || !(rate >= 0)) { setPlanNote('اكتب الساعات وسعر الساعة'); return }
                   if (rate > 0 && rate < 100) { setPlanNote(`اكتب سعر الساعة بالدينار كامل — مثلاً ${(rate * 1000).toLocaleString('en-US')} مو ${rate}`); return }
+                  setPlanSaving(true)
                   try { await api.setRemotePlan({ employeeId: sel.id, targetHours: hours, hourlyRateIQD: rate }); setPlanNote(`✅ انحفظ: ${rate.toLocaleString('en-US')} دينار بالساعة`) }
                   catch (e) { setPlanNote(e instanceof Error ? e.message : 'تعذر الحفظ') }
-                }}>حفظ</button>
+                  finally { setPlanSaving(false) }
+                }}>{planSaving ? '…' : 'حفظ'}</button>
                 {planNote && <span className="w-full text-xs font-bold text-slate-700">{planNote}</span>}
               </div>
               <EntriesTable entries={entries} canDelete={(e) => isAdmin || e.addedById === meId} onDelete={del} onSaved={() => { loadEmp(); loadSummary() }} showWho />

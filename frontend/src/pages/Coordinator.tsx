@@ -30,6 +30,7 @@ import { swallow } from '../utils/swallow'
 import { notify } from '../ui/notify'
 import { DeleteButton } from '../ui/DeleteButton'
 import { bookingServiceLabel } from '../bookingServiceLabel'
+import { BTN_WARN_SOFT } from '../ui/classes'
 const DELETE_CHANNEL_OPTIONS: [BookingDeleteChannel, string][] =
   (Object.entries(bookingDeleteChannelLabels) as [BookingDeleteChannel, string][])
 // ⚠️ «الزبون ما رد» خيار بنفس القائمة بس **مو طلب حذف** — يُعالَج
@@ -968,7 +969,7 @@ export default function Coordinator() {
                     {canMarkWaiting && (
                       <button
                         onClick={() => markNoAnswer(booking.id, booking.code)}
-                        className="rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-700 transition-colors hover:bg-slate-200"
+                        className={BTN_WARN_SOFT}
                       >
                         📞 الزبون ما رد
                       </button>

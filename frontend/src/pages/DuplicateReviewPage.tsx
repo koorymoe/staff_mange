@@ -5,6 +5,7 @@ import EntityIdentity from '../components/EntityIdentity'
 import MatrixNote from '../components/MatrixNote'
 import { askConfirm } from '../ui/dialogs'
 import { swallow } from '../utils/swallow'
+import { BTN_GHOST, BTN_PRIMARY } from '../ui/classes'
 
 // ═══ تدقيق التكرار (ماتركس) — حجوزات وزبائن مكررون بالغلط ═══
 //
@@ -233,8 +234,8 @@ export default function DuplicateReviewPage() {
                   </div>
                   <p className="mt-2 text-[11px] text-slate-500">الموقع والخريطة: الأصلي ياخذها من المكرر بس إذا هو فاضي. المالك يوصله إشعار بالدمج، ويبقى أثره بتبويب «المحلولة».</p>
                   <div className="mt-4 flex gap-2">
-                    <button disabled={merge.moves == null} onClick={doMerge} className="flex-1 rounded-lg bg-sky-700 py-2 font-bold text-white disabled:opacity-50">تأكيد الدمج</button>
-                    <button onClick={() => setMerge(null)} className="rounded-lg border px-4 py-2">إلغاء</button>
+                    <button disabled={merge.moves == null} onClick={doMerge} className={`${BTN_PRIMARY} flex-1`}>تأكيد الدمج</button>
+                    <button onClick={() => setMerge(null)} className={BTN_GHOST}>إلغاء</button>
                   </div>
                 </>
               )

@@ -11,6 +11,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import BookingCodeChip from '../components/BookingCodeChip'
 import DutiesCard from '../components/DutiesCard'
 import { bookingStatusLabel } from '../bookingStatus'
+import { STATUS_LABELS } from '../statusLabels'
 
 const PAGE_SIZE = 10
 
@@ -289,7 +290,7 @@ export default function MonitorDashboard() {
                           <div className="flex items-center gap-2">
                             <span className={`rounded-full px-2.5 py-1 text-xs font-bold ${
                               b.status === 'IN_PROGRESS' ? 'bg-violet-500 text-white' : 'bg-blue-500 text-white'
-                            }`}>{b.status === 'IN_PROGRESS' ? 'جاري التنفيذ' : 'مثبت'}</span>
+                            }`}>{b.status === 'IN_PROGRESS' ? STATUS_LABELS.IN_PROGRESS : STATUS_LABELS.CONFIRMED}</span>
                             {b.status === 'IN_PROGRESS' && b.responseMinutes != null && (
                               <span className={`rounded-full px-2.5 py-1 text-xs font-bold ${b.responseMinutes > 15 ? 'bg-red-100 text-red-700' : 'bg-emerald-100 text-emerald-700'}`}>
                                 استجابة الفريق: {b.responseMinutes} د

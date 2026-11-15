@@ -8,6 +8,7 @@ import { useSession } from '../session'
 import { dayBaghdad } from '../utils/format'
 
 import { notify } from '../ui/notify'
+import { STATUS_LABELS } from '../statusLabels'
 // ═══ مهامي الإضافية — لكل موظف ═══
 //
 // المهام الإضافية كانت تنعرض جوّا شاشة «مهامي»، وهاي محصورة بالفنيين
@@ -38,7 +39,7 @@ const STATUS_STYLE: Record<ExtraTask['status'], string> = {
 const STATUS_LABEL: Record<ExtraTask['status'], string> = {
   ...EXTRA_TASK_STATUS,
   NEW: 'بانتظار البدء',
-  DONE: 'مكتمل',
+  DONE: STATUS_LABELS.DONE,
 }
 
 const isSameDay = (iso: string | undefined, now: Date) => {
@@ -270,8 +271,8 @@ export default function MyExtraTasksPage() {
               <option value="">كل الحالات</option>
               <option value="NEW">بانتظار البدء</option>
               <option value="IN_PROGRESS">قيد التنفيذ</option>
-              <option value="DONE">مكتمل</option>
-              <option value="CANCELLED">ملغاة</option>
+              <option value="DONE">{STATUS_LABELS.DONE}</option>
+              <option value="CANCELLED">{STATUS_LABELS.CANCELLED}</option>
             </select>
           </div>
           <button onClick={clearFilters}

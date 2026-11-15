@@ -6,6 +6,7 @@ import { GROUP_LABEL, type EyeGroup } from './matrixEyeColors'
 import { EV_LABEL, SEV, category, evidenceCards, severity } from './matrixEvidence'
 import { askInput } from '../ui/dialogs'
 import { swallow } from '../utils/swallow'
+import { BTN_DANGER_SOFT, BTN_SUCCESS } from '../ui/classes'
 
 // ═══ اقتراحات ماتركس — هو يقترح، والمدير يقرر ═══
 // الموافَق يصير جزء منه (تعليمة، تعديل، أو تذكير للموظف)، والمرفوض
@@ -147,9 +148,9 @@ export default function MatrixProposals({ onChange }: { onChange?: () => void })
                   </div>
                 </div>
                 <div className="flex min-w-[170px] flex-col gap-1.5">
-                  <button disabled={busy === p.id} onClick={() => approve(p)} className="rounded-lg bg-emerald-600 px-3 py-2 text-xs font-bold text-white disabled:opacity-50">{p.kind === 'PREDICTION' ? '✈️ أرسل التذكير للموظف' : k.approve}</button>
+                  <button disabled={busy === p.id} onClick={() => approve(p)} className={BTN_SUCCESS}>{p.kind === 'PREDICTION' ? '✈️ أرسل التذكير للموظف' : k.approve}</button>
                   <button onClick={() => setWhy(why === p.id ? null : p.id)} className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-bold text-slate-700">👁️ {why === p.id ? 'إخفاء التفاصيل' : 'عرض التفاصيل'}</button>
-                  <button disabled={busy === p.id} onClick={() => reject(p)} className="rounded-lg border border-red-200 bg-red-50 px-3 py-1.5 text-xs font-bold text-red-600 disabled:opacity-50">✕ رفض</button>
+                  <button disabled={busy === p.id} onClick={() => reject(p)} className={BTN_DANGER_SOFT}>✕ رفض</button>
                 </div>
               </li>
             )

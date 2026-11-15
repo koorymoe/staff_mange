@@ -3,11 +3,12 @@ import { useSearchParams } from 'react-router-dom'
 import { api, type ProjectMoney } from '../api'
 import MatrixNote from '../components/MatrixNote'
 import ProjectPaymentsModal from '../components/ProjectPaymentsModal'
+import { num } from '../utils/format'
 
 // ═══ 💰 فلوس المشاريع — قرار (ع) 10-06 ═══
 // كل مشروع: قيمة العقد، المدفوع، الباقي. للمحاسب وإدارة المشاريع والمراقب.
 
-const fmt = (v: number) => v.toLocaleString('en-US')
+const fmt = num // (دازاي 11-15) من utils
 
 export default function ProjectPaymentsPage() {
   const [rows, setRows] = useState<ProjectMoney[] | null>(null)

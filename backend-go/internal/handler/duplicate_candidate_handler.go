@@ -196,9 +196,7 @@ func (h *DuplicateCandidateHandler) RequestDelete(w http.ResponseWriter, r *http
 	}
 	if h.notif != nil {
 		msg := "🗑️ طلب حذف الحجز " + out.BookingCode + " من " + out.RequestedByName + " — السبب: " + reason
-		_ = h.notif.CreateForRole("MONITOR", "booking_delete_request", msg)
-		_ = h.notif.CreateForRole("ADMIN", "booking_delete_request", msg)
-		_ = h.notif.CreateForRole("OWNER", "booking_delete_request", msg)
+		_ = h.notif.CreateForRoles([]string{"MONITOR", "ADMIN", "OWNER"}, "booking_delete_request", msg)
 	}
 	WriteJSON(w, http.StatusOK, map[string]any{"ok": true, "bookingCode": out.BookingCode})
 }

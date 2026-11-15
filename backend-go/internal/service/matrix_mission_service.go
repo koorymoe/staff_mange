@@ -44,8 +44,11 @@ type MatrixMission struct {
 }
 
 type MatrixMissionLog struct {
-	Day  string `db:"day" json:"day"`
-	Text string `db:"text" json:"text"`
+	ID        string    `db:"id" json:"-"`
+	MissionID string    `db:"missionId" json:"-"`
+	CreatedAt time.Time `db:"createdAt" json:"-"`
+	Day       string    `db:"day" json:"day"`
+	Text      string    `db:"text" json:"text"`
 }
 
 const missionSelect = `SELECT m.id, m."employeeId", e.name AS "employeeName", m.note,

@@ -6,7 +6,6 @@ import { loadFailed } from '../../netErrors'
 
 import { notify } from '../../ui/notify'
 const subLabel = (t: string) => t === 'THREE_MONTHS' ? '3 أشهر' : t === 'SIX_MONTHS' ? '6 أشهر' : 'سنوي'
-const subDays = (t: string) => t === 'THREE_MONTHS' ? 90 : t === 'SIX_MONTHS' ? 180 : 365
 
 function printRenewal(rawRenewal: GpsRenewalRequest, newEnd: Date) {
   const renewal = escDeep(rawRenewal)
@@ -63,16 +62,9 @@ export default function GpsRenewalsReview({ embedded }: { embedded?: boolean } =
   const handleApprove = async (renewal: GpsRenewalRequest) => {
     setApproving(true)
     try {
-      const oldEnd = renewal.deviceRequest.subscriptionEnd ? new Date(renewal.deviceRequest.subscriptionEnd) : new Date()
-      const base = oldEnd > new Date() ? oldEnd : new Date()
-      const newEnd = new Date(base.getTime() + subDays(renewal.subscriptionType) * 86400000)
-
-      await api.updateGpsRenewal(renewal.id, { status: 'APPROVED', newEndDate: newEnd.toISOString() })
-      await api.updateGpsDevice(renewal.deviceRequestId, {
-        subscriptionEnd: newEnd.toISOString(),
-        subscriptionType: renewal.subscriptionType as 'THREE_MONTHS' | 'SIX_MONTHS' | 'YEARLY',
-        subscriptionStatus: 'ACTIVE',
-      })
+      // التمديد ينحسب بالسيرفر: max(النهاية الحالية، اليوم) + المدة، بمعاملة وحدة
+      const saved = await api.updateGpsRenewal(renewal.id, { status: 'APPROVED' })
+      const newEnd = saved.newEndDate ? new Date(saved.newEndDate) : new Date()
 
       printRenewal(renewal, newEnd)
       setSelected(null)

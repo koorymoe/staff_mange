@@ -1,5 +1,6 @@
 import Modal from '../ui/Modal'
 import { useRef, useState } from 'react'
+import { BTN_SUCCESS } from '../ui/classes'
 
 // ═══ تغطية صور الموظفين قبل ما يطلع السكرين لهايكو ═══
 // القيد المكتوب: صور الموظفين ما تنرسل لأي مزوّد خارجي. السكرين يلصقه
@@ -92,7 +93,7 @@ export default function ScreenshotRedactor({ src, onDone, onCancel }: {
         <div className="flex justify-end gap-2">
           <button type="button" onClick={onCancel} className="rounded-xl border px-4 py-2 text-sm text-slate-600">إلغاء</button>
           <button type="button" disabled={!confirmed} onClick={() => void approve()}
-            className="rounded-xl bg-gradient-to-l from-violet-600 to-fuchsia-600 px-4 py-2 text-sm font-bold text-white disabled:opacity-40">اعتمد الصورة</button>
+            className={BTN_SUCCESS}>اعتمد الصورة</button>
         </div>
     </Modal>
   )

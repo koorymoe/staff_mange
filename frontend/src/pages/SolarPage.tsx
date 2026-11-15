@@ -14,6 +14,7 @@ import { swallow } from '../utils/swallow'
 
 import { notify } from '../ui/notify'
 import { fmtDate as fmtDay } from '../utils/date'
+import { BTN_GHOST, BTN_PRIMARY } from '../ui/classes'
 // ═══ نظام الطاقة الشمسية ═══
 //
 // كان نظام منفصل على Google Sheets، وصار جزء من النظام: نفس الموظفين
@@ -743,10 +744,10 @@ function ProcessForm({ system, onClose, onDone }: { system: SolarSystem; onClose
       </div>
 
       <div className="mt-4 flex items-center gap-2">
-        <button onClick={submit} disabled={busy} className="rounded-lg bg-emerald-700 px-5 py-2 text-sm font-bold text-white disabled:opacity-50">
+        <button onClick={submit} disabled={busy} className={BTN_PRIMARY}>
           {busy ? 'جاري التجهيز...' : 'أكّد واخصم من المخزن'}
         </button>
-        <button onClick={onClose} className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-bold text-slate-600">إلغاء</button>
+        <button onClick={onClose} className={BTN_GHOST}>إلغاء</button>
       </div>
       {err && <div className="mt-3 whitespace-pre-line rounded-lg bg-red-50 p-3 text-xs font-bold text-red-700">{err}</div>}
     </div>

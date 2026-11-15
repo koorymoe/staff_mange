@@ -164,6 +164,17 @@ type LatePaperworkRow struct {
 	model.LatePaperworkItem
 }
 
+// latePaperworkLeaderExpr نفس ليدر DisciplineRepository.OverdueLeaderPaperwork
+// (RunLeaderPaperworkSweep): ليدر آخر زيارة أولاً، وإلا booking_leader_id —
+// حتى التذكير يروح لنفس الشخص الي راح ينغرّم.
+const latePaperworkLeaderExpr = `COALESCE(
+				(SELECT vc."employeeId" FROM "BookingVisitCrew" vc JOIN "BookingVisit" v ON v.id = vc."visitId"
+				 WHERE v."bookingId" = b.id AND vc."isLeader" ORDER BY v."visitNumber" DESC LIMIT 1),
+				` + bookingLeaderExpr + `)`
+
+// خدمات managerHandlesPaperwork (جي بي اس، داش كام) تنستثنى: ورقها على مسؤولها
+// مو على الليدر — نفس استثناء مكنسة غرامة الليدر.
+//
 // LatePaperworkRows حجوزات آخر ٣٠ يوم المنجزة من أكثر من ٤٨ ساعة وناقصها
 // فاتورة أو تقرير — نفس شروط محطات «ناقصها ورق» (بلا الكشف والتاريخي
 // والمسوّى إدارياً والمطلوب حذفه). leaderID فارغ = كل الليدرية.
@@ -171,7 +182,7 @@ func (r *AiRepository) LatePaperworkRows(leaderID string) ([]LatePaperworkRow, e
 	rows := []LatePaperworkRow{}
 	err := r.db.Select(&rows, `
 		SELECT * FROM (
-			SELECT `+bookingLeaderExpr+` AS "leaderId", b.code AS "bookingCode", b.id AS "bookingId",
+			SELECT `+latePaperworkLeaderExpr+` AS "leaderId", b.code AS "bookingCode", b.id AS "bookingId",
 			       NOT `+hasInvoiceSQL+` AS "missingInvoice",
 			       NOT `+hasReportSQL+` AS "missingReport",
 			       FLOOR(EXTRACT(EPOCH FROM ((now() AT TIME ZONE 'UTC') - b."completedAt")) / 3600)::int AS "hoursSinceDone"
@@ -181,6 +192,12 @@ func (r *AiRepository) LatePaperworkRows(leaderID string) ([]LatePaperworkRow, e
 			  AND b."completedAt" < (now() AT TIME ZONE 'UTC') - interval '48 hours'
 			  AND NOT `+isSurveySQL+` AND NOT (`+isLegacyImportSQL+`)
 			  AND b."settledLegacyAt" IS NULL`+NotDeletePendingSQL("b")+`
+			  AND NOT EXISTS (
+			    SELECT 1 FROM "Service" s
+			    WHERE s."managerHandlesPaperwork"
+			      AND (s.id = b."serviceId"
+			           OR EXISTS (SELECT 1 FROM "BookingService" bs
+			                      WHERE bs."bookingId" = b.id AND bs."serviceId" = s.id)))
 			  AND (NOT `+hasInvoiceSQL+` OR NOT `+hasReportSQL+`)
 		) x
 		WHERE "leaderId" IS NOT NULL AND ($1 = '' OR "leaderId" = $1)

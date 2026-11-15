@@ -45,7 +45,7 @@ func (h *AttendanceBoardHandler) Board(w http.ResponseWriter, r *http.Request) {
 		SELECT e.id, e.name, e.role::text AS role, e.shift::text AS shift, e."shiftStart", e."shiftEnd",
 		       MIN(a."checkIn") AS "firstIn", MAX(a."checkOut") AS "lastOut",
 		       COALESCE(BOOL_OR(a.id IS NOT NULL AND a."checkOut" IS NULL), false) AS open,
-		       COALESCE(SUM(EXTRACT(EPOCH FROM (COALESCE(a."checkOut", now()) - a."checkIn")) / 60), 0)::int AS minutes,
+		       COALESCE(SUM(att_counted_minutes(a."employeeId", a."checkIn", a."checkOut")), 0)::int AS minutes,
 		       (SELECT l.kind FROM "LeaveRequest" l WHERE l."employeeId" = e.id AND l.status = 'APPROVED'
 		         AND $1::date BETWEEN l."startDate"::date AND l."endDate"::date LIMIT 1) AS "leaveKind"
 		FROM "Employee" e

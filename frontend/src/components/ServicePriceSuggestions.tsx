@@ -3,6 +3,7 @@ import { api, type ServicePriceStats, type ServicePriceSuggestion } from '../api
 import { useSession, isAdminOrOwner } from '../session'
 import { numRound as fmt } from '../utils/format'
 import { askConfirm, askInput } from '../ui/dialogs'
+import { BTN_DANGER_SOFT, BTN_SUCCESS } from '../ui/classes'
 
 // ═══ أسعار يقترحها النظام ═══
 //
@@ -150,7 +151,7 @@ export default function ServicePriceSuggestions() {
                         if (!(await askConfirm(`اعتماد ${fmt(g.avgAmount)} د.ع سعراً مقترحاً لـ«${g.serviceName || ''}»؟`))) return
                         void act(g.id, () => api.decideServicePrice(g.id, true), 'انعتمد ✓')
                       }}
-                      className="rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-emerald-700 disabled:opacity-50"
+                      className={BTN_SUCCESS}
                     >✔ اعتماد</button>
                   )}
                   {(g.status === 'PROPOSED' || g.status === 'REVIEWED') && canDecide && (
@@ -160,7 +161,7 @@ export default function ServicePriceSuggestions() {
                         if (!(await askConfirm('رفض هذا الاقتراح؟ ما يرجع يطلع لهاي الخدمة.'))) return
                         void act(g.id, () => api.decideServicePrice(g.id, false), 'انرفض ✓')
                       }}
-                      className="rounded-lg border border-red-300 bg-red-50 px-3 py-1.5 text-xs font-bold text-red-700 hover:bg-red-100 disabled:opacity-50"
+                      className={BTN_DANGER_SOFT}
                     >✖ رفض</button>
                   )}
                   {g.status === 'PROPOSED' && !canReview && (

@@ -217,17 +217,34 @@ func (s *MatrixAutopilotService) staleInvoices(today string, dayStart time.Time)
 	if err != nil {
 		return 0, err
 	}
+	// كل فاتورة تنسجّل فعل بروحها (حتى المتابعة/الانحلال تشتغل عليها)، بس
+	// الإشعار للمحاسبة واحد باليوم يجمعها كلها — مو إشعار لكل فاتورة.
 	n := 0
+	codes := []string{}
+	maxDays := 0
 	for _, r := range rows {
-		msg := fmt.Sprintf("🤖 ماتركس — فاتورة حجز %s تنتظر الاعتماد من %d يوم.", r.BookingCode, r.Days)
 		if s.act(model.AiAction{Kind: model.AiActionInvoiceApproval, EntityType: "LEADER_INVOICE", EntityID: r.ID,
 			Period: today, TargetLabel: "المحاسبة",
 			Summary: fmt.Sprintf("ذكّر المحاسبة بفاتورة %s (%d يوم)", r.BookingCode, r.Days),
 			Details: why(map[string]any{"bookingCode": r.BookingCode, "submittedAt": r.CreatedAt, "days": r.Days})}, dayStart,
-			func() error {
-				return s.notif.CreateForRolesOrPermission([]string{"FINANCE"}, "finance_audit", "AI_AUTOPILOT", msg)
-			}) {
+			func() error { return nil }) {
 			n++
+			if len(codes) < 12 {
+				codes = append(codes, r.BookingCode)
+			}
+			if r.Days > maxDays {
+				maxDays = r.Days
+			}
+		}
+	}
+	if n > 0 {
+		list := strings.Join(codes, "، ")
+		if n > len(codes) {
+			list += "، …"
+		}
+		msg := fmt.Sprintf("🤖 ماتركس — عدكم %d فاتورة حجز تنتظر الاعتماد من ٣ أيام أو أكثر (أقدمها %d يوم): %s.", n, maxDays, list)
+		if err := s.notif.CreateForRolesOrPermission([]string{"FINANCE"}, "finance_audit", "AI_AUTOPILOT", msg); err != nil {
+			log.Printf("[ai] تعذر إرسال ملخص الفواتير المتأخرة: %v", err)
 		}
 	}
 	return n, nil

@@ -12,6 +12,7 @@ import { request, type Project, type ProjectCandidate, candidateLabel, useProjec
 import { EmployeeOptions, Modal, Field } from './ui'
 
 import { notify } from '../../ui/notify'
+import { BTN_SUCCESS } from '../../ui/classes'
 export function ContractModal({ project, onClose, onSaved }: { project: Project; onClose: () => void; onSaved: () => void }) {
   const { employee } = useSession()
   const isAdmin = isAdminOrOwner(employee)
@@ -571,7 +572,7 @@ export function MoveModal({ project, nextStage, onClose, onSaved }: {
       )}
 
       <button onClick={save} disabled={saving || moneyBlock || (needNote && unpaidNote.trim().length < 3)}
-        className="w-full mt-3 py-2.5 rounded-lg bg-green-700 text-white font-bold disabled:opacity-50">
+        className={`${BTN_SUCCESS} w-full mt-3`}>
         {saving ? 'جارٍ الحفظ...' : 'تأكيد ✅'}
       </button>
     </Modal>

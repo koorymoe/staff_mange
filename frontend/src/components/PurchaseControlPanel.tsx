@@ -7,6 +7,7 @@ import { askInput } from '../ui/dialogs'
 import { swallow } from '../utils/swallow'
 
 import { notify } from '../ui/notify'
+import { BTN_SUCCESS } from '../ui/classes'
 // ═══ رقابة المشتريات — قرار (ع) 10-15 ═══
 // المشتري يسجّل الشراء ويقيّم المورد ببنود (أولها السعر) · المحاسب يثبّت ·
 // سجل أسعار لكل مادة · وتنبيهات ماتركس: «اشترى من الأغلى» و«المورد رفع سعره».
@@ -289,7 +290,7 @@ export default function PurchaseControlPanel({ requests, canBuy, canVerify, canW
                   <span className="text-xs text-slate-500">{x.basis}</span>
                   {canDecide && (
                     <span className="mr-auto flex gap-1">
-                      <button onClick={() => stdAct(() => purchaseApi.acceptStandard(x.key, true))} className="rounded bg-violet-600 px-2 py-0.5 text-xs font-bold text-white">✓ اعتمد</button>
+                      <button onClick={() => stdAct(() => purchaseApi.acceptStandard(x.key, true))} className={BTN_SUCCESS}>✓ اعتمد</button>
                       <button onClick={() => stdAct(() => purchaseApi.acceptStandard(x.key, false))} className="rounded bg-white px-2 py-0.5 text-xs ring-1 ring-slate-300">✕ اترك</button>
                     </span>
                   )}

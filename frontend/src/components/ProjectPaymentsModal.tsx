@@ -1,7 +1,7 @@
 import Modal from '../ui/Modal'
 import { useEffect, useState } from 'react'
 import { api, type ProjectPaymentsState } from '../api'
-import { todayBaghdad as today } from '../utils/format'
+import { dinar, todayBaghdad as today } from '../utils/format'
 import { askInput } from '../ui/dialogs'
 
 // ═══ 💰 دفعات المشروع — قرار (ع) 10-06 ═══
@@ -9,7 +9,7 @@ import { askInput } from '../ui/dialogs'
 // هنا بمبلغها وتاريخها ووصلها، وتدخل بالإيرادات. المحاسب ومدير المشاريع
 // ومشرف المشروع يسجّلون؛ المحاسب يأكد ويلغي.
 
-const fmt = (v: number) => v.toLocaleString('en-US') + ' د.ع'
+const fmt = dinar // (دازاي 11-15) من utils
 const METHOD: Record<string, string> = { CASH: 'نقد', TRANSFER: 'تحويل', CHEQUE: 'صك' }
 
 export default function ProjectPaymentsModal({ projectId, title, onClose }: { projectId: string; title: string; onClose: () => void }) {

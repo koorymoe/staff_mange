@@ -565,13 +565,11 @@ func (s *LeaderInvoiceService) RequestMonitorReview(id, byEmployeeID, note strin
 		if n := strings.TrimSpace(note); n != "" {
 			msg += " — " + n
 		}
-		_ = s.notifications.CreateForRole("MONITOR", "invoice_monitor", msg)
-		_ = s.notifications.CreateForRole("ADMIN", "invoice_monitor", msg)
 		// ⚠️⚠️ **المالك دوره `OWNER` مو `ADMIN`** بقاعدة البيانات،
 		// و`CreateForRole("ADMIN")` تطابق العمود حرفياً — يعني المالك
 		// **ما چان يوصله ولا إشعار** عن فاتورة راحت للمراقب. وهو
 		// الوحيد الي يگدر يرجّعها للمحاسب، فما يعرف بشي يحتاج قراره.
-		_ = s.notifications.CreateForRole("OWNER", "invoice_monitor", msg)
+		_ = s.notifications.CreateForRoles([]string{"MONITOR", "ADMIN", "OWNER"}, "invoice_monitor", msg)
 	}
 	if s.monitor != nil {
 		title, summary := monitorInvoiceSummary(inv)
@@ -603,10 +601,9 @@ func (s *LeaderInvoiceService) DecideMonitorReview(id, verdict, note, byEmployee
 			lbl = "⚠️ عليها ملاحظة: " + note
 		}
 		note := "👁️ المراقب راجع فاتورة " + inv.AccountingCode + " — " + lbl
-		_ = s.notifications.CreateForRole("FINANCE", "invoice_monitor", note)
 		// ⚠️ والمالك يتابع الدورة كاملة: راحت للمراقب ورجعت بحكمه.
 		// إشعار بالذهاب بلا إشعار بالرجوع يخلّيه يظن إنها لسه واگفة.
-		_ = s.notifications.CreateForRole("OWNER", "invoice_monitor", note)
+		_ = s.notifications.CreateForRoles([]string{"FINANCE", "OWNER"}, "invoice_monitor", note)
 	}
 	return inv, nil
 }
@@ -632,10 +629,9 @@ func (s *LeaderInvoiceService) ReturnToAccountant(id, byEmployeeID, reason strin
 	}
 	if s.notifications != nil {
 		back := "↩️ المالك رجّع فاتورة " + inv.AccountingCode + " للترتيب من جديد — السبب: " + reason
-		_ = s.notifications.CreateForRole("FINANCE", "invoice_returned", back)
 		// ⚠️ والمراقب هم: لو چانت عنده وانسحبت منه، لازم يعرف ليش
 		// اختفت من طابوره — وإلا يدوّر عليها ويظن النظام بلعها.
-		_ = s.notifications.CreateForRole("MONITOR", "invoice_returned", back)
+		_ = s.notifications.CreateForRoles([]string{"FINANCE", "MONITOR"}, "invoice_returned", back)
 	}
 	if s.monitor != nil {
 		title, summary := monitorInvoiceSummary(inv)
@@ -820,9 +816,7 @@ func (s *LeaderInvoiceService) SetAuditVerdict(id string, req model.AuditVerdict
 		}
 		// ⚠️ الثلاثة سوا: المالك دوره `OWNER` مو `ADMIN`، و
 		// `CreateForRole` تطابق العمود حرفياً — بدون سطره ما يوصله شي.
-		_ = s.notifications.CreateForRole("MONITOR", "invoice_mismatch", msg)
-		_ = s.notifications.CreateForRole("ADMIN", "invoice_mismatch", msg)
-		_ = s.notifications.CreateForRole("OWNER", "invoice_mismatch", msg)
+		_ = s.notifications.CreateForRoles([]string{"MONITOR", "ADMIN", "OWNER"}, "invoice_mismatch", msg)
 	}
 	return inv, nil
 }

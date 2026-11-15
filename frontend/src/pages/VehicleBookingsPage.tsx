@@ -9,6 +9,8 @@ import { askConfirm } from '../ui/dialogs'
 import { swallow } from '../utils/swallow'
 
 import { notify } from '../ui/notify'
+import { BTN_DANGER, BTN_DANGER_SOFT, BTN_GHOST, BTN_SUCCESS } from '../ui/classes'
+import { STATUS_LABELS } from '../statusLabels'
 // ═══ حجز المركبات ═══
 //
 // ⚠️ حراس الباك (main.go):
@@ -22,9 +24,9 @@ import { notify } from '../ui/notify'
 
 const STATUS_LABELS: Record<VehicleBooking['status'], { label: string; cls: string }> = {
   PENDING: { label: 'بانتظار القرار', cls: 'bg-amber-100 text-amber-700' },
-  APPROVED: { label: 'معتمد', cls: 'bg-emerald-100 text-emerald-700' },
-  REJECTED: { label: 'مرفوض', cls: 'bg-red-100 text-red-700' },
-  CANCELLED: { label: 'ملغي', cls: 'bg-slate-100 text-slate-500' },
+  APPROVED: { label: STATUS_LABELS.APPROVED, cls: 'bg-emerald-100 text-emerald-700' },
+  REJECTED: { label: STATUS_LABELS.REJECTED, cls: 'bg-red-100 text-red-700' },
+  CANCELLED: { label: STATUS_LABELS.CANCELLED, cls: 'bg-slate-100 text-slate-500' },
 }
 
 const CARD = 'rounded-xl border border-white bg-white p-5 shadow-[0_4px_20px_rgba(15,32,64,0.06)]'
@@ -206,8 +208,8 @@ export default function VehicleBookingsPage() {
                       <div className="flex flex-wrap gap-1">
                         {b.status === 'PENDING' && (
                           <>
-                            <button onClick={() => approve(b)} className="rounded-lg bg-emerald-50 px-2 py-1 text-xs font-bold text-emerald-700 hover:bg-emerald-100">✓ اعتماد</button>
-                            <button onClick={() => { setRejecting(b); setRejectReason('') }} className="rounded-lg bg-red-50 px-2 py-1 text-xs font-bold text-red-600 hover:bg-red-100">✕ رفض</button>
+                            <button onClick={() => approve(b)} className={BTN_SUCCESS}>✓ اعتماد</button>
+                            <button onClick={() => { setRejecting(b); setRejectReason('') }} className={BTN_DANGER_SOFT}>✕ رفض</button>
                           </>
                         )}
                         {canCancel(b) && (
@@ -227,8 +229,8 @@ export default function VehicleBookingsPage() {
               <p className="mt-1 text-sm text-slate-500">{rejecting.requestedBy?.name} · {rejecting.purpose}</p>
               <textarea autoFocus value={rejectReason} onChange={(e) => setRejectReason(e.target.value)} placeholder="سبب الرفض (إجباري)" className={`mt-4 h-24 w-full ${INPUT}`} />
               <div className="mt-4 flex gap-3">
-                <button onClick={reject} disabled={!rejectReason.trim() || guard.busy} className="flex-1 rounded-xl bg-red-600 py-2.5 font-bold text-white disabled:opacity-50">تأكيد الرفض</button>
-                <button onClick={() => setRejecting(null)} className="rounded-xl border border-slate-300 px-6 py-2.5 font-medium text-slate-600">إلغاء</button>
+                <button onClick={reject} disabled={!rejectReason.trim() || guard.busy} className={`${BTN_DANGER} flex-1`}>تأكيد الرفض</button>
+                <button onClick={() => setRejecting(null)} className={BTN_GHOST}>إلغاء</button>
               </div>
           </Modal>
         )}

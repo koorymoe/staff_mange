@@ -3,6 +3,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { apiRequest, api, type Service } from '../api'
 import { askConfirm } from '../ui/dialogs'
 import { swallow } from '../utils/swallow'
+import { BTN_DANGER_SOFT } from '../ui/classes'
 
 // (DRY 11-02) چانت مكتوبة جوّا كل نموذج بهالملف
 const inp = 'w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm'
@@ -115,7 +116,7 @@ export default function CustomerAppAdminPage() {
                   <div className="mt-2 flex gap-1.5">
                     <button onClick={() => toggle(p)} className={`rounded-lg px-3 py-1 text-xs font-bold ${p.active ? 'border border-slate-300 text-slate-600' : 'bg-emerald-700 text-white'}`}>{p.active ? 'إخفاء' : 'نشر'}</button>
                     <button onClick={() => { setEdit({ id: p.id, kind: p.kind, title: p.title, body: p.body ?? '', serviceId: p.serviceId ?? '', active: p.active, ord: p.ord, discountPercent: p.discountPercent ? String(p.discountPercent) : '' }); setFile(null) }} className="rounded-lg border border-slate-300 px-3 py-1 text-xs text-[#2c5aad]">تعديل</button>
-                    <button onClick={() => remove(p)} className="rounded-lg border border-rose-200 px-3 py-1 text-xs text-rose-600">حذف</button>
+                    <button onClick={() => remove(p)} className={BTN_DANGER_SOFT}>حذف</button>
                   </div>
                 </div>
               </article>
@@ -294,7 +295,7 @@ function BranchesTab() {
             <p className="font-extrabold text-[#0f2040]">📍 {b.name}</p>
             {b.address && <p className="text-xs text-slate-500">{b.address}</p>}
             {b.phone && <p className="text-xs text-slate-500" dir="ltr">{b.phone}</p>}
-            <div className="mt-2 flex gap-1.5"><button onClick={() => setEdit(b)} className="rounded-lg border border-slate-300 px-3 py-1 text-xs text-[#2c5aad]">تعديل</button><button onClick={() => del(b)} className="rounded-lg border border-rose-200 px-3 py-1 text-xs text-rose-600">حذف</button></div>
+            <div className="mt-2 flex gap-1.5"><button onClick={() => setEdit(b)} className="rounded-lg border border-slate-300 px-3 py-1 text-xs text-[#2c5aad]">تعديل</button><button onClick={() => del(b)} className={BTN_DANGER_SOFT}>حذف</button></div>
           </div>
         ))}
       </div>

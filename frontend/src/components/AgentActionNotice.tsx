@@ -2,6 +2,7 @@ import Modal from '../ui/Modal'
 import { useEffect, useState } from 'react'
 import { useSession } from '../session'
 import { waApi, allowedWaAgents, type AiAgentAction } from '../waApi'
+import { BTN_DANGER, BTN_GHOST } from '../ui/classes'
 
 export default function AgentActionNotice({
   targetId,
@@ -128,14 +129,14 @@ export default function AgentActionNotice({
             <div className="mt-4 flex gap-2">
               <button
                 disabled={busy || !reason.trim()}
-                className="rounded-xl bg-red-600 px-4 py-2 font-bold text-white disabled:opacity-50"
+                className={BTN_DANGER}
               >
                 {busy ? 'دا ألغي…' : 'تأكيد الإلغاء'}
               </button>
               <button
                 type="button"
                 disabled={busy}
-                className="rounded-xl border border-slate-200 px-4 py-2 text-slate-700"
+                className={BTN_GHOST}
                 onClick={() => setSelected(null)}
               >
                 رجوع

@@ -7,15 +7,26 @@ import (
 	"staffmange-api/internal/middleware"
 
 	"staffmange-api/internal/model"
+	"staffmange-api/internal/repository"
 	"staffmange-api/internal/service"
 )
 
 type GpsHandler struct {
 	service *service.GpsService
+	// seesAll: الإدارة/مسؤول الجي بي اس/صلاحية gps_system يشوفون كل الطلبات؛
+	// موظف المبيعات يشوف طلباته بس (فلترة بالسيرفر مو بالواجهة).
+	seesAll func(*http.Request) bool
 }
 
-func NewGpsHandler(s *service.GpsService) *GpsHandler {
-	return &GpsHandler{service: s}
+func NewGpsHandler(s *service.GpsService, permissions *repository.PermissionRepository) *GpsHandler {
+	return &GpsHandler{service: s, seesAll: middleware.RoleOrAnyPermissionCheck(permissions, []string{"GPS_ADMIN"}, "gps_system")}
+}
+
+func (h *GpsHandler) scopeMine(r *http.Request) (string, bool) {
+	if h.seesAll != nil && h.seesAll(r) {
+		return "", false
+	}
+	return middleware.EmployeeIDFromContext(r), true
 }
 
 // ── GPS Customers ────────────────────────────────────────────────────────────
@@ -104,6 +115,15 @@ func (h *GpsHandler) ListDevices(w http.ResponseWriter, r *http.Request) {
 		WriteError(w, http.StatusInternalServerError, "تعذر جلب طلبات الأجهزة")
 		return
 	}
+	if me, mine := h.scopeMine(r); mine {
+		own := devices[:0]
+		for _, d := range devices {
+			if d.EmployeeID == me || (d.AssignedTechnicianID != nil && *d.AssignedTechnicianID == me) {
+				own = append(own, d)
+			}
+		}
+		devices = own
+	}
 	WriteJSON(w, http.StatusOK, devices)
 }
 
@@ -144,6 +164,15 @@ func (h *GpsHandler) ListRenewals(w http.ResponseWriter, r *http.Request) {
 		WriteError(w, http.StatusInternalServerError, "تعذر جلب طلبات التجديد")
 		return
 	}
+	if me, mine := h.scopeMine(r); mine {
+		own := renewals[:0]
+		for _, rn := range renewals {
+			if rn.EmployeeID == me {
+				own = append(own, rn)
+			}
+		}
+		renewals = own
+	}
 	WriteJSON(w, http.StatusOK, renewals)
 }
 
@@ -168,6 +197,10 @@ func (h *GpsHandler) UpdateRenewal(w http.ResponseWriter, r *http.Request) {
 		WriteError(w, http.StatusBadRequest, "بيانات الطلب غير صحيحة")
 		return
 	}
+	if req.AdminID == nil {
+		me := middleware.EmployeeIDFromContext(r)
+		req.AdminID = &me
+	}
 	renewal, err := h.service.UpdateRenewal(r.PathValue("id"), req)
 	if err != nil {
 		WriteError(w, http.StatusBadRequest, err.Error())
@@ -183,6 +216,15 @@ func (h *GpsHandler) ListMaintenance(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		WriteError(w, http.StatusInternalServerError, "تعذر جلب طلبات الصيانة")
 		return
+	}
+	if me, mine := h.scopeMine(r); mine {
+		own := records[:0]
+		for _, m := range records {
+			if m.EmployeeID == me {
+				own = append(own, m)
+			}
+		}
+		records = own
 	}
 	WriteJSON(w, http.StatusOK, records)
 }

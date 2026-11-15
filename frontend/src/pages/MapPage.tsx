@@ -71,6 +71,12 @@ export default function MapPage() {
   const [linkValue, setLinkValue] = useState('')
 
   const mapRef = useRef<L.Map | null>(null)
+  const pickBooking = (booking: Booking) => {
+    setSelectedBooking(booking)
+    if (mapRef.current && booking.mapLatitude && booking.mapLongitude) {
+      mapRef.current.setView([booking.mapLatitude, booking.mapLongitude], 15)
+    }
+  }
   const mapContainerRef = useRef<HTMLDivElement>(null)
   const markersRef = useRef<L.LayerGroup | null>(null)
   const myMarkerRef = useRef<L.Marker | null>(null)
@@ -447,19 +453,22 @@ export default function MapPage() {
               <p className="px-2 py-4 text-center text-sm text-slate-400">لا توجد حجوزات بمواقع</p>
             )}
             {filteredBookings.map(booking => (
-              <button
+              // (دازاي 11-15) چان زر «عرض الطريق» داخل زر البطاقة (button بـbutton — HTML غلط).
+              // هسه البطاقة div، والزرين أخوة.
+              <div
                 key={booking.id}
-                onClick={() => {
-                  setSelectedBooking(booking)
-                  if (mapRef.current && booking.mapLatitude && booking.mapLongitude) {
-                    mapRef.current.setView([booking.mapLatitude, booking.mapLongitude], 15)
-                  }
-                }}
-                className={`w-full text-right rounded-lg p-2.5 mb-1 transition ${
+                className={`rounded-lg mb-1 transition ${
                   selectedBooking?.id === booking.id
                     ? 'bg-brand-50 border border-brand-300'
                     : 'hover:bg-slate-50 border border-transparent'
                 }`}
+              >
+              <div
+                role="button"
+                tabIndex={0}
+                onClick={() => pickBooking(booking)}
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); pickBooking(booking) } }}
+                className="w-full cursor-pointer text-right p-2.5"
               >
                 <div className="flex items-center justify-between mb-1">
                   <span className="font-bold text-sm" style={{ color: MARKER_COLORS[booking.status] }}>
@@ -482,20 +491,24 @@ export default function MapPage() {
                     {new Date(booking.scheduledAt).toLocaleDateString('ar-IQ')} {new Date(booking.scheduledAt).toLocaleTimeString('ar-IQ', { hour: '2-digit', minute: '2-digit' })}
                   </div>
                 )}
+              </div>
 
                 {/* Route button */}
                 {myLocation && booking.mapLatitude && booking.mapLongitude && (
+                  <div className="px-2.5 pb-2.5">
                   <button
-                    onClick={e => { e.stopPropagation(); showRoute(booking) }}
-                    className="mt-1.5 w-full flex items-center justify-center gap-1 rounded bg-[#0f2040] px-2 py-1 text-xs text-white hover:bg-[#1a3a6c]"
+                    type="button"
+                    onClick={() => showRoute(booking)}
+                    className="w-full flex items-center justify-center gap-1 rounded bg-[#0f2040] px-2 py-1 text-xs text-white hover:bg-[#1a3a6c]"
                   >
                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                       <path d="M3 11l19-9-9 19-2-8-8-2z" />
                     </svg>
                     عرض الطريق
                   </button>
+                  </div>
                 )}
-              </button>
+              </div>
             ))}
           </div>
         </div>

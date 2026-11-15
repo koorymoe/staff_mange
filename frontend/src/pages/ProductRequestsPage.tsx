@@ -8,6 +8,7 @@ import { swallow } from '../utils/swallow'
 
 import { notify } from '../ui/notify'
 import { money as fmtMoney } from '../utils/money'
+import { STATUS_LABELS } from '../statusLabels'
 const money = (n: number) => fmtMoney(n) // (دازاي 11-15) من utils/money.ts
 
 type SupplierOption = { id: string; companyName: string; ownerName: string }
@@ -149,7 +150,7 @@ export default function ProductRequestsPage({ embedded }: { embedded?: boolean }
     }
   }
 
-  const statusLabel: Record<string, string> = { PENDING: '⏳ بالانتظار', APPROVED: '✔ موافق عليه', REJECTED: '✘ مرفوض' }
+  const statusLabel: Record<string, string> = { PENDING: `⏳ ${STATUS_LABELS.PENDING}`, APPROVED: `✔ ${STATUS_LABELS.APPROVED}`, REJECTED: `✘ ${STATUS_LABELS.REJECTED}` }
   const statusColor: Record<string, string> = { PENDING: 'text-amber-600', APPROVED: 'text-emerald-600', REJECTED: 'text-red-600' }
 
   const inputCls = 'rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand-500'

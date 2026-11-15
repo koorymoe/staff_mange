@@ -210,9 +210,10 @@
   background: #303541;
 }
 .voice-terms .ear-delete {
-  color: #ffb1c3;
-  border-color: #795064;
-  background: #311e29;
+  /* (دازاي 11-15) الحذف أحمر صريح — نفس BTN_DANGER */
+  color: #fff;
+  border-color: #dc2626;
+  background: #dc2626;
 }
 .ear-fix {
   display: flex;

@@ -5,6 +5,7 @@ import (
 	"github.com/lib/pq"
 	"log"
 	"staffmange-api/internal/errlog"
+	"strings"
 	"time"
 
 	"staffmange-api/internal/model"
@@ -68,6 +69,23 @@ func (r *NotificationRepository) CreateForRole(role, notifType, message string) 
 		WHERE status = 'ACTIVE' AND (role::text = $1 OR id IN `+model.OrgRoleEmployeesSQL("ARRAY[$1::text]")+`)
 	`, role, notifType, message)
 	return logFail("CreateForRole", role, notifType, err)
+}
+
+// CreateForRoles يبث الإشعار لكل موظف نشط دوره (أو دوره التنظيمي) من الأدوار
+// المعطاة — صف واحد للشخص حتى لو طابق أكثر من دور. بدل استدعاءات CreateForRole
+// متتالية الي چانت تبعث نفس الإشعار مرتين لمن يطابق دورين.
+func (r *NotificationRepository) CreateForRoles(roles []string, notifType, message string) error {
+	if len(roles) == 0 {
+		return nil
+	}
+	message = model.Rebrand(message)
+	_, err := r.db.Exec(`
+		INSERT INTO "Notification" (id, "employeeId", type, message)
+		SELECT gen_random_uuid()::text, e.id, $2, $3
+		FROM "Employee" e
+		WHERE e.status = 'ACTIVE' AND (e.role::text = ANY($1) OR e.id IN `+model.OrgRoleEmployeesSQL("$1::text[]")+`)
+	`, pq.Array(roles), notifType, message)
+	return logFail("CreateForRoles", strings.Join(roles, ","), notifType, err)
 }
 
 func (r *NotificationRepository) ListForEmployee(employeeID string, limit int) ([]model.Notification, error) {

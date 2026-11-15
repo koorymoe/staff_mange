@@ -2,7 +2,7 @@ import { Suspense, useEffect, useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { api, type Employee, type TcInsight, type TcPlan } from '../api'
 import { ROLE_LABELS, roleLabel } from '../roleLabels'
-import { card } from '../ui/classes'
+import { BTN_DANGER_SOFT, card } from '../ui/classes'
 import { lazyRetry } from '../utils/staleReload'
 import { CurriculumTree, MatchingTab, TrainingReportsTab } from './TrainingMatching'
 import { askConfirm } from '../ui/dialogs'
@@ -246,7 +246,7 @@ function PlanTab({ emps, need }: { emps: Employee[]; need: TcInsight[] }) {
                   {r === 'DONE' ? '✓ انعمل' : r === 'PARTIAL' ? '◐ جزئي' : '✗ ما انعمل'}
                 </button>
               ))}
-              <button onClick={async () => { if ((await askConfirm('تحذف هالتدريب من الخطة؟'))) void api.tcDeletePlan(p.id).then(() => setReload((x) => x + 1)) }} className="text-xs text-slate-400">حذف</button>
+              <button onClick={async () => { if ((await askConfirm('تحذف هالتدريب من الخطة؟'))) void api.tcDeletePlan(p.id).then(() => setReload((x) => x + 1)) }} className={BTN_DANGER_SOFT}>حذف</button>
             </div>
           )}
         </div>
@@ -257,6 +257,7 @@ function PlanTab({ emps, need }: { emps: Employee[]; need: TcInsight[] }) {
 
 function NewTab({ rows, emps }: { rows: TcInsight[]; emps: Employee[] }) {
   const [mentors, setMentors] = useState<Record<string, { mentorId: string | null; notes: string | null }>>({})
+  const [savingId, setSavingId] = useState<string | null>(null)
   const [draft, setDraft] = useState<Record<string, { mentorId: string; notes: string }>>({})
   useEffect(() => { api.tcMentors().then((r) => setMentors(Object.fromEntries(r.map((m) => [m.employeeId, m])))).catch(swallow) }, [])
   if (rows.length === 0) return <p className={`${card} text-center text-slate-500`}>ماكو موظفين جدد (آخر ٩٠ يوم).</p>
@@ -275,7 +276,7 @@ function NewTab({ rows, emps }: { rows: TcInsight[]; emps: Employee[] }) {
               <option value="">المشرف عليه…</option>{emps.filter((e) => e.id !== x.id).map((e) => <option key={e.id} value={e.id}>{e.name}</option>)}
             </select>
             <input value={d.notes} onChange={(e) => setDraft({ ...draft, [x.id]: { ...d, notes: e.target.value } })} placeholder="ملاحظات المتابعة" className={`${input} min-w-[200px] flex-1`} />
-            <button onClick={() => api.tcSetMentor(x.id, d.mentorId, d.notes).then(() => setMentors({ ...mentors, [x.id]: d })).catch(err)} className={btn}>حفظ</button>
+            <button disabled={savingId === x.id} onClick={() => { setSavingId(x.id); api.tcSetMentor(x.id, d.mentorId, d.notes).then(() => setMentors({ ...mentors, [x.id]: d })).catch(err).finally(() => setSavingId(null)) }} className={btn}>{savingId === x.id ? '…' : 'حفظ'}</button>
           </div>
         )
       })}

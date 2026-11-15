@@ -1,8 +1,6 @@
 package service
 
 import (
-	"errors"
-
 	"staffmange-api/internal/repository"
 )
 
@@ -12,5 +10,6 @@ import (
 // يوصل للمدير، والخدمة الدورية حاجزة علامة الأسبوع قبل الإرسال، فالملخص
 // يضيع لذاك الأسبوع. هسه فشل واحد ما يمنع الثاني، والخطأ يرجع مجمّع.
 func notifyOwnerAndAdmin(n *repository.NotificationRepository, notifType, msg string) error {
-	return errors.Join(n.CreateForRole("OWNER", notifType, msg), n.CreateForRole("ADMIN", notifType, msg))
+	// صف واحد للشخص حتى لو طابق الدورين.
+	return n.CreateForRoles([]string{"OWNER", "ADMIN"}, notifType, msg)
 }

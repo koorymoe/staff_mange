@@ -14,6 +14,7 @@ import SearchBar from './SearchBar'
 import SaveError from './SaveError'
 import Pager from './Pager'
 import RowActions from './RowActions'
+import { BTN_DANGER_SOFT, BTN_WARN_SOFT } from '../ui/classes'
 
 // ═══ متابعة الشكاوى وتدقيق مهندسي الجودة ═══
 //
@@ -456,13 +457,13 @@ export default function ComplaintsTracking({
                   )}
                   {canContact && onNoAnswer && !selected.contactedAt && (selected.status === 'NEW' || selected.status === 'IN_PROGRESS') && (
                     <button disabled={busyId === selected.id} onClick={() => onNoAnswer(selected)}
-                      className="mt-2 rounded-lg bg-amber-100 px-3 py-1 text-xs font-bold text-amber-800 hover:bg-amber-200 disabled:opacity-50">
+                      className={`${BTN_WARN_SOFT} mt-2`}>
                       📵 الزبون ما رد
                     </button>
                   )}
                   {canContact && onCloseNoAnswer && !selected.contactedAt && (selected.status === 'NEW' || selected.status === 'IN_PROGRESS') && (
                     <button disabled={busyId === selected.id} onClick={() => onCloseNoAnswer(selected)}
-                      className="mt-2 ms-2 rounded-lg bg-red-100 px-3 py-1 text-xs font-bold text-red-800 hover:bg-red-200 disabled:opacity-50">
+                      className={`${BTN_DANGER_SOFT} mt-2 ms-2`}>
                       ⛔ سدّها — الزبون ما يرد
                     </button>
                   )}

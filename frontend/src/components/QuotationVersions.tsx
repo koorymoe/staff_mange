@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { api, parseQuotationSnapshot, type QuotationVersion, type Quotation } from '../api'
+import { money } from '../utils/money'
 
 // ═══ النسخ القديمة لعرض السعر ═══
 //
@@ -13,7 +14,7 @@ import { api, parseQuotationSnapshot, type QuotationVersion, type Quotation } fr
 // ⚠️ ويُجلب **عند الفتح وبس**: أغلب العروض ما إلها نسخ، فتحميلها مع
 // كل صف بالقائمة يسوي نداء لكل عرض بلا فائدة.
 
-const fmt = (n: number) => n.toLocaleString('en-US', { maximumFractionDigits: 2 })
+const fmt = money // (دازاي 11-15) من utils
 
 export default function QuotationVersions({ quotationId }: { quotationId: string }) {
   const [rows, setRows] = useState<QuotationVersion[] | null>(null)

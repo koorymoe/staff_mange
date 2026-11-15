@@ -26,6 +26,7 @@ import { swallow } from '../utils/swallow'
 
 import { notify } from '../ui/notify'
 import { bookingServiceLabel } from '../bookingServiceLabel'
+import { BTN_WARN_SOFT } from '../ui/classes'
 const DELETE_CHANNEL_OPTIONS: [BookingDeleteChannel, string][] =
   (Object.entries(bookingDeleteChannelLabels) as [BookingDeleteChannel, string][])
 // ⚠️ «الزبون ما رد» خيار بنفس القائمة بس **مو طلب حذف** — يُعالَج
@@ -777,7 +778,7 @@ export default function BookingsList({ bucket = 'all', focus }: { bucket?: Booki
                             {canMarkWaiting && (
                               <button
                                 onClick={() => markNoAnswer(b.id, b.code)}
-                                className="mt-1 mr-2 rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-700 transition-colors hover:bg-slate-200"
+                                className={`${BTN_WARN_SOFT} mt-1 mr-2`}
                               >
                                 📞 الزبون ما رد
                               </button>

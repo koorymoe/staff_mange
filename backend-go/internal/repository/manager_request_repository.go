@@ -27,9 +27,11 @@ type ManagerRequest struct {
 	Source        string     `db:"source" json:"source"`
 	Status        string     `db:"status" json:"status"`
 	Reply         *string    `db:"reply" json:"reply"`
+	HandledByID   *string    `db:"handledById" json:"-"`
 	HandledByName *string    `db:"handledByName" json:"handledByName"`
 	HandledAt     *time.Time `db:"handledAt" json:"handledAt"`
 	CreatedAt     time.Time  `db:"createdAt" json:"createdAt"`
+	RemindedAt    *time.Time `db:"remindedAt" json:"-"`
 }
 
 type ManagerRequestRepository struct {
@@ -72,8 +74,7 @@ func (r *ManagerRequestRepository) Create(requesterID, title, details, priority,
 		var name string
 		errlog.Err(r.db.Get(&name, `SELECT name FROM "Employee" WHERE id = $1`, requesterID))
 		msg := fmt.Sprintf("📨 طلب للمدير (%s) من %s: %s", managerRequestPriorities[priority], name, title)
-		_ = r.notif.CreateForRole("ADMIN", "MANAGER_REQUEST", msg)
-		_ = r.notif.CreateForRole("OWNER", "MANAGER_REQUEST", msg)
+		_ = r.notif.CreateForRoles([]string{"ADMIN", "OWNER"}, "MANAGER_REQUEST", msg)
 	}
 	return id, nil
 }
@@ -191,8 +192,7 @@ func (r *ManagerRequestRepository) RemindStale() (int, error) {
 		for _, x := range rows {
 			days := int(time.Since(x.At).Hours() / 24)
 			msg := fmt.Sprintf("⏰ طلب للمدير (%s) من %s بعده بلا رد من %d يوم: %s — من «📨 طلبات للمدير».", managerRequestPriorities[x.Prio], x.Name, days, x.Title)
-			_ = r.notif.CreateForRole("ADMIN", "MANAGER_REQUEST", msg)
-			_ = r.notif.CreateForRole("OWNER", "MANAGER_REQUEST", msg)
+			_ = r.notif.CreateForRoles([]string{"ADMIN", "OWNER"}, "MANAGER_REQUEST", msg)
 		}
 	}
 	return len(rows), nil

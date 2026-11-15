@@ -306,7 +306,7 @@ export default function Customers() {
                   className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand-500"
                 >
                   <option value="">الكل</option>
-                  {locationOptions.map((l) => <option key={l} value={l}>{l}</option>)}
+                  {locationOptions.map((l, i) => <option key={`${l}-${i}`} value={l}>{l}</option>)}
                 </select>
               </div>
               <div className="grid grid-cols-2 gap-2">
@@ -386,8 +386,8 @@ export default function Customers() {
                       <td className="px-4 py-3">
                         <div className="flex flex-wrap gap-1">
                           {c.services.length === 0 && <span className="text-slate-400">-</span>}
-                          {c.services.map((s) => (
-                            <span key={s} className="rounded-full bg-brand-50 px-2 py-0.5 text-xs font-semibold text-brand-700">
+                          {c.services.map((s, i) => (
+                            <span key={`${s}-${i}`} className="rounded-full bg-brand-50 px-2 py-0.5 text-xs font-semibold text-brand-700">
                               {serviceLabels[s] || s}
                             </span>
                           ))}
@@ -618,7 +618,7 @@ function CustomerDetails({ customer, history, loading }: {
       <DetailBox icon="🔧" title="الخدمات المطلوبة">
         {loading ? <p className="text-slate-400">جاري التحميل…</p> : services.length > 0 ? (
           <ul className="space-y-0.5">
-            {services.map((n) => <li key={n}>• {n}</li>)}
+            {services.map((n, i) => <li key={`${n}-${i}`}>• {n}</li>)}
           </ul>
         ) : <p className="text-slate-400">ماكو خدمات مسجّلة.</p>}
       </DetailBox>

@@ -451,7 +451,6 @@ export interface GpsDeviceRequest {
   scheduledAt: string | null
   assignedTechnician: { id: string; name: string } | null
   assignedTechnicianId?: string | null
-  price?: number | null
   credentialsMessage: string | null
 }
 

@@ -156,8 +156,8 @@ type UpsertSimCardRequest struct {
 
 type GpsDeviceRequest struct {
 	ID                 string     `db:"id" json:"id"`
-	CustomerID         string     `db:"customerId" json:"-"`
-	EmployeeID         string     `db:"employeeId" json:"-"`
+	CustomerID         string     `db:"customerId" json:"customerId"`
+	EmployeeID         string     `db:"employeeId" json:"employeeId"`
 	AdminID            *string    `db:"adminId" json:"adminId"`
 	PurchaseType       string     `db:"purchaseType" json:"purchaseType"`
 	SubscriptionType   string     `db:"subscriptionType" json:"subscriptionType"`
@@ -179,7 +179,7 @@ type GpsDeviceRequest struct {
 	DeliveredAt          *time.Time `db:"deliveredAt" json:"deliveredAt"`
 	CreatedAt            time.Time  `db:"createdAt" json:"createdAt"`
 	ScheduledAt          *time.Time `db:"scheduledAt" json:"scheduledAt"`
-	AssignedTechnicianID *string    `db:"assignedTechnicianId" json:"-"`
+	AssignedTechnicianID *string    `db:"assignedTechnicianId" json:"assignedTechnicianId"`
 	CredentialsMessage   *string    `db:"credentialsMessage" json:"credentialsMessage"`
 
 	Customer           *GpsCustomer   `db:"-" json:"customer"`
@@ -215,9 +215,9 @@ type UpsertGpsDeviceRequest struct {
 
 type GpsRenewalRequest struct {
 	ID               string     `db:"id" json:"id"`
-	CustomerID       string     `db:"customerId" json:"-"`
-	DeviceRequestID  string     `db:"deviceRequestId" json:"-"`
-	EmployeeID       string     `db:"employeeId" json:"-"`
+	CustomerID       string     `db:"customerId" json:"customerId"`
+	DeviceRequestID  string     `db:"deviceRequestId" json:"deviceRequestId"`
+	EmployeeID       string     `db:"employeeId" json:"employeeId"`
 	AdminID          *string    `db:"adminId" json:"adminId"`
 	SubscriptionType string     `db:"subscriptionType" json:"subscriptionType"`
 	NewEndDate       *time.Time `db:"newEndDate" json:"newEndDate"`
@@ -226,6 +226,17 @@ type GpsRenewalRequest struct {
 
 	Customer      *GpsCustomer      `db:"-" json:"customer"`
 	DeviceRequest *GpsDeviceRequest `db:"-" json:"deviceRequest"`
+}
+
+// GpsSubscriptionDays مدة كل نوع اشتراك بالأيام — مصدر واحد لتمديد التجديد.
+func GpsSubscriptionDays(t string) int {
+	switch t {
+	case "THREE_MONTHS", "3_months":
+		return 90
+	case "SIX_MONTHS", "6_months":
+		return 180
+	}
+	return 365
 }
 
 type UpsertGpsRenewalRequest struct {
@@ -240,8 +251,8 @@ type UpsertGpsRenewalRequest struct {
 
 type GpsMaintenanceRequest struct {
 	ID                 string     `db:"id" json:"id"`
-	CustomerID         string     `db:"customerId" json:"-"`
-	EmployeeID         string     `db:"employeeId" json:"-"`
+	CustomerID         string     `db:"customerId" json:"customerId"`
+	EmployeeID         string     `db:"employeeId" json:"employeeId"`
 	AdminID            *string    `db:"adminId" json:"adminId"`
 	ProblemDescription string     `db:"problemDescription" json:"problemDescription"`
 	Status             string     `db:"status" json:"status"`

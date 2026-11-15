@@ -504,8 +504,7 @@ func (s *DesignSetService) Submit(emp, role string, perms []string, sectionID st
 	}
 	if s.notif != nil {
 		msg := "🎨 تصميم «" + disciplineName(sc.Discipline) + "» لصيت «" + sc.Title + "» ينتظر مراجعتك."
-		_ = s.notif.CreateForRole("ADMIN", "DESIGN_REVIEW", msg)
-		_ = s.notif.CreateForRole("OWNER", "DESIGN_REVIEW", msg)
+		_ = s.notif.CreateForRoles([]string{"ADMIN", "OWNER"}, "DESIGN_REVIEW", msg)
 		reviewers := []string{}
 		errlog.Err(s.db.Select(&reviewers, `SELECT DISTINCT "employeeId" FROM "OrgAssignment" WHERE "endedAt" IS NULL AND position IN ('DIRECTOR', 'DEPUTY')
 			AND (("divisionId" = 'eng' AND "unitId" IS NULL) OR "unitId" = 'eng.design') AND "employeeId" <> $1`, emp))
