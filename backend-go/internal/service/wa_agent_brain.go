@@ -47,6 +47,7 @@ type WaAgentTurn struct {
 	Facts          string // تفاصيل الحجز أو المتابعة — حتى ما نصرف خطوة على شي معروف
 	History        []WaHistory
 	Text           string
+	Voice          bool // مكالمة حية — الرد ينگال بصوت
 }
 
 // WaTurnCtx أدوات ناروتو تكتب عليه (مثل SecretaryTurnCtx).
@@ -198,6 +199,9 @@ func (a *waAgent) Reply(ctx context.Context, t WaAgentTurn) *WaAgentResult {
 	msgs = append(msgs, anthropic.NewUserMessage(anthropic.NewTextBlock(t.Text)))
 
 	system := a.system(t)
+	if t.Voice {
+		system += waVoiceRules
+	}
 	confirmed := waConfirmed(t.Text)
 	mask := &nameMask{ids: map[string]string{}, tag: map[string]int{}}
 

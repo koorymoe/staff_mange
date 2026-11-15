@@ -7,7 +7,7 @@ import { startAgentRebrand } from '../utils/agentBrand'
 import AiBrainCards from '../components/AiBrainCards'
 
 type Agent = {
-  agent: 'MATRIX' | 'IRIS' | 'QUALITY' | 'BOOKING' | 'RECEPTION'
+  agent: 'MATRIX' | 'IRIS' | 'QUALITY' | 'BOOKING' | 'RECEPTION' | 'VOICE'
   name: string
   editable: boolean
   default?: string
@@ -30,6 +30,7 @@ const statusKeys = {
   BOOKING: 'booking',
   // الاستقبال يشتغل بمفتاح وميزانية وكيل الحجوزات
   RECEPTION: 'booking',
+  VOICE: 'booking',
 }
 export default function AiAgentsPage() {
   const { employee } = useSession()
@@ -145,7 +146,9 @@ function OwnerAgents() {
                 <h2 className="text-lg font-bold text-slate-800">
                   {agent.agent === 'RECEPTION'
                     ? `📥 الاستقبال · ${agent.name}`
-                    : agent.name}
+                    : agent.agent === 'VOICE'
+                      ? `📞 المكالمة الحية · ${agent.name}`
+                      : agent.name}
                 </h2>
                 <span
                   className={`rounded-full px-3 py-1 text-xs font-bold ${s?.on ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-600'}`}
@@ -196,7 +199,9 @@ function OwnerAgents() {
                 <p className="mt-3 text-sm text-slate-500">
                   {agent.agent === 'RECEPTION'
                     ? 'يرد على الزبون الي يراسل أو يدز فويس أو يتصل هو، ويسجّل طلبه ويثبّت موعده. نفس اسم ومفتاح وكيل الحجوزات.'
-                    : 'الاسم ثابت.'}
+                    : agent.agent === 'VOICE'
+                      ? 'يرد على مكالمة الزبون بصوته وبالعراقي، بنفس عقل وأدوات الاستقبال. يحتاج ربط منصة الصوت، وصوت الزبون يمر بيها (خارج السيرفر).'
+                      : 'الاسم ثابت.'}
                 </p>
               )}
               <dl className="mt-4 grid grid-cols-2 gap-3 text-sm">

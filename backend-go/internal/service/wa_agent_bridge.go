@@ -45,7 +45,7 @@ func (b *luffyWaBrain) Reply(ctx context.Context, t WaTurn) (string, error) {
 		hist = append(hist, WaHistory{Role: role, Text: h.Text})
 	}
 	// ⚠️ بلا CustomerName — لحد قرار الخصوصية المكتوب.
-	res := b.reply(ctx, WaAgentTurn{AgentName: t.AgentName, Facts: t.Context, History: hist, Text: t.Message})
+	res := b.reply(ctx, WaAgentTurn{AgentName: t.AgentName, Facts: t.Context, History: hist, Text: t.Message, Voice: t.Voice})
 	if res == nil {
 		return "", nil
 	}

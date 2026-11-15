@@ -1376,8 +1376,8 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 			"brains":    aiBrainsStatus(cfg.AIModel, cfg.AIModelChat),
 			"gemini":    map[string]any{"on": cfg.GeminiAPIKey != "", "dailyCap": cfg.GeminiDailyCap},
 			"whisper":   map[string]any{"on": cfg.WhisperURL != ""},
-			// 📥 الاستقبال (دازاي 11-15): بمفتاح ابو الحجوزات. voice = فويس الزبون ينسمع (Whisper الداخلي). الرد الصوتي الحي على المكالمة بعده ما انبنى.
-			"reception": map[string]any{"on": cfg.AIKeyBooking != "", "built": true, "voice": cfg.WhisperURL != "", "liveCalls": false},
+			// 📥 الاستقبال (دازاي 11-15): بمفتاح ابو الحجوزات. voice = فويس الزبون ينسمع (Whisper الداخلي). liveCalls = سر منصة الصوت محطوط (المكالمة الحية جاهزة تنربط).
+			"reception": map[string]any{"on": cfg.AIKeyBooking != "", "built": true, "voice": cfg.WhisperURL != "", "liveCalls": cfg.VoiceLLMSecret != ""},
 		})
 	})
 	aiAgentNames := handler.NewAiAgentNameHandler(db)
@@ -3438,6 +3438,11 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 			secs["wa"].Set("GET /api/wa/actions", "wa.get_actions", waH.Actions, requireWa)
 			secs["wa"].Set("POST /api/wa/actions/{id}/undo", "wa.post_actions_by_id_undo", waH.Undo, requireWa)
 			secs["ai"].Set("PUT /api/ai/agents/{agent}/enabled", "ai.put_agents_by_agent_enabled", waH.SetEnabled)
+			// 📞 المكالمة الحية (دازاي 11-15): منصة الصوت تنادي عقل الوكيل هنا بكل جملة. عام بسر مشترك.
+			waSvc.VoiceReady = cfg.VoiceLLMSecret != ""
+			voiceH := handler.NewVoiceLLMHandler(waSvc, cfg.VoiceLLMSecret)
+			secs["wa"].Set("POST /api/voice/v1/chat/completions", "wa.post_voice_chat_completions", voiceH.ChatCompletions,
+				middleware.RateLimit(300, time.Minute))
 			secs["wa"].Set("POST /api/wa/sandbox/start", "wa.post_sandbox_start", waH.SandboxStart)
 			secs["wa"].Set("POST /api/wa/sandbox/{id}/say", "wa.post_sandbox_by_id_say", waH.SandboxSay)
 			log.Printf("💬 وكلاء الواتساب: الواتساب %s · ابو الجودة %s · ابو الحجوزات %s · الاستقبال %s · فويس الزبون %s",

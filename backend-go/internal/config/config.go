@@ -89,6 +89,8 @@ type Config struct {
 	// WaPrivacyApproved قرار دازاي المكتوب (الخصوصية · الكلفة · محل المعالجة · مدة الحفظ) —
 	// بلاه ملاحظات الحجز ما تروح للنموذج.
 	WaPrivacyApproved bool
+	// VoiceLLMSecret سر مشترك ويا منصة الصوت (المكالمة الحية) — فاضي = نقطة /api/voice مسدودة.
+	VoiceLLMSecret string
 	// WhisperURL خدمة تحويل الصوت لنص **الداخلية** (حاوية whisper). فاضي = بلا تحليل فويس.
 	WhisperURL string
 	// AIModel من البيئة مو مكتوب بالكود: أسماء الموديلات تتبدّل،
@@ -196,6 +198,7 @@ func load() *Config {
 		WaTemplateBooking:        getEnv("WA_TEMPLATE_BOOKING", ""),
 		WaTemplateLng:            getEnv("WA_TEMPLATE_LANG", "ar"),
 		WaPrivacyApproved:        getEnv("WA_PRIVACY_APPROVED", "") == "true",
+		VoiceLLMSecret:           getEnv("VOICE_LLM_SECRET", ""),
 		// TutorialsDir: مسار مجلد أدلة الاستخدام (tutorial-*.html و guide-*.txt) اللي
 		// يقرأها المساعد الذكي حتى يعرف يشرح للموظف شلون يستخدم النظام فعلياً.
 		// الافتراضي "../tutorials" يناسب التطوير المحلي (تشغيل go run من داخل backend-go

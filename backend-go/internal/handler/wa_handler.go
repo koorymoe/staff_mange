@@ -184,7 +184,7 @@ func (h *WaHandler) Undo(w http.ResponseWriter, r *http.Request) {
 // PUT /api/ai/agents/{agent}/enabled {enabled}
 func (h *WaHandler) SetEnabled(w http.ResponseWriter, r *http.Request) {
 	agent := r.PathValue("agent")
-	if agent != service.WaAgentQuality && agent != service.WaAgentBooking && agent != service.WaAgentReception {
+	if agent != service.WaAgentQuality && agent != service.WaAgentBooking && agent != service.WaAgentReception && agent != service.WaAgentVoice {
 		WriteError(w, http.StatusBadRequest, "وكيل غير معروف")
 		return
 	}
@@ -197,7 +197,7 @@ func (h *WaHandler) SetEnabled(w http.ResponseWriter, r *http.Request) {
 	}
 	if err := h.svc.SetEnabled(agent, in.Enabled, middleware.EmployeeIDFromContext(r)); err != nil {
 		code := http.StatusInternalServerError
-		if errors.Is(err, whatsapp.ErrOff) {
+		if errors.Is(err, whatsapp.ErrOff) || errors.Is(err, service.ErrVoiceOff) {
 			code = http.StatusConflict
 		}
 		WriteError(w, code, err.Error())

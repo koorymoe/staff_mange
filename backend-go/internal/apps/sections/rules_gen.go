@@ -1404,6 +1404,8 @@ func rules() map[string]map[core.Action]core.Rule {
 			"wa.post_conversations_by_id_takeover": func(l string) core.Rule { return any_(l) }("ينفّذ /api/wa/conversations/{id}/takeover (الدخول — الفحص بالمعالج + طبقة: requireWa)"),
 			"wa.post_sandbox_by_id_say":            func(l string) core.Rule { return owner(l) }("ينفّذ /api/wa/sandbox/{id}/say (المالك بس)"),
 			"wa.post_sandbox_start":                func(l string) core.Rule { return owner(l) }("ينفّذ /api/wa/sandbox/start (المالك بس)"),
+			// (دازاي 11-15) عقل المكالمة الحية: تناديه منصة الصوت مو موظف — عام، والحماية بسر VOICE_LLM_SECRET بالمعالج.
+			"wa.post_voice_chat_completions": core.Rule{Label: "عقل المكالمة الحية — تناديه منصة الصوت بسر مشترك (بلا دخول موظف)", Public: true},
 		},
 		"work_reports": {
 			"work_reports.get_by_booking": func(l string) core.Rule { return any_(l) }("يقرا /api/work-reports/by-booking (الدخول — الفحص بالمعالج)"),

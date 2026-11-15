@@ -86,6 +86,8 @@ services:
       WA_TEMPLATE_LANG: ${WA_TEMPLATE_LANG:-ar}
       WA_DAILY_NEW: ${WA_DAILY_NEW:-10}
       WA_PRIVACY_APPROVED: ${WA_PRIVACY_APPROVED:-}
+      # 📞 المكالمة الحية: سر مشترك ويا منصة الصوت (docs/ai-quality-booking-plan.md)
+      VOICE_LLM_SECRET: ${VOICE_LLM_SECRET:-}
       AI_MODEL: ${AI_MODEL:-claude-haiku-5-5}
       # (ع) 10-14: إيميلات رموز التحقق لتطبيق الزبائن (Gmail + App Password)
       SMTP_HOST: ${SMTP_HOST:-}

@@ -124,6 +124,23 @@ func (r *WaRepository) Bind(convID string, customerID, bookingID *string) error 
 	return err
 }
 
+// SandboxByPhone محادثة تجربة مفتوحة بهذا المعرّف (تجربة المكالمة من لوحة منصة الصوت).
+func (r *WaRepository) SandboxByPhone(phone string) (*WaConversation, error) {
+	var c WaConversation
+	if err := r.db.Get(&c, waConvSelect+` WHERE c.phone = $1 AND c.sandbox AND c.status <> 'CLOSED'
+		ORDER BY c."lastMessageAt" DESC LIMIT 1`, phone); err != nil {
+		return nil, ErrWaNotFound
+	}
+	return &c, nil
+}
+
+// LastOut آخر رد للوكيل بالمحادثة.
+func (r *WaRepository) LastOut(convID string) string {
+	var t string
+	_ = r.db.Get(&t, `SELECT text FROM "WaMessage" WHERE "conversationId" = $1 AND direction = 'OUT' ORDER BY "createdAt" DESC, id DESC LIMIT 1`, convID)
+	return t
+}
+
 // CloseIdleInbound يسد محادثات الاستقبال الي الوكيل ماسكها وسكتت أكثر من يوم — نافذة Meta (٢٤ ساعة)
 // خلصت، والمحادثة المفتوحة تمنع وكيل ثاني يراسل نفس الرقم.
 func (r *WaRepository) CloseIdleInbound() int {

@@ -31,6 +31,9 @@ const (
 	// WaAgentReception الاستقبال (دازاي 11-15): الزبون هو الي يراسل أو يدز فويس أو يتصل، والوكيل يرد.
 	// مو قيمة بعمود agent — محادثته BOOKING ومؤشّرة inbound، وإلها مفتاح تشغيل وعقل خاص.
 	WaAgentReception = "RECEPTION"
+	// WaAgentVoice المكالمة الحية (دازاي 11-15): نفس العقل والأدوات، بس الزبون يحچي والوكيل يرد بصوت.
+	// هم مو قيمة بعمود agent — مفتاح تشغيل بس. التفاصيل بـwa_voice.go.
+	WaAgentVoice = "VOICE"
 )
 
 var ErrWaAgentOff = errors.New("الوكيل مطفي من الإعدادات")
@@ -43,6 +46,7 @@ type WaTurn struct {
 	History   []AgentTurn
 	Message   string
 	Tools     []agentTool
+	Voice     bool // الرد راح ينگال بصوت (مكالمة حية) — بلا إيموجي ولا أرقام مكتوبة
 }
 
 // WaBrain العقل — لوفي يبدّله بسياسته. Reply يرجّع نص الرد للزبون.
@@ -76,6 +80,8 @@ type WaAgentService struct {
 	Templates       map[string]string // agent ← اسم قالب Meta
 	TemplateLang    string
 	PrivacyApproved bool
+	// VoiceReady سر ربط منصة الصوت محطوط (VOICE_LLM_SECRET) — بلاه مفتاح المكالمة ما يشتغل.
+	VoiceReady bool
 }
 
 func NewWaAgentService(db *sqlx.DB, repo *repository.WaRepository, wa *whatsapp.Client, bookings *BookingService,
@@ -100,6 +106,8 @@ func waSwitch(agent string) string {
 		return model.SwitchAIQualityAgent
 	case WaAgentReception:
 		return model.SwitchAIReceptionAgent
+	case WaAgentVoice:
+		return model.SwitchAIVoiceCalls
 	}
 	return model.SwitchAIBookingAgent
 }
@@ -122,6 +130,13 @@ func (s *WaAgentService) Enabled(agent string) bool {
 }
 
 func (s *WaAgentService) SetEnabled(agent string, on bool, by string) error {
+	if agent == WaAgentVoice {
+		// المكالمة الحية تجي من منصة الصوت، مو من ربط Meta مالتنا — شرطها سر الربط.
+		if on && !s.VoiceReady {
+			return ErrVoiceOff
+		}
+		return s.switches.Set(waSwitch(agent), on, by)
+	}
 	if on && !s.wa.On() {
 		return whatsapp.ErrOff
 	}
@@ -129,7 +144,7 @@ func (s *WaAgentService) SetEnabled(agent string, on bool, by string) error {
 }
 
 func (s *WaAgentService) name(agent string) string {
-	if agent == WaAgentReception {
+	if agent == WaAgentReception || agent == WaAgentVoice {
 		agent = WaAgentBooking // الاستقبال هو ابو الحجوزات نفسه لمّا الزبون يبدي — نفس الاسم والمفتاح والميزانية
 	}
 	if s.names != nil {
@@ -215,6 +230,11 @@ func (s *WaAgentService) StartSandbox(agent, bookingID string) (*repository.WaCo
 
 // Say رسالة زبون (تجربة أو حقيقية واردة) والوكيل يرد. يرجّع رسائل هذا الدور وإجراءاته.
 func (s *WaAgentService) Say(ctx context.Context, convID, text string, metaID *string) ([]repository.WaMessage, []repository.AiAgentAction, error) {
+	return s.say(ctx, convID, text, metaID, false)
+}
+
+// say قلب الدور. voice = الزبون عالمكالمة: الرد يرجع للمنصة تنطقه (ما ينرسل واتساب)، ومفتاحه مفتاح المكالمة.
+func (s *WaAgentService) say(ctx context.Context, convID, text string, metaID *string, voice bool) ([]repository.WaMessage, []repository.AiAgentAction, error) {
 	conv, err := s.repo.Conversation(convID)
 	if err != nil {
 		return nil, nil, err
@@ -230,10 +250,14 @@ func (s *WaAgentService) Say(ctx context.Context, convID, text string, metaID *s
 	if conv.Status != "BOT" {
 		return out, nil, nil // إنسان ماسكها — الوكيل ساكت
 	}
-	if !conv.Sandbox && !s.Enabled(convAgent(conv)) {
+	gate := convAgent(conv)
+	if voice {
+		gate = WaAgentVoice
+	}
+	if !conv.Sandbox && !s.Enabled(gate) {
 		return out, nil, nil
 	}
-	reply, actions, err := s.reply(ctx, conv)
+	reply, actions, err := s.replyTurn(ctx, conv, voice)
 	if err != nil {
 		log.Printf("[wa] %s reply: %v", convAgent(conv), err)
 		reply = "شكراً إلك 🙏 راح يتواصل وياك موظف من شركة الأماني بأقرب وقت."
@@ -242,7 +266,9 @@ func (s *WaAgentService) Say(ctx context.Context, convID, text string, metaID *s
 	if strings.TrimSpace(reply) == "" {
 		return out, actions, nil
 	}
-	if !conv.Sandbox {
+	if voice {
+		reply = speakable(reply)
+	} else if !conv.Sandbox {
 		if _, err := s.wa.SendText(ctx, conv.Phone, reply); err != nil {
 			log.Printf("[wa] send: %v", err)
 		}
@@ -255,6 +281,10 @@ func (s *WaAgentService) Say(ctx context.Context, convID, text string, metaID *s
 }
 
 func (s *WaAgentService) reply(ctx context.Context, conv *repository.WaConversation) (string, []repository.AiAgentAction, error) {
+	return s.replyTurn(ctx, conv, false)
+}
+
+func (s *WaAgentService) replyTurn(ctx context.Context, conv *repository.WaConversation, voice bool) (string, []repository.AiAgentAction, error) {
 	var c *repository.WaBookingContext
 	if conv.BookingID != nil {
 		bc, err := s.repo.BookingContext(*conv.BookingID)
@@ -285,13 +315,13 @@ func (s *WaAgentService) reply(ctx context.Context, conv *repository.WaConversat
 		return waHandoffReply, nil, nil
 	}
 	turn := WaTurn{Agent: agent, AgentName: s.name(agent), Context: s.turnContext(conv, c),
-		History: hist, Message: msgs[len(msgs)-1].Text, Tools: tc.tools()}
+		History: hist, Message: msgs[len(msgs)-1].Text, Tools: tc.tools(), Voice: voice}
 	brain := s.brains[agent]
 	if brain == nil {
 		brain = waStubBrain{}
 	}
 	text, err := brain.Reply(ctx, turn)
-	if err == nil && agent == WaAgentReception && len(hist) == 0 && strings.TrimSpace(text) != "" && !strings.Contains(text, "مساعد ذكي") {
+	if err == nil && !voice && agent == WaAgentReception && len(hist) == 0 && strings.TrimSpace(text) != "" && !strings.Contains(text, "مساعد ذكي") {
 		// أول رد للزبون لازم يعرّف إنه مساعد ذكي — ما نعتمد بيها على النموذج.
 		text = "هلا بيك 🌹 وياك " + turn.AgentName + "، مساعد ذكي من شركة الأماني.\n" + text
 	}
