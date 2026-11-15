@@ -477,3 +477,4 @@ git push origin origin/avg:refs/heads/prod     # بعد التأكد إنه fast
   - ماتركس: voiceSafe يرفض أي رقم/كود/رمز جديد أو طول >1.6× (TestVoiceSafe_RejectsAddedFacts)؛ ResolveFor يعلّم إشعار التذكير نفسه بس (MarkReadOneAfter)؛ دورة عصرية ٢م لـprojectIdleToday وvehiclesUnrated (DAILY_MATRIX_AUTOPILOT_PM)؛ السقف ٨ لكل موظف باليوم (العاجل يعبر، الجماعي ٣٠ لكل نوع) ويا تسجيل المحذوف.
   - طلبات الوكلاء الـ٦ موجودة أصلاً (رفع طلب للمدير، سجل التحديثات، ملخص المخازن اليومي) — دازاي يضغط «تم».
 - 11-15 (لوفي) اسم الشركة الرسمي بمكان واحد: frontend/src/company.ts (COMPANY_LEGAL_AR = الصيغة الأولى ويا «محدودة المسؤولية»، اختيار دازاي) بـ٧ أوراق (عرض السعر، عرض المشاريع، سيت المخططات، وصل الـGPS، الكتب، فورمة التصميم). انشال allfns.txt.
+- 11-15 (لوفي) صلاحيات العروض الافتراضية (قرار دازاي): SALES += quotation_create، PROJECT_MANAGER += quotation_edit_own. ApplyDefaultsAll (كل ٦ ساعات) يمنحها ويحترم المشالة.

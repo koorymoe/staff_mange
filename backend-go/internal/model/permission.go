@@ -232,10 +232,10 @@ var MonitorSubPermissions = []string{"mon_inbox", "mon_reports", "mon_justificat
 // RoleDefaultPermissions هي الصلاحيات الافتراضية لكل دور وظيفي
 var RoleDefaultPermissions = map[string][]string{
 	"ADMIN":             {},
-	"SALES":             {"sales_booking", "complaints"},
+	"SALES":             {"sales_booking", "complaints", "quotation_create"}, // (دازاي 11-15) البياع يعمل عرض سعر
 	"HR_COORDINATOR":    {"staff_management", "edit_employee_profile", "coordinator", "manage_customers", "view_bookings", "manage_services", "inventory", "complaints", "mission_tracking", "sales_booking", "invoice_internal"},
 	"TECHNICIAN":        {"expenses"},
-	"PROJECT_MANAGER":   {"project_management", "expenses", "mission_tracking"},
+	"PROJECT_MANAGER":   {"project_management", "expenses", "mission_tracking", "quotation_edit_own"},                                                                                                                                                                                       // (دازاي 11-15) عروضه فقط
 	"MONITOR":           {"staff_management", "edit_employee_profile", "kpi_management", "view_bookings", "manage_customers", "manage_services", "mission_tracking", "inventory", "complaints", "finance", "monitoring", "auditing", "quality_control", "gps_system", "vehicle_management"}, // (ع) 10-17: متابعة المركبات للمراقب
 	"FINANCE":           {"finance", "view_bookings", "unit_finance"},                                                                                                                                                                                                                       // unit_finance: تقرير ٢ — شاشات التدقيق جوّا الوحدة
 	"GPS_ADMIN":         {"gps_system"},
