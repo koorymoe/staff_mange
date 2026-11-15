@@ -1,3 +1,4 @@
+import { COMPANY_LEGAL_AR } from '../company'
 import { useEffect, useState } from 'react'
 import { api, type EmployeeLetter } from '../api'
 import { useSession, isAdminOrOwner } from '../session'
@@ -118,7 +119,7 @@ body { background: #fff; font-family: 'Cairo', sans-serif; direction: rtl; -webk
   <div class="content">
     <div class="header">
       <div>
-        <div class="co-ar">شركة الأماني للتجارة العامة والاستثمارات العقارية والوكالات التجارية محدودة المسؤولية</div>
+        <div class="co-ar">${COMPANY_LEGAL_AR}</div>
         <div class="co-en">Al-Amani for General Trading, Real Estate &amp; Commercial Agencies LLC</div>
       </div>
     </div>

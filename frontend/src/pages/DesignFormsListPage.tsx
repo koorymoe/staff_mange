@@ -1,3 +1,4 @@
+import { COMPANY_LEGAL_AR } from '../company'
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { api, type DesignForm } from '../api'
@@ -35,7 +36,7 @@ function FormBrandPreview({ name }: { name: string }) {
       }}>
         <div style={{ position: 'absolute', top: 0, right: 0, bottom: 0, width: '6px', background: `linear-gradient(${GOLD}, ${PRIMARY})` }} />
         <div style={{ fontSize: '11px', fontWeight: 700, lineHeight: 1.4 }}>
-          شركة الأماني للتجارة العامة والاستثمارات العقارية
+          {COMPANY_LEGAL_AR}
         </div>
         <div style={{ fontSize: '8px', fontWeight: 600, color: GOLD_TEXT, marginTop: '2px' }}>
           Al-Amani for General Trading &amp; Real Estate

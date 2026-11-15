@@ -1,3 +1,4 @@
+import { COMPANY_LEGAL_AR } from '../company'
 import { useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { api, type DesignFormQuestion } from '../api'
@@ -92,7 +93,7 @@ export default function PublicDesignFormPage() {
           }}>
             <div style={{ position: 'absolute', top: 0, left: 0, bottom: 0, width: '10px', background: `linear-gradient(${GOLD}, ${PRIMARY})` }} />
             <div style={{ fontSize: '17px', fontWeight: 700, lineHeight: 1.5 }}>
-              شركة الأماني للتجارة العامة والاستثمارات العقارية والوكالات التجارية محدودة المسؤولية
+              {COMPANY_LEGAL_AR}
             </div>
             <div style={{ fontSize: '12px', fontWeight: 600, color: GOLD_TEXT, marginTop: '4px' }}>
               Al-Amani for General Trading, Real Estate &amp; Commercial Agencies LLC

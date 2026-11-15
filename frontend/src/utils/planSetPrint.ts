@@ -1,3 +1,4 @@
+import { COMPANY_LEGAL_AR, COMPANY_SHORT_AR } from '../company'
 // ═══ 📐 سيت المخططات — ملف الـPDF (ك) 11-10 ═══
 // بطلب دازاي: «تسوي تنزيل ملف ينزل ملف PDF بالألوان الهوية البصرية مال الشركة بي كل
 // التصاميم بالإضافة الى عرض السعر». الشكل نفس ورقة «Package Contents» مال الشركة:
@@ -39,7 +40,7 @@ export type PlanPrintInput = {
   date: Date
 }
 
-const COMPANY = 'شركة الأماني المتحدة للتجارة والخدمات العامة والمقاولات والاستثمارات والتطوير العقاري محدودة المسؤولية'
+const COMPANY = COMPANY_LEGAL_AR
 // (ل) 11-12: ألوان دليل الهوية الي دزه دازاي — كحلي أساسي، ذهبي، أزرق ثانوي، خلفية، نص
 const NAVY = '#0B2D5B'
 const GOLD = '#D4AF37'
@@ -60,7 +61,7 @@ const abs = (u: string) => (/^(https?:|data:|blob:)/.test(u) ? u : new URL(u, lo
 export const isImageFile = (f: { fileType?: string | null }) => IMAGE_TYPES.includes(f.fileType ?? '')
 
 const band = `<div class="band"><img src="LOGO" alt=""><span>${COMPANY}</span></div>`
-const foot = (page: number) => `<div class="foot"><span>شركة الأماني المتحدة</span><bdi dir="ltr">${String(page).padStart(2, '0')}</bdi></div>`
+const foot = (page: number) => `<div class="foot"><span>${COMPANY_SHORT_AR}</span><bdi dir="ltr">${String(page).padStart(2, '0')}</bdi></div>`
 
 export function buildPlanSetHtml(p: PlanPrintInput, logoUrl: string): string {
   const typeName = new Map<string, { group: PlanPrintGroup; name: string }>()

@@ -1,3 +1,4 @@
+import { COMPANY_LEGAL_AR } from '../../company'
 import { escDeep } from '../../utils/printIdentity'
 import { useEffect, useState } from 'react'
 import { api, type GpsDeviceRequest } from '../../api'
@@ -17,7 +18,7 @@ function printAgreement(rawReq: GpsDeviceRequest) {
     <div style="width:190mm;box-sizing:border-box;font-family:'Segoe UI',Tahoma,Arial,sans-serif;direction:rtl;border:2px solid #b8974a;border-radius:5px;padding:10px 14px;background:white;">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px;padding-bottom:5px;border-bottom:2px solid #b8974a;">
         <div>
-          <div style="font-size:13px;font-weight:bold;color:#0f2040;">شركة الأماني للتجارة العامة والاستثمارات العقارية والوكالات التجارية م.م</div>
+          <div style="font-size:13px;font-weight:bold;color:#0f2040;">${COMPANY_LEGAL_AR}</div>
           <div style="font-size:9px;color:#888;">تعهد شراء جهاز GPS مع خط</div>
         </div>
         <div style="text-align:left;">
@@ -26,7 +27,7 @@ function printAgreement(rawReq: GpsDeviceRequest) {
         </div>
       </div>
       <div style="font-size:9.5px;color:#333;margin-bottom:8px;padding:6px 10px;border:1px solid #e8d8b0;border-radius:4px;background:#fffdf5;line-height:1.7;">
-        إني <strong>${customerName}</strong> اشتريت جهاز GPS من <strong>شركة الأماني للتجارة العامة والاستثمارات العقارية والوكالات التجارية محدودة المسؤولية</strong> وأوافق على جميع بنود هذا العقد
+        إني <strong>${customerName}</strong> اشتريت جهاز GPS من <strong>${COMPANY_LEGAL_AR}</strong> وأوافق على جميع بنود هذا العقد
       </div>
       <table style="width:100%;border-collapse:collapse;font-size:9.5px;margin-bottom:10px;">
         <tr>

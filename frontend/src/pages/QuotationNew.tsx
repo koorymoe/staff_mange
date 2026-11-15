@@ -1,3 +1,4 @@
+import { COMPANY_LEGAL_AR } from '../company'
 import { useEffect, useState, useRef } from 'react'
 import { readMoney, money as fmtMoney } from '../utils/money'
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
@@ -517,7 +518,7 @@ export default function QuotationNew() {
 
     const headerHtml = `<div class="header">
       <div class="header-right">
-        <div class="header-company-ar">شركة الأماني للتجارة العامة والاستثمارات العقارية والوكالات التجارية محدودة المسؤولية</div>
+        <div class="header-company-ar">${COMPANY_LEGAL_AR}</div>
         <div class="header-company-en">Al-Amani for General Trading, Real Estate & Commercial Agencies LLC</div>
       </div>
       <div class="header-left">
@@ -703,7 +704,7 @@ ${pageShell(`
     <ol class="terms-list">${termsHtml}</ol>
     <div class="thank-section">
       <div class="thank-title">كلمة شكر وتقدير</div>
-      <div class="thank-text">تتقدم شركة الأماني للتجارة العامة والاستثمارات العقارية والوكالات التجارية محدودة المسؤولية بخالص الشكر والتقدير على ثقتكم الكريمة، ونتطلع إلى أن نكون عند حسن ظنكم في تقديم أفضل الحلول التقنية والخدمات الهندسية المتخصصة. نؤكد لكم أننا نضع رضاكم في مقدمة أولوياتنا.</div>
+      <div class="thank-text">تتقدم ${COMPANY_LEGAL_AR} بخالص الشكر والتقدير على ثقتكم الكريمة، ونتطلع إلى أن نكون عند حسن ظنكم في تقديم أفضل الحلول التقنية والخدمات الهندسية المتخصصة. نؤكد لكم أننا نضع رضاكم في مقدمة أولوياتنا.</div>
       <div class="signature">مع خالص التحية والاحترام - إدارة شركة الأماني</div>
     </div>
 `)}
