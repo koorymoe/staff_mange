@@ -2,6 +2,7 @@ package handler
 
 import (
 	"encoding/json"
+	"log"
 	"net/http"
 	"staffmange-api/internal/authz"
 	"strconv"
@@ -47,6 +48,7 @@ func (h *LeaderInvoiceHandler) List(w http.ResponseWriter, r *http.Request) {
 	// مثل ما چان بالضبط.
 	invoices, err := h.service.ListByStage(employeeID, r.URL.Query().Get("stage"))
 	if err != nil {
+		log.Printf("leader invoices list: %v", err) // (11-15) الخطأ چان يضيع بلا سجل
 		WriteError(w, http.StatusInternalServerError, "تعذر جلب فواتير الليدر")
 		return
 	}
@@ -69,6 +71,7 @@ func (h *LeaderInvoiceHandler) Page(w http.ResponseWriter, r *http.Request) {
 		Page: page, PerPage: per,
 	})
 	if err != nil {
+		log.Printf("leader invoices page: %v", err)
 		WriteError(w, http.StatusInternalServerError, "تعذر جلب فواتير الليدر")
 		return
 	}

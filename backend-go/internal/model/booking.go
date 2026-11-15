@@ -298,8 +298,10 @@ type BookingAssignment struct {
 	// تأخر ورق الحجز.
 	// ⚠️ عمود بالجدول → لازم حقل هنا، لأن الجلب يستعمل SELECT * وأي
 	// عمود بلا حقل يفشل الاستعلام كله بالسكوت وترجع التعيينات فاضية.
-	AssignedByID *string  `db:"assignedById" json:"-"`
-	Employee     Employee `db:"-" json:"employee"`
+	AssignedByID *string `db:"assignedById" json:"-"`
+	// (11-15) شوكت فتح الموظف الحجز الموجّه إله (الرقم الأحمر) — نفس تحذير SELECT * فوك
+	SeenAt   *time.Time `db:"seenAt" json:"seenAt,omitempty"`
+	Employee Employee   `db:"-" json:"employee"`
 }
 
 type CartItem struct {
