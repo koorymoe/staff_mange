@@ -55,6 +55,8 @@ const (
 	// وكيلا الواتساب (دازاي 10-23) — مطفيين لحد قرار الخصوصية وحساب Meta
 	SwitchAIQualityAgent = "ai_quality_agent"
 	SwitchAIBookingAgent = "ai_booking_agent"
+	// SwitchAIReceptionAgent الاستقبال (دازاي 11-15): الوكيل يرد على الزبون الي يراسل أو يدز فويس أو يتصل هو.
+	SwitchAIReceptionAgent = "ai_reception_agent"
 )
 
 // AIFeatureSwitch مفتاح كل ميزة (اسم الميزة بعدّاد الكلفة ← المفتاح).
@@ -72,6 +74,8 @@ var systemSwitchDefaultOff = map[string]bool{
 	// الوكيلين يحچون الزبون مباشرة — المالك يشغّلهم بنفسه بعد قرار الخصوصية
 	SwitchAIQualityAgent: true,
 	SwitchAIBookingAgent: true,
+	// الاستقبال يرد على أي رقم يراسل — المالك يشغّله بنفسه
+	SwitchAIReceptionAgent: true,
 	// قرار (ع) 10-08: «ماتركس لازم يقيّم كل موظف» — التقييم درجة بس بلا فلوس، فصار شغّال افتراضياً.
 }
 
@@ -102,6 +106,7 @@ var SystemSwitchLabels = map[string]string{
 	SwitchAISecretary:           "🗂️ السكرتير: محادثة وبصمات المدير",
 	SwitchAIQualityAgent:        "⭐ ابو الجودة: متابعة الزبائن عالواتساب",
 	SwitchAIBookingAgent:        "📅 ابو الحجوزات: تثبيت الحجوزات عالواتساب",
+	SwitchAIReceptionAgent:      "📥 الاستقبال: الوكيل يرد على الزبون الي يراسل أو يدز فويس أو يتصل",
 }
 
 // KnownSystemSwitch هل هذا مفتاح نعرفه؟
@@ -124,7 +129,7 @@ var systemSwitchAdminAllowed = map[string]bool{
 	SwitchAIGuide: true, SwitchAIJudge: true, SwitchAIDiscovery: true, SwitchAIVoice: true,
 	SwitchAIAsk: true, SwitchAILearning: true, SwitchAIEmployeeReport: true, SwitchAIPeer: true,
 	SwitchAITone: true, SwitchAIChat: true, SwitchAISecretary: true,
-	SwitchAIQualityAgent: true, SwitchAIBookingAgent: true,
+	SwitchAIQualityAgent: true, SwitchAIBookingAgent: true, SwitchAIReceptionAgent: true,
 }
 
 // SystemSwitchAdminAllowed هل مدير النظام (ADMIN) مسموح له يبدّل

@@ -46,6 +46,9 @@ func intArg(in map[string]any, k string) *int {
 }
 
 func (t *waTurnCtx) tools() []agentTool {
+	if t.conv.Inbound {
+		return t.receptionTools()
+	}
 	b := t.booking
 	sandboxNote := func(s string) string {
 		if t.conv.Sandbox {
@@ -145,11 +148,49 @@ func (t *waTurnCtx) tools() []agentTool {
 				}},
 		)
 	}
-	return append(common,
-		agentTool{Name: "add_booking_details",
+	return append(common, t.bookingTools()...)
+}
+
+// bookingTools أدوات الحجز المحدد (t.booking): التفاصيل، الأوقات الفاضية، التثبيت. يستعملها ابو الحجوزات
+// ووكيل الاستقبال بعد ما يسوي حجز أو يختار واحد. الحجز ينقرا ساعة التنفيذ — ممكن ينربط بنص الدور.
+func (t *waTurnCtx) bookingTools() []agentTool {
+	sandboxNote := func(s string) string {
+		if t.conv.Sandbox {
+			return s + " (وضع تجربة — ما انحفظ بالنظام)"
+		}
+		return s
+	}
+	errNoBooking := errors.New("ماكو حجز محدد بهالمحادثة — سوّي حجز بـcreate_booking أو اختار واحد بـselect_booking أول")
+	return []agentTool{
+		{Name: "free_slots",
+			Desc: "الأوقات الفاضية الجاية للحجز (من جدول الكوادر الحقيقي). اقترح منها على الزبون — لا تخترع وقت.",
+			Run: func(map[string]any, *nameMask) (string, error) {
+				if t.svc.slots == nil {
+					return "", errors.New("جدول الأوقات مو متوفر — حوّل لموظف يحدد الموعد")
+				}
+				id := ""
+				if t.booking != nil {
+					id = t.booking.BookingID
+				}
+				slots := t.svc.slots.FreeSlots(id, 6)
+				if len(slots) == 0 {
+					return "ماكو وقت فاضي خلال ١٠ أيام — حوّل لموظف.", nil
+				}
+				out := "الأوقات الفاضية (بتوقيت بغداد):"
+				for _, sl := range slots {
+					at := sl.At.In(debriefLoc)
+					out += fmt.Sprintf("\n- %s %s (للأداة: %s)", waWeekday(at), at.Format("2006-01-02 الساعة 15:04"), at.Format("2006-01-02T15:04"))
+				}
+				return out, nil
+			}},
+		{Name: "add_booking_details",
 			Desc:  "رحّل تفاصيل أخذتها من الزبون ويا الحجز (كادر يريده، نوعية، عنوان أوضح، وقت يناسبه…).",
 			Props: map[string]any{"details": map[string]any{"type": "string"}}, Req: []string{"details"},
 			Run: func(in map[string]any, _ *nameMask) (string, error) {
+				b := t.booking
+				if b == nil {
+					return "", errNoBooking
+				}
 				d := strArg(in, "details")
 				if !t.conv.Sandbox {
 					if err := t.svc.repo.AppendBookingNote(b.BookingID, "🤖 "+t.svc.name(t.conv.Agent)+": "+d); err != nil {
@@ -159,10 +200,14 @@ func (t *waTurnCtx) tools() []agentTool {
 				t.record("ADD_DETAILS", "رحّل تفاصيل ويا الحجز: "+d, d, "BOOKING", &b.BookingID, nil)
 				return sandboxNote("انضافت التفاصيل للحجز."), nil
 			}},
-		agentTool{Name: "confirm_booking",
+		{Name: "confirm_booking",
 			Desc:  "ثبّت الحجز بموعد وافق عليه الزبون صراحة. at بتوقيت بغداد YYYY-MM-DDTHH:MM، ولازم بالمستقبل وبساعات الدوام (٩ص–٦م).",
 			Props: map[string]any{"at": map[string]any{"type": "string"}, "notes": map[string]any{"type": "string"}}, Req: []string{"at"},
 			Run: func(in map[string]any, _ *nameMask) (string, error) {
+				b := t.booking
+				if b == nil {
+					return "", errNoBooking
+				}
 				at, err := time.ParseInLocation("2006-01-02T15:04", strArg(in, "at"), debriefLoc)
 				if err != nil {
 					return "", errors.New("صيغة الموعد غلط — YYYY-MM-DDTHH:MM")
@@ -172,6 +217,10 @@ func (t *waTurnCtx) tools() []agentTool {
 				}
 				if h := at.Hour(); h < 9 || h >= 18 {
 					return "", errors.New("الموعد برّا ساعات الدوام (٩ص–٦م)")
+				}
+				// (حجز التجربة الوهمي بلا معرّف — ماكو شي ينفحص عليه)
+				if t.svc.slots != nil && b.BookingID != "" && !t.svc.slots.SlotFree(b.BookingID, at) {
+					return "", errors.New("هالوقت مو فاضي بعد (انحجز أو برّا الدوام) — جيب الأوقات بـfree_slots واقترح غيره")
 				}
 				if !t.conv.Sandbox {
 					if err := t.svc.repo.MarkContactedByAgent(b.BookingID); err != nil {
@@ -191,5 +240,9 @@ func (t *waTurnCtx) tools() []agentTool {
 					map[string]any{"at": at.Format(time.RFC3339)})
 				return sandboxNote("انثبّت الحجز. كول للزبون الموعد بالضبط."), nil
 			}},
-	)
+	}
+}
+
+func waWeekday(t time.Time) string {
+	return [...]string{"الأحد", "الاثنين", "الثلاثاء", "الأربعاء", "الخميس", "الجمعة", "السبت"}[t.Weekday()]
 }

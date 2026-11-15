@@ -182,3 +182,47 @@ func TestBookingOpeningAndConfirm(t *testing.T) {
 		t.Fatalf("booking policy missing price rule")
 	}
 }
+
+// ═══ الاستقبال (دازاي 11-15) — نفس الحراسات على الزبون الي يراسل أول ═══
+
+func newTestReception(s *waScript, f *waFakeTools) *ReceptionAgent {
+	r := NewReceptionAgent(nil, "x", f.set, 0)
+	r.llm = s
+	return r
+}
+
+// الحجز والتثبيت ما يتنفذن إلا بعد «اي» صريحة، والحجز لازم بيه طلب الزبون.
+func TestReceptionNeedsExplicitConfirm(t *testing.T) {
+	ask := `tool:create_booking:{"kind":"NEW","service":"كاميرات","details":"يريد ٤ كاميرات للبيت"}`
+	// الزبون بعده يشرح — الأداة تنرفض وما تتنفذ.
+	f := &waFakeTools{}
+	res := newTestReception(&waScript{steps: []string{ask, "text:أسجّلك الطلب؟"}}, f).Reply(context.Background(), turn("اريد كاميرات للبيت"))
+	if len(f.ran) != 0 || res.Handoff || !strings.Contains(res.Reply, "أسجّلك") {
+		t.Fatalf("booked without confirmation: ran=%v res=%+v", f.ran, res)
+	}
+	// بعد «اي» تتنفذ.
+	f = &waFakeTools{}
+	newTestReception(&waScript{steps: []string{ask, "text:انسجّل"}}, f).Reply(context.Background(), turn("اي سجّلها"))
+	if len(f.ran) != 1 || f.ran[0] != "create_booking" {
+		t.Fatalf("confirmed booking did not run: %v", f.ran)
+	}
+	// حجز فاضي بلا طلب الزبون ينرفض حتى ويا «اي».
+	f = &waFakeTools{}
+	newTestReception(&waScript{steps: []string{`tool:create_booking:{"kind":"NEW","details":""}`, "text:شنو تحتاج؟"}}, f).
+		Reply(context.Background(), turn("اي"))
+	if len(f.ran) != 0 {
+		t.Fatalf("empty booking ran: %v", f.ran)
+	}
+}
+
+// الفويس المكتوب (🎤) يمشي بنفس الحراسات: طلب إنسان بالفويس يحوّل فوراً بلا نموذج.
+func TestReceptionVoiceHumanRequest(t *testing.T) {
+	s := &waScript{}
+	res := newTestReception(s, &waFakeTools{}).Reply(context.Background(), turn("🎤 اريد احچي ويا موظف"))
+	if !res.Handoff || len(s.calls) != 0 {
+		t.Fatalf("voice human request not handed off: %+v calls=%d", res, len(s.calls))
+	}
+	if sys := receptionSystem(turn("x")); !strings.Contains(sys, "🎤") || !strings.Contains(sys, "free_slots") || !strings.Contains(sys, "handoff") {
+		t.Fatal("reception policy lost voice/slots/handoff guidance")
+	}
+}

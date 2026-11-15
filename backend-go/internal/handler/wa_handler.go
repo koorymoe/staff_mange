@@ -184,7 +184,7 @@ func (h *WaHandler) Undo(w http.ResponseWriter, r *http.Request) {
 // PUT /api/ai/agents/{agent}/enabled {enabled}
 func (h *WaHandler) SetEnabled(w http.ResponseWriter, r *http.Request) {
 	agent := r.PathValue("agent")
-	if agent != service.WaAgentQuality && agent != service.WaAgentBooking {
+	if agent != service.WaAgentQuality && agent != service.WaAgentBooking && agent != service.WaAgentReception {
 		WriteError(w, http.StatusBadRequest, "وكيل غير معروف")
 		return
 	}

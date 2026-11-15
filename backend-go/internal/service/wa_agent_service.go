@@ -28,6 +28,9 @@ import (
 const (
 	WaAgentQuality = "QUALITY"
 	WaAgentBooking = "BOOKING"
+	// WaAgentReception الاستقبال (دازاي 11-15): الزبون هو الي يراسل أو يدز فويس أو يتصل، والوكيل يرد.
+	// مو قيمة بعمود agent — محادثته BOOKING ومؤشّرة inbound، وإلها مفتاح تشغيل وعقل خاص.
+	WaAgentReception = "RECEPTION"
 )
 
 var ErrWaAgentOff = errors.New("الوكيل مطفي من الإعدادات")
@@ -65,6 +68,9 @@ type WaAgentService struct {
 	notif     waNotifier
 	names     func(agent string) string
 	brains    map[string]WaBrain
+	customers *repository.CustomerRepository
+	slots     waSlots
+	hear      WaTranscriber
 
 	DailyNew        int
 	Templates       map[string]string // agent ← اسم قالب Meta
@@ -89,10 +95,21 @@ func (s *WaAgentService) Repo() *repository.WaRepository { return s.repo }
 func (s *WaAgentService) WhatsAppOn() bool { return s.wa.On() }
 
 func waSwitch(agent string) string {
-	if agent == WaAgentQuality {
+	switch agent {
+	case WaAgentQuality:
 		return model.SwitchAIQualityAgent
+	case WaAgentReception:
+		return model.SwitchAIReceptionAgent
 	}
 	return model.SwitchAIBookingAgent
+}
+
+// convAgent الوكيل الي يمسك المحادثة: الي بدأها الزبون للاستقبال، والباقي لوكيلها.
+func convAgent(c *repository.WaConversation) string {
+	if c.Inbound {
+		return WaAgentReception
+	}
+	return c.Agent
 }
 
 // Enabled مفتاح التشغيل (المالك).
@@ -112,6 +129,9 @@ func (s *WaAgentService) SetEnabled(agent string, on bool, by string) error {
 }
 
 func (s *WaAgentService) name(agent string) string {
+	if agent == WaAgentReception {
+		agent = WaAgentBooking // الاستقبال هو ابو الحجوزات نفسه لمّا الزبون يبدي — نفس الاسم والمفتاح والميزانية
+	}
 	if s.names != nil {
 		if n := s.names(agent); n != "" {
 			return n
@@ -160,6 +180,14 @@ func (s *WaAgentService) contextText(c *repository.WaBookingContext) string {
 
 // StartSandbox محادثة تجربة على حجز — بلا واتساب، وبلا تنفيذ على النظام.
 func (s *WaAgentService) StartSandbox(agent, bookingID string) (*repository.WaConversation, []repository.WaMessage, error) {
+	if agent == WaAgentReception {
+		// تجربة الاستقبال: المالك يكتب كأنه زبون جديد يراسل أول — بلا حجز.
+		conv, err := s.repo.CreateInbound(WaAgentBooking, nil, "sandbox", true)
+		if err != nil {
+			return nil, nil, err
+		}
+		return conv, []repository.WaMessage{}, nil
+	}
 	if agent != WaAgentQuality && agent != WaAgentBooking {
 		return nil, nil, errors.New("وكيل غير معروف")
 	}
@@ -202,12 +230,12 @@ func (s *WaAgentService) Say(ctx context.Context, convID, text string, metaID *s
 	if conv.Status != "BOT" {
 		return out, nil, nil // إنسان ماسكها — الوكيل ساكت
 	}
-	if !conv.Sandbox && !s.Enabled(conv.Agent) {
+	if !conv.Sandbox && !s.Enabled(convAgent(conv)) {
 		return out, nil, nil
 	}
 	reply, actions, err := s.reply(ctx, conv)
 	if err != nil {
-		log.Printf("[wa] %s reply: %v", conv.Agent, err)
+		log.Printf("[wa] %s reply: %v", convAgent(conv), err)
 		reply = "شكراً إلك 🙏 راح يتواصل وياك موظف من شركة الأماني بأقرب وقت."
 		s.handoff(conv, "خلل بالوكيل: "+err.Error())
 	}
@@ -227,12 +255,15 @@ func (s *WaAgentService) Say(ctx context.Context, convID, text string, metaID *s
 }
 
 func (s *WaAgentService) reply(ctx context.Context, conv *repository.WaConversation) (string, []repository.AiAgentAction, error) {
-	if conv.BookingID == nil {
+	var c *repository.WaBookingContext
+	if conv.BookingID != nil {
+		bc, err := s.repo.BookingContext(*conv.BookingID)
+		if err != nil {
+			return "", nil, err
+		}
+		c = bc
+	} else if !conv.Inbound {
 		return "", nil, errors.New("المحادثة بلا حجز")
-	}
-	c, err := s.repo.BookingContext(*conv.BookingID)
-	if err != nil {
-		return "", nil, err
 	}
 	msgs, err := s.repo.Messages(conv.ID)
 	if err != nil || len(msgs) == 0 {
@@ -247,13 +278,23 @@ func (s *WaAgentService) reply(ctx context.Context, conv *repository.WaConversat
 		hist = append(hist, AgentTurn{Role: role, Text: m.Text})
 	}
 	tc := &waTurnCtx{svc: s, conv: conv, booking: c}
-	turn := WaTurn{Agent: conv.Agent, AgentName: s.name(conv.Agent), Context: s.contextText(c),
+	agent := convAgent(conv)
+	if agent == WaAgentReception && len(msgs) > waReceptionMaxMsgs {
+		// محادثة طالت بلا نتيجة — إنسان يكمل، والكلفة ما تفلت.
+		s.handoff(conv, "محادثة الاستقبال طالت — تحتاج موظف")
+		return waHandoffReply, nil, nil
+	}
+	turn := WaTurn{Agent: agent, AgentName: s.name(agent), Context: s.turnContext(conv, c),
 		History: hist, Message: msgs[len(msgs)-1].Text, Tools: tc.tools()}
-	brain := s.brains[conv.Agent]
+	brain := s.brains[agent]
 	if brain == nil {
 		brain = waStubBrain{}
 	}
 	text, err := brain.Reply(ctx, turn)
+	if err == nil && agent == WaAgentReception && len(hist) == 0 && strings.TrimSpace(text) != "" && !strings.Contains(text, "مساعد ذكي") {
+		// أول رد للزبون لازم يعرّف إنه مساعد ذكي — ما نعتمد بيها على النموذج.
+		text = "هلا بيك 🌹 وياك " + turn.AgentName + "، مساعد ذكي من شركة الأماني.\n" + text
+	}
 	return text, tc.actions, err
 }
 
@@ -306,7 +347,7 @@ func (s *WaAgentService) handoff(conv *repository.WaConversation, reason string)
 	if conv.BookingCode != nil {
 		code = " (حجز " + *conv.BookingCode + ")"
 	}
-	msg := "💬 " + s.name(conv.Agent) + " يحتاج موظف يكمل ويا الزبون" + code + ": " + reason
+	msg := "💬 " + s.name(convAgent(conv)) + " يحتاج موظف يكمل ويا الزبون" + code + ": " + reason
 	// (دازاي 11-04) التنبيه للمالك والي عنده صلاحية المحادثات بس
 	_ = s.notif.CreateForRolesOrPermission([]string{"OWNER"}, "whatsapp_chats", "wa_handoff", msg)
 }
@@ -369,19 +410,6 @@ func (s *WaAgentService) Actions(targetID, convID string) ([]repository.AiAgentA
 
 // ── الوارد من Meta ──
 
-// Inbound رسالة زبون حقيقية: تروح لمحادثته المفتوحة، والوكيل يرد إذا ماسكها.
-func (s *WaAgentService) Inbound(ctx context.Context, m whatsapp.Inbound) {
-	conv, err := s.repo.OpenByPhone(m.From)
-	if err != nil {
-		log.Printf("[wa] رسالة من رقم بلا محادثة مفتوحة — تنتظر موظف")
-		return
-	}
-	id := m.MetaID
-	if _, _, err := s.Say(ctx, conv.ID, m.Text, &id); err != nil {
-		log.Printf("[wa] inbound: %v", err)
-	}
-}
-
 // ── المشغّل ──
 
 // Scan يبدي محادثات جديدة: الجودة للمتابعات الجديدة، والحجوزات للحجوزات الي تنتظر تواصل.
@@ -389,6 +417,9 @@ func (s *WaAgentService) Inbound(ctx context.Context, m whatsapp.Inbound) {
 func (s *WaAgentService) Scan(ctx context.Context) {
 	if !s.wa.On() {
 		return
+	}
+	if n := s.repo.CloseIdleInbound(); n > 0 {
+		log.Printf("[wa] انسدّت %d محادثة استقبال ساكتة", n)
 	}
 	for _, agent := range []string{WaAgentQuality, WaAgentBooking} {
 		if !s.Enabled(agent) {

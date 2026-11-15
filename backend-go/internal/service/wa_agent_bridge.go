@@ -21,9 +21,12 @@ type luffyWaBrain struct {
 func NewLuffyWaBrain(agent string, client *anthropic.Client, model string, dailyCap int) WaBrain {
 	b := &luffyWaBrain{}
 	toolsFor := func(*WaTurnCtx) []agentTool { return b.cur }
-	if agent == WaAgentQuality {
+	switch agent {
+	case WaAgentQuality:
 		b.reply = NewQualityAgent(client, model, toolsFor, dailyCap).Reply
-	} else {
+	case WaAgentReception:
+		b.reply = NewReceptionAgent(client, model, toolsFor, dailyCap).Reply
+	default:
 		b.reply = NewBookingAgent(client, model, toolsFor, dailyCap).Reply
 	}
 	return b

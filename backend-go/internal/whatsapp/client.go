@@ -33,6 +33,9 @@ func New(token, phoneID, appSecret, verifyToken string) *Client {
 		http: &http.Client{Timeout: 20 * time.Second}, base: graphBase}
 }
 
+// WithBase يبدّل عنوان Graph API — للاختبار بس (سيرفر وهمي).
+func (c *Client) WithBase(base string) *Client { c.base = base; return c }
+
 // On الإرسال الحقيقي مربوط؟
 func (c *Client) On() bool { return c != nil && c.token != "" && c.phoneID != "" && c.appSecret != "" }
 
@@ -106,16 +109,82 @@ func (c *Client) send(ctx context.Context, body map[string]any) (string, error) 
 	return out.Messages[0].ID, nil
 }
 
-// Inbound رسالة واردة من الزبون.
+// Inbound وارد من الزبون: رسالة نصية، فويس (Audio)، أو مكالمة (Call).
 type Inbound struct {
 	MetaID string
 	From   string // رقم الزبون بلا +
 	Name   string
 	Text   string
 	At     time.Time
+	// Audio فويس: معرّف الوسيط عند Meta — ينسحب بـMedia ويتحوّل لنص عدنا.
+	Audio *Audio
+	// Call مكالمة واتساب خلصت (الزبون اتصل).
+	Call *Call
 }
 
-// ParseWebhook يطلّع الرسائل النصية من جسم الـwebhook (الباقي — صور وحالات — يتجاهل).
+type Audio struct {
+	MediaID  string
+	MimeType string
+}
+
+// Call مكالمة بدأها الزبون وخلصت. Answered=false يعني ما أحد رد عليها (فايتة).
+type Call struct {
+	Answered bool
+	Duration int // ثواني — بس إذا انردّ عليها
+}
+
+// MaxMediaBytes حد الفويس — Meta نفسها تحدّه بـ١٦MB.
+const MaxMediaBytes = 16 << 20
+
+// Media يسحب وسيط (فويس) من Meta: أول نداء يرجّع رابط مؤقت، والثاني الملف.
+func (c *Client) Media(ctx context.Context, mediaID string) ([]byte, string, error) {
+	if !c.On() {
+		return nil, "", ErrOff
+	}
+	get := func(url string) (*http.Response, error) {
+		req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+		if err != nil {
+			return nil, err
+		}
+		req.Header.Set("Authorization", "Bearer "+c.token)
+		return c.http.Do(req)
+	}
+	resp, err := get(c.base + "/" + mediaID)
+	if err != nil {
+		return nil, "", err
+	}
+	meta, _ := io.ReadAll(io.LimitReader(resp.Body, 64<<10))
+	resp.Body.Close()
+	if resp.StatusCode >= 300 {
+		return nil, "", fmt.Errorf("whatsapp media %d: %s", resp.StatusCode, strings.TrimSpace(string(meta)))
+	}
+	var info struct {
+		URL      string `json:"url"`
+		MimeType string `json:"mime_type"`
+	}
+	if err := json.Unmarshal(meta, &info); err != nil || info.URL == "" {
+		return nil, "", errors.New("whatsapp media: بلا رابط")
+	}
+	file, err := get(info.URL)
+	if err != nil {
+		return nil, "", err
+	}
+	defer file.Body.Close()
+	if file.StatusCode >= 300 {
+		return nil, "", fmt.Errorf("whatsapp media download %d", file.StatusCode)
+	}
+	data, err := io.ReadAll(io.LimitReader(file.Body, MaxMediaBytes+1))
+	if err != nil {
+		return nil, "", err
+	}
+	if len(data) > MaxMediaBytes {
+		return nil, "", errors.New("الفويس أكبر من الحد")
+	}
+	return data, info.MimeType, nil
+}
+
+// ParseWebhook يطلّع الوارد من جسم الـwebhook: النص والأزرار، الفويس (audio)، والمكالمات
+// الي خلصت (حقل calls). الباقي — صور وحالات تسليم — يوصل كنص توضيحي أو يتجاهل.
 func ParseWebhook(body []byte) ([]Inbound, error) {
 	var p struct {
 		Entry []struct {
@@ -138,13 +207,33 @@ func ParseWebhook(body []byte) ([]Inbound, error) {
 						Button struct {
 							Text string `json:"text"`
 						} `json:"button"`
+						Audio struct {
+							ID       string `json:"id"`
+							MimeType string `json:"mime_type"`
+						} `json:"audio"`
 					} `json:"messages"`
+					Calls []struct {
+						ID        string `json:"id"`
+						From      string `json:"from"`
+						Event     string `json:"event"`
+						Direction string `json:"direction"`
+						Timestamp string `json:"timestamp"`
+						Duration  int    `json:"duration"`
+						StartTime string `json:"start_time"`
+					} `json:"calls"`
 				} `json:"value"`
 			} `json:"changes"`
 		} `json:"entry"`
 	}
 	if err := json.Unmarshal(body, &p); err != nil {
 		return nil, err
+	}
+	unix := func(ts string) time.Time {
+		var sec int64
+		if _, err := fmt.Sscan(ts, &sec); err == nil {
+			return time.Unix(sec, 0)
+		}
+		return time.Time{}
 	}
 	var out []Inbound
 	for _, e := range p.Entry {
@@ -154,19 +243,26 @@ func ParseWebhook(body []byte) ([]Inbound, error) {
 				names[ct.WaID] = ct.Profile.Name
 			}
 			for _, m := range ch.Value.Messages {
-				text := m.Text.Body
-				if m.Type == "button" {
-					text = m.Button.Text
+				in := Inbound{MetaID: m.ID, From: m.From, Name: names[m.From], At: unix(m.Timestamp)}
+				in.Text = m.Text.Body
+				switch {
+				case m.Type == "button":
+					in.Text = m.Button.Text
+				case m.Type == "audio" && m.Audio.ID != "":
+					in.Audio = &Audio{MediaID: m.Audio.ID, MimeType: m.Audio.MimeType}
 				}
-				if strings.TrimSpace(text) == "" {
-					text = "[رسالة " + m.Type + " — الوكيل يقرا النص بس]"
+				if strings.TrimSpace(in.Text) == "" && in.Audio == nil {
+					in.Text = "[رسالة " + m.Type + " — الوكيل يقرا النص والفويس بس]"
 				}
-				var at time.Time
-				var sec int64
-				if _, err := fmt.Sscan(m.Timestamp, &sec); err == nil {
-					at = time.Unix(sec, 0)
+				out = append(out, in)
+			}
+			// المكالمات: بس الي بدأها الزبون وخلصت (terminate). connect يحتاج رد صوتي حي — مو هنا.
+			for _, c := range ch.Value.Calls {
+				if !strings.EqualFold(c.Event, "terminate") || strings.EqualFold(c.Direction, "BUSINESS_INITIATED") || c.From == "" {
+					continue
 				}
-				out = append(out, Inbound{MetaID: m.ID, From: m.From, Name: names[m.From], Text: text, At: at})
+				out = append(out, Inbound{MetaID: c.ID, From: c.From, Name: names[c.From], At: unix(c.Timestamp),
+					Call: &Call{Answered: c.StartTime != "" || c.Duration > 0, Duration: c.Duration}})
 			}
 		}
 	}

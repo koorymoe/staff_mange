@@ -259,6 +259,12 @@ func (a *waAgent) callTool(byName map[string]agentTool, blk anthropic.ToolUseBlo
 	if waConfirmTools[blk.Name] && !confirmed {
 		return "ممنوع: الزبون بعده ما أكد. اسأله سؤال تأكيد واضح (منو، شنو، شوكت) واستنى جوابه.", true
 	}
+	if blk.Name == "create_booking" {
+		// الاستقبال: الطلب الجديد لازم بيه شنو يريد الزبون — مو حجز فاضي.
+		if d, _ := in["details"].(string); len([]rune(strings.TrimSpace(d))) < 5 {
+			return "ممنوع: details لازم بيها طلب الزبون بكلامه (٥ حروف فأكثر).", true
+		}
+	}
 	if blk.Name == "record_contact" {
 		for _, k := range []string{"customerRating", "crewRating"} {
 			v, ok := in[k].(float64)

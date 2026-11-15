@@ -18,6 +18,8 @@ func init() {
 			{Name: "lastMessageAt", Type: "timestamp with time zone", NotNull: true, Default: "now()"},
 			{Name: "lastReadAt", Type: "timestamp with time zone"},
 			{Name: "createdAt", Type: "timestamp with time zone", NotNull: true, Default: "now()"},
+			// (دازاي 11-15) «الزبون من يتصل يردون عليه الوكلاء» — المحادثة بدأها الزبون (رسالة/فويس/مكالمة)، مو الشركة
+			{Name: "inbound", Type: "boolean", NotNull: true, Default: "false"},
 		},
 		Constraints: []Constraint{
 			{Name: "WaConversation_agent_check", Def: "CHECK ((agent = ANY (ARRAY['QUALITY'::text, 'BOOKING'::text])))"},

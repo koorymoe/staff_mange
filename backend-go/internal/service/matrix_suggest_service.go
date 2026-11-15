@@ -178,27 +178,57 @@ func (s *MatrixSuggestService) Suggest(bookingID string) (*BookingSuggestion, er
 }
 
 func (s *MatrixSuggestService) suggestSlot(b *repository.SuggestBooking, dur int, durOf func(*string) int, now time.Time) (*SuggestedSlot, []string) {
+	fromH, toH, _ := s.repo.WorkHours()
+	slots, leaders, people := s.freeSlots(b.ServiceID, b.Solo, b.ID, dur, durOf, now, 1, 0)
+	if len(slots) == 0 {
+		return nil, []string{"ما لگيت وقت فاضي خلال ١٠ أيام — الكوادر كلها مشغولة."}
+	}
+	_ = people
+	first := fmt.Sprintf("أقرب وقت بيه %d ليدر فاضي.", slots[0].FreeLeaders)
+	if b.Solo {
+		first = "أقرب وقت ضمن الدوام (خدمة فردية — الفني ينختار بالكادر)."
+	}
+	why := []string{
+		first,
+		fmt.Sprintf("مدة الشغل المتوقعة %s (وسيط الشركة لهالخدمة) + ساعة طريق.", FmtMinutes(dur)),
+		fmt.Sprintf("ضمن ساعات المواعيد المعتادة (%d:00–%d:00).", fromH, toH),
+	}
+	if leaders == 0 {
+		why = append(why, "⚠️ ماكو ليدرية فعّالين بالنظام.")
+	}
+	return &slots[0], why
+}
+
+// freeSlots الأوقات الفاضية خلال ١٠ أيام: ضمن ساعات وأيام الدوام المعتادة، وبيها ليدر فاضي
+// (أو أي كادر للخدمة الفردية). max = كم وقت نرجّع، perDay = حد الأوقات باليوم (٠ = بلا حد).
+func (s *MatrixSuggestService) freeSlots(serviceID *string, solo bool, exceptBooking string, dur int, durOf func(*string) int,
+	now time.Time, max, perDay int) (slots []SuggestedSlot, leaderCount, peopleCount int) {
 	fromH, toH, off := s.repo.WorkHours()
 	isOff := map[int]bool{}
 	for _, d := range off {
 		isOff[d] = true
 	}
 	horizon := now.AddDate(0, 0, 10)
-	busy := s.busyMap(now, horizon, b.ID)
-	people, _ := s.repo.People(b.ServiceID, now)
+	busy := s.busyMap(now, horizon, exceptBooking)
+	people, _ := s.repo.People(serviceID, now)
 	leaders := []string{}
 	for _, p := range people {
 		if p.IsLeader {
 			leaders = append(leaders, p.ID)
 		}
 	}
+	need := 1
+	if solo {
+		need = 0 // الخدمة الفردية يكفيها فني
+	}
 	earliest := now.Add(2 * time.Hour)
-	for d := 0; d <= 10; d++ {
+	for d := 0; d <= 10 && len(slots) < max; d++ {
 		day := now.In(debriefLoc).AddDate(0, 0, d)
 		if isOff[int(day.Weekday())] {
 			continue
 		}
-		for h := fromH; h <= toH; h++ {
+		today := 0
+		for h := fromH; h <= toH && len(slots) < max; h++ {
 			at := time.Date(day.Year(), day.Month(), day.Day(), h, 0, 0, 0, debriefLoc)
 			if at.Before(earliest) {
 				continue
@@ -209,28 +239,79 @@ func (s *MatrixSuggestService) suggestSlot(b *repository.SuggestBooking, dur int
 					free++
 				}
 			}
-			need := 1
-			if b.Solo {
-				need = 0 // الخدمة الفردية يكفيها فني
-			}
 			if free >= need && (need > 0 || len(people) > 0) {
-				first := fmt.Sprintf("أقرب وقت بيه %d ليدر فاضي.", free)
-				if b.Solo {
-					first = "أقرب وقت ضمن الدوام (خدمة فردية — الفني ينختار بالكادر)."
+				slots = append(slots, SuggestedSlot{At: at, DurationMin: dur, FreeLeaders: free})
+				today++
+				if perDay > 0 && today >= perDay {
+					break
 				}
-				why := []string{
-					first,
-					fmt.Sprintf("مدة الشغل المتوقعة %s (وسيط الشركة لهالخدمة) + ساعة طريق.", FmtMinutes(dur)),
-					fmt.Sprintf("ضمن ساعات المواعيد المعتادة (%d:00–%d:00).", fromH, toH),
-				}
-				if len(leaders) == 0 {
-					why = append(why, "⚠️ ماكو ليدرية فعّالين بالنظام.")
-				}
-				return &SuggestedSlot{At: at, DurationMin: dur, FreeLeaders: free}, why
+				h += max0(dur/60, 1) // أوقات متباعدة، مو كل ساعة ورا الثانية
 			}
 		}
 	}
-	return nil, []string{"ما لگيت وقت فاضي خلال ١٠ أيام — الكوادر كلها مشغولة."}
+	return slots, len(leaders), len(people)
+}
+
+func max0(a, b int) int {
+	if a > b {
+		return a
+	}
+	return b
+}
+
+// FreeSlots أوقات فاضية يقترحها وكيل الحجوزات على الزبون — نفس حساب اقتراح المنسّق
+// (الدوام المعتاد، منو مشغول، مدة الخدمة الحقيقية). bookingID فاضي = طلب بعده بلا حجز.
+func (s *MatrixSuggestService) FreeSlots(bookingID string, max int) []SuggestedSlot {
+	var serviceID *string
+	solo := false
+	if bookingID != "" {
+		if b, err := s.repo.Booking(bookingID); err == nil {
+			serviceID, solo = b.ServiceID, b.Solo
+		}
+	}
+	dur, durOf := s.durations(serviceID)
+	slots, _, _ := s.freeSlots(serviceID, solo, bookingID, dur, durOf, time.Now(), max, 2)
+	return slots
+}
+
+// SlotFree هل الوقت بعده فاضي لهذا الحجز؟ (الوكيل يتأكد قبل ما يثبّت — الوقت ممكن انحجز بين الاقتراح والموافقة.)
+func (s *MatrixSuggestService) SlotFree(bookingID string, at time.Time) bool {
+	b, err := s.repo.Booking(bookingID)
+	if err != nil {
+		return false
+	}
+	fromH, toH, off := s.repo.WorkHours()
+	local := at.In(debriefLoc)
+	for _, d := range off {
+		if d == int(local.Weekday()) {
+			return false
+		}
+	}
+	if local.Hour() < fromH || local.Hour() > toH {
+		return false
+	}
+	dur, durOf := s.durations(b.ServiceID)
+	people, _ := s.repo.People(b.ServiceID, local)
+	busy := s.busyMap(at, at, b.ID)
+	for _, p := range people {
+		if (p.IsLeader || b.Solo) && s.isFree(busy, p.ID, at, dur, durOf) {
+			return true
+		}
+	}
+	return false
+}
+
+func (s *MatrixSuggestService) durations(serviceID *string) (int, func(*string) int) {
+	per, all := s.repo.ServiceDurations()
+	durOf := func(sid *string) int {
+		if sid != nil {
+			if v, ok := per[*sid]; ok {
+				return v
+			}
+		}
+		return all
+	}
+	return s.duration(serviceID), durOf
 }
 
 func (s *MatrixSuggestService) suggestCrew(b *repository.SuggestBooking, at time.Time, dur int, durOf func(*string) int) (*SuggestedCrew, []string) {
@@ -263,6 +344,10 @@ func (s *MatrixSuggestService) suggestCrew(b *repository.SuggestBooking, at time
 		if p.RatingAvg != nil && p.RatingN >= 2 {
 			sp.Score += (*p.RatingAvg - 3) * 3
 			sp.Why = append(sp.Why, fmt.Sprintf("تقييم الليدرية %.1f/5", *p.RatingAvg))
+		}
+		sp.Score += customerRatingScore(p.CustAvg, p.CustN)
+		if p.CustAvg != nil && p.CustN >= custRatingMinN {
+			sp.Why = append(sp.Why, fmt.Sprintf("تقييم الزبائن لشغله %.1f/5 (%d متابعة)", *p.CustAvg, p.CustN))
 		}
 		load := dayLoad(busy, p.ID, at)
 		sp.Score -= float64(load) * 3
@@ -319,6 +404,18 @@ func (s *MatrixSuggestService) suggestCrew(b *repository.SuggestBooking, at time
 		why = append(why, fmt.Sprintf("المعتاد لهالخدمة %d فني ويا الليدر. %d شخص مشغول بنفس الوقت انشال.", size, busyNames))
 	}
 	return crew, why
+}
+
+// custRatingMinN أقل عدد متابعات حتى ينحسب تقييم الزبائن — تقييم واحد أو اثنين صدفة مو نمط.
+const custRatingMinN = 3
+
+// customerRatingScore وزن تقييم الزبائن باختيار الكادر (دازاي 11-15: الوكلاء يتعلمون من سياق الشغل السابق).
+// نفس وزن تقييم الليدرية (٣ نقاط لكل نجمة عن الوسط)، وبلا عيّنة كافية = صفر مو عقوبة.
+func customerRatingScore(avg *float64, n int) float64 {
+	if avg == nil || n < custRatingMinN {
+		return 0
+	}
+	return (*avg - 3) * 3
 }
 
 // ═══ الدقة: المنسق قبل الاقتراح لو غيّره؟ وشنو صار بعدين؟ ═══

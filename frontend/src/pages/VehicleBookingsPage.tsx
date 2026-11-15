@@ -10,7 +10,7 @@ import { swallow } from '../utils/swallow'
 
 import { notify } from '../ui/notify'
 import { BTN_DANGER, BTN_DANGER_SOFT, BTN_GHOST, BTN_SUCCESS } from '../ui/classes'
-import { STATUS_LABELS } from '../statusLabels'
+import { STATUS_LABELS as COMMON_LABELS } from '../statusLabels'
 // ═══ حجز المركبات ═══
 //
 // ⚠️ حراس الباك (main.go):
@@ -24,9 +24,9 @@ import { STATUS_LABELS } from '../statusLabels'
 
 const STATUS_LABELS: Record<VehicleBooking['status'], { label: string; cls: string }> = {
   PENDING: { label: 'بانتظار القرار', cls: 'bg-amber-100 text-amber-700' },
-  APPROVED: { label: STATUS_LABELS.APPROVED, cls: 'bg-emerald-100 text-emerald-700' },
-  REJECTED: { label: STATUS_LABELS.REJECTED, cls: 'bg-red-100 text-red-700' },
-  CANCELLED: { label: STATUS_LABELS.CANCELLED, cls: 'bg-slate-100 text-slate-500' },
+  APPROVED: { label: COMMON_LABELS.APPROVED, cls: 'bg-emerald-100 text-emerald-700' },
+  REJECTED: { label: COMMON_LABELS.REJECTED, cls: 'bg-red-100 text-red-700' },
+  CANCELLED: { label: COMMON_LABELS.CANCELLED, cls: 'bg-slate-100 text-slate-500' },
 }
 
 const CARD = 'rounded-xl border border-white bg-white p-5 shadow-[0_4px_20px_rgba(15,32,64,0.06)]'

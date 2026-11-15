@@ -55,6 +55,8 @@ func (h *AiAgentNameHandler) List(w http.ResponseWriter, _ *http.Request) {
 		{"agent": "IRIS", "name": h.AgentName("IRIS"), "editable": true, "default": model.AgentDefaultNames["IRIS"]},
 		{"agent": "QUALITY", "name": h.AgentName("QUALITY"), "editable": true, "enabled": h.on("QUALITY"), "built": true, "default": model.AgentDefaultNames["QUALITY"]},
 		{"agent": "BOOKING", "name": h.AgentName("BOOKING"), "editable": true, "enabled": h.on("BOOKING"), "built": true, "default": model.AgentDefaultNames["BOOKING"]},
+		// الاستقبال (دازاي 11-15): نفس وكيل الحجوزات لمّا الزبون هو الي يراسل/يدز فويس/يتصل — اسمه من BOOKING، ومفتاحه لحاله.
+		{"agent": "RECEPTION", "name": h.AgentName("BOOKING"), "editable": false, "enabled": h.on("RECEPTION"), "built": true, "default": model.AgentDefaultNames["BOOKING"]},
 	})
 }
 

@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useSession } from '../session'
-import { waApi, type WaAgent, type WaDetail } from '../waApi'
+import { waApi, type WaSandboxAgent, type WaDetail } from '../waApi'
 import AgentActionNotice from '../components/AgentActionNotice'
 import './WhatsAppPage.css'
 
@@ -13,18 +13,23 @@ export default function WhatsAppSandboxPage() {
   )
 }
 function Sandbox() {
-  const [agent, setAgent] = useState<WaAgent>('QUALITY')
+  const [agent, setAgent] = useState<WaSandboxAgent>('QUALITY')
   const [bookingId, setBookingId] = useState('')
   const [text, setText] = useState('')
   const [detail, setDetail] = useState<WaDetail | null>(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
+  // الاستقبال: الزبون يراسل أول — ماكو حجز نبدي منه.
+  const reception = agent === 'RECEPTION'
   const start = async () => {
-    if (busy || !bookingId.trim()) return
+    if (busy || (!reception && !bookingId.trim())) return
     setBusy(true)
     setError('')
     try {
-      const r = await waApi.sandboxStart(agent, bookingId.trim())
+      const r = await waApi.sandboxStart(
+        agent,
+        reception ? '' : bookingId.trim(),
+      )
       if (!r.conversation.sandbox)
         throw new Error(
           'الخادم رجّع محادثة مو تجريبية. ما راح نستخدمها بوضع التجربة.',
@@ -90,16 +95,17 @@ function Sandbox() {
             <select
               disabled={busy || !!detail}
               value={agent}
-              onChange={(e) => setAgent(e.target.value as WaAgent)}
+              onChange={(e) => setAgent(e.target.value as WaSandboxAgent)}
             >
               <option value="QUALITY">وكيل الجودة</option>
               <option value="BOOKING">وكيل الحجوزات</option>
+              <option value="RECEPTION">الاستقبال (الزبون يراسل أول)</option>
             </select>
           </label>
-          <label>
+          <label hidden={reception}>
             معرّف الحجز التجريبي
             <input
-              required
+              required={!reception}
               disabled={busy || !!detail}
               value={bookingId}
               onChange={(e) => setBookingId(e.target.value)}
@@ -107,7 +113,7 @@ function Sandbox() {
             />
           </label>
           {!detail ? (
-            <button disabled={busy || !bookingId.trim()}>
+            <button disabled={busy || (!reception && !bookingId.trim())}>
               {busy ? 'دا أفتح…' : 'ابدأ التجربة'}
             </button>
           ) : (
@@ -126,7 +132,14 @@ function Sandbox() {
         <div className="wa-messages" aria-live="polite">
           {!detail && (
             <div className="wa-empty">
-              اختار الوكيل والحجز حتى تبدي المحادثة.
+              {reception
+                ? 'ابدأ التجربة واكتب أول رسالة كأنك زبون جديد.'
+                : 'اختار الوكيل والحجز حتى تبدي المحادثة.'}
+            </div>
+          )}
+          {detail && detail.messages.length === 0 && (
+            <div className="wa-empty">
+              اكتب أول رسالة — مثلاً «اريد كاميرات للبيت».
             </div>
           )}
           {detail?.messages.map((m) => (

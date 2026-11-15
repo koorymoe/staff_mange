@@ -115,6 +115,12 @@ func autoMigrations() []Migration {
 			ALTER TABLE "TrainingCurriculum" ADD COLUMN IF NOT EXISTS "assignees" text[];
 		`,
 		},
+		{
+			Version: "0500_wa_conversation_inbound",
+			SQL: `
+			ALTER TABLE "WaConversation" ADD COLUMN IF NOT EXISTS "inbound" boolean DEFAULT false NOT NULL;
+		`,
+		},
 		// ‹makemigration› — التحديثات الجديدة تنضاف فوگ هالسطر
 	}
 }

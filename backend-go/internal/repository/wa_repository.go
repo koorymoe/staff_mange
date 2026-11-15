@@ -29,6 +29,7 @@ type WaConversation struct {
 	FollowUpID    *string    `db:"followUpId" json:"followUpId"`
 	Status        string     `db:"status" json:"status"`
 	Sandbox       bool       `db:"sandbox" json:"sandbox"`
+	Inbound       bool       `db:"inbound" json:"inbound"` // الزبون هو الي بدأها (استقبال)
 	HumanByID     *string    `db:"humanById" json:"humanById"`
 	LastMessageAt time.Time  `db:"lastMessageAt" json:"lastMessageAt"`
 	LastMessage   string     `db:"lastMessage" json:"lastMessage"`
@@ -86,7 +87,7 @@ func (n *NullBytes) Scan(v any) error {
 }
 
 const waConvSelect = `SELECT c.id, c.agent, c."customerId", COALESCE(cu.name, '') AS "customerName", c.phone,
-	c."bookingId", b.code AS "bookingCode", c."followUpId", c.status, c.sandbox, c."humanById",
+	c."bookingId", b.code AS "bookingCode", c."followUpId", c.status, c.sandbox, c.inbound, c."humanById",
 	c."lastMessageAt", c."lastReadAt", c."createdAt",
 	COALESCE((SELECT left(m.text, 120) FROM "WaMessage" m WHERE m."conversationId" = c.id ORDER BY m."createdAt" DESC LIMIT 1), '') AS "lastMessage",
 	(SELECT COUNT(*) FROM "WaMessage" m WHERE m."conversationId" = c.id AND m.direction = 'IN'
@@ -104,6 +105,68 @@ func (r *WaRepository) CreateConversation(agent string, customerID *string, phon
 		return nil, err
 	}
 	return r.Conversation(id)
+}
+
+// CreateInbound محادثة بدأها الزبون (استقبال): بلا حجز لحد ما الوكيل يسويله واحد أو يربطه بحجز مفتوح.
+func (r *WaRepository) CreateInbound(agent string, customerID *string, phone string, sandbox bool) (*WaConversation, error) {
+	id := uuid.NewString()
+	if _, err := r.db.Exec(`INSERT INTO "WaConversation" (id, agent, "customerId", phone, sandbox, inbound)
+		VALUES ($1,$2,$3,$4,$5,true)`, id, agent, customerID, phone, sandbox); err != nil {
+		return nil, err
+	}
+	return r.Conversation(id)
+}
+
+// Bind يربط محادثة الاستقبال بزبون وحجز (بعد ما الوكيل سوّى الحجز أو اختار حجز مفتوح).
+func (r *WaRepository) Bind(convID string, customerID, bookingID *string) error {
+	_, err := r.db.Exec(`UPDATE "WaConversation" SET "customerId" = COALESCE($2, "customerId"),
+		"bookingId" = COALESCE($3, "bookingId") WHERE id = $1`, convID, customerID, bookingID)
+	return err
+}
+
+// CloseIdleInbound يسد محادثات الاستقبال الي الوكيل ماسكها وسكتت أكثر من يوم — نافذة Meta (٢٤ ساعة)
+// خلصت، والمحادثة المفتوحة تمنع وكيل ثاني يراسل نفس الرقم.
+func (r *WaRepository) CloseIdleInbound() int {
+	res, err := r.db.Exec(`UPDATE "WaConversation" SET status = 'CLOSED'
+		WHERE inbound AND NOT sandbox AND status = 'BOT' AND "lastMessageAt" < now() - interval '24 hours'`)
+	if err != nil {
+		return 0
+	}
+	n, _ := res.RowsAffected()
+	return int(n)
+}
+
+// WaService خدمة يكدر الزبون يطلبها.
+type WaService struct {
+	ID   string `db:"id"`
+	Name string `db:"name"`
+}
+
+// Services الخدمات الي تنعرض للزبون (بالاسم).
+func (r *WaRepository) Services() ([]WaService, error) {
+	rows := []WaService{}
+	err := r.db.Select(&rows, `SELECT id, name FROM "Service" ORDER BY name LIMIT 80`)
+	return rows, err
+}
+
+// WaOpenBooking حجز مفتوح للزبون — الي يشوفه وكيل الاستقبال.
+type WaOpenBooking struct {
+	ID          string     `db:"id"`
+	Code        string     `db:"code"`
+	Status      string     `db:"status"`
+	Services    string     `db:"services"`
+	ScheduledAt *time.Time `db:"scheduledAt"`
+}
+
+// OpenBookings حجوزات الزبون الحية (مو منجزة ولا ملغية ولا مؤرشفة).
+func (r *WaRepository) OpenBookings(customerID string) ([]WaOpenBooking, error) {
+	rows := []WaOpenBooking{}
+	err := r.db.Select(&rows, `SELECT b.id, b.code, b.status::text AS status, b."scheduledAt",
+		COALESCE((SELECT string_agg(s.name, '، ') FROM "Service" s WHERE s.id = b."serviceId"
+			OR s.id IN (SELECT x."serviceId" FROM "BookingService" x WHERE x."bookingId" = b.id)), '') AS services
+		FROM "Booking" b WHERE b."customerId" = $1 AND b.status::text NOT IN ('COMPLETED', 'CANCELLED')
+		  AND b."archivedAt" IS NULL ORDER BY b."createdAt" DESC LIMIT 10`, customerID)
+	return rows, err
 }
 
 func (r *WaRepository) Conversation(id string) (*WaConversation, error) {

@@ -178,7 +178,7 @@ function Conversations({ allowed }: { allowed: WaAgent[] }) {
           {loading && <p className="wa-empty">دا أجيب المحادثات…</p>}
           {rows
             .filter((x) =>
-              `${x.customerName} ${x.bookingCode}`.includes(search),
+              `${x.customerName} ${x.phone} ${x.bookingCode ?? ''}`.includes(search),
             )
             .map((x) => (
               <button
@@ -191,15 +191,16 @@ function Conversations({ allowed }: { allowed: WaAgent[] }) {
                   setError('')
                 }}
               >
-                <b>{x.customerName}</b>
+                <b>{x.customerName || `رقم جديد ${x.phone}`}</b>
                 <small>
-                  {x.bookingCode} ·{' '}
+                  {x.bookingCode ?? 'بلا حجز'} ·{' '}
                   {x.status === 'HUMAN'
                     ? '👤 إنسان'
                     : x.status === 'BOT'
                       ? '🤖 الوكيل'
                       : 'مغلقة'}
                   {x.sandbox ? ' · تجربة' : ''}
+                  {x.inbound ? ' · 📥 وارد' : ''}
                 </small>
                 <p>{x.lastMessage}</p>
                 {x.unread > 0 && <span>{x.unread} غير مقروءة</span>}
@@ -218,15 +219,16 @@ function Conversations({ allowed }: { allowed: WaAgent[] }) {
             <>
               <header>
                 <div>
-                  <h2>{current.customerName}</h2>
+                  <h2>{current.customerName || `رقم جديد ${current.phone}`}</h2>
                   <p>
-                    {current.bookingCode} ·{' '}
+                    {current.bookingCode ?? 'بلا حجز'} ·{' '}
                     {current.status === 'HUMAN'
                       ? '👤 إنسان'
                       : current.status === 'BOT'
                         ? '🤖 الوكيل'
                         : 'مغلقة'}
                     {current.sandbox ? ' · تجربة' : ''}
+                    {current.inbound ? ' · 📥 وارد' : ''}
                   </p>
                 </div>
                 <div className="wa-toolbar">

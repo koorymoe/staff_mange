@@ -132,6 +132,10 @@ type SuggestPerson struct {
 	WorkMed   *float64 `db:"workMed" json:"workMed"`     // وسيط مدة شغله بنفس الخدمة
 	RatingAvg *float64 `db:"ratingAvg" json:"ratingAvg"` // تقييم الليدرية إله
 	RatingN   int      `db:"ratingN" json:"ratingN"`
+	// (دازاي 11-15) تعلّم من الزبائن: تقييم الزبون للكادر بمتابعة الجودة (يجمعه مهندس الجودة أو وكيله)
+	// لحجوزات اشتغل بيها هذا الشخص.
+	CustAvg *float64 `db:"custAvg" json:"custAvg"`
+	CustN   int      `db:"custN" json:"custN"`
 }
 
 // People الليدرية والفنيين الفعّالين ويا خبرتهم بالخدمة وتقييمهم.
@@ -149,8 +153,15 @@ func (r *MatrixSuggestRepository) People(serviceID *string, day time.Time) ([]Su
 		      AND b."startedAt" IS NOT NULL AND b."completedAt" > b."startedAt" AND b."completedAt" - b."startedAt" < interval '12 hours'
 		      AND b."completedAt" > now() - interval '180 days') AS "workMed",
 		  (SELECT avg(score) FROM "CrewRating" c WHERE c."technicianId" = e.id AND c."createdAt" > now() - interval '180 days') AS "ratingAvg",
-		  (SELECT count(*) FROM "CrewRating" c WHERE c."technicianId" = e.id AND c."createdAt" > now() - interval '180 days')::int AS "ratingN"
+		  (SELECT count(*) FROM "CrewRating" c WHERE c."technicianId" = e.id AND c."createdAt" > now() - interval '180 days')::int AS "ratingN",
+		  cq."custAvg", COALESCE(cq."custN", 0)::int AS "custN"
 		FROM "Employee" e
+		LEFT JOIN LATERAL (
+		  SELECT avg(COALESCE(q."crewRating", q."customerRating"))::float8 AS "custAvg", count(*) AS "custN"
+		    FROM "QualityFollowUp" q JOIN "Booking" b ON b.id = q."bookingId"
+		   WHERE COALESCE(q."crewRating", q."customerRating") IS NOT NULL AND q."contactedAt" > now() - interval '180 days'
+		     AND (b."projectSupervisorId" = e.id OR EXISTS (SELECT 1 FROM "BookingAssignment" a WHERE a."bookingId" = b.id AND a."employeeId" = e.id))
+		) cq ON true
 		WHERE e.status = 'ACTIVE' AND (e."isLeader" OR e.role::text = 'TECHNICIAN')
 		  AND NOT EXISTS (SELECT 1 FROM "LeaveRequest" l WHERE l."employeeId" = e.id AND l.status::text = 'APPROVED'
 		                  AND $2::date BETWEEN l."startDate"::date AND l."endDate"::date)`, serviceID, day)

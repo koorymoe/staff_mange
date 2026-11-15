@@ -88,3 +88,14 @@
 
 ## الحالة
 `GET /ai/status` موجود. وينضاف `quality` و`booking` بنفس شكل `matrix`، و`whatsapp: { "on": bool }`.
+
+
+## 📥 الاستقبال (١١-١٥) — إضافات على العقد
+- `conversation.inbound: bool` — المحادثة بدأها الزبون (رسالة/فويس/مكالمة). `agent` يبقى `BOOKING`،
+  و`bookingId`/`bookingCode` ممكن `null` لحد ما الوكيل يسوي حجز أو يختار واحد، و`customerName` فاضي للرقم الجديد.
+- رسالة الفويس نصها يبدي بـ`🎤 `، والمكالمة بـ`📞 `.
+- `GET /ai/agents` يرجّع صف `RECEPTION` (`editable: false`، واسمه اسم `BOOKING`) ويا `enabled`.
+- `PUT /ai/agents/RECEPTION/enabled` نفس الباقي (409 إذا الواتساب مو مربوط).
+- `POST /wa/sandbox/start` يقبل `{ "agent": "RECEPTION" }` بلا `bookingId` — يرجّع محادثة بلا رسائل، والمالك يكتب أول رسالة.
+- `GET /ai/status` بيه `reception: { on, built, voice, liveCalls }` — `voice` = فويس الزبون ينسمع، `liveCalls` = `false` لحد ما ينبني الرد الصوتي الحي.
+- أدوات جديدة تطلع بـ`actions[].kind` بنفس القيم (`CREATE_BOOKING`, `CONFIRM_BOOKING`, `ADD_DETAILS`, `HANDOFF`).

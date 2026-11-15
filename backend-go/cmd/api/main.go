@@ -1376,6 +1376,8 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 			"brains":    aiBrainsStatus(cfg.AIModel, cfg.AIModelChat),
 			"gemini":    map[string]any{"on": cfg.GeminiAPIKey != "", "dailyCap": cfg.GeminiDailyCap},
 			"whisper":   map[string]any{"on": cfg.WhisperURL != ""},
+			// 📥 الاستقبال (دازاي 11-15): بمفتاح ابو الحجوزات. voice = فويس الزبون ينسمع (Whisper الداخلي). الرد الصوتي الحي على المكالمة بعده ما انبنى.
+			"reception": map[string]any{"on": cfg.AIKeyBooking != "", "built": true, "voice": cfg.WhisperURL != "", "liveCalls": false},
 		})
 	})
 	aiAgentNames := handler.NewAiAgentNameHandler(db)
@@ -3413,6 +3415,15 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 				service.NewAnthropicClientFor(service.WaAgentQuality, cfg.AIKeyQuality), cfg.AIModel, 200))
 			waSvc.SetBrain(service.WaAgentBooking, service.NewLuffyWaBrain(service.WaAgentBooking,
 				service.NewAnthropicClientFor(service.WaAgentBooking, cfg.AIKeyBooking), cfg.AIModel, 200))
+			// 📥 الاستقبال (دازاي 11-15): الزبون يراسل/يدز فويس/يتصل والوكيل يرد. بمفتاح وميزانية ابو الحجوزات.
+			waSvc.SetBrain(service.WaAgentReception, service.NewLuffyWaBrain(service.WaAgentReception,
+				service.NewAnthropicClientFor(service.WaAgentBooking, cfg.AIKeyBooking), cfg.AIModel, 300))
+			waSvc.SetCustomers(customerRepo)
+			waSvc.SetSlots(matrixSuggestService)
+			if cfg.WhisperURL != "" {
+				// فويس الزبون يتحوّل لنص بـWhisper الداخلي — ما يطلع من السيرفر (قرار 10-05).
+				waSvc.SetTranscriber(voiceAnalysisService.Transcribe)
+			}
 			aiAgentNames.SetEnabled(waSvc.Enabled)
 			waH := handler.NewWaHandler(waSvc, waClient, permissionRepo)
 			requireWa := authz.Strict(permissionRepo, authz.WhatsAppChats) // (دازاي 11-04) صلاحية بيد المالك
@@ -3429,10 +3440,12 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 			secs["ai"].Set("PUT /api/ai/agents/{agent}/enabled", "ai.put_agents_by_agent_enabled", waH.SetEnabled)
 			secs["wa"].Set("POST /api/wa/sandbox/start", "wa.post_sandbox_start", waH.SandboxStart)
 			secs["wa"].Set("POST /api/wa/sandbox/{id}/say", "wa.post_sandbox_by_id_say", waH.SandboxSay)
-			log.Printf("💬 وكلاء الواتساب: الواتساب %s · ابو الجودة %s · ابو الحجوزات %s",
+			log.Printf("💬 وكلاء الواتساب: الواتساب %s · ابو الجودة %s · ابو الحجوزات %s · الاستقبال %s · فويس الزبون %s",
 				map[bool]string{true: "مربوط", false: "مو مربوط"}[waClient.On()],
 				map[bool]string{true: "شغّال", false: "مطفي"}[waSvc.Enabled(service.WaAgentQuality)],
-				map[bool]string{true: "شغّال", false: "مطفي"}[waSvc.Enabled(service.WaAgentBooking)])
+				map[bool]string{true: "شغّال", false: "مطفي"}[waSvc.Enabled(service.WaAgentBooking)],
+				map[bool]string{true: "شغّال", false: "مطفي"}[waSvc.Enabled(service.WaAgentReception)],
+				map[bool]string{true: "ينسمع", false: "بلا Whisper"}[waSvc.VoiceOn()])
 			go func() {
 				time.Sleep(2 * time.Minute)
 				for {

@@ -7,7 +7,7 @@ import { startAgentRebrand } from '../utils/agentBrand'
 import AiBrainCards from '../components/AiBrainCards'
 
 type Agent = {
-  agent: 'MATRIX' | 'IRIS' | 'QUALITY' | 'BOOKING'
+  agent: 'MATRIX' | 'IRIS' | 'QUALITY' | 'BOOKING' | 'RECEPTION'
   name: string
   editable: boolean
   default?: string
@@ -28,6 +28,8 @@ const statusKeys = {
   IRIS: 'secretary',
   QUALITY: 'quality',
   BOOKING: 'booking',
+  // الاستقبال يشتغل بمفتاح وميزانية وكيل الحجوزات
+  RECEPTION: 'booking',
 }
 export default function AiAgentsPage() {
   const { employee } = useSession()
@@ -141,7 +143,9 @@ function OwnerAgents() {
             >
               <div className="flex items-center justify-between">
                 <h2 className="text-lg font-bold text-slate-800">
-                  {agent.name}
+                  {agent.agent === 'RECEPTION'
+                    ? `📥 الاستقبال · ${agent.name}`
+                    : agent.name}
                 </h2>
                 <span
                   className={`rounded-full px-3 py-1 text-xs font-bold ${s?.on ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-600'}`}
@@ -189,7 +193,11 @@ function OwnerAgents() {
                   {agent.default && agent.name !== agent.default && ` (الأصلي: ${agent.default})`}
                 </p>
               ) : (
-                <p className="mt-3 text-sm text-slate-500">الاسم ثابت.</p>
+                <p className="mt-3 text-sm text-slate-500">
+                  {agent.agent === 'RECEPTION'
+                    ? 'يرد على الزبون الي يراسل أو يدز فويس أو يتصل هو، ويسجّل طلبه ويثبّت موعده. نفس اسم ومفتاح وكيل الحجوزات.'
+                    : 'الاسم ثابت.'}
+                </p>
               )}
               <dl className="mt-4 grid grid-cols-2 gap-3 text-sm">
                 <div>
@@ -229,11 +237,12 @@ function OwnerAgents() {
                   role="switch"
                   aria-label={`تشغيل ${agent.name}`}
                   aria-checked={
-                    agent.editable ? (agent.enabled ?? false) : (s?.on ?? false)
+                    typeof agent.enabled === 'boolean'
+                      ? agent.enabled
+                      : (s?.on ?? false)
                   }
                   disabled={
                     !!busy ||
-                    !agent.editable ||
                     agent.built === false ||
                     typeof agent.enabled !== 'boolean'
                   }
@@ -241,7 +250,7 @@ function OwnerAgents() {
                     setPending(agent)
                     setError('')
                   }}
-                  className={`h-7 w-12 rounded-full p-1 disabled:opacity-50 ${(agent.editable ? agent.enabled : s?.on) ? 'bg-emerald-600' : 'bg-slate-200'}`}
+                  className={`h-7 w-12 rounded-full p-1 disabled:opacity-50 ${(typeof agent.enabled === 'boolean' ? agent.enabled : s?.on) ? 'bg-emerald-600' : 'bg-slate-200'}`}
                 >
                   <span className="block h-5 w-5 rounded-full bg-white" />
                 </button>
@@ -249,7 +258,7 @@ function OwnerAgents() {
               <p className="mt-2 text-xs text-slate-500">
                 {agent.built === false || s?.built === false
                   ? 'ما مشتغل بعد — ينتظر ربط الواتساب وقرار الخصوصية'
-                  : !agent.editable
+                  : !agent.editable && typeof agent.enabled !== 'boolean'
                     ? 'تشغيل هذا الوكيل من إعدادات الخادم.'
                     : typeof agent.enabled !== 'boolean'
                       ? 'حالة التشغيل بعد ما متوفرة من الخادم.'

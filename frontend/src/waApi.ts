@@ -1,15 +1,18 @@
 import { apiRequest } from './api'
 
 export type WaAgent = 'QUALITY' | 'BOOKING'
+// الاستقبال: الزبون هو الي يراسل أول. محادثته BOOKING ومؤشّرة inbound.
+export type WaSandboxAgent = WaAgent | 'RECEPTION'
 export type WaConversation = {
   id: string
   agent: WaAgent
   status: 'BOT' | 'HUMAN' | 'CLOSED'
   customerName: string
   phone: string
-  bookingId: string
-  bookingCode: string
+  bookingId: string | null
+  bookingCode: string | null
   sandbox: boolean
+  inbound?: boolean
   lastMessageAt: string
   lastMessage: string
   unread: number
@@ -81,7 +84,7 @@ export const waApi = {
       method: 'POST',
       body: JSON.stringify({ reason }),
     }),
-  sandboxStart: (agent: WaAgent, bookingId: string) =>
+  sandboxStart: (agent: WaSandboxAgent, bookingId: string) =>
     apiRequest<{ conversation: WaConversation; messages: WaMessage[] }>(
       '/wa/sandbox/start',
       { method: 'POST', body: JSON.stringify({ agent, bookingId }) },
