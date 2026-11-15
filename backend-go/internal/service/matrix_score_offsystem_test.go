@@ -12,12 +12,12 @@ func TestOffSystemGroup(t *testing.T) {
 	if g != GroupOffSystem {
 		t.Fatalf("المجموعة = %s", g)
 	}
-	for _, r := range []string{"DAILY_REPORT", "ATTENDANCE", "TASK_DUE"} {
+	for _, r := range []string{"REPORT_MATCH", "ATTENDANCE", "TASK_DUE"} {
 		if !RuleFitsGroup(r, g) {
 			t.Fatalf("%s لازم تنحسب", r)
 		}
 	}
-	for _, r := range []string{"REPORT_MATCH", "WORK", "CREATE", "COMPLETE", "PAPER", "STAGE_LOG"} {
+	for _, r := range []string{"WORK", "CREATE", "COMPLETE", "PAPER", "STAGE_LOG"} {
 		if RuleFitsGroup(r, g) {
 			t.Fatalf("%s ما تنحسب على شغل برّا النظام", r)
 		}

@@ -6,6 +6,8 @@ import (
 	"regexp"
 	"staffmange-api/internal/errlog"
 	"strings"
+	"time"
+	"unicode"
 
 	"github.com/jmoiron/sqlx"
 	"github.com/lib/pq"
@@ -133,7 +135,70 @@ func (m *ReportMatcher) Match(emp, day string) (*ReportMatch, error) {
 	default:
 		out.Status, out.Note = "MATCH", fmt.Sprintf("التقرير يطابق المسجّل (%d فعل بالنظام).", out.ActivityCount+len(touchedAll))
 	}
+	// (دازاي 11-15) «اني كتبت تم تعديل هاي الواجهة — ماتركس يروح يفحص بالنظام هل حقاً انعدلت؟»:
+	// الموظف الي شغله برّا النظام (برمجة) ينطابق تقريره ويا سجل تحديثات النظام بنفس اليوم (±يوم).
+	var off bool
+	_ = m.db.Get(&off, `SELECT "offSystemWork" FROM "Employee" WHERE id = $1`, emp)
+	if off {
+		if hits := ChangelogMatches(rep.Body, day); len(hits) > 0 {
+			out.Status, out.Note = "MATCH", "شغل الواجهات الي كتبه موجود بسجل تحديثات النظام: «"+strings.Join(hits, "» · «")+"»."
+		} else {
+			out.Status, out.Note = "NO_TRACE", "كتب إنه اشتغل على النظام، بس ما لكيت بسجل التحديثات (يومه ±يوم) شي يطابق كلامه — المراقب يتأكد."
+		}
+	}
 	return out, nil
+}
+
+var changelogLineRe = regexp.MustCompile(`^- (\d{2})-(\d{2}):?\s+(.*)$`)
+
+// arStop كلمات عامة ما تدل على شاشة أو ميزة.
+var arStop = map[string]bool{"صار": true, "صارت": true, "حتى": true, "بعد": true, "قبل": true, "هسه": true, "الي": true, "على": true,
+	"ويا": true, "مثل": true, "كلشي": true, "مكان": true, "النظام": true, "تعديل": true, "عدلت": true, "عدّلت": true, "سويت": true,
+	"اليوم": true, "واجهة": true, "الواجهة": true, "شاشة": true, "الشاشة": true, "تمت": true, "هاي": true, "هذا": true, "كل": true}
+
+func arTokens(s string) map[string]bool {
+	out := map[string]bool{}
+	for _, w := range strings.FieldsFunc(s, func(r rune) bool { return !unicode.IsLetter(r) }) {
+		w = strings.TrimPrefix(strings.TrimPrefix(w, "و"), "ال")
+		if len([]rune(w)) >= 4 && !arStop[w] && !arStop["ال"+w] {
+			out[w] = true
+		}
+	}
+	return out
+}
+
+// ChangelogMatches أسطر سجل التحديثات (يوم التقرير ±يوم) الي تشارك التقرير بكلمتين مميزتين أو أكثر.
+func ChangelogMatches(body, day string) []string {
+	d, err := time.Parse("2006-01-02", day)
+	if err != nil {
+		return nil
+	}
+	rep := arTokens(body)
+	hits := []string{}
+	for _, line := range strings.Split(changelogMD, "\n") {
+		m := changelogLineRe.FindStringSubmatch(strings.TrimSpace(line))
+		if m == nil {
+			continue
+		}
+		ld, err := time.Parse("2006-01-02", fmt.Sprintf("%d-%s-%s", d.Year(), m[1], m[2]))
+		if err != nil || ld.Sub(d) > 24*time.Hour || d.Sub(ld) > 24*time.Hour {
+			continue
+		}
+		n := 0
+		for w := range arTokens(m[3]) {
+			if rep[w] {
+				n++
+			}
+		}
+		if n >= 2 {
+			t := []rune(m[3])
+			if len(t) > 80 {
+				t = append(t[:80], '…')
+			}
+			hits = append(hits, string(t))
+		}
+	}
+	return hits
 }
 
 // Save يخزّن النتيجة (ويحافظ على مراجعة المراقب). يرجّع true إذا الحالة جديدة وبيها فرق.

@@ -470,3 +470,4 @@ git push origin origin/avg:refs/heads/prod     # بعد التأكد إنه fast
 - 11-15 (لوفي) النوافذ: ٩٥ نافذة بـ٦٥ ملف صارت ui/Modal (props جديدة dismissible/showClose/layer، Esc يسد الأعلى بس). الباقي fixed inset-0 مو نوافذ: قوائم منسدلة، خلفية القائمة بالموبايل، عارض صور، خريطة كاملة.
 - 11-15 (لوفي) ملاحظة #11: scoreDailyReportWriting=false (DAILY_REPORT ما ينضاف)، 0497_data يلغي القديم بـcancelledAt. REPORT_MATCH (محتوى التقرير مقابل النظام) يبقى.
 - 11-15 (لوفي) #12 المطابقة الثلاثية: MatrixWatchRepository.CrossCheck (آخر ٣٠ يوم: REPORT_DONE_NOT_DONE بعد ٢٤س، MONEY_GAP <٩٠٪ بعد ٤٨س، QUALITY_CONTRADICTS إلا إذا الكشف طلّع الزبون مو على حق) → crossCheckItems بعين INTEGRITY. اختبار TestCrossCheckLive.
+- 11-15 (لوفي) #13: ReportMatcher.Match للـoffSystemWork يستعمل ChangelogMatches (changelog.md المضمّن، أسطر «- MM-DD» يوم±١، تطابق ≥٢ كلمة مميزة)؛ REPORT_MATCH رجع ينحسب لمجموعة OFF_SYSTEM. اختبار TestChangelogMatches.

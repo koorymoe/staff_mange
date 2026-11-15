@@ -259,7 +259,8 @@ const (
 	ExtraBonusMax = 5.0
 )
 
-var offSystemSkip = map[string]bool{"REPORT_MATCH": true, "STAGE_LOG": true, "RATING_DUTY": true, "DESIGN_SECTION": true, "PROJECT_WEEK": true}
+// (11-15) REPORT_MATCH رجع ينحسب للي شغله برّا النظام: تقريره ينطابق ويا سجل تحديثات النظام.
+var offSystemSkip = map[string]bool{"STAGE_LOG": true, "RATING_DUTY": true, "DESIGN_SECTION": true, "PROJECT_WEEK": true}
 
 // RuleFitsGroup هل هالقاعدة من شغل هالمجموعة؟ قاعدة مو بالجدول = تنطبق.
 func RuleFitsGroup(rule, group string) bool {
