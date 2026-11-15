@@ -526,7 +526,9 @@ export default function LeaderInvoiceNew({ initialMode, handoverOnly = false }: 
   //
   // فالمسودة تظل بجهاز الليدر: يعبّي نص الحساب، يطلع لحجز، ويرجع
   // يكمّل بلا ما يعيد كلشي من الصفر.
-  const DRAFT_KEY = 'leaderInvoiceDraft'
+  // (11-15) المسودة لكل ليدر ولكل حجز — چانت مفتاح واحد، فمسودة حجز (أو ليدر ثاني على نفس الجهاز) ترجع بحجز ثاني.
+  const DRAFT_KEY = `leaderInvoiceDraft:${employee?.id ?? 'x'}:${bookingId ?? 'inquiry'}`
+  const readDraft = () => { try { return localStorage.getItem(DRAFT_KEY) } catch { return null } }
   const [draftSaved, setDraftSaved] = useState(false)
   const saveDraft = () => {
     try {
@@ -535,10 +537,12 @@ export default function LeaderInvoiceNew({ initialMode, handoverOnly = false }: 
       setTimeout(() => setDraftSaved(false), 2500)
     } catch { /* مساحة التخزين ممتلئة — المسودة ميزة مساعدة، ما توقف الشغل */ }
   }
-  const [hasDraft, setHasDraft] = useState(() => !!localStorage.getItem(DRAFT_KEY))
+  const [hasDraft, setHasDraft] = useState(() => !!readDraft())
+  // eslint-disable-next-line react-hooks/set-state-in-effect
+  useEffect(() => { try { setHasDraft(!!localStorage.getItem(DRAFT_KEY)) } catch { setHasDraft(false) } }, [DRAFT_KEY])
   const restoreDraft = () => {
     try {
-      const raw = localStorage.getItem(DRAFT_KEY)
+      const raw = readDraft()
       if (!raw) return
       const d = JSON.parse(raw)
       if (d.mode) setMode(d.mode)
@@ -1189,7 +1193,7 @@ export default function LeaderInvoiceNew({ initialMode, handoverOnly = false }: 
               كمّلها
             </button>
             <button
-              onClick={() => { localStorage.removeItem(DRAFT_KEY); setHasDraft(false) }}
+              onClick={() => { try { localStorage.removeItem(DRAFT_KEY) } catch { /* بلا تخزين */ } setHasDraft(false) }}
               className="rounded-lg border border-amber-300 px-3 py-1 text-[11px] font-bold text-amber-800 hover:bg-amber-100"
             >
               احذفها

@@ -51,7 +51,7 @@ func (s *MatrixAutopilotService) ResolveFor(employeeID string) {
 	for _, a := range open {
 		if ok, err := s.actions.IsResolved(a); err == nil && ok {
 			_ = s.actions.MarkResolved(a.ID)
-			_ = s.notif.MarkReadNear(employeeID, "AI_AUTOPILOT", a.CreatedAt, 2*time.Minute)
+			_ = s.notif.MarkReadOneAfter(employeeID, "AI_AUTOPILOT", a.CreatedAt, 2*time.Minute)
 		}
 	}
 }
@@ -743,8 +743,8 @@ func (s *MatrixAutopilotService) internalNoInvoice(today string, dayStart time.T
 
 // ١٦. مسؤول مشاريع ما سوّى شي اليوم — طلب (ع) 10-10: «اريده يشوف اذا هذا
 // الموظف سوّا شي اليوم او لا». من الساعة ١ الظهر: تنبيه للمسؤول، وملخص للمراقب.
-func (s *MatrixAutopilotService) projectIdleToday(today string, dayStart time.Time) (int, error) {
-	if time.Now().In(debriefLoc).Hour() < 13 {
+func (s *MatrixAutopilotService) projectIdleToday(today string, dayStart, now time.Time) (int, error) {
+	if now.In(debriefLoc).Hour() < 13 {
 		return 0, nil
 	}
 	duties := s.projectDuties()
@@ -888,12 +888,7 @@ func (s *MatrixAutopilotService) procurementWatch(today, week string, dayStart t
 		}
 	}
 
-	if now.In(debriefLoc).Hour() >= 14 {
-		if cars, _ := s.actions.VehiclesUnratedToday(); len(cars) > 0 {
-			notify(model.AiActionVehiclesUnrated, "EMPLOYEE", today, fmt.Sprintf("ذكّر أبو الكميات: %d سيارة ما انقيّمت اليوم", len(cars)),
-				fmt.Sprintf("🤖 ماتركس — %d سيارة بعدها ما انقيّمت اليوم (%s). قيّمها من «🚗 متابعة السيارات».", len(cars), strings.Join(cars, "، ")), admins)
-		}
-	}
+	// «سيارات ما انقيّمت اليوم» انتقلت لدورة العصر (vehiclesUnrated) — هنا چانت ميتة.
 
 	if open, _ := s.actions.OpenShortages(); len(open) > 0 {
 		if old := older(open, 48*time.Hour); len(old) > 0 {
@@ -912,6 +907,34 @@ func (s *MatrixAutopilotService) procurementWatch(today, week string, dayStart t
 		}
 		notify(model.AiActionFleetOverdue, "EMPLOYEE", week, fmt.Sprintf("ذكّر أبو الكميات: %d صيانة/وثيقة فات موعدها", len(fleet)),
 			fmt.Sprintf("🤖 ماتركس — %d صيانة أو وثيقة سيارة فات موعدها: %s. سجّلها بإدارة المركبات.", len(fleet), strings.Join(shown, "؛ ")), admins)
+	}
+	return n, nil
+}
+
+// vehiclesUnrated (دازاي 11-15) سيارات ما انقيّمت اليوم — من الساعة ٢، بدورة العصر.
+func (s *MatrixAutopilotService) vehiclesUnrated(today string, dayStart, now time.Time) (int, error) {
+	if now.In(debriefLoc).Hour() < autopilotPMHour {
+		return 0, nil
+	}
+	cars, err := s.actions.VehiclesUnratedToday()
+	if err != nil || len(cars) == 0 {
+		return 0, err
+	}
+	admins, err := s.actions.ProcurementAdmins()
+	if err != nil {
+		return 0, err
+	}
+	msg := fmt.Sprintf("🤖 ماتركس — %d سيارة بعدها ما انقيّمت اليوم (%s). قيّمها من «🚗 متابعة السيارات».", len(cars), strings.Join(cars, "، "))
+	n := 0
+	for _, id := range admins {
+		emp := id
+		if s.act(model.AiAction{Kind: model.AiActionVehiclesUnrated, EntityType: "EMPLOYEE", EntityID: emp, Period: today,
+			TargetEmployeeID: &emp, TargetLabel: s.actions.EmployeeName(emp),
+			Summary: fmt.Sprintf("ذكّر أبو الكميات: %d سيارة ما انقيّمت اليوم", len(cars)),
+			Details: why(map[string]any{"msg": msg})}, dayStart,
+			func() error { return s.notif.Create(emp, "AI_AUTOPILOT", msg) }) {
+			n++
+		}
 	}
 	return n, nil
 }

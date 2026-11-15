@@ -23,9 +23,26 @@ import (
 // كلشي بضغطة.
 
 const (
-	autopilotHour     = 10 // بعد فحوصات ماتركس (٨) وتوقّع التأخير (٧)، ووقت كافي لتسجيل الحضور
-	autopilotDailyCap = 30
+	autopilotHour = 10 // بعد فحوصات ماتركس (٨) وتوقّع التأخير (٧)، ووقت كافي لتسجيل الحضور
+	// (دازاي 11-15) «تذكيرين ما ينبعثن أبد»: «ما اشتغل اليوم على مشاريعه» (من ١ الظهر)
+	// و«سيارات ما انقيّمت اليوم» (من ٢) چانن بدورة الـ١٠ الصبح الوحيدة، فشرطهن ما يتحقق
+	// أبد. هسه إلهن دورة عصر مستقلة بعلامة يومية ثانية.
+	autopilotPMHour = 14
+	// (دازاي 11-15) «الحد اليومي ٣٠»: چان حد عام لكل نوع، والي بعد الـ٣٠ يضيع بصمت.
+	// هسه الحد لكل مستلم (٨ باليوم)، والعاجل يعبر، وكل إسقاط ينكتب بالسجل.
+	autopilotPerRecipientCap = 8
+	// الإشعارات الجماعية (لدور/صلاحية بلا شخص محدد) — سقف أمان لكل نوع.
+	autopilotGroupKindCap = 30
 )
+
+// autopilotUrgentKinds عاجل — ما يخضع لحد المستلم.
+var autopilotUrgentKinds = map[string]bool{
+	model.AiActionUnstaffedAlert:  true,
+	model.AiActionDelayWarning:    true,
+	model.AiActionMonitorEscalate: true,
+	model.AiActionAutoCrew:        true,
+	model.AiActionAttendanceNudge: true,
+}
 
 type MatrixAutopilotService struct {
 	actions *repository.AiActionRepository
@@ -87,16 +104,61 @@ func (s *MatrixAutopilotService) RunIfDue() error {
 		return nil
 	}
 	today := now.Format("2006-01-02")
-	claimed, err := s.aiRepo.ClaimDailyMarker("DAILY_MATRIX_AUTOPILOT", today)
-	if err != nil || !claimed {
-		return err
+	am, pm := autopilotPassesDue(now)
+	if am {
+		claimed, err := s.aiRepo.ClaimDailyMarker("DAILY_MATRIX_AUTOPILOT", today)
+		if err != nil {
+			return err
+		}
+		if claimed {
+			done := 0
+			if s.Enabled() {
+				s.followUp()
+				done = s.runActions(now)
+			}
+			if err := s.sendMorningSummary(done); err != nil {
+				return err
+			}
+		}
 	}
-	done := 0
-	if s.Enabled() {
-		s.followUp()
-		done = s.runActions(now)
+	if pm {
+		claimed, err := s.aiRepo.ClaimDailyMarker("DAILY_MATRIX_AUTOPILOT_PM", today)
+		if err != nil || !claimed {
+			return err
+		}
+		if s.Enabled() {
+			s.runAfternoon(now)
+		}
 	}
-	return s.sendMorningSummary(done)
+	return nil
+}
+
+// autopilotPassesDue أي دورة مستحقة بهالساعة (الصبح من ١٠، العصر من ٢).
+func autopilotPassesDue(now time.Time) (am, pm bool) {
+	h := now.In(debriefLoc).Hour()
+	return h >= autopilotHour, h >= autopilotPMHour
+}
+
+// afternoonSteps تذكيرات شرطها وقت العصر — ما تنفع بدورة الصبح.
+func (s *MatrixAutopilotService) afternoonSteps(now time.Time) []func() (int, error) {
+	today := now.In(debriefLoc).Format("2006-01-02")
+	dayStart := baghdadMidnight(today)
+	return []func() (int, error){
+		func() (int, error) { return s.projectIdleToday(today, dayStart, now) },
+		func() (int, error) { return s.vehiclesUnrated(today, dayStart, now) },
+	}
+}
+
+func (s *MatrixAutopilotService) runAfternoon(now time.Time) int {
+	n := 0
+	for _, step := range s.afternoonSteps(now) {
+		c, err := step()
+		if err != nil {
+			log.Printf("[ai] ماتركس التنفيذي (العصر): %v", err)
+		}
+		n += c
+	}
+	return n
 }
 
 func (s *MatrixAutopilotService) runActions(now time.Time) int {
@@ -120,7 +182,6 @@ func (s *MatrixAutopilotService) runActions(now time.Time) int {
 		func() (int, error) { return s.afterInventory(today, dayStart) },
 		func() (int, error) { return s.monitorBacklog(today, dayStart) },
 		func() (int, error) { return s.internalNoInvoice(today, dayStart) },
-		func() (int, error) { return s.projectIdleToday(today, dayStart) },
 		func() (int, error) { return s.projectOverLimit(today, dayStart) },
 		func() (int, error) { return s.procurementWatch(today, week, dayStart) },
 		func() (int, error) { return s.paymentsUnverified(today, dayStart) },
@@ -135,14 +196,14 @@ func (s *MatrixAutopilotService) runActions(now time.Time) int {
 	return n
 }
 
-// act يسجّل الفعل وبعدين ينفّذه — بحد يومي لكل نوع.
+// act يسجّل الفعل وبعدين ينفّذه — بحد يومي لكل مستلم (العاجل يعبر).
 // Act نفس act للخدمات الثانية (الأفعال التنفيذية).
 func (s *MatrixAutopilotService) Act(a model.AiAction, dayStart time.Time, send func() error) bool {
 	return s.act(a, dayStart, send)
 }
 
 func (s *MatrixAutopilotService) act(a model.AiAction, dayStart time.Time, send func() error) bool {
-	if c, err := s.actions.CountSince(a.Kind, dayStart); err != nil || c >= autopilotDailyCap {
+	if !s.withinCap(a, dayStart) {
 		return false
 	}
 	ok, err := s.actions.Claim(a)
@@ -153,6 +214,43 @@ func (s *MatrixAutopilotService) act(a model.AiAction, dayStart time.Time, send 
 		log.Printf("[ai] تعذر إرسال فعل %s: %v", a.Kind, err)
 	}
 	return true
+}
+
+// capDecision حد اليوم: المستلم المحدد ٨، والجماعي ٣٠ لكل نوع، والعاجل بلا حد.
+func capDecision(a model.AiAction, sentToRecipient, sentOfKindToGroups int) (ok bool, limit int) {
+	if autopilotUrgentKinds[a.Kind] {
+		return true, 0
+	}
+	if a.TargetEmployeeID != nil && *a.TargetEmployeeID != "" {
+		return sentToRecipient < autopilotPerRecipientCap, autopilotPerRecipientCap
+	}
+	return sentOfKindToGroups < autopilotGroupKindCap, autopilotGroupKindCap
+}
+
+func (s *MatrixAutopilotService) withinCap(a model.AiAction, dayStart time.Time) bool {
+	if autopilotUrgentKinds[a.Kind] {
+		return true
+	}
+	var toRecipient, toGroups int
+	var err error
+	if a.TargetEmployeeID != nil && *a.TargetEmployeeID != "" {
+		toRecipient, err = s.actions.CountForTargetSince(*a.TargetEmployeeID, dayStart)
+	} else {
+		toGroups, err = s.actions.CountGroupSince(a.Kind, dayStart)
+	}
+	if err != nil {
+		log.Printf("[ai] تعذر فحص الحد اليومي لـ%s (%s): %v — انلغى", a.Kind, a.EntityID, err)
+		return false
+	}
+	ok, limit := capDecision(a, toRecipient, toGroups)
+	if !ok {
+		who := a.TargetLabel
+		if a.TargetEmployeeID != nil {
+			who = *a.TargetEmployeeID + " " + who
+		}
+		log.Printf("[ai] انسقط تذكير %s (%s/%s) لـ%s: وصل الحد اليومي %d", a.Kind, a.EntityType, a.EntityID, who, limit)
+	}
+	return ok
 }
 
 // why يحوّل أسباب الفعل لـJSON يطلع بزر «ليش؟».

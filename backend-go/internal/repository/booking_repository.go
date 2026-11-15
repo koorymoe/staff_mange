@@ -2432,3 +2432,10 @@ func (r *BookingRepository) ArchiveStaleInquiries() (int64, error) {
 	}
 	return res.RowsAffected()
 }
+
+// CrewIDs (11-15) معرّفات الكادر المعيّن على حجز — لإشعار الإلغاء.
+func (r *BookingRepository) CrewIDs(bookingID string) ([]string, error) {
+	ids := []string{}
+	err := r.db.Select(&ids, `SELECT DISTINCT "employeeId" FROM "BookingAssignment" WHERE "bookingId" = $1`, bookingID)
+	return ids, err
+}

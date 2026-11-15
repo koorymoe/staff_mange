@@ -66,6 +66,20 @@ func (r *AiActionRepository) CountSince(kind string, since time.Time) (int, erro
 	return n, err
 }
 
+// CountForTargetSince (دازاي 11-15) كم تذكير وصل لموظف معيّن من وقت — للحد اليومي لكل مستلم.
+func (r *AiActionRepository) CountForTargetSince(employeeID string, since time.Time) (int, error) {
+	var n int
+	err := r.db.Get(&n, `SELECT COUNT(*) FROM "AiAction" WHERE "targetEmployeeId" = $1 AND "createdAt" >= $2`, employeeID, since)
+	return n, err
+}
+
+// CountGroupSince أفعال نوع معيّن بلا مستلم محدد (إشعارات جماعية) من وقت.
+func (r *AiActionRepository) CountGroupSince(kind string, since time.Time) (int, error) {
+	var n int
+	err := r.db.Get(&n, `SELECT COUNT(*) FROM "AiAction" WHERE kind = $1 AND "targetEmployeeId" IS NULL AND "createdAt" >= $2`, kind, since)
+	return n, err
+}
+
 // ListBetween أفعال فترة، الأحدث أول.
 func (r *AiActionRepository) ListBetween(from, to time.Time) ([]model.AiAction, error) {
 	rows := []model.AiAction{}

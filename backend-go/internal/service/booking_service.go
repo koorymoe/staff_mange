@@ -1213,7 +1213,21 @@ func (s *BookingService) Cancel(id, reason, byEmployeeID string) (*model.Booking
 	if err := s.repo.Cancel(id, strings.TrimSpace(reason), byEmployeeID); err != nil {
 		return nil, err
 	}
-	return s.repo.FindByID(id)
+	b, err := s.repo.FindByID(id)
+	// (11-15) الكادر المعيّن لازم يعرف إن الحجز انلغى — چان يبقى بمهامه ويمكن يطلع للزبون عالفاضي.
+	if err == nil && b != nil && s.notifications != nil {
+		crew, _ := s.repo.CrewIDs(id)
+		seen := map[string]bool{byEmployeeID: true}
+		for _, eid := range crew {
+			if eid == "" || seen[eid] {
+				continue
+			}
+			seen[eid] = true
+			_ = s.notifications.Create(eid, "booking_cancelled",
+				fmt.Sprintf("✖️ انلغى الحجز %s — لا تطلع إله. السبب: %s", b.Code, strings.TrimSpace(reason)))
+		}
+	}
+	return b, err
 }
 
 // ListByStageBucket و StageBucketCounts — تمرير مباشر للمستودع.

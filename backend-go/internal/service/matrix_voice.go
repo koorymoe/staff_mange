@@ -33,13 +33,42 @@ var voiceFactRe = regexp.MustCompile(`[A-Za-z]+-?[A-Za-z0-9]*\d+[A-Za-z0-9-]*|\d
 
 func voiceFacts(s string) []string { return voiceFactRe.FindAllString(s, -1) }
 
+// voiceMaxGrowth أقصى نسبة طول الصياغة للأصل — أطول من هيچ يعني ضاف كلام.
+const voiceMaxGrowth = 1.6
+
+// voiceTagRe رموز الموظفين المخفية.
+var voiceTagRe = regexp.MustCompile(`موظف#\d+`)
+
+func voiceSet(xs []string) map[string]bool {
+	m := make(map[string]bool, len(xs))
+	for _, x := range xs {
+		m[x] = true
+	}
+	return m
+}
+
 // voiceSafe الصياغة الجديدة تحافظ على الحقائق وما بيها كلام ممنوع؟
+// (دازاي 11-15) «إعادة الصياغة تضيف حقائق»: مو بس لازم كل رقم/كود بالأصل يبقى —
+// ولا رقم ولا كود حجز/مشروع ولا رمز «موظف#n» جديد يطلع، والطول ما يتجاوز ١.٦ ضعف.
 func voiceSafe(orig, out string) bool {
-	if strings.TrimSpace(out) == "" || len([]rune(out)) > 2*len([]rune(orig))+80 {
+	if strings.TrimSpace(out) == "" || float64(len([]rune(out))) > voiceMaxGrowth*float64(len([]rune(orig))) {
 		return false
 	}
-	for _, f := range voiceFacts(orig) {
-		if !strings.Contains(out, f) {
+	// المقارنة بالرموز الكاملة مو بالـsubstring: «3» ما ينحسب موجود لأن «B1234» بيه 3.
+	origFacts, outFacts := voiceSet(voiceFacts(orig)), voiceSet(voiceFacts(out))
+	for f := range origFacts {
+		if !outFacts[f] {
+			return false
+		}
+	}
+	for f := range outFacts {
+		if !origFacts[f] {
+			return false
+		}
+	}
+	origTags := voiceSet(voiceTagRe.FindAllString(orig, -1))
+	for _, t := range voiceTagRe.FindAllString(out, -1) {
+		if !origTags[t] {
 			return false
 		}
 	}
@@ -64,7 +93,8 @@ func (a *MatrixAgent) Rewrite(recent []string, message string) string {
 	}
 	tone := voiceTones[rand.Intn(len(voiceTones))]
 	prompt := "أعد صياغة تنبيه «ماتركس» هذا لموظف بالشركة، باللهجة العراقية، بأسلوب: " + tone + ".\n" +
-		"شروط: نفس المعنى والطلب بالضبط. كل رقم وكود وتاريخ ورمز «موظف#n» يبقى حرفياً. لا تضيف معلومة جديدة، ولا غرامة ولا تهديد. " +
+		"شروط: غيّر الصياغة بس — نفس المعنى والطلب بالضبط. كل رقم واسم وكود وتاريخ ورمز «موظف#n» يبقى حرفياً. " +
+		"ممنوع تضيف أي شي مو موجود بالتنبيه: لا رقم ولا اسم ولا كود ولا موعد ولا سبب ولا نتيجة. لا غرامة ولا تهديد. خليه بنفس الطول تقريباً. " +
 		"خليه طبيعي مثل إنسان مو قالب، وابدي بغير الطريقة الي بدت بيها الرسائل السابقة. رجّع نص الرسالة بس.\n\n" +
 		"الرسائل السابقة لنفس الموظف (لا تكررها):\n" + strings.Join(prev, "\n") + "\n\nالتنبيه:\n" + hidden
 	ctx, cancel := context.WithTimeout(context.Background(), 6*time.Second)

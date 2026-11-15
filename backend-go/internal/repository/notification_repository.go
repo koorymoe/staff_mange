@@ -101,6 +101,19 @@ func (r *NotificationRepository) MarkReadNear(employeeID, typ string, at time.Ti
 	return err
 }
 
+// MarkReadOneAfter (دازاي 11-15) «حل تذكير واحد يخفي غيره»: MarkReadNear چان يعلّم
+// كل إشعارات ماتركس الي انبعثت بنفس الدقيقتين مقروءة — وكل تذكيرات اليوم تنبعث بنفس
+// الدورة، فحل مهمة وحدة چان يخفي تذكير الحجز والمهمة الثانية. هسه بس إشعار هالفعل:
+// أول إشعار من النوع انخلق بعد الفعل (الفعل ينسجّل وبعدين إشعاره يطلع مباشرة).
+func (r *NotificationRepository) MarkReadOneAfter(employeeID, typ string, at time.Time, window time.Duration) error {
+	_, err := r.db.Exec(`UPDATE "Notification" SET read = true
+		WHERE id = (SELECT id FROM "Notification"
+		            WHERE "employeeId" = $1 AND type = $2 AND "createdAt" >= $3 AND "createdAt" <= $4
+		            ORDER BY "createdAt", id LIMIT 1)
+		  AND read = false`, employeeID, typ, at, at.Add(window))
+	return err
+}
+
 func (r *NotificationRepository) MarkAllRead(employeeID string) error {
 	_, err := r.db.Exec(`UPDATE "Notification" SET read = true WHERE "employeeId" = $1 AND read = false`, employeeID)
 	return err

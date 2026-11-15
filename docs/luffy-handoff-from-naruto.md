@@ -471,3 +471,8 @@ git push origin origin/avg:refs/heads/prod     # بعد التأكد إنه fast
 - 11-15 (لوفي) ملاحظة #11: scoreDailyReportWriting=false (DAILY_REPORT ما ينضاف)، 0497_data يلغي القديم بـcancelledAt. REPORT_MATCH (محتوى التقرير مقابل النظام) يبقى.
 - 11-15 (لوفي) #12 المطابقة الثلاثية: MatrixWatchRepository.CrossCheck (آخر ٣٠ يوم: REPORT_DONE_NOT_DONE بعد ٢٤س، MONEY_GAP <٩٠٪ بعد ٤٨س، QUALITY_CONTRADICTS إلا إذا الكشف طلّع الزبون مو على حق) → crossCheckItems بعين INTEGRITY. اختبار TestCrossCheckLive.
 - 11-15 (لوفي) #13: ReportMatcher.Match للـoffSystemWork يستعمل ChangelogMatches (changelog.md المضمّن، أسطر «- MM-DD» يوم±١، تطابق ≥٢ كلمة مميزة)؛ REPORT_MATCH رجع ينحسب لمجموعة OFF_SYSTEM. اختبار TestChangelogMatches.
+- 11-15 (لوفي) الشغل الباقي:
+  - إلغاء الحجز يوصل إشعار booking_cancelled لكل الكادر (BookingRepository.CrewIDs). اختبار TestBookingCancelNotifiesCrewLive.
+  - مسودة فاتورة الليدر: المفتاح لكل ليدر + حجز (leaderInvoiceDraft:<emp>:<booking>).
+  - ماتركس: voiceSafe يرفض أي رقم/كود/رمز جديد أو طول >1.6× (TestVoiceSafe_RejectsAddedFacts)؛ ResolveFor يعلّم إشعار التذكير نفسه بس (MarkReadOneAfter)؛ دورة عصرية ٢م لـprojectIdleToday وvehiclesUnrated (DAILY_MATRIX_AUTOPILOT_PM)؛ السقف ٨ لكل موظف باليوم (العاجل يعبر، الجماعي ٣٠ لكل نوع) ويا تسجيل المحذوف.
+  - طلبات الوكلاء الـ٦ موجودة أصلاً (رفع طلب للمدير، سجل التحديثات، ملخص المخازن اليومي) — دازاي يضغط «تم».
