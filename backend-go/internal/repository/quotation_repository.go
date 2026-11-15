@@ -161,24 +161,24 @@ func (r *QuotationRepository) FindByProject(projectID string) (*model.Quotation,
 	return r.FindByID(id)
 }
 
-func (r *QuotationRepository) nextQuotationNumber(year int) (string, error) {
+// nextQuotationNumber يحسب الرقم الجاي **داخل معاملة الإدخال**: قفل استشاري
+// على السنة يسلسل الإنشاءات المتزامنة، والـMAX رقمي (مو نصي) حتى يعبر ٩٩٩٩.
+func nextQuotationNumber(tx *sqlx.Tx, year int) (string, error) {
 	prefix := "AM-" + strconv.Itoa(year) + "-"
-	var lastNumber string
-	err := r.db.Get(&lastNumber, `
-		SELECT "quotationNumber" FROM "Quotation"
-		WHERE "quotationNumber" LIKE $1
-		ORDER BY "quotationNumber" DESC LIMIT 1
-	`, prefix+"%")
-	seq := 1
-	if err == nil {
-		parts := strings.Split(lastNumber, "-")
-		if len(parts) == 3 {
-			if n, convErr := strconv.Atoi(parts[2]); convErr == nil {
-				seq = n + 1
-			}
-		}
+	if _, err := tx.Exec(`SELECT pg_advisory_xact_lock(hashtext('quotation-number:' || $1))`, prefix); err != nil {
+		return "", err
 	}
-	return prefix + padLeft(strconv.Itoa(seq), 4, '0'), nil
+	var last int64
+	if err := tx.Get(&last, `
+		SELECT COALESCE(MAX(substring("quotationNumber" FROM '^AM-[0-9]+-([0-9]+)$')::bigint), 0)
+		FROM "Quotation" WHERE "quotationNumber" LIKE $1`, prefix+"%"); err != nil {
+		return "", err
+	}
+	return formatQuotationNumber(prefix, last+1), nil
+}
+
+func formatQuotationNumber(prefix string, seq int64) string {
+	return prefix + padLeft(strconv.FormatInt(seq, 10), 4, '0')
 }
 
 func padLeft(s string, length int, pad byte) string {
@@ -231,10 +231,6 @@ func (r *QuotationRepository) Create(req model.CreateQuotationRequest) (*model.Q
 		return nil, err
 	}
 	year := time.Now().In(timeutil.CompanyLocation()).Year() // (11-07) سنة بغداد — ليلة رأس السنة چان يطلع رقم السنة الماضية
-	quotationNumber, err := r.nextQuotationNumber(year)
-	if err != nil {
-		return nil, err
-	}
 
 	discountPercent := 0.0
 	if req.DiscountPercent != nil {
@@ -247,6 +243,11 @@ func (r *QuotationRepository) Create(req model.CreateQuotationRequest) (*model.Q
 		return nil, err
 	}
 	defer tx.Rollback()
+
+	quotationNumber, err := nextQuotationNumber(tx, year)
+	if err != nil {
+		return nil, err
+	}
 
 	var q model.Quotation
 	err = tx.Get(&q, `

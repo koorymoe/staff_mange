@@ -55,12 +55,21 @@ func (s *KpiService) ListForEmployee(employeeID string) ([]model.KpiEvaluation, 
 // "متدرب" (isTrainee) حتى يكمل التدريب المطلوب قبل ما يرجع لباقي شاشات النظام.
 // كذلك يرسل إشعارات: للموظف نفسه عند خصم نقطة، ولكل زملائه بنفس الدور إذا تغيّر
 // المتصدر بالترتيب الشهري بعد هذا التقييم — إعلام بس، بدون أي تغيير تلقائي بالراتب.
+// ErrKpiTargetNotAllowed الهدف ما موجود، أو مدير/مالك، أو المقيّم نفسه — الهاندلر يرجّع 404.
+var ErrKpiTargetNotAllowed = errors.New("الموظف مو موجود")
+
 func (s *KpiService) Create(req model.CreateKpiEvaluationRequest) (*model.KpiEvaluation, error) {
 	if req.EmployeeID == "" || req.EvaluatorID == "" || req.Points == nil {
 		return nil, errors.New("اختار الموظف والمقيّم والنقاط")
 	}
 
 	employee, empErr := s.employees.FindByID(req.EmployeeID)
+	if empErr != nil || employee == nil {
+		return nil, ErrKpiTargetNotAllowed
+	}
+	if model.IsAdminRole(employee.Role) || req.EmployeeID == req.EvaluatorID {
+		return nil, ErrKpiTargetNotAllowed
+	}
 
 	// ⚠️ الخصم يتقرّر بالمقدار مو بالإشارة: الواجهة تدزّ النقاط بالموجب (١..٨).
 	// ═══ وينخزن **سالب** دائماً — فحص السيرفر 10-23 ═══

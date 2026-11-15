@@ -27,6 +27,14 @@ var (
 )
 
 // editAccess هل يگدر يعدّل/يضيف بهالجدول؟ (السبب إذا لا)
+// ownerOnlyCol عمود فلوس/صلاحيات — قراءته وتعديله للمالك بس.
+func ownerOnlyCol(k string) bool { return k == "salary" || ownerOnlyData.MatchString(k) }
+
+// ownerOnlyEmployeeCol دور الموظف وحالته — تغييرهم من اللوحة للمالك بس (ترقية لمدير أو تفعيل حساب).
+func ownerOnlyEmployeeCol(table, k string) bool {
+	return table == "Employee" && (k == "role" || k == "status")
+}
+
 func editAccess(a *core.Actor, table string) (bool, string) {
 	if readOnlyTable.MatchString(table) {
 		return false, "هذا سجل تدقيق — ما يتعدّل من اللوحة أبداً"
@@ -100,8 +108,12 @@ func (a *App) adminWrite(w http.ResponseWriter, r *http.Request, create bool) {
 			writeErr(w, http.StatusBadRequest, "المفتاح الأساسي ما يتغيّر")
 			return
 		}
-		if (k == "salary" || ownerOnlyData.MatchString(k)) && !actor.Owner() {
+		if ownerOnlyCol(k) && !actor.Owner() {
 			writeErr(w, http.StatusNotFound, "عمود فلوس — تعديله للمالك بس: "+k)
+			return
+		}
+		if ownerOnlyEmployeeCol(name, k) && !actor.Owner() {
+			writeErr(w, http.StatusNotFound, "مو موجود")
 			return
 		}
 		args = append(args, sqlValue(v))

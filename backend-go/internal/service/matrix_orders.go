@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"regexp"
 	"sort"
 	"strings"
@@ -102,7 +103,23 @@ func (o *MatrixOrder) decode() {
 	_ = json.Unmarshal(o.RawAction, &o.Actions)
 }
 
+// staleRunningAfter الأمر الي يبقى «يشتغل» أكثر من هالمدة بلا تقدّم = انقطع (إعادة تشغيل السيرفر بالنص).
+const staleRunningAfter = 10 * time.Minute
+
+const staleRunningNote = "⚠️ التنفيذ انقطع بالنص — شوف الإجراءات المنفّذة قبل لا تعيد"
+
+// sweepStale يحوّل أوامر المستخدم العالقة بـRUNNING إلى FAILED بملاحظة.
+func (s *MatrixOrderService) sweepStale(actor string) {
+	if _, err := s.db.Exec(`UPDATE "MatrixOrder" SET status = $2,
+		reply = CASE WHEN COALESCE(reply, '') = '' THEN $3 ELSE reply || E'\n' || $3 END, "doneAt" = now()
+		WHERE "actorId" = $1 AND status = $4 AND COALESCE("doneAt", "createdAt") < now() - make_interval(secs => $5)`,
+		actor, OrderFailed, staleRunningNote, OrderRunning, staleRunningAfter.Seconds()); err != nil {
+		log.Printf("تنظيف أوامر ماتركس العالقة: %v", err)
+	}
+}
+
 func (s *MatrixOrderService) List(actor string) ([]MatrixOrder, error) {
+	s.sweepStale(actor)
 	rows := []MatrixOrder{}
 	if err := s.db.Select(&rows, orderSelect+` WHERE "actorId" = $1 ORDER BY "createdAt" DESC LIMIT 30`, actor); err != nil {
 		return nil, err
@@ -243,7 +260,8 @@ func (s *MatrixOrderService) Cancel(id, actor string) error {
 // Run ينفّذ الإجراءات (عدا المشطوبة بـskip) مرة وحدة بس — القفل بالحالة.
 func (s *MatrixOrderService) Run(id, actor, role string, skip []int) (*MatrixOrder, error) {
 	var raw json.RawMessage
-	if err := s.db.Get(&raw, `UPDATE "MatrixOrder" SET status = $3 WHERE id = $1 AND "actorId" = $2 AND status = $4 RETURNING actions`,
+	// ⚠️ "doneAt" وقت التشغيل = نبضة آخر تقدّم — حتى الأمر العالق ينعرف (sweepStale).
+	if err := s.db.Get(&raw, `UPDATE "MatrixOrder" SET status = $3, "doneAt" = now() WHERE id = $1 AND "actorId" = $2 AND status = $4 RETURNING actions`,
 		id, actor, OrderRunning, OrderProposed); err != nil {
 		return nil, ErrOrderNotFound
 	}
@@ -266,6 +284,12 @@ func (s *MatrixOrderService) Run(id, actor, role string, skip []int) (*MatrixOrd
 		}
 		acts[i].Done, acts[i].Result, acts[i].Link = true, res, link
 		ok++
+		// كل إجراء ينحفظ أول ما يخلص — لو انقطع التشغيل بالنص، المنفّذ ما ينعاد ولا يضيع أثره.
+		if cur, err := json.Marshal(acts); err == nil {
+			if _, err := s.db.Exec(`UPDATE "MatrixOrder" SET actions = $2, "doneAt" = now() WHERE id = $1 AND status = $3`, id, cur, OrderRunning); err != nil {
+				log.Printf("حفظ تقدّم أمر ماتركس %s: %v", id, err)
+			}
+		}
 	}
 	status := OrderDone
 	if ok == 0 && len(skipped) < len(acts) {

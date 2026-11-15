@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"regexp"
-	"strconv"
 	"time"
 
 	"github.com/jmoiron/sqlx"
@@ -92,31 +91,32 @@ func (r *ProcurementRepository) List() ([]model.ProcurementRequest, error) {
 
 var prCodeRe = regexp.MustCompile(`PR-(\d+)`)
 
-func (r *ProcurementRepository) nextCode() (string, error) {
-	var lastCode string
-	err := r.db.Get(&lastCode, `SELECT code FROM "ProcurementRequest" ORDER BY code DESC LIMIT 1`)
-	nextNum := 1
-	if err == nil {
-		if m := prCodeRe.FindStringSubmatch(lastCode); m != nil {
-			if n, convErr := strconv.Atoi(m[1]); convErr == nil {
-				nextNum = n + 1
-			}
-		}
+// nextProcurementCode داخل معاملة الإدخال: قفل استشاري يسلسل الإنشاءات،
+// والـMAX على الجزء الرقمي حتى PR-10000 ما ينحسب أصغر من PR-9999.
+func nextProcurementCode(tx *sqlx.Tx) (string, error) {
+	if _, err := tx.Exec(`SELECT pg_advisory_xact_lock(hashtext('procurement-code'))`); err != nil {
+		return "", err
 	}
-	return fmt.Sprintf("PR-%04d", nextNum), nil
+	var last int64
+	if err := tx.Get(&last, `SELECT COALESCE(MAX(substring(code FROM '^PR-([0-9]+)$')::bigint), 0) FROM "ProcurementRequest"`); err != nil {
+		return "", err
+	}
+	return formatProcurementCode(last + 1), nil
 }
 
-func (r *ProcurementRepository) Create(req model.CreateProcurementRequestRequest) (*model.ProcurementRequest, error) {
-	code, err := r.nextCode()
-	if err != nil {
-		return nil, err
-	}
+func formatProcurementCode(n int64) string { return fmt.Sprintf("PR-%04d", n) }
 
+func (r *ProcurementRepository) Create(req model.CreateProcurementRequestRequest) (*model.ProcurementRequest, error) {
 	tx, err := r.db.Beginx()
 	if err != nil {
 		return nil, err
 	}
 	defer tx.Rollback()
+
+	code, err := nextProcurementCode(tx)
+	if err != nil {
+		return nil, err
+	}
 
 	requestType := req.RequestType
 	if requestType == "" {

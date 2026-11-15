@@ -70,12 +70,13 @@ func (a *App) adminRows(w http.ResponseWriter, r *http.Request) {
 		page = 1
 	}
 	const size = 50
+	owner := core.ActorOf(r).Owner()
 	q := strings.TrimSpace(r.URL.Query().Get("q"))
 	where, args := "", []any{}
 	if q != "" {
 		parts := []string{}
 		for _, c := range cols {
-			if secretCol.MatchString(c.Name) {
+			if secretCol.MatchString(c.Name) || (!owner && ownerOnlyCol(c.Name)) {
 				continue // البحث ما يمر على الأسرار — حتى ما ينكشف وجود قيمة
 			}
 			parts = append(parts, fmt.Sprintf(`%s::text ILIKE $1`, quoteIdent(c.Name)))
@@ -108,6 +109,8 @@ func (a *App) adminRows(w http.ResponseWriter, r *http.Request) {
 		for k, v := range m {
 			switch {
 			case v == nil:
+			case !owner && ownerOnlyCol(k):
+				m[k] = nil
 			case secretCol.MatchString(k):
 				m[k] = "•••"
 			default:
@@ -136,7 +139,7 @@ func (a *App) adminRows(w http.ResponseWriter, r *http.Request) {
 	}
 	locked := []string{}
 	for _, c := range cols {
-		if secretCol.MatchString(c.Name) || ((c.Name == "salary" || ownerOnlyData.MatchString(c.Name)) && !core.ActorOf(r).Owner()) {
+		if secretCol.MatchString(c.Name) || (!owner && (ownerOnlyCol(c.Name) || ownerOnlyEmployeeCol(name, c.Name))) {
 			locked = append(locked, c.Name)
 		}
 	}

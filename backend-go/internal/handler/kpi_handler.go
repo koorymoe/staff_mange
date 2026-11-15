@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"errors"
 	"slices"
 	"strings"
 
@@ -50,7 +51,12 @@ func (h *KpiHandler) Create(w http.ResponseWriter, r *http.Request) {
 		WriteError(w, http.StatusBadRequest, "بيانات الطلب غير صحيحة")
 		return
 	}
+	req.EvaluatorID = middleware.EmployeeIDFromContext(r)
 	eval, err := h.service.Create(req)
+	if errors.Is(err, service.ErrKpiTargetNotAllowed) {
+		WriteError(w, http.StatusNotFound, err.Error())
+		return
+	}
 	if err != nil {
 		WriteError(w, http.StatusBadRequest, err.Error())
 		return

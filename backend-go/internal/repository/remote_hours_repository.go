@@ -1,7 +1,9 @@
 package repository
 
 import (
+	"errors"
 	"staffmange-api/internal/errlog"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -73,8 +75,32 @@ func (r *RemoteHoursRepository) Create(employeeID, date string, seconds int, not
 	return r.CreateFrom(employeeID, date, seconds, note, byID, "MANUAL")
 }
 
+// ErrAgentKeyUsed سطر الوكيل بهالمفتاح انسجّل قبل (طلب مكرّر).
+var ErrAgentKeyUsed = errors.New("المفتاح مستعمل قبل")
+
+// agentNotePrefix المفتاح محفوظ بأول ملاحظة الوكيل: «🤖 Claude [key]».
+func agentNotePrefix(key string) string { return "🤖 Claude [" + key + "]" }
+
+// agentKeyFromNote يطلّع المفتاح من ملاحظة الوكيل ("" إذا مو ملاحظة وكيل).
+func agentKeyFromNote(note string) string {
+	const p = "🤖 Claude ["
+	if !strings.HasPrefix(note, p) {
+		return ""
+	}
+	rest := note[len(p):]
+	if i := strings.IndexByte(rest, ']'); i > 0 {
+		return rest[:i]
+	}
+	return ""
+}
+
 func (r *RemoteHoursRepository) CreateFrom(employeeID, date string, seconds int, note *string, byID, source string) (string, error) {
 	id := uuid.NewString()
+	if source == "AGENT" && note != nil {
+		if key := agentKeyFromNote(*note); key != "" {
+			return r.createAgent(id, employeeID, date, seconds, note, byID, key)
+		}
+	}
 	_, err := r.db.Exec(`INSERT INTO "RemoteWorkEntry" (id, "employeeId", "workDate", seconds, note, "addedById", source) VALUES ($1,$2,$3::date,$4,$5,NULLIF($6,''),$7)`,
 		id, employeeID, date, seconds, note, byID, source)
 	return id, err
@@ -240,10 +266,36 @@ func (r *RemoteHoursRepository) AgentDaySeconds(employeeID, date string) int {
 	return n
 }
 
+// createAgent الإدخال والفحص بنفس المعاملة تحت قفل استشاري على المفتاح —
+// طلبين متزامنين بنفس Idempotency-Key ما يسجّلون مرتين.
+func (r *RemoteHoursRepository) createAgent(id, employeeID, date string, seconds int, note *string, byID, key string) (string, error) {
+	tx, err := r.db.Beginx()
+	if err != nil {
+		return "", err
+	}
+	defer tx.Rollback() //nolint:errcheck
+	if _, err := tx.Exec(`SELECT pg_advisory_xact_lock(hashtext('remote-agent:' || $1 || ':' || $2))`, employeeID, key); err != nil {
+		return "", err
+	}
+	var used bool
+	if err := tx.Get(&used, `SELECT EXISTS (SELECT 1 FROM "RemoteWorkEntry" WHERE "employeeId" = $1 AND source = 'AGENT' AND starts_with(note, $2))`,
+		employeeID, agentNotePrefix(key)); err != nil {
+		return "", err
+	}
+	if used {
+		return "", ErrAgentKeyUsed
+	}
+	if _, err := tx.Exec(`INSERT INTO "RemoteWorkEntry" (id, "employeeId", "workDate", seconds, note, "addedById", source) VALUES ($1,$2,$3::date,$4,$5,NULLIF($6,''),'AGENT')`,
+		id, employeeID, date, seconds, note, byID); err != nil {
+		return "", err
+	}
+	return id, tx.Commit()
+}
+
 // AgentKeyUsed هل انسجّل سطر بهالمفتاح قبل؟ (المفتاح محفوظ بأول الملاحظة «🤖 Claude [key]»)
 func (r *RemoteHoursRepository) AgentKeyUsed(employeeID, key string) bool {
 	var ok bool
 	errlog.Err(r.db.Get(&ok, `SELECT EXISTS (SELECT 1 FROM "RemoteWorkEntry" WHERE "employeeId" = $1 AND source = 'AGENT' AND starts_with(note, $2))`,
-		employeeID, "🤖 Claude ["+key+"]"))
+		employeeID, agentNotePrefix(key)))
 	return ok
 }

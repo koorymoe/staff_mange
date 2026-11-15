@@ -179,6 +179,9 @@ func (h *ExtraTaskHandler) Cancel(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	id := r.PathValue("id")
+	if !h.requireAssigner(w, r, id) {
+		return
+	}
 	if err := h.repo.Cancel(id, reason); err != nil {
 		WriteError(w, http.StatusBadRequest, err.Error())
 		return
@@ -210,6 +213,9 @@ func (h *ExtraTaskHandler) Extend(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	id := r.PathValue("id")
+	if !h.requireAssigner(w, r, id) {
+		return
+	}
 	due := time.Now().AddDate(0, 0, req.Days)
 	if err := h.repo.Extend(id, due); err != nil {
 		WriteError(w, http.StatusBadRequest, err.Error())
@@ -230,8 +236,33 @@ func (h *ExtraTaskHandler) Remind(w http.ResponseWriter, r *http.Request) {
 		WriteError(w, http.StatusNotFound, "المهمة مو موجودة أو خالصة")
 		return
 	}
+	if !canManageExtraTask(middleware.RoleFromContext(r), middleware.EmployeeIDFromContext(r), task) {
+		WriteError(w, http.StatusNotFound, "المهمة مو موجودة أو خالصة")
+		return
+	}
 	if h.notifications != nil {
 		_ = h.notifications.Create(task.AssignedToID, "extra_task_reminder", fmt.Sprintf("🔔 تذكير من الإدارة: المهمة «%s» تنتظرك", task.Title))
 	}
 	h.respondTask(w, id)
+}
+
+// canManageExtraTask الإلغاء/التمديد/التذكير لمن وجّه المهمة بس — والمدير والمالك.
+func canManageExtraTask(role, actorID string, task *model.ExtraTask) bool {
+	if task == nil {
+		return false
+	}
+	if model.IsAdminRole(role) {
+		return true
+	}
+	return actorID != "" && task.AssignedByID != nil && *task.AssignedByID == actorID
+}
+
+// requireAssigner يرجّع 404 إذا المهمة مو موجودة أو مو من توجيه المستخدم.
+func (h *ExtraTaskHandler) requireAssigner(w http.ResponseWriter, r *http.Request, id string) bool {
+	task, err := h.repo.FindByID(id)
+	if err != nil || !canManageExtraTask(middleware.RoleFromContext(r), middleware.EmployeeIDFromContext(r), task) {
+		WriteError(w, http.StatusNotFound, "المهمة مو موجودة")
+		return false
+	}
+	return true
 }

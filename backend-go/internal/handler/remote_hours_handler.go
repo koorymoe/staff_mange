@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -90,6 +91,10 @@ func (h *RemoteHoursHandler) addFrom(w http.ResponseWriter, b addBody, byID, sou
 		b.Note = &n
 	}
 	id, err := h.repo.CreateFrom(b.EmployeeID, b.Date, total, b.Note, byID, source)
+	if errors.Is(err, repository.ErrAgentKeyUsed) {
+		WriteJSON(w, http.StatusOK, map[string]any{"duplicate": true})
+		return
+	}
 	if err != nil {
 		WriteError(w, http.StatusInternalServerError, "تعذر الحفظ")
 		return
