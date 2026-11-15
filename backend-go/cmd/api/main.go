@@ -2100,6 +2100,8 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	secs["checklists"].Set("GET /api/checklists", "checklists.get_root", checklistHandler.List)
 	secs["checklists"].Set("POST /api/checklists", "checklists.post_root", checklistHandler.Create)
 	secs["checklists"].Set("PUT /api/checklists/{id}/photos", "checklists.put_by_id_photos", checklistHandler.AddPhotos)
+	surveysHandler := handler.NewSurveysHandler(db, middleware.RoleOrAnyPermissionCheck(permissionRepo, []string{"ADMIN", "OWNER", "PROJECT_MANAGER"}, "project_management"))
+	secs["checklists"].Set("GET /api/surveys", "checklists.get_surveys", surveysHandler.List)
 
 	// معرض أعمال التقنيين — أي موظف مسجل دخول يتصفحه (إلهام)، بس صاحب صلاحية
 	// "التقني" (content_technician) بس يقدر يضيف عمل/يرفع وسائط.

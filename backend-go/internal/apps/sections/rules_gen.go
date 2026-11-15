@@ -284,7 +284,8 @@ func rules() map[string]map[core.Action]core.Rule {
 			"cart.put_by_id":                 func(l string) core.Rule { return any_(l) }("يعدّل /api/cart/{id} (الدخول — الفحص بالمعالج + طبقة: requireCartItemParty)"),
 		},
 		"checklists": {
-			"checklists.get_root": func(l string) core.Rule { return any_(l) }("يقرا /api/checklists (الدخول — الفحص بالمعالج)"),
+			"checklists.get_root":    func(l string) core.Rule { return any_(l) }("يقرا /api/checklists (الدخول — الفحص بالمعالج)"),
+			"checklists.get_surveys": func(l string) core.Rule { return any_(l) }("يقرا /api/surveys (الدخول — الإدارة تشوف الكل، غيرها الي يخصه بس)"),
 			"checklists.post_root": func(l string) core.Rule {
 				return rolePerm(l, []string{"ADMIN", "PROJECT_MANAGER"}, "project_management")
 			}("ينفّذ /api/checklists (دور/صلاحية)"),

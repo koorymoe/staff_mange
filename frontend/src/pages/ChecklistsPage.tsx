@@ -5,6 +5,7 @@ import { esc } from '../utils/printIdentity'
 import { swallow } from '../utils/swallow'
 
 import { notify } from '../ui/notify'
+import AllSurveys from '../components/AllSurveys'
 function printBlankChecklist(rawTitle: string) {
   const title = esc(rawTitle)
   const win = window.open('', '_blank')
@@ -81,8 +82,12 @@ export default function ChecklistsPage() {
     <div>
       <h2 className="text-2xl font-bold text-brand-900">الكشوفات</h2>
       <p className="mt-1 text-slate-500">
-        سوي كشف جديد، اطبعه فارغ حتى يمليه المهندس بالموقع، وبعدها ارفع صور الفورمة المالية.
+        كل كشوفات المشاريع والحجوزات بمكان واحد. وتحت: الفورمات الورقية (تطبعها فارغة، يمليها المهندس بالموقع، وترفع صورها).
       </p>
+
+      <AllSurveys />
+
+      <h3 className="mt-8 text-lg font-bold text-brand-900">📄 الفورمات الورقية</h3>
 
       <form onSubmit={handleCreate} className="mt-6 grid grid-cols-1 gap-3 rounded-xl border border-white bg-white p-5 shadow-sm sm:grid-cols-4">
         <input
@@ -104,7 +109,7 @@ export default function ChecklistsPage() {
       {loading && <p className="mt-6 text-slate-400">جاري التحميل…</p>}
 
       <div className="mt-6 flex flex-col gap-3">
-        {!loading && checklists.length === 0 && <p className="text-slate-400">لا توجد كشوفات بعد.</p>}
+        {!loading && checklists.length === 0 && <p className="text-slate-400">ماكو فورمات ورقية بعد.</p>}
         {checklists.map((c) => (
           <div key={c.id} className="rounded-xl border border-white bg-white p-4 shadow-sm">
             <div className="flex flex-wrap items-center justify-between gap-2">

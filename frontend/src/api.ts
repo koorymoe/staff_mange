@@ -506,6 +506,7 @@ export const api = {
   approveAttendanceIconRequest: (id: string) => request<void>(`/attendance-icon-requests/${id}/approve`, { method: 'PUT' }),
   rejectAttendanceIconRequest: (id: string) => request<void>(`/attendance-icon-requests/${id}/reject`, { method: 'PUT' }),
   getChecklists: () => request<ProjectChecklist[]>('/checklists'),
+  getSurveys: () => request<SurveyRow[]>('/surveys'),
   getTechShowcase: () => request<TechShowcaseItem[]>('/tech-showcase'),
   createTechShowcaseItem: (data: { title: string; description?: string }) =>
     request<TechShowcaseItem>('/tech-showcase', { method: 'POST', body: JSON.stringify(data) }),
@@ -2740,4 +2741,22 @@ export const purchaseApi = {
     a.download = `المشتريات-${month}.xlsx`
     a.click()
   },
+}
+
+export interface SurveyRow {
+  kind: 'PROJECT' | 'BOOKING'
+  id: string
+  refId: string
+  code?: string | null
+  title?: string | null
+  customer?: string | null
+  stage?: string | null
+  location?: string | null
+  when?: string | null
+  team?: string | null
+  details?: string | null
+  byName?: string | null
+  ownerName?: string | null
+  hasAnswers: boolean
+  createdAt?: string | null
 }
