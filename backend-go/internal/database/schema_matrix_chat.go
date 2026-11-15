@@ -2486,5 +2486,11 @@ func matrixChatMigrations() []Migration {
 			DROP INDEX IF EXISTS "OrgPlan_scope_uq";
 			CREATE INDEX IF NOT EXISTS "OrgPlan_scope_idx" ON "OrgPlan" ("divisionId", COALESCE("unitId", ''), period);
 		`,
+	}, {
+		// (دازاي 11-15) «محد يتقيم ع كتابة تقرير الإنجاز»: علامات «كتب/ما كتب التقرير» القديمة
+		// تنلغى (cancelledAt — ما تنحذف، وتكدر ترجع). التقييم يبقى على محتوى التقرير (REPORT_MATCH).
+		Version: "0497_data_cancel_daily_report_scores",
+		SQL: `UPDATE "MatrixScore" SET "cancelledAt" = now(), "cancelNote" = 'دازاي 11-15: كتابة تقرير الإنجاز ما تنقيّم — بس محتواه'
+			WHERE rule = 'DAILY_REPORT' AND "cancelledAt" IS NULL;`,
 	}}
 }

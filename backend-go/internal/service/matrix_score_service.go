@@ -247,7 +247,10 @@ func (s *MatrixScoreService) scoreDays(now time.Time, add func(repository.Matrix
 		}
 		reportOn := since != "" && key >= since
 		for _, p := range people {
-			if _, ok := present[p.ID]; ok && reportOn && !leave[p.ID] {
+			// (دازاي 11-15) «اكتب تقريرك… اني ماريد يتقيم هيج»: كتابة التقرير نفسها ما تنقيّم بعد —
+			// التقرير يبقى إجباري (يطلع للموظف)، والتقييم على محتواه بس (REPORT_MATCH: ماتركس يقارن
+			// الي كتبه ويا الي صار بالنظام).
+			if _, ok := present[p.ID]; ok && reportOn && !leave[p.ID] && scoreDailyReportWriting {
 				rl := "تقرير " + key
 				r := repository.MatrixScoreRow{EmployeeID: p.ID, Source: "REPORT", SourceID: "daily:" + key, SourceLabel: &rl,
 					Rule: "DAILY_REPORT", MaxPoints: 2, At: day.Add(13 * time.Hour).UTC()}
@@ -920,6 +923,9 @@ func (s *MatrixScoreService) scoreRatingDuty(now time.Time, add func(repository.
 			Rule: "RATING_DUTY", Points: pts, MaxPoints: 2, At: n.CreatedAt, Reason: why})
 	}
 }
+
+// scoreDailyReportWriting (دازاي 11-15): مطفي — كتابة التقرير ما تنقيّم، بس محتواه.
+const scoreDailyReportWriting = false
 
 // scoreReportMatch (11-02 — ٩.٤) تقرير الإنجاز مقابل الشغل المسجّل: مطابق/مبرّر = ٢، جزئي = ١، بلا أثر = ٠.
 func (s *MatrixScoreService) scoreReportMatch(now time.Time, add func(repository.MatrixScoreRow)) {
