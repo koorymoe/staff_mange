@@ -32,3 +32,4 @@ frontend/playwright-report/
 # توكنات مؤقتة — ما تنرفع (11-06)
 tok.txt
 *.token
+botreports-out/
