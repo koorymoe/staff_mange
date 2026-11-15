@@ -579,3 +579,54 @@ func (r *MatrixWatchRepository) Integrity() ([]IntegrityRow, error) {
 	LIMIT 300`)
 	return rows, err
 }
+
+// ═══ المطابقة الثلاثية (دازاي 11-15) ═══
+// «الليدر يكتب تم الإنجاز — ماتركس يروح يتأكد: حقاً انجز؟ مستلم فلوس؟ تقرير الليدر والي سجّله
+// أبو الجودة من اتصل ع الزبون متطابقين؟». آخر ٣٠ يوم، وبعد مهلة حتى ما يطلع إنذار قبل وقته.
+
+// CrossCheckRow تناقض بين تقرير الليدر والنظام أو اتصال الجودة.
+type CrossCheckRow struct {
+	Kind      string   `db:"kind"`
+	BookingID string   `db:"bookingId"`
+	Code      string   `db:"code"`
+	Leader    *string  `db:"leader"`
+	LeaderID  *string  `db:"leaderId"`
+	Num       *float64 `db:"num"`
+	Num2      *float64 `db:"num2"`
+	Note      *string  `db:"note"`
+}
+
+func (r *MatrixWatchRepository) CrossCheck() ([]CrossCheckRow, error) {
+	rows := []CrossCheckRow{}
+	err := r.db.Select(&rows, `
+	WITH wr AS (
+		SELECT DISTINCT ON (w."bookingId") w."bookingId", w."employeeId", w."workStatus", w."createdAt", w.notes
+		FROM "WorkReport" w WHERE w."createdAt" > now() - interval '30 days'
+		ORDER BY w."bookingId", w."createdAt" DESC
+	), inv AS (
+		SELECT "bookingId", sum("netTotal")::float8 AS net FROM "LeaderInvoice"
+		WHERE "revokedAt" IS NULL AND status <> 'DRAFT' AND "bookingId" IS NOT NULL GROUP BY 1
+	)
+	-- ١) التقرير يگول انجز والحجز بالنظام مو منجز (بعد يوم)
+	SELECT 'REPORT_DONE_NOT_DONE' AS kind, b.id AS "bookingId", b.code, e.name AS leader, wr."employeeId" AS "leaderId",
+	       NULL::float8 AS num, NULL::float8 AS num2, b.status::text AS note
+	FROM wr JOIN "Booking" b ON b.id = wr."bookingId" LEFT JOIN "Employee" e ON e.id = wr."employeeId"
+	WHERE wr."workStatus" = 'COMPLETED' AND b.status::text NOT IN ('COMPLETED') AND b."archivedAt" IS NULL
+	  AND wr."createdAt" < now() - interval '24 hours'
+	UNION ALL
+	-- ٢) منجز وعليه فاتورة، بس المستلم أقل من الفاتورة بأكثر من ١٠٪ (بعد يومين)
+	SELECT 'MONEY_GAP', b.id, b.code, e.name, wr."employeeId", inv.net, COALESCE(b."amountCollected", 0)::float8, NULL
+	FROM wr JOIN "Booking" b ON b.id = wr."bookingId" JOIN inv ON inv."bookingId" = b.id LEFT JOIN "Employee" e ON e.id = wr."employeeId"
+	WHERE wr."workStatus" = 'COMPLETED' AND b.status::text = 'COMPLETED' AND inv.net > 0
+	  AND COALESCE(b."amountCollected", 0) < inv.net * 0.9 AND wr."createdAt" < now() - interval '48 hours'
+	UNION ALL
+	-- ٣) الليدر كتب «انجز» وأبو الجودة سجّل إن الزبون عنده مشكلة / تقرير سلبي
+	SELECT 'QUALITY_CONTRADICTS', b.id, b.code, e.name, wr."employeeId", NULL, NULL,
+	       COALESCE(NULLIF(q."contactNotes", ''), CASE q."reportType" WHEN 'NEGATIVE' THEN 'تقرير سلبي' ELSE 'أكو مشكلة' END)
+	FROM wr JOIN "Booking" b ON b.id = wr."bookingId" LEFT JOIN "Employee" e ON e.id = wr."employeeId"
+	JOIN LATERAL (SELECT * FROM "QualityFollowUp" q WHERE q."bookingId" = b.id ORDER BY q."createdAt" DESC LIMIT 1) q ON true
+	WHERE wr."workStatus" = 'COMPLETED' AND (q.status = 'CONTACTED_ISSUE' OR q."reportType" = 'NEGATIVE')
+	  AND NOT (q."inspectionStatus" = 'DONE' AND q."inspectionResult" = 'CUSTOMER_WRONG')
+	LIMIT 300`)
+	return rows, err
+}

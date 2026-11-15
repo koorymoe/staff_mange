@@ -648,5 +648,51 @@ func (s *MatrixWatchService) integrityEye() EyeGroup {
 		}
 		eye.Items = append(eye.Items, it)
 	}
-	return finishEye(eye, "✅ كل الأرقام متطابقة: ماكو فلوس على ملغي، ولا فواتير مكررة، ولا مبالغ شاذة، ولا حضور غلط.")
+	eye.Items = append(eye.Items, s.crossCheckItems(f)...)
+	return finishEye(eye, "✅ كل الأرقام متطابقة: ماكو فلوس على ملغي، ولا فواتير مكررة، ولا مبالغ شاذة، ولا حضور غلط، وتقارير الليدرية تطابق النظام واتصالات الجودة.")
+}
+
+// crossCheckItems (دازاي 11-15) المطابقة الثلاثية: تقرير الليدر ↔ حالة الحجز والفلوس ↔ اتصال الجودة.
+// «الليدر يكتب تم الإنجاز — ماتركس يروح يتأكد». كل تناقض بند بعين «تطابق الأرقام» ويا الليدر وزر الحجز.
+func (s *MatrixWatchService) crossCheckItems(f func(*float64) string) []EyeItem {
+	rows, err := s.repo.CrossCheck()
+	if err != nil {
+		return []EyeItem{{Eye: "INTEGRITY", Kind: "CHECK_FAILED", Severity: WatchMedium,
+			Title: "ماتركس ما گدر يطابق تقارير الليدرية", Detail: err.Error(), Advice: "بلّغ المبرمج."}}
+	}
+	out := []EyeItem{}
+	for _, r := range rows {
+		it := EyeItem{Eye: "INTEGRITY", Kind: r.Kind, BookingID: r.BookingID}
+		if r.LeaderID != nil {
+			it.OwnerID = *r.LeaderID
+		}
+		if r.Leader != nil {
+			it.OwnerName = *r.Leader
+		}
+		note := ""
+		if r.Note != nil {
+			note = *r.Note
+		}
+		switch r.Kind {
+		case "REPORT_DONE_NOT_DONE":
+			it.Severity = WatchHigh
+			it.Title = "حجز " + r.Code + ": الليدر كتب «انجز» والحجز بالنظام مو منجز"
+			it.Detail = "تقرير الشغل يگول COMPLETED، وحالة الحجز بالنظام: " + note + " — من يوم أو أكثر."
+			it.Advice = "يا الليدر نسى يضغط «إنجاز» بالحجز، يا التقرير مو صحيح. المراقب يتأكد ويا الليدر والزبون."
+		case "MONEY_GAP":
+			it.Severity = WatchHigh
+			it.Title = "حجز " + r.Code + ": الفاتورة " + f(r.Num) + " والمستلم " + f(r.Num2)
+			it.Detail = "الليدر كتب إنه خلص الشغل، بس المستلم من الزبون أقل من الفاتورة بأكثر من ١٠٪ (بعد يومين)."
+			it.Advice = "المحاسب يسأل الليدر: الباقي وين؟ آجل لو خصم لو ما انسجّل؟"
+		case "QUALITY_CONTRADICTS":
+			it.Severity = WatchMedium
+			it.Title = "حجز " + r.Code + ": الليدر كتب «انجز» والزبون گال لأبو الجودة غير شي"
+			it.Detail = "اتصال الجودة: «" + note + "»."
+			it.Advice = "المراقب يقارن التقرير ويا كلام الزبون، وإذا يحتاج يطلب كشف."
+		default:
+			continue
+		}
+		out = append(out, it)
+	}
+	return out
 }
