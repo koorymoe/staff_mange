@@ -28,6 +28,8 @@ func TestAIOnlyRating_Live(t *testing.T) {
 	const emp, rater = "ai-only-emp", "ai-only-rater"
 	cleanup := func() {
 		db.Exec(`DELETE FROM "StaffRating" WHERE "rateeId" = $1`, emp)
+		// اختبارات ثانية تاخذ «أي موظف» لعروضها — نشيلها حتى حذف الموظف ما ينكسر
+		db.Exec(`DELETE FROM "Quotation" WHERE "createdByEmployeeId" IN ($1, $2)`, emp, rater)
 		db.Exec(`DELETE FROM "Employee" WHERE id IN ($1, $2)`, emp, rater)
 	}
 	cleanup()

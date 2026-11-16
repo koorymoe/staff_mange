@@ -67,13 +67,16 @@ type Employee struct {
 	OffSystemWork bool `db:"offSystemWork" json:"offSystemWork"`
 	// AIOnlyRating (دازاي 11-16) تقييمه من ماتركس بس: البشر ما يقيّمونه، ولا ينطلب منهم،
 	// والقديم ما ينحسب. يغيّره المالك بس.
-	AIOnlyRating     bool    `db:"aiOnlyRating" json:"aiOnlyRating"`
-	ShiftEnd         *string `db:"shiftEnd" json:"shiftEnd"`
-	MonthlyLeaves    int     `db:"monthlyLeaves" json:"monthlyLeaves"`
-	JobTitle         *string `db:"jobTitle" json:"jobTitle"`
-	LeaderSkillLevel int     `db:"leaderSkillLevel" json:"leaderSkillLevel"`
-	IsLeader         bool    `db:"isLeader" json:"isLeader"`
-	IsTrainee        bool    `db:"isTrainee" json:"isTrainee"`
+	AIOnlyRating bool `db:"aiOnlyRating" json:"aiOnlyRating"`
+	// RoleChangedAt (دازاي 11-16) آخر تغيير بالدور أو علامة الليدر (تريگر 0502) — إشعاراته
+	// القديمة ما تطلع بعده.
+	RoleChangedAt    *time.Time `db:"roleChangedAt" json:"-"`
+	ShiftEnd         *string    `db:"shiftEnd" json:"shiftEnd"`
+	MonthlyLeaves    int        `db:"monthlyLeaves" json:"monthlyLeaves"`
+	JobTitle         *string    `db:"jobTitle" json:"jobTitle"`
+	LeaderSkillLevel int        `db:"leaderSkillLevel" json:"leaderSkillLevel"`
+	IsLeader         bool       `db:"isLeader" json:"isLeader"`
+	IsTrainee        bool       `db:"isTrainee" json:"isTrainee"`
 	// Language لغة واجهة الموظف: ar (افتراضي) أو ur — بلاغ #11 (11-07). ⚠️ عمود بالجدول → لازم حقل هنا (SELECT *).
 	Language string `db:"language" json:"language"`
 	// Division تفصل موظفي الشعبة الهندسية (ENGINEERING، الافتراضي) عن موظفي

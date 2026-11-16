@@ -490,3 +490,4 @@ git push origin origin/avg:refs/heads/prod     # بعد التأكد إنه fast
 - 11-16: «تقييم ماتركس بس» (عمود aiOnlyRating، ترحيل 0501) — PUT /api/employees/{id}/ai-only-rating للمالك بس، عمود 🤖 بجدول الدوام. التقييم البشري يرجع 404، ينشال من واجبات التقييم والدوري، وما ينحسب بالنهائي. اختبار: TestAIOnlyRating_Live.
 - 11-16: بلاغات #45-#47 (علي اركان): InventoryFollowPanel زر تم الحل + resolved؛ DueSoonLogs آخر سجل فعلي بلا FUEL/CLEANING + MaxVehicleOdometer؛ صلاحية vehicle_admin لـPUT/DELETE /api/vehicles/{id}. المالك ينطي علي vehicle_admin، وعداد str-2 (952588555) لازم ينصلح يدوي.
 - 11-16: VOICE_TEST_PHONE (env): مكالمة التجربة بلا رقم تنحسب من هالرقم وتكتب حقيقي (لازم مفتاح المكالمة الحية شغّال). اختبار TestVoiceCaller.
+- 11-16: ترحيل 0502 roleChangedAt + تريگر employee_role_changed_trg؛ ListForEmployee/UnreadCount تفلتر createdAt >= roleChangedAt. database.ApplyMigrationForTest للاختبارات. ينتظر قرار دازاي: التقييم حسب فترة كل دور.

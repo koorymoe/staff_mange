@@ -93,6 +93,8 @@ func (r *NotificationRepository) ListForEmployee(employeeID string, limit int) (
 	err := r.db.Select(&notifications, `
 		SELECT * FROM "Notification"
 		WHERE "employeeId" = $1
+		  -- (دازاي 11-16) من يتغيّر دوره، إشعارات دوره القديم ما تطلعله
+		  AND "createdAt" >= COALESCE((SELECT "roleChangedAt" FROM "Employee" WHERE id = $1), '-infinity')
 		ORDER BY "createdAt" DESC
 		LIMIT $2
 	`, employeeID, limit)
@@ -101,7 +103,8 @@ func (r *NotificationRepository) ListForEmployee(employeeID string, limit int) (
 
 func (r *NotificationRepository) UnreadCount(employeeID string) (int, error) {
 	var count int
-	err := r.db.Get(&count, `SELECT COUNT(*) FROM "Notification" WHERE "employeeId" = $1 AND read = false`, employeeID)
+	err := r.db.Get(&count, `SELECT COUNT(*) FROM "Notification" WHERE "employeeId" = $1 AND read = false
+		  AND "createdAt" >= COALESCE((SELECT "roleChangedAt" FROM "Employee" WHERE id = $1), '-infinity')`, employeeID)
 	return count, err
 }
 

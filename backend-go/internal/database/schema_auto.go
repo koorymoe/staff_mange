@@ -128,6 +128,27 @@ func autoMigrations() []Migration {
 			ALTER TABLE "Employee" ADD COLUMN IF NOT EXISTS "aiOnlyRating" boolean DEFAULT false NOT NULL;
 		`,
 		},
+		{
+			// (دازاي 11-16) «غيرنه دوره… الاشعارات القديمه بعدها ضاهره اله — لازم تضهرله بس
+			// الاشعارات الجديدة، وهاي طبقها ع كل واحد يتغير دوره». تريگر على Employee: أي تغيير
+			// بالدور أو علامة الليدر — من أي شاشة — يختم roleChangedAt، وقائمة الإشعارات
+			// وعدّادها يعرضن بس الي بعده. القديم ما ينحذف (يبقى بالقاعدة)، بس ما يطلع.
+			Version: "0502_employee_role_changed_at",
+			SQL: `
+			ALTER TABLE "Employee" ADD COLUMN IF NOT EXISTS "roleChangedAt" timestamp without time zone;
+			CREATE OR REPLACE FUNCTION employee_role_changed() RETURNS trigger AS $fn$
+			BEGIN
+				IF NEW.role IS DISTINCT FROM OLD.role OR NEW."isLeader" IS DISTINCT FROM OLD."isLeader" THEN
+					NEW."roleChangedAt" := CURRENT_TIMESTAMP;
+				END IF;
+				RETURN NEW;
+			END
+			$fn$ LANGUAGE plpgsql;
+			DROP TRIGGER IF EXISTS employee_role_changed_trg ON "Employee";
+			CREATE TRIGGER employee_role_changed_trg BEFORE UPDATE ON "Employee"
+				FOR EACH ROW EXECUTE FUNCTION employee_role_changed();
+		`,
+		},
 		// ‹makemigration› — التحديثات الجديدة تنضاف فوگ هالسطر
 	}
 }

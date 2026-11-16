@@ -57,6 +57,7 @@ func init() {
 			{Name: "flexibleHours", Type: "boolean", NotNull: true, Default: "false"},
 			{Name: "offSystemWork", Type: "boolean", NotNull: true, Default: "false"},
 			{Name: "aiOnlyRating", Type: "boolean", NotNull: true, Default: "false"},
+			{Name: "roleChangedAt", Type: "timestamp without time zone"},
 		},
 		Constraints: []Constraint{
 			{Name: "Employee_pkey", Def: "PRIMARY KEY (id)"},
