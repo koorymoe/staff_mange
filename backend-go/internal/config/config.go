@@ -91,6 +91,8 @@ type Config struct {
 	WaPrivacyApproved bool
 	// VoiceLLMSecret سر مشترك ويا منصة الصوت (المكالمة الحية) — فاضي = نقطة /api/voice مسدودة.
 	VoiceLLMSecret string
+	// VoiceTestPhone (دازاي 11-16) مكالمة التجربة (بلا رقم) تنحسب من هالرقم وتكتب حقيقي.
+	VoiceTestPhone string
 	// WhisperURL خدمة تحويل الصوت لنص **الداخلية** (حاوية whisper). فاضي = بلا تحليل فويس.
 	WhisperURL string
 	// AIModel من البيئة مو مكتوب بالكود: أسماء الموديلات تتبدّل،
@@ -199,6 +201,7 @@ func load() *Config {
 		WaTemplateLng:            getEnv("WA_TEMPLATE_LANG", "ar"),
 		WaPrivacyApproved:        getEnv("WA_PRIVACY_APPROVED", "") == "true",
 		VoiceLLMSecret:           getEnv("VOICE_LLM_SECRET", ""),
+		VoiceTestPhone:           getEnv("VOICE_TEST_PHONE", ""),
 		// TutorialsDir: مسار مجلد أدلة الاستخدام (tutorial-*.html و guide-*.txt) اللي
 		// يقرأها المساعد الذكي حتى يعرف يشرح للموظف شلون يستخدم النظام فعلياً.
 		// الافتراضي "../tutorials" يناسب التطوير المحلي (تشغيل go run من داخل backend-go

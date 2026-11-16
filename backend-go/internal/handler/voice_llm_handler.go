@@ -27,6 +27,9 @@ import (
 type VoiceLLMHandler struct {
 	svc    *service.WaAgentService
 	secret string
+	// TestPhone (دازاي 11-16) مكالمة بلا رقم (زر التجربة بلوحة المنصة) تنحسب من هالرقم: الحجز
+	// ينكتب صدگ حتى المالك يشوفه بالنظام. فاضي = وضع تجربة، ولا شي ينكتب.
+	TestPhone string
 }
 
 func NewVoiceLLMHandler(svc *service.WaAgentService, secret string) *VoiceLLMHandler {
@@ -110,6 +113,7 @@ func (h *VoiceLLMHandler) ChatCompletions(w http.ResponseWriter, r *http.Request
 			last = t
 		}
 	}
+	phone = voiceCaller(phone, h.TestPhone)
 	var reply service.VoiceReply
 	if users == 0 {
 		reply = service.VoiceReply{Text: h.svc.VoiceGreeting()} // المنصة تطلب أول جملة
@@ -195,4 +199,12 @@ func voiceSentences(s string) []string {
 		out = append(out, string(rs[start:]))
 	}
 	return out
+}
+
+// voiceCaller رقم المتصل، وإذا ماكو (زر التجربة بالمنصة) فرقم التجربة إذا المالك حطه.
+func voiceCaller(phone, testPhone string) string {
+	if phone == "" {
+		return strings.TrimSpace(testPhone)
+	}
+	return phone
 }

@@ -3441,6 +3441,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 			// 📞 المكالمة الحية (دازاي 11-15): منصة الصوت تنادي عقل الوكيل هنا بكل جملة. عام بسر مشترك.
 			waSvc.VoiceReady = cfg.VoiceLLMSecret != ""
 			voiceH := handler.NewVoiceLLMHandler(waSvc, cfg.VoiceLLMSecret)
+			voiceH.TestPhone = cfg.VoiceTestPhone
 			secs["wa"].Set("POST /api/voice/v1/chat/completions", "wa.post_voice_chat_completions", voiceH.ChatCompletions,
 				middleware.RateLimit(300, time.Minute))
 			secs["wa"].Set("POST /api/wa/sandbox/start", "wa.post_sandbox_start", waH.SandboxStart)

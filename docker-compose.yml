@@ -88,6 +88,7 @@ services:
       WA_PRIVACY_APPROVED: ${WA_PRIVACY_APPROVED:-}
       # 📞 المكالمة الحية: سر مشترك ويا منصة الصوت (docs/ai-quality-booking-plan.md)
       VOICE_LLM_SECRET: ${VOICE_LLM_SECRET:-}
+      VOICE_TEST_PHONE: ${VOICE_TEST_PHONE:-}
       AI_MODEL: ${AI_MODEL:-claude-haiku-5-5}
       # (ع) 10-14: إيميلات رموز التحقق لتطبيق الزبائن (Gmail + App Password)
       SMTP_HOST: ${SMTP_HOST:-}
