@@ -149,6 +149,34 @@ func autoMigrations() []Migration {
 				FOR EACH ROW EXECUTE FUNCTION employee_role_changed();
 		`,
 		},
+		{
+			// (دازاي 11-16) «التقييم حسب كل دور»: التريگر يحفظ الدور القبلي ويا تاريخ التغيير، حتى
+			// تقييم الشهر ينقسم: الدور القديم لحد roleChangedAt، والجديد من بعده.
+			Version: "0503_employee_prev_role",
+			SQL: `
+			ALTER TABLE "Employee" ADD COLUMN IF NOT EXISTS "prevRole" text;
+			ALTER TABLE "Employee" ADD COLUMN IF NOT EXISTS "prevIsLeader" boolean;
+			CREATE OR REPLACE FUNCTION employee_role_changed() RETURNS trigger AS $fn$
+			BEGIN
+				IF NEW.role IS DISTINCT FROM OLD.role OR NEW."isLeader" IS DISTINCT FROM OLD."isLeader" THEN
+					NEW."roleChangedAt" := CURRENT_TIMESTAMP;
+					NEW."prevRole" := OLD.role::text;
+					NEW."prevIsLeader" := OLD."isLeader";
+				END IF;
+				RETURN NEW;
+			END
+			$fn$ LANGUAGE plpgsql;
+		`,
+		},
+		{
+			// (دازاي 11-16) تقي تغيّر دوره (إداري الكوادر ← فني ليدر) قبل ما ينبني التريگر —
+			// دازاي: «اعتمد تاريخ اليوم». بداية ١٦ تشرين الثاني بتوقيت بغداد = 21:00 UTC من ١٥.
+			Version: "0504_data_role_change_taqi",
+			SQL: `
+			UPDATE "Employee" SET "roleChangedAt" = '2026-11-15 21:00:00', "prevRole" = 'HR_COORDINATOR', "prevIsLeader" = false
+			WHERE name = 'تقي يوسف عبيد' AND "roleChangedAt" IS NULL AND role::text = 'TECHNICIAN';
+		`,
+		},
 		// ‹makemigration› — التحديثات الجديدة تنضاف فوگ هالسطر
 	}
 }

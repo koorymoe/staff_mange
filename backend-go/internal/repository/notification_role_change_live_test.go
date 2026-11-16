@@ -21,8 +21,10 @@ func TestNotificationsHiddenAfterRoleChange_Live(t *testing.T) {
 		t.Fatalf("connect: %v", err)
 	}
 	defer db.Close()
-	if err := database.ApplyMigrationForTest(db, "0502_employee_role_changed_at"); err != nil {
-		t.Fatal(err)
+	for _, v := range []string{"0502_employee_role_changed_at", "0503_employee_prev_role"} {
+		if err := database.ApplyMigrationForTest(db, v); err != nil {
+			t.Fatal(err)
+		}
 	}
 	const emp = "role-change-notif-emp"
 	cleanup := func() { db.Exec(`DELETE FROM "Employee" WHERE id = $1`, emp) }
@@ -49,5 +51,11 @@ func TestNotificationsHiddenAfterRoleChange_Live(t *testing.T) {
 	}
 	if n, _ := repo.UnreadCount(emp); n != 1 {
 		t.Fatalf("العدّاد لازم ١، طلع %d", n)
+	}
+	// والدور القبلي ينحفظ — للتقييم حسب كل دور
+	var prev string
+	var prevLeader bool
+	if err := db.QueryRow(`SELECT "prevRole", "prevIsLeader" FROM "Employee" WHERE id = $1`, emp).Scan(&prev, &prevLeader); err != nil || prev != "HR_COORDINATOR" || prevLeader {
+		t.Fatalf("الدور القبلي غلط: %q %v %v", prev, prevLeader, err)
 	}
 }

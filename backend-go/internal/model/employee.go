@@ -69,6 +69,9 @@ type Employee struct {
 	// والقديم ما ينحسب. يغيّره المالك بس.
 	AIOnlyRating bool `db:"aiOnlyRating" json:"aiOnlyRating"`
 	// RoleChangedAt (دازاي 11-16) آخر تغيير بالدور أو علامة الليدر (تريگر 0502) — إشعاراته
+	// PrevRole / PrevIsLeader (دازاي 11-16) الدور قبل roleChangedAt — للتقييم حسب كل دور.
+	PrevRole     *string `db:"prevRole" json:"-"`
+	PrevIsLeader *bool   `db:"prevIsLeader" json:"-"`
 	// القديمة ما تطلع بعده.
 	RoleChangedAt    *time.Time `db:"roleChangedAt" json:"-"`
 	ShiftEnd         *string    `db:"shiftEnd" json:"shiftEnd"`

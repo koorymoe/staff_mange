@@ -47,7 +47,8 @@ func (h *StaffScoreHandler) Detail(w http.ResponseWriter, r *http.Request) {
 		WriteError(w, http.StatusNotFound, "تقييمك تشوفه من «تقييمي»")
 		return
 	}
-	d, err := h.svc.Detail(id, r.URL.Query().Get("month"))
+	// (دازاي 11-16) ?view=prev: تقييمه بدوره القديم إذا تغيّر دوره هالشهر
+	d, err := h.svc.DetailView(id, r.URL.Query().Get("month"), r.URL.Query().Get("view"))
 	if err != nil {
 		WriteError(w, http.StatusBadRequest, err.Error())
 		return

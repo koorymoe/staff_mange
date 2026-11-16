@@ -66,12 +66,16 @@ type Scorable struct {
 	IsCoordinator    bool      `db:"isCoordinator" json:"isCoordinator"`
 	OffSystem        bool      `db:"offSystemWork" json:"offSystemWork"`
 	AIOnly           bool      `db:"aiOnlyRating" json:"aiOnlyRating"`
-	Division         string    `db:"division" json:"division"`
+	// (دازاي 11-16) تغيير الدور: الدور القبلي لحد RoleChangedAt — التقييم ينقسم حسب كل دور.
+	RoleChangedAt *time.Time `db:"roleChangedAt" json:"-"`
+	PrevRole      *string    `db:"prevRole" json:"-"`
+	PrevIsLeader  *bool      `db:"prevIsLeader" json:"-"`
+	Division      string     `db:"division" json:"division"`
 }
 
 func (r *MatrixScoreRepository) Scorables() ([]Scorable, error) {
 	rows := []Scorable{}
-	err := r.db.Select(&rows, `SELECT id, name, `+model.EffectiveRoleSQL(`"Employee".id`, `"Employee".role`)+` AS role, "createdAt", COALESCE("isLeader", false) AS "isLeader", COALESCE(division, 'ENGINEERING') AS division, "offSystemWork", "aiOnlyRating",
+	err := r.db.Select(&rows, `SELECT id, name, `+model.EffectiveRoleSQL(`"Employee".id`, `"Employee".role`)+` AS role, "createdAt", COALESCE("isLeader", false) AS "isLeader", COALESCE(division, 'ENGINEERING') AS division, "offSystemWork", "aiOnlyRating", "roleChangedAt", "prevRole", "prevIsLeader",
 		EXISTS (SELECT 1 FROM "ServiceManager" sm WHERE sm."employeeId" = "Employee".id) AS "isServiceManager",
 		EXISTS (SELECT 1 FROM "EmployeePermission" ep JOIN "Permission" pm ON pm.id = ep."permissionId"
 		        WHERE ep."employeeId" = "Employee".id AND pm.name = 'coordinator') AS "isCoordinator"

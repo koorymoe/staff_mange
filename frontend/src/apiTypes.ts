@@ -3873,6 +3873,9 @@ export interface StaffScore {
   group: string; groupLabel: string
   /** (دازاي 11-16) تقييمه من ماتركس بس */
   aiOnly?: boolean
+  /** (دازاي 11-16) تغيّر دوره هالشهر: فترة كل دور (prev | current)، والمعروض منها */
+  roleViews?: { key: 'prev' | 'current'; role: string; isLeader: boolean; from: string; to: string }[]
+  roleView?: string
   reliability: number | null; reliabilityParts: { key: string; label: string; pct: number; detail: string }[]
   skills?: number; hasLicense?: boolean; isLeader?: boolean
   /** (ل) 11-11: الانضباط بالدوام — ١٥٪ من النهائي، يبدي من startsOn */

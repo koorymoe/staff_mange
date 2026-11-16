@@ -355,6 +355,9 @@ type StaffScore struct {
 	MatrixPct   *float64          `json:"matrixPct"`
 	HumanAvg    *float64          `json:"humanAvg"`
 	HumanCount  int               `json:"humanCount"`
+	// RoleViews (دازاي 11-16) إذا تغيّر دوره هالشهر: فترة كل دور، والمختار منها.
+	RoleViews []RoleView `json:"roleViews,omitempty"`
+	RoleView  string     `json:"roleView,omitempty"`
 	// AIOnly (دازاي 11-16) تقييمه من ماتركس بس — تقييمات البشر ما تنحسب.
 	AIOnly    bool              `json:"aiOnly,omitempty"`
 	HumanPct  *float64          `json:"humanPct"`
@@ -499,6 +502,7 @@ func (s *MatrixScoreService) board(month string) (*StaffScoreBoard, error) {
 	if err != nil {
 		return nil, err
 	}
+	s.applyRoleViews(cur, people, from, to)
 	prev, _ := s.compute(people, from.AddDate(0, -1, 0), from)
 	prevBy := map[string]*float64{}
 	for _, p := range prev {
@@ -518,6 +522,12 @@ func (s *MatrixScoreService) board(month string) (*StaffScoreBoard, error) {
 }
 
 func (s *MatrixScoreService) Detail(employeeID, month string) (*StaffScoreDetail, error) {
+	return s.DetailView(employeeID, month, "")
+}
+
+// DetailView (دازاي 11-16) تقييم موظف تغيّر دوره بالشهر: view «prev» = تقييمه بدوره القديم
+// (من أول الشهر لحد التغيير)، وغيره = بدوره الحالي (من التغيير). بلا تغيير = الشهر كله.
+func (s *MatrixScoreService) DetailView(employeeID, month, view string) (*StaffScoreDetail, error) {
 	key, from, to := MonthRange(month, time.Now())
 	people, err := s.repo.Scorables()
 	if err != nil {
@@ -532,6 +542,17 @@ func (s *MatrixScoreService) Detail(employeeID, month string) (*StaffScoreDetail
 	if len(one) == 0 {
 		return nil, errors.New("هذا الموظف ما ينقيّم (المالك ومدير النظام مستثنين)")
 	}
+	views := RoleViews(one[0], from, to)
+	chosen := ""
+	if len(views) > 0 {
+		v := views[len(views)-1] // الحالي
+		if view == "prev" {
+			v = views[0]
+		}
+		chosen = v.Key
+		one[0].Role, one[0].IsLeader = v.Role, v.IsLeader
+		from, to = v.From, v.To
+	}
 	rows, err := s.compute(one, from, to)
 	if err != nil {
 		return nil, err
@@ -544,6 +565,7 @@ func (s *MatrixScoreService) Detail(employeeID, month string) (*StaffScoreDetail
 	if err != nil {
 		return nil, err
 	}
+	rows[0].RoleViews, rows[0].RoleView = views, chosen
 	return &StaffScoreDetail{StaffScore: rows[0], Month: key, Points: pts, Human: hum}, nil
 }
 
@@ -995,4 +1017,56 @@ func DesignSectionPoints(status string, dueEnd time.Time, submitted *time.Time, 
 		return 0, "فات موعده وما تسلّم.", true
 	}
 	return 0, "", false
+}
+
+// RoleView فترة دور واحد بالشهر (دازاي 11-16).
+type RoleView struct {
+	Key      string    `json:"key"` // prev | current
+	Role     string    `json:"role"`
+	IsLeader bool      `json:"isLeader"`
+	From     time.Time `json:"from"`
+	To       time.Time `json:"to"`
+}
+
+// RoleViews فترتين إذا الدور تغيّر بنص [from,to): القديم لحد التغيير، والحالي من بعده.
+// بلا تغيير بالفترة = فاضية (التقييم عادي على الشهر كله).
+func RoleViews(p repository.Scorable, from, to time.Time) []RoleView {
+	if p.RoleChangedAt == nil || p.PrevRole == nil || *p.PrevRole == "" {
+		return nil
+	}
+	at := *p.RoleChangedAt
+	if !at.After(from) || !at.Before(to) {
+		return nil
+	}
+	prevLeader := p.PrevIsLeader != nil && *p.PrevIsLeader
+	return []RoleView{
+		{Key: "prev", Role: *p.PrevRole, IsLeader: prevLeader, From: from, To: at},
+		{Key: "current", Role: p.Role, IsLeader: p.IsLeader, From: at, To: to},
+	}
+}
+
+// applyRoleViews بلوحة التقييم: الي تغيّر دوره هالشهر ينحسب بدوره الحالي من يوم التغيير بس —
+// شغل دوره القديم ما ينحسب عليه (ويبقى ينشاف من صفحته بزر «دوره القديم»).
+func (s *MatrixScoreService) applyRoleViews(rows []StaffScore, people []repository.Scorable, from, to time.Time) {
+	idx := map[string]int{}
+	for i, r := range rows {
+		idx[r.ID] = i
+	}
+	for _, p := range people {
+		views := RoleViews(p, from, to)
+		i, ok := idx[p.ID]
+		if len(views) == 0 || !ok {
+			continue
+		}
+		cur := views[len(views)-1]
+		one := p
+		one.Role, one.IsLeader = cur.Role, cur.IsLeader
+		got, err := s.compute([]repository.Scorable{one}, cur.From, cur.To)
+		if err != nil || len(got) == 0 {
+			errlog.Err(err)
+			continue
+		}
+		got[0].RoleViews, got[0].RoleView = views, cur.Key
+		rows[i] = got[0]
+	}
 }

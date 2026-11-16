@@ -1295,7 +1295,14 @@ export const api = {
     request<{ ok: boolean }>(`/workplace-issues/${id}/party-followup`, { method: 'POST', body: JSON.stringify({ better, text }) }),
   // ═══ تقييم الموظفين: ماتركس ٦٠٪ + البشر ٤٠٪ ═══
   getStaffScoreBoard: (month = '') => request<StaffScoreBoard>(`/staff-score${month ? `?month=${month}` : ''}`),
-  getStaffScore: (id: string, month = '') => request<StaffScoreDetail>(`/staff-score/${id}${month ? `?month=${month}` : ''}`),
+  // (دازاي 11-16) roleView «prev» = تقييمه بدوره القديم إذا تغيّر دوره هالشهر
+  getStaffScore: (id: string, month = '', roleView = '') => {
+    const q = new URLSearchParams()
+    if (month) q.set('month', month)
+    if (roleView) q.set('view', roleView)
+    const qs = q.toString()
+    return request<StaffScoreDetail>(`/staff-score/${id}${qs ? `?${qs}` : ''}`)
+  },
   getStaffPoints: (month = '') => request<{ month: string; staff: StaffPointsRow[] }>(`/staff-points${month ? `?month=${month}` : ''}`),
   getStaffScorePeers: () => request<{ id: string; final: number | null }[]>('/staff-score/peers'),
   getMyScore: (month = '') => request<{ score: StaffScoreDetail; on: boolean } | null>(`/staff-score/me${month ? `?month=${month}` : ''}`),

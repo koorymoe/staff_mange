@@ -8,6 +8,9 @@ import { GroupRanking, PairCompare, PendingHumanBadge } from '../components/Staf
 import { SWITCH_MATRIX_SCORING } from '../systemSwitches'
 import { useSession, isAdminOrOwner } from '../session'
 import StaffPointsBoard from '../components/StaffPointsBoard'
+import ScoreSteps from '../components/ScoreSteps'
+import { roleLabel } from '../roleLabels'
+import { fmtDate } from '../utils/date'
 import { askInput } from '../ui/dialogs'
 import { swallow } from '../utils/swallow'
 import PctWhy from '../ui/PctWhy'
@@ -48,7 +51,6 @@ function WhyBadge({ d, kind, big }: { d: StaffScoreDetail; kind: 'final' | 'matr
   const v = kind === 'final' ? d.final : kind === 'matrix' ? d.matrixPct : kind === 'human' ? d.humanPct : d.reliability
   const cls = big ? 'text-3xl' : 'text-lg'
   if (v == null) return <ScoreBadge v={null} big={big} />
-  const disc = d.discipline?.score
   let formula: ReactNode
   let meaning: ReactNode
   let title: string
@@ -66,10 +68,7 @@ function WhyBadge({ d, kind, big }: { d: StaffScoreDetail; kind: 'final' | 'matr
     meaning = <>رقم منفصل عن التقييم: هل تعتمد عليه؟ الحضور والجرد والورق والمهام نسبة من نقاط ماتركس، والشكاوى تنزّل 25 لكل شكوى، والإجازات 10 لكل يوم فوق يومين، والمشاكل ويا الزملاء وضياع العدّة 25 لكل وحدة، ونقاط الـKPI 20 لكل نقطة.</>
   } else {
     title = 'التقييم النهائي'
-    const base = d.matrixPct != null && d.humanPct != null
-      ? <>(٦٠٪ × ماتركس {r1(d.matrixPct)}) + (٤٠٪ × البشر {r1(d.humanPct)}) = {r1(0.6 * d.matrixPct + 0.4 * d.humanPct)}</>
-      : d.matrixPct != null ? <>ماكو تقييم بشر بعد، فناخذ ماتركس بس = {r1(d.matrixPct)}</> : <>ماكو نقاط ماتركس، فناخذ البشر بس = {r1(d.humanPct)}</>
-    formula = <>{base}{!!d.revenueAdj && <><br />{d.revenueAdj > 0 ? '+' : '−'} {r1(Math.abs(d.revenueAdj))} نقطة من تغطية راتبه ({r1(d.salaryCoverage ?? 0)}٪) — {d.revenueAdj > 0 ? 'دخّل أكثر من راتبه' : 'ما دخّل قد راتبه، فينزل بنسبة النقص'}</>}{!!d.extraBonus && <><br />+ {r1(d.extraBonus)} نقطة شغل إضافي برّا دوره ({d.extraJobs} شغلة، نقطة لكل وحدة لحد ٥)</>}{disc != null && <><br />وبعدها الانضباط ياخذ ١٥٪: (٨٥٪ × الرقم فوگ) + (١٥٪ × الانضباط {r1(disc)})</>} = <b>{pct(v)}</b></>
+    formula = <ScoreSteps d={d} />
     meaning = <>درجة تقييم الموظف بهذا الشهر. 80 وفوق أخضر، 60–80 أصفر، أقل أحمر. تصعد إذا أخذ نقاط ماتركس كاملة ونجوم عالية وحضر بوقته.</>
   }
   return <b className={cls} style={{ color: tone(v) }}><PctWhy title={title} value={Math.round(v)} formula={formula} meaning={meaning}
@@ -187,8 +186,14 @@ export default function StaffScorePage() {
   const [cmpB, setCmpB] = useState<string | null>(null)
   const load = useCallback(() => { void api.getStaffScoreBoard(month).then(setB).catch((e) => setErr(e instanceof Error ? e.message : 'تعذر')) }, [month])
   useEffect(load, [load])
-  useEffect(() => { if (sel) void api.getStaffScore(sel, month).then(setD).catch(swallow) }, [sel, month])
-  const reloadDetail = () => { if (sel) void api.getStaffScore(sel, month).then(setD); load() }
+  // (دازاي 11-16) موظف تغيّر دوره هالشهر: المدير يختار يشوف تقييمه بدوره القديم لو الحالي
+  // الاختيار مربوط بالموظف والشهر — تغيّر أحدهم يرجع للدور الحالي
+  const [rv, setRv] = useState({ key: '', view: '' })
+  const rvKey = `${sel}|${month}`
+  const roleView = rv.key === rvKey ? rv.view : ''
+  const setRoleView = (view: string) => setRv({ key: rvKey, view })
+  useEffect(() => { if (sel) void api.getStaffScore(sel, month, roleView).then(setD).catch(swallow) }, [sel, month, roleView])
+  const reloadDetail = () => { if (sel) void api.getStaffScore(sel, month, roleView).then(setD); load() }
   const run = async () => { setBusy(true); try { await api.runStaffScore(); load(); if (sel) reloadDetail() } finally { setBusy(false) } }
 
   if (err) return <p className="text-red-600">{err}</p>
@@ -259,7 +264,22 @@ export default function StaffScorePage() {
               peers={shown} onPick={(id) => setCmpB(id || null)} onClose={() => setCmpA(null)} />
           ) : !sel && <p className="p-6 text-center text-sm text-slate-400">اختار موظف حتى تشوف شلون انحسب تقييمه، نقطة بنقطة — أو اضغط «⚖️ قارن» جنب اسمه.</p>}
           {sel && d?.id !== sel && <p className="text-xs text-slate-400">…</p>}
-          {!cmpA && d && d.id === sel && <><p className="mb-2 text-base font-extrabold">{d.name}</p><ScoreBreakdown d={d} admin={admin} onChange={reloadDetail} /></>}
+          {!cmpA && d && d.id === sel && <><p className="mb-2 text-base font-extrabold">{d.name}</p>
+            {d.roleViews && d.roleViews.length > 1 && (
+              <div className="mb-3 rounded-xl bg-sky-50 p-3 text-xs">
+                <p className="mb-2 font-bold text-sky-900">🔁 تغيّر دوره هالشهر — تريد تشوف تقييمه كـ:</p>
+                <div className="flex flex-wrap gap-2">
+                  {d.roleViews.map((v) => (
+                    <button key={v.key} type="button" onClick={() => setRoleView(v.key === 'prev' ? 'prev' : '')}
+                      className={`rounded-lg px-3 py-1.5 font-bold ${d.roleView === v.key ? 'bg-sky-700 text-white' : 'bg-white text-sky-800 ring-1 ring-sky-200 hover:bg-sky-100'}`}>
+                      {roleLabel(v.role)}{v.isLeader ? ' (ليدر)' : ''} · {fmtDate(v.from)} ← {fmtDate(v.to)}
+                    </button>
+                  ))}
+                </div>
+                <p className="mt-2 text-sky-800">كل دور ينحسب على فترته بس: نقاطه، وتقييماته، والفلوس الي دخّلها، وراتبه حسب الأيام. لوحة الترتيب تحسبه بدوره الحالي.</p>
+              </div>
+            )}
+            <ScoreBreakdown d={d} admin={admin} onChange={reloadDetail} /></>}
         </div>
       </div>}
     </div>

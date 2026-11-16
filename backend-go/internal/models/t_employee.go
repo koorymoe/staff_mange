@@ -58,6 +58,8 @@ func init() {
 			{Name: "offSystemWork", Type: "boolean", NotNull: true, Default: "false"},
 			{Name: "aiOnlyRating", Type: "boolean", NotNull: true, Default: "false"},
 			{Name: "roleChangedAt", Type: "timestamp without time zone"},
+			{Name: "prevRole", Type: "text"},
+			{Name: "prevIsLeader", Type: "boolean"},
 		},
 		Constraints: []Constraint{
 			{Name: "Employee_pkey", Def: "PRIMARY KEY (id)"},

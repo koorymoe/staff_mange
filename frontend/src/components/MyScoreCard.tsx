@@ -3,6 +3,7 @@ import { api, type StaffScoreDetail } from '../api'
 import { ScoreBreakdown } from '../pages/StaffScorePage'
 import { swallow } from '../utils/swallow'
 import PctWhy from '../ui/PctWhy'
+import ScoreSteps from './ScoreSteps'
 
 // «🏅 تقييمي هالشهر» — الموظف يشوف رقمه وليش، وشلون يرفعه. ما يشوف غيره.
 export default function MyScoreCard() {
@@ -26,19 +27,8 @@ export default function MyScoreCard() {
           </PctWhy></b></>}{tip && <> · أكثر شي نزّله: <b>{tip.title}</b></>}</span>
         </span>
         <b className="text-2xl" style={{ color }}>{d.final == null ? '—' : <PctWhy title="تقييمي هالشهر" value={Math.round(d.final)}
-          formula={(() => {
-            const m = d.matrixPct, h = d.humanPct
-            const base = m != null && h != null ? 0.6 * m + 0.4 * h : m ?? h ?? 0
-            const ds = d.discipline?.score ?? null
-            return <>
-              <p>{m != null && h != null
-                ? <>ماتركس {Math.round(m)}% ({d.earned} من {d.max} نقطة) × ٦٠٪ + تقييم مسؤوليك {Math.round(h)}% (معدّل {d.humanAvg?.toFixed(1)} من ٥ بـ{d.humanCount} تقييم) × ٤٠٪ = {Math.round(base)}%</>
-                : m != null ? <>بس ماتركس: {Math.round(m)}% ({d.earned} من {d.max} نقطة) — لأن ماكو تقييم من مسؤوليك هالشهر.</>
-                : <>بس تقييم مسؤوليك: {Math.round(h ?? 0)}% (معدّل {d.humanAvg?.toFixed(1)} من ٥) — لأن ماكو نقاط ماتركس هالشهر.</>}</p>
-              {ds != null && <p>بعدين الانضباط بالدوام: {Math.round(base)}% × ٨٥٪ + انضباطك {Math.round(ds)}% × ١٥٪ = <b>{Math.round(d.final ?? 0)}%</b></p>}
-            </>
-          })()}
-          meaning={<>رقمك هالشهر. ٨٠% فما فوق أخضر، ٦٠–٧٩ برتقالي، أقل أحمر. ترفعه لمن تكسب نقاط ماتركس (شغل بوقته، ورق كامل…)، ومسؤوليك يقيّموك زين، وتحضر بوقتك.{tip ? ` أكثر شي نزّله: ${tip.title}.` : ''}{d.prevFinal != null ? ` الشهر الماضي چان ${Math.round(d.prevFinal)}%.` : ''}</>}
+          formula={<ScoreSteps d={d} />}
+          meaning={<>رقمك هالشهر. ٨٠% فما فوق أخضر، ٦٠–٧٩ برتقالي، أقل أحمر. ترفعه لمن تكسب نقاط ماتركس (شغل بوقته، ورق كامل…)، ومسؤوليك يقيّموك زين، وتحضر بوقتك، وشغلك يدخّل للشركة قد راتبك.{tip ? ` أكثر شي نزّله: ${tip.title}.` : ''}{d.prevFinal != null ? ` الشهر الماضي چان ${Math.round(d.prevFinal)}%.` : ''}</>}
           source={<>نقاط ماتركس المسجّلة عليك هالشهر من الحجوزات والحضور والمهام، وتقييمات مسؤوليك (من ١ لـ٥)، وسجل حضورك مقابل جدولك. التفصيل الكامل تفتحه بالضغط على البطاقة.</>} />}</b>
       </button>
       {tip?.advice && !open && <p className="mt-1 text-xs text-violet-800">💡 {tip.advice}</p>}
