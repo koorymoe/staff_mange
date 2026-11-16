@@ -32,6 +32,8 @@ type followCheck struct {
 	BookingID    *string   `db:"bookingId" json:"bookingId"`
 	BookingCode  *string   `db:"bookingCode" json:"bookingCode"`
 	Today        bool      `db:"today" json:"today"`
+	// (بلاغ #45 — 11-16) النقص انحل: باليد («تم الحل») أو جرد أحدث سكّره
+	Resolved bool `db:"resolved" json:"resolved"`
 }
 
 type notChecked struct {
@@ -48,7 +50,7 @@ func (h *InventoryFollowHandler) List(w http.ResponseWriter, r *http.Request) {
 	}
 	checks := []followCheck{}
 	if err := h.db.Select(&checks, `
-		SELECT c.id, c."employeeId", e.name AS "employeeName", c.complete, c."missingItems", c."checkedAt",
+		SELECT c.id, c."employeeId", e.name AS "employeeName", c.complete, c."missingItems", c."checkedAt", c.resolved,
 		       c."bookingId", b.code AS "bookingCode",
 		       baghdad_date(c."checkedAt") = baghdad_today() AS today
 		FROM "InventoryCheck" c

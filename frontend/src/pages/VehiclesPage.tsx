@@ -78,8 +78,10 @@ const currentMonth = () => {
 export default function VehiclesPage() {
   // كل حفظ بهاي الشاشة يمر من هنا — الفشل ينعرض بدل ما ينبلع
   const guard = useSaveGuard()
-  const { employee } = useSession()
+  const { employee, permissions } = useSession()
   const isAdmin = isAdminOrOwner(employee)
+  // (بلاغ #47 — 11-16) تعديل وحذف السيارة: المدير، أو صلاحية vehicle_admin الي ينطيها المالك
+  const canEditVehicle = isAdmin || permissions.includes('vehicle_admin')
   const [vehicles, setVehicles] = useState<Vehicle[]>([])
   const [employees, setEmployees] = useState<Employee[]>([])
   const [selectedId, setSelectedId] = useState<string | null>(null)
@@ -598,7 +600,7 @@ export default function VehiclesPage() {
                     <h3 className="text-lg font-bold text-brand-800">{selectedVehicle.name}</h3>
                     <p className="text-sm text-slate-500">{selectedVehicle.plateNumber}</p>
                   </div>
-                  {isAdmin && (
+                  {canEditVehicle && (
                     <div className="flex shrink-0 gap-2">
                       <button
                         onClick={openEditVehicle}
@@ -627,7 +629,7 @@ export default function VehiclesPage() {
                 </div>
               </div>
 
-              {showEditVehicle && isAdmin && (
+              {showEditVehicle && canEditVehicle && (
                 <form onSubmit={handleUpdateVehicle} className="grid grid-cols-1 gap-3 rounded-xl border border-brand-200 bg-brand-50/40 p-5 sm:grid-cols-3">
                   <input required placeholder="اسم السيارة" value={editDraft.name || ''} onChange={(e) => setEditDraft((p) => ({ ...p, name: e.target.value }))} className="rounded-lg border border-slate-300 px-3 py-2" />
                   <input required placeholder="رقم اللوحة" value={editDraft.plateNumber || ''} onChange={(e) => setEditDraft((p) => ({ ...p, plateNumber: e.target.value }))} className="rounded-lg border border-slate-300 px-3 py-2" />

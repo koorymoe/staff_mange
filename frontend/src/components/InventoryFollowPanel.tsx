@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
-import { apiRequest } from '../api'
+import { api, apiRequest } from '../api'
+import { useSession, hasRole, isAdminOrOwner } from '../session'
 import { fmtDateTime } from '../utils/date'
 
 // ═══ متابعة الجرد الحقيقي — (ع) 10-16 ═══
@@ -8,6 +9,8 @@ import { fmtDateTime } from '../utils/date'
 interface Check {
   id: string; employeeId: string; employeeName: string; complete: boolean; missingItems: string | null
   checkedAt: string; bookingId: string | null; bookingCode: string | null; today: boolean
+  /** (بلاغ #45 — 11-16) النقص انحل: باليد أو جرد أحدث سكّره */
+  resolved?: boolean
 }
 interface NotChecked { employeeId: string; name: string; bookings: string }
 interface Data { days: number; checks: Check[]; notCheckedToday: NotChecked[] }
@@ -21,11 +24,24 @@ export default function InventoryFollowPanel() {
   const [err, setErr] = useState('')
   const [f, setF] = useState<F>('today')
   const [q, setQ] = useState('')
-  useEffect(() => { apiRequest<Data>('/inventory/checks/follow?days=30').then(setD).catch((e) => setErr(e instanceof Error ? e.message : 'تعذر الجلب')) }, [])
+  const [reload, setReload] = useState(0)
+  const [busy, setBusy] = useState<string | null>(null)
+  // (بلاغ #45 — 11-16) «تم الحل» هنا هم — نفس حارس الخادم (inventory.post_checks_by_id_resolve)
+  const { employee, permissions } = useSession()
+  const canResolve = isAdminOrOwner(employee) || hasRole(employee, 'HR_COORDINATOR', 'PROCUREMENT_ADMIN') || permissions.includes('inventory')
+  useEffect(() => { apiRequest<Data>('/inventory/checks/follow?days=30').then(setD).catch((e) => setErr(e instanceof Error ? e.message : 'تعذر الجلب')) }, [reload])
+  const resolve = async (id: string) => {
+    if (busy) return
+    setBusy(id)
+    try { await api.resolveInventoryCheck(id); setReload((n) => n + 1) }
+    catch (e) { setErr(e instanceof Error ? e.message : 'تعذر') }
+    finally { setBusy(null) }
+  }
 
   const lists = useMemo(() => {
     const c = d?.checks ?? []
-    return { today: c.filter((x) => x.today), incomplete: c.filter((x) => !x.complete), all: c }
+    // «جرود ناقصة» = النقص بعده مفتوح بس — الي انحل (باليد أو بجرد أحدث) يطلع بـ«كل الجرود»
+    return { today: c.filter((x) => x.today), incomplete: c.filter((x) => !x.complete && !x.resolved), all: c }
   }, [d])
   if (err) return <p className="rounded-xl bg-red-50 p-3 text-sm text-red-700">{err}</p>
   if (!d) return <p className="py-8 text-center text-slate-400">جاري الجلب…</p>
@@ -49,7 +65,7 @@ export default function InventoryFollowPanel() {
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         {tile('today', 'جرود اليوم', lists.today.length, 'border-sky-200 bg-sky-50/60', 'سجّلوا جرد اليوم')}
         {tile('missing', 'ما جردوا اليوم', d.notCheckedToday.length, d.notCheckedToday.length ? 'border-red-200 bg-red-50/60' : 'border-emerald-200 bg-emerald-50/50', 'عندهم شغل اليوم وما جردوا')}
-        {tile('incomplete', 'جرود ناقصة', lists.incomplete.length, lists.incomplete.length ? 'border-amber-200 bg-amber-50/60' : 'border-slate-200 bg-white', `آخر ${d.days} يوم — بيها أداة ناقصة`)}
+        {tile('incomplete', 'جرود ناقصة', lists.incomplete.length, lists.incomplete.length ? 'border-amber-200 bg-amber-50/60' : 'border-slate-200 bg-white', `آخر ${d.days} يوم — نقص بعده ما انحل`)}
         {tile('all', 'كل الجرود', lists.all.length, 'border-slate-200 bg-white', `آخر ${d.days} يوم`)}
       </div>
       <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="بحث بالاسم أو الأداة أو الحجز…" className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm" />
@@ -74,7 +90,15 @@ export default function InventoryFollowPanel() {
                   <span className="block text-xs text-slate-400">{fmt(c.checkedAt)}{c.bookingCode ? ` · قبل حجز ${c.bookingCode}` : ' · جرد عام'}</span>
                   {!c.complete && c.missingItems && <span className="mt-1 block text-xs text-amber-800">ناقص: {c.missingItems}</span>}
                 </span>
-                <span className={`rounded-full px-3 py-1 text-xs font-bold ${c.complete ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-100 text-amber-800'}`}>{c.complete ? '✓ مكتمل' : '⚠ ناقص'}</span>
+                <span className="flex flex-col items-end gap-1.5">
+                  <span className={`rounded-full px-3 py-1 text-xs font-bold ${c.complete ? 'bg-emerald-50 text-emerald-700' : c.resolved ? 'bg-sky-50 text-sky-700' : 'bg-amber-100 text-amber-800'}`}>{c.complete ? '✓ مكتمل' : c.resolved ? '✓ انحل' : '⚠ ناقص'}</span>
+                  {!c.complete && !c.resolved && canResolve && (
+                    <button type="button" onClick={() => void resolve(c.id)} disabled={busy === c.id}
+                      className="rounded-lg bg-emerald-600 px-3 py-1 text-xs font-bold text-white hover:bg-emerald-700 disabled:opacity-50">
+                      {busy === c.id ? 'جاري…' : 'تم الحل ✓'}
+                    </button>
+                  )}
+                </span>
               </li>
             ))}
           </ul>

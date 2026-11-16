@@ -2689,9 +2689,8 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	secs["vehicles"].Set("POST /api/vehicles/{id}/monthly-status", "vehicles.post_by_id_monthly_status", vehicleHandler.SetMonthlyStatus)
 	secs["vehicles"].Set("POST /api/vehicles/{id}/ratings", "vehicles.post_by_id_ratings", vehicleHandler.CreateDailyRating)
 	secs["vehicles"].Set("GET /api/vehicles/{id}/ratings", "vehicles.get_by_id_ratings", vehicleHandler.ListDailyRatings)
-	// تعديل/حذف بيانات السيارة الأساسية محصور بالمالك/الأدمن (requireAdmin) فقط —
-	// أضيق من صلاحية "إدارة المركبات" العامة (vehicle_management) المستخدمة لبقية
-	// عمليات السيارة (سجلات، وثائق، صور...)، بناءً على طلب صريح من مالك النظام.
+	// تعديل/حذف بيانات السيارة الأساسية: المدير، أو صلاحية vehicle_admin الي ينطيها المالك
+	// فرد-فرد (دازاي 11-16) — أضيق من vehicle_management العامة.
 	secs["vehicles"].Set("PUT /api/vehicles/{id}", "vehicles.put_by_id", vehicleHandler.Update)
 	secs["vehicles"].Set("DELETE /api/vehicles/{id}", "vehicles.delete_by_id", vehicleHandler.Delete, handler.DeleteLogged(db, "Vehicle", "id"))
 

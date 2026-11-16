@@ -1340,7 +1340,7 @@ func rules() map[string]map[core.Action]core.Rule {
 			"vehicle_parts.put_by_id_replace": func(l string) core.Rule { return perm(l, "vehicle_management") }("يعدّل /api/vehicle-parts/{id}/replace (صلاحية)"),
 		},
 		"vehicles": {
-			"vehicles.delete_by_id":                          func(l string) core.Rule { return admin(l) }("يشيل /api/vehicles/{id} (مدير النظام)"),
+			"vehicles.delete_by_id":                          rolePerm("يشيل /api/vehicles/{id} (المدير أو صلاحية vehicle_admin — 11-16)", []string{"ADMIN"}, "vehicle_admin"),
 			"vehicles.delete_by_id_documents_by_docid":       func(l string) core.Rule { return perm(l, "vehicle_management") }("يشيل /api/vehicles/{id}/documents/{docId} (صلاحية)"),
 			"vehicles.delete_by_id_logs_by_logid":            func(l string) core.Rule { return perm(l, "vehicle_management") }("يشيل /api/vehicles/{id}/logs/{logId} (صلاحية)"),
 			"vehicles.delete_by_id_photos_by_photoid":        func(l string) core.Rule { return perm(l, "vehicle_management") }("يشيل /api/vehicles/{id}/photos/{photoId} (صلاحية)"),
@@ -1377,7 +1377,7 @@ func rules() map[string]map[core.Action]core.Rule {
 			"vehicles.post_by_id_ratings":              func(l string) core.Rule { return perm(l, "vehicle_management") }("ينفّذ /api/vehicles/{id}/ratings (صلاحية)"),
 			"vehicles.post_root":                       func(l string) core.Rule { return perm(l, "vehicle_management") }("ينفّذ /api/vehicles (صلاحية)"),
 			"vehicles.post_tracking_merge":             func(l string) core.Rule { return perm(l, "vehicle_management") }("ينفّذ /api/vehicles/tracking/merge (صلاحية)"),
-			"vehicles.put_by_id":                       func(l string) core.Rule { return admin(l) }("يعدّل /api/vehicles/{id} (مدير النظام)"),
+			"vehicles.put_by_id":                       rolePerm("يعدّل /api/vehicles/{id} (المدير أو صلاحية vehicle_admin — 11-16)", []string{"ADMIN"}, "vehicle_admin"),
 			"vehicles.put_by_id_logs_by_logid":         func(l string) core.Rule { return perm(l, "vehicle_management") }("يعدّل /api/vehicles/{id}/logs/{logId} (صلاحية)"),
 			"vehicles.put_tracking_day":                func(l string) core.Rule { return perm(l, "vehicle_management") }("يعدّل /api/vehicles/tracking/day (صلاحية)"),
 		},

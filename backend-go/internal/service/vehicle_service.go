@@ -47,6 +47,9 @@ func (s *VehicleService) Update(id string, req model.UpdateVehicleRequest) (*mod
 	if req.CurrentOdometer != nil && *req.CurrentOdometer < 0 {
 		return nil, errors.New("عداد الكيلومترات لا يمكن أن يكون بالسالب")
 	}
+	if req.CurrentOdometer != nil && *req.CurrentOdometer > MaxVehicleOdometer {
+		return nil, errors.New("عداد الكيلومترات مو منطقي — تأكد من الأرقام")
+	}
 	return s.repo.Update(id, req)
 }
 
@@ -154,8 +157,15 @@ func nonNegativeLog(cost, liters *float64, odometer *int) error {
 	if odometer != nil && *odometer < 0 {
 		return errors.New("قراءة العداد ما تصير سالبة")
 	}
+	if odometer != nil && *odometer > MaxVehicleOdometer {
+		return errors.New("قراءة العداد مو منطقية — تأكد من الأرقام")
+	}
 	return nil
 }
+
+// MaxVehicleOdometer (بلاغ #46 — 11-16) سقف منطقي للعداد: عداد مثل 952588555 (غلط كتابة)
+// چان يخلي كل صيانة بالعداد «متجاوزة».
+const MaxVehicleOdometer = 3_000_000
 
 func (s *VehicleService) DeleteLog(id string) error { return s.repo.DeleteLog(id) }
 

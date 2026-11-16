@@ -36,7 +36,7 @@ var PermissionGroups = []PermissionGroup{
 	{Key: "stores", Title: "📦 المخزن والمشتريات",
 		Perms: []string{"inventory", "inventory_follow", "tool_requests", "tool_requests_approve", "procurement", "procurement_personal", "procurement_customer",
 			"procurement_manual", "suppliers_management", "supplier_relations", "tech_suppliers", "leader_basket", "device_maintenance"}},
-	{Key: "vehicles", Title: "🚗 المركبات", Perms: []string{"vehicle_management"}},
+	{Key: "vehicles", Title: "🚗 المركبات", Perms: []string{"vehicle_management", "vehicle_admin"}},
 	{Key: "agents", Title: "🤖 الوكلاء", Perms: []string{"agent_matrix", "agent_quality", "agent_booking", "whatsapp_chats", "bot_reports"}},
 	{Key: "units", Title: "🏢 الوحدات والأقسام",
 		Perms: []string{"unit_technicians", "unit_service", "unit_design", "unit_pr", "unit_quality", "unit_monitoring", "unit_procurement", "unit_finance",

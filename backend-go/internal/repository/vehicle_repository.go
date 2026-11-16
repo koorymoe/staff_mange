@@ -658,10 +658,15 @@ type dueMaintenanceLogRow struct {
 func (r *VehicleRepository) DueSoonLogs() ([]dueMaintenanceLogRow, error) {
 	rows := []dueMaintenanceLogRow{}
 	err := r.db.Select(&rows, `
-		SELECT DISTINCT ON ("vehicleId", type) "vehicleId", type, "nextDueAt", "nextDueOdometer"
-		FROM "VehicleLog"
+		SELECT "vehicleId", type, "nextDueAt", "nextDueOdometer" FROM (
+			-- (بلاغ #46 — 11-16) آخر سجل *فعلي* من كل نوع: قبل چان ياخذ آخر سجل بي موعد، فسجل
+			-- قديم يبقى معتمد والجديد ما يمسحه. والوقود والتنظيف مو صيانة — ما يطلعن تنبيه صيانة.
+			SELECT DISTINCT ON ("vehicleId", type) "vehicleId", type, "nextDueAt", "nextDueOdometer"
+			FROM "VehicleLog"
+			WHERE type NOT IN ('FUEL', 'CLEANING')
+			ORDER BY "vehicleId", type, "performedAt" DESC, "createdAt" DESC
+		) latest
 		WHERE "nextDueAt" IS NOT NULL OR "nextDueOdometer" IS NOT NULL
-		ORDER BY "vehicleId", type, "performedAt" DESC
 	`)
 	return rows, err
 }
