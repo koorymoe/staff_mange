@@ -3822,6 +3822,8 @@ export interface WorkScheduleRow {
   flexibleHours?: boolean
   /** (دازاي 11-13) شغله برّا النظام: يتقيّم بالتقرير والحضور والمهام بس */
   offSystemWork?: boolean
+  /** (دازاي 11-16) تقييمه من ماتركس بس — البشر ما يقيّمونه. يغيّره المالك بس */
+  aiOnlyRating?: boolean
   shift: string
   shiftStart: string
   shiftEnd: string
@@ -3869,6 +3871,8 @@ export interface StaffScore {
   final: number | null; prevFinal: number | null; noHuman: boolean
   topLosses: RuleLoss[]; bySource: Record<string, [number, number]>
   group: string; groupLabel: string
+  /** (دازاي 11-16) تقييمه من ماتركس بس */
+  aiOnly?: boolean
   reliability: number | null; reliabilityParts: { key: string; label: string; pct: number; detail: string }[]
   skills?: number; hasLicense?: boolean; isLeader?: boolean
   /** (ل) 11-11: الانضباط بالدوام — ١٥٪ من النهائي، يبدي من startsOn */

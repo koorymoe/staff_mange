@@ -2,8 +2,10 @@ package handler
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
 	"staffmange-api/internal/authz"
+	"staffmange-api/internal/repository"
 	"time"
 
 	"staffmange-api/internal/middleware"
@@ -132,6 +134,10 @@ func (h *StaffScoreHandler) rate(stage string) http.HandlerFunc {
 			err = h.svc.RatePeriodic(me, middleware.RoleFromContext(r), in.RateeID, in.Score, in.Note)
 		} else {
 			err = h.svc.RateOnBooking(stage, me, in.BookingID, in.RateeID, in.Score, in.Note)
+		}
+		if errors.Is(err, repository.ErrAIOnlyRatee) {
+			WriteError(w, http.StatusNotFound, "غير موجود")
+			return
 		}
 		if err != nil {
 			WriteError(w, http.StatusBadRequest, err.Error())

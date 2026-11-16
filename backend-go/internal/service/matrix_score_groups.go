@@ -120,6 +120,9 @@ func periodicStage(raterRole string) string {
 }
 
 func periodicAllowed(stage string, p repository.Scorable) bool {
+	if p.AIOnly { // (دازاي 11-16) تقييمه من ماتركس بس
+		return false
+	}
 	return groupRaterStages[ScoreGroup(p)][stage]
 }
 

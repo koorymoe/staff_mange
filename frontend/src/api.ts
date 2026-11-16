@@ -655,6 +655,8 @@ export const api = {
   reactivateEmployee: (id: string) => request<{ ok: boolean }>(`/employees/${encodeURIComponent(id)}/reactivate`, { method: 'PUT' }),
   updateEmployeeAll: (id: string, data: Record<string, unknown>) => request<Employee>(`/employees/${encodeURIComponent(id)}/all`, { method: 'PUT', body: JSON.stringify(data) }),
   getWorkSchedule: () => request<WorkScheduleRow[]>('/work-schedule'),
+  // (دازاي 11-16) تقييم الموظف من ماتركس بس — المالك بس
+  setAIOnlyRating: (id: string, on: boolean) => request<{ ok: boolean; aiOnlyRating: boolean }>(`/employees/${encodeURIComponent(id)}/ai-only-rating`, { method: 'PUT', body: JSON.stringify({ on }) }),
   setEmployeeSchedule: (id: string, data: { shift?: string; shiftStart?: string; shiftEnd?: string; flexibleHours?: boolean; offSystemWork?: boolean }) =>
     request<Employee>(`/employees/${encodeURIComponent(id)}/schedule`, { method: 'PUT', body: JSON.stringify(data) }),
   createEmployee: (

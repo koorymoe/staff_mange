@@ -1172,6 +1172,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	peopleApp.Set("PUT /api/employees/{id}/reactivate", "people.reactivate", employeeAdminHandler.Reactivate)
 	peopleApp.Set("GET /api/employees/suspended", "people.suspended", employeeAdminHandler.ListSuspended)
 	peopleApp.Set("PUT /api/employees/{id}/schedule", "people.schedule", employeeAdminHandler.Schedule)
+	peopleApp.Set("PUT /api/employees/{id}/ai-only-rating", "people.ai_only_rating", employeeAdminHandler.AIOnlyRating)
 	secs["work_schedule"].Set("GET /api/work-schedule", "work_schedule.get_root", employeeAdminHandler.WorkSchedule)
 	peopleApp.Set("PUT /api/employees/{id}", "people.update", employeeHandler.Update)
 	peopleApp.Set("PUT /api/employees/{id}/identity", "people.identity", employeeHandler.UpdateIdentity)

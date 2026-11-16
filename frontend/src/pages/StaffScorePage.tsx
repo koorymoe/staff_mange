@@ -91,7 +91,7 @@ export function ScoreBreakdown({ d, admin, onChange }: { d: StaffScoreDetail; ad
       <div className="grid grid-cols-3 gap-2 text-center">
         <div className="rounded-xl bg-slate-50 p-2"><p className="text-[11px] text-slate-500">النهائي</p><WhyBadge d={d} kind="final" big /></div>
         <div className="rounded-xl bg-violet-50 p-2"><p className="text-[11px] text-slate-500">ماتركس (٦٠٪)</p><WhyBadge d={d} kind="matrix" /><p className="text-[11px] text-slate-500">{d.earned} من {d.max} نقطة</p></div>
-        <div className="rounded-xl bg-amber-50 p-2"><p className="text-[11px] text-slate-500">البشر (٤٠٪)</p><WhyBadge d={d} kind="human" /><p className="text-[11px] text-slate-500">{d.humanCount ? `${d.humanAvg?.toFixed(1)}★ من ${d.humanCount} تقييم` : 'محد قيّمه بعد'}</p></div>
+        <div className="rounded-xl bg-amber-50 p-2"><p className="text-[11px] text-slate-500">البشر (٤٠٪)</p><WhyBadge d={d} kind="human" /><p className="text-[11px] text-slate-500">{d.aiOnly ? 'ماتركس بس — ما ينحسب' : d.humanCount ? `${d.humanAvg?.toFixed(1)}★ من ${d.humanCount} تقييم` : 'محد قيّمه بعد'}</p></div>
       </div>
       {d.discipline && <DisciplineBox d={d.discipline} />}
       {d.reliabilityParts.length > 0 && (
@@ -156,7 +156,8 @@ export function ScoreBreakdown({ d, admin, onChange }: { d: StaffScoreDetail; ad
           {shown.length === 0 && <p className="text-xs text-slate-400">ماكو.</p>}
         </div>
       </div>
-      {d.human.length > 0 && (
+      {d.aiOnly && <p className="rounded-lg bg-indigo-50 px-2 py-1.5 text-xs font-bold text-indigo-700">🤖 تقييمه من ماتركس بس: يقرا تقاريره ويحللها. تقييمات البشر ما تنحسب، ولا ينطلب من أحد يقيّمه.</p>}
+      {d.human.length > 0 && !d.aiOnly && (
         <div>
           <p className="mb-1 text-xs font-extrabold text-slate-700">تقييمات البشر</p>
           <div className="space-y-1">

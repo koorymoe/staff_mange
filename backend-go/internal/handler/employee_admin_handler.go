@@ -221,6 +221,29 @@ func (h *EmployeeAdminHandler) Schedule(w http.ResponseWriter, r *http.Request) 
 	writeEmployeeFor(w, r, emp)
 }
 
+// PUT /api/employees/{id}/ai-only-rating — {on} (دازاي 11-16): المالك بس.
+// «ما أتقيّم من قبل البشر — بس ماتركس يقرا تقاريري ويحلل ويقيّمني».
+func (h *EmployeeAdminHandler) AIOnlyRating(w http.ResponseWriter, r *http.Request) {
+	var body struct {
+		On bool `json:"on"`
+	}
+	if err := DecodeJSON(r, &body); err != nil {
+		WriteError(w, http.StatusBadRequest, "بيانات الطلب غير صحيحة")
+		return
+	}
+	ok, err := h.repo.SetAIOnlyRating(r.PathValue("id"), body.On)
+	if err != nil {
+		WriteError(w, http.StatusInternalServerError, "تعذّر الحفظ")
+		return
+	}
+	if !ok {
+		WriteError(w, http.StatusNotFound, "غير موجود")
+		return
+	}
+	service.InvalidateBoard()
+	WriteJSON(w, http.StatusOK, map[string]any{"ok": true, "aiOnlyRating": body.On})
+}
+
 // GET /api/work-schedule — جدول كل الموظفين الفعّالين وحضورهم اليوم.
 func (h *EmployeeAdminHandler) WorkSchedule(w http.ResponseWriter, r *http.Request) {
 	rows, err := h.repo.WorkSchedule()

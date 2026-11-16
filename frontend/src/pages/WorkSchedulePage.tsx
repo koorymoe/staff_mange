@@ -22,6 +22,18 @@ function ScheduleTab() {
   const canView = isAdmin || role === 'HR_COORDINATOR' || role === 'MONITOR' || permissions.includes('monitoring') || hasRole(employee, 'HR_COORDINATOR')
     || permissions.includes('work_schedule_manage') || permissions.includes('staff_management')
   const canEdit = isAdmin || permissions.includes('work_schedule_manage')
+  // (دازاي 11-16) «تقييمه من ماتركس بس» — المالك بس يشوفه ويغيّره (نفس حارس الخادم)
+  const isOwner = role === 'OWNER'
+  const [aiBusy, setAiBusy] = useState<string | null>(null)
+  const toggleAIOnly = async (r: WorkScheduleRow, on: boolean) => {
+    if (aiBusy) return
+    setAiBusy(r.id)
+    try {
+      await api.setAIOnlyRating(r.id, on)
+      setMsg(on ? `${r.name}: تقييمه صار من ماتركس بس` : `${r.name}: رجع ينقيّم من البشر هم`)
+      load()
+    } catch (err) { setMsg(err instanceof Error ? err.message : 'تعذّر الحفظ') } finally { setAiBusy(null) }
+  }
   const [rows, setRows] = useState<WorkScheduleRow[]>([])
   const [edits, setEdits] = useState<Record<string, Partial<WorkScheduleRow>>>({})
   const [q, setQ] = useState('')
@@ -86,7 +98,7 @@ function ScheduleTab() {
       <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-sm">
         <table className="w-full min-w-[860px] text-sm">
           <thead className="bg-slate-50 text-xs text-slate-500">
-            <tr><th className="p-3 text-right">الموظف</th><th className="p-3 text-right">الدور الوظيفي</th><th className="p-3">الوجبة</th><th className="p-3">يبدأ</th><th className="p-3">ينتهي</th><th className="p-3" title="بدون جدول محدد: يسجّل شوكت ما يبدي، تنحسبله ٨ ساعات وبعدها انصراف تلقائي — إلا إذا بعده يشتغل بالنظام. ما عليه تأخير.">⏱️ بدون جدول</th><th className="p-3" title="شغله مو بالنظام (برمجة، تطوير…): ما يتقيّم على الحجوزات ولا حركة النظام — بس على تقرير إنجازه اليومي وحضوره والمهام الموجّهة إله. وماتركس ما يحسبه «حاضر وما سوّى شي».">💻 شغله برّا النظام</th><th className="p-3">حالة اليوم</th>{canEdit && <th className="p-3">إجراءات</th>}</tr>
+            <tr><th className="p-3 text-right">الموظف</th><th className="p-3 text-right">الدور الوظيفي</th><th className="p-3">الوجبة</th><th className="p-3">يبدأ</th><th className="p-3">ينتهي</th><th className="p-3" title="بدون جدول محدد: يسجّل شوكت ما يبدي، تنحسبله ٨ ساعات وبعدها انصراف تلقائي — إلا إذا بعده يشتغل بالنظام. ما عليه تأخير.">⏱️ بدون جدول</th><th className="p-3" title="شغله مو بالنظام (برمجة، تطوير…): ما يتقيّم على الحجوزات ولا حركة النظام — بس على تقرير إنجازه اليومي وحضوره والمهام الموجّهة إله. وماتركس ما يحسبه «حاضر وما سوّى شي».">💻 شغله برّا النظام</th>{isOwner && <th className="p-3" title="تقييمه من ماتركس بس: يقرا تقاريره ويحللها ويقيّمه. البشر ما يقيّمونه ولا ينطلب منهم، والتقييمات القديمة ما تنحسب.">🤖 تقييم ماتركس بس</th>}<th className="p-3">حالة اليوم</th>{canEdit && <th className="p-3">إجراءات</th>}</tr>
           </thead>
           <tbody>
             {shown.map((r) => {
@@ -117,6 +129,14 @@ function ScheduleTab() {
                       {off && <span className="rounded-full bg-violet-50 px-2 py-0.5 font-bold text-violet-700">تقرير + حضور + مهام</span>}
                     </label>
                   </td>
+                  {isOwner && (
+                    <td className="p-2.5 text-center">
+                      <label className="inline-flex cursor-pointer items-center gap-1 text-xs">
+                        <input type="checkbox" disabled={aiBusy === r.id} checked={!!r.aiOnlyRating} onChange={(ev) => toggleAIOnly(r, ev.target.checked)} aria-label={`${r.name} تقييمه من ماتركس بس`} />
+                        {r.aiOnlyRating && <span className="rounded-full bg-indigo-50 px-2 py-0.5 font-bold text-indigo-700">ماتركس بس</span>}
+                      </label>
+                    </td>
+                  )}
                   <td className="p-2.5 text-center">{pill(dayKind(r), r)}</td>
                   {canEdit && <td className="p-2.5 text-center">{edits[r.id] ? <button onClick={() => save(r)} disabled={savingId === r.id} className="rounded-lg bg-[#0f2040] px-3 py-1 text-xs font-bold text-white disabled:opacity-50">حفظ</button> : <span className="text-slate-300">⋮</span>}</td>}
                 </tr>

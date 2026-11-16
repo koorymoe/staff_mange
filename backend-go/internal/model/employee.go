@@ -61,10 +61,13 @@ type Employee struct {
 	ShiftStart           *string    `db:"shiftStart" json:"shiftStart"`
 	// (دازاي 11-13) بدون جدول محدد: ما يتحاسب على تأخير؛ من يسجّل حضور تنحسبله ٨ ساعات
 	// وبعدها انصراف تلقائي — إلا إذا بعده فاتح النظام ويشتغل.
-	FlexibleHours    bool    `db:"flexibleHours" json:"flexibleHours"`
+	FlexibleHours bool `db:"flexibleHours" json:"flexibleHours"`
 	// OffSystemWork (دازاي 11-13) شغله برّا النظام (مبرمج، تطوير…): ما يتقيّم على
 	// حجوزات وشغل بالنظام — بس على تقرير إنجازه وحضوره ومهامه الموجّهة.
 	OffSystemWork bool `db:"offSystemWork" json:"offSystemWork"`
+	// AIOnlyRating (دازاي 11-16) تقييمه من ماتركس بس: البشر ما يقيّمونه، ولا ينطلب منهم،
+	// والقديم ما ينحسب. يغيّره المالك بس.
+	AIOnlyRating     bool    `db:"aiOnlyRating" json:"aiOnlyRating"`
 	ShiftEnd         *string `db:"shiftEnd" json:"shiftEnd"`
 	MonthlyLeaves    int     `db:"monthlyLeaves" json:"monthlyLeaves"`
 	JobTitle         *string `db:"jobTitle" json:"jobTitle"`

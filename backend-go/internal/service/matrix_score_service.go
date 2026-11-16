@@ -355,12 +355,14 @@ type StaffScore struct {
 	MatrixPct   *float64          `json:"matrixPct"`
 	HumanAvg    *float64          `json:"humanAvg"`
 	HumanCount  int               `json:"humanCount"`
-	HumanPct    *float64          `json:"humanPct"`
-	Final       *float64          `json:"final"`
-	PrevFinal   *float64          `json:"prevFinal"`
-	NoHuman     bool              `json:"noHuman"`
-	TopLosses   []RuleLoss        `json:"topLosses"`
-	BySource    map[string][2]int `json:"bySource"` // مكسوب/أقصى لكل مصدر
+	// AIOnly (دازاي 11-16) تقييمه من ماتركس بس — تقييمات البشر ما تنحسب.
+	AIOnly    bool              `json:"aiOnly,omitempty"`
+	HumanPct  *float64          `json:"humanPct"`
+	Final     *float64          `json:"final"`
+	PrevFinal *float64          `json:"prevFinal"`
+	NoHuman   bool              `json:"noHuman"`
+	TopLosses []RuleLoss        `json:"topLosses"`
+	BySource  map[string][2]int `json:"bySource"` // مكسوب/أقصى لكل مصدر
 	// معلومات تنعرض بـ«مؤشرات أداء الموظف» وما تدخل بالنسبة (قرار (ع) 10-08).
 	Skills     int  `json:"skills"`
 	HasLicense bool `json:"hasLicense"`
@@ -586,8 +588,10 @@ var reliabilityOnlyRules = map[string]bool{"ATTENDANCE": true, "INVENTORY": true
 
 func BuildScores(people []repository.Scorable, pts []repository.MatrixScoreRow, hum []repository.HumanRow, rel map[string]repository.ReliabilityFact) []StaffScore {
 	groupOf := map[string]string{}
+	aiOnly := map[string]bool{}
 	for _, p := range people {
 		groupOf[p.ID] = ScoreGroup(p)
+		aiOnly[p.ID] = p.AIOnly
 	}
 	type acc struct {
 		earned, max int
@@ -651,6 +655,10 @@ func BuildScores(people []repository.Scorable, pts []repository.MatrixScoreRow, 
 	}
 	for _, h := range hum {
 		// قرار (ع) 10-06: كل مجموعة ينحسبلها بس مقيّميها المسموحين.
+		// (دازاي 11-16) تقييمه من ماتركس بس — ولا تقييم بشري ينحسب، حتى القديم.
+		if aiOnly[h.RateeID] {
+			continue
+		}
 		if g, ok := groupOf[h.RateeID]; ok && !groupRaterStages[g][h.Stage] {
 			continue
 		}
@@ -663,7 +671,7 @@ func BuildScores(people []repository.Scorable, pts []repository.MatrixScoreRow, 
 		a := get(p.ID)
 		g := groupOf[p.ID]
 		s := StaffScore{ID: p.ID, Name: p.Name, Role: p.Role, Earned: a.earned, Max: a.max, HumanCount: a.hN,
-			TopLosses: []RuleLoss{}, BySource: a.src, Group: g, GroupLabel: ScoreGroupLabels[g]}
+			TopLosses: []RuleLoss{}, BySource: a.src, Group: g, GroupLabel: ScoreGroupLabels[g], AIOnly: p.AIOnly}
 		for r := range a.rules {
 			if !genericRules[r] {
 				s.RoleWork = true
@@ -851,6 +859,9 @@ func (s *MatrixScoreService) RatePeriodic(raterID, raterRole, rateeID string, sc
 	}
 	for _, p := range people {
 		if p.ID == rateeID {
+			if p.AIOnly {
+				return repository.ErrAIOnlyRatee
+			}
 			stage := periodicStage(raterRole)
 			if !periodicAllowed(stage, p) {
 				return errors.New("هذا الموظف يقيّمه غيرك (حسب مجموعته)")

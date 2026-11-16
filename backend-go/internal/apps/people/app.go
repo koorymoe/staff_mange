@@ -34,6 +34,7 @@ func New() *core.SetApp {
 		"people.suspend":           adminOr("يوقف حساب موظف", "employee_suspend"),
 		"people.reactivate":        adminOr("يرجّع تفعيل حساب", "employee_suspend"),
 		"people.schedule":          adminOr("يغيّر دوام موظف", "work_schedule_manage"),
+		"people.ai_only_rating":    {Label: "يخلي تقييم موظف من ماتركس بس (بلا تقييم بشري)", OwnerOnly: true},
 		"people.identity":          adminOr("يعدّل اسم/دور موظف", "edit_employee_identity"),
 		"people.profile":           adminOr("يعدّل ملف موظف (الراتب ومزايا النفس محمية — selfPerkEdit)", "edit_employee_profile"),
 		"people.skills":            perm("يعدّل مهارات موظف", "staff_management"),

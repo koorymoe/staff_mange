@@ -1,6 +1,7 @@
 package repository
 
 import (
+	"errors"
 	"staffmange-api/internal/errlog"
 	"staffmange-api/internal/model"
 	"time"
@@ -64,12 +65,13 @@ type Scorable struct {
 	IsServiceManager bool      `db:"isServiceManager" json:"isServiceManager"`
 	IsCoordinator    bool      `db:"isCoordinator" json:"isCoordinator"`
 	OffSystem        bool      `db:"offSystemWork" json:"offSystemWork"`
+	AIOnly           bool      `db:"aiOnlyRating" json:"aiOnlyRating"`
 	Division         string    `db:"division" json:"division"`
 }
 
 func (r *MatrixScoreRepository) Scorables() ([]Scorable, error) {
 	rows := []Scorable{}
-	err := r.db.Select(&rows, `SELECT id, name, `+model.EffectiveRoleSQL(`"Employee".id`, `"Employee".role`)+` AS role, "createdAt", COALESCE("isLeader", false) AS "isLeader", COALESCE(division, 'ENGINEERING') AS division, "offSystemWork",
+	err := r.db.Select(&rows, `SELECT id, name, `+model.EffectiveRoleSQL(`"Employee".id`, `"Employee".role`)+` AS role, "createdAt", COALESCE("isLeader", false) AS "isLeader", COALESCE(division, 'ENGINEERING') AS division, "offSystemWork", "aiOnlyRating",
 		EXISTS (SELECT 1 FROM "ServiceManager" sm WHERE sm."employeeId" = "Employee".id) AS "isServiceManager",
 		EXISTS (SELECT 1 FROM "EmployeePermission" ep JOIN "Permission" pm ON pm.id = ep."permissionId"
 		        WHERE ep."employeeId" = "Employee".id AND pm.name = 'coordinator') AS "isCoordinator"
@@ -132,7 +134,17 @@ type StaffRatingInput struct {
 	Note      *string
 }
 
+// ErrAIOnlyRatee (دازاي 11-16) الموظف تقييمه من ماتركس بس — ماكو تقييم بشري إله.
+var ErrAIOnlyRatee = errors.New("هذا الموظف ما ينقيّم")
+
 func (r *MatrixScoreRepository) SaveRating(in StaffRatingInput) error {
+	var aiOnly bool
+	if err := r.db.Get(&aiOnly, `SELECT EXISTS (SELECT 1 FROM "Employee" WHERE id = $1 AND "aiOnlyRating")`, in.RateeID); err != nil {
+		return err
+	}
+	if aiOnly {
+		return ErrAIOnlyRatee
+	}
 	_, err := r.db.Exec(`
 		INSERT INTO "StaffRating" ("raterId", "rateeId", stage, "bookingId", period, score, note)
 		VALUES ($1, $2, $3, $4, $5, $6, $7)

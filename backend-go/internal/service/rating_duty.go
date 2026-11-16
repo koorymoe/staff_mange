@@ -159,7 +159,7 @@ func (d *RatingDuty) Owed(rater, day string) ([]DutyItem, error) {
 			return nil, err
 		}
 	}
-	return out, nil
+	return d.dropAIOnly(out), nil
 }
 
 func companyDay(offset int) string {
@@ -373,4 +373,24 @@ func (d *RatingDuty) Sweep() (int, error) {
 		}
 	}
 	return n, nil
+}
+
+// dropAIOnly (دازاي 11-16) يشيل الي تقييمهم من ماتركس بس: ما ينطلب تقييمهم من أحد.
+func (d *RatingDuty) dropAIOnly(items []DutyItem) []DutyItem {
+	var ids []string
+	if err := d.db.Select(&ids, `SELECT id FROM "Employee" WHERE "aiOnlyRating"`); err != nil || len(ids) == 0 {
+		errlog.Err(err)
+		return items
+	}
+	skip := map[string]bool{}
+	for _, id := range ids {
+		skip[id] = true
+	}
+	out := items[:0]
+	for _, it := range items {
+		if !skip[it.RateeID] {
+			out = append(out, it)
+		}
+	}
+	return out
 }

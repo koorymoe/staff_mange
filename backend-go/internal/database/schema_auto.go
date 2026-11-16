@@ -121,6 +121,13 @@ func autoMigrations() []Migration {
 			ALTER TABLE "WaConversation" ADD COLUMN IF NOT EXISTS "inbound" boolean DEFAULT false NOT NULL;
 		`,
 		},
+		{
+			// (دازاي 11-16) «ما أتقيّم من قبل البشر — بس ماتركس يقرا تقاريري ويقيّمني»
+			Version: "0501_employee_ai_only_rating",
+			SQL: `
+			ALTER TABLE "Employee" ADD COLUMN IF NOT EXISTS "aiOnlyRating" boolean DEFAULT false NOT NULL;
+		`,
+		},
 		// ‹makemigration› — التحديثات الجديدة تنضاف فوگ هالسطر
 	}
 }

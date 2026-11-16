@@ -590,6 +590,7 @@ type ScheduleRow struct {
 	IsLeader   bool           `db:"isLeader" json:"isLeader"`
 	Flexible   bool           `db:"flexibleHours" json:"flexibleHours"`
 	OffSystem  bool           `db:"offSystemWork" json:"offSystemWork"`
+	AIOnly     bool           `db:"aiOnlyRating" json:"aiOnlyRating"`
 	Shift      sql.NullString `db:"shift" json:"-"`
 	ShiftStart sql.NullString `db:"shiftStart" json:"-"`
 	ShiftEnd   sql.NullString `db:"shiftEnd" json:"-"`
@@ -603,10 +604,20 @@ type ScheduleRow struct {
 	OutV   *string `db:"-" json:"checkOut"`
 }
 
+// SetAIOnlyRating (دازاي 11-16) تقييم الموظف من ماتركس بس. false = ماكو موظف بهالرقم.
+func (r *EmployeeRepository) SetAIOnlyRating(id string, on bool) (bool, error) {
+	res, err := r.db.Exec(`UPDATE "Employee" SET "aiOnlyRating" = $2 WHERE id = $1 AND role::text NOT IN ('ADMIN', 'OWNER')`, id, on)
+	if err != nil {
+		return false, err
+	}
+	n, _ := res.RowsAffected()
+	return n > 0, nil
+}
+
 // WorkSchedule جدول كل الفعّالين + أول حضور وآخر انصراف اليوم.
 func (r *EmployeeRepository) WorkSchedule() ([]ScheduleRow, error) {
 	rows := []ScheduleRow{}
-	err := r.db.Select(&rows, `SELECT e.id, e.name, e.role::text AS role, e."isLeader", e."flexibleHours", e."offSystemWork", e.shift::text AS shift, e."shiftStart", e."shiftEnd",
+	err := r.db.Select(&rows, `SELECT e.id, e.name, e.role::text AS role, e."isLeader", e."flexibleHours", e."offSystemWork", e."aiOnlyRating", e.shift::text AS shift, e."shiftStart", e."shiftEnd",
 		(SELECT MIN("checkIn") FROM "Attendance" a WHERE a."employeeId" = e.id AND baghdad_date(a."checkIn") = baghdad_today()) AS "checkIn",
 		(SELECT MAX("checkOut") FROM "Attendance" a WHERE a."employeeId" = e.id AND baghdad_date(a."checkIn") = baghdad_today()) AS "checkOut"
 		FROM "Employee" e WHERE e.status = 'ACTIVE' AND e.role::text <> 'OWNER' ORDER BY e.role, e.name`)
