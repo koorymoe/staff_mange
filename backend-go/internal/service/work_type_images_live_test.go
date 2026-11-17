@@ -33,10 +33,14 @@ func TestWorkTypeImagePickRotatesLive(t *testing.T) {
 	if _, err := s.Add("", wt, []string{"https://evil/x.png"}); err == nil {
 		t.Fatal("صورة من برا النظام انقبلت")
 	}
+	// (11-17) موظف خاص بالاختبار: «أي موظف» چان يلگف موظفين اختبارات ثانية، والعروض الباقية
+	// تمنع حذفهم فتفشل اختباراتهم بالتشغيل الجاي.
+	qe := "wti-emp-" + sfx
+	db.MustExec(`INSERT INTO "Employee"(id, name) VALUES ($1, 'منشئ عروض صور')`, qe)
 	quotes := []string{}
 	for i := 0; i < 3; i++ {
 		q := uuid.NewString()
-		db.MustExec(`INSERT INTO "Quotation" (id, "quotationNumber", "customerName", "createdByEmployeeId") VALUES ($1, $2, 'زبون', (SELECT id FROM "Employee" LIMIT 1))`, q, "QT-"+sfx+string(rune('a'+i)))
+		db.MustExec(`INSERT INTO "Quotation" (id, "quotationNumber", "customerName", "createdByEmployeeId") VALUES ($1, $2, 'زبون', $3)`, q, "QT-"+sfx+string(rune('a'+i)), qe)
 		quotes = append(quotes, q)
 	}
 	t.Cleanup(func() {

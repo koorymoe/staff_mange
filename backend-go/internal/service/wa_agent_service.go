@@ -206,9 +206,11 @@ func (s *WaAgentService) StartSandbox(agent, bookingID string) (*repository.WaCo
 	if agent != WaAgentQuality && agent != WaAgentBooking {
 		return nil, nil, errors.New("وكيل غير معروف")
 	}
+	// (دازاي 11-17) المالك يكتب كود الحجز (B1206) — المعرّف الداخلي ما يبين بالشاشات.
+	bookingID = s.repo.ResolveBookingRef(bookingID)
 	c, err := s.repo.BookingContext(bookingID)
 	if err != nil {
-		return nil, nil, errors.New("الحجز مو موجود")
+		return nil, nil, errors.New("الحجز مو موجود — اكتب كوده مثل B1206")
 	}
 	var fu *string
 	if agent == WaAgentQuality {

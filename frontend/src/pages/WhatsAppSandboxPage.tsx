@@ -103,13 +103,13 @@ function Sandbox() {
             </select>
           </label>
           <label hidden={reception}>
-            معرّف الحجز التجريبي
+            كود الحجز التجريبي
             <input
               required={!reception}
               disabled={busy || !!detail}
               value={bookingId}
               onChange={(e) => setBookingId(e.target.value)}
-              placeholder="معرّف الحجز، مو الكود"
+              placeholder="كود الحجز، مثل B1206"
             />
           </label>
           {!detail ? (

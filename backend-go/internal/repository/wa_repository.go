@@ -405,3 +405,13 @@ func (r *WaRepository) MarkContactedByAgent(bookingID string) error {
 	_, err := r.db.Exec(`UPDATE "Booking" SET "confirmationContactedAt" = now() WHERE id = $1 AND "confirmationContactedAt" IS NULL`, bookingID)
 	return err
 }
+
+// ResolveBookingRef (دازاي 11-17) كود الحجز (B1206) أو معرّفه ← المعرّف. إذا ما لگاه يرجّع النص كما هو.
+func (r *WaRepository) ResolveBookingRef(ref string) string {
+	ref = strings.TrimSpace(ref)
+	var id string
+	if err := r.db.Get(&id, `SELECT id FROM "Booking" WHERE id = $1 OR upper(code) = upper($1) ORDER BY (id = $1) DESC LIMIT 1`, ref); err == nil {
+		return id
+	}
+	return ref
+}
