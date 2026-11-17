@@ -4,7 +4,6 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"regexp"
 	"time"
 
 	"github.com/jmoiron/sqlx"
@@ -88,8 +87,6 @@ func (r *ProcurementRepository) List() ([]model.ProcurementRequest, error) {
 	}
 	return requests, nil
 }
-
-var prCodeRe = regexp.MustCompile(`PR-(\d+)`)
 
 // nextProcurementCode داخل معاملة الإدخال: قفل استشاري يسلسل الإنشاءات،
 // والـMAX على الجزء الرقمي حتى PR-10000 ما ينحسب أصغر من PR-9999.
