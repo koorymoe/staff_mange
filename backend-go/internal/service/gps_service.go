@@ -147,11 +147,16 @@ func (s *GpsService) ListSettings() ([]model.GpsSubscriptionPrice, error) {
 }
 
 func (s *GpsService) UpsertSetting(req model.UpsertGpsSubscriptionPriceRequest) (*model.GpsSubscriptionPrice, error) {
-	id := "default"
-	if req.ID != nil && *req.ID != "" {
-		id = *req.ID
+	// (دازاي 11-17) سعر واحد لكل نوع اشتراك — المعرّف هو النوع نفسه.
+	switch req.SubscriptionType {
+	case "THREE_MONTHS", "SIX_MONTHS", "YEARLY":
+	default:
+		return nil, errors.New("نوع الاشتراك لازم ٣ أشهر أو ٦ أشهر أو سنوي")
 	}
-	return s.repo.UpsertSetting(id, req.SubscriptionType, req.Price)
+	if req.Price < 0 {
+		return nil, errors.New("السعر ما يصير سالب")
+	}
+	return s.repo.UpsertSetting(req.SubscriptionType, req.SubscriptionType, req.Price)
 }
 
 func (s *GpsService) Stats() (*model.GpsStats, error) {

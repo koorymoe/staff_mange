@@ -457,8 +457,8 @@ func (r *GpsRepository) ListRenewals() ([]model.GpsRenewalRequest, error) {
 func (r *GpsRepository) CreateRenewal(req model.UpsertGpsRenewalRequest) (*model.GpsRenewalRequest, error) {
 	var rn model.GpsRenewalRequest
 	err := r.db.Get(&rn, `
-		INSERT INTO "GpsRenewalRequest" (id, "customerId", "deviceRequestId", "employeeId", "adminId", "subscriptionType", "newEndDate")
-		VALUES (gen_random_uuid()::text, $1, $2, $3, $4, $5, $6)
+		INSERT INTO "GpsRenewalRequest" (id, "customerId", "deviceRequestId", "employeeId", "adminId", "subscriptionType", "newEndDate", price)
+		VALUES (gen_random_uuid()::text, $1, $2, $3, $4, $5::text::"GpsSubscriptionType", $6, `+gpsPriceSQL("$5::text")+`)
 		RETURNING *
 	`, req.CustomerID, req.DeviceRequestID, req.EmployeeID, req.AdminID, req.SubscriptionType, req.NewEndDate)
 	if err != nil {
@@ -517,7 +517,8 @@ func (r *GpsRepository) ApproveRenewal(id string, adminID *string) (*model.GpsRe
 			return nil, err
 		}
 		if err := tx.Get(&rn, `
-			UPDATE "GpsRenewalRequest" SET status = 'APPROVED', "newEndDate" = $2, "adminId" = COALESCE($3, "adminId")
+			UPDATE "GpsRenewalRequest" SET status = 'APPROVED', "newEndDate" = $2, "adminId" = COALESCE($3, "adminId"),
+				price = COALESCE(price, `+gpsPriceSQL(`"subscriptionType"`)+`)
 			WHERE id = $1 RETURNING *
 		`, id, newEnd, adminID); err != nil {
 			return nil, err
@@ -608,7 +609,7 @@ func (r *GpsRepository) UpsertSetting(id, subscriptionType string, price float64
 	err := r.db.Get(&p, `
 		INSERT INTO "GpsSubscriptionPrice" (id, "subscriptionType", price)
 		VALUES ($1, $2, $3)
-		ON CONFLICT (id) DO UPDATE SET "subscriptionType" = $2, price = $3
+		ON CONFLICT ("subscriptionType") DO UPDATE SET price = $3
 		RETURNING *
 	`, id, subscriptionType, price)
 	if err != nil {
@@ -869,4 +870,9 @@ func (r *GpsRepository) MonitorSnapshot(windowDays int) (*model.GpsMonitorSnapsh
 		out.Problems = []model.GpsMonitorProblem{}
 	}
 	return out, nil
+}
+
+// gpsPriceSQL (دازاي 11-17) سعر نوع الاشتراك من «أسعار الاشتراك» (آخر سعر للنوع؛ بلا سعر = NULL).
+func gpsPriceSQL(typeExpr string) string {
+	return `(SELECT p.price FROM "GpsSubscriptionPrice" p WHERE p."subscriptionType"::text = (` + typeExpr + `)::text ORDER BY p."createdAt" DESC LIMIT 1)`
 }

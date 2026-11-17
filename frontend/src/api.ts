@@ -1743,6 +1743,10 @@ export const api = {
       method: 'POST', body: JSON.stringify({ outcome, notes: notes || null }),
     }),
   getGpsRenewals: () => request<GpsRenewalRequest[]>('/gps/renewals'),
+  // (دازاي 11-17) أسعار اشتراك GPS — تدخل بالتجديد
+  getGpsPrices: () => request<{ id: string; subscriptionType: string; price: number }[]>('/gps/settings'),
+  setGpsPrice: (subscriptionType: string, price: number) =>
+    request<{ id: string; subscriptionType: string; price: number }>('/gps/settings', { method: 'PUT', body: JSON.stringify({ subscriptionType, price }) }),
   createGpsRenewal: (data: { customerId: string; deviceRequestId: string; employeeId: string; subscriptionType: string }) =>
     request<GpsRenewalRequest>('/gps/renewals', { method: 'POST', body: JSON.stringify(data) }),
   updateGpsRenewal: (id: string, data: Partial<GpsRenewalRequest>) =>

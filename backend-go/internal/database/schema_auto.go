@@ -184,6 +184,13 @@ func autoMigrations() []Migration {
 			ALTER TABLE "ProcurementRequest" ADD COLUMN IF NOT EXISTS "remindedAt" timestamp without time zone;
 		`,
 		},
+		{
+			// (دازاي 11-17) «أسعار اشتراك GPS تدخل بالتجديد»: كل طلب تجديد ياخذ سعر نوعه وقت الطلب.
+			Version: "0506_gps_renewal_price",
+			SQL: `
+			ALTER TABLE "GpsRenewalRequest" ADD COLUMN IF NOT EXISTS price double precision;
+		`,
+		},
 		// ‹makemigration› — التحديثات الجديدة تنضاف فوگ هالسطر
 	}
 }

@@ -524,6 +524,8 @@ export interface GpsRenewalRequest {
   subscriptionType: string
   newEndDate: string | null
   currentEnd?: string | null
+  /** (دازاي 11-17) سعر التجديد من أسعار الاشتراك */
+  price?: number | null
   status: string
   createdAt: string
 }

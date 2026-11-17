@@ -5,6 +5,7 @@ import { api, type GpsRenewalRequest } from '../../api'
 import { loadFailed } from '../../netErrors'
 
 import { notify } from '../../ui/notify'
+import GpsPriceSettings from '../../components/GpsPriceSettings'
 const subLabel = (t: string) => t === 'THREE_MONTHS' ? '3 أشهر' : t === 'SIX_MONTHS' ? '6 أشهر' : 'سنوي'
 
 function printRenewal(rawRenewal: GpsRenewalRequest, newEnd: Date) {
@@ -23,6 +24,7 @@ function printRenewal(rawRenewal: GpsRenewalRequest, newEnd: Date) {
         <tr><td style="padding:5px 7px;color:#444;width:38%;border-bottom:1px solid #f0e8d0;">اسم الزبون</td><td style="padding:5px 7px;font-weight:bold;color:#0f2040;border-bottom:1px solid #f0e8d0;">${customerName}</td></tr>
         <tr style="background:#fffdf5;"><td style="padding:5px 7px;color:#444;border-bottom:1px solid #f0e8d0;">رقم الهاتف</td><td style="padding:5px 7px;font-weight:bold;border-bottom:1px solid #f0e8d0;">${renewal.customer.phone}</td></tr>
         <tr><td style="padding:5px 7px;color:#444;border-bottom:1px solid #f0e8d0;">نوع الاشتراك</td><td style="padding:5px 7px;font-weight:bold;border-bottom:1px solid #f0e8d0;">${subLabel(renewal.subscriptionType)}</td></tr>
+        ${renewal.price != null ? `<tr><td style="padding:5px 7px;color:#444;border-bottom:1px solid #f0e8d0;">المبلغ</td><td style="padding:5px 7px;font-weight:bold;border-bottom:1px solid #f0e8d0;">${Number(renewal.price).toLocaleString('en-US')} د.ع</td></tr>` : ''}
         <tr style="background:#fffdf5;"><td style="padding:5px 7px;color:#444;border-bottom:1px solid #f0e8d0;">تاريخ الانتهاء السابق</td><td style="padding:5px 7px;border-bottom:1px solid #f0e8d0;">${oldEndStr}</td></tr>
         <tr><td style="padding:5px 7px;color:#444;">تاريخ الانتهاء الجديد</td><td style="padding:5px 7px;font-weight:bold;color:#16a34a;">${newEndStr}</td></tr>
       </table>
@@ -82,6 +84,7 @@ export default function GpsRenewalsReview({ embedded }: { embedded?: boolean } =
         <h2 className="mb-6 text-2xl font-bold text-brand-900">طلبات تجديد الاشتراك 🔄</h2>
       )}
 
+      <GpsPriceSettings />
       {loading && <p className="py-20 text-center text-slate-400">جاري التحميل…</p>}
       {!loading && renewals.length === 0 && (
         <div className="rounded-2xl bg-white py-16 text-center shadow-sm">
@@ -100,6 +103,7 @@ export default function GpsRenewalsReview({ embedded }: { embedded?: boolean } =
                 <th className="px-4 py-3 text-right font-semibold text-slate-600">الهاتف</th>
                 <th className="px-4 py-3 text-right font-semibold text-slate-600">تاريخ الانتهاء الحالي</th>
                 <th className="px-4 py-3 text-right font-semibold text-slate-600">النوع المطلوب</th>
+                <th className="px-4 py-3 text-right font-semibold text-slate-600">المبلغ</th>
                 <th className="px-4 py-3 text-right font-semibold text-slate-600">إجراء</th>
               </tr>
             </thead>
@@ -110,6 +114,7 @@ export default function GpsRenewalsReview({ embedded }: { embedded?: boolean } =
                   <td className="px-4 py-3 text-slate-600">{r.customer.phone}</td>
                   <td className="px-4 py-3 text-slate-600">{r.deviceRequest.subscriptionEnd ? new Date(r.deviceRequest.subscriptionEnd).toLocaleDateString('ar-IQ') : '-'}</td>
                   <td className="px-4 py-3 text-slate-600">{subLabel(r.subscriptionType)}</td>
+                  <td className="px-4 py-3 font-bold text-slate-700">{r.price != null ? `${r.price.toLocaleString('en-US')} د.ع` : <span className="text-xs font-normal text-amber-600">ماكو سعر للنوع</span>}</td>
                   <td className="px-4 py-3"><button onClick={() => setSelected(r)} className="rounded-lg bg-brand-500 px-4 py-1.5 text-xs font-bold text-white hover:bg-[#1a3a6c]">موافقة ومعالجة ←</button></td>
                 </tr>
               ))}
@@ -126,6 +131,7 @@ export default function GpsRenewalsReview({ embedded }: { embedded?: boolean } =
                 <p><span className="text-slate-500">الاسم: </span><b>{selected.customer.fullName} {selected.customer.fatherName} {selected.customer.grandfatherName}</b></p>
                 <p><span className="text-slate-500">الهاتف: </span><b>{selected.customer.phone}</b></p>
                 <p><span className="text-slate-500">الاشتراك المطلوب: </span><b>{subLabel(selected.subscriptionType)}</b></p>
+                <p><span className="text-slate-500">المبلغ: </span><b>{selected.price != null ? `${selected.price.toLocaleString('en-US')} د.ع` : 'ماكو سعر للنوع — حدده فوق'}</b></p>
                 <p><span className="text-slate-500">الانتهاء الحالي: </span><b className="text-red-600">{selected.deviceRequest.subscriptionEnd ? new Date(selected.deviceRequest.subscriptionEnd).toLocaleDateString('ar-IQ') : '-'}</b></p>
               </div>
               <div className="rounded-xl bg-emerald-50 p-4 text-emerald-800">سيتم تجديد الاشتراك تلقائياً وطباعة الفاتورة عند الموافقة</div>

@@ -223,6 +223,8 @@ type GpsRenewalRequest struct {
 	NewEndDate       *time.Time `db:"newEndDate" json:"newEndDate"`
 	Status           string     `db:"status" json:"status"`
 	CreatedAt        time.Time  `db:"createdAt" json:"createdAt"`
+	// Price (دازاي 11-17) سعر التجديد من «أسعار الاشتراك» حسب النوع، ينحفظ وقت الطلب/الموافقة
+	Price *float64 `db:"price" json:"price"`
 
 	Customer      *GpsCustomer      `db:"-" json:"customer"`
 	DeviceRequest *GpsDeviceRequest `db:"-" json:"deviceRequest"`

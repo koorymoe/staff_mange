@@ -15,6 +15,7 @@ func init() {
 			{Name: "newEndDate", Type: "timestamp without time zone"},
 			{Name: "status", Type: "\"GpsRequestStatus\"", NotNull: true, Default: "'PENDING'::\"GpsRequestStatus\""},
 			{Name: "createdAt", Type: "timestamp without time zone", NotNull: true, Default: "CURRENT_TIMESTAMP"},
+			{Name: "price", Type: "double precision"},
 		},
 		Constraints: []Constraint{
 			{Name: "GpsRenewalRequest_adminId_fkey", Def: "FOREIGN KEY (\"adminId\") REFERENCES \"Employee\"(id)"},
