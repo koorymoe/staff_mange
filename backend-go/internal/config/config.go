@@ -27,6 +27,9 @@ type Config struct {
 	SonioxModel    string
 	VoicePolish    bool
 	ElevenLabsKey  string
+	// (11-17) 🔊 صوت كمال
+	ElevenVoiceID  string
+	ElevenTTSModel string
 	ElevenSTTModel string
 	GeminiDailyCap int
 	// GeminiImageModel موديل توليد صور شخصية الكيان. من البيئة مو
@@ -155,6 +158,8 @@ func load() *Config {
 		SonioxModel:    getEnv("SONIOX_MODEL", ""),
 		VoicePolish:    getEnv("AI_VOICE_POLISH", "1") == "1",
 		ElevenLabsKey:  getEnv("ELEVENLABS_API_KEY", ""),
+		ElevenVoiceID:  getEnv("ELEVENLABS_VOICE_ID", ""),
+		ElevenTTSModel: getEnv("ELEVENLABS_TTS_MODEL", ""),
 		ElevenSTTModel: getEnv("ELEVENLABS_STT_MODEL", ""),
 		GeminiDailyCap: getEnvInt("GEMINI_DAILY_CAP", 300),
 		// الافتراضي موديل الصور الحالي من نفس المزوّد — ويُضبط بالبيئة

@@ -489,6 +489,18 @@ export const api = {
     if (!res.ok) throw new Error('ما گدرت أجيب البصمة')
     return res.blob()
   },
+  // 🔊 (دازاي 11-17) كمال يحچي: رده المكتوب صوت عراقي. 404 = الصوت مو مربوط بالسيرفر.
+  secretarySpeak: async (text: string): Promise<Blob> => {
+    const token = currentToken()
+    const res = await fetch(`${API_URL}/secretary/speak`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+      body: JSON.stringify({ text }),
+    })
+    if (res.status === 404) throw new Error('صوت كمال مو مربوط بعد — يحتاج مفتاح ElevenLabs ومعرّف الصوت بالسيرفر')
+    if (!res.ok) throw new Error('تعذّر تحويل الرد لصوت')
+    return res.blob()
+  },
   getMe: () => request<Employee>('/auth/me'),
   // تغيير كلمة السر يبطل كل الجلسات القديمة — بضمنها توكن الجهاز الحالي.
   // السيرفر يرجّع توكن جديد ولازم نخزنه فوراً، وإلا كل طلب بعدها يطلع

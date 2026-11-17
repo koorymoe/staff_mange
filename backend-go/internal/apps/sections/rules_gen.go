@@ -1103,6 +1103,7 @@ func rules() map[string]map[core.Action]core.Rule {
 			"secretary.post_actions_by_id_confirm":      func(l string) core.Rule { return admin(l) }("ينفّذ /api/secretary/actions/{id}/confirm (مدير النظام)"),
 			"secretary.post_conversations":              func(l string) core.Rule { return admin(l) }("ينفّذ /api/secretary/conversations (مدير النظام)"),
 			"secretary.post_message":                    func(l string) core.Rule { return admin(l) }("ينفّذ /api/secretary/message (مدير النظام)"),
+			"secretary.post_speak":                      func(l string) core.Rule { return admin(l) }("يسمع رد كمال بصوت (مدير النظام — 11-17)"),
 			"secretary.post_messages_by_msgid_feedback": func(l string) core.Rule { return admin(l) }("ينفّذ /api/secretary/messages/{msgId}/feedback (مدير النظام)"),
 			"secretary.post_notes":                      func(l string) core.Rule { return admin(l) }("ينفّذ /api/secretary/notes (مدير النظام)"),
 			"secretary.post_reminders_by_id_decline":    func(l string) core.Rule { return admin(l) }("ينفّذ /api/secretary/reminders/{id}/decline (مدير النظام)"),

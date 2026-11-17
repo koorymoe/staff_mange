@@ -50,6 +50,9 @@ services:
       AI_VOICE_POLISH: ${AI_VOICE_POLISH:-1}
       ELEVENLABS_API_KEY: ${ELEVENLABS_API_KEY:-}
       ELEVENLABS_STT_MODEL: ${ELEVENLABS_STT_MODEL:-}
+      # 🔊 (11-17) صوت كمال: معرّف الصوت من مكتبة ElevenLabs (فاضي = كمال ما يحچي)
+      ELEVENLABS_VOICE_ID: ${ELEVENLABS_VOICE_ID:-}
+      ELEVENLABS_TTS_MODEL: ${ELEVENLABS_TTS_MODEL:-}
       # ماتركس: نموذج Anthropic (اختياري). بلا مفتاح يبقى على القواعد.
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
       # 🧠 دماغين (10-28): داخلي = ماتركس + ايريس، خارجي = الجودة + الحجوزات

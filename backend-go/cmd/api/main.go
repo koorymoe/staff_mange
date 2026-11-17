@@ -3389,6 +3389,9 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 		secs["secretary"].Set("POST /api/secretary/actions/{id}/cancel", "secretary.post_actions_by_id_cancel", secHandler.Cancel)
 		secs["secretary"].Set("GET /api/secretary/today", "secretary.get_today", secHandler.Today)
 		secs["secretary"].Set("GET /api/secretary/audio/{id}", "secretary.get_audio_by_id", secHandler.Audio)
+		// 🔊 (دازاي 11-17) كمال يحچي: رده المكتوب صوت عراقي (ElevenLabs)
+		secs["secretary"].Set("POST /api/secretary/speak", "secretary.post_speak",
+			handler.NewSecretarySpeakHandler(service.NewElevenLabsTTS(cfg.ElevenLabsKey, cfg.ElevenVoiceID, cfg.ElevenTTSModel)).Speak)
 		secs["secretary"].Set("GET /api/secretary/files/{id}", "secretary.get_files_by_id", secHandler.File)
 		secs["secretary"].Set("GET /api/secretary/history", "secretary.get_history", secHandler.History)
 		// 💬 محادثات ايريس المتعددة (دازاي 10-23)

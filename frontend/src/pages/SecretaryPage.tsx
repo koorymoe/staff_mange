@@ -17,6 +17,8 @@ import { useSession, isAdminOrOwner } from '../session'
 import './SecretaryPage.css'
 import { irisHonorific } from '../irisIdentity'
 import { notify } from '../ui/notify'
+import SpeakButton from '../components/SpeakButton'
+import { stopSpeaking } from '../utils/speak'
 type IrisTrace = {
   text: string
   tools: number
@@ -295,6 +297,14 @@ function Secretary() {
   const honorific = irisHonorific(employee?.certificate)
   const [today, setToday] = useState<SecretaryToday | null>(null)
   const [chats, setChats] = useState<IrisChat[]>([])
+  // 🔊 (دازاي 11-17) «يقرا الردود تلقائياً» — راحة لكل جهاز، فبالمتصفح
+  const [autoSpeak, setAutoSpeak] = useState(() => { try { return localStorage.getItem('kamal-auto-speak') === '1' } catch { return false } })
+  const toggleAutoSpeak = () => setAutoSpeak((v) => {
+    const n = !v
+    try { localStorage.setItem('kamal-auto-speak', n ? '1' : '0') } catch { /* بلا تخزين */ }
+    if (!n) stopSpeaking()
+    return n
+  })
   const [streaming, setStreaming] = useState(false)
   const [retryAudio, setRetryAudio] = useState<Blob | null>(null)
   // (دازاي 10-29) البصمة ما تنرسل لحالها: تنحفظ هنا، يسمعها، وهو يضغط إرسال.
@@ -1490,7 +1500,13 @@ function Secretary() {
                     </div>
                   </div>
                 )}
-                {chats.map((chat) => (
+                <div className="flex justify-end">
+                  <button type="button" onClick={toggleAutoSpeak} title="كمال يقرا ردوده الجديدة بصوت"
+                    className={`rounded-full px-3 py-1 text-xs font-bold ${autoSpeak ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-500'}`}>
+                    {autoSpeak ? '🔊 يقرا الردود تلقائياً' : '🔈 القراءة التلقائية مطفية'}
+                  </button>
+                </div>
+                {chats.map((chat, idx) => (
                   <article key={chat.id} className={`sec-message ${chat.role}`}>
                     {chat.role === 'assistant' && (
                       <span className="iris-avatar">
@@ -1546,6 +1562,9 @@ function Secretary() {
                       </p>
                     )}
                     <p>{chat.text}</p>
+                    {chat.role === 'assistant' && chat.trace?.phase !== 'live' && !!chat.text?.trim() && (
+                      <SpeakButton text={chat.text} auto={autoSpeak && chat.trace?.phase === 'done' && idx === chats.length - 1} />
+                    )}
                     {chat.role === 'assistant' &&
                       chat.trace?.phase !== 'live' && (
                         <AgentFeedback
