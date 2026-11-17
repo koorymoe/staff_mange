@@ -172,9 +172,29 @@ func TestReliability(t *testing.T) {
 	if v == nil || len(parts) != 7 {
 		t.Fatalf("parts %d", len(parts))
 	}
-	// (80 + 100 + 75 + 100×4) / 7
-	if *v < 93.57 || *v > 93.58 {
+	// (دازاي 11-17) داوم ٨ من ١٠ أيام (٨٠٪): غاب يومين ← الإجازات/الغياب ١٠٠−٢٠ = ٨٠،
+	// والأجزاء «ماكو شي ضده» تنحسب على أيام دوامه: الشكاوى ٧٥×٠.٨ = ٦٠، والزملاء والعدّة والـKPI ٨٠.
+	// (80 + 100 + 60 + 80 + 80×3) / 7 = 80
+	if *v < 79.99 || *v > 80.01 {
 		t.Fatalf("got %v", *v)
+	}
+}
+
+// (دازاي 11-17) «موظف مجاي يداوم — شون اكول عنه ماعنده مشاكل؟»: ما سجّل حضور ولا يوم
+// ← الغياب ينحسب عليه، والأجزاء الي تبدي ١٠٠ تصير صفر.
+func TestReliabilityNoAttendance(t *testing.T) {
+	rules := map[string][2]int{"ATTENDANCE": {0, 32}}
+	parts, v := BuildReliability(rules, repository.ReliabilityFact{}, GroupOthers)
+	if v == nil {
+		t.Fatal("لازم ينحسب")
+	}
+	for _, p := range parts {
+		if p.Pct > 0 {
+			t.Fatalf("الي ما داوم ولا يوم ما ياخذ %s = %v", p.Key, p.Pct)
+		}
+	}
+	if *v != 0 {
+		t.Fatalf("الاعتمادية لازم صفر، طلعت %v", *v)
 	}
 }
 

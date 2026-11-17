@@ -202,12 +202,23 @@ func BuildReliability(rules map[string][2]int, f repository.ReliabilityFact, gro
 	if extraLeave < 0 {
 		extraLeave = 0
 	}
-	leaveDetail := "ماكو إجازات"
-	if f.LeaveDays > 0 {
+	// (دازاي 11-17) «موظف مجاي يداوم… ينحسب عليه غياب»: أيام الدوام الي ما سجّل بيها حضور
+	// (بلا إجازة معتمدة — الإجازة أصلاً مو من أيام الدوام بقاعدة الحضور) = غياب، ١٠ لكل يوم.
+	absent := 0
+	if a[1] > a[0] {
+		absent = (a[1] - a[0]) / 2
+	}
+	leaveDetail := "ماكو غياب ولا إجازات"
+	switch {
+	case absent > 0 && f.LeaveDays > 0:
+		leaveDetail = fmt.Sprintf("%d يوم غياب و%d يوم إجازة", absent, f.LeaveDays)
+	case absent > 0:
+		leaveDetail = fmt.Sprintf("%d يوم غياب (بلا حضور ولا إجازة)", absent)
+	case f.LeaveDays > 0:
 		leaveDetail = fmt.Sprintf("%d يوم إجازة", f.LeaveDays)
 	}
 	parts = append(parts, ReliabilityPart{Key: "LEAVES", Label: "ماعنده غيابات وإجازات كثيرة",
-		Pct: float64(max(0, 100-10*extraLeave)), Detail: leaveDetail})
+		Pct: float64(max(0, 100-10*extraLeave-10*absent)), Detail: leaveDetail})
 	penalty("PEERS", "ماعنده مشاكل ويا زملائه", f.Issues, 25, "ماكو مشاكل", "مشكلة وظيفية")
 	if field {
 		penalty("TOOLS", "محافظ على عدّته", f.ToolLosses, 25, "ماكو ضياع ولا تلف", "عدّة ضاعت أو تلفت")
@@ -215,6 +226,18 @@ func BuildReliability(rules map[string][2]int, f repository.ReliabilityFact, gro
 	penalty("KPI", "تقييم الـKPI", f.KpiHits, 20, "ماكو عليه نقاط", "نقطة KPI عليه")
 	if len(parts) <= 1 && f.Complaints == 0 && a[1] == 0 {
 		return parts, nil // ماكو بيانات كافية
+	}
+	// (دازاي 11-17) «شون اكول عنه ماعنده مشاكل وهو ببيتهم؟» — الأجزاء الي تبدي ١٠٠ لأن ماكو
+	// شي ضده (شكاوى، زملاء، عدّة، KPI) تنحسب بس على الأيام الي داوم بيها: داوم نص الأيام = نصها.
+	if a[1] > 0 && a[0] < a[1] {
+		presence := float64(a[0]) / float64(a[1])
+		for i := range parts {
+			switch parts[i].Key {
+			case "COMPLAINTS", "PEERS", "TOOLS", "KPI":
+				parts[i].Pct *= presence
+				parts[i].Detail += fmt.Sprintf(" · بس داوم %d من %d يوم", a[0]/2, a[1]/2)
+			}
+		}
 	}
 	sum := 0.0
 	for _, p := range parts {
