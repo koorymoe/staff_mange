@@ -21,6 +21,7 @@ export default function ScoreSteps({ d }: { d: StaffScore }) {
       {!!d.revenueAdj && <li>{d.revenueAdj > 0
         ? <>+ {r(d.revenueAdj)} لأن دخّل للشركة أكثر من راتبه (تغطية {r(d.salaryCoverage ?? 0)}٪)</>
         : <>× تغطية الراتب: دخّل للشركة {r(d.salaryCoverage ?? 0)}٪ من راتبه، فالرقم ينزل بنسبة النقص (لحد النص) → − {r(Math.abs(d.revenueAdj))}</>} = <b>{r(afterRevenue)}%</b></li>}
+      {d.revenueGrace && <li>تغطية الراتب {r(d.salaryCoverage ?? 0)}٪ — بأول أسبوع من الفترة ما تنقّص الرقم (بعده ما لحق يشتغل ويدخّل)</li>}
       {ds != null && <li>الانضباط بالدوام: {r(afterRevenue)}% × ٨٥٪ + انضباطه {r(ds)}% × ١٥٪ = <b>{r(d.final ?? 0)}%</b></li>}
     </ol>
   )

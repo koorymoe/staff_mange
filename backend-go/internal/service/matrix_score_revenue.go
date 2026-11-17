@@ -27,11 +27,22 @@ var revenueKindOf = map[string]string{
 const (
 	// RevenueFloor: الي ما دخّل ولا دينار ينزل نهائيه للنص.
 	RevenueFloor = 0.5
+	// RevenueGraceDays (دازاي 11-17): بأول هالأيام من الفترة تغطية الراتب ما تنقّص.
+	RevenueGraceDays = 7
 	// RevenueBonusMax: أعلى زيادة لمن يغطي راتبه وأكثر (نقطة لكل ١٠٪ فوك الراتب).
 	RevenueBonusMax = 10.0
 )
 
 // salaryFor راتب الفترة: الشهر الجاري بنسبة الأيام الي مرّت بس.
+// elapsedDays الأيام الي مرّت من الفترة لحد هسه (أو لنهايتها).
+func elapsedDays(from, to, now time.Time) float64 {
+	end := to
+	if now.Before(end) {
+		end = now
+	}
+	return end.Sub(from).Hours() / 24
+}
+
 func salaryFor(salary float64, from, to, now time.Time) float64 {
 	end := to
 	if now.Before(end) {
@@ -71,6 +82,12 @@ func ApplyRevenue(rows []StaffScore, rev []repository.RevenueRow, salaries map[s
 		c := got.Amount / expected * 100
 		s.SalaryCoverage = &c
 		if s.Final == nil {
+			continue
+		}
+		// (دازاي 11-17) أول أسبوع من الفترة (أول الشهر، أو أول أيام دور جديد) بعده ما لحق يشتغل
+		// ويدخّل — التغطية تنعرض بس ما تنقّص الرقم. الزيادة (إذا غطّى أكثر) تبقى.
+		if elapsedDays(from, to, now) < RevenueGraceDays && c < 100 {
+			s.RevenueGrace = true
 			continue
 		}
 		f := *s.Final

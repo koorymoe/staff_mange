@@ -53,4 +53,16 @@ func TestApplyRevenue(t *testing.T) {
 	if *rows2[0].SalaryCoverage != 100 {
 		t.Fatalf("بنص الشهر نص الراتب يكفي: %v", *rows2[0].SalaryCoverage)
 	}
+	// (دازاي 11-17) أول أسبوع: ما دخّل بعد، فالتغطية ما تنقّص الرقم
+	rows3 := []StaffScore{{ID: "newbie", Group: GroupTechs, Final: f(80)}}
+	ApplyRevenue(rows3, nil, map[string]float64{"newbie": 900000}, from, to, from.AddDate(0, 0, 3))
+	if *rows3[0].Final != 80 || !rows3[0].RevenueGrace || rows3[0].RevenueAdj != 0 {
+		t.Fatalf("أول أسبوع ما ينقّص: %+v", rows3[0])
+	}
+	// بعد الأسبوع: ينقّص عادي
+	rows4 := []StaffScore{{ID: "newbie", Group: GroupTechs, Final: f(80)}}
+	ApplyRevenue(rows4, nil, map[string]float64{"newbie": 900000}, from, to, from.AddDate(0, 0, 10))
+	if *rows4[0].Final != 40 || rows4[0].RevenueGrace {
+		t.Fatalf("بعد الأسبوع الي ما دخّل ينزل للنص: %+v", rows4[0])
+	}
 }

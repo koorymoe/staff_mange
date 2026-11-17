@@ -384,6 +384,8 @@ type StaffScore struct {
 	RevenueKind    string   `json:"revenueKind,omitempty"`
 	SalaryCoverage *float64 `json:"salaryCoverage"`
 	RevenueAdj     float64  `json:"revenueAdj"`
+	// RevenueGrace (دازاي 11-17) أول أسبوع من الفترة: التغطية ما نقّصت الرقم
+	RevenueGrace bool `json:"revenueGrace,omitempty"`
 }
 
 // genericRules قواعد تنطبق على الكل — ما تثبت إن ماتركس يقرا شغل الدور نفسه.
