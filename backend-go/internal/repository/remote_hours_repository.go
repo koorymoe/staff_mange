@@ -78,6 +78,12 @@ func (r *RemoteHoursRepository) Create(employeeID, date string, seconds int, not
 // ErrAgentKeyUsed سطر الوكيل بهالمفتاح انسجّل قبل (طلب مكرّر).
 var ErrAgentKeyUsed = errors.New("المفتاح مستعمل قبل")
 
+// AgentDayCap حد الوكيل باليوم (٦ ساعات) — ينفحص داخل المعاملة نفسها.
+const AgentDayCap = 6 * 3600
+
+// ErrAgentDayCap (11-17) طلبين متزامنين بمفتاحين مختلفين چانوا يعبرون الحد سوة.
+var ErrAgentDayCap = errors.New("الوكيل وصل حد اليوم (٦ ساعات)")
+
 // agentNotePrefix المفتاح محفوظ بأول ملاحظة الوكيل: «🤖 Claude [key]».
 func agentNotePrefix(key string) string { return "🤖 Claude [" + key + "]" }
 
@@ -274,7 +280,9 @@ func (r *RemoteHoursRepository) createAgent(id, employeeID, date string, seconds
 		return "", err
 	}
 	defer tx.Rollback() //nolint:errcheck
-	if _, err := tx.Exec(`SELECT pg_advisory_xact_lock(hashtext('remote-agent:' || $1 || ':' || $2))`, employeeID, key); err != nil {
+	// (11-17) القفل على الموظف كله (مو المفتاح بس): طلبات الوكيل لنفس الموظف تمشي وحدة وحدة،
+	// فالمفتاح المكرر وحد اليوم ينفحصون بلا سباق.
+	if _, err := tx.Exec(`SELECT pg_advisory_xact_lock(hashtext('remote-agent:' || $1))`, employeeID); err != nil {
 		return "", err
 	}
 	var used bool
@@ -284,6 +292,14 @@ func (r *RemoteHoursRepository) createAgent(id, employeeID, date string, seconds
 	}
 	if used {
 		return "", ErrAgentKeyUsed
+	}
+	var done int
+	if err := tx.Get(&done, `SELECT COALESCE(SUM(seconds), 0) FROM "RemoteWorkEntry" WHERE "employeeId" = $1 AND "workDate" = $2::date AND source = 'AGENT'`,
+		employeeID, date); err != nil {
+		return "", err
+	}
+	if done+seconds > AgentDayCap {
+		return "", ErrAgentDayCap
 	}
 	if _, err := tx.Exec(`INSERT INTO "RemoteWorkEntry" (id, "employeeId", "workDate", seconds, note, "addedById", source) VALUES ($1,$2,$3::date,$4,$5,NULLIF($6,''),'AGENT')`,
 		id, employeeID, date, seconds, note, byID); err != nil {

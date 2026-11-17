@@ -16,7 +16,7 @@ import (
 
 const (
 	agentMaxPerCall = 2 * 3600
-	agentMaxPerDay  = 6 * 3600
+	agentMaxPerDay  = 6 * 3600 // = repository.AgentDayCap (ينفحص هم داخل المعاملة)
 	agentMaxDaysAgo = 2
 )
 
