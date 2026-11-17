@@ -23,6 +23,7 @@ func TestWorkNoAttendanceSkipsLeave_Live(t *testing.T) {
 	clean := func() {
 		db.Exec(`DELETE FROM "LeaveRequest" WHERE id = $1`, lv)
 		db.Exec(`DELETE FROM "BookingAssignment" WHERE "bookingId" = $1`, bk)
+		db.Exec(`DELETE FROM "Mission" WHERE "bookingId" = $1`, bk)
 		db.Exec(`DELETE FROM "Booking" WHERE id = $1`, bk)
 		db.Exec(`DELETE FROM "Customer" WHERE id = $1`, cu)
 		db.Exec(`DELETE FROM "Employee" WHERE id = $1`, emp)
