@@ -28,6 +28,8 @@ type SecretaryDeps struct {
 	NotifyOwner func(msg string)
 	// Quotes مسودات عروض الأسعار (دازاي 10-28)
 	Quotes *QuotationService
+	// Orders أوامر الحجوزات (دازاي 11-16): تكليف كادر، تثبيت موعد، تنسيق يوم — بموافقة المدير
+	Orders *MatrixOrderService
 }
 
 // NewSecretaryAgent وكيل جديد لكل دور: الأدوات تكتب بطاقاتها ومقترحها على
@@ -47,6 +49,7 @@ func NewSecretaryAgent(d SecretaryDeps, tc *SecretaryTurnCtx) *MatrixAgent {
 	registerVoiceTools(a, tc)
 	registerExecutiveTools(a, tc)
 	registerDirectiveTool(a, tc)
+	registerOrderTools(a, d.Orders, d.Repo, tc)
 	return a
 }
 

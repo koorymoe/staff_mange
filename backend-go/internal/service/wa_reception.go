@@ -195,6 +195,11 @@ func (s *WaAgentService) turnContext(conv *repository.WaConversation, c *reposit
 			b.WriteString("\n- " + waBookingLine(r))
 		}
 	}
+	if conv.CustomerID != nil {
+		if _, code := s.repo.PendingFollowUp(*conv.CustomerID); code != "" {
+			b.WriteString("\nمتابعة جودة معلّقة: خلّصنا إله الحجز " + code + " قبل أيام وبعدنا ما أخذنا رأيه بالشغل.")
+		}
+	}
 	return b.String()
 }
 
@@ -333,6 +338,33 @@ func (t *waTurnCtx) receptionTools() []agentTool {
 			Run: func(in map[string]any, _ *nameMask) (string, error) {
 				return t.receptionCreate(in, sandboxNote)
 			}},
+	}
+	// الجودة من أي تواصل (دازاي 11-16): الزبون الي عنده متابعة معلّقة وراسلنا أو اتصل — ناخذ رأيه هنا،
+	// بلا ما ننتظر وكيل الجودة يراسله. نفس اسم الأداة حتى تنطبق حراسة التقييم (١–٥ من الزبون نفسه).
+	if t.conv.CustomerID != nil && !t.conv.Sandbox {
+		if fu, code := t.svc.repo.PendingFollowUp(*t.conv.CustomerID); fu != "" {
+			tools = append(tools, agentTool{Name: "record_contact",
+				Desc: "سجّل رأي الزبون بالشغل الأخير (الحجز " + code + ") بمتابعة الجودة: outcome = OK راضي، ISSUE عنده مشكلة. والتقييمين من ١ لـ٥ مثل ما گالهن الزبون. مرة وحدة.",
+				Props: map[string]any{
+					"outcome":        map[string]any{"type": "string", "enum": []string{"OK", "ISSUE"}},
+					"customerRating": map[string]any{"type": "integer", "description": "تقييم الزبون للشغل ١–٥"},
+					"crewRating":     map[string]any{"type": "integer", "description": "تقييم الزبون للكادر ١–٥"},
+					"notes":          map[string]any{"type": "string", "description": "شنو گال بجملة أو جملتين"},
+				}, Req: []string{"outcome", "notes"},
+				Run: func(in map[string]any, _ *nameMask) (string, error) {
+					ok := strArg(in, "outcome") != "ISSUE"
+					cr, kr, notes := intArg(in, "customerRating"), intArg(in, "crewRating"), strArg(in, "notes")
+					if err := t.svc.repo.RecordContactByAgent(fu, t.conv.Agent, ok, cr, kr, notes); err != nil {
+						return "", err
+					}
+					sum := "أخذ رأي الزبون بحجز " + code + " — راضي"
+					if !ok {
+						sum = "أخذ رأي الزبون بحجز " + code + " — عنده مشكلة"
+					}
+					t.record("RECORD_CONTACT", sum+": "+notes, notes, "FOLLOWUP", &fu, map[string]any{"ok": ok, "customerRating": cr, "crewRating": kr})
+					return "انسجّل رأيه. إذا عنده مشكلة، اعرض عليه حجز صيانة أو شكوى (create_booking) بعد موافقته.", nil
+				}})
+		}
 	}
 	return append(tools, t.bookingTools()...)
 }

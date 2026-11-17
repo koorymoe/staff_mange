@@ -32,7 +32,7 @@ const (
 
 // OrderAction إجراء واحد مقترح. الحقول حسب النوع.
 type OrderAction struct {
-	Kind         string      `json:"kind"` // points | task | notify | watch | quotation
+	Kind         string      `json:"kind"` // points | task | notify | watch | quotation | crew | schedule
 	EmployeeID   string      `json:"employeeId,omitempty"`
 	EmployeeName string      `json:"employeeName,omitempty"`
 	Points       int         `json:"points,omitempty"`
@@ -44,6 +44,15 @@ type OrderAction struct {
 	ProjectName  string      `json:"projectName,omitempty"`
 	Template     string      `json:"template,omitempty"`
 	Items        []OrderItem `json:"items,omitempty"`
+	// أوامر الحجوزات (crew / schedule) — matrix_orders_booking.go
+	BookingID   string            `json:"bookingId,omitempty"`
+	BookingCode string            `json:"bookingCode,omitempty"`
+	At          string            `json:"at,omitempty"` // بغداد YYYY-MM-DDTHH:MM
+	LeaderID    string            `json:"leaderId,omitempty"`
+	LeaderName  string            `json:"leaderName,omitempty"`
+	Techs       map[string]string `json:"techs,omitempty"` // الخانة → الموظف
+	TechNames   []string          `json:"techNames,omitempty"`
+	Why         []string          `json:"why,omitempty"`
 	// بعد التنفيذ
 	Done   bool   `json:"done,omitempty"`
 	Result string `json:"result,omitempty"`
@@ -78,6 +87,10 @@ type OrderDeps struct {
 	Missions   *MatrixMissionService
 	Quotations *QuotationService
 	Templates  *QuotationTemplateService
+	// أوامر الحجوزات: تكليف الكادر وتثبيت الموعد والتنسيق
+	Bookings *BookingService
+	Suggest  *MatrixSuggestService
+	Actions  *repository.AiActionRepository
 }
 
 type MatrixOrderService struct {
@@ -173,6 +186,15 @@ func (s *MatrixOrderService) Propose(actor, text string) (*MatrixOrder, error) {
 func (s *MatrixOrderService) validate(in []OrderAction) []OrderAction {
 	out := []OrderAction{}
 	for _, a := range in {
+		if orderBookingKind(a.Kind) {
+			if validateBooking(a) {
+				out = append(out, a)
+			}
+			if len(out) >= 10 {
+				break
+			}
+			continue
+		}
 		needsEmp := a.Kind != "quotation"
 		if needsEmp {
 			if a.EmployeeID == "" || !s.scorableActive(a.EmployeeID) {
@@ -303,6 +325,9 @@ func (s *MatrixOrderService) Run(id, actor, role string, skip []int) (*MatrixOrd
 }
 
 func (s *MatrixOrderService) exec(actor, role string, a OrderAction) (string, string, error) {
+	if orderBookingKind(a.Kind) {
+		return s.execBooking(actor, a)
+	}
 	if a.Kind != "quotation" && !s.scorableActive(a.EmployeeID) {
 		return "", "", errors.New("الموظف مو فعّال")
 	}
@@ -386,6 +411,10 @@ const orderSystem = `أنت ماتركس، مساعد إدارة شركة. ال�
 - إذا تحتاج تعرف منو الموظف (مثلاً «فني الحجز الفلاني» أو «أكثر واحد متأخر») استعمل أدوات القراءة.
 - «اخصم نقطة» = order_points بالنقاط والسبب. «انطيه شغلة/مهمة» = order_task. «بلّغه/كله» = order_notify.
   «راقبه» = order_watch. «سويلي عرض سعر» = order_quotation (استعمل quotation_template_list إذا ذكر نموذج).
+- الحجوزات: «كلّف كادر لحجز B120» أو «كلّف فلان بحجز B120» = order_crew. «ثبّت/حدد/غيّر موعد B120» = order_schedule
+  (at بتوقيت بغداد إذا حدد وقت، وبلاه أقرب وقت فاضي). «نسّق حجوزات باچر/اليوم» = order_coordinate بتاريخ اليوم.
+  حجز بلا موعد يحتاج order_schedule قبل order_crew. إذا الأداة رجعت خطأ، انقله للمدير بكلامه — لا تخترع كادر ولا موعد.
+- اليوم بتوقيت بغداد: {TODAY}.
 - لا تخترع سبب أو رقم ما قاله المدير؛ إذا السبب مو واضح اكتب كلامه نفسه.
 - بالنهاية جاوب بسطر أو سطرين: شنو فهمت، وإذا اكو شي ناقص أو مو واضح كوله.`
 
@@ -519,13 +548,15 @@ func (s *MatrixOrderService) proposeAI(actor, text string) (string, []OrderActio
 			return add(a, names), nil
 		},
 	}}
+	tools = append(tools, s.bookingOrderTools(add, emp)...)
 	for _, t := range quotationTemplateTools(s.db, actor, "") {
 		if t.Name == "quotation_template_list" {
 			tools = append(tools, t)
 		}
 	}
 	// أدوات تكتب ما تشتغل هنا — الكتابة بس من «نفّذ».
-	run, err := s.agent.ChatStream("CHAT", orderSystem, nil, masked, nil, ChatOpts{ExtraTools: tools, Actor: actor,
+	system := strings.Replace(orderSystem, "{TODAY}", time.Now().In(baghdad).Format("2006-01-02 Monday 15:04"), 1)
+	run, err := s.agent.ChatStream("CHAT", system, nil, masked, nil, ChatOpts{ExtraTools: tools, Actor: actor,
 		AllowTool: func(n string) bool { return !orderBlockedTools[n] }})
 	if err != nil {
 		return "", nil, err

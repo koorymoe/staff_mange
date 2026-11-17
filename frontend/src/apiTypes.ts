@@ -3974,7 +3974,13 @@ export interface MatrixChatMessage { id: string; role: 'USER' | 'ASSISTANT'; tex
 export interface MatrixMission { id: string; employeeId: string; employeeName: string; note: string | null; startsOn: string; endsOn: string; active: boolean; summary: string | null; createdAt: string; summaryAt: string | null }
 export interface MatrixOrderItem { productName: string; quantity: number; unitPrice: number; unit?: string }
 export interface MatrixOrderAction {
-  kind: 'points' | 'task' | 'notify' | 'watch' | 'quotation'
+  kind: 'points' | 'task' | 'notify' | 'watch' | 'quotation' | 'crew' | 'schedule'
+  // أوامر الحجوزات (11-16): تكليف كادر / تثبيت موعد
+  bookingCode?: string
+  at?: string
+  leaderName?: string
+  techNames?: string[]
+  why?: string[]
   employeeId?: string; employeeName?: string; points?: number; reason?: string; title?: string; message?: string; days?: number
   customerName?: string; projectName?: string; template?: string; items?: MatrixOrderItem[]
   done?: boolean; result?: string; link?: string; error?: string; skip?: boolean

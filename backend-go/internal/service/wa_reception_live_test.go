@@ -333,6 +333,25 @@ func TestWaReception_Live(t *testing.T) {
 		t.Fatalf("sandbox wrote bookings: %d → %d", nBefore, nAfter)
 	}
 
+	// ⑨ الجودة من أي تواصل: زبون عنده متابعة معلّقة وراسلنا — السياق يذكرها، والوكيل يسجّل رأيه.
+	db.Exec(`UPDATE "QualityFollowUp" SET status = 'PENDING', "contactedAt" = NULL, "crewRating" = NULL, "customerRating" = NULL WHERE id = 'war-f1'`)
+	db.Exec(`DELETE FROM "WaConversation" WHERE phone = '9647709998855'`)
+	sawQuality := false
+	svc.SetBrain(WaAgentReception, funcBrain(func(wt WaTurn) (string, error) {
+		sawQuality = strings.Contains(wt.Context, "متابعة جودة معلّقة") && strings.Contains(wt.Context, "WAR1")
+		_, err := waTool(wt, "record_contact", map[string]any{"outcome": "OK", "customerRating": float64(5), "crewRating": float64(4), "notes": "راضي"})
+		return "شكراً إلك", err
+	}))
+	svc.Inbound(ctx, whatsapp.Inbound{MetaID: "wamid.q1", From: "9647709998855", Text: "هلو"})
+	var qst string
+	var qcr int
+	db.QueryRow(`SELECT status, "crewRating" FROM "QualityFollowUp" WHERE id = 'war-f1'`).Scan(&qst, &qcr)
+	if !sawQuality || qst != "CONTACTED_OK" || qcr != 4 {
+		t.Fatalf("quality from inbound contact: saw=%v status=%s crew=%d", sawQuality, qst, qcr)
+	}
+	db.Exec(`DELETE FROM "AiAgentAction" WHERE "conversationId" IN (SELECT id FROM "WaConversation" WHERE phone = '9647709998855')`)
+	db.Exec(`DELETE FROM "WaConversation" WHERE phone = '9647709998855'`)
+
 	// ⑧ محادثة الاستقبال الساكتة أكثر من يوم تنسد (حتى ما تبقى ماسكة الرقم).
 	db.Exec(`UPDATE "WaConversation" SET status = 'BOT', "lastMessageAt" = now() - interval '2 days' WHERE id = $1`, c2.ID)
 	if n := repo.CloseIdleInbound(); n < 1 {

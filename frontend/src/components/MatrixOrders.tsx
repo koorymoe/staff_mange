@@ -14,6 +14,8 @@ const EXAMPLES = [
   'سويلي عرض سعر لزبون جديد: ٤ كاميرات وجهاز تسجيل',
   'انطي أكثر واحد متأخر هالأسبوع مهمة يكتب تبرير خلال يومين',
   'راقب موظف المخزن أسبوع وكلي شنو يصير',
+  'نسّق حجوزات باچر — كلّف كادر لكل حجز بلا كادر',
+  'ثبّت الحجز B120 على أقرب وقت فاضي',
 ]
 
 const KIND: Record<MatrixOrderAction['kind'], { icon: string; label: string; tone: string }> = {
@@ -22,11 +24,16 @@ const KIND: Record<MatrixOrderAction['kind'], { icon: string; label: string; ton
   notify: { icon: '🔔', label: 'تنبيه', tone: 'bg-amber-50 text-amber-800 ring-amber-200' },
   watch: { icon: '👁️', label: 'مراقبة', tone: 'bg-violet-50 text-violet-800 ring-violet-200' },
   quotation: { icon: '🧾', label: 'عرض سعر', tone: 'bg-emerald-50 text-emerald-800 ring-emerald-200' },
+  crew: { icon: '👷', label: 'تكليف كادر', tone: 'bg-indigo-50 text-indigo-800 ring-indigo-200' },
+  schedule: { icon: '📅', label: 'موعد حجز', tone: 'bg-teal-50 text-teal-800 ring-teal-200' },
 }
 
 const STATUS: Record<MatrixOrder['status'], string> = {
   PROPOSED: '⏳ ينتظر موافقتك', RUNNING: '⚙️ يتنفّذ', DONE: '✅ انفّذ', CANCELLED: `✖️ ${STATUS_LABELS.CANCELLED}`, FAILED: '⚠️ ما انفّذ',
 }
+
+const fmtAt = (at?: string) => (at ?? '').replace('T', ' الساعة ')
+const whyText = (a: MatrixOrderAction) => (a.why?.length ? ` — ليش: ${a.why.join(' ')}` : '')
 
 function describe(a: MatrixOrderAction): string {
   switch (a.kind) {
@@ -34,6 +41,11 @@ function describe(a: MatrixOrderAction): string {
     case 'task': return `مهمة لـ${a.employeeName}: «${a.title}»${a.message ? ` — ${a.message}` : ''} · موعدها بعد ${a.days} يوم`
     case 'notify': return `تنبيه لـ${a.employeeName}: «${a.message}»`
     case 'watch': return `ماتركس يراقب ${a.employeeName} ${a.days} يوم${a.reason ? ` — ${a.reason}` : ''}`
+    case 'crew': {
+      const who = [a.leaderName ? `الليدر ${a.leaderName}` : '', ...(a.techNames ?? [])].filter(Boolean).join('، ')
+      return `يكلّف بحجز ${a.bookingCode} (موعده ${fmtAt(a.at)}): ${who}${whyText(a)}`
+    }
+    case 'schedule': return `يثبّت موعد الحجز ${a.bookingCode} على ${fmtAt(a.at)}${whyText(a)}`
     case 'quotation': {
       const items = (a.items ?? []).map((i) => `${i.quantity}× ${i.productName}${i.unitPrice ? ` (${i.unitPrice.toLocaleString('en-US')})` : ''}`).join('، ')
       return `عرض سعر (مسودة) لـ${a.customerName}${a.projectName ? ` · ${a.projectName}` : ''}${a.template ? ` · من نموذج «${a.template}»` : ''}${items ? ` — ${items}` : ' — بلا بنود، تكمّلها من الشاشة'}`
@@ -136,7 +148,7 @@ export default function MatrixOrders() {
       <div className="space-y-2">
         <textarea value={text} onChange={(e) => setText(e.target.value)} rows={2} maxLength={1500}
           onKeyDown={(e) => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) void send() }}
-          placeholder="مثلاً: اخصم من فلان نقطة لأن ما سلّم الفاتورة · سويلي عرض سعر لشركة … · انطي فلان مهمة …"
+          placeholder="مثلاً: اخصم من فلان نقطة لأن ما سلّم الفاتورة · سويلي عرض سعر لشركة … · كلّف كادر لحجز B120 · نسّق حجوزات باچر …"
           className="w-full rounded-xl border border-violet-200 bg-white p-3 text-sm focus:border-violet-500 focus:outline-none" />
         <div className="flex flex-wrap items-center gap-2">
           <button type="button" disabled={busy || !text.trim()} onClick={() => void send()}

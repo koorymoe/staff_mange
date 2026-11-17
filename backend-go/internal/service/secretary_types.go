@@ -86,6 +86,8 @@ type SecretaryTurnCtx struct {
 	Request  string // نص الطلب — ينحفظ ويا المقترح بالسجل
 	Cards    []SecretaryCard
 	Proposal *SecretaryProposal
+	// newOrders أوامر انجهّزت بهذا الدور — ما تتنفّذ بنفس الدور (لازم موافقة المدير برسالة بعدها)
+	newOrders map[string]bool
 }
 
 func (c *SecretaryTurnCtx) addCard(card SecretaryCard) {

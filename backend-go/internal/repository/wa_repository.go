@@ -124,6 +124,20 @@ func (r *WaRepository) Bind(convID string, customerID, bookingID *string) error 
 	return err
 }
 
+// PendingFollowUp متابعة جودة معلّقة لهذا الزبون على حجز خلص آخر ٧ أيام (نفس شرط وكيل الجودة) — أو فاضي.
+func (r *WaRepository) PendingFollowUp(customerID string) (id, bookingCode string) {
+	var row struct {
+		ID   string `db:"id"`
+		Code string `db:"code"`
+	}
+	if err := r.db.Get(&row, `SELECT q.id, b.code FROM "QualityFollowUp" q JOIN "Booking" b ON b.id = q."bookingId"
+		WHERE q."customerId" = $1 AND q.status = 'PENDING' AND b."completedAt" > now() - interval '7 days'
+		ORDER BY b."completedAt" DESC LIMIT 1`, customerID); err != nil {
+		return "", ""
+	}
+	return row.ID, row.Code
+}
+
 // SandboxByPhone محادثة تجربة مفتوحة بهذا المعرّف (تجربة المكالمة من لوحة منصة الصوت).
 func (r *WaRepository) SandboxByPhone(phone string) (*WaConversation, error) {
 	var c WaConversation
