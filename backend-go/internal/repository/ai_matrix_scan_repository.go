@@ -285,6 +285,9 @@ func (r *AiRepository) AttendanceWorkGaps(day string, minMinutes int, employeeID
 			FROM "Employee" e
 			WHERE e.status = 'ACTIVE'
 			  AND NOT EXISTS (SELECT 1 FROM "Attendance" a WHERE a."employeeId" = e.id AND a.date = $1::date)
+			  -- (بلاغ #49 — 11-17) والمجاز بإجازة معتمدة مو «شغل بلا حضور» — نفس استثناء الفحص فوك.
+			  AND NOT EXISTS (SELECT 1 FROM "LeaveRequest" l WHERE l."employeeId" = e.id
+			                  AND l.status = 'APPROVED' AND $1::date BETWEEN l."startDate" AND l."endDate")
 		) x
 		WHERE (kind = 'PRESENT_NO_WORK' OR cardinality("bookingCodes") > 0)
 		  AND ($3 = '' OR "employeeId" = $3)
