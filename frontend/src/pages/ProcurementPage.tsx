@@ -182,6 +182,25 @@ export default function ProcurementPage() {
     }
   }
 
+  // (11-17) 🔔 «ذكّر المدير»: طلب معلّق من يومين فأكثر، ومرة باليوم — نفس حارس الخادم
+  const [reminded, setReminded] = useState<Record<string, boolean>>({})
+  const [nowMs] = useState(() => Date.now())
+  const canRemind = (req: ProcurementRequest) => {
+    if (req.status !== 'PENDING' && req.status !== 'IN_PROGRESS') return false
+    const day = 24 * 3600 * 1000
+    if (nowMs - new Date(req.createdAt).getTime() < 2 * day) return false
+    return !reminded[req.id] && !(req.remindedAt && nowMs - new Date(req.remindedAt).getTime() < day)
+  }
+  const handleRemind = async (id: string) => {
+    try {
+      await api.remindProcurement(id)
+      setReminded((x) => ({ ...x, [id]: true }))
+      setError('')
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'تعذّر إرسال التذكير')
+    }
+  }
+
   const openFulfillModal = (req: ProcurementRequest) => {
     setFulfillModal(req)
     setFulfillCost(req.totalCost?.toString() || '')
@@ -496,6 +515,10 @@ export default function ProcurementPage() {
                               <button onClick={() => handleStatusUpdate(req.id, 'REJECTED')} className={BTN_DANGER_SOFT}>رفض</button>
                             </>
                           )}
+                          {canRemind(req) && (
+                            <button onClick={() => handleRemind(req.id)} title="الطلب معلّق من يومين فأكثر — يوصل إشعار للمدير (مرة باليوم)" className="px-2 py-1 text-xs bg-amber-100 text-amber-800 rounded hover:bg-amber-200 transition">🔔 ذكّر المدير</button>
+                          )}
+                          {reminded[req.id] && <span className="px-2 py-1 text-xs text-emerald-700">✓ انذكّر</span>}
                           {(req.status === 'PENDING' || req.status === 'IN_PROGRESS') && (
                             <button onClick={() => openFulfillModal(req)} className="px-2 py-1 text-xs bg-emerald-100 text-emerald-700 rounded hover:bg-emerald-200 transition">تم التوفير</button>
                           )}

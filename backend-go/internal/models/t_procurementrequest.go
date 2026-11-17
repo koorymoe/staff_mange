@@ -21,6 +21,7 @@ func init() {
 			{Name: "supplierId", Type: "text"},
 			{Name: "decidedAt", Type: "timestamp without time zone"},
 			{Name: "decidedById", Type: "text"},
+			{Name: "remindedAt", Type: "timestamp without time zone"},
 		},
 		Constraints: []Constraint{
 			{Name: "ProcurementRequest_bookingId_fkey", Def: "FOREIGN KEY (\"bookingId\") REFERENCES \"Booking\"(id)"},

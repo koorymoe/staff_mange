@@ -19,6 +19,8 @@ type WarehouseDigest struct {
 	OldestDays    int
 	ActiveCars    int
 	Unrated       int
+	// UnratedNames (11-17) أسماء السيارات الي ما انقيّمت (أول ٨) — مو بس العدد
+	UnratedNames []string
 	WashedToday   int
 	Overdue       []string
 	UrgentShort   int
@@ -39,6 +41,9 @@ func BuildWarehouseDigest(db *sqlx.DB, overdue func() ([]string, error)) (Wareho
 	if err != nil {
 		return d, err
 	}
+	_ = db.Select(&d.UnratedNames, `SELECT v.name FROM "Vehicle" v WHERE v."isActive"
+		AND NOT EXISTS (SELECT 1 FROM "VehicleDailyRating" r WHERE r."vehicleId" = v.id AND r."ratedDate" = baghdad_today())
+		ORDER BY v.name LIMIT 8`)
 	_ = db.QueryRow(repository.UrgentShortagesSQL()).Scan(&d.UrgentShort)
 	if overdue != nil {
 		d.Overdue, _ = overdue()
@@ -56,7 +61,14 @@ func (d WarehouseDigest) Message() string {
 		parts = append(parts, fmt.Sprintf("🔴 عاجل: %d نقص جرد لفنيين عندهم شغل اليوم أو باچر", d.UrgentShort))
 	}
 	if d.Unrated > 0 {
-		parts = append(parts, fmt.Sprintf("🚗 %d سيارة من %d ما انقيّمت اليوم", d.Unrated, d.ActiveCars))
+		p := fmt.Sprintf("🚗 %d سيارة من %d ما انقيّمت اليوم", d.Unrated, d.ActiveCars)
+		if len(d.UnratedNames) > 0 {
+			p += ": " + strings.Join(d.UnratedNames, "، ")
+			if d.Unrated > len(d.UnratedNames) {
+				p += "…"
+			}
+		}
+		parts = append(parts, p)
 	}
 	if len(d.Overdue) > 0 {
 		parts = append(parts, "🔧 صيانة فات موعدها: "+strings.Join(d.Overdue, "، "))

@@ -540,7 +540,10 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 			out = append(out, r.VehicleName+" ("+r.PlateNumber+")")
 		}
 		return out, err
-	}, func(msg string) { _ = notificationRepo.CreateForPermission("inventory", "WAREHOUSE_DAILY", msg) })
+	}, func(msg string) {
+		// (11-17) إداري الكميات يوصله دائماً حتى لو صلاحية المخازن مو عليه، ويا صاحب الصلاحية
+		_ = notificationRepo.CreateForRolesOrPermission([]string{"PROCUREMENT_ADMIN"}, "inventory", "WAREHOUSE_DAILY", msg)
+	})
 	safeguard.Loop("ملخص المخازن اليومي", 27*time.Minute, 30*time.Minute, func() {
 		if err := warehouseDaily.RunIfDue(time.Now()); err != nil {
 			log.Printf("warehouse daily: %v", err)
@@ -2296,6 +2299,11 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	requestsApp.Set("POST /api/procurement", "requests.procurement", procurementHandler.Create)
 	secs["procurement"].Set("PUT /api/procurement/{id}/status", "procurement.put_by_id_status", procurementHandler.UpdateStatus)
 	secs["procurement"].Set("PUT /api/procurement/{id}/fulfill", "procurement.put_by_id_fulfill", procurementHandler.Fulfill)
+	// (11-17) 🔔 «ذكّر المدير» على طلب مواد معلّق من يومين فأكثر — مرة باليوم
+	secs["procurement"].Set("POST /api/procurement/{id}/remind", "procurement.post_by_id_remind",
+		handler.NewProcurementRemindHandler(db, func(msg string) error {
+			return notificationRepo.CreateForRoles([]string{"ADMIN", "OWNER"}, "PROCUREMENT_REMIND", msg)
+		}).Remind)
 	// (ع) 10-15: رقابة المشتريات
 	purchaseControl := handler.NewPurchaseControlHandler(db, func(msg string) {
 		_ = notificationRepo.CreateForRolesOrPermission([]string{"ADMIN", "MONITOR"}, "monitoring", "purchase_alert", msg)

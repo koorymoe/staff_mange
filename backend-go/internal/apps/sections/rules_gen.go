@@ -888,6 +888,7 @@ func rules() map[string]map[core.Action]core.Rule {
 			"procurement.post_by_id_review": func(l string) core.Rule { return roles(l, "ADMIN", "PROCUREMENT_ADMIN") }("ينفّذ /api/procurement/{id}/review (دور)"),
 			"procurement.put_by_id_fulfill": func(l string) core.Rule { return roles(l, "ADMIN", "PROCUREMENT_ADMIN") }("يعدّل /api/procurement/{id}/fulfill (دور)"),
 			"procurement.put_by_id_status":  func(l string) core.Rule { return roles(l, "ADMIN", "PROCUREMENT_ADMIN") }("يعدّل /api/procurement/{id}/status (دور)"),
+			"procurement.post_by_id_remind": func(l string) core.Rule { return roles(l, "ADMIN", "PROCUREMENT_ADMIN") }("يذكّر المدير بطلب مواد معلّق (دور — 11-17)"),
 			"procurement.put_by_id_verify":  func(l string) core.Rule { return rolePerm(l, []string{"ADMIN", "FINANCE"}, "finance_audit") }("يعدّل /api/procurement/{id}/verify (دور/صلاحية)"),
 		},
 		"procurement_alerts": {

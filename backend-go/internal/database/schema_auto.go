@@ -177,6 +177,13 @@ func autoMigrations() []Migration {
 			WHERE name = 'تقي يوسف عبيد' AND "roleChangedAt" IS NULL AND role::text = 'TECHNICIAN';
 		`,
 		},
+		{
+			// (11-17 — طلب ماتركس لإداري الكميات) «تذكير على طلبات المواد المعلّقة الي طال عمرها»
+			Version: "0505_procurement_reminded_at",
+			SQL: `
+			ALTER TABLE "ProcurementRequest" ADD COLUMN IF NOT EXISTS "remindedAt" timestamp without time zone;
+		`,
+		},
 		// ‹makemigration› — التحديثات الجديدة تنضاف فوگ هالسطر
 	}
 }

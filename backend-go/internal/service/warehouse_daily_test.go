@@ -72,3 +72,11 @@ func TestWarehouseDailyOncePerDayLive(t *testing.T) {
 		t.Fatalf("بناء فاشل حجز اليوم: err=%v claims=%d", err, claims)
 	}
 }
+
+// (11-17) أسماء السيارات الي ما انقيّمت تطلع بالتنبيه، مو بس العدد.
+func TestWarehouseDigestUnratedNames(t *testing.T) {
+	m := WarehouseDigest{ActiveCars: 12, Unrated: 9, UnratedNames: []string{"بيك اب", "كيا"}}.Message()
+	if !strings.Contains(m, "بيك اب، كيا…") {
+		t.Fatalf("لازم تطلع الأسماء: %s", m)
+	}
+}

@@ -37,6 +37,8 @@ type ProcurementRequest struct {
 	// أول قرار على الطلب (تنفيذ أو رفض أو قيد التنفيذ) — منو ووكت
 	DecidedAt   *time.Time `db:"decidedAt" json:"decidedAt"`
 	DecidedByID *string    `db:"decidedById" json:"decidedById"`
+	// RemindedAt (11-17) آخر «🔔 ذكّر المدير» — مرة باليوم بالأكثر
+	RemindedAt *time.Time `db:"remindedAt" json:"remindedAt"`
 
 	Items       []ProcurementItem          `db:"-" json:"items"`
 	RequestedBy *ProcurementRequesterBrief `db:"-" json:"requestedBy"`

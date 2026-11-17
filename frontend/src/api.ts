@@ -2619,6 +2619,8 @@ export const api = {
   getProcurementStats: () => request<ProcurementStats>('/procurement/stats'),
   createProcurementRequest: (data: { requestedById: string; bookingId?: string; requestType: ProcurementRequestType; notes?: string; items: { productName: string; quantity: number; unitPrice?: number | null; model?: string | null; spec?: string | null; itemNotes?: string | null }[] }) =>
     request<ProcurementRequest>('/procurement', { method: 'POST', body: JSON.stringify(data) }),
+  // (11-17) 🔔 ذكّر المدير بطلب مواد معلّق من يومين فأكثر — مرة باليوم
+  remindProcurement: (id: string) => request<{ ok: boolean }>(`/procurement/${encodeURIComponent(id)}/remind`, { method: 'POST' }),
   updateProcurementStatus: (id: string, status: string) =>
     request<ProcurementRequest>(`/procurement/${id}/status`, { method: 'PUT', body: JSON.stringify({ status }) }),
   fulfillProcurementRequest: (id: string, data: { fulfilledById: string; supplierId: string; totalCost?: number; fulfillmentNotes?: string; items?: { id: string; unitPrice?: number; totalPrice?: number; fulfilled?: boolean }[]; quotes?: { supplierId: string; totalPrice: number }[] }) =>

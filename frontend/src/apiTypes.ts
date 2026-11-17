@@ -2985,6 +2985,8 @@ export interface ProcurementItem {
 export interface ProcurementRequest {
   id: string
   code: string
+  /** (11-17) آخر «ذكّر المدير» */
+  remindedAt?: string | null
   requestedBy: { id: string; name: string; role: string }
   requestedById: string
   booking: { id: string; code: string; customer: { id: string; name: string; phone: string } | null } | null
