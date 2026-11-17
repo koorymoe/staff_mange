@@ -114,26 +114,66 @@ func (h *VoiceLLMHandler) ChatCompletions(w http.ResponseWriter, r *http.Request
 		}
 	}
 	phone = voiceCaller(phone, h.TestPhone)
-	var reply service.VoiceReply
-	if users == 0 {
-		reply = service.VoiceReply{Text: h.svc.VoiceGreeting()} // المنصة تطلب أول جملة
-	} else {
-		reply = h.svc.VoiceTurn(r.Context(), callID, phone, users, last, greeting)
-	}
 	canEnd := false
 	for _, t := range in.Tools {
 		if t.Function.Name == "end_call" {
 			canEnd = true
 		}
 	}
-	h.write(w, in.Model, in.Stream, reply, reply.End && canEnd)
+	sw := newVoiceStream(w, in.Model, in.Stream)
+	ctx := r.Context()
+	if in.Stream {
+		// (دازاي 11-17 «التسريع») جملة الانتظار تنبث فوراً لمن الوكيل يحتاج أداة.
+		ctx = service.WithVoiceProgress(ctx, func(s string) { sw.text(s + " ") })
+	}
+	var reply service.VoiceReply
+	if users == 0 {
+		reply = service.VoiceReply{Text: h.svc.VoiceGreeting()} // المنصة تطلب أول جملة
+	} else {
+		reply = h.svc.VoiceTurn(ctx, callID, phone, users, last, greeting)
+	}
+	h.write(sw, reply, reply.End && canEnd)
 }
 
-func (h *VoiceLLMHandler) write(w http.ResponseWriter, model string, stream bool, reply service.VoiceReply, endCall bool) {
-	id, now := "chatcmpl-"+uuid.NewString(), time.Now().Unix()
+// voiceStream يكتب رد OpenAI: SSE يبدي أول ما يجي أول نص (جملة الانتظار)، أو JSON واحد بلا بث.
+type voiceStream struct {
+	w       http.ResponseWriter
+	fl      http.Flusher
+	id      string
+	now     int64
+	model   string
+	stream  bool
+	started bool
+}
+
+func newVoiceStream(w http.ResponseWriter, model string, stream bool) *voiceStream {
 	if model == "" {
 		model = "amani-voice"
 	}
+	fl, _ := w.(http.Flusher)
+	return &voiceStream{w: w, fl: fl, id: "chatcmpl-" + uuid.NewString(), now: time.Now().Unix(), model: model, stream: stream}
+}
+
+func (s *voiceStream) chunk(delta map[string]any, fin any) {
+	if !s.started {
+		s.started = true
+		s.w.Header().Set("Content-Type", "text/event-stream")
+		s.w.Header().Set("Cache-Control", "no-cache")
+		s.w.Header().Set("X-Accel-Buffering", "no") // nginx/caddy: لا تجمّع الرد
+		s.chunk(map[string]any{"role": "assistant", "content": ""}, nil)
+	}
+	raw, _ := json.Marshal(map[string]any{"id": s.id, "object": "chat.completion.chunk", "created": s.now, "model": s.model,
+		"choices": []map[string]any{{"index": 0, "delta": delta, "finish_reason": fin}}})
+	fmt.Fprintf(s.w, "data: %s\n\n", raw)
+	if s.fl != nil {
+		s.fl.Flush()
+	}
+}
+
+func (s *voiceStream) text(t string) { s.chunk(map[string]any{"content": t}, nil) }
+
+func (h *VoiceLLMHandler) write(sw *voiceStream, reply service.VoiceReply, endCall bool) {
+	w, model, stream, id, now := sw.w, sw.model, sw.stream, sw.id, sw.now
 	// سد المكالمة: أداة end_call مال المنصة، والوداع بيها (message) — مو نص وأداة سوه حتى ما ينگال مرتين.
 	var toolCalls []map[string]any
 	content := reply.Text
@@ -157,19 +197,7 @@ func (h *VoiceLLMHandler) write(w http.ResponseWriter, model string, stream bool
 			"usage":   map[string]int{"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0}})
 		return
 	}
-	w.Header().Set("Content-Type", "text/event-stream")
-	w.Header().Set("Cache-Control", "no-cache")
-	w.Header().Set("X-Accel-Buffering", "no") // nginx/caddy: لا تجمّع الرد
-	fl, _ := w.(http.Flusher)
-	chunk := func(delta map[string]any, fin any) {
-		raw, _ := json.Marshal(map[string]any{"id": id, "object": "chat.completion.chunk", "created": now, "model": model,
-			"choices": []map[string]any{{"index": 0, "delta": delta, "finish_reason": fin}}})
-		fmt.Fprintf(w, "data: %s\n\n", raw)
-		if fl != nil {
-			fl.Flush()
-		}
-	}
-	chunk(map[string]any{"role": "assistant", "content": ""}, nil)
+	chunk := sw.chunk
 	if endCall {
 		chunk(map[string]any{"tool_calls": toolCalls}, nil)
 	} else {
@@ -179,8 +207,8 @@ func (h *VoiceLLMHandler) write(w http.ResponseWriter, model string, stream bool
 	}
 	chunk(map[string]any{}, finish)
 	fmt.Fprint(w, "data: [DONE]\n\n")
-	if fl != nil {
-		fl.Flush()
+	if sw.fl != nil {
+		sw.fl.Flush()
 	}
 }
 

@@ -21,9 +21,9 @@ type WarehouseDigest struct {
 	Unrated       int
 	// UnratedNames (11-17) أسماء السيارات الي ما انقيّمت (أول ٨) — مو بس العدد
 	UnratedNames []string
-	WashedToday   int
-	Overdue       []string
-	UrgentShort   int
+	WashedToday  int
+	Overdue      []string
+	UrgentShort  int
 }
 
 // BuildWarehouseDigest يجمع الأرقام (بلا أسماء موظفين؛ السيارات بأسمائها/لوحاتها — مو بيانات شخصية).

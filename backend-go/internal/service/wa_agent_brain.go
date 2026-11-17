@@ -24,10 +24,13 @@ import (
 // شرط قبل التشغيل الحقيقي، والمفاتيح مطفية لحد ذاك).
 
 const (
-	waMaxSteps    = 6
-	waMaxTokens   = 500
-	waTimeout     = 45 * time.Second
-	waMaxReplyLen = 600 // حرف — رسالة واتساب وحدة قصيرة
+	waMaxSteps  = 6
+	waMaxTokens = 500
+	// (دازاي 11-17 «التسريع») المكالمة: رد أقصر وتاريخ أقصر — كل توكن وكل رسالة تأخّر الصوت.
+	waVoiceMaxTokens = 300
+	waVoiceHistory   = 16
+	waTimeout        = 45 * time.Second
+	waMaxReplyLen    = 600 // حرف — رسالة واتساب وحدة قصيرة
 )
 
 // الرد الثابت وكت التحويل — ما يعتمد على النموذج.
@@ -182,7 +185,11 @@ func (a *waAgent) Reply(ctx context.Context, t WaAgentTurn) *WaAgentResult {
 	}
 
 	msgs := []anthropic.MessageParam{}
-	for _, h := range t.History {
+	hist := t.History
+	if t.Voice && len(hist) > waVoiceHistory {
+		hist = hist[len(hist)-waVoiceHistory:]
+	}
+	for _, h := range hist {
 		if strings.TrimSpace(h.Text) == "" {
 			continue
 		}
@@ -204,13 +211,19 @@ func (a *waAgent) Reply(ctx context.Context, t WaAgentTurn) *WaAgentResult {
 	}
 	confirmed := waConfirmed(t.Text)
 	mask := &nameMask{ids: map[string]string{}, tag: map[string]int{}}
+	maxTok := int64(waMaxTokens)
+	if t.Voice {
+		maxTok = waVoiceMaxTokens
+	}
+	progress := voiceProgressFrom(ctx)
+	spoke := false
 
 	for step := 0; step < waMaxSteps; step++ {
 		if !a.takeQuota() {
 			return handoffResult("الوكيل وصل حده اليومي", tc.Actions)
 		}
 		resp, err := a.llm.New(ctx, anthropic.MessageNewParams{
-			Model: anthropic.Model(a.model), MaxTokens: waMaxTokens,
+			Model: anthropic.Model(a.model), MaxTokens: maxTok,
 			System:   []anthropic.TextBlockParam{{Text: system, CacheControl: anthropic.NewCacheControlEphemeralParam()}},
 			Messages: msgs, Tools: tools,
 		})
@@ -244,6 +257,16 @@ func (a *waAgent) Reply(ctx context.Context, t WaAgentTurn) *WaAgentResult {
 				reply = strings.TrimSpace(string(r[:waMaxReplyLen])) + "…"
 			}
 			return &WaAgentResult{Reply: reply, Actions: tc.Actions}
+		}
+		// (دازاي 11-17 «التسريع») بالمكالمة: قبل ما نرجع للنموذج بعد الأدوات، الزبون يسمع جملة
+		// فوراً بدل سكتة — الي كتبه النموذج ويا الأداة، وإلا «لحظة خلي أشوفلك».
+		if progress != nil && !spoke {
+			say := speakable(strings.TrimSpace(text.String()))
+			if say == "" {
+				say = voiceHoldOn
+			}
+			progress(say)
+			spoke = true
 		}
 		msgs = append(msgs, anthropic.NewUserMessage(results...))
 	}
@@ -325,4 +348,22 @@ func waAgentName(n string) string {
 		return "مساعد الأماني"
 	}
 	return n
+}
+
+// ═══ (دازاي 11-17 «التسريع») جملة الانتظار بالمكالمة ═══
+// معالج المكالمة يحط دالة بالـcontext؛ الوكيل يناديها أول ما يحتاج أداة (فحص مواعيد، حجز…)،
+// والمعالج يبثّها للمنصة فوراً فتنطقها وهو بعده يشتغل.
+
+const voiceHoldOn = "لحظة خلي أشوفلك."
+
+type voiceProgressKey struct{}
+
+// WithVoiceProgress يربط دالة «جملة الانتظار» بالطلب.
+func WithVoiceProgress(ctx context.Context, f func(string)) context.Context {
+	return context.WithValue(ctx, voiceProgressKey{}, f)
+}
+
+func voiceProgressFrom(ctx context.Context) func(string) {
+	f, _ := ctx.Value(voiceProgressKey{}).(func(string))
+	return f
 }
