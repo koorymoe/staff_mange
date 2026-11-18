@@ -22,6 +22,8 @@ func init() {
 			{Name: "startedAt", Type: "timestamp with time zone"},
 			{Name: "doneAt", Type: "timestamp with time zone"},
 			{Name: "reportText", Type: "text"},
+			// (ك) 11-18 زينا: مفردات المنهج الي اختارها مسؤول التدريب من بدا — تطلع بملف الموظف «دُرّب على».
+			{Name: "items", Type: "text[]", NotNull: true, Default: "'{}'::text[]"},
 			{Name: "reportScore", Type: "integer"},
 			{Name: "reportedById", Type: "text"},
 			{Name: "createdById", Type: "text"},

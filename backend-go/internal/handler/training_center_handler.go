@@ -329,7 +329,7 @@ func (h *TrainingCenterHandler) needErr(w http.ResponseWriter, err error) {
 	switch {
 	case errors.Is(err, service.ErrNeedNotFound):
 		WriteError(w, http.StatusNotFound, "مو موجود")
-	case errors.Is(err, service.ErrNeedMandatory), errors.Is(err, service.ErrNeedState), errors.Is(err, service.ErrNeedReport):
+	case errors.Is(err, service.ErrNeedMandatory), errors.Is(err, service.ErrNeedState), errors.Is(err, service.ErrNeedReport), errors.Is(err, service.ErrNeedItems):
 		WriteError(w, http.StatusBadRequest, err.Error())
 	default:
 		log.Printf("training need: %v", err)
@@ -370,11 +370,23 @@ func (h *TrainingCenterHandler) AddNeed(w http.ResponseWriter, r *http.Request) 
 	WriteJSON(w, http.StatusOK, x)
 }
 
+// Trained (ك) 11-18 زينا: «دُرّب على» بملف الموظف — تدريباته الي خلصت ومفرداتها.
+func (h *TrainingCenterHandler) Trained(w http.ResponseWriter, r *http.Request) {
+	rows, err := h.Match.Trained(r.PathValue("id"))
+	if err != nil {
+		h.needErr(w, err)
+		return
+	}
+	WriteJSON(w, http.StatusOK, rows)
+}
+
 func (h *TrainingCenterHandler) NeedAction(w http.ResponseWriter, r *http.Request) {
 	var in struct {
 		Report string `json:"report"`
 		Score  int    `json:"score"`
 		Note   string `json:"note"`
+		// (ك) 11-18: مفردات المنهج الي راح يتدرب عليها (مع «بدي التدريب»)
+		Items []string `json:"items"`
 	}
 	_ = DecodeJSON(r, &in)
 	id := r.PathValue("id")
@@ -382,7 +394,7 @@ func (h *TrainingCenterHandler) NeedAction(w http.ResponseWriter, r *http.Reques
 	var err error
 	switch r.PathValue("action") {
 	case "start":
-		x, err = h.Match.Start(id)
+		x, err = h.Match.Start(id, in.Items)
 	case "complete":
 		x, err = h.Match.Complete(middleware.EmployeeIDFromContext(r), id, in.Report, in.Score)
 	case "dismiss":

@@ -240,6 +240,12 @@ func autoMigrations() []Migration {
 			);
 		`,
 		},
+		{
+			Version: "0511_training_match_items",
+			SQL: `
+			ALTER TABLE "TrainingMatch" ADD COLUMN IF NOT EXISTS "items" text[] DEFAULT '{}'::text[] NOT NULL;
+		`,
+		},
 		// ‹makemigration› — التحديثات الجديدة تنضاف فوگ هالسطر
 	}
 }

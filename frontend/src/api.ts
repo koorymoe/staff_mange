@@ -2192,9 +2192,10 @@ export const api = {
   tcDeleteCurriculum: (id: string) => request<TcCurriculum[]>(`/training-center/curriculum/${id}`, { method: 'DELETE' }),
   // (ك) 11-14: منو يشمل سطر المنهج — inherit يرجّعه ياخذ من الي فوكه
   tcSetCurriculumAudiences: (id: string, b: { audiences?: string[]; assignees?: string[]; inherit?: boolean }) => request<TcCurriculum[]>(`/training-center/curriculum/${id}/audiences`, { method: 'POST', body: JSON.stringify(b) }),
+  tcEmployeeTrained: (employeeId: string) => request<TcNeed[]>(`/training-center/employees/${employeeId}/trained`),
   tcMatching: (status: '' | 'done' | 'dismissed' = '', refresh = false) => request<TcNeed[]>(`/training-center/matching?status=${status}${refresh ? '&refresh=1' : ''}`),
   tcAddNeed: (b: { employeeId: string; topic: string; curriculumId?: string; reason?: string }) => request<TcNeed>('/training-center/needs', { method: 'POST', body: JSON.stringify(b) }),
-  tcNeedAction: (id: string, action: 'start' | 'complete' | 'dismiss', b: { report?: string; score?: number; note?: string } = {}) =>
+  tcNeedAction: (id: string, action: 'start' | 'complete' | 'dismiss', b: { report?: string; score?: number; note?: string; items?: string[] } = {}) =>
     request<TcNeed>(`/training-center/needs/${id}/${action}`, { method: 'POST', body: JSON.stringify(b) }),
   tcQuestions: (role = '') => request<TcQuestion[]>(`/training-center/questions?role=${encodeURIComponent(role)}`),
   tcAddQuestion: (b: { role: string; text: string; options: string[]; correct: number }) => request<{ ok: boolean }>('/training-center/questions', { method: 'POST', body: JSON.stringify(b) }),

@@ -3690,6 +3690,8 @@ export interface TcNeed {
   topic: string; reason: string | null; bookingId: string | null
   status: 'OPEN' | 'IN_TRAINING' | 'DONE' | 'DISMISSED'; dueAt: string | null; dismissNote: string | null
   startedAt: string | null; doneAt: string | null; reportText: string | null; reportScore: number | null; reportedBy: string | null; createdAt: string
+  /** (ك) 11-18: مفردات المنهج الي اختارها من بدا التدريب */
+  items: string[]; itemTitles: string[]
 }
 export interface TcQuestion { id: string; role: string; text: string; options: string[]; correct: number; approved: boolean; source: 'MANUAL' | 'AI' }
 export interface TcExamReportRow { examId: string; role: string; month: string; title: string; passPct: number; employeeId: string; employeeName: string; score: number | null; total: number | null; finishedAt: string | null }

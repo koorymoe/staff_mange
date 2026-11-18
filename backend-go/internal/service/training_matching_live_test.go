@@ -162,7 +162,7 @@ func TestTrainingMatching_Live(t *testing.T) {
 	if x, err := m.Dismiss(gap[0].ID, "عنده خبرة من شغله القديم"); err != nil || x.Status != "DISMISSED" {
 		t.Fatalf("الاقتراح ينلغي: %v", err)
 	}
-	if x, err := m.Start(t1[0].ID); err != nil || x.Status != "IN_TRAINING" {
+	if x, err := m.Start(t1[0].ID, nil); err != nil || x.Status != "IN_TRAINING" {
 		t.Fatalf("بداية التدريب: %v", err)
 	}
 	if _, err := m.Complete("tm-head", t1[0].ID, "", 4); err != ErrNeedReport {

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import Modal from '../ui/Modal'
 import { api, LEADER_SKILLS, type Employee, type Service, type Stats } from '../api'
 import EmployeeHRPanel from '../components/EmployeeHRPanel'
+import EmployeeTrainedPanel from '../components/EmployeeTrainedPanel'
 import EmployeeAvatar from '../components/EmployeeAvatar'
 import { useSession, hasRole, isAdminOrOwner } from '../session'
 import EmployeeHandoverDialog from '../components/EmployeeHandoverDialog'
@@ -71,6 +72,8 @@ export default function Employees({ embedded }: { embedded?: boolean } = {}) {
   const canIdentity = isAdmin || userPermissions.includes('edit_employee_identity')
   // (ع): صلاحيات تنطى لأي أحد — كل زر يطلع بس لمن الخادم يقبله.
   const canEditAll = isAdmin || userPermissions.includes('employee_edit_all')
+  // (ك) 11-18: «دُرّب على» — الخادم يقبله لمسؤول التدريب أو إدارة الموظفين بس، فما ننادي غيرهم.
+  const canTrained = isAdmin || userPermissions.includes('training_manage') || userPermissions.includes('staff_management')
   // (بلاغ #28 — أمير 11-09) خانات الراتب والإجازات والدوام چانت تنكتب لأي أحد، والخادم يرفض بلا صلاحية
   // «تعديل ملف الموظف» — فالبيانات ما تنحفظ، وكل رفض ينحسب مخالفة. هسه نفحص قبل الحفظ ونوضّح.
   const canProfile = isAdmin || userPermissions.includes('edit_employee_profile')
@@ -119,7 +122,7 @@ export default function Employees({ embedded }: { embedded?: boolean } = {}) {
 
   // تبويبا لوحة التفاصيل بأعلى: معلومات الموظف مقابل مهاراته —
   // نفس قالب تبديل المحتوى الموجود بـ`KpiPage.tsx`.
-  const [panelTab, setPanelTab] = useState<'info' | 'skills'>('info')
+  const [panelTab, setPanelTab] = useState<'info' | 'skills' | 'trained'>('info')
   const [skillTab, setSkillTab] = useState<'technical' | 'leader'>('technical')
   // ⚠️⚠️ چانت حالة محلية ما تنحفظ ولا تنجلب — والتصفير عند تبديل
   // الموظف ما چان يشملها، فالمدير يقيّم واحداً ويشوف نفس درجاته
@@ -673,6 +676,7 @@ export default function Employees({ embedded }: { embedded?: boolean } = {}) {
                     {[
                       { key: 'info' as const, label: '👤 معلومات' },
                       { key: 'skills' as const, label: '🛠️ المهارات' },
+                      ...(canTrained ? [{ key: 'trained' as const, label: '📚 دُرّب على' }] : []),
                     ].map(tab => (
                       <button key={tab.key} type="button" onClick={() => setPanelTab(tab.key)}
                         className={`px-5 py-2.5 text-sm font-bold transition-all border-b-2 -mb-px ${
@@ -1241,6 +1245,7 @@ export default function Employees({ embedded }: { embedded?: boolean } = {}) {
                   </div>
                   </>
                   )}
+                  {panelTab === 'trained' && canTrained && <EmployeeTrainedPanel employeeId={selectedEmployee.id} />}
                 </div>
               )
             })()}

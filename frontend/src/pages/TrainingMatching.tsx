@@ -145,8 +145,57 @@ const KIND: Record<TcNeed['kind'], { label: string; cls: string }> = {
 }
 const dt = (s: string | null) => (s ? new Date(s).toLocaleDateString('en-GB') : '—')
 
-function NeedRow({ n, onChange }: { n: TcNeed; onChange: () => void }) {
-  const [mode, setMode] = useState<'' | 'done' | 'dismiss'>('')
+// (ك) 11-18 زينا: «بدي التدريب» يفتح مفردات المنهج — تختار عليها شنو راح يتدرب،
+// وتطلع بعدين بملفه بإدارة الموظفين («دُرّب على»). المفردات الي تطلع حسب فئته (فني/مهندس…).
+function ItemsPicker({ n, tree, onStart, onCancel }: { n: TcNeed; tree: TcCurriculum[]; onStart: (ids: string[]) => void; onCancel: () => void }) {
+  const byId = useMemo(() => new Map(tree.map((r) => [r.id, r])), [tree])
+  const rootOf = (id: string | null) => { let r = id ? byId.get(id) : undefined; while (r?.parentId) r = byId.get(r.parentId); return r }
+  const tracks = tree.filter((r) => !r.parentId)
+  const [track, setTrack] = useState(rootOf(n.curriculumId)?.id ?? tracks[0]?.id ?? '')
+  const [picked, setPicked] = useState<string[]>([])
+  const aud = (r: TcCurriculum): string[] => r.audiences ?? (r.parentId ? aud(byId.get(r.parentId)!) : [r.role])
+  const fits = (r: TcCurriculum) => !['TECHNICIAN', 'LEADER', 'ENGINEER'].includes(n.employeeRole) || aud(r).includes(n.employeeRole)
+  const list: { r: TcCurriculum; depth: number }[] = []
+  const walk = (id: string, depth: number) => {
+    for (const c of tree.filter((x) => x.parentId === id).sort((a, b) => a.ord - b.ord)) {
+      if (fits(c)) list.push({ r: c, depth })
+      walk(c.id, depth + 1)
+    }
+  }
+  if (track) walk(track, 0)
+  const toggle = (id: string) => setPicked((p) => (p.includes(id) ? p.filter((x) => x !== id) : [...p, id]))
+  return (
+    <div className="mt-2 space-y-2 rounded-lg bg-blue-50 p-2" data-testid="items-picker">
+      <p className="text-xs font-bold text-[#0f2040]">📚 اختار شنو راح يتدرب عليه من المنهج:</p>
+      {tracks.length > 1 && (
+        <div className="flex flex-wrap gap-1">
+          {tracks.map((t) => (
+            <button key={t.id} type="button" onClick={() => { setTrack(t.id); setPicked([]) }}
+              className={`rounded-full px-2.5 py-0.5 text-[11px] font-bold ${track === t.id ? 'bg-[#2c5aad] text-white' : 'bg-white text-slate-500'}`}>{t.title}</button>
+          ))}
+        </div>
+      )}
+      <div className="max-h-56 space-y-0.5 overflow-y-auto">
+        {list.map(({ r, depth }) => (
+          <label key={r.id} className="flex cursor-pointer items-center gap-2 rounded px-1 py-0.5 text-xs hover:bg-white" style={{ paddingInlineStart: `${depth * 16 + 4}px` }}>
+            <input type="checkbox" checked={picked.includes(r.id)} onChange={() => toggle(r.id)} />
+            <span className={depth === 0 ? 'font-bold' : ''}>{r.title}</span>
+          </label>
+        ))}
+        {list.length === 0 && <p className="text-xs text-slate-500">ماكو مفردات بهالمسار لفئته — ضيفها من «مفردات المنهج».</p>}
+      </div>
+      <div className="flex flex-wrap items-center gap-2">
+        <button disabled={list.length > 0 && picked.length === 0} onClick={() => onStart(list.map((x) => x.r.id).filter((id) => picked.includes(id)))} className={btn}>
+          📖 بدي التدريب{picked.length ? ` (${picked.length})` : ''}
+        </button>
+        <button onClick={onCancel} className="text-xs text-slate-500">إلغاء</button>
+      </div>
+    </div>
+  )
+}
+
+function NeedRow({ n, tree, onChange }: { n: TcNeed; tree: TcCurriculum[]; onChange: () => void }) {
+  const [mode, setMode] = useState<'' | 'start' | 'done' | 'dismiss'>('')
   const [report, setReport] = useState('')
   const [score, setScore] = useState(0)
   const [note, setNote] = useState('')
@@ -164,14 +213,16 @@ function NeedRow({ n, onChange }: { n: TcNeed; onChange: () => void }) {
         {n.kind !== 'SKILL_GAP' && n.dueAt && <span className={`text-xs ${late ? 'font-bold text-red-600' : 'text-slate-500'}`}>{late ? '⏰ متأخر — ' : ''}الموعد {dt(n.dueAt)}</span>}
       </div>
       {n.reason && <p className="mt-1 text-xs text-slate-600">{n.reason}</p>}
+      {n.itemTitles.length > 0 && <p className="mt-1 text-xs text-[#2c5aad]">📚 يتدرب على: {n.itemTitles.join('، ')}</p>}
       {error && <p className="mt-1 text-xs text-red-600">{error}</p>}
       {mode === '' && (
         <div className="mt-2 flex flex-wrap gap-2">
-          {n.status === 'OPEN' && <button onClick={() => void act('start')} className={btn}>📖 بدي التدريب</button>}
+          {n.status === 'OPEN' && <button onClick={() => setMode('start')} className={btn}>📖 بدي التدريب</button>}
           <button onClick={() => setMode('done')} className="rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-bold text-white">✅ خلص — اكتب التقرير</button>
           {n.kind === 'SKILL_GAP' && n.status === 'OPEN' && <button onClick={() => setMode('dismiss')} className="text-xs text-slate-500">ما يحتاج</button>}
         </div>
       )}
+      {mode === 'start' && <ItemsPicker n={n} tree={tree} onStart={(items) => void act('start', { items })} onCancel={() => setMode('')} />}
       {mode === 'done' && (
         <div className="mt-2 space-y-2 rounded-lg bg-emerald-50 p-2">
           <textarea value={report} onChange={(e) => setReport(e.target.value)} rows={3} placeholder="تقرير التدريب: شنو تدرب، شكد، وشلون صار أداؤه" className={`${input} w-full`} />
@@ -203,6 +254,8 @@ export function MatchingTab({ emps }: { emps: Employee[] }) {
   const [add, setAdd] = useState({ employeeId: '', topic: '', reason: '' })
   const [error, setError] = useState('')
   const [tick, setTick] = useState(1) // فردي = حدّث من التقييمات والمهارات
+  const [tree, setTree] = useState<TcCurriculum[]>([])
+  useEffect(() => { api.tcCurriculum().then(setTree).catch(swallow) }, [])
   const load = (refresh = false) => { setBusy(true); setTick((t) => (refresh ? (t | 1) + 2 : (t & ~1) + 2)) }
   useEffect(() => {
     api.tcMatching('', (tick & 1) === 1).then(setRows).catch(() => setRows([])).finally(() => setBusy(false))
@@ -226,7 +279,7 @@ export function MatchingTab({ emps }: { emps: Employee[] }) {
       {groups.map((g) => (
         <div key={g[0].employeeId} className={card} data-testid="need-employee">
           <h4 className="mb-2 font-extrabold">{g[0].employeeName} <span className="text-xs font-normal text-slate-500">{roleLabel(g[0].employeeRole)} · {g.length} شي</span></h4>
-          <ul className="space-y-2">{g.map((n) => <NeedRow key={n.id} n={n} onChange={() => load()} />)}</ul>
+          <ul className="space-y-2">{g.map((n) => <NeedRow key={n.id} n={n} tree={tree} onChange={() => load()} />)}</ul>
         </div>
       ))}
       <div className={card}>
@@ -263,6 +316,7 @@ export function TrainingReportsTab() {
             <span className="ms-auto text-amber-500" aria-label={`التقييم ${n.reportScore} من ٥`}>{'★'.repeat(n.reportScore ?? 0)}<span className="text-slate-300">{'★'.repeat(5 - (n.reportScore ?? 0))}</span></span>
           </div>
           {n.reason && <p className="mt-1 text-xs text-slate-500">السبب: {n.reason}</p>}
+          {n.itemTitles.length > 0 && <p className="mt-1 text-xs text-[#2c5aad]">📚 اتدرب على: {n.itemTitles.join('، ')}</p>}
           <p className="mt-2 whitespace-pre-wrap rounded-lg bg-slate-50 p-2 text-sm">{n.reportText}</p>
           <p className="mt-1 text-xs text-slate-500">مسؤول التدريب: {n.reportedBy ?? '—'} · بدأ {dt(n.startedAt)} · خلص {dt(n.doneAt)}</p>
         </div>

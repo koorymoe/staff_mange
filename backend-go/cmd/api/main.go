@@ -2570,6 +2570,9 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	tcRoute("DELETE /api/training-center/curriculum/{id}", trainingCenter.DeleteCurriculum, true)
 	tcRoute("POST /api/training-center/curriculum/{id}/audiences", trainingCenter.SetCurriculumAudiences, true) // (ك) 11-14
 	tcRoute("GET /api/training-center/matching", trainingCenter.Matching, true)
+	// (ك) 11-18 زينا: «دُرّب على» بملف الموظف — لمسؤول التدريب ولإدارة الموظفين
+	trainingCenterApp.Add("GET /api/training-center/employees/{id}/trained",
+		core.PermRule("يشوف المفردات الي اتدرب عليها الموظف (ملفه بإدارة الموظفين)", "training_manage", "staff_management"), trainingCenter.Trained)
 	tcRoute("POST /api/training-center/needs", trainingCenter.AddNeed, true)
 	tcRoute("POST /api/training-center/needs/{id}/{action}", trainingCenter.NeedAction, true)
 	tcRoute("GET /api/training-center/questions", trainingCenter.Questions, true)

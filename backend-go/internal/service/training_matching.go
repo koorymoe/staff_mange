@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/jmoiron/sqlx"
+	"github.com/lib/pq"
 
 	"staffmange-api/internal/errlog"
 	"staffmange-api/internal/repository"
@@ -38,6 +39,7 @@ var (
 	ErrNeedMandatory = errors.New("هذا تدريب إلزامي بسبب مشكلة بحجز — ما ينلغي، لازم يتدرب")
 	ErrNeedState     = errors.New("الحالة ما تسمح")
 	ErrNeedReport    = errors.New("اكتب التقرير وقيّم الموظف من ١ لـ٥")
+	ErrNeedItems     = errors.New("مفردة من المنهج مو موجودة")
 )
 
 // كلمات الليدر الي تعني «ما يعرف» — تقييم بيه وحدة منهن = تدريب إلزامي حتى لو النجوم عالية.
@@ -271,6 +273,9 @@ type TrainingNeedRow struct {
 	ReportScore  *int       `db:"reportScore" json:"reportScore"`
 	ReportedBy   *string    `db:"reportedBy" json:"reportedBy"`
 	CreatedAt    time.Time  `db:"createdAt" json:"createdAt"`
+	// (ك) 11-18: المفردات الي اختارها من بدا التدريب (وعناوينها بنفس الترتيب)
+	Items      pq.StringArray `db:"items" json:"items"`
+	ItemTitles pq.StringArray `db:"itemTitles" json:"itemTitles"`
 }
 
 const needSelect = `
@@ -280,7 +285,8 @@ const needSelect = `
 	SELECT n.id, n."employeeId", e.name AS "employeeName", e.role AS "employeeRole", n.kind, n."curriculumId",
 	       (SELECT path FROM p WHERE p.leaf = n."curriculumId" AND p."parentId" IS NULL LIMIT 1) AS path,
 	       n.topic, n.reason, n."sourceBookingId", n.status, n."dueAt", n."dismissNote", n."startedAt", n."doneAt",
-	       n."reportText", n."reportScore", rb.name AS "reportedBy", n."createdAt"
+	       n."reportText", n."reportScore", rb.name AS "reportedBy", n."createdAt", n.items,
+	       ARRAY(SELECT c.title FROM unnest(n.items) WITH ORDINALITY u(id, i) JOIN "TrainingCurriculum" c ON c.id = u.id ORDER BY u.i) AS "itemTitles"
 	  FROM "TrainingMatch" n
 	  JOIN "Employee" e ON e.id = n."employeeId"
 	  LEFT JOIN "Employee" rb ON rb.id = n."reportedById"`
@@ -334,7 +340,8 @@ func (m *TrainingMatching) Add(actor, employeeID, topic string, curriculumID *st
 }
 
 // Start مسؤول التدريب يبدي تدريب الموظف — يوصله إشعار.
-func (m *TrainingMatching) Start(id string) (*TrainingNeedRow, error) {
+// (ك) 11-18 زينا: items = مفردات المنهج الي راح يتدرب عليها (من شجرة المنهج).
+func (m *TrainingMatching) Start(id string, items []string) (*TrainingNeedRow, error) {
 	r, err := m.get(id)
 	if err != nil {
 		return nil, err
@@ -342,7 +349,21 @@ func (m *TrainingMatching) Start(id string) (*TrainingNeedRow, error) {
 	if r.Status != "OPEN" {
 		return nil, ErrNeedState
 	}
-	m.db.MustExec(`UPDATE "TrainingMatch" SET status = 'IN_TRAINING', "startedAt" = now(), "updatedAt" = now() WHERE id = $1`, id)
+	ids := pq.StringArray{}
+	seen := map[string]bool{}
+	for _, it := range items {
+		if it != "" && !seen[it] {
+			seen[it] = true
+			ids = append(ids, it)
+		}
+	}
+	if len(ids) > 0 {
+		var n int
+		if err := m.db.Get(&n, `SELECT COUNT(*) FROM "TrainingCurriculum" WHERE id = ANY($1)`, ids); err != nil || n != len(ids) {
+			return nil, ErrNeedItems
+		}
+	}
+	m.db.MustExec(`UPDATE "TrainingMatch" SET status = 'IN_TRAINING', "startedAt" = now(), items = $2, "updatedAt" = now() WHERE id = $1`, id, ids)
 	_ = m.notif.Create(r.EmployeeID, "TRAINING_NEED", fmt.Sprintf("📚 وحدة التدريب: بديت تدريبك على «%s».", r.Topic))
 	return m.get(id)
 }
@@ -369,6 +390,13 @@ func (m *TrainingMatching) Complete(actor, id, report string, score int) (*Train
 	_ = m.notif.CreateForRole("OWNER", "TRAINING_REPORT",
 		fmt.Sprintf("📋 تقرير وحدة التدريب: %s خلص تدريبه (%s) على «%s» — التقييم %d/5. التفاصيل بـ«تقارير التدريب».", r.EmployeeName, kind, r.Topic, score))
 	return m.get(id)
+}
+
+// Trained (ك) 11-18 زينا: تدريبات الموظف الي خلصت — لملفه بإدارة الموظفين («دُرّب على»).
+func (m *TrainingMatching) Trained(employeeID string) ([]TrainingNeedRow, error) {
+	rows := []TrainingNeedRow{}
+	err := m.db.Select(&rows, needSelect+` WHERE n."employeeId" = $1 AND n.status = 'DONE' ORDER BY n."doneAt" DESC LIMIT 200`, employeeID)
+	return rows, err
 }
 
 // Dismiss يلغي اقتراح (نقص مهارة) بسبب. الإلزامي ما ينلغي.
