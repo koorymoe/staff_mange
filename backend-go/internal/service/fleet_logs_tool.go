@@ -14,7 +14,7 @@ var fleetLogTypes = map[string]string{"CLEANING": "غسيل", "FUEL": "وقود"
 
 // fleetDayRange حدود اليوم ببغداد بالـUTC (الأعمدة TIMESTAMP بلا منطقة وتنخزن UTC).
 func fleetDayRange(day string, now time.Time) (time.Time, time.Time, error) {
-	loc := baghdadLoc()
+	loc := baghdad
 	d := now.In(loc)
 	if day != "" {
 		t, err := time.ParseInLocation("2006-01-02", day, loc)
@@ -25,13 +25,6 @@ func fleetDayRange(day string, now time.Time) (time.Time, time.Time, error) {
 	}
 	from := time.Date(d.Year(), d.Month(), d.Day(), 0, 0, 0, 0, loc).UTC()
 	return from, from.Add(24 * time.Hour), nil
-}
-
-func baghdadLoc() *time.Location {
-	if l, err := time.LoadLocation("Asia/Baghdad"); err == nil {
-		return l
-	}
-	return time.FixedZone("Baghdad", 3*3600)
 }
 
 func fleetLogsTool(db *sqlx.DB) agentTool {
