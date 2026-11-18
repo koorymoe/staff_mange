@@ -80,6 +80,9 @@ type Employee struct {
 	LeaderSkillLevel int        `db:"leaderSkillLevel" json:"leaderSkillLevel"`
 	IsLeader         bool       `db:"isLeader" json:"isLeader"`
 	IsTrainee        bool       `db:"isTrainee" json:"isTrainee"`
+	// (دازاي 11-18) وقت التدريب اليومي بتوقيت بغداد HH:MM — فارغ = تنبيه بلا وقت محدد.
+	TrainingFrom *string `db:"trainingFrom" json:"trainingFrom"`
+	TrainingTo   *string `db:"trainingTo" json:"trainingTo"`
 	// Language لغة واجهة الموظف: ar (افتراضي) أو ur — بلاغ #11 (11-07). ⚠️ عمود بالجدول → لازم حقل هنا (SELECT *).
 	Language string `db:"language" json:"language"`
 	// Division تفصل موظفي الشعبة الهندسية (ENGINEERING، الافتراضي) عن موظفي
@@ -191,6 +194,8 @@ type UpdateEmployeeRequest struct {
 	HasSafetyCertificate *bool    `json:"hasSafetyCertificate"`
 	IsLeader             *bool    `json:"isLeader"`
 	IsTrainee            *bool    `json:"isTrainee"`
+	TrainingFrom         *string  `json:"trainingFrom"` // HH:MM، فارغ = شيل
+	TrainingTo           *string  `json:"trainingTo"`
 	PhotoURL             *string  `json:"photoUrl"`
 	Salary               *float64 `json:"salary"`
 	ContractEndDate      *string  `json:"contractEndDate"` // YYYY-MM-DD، فارغ = شيل

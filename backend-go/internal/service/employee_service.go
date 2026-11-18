@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -231,6 +232,13 @@ func (s *EmployeeService) Update(id string, req model.UpdateEmployeeRequest) (*m
 		if req.IsLeader != nil {
 			employee.IsLeader = *req.IsLeader
 		}
+		if req.TrainingFrom != nil || req.TrainingTo != nil {
+			from, to, err := normTrainingWindow(req.TrainingFrom, req.TrainingTo, employee.TrainingFrom, employee.TrainingTo)
+			if err != nil {
+				return err
+			}
+			employee.TrainingFrom, employee.TrainingTo = from, to
+		}
 		if req.IsTrainee != nil {
 			employee.IsTrainee = *req.IsTrainee
 		}
@@ -446,4 +454,28 @@ func (s *EmployeeService) LinkHistoricalRecords(id string) (bookingsLinked int, 
 		return 0, 0, err
 	}
 	return s.repo.LinkHistoricalRecords(id, emp.Name)
+}
+
+var trainingClockRe = regexp.MustCompile(`^([01]\d|2[0-3]):[0-5]\d$`)
+
+// normTrainingWindow (دازاي 11-18) يتحقق من وقت التدريب: الاثنين HH:MM والبداية قبل النهاية،
+// أو الاثنين فارغين (= بلا وقت). الحقل الي ما انرسل يبقى مثل ما هو.
+func normTrainingWindow(from, to, curFrom, curTo *string) (*string, *string, error) {
+	pick := func(in, cur *string) string {
+		if in != nil {
+			return strings.TrimSpace(*in)
+		}
+		if cur != nil {
+			return *cur
+		}
+		return ""
+	}
+	f, t := pick(from, curFrom), pick(to, curTo)
+	if f == "" && t == "" {
+		return nil, nil, nil
+	}
+	if !trainingClockRe.MatchString(f) || !trainingClockRe.MatchString(t) || f >= t {
+		return nil, nil, errors.New("وقت التدريب لازم «من» و«إلى» بصيغة HH:MM والبداية قبل النهاية")
+	}
+	return &f, &t, nil
 }

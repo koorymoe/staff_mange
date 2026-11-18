@@ -5,7 +5,7 @@ import Layout from './components/Layout'
 import RequireAdmin from './components/RequireAdmin'
 import RequirePermission from './components/RequirePermission'
 import { useSession } from './session'
-// TrainingPage is left as a regular eager import: Layout.tsx already imports it statically
+// TrainingPage: eager import (صفحة التدريب — 11-18 ما بقت بالحبس من Layout)
 // (rendered directly, outside the router, for trainee accounts), so lazy-loading it here
 // wouldn't split it out of the main bundle anyway — it would just add a redundant chunk boundary.
 import TrainingPage from './pages/TrainingPage'

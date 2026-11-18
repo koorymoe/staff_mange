@@ -58,6 +58,8 @@ func init() {
 			{Name: "offSystemWork", Type: "boolean", NotNull: true, Default: "false"},
 			{Name: "aiOnlyRating", Type: "boolean", NotNull: true, Default: "false"},
 			{Name: "roleChangedAt", Type: "timestamp without time zone"},
+			{Name: "trainingFrom", Type: "text"},
+			{Name: "trainingTo", Type: "text"},
 			{Name: "prevRole", Type: "text"},
 			{Name: "prevIsLeader", Type: "boolean"},
 		},

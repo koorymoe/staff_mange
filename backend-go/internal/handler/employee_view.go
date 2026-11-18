@@ -28,6 +28,8 @@ func basePublicFields(e *model.Employee) employeeView {
 		"division":         e.Division,
 		"isLeader":         e.IsLeader,
 		"isTrainee":        e.IsTrainee,
+		"trainingFrom":     e.TrainingFrom,
+		"trainingTo":       e.TrainingTo,
 		"leaderSkillLevel": e.LeaderSkillLevel,
 		"createdAt":        e.CreatedAt,
 		"language":         e.Language,

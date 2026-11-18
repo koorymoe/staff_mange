@@ -1600,7 +1600,7 @@ export const api = {
     data: Partial<
       Pick<
         Employee,
-        'role' | 'onDuty' | 'status' | 'name' | 'position' | 'phone' | 'certificate' | 'photoUrl' | 'hasDrivingLicense' | 'hasSafetyCertificate' | 'isTrainee'
+        'role' | 'onDuty' | 'status' | 'name' | 'position' | 'phone' | 'certificate' | 'photoUrl' | 'hasDrivingLicense' | 'hasSafetyCertificate' | 'isTrainee' | 'trainingFrom' | 'trainingTo'
         | 'isLeader' | 'salary' | 'shift' | 'shiftStart' | 'shiftEnd' | 'monthlyLeaves' | 'jobTitle'
         // ملف الموارد البشرية — careerStatus ما تنرسل: تنحسب بالسيرفر
         | 'department' | 'hireDate' | 'experienceYears' | 'lastReview' | 'jobLevel' | 'nextRole' | 'trainingNeeds'

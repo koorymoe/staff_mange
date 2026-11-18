@@ -146,6 +146,9 @@ export interface Employee {
   language?: 'ar' | 'ur'
   isLeader: boolean
   isTrainee: boolean
+  /** (11-18) وقت التدريب اليومي بغداد HH:MM */
+  trainingFrom?: string | null
+  trainingTo?: string | null
   salary: number | null
   contractEndDate?: string | null
   shift: 'MORNING' | 'EVENING' | null

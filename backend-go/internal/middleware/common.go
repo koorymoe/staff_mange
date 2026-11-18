@@ -86,7 +86,8 @@ func SecurityHeaders(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		h := w.Header()
 		h.Set("X-Content-Type-Options", "nosniff")
-		h.Set("X-Frame-Options", "DENY")
+		// (11-18) SAMEORIGIN: ملفات التدريب تنعرض داخل النظام نفسه؛ أي موقع ثاني بعده ممنوع
+		h.Set("X-Frame-Options", "SAMEORIGIN")
 		h.Set("Referrer-Policy", "strict-origin-when-cross-origin")
 		h.Set("Permissions-Policy", "camera=(), microphone=(), payment=(), usb=()")
 		h.Set("Cross-Origin-Opener-Policy", "same-origin")

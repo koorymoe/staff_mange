@@ -29,7 +29,7 @@ import { roleLabel, roleGradient } from '../roleLabels'
 import { ensureFileToken, isStealthSession, serverLogout } from '../api'
 import Login from '../pages/Login'
 import CommandApp from '../command/CommandApp'
-import TrainingPage from '../pages/TrainingPage'
+import TrainingBanner from './TrainingBanner'
 import SettingsPanel from './SettingsPanel'
 
 // وجهة كل نوع إشعار: ضغطة على الإشعار توديك للشاشة الي تخصه بدل ما
@@ -423,24 +423,7 @@ export default function Layout() {
   //
   // هسه: ما اكو مواد = ما اكو تدريب، والموظف يدخل النظام عادي. الحبس
   // يشتغل بس لمن المدير يحدد المواد — وهو صاحب القرار.
-  if (employee.isTrainee && traineeHasMaterials === true) {
-    return (
-      <SessionContext.Provider value={{ employee, setEmployee, permissions: employeePermissions, gpsServiceId }}>
-        <div dir="rtl" className="min-h-screen bg-[#f0f4f9]">
-          <header className="sticky top-0 z-40 flex h-16 items-center justify-between border-b border-slate-200/60 bg-white/80 backdrop-blur-xl px-8">
-            <span className="text-lg font-extrabold text-[#0f2040] tracking-tight">نظام شركة الأماني — التدريب</span>
-            <button onClick={() => setEmployee(null)}
-              className="rounded-lg px-3 py-1.5 text-sm font-bold text-red-500 hover:bg-red-50">
-              تسجيل الخروج
-            </button>
-          </header>
-          <main className="p-3 sm:p-5 lg:p-8">
-            <TrainingPage />
-          </main>
-        </div>
-      </SessionContext.Provider>
-    )
-  }
+  // (دازاي 11-18) التدريب ما يحبس الموظف بعد — تنبيه بوقته (TrainingBanner) والشغل يبقى مفتوح.
 
   const role = employee?.role
   // «السكرتير» تطبيق مالك مستقل: يستعمل نفس الجلسة وحراسة الخادم، بس ما
@@ -923,6 +906,7 @@ export default function Layout() {
           <main className="min-w-0 flex-1 overflow-x-hidden overflow-y-auto p-3 sm:p-5 lg:p-8">
             <InspectBar />
             <MyExamBanner />
+            <TrainingBanner hasMaterials={traineeHasMaterials} />
             {/* خطأ بشاشة وحدة يبقى بيها — القائمة تبقى شغّالة */}
             <GlobalBack path={location.pathname} />
             <GlobalBackContext.Provider value={true}>

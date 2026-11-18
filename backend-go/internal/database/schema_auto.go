@@ -201,6 +201,15 @@ func autoMigrations() []Migration {
 			WHERE p."bookingId" = b.id AND p.stage = '5. تجهيز المنتجات' AND b."projectExecutionAt" IS NULL;
 		`,
 		},
+		{
+			// (دازاي 11-18) التدريب ما يحبس الموظف عن شغله: المدير يجدول وقت يومي (بغداد HH:MM)
+			// يطلعله بيه تنبيه التدريب، وبقية الوقت يشتغل عادي.
+			Version: "0508_employee_training_window",
+			SQL: `
+			ALTER TABLE "Employee" ADD COLUMN IF NOT EXISTS "trainingFrom" text;
+			ALTER TABLE "Employee" ADD COLUMN IF NOT EXISTS "trainingTo" text;
+		`,
+		},
 		// ‹makemigration› — التحديثات الجديدة تنضاف فوگ هالسطر
 	}
 }

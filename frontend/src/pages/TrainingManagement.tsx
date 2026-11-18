@@ -107,8 +107,11 @@ export default function TrainingManagement({ embedded }: { embedded?: boolean } 
               <label className="mt-4 flex items-center gap-2 rounded-lg bg-amber-50 p-3 text-sm font-bold text-amber-700">
                 <input type="checkbox" checked={selectedEmployee.isTrainee}
                   onChange={e => toggleTraineeMode(e.target.checked)} />
-                وضع التدريب مفعّل (يشوف صفحة التدريب فقط)
+                وضع التدريب مفعّل (يطلعله تنبيه التدريب، وشغله يبقى مفتوح)
               </label>
+              <TrainingWindowEditor key={selectedEmployee.id} employeeId={selectedEmployee.id}
+                from={selectedEmployee.trainingFrom ?? ''} to={selectedEmployee.trainingTo ?? ''}
+                onSaved={(f, t) => setEmployees(prev => prev.map(e => e.id === selectedEmployee.id ? { ...e, trainingFrom: f || null, trainingTo: t || null } : e))} />
 
               <p className="mt-4 mb-2 text-xs font-bold text-slate-500">الخدمات المخصصة للتدريب:</p>
               <div className="flex flex-col gap-1.5">
@@ -170,5 +173,34 @@ export default function TrainingManagement({ embedded }: { embedded?: boolean } 
       </div>
     </div>
     </>
+  )
+}
+
+// (دازاي 11-18) المدير يجدول وقت التدريب اليومي — التنبيه يطلع بيه بس، والموظف يشتغل عادي.
+function TrainingWindowEditor({ employeeId, from, to, onSaved }: { employeeId: string; from: string; to: string; onSaved: (f: string, t: string) => void }) {
+  const [f, setF] = useState(from)
+  const [t, setT] = useState(to)
+  const [busy, setBusy] = useState(false)
+  const [msg, setMsg] = useState('')
+  const save = async (nf: string, nt: string) => {
+    setBusy(true); setMsg('')
+    try {
+      await api.updateEmployee(employeeId, { trainingFrom: nf, trainingTo: nt })
+      setF(nf); setT(nt); onSaved(nf, nt); setMsg('انحفظ ✅')
+    } catch (e) { setMsg(e instanceof Error ? e.message : 'تعذر الحفظ') } finally { setBusy(false) }
+  }
+  return (
+    <div className="mt-3 rounded-lg border border-slate-200 p-3 text-sm">
+      <p className="mb-2 text-xs font-bold text-slate-500">⏰ وقت التدريب اليومي (بغداد) — فارغ = التنبيه يبين طول الوقت</p>
+      <div className="flex flex-wrap items-center gap-2">
+        <span>من</span><input type="time" value={f} onChange={e => setF(e.target.value)} className="rounded-lg border border-slate-300 px-2 py-1" />
+        <span>إلى</span><input type="time" value={t} onChange={e => setT(e.target.value)} className="rounded-lg border border-slate-300 px-2 py-1" />
+        <button type="button" onClick={() => void save(f, t)} disabled={busy || !f || !t}
+          className="rounded-lg bg-brand-500 px-3 py-1 text-xs font-bold text-white disabled:opacity-40">حفظ الوقت</button>
+        {(from || to) && <button type="button" onClick={() => void save('', '')} disabled={busy}
+          className="rounded-lg px-2 py-1 text-xs font-bold text-red-600 hover:bg-red-50">شيل الوقت</button>}
+      </div>
+      {msg && <p className="mt-1 text-xs text-slate-600">{msg}</p>}
+    </div>
   )
 }
