@@ -117,6 +117,7 @@ function ReportModal({ onClose }: { onClose: () => void }) {
                   <span className="font-bold">#{r.number}</span> · {mine.statuses[r.status] ?? r.status}
                   <p className="line-clamp-1 text-slate-500">{r.body}</p>
                   {r.adminNote && <p className="text-emerald-700">↩️ {r.adminNote}</p>}
+                  {r.status === 'NEEDS_INFO' && <ClarifyBox id={r.id} onDone={loadMine} />}
                 </li>
               ))}
             </ul>
@@ -124,5 +125,27 @@ function ReportModal({ onClose }: { onClose: () => void }) {
         )}
       </div>
     </Modal>
+  )
+}
+
+// (دازاي 11-18) المدير طلب توضيح ← الموظف يكتبه هنا وينضاف لنفس البلاغ.
+function ClarifyBox({ id, onDone }: { id: string; onDone: () => void }) {
+  const [text, setText] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [err, setErr] = useState('')
+  const send = async () => {
+    setBusy(true); setErr('')
+    try { await api.clarifyBotReport(id, { text: text.trim() }); setText(''); onDone() }
+    catch (e) { setErr(e instanceof Error ? e.message : 'تعذر الإرسال') }
+    finally { setBusy(false) }
+  }
+  return (
+    <div className="mt-1.5 flex gap-1.5">
+      <input value={text} onChange={(e) => setText(e.target.value)} maxLength={2000} placeholder="✍️ وضّح هنا…"
+        className="flex-1 rounded-md border border-amber-300 bg-white px-2 py-1 text-xs" />
+      <button type="button" onClick={() => void send()} disabled={busy || !text.trim()}
+        className="rounded-md bg-amber-600 px-2 py-1 text-xs font-bold text-white disabled:opacity-40">{busy ? '…' : 'وضّح'}</button>
+      {err && <span className="text-[11px] text-red-600">{err}</span>}
+    </div>
   )
 }

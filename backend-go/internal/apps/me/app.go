@@ -15,6 +15,7 @@ const onSelf = " — على نفسه بس (المعرّف من الجلسة)"
 var labels = map[core.Action]string{
 	"me.telegram_link":            "يربط حسابه بالتلغرام",
 	"me.bot_report":               "يرفع بلاغ من النظام",
+	"me.bot_report_clarify":       "يوضّح بلاغه الي ينتظر توضيح",
 	"me.profile_survey":           "يملي استمارة ملفه",
 	"me.daily_report":             "يرفع تقريره اليومي",
 	"me.rating_duty":              "يسلّم واجب التقييم اليومي",

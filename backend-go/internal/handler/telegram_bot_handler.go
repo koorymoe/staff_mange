@@ -303,6 +303,10 @@ func (h *TelegramBotHandler) handle(ctx context.Context, m *telegram.Message) {
 		log.Printf("[telegram] draft: %v", err)
 		return
 	}
+	// (دازاي 11-18) بلاغ ينتظر توضيح وما عنده مسودة بلاغ جديد ← الرسالة توضيح لهذاك البلاغ.
+	if draft == nil && h.clarifyFromBot(chat, emp, m, photoURL, text) {
+		return
+	}
 	if draft == nil {
 		draft = &model.BotReportDraft{ChatID: chat, EmployeeID: emp.EmployeeID}
 	}
@@ -646,6 +650,10 @@ func (h *TelegramBotHandler) Update(w http.ResponseWriter, r *http.Request) {
 		WriteError(w, http.StatusBadRequest, "الرد طويل (٢٠٠٠ حرف أقصى)")
 		return
 	}
+	if req.Status == "NEEDS_INFO" && req.Status != rep.Status && reply == "" {
+		WriteError(w, http.StatusBadRequest, "اكتب شنو التوضيح الي تحتاجه")
+		return
+	}
 	var note *string
 	if reply != "" {
 		note = &reply
@@ -658,6 +666,9 @@ func (h *TelegramBotHandler) Update(w http.ResponseWriter, r *http.Request) {
 		msg := fmt.Sprintf("📌 بلاغك #%d: %s", rep.Number, label)
 		if reply != "" {
 			msg += "\n\n" + reply
+		}
+		if req.Status == "NEEDS_INFO" {
+			msg += "\n\n✍️ " + clarifyHint(rep.ChatID != 0)
 		}
 		if h.tg.Enabled() && rep.ChatID != 0 {
 			h.say(rep.ChatID, msg)
@@ -705,4 +716,97 @@ func (h *TelegramBotHandler) PurgeOldPhotos(ctx context.Context) (int, error) {
 		_ = h.repo.ClearDraft(d.ChatID)
 	}
 	return n, nil
+}
+
+// clarifyHint شلون الموظف يوضّح — بالبوت لو البلاغ منه، وإلا من زر «بلّغ».
+func clarifyHint(fromBot bool) string {
+	if fromBot {
+		return "وضّح بالرد هنا مباشرة (كتابة أو صورة)، وتوضيحك ينضاف لنفس البلاغ."
+	}
+	return "وضّح من زر «بلّغ» بالنظام ← «بلاغاتي» ← «وضّح»."
+}
+
+// clarifyFromBot (دازاي 11-18) إذا عند الموظف بلاغ «يحتاج توضيح»، رسالته تنضاف إله.
+// يرجّع true إذا انعاملت كتوضيح.
+func (h *TelegramBotHandler) clarifyFromBot(chat int64, emp *repository.BotLinkedEmployee, m *telegram.Message, photoURL, text string) bool {
+	if m.MediaGroupID != "" && photoURL == "" {
+		return false
+	}
+	body := strings.TrimSpace(m.Caption)
+	if body == "" {
+		body = text
+	}
+	if body == "" && photoURL == "" {
+		return false
+	}
+	rep, err := h.repo.OpenNeedsInfo(emp.EmployeeID)
+	if err != nil || rep == nil {
+		return false
+	}
+	if body == "" {
+		body = "(صورة)"
+	}
+	var photos []string
+	if photoURL != "" {
+		photos = []string{photoURL}
+	}
+	ok, err := h.repo.AddClarification(rep.ID, emp.EmployeeID, body, photos)
+	if err != nil || !ok {
+		return false
+	}
+	h.say(chat, fmt.Sprintf("✅ انضاف توضيحك لبلاغ #%d ورجع للدراسة. شكراً %s 🌷", rep.Number, firstName(emp.Name)))
+	h.notifyClarified(rep, emp.Name)
+	return true
+}
+
+func (h *TelegramBotHandler) notifyClarified(rep *model.BotReport, name string) {
+	if !h.tg.Enabled() {
+		return
+	}
+	chats, err := h.repo.OwnerChats()
+	if err != nil {
+		return
+	}
+	for _, c := range chats {
+		h.say(c, fmt.Sprintf("✍️ %s وضّح بلاغ #%d — رجع «جديد».", name, rep.Number))
+	}
+}
+
+// Clarify POST /api/me/bot-reports/{id}/clarify {text, photos} — الموظف يوضّح بلاغه من النظام.
+// البلاغ مو إله أو مو «يحتاج توضيح» = 404.
+func (h *TelegramBotHandler) Clarify(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		Text   string   `json:"text"`
+		Photos []string `json:"photos"`
+	}
+	if err := DecodeJSON(r, &req); err != nil {
+		WriteError(w, http.StatusBadRequest, "طلب غير صالح")
+		return
+	}
+	text := strings.TrimSpace(req.Text)
+	if text == "" || utf8.RuneCountInString(text) > 2000 {
+		WriteError(w, http.StatusBadRequest, "اكتب التوضيح (٢٠٠٠ حرف أقصى)")
+		return
+	}
+	photos := []string{}
+	for _, p := range req.Photos {
+		if strings.HasPrefix(p, "/api/files/"+botFolder+"/") && !strings.Contains(p, "..") && len(photos) < 5 {
+			photos = append(photos, p)
+		}
+	}
+	empID := middleware.EmployeeIDFromContext(r)
+	ok, err := h.repo.AddClarification(r.PathValue("id"), empID, text, photos)
+	if err != nil {
+		WriteError(w, http.StatusInternalServerError, "تعذر الحفظ")
+		return
+	}
+	if !ok {
+		WriteError(w, http.StatusNotFound, "مو موجود")
+		return
+	}
+	rep, _ := h.repo.Get(r.PathValue("id"))
+	if rep != nil {
+		go h.notifyClarified(rep, rep.EmployeeName)
+	}
+	WriteJSON(w, http.StatusOK, rep)
 }

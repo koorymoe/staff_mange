@@ -255,6 +255,33 @@ func (r *BotReportRepository) SetStatus(id, status string, note *string) error {
 	return err
 }
 
+// OpenNeedsInfo آخر بلاغ للموظف ينتظر توضيحه (nil إذا ماكو).
+func (r *BotReportRepository) OpenNeedsInfo(employeeID string) (*model.BotReport, error) {
+	var b model.BotReport
+	err := r.db.Get(&b, `SELECT `+botReportCols+` FROM "BotReport" b JOIN "Employee" e ON e.id = b."employeeId"
+		WHERE b."employeeId" = $1 AND b.status = 'NEEDS_INFO' ORDER BY b."updatedAt" DESC LIMIT 1`, employeeID)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, nil
+	}
+	return &b, err
+}
+
+// AddClarification (دازاي 11-18) توضيح الموظف ينضاف لنص البلاغ وصوره، والبلاغ يرجع «جديد».
+// بس لصاحبه وبس إذا حالته NEEDS_INFO — يرجّع false إذا ما انطبق.
+func (r *BotReportRepository) AddClarification(id, employeeID, text string, photos []string) (bool, error) {
+	if photos == nil {
+		photos = []string{}
+	}
+	res, err := r.db.Exec(`UPDATE "BotReport"
+		SET body = body || E'\n\n— ✍️ توضيح الموظف: ' || $3, photos = photos || $4::text[], status = 'NEW', "updatedAt" = now()
+		WHERE id = $1 AND "employeeId" = $2 AND status = 'NEEDS_INFO'`, id, employeeID, text, pq.StringArray(photos))
+	if err != nil {
+		return false, err
+	}
+	n, _ := res.RowsAffected()
+	return n == 1, nil
+}
+
 // OwnerChats محادثات المالك المربوطة — لإشعار «بلاغ جديد» الفوري (رسائل البوت مجانية).
 func (r *BotReportRepository) OwnerChats() ([]int64, error) {
 	out := []int64{}

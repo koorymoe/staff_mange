@@ -106,6 +106,17 @@ function ReportCard({ r, labels, expanded, onToggle, onSaved }: {
       setReply(''); setMsg('انحفظ ووصل للموظف ✅'); onSaved()
     } catch (e) { setMsg(e instanceof Error ? e.message : 'تعذر الحفظ') } finally { setSaving(false) }
   }
+  // (دازاي 11-18) أزرار سريعة جنب كل بلاغ: «تم الحل» بضغطة، و«يحتاج توضيح» بسؤال يوصل للموظف
+  const [ask, setAsk] = useState(false)
+  const [question, setQuestion] = useState('')
+  const quick = async (status: string, text?: string) => {
+    setSaving(true); setMsg('')
+    try {
+      await api.updateBotReport(r.id, { status, reply: text })
+      setAsk(false); setQuestion(''); onSaved()
+    } catch (e) { setMsg(e instanceof Error ? e.message : 'تعذر الحفظ') } finally { setSaving(false) }
+  }
+  const open = r.status !== 'DONE' && r.status !== 'REJECTED' && r.status !== 'NOT_A_BUG'
   const when = new Date(r.createdAt).toLocaleString('ar-IQ', { timeZone: 'Asia/Baghdad', dateStyle: 'medium', timeStyle: 'short' })
   return (
     <div className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-200">
@@ -115,6 +126,25 @@ function ReportCard({ r, labels, expanded, onToggle, onSaved }: {
       </button>
       {r.page && <p className="mt-1 text-xs text-slate-400">الشاشة: <bdi dir="ltr" className="font-mono">{r.page}</bdi></p>}
       <p className={`mt-2 whitespace-pre-wrap text-sm text-slate-700 ${expanded ? '' : 'line-clamp-2'}`}>{r.body}</p>
+      {open && (
+        <div className="mt-2 flex flex-wrap items-center gap-2">
+          <button type="button" onClick={() => void quick('DONE')} disabled={saving}
+            className="rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-emerald-700 disabled:opacity-50">✅ تم الحل</button>
+          {r.status !== 'NEEDS_INFO' ? (
+            <button type="button" onClick={() => setAsk((v) => !v)} disabled={saving}
+              className="rounded-lg bg-amber-100 px-3 py-1.5 text-xs font-bold text-amber-900 hover:bg-amber-200 disabled:opacity-50">❓ يحتاج توضيح</button>
+          ) : <span className="text-xs font-bold text-amber-700">⏳ ينتظر توضيح الموظف</span>}
+        </div>
+      )}
+      {ask && (
+        <div className="mt-2 flex flex-col gap-2 sm:flex-row">
+          <input value={question} onChange={(e) => setQuestion(e.target.value)} maxLength={2000} autoFocus
+            placeholder="شنو تحتاج يوضّح؟ (يوصله بالبوت وبالإشعار)" className="flex-1 rounded-lg border border-amber-300 px-3 py-2 text-sm" />
+          <button type="button" onClick={() => void quick('NEEDS_INFO', question.trim())} disabled={saving || !question.trim()}
+            className="rounded-lg bg-amber-600 px-4 py-2 text-sm font-bold text-white disabled:opacity-40">{saving ? 'لحظة…' : 'إرسال للموظف'}</button>
+        </div>
+      )}
+      {!expanded && msg && <p className="mt-1 text-xs text-red-600">{msg}</p>}
       {expanded && (
         <div className="mt-3 space-y-3">
           {r.photosPurgedAt && <p className="text-xs text-slate-400">🗑️ الصور انمسحت من السيرفر بعد أسبوع (حتى ما يثگل).</p>}

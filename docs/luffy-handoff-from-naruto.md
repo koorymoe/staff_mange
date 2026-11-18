@@ -493,3 +493,4 @@ git push origin origin/avg:refs/heads/prod     # بعد التأكد إنه fast
 - 11-16: ترحيل 0502 roleChangedAt + تريگر employee_role_changed_trg؛ ListForEmployee/UnreadCount تفلتر createdAt >= roleChangedAt. database.ApplyMigrationForTest للاختبارات. ينتظر قرار دازاي: التقييم حسب فترة كل دور.
 - 11-16: التقييم حسب الدور: 0503 prevRole/prevIsLeader بالتريگر، 0504_data تقي (16 تشرين الثاني، HR_COORDINATOR). RoleViews/applyRoleViews/DetailView(?view=prev). ScoreSteps يعرض الحسبة بنفس ترتيب الخادم.
 - 11-18: بلاغ #50 (خيار B): stageUnlocksBooking يفتح الحجز من ProjectPrepareStage + ترحيل 0507_data يفتح المشاريع الحالية بالتجهيز.
+- 11-18: بلاغات الموظفين: توضيح البلاغ — AddClarification/OpenNeedsInfo، رسالة البوت لصاحب بلاغ NEEDS_INFO بلا مسودة تنضاف كتوضيح، و POST /api/me/bot-reports/{id}/clarify (me.bot_report_clarify).

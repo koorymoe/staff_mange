@@ -1816,6 +1816,7 @@ export const api = {
   // البلاغ من داخل النظام
   submitBotReport: (body: { body: string; photos: string[]; page: string }) => request<BotReport>('/me/bot-reports', { method: 'POST', body: JSON.stringify(body) }),
   getMyBotReports: () => request<{ items: BotReport[]; statuses: Record<string, string> }>('/me/bot-reports'),
+  clarifyBotReport: (id: string, body: { text: string; photos?: string[] }) => request<BotReport>(`/me/bot-reports/${id}/clarify`, { method: 'POST', body: JSON.stringify(body) }),
   getBotReports: (status = '') =>
     request<{ items: BotReport[]; statuses: Record<string, string> }>(`/bot-reports${status ? `?status=${encodeURIComponent(status)}` : ''}`),
   updateBotReport: (id: string, body: { status?: string; reply?: string }) =>

@@ -1104,6 +1104,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	secs["telegram_links"].Set("DELETE /api/telegram-links/{employeeId}", "telegram_links.delete_by_employeeid", tgBot.OwnerUnlink, requireTgOwner)
 	// البلاغ من داخل النظام (أي موظف مسجّل)، وبلاغاته هو بس
 	meApp.Set("POST /api/me/bot-reports", "me.bot_report", tgBot.SubmitMine)
+	meApp.Set("POST /api/me/bot-reports/{id}/clarify", "me.bot_report_clarify", tgBot.Clarify)
 	secs["me_x"].Set("GET /api/me/bot-reports", "me_x.get_bot_reports", tgBot.MyReports)
 	requireBotReports := authz.Strict(permissionRepo, authz.BotReports)
 	secs["bot_reports"].Set("GET /api/bot-reports", "bot_reports.get_root", tgBot.List, requireBotReports)
