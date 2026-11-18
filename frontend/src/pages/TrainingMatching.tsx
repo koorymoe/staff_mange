@@ -22,15 +22,10 @@ const AUDIENCES = [
   { id: 'LEADER', label: 'ليدر' },
   { id: 'ENGINEER', label: 'مهندس' },
 ]
-// (ك) 11-14 زينا: كل كبسولة تفتح قائمتها — فني يطلعون الفنيين، ليدر الليدرية، مهندس المهندسين،
-// و«أخرى» بحث بالاسم على كل الموظفين.
-const inGroup = (e: Employee, g: string) =>
-  g === 'LEADER' ? e.isLeader : g === 'TECHNICIAN' ? e.role === 'TECHNICIAN' && !e.isLeader : e.role === g
-const groupOf = (e: Employee) => AUDIENCES.find((a) => inGroup(e, a.id))?.id
 const LEVEL = ['المسار', 'تفرع أول', 'تفرع ثاني', 'تفرع ثالث']
 
 // ── ١) شجرة المنهج ──
-export function CurriculumTree({ emps }: { emps: Employee[] }) {
+export function CurriculumTree() {
   const [rows, setRows] = useState<TcCurriculum[]>([])
   const [services, setServices] = useState<Service[]>([])
   const [title, setTitle] = useState('')
@@ -38,8 +33,6 @@ export function CurriculumTree({ emps }: { emps: Employee[] }) {
   const [addUnder, setAddUnder] = useState<string | null>(null)
   const [child, setChild] = useState('')
   const [error, setError] = useState('')
-  const [pick, setPick] = useState<{ id: string; g: string } | null>(null)
-  const [q, setQ] = useState('')
   useEffect(() => {
     api.tcCurriculum().then(setRows).catch(swallow)
     api.getServices().then(setServices).catch(swallow)
@@ -65,68 +58,16 @@ export function CurriculumTree({ emps }: { emps: Employee[] }) {
     for (const r of rows) get(r)
     return memo
   }, [rows])
-  // الأشخاص الفعليين لكل سطر: اختياره هو، وإلا الي فوكه.
-  const effPeople = useMemo(() => {
-    const byId = new Map(rows.map((r) => [r.id, r]))
-    const memo = new Map<string, string[]>()
-    const get = (r: TcCurriculum): string[] => {
-      const hit = memo.get(r.id)
-      if (hit) return hit
-      const parent = r.parentId ? byId.get(r.parentId) : undefined
-      const v = r.assignees ?? (parent ? get(parent) : [])
-      memo.set(r.id, v)
-      return v
-    }
-    for (const r of rows) get(r)
-    return memo
-  }, [rows])
-  const empById = useMemo(() => new Map(emps.map((e) => [e.id, e])), [emps])
-  // يحفظ الأشخاص، والفئات تنحسب منهم (فني/ليدر/مهندس الي بيها أحد مختار).
-  const savePeople = (n: TcCurriculum, ids: string[]) => {
-    const groups = new Set(ids.map((id) => { const e = empById.get(id); return e ? groupOf(e) : undefined }))
-    run(api.tcSetCurriculumAudiences(n.id, { assignees: ids, audiences: AUDIENCES.map((a) => a.id).filter((g) => groups.has(g)) }))
-  }
-  const togglePerson = (n: TcCurriculum, id: string) => {
-    const cur = effPeople.get(n.id) ?? []
-    savePeople(n, cur.includes(id) ? cur.filter((x) => x !== id) : [...cur, id])
+  // (ك) 11-18 دازاي: بلا أسماء — كل سطر بس لمنو: فني، ليدر، مهندس، أو الكل.
+  // (عمود assignees يبقى بالقاعدة فاضي — شيله يحتاج موافقة دازاي.)
+  const saveAud = (n: TcCurriculum, ids: string[]) =>
+    run(api.tcSetCurriculumAudiences(n.id, { audiences: AUDIENCES.map((a) => a.id).filter((x) => ids.includes(x)), assignees: [] }))
+  const toggleAud = (n: TcCurriculum, id: string) => {
+    const cur = eff.get(n.id) ?? []
+    saveAud(n, cur.includes(id) ? cur.filter((x) => x !== id) : [...cur, id])
   }
   const run = (p: Promise<TcCurriculum[]>, after?: () => void) =>
     p.then((r) => { setRows(r); setError(''); after?.() }).catch((e) => setError(msg(e)))
-
-  const picker = (n: TcCurriculum) => {
-    if (pick?.id !== n.id) return null
-    const chosen = new Set(effPeople.get(n.id) ?? [])
-    const pool = pick.g === 'OTHER'
-      ? emps.filter((e) => q.trim() && e.name.includes(q.trim())).slice(0, 30)
-      : emps.filter((e) => inGroup(e, pick.g))
-    const allOn = pool.length > 0 && pool.every((e) => chosen.has(e.id))
-    return (
-      <div className="ms-6 mt-1 space-y-2 rounded-xl border border-slate-200 bg-white p-3" data-testid="people-picker">
-        <div className="flex flex-wrap items-center gap-2">
-          <b className="text-xs text-[#0f2040]">{pick.g === 'OTHER' ? 'أخرى — ابحث بالاسم' : AUDIENCES.find((a) => a.id === pick.g)?.label}</b>
-          {pick.g === 'OTHER'
-            ? <input autoFocus value={q} onChange={(e) => setQ(e.target.value)} placeholder="اسم الموظف…" className={`${input} flex-1 py-1`} />
-            : pool.length > 0 && (
-              <button type="button" onClick={() => savePeople(n, allOn ? [...chosen].filter((id) => !pool.some((e) => e.id === id)) : [...new Set([...chosen, ...pool.map((e) => e.id)])])}
-                className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-bold text-slate-600">{allOn ? 'شيل الكل' : 'اختيار الكل'}</button>
-            )}
-          <button type="button" onClick={() => setPick(null)} className="ms-auto text-xs text-slate-500">إغلاق</button>
-        </div>
-        <div className="flex max-h-48 flex-wrap gap-1.5 overflow-y-auto">
-          {pool.map((e) => {
-            const on = chosen.has(e.id)
-            return (
-              <button key={e.id} type="button" onClick={() => togglePerson(n, e.id)} aria-pressed={on}
-                className={`rounded-full px-2.5 py-1 text-xs font-bold ${on ? 'bg-[#2c5aad] text-white' : 'bg-slate-100 text-slate-600'}`}>
-                {on ? '✓ ' : ''}{e.name}
-              </button>
-            )
-          })}
-          {pool.length === 0 && <span className="text-xs text-slate-400">{pick.g === 'OTHER' ? (q.trim() ? 'ماكو أحد بهالاسم' : 'اكتب الاسم') : 'ماكو أحد بهالقائمة'}</span>}
-        </div>
-      </div>
-    )
-  }
 
   const node = (n: TcCurriculum, depth: number): React.ReactNode => (
     <li key={n.id} className="mt-1.5">
@@ -136,19 +77,25 @@ export function CurriculumTree({ emps }: { emps: Employee[] }) {
         {!n.parentId && (eff.get(n.id) ?? []).length === 0 && <span className="shrink-0 text-[10px] font-bold text-amber-600">حدد الفئة</span>}
         {depth === 0 && n.serviceId && <span className="rounded bg-cyan-100 px-1.5 text-[10px] text-cyan-800">{services.find((s) => s.id === n.serviceId)?.name ?? 'خدمة'}</span>}
         <span className="ms-auto flex shrink-0 items-center gap-1" data-testid="aud-chips">
-          {[...AUDIENCES, { id: 'OTHER', label: 'أخرى' }].map((a) => {
-            const people = (effPeople.get(n.id) ?? []).map((id) => empById.get(id)).filter((e): e is Employee => !!e)
-            const count = a.id === 'OTHER' ? people.filter((e) => !groupOf(e)).length : people.filter((e) => inGroup(e, a.id)).length
-            const on = a.id === 'OTHER' ? count > 0 : count > 0 || (eff.get(n.id) ?? []).includes(a.id)
-            const open = pick?.id === n.id && pick.g === a.id
+          {AUDIENCES.map((a) => {
+            const on = (eff.get(n.id) ?? []).includes(a.id)
             return (
-              <button key={a.id} type="button" onClick={() => { setPick(open ? null : { id: n.id, g: a.id }); setQ('') }} aria-pressed={on} aria-expanded={open}
-                title={n.assignees === null && on ? 'ماخذ من الي فوكه — اضغط حتى تختار لهذا السطر' : ''}
-                className={`inline-flex w-14 items-center justify-center gap-0.5 rounded-full px-1.5 py-0.5 text-[10px] font-bold ${on ? (n.assignees === null ? 'bg-[#2c5aad]/50 text-white' : 'bg-[#2c5aad] text-white shadow-sm') : 'bg-slate-100 text-slate-400'} ${open ? 'ring-2 ring-[#2c5aad]/40' : ''}`}>
-                {a.label} <span aria-hidden className={`text-[9px] transition ${open ? 'rotate-180' : ''}`}>▴</span>
+              <button key={a.id} type="button" onClick={() => toggleAud(n, a.id)} aria-pressed={on}
+                title={n.audiences === null && on ? 'ماخذ من الي فوكه — اضغط حتى تحدد لهذا السطر' : ''}
+                className={`w-14 rounded-full px-1.5 py-0.5 text-[10px] font-bold ${on ? (n.audiences === null ? 'bg-[#2c5aad]/50 text-white' : 'bg-[#2c5aad] text-white shadow-sm') : 'bg-slate-100 text-slate-400'}`}>
+                {a.label}
               </button>
             )
           })}
+          {(() => {
+            const all = AUDIENCES.every((a) => (eff.get(n.id) ?? []).includes(a.id))
+            return (
+              <button type="button" onClick={() => saveAud(n, all ? [] : AUDIENCES.map((a) => a.id))} aria-pressed={all}
+                className={`w-14 rounded-full px-1.5 py-0.5 text-[10px] font-bold ${all ? (n.audiences === null ? 'bg-[#2c5aad]/50 text-white' : 'bg-[#2c5aad] text-white shadow-sm') : 'bg-slate-100 text-slate-400'}`}>
+                الكل
+              </button>
+            )
+          })()}
         </span>
         <span className="flex w-32 shrink-0 items-center justify-start gap-2 whitespace-nowrap">
           <span className="w-[4.5rem]">{depth < 3 && <button onClick={() => { setAddUnder(n.id); setChild('') }} className="text-xs font-bold text-[#2c5aad]">+ {LEVEL[depth + 1]}</button>}</span>
@@ -158,7 +105,6 @@ export function CurriculumTree({ emps }: { emps: Employee[] }) {
           }} className="rounded-full bg-red-100 px-2 py-0.5 text-[11px] font-bold text-red-700">حذف</button>
         </span>
       </div>
-      {picker(n)}
       {addUnder === n.id && (
         <div className="ms-6 mt-1 flex gap-2">
           <input autoFocus value={child} onChange={(e) => setChild(e.target.value)} placeholder={`${LEVEL[depth + 1]} تحت «${n.title}»`} className={`${input} flex-1`} />
@@ -175,7 +121,7 @@ export function CurriculumTree({ emps }: { emps: Employee[] }) {
       <div className="mb-3 flex flex-wrap items-center gap-2">
         <h3 className="font-extrabold text-[#0f2040]">📚 مفردات المنهج</h3>
       </div>
-      <p className="mb-2 text-xs text-slate-500">المسار (مثلاً داش كام) ← تفرع أول ← تفرع ثاني ← تفرع ثالث. اربط المسار بخدمته حتى الماتشينغ يعرف منين يدرّب. وبعد ما تبني، اضغط على كبسولة فني أو ليدر أو مهندس وتطلع قائمتهم، واختار واحد أو أكثر أو الكل؛ و«أخرى» تبحث بالاسم على أي موظف. السطر الي ما تختار إله ياخذ من الي فوكه.</p>
+      <p className="mb-2 text-xs text-slate-500">المسار (مثلاً داش كام) ← تفرع أول ← تفرع ثاني ← تفرع ثالث. اربط المسار بخدمته حتى الماتشينغ يعرف منين يدرّب. وبعد ما تبني، أشّر على كل سطر لمنو: فني، ليدر، مهندس (تگدر أكثر من وحدة) أو «الكل». السطر الي ما تأشّر عليه ياخذ من الي فوكه.</p>
       {error && <p className="mb-2 text-sm text-red-600">{error}</p>}
       <ul>{tracks.map((t) => node(t, 0))}</ul>
       {tracks.length === 0 && <p className="text-sm text-slate-500">ماكو مسارات بعد.</p>}
