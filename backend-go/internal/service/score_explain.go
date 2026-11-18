@@ -1,6 +1,7 @@
 package service
 
 import (
+	"fmt"
 	"sort"
 
 	"staffmange-api/internal/repository"
@@ -37,7 +38,7 @@ var revenueKindLabels = map[string]string{
 }
 
 var groupWhy = map[string]string{
-	GroupTechs:       "شغله بالميدان: ينقيّم على خطوات الحجز نفسها، والليدر هو الي يشوفه يشتغل.",
+	GroupTechs:       "(11-18) ليدره هو الي يشوف شغله: تقييم الليدر + حضوره + عدّته + مهامه + مشاكله ويا زملائه، والسلبي بس إذا أكده المسؤول.",
 	GroupLeaders:     "مسؤول عن الحجز كله وعن فنيينه، فيقيّمه أكثر من طرف شاف شغله.",
 	GroupDecor:       "شعبة الديكور منعزلة عن الهندسية — نفس قواعد الميدان بترتيب خاص بيها.",
 	GroupCoordinator: "شغله تنظيم: سرعة الاتصال والتثبيت وتحديد الكادر. ما تنحسب عليه فلوس لأنه ينسّق مو يجيب.",
@@ -113,6 +114,19 @@ func ExplainOne(p repository.Scorable) ScoreExplainRow {
 	}
 	if fieldGroups[g] {
 		add("INVENTORY")
+	}
+	if g == GroupTechs && !p.AIOnly {
+		// (دازاي 11-18) التقييم الجديد للفني — tech_score.go
+		r.Rules = []string{}
+		for _, w := range techWeights {
+			r.Rules = append(r.Rules, fmt.Sprintf("%s (%.0f)", w.Label, w.Weight*techRulesShare/100))
+		}
+		r.Rules = append(r.Rules, fmt.Sprintf("رأي ماتركس (%.0f): يحتاج تدريب؟ يجي بوقته؟ يكمّل مهامه أسرع؟", techMatrixShare))
+		r.Raters = []string{"ليدره بعد كل حجز — السيء (١–٢) يأكده مدير الإدارة أو نائبه"}
+		if k, ok := revenueKindOf[g]; ok {
+			r.Revenue = revenueKindLabels[k] + " — الهدف ١٣٠٪ من راتبه"
+		}
+		return r
 	}
 	if p.AIOnly {
 		r.Raters = append(r.Raters, "🤖 ماتركس بس — البشر ما يقيّمونه")

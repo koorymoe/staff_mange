@@ -10,6 +10,7 @@ import { useSession, isAdminOrOwner } from '../session'
 import StaffPointsBoard from '../components/StaffPointsBoard'
 import ScoreSteps from '../components/ScoreSteps'
 import ScoreExplain from '../components/ScoreExplain'
+import ScoreReviewPanel from '../components/ScoreReviewPanel'
 import { roleLabel } from '../roleLabels'
 import { fmtDate } from '../utils/date'
 import { askInput } from '../ui/dialogs'
@@ -90,8 +91,14 @@ export function ScoreBreakdown({ d, admin, onChange }: { d: StaffScoreDetail; ad
     <div className="space-y-3">
       <div className="grid grid-cols-3 gap-2 text-center">
         <div className="rounded-xl bg-slate-50 p-2"><p className="text-[11px] text-slate-500">النهائي</p><WhyBadge d={d} kind="final" big /></div>
+        {d.techParts ? <>
+          {/* (دازاي 11-18) الفني: بنود بأوزان + رأي ماتركس ٢٠٪ */}
+          <div className="rounded-xl bg-amber-50 p-2"><p className="text-[11px] text-slate-500">البنود (٨٠٪)</p><p className="text-lg font-black">{Math.round(d.techParts.filter((p) => p.key !== 'MATRIX').reduce((s, p) => s + p.pct * p.weight / 100, 0) * 100 / 80)}%</p><p className="text-[11px] text-slate-500">ليدر · حضور · عدّة · مهام · زملاء</p></div>
+          <div className="rounded-xl bg-violet-50 p-2"><p className="text-[11px] text-slate-500">رأي ماتركس (٢٠٪)</p><p className="text-lg font-black">{Math.round(d.techParts.find((p) => p.key === 'MATRIX')?.pct ?? 0)}%</p><p className="text-[11px] text-slate-500">{d.matrixNotes?.length ? d.matrixNotes.join(' · ') : 'ماكو ملاحظات'}</p></div>
+        </> : <>
         <div className="rounded-xl bg-violet-50 p-2"><p className="text-[11px] text-slate-500">ماتركس (٦٠٪)</p><WhyBadge d={d} kind="matrix" /><p className="text-[11px] text-slate-500">{d.earned} من {d.max} نقطة</p></div>
         <div className="rounded-xl bg-amber-50 p-2"><p className="text-[11px] text-slate-500">البشر (٤٠٪)</p><WhyBadge d={d} kind="human" /><p className="text-[11px] text-slate-500">{d.aiOnly ? 'ماتركس بس — ما ينحسب' : d.humanCount ? `${d.humanAvg?.toFixed(1)}★ من ${d.humanCount} تقييم` : 'محد قيّمه بعد'}</p></div>
+        </>}
       </div>
       {d.discipline && <DisciplineBox d={d.discipline} />}
       {d.reliabilityParts.length > 0 && (
@@ -207,10 +214,11 @@ export default function StaffScorePage() {
 
   return (
     <div dir="rtl" className="space-y-4">
+      <ScoreReviewPanel />
       <div className="flex flex-wrap items-end justify-between gap-2">
         <div>
           <h2 className="text-2xl font-bold text-brand-900">🏅 تقييم الموظفين</h2>
-          <p className="text-sm text-slate-500">ماتركس ٦٠٪ (نقاط كل حجز ويوم دوام ومهمة ومشروع) + البشر ٤٠٪ (الليدر، الإداري، المراقب، الجودة). درجة تقييم بس، بلا فلوس.</p>
+          <p className="text-sm text-slate-500">ماتركس ٦٠٪ (نقاط كل حجز ويوم دوام ومهمة ومشروع) + البشر ٤٠٪ (الليدر، الإداري، المراقب، الجودة). الفنيين (11-18): ليدر ٣٠ · حضور ٢٠ · عدّة ١٥ · مهام ١٠ · زملاء ٥ + رأي ماتركس ٢٠، والفلوس هدفها ١٣٠٪.</p>
         </div>
         <div className="flex items-center gap-2">
           <input type="month" value={month || b.month} onChange={(e) => setMonth(e.target.value)} className="rounded-lg border border-slate-200 px-2 py-1 text-sm" />

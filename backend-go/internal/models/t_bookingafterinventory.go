@@ -11,6 +11,8 @@ func init() {
 			{Name: "complete", Type: "boolean", NotNull: true},
 			{Name: "missingItems", Type: "text"},
 			{Name: "checkedAt", Type: "timestamp with time zone", NotNull: true, Default: "now()"},
+			{Name: "justifiedById", Type: "text"},
+			{Name: "justifiedAt", Type: "timestamp with time zone"},
 		},
 		Constraints: []Constraint{
 			{Name: "BookingAfterInventory_bookingId_fkey", Def: "FOREIGN KEY (\"bookingId\") REFERENCES \"Booking\"(id) ON DELETE CASCADE"},

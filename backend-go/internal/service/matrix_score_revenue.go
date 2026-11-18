@@ -33,6 +33,16 @@ const (
 	RevenueBonusMax = 10.0
 )
 
+// revenueTarget (دازاي 11-18) الهدف كنسبة من الراتب — الفني لازم يدخّل ١٣٠٪، البقية ١٠٠٪.
+var revenueTarget = map[string]float64{GroupTechs: 130}
+
+func targetOf(group string) float64 {
+	if t, ok := revenueTarget[group]; ok {
+		return t
+	}
+	return 100
+}
+
 // salaryFor راتب الفترة: الشهر الجاري بنسبة الأيام الي مرّت بس.
 // elapsedDays الأيام الي مرّت من الفترة لحد هسه (أو لنهايتها).
 func elapsedDays(from, to, now time.Time) float64 {
@@ -86,17 +96,20 @@ func ApplyRevenue(rows []StaffScore, rev []repository.RevenueRow, salaries map[s
 		}
 		// (دازاي 11-17) أول أسبوع من الفترة (أول الشهر، أو أول أيام دور جديد) بعده ما لحق يشتغل
 		// ويدخّل — التغطية تنعرض بس ما تنقّص الرقم. الزيادة (إذا غطّى أكثر) تبقى.
-		if elapsedDays(from, to, now) < RevenueGraceDays && c < 100 {
+		// النسبة من الهدف (١٠٠٪ = وصل هدفه): الفني هدفه ١٣٠٪ من راتبه
+		tc := c * 100 / targetOf(s.Group)
+		s.RevenueTarget = targetOf(s.Group)
+		if elapsedDays(from, to, now) < RevenueGraceDays && tc < 100 {
 			s.RevenueGrace = true
 			continue
 		}
 		f := *s.Final
-		if c < 100 {
-			adj := f * (RevenueFloor + (1-RevenueFloor)*c/100)
+		if tc < 100 {
+			adj := f * (RevenueFloor + (1-RevenueFloor)*tc/100)
 			s.RevenueAdj = adj - f
 			f = adj
 		} else {
-			bonus := math.Min((c-100)/10, RevenueBonusMax)
+			bonus := math.Min((tc-100)/10, RevenueBonusMax)
 			s.RevenueAdj = math.Min(100, f+bonus) - f
 			f = math.Min(100, f+bonus)
 		}

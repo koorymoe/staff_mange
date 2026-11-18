@@ -347,14 +347,18 @@ type StaffScore struct {
 	GroupLabel  string            `json:"groupLabel"`
 	Reliability *float64          `json:"reliability"`
 	RelParts    []ReliabilityPart `json:"reliabilityParts"`
-	ID          string            `json:"id"`
-	Name        string            `json:"name"`
-	Role        string            `json:"role"`
-	Earned      int               `json:"earned"`
-	Max         int               `json:"max"`
-	MatrixPct   *float64          `json:"matrixPct"`
-	HumanAvg    *float64          `json:"humanAvg"`
-	HumanCount  int               `json:"humanCount"`
+	// (دازاي 11-18) التقييم الجديد للفني: البنود بأوزانها ورأي ماتركس (tech_score.go)
+	TechScore   bool       `json:"techScore,omitempty"`
+	TechParts   []TechPart `json:"techParts,omitempty"`
+	MatrixNotes []string   `json:"matrixNotes,omitempty"`
+	ID          string     `json:"id"`
+	Name        string     `json:"name"`
+	Role        string     `json:"role"`
+	Earned      int        `json:"earned"`
+	Max         int        `json:"max"`
+	MatrixPct   *float64   `json:"matrixPct"`
+	HumanAvg    *float64   `json:"humanAvg"`
+	HumanCount  int        `json:"humanCount"`
 	// RoleViews (دازاي 11-16) إذا تغيّر دوره هالشهر: فترة كل دور، والمختار منها.
 	RoleViews []RoleView `json:"roleViews,omitempty"`
 	RoleView  string     `json:"roleView,omitempty"`
@@ -384,6 +388,7 @@ type StaffScore struct {
 	RevenueKind    string   `json:"revenueKind,omitempty"`
 	SalaryCoverage *float64 `json:"salaryCoverage"`
 	RevenueAdj     float64  `json:"revenueAdj"`
+	RevenueTarget  float64  `json:"revenueTarget,omitempty"` // (11-18) الهدف % من الراتب
 	// RevenueGrace (دازاي 11-17) أول أسبوع من الفترة: التغطية ما نقّصت الرقم
 	RevenueGrace bool `json:"revenueGrace,omitempty"`
 }
@@ -588,6 +593,7 @@ func (s *MatrixScoreService) compute(people []repository.Scorable, from, to time
 	}
 	rel, _ := s.repo.ReliabilityFacts(from, to, emp)
 	rows := BuildScores(people, pts, hum, rel)
+	applyTechScores(rows, hum)
 	if rev, err := s.repo.Revenue(from, to, emp); err == nil {
 		sal, _ := s.repo.Salaries(emp)
 		ApplyRevenue(rows, rev, sal, from, to, time.Now())

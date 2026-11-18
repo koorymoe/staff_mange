@@ -160,7 +160,7 @@ SELECT b.id, b.code, b.status::text AS status, b."bookingType"::text AS "booking
        (SELECT count(*) FROM "CrewRating" r WHERE r."bookingId" = b.id)::int AS "ratedCount",
        (SELECT min(r."createdAt") FROM "CrewRating" r WHERE r."bookingId" = b.id) AS "ratedAt",
        COALESCE((SELECT array_agg(i."employeeId") FROM "BookingAfterInventory" i WHERE i."bookingId" = b.id), '{}') AS "inventoryIds",
-       COALESCE((SELECT array_agg(i."employeeId") FROM "BookingAfterInventory" i WHERE i."bookingId" = b.id AND NOT i.complete), '{}') AS "inventoryMissingIds",
+       COALESCE((SELECT array_agg(i."employeeId") FROM "BookingAfterInventory" i WHERE i."bookingId" = b.id AND NOT i.complete AND i."justifiedAt" IS NULL), '{}') AS "inventoryMissingIds",
        q."contactedAt" AS "qualityAt", q."contactedByEmployeeId" AS "qualityById", qe.name AS "qualityBy",
        q.status AS "qualityStatus", q."createdAt" AS "qualityCreated",
        COALESCE(mr.n, 0) AS "monitorRows", COALESCE(mr.pending, 0) AS "monitorPending",

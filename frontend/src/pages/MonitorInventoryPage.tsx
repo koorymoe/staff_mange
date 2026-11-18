@@ -1,3 +1,4 @@
+import AfterShortagesPanel from '../components/AfterShortagesPanel'
 import { useEffect, useMemo, useState } from 'react'
 import { api, type TeamInventoryCheck, type TeamInventoryShortageReason } from '../api'
 import PageHeader from '../components/PageHeader'
@@ -83,6 +84,7 @@ export default function MonitorInventoryPage({ embedded }: { embedded?: boolean 
 
       {/* (ع 10-16) الجرد الحقيقي — من «جردي» و«مهامي» */}
       <InventoryFollowPanel />
+      <AfterShortagesPanel />
 
       {/* جرد الفريق من شاشة الليدر — يطلع بس إذا بيه بيانات */}
       {checks.length > 0 && (<>

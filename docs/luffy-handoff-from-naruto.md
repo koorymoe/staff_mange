@@ -495,3 +495,4 @@ git push origin origin/avg:refs/heads/prod     # بعد التأكد إنه fast
 - 11-18: بلاغ #50 (خيار B): stageUnlocksBooking يفتح الحجز من ProjectPrepareStage + ترحيل 0507_data يفتح المشاريع الحالية بالتجهيز.
 - 11-18: بلاغات الموظفين: توضيح البلاغ — AddClarification/OpenNeedsInfo، رسالة البوت لصاحب بلاغ NEEDS_INFO بلا مسودة تنضاف كتوضيح، و POST /api/me/bot-reports/{id}/clarify (me.bot_report_clarify).
 - 11-18: التدريب: انشال حبس Layout للمتدرب؛ TrainingBanner + Employee.trainingFrom/To (0508، normTrainingWindow)؛ X-Frame-Options SAMEORIGIN وframe-ancestors 'self' وframe-src يوتيوب (nginx + SecurityHeaders).
+- 11-18: التقييم الجديد للفني — tech_score.go (applyTechScores بعد BuildScores)، score_review.go (+handler، 0509)، revenueTarget للفني ١٣٠، humanSQL يشيل CrewRating السيء غير المؤكد، issues بس faultDecided. الوثيقة docs/التقييم-الجديد.md.

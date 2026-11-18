@@ -549,6 +549,15 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 			log.Printf("warehouse daily: %v", err)
 		}
 	})
+	// ⚖️ (دازاي 11-18) تنبيه يومي: السلبي الي ينتظر تأكيد مدير الإدارة/نائبه
+	scoreReviewDaily := service.NewScoreReviewService(db, notificationRepo)
+	safeguard.Loop("تأكيد التقييمات السلبية", 33*time.Minute, 60*time.Minute, func() {
+		if err := scoreReviewDaily.NotifyDaily(time.Now(), aiRepo.ClaimDailyMarker, func(msg string) {
+			_ = notificationRepo.CreateForRole("ADMIN", "SCORE_REVIEW", msg)
+		}); err != nil {
+			log.Printf("score review daily: %v", err)
+		}
+	})
 	// ⏰ (ل) 11-11: تنبيه التأخير بلا عذر (٣ و٦ و٩ مرات بالشهر) للموظف ومسؤوله
 	disciplineAlerts := service.NewLateExcuseService(db, notificationRepo)
 	safeguard.Loop("تنبيه التأخير بلا عذر", 31*time.Minute, 60*time.Minute, func() {
@@ -2488,6 +2497,13 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	secs["late_excuses"].Set("GET /api/late-excuses/inbox", "late_excuses.get_inbox", lateExcuse.Inbox)
 	secs["late_excuses"].Set("GET /api/late-excuses/audit", "late_excuses.get_audit", lateExcuse.Audit)
 	secs["late_excuses"].Set("POST /api/late-excuses/{id}/decide", "late_excuses.post_by_id_decide", lateExcuse.Decide)
+	// (دازاي 11-18) التقييم الجديد: السلبي ما ينحسب إلا بعد تأكيد مدير الإدارة/نائبه، ونقص العدّة المبرَّر
+	scoreReview := handler.NewScoreReviewHandler(service.NewScoreReviewService(db, notificationRepo))
+	secs["late_excuses"].Set("GET /api/score-reviews", "late_excuses.get_score_reviews", scoreReview.Queue)
+	secs["late_excuses"].Set("POST /api/score-reviews/ratings/{id}", "late_excuses.post_score_reviews_rating", scoreReview.DecideRating)
+	secs["late_excuses"].Set("POST /api/score-reviews/issues/{id}", "late_excuses.post_score_reviews_issue", scoreReview.DecideIssue)
+	secs["inventory"].Set("GET /api/inventory/after-shortages", "inventory.get_after_shortages", scoreReview.AfterShortages)
+	secs["inventory"].Set("POST /api/inventory/after-shortages/justify", "inventory.post_after_shortages_justify", scoreReview.Justify)
 	// ☀️ (ل) 11-12 دازاي: استفسارات الطاقة الشمسية — الصلاحيات بالخدمة (solar_inquiry / _tech / quality_control)
 	solarInq := handler.NewSolarInquiryHandler(service.NewSolarInquiryService(db, notificationRepo))
 	secs["solar_inquiries"].Set("GET /api/solar-inquiries", "solar_inquiries.get_root", solarInq.List)

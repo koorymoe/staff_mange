@@ -177,6 +177,8 @@ const humanSQL = `
 		UNION ALL
 		SELECT c."technicianId", e.name, 'LEADER_CREW', b.code, c.score, c.note, c."createdAt"
 		FROM "CrewRating" c JOIN "Employee" e ON e.id = c."leaderId" JOIN "Booking" b ON b.id = c."bookingId"
+		-- (دازاي 11-18) تقييم الليدر السيء (١–٢) ما ينحسب إلا بعد ما يأكده مدير الإدارة/نائبه
+		WHERE c.score >= 3 OR c."reviewStatus" = 'CONFIRMED'
 	) h`
 
 func (r *MatrixScoreRepository) Human(from, to time.Time, employeeID string) ([]HumanRow, error) {
@@ -392,7 +394,7 @@ func (r *MatrixScoreRepository) ReliabilityFacts(from, to time.Time, employeeID 
 		(SELECT count(*) FROM "Complaint" c WHERE c."relatedEmployeeId" = e.id AND c."createdAt" >= ($1::timestamptz AT TIME ZONE 'UTC') AND c."createdAt" < ($2::timestamptz AT TIME ZONE 'UTC'))::int AS complaints,
 		(SELECT COALESCE(sum(GREATEST(0, LEAST(l."endDate", ($2::timestamptz AT TIME ZONE 'Asia/Baghdad')::date - 1) - GREATEST(l."startDate", ($1::timestamptz AT TIME ZONE 'Asia/Baghdad')::date) + 1)), 0)
 		   FROM "LeaveRequest" l WHERE l."employeeId" = e.id AND l.status::text = 'APPROVED')::int AS "leaveDays",
-		(SELECT count(*) FROM "WorkplaceIssue" wi WHERE (wi."partyAId" = e.id OR wi."partyBId" = e.id)
+		(SELECT count(*) FROM "WorkplaceIssue" wi WHERE wi."faultDecided" AND wi."faultEmployeeId" = e.id
 		   AND wi."createdAt" >= $1::timestamptz AND wi."createdAt" < $2::timestamptz)::int AS issues,
 		(SELECT count(*) FROM "PersonalToolEvent" pe WHERE pe."employeeId" = e.id AND pe."toStatus" IN ('LOST','DAMAGED')
 		   AND pe."createdAt" >= ($1::timestamptz AT TIME ZONE 'UTC') AND pe."createdAt" < ($2::timestamptz AT TIME ZONE 'UTC'))::int AS "toolLosses",

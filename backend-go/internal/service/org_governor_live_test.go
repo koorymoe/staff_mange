@@ -60,7 +60,7 @@ func TestOrgGovernor_Live(t *testing.T) {
 	}
 	db.MustExec(`INSERT INTO "Employee"(id, name, status, role, "isLeader") VALUES
 		($1,'ليدر تجربة','ACTIVE','TECHNICIAN',true),($2,'مدير عمليات تجربة','ACTIVE','TECHNICIAN',false),
-		($3,'موظف ثاني','ACTIVE','TECHNICIAN',false),($4,'مالك تجربة','ACTIVE','OWNER',false)`, ldr, dir, oth, own)
+		($3,'موظف ثاني','ACTIVE','TECHNICIAN',true),($4,'مالك تجربة','ACTIVE','OWNER',false)`, ldr, dir, oth, own)
 	db.MustExec(`INSERT INTO "Customer"(id, name, phone) VALUES ($1, 'زبون حاكم', '07700000099')`, cust)
 	db.MustExec(`INSERT INTO "Booking"(id, code, "customerId", status, "projectSupervisorId", "createdAt", "updatedAt") VALUES
 		($1, 'GOV-1', $3, 'COMPLETED', $4, now(), now()), ($2, 'GOV-2', $3, 'COMPLETED', $4, now(), now())`, bk, bk2, cust, ldr)
@@ -162,7 +162,7 @@ func TestOrgGovernor_Live(t *testing.T) {
 	if n != 0 {
 		t.Fatal("شهر گبل أول تشغيل انقيّم")
 	}
-	// ٦ نقاط فاشلة بكل شهر (الحد الأدنى للحكم ١٠ نقاط ماتركس)
+	// ٦ نقاط فاشلة بكل شهر (الحد الأدنى للحكم ١٠ نقاط ماتركس). (11-18) «موظف ثاني» ليدر: الفني ما ينحسب على الورق بعد
 	ats := []time.Time{}
 	for k := 0; k < 6; k++ {
 		ats = append(ats, m1.Add(time.Duration(k)*time.Hour), m2.Add(time.Duration(k)*time.Hour))

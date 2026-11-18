@@ -582,6 +582,12 @@ func rules() map[string]map[core.Action]core.Rule {
 			"inventory.get_tool_exemptions":     func(l string) core.Rule { return rolePerm(l, []string{"ADMIN", "HR_COORDINATOR"}, "inventory") }("يقرا /api/inventory/tool-exemptions (دور/صلاحية)"),
 			"inventory.get_vehicle":             func(l string) core.Rule { return any_(l) }("يقرا /api/inventory/vehicle (الدخول — الفحص بالمعالج)"),
 			"inventory.get_vehicle_tool_checks": func(l string) core.Rule { return any_(l) }("يقرا /api/inventory/vehicle-tool-checks (الدخول — الفحص بالمعالج)"),
+			"inventory.get_after_shortages": func(l string) core.Rule {
+				return rolePerm(l, []string{"ADMIN", "HR_COORDINATOR", "PROCUREMENT_ADMIN"}, "inventory")
+			}("يقرا نواقص العدّة بعد الحجوزات (إداري الكميات)"),
+			"inventory.post_after_shortages_justify": func(l string) core.Rule {
+				return rolePerm(l, []string{"ADMIN", "PROCUREMENT_ADMIN"}, "inventory")
+			}("«مبرَّر»: نقص العدّة بعد الشغل ما ينحسب على الفني (إداري الكميات)"),
 			"inventory.post_checks_by_id_resolve": func(l string) core.Rule {
 				return rolePerm(l, []string{"ADMIN", "HR_COORDINATOR", "PROCUREMENT_ADMIN"}, "inventory")
 			}("ينفّذ /api/inventory/checks/{id}/resolve (دور/صلاحية)"),
@@ -1463,10 +1469,13 @@ func rules() map[string]map[core.Action]core.Rule {
 			"solar_inquiries.post_by_id_quality": func(l string) core.Rule { return any_(l) }("ينفّذ /api/solar-inquiries/{id}/quality (الدخول — الفحص بالمعالج)"),
 		},
 		"late_excuses": {
-			"late_excuses.post_root":         func(l string) core.Rule { return any_(l) }("ينفّذ /api/late-excuses (أي موظف يقدّم عذر إله)"),
-			"late_excuses.get_inbox":         func(l string) core.Rule { return any_(l) }("يقرا /api/late-excuses/inbox (الدخول — الخدمة ترجع الي هو مسؤول عنهم بالهيكل بس)"),
-			"late_excuses.get_audit":         func(l string) core.Rule { return admin(l) }("يقرا /api/late-excuses/audit (مدير النظام)"),
-			"late_excuses.post_by_id_decide": func(l string) core.Rule { return any_(l) }("ينفّذ /api/late-excuses/{id}/decide (الدخول — الخدمة: المسؤول المباشر بس، والغريب 404)"),
+			"late_excuses.post_root":                 func(l string) core.Rule { return any_(l) }("ينفّذ /api/late-excuses (أي موظف يقدّم عذر إله)"),
+			"late_excuses.get_inbox":                 func(l string) core.Rule { return any_(l) }("يقرا /api/late-excuses/inbox (الدخول — الخدمة ترجع الي هو مسؤول عنهم بالهيكل بس)"),
+			"late_excuses.get_audit":                 func(l string) core.Rule { return admin(l) }("يقرا /api/late-excuses/audit (مدير النظام)"),
+			"late_excuses.post_by_id_decide":         func(l string) core.Rule { return any_(l) }("ينفّذ /api/late-excuses/{id}/decide (الدخول — الخدمة: المسؤول المباشر بس، والغريب 404)"),
+			"late_excuses.get_score_reviews":         func(l string) core.Rule { return any_(l) }("يقرا /api/score-reviews (الدخول — الخدمة: مدير/نائب الإدارة لمنتسبيها بس)"),
+			"late_excuses.post_score_reviews_rating": func(l string) core.Rule { return any_(l) }("يأكد/يرفض تقييم ليدر سيء (الخدمة: مدير/نائب إدارة الفني بس، والغريب 404)"),
+			"late_excuses.post_score_reviews_issue":  func(l string) core.Rule { return any_(l) }("يحدد منو الغلطان بمشكلة وظيفية (الخدمة: مدير/نائب الإدارة بس، والغريب 404)"),
 		},
 	}
 }

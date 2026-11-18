@@ -14,6 +14,9 @@ func init() {
 			{Name: "note", Type: "text"},
 			{Name: "createdAt", Type: "timestamp with time zone", NotNull: true, Default: "now()"},
 			{Name: "needsTraining", Type: "text"},
+			{Name: "reviewStatus", Type: "text"},
+			{Name: "reviewedById", Type: "text"},
+			{Name: "reviewedAt", Type: "timestamp with time zone"},
 		},
 		Constraints: []Constraint{
 			{Name: "CrewRating_bookingId_fkey", Def: "FOREIGN KEY (\"bookingId\") REFERENCES \"Booking\"(id) ON DELETE CASCADE"},

@@ -16,7 +16,7 @@ func TestApplyRevenue(t *testing.T) {
 	now := to.Add(time.Hour) // شهر كامل
 	rows := []StaffScore{
 		{ID: "idle", Group: GroupTechs, Final: f(95)},   // ماكو شغل ولا مشاكل
-		{ID: "half", Group: GroupTechs, Final: f(80)},   // غطّى نص راتبه
+		{ID: "half", Group: GroupLeaders, Final: f(80)}, // غطّى نص راتبه (الليدر هدفه ١٠٠٪ — الفني ١٣٠٪: tech_score_test)
 		{ID: "star", Group: GroupSales, Final: f(80)},   // سجّل حجوزات دخّلت ٣ أضعاف راتبه
 		{ID: "acct", Group: GroupFinance, Final: f(80)}, // المحاسب ما يدخّل فلوس مباشرة
 		{ID: "techSold", Group: GroupTechs, Final: f(80)},

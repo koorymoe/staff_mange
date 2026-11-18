@@ -210,6 +210,23 @@ func autoMigrations() []Migration {
 			ALTER TABLE "Employee" ADD COLUMN IF NOT EXISTS "trainingTo" text;
 		`,
 		},
+		{
+			// (دازاي 11-18 — التقييم الجديد للفني) السلبي ما ينحسب إلا بعد تأكيد المسؤول:
+			// تقييم الليدر السيء ← مدير الإدارة/نائبه؛ المشكلة الوظيفية ← منو الغلطان؛
+			// نقص العدّة بعد الشغل ← إداري الكميات يگول «مبرَّر».
+			Version: "0509_score_review",
+			SQL: `
+			ALTER TABLE "CrewRating" ADD COLUMN IF NOT EXISTS "reviewStatus" text;
+			ALTER TABLE "CrewRating" ADD COLUMN IF NOT EXISTS "reviewedById" text;
+			ALTER TABLE "CrewRating" ADD COLUMN IF NOT EXISTS "reviewedAt" timestamp with time zone;
+			ALTER TABLE "WorkplaceIssue" ADD COLUMN IF NOT EXISTS "faultEmployeeId" text;
+			ALTER TABLE "WorkplaceIssue" ADD COLUMN IF NOT EXISTS "faultDecided" boolean NOT NULL DEFAULT false;
+			ALTER TABLE "WorkplaceIssue" ADD COLUMN IF NOT EXISTS "faultById" text;
+			ALTER TABLE "WorkplaceIssue" ADD COLUMN IF NOT EXISTS "faultAt" timestamp with time zone;
+			ALTER TABLE "BookingAfterInventory" ADD COLUMN IF NOT EXISTS "justifiedById" text;
+			ALTER TABLE "BookingAfterInventory" ADD COLUMN IF NOT EXISTS "justifiedAt" timestamp with time zone;
+		`,
+		},
 		// ‹makemigration› — التحديثات الجديدة تنضاف فوگ هالسطر
 	}
 }

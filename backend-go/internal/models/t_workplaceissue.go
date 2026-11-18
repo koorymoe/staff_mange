@@ -22,6 +22,10 @@ func init() {
 			{Name: "sourceNoteId", Type: "text"},
 			{Name: "createdAt", Type: "timestamp with time zone", NotNull: true, Default: "now()"},
 			{Name: "updatedAt", Type: "timestamp with time zone", NotNull: true, Default: "now()"},
+			{Name: "faultEmployeeId", Type: "text"},
+			{Name: "faultDecided", Type: "boolean", NotNull: true, Default: "false"},
+			{Name: "faultById", Type: "text"},
+			{Name: "faultAt", Type: "timestamp with time zone"},
 		},
 		Constraints: []Constraint{
 			{Name: "WorkplaceIssue_decidedById_fkey", Def: "FOREIGN KEY (\"decidedById\") REFERENCES \"Employee\"(id) ON DELETE SET NULL"},
