@@ -1216,6 +1216,9 @@ func rules() map[string]map[core.Action]core.Rule {
 			"staff_score.get_by_id": func(l string) core.Rule {
 				return rolePerm(l, []string{"ADMIN", "MONITOR"}, "monitoring", "auditing", "mon_staff")
 			}("يقرا /api/staff-score/{id} (المراقب)"),
+			"staff_score.get_explain": func(l string) core.Rule {
+				return rolePerm(l, []string{"ADMIN", "MONITOR"}, "monitoring", "auditing", "mon_staff")
+			}("يقرا «على شنو ينقيّم» كل موظف (المراقب — 11-18)"),
 			"staff_score.get_me":    func(l string) core.Rule { return any_(l) }("يقرا /api/staff-score/me (الدخول — الفحص بالمعالج)"),
 			"staff_score.get_peers": func(l string) core.Rule { return any_(l) }("يقرا /api/staff-score/peers (الدخول — الفحص بالمعالج)"),
 			"staff_score.get_root": func(l string) core.Rule {

@@ -192,3 +192,18 @@ func (h *StaffScoreHandler) AuditPending(w http.ResponseWriter, r *http.Request)
 	}
 	WriteJSON(w, http.StatusOK, rows)
 }
+
+// GET /api/staff-score/explain (دازاي 11-18) — كل موظف: مجموعته، قواعده، مقيّميه، الفلوس، وليش.
+// بس لمن يشوف تقييم الكل (نفس محرك الصلاحيات)؛ غيره 404.
+func (h *StaffScoreHandler) Explain(w http.ResponseWriter, r *http.Request) {
+	if !authz.SeeAll(r, nil, authz.StaffScores) {
+		WriteError(w, http.StatusNotFound, "غير موجود")
+		return
+	}
+	rows, err := h.svc.ExplainScores()
+	if err != nil {
+		WriteError(w, http.StatusInternalServerError, "تعذّر")
+		return
+	}
+	WriteJSON(w, http.StatusOK, rows)
+}

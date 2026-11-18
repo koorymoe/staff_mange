@@ -3894,6 +3894,11 @@ export interface StaffScore {
 export interface DisciplineDay { date: string; status: 'LATE' | 'LATE_EXCUSED' | 'ABSENT'; lateMinutes?: number; checkIn?: string; shiftStart?: string }
 export interface Discipline { score: number | null; days: number; onTime: number; late: number; lateExcused: number; absent: number; lateMinutes: number; startsOn: string; items: DisciplineDay[] }
 export interface LateExcuse { id: string; employeeId: string; employeeName: string; date: string; minutes: number | null; reason: string; status: 'PENDING' | 'APPROVED' | 'REJECTED'; decidedBy: string | null; decidedAt: string | null; decisionNote: string | null; createdAt: string }
+/** (دازاي 11-18) على شنو ينقيّم الموظف وليش */
+export interface ScoreExplainRow {
+  id: string; name: string; role: string; isLeader: boolean; group: string; groupLabel: string; why: string
+  rules: string[]; raters: string[]; revenue?: string; aiOnly?: boolean; offSystem?: boolean; roleChange?: string
+}
 export interface StaffScoreBoard { month: string; on: boolean; staff: StaffScore[]; insights: string[] }
 export interface MatrixScorePoint {
   id: string; employeeId: string; source: string; sourceId: string; sourceLabel: string | null; rule: string

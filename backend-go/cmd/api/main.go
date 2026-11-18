@@ -3206,6 +3206,8 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	secs["staff_points"].Set("GET /api/staff-points", "staff_points.get_root", staffPointsHandler.Month)
 	secs["staff_score"].Set("GET /api/staff-score/me", "staff_score.get_me", staffScoreHandler.Mine)
 	secs["staff_score"].Set("GET /api/staff-score/peers", "staff_score.get_peers", staffScoreHandler.Peers)
+	// (دازاي 11-18) «على شنو ينقيّم» — كل موظف ومجموعته وقواعده ومقيّميه وليش
+	secs["staff_score"].Set("GET /api/staff-score/explain", "staff_score.get_explain", staffScoreHandler.Explain)
 	secs["staff_score"].Set("GET /api/staff-score/{id}", "staff_score.get_by_id", staffScoreHandler.Detail)
 	secs["staff_score"].Set("POST /api/staff-score/run", "staff_score.post_run", staffScoreHandler.Run)
 	secs["matrix_score"].Set("POST /api/matrix-score/{id}/cancel", "matrix_score.post_by_id_cancel", staffScoreHandler.Cancel)

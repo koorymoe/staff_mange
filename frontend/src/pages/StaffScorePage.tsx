@@ -9,6 +9,7 @@ import { SWITCH_MATRIX_SCORING } from '../systemSwitches'
 import { useSession, isAdminOrOwner } from '../session'
 import StaffPointsBoard from '../components/StaffPointsBoard'
 import ScoreSteps from '../components/ScoreSteps'
+import ScoreExplain from '../components/ScoreExplain'
 import { roleLabel } from '../roleLabels'
 import { fmtDate } from '../utils/date'
 import { askInput } from '../ui/dialogs'
@@ -181,7 +182,7 @@ export default function StaffScorePage() {
   const [busy, setBusy] = useState(false)
   const [tab, setTab] = useState('')
   // قرار (ع) 10-10: «مقارنة» — ترتيب الأفضل للأسوأ، و«قارن بموظف آخر»
-  const [view, setView] = useState<'list' | 'compare' | 'points'>('points')
+  const [view, setView] = useState<'list' | 'compare' | 'points' | 'explain'>('points')
   const [cmpA, setCmpA] = useState<string | null>(null)
   const [cmpB, setCmpB] = useState<string | null>(null)
   const load = useCallback(() => { void api.getStaffScoreBoard(month).then(setB).catch((e) => setErr(e instanceof Error ? e.message : 'تعذر')) }, [month])
@@ -228,14 +229,15 @@ export default function StaffScorePage() {
         ))}
       </div>
       <div className="flex gap-1.5">
-        {([['points', '🏅 رصيد النقاط'], ['list', '📋 التقييم'], ['compare', '⚖️ المقارنة']] as const).map(([k, l]) => (
+        {([['points', '🏅 رصيد النقاط'], ['list', '📋 التقييم'], ['compare', '⚖️ المقارنة'], ['explain', '❓ على شنو ينقيّم']] as const).map(([k, l]) => (
           <button key={k} type="button" onClick={() => setView(k)}
             className={`rounded-lg px-3 py-1.5 text-sm font-bold ${view === k ? 'bg-[#0f2040] text-white' : 'bg-white text-slate-700 ring-1 ring-slate-200'}`}>{l}</button>
         ))}
       </div>
       {view === 'compare' && <GroupRanking staff={shown} />}
+      {view === 'explain' && <ScoreExplain group={g} />}
       {view === 'points' && g && <StaffPointsBoard month={month || b.month} group={g} />}
-      {g && view !== 'points' && <p className="text-xs text-slate-500">👥 منو يقيّم {b.staff.find((s) => s.group === g)?.groupLabel}: {RATERS[g]}</p>}
+      {g && view !== 'points' && view !== 'explain' && <p className="text-xs text-slate-500">👥 منو يقيّم {b.staff.find((s) => s.group === g)?.groupLabel}: {RATERS[g]}</p>}
       {view === 'list' && <div className="grid gap-4 lg:grid-cols-[1fr_1.2fr]">
         <div className="space-y-1.5">
           {shown.map((s, i) => (
