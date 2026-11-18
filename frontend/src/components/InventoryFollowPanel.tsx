@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { api, apiRequest } from '../api'
 import { useSession, hasRole, isAdminOrOwner } from '../session'
 import { fmtDateTime } from '../utils/date'
+import { ageDays, byShortageAge } from '../utils/shortageAge'
 
 // ═══ متابعة الجرد الحقيقي — (ع) 10-16 ═══
 // الجرد الي يسوّيه الموظف من «جردي» أو قبل الطلعة من «مهامي». كل بطاقة
@@ -26,6 +27,9 @@ export default function InventoryFollowPanel() {
   const [q, setQ] = useState('')
   const [reload, setReload] = useState(0)
   const [busy, setBusy] = useState<string | null>(null)
+  // (طلب ماتركس 0ef76f3b-3 — 11-18) فلتر النواقص حسب عمرها، الأقدم أول
+  const [minAge, setMinAge] = useState(0)
+  const [now] = useState(() => Date.now())
   // (بلاغ #45 — 11-16) «تم الحل» هنا هم — نفس حارس الخادم (inventory.post_checks_by_id_resolve)
   const { employee, permissions } = useSession()
   const canResolve = isAdminOrOwner(employee) || hasRole(employee, 'HR_COORDINATOR', 'PROCUREMENT_ADMIN') || permissions.includes('inventory')
@@ -54,7 +58,8 @@ export default function InventoryFollowPanel() {
     </button>
   )
   const match = (s: string) => !q.trim() || s.includes(q.trim())
-  const rows = f === 'missing' ? [] : lists[f].filter((c) => match(`${c.employeeName} ${c.missingItems ?? ''} ${c.bookingCode ?? ''}`))
+  const base = f === 'incomplete' ? byShortageAge(lists.incomplete, minAge, now) : f === 'missing' ? [] : lists[f]
+  const rows = base.filter((c) => match(`${c.employeeName} ${c.missingItems ?? ''} ${c.bookingCode ?? ''}`))
   const missing = d.notCheckedToday.filter((m) => match(`${m.name} ${m.bookings}`))
 
   return (
@@ -69,6 +74,16 @@ export default function InventoryFollowPanel() {
         {tile('all', 'كل الجرود', lists.all.length, 'border-slate-200 bg-white', `آخر ${d.days} يوم`)}
       </div>
       <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="بحث بالاسم أو الأداة أو الحجز…" className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm" />
+      {f === 'incomplete' && (
+        <div className="flex flex-wrap items-center gap-2 text-xs">
+          <span className="font-bold text-slate-600">عمر النقص:</span>
+          {[[0, 'الكل'], [2, 'أكثر من يومين'], [7, 'أكثر من أسبوع'], [14, 'أكثر من أسبوعين']].map(([v, l]) => (
+            <button key={v} type="button" onClick={() => setMinAge(Number(v))}
+              className={`rounded-full border px-3 py-1 font-bold ${minAge === v ? 'border-amber-400 bg-amber-100 text-amber-900' : 'border-slate-200 bg-white text-slate-600'}`}>{l}</button>
+          ))}
+          <span className="text-slate-400">· الأقدم أول</span>
+        </div>
+      )}
       <div className="rounded-2xl border border-slate-200 bg-white">
         {f === 'missing' ? (
           missing.length === 0 ? <p className="p-6 text-center text-emerald-700">كل الي عنده شغل اليوم جرد ✓</p> : (
@@ -89,6 +104,7 @@ export default function InventoryFollowPanel() {
                   <b className="text-slate-800">{c.employeeName}</b>
                   <span className="block text-xs text-slate-400">{fmt(c.checkedAt)}{c.bookingCode ? ` · قبل حجز ${c.bookingCode}` : ' · جرد عام'}</span>
                   {!c.complete && c.missingItems && <span className="mt-1 block text-xs text-amber-800">ناقص: {c.missingItems}</span>}
+                  {!c.complete && !c.resolved && <span className="mt-0.5 block text-[11px] font-bold text-red-700">مفتوح من {ageDays(c.checkedAt, now)} يوم</span>}
                 </span>
                 <span className="flex flex-col items-end gap-1.5">
                   <span className={`rounded-full px-3 py-1 text-xs font-bold ${c.complete ? 'bg-emerald-50 text-emerald-700' : c.resolved ? 'bg-sky-50 text-sky-700' : 'bg-amber-100 text-amber-800'}`}>{c.complete ? '✓ مكتمل' : c.resolved ? '✓ انحل' : '⚠ ناقص'}</span>
