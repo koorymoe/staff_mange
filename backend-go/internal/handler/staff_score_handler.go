@@ -207,3 +207,34 @@ func (h *StaffScoreHandler) Explain(w http.ResponseWriter, r *http.Request) {
 	}
 	WriteJSON(w, http.StatusOK, rows)
 }
+
+// ServiceTimes GET /api/staff-score/service-times — الوقت القياسي لكل خدمة (المتعلَّم + تعديل المالك).
+func (h *StaffScoreHandler) ServiceTimes(w http.ResponseWriter, r *http.Request) {
+	rows, err := h.svc.Repo().ServiceStandards()
+	if err != nil {
+		WriteError(w, http.StatusInternalServerError, "تعذّر")
+		return
+	}
+	WriteJSON(w, http.StatusOK, map[string]any{"items": rows, "graceOk": service.TimeGraceOK, "gracePartial": service.TimeGracePartial})
+}
+
+// SetServiceTime PUT /api/staff-score/service-times/{id} {minutes|null} — المالك ومدير النظام بس.
+func (h *StaffScoreHandler) SetServiceTime(w http.ResponseWriter, r *http.Request) {
+	var in struct {
+		Minutes *int `json:"minutes"`
+	}
+	if err := DecodeJSON(r, &in); err != nil {
+		WriteError(w, http.StatusBadRequest, "بيانات غير صحيحة")
+		return
+	}
+	if in.Minutes != nil && (*in.Minutes < 5 || *in.Minutes > 1440) {
+		WriteError(w, http.StatusBadRequest, "الوقت بين ٥ دقايق و٢٤ ساعة")
+		return
+	}
+	if err := h.svc.Repo().SetServiceStandard(r.PathValue("id"), in.Minutes, middleware.EmployeeIDFromContext(r)); err != nil {
+		WriteError(w, http.StatusNotFound, "مو موجود")
+		return
+	}
+	service.InvalidateBoard()
+	WriteJSON(w, http.StatusOK, map[string]bool{"ok": true})
+}

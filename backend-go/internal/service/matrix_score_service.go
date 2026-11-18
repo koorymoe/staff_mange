@@ -351,6 +351,7 @@ type StaffScore struct {
 	TechScore   bool       `json:"techScore,omitempty"`
 	TechParts   []TechPart `json:"techParts,omitempty"`
 	MatrixNotes []string   `json:"matrixNotes,omitempty"`
+	ruleTotals  map[string][2]int // نقاط ماتركس لكل قاعدة (مكسوب/أقصى) — لحسبة الأدوار (role_score.go)
 	ID          string     `json:"id"`
 	Name        string     `json:"name"`
 	Role        string     `json:"role"`
@@ -593,7 +594,9 @@ func (s *MatrixScoreService) compute(people []repository.Scorable, from, to time
 	}
 	rel, _ := s.repo.ReliabilityFacts(from, to, emp)
 	rows := BuildScores(people, pts, hum, rel)
-	applyTechScores(rows, hum)
+	jobs, _ := s.repo.LeaderJobs(from, to, emp)
+	expected, _ := s.repo.ExpectedMinutes()
+	applyRoleScores(rows, hum, LeaderTimes(jobs, expected))
 	if rev, err := s.repo.Revenue(from, to, emp); err == nil {
 		sal, _ := s.repo.Salaries(emp)
 		ApplyRevenue(rows, rev, sal, from, to, time.Now())
@@ -708,6 +711,7 @@ func BuildScores(people []repository.Scorable, pts []repository.MatrixScoreRow, 
 				break
 			}
 		}
+		s.ruleTotals = a.rules
 		s.RelParts, s.Reliability = BuildReliability(a.rules, rel[p.ID], g)
 		s.Skills, s.HasLicense, s.IsLeader = rel[p.ID].Skills, rel[p.ID].HasLicense, p.IsLeader
 		if a.max > 0 {

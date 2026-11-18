@@ -1222,6 +1222,10 @@ func rules() map[string]map[core.Action]core.Rule {
 			"staff_score.get_by_id": func(l string) core.Rule {
 				return rolePerm(l, []string{"ADMIN", "MONITOR"}, "monitoring", "auditing", "mon_staff")
 			}("يقرا /api/staff-score/{id} (المراقب)"),
+			"staff_score.get_service_times": func(l string) core.Rule {
+				return rolePerm(l, []string{"ADMIN", "MONITOR"}, "monitoring", "auditing", "mon_staff")
+			}("يقرا الوقت القياسي لكل خدمة (المراقب — 11-18)"),
+			"staff_score.put_service_time": func(l string) core.Rule { return admin(l) }("يعدّل الوقت القياسي لخدمة (المالك ومدير النظام — 11-18)"),
 			"staff_score.get_explain": func(l string) core.Rule {
 				return rolePerm(l, []string{"ADMIN", "MONITOR"}, "monitoring", "auditing", "mon_staff")
 			}("يقرا «على شنو ينقيّم» كل موظف (المراقب — 11-18)"),

@@ -518,3 +518,80 @@ func (r *MatrixScoreRepository) DesignSectionsDue(from, to time.Time) ([]DesignS
 		   AND ((s."dueDate" + 1)::timestamp AT TIME ZONE 'Asia/Baghdad') BETWEEN $1::timestamptz AND $2::timestamptz + interval '30 days'`, from, to)
 	return rows, err
 }
+
+// ═══ الوقت القياسي لكل خدمة (دازاي 11-18 — تقييم الليدر) ═══
+
+// jobMinutesSQL مدة الشغل لكل حجز خلص: من بدء العمل (أو الوصول) لحد الإنجاز، بالدقايق.
+const jobMinutesSQL = `
+	SELECT b.id AS "bookingId", b."serviceId", booking_leader_id(b.id) AS "leaderId", b."completedAt",
+	       EXTRACT(EPOCH FROM (b."completedAt" - COALESCE(m."workStartedAt", b."startedAt", m."arrivedAt", b."arrivedAt"))) / 60 AS minutes
+	FROM "Booking" b
+	LEFT JOIN LATERAL (SELECT "workStartedAt", "arrivedAt" FROM "Mission" WHERE "bookingId" = b.id ORDER BY "assignedAt" DESC LIMIT 1) m ON true
+	WHERE b.status::text IN ('COMPLETED', 'PARTIAL') AND b."completedAt" IS NOT NULL
+	  AND COALESCE(m."workStartedAt", b."startedAt", m."arrivedAt", b."arrivedAt") IS NOT NULL`
+
+type LeaderJob struct {
+	BookingID   string    `db:"bookingId"`
+	ServiceID   *string   `db:"serviceId"`
+	LeaderID    *string   `db:"leaderId"`
+	CompletedAt time.Time `db:"completedAt"`
+	Minutes     float64   `db:"minutes"`
+}
+
+// LeaderJobs الحجوزات الي خلصت بالفترة ومدة شغلها، لكل ليدر.
+func (r *MatrixScoreRepository) LeaderJobs(from, to time.Time, employeeID string) ([]LeaderJob, error) {
+	out := []LeaderJob{}
+	err := r.db.Select(&out, `SELECT * FROM (`+jobMinutesSQL+` AND b."completedAt" >= $1 AND b."completedAt" < $2) j
+		WHERE j."leaderId" IS NOT NULL AND j.minutes > 0 AND ($3 = '' OR j."leaderId" = $3)`, from, to, employeeID)
+	return out, err
+}
+
+type ServiceStandard struct {
+	ServiceID string   `db:"serviceId" json:"serviceId"`
+	Name      string   `db:"name" json:"name"`
+	Learned   *float64 `db:"learned" json:"learned"` // وسيط آخر ٩٠ يوم (٥ عيّنات أو أكثر)
+	Samples   int      `db:"samples" json:"samples"`
+	Override  *int     `db:"override" json:"override"` // تعديل المالك/المدير
+}
+
+// ServiceStandards كل خدمة فعّالة: الوقت المتعلَّم من الشغل والتعديل اليدوي.
+func (r *MatrixScoreRepository) ServiceStandards() ([]ServiceStandard, error) {
+	out := []ServiceStandard{}
+	err := r.db.Select(&out, `
+		WITH j AS (SELECT * FROM (`+jobMinutesSQL+` AND b."completedAt" > now() - interval '90 days') x WHERE x.minutes BETWEEN 5 AND 1440)
+		SELECT s.id AS "serviceId", s.name,
+		       CASE WHEN count(j.*) >= 5 THEN round(percentile_cont(0.5) WITHIN GROUP (ORDER BY j.minutes)::numeric)::float8 END AS learned,
+		       count(j.*)::int AS samples, st.minutes AS override
+		FROM "Service" s
+		LEFT JOIN j ON j."serviceId" = s.id
+		LEFT JOIN "ServiceStandardTime" st ON st."serviceId" = s.id
+		GROUP BY s.id, s.name, st.minutes
+		ORDER BY count(j.*) DESC, s.name`)
+	return out, err
+}
+
+// ExpectedMinutes الوقت المعتمد لكل خدمة: التعديل اليدوي، وإلا المتعلَّم.
+func (r *MatrixScoreRepository) ExpectedMinutes() (map[string]float64, error) {
+	rows, err := r.ServiceStandards()
+	out := map[string]float64{}
+	for _, x := range rows {
+		switch {
+		case x.Override != nil:
+			out[x.ServiceID] = float64(*x.Override)
+		case x.Learned != nil:
+			out[x.ServiceID] = *x.Learned
+		}
+	}
+	return out, err
+}
+
+// SetServiceStandard يحط تعديل يدوي (minutes nil = يرجع للمتعلَّم).
+func (r *MatrixScoreRepository) SetServiceStandard(serviceID string, minutes *int, by string) error {
+	if minutes == nil {
+		_, err := r.db.Exec(`DELETE FROM "ServiceStandardTime" WHERE "serviceId" = $1`, serviceID)
+		return err
+	}
+	_, err := r.db.Exec(`INSERT INTO "ServiceStandardTime" ("serviceId", minutes, "setById") VALUES ($1, $2, $3)
+		ON CONFLICT ("serviceId") DO UPDATE SET minutes = EXCLUDED.minutes, "setById" = EXCLUDED."setById", "setAt" = now()`, serviceID, *minutes, by)
+	return err
+}

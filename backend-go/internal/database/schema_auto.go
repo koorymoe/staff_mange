@@ -227,6 +227,19 @@ func autoMigrations() []Migration {
 			ALTER TABLE "BookingAfterInventory" ADD COLUMN IF NOT EXISTS "justifiedAt" timestamp with time zone;
 		`,
 		},
+		{
+			// (دازاي 11-18 — تقييم الليدر) الوقت القياسي لكل خدمة: ماتركس يحسبه من الشغل الفعلي،
+			// والمالك/مدير النظام يگدر يعدّله. صف هنا = تعديل يدوي يغلب المحسوب.
+			Version: "0510_service_standard_time",
+			SQL: `
+			CREATE TABLE IF NOT EXISTS "ServiceStandardTime" (
+				"serviceId" text PRIMARY KEY REFERENCES "Service"(id) ON DELETE CASCADE,
+				minutes integer NOT NULL CHECK (minutes BETWEEN 5 AND 1440),
+				"setById" text,
+				"setAt" timestamp with time zone NOT NULL DEFAULT now()
+			);
+		`,
+		},
 		// ‹makemigration› — التحديثات الجديدة تنضاف فوگ هالسطر
 	}
 }

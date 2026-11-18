@@ -3225,6 +3225,9 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	secs["staff_score"].Set("GET /api/staff-score/peers", "staff_score.get_peers", staffScoreHandler.Peers)
 	// (دازاي 11-18) «على شنو ينقيّم» — كل موظف ومجموعته وقواعده ومقيّميه وليش
 	secs["staff_score"].Set("GET /api/staff-score/explain", "staff_score.get_explain", staffScoreHandler.Explain)
+	// (دازاي 11-18 — تقييم الليدر) الوقت القياسي لكل خدمة: ماتركس يتعلّمه، والمالك/المدير يعدّل
+	secs["staff_score"].Set("GET /api/staff-score/service-times", "staff_score.get_service_times", staffScoreHandler.ServiceTimes)
+	secs["staff_score"].Set("PUT /api/staff-score/service-times/{id}", "staff_score.put_service_time", staffScoreHandler.SetServiceTime)
 	secs["staff_score"].Set("GET /api/staff-score/{id}", "staff_score.get_by_id", staffScoreHandler.Detail)
 	secs["staff_score"].Set("POST /api/staff-score/run", "staff_score.post_run", staffScoreHandler.Run)
 	secs["matrix_score"].Set("POST /api/matrix-score/{id}/cancel", "matrix_score.post_by_id_cancel", staffScoreHandler.Cancel)

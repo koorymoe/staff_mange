@@ -52,15 +52,48 @@ func TestRevenueTargetTech130(t *testing.T) {
 	to := from.AddDate(0, 1, 0)
 	now := to.Add(-time.Hour)
 	f1, f2 := 80.0, 80.0
-	rows := []StaffScore{{ID: "t", Group: GroupTechs, Final: &f1}, {ID: "l", Group: GroupLeaders, Final: &f2}}
+	rows := []StaffScore{{ID: "t", Group: GroupTechs, Final: &f1}, {ID: "l", Group: GroupTechnical, Final: &f2}}
 	rev := []repository.RevenueRow{{EmployeeID: "t", Kind: "WORK", Amount: 1_000_000}, {EmployeeID: "l", Kind: "WORK", Amount: 1_000_000}}
 	sal := map[string]float64{"t": 1_000_000, "l": 1_000_000}
 	ApplyRevenue(rows, rev, sal, from, to, now)
-	// الفني غطّى ١٠٠٪ من راتبه = ٧٧٪ من هدفه (١٣٠) فينزل؛ الليدر هدفه ١٠٠ فما ينزل
+	// الفني غطّى ١٠٠٪ من راتبه = ٧٧٪ من هدفه (١٣٠) فينزل؛ التقني هدفه ١٠٠ فما ينزل
 	if *rows[0].Final >= 80 || rows[0].RevenueTarget != 130 {
 		t.Fatalf("tech final = %v target %v", *rows[0].Final, rows[0].RevenueTarget)
 	}
 	if *rows[1].Final < 80 {
 		t.Fatalf("leader dropped: %v", *rows[1].Final)
+	}
+}
+
+// (دازاي 11-18) الوقت: +١٥ دقيقة عادي، +٦٠ نص، أكثر صفر.
+func TestJobTimePoints(t *testing.T) {
+	for _, c := range []struct {
+		got, want float64
+		pts       int
+	}{{100, 90, 2}, {105, 90, 2}, {140, 90, 1}, {150, 90, 1}, {210, 90, 0}, {60, 90, 2}} {
+		if p := JobTimePoints(c.got, c.want); p != c.pts {
+			t.Errorf("%v مقابل %v: %d نريد %d", c.got, c.want, p, c.pts)
+		}
+	}
+	s1, s2, l := "cam", "net", "L"
+	jobs := []repository.LeaderJob{{LeaderID: &l, ServiceID: &s1, Minutes: 95}, {LeaderID: &l, ServiceID: &s1, Minutes: 220}, {LeaderID: &l, ServiceID: &s2, Minutes: 999}}
+	got := LeaderTimes(jobs, map[string]float64{"cam": 90}) // net ماله وقت ← ما ينحسب
+	if got["L"] != [3]int{2, 4, 1} {
+		t.Fatalf("got %v", got["L"])
+	}
+}
+
+// الليدر: الوقت 20 · مسؤوله 20 · ورق 15 · فنيينه 5 · حضور 10 · عدّة 5 · مهام 3 · زملاء 2
+func TestLeaderScore(t *testing.T) {
+	rows := []StaffScore{{ID: "L", Group: GroupLeaders,
+		RelParts:   []ReliabilityPart{{Key: "ATTENDANCE", Pct: 100}, {Key: "INVENTORY", Pct: 100}, {Key: "TASK_DUE", Pct: 100}, {Key: "PEERS", Pct: 100}},
+		ruleTotals: map[string][2]int{"PAPER": {2, 4}, "REPORT_MATCH": {2, 4}, "RATING": {2, 2}}}}
+	hum := []repository.HumanRow{{RateeID: "L", Stage: "COORD_LEADER", Score: 5}, {RateeID: "L", Stage: "AUDIT", Score: 1}}
+	applyRoleScores(rows, hum, map[string][3]int{"L": {2, 4, 1}})
+	s := rows[0]
+	// وقت 50%×20=10 · مسؤول 100%×20=20 · ورق 50%×15=7.5 · فنيين 5 · حضور 10 · عدّة 5 · مهام 3 · زملاء 2 = 62.5
+	// ماتركس: وقت <70 (−30) وورق <80 (−25) ⇒ 45 ⇒ 9 ⇒ 71.5
+	if s.Final == nil || !near(*s.Final, 71.5) || len(s.MatrixNotes) != 2 {
+		t.Fatalf("final=%v notes=%v", s.Final, s.MatrixNotes)
 	}
 }

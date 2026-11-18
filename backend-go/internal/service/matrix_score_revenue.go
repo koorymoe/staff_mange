@@ -34,7 +34,7 @@ const (
 )
 
 // revenueTarget (دازاي 11-18) الهدف كنسبة من الراتب — الفني لازم يدخّل ١٣٠٪، البقية ١٠٠٪.
-var revenueTarget = map[string]float64{GroupTechs: 130}
+var revenueTarget = map[string]float64{GroupTechs: 130, GroupLeaders: 130}
 
 func targetOf(group string) float64 {
 	if t, ok := revenueTarget[group]; ok {
