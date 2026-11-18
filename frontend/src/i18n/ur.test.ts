@@ -1,6 +1,8 @@
-import { describe, expect, it } from 'vitest'
+import { beforeAll, describe, expect, it } from 'vitest'
 import { UR } from './ur'
-import { trUR } from './translateDom'
+import { loadUrdu, trUR } from './translateDom'
+
+beforeAll(loadUrdu)
 
 // بلاغ #11: كل نص ظاهر بشاشات الفني إله ترجمة أوردو — حتى ما يضيف أحد نص جديد وينسى يترجمه.
 const FILES = ['components/AttendanceGate.tsx', 'pages/AttendancePage.tsx', 'pages/MyRanking.tsx', 'pages/MyExtraTasksPage.tsx', 'pages/MyAchievementsPage.tsx', 'pages/MyWorkPage.tsx', 'components/AutoCheckoutPrompt.tsx', 'pages/MyTasks.tsx', 'pages/MyInventory.tsx', 'components/WorkGate.tsx', 'components/ReportProblemButton.tsx', 'components/WorkPhotoButton.tsx', 'components/RoutePlanCard.tsx']

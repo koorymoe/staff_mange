@@ -1,5 +1,7 @@
-import { describe, it, expect } from 'vitest'
-import { trUR } from './translateDom'
+import { beforeAll, describe, it, expect } from 'vitest'
+import { loadUrdu, trUR } from './translateDom'
+
+beforeAll(loadUrdu)
 
 // (دازاي 11-13) «نص عربي ونص باكستاني» — النصوص الي بيها أرقام وتواريخ تتترجم كاملة
 describe('trUR patterns', () => {

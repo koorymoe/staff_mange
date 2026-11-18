@@ -1,4 +1,9 @@
-import { UR } from './ur'
+// (11-18 السرعة) القاموس (~٨٧KB) ينحمّل بس للي واجهته أوردو — مو ويا كل موظف بأول فتحة.
+let UR: Record<string, string> = {}
+export async function loadUrdu(): Promise<void> {
+  if (Object.keys(UR).length) return
+  UR = (await import('./ur')).UR
+}
 
 // ═══ ترجمة الواجهة للأوردو (بلاغ #11، 11-07) ═══
 // بدل ما نلف مئات النصوص بالكود: إذا لغة الموظف «ur»، نراقب الصفحة ونبدّل أي نص
@@ -128,7 +133,10 @@ export function startUrduIfNeeded() {
   started = true
   document.documentElement.lang = 'ur'
   document.documentElement.classList.add('lang-ur')
-  translateNode(document.body)
+  void loadUrdu().then(() => { translateNode(document.body); observeUrdu() }).catch(() => { started = false })
+}
+
+function observeUrdu() {
   new MutationObserver((muts) => {
     for (const m of muts) {
       if (m.type === 'characterData') translateNode(m.target)
