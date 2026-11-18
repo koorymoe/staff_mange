@@ -49,9 +49,6 @@ type EmployeeMonthlyStats struct {
 	// قيمة النقاط بالدينار — كل نقطة = 10,000 دينار (تأكيد صريح من المالك).
 	KpiPointsValue float64 `json:"kpiPointsValue"`
 
-	// WorkSpeedScore: TODO — يُملأ فعلياً بعد اكتمال ميزة تقدير مدة تنفيذ العمل
-	// (job-duration-estimation) التي يبنيها فريق موازي بنفس الجلسة. حالياً
-	// دايماً nil عمداً (placeholder صريح، مو رقم مختلق).
 	// WorkSpeedScore نسبة سرعة الموظف للمتوسط العام: فوق ١ أسرع، تحت ١
 	// أبطأ. nil يعني ماكو عيّنات كافية — «ما نعرف» مو صفر.
 	WorkSpeedScore *float64 `json:"workSpeedScore"`
