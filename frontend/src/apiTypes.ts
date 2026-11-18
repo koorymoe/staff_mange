@@ -3685,7 +3685,7 @@ export interface TcInsight {
 export interface TcCurriculum { id: string; role: string; title: string; details: string | null; ord: number; parentId: string | null; serviceId: string | null; audiences: string[] | null; assignees: string[] | null }
 // (ل) 11-12 الماتشينغ: منو يحتاج تدريب وعلى شنو
 export interface TcNeed {
-  id: string; employeeId: string; employeeName: string; employeeRole: string
+  id: string; employeeId: string; employeeName: string; employeeRole: string; employeeIsLeader: boolean
   kind: 'BOOKING_ISSUE' | 'SKILL_GAP' | 'MANUAL'; curriculumId: string | null; path: string | null
   topic: string; reason: string | null; bookingId: string | null
   status: 'OPEN' | 'IN_TRAINING' | 'DONE' | 'DISMISSED'; dueAt: string | null; dismissNote: string | null

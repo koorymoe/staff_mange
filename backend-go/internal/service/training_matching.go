@@ -258,6 +258,8 @@ type TrainingNeedRow struct {
 	EmployeeID   string     `db:"employeeId" json:"employeeId"`
 	EmployeeName string     `db:"employeeName" json:"employeeName"`
 	EmployeeRole string     `db:"employeeRole" json:"employeeRole"`
+	// (ك) 11-18: الليدر دوره فني بالنظام — هذا حتى تطلعله مفردات الليدر بالاختيار
+	EmployeeIsLeader bool `db:"employeeIsLeader" json:"employeeIsLeader"`
 	Kind         string     `db:"kind" json:"kind"`
 	CurriculumID *string    `db:"curriculumId" json:"curriculumId"`
 	Path         *string    `db:"path" json:"path"`
@@ -282,7 +284,7 @@ const needSelect = `
 	WITH RECURSIVE p AS (
 		SELECT id, id AS leaf, title::text AS path, "parentId" FROM "TrainingCurriculum"
 		UNION ALL SELECT p.id, p.leaf, c.title || ' ← ' || p.path, c."parentId" FROM p JOIN "TrainingCurriculum" c ON c.id = p."parentId")
-	SELECT n.id, n."employeeId", e.name AS "employeeName", e.role AS "employeeRole", n.kind, n."curriculumId",
+	SELECT n.id, n."employeeId", e.name AS "employeeName", e.role AS "employeeRole", e."isLeader" AS "employeeIsLeader", n.kind, n."curriculumId",
 	       (SELECT path FROM p WHERE p.leaf = n."curriculumId" AND p."parentId" IS NULL LIMIT 1) AS path,
 	       n.topic, n.reason, n."sourceBookingId", n.status, n."dueAt", n."dismissNote", n."startedAt", n."doneAt",
 	       n."reportText", n."reportScore", rb.name AS "reportedBy", n."createdAt", n.items,

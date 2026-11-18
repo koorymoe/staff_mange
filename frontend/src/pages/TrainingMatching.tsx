@@ -153,8 +153,13 @@ function ItemsPicker({ n, tree, onStart, onCancel }: { n: TcNeed; tree: TcCurric
   const tracks = tree.filter((r) => !r.parentId)
   const [track, setTrack] = useState(rootOf(n.curriculumId)?.id ?? tracks[0]?.id ?? '')
   const [picked, setPicked] = useState<string[]>([])
-  const aud = (r: TcCurriculum): string[] => r.audiences ?? (r.parentId ? aud(byId.get(r.parentId)!) : [r.role])
-  const fits = (r: TcCurriculum) => !['TECHNICIAN', 'LEADER', 'ENGINEER'].includes(n.employeeRole) || aud(r).includes(n.employeeRole)
+  const aud = (r: TcCurriculum | undefined): string[] => {
+    if (!r) return []
+    return r.audiences ?? (r.parentId ? aud(byId.get(r.parentId)) : [r.role])
+  }
+  // فئة الموظف: الليدر (فني مأشّر ليدر) ياخذ مفردات الليدر، وأي دور ثاني يشوف الكل.
+  const mine = n.employeeIsLeader ? 'LEADER' : n.employeeRole
+  const fits = (r: TcCurriculum) => !['TECHNICIAN', 'LEADER', 'ENGINEER'].includes(mine) || aud(r).includes(mine)
   const list: { r: TcCurriculum; depth: number }[] = []
   const walk = (id: string, depth: number) => {
     for (const c of tree.filter((x) => x.parentId === id).sort((a, b) => a.ord - b.ord)) {
