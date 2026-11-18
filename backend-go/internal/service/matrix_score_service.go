@@ -351,15 +351,17 @@ type StaffScore struct {
 	TechScore   bool       `json:"techScore,omitempty"`
 	TechParts   []TechPart `json:"techParts,omitempty"`
 	MatrixNotes []string   `json:"matrixNotes,omitempty"`
-	ruleTotals  map[string][2]int // نقاط ماتركس لكل قاعدة (مكسوب/أقصى) — لحسبة الأدوار (role_score.go)
-	ID          string     `json:"id"`
-	Name        string     `json:"name"`
-	Role        string     `json:"role"`
-	Earned      int        `json:"earned"`
-	Max         int        `json:"max"`
-	MatrixPct   *float64   `json:"matrixPct"`
-	HumanAvg    *float64   `json:"humanAvg"`
-	HumanCount  int        `json:"humanCount"`
+	// (11-18) قبل/بعد: الرقم بالحسبة القديمة (ماتركس ٦٠ + بشر ٤٠ + الإضافي) قبل الفلوس — للمقارنة بس
+	LegacyBase *float64          `json:"legacyBase,omitempty"`
+	ruleTotals map[string][2]int // نقاط ماتركس لكل قاعدة (مكسوب/أقصى) — لحسبة الأدوار (role_score.go)
+	ID         string            `json:"id"`
+	Name       string            `json:"name"`
+	Role       string            `json:"role"`
+	Earned     int               `json:"earned"`
+	Max        int               `json:"max"`
+	MatrixPct  *float64          `json:"matrixPct"`
+	HumanAvg   *float64          `json:"humanAvg"`
+	HumanCount int               `json:"humanCount"`
 	// RoleViews (دازاي 11-16) إذا تغيّر دوره هالشهر: فترة كل دور، والمختار منها.
 	RoleViews []RoleView `json:"roleViews,omitempty"`
 	RoleView  string     `json:"roleView,omitempty"`

@@ -25,6 +25,9 @@ func TestTechScoreWeights(t *testing.T) {
 	if s.Final == nil || !near(*s.Final, 86.75) {
 		t.Fatalf("final = %v", s.Final)
 	}
+	if s.LegacyBase != nil {
+		t.Fatal("legacy without old final")
+	}
 	if len(s.MatrixNotes) != 1 || !s.TechScore {
 		t.Fatalf("notes = %v", s.MatrixNotes)
 	}

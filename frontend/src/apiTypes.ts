@@ -3898,6 +3898,8 @@ export interface StaffScore {
   techParts?: { key: string; label: string; weight: number; pct: number; detail?: string }[]
   matrixNotes?: string[]
   revenueTarget?: number
+  /** (11-18) الرقم بالحسبة القديمة قبل الفلوس — للمقارنة */
+  legacyBase?: number
 }
 export interface DisciplineDay { date: string; status: 'LATE' | 'LATE_EXCUSED' | 'ABSENT'; lateMinutes?: number; checkIn?: string; shiftStart?: string }
 export interface Discipline { score: number | null; days: number; onTime: number; late: number; lateExcused: number; absent: number; lateMinutes: number; startsOn: string; items: DisciplineDay[] }

@@ -168,6 +168,10 @@ func applyRoleScores(rows []StaffScore, hum []repository.HumanRow, times map[str
 		if !ok || s.AIOnly {
 			continue
 		}
+		if s.Final != nil {
+			old := *s.Final
+			s.LegacyBase = &old
+		}
 		pct := map[string]float64{}
 		detail := map[string]string{}
 		set := func(k string, v float64, d string) { pct[k], detail[k] = v, d }
