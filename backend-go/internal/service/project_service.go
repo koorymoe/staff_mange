@@ -47,8 +47,9 @@ const ProjectRepricingStage = "🔁 إعادة التسعير"
 
 // stageUnlocksBooking المكتمل يفتح بعد، لو المشروع قفز المرحلة.
 func stageUnlocksBooking(stage string) bool {
-	// التجهيز قبل التنفيذ ما يفتح الحجز؛ التسليم ورا التنفيذ يبقيه مفتوح للكادر
-	return stage == ProjectExecutionStage || stage == ProjectHandoverStage || stage == "✅ مكتمل"
+	// (بلاغ #50 — دازاي 11-18، خيار B) المنسّق يستلم الحجز كامل من «تجهيز المنتجات»:
+	// يحدد الموعد والكادر وكل شي وهو بعده بالتجهيز. التسليم ورا التنفيذ يبقيه مفتوح.
+	return stage == ProjectPrepareStage || stage == ProjectExecutionStage || stage == ProjectHandoverStage || stage == "✅ مكتمل"
 }
 
 // BookingUnlocker يخلي خدمة المشاريع تفتح الحجز بدون ما تعتمد على

@@ -191,6 +191,16 @@ func autoMigrations() []Migration {
 			ALTER TABLE "GpsRenewalRequest" ADD COLUMN IF NOT EXISTS price double precision;
 		`,
 		},
+		{
+			// (بلاغ #50 — دازاي 11-18، خيار B) الحجز ينفتح للمنسّق من «تجهيز المنتجات» —
+			// المشاريع الي هسه بالتجهيز ينفتح حجزها هم (الجديدة يفتحها الكود).
+			Version: "0507_data_project_prepare_unlock",
+			SQL: `
+			UPDATE "Booking" b SET "projectExecutionAt" = now(), "updatedAt" = now()
+			FROM "Project" p
+			WHERE p."bookingId" = b.id AND p.stage = '5. تجهيز المنتجات' AND b."projectExecutionAt" IS NULL;
+		`,
+		},
 		// ‹makemigration› — التحديثات الجديدة تنضاف فوگ هالسطر
 	}
 }

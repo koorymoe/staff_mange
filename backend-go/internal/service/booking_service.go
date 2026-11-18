@@ -667,7 +667,7 @@ func (s *BookingService) MarkProjectExecution(bookingID string) error {
 	// بدون الإشعار الحجز ينفتح بالسكوت والمنسّق ما يدري — يعني نفس
 	// المشكلة القديمة بس بشكل ثاني.
 	_ = s.notifications.CreateForRolesOrPermission([]string{"HR_COORDINATOR"}, "coordinator", "project_booking_ready",
-		fmt.Sprintf("🏗️ حجز المشاريع %s (%s) وصل مرحلة التنفيذ — جاهز للتنسيق بكادر الشد", b.Code, customerName))
+		fmt.Sprintf("🏗️ حجز المشاريع %s (%s) وصل مرحلة التجهيز — جاهز للتنسيق بكادر الشد", b.Code, customerName))
 	return nil
 }
 

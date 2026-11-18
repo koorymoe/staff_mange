@@ -1200,12 +1200,12 @@ export default function Coordinator() {
                     التحويل» وبس — ما يعرف وين وصل ولا متى يرجع له، مع
                     إن **نفس كادر الشد** هو الي راح ينفّذ.
                     هسه يضل ظاهر: مقفول لحد ما المشروع يوصل «٥. البدء
-                    بالتنفيذ»، وبعدها ينفتح بنفس كتلة التوجيه العادية. */}
+                    بالتجهيز» (بلاغ #50)، وبعدها ينفتح بنفس كتلة التوجيه العادية. */}
                 {booking.projectLocked ? (
                   <div className="mt-4 rounded-lg border border-amber-300 bg-amber-50 px-4 py-3">
                     <p className="text-sm font-bold text-amber-900">🔒 حجز مشاريع — بانتظار إكمال الإجراءات</p>
                     <p className="mt-1 text-xs text-amber-800">
-                      عند إدارة المشاريع (اتصال، كشف، عرض سعر، عقد). أول ما يوصل مرحلة «البدء بالتنفيذ»
+                      عند إدارة المشاريع (اتصال، كشف، عرض سعر، عقد). أول ما يوصل مرحلة «تجهيز المنتجات»
                       راح ينفتح هنا وتنسّقه بكادر الشد مثل أي حجز، وراح يوصلك إشعار.
                     </p>
                   </div>
@@ -1213,7 +1213,7 @@ export default function Coordinator() {
                   <div className="mt-4">
                     {booking.transferToProjects && (
                       <div className="mb-3 rounded-lg border border-emerald-300 bg-emerald-50 px-4 py-2">
-                        <p className="text-sm font-bold text-emerald-900">🏗️ حجز مشاريع وصل مرحلة التنفيذ — جاهز للتنسيق</p>
+                        <p className="text-sm font-bold text-emerald-900">🏗️ حجز مشاريع وصل مرحلة التجهيز — جاهز للتنسيق</p>
                       </div>
                     )}
                     <h4 className="text-sm font-bold text-brand-800">توجيه كادر الشد</h4>
