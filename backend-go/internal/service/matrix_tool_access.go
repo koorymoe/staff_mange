@@ -28,6 +28,7 @@ var matrixToolAccess = map[string][]string{
 	// المشاريع والمشتريات
 	"project_delays":    {"project_management", "my_projects"},
 	"procurement_watch": {"procurement", "inventory", "inventory_follow"},
+	"fleet_logs_day":    {"vehicle_management", "vehicle_admin", "inventory", "inventory_follow", "procurement"},
 	// الفلوس
 	"money_month": {"finance", "finance_audit", "auditing"}, "invoices_status": {"finance", "finance_audit", "auditing", "leader_invoices_view"},
 	"revenue_by_responsible": {"finance", "finance_audit", "auditing"}, "service_economics": {"finance", "finance_audit"},
@@ -115,7 +116,7 @@ func raiseManagerRequestTool(db *sqlx.DB, userID string) agentTool {
 
 // StaffTools أدوات خاصة بهالمستخدم: أرقامه هو، وللموظف قراءة بيانات مجاله.
 func (a *MatrixAgent) StaffTools(db *sqlx.DB, userID string, top bool, perms []string) []agentTool {
-	out := append(MatrixSelfTools(db, userID), raiseManagerRequestTool(db, userID))
+	out := append(MatrixSelfTools(db, userID), raiseManagerRequestTool(db, userID), fleetLogsTool(db))
 	out = append(out, quotationTemplateTools(db, userID, "")...)
 	if !top {
 		out = append(out, a.ScopedDataTools(MatrixDataScope(perms))...)
