@@ -4,6 +4,7 @@ import (
 	"errors"
 	"staffmange-api/internal/errlog"
 	"staffmange-api/internal/model"
+	"sync"
 	"time"
 
 	"github.com/jmoiron/sqlx"
@@ -530,6 +531,22 @@ const jobMinutesSQL = `
 	WHERE b.status::text IN ('COMPLETED', 'PARTIAL') AND b."completedAt" IS NOT NULL
 	  AND COALESCE(m."workStartedAt", b."startedAt", m."arrivedAt", b."arrivedAt") IS NOT NULL`
 
+// serviceMinutesSQL نفس المدة بلا الليدر — لحساب الوقت القياسي (booking_leader_id ثقيلة على ٩٠ يوم).
+const serviceMinutesSQL = `
+	SELECT b."serviceId",
+	       EXTRACT(EPOCH FROM (b."completedAt" - COALESCE(m."workStartedAt", b."startedAt", m."arrivedAt", b."arrivedAt"))) / 60 AS minutes
+	FROM "Booking" b
+	LEFT JOIN LATERAL (SELECT "workStartedAt", "arrivedAt" FROM "Mission" WHERE "bookingId" = b.id ORDER BY "assignedAt" DESC LIMIT 1) m ON true
+	WHERE b.status::text IN ('COMPLETED', 'PARTIAL') AND b."completedAt" > now() - interval '90 days'
+	  AND COALESCE(m."workStartedAt", b."startedAt", m."arrivedAt", b."arrivedAt") IS NOT NULL`
+
+// (11-19 «الصفحة تضل تحمل») الوقت القياسي ينحسب مرة كل ١٥ دقيقة مو لكل موظف.
+var expectedCache struct {
+	sync.Mutex
+	at  time.Time
+	val map[string]float64
+}
+
 type LeaderJob struct {
 	BookingID   string    `db:"bookingId"`
 	ServiceID   *string   `db:"serviceId"`
@@ -541,7 +558,10 @@ type LeaderJob struct {
 // LeaderJobs الحجوزات الي خلصت بالفترة ومدة شغلها، لكل ليدر.
 func (r *MatrixScoreRepository) LeaderJobs(from, to time.Time, employeeID string) ([]LeaderJob, error) {
 	out := []LeaderJob{}
-	err := r.db.Select(&out, `SELECT * FROM (`+jobMinutesSQL+` AND b."completedAt" >= $1 AND b."completedAt" < $2) j
+	// لموظف واحد: نصفّي حجوزاته أول (كادر أو مهمة) قبل booking_leader_id — حتى ما تنحسب لكل حجوزات الشهر
+	err := r.db.Select(&out, `SELECT * FROM (`+jobMinutesSQL+` AND b."completedAt" >= $1 AND b."completedAt" < $2
+		AND ($3 = '' OR EXISTS (SELECT 1 FROM "BookingAssignment" a WHERE a."bookingId" = b.id AND a."employeeId" = $3)
+		     OR EXISTS (SELECT 1 FROM "Mission" mm WHERE mm."bookingId" = b.id AND mm."leaderId" = $3))) j
 		WHERE j."leaderId" IS NOT NULL AND j.minutes > 0 AND ($3 = '' OR j."leaderId" = $3)`, from, to, employeeID)
 	return out, err
 }
@@ -558,7 +578,7 @@ type ServiceStandard struct {
 func (r *MatrixScoreRepository) ServiceStandards() ([]ServiceStandard, error) {
 	out := []ServiceStandard{}
 	err := r.db.Select(&out, `
-		WITH j AS (SELECT * FROM (`+jobMinutesSQL+` AND b."completedAt" > now() - interval '90 days') x WHERE x.minutes BETWEEN 5 AND 1440)
+		WITH j AS (SELECT * FROM (`+serviceMinutesSQL+`) x WHERE x.minutes BETWEEN 5 AND 1440)
 		SELECT s.id AS "serviceId", s.name,
 		       CASE WHEN count(j.*) >= 5 THEN round(percentile_cont(0.5) WITHIN GROUP (ORDER BY j.minutes)::numeric)::float8 END AS learned,
 		       count(j.*)::int AS samples, st.minutes AS override
@@ -572,6 +592,11 @@ func (r *MatrixScoreRepository) ServiceStandards() ([]ServiceStandard, error) {
 
 // ExpectedMinutes الوقت المعتمد لكل خدمة: التعديل اليدوي، وإلا المتعلَّم.
 func (r *MatrixScoreRepository) ExpectedMinutes() (map[string]float64, error) {
+	expectedCache.Lock()
+	defer expectedCache.Unlock()
+	if expectedCache.val != nil && time.Since(expectedCache.at) < 15*time.Minute {
+		return expectedCache.val, nil
+	}
 	rows, err := r.ServiceStandards()
 	out := map[string]float64{}
 	for _, x := range rows {
@@ -582,11 +607,17 @@ func (r *MatrixScoreRepository) ExpectedMinutes() (map[string]float64, error) {
 			out[x.ServiceID] = *x.Learned
 		}
 	}
+	if err == nil {
+		expectedCache.val, expectedCache.at = out, time.Now()
+	}
 	return out, err
 }
 
 // SetServiceStandard يحط تعديل يدوي (minutes nil = يرجع للمتعلَّم).
 func (r *MatrixScoreRepository) SetServiceStandard(serviceID string, minutes *int, by string) error {
+	expectedCache.Lock()
+	expectedCache.val = nil
+	expectedCache.Unlock()
 	if minutes == nil {
 		_, err := r.db.Exec(`DELETE FROM "ServiceStandardTime" WHERE "serviceId" = $1`, serviceID)
 		return err

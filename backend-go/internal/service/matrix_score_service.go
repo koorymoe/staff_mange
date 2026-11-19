@@ -596,10 +596,28 @@ func (s *MatrixScoreService) compute(people []repository.Scorable, from, to time
 	}
 	rel, _ := s.repo.ReliabilityFacts(from, to, emp)
 	rows := BuildScores(people, pts, hum, rel)
-	jobs, _ := s.repo.LeaderJobs(from, to, emp)
-	expected, _ := s.repo.ExpectedMinutes()
-	coord, err := s.repo.CoordFacts(from, to, from.In(baghdad).Format("2006-01"), planItemScoreSQL, emp)
-	errlog.Err(err)
+	// (11-19 «الصفحة تضل تحمل») الاستعلامات الثقيلة بس إذا بالناس أحد يحتاجها
+	needLeader, needCoord := false, false
+	for _, p := range people {
+		switch ScoreGroup(p) {
+		case GroupLeaders:
+			needLeader = true
+		case GroupCoordinator, GroupSales:
+			needCoord = true
+		}
+	}
+	var jobs []repository.LeaderJob
+	var expected map[string]float64
+	if needLeader {
+		jobs, _ = s.repo.LeaderJobs(from, to, emp)
+		expected, _ = s.repo.ExpectedMinutes()
+	}
+	var coord map[string]repository.CoordFact
+	if needCoord {
+		var err error
+		coord, err = s.repo.CoordFacts(from, to, from.In(baghdad).Format("2006-01"), planItemScoreSQL, emp)
+		errlog.Err(err)
+	}
 	applyRoleScores(rows, hum, LeaderTimes(jobs, expected), coord)
 	if rev, err := s.repo.Revenue(from, to, emp); err == nil {
 		sal, _ := s.repo.Salaries(emp)
