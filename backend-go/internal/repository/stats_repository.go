@@ -96,7 +96,9 @@ func (r *StatsRepository) SalesStats(startOfToday, startOfMonth time.Time) ([]mo
 		Name       string `db:"name"`
 	}
 	var employees []row
-	if err := r.db.Select(&employees, `SELECT id, name FROM "Employee" WHERE role IN ('SALES', 'ADMIN')`); err != nil {
+	if err := r.db.Select(&employees, `SELECT id, name FROM "Employee" e WHERE role IN ('SALES', 'ADMIN')
+		-- (دازاي 11-19) الي غادر الشركة ما يطلع — إلا إذا إله حجوزات بهالشهر (حتى ما تضيع أرقامه)
+		AND (e.status = 'ACTIVE' OR EXISTS (SELECT 1 FROM "Booking" b WHERE b."transferEmployeeId" = e.id AND b."createdAt" >= $1))`, startOfMonth); err != nil {
 		return nil, err
 	}
 
@@ -138,7 +140,8 @@ func (r *StatsRepository) CoordinatorStats(startOfToday, startOfMonth time.Time)
 		Name       string `db:"name"`
 	}
 	var employees []row
-	if err := r.db.Select(&employees, `SELECT id, name FROM "Employee" WHERE role IN ('HR_COORDINATOR', 'ADMIN')`); err != nil {
+	if err := r.db.Select(&employees, `SELECT id, name FROM "Employee" e WHERE role IN ('HR_COORDINATOR', 'ADMIN')
+		AND (e.status = 'ACTIVE' OR EXISTS (SELECT 1 FROM "Booking" b WHERE b."confirmedByEmployeeId" = e.id AND b."confirmedAt" >= ($1::timestamptz AT TIME ZONE 'UTC')))`, startOfMonth); err != nil {
 		return nil, err
 	}
 
@@ -175,7 +178,7 @@ func (r *StatsRepository) TechnicianStats() ([]model.TechnicianStat, error) {
 		OnDuty     bool   `db:"onDuty"`
 	}
 	var employees []row
-	if err := r.db.Select(&employees, `SELECT id, name, "onDuty" FROM "Employee" WHERE role = 'TECHNICIAN'`); err != nil {
+	if err := r.db.Select(&employees, `SELECT id, name, "onDuty" FROM "Employee" WHERE role = 'TECHNICIAN' AND status = 'ACTIVE'`); err != nil {
 		return nil, err
 	}
 
@@ -276,7 +279,7 @@ func (r *StatsRepository) ServiceBreakdown() ([]model.ServiceBreakdownEntry, err
 
 func (r *StatsRepository) RoleCounts() ([]model.RoleCount, error) {
 	counts := []model.RoleCount{}
-	err := r.db.Select(&counts, `SELECT role, COUNT(*) as count FROM "Employee" GROUP BY role`)
+	err := r.db.Select(&counts, `SELECT role, COUNT(*) as count FROM "Employee" WHERE status = 'ACTIVE' GROUP BY role`)
 	return counts, err
 }
 
