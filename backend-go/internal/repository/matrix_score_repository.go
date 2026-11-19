@@ -605,6 +605,9 @@ type CoordFact struct {
 	PlanItems  int      `db:"planItems"`
 	Confirmed  int      `db:"confirmed"`
 	Postpones  int      `db:"postpones"`
+	// (11-19) البيّاع: حجوزاته الي سجّلها بالفترة — كم انجزت وكم انلغت
+	Completed int `db:"completed"`
+	Cancelled int `db:"cancelled"`
 }
 
 // CoordFacts لكل موظف (أو واحد): planItemScore نفس معادلة تصنيف المدراء (org_director_ranking).
@@ -622,7 +625,9 @@ func (r *MatrixScoreRepository) CoordFacts(from, to time.Time, period, planItemS
 		  (SELECT count(*) FROM "OrgPlanItem" i JOIN "OrgPlan" p ON p.id = i."planId"
 		    WHERE p.period = $3 AND ((pos.position = 'DIRECTOR' AND p."divisionId" = pos."divisionId") OR (pos.position = 'DEPUTY' AND i."ownerId" = e.id)))::int AS "planItems",
 		  (SELECT count(*) FROM "Booking" b WHERE b."confirmedByEmployeeId" = e.id AND b."scheduledAt" >= $1 AND b."scheduledAt" < $2)::int AS confirmed,
-		  (SELECT COALESCE(sum(b."postponeCount"), 0) FROM "Booking" b WHERE b."confirmedByEmployeeId" = e.id AND b."scheduledAt" >= $1 AND b."scheduledAt" < $2)::int AS postpones
+		  (SELECT COALESCE(sum(b."postponeCount"), 0) FROM "Booking" b WHERE b."confirmedByEmployeeId" = e.id AND b."scheduledAt" >= $1 AND b."scheduledAt" < $2)::int AS postpones,
+		  (SELECT count(*) FROM "Booking" b WHERE b."createdById" = e.id AND b."createdAt" >= $1 AND b."createdAt" < $2 AND b.status::text IN ('COMPLETED','PARTIAL'))::int AS completed,
+		  (SELECT count(*) FROM "Booking" b WHERE b."createdById" = e.id AND b."createdAt" >= $1 AND b."createdAt" < $2 AND b.status::text = 'CANCELLED')::int AS cancelled
 		FROM "Employee" e LEFT JOIN pos ON pos."employeeId" = e.id
 		WHERE e.status = 'ACTIVE' AND ($4 = '' OR e.id = $4)`, from, to, period, employeeID)
 	out := map[string]CoordFact{}

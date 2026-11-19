@@ -256,6 +256,10 @@ func applyRoleScores(rows []StaffScore, hum []repository.HumanRow, times map[str
 			if v, d, ok := stars(s.ID, "AUDIT", "QUALITY_CALL", "MONITOR_DAILY", "MONITOR_PERIODIC", "ADMIN_PERIODIC"); ok {
 				set("SUPERVISOR", v, d)
 			}
+		default:
+			if defs, ok := genericParts[s.Group]; ok {
+				genericPct(defs, s, stars, cf, set)
+			}
 		}
 		rulesShare, planShare := techRulesShare, 0.0
 		if f, ok := cf[s.ID]; ok && s.Group == GroupCoordinator && f.Position != nil {
@@ -296,6 +300,9 @@ func applyRoleScores(rows []StaffScore, hum []repository.HumanRow, times map[str
 			s.TechParts = append(s.TechParts, TechPart{Key: "PLAN", Label: "الخطة وتنفيذها (الهيكل الجديد)", Weight: planShare, Pct: pct["PLAN"], Detail: detail["PLAN"]})
 		}
 		op, notes := RoleMatrixOpinion(s.Group, pct)
+		if defs, ok := genericParts[s.Group]; ok {
+			op, notes = genericOpinion(defs, pct)
+		}
 		s.TechParts = append(s.TechParts, TechPart{Key: "MATRIX", Label: "رأي ماتركس", Weight: techMatrixShare, Pct: op})
 		s.MatrixNotes = notes
 		sum += op * techMatrixShare / 100

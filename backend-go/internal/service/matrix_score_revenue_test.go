@@ -16,14 +16,14 @@ func TestApplyRevenue(t *testing.T) {
 	now := to.Add(time.Hour) // شهر كامل
 	rows := []StaffScore{
 		{ID: "idle", Group: GroupTechs, Final: f(95)},     // ماكو شغل ولا مشاكل
-		{ID: "half", Group: GroupTechnical, Final: f(80)}, // غطّى نص راتبه (التقني هدفه ١٠٠٪ — الفني والليدر ١٣٠٪: tech_score_test)
+		{ID: "half", Group: GroupDecor, Final: f(80)}, // غطّى نص راتبه (الديكور هدفه ١٠٠٪ لحد ما ننقّح قواعده — الفني والليدر والتقني ١٣٠٪)
 		{ID: "star", Group: GroupSales, Final: f(80)},     // سجّل حجوزات دخّلت ٣ أضعاف راتبه
 		{ID: "acct", Group: GroupFinance, Final: f(80)},   // المحاسب ما يدخّل فلوس مباشرة
 		{ID: "techSold", Group: GroupTechs, Final: f(80)},
 	}
 	rev := []repository.RevenueRow{
 		{EmployeeID: "half", Kind: "WORK", Amount: 500_000, Jobs: 4},
-		{EmployeeID: "star", Kind: "BOOKED", Amount: 3_000_000, Jobs: 20},
+		{EmployeeID: "star", Kind: "BOOKED", Amount: 6_000_000, Jobs: 20}, // (11-19) هدف البيّاع ٣٠٠٪: ٦ أضعاف = ضعف هدفه
 		{EmployeeID: "techSold", Kind: "BOOKED", Amount: 9_000_000, Jobs: 1}, // فني سجّل حجز: مو مصدره
 	}
 	sal := map[string]float64{"idle": 1_000_000, "half": 1_000_000, "star": 1_000_000, "acct": 1_000_000, "techSold": 1_000_000}

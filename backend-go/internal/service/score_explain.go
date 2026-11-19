@@ -126,12 +126,26 @@ func ExplainOne(p repository.Scorable) ScoreExplainRow {
 		if g == GroupLeaders {
 			r.Raters = []string{"المنسّق بعد الحجز", "إدارة العمليات (يومي)"}
 		}
+		if defs, ok := genericParts[g]; ok {
+			r.Raters = []string{}
+			for _, d := range defs {
+				for _, st := range d.Stages {
+					if l := raterStageLabels[st]; l != "" {
+						r.Raters = append(r.Raters, l)
+					}
+				}
+			}
+			r.Revenue = ""
+			if k, ok := revenueKindOf[g]; ok {
+				r.Revenue = fmt.Sprintf("%s — الهدف %.0f٪ من راتبه", revenueKindLabels[k], targetOf(g))
+			}
+		}
 		if g == GroupCoordinator {
 			r.Raters = []string{"المراقب (تدقيق + يومي)", "الجودة (رأي الزبون)", "المدير/المالك (دوري)"}
 			r.Rules = append(r.Rules, "مدير الإدارة: شغل الحجز ٤٠ + خطة إدارته ٤٠ · النائب: ٥٠ + بنوده بالخطة ٣٠ (الهيكل الجديد)")
 		}
 		if k, ok := revenueKindOf[g]; ok {
-			r.Revenue = revenueKindLabels[k] + " — الهدف ١٣٠٪ من راتبه"
+			r.Revenue = fmt.Sprintf("%s — الهدف %.0f٪ من راتبه", revenueKindLabels[k], targetOf(g))
 		}
 		return r
 	}

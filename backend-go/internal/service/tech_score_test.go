@@ -55,11 +55,11 @@ func TestRevenueTargetTech130(t *testing.T) {
 	to := from.AddDate(0, 1, 0)
 	now := to.Add(-time.Hour)
 	f1, f2 := 80.0, 80.0
-	rows := []StaffScore{{ID: "t", Group: GroupTechs, Final: &f1}, {ID: "l", Group: GroupTechnical, Final: &f2}}
+	rows := []StaffScore{{ID: "t", Group: GroupTechs, Final: &f1}, {ID: "l", Group: GroupDecor, Final: &f2}}
 	rev := []repository.RevenueRow{{EmployeeID: "t", Kind: "WORK", Amount: 1_000_000}, {EmployeeID: "l", Kind: "WORK", Amount: 1_000_000}}
 	sal := map[string]float64{"t": 1_000_000, "l": 1_000_000}
 	ApplyRevenue(rows, rev, sal, from, to, now)
-	// الفني غطّى ١٠٠٪ من راتبه = ٧٧٪ من هدفه (١٣٠) فينزل؛ التقني هدفه ١٠٠ فما ينزل
+	// الفني غطّى ١٠٠٪ من راتبه = ٧٧٪ من هدفه (١٣٠) فينزل؛ الديكور هدفه ١٠٠ فما ينزل
 	if *rows[0].Final >= 80 || rows[0].RevenueTarget != 130 {
 		t.Fatalf("tech final = %v target %v", *rows[0].Final, rows[0].RevenueTarget)
 	}
