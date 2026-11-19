@@ -2,6 +2,7 @@ package service
 
 import (
 	"errors"
+	"fmt"
 
 	"staffmange-api/internal/model"
 	"staffmange-api/internal/repository"
@@ -94,6 +95,11 @@ func (s *CustomerService) Update(id string, req model.UpdateCustomerRequest) (*m
 	req.Phone = model.LocalPhone(req.Phone)
 	if len(req.Phone) < 7 {
 		return nil, errors.New("رقم الهاتف غير صحيح")
+	}
+	// (بلاغ #53 — 11-19) الرقم مسجّل لزبون ثاني ← رسالة واضحة بدل «ما انحفظ — خبّر الدعم»
+	// (الرقم ما يتكرر بالجدول، فالحفظ چان يفشل بخطأ قاعدة مبهم).
+	if other, ferr := s.repo.FindByPhone(req.Phone); ferr == nil && other != nil && other.ID != id {
+		return nil, fmt.Errorf("هذا الرقم مسجّل لزبون ثاني (رقم الزبون %d) — إذا هو نفس الشخص، افتح حجزه من هناك، أو اكتب رقم ثاني", other.CustomerCode)
 	}
 	c, err := s.repo.Update(id, req)
 	if err != nil {
