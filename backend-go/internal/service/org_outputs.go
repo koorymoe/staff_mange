@@ -7,6 +7,7 @@ import (
 	"sort"
 	"staffmange-api/internal/errlog"
 	"staffmange-api/internal/model"
+	"strconv"
 	"strings"
 	"time"
 
@@ -47,6 +48,44 @@ type OutputRow struct {
 	Complaints   int      `json:"complaints"`
 	// Score درجة الفقرة (٠-١٠٠): نقاط ماتركس ويا المهام بوقتها، ناقص الخصومات والشكاوي
 	Score *float64 `json:"score"`
+	// (دازاي 11-19 «البيانات صفر ماتركس ع شنو يقيم؟») شنو ورا رقم ماتركس: لكل قاعدة كم شغلة
+	// بوقتها/متأخرة/فاتت، والشغلات الناقصة نفسها (منو، شنو، متى).
+	Rules []OutputRule `json:"rules,omitempty"`
+	Items []OutputItem `json:"items,omitempty"`
+}
+
+type OutputRule struct {
+	Rule   string `db:"rule" json:"rule"`
+	Title  string `db:"-" json:"title"`
+	OK     int    `db:"ok" json:"ok"`
+	Late   int    `db:"late" json:"late"`
+	Missed int    `db:"missed" json:"missed"`
+}
+
+type OutputItem struct {
+	Rule     string    `db:"rule" json:"rule"`
+	Employee string    `db:"employee" json:"employee"`
+	Label    *string   `db:"label" json:"label"`
+	Reason   string    `db:"reason" json:"reason"`
+	Points   int       `db:"points" json:"points"`
+	Max      int       `db:"maxPoints" json:"max"`
+	At       time.Time `db:"at" json:"at"`
+}
+
+// outputRuleText «حضور: ١٢ بوقته · ٢ متأخرة · ١ فاتت» — نص واضح بدل «ماتركس ٢٤/٢٨».
+func outputRuleText(rs []OutputRule) string {
+	parts := []string{}
+	for _, r := range rs {
+		s := r.Title + ": " + strconv.Itoa(r.OK) + " بوقتها"
+		if r.Late > 0 {
+			s += " · " + strconv.Itoa(r.Late) + " متأخرة"
+		}
+		if r.Missed > 0 {
+			s += " · " + strconv.Itoa(r.Missed) + " ما انسوت"
+		}
+		parts = append(parts, s)
+	}
+	return strings.Join(parts, " — ")
 }
 
 type OutputsCard struct {
@@ -110,6 +149,32 @@ func OutputsScorecard(db *sqlx.DB, employeeID, unitID, divisionID, period string
 			if c, ok := matrixRuleClause[r.Rule]; ok && rows[c] != nil {
 				rows[c].MatrixEarned += r.P
 				rows[c].MatrixMax += r.M
+			}
+		}
+		// (11-19) شنو ورا الرقم: عدد الشغلات لكل قاعدة، والناقصة نفسها
+		rc := []OutputRule{}
+		errlog.Err(db.Select(&rc, `SELECT rule,
+			count(*) FILTER (WHERE points >= "maxPoints")::int AS ok,
+			count(*) FILTER (WHERE points > 0 AND points < "maxPoints")::int AS late,
+			count(*) FILTER (WHERE points = 0)::int AS missed
+			FROM "MatrixScore" WHERE "employeeId" = ANY($1) AND "cancelledAt" IS NULL AND "at" >= $2 AND "at" < $3
+			GROUP BY rule ORDER BY rule`, pq.Array(ids), from, to))
+		for _, r := range rc {
+			if c, ok := matrixRuleClause[r.Rule]; ok && rows[c] != nil {
+				r.Title = ruleTitle(r.Rule)
+				rows[c].Rules = append(rows[c].Rules, r)
+			}
+		}
+		items := []OutputItem{}
+		errlog.Err(db.Select(&items, `SELECT rule, employee, label, reason, points, "maxPoints", "at" FROM (
+			SELECT m.rule, e.name AS employee, m."sourceLabel" AS label, m.reason, m.points, m."maxPoints", m."at",
+			       row_number() OVER (PARTITION BY m.rule ORDER BY m."at" DESC) AS rn
+			FROM "MatrixScore" m JOIN "Employee" e ON e.id = m."employeeId"
+			WHERE m."employeeId" = ANY($1) AND m."cancelledAt" IS NULL AND m."at" >= $2 AND m."at" < $3 AND m.points < m."maxPoints") x
+			WHERE rn <= 8 ORDER BY "at" DESC`, pq.Array(ids), from, to))
+		for _, it := range items {
+			if c, ok := matrixRuleClause[it.Rule]; ok && rows[c] != nil {
+				rows[c].Items = append(rows[c].Items, it)
 			}
 		}
 		// المهام الإضافية المربوطة

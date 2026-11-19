@@ -33,6 +33,8 @@ type EvidenceLine struct {
 	Label string `json:"label"`
 	Value string `json:"value"`
 	Note  string `json:"note,omitempty"`
+	// (11-19) الشغلات نفسها ورا السطر (تنفتح بالضغط)
+	More []string `json:"more,omitempty"`
 }
 
 func f1(v float64) string { return strconv.FormatFloat(math.Round(v*10)/10, 'f', -1, 64) }
@@ -113,12 +115,31 @@ func DirectorsRanking(db *sqlx.DB, period string, personal PersonalScoreFn) (*Di
 				if r.Score != nil {
 					sum += *r.Score
 					n++
-					note := "ماتركس " + strconv.Itoa(r.MatrixEarned) + "/" + strconv.Itoa(r.MatrixMax) +
-						" · مهام بوقتها " + strconv.Itoa(r.TasksOnTime) + " · متأخرة " + strconv.Itoa(r.TasksLate+r.TasksOverdue)
+					// (دازاي 11-19) نص واضح بدل «ماتركس ٢٤/٢٨ · مهام ٠ · متأخرة ٠»: شنو الشغل ورا الرقم،
+					// والمهام والخصومات بس إذا موجودة. والضغط على السطر يفتح الشغلات الناقصة نفسها.
+					note := outputRuleText(r.Rules)
+					if note == "" {
+						note = "ماتركس " + strconv.Itoa(r.MatrixEarned) + " من " + strconv.Itoa(r.MatrixMax) + " نقطة"
+					}
+					if t := r.TasksOnTime + r.TasksLate + r.TasksOverdue; t > 0 {
+						note += " · مهام مربوطة: " + strconv.Itoa(r.TasksOnTime) + " بوقتها، " + strconv.Itoa(r.TasksLate+r.TasksOverdue) + " متأخرة"
+					}
 					if r.KpiDeducts > 0 {
 						note += " · خصومات " + strconv.Itoa(r.KpiDeducts)
 					}
-					outEv = append(outEv, EvidenceLine{Label: r.Title, Value: f1(*r.Score), Note: note})
+					more := []string{}
+					for _, it := range r.Items {
+						l := it.At.In(baghdad).Format("01-02") + " · " + it.Employee + " · " + ruleTitle(it.Rule)
+						if it.Label != nil && *it.Label != "" {
+							l += " · " + *it.Label
+						}
+						l += " — " + strconv.Itoa(it.Points) + " من " + strconv.Itoa(it.Max)
+						if it.Reason != "" {
+							l += ": " + it.Reason
+						}
+						more = append(more, l)
+					}
+					outEv = append(outEv, EvidenceLine{Label: r.Title, Value: f1(*r.Score), Note: note, More: more})
 				}
 				bad += r.Complaints + r.TasksLate + r.TasksOverdue
 				if r.Complaints+r.TasksLate+r.TasksOverdue > 0 {

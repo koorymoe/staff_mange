@@ -1,9 +1,9 @@
-import { useEffect, useState } from 'react'
+import { Fragment, useEffect, useState } from 'react'
 import { apiRequest } from '../api'
 
 // 🏆 تصنيف المدراء (دازاي 11-01): مدير إدارة مقابل مدير إدارة — على الهيكل الجديد
 // (دازاي 11-04): «ماريد بس ارقام، اريد اشوف على شنو اعتمد» + تصنيف النواب + تملي الشاشة.
-type Evidence = { label: string; value: string; note?: string }
+type Evidence = { label: string; value: string; note?: string; more?: string[] }
 type Criterion = {
   key: string
   label: string
@@ -58,6 +58,8 @@ function CriterionTile({ c, open, onClick }: { c: Criterion; open: boolean; onCl
 }
 
 function EvidencePanel({ c }: { c: Criterion }) {
+  // (دازاي 11-19) الضغط على السطر يفتح الشغلات الي نقّصت رقمه (منو، شنو، متى)
+  const [openRow, setOpenRow] = useState<number | null>(null)
   return (
     <div className="mt-3 rounded-xl border border-brand-200 bg-brand-50/40 p-4">
       <div className="text-sm font-bold text-slate-800">على شنو اعتمد «{c.label}»</div>
@@ -80,11 +82,22 @@ function EvidencePanel({ c }: { c: Criterion }) {
           </thead>
           <tbody>
             {c.evidence.map((e, i) => (
-              <tr key={i} className="border-b border-slate-100 last:border-0">
-                <td className="py-1.5 text-slate-800">{e.label}</td>
-                <td className="py-1.5 font-semibold text-slate-800">{e.value}</td>
-                <td className="py-1.5 text-xs text-slate-500">{e.note ?? ''}</td>
-              </tr>
+              <Fragment key={i}>
+                <tr className={`border-b border-slate-100 last:border-0 ${e.more?.length ? 'cursor-pointer hover:bg-white/60' : ''}`}
+                  onClick={() => e.more?.length && setOpenRow(openRow === i ? null : i)}>
+                  <td className="py-1.5 text-slate-800">{e.label}{e.more?.length ? <span className="mr-1 text-xs text-brand-600">{openRow === i ? '▲' : '▼'}</span> : null}</td>
+                  <td className="py-1.5 font-semibold text-slate-800">{e.value}</td>
+                  <td className="py-1.5 text-xs text-slate-500">{e.note ?? ''}</td>
+                </tr>
+                {openRow === i && e.more && (
+                  <tr><td colSpan={3} className="pb-2">
+                    <p className="mb-1 text-[11px] font-bold text-slate-500">الشغلات الي نقّصت الرقم (آخر ٨ لكل نوع):</p>
+                    <ul className="space-y-0.5 rounded-lg bg-white p-2 text-xs text-slate-600">
+                      {e.more.map((m, k) => <li key={k}>• {m}</li>)}
+                    </ul>
+                  </td></tr>
+                )}
+              </Fragment>
             ))}
           </tbody>
         </table>

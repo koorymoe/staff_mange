@@ -79,6 +79,13 @@ func TestOutputs_Live(t *testing.T) {
 	if r := get(3); r.MatrixPct == nil || *r.MatrixPct != 50 { // الحضور ← م١/ف٣
 		t.Fatalf("م١/ف٣: %+v", r)
 	}
+	// (11-19) شنو ورا الرقم: حضور ١ بوقته و١ ما انسوى، والشغلة الناقصة نفسها
+	if r := get(3); len(r.Rules) != 1 || r.Rules[0].OK != 1 || r.Rules[0].Missed != 1 || len(r.Items) != 1 || r.Items[0].Points != 0 {
+		t.Fatalf("م١/ف٣ التفاصيل: %+v", r)
+	}
+	if txt := outputRuleText(get(3).Rules); !strings.Contains(txt, "1 بوقتها") || !strings.Contains(txt, "1 ما انسوت") {
+		t.Fatalf("النص: %q", txt)
+	}
 	if r := get(15); r.MatrixPct == nil || *r.MatrixPct != 100 { // الورق ← م٤/ف٢
 		t.Fatalf("م٤/ف٢: %+v", r)
 	}
