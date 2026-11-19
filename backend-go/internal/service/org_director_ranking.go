@@ -56,6 +56,9 @@ type DirectorRankRow struct {
 	Criteria     []DirectorCriterion `json:"criteria"`
 	// للنواب: نص رقم الإدارة ونص شغله هو (دازاي 11-04 «خليط»)
 	DivisionTotal *float64 `json:"divisionTotal,omitempty"`
+	// (11-19) مجموعة الموظف بالتقييم — تبويب «الموظفين» ينقسم بيها
+	Group      string `json:"group,omitempty"`
+	GroupLabel string `json:"groupLabel,omitempty"`
 	OwnTotal      *float64 `json:"ownTotal,omitempty"`
 }
 

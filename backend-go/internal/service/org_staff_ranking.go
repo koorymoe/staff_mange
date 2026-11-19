@@ -10,6 +10,7 @@ import (
 	"github.com/jmoiron/sqlx"
 
 	"staffmange-api/internal/errlog"
+	"staffmange-api/internal/repository"
 )
 
 // ═══ تصنيف الموظفين بنفس طريقة المدراء والنواب (دازاي 11-13) ═══
@@ -41,10 +42,17 @@ func staffRanking(db *sqlx.DB, period string, personal PersonalScoreFn) []Direct
 		EmployeeName string `db:"employeeName"`
 		DivisionName string `db:"divisionName"`
 		Manager      string `db:"manager"`
+		// (دازاي 11-19) «كل فئة تنقسم وحدها»: مجموعة الموظف بالتقييم
+		repository.Scorable
 	}{}
 	// كل موظف فعّال مو مدير/نائب (إدارة أو وحدة)، ويا إدارته ومديره.
 	errlog.Err(db.Select(&people, `
-		SELECT e.id AS "employeeId", e.name AS "employeeName",
+		SELECT e.id AS "employeeId", e.name AS "employeeName", e.id, e.name, e.role::text AS role, e."createdAt",
+			COALESCE(e."isLeader", false) AS "isLeader", COALESCE(e.division, 'ENGINEERING') AS division,
+			e."offSystemWork", e."aiOnlyRating", COALESCE(e."flexibleHours", false) AS "flexibleHours",
+			EXISTS (SELECT 1 FROM "ServiceManager" sm WHERE sm."employeeId" = e.id) AS "isServiceManager",
+			EXISTS (SELECT 1 FROM "EmployeePermission" ep JOIN "Permission" pm ON pm.id = ep."permissionId"
+			        WHERE ep."employeeId" = e.id AND pm.name = 'coordinator') AS "isCoordinator",
 			COALESCE(d.name, 'بلا إدارة بالهيكل') AS "divisionName", COALESCE(m.name, '') AS manager
 		FROM "Employee" e
 		LEFT JOIN LATERAL (SELECT a."divisionId" FROM "OrgAssignment" a WHERE a."employeeId" = e.id AND a."endedAt" IS NULL
@@ -69,6 +77,10 @@ func staffRanking(db *sqlx.DB, period string, personal PersonalScoreFn) []Direct
 		}(i, p.EmployeeID, p.EmployeeName, p.DivisionName, p.Manager)
 	}
 	wg.Wait()
+	for i, p := range people {
+		g := ScoreGroup(p.Scorable)
+		out[i].Group, out[i].GroupLabel = g, ScoreGroupLabels[g]
+	}
 	sort.SliceStable(out, func(i, j int) bool {
 		a, b := out[i].Total, out[j].Total
 		if a == nil || b == nil {
@@ -76,14 +88,19 @@ func staffRanking(db *sqlx.DB, period string, personal PersonalScoreFn) []Direct
 		}
 		return *a > *b
 	})
+	// الترتيب داخل كل مجموعة (الفني ما ينقارن بالبياع)
+	n, last := map[string]int{}, map[string]*DirectorRankRow{}
 	for i := range out {
-		if t := out[i].Total; t != nil {
-			if i > 0 && out[i-1].Total != nil && *out[i-1].Total == *t {
-				out[i].Rank = out[i-1].Rank
+		r := &out[i]
+		n[r.Group]++
+		if t := r.Total; t != nil {
+			if p := last[r.Group]; p != nil && p.Total != nil && *p.Total == *t {
+				r.Rank = p.Rank
 			} else {
-				out[i].Rank = i + 1
+				r.Rank = n[r.Group]
 			}
 		}
+		last[r.Group] = r
 	}
 	return out
 }

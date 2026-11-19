@@ -22,6 +22,9 @@ type Row = {
   total: number | null
   criteria: Criterion[]
   divisionTotal?: number | null
+  /** (11-19) مجموعة الموظف بالتقييم — تبويب «الموظفين» ينقسم بيها */
+  group?: string
+  groupLabel?: string
   ownTotal?: number | null
 }
 type Ranking = { period: string; rows: Row[]; deputies: Row[]; units?: Row[]; staff?: Row[] }
@@ -152,7 +155,19 @@ export default function DirectorsRankingPage() {
       alive = false
     }
   }, [period])
-  const rows = (tab === 'directors' ? data?.rows : tab === 'deputies' ? data?.deputies : tab === 'staff' ? data?.staff : data?.units) ?? []
+  // (دازاي 11-19) «كل فئة تنقسم وحدها»: الموظفين بمجاميعهم — المبيعات، الفنيين، الليدرية، الديكور…
+  const [group, setGroup] = useState('')
+  const staffGroups = (() => {
+    const m = new Map<string, { label: string; n: number }>()
+    for (const r of data?.staff ?? []) {
+      const k = r.group ?? 'OTHERS'
+      m.set(k, { label: r.groupLabel ?? k, n: (m.get(k)?.n ?? 0) + 1 })
+    }
+    return [...m.entries()].sort((a, b) => b[1].n - a[1].n)
+  })()
+  const pickedGroup = staffGroups.some(([k]) => k === group) ? group : (staffGroups[0]?.[0] ?? '')
+  const all = (tab === 'directors' ? data?.rows : tab === 'deputies' ? data?.deputies : tab === 'staff' ? data?.staff : data?.units) ?? []
+  const rows = tab === 'staff' ? all.filter((r) => (r.group ?? 'OTHERS') === pickedGroup) : all
   return (
     <div className="w-full px-4 py-4 md:px-6">
       <div className="flex flex-wrap items-center gap-3">
@@ -198,6 +213,16 @@ export default function DirectorsRankingPage() {
               : 'مدير ونائب كل وحدة على خطة تحسين وحدتهم: بنوده بالخطة ٥٠٪ (خلص بموعده = ١٠٠، متأخر = −١٠ لكل يوم) · الخطة كاملة ٢٠٪ · تقييمه الشهري ٣٠٪.'}{' '}
         المعيار الي ماله بيانات ما ينحسب عليه. الأدمن والمالك ما ينقيّمون. <b>اضغط على أي معيار حتى تشوف على شنو اعتمد.</b>
       </p>
+      {tab === 'staff' && staffGroups.length > 1 && (
+        <div className="mt-3 flex flex-wrap gap-2">
+          {staffGroups.map(([k, g]) => (
+            <button key={k} type="button" onClick={() => setGroup(k)}
+              className={`rounded-xl px-3 py-1.5 text-sm font-bold ${k === pickedGroup ? 'bg-[#0f2040] text-white shadow' : 'bg-slate-100 text-slate-600'}`}>
+              {g.label} ({g.n})
+            </button>
+          ))}
+        </div>
+      )}
       {error && <div className="error">{error}</div>}
       {!data && !error && <div className="mt-4 text-slate-400">جاري التحميل…</div>}
       {data && rows.length === 0 && (
