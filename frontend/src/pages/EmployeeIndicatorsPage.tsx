@@ -73,7 +73,9 @@ export default function EmployeeIndicatorsPage() {
   const [month, setMonth] = useState('')
   const [err, setErr] = useState('')
   useEffect(() => {
-    api.getStaffScoreBoard(month).then((b) => setRows(b.staff.filter((s) => s.role !== 'ADMIN' && s.role !== 'OWNER')))
+    // (دازاي 11-19) الديكور معزولين بخيار وحدهم — مو ويا فنيين الشعبة الهندسية
+    api.getStaffScoreBoard(month).then((b) => setRows(b.staff.filter((s) => s.role !== 'ADMIN' && s.role !== 'OWNER')
+      .map((s) => (s.group === 'DECOR' ? { ...s, role: 'DECOR' } : s))))
       .catch((e) => setErr(e instanceof Error ? e.message : 'تعذر'))
   }, [month])
   const rated = (rows ?? []).filter((s) => s.reliability != null)

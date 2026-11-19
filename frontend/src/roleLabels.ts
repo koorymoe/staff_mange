@@ -86,7 +86,7 @@ export function roleLabel(role: string | null | undefined): string {
 }
 
 // (دازاي 11-15) رموز قديمة مو بالنوع بس بعدها تجي من السيرفر — جانت بخريطة StaffRating لحالها
-const LEGACY_LABELS: Record<string, string> = { GPS_ENGINEER: 'جي بي اس' }
+const LEGACY_LABELS: Record<string, string> = { GPS_ENGINEER: 'جي بي اس', DECOR: '🎨 الديكور' } // DECOR: خيار المؤشرات (11-19)
 
 /**
  * (دازاي 11-15) دور الشخص **بكادر الحجز/الفحص** (مو دوره بالنظام) — جان مكتوب بثلاث ملفات:
