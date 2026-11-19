@@ -23,6 +23,7 @@ func init() {
 			{Name: "taskId", Type: "text"},
 			{Name: "byMatrix", Type: "boolean", NotNull: true, Default: "false"},
 			{Name: "reason", Type: "text"},
+			{Name: "recurring", Type: "boolean", NotNull: true, Default: "false"},
 		},
 		Constraints: []Constraint{
 			{Name: "OrgPlanItem_createdById_fkey", Def: "FOREIGN KEY (\"createdById\") REFERENCES \"Employee\"(id) ON DELETE SET NULL"},

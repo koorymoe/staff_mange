@@ -337,6 +337,11 @@ func issueEvidence(db *sqlx.DB, divisionID string, from, to any) issueEv {
 // خلص بموعده = ١٠٠؛ خلص متأخر = ١٠٠ − ١٠ لكل يوم (أقل شي ٤٠)؛ فات موعده وما خلص =
 // نسبته − ١٠ لكل يوم (أقل شي صفر)؛ بعده بالموعد = نسبته المسجّلة.
 const planItemScoreSQL = `CASE
+	WHEN i.recurring THEN COALESCE((SELECT 100.0 * sum(ms.points) / NULLIF(sum(ms."maxPoints"), 0) FROM "MatrixScore" ms
+		WHERE ms."employeeId" = i."ownerId" AND ms."cancelledAt" IS NULL
+		  AND ms.rule NOT IN ('ATTENDANCE', 'DAILY_REPORT', 'REPORT_MATCH', 'RATING_DUTY')
+		  AND to_char(baghdad_date(ms."at"), 'YYYY-MM') = (SELECT op.period FROM "OrgPlan" op WHERE op.id = i."planId")),
+		NULLIF(i."manualProgress", 0))
 	WHEN i."doneAt" IS NOT NULL THEN GREATEST(40, 100 - 10 * GREATEST(0, COALESCE(baghdad_date(i."doneAt") - i."dueDate", 0)))
 	WHEN i."dueDate" IS NOT NULL AND i."dueDate" < baghdad_today() THEN GREATEST(0, i."manualProgress" - 10 * (baghdad_today() - i."dueDate"))
 	ELSE i."manualProgress" END`

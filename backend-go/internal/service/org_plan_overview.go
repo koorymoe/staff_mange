@@ -52,7 +52,7 @@ func (s *OrgService) PlansOverview(role, period string) ([]OrgPlanOverviewRow, e
 		       p.id AS "planId", p.title, COALESCE(p.status, 'NONE') AS status, p."submittedAt",
 		       (SELECT count(*) FROM "OrgPlanItem" i WHERE i."planId" = p.id)::int AS items,
 		       (SELECT count(*) FROM "OrgPlanItem" i WHERE i."planId" = p.id AND i."doneAt" IS NOT NULL)::int AS done,
-		       (SELECT count(*) FROM "OrgPlanItem" i WHERE i."planId" = p.id AND i."doneAt" IS NULL
+		       (SELECT count(*) FROM "OrgPlanItem" i WHERE i."planId" = p.id AND i."doneAt" IS NULL AND NOT i.recurring
 		          AND i."dueDate" IS NOT NULL AND i."dueDate" < baghdad_today())::int AS late,
 		       (SELECT round(avg(`+planItemScoreSQL+`)::numeric, 1)::float8 FROM "OrgPlanItem" i WHERE i."planId" = p.id) AS score
 		FROM scopes s

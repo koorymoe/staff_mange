@@ -499,3 +499,4 @@ git push origin origin/avg:refs/heads/prod     # بعد التأكد إنه fast
 - 11-18: تقييم الليدر — tech_score.go صار applyRoleScores (roleWeightsOf/opinionOf لكل مجموعة)، LeaderJobs/ServiceStandards/ExpectedMinutes (0510 ServiceStandardTime)، /api/staff-score/service-times، revenueTarget لليدر ١٣٠.
 - 11-19: تقييم المنسّق — coordWeights/coordShares بـtech_score.go، CoordFacts (موقعه بالهيكل + درجة الخطة بنفس planItemScoreSQL + التأجيلات بالحجوزات الي ثبّتها).
 - 11-19: بقية الأدوار — role_parts.go (genericParts/partDef: Rules/Stages/Rel/Fact) يملي roleWeightsOf وrevenueTarget بـinit؛ CoordFacts صار بيه completed/cancelled للتحويل.
+- 11-19: OrgPlanItem.recurring (0511 + 0512_data) — planItemScoreSQL: recurring = نقاط ماتركس لصاحبه بشهر الخطة (بلا الحضور والتقرير)، وإلا manualProgress؛ planToTasks يتخطاه؛ Overdue/late تستثنيه.

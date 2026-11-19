@@ -246,6 +246,24 @@ func autoMigrations() []Migration {
 			ALTER TABLE "TrainingMatch" ADD COLUMN IF NOT EXISTS "items" text[] DEFAULT '{}'::text[] NOT NULL;
 		`,
 		},
+		{
+			// (دازاي 11-19) «هوه يومية ينعاد الشغل مالته نفسه شلون تأخر يوم؟» — واجب يومي 🔁
+			// بالخطة ما إله موعد ولا «متأخر»: درجته من نقاط ماتركس لشغل صاحبه بالشهر.
+			Version: "0511_org_plan_item_recurring",
+			SQL: `
+			ALTER TABLE "OrgPlanItem" ADD COLUMN IF NOT EXISTS recurring boolean NOT NULL DEFAULT false;
+		`,
+		},
+		{
+			// البنود الحالية الي مكتوب بيها إنها كل يوم، وبنود مدير سلاسل التوريد لهالشهر (دازاي 11-19 «كلها يومية»)
+			Version: "0512_data_plan_items_recurring",
+			SQL: `
+			UPDATE "OrgPlanItem" SET recurring = true
+			WHERE NOT recurring AND (title ~ '(كل يوم|يومي|يومياً|يومية|اليوم واليوم التالي)'
+			   OR "ownerId" IN (SELECT id FROM "Employee" WHERE name = 'علي اركان حسين')
+			      AND "planId" IN (SELECT id FROM "OrgPlan" WHERE period = '2026-11'));
+		`,
+		},
 		// ‹makemigration› — التحديثات الجديدة تنضاف فوگ هالسطر
 	}
 }

@@ -154,6 +154,8 @@ type OrgPlanItem struct {
 	DoneAt         *time.Time `db:"doneAt" json:"doneAt"`
 	// الجدول الزمني (تطوير الوحدة 10-30): موعد ومسؤول
 	DueDate   *string `db:"dueDate" json:"dueDate"`
+	// (دازاي 11-19) 🔁 واجب يومي: بلا موعد ولا «متأخر»
+	Recurring bool `db:"recurring" json:"recurring"`
 	OwnerID   *string `db:"ownerId" json:"ownerId"`
 	OwnerName *string `db:"ownerName" json:"ownerName"`
 	Overdue   bool    `db:"-" json:"overdue"`
@@ -388,7 +390,7 @@ func (s *OrgService) planByID(divisionID, id, period string) (*OrgPlan, error) {
 		return nil, err
 	}
 	p.Items = []OrgPlanItem{}
-	if err := s.db.Select(&p.Items, `SELECT i.id, i."planId", i.kind, i.title, i."issueId", i.metric, i.baseline, i.target, i."manualProgress", i."doneAt",
+	if err := s.db.Select(&p.Items, `SELECT i.id, i."planId", i.kind, i.title, i."issueId", i.metric, i.baseline, i.target, i."manualProgress", i."doneAt", i.recurring,
 		i."dueDate"::text AS "dueDate", i."ownerId", e.name AS "ownerName", i."taskId", i.reason, i."byMatrix",
 		t.status AS "taskStatus", t."dueAt" AS "taskDueAt", t."doneAt" AS "taskDoneAt"
 		FROM "OrgPlanItem" i LEFT JOIN "Employee" e ON e.id = i."ownerId" LEFT JOIN "ExtraTask" t ON t.id = i."taskId"
@@ -417,7 +419,7 @@ func (s *OrgService) planByID(divisionID, id, period string) (*OrgPlan, error) {
 				it.TaskLate = late
 			}
 		}
-		it.Overdue = it.DoneAt == nil && it.DueDate != nil && *it.DueDate < time.Now().In(baghdad).Format("2006-01-02")
+		it.Overdue = !it.Recurring && it.DoneAt == nil && it.DueDate != nil && *it.DueDate < time.Now().In(baghdad).Format("2006-01-02")
 		sum += it.Progress
 	}
 	if len(p.Items) > 0 {
@@ -755,7 +757,7 @@ func (s *OrgService) AddPlanItem(empID, role, planID string, in OrgPlanItemInput
 }
 
 // UpdatePlanItem نسبة يدوية (للبنود بلا مقياس) أو «خلص».
-func (s *OrgService) UpdatePlanItem(empID, role, itemID string, manual *int, done *bool) error {
+func (s *OrgService) UpdatePlanItem(empID, role, itemID string, manual *int, done *bool, recurring ...*bool) error {
 	var planID string
 	errlog.Err(s.db.Get(&planID, `SELECT "planId" FROM "OrgPlanItem" WHERE id = $1`, itemID))
 	sc := s.planScope(planID)
@@ -770,6 +772,15 @@ func (s *OrgService) UpdatePlanItem(empID, role, itemID string, manual *int, don
 			return errors.New("النسبة من ٠ لـ١٠٠")
 		}
 		if _, err := s.db.Exec(`UPDATE "OrgPlanItem" SET "manualProgress" = $2 WHERE id = $1`, itemID, *manual); err != nil {
+			return err
+		}
+	}
+	// (11-19) «🔁 واجب يومي» — يحدده الي يعدّل الخطة (مو صاحب البند لحاله)
+	if len(recurring) > 0 && recurring[0] != nil {
+		if !s.planEdit(empID, role, sc) {
+			return ErrOrgHidden
+		}
+		if _, err := s.db.Exec(`UPDATE "OrgPlanItem" SET recurring = $2 WHERE id = $1`, itemID, *recurring[0]); err != nil {
 			return err
 		}
 	}
@@ -877,7 +888,7 @@ type MyPlanItem struct {
 // عقد قراءة آمن لأي موظف: يشوف بنوده بس ويحدّث نسبتها (UpdatePlanItem يسمح للمسؤول).
 func (s *OrgService) MyItems(empID string) ([]MyPlanItem, error) {
 	out := []MyPlanItem{}
-	err := s.db.Select(&out, `SELECT i.id, i."planId", i.kind, i.title, i."issueId", i.metric, i.baseline, i.target, i."manualProgress", i."doneAt",
+	err := s.db.Select(&out, `SELECT i.id, i."planId", i.kind, i.title, i."issueId", i.metric, i.baseline, i.target, i."manualProgress", i."doneAt", i.recurring,
 		i."dueDate"::text AS "dueDate", i."ownerId", e.name AS "ownerName",
 		d.name AS "divisionName", u.name AS "unitName", p.period, p.title AS "planTitle", p.status AS "planStatus"
 		FROM "OrgPlanItem" i JOIN "OrgPlan" p ON p.id = i."planId" JOIN "OrgDivision" d ON d.id = p."divisionId"
@@ -891,7 +902,7 @@ func (s *OrgService) MyItems(empID string) ([]MyPlanItem, error) {
 		if it.DoneAt != nil {
 			it.Progress = 100
 		}
-		it.Overdue = it.DoneAt == nil && it.DueDate != nil && *it.DueDate < today
+		it.Overdue = !it.Recurring && it.DoneAt == nil && it.DueDate != nil && *it.DueDate < today
 	}
 	return out, err
 }

@@ -520,7 +520,7 @@ export function PlanCard({
     [error, setError] = useState('')
   const lock = useRef(false),
     metric = metrics.find((m) => m.key === item.metric)
-  async function update(body: { manualProgress?: number; done?: boolean }) {
+  async function update(body: { manualProgress?: number; done?: boolean; recurring?: boolean }) {
     if (
       !canEdit ||
       lock.current ||
@@ -570,10 +570,20 @@ export function PlanCard({
       {item.taskId && <TaskChip item={item} />}
       <div className="desk-item-meta">
         <span>المسؤول: {item.ownerName || 'مو محدد'}</span>
-        <span>
-          الموعد: <bdi>{item.dueDate || 'مو محدد'}</bdi>
-        </span>
+        {item.recurring ? (
+          <span className="desk-badge">🔁 واجب يومي — يتقيّم بشغله اليومي، بلا موعد</span>
+        ) : (
+          <span>
+            الموعد: <bdi>{item.dueDate || 'مو محدد'}</bdi>
+          </span>
+        )}
         {item.overdue && <span className="desk-overdue">متأخر</span>}
+        {canEdit && (
+          <button type="button" disabled={busy}
+            onClick={() => void update({ recurring: !item.recurring })}>
+            {item.recurring ? 'خليه مهمة بموعد' : '🔁 خليه واجب يومي'}
+          </button>
+        )}
       </div>
       {item.byMatrix || item.metric ? (
         <>

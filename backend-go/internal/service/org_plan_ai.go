@@ -23,6 +23,8 @@ type planDraftItem struct {
 	Target *float64 `json:"target"`
 	Due    string   `json:"dueDate"`
 	Owner  string   `json:"owner"` // DIRECTOR | DEPUTY
+	// (11-19) واجب يتكرر كل يوم — بلا موعد ولا «متأخر»
+	Recurring bool `json:"recurring"`
 }
 
 // unitLeaders مدير ونائب الوحدة (أو الإدارة إذا خطة إدارة).
@@ -126,6 +128,7 @@ func (s *OrgService) DraftPlanByMatrix(empID, role, planID, guidance string) (in
 - metric و target: إذا البند ينقاس بمقياس من القائمة فوق (الهدف أحسن من الوضع الحالي)، وإلا فاضيين
 - dueDate: موعد بين %s و %s (YYYY-MM-DD)، والبنود موزعة على الشهر
 - owner: DIRECTOR أو DEPUTY — وزّع الشغل بينهم بعدل حسب طبيعة البند
+- recurring: true إذا البند شغل يتكرر كل يوم (متابعة يومية، جرد، مراجعة حجوزات اليوم) — هذا بلا dueDate، ويتقيّم بشغله اليومي مو بموعد
 توجيه المدير: %s
 جاوب **بمصفوفة JSON بس** بلا أي كلام ثاني.`, start.Format("2006-01-02"), end.AddDate(0, 0, -1).Format("2006-01-02"), strings.TrimSpace(guidance))
 	out, err := s.planDrafter(system, task)
@@ -153,6 +156,9 @@ func (s *OrgService) DraftPlanByMatrix(empID, role, planID, guidance string) (in
 		if it.Kind != "PROBLEM" {
 			it.Kind = "DEVELOPMENT"
 		}
+		if it.Recurring {
+			it.Due = ""
+		}
 		in := OrgPlanItemInput{Kind: it.Kind, Title: it.Title, Metric: it.Metric, Target: it.Target, DueDate: it.Due, OwnerID: owner}
 		id, err := s.AddPlanItem(empID, role, planID, in)
 		if err != nil && in.Metric != "" { // المقياس ما ينطبق: البند يبقى بنسبة يدوية
@@ -166,7 +172,7 @@ func (s *OrgService) DraftPlanByMatrix(empID, role, planID, guidance string) (in
 		if err != nil {
 			continue
 		}
-		errlog.Exec(s.db.Exec(`UPDATE "OrgPlanItem" SET "byMatrix" = true, reason = NULLIF($2, '') WHERE id = $1`, id, strings.TrimSpace(it.Reason)))
+		errlog.Exec(s.db.Exec(`UPDATE "OrgPlanItem" SET "byMatrix" = true, reason = NULLIF($2, ''), recurring = $3 WHERE id = $1`, id, strings.TrimSpace(it.Reason), it.Recurring))
 		n++
 	}
 	if n == 0 {
@@ -190,7 +196,7 @@ func (s *OrgService) planToTasks(planID, approverID string) int {
 		Due    *string `db:"due"`
 	}{}
 	errlog.Err(s.db.Select(&items, `SELECT id, title, reason, "ownerId", "dueDate"::text AS due FROM "OrgPlanItem"
-		WHERE "planId" = $1 AND "taskId" IS NULL AND "doneAt" IS NULL`, planID))
+		WHERE "planId" = $1 AND "taskId" IS NULL AND "doneAt" IS NULL AND NOT recurring`, planID)) // (11-19) الواجب اليومي ما يصير مهمة بموعد
 	n := 0
 	for _, it := range items {
 		to := director

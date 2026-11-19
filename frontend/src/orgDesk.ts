@@ -39,6 +39,8 @@ export type DeskItem = {
   manualProgress: number
   doneAt: string | null
   dueDate: string | null
+  /** (11-19) 🔁 واجب يومي: بلا موعد ولا «متأخر» — يتقيّم بشغل صاحبه اليومي */
+  recurring?: boolean
   ownerId: string | null
   ownerName: string | null
   overdue: boolean

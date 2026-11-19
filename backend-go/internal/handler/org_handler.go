@@ -220,13 +220,14 @@ func (h *OrgHandler) UpdatePlanItem(w http.ResponseWriter, r *http.Request) {
 	var in struct {
 		ManualProgress *int  `json:"manualProgress"`
 		Done           *bool `json:"done"`
+		Recurring      *bool `json:"recurring"` // (11-19) 🔁 واجب يومي
 	}
 	if err := DecodeJSON(r, &in); err != nil {
 		WriteError(w, http.StatusBadRequest, "طلب غير صالح")
 		return
 	}
 	emp, role := who(r)
-	if err := h.svc.UpdatePlanItem(emp, role, r.PathValue("id"), in.ManualProgress, in.Done); err != nil {
+	if err := h.svc.UpdatePlanItem(emp, role, r.PathValue("id"), in.ManualProgress, in.Done, in.Recurring); err != nil {
 		h.orgErr(w, err)
 		return
 	}
