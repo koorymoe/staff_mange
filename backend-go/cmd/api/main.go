@@ -3346,8 +3346,12 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 			return run.Answer, nil
 		}
 		orgHandler := handler.NewOrgHandler(orgService, notificationRepo)
-		orgHandler.PersonalScore = func(empID, period string) (*float64, []service.EvidenceLine) {
-			d, err := matrixScoreService.Detail(empID, period)
+		orgHandler.PersonalScore = func(empID, period string, view ...string) (*float64, []service.EvidenceLine) {
+			v := ""
+			if len(view) > 0 {
+				v = view[0]
+			}
+			d, err := matrixScoreService.DetailView(empID, period, v)
 			if err != nil || d.Final == nil {
 				return nil, nil
 			}

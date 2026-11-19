@@ -50,6 +50,7 @@ func staffRanking(db *sqlx.DB, period string, personal PersonalScoreFn) []Direct
 		SELECT e.id AS "employeeId", e.name AS "employeeName", e.id, e.name, e.role::text AS role, e."createdAt",
 			COALESCE(e."isLeader", false) AS "isLeader", COALESCE(e.division, 'ENGINEERING') AS division,
 			e."offSystemWork", e."aiOnlyRating", COALESCE(e."flexibleHours", false) AS "flexibleHours",
+			e."roleChangedAt", e."prevRole", e."prevIsLeader",
 			EXISTS (SELECT 1 FROM "ServiceManager" sm WHERE sm."employeeId" = e.id) AS "isServiceManager",
 			EXISTS (SELECT 1 FROM "EmployeePermission" ep JOIN "Permission" pm ON pm.id = ep."permissionId"
 			        WHERE ep."employeeId" = e.id AND pm.name = 'coordinator') AS "isCoordinator",
@@ -80,6 +81,20 @@ func staffRanking(db *sqlx.DB, period string, personal PersonalScoreFn) []Direct
 	for i, p := range people {
 		g := ScoreGroup(p.Scorable)
 		out[i].Group, out[i].GroupLabel = g, ScoreGroupLabels[g]
+		// (دازاي 11-19) تغيّر دوره بالشهر: الرقم على دوره الحالي من يوم التغيير، والسابق على أيامه
+		if views := RoleViews(p.Scorable, from, to); len(views) == 2 {
+			cur, prev := views[1], views[0]
+			row := staffRow(db, period, cur.From, cur.To, p.EmployeeID, p.EmployeeName, p.DivisionName, p.Manager, personal, "current")
+			row.Group, row.GroupLabel = g, ScoreGroupLabels[g]
+			pr := staffRow(db, period, prev.From, prev.To, p.EmployeeID, p.EmployeeName, p.DivisionName, p.Manager, personal, "prev")
+			pg := ScoreGroup(repository.Scorable{Role: prev.Role, IsLeader: prev.IsLeader, Division: p.Division})
+			pr.Group, pr.GroupLabel = pg, ScoreGroupLabels[pg]
+			pr.RoleFrom = prev.From.In(baghdad).Format("2006-01-02") + " ← " + prev.To.In(baghdad).Format("2006-01-02")
+			row.RoleNow = ScoreGroupLabels[g]
+			row.RoleFrom = cur.From.In(baghdad).Format("2006-01-02")
+			row.Prev = &pr
+			out[i] = row
+		}
 	}
 	sort.SliceStable(out, func(i, j int) bool {
 		a, b := out[i].Total, out[j].Total
@@ -105,7 +120,7 @@ func staffRanking(db *sqlx.DB, period string, personal PersonalScoreFn) []Direct
 	return out
 }
 
-func staffRow(db *sqlx.DB, period string, from, to time.Time, id, name, div, mgr string, personal PersonalScoreFn) DirectorRankRow {
+func staffRow(db *sqlx.DB, period string, from, to time.Time, id, name, div, mgr string, personal PersonalScoreFn, view ...string) DirectorRankRow {
 	label := div
 	if mgr != "" {
 		label += " · مديره " + mgr
@@ -116,7 +131,7 @@ func staffRow(db *sqlx.DB, period string, from, to time.Time, id, name, div, mgr
 	var outputs *float64
 	outD, outEv := "ماكو تقييم شهري إله", []EvidenceLine{}
 	if personal != nil {
-		if f, lines := personal(id, period); f != nil {
+		if f, lines := personal(id, period, view...); f != nil {
 			outputs = rankPtr(*f)
 			outD, outEv = "تقييمه الشهري (ماتركس)", lines
 		}

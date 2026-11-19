@@ -59,6 +59,11 @@ type DirectorRankRow struct {
 	// (11-19) مجموعة الموظف بالتقييم — تبويب «الموظفين» ينقسم بيها
 	Group      string `json:"group,omitempty"`
 	GroupLabel string `json:"groupLabel,omitempty"`
+	// (دازاي 11-19) «تغيّر دوره بالشهر — اريد اختار التقييم حسب دوره»: الرقم الأساسي على دوره
+	// الحالي من يوم التغيير، وتقييمه بدوره السابق (على أيامه) بزر.
+	RoleNow  string           `json:"roleNow,omitempty"`
+	RoleFrom string           `json:"roleFrom,omitempty"`
+	Prev     *DirectorRankRow `json:"prev,omitempty"`
 	OwnTotal      *float64 `json:"ownTotal,omitempty"`
 }
 
@@ -73,7 +78,8 @@ type DirectorRanking struct {
 }
 
 // PersonalScoreFn التقييم الشهري للموظف نفسه (MatrixScoreService.Detail): النهائي + أكبر الخسارات.
-type PersonalScoreFn func(employeeID, period string) (final *float64, lines []EvidenceLine)
+// view: "" أو "current" = دوره الحالي، "prev" = دوره السابق (إذا تغيّر بالشهر).
+type PersonalScoreFn func(employeeID, period string, view ...string) (final *float64, lines []EvidenceLine)
 
 func clamp100(v float64) float64 { return math.Max(0, math.Min(100, math.Round(v*10)/10)) }
 func rankPtr(v float64) *float64 { c := clamp100(v); return &c }

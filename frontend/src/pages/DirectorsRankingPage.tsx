@@ -25,6 +25,11 @@ type Row = {
   /** (11-19) مجموعة الموظف بالتقييم — تبويب «الموظفين» ينقسم بيها */
   group?: string
   groupLabel?: string
+  /** (دازاي 11-19) تغيّر دوره بالشهر: الرقم على دوره الحالي، والسابق بزر */
+  roleNow?: string
+  roleFrom?: string
+  prev?: Row
+
   ownTotal?: number | null
 }
 type Ranking = { period: string; rows: Row[]; deputies: Row[]; units?: Row[]; staff?: Row[] }
@@ -109,8 +114,10 @@ function EvidencePanel({ c }: { c: Criterion }) {
   )
 }
 
-function PersonCard({ r, deputy, unit, staff }: { r: Row; deputy: boolean; unit?: boolean; staff?: boolean }) {
+function PersonCard({ r: cur, deputy, unit, staff }: { r: Row; deputy: boolean; unit?: boolean; staff?: boolean }) {
   const [open, setOpen] = useState<string | null>(null)
+  const [showPrev, setShowPrev] = useState(false)
+  const r = showPrev && cur.prev ? cur.prev : cur
   const openC = r.criteria.find((c) => c.key === open)
   return (
     <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-[0_4px_20px_rgba(15,32,64,0.05)]">
@@ -131,6 +138,19 @@ function PersonCard({ r, deputy, unit, staff }: { r: Row; deputy: boolean; unit?
         )}
         <span className={`text-3xl font-bold ${tone(r.total)}`}>{r.total === null ? 'ماكو بيانات' : r.total}</span>
       </div>
+      {cur.prev && (
+        <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
+          <span className="font-bold text-slate-500">🔁 تغيّر دوره بالشهر:</span>
+          <button type="button" onClick={() => { setShowPrev(false); setOpen(null) }}
+            className={`rounded-lg px-3 py-1 font-bold ${!showPrev ? 'bg-[#0f2040] text-white' : 'bg-slate-100 text-slate-600'}`}>
+            دوره هسه: {cur.roleNow} (من {cur.roleFrom})
+          </button>
+          <button type="button" onClick={() => { setShowPrev(true); setOpen(null) }}
+            className={`rounded-lg px-3 py-1 font-bold ${showPrev ? 'bg-[#0f2040] text-white' : 'bg-slate-100 text-slate-600'}`}>
+            دوره السابق: {cur.prev.groupLabel} ({cur.prev.roleFrom}) · {cur.prev.total ?? '—'}
+          </button>
+        </div>
+      )}
       <div className="mt-3 grid gap-2 [grid-template-columns:repeat(auto-fit,minmax(190px,1fr))]">
         {r.criteria.map((c) => (
           <CriterionTile key={c.key} c={c} open={open === c.key} onClick={() => setOpen(open === c.key ? null : c.key)} />
