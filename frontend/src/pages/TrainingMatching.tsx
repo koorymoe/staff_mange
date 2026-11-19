@@ -150,16 +150,16 @@ const dt = (s: string | null) => (s ? new Date(s).toLocaleDateString('en-GB') : 
 function ItemsPicker({ n, tree, onStart, onCancel }: { n: TcNeed; tree: TcCurriculum[]; onStart: (ids: string[]) => void; onCancel: () => void }) {
   const byId = useMemo(() => new Map(tree.map((r) => [r.id, r])), [tree])
   const rootOf = (id: string | null) => { let r = id ? byId.get(id) : undefined; while (r?.parentId) r = byId.get(r.parentId); return r }
-  const tracks = tree.filter((r) => !r.parentId)
-  const [track, setTrack] = useState(rootOf(n.curriculumId)?.id ?? tracks[0]?.id ?? '')
-  const [picked, setPicked] = useState<string[]>([])
+  // (11-19) الفني ما يشوف مسارات الليدر (وبالعكس)، والمختار من البداية أول مسار يناسبه
+  const mine = n.employeeIsLeader ? 'LEADER' : n.employeeRole
   const aud = (r: TcCurriculum | undefined): string[] => {
     if (!r) return []
     return r.audiences ?? (r.parentId ? aud(byId.get(r.parentId)) : [r.role])
   }
-  // فئة الموظف: الليدر (فني مأشّر ليدر) ياخذ مفردات الليدر، وأي دور ثاني يشوف الكل.
-  const mine = n.employeeIsLeader ? 'LEADER' : n.employeeRole
   const fits = (r: TcCurriculum) => !['TECHNICIAN', 'LEADER', 'ENGINEER'].includes(mine) || aud(r).includes(mine)
+  const tracks = tree.filter((r) => !r.parentId && fits(r))
+  const [track, setTrack] = useState(rootOf(n.curriculumId)?.id ?? tracks[0]?.id ?? '')
+  const [picked, setPicked] = useState<string[]>([])
   const list: { r: TcCurriculum; depth: number }[] = []
   const walk = (id: string, depth: number) => {
     for (const c of tree.filter((x) => x.parentId === id).sort((a, b) => a.ord - b.ord)) {
