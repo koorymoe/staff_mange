@@ -83,7 +83,7 @@ function EvidencePanel({ c }: { c: Criterion }) {
           <tbody>
             {c.evidence.map((e, i) => (
               <Fragment key={i}>
-                <tr className={`border-b border-slate-100 last:border-0 ${e.more?.length ? 'cursor-pointer hover:bg-white/60' : ''}`}
+                <tr className={`border-b border-slate-100 last:border-0 ${e.more?.length ? 'cursor-pointer hover:bg-slate-500/10' : ''}`}
                   onClick={() => e.more?.length && setOpenRow(openRow === i ? null : i)}>
                   <td className="py-1.5 text-slate-800">{e.label}{e.more?.length ? <span className="mr-1 text-xs text-brand-600">{openRow === i ? '▲' : '▼'}</span> : null}</td>
                   <td className="py-1.5 font-semibold text-slate-800">{e.value}</td>

@@ -376,9 +376,10 @@ func planEvidence(db *sqlx.DB, where string, args ...any) []EvidenceLine {
 		Done     bool    `db:"done"`
 		LateDays int     `db:"lateDays"`
 		Manual   int     `db:"manualProgress"`
+		Daily    bool    `db:"recurring"`
 	}{}
 	errlog.Err(db.Select(&rows, `SELECT i.title, COALESCE(`+planItemScoreSQL+`, 0)::float8 AS pct, e.name AS owner,
-			i."doneAt" IS NOT NULL AS done, i."manualProgress",
+			i."doneAt" IS NOT NULL AS done, i."manualProgress", i.recurring,
 			GREATEST(0, COALESCE(COALESCE(baghdad_date(i."doneAt"), baghdad_today()) - i."dueDate", 0))::int AS "lateDays"
 		FROM "OrgPlanItem" i JOIN "OrgPlan" p ON p.id = i."planId" LEFT JOIN "Employee" e ON e.id = i."ownerId"
 		WHERE `+where+` ORDER BY i."createdAt"`, args...))
@@ -386,6 +387,8 @@ func planEvidence(db *sqlx.DB, where string, args ...any) []EvidenceLine {
 	for _, r := range rows {
 		why := ""
 		switch {
+		case r.Daily: // (11-19) الواجب اليومي ما إله «متأخر»
+			why = "🔁 واجب يومي — من شغله اليومي بالشهر"
 		case r.Done && r.LateDays == 0:
 			why = "خلص بموعده"
 		case r.Done:
