@@ -21,18 +21,24 @@ func (r *MatrixScoreRepository) Revenue(from, to time.Time, emp string) ([]Reven
 	rows := []RevenueRow{}
 	err := r.db.Select(&rows, `
 		WITH inv AS (
-			SELECT li."bookingId", li."employeeId", li."netTotal" AS n FROM "LeaderInvoice" li
-			WHERE li."revokedAt" IS NULL AND li.status <> 'DRAFT' AND li."bookingId" IS NOT NULL
+			SELECT li.id, li."bookingId", li."employeeId", li."netTotal" AS n FROM "LeaderInvoice" li
+			WHERE li."revokedAt" IS NULL AND li.status <> 'DRAFT'
 			  AND li."createdAt" >= $1 AND li."createdAt" < $2
 		), crew AS (
-			SELECT DISTINCT a."bookingId", a."employeeId" FROM "BookingAssignment" a WHERE a."bookingId" IN (SELECT "bookingId" FROM inv)
-		), cnt AS (SELECT "bookingId", count(*) AS c FROM crew GROUP BY 1)
+			-- (11-19 «فني مدخل هواي فلوس وتطلع صفر») الكادر من الفاتورة نفسها — نفس الي انحسبتله
+			-- العمولة (EmployeeCommission). فاتورة بلا عمولات ← كادر تكليف الحجز.
+			SELECT DISTINCT ec."leaderInvoiceId" AS inv, ec."employeeId" FROM "EmployeeCommission" ec
+			WHERE ec."leaderInvoiceId" IN (SELECT id FROM inv)
+			UNION
+			SELECT DISTINCT inv.id, a."employeeId" FROM inv JOIN "BookingAssignment" a ON a."bookingId" = inv."bookingId"
+			WHERE NOT EXISTS (SELECT 1 FROM "EmployeeCommission" ec WHERE ec."leaderInvoiceId" = inv.id)
+		), cnt AS (SELECT inv, count(*) AS c FROM crew GROUP BY 1)
 		SELECT * FROM (
-			SELECT crew."employeeId", 'WORK' AS kind, sum(inv.n / cnt.c)::float8 AS amount, count(DISTINCT inv."bookingId")::int AS jobs
-			FROM inv JOIN crew ON crew."bookingId" = inv."bookingId" JOIN cnt ON cnt."bookingId" = inv."bookingId" GROUP BY 1
+			SELECT crew."employeeId", 'WORK' AS kind, sum(inv.n / cnt.c)::float8 AS amount, count(DISTINCT inv.id)::int AS jobs
+			FROM inv JOIN crew ON crew.inv = inv.id JOIN cnt ON cnt.inv = inv.id GROUP BY 1
 			UNION ALL
-			SELECT inv."employeeId", 'WORK', sum(inv.n)::float8, count(DISTINCT inv."bookingId")::int
-			FROM inv WHERE NOT EXISTS (SELECT 1 FROM crew WHERE crew."bookingId" = inv."bookingId") GROUP BY 1
+			SELECT inv."employeeId", 'WORK', sum(inv.n)::float8, count(DISTINCT inv.id)::int
+			FROM inv WHERE NOT EXISTS (SELECT 1 FROM crew WHERE crew.inv = inv.id) GROUP BY 1
 			UNION ALL
 			SELECT b."createdById", 'BOOKED', sum(inv.n)::float8, count(DISTINCT inv."bookingId")::int
 			FROM inv JOIN "Booking" b ON b.id = inv."bookingId" WHERE b."createdById" IS NOT NULL GROUP BY 1

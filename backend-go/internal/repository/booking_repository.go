@@ -1332,11 +1332,17 @@ func (r *BookingRepository) ListAssignments(bookingID string) ([]model.BookingAs
 func (r *BookingRepository) CountCompletedForEmployeeMonth(employeeID, monthPrefix string) (int, error) {
 	var count int
 	err := r.db.Get(&count, `
-		SELECT COUNT(*) FROM "BookingVisitCrew" vc
+		SELECT (SELECT COUNT(*) FROM "BookingVisitCrew" vc
 		JOIN "BookingVisit" v ON v.id = vc."visitId"
 		JOIN "Booking" b ON b.id = v."bookingId"
 		WHERE vc."employeeId" = $1 AND to_char(baghdad_date(v."occurredAt"), 'YYYY-MM') = $2
-		  AND b.status::text <> 'CANCELLED'`+BookingCountableAndSQL("b")+`
+		  AND b.status::text <> 'CANCELLED'`+BookingCountableAndSQL("b")+`)
+		-- (11-19 «٠ من ٣٣») الحجز المنجز المسند إله بلا زيارة مسجّلة بيها اسمه ينحسب هم
+		+ (SELECT COUNT(DISTINCT b.id) FROM "BookingAssignment" a JOIN "Booking" b ON b.id = a."bookingId"
+		WHERE a."employeeId" = $1 AND b.status::text IN ('COMPLETED','PARTIAL') AND b."completedAt" IS NOT NULL
+		  AND to_char(baghdad_date(b."completedAt"), 'YYYY-MM') = $2`+BookingCountableAndSQL("b")+`
+		  AND NOT EXISTS (SELECT 1 FROM "BookingVisitCrew" vc JOIN "BookingVisit" v ON v.id = vc."visitId"
+		                  WHERE v."bookingId" = b.id AND vc."employeeId" = $1))
 	`, employeeID, monthPrefix)
 	return count, err
 }
