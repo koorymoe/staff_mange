@@ -271,6 +271,8 @@ func (s *MatrixScoreService) scoreDays(now time.Time, add func(repository.Matrix
 				Rule: "ATTENDANCE", MaxPoints: 2, At: day.Add(12 * time.Hour).UTC()}
 			if _, ok := present[p.ID]; ok {
 				r.Points, r.Reason = 2, label+": سجّل حضور."
+			} else if p.Flexible {
+				continue // (دازاي 11-19) دوامه مرن: اليوم الي ما داوم بيه مو غياب
 			} else {
 				r.Points, r.Reason = 0, label+": ما سجّل حضور وما عنده إجازة معتمدة."
 			}
@@ -664,8 +666,16 @@ func BuildScores(people []repository.Scorable, pts []repository.MatrixScoreRow, 
 		}
 		return by[id]
 	}
+	flexible := map[string]bool{}
+	for _, p := range people {
+		flexible[p.ID] = p.Flexible
+	}
 	for _, p := range pts {
 		if p.CancelledAt != nil {
+			continue
+		}
+		// (دازاي 11-19) الدوام المرن: «ما سجّل حضور» القديمة ما تنحسب غياب
+		if p.Rule == "ATTENDANCE" && p.Points == 0 && flexible[p.EmployeeID] {
 			continue
 		}
 		if !RuleFitsGroup(p.Rule, groupOf[p.EmployeeID]) {

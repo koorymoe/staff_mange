@@ -273,6 +273,13 @@ func autoMigrations() []Migration {
 			WHERE name = 'مصطفى محمد يونس' AND status = 'ACTIVE';
 		`,
 		},
+		{
+			// (دازاي 11-19) «ما اتحدد بجدول دوام، أداوم براحتي — المفروض ما أتحاسب ع دوام»
+			Version: "0514_data_programmer_flexible",
+			SQL: `
+			UPDATE "Employee" SET "flexibleHours" = true WHERE name = 'مصطفى محمد يونس' AND status = 'ACTIVE' AND NOT "flexibleHours";
+		`,
+		},
 		// ‹makemigration› — التحديثات الجديدة تنضاف فوگ هالسطر
 	}
 }
