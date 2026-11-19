@@ -41,7 +41,7 @@ func TestChainChargesEffectiveConfirmer(t *testing.T) {
 	f.EffConfirmerID, f.EffConfirmerName, f.EffConfirmerVia = str("sched"), str("حاط الموعد"), "SCHEDULE"
 	ch := s.chainOf(&f, now)
 	for _, k := range []string{"CONTACT", "CONFIRM"} {
-		if id, st, v := owner(ch, k); id != "sched" || st != ChainMissed {
+		if id, st, v := owner(ch, k); id != "sched" || (st != ChainMissed && st != ChainIssue) {
 			t.Fatalf("%s: owner=%q status=%q verdict=%q", k, id, st, v)
 		}
 	}

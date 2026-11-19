@@ -93,3 +93,36 @@ func (h *ScoreReviewHandler) Justify(w http.ResponseWriter, r *http.Request) {
 	}
 	WriteJSON(w, http.StatusOK, map[string]bool{"ok": true})
 }
+
+// POST /api/me/station-excuses {bookingId, stationKey, reason} — الموظف يعتذر عن محطة خسر بيها
+func (h *ScoreReviewHandler) SubmitExcuse(w http.ResponseWriter, r *http.Request) {
+	var in struct {
+		BookingID  string `json:"bookingId"`
+		StationKey string `json:"stationKey"`
+		Reason     string `json:"reason"`
+	}
+	if err := DecodeJSON(r, &in); err != nil {
+		WriteError(w, http.StatusBadRequest, "بيانات غير صحيحة")
+		return
+	}
+	if err := h.svc.SubmitExcuse(middleware.EmployeeIDFromContext(r), in.BookingID, in.StationKey, in.Reason); err != nil {
+		WriteError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	WriteJSON(w, http.StatusOK, map[string]bool{"ok": true})
+}
+
+// POST /api/score-reviews/excuses/{id} {approve}
+func (h *ScoreReviewHandler) DecideExcuse(w http.ResponseWriter, r *http.Request) {
+	var in struct {
+		Approve bool `json:"approve"`
+	}
+	if err := DecodeJSON(r, &in); err != nil {
+		WriteError(w, http.StatusBadRequest, "بيانات غير صحيحة")
+		return
+	}
+	if reviewErr(w, h.svc.DecideExcuse(middleware.EmployeeIDFromContext(r), middleware.RoleFromContext(r), r.PathValue("id"), in.Approve)) {
+		return
+	}
+	WriteJSON(w, http.StatusOK, map[string]bool{"ok": true})
+}

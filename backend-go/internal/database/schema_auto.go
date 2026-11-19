@@ -280,6 +280,26 @@ func autoMigrations() []Migration {
 			UPDATE "Employee" SET "flexibleHours" = true WHERE name = 'مصطفى محمد يونس' AND status = 'ACTIVE' AND NOT "flexibleHours";
 		`,
 		},
+		{
+			Version: "0515_station_excuse",
+			SQL: `
+			CREATE TABLE IF NOT EXISTS "StationExcuse" (
+	"id" text NOT NULL,
+	"bookingId" text NOT NULL,
+	"stationKey" text NOT NULL,
+	"employeeId" text NOT NULL,
+	"reason" text NOT NULL,
+	"status" text DEFAULT 'PENDING'::text NOT NULL,
+	"decidedById" text,
+	"decidedAt" timestamp with time zone,
+	"createdAt" timestamp with time zone DEFAULT now() NOT NULL
+);
+			ALTER TABLE "StationExcuse" ADD CONSTRAINT "StationExcuse_pkey" PRIMARY KEY (id);
+			ALTER TABLE "StationExcuse" ADD CONSTRAINT "StationExcuse_bookingId_stationKey_employeeId_key" UNIQUE ("bookingId", "stationKey", "employeeId");
+			ALTER TABLE "StationExcuse" ADD CONSTRAINT "StationExcuse_bookingId_fkey" FOREIGN KEY ("bookingId") REFERENCES "Booking"(id) ON DELETE CASCADE;
+			ALTER TABLE "StationExcuse" ADD CONSTRAINT "StationExcuse_employeeId_fkey" FOREIGN KEY ("employeeId") REFERENCES "Employee"(id) ON DELETE CASCADE;
+		`,
+		},
 		// ‹makemigration› — التحديثات الجديدة تنضاف فوگ هالسطر
 	}
 }

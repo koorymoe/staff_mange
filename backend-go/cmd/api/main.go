@@ -2502,6 +2502,8 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	secs["late_excuses"].Set("GET /api/score-reviews", "late_excuses.get_score_reviews", scoreReview.Queue)
 	secs["late_excuses"].Set("POST /api/score-reviews/ratings/{id}", "late_excuses.post_score_reviews_rating", scoreReview.DecideRating)
 	secs["late_excuses"].Set("POST /api/score-reviews/issues/{id}", "late_excuses.post_score_reviews_issue", scoreReview.DecideIssue)
+	secs["late_excuses"].Set("POST /api/score-reviews/excuses/{id}", "late_excuses.post_score_reviews_excuse", scoreReview.DecideExcuse)
+	secs["me_x"].Set("POST /api/me/station-excuses", "me_x.post_station_excuse", scoreReview.SubmitExcuse)
 	secs["inventory"].Set("GET /api/inventory/after-shortages", "inventory.get_after_shortages", scoreReview.AfterShortages)
 	secs["inventory"].Set("POST /api/inventory/after-shortages/justify", "inventory.post_after_shortages_justify", scoreReview.Justify)
 	// ☀️ (ل) 11-12 دازاي: استفسارات الطاقة الشمسية — الصلاحيات بالخدمة (solar_inquiry / _tech / quality_control)
@@ -3366,8 +3368,11 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 				lines = append(lines, service.EvidenceLine{Label: "ملاحظات ماتركس", Value: "", Note: strings.Join(d.MatrixNotes, " · ")})
 			}
 			if d.RevenueAdj != 0 && d.SalaryCoverage != nil {
-				lines = append(lines, service.EvidenceLine{Label: "الفلوس الي دخّلها مقابل راتبه", Value: strconv.FormatFloat(d.RevenueAdj, 'f', 1, 64),
-					Note: "غطّى " + strconv.FormatFloat(*d.SalaryCoverage, 'f', 0, 64) + "٪ من راتبه"})
+				// (دازاي 11-19) «اريد رقم المبلغ الي دخله»: المبلغ نفسه + الهدف، والرقم = كم نقص/زاد من تقييمه
+				lines = append(lines, service.EvidenceLine{Label: "الفلوس الي دخّلها مقابل راتبه",
+					Value: "دخّل " + service.FmtIQD(d.Revenue) + " د.ع (" + strconv.Itoa(d.RevenueJobs) + " شغلة)",
+					Note: "غطّى " + strconv.FormatFloat(*d.SalaryCoverage, 'f', 0, 64) + "٪ من راتبه والهدف " + strconv.FormatFloat(d.RevenueTarget, 'f', 0, 64) +
+						"٪ — فتغيّر تقييمه " + strconv.FormatFloat(d.RevenueAdj, 'f', 1, 64) + " نقطة"})
 			}
 			if d.ExtraBonus > 0 {
 				lines = append(lines, service.EvidenceLine{Label: "شغل إضافي برّا دوره", Value: "+" + strconv.FormatFloat(d.ExtraBonus, 'f', 0, 64), Note: strings.Join(d.ExtraList, "، ")})

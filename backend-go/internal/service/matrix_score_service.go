@@ -163,6 +163,17 @@ func (s *MatrixScoreService) scoreBookings(now time.Time, add func(repository.Ma
 	// محطة انشالت بالترحيل للتقني، أو رجعت تنتظر).
 	var seen, keep []string
 	defer func() { _ = s.repo.KeepOnlyStations(seen, keep) }()
+	// (دازاي 11-19) «النظام يعذر»: المحطة الي اعتذر عنها وقبل مديره عذره تنحسب كاملة
+	excused := map[string]string{}
+	var exs []struct {
+		K string `db:"k"`
+		R string `db:"reason"`
+	}
+	_ = s.repo.DB().Select(&exs, `SELECT "bookingId" || '|' || "stationKey" || '|' || "employeeId" AS k, reason
+		FROM "StationExcuse" WHERE status = 'APPROVED' AND "createdAt" > now() - make_interval(days => $1)`, scoreLookbackDays+30)
+	for _, e := range exs {
+		excused[e.K] = e.R
+	}
 	for i := range facts {
 		f := &facts[i]
 		seen = append(seen, f.ID)
@@ -189,10 +200,15 @@ func (s *MatrixScoreService) scoreBookings(now time.Time, add func(repository.Ma
 				if !ok || o.ID == "" {
 					continue
 				}
-				keep = append(keep, f.ID+"|"+st.Key+"|"+o.ID)
+				k := f.ID + "|" + st.Key + "|" + o.ID
+				keep = append(keep, k)
+				reason := fmt.Sprintf("%s · %s: %s", label, st.Title, scoreVerdict(status, st.Verdict))
+				if why, ok := excused[k]; ok && pts < 2 {
+					pts = 2
+					reason += " (عذر مقبول: " + why + ")"
+				}
 				add(repository.MatrixScoreRow{EmployeeID: o.ID, Source: "BOOKING", SourceID: f.ID, SourceLabel: &label,
-					Rule: st.Key, Points: pts, MaxPoints: 2, At: at,
-					Reason: fmt.Sprintf("%s · %s: %s", label, st.Title, scoreVerdict(status, st.Verdict))})
+					Rule: st.Key, Points: pts, MaxPoints: 2, At: at, Reason: reason})
 			}
 		}
 	}

@@ -32,7 +32,7 @@ export default function MyScoreCard() {
           source={<>نقاط ماتركس المسجّلة عليك هالشهر من الحجوزات والحضور والمهام، وتقييمات مسؤوليك (من ١ لـ٥)، وسجل حضورك مقابل جدولك. التفصيل الكامل تفتحه بالضغط على البطاقة.</>} />}</b>
       </button>
       {tip?.advice && !open && <p className="mt-1 text-xs text-violet-800">💡 {tip.advice}</p>}
-      {open && <div className="mt-3"><ScoreBreakdown d={d} /></div>}
+      {open && <div className="mt-3"><ScoreBreakdown d={d} mine /></div>}
     </div>
   )
 }

@@ -208,3 +208,51 @@ func (s *ScoreReviewService) NotifyDaily(now time.Time, claim func(key, day stri
 	}
 	return nil
 }
+
+// ═══ عذر المحطة (دازاي 11-19) «اريد النظام يعذر وبنفس الوقت مايعذر» ═══
+// الموظف يعتذر عن محطة خسر بيها نقاط؛ مدير/نائب إدارته يقبل (تنحسب كاملة) أو يرفض.
+
+var ErrExcuseInvalid = errors.New("هالمحطة ما خسرت بيها نقاط، أو اعتذرت عنها قبل")
+
+// SubmitExcuse يسجّل عذر الموظف على محطة إله بيها نقاط ناقصة.
+func (s *ScoreReviewService) SubmitExcuse(me, bookingID, stationKey, reason string) error {
+	reason = strings.TrimSpace(reason)
+	if len([]rune(reason)) < 5 {
+		return errors.New("اكتب سبب واضح")
+	}
+	res, err := s.db.Exec(`INSERT INTO "StationExcuse" (id, "bookingId", "stationKey", "employeeId", reason)
+		SELECT gen_random_uuid()::text, $2, $3, $1, $4
+		WHERE EXISTS (SELECT 1 FROM "MatrixScore" m WHERE m."employeeId" = $1 AND m.source = 'BOOKING'
+			AND m."sourceId" = $2 AND m.rule = $3 AND m.points < m."maxPoints" AND m."cancelledAt" IS NULL)
+		ON CONFLICT DO NOTHING`, me, bookingID, stationKey, reason)
+	if err != nil {
+		return err
+	}
+	if n, _ := res.RowsAffected(); n != 1 {
+		return ErrExcuseInvalid
+	}
+	return nil
+}
+
+// DecideExcuse يقبل العذر (المحطة تنحسب كاملة) أو يرفضه.
+func (s *ScoreReviewService) DecideExcuse(me, role, id string, approve bool) error {
+	st := "REJECTED"
+	if approve {
+		st = "APPROVED"
+	}
+	var emp string
+	err := s.db.Get(&emp, `UPDATE "StationExcuse" x SET status = $3, "decidedById" = $1, "decidedAt" = now()
+		WHERE x.id = $2 AND x.status = 'PENDING' AND `+reviewScope(role, `x."employeeId"`)+` RETURNING x."employeeId"`, me, id, st)
+	if err != nil {
+		return ErrReviewHidden
+	}
+	InvalidateBoard()
+	if s.notif != nil {
+		msg := "❌ مديرك ما قبل عذرك على المحطة."
+		if approve {
+			msg = "✅ مديرك قبل عذرك — المحطة انحسبت كاملة."
+		}
+		_ = s.notif.Create(emp, "SCORE_REVIEW", msg)
+	}
+	return nil
+}

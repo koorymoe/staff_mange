@@ -482,13 +482,20 @@ func (s *MatrixChainService) chainOf(f *repository.ChainFacts, now time.Time) *B
 			st.Verdict = "الحجز بعده ما وصل لهالمحطة."
 			return
 		}
-		// محطة قبل الإنجاز والحجز خلص بدونها — انتخطّت، مو «بعدها تنتظر».
-		if done && (st.Key == "TECH_DECIDE" || st.Key == "TECH_VISIT" || st.Key == "TECH_CONTACT" || st.Key == "TECH_DIAG" || st.Key == "CONTACT" || st.Key == "CONFIRM" || st.Key == "CREW" || st.Key == "RECEIVE" || st.Key == "WORK") {
-			st.Status = ChainMissed
-			st.Verdict = "الحجز خلص، بس هالخطوة ما انسجّلت بالنظام."
+		// (دازاي 11-19 «النظام يعذر وما يعذر») الحجز خلص والخطوة ما انسجّلت: الشغل انسوى بس التسجيل
+		// ناقص — نص النقاط (مو صفر). «فاتت» بس للي فعلاً ما انسوت.
+		if done && st.Key != "PAPER" && st.Key != "RATING" && st.Key != "ACCOUNT" && st.Key != "QUALITY" && st.Key != "MONITOR" && st.Key != "INVENTORY" {
+			st.Status = ChainIssue
+			st.Verdict = "الحجز خلص، بس هالخطوة ما انسجّلت بالنظام (تسجيل ناقص — نص النقاط)."
 			return
 		}
 		el := int(now.Sub(*from).Minutes())
+		// (11-19) مهلة: ما تنحسب «فاتت» إلا بعد المعتاد + يوم كامل — قبلها «متأخرة وتنتظر» بلا نقاط
+		if el > th && el <= th+24*60 {
+			st.Status = ChainWaiting
+			st.Verdict = fmt.Sprintf("متأخرة: صارلها %s والمعتاد %s — عنده لحد يوم فوگ المعتاد قبل ما تنحسب فايتة.", FmtMinutes(el), FmtMinutes(th))
+			return
+		}
 		if el > th {
 			st.Status = ChainMissed
 			st.Verdict = fmt.Sprintf("ما صارت لحد هسه. صارلها %s تنتظر، والمعتاد ما يتجاوز %s.", FmtMinutes(el), FmtMinutes(th))

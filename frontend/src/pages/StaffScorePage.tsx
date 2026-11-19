@@ -16,6 +16,8 @@ import ScoreReviewPanel from '../components/ScoreReviewPanel'
 import { roleLabel } from '../roleLabels'
 import { fmtDate } from '../utils/date'
 import { askInput } from '../ui/dialogs'
+import { notify } from '../ui/notify'
+import { apiRequest } from '../api'
 import { swallow } from '../utils/swallow'
 import PctWhy from '../ui/PctWhy'
 import { roleLabelShort } from '../roleLabels'
@@ -79,8 +81,19 @@ function WhyBadge({ d, kind, big }: { d: StaffScoreDetail; kind: 'final' | 'matr
     source={kind === 'reliability' ? <>نقاط ماتركس للحضور والجرد والورق والمهام، وشكاوى الزبائن، والإجازات، والمشاكل الوظيفية، وضياع العدّة، ونقاط الـKPI لهذا الشهر.</> : SCORE_SRC} /></b>
 }
 
-export function ScoreBreakdown({ d, admin, onChange }: { d: StaffScoreDetail; admin?: boolean; onChange?: () => void }) {
+export function ScoreBreakdown({ d, admin, mine, onChange }: { d: StaffScoreDetail; admin?: boolean; mine?: boolean; onChange?: () => void }) {
   const [all, setAll] = useState(false)
+  const [asked, setAsked] = useState<Record<string, boolean>>({})
+  // (دازاي 11-19) «النظام يعذر»: الموظف يعتذر عن محطة حجز خسر بيها، ومدير إدارته يقرر
+  const excuse = async (p: StaffScoreDetail['points'][number]) => {
+    const reason = await askInput('شنو عذرك؟ (مدير إدارتك يشوفه ويقرر)')
+    if (!reason) return
+    try {
+      await apiRequest('/me/station-excuses', { method: 'POST', body: JSON.stringify({ bookingId: p.sourceId, stationKey: p.rule, reason }) })
+      setAsked((a) => ({ ...a, [p.id]: true }))
+      notify('انرسل عذرك لمدير إدارتك', 'success')
+    } catch (e) { notify(e instanceof Error ? e.message : 'تعذر الإرسال') }
+  }
   const cancel = async (id: string) => {
     const note = (await askInput('ليش تلغي هالنقطة؟'))
     if (!note) return
@@ -158,6 +171,9 @@ export function ScoreBreakdown({ d, admin, onChange }: { d: StaffScoreDetail; ad
             <div key={p.id} className={`flex items-start justify-between gap-2 rounded-lg px-2 py-1.5 text-xs ${p.cancelledAt ? 'bg-slate-50 text-slate-400 line-through' : p.points === p.maxPoints ? 'bg-emerald-50' : p.points === 0 ? 'bg-red-50' : 'bg-amber-50'}`}>
               <span>{p.reason}{p.cancelNote && <span className="no-underline"> (انلغت: {p.cancelNote})</span>}</span>
               <span className="flex shrink-0 items-center gap-1"><b>{p.points}/{p.maxPoints}</b>
+                {mine && p.source === 'BOOKING' && !p.cancelledAt && p.points < p.maxPoints && (asked[p.id]
+                  ? <span className="text-[10px] text-slate-500">⏳ عذرك ينتظر</span>
+                  : <button type="button" onClick={() => void excuse(p)} className="rounded border border-slate-300 bg-white px-1 text-[10px]">اعتذر</button>)}
                 {admin && !p.cancelledAt && p.points < p.maxPoints && <button type="button" onClick={() => void cancel(p.id)} className="rounded border border-slate-300 bg-white px-1 text-[10px]">غلط؟</button>}
               </span>
             </div>

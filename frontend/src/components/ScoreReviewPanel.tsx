@@ -6,7 +6,7 @@ import { fmtDateTime } from '../utils/date'
 // مدير الإدارة أو نائبه يأكد تقييم الليدر السيء، ويحدد منو الغلطان بالمشكلة الوظيفية.
 // الي ما يتأكد ما ينحسب على الموظف. الخادم يرجّع بس منتسبي إدارته — وإذا ماكو شي ما يبين.
 interface Item {
-  kind: 'LEADER_RATING' | 'ISSUE'; id: string; employee: string; empId: string
+  kind: 'LEADER_RATING' | 'ISSUE' | 'STATION_EXCUSE'; id: string; employee: string; empId: string
   other: string | null; otherId: string | null; score: number | null; title: string; note: string | null; createdAt: string
 }
 
@@ -34,7 +34,19 @@ export default function ScoreReviewPanel() {
       <ul className="space-y-2">
         {items.map((x) => (
           <li key={x.kind + x.id} className="rounded-xl bg-white p-3 ring-1 ring-amber-100">
-            {x.kind === 'LEADER_RATING' ? (
+            {x.kind === 'STATION_EXCUSE' ? (
+              <>
+                <p className="text-sm">🙏 <b>{x.employee}</b> يعتذر عن محطة فاتته · {x.title}</p>
+                {x.note && <p className="mt-1 text-xs text-slate-600">«{x.note}»</p>}
+                <p className="text-[11px] text-slate-400">{fmtDateTime(x.createdAt)}</p>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  <button type="button" disabled={busy === x.id} onClick={() => void act(x.id, `/score-reviews/excuses/${x.id}`, { approve: true })}
+                    className={`${btn} bg-emerald-600 text-white hover:bg-emerald-700`}>عذره مقبول — تنحسب كاملة</button>
+                  <button type="button" disabled={busy === x.id} onClick={() => void act(x.id, `/score-reviews/excuses/${x.id}`, { approve: false })}
+                    className={`${btn} bg-slate-100 text-slate-700 hover:bg-slate-200`}>مو مقبول</button>
+                </div>
+              </>
+            ) : x.kind === 'LEADER_RATING' ? (
               <>
                 <p className="text-sm"><b>{x.employee}</b> — قيّمه الليدر <b>{x.other}</b> بـ<b className="text-red-600">{x.score} من ٥</b> · {x.title}</p>
                 {x.note && <p className="mt-1 text-xs text-slate-600">«{x.note}»</p>}

@@ -199,8 +199,9 @@ func staffRow(db *sqlx.DB, period string, from, to time.Time, id, name, div, mgr
 		speed = rankPtr(float64(st.OnTime) * 100 / float64(d))
 		speedD = strconv.Itoa(st.OnTime) + " من " + strconv.Itoa(d) + " محطة خلصت بوقتها"
 	}
-	if st.OnTime+st.Late+st.Missed > 0 {
-		few = rankPtr(100 - float64(st.Missed)*25)
+	// (دازاي 11-19) بالنسبة مو −٢٥ ثابتة: ٥ فايتة من ١٨٣ = ٩٧، مو صفر
+	if all := st.OnTime + st.Late + st.Missed; all > 0 {
+		few = rankPtr(100 * (1 - float64(st.Missed)/float64(all)))
 	}
 	fewD := strconv.Itoa(st.Missed) + " محطة فاتت وما صارت"
 	if t := st.Missed + st.Late; t > 0 {
@@ -300,7 +301,7 @@ func staffRow(db *sqlx.DB, period string, from, to time.Time, id, name, div, mgr
 		{"outputs", "المخرجات", 30, outputs, outD, "تقييمه الشهري النهائي من ماتركس (شغل دوره)", outEv},
 		{"follow", "اتباع الخطة والتعليمات", 20, follow, followD, "معدل درجات بنود الخطة الي برقبته والمهام الي انطاها إياه مديره: بموعدها = ١٠٠، متأخرة = −١٠ لكل يوم، فات موعدها وما خلصت = ٦٠ − ١٠ لكل يوم", followEv},
 		{"speed", "السرعة", 15, speed, speedD, "محطات شغله الي خلصت بوقتها ÷ كل الي خلصت × ١٠٠", stEv},
-		{"few", "المشاكل والشغل الفايت", 10, few, fewD, "١٠٠ − ٢٥ لكل محطة فاتت وما صارت", stEv},
+		{"few", "المشاكل والشغل الفايت", 10, few, fewD, "١٠٠ × (١ − المحطات الي فاتت ÷ كل محطاته) — المحطة تنحسب فايتة بس بعد المعتاد + يوم، والحجز الي خلص بخطوة ما انسجّلت نص نقاط مو فايتة، والي إلها عذر مقبول ما تنحسب", stEv},
 		{"solve", "شكد انحل منها", 15, solve, solveD, "المحطات المتأخرة الي رجع سوّاها ÷ (المتأخرة + الي فاتت) × ١٠٠", stEv},
 		{"complaints", "الشكاوي والتأخير", 10, complaints, compD, "١٠٠ − (الشكاوي عليه + مهامه المتأخرة) × ٢٠", compEv},
 		{"discipline", "الانضباط بالدوام", 10, disc, discD, "١٠٠ − ٢ لكل يوم تأخير بلا عذر − ٥ لكل غياب بلا إجازة", discEv},

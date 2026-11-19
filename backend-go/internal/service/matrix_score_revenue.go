@@ -2,6 +2,8 @@ package service
 
 import (
 	"math"
+	"strconv"
+	"strings"
 	"time"
 
 	"staffmange-api/internal/repository"
@@ -115,4 +117,18 @@ func ApplyRevenue(rows []StaffScore, rev []repository.RevenueRow, salaries map[s
 		}
 		s.Final = &f
 	}
+}
+
+// FmtIQD مبلغ بفواصل الآلاف: 1250000 → 1,250,000
+func FmtIQD(v float64) string {
+	s := strconv.FormatInt(int64(math.Round(v)), 10)
+	neg := strings.HasPrefix(s, "-")
+	s = strings.TrimPrefix(s, "-")
+	for i := len(s) - 3; i > 0; i -= 3 {
+		s = s[:i] + "," + s[i:]
+	}
+	if neg {
+		return "-" + s
+	}
+	return s
 }
