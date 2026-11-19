@@ -175,10 +175,38 @@ func staffRow(db *sqlx.DB, period string, from, to time.Time, id, name, div, mgr
 		solve = rankPtr(float64(st.Late) * 100 / float64(t))
 		solveD = strconv.Itoa(st.Late) + " من " + strconv.Itoa(t) + " تأخرت ورجع سوّاها (" + strconv.Itoa(st.Missed) + " بعدها ما انسوّت)"
 	}
+	// (دازاي 11-19 «اريد تفاصيل لكل شريط») المحطات المتأخرة والفايتة نفسها — تنفتح بالضغط
+	bad := []struct {
+		Rule   string  `db:"rule"`
+		Label  *string `db:"label"`
+		Reason string  `db:"reason"`
+		Points int     `db:"points"`
+		Day    string  `db:"day"`
+	}{}
+	errlog.Err(db.Select(&bad, `SELECT s.rule, s."sourceLabel" AS label, s.reason, s.points,
+			to_char(baghdad_date(s."at"), 'MM-DD') AS day
+		FROM "MatrixScore" s WHERE s."employeeId" = $1 AND s.source IN ('BOOKING','PROJECT','REPORT')
+		  AND s."cancelledAt" IS NULL AND s."at" >= $2 AND s."at" < $3 AND s.points < s."maxPoints"
+		ORDER BY s."at" DESC LIMIT 40`, id, from, to))
+	lateMore, missedMore := []string{}, []string{}
+	for _, b := range bad {
+		l := b.Day + " · " + ruleTitle(b.Rule)
+		if b.Label != nil && *b.Label != "" {
+			l += " · " + *b.Label
+		}
+		if b.Reason != "" {
+			l += " — " + b.Reason
+		}
+		if b.Points == 0 {
+			missedMore = append(missedMore, l)
+		} else {
+			lateMore = append(lateMore, l)
+		}
+	}
 	stEv := []EvidenceLine{
 		{Label: "بوقتها", Value: strconv.Itoa(st.OnTime)},
-		{Label: "متأخرة بس انسوّت", Value: strconv.Itoa(st.Late)},
-		{Label: "فاتت وما انسوّت", Value: strconv.Itoa(st.Missed)},
+		{Label: "متأخرة بس انسوّت", Value: strconv.Itoa(st.Late), More: lateMore},
+		{Label: "فاتت وما انسوّت", Value: strconv.Itoa(st.Missed), More: missedMore},
 	}
 
 	// ٦. الشكاوي والتأخير
@@ -193,6 +221,36 @@ func staffRow(db *sqlx.DB, period string, from, to time.Time, id, name, div, mgr
 			AND ((t."doneAt" IS NOT NULL AND t."doneAt" > t."dueAt") OR (t."doneAt" IS NULL AND t."dueAt" < now()))) AS t`, id, from, to))
 	complaints := rankPtr(100 - float64(cp.Complaints+cp.LateTasks)*20)
 	compD := strconv.Itoa(cp.Complaints) + " شكوى · " + strconv.Itoa(cp.LateTasks) + " مهمة متأخرة"
+	// (11-19) الشكاوي والمهام المتأخرة نفسها
+	compEv := []EvidenceLine{}
+	cl := []struct {
+		Day  string `db:"day"`
+		Text string `db:"text"`
+	}{}
+	errlog.Err(db.Select(&cl, `SELECT to_char(baghdad_date(c."createdAt"), 'MM-DD') AS day, left(c.description, 120) AS text
+		FROM "Complaint" c WHERE c."relatedEmployeeId" = $1 AND c."createdAt" >= $2 AND c."createdAt" < $3
+		  AND COALESCE(c."auditVerdict", '') <> 'EMPLOYEE_RIGHT' ORDER BY c."createdAt" DESC LIMIT 20`, id, from, to))
+	for _, c := range cl {
+		compEv = append(compEv, EvidenceLine{Label: "شكوى " + c.Day, Value: "−20", Note: c.Text})
+	}
+	lt := []struct {
+		Title string  `db:"title"`
+		Due   string  `db:"due"`
+		Done  *string `db:"done"`
+	}{}
+	errlog.Err(db.Select(&lt, `SELECT t.title, to_char(baghdad_date(t."dueAt"), 'MM-DD') AS due, to_char(baghdad_date(t."doneAt"), 'MM-DD') AS done
+		FROM "ExtraTask" t WHERE t."assignedToId" = $1 AND t."cancelledAt" IS NULL AND t."dueAt" >= $2 AND t."dueAt" < $3
+		  AND ((t."doneAt" IS NOT NULL AND t."doneAt" > t."dueAt") OR (t."doneAt" IS NULL AND t."dueAt" < now()))
+		ORDER BY t."dueAt" DESC LIMIT 20`, id, from, to))
+	for _, t := range lt {
+		n := "موعدها " + t.Due
+		if t.Done != nil {
+			n += " · خلصت " + *t.Done
+		} else {
+			n += " · بعدها ما خلصت"
+		}
+		compEv = append(compEv, EvidenceLine{Label: "📋 " + t.Title, Value: "−20", Note: n})
+	}
 
 	// ٧. الانضباط
 	var disc *float64
@@ -212,7 +270,7 @@ func staffRow(db *sqlx.DB, period string, from, to time.Time, id, name, div, mgr
 		{"speed", "السرعة", 15, speed, speedD, "محطات شغله الي خلصت بوقتها ÷ كل الي خلصت × ١٠٠", stEv},
 		{"few", "المشاكل والشغل الفايت", 10, few, fewD, "١٠٠ − ٢٥ لكل محطة فاتت وما صارت", stEv},
 		{"solve", "شكد انحل منها", 15, solve, solveD, "المحطات المتأخرة الي رجع سوّاها ÷ (المتأخرة + الي فاتت) × ١٠٠", stEv},
-		{"complaints", "الشكاوي والتأخير", 10, complaints, compD, "١٠٠ − (الشكاوي عليه + مهامه المتأخرة) × ٢٠", nil},
+		{"complaints", "الشكاوي والتأخير", 10, complaints, compD, "١٠٠ − (الشكاوي عليه + مهامه المتأخرة) × ٢٠", compEv},
 		{"discipline", "الانضباط بالدوام", 10, disc, discD, "١٠٠ − ٢ لكل يوم تأخير بلا عذر − ٥ لكل غياب بلا إجازة", discEv},
 	}
 	sum, w, withData := 0.0, 0.0, 0

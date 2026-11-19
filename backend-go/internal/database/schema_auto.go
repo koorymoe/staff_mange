@@ -264,6 +264,15 @@ func autoMigrations() []Migration {
 			      AND "planId" IN (SELECT id FROM "OrgPlan" WHERE period = '2026-11'));
 		`,
 		},
+		{
+			// (دازاي 11-19) «البشر ميكدرون يقيموني لان شغلي برمجة… تأكد انت وأشّرهن»:
+			// 💻 شغله برّا النظام + 🤖 تقييم ماتركس بس.
+			Version: "0513_data_programmer_flags",
+			SQL: `
+			UPDATE "Employee" SET "offSystemWork" = true, "aiOnlyRating" = true
+			WHERE name = 'مصطفى محمد يونس' AND status = 'ACTIVE';
+		`,
+		},
 		// ‹makemigration› — التحديثات الجديدة تنضاف فوگ هالسطر
 	}
 }

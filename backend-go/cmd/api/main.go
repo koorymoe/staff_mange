@@ -3352,6 +3352,25 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 				return nil, nil
 			}
 			lines := []service.EvidenceLine{}
+			// (دازاي 11-19 «اريد تفاصيل لكل شريط») التقييم الجديد: كل بند بنسبته ووزنه ومنين جا
+			for _, p := range d.TechParts {
+				lines = append(lines, service.EvidenceLine{Label: p.Label,
+					Value: strconv.FormatFloat(p.Pct, 'f', 0, 64) + "٪ × " + strconv.FormatFloat(p.Weight, 'f', 0, 64) + " = " + strconv.FormatFloat(p.Pct*p.Weight/100, 'f', 1, 64),
+					Note:  p.Detail})
+			}
+			if len(d.MatrixNotes) > 0 {
+				lines = append(lines, service.EvidenceLine{Label: "ملاحظات ماتركس", Value: "", Note: strings.Join(d.MatrixNotes, " · ")})
+			}
+			if d.RevenueAdj != 0 && d.SalaryCoverage != nil {
+				lines = append(lines, service.EvidenceLine{Label: "الفلوس الي دخّلها مقابل راتبه", Value: strconv.FormatFloat(d.RevenueAdj, 'f', 1, 64),
+					Note: "غطّى " + strconv.FormatFloat(*d.SalaryCoverage, 'f', 0, 64) + "٪ من راتبه"})
+			}
+			if d.ExtraBonus > 0 {
+				lines = append(lines, service.EvidenceLine{Label: "شغل إضافي برّا دوره", Value: "+" + strconv.FormatFloat(d.ExtraBonus, 'f', 0, 64), Note: strings.Join(d.ExtraList, "، ")})
+			}
+			if len(d.TechParts) > 0 {
+				return d.Final, lines
+			}
 			if d.MatrixPct != nil {
 				lines = append(lines, service.EvidenceLine{Label: "نقاط ماتركس", Value: strconv.Itoa(d.Earned) + "/" + strconv.Itoa(d.Max)})
 			}
