@@ -595,3 +595,39 @@ func (r *MatrixScoreRepository) SetServiceStandard(serviceID string, minutes *in
 		ON CONFLICT ("serviceId") DO UPDATE SET minutes = EXCLUDED.minutes, "setById" = EXCLUDED."setById", "setAt" = now()`, serviceID, *minutes, by)
 	return err
 }
+
+// ═══ المنسّق بالنظامين (دازاي 11-19) ═══
+// CoordFact: موقعه بالهيكل (مدير/نائب إدارة)، درجة خطته للشهر، والتأجيلات بالحجوزات الي ثبّتها.
+type CoordFact struct {
+	EmployeeID string   `db:"employeeId"`
+	Position   *string  `db:"position"` // DIRECTOR | DEPUTY | nil
+	Plan       *float64 `db:"plan"`     // المدير: خطة إدارته كلها؛ النائب: بنوده هو
+	PlanItems  int      `db:"planItems"`
+	Confirmed  int      `db:"confirmed"`
+	Postpones  int      `db:"postpones"`
+}
+
+// CoordFacts لكل موظف (أو واحد): planItemScore نفس معادلة تصنيف المدراء (org_director_ranking).
+func (r *MatrixScoreRepository) CoordFacts(from, to time.Time, period, planItemScore, employeeID string) (map[string]CoordFact, error) {
+	rows := []CoordFact{}
+	err := r.db.Select(&rows, `
+		WITH pos AS (
+			SELECT DISTINCT ON (a."employeeId") a."employeeId", a.position, a."divisionId"
+			FROM "OrgAssignment" a WHERE a."endedAt" IS NULL AND a."unitId" IS NULL AND a.position IN ('DIRECTOR','DEPUTY')
+			ORDER BY a."employeeId", (a.position = 'DIRECTOR') DESC
+		)
+		SELECT e.id AS "employeeId", pos.position,
+		  (SELECT avg(`+planItemScore+`)::float8 FROM "OrgPlanItem" i JOIN "OrgPlan" p ON p.id = i."planId"
+		    WHERE p.period = $3 AND ((pos.position = 'DIRECTOR' AND p."divisionId" = pos."divisionId") OR (pos.position = 'DEPUTY' AND i."ownerId" = e.id))) AS plan,
+		  (SELECT count(*) FROM "OrgPlanItem" i JOIN "OrgPlan" p ON p.id = i."planId"
+		    WHERE p.period = $3 AND ((pos.position = 'DIRECTOR' AND p."divisionId" = pos."divisionId") OR (pos.position = 'DEPUTY' AND i."ownerId" = e.id)))::int AS "planItems",
+		  (SELECT count(*) FROM "Booking" b WHERE b."confirmedByEmployeeId" = e.id AND b."scheduledAt" >= $1 AND b."scheduledAt" < $2)::int AS confirmed,
+		  (SELECT COALESCE(sum(b."postponeCount"), 0) FROM "Booking" b WHERE b."confirmedByEmployeeId" = e.id AND b."scheduledAt" >= $1 AND b."scheduledAt" < $2)::int AS postpones
+		FROM "Employee" e LEFT JOIN pos ON pos."employeeId" = e.id
+		WHERE e.status = 'ACTIVE' AND ($4 = '' OR e.id = $4)`, from, to, period, employeeID)
+	out := map[string]CoordFact{}
+	for _, x := range rows {
+		out[x.EmployeeID] = x
+	}
+	return out, err
+}

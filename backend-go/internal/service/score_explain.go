@@ -126,6 +126,10 @@ func ExplainOne(p repository.Scorable) ScoreExplainRow {
 		if g == GroupLeaders {
 			r.Raters = []string{"المنسّق بعد الحجز", "إدارة العمليات (يومي)"}
 		}
+		if g == GroupCoordinator {
+			r.Raters = []string{"المراقب (تدقيق + يومي)", "الجودة (رأي الزبون)", "المدير/المالك (دوري)"}
+			r.Rules = append(r.Rules, "مدير الإدارة: شغل الحجز ٤٠ + خطة إدارته ٤٠ · النائب: ٥٠ + بنوده بالخطة ٣٠ (الهيكل الجديد)")
+		}
 		if k, ok := revenueKindOf[g]; ok {
 			r.Revenue = revenueKindLabels[k] + " — الهدف ١٣٠٪ من راتبه"
 		}

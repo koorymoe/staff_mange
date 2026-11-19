@@ -42,3 +42,16 @@ func TestServiceStandardsLive(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+func TestCoordFactsLive(t *testing.T) {
+	dsn := os.Getenv("DATABASE_URL")
+	if dsn == "" {
+		t.Skip("DATABASE_URL غير موجود")
+	}
+	db := sqlx.MustConnect("postgres", dsn)
+	defer db.Close()
+	from := time.Date(2026, 11, 1, 0, 0, 0, 0, time.UTC)
+	if _, err := NewMatrixScoreRepository(db).CoordFacts(from, from.AddDate(0, 1, 0), "2026-11", `i."manualProgress"`, ""); err != nil {
+		t.Fatal(err)
+	}
+}

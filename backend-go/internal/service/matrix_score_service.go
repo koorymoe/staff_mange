@@ -598,7 +598,9 @@ func (s *MatrixScoreService) compute(people []repository.Scorable, from, to time
 	rows := BuildScores(people, pts, hum, rel)
 	jobs, _ := s.repo.LeaderJobs(from, to, emp)
 	expected, _ := s.repo.ExpectedMinutes()
-	applyRoleScores(rows, hum, LeaderTimes(jobs, expected))
+	coord, err := s.repo.CoordFacts(from, to, from.In(baghdad).Format("2006-01"), planItemScoreSQL, emp)
+	errlog.Err(err)
+	applyRoleScores(rows, hum, LeaderTimes(jobs, expected), coord)
 	if rev, err := s.repo.Revenue(from, to, emp); err == nil {
 		sal, _ := s.repo.Salaries(emp)
 		ApplyRevenue(rows, rev, sal, from, to, time.Now())

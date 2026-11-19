@@ -46,7 +46,31 @@ var leaderWeights = []roleWeight{
 	{"PEERS", "الزملاء (المشاكل الوظيفية)", 2},
 }
 
-var roleWeightsOf = map[string][]roleWeight{GroupTechs: techWeights, GroupLeaders: leaderWeights}
+// (دازاي 11-19) المنسّق — شغل الحجز: التواصل والتثبيت 25 · الكادر قبل الموعد 20 · التأجيلات 10 ·
+// تقييم مسؤوله 15 · حضور 5 · مهام 3 · زملاء 2. ومدير/نائب الإدارة ياخذون ويا هذا خطتهم (coordShares).
+var coordWeights = []roleWeight{
+	{"CONFIRM", "التواصل ويا الزبون والتثبيت بوقته", 25},
+	{"CREW", "الكادر يتحدد قبل الموعد", 20},
+	{"POSTPONE", "التأجيلات (كل تأجيل ينحسب)", 10},
+	{"SUPERVISOR", "تقييم مسؤوله", 15},
+	{"ATTENDANCE", "الحضور", 5},
+	{"TASK_DUE", "المهام الإضافية", 3},
+	{"PEERS", "الزملاء (المشاكل الوظيفية)", 2},
+}
+
+var roleWeightsOf = map[string][]roleWeight{GroupTechs: techWeights, GroupLeaders: leaderWeights, GroupCoordinator: coordWeights}
+
+// coordShares (دازاي 11-19) نسب المنسّق حسب موقعه بالهيكل الجديد: [شغل الحجز، خطته]، وماتركس ٢٠ دائماً.
+//   مدير الإدارة: ٤٠ + ٤٠ · النائب: ٥٠ + ٣٠ · الإداري: ٨٠ + ٠
+var coordShares = map[string][2]float64{"DIRECTOR": {40, 40}, "DEPUTY": {50, 30}}
+
+// PostponePct كل تأجيل ينحسب: ١٠٠ − (التأجيلات ÷ الحجوزات الي ثبّتها) × ١٠٠.
+func PostponePct(postpones, confirmed int) (float64, bool) {
+	if confirmed == 0 {
+		return 0, false
+	}
+	return math.Max(0, 100-float64(postpones)*100/float64(confirmed)), true
+}
 
 const (
 	techRulesShare  = 80.0
@@ -78,7 +102,15 @@ var leaderOpinion = []opinionRule{
 	{"ATTENDANCE", 90, 10, "يحتاج يجي بوقته"},
 }
 
-var opinionOf = map[string][]opinionRule{GroupTechs: techOpinion, GroupLeaders: leaderOpinion}
+var coordOpinion = []opinionRule{
+	{"CONFIRM", 70, 30, "يحتاج يتواصل ويثبّت أسرع"},
+	{"CREW", 80, 25, "الكادر يتحدد متأخر — لازم قبل الموعد"},
+	{"POSTPONE", 80, 20, "تأجيلات هواية — يحتاج يضبط المواعيد"},
+	{"PLAN", 70, 25, "خطة الإدارة متأخرة"},
+	{"ATTENDANCE", 90, 10, "يحتاج يجي بوقته"},
+}
+
+var opinionOf = map[string][]opinionRule{GroupTechs: techOpinion, GroupLeaders: leaderOpinion, GroupCoordinator: coordOpinion}
 
 // RoleMatrixOpinion رأي ماتركس (٢٠٪): يبدي ١٠٠ وينقص على الي يحتاجه، ويا ملاحظة لكل وحدة.
 func RoleMatrixOpinion(group string, pct map[string]float64) (float64, []string) {
@@ -140,7 +172,11 @@ func ratio(v [2]int) (float64, bool) {
 }
 
 // applyRoleScores يبدّل رقم الأدوار الي إلها حسبة جديدة (قبل الفلوس والانضباط).
-func applyRoleScores(rows []StaffScore, hum []repository.HumanRow, times map[string][3]int) {
+func applyRoleScores(rows []StaffScore, hum []repository.HumanRow, times map[string][3]int, coord ...map[string]repository.CoordFact) {
+	var cf map[string]repository.CoordFact
+	if len(coord) > 0 {
+		cf = coord[0]
+	}
 	type agg [2]int
 	byStage := map[string]map[string]agg{}
 	for _, h := range hum {
@@ -204,6 +240,34 @@ func applyRoleScores(rows []StaffScore, hum []repository.HumanRow, times map[str
 			if v, ok := ratio([2]int{r["RATING"][0] + r["RATING_DUTY"][0], r["RATING"][1] + r["RATING_DUTY"][1]}); ok {
 				set("CREW", v, "قيّم كادره بعد الحجز")
 			}
+		case GroupCoordinator:
+			r := s.ruleTotals
+			if v, ok := ratio([2]int{r["CONTACT"][0] + r["CONFIRM"][0], r["CONTACT"][1] + r["CONFIRM"][1]}); ok {
+				set("CONFIRM", v, "التواصل والتثبيت بالوقت المعتاد")
+			}
+			if v, ok := ratio(r["CREW"]); ok {
+				set("CREW", v, "الكادر انحدد بوقته")
+			}
+			if f, ok := cf[s.ID]; ok {
+				if v, ok := PostponePct(f.Postpones, f.Confirmed); ok {
+					set("POSTPONE", v, fmt.Sprintf("%d تأجيل على %d حجز ثبّته", f.Postpones, f.Confirmed))
+				}
+			}
+			if v, d, ok := stars(s.ID, "AUDIT", "QUALITY_CALL", "MONITOR_DAILY", "MONITOR_PERIODIC", "ADMIN_PERIODIC"); ok {
+				set("SUPERVISOR", v, d)
+			}
+		}
+		rulesShare, planShare := techRulesShare, 0.0
+		if f, ok := cf[s.ID]; ok && s.Group == GroupCoordinator && f.Position != nil {
+			if sh, ok := coordShares[*f.Position]; ok && f.PlanItems > 0 && f.Plan != nil {
+				rulesShare, planShare = sh[0], sh[1]
+				pct["PLAN"] = *f.Plan
+				who := "خطة إدارته"
+				if *f.Position == "DEPUTY" {
+					who = "بنوده بالخطة"
+				}
+				detail["PLAN"] = fmt.Sprintf("%s: %d بند", who, f.PlanItems)
+			}
 		}
 		total := 0.0
 		for _, w := range weights {
@@ -223,9 +287,13 @@ func applyRoleScores(rows []StaffScore, hum []repository.HumanRow, times map[str
 			if !ok {
 				continue
 			}
-			weight := w.Weight / total * techRulesShare
+			weight := w.Weight / total * rulesShare
 			sum += v * weight / 100
 			s.TechParts = append(s.TechParts, TechPart{Key: w.Key, Label: w.Label, Weight: weight, Pct: v, Detail: detail[w.Key]})
+		}
+		if planShare > 0 {
+			sum += pct["PLAN"] * planShare / 100
+			s.TechParts = append(s.TechParts, TechPart{Key: "PLAN", Label: "الخطة وتنفيذها (الهيكل الجديد)", Weight: planShare, Pct: pct["PLAN"], Detail: detail["PLAN"]})
 		}
 		op, notes := RoleMatrixOpinion(s.Group, pct)
 		s.TechParts = append(s.TechParts, TechPart{Key: "MATRIX", Label: "رأي ماتركس", Weight: techMatrixShare, Pct: op})

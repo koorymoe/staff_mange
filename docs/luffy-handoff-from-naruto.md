@@ -497,3 +497,4 @@ git push origin origin/avg:refs/heads/prod     # بعد التأكد إنه fast
 - 11-18: التدريب: انشال حبس Layout للمتدرب؛ TrainingBanner + Employee.trainingFrom/To (0508، normTrainingWindow)؛ X-Frame-Options SAMEORIGIN وframe-ancestors 'self' وframe-src يوتيوب (nginx + SecurityHeaders).
 - 11-18: التقييم الجديد للفني — tech_score.go (applyTechScores بعد BuildScores)، score_review.go (+handler، 0509)، revenueTarget للفني ١٣٠، humanSQL يشيل CrewRating السيء غير المؤكد، issues بس faultDecided. الوثيقة docs/التقييم-الجديد.md.
 - 11-18: تقييم الليدر — tech_score.go صار applyRoleScores (roleWeightsOf/opinionOf لكل مجموعة)، LeaderJobs/ServiceStandards/ExpectedMinutes (0510 ServiceStandardTime)، /api/staff-score/service-times، revenueTarget لليدر ١٣٠.
+- 11-19: تقييم المنسّق — coordWeights/coordShares بـtech_score.go، CoordFacts (موقعه بالهيكل + درجة الخطة بنفس planItemScoreSQL + التأجيلات بالحجوزات الي ثبّتها).

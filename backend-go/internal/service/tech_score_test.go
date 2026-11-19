@@ -100,3 +100,31 @@ func TestLeaderScore(t *testing.T) {
 		t.Fatalf("final=%v notes=%v", s.Final, s.MatrixNotes)
 	}
 }
+
+// (دازاي 11-19) المنسّق: الإداري ٨٠ شغل حجز، المدير ٤٠ + ٤٠ خطة، النائب ٥٠ + ٣٠، وماتركس ٢٠.
+func TestCoordinatorShares(t *testing.T) {
+	mk := func(id string) StaffScore {
+		return StaffScore{ID: id, Group: GroupCoordinator, RelParts: []ReliabilityPart{{Key: "ATTENDANCE", Pct: 100}},
+			ruleTotals: map[string][2]int{"CONTACT": {2, 2}, "CONFIRM": {2, 2}, "CREW": {2, 2}}}
+	}
+	rows := []StaffScore{mk("adm"), mk("dir"), mk("dep")}
+	dir, dep, plan := "DIRECTOR", "DEPUTY", 50.0
+	coord := map[string]repository.CoordFact{
+		"adm": {Confirmed: 10, Postpones: 5},
+		"dir": {Position: &dir, Plan: &plan, PlanItems: 4, Confirmed: 10},
+		"dep": {Position: &dep, Plan: &plan, PlanItems: 2, Confirmed: 10},
+	}
+	applyRoleScores(rows, nil, nil, coord)
+	// الإداري: تثبيت 25 + كادر 20 + تأجيل 50%×10 + حضور 5 = 55 من 60 ⇒ ×80/60 = 73.33 · ماتركس 100−20 (تأجيل) = 16 ⇒ 89.33
+	// المدير: شغل 100%×40 = 40 + خطة 50%×40 = 20 · ماتركس 100−25 (خطة) = 15 ⇒ 75
+	// النائب: 50 + 15 + 15 = 80
+	want := map[string]float64{"adm": 89.33, "dir": 75, "dep": 80}
+	for _, s := range rows {
+		if s.Final == nil || !near(*s.Final, want[s.ID]) {
+			t.Errorf("%s final = %v نريد %v", s.ID, s.Final, want[s.ID])
+		}
+	}
+	if v, _ := PostponePct(3, 2); v != 0 {
+		t.Fatal("postpone below zero")
+	}
+}
