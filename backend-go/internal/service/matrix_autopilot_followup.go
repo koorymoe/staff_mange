@@ -500,11 +500,12 @@ func (s *MatrixAutopilotService) workload(subj repository.WatchSubject) []Worklo
 			WorkloadItem{Key: "CONFIRM", Label: "حجوزات تنتظر التثبيت", Verb: "ثبّتت", Done: r.ConfirmedByToday(subj.ID), Left: r.BookingsPendingConfirm(), Route: "/coordinator"},
 			WorkloadItem{Key: "STAFF", Label: "حجوزات باچر بلا كادر", Verb: "كلّفت", Left: len(un), Route: "/coordinator"})
 	}
-	if subj.Role == "FINANCE" || hasPerm(subj, "finance") {
+	// (بلاغ #52 — 11-19) المراقب شغله التدقيق بس: الفواتير والجودة ما تطلعله حتى لو عنده صلاحيتها
+	if subj.Role == "FINANCE" || (subj.Role != "MONITOR" && hasPerm(subj, "finance")) {
 		out = append(out, WorkloadItem{Key: "APPROVE", Label: "فواتير تنتظر الاعتماد", Verb: "اعتمدت",
 			Done: r.ApprovedByToday(subj.ID), Left: r.InvoicesAwaitingApproval(), Route: "/leader-invoices"})
 	}
-	if subj.Role == "QUALITY_ENGINEER" || hasPerm(subj, "quality_control") {
+	if subj.Role == "QUALITY_ENGINEER" || (subj.Role != "MONITOR" && hasPerm(subj, "quality_control")) {
 		out = append(out, WorkloadItem{Key: "QUALITY", Label: "متابعات جودة معلّقة", Verb: "تابعت",
 			Done: r.QualityDoneToday(subj.ID), Left: r.QualityPending(), Route: "/quality-follow-ups"})
 	}

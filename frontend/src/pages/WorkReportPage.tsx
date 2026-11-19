@@ -9,6 +9,7 @@ import SignaturePad from '../components/SignaturePad'
 import { emptySheet, sheetMissing, PROJECT_STATUS, type ExecutionSheetData } from '../utils/executionSheet'
 
 import { notify } from '../ui/notify'
+import { fmtDate } from '../utils/date'
 export default function WorkReportPage() {
   const { employee: currentUser, permissions } = useSession()
   // «فواتير وتقارير الجي بي اس/الداش كام»: صاحب الصلاحية يسوي تقرير
@@ -128,7 +129,6 @@ export default function WorkReportPage() {
     )
 
   const needsReportToday = completedToday.filter((b) => !reportedBookingIds.has(b.id))
-  const alreadyReportedToday = completedToday.filter((b) => reportedBookingIds.has(b.id))
 
   const renderCard = (booking: Booking) => {
     const expanded = expandedId === booking.id
@@ -231,7 +231,11 @@ export default function WorkReportPage() {
     return `${b.code} ${b.customer?.name ?? ''}`.includes(q)
   }
   const pendingList = needsReportToday.filter(matches)
-  const doneList = alreadyReportedToday.filter(matches)
+  // (بلاغ #51 — 11-19) «مرفوعة» من تقاريره نفسها (كلها، الأحدث أول) — قبل چانت من الحجوزات
+  // المنجزة المسندة إله بس، فالقديمة وتقارير حجوزات الخدمة ما چانت تبين.
+  const doneList = [...myReports]
+    .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+    .filter((r) => { const q = search.trim(); return !q || `${r.booking?.code ?? ''} ${r.booking?.customerName ?? ''}`.includes(q) })
   const runningList = bookings.filter(matches)
 
   return (
@@ -302,13 +306,13 @@ export default function WorkReportPage() {
         doneList.length === 0
           ? <EmptyBox text="ماكو تقارير مرفوعة بعد" icon="📄" />
           : <div className="space-y-2">
-              {doneList.map((b) => (
-                <div key={b.id} className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3">
+              {doneList.map((r) => (
+                <div key={r.id} className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3">
                   <div className="min-w-0">
-                    <p className="font-mono text-sm font-black text-emerald-900"><BookingCodeChip code={b.code} /></p>
-                    <p className="truncate text-xs text-emerald-700">{b.customer?.name}</p>
+                    <p className="font-mono text-sm font-black text-emerald-900">{r.booking?.code ? <BookingCodeChip code={r.booking.code} /> : '—'}</p>
+                    <p className="truncate text-xs text-emerald-700">{r.booking?.customerName} · {fmtDate(r.createdAt)}</p>
                   </div>
-                  <span className="rounded-full bg-emerald-100 px-3 py-1 text-[11px] font-bold text-emerald-700">✅ انرفع التقرير</span>
+                  <span className="rounded-full bg-emerald-100 px-3 py-1 text-[11px] font-bold text-emerald-700">{r.workStatus === 'STOPPED' ? '⏸ تقرير توقف' : '✅ انرفع التقرير'}</span>
                 </div>
               ))}
             </div>
