@@ -1979,6 +1979,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	secs["complaints"].Set("GET /api/complaints", "complaints.get_root", complaintHandler.List, requireCustomerRead)
 	// 🛠️ صيانة وقائية (دازاي 11-06، فكرة ٧)
 	secs["maintenance_due"].Set("GET /api/maintenance-due", "maintenance_due.get_root", handler.MaintenanceDueHandler(db).ServeHTTP, requireCustomerRead)
+	secs["maintenance_due"].Set("POST /api/maintenance-due/{customerId}/decision", "maintenance_due.post_decision", handler.MaintenanceDecisionHandler(db).ServeHTTP, requireCustomerRead) // بلاغ #55
 	secs["complaints"].Set("POST /api/complaints", "complaints.post_root", complaintHandler.Create, requireCustomerRead)
 	// تحديث حالة الشكوى وحلّها يقتصران على من يملك صلاحية "quality_control" (نفس
 	// أدوار المتابعة بالواجهة: مهندس الجودة/المراقب/الأدمن) — لا أي موظف مسجل دخول

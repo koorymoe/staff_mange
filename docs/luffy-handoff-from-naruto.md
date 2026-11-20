@@ -502,3 +502,4 @@ git push origin origin/avg:refs/heads/prod     # بعد التأكد إنه fast
 - 11-19: OrgPlanItem.recurring (0511 + 0512_data) — planItemScoreSQL: recurring = نقاط ماتركس لصاحبه بشهر الخطة (بلا الحضور والتقرير)، وإلا manualProgress؛ planToTasks يتخطاه؛ Overdue/late تستثنيه.
 - 11-19: التقييم يعذر: نسبة المحطات الفايتة، سماح يوم، نص نقاط للتسجيل الناقص، جدول StationExcuse (0515) + زر اعتذر ومراجعة مدير الإدارة.
 - 11-19: قاعدة: رقم الترحيل ما يتكرر بعد 0514 (TestNewMigrationNumbersUnique) — اسحب avg قبل makemigration. 0511 المكرر (كاكاشي + أني) يبقى.
+- 11-20: بلاغ #55: جدول MaintenanceDecision (0516) + POST /api/maintenance-due/{customerId}/decision (requireCustomerRead) + Kind LATE/COMPLAINTS + القائمة بلا حد ١٠٠.

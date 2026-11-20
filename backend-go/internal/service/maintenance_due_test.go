@@ -86,4 +86,28 @@ func TestMaintenanceDueLive(t *testing.T) {
 	if got[ids["angry"]] != "شكاوى متكررة" {
 		t.Errorf("السبب: %q", got[ids["angry"]])
 	}
+	// (بلاغ #55) النوع: «old» متأخر صيانة، «angry» شكاوى بس
+	kinds := map[string]string{}
+	for _, r := range rows {
+		kinds[r.CustomerID] = r.Kind
+	}
+	if kinds[ids["old"]] != "LATE" || kinds[ids["angry"]] != "COMPLAINTS" {
+		t.Errorf("النوع: old=%q angry=%q", kinds[ids["old"]], kinds[ids["angry"]])
+	}
+	// (بلاغ #55) القرار يخفي الزبون، والقرار الغلط ينرفض
+	by := ""
+	_ = db.Get(&by, `SELECT id FROM "Employee" LIMIT 1`)
+	if err := DecideMaintenance(db, by, ids["old"], "WRONG", ""); err == nil {
+		t.Error("قرار غلط انقبل")
+	}
+	if err := DecideMaintenance(db, by, ids["old"], "NO_ANSWER", "تلفونه مغلق"); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { db.Exec(`DELETE FROM "MaintenanceDecision" WHERE "customerId" = $1`, ids["old"]) }) //nolint:errcheck
+	rows, _ = MaintenanceDueList(db, 100000)
+	for _, r := range rows {
+		if r.CustomerID == ids["old"] {
+			t.Error("الزبون بعده يطلع بعد القرار")
+		}
+	}
 }

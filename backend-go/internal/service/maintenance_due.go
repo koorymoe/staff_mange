@@ -22,6 +22,8 @@ type MaintenanceDue struct {
 	Months     int       `db:"months" json:"months"`
 	Complaints int       `db:"complaints" json:"complaints"`
 	Reason     string    `db:"reason" json:"reason"`
+	// (بلاغ #55) LATE = فات ٦ أشهر (صيانة متأخرة) · COMPLAINTS = شكاوى متكررة بس
+	Kind string `db:"kind" json:"kind"`
 }
 
 func MaintenanceDueList(db *sqlx.DB, limit int) ([]MaintenanceDue, error) {
@@ -38,12 +40,14 @@ func MaintenanceDueList(db *sqlx.DB, limit int) ([]MaintenanceDue, error) {
 		SELECT c.id AS "customerId", c.name, c.phone, l."lastDone", l.service,
 		       (extract(year FROM age(now(), l."lastDone")) * 12 + extract(month FROM age(now(), l."lastDone")))::int AS months,
 		       COALESCE(comp.n, 0)::int AS complaints,
-		       CASE WHEN COALESCE(comp.n, 0) >= 2 THEN 'شكاوى متكررة' ELSE 'فات ٦ أشهر على آخر شغل' END AS reason
+		       CASE WHEN COALESCE(comp.n, 0) >= 2 THEN 'شكاوى متكررة' ELSE 'فات ٦ أشهر على آخر شغل' END AS reason,
+		       CASE WHEN l."lastDone" < now() - interval '6 months' THEN 'LATE' ELSE 'COMPLAINTS' END AS kind
 		FROM last l
 		JOIN "Customer" c ON c.id = l."customerId"
 		LEFT JOIN comp ON comp."customerId" = l."customerId"
 		WHERE (l."lastDone" < now() - interval '6 months' AND l."lastDone" > now() - interval '3 years' OR COALESCE(comp.n, 0) >= 2)
 		  AND NOT EXISTS (SELECT 1 FROM "Booking" o WHERE o."customerId" = l."customerId" AND o.status::text NOT IN ('COMPLETED','CANCELLED') AND o."archivedAt" IS NULL) -- (11-07) حجز مؤرشف مو مفتوح
+		  AND NOT EXISTS (SELECT 1 FROM "MaintenanceDecision" d WHERE d."customerId" = l."customerId" AND d."hiddenUntil" > now()) -- (بلاغ #55) انخذ عليه قرار
 		ORDER BY COALESCE(comp.n, 0) DESC, l."lastDone" ASC
 		LIMIT $1`, limit)
 	return rows, err
@@ -76,4 +80,39 @@ func maintenanceSummary(rows []MaintenanceDue) string {
 		fmt.Fprintf(&b, "- %s: %d\n", k, by[k])
 	}
 	return b.String()
+}
+
+// ═══ قرار الجودة على الزبون (بلاغ #55، 11-20) ═══
+// «جاي يطلع عدني متأخرات الصيانة وماكو قرار اتخذه»: كل قرار يخفي الزبون من القائمة لمدة.
+var MaintenanceDecisions = map[string]struct {
+	Label string
+	Days  int
+}{
+	"BOOKED":    {"اتصلت — حجز صيانة", 180},
+	"DECLINED":  {"اتصلت — ما يريد", 180},
+	"NO_ANSWER": {"ما رد", 7},
+	"POSTPONED": {"أجّل شهر", 30},
+}
+
+var ErrMaintenanceDecision = fmt.Errorf("قرار غير معروف")
+
+func DecideMaintenance(db *sqlx.DB, by, customerID, decision, note string) error {
+	d, ok := MaintenanceDecisions[decision]
+	if !ok {
+		return ErrMaintenanceDecision
+	}
+	var notePtr *string
+	if n := strings.TrimSpace(note); n != "" {
+		notePtr = &n
+	}
+	res, err := db.Exec(`INSERT INTO "MaintenanceDecision" (id, "customerId", decision, note, "hiddenUntil", "byId")
+		SELECT gen_random_uuid()::text, c.id, $2, $3, now() + make_interval(days => $4), $5 FROM "Customer" c WHERE c.id = $1`,
+		customerID, decision, notePtr, d.Days, by)
+	if err != nil {
+		return err
+	}
+	if n, _ := res.RowsAffected(); n != 1 {
+		return ErrMaintenanceDecision
+	}
+	return nil
 }

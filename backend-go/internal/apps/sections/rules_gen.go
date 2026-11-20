@@ -689,7 +689,8 @@ func rules() map[string]map[core.Action]core.Rule {
 			"maintenance_contracts.post_root":   func(l string) core.Rule { return rolePerm(l, []string{"ADMIN"}, "coordinator") }("ينفّذ /api/maintenance-contracts (دور/صلاحية)"),
 		},
 		"maintenance_due": {
-			"maintenance_due.get_root": func(l string) core.Rule { return any_(l) }("يقرا /api/maintenance-due (الدخول — الفحص بالمعالج + طبقة: requireCustomerRead)"),
+			"maintenance_due.post_decision": func(l string) core.Rule { return any_(l) }("يسجّل قرار الجودة على زبون الصيانة الوقائية (طبقة: requireCustomerRead — نفس الي يشوف القائمة)"),
+			"maintenance_due.get_root":      func(l string) core.Rule { return any_(l) }("يقرا /api/maintenance-due (الدخول — الفحص بالمعالج + طبقة: requireCustomerRead)"),
 		},
 		"manager_requests": {
 			"manager_requests.get_inventory_context": func(l string) core.Rule {

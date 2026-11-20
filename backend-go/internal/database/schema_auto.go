@@ -300,6 +300,23 @@ func autoMigrations() []Migration {
 			ALTER TABLE "StationExcuse" ADD CONSTRAINT "StationExcuse_employeeId_fkey" FOREIGN KEY ("employeeId") REFERENCES "Employee"(id) ON DELETE CASCADE;
 		`,
 		},
+		{
+			Version: "0516_maintenance_decision",
+			SQL: `
+			CREATE TABLE IF NOT EXISTS "MaintenanceDecision" (
+	"id" text NOT NULL,
+	"customerId" text NOT NULL,
+	"decision" text NOT NULL,
+	"note" text,
+	"hiddenUntil" timestamp with time zone NOT NULL,
+	"byId" text NOT NULL,
+	"createdAt" timestamp with time zone DEFAULT now() NOT NULL
+);
+			ALTER TABLE "MaintenanceDecision" ADD CONSTRAINT "MaintenanceDecision_pkey" PRIMARY KEY (id);
+			CREATE INDEX IF NOT EXISTS "MaintenanceDecision_customer_idx" ON public."MaintenanceDecision" USING btree ("customerId", "hiddenUntil" DESC);
+			ALTER TABLE "MaintenanceDecision" ADD CONSTRAINT "MaintenanceDecision_customerId_fkey" FOREIGN KEY ("customerId") REFERENCES "Customer"(id) ON DELETE CASCADE;
+		`,
+		},
 		// ‹makemigration› — التحديثات الجديدة تنضاف فوگ هالسطر
 	}
 }
