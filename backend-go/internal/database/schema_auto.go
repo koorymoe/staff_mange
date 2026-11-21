@@ -337,6 +337,15 @@ func autoMigrations() []Migration {
 			ALTER TABLE "EmployeeIdea" ADD CONSTRAINT "EmployeeIdea_employeeId_fkey" FOREIGN KEY ("employeeId") REFERENCES "Employee"(id) ON DELETE CASCADE;
 		`,
 		},
+		{
+			// (دازاي 11-21) «فواتير الجي بي اس… تترحل كبل لمسؤول الخدمة» — الخدمة الي اسمها
+			// GPS تتأشّر نوعها جي بي اس وورقها على مسؤولها (إذا ما متأشّرة قبل).
+			Version: "0518_data_gps_service_kind",
+			SQL: `
+			UPDATE "Service" SET "serviceKind" = 'GPS', "managerHandlesPaperwork" = true
+				WHERE upper(trim(name)) = 'GPS' AND "serviceKind" IS NULL;
+		`,
+		},
 		// ‹makemigration› — التحديثات الجديدة تنضاف فوگ هالسطر
 	}
 }

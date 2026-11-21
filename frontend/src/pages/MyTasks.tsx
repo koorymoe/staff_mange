@@ -1,3 +1,4 @@
+import { paperworkOnManager as paperworkOnManagerOf } from '../utils/paperworkOnManager'
 import Modal from '../ui/Modal'
 import { useEffect, useRef, useState } from 'react'
 import { useSeenOnView } from '../ui/useSeenOnView'
@@ -236,7 +237,7 @@ export default function MyTasks() {
   // ⚠️ **العلم يجي مع الحجز نفسه** (`b.service.managerHandlesPaperwork`)
   // — مو من قائمة خدمات ننزّلها ونطابقها بالاسم. المطابقة بالاسم هي
   // بالضبط الي تنطفي بصمت أول ما يتغيّر اسم خدمة بحرف.
-  const paperworkOnManager = (b: Booking) => !!b.service?.managerHandlesPaperwork
+  const paperworkOnManager = paperworkOnManagerOf // (11-21) كل خدمات الحجز، مو الرئيسية بس
 
   // ═══ حجز «كشف» — بلا ورق مطلوب أصلاً، مو ورق على شخص ثاني ═══
   //
