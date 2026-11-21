@@ -58,7 +58,11 @@ var coordWeights = []roleWeight{
 	{"PEERS", "الزملاء (المشاكل الوظيفية)", 2},
 }
 
-var roleWeightsOf = map[string][]roleWeight{GroupTechs: techWeights, GroupLeaders: leaderWeights, GroupCoordinator: coordWeights}
+var roleWeightsOf = map[string][]roleWeight{
+	GroupTechs:       append(techWeights, roleWeight{projectsPart.Key, projectsPart.Label, projectsPart.Weight}),
+	GroupLeaders:     append(leaderWeights, roleWeight{projectsPart.Key, projectsPart.Label, projectsPart.Weight}),
+	GroupCoordinator: append(coordWeights, roleWeight{projectsPart.Key, projectsPart.Label, projectsPart.Weight}),
+}
 
 // coordShares (دازاي 11-19) نسب المنسّق حسب موقعه بالهيكل الجديد: [شغل الحجز، خطته]، وماتركس ٢٠ دائماً.
 //   مدير الإدارة: ٤٠ + ٤٠ · النائب: ٥٠ + ٣٠ · الإداري: ٨٠ + ٠
@@ -259,6 +263,12 @@ func applyRoleScores(rows []StaffScore, hum []repository.HumanRow, times map[str
 		default:
 			if defs, ok := genericParts[s.Group]; ok {
 				genericPct(defs, s, stars, cf, set)
+			}
+		}
+		// (دازاي 11-21) المشاريع للفني والليدر والمنسّق هم — بقية الأدوار من genericParts
+		if s.Group == GroupTechs || s.Group == GroupLeaders || s.Group == GroupCoordinator {
+			if v, ok := ratio(s.ruleTotals["PROJECT_WEEK"]); ok {
+				set("PROJECTS", v, fmt.Sprintf("%d من %d نقطة", s.ruleTotals["PROJECT_WEEK"][0], s.ruleTotals["PROJECT_WEEK"][1]))
 			}
 		}
 		rulesShare, planShare := techRulesShare, 0.0

@@ -81,7 +81,7 @@ var chainStations = []chainStationDef{
 	{"RATING", "تقييم الليدر لفنيّيه", 24 * 60},
 	{"INVENTORY", "جرد العدّة", 0},
 	{"ACCOUNT", "المحاسب: التدقيق والاعتماد", 24 * 60},
-	{"QUALITY", "اتصال الجودة بالزبون", 48 * 60},
+	{"QUALITY", "اتصال الجودة بالزبون", 24 * 60},
 	{"MONITOR", "حكم المراقب", 4 * 60},
 }
 
@@ -291,8 +291,9 @@ func (s *MatrixChainService) thresholds() (map[string]int, map[string]map[string
 		s.thMed[d.Key] = chainMedian(g[d.Key])
 		s.thN[d.Key] = len(g[d.Key])
 	}
-	// الجودة: قرار (ع) — «بعد يوم من الإنجاز». حد ثابت يومين، مو وسيط.
-	s.thGlobal["QUALITY"] = 48 * 60
+	// الجودة: (دازاي 11-21) «يتصل ٣ ويترك ٢ لغير يوم مو مقبول» — حد ثابت يوم واحد من الإنجاز،
+	// وبعده يوم سماح (متأخرة = نص) قبل ما تنحسب فايتة.
+	s.thGlobal["QUALITY"] = 24 * 60
 	s.thSvc = map[string]map[string]int{}
 	for svc, byKey := range sv {
 		s.thSvc[svc] = map[string]int{}

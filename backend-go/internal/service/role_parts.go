@@ -49,10 +49,13 @@ var genericParts = map[string][]partDef{
 		{Key: "ACCOUNT", Label: "تدقيق واعتماد الفواتير خلال يوم", Weight: 45, Rules: []string{"ACCOUNT"}},
 		{Key: "SUPERVISOR", Label: "تقييم المراقب", Weight: 15, Stages: monitorStages},
 	}, common(10, 5, 5)...),
+	// (دازاي 11-21) الجودة: يتصل بكل زبون خلص حجزه بنفس اليوم، والشكوى يتصل عليها بسرعة ويحلها بأسرع وقت.
 	GroupQuality: append([]partDef{
-		{Key: "QUALITY", Label: "الاتصال بالزبون خلال يومين من الإنجاز", Weight: 50, Rules: []string{"QUALITY"}},
-		{Key: "SUPERVISOR", Label: "تقييم المراقب", Weight: 15, Stages: monitorStages},
-	}, common(10, 3, 2)...),
+		{Key: "QUALITY", Label: "الاتصال بالزبون خلال يوم من الإنجاز", Weight: 30, Rules: []string{"QUALITY"}},
+		{Key: "COMPLAINT_CONTACT", Label: "الاتصال بصاحب الشكوى بسرعة", Weight: 15, Rules: []string{"COMPLAINT_CONTACT"}},
+		{Key: "COMPLAINT_RESOLVE", Label: "حل الشكوى بأسرع وقت", Weight: 15, Rules: []string{"COMPLAINT_RESOLVE"}},
+		{Key: "SUPERVISOR", Label: "تقييم المراقب", Weight: 10, Stages: monitorStages},
+	}, common(7, 2, 1)...),
 	GroupProcurement: append([]partDef{
 		{Key: "REQUESTS", Label: "الرد على طلبات المواد والأدوات", Weight: 25, Rules: []string{"PROC_RESPONSE", "TOOL_RESPONSE"}},
 		{Key: "SHORTAGES", Label: "حل نواقص الجرد", Weight: 20, Rules: []string{"SHORTAGE_RESOLVE"}},
@@ -85,8 +88,20 @@ var genericParts = map[string][]partDef{
 	}, common(10, 20, 5)...),
 }
 
+// projectsPart (دازاي 11-21) «اي موظف عنده مشاريع يتقيّم عليهن… ماكو تأخير»: بند لكل الأدوار،
+// يبين بس للي عنده مشروع (البند الي ماله بيانات وزنه يتوزع).
+var projectsPart = partDef{Key: "PROJECTS", Label: "المشاريع الموجّهة إله (بلا تأخير)", Weight: 15, Rules: []string{"PROJECT_WEEK"}}
+
 func init() {
 	for g, defs := range genericParts {
+		has := false
+		for _, d := range defs {
+			has = has || d.Key == projectsPart.Key
+		}
+		if !has {
+			genericParts[g] = append(defs, projectsPart)
+			defs = genericParts[g]
+		}
 		w := make([]roleWeight, 0, len(defs))
 		for _, d := range defs {
 			w = append(w, roleWeight{d.Key, d.Label, d.Weight})

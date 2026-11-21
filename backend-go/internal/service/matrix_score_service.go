@@ -136,6 +136,7 @@ func (s *MatrixScoreService) Run(now time.Time) (int, error) {
 		errs = append(errs, err.Error())
 	}
 	s.scoreProjects(now, add)
+	s.scoreComplaints(now, add) // (دازاي 11-21) مهندس الجودة
 	s.scoreProcurement(now, add)
 	s.scoreMonitorAudit(now, add)
 	s.scoreRatingDuty(now, add)
@@ -384,13 +385,13 @@ type StaffScore struct {
 	RoleViews []RoleView `json:"roleViews,omitempty"`
 	RoleView  string     `json:"roleView,omitempty"`
 	// AIOnly (دازاي 11-16) تقييمه من ماتركس بس — تقييمات البشر ما تنحسب.
-	AIOnly    bool              `json:"aiOnly,omitempty"`
-	HumanPct  *float64          `json:"humanPct"`
-	Final     *float64          `json:"final"`
-	PrevFinal *float64          `json:"prevFinal"`
+	AIOnly    bool     `json:"aiOnly,omitempty"`
+	HumanPct  *float64 `json:"humanPct"`
+	Final     *float64 `json:"final"`
+	PrevFinal *float64 `json:"prevFinal"`
 	// (دازاي 11-21 — أفكار ٣، المتنبي) التحسّن: معدّل آخر ٣ أشهر قبل هالشهر، والفرق عنه
-	Avg3  *float64 `json:"avg3,omitempty"`
-	Trend *float64 `json:"trend,omitempty"`
+	Avg3      *float64          `json:"avg3,omitempty"`
+	Trend     *float64          `json:"trend,omitempty"`
 	NoHuman   bool              `json:"noHuman"`
 	TopLosses []RuleLoss        `json:"topLosses"`
 	BySource  map[string][2]int `json:"bySource"` // مكسوب/أقصى لكل مصدر
@@ -435,7 +436,7 @@ type StaffScoreDetail struct {
 }
 
 var ruleTitles = map[string]string{
-	"ATTENDANCE": "تسجيل الحضور", "TASK_DUE": "المهام المضافة بموعدها", "PROJECT_WEEK": "المشاريع",
+	"ATTENDANCE": "تسجيل الحضور", "TASK_DUE": "المهام المضافة بموعدها", "PROJECT_WEEK": "المشاريع", "COMPLAINT_CONTACT": "الاتصال بصاحب الشكوى", "COMPLAINT_RESOLVE": "حل الشكوى",
 	"DESIGN_SECTION": "تسليم أقسام التصاميم بموعدها",
 	"PROC_RESPONSE":  "الرد على طلبات المواد", "TOOL_RESPONSE": "الرد على طلبات الأدوات",
 	"VEHICLE_DAILY": "متابعة السيارات اليومية", "SHORTAGE_RESOLVE": "حل نواقص الجرد",
@@ -443,30 +444,32 @@ var ruleTitles = map[string]string{
 }
 
 var ruleAdvice = map[string]string{
-	"RATING_DUTY":      "قيّم الي عليك نفس اليوم — الي يفوتك ينكتب بسجل الإهمال.",
-	"DAILY_REPORT":     "اكتب تقرير إنجازك بنفس اليوم قبل ما تطلع.",
-	"REPORT_MATCH":     "اكتب بتقريرك الي سويته فعلاً واذكر أكواد الحجوزات الي اشتغلت عليها.",
-	"ATTENDANCE":       "سجّل حضورك كل يوم دوام أول ما توصل.",
-	"STAGE_LOG":        "دوس كل مرحلة بوقتها وبمكانها (انطلاق بالشركة، وصول عند الزبون) — حتى بلا نت تنحفظ.",
-	"TASK_DUE":         "خلّص المهام قبل موعدها، وإذا ما تلحق گول للي وجّهها قبل الموعد.",
-	"PROJECT_WEEK":     "حرّك المشروع: كل أسبوع لازم يتقدم خطوة ويتسجل عليه شي.",
-	"PAPER":            "سوّي الفاتورة والتقرير نفس يوم الإنجاز.",
-	"CONTACT":          "اتصل بالزبون أول ما يتسجل الحجز.",
-	"CONFIRM":          "ثبّت الموعد ويا الزبون بسرعة.",
-	"CREW":             "حدد الكادر قبل يوم الحجز.",
-	"RATING":           "قيّم فنيّينك بعد كل حجز.",
-	"INVENTORY":        "جرد العدّة بعد كل حجز.",
-	"ACCOUNT":          "دقّق واعتمد فواتير الحجوزات خلال يوم.",
-	"QUALITY":          "اتصل بالزبون خلال يومين من الإنجاز.",
-	"MONITOR":          "احسم بنود الحجز بالتدقيق بسرعة.",
-	"ROUTE":            "انطلق للموقع بوقتك.",
-	"WORK":             "ابدأ الشغل أول ما توصل.",
-	"COMPLETE":         "سجّل الإنجاز أول ما يخلص الشغل.",
-	"RECEIVE":          "استلم المواد وجهّزها قبل الانطلاق.",
-	"PROC_RESPONSE":    "رد على طلب المواد خلال يوم — نفّذ أو ارفض بسبب.",
-	"TOOL_RESPONSE":    "رد على طلب الأداة خلال يوم.",
-	"VEHICLE_DAILY":    "قيّم كل السيارات كل يوم من «متابعة السيارات».",
-	"SHORTAGE_RESOLVE": "حل نقص الجرد خلال يومين وأشّره «انحل».",
+	"RATING_DUTY":       "قيّم الي عليك نفس اليوم — الي يفوتك ينكتب بسجل الإهمال.",
+	"DAILY_REPORT":      "اكتب تقرير إنجازك بنفس اليوم قبل ما تطلع.",
+	"REPORT_MATCH":      "اكتب بتقريرك الي سويته فعلاً واذكر أكواد الحجوزات الي اشتغلت عليها.",
+	"ATTENDANCE":        "سجّل حضورك كل يوم دوام أول ما توصل.",
+	"STAGE_LOG":         "دوس كل مرحلة بوقتها وبمكانها (انطلاق بالشركة، وصول عند الزبون) — حتى بلا نت تنحفظ.",
+	"TASK_DUE":          "خلّص المهام قبل موعدها، وإذا ما تلحق گول للي وجّهها قبل الموعد.",
+	"PROJECT_WEEK":      "حرّك المشروع: كل أسبوع لازم يتقدم خطوة ويتسجل عليه شي.",
+	"COMPLAINT_CONTACT": "اتصل بصاحب الشكوى خلال ساعتين.",
+	"COMPLAINT_RESOLVE": "حل الشكوى خلال ٣ أيام (حجز جديد، تعويض، أو أي حل).",
+	"PAPER":             "سوّي الفاتورة والتقرير نفس يوم الإنجاز.",
+	"CONTACT":           "اتصل بالزبون أول ما يتسجل الحجز.",
+	"CONFIRM":           "ثبّت الموعد ويا الزبون بسرعة.",
+	"CREW":              "حدد الكادر قبل يوم الحجز.",
+	"RATING":            "قيّم فنيّينك بعد كل حجز.",
+	"INVENTORY":         "جرد العدّة بعد كل حجز.",
+	"ACCOUNT":           "دقّق واعتمد فواتير الحجوزات خلال يوم.",
+	"QUALITY":           "اتصل بالزبون خلال يومين من الإنجاز.",
+	"MONITOR":           "احسم بنود الحجز بالتدقيق بسرعة.",
+	"ROUTE":             "انطلق للموقع بوقتك.",
+	"WORK":              "ابدأ الشغل أول ما توصل.",
+	"COMPLETE":          "سجّل الإنجاز أول ما يخلص الشغل.",
+	"RECEIVE":           "استلم المواد وجهّزها قبل الانطلاق.",
+	"PROC_RESPONSE":     "رد على طلب المواد خلال يوم — نفّذ أو ارفض بسبب.",
+	"TOOL_RESPONSE":     "رد على طلب الأداة خلال يوم.",
+	"VEHICLE_DAILY":     "قيّم كل السيارات كل يوم من «متابعة السيارات».",
+	"SHORTAGE_RESOLVE":  "حل نقص الجرد خلال يومين وأشّره «انحل».",
 }
 
 func ruleTitle(rule string) string {

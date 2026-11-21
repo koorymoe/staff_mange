@@ -504,3 +504,4 @@ git push origin origin/avg:refs/heads/prod     # بعد التأكد إنه fast
 - 11-19: قاعدة: رقم الترحيل ما يتكرر بعد 0514 (TestNewMigrationNumbersUnique) — اسحب avg قبل makemigration. 0511 المكرر (كاكاشي + أني) يبقى.
 - 11-20: بلاغ #55: جدول MaintenanceDecision (0516) + POST /api/maintenance-due/{customerId}/decision (requireCustomerRead) + Kind LATE/COMPLAINTS + القائمة بلا حد ١٠٠.
 - 11-21: أفكار ١/٣/٤: daily_impact.go (DAILY_IMPACT ٨ المسا) · Trend/Avg3 + TopImprover (Board ٣ أشهر، Detail لموظف واحد) · EmployeeIdea (0517) + /api/me/ideas + /api/ideas (reviewScope) + MatrixScore source IDEA (ruleGroups IDEA={} = شغل إضافي) + تصعيد ٤٨ ساعة للمالك.
+- 11-21: تقييم الجودة: QUALITY حد ٢٤ ساعة · scoreComplaints (COMPLAINT_CONTACT/RESOLVE) · projectsPart لكل roleWeightsOf + PROJECT_WEEK شال من ruleGroups (يفيت لكل الفئات). ⚠️ TestOrgActing_Live يفشل محلياً قبل التغيير هم (حالة القاعدة).

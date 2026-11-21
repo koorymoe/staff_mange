@@ -276,7 +276,9 @@ var ruleGroups = map[string]map[string]bool{
 	"ACCOUNT":      {GroupFinance: true},
 	"QUALITY":      {GroupQuality: true},
 	"MONITOR":      {GroupMonitors: true},
-	"PROJECT_WEEK": {GroupProjects: true},
+	// (دازاي 11-21) «اي موظف عنده مشاريع يتقيّم عليهن» — PROJECT_WEEK ينحسب لكل الفئات (مو شغل إضافي)
+	"COMPLAINT_CONTACT": {GroupQuality: true},
+	"COMPLAINT_RESOLVE": {GroupQuality: true},
 }
 
 // ExtraBonusPer وExtraBonusMax: كل شغلة إضافية (حجز/مشروع برّا دوره سوّاها زين)

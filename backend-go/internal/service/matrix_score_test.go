@@ -290,8 +290,9 @@ func TestExtraWorkAddsOnly(t *testing.T) {
 		t.Fatalf("الآيتي: مهامه بس + حجز واحد زين إضافي (+١)، والحجز الناقص ما ينحسب عليه: %+v", it)
 	}
 	des := by["des"]
-	if des.Group != GroupDesign || des.Max != 2 || des.ExtraJobs != 1 || *des.Final != 100 {
-		t.Fatalf("المصممة: المشروع شغلة إضافية وحدة ولا يتجاوز ١٠٠: %+v", des)
+	// (دازاي 11-21) «اي موظف عنده مشاريع يتقيّم عليهن… ماكو تأخير»: المشروع صار بند دور مو شغل إضافي
+	if des.Group != GroupDesign || des.Max != 6 || des.ExtraJobs != 0 || des.ruleTotals["PROJECT_WEEK"] != [2]int{4, 4} {
+		t.Fatalf("المصممة: المشروع ينحسب عليها بند (مو مكافأة): %+v", des)
 	}
 	if pm := by["pm"]; pm.Group != GroupProjects || pm.Max != 2 || pm.ExtraJobs != 0 {
 		t.Fatalf("مدير المشاريع يتقيّم على متابعة مشاريعه: %+v", pm)
