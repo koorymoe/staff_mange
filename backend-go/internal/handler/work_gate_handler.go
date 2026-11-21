@@ -303,6 +303,8 @@ type surveyRow struct {
 	Degree        string     `db:"degree" json:"degree"`
 	SelfSalaryIQD *float64   `db:"selfSalaryIQD" json:"selfSalaryIQD"`
 	FileSalary    *float64   `db:"fileSalary" json:"fileSalary"`
+	// (ك) 11-21 زينا: شكد دخّل فلوس هذا الشهر من حجوزاته — للفنيين والليدرية بس (غيرهم nil)
+	Brought *float64 `db:"brought" json:"brought"`
 	MonthlyHours  *int       `db:"monthlyHours" json:"monthlyHours"`
 	CurrentJob    string     `db:"currentJob" json:"currentJob"`
 	CompanyRating int        `db:"companyRating" json:"companyRating"`
@@ -319,7 +321,16 @@ func (h *WorkGateHandler) ListSurveys(w http.ResponseWriter, r *http.Request) {
 	rows := []surveyRow{}
 	errlog.Err(h.db.Select(&rows, `SELECT s."employeeId", e.name AS "employeeName", s.major, s.degree, s."selfSalaryIQD", e.salary AS "fileSalary",
 			s."monthlyHours", s."currentJob", s."companyRating", s."companyNote", to_char(s."contractEnd", 'YYYY-MM-DD') AS "contractEnd",
-			to_char(e."contractEndDate", 'YYYY-MM-DD') AS "fileContract", s.mismatch, s."submittedAt", s."reviewedAt"
+			to_char(e."contractEndDate", 'YYYY-MM-DD') AS "fileContract", s.mismatch, s."submittedAt", s."reviewedAt",
+			-- (ك) 11-21 زينا: الي دخّله من حجوزات هذا الشهر (المستلم والمدقق من المحاسب، الحجز مكتمل):
+			-- الليدر ياخذ 60% من مبلغ الحجز، والفني 40% (كل فني ياخذ 40% كاملة حتى لو أكثر من واحد).
+			CASE WHEN e.role::text = 'TECHNICIAN' THEN COALESCE((
+				SELECT sum(b."amountCollected" * CASE WHEN e."isLeader" THEN 0.6 ELSE 0.4 END)
+				FROM "BookingAssignment" a JOIN "Booking" b ON b.id = a."bookingId"
+				WHERE a."employeeId" = e.id AND b.status = 'COMPLETED' AND b."amountVerified"
+				  AND b."amountCollected" > 0
+				  AND baghdad_date(b."completedAt") >= date_trunc('month', baghdad_today())::date
+			), 0) END AS brought
 		FROM "EmployeeProfileSurvey" s JOIN "Employee" e ON e.id = s."employeeId"
 		ORDER BY (s.mismatch IS NOT NULL AND s."reviewedAt" IS NULL) DESC, s."submittedAt" DESC`))
 	pending := []missingRow{}

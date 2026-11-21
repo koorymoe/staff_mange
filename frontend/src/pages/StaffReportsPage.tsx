@@ -14,7 +14,7 @@ import { swallow } from '../utils/swallow'
 // الموظفين ويا الفروقات عن ملفهم (للكوادر والمالك بس — بيها رواتب).
 
 type Daily = { day: string; reports: { id: string; employeeId: string; employeeName: string; body: string; late: boolean; createdAt: string; matchStatus: string | null; matchNote: string | null; matchVerdict: string | null; matchReview: string | null }[]; missing: { employeeId: string; employeeName: string }[] }
-type Survey = { employeeId: string; employeeName: string; major: string; degree: string; selfSalaryIQD: number | null; fileSalary: number | null; monthlyHours: number | null; currentJob: string; companyRating: number; companyNote: string; contractEnd: string | null; fileContract: string | null; mismatch: string | null; reviewedAt: string | null }
+type Survey = { employeeId: string; employeeName: string; major: string; degree: string; selfSalaryIQD: number | null; fileSalary: number | null; brought: number | null; monthlyHours: number | null; currentJob: string; companyRating: number; companyNote: string; contractEnd: string | null; fileContract: string | null; mismatch: string | null; reviewedAt: string | null }
 type Surveys = { surveys: Survey[]; pending: { employeeId: string; employeeName: string }[] }
 
 // (ك) 11-21 زينا: تبويبات بإطار، والمختار إطاره ذهبي (مثل التصميم)
@@ -83,16 +83,36 @@ const ICONS: Record<string, string> = {
   cal: 'M4 6h16v14H4zM4 10h16M8 3v4m8-4v4',
   star: 'M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9L12 3Z',
   pulse: 'M3 12h4l2-5 4 10 2-5h6',
+  chart: 'M4 20V10m6 10V4m6 16v-7m4 7H2',
 }
 const Ico = ({ n, className = 'h-4 w-4' }: { n: string; className?: string }) => (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden="true"><path d={ICONS[n]} /></svg>
 )
 
+// (ك) 11-21 زينا: الهدف — الفني أو الليدر يدخّل بحجوزاته ١٣٠٪ من راتبه (راتبه + ٣٠٪)
+const TARGET = 1.3
+function broughtCell(s: Survey) {
+  if (s.brought === null) return <span className="text-slate-400">—</span>
+  const sal = s.fileSalary ?? 0
+  const pct = sal > 0 ? Math.round((s.brought / sal) * 100) : null
+  const ok = sal > 0 && s.brought >= sal * TARGET
+  return (
+    <div className="space-y-1.5" title={sal > 0 ? `الهدف: ${num(Math.round(sal * TARGET))} (راتبه + ٣٠٪)` : 'ماكو راتب بالملف'}>
+      <div className="text-base font-bold text-slate-800" dir="ltr">{num(Math.round(s.brought))}</div>
+      {pct === null
+        ? <span className="text-xs text-slate-400">ماكو راتب بالملف</span>
+        : <span className={`inline-block whitespace-nowrap rounded-full px-3 py-1 text-xs font-bold ring-1 ${ok ? 'bg-emerald-50 text-emerald-700 ring-emerald-300' : 'bg-red-50 text-red-700 ring-red-200'}`}>
+            {ok ? '✓' : '✗'} {pct}٪ من راتبه
+          </span>}
+    </div>
+  )
+}
+
 function SurveysTab() {
   const [reload, setReload] = useState(0)
   const { data, error } = useApi(() => apiRequest<Surveys>('/profile-surveys'), [reload])
   const review = async (id: string) => { await apiRequest(`/profile-surveys/${id}/review`, { method: 'POST' }).catch(swallow); setReload((n) => n + 1) }
-  const heads: [string, string][] = [['', '#'], ['user', 'الموظف'], ['cap', 'التخصص / الشهادة'], ['bag', 'الوظيفة'], ['coins', 'الراتب (د.ع)'], ['clock', 'ساعات العقد (ساعة)'], ['cal', 'تاريخ العقد'], ['star', 'رأيه بالشركة'], ['pulse', 'الحالة']]
+  const heads: [string, string][] = [['', '#'], ['user', 'الموظف'], ['cap', 'التخصص / الشهادة'], ['bag', 'الوظيفة'], ['coins', 'الراتب (د.ع)'], ['chart', 'دخّل هالشهر'], ['clock', 'ساعات العقد (ساعة)'], ['cal', 'تاريخ العقد'], ['star', 'رأيه بالشركة'], ['pulse', 'الحالة']]
   const dash = <span className="text-slate-400">—</span>
   return (
     <div className={`${card} space-y-4`}>
@@ -104,7 +124,7 @@ function SurveysTab() {
         </div>
       )}
       <div className="overflow-x-auto rounded-2xl border border-slate-200" data-testid="surveys-table">
-        <table className="w-full min-w-[1080px] text-[15px]">
+        <table className="w-full min-w-[1200px] text-[15px]">
           <thead className="bg-slate-50 text-sm font-bold text-[#0f2040]">
             <tr>
               {heads.map(([ic, h]) => (
@@ -127,6 +147,8 @@ function SurveysTab() {
                     <div>{s.selfSalaryIQD !== null ? num(s.selfSalaryIQD) : '—'} /</div>
                     <div>{s.fileSalary !== null ? num(s.fileSalary) : '—'}</div>
                   </td>
+                  {/* (ك) 11-21 زينا: شكد دخّل فلوس هالشهر من حجوزاته (ليدر 60٪، فني 40٪) — والهدف ٣٠٪ فوك راتبه */}
+                  <td className="px-3 py-5 text-center">{broughtCell(s)}</td>
                   <td className="px-3 py-5 text-center text-base font-bold text-slate-700">{s.monthlyHours ?? dash}</td>
                   <td className="px-3 py-5 text-center" title="هو / الملف">
                     {s.contractEnd || s.fileContract
