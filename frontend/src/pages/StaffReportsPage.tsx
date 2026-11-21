@@ -44,12 +44,17 @@ function DailyTab() {
   const [reload, setReload] = useState(0)
   // (ك) 11-21 زينا: حذف التقرير للمالك بس (الباك إند يرفض غيره)
   const isOwner = useSession().employee?.actualRole === 'OWNER'
-  const { data, error } = useApi(() => apiRequest<Daily>(`/daily-reports?day=${day}`), [day, reload])
+  // (دازاي 11-21) «اريد احذف الزايدات» — زر «كل تقاريره» يعرض تقارير موظف واحد (آخر ٩٠ يوم)
+  const [emp, setEmp] = useState<{ id: string; name: string } | null>(null)
+  const { data, error } = useApi(() => apiRequest<Daily>(emp ? `/daily-reports?employeeId=${emp.id}` : `/daily-reports?day=${day}`), [day, reload, emp?.id])
   return (
     <div className={`${card} space-y-3`}>
       <div className="flex flex-wrap items-center gap-3">
-        <input type="date" value={day} onChange={(e) => e.target.value && setDay(e.target.value)} className="rounded-lg border border-slate-300 px-2 py-1.5 text-sm" />
-        {data && <span className="text-sm text-slate-500">كتبوا: <b>{data.reports.length}</b> · داوموا وما كتبوا: <b className={data.missing.length ? 'text-red-600' : ''}>{data.missing.length}</b></span>}
+        {emp ? (
+          <span className="flex items-center gap-2 text-sm"><b className="text-[#0f2040]">كل تقارير {emp.name}</b> ({data?.reports.length ?? '…'})
+            <button type="button" onClick={() => setEmp(null)} className="rounded-lg border border-slate-300 px-2 py-1 text-xs">↩ رجوع لليوم</button></span>
+        ) : <input type="date" value={day} onChange={(e) => e.target.value && setDay(e.target.value)} className="rounded-lg border border-slate-300 px-2 py-1.5 text-sm" />}
+        {data && !emp && <span className="text-sm text-slate-500">كتبوا: <b>{data.reports.length}</b> · داوموا وما كتبوا: <b className={data.missing.length ? 'text-red-600' : ''}>{data.missing.length}</b></span>}
       </div>
       {error && <p className="text-sm text-red-600">{error}</p>}
       {data && data.missing.length > 0 && (
@@ -58,7 +63,9 @@ function DailyTab() {
       <div className="divide-y divide-slate-100">
         {data?.reports.map((r) => (
           <div key={r.id} className="py-2.5">
-            <p className="text-sm font-bold text-[#0f2040]"><Link to={`/employee-dossier?id=${r.employeeId}`} className="hover:underline">{r.employeeName}</Link> {r.late && <span className="mr-1 rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-bold text-amber-700 ring-1 ring-amber-200">متأخر</span>}
+            <p className="text-sm font-bold text-[#0f2040]"><Link to={`/employee-dossier?id=${r.employeeId}`} className="hover:underline">{r.employeeName}</Link>
+              {emp ? <span className="mr-2 text-xs font-normal text-slate-500">{r.day}</span>
+                : <button type="button" onClick={() => setEmp({ id: r.employeeId, name: r.employeeName })} className="mr-2 rounded border border-slate-200 px-1.5 text-[11px] font-normal text-slate-600 hover:bg-slate-50">كل تقاريره</button>} {r.late && <span className="mr-1 rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-bold text-amber-700 ring-1 ring-amber-200">متأخر</span>}
               {isOwner && <DeleteButton className="float-left" confirm={`تحذف تقرير ${r.employeeName}؟ ينحذف وياه تحليل ماتركس، وما يرجع.`}
                 onConfirm={async () => { await apiRequest(`/daily-reports/${r.id}`, { method: 'DELETE' }); setReload((n) => n + 1) }} />}</p>
             <p className="whitespace-pre-wrap text-sm text-slate-700">{r.body}</p>
@@ -66,7 +73,7 @@ function DailyTab() {
             <ReportAnalysisBox reportId={r.id} />
           </div>
         ))}
-        {data && data.reports.length === 0 && <p className="py-4 text-center text-sm text-slate-400">ماكو تقارير لهذا اليوم.</p>}
+        {data && data.reports.length === 0 && <p className="py-4 text-center text-sm text-slate-400">{emp ? 'ماكو تقارير إله.' : 'ماكو تقارير لهذا اليوم.'}</p>}
       </div>
     </div>
   )
