@@ -24,6 +24,8 @@ type ChainFacts struct {
 	ServiceID     *string    `db:"serviceId"`
 	ServiceName   *string    `db:"serviceName"`
 	Solo          bool       `db:"solo"`
+	// (دازاي 11-21) الخدمة الي ورقها على مسؤولها (جي بي اس/داش كام): مسؤولي الخدمة
+	ServiceManagerIDs pq.StringArray `db:"serviceManagerIds"`
 	CreatedAt     time.Time  `db:"createdAt"`
 	CreatedByID   *string    `db:"createdById"`
 	CreatedByName *string    `db:"createdByName"`
@@ -125,6 +127,7 @@ func NewMatrixChainRepository(db *sqlx.DB) *MatrixChainRepository {
 const chainFactsSQL = `
 SELECT b.id, b.code, b.status::text AS status, b."bookingType"::text AS "bookingType",
        b."serviceId", s.name AS "serviceName", COALESCE(s."managerHandlesPaperwork", false) AS solo,
+       COALESCE((SELECT array_agg(sm."employeeId") FROM "ServiceManager" sm WHERE sm."serviceId" = b."serviceId"), '{}') AS "serviceManagerIds",
        b."createdAt", b."createdById", ce.name AS "createdByName",
        (COALESCE(btrim(b.address), '') <> '') AS "hasAddress",
        (b."mapLatitude" IS NOT NULL OR COALESCE(b."locationUrl", '') <> '' OR COALESCE(b."mapLocation", '') <> '') AS "hasLocation",

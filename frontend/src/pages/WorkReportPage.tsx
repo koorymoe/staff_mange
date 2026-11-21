@@ -56,7 +56,9 @@ export default function WorkReportPage() {
           b.projectSupervisor?.id === currentUser.id
         setBookings(inProgress.filter(isMine))
         // قرار (ع) 10-07: الإداري يسوي تقرير العمل الداخلي — يجي من طابوره بـ?bookingId=.
-        const mine = completed.filter((b) => isMine(b) || (b.id === focusId && b.bookingType === 'INTERNAL'))
+        // (دازاي 11-21) حجز جي بي اس/داش كام: الورق على مسؤول الخدمة — ما يطلع للفني/الليدر
+        // (چان يطلعله «رفع التقرير» وهو ما يگدر يسويه). يوصل لمسؤول الخدمة من قائمة خدمته.
+        const mine = completed.filter((b) => !b.service?.managerHandlesPaperwork && (isMine(b) || (b.id === focusId && b.bookingType === 'INTERNAL')))
         const seen = new Set(mine.map((b) => b.id))
         const service = serviceLists.flat().filter((b) => !b.hasReport && !seen.has(b.id) && seen.add(b.id))
         setCompletedToday([...mine, ...service])

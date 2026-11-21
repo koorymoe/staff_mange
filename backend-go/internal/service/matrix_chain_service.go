@@ -794,8 +794,23 @@ func (s *MatrixChainService) chainOf(f *repository.ChainFacts, now time.Time) *B
 		if len(owners) == 0 {
 			owners = s.owner(f.InvoiceByID, nil)
 		}
+		// (دازاي 11-21) جي بي اس/داش كام: «ما يكدر يسوي فاتورة ولا تقرير… المفروض يترحلن لمسؤول
+		// الخدمة». الورق على الي سوّى الفاتورة، وإلا مسؤولي الخدمة — مو على الفني/الليدر.
+		paperOnManager := f.Solo
+		if paperOnManager {
+			owners = s.owner(f.InvoiceByID, nil)
+			if len(owners) == 0 {
+				for _, id := range f.ServiceManagerIDs {
+					id := id
+					owners = append(owners, s.owner(&id, nil)...)
+				}
+			}
+		}
 		st := ChainStation{Key: "PAPER", Role: fieldRole, Owners: owners}
-		if survey || ch.Legacy {
+		if paperOnManager && len(owners) == 0 {
+			st.Status = ChainNA
+			st.Verdict = "الورق على مسؤول الخدمة (ماكو مسؤول محدد لهالخدمة)."
+		} else if survey || ch.Legacy {
 			st.Status = ChainNA
 			st.Verdict = "معفي من الورق (كشف أو حجز قديم)."
 		} else {
