@@ -21,6 +21,8 @@ type MaintenanceDue struct {
 	Service    *string   `db:"service" json:"service"`
 	Months     int       `db:"months" json:"months"`
 	Complaints int       `db:"complaints" json:"complaints"`
+	// (ك) 11-21 زينا: وقت آخر شكوى — يطلع يم الزبون بخط ناعم
+	LastComplaint *time.Time `db:"lastComplaint" json:"lastComplaint"`
 	Reason     string    `db:"reason" json:"reason"`
 	// (بلاغ #55) LATE = فات ٦ أشهر (صيانة متأخرة) · COMPLAINTS = شكاوى متكررة بس
 	Kind string `db:"kind" json:"kind"`
@@ -35,11 +37,11 @@ func MaintenanceDueList(db *sqlx.DB, limit int) ([]MaintenanceDue, error) {
 			WHERE b.status = 'COMPLETED' AND b."completedAt" IS NOT NULL AND b."bookingType" IS DISTINCT FROM 'INTERNAL'
 			ORDER BY b."customerId", b."completedAt" DESC
 		), comp AS (
-			SELECT "customerId", count(*) AS n FROM "Complaint" WHERE "createdAt" > now() - interval '365 days' GROUP BY 1
+			SELECT "customerId", count(*) AS n, max("createdAt") AS at FROM "Complaint" WHERE "createdAt" > now() - interval '365 days' GROUP BY 1
 		)
 		SELECT c.id AS "customerId", c.name, c.phone, l."lastDone", l.service,
 		       (extract(year FROM age(now(), l."lastDone")) * 12 + extract(month FROM age(now(), l."lastDone")))::int AS months,
-		       COALESCE(comp.n, 0)::int AS complaints,
+		       COALESCE(comp.n, 0)::int AS complaints, comp.at AS "lastComplaint",
 		       CASE WHEN COALESCE(comp.n, 0) >= 2 THEN 'شكاوى متكررة' ELSE 'فات ٦ أشهر على آخر شغل' END AS reason,
 		       CASE WHEN l."lastDone" < now() - interval '6 months' THEN 'LATE' ELSE 'COMPLAINTS' END AS kind
 		FROM last l

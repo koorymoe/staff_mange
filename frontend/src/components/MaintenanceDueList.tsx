@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react'
 import { apiRequest } from '../api'
 import { notify } from '../ui/notify'
+import { fmtDateTime } from '../utils/date'
 
 // 🛠️ صيانة وقائية (دازاي 11-06، فكرة ٧): زبائن فات ٦ أشهر على آخر شغلهم، أو عندهم شكاوى متكررة،
 // وماكو حجز مفتوح. الجودة تتصل وتعرض صيانة.
 // (بلاغ #55، 11-20) «ماكو قرار اتخذه كذالك بالعدد»: أزرار قرار لكل زبون (يختفي لمدة)،
 // العدد الحقيقي مقسوم (متأخر صيانة / شكاوى)، والقائمة ٥٠ ٥٠.
-type Row = { customerId: string; name: string; phone?: string | null; lastDone: string; service: string | null; months: number; complaints: number; reason: string; kind: 'LATE' | 'COMPLAINTS' }
+type Row = { customerId: string; name: string; phone?: string | null; lastDone: string; service: string | null; months: number; complaints: number; lastComplaint?: string | null; reason: string; kind: 'LATE' | 'COMPLAINTS' }
 
 const DECISIONS: { key: string; label: string; cls: string }[] = [
   { key: 'BOOKED', label: '✅ حجز صيانة', cls: 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100' },
@@ -66,6 +67,8 @@ export default function MaintenanceDueList() {
               <span className="text-slate-500">{r.service ?? '—'}</span>
               <span className="text-slate-500">آخر شغل قبل {r.months} شهر</span>
               {r.complaints >= 2 && <span className="rounded bg-rose-50 px-2 py-0.5 text-xs font-bold text-rose-700">{r.complaints} شكاوى بالسنة</span>}
+              {/* (ك) 11-21 زينا: وقت آخر شكوى بخط ناعم مثل باقي النظام */}
+              {r.complaints > 0 && r.lastComplaint && <span className="ms-auto text-[11px] text-slate-400" title="آخر شكوى">آخر شكوى: {fmtDateTime(r.lastComplaint)}</span>}
             </div>
             <div className="flex flex-wrap gap-1">
               {DECISIONS.map((d) => (

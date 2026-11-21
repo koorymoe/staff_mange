@@ -94,6 +94,15 @@ func TestMaintenanceDueLive(t *testing.T) {
 	if kinds[ids["old"]] != "LATE" || kinds[ids["angry"]] != "COMPLAINTS" {
 		t.Errorf("النوع: old=%q angry=%q", kinds[ids["old"]], kinds[ids["angry"]])
 	}
+	// (ك) 11-21: وقت آخر شكوى — موجود للي عنده شكاوى، وفاضي للي ماعنده
+	for _, r := range rows {
+		if r.CustomerID == ids["angry"] && r.LastComplaint == nil {
+			t.Errorf("angry بلا وقت آخر شكوى")
+		}
+		if r.CustomerID == ids["old"] && r.LastComplaint != nil {
+			t.Errorf("old ماعنده شكاوى بس طلع إله وقت")
+		}
+	}
 	// (بلاغ #55) القرار يخفي الزبون، والقرار الغلط ينرفض
 	by := ""
 	_ = db.Get(&by, `SELECT id FROM "Employee" LIMIT 1`)
