@@ -204,7 +204,16 @@ func applyRoleScores(rows []StaffScore, hum []repository.HumanRow, times map[str
 	}
 	for i := range rows {
 		s := &rows[i]
-		weights, ok := roleWeightsOf[s.Group]
+		// (دازاي 11-21) الديكور: نفس قواعد الفني والليدر (تقييم الليدر، الجرد، الوقت، الورق…)
+		// بس يبقون بفئتهم وترتيبهم الخاص.
+		rg := s.Group
+		if rg == GroupDecor {
+			rg = GroupTechs
+			if s.IsLeader {
+				rg = GroupLeaders
+			}
+		}
+		weights, ok := roleWeightsOf[rg]
 		if !ok || s.AIOnly {
 			continue
 		}
@@ -221,7 +230,7 @@ func applyRoleScores(rows []StaffScore, hum []repository.HumanRow, times map[str
 				set(p.Key, p.Pct, p.Detail)
 			}
 		}
-		switch s.Group {
+		switch rg {
 		case GroupTechs:
 			if v, d, ok := stars(s.ID, "LEADER_CREW"); ok {
 				set("LEADER", v, d)
@@ -266,7 +275,7 @@ func applyRoleScores(rows []StaffScore, hum []repository.HumanRow, times map[str
 			}
 		}
 		// (دازاي 11-21) المشاريع للفني والليدر والمنسّق هم — بقية الأدوار من genericParts
-		if s.Group == GroupTechs || s.Group == GroupLeaders || s.Group == GroupCoordinator {
+		if rg == GroupTechs || rg == GroupLeaders || rg == GroupCoordinator {
 			if v, ok := ratio(s.ruleTotals["PROJECT_WEEK"]); ok {
 				set("PROJECTS", v, fmt.Sprintf("%d من %d نقطة", s.ruleTotals["PROJECT_WEEK"][0], s.ruleTotals["PROJECT_WEEK"][1]))
 			}
@@ -309,7 +318,7 @@ func applyRoleScores(rows []StaffScore, hum []repository.HumanRow, times map[str
 			sum += pct["PLAN"] * planShare / 100
 			s.TechParts = append(s.TechParts, TechPart{Key: "PLAN", Label: "الخطة وتنفيذها (الهيكل الجديد)", Weight: planShare, Pct: pct["PLAN"], Detail: detail["PLAN"]})
 		}
-		op, notes := RoleMatrixOpinion(s.Group, pct)
+		op, notes := RoleMatrixOpinion(rg, pct)
 		if defs, ok := genericParts[s.Group]; ok {
 			op, notes = genericOpinion(defs, pct)
 		}

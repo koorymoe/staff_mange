@@ -167,10 +167,16 @@ func TestSimulationRoles(t *testing.T) {
 				"createdById", "confirmedByEmployeeId", "confirmedAt", "createdAt", "updatedAt")
 				VALUES ($1, $2, 'rs_cust', $3, 'COMPLETED', $4, $5, $6, $6, $7, $8, $8, $9, $9, $7)`,
 				id, b.code, svc, sched, sched.Add(-40*time.Minute), arr, done, b.sales, at(day, 7, 30))
-			for i, e := range []string{b.leader, b.tech} {
-				ex(`INSERT INTO "BookingAssignment" (id, "bookingId", "employeeId", role) VALUES ($1, $2, $3, $4::"TechnicianRole")`,
-					fmt.Sprintf("%s_%d", id, i), id, e, []string{"TECH_1", "TECH_2"}[i])
+			decor := "rs_dec_good"
+			if b.leader == "rs_l_bad" {
+				decor = "rs_dec_bad"
 			}
+			for i, e := range []string{b.leader, b.tech, decor} {
+				ex(`INSERT INTO "BookingAssignment" (id, "bookingId", "employeeId", role) VALUES ($1, $2, $3, $4::"TechnicianRole")`,
+					fmt.Sprintf("%s_%d", id, i), id, e, []string{"TECH_1", "TECH_2", "TECH_3"}[i])
+			}
+			// الديكور: الليدر يقيّمه (الزين ٥، المقصّر ٢ مؤكَّد)
+			ex(`INSERT INTO "CrewRating" (id, "bookingId", "leaderId", "technicianId", score, "reviewStatus") VALUES ($1, $2, 'rs_l_good', $3, $4, 'CONFIRMED')`, id+"_crd", id, decor, b.crewScore)
 			if b.leader == "rs_l_good" { // الليدر الزين يقيّم فنيّه، المقصّر لا
 				ex(`INSERT INTO "CrewRating" (id, "bookingId", "leaderId", "technicianId", score) VALUES ($1, $2, $3, $4, $5)`, id+"_cr", id, b.leader, b.tech, b.crewScore)
 			} else {
@@ -313,6 +319,9 @@ func TestSimulationRoles(t *testing.T) {
 		v, ok := part(id, "PROJECTS")
 		add("المشاريع: "+by[id].GroupLabel+" الي مشروعه واكف ينحسب عليه (مو مكافأة)", ok && v < 50 && by[id].ExtraJobs == 0, fmt.Sprintf("%.0f٪", v))
 	}
+	_, okDec := part("rs_dec_good", "LEADER")
+	add("الديكور: صار ينقيّم بقواعد الفني (تقييم الليدر، الحضور، الجرد…) مو المعادلة القديمة", okDec && by["rs_dec_good"].Group == GroupDecor,
+		fmt.Sprintf("زين %.0f · مقصّر %.0f", final("rs_dec_good"), final("rs_dec_bad")))
 	if v, ok := part("rs_t_good", "PROJECTS"); ok {
 		add("الي ما عنده مشروع ما يطلعله بند المشاريع", false, fmt.Sprintf("طلع %.0f٪", v))
 	} else {

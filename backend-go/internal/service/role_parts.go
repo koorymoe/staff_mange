@@ -43,9 +43,11 @@ var genericParts = map[string][]partDef{
 		{Key: "COMPLAINT_LOG", Label: "تسجيل الشكاوى كاملة (مربوطة بالحجز وشرح واضح)", Weight: 10, Rules: []string{"COMPLAINT_LOG"}},
 		{Key: "SUPERVISOR", Label: "تقييم المراقب", Weight: 8, Stages: monitorStages},
 	}, common(5, 1, 1)...),
+	// (11-21) + تقييمه اليومي للموظفين بوقته (واجب التقييم)
 	GroupMonitors: append([]partDef{
-		{Key: "VERDICT", Label: "حسم بنود التدقيق بسرعة", Weight: 30, Rules: []string{"MONITOR"}},
-		{Key: "AUDIT", Label: "تدقيق غير الحجوزات (التغطية)", Weight: 25, Rules: []string{"MONITOR_AUDIT"}},
+		{Key: "VERDICT", Label: "حسم بنود التدقيق بسرعة", Weight: 25, Rules: []string{"MONITOR"}},
+		{Key: "AUDIT", Label: "تدقيق غير الحجوزات (التغطية)", Weight: 20, Rules: []string{"MONITOR_AUDIT"}},
+		{Key: "RATING_DUTY", Label: "يقيّم الموظفين يومياً بوقته", Weight: 10, Rules: []string{"RATING_DUTY"}},
 		{Key: "SUPERVISOR", Label: "تقييم المدير/المالك", Weight: 15, Stages: []string{"ADMIN_PERIODIC"}},
 	}, common(5, 3, 2)...),
 	GroupFinance: append([]partDef{
