@@ -278,6 +278,7 @@ var ruleGroups = map[string]map[string]bool{
 	"MONITOR":      {GroupMonitors: true},
 	// (دازاي 11-21) «اي موظف عنده مشاريع يتقيّم عليهن» — PROJECT_WEEK ينحسب لكل الفئات (مو شغل إضافي)
 	"COMPLAINT_CONTACT": {GroupQuality: true},
+	"COMPLAINT_LOG":     {GroupSales: true},
 	"COMPLAINT_RESOLVE": {GroupQuality: true},
 }
 

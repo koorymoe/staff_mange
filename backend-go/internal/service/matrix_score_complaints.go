@@ -40,16 +40,24 @@ func ComplaintPoints(took *time.Duration, open time.Duration, full, half time.Du
 
 func (s *MatrixScoreService) scoreComplaints(now time.Time, add func(repository.MatrixScoreRow)) {
 	var rows []struct {
-		ID          string   `db:"id"`
-		Contacter   *string  `db:"contacter"`
-		Assigned    *string  `db:"assigned"`
-		Code        *string  `db:"code"`
-		OpenSecs    float64  `db:"openSecs"`
-		ContactSecs *float64 `db:"contactSecs"`
-		ResolveSecs *float64 `db:"resolveSecs"`
+		ID          string    `db:"id"`
+		Contacter   *string   `db:"contacter"`
+		Assigned    *string   `db:"assigned"`
+		Code        *string   `db:"code"`
+		OpenSecs    float64   `db:"openSecs"`
+		ContactSecs *float64  `db:"contactSecs"`
+		ResolveSecs *float64  `db:"resolveSecs"`
+		Creator     string    `db:"creator"`
+		Linked      bool      `db:"linked"`
+		Words       int       `db:"words"`
+		CreatedAt   time.Time `db:"createdAt"`
+		BySales     bool      `db:"bySales"`
 	}
 	err := s.repo.DB().Select(&rows, `
-		SELECT c.id, c."contactedById" AS contacter, c."assignedToEmployeeId" AS assigned, b.code,
+		SELECT c.id, c."createdByEmployeeId" AS creator,
+		       EXISTS (SELECT 1 FROM "Employee" ce WHERE ce.id = c."createdByEmployeeId" AND ce.role::text = 'SALES') AS "bySales", c."bookingId" IS NOT NULL AS linked, c."createdAt",
+		       COALESCE(array_length(regexp_split_to_array(trim(c.description), '\s+'), 1), 0) AS words,
+		       c."contactedById" AS contacter, c."assignedToEmployeeId" AS assigned, b.code,
 		       EXTRACT(EPOCH FROM (now() AT TIME ZONE 'UTC') - c."createdAt") AS "openSecs",
 		       EXTRACT(EPOCH FROM (c."contactedAt" AT TIME ZONE 'UTC') - c."createdAt") AS "contactSecs",
 		       EXTRACT(EPOCH FROM c."resolvedAt" - c."createdAt") AS "resolveSecs"
@@ -70,6 +78,12 @@ func (s *MatrixScoreService) scoreComplaints(now time.Time, add func(repository.
 		if c.Code != nil {
 			label += " حجز " + *c.Code
 		}
+		// (دازاي 11-21) المبيعات «يسجلون شكوى»: كاملة = مربوطة بحجز + شرح ٥ كلمات فما فوق
+		if c.BySales {
+			pts, why := ComplaintLogPoints(c.Linked, c.Words)
+			add(repository.MatrixScoreRow{EmployeeID: c.Creator, Source: "COMPLAINT", SourceID: c.ID + "@log", SourceLabel: &label,
+				Rule: "COMPLAINT_LOG", Points: pts, MaxPoints: 2, At: c.CreatedAt, Reason: label + " · التسجيل: " + why})
+		}
 		open := time.Duration(c.OpenSecs * float64(time.Second))
 		who := c.Contacter
 		if who == nil {
@@ -89,4 +103,18 @@ func (s *MatrixScoreService) scoreComplaints(now time.Time, add func(repository.
 				Rule: "COMPLAINT_RESOLVE", Points: pts, MaxPoints: 2, At: now, Reason: fmt.Sprintf("%s · الحل: %s", label, why)})
 		}
 	}
+}
+
+// ComplaintLogPoints تسجيل الشكوى: مربوطة بالحجز وشرحها واضح (٥ كلمات فما فوق).
+func ComplaintLogPoints(linked bool, words int) (int, string) {
+	switch {
+	case linked && words >= 5:
+		return 2, "كاملة: مربوطة بالحجز وشرحها واضح."
+	case linked || words >= 5:
+		if !linked {
+			return 1, "ناقصة: مو مربوطة بالحجز."
+		}
+		return 1, "ناقصة: الشرح قصير (أقل من ٥ كلمات)."
+	}
+	return 0, "ناقصة: بلا حجز وشرحها قصير."
 }

@@ -64,3 +64,28 @@ func TestGenericOpinionFloors(t *testing.T) {
 		t.Fatalf("الكامل لازم ١٠٠: %v", v)
 	}
 }
+
+// (11-21) المبيعات: تسجيل الشكوى + أوزانهم ٨٠.
+func TestSalesComplaintLogAndWeights(t *testing.T) {
+	if p, _ := ComplaintLogPoints(true, 6); p != 2 {
+		t.Fatal(p)
+	}
+	if p, _ := ComplaintLogPoints(false, 6); p != 1 {
+		t.Fatal(p)
+	}
+	if p, _ := ComplaintLogPoints(false, 2); p != 0 {
+		t.Fatal(p)
+	}
+	sum := 0.0
+	for _, d := range genericParts[GroupSales] {
+		if d.Key != "PROJECTS" {
+			sum += d.Weight
+		}
+	}
+	if sum != 80 {
+		t.Fatalf("أوزان المبيعات %v", sum)
+	}
+	if RuleFitsGroup("COMPLAINT_LOG", GroupQuality) {
+		t.Fatal("تسجيل الشكوى للمبيعات بس")
+	}
+}

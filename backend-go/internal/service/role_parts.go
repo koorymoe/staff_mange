@@ -35,11 +35,14 @@ func common(att, tasks, peers float64) []partDef {
 }
 
 var genericParts = map[string][]partDef{
+	// (دازاي 11-21) المبيعات: «يسجلون حجز ويسجلون شكوى، وكم حجز سجلوه تم واشتغلنا للزبون،
+	// والحجز الي تحول لمشروع ينحسب الهم».
 	GroupSales: append([]partDef{
 		{Key: "CREATE", Label: "تسجيل الحجوزات كاملة وبوقتها", Weight: 30, Rules: []string{"CREATE"}},
-		{Key: "CONVERSION", Label: "التحويل: حجوزاته الي انجزت مو انلغت", Weight: 20, Fact: "CONVERSION"},
-		{Key: "SUPERVISOR", Label: "تقييم المراقب", Weight: 15, Stages: monitorStages},
-	}, common(10, 3, 2)...),
+		{Key: "CONVERSION", Label: "حجوزاته الي تمت (أو صارت مشروع) مو انلغت", Weight: 25, Fact: "CONVERSION"},
+		{Key: "COMPLAINT_LOG", Label: "تسجيل الشكاوى كاملة (مربوطة بالحجز وشرح واضح)", Weight: 10, Rules: []string{"COMPLAINT_LOG"}},
+		{Key: "SUPERVISOR", Label: "تقييم المراقب", Weight: 8, Stages: monitorStages},
+	}, common(5, 1, 1)...),
 	GroupMonitors: append([]partDef{
 		{Key: "VERDICT", Label: "حسم بنود التدقيق بسرعة", Weight: 30, Rules: []string{"MONITOR"}},
 		{Key: "AUDIT", Label: "تدقيق غير الحجوزات (التغطية)", Weight: 25, Rules: []string{"MONITOR_AUDIT"}},
@@ -140,8 +143,12 @@ func genericPct(defs []partDef, s *StaffScore, stars func(string, ...string) (fl
 			}
 		case d.Fact == "CONVERSION":
 			if f, ok := cf[s.ID]; ok {
-				if v, ok := ConversionPct(f.Completed, f.Cancelled); ok {
-					set(d.Key, v, fmt.Sprintf("%d انجز، %d انلغى", f.Completed, f.Cancelled))
+				if v, ok := ConversionPct(f.Completed+f.Projects, f.Cancelled); ok {
+					d := fmt.Sprintf("%d تم، %d انلغى", f.Completed, f.Cancelled)
+					if f.Projects > 0 {
+						d = fmt.Sprintf("%d تم، %d صار مشروع، %d انلغى", f.Completed, f.Projects, f.Cancelled)
+					}
+					set("CONVERSION", v, d)
 				}
 			}
 		case len(d.Rules) > 0:

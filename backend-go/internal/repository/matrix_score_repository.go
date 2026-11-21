@@ -641,6 +641,8 @@ type CoordFact struct {
 	// (11-19) البيّاع: حجوزاته الي سجّلها بالفترة — كم انجزت وكم انلغت
 	Completed int `db:"completed"`
 	Cancelled int `db:"cancelled"`
+	// (دازاي 11-21) «في حال تحول الحجز الى مشروع ينحسب الهم مسجلين مشروع»
+	Projects int `db:"projects"`
 }
 
 // CoordFacts لكل موظف (أو واحد): planItemScore نفس معادلة تصنيف المدراء (org_director_ranking).
@@ -659,8 +661,14 @@ func (r *MatrixScoreRepository) CoordFacts(from, to time.Time, period, planItemS
 		    WHERE p.period = $3 AND ((pos.position = 'DIRECTOR' AND p."divisionId" = pos."divisionId") OR (pos.position = 'DEPUTY' AND i."ownerId" = e.id)))::int AS "planItems",
 		  (SELECT count(*) FROM "Booking" b WHERE b."confirmedByEmployeeId" = e.id AND b."scheduledAt" >= $1 AND b."scheduledAt" < $2)::int AS confirmed,
 		  (SELECT COALESCE(sum(b."postponeCount"), 0) FROM "Booking" b WHERE b."confirmedByEmployeeId" = e.id AND b."scheduledAt" >= $1 AND b."scheduledAt" < $2)::int AS postpones,
-		  (SELECT count(*) FROM "Booking" b WHERE b."createdById" = e.id AND b."createdAt" >= $1 AND b."createdAt" < $2 AND b.status::text IN ('COMPLETED','PARTIAL'))::int AS completed,
-		  (SELECT count(*) FROM "Booking" b WHERE b."createdById" = e.id AND b."createdAt" >= $1 AND b."createdAt" < $2 AND b.status::text = 'CANCELLED')::int AS cancelled
+		  (SELECT count(*) FROM "Booking" b WHERE b."createdById" = e.id AND b."createdAt" >= $1 AND b."createdAt" < $2 AND b.status::text IN ('COMPLETED','PARTIAL')
+		     AND NOT EXISTS (SELECT 1 FROM "Project" pj WHERE pj."bookingId" = b.id))::int AS completed,
+		  (SELECT count(*) FROM "Booking" b WHERE b."createdById" = e.id AND b."createdAt" >= $1 AND b."createdAt" < $2 AND b.status::text = 'CANCELLED'
+		     AND NOT EXISTS (SELECT 1 FROM "Project" pj WHERE pj."bookingId" = b.id))::int AS cancelled,
+		  -- (11-21) المشروع الي طلع من حجزه، أو سجّله هو مباشرة — ينحسب إله «تم» (حتى لو الحجز انلغى لأنه صار مشروع)
+		  (SELECT count(DISTINCT pj.id) FROM "Project" pj LEFT JOIN "Booking" b ON b.id = pj."bookingId"
+		     WHERE pj."createdAt" >= $1 AND pj."createdAt" < $2 AND pj.stage <> '❌ مرفوض'
+		       AND (b."createdById" = e.id OR (pj."bookingId" IS NULL AND pj."createdByEmployeeId" = e.id)))::int AS projects
 		FROM "Employee" e LEFT JOIN pos ON pos."employeeId" = e.id
 		WHERE e.status = 'ACTIVE' AND ($4 = '' OR e.id = $4)`, from, to, period, employeeID)
 	out := map[string]CoordFact{}

@@ -82,6 +82,7 @@ func TestSimulationRoles(t *testing.T) {
 		`DELETE FROM "Complaint" WHERE id LIKE 'rs\_%'`,
 		`DELETE FROM "BookingAssignment" WHERE "bookingId" LIKE 'rs\_%'`,
 		`DELETE FROM "ProjectStageLog" WHERE "projectId" LIKE 'rs\_%'`,
+		`DELETE FROM "Project" WHERE id = 'rs_prj_from_booking'`,
 		`DELETE FROM "Project" WHERE id LIKE 'rs\_%'`,
 		`DELETE FROM "Booking" WHERE id LIKE 'rs\_%'`,
 		`DELETE FROM "ExtraTask" WHERE id LIKE 'rs\_%'`,
@@ -183,10 +184,18 @@ func TestSimulationRoles(t *testing.T) {
 	// ── شكاوى: الجودة الزين يتصل خلال ساعة ويحلها بيوم؛ المقصّر يتصل بعد يوم ونص وبعدها مفتوحة ٨ أيام ──
 	cAt := time.Now().UTC().Add(-8 * 24 * time.Hour)
 	ex(`INSERT INTO "Complaint" (id, "customerId", description, status, "createdByEmployeeId", "assignedToEmployeeId", "createdAt", "contactedAt", "contactedById", "resolvedAt")
-		VALUES ('rs_c_good', 'rs_cust', 'الكاميرا تطفي بالليل', 'RESOLVED', 'rs_s_good', 'rs_q_good', $1, $2, 'rs_q_good', $3)`,
+		VALUES ('rs_c_good', 'rs_cust', 'الكاميرا الأمامية تطفي كل ليلة بعد الساعة عشرة', 'RESOLVED', 'rs_s_good', 'rs_q_good', $1, $2, 'rs_q_good', $3)`,
 		cAt, cAt.Add(time.Hour), cAt.Add(24*time.Hour))
 	ex(`INSERT INTO "Complaint" (id, "customerId", description, status, "createdByEmployeeId", "assignedToEmployeeId", "createdAt", "contactedAt", "contactedById")
 		VALUES ('rs_c_bad', 'rs_cust', 'الجهاز ما يشتغل', 'NEW', 'rs_s_bad', 'rs_q_bad', $1, $2, 'rs_q_bad')`, cAt, cAt.Add(36*time.Hour))
+	ex(`UPDATE "Complaint" SET "bookingId" = 'rs_RS1G' WHERE id = 'rs_c_good'`)
+	// ── المبيعات: حجز الزين تحول لمشروع، وحجزين للمقصّر انلغوا ──
+	ex(`INSERT INTO "Project" (id, code, name, stage, "createdAt", "updatedAt", "bookingId") VALUES ('rs_prj_from_booking', 'RSPFB', '🧪 مشروع من حجز', '4. العقد', now(), now(), 'rs_RS5G')`)
+	for i := 1; i <= 2; i++ {
+		ex(`INSERT INTO "Booking" (id, code, "customerId", "serviceId", status, "scheduledAt", "createdById", "createdAt", "updatedAt")
+			VALUES ($1, $2, 'rs_cust', $3, 'CANCELLED', now() + interval '1 day', 'rs_s_bad', now() - interval '2 day', now())`,
+			fmt.Sprintf("rs_RSX%d", i), fmt.Sprintf("RSX%d", i), svc)
+	}
 	// ── مشاريع: كل «زين» عنده مشروع يتحرك، كل «مقصّر» من التصميم والتقني ومدير المشاريع والجودة عنده مشروع واكف ٦٠ يوم ──
 	old := time.Now().UTC().AddDate(0, 0, -60)
 	for _, owner := range []string{"rs_d_good", "rs_d_bad", "rs_pm_good", "rs_pm_bad", "rs_e_good", "rs_e_bad", "rs_q_good", "rs_q_bad"} {
@@ -287,6 +296,12 @@ func TestSimulationRoles(t *testing.T) {
 	p, m = rule("rs_q_good", "COMPLAINT_RESOLVE")
 	p2, m2 = rule("rs_q_bad", "COMPLAINT_RESOLVE")
 	add("الشكوى: الحل بيوم كامل، والمفتوحة ٨ أيام صفر", p == 2 && m == 2 && p2 == 0 && m2 == 2, fmt.Sprintf("زين %d/%d · مقصّر %d/%d", p, m, p2, m2))
+	p, m = rule("rs_s_good", "COMPLAINT_LOG")
+	p2, m2 = rule("rs_s_bad", "COMPLAINT_LOG")
+	add("المبيعات: الشكوى المربوطة بالحجز وشرحها واضح كاملة، والناقصة صفر", p == 2 && m == 2 && p2 == 0 && m2 == 2, fmt.Sprintf("زين %d/%d · مقصّر %d/%d", p, m, p2, m2))
+	v1, _ := part("rs_s_good", "CONVERSION")
+	v2, _ := part("rs_s_bad", "CONVERSION")
+	add("المبيعات: الحجز الي صار مشروع ينحسب «تم»، والملغي ينزّل", v1 == 100 && v2 < 100, fmt.Sprintf("زين %.0f٪ · مقصّر %.0f٪", v1, v2))
 	_, okQ := part("rs_q_good", "COMPLAINT_RESOLVE")
 	add("الجودة: بند «حل الشكوى» يطلع بتفاصيل التقييم", okQ, "")
 	// ٣) المشاريع لكل الأدوار

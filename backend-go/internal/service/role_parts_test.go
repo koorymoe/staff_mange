@@ -7,16 +7,16 @@ import (
 	"staffmange-api/internal/repository"
 )
 
-// (دازاي 11-19) البيّاع: تسجيل 30 · تحويل 20 · مراقب 15 · حضور 10 · مهام 3 · زملاء 2 + ماتركس 20
+// (دازاي 11-21) البيّاع: تسجيل 30 · تحويل 25 · تسجيل الشكاوى 10 · مراقب 8 · حضور 5 · مهام 1 · زملاء 1 + ماتركس 20
 func TestSalesScore(t *testing.T) {
 	rows := []StaffScore{{ID: "s", Group: GroupSales,
 		RelParts:   []ReliabilityPart{{Key: "ATTENDANCE", Pct: 100}, {Key: "PEERS", Pct: 100}},
 		ruleTotals: map[string][2]int{"CREATE": {4, 4}}}}
 	hum := []repository.HumanRow{{RateeID: "s", Stage: "MONITOR_DAILY", Score: 4}}
 	applyRoleScores(rows, hum, nil, map[string]repository.CoordFact{"s": {Completed: 1, Cancelled: 3}})
-	// تسجيل 30 + تحويل 25%×20=5 + مراقب 80%×15=12 + حضور 10 + زملاء 2 = 59 من 77 ⇒ ×80/77 = 61.30
-	// ماتركس: التحويل تحت ٧٠ (−٢٥) ⇒ 75 ⇒ 15 ⇒ 76.30
-	if f := rows[0].Final; f == nil || !near(*f, 76.30) {
+	// تسجيل 30 + تحويل 25%×25=6.25 + مراقب 80%×8=6.4 + حضور 5 + زملاء 1 = 48.65 من 69 ⇒ ×80/69 = 56.41
+	// ماتركس: التحويل تحت ٧٠ (−٣١.٢٥) ⇒ 68.75 ⇒ 13.75 ⇒ 70.16
+	if f := rows[0].Final; f == nil || !near(*f, 70.16) {
 		t.Fatalf("final = %v", f)
 	}
 }
