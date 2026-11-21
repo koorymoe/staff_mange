@@ -259,6 +259,8 @@ html.dark .bg-white\/95 { background-color: rgba(19, 26, 42, 0.95); }
 html.dark .bg-white\/90 { background-color: rgba(19, 26, 42, 0.9); }
 html.dark .bg-white\/80 { background-color: rgba(19, 26, 42, 0.8); }
 html.dark .bg-white\/60 { background-color: rgba(19, 26, 42, 0.6); }
+/* (ك) 11-21 زينا: /70 چانت ناقصة — كروت أيام الحجز («وين وصل الشغل») وغيرها طلعن رصاصيات بالليلي */
+html.dark .bg-white\/70 { background-color: rgba(19, 26, 42, 0.7); }
 
 /* ═══════════════════════════════════════════════════════════════
    ألوان المعاني بالوضع الليلي
