@@ -18,7 +18,7 @@ type Survey = { employeeId: string; employeeName: string; major: string; degree:
 type Surveys = { surveys: Survey[]; pending: { employeeId: string; employeeName: string }[] }
 
 // (ك) 11-21 زينا: تبويبات بإطار، والمختار إطاره ذهبي (مثل التصميم)
-const tabCls = (on: boolean) => `rounded-2xl border bg-white px-5 py-2.5 text-sm font-bold transition ${on ? 'border-amber-400 text-[#0f2040] ring-2 ring-amber-300/60' : 'border-slate-200 text-slate-600 hover:border-slate-300'}`
+const tabCls = (on: boolean) => `rounded-2xl border bg-white px-6 py-3 text-base font-bold transition ${on ? 'border-amber-400 text-[#0f2040] ring-2 ring-amber-300/60' : 'border-slate-200 text-slate-600 hover:border-slate-300'}`
 
 const yesterday = () => { const d = new Date(todayBaghdad() + 'T12:00:00'); d.setDate(d.getDate() - 1); return d.toISOString().slice(0, 10) }
 
@@ -98,18 +98,18 @@ function SurveysTab() {
     <div className={`${card} space-y-4`}>
       {error && <p className="text-sm text-red-600">{error}</p>}
       {data && data.pending.length > 0 && (
-        <div className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700">
-          <span className="text-amber-500"><Ico n="users" className="h-6 w-6" /></span>
-          <p><b className="text-[#0f2040]">بعدهم ما عبّوا ({data.pending.length}):</b> {data.pending.map((p) => p.employeeName).join('، ')}</p>
+        <div className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-5 py-4 text-base text-slate-700">
+          <span className="text-amber-500"><Ico n="users" className="h-8 w-8" /></span>
+          <p><b className="text-lg text-[#0f2040]">بعدهم ما عبّوا ({data.pending.length}):</b> {data.pending.map((p) => p.employeeName).join('، ')}</p>
         </div>
       )}
       <div className="overflow-x-auto rounded-2xl border border-slate-200" data-testid="surveys-table">
-        <table className="w-full min-w-[980px] text-sm">
-          <thead className="bg-slate-50 text-xs font-bold text-[#0f2040]">
+        <table className="w-full min-w-[1080px] text-[15px]">
+          <thead className="bg-slate-50 text-sm font-bold text-[#0f2040]">
             <tr>
               {heads.map(([ic, h]) => (
-                <th key={h} className="px-2 py-3.5 text-center">
-                  <span className="inline-flex items-center justify-center gap-1.5">{ic && <span className="text-amber-500"><Ico n={ic} /></span>}{h}</span>
+                <th key={h} className="px-3 py-5 text-center">
+                  <span className="inline-flex items-center justify-center gap-2">{ic && <span className="text-amber-500"><Ico n={ic} className="h-6 w-6" /></span>}<span className="whitespace-nowrap">{h}</span></span>
                 </th>
               ))}
             </tr>
@@ -119,32 +119,32 @@ function SurveysTab() {
               const flag = !!s.mismatch && !s.reviewedAt
               return (
                 <tr key={s.employeeId} className={`align-middle ${flag ? 'bg-red-50' : 'hover:bg-slate-50'}`}>
-                  <td className="px-2 py-3 text-center"><span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-slate-100 text-xs font-bold text-slate-600">{i + 1}</span></td>
-                  <td className="px-2 py-3"><span className="flex items-center gap-2 font-bold text-[#0f2040]"><span className="shrink-0 text-amber-500"><Ico n="user" className="h-5 w-5" /></span>{s.employeeName}</span></td>
-                  <td className="px-2 py-3 text-center text-slate-700">{s.major} / {s.degree}</td>
-                  <td className="px-2 py-3 text-center">{s.currentJob ? <span className="inline-block rounded-full bg-blue-50 px-3 py-1 text-xs font-bold text-blue-700 ring-1 ring-blue-200">{s.currentJob}</span> : dash}</td>
-                  <td className="px-2 py-3 text-center font-bold text-slate-800" dir="ltr" title="هو / الملف">
+                  <td className="px-3 py-5 text-center"><span className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-slate-100 text-sm ring-1 ring-slate-200 font-bold text-slate-600">{i + 1}</span></td>
+                  <td className="px-3 py-5"><span className="flex items-center gap-3 whitespace-nowrap text-base font-extrabold text-[#0f2040]"><span className="shrink-0 text-amber-500"><Ico n="user" className="h-7 w-7" /></span>{s.employeeName}</span></td>
+                  <td className="px-3 py-5 text-center text-slate-700">{s.major} / {s.degree}</td>
+                  <td className="px-3 py-5 text-center">{s.currentJob ? <span className="inline-block rounded-full bg-blue-50 px-4 py-1.5 text-sm font-bold text-blue-700 ring-1 ring-blue-200">{s.currentJob}</span> : dash}</td>
+                  <td className="px-3 py-5 text-center text-base font-bold leading-relaxed text-slate-800" dir="ltr" title="هو / الملف">
                     <div>{s.selfSalaryIQD !== null ? num(s.selfSalaryIQD) : '—'} /</div>
                     <div>{s.fileSalary !== null ? num(s.fileSalary) : '—'}</div>
                   </td>
-                  <td className="px-2 py-3 text-center font-bold text-slate-700">{s.monthlyHours ?? dash}</td>
-                  <td className="px-2 py-3 text-center" title="هو / الملف">
+                  <td className="px-3 py-5 text-center text-base font-bold text-slate-700">{s.monthlyHours ?? dash}</td>
+                  <td className="px-3 py-5 text-center" title="هو / الملف">
                     {s.contractEnd || s.fileContract
-                      ? <span className="inline-block whitespace-nowrap rounded-lg bg-slate-100 px-3 py-1.5 font-bold text-slate-700" dir="ltr">{s.contractEnd ?? '—'}{s.fileContract && s.fileContract !== s.contractEnd ? ` / ${s.fileContract}` : ''}</span>
+                      ? <span className="inline-block whitespace-nowrap rounded-xl bg-slate-100 px-4 py-2 text-base font-bold ring-1 ring-slate-200 text-slate-700" dir="ltr">{s.contractEnd ?? '—'}{s.fileContract && s.fileContract !== s.contractEnd ? ` / ${s.fileContract}` : ''}</span>
                       : <span className="text-slate-400">—/—</span>}
                   </td>
-                  <td className="px-2 py-3 text-center">
-                    <div className="text-base leading-none text-amber-400" aria-label={`${s.companyRating} من ٥`}>{'★'.repeat(s.companyRating)}</div>
-                    {s.companyNote && <div className="mt-1 text-xs text-slate-500">{s.companyNote}</div>}
+                  <td className="px-3 py-5 text-center">
+                    <div className="text-2xl leading-none tracking-tight text-amber-400" aria-label={`${s.companyRating} من ٥`}>{'★'.repeat(s.companyRating)}</div>
+                    {s.companyNote && <div className="mt-1.5 text-sm text-slate-500">{s.companyNote}</div>}
                   </td>
-                  <td className="px-2 py-3 text-center">
+                  <td className="px-3 py-5 text-center">
                     {flag && (
                       <>
-                        <div className="mb-1.5 text-xs font-bold text-amber-700">⚠️ {s.mismatch}</div>
-                        <button type="button" onClick={() => void review(s.employeeId)} className="rounded-lg border border-slate-300 bg-white px-3 py-1 text-xs font-bold text-slate-700 hover:bg-slate-50">✓ طابقت</button>
+                        <div className="mb-2 text-sm font-bold text-amber-600">⚠️ {s.mismatch}</div>
+                        <button type="button" onClick={() => void review(s.employeeId)} className="rounded-xl border border-slate-300 bg-white px-4 py-1.5 text-sm font-bold text-slate-700 hover:bg-slate-50">✓ طابقت</button>
                       </>
                     )}
-                    {!flag && <span className="inline-block rounded-full bg-emerald-50 px-3 py-1 text-xs font-bold text-emerald-700 ring-1 ring-emerald-200">✓ {s.reviewedAt ? 'انطابقت' : 'طابق'}</span>}
+                    {!flag && <span className="inline-block rounded-full bg-emerald-50 px-5 py-2 text-sm font-bold text-emerald-700 ring-1 ring-emerald-300">✓ {s.reviewedAt ? 'انطابقت' : 'طابق'}</span>}
                   </td>
                 </tr>
               )
