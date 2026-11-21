@@ -66,7 +66,7 @@ export default function MaintenanceDueList() {
         <table className="w-full min-w-[900px] text-sm">
           <thead className="bg-slate-50 text-slate-600">
             <tr>
-              {['ت', 'الاسم الكامل', 'رقم الموبايل', 'نوع الخدمة', 'آخر شغل', 'الشكاوى', 'تاريخ آخر شغل', 'الإجراءات'].map((h) => (
+              {['ت', 'الاسم الكامل', 'رقم الموبايل', 'نوع الخدمة', 'آخر شغل', 'الشكاوى', 'تاريخ الشكوى', 'الإجراءات'].map((h) => (
                 <th key={h} className="whitespace-nowrap border-s border-slate-200 px-1.5 py-3.5 text-center text-sm font-bold first:border-s-0">{h}</th>
               ))}
             </tr>
@@ -83,10 +83,9 @@ export default function MaintenanceDueList() {
                   {r.complaints > 0
                     ? <span className="whitespace-nowrap rounded-full bg-rose-50 px-3 py-1 text-xs font-bold text-rose-700">{r.complaints} شكاوى بالسنة</span>
                     : <span className="text-slate-400">—</span>}
-                  {/* (ك) 11-21 زينا: وقت آخر شكوى بخط ناعم مثل باقي النظام */}
-                  {r.complaints > 0 && r.lastComplaint && <div className="mt-1 whitespace-nowrap text-[11px] text-slate-400" title="آخر شكوى">آخر شكوى: {fmtDateTime(r.lastComplaint)}</div>}
-                </td>
-                <td className="whitespace-nowrap px-1.5 py-3.5 text-center text-slate-600">{r.lastDone.slice(0, 10)}</td>
+</td>
+                {/* (ك) 11-21 زينا: «تاريخ الشكوى» — يوم وساعة آخر شكوى للزبون، بعمود واضح */}
+                <td className="px-1.5 py-3.5 text-center text-slate-600">{r.complaints > 0 && r.lastComplaint ? fmtDateTime(r.lastComplaint) : <span className="text-slate-400">—</span>}</td>
                 <td className="px-1.5 py-3.5 text-center">
                   <div className="flex flex-nowrap justify-center gap-1">
                     {[...DECISIONS].reverse().map((d) => (
