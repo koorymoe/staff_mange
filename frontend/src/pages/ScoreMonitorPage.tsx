@@ -71,8 +71,9 @@ export default function ScoreMonitorPage() {
 
       <section className="overflow-x-auto rounded-2xl bg-white p-4 shadow-sm">
         <h2 className="mb-2 text-base font-extrabold">🏛️ المدراء — منين جاي الرقم</h2>
-        <table className="w-full min-w-[720px] text-sm">
-          <thead><tr className="text-right text-xs text-slate-500"><th className="p-1">المدير</th><th>الإدارة</th><th>الرقم</th><th>تغطية البيانات</th>{rank?.rows[0]?.criteria.map((c) => <th key={c.key} className="p-1">{c.label} <small>({c.weight})</small></th>)}</tr></thead>
+        {/* (ك) 11-21 زينا: الخلايا چانت بلا مسافة فالعناوين والأرقام تتداخل */}
+        <table className="w-full min-w-[900px] text-sm [&_td]:px-3 [&_td]:py-2.5 [&_td]:align-middle [&_th]:px-3 [&_th]:py-2 [&_th]:align-bottom [&_th]:font-bold [&_th]:leading-snug [&_tbody_td:not(:first-child):not(:nth-child(2))]:whitespace-nowrap">
+          <thead><tr className="text-right text-xs text-slate-500"><th className="p-1">المدير</th><th>الإدارة</th><th>الرقم</th><th className="whitespace-nowrap">تغطية البيانات</th>{rank?.rows[0]?.criteria.map((c) => <th key={c.key} className="min-w-[5.5rem]">{c.label} <small className="block font-normal text-slate-400">({c.weight})</small></th>)}</tr></thead>
           <tbody>
             {(rank?.rows ?? []).map((r) => (
               <tr key={r.divisionName + r.employeeName} className="border-t border-slate-100">
@@ -95,7 +96,8 @@ export default function ScoreMonitorPage() {
 
       <section className="overflow-x-auto rounded-2xl bg-white p-4 shadow-sm">
         <h2 className="mb-2 text-base font-extrabold">👥 الموظفين — تفصيل كل تقييم</h2>
-        <table className="w-full min-w-[720px] text-sm">
+        {/* (ك) 11-21 زينا: الخلايا چانت بلا مسافة فالعناوين والأرقام تتداخل */}
+        <table className="w-full min-w-[900px] text-sm [&_td]:px-3 [&_td]:py-2.5 [&_td]:align-middle [&_th]:px-3 [&_th]:py-2 [&_th]:align-bottom [&_th]:font-bold [&_th]:leading-snug [&_tbody_td:not(:first-child):not(:nth-child(2))]:whitespace-nowrap">
           <thead><tr className="text-right text-xs text-slate-500"><th className="p-1">الموظف</th><th>النهائي</th><th>الشهر الي فات</th><th>ماتركس</th><th>البشر</th><th>الانضباط</th><th>تأخير بلا عذر</th><th>غياب</th><th>الاعتمادية</th><th /></tr></thead>
           <tbody>
             {(staff ?? []).map((s) => (
