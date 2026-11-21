@@ -4,6 +4,7 @@ import { apiRequest } from '../api'
 import { useSession, isAdminOrOwner, hasRole } from '../session'
 import { useApi } from '../utils/useApi'
 import { ReportAnalysisBox } from '../components/ReportAnalysisBox'
+import { DeleteButton } from '../ui/DeleteButton'
 import { card } from '../ui/classes'
 import { num, todayBaghdad } from '../utils/format'
 import { swallow } from '../utils/swallow'
@@ -38,6 +39,8 @@ export default function StaffReportsPage() {
 function DailyTab() {
   const [day, setDay] = useState(yesterday())
   const [reload, setReload] = useState(0)
+  // (ك) 11-21 زينا: حذف التقرير للمالك بس (الباك إند يرفض غيره)
+  const isOwner = useSession().employee?.actualRole === 'OWNER'
   const { data, error } = useApi(() => apiRequest<Daily>(`/daily-reports?day=${day}`), [day, reload])
   return (
     <div className={`${card} space-y-3`}>
@@ -52,7 +55,9 @@ function DailyTab() {
       <div className="divide-y divide-slate-100">
         {data?.reports.map((r) => (
           <div key={r.id} className="py-2.5">
-            <p className="text-sm font-bold text-[#0f2040]"><Link to={`/employee-dossier?id=${r.employeeId}`} className="hover:underline">{r.employeeName}</Link> {r.late && <span className="mr-1 rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-bold text-amber-700 ring-1 ring-amber-200">متأخر</span>}</p>
+            <p className="text-sm font-bold text-[#0f2040]"><Link to={`/employee-dossier?id=${r.employeeId}`} className="hover:underline">{r.employeeName}</Link> {r.late && <span className="mr-1 rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-bold text-amber-700 ring-1 ring-amber-200">متأخر</span>}
+              {isOwner && <DeleteButton className="float-left" confirm={`تحذف تقرير ${r.employeeName}؟ ينحذف وياه تحليل ماتركس، وما يرجع.`}
+                onConfirm={async () => { await apiRequest(`/daily-reports/${r.id}`, { method: 'DELETE' }); setReload((n) => n + 1) }} />}</p>
             <p className="whitespace-pre-wrap text-sm text-slate-700">{r.body}</p>
             <MatchRow r={r} onDone={() => setReload((n) => n + 1)} />
             <ReportAnalysisBox reportId={r.id} />

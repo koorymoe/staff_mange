@@ -1152,6 +1152,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	secs["daily_reports"].Set("GET /api/daily-reports/{id}/analysis", "daily_reports.get_by_id_analysis", workGate.ReportAnalysis)
 	secs["me_x"].Set("GET /api/me/daily-reports/{id}/analysis", "me_x.get_daily_reports_by_id_analysis", workGate.MyReportAnalysis)
 	secs["daily_reports"].Set("POST /api/daily-reports/{id}/match-review", "daily_reports.post_by_id_match_review", workGate.ReviewMatch)
+	secs["daily_reports"].Set("DELETE /api/daily-reports/{id}", "daily_reports.delete_by_id", workGate.DeleteReport)
 	safeguard.Loop("مطابقة تقارير الإنجاز", 13*time.Minute, time.Hour, func() {
 		if n, err := workGate.SweepMatches(); err != nil {
 			log.Printf("report match: %v", err)

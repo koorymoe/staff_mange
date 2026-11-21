@@ -488,6 +488,19 @@ func (h *WorkGateHandler) ReviewMatch(w http.ResponseWriter, r *http.Request) {
 	WriteJSON(w, http.StatusOK, map[string]bool{"ok": true})
 }
 
+// DELETE /api/daily-reports/{id} — (ك) 11-21 زينا: المالك بس يحذف تقرير إنجاز يومي.
+// التحليل والمطابقة ينحذفن وياه (ON DELETE CASCADE)، والحذف ينكتب بالسجل.
+func (h *WorkGateHandler) DeleteReport(w http.ResponseWriter, r *http.Request) {
+	var emp string
+	err := h.db.Get(&emp, `DELETE FROM "DailyWorkReport" WHERE id = $1 RETURNING "employeeId"`, r.PathValue("id"))
+	if err != nil {
+		WriteError(w, http.StatusNotFound, "التقرير مو موجود")
+		return
+	}
+	log.Printf("[daily-report] حذف التقرير %s (الموظف %s) بيد %s", r.PathValue("id"), emp, middleware.EmployeeIDFromContext(r))
+	WriteJSON(w, http.StatusOK, map[string]bool{"ok": true})
+}
+
 // GET /api/field-timing — ⏱️ أوقات الميدان + التحليل (أرقام وأكواد بس، بلا أسماء)
 func (h *WorkGateHandler) FieldTiming(w http.ResponseWriter, r *http.Request) {
 	rows, err := service.FieldTiming(h.db, "")

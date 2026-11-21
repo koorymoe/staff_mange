@@ -372,6 +372,8 @@ func rules() map[string]map[core.Action]core.Rule {
 			"daily_reports.post_by_id_match_review": func(l string) core.Rule {
 				return rolePerm(l, []string{"ADMIN", "MONITOR", "HR_COORDINATOR"}, "monitoring", "mon_staff", "staff_management")
 			}("ينفّذ /api/daily-reports/{id}/match-review (دور/صلاحية)"),
+			// (ك) 11-21 زينا: حذف تقرير يومي — للمالك بس
+			"daily_reports.delete_by_id": core.Rule{OwnerOnly: true, NoDelegate: true, Label: "يحذف تقرير إنجاز يومي (المالك بس)"},
 		},
 		"dashboard": {
 			"dashboard.get_finance_summary": func(l string) core.Rule {
