@@ -124,12 +124,14 @@ function SurveysTab() {
         </div>
       )}
       <div className="overflow-x-auto rounded-2xl border border-slate-200" data-testid="surveys-table">
-        <table className="w-full min-w-[1200px] text-[15px]">
+        <table className="w-full min-w-[1100px] table-fixed text-[15px]">
+          {/* (ك) 11-21 زينا: عرض ثابت لكل عمود — الأسماء والوظائف الطويلة تنكسر جوه عمودها، والجدول ما يطلع برا */}
+          <colgroup>{['4%', '14%', '12%', '11%', '10%', '11%', '6%', '9%', '9%', '14%'].map((w, i) => <col key={i} style={{ width: w }} />)}</colgroup>
           <thead className="bg-slate-50 text-sm font-bold text-[#0f2040]">
             <tr>
               {heads.map(([ic, h]) => (
-                <th key={h} className="px-3 py-5 text-center">
-                  <span className="inline-flex items-center justify-center gap-2">{ic && <span className="text-amber-500"><Ico n={ic} className="h-6 w-6" /></span>}<span className="whitespace-nowrap">{h}</span></span>
+                <th key={h} className="px-2.5 py-3.5 text-center">
+                  <span className="flex flex-col items-center justify-center gap-1">{ic && <span className="text-amber-500"><Ico n={ic} className="h-6 w-6" /></span>}<span className="leading-snug">{h}</span></span>
                 </th>
               ))}
             </tr>
@@ -139,30 +141,30 @@ function SurveysTab() {
               const flag = !!s.mismatch && !s.reviewedAt
               return (
                 <tr key={s.employeeId} className={`align-middle ${flag ? 'bg-red-50' : 'hover:bg-slate-50'}`}>
-                  <td className="px-3 py-5 text-center"><span className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-slate-100 text-sm ring-1 ring-slate-200 font-bold text-slate-600">{i + 1}</span></td>
-                  <td className="px-3 py-5"><span className="flex items-center gap-3 whitespace-nowrap text-base font-extrabold text-[#0f2040]"><span className="shrink-0 text-amber-500"><Ico n="user" className="h-7 w-7" /></span>{s.employeeName}</span></td>
-                  <td className="px-3 py-5 text-center text-slate-700">{s.major} / {s.degree}</td>
-                  <td className="px-3 py-5 text-center">{s.currentJob ? <span className="inline-block rounded-full bg-blue-50 px-4 py-1.5 text-sm font-bold text-blue-700 ring-1 ring-blue-200">{s.currentJob}</span> : dash}</td>
-                  <td className="px-3 py-5 text-center text-base font-bold leading-relaxed text-slate-800" dir="ltr" title="هو / الملف">
+                  <td className="px-2.5 py-3.5 text-center"><span className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-slate-100 text-sm ring-1 ring-slate-200 font-bold text-slate-600">{i + 1}</span></td>
+                  <td className="px-2.5 py-3.5"><span className="flex items-center gap-2.5 text-[15px] font-extrabold leading-snug text-[#0f2040]"><span className="shrink-0 text-amber-500"><Ico n="user" className="h-6 w-6" /></span>{s.employeeName}</span></td>
+                  <td className="px-2.5 py-3.5 text-center text-slate-700">{s.major} / {s.degree}</td>
+                  <td className="px-2.5 py-3.5 text-center">{s.currentJob ? <span className="inline-block max-w-full rounded-2xl bg-blue-50 px-3 py-1 text-xs font-bold leading-relaxed text-blue-700 ring-1 ring-blue-200">{s.currentJob}</span> : dash}</td>
+                  <td className="px-2.5 py-3.5 text-center text-base font-bold leading-relaxed text-slate-800" dir="ltr" title="هو / الملف">
                     <div>{s.selfSalaryIQD !== null ? num(s.selfSalaryIQD) : '—'} /</div>
                     <div>{s.fileSalary !== null ? num(s.fileSalary) : '—'}</div>
                   </td>
                   {/* (ك) 11-21 زينا: شكد دخّل فلوس هالشهر من حجوزاته (ليدر 60٪، فني 40٪) — والهدف ٣٠٪ فوك راتبه */}
-                  <td className="px-3 py-5 text-center">{broughtCell(s)}</td>
-                  <td className="px-3 py-5 text-center text-base font-bold text-slate-700">{s.monthlyHours ?? dash}</td>
-                  <td className="px-3 py-5 text-center" title="هو / الملف">
+                  <td className="px-2.5 py-3.5 text-center">{broughtCell(s)}</td>
+                  <td className="px-2.5 py-3.5 text-center text-base font-bold text-slate-700">{s.monthlyHours ?? dash}</td>
+                  <td className="px-2.5 py-3.5 text-center" title="هو / الملف">
                     {s.contractEnd || s.fileContract
                       ? <span className="inline-block whitespace-nowrap rounded-xl bg-slate-100 px-4 py-2 text-base font-bold ring-1 ring-slate-200 text-slate-700" dir="ltr">{s.contractEnd ?? '—'}{s.fileContract && s.fileContract !== s.contractEnd ? ` / ${s.fileContract}` : ''}</span>
                       : <span className="text-slate-400">—/—</span>}
                   </td>
-                  <td className="px-3 py-5 text-center">
+                  <td className="px-2.5 py-3.5 text-center">
                     <div className="text-2xl leading-none tracking-tight text-amber-400" aria-label={`${s.companyRating} من ٥`}>{'★'.repeat(s.companyRating)}</div>
                     {s.companyNote && <div className="mt-1.5 text-sm text-slate-500">{s.companyNote}</div>}
                   </td>
-                  <td className="px-3 py-5 text-center">
+                  <td className="px-2.5 py-3.5 text-center">
                     {flag && (
                       <>
-                        <div className="mb-2 text-sm font-bold text-amber-600">⚠️ {s.mismatch}</div>
+                        <div className="mb-2 text-xs font-bold leading-relaxed text-amber-600">⚠️ {s.mismatch}</div>
                         <button type="button" onClick={() => void review(s.employeeId)} className="rounded-xl border border-slate-300 bg-white px-4 py-1.5 text-sm font-bold text-slate-700 hover:bg-slate-50">✓ طابقت</button>
                       </>
                     )}
