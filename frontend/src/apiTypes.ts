@@ -3878,6 +3878,7 @@ export interface StaffScore {
   earned: number; max: number; matrixPct: number | null
   humanAvg: number | null; humanCount: number; humanPct: number | null
   final: number | null; prevFinal: number | null; noHuman: boolean
+  avg3?: number | null; trend?: number | null // (11-21) التحسّن عن معدّل آخر ٣ أشهر
   topLosses: RuleLoss[]; bySource: Record<string, [number, number]>
   group: string; groupLabel: string
   /** (دازاي 11-16) تقييمه من ماتركس بس */

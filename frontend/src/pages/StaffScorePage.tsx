@@ -13,6 +13,7 @@ import ScoreExplain from '../components/ScoreExplain'
 import ServiceTimes from '../components/ServiceTimes'
 import ScoreBeforeAfter from '../components/ScoreBeforeAfter'
 import ScoreReviewPanel from '../components/ScoreReviewPanel'
+import IdeasReviewPanel from '../components/IdeasReviewPanel'
 import { roleLabel } from '../roleLabels'
 import { fmtDate } from '../utils/date'
 import { askInput } from '../ui/dialogs'
@@ -228,11 +229,16 @@ export default function StaffScorePage() {
   const groups = GROUP_ORDER.filter((g) => b.staff.some((s) => s.group === g))
   const g = groups.includes(tab) ? tab : groups[0] ?? ''
   const shown = b.staff.filter((s) => s.group === g)
-  const trend = (s: StaffScore) => s.final == null || s.prevFinal == null ? '' : s.final > s.prevFinal + 2 ? ' ↑' : s.final < s.prevFinal - 2 ? ' ↓' : ''
+  // (دازاي 11-21 — المتنبي) التحسّن عن معدّل آخر ٣ أشهر، وإلا عن الشهر الماضي
+  const trend = (s: StaffScore) => {
+    const d = s.trend ?? (s.final != null && s.prevFinal != null ? s.final - s.prevFinal : null)
+    return d == null || Math.abs(d) < 2 ? '' : d > 0 ? ` ↑+${Math.round(d)}` : ` ↓${Math.round(d)}`
+  }
 
   return (
     <div dir="rtl" className="space-y-4">
       <ScoreReviewPanel />
+      <IdeasReviewPanel />
       <div className="flex flex-wrap items-end justify-between gap-2">
         <div>
           <h2 className="text-2xl font-bold text-brand-900">🏅 تقييم الموظفين</h2>

@@ -317,6 +317,26 @@ func autoMigrations() []Migration {
 			ALTER TABLE "MaintenanceDecision" ADD CONSTRAINT "MaintenanceDecision_customerId_fkey" FOREIGN KEY ("customerId") REFERENCES "Customer"(id) ON DELETE CASCADE;
 		`,
 		},
+		{
+			Version: "0517_employee_idea",
+			SQL: `
+			CREATE TABLE IF NOT EXISTS "EmployeeIdea" (
+	"id" text NOT NULL,
+	"employeeId" text NOT NULL,
+	"text" text NOT NULL,
+	"category" text DEFAULT 'OTHER'::text NOT NULL,
+	"status" text DEFAULT 'NEW'::text NOT NULL,
+	"reply" text,
+	"decidedById" text,
+	"decidedAt" timestamp with time zone,
+	"escalatedAt" timestamp with time zone,
+	"createdAt" timestamp with time zone DEFAULT now() NOT NULL
+);
+			ALTER TABLE "EmployeeIdea" ADD CONSTRAINT "EmployeeIdea_pkey" PRIMARY KEY (id);
+			CREATE INDEX IF NOT EXISTS "EmployeeIdea_status_idx" ON public."EmployeeIdea" USING btree (status, "createdAt" DESC);
+			ALTER TABLE "EmployeeIdea" ADD CONSTRAINT "EmployeeIdea_employeeId_fkey" FOREIGN KEY ("employeeId") REFERENCES "Employee"(id) ON DELETE CASCADE;
+		`,
+		},
 		// ‹makemigration› — التحديثات الجديدة تنضاف فوگ هالسطر
 	}
 }

@@ -558,6 +558,21 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 			log.Printf("score review daily: %v", err)
 		}
 	})
+	// 📊 (دازاي 11-21) أثرك اليوم: كل موظف يوصله بالليل شنو كسب وخسر اليوم
+	safeguard.Loop("أثرك اليوم", 35*time.Minute, 60*time.Minute, func() {
+		if err := service.NotifyDailyImpact(db, time.Now(), aiRepo.ClaimDailyMarker, notificationRepo.Create); err != nil {
+			log.Printf("daily impact: %v", err)
+		}
+	})
+	// 💡 (دازاي 11-21) الأفكار الي تنتظر رد مدير الإدارة، والي عدّت ٤٨ ساعة تصعد للمالك
+	ideaDaily := service.NewIdeaService(db, notificationRepo)
+	safeguard.Loop("أفكار الموظفين", 34*time.Minute, 60*time.Minute, func() {
+		if err := ideaDaily.NotifyDaily(time.Now(), aiRepo.ClaimDailyMarker, func(msg string) {
+			_ = notificationRepo.CreateForRole("OWNER", "IDEA", msg)
+		}); err != nil {
+			log.Printf("ideas daily: %v", err)
+		}
+	})
 	// ⏰ (ل) 11-11: تنبيه التأخير بلا عذر (٣ و٦ و٩ مرات بالشهر) للموظف ومسؤوله
 	disciplineAlerts := service.NewLateExcuseService(db, notificationRepo)
 	safeguard.Loop("تنبيه التأخير بلا عذر", 31*time.Minute, 60*time.Minute, func() {
@@ -2505,6 +2520,12 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	secs["late_excuses"].Set("POST /api/score-reviews/issues/{id}", "late_excuses.post_score_reviews_issue", scoreReview.DecideIssue)
 	secs["late_excuses"].Set("POST /api/score-reviews/excuses/{id}", "late_excuses.post_score_reviews_excuse", scoreReview.DecideExcuse)
 	secs["me_x"].Set("POST /api/me/station-excuses", "me_x.post_station_excuse", scoreReview.SubmitExcuse)
+	// 💡 (دازاي 11-21 — كايزن) عندي فكرة
+	ideas := handler.NewIdeaHandler(service.NewIdeaService(db, notificationRepo))
+	secs["me_x"].Set("POST /api/me/ideas", "me_x.post_idea", ideas.Submit)
+	secs["me_x"].Set("GET /api/me/ideas", "me_x.get_ideas", ideas.Mine)
+	secs["late_excuses"].Set("GET /api/ideas", "late_excuses.get_ideas", ideas.Queue)
+	secs["late_excuses"].Set("POST /api/ideas/{id}/decide", "late_excuses.post_idea_decide", ideas.Decide)
 	secs["inventory"].Set("GET /api/inventory/after-shortages", "inventory.get_after_shortages", scoreReview.AfterShortages)
 	secs["inventory"].Set("POST /api/inventory/after-shortages/justify", "inventory.post_after_shortages_justify", scoreReview.Justify)
 	// ☀️ (ل) 11-12 دازاي: استفسارات الطاقة الشمسية — الصلاحيات بالخدمة (solar_inquiry / _tech / quality_control)

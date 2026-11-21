@@ -28,7 +28,7 @@ export default function MyScoreCard() {
         </span>
         <b className="text-2xl" style={{ color }}>{d.final == null ? '—' : <PctWhy title="تقييمي هالشهر" value={Math.round(d.final)}
           formula={<ScoreSteps d={d} />}
-          meaning={<>رقمك هالشهر. ٨٠% فما فوق أخضر، ٦٠–٧٩ برتقالي، أقل أحمر. ترفعه لمن تكسب نقاط ماتركس (شغل بوقته، ورق كامل…)، ومسؤوليك يقيّموك زين، وتحضر بوقتك، وشغلك يدخّل للشركة قد راتبك.{tip ? ` أكثر شي نزّله: ${tip.title}.` : ''}{d.prevFinal != null ? ` الشهر الماضي چان ${Math.round(d.prevFinal)}%.` : ''}</>}
+          meaning={<>رقمك هالشهر. ٨٠% فما فوق أخضر، ٦٠–٧٩ برتقالي، أقل أحمر. ترفعه لمن تكسب نقاط ماتركس (شغل بوقته، ورق كامل…)، ومسؤوليك يقيّموك زين، وتحضر بوقتك، وشغلك يدخّل للشركة قد راتبك.{tip ? ` أكثر شي نزّله: ${tip.title}.` : ''}{d.prevFinal != null ? ` الشهر الماضي چان ${Math.round(d.prevFinal)}%.` : ''}{d.trend != null && Math.abs(d.trend) >= 2 ? (d.trend > 0 ? ` 📈 صاعد ${Math.round(d.trend)} عن معدّلك بآخر ٣ أشهر — كمّل!` : ` 📉 نازل ${Math.round(-d.trend)} عن معدّلك بآخر ٣ أشهر.`) : ''}</>}
           source={<>نقاط ماتركس المسجّلة عليك هالشهر من الحجوزات والحضور والمهام، وتقييمات مسؤوليك (من ١ لـ٥)، وسجل حضورك مقابل جدولك. التفصيل الكامل تفتحه بالضغط على البطاقة.</>} />}</b>
       </button>
       {tip?.advice && !open && <p className="mt-1 text-xs text-violet-800">💡 {tip.advice}</p>}

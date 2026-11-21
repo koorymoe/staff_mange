@@ -503,3 +503,4 @@ git push origin origin/avg:refs/heads/prod     # بعد التأكد إنه fast
 - 11-19: التقييم يعذر: نسبة المحطات الفايتة، سماح يوم، نص نقاط للتسجيل الناقص، جدول StationExcuse (0515) + زر اعتذر ومراجعة مدير الإدارة.
 - 11-19: قاعدة: رقم الترحيل ما يتكرر بعد 0514 (TestNewMigrationNumbersUnique) — اسحب avg قبل makemigration. 0511 المكرر (كاكاشي + أني) يبقى.
 - 11-20: بلاغ #55: جدول MaintenanceDecision (0516) + POST /api/maintenance-due/{customerId}/decision (requireCustomerRead) + Kind LATE/COMPLAINTS + القائمة بلا حد ١٠٠.
+- 11-21: أفكار ١/٣/٤: daily_impact.go (DAILY_IMPACT ٨ المسا) · Trend/Avg3 + TopImprover (Board ٣ أشهر، Detail لموظف واحد) · EmployeeIdea (0517) + /api/me/ideas + /api/ideas (reviewScope) + MatrixScore source IDEA (ruleGroups IDEA={} = شغل إضافي) + تصعيد ٤٨ ساعة للمالك.

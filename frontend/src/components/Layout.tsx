@@ -14,6 +14,7 @@ import MatrixCourier from './MatrixCourier'
 import RemoteTimerChip from './RemoteTimerChip'
 import GlobalSearch from './GlobalSearch'
 import ReportProblemButton from './ReportProblemButton'
+import IdeaButton from './IdeaButton'
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import AttendanceGate from './AttendanceGate'
 import { InspectBar } from './InspectBar'
@@ -805,6 +806,8 @@ export default function Layout() {
               <LiveAlerts />
               {/* 🆘 بلاغ مشكلة بالنظام — لكل موظف (دازاي 11-05) */}
               <ReportProblemButton />
+              {/* 💡 عندي فكرة — لكل موظف (دازاي 11-21، كايزن) */}
+              <IdeaButton />
               {/* 🔍 البحث بكل النظام — شاشات (ويا طريقها)، حجوزات، زبائن، موظفين. Ctrl+K */}
               <GlobalSearch />
               {/* عين ماتركس — تتابع وتنتبه لكل إجراء، ولونها حسب الدور والحالة */}

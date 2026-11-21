@@ -255,6 +255,7 @@ var fieldGroups = map[string]bool{GroupLeaders: true, GroupTechs: true, GroupDec
 var officeBookingGroups = map[string]bool{GroupSales: true, GroupCoordinator: true, GroupTechnical: true}
 
 var ruleGroups = map[string]map[string]bool{
+	"IDEA":         {}, // (11-21) فكرة انطبقت = شغل إضافي لكل الفئات
 	"CREATE":       officeBookingGroups,
 	"CONTACT":      {GroupCoordinator: true, GroupTechnical: true},
 	"HANDOFF":      {GroupCoordinator: true, GroupTechnical: true},

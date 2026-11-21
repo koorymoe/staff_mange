@@ -388,6 +388,9 @@ type StaffScore struct {
 	HumanPct  *float64          `json:"humanPct"`
 	Final     *float64          `json:"final"`
 	PrevFinal *float64          `json:"prevFinal"`
+	// (دازاي 11-21 — أفكار ٣، المتنبي) التحسّن: معدّل آخر ٣ أشهر قبل هالشهر، والفرق عنه
+	Avg3  *float64 `json:"avg3,omitempty"`
+	Trend *float64 `json:"trend,omitempty"`
 	NoHuman   bool              `json:"noHuman"`
 	TopLosses []RuleLoss        `json:"topLosses"`
 	BySource  map[string][2]int `json:"bySource"` // مكسوب/أقصى لكل مصدر
@@ -531,13 +534,23 @@ func (s *MatrixScoreService) board(month string) (*StaffScoreBoard, error) {
 		return nil, err
 	}
 	s.applyRoleViews(cur, people, from, to)
-	prev, _ := s.compute(people, from.AddDate(0, -1, 0), from)
 	prevBy := map[string]*float64{}
-	for _, p := range prev {
-		prevBy[p.ID] = p.Final
+	sum, n := map[string]float64{}, map[string]int{}
+	for k := 1; k <= 3; k++ {
+		prev, _ := s.compute(people, from.AddDate(0, -k, 0), from.AddDate(0, -k+1, 0))
+		for _, p := range prev {
+			if k == 1 {
+				prevBy[p.ID] = p.Final
+			}
+			if p.Final != nil {
+				sum[p.ID] += *p.Final
+				n[p.ID]++
+			}
+		}
 	}
 	for i := range cur {
 		cur[i].PrevFinal = prevBy[cur[i].ID]
+		applyTrend(&cur[i], sum[cur[i].ID], n[cur[i].ID])
 	}
 	sort.SliceStable(cur, func(i, j int) bool {
 		a, b := cur[i].Final, cur[j].Final
@@ -594,6 +607,20 @@ func (s *MatrixScoreService) DetailView(employeeID, month, view string) (*StaffS
 		return nil, err
 	}
 	rows[0].RoleViews, rows[0].RoleView = views, chosen
+	// (دازاي 11-21 — المتنبي) التحسّن: لموظف واحد رخيص — آخر ٣ أشهر قبل الشهر
+	if _, mFrom, _ := MonthRange(month, time.Now()); chosen == "" || view != "prev" {
+		sum, n := 0.0, 0
+		for k := 1; k <= 3; k++ {
+			if prev, err := s.compute(one, mFrom.AddDate(0, -k, 0), mFrom.AddDate(0, -k+1, 0)); err == nil && len(prev) == 1 && prev[0].Final != nil {
+				if k == 1 {
+					rows[0].PrevFinal = prev[0].Final
+				}
+				sum += *prev[0].Final
+				n++
+			}
+		}
+		applyTrend(&rows[0], sum, n)
+	}
 	return &StaffScoreDetail{StaffScore: rows[0], Month: key, Points: pts, Human: hum}, nil
 }
 
@@ -807,8 +834,32 @@ func BuildScores(people []repository.Scorable, pts []repository.MatrixScoreRow, 
 	return out
 }
 
+// applyTrend معدّل الأشهر السابقة (لحد ٣) والفرق عنه.
+func applyTrend(s *StaffScore, sum float64, n int) {
+	if n == 0 || s.Final == nil {
+		return
+	}
+	avg := sum / float64(n)
+	t := *s.Final - avg
+	s.Avg3, s.Trend = &avg, &t
+}
+
+// TopImprover أكثر واحد صعد عن معدّله (٥ نقاط فما فوق)، ويا الفرق.
+func TopImprover(rows []StaffScore) (string, float64) {
+	name, best := "", 4.99
+	for _, r := range rows {
+		if r.Trend != nil && *r.Trend > best {
+			name, best = r.Name, *r.Trend
+		}
+	}
+	return name, best
+}
+
 func boardInsights(rows []StaffScore) []string {
 	out := []string{}
+	if name, d := TopImprover(rows); name != "" {
+		out = append(out, fmt.Sprintf("📈 أكثر واحد تحسّن هالشهر: %s (+%.0f عن معدّله بآخر ٣ أشهر).", name, d))
+	}
 	scored := 0
 	var low, pending, noWork []string
 	for _, r := range rows {

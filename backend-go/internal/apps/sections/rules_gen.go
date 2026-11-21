@@ -752,6 +752,8 @@ func rules() map[string]map[core.Action]core.Rule {
 			"me_x.get_telegram":                     func(l string) core.Rule { return any_(l) }("يقرا /api/me/telegram (الدخول — الفحص بالمعالج)"),
 			"me_x.get_work_gate":                    func(l string) core.Rule { return any_(l) }("يقرا /api/me/work-gate (الدخول — الفحص بالمعالج)"),
 			"me_x.post_station_excuse":              func(l string) core.Rule { return any_(l) }("يعتذر عن محطة خسر بيها (الخدمة: بس محطة إله بيها نقاط ناقصة)"),
+			"me_x.post_idea":                        func(l string) core.Rule { return any_(l) }("يرسل فكرة تحسين (الخدمة: باسمه هو بس)"),
+			"me_x.get_ideas":                        func(l string) core.Rule { return any_(l) }("يقرا أفكاره هو وردودها"),
 			"me_x.put_language":                     func(l string) core.Rule { return any_(l) }("يعدّل /api/me/language (الدخول — الفحص بالمعالج)"),
 		},
 		"media": {
@@ -1481,6 +1483,8 @@ func rules() map[string]map[core.Action]core.Rule {
 			"late_excuses.post_by_id_decide":         func(l string) core.Rule { return any_(l) }("ينفّذ /api/late-excuses/{id}/decide (الدخول — الخدمة: المسؤول المباشر بس، والغريب 404)"),
 			"late_excuses.get_score_reviews":         func(l string) core.Rule { return any_(l) }("يقرا /api/score-reviews (الدخول — الخدمة: مدير/نائب الإدارة لمنتسبيها بس)"),
 			"late_excuses.post_score_reviews_rating": func(l string) core.Rule { return any_(l) }("يأكد/يرفض تقييم ليدر سيء (الخدمة: مدير/نائب إدارة الفني بس، والغريب 404)"),
+			"late_excuses.get_ideas":                 func(l string) core.Rule { return any_(l) }("يقرا أفكار منتسبي إدارته (الخدمة: مدير/نائب الإدارة بس، المالك/المدير الكل)"),
+			"late_excuses.post_idea_decide":          func(l string) core.Rule { return any_(l) }("يرد على فكرة موظف (الخدمة: مدير/نائب الإدارة بس، والغريب 404)"),
 			"late_excuses.post_score_reviews_excuse": func(l string) core.Rule { return any_(l) }("يقبل/يرفض عذر محطة (الخدمة: مدير/نائب الإدارة بس، والغريب 404)"),
 			"late_excuses.post_score_reviews_issue":  func(l string) core.Rule { return any_(l) }("يحدد منو الغلطان بمشكلة وظيفية (الخدمة: مدير/نائب الإدارة بس، والغريب 404)"),
 		},
