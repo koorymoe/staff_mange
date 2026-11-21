@@ -63,34 +63,35 @@ export default function MaintenanceDueList() {
       </div>
       {/* (ك) 11-21 زينا: جدول مثل شاشة المستخدمين — أعمدة، وأزرار القرار بآخر كل صف، وترقيم صفحات */}
       <div className="overflow-x-auto rounded-xl border border-slate-200" data-testid="maint-table">
-        <table className="w-full min-w-[860px] text-sm">
-          <thead className="bg-slate-50 text-xs text-slate-500">
+        <table className="w-full min-w-[900px] text-sm">
+          <thead className="bg-slate-50 text-slate-600">
             <tr>
-              {['الاسم الكامل', 'رقم الموبايل', 'نوع الخدمة', 'آخر شغل', 'الشكاوى', 'تاريخ آخر شغل', 'الإجراءات'].map((h) => (
-                <th key={h} className="px-3 py-3 text-start font-bold">{h}</th>
+              {['ت', 'الاسم الكامل', 'رقم الموبايل', 'نوع الخدمة', 'آخر شغل', 'الشكاوى', 'تاريخ آخر شغل', 'الإجراءات'].map((h) => (
+                <th key={h} className="whitespace-nowrap border-s border-slate-200 px-1.5 py-3.5 text-center text-sm font-bold first:border-s-0">{h}</th>
               ))}
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-100">
-            {pageRows.map((r) => (
-              <tr key={r.customerId} className="align-middle hover:bg-slate-50">
-                <td className="px-3 py-3 font-bold text-slate-800">{r.name}</td>
-                <td className="px-3 py-3">{r.phone ? <a href={`tel:${r.phone}`} className="text-brand-700" dir="ltr">{r.phone}</a> : <span className="text-slate-400">—</span>}</td>
-                <td className="px-3 py-3 text-slate-600">{r.service ?? '—'}</td>
-                <td className="px-3 py-3 text-slate-600">آخر شغل قبل {r.months} شهر</td>
-                <td className="px-3 py-3">
+          <tbody className="divide-y divide-slate-200">
+            {pageRows.map((r, i) => (
+              <tr key={r.customerId} className="align-middle hover:bg-slate-50 [&>td]:whitespace-nowrap [&>td]:border-s [&>td]:border-slate-200 [&>td:first-child]:border-s-0">
+                <td className="px-1.5 py-3.5 text-center text-slate-500">{(cur - 1) * PAGE + i + 1}</td>
+                <td className="px-1.5 py-3.5 text-start font-bold text-slate-800">{r.name}</td>
+                <td className="px-1.5 py-3.5 text-center">{r.phone ? <a href={`tel:${r.phone}`} className="text-brand-700" dir="ltr">{r.phone}</a> : <span className="text-slate-400">—</span>}</td>
+                <td className="px-1.5 py-3.5 text-center text-slate-600">{r.service ?? '—'}</td>
+                <td className="px-1.5 py-3.5 text-center text-slate-600">آخر شغل قبل {r.months} شهر</td>
+                <td className="px-1.5 py-3.5 text-center">
                   {r.complaints > 0
-                    ? <span className="whitespace-nowrap rounded-full bg-rose-50 px-2 py-0.5 text-xs font-bold text-rose-700">{r.complaints} شكاوى بالسنة</span>
+                    ? <span className="whitespace-nowrap rounded-full bg-rose-50 px-3 py-1 text-xs font-bold text-rose-700">{r.complaints} شكاوى بالسنة</span>
                     : <span className="text-slate-400">—</span>}
                   {/* (ك) 11-21 زينا: وقت آخر شكوى بخط ناعم مثل باقي النظام */}
                   {r.complaints > 0 && r.lastComplaint && <div className="mt-1 whitespace-nowrap text-[11px] text-slate-400" title="آخر شكوى">آخر شكوى: {fmtDateTime(r.lastComplaint)}</div>}
                 </td>
-                <td className="whitespace-nowrap px-3 py-3 text-slate-600" dir="ltr">{r.lastDone.slice(0, 10)}</td>
-                <td className="px-3 py-3">
-                  <div className="flex flex-nowrap gap-1">
-                    {DECISIONS.map((d) => (
+                <td className="whitespace-nowrap px-1.5 py-3.5 text-center text-slate-600">{r.lastDone.slice(0, 10)}</td>
+                <td className="px-1.5 py-3.5 text-center">
+                  <div className="flex flex-nowrap justify-center gap-1">
+                    {[...DECISIONS].reverse().map((d) => (
                       <button key={d.key} type="button" disabled={busy === r.customerId} onClick={() => void decide(r, d.key)}
-                        className={`whitespace-nowrap rounded-lg px-2 py-1 text-[11px] font-bold disabled:opacity-50 ${d.cls}`}>{d.label}</button>
+                        className={`whitespace-nowrap rounded-full px-2.5 py-1 text-[11px] font-bold disabled:opacity-50 ${d.cls}`}>{d.label}</button>
                     ))}
                   </div>
                 </td>
@@ -99,19 +100,19 @@ export default function MaintenanceDueList() {
           </tbody>
         </table>
       </div>
-      <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
-        <span className="text-xs text-slate-500">عرض {pageRows.length} من {list.length} نتيجة</span>
+      <div className="flex flex-wrap items-center justify-between gap-2 px-1 pt-2">
+        <span className="text-sm text-slate-500">عرض {pageRows.length} من {list.length} نتيجة</span>
         {pages > 1 && (
           <div className="flex items-center gap-1" dir="ltr">
-            <button type="button" aria-label="السابقة" disabled={cur === 1} onClick={() => setPage(cur - 1)} className="rounded-lg bg-slate-100 px-3 py-1 text-sm text-slate-700 disabled:opacity-40">‹</button>
+            <button type="button" aria-label="السابقة" disabled={cur === 1} onClick={() => setPage(cur - 1)} className="h-10 w-12 rounded-xl bg-slate-100 text-lg text-slate-700 disabled:opacity-40">‹</button>
             {Array.from({ length: pages }, (_, i) => i + 1).filter((n) => n === 1 || n === pages || Math.abs(n - cur) <= 1).map((n, i, arr) => (
               <span key={n} className="flex items-center gap-1">
                 {i > 0 && n - arr[i - 1] > 1 && <span className="text-slate-400">…</span>}
                 <button type="button" onClick={() => setPage(n)} aria-current={n === cur ? 'page' : undefined}
-                  className={`min-w-8 rounded-lg px-2 py-1 text-sm font-bold ${n === cur ? 'bg-[#0f2040] text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}>{n}</button>
+                  className={`h-10 min-w-10 rounded-xl px-3 text-base font-bold ${n === cur ? 'bg-[#1e40af] text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}>{n}</button>
               </span>
             ))}
-            <button type="button" aria-label="التالية" disabled={cur === pages} onClick={() => setPage(cur + 1)} className="rounded-lg bg-slate-100 px-3 py-1 text-sm text-slate-700 disabled:opacity-40">›</button>
+            <button type="button" aria-label="التالية" disabled={cur === pages} onClick={() => setPage(cur + 1)} className="h-10 w-12 rounded-xl bg-slate-100 text-lg text-slate-700 disabled:opacity-40">›</button>
           </div>
         )}
       </div>
