@@ -13,7 +13,7 @@ import { swallow } from '../utils/swallow'
 // تقارير الإنجاز اليومية (منو كتب، ومنو داوم وما كتب) + استمارات معلومات
 // الموظفين ويا الفروقات عن ملفهم (للكوادر والمالك بس — بيها رواتب).
 
-type Daily = { day: string; reports: { id: string; employeeId: string; employeeName: string; body: string; late: boolean; createdAt: string; matchStatus: string | null; matchNote: string | null; matchVerdict: string | null; matchReview: string | null }[]; missing: { employeeId: string; employeeName: string }[] }
+type Daily = { day: string; reports: { id: string; employeeId: string; employeeName: string; day: string; body: string; late: boolean; createdAt: string; matchStatus: string | null; matchNote: string | null; matchVerdict: string | null; matchReview: string | null }[]; missing: { employeeId: string; employeeName: string }[] }
 type Survey = { employeeId: string; employeeName: string; major: string; degree: string; selfSalaryIQD: number | null; fileSalary: number | null; brought: number | null; monthlyHours: number | null; currentJob: string; companyRating: number; companyNote: string; contractEnd: string | null; fileContract: string | null; mismatch: string | null; reviewedAt: string | null }
 type Surveys = { surveys: Survey[]; pending: { employeeId: string; employeeName: string }[] }
 
