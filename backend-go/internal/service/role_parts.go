@@ -171,7 +171,16 @@ func genericOpinion(defs []partDef, pct map[string]float64) (float64, []string) 
 			limit = 90
 		}
 		if x < limit {
-			v -= math.Min(40, d.Weight*1.25)
+			cut := math.Min(40, d.Weight*1.25)
+			// (دازاي 11-21، المحاكاة) الغياب والمهام الفايتة ينقّصن حد أدنى ثابت مهما چان وزنهن
+			// بالدور — قبل چان المراقب الغايب يومين ياخذ رأي ٨٨٪ لأن وزن الحضور عنده ٥ بس.
+			switch {
+			case d.Key == "ATTENDANCE" && x < 80:
+				cut = math.Max(cut, 20)
+			case d.Key == "TASK_DUE":
+				cut = math.Max(cut, 15)
+			}
+			v -= cut
 			notes = append(notes, "يحتاج يحسّن: "+d.Label)
 		}
 	}

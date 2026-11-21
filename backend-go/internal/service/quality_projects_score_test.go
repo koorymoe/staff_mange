@@ -51,3 +51,16 @@ func TestQualityWeightsAndProjectsEverywhere(t *testing.T) {
 		t.Fatal("المشروع لازم يتحسب بند دور لكل الفئات مو شغل إضافي")
 	}
 }
+
+// (11-21) رأي ماتركس ما يتساهل ويه الغياب والمهام الفايتة حتى لو وزنهن صغير بالدور.
+func TestGenericOpinionFloors(t *testing.T) {
+	defs := genericParts[GroupMonitors]
+	v, _ := genericOpinion(defs, map[string]float64{"ATTENDANCE": 43, "TASK_DUE": 0})
+	if v > 65 {
+		t.Fatalf("مراقب غايب ومفوّت مهامه أخذ رأي %v", v)
+	}
+	v, _ = genericOpinion(defs, map[string]float64{"ATTENDANCE": 100, "TASK_DUE": 100})
+	if v != 100 {
+		t.Fatalf("الكامل لازم ١٠٠: %v", v)
+	}
+}
