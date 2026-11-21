@@ -15,13 +15,13 @@ const DECISIONS: { key: string; label: string; cls: string }[] = [
   { key: 'NO_ANSWER', label: '📵 ما رد', cls: 'bg-amber-50 text-amber-800 hover:bg-amber-100' },
   { key: 'POSTPONED', label: '⏳ أجّل شهر', cls: 'bg-sky-50 text-sky-700 hover:bg-sky-100' },
 ]
-const PAGE = 50
+const PAGE = 20
 
 export default function MaintenanceDueList() {
   const [rows, setRows] = useState<Row[] | null>(null)
   const [err, setErr] = useState('')
   const [tab, setTab] = useState<'ALL' | 'LATE' | 'COMPLAINTS'>('LATE')
-  const [shown, setShown] = useState(PAGE)
+  const [page, setPage] = useState(1)
   const [busy, setBusy] = useState<string | null>(null)
   useEffect(() => {
     apiRequest<Row[]>('/maintenance-due').then(setRows).catch((e) => setErr(e.message))
@@ -31,6 +31,9 @@ export default function MaintenanceDueList() {
   if (rows.length === 0) return <p className="rounded-2xl bg-white p-6 text-center text-slate-500">ماكو زبون يستاهل اتصال صيانة هسه ✅</p>
   const late = rows.filter((r) => r.kind === 'LATE').length
   const list = tab === 'ALL' ? rows : rows.filter((r) => r.kind === tab)
+  const pages = Math.max(1, Math.ceil(list.length / PAGE))
+  const cur = Math.min(page, pages)
+  const pageRows = list.slice((cur - 1) * PAGE, cur * PAGE)
   const decide = async (r: Row, decision: string) => {
     setBusy(r.customerId)
     try {
@@ -44,7 +47,7 @@ export default function MaintenanceDueList() {
     }
   }
   const chip = (k: typeof tab, label: string) => (
-    <button type="button" onClick={() => { setTab(k); setShown(PAGE) }}
+    <button type="button" onClick={() => { setTab(k); setPage(1) }}
       className={`rounded-full px-3 py-1 text-xs font-bold ${tab === k ? 'bg-[#0f2040] text-white' : 'bg-slate-100 text-slate-600'}`}>{label}</button>
   )
   return (
@@ -58,32 +61,60 @@ export default function MaintenanceDueList() {
         {chip('COMPLAINTS', `شكاوى متكررة (${rows.length - late})`)}
         {chip('ALL', `الكل (${rows.length})`)}
       </div>
-      <ul className="divide-y divide-slate-100 text-sm">
-        {list.slice(0, shown).map((r) => (
-          <li key={r.customerId} className="space-y-1 py-2">
-            <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-              <b className="text-slate-800">{r.name}</b>
-              {r.phone && <a href={`tel:${r.phone}`} className="text-brand-700" dir="ltr">{r.phone}</a>}
-              <span className="text-slate-500">{r.service ?? '—'}</span>
-              <span className="text-slate-500">آخر شغل قبل {r.months} شهر</span>
-              {r.complaints >= 2 && <span className="rounded bg-rose-50 px-2 py-0.5 text-xs font-bold text-rose-700">{r.complaints} شكاوى بالسنة</span>}
-              {/* (ك) 11-21 زينا: وقت آخر شكوى بخط ناعم مثل باقي النظام */}
-              {r.complaints > 0 && r.lastComplaint && <span className="ms-auto text-[11px] text-slate-400" title="آخر شكوى">آخر شكوى: {fmtDateTime(r.lastComplaint)}</span>}
-            </div>
-            <div className="flex flex-wrap gap-1">
-              {DECISIONS.map((d) => (
-                <button key={d.key} type="button" disabled={busy === r.customerId} onClick={() => void decide(r, d.key)}
-                  className={`rounded-lg px-2 py-1 text-[11px] font-bold disabled:opacity-50 ${d.cls}`}>{d.label}</button>
+      {/* (ك) 11-21 زينا: جدول مثل شاشة المستخدمين — أعمدة، وأزرار القرار بآخر كل صف، وترقيم صفحات */}
+      <div className="overflow-x-auto rounded-xl border border-slate-200" data-testid="maint-table">
+        <table className="w-full min-w-[860px] text-sm">
+          <thead className="bg-slate-50 text-xs text-slate-500">
+            <tr>
+              {['الاسم الكامل', 'رقم الموبايل', 'نوع الخدمة', 'آخر شغل', 'الشكاوى', 'تاريخ آخر شغل', 'الإجراءات'].map((h) => (
+                <th key={h} className="px-3 py-3 text-start font-bold">{h}</th>
               ))}
-            </div>
-          </li>
-        ))}
-      </ul>
-      {list.length > shown && (
-        <button type="button" onClick={() => setShown((n) => n + PAGE)} className="w-full rounded-lg bg-slate-100 py-2 text-xs font-bold text-slate-700 hover:bg-slate-200">
-          المزيد ({list.length - shown} باقي)
-        </button>
-      )}
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-100">
+            {pageRows.map((r) => (
+              <tr key={r.customerId} className="align-middle hover:bg-slate-50">
+                <td className="px-3 py-3 font-bold text-slate-800">{r.name}</td>
+                <td className="px-3 py-3">{r.phone ? <a href={`tel:${r.phone}`} className="text-brand-700" dir="ltr">{r.phone}</a> : <span className="text-slate-400">—</span>}</td>
+                <td className="px-3 py-3 text-slate-600">{r.service ?? '—'}</td>
+                <td className="px-3 py-3 text-slate-600">آخر شغل قبل {r.months} شهر</td>
+                <td className="px-3 py-3">
+                  {r.complaints > 0
+                    ? <span className="whitespace-nowrap rounded-full bg-rose-50 px-2 py-0.5 text-xs font-bold text-rose-700">{r.complaints} شكاوى بالسنة</span>
+                    : <span className="text-slate-400">—</span>}
+                  {/* (ك) 11-21 زينا: وقت آخر شكوى بخط ناعم مثل باقي النظام */}
+                  {r.complaints > 0 && r.lastComplaint && <div className="mt-1 whitespace-nowrap text-[11px] text-slate-400" title="آخر شكوى">آخر شكوى: {fmtDateTime(r.lastComplaint)}</div>}
+                </td>
+                <td className="whitespace-nowrap px-3 py-3 text-slate-600" dir="ltr">{r.lastDone.slice(0, 10)}</td>
+                <td className="px-3 py-3">
+                  <div className="flex flex-nowrap gap-1">
+                    {DECISIONS.map((d) => (
+                      <button key={d.key} type="button" disabled={busy === r.customerId} onClick={() => void decide(r, d.key)}
+                        className={`whitespace-nowrap rounded-lg px-2 py-1 text-[11px] font-bold disabled:opacity-50 ${d.cls}`}>{d.label}</button>
+                    ))}
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
+        <span className="text-xs text-slate-500">عرض {pageRows.length} من {list.length} نتيجة</span>
+        {pages > 1 && (
+          <div className="flex items-center gap-1" dir="ltr">
+            <button type="button" aria-label="السابقة" disabled={cur === 1} onClick={() => setPage(cur - 1)} className="rounded-lg bg-slate-100 px-3 py-1 text-sm text-slate-700 disabled:opacity-40">‹</button>
+            {Array.from({ length: pages }, (_, i) => i + 1).filter((n) => n === 1 || n === pages || Math.abs(n - cur) <= 1).map((n, i, arr) => (
+              <span key={n} className="flex items-center gap-1">
+                {i > 0 && n - arr[i - 1] > 1 && <span className="text-slate-400">…</span>}
+                <button type="button" onClick={() => setPage(n)} aria-current={n === cur ? 'page' : undefined}
+                  className={`min-w-8 rounded-lg px-2 py-1 text-sm font-bold ${n === cur ? 'bg-[#0f2040] text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}>{n}</button>
+              </span>
+            ))}
+            <button type="button" aria-label="التالية" disabled={cur === pages} onClick={() => setPage(cur + 1)} className="rounded-lg bg-slate-100 px-3 py-1 text-sm text-slate-700 disabled:opacity-40">›</button>
+          </div>
+        )}
+      </div>
     </section>
   )
 }
