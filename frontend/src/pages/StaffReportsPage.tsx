@@ -259,14 +259,15 @@ function NegligenceTab() {
       </div>
       {error && <p className="text-sm text-red-600">{error}</p>}
       <div className="overflow-x-auto rounded-2xl border border-slate-200" data-testid="negligence-table">
-        <table className="w-full min-w-[860px] table-fixed text-[13px]">
+        <table className="w-full min-w-[980px] table-fixed text-[13px]">
           <colgroup>{['5%', '12%', '18%', '13%', '38%', '14%'].map((w, i) => <col key={i} style={{ width: w }} />)}</colgroup>
           <thead className="text-xs font-bold">
             <tr>
               {heads.map(([ic, h]) => (
-                <th key={h} className="p-1 text-center">
-                  <span className="th-box flex h-11 items-center justify-center gap-1.5 rounded-xl px-1.5">
-                    {ic && <span className="th-box-ic"><Ico n={ic} className="h-4 w-4" /></span>}
+                <th key={h} className="p-0 text-center">
+                  {/* (ك) 11-22 زينا: شريط عناوين واحد متصل (مثل التصميم) وبطول عناوين الاستمارات */}
+                  <span className="th-box flex h-[4.75rem] items-center justify-center gap-2 rounded-none border-x-0 px-1.5 text-[13px]">
+                    {ic && <span className="th-box-ic"><Ico n={ic} className="h-5 w-5" /></span>}
                     <span className="leading-snug">{h}</span>
                   </span>
                 </th>
@@ -277,7 +278,7 @@ function NegligenceTab() {
             {data?.map((n, i) => {
               const [rating, names] = splitDetail(n.detail)
               return (
-                <tr key={n.id} className="align-middle hover:bg-slate-50">
+                <tr key={n.id} className="h-[3.8rem] align-middle hover:bg-slate-50 [&>td]:border-l [&>td]:border-slate-200 [&>td:last-child]:border-l-0">
                   <td className="px-2 py-2 text-center"><span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-slate-100 text-[11px] font-bold text-slate-600 ring-1 ring-slate-200">{i + 1}</span></td>
                   <td className="px-2 py-2 text-center"><span className="inline-flex items-center gap-1.5 text-slate-700" dir="ltr"><span className="text-blue-500"><Ico n="cal" className="h-4 w-4" /></span>{n.day}</span></td>
                   <td className="px-2 py-2"><span className="flex items-center gap-1.5 font-bold text-[#0f2040]"><span className="shrink-0 text-amber-500"><Ico n="user" className="h-4 w-4" /></span>{n.employeeName}</span></td>
