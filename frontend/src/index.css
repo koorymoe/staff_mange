@@ -1504,3 +1504,17 @@ html.dark .rv-pill-bad { background: #3b0d14; color: #fca5a5; --tw-ring-color: #
 html.dark .rv-pill-mid { background: #3a2c06; color: #fde68a; --tw-ring-color: #ca8a04; }
 html.dark .rv-pill-good { background: #062e22; color: #86efac; --tw-ring-color: #15803d; }
 html.dark .rv-pill-top { background: #3a2c06; color: #fde68a; --tw-ring-color: #ca8a04; }
+/* (ك) 11-22 زينا: بطاقات وأزرار «الرجعات» بالليلي مثل التصميم بالضبط — خلفيات غامجة شفافة وإطارات متوهّجة */
+html.dark .rv-blue { background: linear-gradient(135deg, #0c2a57, #0a1f42); border-color: #3b82f6; color: #ffffff; box-shadow: 0 0 16px rgba(59, 130, 246, .45), inset 0 0 18px rgba(59, 130, 246, .15); }
+html.dark .rv-blue .rv-ic { background: rgba(59, 130, 246, .2); color: #60a5fa; }
+html.dark .rv-blue > svg { color: #60a5fa; }
+html.dark .rv-amber { background: linear-gradient(135deg, #3d3208, #2a2205); border-color: #facc15; color: #ffffff; box-shadow: 0 0 16px rgba(250, 204, 21, .45), inset 0 0 18px rgba(250, 204, 21, .12); }
+html.dark .rv-amber .rv-ic { background: rgba(250, 204, 21, .2); color: #facc15; }
+html.dark .rv-amber > svg { color: #facc15; }
+html.dark .rv-teal { background: linear-gradient(135deg, #073a3a, #052a2c); border-color: #14b8a6; color: #ffffff; box-shadow: 0 0 16px rgba(20, 184, 166, .4), inset 0 0 18px rgba(20, 184, 166, .12); }
+html.dark .rv-teal .rv-ic { background: rgba(20, 184, 166, .2); color: #2dd4bf; }
+html.dark .rv-ring-in { background: #052a2c; color: #ffffff; }
+html.dark .rv-range { background: #0b1d38; border-color: rgba(148, 163, 184, .45); color: #e2e8f0; }
+html.dark .rv-range-on { background: linear-gradient(to bottom, #fcd34d, #eab308); border-color: #fde047; color: #1c1402; --tw-ring-color: rgba(250, 204, 21, .45); box-shadow: 0 0 14px rgba(250, 204, 21, .5); }
+html.dark .rv-cal { background: #0b1d38; border-color: rgba(148, 163, 184, .45); color: #cbd5e1; }
+html.dark button.rv-range:not(.rv-range-on) { color: #f1f5f9; }

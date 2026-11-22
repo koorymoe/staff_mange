@@ -81,10 +81,10 @@ export default function RevisitsPage() {
         </div>
       </div>
       <div className="flex flex-wrap items-center gap-2">
-        <span className="flex h-11 w-11 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600"><Ico n="cal" className="h-5 w-5" /></span>
+        <span className="rv-cal flex h-11 w-11 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600"><Ico n="cal" className="h-5 w-5" /></span>
         {RANGES.map((d) => (
           <button key={d} type="button" onClick={() => { if (d !== days) { setRep(null); setDays(d) } }}
-            className={`rounded-full border bg-white px-6 py-2 text-base font-bold transition ${days === d ? 'border-amber-400 text-[#0f2040] ring-2 ring-amber-300/60' : 'border-slate-200 text-slate-600 hover:border-slate-300'}`}>آخر {d} يوم</button>
+            className={`rv-range rounded-full border bg-white px-6 py-2 text-base font-bold transition ${days === d ? 'rv-range-on border-amber-400 text-[#0f2040] ring-2 ring-amber-300/60' : 'border-slate-200 text-slate-600 hover:border-slate-300'}`}>آخر {d} يوم</button>
         ))}
       </div>
       {err && <p className="text-sm text-red-600">{err}</p>}
@@ -105,7 +105,7 @@ export default function RevisitsPage() {
             <div className="rv-card rv-teal flex min-h-[7rem] items-center gap-4 rounded-2xl px-6 py-4">
               <span className="rv-ic flex h-14 w-14 items-center justify-center rounded-full"><Ico n="bars" className="h-7 w-7" /></span>
               <div className="flex-1"><p className="text-lg font-bold">نسبة الرجعة</p><p className="text-sm opacity-80">من إجمالي الحجوزات</p></div>
-              <span className="relative flex h-24 w-24 items-center justify-center rounded-full" style={{ background: `conic-gradient(#facc15 ${ring * 3.6}deg, rgba(45,212,191,.35) 0)` }}>
+              <span className="relative flex h-24 w-24 items-center justify-center rounded-full" style={{ background: `conic-gradient(#facc15 ${ring * 3.6}deg, #0d9488 0)` }}>
                 <span className="rv-ring-in flex h-[4.5rem] w-[4.5rem] items-center justify-center rounded-full text-lg font-extrabold">
                   <PctWhy title="نسبة الرجعة" value={rate} suffix={dec(rate)} parts={{ numLabel: 'حجز رجع', num: rep.revisits, denLabel: 'حجز انجز', den: rep.jobs }}
                     meaning={<>من كل 100 حجز انجز، شكد واحد رجع الزبون فتح حجز ثاني لنفس الخدمة خلال {rep.windowDays} يوم — يعني الشغل الأول يمكن ما انعمل صح. كل ما تكون أقل أحسن.</>}
