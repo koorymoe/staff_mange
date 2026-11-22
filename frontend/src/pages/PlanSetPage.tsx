@@ -84,7 +84,7 @@ export default function PlanSetPage() {
       } catch { quoteNote = 'تعذر جلب عرض السعر.' }
     }
     printProjectQuote(buildPlanSetHtml({
-      title: d.title, projectName: d.projectName, projectAddress: d.projectAddress, groups: meta.groups, files: d.items, quote, quoteNote, date: new Date(), noQuote: true,
+      title: d.title, projectName: d.sheetProjectName || d.projectName, projectAddress: d.sheetProjectAddress || d.projectAddress, groups: meta.groups, files: d.items, quote, quoteNote, date: new Date(), noQuote: true,
     }, `${import.meta.env.BASE_URL}apple-touch-icon.png`))
   }, [d, meta, canQuotes])
 
@@ -278,7 +278,7 @@ export default function PlanSetPage() {
           </div>
         </div>
       )}
-      {sheetFor && <PlanSheetEditor file={sheetFor.file} typeName={sheetFor.typeName} projectName={d.projectName} projectAddress={d.projectAddress}
+      {sheetFor && <PlanSheetEditor file={sheetFor.file} typeName={sheetFor.typeName} setId={d.id} projectName={d.sheetProjectName || d.projectName || ''} projectAddress={d.sheetProjectAddress || d.projectAddress || ''}
         packageName={meta?.groups.find((g) => g.types.some((x) => x.code === sheetFor.file.typeCode))?.name} canEditFields={!!d.canEditFields} onClose={() => setSheetFor(null)} onSaved={() => { setSheetFor(null); setReload((n) => n + 1) }} />}
     </div>
   )

@@ -13,9 +13,10 @@ import { COMPANY_UNITED_AR, COMPANY_UNITED_SUB } from '../../company'
 const LOGO = `${import.meta.env.BASE_URL}apple-touch-icon.png`
 const NAVY = '#2b3074'
 
-export default function PlanSheetEditor({ file, typeName, projectName, projectAddress, packageName, canEditFields, onClose, onSaved }: {
+export default function PlanSheetEditor({ file, typeName, setId, projectName: pn0, projectAddress: pa0, packageName, canEditFields, onClose, onSaved }: {
   file: PlanFileRow
   typeName: string
+  setId?: string
   projectName?: string | null
   projectAddress?: string | null
   packageName?: string
@@ -28,12 +29,18 @@ export default function PlanSheetEditor({ file, typeName, projectName, projectAd
   const [name, setName] = useState(file.sheetName ?? typeName)
   const [notes, setNotes] = useState(file.sheetNotes ?? '')
   const [scale, setScale] = useState(file.sheetScale ?? '')
+  // (ل) 11-22 دازاي «اسم المشروع وعنوانه منين أضيفهن؟ — بس مرة وحدة»: ينحفظن للسيت كله
+  const [projectName, setProjectName] = useState(pn0 ?? '')
+  const [projectAddress, setProjectAddress] = useState(pa0 ?? '')
   const [extra, setExtra] = useState<SheetExtraField[]>(file.sheetExtra ?? [])
   const [err, setErr] = useState('')
   const [busy, setBusy] = useState(false)
   const save = async () => {
     setBusy(true); setErr('')
     try {
+      if (setId && (projectName !== (pn0 ?? '') || projectAddress !== (pa0 ?? ''))) {
+        await apiRequest(`/plan-sets/${setId}`, { method: 'PUT', body: JSON.stringify({ sheetProjectName: projectName, sheetProjectAddress: projectAddress }) })
+      }
       await apiRequest(`/plan-files/${file.id}/sheet`, { method: 'PUT', body: JSON.stringify({ pos, name, notes, scale, ...(canEditFields ? { extra } : {}) }) })
       onSaved()
     } catch (e) { setErr(e instanceof Error ? e.message : 'تعذر الحفظ') } finally { setBusy(false) }
@@ -66,6 +73,15 @@ export default function PlanSheetEditor({ file, typeName, projectName, projectAd
                 ))}
               </div>
             </fieldset>
+            {setId && (
+              <fieldset className="grid gap-2 rounded-lg border border-slate-200 p-2 sm:grid-cols-2" data-testid="sheet-project">
+                <legend className="px-1 text-xs font-bold text-slate-500">🏢 المشروع — ينكتب مرة وحدة ويطلع بكل لوحات السيت</legend>
+                <label className="block"><span className="font-bold text-slate-700">اسم المشروع</span>
+                  <input value={projectName} onChange={(e) => setProjectName(e.target.value)} maxLength={200} className="mt-1 w-full rounded-lg border border-slate-200 p-2" /></label>
+                <label className="block"><span className="font-bold text-slate-700">عنوان المشروع</span>
+                  <input value={projectAddress} onChange={(e) => setProjectAddress(e.target.value)} maxLength={200} className="mt-1 w-full rounded-lg border border-slate-200 p-2" /></label>
+              </fieldset>
+            )}
             <label className="block"><span className="font-bold text-slate-700">اسم اللوحة</span>
               <input value={name} onChange={(e) => setName(e.target.value)} maxLength={120} className="mt-1 w-full rounded-lg border border-slate-200 p-2" /></label>
             <label className="block"><span className="font-bold text-slate-700">الملاحظات</span>

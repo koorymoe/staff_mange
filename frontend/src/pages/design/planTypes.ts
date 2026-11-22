@@ -43,7 +43,7 @@ export type PlanFileRow = {
 }
 export type SheetExtraField = { label: string; value: string; after: SheetSlot }
 export type SheetSlot = 'company' | 'project' | 'package' | 'scale' | 'notes'
-export type PlanSetDetail = PlanSetRow & { items: PlanFileRow[]; canManage: boolean; canEditFields?: boolean; projectAddress?: string | null }
+export type PlanSetDetail = PlanSetRow & { items: PlanFileRow[]; canManage: boolean; canEditFields?: boolean; projectAddress?: string | null; sheetProjectName?: string | null; sheetProjectAddress?: string | null }
 export type PlanProjectCard = {
   projectId: string
   code: string

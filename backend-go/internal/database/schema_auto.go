@@ -362,6 +362,13 @@ func autoMigrations() []Migration {
 			ALTER TABLE "PlanFile" ADD COLUMN IF NOT EXISTS "sheetExtra" jsonb DEFAULT '[]'::jsonb NOT NULL;
 		`,
 		},
+		{
+			Version: "0521_plan_set_sheet_project",
+			SQL: `
+			ALTER TABLE "PlanSet" ADD COLUMN IF NOT EXISTS "sheetProjectName" text;
+			ALTER TABLE "PlanSet" ADD COLUMN IF NOT EXISTS "sheetProjectAddress" text;
+		`,
+		},
 		// ‹makemigration› — التحديثات الجديدة تنضاف فوگ هالسطر
 	}
 }
