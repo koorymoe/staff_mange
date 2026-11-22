@@ -71,42 +71,42 @@ export default function RevisitsPage() {
   return (
     <div dir="rtl" className="space-y-4">
       <div className="flex items-start gap-3">
-        <span className="rv-icon flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl text-3xl">🔁</span>
+        <span className="rv-icon flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl text-4xl">🔁</span>
         <div>
-          <h2 className="text-2xl font-extrabold text-brand-900">الرجعات</h2>
-          <p className="text-sm text-slate-500">
+          <h2 className="text-3xl font-extrabold text-brand-900">الرجعات</h2>
+          <p className="mt-1 text-[15px] leading-7 text-slate-500">
             حجز رجع لنفس الزبون ونفس الخدمة خلال {rep?.windowDays ?? 30} يوم من الإنجاز — يعني الشغل الأول يمكن ما انعمل صح.
             تنحسب على ليدر الحجز الأول. للمتابعة والتدريب، مو للخصم.
           </p>
         </div>
       </div>
       <div className="flex flex-wrap items-center gap-2">
-        <span className="flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600"><Ico n="cal" /></span>
+        <span className="flex h-11 w-11 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600"><Ico n="cal" className="h-5 w-5" /></span>
         {RANGES.map((d) => (
           <button key={d} type="button" onClick={() => { if (d !== days) { setRep(null); setDays(d) } }}
-            className={`rounded-full border bg-white px-4 py-1.5 text-sm font-bold transition ${days === d ? 'border-amber-400 text-[#0f2040] ring-2 ring-amber-300/60' : 'border-slate-200 text-slate-600 hover:border-slate-300'}`}>آخر {d} يوم</button>
+            className={`rounded-full border bg-white px-6 py-2 text-base font-bold transition ${days === d ? 'border-amber-400 text-[#0f2040] ring-2 ring-amber-300/60' : 'border-slate-200 text-slate-600 hover:border-slate-300'}`}>آخر {d} يوم</button>
         ))}
       </div>
       {err && <p className="text-sm text-red-600">{err}</p>}
       {!rep && !err && <p className="text-slate-400">جاري الحساب…</p>}
       {rep && (
         <>
-          <div className="grid gap-3 md:grid-cols-3">
-            <div className="rv-card rv-blue flex items-center gap-3 rounded-2xl p-4">
-              <span className="rv-ic flex h-11 w-11 items-center justify-center rounded-full"><Ico n="clip" className="h-6 w-6" /></span>
-              <div className="flex-1"><p className="text-sm font-bold">حجوزات الإنجاز</p><p className="text-3xl font-extrabold tabular-nums">{rep.jobs}</p></div>
-              <Ico n="cal" className="h-10 w-10 opacity-80" />
+          <div className="grid gap-5 md:grid-cols-3">
+            <div className="rv-card rv-blue flex min-h-[7rem] items-center gap-4 rounded-2xl px-6 py-4">
+              <span className="rv-ic flex h-14 w-14 items-center justify-center rounded-full"><Ico n="clip" className="h-7 w-7" /></span>
+              <div className="flex-1"><p className="text-lg font-bold">حجوزات الإنجاز</p><p className="text-4xl font-extrabold tabular-nums">{rep.jobs}</p></div>
+              <Ico n="cal" className="h-14 w-14 opacity-90" />
             </div>
-            <div className="rv-card rv-amber flex items-center gap-3 rounded-2xl p-4">
-              <span className="rv-ic flex h-11 w-11 items-center justify-center rounded-full"><Ico n="undo" className="h-6 w-6" /></span>
-              <div className="flex-1"><p className="text-sm font-bold">الرجعات</p><p className="text-3xl font-extrabold tabular-nums">{rep.revisits}</p></div>
-              <Ico n="clip" className="h-10 w-10 opacity-80" />
+            <div className="rv-card rv-amber flex min-h-[7rem] items-center gap-4 rounded-2xl px-6 py-4">
+              <span className="rv-ic flex h-14 w-14 items-center justify-center rounded-full"><Ico n="undo" className="h-7 w-7" /></span>
+              <div className="flex-1"><p className="text-lg font-bold">الرجعات</p><p className="text-4xl font-extrabold tabular-nums">{rep.revisits}</p></div>
+              <Ico n="clip" className="h-14 w-14 opacity-90" />
             </div>
-            <div className="rv-card rv-teal flex items-center gap-3 rounded-2xl p-4">
-              <span className="rv-ic flex h-11 w-11 items-center justify-center rounded-full"><Ico n="bars" className="h-6 w-6" /></span>
-              <div className="flex-1"><p className="text-sm font-bold">نسبة الرجعة</p><p className="text-xs opacity-80">من إجمالي الحجوزات</p></div>
-              <span className="relative flex h-16 w-16 items-center justify-center rounded-full" style={{ background: `conic-gradient(#facc15 ${ring * 3.6}deg, rgba(45,212,191,.35) 0)` }}>
-                <span className="rv-ring-in flex h-12 w-12 items-center justify-center rounded-full text-sm font-extrabold">
+            <div className="rv-card rv-teal flex min-h-[7rem] items-center gap-4 rounded-2xl px-6 py-4">
+              <span className="rv-ic flex h-14 w-14 items-center justify-center rounded-full"><Ico n="bars" className="h-7 w-7" /></span>
+              <div className="flex-1"><p className="text-lg font-bold">نسبة الرجعة</p><p className="text-sm opacity-80">من إجمالي الحجوزات</p></div>
+              <span className="relative flex h-24 w-24 items-center justify-center rounded-full" style={{ background: `conic-gradient(#facc15 ${ring * 3.6}deg, rgba(45,212,191,.35) 0)` }}>
+                <span className="rv-ring-in flex h-[4.5rem] w-[4.5rem] items-center justify-center rounded-full text-lg font-extrabold">
                   <PctWhy title="نسبة الرجعة" value={rate} suffix={dec(rate)} parts={{ numLabel: 'حجز رجع', num: rep.revisits, denLabel: 'حجز انجز', den: rep.jobs }}
                     meaning={<>من كل 100 حجز انجز، شكد واحد رجع الزبون فتح حجز ثاني لنفس الخدمة خلال {rep.windowDays} يوم — يعني الشغل الأول يمكن ما انعمل صح. كل ما تكون أقل أحسن.</>}
                     source={<>جدول الحجوزات: كل حجز حالته «مكتمل» انجز خلال المدة المختارة (بدون الاستيراد القديم OLD- والشغل الداخلي والمحذوف). وبعدها ندور حجز ثاني لنفس الزبون ونفس الخدمة انفتح خلال {rep.windowDays} يوم من الإنجاز ومو ملغي.</>} />
@@ -115,21 +115,21 @@ export default function RevisitsPage() {
             </div>
           </div>
 
-          <div className="space-y-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+          <div className="rv-panel space-y-4 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
             <div className="flex flex-wrap items-center gap-2">
-              <label className="flex min-w-[220px] flex-1 items-center gap-2 rounded-full border border-slate-200 px-3 py-1.5 text-slate-500">
-                <Ico n="search" />
-                <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="البحث عن ليدر…" className="w-full bg-transparent text-sm text-slate-800 outline-none" />
+              <label className="flex min-w-[220px] max-w-md flex-1 items-center gap-2 rounded-full border border-slate-200 px-4 py-2.5 text-slate-500">
+                <Ico n="search" className="h-5 w-5" />
+                <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="البحث عن ليدر…" className="w-full bg-transparent text-[15px] text-slate-800 outline-none" />
               </label>
-              <label className="flex items-center gap-1.5 rounded-full border border-slate-200 px-4 py-1.5 text-sm font-bold text-slate-700">
-                <Ico n="filter" />
+              <label className="ms-auto flex items-center gap-2 rounded-full border border-slate-200 px-5 py-2.5 text-base font-bold text-slate-700">
+                <Ico n="filter" className="h-5 w-5" />
                 <select value={lvl} onChange={(e) => setLvl(e.target.value)} className="bg-transparent outline-none" aria-label="تصفية">
                   <option value="">تصفية</option>
                   {LEVELS.map((l) => <option key={l.key} value={l.key}>{l.label}</option>)}
                 </select>
               </label>
-              <button type="button" onClick={exportCsv} disabled={!rows.length} className="flex items-center gap-1.5 rounded-full border border-amber-300 px-4 py-1.5 text-sm font-bold text-amber-700 disabled:opacity-50">
-                <Ico n="down" />تصدير التقرير
+              <button type="button" onClick={exportCsv} disabled={!rows.length} className="flex items-center gap-2 rounded-full border border-amber-300 px-5 py-2.5 text-base font-bold text-amber-700 disabled:opacity-50">
+                <Ico n="down" className="h-5 w-5" />تصدير التقرير
               </button>
             </div>
             <div className="overflow-x-auto rounded-2xl border border-slate-200" data-testid="revisits-table">
@@ -139,7 +139,7 @@ export default function RevisitsPage() {
                   <tr>
                     {heads.map(([ic, h]) => (
                       <th key={h} className="p-0 text-center">
-                        <span className="th-box flex h-[4.75rem] items-center justify-center gap-2 rounded-none border-x-0 px-1.5 text-[13px]">
+                        <span className="th-box rv-th flex h-[4.75rem] items-center justify-center gap-2 rounded-none border-x-0 px-1.5 text-[15px]">
                           {ic && <span className="th-box-ic"><Ico n={ic} className="h-5 w-5" /></span>}
                           <span className="leading-snug">{h}</span>
                         </span>
@@ -152,22 +152,22 @@ export default function RevisitsPage() {
                     const lv = levelOf(l.rate, l.revisits)
                     return (
                       <tr key={l.leaderId} className="h-[3.8rem] align-middle hover:bg-slate-50 [&>td]:border-l [&>td]:border-slate-200 [&>td:last-child]:border-l-0">
-                        <td className="px-2 py-2 text-center"><span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-slate-100 text-[11px] font-bold text-slate-600 ring-1 ring-slate-200">{i + 1}</span></td>
-                        <td className="px-2 py-2"><span className="flex items-center gap-1.5 font-bold text-[#0f2040]"><span className="shrink-0 text-amber-500"><Ico n="user" /></span>{l.leaderName}</span></td>
-                        <td className="px-2 py-2 text-center font-bold tabular-nums text-slate-700">{l.jobs}</td>
-                        <td className="px-2 py-2 text-center font-bold tabular-nums text-slate-700">{l.revisits}</td>
+                        <td className="px-2 py-2 text-center"><span className="rv-num inline-flex h-8 w-8 items-center justify-center rounded-full bg-slate-100 text-sm font-bold text-slate-600 ring-1 ring-slate-300">{i + 1}</span></td>
+                        <td className="px-2 py-2"><span className="flex items-center gap-2 text-[15px] font-bold text-[#0f2040]"><span className="shrink-0 text-amber-500"><Ico n="user" className="h-5 w-5" /></span>{l.leaderName}</span></td>
+                        <td className="px-2 py-2 text-center text-[15px] font-bold tabular-nums text-slate-700">{l.jobs}</td>
+                        <td className="px-2 py-2 text-center text-[15px] font-bold tabular-nums text-slate-700">{l.revisits}</td>
                         <td className="px-3 py-2">
                           <div className="flex items-center gap-2" dir="ltr">
-                            <span className={`w-14 shrink-0 font-extrabold tabular-nums ${lv.text}`}>
+                            <span className={`w-16 shrink-0 text-[15px] font-extrabold tabular-nums ${lv.text}`}>
                               <PctWhy title={`نسبة رجعة ${l.leaderName}`} value={l.rate} suffix={dec(l.rate)} parts={{ numLabel: 'حجز رجع', num: l.revisits, denLabel: 'حجز انجز وهو ليدره', den: l.jobs }}
                                 meaning={<>من الحجوزات الي هذا الليدر كان ليدرها وانجزت، شكد منها رجع الزبون عليها خلال {rep.windowDays} يوم. 20٪ وفوك «يحتاج إلى متابعة»، من 10٪ لـ20٪ «متوسط»، أقل من 10٪ «جيد»، وصفر رجعة «ممتاز».</>}
                                 source={<>جدول الحجوزات: كل حجز حالته «مكتمل» انجز خلال المدة المختارة (بدون الاستيراد القديم OLD- والشغل الداخلي والمحذوف). وبعدها ندور حجز ثاني لنفس الزبون ونفس الخدمة انفتح خلال {rep.windowDays} يوم من الإنجاز ومو ملغي.</>} />
                             </span>
-                            <span className="h-2 flex-1 overflow-hidden rounded-full bg-slate-200"><span className={`block h-full rounded-full ${lv.bar}`} style={{ width: `${Math.min(100, l.rate)}%` }} /></span>
+                            <span className="rv-track h-2.5 flex-1 overflow-hidden rounded-full bg-slate-200"><span className={`block h-full rounded-full ${lv.bar}`} style={{ width: `${Math.min(100, l.rate)}%` }} /></span>
                           </div>
                         </td>
                         <td className="px-2 py-2 text-center">
-                          <span className={`inline-flex items-center gap-1 whitespace-nowrap rounded-full px-2.5 py-0.5 text-[11px] font-bold ring-1 ${lv.pill}`}><Ico n={lv.icon} className="h-3.5 w-3.5" />{lv.label}</span>
+                          <span className={`rv-pill-${lv.key} inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-4 py-1 text-sm font-bold ring-1 ${lv.pill}`}><Ico n={lv.icon} className="h-4 w-4" />{lv.label}</span>
                         </td>
                       </tr>
                     )

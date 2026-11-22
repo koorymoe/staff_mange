@@ -1495,3 +1495,12 @@ html.dark .rv-amber { background: linear-gradient(to left, #a16207, #ca8a04); bo
 html.dark .rv-teal { background: linear-gradient(to left, #0b3b3a, #0f4c4a); border-color: rgba(45, 212, 191, .7); color: #ccfbf1; box-shadow: 0 0 12px rgba(45, 212, 191, .3); }
 html.dark .rv-ic { background: rgba(255, 255, 255, .12); }
 html.dark .rv-ring-in { background: #0b2a2a; color: #ffffff; }
+/* (ك) 11-22 زينا: الرجعات بالليلي — نفس درجات التصميم (شريط عناوين كحلي، أرقام بدوائر، كبسولات غامجة) */
+html.dark .rv-panel { background: #081a33; border-color: rgba(56, 189, 248, .35); box-shadow: 0 0 18px rgba(56, 189, 248, .15); }
+html.dark .rv-th { background-image: linear-gradient(to bottom, #0e2a52, #0b2246); border-color: rgba(56, 189, 248, .25); box-shadow: none; color: #f1f5ff; }
+html.dark .rv-num { background: #10284d; color: #e2e8f0; --tw-ring-color: rgba(148, 163, 184, .45); }
+html.dark .rv-track { background: #23344f; }
+html.dark .rv-pill-bad { background: #3b0d14; color: #fca5a5; --tw-ring-color: #b91c1c; }
+html.dark .rv-pill-mid { background: #3a2c06; color: #fde68a; --tw-ring-color: #ca8a04; }
+html.dark .rv-pill-good { background: #062e22; color: #86efac; --tw-ring-color: #15803d; }
+html.dark .rv-pill-top { background: #3a2c06; color: #fde68a; --tw-ring-color: #ca8a04; }
