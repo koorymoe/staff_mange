@@ -16,7 +16,11 @@ export default function MatrixBusiness() {
   if (err) return <p className="rounded-lg bg-red-50 p-3 text-red-600">{err}</p>
   if (!b) return <p className="text-slate-400">ماتركس يحسب الأرقام…</p>
   const max = Math.max(1, ...b.months.map((m) => m.revenue))
-  const delta = b.mtd.lastRevenue > 0 ? Math.round(((b.mtd.revenue - b.mtd.lastRevenue) / b.mtd.lastRevenue) * 100) : null
+  // (دازاي 11-22) «افصلي فلوس الحجوزات عن المشاريع»: المقارنة على الحجوزات بس — دفعات المشاريع
+  // تنسجّل بالجملة (مثل إدخال المشاريع القديمة بتشرين الأول) فتخرّب أي مقارنة.
+  const proj = b.mtd.projectRevenue ?? 0, lastProj = b.mtd.lastProjectRevenue ?? 0
+  const book = b.mtd.revenue - proj, lastBook = b.mtd.lastRevenue - lastProj
+  const delta = lastBook > 0 ? Math.round(((book - lastBook) / lastBook) * 100) : null
   const c = b.customers
   const totalCust = c.actual + c.inquiry + c.openOnly
   return (
@@ -26,11 +30,21 @@ export default function MatrixBusiness() {
         <div className="rounded-xl bg-slate-50 p-3">
           <p className="text-xs text-slate-500">هالشهر لحد اليوم</p>
           <p className="text-xl font-extrabold tabular-nums">{iqd(b.mtd.revenue)}</p>
-          <p className="text-xs text-slate-500">{b.mtd.bookings} حجز منجز · الشهر الماضي بنفس الفترة {iqd(b.mtd.lastRevenue)}
-            {delta !== null && <b className={delta >= 0 ? ' text-emerald-700' : ' text-red-700'}> ({delta >= 0 ? '+' : ''}<PctWhy title="الفرق عن الشهر الماضي" value={delta} suffix="٪"
-              formula={<>({iqd(b.mtd.revenue)} هالشهر − {iqd(b.mtd.lastRevenue)} الشهر الماضي) ÷ {iqd(b.mtd.lastRevenue)} × ١٠٠ = <b>{delta >= 0 ? '+' : ''}{delta}٪</b></>}
-              meaning={<>شكد زاد أو نقص إيراد الحجوزات المنجزة هالشهر لحد اليوم، مقارنة بنفس الأيام من الشهر الماضي (من أوله لنفس التاريخ). موجب يعني أحسن.</>}
-              source={<>الحجوزات المنجزة (المحسوبة) من جدول الحجوزات حسب تاريخ إنجازها بتوقيت بغداد، ومبلغ كل حجز الصافي — هالشهر {b.mtd.bookings} حجز.</>} />)</b>}</p>
+          <div className="mt-1 grid grid-cols-2 gap-2">
+            <div className="rounded-lg bg-white p-2 ring-1 ring-slate-200">
+              <p className="text-[11px] text-slate-500">🧾 الحجوزات ({b.mtd.bookings} حجز)</p>
+              <p className="font-extrabold tabular-nums text-[#0f2040]">{iqd(book)}</p>
+            </div>
+            <div className="rounded-lg bg-white p-2 ring-1 ring-amber-200">
+              <p className="text-[11px] text-slate-500">🏗️ دفعات المشاريع</p>
+              <p className="font-extrabold tabular-nums text-amber-700">{iqd(proj)}</p>
+            </div>
+          </div>
+          <p className="mt-1 text-xs text-slate-500">حجوزات الشهر الماضي بنفس الفترة {iqd(lastBook)}
+            {delta !== null && <b className={delta >= 0 ? ' text-emerald-700' : ' text-red-700'}> ({delta >= 0 ? '+' : ''}<PctWhy title="الفرق عن الشهر الماضي (الحجوزات)" value={delta} suffix="٪"
+              formula={<>({iqd(book)} هالشهر − {iqd(lastBook)} الشهر الماضي) ÷ {iqd(lastBook)} × ١٠٠ = <b>{delta >= 0 ? '+' : ''}{delta}٪</b></>}
+              meaning={<>شكد زاد أو نقص إيراد الحجوزات المنجزة هالشهر لحد اليوم، مقارنة بنفس الأيام من الشهر الماضي. دفعات المشاريع ما داخلة بالمقارنة لأنها تنسجّل بالجملة. موجب يعني أحسن.</>}
+              source={<>الحجوزات المنجزة من جدول الحجوزات حسب تاريخ إنجازها بتوقيت بغداد، ومبلغ كل حجز الصافي — هالشهر {b.mtd.bookings} حجز.</>} />)</b>}</p>
         </div>
         <div className="rounded-xl bg-violet-50 p-3">
           <p className="text-xs text-violet-700">🔮 توقع نهاية الشهر</p>
@@ -50,13 +64,16 @@ export default function MatrixBusiness() {
         </div>
       </div>
       <div className="mt-4">
-        <p className="mb-1 text-xs font-bold text-slate-500">الإيراد آخر ٦ أشهر (الفلوس المقبوضة فعلاً: الحجوزات المنجزة + دفعات المشاريع)</p>
+        <p className="mb-1 text-xs font-bold text-slate-500">الإيراد آخر ٦ أشهر — <span className="text-[#2c4fa8]">■ الحجوزات</span> · <span className="text-amber-600">■ دفعات المشاريع</span></p>
         <div className="space-y-1">
           {b.months.map((m) => (
             <div key={m.month} className="flex items-center gap-2 text-xs">
               <span className="w-16 tabular-nums text-slate-500">{m.month}</span>
-              <div className="h-4 flex-1 rounded bg-slate-100"><div className="h-4 rounded bg-brand-500" style={{ width: `${(m.revenue / max) * 100}%` }} /></div>
-              <span className="w-40 text-left tabular-nums">{iqd(m.revenue)} · {m.bookings} حجز{m.invoiced < m.bookings ? ` (${m.bookings - m.invoiced} بلا فاتورة)` : ''}</span>
+              <div className="flex h-4 flex-1 overflow-hidden rounded bg-slate-100">
+                <div className="h-4 bg-[#2c4fa8]" style={{ width: `${((m.revenue - (m.projectRevenue ?? 0)) / max) * 100}%` }} />
+                <div className="h-4 bg-amber-500" style={{ width: `${((m.projectRevenue ?? 0) / max) * 100}%` }} />
+              </div>
+              <span className="w-64 text-left tabular-nums">🧾 {iqd(m.revenue - (m.projectRevenue ?? 0))} ({m.bookings} حجز{m.invoiced < m.bookings ? `، ${m.bookings - m.invoiced} بلا فاتورة` : ''}) · 🏗️ {iqd(m.projectRevenue ?? 0)}</span>
             </div>
           ))}
           {b.months.length === 0 && <p className="text-xs text-slate-400">ماكو حجوزات منجزة بآخر ٦ أشهر.</p>}

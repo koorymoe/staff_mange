@@ -3806,7 +3806,7 @@ export interface EmployeeReport {
 }
 export interface RoleMetric { label: string; value: number }
 export interface MatrixBusiness {
-  months: { month: string; bookings: number; revenue: number; invoiced: number }[]
+  months: { month: string; bookings: number; revenue: number; invoiced: number; projectRevenue?: number }[]
   mtd: { bookings: number; revenue: number; lastBookings: number; lastRevenue: number; projectRevenue?: number; lastProjectRevenue?: number }
   forecast: {
     expected: number; expectedJobs: number; basis: string; insufficient: boolean; low?: number; high?: number; accuracy?: string
