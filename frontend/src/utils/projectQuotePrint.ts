@@ -1,4 +1,4 @@
-import { COMPANY_LEGAL_AR } from '../company'
+import { COMPANY_LEGAL_AR, COMPANY_PHONE, COMPANY_EMAIL } from '../company'
 // ═══ «عرض مشاريع» — صفحة الطباعة (دازاي 11-06) ═══
 // نفس تصميم نموذج «مشروع جامعة المكين»: غلاف، نظرة شاملة، فصل لكل فئة بكارتين بالصفحة،
 // كشف الكميات والأسعار ويا المبلغ بالحروف، والملحق الفني بأجزائه. A4 وألوان الشركة.
@@ -34,8 +34,8 @@ export type ProjectQuote = {
 
 const COMPANY_AR = COMPANY_LEGAL_AR
 const COMPANY_AR2 = 'والوكالات التجارية محدودة المسؤولية'
-const PHONE = '07869787888'
-const EMAIL = 'info@alamani.iq'
+const PHONE = COMPANY_PHONE
+const EMAIL = COMPANY_EMAIL
 
 const n = (v: number) => Math.round(v).toLocaleString('en-US')
 const abs = (u: string) => (/^(https?:|data:|blob:)/.test(u) ? u : new URL(u, location.origin).href)

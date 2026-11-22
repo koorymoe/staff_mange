@@ -3,3 +3,7 @@
 // الرسمي تاخذه من هنا.
 export const COMPANY_LEGAL_AR = 'شركة الأماني للتجارة العامة والاستثمارات العقارية والوكالات التجارية محدودة المسؤولية'
 export const COMPANY_SHORT_AR = 'شركة الأماني'
+
+// (ل) 11-22: رقم وإيميل الشركة — نفس فورما عرض السعر، ويطلعن بأسفل صفحات سيت المخططات
+export const COMPANY_PHONE = '07869787888'
+export const COMPANY_EMAIL = 'info@alamani.iq'

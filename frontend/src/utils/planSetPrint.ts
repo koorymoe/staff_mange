@@ -1,4 +1,4 @@
-import { COMPANY_LEGAL_AR, COMPANY_SHORT_AR } from '../company'
+import { COMPANY_EMAIL, COMPANY_LEGAL_AR, COMPANY_PHONE, COMPANY_SHORT_AR } from '../company'
 // ═══ 📐 سيت المخططات — ملف الـPDF (ك) 11-10 ═══
 // بطلب دازاي: «تسوي تنزيل ملف ينزل ملف PDF بالألوان الهوية البصرية مال الشركة بي كل
 // التصاميم بالإضافة الى عرض السعر». الشكل نفس ورقة «Package Contents» مال الشركة:
@@ -61,7 +61,8 @@ const abs = (u: string) => (/^(https?:|data:|blob:)/.test(u) ? u : new URL(u, lo
 export const isImageFile = (f: { fileType?: string | null }) => IMAGE_TYPES.includes(f.fileType ?? '')
 
 const band = `<div class="band"><img src="LOGO" alt=""><span>${COMPANY}</span></div>`
-const foot = (page: number) => `<div class="foot"><span>${COMPANY_SHORT_AR}</span><bdi dir="ltr">${String(page).padStart(2, '0')}</bdi></div>`
+// (ل) 11-22 دازاي: «هنا يكون عنوان الشركة والرقم» — نفس فورما عرض السعر
+const foot = (page: number) => `<div class="foot"><span>${COMPANY_SHORT_AR} · هاتف <bdi dir="ltr">${COMPANY_PHONE}</bdi> · <bdi dir="ltr">${COMPANY_EMAIL}</bdi></span><bdi dir="ltr">${String(page).padStart(2, '0')}</bdi></div>`
 
 export function buildPlanSetHtml(p: PlanPrintInput, logoUrl: string): string {
   const typeName = new Map<string, { group: PlanPrintGroup; name: string }>()
@@ -172,7 +173,7 @@ body { margin: 0; font-family: 'Tajawal', sans-serif; color: #1e293b; -webkit-pr
 .img img { max-width: 100%; max-height: 100%; object-fit: contain }
 table { width: 100%; border-collapse: collapse; font-size: 15px } th { background: ${NAVY}; color: #fff; padding: 2mm } td { border-bottom: 1px solid #e2e8f0; padding: 2mm; text-align: center }
 .tot { display: flex; gap: 6mm; justify-content: flex-end; font-size: 13px } .tot .net b { color: ${NAVY}; font-size: 16px }
-.foot { position: absolute; bottom: 8mm; left: 20mm; right: 20mm; display: flex; justify-content: space-between; font-size: 13px; color: #94a3b8; border-top: 1px solid #e2e8f0; padding-top: 2mm }
+.foot { position: absolute; bottom: 8mm; left: 20mm; right: 20mm; display: flex; justify-content: space-between; font-size: 15px; color: #475569; border-top: 1px solid #e2e8f0; padding-top: 2mm }
 .page.land { padding: 14mm 16mm 20mm }
 /* ── غلاف المخطط: كحلي غامق وذهبي ── */
 .page.land.pcover { background: linear-gradient(135deg, #123a70 0%, ${NAVY} 45%, #071f42 100%); color: #fff; justify-content: space-between; padding: 22mm 28mm 24mm }
