@@ -95,6 +95,9 @@ export default function PurchaseControlPanel({ requests, canBuy, canVerify, canW
 
   const tabs: [typeof tab, string, string][] = [['todo', `بانتظاري (${toReview.length + toVerify.length})`, 'clip'], ['prices', 'سجل الأسعار', 'tag']]
   if (canWatch) tabs.push(['alerts', `تنبيهات ماتركس (${openAlerts.length})`, 'bell'], ['bias', `الميل لمورد (${bias.length})`, 'card'], ['month', 'التقرير الشهري', 'cal'], ['std', `الأسعار الاستاندرد${std?.suggestions.length ? ` (${std.suggestions.length} اقتراح)` : ''}`, 'tag'])
+  const tabBtn = (k: typeof tab, label: string, ic: string) => (
+    <button key={k} onClick={() => setTab(k)} className={`pc-tab flex items-center gap-2 rounded-xl border px-4 py-2 text-[15px] font-bold ${tab === k ? (k === 'alerts' ? 'pc-tab-red' : 'pc-tab-on') : ''}`}><LineIcon n={ic} className="h-5 w-5" />{label}</button>
+  )
   const products = [...new Set(prices.map((p) => p.product))].sort()
   const suppliers = [...new Set(prices.map((p) => p.supplier))].sort()
   const priceRows = prices.filter((p) => (!fProduct || p.product === fProduct) && (!fSupplier || p.supplier === fSupplier))
@@ -133,11 +136,15 @@ export default function PurchaseControlPanel({ requests, canBuy, canVerify, canW
           </span>
         )}
         <div className="flex flex-1 flex-wrap justify-end gap-3">
-          {tabs.map(([k, label, ic]) => (
-            <button key={k} onClick={() => setTab(k)} className={`pc-tab flex items-center gap-2 rounded-xl border px-4 py-2 text-[15px] font-bold ${tab === k ? (k === 'alerts' ? 'pc-tab-red' : 'pc-tab-on') : ''}`}><LineIcon n={ic} className="h-5 w-5" />{label}</button>
-          ))}
+          {tabs.filter(([k]) => k !== 'month' && k !== 'std').map(([k, label, ic]) => tabBtn(k, label, ic))}
         </div>
       </div>
+      {/* التقرير الشهري والأسعار الاستاندرد بسطر لحالهن تحت العنوان (مثل التصميم) */}
+      {tabs.some(([k]) => k === 'month' || k === 'std') && (
+        <div className="-mt-2 mb-5 flex flex-wrap gap-3">
+          {tabs.filter(([k]) => k === 'month' || k === 'std').map(([k, label, ic]) => tabBtn(k, label, ic))}
+        </div>
+      )}
 
       {tab === 'todo' && (
         <div className="space-y-2">
@@ -187,9 +194,9 @@ export default function PurchaseControlPanel({ requests, canBuy, canVerify, canW
               <thead className="font-bold">
                 <tr>
                   {([['', 'ت'], ['box', 'المادة'], ['user', 'المورد'], ['tag', 'آخر سعر'], ['trendDown', 'أقل سعر'], ['layers', 'مرات الشراء'], ['cal', 'آخر شراء']] as [string, string][]).map(([ic, h]) => (
-                    <th key={h} className="p-0 text-center">
-                      <span className="th-box pc-th flex h-12 items-center justify-center gap-2 rounded-none border-x-0 px-1.5">
-                        <span className="leading-snug">{h}</span>{ic && <span className="th-box-ic"><LineIcon n={ic} className="h-5 w-5" /></span>}
+                    <th key={h} className="pc-th-cell p-0 text-center">
+                      <span className="th-box pc-th flex h-12 items-center justify-center gap-2 rounded-none border-x-0 px-1.5 text-base">
+                        {ic && <span className="th-box-ic"><LineIcon n={ic} className="h-5 w-5" /></span>}<span className="leading-snug">{h}</span>
                       </span>
                     </th>
                   ))}
@@ -200,7 +207,7 @@ export default function PurchaseControlPanel({ requests, canBuy, canVerify, canW
                   const same = prices.filter((x) => x.key === r.key)
                   const min = Math.min(...same.map((x) => x.lastPrice))
                   return (
-                    <tr key={r.key + r.supplier} className="h-12 align-middle hover:bg-slate-50 [&>td]:border-l [&>td]:border-slate-200 [&>td:last-child]:border-l-0">
+                    <tr key={r.key + r.supplier} className="pc-row h-12 align-middle [&>td]:border-l [&>td]:border-slate-200 [&>td:last-child]:border-l-0">
                       <td className="px-2 text-center font-bold text-slate-700">{(pg - 1) * per + i + 1}</td>
                       <td className="px-2 text-center font-extrabold text-[#0f2040]">{r.product}</td>
                       <td className="px-2 text-center text-slate-700">{r.supplier}{r.lastPrice === min && same.length > 1 && <span className="mr-1 text-xs font-bold text-emerald-600">الأرخص</span>}</td>
