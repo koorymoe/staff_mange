@@ -100,15 +100,18 @@ type PlanSet struct {
 	ProjectCode *string `db:"projectCode" json:"projectCode"`
 	ProjectName *string `db:"projectName" json:"projectName"`
 	// (ل) 11-22: «عنوان المشروع» بالفورما = موقع المشروع
-	ProjectAddress *string    `db:"projectAddress" json:"projectAddress"`
-	Notes          *string    `db:"notes" json:"notes"`
-	CreatedByName  *string    `db:"createdByName" json:"createdByName"`
-	CreatedAt      time.Time  `db:"createdAt" json:"createdAt"`
-	ArchivedAt     *time.Time `db:"archivedAt" json:"archivedAt"`
-	Files          int        `db:"files" json:"files"`
-	Cover          *string    `db:"cover" json:"cover"`
-	IsTemplate     bool       `db:"isTemplate" json:"isTemplate"`
-	QuotationID    *string    `db:"quotationId" json:"quotationId"`
+	ProjectAddress *string `db:"projectAddress" json:"projectAddress"`
+	// (ل) 11-22: اسم/عنوان المشروع للفورما — تكتبهن المصممة مرة وحدة للسيت (يغلبن المشروع المربوط)
+	SheetProjectName    *string    `db:"sheetProjectName" json:"sheetProjectName"`
+	SheetProjectAddress *string    `db:"sheetProjectAddress" json:"sheetProjectAddress"`
+	Notes               *string    `db:"notes" json:"notes"`
+	CreatedByName       *string    `db:"createdByName" json:"createdByName"`
+	CreatedAt           time.Time  `db:"createdAt" json:"createdAt"`
+	ArchivedAt          *time.Time `db:"archivedAt" json:"archivedAt"`
+	Files               int        `db:"files" json:"files"`
+	Cover               *string    `db:"cover" json:"cover"`
+	IsTemplate          bool       `db:"isTemplate" json:"isTemplate"`
+	QuotationID         *string    `db:"quotationId" json:"quotationId"`
 }
 
 type PlanFile struct {
