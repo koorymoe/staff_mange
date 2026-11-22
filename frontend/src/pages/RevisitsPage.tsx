@@ -27,15 +27,17 @@ const Ico = ({ n, className = 'h-4 w-4' }: { n: string; className?: string }) =>
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden="true"><path d={ICONS[n]} /></svg>
 )
 
-// الحدود نفسها الي چانت (فوك ١٥٪ أحمر، ٧–١٥ أصفر، أقل أخضر) — وصفر رجعة = ممتاز.
+// (ك) 11-22 زينا: الحدود مثل التصميم — ٢٠٪ وفوك يحتاج متابعة، ١٠–٢٠ متوسط، أقل جيد، وصفر رجعة ممتاز.
 type Level = { key: string; label: string; icon: string; pill: string; text: string; bar: string }
 const LEVELS: Level[] = [
   { key: 'bad', label: 'يحتاج إلى متابعة', icon: 'warn', pill: 'bg-red-50 text-red-700 ring-red-300', text: 'text-red-600', bar: 'bg-red-500' },
   { key: 'mid', label: 'متوسط', icon: 'eq', pill: 'bg-amber-50 text-amber-700 ring-amber-300', text: 'text-amber-600', bar: 'bg-amber-400' },
   { key: 'good', label: 'جيد', icon: 'check', pill: 'bg-emerald-50 text-emerald-700 ring-emerald-300', text: 'text-emerald-600', bar: 'bg-emerald-500' },
-  { key: 'top', label: 'ممتاز', icon: 'star', pill: 'bg-yellow-50 text-yellow-700 ring-yellow-300', text: 'text-slate-600', bar: 'bg-yellow-400' },
+  { key: 'top', label: 'ممتاز', icon: 'star', pill: 'bg-yellow-50 text-yellow-700 ring-yellow-300', text: 'text-slate-700', bar: 'bg-yellow-400' },
 ]
-const levelOf = (rate: number, revisits: number) => revisits === 0 ? LEVELS[3] : rate >= 15 ? LEVELS[0] : rate >= 7 ? LEVELS[1] : LEVELS[2]
+const levelOf = (rate: number, revisits: number) => revisits === 0 ? LEVELS[3] : rate >= 20 ? LEVELS[0] : rate >= 10 ? LEVELS[1] : LEVELS[2]
+// الرقم بمرتبة عشرية وحدة دائماً (50.0%) مثل التصميم
+const dec = (v: number) => `${Number.isInteger(v) ? '.0' : ''}%`
 
 export default function RevisitsPage() {
   const [days, setDays] = useState(30)
@@ -82,7 +84,7 @@ export default function RevisitsPage() {
         <span className="flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600"><Ico n="cal" /></span>
         {RANGES.map((d) => (
           <button key={d} type="button" onClick={() => { if (d !== days) { setRep(null); setDays(d) } }}
-            className={`rounded-xl border bg-white px-4 py-1.5 text-sm font-bold transition ${days === d ? 'border-amber-400 text-[#0f2040] ring-2 ring-amber-300/60' : 'border-slate-200 text-slate-600 hover:border-slate-300'}`}>آخر {d} يوم</button>
+            className={`rounded-full border bg-white px-4 py-1.5 text-sm font-bold transition ${days === d ? 'border-amber-400 text-[#0f2040] ring-2 ring-amber-300/60' : 'border-slate-200 text-slate-600 hover:border-slate-300'}`}>آخر {d} يوم</button>
         ))}
       </div>
       {err && <p className="text-sm text-red-600">{err}</p>}
@@ -105,7 +107,7 @@ export default function RevisitsPage() {
               <div className="flex-1"><p className="text-sm font-bold">نسبة الرجعة</p><p className="text-xs opacity-80">من إجمالي الحجوزات</p></div>
               <span className="relative flex h-16 w-16 items-center justify-center rounded-full" style={{ background: `conic-gradient(#facc15 ${ring * 3.6}deg, rgba(45,212,191,.35) 0)` }}>
                 <span className="rv-ring-in flex h-12 w-12 items-center justify-center rounded-full text-sm font-extrabold">
-                  <PctWhy title="نسبة الرجعة" value={rate} suffix="٪" parts={{ numLabel: 'حجز رجع', num: rep.revisits, denLabel: 'حجز انجز', den: rep.jobs }}
+                  <PctWhy title="نسبة الرجعة" value={rate} suffix={dec(rate)} parts={{ numLabel: 'حجز رجع', num: rep.revisits, denLabel: 'حجز انجز', den: rep.jobs }}
                     meaning={<>من كل 100 حجز انجز، شكد واحد رجع الزبون فتح حجز ثاني لنفس الخدمة خلال {rep.windowDays} يوم — يعني الشغل الأول يمكن ما انعمل صح. كل ما تكون أقل أحسن.</>}
                     source={<>جدول الحجوزات: كل حجز حالته «مكتمل» انجز خلال المدة المختارة (بدون الاستيراد القديم OLD- والشغل الداخلي والمحذوف). وبعدها ندور حجز ثاني لنفس الزبون ونفس الخدمة انفتح خلال {rep.windowDays} يوم من الإنجاز ومو ملغي.</>} />
                 </span>
@@ -115,18 +117,18 @@ export default function RevisitsPage() {
 
           <div className="space-y-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
             <div className="flex flex-wrap items-center gap-2">
-              <label className="flex min-w-[220px] flex-1 items-center gap-2 rounded-xl border border-slate-200 px-3 py-1.5 text-slate-500">
+              <label className="flex min-w-[220px] flex-1 items-center gap-2 rounded-full border border-slate-200 px-3 py-1.5 text-slate-500">
                 <Ico n="search" />
                 <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="البحث عن ليدر…" className="w-full bg-transparent text-sm text-slate-800 outline-none" />
               </label>
-              <label className="flex items-center gap-1.5 rounded-xl border border-slate-200 px-3 py-1.5 text-sm font-bold text-slate-700">
+              <label className="flex items-center gap-1.5 rounded-full border border-slate-200 px-4 py-1.5 text-sm font-bold text-slate-700">
                 <Ico n="filter" />
                 <select value={lvl} onChange={(e) => setLvl(e.target.value)} className="bg-transparent outline-none" aria-label="تصفية">
-                  <option value="">تصفية: الكل</option>
+                  <option value="">تصفية</option>
                   {LEVELS.map((l) => <option key={l.key} value={l.key}>{l.label}</option>)}
                 </select>
               </label>
-              <button type="button" onClick={exportCsv} disabled={!rows.length} className="flex items-center gap-1.5 rounded-xl border border-amber-300 px-3 py-1.5 text-sm font-bold text-amber-700 disabled:opacity-50">
+              <button type="button" onClick={exportCsv} disabled={!rows.length} className="flex items-center gap-1.5 rounded-full border border-amber-300 px-4 py-1.5 text-sm font-bold text-amber-700 disabled:opacity-50">
                 <Ico n="down" />تصدير التقرير
               </button>
             </div>
@@ -155,10 +157,10 @@ export default function RevisitsPage() {
                         <td className="px-2 py-2 text-center font-bold tabular-nums text-slate-700">{l.jobs}</td>
                         <td className="px-2 py-2 text-center font-bold tabular-nums text-slate-700">{l.revisits}</td>
                         <td className="px-3 py-2">
-                          <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-2" dir="ltr">
                             <span className={`w-14 shrink-0 font-extrabold tabular-nums ${lv.text}`}>
-                              <PctWhy title={`نسبة رجعة ${l.leaderName}`} value={l.rate} suffix="٪" parts={{ numLabel: 'حجز رجع', num: l.revisits, denLabel: 'حجز انجز وهو ليدره', den: l.jobs }}
-                                meaning={<>من الحجوزات الي هذا الليدر كان ليدرها وانجزت، شكد منها رجع الزبون عليها خلال {rep.windowDays} يوم. 15٪ وفوك أحمر، من 7٪ لـ15٪ أصفر، أقل من 7٪ أخضر، وصفر رجعة ممتاز.</>}
+                              <PctWhy title={`نسبة رجعة ${l.leaderName}`} value={l.rate} suffix={dec(l.rate)} parts={{ numLabel: 'حجز رجع', num: l.revisits, denLabel: 'حجز انجز وهو ليدره', den: l.jobs }}
+                                meaning={<>من الحجوزات الي هذا الليدر كان ليدرها وانجزت، شكد منها رجع الزبون عليها خلال {rep.windowDays} يوم. 20٪ وفوك «يحتاج إلى متابعة»، من 10٪ لـ20٪ «متوسط»، أقل من 10٪ «جيد»، وصفر رجعة «ممتاز».</>}
                                 source={<>جدول الحجوزات: كل حجز حالته «مكتمل» انجز خلال المدة المختارة (بدون الاستيراد القديم OLD- والشغل الداخلي والمحذوف). وبعدها ندور حجز ثاني لنفس الزبون ونفس الخدمة انفتح خلال {rep.windowDays} يوم من الإنجاز ومو ملغي.</>} />
                             </span>
                             <span className="h-2 flex-1 overflow-hidden rounded-full bg-slate-200"><span className={`block h-full rounded-full ${lv.bar}`} style={{ width: `${Math.min(100, l.rate)}%` }} /></span>
