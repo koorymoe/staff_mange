@@ -517,3 +517,4 @@ git push origin origin/avg:refs/heads/prod     # بعد التأكد إنه fast
 - (ل) 11-22 planSetPrint: WAVES صار مشهد SVG كامل (lat/bp patterns، مبنى، لفافة) + ICONS أربع أيقونات + CSS pc-* جديد. حسب صورة دازاي.
 - (ل) 11-22 isDesigner(role, perms) بـdesign_set.go: DESIGNER أو unit_design → CanSeeAll (التصاميم+المخططات) وPlanSetService.CanManage. السبب: نرجس دورها مصمم بلا OrgAssignment بـeng.design وانشالت منها project_management.
 - (ل) 11-22 فورما المخطط: sheetSections بـplanSetPrint (مصدر واحد للـPDF والمعاينة)، عرض 50mm. PlanFile.sheetExtra jsonb (0520) + صلاحية plan_sheet_fields (CanEditSheetFields)، Extra nil = ما تنمس. projectAddress = Project.location.
+- (ل) 11-22 PlanSet.sheetProjectName/sheetProjectAddress (0521) — PUT /plan-sets/{id}؛ الفورما تستخدمهن قبل Project.name/location.

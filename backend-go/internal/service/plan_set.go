@@ -100,15 +100,18 @@ type PlanSet struct {
 	ProjectCode *string `db:"projectCode" json:"projectCode"`
 	ProjectName *string `db:"projectName" json:"projectName"`
 	// (ل) 11-22: «عنوان المشروع» بالفورما = موقع المشروع
-	ProjectAddress *string    `db:"projectAddress" json:"projectAddress"`
-	Notes          *string    `db:"notes" json:"notes"`
-	CreatedByName  *string    `db:"createdByName" json:"createdByName"`
-	CreatedAt      time.Time  `db:"createdAt" json:"createdAt"`
-	ArchivedAt     *time.Time `db:"archivedAt" json:"archivedAt"`
-	Files          int        `db:"files" json:"files"`
-	Cover          *string    `db:"cover" json:"cover"`
-	IsTemplate     bool       `db:"isTemplate" json:"isTemplate"`
-	QuotationID    *string    `db:"quotationId" json:"quotationId"`
+	ProjectAddress *string `db:"projectAddress" json:"projectAddress"`
+	// (ل) 11-22: اسم/عنوان المشروع للفورما — تكتبهن المصممة مرة وحدة للسيت (يغلبن المشروع المربوط)
+	SheetProjectName    *string    `db:"sheetProjectName" json:"sheetProjectName"`
+	SheetProjectAddress *string    `db:"sheetProjectAddress" json:"sheetProjectAddress"`
+	Notes               *string    `db:"notes" json:"notes"`
+	CreatedByName       *string    `db:"createdByName" json:"createdByName"`
+	CreatedAt           time.Time  `db:"createdAt" json:"createdAt"`
+	ArchivedAt          *time.Time `db:"archivedAt" json:"archivedAt"`
+	Files               int        `db:"files" json:"files"`
+	Cover               *string    `db:"cover" json:"cover"`
+	IsTemplate          bool       `db:"isTemplate" json:"isTemplate"`
+	QuotationID         *string    `db:"quotationId" json:"quotationId"`
 }
 
 type PlanFile struct {
@@ -166,7 +169,7 @@ func (s *PlanSetService) Projects() []ProjectOption { return s.design.Projects()
 // imageTypes الأنواع الي تنعرض صورة (الغلاف وحزمة الـPDF).
 const planImageTypes = `('image/jpeg', 'image/png', 'image/webp')`
 
-const planSetCols = `SELECT d.id, d.title, d."projectId", p.code AS "projectCode", p.name AS "projectName", p.location AS "projectAddress",
+const planSetCols = `SELECT d.id, d.title, d."projectId", p.code AS "projectCode", p.name AS "projectName", p.location AS "projectAddress", d."sheetProjectName", d."sheetProjectAddress",
 	d.notes, e.name AS "createdByName", d."createdAt", d."archivedAt", d."isTemplate", d."quotationId",
 	(SELECT count(*) FROM "PlanFile" f WHERE f."setId" = d.id AND f."removedAt" IS NULL)::int AS files,
 	(SELECT f."fileKey" FROM "PlanFile" f WHERE f."setId" = d.id AND f."removedAt" IS NULL
@@ -408,6 +411,9 @@ type PlanSetUpdate struct {
 	ProjectID   *string `json:"projectId"`
 	IsTemplate  *bool   `json:"isTemplate"`
 	QuotationID *string `json:"quotationId"`
+	// (ل) 11-22: اسم وعنوان المشروع بالفورما ("" = يرجع للمشروع المربوط)
+	SheetProjectName    *string `json:"sheetProjectName"`
+	SheetProjectAddress *string `json:"sheetProjectAddress"`
 }
 
 func (s *PlanSetService) Update(emp, role string, perms []string, id string, in PlanSetUpdate) error {
@@ -421,12 +427,22 @@ func (s *PlanSetService) Update(emp, role string, perms []string, id string, in 
 		}
 		in.Title = &t
 	}
+	for _, v := range []*string{in.SheetProjectName, in.SheetProjectAddress} {
+		if v != nil {
+			*v = strings.TrimSpace(*v)
+			if len([]rune(*v)) > 200 {
+				return errors.New("اسم أو عنوان المشروع طويل هواية")
+			}
+		}
+	}
 	res, err := s.db.Exec(`UPDATE "PlanSet" SET
 		title = COALESCE($2, title),
 		"projectId" = CASE WHEN $3::text IS NULL THEN "projectId" ELSE NULLIF($3, '') END,
 		"isTemplate" = COALESCE($4, "isTemplate"),
-		"quotationId" = CASE WHEN $5::text IS NULL THEN "quotationId" ELSE NULLIF($5, '') END
-		WHERE id = $1`, id, in.Title, in.ProjectID, in.IsTemplate, in.QuotationID)
+		"quotationId" = CASE WHEN $5::text IS NULL THEN "quotationId" ELSE NULLIF($5, '') END,
+		"sheetProjectName" = CASE WHEN $6::text IS NULL THEN "sheetProjectName" ELSE NULLIF($6, '') END,
+		"sheetProjectAddress" = CASE WHEN $7::text IS NULL THEN "sheetProjectAddress" ELSE NULLIF($7, '') END
+		WHERE id = $1`, id, in.Title, in.ProjectID, in.IsTemplate, in.QuotationID, in.SheetProjectName, in.SheetProjectAddress)
 	if err != nil {
 		if strings.Contains(err.Error(), "foreign key") {
 			return errors.New("المشروع أو عرض السعر مو موجود")

@@ -15,6 +15,9 @@ func init() {
 			{Name: "archivedAt", Type: "timestamp with time zone"},
 			{Name: "isTemplate", Type: "boolean", NotNull: true, Default: "false"},
 			{Name: "quotationId", Type: "text"},
+			// (ل) 11-22 دازاي «اسم المشروع وعنوانه منين أضيفهن؟»: ينكتبن مرة وحدة للسيت (فوگ المشروع المربوط)
+			{Name: "sheetProjectName", Type: "text"},
+			{Name: "sheetProjectAddress", Type: "text"},
 		},
 		Constraints: []Constraint{
 			{Name: "PlanSet_createdById_fkey", Def: "FOREIGN KEY (\"createdById\") REFERENCES \"Employee\"(id) ON DELETE SET NULL"},

@@ -133,4 +133,13 @@ func TestPlanSheetExtra_Live(t *testing.T) {
 	if n != 2 {
 		t.Fatalf("الخانات انمسحت: %d", n)
 	}
+	// اسم وعنوان المشروع ينكتبن مرة وحدة للسيت
+	pn, pa := " بيت الزيتون ", "كربلاء - حي النقيب"
+	if err := pl.Update(e, "DESIGNER", nil, "__px_set", PlanSetUpdate{SheetProjectName: &pn, SheetProjectAddress: &pa}); err != nil {
+		t.Fatal(err)
+	}
+	d, err := pl.Detail(e, "DESIGNER", nil, "__px_set")
+	if err != nil || d.SheetProjectName == nil || *d.SheetProjectName != "بيت الزيتون" || *d.SheetProjectAddress != pa {
+		t.Fatalf("اسم/عنوان المشروع ما انحفظ: %v %+v", err, d)
+	}
 }
