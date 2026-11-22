@@ -356,6 +356,12 @@ func autoMigrations() []Migration {
 			WHERE "typeCode" IN ('10.2', '10.3', '10.4');
 		`,
 		},
+		{
+			Version: "0520_plan_sheet_extra",
+			SQL: `
+			ALTER TABLE "PlanFile" ADD COLUMN IF NOT EXISTS "sheetExtra" jsonb DEFAULT '[]'::jsonb NOT NULL;
+		`,
+		},
 		// ‹makemigration› — التحديثات الجديدة تنضاف فوگ هالسطر
 	}
 }

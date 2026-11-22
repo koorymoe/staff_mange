@@ -1,4 +1,5 @@
-import { COMPANY_ADDRESS, COMPANY_LEGAL_AR, COMPANY_PHONE } from '../company'
+import { COMPANY_ADDRESS, COMPANY_LEGAL_AR, COMPANY_PHONE, COMPANY_UNITED_AR, COMPANY_UNITED_SUB } from '../company'
+import type { SheetExtraField, SheetSlot } from '../pages/design/planTypes'
 // ═══ 📐 سيت المخططات — ملف الـPDF (ك) 11-10 ═══
 // بطلب دازاي: «تسوي تنزيل ملف ينزل ملف PDF بالألوان الهوية البصرية مال الشركة بي كل
 // التصاميم بالإضافة الى عرض السعر». الشكل نفس ورقة «Package Contents» مال الشركة:
@@ -13,6 +14,34 @@ export type PlanPrintFile = {
   typeCode: string; title: string; fileKey: string; fileType?: string | null
   // (ل) 11-12: فورما المخطط + تاريخه
   createdAt?: string; sheetPos?: 'right' | 'bottom'; sheetName?: string | null; sheetNotes?: string | null; sheetScale?: string | null
+  sheetExtra?: SheetExtraField[] | null
+}
+
+// ═══ (ل) 11-22 دازاي: الفورما الجديدة — نفس نموذجه حرفياً ═══
+// لوغو · اسم الشركة · (اسم المشروع، عنوان المشروع) · (عنوان الحزمة، اسم اللوحة) · (المقياس، التاريخ)
+// · الملاحظات · رقم الصفحة. والخانات الإضافية تنحط بعد القسم الي تختاره المصممة.
+// مصدر واحد للـPDF والمعاينة بالنظام حتى ما يختلفون.
+export type SheetSection = { key: SheetSlot | 'page' | 'extra'; rows: [string, string][]; grow?: boolean }
+export const SHEET_SLOTS: { key: SheetSlot; label: string }[] = [
+  { key: 'company', label: 'بعد اسم الشركة' }, { key: 'project', label: 'بعد المشروع' },
+  { key: 'package', label: 'بعد الحزمة واللوحة' }, { key: 'scale', label: 'بعد المقياس والتاريخ' }, { key: 'notes', label: 'بعد الملاحظات' },
+]
+export function sheetSections(v: { projectName?: string | null; projectAddress?: string | null; packageName?: string; boardName: string; scale?: string | null; date: string; notes?: string | null; page?: string; extra?: SheetExtraField[] | null }): SheetSection[] {
+  const d = (x?: string | null) => (x || '').trim() || '—'
+  const base: SheetSection[] = [
+    { key: 'company', rows: [] },
+    { key: 'project', rows: [['اسم المشروع', d(v.projectName)], ['عنوان المشروع', d(v.projectAddress)]] },
+    { key: 'package', rows: [['عنوان الحزمة', d(v.packageName)], ['اسم اللوحة', d(v.boardName)]] },
+    { key: 'scale', rows: [['المقياس', d(v.scale)], ['التاريخ', v.date]] },
+    { key: 'notes', rows: [['الملاحظات', d(v.notes)]], grow: true },
+  ]
+  const out: SheetSection[] = []
+  for (const sec of base) {
+    out.push(sec)
+    for (const x of v.extra ?? []) if (x.after === sec.key && x.label.trim()) out.push({ key: 'extra', rows: [[x.label.trim(), d(x.value)]] })
+  }
+  out.push({ key: 'page', rows: [['رقم الصفحة', v.page ?? '—']] })
+  return out
 }
 
 /** تاريخ المخطط بالفورما = يوم رفعه (بتوقيت بغداد) */
@@ -30,6 +59,7 @@ export type PlanPrintQuote = {
 export type PlanPrintInput = {
   title: string
   projectName?: string | null
+  projectAddress?: string | null
   groups: PlanPrintGroup[]
   files: PlanPrintFile[]
   quote: PlanPrintQuote | null
@@ -181,11 +211,14 @@ export function buildPlanSetHtml(p: PlanPrintInput, logoUrl: string): string {
     const sheets = fs.map((f, j) => {
       const name = (f.sheetName || '').trim() || (fs.length > 1 ? `${t?.name ?? code} ${j + 1}` : t?.name || f.title || code)
       const date = sheetDate(f, p.date)
-      const cells = [['اسم المخطط', name], ['الملاحظات', (f.sheetNotes || '').trim() || '—'], ['السكيل', (f.sheetScale || '').trim() || '—'], ['التاريخ', date]]
-      // (ل) 11-22 دازاي: «رقم الصفحة بدل ما يكون تحت، يكون بالفورما» — آخر خانة مثل نموذجه
-      const block = `<div class="tb"><div class="tb-logo"><img src="LOGO" alt=""><small>الأماني</small><small dir="ltr">${esc(seq)}${fs.length > 1 ? `-${j + 1}` : ''}</small></div>
-        ${cells.map(([kk, v]) => `<div class="tb-cell"><b>${kk}</b><span${kk === 'السكيل' || kk === 'التاريخ' ? ' dir="ltr"' : ''}>${esc(v)}</span></div>`).join('')}
-        <div class="tb-cell tb-page"><b>رقم الصفحة</b><span dir="ltr">${String(page).padStart(2, '0')}</span></div></div>`
+      // (ل) 11-22 دازاي: الفورما الجديدة (sheetSections) — رقم الصفحة آخر خانة
+      const secs = sheetSections({ projectName: p.projectName, projectAddress: p.projectAddress, packageName: t?.group.name, boardName: name,
+        scale: f.sheetScale, date, notes: f.sheetNotes, page: String(page).padStart(2, '0'), extra: f.sheetExtra })
+      const ltr = new Set(['المقياس', 'التاريخ', 'رقم الصفحة'])
+      const block = `<div class="tb"><div class="tb-logo"><img src="LOGO" alt=""></div>
+        ${secs.map((sec) => sec.key === 'company'
+          ? `<div class="tb-co"><b>${esc(COMPANY_UNITED_AR)}</b><small>${esc(COMPANY_UNITED_SUB)}</small></div>`
+          : `<div class="tb-sec${sec.grow ? ' grow' : ''}${sec.key === 'page' ? ' tb-page' : ''}">${sec.rows.map(([k, v]) => `<div class="tb-cell"><b>${esc(k)}:</b><span${ltr.has(k) ? ' dir="ltr"' : ''}>${esc(v)}</span></div>`).join('')}</div>`).join('')}</div>`
       const pos = f.sheetPos === 'bottom' ? 'bottom' : 'right'
       page++
       return `<section class="page land plan sheet-${pos}">
@@ -265,16 +298,21 @@ table { width: 100%; border-collapse: collapse; font-size: 15px } th { backgroun
 /* ⚠️ grid مو flex-column: ويا flex-column كروم يطبع صفحة الفورما-تحت بالطول (portrait) ويقص المخطط */
 .plan.sheet-bottom { display: grid; grid-template-rows: minmax(0, 1fr) 36mm; gap: 4mm }
 .plan .img { flex: 1; min-width: 0 }
-.tb { display: flex; border: 0.5mm solid ${NAVY}; border-radius: 2mm; overflow: hidden; background: #fff; font-size: 10px }
-.sheet-right .tb { flex-direction: column; width: 64mm } .sheet-bottom .tb { flex-direction: row; height: 36mm }
-.tb-logo { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1mm; padding: 2mm; background: ${NAVY}; border-bottom: 1mm solid ${GOLD}; color: #fff; font-weight: 700; font-size: 16px }
-.tb-logo img { width: 22mm; height: 22mm; border-radius: 50%; background: #fff; padding: 1mm }
-.sheet-bottom .tb-logo { width: 40mm }
-.tb-cell { flex: 1; padding: 2mm 2.5mm; display: flex; flex-direction: column; gap: 1mm; min-width: 0 }
-.sheet-right .tb-cell { border-top: 0.3mm solid ${NAVY} } .sheet-bottom .tb-cell { border-inline-start: 0.3mm solid ${NAVY} }
-.sheet-right .tb-cell:nth-child(3) { flex: 2 } .sheet-bottom .tb-cell:nth-child(3) { flex: 2 }
-.tb-page { flex: 0 0 auto !important; background: #f8fafc } .tb-page span { font-size: 22px; font-weight: 800; color: ${NAVY} }
-.tb-cell b { color: ${NAVY}; font-size: 14px } .tb-cell span { font-size: 16px; white-space: pre-wrap; overflow-wrap: anywhere; color: #1e293b }
+.tb { display: flex; border: 0.5mm solid ${NAVY}; border-radius: 1.5mm; overflow: hidden; background: #fff; font-size: 10px; color: #1e293b }
+/* (ل) 11-22 دازاي «قلل من العرض»: 64 ← 50 ملم */
+.sheet-right .tb { flex-direction: column; width: 50mm; flex: 0 0 50mm } .sheet-bottom .tb { flex-direction: row; height: 36mm }
+.tb > * { border-color: ${NAVY} } .sheet-right .tb > * + * { border-top: 0.3mm solid ${NAVY} } .sheet-bottom .tb > * + * { border-inline-start: 0.3mm solid ${NAVY} }
+.tb-logo { display: grid; place-items: center; padding: 3mm 2mm }
+.tb-logo img { width: 26mm; height: 26mm; object-fit: contain }
+.sheet-bottom .tb-logo { width: 34mm } .sheet-bottom .tb-logo img { width: 24mm; height: 24mm }
+.tb-co { padding: 2mm 2.5mm; text-align: center; display: flex; flex-direction: column; justify-content: center; gap: 1mm }
+.tb-co b { font-size: 15px; color: ${NAVY} } .tb-co small { font-size: 8.5px; line-height: 1.5; color: #334155 }
+.sheet-bottom .tb-co { width: 52mm }
+.tb-sec { padding: 2mm 2.5mm; display: flex; flex-direction: column; gap: 2.5mm; min-width: 0 }
+.sheet-right .tb-sec { min-height: 20mm } .tb-sec.grow { flex: 1 } .sheet-bottom .tb-sec { flex: 1 }
+.tb-cell { display: flex; flex-direction: column; gap: 0.6mm; min-width: 0 }
+.tb-cell b { color: ${NAVY}; font-size: 11.5px } .tb-cell span { font-size: 12.5px; white-space: pre-wrap; overflow-wrap: anywhere }
+.tb-page { background: #f8fafc; min-height: 0 !important } .tb-page span { font-size: 20px; font-weight: 800; color: ${NAVY} }
 @media print { html, body { margin: 0; background: #fff } .page { margin: 0 } }
 </style></head><body>${cover}${contents}${pages}${attach}${p.noQuote ? '' : quote}</body></html>`.replace(/src="LOGO"/g, `src="${esc(abs(logoUrl))}"`)
 }

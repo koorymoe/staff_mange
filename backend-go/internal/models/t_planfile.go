@@ -20,6 +20,8 @@ func init() {
 			{Name: "sheetName", Type: "text"},
 			{Name: "sheetNotes", Type: "text"},
 			{Name: "sheetScale", Type: "text"},
+			// (ل) 11-22 دازاي: خانات إضافية بالفورما تضيفها المصممة (اسم، معلومة، مكان)
+			{Name: "sheetExtra", Type: "jsonb", NotNull: true, Default: "'[]'::jsonb"},
 		},
 		Constraints: []Constraint{
 			{Name: "PlanFile_pkey", Def: "PRIMARY KEY (id)"},

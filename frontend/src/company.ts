@@ -9,3 +9,6 @@ export const COMPANY_PHONE = '07869787888'
 export const COMPANY_EMAIL = 'info@alamani.iq'
 // (ل) 11-22: عنوان الشركة (دازاي 11-22)
 export const COMPANY_ADDRESS = 'حي النقيب - شارع البلديات'
+// (ل) 11-22: اسم الشركة بفورما المخطط — حرفياً من نموذج دازاي
+export const COMPANY_UNITED_AR = 'شركة الأماني المتحدة'
+export const COMPANY_UNITED_SUB = 'للتجارة والخدمات العامة والمقاولات والاستثمارات والتطوير العقاري محدودة المسؤولية'

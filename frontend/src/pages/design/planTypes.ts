@@ -38,8 +38,12 @@ export type PlanFileRow = {
   sheetName: string | null
   sheetNotes: string | null
   sheetScale: string | null
+  // (ل) 11-22: خانات إضافية تضيفها المصممة (صلاحية plan_sheet_fields)
+  sheetExtra?: SheetExtraField[] | null
 }
-export type PlanSetDetail = PlanSetRow & { items: PlanFileRow[]; canManage: boolean }
+export type SheetExtraField = { label: string; value: string; after: SheetSlot }
+export type SheetSlot = 'company' | 'project' | 'package' | 'scale' | 'notes'
+export type PlanSetDetail = PlanSetRow & { items: PlanFileRow[]; canManage: boolean; canEditFields?: boolean; projectAddress?: string | null }
 export type PlanProjectCard = {
   projectId: string
   code: string

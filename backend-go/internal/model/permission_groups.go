@@ -40,7 +40,7 @@ var PermissionGroups = []PermissionGroup{
 	{Key: "agents", Title: "🤖 الوكلاء", Perms: []string{"agent_matrix", "agent_quality", "agent_booking", "whatsapp_chats", "bot_reports"}},
 	{Key: "units", Title: "🏢 الوحدات والأقسام",
 		Perms: []string{"unit_technicians", "unit_service", "unit_design", "unit_pr", "unit_quality", "unit_monitoring", "unit_procurement", "unit_finance",
-			"unit_hr", "unit_projects", "unit_it", "design_forms", "design_gallery", "media", "it_assets", "it_stats", "privacy_policy_manage", "work_reports"}},
+			"unit_hr", "unit_projects", "unit_it", "design_forms", "design_gallery", "plan_sheet_fields", "media", "it_assets", "it_stats", "privacy_policy_manage", "work_reports"}},
 }
 
 // PermissionOwnerOnly صلاحيات «مفتاح المالك» — المالك يمنحها بيده، والمدير يشوفها مقفولة ويا السبب.

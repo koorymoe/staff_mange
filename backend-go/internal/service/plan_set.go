@@ -1,6 +1,7 @@
 package service
 
 import (
+	"encoding/json"
 	"fmt"
 
 	"errors"
@@ -9,6 +10,7 @@ import (
 	"time"
 
 	"github.com/jmoiron/sqlx"
+	"github.com/jmoiron/sqlx/types"
 )
 
 // ═══ 📐 سيت المخططات (ك) 11-10 ═══
@@ -92,19 +94,21 @@ func planTypeCount() int {
 }
 
 type PlanSet struct {
-	ID            string     `db:"id" json:"id"`
-	Title         string     `db:"title" json:"title"`
-	ProjectID     *string    `db:"projectId" json:"projectId"`
-	ProjectCode   *string    `db:"projectCode" json:"projectCode"`
-	ProjectName   *string    `db:"projectName" json:"projectName"`
-	Notes         *string    `db:"notes" json:"notes"`
-	CreatedByName *string    `db:"createdByName" json:"createdByName"`
-	CreatedAt     time.Time  `db:"createdAt" json:"createdAt"`
-	ArchivedAt    *time.Time `db:"archivedAt" json:"archivedAt"`
-	Files         int        `db:"files" json:"files"`
-	Cover         *string    `db:"cover" json:"cover"`
-	IsTemplate    bool       `db:"isTemplate" json:"isTemplate"`
-	QuotationID   *string    `db:"quotationId" json:"quotationId"`
+	ID          string  `db:"id" json:"id"`
+	Title       string  `db:"title" json:"title"`
+	ProjectID   *string `db:"projectId" json:"projectId"`
+	ProjectCode *string `db:"projectCode" json:"projectCode"`
+	ProjectName *string `db:"projectName" json:"projectName"`
+	// (ل) 11-22: «عنوان المشروع» بالفورما = موقع المشروع
+	ProjectAddress *string    `db:"projectAddress" json:"projectAddress"`
+	Notes          *string    `db:"notes" json:"notes"`
+	CreatedByName  *string    `db:"createdByName" json:"createdByName"`
+	CreatedAt      time.Time  `db:"createdAt" json:"createdAt"`
+	ArchivedAt     *time.Time `db:"archivedAt" json:"archivedAt"`
+	Files          int        `db:"files" json:"files"`
+	Cover          *string    `db:"cover" json:"cover"`
+	IsTemplate     bool       `db:"isTemplate" json:"isTemplate"`
+	QuotationID    *string    `db:"quotationId" json:"quotationId"`
 }
 
 type PlanFile struct {
@@ -117,16 +121,19 @@ type PlanFile struct {
 	UploadedByName *string   `db:"uploadedByName" json:"uploadedByName"`
 	CreatedAt      time.Time `db:"createdAt" json:"createdAt"`
 	// (ل) 11-12: فورما المخطط (اللوغو والتاريخ ثابتين؛ الباقي المصممة تعدّله)
-	SheetPos   string  `db:"sheetPos" json:"sheetPos"`
-	SheetName  *string `db:"sheetName" json:"sheetName"`
-	SheetNotes *string `db:"sheetNotes" json:"sheetNotes"`
-	SheetScale *string `db:"sheetScale" json:"sheetScale"`
+	SheetPos   string         `db:"sheetPos" json:"sheetPos"`
+	SheetName  *string        `db:"sheetName" json:"sheetName"`
+	SheetNotes *string        `db:"sheetNotes" json:"sheetNotes"`
+	SheetScale *string        `db:"sheetScale" json:"sheetScale"`
+	SheetExtra types.JSONText `db:"sheetExtra" json:"sheetExtra"`
 }
 
 type PlanSetDetail struct {
 	PlanSet
 	Items     []PlanFile `json:"items"`
 	CanManage bool       `json:"canManage"`
+	// (ل) 11-22: يگدر يضيف خانات للفورما
+	CanEditFields bool `json:"canEditFields"`
 }
 
 type PlanStats struct {
@@ -159,7 +166,7 @@ func (s *PlanSetService) Projects() []ProjectOption { return s.design.Projects()
 // imageTypes الأنواع الي تنعرض صورة (الغلاف وحزمة الـPDF).
 const planImageTypes = `('image/jpeg', 'image/png', 'image/webp')`
 
-const planSetCols = `SELECT d.id, d.title, d."projectId", p.code AS "projectCode", p.name AS "projectName",
+const planSetCols = `SELECT d.id, d.title, d."projectId", p.code AS "projectCode", p.name AS "projectName", p.location AS "projectAddress",
 	d.notes, e.name AS "createdByName", d."createdAt", d."archivedAt", d."isTemplate", d."quotationId",
 	(SELECT count(*) FROM "PlanFile" f WHERE f."setId" = d.id AND f."removedAt" IS NULL)::int AS files,
 	(SELECT f."fileKey" FROM "PlanFile" f WHERE f."setId" = d.id AND f."removedAt" IS NULL
@@ -215,12 +222,12 @@ func (s *PlanSetService) Detail(emp, role string, perms []string, id string) (*P
 	if !s.CanSee(emp, role, perms) {
 		return nil, ErrDesignHidden
 	}
-	d := &PlanSetDetail{Items: []PlanFile{}, CanManage: s.CanManage(emp, role, perms)}
+	d := &PlanSetDetail{Items: []PlanFile{}, CanManage: s.CanManage(emp, role, perms), CanEditFields: s.CanEditSheetFields(emp, role, perms)}
 	if err := s.db.Get(&d.PlanSet, planSetCols+` WHERE d.id = $1`, id); err != nil {
 		return nil, ErrDesignHidden
 	}
 	err := s.db.Select(&d.Items, `SELECT f.id, f."setId", f."typeCode", f.title, f."fileKey", f."fileType",
-		e.name AS "uploadedByName", f."createdAt", f."sheetPos", f."sheetName", f."sheetNotes", f."sheetScale"
+		e.name AS "uploadedByName", f."createdAt", f."sheetPos", f."sheetName", f."sheetNotes", f."sheetScale", f."sheetExtra"
 		FROM "PlanFile" f LEFT JOIN "Employee" e ON e.id = f."uploadedById"
 		WHERE f."setId" = $1 AND f."removedAt" IS NULL ORDER BY f."createdAt"`, id)
 	return d, err
@@ -461,8 +468,8 @@ func (s *PlanSetService) Copy(emp, role string, perms []string, toSetID string, 
 	for _, n := range in.Sections {
 		secs = append(secs, fmt.Sprintf("%d.", n))
 	}
-	res, err := s.db.Exec(`INSERT INTO "PlanFile" ("setId", "typeCode", title, "fileKey", "fileType", "uploadedById", "sheetPos", "sheetName", "sheetNotes", "sheetScale")
-		SELECT $2, f."typeCode", f.title, f."fileKey", f."fileType", $3, f."sheetPos", f."sheetName", f."sheetNotes", f."sheetScale" FROM "PlanFile" f
+	res, err := s.db.Exec(`INSERT INTO "PlanFile" ("setId", "typeCode", title, "fileKey", "fileType", "uploadedById", "sheetPos", "sheetName", "sheetNotes", "sheetScale", "sheetExtra")
+		SELECT $2, f."typeCode", f.title, f."fileKey", f."fileType", $3, f."sheetPos", f."sheetName", f."sheetNotes", f."sheetScale", f."sheetExtra" FROM "PlanFile" f
 		WHERE f."setId" = $1 AND f."removedAt" IS NULL
 		  AND (f.id = ANY($4) OR EXISTS (SELECT 1 FROM unnest($5::text[]) p WHERE f."typeCode" LIKE p || '%'))
 		  AND NOT EXISTS (SELECT 1 FROM "PlanFile" x WHERE x."setId" = $2 AND x."removedAt" IS NULL
@@ -482,6 +489,30 @@ type PlanSheetInput struct {
 	Name  string `json:"name"`
 	Notes string `json:"notes"`
 	Scale string `json:"scale"`
+	// Extra nil = ما تنمس (الي ما عنده الصلاحية يحفظ بلاها)
+	Extra *[]SheetExtraField `json:"extra"`
+}
+
+// SheetExtraField خانة إضافية بالفورما. After: بعد أي قسم تنحط.
+type SheetExtraField struct {
+	Label string `json:"label"`
+	Value string `json:"value"`
+	After string `json:"after"`
+}
+
+var sheetExtraSlots = map[string]bool{"company": true, "project": true, "package": true, "scale": true, "notes": true}
+
+// CanEditSheetFields صلاحية «فورما المخطط: إضافة خانات» (أو الإدارة)
+func (s *PlanSetService) CanEditSheetFields(emp, role string, perms []string) bool {
+	if s.design.CanManage(emp, role, perms) {
+		return true
+	}
+	for _, p := range perms {
+		if p == "plan_sheet_fields" {
+			return true
+		}
+	}
+	return false
 }
 
 // UpdateSheet المصممة (الي رفعت المخطط) أو الي يدير تعدّل الفورما.
@@ -499,6 +530,32 @@ func (s *PlanSetService) UpdateSheet(emp, role string, perms []string, fileID st
 	in.Name, in.Notes, in.Scale = strings.TrimSpace(in.Name), strings.TrimSpace(in.Notes), strings.TrimSpace(in.Scale)
 	if len([]rune(in.Name)) > 120 || len([]rune(in.Notes)) > 600 || len([]rune(in.Scale)) > 40 {
 		return errors.New("النص طويل هواية")
+	}
+	if in.Extra != nil {
+		if !s.CanEditSheetFields(emp, role, perms) {
+			return ErrDesignHidden
+		}
+		clean := []SheetExtraField{}
+		for _, f := range *in.Extra {
+			f.Label, f.Value = strings.TrimSpace(f.Label), strings.TrimSpace(f.Value)
+			if f.Label == "" {
+				continue
+			}
+			if !sheetExtraSlots[f.After] {
+				f.After = "notes"
+			}
+			if len([]rune(f.Label)) > 40 || len([]rune(f.Value)) > 300 {
+				return errors.New("اسم الخانة أو معلومتها طويلة هواية")
+			}
+			clean = append(clean, f)
+		}
+		if len(clean) > 8 {
+			return errors.New("أكثر شي ٨ خانات إضافية")
+		}
+		b, _ := json.Marshal(clean)
+		if _, err := s.db.Exec(`UPDATE "PlanFile" SET "sheetExtra" = $2::jsonb WHERE id = $1`, fileID, string(b)); err != nil {
+			return err
+		}
 	}
 	_, err := s.db.Exec(`UPDATE "PlanFile" SET "sheetPos" = $2, "sheetName" = NULLIF($3, ''), "sheetNotes" = NULLIF($4, ''), "sheetScale" = NULLIF($5, '')
 		WHERE id = $1`, fileID, in.Pos, in.Name, in.Notes, in.Scale)

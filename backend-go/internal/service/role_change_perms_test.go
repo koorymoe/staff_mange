@@ -85,3 +85,52 @@ func TestRoleChangeDropsOldDefaults_Live(t *testing.T) {
 		t.Fatal("المصممة ما تشوف سيت المخططات")
 	}
 }
+
+// (ل) 11-22: الخانات الإضافية بالفورما بس بصلاحية plan_sheet_fields
+func TestPlanSheetExtra_Live(t *testing.T) {
+	dsn := os.Getenv("DATABASE_URL")
+	if dsn == "" {
+		t.Skip("DATABASE_URL غير موجود")
+	}
+	db := sqlx.MustConnect("postgres", dsn)
+	t.Cleanup(func() { db.Close() })
+	if err := database.Migrate(db, "", ""); err != nil {
+		t.Fatal(err)
+	}
+	const e = "__px_emp"
+	clean := func() {
+		db.Exec(`DELETE FROM "PlanSet" WHERE "createdById" = $1`, e) //nolint:errcheck
+		db.Exec(`DELETE FROM "Employee" WHERE id = $1`, e)           //nolint:errcheck
+	}
+	clean()
+	t.Cleanup(clean)
+	db.MustExec(`INSERT INTO "Employee"(id, name, status, role) VALUES ($1,'مصممة','ACTIVE','DESIGNER')`, e)
+	db.MustExec(`INSERT INTO "PlanSet"(id, title, "createdById") VALUES ('__px_set','سيت',$1)`, e)
+	var fid string
+	if err := db.Get(&fid, `INSERT INTO "PlanFile"("setId","typeCode",title,"fileKey","fileType","uploadedById") VALUES ('__px_set','1.1','x','k','image/png',$1) RETURNING id`, e); err != nil {
+		t.Fatal(err)
+	}
+	ds := NewDesignSetService(db, repository.NewExtraTaskRepository(db), repository.NewNotificationRepository(db))
+	pl := NewPlanSetService(db, ds)
+	ex := []SheetExtraField{{Label: "المهندس المشرف", Value: "م. علي", After: "package"}, {Label: "x", After: "زبالة"}}
+	if err := pl.UpdateSheet(e, "DESIGNER", nil, fid, PlanSheetInput{Name: "لوحة", Extra: &ex}); err != ErrDesignHidden {
+		t.Fatalf("بلا صلاحية لازم ينرفض: %v", err)
+	}
+	if err := pl.UpdateSheet(e, "DESIGNER", []string{"plan_sheet_fields"}, fid, PlanSheetInput{Name: "لوحة", Extra: &ex}); err != nil {
+		t.Fatal(err)
+	}
+	var raw string
+	db.Get(&raw, `SELECT "sheetExtra"::text FROM "PlanFile" WHERE id = $1`, fid) //nolint:errcheck
+	if raw != `[{"after": "package", "label": "المهندس المشرف", "value": "م. علي"}, {"after": "notes", "label": "x", "value": ""}]` {
+		t.Fatalf("انحفظ غلط: %s", raw)
+	}
+	// حفظ بلا extra (مصممة بلا صلاحية) ما يمسح الخانات
+	if err := pl.UpdateSheet(e, "DESIGNER", nil, fid, PlanSheetInput{Name: "لوحة 2"}); err != nil {
+		t.Fatal(err)
+	}
+	var n int
+	db.Get(&n, `SELECT jsonb_array_length("sheetExtra") FROM "PlanFile" WHERE id = $1`, fid) //nolint:errcheck
+	if n != 2 {
+		t.Fatalf("الخانات انمسحت: %d", n)
+	}
+}
