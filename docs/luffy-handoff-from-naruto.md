@@ -505,3 +505,5 @@ git push origin origin/avg:refs/heads/prod     # بعد التأكد إنه fast
 - 11-20: بلاغ #55: جدول MaintenanceDecision (0516) + POST /api/maintenance-due/{customerId}/decision (requireCustomerRead) + Kind LATE/COMPLAINTS + القائمة بلا حد ١٠٠.
 - 11-21: أفكار ١/٣/٤: daily_impact.go (DAILY_IMPACT ٨ المسا) · Trend/Avg3 + TopImprover (Board ٣ أشهر، Detail لموظف واحد) · EmployeeIdea (0517) + /api/me/ideas + /api/ideas (reviewScope) + MatrixScore source IDEA (ruleGroups IDEA={} = شغل إضافي) + تصعيد ٤٨ ساعة للمالك.
 - 11-21: تقييم الجودة: QUALITY حد ٢٤ ساعة · scoreComplaints (COMPLAINT_CONTACT/RESOLVE) · projectsPart لكل roleWeightsOf + PROJECT_WEEK شال من ruleGroups (يفيت لكل الفئات). ⚠️ TestOrgActing_Live يفشل محلياً قبل التغيير هم (حالة القاعدة).
+
+- (ل) 11-22 سيت المخططات: PlanCatalog مجموعة 10 = نوع واحد 10.1 «حزمة العرض» + 0519_data_plan_render_single_type (10.2-10.4 ← 10.1). planSetPrint: المحتويات تفلتر الأقسام الموجودة، الغلاف بلا pc-group/pc-count، رقم الصفحة خانة tb-page بالفورما بدل foot.

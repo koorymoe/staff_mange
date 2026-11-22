@@ -15,7 +15,8 @@ describe('PDF سيت المخططات: الغلاف والفورما', () => {
     ] }, '/logo.png')
     // صورتين من نفس النوع = غلاف واحد قبلهن
     expect(html.match(/class="page land pcover"/g)).toHaveLength(1)
-    expect(html).toContain('2 لوحات')
+    expect(html).not.toContain('2 لوحات') // (ل) 11-22 دازاي: العدد انحذف من الغلاف
+    expect(html).toContain('رقم الصفحة')
     expect(html.match(/class="page land plan sheet-right"/g)).toHaveLength(1)
     expect(html.match(/class="page land plan sheet-bottom"/g)).toHaveLength(1)
     // الغلاف قبل مخططه

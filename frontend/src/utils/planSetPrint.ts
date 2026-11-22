@@ -80,9 +80,9 @@ export function buildPlanSetHtml(p: PlanPrintInput, logoUrl: string): string {
       ${p.projectName ? `<p>${esc(p.projectName)}</p>` : ''}<p class="muted">${esc(day)} · ${files.length} مخطط</p></div>
     ${foot(page++)}</section>`
 
-  // «Package Contents»: الأقسام العشرة، والي بيه ملفات يتعلّم
+  // «Package Contents»: (ل) 11-22 دازاي: «اذا المخططات المعمارية مموجودة راسا تنحذف» — بس الأقسام الي بيها ملفات
   const contents = `<section class="page">${band}<div class="box">Package Contents</div><ol class="contents">
-    ${p.groups.map((g) => `<li class="${g.types.some((t) => present.has(t.code)) ? 'on' : ''}"><b>${g.no}</b><span dir="ltr">${esc(g.en)}</span><span>${esc(g.name)}</span></li>`).join('')}
+    ${p.groups.filter((g) => g.types.some((t) => present.has(t.code))).map((g) => `<li class="on"><b>${g.no}</b><span dir="ltr">${esc(g.en)}</span><span>${esc(g.name)}</span></li>`).join('')}
   </ol>${foot(page++)}</section>`
 
   // (ل) 11-12 دازاي: «قبل كل تصميم غلاف يوضح هذا تصميم شنو — مرتب وحلو، بألوان فخمة، وبيه اسم المخطط»،
@@ -105,13 +105,12 @@ export function buildPlanSetHtml(p: PlanPrintInput, logoUrl: string): string {
     if (gno != null) seqInGroup.set(gno, k)
     const seq = gno == null ? code : `${gno}.${k}`
     const coverName = (fs.length === 1 && (fs[0].sheetName || '').trim()) || t?.name || fs[0].title || code
-    const group = t ? `${t.group.no}. ${t.group.name}` : ''
+    // (ل) 11-22 دازاي: سطر القسم وعدد اللوحات انحذفن من الغلاف
     const cover = `<section class="page land pcover">${WAVES}
       <div class="pc-top"><img src="LOGO" alt=""><div><b>شركة الأماني</b><small dir="ltr">Al-Amani Company</small></div>
         <span class="pc-no" dir="ltr">${String(i + 1).padStart(2, '0')} / ${String(typeOrder.length).padStart(2, '0')}</span></div>
       <div class="pc-body"><span class="pc-code" dir="ltr">${esc(seq)}</span>
-        <h2>${esc(coverName)}</h2>${group ? `<p class="pc-group">${esc(group)}${t?.group.en ? ` · <bdi dir="ltr">${esc(t.group.en)}</bdi>` : ''}</p>` : ''}
-        ${fs.length > 1 ? `<p class="pc-count">${fs.length} لوحات</p>` : ''}
+        <h2>${esc(coverName)}</h2>
         <p class="pc-tag"><i></i><span>${esc(p.title)}${p.projectName ? ` · ${esc(p.projectName)}` : ''}</span><i></i></p></div>
       <div class="pc-foot"><span dir="ltr">${esc(sheetDate(fs[0], p.date))}</span><span>معاً .. نحو مستقبل أفضل</span></div>
       ${foot(page++)}</section>`
@@ -119,12 +118,15 @@ export function buildPlanSetHtml(p: PlanPrintInput, logoUrl: string): string {
       const name = (f.sheetName || '').trim() || (fs.length > 1 ? `${t?.name ?? code} ${j + 1}` : t?.name || f.title || code)
       const date = sheetDate(f, p.date)
       const cells = [['اسم المخطط', name], ['الملاحظات', (f.sheetNotes || '').trim() || '—'], ['السكيل', (f.sheetScale || '').trim() || '—'], ['التاريخ', date]]
+      // (ل) 11-22 دازاي: «رقم الصفحة بدل ما يكون تحت، يكون بالفورما» — آخر خانة مثل نموذجه
       const block = `<div class="tb"><div class="tb-logo"><img src="LOGO" alt=""><small>الأماني</small><small dir="ltr">${esc(seq)}${fs.length > 1 ? `-${j + 1}` : ''}</small></div>
-        ${cells.map(([kk, v]) => `<div class="tb-cell"><b>${kk}</b><span${kk === 'السكيل' || kk === 'التاريخ' ? ' dir="ltr"' : ''}>${esc(v)}</span></div>`).join('')}</div>`
+        ${cells.map(([kk, v]) => `<div class="tb-cell"><b>${kk}</b><span${kk === 'السكيل' || kk === 'التاريخ' ? ' dir="ltr"' : ''}>${esc(v)}</span></div>`).join('')}
+        <div class="tb-cell tb-page"><b>رقم الصفحة</b><span dir="ltr">${String(page).padStart(2, '0')}</span></div></div>`
       const pos = f.sheetPos === 'bottom' ? 'bottom' : 'right'
+      page++
       return `<section class="page land plan sheet-${pos}">
         ${pos === 'right' ? block : ''}<div class="img"><img src="${esc(abs(fileUrl(f.fileKey)))}" alt=""></div>${pos === 'bottom' ? block : ''}
-        ${foot(page++)}</section>`
+        </section>`
     }).join('')
     return cover + sheets
   }).join('')
@@ -198,6 +200,7 @@ table { width: 100%; border-collapse: collapse; font-size: 15px } th { backgroun
 .tb-cell { flex: 1; padding: 2mm 2.5mm; display: flex; flex-direction: column; gap: 1mm; min-width: 0 }
 .sheet-right .tb-cell { border-top: 0.3mm solid ${NAVY} } .sheet-bottom .tb-cell { border-inline-start: 0.3mm solid ${NAVY} }
 .sheet-right .tb-cell:nth-child(3) { flex: 2 } .sheet-bottom .tb-cell:nth-child(3) { flex: 2 }
+.tb-page { flex: 0 0 auto !important; background: #f8fafc } .tb-page span { font-size: 22px; font-weight: 800; color: ${NAVY} }
 .tb-cell b { color: ${NAVY}; font-size: 14px } .tb-cell span { font-size: 16px; white-space: pre-wrap; overflow-wrap: anywhere; color: #1e293b }
 @media print { html, body { margin: 0; background: #fff } .page { margin: 0 } }
 </style></head><body>${cover}${contents}${pages}${attach}${p.noQuote ? '' : quote}</body></html>`.replace(/src="LOGO"/g, `src="${esc(abs(logoUrl))}"`)

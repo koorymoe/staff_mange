@@ -346,6 +346,16 @@ func autoMigrations() []Migration {
 				WHERE upper(trim(name)) = 'GPS' AND "serviceKind" IS NULL;
 		`,
 		},
+		{
+			// (ل) 11-22 دازاي: حزمة العرض صارت نوع واحد (10.1) — ملفات 10.2/10.3/10.4 تنضم إله.
+			Version: "0519_data_plan_render_single_type",
+			SQL: `
+			UPDATE "PlanFile" SET
+				title = CASE WHEN title = "typeCode" THEN '10.1' ELSE title END,
+				"typeCode" = '10.1'
+			WHERE "typeCode" IN ('10.2', '10.3', '10.4');
+		`,
+		},
 		// ‹makemigration› — التحديثات الجديدة تنضاف فوگ هالسطر
 	}
 }

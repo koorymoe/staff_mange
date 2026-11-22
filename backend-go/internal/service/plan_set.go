@@ -68,10 +68,8 @@ var PlanCatalog = []PlanGroup{
 	{7, "جدول الكميات", "BOQ (Bill of Quantities)", []PlanType{{"7.1", "جدول الكميات"}}},
 	{8, "تفاصيل البناء", "Construction Details", []PlanType{{"8.1", "تفاصيل البناء"}}},
 	{9, "المواصفات الفنية", "Technical Specifications", []PlanType{{"9.1", "المواصفات الفنية"}}},
-	{10, "حزمة العرض", "3D Renderings & Presentation Boards", []PlanType{
-		{"10.1", "المفهوم الفلسفي"}, {"10.2", "اللقطات الرئيسية"}, {"10.3", "اللقطات الثانوية"},
-		{"10.4", "اللقطات المنظورية"},
-	}},
+	// (ل) 11-22 دازاي: «النقاط الاربعه ينحذفن يبقه عندي بس حزمة العرض» — نوع واحد. الملفات القديمة: 0519.
+	{10, "حزمة العرض", "3D Renderings & Presentation Boards", []PlanType{{"10.1", "حزمة العرض"}}},
 }
 
 func validPlanType(code string) bool {
