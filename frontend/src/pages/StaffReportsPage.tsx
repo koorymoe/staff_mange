@@ -92,6 +92,10 @@ const ICONS: Record<string, string> = {
   pulse: 'M3 12h4l2-5 4 10 2-5h6',
   chart: 'M4 20V10m6 10V4m6 16v-7m4 7H2',
   layers: 'M12 3l9 5-9 5-9-5 9-5Zm-9 9l9 5 9-5M3 16l9 5 9-5',
+  clip: 'M9 4h6v3H9zM7 5H5v16h14V5h-2M9 12h6m-6 4h4',
+  chat: 'M4 5h16v11H9l-5 4V5Z',
+  info: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18Zm0-10v6m0-9v.5',
+  xc: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18ZM9 9l6 6m0-6-6 6',
 }
 const Ico = ({ n, className = 'h-4 w-4' }: { n: string; className?: string }) => (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden="true"><path d={ICONS[n]} /></svg>
@@ -237,25 +241,68 @@ function SurveysTab() {
 type Neg = { id: string; employeeName: string; day: string; kind: string; detail: string; reason: string; compensatedAt: string | null }
 
 // ٩.٢ سجل الإهمال: كل مقيّم فاته تقييم — يتسجّل بالتاريخ، ويا سببه ومتى عوّض.
+// (ك) 11-22 زينا: «سجل الإهمال» بجدول مثل الاستمارات — عناوين بمربعات، والتقييم بكبسولة، والحالة بكبسولة ملوّنة.
+// detail ينكتب «فاته N تقييم: الأسماء» (rating_duty.go) — نفصله: الجزء الأول بعمود التقييم، والأسماء بالملاحظات.
+function splitDetail(d: string): [string, string] {
+  const i = d.indexOf(': ')
+  return i > 0 ? [d.slice(0, i), d.slice(i + 2)] : ['', d]
+}
+
 function NegligenceTab() {
   const { data, error } = useApi(() => apiRequest<Neg[]>('/negligence'), [])
+  const heads: [string, string][] = [['', '#'], ['cal', 'التاريخ'], ['user', 'اسم الموظف'], ['clip', 'التقييم'], ['chat', 'الملاحظات / السبب'], ['layers', 'الحالة']]
   return (
-    <div className={`${card} space-y-2`}>
-      <p className="text-xs text-slate-500">كل مقيّم فاته يقيّم الي عليه بيومه ينكتب هنا. ينزل تقييمه هو بماتركس (عوّض = نص، ما عوّض = صفر) — بلا خصم فلوس ولا نقاط انضباط.</p>
-      {error && <p className="text-sm text-red-600">{error}</p>}
-      <div className="divide-y divide-slate-100">
-        {data?.map((n) => (
-          <div key={n.id} className="flex flex-wrap items-start gap-2 py-2 text-sm">
-            <span className="w-24 shrink-0 font-mono text-xs text-slate-500" dir="ltr">{n.day}</span>
-            <span className="w-40 shrink-0 font-bold text-[#0f2040]">{n.employeeName}</span>
-            <span className="flex-1 text-slate-700">{n.detail}{n.reason && <span className="block text-xs text-slate-500">السبب: {n.reason}</span>}</span>
-            {n.compensatedAt
-              ? <span className="rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-bold text-amber-700 ring-1 ring-amber-200">عوّض متأخر</span>
-              : <span className="rounded-full bg-red-50 px-2 py-0.5 text-[11px] font-bold text-red-700 ring-1 ring-red-200">ما عوّض</span>}
-          </div>
-        ))}
-        {data && data.length === 0 && <p className="py-6 text-center text-emerald-700">✅ ماكو إهمال مسجّل</p>}
+    <div className={`${card} space-y-4`}>
+      <div className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-700">
+        <span className="shrink-0 text-blue-500"><Ico n="info" className="h-5 w-5" /></span>
+        <p>كل مقيّم فاته يقيّم الي عليه بيومه ينكتب هنا. ينزل تقييمه هو بماتركس (عوّض = نص، ما عوّض = صفر) — بلا خصم فلوس ولا نقاط انضباط.</p>
       </div>
+      {error && <p className="text-sm text-red-600">{error}</p>}
+      <div className="overflow-x-auto rounded-2xl border border-slate-200" data-testid="negligence-table">
+        <table className="w-full min-w-[860px] table-fixed text-[13px]">
+          <colgroup>{['5%', '12%', '18%', '13%', '38%', '14%'].map((w, i) => <col key={i} style={{ width: w }} />)}</colgroup>
+          <thead className="text-xs font-bold">
+            <tr>
+              {heads.map(([ic, h]) => (
+                <th key={h} className="p-1 text-center">
+                  <span className="th-box flex h-11 items-center justify-center gap-1.5 rounded-xl px-1.5">
+                    {ic && <span className="th-box-ic"><Ico n={ic} className="h-4 w-4" /></span>}
+                    <span className="leading-snug">{h}</span>
+                  </span>
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-200">
+            {data?.map((n, i) => {
+              const [rating, names] = splitDetail(n.detail)
+              return (
+                <tr key={n.id} className="align-middle hover:bg-slate-50">
+                  <td className="px-2 py-2 text-center"><span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-slate-100 text-[11px] font-bold text-slate-600 ring-1 ring-slate-200">{i + 1}</span></td>
+                  <td className="px-2 py-2 text-center"><span className="inline-flex items-center gap-1.5 text-slate-700" dir="ltr"><span className="text-blue-500"><Ico n="cal" className="h-4 w-4" /></span>{n.day}</span></td>
+                  <td className="px-2 py-2"><span className="flex items-center gap-1.5 font-bold text-[#0f2040]"><span className="shrink-0 text-amber-500"><Ico n="user" className="h-4 w-4" /></span>{n.employeeName}</span></td>
+                  <td className="px-2 py-2 text-center">
+                    {rating
+                      ? <span className="inline-flex items-center gap-1 whitespace-nowrap rounded-full bg-blue-50 px-2.5 py-0.5 text-[11px] font-bold text-blue-700 ring-1 ring-blue-200"><Ico n="clip" className="h-3.5 w-3.5" />{rating}</span>
+                      : <span className="text-slate-400">—</span>}
+                  </td>
+                  <td className="px-2 py-2 text-slate-700">
+                    {names && <div className="leading-snug">{names}</div>}
+                    {n.reason && <div className="text-xs leading-snug text-slate-500">السبب: {n.reason}</div>}
+                    {!names && !n.reason && <span className="text-slate-400">—</span>}
+                  </td>
+                  <td className="px-2 py-2 text-center">
+                    {n.compensatedAt
+                      ? <span className="inline-flex items-center gap-1 whitespace-nowrap rounded-full bg-amber-50 px-2.5 py-0.5 text-[11px] font-bold text-amber-700 ring-1 ring-amber-300"><Ico n="clock" className="h-3.5 w-3.5" />عوّض متأخر</span>
+                      : <span className="inline-flex items-center gap-1 whitespace-nowrap rounded-full bg-red-50 px-2.5 py-0.5 text-[11px] font-bold text-red-700 ring-1 ring-red-300"><Ico n="xc" className="h-3.5 w-3.5" />ما عوّض</span>}
+                  </td>
+                </tr>
+              )
+            })}
+          </tbody>
+        </table>
+      </div>
+      {data && data.length === 0 && <p className="py-4 text-center text-emerald-700">✅ ماكو إهمال مسجّل</p>}
     </div>
   )
 }
