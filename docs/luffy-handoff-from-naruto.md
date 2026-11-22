@@ -507,3 +507,4 @@ git push origin origin/avg:refs/heads/prod     # بعد التأكد إنه fast
 - 11-21: تقييم الجودة: QUALITY حد ٢٤ ساعة · scoreComplaints (COMPLAINT_CONTACT/RESOLVE) · projectsPart لكل roleWeightsOf + PROJECT_WEEK شال من ruleGroups (يفيت لكل الفئات). ⚠️ TestOrgActing_Live يفشل محلياً قبل التغيير هم (حالة القاعدة).
 
 - (ل) 11-22 سيت المخططات: PlanCatalog مجموعة 10 = نوع واحد 10.1 «حزمة العرض» + 0519_data_plan_render_single_type (10.2-10.4 ← 10.1). planSetPrint: المحتويات تفلتر الأقسام الموجودة، الغلاف بلا pc-group/pc-count، رقم الصفحة خانة tb-page بالفورما بدل foot.
+- (ل) 11-22 planSetPrint: seqNo يرقّم الأقسام الموجودة 1..n بدل رقم الكتالوج (المحتويات + pc-code + tb).

@@ -38,7 +38,7 @@ describe('PDF سيت المخططات: الغلاف والفورما', () => {
     const img = (c: string) => ({ typeCode: c, title: c, fileKey: '/api/files/designs/' + c, fileType: 'image/png' })
     const html = buildPlanSetHtml({ ...base, groups: g, files: [img('10.4'), img('10.2'), img('10.2')] }, '/logo.png')
     const codes = [...html.matchAll(/class="pc-code" dir="ltr">([^<]+)</g)].map((m) => m[1])
-    expect(codes).toEqual(['10.1', '10.2'])
+    expect(codes).toEqual(['1.1', '1.2']) // (ل) 11-22: القسم يترقّم حسب الموجود
     expect(html.indexOf('اللقطات الرئيسية')).toBeLessThan(html.indexOf('اللقطات المنظورية'))
     expect(html).toContain('01 / 02')
   })

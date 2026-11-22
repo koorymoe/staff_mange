@@ -81,8 +81,11 @@ export function buildPlanSetHtml(p: PlanPrintInput, logoUrl: string): string {
     ${foot(page++)}</section>`
 
   // «Package Contents»: (ل) 11-22 دازاي: «اذا المخططات المعمارية مموجودة راسا تنحذف» — بس الأقسام الي بيها ملفات
+  // (ل) 11-22 دازاي: «تسلسل جديد حسب الموجود» — الأقسام الموجودة بالسيت تترقّم 1، 2، 3… (مو رقم الكتالوج)
+  const shownGroups = p.groups.filter((g) => g.types.some((t) => present.has(t.code)))
+  const seqNo = new Map(shownGroups.map((g, i) => [g.no, i + 1]))
   const contents = `<section class="page">${band}<div class="box">Package Contents</div><ol class="contents">
-    ${p.groups.filter((g) => g.types.some((t) => present.has(t.code))).map((g) => `<li class="on"><b>${g.no}</b><span dir="ltr">${esc(g.en)}</span><span>${esc(g.name)}</span></li>`).join('')}
+    ${shownGroups.map((g) => `<li class="on"><b>${seqNo.get(g.no)}</b><span dir="ltr">${esc(g.en)}</span><span>${esc(g.name)}</span></li>`).join('')}
   </ol>${foot(page++)}</section>`
 
   // (ل) 11-12 دازاي: «قبل كل تصميم غلاف يوضح هذا تصميم شنو — مرتب وحلو، بألوان فخمة، وبيه اسم المخطط»،
@@ -103,7 +106,7 @@ export function buildPlanSetHtml(p: PlanPrintInput, logoUrl: string): string {
     const gno = t?.group.no
     const k = gno == null ? 0 : (seqInGroup.get(gno) ?? 0) + 1
     if (gno != null) seqInGroup.set(gno, k)
-    const seq = gno == null ? code : `${gno}.${k}`
+    const seq = gno == null ? code : `${seqNo.get(gno) ?? gno}.${k}`
     const coverName = (fs.length === 1 && (fs[0].sheetName || '').trim()) || t?.name || fs[0].title || code
     // (ل) 11-22 دازاي: سطر القسم وعدد اللوحات انحذفن من الغلاف
     const cover = `<section class="page land pcover">${WAVES}
