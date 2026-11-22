@@ -76,4 +76,12 @@ func TestRoleChangeDropsOldDefaults_Live(t *testing.T) {
 	if !found {
 		t.Fatal("السيت الي سوّته ما طلعلها")
 	}
+	// المصممة بلا تسجيل بالهيكل تشوف كل السيتات وتشتغل على سيت المخططات
+	if !ds.CanSeeAll(e, "DESIGNER", nil) || !ds.CanSeeAll(e, "TECHNICIAN", []string{"unit_design"}) || ds.CanSeeAll(e, "TECHNICIAN", nil) {
+		t.Fatal("شوف المصمم غلط")
+	}
+	pl := NewPlanSetService(db, ds)
+	if !pl.CanSee(e, "DESIGNER", nil) || !pl.CanManage(e, "DESIGNER", nil) {
+		t.Fatal("المصممة ما تشوف سيت المخططات")
+	}
 }

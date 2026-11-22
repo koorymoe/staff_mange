@@ -146,7 +146,8 @@ func NewPlanSetService(db *sqlx.DB, design *DesignSetService) *PlanSetService {
 }
 
 func (s *PlanSetService) CanManage(emp, role string, perms []string) bool {
-	return s.design.CanManage(emp, role, perms)
+	// (ل) 11-22: المصمم يسوي سيت المخططات ويرفع عليه — هذا شغله
+	return s.design.CanManage(emp, role, perms) || isDesigner(role, perms)
 }
 
 func (s *PlanSetService) CanSee(emp, role string, perms []string) bool {

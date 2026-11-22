@@ -157,7 +157,22 @@ func (s *DesignSetService) CanManage(emp, role string, perms []string) bool {
 }
 
 func (s *DesignSetService) CanSeeAll(emp, role string, perms []string) bool {
-	return s.CanManage(emp, role, perms) || s.inDesignUnit(emp, "DIRECTOR", "DEPUTY", "MEMBER")
+	return s.CanManage(emp, role, perms) || isDesigner(role, perms) || s.inDesignUnit(emp, "DIRECTOR", "DEPUTY", "MEMBER")
+}
+
+// isDesigner (ل) 11-22 دازاي «المصممة عدها هواي مخططات وتصاميم وما يطلعن»: الشوف چان مربوط بصلاحية
+// إدارة المشاريع أو عضوية وحدة التصميم بالهيكل — مصممة دورها «مصمم» بلا تسجيل بالهيكل ما تشوف شغلها.
+// هسه دور المصمم (أساسي أو ثانوي) أو صلاحية وحدة التصميم يكفي.
+func isDesigner(role string, perms []string) bool {
+	if role == "DESIGNER" {
+		return true
+	}
+	for _, p := range perms {
+		if p == "unit_design" {
+			return true
+		}
+	}
+	return false
 }
 
 func (s *DesignSetService) canSeeSet(emp, role string, perms []string, setID string) bool {
