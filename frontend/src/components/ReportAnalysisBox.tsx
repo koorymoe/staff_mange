@@ -28,8 +28,9 @@ export function ReportAnalysisBox({ reportId, own = false }: { reportId: string;
   const a = data?.analysis
   const badge = a ? VERDICT[a.verdict] : undefined
   return (
-    <div className="mt-1.5 text-xs">
-      <button onClick={() => setOpen((o) => !o)} className={`rounded-full px-2 py-0.5 font-bold ring-1 ${badge ? badge[1] : 'bg-indigo-50 text-indigo-700 ring-indigo-200'}`}>
+    <div className="text-xs">
+      {/* (ك) 11-22 زينا: كبسولة أكبر بنفسجية مثل تصميم التقارير اليومية */}
+      <button onClick={() => setOpen((o) => !o)} className={`rounded-full px-4 py-1.5 text-sm font-bold ring-1 ${badge ? badge[1] : 'bg-violet-50 text-violet-700 ring-violet-400'}`}>
         🧠 تحليل ماتركس للتقرير{badge && ` — ${badge[0]}`} {open ? '▴' : '▾'}
       </button>
       {open && (

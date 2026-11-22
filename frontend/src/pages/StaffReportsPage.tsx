@@ -17,8 +17,8 @@ type Daily = { day: string; reports: { id: string; employeeId: string; employeeN
 type Survey = { employeeId: string; employeeName: string; major: string; degree: string; selfSalaryIQD: number | null; fileSalary: number | null; brought: number | null; monthlyHours: number | null; currentJob: string; companyRating: number; companyNote: string; contractEnd: string | null; fileContract: string | null; mismatch: string | null; reviewedAt: string | null }
 type Surveys = { surveys: Survey[]; pending: { employeeId: string; employeeName: string }[] }
 
-// (ك) 11-21 زينا: تبويبات بإطار، والمختار إطاره ذهبي (مثل التصميم)
-const tabCls = (on: boolean) => `rounded-xl border bg-white px-4 py-2 text-sm font-bold transition ${on ? 'border-amber-400 text-[#0f2040] ring-2 ring-amber-300/60' : 'border-slate-200 text-slate-600 hover:border-slate-300'}`
+// (ك) 11-22 زينا: تبويبات كبيرة بأيقونة، والمختار إطاره أزرق متوهّج (مثل التصميم) — الألوان بـindex.css (.sr-tab)
+const tabCls = (on: boolean) => `sr-tab flex items-center justify-center gap-2.5 rounded-2xl border px-8 py-2.5 text-base font-bold transition ${on ? 'sr-tab-on' : ''}`
 
 const yesterday = () => { const d = new Date(todayBaghdad() + 'T12:00:00'); d.setDate(d.getDate() - 1); return d.toISOString().slice(0, 10) }
 
@@ -28,11 +28,17 @@ export default function StaffReportsPage() {
   const [tab, setTab] = useState<'daily' | 'surveys' | 'negligence'>('daily')
   return (
     <div dir="rtl" className="space-y-4">
-      <h1 className="text-2xl font-extrabold text-[#0f2040]">🧾 تقارير الموظفين</h1>
-      <div className="flex gap-2">
-        <button onClick={() => setTab('daily')} className={tabCls(tab === 'daily')}>📝 تقارير الإنجاز اليومية</button>
-        <button onClick={() => setTab('negligence')} className={tabCls(tab === 'negligence')}>📒 سجل الإهمال</button>
-        {canSurveys && <button onClick={() => setTab('surveys')} className={tabCls(tab === 'surveys')}>🧾 استمارات المعلومات</button>}
+      <div className="flex items-center gap-4">
+        <span className="sr-logo flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl"><Ico n="clipList" className="h-9 w-9" /></span>
+        <div>
+          <h1 className="text-3xl font-extrabold text-[#0f2040]">تقارير الموظفين</h1>
+          <p className="mt-0.5 text-[15px] text-slate-500">متابعة تقارير الأداء والإنجاز اليومي للموظفين</p>
+        </div>
+      </div>
+      <div className="flex flex-wrap gap-4">
+        <button onClick={() => setTab('daily')} className={tabCls(tab === 'daily')}><Ico n="fileCheck" className="h-6 w-6" />تقارير الإنجاز اليومية</button>
+        <button onClick={() => setTab('negligence')} className={tabCls(tab === 'negligence')}><span className="text-xl leading-none">📒</span>سجل الإهمال</button>
+        {canSurveys && <button onClick={() => setTab('surveys')} className={tabCls(tab === 'surveys')}><Ico n="file" className="h-6 w-6" />استمارات المعلومات</button>}
       </div>
       {tab === 'daily' ? <DailyTab /> : tab === 'negligence' ? <NegligenceTab /> : canSurveys && <SurveysTab />}
     </div>
@@ -47,34 +53,82 @@ function DailyTab() {
   // (دازاي 11-21) «اريد احذف الزايدات» — زر «كل تقاريره» يعرض تقارير موظف واحد (آخر ٩٠ يوم)
   const [emp, setEmp] = useState<{ id: string; name: string } | null>(null)
   const { data, error } = useApi(() => apiRequest<Daily>(emp ? `/daily-reports?employeeId=${emp.id}` : `/daily-reports?day=${day}`), [day, reload, emp?.id])
+  // (ك) 11-22 زينا: تصميم التقارير اليومية — شريط التاريخ والعدّاد، تنبيه الي ما كتبوا، وكل تقرير ببطاقة
   return (
-    <div className={`${card} space-y-3`}>
-      <div className="flex flex-wrap items-center gap-3">
+    <div className="sr-panel space-y-4 rounded-3xl border p-5">
+      <div className="flex flex-wrap items-center gap-4">
         {emp ? (
           <span className="flex items-center gap-2 text-sm"><b className="text-[#0f2040]">كل تقارير {emp.name}</b> ({data?.reports.length ?? '…'})
-            <button type="button" onClick={() => setEmp(null)} className="rounded-lg border border-slate-300 px-2 py-1 text-xs">↩ رجوع لليوم</button></span>
-        ) : <input type="date" value={day} onChange={(e) => e.target.value && setDay(e.target.value)} className="rounded-lg border border-slate-300 px-2 py-1.5 text-sm" />}
-        {data && !emp && <span className="text-sm text-slate-500">كتبوا: <b>{data.reports.length}</b> · داوموا وما كتبوا: <b className={data.missing.length ? 'text-red-600' : ''}>{data.missing.length}</b></span>}
+            <button type="button" onClick={() => setEmp(null)} className="sr-chip rounded-xl border px-3 py-1.5 text-xs font-bold">↩ رجوع لليوم</button></span>
+        ) : (
+          <label className="sr-box flex w-72 items-center gap-3 rounded-2xl border px-4 py-2.5">
+            <Ico n="cal" className="h-6 w-6 shrink-0" />
+            <input type="date" value={day} onChange={(e) => e.target.value && setDay(e.target.value)} className="w-full bg-transparent text-center text-lg font-bold outline-none" />
+          </label>
+        )}
+        {data && !emp && (
+          <div className="sr-box mx-auto flex items-center gap-8 rounded-2xl border px-10 py-2.5 text-lg font-bold">
+            <span className="flex items-center gap-2"><Ico n="file" className="h-7 w-7" />كتبوا: <b className="text-3xl font-extrabold text-emerald-500">{data.reports.length}</b></span>
+            <span className="h-7 w-px bg-current opacity-30" />
+            <span className="flex items-center gap-2"><Ico n="file" className="h-7 w-7" />ما كتبوا: <b className={`text-3xl font-extrabold ${data.missing.length ? 'text-red-500' : 'text-emerald-500'}`}>{data.missing.length}</b></span>
+          </div>
+        )}
       </div>
       {error && <p className="text-sm text-red-600">{error}</p>}
       {data && data.missing.length > 0 && (
-        <div className="rounded-xl bg-red-50 p-3 text-sm text-red-800"><b>داوموا وما كتبوا تقريرهم:</b> {data.missing.map((m) => m.employeeName).join('، ')} <span className="text-xs">(تنقفل عليهم الشاشات لحد ما يكتبون)</span></div>
+        <div className="sr-alert flex items-center gap-3 rounded-2xl border px-4 py-3 text-sm">
+          <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-red-500 text-base font-extrabold text-white">!</span>
+          <p><b className="text-base">داوموا وما كتبوا تقريرهم:</b> {data.missing.map((m) => m.employeeName).join('، ')} <span className="text-xs opacity-80">(تنقفل عليهم الشاشات لحد ما يكتبون)</span></p>
+        </div>
       )}
-      <div className="divide-y divide-slate-100">
+      <div className="space-y-3">
         {data?.reports.map((r) => (
-          <div key={r.id} className="py-2.5">
-            <p className="text-sm font-bold text-[#0f2040]"><Link to={`/employee-dossier?id=${r.employeeId}`} className="hover:underline">{r.employeeName}</Link>
-              {emp ? <span className="mr-2 text-xs font-normal text-slate-500">{r.day}</span>
-                : <button type="button" onClick={() => setEmp({ id: r.employeeId, name: r.employeeName })} className="mr-2 rounded border border-slate-200 px-1.5 text-[11px] font-normal text-slate-600 hover:bg-slate-50">كل تقاريره</button>} {r.late && <span className="mr-1 rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-bold text-amber-700 ring-1 ring-amber-200">متأخر</span>}
-              {isOwner && <DeleteButton className="float-left" confirm={`تحذف تقرير ${r.employeeName}؟ ينحذف وياه تحليل ماتركس، وما يرجع.`}
-                onConfirm={async () => { await apiRequest(`/daily-reports/${r.id}`, { method: 'DELETE' }); setReload((n) => n + 1) }} />}</p>
-            <p className="whitespace-pre-wrap text-sm text-slate-700">{r.body}</p>
-            <MatchRow r={r} onDone={() => setReload((n) => n + 1)} />
-            <ReportAnalysisBox reportId={r.id} />
+          <div key={r.id} className="sr-card flex items-stretch gap-4 rounded-2xl border p-3">
+            <div className="flex w-72 shrink-0 items-center gap-3">
+              <span className="sr-ic flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl"><Ico n="layers" className="h-8 w-8" /></span>
+              <div className="min-w-0 space-y-1.5">
+                <Link to={`/employee-dossier?id=${r.employeeId}`} className="flex items-center gap-2 text-lg font-bold text-[#0f2040] hover:underline"><Ico n="user" className="h-6 w-6 shrink-0 opacity-80" />{r.employeeName}</Link>
+                {emp ? <span className="text-xs text-slate-500">{r.day}</span>
+                  : <button type="button" onClick={() => setEmp({ id: r.employeeId, name: r.employeeName })} className="sr-chip inline-flex items-center gap-1.5 rounded-xl border px-2.5 py-1 text-xs font-bold"><Ico n="file" className="h-4 w-4" />كل تقاريره</button>}
+              </div>
+            </div>
+            <div className="sr-sep w-px shrink-0" />
+            <div className="min-w-0 flex-1 space-y-2 py-1">
+              <div className="flex items-start gap-3">
+                {r.late && <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-amber-50 px-3 py-1 text-sm font-bold text-amber-700 ring-1 ring-amber-400"><Ico n="clock" className="h-4 w-4" />متأخر</span>}
+                <ReportBody body={r.body} />
+              </div>
+              <div className="flex flex-wrap items-start gap-3">
+                <MatchRow r={r} onDone={() => setReload((n) => n + 1)} />
+                <ReportAnalysisBox reportId={r.id} />
+              </div>
+            </div>
+            {isOwner && <>
+              <div className="sr-sep w-px shrink-0" />
+              <div className="flex shrink-0 items-center px-3">
+                <DeleteButton className="sr-del" label="🗑️ حذف" confirm={`تحذف تقرير ${r.employeeName}؟ ينحذف وياه تحليل ماتركس، وما يرجع.`}
+                  onConfirm={async () => { await apiRequest(`/daily-reports/${r.id}`, { method: 'DELETE' }); setReload((n) => n + 1) }} />
+              </div>
+            </>}
           </div>
         ))}
         {data && data.reports.length === 0 && <p className="py-4 text-center text-sm text-slate-400">{emp ? 'ماكو تقارير إله.' : 'ماكو تقارير لهذا اليوم.'}</p>}
       </div>
+    </div>
+  )
+}
+
+// (ك) 11-22 زينا: نص التقرير — الأسطر الي تبدي بـ«-» أو «•» أو «✓» تطلع بعلامة صح خضرة (مثل التصميم)، والباقي سطر عادي
+function ReportBody({ body }: { body: string }) {
+  const lines = body.split('\n').filter((l) => l.trim())
+  return (
+    <div className="min-w-0 flex-1 space-y-0.5 text-[15px] leading-7 text-slate-700">
+      {lines.map((l, i) => {
+        const m = l.trim().match(/^[-•✓*]\s*(.*)$/)
+        return m
+          ? <p key={i} className="flex items-start gap-2"><span className="mt-1.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-emerald-500 text-[10px] font-extrabold text-white">✓</span>{m[1]}</p>
+          : <p key={i} className="whitespace-pre-wrap">{l}</p>
+      })}
     </div>
   )
 }
@@ -96,6 +150,9 @@ const ICONS: Record<string, string> = {
   chat: 'M4 5h16v11H9l-5 4V5Z',
   info: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18Zm0-10v6m0-9v.5',
   xc: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18ZM9 9l6 6m0-6-6 6',
+  file: 'M6 3h8l4 4v14H6zM14 3v4h4M9 12h6m-6 4h6',
+  fileCheck: 'M6 3h8l4 4v14H6zM14 3v4h4M9 14l2 2 4-4',
+  clipList: 'M9 3h6v3H9zM7 4.5H5V21h14V4.5h-2M8 11h8M8 15h8M8 19h5',
 }
 const Ico = ({ n, className = 'h-4 w-4' }: { n: string; className?: string }) => (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden="true"><path d={ICONS[n]} /></svg>
@@ -312,8 +369,8 @@ type Report = Daily['reports'][number]
 type MatchDetail = { status: string; note: string; claimedCodes: string[]; missingCodes: string[]; unclaimedCodes: string[]; activity: { at: string; text: string; count: number }[] }
 
 const MATCH_BADGE: Record<string, [string, string]> = {
-  MATCH: ['✅ يطابق الشغل المسجّل', 'bg-emerald-50 text-emerald-700 ring-emerald-200'],
-  PARTIAL: ['⚠️ يطابق جزئياً', 'bg-amber-50 text-amber-700 ring-amber-200'],
+  MATCH: ['✓ يطابق الشغل المسجّل', 'bg-emerald-50 text-emerald-700 ring-emerald-400'],
+  PARTIAL: ['⚠️ يطابق جزئياً', 'bg-amber-50 text-amber-700 ring-amber-400'],
   NO_TRACE: ['❌ بلا أثر بالنظام — ما ينحسب لحد ما تحكم', 'bg-red-50 text-red-700 ring-red-200'],
 }
 
@@ -331,8 +388,8 @@ function MatchRow({ r, onDone }: { r: Report; onDone: () => void }) {
     try { await apiRequest(`/daily-reports/${r.id}/match-review`, { method: 'POST', body: JSON.stringify({ verdict, note }) }); onDone() } catch (e) { setErr(e instanceof Error ? e.message : 'تعذر الحفظ') }
   }
   return (
-    <div className="mt-1.5 text-xs">
-      <button onClick={() => setOpen((o) => !o)} className={`rounded-full px-2 py-0.5 font-bold ring-1 ${cls}`}>{label} {open ? '▴' : '▾'}</button>
+    <div className="text-xs">
+      <button onClick={() => setOpen((o) => !o)} className={`rounded-full px-4 py-1.5 text-sm font-bold ring-1 ${cls}`}>{label} {open ? '▴' : '▾'}</button>
       {r.matchVerdict && <span className={`mr-2 font-bold ${r.matchVerdict === 'JUSTIFIED' ? 'text-emerald-700' : 'text-red-700'}`}>المراقب: {r.matchVerdict === 'JUSTIFIED' ? 'مبرّر' : 'مو مبرّر'}{r.matchReview && ` — ${r.matchReview}`}</span>}
       {open && (
         <div className="mt-2 space-y-1.5 rounded-xl bg-slate-50 p-3 text-slate-700">
