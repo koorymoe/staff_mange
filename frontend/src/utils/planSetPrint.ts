@@ -44,16 +44,73 @@ const COMPANY = COMPANY_LEGAL_AR
 // (ل) 11-12: ألوان دليل الهوية الي دزه دازاي — كحلي أساسي، ذهبي، أزرق ثانوي، خلفية، نص
 const NAVY = '#0B2D5B'
 const GOLD = '#D4AF37'
-const BLUE = '#1E4A8A'
 // موجات الغلاف (نفس بانر الهوية): كحلي غامق وموجة ذهبية تحت
-const WAVES = `<svg class="pc-waves" viewBox="0 0 1123 794" preserveAspectRatio="none" aria-hidden="true">
-  <defs><linearGradient id="g" x1="0" x2="1"><stop offset="0" stop-color="#f3dc8a"/><stop offset=".5" stop-color="${GOLD}"/><stop offset="1" stop-color="#9c7a1e"/></linearGradient>
-  <linearGradient id="b" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${BLUE}" stop-opacity=".55"/><stop offset="1" stop-color="${NAVY}" stop-opacity="0"/></linearGradient></defs>
-  <path d="M0 0 H1123 V170 C900 260 700 120 470 180 C270 232 120 160 0 210 Z" fill="url(#b)"/>
-  <path d="M0 640 C220 560 430 700 700 650 C880 616 1010 560 1123 590 V794 H0 Z" fill="#071f42"/>
-  <path d="M0 655 C230 575 430 715 700 665 C880 631 1010 575 1123 605" fill="none" stroke="url(#g)" stroke-width="7"/>
-  <path d="M0 690 C250 620 470 745 760 700 C930 674 1040 630 1123 650" fill="none" stroke="url(#g)" stroke-width="2" opacity=".7"/>
+// (ل) 11-22 دازاي «سويلنه هاي بدل القديمة»: غلاف فخم — شريط ذهبي بزخرفة إسلامية فوگ اليسار، مبنى زجاجي
+// يمين، مخطط ملفوف يسار، وأيقونات التصميم بالوسط. كله SVG حتى ينطبع حاد بالـA3.
+const WAVES = `<svg class="pc-waves" viewBox="0 0 1123 794" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+  <defs>
+    <radialGradient id="bg" cx=".55" cy=".45" r=".8"><stop offset="0" stop-color="#1b3f78"/><stop offset=".55" stop-color="${NAVY}"/><stop offset="1" stop-color="#061a38"/></radialGradient>
+    <linearGradient id="g" x1="0" x2="1"><stop offset="0" stop-color="#9c7a1e"/><stop offset=".45" stop-color="#f3dc8a"/><stop offset="1" stop-color="${GOLD}"/></linearGradient>
+    <linearGradient id="gv" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f3dc8a"/><stop offset="1" stop-color="#9c7a1e"/></linearGradient>
+    <linearGradient id="glass" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#2a5a9e" stop-opacity=".55"/><stop offset=".6" stop-color="#123a70" stop-opacity=".35"/><stop offset="1" stop-color="${GOLD}" stop-opacity=".25"/></linearGradient>
+    <linearGradient id="refl" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${GOLD}" stop-opacity=".25"/><stop offset="1" stop-color="${GOLD}" stop-opacity="0"/></linearGradient>
+    <linearGradient id="roll" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#3b6cb0"/><stop offset=".5" stop-color="#1a3f75"/><stop offset="1" stop-color="#0a2550"/></linearGradient>
+    <pattern id="lat" width="34" height="34" patternUnits="userSpaceOnUse"><g fill="none" stroke="${GOLD}" stroke-width="1.1" opacity=".75">
+      <path d="M17 2 L21 13 L32 17 L21 21 L17 32 L13 21 L2 17 L13 13 Z"/><circle cx="17" cy="17" r="5"/><path d="M0 0 L5 5 M34 0 L29 5 M0 34 L5 29 M34 34 L29 29"/></g></pattern>
+    <pattern id="bp" width="16" height="16" patternUnits="userSpaceOnUse"><path d="M16 0H0V16" fill="none" stroke="#8fb3e8" stroke-opacity=".35" stroke-width=".6"/></pattern>
+    <clipPath id="band"><path d="M0 0 H330 C250 120 150 260 0 420 Z"/></clipPath>
+    <filter id="glow"><feGaussianBlur stdDeviation="6"/></filter>
+  </defs>
+  <rect width="1123" height="794" fill="url(#bg)"/>
+  <!-- الشريط الذهبي والزخرفة -->
+  <g clip-path="url(#band)"><rect width="400" height="450" fill="#0a2550"/><rect width="400" height="450" fill="url(#lat)"/></g>
+  <path d="M330 0 C250 120 150 260 0 420" fill="none" stroke="url(#g)" stroke-width="10"/>
+  <path d="M380 0 C290 150 170 300 0 470" fill="none" stroke="url(#g)" stroke-width="4" opacity=".8"/>
+  <path d="M420 0 C330 170 190 330 0 520" fill="none" stroke="${GOLD}" stroke-width="1.5" opacity=".5"/>
+  <path d="M330 0 C250 120 150 260 0 420" fill="none" stroke="#f3dc8a" stroke-width="18" opacity=".25" filter="url(#glow)"/>
+  <!-- المبنى الزجاجي -->
+  <polygon points="830,610 1123,560 1123,330 900,400 830,430" fill="url(#glass)" stroke="#8fb3e8" stroke-opacity=".5" stroke-width="1.2"/>
+  <line x1="867" y1="604" x2="867" y2="418" stroke="#a9c6f0" stroke-opacity=".35"/>
+  <line x1="903" y1="598" x2="903" y2="399" stroke="#a9c6f0" stroke-opacity=".35"/>
+  <line x1="940" y1="591" x2="940" y2="387" stroke="#a9c6f0" stroke-opacity=".35"/>
+  <line x1="976" y1="585" x2="976" y2="376" stroke="#a9c6f0" stroke-opacity=".35"/>
+  <line x1="1013" y1="579" x2="1013" y2="364" stroke="#a9c6f0" stroke-opacity=".35"/>
+  <line x1="1050" y1="572" x2="1050" y2="353" stroke="#a9c6f0" stroke-opacity=".35"/>
+  <line x1="1086" y1="566" x2="1086" y2="341" stroke="#a9c6f0" stroke-opacity=".35"/>
+  <line x1="830" y1="580" x2="1123" y2="522" stroke="#a9c6f0" stroke-opacity=".3"/>
+  <line x1="830" y1="550" x2="1123" y2="483" stroke="#a9c6f0" stroke-opacity=".3"/>
+  <line x1="830" y1="520" x2="1123" y2="445" stroke="#a9c6f0" stroke-opacity=".3"/>
+  <line x1="830" y1="490" x2="1123" y2="407" stroke="#a9c6f0" stroke-opacity=".3"/>
+  <line x1="830" y1="460" x2="1123" y2="368" stroke="#a9c6f0" stroke-opacity=".3"/>
+  <polygon points="760,620 830,610 830,430 760,450" fill="#123a70" fill-opacity=".7" stroke="#8fb3e8" stroke-opacity=".4"/>
+  <line x1="760" y1="592" x2="830" y2="580" stroke="${GOLD}" stroke-opacity="0.35"/>
+  <line x1="760" y1="563" x2="830" y2="550" stroke="${GOLD}" stroke-opacity="0.25"/>
+  <line x1="760" y1="535" x2="830" y2="520" stroke="${GOLD}" stroke-opacity="0.35"/>
+  <line x1="760" y1="507" x2="830" y2="490" stroke="${GOLD}" stroke-opacity="0.25"/>
+  <line x1="760" y1="478" x2="830" y2="460" stroke="${GOLD}" stroke-opacity="0.35"/>
+  <polygon points="880,560 1123,525" fill="none"/><line x1="860" y1="520" x2="1123" y2="480" stroke="${GOLD}" stroke-width="3" opacity=".8"/><line x1="860" y1="470" x2="1123" y2="425" stroke="${GOLD}" stroke-width="2" opacity=".6"/>
+  <rect x="760" y="618" width="363" height="40" fill="url(#refl)"/>
+  <!-- الأرضية والخطوط الذهبية -->
+  <path d="M0 650 L1123 590" stroke="${GOLD}" stroke-width="2" opacity=".7"/>
+  <path d="M260 794 L1123 610" stroke="url(#g)" stroke-width="1.5" opacity=".5"/>
+  <path d="M0 700 Q560 560 1123 690" fill="none" stroke="#8fb3e8" stroke-opacity=".12" stroke-width="40"/>
+  <!-- المخطط الملفوف -->
+  <g transform="rotate(14 160 620)">
+    <rect x="-40" y="575" width="300" height="80" rx="4" fill="url(#roll)"/><rect x="-40" y="575" width="300" height="80" fill="url(#bp)"/>
+    <path d="M20 600 h80 v30 h-50 M130 590 v50 M160 610 h70" fill="none" stroke="#cfe0fa" stroke-opacity=".5"/>
+    <ellipse cx="260" cy="615" rx="18" ry="40" fill="#0a2550" stroke="url(#gv)" stroke-width="7"/>
+    <ellipse cx="260" cy="615" rx="8" ry="20" fill="#061a38"/>
+    <ellipse cx="260" cy="615" rx="30" ry="50" fill="${GOLD}" opacity=".18" filter="url(#glow)"/>
+  </g>
+  <path d="M300 700 l120 -20 l60 50 l-120 22 Z" fill="url(#bp)" opacity=".7"/>
 </svg>`
+const ICO = (d: string) => `<span class="pc-ico"><svg viewBox="0 0 24 24" fill="none" stroke="${GOLD}" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">${d}</svg></span>`
+const ICONS = [
+  '<path d="M12 3 21 8 12 13 3 8Z"/><path d="M3 12l9 5 9-5"/><path d="M3 16l9 5 9-5"/>',
+  '<rect x="3" y="4" width="18" height="14"/><path d="M3 11h8V4M11 11v7M15 4v6h6"/><path d="M14 20l6-6 2 2-6 6h-2z"/>',
+  '<circle cx="12" cy="4" r="1.6"/><path d="M11 5.5 5 21M13 5.5 19 21M7.5 15h9"/>',
+  '<path d="M12 2 21 7v10l-9 5-9-5V7z"/><path d="M3 7l9 5 9-5M12 12v10"/>',
+].map(ICO).join('')
 const IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp']
 
 const n = (v: number) => Math.round(v).toLocaleString('en-US')
@@ -114,11 +171,12 @@ export function buildPlanSetHtml(p: PlanPrintInput, logoUrl: string): string {
     // (ل) 11-22 دازاي: سطر القسم وعدد اللوحات انحذفن من الغلاف
     const cover = `<section class="page land pcover">${WAVES}
       <div class="pc-top"><img src="LOGO" alt=""><div><b>شركة الأماني</b><small dir="ltr">Al-Amani Company</small></div>
-        <span class="pc-no" dir="ltr">${String(i + 1).padStart(2, '0')} / ${String(typeOrder.length).padStart(2, '0')}</span></div>
-      <div class="pc-body"><span class="pc-code" dir="ltr">${esc(seq)}</span>
+        <span class="pc-no" dir="ltr"><i></i>${String(i + 1).padStart(2, '0')} / ${String(typeOrder.length).padStart(2, '0')}</span></div>
+      <div class="pc-body"><p class="pc-codeline"><i></i><span class="pc-code" dir="ltr">${esc(seq)}</span><i></i></p>
         <h2>${esc(coverName)}</h2>
-        <p class="pc-tag"><i></i><span>${esc(p.title)}${p.projectName ? ` · ${esc(p.projectName)}` : ''}</span><i></i></p></div>
-      <div class="pc-foot"><span dir="ltr">${esc(sheetDate(fs[0], p.date))}</span><span>معاً .. نحو مستقبل أفضل</span></div>
+        <p class="pc-tag"><i></i><span>${esc(p.title)}${p.projectName ? ` - ${esc(p.projectName)}` : ''}</span><i></i></p>
+        <div class="pc-icons">${ICONS}</div></div>
+      <div class="pc-foot"><span dir="ltr">${esc(sheetDate(fs[0], p.date))}</span><span>معاً ... نحو مستقبل أفضل</span></div>
       ${foot(page++)}</section>`
     const sheets = fs.map((f, j) => {
       const name = (f.sheetName || '').trim() || (fs.length > 1 ? `${t?.name ?? code} ${j + 1}` : t?.name || f.title || code)
@@ -180,20 +238,27 @@ table { width: 100%; border-collapse: collapse; font-size: 15px } th { backgroun
 .foot .fp { margin-right: auto; background: ${GOLD}; color: ${NAVY}; border-radius: 2mm; padding: 0.5mm 3mm }
 .page.land { padding: 14mm 16mm 20mm }
 /* ── غلاف المخطط: كحلي غامق وذهبي ── */
-.page.land.pcover { background: linear-gradient(135deg, #123a70 0%, ${NAVY} 45%, #071f42 100%); color: #fff; justify-content: space-between; padding: 22mm 28mm 24mm }
+.page.land.pcover { background: ${NAVY}; color: #fff; justify-content: space-between; padding: 18mm 24mm 18mm }
 .pc-waves { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 0 }
 .pcover > *:not(.pc-waves) { position: relative; z-index: 1 }
 .pc-top { display: flex; align-items: center; gap: 5mm }
-.pc-top img { width: 28mm; height: 28mm; border-radius: 50%; background: #fff; padding: 1.5mm; box-shadow: 0 0 0 0.8mm ${GOLD} }
-.pc-top b { display: block; font-size: 22px } .pc-top small { color: ${GOLD}; font-size: 15px; font-weight: 700 }
-.pc-no { margin-inline-start: auto; font-size: 13px; letter-spacing: 2px; color: ${GOLD} }
-.pc-body { text-align: center; margin-top: -10mm }
-.pc-code { display: inline-block; background: ${GOLD}; color: ${NAVY}; border-radius: 10mm; padding: 1.5mm 9mm; font-size: 20px; font-weight: 800; letter-spacing: 2px }
-.pc-body h2 { font-size: 62px; margin: 6mm 0 3mm; line-height: 1.25; text-shadow: 0 2px 14px rgba(0,0,0,.35) }
-.pc-count { color: #e2e8f0; font-size: 18px; margin: 3mm 0 0 } .pc-group { color: ${GOLD}; font-size: 22px; margin: 0; font-weight: 700 }
-.pc-tag { display: flex; align-items: center; justify-content: center; gap: 5mm; margin: 9mm 0 0; color: #e2e8f0; font-size: 19px }
-.pc-tag i { width: 22mm; height: 0.5mm; background: ${GOLD} }
-.pc-foot { display: flex; justify-content: space-between; gap: 6mm; font-size: 15px; color: #fff; font-weight: 700 }
+.pc-top img { width: 30mm; height: 30mm; border-radius: 50%; background: #fff; padding: 1.5mm; box-shadow: 0 0 0 1mm ${GOLD}, 0 0 8mm rgba(212,175,55,.35) }
+.pc-top b { display: block; font-size: 30px } .pc-top small { color: ${GOLD}; font-size: 17px; font-weight: 700 }
+.pc-no { margin-inline-start: auto; font-size: 15px; letter-spacing: 1px; color: #e2e8f0; display: flex; align-items: center; gap: 4mm }
+.pc-no i { width: 14mm; height: 0.5mm; background: ${GOLD} }
+.pc-body { text-align: center; margin-top: -26mm }
+.pc-codeline, .pc-tag { display: flex; align-items: center; justify-content: center; gap: 6mm; margin: 0 }
+.pc-codeline i { width: 18mm; height: 0.5mm; background: ${GOLD} }
+.pc-code { display: inline-block; background: linear-gradient(180deg, #f3dc8a, ${GOLD} 55%, #9c7a1e); color: ${NAVY}; border-radius: 10mm; padding: 1.5mm 10mm; font-size: 26px; font-weight: 800; box-shadow: 0 1mm 4mm rgba(0,0,0,.35) }
+.pc-body h2 { font-size: 84px; margin: 3mm 0 0; line-height: 1.25; background: linear-gradient(180deg, #fff 30%, #cdd6e4); -webkit-background-clip: text; background-clip: text; color: transparent; filter: drop-shadow(0 3px 6px rgba(0,0,0,.45)) }
+.pc-body h2::after { content: ''; display: block; width: 60mm; height: 0.8mm; margin: 2mm auto 0; background: radial-gradient(${GOLD}, transparent 70%) }
+.pc-tag { margin: 5mm 0 0; color: #fff; font-size: 24px; font-weight: 700 }
+.pc-tag i { width: 30mm; height: 0.5mm; background: ${GOLD} }
+.pc-icons { display: flex; justify-content: center; gap: 7mm; margin-top: 9mm }
+.pc-ico { width: 24mm; height: 24mm; border-radius: 5mm; display: grid; place-items: center; background: linear-gradient(160deg, rgba(255,255,255,.14), rgba(255,255,255,.03)); border: 0.4mm solid rgba(212,175,55,.55); box-shadow: inset 0 0 4mm rgba(212,175,55,.15), 0 1.5mm 4mm rgba(0,0,0,.4) }
+.pc-ico svg { width: 13mm; height: 13mm }
+.pc-foot { display: flex; justify-content: space-between; gap: 6mm; font-size: 19px; color: #fff; font-weight: 700 }
+.pc-foot span { border-inline-start: 1mm solid ${GOLD}; padding-inline-start: 4mm }
 .pcover .foot { display: none }
 /* ── صفحة المخطط ويا الفورما ── */
 .plan { gap: 4mm } .plan.sheet-right { flex-direction: row }

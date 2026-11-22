@@ -514,3 +514,4 @@ git push origin origin/avg:refs/heads/prod     # بعد التأكد إنه fast
 - (ل) 11-22 COMPANY_ADDRESS = «حي النقيب - شارع البلديات» (دازاي).
 - (ل) 11-22 EmployeeService.Update: إذا تغيّرت EffectiveRoles → dropForeignRoleDefaults يحذف EmployeePermission الي افتراضية لأي دور ومو لأدواره الجديدة. DesignSet List/canSeeSet: createdById = emp يكفي.
 - (ل) 11-22 dropForeignRoleDefaults: ما يمس PermissionException ولا OrgPermissionGrant، يسجّل ROLE_REVOKE بالـPermissionAuditLog ويزيد accessVersion. اختبار TestRoleChangeDropsOldDefaults_Live.
+- (ل) 11-22 planSetPrint: WAVES صار مشهد SVG كامل (lat/bp patterns، مبنى، لفافة) + ICONS أربع أيقونات + CSS pc-* جديد. حسب صورة دازاي.
