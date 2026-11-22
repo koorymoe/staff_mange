@@ -165,7 +165,8 @@ func (s *DesignSetService) canSeeSet(emp, role string, perms []string, setID str
 		return true
 	}
 	var n int
-	errlog.Err(s.db.Get(&n, `SELECT count(*) FROM "DesignSection" WHERE "setId" = $1 AND "assigneeId" = $2`, setID, emp))
+	errlog.Err(s.db.Get(&n, `SELECT (SELECT count(*) FROM "DesignSection" WHERE "setId" = $1 AND "assigneeId" = $2)
+		+ (SELECT count(*) FROM "DesignSet" WHERE id = $1 AND "createdById" = $2)`, setID, emp))
 	return n > 0
 }
 
@@ -231,7 +232,8 @@ func (s *DesignSetService) List(emp, role string, perms []string) ([]DesignSet, 
 		err := s.db.Select(&rows, designSetCols+` ORDER BY (d."archivedAt" IS NOT NULL), d."createdAt" DESC LIMIT 300`)
 		return rows, err
 	}
-	err := s.db.Select(&rows, designSetCols+` WHERE EXISTS (SELECT 1 FROM "DesignSection" x WHERE x."setId" = d.id AND x."assigneeId" = $1)
+	// (ل) 11-22 دازاي «اختفن السيتات الي جانت مسويتهن»: الي سوّت السيت تشوفه هم، مو بس المكلّف بقسم منه
+	err := s.db.Select(&rows, designSetCols+` WHERE (d."createdById" = $1 OR EXISTS (SELECT 1 FROM "DesignSection" x WHERE x."setId" = d.id AND x."assigneeId" = $1))
 		ORDER BY (d."archivedAt" IS NOT NULL), d."createdAt" DESC LIMIT 300`, emp)
 	return rows, err
 }

@@ -512,3 +512,4 @@ git push origin origin/avg:refs/heads/prod     # بعد التأكد إنه fast
 - (ل) 11-22 COMPANY_PHONE/COMPANY_EMAIL بـcompany.ts (عرض السعر يستخدمهن)، وfoot مال planSetPrint يطلعهن. العنوان: ماكو بالنظام، ننتظر دازاي.
 - (ل) 11-22 planSetPrint foot: شريط كحلي (PIN عنوان + TEL رقم + fp رقم صفحة). COMPANY_ADDRESS فارغ بـcompany.ts لحد ما دازاي يدزه.
 - (ل) 11-22 COMPANY_ADDRESS = «حي النقيب - شارع البلديات» (دازاي).
+- (ل) 11-22 EmployeeService.Update: إذا تغيّرت EffectiveRoles → dropForeignRoleDefaults يحذف EmployeePermission الي افتراضية لأي دور ومو لأدواره الجديدة. DesignSet List/canSeeSet: createdById = emp يكفي.

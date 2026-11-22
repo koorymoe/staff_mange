@@ -10,6 +10,8 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/jmoiron/sqlx"
+	"github.com/lib/pq"
 
 	"staffmange-api/internal/model"
 	"staffmange-api/internal/repository"
@@ -153,7 +155,10 @@ func (s *EmployeeService) Update(id string, req model.UpdateEmployeeRequest) (*m
 	if err := ValidSalary(req.Salary); err != nil {
 		return nil, err
 	}
+	var rolesBefore, rolesAfter []string
 	_, err := s.repo.UpdateWithLock(id, func(employee *model.Employee) error {
+		rolesBefore = employee.EffectiveRoles()
+		defer func() { rolesAfter = employee.EffectiveRoles() }()
 		if req.Name != nil {
 			employee.Name = *req.Name
 		}
@@ -348,6 +353,16 @@ func (s *EmployeeService) Update(id string, req model.UpdateEmployeeRequest) (*m
 	if err != nil {
 		return nil, err
 	}
+	// (ل) 11-22 دازاي «للمرة المليار… غيّرت دورها وتطلع الها اشياء مو من شغلها»: تغيير الدور چان
+	// يضيف صلاحيات الدور الجديد وما يشيل صلاحيات القديم. هسه: أي صلاحية «افتراضية لدور» مو من
+	// أدواره الجديدة تنشال. الصلاحيات اليدوية الي مو تابعة لأي دور تبقى.
+	if !sameRoles(rolesBefore, rolesAfter) {
+		if n, err := dropForeignRoleDefaults(s.repo.DB(), id, rolesAfter); err != nil {
+			log.Printf("تحذير: تعذر تنظيف صلاحيات الدور القديم للموظف %s: %v", id, err)
+		} else if n > 0 {
+			log.Printf("صلاحيات: انشالت %d صلاحية دور قديم من %s بعد تغيير الدور", n, id)
+		}
+	}
 	// تغيير الدور أو صفة الليدر يغيّر الاستحقاق للعدة القياسية: فني ينتقل
 	// للمبيعات لازم تنشال عدته، وموظف يصير ليدر لازم ياخذها. فشل المزامنة
 	// ما يبطّل تعديل الموظف — نسجّله بس.
@@ -478,4 +493,48 @@ func normTrainingWindow(from, to, curFrom, curTo *string) (*string, *string, err
 		return nil, nil, errors.New("وقت التدريب لازم «من» و«إلى» بصيغة HH:MM والبداية قبل النهاية")
 	}
 	return &f, &t, nil
+}
+
+func sameRoles(a, b []string) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	m := map[string]int{}
+	for _, r := range a {
+		m[r]++
+	}
+	for _, r := range b {
+		if m[r] == 0 {
+			return false
+		}
+		m[r]--
+	}
+	return true
+}
+
+// dropForeignRoleDefaults يشيل من الموظف كل صلاحية هي افتراضية لدور ما وماهي افتراضية لأدواره الحالية.
+func dropForeignRoleDefaults(db *sqlx.DB, empID string, roles []string) (int64, error) {
+	keep := map[string]bool{}
+	for _, n := range roleDefaultsUnion(roles) {
+		keep[n] = true
+	}
+	drop := []string{}
+	seen := map[string]bool{}
+	for _, names := range model.RoleDefaultPermissions {
+		for _, n := range names {
+			if !keep[n] && !seen[n] {
+				seen[n] = true
+				drop = append(drop, n)
+			}
+		}
+	}
+	if len(drop) == 0 {
+		return 0, nil
+	}
+	res, err := db.Exec(`DELETE FROM "EmployeePermission" ep USING "Permission" p
+		WHERE ep."permissionId" = p.id AND ep."employeeId" = $1 AND p.name = ANY($2)`, empID, pq.Array(drop))
+	if err != nil {
+		return 0, err
+	}
+	return res.RowsAffected()
 }
