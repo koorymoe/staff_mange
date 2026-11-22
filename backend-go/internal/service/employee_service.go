@@ -13,6 +13,7 @@ import (
 	"github.com/jmoiron/sqlx"
 	"github.com/lib/pq"
 
+	"staffmange-api/internal/errlog"
 	"staffmange-api/internal/model"
 	"staffmange-api/internal/repository"
 )
@@ -531,10 +532,21 @@ func dropForeignRoleDefaults(db *sqlx.DB, empID string, roles []string) (int64, 
 	if len(drop) == 0 {
 		return 0, nil
 	}
-	res, err := db.Exec(`DELETE FROM "EmployeePermission" ep USING "Permission" p
-		WHERE ep."permissionId" = p.id AND ep."employeeId" = $1 AND p.name = ANY($2)`, empID, pq.Array(drop))
-	if err != nil {
+	// ما ينمس: استثناء مثبّت (PermissionException)، والي جاية من المنصب بالهيكل (OrgPermissionGrant — مزامنة الهيكل تديرها)
+	names := []string{}
+	if err := db.Select(&names, `DELETE FROM "EmployeePermission" ep USING "Permission" p
+		WHERE ep."permissionId" = p.id AND ep."employeeId" = $1 AND p.name = ANY($2)
+		  AND NOT EXISTS (SELECT 1 FROM "PermissionException" x WHERE x."employeeId" = $1 AND x.permission = p.name)
+		  AND NOT EXISTS (SELECT 1 FROM "OrgPermissionGrant" g WHERE g."employeeId" = $1 AND g.permission = p.name)
+		RETURNING p.name`, empID, pq.Array(drop)); err != nil {
 		return 0, err
 	}
-	return res.RowsAffected()
+	if len(names) > 0 {
+		for _, n := range names {
+			errlog.Exec(db.Exec(`INSERT INTO "PermissionAuditLog" ("employeeId", action, permission, reason) VALUES ($1, 'ROLE_REVOKE', $2, 'تغيير الدور')`, empID, n))
+		}
+		// الجلسة المفتوحة تحدّث قائمتها
+		errlog.Exec(db.Exec(`UPDATE "Employee" SET "accessVersion" = "accessVersion" + 1 WHERE id = $1`, empID))
+	}
+	return int64(len(names)), nil
 }
