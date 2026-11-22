@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { apiRequest } from '../api'
 import { useSession, isAdminOrOwner, hasRole } from '../session'
@@ -108,6 +108,45 @@ function broughtCell(s: Survey) {
   )
 }
 
+// (ك) 11-22 زينا: الملاحظة الطويلة تطوّل الصف كله — نطلع كم كلمة بس، و«▾» يفتح مربع منسدل بالكلام كامل
+const NOTE_WORDS = 4
+function NoteCell({ text }: { text: string }) {
+  // المربع «fixed» فوك الصفحة — حتى إطار الجدول (overflow) ما يگصّه
+  const [pos, setPos] = useState<{ top: number; left: number } | null>(null)
+  const open = pos !== null
+  const ref = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    if (!open) return
+    const close = (e: Event) => { if (!ref.current?.contains(e.target as Node)) setPos(null) }
+    document.addEventListener('mousedown', close)
+    window.addEventListener('scroll', close, true)
+    window.addEventListener('resize', close)
+    return () => { document.removeEventListener('mousedown', close); window.removeEventListener('scroll', close, true); window.removeEventListener('resize', close) }
+  }, [open])
+  const toggle = (e: React.MouseEvent<HTMLButtonElement>) => {
+    if (open) { setPos(null); return }
+    const r = e.currentTarget.getBoundingClientRect()
+    const W = 288 // w-72
+    setPos({ top: r.bottom + 6, left: Math.max(8, Math.min(window.innerWidth - W - 8, r.left + r.width / 2 - W / 2)) })
+  }
+  const words = text.trim().split(/\s+/)
+  if (words.length <= NOTE_WORDS) return <div className="mt-1 text-[11px] text-slate-500">{text}</div>
+  return (
+    <div ref={ref} className="relative mt-1 text-[11px] text-slate-500">
+      <button type="button" onClick={toggle} aria-expanded={open} title="شوف الكلام كامل"
+        className="inline-flex max-w-full items-center gap-1 rounded-md px-1 hover:bg-slate-100">
+        <span className="truncate">{words.slice(0, NOTE_WORDS).join(' ')}…</span>
+        <span className={`shrink-0 text-xs font-bold text-amber-500 transition-transform ${open ? 'rotate-180' : ''}`}>▾</span>
+      </button>
+      {pos && (
+        <div role="dialog" style={{ top: pos.top, left: pos.left }} className="fixed z-50 max-h-72 w-72 overflow-y-auto whitespace-pre-wrap rounded-xl border border-slate-200 bg-white p-3 text-start text-xs leading-relaxed text-slate-700 shadow-xl">
+          {text}
+        </div>
+      )}
+    </div>
+  )
+}
+
 function SurveysTab() {
   const [reload, setReload] = useState(0)
   const { data, error } = useApi(() => apiRequest<Surveys>('/profile-surveys'), [reload])
@@ -159,7 +198,7 @@ function SurveysTab() {
                   </td>
                   <td className="px-2 py-2 text-center">
                     <div className="text-sm leading-none text-amber-400" aria-label={`${s.companyRating} من ٥`}>{'★'.repeat(s.companyRating)}</div>
-                    {s.companyNote && <div className="mt-1 text-[11px] text-slate-500">{s.companyNote}</div>}
+                    {s.companyNote && <NoteCell text={s.companyNote} />}
                   </td>
                   <td className="px-2 py-2 text-center">
                     {flag && (
