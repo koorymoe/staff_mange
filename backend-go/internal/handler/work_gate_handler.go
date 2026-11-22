@@ -283,6 +283,16 @@ func (h *WorkGateHandler) ListDaily(w http.ResponseWriter, r *http.Request) {
 		day = companyToday().AddDate(0, 0, -1).Format("2006-01-02")
 	}
 	rows := []dailyReportRow{}
+	// (دازاي 11-21) «اريد احذف الزايدات» — كل تقارير موظف واحد (آخر ٩٠ يوم) بدل يوم واحد
+	if emp := r.URL.Query().Get("employeeId"); emp != "" {
+		errlog.Err(h.db.Select(&rows, `SELECT d.id, d."employeeId", e.name AS "employeeName", to_char(d.day, 'YYYY-MM-DD') AS day, d.body, d.late, d."createdAt",
+			m.status AS "matchStatus", m.note AS "matchNote", m.detail AS "matchDetail", m."reviewVerdict" AS "matchVerdict", m."reviewNote" AS "matchReview"
+			FROM "DailyWorkReport" d JOIN "Employee" e ON e.id = d."employeeId"
+			LEFT JOIN "DailyReportMatch" m ON m."employeeId" = d."employeeId" AND m.day = d.day
+			WHERE d."employeeId" = $1 AND d.day > current_date - 90 ORDER BY d.day DESC`, emp))
+		WriteJSON(w, http.StatusOK, map[string]any{"day": "", "reports": rows, "missing": []missingRow{}})
+		return
+	}
 	errlog.Err(h.db.Select(&rows, `SELECT d.id, d."employeeId", e.name AS "employeeName", to_char(d.day, 'YYYY-MM-DD') AS day, d.body, d.late, d."createdAt",
 		m.status AS "matchStatus", m.note AS "matchNote", m.detail AS "matchDetail", m."reviewVerdict" AS "matchVerdict", m."reviewNote" AS "matchReview"
 		FROM "DailyWorkReport" d JOIN "Employee" e ON e.id = d."employeeId"

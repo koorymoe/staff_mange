@@ -126,7 +126,10 @@ func NewMatrixChainRepository(db *sqlx.DB) *MatrixChainRepository {
 
 const chainFactsSQL = `
 SELECT b.id, b.code, b.status::text AS status, b."bookingType"::text AS "bookingType",
-       b."serviceId", s.name AS "serviceName", COALESCE(s."managerHandlesPaperwork", false) AS solo,
+       b."serviceId", s.name AS "serviceName", -- (11-21) ورقه على مسؤول الخدمة إذا كل خدمات الحجز (الرئيسية + المتعددة) مؤشّرة
+       (COALESCE(s."managerHandlesPaperwork", false) OR (s.id IS NULL AND EXISTS (SELECT 1 FROM "BookingService" bs0 WHERE bs0."bookingId" = b.id)))
+         AND NOT EXISTS (SELECT 1 FROM "BookingService" bs1 JOIN "Service" s1 ON s1.id = bs1."serviceId"
+                         WHERE bs1."bookingId" = b.id AND NOT s1."managerHandlesPaperwork") AS solo,
        COALESCE((SELECT array_agg(sm."employeeId") FROM "ServiceManager" sm WHERE sm."serviceId" = b."serviceId"), '{}') AS "serviceManagerIds",
        b."createdAt", b."createdById", ce.name AS "createdByName",
        (COALESCE(btrim(b.address), '') <> '') AS "hasAddress",
