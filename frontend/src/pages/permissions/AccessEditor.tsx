@@ -6,6 +6,7 @@ import { matches } from '../../utils/search'
 import EmployeeAdminScope from '../../components/EmployeeAdminScope'
 import { sourceLabel, tiers, exceptionDeadline, baghdadInput, agentPermission, time, conflict, message } from './shared'
 import { Dialog } from './ui'
+import { useSession } from '../../session'
 
 export function AccessEditor({
   id,
@@ -43,6 +44,8 @@ export function AccessEditor({
     removing: boolean
   } | null>(null)
   const [expires, setExpires] = useState('')
+  // (دازاي 11-22) سجل تغييرات الصلاحيات للمالك وحده
+  const isOwner = useSession().employee?.actualRole === 'OWNER'
   const [audit, setAudit] = useState<AccessAudit[] | null>(null)
   const [auditError, setAuditError] = useState('')
   const [auditReload, setAuditReload] = useState(0)
@@ -67,6 +70,7 @@ export function AccessEditor({
   }, [id, reload])
   useEffect(() => {
     let alive = true
+    if (!isOwner) return
     accessApi
       .audit(id)
       .then((rows) => {
@@ -81,7 +85,7 @@ export function AccessEditor({
     return () => {
       alive = false
     }
-  }, [id, auditReload])
+  }, [id, auditReload, isOwner])
   const perms = groups.flatMap((g) => g.perms)
   const label = (name: string) =>
     perms.find((p) => p.name === name)?.label ?? name
@@ -507,7 +511,7 @@ export function AccessEditor({
               saved.includes('employee_edit_all')) && (
               <EmployeeAdminScope employeeId={id} />
             )}
-          <details className="access-card">
+          {isOwner && (<details className="access-card">
             <summary>سجل تغييرات الصلاحيات</summary>
             {auditError && (
               <p className="access-error">
@@ -539,7 +543,7 @@ export function AccessEditor({
                 <small>{item.reason ?? 'بدون سبب مسجّل'}</small>
               </article>
             ))}
-          </details>
+          </details>)}
         </>
       )}
       {review && (
