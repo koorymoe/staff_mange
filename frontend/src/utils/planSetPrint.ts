@@ -1,4 +1,4 @@
-import { COMPANY_EMAIL, COMPANY_LEGAL_AR, COMPANY_PHONE, COMPANY_SHORT_AR } from '../company'
+import { COMPANY_ADDRESS, COMPANY_LEGAL_AR, COMPANY_PHONE } from '../company'
 // ═══ 📐 سيت المخططات — ملف الـPDF (ك) 11-10 ═══
 // بطلب دازاي: «تسوي تنزيل ملف ينزل ملف PDF بالألوان الهوية البصرية مال الشركة بي كل
 // التصاميم بالإضافة الى عرض السعر». الشكل نفس ورقة «Package Contents» مال الشركة:
@@ -61,8 +61,10 @@ const abs = (u: string) => (/^(https?:|data:|blob:)/.test(u) ? u : new URL(u, lo
 export const isImageFile = (f: { fileType?: string | null }) => IMAGE_TYPES.includes(f.fileType ?? '')
 
 const band = `<div class="band"><img src="LOGO" alt=""><span>${COMPANY}</span></div>`
-// (ل) 11-22 دازاي: «هنا يكون عنوان الشركة والرقم» — نفس فورما عرض السعر
-const foot = (page: number) => `<div class="foot"><span>${COMPANY_SHORT_AR} · هاتف <bdi dir="ltr">${COMPANY_PHONE}</bdi> · <bdi dir="ltr">${COMPANY_EMAIL}</bdi></span><bdi dir="ltr">${String(page).padStart(2, '0')}</bdi></div>`
+// (ل) 11-22 دازاي: «هنا يكون عنوان الشركة والرقم… بتصميم مرتب» — شريط كحلي رفيع بأيقونات، بلا كلمات زايدة
+const PIN = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2a7 7 0 0 0-7 7c0 5.2 7 13 7 13s7-7.8 7-13a7 7 0 0 0-7-7zm0 9.5A2.5 2.5 0 1 1 12 6.5a2.5 2.5 0 0 1 0 5z"/></svg>'
+const TEL = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6.6 10.8a15.1 15.1 0 0 0 6.6 6.6l2.2-2.2a1 1 0 0 1 1-.25 11.4 11.4 0 0 0 3.6.57 1 1 0 0 1 1 1V20a1 1 0 0 1-1 1A17 17 0 0 1 3 4a1 1 0 0 1 1-1h3.5a1 1 0 0 1 1 1c0 1.25.2 2.45.57 3.57a1 1 0 0 1-.25 1z"/></svg>'
+const foot = (page: number) => `<div class="foot">${COMPANY_ADDRESS ? `<span class="fi">${PIN}<span>${esc(COMPANY_ADDRESS)}</span></span>` : ''}<span class="fi">${TEL}<bdi dir="ltr">${COMPANY_PHONE}</bdi></span><b class="fp" dir="ltr">${String(page).padStart(2, '0')}</b></div>`
 
 export function buildPlanSetHtml(p: PlanPrintInput, logoUrl: string): string {
   const typeName = new Map<string, { group: PlanPrintGroup; name: string }>()
@@ -157,7 +159,7 @@ export function buildPlanSetHtml(p: PlanPrintInput, logoUrl: string): string {
 @page { size: A3 landscape; margin: 0 }
 * { box-sizing: border-box }
 body { margin: 0; font-family: 'Tajawal', sans-serif; color: #1e293b; -webkit-print-color-adjust: exact; print-color-adjust: exact; background: #e2e8f0 }
-.page { width: 420mm; height: 297mm; padding: 16mm 20mm 22mm; break-inside: avoid; position: relative; overflow: hidden; background: #fff; page-break-after: always; margin: 0 auto; display: flex; flex-direction: column; gap: 8mm }
+.page { width: 420mm; height: 297mm; padding: 16mm 20mm 26mm; break-inside: avoid; position: relative; overflow: hidden; background: #fff; page-break-after: always; margin: 0 auto; display: flex; flex-direction: column; gap: 8mm }
 .band { background: ${NAVY}; color: #fff; border-radius: 6mm; padding: 5mm 8mm; display: flex; align-items: center; gap: 6mm; font-size: 15px; font-weight: 700 }
 .band img { width: 24mm; height: 24mm; border-radius: 50%; background: #fff; object-fit: contain; padding: 1.5mm }
 .cover-body { flex: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center }
@@ -173,7 +175,9 @@ body { margin: 0; font-family: 'Tajawal', sans-serif; color: #1e293b; -webkit-pr
 .img img { max-width: 100%; max-height: 100%; object-fit: contain }
 table { width: 100%; border-collapse: collapse; font-size: 15px } th { background: ${NAVY}; color: #fff; padding: 2mm } td { border-bottom: 1px solid #e2e8f0; padding: 2mm; text-align: center }
 .tot { display: flex; gap: 6mm; justify-content: flex-end; font-size: 13px } .tot .net b { color: ${NAVY}; font-size: 16px }
-.foot { position: absolute; bottom: 8mm; left: 20mm; right: 20mm; display: flex; justify-content: space-between; font-size: 15px; color: #475569; border-top: 1px solid #e2e8f0; padding-top: 2mm }
+.foot { position: absolute; bottom: 7mm; left: 20mm; right: 20mm; display: flex; align-items: center; gap: 10mm; background: ${NAVY}; color: #fff; border-radius: 3mm; padding: 2.5mm 6mm; font-size: 15px; font-weight: 700; border-bottom: 1mm solid ${GOLD} }
+.foot .fi { display: flex; align-items: center; gap: 2.5mm } .foot svg { width: 5mm; height: 5mm; fill: ${GOLD} }
+.foot .fp { margin-right: auto; background: ${GOLD}; color: ${NAVY}; border-radius: 2mm; padding: 0.5mm 3mm }
 .page.land { padding: 14mm 16mm 20mm }
 /* ── غلاف المخطط: كحلي غامق وذهبي ── */
 .page.land.pcover { background: linear-gradient(135deg, #123a70 0%, ${NAVY} 45%, #071f42 100%); color: #fff; justify-content: space-between; padding: 22mm 28mm 24mm }
