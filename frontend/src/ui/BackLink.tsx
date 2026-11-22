@@ -16,7 +16,7 @@ export function BackLink({ to = '/', label = '→ رجوع', className = '' }: {
   if (global) return null
   return (
     <button type="button" onClick={back}
-      className={`inline-flex items-center gap-1 rounded-lg border border-slate-300 bg-white/90 px-3 py-1 text-xs font-bold text-slate-700 hover:bg-white dark:border-slate-600 dark:bg-slate-800/90 dark:text-slate-100 ${className}`}>
+      className={`back-btn inline-flex items-center gap-1 rounded-lg border border-slate-300 bg-white/90 px-3 py-1 text-xs font-bold text-slate-700 hover:bg-white ${className}`}>
       {label}
     </button>
   )
@@ -34,7 +34,7 @@ export function GlobalBack({ path }: { path: string }) {
   return (
     <div className="mb-3 flex">
       <button type="button" onClick={back}
-        className="inline-flex items-center gap-1 rounded-lg border border-slate-300 bg-white/90 px-3 py-1 text-xs font-bold text-slate-700 hover:bg-white dark:border-slate-600 dark:bg-slate-800/90 dark:text-slate-100">
+        className="back-btn inline-flex items-center gap-1 rounded-lg border border-slate-300 bg-white/90 px-3 py-1 text-xs font-bold text-slate-700 hover:bg-white">
         → رجوع
       </button>
     </div>

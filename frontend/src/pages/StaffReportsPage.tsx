@@ -61,13 +61,13 @@ function DailyTab() {
           <span className="flex items-center gap-2 text-sm"><b className="text-[#0f2040]">كل تقارير {emp.name}</b> ({data?.reports.length ?? '…'})
             <button type="button" onClick={() => setEmp(null)} className="sr-chip rounded-xl border px-3 py-1.5 text-xs font-bold">↩ رجوع لليوم</button></span>
         ) : (
-          <label className="sr-box flex w-72 items-center gap-3 rounded-2xl border px-4 py-2.5">
+          <label className="sr-box flex w-full items-center sm:w-72 gap-3 rounded-2xl border px-4 py-2.5">
             <Ico n="cal" className="h-6 w-6 shrink-0" />
             <input type="date" value={day} onChange={(e) => e.target.value && setDay(e.target.value)} className="w-full bg-transparent text-center text-lg font-bold outline-none" />
           </label>
         )}
         {data && !emp && (
-          <div className="sr-box mx-auto flex items-center gap-8 rounded-2xl border px-10 py-2.5 text-lg font-bold">
+          <div className="sr-box mx-auto flex items-center gap-4 rounded-2xl border px-5 py-2.5 text-base font-bold sm:gap-8 sm:px-10 sm:text-lg">
             <span className="flex items-center gap-2"><Ico n="file" className="h-7 w-7" />كتبوا: <b className="text-3xl font-extrabold text-emerald-500">{data.reports.length}</b></span>
             <span className="h-7 w-px bg-current opacity-30" />
             <span className="flex items-center gap-2"><Ico n="file" className="h-7 w-7" />ما كتبوا: <b className={`text-3xl font-extrabold ${data.missing.length ? 'text-red-500' : 'text-emerald-500'}`}>{data.missing.length}</b></span>
@@ -83,8 +83,8 @@ function DailyTab() {
       )}
       <div className="space-y-3">
         {data?.reports.map((r) => (
-          <div key={r.id} className="sr-card flex items-stretch gap-4 rounded-2xl border p-3">
-            <div className="flex w-72 shrink-0 items-center gap-3">
+          <div key={r.id} className="sr-card flex flex-col gap-3 rounded-2xl border p-3 md:flex-row md:items-stretch md:gap-4">
+            <div className="flex shrink-0 items-center gap-3 md:w-72">
               <span className="sr-ic flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl"><Ico n="layers" className="h-8 w-8" /></span>
               <div className="min-w-0 space-y-1.5">
                 <Link to={`/employee-dossier?id=${r.employeeId}`} className="flex items-center gap-2 text-lg font-bold text-[#0f2040] hover:underline"><Ico n="user" className="h-6 w-6 shrink-0 opacity-80" />{r.employeeName}</Link>
@@ -92,7 +92,7 @@ function DailyTab() {
                   : <button type="button" onClick={() => setEmp({ id: r.employeeId, name: r.employeeName })} className="sr-chip inline-flex items-center gap-1.5 rounded-xl border px-2.5 py-1 text-xs font-bold"><Ico n="file" className="h-4 w-4" />كل تقاريره</button>}
               </div>
             </div>
-            <div className="sr-sep w-px shrink-0" />
+            <div className="sr-sep hidden w-px shrink-0 md:block" />
             <div className="min-w-0 flex-1 space-y-2 py-1">
               <div className="flex items-start gap-3">
                 {r.late && <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-amber-50 px-3 py-1 text-sm font-bold text-amber-700 ring-1 ring-amber-400"><Ico n="clock" className="h-4 w-4" />متأخر</span>}
@@ -104,8 +104,8 @@ function DailyTab() {
               </div>
             </div>
             {isOwner && <>
-              <div className="sr-sep w-px shrink-0" />
-              <div className="flex shrink-0 items-center px-3">
+              <div className="sr-sep hidden w-px shrink-0 md:block" />
+              <div className="flex shrink-0 items-center justify-end md:px-3">
                 <DeleteButton className="sr-del" label="🗑️ حذف" confirm={`تحذف تقرير ${r.employeeName}؟ ينحذف وياه تحليل ماتركس، وما يرجع.`}
                   onConfirm={async () => { await apiRequest(`/daily-reports/${r.id}`, { method: 'DELETE' }); setReload((n) => n + 1) }} />
               </div>
