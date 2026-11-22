@@ -1518,3 +1518,7 @@ html.dark .rv-range { background: #0b1d38; border-color: rgba(148, 163, 184, .45
 html.dark .rv-range-on { background: linear-gradient(to bottom, #fcd34d, #eab308); border-color: #fde047; color: #1c1402; --tw-ring-color: rgba(250, 204, 21, .45); box-shadow: 0 0 14px rgba(250, 204, 21, .5); }
 html.dark .rv-cal { background: #0b1d38; border-color: rgba(148, 163, 184, .45); color: #cbd5e1; }
 html.dark button.rv-range:not(.rv-range-on) { color: #f1f5f9; }
+/* (ك) 11-22 زينا: أزرار المدة مثل التصميم — المختار غامج بإطار ذهبي متوهّج وكتابة بيضة، والباقي كحلي-تركوازي بإطار خفيف */
+html.dark .rv-range { background: linear-gradient(to bottom, #0f2a3d, #0b1f30); border-color: rgba(94, 160, 190, .45); color: #f1f5f9; }
+html.dark .rv-range-on { background: linear-gradient(to bottom, #3a3208, #241f05); border-color: #facc15; color: #ffffff; --tw-ring-color: rgba(250, 204, 21, .35); box-shadow: 0 0 14px rgba(250, 204, 21, .55), inset 0 0 10px rgba(250, 204, 21, .15); }
+html.dark .rv-cal { background: linear-gradient(to bottom, #0f2a3d, #0b1f30); border-color: rgba(94, 160, 190, .45); color: #e2e8f0; }
