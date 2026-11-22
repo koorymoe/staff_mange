@@ -508,3 +508,4 @@ git push origin origin/avg:refs/heads/prod     # بعد التأكد إنه fast
 
 - (ل) 11-22 سيت المخططات: PlanCatalog مجموعة 10 = نوع واحد 10.1 «حزمة العرض» + 0519_data_plan_render_single_type (10.2-10.4 ← 10.1). planSetPrint: المحتويات تفلتر الأقسام الموجودة، الغلاف بلا pc-group/pc-count، رقم الصفحة خانة tb-page بالفورما بدل foot.
 - (ل) 11-22 planSetPrint: seqNo يرقّم الأقسام الموجودة 1..n بدل رقم الكتالوج (المحتويات + pc-code + tb).
+- (ل) 11-22 PlanSheetEditor: عرض معاينة الفورما w-[15.2%] (نسبة 64/420) بدل w-28.

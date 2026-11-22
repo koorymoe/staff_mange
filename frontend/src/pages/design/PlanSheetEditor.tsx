@@ -31,8 +31,10 @@ export default function PlanSheetEditor({ file, typeName, onClose, onSaved }: {
       onSaved()
     } catch (e) { setErr(e instanceof Error ? e.message : 'تعذر الحفظ') } finally { setBusy(false) }
   }
+
+  // (ل) 11-22 دازاي «بلنظام شكد؟»: المعاينة چانت ثابتة 112px (أعرض من الـPDF) — هسه نفس نسبة الـPDF: 64 ملم من 420 = 15.2٪
   const block = (
-    <div className={`flex ${pos === 'right' ? 'h-full w-28 flex-col' : 'w-full'} overflow-hidden rounded border-2 bg-white text-[9px] leading-tight`} style={{ borderColor: NAVY }} data-testid="sheet-preview">
+    <div className={`flex ${pos === 'right' ? 'h-full w-[15.2%] shrink-0 flex-col' : 'w-full'} overflow-hidden rounded border-2 bg-white text-[9px] leading-tight`} style={{ borderColor: NAVY }} data-testid="sheet-preview">
       <div className={`flex items-center justify-center p-1.5 ${pos === 'right' ? 'border-b' : 'border-l'}`} style={{ borderColor: NAVY }}>
         <img src={LOGO} alt="الأماني" className="h-8 w-8 rounded-full object-contain" />
       </div>
