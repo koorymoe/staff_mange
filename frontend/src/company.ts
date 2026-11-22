@@ -7,5 +7,5 @@ export const COMPANY_SHORT_AR = 'شركة الأماني'
 // (ل) 11-22: رقم وإيميل الشركة — نفس فورما عرض السعر، ويطلعن بأسفل صفحات سيت المخططات
 export const COMPANY_PHONE = '07869787888'
 export const COMPANY_EMAIL = 'info@alamani.iq'
-// (ل) 11-22: عنوان الشركة — ينتظر دازاي يدزه (فارغ = ما يطلع)
-export const COMPANY_ADDRESS = ''
+// (ل) 11-22: عنوان الشركة (دازاي 11-22)
+export const COMPANY_ADDRESS = 'حي النقيب - شارع البلديات'
