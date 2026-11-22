@@ -8,6 +8,7 @@ import { swallow } from '../utils/swallow'
 
 import { notify } from '../ui/notify'
 import { BTN_SUCCESS } from '../ui/classes'
+import { LineIcon } from './LineIcon'
 // ═══ رقابة المشتريات — قرار (ع) 10-15 ═══
 // المشتري يسجّل الشراء ويقيّم المورد ببنود (أولها السعر) · المحاسب يثبّت ·
 // سجل أسعار لكل مادة · وتنبيهات ماتركس: «اشترى من الأغلى» و«المورد رفع سعره».
@@ -40,6 +41,11 @@ export default function PurchaseControlPanel({ requests, canBuy, canVerify, canW
   const [alerts, setAlerts] = useState<PurchaseAlert[]>([])
   const [q, setQ] = useState('')
   const [prices, setPrices] = useState<PurchasePriceRow[]>([])
+  // (ك) 11-22 زينا: سجل الأسعار جدول واحد (صف لكل مادة ومورد) بفلتر مادة ومورد وترقيم صفحات
+  const [fProduct, setFProduct] = useState('')
+  const [fSupplier, setFSupplier] = useState('')
+  const [per, setPer] = useState(10)
+  const [page, setPage] = useState(1)
   const [reload, setReload] = useState(0)
   const [reviewing, setReviewing] = useState<ProcurementRequest | null>(null)
   const open = reviewFor ?? reviewing
@@ -87,8 +93,15 @@ export default function PurchaseControlPanel({ requests, canBuy, canVerify, canW
     try { await purchaseApi.reviewAlert(a.id, note.trim()); setReload((n) => n + 1) } catch (e) { notify(e instanceof Error ? e.message : 'تعذر الحفظ') }
   }
 
-  const tabs: [typeof tab, string][] = [['todo', `📋 بانتظاري (${toReview.length + toVerify.length})`], ['prices', '📊 سجل الأسعار']]
-  if (canWatch) tabs.push(['alerts', `🚨 تنبيهات ماتركس (${openAlerts.length})`], ['bias', `🔁 الميل لمورد (${bias.length})`], ['month', '📅 التقرير الشهري'], ['std', `📏 الأسعار الستاندرد${std?.suggestions.length ? ` (${std.suggestions.length} اقتراح)` : ''}`])
+  const tabs: [typeof tab, string, string][] = [['todo', `بانتظاري (${toReview.length + toVerify.length})`, 'clip'], ['prices', 'سجل الأسعار', 'tag']]
+  if (canWatch) tabs.push(['alerts', `تنبيهات ماتركس (${openAlerts.length})`, 'bell'], ['bias', `الميل لمورد (${bias.length})`, 'card'], ['month', 'التقرير الشهري', 'cal'], ['std', `الأسعار الاستاندرد${std?.suggestions.length ? ` (${std.suggestions.length} اقتراح)` : ''}`, 'tag'])
+  const products = [...new Set(prices.map((p) => p.product))].sort()
+  const suppliers = [...new Set(prices.map((p) => p.supplier))].sort()
+  const priceRows = prices.filter((p) => (!fProduct || p.product === fProduct) && (!fSupplier || p.supplier === fSupplier))
+  const pages = Math.max(1, Math.ceil(priceRows.length / per))
+  const pg = Math.min(page, pages)
+  const shownRows = priceRows.slice((pg - 1) * per, pg * per)
+  const productCount = new Set(priceRows.map((p) => p.key)).size
   const editThreshold = async () => {
     const v = (await askInput('حد «العرضين» بالدينار (الشراء فوقه لازم وياه عرض مورد ثاني، 0 = بلا شرط):', String(threshold ?? 500000)))
     if (v == null || isNaN(Number(v))) return
@@ -107,18 +120,23 @@ export default function PurchaseControlPanel({ requests, canBuy, canVerify, canW
   }
 
   return (
-    <div className="rounded-xl border border-white bg-white p-4 shadow-[0_4px_20px_rgba(15,32,64,0.06)]">
-      <div className="mb-3 flex flex-wrap items-center gap-2">
-        <h2 className="text-lg font-bold text-[#0f2040]">🛡️ رقابة المشتريات</h2>
+    <div className="pc-panel rounded-2xl border p-5">
+      {/* (ك) 11-22 زينا: الرأس والتبويبات مثل التصميم */}
+      <div className="mb-5 flex flex-wrap items-start gap-x-6 gap-y-3">
+        <div className="space-y-1">
+          <h2 className="flex items-center gap-2 text-2xl font-extrabold text-[#0f2040]"><span className="pc-shield"><LineIcon n="shield" className="h-7 w-7" /></span>رقابة المشتريات</h2>
+        </div>
         {threshold != null && (
-          <span className="ml-auto text-xs text-slate-500">
-            🧾 شرط العرضين فوق {threshold > 0 ? iqd(threshold) : '— (مطفي)'}
-            {canDecide && <button onClick={editThreshold} className="mr-1 text-[#2c5aad] underline">تغيير</button>}
+          <span className="mt-2 text-sm text-slate-500">
+            شرط العارضين فوق {threshold > 0 ? iqd(threshold) : '— (مطفي)'}
+            {canDecide && <button onClick={editThreshold} className="mr-2 text-[#2c5aad] underline">تغيير</button>}
           </span>
         )}
-        {tabs.map(([k, label]) => (
-          <button key={k} onClick={() => setTab(k)} className={`rounded-lg px-3 py-1.5 text-sm font-bold ${tab === k ? (k === 'alerts' ? 'bg-red-600 text-white' : 'bg-[#2c5aad] text-white') : 'bg-slate-100 text-slate-600'}`}>{label}</button>
-        ))}
+        <div className="flex flex-1 flex-wrap justify-end gap-3">
+          {tabs.map(([k, label, ic]) => (
+            <button key={k} onClick={() => setTab(k)} className={`pc-tab flex items-center gap-2 rounded-xl border px-4 py-2 text-[15px] font-bold ${tab === k ? (k === 'alerts' ? 'pc-tab-red' : 'pc-tab-on') : ''}`}><LineIcon n={ic} className="h-5 w-5" />{label}</button>
+          ))}
+        </div>
       </div>
 
       {tab === 'todo' && (
@@ -148,31 +166,67 @@ export default function PurchaseControlPanel({ requests, canBuy, canVerify, canW
       )}
 
       {tab === 'prices' && (
-        <div className="space-y-3">
-          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="دوّر على مادة (كيبل، كاميرا...)" className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" />
-          {groups.size === 0 && <p className="text-sm text-slate-400">ماكو أسعار مسجّلة لهذي المادة.</p>}
-          {[...groups.entries()].slice(0, 50).map(([key, rows]) => {
-            const min = Math.min(...rows.map((r) => r.lastPrice))
-            return (
-              <div key={key} className="rounded-lg border border-slate-200">
-                <p className="border-b border-slate-100 bg-slate-50 px-3 py-1.5 text-sm font-bold">{rows[0].product}</p>
-                <table className="w-full text-sm">
-                  <thead><tr className="text-xs text-slate-400"><th className="px-3 text-right">المورد</th><th>آخر سعر</th><th>أقل سعر</th><th>مرات</th><th>آخر شراء</th></tr></thead>
-                  <tbody>
-                    {rows.map((r) => (
-                      <tr key={r.supplier} className="border-t border-slate-100">
-                        <td className="px-3 py-1">{r.supplier} {r.lastPrice === min && rows.length > 1 && <span className="text-xs font-bold text-emerald-600">الأرخص</span>}</td>
-                        <td className={`text-center font-bold ${r.lastPrice > min * 1.1 ? 'text-red-600' : ''}`}>{iqd(r.lastPrice)}</td>
-                        <td className="text-center">{iqd(r.minPrice)}</td>
-                        <td className="text-center">{r.times}</td>
-                        <td className="text-center">{day(r.lastAt)}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )
-          })}
+        <div className="space-y-4">
+          <div className="flex flex-wrap gap-3">
+            <label className="pc-field flex min-w-[260px] flex-[2] items-center gap-2 rounded-xl border px-3 py-2.5">
+              <LineIcon n="search" className="h-5 w-5 shrink-0 opacity-70" />
+              <input value={q} onChange={(e) => { setQ(e.target.value); setPage(1) }} placeholder="دور على مادة (كابل، كاميرا...)" className="w-full bg-transparent text-[15px] outline-none" />
+            </label>
+            <select value={fProduct} onChange={(e) => { setFProduct(e.target.value); setPage(1) }} className="pc-field min-w-[200px] flex-1 rounded-xl border px-4 py-2.5 text-[15px] font-bold" aria-label="المادة">
+              <option value="">كل المادة</option>
+              {products.map((p) => <option key={p} value={p}>{p}</option>)}
+            </select>
+            <select value={fSupplier} onChange={(e) => { setFSupplier(e.target.value); setPage(1) }} className="pc-field min-w-[200px] flex-1 rounded-xl border px-4 py-2.5 text-[15px] font-bold" aria-label="المورد">
+              <option value="">كل الموردين</option>
+              {suppliers.map((p) => <option key={p} value={p}>{p}</option>)}
+            </select>
+          </div>
+          <div className="overflow-x-auto rounded-2xl border border-slate-200" data-testid="prices-table">
+            <table className="w-full min-w-[860px] table-fixed text-[15px]">
+              <colgroup>{['6%', '20%', '16%', '14%', '15%', '13%', '16%'].map((w, i) => <col key={i} style={{ width: w }} />)}</colgroup>
+              <thead className="font-bold">
+                <tr>
+                  {([['', 'ت'], ['box', 'المادة'], ['user', 'المورد'], ['tag', 'آخر سعر'], ['trendDown', 'أقل سعر'], ['layers', 'مرات الشراء'], ['cal', 'آخر شراء']] as [string, string][]).map(([ic, h]) => (
+                    <th key={h} className="p-0 text-center">
+                      <span className="th-box pc-th flex h-12 items-center justify-center gap-2 rounded-none border-x-0 px-1.5">
+                        <span className="leading-snug">{h}</span>{ic && <span className="th-box-ic"><LineIcon n={ic} className="h-5 w-5" /></span>}
+                      </span>
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-200">
+                {shownRows.map((r, i) => {
+                  const same = prices.filter((x) => x.key === r.key)
+                  const min = Math.min(...same.map((x) => x.lastPrice))
+                  return (
+                    <tr key={r.key + r.supplier} className="h-12 align-middle hover:bg-slate-50 [&>td]:border-l [&>td]:border-slate-200 [&>td:last-child]:border-l-0">
+                      <td className="px-2 text-center font-bold text-slate-700">{(pg - 1) * per + i + 1}</td>
+                      <td className="px-2 text-center font-extrabold text-[#0f2040]">{r.product}</td>
+                      <td className="px-2 text-center text-slate-700">{r.supplier}{r.lastPrice === min && same.length > 1 && <span className="mr-1 text-xs font-bold text-emerald-600">الأرخص</span>}</td>
+                      <td className="px-2 text-center"><span className={`pc-price inline-block min-w-[8.5rem] rounded-lg border px-3 py-0.5 font-extrabold ${r.lastPrice > min * 1.1 ? 'text-red-600' : ''}`}>{iqd(r.lastPrice)}</span></td>
+                      <td className="px-2 text-center text-slate-700">{iqd(r.minPrice)}</td>
+                      <td className="px-2 text-center text-slate-700">{r.times}</td>
+                      <td className="px-2 text-center text-slate-700">{day(r.lastAt)}</td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+          {priceRows.length === 0 && <p className="text-center text-sm text-slate-400">ماكو أسعار مسجّلة لهذي المادة.</p>}
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <label className="flex items-center gap-3 text-[15px] text-slate-600">عرض
+              <select value={per} onChange={(e) => { setPer(Number(e.target.value)); setPage(1) }} className="pc-field rounded-xl border px-4 py-1.5 font-bold" aria-label="لكل صفحة">
+                {[10, 25, 50].map((n) => <option key={n} value={n}>{n}</option>)}
+              </select>لكل صفحة</label>
+            <div className="flex items-center gap-2">
+              <button type="button" disabled={pg <= 1} onClick={() => setPage(pg - 1)} className="pc-field flex h-10 w-12 items-center justify-center rounded-xl border disabled:opacity-40" aria-label="السابقة"><LineIcon n="right" className="h-5 w-5" /></button>
+              <span className="pc-page flex h-10 min-w-[3rem] items-center justify-center rounded-xl px-3 font-bold">{pg}</span>
+              <button type="button" disabled={pg >= pages} onClick={() => setPage(pg + 1)} className="pc-field flex h-10 w-12 items-center justify-center rounded-xl border disabled:opacity-40" aria-label="التالية"><LineIcon n="left" className="h-5 w-5" /></button>
+            </div>
+            <span className="pc-total flex items-center gap-3 rounded-xl border px-6 py-2 text-[15px] font-bold">إجمالي المواد : {productCount}<LineIcon n="layers" className="h-5 w-5" /></span>
+          </div>
         </div>
       )}
 

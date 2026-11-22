@@ -9,6 +9,7 @@ import BookingCodeChip from '../components/BookingCodeChip'
 import { swallow } from '../utils/swallow'
 import { BTN_DANGER_SOFT, BTN_GHOST, BTN_SUCCESS } from '../ui/classes'
 import { STATUS_LABELS } from '../statusLabels'
+import { LineIcon } from '../components/LineIcon'
 
 const statusLabels: Record<string, string> = {
   PENDING: 'بانتظار التوفير',
@@ -274,7 +275,11 @@ export default function ProcurementPage() {
 
   return (
     <div dir="rtl" className="p-6 space-y-6">
-      <h1 className="text-2xl font-bold text-[#0f2040]">طلبات المواد والمشتريات</h1>
+      {/* (ك) 11-22 زينا: الرأس والبطاقات مثل التصميم — الألوان بـindex.css (.pc-*) */}
+      <div className="flex items-center gap-3">
+        <span className="pc-logo flex h-12 w-12 items-center justify-center rounded-xl"><LineIcon n="cart" className="h-7 w-7" /></span>
+        <h1 className="text-3xl font-extrabold text-[#0f2040]">طلبات المواد والمشتريات</h1>
+      </div>
 
       {error && (
         <div className="bg-red-50 border border-red-200 text-red-700 rounded-lg p-3 text-sm">{error}</div>
@@ -282,16 +287,19 @@ export default function ProcurementPage() {
 
       {/* Stats Cards */}
       {stats && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {[
-            { label: 'إجمالي المصروفات', value: `${fmt(stats.totalSpent)} د.ع`, color: 'text-[#2c5aad]' },
-            { label: 'طلبات معلقة', value: stats.pendingCount.toString(), color: 'text-amber-600' },
-            { label: 'تم التوفير', value: stats.fulfilledCount.toString(), color: 'text-emerald-600' },
-            { label: 'مصروفات الشهر', value: `${fmt(stats.monthlySpent)} د.ع`, color: 'text-[#2c5aad]' },
+            { label: 'إجمالي المصروفات', value: `${fmt(stats.totalSpent)} د.ع`, color: 'pc-v-blue', icon: 'wallet' },
+            { label: 'طلبات معلقة', value: stats.pendingCount.toString(), color: 'pc-v-amber', icon: 'clock' },
+            { label: 'تم التوفير', value: stats.fulfilledCount.toString(), color: 'pc-v-green', icon: 'bars' },
+            { label: 'مصروفات الشهر', value: `${fmt(stats.monthlySpent)} د.ع`, color: 'pc-v-blue', icon: 'layers' },
           ].map((card, i) => (
-            <div key={i} className="rounded-xl border border-white bg-white shadow-[0_4px_20px_rgba(15,32,64,0.06)] p-5">
-              <p className="text-sm text-slate-500 mb-1">{card.label}</p>
-              <p className={`text-2xl font-bold ${card.color}`}>{card.value}</p>
+            <div key={i} className="pc-card flex items-center gap-4 rounded-2xl border px-5 py-5">
+              <span className="pc-ic flex h-14 w-14 shrink-0 items-center justify-center rounded-xl"><LineIcon n={card.icon} className="h-8 w-8" /></span>
+              <div className="min-w-0 flex-1 text-right">
+                <p className="text-lg font-bold">{card.label}</p>
+                <p className={`text-2xl font-extrabold tabular-nums ${card.color}`}>{card.value}</p>
+              </div>
             </div>
           ))}
         </div>
