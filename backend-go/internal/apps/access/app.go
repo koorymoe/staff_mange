@@ -20,6 +20,6 @@ func New() *core.SetApp {
 		"access.role_drift_fix": admin("يرجّع موظف لصلاحيات دوره"),
 		"access.exception_add":  admin("يضيف استثناء صلاحية"),
 		"access.exception_del":  admin("يشيل استثناء صلاحية"),
-		"access.audit_log":      admin("يشوف سجل تغييرات الصلاحيات"),
+		"access.audit_log":      {OwnerOnly: true, NoDelegate: true, Label: "يشوف سجل تغييرات الصلاحيات (المالك بس — دازاي 11-22)"},
 	})
 }
