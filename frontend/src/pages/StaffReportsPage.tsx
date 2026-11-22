@@ -91,6 +91,7 @@ const ICONS: Record<string, string> = {
   star: 'M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9L12 3Z',
   pulse: 'M3 12h4l2-5 4 10 2-5h6',
   chart: 'M4 20V10m6 10V4m6 16v-7m4 7H2',
+  layers: 'M12 3l9 5-9 5-9-5 9-5Zm-9 9l9 5 9-5M3 16l9 5 9-5',
 }
 const Ico = ({ n, className = 'h-4 w-4' }: { n: string; className?: string }) => (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden="true"><path d={ICONS[n]} /></svg>
@@ -158,7 +159,7 @@ function SurveysTab() {
   const [reload, setReload] = useState(0)
   const { data, error } = useApi(() => apiRequest<Surveys>('/profile-surveys'), [reload])
   const review = async (id: string) => { await apiRequest(`/profile-surveys/${id}/review`, { method: 'POST' }).catch(swallow); setReload((n) => n + 1) }
-  const heads: [string, string][] = [['', '#'], ['user', 'الموظف'], ['cap', 'التخصص / الشهادة'], ['bag', 'الوظيفة'], ['coins', 'الراتب (د.ع)'], ['chart', 'دخّل هالشهر'], ['clock', 'ساعات العقد (ساعة)'], ['cal', 'تاريخ العقد'], ['star', 'رأيه بالشركة'], ['pulse', 'الحالة']]
+  const heads: [string, string][] = [['', '#'], ['user', 'الموظف'], ['cap', 'التخصص / الشهادة'], ['bag', 'الوظيفة'], ['coins', 'الراتب (د.ع)'], ['chart', 'دخّل هالشهر'], ['clock', 'ساعات العقد (ساعة)'], ['cal', 'تاريخ العقد'], ['star', 'رأيه بالشركة'], ['layers', 'الحالة']]
   const dash = <span className="text-slate-400">—</span>
   return (
     <div className={`${card} space-y-4`}>
@@ -172,12 +173,18 @@ function SurveysTab() {
       <div className="overflow-x-auto rounded-2xl border border-slate-200" data-testid="surveys-table">
         <table className="w-full min-w-[980px] table-fixed text-[13px]">
           {/* (ك) 11-21 زينا: عرض ثابت لكل عمود — الأسماء والوظائف الطويلة تنكسر جوه عمودها، والجدول ما يطلع برا */}
-          <colgroup>{['4%', '14%', '12%', '11%', '10%', '11%', '6%', '9%', '9%', '14%'].map((w, i) => <col key={i} style={{ width: w }} />)}</colgroup>
-          <thead className="bg-slate-50 text-xs font-bold text-[#0f2040]">
+          <colgroup>{['4%', '14%', '12%', '11%', '10%', '11%', '7%', '9%', '9%', '13%'].map((w, i) => <col key={i} style={{ width: w }} />)}</colgroup>
+          <thead className="text-xs font-bold">
             <tr>
               {heads.map(([ic, h]) => (
-                <th key={h} className="px-2 py-2 text-center">
-                  <span className="flex flex-col items-center justify-center gap-1">{ic && <span className="text-amber-500"><Ico n={ic} className="h-4 w-4" /></span>}<span className="leading-snug">{h}</span></span>
+                <th key={h} className="p-1 text-center">
+                  {/* (ك) 11-22 زينا: كل عنوان بمربع لحاله (أزرق بإطار، الأيقونة فوك) — مثل التصميم */}
+                  <span className="flex h-[4.25rem] flex-col items-center justify-center gap-1 th-box rounded-xl px-1.5 py-2 shadow-sm">
+                    {ic && <span className="th-box-ic"><Ico n={ic} className="h-5 w-5" /></span>}
+                    {h.includes(' (') && h !== 'الراتب (د.ع)'
+                      ? <span className="whitespace-nowrap text-[11px] leading-tight">{h.split(' (')[0]}<small className="block text-[10px] font-semibold opacity-80">({h.split(' (')[1]}</small></span>
+                      : <span className="leading-snug">{h}</span>}
+                  </span>
                 </th>
               ))}
             </tr>

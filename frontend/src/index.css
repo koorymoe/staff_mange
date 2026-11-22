@@ -1469,3 +1469,10 @@ html.dark .matrix-courier-say{background:#2a0b0e;color:#fecaca;border-color:#7f1
 
 /* بلاغ #11: خط يدعم حروف الأوردو (ٹ ڈ ڑ ں ہ ے) */
 .lang-ur body { font-family: 'Noto Nastaliq Urdu', 'Noto Naskh Arabic', 'Jameel Noori Nastaleeq', Tahoma, sans-serif; line-height: 1.9; }
+
+/* (ك) 11-22 زينا: مربعات عناوين جدول «استمارات المعلومات» — كل عنوان بمربع أزرق لحاله.
+   بالـCSS مو بـdark: لأن dark: بتيلويند يتبع إعداد الجهاز، والوضع الليلي بالنظام يتبع html.dark */
+.th-box { border: 1px solid #bfdbfe; background-image: linear-gradient(to bottom, #eff6ff, #dbeafe); color: #0f2040; }
+.th-box-ic { color: #2563eb; }
+html.dark .th-box { border-color: rgba(96, 165, 250, 0.4); background-image: linear-gradient(to bottom, #1d3f86, #132b5e); color: #ffffff; }
+html.dark .th-box-ic { color: #bfdbfe; }
