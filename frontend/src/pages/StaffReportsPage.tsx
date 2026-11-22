@@ -179,7 +179,7 @@ function SurveysTab() {
               {heads.map(([ic, h]) => (
                 <th key={h} className="p-1 text-center">
                   {/* (ك) 11-22 زينا: كل عنوان بمربع لحاله (أزرق بإطار، الأيقونة فوك) — مثل التصميم */}
-                  <span className="flex h-[4.25rem] flex-col items-center justify-center gap-1 th-box rounded-xl px-1.5 py-2 shadow-sm">
+                  <span className="flex h-[4.25rem] flex-col items-center justify-center gap-1 th-box rounded-xl px-1.5 py-2">
                     {ic && <span className="th-box-ic"><Ico n={ic} className="h-5 w-5" /></span>}
                     {h.includes(' (') && h !== 'الراتب (د.ع)'
                       ? <span className="whitespace-nowrap text-[11px] leading-tight">{h.split(' (')[0]}<small className="block text-[10px] font-semibold opacity-80">({h.split(' (')[1]}</small></span>
