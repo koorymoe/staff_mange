@@ -1591,3 +1591,17 @@ html.dark .pc-total { background: #10264d; border-color: rgba(96, 165, 250, .6);
 html.dark .pc-row:nth-child(odd) { background: #0e1d3a; }
 html.dark .pc-row:nth-child(even) { background: #132648; }
 html.dark .pc-row:hover { background: #1a3160; }
+/* (ك) 11-22 زينا: درجات الليلي مقاسة من صورة التصميم نفسها (بالبكسل) — تغلب الي فوك */
+html.dark .pc-card, html.dark .pc-panel { background: #111d32; border-color: rgba(203, 213, 225, .45); }
+html.dark .pc-ic { background: #1e2c47; }
+html.dark .pc-tab { background: #1e2c47; border-color: #1e2c47; color: #ffffff; }
+html.dark .pc-tab-on { background: #2154ae; border-color: #2154ae; }
+html.dark .pc-field { background: #172137; border-color: rgba(148, 163, 184, .45); color: #ffffff; }
+html.dark .pc-th { background-image: linear-gradient(to bottom, #1d4383, #193567); border-color: #1d4383; }
+html.dark .pc-row:nth-child(odd) { background: #141e31; }
+html.dark .pc-row:nth-child(even) { background: #1b2942; }
+html.dark .pc-row:hover { background: #22345a; }
+html.dark .pc-price { background: #1e325b; border-color: #2c4a80; color: #ffffff; }
+html.dark .pc-page { background: #2d4bb3; }
+html.dark .pc-total { background: #162d55; border-color: #2c4a80; color: #ffffff; }
+html.dark [data-testid="prices-table"] { border-color: #1e2945; }
