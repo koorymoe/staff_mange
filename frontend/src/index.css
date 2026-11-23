@@ -1653,27 +1653,26 @@ html.dark .op-pg { background: #16243d; border-color: #31405f; color: #ffffff; }
 html.dark .op-pg-on { background: #2355b6; border-color: #2355b6; }
 
 /* ═══ (ك) 11-23 زينا: فحص المتأخرات — الجدول مثل الصورة (.la-*). الليلي مقاس بالبكسل من صورتها ═══ */
-.la-panel { background: #fff; border-color: #e2e8f0; }
-.la-field, .la-adv { background: #fff; border-color: #cbd5e1; color: #1e3a5f; }
-.la-tog { color: #475569; }
-.la-tog-on { background: #1d5bb0 !important; color: #fff !important; }
-.la-table { border-color: #dbe3ee; }
-.la-th { background: #0f2c5c; color: #fff; }
-.la-row { background: #fff; color: #0f172a; }
-.la-table .la-row:nth-child(even) { background: #f6f9fc; }
-.la-table .la-row td { border-top: 1px solid #e8eef5; }
-.la-row-warn, .la-table .la-row-warn:nth-child(even) { background: #fdf8ec; }
-.la-table .la-row-warn td { border-top: 1px solid #ecd9a8; border-bottom: 1px solid #ecd9a8; }
-.la-table .la-row-warn td:first-child { border-right: 1px solid #ecd9a8; border-radius: 0 12px 12px 0; }
-.la-table .la-row-warn td:last-child { border-left: 1px solid #ecd9a8; border-radius: 12px 0 0 12px; }
-.la-card { border-color: #e2e8f0; }
-.la-sub { color: #64748b; }
-.la-code { background: #e8f0fd; border-color: #9fbcec; color: #12408f; }
-.la-d30 { background: #7f1d1d; border-color: #b4353a; color: #fff; }
-.la-d14 { background: #dc2626; border-color: #ef4444; color: #fff; }
-.la-d7 { background: #fee2e2; border-color: #fca5a5; color: #991b1b; }
-.la-d0 { background: #fef3c7; border-color: #f2c94c; color: #854d0e; }
-.la-note { background: #fffbeb; border-color: #f3d17a; color: #78350f; }
+.la-panel { background: #fefcfb; border-color: #e8e5e1; }
+.la-field { background: #fefcfb; border-color: #d9d6d2; color: #1c2b3a; }
+.la-adv { background: #173a55; border-color: #173a55; color: #fff; }
+.la-tog { color: #1a2d44; background: #fefcfb; }
+.la-tog-on { background: #214566 !important; color: #fff !important; }
+.la-table { border-color: #edebe9; }
+.la-th { background: linear-gradient(to left, #254e6b, #153752); color: #fff; }
+.la-row { background: #fff; color: #111827; }
+.la-table .la-row:nth-child(even) { background: #fcfbfc; }
+.la-table .la-row td { border-top: 1px solid #f1f0ec; }
+.la-row-warn, .la-table .la-row-warn:nth-child(even) { background: #fff4e4; }
+.la-table .la-row-warn td { border-top: 1px solid #f3e7cf; border-bottom: 1px solid #f3e7cf; }
+.la-table .la-row-warn td:first-child { border-right: 1px solid #f3e7cf; border-radius: 0 12px 12px 0; }
+.la-table .la-row-warn td:last-child { border-left: 1px solid #f3e7cf; border-radius: 12px 0 0 12px; }
+.la-card { border-color: #e8e5e1; }
+.la-sub { color: #4b5563; }
+.la-code { background: #e4efff; border-color: #b9d5f5; color: #1e5395; }
+.la-d30, .la-d14, .la-d7 { background: #fdd7d4; border-color: #f5b8b3; color: #b4232c; }
+.la-d0 { background: #fee8ab; border-color: #f3cf6a; color: #6b4a06; }
+.la-note { background: #fff5e1; border-color: #f0d9a4; color: #1f2937; }
 html.dark .la-panel { background: #041229; border-color: #0f2a52; }
 html.dark .la-field, html.dark .la-adv { background: #0b274b; border-color: #2a4a78; color: #e5edf8; }
 html.dark .la-adv { background: #18335c; border-color: #3b557c; }

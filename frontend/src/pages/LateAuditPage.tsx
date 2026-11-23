@@ -130,12 +130,11 @@ export default function LateAuditPage() {
 
         {view === 'list' ? (
           <div className="la-table overflow-x-auto rounded-2xl border">
-            <table className="w-full min-w-[1100px] table-fixed border-separate border-spacing-y-0 text-[15px]">
-              <colgroup>{['9%', '19%', '15%', '9%', '17%', '16%', '15%'].map((w, i) => <col key={i} style={{ width: w }} />)}</colgroup>
+            <table className="min-w-full border-separate border-spacing-y-0 text-right text-sm">
               <thead>
-                <tr className="la-th h-12 font-bold">
+                <tr className="la-th">
                   {([['', 'رقم الحجز'], ['user', 'الإسم'], ['cal', 'الموعد'], ['clock', 'التأخير'], ['list', 'السبب المرجّح'], ['user', 'المدير / الكادر'], ['file', 'ملاحظة']] as const).map(([ic, h]) => (
-                    <th key={h} className="px-2 text-center"><span className="inline-flex items-center gap-1.5">{ic && <LineIcon n={ic} className="h-5 w-5" />}{h}</span></th>
+                    <th key={h} className="px-3 py-2 text-center"><span className="inline-flex items-center gap-1.5">{ic && <LineIcon n={ic} className="h-5 w-5" />}{h}</span></th>
                   ))}
                 </tr>
               </thead>
@@ -143,20 +142,20 @@ export default function LateAuditPage() {
                 {rows.map((r) => {
                   const open = r.status !== 'COMPLETED'
                   return (
-                    <tr key={r.id} className={`la-row h-14 ${r.dataIssues.length ? 'la-row-warn' : ''}`}>
-                      <td className="px-2 text-center"><Link to={`/bookings?focus=${r.id}`} className="la-code inline-block rounded-lg border px-3 py-1 text-sm font-extrabold" dir="ltr">{r.code}</Link></td>
-                      <td className="px-3 py-1.5">
+                    <tr key={r.id} className={`la-row ${r.dataIssues.length ? 'la-row-warn' : ''}`}>
+                      <td className="px-3 py-2 text-center"><Link to={`/bookings?focus=${r.id}`} className="la-code inline-block rounded-lg border px-3 py-1 text-sm font-extrabold" dir="ltr">{r.code}</Link></td>
+                      <td className="px-3 py-2">
                         <p className="font-extrabold">{r.customer ?? '—'}</p>
                         <p className="la-sub flex items-center gap-1 text-xs"><LineIcon n="wrench" className="h-3.5 w-3.5 shrink-0" />{[r.service, r.division === 'DECOR' ? 'ديكور' : 'هندسي'].filter(Boolean).join(' · ')}</p>
                       </td>
-                      <td className="px-2 text-center text-sm font-bold">
+                      <td className="px-3 py-2 text-center text-sm font-bold">
                         <span dir="ltr">{day(r.scheduledAt)}</span> ← {open ? <b className="text-red-500">بعده</b> : <span dir="ltr">{day(r.completedAt)}</span>}
                         <span className={`block ${open ? 'font-extrabold text-emerald-400' : ''}`}>{open ? 'مفتوح' : r.completedAt ? new Date(r.completedAt).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Baghdad' }) : ''}</span>
                         {r.reschedules > 0 && <span className="la-sub block text-xs font-normal">انعاد جدولته {r.reschedules} مرة</span>}
                       </td>
-                      <td className="px-2 text-center"><span className={`la-late ${r.daysLate >= 30 ? 'la-d30' : r.daysLate >= 14 ? 'la-d14' : r.daysLate >= 7 ? 'la-d7' : 'la-d0'} inline-block min-w-[4.5rem] rounded-xl border px-3 py-1 text-sm font-extrabold`}>{r.daysLate} يوم</span></td>
-                      <td className="px-2 text-center"><b>{data?.causes[r.cause] ?? r.cause}</b>{r.causeDetail && <span className="la-sub block text-xs">{r.causeDetail}</span>}</td>
-                      <td className="px-2">
+                      <td className="px-3 py-2 text-center"><span className={`la-late ${r.daysLate >= 30 ? 'la-d30' : r.daysLate >= 14 ? 'la-d14' : r.daysLate >= 7 ? 'la-d7' : 'la-d0'} inline-block min-w-[4.5rem] rounded-xl border px-3 py-1 text-sm font-extrabold`}>{r.daysLate} يوم</span></td>
+                      <td className="px-3 py-2 text-center"><b>{data?.causes[r.cause] ?? r.cause}</b>{r.causeDetail && <span className="la-sub block text-xs">{r.causeDetail}</span>}</td>
+                      <td className="px-3 py-2">
                         {r.leader || r.team ? (
                           <div className="flex items-center justify-center gap-2">
                             <span className="text-center"><b className="block text-sm">{r.leader ?? '—'}</b>{r.team && <span className="la-sub block text-xs">{r.team}</span>}</span>
@@ -164,7 +163,7 @@ export default function LateAuditPage() {
                           </div>
                         ) : <p className="text-center">-</p>}
                       </td>
-                      <td className="px-2 text-center">{r.dataIssues.length ? r.dataIssues.map((d) => <span key={d} className="la-note mb-0.5 flex items-start gap-1.5 rounded-lg border px-2 py-1 text-xs font-bold"><LineIcon n="warn" className="mt-0.5 h-4 w-4 shrink-0 text-amber-400" />{d}</span>) : '-'}</td>
+                      <td className="px-3 py-2 text-center">{r.dataIssues.length ? r.dataIssues.map((d) => <span key={d} className="la-note mb-0.5 flex items-start gap-1.5 rounded-lg border px-2 py-1 text-xs font-bold"><LineIcon n="warn" className="mt-0.5 h-4 w-4 shrink-0 text-amber-400" />{d}</span>) : '-'}</td>
                     </tr>
                   )
                 })}
