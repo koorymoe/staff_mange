@@ -1605,3 +1605,49 @@ html.dark .pc-price { background: #1e325b; border-color: #2c4a80; color: #ffffff
 html.dark .pc-page { background: #2d4bb3; }
 html.dark .pc-total { background: #162d55; border-color: #2c4a80; color: #ffffff; }
 html.dark [data-testid="prices-table"] { border-color: #1e2945; }
+
+/* (ك) 11-23 زينا: «خطط الإدارات والوحدات» — الليلي مقاس بالبكسل من صورة التصميم، والنهاري فاتح بنفس التوزيع */
+.op-card, .op-panel { background: #ffffff; border-color: #cbd5e1; color: #0f2040; }
+.op-field { background: #ffffff; border-color: #cbd5e1; color: #0f2040; }
+.op-ic { background: #eff6ff; }
+.op-c-blue { color: #2563eb; } .op-c-red { color: #dc2626; } .op-c-amber { color: #d97706; } .op-c-green { color: #059669; } .op-c-list { color: #2563eb; }
+.op-ic.op-c-red { background: #fef2f2; } .op-ic.op-c-amber { background: #fffbeb; } .op-ic.op-c-green { background: #ecfdf5; }
+.op-n.op-c-blue, .op-n.op-c-list { color: #0f2040; }
+.op-add { background: #2555b4; color: #ffffff; }
+.op-table { border-color: #cbd5e1; }
+.op-th { background: linear-gradient(to bottom, #2563eb, #1d4ed8); color: #ffffff; }
+.op-row { color: #0f2040; border-top: 1px solid #e2e8f0; }
+.op-row:nth-child(even) { background: #f1f5fb; }
+.op-pill-none { background: #f1f5f9; border-color: #cbd5e1; color: #475569; }
+.op-pill-draft { background: #ccfbf1; border-color: #5eead4; color: #115e59; } .op-pill-draft .op-dot { background: #14b8a6; }
+.op-pill-wait { background: #fef3c7; border-color: #fcd34d; color: #92400e; } .op-pill-wait .op-dot { background: #f59e0b; }
+.op-pill-ok { background: #d1fae5; border-color: #6ee7b7; color: #065f46; } .op-pill-ok .op-dot { background: #10b981; }
+.op-pill-ret { background: #fee2e2; border-color: #fca5a5; color: #991b1b; } .op-pill-ret .op-dot { background: #ef4444; }
+.op-open { background: #ffffff; border-color: #cbd5e1; color: #0f2040; }
+.op-foot { background: #f8fafc; border-color: #e2e8f0; color: #334155; }
+.op-pg { background: #ffffff; border-color: #cbd5e1; color: #0f2040; }
+.op-pg-on { background: #2355b6; border-color: #2355b6; color: #ffffff; }
+html.dark .op-card, html.dark .op-panel { background: #13213a; border-color: #31405f; color: #ffffff; }
+html.dark .op-field { background: #1c2c46; border-color: #4e5c75; color: #ffffff; }
+html.dark .op-ic.op-c-blue { background: #2e4272; color: #c7d7fb; }
+html.dark .op-ic.op-c-red { background: #4b2b3d; color: #f87171; }
+html.dark .op-ic.op-c-amber { background: #42402f; color: #facc15; }
+html.dark .op-ic.op-c-green { background: #224647; color: #4ade80; }
+html.dark .op-ic.op-c-list { background: #2a4071; color: #c7d7fb; }
+html.dark .op-n.op-c-blue, html.dark .op-n.op-c-list { color: #ffffff; }
+html.dark .op-n.op-c-red { color: #f87171; } html.dark .op-n.op-c-amber { color: #facc15; } html.dark .op-n.op-c-green { color: #4ade80; }
+html.dark .op-add { background: linear-gradient(to bottom, #2555b4, #214ea3); color: #ffffff; }
+html.dark .op-table { border-color: #17263c; }
+html.dark .op-th { background: linear-gradient(to bottom, #1f3866, #192f53); color: #ffffff; }
+html.dark .op-row { color: #ffffff; border-top-color: #1c2a45; }
+html.dark .op-row:nth-child(odd) { background: #121e33; }
+html.dark .op-row:nth-child(even) { background: #192a42; }
+html.dark .op-pill-none { background: #2b3a57; border-color: #3a4a69; color: #e2e8f0; }
+html.dark .op-pill-draft { background: #1f5661; border-color: #2a8a8f; color: #f2f2f2; } html.dark .op-pill-draft .op-dot { background: #3cf3ec; }
+html.dark .op-pill-wait { background: #4a3d12; border-color: #a16207; color: #fde68a; }
+html.dark .op-pill-ok { background: #14432f; border-color: #15803d; color: #bbf7d0; }
+html.dark .op-pill-ret { background: #4b1d27; border-color: #b91c1c; color: #fecaca; }
+html.dark .op-open { background: #182843; border-color: #3a4a69; color: #ffffff; }
+html.dark .op-foot { background: #13213a; border-color: #1c2a45; color: #ffffff; }
+html.dark .op-pg { background: #16243d; border-color: #31405f; color: #ffffff; }
+html.dark .op-pg-on { background: #2355b6; border-color: #2355b6; }

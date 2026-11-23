@@ -17,6 +17,16 @@ const P: Record<string, string> = {
   right: 'm9 6 6 6-6 6',
   box: 'M12 3l8 4.5v9L12 21l-8-4.5v-9L12 3Zm0 9 8-4.5M12 12v9M12 12 4 7.5',
   user: 'M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8Zm-7 9a7 7 0 0 1 14 0',
+  file: 'M6 3h8l4 4v14H6zM14 3v4h4M9 12h6m-6 4h6',
+  xCircle: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18ZM9 9l6 6m0-6-6 6',
+  check: 'm5 12 5 5 9-10',
+  checkCircle: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18Zm-4-9 3 3 5-6',
+  list: 'M9 6h11M9 12h11M9 18h11M4.5 6h.01M4.5 12h.01M4.5 18h.01',
+  bank: 'M3 9 12 4l9 5M5 9v9m4-9v9m6-9v9m4-9v9M3 20h18',
+  filter: 'M3 5h18l-7 8v6l-4 2v-8L3 5Z',
+  plus: 'M12 5v14M5 12h14',
+  ext: 'M14 4h6v6M20 4l-9 9M18 14v6H4V6h6',
+  award: 'M12 15a5 5 0 1 0 0-10 5 5 0 0 0 0 10Zm-3 0-1 6 4-2 4 2-1-6',
   trendDown: 'M3 7l6 6 4-4 8 8m0 0v-5m0 5h-5',
 }
 export function LineIcon({ n, className = 'h-4 w-4' }: { n: string; className?: string }) {
