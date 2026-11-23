@@ -87,32 +87,32 @@ export default function SupplierRelationsPage() {
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
         {/* (ك 11-23) الجدول حسب صورة زينا: رأس بأيقونات، وكل مورد بطاقة — الليلي مقاس من الصورة (.sp-*) */}
         <div className="sp-wrap overflow-x-auto xl:col-span-2">
-          <div className="min-w-[860px]">
+          <div className="min-w-[640px]">
             <div className="sp-head sp-grid">
               {([['store', 'المورد'], ['tag', 'النوع'], ['pulse', 'آخر حركة'], ['phone', 'آخر تواصل'], ['cart', 'آخر شراء'], ['cal', '٩٠ يوم']] as const).map(([i, h]) => (
-                <span key={h} className="sp-th"><LineIcon n={i} className="h-6 w-6" />{h}</span>
+                <span key={h} className="sp-th"><LineIcon n={i} className="h-4 w-4" />{h}</span>
               ))}
             </div>
-            <div className="mt-3 space-y-3">
+            <div className="mt-2 space-y-2">
               {rows.map((r) => (
                 <div key={r.kind + r.id} role="button" tabIndex={0} onClick={() => setOpen(r)} onKeyDown={(e) => { if (e.key === 'Enter') setOpen(r) }}
                   className={`sp-row sp-grid ${open?.id === r.id && open.kind === r.kind ? 'sp-row-on' : ''}`}>
                   <span className="flex items-center gap-3">
-                    <span className="sp-ibox"><LineIcon n="briefcase" className="h-6 w-6" /></span>
+                    <span className="sp-ibox"><LineIcon n="briefcase" className="h-5 w-5" /></span>
                     <span><b className="sp-name">{r.name}</b><span className="sp-phone block tabular-nums">{r.phone}{r.specialty ? ` · ${r.specialty}` : ''}</span></span>
                   </span>
-                  <span className="sp-type"><LineIcon n={r.kind === 'TECH' ? 'store' : 'cube'} className="h-6 w-6 sp-type-ico" />{r.kind === 'TECH' ? 'تقنيين' : 'مشتريات'}</span>
+                  <span className="sp-type"><LineIcon n={r.kind === 'TECH' ? 'store' : 'cube'} className="h-5 w-5 sp-type-ico" />{r.kind === 'TECH' ? 'تقنيين' : 'مشتريات'}</span>
                   <span>
                     <span className={`sp-pill ${r.overdue || r.daysSince == null ? 'sp-pill-bad' : 'sp-pill-ok'}`}>
-                      <LineIcon n={r.daysSince == null ? 'ban' : r.overdue ? 'clock' : 'checkCircle'} className="h-6 w-6 shrink-0" />
+                      <LineIcon n={r.daysSince == null ? 'ban' : r.overdue ? 'clock' : 'checkCircle'} className="h-4 w-4 shrink-0" />
                       <span>{r.daysSince == null ? <>ماكو<br />ولا حركة</> : r.daysSince === 0 ? 'اليوم' : `قبل ${r.daysSince} يوم`}</span>
                     </span>
                   </span>
                   <span className="sp-cell">{r.lastContactAt ? <>{when(r.lastContactAt)} · {r.lastContact}{r.lastContactBy && <span className="sp-muted"> ({r.lastContactBy})</span>}</> : '—'}</span>
                   <span className="sp-cell">{r.lastBuyAt ? `${when(r.lastBuyAt)} · ${r.lastBuy}` : '—'}</span>
                   <span className="sp-90">
-                    <span className="inline-flex items-center gap-2"><LineIcon n="chat" className="h-5 w-5" />{r.contacts90} تواصل</span>
-                    <span className="inline-flex items-center gap-2"><LineIcon n="cart" className="h-5 w-5" />{r.buys90} شراء</span>
+                    <span className="inline-flex items-center gap-2"><LineIcon n="chat" className="h-4 w-4" />{r.contacts90} تواصل</span>
+                    <span className="inline-flex items-center gap-2"><LineIcon n="cart" className="h-4 w-4" />{r.buys90} شراء</span>
                   </span>
                 </div>
               ))}

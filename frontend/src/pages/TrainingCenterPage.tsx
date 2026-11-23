@@ -126,18 +126,11 @@ function NotesTab({ rows }: { rows: TcInsight[] | null }) {
   const heads: [string, string][] = [['user', 'الموظف'], ['shield', 'الدور'], ['cal', 'حجوزات'], ['clock', 'مدته'], ['pulse', 'معدل الفريق'], ['warn', 'شكاوى'], ['xCircle', 'توقف'], ['layers', 'جزئي'], ['award', 'مهارات'], ['check', 'آخر اختبار'], ['file', 'ملاحظة ماتركس']]
   return (
     <div className="tc-wrap">
-      <div className="tc-head">
-        <span className="tc-head-ico"><LineIcon n="user" className="h-7 w-7" /></span>
-        <div>
-          <h2 className="tc-title">متابعة أداء الموظفين</h2>
-          <p className="tc-sub">معلومات الإنجاز، التوقف، الشكاوى والأداء اليومي لكل موظف</p>
-        </div>
-      </div>
       <p className="tc-info"><span className="tc-info-ico">i</span>مدة الشغلة = من بدء العمل لحد الإنجاز (آخر ١٥ يوم)، ومعدل الفريق = نفس الخدمات الي اشتغلها.</p>
       <div className="tc-table overflow-x-auto">
-        <table className="w-full min-w-[900px] text-sm">
+        <table className="w-full min-w-[760px] text-xs">
           <thead><tr>
-            {heads.map(([i, h]) => <th key={h} className="tc-th"><LineIcon n={i} className="tc-th-ico mx-auto mb-1 h-5 w-5" />{h}</th>)}
+            {heads.map(([i, h]) => <th key={h} className="tc-th"><LineIcon n={i} className="tc-th-ico mx-auto mb-0.5 h-4 w-4" />{h}</th>)}
           </tr></thead>
           <tbody>
             {rows.map((x) => {
@@ -161,7 +154,7 @@ function NotesTab({ rows }: { rows: TcInsight[] | null }) {
                     source={<>محاولات الاختبار بمركز التدريب: آخر محاولة خلّصها هذا الموظف (حسب وقت الإنهاء).</>} /> : '—'}</td>
                   <td className="tc-td text-xs tc-note">
                     {x.strengths.length === 0 && x.reasons.length === 0 ? <span className="tc-ok">✅ مستقر</span>
-                      : <span className="whitespace-nowrap">{x.reasons.length ? '⚠️' : '📁'} {[...x.strengths, ...x.reasons.slice(0, 2)].join(' · ')}</span>}
+                      : <span>{x.reasons.length ? '⚠️' : '📁'} {[...x.strengths, ...x.reasons.slice(0, 2)].join(' · ')}</span>}
                   </td>
                 </tr>
               )

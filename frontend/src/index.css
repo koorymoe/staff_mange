@@ -1948,3 +1948,27 @@ html.dark .sp-pill-ok { color: #b7f3cf; background: #173d33; border-color: #2560
 html.dark .sp-cell { color: #abb1bf; }
 html.dark .sp-muted { color: #7480a0; }
 html.dark .sp-90 { color: #dfe4f3; border-inline-start-color: #464082; }
+
+/* (ك 11-23) طلب زينا: صغّر الجداول حتى كلشي يبين بصفحة وحدة */
+.sp-grid { grid-template-columns: 2fr 1fr 1.1fr 1.1fr 1.1fr 1fr; gap: .5rem; }
+.sp-head { padding: .55rem .9rem; border-radius: .8rem; }
+.sp-th { gap: .35rem; font-size: .8rem; }
+.sp-row { padding: .45rem .9rem; border-radius: .8rem; }
+.sp-ibox { width: 2.5rem; height: 2.3rem; border-radius: .6rem; flex-shrink: 0; }
+.sp-name { font-size: .9rem; }
+.sp-phone { font-size: .78rem; }
+.sp-type { gap: .35rem; font-size: .8rem; }
+.sp-pill { gap: .35rem; padding: .25rem .6rem; border-radius: .65rem; font-size: .75rem; line-height: 1.25; }
+.sp-cell { font-size: .75rem; }
+.sp-90 { gap: .15rem; padding-inline-start: .6rem; font-size: .75rem; }
+.tc-th { padding: .4rem .3rem; font-size: 11px; }
+.tc-td { padding: .35rem .3rem; }
+.tc-exam { font-size: 13px; }
+.tc-note { min-width: 14rem; line-height: 1.5; }
+.li-table table { font-size: 12px; min-width: 0; }
+.li-table th, .li-table td { padding: .4rem .3rem; }
+.li-table .li-thi { width: 1rem; height: 1rem; }
+.li-table .li-code { font-size: 11px; word-break: break-all; max-width: 7.5rem; }
+.li-table .li-net { padding: .15rem .45rem; }
+.li-table .li-btn { width: 3.5rem; padding: .25rem .2rem; font-size: 10px; border-radius: .6rem; }
+.li-table .li-edit { width: 2rem; font-size: .9rem; }
