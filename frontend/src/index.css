@@ -1732,7 +1732,5 @@ html.dark .rd-tri { color: #7f91af; }
 html.dark .sr-meta { border-color: #2f4568; background: #0b1a33; color: #e2e8f0; }
 html.dark .sr-meta-sep { border-color: #2f4568; }
 html.dark .sr-done-list .sr-done { border-bottom-color: #1d2f4d; }
-.sr-view-on { background: #2563eb; color: #fff; }
 .sr-match-none { background: #f8fafc; color: #475569; --tw-ring-color: #cbd5e1; }
-html.dark .sr-view-on { background: #1f6fe0; color: #fff; }
 html.dark .sr-match-none { background: #0b1a33; color: #cbd5e1; --tw-ring-color: #2f4568; }
