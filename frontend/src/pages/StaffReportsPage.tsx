@@ -29,10 +29,11 @@ export default function StaffReportsPage() {
   return (
     <div dir="rtl" className="space-y-4">
       <div className="flex items-center gap-4">
-        <span className="sr-logo flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl"><Ico n="clipList" className="h-9 w-9" /></span>
+        {/* (ك) 11-23 زينا: بتبويب التقارير اليومية العنوان مثل الصورة */}
+        <span className="sr-logo flex h-16 w-16 shrink-0 items-center justify-center rounded-full"><Ico n={tab === 'daily' ? 'chart' : 'clipList'} className="h-9 w-9" /></span>
         <div>
-          <h1 className="text-3xl font-extrabold text-[#0f2040]">تقارير الموظفين</h1>
-          <p className="mt-0.5 text-[15px] text-slate-500">متابعة تقارير الأداء والإنجاز اليومي للموظفين</p>
+          <h1 className="text-3xl font-extrabold text-[#0f2040]">{tab === 'daily' ? 'تقارير العمل والمشاريع' : 'تقارير الموظفين'}</h1>
+          <p className="mt-0.5 text-[15px] text-slate-500">{tab === 'daily' ? 'متابعة تقارير العمل اليومية، مراقبة الإنجاز، وكشف المعوقات' : 'متابعة تقارير الأداء والإنجاز اليومي للموظفين'}</p>
         </div>
       </div>
       <div className="flex flex-wrap gap-4">
@@ -52,28 +53,14 @@ function DailyTab() {
   const isOwner = useSession().employee?.actualRole === 'OWNER'
   // (دازاي 11-21) «اريد احذف الزايدات» — زر «كل تقاريره» يعرض تقارير موظف واحد (آخر ٩٠ يوم)
   const [emp, setEmp] = useState<{ id: string; name: string } | null>(null)
+  const [filter, setFilter] = useState<'' | 'late' | 'ontime'>('')
+  const [q, setQ] = useState('')
+  const [grid, setGrid] = useState(false)
   const { data, error } = useApi(() => apiRequest<Daily>(emp ? `/daily-reports?employeeId=${emp.id}` : `/daily-reports?day=${day}`), [day, reload, emp?.id])
+  const shown = (data?.reports ?? []).filter((r) => (!filter || (filter === 'late' ? r.late : !r.late)) && (!q.trim() || `${r.employeeName} ${r.body}`.includes(q.trim())))
   // (ك) 11-22 زينا: تصميم التقارير اليومية — شريط التاريخ والعدّاد، تنبيه الي ما كتبوا، وكل تقرير ببطاقة
   return (
     <div className="sr-panel space-y-4 rounded-3xl border p-5">
-      <div className="flex flex-wrap items-center gap-4">
-        {emp ? (
-          <span className="flex items-center gap-2 text-sm"><b className="text-[#0f2040]">كل تقارير {emp.name}</b> ({data?.reports.length ?? '…'})
-            <button type="button" onClick={() => setEmp(null)} className="sr-chip rounded-xl border px-3 py-1.5 text-xs font-bold">↩ رجوع لليوم</button></span>
-        ) : (
-          <label className="sr-box flex w-full items-center sm:w-72 gap-3 rounded-2xl border px-4 py-2.5">
-            <Ico n="cal" className="h-6 w-6 shrink-0" />
-            <input type="date" value={day} onChange={(e) => e.target.value && setDay(e.target.value)} className="w-full bg-transparent text-center text-lg font-bold outline-none" />
-          </label>
-        )}
-        {data && !emp && (
-          <div className="sr-box mx-auto flex items-center gap-4 rounded-2xl border px-5 py-2.5 text-base font-bold sm:gap-8 sm:px-10 sm:text-lg">
-            <span className="flex items-center gap-2"><Ico n="file" className="h-7 w-7" />كتبوا: <b className="text-3xl font-extrabold text-emerald-500">{data.reports.length}</b></span>
-            <span className="h-7 w-px bg-current opacity-30" />
-            <span className="flex items-center gap-2"><Ico n="file" className="h-7 w-7" />ما كتبوا: <b className={`text-3xl font-extrabold ${data.missing.length ? 'text-red-500' : 'text-emerald-500'}`}>{data.missing.length}</b></span>
-          </div>
-        )}
-      </div>
       {error && <p className="text-sm text-red-600">{error}</p>}
       {data && data.missing.length > 0 && (
         <div className="sr-alert flex items-center gap-3 rounded-2xl border px-4 py-3 text-sm">
@@ -81,10 +68,38 @@ function DailyTab() {
           <p><b className="text-base">داوموا وما كتبوا تقريرهم:</b> {data.missing.map((m) => m.employeeName).join('، ')} <span className="text-xs opacity-80">(تنقفل عليهم الشاشات لحد ما يكتبون)</span></p>
         </div>
       )}
-      <div className="space-y-3">
-        {data?.reports.map((r) => (
-          <div key={r.id} className="sr-card flex flex-col gap-3 rounded-2xl border p-3 md:flex-row md:items-stretch md:gap-4">
-            <div className="flex shrink-0 items-center gap-3 md:w-72 md:items-start md:pt-1">
+      {/* (ك) 11-23 زينا: شريط مثل الصورة — التصفية، البحث، التاريخ، وقائمة/بطاقات */}
+      <div className="flex flex-wrap items-center gap-3">
+        <label className="sr-box flex items-center gap-2 rounded-xl border px-4 py-2 text-[15px] font-bold">
+          <select value={filter} onChange={(e) => setFilter(e.target.value as typeof filter)} className="bg-transparent outline-none" aria-label="تصفية التقارير">
+            <option value="">جميع التقارير ({data?.reports.length ?? 0})</option>
+            <option value="late">المتأخرة</option>
+            <option value="ontime">بوقتها</option>
+          </select>
+          <Ico n="filter" className="h-5 w-5 shrink-0" />
+        </label>
+        <label className="sr-box flex min-w-[240px] max-w-xl flex-1 items-center gap-2 rounded-xl border px-4 py-2">
+          <Ico n="search" className="h-5 w-5 shrink-0 opacity-80" />
+          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="ابحث عن موظف، تقرير أو مهمة..." className="w-full bg-transparent text-[15px] outline-none" />
+        </label>
+        {emp ? (
+          <span className="flex items-center gap-2 text-sm"><b className="text-[#0f2040]">كل تقارير {emp.name}</b> ({data?.reports.length ?? '…'})
+            <button type="button" onClick={() => setEmp(null)} className="sr-chip rounded-xl border px-3 py-1.5 text-xs font-bold">↩ رجوع لليوم</button></span>
+        ) : (
+          <label className="sr-box flex items-center gap-2 rounded-xl border px-3 py-2">
+            <Ico n="cal" className="h-5 w-5 shrink-0" />
+            <input type="date" value={day} onChange={(e) => e.target.value && setDay(e.target.value)} className="bg-transparent text-[15px] font-bold outline-none" aria-label="اليوم" />
+          </label>
+        )}
+        <div className="sr-box ms-auto flex overflow-hidden rounded-xl border">
+          <button type="button" onClick={() => setGrid(false)} aria-label="قائمة" className={`px-4 py-2 ${!grid ? 'sr-view-on' : ''}`}><Ico n="list" className="h-5 w-5" /></button>
+          <button type="button" onClick={() => setGrid(true)} aria-label="بطاقات" className={`px-4 py-2 ${grid ? 'sr-view-on' : ''}`}><Ico n="grid" className="h-5 w-5" /></button>
+        </div>
+      </div>
+      <div className={grid ? 'grid grid-cols-1 gap-3 xl:grid-cols-2' : 'space-y-3'}>
+        {shown.map((r) => (
+          <div key={r.id} className={`sr-card flex flex-col gap-3 rounded-2xl border p-3 md:items-stretch md:gap-4 ${grid ? '' : 'md:flex-row'}`}>
+            <div className="flex shrink-0 items-center gap-3 md:w-72">
               <span className="sr-ic flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl"><Ico n="layers" className="h-8 w-8" /></span>
               <div className="min-w-0 space-y-1.5">
                 <Link to={`/employee-dossier?id=${r.employeeId}`} className="flex items-center gap-2 text-lg font-bold text-[#0f2040] hover:underline"><Ico n="user" className="h-6 w-6 shrink-0 opacity-80" />{r.employeeName}</Link>
@@ -102,14 +117,14 @@ function DailyTab() {
             </div>
             {isOwner && <>
               <div className="sr-sep hidden w-px shrink-0 md:block" />
-              <div className="flex shrink-0 items-center justify-end md:items-start md:px-3 md:pt-1">
+              <div className="flex shrink-0 items-center justify-end md:px-3">
                 <DeleteButton className="sr-del" label="🗑️ حذف" confirm={`تحذف تقرير ${r.employeeName}؟ ينحذف وياه تحليل ماتركس، وما يرجع.`}
                   onConfirm={async () => { await apiRequest(`/daily-reports/${r.id}`, { method: 'DELETE' }); setReload((n) => n + 1) }} />
               </div>
             </>}
           </div>
         ))}
-        {data && data.reports.length === 0 && <p className="py-4 text-center text-sm text-slate-400">{emp ? 'ماكو تقارير إله.' : 'ماكو تقارير لهذا اليوم.'}</p>}
+        {data && shown.length === 0 && <p className="py-4 text-center text-sm text-slate-400">{emp ? 'ماكو تقارير إله.' : 'ماكو تقارير لهذا اليوم.'}</p>}
       </div>
     </div>
   )
@@ -146,23 +161,21 @@ function ReportBody({ body, late }: { body: string; late?: boolean }) {
       {meta.length > 0 && (
         <div className="sr-meta flex flex-wrap items-stretch rounded-xl border">
           {meta.map((x, i) => (
-            <span key={i} className={`flex flex-1 items-center justify-center gap-2 px-4 py-1.5 text-sm ${i ? 'sr-meta-sep border-r' : ''}`}><Ico n={x.ic} className="h-5 w-5 shrink-0" />{x.text}</span>
+            <span key={i} className={`flex flex-1 items-center justify-center gap-2 whitespace-nowrap px-4 py-1.5 text-sm ${i ? 'sr-meta-sep border-r' : ''}`}><Ico n={x.ic} className="h-5 w-5 shrink-0" />{x.text}</span>
           ))}
         </div>
       )}
       {shown.length > 0 && (
-        <div className={allDone ? 'sr-done-list' : 'space-y-0'}>
+        <div className={`${allDone ? 'sr-done-list' : ''} ${meta.length > 0 && rest.length > 3 ? 'cursor-pointer' : ''}`} title={meta.length > 0 && rest.length > 3 ? (full ? 'اضغط حتى تطوي التقرير' : 'اضغط حتى تشوف التقرير كامل') : undefined} onClick={() => { if (meta.length > 0 && rest.length > 3) setFull((v) => !v) }}>
           {shown.map((l, i) => {
             const t = l.replace(/^[-•✓*]\s*/, '')
             return allDone
               ? <p key={i} className="sr-done flex items-start gap-2"><span className="mt-1.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-emerald-500 text-[10px] font-extrabold text-white">✓</span>{t}</p>
-              : <p key={i} className={`flex items-start gap-2 ${fold ? 'truncate' : ''}`}><span className="mt-3 h-1.5 w-1.5 shrink-0 rounded-full bg-sky-500" /><span className={`min-w-0 ${fold ? 'truncate' : 'whitespace-pre-wrap'}`}>{t}</span></p>
+              : <p key={i} className={`flex items-start gap-2 ${fold ? 'truncate' : ''}`}><span className="mt-3 h-1.5 w-1.5 shrink-0 rounded-full bg-sky-500" /><span className={`min-w-0 ${fold ? 'truncate' : 'whitespace-pre-wrap'}`}>{t}{fold && i === shown.length - 1 ? ' …' : ''}</span></p>
           })}
         </div>
       )}
-      {meta.length > 0 && rest.length > 3 && (
-        <button type="button" onClick={() => setFull((v) => !v)} className="text-xs font-bold text-sky-600 hover:underline">{full ? 'طوي التقرير ▴' : `عرض التقرير كامل (${rest.length} سطر) ▾`}</button>
-      )}
+
     </div>
   )
 }
@@ -179,6 +192,10 @@ const ICONS: Record<string, string> = {
   star: 'M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9L12 3Z',
   pulse: 'M3 12h4l2-5 4 10 2-5h6',
   chart: 'M4 20V10m6 10V4m6 16v-7m4 7H2',
+  grid: 'M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z',
+  list: 'M9 6h11M9 12h11M9 18h11M4.5 6h.01M4.5 12h.01M4.5 18h.01',
+  filter: 'M3 5h18l-7 8v6l-4 2v-8L3 5Z',
+  search: 'M11 18a7 7 0 1 0 0-14 7 7 0 0 0 0 14Zm10 3-5-5',
   layers: 'M12 3l9 5-9 5-9-5 9-5Zm-9 9l9 5 9-5M3 16l9 5 9-5',
   clip: 'M9 4h6v3H9zM7 5H5v16h14V5h-2M9 12h6m-6 4h4',
   chat: 'M4 5h16v11H9l-5 4V5Z',
@@ -415,7 +432,7 @@ function MatchRow({ r, onDone }: { r: Report; onDone: () => void }) {
   const [err, setErr] = useState('')
   const { data } = useApi(() => apiRequest<MatchDetail>(`/daily-reports/${r.id}/match`), [r.id], { enabled: open })
   const status = data?.status ?? r.matchStatus
-  if (!status) return <button onClick={() => setOpen(true)} className="mt-1 text-xs text-slate-400 hover:underline">🔎 طابق ويا الشغل المسجّل</button>
+  if (!status) return <button onClick={() => setOpen(true)} className="sr-match-none rounded-full px-4 py-1.5 text-sm font-bold ring-1">🔎 طابق ويا الشغل المسجّل ▾</button>
   const [label, cls] = MATCH_BADGE[status] ?? [status, 'bg-slate-50 text-slate-600 ring-slate-200']
   const review = async (verdict: string) => {
     setErr('')
