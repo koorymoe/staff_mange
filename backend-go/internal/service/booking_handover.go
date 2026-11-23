@@ -76,15 +76,32 @@ func (s *BookingService) TechContacted(id, empID, note string) (*model.Booking, 
 	if err := s.repo.TechContacted(id, note); err != nil {
 		return nil, err
 	}
-	if s.notifications != nil {
-		var who string
-		if e, _ := s.employees.FindByID(empID); e != nil {
-			who = e.Name
-		}
-		_ = s.notifications.CreateForTechContactWatchers("tech_contact_report",
-			fmt.Sprintf("☎️ تقرير اتصال — %s · الحجز %s: %s", who, b.Code, note), empID)
-	}
+	s.reportTechContact(b, empID, note)
 	return s.repo.FindByID(id)
+}
+
+// reportTechContact يوصل تقرير الاتصال للمراقب ومدراء العمليات والإدارة ونوابهم.
+func (s *BookingService) reportTechContact(b *model.Booking, empID, note string) {
+	if s.notifications == nil {
+		return
+	}
+	var who string
+	if e, _ := s.employees.FindByID(empID); e != nil {
+		who = e.Name
+	}
+	_ = s.notifications.CreateForTechContactWatchers("tech_contact_report",
+		fmt.Sprintf("☎️ تقرير اتصال — %s · الحجز %s: %s", who, b.Code, note), empID)
+}
+
+// markContactAttempt (ك 11-23) «الزبون ما رد» و«يرجع خبر» و«أجّل» = التقني اتصل وكتب ملاحظة،
+// فتنحسب تقرير اتصال (ما ينخصم عليه ولا يبقى الرقم الأحمر). أول مرة بس.
+func (s *BookingService) markContactAttempt(b *model.Booking, empID, note string) {
+	if b.TechContactedAt != nil {
+		return
+	}
+	if err := s.repo.TechContacted(b.ID, note); err == nil {
+		s.reportTechContact(b, empID, note)
+	}
 }
 
 func (s *BookingService) TechDiagnose(id, empID, diagnosis string) (*model.Booking, error) {
@@ -262,9 +279,11 @@ func (s *BookingService) TechWaiting(id, empID, note, kind string) (*model.Booki
 	if err != nil {
 		return nil, err
 	}
-	if _, err := s.handoverOwned(id, empID); err != nil {
+	b, err := s.handoverOwned(id, empID)
+	if err != nil {
 		return nil, err
 	}
+	s.markContactAttempt(b, empID, n)
 	return s.MarkWaiting(id, n, empID, kind)
 }
 
@@ -273,9 +292,11 @@ func (s *BookingService) TechPostpone(id, empID, when, reason string) (*model.Bo
 	if err != nil {
 		return nil, err
 	}
-	if _, err := s.handoverOwned(id, empID); err != nil {
+	b, err := s.handoverOwned(id, empID)
+	if err != nil {
 		return nil, err
 	}
+	s.markContactAttempt(b, empID, n)
 	return s.Postpone(id, when, n, empID)
 }
 

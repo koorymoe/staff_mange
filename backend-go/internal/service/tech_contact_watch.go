@@ -82,7 +82,7 @@ func (w *TechContactWatch) remind() {
 	for _, p := range rows {
 		var recent bool
 		_ = w.db.Get(&recent, `SELECT EXISTS (SELECT 1 FROM "Notification" WHERE "employeeId" = $1 AND type = 'tech_contact_reminder'
-			AND message LIKE '%' || $2 || '%' AND "createdAt" > now() - interval '235 minutes')`, p.TechID, p.Ref)
+			AND strpos(message, $2) > 0 AND "createdAt" > now() - interval '235 minutes')`, p.TechID, refLabel(p)+" —")
 		if recent {
 			continue
 		}
@@ -98,7 +98,9 @@ func (w *TechContactWatch) remind() {
 // deduct بعد ٢٤ ساعة بلا تقرير: نقطة وحدة، مرة وحدة لكل حجز/استفسار.
 func (w *TechContactWatch) deduct() {
 	var rows []pendingContact
-	if err := w.db.Select(&rows, `SELECT * FROM (`+pendingSQL+`) p WHERE p.since < now() - interval '24 hours'`); err != nil {
+	if err := w.db.Select(&rows, `SELECT * FROM (`+pendingSQL+`) p WHERE p.since < now() - interval '24 hours'
+		-- (ك 11-23) القاعدة تبدي من يوم انطبقت: الي انحوّل قبلها ما ينحاسب عليه بأثر رجعي
+		AND p.since >= (SELECT "appliedAt" FROM "SchemaMigration" WHERE version = '0522_tech_contact_report')`); err != nil {
 		log.Printf("[tech-contact] deduct: %v", err)
 		return
 	}
@@ -114,9 +116,13 @@ func (w *TechContactWatch) deduct() {
 	for _, p := range rows {
 		// (ك 11-23) يبدي باسم المعيار حتى ينحسب من نقطة «تنفيذ المهام الموكلة إليه» — نفس خصم تقصير التثبيت
 		reason := fmt.Sprintf("%s — %s: ما رفع تقرير اتصال %s خلال %d ساعة من التحويل", w.taskCriterion(), TechContactKpiReason, refLabel(p), techContactHours)
-		if err := w.apply(p, author, reason); err != nil {
+		applied, err := w.apply(p, author, reason)
+		if err != nil {
 			log.Printf("[tech-contact] apply %s: %v", p.ID, err)
 			continue
+		}
+		if !applied {
+			continue // انخصمت قبل — ما نعيد الإشعارات
 		}
 		_ = w.notif.Create(p.TechID, "kpi_deduction", "🔻 انخصمت نقطة كي بي آي — "+reason+". اتصل بالزبون ورفع التقرير هسه.")
 		_ = w.notif.CreateForTechContactWatchers("tech_contact_kpi", fmt.Sprintf("🔻 %s: انخصمت نقطة كي بي آي — %s", p.Tech, reason), p.TechID)
@@ -132,10 +138,10 @@ func (w *TechContactWatch) taskCriterion() string {
 	return l
 }
 
-func (w *TechContactWatch) apply(p pendingContact, author, reason string) error {
+func (w *TechContactWatch) apply(p pendingContact, author, reason string) (bool, error) {
 	tx, err := w.db.Beginx()
 	if err != nil {
-		return err
+		return false, err
 	}
 	defer func() { _ = tx.Rollback() }()
 	table := `"Booking"`
@@ -144,16 +150,16 @@ func (w *TechContactWatch) apply(p pendingContact, author, reason string) error 
 	}
 	res, err := tx.Exec(`UPDATE `+table+` SET "techContactKpiAt" = now() WHERE id = $1 AND "techContactKpiAt" IS NULL`, p.ID)
 	if err != nil {
-		return err
+		return false, err
 	}
 	if n, _ := res.RowsAffected(); n == 0 {
-		return nil // انخصمت قبل
+		return false, nil // انخصمت قبل
 	}
 	if _, err := tx.Exec(`INSERT INTO "KpiEvaluation" (id, "employeeId", "evaluatorId", points, reason, "deductionAmount")
 		VALUES ($1, $2, $3, -1, $4, 0)`, uuid.NewString(), p.TechID, author, reason); err != nil {
-		return err
+		return false, err
 	}
-	return tx.Commit()
+	return true, tx.Commit()
 }
 
 // TechContactBadges أرقام القائمة: الي محوّل إله وبعده بلا تقرير اتصال.

@@ -175,6 +175,7 @@ export default function Layout() {
   const [settingsOpen, setSettingsOpen] = useState(false)
   // أرقام رسول ماتركس على البنود — عدد الي توجّهله وما فتحه بعد (من الخادم)
   const [courierBadges, setCourierBadges] = useState<Record<string, number>>({})
+  const seenKeyRef = useRef('')
   useEffect(() => {
     // (دازاي 11-15) «يوصلهم إشعار صوتي»: من يزيد مجموع الأرقام الحمراء (شي جديد توجّهله) يطلع صوت.
     let last = -1
@@ -199,8 +200,11 @@ export default function Layout() {
   // فتح البند = شاف الشغل الموجّه → رقمه يتصفّر بالخادم
   useEffect(() => {
     const link = location.pathname
-    // (ك 11-23) رقم «ينتظر تقرير اتصال» ما ينمسح بالفتح — ينقص بس من يرفع التقرير، فما نطلب «شاف» (وإلا حلقة طلبات)
-    if (!courierBadges[link] || link === '/my-handovers' || link === '/solar-inquiries') return
+    // (ك 11-23) بعض الأرقام حيّة (مثل «ينتظر تقرير اتصال») وما تنمسح بالفتح — فنطلب «شاف» مرة
+    // لكل رقم جديد بس، وإلا الرقم يبقى ويصير طلب ورا طلب بلا توقف.
+    const key = `${link}:${courierBadges[link] ?? 0}`
+    if (!courierBadges[link] || seenKeyRef.current === key) return
+    seenKeyRef.current = key
     api.courierSeen(link).then(() => window.dispatchEvent(new Event('matrix-courier-refresh'))).catch(swallow)
   }, [location.pathname, courierBadges])
 
