@@ -40,6 +40,10 @@ const P: Record<string, string> = {
   ext: 'M14 4h6v6M20 4l-9 9M18 14v6H4V6h6',
   award: 'M12 15a5 5 0 1 0 0-10 5 5 0 0 0 0 10Zm-3 0-1 6 4-2 4 2-1-6',
   trendDown: 'M3 7l6 6 4-4 8 8m0 0v-5m0 5h-5',
+  store: 'M4 9l1.5-5h13L20 9M4 9v11h16V9M4 9h16M4 9a2.7 2.7 0 0 0 5.3 0 2.7 2.7 0 0 0 5.4 0 2.7 2.7 0 0 0 5.3 0M10 20v-5h4v5',
+  briefcase: 'M4 8h16v11H4zM9 8V5h6v3M4 13h16M11 13v2h2v-2',
+  chat: 'M4 12a8 7 0 1 1 3.5 5.8L4 19l1-3.2A6.8 6.8 0 0 1 4 12Z',
+  ban: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18ZM5.6 5.6l12.8 12.8',
 }
 export function LineIcon({ n, className = 'h-4 w-4' }: { n: string; className?: string }) {
   return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden="true"><path d={P[n]} /></svg>

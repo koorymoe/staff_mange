@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { api } from '../api'
 import PageHeader from '../components/PageHeader'
+import { LineIcon } from '../components/LineIcon'
 import { useSession, isAdminOrOwner } from '../session'
 import { dayBaghdad } from '../utils/format'
 import { askInput } from '../ui/dialogs'
@@ -84,29 +85,40 @@ export default function SupplierRelationsPage() {
       </div>
 
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
-        <div className="overflow-x-auto rounded-2xl bg-white shadow-sm xl:col-span-2">
-          <table className="min-w-full text-right text-sm">
-            <thead className="bg-gradient-to-l from-brand-500 to-brand-800 text-white">
-              <tr><th className="px-3 py-2">المورد</th><th className="px-3 py-2">النوع</th><th className="px-3 py-2">آخر حركة</th><th className="px-3 py-2">آخر تواصل</th><th className="px-3 py-2">آخر شراء</th><th className="px-3 py-2">٩٠ يوم</th></tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {rows.map((r) => (
-                <tr key={r.kind + r.id} onClick={() => setOpen(r)} className={`cursor-pointer hover:bg-slate-50 ${open?.id === r.id && open.kind === r.kind ? 'bg-brand-50/60' : ''}`}>
-                  <td className="px-3 py-2"><b>{r.name}</b><span className="block text-xs text-slate-400">{r.phone} {r.specialty ? `· ${r.specialty}` : ''}</span></td>
-                  <td className="px-3 py-2 text-xs">{r.kind === 'TECH' ? '🏪 تقنيين' : '🏬 مشتريات'}</td>
-                  <td className="px-3 py-2">
-                    <span className={`rounded-full px-2 py-0.5 text-xs font-bold ${r.overdue ? 'bg-red-100 text-red-700' : 'bg-emerald-100 text-emerald-700'}`}>
-                      {r.daysSince == null ? 'ماكو ولا حركة' : r.daysSince === 0 ? 'اليوم' : `قبل ${r.daysSince} يوم`}
-                    </span>
-                  </td>
-                  <td className="px-3 py-2 text-xs">{r.lastContactAt ? <>{when(r.lastContactAt)} · {r.lastContact}{r.lastContactBy && <span className="text-slate-400"> ({r.lastContactBy})</span>}</> : '—'}</td>
-                  <td className="px-3 py-2 text-xs">{r.lastBuyAt ? `${when(r.lastBuyAt)} · ${r.lastBuy}` : '—'}</td>
-                  <td className="px-3 py-2 text-xs">{r.contacts90} تواصل · {r.buys90} شراء</td>
-                </tr>
+        {/* (ك 11-23) الجدول حسب صورة زينا: رأس بأيقونات، وكل مورد بطاقة — الليلي مقاس من الصورة (.sp-*) */}
+        <div className="sp-wrap overflow-x-auto xl:col-span-2">
+          <div className="min-w-[860px]">
+            <div className="sp-head sp-grid">
+              {([['store', 'المورد'], ['tag', 'النوع'], ['pulse', 'آخر حركة'], ['phone', 'آخر تواصل'], ['cart', 'آخر شراء'], ['cal', '٩٠ يوم']] as const).map(([i, h]) => (
+                <span key={h} className="sp-th"><LineIcon n={i} className="h-6 w-6" />{h}</span>
               ))}
-              {data && rows.length === 0 && <tr><td colSpan={6} className="p-4 text-center text-slate-400">ماكو موردين بهذا الفلتر</td></tr>}
-            </tbody>
-          </table>
+            </div>
+            <div className="mt-3 space-y-3">
+              {rows.map((r) => (
+                <div key={r.kind + r.id} role="button" tabIndex={0} onClick={() => setOpen(r)} onKeyDown={(e) => { if (e.key === 'Enter') setOpen(r) }}
+                  className={`sp-row sp-grid ${open?.id === r.id && open.kind === r.kind ? 'sp-row-on' : ''}`}>
+                  <span className="flex items-center gap-3">
+                    <span className="sp-ibox"><LineIcon n="briefcase" className="h-6 w-6" /></span>
+                    <span><b className="sp-name">{r.name}</b><span className="sp-phone block tabular-nums">{r.phone}{r.specialty ? ` · ${r.specialty}` : ''}</span></span>
+                  </span>
+                  <span className="sp-type"><LineIcon n={r.kind === 'TECH' ? 'store' : 'cube'} className="h-6 w-6 sp-type-ico" />{r.kind === 'TECH' ? 'تقنيين' : 'مشتريات'}</span>
+                  <span>
+                    <span className={`sp-pill ${r.overdue || r.daysSince == null ? 'sp-pill-bad' : 'sp-pill-ok'}`}>
+                      <LineIcon n={r.daysSince == null ? 'ban' : r.overdue ? 'clock' : 'checkCircle'} className="h-6 w-6 shrink-0" />
+                      <span>{r.daysSince == null ? <>ماكو<br />ولا حركة</> : r.daysSince === 0 ? 'اليوم' : `قبل ${r.daysSince} يوم`}</span>
+                    </span>
+                  </span>
+                  <span className="sp-cell">{r.lastContactAt ? <>{when(r.lastContactAt)} · {r.lastContact}{r.lastContactBy && <span className="sp-muted"> ({r.lastContactBy})</span>}</> : '—'}</span>
+                  <span className="sp-cell">{r.lastBuyAt ? `${when(r.lastBuyAt)} · ${r.lastBuy}` : '—'}</span>
+                  <span className="sp-90">
+                    <span className="inline-flex items-center gap-2"><LineIcon n="chat" className="h-5 w-5" />{r.contacts90} تواصل</span>
+                    <span className="inline-flex items-center gap-2"><LineIcon n="cart" className="h-5 w-5" />{r.buys90} شراء</span>
+                  </span>
+                </div>
+              ))}
+              {data && rows.length === 0 && <p className="sp-cell p-4 text-center">ماكو موردين بهذا الفلتر</p>}
+            </div>
+          </div>
         </div>
 
         <div className="space-y-3">
