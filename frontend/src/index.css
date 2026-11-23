@@ -1862,3 +1862,49 @@ html.dark .tc-table { border-color: #b8923a; box-shadow: 0 0 16px rgba(217,169,5
 html.dark .tc-th-ico { color: #f2b544; }
 html.dark .tc-role { color: #f5d27a; }
 html.dark .tc-stop { background: #6b5420; color: #fff; border-color: #c99a2e; }
+
+/* (ك 11-23) تنسيق الحجوزات — أعمال داخل الشركة (صورة زينا، الليلي مقاس منها) */
+.ip-wrap { border-radius: 1rem; padding: 1rem; background: #f4f7fb; border: 1px solid #dbe3ee; }
+.ip-title { font-weight: 800; color: #0f2040; }
+.ip-sub { font-size: .75rem; color: #475569; margin-bottom: .75rem; }
+.ip-gold { color: #b8892a; }
+.ip-search { display: flex; align-items: center; gap: .5rem; flex: 0 1 21rem; padding: .55rem 1rem; border-radius: 9999px; background: #fff; border: 1px solid #c9d5e3; }
+.ip-search input { flex: 1; min-width: 0; background: transparent; outline: none; font-size: .875rem; color: #0f2040; }
+.ip-filter { position: relative; display: inline-flex; align-items: center; gap: .5rem; padding: .55rem 1.4rem; border-radius: 9999px; font-weight: 800; font-size: .875rem; color: #3b2a05; background: #fdf3d8; border: 1.5px solid #d4a73c; }
+.ip-filter-dot { position: absolute; top: .3rem; left: .6rem; width: .45rem; height: .45rem; border-radius: 9999px; background: #e11d48; }
+.ip-menu { position: absolute; z-index: 20; top: calc(100% + .35rem); left: 0; min-width: 9rem; padding: .3rem; border-radius: .75rem; background: #fff; border: 1px solid #dbe3ee; box-shadow: 0 8px 24px rgba(15,32,64,.15); }
+.ip-menu button { display: block; width: 100%; text-align: right; padding: .4rem .7rem; border-radius: .5rem; font-size: .8rem; font-weight: 700; color: #334155; }
+.ip-menu button:hover, .ip-menu .ip-menu-on { background: #fdf3d8; color: #7a5a12; }
+.ip-row { display: flex; flex-wrap: wrap; align-items: center; gap: 1.25rem; padding: .55rem 1rem; border-radius: .9rem; background: #fff; border: 1px solid #dbe3ee; border-inline-start: 4px solid #d9ab45; }
+.ip-code { min-width: 6.5rem; padding: .3rem 1rem; text-align: center; border-radius: 9999px; font-weight: 800; color: #0f2040; background: #fbf7ec; border: 1.5px solid #d4a73c; }
+.ip-dept { display: inline-flex; align-items: center; gap: .6rem; min-width: 14rem; font-weight: 700; font-size: 1rem; color: #0f2040; }
+.ip-when { display: inline-flex; align-items: center; gap: .5rem; font-size: .875rem; color: #475569; }
+.ip-when svg { color: #64748b; }
+.ip-btn { display: inline-flex; align-items: center; gap: .4rem; padding: .35rem 1.1rem; border-radius: 9999px; font-weight: 800; font-size: .875rem; }
+.ip-blue { color: #fff; background: #1d4f8f; border: 1px solid #2c62a8; }
+.ip-purple { color: #3b2f73; background: #ece9fb; border: 1px solid #b9b2e6; }
+.ip-done { color: #fff; background: #12804a; border: 1px solid #0b6a3b; }
+html.dark .ip-wrap { background: #021732; border-color: #12294a; }
+html.dark .ip-title { color: #f1f5f9; } html.dark .ip-sub { color: #9eaab6; }
+html.dark .ip-gold { color: #e0b44c; }
+html.dark .ip-search { background: #061b34; border-color: #334861; }
+html.dark .ip-search input { color: #e2e8f0; }
+html.dark .ip-filter { color: #f3f4ef; background: #2c2b22; border-color: #b8932f; }
+html.dark .ip-menu { background: #0b1e35; border-color: #334861; }
+html.dark .ip-menu button { color: #dbe6f5; }
+html.dark .ip-menu button:hover, html.dark .ip-menu .ip-menu-on { background: #2c2b22; color: #f5d27a; }
+html.dark .ip-row { background: #0b1e35; border-color: #1a2d47; border-inline-start-color: #e6bf5f; }
+html.dark .ip-code { color: #f3f3f5; background: #111315; border-color: #c9a24a; }
+html.dark .ip-dept { color: #edf5fd; }
+html.dark .ip-when { color: #9eaab6; } html.dark .ip-when svg { color: #647387; }
+html.dark .ip-blue { color: #fff; background: #113463; border-color: #224b81; }
+html.dark .ip-purple { color: #fff; background: #17203d; border-color: #3f4366; }
+html.dark .ip-done { color: #fff; background: #043d23; border-color: #0b5f2a; }
+/* (ك 11-23) مقاسات الصف من الصورة: الصف ~٦٠px، الكود ١١٠×٣٨ */
+.ip-row { min-height: 3.75rem; padding: .6rem 1.1rem; gap: 2rem; }
+.ip-code { min-width: 7rem; padding: .35rem 1.1rem; font-size: 1.1rem; }
+.ip-dept { min-width: 18rem; font-size: 1.15rem; }
+.ip-when { font-size: 1rem; }
+.ip-btn { padding: .45rem 1.3rem; font-size: 1rem; }
+.ip-search { padding: .65rem 1.1rem; }
+.ip-filter { padding: .6rem 1.5rem; font-size: .95rem; }

@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { api } from '../api'
 import { parseAmount } from '../utils/money'
+import { LineIcon } from './LineIcon'
 
 // ═══ طابور الإداري: ورق الأعمال داخل الشركة (قرار (ع) 10-07) ═══
 // «من يكمل الحجز الي داخل الشركة الإداري لازم يسوي الفاتورة والتقرير» —
@@ -12,34 +13,76 @@ import { parseAmount } from '../utils/money'
 // (شنو انعمل + السعر المقدّر) بدل صفحة الفاتورة الكاملة.
 type Row = Awaited<ReturnType<typeof api.getInternalPaperwork>>[number]
 
+// (ك 11-23) شكل الصف حسب صورة زينا: كود بكبسولة ذهبية، القسم بأيقونة طبقات، التاريخ والوقت،
+// وأزرار «سوي الحساب» / «سوي التقرير» تصير خضرة بعلامة ✓ من تخلص. بحث بالقسم أو الكود، وتصفية.
+const fmtDone = (s: string) => {
+  const [d, t] = s.split(' ')
+  const [y, m, dd] = (d ?? '').split('-')
+  return { date: y && m && dd ? `${dd}-${m}-${y}` : d, time: t ?? '' }
+}
+
+type IpFilter = 'ALL' | 'INVOICE' | 'REPORT'
+
 export default function InternalPaperworkQueue() {
   const [rows, setRows] = useState<Row[] | null>(null)
   const [tick, setTick] = useState(0)
   const [open, setOpen] = useState<Row | null>(null)
+  const [q, setQ] = useState('')
+  const [filter, setFilter] = useState<IpFilter>('ALL')
+  const [filterOpen, setFilterOpen] = useState(false)
   useEffect(() => {
     let alive = true
     api.getInternalPaperwork().then((r) => { if (alive) setRows(r) }).catch(() => { if (alive) setRows([]) })
     return () => { alive = false }
   }, [tick])
   if (!rows || rows.length === 0) return null
+  const term = q.trim().toLowerCase()
+  const list = rows.filter((r) =>
+    (!term || r.code.toLowerCase().includes(term) || (r.department ?? '').toLowerCase().includes(term))
+    && (filter === 'ALL' || (filter === 'INVOICE' ? !r.hasInvoice : !r.hasReport)))
+  const FILTERS: [IpFilter, string][] = [['ALL', 'الكل'], ['INVOICE', 'تنتظر الحساب'], ['REPORT', 'تنتظر التقرير']]
   return (
-    <div dir="rtl" className="rounded-2xl border border-indigo-200 bg-indigo-50/60 p-4">
-      <p className="font-extrabold text-indigo-900">🏢 أعمال داخل الشركة تنتظر ورقك ({rows.length})</p>
-      <p className="mb-3 text-xs text-indigo-800">الفني خلّص الشغل — عليك الفاتورة (تكتب شنو انعمل وتحدد السعر) والتقرير.</p>
+    <div dir="rtl" className="ip-wrap">
+      <p className="ip-title">🏢 أعمال داخل الشركة تنتظر ورقك ({rows.length})</p>
+      <p className="ip-sub">الفني خلّص الشغل — عليك الفاتورة (تكتب شنو انعمل وتحدد السعر) والتقرير.</p>
+      <div className="mb-3 flex flex-wrap items-center gap-3">
+        <label className="ip-search">
+          <LineIcon n="search" className="h-5 w-5 ip-gold" />
+          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="بحث في الأقسام أو الأكواد..." aria-label="بحث في الأقسام أو الأكواد" />
+        </label>
+        <div className="relative">
+          <button type="button" onClick={() => setFilterOpen((o) => !o)} className="ip-filter">
+            <LineIcon n="filter" className="h-4 w-4 ip-gold" />التصفية{filter !== 'ALL' && <span className="ip-filter-dot" />}
+          </button>
+          {filterOpen && (
+            <div className="ip-menu">
+              {FILTERS.map(([k, t]) => (
+                <button key={k} type="button" onClick={() => { setFilter(k); setFilterOpen(false) }} className={filter === k ? 'ip-menu-on' : ''}>{t}</button>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
       <div className="space-y-2">
-        {rows.map((r) => (
-          <div key={r.id} className="flex flex-wrap items-center justify-between gap-2 rounded-xl bg-white px-3 py-2 text-sm">
-            <span><b>{r.code}</b>{r.department && <span className="text-slate-500"> · {r.department}</span>}{r.doneAt && <span className="text-xs text-slate-400"> · خلص {r.doneAt}</span>}</span>
-            <span className="flex gap-2">
-              {r.hasInvoice
-                ? <span className="rounded-lg bg-emerald-50 px-2 py-1 text-xs font-bold text-emerald-700">✓ الفاتورة</span>
-                : <button type="button" onClick={() => setOpen(r)} className="rounded-lg bg-[#0f2040] px-3 py-1.5 text-xs font-bold text-white">🧾 سوّي الحساب</button>}
-              {r.hasReport
-                ? <span className="rounded-lg bg-emerald-50 px-2 py-1 text-xs font-bold text-emerald-700">✓ التقرير</span>
-                : <Link to={`/work-reports?bookingId=${r.id}`} className="rounded-lg border border-indigo-300 bg-white px-3 py-1.5 text-xs font-bold text-indigo-800">📝 سوّي التقرير</Link>}
-            </span>
-          </div>
-        ))}
+        {list.map((r) => {
+          const d = r.doneAt ? fmtDone(r.doneAt) : null
+          return (
+            <div key={r.id} className="ip-row">
+              <span className="ip-code">{r.code}</span>
+              <span className="ip-dept"><LineIcon n="layers" className="h-6 w-6 ip-gold" />{r.department ?? '—'}</span>
+              {d && <span className="ip-when"><LineIcon n="cal" className="h-5 w-5" /><span className="tabular-nums" dir="ltr">{d.date} {d.time}</span><LineIcon n="clock" className="h-5 w-5" /></span>}
+              <span className="ms-auto flex flex-wrap gap-3">
+                {r.hasInvoice
+                  ? <span className="ip-btn ip-done">✓ الفاتورة</span>
+                  : <button type="button" onClick={() => setOpen(r)} className="ip-btn ip-blue"><LineIcon n="calc" className="h-4 w-4" />سوي الحساب</button>}
+                {r.hasReport
+                  ? <span className="ip-btn ip-done">✓ التقرير</span>
+                  : <Link to={`/work-reports?bookingId=${r.id}`} className="ip-btn ip-purple"><LineIcon n="file" className="h-4 w-4" />سوي التقرير</Link>}
+              </span>
+            </div>
+          )
+        })}
+        {list.length === 0 && <p className="ip-sub py-3 text-center">ماكو نتائج</p>}
       </div>
       {open && <QuickCost row={open} onClose={() => setOpen(null)} onSaved={() => { setOpen(null); setTick((t) => t + 1) }} />}
     </div>
