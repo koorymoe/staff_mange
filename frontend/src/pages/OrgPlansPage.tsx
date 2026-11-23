@@ -124,7 +124,7 @@ export default function OrgPlansPage() {
                     <tr key={`${r.divisionId}:${r.unitId ?? ''}`} className="op-row h-12 align-middle">
                       <td className="px-2 text-center font-bold">{(pg - 1) * per + i + 1}</td>
                       <td className="px-3 py-1.5">
-                        <div className={`flex items-center gap-2 font-extrabold ${r.unitId ? 'ps-5' : ''}`}><LineIcon n="bank" className="h-5 w-5 shrink-0 opacity-70" />{r.unitId ? `↳ ${r.unitName}` : r.divisionName}</div>
+                        <div className="flex items-center gap-2 font-extrabold"><LineIcon n="bank" className="h-5 w-5 shrink-0 opacity-70" />{r.unitId ? r.unitName : r.divisionName}</div>
                         {r.title && <div className="text-xs opacity-70">{r.title}</div>}
                       </td>
                       <td className="px-2 text-center">{r.title ? <span className="inline-flex items-center gap-1.5 text-sm"><LineIcon n="file" className="h-4 w-4 shrink-0" />{r.title}</span> : dash}</td>
@@ -147,12 +147,12 @@ export default function OrgPlansPage() {
               <select value={per} onChange={(e) => { setPer(Number(e.target.value)); setPage(1) }} className="op-field rounded-xl border px-4 py-1.5 font-bold" aria-label="لكل صفحة">
                 {[10, 25, 50].map((n) => <option key={n} value={n}>{n}</option>)}
               </select>لكل صفحة</label>
-            <div className="flex items-center gap-2">
-              <button type="button" disabled={pg <= 1} onClick={() => setPage(pg - 1)} className="op-pg flex h-11 w-12 items-center justify-center rounded-xl border disabled:opacity-40" aria-label="السابقة"><LineIcon n="right" className="h-5 w-5" /></button>
+            <div dir="ltr" className="flex items-center gap-2">
+              <button type="button" disabled={pg <= 1} onClick={() => setPage(pg - 1)} className="op-pg flex h-11 w-12 items-center justify-center rounded-xl border disabled:opacity-40" aria-label="السابقة"><LineIcon n="left" className="h-5 w-5" /></button>
               {Array.from({ length: pages }, (_, k) => k + 1).map((n) => (
                 <button key={n} type="button" onClick={() => setPage(n)} className={`op-pg flex h-11 min-w-[3rem] items-center justify-center rounded-xl border px-3 font-bold ${n === pg ? 'op-pg-on' : ''}`}>{n}</button>
               ))}
-              <button type="button" disabled={pg >= pages} onClick={() => setPage(pg + 1)} className="op-pg flex h-11 w-12 items-center justify-center rounded-xl border disabled:opacity-40" aria-label="التالية"><LineIcon n="left" className="h-5 w-5" /></button>
+              <button type="button" disabled={pg >= pages} onClick={() => setPage(pg + 1)} className="op-pg flex h-11 w-12 items-center justify-center rounded-xl border disabled:opacity-40" aria-label="التالية"><LineIcon n="right" className="h-5 w-5" /></button>
             </div>
             <span className="op-field flex items-center gap-3 rounded-xl border px-5 py-2 text-[15px] font-bold"><LineIcon n="list" className="h-5 w-5" />إجمالي الخطط: <b className="tabular-nums">{filtered.length}</b></span>
           </div>
