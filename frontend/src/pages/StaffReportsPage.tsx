@@ -138,9 +138,10 @@ function ReportBody({ body, late }: { body: string; late?: boolean }) {
   return (
     <div className="min-w-0 flex-1 space-y-2 text-[15px] leading-7 text-slate-700">
       {(title || late) && (
-        <div className="flex flex-wrap items-center justify-center gap-x-10 gap-y-2">
-          {title && <p className="text-base font-extrabold text-[#0f2040]">{title}</p>}
-          {late && <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-amber-50 px-3 py-0.5 text-sm font-bold text-amber-700 ring-1 ring-amber-400"><Ico n="clock" className="h-4 w-4" />متأخر</span>}
+        // (ك) 11-23 زينا: «متأخر» دايماً بنفس المكان — الطرف الأيسر من عمود التقرير، بكل البطاقات
+        <div className="flex items-start gap-3">
+          {title && <p className="min-w-0 flex-1 text-center text-base font-extrabold text-[#0f2040]">{title}</p>}
+          {late && <span className="ms-auto inline-flex shrink-0 items-center gap-1.5 rounded-full bg-amber-50 px-3 py-0.5 text-sm font-bold text-amber-700 ring-1 ring-amber-400"><Ico n="clock" className="h-4 w-4" />متأخر</span>}
         </div>
       )}
       {meta.length > 0 && (
