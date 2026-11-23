@@ -1723,3 +1723,12 @@ html.dark .rd-ok { background: #0a271d; color: #4ade80; }
 html.dark .rd-wait { background: #3b2a06; color: #fcd34d; }
 html.dark .rd-date { color: #e2e8f0; }
 html.dark .rd-tri { color: #7f91af; }
+
+/* ═══ (ك) 11-23 زينا: شريط التاريخ/الوقت/التفاصيل بالتقرير اليومي، وخطوط «تم…» (.sr-meta / .sr-done) ═══ */
+.sr-meta { border-color: #d5dbe6; background: #f8fafc; color: #1e293b; }
+.sr-meta-sep { border-color: #d5dbe6; }
+.sr-done-list .sr-done { border-bottom: 1px solid #e5e9f0; }
+.sr-done-list .sr-done:last-child { border-bottom: 0; }
+html.dark .sr-meta { border-color: #2f4568; background: #0b1a33; color: #e2e8f0; }
+html.dark .sr-meta-sep { border-color: #2f4568; }
+html.dark .sr-done-list .sr-done { border-bottom-color: #1d2f4d; }

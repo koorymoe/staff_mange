@@ -94,9 +94,7 @@ function DailyTab() {
             </div>
             <div className="sr-sep hidden w-px shrink-0 md:block" />
             <div className="min-w-0 flex-1 space-y-2 py-1">
-              {/* (ك) 11-23 زينا: «متأخر» بسطر لحاله، حتى النص يبدي من نفس الحافة بكل البطاقات */}
-              {r.late && <div><span className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-amber-50 px-3 py-1 text-sm font-bold text-amber-700 ring-1 ring-amber-400"><Ico n="clock" className="h-4 w-4" />متأخر</span></div>}
-              <ReportBody body={r.body} />
+              <ReportBody body={r.body} late={r.late} />
               <div className="flex flex-wrap items-start gap-3">
                 <MatchRow r={r} onDone={() => setReload((n) => n + 1)} />
                 <ReportAnalysisBox reportId={r.id} />
@@ -118,16 +116,53 @@ function DailyTab() {
 }
 
 // (ك) 11-22 زينا: نص التقرير — الأسطر الي تبدي بـ«-» أو «•» أو «✓» تطلع بعلامة صح خضرة (مثل التصميم)، والباقي سطر عادي
-function ReportBody({ body }: { body: string }) {
-  const lines = body.split('\n').filter((l) => l.trim())
+// (ك) 11-23 زينا: ترتيب التقرير مثل الصورة — أول سطر عنوان (وجنبه «متأخر»)، وإذا كتب التاريخ/وقت الدوام/تفاصيل
+// الأعمال تطلع بشريط بأيقونات، وبعدها التفاصيل: «تم…» بعلامة خضرة وخط فاصل، والباقي بنقطة زرقة.
+// التقرير الطويل ينطوي على سطرين، و«عرض التقرير كامل» يفتحه.
+const META: [RegExp, string][] = [[/^التاريخ\s*:?\s*/, 'cal'], [/^وقت\s+بدء\s+الدوام\s*:?\s*/, 'clock'], [/^تفاصيل\s+الأعمال\s+المنجزة\s*:?\s*/, 'bag']]
+const isDone = (l: string) => /^[-•✓*]\s*/.test(l) || /^(تم|تمت|أنجزت|انجزت)\s/.test(l)
+function ReportBody({ body, late }: { body: string; late?: boolean }) {
+  const [full, setFull] = useState(false)
+  const lines = body.split('\n').map((l) => l.trim()).filter(Boolean)
+  const meta: { ic: string; text: string }[] = []
+  const rest: string[] = []
+  for (const l of lines) {
+    const m = META.find(([re]) => re.test(l))
+    if (m) meta.push({ ic: m[1], text: l.includes(':') ? l : `${l}:` })
+    else rest.push(l)
+  }
+  const title = rest.length > 0 && !isDone(rest[0]) ? rest.shift() : undefined
+  const fold = meta.length > 0 && rest.length > 3 && !full
+  const shown = fold ? rest.slice(0, 2) : rest
+  const allDone = shown.length > 0 && shown.every(isDone)
   return (
-    <div className="min-w-0 flex-1 text-[15px] leading-7 text-slate-700">
-      {lines.map((l, i) => {
-        const m = l.trim().match(/^[-•✓*]\s*(.*)$/)
-        return m
-          ? <p key={i} className="flex items-start gap-2"><span className="mt-1.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-emerald-500 text-[10px] font-extrabold text-white">✓</span>{m[1]}</p>
-          : <p key={i} className="whitespace-pre-wrap">{l}</p>
-      })}
+    <div className="min-w-0 flex-1 space-y-2 text-[15px] leading-7 text-slate-700">
+      {(title || late) && (
+        <div className="flex flex-wrap items-center justify-center gap-x-10 gap-y-2">
+          {title && <p className="text-base font-extrabold text-[#0f2040]">{title}</p>}
+          {late && <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-amber-50 px-3 py-0.5 text-sm font-bold text-amber-700 ring-1 ring-amber-400"><Ico n="clock" className="h-4 w-4" />متأخر</span>}
+        </div>
+      )}
+      {meta.length > 0 && (
+        <div className="sr-meta flex flex-wrap items-stretch rounded-xl border">
+          {meta.map((x, i) => (
+            <span key={i} className={`flex flex-1 items-center justify-center gap-2 px-4 py-1.5 text-sm ${i ? 'sr-meta-sep border-r' : ''}`}><Ico n={x.ic} className="h-5 w-5 shrink-0" />{x.text}</span>
+          ))}
+        </div>
+      )}
+      {shown.length > 0 && (
+        <div className={allDone ? 'sr-done-list' : 'space-y-0'}>
+          {shown.map((l, i) => {
+            const t = l.replace(/^[-•✓*]\s*/, '')
+            return allDone
+              ? <p key={i} className="sr-done flex items-start gap-2"><span className="mt-1.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-emerald-500 text-[10px] font-extrabold text-white">✓</span>{t}</p>
+              : <p key={i} className={`flex items-start gap-2 ${fold ? 'truncate' : ''}`}><span className="mt-3 h-1.5 w-1.5 shrink-0 rounded-full bg-sky-500" /><span className={`min-w-0 ${fold ? 'truncate' : 'whitespace-pre-wrap'}`}>{t}</span></p>
+          })}
+        </div>
+      )}
+      {meta.length > 0 && rest.length > 3 && (
+        <button type="button" onClick={() => setFull((v) => !v)} className="text-xs font-bold text-sky-600 hover:underline">{full ? 'طوي التقرير ▴' : `عرض التقرير كامل (${rest.length} سطر) ▾`}</button>
+      )}
     </div>
   )
 }
