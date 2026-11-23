@@ -1810,3 +1810,38 @@ html.dark .li-mon { background: #1c2952; border-color: #4a5aa0; color: #c7d2fe; 
 html.dark .li-ok { background: #1f6fe0; border-color: #3b82f6; color: #fff; }
 html.dark .li-edit { background: #142239; border-color: #2c3a55; color: #fb923c; }
 html.dark .li-del { background: #1a1a2a; border-color: #7a3040; color: #f87171; }
+
+/* (ك) مركز التدريب — ملاحظات ماتركس */
+.tc-wrap { border-radius: 1rem; padding: 1rem; background: #fff; border: 1px solid #e2e8f0; }
+.tc-head { display: flex; align-items: center; gap: .75rem; margin-bottom: .75rem; }
+.tc-head-ico { display: grid; place-items: center; width: 2.75rem; height: 2.75rem; border-radius: .75rem; background: #fff3e6; color: #f08a24; border: 1px solid #f5c48f; }
+.tc-title { font-size: 1.125rem; font-weight: 800; color: #0f2040; }
+.tc-sub { font-size: .75rem; color: #64748b; }
+.tc-info { display: flex; align-items: center; gap: .5rem; margin-bottom: .75rem; padding: .5rem .75rem; border-radius: .6rem; font-size: .75rem; color: #475569; background: #f8fafc; border: 1px solid #e2e8f0; }
+.tc-info-ico { display: grid; place-items: center; width: 1.1rem; height: 1.1rem; border-radius: 9999px; border: 1.5px solid currentColor; font-size: .65rem; font-weight: 800; color: #2563eb; }
+.tc-table { border-radius: .8rem; border: 1px solid #d6e2f0; }
+.tc-th { padding: .6rem .5rem; text-align: center; font-size: 12px; font-weight: 700; color: #334155; background: #eef3f9; border-inline-start: 1px solid #dbe4ef; }
+.tc-th:first-child { border-inline-start: 0; }
+.tc-tr:nth-child(odd) { background: #fff; } .tc-tr:nth-child(even) { background: #f6f9fc; }
+.tc-td { padding: .55rem .5rem; text-align: center; color: #1e293b; }
+.tc-td:first-child, .tc-td:last-child { text-align: right; }
+.tc-name { color: #0f2040; } .tc-orange { color: #f08a24; }
+.tc-role { display: inline-block; padding: .1rem .6rem; border-radius: 9999px; font-size: 11px; border: 1px solid #d4b86a; background: #fdf8ec; color: #7a5d16; }
+.tc-pill { display: inline-block; padding: .1rem .55rem; border-radius: 9999px; font-weight: 700; font-size: 12px; }
+.tc-good { background: #dcfce7; color: #15803d; } .tc-bad { background: #fee2e2; color: #b91c1c; } .tc-mid { background: #f1f5f9; color: #334155; }
+.tc-stop { background: #fef3c7; color: #92400e; border: 1px solid #f0c66b; }
+.tc-team { color: #64748b; } .tc-muted { color: #94a3b8; } .tc-ok { color: #15803d; font-weight: 700; }
+html.dark .tc-wrap { background: #00152e; border-color: #2a4361; }
+html.dark .tc-head { background: #022345; border-radius: .8rem; padding: .75rem; }
+html.dark .tc-head-ico { background: #3a2410; border-color: #a5621f; color: #ff9a3c; }
+html.dark .tc-title { color: #f1f5f9; } html.dark .tc-sub { color: #9fb2cc; }
+html.dark .tc-info { background: #021d3a; border-color: #2a4361; color: #bacae2; }
+html.dark .tc-info-ico { color: #60a5fa; }
+html.dark .tc-table { border-color: #0b3d6a; box-shadow: 0 0 0 1px rgba(112,104,81,.35), 0 0 14px rgba(11,61,106,.6); }
+html.dark .tc-th { background: #06294d; color: #dbe6f5; border-color: #254467; }
+html.dark .tc-tr:nth-child(odd) { background: #031831; } html.dark .tc-tr:nth-child(even) { background: #0e233e; }
+html.dark .tc-td { color: #e2e8f0; } html.dark .tc-name { color: #f1f5f9; }
+html.dark .tc-role { background: #16202c; border-color: #706851; color: #e7d6a2; }
+html.dark .tc-good { background: #165136; color: #7ff5a0; } html.dark .tc-bad { background: #773a35; color: #f77a5d; } html.dark .tc-mid { background: #16263d; color: #dbe6f5; }
+html.dark .tc-stop { background: #473819; border-color: #765f27; color: #f5c96a; }
+html.dark .tc-team { color: #bacae2; } html.dark .tc-muted { color: #6b7f99; } html.dark .tc-ok { color: #7ff5a0; }

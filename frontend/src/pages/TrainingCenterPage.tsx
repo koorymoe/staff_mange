@@ -8,6 +8,7 @@ import { CurriculumTree, MatchingTab, TrainingReportsTab } from './TrainingMatch
 import { askConfirm } from '../ui/dialogs'
 import { swallow } from '../utils/swallow'
 import PctWhy from '../ui/PctWhy'
+import { LineIcon } from '../components/LineIcon'
 
 import { notify } from '../ui/notify'
 // ═══ مركز التدريب — قرار (ع) 10-13: «شي إعجازي بالتدريب» ═══
@@ -122,37 +123,56 @@ function NeedTab({ rows, loading }: { rows: TcInsight[]; loading: boolean }) {
 
 function NotesTab({ rows }: { rows: TcInsight[] | null }) {
   if (!rows) return <p className="py-8 text-center text-slate-400">جاري التحميل…</p>
+  const heads: [string, string][] = [['user', 'الموظف'], ['shield', 'الدور'], ['cal', 'حجوزات'], ['clock', 'مدته'], ['pulse', 'معدل الفريق'], ['warn', 'شكاوى'], ['xCircle', 'توقف'], ['layers', 'جزئي'], ['award', 'مهارات'], ['check', 'آخر اختبار'], ['file', 'ملاحظة ماتركس']]
   return (
-    <div className={`${card} overflow-x-auto`}>
-      <p className="mb-2 text-xs text-slate-500">مدة الشغلة = من بدء العمل لحد الإنجاز (آخر ١٥ يوم)، ومعدل الفريق = نفس الخدمات الي اشتغلها.</p>
-      <table className="w-full min-w-[900px] text-sm">
-        <thead><tr className="border-b text-[12px] text-slate-500">
-          {['الموظف', 'الدور', 'حجوزات', 'مدته', 'معدل الفريق', 'شكاوى', 'توقف', 'جزئي', 'مهارات', 'آخر اختبار', 'ملاحظة ماتركس'].map((h) => <th key={h} className="py-2 text-right font-bold">{h}</th>)}
-        </tr></thead>
-        <tbody>
-          {rows.map((x) => {
-            const ratio = x.avgMinutes && x.teamMinutes ? x.avgMinutes / x.teamMinutes : null
-            return (
-              <tr key={x.id} className="border-b border-slate-50">
-                <td className="py-2 font-bold text-[#0f2040]">{x.name}</td>
-                <td className="text-xs">{roleLabel(x.role)}</td>
-                <td className="tabular-nums">{x.jobs}</td>
-                <td className={`tabular-nums font-bold ${ratio && ratio >= 1.4 ? 'text-red-600' : ratio && ratio <= 0.8 ? 'text-emerald-700' : ''}`}>{x.avgMinutes ? `${Math.round(x.avgMinutes)} د` : '—'}</td>
-                <td className="tabular-nums text-slate-500">{x.teamMinutes ? `${Math.round(x.teamMinutes)} د` : '—'}</td>
-                <td className={x.complaints ? 'font-bold text-red-600' : 'text-slate-400'}>{x.complaints}</td>
-                <td className={x.stops ? 'font-bold text-amber-600' : 'text-slate-400'}>{x.stops}</td>
-                <td className="text-slate-500">{x.partials}</td>
-                <td>{x.skills}</td>
-                <td>{x.lastExamPct != null ? <PctWhy title={`آخر اختبار ${x.name}`} value={x.lastExamPct}
-                  formula={<>درجته بآخر اختبار خلّصه ÷ الدرجة الكاملة لذاك الاختبار × 100 = <b>{x.lastExamPct}%</b> (الكسر ينشال).</>}
-                  meaning={<>شكد جاوب صح بآخر اختبار تدريبي سواه — كل ما أعلى يعني فاهم المادة أكثر. هذا آخر اختبار بس، مو معدل كل اختباراته.</>}
-                  source={<>محاولات الاختبار بمركز التدريب: آخر محاولة خلّصها هذا الموظف (حسب وقت الإنهاء).</>} /> : '—'}</td>
-                <td className="text-xs">{[...x.strengths.map((s) => `💪 ${s}`), ...x.reasons.slice(0, 2).map((r) => `⚠️ ${r}`)].join(' · ') || 'مستقر'}</td>
-              </tr>
-            )
-          })}
-        </tbody>
-      </table>
+    <div className="tc-wrap">
+      <div className="tc-head">
+        <span className="tc-head-ico"><LineIcon n="user" className="h-6 w-6" /></span>
+        <div>
+          <h2 className="tc-title">متابعة أداء الموظفين</h2>
+          <p className="tc-sub">معلومات الإنجاز، التوقف، الشكاوى والأداء اليومي لكل موظف</p>
+        </div>
+      </div>
+      <p className="tc-info"><span className="tc-info-ico">i</span>مدة الشغلة = من بدء العمل لحد الإنجاز (آخر ١٥ يوم)، ومعدل الفريق = نفس الخدمات الي اشتغلها.</p>
+      <div className="tc-table overflow-x-auto">
+        <table className="w-full min-w-[900px] text-sm">
+          <thead><tr>
+            {heads.map(([i, h]) => <th key={h} className="tc-th"><LineIcon n={i} className="mx-auto mb-1 h-4 w-4" />{h}</th>)}
+          </tr></thead>
+          <tbody>
+            {rows.map((x) => {
+              const ratio = x.avgMinutes && x.teamMinutes ? x.avgMinutes / x.teamMinutes : null
+              const slow = ratio != null && ratio >= 1.4
+              const fast = ratio != null && ratio <= 0.8
+              return (
+                <tr key={x.id} className="tc-tr">
+                  <td className="tc-td"><span className="inline-flex items-center gap-2 font-bold tc-name"><LineIcon n="user" className="h-4 w-4 tc-orange" />{x.name}</span></td>
+                  <td className="tc-td"><span className="tc-role">{roleLabel(x.role)}</span></td>
+                  <td className="tc-td tabular-nums">{x.jobs}</td>
+                  <td className="tc-td tabular-nums">{x.avgMinutes ? <span className={`tc-pill ${slow ? 'tc-bad' : fast ? 'tc-good' : 'tc-mid'}`}>{slow ? '▼' : fast ? '▲' : ''} {Math.round(x.avgMinutes)} د</span> : '—'}</td>
+                  <td className="tc-td tabular-nums tc-team">{x.teamMinutes ? `${Math.round(x.teamMinutes)} د` : '—'}</td>
+                  <td className={`tc-td ${x.complaints ? 'font-bold text-red-600' : 'tc-muted'}`}>{x.complaints}</td>
+                  <td className="tc-td">{x.stops ? <span className="tc-pill tc-stop">{x.stops}</span> : <span className="tc-muted">0</span>}</td>
+                  <td className="tc-td tc-muted">{x.partials}</td>
+                  <td className="tc-td">{x.skills}</td>
+                  <td className="tc-td">{x.lastExamPct != null ? <PctWhy title={`آخر اختبار ${x.name}`} value={x.lastExamPct}
+                    formula={<>درجته بآخر اختبار خلّصه ÷ الدرجة الكاملة لذاك الاختبار × 100 = <b>{x.lastExamPct}%</b> (الكسر ينشال).</>}
+                    meaning={<>شكد جاوب صح بآخر اختبار تدريبي سواه — كل ما أعلى يعني فاهم المادة أكثر. هذا آخر اختبار بس، مو معدل كل اختباراته.</>}
+                    source={<>محاولات الاختبار بمركز التدريب: آخر محاولة خلّصها هذا الموظف (حسب وقت الإنهاء).</>} /> : '—'}</td>
+                  <td className="tc-td text-xs">
+                    {x.strengths.length === 0 && x.reasons.length === 0 ? <span className="tc-ok">✅ مستقر</span> : (
+                      <div className="space-y-0.5">
+                        {x.strengths.map((t) => <div key={'s' + t}>📁 {t}</div>)}
+                        {x.reasons.slice(0, 2).map((r) => <div key={'r' + r}>⚠️ {r}</div>)}
+                      </div>
+                    )}
+                  </td>
+                </tr>
+              )
+            })}
+          </tbody>
+        </table>
+      </div>
     </div>
   )
 }
