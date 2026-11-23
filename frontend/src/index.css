@@ -1767,3 +1767,46 @@ html.dark .cr-row:nth-child(even) { background: #061328; }
 html.dark .cr-paid { color: #7eeeb6; }
 html.dark .cr-left { color: #dab4f6; }
 html.dark .cr-bar { background: #1b2e53; }
+
+/* ═══ (ك) 11-23 زينا: جدول فواتير الليدر مثل الصورة (.li-*) — الليلي مقاس بالبكسل من صورتها ═══ */
+.li-table { background: #fff; border-color: #d9e2ee; box-shadow: 0 4px 20px rgb(15 32 64 / .06); }
+.li-th { background: linear-gradient(to left, #1c3f73, #163360); color: #fff; }
+.li-thc + .li-thc { border-right: 1px solid rgb(255 255 255 / .12); }
+.li-thi { opacity: .85; }
+.li-row { border-top: 1px solid #edf1f6; color: #0f172a; }
+.li-row:nth-child(even) { background: #f8fafc; }
+.li-code { color: #1d4f9c; }
+.li-name { color: #0f2040; }
+.li-sub { color: #64748b; }
+.li-net { background: #eef2ff; border-color: #c7d2fe; color: #3730a3; }
+.li-st-wait { background: #fff7e6; border-color: #f2c94c; color: #8a5a00; }
+.li-st-ok { background: #ecfdf5; border-color: #86efac; color: #047857; }
+.li-date { color: #334155; }
+.li-det { background: #f1f5f9; border-color: #cbd5e1; color: #1e293b; }
+.li-aud { background: #eff6ff; border-color: #93c5fd; color: #1d4ed8; }
+.li-ret { background: #fff7e6; border-color: #e3b04b; color: #7c4a03; }
+.li-pay { background: #ecfeff; border-color: #67e8f9; color: #0e7490; }
+.li-mon { background: #eef2ff; border-color: #a5b4fc; color: #4338ca; }
+.li-ok { background: #0f2040; border-color: #0f2040; color: #fff; }
+.li-edit { background: #fff7ed; border-color: #fdba74; color: #c2410c; }
+.li-del { background: #fef2f2; border-color: #fca5a5; color: #b91c1c; }
+html.dark .li-table { background: #091934; border-color: #8d887c; box-shadow: 0 0 14px rgb(141 136 124 / .18); }
+html.dark .li-th { background: linear-gradient(to left, #182f53, #142c4d); }
+html.dark .li-thc + .li-thc { border-right-color: #1e3357; }
+html.dark .li-row { border-top-color: #112241; color: #f1f5f9; }
+html.dark .li-row:nth-child(even) { background: #081830; }
+html.dark .li-code { color: #c9d9f4; }
+html.dark .li-name { color: #fff; }
+html.dark .li-sub { color: #9baec5; }
+html.dark .li-net { background: #1c2952; border-color: #34467a; color: #dcd6f5; }
+html.dark .li-st-wait { background: #312713; border-color: #6b5222; color: #ffe2a3; }
+html.dark .li-st-ok { background: #0a2a1f; border-color: #1f6b4a; color: #86efac; }
+html.dark .li-date { color: #dbe4f0; }
+html.dark .li-det { background: #1a2e4b; border-color: #3b506d; color: #fff; }
+html.dark .li-aud { background: #0e2242; border-color: #2c4466; color: #fff; }
+html.dark .li-ret { background: #3d2e1a; border-color: #8a6a2a; color: #f5e6c2; }
+html.dark .li-pay { background: #062c40; border-color: #1aa6b8; color: #8fd7e8; }
+html.dark .li-mon { background: #1c2952; border-color: #4a5aa0; color: #c7d2fe; }
+html.dark .li-ok { background: #1f6fe0; border-color: #3b82f6; color: #fff; }
+html.dark .li-edit { background: #142239; border-color: #2c3a55; color: #fb923c; }
+html.dark .li-del { background: #1a1a2a; border-color: #7a3040; color: #f87171; }

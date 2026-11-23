@@ -8,7 +8,7 @@ import { BTN_DANGER, BTN_DANGER_SOFT } from '../ui/classes'
 // المحاسب يطلب ويكتب السبب، والمالك وحده يوافق أو يرفض. قبل الحذف تنحفظ نسخة كاملة.
 
 /** زر المحاسب: «اطلب حذف» ويا نافذة السبب داخل الصفحة (بلا prompt). */
-export function RequestInvoiceDelete({ invoiceId, code, onDone }: { invoiceId: string; code: string; onDone: () => void }) {
+export function RequestInvoiceDelete({ invoiceId, code, onDone, className }: { invoiceId: string; code: string; onDone: () => void; className?: string }) {
   const [open, setOpen] = useState(false)
   const [reason, setReason] = useState('')
   const [busy, setBusy] = useState(false)
@@ -20,8 +20,11 @@ export function RequestInvoiceDelete({ invoiceId, code, onDone }: { invoiceId: s
   }
   return (
     <>
-      <button type="button" onClick={() => setOpen(true)}
-        className="rounded-lg border border-red-200 px-3 py-1.5 text-xs font-bold text-red-600 hover:bg-red-50">🗑️ اطلب حذف</button>
+      {/* (ك) 11-23: className يبدّل الشكل لزر أيقونة بفواتير الليدر */}
+      {className
+        ? <button type="button" onClick={() => setOpen(true)} title="اطلب حذف" aria-label="اطلب حذف" className={className}>🗑️</button>
+        : <button type="button" onClick={() => setOpen(true)}
+          className="rounded-lg border border-red-200 px-3 py-1.5 text-xs font-bold text-red-600 hover:bg-red-50">🗑️ اطلب حذف</button>}
       {open && (
         <Modal title={<>🗑️ طلب حذف الفاتورة {code}</>} onClose={() => setOpen(false)} size="md" busy={busy}>
             <p className="mt-1 text-xs text-slate-500">الطلب يروح للمالك، وما تنحذف إلا بموافقته. اكتب السبب بوضوح.</p>

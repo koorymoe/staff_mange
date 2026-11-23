@@ -624,27 +624,20 @@ export default function LeaderInvoicesListPage({ embedded }: EmbeddedProps = {})
       {loading && tab !== 'PRICES' && <p className="mt-6 text-slate-400">جاري التحميل…</p>}
 
       {!loading && tab !== 'PRICES' && (
-        <div className="mt-6 overflow-x-auto rounded-xl border border-white bg-white shadow-[0_4px_20px_rgba(15,32,64,0.06)]">
+        <div className="li-table mt-6 overflow-x-auto rounded-xl border">
+          {/* (ك) 11-23 زينا: الجدول مثل الصورة — عناوين بأيقونات، كبسولات، وأزرار بأيقونة فوك النص. الألوان بـindex.css (.li-*) */}
           <table className="w-full min-w-[820px] text-sm">
             <thead>
-              <tr className="border-b border-slate-100 text-right text-slate-400">
-                <th className="px-4 py-3">كود المحاسبة</th>
-                <th className="px-4 py-3">رقم الفاتورة المحاسبية</th>
-                <th className="px-4 py-3">الليدر</th>
-                <th className="px-4 py-3">الزبون</th>
-                <th className="px-4 py-3">المنظومات</th>
-                <th className="px-4 py-3">تكاليف التنفيذ</th>
-                <th className="px-4 py-3">مجموع المواد</th>
-                <th className="px-4 py-3">المجموع الصافي</th>
-                <th className="px-4 py-3">الحالة</th>
-                <th className="px-4 py-3">التاريخ</th>
-                <th className="px-4 py-3">إجراءات</th>
+              <tr className="li-th text-center">
+                {([['⌘', 'كود المحاسبة'], ['#', 'رقم الفاتورة المحاسبية'], ['🗂', 'الليدر'], ['👤', 'الزبون'], ['⚙', 'المنظومات'], ['🧾', 'تكاليف التنفيذ'], ['📦', 'مجموع المواد'], ['🧮', 'المجموع الصافي'], ['〰', 'الحالة'], ['📅', 'التاريخ'], ['🗃', 'إجراءات']] as const).map(([ic, h]) => (
+                  <th key={h} className="li-thc px-2 py-3"><span className="inline-flex items-center gap-1.5"><span className="li-thi">{ic}</span>{h}</span></th>
+                ))}
               </tr>
             </thead>
             <tbody>
               {paged.map((inv) => (
-                <tr key={inv.id} className="border-b border-slate-50 last:border-0">
-                  <td className="px-4 py-3 font-mono text-brand-700">
+                <tr key={inv.id} className="li-row text-center">
+                  <td className="li-code px-2 py-3 font-mono">
                     {inv.accountingCode}
                     {/* ⚠️ الفاتورة اليدوية ما وراها جدول كلفة يراجعها —
                         فتنوسم بالصف نفسه، ووصف الشغل تحتها هو مرجع
@@ -660,28 +653,28 @@ export default function LeaderInvoicesListPage({ embedded }: EmbeddedProps = {})
                         شكلها فاتورة أحد فضّاها، مو ضماناً بسبب موثَّق. */}
                     <FreeWorkBadge isFree={inv.isFree} reason={inv.freeReasonLabel} note={inv.freeReasonNote} className="mt-1 font-sans font-normal" />
                   </td>
-                  <td className="px-4 py-3">
+                  <td className="px-2 py-3">
                     {inv.externalInvoiceNumber
                       ? <span className="rounded-lg bg-emerald-50 px-2 py-1 font-mono text-xs font-bold text-emerald-800">{inv.externalInvoiceNumber}</span>
                       : <span className="text-xs text-slate-400">—</span>}
                   </td>
-                  <td className="px-4 py-3">
-                    <span className="font-bold text-slate-700">{inv.employeeName || '—'}</span>
-                    {inv.bookingCode && <div className="text-xs text-slate-400">حجز {inv.bookingCode}</div>}
+                  <td className="px-2 py-3">
+                    <span className="li-name font-bold">{inv.employeeName || '—'}</span>
+                    {inv.bookingCode && <div className="li-sub text-xs">حجز {inv.bookingCode}</div>}
                   </td>
-                  <td className="px-4 py-3">
+                  <td className="px-2 py-3">
                     {inv.customerName || inv.booking?.customer?.name || '—'}
                     {formatCustomerCode(inv.booking?.customer) && (
-                      <div className="font-mono text-xs text-slate-400">{formatCustomerCode(inv.booking?.customer)}</div>
+                      <div className="li-sub font-mono text-xs">{formatCustomerCode(inv.booking?.customer)}</div>
                     )}
                   </td>
-                  <td className="px-4 py-3">{inv.systems.join('، ')}</td>
-                  <td className="px-4 py-3">{inv.executionCost.toLocaleString()}</td>
-                  <td className="px-4 py-3">{inv.materialsTotal.toLocaleString()}</td>
-                  <td className="px-4 py-3 font-bold text-brand-800">{inv.netTotal.toLocaleString()}</td>
-                  <td className="px-4 py-3">
-                    <span className={`rounded-full px-3 py-1 text-xs font-bold ${
-                      inv.status === 'APPROVED' ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'
+                  <td className="px-2 py-3">{inv.systems.join('، ')}</td>
+                  <td className="px-2 py-3 font-bold">{inv.executionCost.toLocaleString()}</td>
+                  <td className="px-2 py-3 font-bold">{inv.materialsTotal.toLocaleString()}</td>
+                  <td className="px-2 py-3"><span className="li-net inline-block whitespace-nowrap rounded-lg border px-3 py-1 font-bold">{inv.netTotal.toLocaleString()} د.ع</span></td>
+                  <td className="px-2 py-3">
+                    <span className={`li-st inline-block max-w-[7rem] rounded-xl border px-3 py-1 text-xs font-bold ${
+                      inv.status === 'APPROVED' ? 'li-st-ok' : 'li-st-wait'
                     }`}>
                       {inv.status === 'APPROVED' ? '✔ مكتملة'
                         : atMonitor(inv) ? '👁️ بانتظار تدقيق المراقب'
@@ -740,11 +733,11 @@ export default function LeaderInvoicesListPage({ embedded }: EmbeddedProps = {})
                       </span>
                     )}
                   </td>
-                  <td className="px-4 py-3 text-slate-400">
-                    {new Date(inv.createdAt).toLocaleDateString('ar-IQ')}
+                  <td className="li-date whitespace-nowrap px-2 py-3">
+                    📅 {new Date(inv.createdAt).toLocaleDateString('en-CA').replace(/-/g, '/')}
                   </td>
-                  <td className="px-4 py-3">
-                    <div className="flex gap-2">
+                  <td className="px-2 py-3">
+                    <div className="flex flex-nowrap items-stretch justify-center gap-1.5">
                       <button
                         onClick={() => {
                           setDetails(inv)
@@ -752,9 +745,9 @@ export default function LeaderInvoicesListPage({ embedded }: EmbeddedProps = {})
                           setAdjustments([])
                           api.getInvoiceAdjustments(inv.id).then(setAdjustments).catch(() => setAdjustments([]))
                         }}
-                        className="rounded-lg bg-slate-100 px-3 py-1.5 text-xs font-bold text-slate-700 hover:bg-slate-200"
+                        className="li-btn flex flex-col items-center justify-center gap-0.5 whitespace-nowrap rounded-xl border px-2.5 py-1.5 text-xs font-bold leading-tight disabled:opacity-50 li-det"
                       >
-                        📋 التفاصيل
+                        <span>📋</span>التفاصيل
                       </button>
                       {/* ⚠️ زر التدقيق يبقى ظاهراً **حتى بعد الحكم**:
                           المحاسب يگدر يبدّل حكمه قبل الاعتماد. حجبه
@@ -769,9 +762,9 @@ export default function LeaderInvoicesListPage({ embedded }: EmbeddedProps = {})
                             setAuditAmount(inv.auditedAmount != null ? String(inv.auditedAmount) : '')
                             setAuditErr(null)
                           }}
-                          className="rounded-lg border border-brand-300 px-3 py-1.5 text-xs font-bold text-brand-700 hover:bg-brand-50"
+                          className="li-btn flex flex-col items-center justify-center gap-0.5 whitespace-nowrap rounded-xl border px-2.5 py-1.5 text-xs font-bold leading-tight disabled:opacity-50 li-aud"
                         >
-                          🔍 تدقيق
+                          <span>🔍</span>تدقيق
                         </button>
                       )}
                       {/* ↩ سحب الاعتماد — «لازم تخليلي خيار أكدر أرجعله
@@ -780,9 +773,9 @@ export default function LeaderInvoicesListPage({ embedded }: EmbeddedProps = {})
                         <button
                           onClick={() => revoke(inv)}
                           disabled={busyId === inv.id}
-                          className="rounded-lg border border-red-300 px-3 py-1.5 text-xs font-bold text-red-700 hover:bg-red-50 disabled:opacity-50"
+                          className="li-btn flex flex-col items-center justify-center gap-0.5 whitespace-nowrap rounded-xl border px-2.5 py-1.5 text-xs font-bold leading-tight disabled:opacity-50 li-del"
                         >
-                          ↩ اسحب الاعتماد
+                          <span>↩</span>اسحب الاعتماد
                         </button>
                       )}
                       {/* ═══ الاعتماد — بعد الحكم بس ═══
@@ -794,9 +787,9 @@ export default function LeaderInvoicesListPage({ embedded }: EmbeddedProps = {})
                         <button
                           onClick={() => { setApproveFor(inv); setInvoiceNo(''); setApproveErr(null) }}
                           disabled={busyId === inv.id}
-                          className="rounded-lg bg-[#0f2040] px-3 py-1.5 text-xs font-bold text-white hover:bg-[#1a3a6c] disabled:opacity-50"
+                          className="li-btn flex flex-col items-center justify-center gap-0.5 whitespace-nowrap rounded-xl border px-2.5 py-1.5 text-xs font-bold leading-tight disabled:opacity-50 li-ok"
                         >
-                          {busyId === inv.id ? 'جاري الاعتماد...' : 'اعتماد'}
+                          <span>✔</span>{busyId === inv.id ? 'جاري الاعتماد...' : 'اعتماد'}
                         </button>
                       )}
                       {/* ⚠️ **الطريق الثالث** جنب الاعتماد: المحاسب
@@ -808,9 +801,9 @@ export default function LeaderInvoicesListPage({ embedded }: EmbeddedProps = {})
                         <button
                           onClick={() => { setMonitorFor(inv); setMonitorNote(''); setMonitorErr(null) }}
                           disabled={busyId === inv.id}
-                          className="rounded-lg border border-indigo-300 bg-indigo-50 px-3 py-1.5 text-xs font-bold text-indigo-700 hover:bg-indigo-100 disabled:opacity-50"
+                          className="li-btn flex flex-col items-center justify-center gap-0.5 whitespace-nowrap rounded-xl border px-2.5 py-1.5 text-xs font-bold leading-tight disabled:opacity-50 li-mon"
                         >
-                          👁️ أرسلها للمراقب
+                          <span>👁️</span>أرسلها للمراقب
                         </button>
                       )}
                       {/* المراقب يبتّ — وهو وحده يشوف هالزر */}
@@ -818,9 +811,9 @@ export default function LeaderInvoicesListPage({ embedded }: EmbeddedProps = {})
                         <button
                           onClick={() => { setDecideFor(inv); setDecideVerdict('OK'); setDecideNote(''); setDecideErr(null) }}
                           disabled={busyId === inv.id}
-                          className="rounded-lg bg-[#0f2040] px-3 py-1.5 text-xs font-bold text-white hover:bg-[#1a3a6c] disabled:opacity-50"
+                          className="li-btn flex flex-col items-center justify-center gap-0.5 whitespace-nowrap rounded-xl border px-2.5 py-1.5 text-xs font-bold leading-tight disabled:opacity-50 li-ok"
                         >
-                          👁️ راجعها
+                          <span>👁️</span>راجعها
                         </button>
                       )}
                       {/* ⚠️ المالك وحده: يرجّعها للمحاسب حتى يرتّبها من
@@ -829,25 +822,25 @@ export default function LeaderInvoicesListPage({ embedded }: EmbeddedProps = {})
                         <button
                           onClick={() => returnToAccountant(inv)}
                           disabled={busyId === inv.id}
-                          className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-1.5 text-xs font-bold text-amber-800 hover:bg-amber-100 disabled:opacity-50"
+                          className="li-btn flex flex-col items-center justify-center gap-0.5 whitespace-nowrap rounded-xl border px-2.5 py-1.5 text-xs font-bold leading-tight disabled:opacity-50 li-ret"
                         >
-                          ↩️ أرجعها للمحاسب
+                          <span>↩️</span>أرجعها للمحاسب
                         </button>
                       )}
                       {/* ⚠️ وبدل ما يختفي الزر بلا تفسير: سطر يقول
                           **ليش** والخطوة الجاية. زر يختفي بصمت يخلّي
                           المحاسب يدوّر عليه. */}
                       {canApprove && inv.status !== 'APPROVED' && !audited(inv) && !isInternalInv(inv) && (
-                        <span className="rounded-lg bg-sky-50 px-3 py-1.5 text-xs font-bold text-sky-700 ring-1 ring-sky-200">
-                          دقّقها أول
+                        <span className="li-btn flex flex-col items-center justify-center gap-0.5 whitespace-nowrap rounded-xl border px-2.5 py-1.5 text-xs font-bold leading-tight disabled:opacity-50 li-pay">
+                          <span>↩️</span>دقّقها أول
                         </span>
                       )}
                       {/* ⚠️ المحاسب يشوف **وين** هي مو زراً معطّلاً:
                           «عند المراقب» تقول له ينتظر منو، والزر
                           المعطّل يقول «ممنوع» بلا ما يقول ليش. */}
                       {canApprove && !isMonitor && atMonitor(inv) && (
-                        <span className="rounded-lg bg-indigo-50 px-3 py-1.5 text-xs font-bold text-indigo-700 ring-1 ring-indigo-200">
-                          👁️ عند المراقب
+                        <span className="li-btn flex flex-col items-center justify-center gap-0.5 whitespace-nowrap rounded-xl border px-2.5 py-1.5 text-xs font-bold leading-tight disabled:opacity-50 li-mon">
+                          <span>👁️</span>عند المراقب
                         </span>
                       )}
                       {/* الفواتير الي انعتمدت قبل ما يصير الرقم إجبارياً —
@@ -856,9 +849,9 @@ export default function LeaderInvoicesListPage({ embedded }: EmbeddedProps = {})
                         <button
                           onClick={() => { setLinkFor(inv); setLinkNo(''); setLinkErr(null) }}
                           disabled={busyId === inv.id}
-                          className="rounded-lg bg-amber-500 px-3 py-1.5 text-xs font-bold text-white hover:bg-amber-600 disabled:opacity-50"
+                          className="li-btn flex flex-col items-center justify-center gap-0.5 whitespace-nowrap rounded-xl border px-2.5 py-1.5 text-xs font-bold leading-tight disabled:opacity-50 li-ret"
                         >
-                          🔗 اربط رقم فاتورة
+                          <span>🔗</span>اربط رقم فاتورة
                         </button>
                       )}
                       {/* تقدير الإداري يطلع غلط أحياناً والفاتورة هي الصح */}
@@ -866,14 +859,15 @@ export default function LeaderInvoicesListPage({ embedded }: EmbeddedProps = {})
                         <button
                           onClick={() => openAdjust(inv)}
                           disabled={busyId === inv.id}
-                          className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-bold text-slate-600 hover:bg-slate-50 disabled:opacity-50"
+                          title="تعديل المبالغ" aria-label="تعديل المبالغ"
+                          className="li-btn li-edit flex w-11 shrink-0 items-center justify-center rounded-xl border text-lg disabled:opacity-50"
                         >
-                          ✏️ تعديل المبالغ
+                          ✏️
                         </button>
                       )}
                       {/* (دازاي 10-25) المحاسب يطلب حذف فاتورة بيها مشكلة — الطلب يروح للمالك */}
                       {canApprove && inv.status !== 'APPROVED' && (
-                        <RequestInvoiceDelete invoiceId={inv.id} code={inv.accountingCode} onDone={load} />
+                        <RequestInvoiceDelete invoiceId={inv.id} code={inv.accountingCode} onDone={load} className="li-btn li-del flex h-full min-h-[2.75rem] w-11 shrink-0 items-center justify-center rounded-xl border text-lg" />
                       )}
                     </div>
                   </td>
@@ -881,7 +875,7 @@ export default function LeaderInvoicesListPage({ embedded }: EmbeddedProps = {})
               ))}
               {invoices.length === 0 && (
                 <tr>
-                  <td colSpan={10} className="px-4 py-6 text-center text-slate-400">
+                  <td colSpan={11} className="li-sub px-4 py-6 text-center">
                     لا توجد فواتير بعد.
                   </td>
                 </tr>
