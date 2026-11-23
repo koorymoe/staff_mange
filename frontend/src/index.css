@@ -1937,7 +1937,7 @@ html.dark .sp-head { background: linear-gradient(90deg, #2c4281, #38509a 50%, #3
 html.dark .sp-th svg { color: #c9d5f5; }
 html.dark .sp-row { background: linear-gradient(90deg, #222a4b, #151e3b 35%, #151e3b); border-color: #2a3358; }
 html.dark .sp-row:hover, html.dark .sp-row-on { border-color: #5a6ab0; }
-html.dark .sp-ibox { color: #cdd9f5; background: #26376c; border-color: #3e508c; }
+html.dark .sp-ibox { color: #cdd9f5; background: linear-gradient(180deg, #30437a, #223162); border-color: #3e508c; }
 html.dark .sp-name { color: #f4f6fc; }
 html.dark .sp-phone { color: #cdd4f1; }
 html.dark .sp-type { color: #fcfeff; }
