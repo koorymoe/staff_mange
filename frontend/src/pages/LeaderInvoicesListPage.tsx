@@ -1,3 +1,4 @@
+import { LineIcon } from '../components/LineIcon'
 import Modal from '../ui/Modal'
 import { useEffect, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
@@ -629,8 +630,8 @@ export default function LeaderInvoicesListPage({ embedded }: EmbeddedProps = {})
           <table className="w-full min-w-[820px] text-sm">
             <thead>
               <tr className="li-th text-center">
-                {([['⌘', 'كود المحاسبة'], ['#', 'رقم الفاتورة المحاسبية'], ['🗂', 'الليدر'], ['👤', 'الزبون'], ['⚙', 'المنظومات'], ['🧾', 'تكاليف التنفيذ'], ['📦', 'مجموع المواد'], ['🧮', 'المجموع الصافي'], ['〰', 'الحالة'], ['📅', 'التاريخ'], ['🗃', 'إجراءات']] as const).map(([ic, h]) => (
-                  <th key={h} className="li-thc px-2 py-3"><span className="inline-flex items-center gap-1.5"><span className="li-thi">{ic}</span>{h}</span></th>
+                {([['cube', 'كود المحاسبة'], ['#', 'رقم الفاتورة المحاسبية'], ['layers', 'الليدر'], ['user', 'الزبون'], ['gear', 'المنظومات'], ['coins', 'تكاليف التنفيذ'], ['box', 'مجموع المواد'], ['calc', 'المجموع الصافي'], ['pulse', 'الحالة'], ['cal', 'التاريخ'], ['layers', 'إجراءات']] as const).map(([ic, h]) => (
+                  <th key={h} className="li-thc px-2 py-3"><span className="inline-flex items-center gap-1.5">{ic === '#' ? <span className="li-thi text-lg font-black">#</span> : <LineIcon n={ic} className="li-thi h-5 w-5 shrink-0" />}<span className="max-w-[6rem]">{h}</span></span></th>
                 ))}
               </tr>
             </thead>
@@ -734,7 +735,7 @@ export default function LeaderInvoicesListPage({ embedded }: EmbeddedProps = {})
                     )}
                   </td>
                   <td className="li-date whitespace-nowrap px-2 py-3">
-                    📅 {new Date(inv.createdAt).toLocaleDateString('en-CA').replace(/-/g, '/')}
+                    <LineIcon n="cal" className="me-1 inline h-4 w-4 align-[-3px]" />{new Date(inv.createdAt).toLocaleDateString('en-CA').replace(/-/g, '/')}
                   </td>
                   <td className="px-2 py-3">
                     <div className="flex flex-nowrap items-stretch justify-center gap-1.5">
@@ -745,7 +746,7 @@ export default function LeaderInvoicesListPage({ embedded }: EmbeddedProps = {})
                           setAdjustments([])
                           api.getInvoiceAdjustments(inv.id).then(setAdjustments).catch(() => setAdjustments([]))
                         }}
-                        className="li-btn flex flex-col items-center justify-center gap-0.5 whitespace-nowrap rounded-xl border px-2.5 py-1.5 text-xs font-bold leading-tight disabled:opacity-50 li-det"
+                        className="li-btn flex w-[4.5rem] shrink-0 flex-col items-center justify-center gap-0.5 rounded-xl border px-1.5 py-1.5 text-center text-xs font-bold leading-tight disabled:opacity-50 li-det"
                       >
                         <span>📋</span>التفاصيل
                       </button>
@@ -762,7 +763,7 @@ export default function LeaderInvoicesListPage({ embedded }: EmbeddedProps = {})
                             setAuditAmount(inv.auditedAmount != null ? String(inv.auditedAmount) : '')
                             setAuditErr(null)
                           }}
-                          className="li-btn flex flex-col items-center justify-center gap-0.5 whitespace-nowrap rounded-xl border px-2.5 py-1.5 text-xs font-bold leading-tight disabled:opacity-50 li-aud"
+                          className="li-btn flex w-[4.5rem] shrink-0 flex-col items-center justify-center gap-0.5 rounded-xl border px-1.5 py-1.5 text-center text-xs font-bold leading-tight disabled:opacity-50 li-aud"
                         >
                           <span>🔍</span>تدقيق
                         </button>
@@ -773,7 +774,7 @@ export default function LeaderInvoicesListPage({ embedded }: EmbeddedProps = {})
                         <button
                           onClick={() => revoke(inv)}
                           disabled={busyId === inv.id}
-                          className="li-btn flex flex-col items-center justify-center gap-0.5 whitespace-nowrap rounded-xl border px-2.5 py-1.5 text-xs font-bold leading-tight disabled:opacity-50 li-del"
+                          className="li-btn flex w-[4.5rem] shrink-0 flex-col items-center justify-center gap-0.5 rounded-xl border px-1.5 py-1.5 text-center text-xs font-bold leading-tight disabled:opacity-50 li-del"
                         >
                           <span>↩</span>اسحب الاعتماد
                         </button>
@@ -787,7 +788,7 @@ export default function LeaderInvoicesListPage({ embedded }: EmbeddedProps = {})
                         <button
                           onClick={() => { setApproveFor(inv); setInvoiceNo(''); setApproveErr(null) }}
                           disabled={busyId === inv.id}
-                          className="li-btn flex flex-col items-center justify-center gap-0.5 whitespace-nowrap rounded-xl border px-2.5 py-1.5 text-xs font-bold leading-tight disabled:opacity-50 li-ok"
+                          className="li-btn flex w-[4.5rem] shrink-0 flex-col items-center justify-center gap-0.5 rounded-xl border px-1.5 py-1.5 text-center text-xs font-bold leading-tight disabled:opacity-50 li-ok"
                         >
                           <span>✔</span>{busyId === inv.id ? 'جاري الاعتماد...' : 'اعتماد'}
                         </button>
@@ -801,7 +802,7 @@ export default function LeaderInvoicesListPage({ embedded }: EmbeddedProps = {})
                         <button
                           onClick={() => { setMonitorFor(inv); setMonitorNote(''); setMonitorErr(null) }}
                           disabled={busyId === inv.id}
-                          className="li-btn flex flex-col items-center justify-center gap-0.5 whitespace-nowrap rounded-xl border px-2.5 py-1.5 text-xs font-bold leading-tight disabled:opacity-50 li-mon"
+                          className="li-btn flex w-[4.5rem] shrink-0 flex-col items-center justify-center gap-0.5 rounded-xl border px-1.5 py-1.5 text-center text-xs font-bold leading-tight disabled:opacity-50 li-mon"
                         >
                           <span>👁️</span>أرسلها للمراقب
                         </button>
@@ -811,7 +812,7 @@ export default function LeaderInvoicesListPage({ embedded }: EmbeddedProps = {})
                         <button
                           onClick={() => { setDecideFor(inv); setDecideVerdict('OK'); setDecideNote(''); setDecideErr(null) }}
                           disabled={busyId === inv.id}
-                          className="li-btn flex flex-col items-center justify-center gap-0.5 whitespace-nowrap rounded-xl border px-2.5 py-1.5 text-xs font-bold leading-tight disabled:opacity-50 li-ok"
+                          className="li-btn flex w-[4.5rem] shrink-0 flex-col items-center justify-center gap-0.5 rounded-xl border px-1.5 py-1.5 text-center text-xs font-bold leading-tight disabled:opacity-50 li-ok"
                         >
                           <span>👁️</span>راجعها
                         </button>
@@ -822,7 +823,7 @@ export default function LeaderInvoicesListPage({ embedded }: EmbeddedProps = {})
                         <button
                           onClick={() => returnToAccountant(inv)}
                           disabled={busyId === inv.id}
-                          className="li-btn flex flex-col items-center justify-center gap-0.5 whitespace-nowrap rounded-xl border px-2.5 py-1.5 text-xs font-bold leading-tight disabled:opacity-50 li-ret"
+                          className="li-btn flex w-[4.5rem] shrink-0 flex-col items-center justify-center gap-0.5 rounded-xl border px-1.5 py-1.5 text-center text-xs font-bold leading-tight disabled:opacity-50 li-ret"
                         >
                           <span>↩️</span>أرجعها للمحاسب
                         </button>
@@ -831,7 +832,7 @@ export default function LeaderInvoicesListPage({ embedded }: EmbeddedProps = {})
                           **ليش** والخطوة الجاية. زر يختفي بصمت يخلّي
                           المحاسب يدوّر عليه. */}
                       {canApprove && inv.status !== 'APPROVED' && !audited(inv) && !isInternalInv(inv) && (
-                        <span className="li-btn flex flex-col items-center justify-center gap-0.5 whitespace-nowrap rounded-xl border px-2.5 py-1.5 text-xs font-bold leading-tight disabled:opacity-50 li-pay">
+                        <span className="li-btn flex w-[4.5rem] shrink-0 flex-col items-center justify-center gap-0.5 rounded-xl border px-1.5 py-1.5 text-center text-xs font-bold leading-tight disabled:opacity-50 li-pay">
                           <span>↩️</span>دقّقها أول
                         </span>
                       )}
@@ -839,7 +840,7 @@ export default function LeaderInvoicesListPage({ embedded }: EmbeddedProps = {})
                           «عند المراقب» تقول له ينتظر منو، والزر
                           المعطّل يقول «ممنوع» بلا ما يقول ليش. */}
                       {canApprove && !isMonitor && atMonitor(inv) && (
-                        <span className="li-btn flex flex-col items-center justify-center gap-0.5 whitespace-nowrap rounded-xl border px-2.5 py-1.5 text-xs font-bold leading-tight disabled:opacity-50 li-mon">
+                        <span className="li-btn flex w-[4.5rem] shrink-0 flex-col items-center justify-center gap-0.5 rounded-xl border px-1.5 py-1.5 text-center text-xs font-bold leading-tight disabled:opacity-50 li-mon">
                           <span>👁️</span>عند المراقب
                         </span>
                       )}
@@ -849,7 +850,7 @@ export default function LeaderInvoicesListPage({ embedded }: EmbeddedProps = {})
                         <button
                           onClick={() => { setLinkFor(inv); setLinkNo(''); setLinkErr(null) }}
                           disabled={busyId === inv.id}
-                          className="li-btn flex flex-col items-center justify-center gap-0.5 whitespace-nowrap rounded-xl border px-2.5 py-1.5 text-xs font-bold leading-tight disabled:opacity-50 li-ret"
+                          className="li-btn flex w-[4.5rem] shrink-0 flex-col items-center justify-center gap-0.5 rounded-xl border px-1.5 py-1.5 text-center text-xs font-bold leading-tight disabled:opacity-50 li-ret"
                         >
                           <span>🔗</span>اربط رقم فاتورة
                         </button>
