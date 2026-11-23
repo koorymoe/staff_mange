@@ -993,7 +993,7 @@ func (h *BookingHandler) TechStep(w http.ResponseWriter, r *http.Request) {
 	var err error
 	switch r.PathValue("step") {
 	case "contacted":
-		b, err = h.service.TechContacted(id, me)
+		b, err = h.service.TechContacted(id, me, body.Text)
 	case "decide":
 		b, err = h.service.TechDecide(id, me, body.Decision, body.Text, body.VisitAt)
 	case "visited":

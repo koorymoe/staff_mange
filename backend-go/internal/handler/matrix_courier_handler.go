@@ -13,6 +13,7 @@ import (
 	"github.com/jmoiron/sqlx"
 
 	"staffmange-api/internal/middleware"
+	"staffmange-api/internal/service"
 )
 
 // ═══ رسول ماتركس — قرار (ع) 10-13 ═══
@@ -154,6 +155,10 @@ func (h *MatrixCourierHandler) State(w http.ResponseWriter, r *http.Request) {
 	out.Badges["/my-work"] = tasks
 	out.Badges["/my-extra-tasks"] = tasks
 	out.Badges["/my-tasks"] = jobs
+	// (ك 11-23) محوّل للتقني وبعده بلا تقرير اتصال — رقم أحمر بمكانه
+	hb, sq := service.TechContactBadges(h.db, me)
+	out.Badges["/my-handovers"] = hb
+	out.Badges["/solar-inquiries"] = sq
 	WriteJSON(w, http.StatusOK, out)
 }
 

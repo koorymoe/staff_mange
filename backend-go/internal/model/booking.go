@@ -251,11 +251,14 @@ type Booking struct {
 	LastEditedBy              *EmployeeBrief `db:"-" json:"lastEditedBy,omitempty"`
 
 	// ترحيل للتقني (0326): الحجز صار برقبة تقني أو مسؤول خدمة.
-	HandoverToID        *string    `db:"handoverToId" json:"handoverToId,omitempty"`
-	HandoverByID        *string    `db:"handoverById" json:"-"`
-	HandoverAt          *time.Time `db:"handoverAt" json:"handoverAt,omitempty"`
-	HandoverReason      *string    `db:"handoverReason" json:"handoverReason,omitempty"`
-	TechContactedAt     *time.Time `db:"techContactedAt" json:"techContactedAt,omitempty"`
+	HandoverToID    *string    `db:"handoverToId" json:"handoverToId,omitempty"`
+	HandoverByID    *string    `db:"handoverById" json:"-"`
+	HandoverAt      *time.Time `db:"handoverAt" json:"handoverAt,omitempty"`
+	HandoverReason  *string    `db:"handoverReason" json:"handoverReason,omitempty"`
+	TechContactedAt *time.Time `db:"techContactedAt" json:"techContactedAt,omitempty"`
+	// (ك 11-23) تقرير الاتصال: ملاحظة التقني (اتصل وما رد…)، ووقت خصم نقطة الكي بي آي إذا عبرت ٢٤ ساعة بلا تقرير.
+	TechContactNote     *string    `db:"techContactNote" json:"techContactNote,omitempty"`
+	TechContactKpiAt    *time.Time `db:"techContactKpiAt" json:"techContactKpiAt,omitempty"`
 	TechDiagnosis       *string    `db:"techDiagnosis" json:"techDiagnosis,omitempty"`
 	TechDiagnosedAt     *time.Time `db:"techDiagnosedAt" json:"techDiagnosedAt,omitempty"`
 	TechCrewRequestedAt *time.Time `db:"techCrewRequestedAt" json:"techCrewRequestedAt,omitempty"`

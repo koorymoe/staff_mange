@@ -668,6 +668,8 @@ export interface Booking {
   tracking?: { kind: 'PROJECT' | 'TECH'; stage: string; since: string; days: number; limit: number; late: boolean } | null
   handoverBy?: { id: string; name: string } | null
   techContactedAt?: string | null
+  techContactNote?: string | null
+  techContactKpiAt?: string | null
   techDiagnosis?: string | null
   techDiagnosedAt?: string | null
   techCrewRequestedAt?: string | null

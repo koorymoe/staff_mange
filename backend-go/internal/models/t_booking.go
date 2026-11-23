@@ -139,6 +139,8 @@ func init() {
 			{Name: "returnedFromProjectsById", Type: "text"},
 			{Name: "returnHandledAt", Type: "timestamp with time zone"},
 			{Name: "returnHandledById", Type: "text"},
+			{Name: "techContactNote", Type: "text"},
+			{Name: "techContactKpiAt", Type: "timestamp with time zone"},
 		},
 		Constraints: []Constraint{
 			{Name: "Booking_archivedById_fkey", Def: "FOREIGN KEY (\"archivedById\") REFERENCES \"Employee\"(id)"},

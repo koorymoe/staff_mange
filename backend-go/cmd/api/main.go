@@ -242,6 +242,8 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	// بالطابور بلا حركة، لا ملغي ولا شغّال.
 	bookingReminderService := service.NewBookingReminderService(bookingRepo, notificationRepo)
 	bookingReminderService.StartBackgroundSweeps()
+	// (ك 11-23) تقرير اتصال التقني: تذكير كل ٤ ساعات، ونقطة كي بي آي بعد ٢٤ ساعة بلا تقرير
+	service.NewTechContactWatch(db, notificationRepo).Start()
 	projectWorkTypeService := service.NewProjectWorkTypeService(projectWorkTypeRepo)
 	checklistService := service.NewChecklistService(checklistRepo)
 	techShowcaseService := service.NewTechShowcaseService(techShowcaseRepo)

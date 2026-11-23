@@ -199,7 +199,8 @@ export default function Layout() {
   // فتح البند = شاف الشغل الموجّه → رقمه يتصفّر بالخادم
   useEffect(() => {
     const link = location.pathname
-    if (!courierBadges[link]) return
+    // (ك 11-23) رقم «ينتظر تقرير اتصال» ما ينمسح بالفتح — ينقص بس من يرفع التقرير، فما نطلب «شاف» (وإلا حلقة طلبات)
+    if (!courierBadges[link] || link === '/my-handovers' || link === '/solar-inquiries') return
     api.courierSeen(link).then(() => window.dispatchEvent(new Event('matrix-courier-refresh'))).catch(swallow)
   }, [location.pathname, courierBadges])
 

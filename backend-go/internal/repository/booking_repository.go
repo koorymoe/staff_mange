@@ -2338,12 +2338,13 @@ func (r *BookingRepository) Handover(id, toID, byID, reason string) error {
 	_, err := r.db.Exec(`UPDATE "Booking" SET "handoverToId" = $2, "handoverById" = $3, "handoverAt" = now(),
 		"handoverReason" = $4, "techContactedAt" = NULL, "techDiagnosis" = NULL, "techDiagnosedAt" = NULL,
 		"techCrewRequestedAt" = NULL, "techDecision" = NULL, "techDecidedAt" = NULL, "techVisitAt" = NULL,
-		"techVisitedAt" = NULL, "techVisitMoves" = 0, "updatedAt" = now() WHERE id = $1`, id, toID, byID, reason)
+		"techVisitedAt" = NULL, "techVisitMoves" = 0, "techContactNote" = NULL, "techContactKpiAt" = NULL, "updatedAt" = now() WHERE id = $1`, id, toID, byID, reason)
 	return err
 }
 
-func (r *BookingRepository) TechContacted(id string) error {
-	_, err := r.db.Exec(`UPDATE "Booking" SET "techContactedAt" = COALESCE("techContactedAt", now()), "updatedAt" = now() WHERE id = $1`, id)
+func (r *BookingRepository) TechContacted(id, note string) error {
+	_, err := r.db.Exec(`UPDATE "Booking" SET "techContactedAt" = COALESCE("techContactedAt", now()),
+		"techContactNote" = COALESCE(NULLIF($2, ''), "techContactNote"), "updatedAt" = now() WHERE id = $1`, id, note)
 	return err
 }
 

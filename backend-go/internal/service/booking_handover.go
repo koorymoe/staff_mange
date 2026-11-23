@@ -62,12 +62,27 @@ func (s *BookingService) handoverOwned(id, empID string) (*model.Booking, error)
 	return b, nil
 }
 
-func (s *BookingService) TechContacted(id, empID string) (*model.Booking, error) {
-	if _, err := s.handoverOwned(id, empID); err != nil {
+// TechContacted (ك 11-23) «تم الاتصال» + ملاحظة التقني (اتصل وما رد…) — التقرير يوصل للمراقب
+// ومدراء العمليات والإدارة ونوابهم.
+func (s *BookingService) TechContacted(id, empID, note string) (*model.Booking, error) {
+	note = strings.TrimSpace(note)
+	if len([]rune(note)) < 3 {
+		return nil, errors.New("اكتب ملاحظة الاتصال (مثلاً: اتصلت وما رد)")
+	}
+	b, err := s.handoverOwned(id, empID)
+	if err != nil {
 		return nil, err
 	}
-	if err := s.repo.TechContacted(id); err != nil {
+	if err := s.repo.TechContacted(id, note); err != nil {
 		return nil, err
+	}
+	if s.notifications != nil {
+		var who string
+		if e, _ := s.employees.FindByID(empID); e != nil {
+			who = e.Name
+		}
+		_ = s.notifications.CreateForTechContactWatchers("tech_contact_report",
+			fmt.Sprintf("☎️ تقرير اتصال — %s · الحجز %s: %s", who, b.Code, note), empID)
 	}
 	return s.repo.FindByID(id)
 }

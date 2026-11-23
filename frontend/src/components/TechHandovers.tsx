@@ -27,6 +27,8 @@ function Card({ b, onChange }: { b: Booking; onChange: (b: Booking) => void }) {
   const [mode, setMode] = useState<'' | 'PHONE' | 'VISIT' | 'MOVE' | 'NOANS' | 'AWAIT' | 'POSTPONE'>('')
   const [note, setNote] = useState('')
   const [postAt, setPostAt] = useState('')
+  // (ك 11-23) ملاحظة تقرير الاتصال — مثلاً «اتصلت وما رد»
+  const [contactNote, setContactNote] = useState('')
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState('')
   const call = async (f: () => Promise<Booking>) => {
@@ -56,6 +58,7 @@ function Card({ b, onChange }: { b: Booking; onChange: (b: Booking) => void }) {
         {b.techDecision !== 'PHONE' && <Step n={visit ? 4 : 3} title="الكشف" done={!!b.techDiagnosedAt} at={b.techDiagnosedAt} />}
         <Step n={visit ? 5 : 4} title="انحلّت" done={b.status === 'COMPLETED'} at={b.completedAt} />
       </div>
+      {b.techContactNote && <p className="mt-2 text-xs text-slate-600">☎️ <b>تقرير الاتصال:</b> {b.techContactNote}</p>}
       {err && <p className="mt-2 text-xs text-red-600">{err}</p>}
 
       {/* (دازاي 11-01) خيارات الزبون — نفس خيارات الإداري، والملاحظة توصل للمراقب */}
@@ -91,7 +94,10 @@ function Card({ b, onChange }: { b: Booking; onChange: (b: Booking) => void }) {
       {!waiting && !b.techContactedAt && (
         <div className="mt-3 flex flex-wrap gap-2">
           {phone && <a href={`tel:${phone}`} className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-bold">📞 اتصل {phone}</a>}
-          <button disabled={busy} onClick={() => void run('contacted')} className="rounded-lg bg-orange-600 px-3 py-2 text-sm font-bold text-white disabled:opacity-50">✅ تواصلت ويا الزبون</button>
+          <input value={contactNote} onChange={(e) => setContactNote(e.target.value)} className="min-w-[220px] flex-1 rounded-lg border border-slate-300 px-2 py-1.5 text-sm"
+            placeholder="ملاحظة الاتصال — مثلاً: اتصلت وما رد" aria-label="ملاحظة الاتصال" />
+          <button disabled={busy || contactNote.trim().length < 3} onClick={() => void run('contacted', contactNote)} className="rounded-lg bg-orange-600 px-3 py-2 text-sm font-bold text-white disabled:opacity-50">✅ تم الاتصال</button>
+          <span className="w-full text-[11px] text-slate-500">لازم ترفع تقرير الاتصال خلال ٢٤ ساعة من التحويل، وإلا تنخصم نقطة كي بي آي — والتقرير يوصل للمراقب ومدراء العمليات والإدارة.</span>
         </div>
       )}
 

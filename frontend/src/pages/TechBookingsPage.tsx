@@ -24,8 +24,8 @@ function stage(b: Booking): string {
   if (b.techVisitAt) return `📅 زيارة ${d(b.techVisitAt)}`
   if (b.techDecision) return b.techDecision === 'PHONE' ? '📞 قرر: بالتلفون' : '🚗 قرر: زيارة'
   if (b.techDiagnosedAt) return '📝 كتب الكشف'
-  if (b.techContactedAt) return '☎️ تواصل ويا الزبون'
-  return '⏳ ما بدأ'
+  if (b.techContactedAt) return `☎️ تواصل ويا الزبون${b.techContactNote ? ` — ${b.techContactNote}` : ''}`
+  return b.techContactKpiAt ? '🔻 ما رفع تقرير الاتصال (انخصمت نقطة)' : '⏳ ما بدأ'
 }
 
 // قرار (ع) 10-09: «نفس ترتيب الحجوزات العادية» — طلب حذف، تفاصيل، تواصل ويا

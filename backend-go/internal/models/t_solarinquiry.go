@@ -29,6 +29,7 @@ func init() {
 			{Name: "qGotQuote", Type: "text"},
 			{Name: "qQuoteFair", Type: "text"},
 			{Name: "qNote", Type: "text"},
+			{Name: "techContactKpiAt", Type: "timestamp with time zone"},
 		},
 		Constraints: []Constraint{
 			{Name: "SolarInquiry_createdById_fkey", Def: "FOREIGN KEY (\"createdById\") REFERENCES \"Employee\"(id) ON DELETE SET NULL"},

@@ -216,6 +216,12 @@ func (s *SolarInquiryService) TechContact(emp, role, id, outcome, note string, q
 			msg = fmt.Sprintf("⭐ استفسار #%d: التقني كاتب «ما رد» — اتصل بالزبون واسأله: اتصل بيك التقني؟", x.Number)
 		}
 		_ = s.notif.CreateForPermission("quality_control", "SOLAR_INQUIRY", msg)
+		// (ك 11-23) تقرير الاتصال يوصل للمراقب ومدراء العمليات والإدارة ونوابهم
+		rep := fmt.Sprintf("☎️ تقرير اتصال — %s · استفسار الطاقة الشمسية #%d: %s", deref(x.TechName, "التقني"), x.Number, inquiryOutcomeLabel(outcome))
+		if x.TechNote != nil && *x.TechNote != "" {
+			rep += " — " + *x.TechNote
+		}
+		_ = s.notif.CreateForTechContactWatchers("tech_contact_report", rep, emp)
 	}
 	return x, err
 }
@@ -268,4 +274,18 @@ func (s *SolarInquiryService) QualityCheck(emp, role, id string, in QualityInput
 			x.Number, deref(x.TechName, "—")))
 	}
 	return x, err
+}
+
+func inquiryOutcomeLabel(o string) string {
+	switch o {
+	case "JUST_ASKING":
+		return "بس يستفسر"
+	case "WANTS_INSTALL":
+		return "يريد ينصب منظومة"
+	case "NO_ANSWER":
+		return "ما رد"
+	case "NOT_INTERESTED":
+		return "ما مهتم"
+	}
+	return o
 }

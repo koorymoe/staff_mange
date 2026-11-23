@@ -170,3 +170,18 @@ func (r *NotificationRepository) CreateForRolesOrPermission(roles []string, perm
 	`, pq.Array(roles), permissionName, notifType, message)
 	return logFail("CreateForRolesOrPermission", permissionName, notifType, err)
 }
+
+// CreateForTechContactWatchers (ك 11-23) تقارير اتصال التقني وخصمها: للمراقب، ومدير
+// العمليات ونائبه، ومدير الإدارة ونائبه (من الهيكل) — مرة وحدة للشخص، وبلا صاحب الشغل نفسه.
+func (r *NotificationRepository) CreateForTechContactWatchers(notifType, message, exceptID string) error {
+	message = model.Rebrand(message)
+	_, err := r.db.Exec(`
+		INSERT INTO "Notification" (id, "employeeId", type, message)
+		SELECT gen_random_uuid()::text, e.id, $1, $2
+		FROM "Employee" e
+		WHERE e.status = 'ACTIVE' AND e.id <> $3 AND (e.role::text = 'MONITOR' OR `+model.HasPermSQL(`e.id`, `= 'monitoring'`)+`
+			OR e.id IN (SELECT oa."employeeId" FROM "OrgAssignment" oa WHERE oa."endedAt" IS NULL AND oa."unitId" IS NULL
+				AND oa."divisionId" IN ('ops', 'admin') AND oa.position IN ('DIRECTOR', 'DEPUTY')))
+	`, notifType, message, exceptID)
+	return logFail("CreateForTechContactWatchers", "", notifType, err)
+}

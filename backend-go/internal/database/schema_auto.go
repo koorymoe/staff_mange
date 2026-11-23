@@ -369,6 +369,14 @@ func autoMigrations() []Migration {
 			ALTER TABLE "PlanSet" ADD COLUMN IF NOT EXISTS "sheetProjectAddress" text;
 		`,
 		},
+		{
+			Version: "0522_tech_contact_report",
+			SQL: `
+			ALTER TABLE "Booking" ADD COLUMN IF NOT EXISTS "techContactNote" text;
+			ALTER TABLE "Booking" ADD COLUMN IF NOT EXISTS "techContactKpiAt" timestamp with time zone;
+			ALTER TABLE "SolarInquiry" ADD COLUMN IF NOT EXISTS "techContactKpiAt" timestamp with time zone;
+		`,
+		},
 		// ‹makemigration› — التحديثات الجديدة تنضاف فوگ هالسطر
 	}
 }
