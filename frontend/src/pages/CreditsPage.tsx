@@ -76,7 +76,7 @@ export default function CreditsPage() {
       <div className="cr-table overflow-x-auto rounded-2xl border">
         <table className="w-full min-w-[980px] text-sm">
           <thead className="cr-th text-sm font-bold">
-            <tr>{['الحجز / المشروع', 'الزبون', 'المستحق', 'المدفوع', 'الباقي', 'التقدّم', 'آخر دفعة', 'موعد السداد', 'سجّله', ''].map((h, i) => <th key={i} className="p-3 text-center first:text-right">{h || 'الإجراءات'}</th>)}</tr>
+            <tr>{['الحجز / المشروع', 'الزبون', 'المستحق', 'المدفوع', 'الباقي', 'التقدّم', 'آخر دفعة', 'موعد السداد', 'سجّله', ''].map((h, i) => <th key={i} className="h-12 px-3 text-center first:text-right">{h || 'الإجراءات'}</th>)}</tr>
           </thead>
           <tbody>
             {rows === null && <tr><td colSpan={10} className="p-6 text-center text-slate-400">جاري التحميل…</td></tr>}
@@ -89,13 +89,13 @@ export default function CreditsPage() {
                 <Fragment key={r.id}>
                   <tr className="cr-row align-middle">
                     <td className="p-3">
-                      <p className="font-bold text-[#0f2040]">{r.title}</p>
+                      <p className="text-base font-bold text-[#0f2040]">{r.title}</p>
                       {r.note && <p className="cr-sub text-[11px]">{r.note}</p>}
                     </td>
-                    <td className="p-3 text-xs">{r.customerName ?? '—'}{r.phone && <span className="cr-sub mt-0.5 flex items-center gap-1.5"><LineIcon n="phone" className="h-4 w-4 shrink-0" /><span dir="ltr">{r.phone}</span></span>}</td>
-                    <td className="p-3 text-center font-bold tabular-nums">{iqd(r.amount)}</td>
-                    <td className="cr-paid p-3 text-center font-bold tabular-nums">{iqd(r.paid)}</td>
-                    <td className="cr-left p-3 text-center font-bold tabular-nums">{r.settledAt ? <span className="rounded-lg bg-emerald-50 px-2 py-0.5 text-xs text-emerald-700">✓ مسدّد</span> : iqd(left)}</td>
+                    <td className="p-3 text-sm">{r.customerName ?? '—'}{r.phone && <span className="cr-sub mt-0.5 flex items-center gap-1.5"><LineIcon n="phone" className="h-4 w-4 shrink-0" /><span dir="ltr">{r.phone}</span></span>}</td>
+                    <td className="p-3 text-center text-base font-bold tabular-nums">{iqd(r.amount)}</td>
+                    <td className="cr-paid p-3 text-center text-base font-bold tabular-nums">{iqd(r.paid)}</td>
+                    <td className="cr-left p-3 text-center text-base font-bold tabular-nums">{r.settledAt ? <span className="rounded-lg bg-emerald-50 px-2 py-0.5 text-xs text-emerald-700">✓ مسدّد</span> : iqd(left)}</td>
                     <td className="p-3"><div className="cr-bar h-2 w-28 overflow-hidden rounded-full"><div className="h-full bg-emerald-500" style={{ width: `${pct}%` }} /></div><span className="block text-left text-[10px]">{pct}%</span></td>
                     <td className="p-3 text-center text-xs">{d(r.lastPaidAt)}</td>
                     <td className={`p-3 text-center text-xs ${late ? 'font-bold text-rose-600' : ''}`}>{d(r.dueDate)}{late && ' ⚠️ فات'}</td>
