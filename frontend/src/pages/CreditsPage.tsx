@@ -2,6 +2,7 @@ import Modal from '../ui/Modal'
 import { Fragment, useCallback, useEffect, useState } from 'react'
 import { api, type CreditSale } from '../api'
 import { dinarRound as iqd } from '../utils/format'
+import { LineIcon } from '../components/LineIcon'
 
 import { notify } from '../ui/notify'
 // (DRY 11-02) چانت مكتوبة جوّا كل نموذج بهالملف
@@ -38,31 +39,44 @@ export default function CreditsPage() {
 
   return (
     <div dir="rtl" className="w-full space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-violet-100 bg-gradient-to-l from-violet-50 to-white p-5 shadow-sm">
+      {/* (ك) 11-23 زينا: الآجل مثل الصورة — الألوان بـindex.css (.cr-*) */}
+      <div className="cr-head space-y-4 rounded-2xl border p-5">
         <div>
           <h1 className="text-2xl font-black text-[#0f2040]">⏳ الآجل</h1>
-          <p className="text-sm text-slate-500">شغل خلص والفلوس مؤجلة — دفعات أو مبلغ كامل. كل دفعة تنسجّل هنا وتنضاف لمستلم الحجز.</p>
+          <p className="cr-sub text-sm">شغل خلص والفلوس مؤجلة — دفعات أو مبلغ كامل. كل دفعة تنسجّل هنا وتنضاف لمستلم الحجز.</p>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="rounded-xl bg-white px-4 py-2 text-center text-xs shadow-sm">الباقي على الزبائن<b className="block text-lg text-violet-700">{iqd(owed)}</b></span>
-          <input type="month" value={month} onChange={(e) => setMonth(e.target.value)} className="rounded-xl border border-slate-300 px-2 py-2 text-sm" />
-          <button onClick={() => api.exportCredits(month).catch((e) => notify(e.message))} className="rounded-xl bg-emerald-700 px-4 py-2 text-sm font-bold text-white">⬇️ إكسل الشهر</button>
-          <button onClick={() => setAdding(true)} className="rounded-xl bg-[#0f2040] px-4 py-2 text-sm font-bold text-white">+ آجل مشروع / يدوي</button>
+        <div className="flex flex-wrap items-center gap-4">
+          <span className="cr-owed flex items-center gap-4 rounded-2xl border px-6 py-2.5">
+            <LineIcon n="coins" className="h-9 w-9 shrink-0 text-amber-400" />
+            <span className="text-sm">الباقي على الزبائن<b className="block text-xl font-extrabold">{iqd(owed)}</b></span>
+          </span>
+          <label className="cr-field relative flex items-center gap-3 rounded-xl border px-4 py-2.5">
+            <LineIcon n="cal" className="h-5 w-5" />
+            <span className="min-w-[8.5rem] text-center" dir="ltr">{new Date(`${month}-01T12:00:00`).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}</span>
+            <input type="month" value={month} onChange={(e) => e.target.value && setMonth(e.target.value)} className="absolute inset-0 cursor-pointer opacity-0" aria-label="الشهر" />
+          </label>
+          <button onClick={() => api.exportCredits(month).catch((e) => notify(e.message))} className="cr-excel rounded-xl px-7 py-2.5 text-base font-bold text-white">⬇️ إكسل الشهر</button>
+          <button onClick={() => setAdding(true)} className="cr-add rounded-xl px-7 py-2.5 text-base font-bold text-white">+ آجل مشروع / يدوي</button>
         </div>
       </div>
 
-      <div className="flex flex-wrap items-center gap-2">
-        {([['open', 'المفتوحة'], ['settled', 'المسدّدة'], ['all', 'الكل']] as const).map(([k, l]) => (
-          <button key={k} onClick={() => setStatus(k)} className={`rounded-xl px-4 py-2 text-sm font-bold ${status === k ? 'bg-[#0f2040] text-white' : 'border border-slate-200 bg-white text-slate-600'}`}>{l}</button>
-        ))}
-        <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="🔍 كود الحجز/المشروع، الزبون، الهاتف…" className="min-w-[240px] flex-1 rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm" />
+      <div className="flex flex-wrap items-center gap-3">
+        <label className="cr-field flex min-w-[240px] max-w-2xl flex-1 items-center gap-2 rounded-xl border px-4 py-2.5">
+          <LineIcon n="search" className="h-5 w-5 shrink-0" />
+          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="كود الحجز/المشروع، الزبون، الهاتف…" className="w-full bg-transparent text-sm outline-none" />
+        </label>
+        <div className="ms-auto flex gap-3">
+          {([['open', 'المفتوحة'], ['settled', 'المسدّدة'], ['all', 'الكل']] as const).map(([k, l]) => (
+            <button key={k} onClick={() => setStatus(k)} className={`cr-tab min-w-[7rem] rounded-xl border px-5 py-2.5 text-sm font-bold ${status === k ? 'cr-tab-on' : ''}`}>{l}</button>
+          ))}
+        </div>
       </div>
       {err && <p className="rounded-xl bg-rose-50 p-3 text-sm text-rose-700">{err}</p>}
 
-      <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-sm">
+      <div className="cr-table overflow-x-auto rounded-2xl border">
         <table className="w-full min-w-[980px] text-sm">
-          <thead className="bg-slate-50 text-xs text-slate-500">
-            <tr>{['الحجز / المشروع', 'الزبون', 'المستحق', 'المدفوع', 'الباقي', 'التقدّم', 'آخر دفعة', 'موعد السداد', 'سجّله', ''].map((h, i) => <th key={i} className="p-3 text-right">{h}</th>)}</tr>
+          <thead className="cr-th text-sm font-bold">
+            <tr>{['الحجز / المشروع', 'الزبون', 'المستحق', 'المدفوع', 'الباقي', 'التقدّم', 'آخر دفعة', 'موعد السداد', 'سجّله', ''].map((h, i) => <th key={i} className="p-3 text-center first:text-right">{h || 'الإجراءات'}</th>)}</tr>
           </thead>
           <tbody>
             {rows === null && <tr><td colSpan={10} className="p-6 text-center text-slate-400">جاري التحميل…</td></tr>}
@@ -73,22 +87,22 @@ export default function CreditsPage() {
               const late = !r.settledAt && r.dueDate && new Date(r.dueDate) < new Date()
               return (
                 <Fragment key={r.id}>
-                  <tr className="border-t border-slate-100 align-top">
+                  <tr className="cr-row align-middle">
                     <td className="p-3">
                       <p className="font-bold text-[#0f2040]">{r.title}</p>
-                      {r.note && <p className="text-[11px] text-slate-500">{r.note}</p>}
+                      {r.note && <p className="cr-sub text-[11px]">{r.note}</p>}
                     </td>
-                    <td className="p-3 text-xs">{r.customerName ?? '—'}{r.phone && <span className="block text-slate-500" dir="ltr">{r.phone}</span>}</td>
-                    <td className="p-3 font-bold tabular-nums">{iqd(r.amount)}</td>
-                    <td className="p-3 tabular-nums text-emerald-700">{iqd(r.paid)}</td>
-                    <td className="p-3 font-bold tabular-nums text-violet-700">{r.settledAt ? <span className="rounded-lg bg-emerald-50 px-2 py-0.5 text-xs text-emerald-700">✓ مسدّد</span> : iqd(left)}</td>
-                    <td className="p-3"><div className="h-2 w-28 overflow-hidden rounded-full bg-slate-100"><div className="h-full bg-emerald-500" style={{ width: `${pct}%` }} /></div><span className="text-[10px] text-slate-500">{pct}%</span></td>
-                    <td className="p-3 text-xs">{d(r.lastPaidAt)}</td>
-                    <td className={`p-3 text-xs ${late ? 'font-bold text-rose-600' : ''}`}>{d(r.dueDate)}{late && ' ⚠️ فات'}</td>
-                    <td className="p-3 text-xs text-slate-500">{r.createdByName ?? '—'}<span className="block">{d(r.createdAt)}</span></td>
+                    <td className="p-3 text-xs">{r.customerName ?? '—'}{r.phone && <span className="cr-sub mt-0.5 flex items-center gap-1.5"><LineIcon n="phone" className="h-4 w-4 shrink-0" /><span dir="ltr">{r.phone}</span></span>}</td>
+                    <td className="p-3 text-center font-bold tabular-nums">{iqd(r.amount)}</td>
+                    <td className="cr-paid p-3 text-center font-bold tabular-nums">{iqd(r.paid)}</td>
+                    <td className="cr-left p-3 text-center font-bold tabular-nums">{r.settledAt ? <span className="rounded-lg bg-emerald-50 px-2 py-0.5 text-xs text-emerald-700">✓ مسدّد</span> : iqd(left)}</td>
+                    <td className="p-3"><div className="cr-bar h-2 w-28 overflow-hidden rounded-full"><div className="h-full bg-emerald-500" style={{ width: `${pct}%` }} /></div><span className="block text-left text-[10px]">{pct}%</span></td>
+                    <td className="p-3 text-center text-xs">{d(r.lastPaidAt)}</td>
+                    <td className={`p-3 text-center text-xs ${late ? 'font-bold text-rose-600' : ''}`}>{d(r.dueDate)}{late && ' ⚠️ فات'}</td>
+                    <td className="p-3 text-xs"><span className="flex items-start gap-1.5"><LineIcon n="user" className="h-4 w-4 shrink-0" />{r.createdByName ?? '—'}</span><span className="mt-0.5 flex items-center gap-1.5"><LineIcon n="cal" className="h-4 w-4 shrink-0" />{d(r.createdAt)}</span></td>
                     <td className="p-3">
-                      <div className="flex gap-1.5">
-                        {!r.settledAt && <button onClick={() => setPay(r)} className="rounded-lg bg-emerald-700 px-3 py-1 text-xs font-bold text-white">💵 دفعة</button>}
+                      <div className="flex justify-center gap-1.5">
+                        {!r.settledAt && <button onClick={() => setPay(r)} className="cr-pay rounded-lg px-4 py-1.5 text-xs font-bold text-white">💵 دفعة</button>}
                         {r.paid > 0 && <button onClick={() => showHistory(r)} className="rounded-lg border border-slate-300 px-2.5 py-1 text-xs">الدفعات</button>}
                       </div>
                     </td>

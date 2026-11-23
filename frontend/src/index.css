@@ -1734,3 +1734,36 @@ html.dark .sr-meta-sep { border-color: #2f4568; }
 html.dark .sr-done-list .sr-done { border-bottom-color: #1d2f4d; }
 .sr-match-none { background: #f8fafc; color: #475569; --tw-ring-color: #cbd5e1; }
 html.dark .sr-match-none { background: #0b1a33; color: #cbd5e1; --tw-ring-color: #2f4568; }
+
+/* ═══ (ك) 11-23 زينا: الآجل مثل الصورة (.cr-*) — الليلي مقاس بالبكسل من صورتها ═══ */
+.cr-head { background: #fff; border-color: #e2e8f0; }
+.cr-sub { color: #64748b; }
+.cr-owed { background: #faf5ff; border-color: #c4b5fd; color: #4c1d95; }
+.cr-owed b { color: #6d28d9; }
+.cr-field { background: #fff; border-color: #cbd5e1; color: #0f2040; }
+.cr-excel { background: #00873c; }
+.cr-add { background: #083e8b; }
+.cr-tab { background: #fff; border-color: #cbd5e1; color: #334155; }
+.cr-tab-on { background: #016cdc; border-color: #016cdc; color: #fff; }
+.cr-table { background: #fff; border-color: #cfdbea; }
+.cr-th { background: #10315f; color: #fff; }
+.cr-row { border-top: 1px solid #edf1f6; }
+.cr-row:nth-child(even) { background: #f8fafc; }
+.cr-paid { color: #047857; }
+.cr-left { color: #6d28d9; }
+.cr-bar { background: #e2e8f0; }
+.cr-pay { background: #037140; }
+html.dark .cr-head { background: #061025; border-color: #1b2e50; }
+html.dark .cr-sub { color: #cbd5e1; }
+html.dark .cr-owed { background: #0c0e2b; border-color: #8a46a0; color: #f1f5f9; }
+html.dark .cr-owed b { color: #fff; }
+html.dark .cr-field { background: #0c1e3d; border-color: #354f76; color: #f1f5f9; }
+html.dark .cr-tab { background: #061025; border-color: #1b4065; color: #fff; }
+html.dark .cr-tab-on { background: #016cdc; border-color: #2b8cf0; }
+html.dark .cr-table { background: #051226; border-color: #305480; }
+html.dark .cr-th { background: #10315f; }
+html.dark .cr-row { border-top-color: #142740; color: #f1f5f9; }
+html.dark .cr-row:nth-child(even) { background: #061328; }
+html.dark .cr-paid { color: #7eeeb6; }
+html.dark .cr-left { color: #dab4f6; }
+html.dark .cr-bar { background: #1b2e53; }
