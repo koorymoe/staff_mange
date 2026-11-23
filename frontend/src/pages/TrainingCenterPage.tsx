@@ -127,7 +127,7 @@ function NotesTab({ rows }: { rows: TcInsight[] | null }) {
   return (
     <div className="tc-wrap">
       <div className="tc-head">
-        <span className="tc-head-ico"><LineIcon n="user" className="h-6 w-6" /></span>
+        <span className="tc-head-ico"><LineIcon n="user" className="h-7 w-7" /></span>
         <div>
           <h2 className="tc-title">متابعة أداء الموظفين</h2>
           <p className="tc-sub">معلومات الإنجاز، التوقف، الشكاوى والأداء اليومي لكل موظف</p>
@@ -137,7 +137,7 @@ function NotesTab({ rows }: { rows: TcInsight[] | null }) {
       <div className="tc-table overflow-x-auto">
         <table className="w-full min-w-[900px] text-sm">
           <thead><tr>
-            {heads.map(([i, h]) => <th key={h} className="tc-th"><LineIcon n={i} className="mx-auto mb-1 h-4 w-4" />{h}</th>)}
+            {heads.map(([i, h]) => <th key={h} className="tc-th"><LineIcon n={i} className="tc-th-ico mx-auto mb-1 h-5 w-5" />{h}</th>)}
           </tr></thead>
           <tbody>
             {rows.map((x) => {
@@ -155,17 +155,13 @@ function NotesTab({ rows }: { rows: TcInsight[] | null }) {
                   <td className="tc-td">{x.stops ? <span className="tc-pill tc-stop">{x.stops}</span> : <span className="tc-muted">0</span>}</td>
                   <td className="tc-td tc-muted">{x.partials}</td>
                   <td className="tc-td">{x.skills}</td>
-                  <td className="tc-td">{x.lastExamPct != null ? <PctWhy title={`آخر اختبار ${x.name}`} value={x.lastExamPct}
+                  <td className="tc-td tc-exam">{x.lastExamPct != null ? <PctWhy title={`آخر اختبار ${x.name}`} value={x.lastExamPct}
                     formula={<>درجته بآخر اختبار خلّصه ÷ الدرجة الكاملة لذاك الاختبار × 100 = <b>{x.lastExamPct}%</b> (الكسر ينشال).</>}
                     meaning={<>شكد جاوب صح بآخر اختبار تدريبي سواه — كل ما أعلى يعني فاهم المادة أكثر. هذا آخر اختبار بس، مو معدل كل اختباراته.</>}
                     source={<>محاولات الاختبار بمركز التدريب: آخر محاولة خلّصها هذا الموظف (حسب وقت الإنهاء).</>} /> : '—'}</td>
-                  <td className="tc-td text-xs">
-                    {x.strengths.length === 0 && x.reasons.length === 0 ? <span className="tc-ok">✅ مستقر</span> : (
-                      <div className="space-y-0.5">
-                        {x.strengths.map((t) => <div key={'s' + t}>📁 {t}</div>)}
-                        {x.reasons.slice(0, 2).map((r) => <div key={'r' + r}>⚠️ {r}</div>)}
-                      </div>
-                    )}
+                  <td className="tc-td text-xs tc-note">
+                    {x.strengths.length === 0 && x.reasons.length === 0 ? <span className="tc-ok">✅ مستقر</span>
+                      : <span className="whitespace-nowrap">{x.reasons.length ? '⚠️' : '📁'} {[...x.strengths, ...x.reasons.slice(0, 2)].join(' · ')}</span>}
                   </td>
                 </tr>
               )
