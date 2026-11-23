@@ -108,6 +108,8 @@ export const SERVICE_DEVELOPER_NAV = ['/', '/service-studies', '/attendance', '/
 
 const TECHNICIAN_NAV = [
   '/', '/attendance', '/leaves', '/my-ranking', '/my-tasks', '/my-extra-tasks', '/my-inventory', '/my-achievements', '/my-work', '/privacy-policy',
+  // (ك 11-23) الحجوزات المرحّلة للتقني — بندها مقيّد بدور TECHNICAL، بس القائمة المقفلة چانت تحجبها عنه
+  '/my-handovers',
 ]
 
 // تقرير ١ (A6): نفس الشاشة بأسمين — الاسم يتبع الشخص: صاحب صلاحية الحسابات
@@ -520,6 +522,8 @@ export const navItems: NavItem[] = [
   // المحفوظة والإشعارات.
   // (دازاي 10-26) ليدر سابق يكمّل ورق حجوزاته — يطلع بس لصاحب الصلاحية المؤقتة
   { to: '/my-paperwork', label: '📄 ورق حجوزاتي القديمة', icon: <span>📄</span>, permission: 'paperwork_carryover' },
+  // (ك 11-23) تقارير اتصال التقنيين — المراقب ومدير/نائب العمليات والإدارة (الفحص بـisNavVisible ونفسه بالخادم)
+  { to: '/tech-contact-reports', label: '☎️ تقارير اتصال التقنيين', icon: <span>☎️</span> },
   // "خريطة المواقع" انشالت من القائمة — الفني هسه يشوف طريق مهمته مباشرة
   // من صفحة "مهامي" (بوب-أب داخل نفس الصفحة، بدون تحويل لصفحة ثانية).
   // مدير المشاريع مدير مو فني: ما عنده مهام تنستلم ولا تقييم ولا تصنيف ولا تقارير عمل
@@ -1257,6 +1261,10 @@ export function isNavVisible(item: NavItem, ctx: NavContext, unitGranted = false
   // (دازاي 11-01) صاحب مكتب الإدارة يشوف «مكاني» جوّا المكتب — خيار واحد بالقائمة
   if (item.to === '/my-org') return !!ctx.employee && !!ctx.orgMemberships?.length && !orgDeskAllowed(ctx.employee, ctx.orgMemberships)
   if (item.to === '/org/desk') return orgDeskAllowed(ctx.employee, ctx.orgMemberships)
+  if (item.to === '/tech-contact-reports') {
+    return role === 'ADMIN' || ctx.employee?.actualRole === 'OWNER' || role === 'MONITOR' || ctx.permissions.includes('monitoring')
+      || !!ctx.orgMemberships?.some((m) => (m.position === 'DIRECTOR' || m.position === 'DEPUTY') && !m.unitId && (m.divisionId === 'ops' || m.divisionId === 'admin'))
+  }
   // (دازاي 11-08) خطة الوحدة: مدير/نائب الوحدة نفسها أو إدارتها، والمالك ومدير النظام
   if (item.to.startsWith('/org/desk/') && item.to.includes('unit=')) {
     const unit = decodeURIComponent(item.to.split('unit=')[1] ?? '')

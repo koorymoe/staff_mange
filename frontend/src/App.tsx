@@ -66,6 +66,7 @@ const MyTasks = lazyRetry(() => import('./pages/MyTasks'))
 const DecorTodayPage = lazyRetry(() => import('./pages/DecorTodayPage'))
 const DecorGuidePage = lazyRetry(() => import('./pages/DecorGuidePage'))
 const MyPaperworkPage = lazyRetry(() => import('./pages/MyPaperworkPage'))
+const TechContactReportsPage = lazyRetry(() => import('./pages/TechContactReportsPage'))
 const MyHandoversPage = lazyRetry(() => import('./pages/MyHandoversPage'))
 const MyRanking = lazyRetry(() => import('./pages/MyRanking'))
 const MyExtraTasksPage = lazyRetry(() => import('./pages/MyExtraTasksPage'))
@@ -309,6 +310,7 @@ function App() {
           <Route path="decor-today" element={<DecorTodayPage />} />
           <Route path="decor-guide" element={<DecorGuidePage />} />
           <Route path="my-paperwork" element={<MyPaperworkPage />} />
+          <Route path="tech-contact-reports" element={<TechContactReportsPage />} />
           <Route path="my-handovers" element={<MyHandoversPage />} />
           <Route path="my-ranking" element={<MyRanking />} />
           {/* مهامي الإضافية — بلا حارس: هاي مهام الموظف نفسه */}

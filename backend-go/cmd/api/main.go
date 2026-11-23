@@ -2538,6 +2538,8 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	secs["solar_inquiries"].Set("POST /api/solar-inquiries/{id}/claim", "solar_inquiries.post_by_id_claim", solarInq.Claim)
 	secs["solar_inquiries"].Set("POST /api/solar-inquiries/{id}/contact", "solar_inquiries.post_by_id_contact", solarInq.Contact)
 	secs["solar_inquiries"].Set("POST /api/solar-inquiries/{id}/quality", "solar_inquiries.post_by_id_quality", solarInq.Quality)
+	// (ك 11-23) تقارير اتصال التقنيين — للمراقب ومدراء العمليات والإدارة ونوابهم
+	secs["solar_inquiries"].Set("GET /api/tech-contact/reports", "solar_inquiries.get_tech_contact_reports", handler.NewTechContactHandler(db).Reports)
 	// 🗓️ «إجازات الموظفين» (ع 10-23) — نفس حارس البند بالقائمة: المدير/المراقب أو إدارة الكوادر أو الموافقة على الإجازات
 	// (ون بيس 11-10) requireLeaveRegister انتقل لقاعدة بالنواة (internal/apps/sections)
 	secs["leaves"].Set("GET /api/leaves/register", "leaves.get_register", leaveHandler.Register)

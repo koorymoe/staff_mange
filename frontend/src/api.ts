@@ -2186,6 +2186,8 @@ export const api = {
   getProjectPayments: (projectId: string) => request<ProjectPaymentsState>(`/projects/${projectId}/payments`),
   // ═══ مركز التدريب (ع 10-13) ═══
   tcInsights: () => request<TcInsight[]>('/training-center/insights'),
+  /** (ك 11-23) تقارير اتصال التقنيين — المراقب ومدراء العمليات والإدارة ونوابهم */
+  techContactReports: () => request<TechContactReport[]>('/tech-contact/reports'),
   tcTracks: () => request<{ id: string; name: string; division: string; materials: number; skills: number; masters: number; assigned: number; programs: number }[]>('/training-center/tracks'),
   tcCurriculum: () => request<TcCurriculum[]>('/training-center/curriculum'),
   tcAddCurriculum: (b: { role?: string; title: string; details?: string; parentId?: string; serviceId?: string }) => request<TcCurriculum[]>('/training-center/curriculum', { method: 'POST', body: JSON.stringify(b) }),
@@ -2790,4 +2792,17 @@ export interface SurveyRow {
   ownerName?: string | null
   hasAnswers: boolean
   createdAt?: string | null
+}
+
+export interface TechContactReport {
+  kind: 'booking' | 'solar'
+  ref: string
+  customer: string | null
+  tech: string
+  by: string | null
+  since: string
+  contactedAt: string | null
+  note: string | null
+  kpiAt: string | null
+  closed: boolean
 }

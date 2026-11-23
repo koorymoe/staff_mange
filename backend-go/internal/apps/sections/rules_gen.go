@@ -1472,11 +1472,12 @@ func rules() map[string]map[core.Action]core.Rule {
 			"quotation_templates.post_by_id_use": func(l string) core.Rule { return any_(l) }("ينفّذ /api/quotation-templates/{id}/use (الدخول + طبقة: allowQuotationOrDelegate)"),
 		},
 		"solar_inquiries": {
-			"solar_inquiries.get_root":           func(l string) core.Rule { return any_(l) }("يقرا /api/solar-inquiries (الدخول — الفحص بالمعالج)"),
-			"solar_inquiries.post_root":          func(l string) core.Rule { return any_(l) }("ينفّذ /api/solar-inquiries (الدخول — الفحص بالمعالج)"),
-			"solar_inquiries.post_by_id_claim":   func(l string) core.Rule { return any_(l) }("ينفّذ /api/solar-inquiries/{id}/claim (الدخول — الفحص بالمعالج)"),
-			"solar_inquiries.post_by_id_contact": func(l string) core.Rule { return any_(l) }("ينفّذ /api/solar-inquiries/{id}/contact (الدخول — الفحص بالمعالج)"),
-			"solar_inquiries.post_by_id_quality": func(l string) core.Rule { return any_(l) }("ينفّذ /api/solar-inquiries/{id}/quality (الدخول — الفحص بالمعالج)"),
+			"solar_inquiries.get_root":                 func(l string) core.Rule { return any_(l) }("يقرا /api/solar-inquiries (الدخول — الفحص بالمعالج)"),
+			"solar_inquiries.post_root":                func(l string) core.Rule { return any_(l) }("ينفّذ /api/solar-inquiries (الدخول — الفحص بالمعالج)"),
+			"solar_inquiries.post_by_id_claim":         func(l string) core.Rule { return any_(l) }("ينفّذ /api/solar-inquiries/{id}/claim (الدخول — الفحص بالمعالج)"),
+			"solar_inquiries.post_by_id_contact":       func(l string) core.Rule { return any_(l) }("ينفّذ /api/solar-inquiries/{id}/contact (الدخول — الفحص بالمعالج)"),
+			"solar_inquiries.post_by_id_quality":       func(l string) core.Rule { return any_(l) }("ينفّذ /api/solar-inquiries/{id}/quality (الدخول — الفحص بالمعالج)"),
+			"solar_inquiries.get_tech_contact_reports": func(l string) core.Rule { return any_(l) }("يقرا تقارير اتصال التقنيين (المراقب ومدراء العمليات والإدارة ونوابهم — الفحص بالمعالج)"),
 		},
 		"late_excuses": {
 			"late_excuses.post_root":                 func(l string) core.Rule { return any_(l) }("ينفّذ /api/late-excuses (أي موظف يقدّم عذر إله)"),

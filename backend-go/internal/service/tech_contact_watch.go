@@ -112,7 +112,8 @@ func (w *TechContactWatch) deduct() {
 		return
 	}
 	for _, p := range rows {
-		reason := fmt.Sprintf("%s: ما رفع تقرير اتصال %s خلال %d ساعة من التحويل", TechContactKpiReason, refLabel(p), techContactHours)
+		// (ك 11-23) يبدي باسم المعيار حتى ينحسب من نقطة «تنفيذ المهام الموكلة إليه» — نفس خصم تقصير التثبيت
+		reason := fmt.Sprintf("%s — %s: ما رفع تقرير اتصال %s خلال %d ساعة من التحويل", w.taskCriterion(), TechContactKpiReason, refLabel(p), techContactHours)
 		if err := w.apply(p, author, reason); err != nil {
 			log.Printf("[tech-contact] apply %s: %v", p.ID, err)
 			continue
@@ -120,6 +121,15 @@ func (w *TechContactWatch) deduct() {
 		_ = w.notif.Create(p.TechID, "kpi_deduction", "🔻 انخصمت نقطة كي بي آي — "+reason+". اتصل بالزبون ورفع التقرير هسه.")
 		_ = w.notif.CreateForTechContactWatchers("tech_contact_kpi", fmt.Sprintf("🔻 %s: انخصمت نقطة كي بي آي — %s", p.Tech, reason), p.TechID)
 	}
+}
+
+// taskCriterion اسم معيار «تنفيذ المهام» كما هو بالقاعدة (من النقاط الثمانية).
+func (w *TechContactWatch) taskCriterion() string {
+	var l string
+	if err := w.db.Get(&l, `SELECT label FROM "KpiCriterion" WHERE label LIKE '%تنفيذ المهام%' OR label LIKE '%إتمام المهام%' OR label LIKE '%اتمام المهام%' ORDER BY "createdAt" LIMIT 1`); err != nil || l == "" {
+		return "تنفيذ المهام الموكلة إليه"
+	}
+	return l
 }
 
 func (w *TechContactWatch) apply(p pendingContact, author, reason string) error {
