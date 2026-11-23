@@ -1972,3 +1972,20 @@ html.dark .sp-90 { color: #dfe4f3; border-inline-start-color: #464082; }
 .li-table .li-net { padding: .15rem .45rem; }
 .li-table .li-btn { width: 3.5rem; padding: .25rem .2rem; font-size: 10px; border-radius: .6rem; }
 .li-table .li-edit { width: 2rem; font-size: .9rem; }
+
+/* (ك 11-23) طلب زينا: الخط بحجم خط باقي النظام (text-sm للأساسي، text-xs للثانوي) */
+.ip-title { font-size: .875rem; }
+.ip-row { min-height: 0; padding: .45rem .9rem; gap: 1.25rem; }
+.ip-code { min-width: 5.5rem; padding: .2rem .8rem; font-size: .8rem; }
+.ip-dept { min-width: 12rem; gap: .45rem; font-size: .875rem; }
+.ip-dept svg { width: 1.1rem; height: 1.1rem; }
+.ip-when { gap: .35rem; font-size: .75rem; }
+.ip-when svg { width: 1rem; height: 1rem; }
+.ip-btn { padding: .3rem .9rem; font-size: .75rem; }
+.ip-slot { width: 8.5rem; }
+.ip-search { padding: .4rem .9rem; }
+.ip-filter { padding: .4rem 1.1rem; font-size: .8rem; }
+.sp-th { font-size: .75rem; }
+.sp-name { font-size: .875rem; }
+.sp-phone, .sp-type, .sp-cell, .sp-90 { font-size: .75rem; }
+.sp-pill { font-size: .7rem; }

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { api } from '../api'
 import PageHeader from '../components/PageHeader'
+import Pager from '../components/Pager'
 import { LineIcon } from '../components/LineIcon'
 import { useSession, isAdminOrOwner } from '../session'
 import { dayBaghdad } from '../utils/format'
@@ -31,6 +32,8 @@ export default function SupplierRelationsPage() {
   const [onlyOverdue, setOnlyOverdue] = useState(false)
   const [q, setQ] = useState('')
   const [open, setOpen] = useState<Row | null>(null)
+  // (ك 11-23) طلب زينا: صفحات مثل باقي النظام — تغيير الفلتر يرجّع لأول صفحة
+  const [pg, setPg] = useState({ k: '', p: 1, n: 10 })
   const [tl, setTl] = useState<{ key: string; evs: Ev[] } | null>(null)
   const [cType, setCType] = useState('CALL')
   const [cNote, setCNote] = useState('')
@@ -70,6 +73,8 @@ export default function SupplierRelationsPage() {
     .sort((a, b) => (b.daysSince ?? 99999) - (a.daysSince ?? 99999))
   const overdueN = (data?.rows ?? []).filter((r) => r.overdue).length
   const typeLabel = (t: string) => (t === 'PURCHASE' ? '🛒 شراء' : data?.kinds[t] ?? t)
+  const fkey = `${kind}|${onlyOverdue}|${q}`
+  const page = pg.k === fkey ? Math.min(pg.p, Math.max(1, Math.ceil(rows.length / pg.n))) : 1
 
   return (
     <div dir="rtl" className="space-y-4">
@@ -94,7 +99,7 @@ export default function SupplierRelationsPage() {
               ))}
             </div>
             <div className="mt-2 space-y-2">
-              {rows.map((r) => (
+              {rows.slice((page - 1) * pg.n, page * pg.n).map((r) => (
                 <div key={r.kind + r.id} role="button" tabIndex={0} onClick={() => setOpen(r)} onKeyDown={(e) => { if (e.key === 'Enter') setOpen(r) }}
                   className={`sp-row sp-grid ${open?.id === r.id && open.kind === r.kind ? 'sp-row-on' : ''}`}>
                   <span className="flex items-center gap-3">
@@ -118,6 +123,8 @@ export default function SupplierRelationsPage() {
               ))}
               {data && rows.length === 0 && <p className="sp-cell p-4 text-center">ماكو موردين بهذا الفلتر</p>}
             </div>
+            {rows.length > 0 && <div className="mt-3"><Pager page={page} perPage={pg.n} total={rows.length} unit="مورد"
+              onPage={(p) => setPg({ k: fkey, p, n: pg.n })} onPerPage={(n) => setPg({ k: fkey, p: 1, n })} /></div>}
           </div>
         </div>
 
