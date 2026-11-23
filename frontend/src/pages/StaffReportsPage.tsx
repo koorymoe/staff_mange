@@ -84,7 +84,7 @@ function DailyTab() {
       <div className="space-y-3">
         {data?.reports.map((r) => (
           <div key={r.id} className="sr-card flex flex-col gap-3 rounded-2xl border p-3 md:flex-row md:items-stretch md:gap-4">
-            <div className="flex shrink-0 items-center gap-3 md:w-72">
+            <div className="flex shrink-0 items-center gap-3 md:w-72 md:items-start md:pt-1">
               <span className="sr-ic flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl"><Ico n="layers" className="h-8 w-8" /></span>
               <div className="min-w-0 space-y-1.5">
                 <Link to={`/employee-dossier?id=${r.employeeId}`} className="flex items-center gap-2 text-lg font-bold text-[#0f2040] hover:underline"><Ico n="user" className="h-6 w-6 shrink-0 opacity-80" />{r.employeeName}</Link>
@@ -94,10 +94,9 @@ function DailyTab() {
             </div>
             <div className="sr-sep hidden w-px shrink-0 md:block" />
             <div className="min-w-0 flex-1 space-y-2 py-1">
-              <div className="flex items-start gap-3">
-                {r.late && <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-amber-50 px-3 py-1 text-sm font-bold text-amber-700 ring-1 ring-amber-400"><Ico n="clock" className="h-4 w-4" />متأخر</span>}
-                <ReportBody body={r.body} />
-              </div>
+              {/* (ك) 11-23 زينا: «متأخر» بسطر لحاله، حتى النص يبدي من نفس الحافة بكل البطاقات */}
+              {r.late && <div><span className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-amber-50 px-3 py-1 text-sm font-bold text-amber-700 ring-1 ring-amber-400"><Ico n="clock" className="h-4 w-4" />متأخر</span></div>}
+              <ReportBody body={r.body} />
               <div className="flex flex-wrap items-start gap-3">
                 <MatchRow r={r} onDone={() => setReload((n) => n + 1)} />
                 <ReportAnalysisBox reportId={r.id} />
@@ -105,7 +104,7 @@ function DailyTab() {
             </div>
             {isOwner && <>
               <div className="sr-sep hidden w-px shrink-0 md:block" />
-              <div className="flex shrink-0 items-center justify-end md:px-3">
+              <div className="flex shrink-0 items-center justify-end md:items-start md:px-3 md:pt-1">
                 <DeleteButton className="sr-del" label="🗑️ حذف" confirm={`تحذف تقرير ${r.employeeName}؟ ينحذف وياه تحليل ماتركس، وما يرجع.`}
                   onConfirm={async () => { await apiRequest(`/daily-reports/${r.id}`, { method: 'DELETE' }); setReload((n) => n + 1) }} />
               </div>
@@ -122,7 +121,7 @@ function DailyTab() {
 function ReportBody({ body }: { body: string }) {
   const lines = body.split('\n').filter((l) => l.trim())
   return (
-    <div className="min-w-0 flex-1 space-y-0.5 text-[15px] leading-7 text-slate-700">
+    <div className="min-w-0 flex-1 text-[15px] leading-7 text-slate-700">
       {lines.map((l, i) => {
         const m = l.trim().match(/^[-•✓*]\s*(.*)$/)
         return m
