@@ -1651,3 +1651,50 @@ html.dark .op-open { background: #182843; border-color: #3a4a69; color: #ffffff;
 html.dark .op-foot { background: #13213a; border-color: #1c2a45; color: #ffffff; }
 html.dark .op-pg { background: #16243d; border-color: #31405f; color: #ffffff; }
 html.dark .op-pg-on { background: #2355b6; border-color: #2355b6; }
+
+/* ═══ (ك) 11-23 زينا: فحص المتأخرات — الجدول مثل الصورة (.la-*). الليلي مقاس بالبكسل من صورتها ═══ */
+.la-panel { background: #fff; border-color: #e2e8f0; }
+.la-field, .la-adv { background: #fff; border-color: #cbd5e1; color: #1e3a5f; }
+.la-tog { color: #475569; }
+.la-tog-on { background: #1d5bb0 !important; color: #fff !important; }
+.la-table { border-color: #dbe3ee; }
+.la-th { background: #0f2c5c; color: #fff; }
+.la-row { background: #fff; color: #0f172a; }
+.la-table .la-row:nth-child(even) { background: #f6f9fc; }
+.la-table .la-row td { border-top: 1px solid #e8eef5; }
+.la-row-warn, .la-table .la-row-warn:nth-child(even) { background: #fdf8ec; }
+.la-table .la-row-warn td { border-top: 1px solid #ecd9a8; border-bottom: 1px solid #ecd9a8; }
+.la-table .la-row-warn td:first-child { border-right: 1px solid #ecd9a8; border-radius: 0 12px 12px 0; }
+.la-table .la-row-warn td:last-child { border-left: 1px solid #ecd9a8; border-radius: 12px 0 0 12px; }
+.la-card { border-color: #e2e8f0; }
+.la-sub { color: #64748b; }
+.la-code { background: #e8f0fd; border-color: #9fbcec; color: #12408f; }
+.la-d30 { background: #7f1d1d; border-color: #b4353a; color: #fff; }
+.la-d14 { background: #dc2626; border-color: #ef4444; color: #fff; }
+.la-d7 { background: #fee2e2; border-color: #fca5a5; color: #991b1b; }
+.la-d0 { background: #fef3c7; border-color: #f2c94c; color: #854d0e; }
+.la-note { background: #fffbeb; border-color: #f3d17a; color: #78350f; }
+.la-act { background: #f1f5f9; border-color: #cbd5e1; color: #1e3a5f; }
+.la-act-eye { background: #e3edfb; color: #1d4f9c; }
+html.dark .la-panel { background: #041229; border-color: #0f2a52; }
+html.dark .la-field, html.dark .la-adv { background: #0b274b; border-color: #2a4a78; color: #e5edf8; }
+html.dark .la-adv { background: #18335c; border-color: #3b557c; }
+html.dark .la-tog { color: #c7d5ea; background: #0d2a4e; }
+html.dark .la-tog-on { background: #115bad !important; }
+html.dark .la-table { border-color: #0f2a52; }
+html.dark .la-th { background: #061f44; color: #fff; }
+html.dark .la-row { background: #03142c; color: #f1f5fb; }
+html.dark .la-table .la-row:nth-child(even) { background: #051831; }
+html.dark .la-table .la-row td { border-top-color: #0c2242; }
+html.dark .la-row-warn, html.dark .la-table .la-row-warn:nth-child(even) { background: #23221c; }
+html.dark .la-table .la-row-warn td { border-color: #4a4430 !important; }
+html.dark .la-card { border-color: #0f2a52; }
+html.dark .la-sub { color: #aeb9cb; }
+html.dark .la-code { background: #03307c; border-color: #1e56b8; color: #fff; }
+html.dark .la-d30 { background: #561118; border-color: #8e2a32; color: #ffede5; }
+html.dark .la-d14 { background: #a51d29; border-color: #d13a46; color: #fff; }
+html.dark .la-d7 { background: #7a1a1a; border-color: #a33232; color: #ffe8e8; }
+html.dark .la-d0 { background: #574308; border-color: #8a6d14; color: #ffe9a8; }
+html.dark .la-note { background: #302512; border-color: #5a4518; color: #f6ead0; }
+html.dark .la-act { background: #0f294c; border-color: #23426e; color: #dbe6f5; }
+html.dark .la-act-eye { background: #0b2c5a; color: #fff; }
