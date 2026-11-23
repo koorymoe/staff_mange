@@ -1674,8 +1674,6 @@ html.dark .op-pg-on { background: #2355b6; border-color: #2355b6; }
 .la-d7 { background: #fee2e2; border-color: #fca5a5; color: #991b1b; }
 .la-d0 { background: #fef3c7; border-color: #f2c94c; color: #854d0e; }
 .la-note { background: #fffbeb; border-color: #f3d17a; color: #78350f; }
-.la-act { background: #f1f5f9; border-color: #cbd5e1; color: #1e3a5f; }
-.la-act-eye { background: #e3edfb; color: #1d4f9c; }
 html.dark .la-panel { background: #041229; border-color: #0f2a52; }
 html.dark .la-field, html.dark .la-adv { background: #0b274b; border-color: #2a4a78; color: #e5edf8; }
 html.dark .la-adv { background: #18335c; border-color: #3b557c; }
@@ -1696,5 +1694,3 @@ html.dark .la-d14 { background: #a51d29; border-color: #d13a46; color: #fff; }
 html.dark .la-d7 { background: #7a1a1a; border-color: #a33232; color: #ffe8e8; }
 html.dark .la-d0 { background: #574308; border-color: #8a6d14; color: #ffe9a8; }
 html.dark .la-note { background: #302512; border-color: #5a4518; color: #f6ead0; }
-html.dark .la-act { background: #0f294c; border-color: #23426e; color: #dbe6f5; }
-html.dark .la-act-eye { background: #0b2c5a; color: #fff; }

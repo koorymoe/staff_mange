@@ -131,10 +131,10 @@ export default function LateAuditPage() {
         {view === 'list' ? (
           <div className="la-table overflow-x-auto rounded-2xl border">
             <table className="w-full min-w-[1100px] table-fixed border-separate border-spacing-y-0 text-[15px]">
-              <colgroup>{['8%', '17%', '14%', '8%', '15%', '14%', '13%', '11%'].map((w, i) => <col key={i} style={{ width: w }} />)}</colgroup>
+              <colgroup>{['9%', '19%', '15%', '9%', '17%', '16%', '15%'].map((w, i) => <col key={i} style={{ width: w }} />)}</colgroup>
               <thead>
                 <tr className="la-th h-12 font-bold">
-                  {([['', 'رقم الحجز'], ['user', 'الإسم'], ['cal', 'الموعد'], ['clock', 'التأخير'], ['list', 'السبب المرجّح'], ['user', 'المدير / الكادر'], ['file', 'ملاحظة'], ['', 'الإجراءات']] as const).map(([ic, h]) => (
+                  {([['', 'رقم الحجز'], ['user', 'الإسم'], ['cal', 'الموعد'], ['clock', 'التأخير'], ['list', 'السبب المرجّح'], ['user', 'المدير / الكادر'], ['file', 'ملاحظة']] as const).map(([ic, h]) => (
                     <th key={h} className="px-2 text-center"><span className="inline-flex items-center gap-1.5">{ic && <LineIcon n={ic} className="h-5 w-5" />}{h}</span></th>
                   ))}
                 </tr>
@@ -165,17 +165,10 @@ export default function LateAuditPage() {
                         ) : <p className="text-center">-</p>}
                       </td>
                       <td className="px-2 text-center">{r.dataIssues.length ? r.dataIssues.map((d) => <span key={d} className="la-note mb-0.5 flex items-start gap-1.5 rounded-lg border px-2 py-1 text-xs font-bold"><LineIcon n="warn" className="mt-0.5 h-4 w-4 shrink-0 text-amber-400" />{d}</span>) : '-'}</td>
-                      <td className="px-2">
-                        <div className="flex items-center justify-center gap-2">
-                          <Link to={`/bookings?focus=${r.id}`} title="عرض الحجز" className="la-act la-act-eye flex h-8 w-9 items-center justify-center rounded-lg border"><LineIcon n="eye" className="h-5 w-5" /></Link>
-                          <Link to={`/bookings?focus=${r.id}`} title="تعديل بالحجوزات" className="la-act flex h-8 w-9 items-center justify-center rounded-lg border"><LineIcon n="edit" className="h-4 w-4" /></Link>
-                          <button type="button" title="نسخ رقم الحجز" onClick={() => { void navigator.clipboard?.writeText(r.code).then(() => notify(`انسخ ${r.code}`)) }} className="la-act flex h-8 w-9 items-center justify-center rounded-lg border"><LineIcon n="dots" className="h-5 w-5" /></button>
-                        </div>
-                      </td>
                     </tr>
                   )
                 })}
-                {data && rows.length === 0 && <tr><td colSpan={8} className="p-4 text-center opacity-70">ماكو حجوزات متأخرة بهذا الفلتر ✓</td></tr>}
+                {data && rows.length === 0 && <tr><td colSpan={7} className="p-4 text-center opacity-70">ماكو حجوزات متأخرة بهذا الفلتر ✓</td></tr>}
               </tbody>
             </table>
           </div>
