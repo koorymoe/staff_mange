@@ -1693,3 +1693,33 @@ html.dark .la-d14 { background: #a51d29; border-color: #d13a46; color: #fff; }
 html.dark .la-d7 { background: #7a1a1a; border-color: #a33232; color: #ffe8e8; }
 html.dark .la-d0 { background: #574308; border-color: #8a6d14; color: #ffe9a8; }
 html.dark .la-note { background: #302512; border-color: #5a4518; color: #f6ead0; }
+
+/* ═══ (ك) 11-23 زينا: تقارير الحجوزات والمشاريع — التبويبين وصفوف المشاريع (.rd-*). مقاسة من صورتيها ═══ */
+.rd-tab { background: #f2f6fc; border-color: #d5dbe6; color: #0f172a; }
+.rd-tab .rd-hint { color: #334155; }
+.rd-tab-on { background: #084987; border-color: #084987; color: #fff; box-shadow: 0 2px 6px rgb(8 73 135 / .25); }
+.rd-tab-on .rd-hint { color: #dbeafe; }
+.rd-row { background: #f8f9fd; border-color: #dde1ea; color: #0f172a; }
+.rd-open { border-color: #e5e8f0; }
+.rd-code { background: #084a88; color: #fff; }
+.rd-rep { color: #1e4f8a; }
+.rd-div { background: #c8cfdb; }
+.rd-pct { background: #fae9c6; color: #1f2937; }
+.rd-ok { background: #cdf4e5; color: #15803d; }
+.rd-wait { background: #fde68a; color: #92400e; }
+.rd-date { color: #1f2937; }
+.rd-tri { color: #305e91; }
+html.dark .rd-tab { background: transparent; border-color: #1f2a3d; color: #fff; }
+html.dark .rd-tab .rd-hint { color: #cbd5e1; }
+html.dark .rd-tab-on { background: #163a70; border-color: #163a70; box-shadow: none; }
+html.dark .rd-tab-on .rd-hint { color: #e2e8f0; }
+html.dark .rd-row { background: #0e1728; border-color: #2b354b; color: #f1f5f9; }
+html.dark .rd-open { border-color: #2b354b; }
+html.dark .rd-code { background: transparent; color: #fff; }
+html.dark .rd-rep { color: #a5d6ea; }
+html.dark .rd-div { background: #4d5c70; }
+html.dark .rd-pct { background: #332808; color: #f5d78e; }
+html.dark .rd-ok { background: #0a271d; color: #4ade80; }
+html.dark .rd-wait { background: #3b2a06; color: #fcd34d; }
+html.dark .rd-date { color: #e2e8f0; }
+html.dark .rd-tri { color: #7f91af; }

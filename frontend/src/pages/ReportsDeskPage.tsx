@@ -17,9 +17,9 @@ export default function ReportsDeskPage() {
   const [view, setView] = useState<View>('bookings')
   const btn = (v: View, label: string, hint: string) => (
     <button type="button" onClick={() => setView(v)}
-      className={`flex-1 rounded-2xl px-4 py-3 text-right transition ${view === v ? 'bg-[#0f2040] text-white shadow' : 'bg-white text-slate-700 ring-1 ring-slate-200 hover:bg-slate-50'}`}>
+      className={`rd-tab flex-1 rounded-2xl border px-4 py-3 text-right transition ${view === v ? 'rd-tab-on' : ''}`}>
       <span className="block text-base font-extrabold">{label}</span>
-      <span className={`block text-xs ${view === v ? 'text-blue-100' : 'text-slate-400'}`}>{hint}</span>
+      <span className="rd-hint block text-xs">{hint}</span>
     </button>
   )
   return (
@@ -55,25 +55,31 @@ function ProjectReports() {
   return (
     <div className="space-y-2">
       {rows.map((r) => (
-        <div key={r.bookingId} className="rounded-2xl bg-white ring-1 ring-slate-200">
+        <div key={r.bookingId} className="rd-row rounded-2xl border">
+          {/* (ك) 11-23 زينا: الصف مثل الصورة — أعمدة ثابتة بفواصل. الألوان بـindex.css (.rd-*) */}
           <button type="button" onClick={() => setOpen(open === r.bookingId ? null : r.bookingId)}
-            className="flex w-full flex-wrap items-center gap-3 px-4 py-3 text-right">
-            <span className="font-extrabold text-[#0f2040]">{r.bookingCode}</span>
-            <span className="text-sm text-slate-600">{r.customerName ?? '—'}</span>
-            {r.leaderName && <span className="text-xs text-slate-500">👷 الليدر: {r.leaderName}</span>}
-            <span className="rounded-full bg-sky-50 px-2 py-0.5 text-xs font-bold text-sky-700">{r.reports} تقرير · آخرها اليوم {r.lastDay}</span>
-            <span className={`rounded-full px-2 py-0.5 text-xs font-bold ${r.lastPercent >= 100 ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'}`}><PctWhy title={`إنجاز ${r.bookingCode}`} value={r.lastPercent}
+            className="flex w-full flex-wrap items-center gap-3 px-4 py-2 text-right text-sm md:grid md:min-h-12 md:grid-cols-[6rem_minmax(0,1fr)_12rem_1px_6.5rem_1px_10rem_1px_13rem_1.5rem] md:gap-4">
+            <span className="rd-code justify-self-start rounded-lg px-3 py-0.5 font-extrabold" dir="ltr">{r.bookingCode}</span>
+            <span className="flex min-w-0 items-center gap-2 font-bold" title={r.customerName ?? undefined}>
+              <svg viewBox="0 0 24 24" className="h-5 w-5 shrink-0" aria-hidden="true"><circle cx="12" cy="8" r="4.5" fill="#f5b041" /><path d="M3.5 21a8.5 8.5 0 0 1 17 0Z" fill="#f39c12" /></svg>
+              <span className="truncate">المدير {r.leaderName ?? '—'}</span>
+            </span>
+            <span className="rd-rep text-center font-extrabold">تقرير {r.reports}: آخرها اليوم {r.lastDay}</span>
+            <span className="rd-div hidden h-6 md:block" />
+            <span className="rd-pct justify-self-center rounded-full px-3 py-0.5 font-extrabold"><PctWhy title={`إنجاز ${r.bookingCode}`} value={r.lastPercent}
               formula={<>هذي مو حسبة — هي «نسبة الإنجاز» الي كتبها الفريق بآخر تقرير يومي (اليوم {r.lastDay}) لهذا الحجز. انكتب للحجز {r.reports} تقرير لحد هسه.</>}
-              meaning={<>شكد خلص من الشغل حسب تقدير الفريق بالموقع. 100% يعني خلص (تطلع خضرة)، أقل يعني بعده شغّال (تطلع صفرة). {r.unreviewed > 0 ? `بعد ${r.unreviewed} تقرير ما متدقّق، فالرقم ما مأكد من الإدارة.` : 'كل تقاريره متدقّقة.'}</>}
+              meaning={<>شكد خلص من الشغل حسب تقدير الفريق بالموقع. 100% يعني خلص، أقل يعني بعده شغّال. {r.unreviewed > 0 ? `بعد ${r.unreviewed} تقرير ما متدقّق، فالرقم ما مأكد من الإدارة.` : 'كل تقاريره متدقّقة.'}</>}
               source={<>جدول التقارير اليومية للحجوزات: نأخذ نسبة الإنجاز من أحدث تقرير انكتب لهذا الحجز.</>} /></span>
+            <span className="rd-div hidden h-6 md:block" />
             {r.unreviewed > 0
-              ? <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-bold text-amber-800">⏳ {r.unreviewed} تنتظر التدقيق</span>
-              : <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-bold text-emerald-700">✅ متدقّقة</span>}
-            <span className="ms-auto text-xs text-slate-400">{new Date(r.lastAt).toLocaleString('ar-IQ', { timeZone: 'Asia/Baghdad' })}</span>
-            <span className="text-slate-400">{open === r.bookingId ? '▲' : '▼'}</span>
+              ? <span className="rd-wait justify-self-center whitespace-nowrap rounded-full px-3 py-0.5 font-extrabold">⏳ {r.unreviewed} تنتظر التدقيق</span>
+              : <span className="rd-ok justify-self-center whitespace-nowrap rounded-full px-3 py-0.5 font-extrabold">✅ متدقّقة</span>}
+            <span className="rd-div hidden h-6 md:block" />
+            <span className="rd-date ms-auto text-sm font-bold md:ms-0">{new Date(r.lastAt).toLocaleString('ar-IQ', { timeZone: 'Asia/Baghdad' })}</span>
+            <span className="rd-tri text-base">{open === r.bookingId ? '▲' : '▼'}</span>
           </button>
           {open === r.bookingId && (
-            <div className="border-t border-slate-100 p-3">
+            <div className="rd-open border-t p-3">
               {r.unreviewed > 0 && (
                 <button type="button" onClick={async () => {
                   try { await api.reviewProjectReports(r.bookingId); setRows((rs) => (rs ?? []).map((x) => (x.bookingId === r.bookingId ? { ...x, unreviewed: 0 } : x))) }
