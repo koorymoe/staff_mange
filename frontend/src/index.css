@@ -1908,3 +1908,7 @@ html.dark .ip-done { color: #fff; background: #043d23; border-color: #0b5f2a; }
 .ip-btn { padding: .45rem 1.3rem; font-size: 1rem; }
 .ip-search { padding: .65rem 1.1rem; }
 .ip-filter { padding: .6rem 1.5rem; font-size: .95rem; }
+/* (ك 11-23) مراجعة الصورة: أزرار بأعمدة متساوية، وألوان الليلي مقاسة ثاني مرة */
+.ip-slot { display: inline-flex; justify-content: center; width: 11rem; }
+html.dark .ip-row { background: #061b34; border-color: #0d2039; border-top-color: #31445d; border-inline-start-color: #e6bf5f; }
+html.dark .ip-code { background: #090d14; border-color: #c5b992; }

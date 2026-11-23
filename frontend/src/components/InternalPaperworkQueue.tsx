@@ -71,13 +71,13 @@ export default function InternalPaperworkQueue() {
               <span className="ip-code">{r.code}</span>
               <span className="ip-dept"><LineIcon n="layers" className="h-6 w-6 ip-gold" />{r.department ?? '—'}</span>
               {d && <span className="ip-when"><LineIcon n="cal" className="h-5 w-5" /><span className="tabular-nums" dir="ltr">{d.date} {d.time}</span><LineIcon n="clock" className="h-5 w-5" /></span>}
-              <span className="ms-auto flex flex-wrap gap-3">
-                {r.hasInvoice
+              <span className="ms-auto flex gap-3">
+                <span className="ip-slot">{r.hasInvoice
                   ? <span className="ip-btn ip-done">✓ الفاتورة</span>
-                  : <button type="button" onClick={() => setOpen(r)} className="ip-btn ip-blue"><LineIcon n="calc" className="h-4 w-4" />سوي الحساب</button>}
-                {r.hasReport
+                  : <button type="button" onClick={() => setOpen(r)} className="ip-btn ip-blue"><LineIcon n="calc" className="h-4 w-4" />سوي الحساب</button>}</span>
+                <span className="ip-slot">{r.hasReport
                   ? <span className="ip-btn ip-done">✓ التقرير</span>
-                  : <Link to={`/work-reports?bookingId=${r.id}`} className="ip-btn ip-purple"><LineIcon n="file" className="h-4 w-4" />سوي التقرير</Link>}
+                  : <Link to={`/work-reports?bookingId=${r.id}`} className="ip-btn ip-purple"><LineIcon n="file" className="h-4 w-4" />سوي التقرير</Link>}</span>
               </span>
             </div>
           )
