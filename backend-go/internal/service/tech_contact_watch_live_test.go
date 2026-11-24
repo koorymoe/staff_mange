@@ -28,12 +28,13 @@ func TestTechContactWatchLive(t *testing.T) {
 		db.Exec(`DELETE FROM "KpiEvaluation" WHERE "employeeId" LIKE 'tcw-%'`)
 		db.Exec(`DELETE FROM "Notification" WHERE "employeeId" LIKE 'tcw-%'`)
 		db.Exec(`DELETE FROM "Booking" WHERE id LIKE 'tcw-%'`)
+		db.Exec(`DELETE FROM "LeaveRequest" WHERE "employeeId" LIKE 'tcw-%'`)
 		db.Exec(`DELETE FROM "Customer" WHERE id = 'tcw-cu'`)
 		db.Exec(`DELETE FROM "Employee" WHERE id LIKE 'tcw-%'`)
 	}
 	clean()
 	t.Cleanup(clean)
-	db.MustExec(`INSERT INTO "Employee"(id, name, role) VALUES ('tcw-t', 'tcw تقني', 'TECHNICAL'), ('tcw-o', 'tcw مدير', 'ADMIN'), ('tcw-m', 'tcw مراقب', 'MONITOR')`)
+	db.MustExec(`INSERT INTO "Employee"(id, name, role) VALUES ('tcw-t', 'tcw تقني', 'TECHNICAL'), ('tcw-o', 'tcw مدير', 'ADMIN'), ('tcw-m', 'tcw مراقب', 'MONITOR'), ('tcw-l', 'tcw تقني بإجازة', 'TECHNICAL')`)
 	db.MustExec(`INSERT INTO "Customer"(id, name, phone) VALUES ('tcw-cu', 'x', '07700003434')`)
 	// القاعدة «انطبقت» قبل ساعتين يوم حتى نكدر نجرّب حجز عابر ٢٤ ساعة بعدها
 	var applied string
@@ -50,6 +51,12 @@ func TestTechContactWatchLive(t *testing.T) {
 	ins("tcw-old", "60 hours")  // قبل القاعدة ← ولا شي
 	ins("tcw-new", "5 hours")   // جديد ← تذكير بس
 	ins("tcw-na", "26 hours")   // التقني گال «الزبون ما رد» ← تقرير، بلا خصم
+	// (ل) 11-24 دازاي: تقني بإجازة معتمدة بمهلة الـ٢٤ ساعة ← لا تذكير ولا خصم
+	db.MustExec(`INSERT INTO "Booking"(id, code, "customerId", status, "handoverToId", "handoverById", "handoverAt", "handoverReason", "confirmationContactedAt")
+		VALUES ('tcw-lv', 'TCW-LV', 'tcw-cu', 'CONFIRMED', 'tcw-l', 'tcw-o', now() - interval '25 hours', 'تجربة', now()),
+		       ('tcw-lv2', 'TCW-LV2', 'tcw-cu', 'CONFIRMED', 'tcw-l', 'tcw-o', now() - interval '5 hours', 'تجربة', now())`)
+	db.MustExec(`INSERT INTO "LeaveRequest"("employeeId", "startDate", "endDate", route, status)
+		VALUES ('tcw-l', (now() AT TIME ZONE 'Asia/Baghdad')::date - 1, (now() AT TIME ZONE 'Asia/Baghdad')::date, 'HR', 'APPROVED')`)
 
 	notif := repository.NewNotificationRepository(db)
 	s := NewBookingService(repository.NewBookingRepository(db), repository.NewEmployeeRepository(db), repository.NewCustomerRepository(db),
@@ -80,6 +87,11 @@ func TestTechContactWatchLive(t *testing.T) {
 		if !strings.Contains(evs[0].Reason, want) {
 			t.Fatalf("السبب ناقص %q: %s", want, evs[0].Reason)
 		}
+	}
+	var onLeave int
+	db.Get(&onLeave, `SELECT (SELECT count(*) FROM "KpiEvaluation" WHERE "employeeId" = 'tcw-l') + (SELECT count(*) FROM "Notification" WHERE "employeeId" = 'tcw-l')`)
+	if onLeave != 0 {
+		t.Fatalf("التقني الي بإجازة انخصم عليه أو وصله تذكير: %d", onLeave)
 	}
 	var deductNotes, reminders, watcher int
 	db.Get(&deductNotes, `SELECT count(*) FROM "Notification" WHERE "employeeId" = 'tcw-t' AND type = 'kpi_deduction'`)

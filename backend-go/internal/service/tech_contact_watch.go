@@ -52,6 +52,13 @@ type pendingContact struct {
 	Since  time.Time `db:"since"`
 }
 
+// onLeaveSQL (ل) 11-24 دازاي «لازم النظام يشوف جدول الإجازات»: إجازة معتمدة تغطي يوم من الفترة [من، لـ]
+// (بتوقيت بغداد). التقني الي بإجازة ما يوصله تذكير، وما ينخصم عليه إذا إجازته كانت بمهلة الـ٢٤ ساعة.
+func onLeaveSQL(emp, from, to string) string {
+	return `EXISTS (SELECT 1 FROM "LeaveRequest" lv WHERE lv."employeeId" = ` + emp + ` AND lv.status = 'APPROVED'
+		AND lv."startDate" <= baghdad_date(` + to + `) AND lv."endDate" >= baghdad_date(` + from + `))`
+}
+
 // pendingSQL كل شي محوّل لتقني وبعده بلا تقرير اتصال (ومفتوح).
 const pendingSQL = `
 	SELECT 'booking' AS kind, b.id, b.code AS ref, b."handoverToId" AS "techId", e.name AS tech, b."handoverAt" AS since
@@ -75,7 +82,8 @@ func refLabel(p pendingContact) string {
 func (w *TechContactWatch) remind() {
 	var rows []pendingContact
 	if err := w.db.Select(&rows, `SELECT * FROM (`+pendingSQL+`) p
-		WHERE p.since < now() - interval '4 hours' AND p.since > now() - interval '24 hours'`); err != nil {
+		WHERE p.since < now() - interval '4 hours' AND p.since > now() - interval '24 hours'
+		  AND NOT `+onLeaveSQL(`p."techId"`, `now()`, `now()`)); err != nil {
 		log.Printf("[tech-contact] remind: %v", err)
 		return
 	}
@@ -100,7 +108,8 @@ func (w *TechContactWatch) deduct() {
 	var rows []pendingContact
 	if err := w.db.Select(&rows, `SELECT * FROM (`+pendingSQL+`) p WHERE p.since < now() - interval '24 hours'
 		-- (ك 11-23) القاعدة تبدي من يوم انطبقت: الي انحوّل قبلها ما ينحاسب عليه بأثر رجعي
-		AND p.since >= (SELECT "appliedAt" FROM "SchemaMigration" WHERE version = '0522_tech_contact_report')`); err != nil {
+		AND p.since >= (SELECT "appliedAt" FROM "SchemaMigration" WHERE version = '0522_tech_contact_report')
+		AND NOT `+onLeaveSQL(`p."techId"`, `p.since`, `p.since + interval '24 hours'`)); err != nil {
 		log.Printf("[tech-contact] deduct: %v", err)
 		return
 	}
