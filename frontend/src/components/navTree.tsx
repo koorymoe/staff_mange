@@ -303,6 +303,8 @@ export const navItems: NavItem[] = [
         },
       },
       { to: '/my-handovers', label: '🛠️ حجوزاتي المسلّمة', icon: <></>, roles: TECH_ROLES },
+      // (ل) 11-24 دازاي: الخطأ الفني والتصحيح — الكادر يسجّل، المراقب يوافق
+      { to: '/rework', label: '🔧 الخطأ الفني والتصحيح', icon: <></>, roles: [...TECH_ROLES, 'TECHNICIAN', 'MONITOR', 'ADMIN'] },
       // (ع) 11-08: 🔄 عقود الصيانة الدورية — نفس حارس /api/maintenance-contracts (ADMIN أو coordinator)
       { to: '/maintenance-contracts', label: '🔄 عقود الصيانة', icon: <></>, roles: ['ADMIN'], permission: 'coordinator' },
       // ماتركس — فرص البيع: نفس حارس GET /api/ai/opportunities (ADMIN/OWNER أو sales_booking).

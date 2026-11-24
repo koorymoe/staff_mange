@@ -38,6 +38,10 @@ func (r *MatrixScoreRepository) Revenue(from, to time.Time, emp string) ([]Reven
 			FROM inv JOIN "Employee" e ON e.id = inv."employeeId"
 			WHERE e."isLeader" AND e.role::text <> 'SERVICE_MANAGER' AND NOT EXISTS (SELECT 1 FROM crew2 WHERE crew2.inv = inv.id) GROUP BY 1
 			UNION ALL
+			-- (ل) 11-24: تصحيح الخطأ الفني (بموافقة المراقب) — ينضاف للي صلّح وينخصم من الكادر الأول
+			SELECT ra."employeeId", 'WORK', sum(ra.amount)::float8, 0
+			FROM "ReworkAdjustment" ra WHERE ra."createdAt" >= $1 AND ra."createdAt" < $2 GROUP BY 1
+			UNION ALL
 			SELECT b."createdById", 'BOOKED', sum(inv.n)::float8, count(DISTINCT inv."bookingId")::int
 			FROM inv JOIN "Booking" b ON b.id = inv."bookingId" WHERE b."createdById" IS NOT NULL GROUP BY 1
 			UNION ALL

@@ -491,6 +491,44 @@ func autoMigrations() []Migration {
 			ALTER TABLE "DowntimePeriod" ADD CONSTRAINT "DowntimePeriod_createdById_fkey" FOREIGN KEY ("createdById") REFERENCES "Employee"(id) ON DELETE SET NULL;
 		`,
 		},
+		{
+			Version: "0527_rework_claims",
+			SQL: `
+			CREATE TABLE IF NOT EXISTS "ReworkAdjustment" (
+	"id" text DEFAULT (gen_random_uuid())::text NOT NULL,
+	"claimId" text NOT NULL,
+	"employeeId" text NOT NULL,
+	"amount" numeric NOT NULL,
+	"createdAt" timestamp with time zone DEFAULT now() NOT NULL
+);
+			CREATE TABLE IF NOT EXISTS "ReworkClaim" (
+	"id" text DEFAULT (gen_random_uuid())::text NOT NULL,
+	"fixBookingId" text NOT NULL,
+	"originalBookingId" text NOT NULL,
+	"note" text NOT NULL,
+	"status" text DEFAULT 'PENDING'::text NOT NULL,
+	"hours" numeric,
+	"amount" numeric,
+	"createdById" text NOT NULL,
+	"createdAt" timestamp with time zone DEFAULT now() NOT NULL,
+	"decidedById" text,
+	"decidedAt" timestamp with time zone,
+	"decisionNote" text
+);
+			ALTER TABLE "ReworkAdjustment" ADD CONSTRAINT "ReworkAdjustment_pkey" PRIMARY KEY (id);
+			ALTER TABLE "ReworkClaim" ADD CONSTRAINT "ReworkClaim_pkey" PRIMARY KEY (id);
+			ALTER TABLE "ReworkClaim" ADD CONSTRAINT "ReworkClaim_fixBookingId_key" UNIQUE ("fixBookingId");
+			CREATE INDEX IF NOT EXISTS "ReworkAdjustment_emp_idx" ON public."ReworkAdjustment" USING btree ("employeeId", "createdAt");
+			ALTER TABLE "ReworkClaim" ADD CONSTRAINT "rework_claim_status_ok" CHECK ((status = ANY (ARRAY['PENDING'::text, 'APPROVED'::text, 'REJECTED'::text])));
+			ALTER TABLE "ReworkClaim" ADD CONSTRAINT "rework_claim_distinct" CHECK (("fixBookingId" <> "originalBookingId"));
+			ALTER TABLE "ReworkAdjustment" ADD CONSTRAINT "ReworkAdjustment_claimId_fkey" FOREIGN KEY ("claimId") REFERENCES "ReworkClaim"(id) ON DELETE CASCADE;
+			ALTER TABLE "ReworkAdjustment" ADD CONSTRAINT "ReworkAdjustment_employeeId_fkey" FOREIGN KEY ("employeeId") REFERENCES "Employee"(id) ON DELETE CASCADE;
+			ALTER TABLE "ReworkClaim" ADD CONSTRAINT "ReworkClaim_fixBookingId_fkey" FOREIGN KEY ("fixBookingId") REFERENCES "Booking"(id) ON DELETE CASCADE;
+			ALTER TABLE "ReworkClaim" ADD CONSTRAINT "ReworkClaim_originalBookingId_fkey" FOREIGN KEY ("originalBookingId") REFERENCES "Booking"(id) ON DELETE CASCADE;
+			ALTER TABLE "ReworkClaim" ADD CONSTRAINT "ReworkClaim_createdById_fkey" FOREIGN KEY ("createdById") REFERENCES "Employee"(id);
+			ALTER TABLE "ReworkClaim" ADD CONSTRAINT "ReworkClaim_decidedById_fkey" FOREIGN KEY ("decidedById") REFERENCES "Employee"(id);
+		`,
+		},
 		// ‹makemigration› — التحديثات الجديدة تنضاف فوگ هالسطر
 	}
 }
