@@ -1989,3 +1989,64 @@ html.dark .sp-90 { color: #dfe4f3; border-inline-start-color: #464082; }
 .sp-name { font-size: .875rem; }
 .sp-phone, .sp-type, .sp-cell, .sp-90 { font-size: .75rem; }
 .sp-pill { font-size: .7rem; }
+
+/* (ك 11-24) الحسابات — جدول الحجوزات حسب صورتي زينا (الليلي والنهاري مقاسات منهن) */
+.fn-searchwrap { padding: .9rem 1rem; border-radius: 1rem; background: #ebf2fd; border: 1px solid #c9d6ee; }
+.fn-search { display: flex; align-items: center; gap: .6rem; padding: .55rem 1rem; border-radius: .6rem; background: #f7faff; border: 1px solid #aabcdb; color: #191d49; }
+.fn-search input { flex: 1; min-width: 0; background: transparent; outline: none; font-size: .875rem; color: #15184c; }
+.fn-search input::placeholder { color: #5f6788; }
+.fn-table { overflow-x: auto; border-radius: 1rem; background: #f6f8fc; border: 1px solid #aabcdb; }
+.fn-grid { display: grid; grid-template-columns: 7rem minmax(11rem, 1.6fr) minmax(8rem, 1fr) 9.5rem 9.5rem 10rem 15rem; align-items: center; gap: .75rem; min-width: 900px; }
+.fn-head { padding: .8rem 1rem; background: linear-gradient(180deg, #d6e6fd, #c4dafc); border-bottom: 1px solid #aabcdb; }
+.fn-th { display: inline-flex; align-items: center; gap: .45rem; font-size: .875rem; font-weight: 800; color: #15184c; }
+.fn-th svg { color: #3b4a82; }
+.fn-th-act { justify-content: center; }
+.fn-row { border-bottom: 1px solid #e1e8f3; }
+.fn-row:last-child { border-bottom: 0; }
+.fn-row:nth-child(odd) { background: #f1f7fe; } .fn-row:nth-child(even) { background: #f9fbff; }
+.fn-line { padding: .45rem 1rem; }
+.fn-code { display: inline-flex; justify-content: center; padding: .3rem .6rem; border-radius: .6rem; font-weight: 800; font-size: .875rem; color: #1d4fb8; background: #d2e5fc; border: 1px solid #c1d1eb; }
+.fn-name { display: flex; flex-direction: column; font-weight: 800; font-size: .875rem; color: #15184c; }
+.fn-extra { display: flex; flex-wrap: wrap; gap: .3rem .6rem; margin-top: .15rem; font-size: .7rem; font-weight: 600; color: #5b4bb0; }
+.fn-svc { display: inline-block; padding: .25rem .9rem; border-radius: .6rem; font-size: .75rem; color: #262a4d; background: #e5eaf6; border: 1px solid #bec5d7; }
+.fn-date { display: inline-flex; align-items: center; gap: .4rem; padding: .25rem .7rem; border-radius: .6rem; font-size: .75rem; font-weight: 600; color: #15184c; background: #e6ebf9; border: 1px solid #dde2ee; font-variant-numeric: tabular-nums; }
+.fn-date svg { color: #59659c; }
+.fn-end { background: #e2f4e9; border-color: #cdeedb; }
+.fn-pill { display: inline-flex; align-items: center; gap: .4rem; padding: .3rem .8rem; border-radius: .7rem; font-size: .75rem; font-weight: 800; white-space: nowrap; }
+.fn-wait { color: #8a5a00; background: #fef0d5; border: 1px solid #f2dfbc; }
+.fn-ok { color: #157a44; background: #c8f0dc; border: 1px solid #a9e3c6; }
+.fn-survey { color: #0f766e; background: #ccfbf1; border: 1px solid #99e6d8; }
+.fn-partial { color: #6d28d9; background: #ede9fe; border: 1px solid #d4c8fb; }
+.fn-acts { display: flex; align-items: center; justify-content: flex-end; gap: .5rem; }
+.fn-chev { display: grid; place-items: center; width: 2rem; height: 2rem; color: #191d49; }
+.fn-act { display: grid; place-items: center; width: 2.4rem; height: 2.2rem; border-radius: .6rem; border: 1px solid; }
+.fn-act:disabled { opacity: .5; }
+.fn-link { color: #7c3aed; background: #ede7fd; border-color: #ccc4e9; }
+.fn-srch { color: #1e63d6; background: #dcebff; border-color: #b9d3f5; }
+.fn-del { color: #dc2f45; background: #f7e2e7; border-color: #dac0c4; }
+.fn-empty { padding: 1.25rem; text-align: center; font-size: .875rem; color: #5f6788; }
+html.dark .fn-searchwrap { background: #0e1c35; border-color: #2a3c63; }
+html.dark .fn-search { background: #1a294b; border-color: #5b73a3; color: #e6f7ff; }
+html.dark .fn-search input { color: #f1f5f9; }
+html.dark .fn-search input::placeholder { color: #b9c6df; }
+html.dark .fn-table { background: #101c33; border-color: #5b73a3; }
+html.dark .fn-head { background: linear-gradient(180deg, #213a72, #1c3263); border-bottom-color: #3a5288; }
+html.dark .fn-th { color: #fff; } html.dark .fn-th svg { color: #cad5f1; }
+html.dark .fn-row { border-bottom-color: #253551; }
+html.dark .fn-row:nth-child(odd) { background: #101c33; } html.dark .fn-row:nth-child(even) { background: #111d34; }
+html.dark .fn-code { color: #8fc0ff; background: #1a2f5a; border-color: #203460; }
+html.dark .fn-name { color: #fff; }
+html.dark .fn-extra { color: #b8a9f5; }
+html.dark .fn-svc { color: #eef3ff; background: #202f51; border-color: #394a72; }
+html.dark .fn-date { color: #fff; background: #1c2b4c; border-color: #243354; }
+html.dark .fn-date svg { color: #e5e8ff; }
+html.dark .fn-end { background: #133034; border-color: #1a4044; }
+html.dark .fn-wait { color: #fbe3c0; background: #413327; border-color: #5b504b; }
+html.dark .fn-ok { color: #d9fbec; background: #133738; border-color: #1f5452; }
+html.dark .fn-survey { color: #99f6e4; background: #0f3536; border-color: #1f5452; }
+html.dark .fn-partial { color: #ddd6fe; background: #292249; border-color: #5f578c; }
+html.dark .fn-chev { color: #cad5f1; }
+html.dark .fn-link { color: #d6c4ff; background: #292249; border-color: #5f578c; }
+html.dark .fn-srch { color: #7dd6ff; background: #132b3f; border-color: #1f4a63; }
+html.dark .fn-del { color: #ffb3c0; background: #2f1e2f; border-color: #735e73; }
+html.dark .fn-empty { color: #b9c6df; }

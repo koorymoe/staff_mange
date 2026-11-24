@@ -43,6 +43,10 @@ const P: Record<string, string> = {
   store: 'M4 9l1.5-5h13L20 9M4 9v11h16V9M4 9h16M4 9a2.7 2.7 0 0 0 5.3 0 2.7 2.7 0 0 0 5.4 0 2.7 2.7 0 0 0 5.3 0M10 20v-5h4v5',
   briefcase: 'M4 8h16v11H4zM9 8V5h6v3M4 13h16M11 13v2h2v-2',
   chat: 'M4 12a8 7 0 1 1 3.5 5.8L4 19l1-3.2A6.8 6.8 0 0 1 4 12Z',
+  copy: 'M9 9h11v11H9zM5 15H4V4h11v1',
+  link: 'M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1',
+  trash: 'M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3',
+  flag: 'M5 21V4M5 4h14v9H5M9 4v9M13 4v9M5 8.5h14',
   ban: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18ZM5.6 5.6l12.8 12.8',
 }
 export function LineIcon({ n, className = 'h-4 w-4' }: { n: string; className?: string }) {

@@ -6,6 +6,7 @@ import { matches } from '../utils/search'
 import { useSession, canAuditFinance, canLinkPartialBooking } from '../session'
 import InternalDepartmentContacts from '../components/InternalDepartmentContacts'
 import BookingCodeChip from '../components/BookingCodeChip'
+import { LineIcon } from '../components/LineIcon'
 import EntityIdentity from '../components/EntityIdentity'
 import MoneyNoInvoice from '../components/MoneyNoInvoice'
 import { askForm } from '../utils/dialog'
@@ -409,13 +410,16 @@ export default function Finance() {
         </button>
       </div>
 
-      <div className="rounded-xl border border-slate-200 bg-[var(--sf-card)] p-4 shadow-[0_4px_20px_rgba(15,32,64,0.06)]">
-        <input
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="🔍 بحث بكود الحجز، كود الزبون، رقم الهاتف، أو اسم الزبون..."
-          className="w-full rounded-lg border border-slate-300 px-4 py-2.5 outline-none focus:border-brand-500"
-        />
+      {/* (ك 11-24) جدول الحسابات حسب صورة زينا — الألوان مقاسة من الصورتين (.fn-*) */}
+      <div className="fn-searchwrap">
+        <label className="fn-search">
+          <LineIcon n="search" className="h-5 w-5 shrink-0" />
+          <input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="بحث بكود الحجز، كود الزبون، رقم الهاتف، أو اسم الزبون..."
+          />
+        </label>
         {search.trim() && (
           <p className="mt-2 text-xs text-slate-500">النتائج: {filtered.length} حجز</p>
         )}
@@ -433,7 +437,14 @@ export default function Finance() {
           ⏳ باقي {backfill.size} عمل داخلي قديم بلا سعر — افتح الحجز واضغط «💰 سعّر (قديم)»، تنسوّى فاتورته.
         </p>
       )}
-      <div className="mt-6 flex flex-col gap-4">
+      <div className="fn-table mt-4">
+        <div className="fn-grid fn-head">
+          {([['copy', 'كود'], ['user', 'اسم الزبون'], ['layers', 'نوع الخدمة'], ['cal', 'تاريخ الحجز'], ['flag', 'تاريخ الانتهاء'], ['checkCircle', 'حالة التدقيق']] as const).map(([i, h]) => (
+            <span key={h} className="fn-th"><LineIcon n={i} className="h-5 w-5" />{h}</span>
+          ))}
+          <span className="fn-th fn-th-act"><LineIcon n="gear" className="h-5 w-5" />الإجراءات</span>
+        </div>
+        {filtered.length === 0 && !loading && <p className="fn-empty">ماكو حجوزات</p>}
         {filtered.map((b) => {
           const isOpen = expanded[b.id] ?? false
           const cartTotal = (b.cartItems ?? []).reduce(
@@ -455,131 +466,55 @@ export default function Finance() {
           return (
             <div
               key={b.id}
-              className="overflow-hidden rounded-xl border border-white bg-white shadow-[0_4px_20px_rgba(15,32,64,0.06)]"
+              className="fn-row"
             >
               {/* Header - always visible */}
-              <div className="flex items-center">
-              <button
-                onClick={() => toggle(b.id)}
-                className="flex flex-1 items-center justify-between p-4 text-start transition-colors hover:bg-slate-50"
-              >
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="font-mono text-sm font-semibold text-brand-600">
-                    <BookingCodeChip code={b.code} />
-                  </span>
-                  <span className="text-sm font-medium text-brand-800">
-                    {b.customer?.name}
-                  </span>
-                  {b.service && (
-                    <span className="rounded-md bg-slate-100 px-2 py-0.5 text-xs text-slate-600">
-                      {b.service.name}
+              <div className="fn-grid fn-line">
+                <span className="fn-code"><BookingCodeChip code={b.code} /></span>
+                <button type="button" onClick={() => toggle(b.id)} className="fn-name text-start">
+                  {b.customer?.name}
+                  {/* الشارات الإضافية تبقى — تحت الاسم بخط صغير */}
+                  {(b.partialJobBooking || continuationAnchorIds.has(b.id) || surveyAnchorIds.has(b.id) || isInternal(b)) && (
+                    <span className="fn-extra">
+                      {b.partialJobBooking && <span>{isSurvey(b) ? `🔍 كشف لهذا الحجز: ${b.partialJobBooking.code}` : `🔗 يوم إضافي — الأصل: ${b.partialJobBooking.code}`}</span>}
+                      {continuationAnchorIds.has(b.id) && <span>🔗 مرتبط بأيام إضافية — لا تحذفه</span>}
+                      {surveyAnchorIds.has(b.id) && <span>🔍 عليه كشف مسبق — راجع نتائجه</span>}
+                      {/* قرار (ع) 10-09: قيمة الشغل الداخلي من فاتورته الداخلية */}
+                      {isInternal(b) && <span title="من الفاتورة الداخلية">{b.internalInvoiceTotal != null ? `🏭 ${Math.round(b.internalInvoiceTotal).toLocaleString('en-US')} د.ع` : 'بلا سعر'}</span>}
                     </span>
                   )}
-                  {/* التاريخ وموعد الانتهاء ظاهرين بالسطر — الباقي داخل التفاصيل */}
-                  <span className="rounded-md bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-700">
-                    📅 الحجز: {b.scheduledAt ? new Date(b.scheduledAt).toLocaleDateString('ar-IQ') : new Date(b.createdAt).toLocaleDateString('ar-IQ')}
-                  </span>
-                  <span className={`rounded-md px-2 py-0.5 text-xs font-medium ${
-                    b.completedAt ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-500'
-                  }`}>
-                    🏁 الانتهاء: {b.completedAt ? new Date(b.completedAt).toLocaleDateString('ar-IQ') : 'لم ينتهِ بعد'}
-                  </span>
-                  {/* ⚠️ الحل لمشكلة «هذا مكرر لو لأ بنظرة وحدة» — بدون فتح
-                      التفاصيل: شارة على الحجز التابع (فيها كود الأصل)،
-                      وشارة عكسية على الحجز الأصل نفسه («ما تحتاج تحذفني»).
-                      نفس العمود يخدم معنيين مختلفين حسب نوع الحجز
-                      المُشير: يوم إضافي بشغلة، أو كشف سبق حجزاً حقيقياً. */}
-                  {b.partialJobBooking && (
-                    <span className="rounded-md bg-violet-50 px-2 py-0.5 text-xs font-medium text-violet-700">
-                      {isSurvey(b)
-                        ? `🔍 كشف لهذا الحجز: ${b.partialJobBooking.code}`
-                        : `🔗 يوم إضافي — الأصل: ${b.partialJobBooking.code}`}
-                    </span>
-                  )}
-                  {continuationAnchorIds.has(b.id) && (
-                    <span className="rounded-md bg-violet-50 px-2 py-0.5 text-xs font-medium text-violet-700">
-                      🔗 مرتبط بأيام إضافية — لا تحذفه
-                    </span>
-                  )}
-                  {surveyAnchorIds.has(b.id) && (
-                    <span className="rounded-md bg-teal-50 px-2 py-0.5 text-xs font-medium text-teal-700">
-                      🔍 عليه كشف مسبق — راجع نتائجه
-                    </span>
-                  )}
-                </div>
-                <div className="flex items-center gap-2">
-                  {/* قرار (ع) 10-09: قيمة الشغل الداخلي من فاتورته الداخلية */}
-                  {isInternal(b) && (b.internalInvoiceTotal != null ? (
-                    <span className="rounded-full bg-indigo-100 px-3 py-1 text-xs font-bold text-indigo-800" title="من الفاتورة الداخلية">
-                      🏭 {Math.round(b.internalInvoiceTotal).toLocaleString('en-US')} د.ع
-                    </span>
-                  ) : (
-                    <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-500">بلا سعر</span>
-                  ))}
-                  {isSurvey(b) ? (
-                    <span className="rounded-full bg-teal-100 px-3 py-1 text-xs font-bold text-teal-700">
-                      🔍 زيارة كشف — بلا فاتورة
-                    </span>
-                  ) : isPartialLinked(b) ? (
-                    <span className="rounded-full bg-violet-100 px-3 py-1 text-xs font-bold text-violet-700">
-                      🔗 ضمن شغلة {b.partialJobBooking?.code}
-                    </span>
-                  ) : (
-                    <span
-                      className={`rounded-full px-3 py-1 text-xs font-bold ${
-                        b.amountVerified
-                          ? 'bg-emerald-100 text-emerald-700'
-                          : 'bg-amber-100 text-amber-700'
-                      }`}
-                    >
-                      {b.amountVerified ? 'تم التدقيق' : 'بانتظار التدقيق'}
-                    </span>
-                  )}
-                  <svg
-                    className={`h-5 w-5 text-slate-400 transition-transform ${isOpen ? 'rotate-180' : ''}`}
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                    strokeWidth={2}
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      d="M19 9l-7 7-7-7"
-                    />
-                  </svg>
-                </div>
-              </button>
-              {canLinkPartial && (
-                <button
-                  onClick={() => setPartialLink(b)}
-                  disabled={partialLinkBusyId === b.id}
-                  title="ربط بحجز آخر كإنجاز جزئي لنفس الشغلة (شغلة طوّلت أكثر من يوم)"
-                  className="mx-2 shrink-0 rounded-lg border border-violet-300 bg-violet-50 px-2.5 py-1.5 text-sm text-violet-700 hover:bg-violet-100 disabled:opacity-50"
-                >
-                  🔗
                 </button>
-              )}
-              {canLinkPartial && (
-                <button
-                  onClick={() => markAsSurvey(b)}
-                  disabled={surveyMarkBusyId === b.id}
-                  title="تأشير ككشف بأثر رجعي + ربطه بالحجز الحقيقي الي نتج عنه"
-                  className="mx-2 shrink-0 rounded-lg border border-teal-300 bg-teal-50 px-2.5 py-1.5 text-sm text-teal-700 hover:bg-teal-100 disabled:opacity-50"
-                >
-                  🔍
-                </button>
-              )}
-              {isOwner && (
-                <button
-                  onClick={() => archiveBooking(b)}
-                  disabled={archiveBusyId === b.id}
-                  title="حذف الحجز (للمالك حصراً)"
-                  className="mx-2 shrink-0 rounded-lg border border-red-300 bg-red-50 px-2.5 py-1.5 text-sm text-red-700 hover:bg-red-100 disabled:opacity-50"
-                >
-                  🗑️
-                </button>
-              )}
+                <span>{b.service && <span className="fn-svc">{b.service.name}</span>}</span>
+                <span><span className="fn-date"><LineIcon n="cal" className="h-4 w-4" />{(b.scheduledAt ? new Date(b.scheduledAt) : new Date(b.createdAt)).toLocaleDateString('en-CA').replace(/-/g, '/')}</span></span>
+                <span><span className={`fn-date ${b.completedAt ? 'fn-end' : ''}`}><LineIcon n="flag" className="h-4 w-4" />{b.completedAt ? new Date(b.completedAt).toLocaleDateString('en-CA').replace(/-/g, '/') : 'لم ينتهِ بعد'}</span></span>
+                <span>
+                  {isSurvey(b) ? <span className="fn-pill fn-survey">🔍 زيارة كشف — بلا فاتورة</span>
+                    : isPartialLinked(b) ? <span className="fn-pill fn-partial">🔗 ضمن شغلة {b.partialJobBooking?.code}</span>
+                      : <span className={`fn-pill ${b.amountVerified ? 'fn-ok' : 'fn-wait'}`}><LineIcon n={b.amountVerified ? 'check' : 'clock'} className="h-4 w-4" />{b.amountVerified ? 'تم التدقيق' : 'بانتظار التدقيق'}</span>}
+                </span>
+                <span className="fn-acts">
+                  <button type="button" onClick={() => toggle(b.id)} className="fn-chev" title="التفاصيل">
+                    <LineIcon n="down" className={`h-5 w-5 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+                  </button>
+                  {canLinkPartial && (
+                    <button onClick={() => setPartialLink(b)} disabled={partialLinkBusyId === b.id}
+                      title="ربط بحجز آخر كإنجاز جزئي لنفس الشغلة (شغلة طوّلت أكثر من يوم)" className="fn-act fn-link">
+                      <LineIcon n="link" className="h-4 w-4" />
+                    </button>
+                  )}
+                  {canLinkPartial && (
+                    <button onClick={() => markAsSurvey(b)} disabled={surveyMarkBusyId === b.id}
+                      title="تأشير ككشف بأثر رجعي + ربطه بالحجز الحقيقي الي نتج عنه" className="fn-act fn-srch">
+                      <LineIcon n="search" className="h-4 w-4" />
+                    </button>
+                  )}
+                  {isOwner && (
+                    <button onClick={() => archiveBooking(b)} disabled={archiveBusyId === b.id}
+                      title="حذف الحجز (للمالك حصراً)" className="fn-act fn-del">
+                      <LineIcon n="trash" className="h-4 w-4" />
+                    </button>
+                  )}
+                </span>
               </div>
 
               {/* Expanded details */}
