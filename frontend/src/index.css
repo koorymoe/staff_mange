@@ -2145,3 +2145,43 @@ html.dark .sb-pa a:nth-child(1) { color: #fff !important; background: #172b4d !i
 html.dark .sb-pa a:nth-child(2) { color: #ecfff5 !important; background: #074537 !important; border-color: #1f6b55; }
 html.dark .sb-pa a:nth-child(3) { color: #d6f3ff !important; background: #003751 !important; border-color: #1d5a78; }
 html.dark .sb-svc { background: #1d3258; }
+
+/* (ك 11-24) طلب زينا: جدول الحسابات يبين بلا تمرير يمين ويسار — أعمدة أضيق وأزرار أصغر */
+.fn-grid { grid-template-columns: 6.2rem minmax(8.5rem, 1.5fr) minmax(6.5rem, 1fr) 7.2rem 7.2rem 8.2rem 10.2rem; gap: .5rem; min-width: 720px; }
+.fn-head { padding: .65rem .75rem; }
+.fn-line { padding: .4rem .75rem; }
+.fn-th { gap: .35rem; font-size: .8rem; white-space: nowrap; }
+.fn-th svg { width: 1.05rem; height: 1.05rem; }
+.fn-code { padding: .25rem .45rem; font-size: .8rem; }
+.fn-svc, .fn-date, .fn-pill { white-space: nowrap; }
+.fn-svc { padding: .2rem .6rem; font-size: .72rem; }
+.fn-date { gap: .3rem; padding: .2rem .5rem; font-size: .72rem; }
+.fn-pill { gap: .3rem; padding: .25rem .6rem; font-size: .72rem; }
+.fn-acts { gap: .3rem; }
+.fn-chev { width: 1.6rem; }
+.fn-act { width: 2rem; height: 1.9rem; border-radius: .5rem; }
+
+/* (ك 11-24) طلب زينا: كتابة الكبسولات بمحطات الحجوزات سطر واحد — خط أصغر شوية وما تنزل لسطر ثاني */
+.sb-box, .sb-btn, .sb-pa a, .sb-th { white-space: nowrap; }
+.sb-box { padding: .3rem .6rem; font-size: .7rem; }
+.sb-svc { font-size: .72rem; }
+.sb-note { white-space: normal; max-width: 15rem; }
+.sb-btn { padding: .28rem .6rem; font-size: .7rem; }
+.sb-pa a { padding: .2rem .55rem !important; font-size: .7rem !important; }
+.sb-th { font-size: .8rem; }
+.sb-td { padding: .5rem .55rem; }
+.sb-table { min-width: 0 !important; }
+.sb-td { padding: .45rem .4rem; }
+.sb-th { padding: .6rem .4rem; }
+.sb-note { max-width: 11rem; }
+.sb-wrap td .h-10.w-10 { width: 2.25rem; height: 2.25rem; }
+.sb-svc { max-width: 10rem; }
+.sb-pa { gap: .25rem; }
+.sb-pa a { padding: .2rem .45rem !important; }
+.sb-note { max-width: 10rem; }
+.sb-num { min-width: 1.7rem; height: 1.7rem; font-size: .8rem; }
+.sb-btn { padding: .28rem .45rem; }
+.sb-name { white-space: normal; max-width: 12rem; }
+.sb-svc { max-width: 9.5rem; }
+/* (ك) تبويب المؤجّلة: زر «ثبّت» تحت خانة الموعد حتى الجدول يلحك بشاشة 1366 */
+.sb-wrap td .flex:has(> input[type="datetime-local"]) { flex-direction: column; align-items: stretch; gap: .3rem; }
