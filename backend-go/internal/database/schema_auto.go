@@ -409,6 +409,34 @@ func autoMigrations() []Migration {
 			    OR (b."postponeReason" IS NOT NULL AND b."lastPostponedAt" >= b."handoverAt"));
 		`,
 		},
+		{
+			Version: "0525_service_invoice_options",
+			SQL: `
+			CREATE TABLE IF NOT EXISTS "ServiceInvoiceOption" (
+	"id" text DEFAULT (gen_random_uuid())::text NOT NULL,
+	"serviceId" text NOT NULL,
+	"label" text NOT NULL,
+	"unit" text DEFAULT 'قطعة'::text NOT NULL,
+	"unitPrice" numeric DEFAULT 0 NOT NULL,
+	"sortOrder" integer DEFAULT 0 NOT NULL,
+	"createdAt" timestamp with time zone DEFAULT now() NOT NULL
+);
+			CREATE TABLE IF NOT EXISTS "ServiceInvoiceRule" (
+	"serviceId" text NOT NULL,
+	"minWork" numeric DEFAULT 0 NOT NULL,
+	"updatedById" text,
+	"updatedAt" timestamp with time zone DEFAULT now() NOT NULL
+);
+			ALTER TABLE "ServiceInvoiceOption" ADD CONSTRAINT "ServiceInvoiceOption_pkey" PRIMARY KEY (id);
+			ALTER TABLE "ServiceInvoiceRule" ADD CONSTRAINT "ServiceInvoiceRule_pkey" PRIMARY KEY ("serviceId");
+			CREATE INDEX IF NOT EXISTS "ServiceInvoiceOption_service_idx" ON public."ServiceInvoiceOption" USING btree ("serviceId", "sortOrder");
+			ALTER TABLE "ServiceInvoiceOption" ADD CONSTRAINT "service_invoice_option_price_ok" CHECK (("unitPrice" >= (0)::numeric));
+			ALTER TABLE "ServiceInvoiceRule" ADD CONSTRAINT "service_invoice_rule_min_ok" CHECK (("minWork" >= (0)::numeric));
+			ALTER TABLE "ServiceInvoiceOption" ADD CONSTRAINT "ServiceInvoiceOption_serviceId_fkey" FOREIGN KEY ("serviceId") REFERENCES "Service"(id) ON DELETE CASCADE;
+			ALTER TABLE "ServiceInvoiceRule" ADD CONSTRAINT "ServiceInvoiceRule_serviceId_fkey" FOREIGN KEY ("serviceId") REFERENCES "Service"(id) ON DELETE CASCADE;
+			ALTER TABLE "ServiceInvoiceRule" ADD CONSTRAINT "ServiceInvoiceRule_updatedById_fkey" FOREIGN KEY ("updatedById") REFERENCES "Employee"(id) ON DELETE SET NULL;
+		`,
+		},
 		// ‹makemigration› — التحديثات الجديدة تنضاف فوگ هالسطر
 	}
 }

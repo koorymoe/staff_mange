@@ -2661,6 +2661,11 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	// إن هذا المسار موجود أصلاً. لا تضيف هنا أي middleware ثاني.
 	secs["owner"].Set("GET /api/owner/backups", "owner.get_backups", backupHandler.Overview)
 	// (ل) 11-24 دازاي: توزيع الفلوس (الإحصائيات والإيراد) + صافي ربح الشركة — المالك بس
+	// (ل) 11-24 دازاي: خيارات الفاتورة لكل خدمة — تجريبي (الفواتير الحقيقية ما تمسها لحد الإطلاق)
+	sio := handler.NewServiceInvoiceOptionsHandler(service.NewServiceInvoiceOptions(db))
+	secs["services"].Set("GET /api/service-invoice-options", "services.get_invoice_options", sio.List)
+	secs["services"].Set("PUT /api/service-invoice-options/{serviceId}", "services.put_invoice_options", sio.Save)
+	secs["services"].Set("POST /api/service-invoice-options/{serviceId}/quote", "services.post_invoice_options_quote", sio.Quote)
 	moneySplit := handler.NewMoneySplitHandler(db)
 	secs["owner"].Set("GET /api/owner/money-split", "owner.get_money_split", moneySplit.Get)
 	secs["owner"].Set("PUT /api/owner/money-split", "owner.put_money_split", moneySplit.Put)

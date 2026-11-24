@@ -139,6 +139,8 @@ export const navItems: NavItem[] = [
   { ownerOnly: true, to: '/owner-grants', label: '👑 صلاحياتي لمدير النظام', icon: <></>, roles: ['ADMIN'] },
   { to: '/ai-suggestions', label: '🧠 اقتراحات الذكاء', icon: <></>, roles: ['ADMIN'] },
   { to: '/org', label: '🏛️ الهيكل التنظيمي', icon: <></>, roles: ['ADMIN'] },
+  // (ل) 11-24 دازاي: خيارات الفاتورة لكل خدمة — تجريبي (المالك ومدير النظام)
+  { to: '/service-invoice-options', label: '🧾 خيارات الفاتورة (تجريبي)', icon: <></>, roles: ['ADMIN'] },
   { to: '/org/directors-ranking', label: '🏆 تصنيف المدراء والموظفين', icon: <></>, roles: ['ADMIN'] },
   // (ل) 11-11 دازاي: مراقبة التقييم — نفس حارس تصنيف المدراء وأعذار التأخير (ADMIN/OWNER)
   { to: '/org/score-monitor', label: '🔍 مراقبة التقييم', icon: <></>, roles: ['ADMIN'] },
