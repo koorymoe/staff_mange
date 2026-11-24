@@ -11,6 +11,7 @@ const StaffScorePage = lazyRetry(() => import('./StaffScorePage'))
 const EmployeeIndicatorsPage = lazyRetry(() => import('./EmployeeIndicatorsPage'))
 const EmployeeMonthlyStatsPage = lazyRetry(() => import('./EmployeeMonthlyStatsPage'))
 const StatsPage = lazyRetry(() => import('./StatsPage'))
+const MoneyRankingPage = lazyRetry(() => import('./MoneyRankingPage'))
 
 export default function StaffScoreHub() {
   return (
@@ -20,6 +21,7 @@ export default function StaffScoreHub() {
         { path: '/org/directors-ranking', label: '🏛️ المدراء', hint: 'مدراء الأقسام ونوابهم ورؤساء الوحدات', render: () => <DirectorsRankingPage /> },
         { path: '/staff-score', label: '🏅 الموظفين — ماتركس', hint: 'كل دور حسب شغله: ماتركس ٦٠٪ + التقييم البشري ٤٠٪', render: () => <StaffScorePage /> },
         { path: '/employee-indicators', label: '📈 المؤشرات', hint: 'مؤشرات أداء كل موظف', render: () => <EmployeeIndicatorsPage /> },
+        { path: '/money-ranking', label: '💰 الفلوس والأهداف', hint: 'كل موظف شكد دخّل من هدفه، وأخطاءه وتصحيحاته — (ل) 11-24', render: () => <MoneyRankingPage /> },
         { path: '/employee-stats', label: '📆 أرقام الشهر', hint: 'أرقام كل موظف بالشهر حسب دوره', render: () => <EmployeeMonthlyStatsPage /> },
         { path: '/staff-numbers', label: '👥 أرقام الأقسام', hint: 'المبيعات والتنسيق والفنيين', render: () => <StatsPage /> },
       ]} />

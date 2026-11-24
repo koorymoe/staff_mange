@@ -109,3 +109,38 @@ func (h *CompanyCostsHandler) Mine(w http.ResponseWriter, r *http.Request) {
 	}
 	WriteJSON(w, http.StatusOK, map[string]any{"target": t})
 }
+
+// MoneyRankRow ترتيب المدراء — بلا رواتب (الرواتب للمالك بس بصفحة التكاليف).
+type MoneyRankRow struct {
+	Rank        int     `json:"rank"`
+	Name        string  `json:"name"`
+	Shift       *string `json:"shift"`
+	Target      float64 `json:"target"`
+	Daily       float64 `json:"daily"`
+	Brought     float64 `json:"brought"`
+	Remaining   float64 `json:"remaining"`
+	Forecast    float64 `json:"forecast"`
+	Pct         float64 `json:"pct"`
+	DailyNeeded float64 `json:"dailyNeeded"`
+	Errors      int     `json:"errors"`
+	Fixes       int     `json:"fixes"`
+}
+
+// GET /api/employee-stats/money-ranking?month= — (ل) 11-24 دازاي: الترتيب بصفحة الإحصائيات للمدراء
+func (h *CompanyCostsHandler) Ranking(w http.ResponseWriter, r *http.Request) {
+	month := r.URL.Query().Get("month")
+	if month == "" {
+		month = timeutil.ThisMonth()
+	}
+	rep, err := h.svc.Report(month, time.Now())
+	if err != nil {
+		WriteError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	rows := make([]MoneyRankRow, 0, len(rep.Targets))
+	for _, t := range rep.Targets {
+		rows = append(rows, MoneyRankRow{Rank: t.Rank, Name: t.Name, Shift: t.Shift, Target: t.Target, Daily: t.Daily, Brought: t.Brought,
+			Remaining: t.Remaining, Forecast: t.Forecast, Pct: t.Pct, DailyNeeded: t.DailyNeeded, Errors: t.Errors, Fixes: t.Fixes})
+	}
+	WriteJSON(w, http.StatusOK, map[string]any{"month": month, "rows": rows, "downtimeDays": rep.DowntimeDays})
+}

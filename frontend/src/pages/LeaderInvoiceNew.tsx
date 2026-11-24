@@ -24,6 +24,8 @@ import { loadFailed } from '../netErrors'
 import { swallow } from '../utils/swallow'
 
 import { notify } from '../ui/notify'
+import ReworkFlag from '../components/ReworkFlag'
+import { emptyRework, fileRework, reworkProblem, type ReworkState } from '../utils/rework'
 import { BackLink } from '../ui/BackLink'
 import { BTN_DANGER_SOFT, BTN_GHOST, BTN_PRIMARY } from '../ui/classes'
 // صفحة إنشاء فاتورة ليدر — تحل محل شيت جوجل "تكاليف المشروع" + "انشاء الفواتير":
@@ -290,6 +292,9 @@ export default function LeaderInvoiceNew({ initialMode, handoverOnly = false }: 
   // الليدر إما يسوي فاتورة بصفر بلا سبب — فمحد يعرف ليش بعد شهر —
   // أو ما يسوي فاتورة أصلاً، فالشغل ينضاع من السجل كله.
   const [isFree, setIsFree] = useState(false)
+  // (ل) 11-24 دازاي: «خطأ فني من الكادر السابق» — ينسجّل بعد الحفظ ويروح للمراقب
+  const [rework, setRework] = useState<ReworkState>(emptyRework)
+  const reworkFix = () => completedBookings.find((b) => b.id === selectedBookingId)?.code
   const [freeReasonId, setFreeReasonId] = useState('')
   const [freeReasonNote, setFreeReasonNote] = useState('')
   const [freeReasons, setFreeReasons] = useState<FreeWorkReason[]>([])
@@ -594,10 +599,12 @@ export default function LeaderInvoiceNew({ initialMode, handoverOnly = false }: 
       }
       setSaving(true)
       try {
+        if (reworkProblem(rework)) { setError(reworkProblem(rework)); return }
         const invoice = await api.createInternalInvoice({
           bookingId, work, price, note: internalNote.trim() || undefined,
         })
         setResult(invoice)
+        void fileRework(rework, reworkFix())
       } catch (e) {
         setError(e instanceof Error ? e.message : 'تعذر حفظ الفاتورة')
       } finally {
@@ -626,6 +633,7 @@ export default function LeaderInvoiceNew({ initialMode, handoverOnly = false }: 
       }
       setSaving(true)
       try {
+        if (reworkProblem(rework)) { setError(reworkProblem(rework)); return }
         const invoice = await api.createServiceInvoice({
           kind: serviceKind,
           price,
@@ -640,6 +648,7 @@ export default function LeaderInvoiceNew({ initialMode, handoverOnly = false }: 
           freeReasonNote: isFree && freeReasonNote.trim() ? freeReasonNote.trim() : undefined,
         })
         setResult(invoice)
+        void fileRework(rework, reworkFix())
       } catch (e) {
         setError(e instanceof Error ? e.message : 'تعذر حفظ الفاتورة')
       } finally {
@@ -664,6 +673,7 @@ export default function LeaderInvoiceNew({ initialMode, handoverOnly = false }: 
       if (isFree && !freeReasonId) { setError('اختار سبب المجانية'); return }
       setSaving(true)
       try {
+        if (reworkProblem(rework)) { setError(reworkProblem(rework)); return }
         const invoice = await api.createManualInvoice({
           work,
           price,
@@ -679,6 +689,7 @@ export default function LeaderInvoiceNew({ initialMode, handoverOnly = false }: 
           freeReasonNote: isFree && freeReasonNote.trim() ? freeReasonNote.trim() : undefined,
         })
         setResult(invoice)
+        void fileRework(rework, reworkFix())
       } catch (e) {
         setError(e instanceof Error ? e.message : 'تعذر حفظ الفاتورة')
       } finally {
@@ -721,8 +732,10 @@ export default function LeaderInvoiceNew({ initialMode, handoverOnly = false }: 
         freeReasonId: isFree ? freeReasonId : undefined,
         freeReasonNote: isFree ? freeReasonNote.trim() : undefined,
       }
+      if (reworkProblem(rework)) { setError(reworkProblem(rework)); return }
       const invoice = await api.createLeaderInvoice(payload)
       setResult(invoice)
+      void fileRework(rework, reworkFix())
     } catch (e) {
       setError(e instanceof Error ? e.message : (estimateOnly ? 'تعذر حساب الكلفة' : 'تعذر حفظ الفاتورة'))
     } finally {
@@ -1108,6 +1121,7 @@ export default function LeaderInvoiceNew({ initialMode, handoverOnly = false }: 
                   </p>
                 )}
               </div>
+              {selectedBookingId && <div className="sm:col-span-3"><ReworkFlag value={rework} onChange={setRework} /></div>}
               <div className={`rounded-xl border-2 p-3 sm:col-span-3 ${isFree ? 'border-emerald-400 bg-emerald-50' : 'border-slate-200 bg-white'}`}>
                 <label className="flex cursor-pointer items-center gap-2">
                   <input type="checkbox" checked={isFree} className="h-4 w-4"
@@ -1690,6 +1704,8 @@ export default function LeaderInvoiceNew({ initialMode, handoverOnly = false }: 
               className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand-500 disabled:bg-slate-100"
             />
           </div>
+
+          {selectedBookingId && <ReworkFlag value={rework} onChange={setRework} />}
 
           {/* ── الشغل المجاني ── */}
           <div className={`rounded-xl border-2 p-4 ${isFree ? 'border-emerald-400 bg-emerald-50' : 'border-slate-200 bg-white'}`}>

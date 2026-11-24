@@ -395,6 +395,7 @@ function App() {
           <Route path="staff-requests" element={<StaffRequestsPage />} />
           <Route path="service-managers" element={<RequirePermission permission="service_managers"><ServiceManagersPage /></RequirePermission>} />
           <Route path="employee-stats" element={<RequirePermission permission="employee_stats"><StaffScoreHub /></RequirePermission>} />
+          <Route path="money-ranking" element={<RequirePermission permission="employee_stats"><StaffScoreHub /></RequirePermission>} />
           <Route path="staff-numbers" element={<RequirePermission permission="employee_stats"><StaffScoreHub /></RequirePermission>} />
           <Route path="stats-management" element={<RequirePermission permission="employee_stats"><StatsManagementPage /></RequirePermission>} />
           <Route path="performance-review" element={<PerformanceReviewPage />} />
