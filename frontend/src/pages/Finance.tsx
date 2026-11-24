@@ -485,8 +485,8 @@ export default function Finance() {
                   )}
                 </button>
                 <span>{b.service && <span className="fn-svc">{b.service.name}</span>}</span>
-                <span><span className="fn-date"><LineIcon n="cal" className="h-4 w-4" />{(b.scheduledAt ? new Date(b.scheduledAt) : new Date(b.createdAt)).toLocaleDateString('en-CA').replace(/-/g, '/')}</span></span>
-                <span><span className={`fn-date ${b.completedAt ? 'fn-end' : ''}`}><LineIcon n="flag" className="h-4 w-4" />{b.completedAt ? new Date(b.completedAt).toLocaleDateString('en-CA').replace(/-/g, '/') : 'لم ينتهِ بعد'}</span></span>
+                <span><span className="fn-date"><LineIcon n="cal" className="h-4 w-4" />{(b.scheduledAt ? new Date(b.scheduledAt) : new Date(b.createdAt)).toLocaleDateString('en-CA', { timeZone: 'Asia/Baghdad' }).replace(/-/g, '/')}</span></span>
+                <span><span className={`fn-date ${b.completedAt ? 'fn-end' : ''}`}><LineIcon n="flag" className="h-4 w-4" />{b.completedAt ? new Date(b.completedAt).toLocaleDateString('en-CA', { timeZone: 'Asia/Baghdad' }).replace(/-/g, '/') : 'لم ينتهِ بعد'}</span></span>
                 <span>
                   {isSurvey(b) ? <span className="fn-pill fn-survey">🔍 زيارة كشف — بلا فاتورة</span>
                     : isPartialLinked(b) ? <span className="fn-pill fn-partial">🔗 ضمن شغلة {b.partialJobBooking?.code}</span>
