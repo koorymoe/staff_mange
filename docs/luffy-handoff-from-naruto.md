@@ -519,3 +519,4 @@ git push origin origin/avg:refs/heads/prod     # بعد التأكد إنه fast
 - (ل) 11-22 فورما المخطط: sheetSections بـplanSetPrint (مصدر واحد للـPDF والمعاينة)، عرض 50mm. PlanFile.sheetExtra jsonb (0520) + صلاحية plan_sheet_fields (CanEditSheetFields)، Extra nil = ما تنمس. projectAddress = Project.location.
 - (ل) 11-22 PlanSet.sheetProjectName/sheetProjectAddress (0521) — PUT /plan-sets/{id}؛ الفورما تستخدمهن قبل Project.name/location.
 - (ل) 11-24 tech_contact_watch: onLeaveSQL (LeaveRequest APPROVED، baghdad_date) يستثني التذكير (اليوم) والخصم (من التحويل لـ+24س). اختبار tcw-l بـTestTechContactWatchLive.
+- (ل) 11-24 tech_contact_watch: pendingSQL يستثني الحجز الي بيه arrivedAt/startedAt، والسبب ينتهي بـTechContactAutoTag. اختبار tcw-go.

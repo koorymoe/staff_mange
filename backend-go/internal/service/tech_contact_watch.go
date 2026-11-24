@@ -27,6 +27,9 @@ const TechContactKpiReason = "عدم إكمال المهام الموجهة إل
 
 const techContactHours = 24
 
+// TechContactAutoTag علامة الخصم التلقائي بالسبب
+const TechContactAutoTag = "🤖 خصم تلقائي من النظام"
+
 type TechContactWatch struct {
 	db    *sqlx.DB
 	notif *repository.NotificationRepository
@@ -65,6 +68,8 @@ const pendingSQL = `
 	FROM "Booking" b JOIN "Employee" e ON e.id = b."handoverToId"
 	WHERE b."handoverToId" IS NOT NULL AND b."techContactedAt" IS NULL AND b."techContactKpiAt" IS NULL
 	  AND b."handoverAt" IS NOT NULL AND b.status::text NOT IN ('COMPLETED', 'CANCELLED') AND b."archivedAt" IS NULL
+	  -- (ل) 11-24 دازاي: الحجز الي بدا شغله (وصلوا أو بدوا) ما ينحاسب عليه التقني حتى لو نسى «تم الاتصال»
+	  AND b."arrivedAt" IS NULL AND b."startedAt" IS NULL
 	UNION ALL
 	SELECT 'solar', q.id, '#' || q.number::text, q."techId", e.name, q."techClaimedAt"
 	FROM "SolarInquiry" q JOIN "Employee" e ON e.id = q."techId"
@@ -124,7 +129,9 @@ func (w *TechContactWatch) deduct() {
 	}
 	for _, p := range rows {
 		// (ك 11-23) يبدي باسم المعيار حتى ينحسب من نقطة «تنفيذ المهام الموكلة إليه» — نفس خصم تقصير التثبيت
-		reason := fmt.Sprintf("%s — %s: ما رفع تقرير اتصال %s خلال %d ساعة من التحويل", w.taskCriterion(), TechContactKpiReason, refLabel(p), techContactHours)
+		// (ل) 11-24 دازاي: ينكتب صراحةً إنه خصم تلقائي من النظام (مو المالك خصم بيده). الجدول يحتاج مقيّم،
+		// فيبقى باسم المالك تقنياً، بس السبب يوضح. واسم المعيار يبقى بالأول حتى ينحسب من نقطته.
+		reason := fmt.Sprintf("%s — %s: ما رفع تقرير اتصال %s خلال %d ساعة من التحويل · %s", w.taskCriterion(), TechContactKpiReason, refLabel(p), techContactHours, TechContactAutoTag)
 		applied, err := w.apply(p, author, reason)
 		if err != nil {
 			log.Printf("[tech-contact] apply %s: %v", p.ID, err)

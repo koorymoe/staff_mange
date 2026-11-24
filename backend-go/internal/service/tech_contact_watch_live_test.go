@@ -51,6 +51,8 @@ func TestTechContactWatchLive(t *testing.T) {
 	ins("tcw-old", "60 hours")  // قبل القاعدة ← ولا شي
 	ins("tcw-new", "5 hours")   // جديد ← تذكير بس
 	ins("tcw-na", "26 hours")   // التقني گال «الزبون ما رد» ← تقرير، بلا خصم
+	ins("tcw-go", "27 hours")   // (ل) 11-24: الحجز بدا شغله (وصلوا) ← بلا خصم
+	db.MustExec(`UPDATE "Booking" SET "arrivedAt" = now() - interval '2 hours' WHERE id = 'tcw-go'`)
 	// (ل) 11-24 دازاي: تقني بإجازة معتمدة بمهلة الـ٢٤ ساعة ← لا تذكير ولا خصم
 	db.MustExec(`INSERT INTO "Booking"(id, code, "customerId", status, "handoverToId", "handoverById", "handoverAt", "handoverReason", "confirmationContactedAt")
 		VALUES ('tcw-lv', 'TCW-LV', 'tcw-cu', 'CONFIRMED', 'tcw-l', 'tcw-o', now() - interval '25 hours', 'تجربة', now()),
@@ -83,7 +85,7 @@ func TestTechContactWatchLive(t *testing.T) {
 	if evs[0].Points != -1 || evs[0].Amount != 0 {
 		t.Fatalf("الخصم لازم نقطة وحدة بلا فلوس: %+v", evs[0])
 	}
-	for _, want := range []string{"تنفيذ المهام", "عدم إكمال المهام الموجهة إليه", "TCW-LATE"} {
+	for _, want := range []string{"تنفيذ المهام", "عدم إكمال المهام الموجهة إليه", "TCW-LATE", TechContactAutoTag} {
 		if !strings.Contains(evs[0].Reason, want) {
 			t.Fatalf("السبب ناقص %q: %s", want, evs[0].Reason)
 		}
