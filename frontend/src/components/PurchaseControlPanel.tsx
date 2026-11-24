@@ -152,7 +152,7 @@ export default function PurchaseControlPanel({ requests, canBuy, canVerify, canW
           {toReview.map((r) => (
             <div key={'rv' + r.id} className="flex flex-wrap items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm">
               <span className="font-bold">{r.code}</span> · {r.supplier?.name} · {r.totalCost != null ? iqd(r.totalCost) : ''}
-              <button onClick={() => setReviewing(r)} className="mr-auto rounded-lg bg-amber-500 px-3 py-1 font-bold text-white">⭐ قيّم المورد</button>
+              <button onClick={() => setReviewing(r)} className="pc-rate mr-auto rounded-lg px-3 py-1 font-bold">⭐ قيّم المورد</button>
             </div>
           ))}
           {toVerify.map((r) => (

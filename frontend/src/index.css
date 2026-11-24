@@ -2192,3 +2192,10 @@ html.dark .sb-svc { background: #1d3258; }
 .sp-name { white-space: nowrap; }
 .sp-grid { grid-template-columns: minmax(0,2.2fr) minmax(0,1fr) minmax(0,1.2fr) repeat(3, minmax(0,1fr)); }
 .sp-th, .sp-90 > span { white-space: nowrap; }
+
+/* (ك 11-24) زر «قيّم المورد» — لون صورة زينا (مقاس منها) ثابت بالوضعين */
+.pc-rate, html.dark .pc-rate { background: #fe9a00; color: #422006; }
+.pc-rate:hover, html.dark .pc-rate:hover { background: #f08c00; }
+/* (ك 11-24) تصحيح: اللون المقصود ذهبي غامق وكتابة بيضة (مقاس من صورة زينا 151) */
+.pc-rate, html.dark .pc-rate { background: #5e4709; color: #fbfcfc; }
+.pc-rate:hover, html.dark .pc-rate:hover { background: #6e540b; }
