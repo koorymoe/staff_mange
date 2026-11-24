@@ -2050,3 +2050,44 @@ html.dark .fn-link { color: #d6c4ff; background: #292249; border-color: #5f578c;
 html.dark .fn-srch { color: #7dd6ff; background: #132b3f; border-color: #1f4a63; }
 html.dark .fn-del { color: #ffb3c0; background: #2f1e2f; border-color: #735e73; }
 html.dark .fn-empty { color: #b9c6df; }
+
+/* (ك 11-24) تقارير اتصال التقنيين — حسب صورتي زينا (الليلي والنهاري مقاسات منهن) */
+.tr-title { display: flex; align-items: center; gap: .6rem; font-size: 1.5rem; font-weight: 800; color: #0b1a4a; }
+.tr-title-ico { display: grid; place-items: center; width: 2.2rem; height: 2.2rem; border-radius: .6rem; color: #fff; background: linear-gradient(180deg, #f0679e, #c81e63); }
+.tr-sub { font-size: .875rem; color: #334155; }
+.tr-tab { display: inline-flex; align-items: center; gap: .5rem; padding: .5rem 1.4rem; border-radius: .8rem; font-size: .875rem; font-weight: 800; color: #0b1a4a; background: #f3f7fe; border: 1px solid #c9d6ee; }
+.tr-tab svg { color: #1f3b7a; }
+.tr-tab-on { color: #fff; background: #2a68d5; border-color: #2f6bc9; }
+.tr-tab-on svg { color: #fff; }
+.tr-wrap { border-radius: 1rem; background: #f1f7fe; border: 1px solid #97acd0; }
+.tr-head { background: #d5e5fd; }
+.tr-th { padding: .75rem .75rem; text-align: right; font-size: .875rem; font-weight: 800; color: #0b1a4a; white-space: nowrap; }
+.tr-th-ico { color: #1f3b7a; }
+.tr-row { border-top: 1px solid #e3ebf6; }
+.tr-row:nth-child(odd) { background: #f1f7fe; } .tr-row:nth-child(even) { background: #f8fbff; }
+.tr-td { padding: .55rem .75rem; color: #0b1a4a; vertical-align: middle; }
+.tr-muted { color: #334155; }
+.tr-note { max-width: 20rem; }
+.tr-sun { color: #f0b410; font-size: 1.1rem; }
+.tr-doc { color: #1f4988; }
+.tr-pill { display: inline-flex; align-items: center; gap: .4rem; padding: .3rem .9rem; border-radius: 9999px; font-size: .75rem; font-weight: 800; white-space: nowrap; border: 1px solid; }
+.tr-ok { color: #0f5132; background: #d8eee5; border-color: #b4dcc9; }
+.tr-wait { color: #8a5a00; background: #fef0d5; border-color: #f2dfbc; }
+.tr-bad { color: #b4232f; background: #fde2e5; border-color: #f3c1c7; }
+.tr-off { color: #475569; background: #eef2f7; border-color: #d5dde8; }
+html.dark .tr-title { color: #fff; }
+html.dark .tr-sub { color: #cfe0f5; }
+html.dark .tr-tab { color: #fff; background: #0d2553; border-color: #4a6295; }
+html.dark .tr-tab svg { color: #dbe8ff; }
+html.dark .tr-tab-on { background: #1b50ad; border-color: #6ba4e0; }
+html.dark .tr-wrap { background: #0f2144; border-color: #315286; }
+html.dark .tr-head { background: #133265; }
+html.dark .tr-th { color: #fff; } html.dark .tr-th-ico { color: #dbe8ff; }
+html.dark .tr-row { border-top-color: #1c3158; }
+html.dark .tr-row:nth-child(odd) { background: #0f2144; } html.dark .tr-row:nth-child(even) { background: #122750; }
+html.dark .tr-td { color: #fff; } html.dark .tr-muted { color: #e1ecf8; }
+html.dark .tr-sun { color: #ffd54a; } html.dark .tr-doc { color: #dbe8ff; }
+html.dark .tr-ok { color: #d6fbe9; background: #09413c; border-color: #245358; }
+html.dark .tr-wait { color: #fbe3c0; background: #413327; border-color: #5b504b; }
+html.dark .tr-bad { color: #ffc2c8; background: #4a1d2a; border-color: #7a3445; }
+html.dark .tr-off { color: #cbd5e1; background: #1c2b45; border-color: #33466a; }
