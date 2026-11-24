@@ -176,10 +176,7 @@ export default function QuotationsPage() {
               {quotations.map((q) => {
                 const st = statusConfig[q.status]
                 return (
-                  <tr key={q.id} className="border-b border-bd-line"
-                    onMouseEnter={(e) => (e.currentTarget.style.background = '#f8f9ff')}
-                    onMouseLeave={(e) => (e.currentTarget.style.background = 'white')}
-                  >
+                  <tr key={q.id} className="border-b border-bd-line transition-colors hover:bg-sf-sunken">
                     <td style={{ padding: '12px 16px', fontWeight: 'bold', color: PRIMARY_TEXT }}>{q.quotationNumber}</td>
                     <td className="py-3 px-4">{q.customerName}</td>
                     <td className="py-3 px-4 text-t-muted">{q.projectName || '-'}</td>
