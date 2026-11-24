@@ -19,26 +19,24 @@ type RevenueRow struct {
 // Revenue الفلوس الي دخّلها كل موظف بين from وto، مصنّفة بالمصدر.
 func (r *MatrixScoreRepository) Revenue(from, to time.Time, emp string) ([]RevenueRow, error) {
 	rows := []RevenueRow{}
+	ms := LoadMoneySplit(r.db)
 	err := r.db.Select(&rows, `
 		WITH inv AS (
 			SELECT li.id, li."bookingId", li."employeeId", li."netTotal" AS n FROM "LeaderInvoice" li
 			WHERE li."revokedAt" IS NULL AND li.status <> 'DRAFT'
 			  AND li."createdAt" >= $1 AND li."createdAt" < $2
-		), crew AS (
-			-- (11-19 «فني مدخل هواي فلوس وتطلع صفر») الكادر من الفاتورة نفسها — نفس الي انحسبتله
-			-- العمولة (EmployeeCommission). فاتورة بلا عمولات ← كادر تكليف الحجز.
-			SELECT DISTINCT ec."leaderInvoiceId" AS inv, ec."employeeId" FROM "EmployeeCommission" ec
-			WHERE ec."leaderInvoiceId" IN (SELECT id FROM inv)
-			UNION
-			SELECT DISTINCT inv.id, a."employeeId" FROM inv JOIN "BookingAssignment" a ON a."bookingId" = inv."bookingId"
-			WHERE NOT EXISTS (SELECT 1 FROM "EmployeeCommission" ec WHERE ec."leaderInvoiceId" = inv.id)
-		), cnt AS (SELECT inv, count(*) AS c FROM crew GROUP BY 1)
+		),`+workCrewSQL+`
 		SELECT * FROM (
-			SELECT crew."employeeId", 'WORK' AS kind, sum(inv.n / cnt.c)::float8 AS amount, count(DISTINCT inv.id)::int AS jobs
-			FROM inv JOIN crew ON crew.inv = inv.id JOIN cnt ON cnt.inv = inv.id GROUP BY 1
+			-- (ل) 11-24 دازاي: الليدر نسبته، والفنيين يتقاسمون نسبتهم؛ بلا ليدر الفنيين ياخذون نسبة «بلا ليدر»
+			SELECT c."employeeId", 'WORK' AS kind,
+				sum(inv.n * CASE WHEN c.lead THEN $4::float8 WHEN cnt.has_lead THEN $5::float8 / cnt.techs ELSE $6::float8 / cnt.techs END / 100.0)::float8 AS amount,
+				count(DISTINCT inv.id)::int AS jobs
+			FROM inv JOIN crew2 c ON c.inv = inv.id JOIN cnt ON cnt.inv = inv.id GROUP BY 1
 			UNION ALL
-			SELECT inv."employeeId", 'WORK', sum(inv.n)::float8, count(DISTINCT inv.id)::int
-			FROM inv WHERE NOT EXISTS (SELECT 1 FROM crew WHERE crew.inv = inv.id) GROUP BY 1
+			-- فاتورة بلا كادر: الي فوترها ياخذ نسبة الليدر إذا هو ليدر (مسؤول الخدمة ما ياخذ شي)
+			SELECT inv."employeeId", 'WORK', sum(inv.n * $4::float8 / 100.0)::float8, count(DISTINCT inv.id)::int
+			FROM inv JOIN "Employee" e ON e.id = inv."employeeId"
+			WHERE e."isLeader" AND e.role::text <> 'SERVICE_MANAGER' AND NOT EXISTS (SELECT 1 FROM crew2 WHERE crew2.inv = inv.id) GROUP BY 1
 			UNION ALL
 			SELECT b."createdById", 'BOOKED', sum(inv.n)::float8, count(DISTINCT inv."bookingId")::int
 			FROM inv JOIN "Booking" b ON b.id = inv."bookingId" WHERE b."createdById" IS NOT NULL GROUP BY 1
@@ -47,7 +45,8 @@ func (r *MatrixScoreRepository) Revenue(from, to time.Time, emp string) ([]Reven
 			FROM "ProjectPayment" pp JOIN "Project" p ON p.id = pp."projectId"
 			WHERE p."responsibleEmployeeId" IS NOT NULL AND pp."cancelledAt" IS NULL AND COALESCE(pp."paidAt", pp."createdAt") >= $1 AND COALESCE(pp."paidAt", pp."createdAt") < $2
 			GROUP BY 1
-		) x WHERE "employeeId" IS NOT NULL AND ($3 = '' OR "employeeId" = $3)`, from, to, emp)
+		) x WHERE "employeeId" IS NOT NULL AND ($3 = '' OR "employeeId" = $3)`, from, to, emp,
+		ms.StatsLeaderPct, ms.StatsTechPct, ms.StatsNoLeaderTechPct)
 	return rows, err
 }
 

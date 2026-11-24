@@ -2660,6 +2660,10 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	// requireOwner يرجّع 404 مو 403: أي حساب ثاني (حتى ADMIN) ما يعرف
 	// إن هذا المسار موجود أصلاً. لا تضيف هنا أي middleware ثاني.
 	secs["owner"].Set("GET /api/owner/backups", "owner.get_backups", backupHandler.Overview)
+	// (ل) 11-24 دازاي: توزيع الفلوس (الإحصائيات والإيراد) + صافي ربح الشركة — المالك بس
+	moneySplit := handler.NewMoneySplitHandler(db)
+	secs["owner"].Set("GET /api/owner/money-split", "owner.get_money_split", moneySplit.Get)
+	secs["owner"].Set("PUT /api/owner/money-split", "owner.put_money_split", moneySplit.Put)
 
 	// ═══ مختبر المحاكاة — للمالك وحده ═══
 	//

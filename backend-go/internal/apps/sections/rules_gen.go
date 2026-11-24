@@ -848,6 +848,8 @@ func rules() map[string]map[core.Action]core.Rule {
 		},
 		"owner": {
 			"owner.get_backups":                func(l string) core.Rule { return owner(l) }("يقرا /api/owner/backups (المالك بس)"),
+			"owner.get_money_split":            func(l string) core.Rule { return owner(l) }("يقرا توزيع الفلوس وربح الشركة (المالك بس)"),
+			"owner.put_money_split":            func(l string) core.Rule { return owner(l) }("يعدّل توزيع الفلوس (المالك بس)"),
 			"owner.get_deleted":                func(l string) core.Rule { return strictRoles(l, "OWNER") }("يقرا /api/owner/deleted (دور (بلا المدير))"),
 			"owner.post_deleted_by_id_restore": func(l string) core.Rule { return strictRoles(l, "OWNER") }("ينفّذ /api/owner/deleted/{id}/restore (دور (بلا المدير))"),
 		},

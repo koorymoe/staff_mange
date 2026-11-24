@@ -377,6 +377,25 @@ func autoMigrations() []Migration {
 			ALTER TABLE "SolarInquiry" ADD COLUMN IF NOT EXISTS "techContactKpiAt" timestamp with time zone;
 		`,
 		},
+		{
+			Version: "0523_money_split_config",
+			SQL: `
+			CREATE TABLE IF NOT EXISTS "MoneySplitConfig" (
+	"id" integer DEFAULT 1 NOT NULL,
+	"statsLeaderPct" numeric DEFAULT 50 NOT NULL,
+	"statsTechPct" numeric DEFAULT 50 NOT NULL,
+	"statsNoLeaderTechPct" numeric DEFAULT 30 NOT NULL,
+	"revenueLeaderPct" numeric DEFAULT 40 NOT NULL,
+	"revenueTechPct" numeric DEFAULT 30 NOT NULL,
+	"revenueTechEach" boolean DEFAULT false NOT NULL,
+	"updatedById" text,
+	"updatedAt" timestamp with time zone DEFAULT now() NOT NULL
+);
+			ALTER TABLE "MoneySplitConfig" ADD CONSTRAINT "MoneySplitConfig_pkey" PRIMARY KEY (id);
+			ALTER TABLE "MoneySplitConfig" ADD CONSTRAINT "money_split_single_row" CHECK ((id = 1));
+			ALTER TABLE "MoneySplitConfig" ADD CONSTRAINT "MoneySplitConfig_updatedById_fkey" FOREIGN KEY ("updatedById") REFERENCES "Employee"(id) ON DELETE SET NULL;
+		`,
+		},
 		// ‹makemigration› — التحديثات الجديدة تنضاف فوگ هالسطر
 	}
 }

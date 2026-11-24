@@ -40,6 +40,7 @@ const SolarInquiriesPage = lazyRetry(() => import('./pages/SolarInquiriesPage'))
 // مراقبة النسخ الاحتياطية — الصفحة نفسها تتحقق من actualRole === 'OWNER'
 // والمسار بالباك إند يرجّع 404 لأي حساب ثاني.
 const OwnerBackups = lazyRetry(() => import('./pages/OwnerBackups'))
+const OwnerMoneySplitPage = lazyRetry(() => import('./pages/OwnerMoneySplitPage'))
 const CoreMatrixPage = lazyRetry(() => import('./pages/CoreMatrixPage'))
 const CoreAdminPage = lazyRetry(() => import('./pages/CoreAdminPage'))
 const OwnerGrantsPage = lazyRetry(() => import('./pages/OwnerGrantsPage'))
@@ -222,6 +223,7 @@ function App() {
           <Route path="quality-follow-ups" element={<QualityDeskPage />} />
           <Route path="owner-security" element={<SecurityDashboardPage />} />
           <Route path="owner-backups" element={<OwnerBackups />} />
+          <Route path="owner-money-split" element={<OwnerMoneySplitPage />} />
           {/* 🏴‍☠️ ون بيس (11-10): مصفوفة الصلاحيات ولوحة الأدمن — للمالك */}
           <Route path="core-matrix" element={<CoreMatrixPage />} />
           <Route path="core-admin" element={<CoreAdminPage />} />

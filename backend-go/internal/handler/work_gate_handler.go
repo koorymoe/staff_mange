@@ -307,14 +307,15 @@ func (h *WorkGateHandler) ListDaily(w http.ResponseWriter, r *http.Request) {
 }
 
 type surveyRow struct {
-	EmployeeID    string     `db:"employeeId" json:"employeeId"`
-	EmployeeName  string     `db:"employeeName" json:"employeeName"`
-	Major         string     `db:"major" json:"major"`
-	Degree        string     `db:"degree" json:"degree"`
-	SelfSalaryIQD *float64   `db:"selfSalaryIQD" json:"selfSalaryIQD"`
-	FileSalary    *float64   `db:"fileSalary" json:"fileSalary"`
+	EmployeeID    string   `db:"employeeId" json:"employeeId"`
+	EmployeeName  string   `db:"employeeName" json:"employeeName"`
+	Major         string   `db:"major" json:"major"`
+	Degree        string   `db:"degree" json:"degree"`
+	SelfSalaryIQD *float64 `db:"selfSalaryIQD" json:"selfSalaryIQD"`
+	FileSalary    *float64 `db:"fileSalary" json:"fileSalary"`
 	// (ك) 11-21 زينا: شكد دخّل فلوس هذا الشهر من حجوزاته — للفنيين والليدرية بس (غيرهم nil)
-	Brought *float64 `db:"brought" json:"brought"`
+	Brought       *float64   `db:"brought" json:"brought"`
+	Role          string     `db:"role" json:"-"`
 	MonthlyHours  *int       `db:"monthlyHours" json:"monthlyHours"`
 	CurrentJob    string     `db:"currentJob" json:"currentJob"`
 	CompanyRating int        `db:"companyRating" json:"companyRating"`
@@ -332,17 +333,27 @@ func (h *WorkGateHandler) ListSurveys(w http.ResponseWriter, r *http.Request) {
 	errlog.Err(h.db.Select(&rows, `SELECT s."employeeId", e.name AS "employeeName", s.major, s.degree, s."selfSalaryIQD", e.salary AS "fileSalary",
 			s."monthlyHours", s."currentJob", s."companyRating", s."companyNote", to_char(s."contractEnd", 'YYYY-MM-DD') AS "contractEnd",
 			to_char(e."contractEndDate", 'YYYY-MM-DD') AS "fileContract", s.mismatch, s."submittedAt", s."reviewedAt",
-			-- (ك) 11-21 زينا: الي دخّله من حجوزات هذا الشهر (المستلم والمدقق من المحاسب، الحجز مكتمل):
-			-- الليدر ياخذ 60% من مبلغ الحجز، والفني 40% (كل فني ياخذ 40% كاملة حتى لو أكثر من واحد).
-			CASE WHEN e.role::text = 'TECHNICIAN' THEN COALESCE((
-				SELECT sum(b."amountCollected" * CASE WHEN e."isLeader" THEN 0.6 ELSE 0.4 END)
-				FROM "BookingAssignment" a JOIN "Booking" b ON b.id = a."bookingId"
-				WHERE a."employeeId" = e.id AND b.status = 'COMPLETED' AND b."amountVerified"
-				  AND b."amountCollected" > 0
-				  AND baghdad_date(b."completedAt") >= date_trunc('month', baghdad_today())::date
-			), 0) END AS brought
+			-- (ل) 11-24 دازاي: «شكد دخّل» صار نفس حساب التقييم (توزيع الفلوس من الإعدادات) — ينملأ تحت
+			NULL::float8 AS brought, e.role::text AS role
 		FROM "EmployeeProfileSurvey" s JOIN "Employee" e ON e.id = s."employeeId"
 		ORDER BY (s.mismatch IS NOT NULL AND s."reviewedAt" IS NULL) DESC, s."submittedAt" DESC`))
+	// (ل) 11-24: «جاب فلوس» من مصدر واحد ويا التقييم — repository.Revenue (WORK) هذا الشهر، للفنيين بس
+	if from, to, ok := timeutil.MonthStart(timeutil.ThisMonth()); ok {
+		if rev, err := repository.NewMatrixScoreRepository(h.db).Revenue(from.UTC(), to.UTC(), ""); err == nil {
+			work := map[string]float64{}
+			for _, x := range rev {
+				if x.Kind == "WORK" {
+					work[x.EmployeeID] += x.Amount
+				}
+			}
+			for i := range rows {
+				if rows[i].Role == "TECHNICIAN" {
+					v := math.Round(work[rows[i].EmployeeID])
+					rows[i].Brought = &v
+				}
+			}
+		}
+	}
 	pending := []missingRow{}
 	errlog.Err(h.db.Select(&pending, `SELECT e.id AS "employeeId", e.name AS "employeeName" FROM "Employee" e
 		WHERE e.status = 'ACTIVE' AND e.role::text NOT IN ('ADMIN', 'OWNER')
