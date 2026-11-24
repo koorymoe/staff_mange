@@ -437,6 +437,60 @@ func autoMigrations() []Migration {
 			ALTER TABLE "ServiceInvoiceRule" ADD CONSTRAINT "ServiceInvoiceRule_updatedById_fkey" FOREIGN KEY ("updatedById") REFERENCES "Employee"(id) ON DELETE SET NULL;
 		`,
 		},
+		{
+			Version: "0526_company_costs",
+			SQL: `
+			CREATE TABLE IF NOT EXISTS "CostConfig" (
+	"id" integer DEFAULT 1 NOT NULL,
+	"marginPct" numeric DEFAULT 0 NOT NULL,
+	"updatedAt" timestamp with time zone DEFAULT now() NOT NULL
+);
+			CREATE TABLE IF NOT EXISTS "CostEmployee" (
+	"employeeId" text NOT NULL,
+	"kind" text DEFAULT 'EARNER'::text NOT NULL,
+	"shift" text,
+	"salary" numeric DEFAULT 0 NOT NULL,
+	"hoursPerDay" numeric DEFAULT 8 NOT NULL,
+	"daysPerMonth" numeric DEFAULT 26 NOT NULL,
+	"leaveDays" numeric DEFAULT 0 NOT NULL,
+	"updatedAt" timestamp with time zone DEFAULT now() NOT NULL
+);
+			CREATE TABLE IF NOT EXISTS "CostExpense" (
+	"id" text DEFAULT (gen_random_uuid())::text NOT NULL,
+	"month" text NOT NULL,
+	"kind" text NOT NULL,
+	"amount" numeric NOT NULL,
+	"note" text,
+	"createdById" text,
+	"createdAt" timestamp with time zone DEFAULT now() NOT NULL
+);
+			CREATE TABLE IF NOT EXISTS "DowntimePeriod" (
+	"id" text DEFAULT (gen_random_uuid())::text NOT NULL,
+	"startDate" date NOT NULL,
+	"endDate" date NOT NULL,
+	"reason" text NOT NULL,
+	"createdById" text,
+	"createdAt" timestamp with time zone DEFAULT now() NOT NULL
+);
+			ALTER TABLE "CostConfig" ADD CONSTRAINT "CostConfig_pkey" PRIMARY KEY (id);
+			ALTER TABLE "CostEmployee" ADD CONSTRAINT "CostEmployee_pkey" PRIMARY KEY ("employeeId");
+			ALTER TABLE "CostExpense" ADD CONSTRAINT "CostExpense_pkey" PRIMARY KEY (id);
+			ALTER TABLE "DowntimePeriod" ADD CONSTRAINT "DowntimePeriod_pkey" PRIMARY KEY (id);
+			CREATE INDEX IF NOT EXISTS "CostExpense_month_idx" ON public."CostExpense" USING btree (month);
+			ALTER TABLE "CostConfig" ADD CONSTRAINT "cost_config_single_row" CHECK ((id = 1));
+			ALTER TABLE "CostConfig" ADD CONSTRAINT "cost_config_margin_ok" CHECK ((("marginPct" >= (0)::numeric) AND ("marginPct" <= (500)::numeric)));
+			ALTER TABLE "CostEmployee" ADD CONSTRAINT "cost_employee_kind_ok" CHECK ((kind = ANY (ARRAY['EARNER'::text, 'ADMIN'::text, 'BOOKING_ADMIN'::text])));
+			ALTER TABLE "CostEmployee" ADD CONSTRAINT "cost_employee_shift_ok" CHECK (((shift IS NULL) OR (shift = ANY (ARRAY['MORNING'::text, 'EVENING'::text]))));
+			ALTER TABLE "CostEmployee" ADD CONSTRAINT "cost_employee_numbers_ok" CHECK (((salary >= (0)::numeric) AND ("hoursPerDay" > (0)::numeric) AND ("daysPerMonth" > (0)::numeric) AND ("leaveDays" >= (0)::numeric)));
+			ALTER TABLE "CostExpense" ADD CONSTRAINT "cost_expense_kind_ok" CHECK ((kind = ANY (ARRAY['FUEL'::text, 'VEHICLE'::text, 'TOOLS'::text, 'OTHER'::text])));
+			ALTER TABLE "CostExpense" ADD CONSTRAINT "cost_expense_amount_ok" CHECK ((amount >= (0)::numeric));
+			ALTER TABLE "CostExpense" ADD CONSTRAINT "cost_expense_month_ok" CHECK ((month ~ '^[0-9]{4}-[0-9]{2}$'::text));
+			ALTER TABLE "DowntimePeriod" ADD CONSTRAINT "downtime_period_range_ok" CHECK (("endDate" >= "startDate"));
+			ALTER TABLE "CostEmployee" ADD CONSTRAINT "CostEmployee_employeeId_fkey" FOREIGN KEY ("employeeId") REFERENCES "Employee"(id) ON DELETE CASCADE;
+			ALTER TABLE "CostExpense" ADD CONSTRAINT "CostExpense_createdById_fkey" FOREIGN KEY ("createdById") REFERENCES "Employee"(id) ON DELETE SET NULL;
+			ALTER TABLE "DowntimePeriod" ADD CONSTRAINT "DowntimePeriod_createdById_fkey" FOREIGN KEY ("createdById") REFERENCES "Employee"(id) ON DELETE SET NULL;
+		`,
+		},
 		// ‹makemigration› — التحديثات الجديدة تنضاف فوگ هالسطر
 	}
 }

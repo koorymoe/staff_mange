@@ -26,7 +26,7 @@ import { ROLE_LABELS } from '../roleLabels'
 const SENSITIVE: { match: (to: string) => boolean; label: string }[] = [
   { match: (t) => /finance|expenses|revolving|leader-invoices|daily-audit|gps-install-costs/.test(t), label: '💰 فلوس' },
   { match: (t) => /permissions|employees/.test(t), label: '🔑 صلاحيات وحسابات' },
-  { match: (t) => /owner-backups|owner-money-split|command-code/.test(t), label: '🔐 مالك' },
+  { match: (t) => /owner-backups|owner-money-split|owner-costs|command-code/.test(t), label: '🔐 مالك' },
   { match: (t) => /archive|delete/.test(t), label: '🗑️ حذف وأرشفة' },
 ]
 
