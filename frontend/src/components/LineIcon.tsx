@@ -42,6 +42,7 @@ const P: Record<string, string> = {
   trendDown: 'M3 7l6 6 4-4 8 8m0 0v-5m0 5h-5',
   store: 'M4 9l1.5-5h13L20 9M4 9v11h16V9M4 9h16M4 9a2.7 2.7 0 0 0 5.3 0 2.7 2.7 0 0 0 5.4 0 2.7 2.7 0 0 0 5.3 0M10 20v-5h4v5',
   briefcase: 'M4 8h16v11H4zM9 8V5h6v3M4 13h16M11 13v2h2v-2',
+  bolt: 'M13 3 5 14h6l-1 7 8-11h-6l1-7Z',
   chat: 'M4 12a8 7 0 1 1 3.5 5.8L4 19l1-3.2A6.8 6.8 0 0 1 4 12Z',
   copy: 'M9 9h11v11H9zM5 15H4V4h11v1',
   link: 'M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1',

@@ -2091,3 +2091,69 @@ html.dark .tr-ok { color: #d6fbe9; background: #09413c; border-color: #245358; }
 html.dark .tr-wait { color: #fbe3c0; background: #413327; border-color: #5b504b; }
 html.dark .tr-bad { color: #ffc2c8; background: #4a1d2a; border-color: #7a3445; }
 html.dark .tr-off { color: #cbd5e1; background: #1c2b45; border-color: #33466a; }
+
+/* (ك 11-24) محطات الحجوزات (ما رد / مؤجل / ملغى) — جدول حسب صورتي زينا، الألوان مقاسة منهن */
+.sb-wrap { border-radius: 1rem; border: 1px solid #c9d6ee; background: #fbfcff; }
+.sb-head { background: #e3eefc; }
+.sb-th { padding: .7rem .75rem; text-align: right; font-size: .875rem; font-weight: 800; color: #0b1a4a; white-space: nowrap; }
+.sb-thi { display: inline-flex; align-items: center; gap: .45rem; }
+.sb-thi svg { color: #1f3b7a; }
+.sb-row { border-top: 1px solid #e6edf7; }
+.sb-row:nth-child(odd) { background: #fdfcff; } .sb-row:nth-child(even) { background: #f4f8fe; }
+.sb-td { padding: .55rem .75rem; vertical-align: middle; }
+.sb-num { display: inline-grid; place-items: center; min-width: 2rem; height: 2rem; border-radius: .5rem; font-size: .875rem; font-weight: 800; color: #0b1a4a; background: #f4f5fe; border: 1px solid #d5dbec; }
+.sb-name { font-size: .875rem; font-weight: 800; color: #0b1a4a; }
+.sb-code { font-size: .75rem; font-weight: 600; color: #1e293b; }
+.sb-phone { font-size: .75rem; color: #1e293b; }
+.sb-box { display: inline-flex; align-items: center; gap: .4rem; padding: .35rem .8rem; border-radius: .7rem; font-size: .75rem; font-weight: 700; color: #0b1a4a; background: #f3f6fc; border: 1px solid #d5dce9; }
+.sb-svc { font-size: .8rem; font-weight: 800; }
+.sb-svc-ico { color: #d6336c; }
+.sb-stack { flex-direction: column; align-items: center; gap: .1rem; }
+.sb-stack small { display: inline-flex; font-size: .7rem; font-weight: 500; color: #475569; }
+.sb-stack svg { color: #1f3b7a; }
+.sb-nodate { color: #6b4507; background: #fdf1e5; border-color: #f4d8a8; }
+.sb-nodate svg { color: #8a5a00; }
+.sb-note { color: #0b1a4a; background: #f0f3fb; border-color: #dae4ee; }
+.sb-dash { color: #475569; }
+.sb-btn { display: inline-flex; align-items: center; justify-content: center; gap: .4rem; width: 100%; padding: .3rem .8rem; border-radius: .55rem; font-size: .75rem; font-weight: 800; border: 1px solid; }
+.sb-btn:disabled { opacity: .5; }
+.sb-ok { color: #fff; background: #1f8f66; border-color: #1d916a; }
+.sb-no { color: #4a2a05; background: #fbe9d6; border-color: #f2d3a8; }
+.sb-del { color: #b4161b; background: #f9d9dd; border-color: #e7a9b0; }
+.sb-tries { margin-top: .3rem; text-align: center; font-size: .7rem; font-weight: 700; color: #0b1a4a; }
+.sb-sticky { background: inherit; }
+.sb-head .sb-sticky { background: #e3eefc; }
+.sb-pa a, .sb-pa button { border: 1px solid #d5dce9; padding: .2rem .65rem !important; }
+html.dark .sb-wrap { background: #0a1a37; border-color: #345180; }
+html.dark .sb-head { background: linear-gradient(180deg, #0f3f8c, #0c357a); }
+html.dark .sb-th { color: #fff; } html.dark .sb-thi svg { color: #dbe8ff; }
+html.dark .sb-row { border-top-color: #1b3157; }
+html.dark .sb-row:nth-child(odd) { background: #0a1a37; } html.dark .sb-row:nth-child(even) { background: #091b37; }
+html.dark .sb-num { color: #fff; background: #12284c; border-color: #2c4370; }
+html.dark .sb-name { color: #fff; }
+html.dark .sb-code { color: #d0e2fe; } html.dark .sb-phone { color: #e2f1ff; }
+html.dark .sb-box { color: #fff; background: #142a4e; border-color: #43587f; }
+html.dark .sb-svc { background: #1d3258; border-color: #304368; }
+html.dark .sb-svc-ico { color: #ff7fb0; }
+html.dark .sb-stack small { color: #cbd8ee; } html.dark .sb-stack svg { color: #dbe8ff; }
+html.dark .sb-nodate { color: #fff3c4; background: #4b3f26; border-color: #a9956c; }
+html.dark .sb-nodate svg { color: #fff3c4; }
+html.dark .sb-note { background: #142a4e; border-color: #43587f; }
+html.dark .sb-dash { color: #cbd8ee; }
+html.dark .sb-ok { color: #fff; background: #00613e; border-color: #4d968b; }
+html.dark .sb-no { color: #fff; background: #442425; border-color: #896165; }
+html.dark .sb-del { color: #fff; background: #89141c; border-color: #bb4d54; }
+html.dark .sb-tries { color: #cbd8ee; }
+html.dark .sb-head .sb-sticky { background: #0c357a; }
+html.dark .sb-pa a, html.dark .sb-pa button { border-color: #45577f; }
+/* (ك 11-24) مراجعة صورتي زينا: أزرار الاتصال بالشكل والألوان المقاسة (بهالجدول بس — المكوّن المشترك ما ينلمس) */
+.sb-pa { gap: .4rem; }
+.sb-pa a { border-radius: .55rem !important; padding: .25rem .75rem !important; font-size: .75rem !important; border: 1px solid; }
+.sb-pa a:nth-child(1) { color: #0b1a4a !important; background: #f6f8fe !important; border-color: #d5dce9; }
+.sb-pa a:nth-child(2) { color: #0f6b3d !important; background: #e4fbec !important; border-color: #b9e8cb; }
+.sb-pa a:nth-child(3) { color: #13537d !important; background: #e8f7fd !important; border-color: #b7e0f2; }
+.sb-svc { background: #f8f9fd; }
+html.dark .sb-pa a:nth-child(1) { color: #fff !important; background: #172b4d !important; border-color: #45577f; }
+html.dark .sb-pa a:nth-child(2) { color: #ecfff5 !important; background: #074537 !important; border-color: #1f6b55; }
+html.dark .sb-pa a:nth-child(3) { color: #d6f3ff !important; background: #003751 !important; border-color: #1d5a78; }
+html.dark .sb-svc { background: #1d3258; }

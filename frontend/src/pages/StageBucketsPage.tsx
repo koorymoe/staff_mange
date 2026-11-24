@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { api, type Booking, type StageBucket } from '../api'
 import PhoneActions from '../components/PhoneActions'
+import { LineIcon } from '../components/LineIcon'
 import { useSession, isAdminOrOwner } from '../session'
 import { copyText } from '../utils/clipboard'
 import { askConfirm } from '../ui/dialogs'
@@ -123,7 +124,7 @@ function dateParts(iso?: string | null) {
   return {
     date: `${d.getFullYear()}/${pad(d.getMonth() + 1)}/${pad(d.getDate())}`,
     weekday: d.toLocaleDateString('ar-IQ', { weekday: 'long' }),
-    time: d.toLocaleTimeString('ar-IQ', { hour: '2-digit', minute: '2-digit', hour12: true }).replace(/[صم].*$/, '').trim(),
+    time: d.toLocaleTimeString('ar-IQ', { hour: '2-digit', minute: '2-digit', hour12: true, numberingSystem: 'latn' }).replace(/[صم].*$/, '').trim(),
     period: d.getHours() < 12 ? 'صباحاً' : d.getHours() < 17 ? 'عصراً' : 'مساءً',
   }
 }
@@ -385,43 +386,44 @@ export default function StageBucketsPage({ only }: Props = {}) {
           <>
             {/* ⚠️ التمرير جوّا الجدول مو بالصفحة: سبع أعمدة على شاشة
                 موبايل تدفع الصفحة كلها للجنب وتخرّب القائمة الجانبية. */}
-            <div className="overflow-x-auto">
-              <table className={`w-full text-right ${isPostponed || isNoAnswer ? 'min-w-[1000px]' : 'min-w-[860px]'}`}>
+            {/* (ك 11-24) الجدول حسب صورتي زينا — الألوان مقاسة منهن (.sb-*) */}
+            <div className="sb-wrap overflow-x-auto">
+              <table className={`sb-table w-full text-right ${isPostponed || isNoAnswer ? 'min-w-[1000px]' : 'min-w-[860px]'}`}>
                 <thead>
-                  <tr className="text-[11px] font-bold text-slate-400">
-                    <th className="px-4 py-3 font-bold">#</th>
-                    <th className="px-4 py-3 font-bold">الزبون</th>
-                    <th className="px-4 py-3 font-bold">الخدمة</th>
-                    <th className="px-4 py-3 font-bold">التاريخ</th>
-                    <th className="px-4 py-3 font-bold">الوقت</th>
-                    <th className="px-4 py-3 font-bold">{info.reasonHead}</th>
-                    <th className="px-4 py-3 font-bold">{info.whenHead}</th>
-                    {isPostponed && <th className="px-4 py-3 font-bold">موعد جديد</th>}
+                  <tr className="sb-head">
+                    <th className="sb-th">#</th>
+                    <th className="sb-th"><span className="sb-thi"><LineIcon n="user" className="h-5 w-5" />الزبون</span></th>
+                    <th className="sb-th"><span className="sb-thi"><LineIcon n="layers" className="h-5 w-5" />الخدمة</span></th>
+                    <th className="sb-th"><span className="sb-thi"><LineIcon n="cal" className="h-5 w-5" />التاريخ</span></th>
+                    <th className="sb-th"><span className="sb-thi"><LineIcon n="clock" className="h-5 w-5" />الوقت</span></th>
+                    <th className="sb-th"><span className="sb-thi"><LineIcon n="chat" className="h-5 w-5" />{info.reasonHead}</span></th>
+                    <th className="sb-th"><span className="sb-thi"><LineIcon n="cal" className="h-5 w-5" />{info.whenHead}</span></th>
+                    {isPostponed && <th className="sb-th">موعد جديد</th>}
                     {/* ⚠️ العمود يلتصق: قست على عرض ١٢٨٠ فطلع زر «مارد»
                         خارج الإطار (يساره −٦px) — يعني الإداري ما يشوف
                         الزر الي كل الشاشة مبنية عليه. */}
-                    {isNoAnswer && canMarkWaiting && <th className="sticky left-0 z-10 bg-slate-50 px-4 py-3 font-bold">إجراء</th>}
+                    {isNoAnswer && canMarkWaiting && <th className="sb-th sb-sticky sticky left-0 z-10"><span className="sb-thi"><LineIcon n="bolt" className="h-5 w-5" />إجراء</span></th>}
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-50">
+                <tbody>
                   {shown.map((b, i) => {
                     const name = b.customer?.name || 'زبون غير معروف'
                     const when = dateParts(b.scheduledAt)
                     const evt = dateParts(whenOf(b))
                     return (
-                      <tr key={b.id} className="transition-colors hover:bg-slate-50/70">
-                        <td className="px-4 py-3 text-xs font-bold text-slate-400">{(page - 1) * PAGE_SIZE + i + 1}</td>
-                        <td className="px-4 py-3">
+                      <tr key={b.id} className="sb-row">
+                        <td className="sb-td"><span className="sb-num">{(page - 1) * PAGE_SIZE + i + 1}</span></td>
+                        <td className="sb-td">
                           <div className="flex items-center gap-2.5">
-                            <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-sm font-black text-white ${colorOf(name)}`}>
+                            <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-base font-black text-white ${colorOf(name)}`}>
                               {name.trim().charAt(0)}
                             </span>
                             <div className="min-w-0">
-                              <p className="truncate text-[13px] font-bold text-[#0f2040]">{name}</p>
+                              <p className="sb-name truncate">{name}</p>
                               {/* رقم الحجز + نسخه بضغطة — الإداري يحتاجه
                                   بالمحادثة ويكتبه بالإيد ويغلط بيه. */}
                               <div className="flex items-center gap-1">
-                                <span className="text-[10px] font-bold text-slate-500" dir="ltr">#{b.code}</span>
+                                <span className="sb-code" dir="ltr">#{b.code}</span>
                                 <button
                                   type="button"
                                   onClick={async () => {
@@ -439,7 +441,7 @@ export default function StageBucketsPage({ only }: Props = {}) {
                               {/* الرقم + نسخه + واتساب وتلغرام — الاتصال
                                   يصير من هنا بلا تنقّل بين الشاشات. */}
                               <div className="flex items-center gap-1">
-                                <span className="text-[11px] text-slate-400" dir="ltr">{b.customer?.phone || '—'}</span>
+                                <span className="sb-phone" dir="ltr">{b.customer?.phone || '—'}</span>
                                 {b.customer?.phone && (
                                   <button
                                     type="button"
@@ -458,44 +460,35 @@ export default function StageBucketsPage({ only }: Props = {}) {
                               </div>
                               {/* المكوّن المشترك: يتحقّق من الرقم
                                   ويخفي نفسه إذا مو صالح. */}
-                              <PhoneActions phone={b.customer?.phone} telegram className="mt-0.5" />
+                              <PhoneActions phone={b.customer?.phone} telegram className="sb-pa mt-1" />
                             </div>
                           </div>
                         </td>
-                        <td className="px-4 py-3">
-                          <div className="flex items-center gap-2">
-                            <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-brand-50 text-sm">🧰</span>
-                            <span className="text-[12px] font-semibold leading-tight text-slate-600">{serviceNames(b)}</span>
-                          </div>
+                        <td className="sb-td">
+                          <span className="sb-box sb-svc"><LineIcon n="briefcase" className="sb-svc-ico h-5 w-5 shrink-0" />{serviceNames(b)}</span>
                         </td>
-                        <td className="px-4 py-3">
+                        <td className="sb-td">
                           {when ? (
-                            <div className="flex items-start gap-1.5">
-                              <span className="text-xs">📅</span>
-                              <div>
-                                <p className="text-[12px] font-bold text-slate-700">{when.date}</p>
-                                <p className="text-[11px] text-slate-400">{when.weekday}</p>
-                              </div>
-                            </div>
+                            <span className="sb-box sb-stack">
+                              <b className="inline-flex items-center gap-1.5"><LineIcon n="cal" className="h-4 w-4" />{when.date}</b>
+                              <small>{when.weekday}</small>
+                            </span>
                           ) : (
                             // الحجز المؤجل بلا موعد جديد — هذي حالته الطبيعية
-                            <span className="text-[11px] font-bold text-amber-600">بلا موعد</span>
+                            <span className="sb-box sb-nodate"><LineIcon n="cal" className="h-4 w-4" />بلا موعد</span>
                           )}
                         </td>
-                        <td className="px-4 py-3">
+                        <td className="sb-td">
                           {when ? (
-                            <div className="flex items-start gap-1.5">
-                              <span className="text-xs">🕐</span>
-                              <div>
-                                <p className="text-[12px] font-bold text-slate-700">{when.time}</p>
-                                <p className="text-[11px] text-slate-400">{when.period}</p>
-                              </div>
-                            </div>
-                          ) : <span className="text-slate-300">—</span>}
+                            <span className="sb-box sb-stack">
+                              <b className="inline-flex items-center gap-1.5"><LineIcon n="clock" className="h-4 w-4" />{when.time}</b>
+                              <small>{when.period}</small>
+                            </span>
+                          ) : <span className="sb-dash">—</span>}
                         </td>
-                        <td className="px-4 py-3">
+                        <td className="sb-td">
                           {reasonOf(b) ? (
-                            <span className="flex items-center gap-1.5 text-[12px] text-slate-600">
+                            <span className="sb-box sb-note">
                               <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${
                                 bucket.startsWith('CANCELLED') ? 'bg-red-500' : bucket.startsWith('NO_ANSWER') ? 'bg-slate-400' : 'bg-amber-500'
                               }`} />
@@ -504,29 +497,26 @@ export default function StageBucketsPage({ only }: Props = {}) {
                           ) : (
                             // ⚠️ «بلا سبب» تنعرض صريحة مو شرطة: السبب الناقص
                             // معلومة بحد ذاتها — منو أجّل بلا ما يعلّل؟
-                            <span className="text-[11px] text-slate-500">ما انكتب سبب</span>
+                            <span className="sb-box sb-note">ما انكتب سبب</span>
                           )}
                         </td>
-                        <td className="px-4 py-3">
+                        <td className="sb-td">
                           {evt ? (
-                            <div className="flex items-start gap-1.5">
-                              <span className="text-xs">📅</span>
-                              <div>
-                                <p className="text-[12px] font-bold text-slate-700">{evt.date}</p>
-                                <p className="text-[11px] text-slate-400">{evt.time} {evt.period}</p>
-                              </div>
-                            </div>
-                          ) : <span className="text-slate-300">—</span>}
+                            <span className="sb-box sb-stack">
+                              <b className="inline-flex items-center gap-1.5"><LineIcon n="cal" className="h-4 w-4" />{evt.date}</b>
+                              <small className="inline-flex items-center gap-1.5"><LineIcon n="clock" className="h-3.5 w-3.5" />{evt.time} {evt.period}</small>
+                            </span>
+                          ) : <span className="sb-dash">—</span>}
                         </td>
                         {isNoAnswer && canMarkWaiting && (
-                          <td className="sticky left-0 z-10 bg-white px-4 py-3 shadow-[6px_0_8px_-6px_rgba(15,32,64,0.18)]">
+                          <td className="sb-td sb-sticky sticky left-0 z-10">
                             <div className="flex flex-col gap-1.5">
                               <button
                                 onClick={() => resume(b.id, name)}
                                 disabled={busyId === b.id}
-                                className="rounded-lg bg-emerald-700 px-3 py-1.5 text-[11px] font-bold text-white hover:bg-emerald-800 disabled:opacity-50"
+                                className="sb-btn sb-ok"
                               >
-                                {busyId === b.id ? '...' : '📞 الزبون رد'}
+                                {busyId === b.id ? '...' : <><LineIcon n="phone" className="h-4 w-4" />الزبون رد</>}
                               </button>
                               {/* محاولة جديدة تنسجّل من نفس الصف — بلاها
                                   العدّاد يبقى كذّاباً. ولونها مختلف عن
@@ -534,9 +524,9 @@ export default function StageBucketsPage({ only }: Props = {}) {
                               <button
                                 onClick={() => markNoAnswer(b.id, name, b.contactAttempts || 0)}
                                 disabled={busyId === b.id}
-                                className="rounded-lg border border-red-200 bg-red-50 px-3 py-1.5 text-[11px] font-bold text-red-700 hover:bg-red-100 disabled:opacity-50"
+                                className="sb-btn sb-no"
                               >
-                                {busyId === b.id ? '...' : '✖ مارد'}
+                                {busyId === b.id ? '...' : <><b>✕</b>ما رد</>}
                               </button>
                               {/* ═══ بعد ٣ محاولات: طلب حذف ═══
                                   ثلاث محاولات مسجّلة = دليل إن الزبون
@@ -551,20 +541,20 @@ export default function StageBucketsPage({ only }: Props = {}) {
                                   <button
                                     onClick={() => askDelete(b.id, name, b.contactAttempts || 0)}
                                     disabled={busyId === b.id}
-                                    className="rounded-lg bg-red-700 px-3 py-1.5 text-[11px] font-bold text-white hover:bg-red-800 disabled:opacity-50"
+                                    className="sb-btn sb-del"
                                   >
-                                    {busyId === b.id ? '...' : '🗑 طلب حذف الحجز'}
+                                    {busyId === b.id ? '...' : <><LineIcon n="trash" className="h-4 w-4" />طلب حذف الحجز</>}
                                   </button>
                                 )
                               )}
                             </div>
                             {b.contactAttempts > 0 && (
-                              <p className="mt-1 text-[10px] text-slate-400">{b.contactAttempts} محاولة</p>
+                              <p className="sb-tries">{b.contactAttempts} محاولة</p>
                             )}
                           </td>
                         )}
                         {isPostponed && (
-                          <td className="px-4 py-3">
+                          <td className="sb-td">
                             <div className="flex items-center gap-1.5">
                               <input
                                 type="datetime-local"
