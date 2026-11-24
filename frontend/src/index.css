@@ -2185,3 +2185,10 @@ html.dark .sb-svc { background: #1d3258; }
 .sb-svc { max-width: 9.5rem; }
 /* (ك) تبويب المؤجّلة: زر «ثبّت» تحت خانة الموعد حتى الجدول يلحك بشاشة 1366 */
 .sb-wrap td .flex:has(> input[type="datetime-local"]) { flex-direction: column; align-items: stretch; gap: .3rem; }
+/* (ك 11-24) طلب زينا: كل شي بالوسط تحت عنوانه (من «النوع» لـ«٩٠ يوم»)، و«ماكو ولا حركة» سطر واحد */
+.sp-grid > :nth-child(n+2) { justify-self: center; text-align: center; }
+.sp-grid { grid-template-columns: minmax(0,2fr) repeat(4, minmax(0,1.1fr)) minmax(0,1fr); }
+.sp-grid { grid-template-columns: minmax(0,2.6fr) minmax(0,1fr) minmax(0,1.2fr) repeat(2, minmax(0,1fr)) minmax(0,1fr); }
+.sp-name { white-space: nowrap; }
+.sp-grid { grid-template-columns: minmax(0,2.2fr) minmax(0,1fr) minmax(0,1.2fr) repeat(3, minmax(0,1fr)); }
+.sp-th, .sp-90 > span { white-space: nowrap; }

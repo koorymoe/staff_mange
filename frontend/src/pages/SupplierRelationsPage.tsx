@@ -110,7 +110,7 @@ export default function SupplierRelationsPage() {
                   <span>
                     <span className={`sp-pill ${r.overdue || r.daysSince == null ? 'sp-pill-bad' : 'sp-pill-ok'}`}>
                       <LineIcon n={r.daysSince == null ? 'ban' : r.overdue ? 'clock' : 'checkCircle'} className="h-4 w-4 shrink-0" />
-                      <span>{r.daysSince == null ? <>ماكو<br />ولا حركة</> : r.daysSince === 0 ? 'اليوم' : `قبل ${r.daysSince} يوم`}</span>
+                      <span>{r.daysSince == null ? 'ماكو ولا حركة' : r.daysSince === 0 ? 'اليوم' : `قبل ${r.daysSince} يوم`}</span>
                     </span>
                   </span>
                   <span className="sp-cell">{r.lastContactAt ? <>{when(r.lastContactAt)} · {r.lastContact}{r.lastContactBy && <span className="sp-muted"> ({r.lastContactBy})</span>}</> : '—'}</span>
