@@ -396,6 +396,19 @@ func autoMigrations() []Migration {
 			ALTER TABLE "MoneySplitConfig" ADD CONSTRAINT "MoneySplitConfig_updatedById_fkey" FOREIGN KEY ("updatedById") REFERENCES "Employee"(id) ON DELETE SET NULL;
 		`,
 		},
+		{
+			// (ل) 11-24 بلاغ #58: التقني الي حط الحجز «بالانتظار» أو أجّله بملاحظة قبل 11-23 فعلياً اتصل —
+			// من 11-23 هالشي ينحسب «تم الاتصال» بروحه، بس القديم ما انعلّم فيبقى رقم أحمر وهمي.
+			Version: "0524_data_tech_contact_backfill",
+			SQL: `
+			UPDATE "Booking" b SET
+				"techContactedAt" = CASE WHEN b."waitingNote" IS NOT NULL AND b."waitingSince" >= b."handoverAt" THEN b."waitingSince" ELSE b."lastPostponedAt" END,
+				"techContactNote" = COALESCE(b."techContactNote", CASE WHEN b."waitingNote" IS NOT NULL AND b."waitingSince" >= b."handoverAt" THEN b."waitingNote" ELSE b."postponeReason" END)
+			WHERE b."handoverToId" IS NOT NULL AND b."techContactedAt" IS NULL
+			  AND ((b."waitingNote" IS NOT NULL AND b."waitingSince" >= b."handoverAt")
+			    OR (b."postponeReason" IS NOT NULL AND b."lastPostponedAt" >= b."handoverAt"));
+		`,
+		},
 		// ‹makemigration› — التحديثات الجديدة تنضاف فوگ هالسطر
 	}
 }

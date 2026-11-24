@@ -521,3 +521,4 @@ git push origin origin/avg:refs/heads/prod     # بعد التأكد إنه fast
 - (ل) 11-24 tech_contact_watch: onLeaveSQL (LeaveRequest APPROVED، baghdad_date) يستثني التذكير (اليوم) والخصم (من التحويل لـ+24س). اختبار tcw-l بـTestTechContactWatchLive.
 - (ل) 11-24 tech_contact_watch: pendingSQL يستثني الحجز الي بيه arrivedAt/startedAt، والسبب ينتهي بـTechContactAutoTag. اختبار tcw-go.
 - (ل) 11-24 توزيع الفلوس: MoneySplitConfig (0523، صف واحد) + repository/money_split_repository.go (LoadMoneySplit/SaveMoneySplit/workCrewSQL/CompanyProfit). Revenue WORK: الليدر من EmployeeCommission.role=LEADER أو booking_leader_id، مسؤول الخدمة مستثنى. ListSurveys «brought» يقرا Revenue. API GET/PUT /api/owner/money-split (owner)، صفحة /owner-money-split. اختبار TestMoneySplitLive.
+- (ل) 11-24 بلاغ #58: 0524_data_tech_contact_backfill يعلّم techContactedAt من waitingSince/lastPostponedAt (بعد handoverAt). اختبار database/tech_contact_backfill_live_test.go.
