@@ -5,6 +5,7 @@ import { Suspense, useEffect, useState } from 'react'
 import { bookingDone } from '../bookingDone'
 import PeerCheckinCard from '../components/PeerCheckinCard'
 import MyScoreCard from '../components/MyScoreCard'
+import MyMoneyTargetCard from '../components/MyMoneyTargetCard'
 import { Navigate, useNavigate } from 'react-router-dom'
 import MyFundBalance from '../components/MyFundBalance'
 import TodayBoard from '../components/TodayBoard'
@@ -439,6 +440,7 @@ function StaffDashboard() {
       <SaveError message={guard.error} onClose={guard.clear} />
     <div dir="rtl" className="space-y-6">
       <MyScoreCard />
+      <MyMoneyTargetCard />
       <PeerCheckinCard />
       {/* ═══ Hero Section ═══ */}
       <div className="relative overflow-hidden rounded-3xl bg-gradient-to-l from-[#0a1628] via-[#1a3a6e] to-[#2c5aad] p-8 text-white">

@@ -21,6 +21,7 @@ import MyExtraTasks from '../components/MyExtraTasks'
 import CrewRatingPrompt from '../components/CrewRatingPrompt'
 import PeerCheckinCard from '../components/PeerCheckinCard'
 import MyScoreCard from '../components/MyScoreCard'
+import MyMoneyTargetCard from '../components/MyMoneyTargetCard'
 import TechSuppliersLink from '../components/TechSuppliersLink'
 import AfterInventoryPrompt from '../components/AfterInventoryPrompt'
 import LeaderInvoicesListPage from './LeaderInvoicesListPage'
@@ -590,6 +591,7 @@ export default function MyTasks() {
               </button>
             )}
             <MyScoreCard />
+            <MyMoneyTargetCard />
             <TechSuppliersLink />
             <PeerCheckinCard />
             <CrewRatingPrompt />

@@ -2,6 +2,7 @@ package service
 
 import (
 	"errors"
+	"fmt"
 	"math"
 	"strings"
 	"time"
@@ -31,6 +32,7 @@ type CostEmployee struct {
 	Kind         string  `db:"kind" json:"kind"`
 	Shift        *string `db:"shift" json:"shift"`
 	Salary       float64 `db:"salary" json:"salary"`
+	BaseSalary   float64 `db:"baseSalary" json:"baseSalary"`
 	HoursPerDay  float64 `db:"hoursPerDay" json:"hoursPerDay"`
 	DaysPerMonth float64 `db:"daysPerMonth" json:"daysPerMonth"`
 	LeaveDays    float64 `db:"leaveDays" json:"leaveDays"`
@@ -66,6 +68,26 @@ type EmployeeTarget struct {
 	Remaining  float64 `json:"remaining"`
 	Forecast   float64 `json:"forecast"` // على هالمنوال لآخر الشهر
 	Pct        float64 `json:"pct"`      // من الهدف
+	// (ل) 11-24 دازاي «الأساسي 350 والباقي حسب الهدف»
+	BaseSalary     float64 `json:"baseSalary"`
+	ExpectedNow    float64 `json:"expectedNow"`    // حسب الي دخّله لحد هسه
+	ExpectedSalary float64 `json:"expectedSalary"` // حسب التوقع لآخر الشهر
+	DailyNeeded    float64 `json:"dailyNeeded"`    // شكد لازم يدخّل باليوم بباقي الشهر حتى يوصل
+	Errors         int     `json:"errors"`         // أخطاء فنية انوافق عليها (هو الكادر الأول)
+	Fixes          int     `json:"fixes"`          // صلّح أخطاء غيره
+	Rank           int     `json:"rank"`
+}
+
+// ExpectedSalary الأساسي + (الراتب − الأساسي) × نسبة الوصول (سقفها ١٠٠٪، وما ينزل عن الأساسي).
+func ExpectedSalary(salary, base, brought, target float64) float64 {
+	if base > salary {
+		base = salary
+	}
+	if target <= 0 {
+		return salary
+	}
+	r := math.Max(0, math.Min(1, brought/target))
+	return math.Round(base + (salary-base)*r)
 }
 
 type CostsReport struct {
@@ -132,7 +154,7 @@ func ComputeTargets(emps []CostEmployee, expenses, marginPct float64, downtimeDa
 	out := []EmployeeTarget{}
 	for _, e := range earners {
 		w, d := weight(e), workDays(e)
-		t := EmployeeTarget{EmployeeID: e.EmployeeID, Name: e.Name, Shift: e.Shift, Salary: e.Salary, WorkDays: math.Round(d*10) / 10}
+		t := EmployeeTarget{EmployeeID: e.EmployeeID, Name: e.Name, Shift: e.Shift, Salary: e.Salary, BaseSalary: e.BaseSalary, WorkDays: math.Round(d*10) / 10}
 		if wAll > 0 {
 			t.Overhead = adminPool * w / wAll
 		}
@@ -169,7 +191,7 @@ func (c *CompanyCosts) Report(month string, now time.Time) (*CostsReport, error)
 	}
 	r := &CostsReport{Month: month, Employees: []CostEmployee{}, Expenses: []CostExpense{}, Downtime: []DowntimePeriod{}}
 	_ = c.db.Get(&r.MarginPct, `SELECT "marginPct"::float8 FROM "CostConfig" WHERE id = 1`)
-	if err := c.db.Select(&r.Employees, `SELECT ce."employeeId", e.name, ce.kind, ce.shift, ce.salary::float8 AS salary,
+	if err := c.db.Select(&r.Employees, `SELECT ce."employeeId", e.name, ce.kind, ce.shift, ce.salary::float8 AS salary, ce."baseSalary"::float8 AS "baseSalary",
 		ce."hoursPerDay"::float8 AS "hoursPerDay", ce."daysPerMonth"::float8 AS "daysPerMonth", ce."leaveDays"::float8 AS "leaveDays"
 		FROM "CostEmployee" ce JOIN "Employee" e ON e.id = ce."employeeId" ORDER BY ce.kind, e.name`); err != nil {
 		return nil, err
@@ -212,6 +234,22 @@ func (c *CompanyCosts) Report(month string, now time.Time) (*CostsReport, error)
 	if now.Before(to) {
 		frac = math.Max(0.02, now.Sub(from).Hours()/to.Sub(from).Hours())
 	}
+	type cnt struct {
+		ID string `db:"id"`
+		N  int    `db:"n"`
+	}
+	errs, fixes := []cnt{}, []cnt{}
+	_ = c.db.Select(&errs, `SELECT ra."employeeId" AS id, count(DISTINCT ra."claimId")::int AS n FROM "ReworkAdjustment" ra
+		WHERE ra.amount < 0 AND ra."createdAt" >= $1 AND ra."createdAt" < $2 GROUP BY 1`, from.UTC(), to.UTC())
+	_ = c.db.Select(&fixes, `SELECT ra."employeeId" AS id, count(DISTINCT ra."claimId")::int AS n FROM "ReworkAdjustment" ra
+		WHERE ra.amount > 0 AND ra."createdAt" >= $1 AND ra."createdAt" < $2 GROUP BY 1`, from.UTC(), to.UTC())
+	em, fm := map[string]int{}, map[string]int{}
+	for _, x := range errs {
+		em[x.ID] = x.N
+	}
+	for _, x := range fixes {
+		fm[x.ID] = x.N
+	}
 	for i := range r.Targets {
 		t := &r.Targets[i]
 		r.TotalTarget += t.Target
@@ -221,8 +259,45 @@ func (c *CompanyCosts) Report(month string, now time.Time) (*CostsReport, error)
 		if t.Target > 0 {
 			t.Pct = math.Round(t.Brought / t.Target * 100)
 		}
+		t.ExpectedNow = ExpectedSalary(t.Salary, t.BaseSalary, t.Brought, t.Target)
+		t.ExpectedSalary = ExpectedSalary(t.Salary, t.BaseSalary, t.Forecast, t.Target)
+		if left := t.WorkDays * (1 - frac); left >= 0.5 {
+			t.DailyNeeded = math.Round(t.Remaining / left)
+		}
+		t.Errors, t.Fixes = em[t.EmployeeID], fm[t.EmployeeID]
 	}
+	// الترتيب: الأعلى وصولاً لهدفه أول
+	order := make([]int, len(r.Targets))
+	for i := range order {
+		order[i] = i
+	}
+	for i := 1; i < len(order); i++ {
+		for j := i; j > 0 && r.Targets[order[j]].Pct > r.Targets[order[j-1]].Pct; j-- {
+			order[j], order[j-1] = order[j-1], order[j]
+		}
+	}
+	sorted := make([]EmployeeTarget, len(order))
+	for k, i := range order {
+		sorted[k] = r.Targets[i]
+		sorted[k].Rank = k + 1
+	}
+	r.Targets = sorted
 	return r, nil
+}
+
+// MyTarget هدف موظف واحد لشاشته (nil إذا مو «يدخّل فلوس» بالتكاليف).
+func (c *CompanyCosts) MyTarget(emp string, now time.Time) (*EmployeeTarget, error) {
+	rep, err := c.Report(timeutil.ThisMonth(), now)
+	if err != nil {
+		return nil, err
+	}
+	for i := range rep.Targets {
+		if rep.Targets[i].EmployeeID == emp {
+			t := rep.Targets[i]
+			return &t, nil
+		}
+	}
+	return nil, nil
 }
 
 // ─── الحفظ ───
@@ -234,13 +309,16 @@ func (c *CompanyCosts) SaveEmployee(e CostEmployee) error {
 	if e.Shift != nil && *e.Shift != "MORNING" && *e.Shift != "EVENING" {
 		e.Shift = nil
 	}
-	if e.Salary < 0 || e.HoursPerDay <= 0 || e.HoursPerDay > 24 || e.DaysPerMonth <= 0 || e.DaysPerMonth > 31 || e.LeaveDays < 0 || e.LeaveDays >= e.DaysPerMonth {
-		return errors.New("تأكد من الأرقام: الراتب، ساعات اليوم (١–٢٤)، أيام الشهر (١–٣١)، والإجازات أقل من أيام الشهر")
+	if e.BaseSalary <= 0 {
+		e.BaseSalary = 350000
 	}
-	_, err := c.db.Exec(`INSERT INTO "CostEmployee" ("employeeId", kind, shift, salary, "hoursPerDay", "daysPerMonth", "leaveDays", "updatedAt")
-		VALUES ($1, $2, $3, $4, $5, $6, $7, now())
-		ON CONFLICT ("employeeId") DO UPDATE SET kind = $2, shift = $3, salary = $4, "hoursPerDay" = $5, "daysPerMonth" = $6, "leaveDays" = $7, "updatedAt" = now()`,
-		e.EmployeeID, e.Kind, e.Shift, e.Salary, e.HoursPerDay, e.DaysPerMonth, e.LeaveDays)
+	if e.Salary < 0 || e.BaseSalary > e.Salary && e.Salary > 0 || e.HoursPerDay <= 0 || e.HoursPerDay > 24 || e.DaysPerMonth <= 0 || e.DaysPerMonth > 31 || e.LeaveDays < 0 || e.LeaveDays >= e.DaysPerMonth {
+		return errors.New("تأكد من الأرقام: الراتب (والأساسي ما يعبره)، ساعات اليوم (١–٢٤)، أيام الشهر (١–٣١)، والإجازات أقل من أيام الشهر")
+	}
+	_, err := c.db.Exec(`INSERT INTO "CostEmployee" ("employeeId", kind, shift, salary, "hoursPerDay", "daysPerMonth", "leaveDays", "baseSalary", "updatedAt")
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, now())
+		ON CONFLICT ("employeeId") DO UPDATE SET kind = $2, shift = $3, salary = $4, "hoursPerDay" = $5, "daysPerMonth" = $6, "leaveDays" = $7, "baseSalary" = $8, "updatedAt" = now()`,
+		e.EmployeeID, e.Kind, e.Shift, e.Salary, e.HoursPerDay, e.DaysPerMonth, e.LeaveDays, e.BaseSalary)
 	if err != nil && strings.Contains(err.Error(), "foreign key") {
 		return errors.New("الموظف مو موجود")
 	}
@@ -297,4 +375,47 @@ func (c *CompanyCosts) SetMargin(p float64) error {
 	_, err := c.db.Exec(`INSERT INTO "CostConfig" (id, "marginPct", "updatedAt") VALUES (1, $1, now())
 		ON CONFLICT (id) DO UPDATE SET "marginPct" = $1, "updatedAt" = now()`, p)
 	return err
+}
+
+// ═══ ماتركس يتابع الهدف (ل) 11-24 دازاي ═══
+// «ماتركس يتابع كل موظف شكد معدل إدخاله اليومي، وعلى هالمنوال شكد راح يدخّل لنهاية الشهر، ويتوقع وينبّه».
+// مرة بالليل (بعد ٨ ببغداد): كل موظف «يدخّل فلوس» يوصله وين وصل، والمالك يوصله منو متأخر عن هدفه.
+
+// TargetMessage رسالة الموظف.
+func TargetMessage(t EmployeeTarget) string {
+	msg := fmt.Sprintf("🎯 ماتركس: دخّلت هالشهر %s من هدفك %s (%d٪).", FmtIQD(t.Brought), FmtIQD(t.Target), int(t.Pct))
+	if t.Remaining > 0 && t.DailyNeeded > 0 {
+		msg += fmt.Sprintf(" حتى توصل تحتاج %s باليوم بباقي الشهر.", FmtIQD(t.DailyNeeded))
+	} else if t.Remaining <= 0 {
+		msg += " وصلت هدفك، عاشت إيدك 👏"
+	}
+	msg += fmt.Sprintf(" على هالمنوال توصل %s، وراتبك المتوقع %s.", FmtIQD(t.Forecast), FmtIQD(t.ExpectedSalary))
+	return msg
+}
+
+// NotifyTargets مرة باليوم بعد ٨ المسا ببغداد.
+func (c *CompanyCosts) NotifyTargets(now time.Time, claim func(key, day string) (bool, error), notify func(employeeID, typ, msg string) error, owner func(msg string)) error {
+	local := now.In(timeutil.CompanyLocation())
+	if local.Hour() < 20 {
+		return nil
+	}
+	ok, err := claim("MONEY_TARGET", local.Format("2006-01-02"))
+	if err != nil || !ok {
+		return err
+	}
+	rep, err := c.Report(timeutil.ThisMonth(), now)
+	if err != nil {
+		return err
+	}
+	behind := []string{}
+	for _, t := range rep.Targets {
+		_ = notify(t.EmployeeID, "MONEY_TARGET", TargetMessage(t))
+		if t.Forecast < t.Target {
+			behind = append(behind, fmt.Sprintf("%s (%d٪، متوقع %s من %s)", t.Name, int(t.Pct), FmtIQD(t.Forecast), FmtIQD(t.Target)))
+		}
+	}
+	if len(behind) > 0 && owner != nil {
+		owner("🎯 ماتركس — متأخرين عن هدف الشهر على هالمنوال: " + strings.Join(behind, "، "))
+	}
+	return nil
 }

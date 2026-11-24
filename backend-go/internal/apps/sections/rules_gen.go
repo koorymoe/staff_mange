@@ -176,6 +176,7 @@ func rules() map[string]map[core.Action]core.Rule {
 			"booking_survey_reports.get_root": func(l string) core.Rule { return any_(l) }("يقرا /api/booking-survey-reports (الدخول — الفحص بالمعالج)"),
 		},
 		"bookings": {
+			"bookings.get_me_money_target":           func(l string) core.Rule { return any_(l) }("يقرا هدفه هو من الفلوس (لنفسه بس)"),
 			"bookings.get_rework":                    func(l string) core.Rule { return any_(l) }("يقرا تصحيحات الأخطاء الفنية (الفحص بالخدمة)"),
 			"bookings.post_rework":                   func(l string) core.Rule { return any_(l) }("يسجّل تصحيح خطأ فني (كادر حجز التصحيح — الفحص بالخدمة)"),
 			"bookings.post_rework_decide":            func(l string) core.Rule { return any_(l) }("يوافق/يرفض تصحيح خطأ فني (المراقب — الفحص بالخدمة)"),

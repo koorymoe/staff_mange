@@ -566,6 +566,15 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 			log.Printf("daily impact: %v", err)
 		}
 	})
+	// 🎯 (دازاي 11-24) ماتركس يتابع هدف الفلوس: كل موظف يدخّل فلوس يوصله وين وصل، والمالك منو متأخر
+	targetsDaily := service.NewCompanyCosts(db)
+	safeguard.Loop("هدف الفلوس", 36*time.Minute, 60*time.Minute, func() {
+		if err := targetsDaily.NotifyTargets(time.Now(), aiRepo.ClaimDailyMarker, notificationRepo.Create, func(msg string) {
+			_ = notificationRepo.CreateForRole("OWNER", "MONEY_TARGET", msg)
+		}); err != nil {
+			log.Printf("money targets: %v", err)
+		}
+	})
 	// 💡 (دازاي 11-21) الأفكار الي تنتظر رد مدير الإدارة، والي عدّت ٤٨ ساعة تصعد للمالك
 	ideaDaily := service.NewIdeaService(db, notificationRepo)
 	safeguard.Loop("أفكار الموظفين", 34*time.Minute, 60*time.Minute, func() {
@@ -2668,6 +2677,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	secs["services"].Set("POST /api/service-invoice-options/{serviceId}/quote", "services.post_invoice_options_quote", sio.Quote)
 	// (ل) 11-24 دازاي: تكاليف الشركة وأهداف الموظفين (رواتب، مصاريف، فترات توقف) — المالك بس
 	costs := handler.NewCompanyCostsHandler(service.NewCompanyCosts(db))
+	secs["bookings"].Set("GET /api/me/money-target", "bookings.get_me_money_target", costs.Mine)
 	secs["owner"].Set("GET /api/owner/costs", "owner.get_costs", costs.Get)
 	secs["owner"].Set("PUT /api/owner/costs/employees/{id}", "owner.put_costs_employee", costs.PutEmployee)
 	secs["owner"].Set("DELETE /api/owner/costs/employees/{id}", "owner.delete_costs_employee", costs.DeleteEmployee)

@@ -529,6 +529,12 @@ func autoMigrations() []Migration {
 			ALTER TABLE "ReworkClaim" ADD CONSTRAINT "ReworkClaim_decidedById_fkey" FOREIGN KEY ("decidedById") REFERENCES "Employee"(id);
 		`,
 		},
+		{
+			Version: "0528_cost_employee_base_salary",
+			SQL: `
+			ALTER TABLE "CostEmployee" ADD COLUMN IF NOT EXISTS "baseSalary" numeric DEFAULT 350000 NOT NULL;
+		`,
+		},
 		// ‹makemigration› — التحديثات الجديدة تنضاف فوگ هالسطر
 	}
 }

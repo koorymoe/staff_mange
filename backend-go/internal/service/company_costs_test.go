@@ -3,6 +3,7 @@ package service
 import (
 	"math"
 	"os"
+	"strings"
 	"testing"
 	"time"
 
@@ -13,6 +14,20 @@ import (
 
 // (ل) 11-24 دازاي: مثال مكتوب باليد — فنيين اثنين نفس الراتب والساعات، إداري 700، مصاريف 300،
 // إداري حجوزات صباحي 400 (على فني الصباح بس)، وربح 10٪.
+// (ل) 11-24 دازاي: «الأساسي 350 والباقي حسب الهدف»
+func TestExpectedSalary(t *testing.T) {
+	for _, c := range []struct{ sal, base, got, target, want float64 }{
+		{600000, 350000, 800, 1000, 550000},  // 80٪ ← 350 + 250×0.8
+		{600000, 350000, 0, 1000, 350000},    // صفر ← الأساسي
+		{600000, 350000, 2000, 1000, 600000}, // عبر هدفه ← الكامل بس
+		{300000, 350000, 500, 1000, 300000},  // أساسي أكبر من الراتب ← الراتب
+	} {
+		if g := ExpectedSalary(c.sal, c.base, c.got, c.target); g != c.want {
+			t.Fatalf("%+v ← %v", c, g)
+		}
+	}
+}
+
 func TestComputeTargets(t *testing.T) {
 	m, e := "MORNING", "EVENING"
 	emps := []CostEmployee{
@@ -95,5 +110,14 @@ func TestCompanyCostsLive(t *testing.T) {
 	}
 	if rep.DowntimeDays != 4 || len(rep.Targets) != 1 || rep.Targets[0].Target != 1200000 || rep.TotalCost != 1200000 {
 		t.Fatalf("التقرير غلط: توقف %d، أهداف %+v، تكلفة %v", rep.DowntimeDays, rep.Targets, rep.TotalCost)
+	}
+}
+
+func TestTargetMessage(t *testing.T) {
+	m := TargetMessage(EmployeeTarget{Brought: 400000, Target: 1000000, Pct: 40, Remaining: 600000, DailyNeeded: 50000, Forecast: 800000, ExpectedSalary: 550000})
+	for _, w := range []string{"400,000", "1,000,000", "40٪", "50,000", "800,000", "550,000"} {
+		if !strings.Contains(m, w) {
+			t.Fatalf("الرسالة ناقصها %q: %s", w, m)
+		}
 	}
 }

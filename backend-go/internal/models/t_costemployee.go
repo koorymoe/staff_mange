@@ -12,6 +12,8 @@ func init() {
 			{Name: "kind", Type: "text", NotNull: true, Default: "'EARNER'::text"},
 			{Name: "shift", Type: "text"},
 			{Name: "salary", Type: "numeric", NotNull: true, Default: "0"},
+			// (ل) 11-24 دازاي: «الأساسي 350 والباقي حسب الهدف» — الراتب المتوقع = الأساسي + (الراتب − الأساسي) × نسبة الوصول
+			{Name: "baseSalary", Type: "numeric", NotNull: true, Default: "350000"},
 			{Name: "hoursPerDay", Type: "numeric", NotNull: true, Default: "8"},
 			{Name: "daysPerMonth", Type: "numeric", NotNull: true, Default: "26"},
 			{Name: "leaveDays", Type: "numeric", NotNull: true, Default: "0"},

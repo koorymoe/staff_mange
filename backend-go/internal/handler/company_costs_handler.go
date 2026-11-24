@@ -99,3 +99,13 @@ func (h *CompanyCostsHandler) PutMargin(w http.ResponseWriter, r *http.Request) 
 	}
 	h.done(w, r, h.svc.SetMargin(in.MarginPct))
 }
+
+// GET /api/me/money-target — الموظف يشوف هدفه هو بس (null إذا مو «يدخّل فلوس»)
+func (h *CompanyCostsHandler) Mine(w http.ResponseWriter, r *http.Request) {
+	t, err := h.svc.MyTarget(middleware.EmployeeIDFromContext(r), time.Now())
+	if err != nil {
+		WriteError(w, http.StatusInternalServerError, "تعذر")
+		return
+	}
+	WriteJSON(w, http.StatusOK, map[string]any{"target": t})
+}
