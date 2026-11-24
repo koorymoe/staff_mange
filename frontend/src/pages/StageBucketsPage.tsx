@@ -465,7 +465,7 @@ export default function StageBucketsPage({ only }: Props = {}) {
                           </div>
                         </td>
                         <td className="sb-td">
-                          <span className="sb-box sb-svc"><LineIcon n="briefcase" className="sb-svc-ico h-5 w-5 shrink-0" />{serviceNames(b)}</span>
+                          <span className="sb-box sb-svc" title={serviceNames(b)}><LineIcon n="briefcase" className="sb-svc-ico h-4 w-4 shrink-0" /><span className="truncate">{serviceNames(b)}</span></span>
                         </td>
                         <td className="sb-td">
                           {when ? (
