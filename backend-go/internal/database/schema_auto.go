@@ -591,6 +591,13 @@ func autoMigrations() []Migration {
 			ALTER TABLE "PaymentVoucher" ADD CONSTRAINT "PaymentVoucher_cancelledById_fkey" FOREIGN KEY ("cancelledById") REFERENCES "Employee"(id);
 		`,
 		},
+		{
+			Version: "0532_solar_inquiry_intake",
+			SQL: `
+			ALTER TABLE "SolarInquiry" ADD COLUMN IF NOT EXISTS "intake" jsonb DEFAULT '{}'::jsonb NOT NULL;
+			ALTER TABLE "SolarInquiry" ADD COLUMN IF NOT EXISTS "siteVisitAt" timestamp with time zone;
+		`,
+		},
 		// ‹makemigration› — التحديثات الجديدة تنضاف فوگ هالسطر
 	}
 }

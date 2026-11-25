@@ -53,6 +53,12 @@ const P: Record<string, string> = {
   sigma: 'M18 5H6l6 7-6 7h12',
   percent: 'M19 5 5 19M7 9a2 2 0 1 0 0-4 2 2 0 0 0 0 4Zm10 10a2 2 0 1 0 0-4 2 2 0 0 0 0 4Z',
   db: 'M12 8c4.4 0 8-1.3 8-3s-3.6-3-8-3-8 1.3-8 3 3.6 3 8 3Zm-8-3v14c0 1.7 3.6 3 8 3s8-1.3 8-3V5M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3',
+  house: 'M3 11 12 4l9 7M5 9.5V20h5v-6h4v6h5V9.5',
+  pin: 'M12 21s-6-5.6-6-11a6 6 0 1 1 12 0c0 5.4-6 11-6 11Zm0-9a2 2 0 1 0 0-4 2 2 0 0 0 0 4Z',
+  printer: 'M7 8V3h10v5M6 17H4v-7a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v7h-2M7 14h10v7H7z',
+  leaf: 'M5 19c0-8 5-14 15-15-1 10-7 15-15 15Zm0 0 8-8',
+  star: 'm12 3 2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9L12 3Z',
+  gem: 'M6 4h12l3 5-9 11L3 9l3-5Zm-3 5h18M9 4l3 16 3-16',
 }
 export function LineIcon({ n, className = 'h-4 w-4' }: { n: string; className?: string }) {
   return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden="true"><path d={P[n]} /></svg>

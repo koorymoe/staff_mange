@@ -2,6 +2,8 @@ package handler
 
 import (
 	"net/http"
+	"strconv"
+	"time"
 
 	"staffmange-api/internal/middleware"
 	"staffmange-api/internal/service"
@@ -36,14 +38,29 @@ func (h *SolarInquiryHandler) List(w http.ResponseWriter, r *http.Request) {
 	h.reply(w, map[string]any{"items": rows, "access": access}, err, false)
 }
 
-// POST /api/solar-inquiries {customerName, phone, area, note}
+// GET /api/solar-inquiries/price-ranges?minKw=&maxKw= — مدى الأسعار من المنظومات المسجّلة
+func (h *SolarInquiryHandler) PriceRanges(w http.ResponseWriter, r *http.Request) {
+	minKw, _ := strconv.ParseFloat(r.URL.Query().Get("minKw"), 64)
+	maxKw, _ := strconv.ParseFloat(r.URL.Query().Get("maxKw"), 64)
+	tiers, err := h.svc.PriceRanges(middleware.EmployeeIDFromContext(r), middleware.RoleFromContext(r), minKw, maxKw)
+	h.reply(w, map[string]any{"tiers": tiers}, err, false)
+}
+
+// POST /api/solar-inquiries {customerName, phone, area, note, intake, siteVisitAt}
 func (h *SolarInquiryHandler) Create(w http.ResponseWriter, r *http.Request) {
-	var in struct{ CustomerName, Phone, Area, Note string }
+	var in struct {
+		CustomerName string                 `json:"customerName"`
+		Phone        string                 `json:"phone"`
+		Area         string                 `json:"area"`
+		Note         string                 `json:"note"`
+		Intake       *service.InquiryIntake `json:"intake"`
+		SiteVisitAt  *time.Time             `json:"siteVisitAt"`
+	}
 	if err := DecodeJSON(r, &in); err != nil {
 		WriteError(w, http.StatusBadRequest, "بيانات غير صحيحة")
 		return
 	}
-	x, err := h.svc.Create(middleware.EmployeeIDFromContext(r), middleware.RoleFromContext(r), in.CustomerName, in.Phone, in.Area, in.Note)
+	x, err := h.svc.Create(middleware.EmployeeIDFromContext(r), middleware.RoleFromContext(r), in.CustomerName, in.Phone, in.Area, in.Note, in.Intake, in.SiteVisitAt)
 	h.reply(w, x, err, true)
 }
 

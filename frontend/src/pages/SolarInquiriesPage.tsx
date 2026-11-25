@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { apiRequest } from '../api'
+import SolarIntake from './solar/SolarIntake'
 
 // ═══ 📞 استفسارات الطاقة الشمسية (دازاي 11-12) ═══
 // المسجّل يسجّل الزبون ← التقنيين يتواصلون ويسجّلون النتيجة ← ابو الجودة يتصل بالزبون ويتأكد:
@@ -12,6 +13,16 @@ type Inq = {
   qualityBy: string | null; qualityAt: string | null; qCustomerReached: boolean | null; qTechCalled: string | null
   qIntent: string | null; qGotQuote: string | null; qQuoteFair: string | null; qNote: string | null
   stage: 'NEW' | 'TECH_DONE' | 'CLOSED'; overdue: boolean; mismatch: boolean
+  intake: Intake | null; siteVisitAt: string | null
+}
+type Intake = { houseArea?: number; roofArea?: number; houseType?: string; roofObstacles?: boolean; obstaclesNote?: string; usage?: string; appliances?: { type: string; count: number; condition?: string }[] }
+const USAGE_T: Record<string, string> = { DAY_NIGHT: 'ليلي ونهاري', NIGHT: 'ليلي بس', DAY: 'نهاري بس' }
+const intakeLine = (i: Intake | null) => {
+  if (!i) return ''
+  const parts = [i.houseType, i.houseArea ? `المنزل ${i.houseArea} م²` : '', i.roofArea ? `السطح ${i.roofArea} م²` : '',
+    i.roofObstacles ? `عوائق: ${i.obstaclesNote || 'إي'}` : '', i.usage ? USAGE_T[i.usage] : '',
+    (i.appliances ?? []).map((a) => `${a.type} ×${a.count}${a.condition === 'OLD' ? ' قديمة' : a.condition === 'NEW' ? ' جديدة' : ''}`).join('، ')]
+  return parts.filter(Boolean).join(' · ')
 }
 type Access = { intake: boolean; tech: boolean; quality: boolean; admin: boolean }
 
@@ -45,7 +56,6 @@ export default function SolarInquiriesPage() {
   const [tab, setTab] = useState<'NEW' | 'TECH_DONE' | 'CLOSED' | 'ALL'>('NEW')
   const [msg, setMsg] = useState<{ ok: boolean; t: string } | null>(null)
   const [busy, setBusy] = useState(false)
-  const [form, setForm] = useState({ customerName: '', phone: '', area: '', note: '' })
   const [open, setOpen] = useState<string | null>(null)
   const [tc, setTc] = useState({ outcome: '', note: '', quoteGiven: '', quoteAmount: '' })
   const [qc, setQc] = useState({ reached: '', techCalled: '', intent: '', gotQuote: '', quoteFair: '', note: '' })
@@ -61,10 +71,6 @@ export default function SolarInquiriesPage() {
     setBusy(true); setMsg(null)
     try { await f(); setMsg({ ok: true, t: ok }); setOpen(null); load() } catch (e) { setMsg({ ok: false, t: (e as Error).message }) } finally { setBusy(false) }
   }
-  const create = () => run(async () => {
-    await apiRequest('/solar-inquiries', { method: 'POST', body: JSON.stringify(form) })
-    setForm({ customerName: '', phone: '', area: '', note: '' })
-  }, 'انسجل الاستفسار وانرسل للتقنيين ✅')
   const claim = (id: string) => run(() => apiRequest(`/solar-inquiries/${id}/claim`, { method: 'POST' }), 'صار عليك — اتصل بالزبون وسجّل النتيجة')
   const contact = (id: string) => run(() => apiRequest(`/solar-inquiries/${id}/contact`, {
     method: 'POST',
@@ -81,24 +87,17 @@ export default function SolarInquiriesPage() {
 
   return (
     <div dir="rtl" className="space-y-4 p-4">
-      <div>
-        <h1 className="text-2xl font-black text-[#0f2040]">📞 استفسارات الطاقة الشمسية</h1>
-        <p className="text-xs text-slate-500">يتسجّل الزبون ← التقني يتواصل وياه ← ابو الجودة يتأكد إن التقني اتصل وقدّم عرض مناسب</p>
-      </div>
+      {(acc?.intake || acc?.admin) ? (
+        <div className="-mx-4 -mt-4"><SolarIntake onSaved={(t) => { setMsg({ ok: true, t }); load() }} /></div>
+      ) : (
+        <div>
+          <h1 className="text-2xl font-black text-[#0f2040]">📞 استفسارات الطاقة الشمسية</h1>
+          <p className="text-xs text-slate-500">يتسجّل الزبون ← التقني يتواصل وياه ← ابو الجودة يتأكد إن التقني اتصل وقدّم عرض مناسب</p>
+        </div>
+      )}
       {msg && <p role={msg.ok ? 'status' : 'alert'} className={`rounded-xl p-2 text-sm ${msg.ok ? 'bg-emerald-50 text-emerald-800' : 'bg-red-50 text-red-700'}`}>{msg.t}</p>}
       {mismatches > 0 && (acc?.admin || acc?.quality) && (
         <p className="rounded-xl bg-red-50 p-2 text-sm font-bold text-red-800">🚩 {mismatches} استفسار: التقني كاتب «اتصلت» والزبون يگول ما اتصل بيه أحد</p>
-      )}
-
-      {(acc?.intake || acc?.admin) && (
-        <section className="grid gap-2 rounded-2xl bg-white p-4 shadow-sm sm:grid-cols-2">
-          <h2 className="text-base font-extrabold sm:col-span-2">➕ تسجيل استفسار جديد</h2>
-          <label className="text-xs">اسم الزبون<input id="si-name" className={input} value={form.customerName} onChange={(e) => setForm({ ...form, customerName: e.target.value })} /></label>
-          <label className="text-xs">رقم الهاتف<input id="si-phone" dir="ltr" className={input} value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} placeholder="07xx xxx xxxx" /></label>
-          <label className="text-xs">المنطقة<input id="si-area" className={input} value={form.area} onChange={(e) => setForm({ ...form, area: e.target.value })} /></label>
-          <label className="text-xs">شنو سأل؟<input id="si-note" className={input} value={form.note} onChange={(e) => setForm({ ...form, note: e.target.value })} placeholder="مثلاً: يسأل عن منظومة ٥ كيلو للبيت" /></label>
-          <div className="sm:col-span-2"><button type="button" disabled={busy || !form.customerName.trim() || form.phone.replace(/\D/g, '').length < 10} onClick={() => void create()} className="rounded-xl bg-orange-500 px-5 py-2 text-sm font-bold text-white disabled:opacity-50">سجّل وارسل للتقنيين</button></div>
-        </section>
       )}
 
       {(acc?.tech || acc?.quality || acc?.admin || (rows?.length ?? 0) > 0) && (
@@ -121,6 +120,8 @@ export default function SolarInquiriesPage() {
                 {r.mismatch && <span className="rounded-full bg-red-200 px-2 py-0.5 text-xs font-bold text-red-900">🚩 الزبون يگول التقني ما اتصل</span>}
               </div>
               {r.note && <p className="mt-1 text-sm text-slate-700">سأل: {r.note}</p>}
+              {intakeLine(r.intake) && <p className="mt-1 text-sm text-slate-700">🏠 {intakeLine(r.intake)}</p>}
+              {r.siteVisitAt && <p className="mt-1 text-sm font-bold text-violet-700">📅 كشف موقعي: {when(r.siteVisitAt)}</p>}
               <p className="text-xs text-slate-500">سجّله {r.createdBy ?? '—'} · {when(r.createdAt)}{r.techName ? ` · التقني: ${r.techName}` : ''}</p>
               {r.techOutcome && (
                 <p className="mt-1 rounded-lg bg-sky-50 p-2 text-sm">📱 التقني ({when(r.techContactAt)}): <b>{OUTCOME[r.techOutcome]}</b>{r.techNote ? ` — ${r.techNote}` : ''}
