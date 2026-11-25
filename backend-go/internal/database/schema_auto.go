@@ -556,6 +556,41 @@ func autoMigrations() []Migration {
 			ALTER TABLE "ExtraTask" ADD COLUMN IF NOT EXISTS "estimatedCost" numeric;
 		`,
 		},
+		{
+			Version: "0531_payment_vouchers",
+			SQL: `
+			CREATE TABLE IF NOT EXISTS "PaymentVoucher" (
+	"id" text DEFAULT (gen_random_uuid())::text NOT NULL,
+	"number" bigint NOT NULL,
+	"targetKind" text NOT NULL,
+	"projectId" text,
+	"bookingId" text,
+	"externalName" text,
+	"purpose" text NOT NULL,
+	"amount" numeric NOT NULL,
+	"paidAt" timestamp with time zone DEFAULT now() NOT NULL,
+	"recipientKind" text NOT NULL,
+	"recipientEmployeeId" text,
+	"note" text,
+	"createdById" text NOT NULL,
+	"createdAt" timestamp with time zone DEFAULT now() NOT NULL,
+	"cancelledAt" timestamp with time zone,
+	"cancelledById" text,
+	"cancelReason" text
+);
+			ALTER TABLE "PaymentVoucher" ADD CONSTRAINT "PaymentVoucher_pkey" PRIMARY KEY (id);
+			ALTER TABLE "PaymentVoucher" ADD CONSTRAINT "PaymentVoucher_number_key" UNIQUE (number);
+			CREATE INDEX IF NOT EXISTS "PaymentVoucher_paidAt_idx" ON public."PaymentVoucher" USING btree ("paidAt" DESC);
+			ALTER TABLE "PaymentVoucher" ADD CONSTRAINT "payment_voucher_amount_ok" CHECK ((amount > (0)::numeric));
+			ALTER TABLE "PaymentVoucher" ADD CONSTRAINT "payment_voucher_target_ok" CHECK (((("targetKind" = 'PROJECT'::text) AND ("projectId" IS NOT NULL)) OR (("targetKind" = 'BOOKING'::text) AND ("bookingId" IS NOT NULL)) OR (("targetKind" = 'EXTERNAL'::text) AND ("externalName" IS NOT NULL))));
+			ALTER TABLE "PaymentVoucher" ADD CONSTRAINT "payment_voucher_recipient_ok" CHECK (((("recipientKind" = 'EMPLOYEE'::text) AND ("recipientEmployeeId" IS NOT NULL)) OR ("recipientKind" = 'CASHIER'::text)));
+			ALTER TABLE "PaymentVoucher" ADD CONSTRAINT "PaymentVoucher_projectId_fkey" FOREIGN KEY ("projectId") REFERENCES "Project"(id) ON DELETE SET NULL;
+			ALTER TABLE "PaymentVoucher" ADD CONSTRAINT "PaymentVoucher_bookingId_fkey" FOREIGN KEY ("bookingId") REFERENCES "Booking"(id) ON DELETE SET NULL;
+			ALTER TABLE "PaymentVoucher" ADD CONSTRAINT "PaymentVoucher_recipientEmployeeId_fkey" FOREIGN KEY ("recipientEmployeeId") REFERENCES "Employee"(id);
+			ALTER TABLE "PaymentVoucher" ADD CONSTRAINT "PaymentVoucher_createdById_fkey" FOREIGN KEY ("createdById") REFERENCES "Employee"(id);
+			ALTER TABLE "PaymentVoucher" ADD CONSTRAINT "PaymentVoucher_cancelledById_fkey" FOREIGN KEY ("cancelledById") REFERENCES "Employee"(id);
+		`,
+		},
 		// ‹makemigration› — التحديثات الجديدة تنضاف فوگ هالسطر
 	}
 }

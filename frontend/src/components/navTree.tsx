@@ -479,6 +479,9 @@ export const navItems: NavItem[] = [
       { to: '/credits', label: '⏳ الآجل', icon: <></>, capability: 'credits', roles: ['ADMIN', 'FINANCE', 'MONITOR'], unlockAnyPermission: ['finance', 'finance_audit'] },
           // فواتير الليدر تترحّل للمحاسب بتفاصيلها حتى يدققها ويعتمدها
           { to: '/revolving-fund', label: '💵 الدوار', icon: <></>, capability: 'funds', permission: 'revolving_fund' },
+      { to: '/vouchers', label: '🧾 سندات الصرف', icon: <></>, roles: ['ADMIN'], unlockAnyPermission: ['finance'] },
+          // (ل) 11-25 دازاي: سندات الصرف
+          { to: '/vouchers', label: '🧾 سندات الصرف', icon: <></>, roles: ['ADMIN'], unlockAnyPermission: ['finance'] },
       { to: '/audit-issues', label: '💸 بلاغات أخطاء التدقيق', icon: <></>, roles: ['ADMIN', 'MONITOR', 'QUALITY_ENGINEER', 'FINANCE'], unlockAnyPermission: ['audit_issues', 'finance_audit'] },
       // موجودة بالقائمة الرئيسية كمان — منحطة هنا لأن محلها المنطقي الحسابات
       { to: '/leader-invoices/new', label: '🧮 حساب الكلفة', icon: <></>, permission: 'execution_cost' },
