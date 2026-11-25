@@ -2277,3 +2277,6 @@ html.dark .qt-row, html.dark .qt-row:nth-child(even) { border-bottom-color: #2a3
 .qt-acts { gap: .3rem; } .qt-act { width: 2rem; height: 2rem; }
 .qt-code { padding: .28rem .45rem; }
 .qt-st { padding: .25rem .65rem; }
+
+/* (ك 11-25) طلب زينا: ملاحظات ماتركس بمركز التدريب — كلشي سطر واحد (الكبسولات، الأرقام، العناوين، الأسماء) */
+.tc-pill, .tc-team, .tc-role, .tc-th, .tc-name, .tc-exam { white-space: nowrap; }
