@@ -49,6 +49,9 @@ export default function SolarIntake({ onSaved }: { onSaved: (msg: string) => voi
   const [tierState, setTierState] = useState<{ key: string; tiers: Tier[] }>({ key: '', tiers: [] })
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState('')
+  const [ok, setOk] = useState('')
+  // أقل موعد للكشف = هسه (بتوقيت الجهاز) — ينحسب مرة وحدة
+  const [minVisit] = useState(() => { const d = new Date(); d.setMinutes(d.getMinutes() - d.getTimezoneOffset()); return d.toISOString().slice(0, 16) })
 
   const toggle = (s: Sec) => setOpen((o) => ({ ...o, [s]: !o[s] }))
   const set = (k: keyof typeof f, v: string | boolean) => setF((x) => ({ ...x, [k]: v }))
@@ -107,7 +110,8 @@ export default function SolarIntake({ onSaved }: { onSaved: (msg: string) => voi
     setBusy(true)
     try {
       await apiRequest('/solar-inquiries', { method: 'POST', body: JSON.stringify(payload(visit)) })
-      onSaved(visit ? 'انحجز الكشف الموقعي وانرسل للتقنيين ✅' : 'انسجل الاستفسار ✅')
+      const t = visit ? 'انحجز الكشف بالموقع وانرسل للتقنيين ✅' : 'انسجل الاستفسار ✅'
+      setOk(t); onSaved(t)
       setF({ name: '', phone: '', houseArea: '', roofArea: '', houseType: HOUSE_TYPES[0], region: '', obstacles: false, obstaclesNote: '', usage: '', visit: '' })
       setDevs([{ type: '', count: '', condition: '' }])
     } catch (e) { setErr((e as Error).message) } finally { setBusy(false) }
@@ -249,7 +253,7 @@ export default function SolarIntake({ onSaved }: { onSaved: (msg: string) => voi
             {head('visit', 'cal', 'موعد الكشف', `${f.visit ? new Date(f.visit).toLocaleString('en-GB', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : 'ما محدد'}`)}
             {open.visit && (
               <div className="si-sec-body si-cols-2">
-                <label>وكت الكشف<span className="si-in"><input type="datetime-local" value={f.visit} onChange={(e) => set('visit', e.target.value)} /></span></label>
+                <label>وكت الكشف<span className="si-in"><input type="datetime-local" min={minVisit} value={f.visit} onChange={(e) => set('visit', e.target.value)} /></span></label>
               </div>
             )}
           </section>
@@ -280,6 +284,8 @@ export default function SolarIntake({ onSaved }: { onSaved: (msg: string) => voi
             <button type="button" className="si-btn si-btn-green" disabled={busy} onClick={() => void save(true)}><LineIcon n="cal" />احجز كشف بالموقع</button>
             <button type="button" className="si-btn si-btn-yellow" onClick={print}><LineIcon n="printer" />اطبع وصف الطلب</button>
             <button type="button" className="si-btn si-btn-out" disabled={busy} onClick={() => void save(false)}><LineIcon n="chat" />بس يستفسر</button>
+            {err && <p className="si-err" role="alert">{err}</p>}
+            {ok && <p className="si-ok" role="status">{ok}</p>}
           </div>
         </aside>
       </div>

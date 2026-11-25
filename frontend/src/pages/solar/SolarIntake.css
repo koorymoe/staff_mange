@@ -44,15 +44,7 @@ html.dark .si-page {
 .si-banner-night { display: none; }
 html.dark .si-banner-night { display: block; }
 html.dark .si-banner-day { display: none; }
-.si-hero-tools { position: relative; display: flex; align-items: center; gap: 12px; flex-direction: row-reverse; }
-.si-back { height: 34px; padding: 0 14px; border-radius: 999px; border: 1px solid var(--si-line); background: var(--si-card); color: var(--si-ink); font-size: 14px; font-weight: 700; box-shadow: 0 2px 6px rgb(0 0 0 / .08); }
-html.dark .si-back { background: transparent; border-color: #3b5470; }
-.si-theme { display: flex; gap: 2px; padding: 4px; border-radius: 999px; background: #eef1f5; }
-html.dark .si-theme { background: #0b1d33; }
-.si-theme button { width: 30px; height: 26px; border-radius: 999px; font-size: 14px; opacity: .55; }
-.si-theme button[aria-pressed='true'] { opacity: 1; background: #1d4776; }
-html.dark .si-theme button[aria-pressed='true'] { background: #1f6fe0; }
-
+html.dark html.dark html.dark 
 /* ── الشبكة ── */
 .si-grid { display: grid; grid-template-columns: minmax(0, 1fr) 330px; gap: 16px; align-items: start; }
 .si-card { background: var(--si-card); border: 1px solid var(--si-line); border-radius: 16px; box-shadow: 0 2px 12px rgb(15 32 64 / .06); }
@@ -126,6 +118,9 @@ html.dark .si-yn button.is-on { box-shadow: 0 0 8px rgb(47 174 90 / .5); }
 .si-add svg { width: 16px; height: 16px; }
 .si-note { margin: 0; font-size: 14px; font-weight: 600; }
 .si-err { margin: 0; padding: 10px 14px; border-radius: 10px; background: #fde8e8; color: #9b1c1c; font-size: 14px; font-weight: 700; }
+
+.si-ok { margin: 0; padding: 10px 14px; border-radius: 10px; background: #e6f4ea; color: #1e6b34; font-size: 14px; font-weight: 700; }
+html.dark .si-ok { background: #0d3b22; color: #bbf7d0; }
 html.dark .si-err { background: #4a1212; color: #fecaca; }
 
 /* ── الملخص ── */
