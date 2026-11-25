@@ -173,7 +173,10 @@ export default function QualityFollowUpsPage({ embedded }: EmbeddedProps = {}) {
                     {item.customer.name} — {item.customer.phone}
                   </p>
                   <p className="text-sm text-slate-500">
-                    الحجز: <BookingCodeChip code={item.booking.code} /> — {bookingServiceLabel(item.booking)}
+                    الحجز: <BookingCodeChip code={item.booking.code} /> —{' '}
+                    {item.booking.bookingType === 'INTERNAL'
+                      ? `🏢 شغل داخلي${item.booking.internalDepartment ? ` — ${item.booking.internalDepartment}` : ''}`
+                      : bookingServiceLabel(item.booking)}
                   </p>
                   {/* هوية كاملة: مهندس الجودة كان يشوف كود الحجز والخدمة بس */}
                   <EntityIdentity
@@ -182,7 +185,13 @@ export default function QualityFollowUpsPage({ embedded }: EmbeddedProps = {}) {
                       customerCode: formatCustomerCode(item.customer),
                       customerName: item.customer?.name,
                       customerPhone: item.customer?.phone,
-                      serviceName: item.booking.service?.name,
+                      serviceName: bookingServiceLabel(item.booking),
+                      leaderName:
+                        item.booking.leaderName ??
+                        item.execution?.crew.find((c) => c.isLeader)?.name ??
+                        item.execution?.crew[0]?.name,
+                      address: item.financials?.location || item.booking.address || undefined,
+                      scheduledAt: item.booking.scheduledAt,
                     }}
                     variant="full"
                     className="mt-2"

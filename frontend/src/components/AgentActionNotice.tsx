@@ -26,7 +26,11 @@ export default function AgentActionNotice({
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [reload, setReload] = useState(0)
-  const scope = allowed.join(',')
+  // الخادم يشترط whatsapp_chats على /api/wa/actions — بدونها نخفي القسم بدل خطأ 404
+  const canFetch =
+    permissions.includes('whatsapp_chats') ||
+    ['OWNER', 'ADMIN'].includes(employee?.actualRole ?? employee?.role ?? '')
+  const scope = canFetch ? allowed.join(',') : ''
   useEffect(() => {
     if (!scope || !targetId || actions) return
     let alive = true
@@ -36,7 +40,7 @@ export default function AgentActionNotice({
         if (alive) setRows(x)
       })
       .catch((e) => {
-        if (alive) setError(e.message)
+        if (alive && !/404|not found/i.test(String(e.message))) setError(e.message)
       })
     return () => {
       alive = false

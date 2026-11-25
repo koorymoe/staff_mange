@@ -168,6 +168,50 @@ func (r *QualityFollowUpRepository) hydrateMany(items []model.QualityFollowUp) {
 			bookings[bl[i].ID] = &bl[i]
 		}
 	}
+	// (ل) 11-25 دازاي «كل الحجوزات تطلع بلا خدمة وبلا ليدر» بصفحة الجودة: الحجز چان ينجاب بلا خدماته
+	// وبلا ليدره، فالواجهة تكتب «⚠️ بلا خدمة» و«بلا ليدر» لكل شي. هسه ترتبط الخدمات (الرئيسية والمتعددة) والليدر.
+	type svcRow struct {
+		BookingID string `db:"bid"`
+		model.Service
+		Main bool `db:"main"`
+	}
+	var sl []svcRow
+	errlog.Err(r.db.Select(&sl, `
+		SELECT x.bid, s.id, s.name, x.main FROM (
+			SELECT b.id AS bid, b."serviceId" AS sid, true AS main FROM "Booking" b WHERE b.id = ANY($1) AND b."serviceId" IS NOT NULL
+			UNION
+			SELECT bs."bookingId", bs."serviceId", false FROM "BookingService" bs WHERE bs."bookingId" = ANY($1)
+		) x JOIN "Service" s ON s.id = x.sid ORDER BY x.main DESC, s.name`, pq.Array(bookingIDs)))
+	for _, x := range sl {
+		b := bookings[x.BookingID]
+		if b == nil {
+			continue
+		}
+		sv := x.Service
+		if x.Main && b.Service == nil {
+			b.Service = &sv
+		}
+		dup := false
+		for _, e := range b.Services {
+			dup = dup || e.ID == sv.ID
+		}
+		if !dup {
+			b.Services = append(b.Services, sv)
+		}
+	}
+	var ll []struct {
+		BookingID string  `db:"bid"`
+		LeaderID  *string `db:"lid"`
+		Name      *string `db:"name"`
+	}
+	errlog.Err(r.db.Select(&ll, `SELECT b.id AS bid, booking_leader_id(b.id) AS lid, e.name FROM "Booking" b
+		LEFT JOIN "Employee" e ON e.id = booking_leader_id(b.id) WHERE b.id = ANY($1)`, pq.Array(bookingIDs)))
+	for _, x := range ll {
+		if b := bookings[x.BookingID]; b != nil && x.LeaderID != nil {
+			b.LeaderID, b.LeaderName = x.LeaderID, x.Name
+		}
+	}
+
 	customers := map[string]*model.Customer{}
 	var cl []model.Customer
 	if err := r.db.Select(&cl, `SELECT * FROM "Customer" WHERE id = ANY($1)`, pq.Array(customerIDs)); err == nil {

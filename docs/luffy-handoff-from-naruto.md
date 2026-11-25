@@ -530,3 +530,9 @@ git push origin origin/avg:refs/heads/prod     # بعد التأكد إنه fast
 - (ل) 11-25 عهدة الأدوات: ToolRequest + takenAt/selfCheckout/returnRequestedAt/returnPhoto/returnNote/verifiedById/verifiedAt/verifyNote (0529، والـmodel.ToolRequest انضافتله الحقول لأن الريبو يقرا SELECT *). service/tool_custody.go فوگ InventoryService (Create+Approve، ReturnToolRequest). /api/tool-custody* وصفحة /tool-custody.
 - (ل) 11-25 ExtraTask.estimatedMinutes/estimatedCost (0530، الـmodel متحدّث لأن RETURNING *). service/fragility.go (BookingService×BookingAssignment للمكتملة + EmployeeSkill)، /api/employee-stats/fragility، تبويب /fragility.
 - (ل) 11-25 سندات الصرف: PaymentVoucher (0531، number تسلسلي بقفل)، service/payment_voucher.go، /api/vouchers* (rolePerm ADMIN+finance)، صفحة /vouchers.
+
+
+## 11-25 متابعات الجودة
+- `hydrateMany` يرفق Service/Services والليدر (`booking_leader_id`) + اختبار حي.
+- الصفحة تمرر leaderName (أو من الكادر) و address (financials.location)؛ INTERNAL يظهر شغل داخلي.
+- AgentActionNotice يجلب فقط بصلاحية whatsapp_chats أو OWNER/ADMIN ويخفي 404.
