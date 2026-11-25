@@ -114,11 +114,18 @@ html.dark .si-in select option { background: #0b283e; color: #fff; }
 .si-yn button.is-on { background: var(--si-on-bg); border-color: var(--si-on-line); color: var(--si-on-ink); }
 html.dark .si-yn button.is-on { box-shadow: 0 0 8px rgb(47 174 90 / .5); }
 .si-devs { display: flex; flex-direction: column; gap: 8px; }
-.si-dev { display: grid; grid-template-columns: 1.3fr .7fr 1.3fr auto; gap: 8px; align-items: center; }
+.si-dev { display: grid; grid-template-columns: 1fr .7fr 1.3fr auto; gap: 8px; align-items: center; }
+.si-dev-name { font-size: 14px; font-weight: 800; white-space: nowrap; }
+.si-other { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; max-width: 520px; }
+.si-add-btn { display: flex; align-items: center; gap: 6px; height: 34px; padding: 0 16px; border-radius: 8px; background: var(--si-dot); color: #fff; font-size: 14px; font-weight: 800; white-space: nowrap; }
+.si-add-btn svg { width: 16px; height: 16px; }
+.si-add-btn:disabled { opacity: .5; }
+.si-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.si-chips button { display: flex; align-items: center; gap: 6px; height: 32px; padding: 0 14px; border: 1px solid var(--si-in-line); border-radius: 999px; background: var(--si-in); color: var(--si-ink); font-size: 14px; font-weight: 700; white-space: nowrap; }
+.si-chips button svg { width: 14px; height: 14px; }
+.si-chips button.is-on { background: var(--si-on-bg); border-color: var(--si-on-line); color: var(--si-on-ink); }
 .si-x { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 8px; color: #dc2626; }
 .si-x svg { width: 16px; height: 16px; }
-.si-add { display: flex; align-items: center; gap: 6px; align-self: flex-start; font-size: 14px; font-weight: 800; color: var(--si-dot); }
-.si-add svg { width: 16px; height: 16px; }
 .si-note { margin: 0; font-size: 14px; font-weight: 600; }
 .si-err { margin: 0; padding: 10px 14px; border-radius: 10px; background: #fde8e8; color: #9b1c1c; font-size: 14px; font-weight: 700; }
 
