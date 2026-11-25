@@ -44,6 +44,7 @@ const OwnerMoneySplitPage = lazyRetry(() => import('./pages/OwnerMoneySplitPage'
 const ServiceInvoiceOptionsPage = lazyRetry(() => import('./pages/ServiceInvoiceOptionsPage'))
 const OwnerCostsPage = lazyRetry(() => import('./pages/OwnerCostsPage'))
 const ReworkPage = lazyRetry(() => import('./pages/ReworkPage'))
+const ToolCustodyPage = lazyRetry(() => import('./pages/ToolCustodyPage'))
 const CoreMatrixPage = lazyRetry(() => import('./pages/CoreMatrixPage'))
 const CoreAdminPage = lazyRetry(() => import('./pages/CoreAdminPage'))
 const OwnerGrantsPage = lazyRetry(() => import('./pages/OwnerGrantsPage'))
@@ -230,6 +231,7 @@ function App() {
           <Route path="service-invoice-options" element={<ServiceInvoiceOptionsPage />} />
           <Route path="owner-costs" element={<OwnerCostsPage />} />
           <Route path="rework" element={<ReworkPage />} />
+          <Route path="tool-custody" element={<ToolCustodyPage />} />
           {/* 🏴‍☠️ ون بيس (11-10): مصفوفة الصلاحيات ولوحة الأدمن — للمالك */}
           <Route path="core-matrix" element={<CoreMatrixPage />} />
           <Route path="core-admin" element={<CoreAdminPage />} />

@@ -562,6 +562,10 @@ func rules() map[string]map[core.Action]core.Rule {
 			}("يقرا /api/internal-bookings/export (دور/صلاحية)"),
 		},
 		"inventory": {
+			"inventory.get_tool_custody":         func(l string) core.Rule { return any_(l) }("يقرا عهدته من الأدوات (والمدير الكل — الفحص بالمعالج)"),
+			"inventory.post_tool_custody_take":   func(l string) core.Rule { return any_(l) }("ياخذ أداة بعهدته (المدير عن غيره — الفحص بالمعالج)"),
+			"inventory.post_tool_custody_return": func(l string) core.Rule { return any_(l) }("يسلّم أداة بصورة (صاحب العهدة — الفحص بالخدمة)"),
+			"inventory.post_tool_custody_verify": func(l string) core.Rule { return admin(l) }("يدقق تسليم الأداة (المالك ومدير النظام)"),
 			// (ل) 11-11 أولوية نواقص الجرد — نفس قاعدة «تم الحل» (requireInventoryManage)
 			"inventory.put_checks_by_id_priority": func(l string) core.Rule {
 				return rolePerm(l, []string{"ADMIN", "HR_COORDINATOR", "PROCUREMENT_ADMIN"}, "inventory")

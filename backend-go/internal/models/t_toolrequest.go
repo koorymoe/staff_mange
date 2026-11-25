@@ -21,12 +21,22 @@ func init() {
 			{Name: "requestKind", Type: "text"},
 			{Name: "rejectedAt", Type: "timestamp without time zone"},
 			{Name: "rejectedById", Type: "text"},
+			// (ل) 11-25 دازاي: «الموظف يختار الأداة ووقت أخذها، تبقى بعهدته، يسوي تسليم ويرفع صورة، واني أدققها»
+			{Name: "takenAt", Type: "timestamp with time zone"},
+			{Name: "selfCheckout", Type: "boolean", NotNull: true, Default: "false"},
+			{Name: "returnRequestedAt", Type: "timestamp with time zone"},
+			{Name: "returnPhoto", Type: "text"},
+			{Name: "returnNote", Type: "text"},
+			{Name: "verifiedById", Type: "text"},
+			{Name: "verifiedAt", Type: "timestamp with time zone"},
+			{Name: "verifyNote", Type: "text"},
 		},
 		Constraints: []Constraint{
 			{Name: "ToolRequest_approvedById_fkey", Def: "FOREIGN KEY (\"approvedById\") REFERENCES \"Employee\"(id)"},
 			{Name: "ToolRequest_employeeId_fkey", Def: "FOREIGN KEY (\"employeeId\") REFERENCES \"Employee\"(id)"},
 			{Name: "ToolRequest_pkey", Def: "PRIMARY KEY (id)"},
 			{Name: "ToolRequest_rejectedById_fkey", Def: "FOREIGN KEY (\"rejectedById\") REFERENCES \"Employee\"(id) ON DELETE SET NULL"},
+			{Name: "ToolRequest_verifiedById_fkey", Def: "FOREIGN KEY (\"verifiedById\") REFERENCES \"Employee\"(id) ON DELETE SET NULL"},
 			{Name: "ToolRequest_toolId_fkey", Def: "FOREIGN KEY (\"toolId\") REFERENCES \"OnDemandTool\"(id)"},
 		},
 		Indexes: []string{

@@ -535,6 +535,20 @@ func autoMigrations() []Migration {
 			ALTER TABLE "CostEmployee" ADD COLUMN IF NOT EXISTS "baseSalary" numeric DEFAULT 350000 NOT NULL;
 		`,
 		},
+		{
+			Version: "0529_tool_custody",
+			SQL: `
+			ALTER TABLE "ToolRequest" ADD COLUMN IF NOT EXISTS "takenAt" timestamp with time zone;
+			ALTER TABLE "ToolRequest" ADD COLUMN IF NOT EXISTS "selfCheckout" boolean DEFAULT false NOT NULL;
+			ALTER TABLE "ToolRequest" ADD COLUMN IF NOT EXISTS "returnRequestedAt" timestamp with time zone;
+			ALTER TABLE "ToolRequest" ADD COLUMN IF NOT EXISTS "returnPhoto" text;
+			ALTER TABLE "ToolRequest" ADD COLUMN IF NOT EXISTS "returnNote" text;
+			ALTER TABLE "ToolRequest" ADD COLUMN IF NOT EXISTS "verifiedById" text;
+			ALTER TABLE "ToolRequest" ADD COLUMN IF NOT EXISTS "verifiedAt" timestamp with time zone;
+			ALTER TABLE "ToolRequest" ADD COLUMN IF NOT EXISTS "verifyNote" text;
+			ALTER TABLE "ToolRequest" ADD CONSTRAINT "ToolRequest_verifiedById_fkey" FOREIGN KEY ("verifiedById") REFERENCES "Employee"(id) ON DELETE SET NULL;
+		`,
+		},
 		// ‹makemigration› — التحديثات الجديدة تنضاف فوگ هالسطر
 	}
 }

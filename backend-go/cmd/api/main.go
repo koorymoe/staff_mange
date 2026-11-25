@@ -2692,6 +2692,12 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	secs["bookings"].Set("GET /api/rework", "bookings.get_rework", rework.List)
 	secs["bookings"].Set("POST /api/rework", "bookings.post_rework", rework.Submit)
 	secs["bookings"].Set("POST /api/rework/{id}/decide", "bookings.post_rework_decide", rework.Decide)
+	// (ل) 11-25 دازاي: عهدة الأدوات — الموظف ياخذ بنفسه ويسلّم بصورة، والمالك/المدير يدقق أو يختار عنه
+	custody := handler.NewToolCustodyHandler(service.NewToolCustody(db, inventoryService), db)
+	secs["inventory"].Set("GET /api/tool-custody", "inventory.get_tool_custody", custody.Get)
+	secs["inventory"].Set("POST /api/tool-custody/take", "inventory.post_tool_custody_take", custody.Take)
+	secs["inventory"].Set("POST /api/tool-custody/{id}/return", "inventory.post_tool_custody_return", custody.Return)
+	secs["inventory"].Set("POST /api/tool-custody/{id}/verify", "inventory.post_tool_custody_verify", custody.Verify)
 	moneySplit := handler.NewMoneySplitHandler(db)
 	secs["owner"].Set("GET /api/owner/money-split", "owner.get_money_split", moneySplit.Get)
 	secs["owner"].Set("PUT /api/owner/money-split", "owner.put_money_split", moneySplit.Put)

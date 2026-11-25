@@ -299,6 +299,15 @@ type ToolRequest struct {
 	ReturnedAt   *time.Time `db:"returnedAt" json:"returnedAt"`
 	RejectedAt   *time.Time `db:"rejectedAt" json:"rejectedAt"`
 	RejectedByID *string    `db:"rejectedById" json:"rejectedById"`
+	// (ل) 11-25 عهدة الأدوات — الأخذ بنفسه، والتسليم بصورة، والتدقيق
+	TakenAt           *time.Time `db:"takenAt" json:"takenAt"`
+	SelfCheckout      bool       `db:"selfCheckout" json:"selfCheckout"`
+	ReturnRequestedAt *time.Time `db:"returnRequestedAt" json:"returnRequestedAt"`
+	ReturnPhoto       *string    `db:"returnPhoto" json:"returnPhoto"`
+	ReturnNote        *string    `db:"returnNote" json:"returnNote"`
+	VerifiedByID      *string    `db:"verifiedById" json:"verifiedById"`
+	VerifiedAt        *time.Time `db:"verifiedAt" json:"verifiedAt"`
+	VerifyNote        *string    `db:"verifyNote" json:"verifyNote"`
 	// إذا الأداة ما كانت متوفرة بالشركة وقت الموافقة، إداري الكميات لازم يدخل
 	// سعر الشراء، ويتفتح طلب مشتريات تلقائياً يوصل للمحاسب — هذول الحقلين
 	// يربطون طلب الأداة بطلب المشتريات المتولّد منه.
