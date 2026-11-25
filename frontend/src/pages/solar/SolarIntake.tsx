@@ -31,7 +31,7 @@ const money = (n: number) => `${Math.round(n).toLocaleString('en-US')} د.ع`
 const kw = (n: number) => (Number.isInteger(n) ? String(n) : n.toFixed(1))
 
 export default function SolarIntake({ onSaved }: { onSaved: (msg: string) => void }) {
-  // أضيق من 1000 بكسل: ترتيب عمودي
+  // أضيق من 1000 بكسل: الحقول اثنين بالسطر وتنشال الصورة — والملخص يبقى جنب الاستمارة (زينا 11-25)
   const pageRef = useRef<HTMLDivElement>(null)
   useLayoutEffect(() => {
     const el = pageRef.current
@@ -99,7 +99,7 @@ export default function SolarIntake({ onSaved }: { onSaved: (msg: string) => voi
     : '"راح نطلعلك كادر يكشف على البيت ويتأكد من المعلومات ويحدد المنظومة الي تناسبك، والسعر يختلف حسب الماركة والمواصفات."'
 
   const payload = (visit: boolean) => ({
-    customerName: f.name, phone: f.phone, area: f.region,
+    customerName: f.name, phone: f.phone, area: f.region, answered: true,
     note: devSummary ? `الأجهزة: ${devSummary}` : '',
     siteVisitAt: visit && f.visit ? new Date(f.visit).toISOString() : null,
     intake: {

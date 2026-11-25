@@ -44,9 +44,8 @@ html.dark .si-page {
 .si-banner-night { display: none; }
 html.dark .si-banner-night { display: block; }
 html.dark .si-banner-day { display: none; }
-html.dark html.dark html.dark 
 /* ── الشبكة ── */
-.si-grid { display: grid; grid-template-columns: minmax(0, 1fr) 330px; gap: 16px; align-items: start; }
+.si-grid { display: grid; grid-template-columns: minmax(0, 1fr) clamp(250px, 30%, 330px); gap: 16px; align-items: start; }
 .si-card { background: var(--si-card); border: 1px solid var(--si-line); border-radius: 16px; box-shadow: 0 2px 12px rgb(15 32 64 / .06); }
 .si-main { display: flex; flex-direction: column; gap: 10px; }
 
@@ -162,11 +161,11 @@ html.dark .si-btn-yellow { background: linear-gradient(180deg, #c99316, #9a6d06)
 html.dark .si-btn-out { background: #0b2e50; border-color: #2f7bd6; }
 
 /* أضيق من 1000: ترتيب عمودي بلا تصغير */
-.si-page.si-narrow .si-grid { grid-template-columns: 1fr; }
-.si-page.si-narrow .si-side { position: static; }
 .si-page.si-narrow .si-cols-4 { grid-template-columns: 1fr 1fr; }
 .si-page.si-narrow .si-banner { display: none; }
 @media (max-width: 640px) {
+  .si-grid { grid-template-columns: 1fr; }
+  .si-side { position: static; }
   .si-cols-2, .si-cols-4, .si-obst, .si-dev { grid-template-columns: 1fr; }
   .si-hero-text h1 { font-size: 18px; }
   .si-steps { flex-direction: column; align-items: stretch; }

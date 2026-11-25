@@ -55,12 +55,13 @@ func (h *SolarInquiryHandler) Create(w http.ResponseWriter, r *http.Request) {
 		Note         string                 `json:"note"`
 		Intake       *service.InquiryIntake `json:"intake"`
 		SiteVisitAt  *time.Time             `json:"siteVisitAt"`
+		Answered     bool                   `json:"answered"`
 	}
 	if err := DecodeJSON(r, &in); err != nil {
 		WriteError(w, http.StatusBadRequest, "بيانات غير صحيحة")
 		return
 	}
-	x, err := h.svc.Create(middleware.EmployeeIDFromContext(r), middleware.RoleFromContext(r), in.CustomerName, in.Phone, in.Area, in.Note, in.Intake, in.SiteVisitAt)
+	x, err := h.svc.Create(middleware.EmployeeIDFromContext(r), middleware.RoleFromContext(r), in.CustomerName, in.Phone, in.Area, in.Note, in.Intake, in.SiteVisitAt, in.Answered)
 	h.reply(w, x, err, true)
 }
 

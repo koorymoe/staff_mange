@@ -13,7 +13,7 @@ type Inq = {
   qualityBy: string | null; qualityAt: string | null; qCustomerReached: boolean | null; qTechCalled: string | null
   qIntent: string | null; qGotQuote: string | null; qQuoteFair: string | null; qNote: string | null
   stage: 'NEW' | 'TECH_DONE' | 'CLOSED'; overdue: boolean; mismatch: boolean
-  intake: Intake | null; siteVisitAt: string | null
+  intake: Intake | null; siteVisitAt: string | null; answeredAt: string | null
 }
 type Intake = { houseArea?: number; roofArea?: number; houseType?: string; roofObstacles?: boolean; obstaclesNote?: string; usage?: string; appliances?: { type: string; count: number; condition?: string }[] }
 const USAGE_T: Record<string, string> = { DAY_NIGHT: 'ليلي ونهاري', NIGHT: 'ليلي بس', DAY: 'نهاري بس' }
@@ -115,7 +115,8 @@ export default function SolarInquiriesPage() {
                 <b>#{r.number} {r.customerName}</b>
                 <a href={`tel:${r.phone}`} dir="ltr" className="text-brand-700 underline">{r.phone}</a>
                 {r.area && <span className="text-slate-500">· {r.area}</span>}
-                <span className={`rounded-full px-2 py-0.5 text-xs font-bold ${STAGE[r.stage].cls}`}>{STAGE[r.stage].t}</span>
+                <span className={`rounded-full px-2 py-0.5 text-xs font-bold ${STAGE[r.stage].cls}`}>{r.stage === 'NEW' && r.siteVisitAt && r.answeredAt ? 'ينتظر الكشف بالموقع' : STAGE[r.stage].t}</span>
+                {r.answeredAt && <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-bold text-emerald-800">☎️ جاوبه {r.createdBy ?? 'موظف'} بالمكالمة</span>}
                 {r.overdue && <span className="rounded-full bg-amber-200 px-2 py-0.5 text-xs font-bold text-amber-900">⏰ أكثر من ٢٤ ساعة بلا تواصل</span>}
                 {r.mismatch && <span className="rounded-full bg-red-200 px-2 py-0.5 text-xs font-bold text-red-900">🚩 الزبون يگول التقني ما اتصل</span>}
               </div>
@@ -134,8 +135,8 @@ export default function SolarInquiriesPage() {
               )}
 
               <div className="mt-2 flex flex-wrap gap-2">
-                {(acc?.tech || acc?.admin) && r.stage === 'NEW' && !r.techId && <button type="button" disabled={busy} onClick={() => void claim(r.id)} className="rounded-lg bg-orange-500 px-3 py-1 text-xs font-bold text-white">📞 آخذه أنا</button>}
-                {(acc?.tech || acc?.admin) && r.stage === 'NEW' && <button type="button" onClick={() => { setOpen(open === r.id + 't' ? null : r.id + 't'); setTc({ outcome: '', note: '', quoteGiven: '', quoteAmount: '' }) }} className="rounded-lg bg-[#0f2040] px-3 py-1 text-xs font-bold text-white">سجّل نتيجة الاتصال</button>}
+                {(acc?.tech || acc?.admin) && r.stage === 'NEW' && !r.techId && <button type="button" disabled={busy} onClick={() => void claim(r.id)} className="rounded-lg bg-orange-500 px-3 py-1 text-xs font-bold text-white">{r.answeredAt ? '📅 آخذ الكشف أنا' : '📞 آخذه أنا'}</button>}
+                {(acc?.tech || acc?.admin) && r.stage === 'NEW' && <button type="button" onClick={() => { setOpen(open === r.id + 't' ? null : r.id + 't'); setTc({ outcome: '', note: '', quoteGiven: '', quoteAmount: '' }) }} className="rounded-lg bg-[#0f2040] px-3 py-1 text-xs font-bold text-white">{r.answeredAt ? 'سجّل نتيجة الكشف' : 'سجّل نتيجة الاتصال'}</button>}
                 {(acc?.quality || acc?.admin) && r.stage !== 'CLOSED' && <button type="button" onClick={() => { setOpen(open === r.id + 'q' ? null : r.id + 'q'); setQc({ reached: '', techCalled: '', intent: '', gotQuote: '', quoteFair: '', note: '' }) }} className="rounded-lg bg-emerald-700 px-3 py-1 text-xs font-bold text-white">⭐ اتصلت بالزبون (ابو الجودة)</button>}
               </div>
 
@@ -155,7 +156,8 @@ export default function SolarInquiriesPage() {
               {open === r.id + 'q' && (
                 <div className="mt-2 space-y-2 rounded-lg bg-emerald-50/60 p-3">
                   {r.techOutcome === 'NO_ANSWER' && <p className="rounded-lg bg-amber-50 text-amber-800 ring-1 ring-amber-200 px-2 py-1 text-xs font-bold">التقني كاتب «ما رد» — اسأل الزبون: اتصل بيك التقني؟</p>}
-                  {!r.techOutcome && <p className="text-xs font-bold text-amber-800">التقني بعده ما سجّل اتصال — اسأل الزبون إذا أحد تواصل وياه</p>}
+                  {!r.techOutcome && !r.answeredAt && <p className="text-xs font-bold text-amber-800">التقني بعده ما سجّل اتصال — اسأل الزبون إذا أحد تواصل وياه</p>}
+                  {r.answeredAt && <p className="text-xs font-bold text-emerald-800">الموظف جاوب الزبون بالمكالمة — اسأله إذا انطوه التقدير والسعر التقريبي وچان الجواب واضح</p>}
                   <Choice id={`qc-r-${r.number}`} label="رد عليك الزبون؟" value={qc.reached} onChange={(v) => setQc({ ...qc, reached: v })} opts={{ YES: 'إي', NO: 'لا' }} />
                   {qc.reached === 'YES' && (
                     <>

@@ -74,7 +74,9 @@ const pendingSQL = `
 	SELECT 'solar', q.id, '#' || q.number::text, q."techId", e.name, q."techClaimedAt"
 	FROM "SolarInquiry" q JOIN "Employee" e ON e.id = q."techId"
 	WHERE q."techId" IS NOT NULL AND q."techOutcome" IS NULL AND q."qualityAt" IS NULL
-	  AND q."techContactKpiAt" IS NULL AND q."techClaimedAt" IS NOT NULL`
+	  AND q."techContactKpiAt" IS NULL AND q."techClaimedAt" IS NOT NULL
+	  -- (ك 11-25) الي جاوبه موظف بالمكالمة ما ينحاسب عليه التقني بالاتصال
+	  AND q."answeredAt" IS NULL`
 
 func refLabel(p pendingContact) string {
 	if p.Kind == "solar" {
@@ -182,7 +184,7 @@ func (w *TechContactWatch) apply(p pendingContact, author, reason string) (bool,
 func TechContactBadges(db *sqlx.DB, me string) (bookings, solar int) {
 	_ = db.Get(&bookings, `SELECT count(*) FROM "Booking" b WHERE b."handoverToId" = $1 AND b."techContactedAt" IS NULL
 		AND b.status::text NOT IN ('COMPLETED', 'CANCELLED') AND b."archivedAt" IS NULL`, me)
-	_ = db.Get(&solar, `SELECT count(*) FROM "SolarInquiry" q WHERE q."techOutcome" IS NULL AND q."qualityAt" IS NULL
+	_ = db.Get(&solar, `SELECT count(*) FROM "SolarInquiry" q WHERE q."techOutcome" IS NULL AND q."qualityAt" IS NULL AND q."answeredAt" IS NULL
 		AND (q."techId" = $1 OR (q."techId" IS NULL AND `+model.HasPermSQL(`$1`, `= 'solar_inquiry_tech'`)+`))`, me)
 	return
 }
