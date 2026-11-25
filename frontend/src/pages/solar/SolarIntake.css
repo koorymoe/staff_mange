@@ -99,7 +99,10 @@ html.dark .si-tone-purple { box-shadow: 0 0 10px rgb(123 95 214 / .45); }
 .si-in svg { width: 16px; height: 16px; flex: none; }
 .si-in input, .si-in select { flex: 1; min-width: 0; height: 100%; border: 0; background: transparent; font-size: 14px; font-weight: 600; color: var(--si-ink); outline: none; appearance: none; }
 .si-in input::placeholder { color: var(--si-ph); font-weight: 500; }
-.si-in select option { color: #0f2040; }
+.si-in select { color-scheme: light; }
+.si-in select option { background: #fff; color: #0f2040; }
+html.dark .si-in select { color-scheme: dark; }
+html.dark .si-in select option { background: #0b283e; color: #fff; }
 .si-sel svg { order: 2; }
 .si-in input[type='number']::-webkit-inner-spin-button { -webkit-appearance: none; }
 .si-in input:disabled { opacity: .6; }
