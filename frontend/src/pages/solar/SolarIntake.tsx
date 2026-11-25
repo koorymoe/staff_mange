@@ -45,7 +45,14 @@ export default function SolarIntake({ onSaved }: { onSaved: (msg: string) => voi
   }, [])
   const [open, setOpen] = useState<Record<Sec, boolean>>({ customer: true, house: true, usage: false, devices: false, result: false, visit: false })
   const [f, setF] = useState({ name: '', phone: '', houseArea: '', roofArea: '', houseType: HOUSE_TYPES[0], region: '', obstacles: false, obstaclesNote: '', usage: '', visit: '' })
-  const [devs, setDevs] = useState<Appliance[]>([{ type: '', count: '', condition: '' }])
+  const [devs, setDevs] = useState<Appliance[]>([])
+  const [other, setOther] = useState('')
+  const addOther = () => {
+    const t = other.trim()
+    if (!t) return
+    setDevs((ds) => (ds.some((d) => d.type === t) ? ds : [...ds, { type: t, count: '1', condition: '' }]))
+    setOther('')
+  }
   const [tierState, setTierState] = useState<{ key: string; tiers: Tier[] }>({ key: '', tiers: [] })
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState('')
@@ -113,7 +120,7 @@ export default function SolarIntake({ onSaved }: { onSaved: (msg: string) => voi
       const t = visit ? 'انحجز الكشف بالموقع وانرسل للتقنيين ✅' : 'انسجل الاستفسار ✅'
       setOk(t); onSaved(t)
       setF({ name: '', phone: '', houseArea: '', roofArea: '', houseType: HOUSE_TYPES[0], region: '', obstacles: false, obstaclesNote: '', usage: '', visit: '' })
-      setDevs([{ type: '', count: '', condition: '' }])
+      setDevs([])
     } catch (e) { setErr((e as Error).message) } finally { setBusy(false) }
   }
 
@@ -222,20 +229,34 @@ export default function SolarIntake({ onSaved }: { onSaved: (msg: string) => voi
             {head('devices', 'layers', 'الأجهزة الي يشغّلها', devSummary || 'ماكو أجهزة بعد')}
             {open.devices && (
               <div className="si-sec-body si-devs">
-                {devs.map((d, i) => (
-                  <div key={i} className="si-dev">
-                    <span className="si-in si-sel"><select value={d.type} onChange={(e) => setDevs((ds) => ds.map((x, j) => (j === i ? { ...x, type: e.target.value } : x)))}>
-                      <option value="">نوع الجهاز</option>{APPLIANCES.map((a) => <option key={a}>{a}</option>)}</select><LineIcon n="down" /></span>
-                    <span className="si-in"><input type="number" min="1" placeholder="العدد" value={d.count} onChange={(e) => setDevs((ds) => ds.map((x, j) => (j === i ? { ...x, count: e.target.value } : x)))} /></span>
+                <span className="si-lbl">اختار كل الأجهزة الي يشغّلها</span>
+                <div className="si-chips">
+                  {APPLIANCES.map((a) => {
+                    const on = devs.some((d) => d.type === a)
+                    return (
+                      <button key={a} type="button" className={on ? 'is-on' : ''} aria-pressed={on}
+                        onClick={() => setDevs((ds) => (ds.some((d) => d.type === a) ? ds.filter((d) => d.type !== a) : [...ds, { type: a, count: '1', condition: '' }]))}>
+                        {on && <LineIcon n="check" />}{a}
+                      </button>
+                    )
+                  })}
+                </div>
+                <div className="si-other">
+                  <span className="si-in"><input value={other} onChange={(e) => setOther(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addOther() } }} placeholder="أخرى: اكتب اسم الجهاز إذا مو موجود" /></span>
+                  <button type="button" className="si-add-btn" disabled={!other.trim()} onClick={addOther}><LineIcon n="plus" />ضيف</button>
+                </div>
+                {devs.map((d) => (
+                  <div key={d.type} className="si-dev">
+                    <b className="si-dev-name">{d.type}</b>
+                    <span className="si-in"><input type="number" min="1" placeholder="العدد" aria-label={`عدد ${d.type}`} value={d.count} onChange={(e) => setDevs((ds) => ds.map((x) => (x.type === d.type ? { ...x, count: e.target.value } : x)))} /></span>
                     <div className="si-yn">
                       {(['OLD', 'NEW'] as const).map((c) => (
-                        <button key={c} type="button" className={d.condition === c ? 'is-on' : ''} onClick={() => setDevs((ds) => ds.map((x, j) => (j === i ? { ...x, condition: c } : x)))}>{c === 'OLD' ? 'قديمة' : 'جديدة'}</button>
+                        <button key={c} type="button" className={d.condition === c ? 'is-on' : ''} onClick={() => setDevs((ds) => ds.map((x) => (x.type === d.type ? { ...x, condition: c } : x)))}>{c === 'OLD' ? 'قديمة' : 'جديدة'}</button>
                       ))}
                     </div>
-                    {devs.length > 1 && <button type="button" className="si-x" aria-label="شيل الجهاز" onClick={() => setDevs((ds) => ds.filter((_, j) => j !== i))}><LineIcon n="trash" /></button>}
+                    <button type="button" className="si-x" aria-label={`شيل ${d.type}`} onClick={() => setDevs((ds) => ds.filter((x) => x.type !== d.type))}><LineIcon n="trash" /></button>
                   </div>
                 ))}
-                <button type="button" className="si-add" onClick={() => setDevs((ds) => [...ds, { type: '', count: '', condition: '' }])}><LineIcon n="plus" />جهاز ثاني</button>
               </div>
             )}
           </section>
