@@ -46,13 +46,13 @@ func TestSolarInquiryFlow_Live(t *testing.T) {
 	perm("si-q", "quality_control")
 	s := NewSolarInquiryService(db, repository.NewNotificationRepository(db))
 
-	if _, err := s.Create("si-out", "SALES", "زبون", "07701234567", "", "", nil, nil); err != ErrInquiryHidden {
+	if _, err := s.Create("si-out", "SALES", "زبون", "07701234567", "", "", nil, nil, false); err != ErrInquiryHidden {
 		t.Fatalf("الي ماعنده صلاحية = 404: %v", err)
 	}
-	if _, err := s.Create("si-in", "SALES", "زبون", "077", "", "", nil, nil); err == nil {
+	if _, err := s.Create("si-in", "SALES", "زبون", "077", "", "", nil, nil, false); err == nil {
 		t.Fatal("رقم ناقص لازم ينرفض")
 	}
-	x, err := s.Create("si-in", "SALES", "أبو علي", "0770 123 4567", "كربلاء", "يسأل عن منظومة ٥ كيلو", nil, nil)
+	x, err := s.Create("si-in", "SALES", "أبو علي", "0770 123 4567", "كربلاء", "يسأل عن منظومة ٥ كيلو", nil, nil, false)
 	if err != nil || x.Stage != "NEW" {
 		t.Fatalf("التسجيل: %v %+v", err, x)
 	}

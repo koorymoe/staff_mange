@@ -99,7 +99,7 @@ export default function SolarIntake({ onSaved }: { onSaved: (msg: string) => voi
     : '"راح نطلعلك كادر يكشف على البيت ويتأكد من المعلومات ويحدد المنظومة الي تناسبك، والسعر يختلف حسب الماركة والمواصفات."'
 
   const payload = (visit: boolean) => ({
-    customerName: f.name, phone: f.phone, area: f.region,
+    customerName: f.name, phone: f.phone, area: f.region, answered: true,
     note: devSummary ? `الأجهزة: ${devSummary}` : '',
     siteVisitAt: visit && f.visit ? new Date(f.visit).toISOString() : null,
     intake: {

@@ -62,6 +62,7 @@ type SolarInquiry struct {
 	QNote         *string       `db:"qNote" json:"qNote"`
 	Intake        model.JSONRaw `db:"intake" json:"intake"`
 	SiteVisitAt   *time.Time    `db:"siteVisitAt" json:"siteVisitAt"`
+	AnsweredAt    *time.Time    `db:"answeredAt" json:"answeredAt"` // (ك 11-25) الموظف جاوب الزبون بالمكالمة — ما يروح للتقني حتى يتصل
 
 	Stage    string `db:"-" json:"stage"`    // NEW · TECH_DONE · CLOSED
 	Overdue  bool   `db:"-" json:"overdue"`  // ما تواصل تقني خلال ٢٤ ساعة
@@ -216,7 +217,7 @@ func (s *SolarInquiryService) Access(emp, role string) InquiryAccess {
 
 const inquirySelect = `SELECT q.id, q.number, q."customerName", q.phone, q.area, q.note, c.name AS "createdBy", q."createdAt",
 	q."techId", t.name AS "techName", q."techOutcome", q."techNote", q."techContactAt", q."quoteGiven", q."quoteAmount"::float8 AS "quoteAmount",
-	g.name AS "qualityBy", q."qualityAt", q."qCustomerReached", q."qTechCalled", q."qIntent", q."qGotQuote", q."qQuoteFair", q."qNote", q.intake, q."siteVisitAt"
+	g.name AS "qualityBy", q."qualityAt", q."qCustomerReached", q."qTechCalled", q."qIntent", q."qGotQuote", q."qQuoteFair", q."qNote", q.intake, q."siteVisitAt", q."answeredAt"
 	FROM "SolarInquiry" q LEFT JOIN "Employee" c ON c.id = q."createdById"
 	LEFT JOIN "Employee" t ON t.id = q."techId" LEFT JOIN "Employee" g ON g.id = q."qualityById"`
 
@@ -226,9 +227,12 @@ func decorate(x *SolarInquiry, now time.Time) {
 		x.Stage = "CLOSED"
 	case x.TechOutcome != nil:
 		x.Stage = "TECH_DONE"
+	case x.AnsweredAt != nil && x.SiteVisitAt == nil:
+		x.Stage = "TECH_DONE" // الموظف جاوبه وبس يستفسر ← ينتظر ابو الجودة، بلا تقني
 	default:
 		x.Stage = "NEW"
-		x.Overdue = now.Sub(x.CreatedAt) > inquiryTechSLA
+		// الي جاوبه موظف وحجز كشف: التقني يوصله موعد كشف، مو طلب اتصال — فماكو تأخير ٢٤ ساعة
+		x.Overdue = x.AnsweredAt == nil && now.Sub(x.CreatedAt) > inquiryTechSLA
 	}
 	x.Mismatch = x.TechOutcome != nil && *x.TechOutcome != "NO_ANSWER" && x.QTechCalled != nil && *x.QTechCalled == "NO"
 }
@@ -266,7 +270,7 @@ func (s *SolarInquiryService) get(id string) (*SolarInquiry, error) {
 }
 
 // Create تسجيل استفسار (صلاحية solar_inquiry أو المدير) ← ينبّه التقنيين.
-func (s *SolarInquiryService) Create(emp, role, name, phone, area, note string, intake *InquiryIntake, siteVisitAt *time.Time) (*SolarInquiry, error) {
+func (s *SolarInquiryService) Create(emp, role, name, phone, area, note string, intake *InquiryIntake, siteVisitAt *time.Time, answered bool) (*SolarInquiry, error) {
 	a := s.Access(emp, role)
 	if !a.Intake && !a.Admin {
 		return nil, ErrInquiryHidden
@@ -295,8 +299,8 @@ func (s *SolarInquiryService) Create(emp, role, name, phone, area, note string, 
 		return nil, err
 	}
 	var id string
-	if err := s.db.Get(&id, `INSERT INTO "SolarInquiry" ("customerName", phone, area, note, "createdById", intake, "siteVisitAt")
-		VALUES ($1, $2, NULLIF($3,''), NULLIF($4,''), $5, $6, $7) RETURNING id`, name, phone, strings.TrimSpace(area), strings.TrimSpace(note), emp, string(raw), siteVisitAt); err != nil {
+	if err := s.db.Get(&id, `INSERT INTO "SolarInquiry" ("customerName", phone, area, note, "createdById", intake, "siteVisitAt", "answeredAt")
+		VALUES ($1, $2, NULLIF($3,''), NULLIF($4,''), $5, $6, $7, CASE WHEN $8 THEN now() END) RETURNING id`, name, phone, strings.TrimSpace(area), strings.TrimSpace(note), emp, string(raw), siteVisitAt, answered); err != nil {
 		return nil, err
 	}
 	x, err := s.get(id)
@@ -306,7 +310,13 @@ func (s *SolarInquiryService) Create(emp, role, name, phone, area, note string, 
 			msg = fmt.Sprintf("☀️ استفسار #%d: الزبون يريد كشف موقعي %s — اطبع وصف الطلب وتأكد من المعلومات بالموقع",
 				x.Number, siteVisitAt.In(debriefLoc).Format("2006-01-02 15:04"))
 		}
-		_ = s.notif.CreateForPermission("solar_inquiry_tech", "SOLAR_INQUIRY", msg)
+		if answered && siteVisitAt == nil {
+			// (ك 11-25) زينا: «مو الا التقني يرد» — الموظف جاوبه، فيروح لابو الجودة بس
+			_ = s.notif.CreateForPermission("quality_control", "SOLAR_INQUIRY",
+				fmt.Sprintf("⭐ استفسار #%d: الموظف جاوب الزبون بالمكالمة (بس يستفسر) — اتصل بالزبون وتأكد", x.Number))
+		} else {
+			_ = s.notif.CreateForPermission("solar_inquiry_tech", "SOLAR_INQUIRY", msg)
+		}
 	}
 	return x, err
 }

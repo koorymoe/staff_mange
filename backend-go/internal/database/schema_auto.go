@@ -598,6 +598,12 @@ func autoMigrations() []Migration {
 			ALTER TABLE "SolarInquiry" ADD COLUMN IF NOT EXISTS "siteVisitAt" timestamp with time zone;
 		`,
 		},
+		{
+			Version: "0533_solar_inquiry_answered",
+			SQL: `
+			ALTER TABLE "SolarInquiry" ADD COLUMN IF NOT EXISTS "answeredAt" timestamp with time zone;
+		`,
+		},
 		// ‹makemigration› — التحديثات الجديدة تنضاف فوگ هالسطر
 	}
 }
