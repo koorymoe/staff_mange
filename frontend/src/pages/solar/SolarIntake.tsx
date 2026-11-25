@@ -31,7 +31,7 @@ const money = (n: number) => `${Math.round(n).toLocaleString('en-US')} د.ع`
 const kw = (n: number) => (Number.isInteger(n) ? String(n) : n.toFixed(1))
 
 export default function SolarIntake({ onSaved }: { onSaved: (msg: string) => void }) {
-  // أضيق من 1000 بكسل: ترتيب عمودي
+  // أضيق من 1000 بكسل: الحقول اثنين بالسطر وتنشال الصورة — والملخص يبقى جنب الاستمارة (زينا 11-25)
   const pageRef = useRef<HTMLDivElement>(null)
   useLayoutEffect(() => {
     const el = pageRef.current
