@@ -2,6 +2,7 @@ package handler
 
 import (
 	"net/http"
+	"strconv"
 	"time"
 
 	"staffmange-api/internal/middleware"
@@ -143,4 +144,20 @@ func (h *CompanyCostsHandler) Ranking(w http.ResponseWriter, r *http.Request) {
 			Remaining: t.Remaining, Forecast: t.Forecast, Pct: t.Pct, DailyNeeded: t.DailyNeeded, Errors: t.Errors, Fixes: t.Fixes})
 	}
 	WriteJSON(w, http.StatusOK, map[string]any{"month": month, "rows": rows, "downtimeDays": rep.DowntimeDays})
+}
+
+// GET /api/employee-stats/fragility?days=90 — (ل) 11-25 دازاي: مؤشر هشاشة النظام
+func (h *CompanyCostsHandler) Fragility(w http.ResponseWriter, r *http.Request) {
+	days := 90
+	if v := r.URL.Query().Get("days"); v != "" {
+		if n, err := strconv.Atoi(v); err == nil {
+			days = n
+		}
+	}
+	rep, err := service.Fragility(h.svc.DB(), days, time.Now())
+	if err != nil {
+		WriteError(w, http.StatusInternalServerError, "تعذر")
+		return
+	}
+	WriteJSON(w, http.StatusOK, rep)
 }

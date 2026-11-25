@@ -1337,6 +1337,7 @@ export const api = {
   createExtraTask: (data: {
     title: string; description?: string; assignedToId: string
     priority: 'NORMAL' | 'URGENT'; dueAt?: string | null
+    estimatedMinutes?: number; estimatedCost?: number
   }) => request<ExtraTask>('/extra-tasks', { method: 'POST', body: JSON.stringify(data) }),
   // ═══ 🗂️ السكرتير (docs/secretary.md) — المالك والمدير بس ═══
   secretaryToday: () => request<SecretaryToday>('/secretary/today'),

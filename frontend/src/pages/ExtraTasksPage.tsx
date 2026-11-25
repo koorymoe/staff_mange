@@ -43,6 +43,9 @@ export default function ExtraTasksPage({ embedded }: { embedded?: boolean } = {}
   const [assignee, setAssignee] = useState('')
   const [priority, setPriority] = useState<'NORMAL' | 'URGENT'>('NORMAL')
   const [dueAt, setDueAt] = useState('')
+  // (ل) 11-25 دازاي: مهام سريعة — الوقت اللازم والتكلفة التقديرية
+  const [estHours, setEstHours] = useState('')
+  const [estCost, setEstCost] = useState('')
   const [busy, setBusy] = useState(false)
   // مهمة بالفويس: الصوت يتحول لمسودة تملي الحقول، والمدير يراجع ويوجّه بنفسه.
   const [voice, setVoice] = useState<{ blob: Blob; seconds: number } | null>(null)
@@ -99,8 +102,10 @@ export default function ExtraTasksPage({ embedded }: { embedded?: boolean } = {}
         priority,
         // datetime-local ينطي وقتاً بلا منطقة — نحوّله ISO كامل
         dueAt: new Date(dueAt).toISOString(),
+        estimatedMinutes: Number(estHours) > 0 ? Math.round(Number(estHours) * 60) : undefined,
+        estimatedCost: Number(estCost) > 0 ? Number(estCost) : undefined,
       })
-      setTitle(''); setDesc(''); setDueAt(''); setPriority('NORMAL'); setHeard(null)
+      setTitle(''); setDesc(''); setDueAt(''); setEstHours(''); setEstCost(''); setPriority('NORMAL'); setHeard(null)
       setReload((n) => n + 1)
     } catch (e) {
       setErr(e instanceof Error ? e.message : 'تعذر التوجيه')
@@ -174,11 +179,15 @@ export default function ExtraTasksPage({ embedded }: { embedded?: boolean } = {}
             <input
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              placeholder="مثال: تخريج فواتير الشهر"
+              placeholder="مثال: شد يدة باب، تنظيف غرفة، تسليك كيبل"
+              list="quick-task-titles"
               className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand-500"
             />
           </div>
           <div>
+            <datalist id="quick-task-titles">
+              {[...new Set(['شد يدة باب', 'تنظيف غرفة', 'تسليك كيبل', 'تبديل مصباح', 'تصليح حنفية', 'ترتيب المخزن', ...tasks.map((x) => x.title)])].slice(0, 40).map((x) => <option key={x} value={x} />)}
+            </datalist>
             <label className="mb-1 block text-xs font-bold text-slate-500">الموظف *</label>
             <select
               value={assignee}
@@ -222,6 +231,16 @@ export default function ExtraTasksPage({ embedded }: { embedded?: boolean } = {}
               onChange={(e) => setDueAt(e.target.value)}
               className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand-500"
             />
+          </div>
+          <div>
+            <label className="mb-1 block text-xs font-bold text-slate-500">⏱️ الوقت اللازم (ساعات)</label>
+            <input type="number" min={0} step={0.25} value={estHours} onChange={(e) => setEstHours(e.target.value)} placeholder="مثلاً 0.5"
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand-500" dir="ltr" />
+          </div>
+          <div>
+            <label className="mb-1 block text-xs font-bold text-slate-500">💰 تكلفة تقديرية (د.ع)</label>
+            <input type="number" min={0} value={estCost} onChange={(e) => setEstCost(e.target.value)} placeholder="مواد أو أجور"
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand-500" dir="ltr" />
           </div>
         </div>
         <button
@@ -291,6 +310,8 @@ export default function ExtraTasksPage({ embedded }: { embedded?: boolean } = {}
               <span>👤 <b className="text-slate-700">{t.assignedToName || '—'}</b></span>
               {t.assignedByName && <span>📤 وجّهها: {t.assignedByName}</span>}
               {t.dueAt && <span>⏳ آخر موعد: {new Date(t.dueAt).toLocaleString('en-GB')}</span>}
+              {t.estimatedMinutes ? <span>⏱️ {t.estimatedMinutes >= 60 ? `${Math.round(t.estimatedMinutes / 6) / 10} ساعة` : `${t.estimatedMinutes} دقيقة`}</span> : null}
+              {t.estimatedCost ? <span>💰 {Math.round(t.estimatedCost).toLocaleString('en-US')} د.ع تقديرية</span> : null}
               {/* «شافها» يقطع نقاش «ما وصلني» */}
               <span>{t.seenAt ? `👁️ شافها ${new Date(t.seenAt).toLocaleString('en-GB')}` : '⚪ ما فتحها بعد'}</span>
             </div>

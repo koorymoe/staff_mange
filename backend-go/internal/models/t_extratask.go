@@ -23,6 +23,9 @@ func init() {
 			{Name: "createdAt", Type: "timestamp with time zone", NotNull: true, Default: "now()"},
 			{Name: "updatedAt", Type: "timestamp with time zone", NotNull: true, Default: "now()"},
 			{Name: "clause", Type: "integer"},
+			// (ل) 11-25 دازاي: «مهام سريعة — الوقت اللازم وشوكت تخلص وتكلفة تقديرية»
+			{Name: "estimatedMinutes", Type: "integer"},
+			{Name: "estimatedCost", Type: "numeric"},
 		},
 		Constraints: []Constraint{
 			{Name: "ExtraTask_assignedById_fkey", Def: "FOREIGN KEY (\"assignedById\") REFERENCES \"Employee\"(id) ON DELETE SET NULL"},

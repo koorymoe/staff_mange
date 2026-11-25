@@ -2679,6 +2679,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	costs := handler.NewCompanyCostsHandler(service.NewCompanyCosts(db))
 	secs["bookings"].Set("GET /api/me/money-target", "bookings.get_me_money_target", costs.Mine)
 	secs["employee_stats"].Set("GET /api/employee-stats/money-ranking", "employee_stats.get_money_ranking", costs.Ranking)
+	secs["employee_stats"].Set("GET /api/employee-stats/fragility", "employee_stats.get_fragility", costs.Fragility)
 	secs["owner"].Set("GET /api/owner/costs", "owner.get_costs", costs.Get)
 	secs["owner"].Set("PUT /api/owner/costs/employees/{id}", "owner.put_costs_employee", costs.PutEmployee)
 	secs["owner"].Set("DELETE /api/owner/costs/employees/{id}", "owner.delete_costs_employee", costs.DeleteEmployee)

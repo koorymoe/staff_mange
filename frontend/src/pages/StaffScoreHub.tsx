@@ -12,6 +12,7 @@ const EmployeeIndicatorsPage = lazyRetry(() => import('./EmployeeIndicatorsPage'
 const EmployeeMonthlyStatsPage = lazyRetry(() => import('./EmployeeMonthlyStatsPage'))
 const StatsPage = lazyRetry(() => import('./StatsPage'))
 const MoneyRankingPage = lazyRetry(() => import('./MoneyRankingPage'))
+const FragilityPage = lazyRetry(() => import('./FragilityPage'))
 
 export default function StaffScoreHub() {
   return (
@@ -22,6 +23,7 @@ export default function StaffScoreHub() {
         { path: '/staff-score', label: '🏅 الموظفين — ماتركس', hint: 'كل دور حسب شغله: ماتركس ٦٠٪ + التقييم البشري ٤٠٪', render: () => <StaffScorePage /> },
         { path: '/employee-indicators', label: '📈 المؤشرات', hint: 'مؤشرات أداء كل موظف', render: () => <EmployeeIndicatorsPage /> },
         { path: '/money-ranking', label: '💰 الفلوس والأهداف', hint: 'كل موظف شكد دخّل من هدفه، وأخطاءه وتصحيحاته — (ل) 11-24', render: () => <MoneyRankingPage /> },
+        { path: '/fragility', label: '🧩 هشاشة النظام', hint: 'وين الشغل معتمد على موظف واحد — (ل) 11-25', render: () => <FragilityPage /> },
         { path: '/employee-stats', label: '📆 أرقام الشهر', hint: 'أرقام كل موظف بالشهر حسب دوره', render: () => <EmployeeMonthlyStatsPage /> },
         { path: '/staff-numbers', label: '👥 أرقام الأقسام', hint: 'المبيعات والتنسيق والفنيين', render: () => <StatsPage /> },
       ]} />

@@ -1766,6 +1766,9 @@ export interface AiMetric {
  *  «رتّب المخزن». تطلع عند الموظف الي انتوجّهت له. */
 export interface ExtraTask {
   clause?: number | null
+  // (ل) 11-25 مهمة سريعة
+  estimatedMinutes?: number | null
+  estimatedCost?: number | null
   id: string
   title: string
   description?: string

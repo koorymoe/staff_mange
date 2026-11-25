@@ -174,6 +174,9 @@ type CompanyCosts struct{ db *sqlx.DB }
 
 func NewCompanyCosts(db *sqlx.DB) *CompanyCosts { return &CompanyCosts{db: db} }
 
+// DB للتقارير الجانبية (مؤشر الهشاشة)
+func (c *CompanyCosts) DB() *sqlx.DB { return c.db }
+
 // downtimeDaysIn أيام التوقف (اتحاد الفترات) الي تطيح جوه الشهر.
 func (c *CompanyCosts) downtimeDaysIn(from, to time.Time) int {
 	var n int

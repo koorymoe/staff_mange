@@ -457,6 +457,7 @@ func rules() map[string]map[core.Action]core.Rule {
 		},
 		"employee_stats": {
 			"employee_stats.get_curve_by_employeeid": func(l string) core.Rule { return rolePerm(l, []string{"ADMIN"}, "employee_stats") }("يقرا /api/employee-stats/curve/{employeeId} (دور/صلاحية)"),
+			"employee_stats.get_fragility":           func(l string) core.Rule { return rolePerm(l, []string{"ADMIN"}, "employee_stats") }("يقرا مؤشر هشاشة النظام"),
 			"employee_stats.get_money_ranking":       func(l string) core.Rule { return rolePerm(l, []string{"ADMIN"}, "employee_stats") }("يقرا ترتيب الفلوس والأهداف (بلا رواتب)"),
 			"employee_stats.get_monthly":             func(l string) core.Rule { return rolePerm(l, []string{"ADMIN"}, "employee_stats") }("يقرا /api/employee-stats/monthly (دور/صلاحية)"),
 			"employee_stats.get_monthly_export":      func(l string) core.Rule { return rolePerm(l, []string{"ADMIN"}, "employee_stats") }("يقرا /api/employee-stats/monthly/export (دور/صلاحية)"),

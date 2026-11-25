@@ -27,6 +27,9 @@ type ExtraTask struct {
 	UpdatedAt    time.Time  `db:"updatedAt" json:"updatedAt"`
 	// Clause فقرة لائحة العمل الي تخدمها المهمة (النقطة ٨ — 10-30). ⚠️ SELECT * — لازم يبقى.
 	Clause *int `db:"clause" json:"clause"`
+	// (ل) 11-25 مهمة سريعة: الوقت اللازم (دقائق) والتكلفة التقديرية. ⚠️ SELECT * / RETURNING *.
+	EstimatedMinutes *int     `db:"estimatedMinutes" json:"estimatedMinutes"`
+	EstimatedCost    *float64 `db:"estimatedCost" json:"estimatedCost"`
 
 	// أسماء محسوبة وقت الجلب — مو أعمدة.
 	AssignedToName *string `db:"-" json:"assignedToName,omitempty"`
@@ -54,6 +57,9 @@ type CreateExtraTaskRequest struct {
 	// DueAt نص ISO أو فاضي — «بلا موعد» حالة مشروعة، فما نفرض تاريخاً
 	// وهمياً يخلي المهمة تطلع «متأخرة» وهي أصلاً بلا موعد.
 	DueAt *string `json:"dueAt"`
+	// (ل) 11-25: اختيارية
+	EstimatedMinutes *int     `json:"estimatedMinutes"`
+	EstimatedCost    *float64 `json:"estimatedCost"`
 }
 
 // CompleteExtraTaskRequest إنجاز المهمة.

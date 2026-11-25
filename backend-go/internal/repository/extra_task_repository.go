@@ -47,12 +47,18 @@ func (r *ExtraTaskRepository) Create(in model.CreateExtraTaskRequest, byEmployee
 	}
 	due := &t
 
+	if in.EstimatedMinutes != nil && (*in.EstimatedMinutes <= 0 || *in.EstimatedMinutes > 60*24*30) {
+		return nil, errors.New("الوقت اللازم غلط")
+	}
+	if in.EstimatedCost != nil && *in.EstimatedCost < 0 {
+		return nil, errors.New("التكلفة ما تصير سالبة")
+	}
 	var row model.ExtraTask
 	err = r.db.Get(&row, `
-		INSERT INTO "ExtraTask" (id, title, description, "assignedToId", "assignedById", priority, "dueAt")
-		VALUES ($1,$2,NULLIF($3,''),$4,$5,$6,$7)
+		INSERT INTO "ExtraTask" (id, title, description, "assignedToId", "assignedById", priority, "dueAt", "estimatedMinutes", "estimatedCost")
+		VALUES ($1,$2,NULLIF($3,''),$4,$5,$6,$7,$8,$9)
 		RETURNING *`,
-		uuid.NewString(), title, derefStrLocal(in.Description), in.AssignedToID, byEmployeeID, priority, due)
+		uuid.NewString(), title, derefStrLocal(in.Description), in.AssignedToID, byEmployeeID, priority, due, in.EstimatedMinutes, in.EstimatedCost)
 	if err != nil {
 		return nil, err
 	}

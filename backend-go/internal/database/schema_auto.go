@@ -549,6 +549,13 @@ func autoMigrations() []Migration {
 			ALTER TABLE "ToolRequest" ADD CONSTRAINT "ToolRequest_verifiedById_fkey" FOREIGN KEY ("verifiedById") REFERENCES "Employee"(id) ON DELETE SET NULL;
 		`,
 		},
+		{
+			Version: "0530_extra_task_estimates",
+			SQL: `
+			ALTER TABLE "ExtraTask" ADD COLUMN IF NOT EXISTS "estimatedMinutes" integer;
+			ALTER TABLE "ExtraTask" ADD COLUMN IF NOT EXISTS "estimatedCost" numeric;
+		`,
+		},
 		// ‹makemigration› — التحديثات الجديدة تنضاف فوگ هالسطر
 	}
 }
