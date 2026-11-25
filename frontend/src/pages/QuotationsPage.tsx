@@ -6,6 +6,7 @@ import QuotationVersions from '../components/QuotationVersions'
 import QuotationTermsEditor from '../components/QuotationTermsEditor'
 import { numIQ as fmt, todayBaghdad } from '../utils/format'
 import { askConfirm } from '../ui/dialogs'
+import { LineIcon } from '../components/LineIcon'
 
 import { notify } from '../ui/notify'
 const PRIMARY = '#1a237e'
@@ -19,11 +20,12 @@ const GOLD = '#c8a45a'
 // قلب الاثنين سوا يكسر واحداً منهما — نفس فخّ --color-white.
 const GOLD_TEXT = 'var(--gold-ink)'
 
-const statusConfig: Record<Quotation['status'], { label: string; bg: string; color: string }> = {
-  NEW: { label: 'جديد', bg: '#fff3cd', color: 'var(--t-warning)' },
-  SENT: { label: 'مرسل', bg: '#cce5ff', color: 'var(--t-info)' },
-  ACCEPTED: { label: 'مقبول', bg: '#d4edda', color: 'var(--t-success)' },
-  REJECTED: { label: 'مرفوض', bg: '#f8d7da', color: 'var(--t-danger)' },
+// (ك 11-25) كبسولات الحالة حسب صورة زينا — الألوان بـ.qt-st-* بـindex.css (الوضعين)
+const statusConfig: Record<Quotation['status'], { label: string; cls: string }> = {
+  NEW: { label: 'جديد', cls: 'qt-st-new' },
+  SENT: { label: 'مرسل', cls: 'qt-st-sent' },
+  ACCEPTED: { label: 'مقبول', cls: 'qt-st-ok' },
+  REJECTED: { label: 'مرفوض', cls: 'qt-st-no' },
 }
 
 
@@ -32,8 +34,9 @@ function ValidityBadge({ q }: { q: Quotation }) {
   if (!q.validUntil || (q.status !== 'NEW' && q.status !== 'SENT')) return null
   const day = q.validUntil.slice(0, 10)
   const left = Math.round((new Date(day).getTime() - new Date(todayBaghdad()).getTime()) / 86400000)
-  const [txt, cls] = left < 0 ? ['⌛ منتهي', 'bg-red-100 text-red-700'] : left <= 2 ? [`⏳ ينتهي ${left === 0 ? 'اليوم' : `خلال ${left} يوم`}`, 'bg-amber-100 text-amber-800'] : [`صالح لغاية ${day}`, 'text-t-muted']
-  return <span className={`mt-1 block rounded-full px-2 py-0.5 text-[11px] font-bold ${cls}`}>{txt}</span>
+  const d = day.split('-').reverse().join('-')
+  const [txt, cls] = left < 0 ? ['⌛ منتهي', 'qt-valid-bad'] : left <= 2 ? [`⏳ ينتهي ${left === 0 ? 'اليوم' : `خلال ${left} يوم`}`, 'qt-valid-warn'] : [<>صالح لغاية:<br />{d}</>, '']
+  return <span className={`qt-valid ${cls}`}>{txt}</span>
 }
 
 export default function QuotationsPage() {
@@ -152,80 +155,49 @@ export default function QuotationsPage() {
       )}
 
       {!loading && !error && (
-        <div style={{
-          background: 'var(--sf-card)',
-          border: `2px solid ${PRIMARY}`,
-          borderRadius: '12px',
-          overflow: 'hidden',
-        }}>
-          <table className="w-full border-collapse">
+        <div className="qt-wrap">
+          <table className="qt-table w-full border-collapse">
             <thead>
-              <tr style={{ background: PRIMARY, color: 'white' }}>
-                <th className="py-3 px-4 text-[13px] text-right">رقم العرض</th>
-                <th className="py-3 px-4 text-[13px] text-right">اسم الزبون</th>
-                <th className="py-3 px-4 text-[13px] text-right">المشروع</th>
-                <th className="py-3 px-4 text-[13px] text-center">المجموع</th>
-                <th className="py-3 px-4 text-[13px] text-center">الخصم</th>
-                <th className="py-3 px-4 text-[13px] text-center">الصافي</th>
-                <th className="py-3 px-4 text-[13px] text-center">الحالة</th>
-                <th className="py-3 px-4 text-[13px] text-center">التاريخ</th>
-                <th className="py-3 px-4 text-[13px] text-center">إجراءات</th>
+              <tr className="qt-head">
+                {([['hash', 'رقم العرض'], ['user', 'اسم الزبون'], ['layers', 'المشروع'], ['sigma', 'المجموع'], ['percent', 'الخصم'], ['db', 'الصافي'], ['pulse', 'الحالة'], ['cal', 'التاريخ'], ['gear', 'اجراءات']] as const).map(([i, h], k) => (
+                  <th key={h} className={`qt-th ${k < 3 ? 'text-right' : 'text-center'}`}><span className="qt-th-in"><LineIcon n={i} className="h-5 w-5 shrink-0" />{h}</span></th>
+                ))}
               </tr>
             </thead>
             <tbody>
               {quotations.map((q) => {
                 const st = statusConfig[q.status]
                 return (
-                  <tr key={q.id} className="border-b border-bd-line transition-colors hover:bg-sf-sunken">
-                    <td style={{ padding: '12px 16px', fontWeight: 'bold', color: PRIMARY_TEXT }}>{q.quotationNumber}</td>
-                    <td className="py-3 px-4">{q.customerName}</td>
-                    <td className="py-3 px-4 text-t-muted">{q.projectName || '-'}</td>
-                    <td className="py-3 px-4 text-center">{fmt(q.grandTotal)} د.ع</td>
-                    <td className="py-3 px-4 text-center text-t-danger">{fmt(q.discountValue)} د.ع</td>
-                    <td style={{ padding: '12px 16px', textAlign: 'center', fontWeight: 'bold', color: PRIMARY_TEXT }}>{fmt(q.netTotal)} د.ع</td>
-                    <td className="py-3 px-4 text-center">
-                      <span style={{
-                        background: st.bg, color: st.color,
-                        padding: '4px 12px', borderRadius: '12px',
-                        fontSize: '12px', fontWeight: 'bold',
-                      }}>
-                        {st.label}
-                      </span>
+                  <tr key={q.id} className="qt-row">
+                    <td className="qt-td"><span className="qt-code">{q.quotationNumber}</span></td>
+                    <td className="qt-td qt-name">{q.customerName}</td>
+                    <td className="qt-td qt-proj">{q.projectName || '—'}</td>
+                    <td className="qt-td text-center"><span className="qt-money qt-tot">{fmt(q.grandTotal)}<small>د.ع</small></span></td>
+                    <td className="qt-td text-center"><span className="qt-disc">{fmt(q.discountValue)} د.ع</span></td>
+                    <td className="qt-td text-center"><span className="qt-money qt-net">{fmt(q.netTotal)}<small>د.ع</small></span></td>
+                    <td className="qt-td text-center"><span className={`qt-st ${st.cls}`}><i />{st.label}</span></td>
+                    <td className="qt-td text-center">
+                      <span className="qt-date"><LineIcon n="cal" className="h-5 w-5 shrink-0" />{new Date(q.createdAt).toLocaleDateString('en-CA', { timeZone: 'Asia/Baghdad' }).replace(/-/g, '/')}</span>
                       <ValidityBadge q={q} />
                     </td>
-                    <td className="py-3 px-4 text-center text-[13px] text-t-muted">
-                      {new Date(q.createdAt).toLocaleDateString('ar-IQ')}
-                    </td>
-                    <td className="py-3 px-4 text-center">
-                      <div className="flex gap-2 justify-center">
-                        <button
+                    <td className="qt-td">
+                      <div className="qt-acts">
+                        <button type="button" title="معاينة" aria-label="معاينة"
                           onClick={() => navigate(q.layout === 'PROJECT' ? `/quotations/project/${q.id}` : `/quotations/${q.id}/edit?preview=1`)}
-                          className="bg-sf-violet text-t-violet border-0 py-1.5 px-3.5 rounded-md cursor-pointer text-[12px] font-bold"
-                        >
-                          👁️ معاينة
-                        </button>
+                          className="qt-act qt-eye"><LineIcon n="eye" className="h-5 w-5" /></button>
                         {/* 🔴 باب الأرشيف: التعديل چان يمحي النسخة
                             القديمة تماماً، وهسه تنحفظ — بس أرشيف بلا
-                            باب ما إله قيمة. */}
-                        <button
+                            باب ما إله قيمة. (ك 11-25: صار أيقونة حتى يبقى بالتصميم الجديد) */}
+                        <button type="button" title="النسخ القديمة" aria-label="النسخ القديمة"
                           onClick={() => setHistoryId(historyId === q.id ? null : q.id)}
-                          className="bg-sf-sunken text-t-muted border-0 py-1.5 px-3.5 rounded-md cursor-pointer text-[12px] font-bold"
-                        >
-                          📚 النسخ القديمة
-                        </button>
-                        <button
+                          className={`qt-act qt-hist ${historyId === q.id ? 'qt-act-on' : ''}`}><LineIcon n="copy" className="h-5 w-5" /></button>
+                        <button type="button" title="تعديل" aria-label="تعديل"
                           onClick={() => navigate(q.layout === 'PROJECT' ? `/quotations/project/${q.id}` : `/quotations/${q.id}/edit`)}
-                          className="bg-sf-info text-t-info border-0 py-1.5 px-3.5 rounded-md cursor-pointer text-[12px] font-bold"
-                        >
-                          تعديل
-                        </button>
+                          className="qt-act qt-pen"><LineIcon n="edit" className="h-5 w-5" /></button>
                         {isAdmin && (
-                          <button
+                          <button type="button" title="حذف" aria-label="حذف"
                             onClick={() => handleDelete(q.id)}
-                            className="bg-sf-danger text-t-danger border-0 py-1.5 px-3.5 rounded-md cursor-pointer text-[12px] font-bold"
-                          >
-                            حذف
-                          </button>
+                            className="qt-act qt-del"><LineIcon n="trash" className="h-5 w-5" /></button>
                         )}
                       </div>
                     </td>

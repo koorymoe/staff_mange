@@ -2199,3 +2199,81 @@ html.dark .sb-svc { background: #1d3258; }
 /* (ك 11-24) تصحيح: اللون المقصود ذهبي غامق وكتابة بيضة (مقاس من صورة زينا 151) */
 .pc-rate, html.dark .pc-rate { background: #5e4709; color: #fbfcfc; }
 .pc-rate:hover, html.dark .pc-rate:hover { background: #6e540b; }
+
+/* (ك 11-25) عروض الأسعار — جدول حسب صورة زينا (الليلي مقاس منها بالبكسل، والنهاري بنفس نظام باقي الجداول) */
+.qt-wrap { overflow-x: auto; border-radius: 1rem; background: #f6f8fc; border: 1px solid #aabcdb; }
+.qt-table { min-width: 980px; }
+.qt-head { background: linear-gradient(180deg, #d6e6fd, #c4dafc); }
+.qt-th { padding: .75rem .6rem; font-size: .875rem; font-weight: 800; color: #15184c; white-space: nowrap; border-bottom: 1px solid #aabcdb; }
+.qt-th-in { display: inline-flex; align-items: center; gap: .45rem; }
+.qt-th svg { color: #3b4a82; }
+.qt-row { border-bottom: 1px solid #e1e8f3; background: #fff; transition: background .15s; }
+.qt-row:nth-child(even) { background: #f9fbff; }
+.qt-row:hover { background: #eef4fd; }
+.qt-td { padding: .55rem .6rem; font-size: .875rem; vertical-align: middle; }
+.qt-code { display: inline-block; padding: .35rem .8rem; border-radius: .6rem; font-weight: 800; white-space: nowrap; color: #1d4fb8; background: #d2e5fc; border: 1px solid #a9c4ec; }
+.qt-name { font-weight: 800; color: #15184c; }
+.qt-proj { font-weight: 600; color: #262a4d; }
+.qt-money { display: inline-flex; flex-direction: column; align-items: center; min-width: 8.5rem; padding: .3rem .8rem; border-radius: .7rem; font-weight: 800; line-height: 1.3; font-variant-numeric: tabular-nums; border: 1px solid; }
+.qt-money small { font-size: .75rem; font-weight: 600; }
+.qt-tot { color: #15184c; background: #eef2f9; border-color: #cfd8e8; }
+.qt-net { color: #0f6b3d; background: #e1f6ea; border-color: #a8e0c1; }
+.qt-disc { display: inline-block; padding: .25rem .7rem; border-radius: .7rem; font-size: .8rem; font-weight: 700; white-space: nowrap; color: #b4234f; background: #fde7ee; border: 1px solid #f3b8ca; }
+.qt-st { display: inline-flex; align-items: center; gap: .45rem; padding: .3rem 1.1rem; border-radius: 999px; font-size: .8rem; font-weight: 800; white-space: nowrap; border: 1px solid; }
+.qt-st i { width: .5rem; height: .5rem; border-radius: 50%; background: currentColor; }
+.qt-st-new { color: #2b2405; background: #fdf3bd; border-color: #f1df8a; } .qt-st-new i { background: #c9a422; }
+.qt-st-sent { color: #1e40af; background: #dbeafe; border-color: #b6cef5; }
+.qt-st-ok { color: #0f6b3d; background: #d1f4e0; border-color: #a8e0c1; }
+.qt-st-no { color: #b4234f; background: #fde7ee; border-color: #f3b8ca; }
+.qt-date { display: inline-flex; align-items: center; gap: .4rem; font-weight: 800; color: #15184c; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.qt-date svg { color: #59659c; }
+.qt-valid { display: block; margin-top: .15rem; font-size: .75rem; font-weight: 600; line-height: 1.35; color: #5f6788; font-variant-numeric: tabular-nums; }
+.qt-valid-bad { color: #b4234f; font-weight: 800; } .qt-valid-warn { color: #8a5a00; font-weight: 800; }
+.qt-acts { display: flex; align-items: center; justify-content: center; gap: .55rem; }
+.qt-act { display: grid; place-items: center; width: 2.6rem; height: 2.5rem; border-radius: .6rem; border: 1px solid; cursor: pointer; transition: filter .15s; }
+.qt-act:hover { filter: brightness(1.08); }
+.qt-eye { color: #6d28d9; background: #ede7fd; border-color: #ccc4e9; }
+.qt-hist { color: #475569; background: #eef2f7; border-color: #cbd5e1; }
+.qt-act-on { outline: 2px solid #6b7fd0; outline-offset: 1px; }
+.qt-pen { color: #1e63d6; background: #dcebff; border-color: #b9d3f5; }
+.qt-del { color: #dc2f45; background: #f7e2e7; border-color: #dac0c4; }
+html.dark .qt-wrap { background: #091f40; border-color: #264266; }
+html.dark .qt-head { background: linear-gradient(180deg, #133e76, #0f3a72 50%, #0c3368); }
+html.dark .qt-th { color: #fff; border-bottom-color: #264266; }
+html.dark .qt-th svg { color: #fff; }
+html.dark .qt-row, html.dark .qt-row:nth-child(even) { background: #061930; border-bottom-color: #1c3350; }
+html.dark .qt-row:hover { background: #0b2242; }
+html.dark .qt-code { color: #f7ffff; background: #183c69; border-color: #608db9; }
+html.dark .qt-name, html.dark .qt-proj { color: #fff; }
+html.dark .qt-tot { color: #fff; background: #193150; border-color: #37506e; }
+html.dark .qt-net { color: #fff; background: #0f3b35; border-color: #2d5956; }
+html.dark .qt-disc { color: #ffd1e0; background: #3f2335; border-color: #60354f; }
+html.dark .qt-st-sent { color: #dbeafe; background: #1a3560; border-color: #2f5590; }
+html.dark .qt-st-ok { color: #d9fbec; background: #133738; border-color: #1f5452; }
+html.dark .qt-st-no { color: #ffd1e0; background: #3f2335; border-color: #60354f; }
+html.dark .qt-date { color: #fff; } html.dark .qt-date svg { color: #dfe7f5; }
+html.dark .qt-valid { color: #c8d3e6; } html.dark .qt-valid-bad { color: #ffb3c0; } html.dark .qt-valid-warn { color: #fbe3c0; }
+html.dark .qt-eye { color: #ddd6ff; background: #24295e; border-color: #6c71b3; }
+html.dark .qt-hist { color: #dbe4f3; background: #1a2840; border-color: #44587a; }
+html.dark .qt-pen { color: #c7e6ff; background: #0d355c; border-color: #5896bd; }
+html.dark .qt-del { color: #ffd9db; background: #561919; border-color: #a35357; }
+/* (ك 11-25) يلحك بشاشة 1366 بلا تحريك يمين ويسار */
+.qt-table { min-width: 0; }
+.qt-th { padding: .65rem .4rem; font-size: .8rem; } .qt-th-in { gap: .3rem; } .qt-th svg { width: 1.05rem; height: 1.05rem; }
+.qt-td { padding: .5rem .4rem; }
+.qt-code { padding: .3rem .55rem; font-size: .8rem; }
+.qt-money { min-width: 6.6rem; padding: .25rem .5rem; font-size: .85rem; }
+.qt-disc { padding: .2rem .55rem; font-size: .75rem; }
+.qt-st { padding: .25rem .8rem; font-size: .75rem; }
+.qt-date { gap: .3rem; font-size: .85rem; } .qt-date svg { width: 1.05rem; height: 1.05rem; }
+.qt-acts { gap: .35rem; }
+.qt-act { width: 2.2rem; height: 2.15rem; } .qt-act svg { width: 1.1rem; height: 1.1rem; }
+.qt-name, .qt-proj { min-width: 6.5rem; }
+html.dark .qt-row, html.dark .qt-row:nth-child(even) { border-bottom-color: #2a3f58; }
+/* (ك 11-25) يلحك حتى بشاشة 1280 */
+.qt-money { min-width: 5.6rem; padding: .25rem .45rem; }
+.qt-name, .qt-proj { min-width: 5rem; }
+.qt-td { padding: .45rem .3rem; } .qt-th { padding: .6rem .3rem; }
+.qt-acts { gap: .3rem; } .qt-act { width: 2rem; height: 2rem; }
+.qt-code { padding: .28rem .45rem; }
+.qt-st { padding: .25rem .65rem; }

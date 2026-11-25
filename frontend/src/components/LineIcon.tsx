@@ -49,6 +49,10 @@ const P: Record<string, string> = {
   trash: 'M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3',
   flag: 'M5 21V4M5 4h14v9H5M9 4v9M13 4v9M5 8.5h14',
   ban: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18ZM5.6 5.6l12.8 12.8',
+  hash: 'M5 9h14M5 15h14M10 4 8 20M16 4l-2 16',
+  sigma: 'M18 5H6l6 7-6 7h12',
+  percent: 'M19 5 5 19M7 9a2 2 0 1 0 0-4 2 2 0 0 0 0 4Zm10 10a2 2 0 1 0 0-4 2 2 0 0 0 0 4Z',
+  db: 'M12 8c4.4 0 8-1.3 8-3s-3.6-3-8-3-8 1.3-8 3 3.6 3 8 3Zm-8-3v14c0 1.7 3.6 3 8 3s8-1.3 8-3V5M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3',
 }
 export function LineIcon({ n, className = 'h-4 w-4' }: { n: string; className?: string }) {
   return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden="true"><path d={P[n]} /></svg>
