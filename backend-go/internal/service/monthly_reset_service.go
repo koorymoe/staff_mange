@@ -51,11 +51,33 @@ func (s *MonthlyResetService) RunIfDue() error {
 	if kerr != nil {
 		log.Printf("monthly reset kpi: %v", kerr)
 	}
-	hours, herr := s.remote.CloseAll("")
-	if herr != nil {
-		log.Printf("monthly reset remote hours: %v", herr)
+	// (دازاي 11-26) ساعات البيت صار إلها موعد رفع خاص من إعدادات الأدمن — RunRemoteCloseIfDue
+	msg := fmt.Sprintf("🔄 التصفير الشهري (%s): رجعت %d نقطة من %d تقييم للموظفين. السجلات كلها باقية.",
+		now.Format("2006-01-02 15:04"), pts, evals)
+	return notifyOwnerAndAdmin(s.notif, "monthly_reset", msg)
+}
+
+// RunRemoteCloseIfDue (دازاي 11-26) يرفع ساعات البيت بموعد الأدمن: الفترة الي خلصت تنسكّر
+// لحد آخر يوم بيها بس — الي اشتغل بعدها (بالفترة الجديدة) يبقى مفتوح.
+func (s *MonthlyResetService) RunRemoteCloseIfDue() error {
+	now := time.Now().In(debriefLoc)
+	c := s.remote.Config()
+	cur := repository.PeriodOf(now, c.PeriodStartDay)
+	m, _ := time.Parse("2006-01", cur)
+	prev := m.AddDate(0, -1, 0).Format("2006-01")
+	if now.Before(repository.CloseMoment(prev, c, debriefLoc)) {
+		return nil
 	}
-	msg := fmt.Sprintf("🔄 التصفير الشهري (%s): رجعت %d نقطة من %d تقييم للموظفين، وتصفّرت ساعات البيت (%d تسجيل). السجلات كلها باقية.",
-		now.Format("2006-01-02 15:04"), pts, evals, hours)
+	ok, err := s.aiRepo.ClaimDailyMarker("REMOTE_CLOSE", prev+"-01")
+	if err != nil || !ok {
+		return err
+	}
+	from, to := repository.PeriodRange(prev, c.PeriodStartDay)
+	n, err := s.remote.CloseUpTo(to, "")
+	if err != nil {
+		return err
+	}
+	msg := fmt.Sprintf("🏠 انرفعت ساعات البيت لفترة %s (من %s إلى %s): %d تسجيل. الفترة الجديدة بدت من %s.",
+		prev, from.Format("2006-01-02"), to.Format("2006-01-02"), n, to.AddDate(0, 0, 1).Format("2006-01-02"))
 	return notifyOwnerAndAdmin(s.notif, "monthly_reset", msg)
 }

@@ -1057,28 +1057,17 @@ export default function Layout() {
                 🔐 النسخ الاحتياطية
               </NavLink>
             )}
-            {employee.actualRole === 'OWNER' && (
+            {(employee.actualRole === 'OWNER' || employee.actualRole === 'ADMIN') && (
               <NavLink
-                to="/owner-money-split"
-                className={({ isActive }) =>
-                  `mt-1 flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors ${
-                    isActive ? 'bg-white/10 text-white' : 'text-white/60 hover:bg-white/5 hover:text-white'
+                to="/owner-settings"
+                className={() => {
+                  const on = ['/owner-settings', '/owner-money-audit', '/owner-money-split', '/owner-costs', '/service-invoice-options'].some((x) => location.pathname.startsWith(x))
+                  return `mt-1 flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors ${
+                    on ? 'bg-white/10 text-white' : 'text-white/60 hover:bg-white/5 hover:text-white'
                   }`
-                }
+                }}
               >
-                💰 توزيع الفلوس
-              </NavLink>
-            )}
-            {employee.actualRole === 'OWNER' && (
-              <NavLink
-                to="/owner-costs"
-                className={({ isActive }) =>
-                  `mt-1 flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors ${
-                    isActive ? 'bg-white/10 text-white' : 'text-white/60 hover:bg-white/5 hover:text-white'
-                  }`
-                }
-              >
-                💼 تكاليف الشركة والأهداف
+                ⚙️ الإعدادات (الفلوس والحسابات)
               </NavLink>
             )}
             {employee.actualRole === 'OWNER' && (

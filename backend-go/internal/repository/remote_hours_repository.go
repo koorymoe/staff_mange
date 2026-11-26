@@ -43,19 +43,21 @@ const remoteSelect = `SELECT r.id, r."employeeId", e.name AS "employeeName", r."
 
 // List سجلات شهر (month = YYYY-MM)؛ employeeID فارغ = الكل.
 func (r *RemoteHoursRepository) List(employeeID, month string) ([]RemoteEntry, error) {
+	from, to := r.rangeOf(month)
 	rows := []RemoteEntry{}
 	err := r.db.Select(&rows, remoteSelect+`
-		WHERE to_char(r."workDate", 'YYYY-MM') = $1 AND ($2 = '' OR r."employeeId" = $2)
-		ORDER BY e.name, r."workDate", r."createdAt"`, month, employeeID)
+		WHERE r."workDate" BETWEEN $1::date AND $3::date AND ($2 = '' OR r."employeeId" = $2)
+		ORDER BY e.name, r."workDate", r."createdAt"`, from, employeeID, to)
 	return rows, err
 }
 
 func (r *RemoteHoursRepository) Summary(month string) ([]RemoteSummary, error) {
+	from, to := r.rangeOf(month)
 	rows := []RemoteSummary{}
 	err := r.db.Select(&rows, `SELECT r."employeeId", e.name, COUNT(DISTINCT r."workDate") AS days, SUM(r.seconds)::int AS seconds
 		FROM "RemoteWorkEntry" r JOIN "Employee" e ON e.id = r."employeeId"
-		WHERE to_char(r."workDate", 'YYYY-MM') = $1
-		GROUP BY r."employeeId", e.name ORDER BY e.name`, month)
+		WHERE r."workDate" BETWEEN $1::date AND $2::date
+		GROUP BY r."employeeId", e.name ORDER BY e.name`, from, to)
 	return rows, err
 }
 
@@ -239,7 +241,7 @@ type RemoteMonthTotal struct {
 // Months كل شهر بيه دوام من البيت (الأحدث أول).
 func (r *RemoteHoursRepository) Months() ([]RemoteMonthTotal, error) {
 	rows := []RemoteMonthTotal{}
-	err := r.db.Select(&rows, `SELECT to_char("workDate", 'YYYY-MM') AS month, COUNT(DISTINCT "employeeId")::int AS employees,
+	err := r.db.Select(&rows, `SELECT `+periodSQL(`"workDate"`, r.Config().PeriodStartDay)+` AS month, COUNT(DISTINCT "employeeId")::int AS employees,
 		COUNT(DISTINCT ("employeeId", "workDate"))::int AS days, SUM(seconds)::int AS seconds
 		FROM "RemoteWorkEntry" GROUP BY 1 ORDER BY 1 DESC LIMIT 36`)
 	return rows, err
@@ -256,12 +258,13 @@ type RemoteMonthRow struct {
 
 // MonthDetail كل موظف بالشهر ويا المطلوب وسعر الساعة (الحالي).
 func (r *RemoteHoursRepository) MonthDetail(month string) ([]RemoteMonthRow, error) {
+	from, to := r.rangeOf(month)
 	rows := []RemoteMonthRow{}
 	err := r.db.Select(&rows, `SELECT r."employeeId", e.name, COUNT(DISTINCT r."workDate")::int AS days, SUM(r.seconds)::int AS seconds,
 		p."targetHours", p."hourlyRateIQD"::float8 AS "hourlyRateIQD"
 		FROM "RemoteWorkEntry" r JOIN "Employee" e ON e.id = r."employeeId" LEFT JOIN "RemoteHoursPlan" p ON p."employeeId" = r."employeeId"
-		WHERE to_char(r."workDate", 'YYYY-MM') = $1
-		GROUP BY r."employeeId", e.name, p."targetHours", p."hourlyRateIQD" ORDER BY seconds DESC`, month)
+		WHERE r."workDate" BETWEEN $1::date AND $2::date
+		GROUP BY r."employeeId", e.name, p."targetHours", p."hourlyRateIQD" ORDER BY seconds DESC`, from, to)
 	return rows, err
 }
 
@@ -314,4 +317,10 @@ func (r *RemoteHoursRepository) AgentKeyUsed(employeeID, key string) bool {
 	errlog.Err(r.db.Get(&ok, `SELECT EXISTS (SELECT 1 FROM "RemoteWorkEntry" WHERE "employeeId" = $1 AND source = 'AGENT' AND starts_with(note, $2))`,
 		employeeID, agentNotePrefix(key)))
 	return ok
+}
+
+// rangeOf حدود الفترة كنص تاريخ حسب إعداد الأدمن.
+func (r *RemoteHoursRepository) rangeOf(month string) (string, string) {
+	a, b := PeriodRange(month, r.Config().PeriodStartDay)
+	return a.Format("2006-01-02"), b.Format("2006-01-02")
 }

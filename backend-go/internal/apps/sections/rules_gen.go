@@ -858,6 +858,7 @@ func rules() map[string]map[core.Action]core.Rule {
 		},
 		"owner": {
 			"owner.get_backups":                func(l string) core.Rule { return owner(l) }("يقرا /api/owner/backups (المالك بس)"),
+			"owner.get_money_audit":            func(l string) core.Rule { return owner(l) }("يقرا فحص الأرقام (المالك بس)"),
 			"owner.get_costs":                  func(l string) core.Rule { return owner(l) }("يقرا تكاليف الشركة والأهداف (المالك بس)"),
 			"owner.put_costs_employee":         func(l string) core.Rule { return owner(l) }("يعدّل تكلفة موظف (المالك بس)"),
 			"owner.delete_costs_employee":      func(l string) core.Rule { return owner(l) }("يشيل موظف من التكاليف (المالك بس)"),
@@ -1094,7 +1095,11 @@ func rules() map[string]map[core.Action]core.Rule {
 			"remote_hours.delete_by_id": func(l string) core.Rule {
 				return rolePerm(l, []string{"ADMIN", "OWNER"}, "remote_hours_self", "remote_hours_manage")
 			}("يشيل /api/remote-hours/{id} (دور/صلاحية)"),
-			"remote_hours.get_export":  func(l string) core.Rule { return rolePerm(l, []string{"ADMIN", "OWNER"}, "remote_hours_manage") }("يقرا /api/remote-hours/export (دور/صلاحية)"),
+			"remote_hours.get_export": func(l string) core.Rule { return rolePerm(l, []string{"ADMIN", "OWNER"}, "remote_hours_manage") }("يقرا /api/remote-hours/export (دور/صلاحية)"),
+			"remote_hours.get_config": func(l string) core.Rule {
+				return rolePerm(l, []string{"ADMIN", "OWNER"}, "remote_hours_self", "remote_hours_manage")
+			}("يقرا /api/remote-hours/config — فترة الشهر وموعد الرفع (دور/صلاحية)"),
+			"remote_hours.put_config":  func(l string) core.Rule { return roles(l, "ADMIN", "OWNER") }("يعدّل /api/remote-hours/config (الأدمن والمالك)"),
 			"remote_hours.get_history": func(l string) core.Rule { return strictRoles(l, "OWNER") }("يقرا /api/remote-hours/history (دور (بلا المدير))"),
 			"remote_hours.get_mine": func(l string) core.Rule {
 				return rolePerm(l, []string{"ADMIN", "OWNER"}, "remote_hours_self", "remote_hours_manage")

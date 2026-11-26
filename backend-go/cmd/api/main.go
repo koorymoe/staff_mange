@@ -672,6 +672,9 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 		if err := monthlyResetService.RunIfDue(); err != nil {
 			log.Printf("monthly reset: %v", err)
 		}
+		if err := monthlyResetService.RunRemoteCloseIfDue(); err != nil {
+			log.Printf("remote hours close: %v", err)
+		}
 	})
 	safeguard.Loop("ماتركس يتعلّم", 47*time.Minute, 30*time.Minute, func() {
 		if err := matrixLearningService.RunIfDue(); err != nil {
@@ -1597,6 +1600,8 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 		ok, _ := permissionRepo.HasPermission(middleware.EmployeeIDFromContext(r), "remote_hours_manage")
 		return ok
 	}).ServeHTTP)
+	secs["remote_hours"].Set("GET /api/remote-hours/config", "remote_hours.get_config", remoteHoursHandler.GetConfig)
+	secs["remote_hours"].Set("PUT /api/remote-hours/config", "remote_hours.put_config", remoteHoursHandler.PutConfig)
 	secs["remote_hours"].Set("POST /api/remote-hours/reset", "remote_hours.post_reset", remoteHoursHandler.Reset)
 	// الحذف: للي سجّلها أو للمدير (يتفحص بالهاندلر) — للمسؤول والموظف لنفسه.
 	secs["remote_hours"].Set("DELETE /api/remote-hours/{id}", "remote_hours.delete_by_id", remoteHoursHandler.Delete)
@@ -3299,6 +3304,9 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 		}
 	})
 	staffScoreHandler := handler.NewStaffScoreHandler(matrixScoreService)
+	// 🔎 فحص الأرقام (دازاي 11-26): الفواتير والليدر والمبالغ والصافي والتقييم — للمالك
+	moneyAudit := handler.NewMoneyAuditHandler(service.NewMoneyAuditService(db, matrixScoreService))
+	secs["owner"].Set("GET /api/owner/money-audit", "owner.get_money_audit", moneyAudit.Get)
 	secs["staff_score"].Set("GET /api/staff-score", "staff_score.get_root", staffScoreHandler.Board)
 	// 🏅 رصيد نقاط الشهر — تصاعدي بلا حد (قرار (ع) 10-11)
 	staffPointsHandler := handler.NewStaffPointsHandler(service.NewStaffPointsService(db, matrixScoreService.Repo()))

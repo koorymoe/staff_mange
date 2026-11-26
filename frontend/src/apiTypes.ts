@@ -4131,6 +4131,9 @@ export interface PermissionAuditRow {
 }
 
 export interface RemotePlan { targetHours: number; hourlyRateIQD: number }
+/** (11-26) فترة ساعات البيت: من يوم periodStartDay لليوم الي قبله بالشهر الجاي، وترتفع يوم closeDay الساعة closeHour. */
+export interface RemoteHoursConfig { periodStartDay: number; closeDay: number; closeHour: number }
+export interface RemoteHoursConfigState { config: RemoteHoursConfig; period: string; from: string; to: string; closeAt: string }
 
 /** (ع) 11-04: طلب مرفوع للمدير */
 export interface ManagerRequest {

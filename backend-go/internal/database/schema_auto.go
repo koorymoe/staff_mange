@@ -604,6 +604,25 @@ func autoMigrations() []Migration {
 			ALTER TABLE "SolarInquiry" ADD COLUMN IF NOT EXISTS "answeredAt" timestamp with time zone;
 		`,
 		},
+		{
+			Version: "0534_remote_hours_config",
+			SQL: `
+			CREATE TABLE IF NOT EXISTS "RemoteHoursConfig" (
+	"id" integer DEFAULT 1 NOT NULL,
+	"periodStartDay" integer DEFAULT 26 NOT NULL,
+	"closeDay" integer DEFAULT 25 NOT NULL,
+	"closeHour" integer DEFAULT 23 NOT NULL,
+	"updatedById" text,
+	"updatedAt" timestamp with time zone DEFAULT now() NOT NULL
+);
+			ALTER TABLE "RemoteHoursConfig" ADD CONSTRAINT "RemoteHoursConfig_pkey" PRIMARY KEY (id);
+			ALTER TABLE "RemoteHoursConfig" ADD CONSTRAINT "RemoteHoursConfig_one_row" CHECK ((id = 1));
+			ALTER TABLE "RemoteHoursConfig" ADD CONSTRAINT "RemoteHoursConfig_start_check" CHECK ((("periodStartDay" >= 1) AND ("periodStartDay" <= 28)));
+			ALTER TABLE "RemoteHoursConfig" ADD CONSTRAINT "RemoteHoursConfig_close_check" CHECK ((("closeDay" >= 1) AND ("closeDay" <= 28)));
+			ALTER TABLE "RemoteHoursConfig" ADD CONSTRAINT "RemoteHoursConfig_hour_check" CHECK ((("closeHour" >= 0) AND ("closeHour" <= 23)));
+			ALTER TABLE "RemoteHoursConfig" ADD CONSTRAINT "RemoteHoursConfig_updatedById_fkey" FOREIGN KEY ("updatedById") REFERENCES "Employee"(id) ON DELETE SET NULL;
+		`,
+		},
 		// ‹makemigration› — التحديثات الجديدة تنضاف فوگ هالسطر
 	}
 }
