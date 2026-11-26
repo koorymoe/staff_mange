@@ -40,9 +40,7 @@ const SolarInquiriesPage = lazyRetry(() => import('./pages/SolarInquiriesPage'))
 // مراقبة النسخ الاحتياطية — الصفحة نفسها تتحقق من actualRole === 'OWNER'
 // والمسار بالباك إند يرجّع 404 لأي حساب ثاني.
 const OwnerBackups = lazyRetry(() => import('./pages/OwnerBackups'))
-const OwnerMoneySplitPage = lazyRetry(() => import('./pages/OwnerMoneySplitPage'))
-const ServiceInvoiceOptionsPage = lazyRetry(() => import('./pages/ServiceInvoiceOptionsPage'))
-const OwnerCostsPage = lazyRetry(() => import('./pages/OwnerCostsPage'))
+const OwnerSettingsHub = lazyRetry(() => import('./pages/OwnerSettingsHub'))
 const ReworkPage = lazyRetry(() => import('./pages/ReworkPage'))
 const ToolCustodyPage = lazyRetry(() => import('./pages/ToolCustodyPage'))
 const VouchersPage = lazyRetry(() => import('./pages/VouchersPage'))
@@ -228,9 +226,12 @@ function App() {
           <Route path="quality-follow-ups" element={<QualityDeskPage />} />
           <Route path="owner-security" element={<SecurityDashboardPage />} />
           <Route path="owner-backups" element={<OwnerBackups />} />
-          <Route path="owner-money-split" element={<OwnerMoneySplitPage />} />
-          <Route path="service-invoice-options" element={<ServiceInvoiceOptionsPage />} />
-          <Route path="owner-costs" element={<OwnerCostsPage />} />
+          {/* (11-26) كل إعدادات الفلوس شاشة وحدة بتبويبات — المسارات القديمة نفسها */}
+          <Route path="owner-settings" element={<OwnerSettingsHub />} />
+          <Route path="owner-settings-remote" element={<OwnerSettingsHub />} />
+          <Route path="owner-money-split" element={<OwnerSettingsHub />} />
+          <Route path="service-invoice-options" element={<OwnerSettingsHub />} />
+          <Route path="owner-costs" element={<OwnerSettingsHub />} />
           <Route path="rework" element={<ReworkPage />} />
           <Route path="tool-custody" element={<ToolCustodyPage />} />
           <Route path="vouchers" element={<VouchersPage />} />

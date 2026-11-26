@@ -543,3 +543,7 @@ git push origin origin/avg:refs/heads/prod     # بعد التأكد إنه fast
 - `repository/remote_hours_period.go`: PeriodOf/PeriodRange/CloseMoment/CloseUpTo؛ الفترة تنسمّى بشهر نهايتها (2026-12 = 11-26..12-25). List/Summary/Months/MonthDetail/export صارت بالفترة.
 - التصفير الشهري (27) ما عاد يسكّر ساعات البيت؛ `RunRemoteCloseIfDue` يسكّر لحد آخر يوم بالفترة بس، مرة وحدة (علامة REMOTE_CLOSE).
 - `/api/remote-hours/config` GET (أصحاب ساعات البيت) و PUT (ADMIN/OWNER). الواجهة `RemotePeriodCard`.
+
+
+## 11-26 مكان واحد لإعدادات الفلوس
+- `pages/OwnerSettingsHub.tsx` (TabbedHub): /owner-settings (دليل) و/owner-money-split و/owner-costs و/service-invoice-options و/owner-settings-remote. رابط واحد بالقائمة للمالك بدل رابطين. غير المالك يشوف خيارات الفاتورة بس.
