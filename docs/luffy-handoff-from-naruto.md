@@ -547,3 +547,5 @@ git push origin origin/avg:refs/heads/prod     # بعد التأكد إنه fast
 
 ## 11-26 مكان واحد لإعدادات الفلوس
 - `pages/OwnerSettingsHub.tsx` (TabbedHub): /owner-settings (دليل) و/owner-money-split و/owner-costs و/service-invoice-options و/owner-settings-remote. رابط واحد بالقائمة للمالك بدل رابطين. غير المالك يشوف خيارات الفاتورة بس.
+
+- (11-26 ب) `OwnerSettingsHub` Guide = كتالوج GROUPS لكل شاشات الإدخال اليدوي، مفلتر بـisPathAllowed (المالك يشوف الكل). الرابط بالقائمة للمالك والأدمن.

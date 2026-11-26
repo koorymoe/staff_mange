@@ -1057,7 +1057,7 @@ export default function Layout() {
                 🔐 النسخ الاحتياطية
               </NavLink>
             )}
-            {employee.actualRole === 'OWNER' && (
+            {(employee.actualRole === 'OWNER' || employee.actualRole === 'ADMIN') && (
               <NavLink
                 to="/owner-settings"
                 className={() => {

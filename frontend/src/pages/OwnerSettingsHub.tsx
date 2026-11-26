@@ -1,6 +1,7 @@
 import { Suspense } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useLocation } from 'react-router-dom'
 import { useSession } from '../session'
+import { isPathAllowed } from '../components/navTree'
 import TabbedHub from '../components/TabbedHub'
 import RemotePeriodCard from '../components/RemotePeriodCard'
 import { card } from '../ui/classes'
@@ -45,38 +46,98 @@ const ITEMS: Item[] = [
   },
 ]
 
+// (دازاي 11-26) «كلشي ممكن يصير يدوي سويله كارت» — كل شاشة إدخال يدوي بالنظام هنا،
+// مقسّمة حسب النوع. الكارت يفتح شاشته نفسها بصلاحياتها؛ الي ما يگدر يفتحها ما يشوف كارتها.
+type Card = { to: string; title: string; enter: string; affects: string }
+const GROUPS: { title: string; cards: Card[] }[] = [
+  { title: '💰 الفلوس والأسعار', cards: [
+    { to: '/owner-money-split', title: '💰 توزيع الفلوس', enter: 'نسب تقسيم فلوس الحجز.', affects: 'الفلوس الي دخّلها كل موظف، والترتيب.' },
+    { to: '/owner-costs', title: '💼 الرواتب والتكاليف والأهداف', enter: 'الرواتب والأساسي، المصاريف، التوقف، ربح الشركة.', affects: 'هدف كل موظف وراتبه المتوقع.' },
+    { to: '/service-invoice-options', title: '🧾 خيارات فاتورة الخدمات', enter: 'بنود كل خدمة وسعرها والحد الأدنى.', affects: 'تجريبي — ما مربوط بالفواتير لسه.' },
+    { to: '/network-prices', title: '🌐 أسعار الشبكات', enter: 'سعر كل مادة وشغلة بالشبكات.', affects: 'حساب كلفة الشبكات وعروض الأسعار.' },
+    { to: '/decor-rates', title: '🪚 أسعار الديكور', enter: 'سعر المتر لكل نوع ديكور.', affects: 'حساب كلفة الديكور.' },
+    { to: '/gps-install-costs', title: '🔧 تكاليف شد الـGPS', enter: 'كلفة الشد لكل نوع.', affects: 'حساب ربح أجهزة الـGPS.' },
+    { to: '/products', title: '📦 المنتجات', enter: 'المنتجات وأسعارها.', affects: 'الفواتير والمخزن وعروض الأسعار.' },
+    { to: '/expenses', title: '🧾 المصاريف', enter: 'مصاريف الشركة اليومية.', affects: 'الحسابات والتدقيق.' },
+    { to: '/revolving-fund', title: '💵 الدوار', enter: 'تمويل الدوار وحركاته.', affects: 'رصيد الدوار عند الموظفين.' },
+    { to: '/vouchers', title: '🧾 سندات الصرف', enter: 'سند صرف لكل دفعة.', affects: 'سجل الصرف والحسابات.' },
+  ] },
+  { title: '🚗 السيارات', cards: [
+    { to: '/vehicles', title: '🚙 المركبات', enter: 'السيارات ومعلوماتها وأوراقها ومشاكلها وقطعها.', affects: 'الأسطول والتنبيهات والصيانة.' },
+    { to: '/vehicle-drivers', title: '🪪 السواق وبطاقات البنزين', enter: 'منو يسوق شنو، وبطاقات البنزين.', affects: 'متابعة البنزين والسواق.' },
+    { to: '/car-wash', title: '🧽 غسل السيارات', enter: 'تسجيل الغسل.', affects: 'تقييم نظافة السيارات.' },
+  ] },
+  { title: '🛠️ الخدمات والشغل', cards: [
+    { to: '/services', title: '🛠️ الخدمات', enter: 'الخدمات الي تقدمها الشركة.', affects: 'الحجوزات والفواتير والإحصائيات.' },
+    { to: '/service-managers', title: '👔 مسؤولو الخدمات', enter: 'مسؤول كل خدمة.', affects: 'منو يستلم حجوزات وتنبيهات الخدمة.' },
+    { to: '/project-work-types', title: '🏗️ أنواع الأعمال', enter: 'أنواع أعمال المشاريع.', affects: 'المشاريع وحساب كلفتها.' },
+    { to: '/stage-buckets', title: '⏱️ مراحل المشاريع', enter: 'مراحل المشروع ومددها.', affects: 'متابعة تأخير المشاريع.' },
+    { to: '/maintenance-contracts', title: '🔄 عقود الصيانة', enter: 'عقود الصيانة ومواعيدها.', affects: 'حجوزات الصيانة التلقائية.' },
+    { to: '/store-tools', title: '🧰 أدوات المخزن', enter: 'أدوات المخزن.', affects: 'العهدة والجرد.' },
+    { to: '/suppliers', title: '🏪 الموردون', enter: 'الموردين ومعلوماتهم.', affects: 'المشتريات والأسعار.' },
+  ] },
+  { title: '👥 الموظفين والدوام', cards: [
+    { to: '/employees', title: '👥 الموظفين', enter: 'الموظفين وأدوارهم.', affects: 'كل النظام.' },
+    { to: '/departments', title: '🏢 الأقسام', enter: 'الأقسام.', affects: 'الهيكل والتقارير.' },
+    { to: '/org', title: '🏛️ الهيكل التنظيمي', enter: 'الإدارات والوحدات ومدرائها.', affects: 'منو يشوف شنو، والتقييم.' },
+    { to: '/work-schedule', title: '🕘 جدول الدوام', enter: 'أوقات دوام كل موظف.', affects: 'الحضور والتأخير.' },
+    { to: '/kpi', title: '⭐ معايير التقييم', enter: 'معايير التقييم ونقاطها.', affects: 'تقييم الموظفين.' },
+    { to: '/owner-settings-remote', title: '🏠 فترة ساعات البيت', enter: 'يوم بداية الشهر وموعد الرفع.', affects: 'حساب ساعات البيت.' },
+    { to: '/core-matrix', title: '🏴‍☠️ الصلاحيات', enter: 'صلاحيات كل دور وموظف.', affects: 'منو يفتح شنو.' },
+  ] },
+  { title: '📋 ثانية', cards: [
+    { to: '/vip-customers', title: '⭐ الشخصيات المهمة', enter: 'الزبائن المهمين.', affects: 'تنبيهات وأولوية حجوزاتهم.' },
+    { to: '/voice-terms', title: '👂 قاموس الأذن', enter: 'كلمات ومصطلحات الشركة.', affects: 'دقة تفريغ الصوت.' },
+    { to: '/privacy-policy', title: '🔒 سياسة الخصوصية', enter: 'بنود السياسة.', affects: 'موافقة الموظفين.' },
+  ] },
+]
+
 function Guide() {
+  const { employee, permissions, gpsServiceId } = useSession()
+  const owner = employee?.actualRole === 'OWNER'
+  const ctx = { employee, permissions, gpsServiceId }
+  const ownerOnly = new Set(['/owner-money-split', '/owner-costs', '/owner-settings-remote'])
+  const ok = (to: string) => owner || (!ownerOnly.has(to) && isPathAllowed(to, ctx) !== false)
   return (
-    <div className="space-y-3">
+    <div className="space-y-4">
       <div className={card}>
-        <h1 className="text-xl font-extrabold text-[#0f2040]">⚙️ الإعدادات — دليل سريع</h1>
-        <p className="mt-1 text-sm text-slate-500">كل شي يندخل بيدك ويأثر على الفلوس هنا. اختار التبويب من فوگ، وهاي شنو يسوي كل واحد:</p>
+        <h1 className="text-xl font-extrabold text-[#0f2040]">⚙️ الإعدادات — كل شي يندخل باليد</h1>
+        <p className="mt-1 text-sm text-slate-500">كل كارت يكلك شنو تدخّل بيه وعلى شنو يأثر. اضغط عليه يفتح شاشته.</p>
       </div>
-      <div className="grid gap-3 md:grid-cols-2">
-        {ITEMS.map((x) => (
-          <Link key={x.to} to={x.to} className={`${card} block transition hover:ring-2 hover:ring-[#0f2040]/30`}>
-            <h2 className="text-lg font-extrabold text-[#0f2040]">{x.title}</h2>
-            <dl className="mt-2 space-y-1.5 text-sm">
-              <div><dt className="inline font-bold text-slate-700">شنو تدخّل: </dt><dd className="inline text-slate-600">{x.enter}</dd></div>
-              <div><dt className="inline font-bold text-slate-700">يأثر على: </dt><dd className="inline text-slate-600">{x.affects}</dd></div>
-              <div><dt className="inline font-bold text-slate-700">شوكت: </dt><dd className="inline text-slate-600">{x.when}</dd></div>
-            </dl>
-          </Link>
-        ))}
-      </div>
+      {GROUPS.map((g) => {
+        const cards = g.cards.filter((c) => ok(c.to))
+        if (!cards.length) return null
+        return (
+          <section key={g.title}>
+            <h2 className="mb-2 text-lg font-extrabold text-[#0f2040]">{g.title}</h2>
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {cards.map((x) => (
+                <Link key={x.to} to={x.to} className={`${card} block transition hover:ring-2 hover:ring-[#0f2040]/30`}>
+                  <h3 className="font-extrabold text-[#0f2040]">{x.title}</h3>
+                  <p className="mt-1 text-sm"><b className="text-slate-700">تدخّل: </b><span className="text-slate-600">{x.enter}</span></p>
+                  <p className="text-sm"><b className="text-slate-700">يأثر على: </b><span className="text-slate-600">{x.affects}</span></p>
+                </Link>
+              ))}
+            </div>
+          </section>
+        )
+      })}
     </div>
   )
 }
 
 export default function OwnerSettingsHub() {
   const { employee } = useSession()
+  const location = useLocation()
   // الأدمن يوصل لخيارات الفاتورة بس — باقي التبويبات للمالك
   if (employee?.actualRole !== 'OWNER') {
-    return <Suspense fallback={null}><ServiceInvoiceOptionsPage /></Suspense>
+    return location.pathname.startsWith('/service-invoice-options')
+      ? <Suspense fallback={null}><ServiceInvoiceOptionsPage /></Suspense>
+      : <Guide />
   }
   return (
     <TabbedHub tabs={[
-      { path: '/owner-settings', label: '📖 الدليل', hint: 'شنو كل إعداد ووين يروح', render: () => <Guide /> },
+      { path: '/owner-settings', label: '🗂️ كل الإعدادات', hint: 'كل شي يندخل باليد ووين يأثر', render: () => <Guide /> },
       ...ITEMS.map((x) => ({
         path: x.to,
         label: x.title,
