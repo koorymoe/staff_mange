@@ -9,6 +9,8 @@ import { roleLabel as arabicRole } from '../roleLabels'
 import { tracksFor } from '../rankingTracks'
 import PerformanceReviewPage from './PerformanceReviewPage'
 import { swallow } from '../utils/swallow'
+import { LineIcon } from '../components/LineIcon'
+import './MyRanking.css'
 
 const levels = [
   { level: 1, label: 'متدرب', min: 0 },
@@ -62,19 +64,29 @@ const CUSTOM_BOARDS: Record<string, { cols: BoardCol[]; explain: [string, string
 function MatrixPct({ v, s, who, className }: { v: number | null | undefined; s?: StaffScoreDetail | null; who?: string; className?: string }) {
   const r = (n: number) => Math.round(n)
   let formula: ReactNode = <>ماكو نقاط ماتركس ولا تقييم مسؤولين بالشهر، فماكو نسبة.</>
-  if (v != null && s) {
+  // (ك) 11-26: إذا السيرفر رجّع بنود الحسبة (الفني والأدوار الجديدة) نشرح منها هي — مو من حسبة ٦٠/٤٠ القديمة
+  if (v != null && s?.techParts?.length) {
+    const extras: string[] = []
+    if (s.extraBonus) extras.push(`+ ${r(s.extraBonus)} بونص شغل برّا دورك`)
+    if (s.discipline?.score != null) extras.push(`ويا الانضباط بالدوام ${r(s.discipline.score)}% (يدخل بـ١٥٪)`)
+    if (s.revenueAdj) extras.push(`وتغطية الراتب ${s.revenueAdj > 0 ? '+' : ''}${r(s.revenueAdj)}`)
+    formula = <>{s.techParts.map((p, i) => <span key={p.key}>{i > 0 && ' + '}{p.label} {r(p.pct)}% × {r(p.weight)}%</span>)}
+      {extras.length > 0 && <> {extras.join(' ')}</>} = {r(v)}%.</>
+  } else if (v != null && s) {
     const m = s.matrixPct, h = s.humanPct
     formula = m != null && h != null
       ? <>نسبة ماتركس {r(m)}% (انحسبلك {r(s.earned / 2)} من {r(s.max / 2)}) × ٦٠٪ + تقييم مسؤوليك {r(h)}% (معدل {s.humanAvg?.toFixed(1)} من ٥ × ٢٠، على {s.humanCount} تقييم) × ٤٠٪ = {r(v)}%.</>
       : m != null
         ? <>ماكو تقييم من مسؤوليك بعد، فالنسبة = نسبة ماتركس وحدها: {r(s.earned / 2)} من {r(s.max / 2)} = {r(v)}%.</>
-        : <>ماكو نقاط ماتركس بعد، فالنسبة = تقييم مسؤوليك وحده: معدل {s.humanAvg?.toFixed(1)} من ٥ × ٢٠ = {r(v)}%.</>
+        : h != null
+          ? <>ماكو نقاط ماتركس بعد، فالنسبة = تقييم مسؤوليك وحده: معدل {s.humanAvg?.toFixed(1)} من ٥ × ٢٠ = {r(v)}%.</>
+          : <>التقييم = {r(v)}% — محسوب من شغلك بالشهر.</>
   } else if (v != null) {
     formula = <>{who ? `تقييم ${who}` : 'التقييم'} = نسبة نقاط ماتركس × ٦٠٪ + تقييم المسؤولين (المعدل من ٥ × ٢٠) × ٤٠٪ = {r(v)}%. إذا واحد منهن ماكو، تنحسب من الثاني وحده.</>
   }
   return (
     <PctWhy title={who ? `تقييم ماتركس — ${who}` : 'تقييم ماتركس'} value={v == null ? null : r(v)} className={className} formula={formula}
-      meaning={<>تقييم الشغل بالشهر: نقاط ماتركس (الحضور، الجرد، الورق، المهام، الحجوزات…) ويا تقييم المسؤولين. كل ما تعلى أحسن، وكل تقصير ينسجل يخسّر نقاط.</>}
+      meaning={<>تقييم الشغل <b>بالشهر كله</b> (حتى لو مختار «أسبوعي»): نقاط ماتركس (الحضور، الجرد، الورق، المهام، الحجوزات…) ويا تقييم المسؤولين. كل ما تعلى أحسن، وكل تقصير ينسجل يخسّر نقاط.</>}
       source={<>نقاط ماتركس المسجلة بالشهر (بلا الملغية) وتقييمات المسؤولين المسموحين لكل مجموعة.</>}>
       {s && s.topLosses.length > 0 && <ul className="space-y-1 text-xs">{s.topLosses.slice(0, 5).map((l) => <li key={l.rule}>• {l.title}: {l.count} مرة</li>)}</ul>}
     </PctWhy>
@@ -101,23 +113,26 @@ function HelpDot({ lines }: { lines: string[] }) {
 function MatrixMine({ score }: { score: StaffScoreDetail | null }) {
   if (!score) return null
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+    <div className="mr-card p-5">
       <div className="flex items-center justify-between">
-        <h3 className="text-sm font-extrabold text-[#0f2040]">🤖 ماتركس يقيّمك</h3>
-        <span className="text-2xl font-black text-sky-700"><MatrixPct v={score.final} s={score} /></span>
+        <h3 className="mr-h flex items-center gap-2 text-sm font-extrabold"><LineIcon n="cal" className="h-5 w-5" /> ماتركس يقيّمك</h3>
+        <span className="mr-big mr-bigbox text-3xl font-black"><MatrixPct v={score.final} s={score} /></span>
       </div>
-      <p className="mt-1 text-[11px] text-slate-500">
+      <p className="mr-sub mt-1 text-[11px]">
         {score.month !== todayBaghdad().slice(0, 7) && <b className="text-amber-700">تقييم الشهر الماضي ({score.month}) — هالشهر بعده بأوله · </b>}
         {score.max > 0 ? `انحسبلك ${Math.round(score.earned / 2)} من ${Math.round(score.max / 2)} بشغلك` : 'بعد ماكو نقاط هالشهر — تنحسبلك من تقرير إنجازك اليومي وحجوزاتك ومهامك وتقييم مسؤوليك'}
         {score.humanCount > 0 && ` · ${score.humanCount} تقييم من مسؤوليك`}
       </p>
       {score.topLosses.length > 0 && (
         <div className="mt-3 space-y-2">
-          <p className="text-[11px] font-bold text-slate-600">شنو نزّل تقييمك:</p>
-          {score.topLosses.slice(0, 3).map((l) => (
-            <div key={l.rule} className="rounded-xl bg-red-50/60 px-3 py-2 text-[11px]">
-              <p className="font-bold text-red-800">{l.title} ({l.count} مرة)</p>
-              {l.advice && <p className="mt-0.5 text-slate-600">💡 {l.advice}</p>}
+          <p className="mr-h text-[11px] font-bold">شنو نزّل تقييمك:</p>
+          {score.topLosses.slice(0, 3).map((l, i) => (
+            <div key={l.rule} className={`mr-loss l${i} text-[11px]`}>
+              <span className="mr-tile"><LineIcon n={['cal', 'gear', 'layers'][i]} className="h-4 w-4" /></span>
+              <div className="min-w-0">
+                <b className="block font-bold">{l.title} ({l.count} مرة)</b>
+                {l.advice && <span className="mt-0.5 block">{l.advice}</span>}
+              </div>
             </div>
           ))}
         </div>
@@ -290,16 +305,16 @@ export default function MyRanking() {
   const top3 = list.slice(0, 3)
 
   return (
-    <div dir="rtl" className="space-y-5">
+    <div dir="rtl" className="mr-page space-y-5">
       {/* تصميم (ع) 10-13: العنوان والتبويبات بشريط فاتح وحد */}
-      <div className="space-y-4 rounded-2xl bg-gradient-to-l from-sky-50 to-indigo-50 p-5">
+      <div className="mr-hero space-y-4">
       {/* ═══ العنوان + التبديل ═══ */}
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="flex items-center gap-3">
-          <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-amber-50 text-xl">🏆</span>
+          <span className="mr-logo"><LineIcon n="trophy" className="h-6 w-6" /></span>
           <div>
-            <h2 className="text-2xl font-black text-[#0f2040]">التقييم</h2>
-            <p className="text-xs text-slate-500">
+            <h2 className="mr-title text-2xl font-black">التقييم</h2>
+            <p className="mr-sub text-xs">
               {effectiveView === 'mine' ? `تقييمي وتصنيفي — مقارنة بين الي يشتغلون ${roleLabel}`
                 : effectiveView === 'team' ? 'قيّم فريقك عن كل حجز'
                 : effectiveView === 'kpi' ? 'خصم وإضافة نقاط الكي بي اي على بنودها الثمانية'
@@ -307,27 +322,23 @@ export default function MyRanking() {
             </p>
           </div>
         </div>
-        {effectiveView === 'mine' && (
-        <div className="flex gap-2">
-          {(['monthly', 'weekly'] as const).map((p) => (
+        <div className="relative flex gap-2">
+          {effectiveView === 'mine' && (['monthly', 'weekly'] as const).map((p) => (
             <button
               key={p}
               onClick={() => setPeriod(p)}
-              className={`rounded-lg px-4 py-2 text-xs font-bold transition ${
-                period === p ? 'bg-[#2c5aad] text-white shadow-md' : 'border border-slate-300 bg-white text-slate-600 hover:bg-slate-50'
-              }`}
+              className={`mr-btn ${period === p ? 'on' : ''}`}
             >
-              📅 {p === 'weekly' ? 'أسبوعي' : 'شهري'}
+              <LineIcon n="cal" /> {p === 'weekly' ? 'أسبوعي' : 'شهري'}
             </button>
           ))}
         </div>
-        )}
       </div>
 
       {/* ═══ خيارات من فوگ ═══
           نفس نمط «مهامي» و«الجرد»: بند واحد بالقائمة والاختيار هنا. */}
       {(canReviewTeam || canSeeEvaluators || canKpi) && (
-        <div className="grid grid-cols-2 gap-1.5 rounded-2xl border border-slate-200 bg-white p-1.5 shadow-[0_2px_12px_rgba(15,32,64,0.05)] sm:inline-flex sm:gap-2">
+        <div className="mr-tabs">
           {([
             ...(isTopAdmin ? [] : [{ k: 'mine' as const, label: '🏆 تقييمي وتصنيفي' }]),
             ...(canReviewTeam ? [{ k: 'team' as const, label: '👥 تقييم الموظفين' }] : []),
@@ -337,11 +348,7 @@ export default function MyRanking() {
             <button
               key={o.k}
               onClick={() => setView(o.k)}
-              className={`rounded-xl px-3 py-2 text-[11px] font-extrabold transition sm:px-5 sm:text-xs ${
-                effectiveView === o.k
-                  ? 'bg-gradient-to-l from-brand-500 to-brand-800 text-white shadow-md'
-                  : 'text-slate-600 hover:bg-slate-50'
-              }`}
+              className={`mr-btn ${effectiveView === o.k ? 'on' : ''}`}
             >
               {o.label}
             </button>
@@ -385,14 +392,14 @@ export default function MyRanking() {
               <>
                 <div className="grid grid-cols-2 gap-3 lg:grid-cols-2">
                   <RankCard
-                    icon="🗂️" label="حجوزات راجعتها"
+                    icon="cal" label="حجوزات راجعتها"
                     value={myEvalEntry ? String(myEvalEntry.points) : '—'}
                     tone="sky"
                     delta={myEvalEntry?.pointsDelta ?? 0}
                     deltaSuffix="مراجعة"
                   />
                   <RankCard
-                    icon="🏆" label="ترتيبي الحالي"
+                    icon="trophy" label="ترتيبي الحالي"
                     value={myEvalIndex >= 0 ? `#${myEvalIndex + 1}` : '—'}
                     tone="emerald"
                     delta={myEvalEntry?.rankDelta ?? 0}
@@ -479,18 +486,18 @@ export default function MyRanking() {
         </div>
       )}
 
-      <p className="rounded-lg bg-slate-50 px-3 py-2 text-[11px] text-slate-500">
+      <p className="mr-note"><LineIcon n="info" className="h-4 w-4 shrink-0" /><span>
         {activeTrack?.strictRoles?.length
           ? <>ⓘ الترتيب بين <b>{activeTrack.label}</b> فقط (عائلة أدوار محدَّدة) — بلا خلط مع أدوار ثانية عندها نفس الصلاحية.</>
           : <>ⓘ الترتيب بين الي يشتغلون <b>نفس الشغل</b> ({roleLabel}) — مو حسب مسمّى الدور.</>}
         {' '}آخر {periodDays} يوم، والمقارنة مع {periodLabel}.
         {myTracks.length > 1 && ` وإنت تشتغل ${myTracks.length} شغلات، فعندك ${myTracks.length} تصنيفات.`}
-      </p>
+      </span></p>
 
       {/* ═══ البطاقات الأربع ═══ */}
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <RankCard
-          icon="🏆" label="ترتيبي الحالي"
+          icon="trophy" label="ترتيبي الحالي"
           value={myRank ? `#${myRank}` : '—'}
           tone="emerald"
           delta={myEntry?.rankDelta ?? 0}
@@ -499,23 +506,25 @@ export default function MyRanking() {
         />
         {isSales ? (<>
         {custom!.cols.slice(0, 2).map((c, i) => (
-          <RankCard key={c.label} icon={c.icon} label={c.label} value={myEntry ? String(c.get(myEntry)) : '—'} tone={i === 0 ? 'sky' : 'amber'} />
+          <RankCard key={c.label} icon={i === 0 ? 'cal' : 'clip'} label={c.label} value={myEntry ? String(c.get(myEntry)) : '—'} tone={i === 0 ? 'sky' : 'amber'} />
         ))}
-        <RankCard icon="🕐" label="أيام الحضور" value={myEntry ? String(myEntry.attendedDays) : '—'} tone="violet" />
+        <RankCard icon="clock" label="أيام الحضور" value={myEntry ? String(myEntry.attendedDays) : '—'} tone="violet" />
         </>) : (<>
         <RankCard
-          icon="🤖" label="تقييم ماتركس"
+          icon="briefcase" label="تقييم ماتركس"
+          note={period === 'weekly' ? 'للشهر كله' : undefined}
           value={<MatrixPct v={myScore?.final ?? (employee ? peers.get(employee.id) : null)} s={myScore} />}
           tone="amber"
+          bar={(myScore?.final ?? (employee ? peers.get(employee.id) : null)) ?? undefined}
         />
         <RankCard
-          icon="🗂️" label="حجوزات منجزة"
+          icon="cal" label="حجوزات منجزة"
           value={myEntry ? String(myEntry.completedBookings) : '—'}
           tone="sky"
           note={myEntry && myEntry.assignedBookings > 0 ? `من ${myEntry.assignedBookings} مكلّف بيها` : undefined}
         />
         <RankCard
-          icon="📈" label="معدل الإنجاز"
+          icon="trendUp" label="معدل الإنجاز"
           value={completionWhy}
           tone="violet"
           note={completionRate === null ? 'ماكو حجوزات بالفترة' : undefined}
@@ -526,14 +535,15 @@ export default function MyRanking() {
 
       {/* ═══ أعلى ٣ ═══ */}
       {top3.length === 0 && (
-        <p className="rounded-2xl border border-dashed border-slate-200 bg-white px-4 py-6 text-center text-xs text-slate-400">
+        <p className="mr-card mr-sub px-4 py-6 text-center text-xs">
           ماكو تصنيف بهذي الفترة بعد — التصنيف يبني نفسه من الحجوزات المنجزة والتقييمات.
         </p>
       )}
       {top3.length > 0 && (
-        <div className="rounded-2xl border border-amber-200 bg-amber-50/40 p-5">
-          <h3 className="mb-4 text-sm font-extrabold text-[#0f2040]">
+        <div className="mr-podium p-5">
+          <h3 className="mr-h mb-4 text-sm font-extrabold">
             👑 أعلى ٣ {roleLabel} {period === 'weekly' ? 'هذا الأسبوع' : 'هذا الشهر'}
+            {period === 'weekly' && !custom && <span className="mr-sub mr-2 text-[11px] font-bold">(النسبة لتقييم الشهر كله)</span>}
           </h3>
           {/* ═══ المنصّة ═══
               ⚠️ بالموبايل تنقلب **صفوف** مو ثلاث بطاقات جنب بعض.
@@ -546,25 +556,22 @@ export default function MyRanking() {
             {[top3[2], top3[0], top3[1]].map((e, slot) => {
               if (!e) return <div key={slot} className="hidden sm:block sm:flex-1" />
               const place = e === top3[0] ? 1 : e === top3[1] ? 2 : 3
-              const medal = place === 1 ? '🥇' : place === 2 ? '🥈' : '🥉'
               const placeLabel = place === 1 ? 'الأول' : place === 2 ? 'الثاني' : 'الثالث'
               const isMe = e.employeeId === employee?.id
               const orderCls = place === 1 ? 'order-1' : place === 2 ? 'order-2' : 'order-3'
               return (
                 <div
                   key={e.employeeId}
-                  className={`${orderCls} flex items-center gap-2.5 rounded-2xl border-2 bg-white p-3 sm:order-none sm:block sm:flex-1 sm:p-4 sm:text-center ${
-                    place === 1 ? 'border-amber-300 shadow-lg' : 'border-slate-200'
-                  } ${isMe ? 'ring-2 ring-sky-300' : ''}`}
+                  className={`${orderCls} mr-pod ${place === 1 ? 'first' : ''} flex items-center gap-2.5 p-3 sm:order-none sm:block sm:flex-1 sm:p-3 sm:text-center ${isMe ? 'ring-2 ring-sky-300' : ''}`}
                 >
-                  <div className="shrink-0 text-2xl sm:mb-1">{medal}</div>
+                  <div className="shrink-0 sm:mb-1"><span className={`mr-medal m${place}`}>{place}</span></div>
                   {/* الاسم بلا قصّ: يلتف بسطرين إذا احتاج */}
-                  <p className="min-w-0 flex-1 break-words text-right text-xs font-bold leading-tight text-slate-700 sm:text-center">
+                  <p className="mr-h min-w-0 flex-1 break-words text-right text-xs font-bold leading-tight sm:text-center">
                     {e.employeeName}
                     {isMe && <span className="mr-1 text-[10px] text-sky-600">(أنت)</span>}
                   </p>
                   <div className="shrink-0 text-left sm:text-center">
-                    <p className={`text-2xl font-black leading-none ${place === 1 ? 'text-amber-600' : 'text-slate-600'} sm:mt-1`}>
+                    <p className="mr-h text-2xl font-black leading-none sm:mt-1">
                       {custom ? custom.cols[0].get(e) : <MatrixPct v={peers.get(e.employeeId)} who={e.employeeName} />}
                     </p>
                     {!isSales && e.pointsDelta !== 0 && (
@@ -573,9 +580,7 @@ export default function MyRanking() {
                       </p>
                     )}
                   </div>
-                  <span className={`shrink-0 rounded-md px-2 py-0.5 text-[10px] font-bold sm:mt-2 sm:inline-block ${
-                    place === 1 ? 'bg-amber-100 text-amber-800' : 'bg-slate-100 text-slate-600'
-                  }`}>
+                  <span className={`mr-place ${place === 1 ? 'first' : ''} shrink-0 sm:mt-2`}>
                     {placeLabel}
                   </span>
                 </div>
@@ -585,43 +590,12 @@ export default function MyRanking() {
         </div>
       )}
 
-      {isTechnician && (
-        <div className="mt-6 grid grid-cols-1 gap-6 sm:grid-cols-2">
-          <div className="rounded-xl bg-gradient-to-l from-brand-500 to-brand-800 p-6 text-white shadow-lg shadow-brand-900/20">
-            <p className="text-sm text-brand-100">المستوى (حسب المهارات المعتمدة)</p>
-            <p className="mt-1 text-3xl font-extrabold">
-              {currentLevel.level} - {currentLevel.label}
-            </p>
-            <p className="mt-2 text-sm text-brand-100">
-              {skillCount} مهارة معتمدة
-              {nextLevel
-                ? ` - يحتاج ${nextLevel.min - skillCount} مهارة إضافية للترقي إلى "${nextLevel.label}"`
-                : ' - وصلت لأعلى مستوى!'}
-            </p>
-          </div>
-
-          <div className="rounded-xl border border-white bg-white p-6 shadow-[0_4px_20px_rgba(15,32,64,0.06)]">
-            <p className="text-sm text-slate-500">الرانك</p>
-            <p className="mt-1 text-3xl font-extrabold text-emerald-700">{rank}</p>
-            <p className="mt-2 text-sm text-slate-500">
-              {completedCount} حجز منجز - يحتاج {remainingForNextRank} حجز إضافي للصعود للرانك التالي
-            </p>
-            {myPosition >= 0 && (
-              <p className="mt-2 text-sm text-slate-500">
-                ترتيبك بين الفنيين: <span className="font-bold text-brand-700">#{myPosition + 1}</span> من{' '}
-                {sortedTechs.length}
-              </p>
-            )}
-          </div>
-        </div>
-      )}
-
       {/* ═══ الجدول + شرح النقاط ═══ */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
         {/* الترتيب الكامل */}
-        <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm lg:col-span-2">
-          <div className="border-b border-slate-100 px-5 py-4">
-            <h3 className="flex items-center gap-2 text-sm font-extrabold text-[#0f2040]">👥 ترتيب {roleLabel}
+        <div className="mr-card overflow-hidden lg:col-span-2">
+          <div className="px-5 py-4">
+            <h3 className="mr-h flex items-center gap-2 text-sm font-extrabold"><LineIcon n="users" className="h-5 w-5" /> ترتيب {roleLabel}
               <HelpDot lines={custom ? custom.explain.map(([t, d]) => `${t}: ${d.split(' — ')[0]}`) : [
                 '🤖 تقييم ماتركس: يقيّم شغلك تلقائياً — شنو سوّيت بوقته، وشنو تركت، والأخطاء.',
                 '🗂️ الحجوزات المنجزة: الي انكلّفت بيها وخلصت.',
@@ -630,58 +604,53 @@ export default function MyRanking() {
               ]} />
             </h3>
           </div>
-          <div className="overflow-x-auto">
-            <table className="w-full text-right text-xs">
-              <thead className="bg-slate-50 text-slate-600">
+          <div className="overflow-x-auto px-3 pb-3">
+            <table className="mr-table w-full text-right text-xs">
+              <thead className="mr-thead">
                 <tr>
-                  <th className="px-4 py-2.5 font-bold">#</th>
+                  <th className="rounded-s-lg px-4 py-2.5 font-bold">#</th>
                   <th className="px-4 py-2.5 font-bold">الموظف</th>
                   {isSales ? (<>
                     {custom!.cols.map((c) => <th key={c.label} className="px-4 py-2.5 font-bold">{c.label}</th>)}
                     <th className="px-4 py-2.5 font-bold">الالتزام</th>
                   </>) : (<>
-                    <th className="px-4 py-2.5 font-bold">🤖 تقييم ماتركس</th>
+                    <th className="px-4 py-2.5 font-bold">تقييم ماتركس{period === 'weekly' && ' (للشهر)'}</th>
                     <th className="px-4 py-2.5 font-bold">الحجوزات المنجزة</th>
                     <th className="px-4 py-2.5 font-bold">الالتزام</th>
-                    <th className="px-4 py-2.5 font-bold">التغيير</th>
+                    <th className="rounded-e-lg px-4 py-2.5 font-bold">التغيير</th>
                   </>)}
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100">
+              <tbody>
                 {list.map((e, i) => {
                   const isMe = e.employeeId === employee?.id
                   // الالتزام = أيام الحضور من أيام الفترة (عدا الجمع)
                   const workDays = period === 'weekly' ? 7 : 30 // ماكو عطلة أسبوعية (قرار 10-08)
                   const rate = Math.min(100, Math.round((e.attendedDays / workDays) * 100))
                   const commit = rate >= 90
-                    ? { text: 'ممتاز', cls: 'bg-emerald-50 text-emerald-700' }
+                    ? { text: 'ممتاز', cls: 'mr-pill-ok' }
                     : rate >= 75
                       ? { text: 'جيد جداً', cls: 'bg-sky-50 text-sky-700' }
                       : rate >= 50
                         ? { text: 'جيد', cls: 'bg-amber-50 text-amber-700' }
                         : { text: 'يحتاج تحسين', cls: 'bg-red-50 text-red-700' }
                   return (
-                    <tr key={e.employeeId} className={isMe ? 'bg-sky-50/60' : 'hover:bg-slate-50'}>
+                    <tr key={e.employeeId} className={isMe ? 'me' : ''}>
                       <td className="px-4 py-3">
-                        <span className={`inline-flex h-6 w-6 items-center justify-center rounded-md text-[11px] font-black ${
-                          i === 0 ? 'bg-amber-100 text-amber-800'
-                          : i === 1 ? 'bg-slate-200 text-slate-700'
-                          : i === 2 ? 'bg-orange-100 text-orange-800'
-                          : 'text-slate-400'
-                        }`}>{i + 1}</span>
+                        <span className={`mr-rank ${isMe ? 'me' : i < 3 ? `r${i + 1}` : ''}`}>{i + 1}</span>
                       </td>
-                      <td className="px-4 py-3 font-bold text-slate-800">
+                      <td className="px-4 py-3 font-bold">
                         {e.employeeName}{isMe && <span className="mr-1 text-[10px] text-sky-600">(أنت)</span>}
                       </td>
                       {isSales ? (<>
-                        {custom!.cols.map((c, ci) => <td key={c.label} className={`px-4 py-3 ${ci === 0 ? 'font-black text-slate-800' : 'text-slate-600'}`}>{e.limited ? '—' : c.get(e)}</td>)}
+                        {custom!.cols.map((c, ci) => <td key={c.label} className={`px-4 py-3 ${ci === 0 ? 'font-black' : ''}`}>{e.limited ? '—' : c.get(e)}</td>)}
                       </>) : (<>
-                        <td className="px-4 py-3 font-black text-slate-800"><MatrixPct v={peers.get(e.employeeId)} who={e.employeeName} /></td>
-                        <td className="px-4 py-3 text-slate-600">{e.limited ? '—' : e.completedBookings}</td>
+                        <td className="px-4 py-3 font-black"><MatrixPct v={peers.get(e.employeeId)} who={e.employeeName} /></td>
+                        <td className="px-4 py-3">{e.limited ? '—' : e.completedBookings}</td>
                       </>)}
                       <td className="px-4 py-3">
                         {e.limited ? <span className="text-slate-400">—</span> : (
-                          <span className={`rounded-md px-2 py-0.5 text-[10px] font-bold ${commit.cls}`} title={`${e.attendedDays} يوم حضور`}>
+                          <span className={`${commit.cls === 'mr-pill-ok' ? '' : 'rounded-md px-2 py-0.5 text-[10px] font-bold'} ${commit.cls}`} title={`${e.attendedDays} يوم حضور`}>
                             {commit.text}
                           </span>
                         )}
@@ -713,28 +682,28 @@ export default function MyRanking() {
 
           {/* إنجازاتك بالفترة */}
           {myEntry && (
-            <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-              <h3 className="mb-3 text-sm font-extrabold text-[#0f2040]">
+            <div className="mr-card p-5">
+              <h3 className="mr-h mb-3 text-sm font-extrabold">
                 🏅 إنجازاتك {period === 'weekly' ? 'هذا الأسبوع' : 'هذا الشهر'}
               </h3>
               <div className="grid grid-cols-3 gap-2">
                 <Achievement
-                  icon="✅" label="أيام الحضور"
+                  icon="check" label="أيام الحضور"
                   value={`${myEntry.attendedDays}`}
                   ok={myEntry.attendedDays > 0}
                 />
                 {isSales ? (<>
                 {custom!.cols.slice(0, 2).map((c) => (
-                  <Achievement key={c.label} icon={c.icon} label={c.label} value={`${c.get(myEntry)}`} ok={c.get(myEntry) > 0} />
+                  <Achievement key={c.label} icon="bars" label={c.label} value={`${c.get(myEntry)}`} ok={c.get(myEntry) > 0} />
                 ))}
                 </>) : (<>
                 <Achievement
-                  icon="⚡" label="معدل الإنجاز"
+                  icon="bolt" label="معدل الإنجاز"
                   value={completionWhy}
                   ok={(completionRate ?? 0) >= 80}
                 />
                 <Achievement
-                  icon="📊" label="تقييمات"
+                  icon="bars" label="تقييمات"
                   value={`${myEntry.evaluationCount}`}
                   ok={myEntry.points >= 0}
                 />
@@ -744,6 +713,46 @@ export default function MyRanking() {
           )}
         </div>
       </div>
+      {isTechnician && (
+        <div className={`grid grid-cols-1 gap-4 ${stats ? 'sm:grid-cols-2' : ''}`}>
+          <div className="mr-level flex items-center justify-between gap-4 p-6">
+            <div>
+            <p className="sub text-sm">المستوى (حسب المهارات المعتمدة)</p>
+            <p className="mt-1 text-3xl font-extrabold">
+              {currentLevel.level} - {currentLevel.label}
+            </p>
+            <p className="sub mt-2 text-sm">
+              {skillCount} مهارة معتمدة
+              {nextLevel
+                ? ` - يحتاج ${nextLevel.min - skillCount} مهارة إضافية للترقي إلى "${nextLevel.label}"`
+                : ' - وصلت لأعلى مستوى!'}
+            </p>
+            </div>
+            <Emblem />
+          </div>
+
+          {/* (ك) 11-26: الرانك من «إحصائيات الموظفين» — بلا الصلاحية چان يطلع «0 حجز · رانك 1» دايماً، فما نعرضه بلا أرقام حقيقية */}
+          {stats && <div className="mr-card p-6">
+            <h3 className="mr-h mb-2 flex items-center gap-2 text-sm font-extrabold"><LineIcon n="chat" className="h-5 w-5" /> ملاحظات الأداء</h3>
+            <div className="flex items-center gap-4">
+            <div className="text-center"><p className="mr-sub text-sm">الرانك</p>
+            <p className="mr-val emerald mt-1 text-3xl font-extrabold">{rank}</p></div>
+            <div className="mr-divider ps-4">
+            <p className="mr-sub text-sm">
+              {completedCount} حجز منجز - يحتاج {remainingForNextRank} حجز إضافي للصعود للرانك التالي
+            </p>
+            {myPosition >= 0 && (
+              <p className="mr-sub mt-2 text-sm">
+                ترتيبك بين الفنيين: <span className="font-bold text-brand-700">#{myPosition + 1}</span> من{' '}
+                {sortedTechs.length}
+              </p>
+            )}
+            </div>
+            </div>
+          </div>}
+        </div>
+      )}
+
       </>)}
     </div>
   )
@@ -756,45 +765,65 @@ function RankCard({ icon, label, value, tone, delta, deltaSuffix, note, bar }: {
   tone: 'emerald' | 'amber' | 'sky' | 'violet'
   delta?: number; deltaSuffix?: string; note?: string; bar?: number
 }) {
-  const tones: Record<string, { text: string; bg: string; bar: string }> = {
-    emerald: { text: 'text-emerald-700', bg: 'bg-emerald-50', bar: 'bg-emerald-500' },
-    amber:   { text: 'text-amber-700',   bg: 'bg-amber-50',   bar: 'bg-amber-500' },
-    sky:     { text: 'text-sky-700',     bg: 'bg-sky-50',     bar: 'bg-sky-500' },
-    violet:  { text: 'text-violet-700',  bg: 'bg-violet-50',  bar: 'bg-violet-500' },
-  }
-  const t = tones[tone]
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+    <div className="mr-card p-4">
       <div className="flex items-start justify-between gap-2">
-        <p className="text-[11px] font-medium text-slate-500">{label}</p>
-        <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-sm ${t.bg}`}>{icon}</span>
+        <div className="min-w-0">
+          <p className="mr-h text-base font-extrabold">{label}</p>
+          <p className={`mr-val ${tone} mt-1 text-3xl font-black`}>{value}</p>
+          {delta !== undefined && delta !== 0 && (
+            <p className={`text-[11px] font-bold ${delta > 0 ? 'text-emerald-600' : 'text-red-500'}`}>
+              {delta > 0 ? '▲' : '▼'} {delta > 0 ? '+' : ''}{delta} {deltaSuffix}
+            </p>
+          )}
+          {note && <p className="mr-h mt-0.5 text-xs">{note}</p>}
+        </div>
+        <span className={`mr-tile ${tone}`}><LineIcon n={icon} className="h-5 w-5" /></span>
       </div>
-      <p className={`mt-1 text-2xl font-black ${t.text}`}>{value}</p>
-      {delta !== undefined && delta !== 0 && (
-        <p className={`text-[10px] font-bold ${delta > 0 ? 'text-emerald-600' : 'text-red-500'}`}>
-          {delta > 0 ? '▲' : '▼'} {delta > 0 ? '+' : ''}{delta} {deltaSuffix}
-        </p>
-      )}
-      {note && <p className="mt-0.5 text-[10px] text-slate-500">{note}</p>}
       {bar !== undefined && (
-        <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-slate-100">
-          <div className={`h-full rounded-full ${t.bar}`} style={{ width: `${Math.min(100, bar)}%` }} />
+        <div className="mr-bar mt-3">
+          <div className={tone} style={{ width: `${Math.max(0, Math.min(100, bar))}%` }} />
         </div>
       )}
     </div>
   )
 }
 
+/* ───── شعار المستوى: نجمة بإكليل غار ───── */
+
+function Emblem() {
+  const leaves = [0, 1, 2, 3, 4, 5]
+  return (
+    <svg viewBox="0 0 100 100" className="h-20 w-20 shrink-0" aria-hidden="true" fill="none" stroke="#e6ecff" strokeWidth="2">
+      <circle cx="50" cy="52" r="24" />
+      <circle cx="50" cy="52" r="19" strokeWidth="1.2" />
+      <path d="m50 39 3.8 7.8 8.6 1.2-6.2 6 1.5 8.5L50 58.5l-7.7 4 1.5-8.5-6.2-6 8.6-1.2L50 39Z" fill="#e6ecff" stroke="none" />
+      <path d="m50 12 1.8 3.6 4 .6-2.9 2.8.7 4L50 21.1 46.4 23l.7-4-2.9-2.8 4-.6L50 12Z" fill="#e6ecff" stroke="none" />
+      {[-1, 1].map((side) => leaves.map((i) => {
+        // ورق الغار على قوس حول الدائرة، كل ورقة مايلة ويا القوس
+        const deg = 105 + i * 21
+        const a = deg * Math.PI / 180
+        const lx = 50 + Math.cos(a) * 33, y = 52 + Math.sin(a) * 33
+        const x = side === -1 ? lx : 100 - lx
+        const rot = side === -1 ? deg - 180 + 30 : 180 - deg - 30
+        return <ellipse key={`${side}${i}`} cx={x} cy={y} rx="2.8" ry="6" fill="#e6ecff" stroke="none"
+          transform={`rotate(${rot} ${x} ${y})`} />
+      }))}
+      <path d="M36 84q14 6 28 0" strokeWidth="3" />
+    </svg>
+  )
+}
+
 /* ───── إنجاز صغير ───── */
 
-function Achievement({ icon, label, value, ok }: {
+function Achievement({ icon, label, value }: {
   icon: string; label: string; value: ReactNode; ok: boolean
 }) {
   return (
-    <div className={`rounded-xl border p-2.5 text-center ${ok ? 'border-emerald-200 bg-emerald-50/60' : 'border-slate-200 bg-slate-50'}`}>
-      <div className="text-base">{icon}</div>
-      <p className={`mt-0.5 text-sm font-black ${ok ? 'text-emerald-700' : 'text-slate-500'}`}>{value}</p>
-      <p className="text-[9px] leading-tight text-slate-500">{label}</p>
+    <div className="mr-ach">
+      <div className={`ic ${icon} flex justify-center`}><LineIcon n={icon} className="h-5 w-5" /></div>
+      <p className={`v ${icon} mt-0.5 text-sm font-black`}>{value}</p>
+      <p className="mr-sub text-[11px] leading-tight">{label}</p>
     </div>
   )
 }

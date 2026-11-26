@@ -58,7 +58,12 @@ const P: Record<string, string> = {
   printer: 'M7 8V3h10v5M6 17H4v-7a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v7h-2M7 14h10v7H7z',
   leaf: 'M5 19c0-8 5-14 15-15-1 10-7 15-15 15Zm0 0 8-8',
   star: 'm12 3 2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9L12 3Z',
-  gem: 'M6 4h12l3 5-9 11L3 9l3-5Zm-3 5h18M9 4l3 16 3-16',
+  trophy: 'M8 4h8v5a4 4 0 0 1-8 0V4Zm0 2H5a3 3 0 0 0 3 4m8-4h3a3 3 0 0 1-3 4M12 13v4m-4 3h8m-6-3h4',
+  trendUp: 'M3 17l6-6 4 4 8-8m0 0v5m0-5h-5',
+  users: 'M9 11a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Zm-6 9a6 6 0 0 1 12 0M16 4.5a3.5 3.5 0 0 1 0 6.5M18 14.5a6 6 0 0 1 3 5.5',
+  arrowLeft: 'M20 12H4m6-6-6 6 6 6',
+  info: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18Zm0-10v6m0-9h.01',
+  gem:'M6 4h12l3 5-9 11L3 9l3-5Zm-3 5h18M9 4l3 16 3-16',
 }
 export function LineIcon({ n, className = 'h-4 w-4' }: { n: string; className?: string }) {
   return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden="true"><path d={P[n]} /></svg>
