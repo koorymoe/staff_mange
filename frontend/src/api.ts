@@ -649,6 +649,8 @@ export const api = {
   deleteRemoteHours: (id: string) => request<{ ok: boolean }>(`/remote-hours/${encodeURIComponent(id)}`, { method: 'DELETE' }),
   updateRemoteHours: (id: string, b: { hours: number; minutes: number; seconds: number; note?: string }) =>
     request<{ ok: boolean; seconds: number }>(`/remote-hours/${encodeURIComponent(id)}`, { method: 'PUT', body: JSON.stringify(b) }),
+  // 🔎 فحص الأرقام (11-26) — المالك بس
+  getMoneyAudit: <T,>(period = '') => request<T>(`/owner/money-audit?period=${period}`),
   getRemoteConfig: () => request<RemoteHoursConfigState>('/remote-hours/config'),
   saveRemoteConfig: (c: RemoteHoursConfig) => request<RemoteHoursConfigState>('/remote-hours/config', { method: 'PUT', body: JSON.stringify(c) }),
   resetRemoteHours: () => request<{ closed: number }>('/remote-hours/reset', { method: 'POST' }),

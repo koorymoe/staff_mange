@@ -549,3 +549,9 @@ git push origin origin/avg:refs/heads/prod     # بعد التأكد إنه fast
 - `pages/OwnerSettingsHub.tsx` (TabbedHub): /owner-settings (دليل) و/owner-money-split و/owner-costs و/service-invoice-options و/owner-settings-remote. رابط واحد بالقائمة للمالك بدل رابطين. غير المالك يشوف خيارات الفاتورة بس.
 
 - (11-26 ب) `OwnerSettingsHub` Guide = كتالوج GROUPS لكل شاشات الإدخال اليدوي، مفلتر بـisPathAllowed (المالك يشوف الكل). الرابط بالقائمة للمالك والأدمن.
+
+
+## 11-26 فحص الأرقام
+- `service/money_audit.go` (Run(period)) + `/api/owner/money-audit` (owner) + `pages/MoneyAuditPage.tsx` تبويب /owner-money-audit بالإعدادات. قراءة بس.
+- auditCrew نسخة من workCrewSQL — إذا تغيّر واحد غيّر الثاني.
+- التقييم ينحسب بالشهر الميلادي والتصفير 27 والفلوس 26→25: الفحص يأشّرها تنبيه لحد قرار دازاي.

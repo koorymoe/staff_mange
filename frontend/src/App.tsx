@@ -229,6 +229,7 @@ function App() {
           {/* (11-26) كل إعدادات الفلوس شاشة وحدة بتبويبات — المسارات القديمة نفسها */}
           <Route path="owner-settings" element={<OwnerSettingsHub />} />
           <Route path="owner-settings-remote" element={<OwnerSettingsHub />} />
+          <Route path="owner-money-audit" element={<OwnerSettingsHub />} />
           <Route path="owner-money-split" element={<OwnerSettingsHub />} />
           <Route path="service-invoice-options" element={<OwnerSettingsHub />} />
           <Route path="owner-costs" element={<OwnerSettingsHub />} />

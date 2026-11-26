@@ -12,6 +12,7 @@ import { lazyRetry } from '../utils/staleReload'
 // كل تبويب شاشته القديمة نفسها بمساره القديم، فالصلاحيات ما تتغيّر.
 const OwnerMoneySplitPage = lazyRetry(() => import('./OwnerMoneySplitPage'))
 const OwnerCostsPage = lazyRetry(() => import('./OwnerCostsPage'))
+const MoneyAuditPage = lazyRetry(() => import('./MoneyAuditPage'))
 const ServiceInvoiceOptionsPage = lazyRetry(() => import('./ServiceInvoiceOptionsPage'))
 
 type Item = { to: string; title: string; enter: string; affects: string; when: string }
@@ -138,6 +139,7 @@ export default function OwnerSettingsHub() {
   return (
     <TabbedHub tabs={[
       { path: '/owner-settings', label: '🗂️ كل الإعدادات', hint: 'كل شي يندخل باليد ووين يأثر', render: () => <Guide /> },
+      { path: '/owner-money-audit', label: '🔎 فحص الأرقام', hint: 'الفواتير والليدر والصافي والتقييم', render: () => <MoneyAuditPage /> },
       ...ITEMS.map((x) => ({
         path: x.to,
         label: x.title,

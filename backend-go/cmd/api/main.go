@@ -3304,6 +3304,9 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 		}
 	})
 	staffScoreHandler := handler.NewStaffScoreHandler(matrixScoreService)
+	// 🔎 فحص الأرقام (دازاي 11-26): الفواتير والليدر والمبالغ والصافي والتقييم — للمالك
+	moneyAudit := handler.NewMoneyAuditHandler(service.NewMoneyAuditService(db, matrixScoreService))
+	secs["owner"].Set("GET /api/owner/money-audit", "owner.get_money_audit", moneyAudit.Get)
 	secs["staff_score"].Set("GET /api/staff-score", "staff_score.get_root", staffScoreHandler.Board)
 	// 🏅 رصيد نقاط الشهر — تصاعدي بلا حد (قرار (ع) 10-11)
 	staffPointsHandler := handler.NewStaffPointsHandler(service.NewStaffPointsService(db, matrixScoreService.Repo()))
