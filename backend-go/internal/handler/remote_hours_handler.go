@@ -31,12 +31,45 @@ func NewRemoteHoursHandler(r *repository.RemoteHoursRepository) *RemoteHoursHand
 
 var baghdad, _ = time.LoadLocation("Asia/Baghdad")
 
-func remoteMonth(r *http.Request) string {
+// month الفترة المطلوبة، وإلا الفترة الحالية حسب يوم البداية بالإعدادات.
+func (h *RemoteHoursHandler) month(r *http.Request) string {
 	m := r.URL.Query().Get("month")
 	if _, err := time.Parse("2006-01", m); err != nil {
-		return time.Now().In(baghdad).Format("2006-01")
+		return repository.PeriodOf(time.Now().In(baghdad), h.repo.Config().PeriodStartDay)
 	}
 	return m
+}
+
+// configJSON الإعداد ويا الفترة الحالية وموعد رفعها — حتى الصفحة تعرضها.
+func (h *RemoteHoursHandler) configJSON() map[string]any {
+	c := h.repo.Config()
+	now := time.Now().In(baghdad)
+	cur := repository.PeriodOf(now, c.PeriodStartDay)
+	from, to := repository.PeriodRange(cur, c.PeriodStartDay)
+	return map[string]any{
+		"config": c, "period": cur,
+		"from": from.Format("2006-01-02"), "to": to.Format("2006-01-02"),
+		"closeAt": repository.CloseMoment(cur, c, baghdad).Format("2006-01-02 15:04"),
+	}
+}
+
+// GET /api/remote-hours/config
+func (h *RemoteHoursHandler) GetConfig(w http.ResponseWriter, r *http.Request) {
+	WriteJSON(w, http.StatusOK, h.configJSON())
+}
+
+// PUT /api/remote-hours/config (دازاي 11-26) الأدمن يحدد من ياهو يوم تبدي الفترة وشوكت ينرفعن.
+func (h *RemoteHoursHandler) PutConfig(w http.ResponseWriter, r *http.Request) {
+	var c repository.RemoteHoursConfig
+	if err := DecodeJSON(r, &c); err != nil || !c.Valid() {
+		WriteError(w, http.StatusBadRequest, "الأيام من 1 إلى 28 والساعة من 0 إلى 23")
+		return
+	}
+	if err := h.repo.SaveConfig(c, middleware.EmployeeIDFromContext(r)); err != nil {
+		WriteError(w, http.StatusInternalServerError, "تعذر الحفظ")
+		return
+	}
+	WriteJSON(w, http.StatusOK, h.configJSON())
 }
 
 // HMS ثواني ← «س:د:ث» (الساعات ممكن تعدّي ٢٤ بمجموع الشهر).
@@ -236,7 +269,7 @@ func (h *RemoteHoursHandler) List(w http.ResponseWriter, r *http.Request) {
 	var rows []repository.RemoteEntry
 	var err error
 	if r.URL.Query().Get("scope") == "month" {
-		rows, err = h.repo.List(r.URL.Query().Get("employeeId"), remoteMonth(r))
+		rows, err = h.repo.List(r.URL.Query().Get("employeeId"), h.month(r))
 	} else { // الفترة المفتوحة (من آخر تصفير)
 		rows, err = h.repo.Open(r.URL.Query().Get("employeeId"))
 	}
@@ -260,7 +293,7 @@ func (h *RemoteHoursHandler) Summary(w http.ResponseWriter, r *http.Request) {
 	var rows []repository.RemoteSummary
 	var err error
 	if r.URL.Query().Get("scope") == "month" {
-		rows, err = h.repo.Summary(remoteMonth(r))
+		rows, err = h.repo.Summary(h.month(r))
 	} else {
 		rows, err = h.repo.OpenSummary()
 	}
@@ -336,7 +369,7 @@ func (h *RemoteHoursHandler) Update(w http.ResponseWriter, r *http.Request) {
 
 // GET /api/remote-hours/export?month=&employeeId=
 func (h *RemoteHoursHandler) Export(w http.ResponseWriter, r *http.Request) {
-	month := remoteMonth(r)
+	month := h.month(r)
 	empID := r.URL.Query().Get("employeeId")
 	rows, err := h.repo.List(empID, month)
 	if err != nil {

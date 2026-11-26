@@ -536,3 +536,10 @@ git push origin origin/avg:refs/heads/prod     # بعد التأكد إنه fast
 - `hydrateMany` يرفق Service/Services والليدر (`booking_leader_id`) + اختبار حي.
 - الصفحة تمرر leaderName (أو من الكادر) و address (financials.location)؛ INTERNAL يظهر شغل داخلي.
 - AgentActionNotice يجلب فقط بصلاحية whatsapp_chats أو OWNER/ADMIN ويخفي 404.
+
+
+## 11-26 فترة ساعات البيت
+- جدول `RemoteHoursConfig` (0534): periodStartDay/closeDay/closeHour (افتراضي 26/25/23).
+- `repository/remote_hours_period.go`: PeriodOf/PeriodRange/CloseMoment/CloseUpTo؛ الفترة تنسمّى بشهر نهايتها (2026-12 = 11-26..12-25). List/Summary/Months/MonthDetail/export صارت بالفترة.
+- التصفير الشهري (27) ما عاد يسكّر ساعات البيت؛ `RunRemoteCloseIfDue` يسكّر لحد آخر يوم بالفترة بس، مرة وحدة (علامة REMOTE_CLOSE).
+- `/api/remote-hours/config` GET (أصحاب ساعات البيت) و PUT (ADMIN/OWNER). الواجهة `RemotePeriodCard`.

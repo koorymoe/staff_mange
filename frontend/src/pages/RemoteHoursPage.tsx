@@ -6,6 +6,7 @@ import { hms, todayBaghdad as today } from '../utils/format'
 import { card } from '../ui/classes'
 import { askConfirm } from '../ui/dialogs'
 import PctWhy from '../ui/PctWhy'
+import RemotePeriodCard from '../components/RemotePeriodCard'
 
 import { notify } from '../ui/notify'
 // ═══ ساعات العمل من البيت ═══
@@ -27,6 +28,7 @@ export default function RemoteHoursPage() {
         <h1 className="text-2xl font-extrabold text-[#0f2040]">🏠 ساعات العمل من البيت</h1>
         <p className="text-sm text-slate-500">شغّل العدّاد أو ضيف الساعات بيدك، والنظام يجمعها بالساعة والدقيقة والثانية.</p>
       </div>
+      <RemotePeriodCard canEdit={isAdmin} />
       {canSelf && <MyHours meId={me?.id ?? ''} />}
       {canManage && <ManageHours meId={me?.id ?? ''} isAdmin={isAdmin} />}
       {(me?.role === 'OWNER' || me?.actualRole === 'OWNER') && <OwnerHistory />}

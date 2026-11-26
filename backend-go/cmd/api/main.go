@@ -672,6 +672,9 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 		if err := monthlyResetService.RunIfDue(); err != nil {
 			log.Printf("monthly reset: %v", err)
 		}
+		if err := monthlyResetService.RunRemoteCloseIfDue(); err != nil {
+			log.Printf("remote hours close: %v", err)
+		}
 	})
 	safeguard.Loop("ماتركس يتعلّم", 47*time.Minute, 30*time.Minute, func() {
 		if err := matrixLearningService.RunIfDue(); err != nil {
@@ -1597,6 +1600,8 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 		ok, _ := permissionRepo.HasPermission(middleware.EmployeeIDFromContext(r), "remote_hours_manage")
 		return ok
 	}).ServeHTTP)
+	secs["remote_hours"].Set("GET /api/remote-hours/config", "remote_hours.get_config", remoteHoursHandler.GetConfig)
+	secs["remote_hours"].Set("PUT /api/remote-hours/config", "remote_hours.put_config", remoteHoursHandler.PutConfig)
 	secs["remote_hours"].Set("POST /api/remote-hours/reset", "remote_hours.post_reset", remoteHoursHandler.Reset)
 	// الحذف: للي سجّلها أو للمدير (يتفحص بالهاندلر) — للمسؤول والموظف لنفسه.
 	secs["remote_hours"].Set("DELETE /api/remote-hours/{id}", "remote_hours.delete_by_id", remoteHoursHandler.Delete)
