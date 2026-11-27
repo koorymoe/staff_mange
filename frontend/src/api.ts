@@ -1950,6 +1950,7 @@ export const api = {
     terms?: string[]
     createdByEmployeeId?: string
     validUntil?: string
+    customerSignature?: boolean
   }) => request<Quotation>('/quotations', { method: 'POST', body: JSON.stringify(data) }),
   updateQuotation: (id: string, data: {
     customerName?: string
@@ -1963,6 +1964,7 @@ export const api = {
     terms?: string[]
     status?: Quotation['status']
     validUntil?: string
+    customerSignature?: boolean
   }) => request<Quotation>(`/quotations/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
   deleteQuotation: (id: string) =>
     request<void>(`/quotations/${id}`, { method: 'DELETE' }),

@@ -623,6 +623,12 @@ func autoMigrations() []Migration {
 			ALTER TABLE "RemoteHoursConfig" ADD CONSTRAINT "RemoteHoursConfig_updatedById_fkey" FOREIGN KEY ("updatedById") REFERENCES "Employee"(id) ON DELETE SET NULL;
 		`,
 		},
+		{
+			Version: "0535_quotation_customer_signature",
+			SQL: `
+			ALTER TABLE "Quotation" ADD COLUMN IF NOT EXISTS "customerSignature" boolean DEFAULT false NOT NULL;
+		`,
+		},
 		// ‹makemigration› — التحديثات الجديدة تنضاف فوگ هالسطر
 	}
 }

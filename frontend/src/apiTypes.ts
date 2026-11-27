@@ -2223,6 +2223,8 @@ export interface Quotation {
   status: 'NEW' | 'SENT' | 'ACCEPTED' | 'REJECTED'
   /** (ع) 11-07: صالح لغاية (فاضي بالعروض القديمة) */
   validUntil?: string | null
+  /** بلاغ #61: خانة توقيع الزبون بالمطبوع */
+  customerSignature?: boolean
   createdAt: string
 }
 

@@ -555,3 +555,8 @@ git push origin origin/avg:refs/heads/prod     # بعد التأكد إنه fast
 - `service/money_audit.go` (Run(period)) + `/api/owner/money-audit` (owner) + `pages/MoneyAuditPage.tsx` تبويب /owner-money-audit بالإعدادات. قراءة بس.
 - auditCrew نسخة من workCrewSQL — إذا تغيّر واحد غيّر الثاني.
 - التقييم ينحسب بالشهر الميلادي والتصفير 27 والفلوس 26→25: الفحص يأشّرها تنبيه لحد قرار دازاي.
+
+
+## 11-27 بلاغات #60 و#61 (عرض السعر)
+- #60: خانة «قيمة الخصم» صارت تنكتب؛ تحوّل لنسبة (discountPercent كسري) والخادم يحسب القيمة منها نفسها. النسبة تنعرض مقرّبة لمرتبتين.
+- #61: `Quotation.customerSignature` (0535) + بالـmodel لأن القراءة SELECT *. مربع اختيار بقسم الشروط، والطباعة الكلاسيكية تضيف sign-box. عرض المشاريع (PROJECT) ما بي توقيع لسه.

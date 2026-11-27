@@ -72,7 +72,7 @@ export default function QuotationVersions({ quotationId }: { quotationId: string
                 ) : (
                   <>
                     <p className="mb-1 text-[11px] font-bold text-slate-500">
-                      المجموع {fmt(snap.grandTotal)} · خصم {snap.discountPercent}% ({fmt(snap.discountValue)}) · الصافي {fmt(snap.netTotal)}
+                      المجموع {fmt(snap.grandTotal)} · خصم {Math.round(snap.discountPercent * 100) / 100}% ({fmt(snap.discountValue)}) · الصافي {fmt(snap.netTotal)}
                     </p>
                     <table className="w-full text-[11px]">
                       <thead>
