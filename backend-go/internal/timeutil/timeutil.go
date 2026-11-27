@@ -71,6 +71,33 @@ func MonthStart(period string) (from, to time.Time, ok bool) {
 	return t, t.AddDate(0, 1, 0), true
 }
 
+// ═══ (دازاي 11-27) شهر الشركة: من يوم ٢٦ لـ٢٥ ═══
+// «شهرنه يبدي من يوم 26 وينتهي يوم 25». الفترة تنسمّى بالشهر الي تخلص بيه:
+// «2026-12» = من 2026-11-26 لحد 2026-12-25. التقييم والتصفير يمشون عليها.
+const PeriodStartDay = 26
+
+// PeriodStart حدود فترة الشركة «YYYY-MM» بتوقيت الشركة: from (يوم ٢٦ بالشهر الي قبله) و to حصري (يوم ٢٦ بالشهر نفسه).
+func PeriodStart(period string) (from, to time.Time, ok bool) {
+	t, err := time.ParseInLocation("2006-01", period, companyLoc)
+	if err != nil {
+		return time.Time{}, time.Time{}, false
+	}
+	to = time.Date(t.Year(), t.Month(), PeriodStartDay, 0, 0, 0, 0, companyLoc)
+	return to.AddDate(0, -1, 0), to, true
+}
+
+// PeriodOf اسم فترة الشركة الي يوقع بيها الوقت t.
+func PeriodOf(t time.Time) string {
+	t = t.In(companyLoc)
+	if t.Day() >= PeriodStartDay {
+		return time.Date(t.Year(), t.Month()+1, 1, 0, 0, 0, 0, companyLoc).Format("2006-01")
+	}
+	return t.Format("2006-01")
+}
+
+// ThisPeriod فترة الشركة الحالية (٢٦ ← ٢٥) — «الشهر» بالإحصائيات والفلوس.
+func ThisPeriod() string { return PeriodOf(time.Now()) }
+
 // Today تاريخ اليوم YYYY-MM-DD بتوقيت الشركة (بغداد). ⚠️ السيرفر يشتغل UTC:
 // time.Now().Format("2006-01-02") يطلع **أمس** من ١٢ الليل لـ ٣ الفجر.
 func Today() string { return time.Now().In(companyLoc).Format("2006-01-02") }

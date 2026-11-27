@@ -169,7 +169,14 @@ func (s *SolarInquiryService) PriceRanges(emp, role string, minKw, maxKw float64
 		return nil, ErrInquiryHidden
 	}
 	out := []PriceTier{}
-	if s.solar == nil || minKw <= 0 || maxKw < minKw {
+	if minKw <= 0 || maxKw < minKw {
+		return out, nil
+	}
+	// (دازاي 11-27) الأسعار اليدوية من الإعدادات أول — إذا موجودة
+	if t := bandTiers(s.loadConfig().Bands, minKw, maxKw); t != nil {
+		return t, nil
+	}
+	if s.solar == nil {
 		return out, nil
 	}
 	systems, err := s.solar.ListSystems("")

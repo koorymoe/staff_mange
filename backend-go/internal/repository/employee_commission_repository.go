@@ -37,7 +37,7 @@ func (r *EmployeeCommissionRepository) SumForEmployeeMonth(employeeID, monthPref
 	var total sql64
 	err := r.db.Get(&total, `
 		SELECT COALESCE(SUM("totalCommission"), 0) FROM "EmployeeCommission"
-		WHERE "employeeId" = $1 AND to_char(baghdad_date("createdAt"), 'YYYY-MM') = $2
+		WHERE "employeeId" = $1 AND company_period(baghdad_date("createdAt")) = $2
 	`, employeeID, monthPrefix)
 	return float64(total), err
 }
@@ -66,7 +66,7 @@ func (r *EmployeeCommissionRepository) MonthlyCommissionSeriesForEmployee(employ
 			interval '1 month'
 		) m
 		LEFT JOIN "EmployeeCommission" c ON c."employeeId" = $1
-			AND to_char(baghdad_date(c."createdAt"), 'YYYY-MM') = to_char(m, 'YYYY-MM')
+			AND company_period(baghdad_date(c."createdAt")) = to_char(m, 'YYYY-MM')
 		GROUP BY m
 		ORDER BY m
 	`, employeeID, monthsCount, endMonth)

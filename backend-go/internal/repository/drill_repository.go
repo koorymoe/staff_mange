@@ -146,10 +146,10 @@ var drillDefs = []DrillDef{
 		Where:   `b.status = 'IN_PROGRESS'`},
 	{Key: "inhouse_month", Title: "شغل داخل الشركة — هذا الشهر", AgeFrom: `"completedAt"`,
 		Explain: "حجوزات انخلصت هذا الشهر والشغل صار جوّا الشركة (الزبون جاب الجهاز).",
-		Where:   `b.status = 'COMPLETED' AND b."workLocation" = 'IN_HOUSE' AND to_char(baghdad_date(b."completedAt"), 'YYYY-MM') = to_char(baghdad_today(), 'YYYY-MM')`},
+		Where:   `b.status = 'COMPLETED' AND b."workLocation" = 'IN_HOUSE' AND company_period(baghdad_date(b."completedAt")) = company_period(baghdad_today())`},
 	{Key: "onsite_month", Title: "شغل بالموقع — هذا الشهر", AgeFrom: `"completedAt"`,
 		Explain: "حجوزات انخلصت هذا الشهر والكادر راح لموقع الزبون.",
-		Where:   `b.status = 'COMPLETED' AND b."workLocation" <> 'IN_HOUSE' AND to_char(baghdad_date(b."completedAt"), 'YYYY-MM') = to_char(baghdad_today(), 'YYYY-MM')`},
+		Where:   `b.status = 'COMPLETED' AND b."workLocation" <> 'IN_HOUSE' AND company_period(baghdad_date(b."completedAt")) = company_period(baghdad_today())`},
 }
 
 // DrillDefs كل التعريفات (للاختبار وللواجهة).

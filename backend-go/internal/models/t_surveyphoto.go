@@ -14,6 +14,8 @@ func init() {
 			{Name: "fileName", Type: "text", NotNull: true, Default: "''::text"},
 			{Name: "uploadedById", Type: "text", NotNull: true},
 			{Name: "createdAt", Type: "timestamp with time zone", NotNull: true, Default: "now()"},
+			{Name: "kind", Type: "text", NotNull: true, Default: "'SURVEY'::text"},
+			{Name: "stage", Type: "text"},
 		},
 		Constraints: []Constraint{
 			{Name: "SurveyPhoto_bookingId_fkey", Def: "FOREIGN KEY (\"bookingId\") REFERENCES \"Booking\"(id) ON DELETE CASCADE"},

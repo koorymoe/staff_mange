@@ -156,7 +156,7 @@ func (r *LeaderInvoiceRepository) CountForEmployeeMonth(employeeID, monthPrefix 
 	var count int
 	err := r.db.Get(&count, `
 		SELECT COUNT(*) FROM "LeaderInvoice"
-		WHERE "revokedAt" IS NULL AND "employeeId" = $1 AND to_char(baghdad_date("createdAt"), 'YYYY-MM') = $2
+		WHERE "revokedAt" IS NULL AND "employeeId" = $1 AND company_period(baghdad_date("createdAt")) = $2
 	`, employeeID, monthPrefix)
 	return count, err
 }
@@ -175,7 +175,7 @@ func (r *LeaderInvoiceRepository) SumNetTotalForEmployeeMonth(employeeID, monthP
 	err := r.db.Get(&total, `
 		SELECT SUM("netTotal") FROM "LeaderInvoice"
 		WHERE "revokedAt" IS NULL AND "employeeId" = $1
-		  AND to_char(baghdad_date("createdAt"), 'YYYY-MM') = $2
+		  AND company_period(baghdad_date("createdAt")) = $2
 	`, employeeID, monthPrefix)
 	if err != nil || total == nil {
 		return 0, err

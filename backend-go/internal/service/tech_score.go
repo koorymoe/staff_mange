@@ -176,7 +176,14 @@ func ratio(v [2]int) (float64, bool) {
 }
 
 // applyRoleScores يبدّل رقم الأدوار الي إلها حسبة جديدة (قبل الفلوس والانضباط).
+// scoreWeightsLoader (11-27) يقرا أوزان الإعدادات — ينضبط ويا الخدمة؛ بالاختبارات nil = الأوزان الأصلية.
+var scoreWeightsLoader func() ScoreWeights
+
 func applyRoleScores(rows []StaffScore, hum []repository.HumanRow, times map[string][3]int, coord ...map[string]repository.CoordFact) {
+	overrides := ScoreWeights{}
+	if scoreWeightsLoader != nil {
+		overrides = scoreWeightsLoader()
+	}
 	var cf map[string]repository.CoordFact
 	if len(coord) > 0 {
 		cf = coord[0]
@@ -217,6 +224,8 @@ func applyRoleScores(rows []StaffScore, hum []repository.HumanRow, times map[str
 		if !ok || s.AIOnly {
 			continue
 		}
+		// (دازاي 11-27) الأوزان من الإعدادات — البند المطفي يطلع ووزنه يتوزع
+		weights = applyWeights(rg, weights, overrides)
 		if s.Final != nil {
 			old := *s.Final
 			s.LegacyBase = &old

@@ -188,7 +188,7 @@ func (c *CompanyCosts) downtimeDaysIn(from, to time.Time) int {
 
 // Report كل شي لشهر: الإعدادات والأهداف ووين وصل كل موظف.
 func (c *CompanyCosts) Report(month string, now time.Time) (*CostsReport, error) {
-	from, to, ok := timeutil.MonthStart(month)
+	from, to, ok := timeutil.PeriodStart(month)
 	if !ok {
 		return nil, errors.New("الشهر غلط")
 	}
@@ -290,7 +290,7 @@ func (c *CompanyCosts) Report(month string, now time.Time) (*CostsReport, error)
 
 // MyTarget هدف موظف واحد لشاشته (nil إذا مو «يدخّل فلوس» بالتكاليف).
 func (c *CompanyCosts) MyTarget(emp string, now time.Time) (*EmployeeTarget, error) {
-	rep, err := c.Report(timeutil.ThisMonth(), now)
+	rep, err := c.Report(timeutil.ThisPeriod(), now)
 	if err != nil {
 		return nil, err
 	}
@@ -406,7 +406,7 @@ func (c *CompanyCosts) NotifyTargets(now time.Time, claim func(key, day string) 
 	if err != nil || !ok {
 		return err
 	}
-	rep, err := c.Report(timeutil.ThisMonth(), now)
+	rep, err := c.Report(timeutil.ThisPeriod(), now)
 	if err != nil {
 		return err
 	}

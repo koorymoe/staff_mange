@@ -27,6 +27,7 @@ func init() {
 			{Name: "cover", Type: "jsonb"},
 			{Name: "annex", Type: "jsonb"},
 			{Name: "validUntil", Type: "date"},
+			{Name: "customerSignature", Type: "boolean", NotNull: true, Default: "false"},
 			{Name: "expiryRemindedAt", Type: "timestamp with time zone"},
 		},
 		Constraints: []Constraint{

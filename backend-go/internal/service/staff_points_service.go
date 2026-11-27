@@ -84,7 +84,7 @@ func (s *StaffPointsService) counts(label, q string, month string) map[string]fl
 
 // شرط الشهر ببغداد لعمود — $1 = 'YYYY-MM'
 func inMonth(col string) string {
-	return fmt.Sprintf(`to_char(baghdad_date(%s), 'YYYY-MM') = $1`, col)
+	return fmt.Sprintf(`company_period(baghdad_date(%s)) = $1`, col)
 }
 
 func (s *StaffPointsService) Month(month string) ([]StaffPoints, error) {

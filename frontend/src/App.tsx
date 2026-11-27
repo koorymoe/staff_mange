@@ -230,6 +230,8 @@ function App() {
           <Route path="owner-settings" element={<OwnerSettingsHub />} />
           <Route path="owner-settings-remote" element={<OwnerSettingsHub />} />
           <Route path="owner-money-audit" element={<OwnerSettingsHub />} />
+          <Route path="owner-settings-solar" element={<OwnerSettingsHub />} />
+          <Route path="owner-settings-score" element={<OwnerSettingsHub />} />
           <Route path="owner-money-split" element={<OwnerSettingsHub />} />
           <Route path="service-invoice-options" element={<OwnerSettingsHub />} />
           <Route path="owner-costs" element={<OwnerSettingsHub />} />

@@ -12,6 +12,8 @@ import { lazyRetry } from '../utils/staleReload'
 // كل تبويب شاشته القديمة نفسها بمساره القديم، فالصلاحيات ما تتغيّر.
 const OwnerMoneySplitPage = lazyRetry(() => import('./OwnerMoneySplitPage'))
 const OwnerCostsPage = lazyRetry(() => import('./OwnerCostsPage'))
+const SolarSettingsPage = lazyRetry(() => import('./SolarSettingsPage'))
+const ScoreWeightsPage = lazyRetry(() => import('./ScoreWeightsPage'))
 const MoneyAuditPage = lazyRetry(() => import('./MoneyAuditPage'))
 const ServiceInvoiceOptionsPage = lazyRetry(() => import('./ServiceInvoiceOptionsPage'))
 
@@ -37,6 +39,20 @@ const ITEMS: Item[] = [
     enter: 'لكل خدمة: البنود وسعر كل بند والحد الأدنى للعمل.',
     affects: 'تجريبي بس — ما مربوط بالفواتير الحقيقية لحد ما نجربه ونعتمده.',
     when: 'لما تضيف خدمة أو تتغيّر الأسعار.',
+  },
+  {
+    to: '/owner-settings-solar',
+    title: '☀️ الطاقة الشمسية',
+    enter: 'استهلاك كل جهاز (كيلو واط)، وأسعار المنظومات لكل حجم: اقتصادي ووسط وغالي.',
+    affects: 'شاشة استفسارات الطاقة الشمسية: حجم المنظومة والأسعار الي يكولها الموظف للزبون.',
+    when: 'مرة وحدة، وكل ما تتغيّر الأسعار.',
+  },
+  {
+    to: '/owner-settings-score',
+    title: '⚖️ بنود التقييم',
+    enter: 'لكل مجموعة موظفين: بنود تقييمها ووزن كل بند، وتكدر تطفّي بند.',
+    affects: 'رقم تقييم كل موظف بهالمجموعة من لحظة الحفظ.',
+    when: 'لما تريد تغيّر شنو أهم بتقييم دور معيّن.',
   },
   {
     to: '/owner-settings-remote',
@@ -82,7 +98,9 @@ const GROUPS: { title: string; cards: Card[] }[] = [
     { to: '/departments', title: '🏢 الأقسام', enter: 'الأقسام.', affects: 'الهيكل والتقارير.' },
     { to: '/org', title: '🏛️ الهيكل التنظيمي', enter: 'الإدارات والوحدات ومدرائها.', affects: 'منو يشوف شنو، والتقييم.' },
     { to: '/work-schedule', title: '🕘 جدول الدوام', enter: 'أوقات دوام كل موظف.', affects: 'الحضور والتأخير.' },
+    { to: '/owner-settings-score', title: '⚖️ بنود التقييم وأوزانها', enter: 'وزن كل بند لكل مجموعة، أو تطفّيه.', affects: 'رقم تقييم الموظفين.' },
     { to: '/kpi', title: '⭐ معايير التقييم', enter: 'معايير التقييم ونقاطها.', affects: 'تقييم الموظفين.' },
+    { to: '/owner-settings-solar', title: '☀️ الطاقة الشمسية', enter: 'استهلاك الأجهزة وأسعار المنظومات لكل حجم.', affects: 'حجم المنظومة والأسعار باستفسارات الطاقة.' },
     { to: '/owner-settings-remote', title: '🏠 فترة ساعات البيت', enter: 'يوم بداية الشهر وموعد الرفع.', affects: 'حساب ساعات البيت.' },
     { to: '/core-matrix', title: '🏴‍☠️ الصلاحيات', enter: 'صلاحيات كل دور وموظف.', affects: 'منو يفتح شنو.' },
   ] },
@@ -97,7 +115,7 @@ function Guide() {
   const { employee, permissions, gpsServiceId } = useSession()
   const owner = employee?.actualRole === 'OWNER'
   const ctx = { employee, permissions, gpsServiceId }
-  const ownerOnly = new Set(['/owner-money-split', '/owner-costs', '/owner-settings-remote'])
+  const ownerOnly = new Set(['/owner-settings-score', '/owner-money-split', '/owner-costs', '/owner-settings-remote', '/owner-money-audit'])
   const ok = (to: string) => owner || (!ownerOnly.has(to) && isPathAllowed(to, ctx) !== false)
   return (
     <div className="space-y-4">
@@ -132,9 +150,10 @@ export default function OwnerSettingsHub() {
   const location = useLocation()
   // الأدمن يوصل لخيارات الفاتورة بس — باقي التبويبات للمالك
   if (employee?.actualRole !== 'OWNER') {
-    return location.pathname.startsWith('/service-invoice-options')
-      ? <Suspense fallback={null}><ServiceInvoiceOptionsPage /></Suspense>
-      : <Guide />
+    if (location.pathname.startsWith('/service-invoice-options')) return <Suspense fallback={null}><ServiceInvoiceOptionsPage /></Suspense>
+    // الأدمن يعدّل إعدادات الطاقة الشمسية هم (الخادم يسمح للمدير والمالك)
+    if (location.pathname.startsWith('/owner-settings-solar') && employee?.actualRole === 'ADMIN') return <Suspense fallback={null}><SolarSettingsPage /></Suspense>
+    return <Guide />
   }
   return (
     <TabbedHub tabs={[
@@ -148,6 +167,8 @@ export default function OwnerSettingsHub() {
           x.to === '/owner-money-split' ? <OwnerMoneySplitPage />
           : x.to === '/owner-costs' ? <OwnerCostsPage />
           : x.to === '/service-invoice-options' ? <ServiceInvoiceOptionsPage />
+          : x.to === '/owner-settings-solar' ? <SolarSettingsPage />
+          : x.to === '/owner-settings-score' ? <ScoreWeightsPage />
           : <RemotePeriodCard canEdit />,
       })),
     ]} />

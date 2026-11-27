@@ -145,9 +145,13 @@ export default function QuotationNew() {
      
   }, [solarSystemId])
   const [discountPercent, setDiscountPercent] = useState(0)
+  // النص الي يكتبه الموظف بخانة مبلغ الخصم (null = اعرض المحسوب من النسبة)
+  const [discountAmountText, setDiscountAmountText] = useState<string | null>(null)
   const [duration, setDuration] = useState('')
   // (ع) 11-07: صلاحية العرض — فاضي بالإنشاء = ١٥ يوم من اليوم (الخادم يحطها)
   const [validUntil, setValidUntil] = useState('')
+  // بلاغ #61 (11-27): خانة توقيع الزبون — للعروض الي تنضاف للعقود
+  const [customerSignature, setCustomerSignature] = useState(false)
   const [notes, setNotes] = useState('')
   const [quotationNumber, setQuotationNumber] = useState('')
   const [loadingQuotation, setLoadingQuotation] = useState(isEdit)
@@ -197,6 +201,7 @@ export default function QuotationNew() {
         setDiscountPercent(q.discountPercent)
         setDuration(q.duration || '')
         setValidUntil(q.validUntil ? q.validUntil.slice(0, 10) : '')
+        setCustomerSignature(!!q.customerSignature)
         setNotes(q.notes || '')
         setOwnTerms(q.terms && q.terms.length ? q.terms : null)
         setItems(q.items.length > 0 ? q.items.map((it) => ({
@@ -318,6 +323,7 @@ export default function QuotationNew() {
           notes: notes || undefined,
           terms: terms.filter((t) => t.trim()),
           validUntil: validUntil || undefined,
+          customerSignature,
         })
         showStatus('تم حفظ التعديلات بنجاح ✓', 'ok')
       } else {
@@ -337,6 +343,7 @@ export default function QuotationNew() {
           terms: terms.filter((t) => t.trim()),
           createdByEmployeeId: employee?.id,
           validUntil: validUntil || undefined,
+          customerSignature,
         })
         showStatus('تم الحفظ بنجاح ✓', 'ok')
         // بعد أول حفظ نصير على نفس العرض — الحفظ الثاني يعدّله مو يسوي عرض جديد
@@ -393,7 +400,7 @@ export default function QuotationNew() {
       : { customerName, customerPhone, customerAddress, projectName, quotationNumber, discountPercent, notes, grandTotal, discountValue, netTotal, today, items }
     return buildPrintHtmlFrom(allowZero, withImages, cur.customerName, cur.customerPhone, cur.customerAddress, cur.projectName, cur.quotationNumber,
       cur.discountPercent, cur.notes, cur.grandTotal, cur.discountValue, cur.netTotal, cur.today, cur.items,
-      snap ? (snap.terms?.length ? snap.terms : defaultTerms) : terms)
+      snap ? (snap.terms?.length ? snap.terms : defaultTerms) : terms, snap ? !!snap.customerSignature : customerSignature)
   }
   const htmlOrAskZero = async (withImages: boolean, snap: Quotation | null): Promise<string | null> => {
     const html = buildPrintHtml(withImages, snap)
@@ -403,7 +410,7 @@ export default function QuotationNew() {
   }
   const buildPrintHtmlFrom = (allowZero: boolean, withImages: boolean, customerName: string, customerPhone: string, customerAddress: string,
     projectName: string, quotationNumber: string, discountPercent: number, notes: string,
-    grandTotal: number, discountValue: number, netTotal: number, today: string, items: ItemRow[], terms: string[]): string | null => {
+    grandTotal: number, discountValue: number, netTotal: number, today: string, items: ItemRow[], terms: string[], withSignature = false): string | null => {
     if (!customerName.trim()) {
       showStatus('الرجاء إدخال اسم الزبون قبل الطباعة', 'err')
       return null
@@ -591,6 +598,11 @@ body { background: #fff; margin: 0; padding: 0; -webkit-print-color-adjust: exac
 .thank-title { font-size: 17px; font-weight: 700; color: #47528f; margin-bottom: 10px; font-family: 'Amiri', serif; }
 .thank-text { font-size: 13px; line-height: 1.9; color: #47528f; margin-bottom: 12px; font-family: 'Amiri', serif; }
 .signature { font-size: 16px; font-weight: 700; color: #c97a3a; font-family: 'Amiri', serif; }
+.sign-box { display: flex; gap: 18px; margin: 14px 0 6px; }
+.sign-col { flex: 1; border: 1px solid #c7cbe6; border-radius: 10px; padding: 10px 12px; font-family: 'Amiri', serif; color: #47528f; }
+.sign-head { font-weight: 700; font-size: 14px; margin-bottom: 8px; text-align: center; }
+.sign-row { display: flex; gap: 6px; align-items: flex-end; font-size: 13px; margin-bottom: 12px; }
+.sign-row i { flex: 1; border-bottom: 1px dotted #47528f; height: 16px; }
 @media print {
   body { background: #fff; margin: 0; padding: 0; }
   .page { width: 210mm; height: 297mm; overflow: visible; page-break-after: always; page-break-inside: avoid; }
@@ -691,7 +703,7 @@ ${pageShell(`
     <div class="title-right">ملخص المبالغ</div>
     <div class="summary-list">
       <div class="summary-item tt"><span class="sum-label">اجمالي قيمة العرض</span><span class="sum-value">د.ع ${fmt(grandTotal)}</span></div>
-      <div class="summary-item tt"><span class="sum-label">نسبة الخصم</span><span class="sum-value">${discountPercent}%</span></div>
+      <div class="summary-item tt"><span class="sum-label">نسبة الخصم</span><span class="sum-value">${Math.round(discountPercent * 100) / 100}%</span></div>
       <div class="summary-item tt"><span class="sum-label">قيمة الخصم</span><span class="sum-value">د.ع ${fmt(discountValue)}</span></div>
       <div class="summary-item highlight"><span class="sum-label">الصافي بعد الخصم</span><span class="sum-value">د.ع ${fmt(netTotal)}</span></div>
     </div>
@@ -702,6 +714,10 @@ ${pageShell(`
     <hr class="hr-light">
     <div class="title-center">شروط واحكام عرض السعر</div>
     <ol class="terms-list">${termsHtml}</ol>
+    ${withSignature ? `<div class="sign-box">
+      <div class="sign-col"><div class="sign-head">توقيع الزبون</div><div class="sign-row">الاسم: <span>${esc(customerName)}</span></div><div class="sign-row">التوقيع: <i></i></div><div class="sign-row">التاريخ: <i></i></div></div>
+      <div class="sign-col"><div class="sign-head">عن ${COMPANY_LEGAL_AR}</div><div class="sign-row">الاسم: <i></i></div><div class="sign-row">التوقيع والختم: <i></i></div><div class="sign-row">التاريخ: <i></i></div></div>
+    </div>` : ''}
     <div class="thank-section">
       <div class="thank-title">كلمة شكر وتقدير</div>
       <div class="thank-text">تتقدم ${COMPANY_LEGAL_AR} بخالص الشكر والتقدير على ثقتكم الكريمة، ونتطلع إلى أن نكون عند حسن ظنكم في تقديم أفضل الحلول التقنية والخدمات الهندسية المتخصصة. نؤكد لكم أننا نضع رضاكم في مقدمة أولوياتنا.</div>
@@ -1123,7 +1139,7 @@ ${pageShell(`
             {/* ⚠️ step="any" لازم: بلاه المتصفح يفرض خطوة ١ ويرفض الكسور
                 (نفس درس سعر الوحدة) — و«١.٥٪» ما تنكتب أصلاً بلوحة
                 مفاتيح الموبايل. */}
-            <input type="number" min={0} max={100} step="any" value={discountPercent}
+            <input type="number" min={0} max={100} step="any" value={Math.round(discountPercent * 100) / 100}
               onChange={(e) => {
                 const n = Number(e.target.value)
                 setDiscountPercent(Number.isFinite(n) ? n : 0)
@@ -1131,8 +1147,17 @@ ${pageShell(`
               style={inputStyle({})} />
           </div>
           <div>
-            <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: 'var(--t-body)', marginBottom: '6px' }}>قيمة الخصم (د.ع)</label>
-            <input readOnly value={fmt(discountValue) + ' د.ع'} style={inputStyle({ bg: '#fff', fw: 700, color: 'var(--t-danger)', ta: 'center' })} />
+            <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: 'var(--t-body)', marginBottom: '6px' }}>قيمة الخصم (د.ع) — اكتب مبلغ أو نسبة</label>
+            {/* بلاغ #60 (11-27): الخصم ينكتب مبلغ هم — تنحسب النسبة منه، والخادم يخزنها نفسها */}
+            <input type="number" min={0} step="any"
+              value={discountAmountText ?? (discountValue ? Math.round(discountValue) : 0)}
+              onChange={(e) => {
+                setDiscountAmountText(e.target.value)
+                const v = Math.max(0, Number(e.target.value) || 0)
+                setDiscountPercent(grandTotal > 0 ? Math.min(100, (v / grandTotal) * 100) : 0)
+              }}
+              onBlur={() => setDiscountAmountText(null)}
+              style={inputStyle({ bg: '#fff', fw: 700, color: 'var(--t-danger)', ta: 'center' })} />
           </div>
           <div>
             <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: 'var(--t-body)', marginBottom: '6px' }}>الصافي بعد الخصم (د.ع)</label>
@@ -1154,6 +1179,10 @@ ${pageShell(`
       <div style={{ background: 'var(--sf-card)', borderRadius: '12px', padding: '24px', marginBottom: '20px', boxShadow: '0 2px 12px rgba(0,0,0,0.06)' }}>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', alignItems: 'center', justifyContent: 'space-between', fontSize: '15px', fontWeight: 700, color: 'var(--t-title-alt)', marginBottom: '16px', paddingBottom: '10px', borderBottom: '2px solid var(--bd-line)' }}>
           <span>📜 شروط وأحكام هذا العرض {ownTerms ? '' : <small style={{ color: '#64748b', fontWeight: 400 }}>(الافتراضية)</small>}</span>
+          <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', fontWeight: 600, cursor: 'pointer' }}>
+            <input type="checkbox" checked={customerSignature} onChange={(e) => setCustomerSignature(e.target.checked)} />
+            ✍️ إضافة توقيع الزبون (للعروض الي تنضاف للعقود)
+          </label>
           <span style={{ display: 'flex', gap: '6px' }}>
             <button type="button" onClick={() => setOwnTerms([...terms, ''])} style={{ background: '#1565c0', color: 'white', border: 'none', padding: '6px 12px', borderRadius: '8px', cursor: 'pointer', fontFamily: 'inherit', fontSize: '12px', fontWeight: 700 }}>+ شرط</button>
             {ownTerms && <button type="button" onClick={() => setOwnTerms(null)} style={{ background: 'transparent', color: '#475569', border: '1px solid var(--bd-line)', padding: '6px 12px', borderRadius: '8px', cursor: 'pointer', fontFamily: 'inherit', fontSize: '12px' }}>↺ استرجاع الافتراضية</button>}

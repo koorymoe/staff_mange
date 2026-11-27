@@ -858,6 +858,8 @@ func rules() map[string]map[core.Action]core.Rule {
 		},
 		"owner": {
 			"owner.get_backups":                func(l string) core.Rule { return owner(l) }("يقرا /api/owner/backups (المالك بس)"),
+			"owner.get_score_weights":          func(l string) core.Rule { return owner(l) }("يقرا بنود التقييم وأوزانها (المالك بس)"),
+			"owner.put_score_weights":          func(l string) core.Rule { return owner(l) }("يعدّل بنود التقييم وأوزانها (المالك بس)"),
 			"owner.get_money_audit":            func(l string) core.Rule { return owner(l) }("يقرا فحص الأرقام (المالك بس)"),
 			"owner.get_costs":                  func(l string) core.Rule { return owner(l) }("يقرا تكاليف الشركة والأهداف (المالك بس)"),
 			"owner.put_costs_employee":         func(l string) core.Rule { return owner(l) }("يعدّل تكلفة موظف (المالك بس)"),
@@ -1505,6 +1507,8 @@ func rules() map[string]map[core.Action]core.Rule {
 		"solar_inquiries": {
 			"solar_inquiries.get_root":                 func(l string) core.Rule { return any_(l) }("يقرا /api/solar-inquiries (الدخول — الفحص بالمعالج)"),
 			"solar_inquiries.post_root":                func(l string) core.Rule { return any_(l) }("ينفّذ /api/solar-inquiries (الدخول — الفحص بالمعالج)"),
+			"solar_inquiries.get_config":               func(l string) core.Rule { return any_(l) }("يقرا إعدادات الاستفسار (الفحص بالخدمة)"),
+			"solar_inquiries.put_config":               func(l string) core.Rule { return admin(l) }("يعدّل استهلاك الأجهزة وأسعار الأحجام (المدير والمالك)"),
 			"solar_inquiries.get_price_ranges":         func(l string) core.Rule { return any_(l) }("يشوف مدى أسعار المنظومات للاستفسار (الدخول — الفحص بالخدمة)"),
 			"solar_inquiries.post_by_id_claim":         func(l string) core.Rule { return any_(l) }("ينفّذ /api/solar-inquiries/{id}/claim (الدخول — الفحص بالمعالج)"),
 			"solar_inquiries.post_by_id_contact":       func(l string) core.Rule { return any_(l) }("ينفّذ /api/solar-inquiries/{id}/contact (الدخول — الفحص بالمعالج)"),

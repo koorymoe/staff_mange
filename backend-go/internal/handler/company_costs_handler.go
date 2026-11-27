@@ -20,7 +20,7 @@ func NewCompanyCostsHandler(s *service.CompanyCosts) *CompanyCostsHandler {
 
 func (h *CompanyCostsHandler) report(w http.ResponseWriter, month string) {
 	if month == "" {
-		month = timeutil.ThisMonth()
+		month = timeutil.ThisPeriod()
 	}
 	rep, err := h.svc.Report(month, time.Now())
 	if err != nil {
@@ -131,7 +131,7 @@ type MoneyRankRow struct {
 func (h *CompanyCostsHandler) Ranking(w http.ResponseWriter, r *http.Request) {
 	month := r.URL.Query().Get("month")
 	if month == "" {
-		month = timeutil.ThisMonth()
+		month = timeutil.ThisPeriod()
 	}
 	rep, err := h.svc.Report(month, time.Now())
 	if err != nil {

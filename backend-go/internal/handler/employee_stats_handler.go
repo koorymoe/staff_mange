@@ -27,7 +27,7 @@ func NewEmployeeStatsHandler(s *service.EmployeeMonthlyStatsService) *EmployeeSt
 func monthParam(r *http.Request) string {
 	month := r.URL.Query().Get("month")
 	if month == "" {
-		month = timeutil.ThisMonth()
+		month = timeutil.ThisPeriod()
 	}
 	return month
 }

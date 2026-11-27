@@ -1,3 +1,4 @@
+import { thisPeriod, periodRangeLabel } from '../utils/format'
 import { useEffect, useState, type ReactNode } from 'react'
 import PctWhy from '../ui/PctWhy'
 import { type KpiLeaderboardEntry, type StaffScoreDetail } from '../api'
@@ -75,18 +76,18 @@ function MatrixPct({ v, s, who, className }: { v: number | null | undefined; s?:
   } else if (v != null && s) {
     const m = s.matrixPct, h = s.humanPct
     formula = m != null && h != null
-      ? <>نسبة ماتركس {r(m)}% (انحسبلك {r(s.earned / 2)} من {r(s.max / 2)}) × ٦٠٪ + تقييم مسؤوليك {r(h)}% (معدل {s.humanAvg?.toFixed(1)} من ٥ × ٢٠، على {s.humanCount} تقييم) × ٤٠٪ = {r(v)}%.</>
+      ? <>شغلك المسجّل {r(m)}% (جمعت {r(s.earned / 2)} من {r(s.max / 2)} نقطة) وهذا ياخذ ٦٠٪ من الرقم + تقييم مسؤولك {r(h)}% (معدله {s.humanAvg?.toFixed(1)} من ٥، على {s.humanCount} تقييم) وهذا ياخذ ٤٠٪ = {r(v)}%.</>
       : m != null
-        ? <>ماكو تقييم من مسؤوليك بعد، فالنسبة = نسبة ماتركس وحدها: {r(s.earned / 2)} من {r(s.max / 2)} = {r(v)}%.</>
+        ? <>مسؤولك بعده ما قيّمك، فالرقم من شغلك المسجّل بس: {r(s.earned / 2)} من {r(s.max / 2)} نقطة = {r(v)}%.</>
         : h != null
-          ? <>ماكو نقاط ماتركس بعد، فالنسبة = تقييم مسؤوليك وحده: معدل {s.humanAvg?.toFixed(1)} من ٥ × ٢٠ = {r(v)}%.</>
+          ? <>بعدك ما جمعت نقاط شغل، فالرقم من تقييم مسؤولك بس: معدله {s.humanAvg?.toFixed(1)} من ٥ = {r(v)}%.</>
           : <>التقييم = {r(v)}% — محسوب من شغلك بالشهر.</>
   } else if (v != null) {
     formula = <>{who ? `تقييم ${who}` : 'التقييم'} = نسبة نقاط ماتركس × ٦٠٪ + تقييم المسؤولين (المعدل من ٥ × ٢٠) × ٤٠٪ = {r(v)}%. إذا واحد منهن ماكو، تنحسب من الثاني وحده.</>
   }
   return (
-    <PctWhy title={who ? `تقييم ماتركس — ${who}` : 'تقييم ماتركس'} value={v == null ? null : r(v)} className={className} formula={formula}
-      meaning={<>تقييم الشغل <b>بالشهر كله</b> (حتى لو مختار «أسبوعي»): نقاط ماتركس (الحضور، الجرد، الورق، المهام، الحجوزات…) ويا تقييم المسؤولين. كل ما تعلى أحسن، وكل تقصير ينسجل يخسّر نقاط.</>}
+    <PctWhy title={who ? `تقييم ${who}` : 'تقييمك'} value={v == null ? null : r(v)} className={className} formula={formula}
+      meaning={<>رقمك من ١٠٠ <b>للشهر كله</b> (حتى لو مختار «أسبوعي»). يطلع من شغلك المسجّل بالنظام (الحضور، الجرد، الورق، المهام، الحجوزات) ومن تقييم مسؤولك. كل تقصير ينسجل ينزّله، وكل شغل زين يرفعه.</>}
       source={<>نقاط ماتركس المسجلة بالشهر (بلا الملغية) وتقييمات المسؤولين المسموحين لكل مجموعة.</>}>
       {s && s.topLosses.length > 0 && <ul className="space-y-1 text-xs">{s.topLosses.slice(0, 5).map((l) => <li key={l.rule}>• {l.title}: {l.count} مرة</li>)}</ul>}
     </PctWhy>
@@ -115,22 +116,22 @@ function MatrixMine({ score }: { score: StaffScoreDetail | null }) {
   return (
     <div className="mr-card p-5">
       <div className="flex items-center justify-between">
-        <h3 className="mr-h flex items-center gap-2 text-sm font-extrabold"><LineIcon n="cal" className="h-5 w-5" /> ماتركس يقيّمك</h3>
+        <h3 className="mr-h flex items-center gap-2 text-sm font-extrabold"><LineIcon n="cal" className="h-5 w-5" /> تقييمك هالشهر</h3>
         <span className="mr-big mr-bigbox text-3xl font-black"><MatrixPct v={score.final} s={score} /></span>
       </div>
       <p className="mr-sub mt-1 text-[11px]">
-        {score.month !== todayBaghdad().slice(0, 7) && <b className="text-amber-700">تقييم الشهر الماضي ({score.month}) — هالشهر بعده بأوله · </b>}
-        {score.max > 0 ? `انحسبلك ${Math.round(score.earned / 2)} من ${Math.round(score.max / 2)} بشغلك` : 'بعد ماكو نقاط هالشهر — تنحسبلك من تقرير إنجازك اليومي وحجوزاتك ومهامك وتقييم مسؤوليك'}
-        {score.humanCount > 0 && ` · ${score.humanCount} تقييم من مسؤوليك`}
+        {score.month !== thisPeriod() && <b className="text-amber-700">هذا تقييم الشهر الي فات ({periodRangeLabel(score.month)}) — هالشهر بعده بأوله · </b>}
+        {score.max > 0 ? `جمعت ${Math.round(score.earned / 2)} نقطة من أصل ${Math.round(score.max / 2)} بشغلك المسجّل` : 'بعدك ما جمعت نقاط هالشهر — تجيك من تقريرك اليومي وحجوزاتك ومهامك وتقييم مسؤولك'}
+        {score.humanCount > 0 && ` · مسؤولك قيّمك ${score.humanCount} مرة`}
       </p>
       {score.topLosses.length > 0 && (
         <div className="mt-3 space-y-2">
-          <p className="mr-h text-[11px] font-bold">شنو نزّل تقييمك:</p>
+          <p className="mr-h text-[11px] font-bold">أكثر الأشياء الي نزّلت رقمك:</p>
           {score.topLosses.slice(0, 3).map((l, i) => (
             <div key={l.rule} className={`mr-loss l${i} text-[11px]`}>
               <span className="mr-tile"><LineIcon n={['cal', 'gear', 'layers'][i]} className="h-4 w-4" /></span>
               <div className="min-w-0">
-                <b className="block font-bold">{l.title} ({l.count} مرة)</b>
+                <b className="block font-bold">{l.title} — صارت {l.count} مرة</b>
                 {l.advice && <span className="mt-0.5 block">{l.advice}</span>}
               </div>
             </div>
@@ -392,11 +393,11 @@ export default function MyRanking() {
               <>
                 <div className="grid grid-cols-2 gap-3 lg:grid-cols-2">
                   <RankCard
-                    icon="cal" label="حجوزات راجعتها"
+                    icon="cal" label={evalPeriod === 'weekly' ? 'حجوزات راجعتها هالأسبوع' : 'حجوزات راجعتها هالشهر'}
                     value={myEvalEntry ? String(myEvalEntry.points) : '—'}
                     tone="sky"
                     delta={myEvalEntry?.pointsDelta ?? 0}
-                    deltaSuffix="مراجعة"
+                    deltaSuffix="حجز"
                   />
                   <RankCard
                     icon="trophy" label="ترتيبي الحالي"
@@ -411,6 +412,7 @@ export default function MyRanking() {
                 <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
                   <div className="border-b border-slate-100 px-5 py-4">
                     <h3 className="text-sm font-extrabold text-[#0f2040]">👥 ترتيب الإداريين حسب نشاط المراجعة</h3>
+                    <p className="mt-1 text-xs text-slate-500">الرقم = كم حجز راجعته وقيّمته {evalPeriod === 'weekly' ? 'هالأسبوع' : 'هالشهر'}. الأكثر مراجعة يطلع أول.</p>
                   </div>
                   <div className="overflow-x-auto">
                     <table className="w-full text-right text-xs">
@@ -418,8 +420,8 @@ export default function MyRanking() {
                         <tr>
                           <th className="px-4 py-2.5 font-bold">#</th>
                           <th className="px-4 py-2.5 font-bold">الإداري</th>
-                          <th className="px-4 py-2.5 font-bold">الحجوزات المراجعة</th>
-                          <th className="px-4 py-2.5 font-bold">التغيير</th>
+                          <th className="px-4 py-2.5 font-bold">كم حجز راجع</th>
+                          <th className="px-4 py-2.5 font-bold">مقارنة بالفترة الي فاتت</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-100">
@@ -441,10 +443,10 @@ export default function MyRanking() {
                               <td className="px-4 py-3 font-black text-slate-800">{e.points}</td>
                               <td className="px-4 py-3">
                                 {e.pointsDelta === 0 ? (
-                                  <span className="text-slate-400">0 —</span>
+                                  <span className="text-slate-400">نفس الفترة الي فاتت</span>
                                 ) : (
                                   <span className={`font-bold ${e.pointsDelta > 0 ? 'text-emerald-600' : 'text-red-500'}`}>
-                                    {e.pointsDelta > 0 ? '▲' : '▼'} {e.pointsDelta > 0 ? '+' : ''}{e.pointsDelta}
+                                    {e.pointsDelta > 0 ? '▲ أكثر' : '▼ أقل'} بـ{Math.abs(e.pointsDelta)}
                                   </span>
                                 )}
                               </td>
@@ -617,7 +619,7 @@ export default function MyRanking() {
                     <th className="px-4 py-2.5 font-bold">تقييم ماتركس{period === 'weekly' && ' (للشهر)'}</th>
                     <th className="px-4 py-2.5 font-bold">الحجوزات المنجزة</th>
                     <th className="px-4 py-2.5 font-bold">الالتزام</th>
-                    <th className="rounded-e-lg px-4 py-2.5 font-bold">التغيير</th>
+                    <th className="rounded-e-lg px-4 py-2.5 font-bold">مقارنة بالفترة الي فاتت</th>
                   </>)}
                 </tr>
               </thead>
@@ -657,10 +659,10 @@ export default function MyRanking() {
                       </td>
                       {!isSales && <td className="px-4 py-3">
                         {e.pointsDelta === 0 ? (
-                          <span className="text-slate-400">0 —</span>
+                          <span className="text-slate-400">نفس الفترة الي فاتت</span>
                         ) : (
                           <span className={`font-bold ${e.pointsDelta > 0 ? 'text-emerald-600' : 'text-red-500'}`}>
-                            {e.pointsDelta > 0 ? '▲' : '▼'} {e.pointsDelta > 0 ? '+' : ''}{e.pointsDelta}
+                            {e.pointsDelta > 0 ? '▲ أكثر' : '▼ أقل'} بـ{Math.abs(e.pointsDelta)}
                           </span>
                         )}
                       </td>}
@@ -773,7 +775,10 @@ function RankCard({ icon, label, value, tone, delta, deltaSuffix, note, bar }: {
           <p className={`mr-val ${tone} mt-1 text-3xl font-black`}>{value}</p>
           {delta !== undefined && delta !== 0 && (
             <p className={`text-[11px] font-bold ${delta > 0 ? 'text-emerald-600' : 'text-red-500'}`}>
-              {delta > 0 ? '▲' : '▼'} {delta > 0 ? '+' : ''}{delta} {deltaSuffix}
+              {/* (دازاي 11-27) «-103 مراجعة» ما يفهمها الموظف — جملة واضحة بدلها */}
+              {deltaSuffix === 'مركز'
+                ? `${delta > 0 ? '▲ صعدت' : '▼ نزلت'} ${Math.abs(delta)} ${Math.abs(delta) === 1 ? 'مركز' : 'مراكز'} عن الفترة الي فاتت`
+                : `${delta > 0 ? '▲ أكثر' : '▼ أقل'} بـ${Math.abs(delta)} ${deltaSuffix ?? ''} عن الفترة الي فاتت`}
             </p>
           )}
           {note && <p className="mr-h mt-0.5 text-xs">{note}</p>}

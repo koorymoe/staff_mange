@@ -1335,12 +1335,12 @@ func (r *BookingRepository) CountCompletedForEmployeeMonth(employeeID, monthPref
 		SELECT (SELECT COUNT(*) FROM "BookingVisitCrew" vc
 		JOIN "BookingVisit" v ON v.id = vc."visitId"
 		JOIN "Booking" b ON b.id = v."bookingId"
-		WHERE vc."employeeId" = $1 AND to_char(baghdad_date(v."occurredAt"), 'YYYY-MM') = $2
+		WHERE vc."employeeId" = $1 AND company_period(baghdad_date(v."occurredAt")) = $2
 		  AND b.status::text <> 'CANCELLED'`+BookingCountableAndSQL("b")+`)
 		-- (11-19 «٠ من ٣٣») الحجز المنجز المسند إله بلا زيارة مسجّلة بيها اسمه ينحسب هم
 		+ (SELECT COUNT(DISTINCT b.id) FROM "BookingAssignment" a JOIN "Booking" b ON b.id = a."bookingId"
 		WHERE a."employeeId" = $1 AND b.status::text IN ('COMPLETED','PARTIAL') AND b."completedAt" IS NOT NULL
-		  AND to_char(baghdad_date(b."completedAt"), 'YYYY-MM') = $2`+BookingCountableAndSQL("b")+`
+		  AND company_period(baghdad_date(b."completedAt")) = $2`+BookingCountableAndSQL("b")+`
 		  AND NOT EXISTS (SELECT 1 FROM "BookingVisitCrew" vc JOIN "BookingVisit" v ON v.id = vc."visitId"
 		                  WHERE v."bookingId" = b.id AND vc."employeeId" = $1))
 	`, employeeID, monthPrefix)
@@ -1362,7 +1362,7 @@ func (r *BookingRepository) CountInHouseForEmployeeMonth(employeeID, monthPrefix
 		WHERE ba."employeeId" = $1
 		  AND b.status = 'COMPLETED'
 		  AND b."workLocation" = 'IN_HOUSE'
-		  AND to_char(baghdad_date(b."completedAt"), 'YYYY-MM') = $2`+BookingCountableAndSQL(`b`)+`
+		  AND company_period(baghdad_date(b."completedAt")) = $2`+BookingCountableAndSQL(`b`)+`
 		GROUP BY s.name
 		ORDER BY n DESC
 	`, employeeID, monthPrefix)
@@ -1390,7 +1390,7 @@ func (r *BookingRepository) CountAssignedForEmployeeMonth(employeeID, monthPrefi
 		SELECT COUNT(DISTINCT b.id) FROM "Booking" b
 		JOIN "BookingAssignment" ba ON ba."bookingId" = b.id
 		WHERE ba."employeeId" = $1
-			AND to_char(baghdad_date(COALESCE(b."completedAt", b."createdAt")), 'YYYY-MM') = $2`+BookingCountableAndSQL(`b`)+`
+			AND company_period(baghdad_date(COALESCE(b."completedAt", b."createdAt"))) = $2`+BookingCountableAndSQL(`b`)+`
 	`, employeeID, monthPrefix)
 	return count, err
 }
@@ -1403,7 +1403,7 @@ func (r *BookingRepository) CountMaintenanceForEmployeeMonth(employeeID, monthPr
 		SELECT COUNT(DISTINCT b.id) FROM "Booking" b
 		JOIN "BookingAssignment" ba ON ba."bookingId" = b.id
 		WHERE ba."employeeId" = $1 AND b."bookingType" = 'MAINTENANCE'
-			AND to_char(baghdad_date(COALESCE(b."completedAt", b."createdAt")), 'YYYY-MM') = $2`+BookingCountableAndSQL(`b`)+`
+			AND company_period(baghdad_date(COALESCE(b."completedAt", b."createdAt"))) = $2`+BookingCountableAndSQL(`b`)+`
 	`, employeeID, monthPrefix)
 	return count, err
 }
@@ -1417,7 +1417,7 @@ func (r *BookingRepository) CountFreeMaintenanceForEmployeeMonth(employeeID, mon
 		JOIN "BookingAssignment" ba ON ba."bookingId" = b.id
 		WHERE ba."employeeId" = $1 AND b."bookingType" = 'MAINTENANCE'
 			AND (b."quotedPrice" IS NULL OR b."quotedPrice" = 0)
-			AND to_char(baghdad_date(COALESCE(b."completedAt", b."createdAt")), 'YYYY-MM') = $2`+BookingCountableAndSQL(`b`)+`
+			AND company_period(baghdad_date(COALESCE(b."completedAt", b."createdAt"))) = $2`+BookingCountableAndSQL(`b`)+`
 	`, employeeID, monthPrefix)
 	return count, err
 }

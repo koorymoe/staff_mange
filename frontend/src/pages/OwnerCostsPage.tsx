@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { thisPeriod } from '../utils/format'
 import { api, apiRequest } from '../api'
 import { useSession } from '../session'
 import { notify } from '../ui/notify'
@@ -19,7 +20,7 @@ type Rep = {
 }
 
 const iqd = (v: number) => Math.round(v).toLocaleString('en-US')
-const thisMonth = () => new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Baghdad' }).slice(0, 7)
+const thisMonth = thisPeriod // (11-27) فترة الشركة ٢٦ ← ٢٥
 const KIND: Record<Kind, string> = { EARNER: '💰 يدخّل فلوس (فني/ليدر)', ADMIN: '🏢 إداري', BOOKING_ADMIN: '📞 إداري حجوزات' }
 const SHIFT: Record<string, string> = { MORNING: 'صباحي', EVENING: 'مسائي' }
 const EXP: Record<string, string> = { FUEL: '⛽ كاز', VEHICLE: '🚗 تصليح سيارات', TOOLS: '🧰 عدد جديدة', OTHER: '📦 غيرها' }

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { thisPeriod, periodRangeLabel } from '../utils/format'
 import { api, type EmployeeMonthlyStats } from '../api'
 import PctWhy from '../ui/PctWhy'
 import KpiBreakdownChart from '../components/KpiBreakdownChart'
@@ -9,10 +10,6 @@ import { numIQ as fmt } from '../utils/format'
 
 
 import { notify } from '../ui/notify'
-function getCurrentMonth(): string {
-  const now = new Date()
-  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
-}
 
 // صفحة إحصائيات الموظفين الشهرية — تجمع نقاط الكي بي اي (نفس الآلية الموجودة
 // أصلاً)، سرعة العمل (نسبة زمن الموظف للمتوسط العام بنفس المنظومة)،
@@ -21,7 +18,7 @@ function getCurrentMonth(): string {
 // مقيّدة بـRequireAdmin بنفس نمط بقية الصفحات الحساسة (permissions،
 // service-managers).
 export default function EmployeeMonthlyStatsPage() {
-  const [month, setMonth] = useState(getCurrentMonth())
+  const [month, setMonth] = useState(thisPeriod())
   const [rows, setRows] = useState<EmployeeMonthlyStats[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -94,7 +91,7 @@ export default function EmployeeMonthlyStatsPage() {
         </div>
         <div className="flex items-end gap-2">
           <label className="text-xs text-white/80">
-            <span className="mb-1 block">الشهر</span>
+            <span className="mb-1 block">الشهر <span dir="ltr">({periodRangeLabel(month)})</span></span>
             <input type="month" value={month} onChange={(e) => { setLoading(true); setMonth(e.target.value) }}
               className="rounded-lg border-0 bg-white px-3 py-2 text-sm font-bold text-[#1a237e] [color-scheme:light]" />
           </label>

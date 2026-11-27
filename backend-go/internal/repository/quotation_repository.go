@@ -251,12 +251,12 @@ func (r *QuotationRepository) Create(req model.CreateQuotationRequest) (*model.Q
 
 	var q model.Quotation
 	err = tx.Get(&q, `
-		INSERT INTO "Quotation" (id, "quotationNumber", "customerName", "customerPhone", "customerAddress", "projectName", "discountPercent", "discountValue", "grandTotal", "netTotal", notes, duration, "createdByEmployeeId", "projectId", terms, layout, cover, annex, "validUntil")
+		INSERT INTO "Quotation" (id, "quotationNumber", "customerName", "customerPhone", "customerAddress", "projectName", "discountPercent", "discountValue", "grandTotal", "netTotal", notes, duration, "createdByEmployeeId", "projectId", terms, layout, cover, annex, "validUntil", "customerSignature")
 		VALUES (gen_random_uuid()::text, $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14::jsonb, $15, $16::jsonb, $17::jsonb,
-		        COALESCE(NULLIF($18, '')::date, baghdad_today() + `+QuotationDefaultValidityDays+`))
+		        COALESCE(NULLIF($18, '')::date, baghdad_today() + `+QuotationDefaultValidityDays+`), $19)
 		RETURNING *
 	`, quotationNumber, req.CustomerName, req.CustomerPhone, req.CustomerAddress, req.ProjectName, discountPercent, discountValue, grandTotal, netTotal, req.Notes, req.Duration, req.CreatedByEmployeeID, req.ProjectID, termsJSON(req.Terms),
-		quotationLayout(req.Layout), rawJSON(req.Cover), rawJSON(req.Annex), derefStr(req.ValidUntil))
+		quotationLayout(req.Layout), rawJSON(req.Cover), rawJSON(req.Annex), derefStr(req.ValidUntil), req.CustomerSignature)
 	if err != nil {
 		return nil, err
 	}
@@ -378,12 +378,13 @@ func (r *QuotationRepository) Update(id string, req model.UpdateQuotationRequest
 			annex = COALESCE($15::jsonb, annex),
 			-- تمديد الصلاحية يرجّع التنبيه (حتى ينبّه مرة ثانية قبل الموعد الجديد)
 			"expiryRemindedAt" = CASE WHEN NULLIF($16, '')::date IS DISTINCT FROM "validUntil" AND NULLIF($16, '') IS NOT NULL THEN NULL ELSE "expiryRemindedAt" END,
-			"validUntil" = COALESCE(NULLIF($16, '')::date, "validUntil")
+			"validUntil" = COALESCE(NULLIF($16, '')::date, "validUntil"),
+			"customerSignature" = COALESCE($17, "customerSignature")
 		WHERE id = $1
 		RETURNING *
 	`, id, req.CustomerName, req.CustomerPhone, req.CustomerAddress, req.ProjectName,
 		req.DiscountPercent, req.Notes, req.Duration, req.Status, grandTotal, discountValue, netTotal, termsJSON(req.Terms),
-		rawJSON(req.Cover), rawJSON(req.Annex), derefStr(req.ValidUntil))
+		rawJSON(req.Cover), rawJSON(req.Annex), derefStr(req.ValidUntil), req.CustomerSignature)
 	if err != nil {
 		return nil, err
 	}

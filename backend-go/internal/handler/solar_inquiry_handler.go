@@ -46,6 +46,23 @@ func (h *SolarInquiryHandler) PriceRanges(w http.ResponseWriter, r *http.Request
 	h.reply(w, map[string]any{"tiers": tiers}, err, false)
 }
 
+// GET /api/solar-inquiries/config — استهلاك الأجهزة وأسعار الأحجام (دازاي 11-27)
+func (h *SolarInquiryHandler) Config(w http.ResponseWriter, r *http.Request) {
+	c, err := h.svc.Config(middleware.EmployeeIDFromContext(r), middleware.RoleFromContext(r))
+	h.reply(w, c, err, false)
+}
+
+// PUT /api/solar-inquiries/config — المدير والمالك
+func (h *SolarInquiryHandler) SaveConfig(w http.ResponseWriter, r *http.Request) {
+	var in service.SolarIntakeConfig
+	if err := DecodeJSON(r, &in); err != nil {
+		WriteError(w, http.StatusBadRequest, "بيانات غير صحيحة")
+		return
+	}
+	c, err := h.svc.SaveConfig(middleware.EmployeeIDFromContext(r), middleware.RoleFromContext(r), in)
+	h.reply(w, c, err, false)
+}
+
 // POST /api/solar-inquiries {customerName, phone, area, note, intake, siteVisitAt}
 func (h *SolarInquiryHandler) Create(w http.ResponseWriter, r *http.Request) {
 	var in struct {

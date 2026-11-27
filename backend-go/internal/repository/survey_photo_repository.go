@@ -16,6 +16,17 @@ type SurveyPhoto struct {
 	UploadedByID string    `db:"uploadedById" json:"uploadedById"`
 	UploadedBy   string    `db:"uploadedByName" json:"uploadedByName"`
 	CreatedAt    time.Time `db:"createdAt" json:"createdAt"`
+	// بلاغ #62 (11-27): SURVEY = صور الكشف، FOLLOWUP = صور متابعة الكادر بأي مرحلة (بدقتها الأصلية)
+	Kind  string  `db:"kind" json:"kind"`
+	Stage *string `db:"stage" json:"stage"`
+}
+
+// PhotoKind يرجّع نوع مقبول (أي شي غريب = كشف).
+func PhotoKind(k string) string {
+	if k == "FOLLOWUP" {
+		return k
+	}
+	return "SURVEY"
 }
 
 type SurveyPhotoRepository struct {
@@ -28,17 +39,21 @@ func NewSurveyPhotoRepository(db *sqlx.DB) *SurveyPhotoRepository {
 
 const surveyPhotoSelect = `
 	SELECT p.id, p."bookingId", p."projectId", p."fileKey", p."contentType", p."fileName",
-	       p."uploadedById", COALESCE(e.name, '') AS "uploadedByName", p."createdAt"
+	       p."uploadedById", COALESCE(e.name, '') AS "uploadedByName", p."createdAt", p.kind, p.stage
 	FROM "SurveyPhoto" p
 	LEFT JOIN "Employee" e ON e.id = p."uploadedById"`
 
 func (r *SurveyPhotoRepository) Create(bookingID, projectID *string, fileKey, contentType, fileName, uploadedByID string) (*SurveyPhoto, error) {
+	return r.CreateKind(bookingID, projectID, fileKey, contentType, fileName, uploadedByID, "SURVEY", "")
+}
+
+func (r *SurveyPhotoRepository) CreateKind(bookingID, projectID *string, fileKey, contentType, fileName, uploadedByID, kind, stage string) (*SurveyPhoto, error) {
 	var id string
 	if err := r.db.Get(&id, `
-		INSERT INTO "SurveyPhoto" (id, "bookingId", "projectId", "fileKey", "contentType", "fileName", "uploadedById")
-		VALUES (gen_random_uuid()::text, $1, $2, $3, $4, $5, $6)
+		INSERT INTO "SurveyPhoto" (id, "bookingId", "projectId", "fileKey", "contentType", "fileName", "uploadedById", kind, stage)
+		VALUES (gen_random_uuid()::text, $1, $2, $3, $4, $5, $6, $7, NULLIF($8, ''))
 		RETURNING id
-	`, bookingID, projectID, fileKey, contentType, fileName, uploadedByID); err != nil {
+	`, bookingID, projectID, fileKey, contentType, fileName, uploadedByID, PhotoKind(kind), stage); err != nil {
 		return nil, err
 	}
 	return r.Get(id)
@@ -54,13 +69,17 @@ func (r *SurveyPhotoRepository) Get(id string) (*SurveyPhoto, error) {
 
 func (r *SurveyPhotoRepository) ListForBooking(bookingID string) ([]SurveyPhoto, error) {
 	out := []SurveyPhoto{}
-	err := r.db.Select(&out, surveyPhotoSelect+` WHERE p."bookingId" = $1 ORDER BY p."createdAt"`, bookingID)
+	err := r.db.Select(&out, surveyPhotoSelect+` WHERE p."bookingId" = $1 AND p.kind = 'SURVEY' ORDER BY p."createdAt"`, bookingID)
 	return out, err
 }
 
 func (r *SurveyPhotoRepository) ListForProject(projectID string) ([]SurveyPhoto, error) {
+	return r.ListForProjectKind(projectID, "SURVEY")
+}
+
+func (r *SurveyPhotoRepository) ListForProjectKind(projectID, kind string) ([]SurveyPhoto, error) {
 	out := []SurveyPhoto{}
-	err := r.db.Select(&out, surveyPhotoSelect+` WHERE p."projectId" = $1 ORDER BY p."createdAt"`, projectID)
+	err := r.db.Select(&out, surveyPhotoSelect+` WHERE p."projectId" = $1 AND p.kind = $2 ORDER BY p."createdAt"`, projectID, PhotoKind(kind))
 	return out, err
 }
 
@@ -88,6 +107,9 @@ func (r *SurveyPhotoRepository) IsProjectSurveyTeam(projectID, employeeID string
 				COALESCE("surveyorEmployeeId", ''), COALESCE("responsibleEmployeeId", ''), COALESCE("delegatedToEmployeeId", '')
 			)
 		)
+		-- (بلاغ #62) كادر حجز المشروع يرفع ويشوف صور المتابعة
+		OR EXISTS (SELECT 1 FROM "Project" p JOIN "BookingAssignment" a ON a."bookingId" = p."bookingId"
+			WHERE p.id = $1 AND a."employeeId" = $2)
 	`, projectID, employeeID)
 	return ok, err
 }

@@ -23,3 +23,17 @@ export const dayBaghdad = (iso: string | Date | null | undefined) => (iso ? new 
 export const hms = (sec: number) => `${Math.floor(sec / 3600)}:${String(Math.floor((sec % 3600) / 60)).padStart(2, '0')}:${String(sec % 60).padStart(2, '0')}`
 /** تاريخ ووقت عربي متوسط */
 export const dateTimeAr = (s: string) => new Date(s).toLocaleString('ar-IQ', { dateStyle: 'medium', timeStyle: 'short' })
+
+/** (دازاي 11-27) فترة الشركة الحالية «YYYY-MM» (من ٢٦ لـ٢٥) — يوم ٢٦ وبعده = الشهر الجاي. */
+export const thisPeriod = () => {
+  const d = todayBaghdad()
+  const [y, m, day] = d.split('-').map(Number)
+  if (day < 26) return d.slice(0, 7)
+  return new Date(Date.UTC(y, m, 1)).toISOString().slice(0, 7)
+}
+/** حدود الفترة للعرض: «26/10 ← 25/11» */
+export const periodRangeLabel = (p: string) => {
+  const [y, m] = p.split('-').map(Number)
+  const prev = new Date(Date.UTC(y, m - 2, 1))
+  return `26/${prev.getUTCMonth() + 1} ← 25/${m}`
+}

@@ -28,6 +28,8 @@ type Quotation struct {
 	Status string           `db:"status" json:"status"`
 	// (ع) 11-07: صلاحية العرض — بعدها السعر يحتاج تأكيد. وتنبيه للمنشئ قبل يومين.
 	ValidUntil          *time.Time `db:"validUntil" json:"validUntil"`
+	// بلاغ #61 (11-27): خانة توقيع الزبون بالمطبوع — للعروض الي تنضاف للعقود
+	CustomerSignature bool `db:"customerSignature" json:"customerSignature"`
 	ExpiryRemindedAt    *time.Time `db:"expiryRemindedAt" json:"-"`
 	CreatedByEmployeeID string     `db:"createdByEmployeeId" json:"-"`
 	CreatedAt           time.Time  `db:"createdAt" json:"createdAt"`
@@ -85,7 +87,8 @@ type CreateQuotationRequest struct {
 	Annex               *json.RawMessage     `json:"annex"`
 	CreatedByEmployeeID string               `json:"createdByEmployeeId"`
 	// ValidUntil YYYY-MM-DD — فاضي = ١٥ يوم من اليوم
-	ValidUntil *string `json:"validUntil"`
+	ValidUntil        *string `json:"validUntil"`
+	CustomerSignature bool    `json:"customerSignature"`
 }
 
 type UpdateQuotationRequest struct {
@@ -102,6 +105,8 @@ type UpdateQuotationRequest struct {
 	Cover           *json.RawMessage     `json:"cover"`
 	Annex           *json.RawMessage     `json:"annex"`
 	ValidUntil      *string              `json:"validUntil"`
+	// nil = بلا تغيير
+	CustomerSignature *bool `json:"customerSignature"`
 }
 
 // ═══ نسخة مؤرشفة من عرض سعر ═══

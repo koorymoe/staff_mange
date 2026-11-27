@@ -1516,6 +1516,9 @@ export interface SurveyPhoto {
   uploadedById: string
   uploadedByName: string
   createdAt: string
+  /** بلاغ #62: SURVEY = كشف، FOLLOWUP = متابعة */
+  kind?: 'SURVEY' | 'FOLLOWUP'
+  stage?: string | null
 }
 
 export interface DailyAuditRow {
@@ -2223,6 +2226,8 @@ export interface Quotation {
   status: 'NEW' | 'SENT' | 'ACCEPTED' | 'REJECTED'
   /** (ع) 11-07: صالح لغاية (فاضي بالعروض القديمة) */
   validUntil?: string | null
+  /** بلاغ #61: خانة توقيع الزبون بالمطبوع */
+  customerSignature?: boolean
   createdAt: string
 }
 
@@ -3917,7 +3922,7 @@ export interface ScoreExplainRow {
   id: string; name: string; role: string; isLeader: boolean; group: string; groupLabel: string; why: string
   rules: string[]; raters: string[]; revenue?: string; aiOnly?: boolean; offSystem?: boolean; roleChange?: string
 }
-export interface StaffScoreBoard { month: string; on: boolean; staff: StaffScore[]; insights: string[] }
+export interface StaffScoreBoard { month: string; /** (11-27) الفترة ٢٦ ← ٢٥ */ from?: string; to?: string; on: boolean; staff: StaffScore[]; insights: string[] }
 export interface MatrixScorePoint {
   id: string; employeeId: string; source: string; sourceId: string; sourceLabel: string | null; rule: string
   points: number; maxPoints: number; reason: string; at: string; cancelledAt: string | null; cancelNote: string | null

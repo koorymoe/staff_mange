@@ -156,7 +156,7 @@ func (r *Rework) Decide(emp, id string, approve bool, note string) error {
 	if len(fixCrew) == 0 || len(origCrew) == 0 {
 		return errors.New("لازم الحجزين بيهن كادر مسجّل (وكادر الأصلي مو نفس الي صلّح)")
 	}
-	rep, err := r.costs.Report(timeutil.ThisMonth(), time.Now())
+	rep, err := r.costs.Report(timeutil.ThisPeriod(), time.Now())
 	if err != nil {
 		return err
 	}

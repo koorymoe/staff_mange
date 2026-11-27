@@ -19,7 +19,7 @@ export default function MyScoreCard() {
       <button type="button" onClick={() => setOpen(!open)} className="flex w-full items-center justify-between gap-3 text-right">
         <span>
           <b className="text-sm text-slate-800">🏅 تقييمي هالشهر</b>
-          <span className="block text-[11px] text-slate-500">ماتركس ٦٠٪ + تقييم مسؤوليك ٤٠٪{d.reliability != null && <> · 🛡️ الاعتمادية <b><PctWhy title="الاعتمادية" value={Math.round(d.reliability)}
+          <span className="block text-[11px] text-slate-500">٦٠٪ من شغلك المسجّل + ٤٠٪ من تقييم مسؤولك{d.reliability != null && <> · 🛡️ الالتزام <b><PctWhy title="الالتزام" value={Math.round(d.reliability)}
             formula={<>معدّل {d.reliabilityParts.length} جزء: ({d.reliabilityParts.map((p) => `${Math.round(p.pct)}`).join(' + ')}) ÷ {d.reliabilityParts.length} = <b>{Math.round(d.reliability)}%</b></>}
             meaning={<>شكد نگدر نعتمد عليك بالأشياء الأساسية: الحضور، الجرد، الورق، المهام، الشكاوى، الإجازات، المشاكل ويا الزملاء، العدّة والـKPI. كل جزء يبدي من ١٠٠ وينزل بقدر الي عليك.</>}
             source={<>سجلات هالشهر: الحضور، جرد العدّة، أوراق الحجوزات، المهام، شكاوى الزبائن، الإجازات، والملاحظات الوظيفية.</>}>

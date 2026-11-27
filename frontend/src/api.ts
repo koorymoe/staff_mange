@@ -1856,11 +1856,14 @@ export const api = {
   // ═══ صور الكشف (حجز أو مشروع) ═══
   // ⚠️ الصورة تنجلب بترويسة Authorization (blob) مو برابط <img> عام:
   // الخادم يفحص الدور بكل طلب، فرابط مسرّب ما يفتح لغير المصرّح.
-  getSurveyPhotos: (owner: SurveyPhotoOwner) =>
-    request<SurveyPhoto[]>(`/survey-photos?${owner.bookingId ? `bookingId=${owner.bookingId}` : `projectId=${owner.projectId}`}`),
-  uploadSurveyPhoto: async (owner: SurveyPhotoOwner, file: File) => {
+  getSurveyPhotos: (owner: SurveyPhotoOwner, kind: 'SURVEY' | 'FOLLOWUP' = 'SURVEY') =>
+    request<SurveyPhoto[]>(`/survey-photos?${owner.bookingId ? `bookingId=${owner.bookingId}` : `projectId=${owner.projectId}&kind=${kind}`}`),
+  // بلاغ #62: kind=FOLLOWUP صور متابعة الكادر بالمشروع ويا المرحلة — الملف يرتفع مثل ما هو بلا ضغط
+  uploadSurveyPhoto: async (owner: SurveyPhotoOwner, file: File, kind: 'SURVEY' | 'FOLLOWUP' = 'SURVEY', stage = '') => {
     const form = new FormData()
     form.append('file', file)
+    form.append('kind', kind)
+    if (stage) form.append('stage', stage)
     if (owner.bookingId) form.append('bookingId', owner.bookingId)
     if (owner.projectId) form.append('projectId', owner.projectId)
     const token = currentToken()
@@ -1950,6 +1953,7 @@ export const api = {
     terms?: string[]
     createdByEmployeeId?: string
     validUntil?: string
+    customerSignature?: boolean
   }) => request<Quotation>('/quotations', { method: 'POST', body: JSON.stringify(data) }),
   updateQuotation: (id: string, data: {
     customerName?: string
@@ -1963,6 +1967,7 @@ export const api = {
     terms?: string[]
     status?: Quotation['status']
     validUntil?: string
+    customerSignature?: boolean
   }) => request<Quotation>(`/quotations/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
   deleteQuotation: (id: string) =>
     request<void>(`/quotations/${id}`, { method: 'DELETE' }),

@@ -3,6 +3,7 @@ package repository
 import (
 	"github.com/lib/pq"
 	"staffmange-api/internal/errlog"
+	"time"
 
 	"github.com/jmoiron/sqlx"
 
@@ -102,7 +103,7 @@ func (r *KpiRepository) SumPointsForEmployeeMonth(employeeID, monthPrefix string
 	var total int
 	err := r.db.Get(&total, `
 		SELECT COALESCE(SUM(points), 0) FROM "KpiEvaluation"
-		WHERE "employeeId" = $1 AND cancelled = false AND to_char(baghdad_date("createdAt"), 'YYYY-MM') = $2
+		WHERE "employeeId" = $1 AND cancelled = false AND company_period(baghdad_date("createdAt")) = $2
 	`, employeeID, monthPrefix)
 	return total, err
 }
@@ -132,7 +133,7 @@ func (r *KpiRepository) MonthlyPointsSeriesForEmployee(employeeID string, months
 			interval '1 month'
 		) m
 		LEFT JOIN "KpiEvaluation" k ON k."employeeId" = $1 AND k.cancelled = false
-			AND to_char(baghdad_date(k."createdAt"), 'YYYY-MM') = to_char(m, 'YYYY-MM')
+			AND company_period(baghdad_date(k."createdAt")) = to_char(m, 'YYYY-MM')
 		GROUP BY m
 		ORDER BY m
 	`, employeeID, monthsCount, endMonth)
@@ -313,6 +314,19 @@ func (r *KpiRepository) RoleLeaderboard(roles []string, since, until string, sco
 
 // ResetAllActive التصفير الشهري: كل تقييم فعّال يرجع (cancelled) ويا ملاحظة،
 // والسجل يبقى. يرجّع عدد التقييمات ومجموع نقاطها.
+// ResetBefore (11-27) نفس ResetAllActive بس للتقييمات الي قبل cutoff (بداية الفترة الجديدة).
+func (r *KpiRepository) ResetBefore(cutoff time.Time) (int64, int, error) {
+	var pts int
+	errlog.Err(r.db.Get(&pts, `SELECT COALESCE(SUM(points), 0) FROM "KpiEvaluation" WHERE cancelled = false AND "createdAt" < $1`, cutoff))
+	res, err := r.db.Exec(`UPDATE "KpiEvaluation" SET cancelled = true, "cancelledAt" = now(), "cancelNote" = 'MONTHLY_RESET'
+		WHERE cancelled = false AND "createdAt" < $1`, cutoff)
+	if err != nil {
+		return 0, 0, err
+	}
+	n, _ := res.RowsAffected()
+	return n, pts, nil
+}
+
 func (r *KpiRepository) ResetAllActive() (int64, int, error) {
 	var pts int
 	errlog.Err(r.db.Get(&pts, `SELECT COALESCE(SUM(points), 0) FROM "KpiEvaluation" WHERE cancelled = false`))

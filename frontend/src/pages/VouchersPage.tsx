@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { thisPeriod } from '../utils/format'
 import { api, apiRequest } from '../api'
 import { notify } from '../ui/notify'
 import { fmtDateTime } from '../utils/date'
@@ -10,7 +11,7 @@ import { fmtDateTime } from '../utils/date'
 type V = { id: string; number: number; targetKind: 'PROJECT' | 'BOOKING' | 'EXTERNAL'; targetLabel: string; purpose: string; amount: number; paidAt: string; recipientKind: 'EMPLOYEE' | 'CASHIER'; recipient: string | null; note: string | null; createdBy: string; cancelledAt: string | null; cancelReason: string | null }
 type L = { month: string; items: V[]; total: number; toCashier: number; toStaff: number }
 const iqd = (v: number) => Math.round(v).toLocaleString('en-US')
-const thisMonth = () => new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Baghdad' }).slice(0, 7)
+const thisMonth = thisPeriod // (11-27) فترة الشركة ٢٦ ← ٢٥
 const nowLocal = () => new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16)
 const KIND = { PROJECT: '🏗️ مشروع', BOOKING: '📋 حجز', EXTERNAL: '🌐 مشروع خارجي' } as const
 const inp = 'rounded-lg border border-slate-300 p-2 text-sm'

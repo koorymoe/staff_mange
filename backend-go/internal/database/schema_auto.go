@@ -623,6 +623,57 @@ func autoMigrations() []Migration {
 			ALTER TABLE "RemoteHoursConfig" ADD CONSTRAINT "RemoteHoursConfig_updatedById_fkey" FOREIGN KEY ("updatedById") REFERENCES "Employee"(id) ON DELETE SET NULL;
 		`,
 		},
+		{
+			Version: "0535_quotation_customer_signature",
+			SQL: `
+			ALTER TABLE "Quotation" ADD COLUMN IF NOT EXISTS "customerSignature" boolean DEFAULT false NOT NULL;
+		`,
+		},
+		{
+			Version: "0536_survey_photo_followup",
+			SQL: `
+			ALTER TABLE "SurveyPhoto" ADD COLUMN IF NOT EXISTS "kind" text DEFAULT 'SURVEY'::text NOT NULL;
+			ALTER TABLE "SurveyPhoto" ADD COLUMN IF NOT EXISTS "stage" text;
+		`,
+		},
+		{
+			Version: "0537_solar_intake_config",
+			SQL: `
+			CREATE TABLE IF NOT EXISTS "SolarIntakeConfig" (
+	"id" integer DEFAULT 1 NOT NULL,
+	"appliances" jsonb DEFAULT '[]'::jsonb NOT NULL,
+	"bands" jsonb DEFAULT '[]'::jsonb NOT NULL,
+	"updatedById" text,
+	"updatedAt" timestamp with time zone DEFAULT now() NOT NULL
+);
+			ALTER TABLE "SolarIntakeConfig" ADD CONSTRAINT "SolarIntakeConfig_pkey" PRIMARY KEY (id);
+			ALTER TABLE "SolarIntakeConfig" ADD CONSTRAINT "SolarIntakeConfig_one_row" CHECK ((id = 1));
+			ALTER TABLE "SolarIntakeConfig" ADD CONSTRAINT "SolarIntakeConfig_updatedById_fkey" FOREIGN KEY ("updatedById") REFERENCES "Employee"(id) ON DELETE SET NULL;
+		`,
+		},
+		{
+			// (دازاي 11-27) شهر الشركة ٢٦ ← ٢٥: الفترة تنسمّى بشهر نهايتها (يوم ٢٦ وبعده = الشهر الجاي)
+			Version: "0538_company_period_function",
+			SQL: `
+			CREATE OR REPLACE FUNCTION company_period(d date)
+			RETURNS text LANGUAGE sql IMMUTABLE PARALLEL SAFE AS
+			$$ SELECT CASE WHEN extract(day FROM d) >= 26 THEN to_char(d + interval '1 month', 'YYYY-MM') ELSE to_char(d, 'YYYY-MM') END $$;
+		`,
+		},
+		{
+			Version: "0539_score_weight_config",
+			SQL: `
+			CREATE TABLE IF NOT EXISTS "ScoreWeightConfig" (
+	"id" integer DEFAULT 1 NOT NULL,
+	"weights" jsonb DEFAULT '{}'::jsonb NOT NULL,
+	"updatedById" text,
+	"updatedAt" timestamp with time zone DEFAULT now() NOT NULL
+);
+			ALTER TABLE "ScoreWeightConfig" ADD CONSTRAINT "ScoreWeightConfig_pkey" PRIMARY KEY (id);
+			ALTER TABLE "ScoreWeightConfig" ADD CONSTRAINT "ScoreWeightConfig_one_row" CHECK ((id = 1));
+			ALTER TABLE "ScoreWeightConfig" ADD CONSTRAINT "ScoreWeightConfig_updatedById_fkey" FOREIGN KEY ("updatedById") REFERENCES "Employee"(id) ON DELETE SET NULL;
+		`,
+		},
 		// ‹makemigration› — التحديثات الجديدة تنضاف فوگ هالسطر
 	}
 }

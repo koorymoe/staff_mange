@@ -7,10 +7,13 @@ import { notify } from '../ui/notify'
 // صور الكشف — للحجز والمشروع. العرض والتنزيل يقرّرهن الخادم بكل طلب
 // (المراقب، المحاسب، المدير، إداري الحجوزات، والكادر الي رفعها)، فلو
 // رجع ٤٠٣ المكوّن يختفي بهدوء بدل ما يطلّع خطأ لموظف ما يخصّه.
-export default function SurveyPhotos({ owner, canUpload = false, title = '📷 صور الكشف' }: {
+export default function SurveyPhotos({ owner, canUpload = false, title = '📷 صور الكشف', kind = 'SURVEY', stages }: {
   owner: SurveyPhotoOwner
   canUpload?: boolean
   title?: string
+  /** بلاغ #62: FOLLOWUP = صور متابعة الكادر بالمشروع، ويا اختيار المرحلة */
+  kind?: 'SURVEY' | 'FOLLOWUP'
+  stages?: string[]
 }) {
   const { employee } = useSession()
   const ownerKey = owner.bookingId ? `b:${owner.bookingId}` : `p:${owner.projectId}`
@@ -19,15 +22,16 @@ export default function SurveyPhotos({ owner, canUpload = false, title = '📷 �
   const [hidden, setHidden] = useState(false)
   const [busy, setBusy] = useState(false)
   const [reload, setReload] = useState(0)
+  const [stage, setStage] = useState(stages?.[0] ?? '')
 
   useEffect(() => {
     let alive = true
-    api.getSurveyPhotos(owner)
+    api.getSurveyPhotos(owner, kind)
       .then((list) => { if (alive) { setPhotos(list); setHidden(false) } })
       .catch(() => { if (alive) setHidden(true) })
     return () => { alive = false }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ownerKey, reload])
+  }, [ownerKey, reload, kind])
 
   useEffect(() => {
     if (!photos?.length) return
@@ -73,7 +77,7 @@ export default function SurveyPhotos({ owner, canUpload = false, title = '📷 �
     setBusy(true)
     const errors: string[] = []
     for (const f of Array.from(files)) {
-      try { await api.uploadSurveyPhoto(owner, f) } catch (e) {
+      try { await api.uploadSurveyPhoto(owner, f, kind, stage) } catch (e) {
         errors.push(`${f.name}: ${e instanceof Error ? e.message : 'تعذر الرفع'}`)
       }
     }
@@ -106,6 +110,11 @@ export default function SurveyPhotos({ owner, canUpload = false, title = '📷 �
               ⬇ تنزيل الكل
             </button>
           )}
+          {canUpload && stages && (
+            <select value={stage} onChange={(e) => setStage(e.target.value)} className="rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs">
+              {stages.map((x) => <option key={x} value={x}>{x}</option>)}
+            </select>
+          )}
           {canUpload && (
             <label className={`cursor-pointer rounded-lg bg-[var(--color-brand-600,#2563eb)] px-2.5 py-1 text-xs font-bold text-white ${busy ? 'opacity-60' : ''}`}>
               {busy ? 'جاري الرفع…' : '＋ أرفق صور'}
@@ -127,7 +136,9 @@ export default function SurveyPhotos({ owner, canUpload = false, title = '📷 �
                 ? <a href={thumbs[p.id]} target="_blank" rel="noreferrer"><img src={thumbs[p.id]} alt={p.fileName} className="h-24 w-full object-cover" /></a>
                 : <div className="h-24 w-full animate-pulse bg-slate-100" />}
               <div className="flex items-center justify-between gap-1 px-1.5 py-1">
-                <span className="truncate text-[10px] text-slate-500" title={p.uploadedByName}>{p.uploadedByName}</span>
+                <span className="truncate text-[10px] text-slate-500" title={`${p.uploadedByName} · ${new Date(p.createdAt).toLocaleString('ar-IQ')}`}>
+                  {p.stage ? <b className="text-slate-700">{p.stage} · </b> : null}{p.uploadedByName}
+                </span>
                 <span className="flex gap-1">
                   <button type="button" onClick={() => download(p)} title="تنزيل" className="text-xs text-slate-600 hover:text-slate-900">⬇</button>
                   {canDelete(p) && (

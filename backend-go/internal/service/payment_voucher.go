@@ -149,9 +149,9 @@ type VoucherList struct {
 
 func (s *Vouchers) List(month string) (*VoucherList, error) {
 	if month == "" {
-		month = timeutil.ThisMonth()
+		month = timeutil.ThisPeriod()
 	}
-	from, to, ok := timeutil.MonthStart(month)
+	from, to, ok := timeutil.PeriodStart(month)
 	if !ok {
 		return nil, errors.New("الشهر غلط")
 	}

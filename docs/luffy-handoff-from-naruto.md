@@ -555,3 +555,38 @@ git push origin origin/avg:refs/heads/prod     # بعد التأكد إنه fast
 - `service/money_audit.go` (Run(period)) + `/api/owner/money-audit` (owner) + `pages/MoneyAuditPage.tsx` تبويب /owner-money-audit بالإعدادات. قراءة بس.
 - auditCrew نسخة من workCrewSQL — إذا تغيّر واحد غيّر الثاني.
 - التقييم ينحسب بالشهر الميلادي والتصفير 27 والفلوس 26→25: الفحص يأشّرها تنبيه لحد قرار دازاي.
+
+
+## 11-27 بلاغات #60 و#61 (عرض السعر)
+- #60: خانة «قيمة الخصم» صارت تنكتب؛ تحوّل لنسبة (discountPercent كسري) والخادم يحسب القيمة منها نفسها. النسبة تنعرض مقرّبة لمرتبتين.
+- #61: `Quotation.customerSignature` (0535) + بالـmodel لأن القراءة SELECT *. مربع اختيار بقسم الشروط، والطباعة الكلاسيكية تضيف sign-box. عرض المشاريع (PROJECT) ما بي توقيع لسه.
+
+
+## 11-27 توحيد الفترة 26←25
+- `timeutil.PeriodStart/PeriodOf` (PeriodStartDay=26). `MonthRange` بالتقييم صار عليها؛ «2026-12» = 11-26..12-25. البورد يرجّع from/to.
+- التصفير الشهري يوم 25 الساعة 23، و`KpiRepository.ResetBefore(cutoff)` يصفّر بس الي قبل 26.
+- باقي الإحصائيات (MonthStart/ThisMonth) بعدها ميلادية.
+
+
+## 11-27 بلاغ #62 صور المتابعة
+- `SurveyPhoto.kind` (SURVEY/FOLLOWUP) و`stage` (0536). صور الكشف القديمة ما تتأثر (default SURVEY، والقوائم تفلتر).
+- كادر حجز المشروع (Project.bookingId) صار من فريق المشروع بالصور.
+- الواجهة: `SurveyPhotos` بـkind/stages، وزر بـ`ProjectCard`. الحد 10MB للصورة.
+
+
+## 11-27 الطاقة الشمسية بالإعدادات
+- `SolarIntakeConfig` (0537) appliances/bands jsonb. `service/solar_intake_config.go`؛ PriceRanges ياخذ الجدول اليدوي أول (bandTiers) وإلا القديم.
+- `/api/solar-inquiries/config` GET (أصحاب الاستفسار) و PUT (admin). صفحة `SolarSettingsPage` تبويب /owner-settings-solar.
+- `SolarIntake.tsx` يقرا الجدول بدل APPLIANCE_KW الفاضي. ألوان النظام بآخر SolarIntake.css (تغطي ألوان زينا). شاشة زينا — بلّغها.
+
+
+## 11-27 الإحصائيات على 26←25
+- دالة SQL `company_period(date)` (0538 + t__objects). استبدلت `to_char(baghdad_date(x),'YYYY-MM')` بالإحصائيات (kpi، booking counts، commissions، internal works، month stats، job duration، leader invoice، vehicle rating، complaints، staff points، matrix agent tools، drill).
+- Go: `timeutil.ThisPeriod/PeriodStart` بالفلوس والتكاليف والسندات وإحصائيات الموظفين. الواجهة `thisPeriod()` بـutils/format.
+- باقي (ما تغيّر): الإجازات، السيارات، قائمة الحجوزات، org plans، KpiPage (smart kpi).
+
+
+## 11-27 بنود التقييم من الإعدادات
+- `ScoreWeightConfig` (0539) weights jsonb {group:{key:weight}} — الي يخالف الأصل بس. `service/score_weights.go`.
+- `applyRoleScores` يقرا الأوزان عبر `scoreWeightsLoader` (ينضبط بـNewMatrixScoreService) و`applyWeights` يطلّع المطفي. رأي ماتركس العام (genericOpinion) بعده بالأوزان الأصلية.
+- `/api/owner/score-weights` GET/PUT (owner)، صفحة `ScoreWeightsPage` تبويب /owner-settings-score.

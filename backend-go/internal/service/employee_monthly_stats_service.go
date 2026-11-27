@@ -288,7 +288,7 @@ func (s *EmployeeMonthlyStatsService) Curve(employeeID string, monthsCount int, 
 		monthsCount = 6
 	}
 	if month == "" {
-		month = timeutil.ThisMonth()
+		month = timeutil.ThisPeriod()
 	}
 	if _, err := time.Parse("2006-01", month); err != nil {
 		return nil, fmt.Errorf("صيغة الشهر يجب أن تكون YYYY-MM")

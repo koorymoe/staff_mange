@@ -96,7 +96,8 @@ func TestCompanyCostsLive(t *testing.T) {
 	if err := c.AddExpense(CostExpense{Month: "2031-02", Kind: "FUEL", Amount: 100000}, ""); err != nil {
 		t.Fatal(err)
 	}
-	// شباط 2031 = 28 يوم؛ توقف 7 أيام (من 25 شباط لـ3 آذار ← 4 أيام بس جوه الشهر) + فترة متداخلة ما تنعد مرتين
+	// (11-27) فترة «2031-02» = من 26 كانون الثاني لـ25 شباط؛ توقف من 25 شباط لـ3 آذار ← يوم واحد (25) جوه الفترة،
+	// والمتداخلة (26–27 شباط) برّا الفترة
 	if err := c.AddDowntime(DowntimePeriod{StartDate: "2031-02-25", EndDate: "2031-03-03", Reason: "cc-عيد"}, ""); err != nil {
 		t.Fatal(err)
 	}
@@ -108,7 +109,7 @@ func TestCompanyCostsLive(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if rep.DowntimeDays != 4 || len(rep.Targets) != 1 || rep.Targets[0].Target != 1200000 || rep.TotalCost != 1200000 {
+	if rep.DowntimeDays != 1 || len(rep.Targets) != 1 || rep.Targets[0].Target != 1200000 || rep.TotalCost != 1200000 {
 		t.Fatalf("التقرير غلط: توقف %d، أهداف %+v، تكلفة %v", rep.DowntimeDays, rep.Targets, rep.TotalCost)
 	}
 }

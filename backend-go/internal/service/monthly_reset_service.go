@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"staffmange-api/internal/repository"
+	"staffmange-api/internal/timeutil"
 )
 
 // ═══ التصفير الشهري — يوم ٢٧ الساعة ١١ بالليل (بغداد) ═══
@@ -16,8 +17,9 @@ import (
 //  • ساعات البيت: الفترة تنسكّر، والعدّادات تبدي من صفر، والسجلات تبقى بالإكسل.
 // مرة وحدة بالشهر (علامة بالقاعدة)، ولو السيرفر چان طافي وقتها يلحق أول ما يشتغل.
 
+// (دازاي 11-27) التصفير بآخر يوم بفترة الشركة (٢٥) الساعة ١١ بالليل — چان يوم ٢٧ والفترة ٢٦←٢٥.
 const (
-	ResetDayOfMonth = 27
+	ResetDayOfMonth = 25
 	resetHour       = 23
 )
 
@@ -47,7 +49,9 @@ func (s *MonthlyResetService) RunIfDue() error {
 	if err != nil || !ok {
 		return err
 	}
-	evals, pts, kerr := s.kpi.ResetAllActive()
+	// يصفّر بس الي قبل بداية الفترة الجديدة (٢٦) — خصم انسجّل يوم ٢٦ لو بعده يبقى للفترة الجديدة
+	_, cutoff, _ := timeutil.PeriodStart(now.Format("2006-01"))
+	evals, pts, kerr := s.kpi.ResetBefore(cutoff)
 	if kerr != nil {
 		log.Printf("monthly reset kpi: %v", kerr)
 	}

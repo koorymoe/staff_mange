@@ -90,6 +90,10 @@ type MatrixScoreService struct {
 
 func NewMatrixScoreService(repo *repository.MatrixScoreRepository, chain *MatrixChainService,
 	switches *repository.SystemSwitchRepository, projects func() (*ProjectsReport, error)) *MatrixScoreService {
+	if repo != nil && repo.DB() != nil {
+		db := repo.DB()
+		scoreWeightsLoader = func() ScoreWeights { return LoadScoreWeights(db) }
+	}
 	return &MatrixScoreService{repo: repo, chain: chain, switches: switches, projects: projects}
 }
 
@@ -423,6 +427,8 @@ var genericRules = map[string]bool{"ATTENDANCE": true, "DAILY_REPORT": true, "RE
 
 type StaffScoreBoard struct {
 	Month    string       `json:"month"`
+	From     string       `json:"from"` // (11-27) أول يوم بالفترة (٢٦)
+	To       string       `json:"to"`   // آخر يوم (٢٥)
 	On       bool         `json:"on"`
 	Staff    []StaffScore `json:"staff"`
 	Insights []string     `json:"insights"`
@@ -480,12 +486,14 @@ func ruleTitle(rule string) string {
 }
 
 // MonthRange حدود الشهر بتوقيت بغداد. month = «2026-10» أو فارغ للحالي.
+// (دازاي 11-27) فترة التقييم = شهر الشركة (٢٦ ← ٢٥)، نفس الفلوس وساعات البيت والتصفير.
 func MonthRange(month string, now time.Time) (string, time.Time, time.Time) {
-	if from, to, ok := timeutil.MonthStart(month); ok {
+	if from, to, ok := timeutil.PeriodStart(month); ok {
 		return month, from, to
 	}
-	from, to, _ := timeutil.MonthStart(now.In(timeutil.CompanyLocation()).Format("2006-01"))
-	return from.Format("2006-01"), from, to
+	key := timeutil.PeriodOf(now)
+	from, to, _ := timeutil.PeriodStart(key)
+	return key, from, to
 }
 
 // boardTTL (11-12 «النظام بطيء»): لوحة الترتيب (والأقران) تنحسب للشركة كلها مرتين (الشهر والي
@@ -562,7 +570,8 @@ func (s *MatrixScoreService) board(month string) (*StaffScoreBoard, error) {
 		}
 		return *a > *b
 	})
-	return &StaffScoreBoard{Month: key, On: s.On(), Staff: cur, Insights: boardInsights(cur)}, nil
+	return &StaffScoreBoard{Month: key, From: from.Format("2006-01-02"), To: to.AddDate(0, 0, -1).Format("2006-01-02"),
+		On: s.On(), Staff: cur, Insights: boardInsights(cur)}, nil
 }
 
 func (s *MatrixScoreService) Detail(employeeID, month string) (*StaffScoreDetail, error) {

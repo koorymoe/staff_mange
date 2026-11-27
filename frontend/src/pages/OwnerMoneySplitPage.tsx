@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { thisPeriod } from '../utils/format'
 import { apiRequest } from '../api'
 import { useSession } from '../session'
 import { notify } from '../ui/notify'
@@ -17,7 +18,7 @@ type Profit = { invoices: number; total: number; leaders: number; techs: number;
 type Resp = { split: Split; month: string; profit: Profit }
 
 const iqd = (v: number) => `${Math.round(v).toLocaleString('en-US')} د.ع`
-const thisMonth = () => new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Baghdad' }).slice(0, 7)
+const thisMonth = thisPeriod // (11-27) فترة الشركة ٢٦ ← ٢٥
 
 function Pct({ label, hint, value, onChange }: { label: string; hint?: string; value: number; onChange: (v: number) => void }) {
   return (

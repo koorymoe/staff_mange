@@ -127,7 +127,7 @@ func (h *SurveyPhotoHandler) List(w http.ResponseWriter, r *http.Request) {
 	if bookingID != "" {
 		photos, err = h.repo.ListForBooking(bookingID)
 	} else {
-		photos, err = h.repo.ListForProject(projectID)
+		photos, err = h.repo.ListForProjectKind(projectID, r.URL.Query().Get("kind"))
 	}
 	if err != nil {
 		WriteError(w, http.StatusInternalServerError, "تعذر جلب صور الكشف")
@@ -175,7 +175,16 @@ func (h *SurveyPhotoHandler) Upload(w http.ResponseWriter, r *http.Request) {
 		WriteError(w, http.StatusInternalServerError, "تعذر حفظ الصورة")
 		return
 	}
-	photo, err := h.repo.Create(bID, pID, key, contentType, header.Filename, middleware.EmployeeIDFromContext(r))
+	// (بلاغ #62) صور المتابعة للمشروع بس، ويا المرحلة. الملف ينحفظ مثل ما هو (بلا ضغط).
+	kind := repository.PhotoKind(r.FormValue("kind"))
+	if pID == nil {
+		kind = "SURVEY"
+	}
+	stage := strings.TrimSpace(r.FormValue("stage"))
+	if len([]rune(stage)) > 40 {
+		stage = string([]rune(stage)[:40])
+	}
+	photo, err := h.repo.CreateKind(bID, pID, key, contentType, header.Filename, middleware.EmployeeIDFromContext(r), kind, stage)
 	if err != nil {
 		_ = h.store.Delete(r.Context(), key)
 		WriteError(w, http.StatusBadRequest, "تعذر ربط الصورة — تأكد الحجز/المشروع موجود")
