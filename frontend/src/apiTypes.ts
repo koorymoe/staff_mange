@@ -4074,6 +4074,7 @@ export interface DrillRow {
   id: string; code: string; customer: string | null; phone: string | null; service: string | null
   status: string; scheduledAt: string | null; createdAt: string; crew: string | null
   responsible: string | null; ageDays: number | null; station: string; missing: string | null
+  amount?: number | null; collected?: number | null; creditDue?: number | null
 }
 export interface DrillResult {
   key: string; title: string; explain: string; count: number; rows: DrillRow[]

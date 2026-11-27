@@ -209,6 +209,11 @@ type DrillRow struct {
 	AgeDays     *int    `db:"ageDays" json:"ageDays"`
 	Station     string  `db:"station" json:"station"`
 	Missing     *string `db:"missing" json:"missing"`
+	// (ك) 11-27 زينا: فلوس الحجز لصفحة «حجوزات اليوم» — المبلغ (المستلم، وإذا بعد ما انستلم فالسعر المعروض)،
+	// والمستلم فعلاً (للإيرادات)، وباقي الآجل (CreditSale غير مسدّد ناقص دفعاته).
+	Amount    *float64 `db:"amount" json:"amount"`
+	Collected *float64 `db:"collected" json:"collected"`
+	CreditDue *float64 `db:"creditDue" json:"creditDue"`
 }
 
 // DrillResult القائمة ويا عنوانها وشرحها.
@@ -268,7 +273,11 @@ func Drill(db *sqlx.DB, key string, limit int) (*DrillResult, error) {
 		       ` + stationExpr + ` AS station,
 		       NULLIF(concat_ws(' + ',
 		         CASE WHEN b."scheduledAt" IS NULL THEN 'بلا موعد' END,
-		         CASE WHEN NOT ` + hasCrewSQL + ` THEN 'بلا كادر' END), '') AS missing
+		         CASE WHEN NOT ` + hasCrewSQL + ` THEN 'بلا كادر' END), '') AS missing,
+		       COALESCE(b."amountCollected", b."quotedPrice")::float8 AS amount,
+		       b."amountCollected"::float8 AS collected,
+		       (SELECT (cs.amount - COALESCE((SELECT SUM(cp.amount) FROM "CreditPayment" cp WHERE cp."creditId" = cs.id), 0))::float8
+		          FROM "CreditSale" cs WHERE cs."bookingId" = b.id AND cs."settledAt" IS NULL) AS "creditDue"
 		FROM "Booking" b
 		LEFT JOIN "Customer" c ON c.id = b."customerId"
 		LEFT JOIN "Service" s ON s.id = b."serviceId"

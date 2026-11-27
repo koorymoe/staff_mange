@@ -115,3 +115,27 @@ html.dark .tb-code { background:#1b2c4f; color:#fff; }
 .tb-pg { border:0; border-radius:10px; }
 .tb-pg.on { background:#13285a; } html.dark .tb-pg.on { background:#0ea5e9; }
 .tb-input { padding:7px 12px; border-radius:12px; }
+
+/* (ك) 11-27 زينا: بطاقة «غير مكتملة» + البطاقات متساوية وكل نص بسطر واحد */
+.tb-cards { grid-template-columns:repeat(6,minmax(0,1fr)); }
+@media (max-width:1100px) { .tb-cards { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+@media (max-width:640px) { .tb-cards { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+.tb-card { height:100%; }
+.tb-card .min-w-0 { flex:1; }
+.tb-cl, .tb-cu { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.tb-card.slate { background:#f3f5f9; border-color:#d5dbe6; } .tb-card.slate .tb-ic { background:#e2e7ef; color:#475569; }
+html.dark .tb-card.slate { background:#162038; border-color:#34456a; } html.dark .tb-card.slate .tb-ic { background:#34456a; color:#e2e8f5; }
+.tb-tabs button { min-width:150px; }
+.tb-tabs button:nth-child(4) .ic { color:#64748b; } .tb-tabs button:nth-child(5) .ic { color:#d97706; }
+html.dark .tb-tabs button:nth-child(4) .ic { color:#cbd5e1; }
+.tb-card { padding:14px 12px; gap:10px; }
+.tb-card .tb-ic { width:38px; height:38px; }
+@media (max-width:1700px) { .tb-cards { grid-template-columns:repeat(3,minmax(0,1fr)); } }
+@media (max-width:1100px) { .tb-cards { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+/* (ك) 11-27: البطاقة تنضغط وتفلتر الجدول، وحبة «بانتظار الدفع» */
+.tb-card { cursor:pointer; transition:transform .15s, box-shadow .15s; }
+.tb-card:hover { transform:translateY(-2px); }
+.tb-card.on { box-shadow:0 0 0 2px #1d4ed8, var(--tb-shadow); }
+html.dark .tb-card.on { box-shadow:0 0 0 2px #3b82f6, 0 0 14px rgba(59,130,246,.45); }
+.tb-pill.pay { background:#fdf3dc; color:#b45309; border-color:#f5d98a; }
+html.dark .tb-pill.pay { background:#713f12; color:#fde68a; border-color:#a16207; }
