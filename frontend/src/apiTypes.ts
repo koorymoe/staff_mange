@@ -1516,6 +1516,9 @@ export interface SurveyPhoto {
   uploadedById: string
   uploadedByName: string
   createdAt: string
+  /** بلاغ #62: SURVEY = كشف، FOLLOWUP = متابعة */
+  kind?: 'SURVEY' | 'FOLLOWUP'
+  stage?: string | null
 }
 
 export interface DailyAuditRow {

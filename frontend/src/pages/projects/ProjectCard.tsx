@@ -11,6 +11,7 @@ import LinkQuotationModal from './LinkQuotationModal'
 
 import { notify } from '../../ui/notify'
 import { BTN_DANGER_SOFT } from '../../ui/classes'
+import SurveyPhotos from '../../components/SurveyPhotos'
 export function MainView(props: {
   projects: Project[]
   totalCount: number
@@ -138,6 +139,8 @@ export function ProjectCard({ p, canManage, onEdit, onMove, onReport, onDelete, 
   const navigate = useNavigate()
   const isRejected = p.stage.includes('مرفوض')
   const canPurge = useCanPurge()
+  // بلاغ #62 (11-27): صور متابعة الكادر بكل المراحل، بدقتها الأصلية
+  const [showPhotos, setShowPhotos] = useState(false)
   const isCompleted = p.stage.includes('مكتمل')
   const isContractStage = p.stage.includes('عقد')
   const stageIdx = STAGES.indexOf(p.stage)
@@ -247,6 +250,8 @@ export function ProjectCard({ p, canManage, onEdit, onMove, onReport, onDelete, 
           </div>
         )}
         <div className="flex gap-2 flex-wrap">
+          <button onClick={() => setShowPhotos((v) => !v)}
+            className="text-sm px-3 py-1.5 rounded-lg border font-medium hover:bg-gray-50">📸 صور المتابعة</button>
           {stageIdx >= 1 && (
             <button onClick={() => onReport('visit', p)}
               className="text-sm px-3 py-1.5 rounded-lg border font-medium hover:bg-gray-50">تقرير الزيارة</button>
@@ -321,6 +326,10 @@ export function ProjectCard({ p, canManage, onEdit, onMove, onReport, onDelete, 
             <span className="text-sm px-3 py-1.5 rounded-full bg-green-700 text-white font-bold flex items-center gap-1">✅ تم التسليم والانتهاء</span>
           )}
         </div>
+        {showPhotos && (
+          <SurveyPhotos owner={{ projectId: p.id }} kind="FOLLOWUP" canUpload title="📸 صور متابعة الكادر (بالدقة الأصلية)"
+            stages={[p.stage, 'تجهيز', 'تنفيذ', 'تسليم', 'صيانة', 'غيره'].filter((x, k, a) => x && a.indexOf(x) === k)} />
+        )}
       </div>
 
       {canManage && (p.stage.includes('تنفيذ') || p.stage.includes('التسليم')) && (

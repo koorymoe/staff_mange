@@ -566,3 +566,9 @@ git push origin origin/avg:refs/heads/prod     # بعد التأكد إنه fast
 - `timeutil.PeriodStart/PeriodOf` (PeriodStartDay=26). `MonthRange` بالتقييم صار عليها؛ «2026-12» = 11-26..12-25. البورد يرجّع from/to.
 - التصفير الشهري يوم 25 الساعة 23، و`KpiRepository.ResetBefore(cutoff)` يصفّر بس الي قبل 26.
 - باقي الإحصائيات (MonthStart/ThisMonth) بعدها ميلادية.
+
+
+## 11-27 بلاغ #62 صور المتابعة
+- `SurveyPhoto.kind` (SURVEY/FOLLOWUP) و`stage` (0536). صور الكشف القديمة ما تتأثر (default SURVEY، والقوائم تفلتر).
+- كادر حجز المشروع (Project.bookingId) صار من فريق المشروع بالصور.
+- الواجهة: `SurveyPhotos` بـkind/stages، وزر بـ`ProjectCard`. الحد 10MB للصورة.

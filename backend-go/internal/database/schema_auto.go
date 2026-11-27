@@ -629,6 +629,13 @@ func autoMigrations() []Migration {
 			ALTER TABLE "Quotation" ADD COLUMN IF NOT EXISTS "customerSignature" boolean DEFAULT false NOT NULL;
 		`,
 		},
+		{
+			Version: "0536_survey_photo_followup",
+			SQL: `
+			ALTER TABLE "SurveyPhoto" ADD COLUMN IF NOT EXISTS "kind" text DEFAULT 'SURVEY'::text NOT NULL;
+			ALTER TABLE "SurveyPhoto" ADD COLUMN IF NOT EXISTS "stage" text;
+		`,
+		},
 		// ‹makemigration› — التحديثات الجديدة تنضاف فوگ هالسطر
 	}
 }
