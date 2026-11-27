@@ -7,21 +7,16 @@ import { api, procurementTypeLabels, type ProcurementRequest, type ProcurementRe
 import { SessionContext, hasRole, isAdminOrOwner } from '../session'
 import BookingCodeChip from '../components/BookingCodeChip'
 import { swallow } from '../utils/swallow'
-import { BTN_DANGER_SOFT, BTN_GHOST, BTN_SUCCESS } from '../ui/classes'
+import { BTN_GHOST, BTN_SUCCESS } from '../ui/classes'
 import { STATUS_LABELS } from '../statusLabels'
 import { LineIcon } from '../components/LineIcon'
+import './ProcurementRequests.css'
 
 const statusLabels: Record<string, string> = {
   PENDING: 'بانتظار التوفير',
   IN_PROGRESS: 'جاري التوفير',
   FULFILLED: 'تم التوفير',
   REJECTED: STATUS_LABELS.REJECTED,
-}
-const statusColors: Record<string, string> = {
-  PENDING: 'bg-amber-100 text-amber-700',
-  IN_PROGRESS: 'bg-blue-100 text-blue-700',
-  FULFILLED: 'bg-emerald-100 text-emerald-700',
-  REJECTED: 'bg-red-100 text-red-700',
 }
 
 export default function ProcurementPage() {
@@ -58,6 +53,12 @@ export default function ProcurementPage() {
 
   // Expanded rows
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set())
+  const [q, setQ] = useState('')
+  const [statusF, setStatusF] = useState('')
+  const [filterOpen, setFilterOpen] = useState(false)
+  const [menuFor, setMenuFor] = useState<string | null>(null)
+  // القائمة تطفو فوگ الصفحة (fixed) — داخل الجدول القابل للتمرير چانت تنقص
+  const [menuPos, setMenuPos] = useState<{ top?: number; bottom?: number; left: number }>({ top: 0, left: 0 })
 
   // Fulfill modal
   const [fulfillModal, setFulfillModal] = useState<ProcurementRequest | null>(null)
@@ -263,7 +264,7 @@ export default function ProcurementPage() {
   }
 
   const fmt = (n: number | null | undefined) =>
-    n != null ? n.toLocaleString('ar-IQ', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '—'
+    n != null ? n.toLocaleString('ar-IQ', { minimumFractionDigits: 0, maximumFractionDigits: 2 }) : '—'
 
   if (loading) {
     return (
@@ -308,15 +309,13 @@ export default function ProcurementPage() {
       <PurchaseControlPanel requests={requests} canBuy={canManageProcurement} canVerify={canVerifyPurchase} canWatch={canWatchPurchase}
         canDecide={isAdminLike} reviewFor={reviewFor} onReviewClose={() => setReviewFor(null)} />
 
-      {/* New Request Form */}
+      {/* New Request Form — (ك) 11-27 زينا: تنفتح من «اضافة طلب جديد» بالجدول، والشريط القديم انشال */}
+      {showForm && (
       <div className="rounded-xl border border-white bg-white shadow-[0_4px_20px_rgba(15,32,64,0.06)]">
-        <button
-          onClick={() => setShowForm(!showForm)}
-          className="w-full flex items-center justify-between p-4 text-right font-semibold text-[#0f2040] hover:bg-slate-50 rounded-xl transition"
-        >
+        <div className="flex items-center justify-between p-4 font-semibold text-[#0f2040]">
           <span>+ طلب جديد</span>
-          <svg className={`w-5 h-5 transition-transform ${showForm ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
-        </button>
+          <button type="button" onClick={() => setShowForm(false)} aria-label="سد الاستمارة" className="rounded-lg px-2 py-1 text-lg leading-none text-slate-500 hover:bg-slate-100">×</button>
+        </div>
         {showForm && (
           <div className="p-4 pt-0 space-y-4 border-t">
             {allowedTypes.length > 1 && (
@@ -457,88 +456,123 @@ export default function ProcurementPage() {
           </div>
         )}
       </div>
+      )}
 
-      {/* Tabs */}
-      <div className="flex gap-2 border-b border-slate-200">
-        <button
-          onClick={() => setActiveTab('CUSTOMER_PRODUCT')}
-          className={`px-4 py-2 text-sm font-semibold border-b-2 transition ${activeTab === 'CUSTOMER_PRODUCT' ? 'border-[#2c5aad] text-[#2c5aad]' : 'border-transparent text-slate-500 hover:text-slate-700'}`}
-        >
-          طلبات منتجات الزبائن
-        </button>
-        <button
-          onClick={() => setActiveTab('PERSONAL_SUPPLY')}
-          className={`px-4 py-2 text-sm font-semibold border-b-2 transition ${activeTab === 'PERSONAL_SUPPLY' ? 'border-[#2c5aad] text-[#2c5aad]' : 'border-transparent text-slate-500 hover:text-slate-700'}`}
-        >
-          طلبات احتياجات شخصية
-        </button>
-        <button
-          onClick={() => setActiveTab('MANUAL_SUPPLY')}
-          className={`px-4 py-2 text-sm font-semibold border-b-2 transition ${activeTab === 'MANUAL_SUPPLY' ? 'border-[#2c5aad] text-[#2c5aad]' : 'border-transparent text-slate-500 hover:text-slate-700'}`}
-        >
-          طلبات مواد يدوية
-        </button>
+      {/* (ك) 11-27 زينا: التبويبات والجدول مثل التصميم — الألوان بـProcurementRequests.css (.pr-*) */}
+      <div className="pr-tabs">
+        {([
+          { k: 'CUSTOMER_PRODUCT' as const, label: 'طلبات منتجات الزبائن', icon: 'cart' },
+          { k: 'PERSONAL_SUPPLY' as const, label: 'طلبات احتياجات شخصية', icon: 'user' },
+          { k: 'MANUAL_SUPPLY' as const, label: 'طلبات مواد يدوية', icon: 'box' },
+        ]).map((t) => (
+          <button key={t.k} type="button" onClick={() => setActiveTab(t.k)} className={`pr-tab ${activeTab === t.k ? 'on' : ''}`}>
+            <LineIcon n={t.icon} className="h-6 w-6" /> {t.label}
+          </button>
+        ))}
       </div>
 
-      {/* Requests Table */}
-      <div className="rounded-xl border border-white bg-white shadow-[0_4px_20px_rgba(15,32,64,0.06)] overflow-hidden">
+      {(() => {
+        const tabTitle = activeTab === 'CUSTOMER_PRODUCT' ? 'طلبات منتجات الزبائن' : activeTab === 'PERSONAL_SUPPLY' ? 'طلبات احتياجات شخصية' : 'طلبات مواد يدوية'
+        const tabSub = activeTab === 'CUSTOMER_PRODUCT' ? 'إدارة ومتابعة طلبات الزبائن للمنتجات' : activeTab === 'PERSONAL_SUPPLY' ? 'إدارة ومتابعة طلبات الاحتياجات الشخصية' : 'إدارة ومتابعة طلبات المواد اليدوية'
+        const tabIcon = activeTab === 'CUSTOMER_PRODUCT' ? 'cart' : activeTab === 'PERSONAL_SUPPLY' ? 'user' : 'box'
+        const isCust = activeTab === 'CUSTOMER_PRODUCT'
+        const cols = isCust ? 7 : 6
+        const term = q.trim().toLowerCase()
+        const rows = requests.filter(r => r.requestType === activeTab)
+          .filter(r => !statusF || r.status === statusF)
+          .filter(r => !term || [r.code, r.requestedBy.name, r.booking?.code, r.booking?.customer?.name].some(v => (v ?? '').toLowerCase().includes(term)))
+        return (
+      <div className="pr-panel">
+        <div className="pr-head">
+          <div className="flex items-center gap-3">
+            <span className="pr-logo"><LineIcon n={tabIcon} className="h-7 w-7" /></span>
+            <div>
+              <h2 className="pr-title">{tabTitle}</h2>
+              <p className="pr-sub">{tabSub}</p>
+            </div>
+          </div>
+          <div className="pr-tools">
+            <label className="pr-search">
+              <LineIcon n="search" className="h-5 w-5" />
+              <input value={q} onChange={e => setQ(e.target.value)} placeholder="البحث في الطلبات..." />
+            </label>
+            <div className="relative">
+              <button type="button" className={`pr-filter ${statusF ? 'on' : ''}`} onClick={() => setFilterOpen(o => !o)} aria-label="فلترة حسب الحالة">
+                <LineIcon n="filter" className="h-5 w-5" />
+              </button>
+              {filterOpen && (
+                <div className="pr-menu" onMouseLeave={() => setFilterOpen(false)}>
+                  {[['', 'كل الحالات'], ...Object.entries(statusLabels)].map(([k, l]) => (
+                    <button key={k} type="button" className={statusF === k ? 'on' : ''} onClick={() => { setStatusF(k); setFilterOpen(false) }}>{l}</button>
+                  ))}
+                </div>
+              )}
+            </div>
+            <button type="button" className="pr-add" onClick={() => { setShowForm(true); window.scrollTo({ top: 0, behavior: 'smooth' }) }}>
+              <LineIcon n="plus" className="h-5 w-5" /> اضافة طلب جديد
+            </button>
+          </div>
+        </div>
+
         <div className="overflow-x-auto">
-          <table className="w-full text-sm">
+          <table className="pr-table">
             <thead>
-              <tr className="bg-gradient-to-l from-[#2c5aad] to-[#1a3a6e] text-white">
-                <th className="px-4 py-3 text-right font-medium">الكود</th>
-                <th className="px-4 py-3 text-right font-medium">مقدم الطلب</th>
-                {activeTab === 'CUSTOMER_PRODUCT' && <th className="px-4 py-3 text-right font-medium">الحجز</th>}
-                <th className="px-4 py-3 text-right font-medium">الحالة</th>
-                <th className="px-4 py-3 text-right font-medium">التكلفة</th>
-                <th className="px-4 py-3 text-right font-medium">التاريخ</th>
-                <th className="px-4 py-3 text-right font-medium">إجراءات</th>
+              <tr>
+                <th><span><LineIcon n="tag" /> الكود</span></th>
+                <th><span><LineIcon n="user" /> مقدم الطلب</span></th>
+                {isCust && <th><span><LineIcon n="bookmark" /> الحجز</span></th>}
+                <th className="c"><span><LineIcon n="layers" /> الحالة</span></th>
+                <th className="c"><span><LineIcon n="db" /> التكلفة</span></th>
+                <th className="c"><span><LineIcon n="cal" /> التاريخ</span></th>
+                <th className="c act"><span><LineIcon n="gear" /> إجراءات</span></th>
               </tr>
             </thead>
             <tbody>
-              {requests.filter(r => r.requestType === activeTab).length === 0 && (
-                <tr><td colSpan={activeTab === 'CUSTOMER_PRODUCT' ? 7 : 6} className="text-center py-8 text-slate-400">لا توجد طلبات</td></tr>
+              {rows.length === 0 && (
+                <tr><td colSpan={cols} className="pr-empty">لا توجد طلبات</td></tr>
               )}
-              {requests.filter(r => r.requestType === activeTab).map(req => (
+              {rows.map(req => (
                 <Fragment key={req.id}>
-                  <tr className="border-b border-slate-100 hover:bg-slate-50 cursor-pointer" onClick={() => toggleRow(req.id)}>
-                    <td className="px-4 py-3 font-mono text-xs">{req.code}</td>
-                    <td className="px-4 py-3">{req.requestedBy.name}</td>
-                    {activeTab === 'CUSTOMER_PRODUCT' && (
-                      <td className="px-4 py-3">{req.booking ? `${req.booking.code} - ${req.booking.customer?.name}` : '—'}</td>
+                  <tr className="pr-row" onClick={() => toggleRow(req.id)}>
+                    <td><span className="pr-code">{req.code}</span></td>
+                    <td><span className="pr-who"><LineIcon n="user" className="h-5 w-5" /> {req.requestedBy.name}</span></td>
+                    {isCust && (
+                      <td className="c">{req.booking ? `${req.booking.code} - ${req.booking.customer?.name}` : '—'}</td>
                     )}
-                    <td className="px-4 py-3">
-                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${statusColors[req.status]}`}>
-                        {statusLabels[req.status]}
+                    <td className="c">
+                      <span className={`pr-status s-${req.status}`}>
+                        {req.status === 'FULFILLED' && <LineIcon n="check" className="h-4 w-4" />} {statusLabels[req.status]}
                       </span>
                     </td>
-                    <td className="px-4 py-3">{fmt(req.totalCost)}</td>
-                    <td className="px-4 py-3 text-xs text-slate-500">{new Date(req.createdAt).toLocaleDateString('ar-IQ')}</td>
-                    <td className="px-4 py-3">
-                      {canManageProcurement ? (
-                        <div className="flex gap-1 flex-wrap" onClick={e => e.stopPropagation()}>
-                          {req.status === 'PENDING' && (
-                            <>
-                              <button onClick={() => handleStatusUpdate(req.id, 'IN_PROGRESS')} className="px-2 py-1 text-xs bg-blue-100 text-blue-700 rounded hover:bg-blue-200 transition">جاري التوفير</button>
-                              <button onClick={() => handleStatusUpdate(req.id, 'REJECTED')} className={BTN_DANGER_SOFT}>رفض</button>
-                            </>
-                          )}
-                          {canRemind(req) && (
-                            <button onClick={() => handleRemind(req.id)} title="الطلب معلّق من يومين فأكثر — يوصل إشعار للمدير (مرة باليوم)" className="px-2 py-1 text-xs bg-amber-100 text-amber-800 rounded hover:bg-amber-200 transition">🔔 ذكّر المدير</button>
-                          )}
-                          {reminded[req.id] && <span className="px-2 py-1 text-xs text-emerald-700">✓ انذكّر</span>}
-                          {(req.status === 'PENDING' || req.status === 'IN_PROGRESS') && (
-                            <button onClick={() => openFulfillModal(req)} className="px-2 py-1 text-xs bg-emerald-100 text-emerald-700 rounded hover:bg-emerald-200 transition">تم التوفير</button>
-                          )}
-                        </div>
-                      ) : (
-                        <span className="text-xs text-slate-400">للاطّلاع فقط</span>
-                      )}
+                    <td className="c num">{fmt(req.totalCost)}</td>
+                    <td className="c num">{new Date(req.createdAt).toLocaleDateString('ar-IQ')}</td>
+                    <td className="c" onClick={e => e.stopPropagation()}>
+                      <div className="relative inline-block">
+                        <button type="button" className="pr-dots" aria-label="إجراءات" onClick={e => { const r = e.currentTarget.getBoundingClientRect(); setMenuPos(r.bottom + 220 > window.innerHeight ? { bottom: window.innerHeight - r.top + 6, left: r.left } : { top: r.bottom + 6, left: r.left }); setMenuFor(m => m === req.id ? null : req.id) }}>•••</button>
+                        {menuFor === req.id && (
+                          <div className="pr-menu float" style={menuPos} onMouseLeave={() => setMenuFor(null)}>
+                            <button type="button" onClick={() => { toggleRow(req.id); setMenuFor(null) }}>{expandedRows.has(req.id) ? 'اخفي المواد' : 'شوف المواد'}</button>
+                            {canManageProcurement ? (<>
+                              {req.status === 'PENDING' && (<>
+                                <button type="button" onClick={() => { setMenuFor(null); handleStatusUpdate(req.id, 'IN_PROGRESS') }}>جاري التوفير</button>
+                                <button type="button" className="bad" onClick={() => { setMenuFor(null); handleStatusUpdate(req.id, 'REJECTED') }}>رفض</button>
+                              </>)}
+                              {canRemind(req) && (
+                                <button type="button" title="الطلب معلّق من يومين فأكثر — يوصل إشعار للمدير (مرة باليوم)" onClick={() => { setMenuFor(null); handleRemind(req.id) }}>🔔 ذكّر المدير</button>
+                              )}
+                              {reminded[req.id] && <span className="ok">✓ انذكّر</span>}
+                              {(req.status === 'PENDING' || req.status === 'IN_PROGRESS') && (
+                                <button type="button" className="good" onClick={() => { setMenuFor(null); openFulfillModal(req) }}>تم التوفير</button>
+                              )}
+                            </>) : <span className="muted">للاطّلاع فقط</span>}
+                          </div>
+                        )}
+                      </div>
                     </td>
                   </tr>
                   {expandedRows.has(req.id) && (
-                    <tr key={`${req.id}-items`} className="bg-slate-50">
-                      <td colSpan={activeTab === 'CUSTOMER_PRODUCT' ? 7 : 6} className="px-6 py-3">
+                    <tr key={`${req.id}-items`} className="pr-items">
+                      <td colSpan={cols} className="px-6 py-3">
                         <div className="space-y-1">
                           <p className="text-xs font-semibold text-slate-600 mb-2">المواد المطلوبة:</p>
                           {req.items.map(item => (
@@ -569,6 +603,8 @@ export default function ProcurementPage() {
           </table>
         </div>
       </div>
+        )
+      })()}
 
       {/* Fulfill Modal */}
       {fulfillModal && (

@@ -1,0 +1,93 @@
+/* (ك) 11-27 زينا: تبويبات وجدول «طلبات المواد» — نهاري وليلي، مثل التصميم */
+.pr-tabs, .pr-panel {
+  --pr-card: #ffffff; --pr-bd: #e3e8f2; --pr-ink: #0f2040; --pr-sub: #5b6b84;
+  --pr-navy: #13285a; --pr-navy2: #1d3f86; --pr-row: #f3f5fa; --pr-shadow: 0 4px 16px rgba(15,32,64,.08);
+  --pr-field: #ffffff; --pr-green-bg: #dff3e6; --pr-green: #13763f;
+}
+html.dark .pr-tabs, html.dark .pr-panel {
+  --pr-card: #0b1a36; --pr-bd: #22355c; --pr-ink: #f1f5ff; --pr-sub: #a9b6cf;
+  --pr-navy: #163a7a; --pr-navy2: #1e4fa8; --pr-row: #0f2142; --pr-shadow: 0 4px 16px rgba(0,0,0,.35);
+  --pr-field: #0b1a36; --pr-green-bg: #0f5a32; --pr-green: #e6fff0;
+}
+.pr-tabs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+.pr-tab { display: flex; align-items: center; justify-content: center; gap: 10px; min-height: 64px; padding: 10px 14px;
+  border-radius: 14px; border: 1px solid var(--pr-bd); background: var(--pr-card); color: var(--pr-ink);
+  font-size: 14px; font-weight: 800; box-shadow: var(--pr-shadow); transition: .15s; }
+.pr-tab.on { background: linear-gradient(135deg, var(--pr-navy2), var(--pr-navy)); color: #fff; border-color: transparent; }
+html.dark .pr-tab.on { border: 1px solid #3b82f6; box-shadow: 0 0 14px rgba(59,130,246,.4); }
+.pr-panel { position: relative; overflow: visible; border-radius: 20px; border: 1px solid var(--pr-bd); background: var(--pr-card);
+  box-shadow: var(--pr-shadow); padding: 18px; color: var(--pr-ink); }
+.pr-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 14px; margin-bottom: 18px; }
+.pr-logo { display: flex; align-items: center; justify-content: center; width: 60px; height: 60px; border-radius: 14px; flex-shrink: 0;
+  background: linear-gradient(135deg, var(--pr-navy2), var(--pr-navy)); color: #fff; box-shadow: var(--pr-shadow); }
+html.dark .pr-logo { background: #0f2a57; border: 1px solid #3b82f6; color: #dbeafe; }
+.pr-title { font-size: 18px; font-weight: 900; color: var(--pr-ink); }
+.pr-sub { font-size: 12px; color: var(--pr-sub); }
+.pr-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
+.pr-search { display: flex; align-items: center; gap: 8px; width: 340px; max-width: 100%; height: 46px; padding: 0 14px;
+  border-radius: 12px; border: 1px solid var(--pr-bd); background: var(--pr-field); color: var(--pr-sub); box-shadow: var(--pr-shadow); }
+.pr-search input, html.dark .pr-search input { flex: 1; min-width: 0; background: transparent !important; border: 0 !important; box-shadow: none !important; outline: 0; font-size: 14px; color: var(--pr-ink); }
+.pr-search input::placeholder { color: var(--pr-sub); }
+.pr-filter { display: flex; align-items: center; justify-content: center; width: 54px; height: 46px; border-radius: 12px;
+  border: 1px solid var(--pr-bd); background: var(--pr-field); color: var(--pr-navy); box-shadow: var(--pr-shadow); }
+html.dark .pr-filter { color: #fff; border-color: #3b82f6; }
+.pr-filter.on { background: var(--pr-navy2); color: #fff; }
+.pr-add { display: inline-flex; align-items: center; gap: 8px; height: 46px; padding: 0 26px; border-radius: 12px; font-size: 14px; font-weight: 800;
+  color: #fff; background: linear-gradient(135deg, var(--pr-navy2), var(--pr-navy)); box-shadow: var(--pr-shadow); }
+html.dark .pr-add { background: linear-gradient(135deg, #2563eb, #1d4ed8); }
+.pr-menu { position: absolute; top: calc(100% + 6px); right: 0; z-index: 30; min-width: 170px; padding: 6px; border-radius: 12px;
+  background: var(--pr-card); border: 1px solid var(--pr-bd); box-shadow: 0 10px 30px rgba(15,32,64,.18); display: flex; flex-direction: column; gap: 2px; }
+.pr-menu.float { position: fixed; top: auto; right: auto; z-index: 60; }
+.pr-menu button, .pr-menu span { text-align: right; padding: 7px 10px; border-radius: 8px; font-size: 14px; font-weight: 700; color: var(--pr-ink); white-space: nowrap; }
+.pr-menu button:hover, .pr-menu button.on { background: var(--pr-row); }
+.pr-menu .bad { color: #dc2626; } .pr-menu .good { color: #15803d; } .pr-menu .ok { color: #15803d; } .pr-menu .muted { color: var(--pr-sub); }
+html.dark .pr-menu .good, html.dark .pr-menu .ok { color: #4ade80; } html.dark .pr-menu .bad { color: #f87171; }
+.pr-table { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 14px; }
+.pr-table thead th { background: var(--pr-navy); color: #fff; font-size: 14px; font-weight: 800; padding: 14px 16px; text-align: right; white-space: nowrap; }
+html.dark .pr-table thead th { background: #123570; }
+.pr-table thead th:first-child { border-start-start-radius: 12px; border-end-start-radius: 12px; }
+.pr-table thead th:last-child { border-start-end-radius: 12px; border-end-end-radius: 12px; }
+.pr-table thead th span { display: inline-flex; align-items: center; gap: 8px; }
+.pr-table thead th svg { width: 20px; height: 20px; }
+.pr-table .c { text-align: center; }
+.pr-table thead th.c span { justify-content: center; }
+.pr-table td { padding: 12px 16px; color: var(--pr-ink); font-weight: 600; }
+.pr-row { cursor: pointer; }
+.pr-table tbody tr.pr-row:nth-of-type(even) td { background: var(--pr-row); }
+.pr-row:hover td { background: var(--pr-row); }
+.pr-table .num { font-variant-numeric: tabular-nums; font-weight: 700; }
+.pr-code { display: inline-block; padding: 5px 14px; border-radius: 10px; border: 1px solid var(--pr-bd); background: var(--pr-card);
+  font-size: 14px; font-weight: 800; color: var(--pr-ink); box-shadow: 0 1px 3px rgba(15,32,64,.08); direction: ltr; }
+html.dark .pr-code { background: #0f2142; }
+.pr-who { display: inline-flex; align-items: center; gap: 8px; }
+.pr-status { display: inline-flex; align-items: center; gap: 6px; padding: 5px 16px; border-radius: 99px; font-size: 14px; font-weight: 800; white-space: nowrap; }
+.pr-status.s-FULFILLED { background: var(--pr-green-bg); color: var(--pr-green); }
+.pr-status.s-PENDING { background: #fdf0d5; color: #92400e; } .pr-status.s-IN_PROGRESS { background: #dbeafe; color: #1d4ed8; }
+.pr-status.s-REJECTED { background: #fde2e2; color: #b91c1c; }
+html.dark .pr-status.s-PENDING { background: #5a3d0a; color: #fde68a; } html.dark .pr-status.s-IN_PROGRESS { background: #1e3a8a; color: #dbeafe; }
+html.dark .pr-status.s-REJECTED { background: #6b1a1a; color: #fecaca; }
+.pr-dots { width: 92px; height: 36px; border-radius: 10px; border: 1px solid var(--pr-bd); background: var(--pr-card); color: var(--pr-ink);
+  font-size: 14px; font-weight: 900; letter-spacing: 1px; box-shadow: var(--pr-shadow); }
+html.dark .pr-dots { border-color: #3b82f6; background: transparent; }
+.pr-empty { text-align: center; padding: 32px !important; color: var(--pr-sub) !important; }
+.pr-items td { background: var(--pr-row); }
+.pr-items p, .pr-items div, .pr-items span { color: var(--pr-ink); }
+@media (max-width: 760px) { .pr-tabs { grid-template-columns: 1fr; } .pr-search { width: 100%; } }
+
+/* (ك) 11-27: الموجة الخفيفة بالزاوية ورا التبويبات مثل التصميم */
+.pr-tabs { position: relative; }
+.pr-tabs::before { content: ''; position: absolute; z-index: 0; pointer-events: none; top: -40px; left: -30px; width: 420px; height: 140px;
+  background:
+    radial-gradient(120% 90% at 0% 100%, transparent 58%, rgba(120,150,235,.35) 60%, transparent 63%),
+    radial-gradient(120% 90% at 0% 110%, transparent 62%, rgba(150,175,240,.3) 64%, transparent 67%),
+    radial-gradient(90% 90% at 0% 0%, rgba(170,190,245,.35), transparent 70%); }
+html.dark .pr-tabs::before {
+  background:
+    radial-gradient(120% 90% at 0% 100%, transparent 58%, rgba(80,150,255,.7) 60%, transparent 62.5%),
+    radial-gradient(120% 90% at 0% 110%, transparent 62%, rgba(70,130,255,.35) 64%, transparent 67%),
+    radial-gradient(90% 90% at 0% 0%, rgba(40,90,220,.35), transparent 70%); }
+.pr-tab { position: relative; z-index: 1; }
+
+/* (ك) 11-27 زينا: خط النظام — الجدول كله ١٤ بلا خطوة ثانية */
+.pr-table td, .pr-table td * { font-size: 14px; }
+.pr-items td, .pr-items td * { font-size: 14px; }

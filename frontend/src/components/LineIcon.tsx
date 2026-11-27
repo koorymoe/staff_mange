@@ -62,6 +62,7 @@ const P: Record<string, string> = {
   trendUp: 'M3 17l6-6 4 4 8-8m0 0v5m0-5h-5',
   users: 'M9 11a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Zm-6 9a6 6 0 0 1 12 0M16 4.5a3.5 3.5 0 0 1 0 6.5M18 14.5a6 6 0 0 1 3 5.5',
   arrowLeft: 'M20 12H4m6-6-6 6 6 6',
+  bookmark: 'M6 3h12v18l-6-4-6 4V3Z',
   info: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18Zm0-10v6m0-9h.01',
   gem:'M6 4h12l3 5-9 11L3 9l3-5Zm-3 5h18M9 4l3 16 3-16',
 }
