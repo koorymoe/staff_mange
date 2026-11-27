@@ -392,11 +392,11 @@ export default function MyRanking() {
               <>
                 <div className="grid grid-cols-2 gap-3 lg:grid-cols-2">
                   <RankCard
-                    icon="cal" label="حجوزات راجعتها"
+                    icon="cal" label={evalPeriod === 'weekly' ? 'حجوزات راجعتها هالأسبوع' : 'حجوزات راجعتها هالشهر'}
                     value={myEvalEntry ? String(myEvalEntry.points) : '—'}
                     tone="sky"
                     delta={myEvalEntry?.pointsDelta ?? 0}
-                    deltaSuffix="مراجعة"
+                    deltaSuffix="حجز"
                   />
                   <RankCard
                     icon="trophy" label="ترتيبي الحالي"
@@ -411,6 +411,7 @@ export default function MyRanking() {
                 <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
                   <div className="border-b border-slate-100 px-5 py-4">
                     <h3 className="text-sm font-extrabold text-[#0f2040]">👥 ترتيب الإداريين حسب نشاط المراجعة</h3>
+                    <p className="mt-1 text-xs text-slate-500">الرقم = كم حجز راجعته وقيّمته {evalPeriod === 'weekly' ? 'هالأسبوع' : 'هالشهر'}. الأكثر مراجعة يطلع أول.</p>
                   </div>
                   <div className="overflow-x-auto">
                     <table className="w-full text-right text-xs">
@@ -418,8 +419,8 @@ export default function MyRanking() {
                         <tr>
                           <th className="px-4 py-2.5 font-bold">#</th>
                           <th className="px-4 py-2.5 font-bold">الإداري</th>
-                          <th className="px-4 py-2.5 font-bold">الحجوزات المراجعة</th>
-                          <th className="px-4 py-2.5 font-bold">التغيير</th>
+                          <th className="px-4 py-2.5 font-bold">كم حجز راجع</th>
+                          <th className="px-4 py-2.5 font-bold">مقارنة بالفترة الي فاتت</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-100">
@@ -441,10 +442,10 @@ export default function MyRanking() {
                               <td className="px-4 py-3 font-black text-slate-800">{e.points}</td>
                               <td className="px-4 py-3">
                                 {e.pointsDelta === 0 ? (
-                                  <span className="text-slate-400">0 —</span>
+                                  <span className="text-slate-400">نفس الفترة الي فاتت</span>
                                 ) : (
                                   <span className={`font-bold ${e.pointsDelta > 0 ? 'text-emerald-600' : 'text-red-500'}`}>
-                                    {e.pointsDelta > 0 ? '▲' : '▼'} {e.pointsDelta > 0 ? '+' : ''}{e.pointsDelta}
+                                    {e.pointsDelta > 0 ? '▲ أكثر' : '▼ أقل'} بـ{Math.abs(e.pointsDelta)}
                                   </span>
                                 )}
                               </td>
@@ -617,7 +618,7 @@ export default function MyRanking() {
                     <th className="px-4 py-2.5 font-bold">تقييم ماتركس{period === 'weekly' && ' (للشهر)'}</th>
                     <th className="px-4 py-2.5 font-bold">الحجوزات المنجزة</th>
                     <th className="px-4 py-2.5 font-bold">الالتزام</th>
-                    <th className="rounded-e-lg px-4 py-2.5 font-bold">التغيير</th>
+                    <th className="rounded-e-lg px-4 py-2.5 font-bold">مقارنة بالفترة الي فاتت</th>
                   </>)}
                 </tr>
               </thead>
@@ -657,10 +658,10 @@ export default function MyRanking() {
                       </td>
                       {!isSales && <td className="px-4 py-3">
                         {e.pointsDelta === 0 ? (
-                          <span className="text-slate-400">0 —</span>
+                          <span className="text-slate-400">نفس الفترة الي فاتت</span>
                         ) : (
                           <span className={`font-bold ${e.pointsDelta > 0 ? 'text-emerald-600' : 'text-red-500'}`}>
-                            {e.pointsDelta > 0 ? '▲' : '▼'} {e.pointsDelta > 0 ? '+' : ''}{e.pointsDelta}
+                            {e.pointsDelta > 0 ? '▲ أكثر' : '▼ أقل'} بـ{Math.abs(e.pointsDelta)}
                           </span>
                         )}
                       </td>}
@@ -773,7 +774,10 @@ function RankCard({ icon, label, value, tone, delta, deltaSuffix, note, bar }: {
           <p className={`mr-val ${tone} mt-1 text-3xl font-black`}>{value}</p>
           {delta !== undefined && delta !== 0 && (
             <p className={`text-[11px] font-bold ${delta > 0 ? 'text-emerald-600' : 'text-red-500'}`}>
-              {delta > 0 ? '▲' : '▼'} {delta > 0 ? '+' : ''}{delta} {deltaSuffix}
+              {/* (دازاي 11-27) «-103 مراجعة» ما يفهمها الموظف — جملة واضحة بدلها */}
+              {deltaSuffix === 'مركز'
+                ? `${delta > 0 ? '▲ صعدت' : '▼ نزلت'} ${Math.abs(delta)} ${Math.abs(delta) === 1 ? 'مركز' : 'مراكز'} عن الفترة الي فاتت`
+                : `${delta > 0 ? '▲ أكثر' : '▼ أقل'} بـ${Math.abs(delta)} ${deltaSuffix ?? ''} عن الفترة الي فاتت`}
             </p>
           )}
           {note && <p className="mr-h mt-0.5 text-xs">{note}</p>}
