@@ -65,7 +65,12 @@ func TestMaintenanceContracts_Live(t *testing.T) {
 	var next string
 	var hasBooking bool
 	db.QueryRow(`SELECT "nextVisitDate"::text, "lastBookingId" IS NOT NULL FROM "MaintenanceContract" WHERE id = $1`, due).Scan(&next, &hasBooking)
-	want := time.Now().AddDate(0, 0, 3).AddDate(0, 3, 0).Format("2006-01-02")
+	// (ك) 11-27: نفس حسبة النظام (Postgres يوقف بآخر الشهر: 30 تشرين الثاني + 3 أشهر = 28 شباط).
+	// AddDate بـGo يعبر لآذار، فالاختبار چان يفشل بآخر كل شهر والنظام صحيح.
+	var want string
+	if err := db.Get(&want, `SELECT ($1::date + interval '3 months')::date::text`, soon); err != nil {
+		t.Fatal(err)
+	}
 	if next != want || !hasBooking {
 		t.Fatalf("الموعد الجاي %s (نريد %s) والحجز %v", next, want, hasBooking)
 	}
