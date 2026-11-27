@@ -90,6 +90,10 @@ type MatrixScoreService struct {
 
 func NewMatrixScoreService(repo *repository.MatrixScoreRepository, chain *MatrixChainService,
 	switches *repository.SystemSwitchRepository, projects func() (*ProjectsReport, error)) *MatrixScoreService {
+	if repo != nil && repo.DB() != nil {
+		db := repo.DB()
+		scoreWeightsLoader = func() ScoreWeights { return LoadScoreWeights(db) }
+	}
 	return &MatrixScoreService{repo: repo, chain: chain, switches: switches, projects: projects}
 }
 

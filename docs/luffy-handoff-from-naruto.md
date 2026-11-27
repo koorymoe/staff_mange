@@ -584,3 +584,9 @@ git push origin origin/avg:refs/heads/prod     # بعد التأكد إنه fast
 - دالة SQL `company_period(date)` (0538 + t__objects). استبدلت `to_char(baghdad_date(x),'YYYY-MM')` بالإحصائيات (kpi، booking counts، commissions، internal works، month stats، job duration، leader invoice، vehicle rating، complaints، staff points، matrix agent tools، drill).
 - Go: `timeutil.ThisPeriod/PeriodStart` بالفلوس والتكاليف والسندات وإحصائيات الموظفين. الواجهة `thisPeriod()` بـutils/format.
 - باقي (ما تغيّر): الإجازات، السيارات، قائمة الحجوزات، org plans، KpiPage (smart kpi).
+
+
+## 11-27 بنود التقييم من الإعدادات
+- `ScoreWeightConfig` (0539) weights jsonb {group:{key:weight}} — الي يخالف الأصل بس. `service/score_weights.go`.
+- `applyRoleScores` يقرا الأوزان عبر `scoreWeightsLoader` (ينضبط بـNewMatrixScoreService) و`applyWeights` يطلّع المطفي. رأي ماتركس العام (genericOpinion) بعده بالأوزان الأصلية.
+- `/api/owner/score-weights` GET/PUT (owner)، صفحة `ScoreWeightsPage` تبويب /owner-settings-score.

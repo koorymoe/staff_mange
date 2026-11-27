@@ -660,6 +660,20 @@ func autoMigrations() []Migration {
 			$$ SELECT CASE WHEN extract(day FROM d) >= 26 THEN to_char(d + interval '1 month', 'YYYY-MM') ELSE to_char(d, 'YYYY-MM') END $$;
 		`,
 		},
+		{
+			Version: "0539_score_weight_config",
+			SQL: `
+			CREATE TABLE IF NOT EXISTS "ScoreWeightConfig" (
+	"id" integer DEFAULT 1 NOT NULL,
+	"weights" jsonb DEFAULT '{}'::jsonb NOT NULL,
+	"updatedById" text,
+	"updatedAt" timestamp with time zone DEFAULT now() NOT NULL
+);
+			ALTER TABLE "ScoreWeightConfig" ADD CONSTRAINT "ScoreWeightConfig_pkey" PRIMARY KEY (id);
+			ALTER TABLE "ScoreWeightConfig" ADD CONSTRAINT "ScoreWeightConfig_one_row" CHECK ((id = 1));
+			ALTER TABLE "ScoreWeightConfig" ADD CONSTRAINT "ScoreWeightConfig_updatedById_fkey" FOREIGN KEY ("updatedById") REFERENCES "Employee"(id) ON DELETE SET NULL;
+		`,
+		},
 		// ‹makemigration› — التحديثات الجديدة تنضاف فوگ هالسطر
 	}
 }
