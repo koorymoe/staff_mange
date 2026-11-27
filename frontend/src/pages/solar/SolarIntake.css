@@ -172,3 +172,27 @@ html.dark .si-btn-out { background: #0b2e50; border-color: #2f7bd6; }
   .si-steps { flex-direction: column; align-items: stretch; }
   .si-progress { width: auto; }
 }
+
+/* ═══ (دازاي 11-27) ألوان النظام: «حدد الألوان ويا ألوان نظامنه» ═══
+   نفس أسطح وخطوط وكحلي باقي الشاشات (index.css)، وألوان درجات السعر تبقى لأنها معنى. */
+.si-page {
+  --si-bg: transparent; --si-card: var(--sf-card); --si-line: var(--bd-line); --si-ink: var(--color-brand-900); --si-sub: #475569;
+  --si-head: linear-gradient(180deg, var(--color-brand-700), var(--color-brand-900));
+  --si-in: var(--sf-card); --si-in-line: #cbd5e1;
+  --si-blue-bg: var(--sf-info); --si-blue-line: var(--color-brand-100);
+  --si-grey-bg: var(--sf-sunken); --si-grey-line: var(--bd-line); --si-grey-ic: var(--color-brand-600);
+  --si-size-bg: var(--color-brand-50); --si-size-ink: var(--color-brand-700);
+  --si-row: var(--sf-sunken); --si-phrase: var(--sf-sunken);
+  --si-dot: var(--color-brand-500); --si-track: var(--color-brand-100); --si-fill: var(--color-brand-500);
+}
+html.dark .si-page {
+  --si-bg: transparent; --si-card: var(--sf-card); --si-line: var(--bd-line); --si-ink: #fff; --si-sub: #cbd5e1;
+  --si-in: var(--sf-sunken); --si-in-line: var(--bd-line);
+  --si-row: var(--sf-sunken); --si-phrase: var(--sf-sunken);
+  --si-track: #1e2a44;
+}
+/* الأزرار: الأساسي كحلي النظام، والباقي ثانوي — بدل الأخضر والأصفر */
+.si-btn-green, html.dark .si-btn-green { background: var(--color-brand-900); color: #fff; box-shadow: none; }
+.si-btn-yellow, html.dark .si-btn-yellow { background: var(--color-brand-500); color: #fff; }
+.si-btn-out { border-color: var(--color-brand-500); }
+html.dark .si-btn-out { background: transparent; border-color: var(--color-brand-400); }

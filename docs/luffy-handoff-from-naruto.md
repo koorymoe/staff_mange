@@ -572,3 +572,9 @@ git push origin origin/avg:refs/heads/prod     # بعد التأكد إنه fast
 - `SurveyPhoto.kind` (SURVEY/FOLLOWUP) و`stage` (0536). صور الكشف القديمة ما تتأثر (default SURVEY، والقوائم تفلتر).
 - كادر حجز المشروع (Project.bookingId) صار من فريق المشروع بالصور.
 - الواجهة: `SurveyPhotos` بـkind/stages، وزر بـ`ProjectCard`. الحد 10MB للصورة.
+
+
+## 11-27 الطاقة الشمسية بالإعدادات
+- `SolarIntakeConfig` (0537) appliances/bands jsonb. `service/solar_intake_config.go`؛ PriceRanges ياخذ الجدول اليدوي أول (bandTiers) وإلا القديم.
+- `/api/solar-inquiries/config` GET (أصحاب الاستفسار) و PUT (admin). صفحة `SolarSettingsPage` تبويب /owner-settings-solar.
+- `SolarIntake.tsx` يقرا الجدول بدل APPLIANCE_KW الفاضي. ألوان النظام بآخر SolarIntake.css (تغطي ألوان زينا). شاشة زينا — بلّغها.

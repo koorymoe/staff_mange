@@ -2552,6 +2552,8 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	secs["solar_inquiries"].Set("GET /api/solar-inquiries", "solar_inquiries.get_root", solarInq.List)
 	secs["solar_inquiries"].Set("POST /api/solar-inquiries", "solar_inquiries.post_root", solarInq.Create, idem)
 	secs["solar_inquiries"].Set("GET /api/solar-inquiries/price-ranges", "solar_inquiries.get_price_ranges", solarInq.PriceRanges)
+	secs["solar_inquiries"].Set("GET /api/solar-inquiries/config", "solar_inquiries.get_config", solarInq.Config)
+	secs["solar_inquiries"].Set("PUT /api/solar-inquiries/config", "solar_inquiries.put_config", solarInq.SaveConfig)
 	secs["solar_inquiries"].Set("POST /api/solar-inquiries/{id}/claim", "solar_inquiries.post_by_id_claim", solarInq.Claim)
 	secs["solar_inquiries"].Set("POST /api/solar-inquiries/{id}/contact", "solar_inquiries.post_by_id_contact", solarInq.Contact)
 	secs["solar_inquiries"].Set("POST /api/solar-inquiries/{id}/quality", "solar_inquiries.post_by_id_quality", solarInq.Quality)

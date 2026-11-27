@@ -636,6 +636,21 @@ func autoMigrations() []Migration {
 			ALTER TABLE "SurveyPhoto" ADD COLUMN IF NOT EXISTS "stage" text;
 		`,
 		},
+		{
+			Version: "0537_solar_intake_config",
+			SQL: `
+			CREATE TABLE IF NOT EXISTS "SolarIntakeConfig" (
+	"id" integer DEFAULT 1 NOT NULL,
+	"appliances" jsonb DEFAULT '[]'::jsonb NOT NULL,
+	"bands" jsonb DEFAULT '[]'::jsonb NOT NULL,
+	"updatedById" text,
+	"updatedAt" timestamp with time zone DEFAULT now() NOT NULL
+);
+			ALTER TABLE "SolarIntakeConfig" ADD CONSTRAINT "SolarIntakeConfig_pkey" PRIMARY KEY (id);
+			ALTER TABLE "SolarIntakeConfig" ADD CONSTRAINT "SolarIntakeConfig_one_row" CHECK ((id = 1));
+			ALTER TABLE "SolarIntakeConfig" ADD CONSTRAINT "SolarIntakeConfig_updatedById_fkey" FOREIGN KEY ("updatedById") REFERENCES "Employee"(id) ON DELETE SET NULL;
+		`,
+		},
 		// ‹makemigration› — التحديثات الجديدة تنضاف فوگ هالسطر
 	}
 }

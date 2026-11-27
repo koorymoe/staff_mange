@@ -1505,6 +1505,8 @@ func rules() map[string]map[core.Action]core.Rule {
 		"solar_inquiries": {
 			"solar_inquiries.get_root":                 func(l string) core.Rule { return any_(l) }("يقرا /api/solar-inquiries (الدخول — الفحص بالمعالج)"),
 			"solar_inquiries.post_root":                func(l string) core.Rule { return any_(l) }("ينفّذ /api/solar-inquiries (الدخول — الفحص بالمعالج)"),
+			"solar_inquiries.get_config":               func(l string) core.Rule { return any_(l) }("يقرا إعدادات الاستفسار (الفحص بالخدمة)"),
+			"solar_inquiries.put_config":               func(l string) core.Rule { return admin(l) }("يعدّل استهلاك الأجهزة وأسعار الأحجام (المدير والمالك)"),
 			"solar_inquiries.get_price_ranges":         func(l string) core.Rule { return any_(l) }("يشوف مدى أسعار المنظومات للاستفسار (الدخول — الفحص بالخدمة)"),
 			"solar_inquiries.post_by_id_claim":         func(l string) core.Rule { return any_(l) }("ينفّذ /api/solar-inquiries/{id}/claim (الدخول — الفحص بالمعالج)"),
 			"solar_inquiries.post_by_id_contact":       func(l string) core.Rule { return any_(l) }("ينفّذ /api/solar-inquiries/{id}/contact (الدخول — الفحص بالمعالج)"),

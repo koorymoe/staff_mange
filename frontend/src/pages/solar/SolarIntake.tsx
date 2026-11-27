@@ -13,9 +13,9 @@ import './SolarIntake.css'
 
 // ⚠️ جدول استهلاك الأجهزة (كيلو واط لكل جهاز: [أقل، أكثر]) — ينطوه التقنيين، ممنوع أرقام من عندنا.
 // لحد ما يتعبّى، التقدير يطلع «بانتظار جدول الأجهزة» والكادر يحدد بالكشف.
-const APPLIANCE_KW: Record<string, [number, number]> = {}
-
-const APPLIANCES = ['ثلاجة', 'مجمدة', 'مبردة', 'مكيف', 'غسالة', 'سخان ماء', 'مضخة ماء', 'تلفزيون', 'إنارة']
+// (دازاي 11-27) الجدول صار بالإعدادات («⚙️ الإعدادات ← ☀️ الطاقة الشمسية») — يدوي، يكتبه المدير أو التقني.
+const DEFAULT_APPLIANCES = ['ثلاجة', 'مجمدة', 'مبردة', 'مكيف', 'غسالة', 'سخان ماء', 'مضخة ماء', 'تلفزيون', 'إنارة']
+type SolarConfig = { appliances: { name: string; minKw: number; maxKw: number }[] }
 const HOUSE_TYPES = ['بيت مستقل', 'شقة', 'محل']
 const USAGE: Record<string, string> = { DAY_NIGHT: 'ليلي ونهاري', NIGHT: 'ليلي بس', DAY: 'نهاري بس' }
 const TIER: Record<string, { t: string; icon: string; cls: string }> = {
@@ -47,6 +47,16 @@ export default function SolarIntake({ onSaved }: { onSaved: (msg: string) => voi
     ro.observe(host)
     return () => ro.disconnect()
   }, [])
+  const [cfg, setCfg] = useState<SolarConfig | null>(null)
+  useEffect(() => {
+    apiRequest<SolarConfig>('/solar-inquiries/config').then(setCfg).catch(() => setCfg(null))
+  }, [])
+  const APPLIANCE_KW = useMemo(() => {
+    const m: Record<string, [number, number]> = {}
+    for (const a of cfg?.appliances ?? []) m[a.name] = [a.minKw, a.maxKw]
+    return m
+  }, [cfg])
+  const APPLIANCES = cfg?.appliances.length ? cfg.appliances.map((a) => a.name) : DEFAULT_APPLIANCES
   const [open, setOpen] = useState<Record<Sec, boolean>>({ customer: true, house: true, usage: false, devices: false, result: false, visit: false })
   const [f, setF] = useState({ name: '', phone: '', houseArea: '', roofArea: '', houseType: HOUSE_TYPES[0], region: '', obstacles: false, obstaclesNote: '', usage: '', visit: '' })
   const [devs, setDevs] = useState<Appliance[]>([])
@@ -77,7 +87,7 @@ export default function SolarIntake({ onSaved }: { onSaved: (msg: string) => voi
     let lo = 0, hi = 0
     for (const d of list) { lo += APPLIANCE_KW[d.type][0] * Number(d.count); hi += APPLIANCE_KW[d.type][1] * Number(d.count) }
     return { min: Math.max(1, Math.floor(lo)), max: Math.max(1, Math.ceil(hi)) }
-  }, [devs])
+  }, [devs, APPLIANCE_KW])
   const estKey = estimate ? `${estimate.min}-${estimate.max}` : ''
 
   useEffect(() => {
@@ -97,7 +107,10 @@ export default function SolarIntake({ onSaved }: { onSaved: (msg: string) => voi
   const current = firstOpen === -1 ? 5 : firstOpen + 1
   const pct = Math.max(20, done.filter(Boolean).length * 20)
   const stepSec: Sec[] = ['house', 'usage', 'devices', 'result', 'visit']
-  const sizeText = estimate ? `من ${kw(estimate.min)} لـ ${kw(estimate.max)} كيلو واط` : 'بانتظار جدول الأجهزة'
+  const sizeText = estimate ? `من ${kw(estimate.min)} لـ ${kw(estimate.max)} كيلو واط`
+    : !cfg?.appliances.length ? 'جدول استهلاك الأجهزة فاضي — يتعبّى من الإعدادات'
+    : appliances.length === 0 ? 'اختار الأجهزة الي يشغّلها'
+    : 'جهاز مختار ماله رقم بجدول الاستهلاك'
   const phrase = estimate
     ? `"المنظومة الي تناسبك من ${kw(estimate.min)} لـ ${kw(estimate.max)} كيلو واط، والسعر يختلف حسب الماركة والمواصفات."`
     : '"راح نطلعلك كادر يكشف على البيت ويتأكد من المعلومات ويحدد المنظومة الي تناسبك، والسعر يختلف حسب الماركة والمواصفات."'
