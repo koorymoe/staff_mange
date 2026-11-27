@@ -23,24 +23,24 @@ func MonthStatsFor(db *sqlx.DB, m string) (*MonthStats, error) {
 	err := db.Get(&st, `
 			SELECT $1::text AS month,
 			  (SELECT COUNT(*) FROM "Booking" b WHERE `+BookingCountableSQL("b")+`
-			     AND to_char(baghdad_date(b."createdAt"), 'YYYY-MM') = $1) AS "bookingsCreated",
+			     AND company_period(baghdad_date(b."createdAt")) = $1) AS "bookingsCreated",
 			  (SELECT COUNT(*) FROM "Booking" b WHERE `+BookingCountableSQL("b")+`
 			     AND b.status::text IN ('COMPLETED','PARTIAL') AND b."bookingType" IS DISTINCT FROM 'INTERNAL'
-			     AND to_char(baghdad_date(b."completedAt"), 'YYYY-MM') = $1) AS "bookingsCompleted",
+			     AND company_period(baghdad_date(b."completedAt")) = $1) AS "bookingsCompleted",
 			  (SELECT COUNT(*) FROM "Booking" b WHERE `+BookingCountableSQL("b")+`
-			     AND b.status::text = 'CANCELLED' AND to_char(baghdad_date(b."createdAt"), 'YYYY-MM') = $1) AS "bookingsCancelled",
+			     AND b.status::text = 'CANCELLED' AND company_period(baghdad_date(b."createdAt")) = $1) AS "bookingsCancelled",
 			  (SELECT COUNT(*) FROM "Booking" b WHERE `+BookingCountableSQL("b")+`
 			     AND b."bookingType" = 'INTERNAL' AND b.status::text = 'COMPLETED'
-			     AND to_char(baghdad_date(b."completedAt"), 'YYYY-MM') = $1) AS "internalWorks",
-			  (SELECT COUNT(*) FROM "Project" p WHERE to_char(baghdad_date(p."createdAt"), 'YYYY-MM') = $1) AS "projectsCreated",
-			  (SELECT COUNT(*) FROM "Customer" c WHERE to_char(baghdad_date(c."createdAt"), 'YYYY-MM') = $1) AS "newCustomers",
-			  (SELECT COUNT(*) FROM "Complaint" q WHERE to_char(baghdad_date(q."createdAt"), 'YYYY-MM') = $1) AS "complaints",
+			     AND company_period(baghdad_date(b."completedAt")) = $1) AS "internalWorks",
+			  (SELECT COUNT(*) FROM "Project" p WHERE company_period(baghdad_date(p."createdAt")) = $1) AS "projectsCreated",
+			  (SELECT COUNT(*) FROM "Customer" c WHERE company_period(baghdad_date(c."createdAt")) = $1) AS "newCustomers",
+			  (SELECT COUNT(*) FROM "Complaint" q WHERE company_period(baghdad_date(q."createdAt")) = $1) AS "complaints",
 			  (SELECT COALESCE(SUM(`+RevenueAmountSQL("b")+`), 0) FROM "Booking" b WHERE `+BookingCountableSQL("b")+`
-			     AND `+RevenueBookingSQL("b")+` AND to_char(baghdad_date(b."completedAt"), 'YYYY-MM') = $1) AS "bookingsRevenue",
+			     AND `+RevenueBookingSQL("b")+` AND company_period(baghdad_date(b."completedAt")) = $1) AS "bookingsRevenue",
 			  (SELECT COALESCE(SUM(pp.amount), 0) FROM "ProjectPayment" pp WHERE pp."cancelledAt" IS NULL
-			     AND to_char(baghdad_date(pp."paidAt"), 'YYYY-MM') = $1) AS "projectsRevenue",
+			     AND company_period(baghdad_date(pp."paidAt")) = $1) AS "projectsRevenue",
 			  (SELECT COALESCE(SUM(e.amount), 0) FROM "Expense" e WHERE e.status = 'APPROVED'
-			     AND to_char(baghdad_date(e."createdAt"), 'YYYY-MM') = $1) AS "expenses"`, m)
+			     AND company_period(baghdad_date(e."createdAt")) = $1) AS "expenses"`, m)
 	if err != nil {
 		return nil, err
 	}

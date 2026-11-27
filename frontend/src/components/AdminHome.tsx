@@ -1,4 +1,5 @@
 import MatrixChat from './MatrixChat'
+import { thisPeriod } from '../utils/format'
 import { useEffect, useMemo, useState, type ReactNode, Suspense } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import {
@@ -43,7 +44,7 @@ const MatrixCommandCenter = lazyRetry(() => import('./MatrixCommandCenter'))
 type Board = 'follow' | 'actions' | 'matrix' | 'chat'
 
 // قرار (ع) 10-09: المبالغ تقريبية لأقرب ألف — بلا كسور مثل ٨٣٢
-const monthKey = () => new Date().toISOString().slice(0, 7)
+const monthKey = thisPeriod // (11-27) فترة الشركة ٢٦ ← ٢٥
 
 const SEVERITY: Record<string, { label: string; rank: number; cls: string }> = {
   CRITICAL: { label: 'حرج', rank: 4, cls: 'bg-red-100 text-red-700' },

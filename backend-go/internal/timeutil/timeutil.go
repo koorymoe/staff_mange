@@ -95,6 +95,9 @@ func PeriodOf(t time.Time) string {
 	return t.Format("2006-01")
 }
 
+// ThisPeriod فترة الشركة الحالية (٢٦ ← ٢٥) — «الشهر» بالإحصائيات والفلوس.
+func ThisPeriod() string { return PeriodOf(time.Now()) }
+
 // Today تاريخ اليوم YYYY-MM-DD بتوقيت الشركة (بغداد). ⚠️ السيرفر يشتغل UTC:
 // time.Now().Format("2006-01-02") يطلع **أمس** من ١٢ الليل لـ ٣ الفجر.
 func Today() string { return time.Now().In(companyLoc).Format("2006-01-02") }

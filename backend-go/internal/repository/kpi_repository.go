@@ -103,7 +103,7 @@ func (r *KpiRepository) SumPointsForEmployeeMonth(employeeID, monthPrefix string
 	var total int
 	err := r.db.Get(&total, `
 		SELECT COALESCE(SUM(points), 0) FROM "KpiEvaluation"
-		WHERE "employeeId" = $1 AND cancelled = false AND to_char(baghdad_date("createdAt"), 'YYYY-MM') = $2
+		WHERE "employeeId" = $1 AND cancelled = false AND company_period(baghdad_date("createdAt")) = $2
 	`, employeeID, monthPrefix)
 	return total, err
 }
@@ -133,7 +133,7 @@ func (r *KpiRepository) MonthlyPointsSeriesForEmployee(employeeID string, months
 			interval '1 month'
 		) m
 		LEFT JOIN "KpiEvaluation" k ON k."employeeId" = $1 AND k.cancelled = false
-			AND to_char(baghdad_date(k."createdAt"), 'YYYY-MM') = to_char(m, 'YYYY-MM')
+			AND company_period(baghdad_date(k."createdAt")) = to_char(m, 'YYYY-MM')
 		GROUP BY m
 		ORDER BY m
 	`, employeeID, monthsCount, endMonth)

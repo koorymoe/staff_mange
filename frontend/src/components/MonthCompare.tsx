@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { thisPeriod } from '../utils/format'
 import { api, type MonthStats } from '../api'
 import { numRound as fmt, dinarK as money } from '../utils/format'
 import PctWhy from '../ui/PctWhy'
@@ -10,7 +11,7 @@ import PctWhy from '../ui/PctWhy'
 const ym = (d: Date) => d.toISOString().slice(0, 7)
 const shift = (m: string, n: number) => { const [y, mo] = m.split('-').map(Number); return ym(new Date(Date.UTC(y, mo - 1 + n, 1))) }
 const AR_MONTH = (m: string) => new Date(m + '-01').toLocaleDateString('ar-IQ', { month: 'long', year: 'numeric' })
-const thisMonth = () => ym(new Date(Date.now() + 3 * 3600_000))
+const thisMonth = thisPeriod // (11-27) فترة الشركة ٢٦ ← ٢٥
 
 // good: هل الزيادة شي زين؟ (الإلغاء والشكاوى والمصاريف زيادتها مو زينة)
 const ROWS: { key: keyof MonthStats; label: string; money?: boolean; good: boolean }[] = [

@@ -131,7 +131,7 @@ func TestArchivedAndDeletePendingNotCounted_Live(t *testing.T) {
 	}
 
 	var month string
-	if err := db.Get(&month, `SELECT to_char(now(), 'YYYY-MM')`); err != nil {
+	if err := db.Get(&month, `SELECT company_period(baghdad_today())`); err != nil {
 		t.Fatalf("الشهر: %v", err)
 	}
 	got, err := repo.CountAssignedForEmployeeMonth(emp, month)

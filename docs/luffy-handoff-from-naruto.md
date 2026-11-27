@@ -578,3 +578,9 @@ git push origin origin/avg:refs/heads/prod     # بعد التأكد إنه fast
 - `SolarIntakeConfig` (0537) appliances/bands jsonb. `service/solar_intake_config.go`؛ PriceRanges ياخذ الجدول اليدوي أول (bandTiers) وإلا القديم.
 - `/api/solar-inquiries/config` GET (أصحاب الاستفسار) و PUT (admin). صفحة `SolarSettingsPage` تبويب /owner-settings-solar.
 - `SolarIntake.tsx` يقرا الجدول بدل APPLIANCE_KW الفاضي. ألوان النظام بآخر SolarIntake.css (تغطي ألوان زينا). شاشة زينا — بلّغها.
+
+
+## 11-27 الإحصائيات على 26←25
+- دالة SQL `company_period(date)` (0538 + t__objects). استبدلت `to_char(baghdad_date(x),'YYYY-MM')` بالإحصائيات (kpi، booking counts، commissions، internal works، month stats، job duration، leader invoice، vehicle rating، complaints، staff points، matrix agent tools، drill).
+- Go: `timeutil.ThisPeriod/PeriodStart` بالفلوس والتكاليف والسندات وإحصائيات الموظفين. الواجهة `thisPeriod()` بـutils/format.
+- باقي (ما تغيّر): الإجازات، السيارات، قائمة الحجوزات، org plans، KpiPage (smart kpi).

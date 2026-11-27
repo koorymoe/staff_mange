@@ -75,7 +75,7 @@ func (r *JobDurationSampleRepository) EmployeeSpeedRatio(employeeID, month strin
 			JOIN "Booking" b ON b.id = j."bookingId"
 			JOIN "BookingAssignment" ba ON ba."bookingId" = b.id
 			WHERE ba."employeeId" = $1
-			  AND to_char(baghdad_date(j."createdAt"), 'YYYY-MM') = $2
+			  AND company_period(baghdad_date(j."createdAt")) = $2
 			  -- (11-10 بلاغ #27) شغل «خلص» بأقل من ٥ دقايق مو قياس حقيقي (ضغط بدأت وتم ورا بعض)
 			  AND j."durationMinutes" >= 5
 		)

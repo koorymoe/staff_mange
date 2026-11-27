@@ -21,9 +21,9 @@ func NewMoneySplitHandler(db *sqlx.DB) *MoneySplitHandler { return &MoneySplitHa
 func (h *MoneySplitHandler) Get(w http.ResponseWriter, r *http.Request) {
 	month := r.URL.Query().Get("month")
 	if month == "" {
-		month = timeutil.ThisMonth()
+		month = timeutil.ThisPeriod()
 	}
-	from, to, ok := timeutil.MonthStart(month)
+	from, to, ok := timeutil.PeriodStart(month)
 	if !ok {
 		WriteError(w, http.StatusBadRequest, "الشهر غلط")
 		return

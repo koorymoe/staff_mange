@@ -2,8 +2,8 @@ package repository
 
 import (
 	"os"
+	"staffmange-api/internal/timeutil"
 	"testing"
-	"time"
 
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
@@ -51,7 +51,7 @@ func TestEmployeeSpeedRatioIgnoresOutlierLive(t *testing.T) {
 	add(120, false)
 	add(120, true)
 	add(1, true)
-	ratio, n, err := repo.EmployeeSpeedRatio(emp, time.Now().In(time.FixedZone("BGW", 3*3600)).Format("2006-01"))
+	ratio, n, err := repo.EmployeeSpeedRatio(emp, timeutil.ThisPeriod())
 	if err != nil {
 		t.Fatal(err)
 	}

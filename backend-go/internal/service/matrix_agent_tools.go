@@ -74,14 +74,14 @@ func (a *MatrixAgent) RegisterReadTools(d AgentDeps) {
 				 count(*) FILTER (WHERE li."auditVerdict" = 'PRICE_ERROR'),
 				 (SELECT count(*) FROM "Booking" b WHERE b.status = 'COMPLETED' AND b."archivedAt" IS NULL
 				    AND b."bookingType" IS DISTINCT FROM 'INTERNAL'
-				    AND to_char(baghdad_date(b."completedAt"), 'YYYY-MM') = to_char(baghdad_today(), 'YYYY-MM')
+				    AND company_period(baghdad_date(b."completedAt")) = company_period(baghdad_today())
 				    AND NOT EXISTS (SELECT 1 FROM "LeaderInvoice" x WHERE x."bookingId" = b.id AND x."revokedAt" IS NULL)),
 				 COALESCE(sum(li."netTotal") FILTER (WHERE NOT li."isFree"), 0),
 				 COALESCE((SELECT sum(COALESCE(b."amountCollected",0) + COALESCE(b."advancePaid",0)) FROM "Booking" b
 				    WHERE b.id IN (SELECT "bookingId" FROM "LeaderInvoice" y WHERE y."revokedAt" IS NULL
-				      AND to_char(baghdad_date(y."createdAt"), 'YYYY-MM') = to_char(baghdad_today(), 'YYYY-MM'))), 0)
+				      AND company_period(baghdad_date(y."createdAt")) = company_period(baghdad_today()))), 0)
 				FROM "LeaderInvoice" li
-				WHERE li."revokedAt" IS NULL AND to_char(baghdad_date(li."createdAt"), 'YYYY-MM') = to_char(baghdad_today(), 'YYYY-MM')`).
+				WHERE li."revokedAt" IS NULL AND company_period(baghdad_date(li."createdAt")) = company_period(baghdad_today())`).
 				Scan(&r.Submitted, &r.Audited, &r.Approved, &r.Free, &r.Mismatch, &r.PriceErr, &r.NoInvoice, &r.Billed, &r.Collected)
 			if err != nil {
 				return "", err
