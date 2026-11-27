@@ -64,6 +64,8 @@ const P: Record<string, string> = {
   arrowLeft: 'M20 12H4m6-6-6 6 6 6',
   bookmark: 'M6 3h12v18l-6-4-6 4V3Z',
   info: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18Zm0-10v6m0-9h.01',
+  hourglass: 'M6 3h12M6 21h12M7 3c0 5 5 6 5 9s-5 4-5 9m10-18c0 5-5 6-5 9s5 4 5 9',
+  play: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18Zm-2-12.5v7l5.5-3.5L10 8.5Z',
   gem:'M6 4h12l3 5-9 11L3 9l3-5Zm-3 5h18M9 4l3 16 3-16',
 }
 export function LineIcon({ n, className = 'h-4 w-4' }: { n: string; className?: string }) {

@@ -6,6 +6,7 @@ import { useSession } from '../session'
 import { canDrill } from '../utils/drill'
 import { useApi } from '../utils/useApi'
 import { BackLink } from '../ui/BackLink'
+import TodayBookings from './TodayBookings'
 // ═══ «الرقم = القائمة» — قرار (ع) 10-16 ═══
 // صفحة وحدة لكل بطاقة رقم باللوحة: العنوان نفس اسم البطاقة، والعدد
 // نفس رقمها، والشرح يگول شنو هذا الرقم ومن يا فترة. الخادم يعدّ ويطلّع
@@ -19,6 +20,8 @@ export default function DrillPage() {
   const { data: d, error: err } = useApi(() => api.getDrill(key), [key], { fallback: 'تعذر جلب القائمة', enabled: allowed })
 
   if (!allowed) return <p className="py-16 text-center text-slate-500">هاي القائمة مو ضمن صلاحياتك.</p>
+
+  if (key === 'today_scheduled' && d) return <TodayBookings d={d} />
 
   const rows = (d?.rows ?? []).filter((r) => !q.trim()
     || [r.code, r.customer, r.phone, r.service, r.crew, r.responsible, r.station].some((v) => v?.includes(q.trim())))
