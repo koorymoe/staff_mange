@@ -246,6 +246,7 @@ export default function StaffScorePage() {
         </div>
         <div className="flex items-center gap-2">
           <input type="month" value={month || b.month} onChange={(e) => setMonth(e.target.value)} className="rounded-lg border border-slate-200 px-2 py-1 text-sm" />
+          {b.from && <span className="text-xs text-slate-500" dir="ltr">{b.from.slice(5).replace('-', '/')} ← {b.to?.slice(5).replace('-', '/')}</span>}
           {admin && <button type="button" disabled={busy} onClick={() => void run()} className="rounded-lg bg-[#0f2040] px-3 py-1.5 text-xs font-bold text-white disabled:opacity-50">🔄 احسب هسه</button>}
         </div>
       </div>

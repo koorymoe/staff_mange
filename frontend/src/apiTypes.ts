@@ -3919,7 +3919,7 @@ export interface ScoreExplainRow {
   id: string; name: string; role: string; isLeader: boolean; group: string; groupLabel: string; why: string
   rules: string[]; raters: string[]; revenue?: string; aiOnly?: boolean; offSystem?: boolean; roleChange?: string
 }
-export interface StaffScoreBoard { month: string; on: boolean; staff: StaffScore[]; insights: string[] }
+export interface StaffScoreBoard { month: string; /** (11-27) الفترة ٢٦ ← ٢٥ */ from?: string; to?: string; on: boolean; staff: StaffScore[]; insights: string[] }
 export interface MatrixScorePoint {
   id: string; employeeId: string; source: string; sourceId: string; sourceLabel: string | null; rule: string
   points: number; maxPoints: number; reason: string; at: string; cancelledAt: string | null; cancelNote: string | null

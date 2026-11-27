@@ -560,3 +560,9 @@ git push origin origin/avg:refs/heads/prod     # بعد التأكد إنه fast
 ## 11-27 بلاغات #60 و#61 (عرض السعر)
 - #60: خانة «قيمة الخصم» صارت تنكتب؛ تحوّل لنسبة (discountPercent كسري) والخادم يحسب القيمة منها نفسها. النسبة تنعرض مقرّبة لمرتبتين.
 - #61: `Quotation.customerSignature` (0535) + بالـmodel لأن القراءة SELECT *. مربع اختيار بقسم الشروط، والطباعة الكلاسيكية تضيف sign-box. عرض المشاريع (PROJECT) ما بي توقيع لسه.
+
+
+## 11-27 توحيد الفترة 26←25
+- `timeutil.PeriodStart/PeriodOf` (PeriodStartDay=26). `MonthRange` بالتقييم صار عليها؛ «2026-12» = 11-26..12-25. البورد يرجّع from/to.
+- التصفير الشهري يوم 25 الساعة 23، و`KpiRepository.ResetBefore(cutoff)` يصفّر بس الي قبل 26.
+- باقي الإحصائيات (MonthStart/ThisMonth) بعدها ميلادية.
