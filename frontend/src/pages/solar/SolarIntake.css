@@ -59,7 +59,7 @@ html.dark .si-banner-day { display: none; }
 .si-progress-bar i { position: absolute; inset-block: 0; right: 0; border-radius: 999px; background: var(--si-fill); }
 .si-steps ol { display: flex; flex: 1; margin: 0; padding: 0; list-style: none; }
 .si-steps li { position: relative; flex: 1; display: flex; justify-content: center; }
-.si-steps li + li::before { content: ''; position: absolute; top: 14px; right: calc(50% + 18px); left: calc(-50% + 18px); height: 2px; background: #9ea1a7; }
+.si-steps li + li::before { content: ''; position: absolute; top: 14px; right: calc(-50% + 18px); left: calc(50% + 18px); /* (ك) 11-27: RTL — الخط يروح للخطوة الي قبلها (يمين) */ height: 2px; background: #9ea1a7; }
 html.dark .si-steps li + li::before { background: #435a72; }
 .si-steps li.is-on + li::before, .si-steps li.is-done + li::before { background: #7fb4e8; }
 .si-steps li button { display: flex; flex-direction: column; align-items: center; gap: 4px; }
@@ -163,6 +163,7 @@ html.dark .si-btn-out { background: #0b2e50; border-color: #2f7bd6; }
 /* أضيق من 1000: ترتيب عمودي بلا تصغير */
 .si-page.si-narrow .si-cols-4 { grid-template-columns: 1fr 1fr; }
 .si-page.si-narrow .si-banner { display: none; }
+.si-page.si-stack .si-grid { grid-template-columns: 1fr; }
 @media (max-width: 640px) {
   .si-grid { grid-template-columns: 1fr; }
   .si-side { position: static; }

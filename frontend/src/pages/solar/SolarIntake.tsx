@@ -37,7 +37,11 @@ export default function SolarIntake({ onSaved }: { onSaved: (msg: string) => voi
     const el = pageRef.current
     const host = el?.parentElement
     if (!el || !host) return
-    const fit = () => el.classList.toggle('si-narrow', host.clientWidth < 1000)
+    const fit = () => {
+      el.classList.toggle('si-narrow', host.clientWidth < 1000)
+      // (ك) 11-27: تحت ٨٠٠ العمودين ما يكفون — الحقول چانت تنقص من اليسار، فالملخص ينزل تحت
+      el.classList.toggle('si-stack', host.clientWidth < 800)
+    }
     fit()
     const ro = new ResizeObserver(fit)
     ro.observe(host)
