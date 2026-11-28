@@ -196,7 +196,7 @@ func (r *StatsRepository) TechnicianStats() ([]model.TechnicianStat, error) {
 			SELECT COUNT(*) FROM "BookingVisitCrew" vc
 			JOIN "BookingVisit" v ON v.id = vc."visitId"
 			JOIN "Booking" b ON b.id = v."bookingId"
-			WHERE vc."employeeId" = $1 AND b.status::text <> 'CANCELLED'`+BookingCountableAndSQL("b")+`
+			WHERE vc."employeeId" = $1 AND b.status::text <> 'CANCELLED'`+BookingCountableAndSQL("b")+LastVisitOnlySQL("vc", "v")+`
 		`, e.EmployeeID)
 		if err != nil {
 			return nil, err

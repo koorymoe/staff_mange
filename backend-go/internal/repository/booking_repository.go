@@ -1311,6 +1311,15 @@ func (r *BookingRepository) ListAssignments(bookingID string) ([]model.BookingAs
 	return assignments, err
 }
 
+// LastVisitOnlySQL (ك 11-28، دازاي: «الحجز حتى لو جزء أكثر من مرة يبقى حجز
+// واحد») — يخلّي طلعة الموظف **الأخيرة** على الحجز بس هي الي تنعدّ. الجزئي
+// اليوم والإكمال باچر = حجز واحد منجز (بيوم الإكمال)، فيطابق عدد المدقّق والمقيَّم.
+func LastVisitOnlySQL(vc, v string) string {
+	return ` AND NOT EXISTS (SELECT 1 FROM "BookingVisitCrew" lvc JOIN "BookingVisit" lv ON lv.id = lvc."visitId"
+		WHERE lvc."employeeId" = ` + vc + `."employeeId" AND lv."bookingId" = ` + v + `."bookingId"
+		  AND (lv."occurredAt", lv.id) > (` + v + `."occurredAt", ` + v + `.id))`
+}
+
 // CountCompletedForEmployeeMonth إنتاجية موظف بشهر — **بالطلعات**.
 //
 // ═══ ليش انتغيّر العدّ ═══
@@ -1336,7 +1345,7 @@ func (r *BookingRepository) CountCompletedForEmployeeMonth(employeeID, monthPref
 		JOIN "BookingVisit" v ON v.id = vc."visitId"
 		JOIN "Booking" b ON b.id = v."bookingId"
 		WHERE vc."employeeId" = $1 AND company_period(baghdad_date(v."occurredAt")) = $2
-		  AND b.status::text <> 'CANCELLED'`+BookingCountableAndSQL("b")+`)
+		  AND b.status::text <> 'CANCELLED'`+BookingCountableAndSQL("b")+LastVisitOnlySQL("vc", "v")+`)
 		-- (11-19 «٠ من ٣٣») الحجز المنجز المسند إله بلا زيارة مسجّلة بيها اسمه ينحسب هم
 		+ (SELECT COUNT(DISTINCT b.id) FROM "BookingAssignment" a JOIN "Booking" b ON b.id = a."bookingId"
 		WHERE a."employeeId" = $1 AND b.status::text IN ('COMPLETED','PARTIAL') AND b."completedAt" IS NOT NULL
@@ -1552,7 +1561,7 @@ func (r *BookingRepository) AssignedAndCompletedForEmployeeOnDate(employeeID, da
 		SELECT COUNT(*) FROM "BookingVisitCrew" vc
 		JOIN "BookingVisit" v ON v.id = vc."visitId"
 		JOIN "Booking" b ON b.id = v."bookingId"
-		WHERE vc."employeeId" = $1 AND (v."occurredAt" AT TIME ZONE 'Asia/Baghdad')::date = $2::date`+BookingCountableAndSQL(`b`)+`
+		WHERE vc."employeeId" = $1 AND (v."occurredAt" AT TIME ZONE 'Asia/Baghdad')::date = $2::date`+BookingCountableAndSQL(`b`)+LastVisitOnlySQL("vc", "v")+`
 	`, employeeID, date)
 	return assigned, completed, err
 }
@@ -1576,7 +1585,7 @@ func (r *BookingRepository) CountCompletedForEmployeeLast7Days(employeeID string
 	err := r.db.Get(&count, `
 		SELECT COUNT(*) FROM "BookingVisitCrew" vc
 		JOIN "BookingVisit" v ON v.id = vc."visitId"
-		WHERE vc."employeeId" = $1 AND v."occurredAt" >= now() - interval '7 days'
+		WHERE vc."employeeId" = $1 AND v."occurredAt" >= now() - interval '7 days'`+LastVisitOnlySQL("vc", "v")+`
 	`, employeeID)
 	return count, err
 }
