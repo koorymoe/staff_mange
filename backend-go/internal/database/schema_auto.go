@@ -761,6 +761,12 @@ func autoMigrations() []Migration {
 			ALTER TABLE "ActionPlanNote" ADD CONSTRAINT "ActionPlanNote_planId_fkey" FOREIGN KEY ("planId") REFERENCES "ActionPlan"(id) ON DELETE CASCADE;
 		`,
 		},
+		{
+			Version: "0548_data_solar_prices_permission",
+			SQL: `
+			INSERT INTO "Permission" (id, name, label) VALUES (gen_random_uuid()::text, 'solar_prices', 'استفسارات الطاقة الشمسية: الأسعار واستهلاك الأجهزة') ON CONFLICT (name) DO NOTHING;
+		`,
+		},
 		// ‹makemigration› — التحديثات الجديدة تنضاف فوگ هالسطر
 	}
 }

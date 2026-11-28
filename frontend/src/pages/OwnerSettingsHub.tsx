@@ -154,7 +154,7 @@ export default function OwnerSettingsHub() {
     if (location.pathname.startsWith('/owner-costs') && permissions.includes('company_costs')) return <Suspense fallback={null}><OwnerCostsPage /></Suspense>
     if (location.pathname.startsWith('/service-invoice-options')) return <Suspense fallback={null}><ServiceInvoiceOptionsPage /></Suspense>
     // الأدمن يعدّل إعدادات الطاقة الشمسية هم (الخادم يسمح للمدير والمالك)
-    if (location.pathname.startsWith('/owner-settings-solar') && employee?.actualRole === 'ADMIN') return <Suspense fallback={null}><SolarSettingsPage /></Suspense>
+    if (location.pathname.startsWith('/owner-settings-solar') && (employee?.actualRole === 'ADMIN' || permissions.includes('solar_prices'))) return <Suspense fallback={null}><SolarSettingsPage /></Suspense>
     return <Guide />
   }
   return (

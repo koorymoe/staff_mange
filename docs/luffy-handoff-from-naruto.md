@@ -623,3 +623,5 @@ git push origin origin/avg:refs/heads/prod     # بعد التأكد إنه fast
 - 11-28 فحص صلاحيات المناصب: اختبار perm_restart_live_test.go يحاكي إعادة تشغيل كاملة (Migrate+EnsureSeeded+org.Seed+resyncAll+ApplyDefaultsAll): اليدوي يبقى، المشال ما يرجع، المنصب ينضاف وينسحب، اليدوي ما ينسحب ويا المنصب. ثغرة: نائب الإدارة/الوحدة ياخذ صلاحيات العضو بس (headOnly للمدير) — مثلاً نائب مدير الإدارة بلا mon_staff. وحدات بلا دور فعلي: ops.audit, ops.bookings, ops.fleet, admin.oversight, bizdev.training.
 
 - 11-28 مشاهدة من المنصب: model/org_view.go (OrgViewSQL = headOnly للنائب، OrgOversightSQL = قادة admin ← OversightBundle). PermissionRepository.ViewNames + core.ViewLister: تنضاف للـActor بـGET/HEAD بس. GET /api/me/view-permissions للقائمة (Layout). اختبار TestTwoPositionsPermissionsLive (مدير توريد + نائب إدارة).
+
+- 11-28 solar_prices: solar_inquiries.put_config = rolePerm ADMIN/OWNER + solar_prices. 0548_data. الهَب يفتح SolarSettingsPage لصاحبها + عنصر قائمة.

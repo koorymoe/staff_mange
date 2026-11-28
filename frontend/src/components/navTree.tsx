@@ -141,6 +141,8 @@ export const navItems: NavItem[] = [
   { to: '/org', label: '🏛️ الهيكل التنظيمي', icon: <></>, roles: ['ADMIN'] },
   // (ل) 11-24 دازاي: خيارات الفاتورة لكل خدمة — تجريبي (المالك ومدير النظام)
   // (دازاي 11-28) صلاحية «تفاصيل فاتورة الخدمات» تفتحها لموظف — يختار الخدمة ويحفظ بنودها وأسعارها
+  // (دازاي 11-28) صلاحية «أسعار الطاقة الشمسية» تفتح إعداداتها لموظف
+  { to: '/owner-settings-solar', label: '☀️ أسعار الطاقة الشمسية', icon: <></>, permission: 'solar_prices', hideForRoles: ['OWNER', 'ADMIN'] },
   { to: '/service-invoice-options', label: '🧾 تفاصيل فاتورة الخدمات (تجريبي)', icon: <></>, roles: ['ADMIN'], unlockPermission: 'service_prices' },
   // (دازاي 11-28) صلاحية «الرواتب والتكاليف» — مفتاح المالك: يدخّل ساعات الموظف وراتبه وهدفه اليومي
   { to: '/owner-costs', label: '💼 الرواتب والتكاليف والأهداف', icon: <></>, permission: 'company_costs', hideForRoles: ['OWNER'] },
