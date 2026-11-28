@@ -699,6 +699,12 @@ func autoMigrations() []Migration {
 			ALTER TABLE "ServiceInvoiceRule" ADD COLUMN IF NOT EXISTS "minTiers" jsonb DEFAULT '[]'::jsonb NOT NULL;
 		`,
 		},
+		{
+			Version: "0544_data_company_costs_permission",
+			SQL: `
+			INSERT INTO "Permission" (id, name, label) VALUES (gen_random_uuid()::text, 'company_costs', 'الرواتب والتكاليف والأهداف (ساعات الموظف وراتبه وهدفه اليومي)') ON CONFLICT (name) DO NOTHING;
+		`,
+		},
 		// ‹makemigration› — التحديثات الجديدة تنضاف فوگ هالسطر
 	}
 }

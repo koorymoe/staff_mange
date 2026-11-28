@@ -142,6 +142,8 @@ export const navItems: NavItem[] = [
   // (ل) 11-24 دازاي: خيارات الفاتورة لكل خدمة — تجريبي (المالك ومدير النظام)
   // (دازاي 11-28) صلاحية «تفاصيل فاتورة الخدمات» تفتحها لموظف — يختار الخدمة ويحفظ بنودها وأسعارها
   { to: '/service-invoice-options', label: '🧾 تفاصيل فاتورة الخدمات (تجريبي)', icon: <></>, roles: ['ADMIN'], unlockPermission: 'service_prices' },
+  // (دازاي 11-28) صلاحية «الرواتب والتكاليف» — مفتاح المالك: يدخّل ساعات الموظف وراتبه وهدفه اليومي
+  { to: '/owner-costs', label: '💼 الرواتب والتكاليف والأهداف', icon: <></>, permission: 'company_costs', hideForRoles: ['OWNER'] },
   { to: '/org/directors-ranking', label: '🏆 تصنيف المدراء والموظفين', icon: <></>, roles: ['ADMIN'] },
   // (ل) 11-11 دازاي: مراقبة التقييم — نفس حارس تصنيف المدراء وأعذار التأخير (ADMIN/OWNER)
   { to: '/org/score-monitor', label: '🔍 مراقبة التقييم', icon: <></>, roles: ['ADMIN'] },

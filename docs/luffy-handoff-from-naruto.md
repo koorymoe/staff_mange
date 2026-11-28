@@ -613,3 +613,5 @@ git push origin origin/avg:refs/heads/prod     # بعد التأكد إنه fast
 - 11-28 صلاحية service_prices: تفتح /service-invoice-options وراوتات invoice_options (rolePerm ADMIN/OWNER). ترحيل 0542_data_service_prices_permission.
 
 - 11-28 درجات أقل سعر: ServiceInvoiceRule.minTiers jsonb (0543). QuoteFor: أصغر درجة >= المجموع، وإذا فات الكل ينحسب كما هو. minWork = أول درجة (توافق). الواجهة: «+ أضف درجة».
+
+- 11-28 صلاحية company_costs: مفتاح مالك (PermissionOwnerOnly). راوتات owner.*costs* صارت ownerPerm (Strict: المالك أو الصلاحية، المدير ما يعبر). 0544_data. واجهة: عنصر /owner-costs بالقائمة + الهَب يفتح OwnerCostsPage لصاحب الصلاحية.

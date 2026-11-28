@@ -40,6 +40,11 @@ func strictRoles(l string, r ...string) core.Rule {
 	return core.Rule{Label: l, Strict: true, Roles: append([]string{"OWNER"}, r...)}
 }
 
+// ownerPerm المالك، أو الي المالك نطاه الصلاحية بيده — المدير ما يعبر تلقائياً.
+func ownerPerm(l string, p ...string) core.Rule {
+	return core.Rule{Label: l, Strict: true, Roles: []string{"OWNER"}, Perms: p}
+}
+
 // fromAuthz نفس authz.Guard: أدوار القاعدة أو صلاحياتها، والمالك والمدير يعبرون.
 func fromAuthz(l string, res authz.Resource) core.Rule {
 	r := authz.SeeAllRules[res]
