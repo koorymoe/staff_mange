@@ -611,3 +611,5 @@ git push origin origin/avg:refs/heads/prod     # بعد التأكد إنه fast
 - ProjectCover.signature (بالـcover jsonb، بلا تحديث قاعدة) ← sign-box بآخر صفحة الملخص المالي.
 
 - 11-28 صلاحية service_prices: تفتح /service-invoice-options وراوتات invoice_options (rolePerm ADMIN/OWNER). ترحيل 0542_data_service_prices_permission.
+
+- 11-28 درجات أقل سعر: ServiceInvoiceRule.minTiers jsonb (0543). QuoteFor: أصغر درجة >= المجموع، وإذا فات الكل ينحسب كما هو. minWork = أول درجة (توافق). الواجهة: «+ أضف درجة».

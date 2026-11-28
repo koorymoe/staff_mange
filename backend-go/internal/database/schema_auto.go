@@ -693,6 +693,12 @@ func autoMigrations() []Migration {
 			INSERT INTO "Permission" (id, name, label) VALUES (gen_random_uuid()::text, 'service_prices', 'تفاصيل فاتورة الخدمات (البنود والأسعار)') ON CONFLICT (name) DO NOTHING;
 		`,
 		},
+		{
+			Version: "0543_service_invoice_min_tiers",
+			SQL: `
+			ALTER TABLE "ServiceInvoiceRule" ADD COLUMN IF NOT EXISTS "minTiers" jsonb DEFAULT '[]'::jsonb NOT NULL;
+		`,
+		},
 		// ‹makemigration› — التحديثات الجديدة تنضاف فوگ هالسطر
 	}
 }

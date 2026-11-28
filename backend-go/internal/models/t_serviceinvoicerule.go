@@ -9,6 +9,7 @@ func init() {
 		Columns: []Column{
 			{Name: "serviceId", Type: "text", NotNull: true},
 			{Name: "minWork", Type: "numeric", NotNull: true, Default: "0"},
+			{Name: "minTiers", Type: "jsonb", NotNull: true, Default: "'[]'::jsonb"}, // (دازاي 11-28) درجات: أقل من 14 ← 14، أكثر ← 24…
 			{Name: "updatedById", Type: "text"},
 			{Name: "updatedAt", Type: "timestamp with time zone", NotNull: true, Default: "now()"},
 		},

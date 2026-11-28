@@ -43,13 +43,13 @@ func TestServiceInvoiceOptionsLive(t *testing.T) {
 	t.Cleanup(func() { db.Exec(`DELETE FROM "Service" WHERE id = 'sio-svc'`) })
 	db.MustExec(`INSERT INTO "Service"(id, name) VALUES ('sio-svc', 'تنظيف ألواح sio')`)
 	s := NewServiceInvoiceOptions(db)
-	if err := s.Save("sio-svc", "", 14000, []ServiceInvoiceOption{{Label: " غسل لوح ", Unit: "لوح", UnitPrice: 2000}, {Label: "صعود سطح", UnitPrice: 3000}}); err != nil {
+	if err := s.Save("sio-svc", "", 14000, nil, []ServiceInvoiceOption{{Label: " غسل لوح ", Unit: "لوح", UnitPrice: 2000}, {Label: "صعود سطح", UnitPrice: 3000}}); err != nil {
 		t.Fatal(err)
 	}
-	if err := s.Save("sio-svc", "", 0, []ServiceInvoiceOption{{Label: "", UnitPrice: 1}}); err == nil {
+	if err := s.Save("sio-svc", "", 0, nil, []ServiceInvoiceOption{{Label: "", UnitPrice: 1}}); err == nil {
 		t.Fatal("خيار بلا اسم لازم ينرفض")
 	}
-	if err := s.Save("no-such", "", 0, nil); err != ErrDesignHidden {
+	if err := s.Save("no-such", "", 0, nil, nil); err != ErrDesignHidden {
 		t.Fatalf("خدمة مو موجودة: %v", err)
 	}
 	ts, _ := s.List()
@@ -65,5 +65,15 @@ func TestServiceInvoiceOptionsLive(t *testing.T) {
 	q, err := s.Quote("sio-svc", map[string]float64{tpl.Options[0].ID: 3}, 0)
 	if err != nil || q.Work != 14000 || q.Sum != 6000 {
 		t.Fatalf("التجربة غلط: %+v %v", q, err)
+	}
+}
+
+// (دازاي 11-28) «إذا طلعت أقل من 14 ينحسب 14، وإذا أكثر من 14 ينحسب أقل شي 24».
+func TestQuoteForTiers(t *testing.T) {
+	tpl := ServiceInvoiceTemplate{MinTiers: []float64{24000, 14000}, Options: []ServiceInvoiceOption{{ID: "a", UnitPrice: 1000}}}
+	for _, c := range []struct{ n, want float64 }{{5, 14000}, {14, 14000}, {16, 24000}, {30, 30000}} {
+		if q := QuoteFor(tpl, map[string]float64{"a": c.n}, 0); q.Work != c.want {
+			t.Fatalf("n=%v: work=%v want %v", c.n, q.Work, c.want)
+		}
 	}
 }

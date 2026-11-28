@@ -1,8 +1,10 @@
 package service
 
 import (
+	"encoding/json"
 	"errors"
 	"math"
+	"sort"
 	"strings"
 
 	"github.com/jmoiron/sqlx"
@@ -22,20 +24,25 @@ type ServiceInvoiceOption struct {
 }
 
 type ServiceInvoiceTemplate struct {
-	ServiceID   string                 `db:"serviceId" json:"serviceId"`
-	ServiceName string                 `db:"serviceName" json:"serviceName"`
-	MinWork     float64                `db:"minWork" json:"minWork"`
-	Options     []ServiceInvoiceOption `db:"-" json:"options"`
+	ServiceID   string  `db:"serviceId" json:"serviceId"`
+	ServiceName string  `db:"serviceName" json:"serviceName"`
+	MinWork     float64 `db:"minWork" json:"minWork"`
+	TiersRaw    []byte  `db:"minTiers" json:"-"`
+	// MinTiers درجات أقل سعر (تصاعدي): الشغل يطلع بأصغر درجة توصل للمجموع، وإذا المجموع فات كل الدرجات ينحسب مثل ما هو.
+	MinTiers []float64              `db:"-" json:"minTiers"`
+	Options  []ServiceInvoiceOption `db:"-" json:"options"`
 }
 
 type ServiceInvoiceOptions struct{ db *sqlx.DB }
 
-func NewServiceInvoiceOptions(db *sqlx.DB) *ServiceInvoiceOptions { return &ServiceInvoiceOptions{db: db} }
+func NewServiceInvoiceOptions(db *sqlx.DB) *ServiceInvoiceOptions {
+	return &ServiceInvoiceOptions{db: db}
+}
 
 // List كل الخدمات ووياها خياراتها وحدّها الأدنى (الخدمة البلا خيارات تطلع فاضية).
 func (s *ServiceInvoiceOptions) List() ([]ServiceInvoiceTemplate, error) {
 	ts := []ServiceInvoiceTemplate{}
-	if err := s.db.Select(&ts, `SELECT sv.id AS "serviceId", sv.name AS "serviceName", COALESCE(r."minWork", 0)::float8 AS "minWork"
+	if err := s.db.Select(&ts, `SELECT sv.id AS "serviceId", sv.name AS "serviceName", COALESCE(r."minWork", 0)::float8 AS "minWork", COALESCE(r."minTiers", '[]'::jsonb) AS "minTiers"
 		FROM "Service" sv LEFT JOIN "ServiceInvoiceRule" r ON r."serviceId" = sv.id ORDER BY sv.name`); err != nil {
 		return nil, err
 	}
@@ -53,6 +60,11 @@ func (s *ServiceInvoiceOptions) List() ([]ServiceInvoiceTemplate, error) {
 		by[r.ServiceID] = append(by[r.ServiceID], r.ServiceInvoiceOption)
 	}
 	for i := range ts {
+		ts[i].MinTiers = []float64{}
+		_ = json.Unmarshal(ts[i].TiersRaw, &ts[i].MinTiers)
+		if len(ts[i].MinTiers) == 0 && ts[i].MinWork > 0 {
+			ts[i].MinTiers = []float64{ts[i].MinWork}
+		}
 		ts[i].Options = by[ts[i].ServiceID]
 		if ts[i].Options == nil {
 			ts[i].Options = []ServiceInvoiceOption{}
@@ -62,10 +74,31 @@ func (s *ServiceInvoiceOptions) List() ([]ServiceInvoiceTemplate, error) {
 }
 
 // Save يبدّل خيارات الخدمة كلها بالي انرسل (بالترتيب) ويحفظ الحد الأدنى.
-func (s *ServiceInvoiceOptions) Save(serviceID, by string, minWork float64, opts []ServiceInvoiceOption) error {
+func (s *ServiceInvoiceOptions) Save(serviceID, by string, minWork float64, tiers []float64, opts []ServiceInvoiceOption) error {
 	if minWork < 0 || math.IsNaN(minWork) {
 		return errors.New("أقل سعر لازم صفر أو أكثر")
 	}
+	if tiers == nil && minWork > 0 {
+		tiers = []float64{minWork}
+	}
+	clean := []float64{}
+	for _, t := range tiers {
+		if t < 0 || math.IsNaN(t) {
+			return errors.New("درجات أقل سعر لازم صفر أو أكثر")
+		}
+		if t > 0 {
+			clean = append(clean, t)
+		}
+	}
+	if len(clean) > 20 {
+		return errors.New("أكثر شي ٢٠ درجة")
+	}
+	sort.Float64s(clean)
+	minWork = 0
+	if len(clean) > 0 {
+		minWork = clean[0]
+	}
+	tiersJSON, _ := json.Marshal(clean)
 	if len(opts) > 40 {
 		return errors.New("أكثر شي ٤٠ خيار للخدمة")
 	}
@@ -99,8 +132,8 @@ func (s *ServiceInvoiceOptions) Save(serviceID, by string, minWork float64, opts
 			return err
 		}
 	}
-	if _, err := tx.Exec(`INSERT INTO "ServiceInvoiceRule" ("serviceId", "minWork", "updatedById", "updatedAt") VALUES ($1, $2, NULLIF($3, ''), now())
-		ON CONFLICT ("serviceId") DO UPDATE SET "minWork" = $2, "updatedById" = NULLIF($3, ''), "updatedAt" = now()`, serviceID, minWork, by); err != nil {
+	if _, err := tx.Exec(`INSERT INTO "ServiceInvoiceRule" ("serviceId", "minWork", "minTiers", "updatedById", "updatedAt") VALUES ($1, $2, $4::jsonb, NULLIF($3, ''), now())
+		ON CONFLICT ("serviceId") DO UPDATE SET "minWork" = $2, "minTiers" = $4::jsonb, "updatedById" = NULLIF($3, ''), "updatedAt" = now()`, serviceID, minWork, by, string(tiersJSON)); err != nil {
 		return err
 	}
 	return tx.Commit()
@@ -137,8 +170,18 @@ func QuoteFor(t ServiceInvoiceTemplate, qty map[string]float64, materials float6
 		q.Sum += l.Total
 	}
 	q.Work = q.Sum
-	if t.MinWork > q.Work {
-		q.Work, q.MinUsed = t.MinWork, true
+	tiers := append([]float64(nil), t.MinTiers...)
+	if len(tiers) == 0 && t.MinWork > 0 {
+		tiers = []float64{t.MinWork}
+	}
+	sort.Float64s(tiers)
+	for _, m := range tiers { // أصغر درجة توصل للمجموع
+		if m >= q.Sum {
+			if m > q.Sum {
+				q.Work, q.MinUsed, q.MinWork = m, true, m
+			}
+			break
+		}
 	}
 	q.Total = q.Work + q.Materials
 	return q

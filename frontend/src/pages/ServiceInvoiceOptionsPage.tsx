@@ -7,7 +7,7 @@ import { notify } from '../ui/notify'
 // «تنضاف بس ما تنطلق» — الفواتير الحقيقية بعدها بالطريقة القديمة؛ هنا حاسبة تجربة بس.
 
 type Opt = { id?: string; label: string; unit: string; unitPrice: number }
-type Tpl = { serviceId: string; serviceName: string; minWork: number; options: Opt[] }
+type Tpl = { serviceId: string; serviceName: string; minWork: number; minTiers: number[]; options: Opt[] }
 type Quote = { lines: { label: string; unit: string; qty: number; price: number; total: number }[]; sum: number; minWork: number; work: number; materials: number; total: number; minUsed: boolean }
 
 const iqd = (v: number) => `${Math.round(v).toLocaleString('en-US')} د.ع`
@@ -19,7 +19,7 @@ export default function ServiceInvoiceOptionsPage() {
   const [sel, setSel] = useState('')
   const [q, setQ] = useState('')
   const [opts, setOpts] = useState<Opt[]>([])
-  const [minWork, setMinWork] = useState(0)
+  const [tiers, setTiers] = useState<number[]>([])
   const [busy, setBusy] = useState(false)
   const [qty, setQty] = useState<Record<string, number>>({})
   const [materials, setMaterials] = useState(0)
@@ -27,8 +27,8 @@ export default function ServiceInvoiceOptionsPage() {
 
   useEffect(() => { apiRequest<Tpl[]>('/service-invoice-options').then(setAll).catch((e: Error) => setErr(e.message)) }, [])
   const cur = useMemo(() => all?.find((t) => t.serviceId === sel) ?? null, [all, sel])
-  const pick = (t: Tpl) => { setSel(t.serviceId); setOpts(t.options.map((o) => ({ ...o }))); setMinWork(t.minWork); setQty({}); setMaterials(0); setQuote(null) }
-  const dirty = !!cur && (minWork !== cur.minWork || JSON.stringify(opts.map(({ label, unit, unitPrice }) => [label, unit, unitPrice])) !== JSON.stringify(cur.options.map(({ label, unit, unitPrice }) => [label, unit, unitPrice])))
+  const pick = (t: Tpl) => { setSel(t.serviceId); setOpts(t.options.map((o) => ({ ...o }))); setTiers([...(t.minTiers ?? [])]); setQty({}); setMaterials(0); setQuote(null) }
+  const dirty = !!cur && (JSON.stringify(tiers) !== JSON.stringify(cur.minTiers ?? []) || JSON.stringify(opts.map(({ label, unit, unitPrice }) => [label, unit, unitPrice])) !== JSON.stringify(cur.options.map(({ label, unit, unitPrice }) => [label, unit, unitPrice])))
 
   if (err) return <p role="alert" className="text-rose-700">{err}</p>
   if (!all) return <p className="py-10 text-center text-slate-400">جاري التحميل…</p>
@@ -40,7 +40,7 @@ export default function ServiceInvoiceOptionsPage() {
     if (!cur) return
     setBusy(true)
     try {
-      const next = await apiRequest<Tpl[]>(`/service-invoice-options/${cur.serviceId}`, { method: 'PUT', body: JSON.stringify({ minWork, options: opts }) })
+      const next = await apiRequest<Tpl[]>(`/service-invoice-options/${cur.serviceId}`, { method: 'PUT', body: JSON.stringify({ minWork: 0, minTiers: tiers.filter((x) => x > 0), options: opts }) })
       setAll(next)
       const t = next.find((x) => x.serviceId === cur.serviceId)
       if (t) pick(t)
@@ -90,11 +90,19 @@ export default function ServiceInvoiceOptionsPage() {
                 </div>
               ))}
               <button type="button" onClick={() => setOpts((xs) => [...xs, { label: '', unit: 'قطعة', unitPrice: 0 }])} className="rounded-lg border border-dashed border-slate-400 px-3 py-1.5 text-sm font-bold text-slate-700">+ أضف خانة</button>
-              <label className="flex flex-wrap items-center gap-3 rounded-xl bg-[#0f2040]/5 px-4 py-3">
-                <b className="text-slate-800">أقل سعر للشغل</b>
-                <input type="number" min={0} value={minWork} onChange={(e) => setMinWork(Number(e.target.value))} className={`${inp} w-36`} dir="ltr" />
-                <small className="text-slate-500">إذا مجموع الخانات أقل منه، الفاتورة تطلع بهذا السعر. المواد تنضاف فوگه.</small>
-              </label>
+              <div className="space-y-2 rounded-xl bg-[#0f2040]/5 px-4 py-3" data-testid="sio-tiers">
+                <b className="text-slate-800">أقل سعر للشغل (درجات)</b>
+                <p className="text-xs text-slate-500">الفاتورة تطلع بأصغر درجة توصل لمجموع الخانات. مثلاً 14,000 و 24,000: إذا المجموع 10,000 ← 14,000، وإذا 16,000 ← 24,000، وإذا فات آخر درجة ينحسب مثل ما هو. المواد تنضاف فوگه.</p>
+                {tiers.map((v, i) => (
+                  <div key={i} className="flex items-center gap-2">
+                    <span className="w-16 text-sm text-slate-600">درجة {i + 1}</span>
+                    <input type="number" min={0} value={v || ''} onChange={(e) => setTiers((xs) => xs.map((x, k) => (k === i ? Number(e.target.value) : x)))} className={`${inp} w-36`} dir="ltr" />
+                    <small className="text-slate-500">د.ع</small>
+                    <button type="button" onClick={() => setTiers((xs) => xs.filter((_, k) => k !== i))} className="rounded-lg px-2 py-1 text-rose-600 hover:bg-rose-50" aria-label="شيل الدرجة">✕</button>
+                  </div>
+                ))}
+                <button type="button" onClick={() => setTiers((xs) => [...xs, 0])} className="rounded-lg border border-dashed border-slate-400 px-3 py-1.5 text-sm font-bold text-slate-700">+ أضف درجة</button>
+              </div>
               <button type="button" disabled={busy || !dirty} onClick={() => void save()} className="rounded-xl bg-[#0f2040] px-6 py-2.5 font-bold text-white disabled:opacity-40">{busy ? 'يحفظ…' : 'احفظ'}</button>
             </div>
 
@@ -112,7 +120,7 @@ export default function ServiceInvoiceOptionsPage() {
                 <div className="rounded-xl bg-slate-50 p-3 text-sm" data-testid="sio-quote">
                   {quote.lines.map((l) => <p key={l.label} className="flex justify-between"><span>{l.label} × {l.qty} {l.unit}</span><b dir="ltr">{iqd(l.total)}</b></p>)}
                   <p className="mt-2 flex justify-between border-t pt-2"><span>مجموع الخانات</span><b dir="ltr">{iqd(quote.sum)}</b></p>
-                  <p className="flex justify-between"><span>الشغل {quote.minUsed && <small className="text-amber-700">(طلع الحد الأدنى)</small>}</span><b dir="ltr">{iqd(quote.work)}</b></p>
+                  <p className="flex justify-between"><span>الشغل {quote.minUsed && <small className="text-amber-700">(طلعت درجة {iqd(quote.minWork)})</small>}</span><b dir="ltr">{iqd(quote.work)}</b></p>
                   {quote.materials > 0 && <p className="flex justify-between"><span>المواد</span><b dir="ltr">{iqd(quote.materials)}</b></p>}
                   <p className="mt-1 flex justify-between text-base text-[#0f2040]"><span className="font-bold">المجموع</span><b dir="ltr">{iqd(quote.total)}</b></p>
                 </div>

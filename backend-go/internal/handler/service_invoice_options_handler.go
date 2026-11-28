@@ -10,7 +10,9 @@ import (
 
 // ═══ خيارات الفاتورة لكل خدمة — تجريبي، المالك ومدير النظام (ل) 11-24 ═══
 
-type ServiceInvoiceOptionsHandler struct{ svc *service.ServiceInvoiceOptions }
+type ServiceInvoiceOptionsHandler struct {
+	svc *service.ServiceInvoiceOptions
+}
 
 func NewServiceInvoiceOptionsHandler(s *service.ServiceInvoiceOptions) *ServiceInvoiceOptionsHandler {
 	return &ServiceInvoiceOptionsHandler{svc: s}
@@ -29,14 +31,15 @@ func (h *ServiceInvoiceOptionsHandler) List(w http.ResponseWriter, r *http.Reque
 // PUT /api/service-invoice-options/{serviceId}  {minWork, options:[{label,unit,unitPrice}]}
 func (h *ServiceInvoiceOptionsHandler) Save(w http.ResponseWriter, r *http.Request) {
 	var in struct {
-		MinWork float64                        `json:"minWork"`
-		Options []service.ServiceInvoiceOption `json:"options"`
+		MinWork  float64                        `json:"minWork"`
+		MinTiers []float64                      `json:"minTiers"`
+		Options  []service.ServiceInvoiceOption `json:"options"`
 	}
 	if err := DecodeJSON(r, &in); err != nil {
 		WriteError(w, http.StatusBadRequest, "بيانات غير صحيحة")
 		return
 	}
-	if err := h.svc.Save(r.PathValue("serviceId"), middleware.EmployeeIDFromContext(r), in.MinWork, in.Options); err != nil {
+	if err := h.svc.Save(r.PathValue("serviceId"), middleware.EmployeeIDFromContext(r), in.MinWork, in.MinTiers, in.Options); err != nil {
 		if errors.Is(err, service.ErrDesignHidden) {
 			WriteError(w, http.StatusNotFound, "الخدمة مو موجودة")
 			return
