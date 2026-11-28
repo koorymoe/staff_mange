@@ -368,7 +368,8 @@ export default function Layout() {
     Promise.all([
       api.getEmployeePermissions(employee.id).then((perms) => perms.map((p) => p.name)).catch(() => [] as string[]),
       employee.actualRole === 'ADMIN' || employee.role === 'ADMIN' ? api.getMyOwnerGrants().catch(() => [] as string[]) : Promise.resolve([] as string[]),
-    ]).then(([perms, grants]) => setEmployeePermissions(expandOversight([...perms, ...grants.map((g) => 'owner:' + g)])))
+      api.getMyViewPermissions().catch(() => [] as string[]),
+    ]).then(([perms, grants, view]) => setEmployeePermissions(expandOversight([...new Set([...perms, ...view]), ...grants.map((g) => 'owner:' + g)])))
   }, [employee])
 
   useEffect(() => {

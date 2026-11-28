@@ -105,3 +105,70 @@ func TestPermissionsSurviveRestartLive(t *testing.T) {
 		t.Fatal("اليدوي انسحب ويا المنصب")
 	}
 }
+
+// (دازاي 11-28) «مدير سلاسل التوريد وبنفس الوقت نائب مدير الادارة»: صلاحياته تجي من المنصبين لحالها.
+func TestTwoPositionsPermissionsLive(t *testing.T) {
+	dsn := os.Getenv("DATABASE_URL")
+	if dsn == "" {
+		t.Skip("بلا DATABASE_URL")
+	}
+	db := sqlx.MustConnect("postgres", dsn)
+	t.Cleanup(func() { db.Close() })
+	if err := database.Migrate(db, "", ""); err != nil {
+		t.Fatal(err)
+	}
+	clean := func() {
+		for _, q := range []string{`DELETE FROM "OrgAssignment" WHERE "employeeId" = 'pr-2'`, `DELETE FROM "OrgPermissionGrant" WHERE "employeeId" = 'pr-2'`,
+			`DELETE FROM "PermissionAuditLog" WHERE "employeeId" = 'pr-2'`, `DELETE FROM "EmployeePermission" WHERE "employeeId" = 'pr-2'`, `DELETE FROM "Employee" WHERE id = 'pr-2'`} {
+			db.Exec(q)
+		}
+	}
+	clean()
+	t.Cleanup(clean)
+	org := NewOrgService(db)
+	if err := org.Seed(); err != nil {
+		t.Fatal(err)
+	}
+	db.MustExec(`INSERT INTO "Employee"(id, name, role) VALUES ('pr-2', 'pr مدير توريد ونائب إدارة', 'TECHNICIAN')`)
+	db.MustExec(`INSERT INTO "OrgAssignment"("employeeId", "divisionId", position) VALUES ('pr-2', 'supply', 'DIRECTOR'), ('pr-2', 'admin', 'DEPUTY')`)
+	tx := db.MustBegin()
+	if err := syncOrgPermissions(tx, "pr-2", "", "اختبار"); err != nil {
+		t.Fatal(err)
+	}
+	tx.Commit()
+	repo := repository.NewPermissionRepository(db)
+	full, _ := repo.Names("pr-2")
+	view, _ := repo.ViewNames("pr-2")
+	in := func(xs []string, x string) bool {
+		for _, y := range xs {
+			if y == x {
+				return true
+			}
+		}
+		return false
+	}
+	// مدير سلاسل التوريد: كامل (حتى صلاحيات الرئيس)
+	for _, p := range []string{"procurement", "inventory", "suppliers_management", "unit_procurement"} {
+		if !in(full, p) {
+			t.Fatalf("مدير التوريد ناقصه %s: %v", p, full)
+		}
+	}
+	// نائب الإدارة: تعديل العضو (إحصائيات، معالجة الحالات)، ومشاهدة التقييمات والتفاصيل والتدقيق
+	for _, p := range []string{"employee_stats", "action_plan"} {
+		if !in(full, p) {
+			t.Fatalf("نائب الإدارة ناقصه %s: %v", p, full)
+		}
+	}
+	for _, p := range []string{"mon_staff", "monitoring", "auditing", "staff_stats", "performance_review", "finance"} {
+		if !in(view, p) && !in(full, p) {
+			t.Fatalf("نائب الإدارة ما يشوف %s: %v", p, view)
+		}
+	}
+	// موافقة المدير ما تنطى للنائب كاملة
+	if in(full, "mon_justifications") || in(full, "booking_delete_approve") {
+		t.Fatalf("النائب أخذ صلاحية موافقة كاملة: %v", full)
+	}
+	if in(view, "finance_audit") {
+		t.Fatal("صلاحية مالك انطت من المنصب")
+	}
+}

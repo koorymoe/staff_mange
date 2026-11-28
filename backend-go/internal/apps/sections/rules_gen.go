@@ -769,6 +769,7 @@ func rules() map[string]map[core.Action]core.Rule {
 			"matrix_selfcheck.get_root": func(l string) core.Rule { return strictRoles(l, "OWNER") }("يقرا /api/matrix-selfcheck (دور (بلا المدير))"),
 		},
 		"me_x": {
+			"me_x.get_view_permissions":             func(l string) core.Rule { return any_(l) }("يقرا صلاحيات المشاهدة من منصبه (لنفسه بس)"),
 			"me_x.get_bot_reports":                  func(l string) core.Rule { return any_(l) }("يقرا /api/me/bot-reports (الدخول — الفحص بالمعالج)"),
 			"me_x.get_daily_reports":                func(l string) core.Rule { return any_(l) }("يقرا /api/me/daily-reports (الدخول — الفحص بالمعالج)"),
 			"me_x.get_daily_reports_by_id_analysis": func(l string) core.Rule { return any_(l) }("يقرا /api/me/daily-reports/{id}/analysis (الدخول — الفحص بالمعالج)"),

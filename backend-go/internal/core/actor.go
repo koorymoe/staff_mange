@@ -22,6 +22,11 @@ type PermLister interface {
 	Names(employeeID string) ([]string, error)
 }
 
+// ViewLister اختياري: صلاحيات مشاهدة (للقراءة بس) من المنصب.
+type ViewLister interface {
+	ViewNames(employeeID string) ([]string, error)
+}
+
 // Actor صاحب الطلب — يتحسب مرة وحدة بالطلب.
 type Actor struct {
 	ID            string
@@ -131,9 +136,18 @@ func resolveActor(r *http.Request, perms PermLister, leader func(string) bool, g
 		}
 	}
 	// (دازاي 11-28) «رقابة وتدقيق — مشاهدة»: الحزمة تنفتح للقراءة بس
-	if a.Perms[model.OversightView] && (r.Method == http.MethodGet || r.Method == http.MethodHead) {
+	read := r.Method == http.MethodGet || r.Method == http.MethodHead
+	if a.Perms[model.OversightView] && read {
 		for _, p := range model.OversightBundle {
 			a.Perms[p] = true
+		}
+	}
+	// (دازاي 11-28) مشاهدة من المنصب: النائب يشوف شغل مديره، وقادة الإدارة يشوفون الرقابة والتدقيق
+	if v, ok := perms.(ViewLister); ok && read {
+		if names, err := v.ViewNames(id); err == nil {
+			for _, n := range names {
+				a.Perms[n] = true
+			}
 		}
 	}
 	return a
