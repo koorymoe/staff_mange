@@ -214,7 +214,8 @@ export default function ProcurementPage() {
       quantity: i.quantity,
       unitPrice: i.unitPrice?.toString() || '',
       totalPrice: i.totalPrice?.toString() || '',
-      fulfilled: i.fulfilled,
+      // (ك) 11-28 زينا: يبدي مأشّر — چان فارغ فالطلب ينحفظ «تم التوفير» والمادة «لم يوفر» (PR-0004)
+      fulfilled: true,
     })))
   }
 
