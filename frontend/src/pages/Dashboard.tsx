@@ -17,7 +17,7 @@ import type { Booking, Expense, StaffRequest, LeaveRequest, InventoryCheck, Fina
 import { useSession, hasGpsSkill, hasRole, isAdminOrOwner } from '../session'
 import MeetingRequests from '../components/MeetingRequests'
 import MyDirectives from '../components/MyDirectives'
-import { useOrgMemberships, orgPositionTitle } from '../orgDeskAccess'
+import { useOrgMemberships, greetingTitle } from '../orgDeskAccess'
 import { navItems, collectMonitorExtraLinks } from '../components/navTree'
 import { useSaveGuard } from '../useSaveGuard'
 import SaveError from '../components/SaveError'
@@ -467,10 +467,10 @@ function StaffDashboard() {
               {greetingPhase === 'time' ? (
                 <>
                   <span className="greet-icon ml-1 inline-block">{greet.icon}</span>
-                  {greet.text} يا {orgPositionTitle(orgMine) ?? positionTitle(employee)}
+                  {greet.text} يا {greetingTitle(employee, orgMine)}
                 </>
               ) : (
-                <>مرحباً يا {orgPositionTitle(orgMine) ?? positionTitle(employee)}</>
+                <>مرحباً يا {greetingTitle(employee, orgMine)}</>
               )}
             </h1>
             <p className="mt-2 text-sm text-blue-200/80">{formatDate()}</p>

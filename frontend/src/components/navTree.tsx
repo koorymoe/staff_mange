@@ -150,7 +150,7 @@ export const navItems: NavItem[] = [
   { to: '/org/desk', label: '🏛️ مكتب الإدارة', icon: <></> },
   { to: '/voice-terms', label: '👂 قاموس الأذن', icon: <></>, roles: ['ADMIN'] },
   // (دازاي 10-29) محادثة ماتركس لصاحب الصلاحية — أدواته بحدود صلاحياته بالخادم
-  { to: '/matrix-chat', label: '🤖 محادثة ماتركس', icon: <></>, roles: ['ADMIN'], anyPermission: ['agent_matrix'] },
+  // (دازاي 11-28) محادثة ماتركس صارت فقاعة دردشة أسفل اليسار (MatrixChatBubble) — مو بالقائمة
   // (دازاي 11-04) صلاحية بيد المالك بس — ولا الأدمن ولا المراقب بلاها (السيرفر: authz.WhatsAppChats)
   { to: '/whatsapp-conversations', label: 'محادثات الواتساب', icon: <></>, capability: 'whatsapp_chats', permission: 'whatsapp_chats' },
   // (دازاي 11-05) بلاغات الموظفين من بوت التلغرام — مفتاح مالك
@@ -1565,7 +1565,7 @@ const SELF_SCOPED: Record<string, RouteRule> = {
 // 🔴 «تقرير العمل» ينفتح من «مهامي» لكل كادر مكلّف — بند القائمة مقيّد بصلاحية
 // فواتير الجي بي اس، فالحارس چان يرفض الكادر وهو المفروض يكتب التقرير.
 // تقرير ١ (B10): سياسة الخصوصية والإجازات روابطهن عند كل موظف، والصفحة تفرّق القراءة عن الإدارة.
-const OPEN_PATHS = new Set(['/work-reports', '/privacy-policy', '/leaves'])
+const OPEN_PATHS = new Set(['/work-reports', '/privacy-policy', '/leaves', '/profile'])
 
 // ⚠️ كل سطر = حارس GET الشاشة بـmain.go. إذا تغيّر الحارس هناك، غيّره هنا.
 type RouteRule = { roles?: EmployeeRole[]; anyPermission?: string[]; leader?: boolean }

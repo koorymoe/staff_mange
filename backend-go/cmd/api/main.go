@@ -2541,6 +2541,8 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	ideas := handler.NewIdeaHandler(service.NewIdeaService(db, notificationRepo))
 	secs["me_x"].Set("POST /api/me/ideas", "me_x.post_idea", ideas.Submit)
 	secs["me_x"].Set("GET /api/me/ideas", "me_x.get_ideas", ideas.Mine)
+	// 👤 ملفي الشخصي (دازاي 11-28) — كل موظف عن نفسه بس
+	secs["me_x"].Set("GET /api/me/profile", "me_x.get_profile", handler.NewMeProfileHandler(db).Get)
 	secs["late_excuses"].Set("GET /api/ideas", "late_excuses.get_ideas", ideas.Queue)
 	secs["late_excuses"].Set("POST /api/ideas/{id}/decide", "late_excuses.post_idea_decide", ideas.Decide)
 	secs["inventory"].Set("GET /api/inventory/after-shortages", "inventory.get_after_shortages", scoreReview.AfterShortages)

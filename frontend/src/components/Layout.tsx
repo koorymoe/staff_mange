@@ -1,3 +1,4 @@
+import MatrixChatBubble from './MatrixChatBubble'
 import Modal from '../ui/Modal'
 import { GlobalBack } from '../ui/BackLink'
 import { GlobalBackContext } from '../ui/backContext'
@@ -444,7 +445,11 @@ export default function Layout() {
   }
   // صاحب صلاحية monitoring يشوف قائمة المراقب نفسها — (ع) 10-16
   const isMonRole = role === 'MONITOR' || (role !== 'ADMIN' && employeePermissions.includes('monitoring'))
+  // (دازاي 11-28) الأشياء الشخصية (دوامي، تقييمي) صارت بـ«ملفي الشخصي» — تنشال من القائمة للموظف.
+  // الرابط يبقى شغّال (الحارس ما يتغيّر)، والمدير يبقى يشوفها لأنها عنده شاشات الكل.
+  const personalOnly = !isAdminOrOwner(employee) && role !== 'MONITOR'
   const isVisible = (item: NavItem, unitGranted = false): boolean =>
+    !(personalOnly && (item.to === '/attendance' || item.to === '/my-ranking')) &&
     isNavVisible(item, { employee, permissions: employeePermissions, gpsServiceId, orgMemberships }, unitGranted)
   // ⚠️ عزل شغل المراقب: عنصر ظاهر بصلاحية ممنوحة زيادة عن دوره، مو
   // من صميم شغله (الإشراف). يُشار له بشارة صغيرة بس — بلا نقل ولا
@@ -890,7 +895,10 @@ export default function Layout() {
                   </>
                 )}
               </div>
-              <div className="flex items-center gap-2 rounded-xl bg-slate-50/80 px-2 py-1.5 transition-colors hover:bg-slate-100 sm:gap-3 sm:px-3">
+              {/* (دازاي 11-28) الضغط على الاسم = ملفي الشخصي */}
+              <div role="button" tabIndex={0} title="ملفي الشخصي" onClick={() => navigate('/profile')}
+                onKeyDown={(e) => { if (e.key === 'Enter') navigate('/profile') }}
+                className="flex cursor-pointer items-center gap-2 rounded-xl bg-slate-50/80 px-2 py-1.5 transition-colors hover:bg-slate-100 sm:gap-3 sm:px-3">
                 <div className="hidden text-left sm:block">
                   <p className="text-sm font-bold text-slate-800">{employee.name}</p>
                   <p className="text-[11px] text-slate-400">{orgTitle ?? roleLabel(employee.actualRole || employee.role)}</p>
@@ -924,6 +932,7 @@ export default function Layout() {
                 ? <NoAccess />
                 : <AttendanceGate><Outlet /></AttendanceGate>}
             </ErrorBoundary>
+            <MatrixChatBubble />
             </GlobalBackContext.Provider>
           </main>
         </div>
@@ -971,7 +980,7 @@ export default function Layout() {
           {!collapsed ? (
             <div className="mx-3 mb-4 overflow-hidden rounded-2xl bg-gradient-to-br from-white/[0.08] to-white/[0.03] p-4 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.06)]">
               <div className="flex items-center gap-3">
-                <div className="flex-1 text-right">
+                <div className="flex-1 cursor-pointer text-right" role="button" tabIndex={0} title="ملفي الشخصي" onClick={() => navigate('/profile')}>
                   <p className="text-sm font-bold text-white">{employee.name}</p>
                   <p className="text-[11px] text-blue-300/80">{orgTitle ?? roleLabel(employee.actualRole || employee.role)}</p>
                 </div>
