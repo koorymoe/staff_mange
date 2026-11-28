@@ -709,6 +709,8 @@ export const navItems: NavItem[] = [
       { strict: true, to: '/staff-leaves', label: '🗓️ إجازات الموظفين', icon: <></>, roles: ['ADMIN', 'MONITOR'], anyPermission: ['staff_management', 'monitoring', 'leave_approve_morning', 'leave_approve_evening'] },
       { to: '/nav-hr-stats', label: '📊 الإحصائيات', icon: <></>, divider: true, plain: true },
       { strict: true, to: '/stats-management', label: '📊 الإحصائيات', icon: <></>, roles: ['ADMIN'], unlockPermission: 'employee_stats' },
+      // (ك) 11-28 زينا: معالجة الحالات الحرجة — الإدارة والمالك
+      { strict: true, to: '/action-plans', label: '🛡️ معالجة الحالات الحرجة', icon: <></>, roles: ['ADMIN'], unlockPermission: 'action_plan' },
     ],
   },
   {

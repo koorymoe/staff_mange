@@ -1918,6 +1918,15 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	revisitHandler := handler.NewRevisitHandler(repository.NewRevisitRepository(db))
 	secs["revisits"].Set("GET /api/revisits", "revisits.get_root", revisitHandler.Report)
 	secs["manager_requests"].Set("GET /api/manager-requests", "manager_requests.get_root", managerRequestHandler.List)
+	// (ك) 11-28 زينا: معالجة الحالات الحرجة
+	actionPlanHandler := handler.NewActionPlanHandler(db)
+	secs["action_plans"].Set("GET /api/action-plans", "action_plans.get_root", actionPlanHandler.List)
+	secs["action_plans"].Set("GET /api/action-plans/employees", "action_plans.get_employees", actionPlanHandler.Employees)
+	secs["action_plans"].Set("GET /api/action-plans/{id}/notes", "action_plans.get_by_id_notes", actionPlanHandler.Notes)
+	secs["action_plans"].Set("POST /api/action-plans", "action_plans.post_root", actionPlanHandler.Create)
+	secs["action_plans"].Set("POST /api/action-plans/{id}/notes", "action_plans.post_by_id_notes", actionPlanHandler.AddNote)
+	secs["action_plans"].Set("POST /api/action-plans/{id}/extend", "action_plans.post_by_id_extend", actionPlanHandler.Extend)
+	secs["action_plans"].Set("POST /api/action-plans/{id}/close", "action_plans.post_by_id_close", actionPlanHandler.Close)
 	secs["manager_requests"].Set("POST /api/manager-requests/{id}/handle", "manager_requests.post_by_id_handle", managerRequestHandler.Handle)
 
 	secs["inventory"].Set("GET /api/inventory/vehicle", "inventory.get_vehicle", inventoryHandler.ListVehicleTools)

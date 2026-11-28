@@ -712,6 +712,49 @@ func autoMigrations() []Migration {
 			ALTER TABLE "CostEmployee" ADD COLUMN IF NOT EXISTS "dailyTarget" numeric DEFAULT 0 NOT NULL;
 		`,
 		},
+		{
+			Version: "0547_action_plans",
+			SQL: `
+			CREATE TABLE IF NOT EXISTS "ActionPlan" (
+	"id" text NOT NULL,
+	"employeeId" text NOT NULL,
+	"problem" text NOT NULL,
+	"details" text DEFAULT ''::text NOT NULL,
+	"source" text DEFAULT 'MANAGER'::text NOT NULL,
+	"target" text NOT NULL,
+	"steps" text DEFAULT ''::text NOT NULL,
+	"startDate" date DEFAULT CURRENT_DATE NOT NULL,
+	"dueDate" date NOT NULL,
+	"status" text DEFAULT 'OPEN'::text NOT NULL,
+	"outcome" text,
+	"nextAction" text,
+	"createdById" text NOT NULL,
+	"createdAt" timestamp with time zone DEFAULT now() NOT NULL,
+	"closedById" text,
+	"closedAt" timestamp with time zone
+);
+			CREATE TABLE IF NOT EXISTS "ActionPlanNote" (
+	"id" text NOT NULL,
+	"planId" text NOT NULL,
+	"note" text NOT NULL,
+	"byId" text NOT NULL,
+	"createdAt" timestamp with time zone DEFAULT now() NOT NULL
+);
+			ALTER TABLE "ActionPlan" ADD CONSTRAINT "ActionPlan_pkey" PRIMARY KEY (id);
+			ALTER TABLE "ActionPlanNote" ADD CONSTRAINT "ActionPlanNote_pkey" PRIMARY KEY (id);
+			CREATE INDEX IF NOT EXISTS "ActionPlan_employee_idx" ON public."ActionPlan" USING btree ("employeeId", "createdAt");
+			CREATE INDEX IF NOT EXISTS "ActionPlan_status_idx" ON public."ActionPlan" USING btree (status, "dueDate");
+			CREATE INDEX IF NOT EXISTS "ActionPlanNote_plan_idx" ON public."ActionPlanNote" USING btree ("planId", "createdAt");
+			ALTER TABLE "ActionPlan" ADD CONSTRAINT "ActionPlan_problem_check" CHECK ((problem = ANY (ARRAY['SLOW'::text, 'ACCURACY'::text, 'TIME_WASTE'::text, 'BEHAVIOR'::text, 'OTHER'::text])));
+			ALTER TABLE "ActionPlan" ADD CONSTRAINT "ActionPlan_source_check" CHECK ((source = ANY (ARRAY['MATRIX'::text, 'MANAGER'::text, 'OWNER'::text])));
+			ALTER TABLE "ActionPlan" ADD CONSTRAINT "ActionPlan_status_check" CHECK ((status = ANY (ARRAY['OPEN'::text, 'RESOLVED'::text, 'NOT_RESOLVED'::text])));
+			ALTER TABLE "ActionPlan" ADD CONSTRAINT "ActionPlan_closedById_fkey" FOREIGN KEY ("closedById") REFERENCES "Employee"(id) ON DELETE SET NULL;
+			ALTER TABLE "ActionPlan" ADD CONSTRAINT "ActionPlan_createdById_fkey" FOREIGN KEY ("createdById") REFERENCES "Employee"(id) ON DELETE RESTRICT;
+			ALTER TABLE "ActionPlan" ADD CONSTRAINT "ActionPlan_employeeId_fkey" FOREIGN KEY ("employeeId") REFERENCES "Employee"(id) ON DELETE CASCADE;
+			ALTER TABLE "ActionPlanNote" ADD CONSTRAINT "ActionPlanNote_byId_fkey" FOREIGN KEY ("byId") REFERENCES "Employee"(id) ON DELETE RESTRICT;
+			ALTER TABLE "ActionPlanNote" ADD CONSTRAINT "ActionPlanNote_planId_fkey" FOREIGN KEY ("planId") REFERENCES "ActionPlan"(id) ON DELETE CASCADE;
+		`,
+		},
 		// ‹makemigration› — التحديثات الجديدة تنضاف فوگ هالسطر
 	}
 }

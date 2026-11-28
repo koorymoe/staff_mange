@@ -185,6 +185,7 @@ const ReportsDeskPage = lazyRetry(() => import('./pages/ReportsDeskPage'))
 const DecorRatesPage = lazyRetry(() => import('./pages/DecorRatesPage'))
 const VehicleDriversPage = lazyRetry(() => import('./pages/VehicleDriversPage'))
 const StatsManagementPage = lazyRetry(() => import('./pages/StatsManagementPage'))
+const ActionPlansPage = lazyRetry(() => import('./pages/ActionPlansPage'))
 const CustomerAppAdminPage = lazyRetry(() => import('./pages/CustomerAppAdminPage'))
 const CreditsPage = lazyRetry(() => import('./pages/CreditsPage'))
 const BookingDeleteRequestsPage = lazyRetry(() => import('./pages/BookingDeleteRequestsPage'))
@@ -409,6 +410,7 @@ function App() {
           <Route path="fragility" element={<RequirePermission permission="employee_stats"><StaffScoreHub /></RequirePermission>} />
           <Route path="staff-numbers" element={<RequirePermission permission="employee_stats"><StaffScoreHub /></RequirePermission>} />
           <Route path="stats-management" element={<RequirePermission permission="employee_stats"><StatsManagementPage /></RequirePermission>} />
+          <Route path="action-plans" element={<RequirePermission permission="action_plan"><ActionPlansPage /></RequirePermission>} />
           <Route path="performance-review" element={<PerformanceReviewPage />} />
           <Route path="missions" element={<MissionsPage />} />
           <Route path="procurement" element={<ProcurementPage />} />

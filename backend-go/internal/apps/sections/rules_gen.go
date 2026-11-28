@@ -706,6 +706,16 @@ func rules() map[string]map[core.Action]core.Rule {
 			"maintenance_due.post_decision": func(l string) core.Rule { return any_(l) }("يسجّل قرار الجودة على زبون الصيانة الوقائية (طبقة: requireCustomerRead — نفس الي يشوف القائمة)"),
 			"maintenance_due.get_root":      func(l string) core.Rule { return any_(l) }("يقرا /api/maintenance-due (الدخول — الفحص بالمعالج + طبقة: requireCustomerRead)"),
 		},
+		// (ك) 11-28 زينا: «معالجة الحالات الحرجة» — الإدارة (صلاحية action_plan) والمالك ومدير النظام بس
+		"action_plans": {
+			"action_plans.get_employees":     func(l string) core.Rule { return perm(l, "action_plan") }("يشوف أسماء الموظفين لخطة المعالجة"),
+			"action_plans.get_root":          func(l string) core.Rule { return perm(l, "action_plan") }("يشوف خطط معالجة الحالات الحرجة"),
+			"action_plans.get_by_id_notes":   func(l string) core.Rule { return perm(l, "action_plan") }("يشوف متابعات خطة المعالجة"),
+			"action_plans.post_root":         func(l string) core.Rule { return perm(l, "action_plan") }("يفتح خطة معالجة لموظف"),
+			"action_plans.post_by_id_notes":  func(l string) core.Rule { return perm(l, "action_plan") }("يضيف متابعة لخطة المعالجة"),
+			"action_plans.post_by_id_extend": func(l string) core.Rule { return perm(l, "action_plan") }("يمدّد مدة خطة المعالجة"),
+			"action_plans.post_by_id_close":  func(l string) core.Rule { return perm(l, "action_plan") }("يسكّر خطة المعالجة بالنتيجة والإجراء التالي"),
+		},
 		"manager_requests": {
 			"manager_requests.get_inventory_context": func(l string) core.Rule {
 				return rolePerm(l, []string{"ADMIN", "HR_COORDINATOR", "PROCUREMENT_ADMIN"}, "inventory")
