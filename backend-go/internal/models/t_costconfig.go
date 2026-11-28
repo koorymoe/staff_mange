@@ -9,6 +9,7 @@ func init() {
 		Columns: []Column{
 			{Name: "id", Type: "integer", NotNull: true, Default: "1"},
 			{Name: "marginPct", Type: "numeric", NotNull: true, Default: "0"},
+			{Name: "shiftTargets", Type: "jsonb", NotNull: true, Default: "'{}'::jsonb"}, // (دازاي 11-28) شكد لازم يطلع كل شفت باليوم
 			{Name: "updatedAt", Type: "timestamp with time zone", NotNull: true, Default: "now()"},
 		},
 		Constraints: []Constraint{

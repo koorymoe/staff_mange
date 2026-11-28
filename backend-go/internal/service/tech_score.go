@@ -1,6 +1,8 @@
 package service
 
 import (
+	"time"
+
 	"fmt"
 	"math"
 
@@ -58,14 +60,19 @@ var coordWeights = []roleWeight{
 	{"PEERS", "الزملاء (المشاكل الوظيفية)", 2},
 }
 
+// moneyPart (دازاي 11-28) «هذا الموظف ما دخل فلوسه لازم يطلعلي بتقييمه»: الفلوس مقابل هدفه
+// (إداري الحجوزات: هدف شفته — الحجوزات الي ثبّتها منسّقين شفته). الوزن يتغيّر من الإعدادات.
+var moneyPart = roleWeight{"MONEY", "الفلوس مقابل الهدف", 25}
+
 var roleWeightsOf = map[string][]roleWeight{
-	GroupTechs:       append(techWeights, roleWeight{projectsPart.Key, projectsPart.Label, projectsPart.Weight}),
-	GroupLeaders:     append(leaderWeights, roleWeight{projectsPart.Key, projectsPart.Label, projectsPart.Weight}),
-	GroupCoordinator: append(coordWeights, roleWeight{projectsPart.Key, projectsPart.Label, projectsPart.Weight}),
+	GroupTechs:       append(techWeights, roleWeight{projectsPart.Key, projectsPart.Label, projectsPart.Weight}, moneyPart),
+	GroupLeaders:     append(leaderWeights, roleWeight{projectsPart.Key, projectsPart.Label, projectsPart.Weight}, moneyPart),
+	GroupCoordinator: append(coordWeights, roleWeight{projectsPart.Key, projectsPart.Label, projectsPart.Weight}, moneyPart),
 }
 
 // coordShares (دازاي 11-19) نسب المنسّق حسب موقعه بالهيكل الجديد: [شغل الحجز، خطته]، وماتركس ٢٠ دائماً.
-//   مدير الإدارة: ٤٠ + ٤٠ · النائب: ٥٠ + ٣٠ · الإداري: ٨٠ + ٠
+//
+//	مدير الإدارة: ٤٠ + ٤٠ · النائب: ٥٠ + ٣٠ · الإداري: ٨٠ + ٠
 var coordShares = map[string][2]float64{"DIRECTOR": {40, 40}, "DEPUTY": {50, 30}}
 
 // PostponePct كل تأجيل ينحسب: ١٠٠ − (التأجيلات ÷ الحجوزات الي ثبّتها) × ١٠٠.
@@ -92,6 +99,7 @@ type opinionRule struct {
 }
 
 var techOpinion = []opinionRule{
+	{"MONEY", 80, 25, "ما دخّل الفلوس المطلوبة منه — أقل من هدفه"},
 	{"LEADER", 70, 30, "يحتاج تدريب — تقييم ليدره واطي"},
 	{"ATTENDANCE", 90, 30, "يحتاج يجي بوقته ويسجّل حضوره كل يوم"},
 	{"TASK_DUE", 80, 20, "يحتاج يكمّل مهامه أسرع"},
@@ -99,6 +107,7 @@ var techOpinion = []opinionRule{
 }
 
 var leaderOpinion = []opinionRule{
+	{"MONEY", 80, 25, "ما دخّل الفلوس المطلوبة منه — أقل من هدفه"},
 	{"TIME", 70, 30, "يحتاج يضبط وقت الشغل — حجوزاته تطوّل فوگ الوقت القياسي"},
 	{"PAPER", 80, 25, "تقاريره وفواتيره تحتاج دقة ووقت"},
 	{"SUPERVISOR", 70, 25, "يحتاج تدريب — تقييم مسؤوله واطي"},
@@ -107,6 +116,7 @@ var leaderOpinion = []opinionRule{
 }
 
 var coordOpinion = []opinionRule{
+	{"MONEY", 80, 25, "شفته ما طلّع الفلوس المطلوبة — أقل من هدف الشفت"},
 	{"CONFIRM", 70, 30, "يحتاج يتواصل ويثبّت أسرع"},
 	{"CREW", 80, 25, "الكادر يتحدد متأخر — لازم قبل الموعد"},
 	{"POSTPONE", 80, 20, "تأجيلات هواية — يحتاج يضبط المواعيد"},
@@ -198,7 +208,14 @@ func ratio(v [2]int) (float64, bool) {
 // scoreWeightsLoader (11-27) يقرا أوزان الإعدادات — ينضبط ويا الخدمة؛ بالاختبارات nil = الأوزان الأصلية.
 var scoreWeightsLoader func() ScoreWeights
 
+// moneyFactsLoader (دازاي 11-28) بند الفلوس مقابل الهدف — ينضبط ويا الخدمة؛ بالاختبارات nil = ماكو بند.
+var moneyFactsLoader func(from, to time.Time) map[string]MoneyFact
+
 func applyRoleScores(rows []StaffScore, hum []repository.HumanRow, times map[string][3]int, coord ...map[string]repository.CoordFact) {
+	applyRoleScoresM(rows, hum, times, nil, coord...)
+}
+
+func applyRoleScoresM(rows []StaffScore, hum []repository.HumanRow, times map[string][3]int, money map[string]MoneyFact, coord ...map[string]repository.CoordFact) {
 	overrides := ScoreWeights{}
 	if scoreWeightsLoader != nil {
 		overrides = scoreWeightsLoader()
@@ -300,6 +317,11 @@ func applyRoleScores(rows []StaffScore, hum []repository.HumanRow, times map[str
 		default:
 			if defs, ok := genericParts[s.Group]; ok {
 				genericPct(defs, s, stars, cf, set)
+			}
+		}
+		if rg == GroupTechs || rg == GroupLeaders || rg == GroupCoordinator {
+			if m, ok := money[s.ID]; ok {
+				set("MONEY", m.Pct, m.Detail)
 			}
 		}
 		// (دازاي 11-21) المشاريع للفني والليدر والمنسّق هم — بقية الأدوار من genericParts

@@ -101,6 +101,18 @@ func (h *CompanyCostsHandler) PutMargin(w http.ResponseWriter, r *http.Request) 
 	h.done(w, r, h.svc.SetMargin(in.MarginPct))
 }
 
+// PUT /api/owner/costs/shift-targets {shiftTargets:{MORNING,EVENING}} — (دازاي 11-28) هدف كل شفت باليوم
+func (h *CompanyCostsHandler) PutShiftTargets(w http.ResponseWriter, r *http.Request) {
+	var in struct {
+		ShiftTargets map[string]float64 `json:"shiftTargets"`
+	}
+	if err := DecodeJSON(r, &in); err != nil {
+		WriteError(w, http.StatusBadRequest, "بيانات غير صحيحة")
+		return
+	}
+	h.done(w, r, h.svc.SetShiftTargets(in.ShiftTargets))
+}
+
 // GET /api/me/money-target — الموظف يشوف هدفه هو بس (null إذا مو «يدخّل فلوس»)
 func (h *CompanyCostsHandler) Mine(w http.ResponseWriter, r *http.Request) {
 	t, team, err := h.svc.MyTargetAndTeam(middleware.EmployeeIDFromContext(r), time.Now())

@@ -872,6 +872,7 @@ func rules() map[string]map[core.Action]core.Rule {
 			"owner.delete_costs_expense":       func(l string) core.Rule { return ownerPerm(l, "company_costs") }("يشيل مصروف (المالك أو صلاحية الرواتب)"),
 			"owner.post_costs_downtime":        func(l string) core.Rule { return ownerPerm(l, "company_costs") }("يضيف فترة توقف (المالك أو صلاحية الرواتب)"),
 			"owner.delete_costs_downtime":      func(l string) core.Rule { return ownerPerm(l, "company_costs") }("يشيل فترة توقف (المالك أو صلاحية الرواتب)"),
+			"owner.put_costs_shift_targets":    func(l string) core.Rule { return ownerPerm(l, "company_costs") }("يعدّل هدف كل شفت باليوم (المالك أو صلاحية الرواتب)"),
 			"owner.put_costs_margin":           func(l string) core.Rule { return ownerPerm(l, "company_costs") }("يعدّل نسبة ربح الشركة (المالك أو صلاحية الرواتب)"),
 			"owner.get_vouchers":               func(l string) core.Rule { return rolePerm(l, []string{"ADMIN"}, "finance") }("يقرا سندات الصرف (المالية)"),
 			"owner.post_vouchers":              func(l string) core.Rule { return rolePerm(l, []string{"ADMIN"}, "finance") }("يصرف سند (المالية)"),

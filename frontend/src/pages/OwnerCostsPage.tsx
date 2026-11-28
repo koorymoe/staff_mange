@@ -10,13 +10,15 @@ import { notify } from '../ui/notify'
 
 type Kind = 'EARNER' | 'ADMIN' | 'BOOKING_ADMIN'
 type Shift = 'MORNING' | 'EVENING' | null
-type CostEmp = { employeeId: string; name: string; kind: Kind; shift: Shift; salary: number; baseSalary: number; hoursPerDay: number; daysPerMonth: number; leaveDays: number }
+type CostEmp = { employeeId: string; name: string; kind: Kind; shift: Shift; salary: number; baseSalary: number; hoursPerDay: number; daysPerMonth: number; leaveDays: number; dailyTarget: number }
 type Expense = { id: string; kind: string; amount: number; note: string | null }
 type Down = { id: string; startDate: string; endDate: string; reason: string }
-type Target = { employeeId: string; name: string; shift: Shift; salary: number; workDays: number; overhead: number; shiftShare: number; target: number; daily: number; hourly: number; brought: number; remaining: number; forecast: number; pct: number; baseSalary: number; expectedNow: number; expectedSalary: number; dailyNeeded: number; errors: number; fixes: number; rank: number }
+type Target = { employeeId: string; name: string; shift: Shift; salary: number; workDays: number; overhead: number; shiftShare: number; target: number; daily: number; hourly: number; brought: number; remaining: number; forecast: number; pct: number; baseSalary: number; expectedNow: number; expectedSalary: number; dailyNeeded: number; errors: number; fixes: number; rank: number; manual?: boolean }
+type ShiftP = { shift: string; daily: number; target: number; dueNow: number; brought: number; bookings: number; pct: number }
 type Rep = {
   month: string; marginPct: number; employees: CostEmp[]; expenses: Expense[]; downtime: Down[]; downtimeDays: number
   salariesEarn: number; salariesAdmin: number; salariesShift: Record<string, number>; expensesTotal: number; totalCost: number; totalTarget: number; targets: Target[]
+  shiftTargets: Record<string, number>; shifts: ShiftP[]
 }
 
 const iqd = (v: number) => Math.round(v).toLocaleString('en-US')
@@ -27,8 +29,9 @@ const EXP: Record<string, string> = { FUEL: '⛽ كاز', VEHICLE: '🚗 تصل�
 const inp = 'rounded-lg border border-slate-300 p-1.5 text-sm'
 
 export default function OwnerCostsPage() {
-  const { employee } = useSession()
-  const isOwner = employee?.actualRole === 'OWNER'
+  const { employee, permissions } = useSession()
+  // (دازاي 11-28) المالك، أو الي نطاه صلاحية «الرواتب والتكاليف والأهداف»
+  const isOwner = employee?.actualRole === 'OWNER' || permissions.includes('company_costs')
   const [month, setMonth] = useState(thisMonth())
   const [rep, setRep] = useState<Rep | null>(null)
   const [err, setErr] = useState('')
@@ -37,8 +40,9 @@ export default function OwnerCostsPage() {
   const [exp, setExp] = useState({ kind: 'FUEL', amount: 0, note: '' })
   const [dt, setDt] = useState({ startDate: '', endDate: '', reason: '' })
   const [margin, setMargin] = useState(0)
+  const [shiftT, setShiftT] = useState<Record<string, number>>({})
 
-  const load = (m = month) => apiRequest<Rep>(`/owner/costs?month=${m}`).then((r) => { setRep(r); setMargin(r.marginPct) }).catch((e: Error) => setErr(e.message))
+  const load = (m = month) => apiRequest<Rep>(`/owner/costs?month=${m}`).then((r) => { setRep(r); setMargin(r.marginPct); setShiftT(r.shiftTargets ?? {}) }).catch((e: Error) => setErr(e.message))
   useEffect(() => {
     if (!isOwner) return
     void load(month)
@@ -92,7 +96,7 @@ export default function OwnerCostsPage() {
                     <td className="p-2 text-slate-500">{t.rank}</td>
                     <td className="p-2 text-start font-bold">{t.name}<small className="block text-xs font-normal text-slate-500">{t.workDays} يوم شغل</small></td>
                     <td>{t.shift ? SHIFT[t.shift] : '—'}</td><td dir="ltr">{iqd(t.salary)}</td><td dir="ltr">{iqd(t.overhead)}</td><td dir="ltr">{iqd(t.shiftShare)}</td>
-                    <td className="font-extrabold text-[#0f2040]" dir="ltr">{iqd(t.target)}</td><td dir="ltr">{iqd(t.daily)}</td><td dir="ltr">{iqd(t.hourly)}</td>
+                    <td className="font-extrabold text-[#0f2040]" dir="ltr">{iqd(t.target)}</td><td dir="ltr">{iqd(t.daily)}{t.manual && <small className="block text-[10px] text-indigo-600">يدوي</small>}</td><td dir="ltr">{iqd(t.hourly)}</td>
                     <td dir="ltr"><b className={t.pct >= 100 ? 'text-emerald-700' : t.pct >= 60 ? 'text-amber-700' : 'text-rose-700'}>{iqd(t.brought)}</b> <small className="text-slate-500">({t.pct}٪)</small></td>
                     <td dir="ltr">{iqd(t.remaining)}</td>
                     <td dir="ltr" className={t.forecast >= t.target ? 'text-emerald-700' : 'text-rose-700'}>{iqd(t.forecast)}</td>
@@ -108,10 +112,31 @@ export default function OwnerCostsPage() {
         <p className="text-xs text-slate-400">الراتب المتوقع = الأساسي + (الراتب − الأساسي) × نسبة الوصول للهدف (على التوقع لآخر الشهر). «دخّل» = نفس «الفلوس الي دخّلها» بالتقييم (حسب نسب «توزيع الفلوس»). التوقع = على هالمنوال لآخر الشهر.</p>
       </section>
 
+      <section className="space-y-3 rounded-2xl bg-white p-4 shadow-sm" data-testid="shift-targets">
+        <h2 className="text-lg font-bold">📞 هدف كل شفت باليوم</h2>
+        <p className="text-xs text-slate-500">فلوس الحجز تنحسب لشفت المنسّق الي ثبّته — حتى لو الكادر طلع بعد الدوام. وإداري الحجوزات يتقيّم على وصول شفته لهدفه.</p>
+        <div className="flex flex-wrap items-end gap-3">
+          {(['MORNING', 'EVENING'] as const).map((sh) => (
+            <label key={sh} className="text-sm">{SHIFT[sh]}<input type="number" min={0} value={shiftT[sh] || ''} onChange={(e) => setShiftT({ ...shiftT, [sh]: Number(e.target.value) })} placeholder="باليوم" className={`${inp} mt-1 block w-36`} dir="ltr" /></label>
+          ))}
+          {JSON.stringify(shiftT) !== JSON.stringify(rep.shiftTargets ?? {}) && <button type="button" onClick={async () => { if (await call('/owner/costs/shift-targets', 'PUT', { shiftTargets: shiftT })) notify('انحفظ ✅', 'success') }} className="rounded-lg bg-[#0f2040] px-4 py-1.5 text-sm font-bold text-white">احفظ</button>}
+        </div>
+        {rep.shifts?.length > 0 && (
+          <div className="grid gap-2 sm:grid-cols-2">
+            {rep.shifts.map((s) => (
+              <div key={s.shift} className="rounded-xl bg-slate-50 p-3 text-sm">
+                <b>{SHIFT[s.shift]}</b> — طلّع <b dir="ltr" className={s.pct >= 100 ? 'text-emerald-700' : s.pct >= 80 ? 'text-amber-700' : 'text-rose-700'}>{iqd(s.brought)}</b> من <span dir="ltr">{iqd(s.dueNow)}</span> المفروضة لحد هسه ({s.pct}٪)
+                <small className="block text-xs text-slate-500">{s.bookings} حجز · هدف الفترة {iqd(s.target)}</small>
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
+
       <section className="space-y-2 rounded-2xl bg-white p-4 shadow-sm">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <h2 className="text-lg font-bold">👥 الموظفين بالحساب</h2>
-          <select value="" onChange={(e) => { const p = all.find((x) => x.id === e.target.value); if (p) setEdit({ employeeId: p.id, name: p.name, kind: 'EARNER', shift: null, salary: Number(p.salary) || 0, baseSalary: 350000, hoursPerDay: 8, daysPerMonth: 26, leaveDays: 0 }) }} className={inp}>
+          <select value="" onChange={(e) => { const p = all.find((x) => x.id === e.target.value); if (p) setEdit({ employeeId: p.id, name: p.name, kind: 'EARNER', shift: null, salary: Number(p.salary) || 0, baseSalary: 350000, hoursPerDay: 8, daysPerMonth: 26, leaveDays: 0, dailyTarget: 0 }) }} className={inp}>
             <option value="">+ أضف موظف…</option>
             {all.filter((x) => !inList.has(x.id)).map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}
           </select>
@@ -126,17 +151,18 @@ export default function OwnerCostsPage() {
             <label>ساعات اليوم<input type="number" min={1} max={24} value={edit.hoursPerDay} onChange={(e) => setEdit({ ...edit, hoursPerDay: Number(e.target.value) })} className={`${inp} mt-1 w-full`} dir="ltr" /></label>
             <label>أيام الدوام بالشهر<input type="number" min={1} max={31} value={edit.daysPerMonth} onChange={(e) => setEdit({ ...edit, daysPerMonth: Number(e.target.value) })} className={`${inp} mt-1 w-full`} dir="ltr" /></label>
             <label>إجازات بالشهر<input type="number" min={0} value={edit.leaveDays} onChange={(e) => setEdit({ ...edit, leaveDays: Number(e.target.value) })} className={`${inp} mt-1 w-full`} dir="ltr" /></label>
+            {edit.kind === 'EARNER' && <label>الهدف اليومي (يدوي)<input type="number" min={0} value={edit.dailyTarget || ''} onChange={(e) => setEdit({ ...edit, dailyTarget: Number(e.target.value) })} placeholder="فارغ = يتحسب لحاله" className={`${inp} mt-1 w-full`} dir="ltr" /></label>}
             <p className="self-end text-xs text-slate-600">ساعات الشهر: <b>{edit.hoursPerDay * (edit.daysPerMonth - edit.leaveDays)}</b></p>
             <div className="flex items-end gap-2"><button type="button" onClick={() => void saveEmp()} className="rounded-lg bg-[#0f2040] px-4 py-1.5 font-bold text-white">احفظ</button><button type="button" onClick={() => setEdit(null)} className="text-slate-500">إلغاء</button></div>
           </div>
         )}
         <table className="w-full text-sm">
-          <thead className="bg-slate-50 text-xs text-slate-600"><tr>{['الموظف', 'النوع', 'الشفت', 'الراتب', 'الأساسي', 'ساعات/يوم', 'أيام/شهر', 'إجازات', ''].map((h) => <th key={h} className="p-2 text-center">{h}</th>)}</tr></thead>
+          <thead className="bg-slate-50 text-xs text-slate-600"><tr>{['الموظف', 'النوع', 'الشفت', 'الراتب', 'الأساسي', 'ساعات/يوم', 'أيام/شهر', 'إجازات', 'هدف يومي يدوي', ''].map((h) => <th key={h} className="p-2 text-center">{h}</th>)}</tr></thead>
           <tbody className="divide-y">
             {rep.employees.map((e) => (
               <tr key={e.employeeId} className="text-center">
                 <td className="p-2 text-start font-bold">{e.name}</td><td>{KIND[e.kind]}</td><td>{e.shift ? SHIFT[e.shift] : '—'}</td>
-                <td dir="ltr">{iqd(e.salary)}</td><td dir="ltr">{iqd(e.baseSalary)}</td><td>{e.hoursPerDay}</td><td>{e.daysPerMonth}</td><td>{e.leaveDays}</td>
+                <td dir="ltr">{iqd(e.salary)}</td><td dir="ltr">{iqd(e.baseSalary)}</td><td>{e.hoursPerDay}</td><td>{e.daysPerMonth}</td><td>{e.leaveDays}</td><td dir="ltr">{e.dailyTarget > 0 ? iqd(e.dailyTarget) : '—'}</td>
                 <td className="whitespace-nowrap"><button type="button" onClick={() => setEdit({ ...e })} className="px-2 text-[#0f2040]">✏️</button><button type="button" onClick={() => void call(`/owner/costs/employees/${e.employeeId}`, 'DELETE')} className="px-2 text-rose-600" aria-label="شيل من الحساب">✕</button></td>
               </tr>
             ))}

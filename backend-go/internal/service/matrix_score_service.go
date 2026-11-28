@@ -93,6 +93,8 @@ func NewMatrixScoreService(repo *repository.MatrixScoreRepository, chain *Matrix
 	if repo != nil && repo.DB() != nil {
 		db := repo.DB()
 		scoreWeightsLoader = func() ScoreWeights { return LoadScoreWeights(db) }
+		cc := NewCompanyCosts(db)
+		moneyFactsLoader = func(from, _ time.Time) map[string]MoneyFact { return cc.MoneyFacts(from, time.Now()) }
 	}
 	return &MatrixScoreService{repo: repo, chain: chain, switches: switches, projects: projects}
 }
@@ -675,7 +677,11 @@ func (s *MatrixScoreService) compute(people []repository.Scorable, from, to time
 		coord, err = s.repo.CoordFacts(from, to, from.In(baghdad).Format("2006-01"), planItemScoreSQL, emp)
 		errlog.Err(err)
 	}
-	applyRoleScores(rows, hum, LeaderTimes(jobs, expected), coord)
+	var money map[string]MoneyFact
+	if moneyFactsLoader != nil {
+		money = moneyFactsLoader(from, to)
+	}
+	applyRoleScoresM(rows, hum, LeaderTimes(jobs, expected), money, coord)
 	if rev, err := s.repo.Revenue(from, to, emp); err == nil {
 		sal, _ := s.repo.Salaries(emp)
 		ApplyRevenue(rows, rev, sal, from, to, time.Now())

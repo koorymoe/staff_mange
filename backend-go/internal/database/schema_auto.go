@@ -705,6 +705,13 @@ func autoMigrations() []Migration {
 			INSERT INTO "Permission" (id, name, label) VALUES (gen_random_uuid()::text, 'company_costs', 'الرواتب والتكاليف والأهداف (ساعات الموظف وراتبه وهدفه اليومي)') ON CONFLICT (name) DO NOTHING;
 		`,
 		},
+		{
+			Version: "0545_money_targets_manual",
+			SQL: `
+			ALTER TABLE "CostConfig" ADD COLUMN IF NOT EXISTS "shiftTargets" jsonb DEFAULT '{}'::jsonb NOT NULL;
+			ALTER TABLE "CostEmployee" ADD COLUMN IF NOT EXISTS "dailyTarget" numeric DEFAULT 0 NOT NULL;
+		`,
+		},
 		// ‹makemigration› — التحديثات الجديدة تنضاف فوگ هالسطر
 	}
 }

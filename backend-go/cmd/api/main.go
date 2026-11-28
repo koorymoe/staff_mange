@@ -2702,6 +2702,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	secs["owner"].Set("POST /api/owner/costs/downtime", "owner.post_costs_downtime", costs.PostDowntime)
 	secs["owner"].Set("DELETE /api/owner/costs/downtime/{id}", "owner.delete_costs_downtime", costs.DeleteDowntime)
 	secs["owner"].Set("PUT /api/owner/costs/margin", "owner.put_costs_margin", costs.PutMargin)
+	secs["owner"].Set("PUT /api/owner/costs/shift-targets", "owner.put_costs_shift_targets", costs.PutShiftTargets)
 	// (ل) 11-24 دازاي: الخطأ الفني والتصحيح — الليدر يسجّل، المراقب يوافق (الفحص بالخدمة)
 	rework := handler.NewReworkHandler(service.NewRework(db))
 	secs["bookings"].Set("GET /api/rework", "bookings.get_rework", rework.List)

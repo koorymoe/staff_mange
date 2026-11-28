@@ -615,3 +615,5 @@ git push origin origin/avg:refs/heads/prod     # بعد التأكد إنه fast
 - 11-28 درجات أقل سعر: ServiceInvoiceRule.minTiers jsonb (0543). QuoteFor: أصغر درجة >= المجموع، وإذا فات الكل ينحسب كما هو. minWork = أول درجة (توافق). الواجهة: «+ أضف درجة».
 
 - 11-28 صلاحية company_costs: مفتاح مالك (PermissionOwnerOnly). راوتات owner.*costs* صارت ownerPerm (Strict: المالك أو الصلاحية، المدير ما يعبر). 0544_data. واجهة: عنصر /owner-costs بالقائمة + الهَب يفتح OwnerCostsPage لصاحب الصلاحية.
+
+- 11-28 الفلوس بالتقييم: CostEmployee.dailyTarget + CostConfig.shiftTargets (0545). ComputeTargets: dailyTarget>0 يغلب (Manual). Report.Shifts: LeaderInvoice ← Booking.confirmedByEmployeeId ← CostEmployee.shift. MoneyFacts(from,now): فني/ليدر = دخّل ÷ (هدف×الي مضى)، إداري حجوزات = نسبة شفته، سقف 100. moneyPart MONEY وزن 25 بـroleWeightsOf للمجاميع الثلاث + رأي ماتركس تحت 80. moneyFactsLoader ينضبط بـNewMatrixScoreService. PUT /api/owner/costs/shift-targets (ownerPerm company_costs). وتصليح: OwnerCostsPage كانت تقفل على المالك بس — هسه صاحب company_costs يدخل.
