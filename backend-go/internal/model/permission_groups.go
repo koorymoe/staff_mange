@@ -17,7 +17,7 @@ var PermissionGroups = []PermissionGroup{
 	{Key: "quality", Title: "⭐ الجودة والشكاوى",
 		Perms: []string{"quality_control", "complaints", "complaint_contact", "performance_review"}},
 	{Key: "solar_inquiry", Title: "☀️ استفسارات الطاقة الشمسية",
-		Perms: []string{"solar_inquiry", "solar_inquiry_tech"}},
+		Perms: []string{"solar_inquiry", "solar_inquiry_tech", "solar_prices"}},
 	{Key: "audit", Title: "🔍 التدقيق", Bundle: "auditing",
 		Perms: []string{"auditing", "audit_issues", "duplicate_review", "leader_invoices_view", "crew_management"}},
 	{Key: "finance", Title: "💵 الحسابات",

@@ -159,6 +159,31 @@ func (r *PermissionRepository) AddMissingForEmployee(employeeID string, permissi
 }
 
 // Names أسماء صلاحيات الموظف — لمحرك الصلاحيات (authz.PermLister).
+// ViewNames (دازاي 11-28) صلاحيات المشاهدة من المنصب (النائب، وقادة الإدارة) — تنفتح للقراءة بس.
+func (r *PermissionRepository) ViewNames(employeeID string) ([]string, error) {
+	names := []string{}
+	if err := r.db.Select(&names, model.OrgViewSQL, employeeID); err != nil {
+		return nil, err
+	}
+	var lead bool
+	if err := r.db.Get(&lead, model.OrgOversightSQL, employeeID); err != nil {
+		return nil, err
+	}
+	if lead {
+		names = append(names, model.OversightBundle...)
+	}
+	out := make([]string, 0, len(names))
+	seen := map[string]bool{}
+	for _, n := range names {
+		if _, ownerOnly := model.PermissionOwnerOnly[n]; ownerOnly || seen[n] {
+			continue
+		}
+		seen[n] = true
+		out = append(out, n)
+	}
+	return out, nil
+}
+
 func (r *PermissionRepository) Names(employeeID string) ([]string, error) {
 	rows, err := r.ListForEmployee(employeeID)
 	if err != nil {

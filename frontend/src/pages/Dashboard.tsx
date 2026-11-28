@@ -431,7 +431,7 @@ function StaffDashboard() {
   ]
 
   // واجهة المراقب الرئيسية بتصميم (ع) — شاشة وحدة مرتبة بدل كل الأقسام.
-  if (isMonitorHome) return <Suspense fallback={<div className="h-40 animate-pulse rounded-2xl bg-white/60" />}><MonitorDashboard /></Suspense>
+  if (isMonitorHome) return <><ShiftEndCard /><Suspense fallback={<div className="h-40 animate-pulse rounded-2xl bg-white/60" />}><MonitorDashboard /></Suspense></>
   // (دازاي 10-25) كادر الديكور: الرئيسية مالته «شغلي اليوم» — بسيطة وكبيرة
   if (!isAdmin && employee.division === 'DECOR') return <Navigate to="/decor-today" replace />
 
@@ -1110,7 +1110,8 @@ function StaffDashboard() {
           ثانية — الحالة والحفظ يشتغلون بمكان واحد بس. */}
       {/* قرار (ع) 10-06: الدوام كله بـ«جدول دوامي». الرئيسية بس تطلب الانصراف
           لمن الشفت يخلص — والحضور ينطلب أصلاً بشاشة ماتركس الإجبارية. */}
-      {!isMonitorHome && <ShiftEndCard />}
+      {/* (دازاي 11-28) كارت الانصراف يبين للكل — حتى الي رئيسيته رقابة */}
+      <ShiftEndCard />
 
       {/* ═══ شريط الفني: جرد أدواته + طلب إجازة ═══
           الفني ما إله شاشات إدارية يتنقل بيها، فالشغلتين الي يحتاجهن

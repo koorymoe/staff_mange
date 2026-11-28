@@ -2553,6 +2553,14 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	// 👤 ملفي الشخصي (دازاي 11-28) — كل موظف عن نفسه بس
 	meProfile := handler.NewMeProfileHandler(db)
 	secs["me_x"].Set("GET /api/me/profile", "me_x.get_profile", meProfile.Get)
+	// (دازاي 11-28) صلاحيات المشاهدة من المنصب — حتى القائمة تبين شاشاتها (الخادم يفتحها للقراءة بس)
+	secs["me_x"].Set("GET /api/me/view-permissions", "me_x.get_view_permissions", func(w http.ResponseWriter, r *http.Request) {
+		names, err := permissionRepo.ViewNames(middleware.EmployeeIDFromContext(r))
+		if err != nil {
+			names = []string{}
+		}
+		handler.WriteJSON(w, http.StatusOK, names)
+	})
 	secs["me_x"].Set("PUT /api/me/email", "me_x.put_email", meProfile.SetEmail)
 	secs["late_excuses"].Set("GET /api/ideas", "late_excuses.get_ideas", ideas.Queue)
 	secs["late_excuses"].Set("POST /api/ideas/{id}/decide", "late_excuses.post_idea_decide", ideas.Decide)

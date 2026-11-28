@@ -769,6 +769,7 @@ func rules() map[string]map[core.Action]core.Rule {
 			"matrix_selfcheck.get_root": func(l string) core.Rule { return strictRoles(l, "OWNER") }("يقرا /api/matrix-selfcheck (دور (بلا المدير))"),
 		},
 		"me_x": {
+			"me_x.get_view_permissions":             func(l string) core.Rule { return any_(l) }("يقرا صلاحيات المشاهدة من منصبه (لنفسه بس)"),
 			"me_x.get_bot_reports":                  func(l string) core.Rule { return any_(l) }("يقرا /api/me/bot-reports (الدخول — الفحص بالمعالج)"),
 			"me_x.get_daily_reports":                func(l string) core.Rule { return any_(l) }("يقرا /api/me/daily-reports (الدخول — الفحص بالمعالج)"),
 			"me_x.get_daily_reports_by_id_analysis": func(l string) core.Rule { return any_(l) }("يقرا /api/me/daily-reports/{id}/analysis (الدخول — الفحص بالمعالج)"),
@@ -1523,7 +1524,7 @@ func rules() map[string]map[core.Action]core.Rule {
 			"solar_inquiries.get_root":                 func(l string) core.Rule { return any_(l) }("يقرا /api/solar-inquiries (الدخول — الفحص بالمعالج)"),
 			"solar_inquiries.post_root":                func(l string) core.Rule { return any_(l) }("ينفّذ /api/solar-inquiries (الدخول — الفحص بالمعالج)"),
 			"solar_inquiries.get_config":               func(l string) core.Rule { return any_(l) }("يقرا إعدادات الاستفسار (الفحص بالخدمة)"),
-			"solar_inquiries.put_config":               func(l string) core.Rule { return admin(l) }("يعدّل استهلاك الأجهزة وأسعار الأحجام (المدير والمالك)"),
+			"solar_inquiries.put_config":               func(l string) core.Rule { return rolePerm(l, []string{"ADMIN", "OWNER"}, "solar_prices") }("يعدّل استهلاك الأجهزة وأسعار الأحجام (المدير والمالك وصلاحية أسعار الطاقة)"),
 			"solar_inquiries.get_price_ranges":         func(l string) core.Rule { return any_(l) }("يشوف مدى أسعار المنظومات للاستفسار (الدخول — الفحص بالخدمة)"),
 			"solar_inquiries.post_by_id_claim":         func(l string) core.Rule { return any_(l) }("ينفّذ /api/solar-inquiries/{id}/claim (الدخول — الفحص بالمعالج)"),
 			"solar_inquiries.post_by_id_contact":       func(l string) core.Rule { return any_(l) }("ينفّذ /api/solar-inquiries/{id}/contact (الدخول — الفحص بالمعالج)"),

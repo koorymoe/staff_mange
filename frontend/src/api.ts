@@ -1668,6 +1668,8 @@ export const api = {
   getCoreMatrix: () => request<CoreMatrix>('/core/matrix'),
   getOwnerGrants: () => request<OwnerGrants>('/core/owner-grants'),
   getMyOwnerGrants: () => request<string[]>('/core/my-grants'),
+  // (دازاي 11-28) مشاهدة من المنصب: النائب يشوف شغل مديره، وقادة الإدارة يشوفون الرقابة
+  getMyViewPermissions: () => request<string[]>('/me/view-permissions'),
   setOwnerGrants: (employeeId: string, actions: string[]) =>
     request<{ ok: boolean; changed: string[] }>(`/core/owner-grants/${encodeURIComponent(employeeId)}`, { method: 'PUT', body: JSON.stringify({ actions }) }),
   getCoreTables: () => request<CoreTable[]>('/core/admin/tables'),

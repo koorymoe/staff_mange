@@ -7,6 +7,7 @@ import { card } from '../ui/classes'
 import { notify } from '../ui/notify'
 import MyScoreCard from '../components/MyScoreCard'
 import MyMoneyTargetCard from '../components/MyMoneyTargetCard'
+import AttendanceButton from '../components/AttendanceButton'
 
 // ═══ 👤 ملفي الشخصي (دازاي 11-28) ═══
 // «من يضغط الموظف على اسمه يدخل ع الملف الشخصي مالته ويكدر يشوف كلشي يخصه»:
@@ -154,6 +155,7 @@ export default function ProfilePage() {
       {tab === 'time' && (
         <section className={card}>
           <h2 className="mb-1 font-extrabold text-[#0f2040]">🕘 دوامي وحضوري</h2>
+          <AttendanceButton />
           <p className="mb-3 text-sm text-slate-500">
             دوامك: {i.shiftStart && i.shiftEnd ? `${i.shiftStart} ← ${i.shiftEnd}` : 'ما محدد'}{i.shift ? ` · ${SHIFT[i.shift] ?? i.shift}` : ''}. هذا سجل حضورك وانصرافك لآخر ٤٥ يوم.
           </p>
