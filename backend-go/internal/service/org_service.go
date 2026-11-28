@@ -88,6 +88,22 @@ func (s *OrgService) Seed() error {
 			return err
 		}
 	}
+	// (ك) 11-28 زينا: «إحصائيات الموظفين» لحزمة إدارة «الإدارة» — للكل بيها (مو headOnly) حتى النائب ياخذها.
+	// مرة وحدة: لو انشالت بعدين من الحزمة ما ترجع.
+	var statsDone int
+	if err := s.db.Get(&statsDone, `SELECT count(*) FROM "OrgGovernorState" WHERE key = 'bundle_admin_stats_1128'`); err == nil && statsDone == 0 {
+		res, err := s.db.Exec(`INSERT INTO "OrgBundle" (scope, permission, "headOnly")
+			SELECT 'admin', name, false FROM "Permission" WHERE name = 'employee_stats' ON CONFLICT DO NOTHING`)
+		if err != nil {
+			return err
+		}
+		if k, _ := res.RowsAffected(); k > 0 {
+			changed = true
+		}
+		if _, err := s.db.Exec(`INSERT INTO "OrgGovernorState"(key, value) VALUES ('bundle_admin_stats_1128', now()::text) ON CONFLICT (key) DO NOTHING`); err != nil {
+			return err
+		}
+	}
 	// (دازاي 11-01) «ساعات العمل من البيت» تنشال من حزم المنصب — بس بالمنح اليدوي
 	var rhDone int
 	if err := s.db.Get(&rhDone, `SELECT count(*) FROM "OrgGovernorState" WHERE key = 'remote_hours_out_1101'`); err == nil && rhDone == 0 {
