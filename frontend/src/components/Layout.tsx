@@ -1,4 +1,5 @@
 import MatrixChatBubble from './MatrixChatBubble'
+import { expandOversight } from '../utils/oversight'
 import Modal from '../ui/Modal'
 import { GlobalBack } from '../ui/BackLink'
 import { GlobalBackContext } from '../ui/backContext'
@@ -367,7 +368,7 @@ export default function Layout() {
     Promise.all([
       api.getEmployeePermissions(employee.id).then((perms) => perms.map((p) => p.name)).catch(() => [] as string[]),
       employee.actualRole === 'ADMIN' || employee.role === 'ADMIN' ? api.getMyOwnerGrants().catch(() => [] as string[]) : Promise.resolve([] as string[]),
-    ]).then(([perms, grants]) => setEmployeePermissions([...perms, ...grants.map((g) => 'owner:' + g)]))
+    ]).then(([perms, grants]) => setEmployeePermissions(expandOversight([...perms, ...grants.map((g) => 'owner:' + g)])))
   }, [employee])
 
   useEffect(() => {

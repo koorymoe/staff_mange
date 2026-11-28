@@ -712,6 +712,12 @@ func autoMigrations() []Migration {
 			ALTER TABLE "CostEmployee" ADD COLUMN IF NOT EXISTS "dailyTarget" numeric DEFAULT 0 NOT NULL;
 		`,
 		},
+		{
+			Version: "0546_data_oversight_view_permission",
+			SQL: `
+			INSERT INTO "Permission" (id, name, label) VALUES (gen_random_uuid()::text, 'oversight_view', 'رقابة وتدقيق — مشاهدة وتقارير (كل شاشات الرقابة والتدقيق، بلا تعديل)') ON CONFLICT (name) DO NOTHING;
+		`,
+		},
 		// ‹makemigration› — التحديثات الجديدة تنضاف فوگ هالسطر
 	}
 }

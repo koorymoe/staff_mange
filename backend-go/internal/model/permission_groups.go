@@ -24,7 +24,7 @@ var PermissionGroups = []PermissionGroup{
 		Perms: []string{"finance", "finance_audit", "expenses", "expenses_manage", "revolving_fund", "revolving_fund_amount", "fund_discharge",
 			"gps_install_costs", "invoice_internal", "invoice_manual", "invoice_gps", "invoice_dashcam", "execution_cost", "booking_partial_link"}},
 	{Key: "staff", Title: "👥 الموظفين",
-		Perms: []string{"staff_management", "company_costs", "employee_create", "edit_employee_profile", "edit_employee_identity", "employee_edit_all", "employee_suspend",
+		Perms: []string{"staff_management", "company_costs", "oversight_view", "employee_create", "edit_employee_profile", "edit_employee_identity", "employee_edit_all", "employee_suspend",
 			"employee_stats", "staff_stats", "staff_requests", "extra_tasks_assign", "training_manage", "kpi_management", "kpi_criteria_management",
 			"work_schedule_manage", "remote_hours_manage", "remote_hours_self", "leave_approve_morning", "leave_approve_evening", "departments_manage"}},
 	{Key: "bookings", Title: "📋 الحجوزات والزبائن",
@@ -51,4 +51,5 @@ var PermissionOwnerOnly = map[string]string{
 	"employee_create":  "إضافة موظفين — قرار المالك",
 	"employee_suspend": "إيقاف الحسابات — قرار المالك",
 	"company_costs":    "الرواتب والتكاليف — المالك يمنحها بيده",
+	"oversight_view":   "الرقابة والتدقيق (مشاهدة) — المالك يمنحها بيده",
 }
