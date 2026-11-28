@@ -5,6 +5,7 @@ import { useOrgMemberships, greetingTitle } from '../orgDeskAccess'
 import { roleLabel } from '../roleLabels'
 import { card } from '../ui/classes'
 import MyScoreCard from '../components/MyScoreCard'
+import MyMoneyTargetCard from '../components/MyMoneyTargetCard'
 
 // ═══ 👤 ملفي الشخصي (دازاي 11-28) ═══
 // «من يضغط الموظف على اسمه يدخل ع الملف الشخصي مالته ويكدر يشوف كلشي يخصه»:
@@ -19,7 +20,7 @@ type Info = {
 type Att = { day: string; checkIn: string | null; checkOut: string | null; minutes: number | null }
 type Ded = { source: 'KPI' | 'POINTS' | 'LEDGER'; id: string; amount: number; points: number; reason: string; byName: string | null; bookingCode: string | null; at: string; returned: boolean }
 type Profile = { info: Info; attendance: Att[]; deductions: Ded[] }
-type Tab = 'info' | 'rating' | 'time' | 'deductions'
+type Tab = 'info' | 'money' | 'rating' | 'time' | 'deductions'
 
 const money = (n: number) => `${Math.round(n).toLocaleString('en-US')} د.ع`
 const time = (s: string | null) => (s ? new Date(s).toLocaleTimeString('ar-IQ', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Baghdad' }) : '—')
@@ -51,6 +52,7 @@ export default function ProfilePage() {
   const active = p.deductions.filter((d) => !d.returned)
   const tabs: { k: Tab; t: string }[] = [
     { k: 'info', t: '👤 معلوماتي' },
+    { k: 'money', t: '💰 راتبي وهدفي' },
     { k: 'rating', t: '⭐ تقييمي' },
     { k: 'time', t: '🕘 دوامي' },
     { k: 'deductions', t: `💸 خصوماتي${active.length ? ` (${active.length})` : ''}` },
@@ -85,12 +87,27 @@ export default function ProfilePage() {
           </section>
           <section className={card}>
             <h2 className="mb-2 font-extrabold text-[#0f2040]">عملي</h2>
-            <Row k="الراتب (يشوفه إنت بس)" v={i.salary ? money(i.salary) : null} />
+            <Row k="الراتب (يشوفه إنت بس — تفاصيله بتبويب راتبي وهدفي)" v={i.salary ? money(i.salary) : null} />
             <Row k="تاريخ التعيين" v={i.hireDate ?? i.createdAt} />
             <Row k="نهاية العقد" v={i.contractEnd} />
             <Row k="الشفت" v={i.shift ? SHIFT[i.shift] ?? i.shift : null} />
             <Row k="وقت الدوام" v={i.shiftStart && i.shiftEnd ? `${i.shiftStart} ← ${i.shiftEnd}` : null} />
             <p className="mt-3 text-xs text-slate-500">إذا معلومة غلط، كلّم الإدارة حتى يصححوها.</p>
+          </section>
+        </div>
+      )}
+
+      {tab === 'money' && (
+        <div className="space-y-3">
+          <MyMoneyTargetCard />
+          <section className={card}>
+            <h2 className="mb-1 font-extrabold text-[#0f2040]">💰 شلون ينحسب راتبي؟</h2>
+            <p className="text-sm leading-relaxed text-slate-600">
+              راتبك الكامل <b>{i.salary ? money(i.salary) : '—'}</b>. تاخذ الأساسي مضمون، والباقي حسب شكد توصل من هدفك الشهري:
+              إذا وصلت الهدف تاخذ راتبك كامل، وإذا وصلت نصه تاخذ الأساسي ونص الباقي. هدفك يشمل راتبك وحصتك من رواتب زملائك الي ما يدخّلون فلوس،
+              فلمن تعبر راتبك شغلك يشيل زملائك — وشغلهم يشيلك.
+            </p>
+            <p className="mt-2 text-xs text-slate-400">إذا الكارت فوگ ما طلع، يعني بعدك مو بحساب «يدخّل فلوس» بتكاليف الشركة.</p>
           </section>
         </div>
       )}

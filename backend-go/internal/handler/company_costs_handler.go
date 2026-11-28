@@ -103,12 +103,16 @@ func (h *CompanyCostsHandler) PutMargin(w http.ResponseWriter, r *http.Request) 
 
 // GET /api/me/money-target — الموظف يشوف هدفه هو بس (null إذا مو «يدخّل فلوس»)
 func (h *CompanyCostsHandler) Mine(w http.ResponseWriter, r *http.Request) {
-	t, err := h.svc.MyTarget(middleware.EmployeeIDFromContext(r), time.Now())
+	t, team, err := h.svc.MyTargetAndTeam(middleware.EmployeeIDFromContext(r), time.Now())
 	if err != nil {
 		WriteError(w, http.StatusInternalServerError, "تعذر")
 		return
 	}
-	WriteJSON(w, http.StatusOK, map[string]any{"target": t})
+	// الفريق يطلع بس للي هو نفسه بالحساب (يدخّل فلوس)
+	if t == nil {
+		team = nil
+	}
+	WriteJSON(w, http.StatusOK, map[string]any{"target": t, "team": team})
 }
 
 // MoneyRankRow ترتيب المدراء — بلا رواتب (الرواتب للمالك بس بصفحة التكاليف).
