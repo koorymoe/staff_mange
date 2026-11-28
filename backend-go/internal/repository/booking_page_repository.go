@@ -278,7 +278,7 @@ func (r *BookingRepository) ListPaged(q BookingPageQuery) ([]model.Booking, int,
 		args = append(args, q.Month)
 		i := len(args)
 		where = append(where, fmt.Sprintf(
-			`to_char(baghdad_date(COALESCE(b."scheduledAt", b."createdAt")), 'YYYY-MM') = $%d`, i))
+			`company_period(baghdad_date(COALESCE(b."scheduledAt", b."createdAt"))) = $%d`, i))
 	}
 
 	whereSQL := strings.Join(where, " AND ")

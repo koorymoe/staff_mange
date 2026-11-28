@@ -208,6 +208,7 @@ const employeeUpdateSQL = `
 		"photoUrl" = :photoUrl,
 		position = :position,
 		phone = :phone,
+		email = :email,
 		status = :status,
 		role = :role,
 		"secondaryRoles" = :secondaryRoles,

@@ -199,8 +199,9 @@ func derefStr(s *string) string {
 func (r *LeaveRequestRepository) Register(month string) ([]model.LeaveRequest, error) {
 	rows := []model.LeaveRequest{}
 	err := r.db.Select(&rows, leaveSelect+`
-		WHERE l."startDate" < (to_date($1, 'YYYY-MM') + interval '1 month')::date
-		  AND l."endDate" >= to_date($1, 'YYYY-MM')
+		-- (11-28) شهر الشركة ٢٦ ← ٢٥
+		WHERE l."startDate" < (to_date($1, 'YYYY-MM') + 25)
+		  AND l."endDate" >= (to_date($1, 'YYYY-MM') - interval '1 month' + interval '25 days')::date
 		ORDER BY l."startDate", e.name`, month)
 	return decorateLeaves(rows), err
 }

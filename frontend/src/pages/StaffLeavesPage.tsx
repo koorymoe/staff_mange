@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { thisPeriod } from '../utils/format'
 import { Link } from 'react-router-dom'
 import { api, type LeaveRequest } from '../api'
 
@@ -19,7 +20,7 @@ const GROUPS: { key: string; label: string; match: (s: string) => boolean }[] = 
   { key: 'approved', label: '✅ معتمدة', match: (s) => s === 'APPROVED' },
   { key: 'closed', label: '✖️ مرفوضة أو ملغية', match: (s) => s === 'REJECTED' || s === 'CANCELLED' },
 ]
-const thisMonth = () => new Date(Date.now() + 3 * 3600_000).toISOString().slice(0, 7)
+const thisMonth = thisPeriod // (11-28) شهر الشركة ٢٦ ← ٢٥
 const d = (iso: string) => iso.slice(0, 10)
 
 export default function StaffLeavesPage() {

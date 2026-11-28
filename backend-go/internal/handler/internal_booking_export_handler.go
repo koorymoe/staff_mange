@@ -33,7 +33,7 @@ var internalExportHeaders = []string{
 func (h *InternalBookingExportHandler) ExportMonth(w http.ResponseWriter, r *http.Request) {
 	month := r.URL.Query().Get("month")
 	if month == "" {
-		month = timeutil.ThisMonth()
+		month = timeutil.ThisPeriod()
 	}
 	rows, err := h.reports.Month(month)
 	if err != nil {

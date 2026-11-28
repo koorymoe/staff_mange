@@ -22,8 +22,8 @@ func NewSmartKpiService(repo *repository.SmartKpiRepository) *SmartKpiService {
 	return &SmartKpiService{repo: repo}
 }
 
+// (دازاي 11-28) الشهر = شهر الشركة (٢٦ ← ٢٥): «2026-12» = من 26/11 لحد 25/12.
 func getMonthRange(month string) (start, end time.Time, year, mon int) {
-	now := time.Now().In(timeutil.CompanyLocation()) // الشهر الافتراضي بتوقيت بغداد مو السيرفر
 	if month != "" {
 		parts := strings.Split(month, "-")
 		if len(parts) == 2 {
@@ -35,33 +35,26 @@ func getMonthRange(month string) (start, end time.Time, year, mon int) {
 		}
 	}
 	if year == 0 {
-		year, mon = now.Year(), int(now.Month())
+		p, _ := time.Parse("2006-01", timeutil.ThisPeriod())
+		year, mon = p.Year(), int(p.Month())
 	}
-	start = time.Date(year, time.Month(mon), 1, 0, 0, 0, 0, time.UTC)
-	end = time.Date(year, time.Month(mon+1), 1, 0, 0, 0, 0, time.UTC)
+	end = time.Date(year, time.Month(mon), timeutil.PeriodStartDay, 0, 0, 0, 0, time.UTC)
+	start = end.AddDate(0, -1, 0)
 	return start, end, year, mon
 }
 
-// getWorkingDaysSoFar أيام الدوام (كل الأيام — ماكو عطلة أسبوعية) بالشهر لحد اليوم — بنص الشهر
-// الموظف الملتزم ياخذ العلامة كاملة، مو نسبة من شهر بعده ما خلص.
-func getWorkingDaysSoFar(year, month int, today time.Time) int {
-	if today.Year() != year || int(today.Month()) != month {
-		return getWorkingDays(year, month)
+// getWorkingDaysSoFar أيام الدوام (كل الأيام — ماكو عطلة أسبوعية) بالفترة لحد اليوم — بنص الفترة
+// الموظف الملتزم ياخذ العلامة كاملة، مو نسبة من فترة بعدها ما خلصت.
+func getWorkingDaysSoFar(start, end, today time.Time) int {
+	d := time.Date(today.Year(), today.Month(), today.Day(), 0, 0, 0, 0, time.UTC)
+	if d.Before(start) || !d.Before(end) {
+		return getWorkingDays(start, end)
 	}
-	n := 0
-	for d := 1; d <= today.Day(); d++ {
-		n++ // قرار (ع) 10-08: ماكو عطلة أسبوعية
-	}
-	return n
+	return int(d.Sub(start).Hours()/24) + 1 // قرار (ع) 10-08: ماكو عطلة أسبوعية
 }
 
-func getWorkingDays(year, month int) int {
-	daysInMonth := time.Date(year, time.Month(month+1), 0, 0, 0, 0, 0, time.UTC).Day()
-	workDays := 0
-	for d := 1; d <= daysInMonth; d++ {
-		workDays++ // قرار (ع) 10-08: ماكو عطلة أسبوعية
-	}
-	return workDays
+func getWorkingDays(start, end time.Time) int {
+	return int(end.Sub(start).Hours()/24 + 0.5)
 }
 
 func (s *SmartKpiService) CalculateTechnicianKpi(employeeID, month string) (*model.SmartKpiResult, error) {
@@ -136,7 +129,7 @@ func (s *SmartKpiService) CalculateTechnicianKpi(employeeID, month string) (*mod
 	if err != nil {
 		return nil, err
 	}
-	totalDays := getWorkingDaysSoFar(year, mon, time.Now().In(debriefLoc))
+	totalDays := getWorkingDaysSoFar(start, end, time.Now().In(debriefLoc))
 	attendanceRatio := 0.0
 	if totalDays > 0 {
 		attendanceRatio = float64(daysPresent) / float64(totalDays)

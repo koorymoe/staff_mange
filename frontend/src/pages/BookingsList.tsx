@@ -1,4 +1,5 @@
 import Modal from '../ui/Modal'
+import { periodRangeLabel } from '../utils/format'
 import { Fragment, useEffect, useRef, useState } from 'react'
 import { api, type Booking, type Employee, type VehicleOption } from '../api'
 import { formatCustomerCode } from '../utils/identity'
@@ -587,6 +588,8 @@ export default function BookingsList({ bucket = 'all', focus }: { bucket?: Booki
             }}
             className="rounded-md border border-slate-300 bg-white px-2 py-1 text-xs outline-none focus:border-brand-500"
           />
+          {/* (دازاي 11-28) الشهر = شهر الشركة ٢٦ ← ٢٥ */}
+          {selectedMonth && <span className="whitespace-nowrap text-[10px] text-slate-500" dir="ltr">{periodRangeLabel(selectedMonth)}</span>}
         </label>
         )}
         {bucket !== 'pending' && selectedMonth && (

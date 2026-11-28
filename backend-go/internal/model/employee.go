@@ -183,6 +183,8 @@ type CreateEmployeeRequest struct {
 }
 
 type UpdateEmployeeRequest struct {
+	// (دازاي 11-28) الإدارة تكتب إيميل الموظف هم (فاضي = يشيله)
+	Email                *string  `json:"email"`
 	Name                 *string  `json:"name"`
 	Certificate          *string  `json:"certificate"`
 	Position             *string  `json:"position"`

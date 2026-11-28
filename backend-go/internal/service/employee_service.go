@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"net/mail"
 	"regexp"
 	"strconv"
 	"strings"
@@ -171,6 +172,16 @@ func (s *EmployeeService) Update(id string, req model.UpdateEmployeeRequest) (*m
 		}
 		if req.Phone != nil {
 			employee.Phone = req.Phone
+		}
+		if req.Email != nil {
+			e := strings.TrimSpace(*req.Email)
+			if e == "" {
+				employee.Email = nil
+			} else if a, err := mail.ParseAddress(e); err != nil || a.Address != e || len(e) > 120 {
+				return errors.New("الإيميل مو صحيح")
+			} else {
+				employee.Email = &e
+			}
 		}
 		// 🔴🔴 **حساب المالك محمي من مدير النظام.**
 		//

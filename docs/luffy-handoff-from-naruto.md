@@ -602,3 +602,5 @@ git push origin origin/avg:refs/heads/prod     # بعد التأكد إنه fast
 ## 11-28 ترتيب القائمة + الخطأ الفني من الجودة
 - navTree: mgmt-finance/mgmt-procurement/tool-custody/tech-contact-reports بـhideIfAnyPermission (unit_accounts/unit_procurement/unit_fleet/unit_monitoring) ونسخها داخل الوحدات. فرع tech-contact الخاص بـisNavVisible صار يحترم hideIfAnyPermission.
 - ReworkClaim.fixBookingId صار يقبل فاضي (0540 يدوي — موافقة دازاي ضمن الطلب). Rework.CanReport (QUALITY_ENGINEER/quality_control/complaints/المراقب)، SearchBookings، LinkFix. Decide يرفض الموافقة بلا حجز تصحيح.
+
+- (11-28 ب) company_period صار بالإجازات (Register)، السيارات (performedAt/ratedDate)، booking_page_repository، leader_invoice_page، والـsmart KPI (getMonthRange/getWorkingDays بالفترة). جدول الحضور (attendance board) بقى ميلادي لأنه شبكة أيام الشهر. UpdateEmployeeRequest.Email + email = :email.
