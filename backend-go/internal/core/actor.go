@@ -130,6 +130,12 @@ func resolveActor(r *http.Request, perms PermLister, leader func(string) bool, g
 			}
 		}
 	}
+	// (دازاي 11-28) «رقابة وتدقيق — مشاهدة»: الحزمة تنفتح للقراءة بس
+	if a.Perms[model.OversightView] && (r.Method == http.MethodGet || r.Method == http.MethodHead) {
+		for _, p := range model.OversightBundle {
+			a.Perms[p] = true
+		}
+	}
 	return a
 }
 

@@ -713,6 +713,12 @@ func autoMigrations() []Migration {
 		`,
 		},
 		{
+			Version: "0546_data_oversight_view_permission",
+			SQL: `
+			INSERT INTO "Permission" (id, name, label) VALUES (gen_random_uuid()::text, 'oversight_view', 'رقابة وتدقيق — مشاهدة وتقارير (كل شاشات الرقابة والتدقيق، بلا تعديل)') ON CONFLICT (name) DO NOTHING;
+		`,
+		},
+		{
 			Version: "0547_action_plans",
 			SQL: `
 			CREATE TABLE IF NOT EXISTS "ActionPlan" (
