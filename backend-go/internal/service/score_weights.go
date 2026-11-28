@@ -122,3 +122,21 @@ func SaveScoreWeights(db *sqlx.DB, by string, in ScoreWeights) error {
 	InvalidateBoard()
 	return nil
 }
+
+// withWeights (11-28) بنود الدور العام بأوزان الإعدادات — حتى «رأي ماتركس» يمشي وياها (المطفي يطلع).
+func withWeights(defs []partDef, ov map[string]float64) []partDef {
+	if len(ov) == 0 {
+		return defs
+	}
+	out := make([]partDef, 0, len(defs))
+	for _, d := range defs {
+		if v, ok := ov[d.Key]; ok {
+			if v <= 0 {
+				continue
+			}
+			d.Weight = v
+		}
+		out = append(out, d)
+	}
+	return out
+}

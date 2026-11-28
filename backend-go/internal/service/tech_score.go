@@ -118,11 +118,30 @@ var opinionOf = map[string][]opinionRule{GroupTechs: techOpinion, GroupLeaders: 
 
 // RoleMatrixOpinion رأي ماتركس (٢٠٪): يبدي ١٠٠ وينقص على الي يحتاجه، ويا ملاحظة لكل وحدة.
 func RoleMatrixOpinion(group string, pct map[string]float64) (float64, []string) {
+	return roleMatrixOpinionW(group, pct, nil)
+}
+
+// roleMatrixOpinionW (دازاي 11-28) نفسها ويا أوزان الإعدادات: البند المطفي ما ينقّص،
+// والبند الي وزنه تغيّر خصمه يتغيّر بنفس النسبة (سقفه ٤٠).
+func roleMatrixOpinionW(group string, pct map[string]float64, ov map[string]float64) (float64, []string) {
+	def := map[string]float64{}
+	for _, w := range roleWeightsOf[group] {
+		def[w.Key] = w.Weight
+	}
 	v := 100.0
 	notes := []string{}
 	for _, r := range opinionOf[group] {
+		pen := r.Penalty
+		if nw, set := ov[r.Key]; set {
+			if nw <= 0 {
+				continue
+			}
+			if d := def[r.Key]; d > 0 {
+				pen = math.Min(40, pen*nw/d)
+			}
+		}
 		if x, ok := pct[r.Key]; ok && x < r.Below {
-			v -= r.Penalty
+			v -= pen
 			notes = append(notes, r.Note)
 		}
 	}
@@ -327,9 +346,9 @@ func applyRoleScores(rows []StaffScore, hum []repository.HumanRow, times map[str
 			sum += pct["PLAN"] * planShare / 100
 			s.TechParts = append(s.TechParts, TechPart{Key: "PLAN", Label: "الخطة وتنفيذها (الهيكل الجديد)", Weight: planShare, Pct: pct["PLAN"], Detail: detail["PLAN"]})
 		}
-		op, notes := RoleMatrixOpinion(rg, pct)
+		op, notes := roleMatrixOpinionW(rg, pct, overrides[rg])
 		if defs, ok := genericParts[s.Group]; ok {
-			op, notes = genericOpinion(defs, pct)
+			op, notes = genericOpinion(withWeights(defs, overrides[s.Group]), pct)
 		}
 		s.TechParts = append(s.TechParts, TechPart{Key: "MATRIX", Label: "رأي ماتركس", Weight: techMatrixShare, Pct: op})
 		s.MatrixNotes = notes
