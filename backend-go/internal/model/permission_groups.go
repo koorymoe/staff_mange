@@ -32,7 +32,7 @@ var PermissionGroups = []PermissionGroup{
 			"booking_reopen", "booking_delete_request", "booking_delete_approve", "mission_tracking", "paperwork_carryover", "vip_manual_add"}},
 	{Key: "projects", Title: "🏗️ المشاريع وعروض الأسعار",
 		Perms: []string{"project_management", "project_create_only", "my_projects", "quotation_create", "quotation_edit_own", "quotation_manage_all",
-			"quotation_system", "network_prices", "solar_system", "gps_system", "gps_requests", "content_technician", "service_managers", "manage_services"}},
+			"quotation_system", "network_prices", "solar_system", "gps_system", "gps_requests", "content_technician", "service_managers", "manage_services", "service_prices"}},
 	{Key: "stores", Title: "📦 المخزن والمشتريات",
 		Perms: []string{"inventory", "inventory_follow", "tool_requests", "tool_requests_approve", "procurement", "procurement_personal", "procurement_customer",
 			"procurement_manual", "suppliers_management", "supplier_relations", "tech_suppliers", "leader_basket", "device_maintenance"}},

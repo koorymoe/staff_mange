@@ -687,6 +687,12 @@ func autoMigrations() []Migration {
 			ALTER TABLE "Employee" ADD COLUMN IF NOT EXISTS "email" text;
 		`,
 		},
+		{
+			Version: "0542_data_service_prices_permission",
+			SQL: `
+			INSERT INTO "Permission" (id, name, label) VALUES (gen_random_uuid()::text, 'service_prices', 'تفاصيل فاتورة الخدمات (البنود والأسعار)') ON CONFLICT (name) DO NOTHING;
+		`,
+		},
 		// ‹makemigration› — التحديثات الجديدة تنضاف فوگ هالسطر
 	}
 }

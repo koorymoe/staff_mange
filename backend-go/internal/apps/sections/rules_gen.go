@@ -1187,9 +1187,9 @@ func rules() map[string]map[core.Action]core.Rule {
 		},
 		"services": {
 			"services.delete_by_id":                func(l string) core.Rule { return admin(l) }("يشيل /api/services/{id} (مدير النظام)"),
-			"services.get_invoice_options":         func(l string) core.Rule { return admin(l) }("يقرا خيارات الفاتورة لكل خدمة (مدير النظام والمالك)"),
-			"services.put_invoice_options":         func(l string) core.Rule { return admin(l) }("يعدّل خيارات الفاتورة لكل خدمة (مدير النظام والمالك)"),
-			"services.post_invoice_options_quote":  func(l string) core.Rule { return admin(l) }("يجرّب حساب فاتورة الخدمة (مدير النظام والمالك)"),
+			"services.get_invoice_options":         func(l string) core.Rule { return rolePerm(l, []string{"ADMIN", "OWNER"}, "service_prices") }("يقرا خيارات الفاتورة لكل خدمة (المدير والمالك وصاحب صلاحية تفاصيل الفاتورة)"),
+			"services.put_invoice_options":         func(l string) core.Rule { return rolePerm(l, []string{"ADMIN", "OWNER"}, "service_prices") }("يعدّل خيارات الفاتورة لكل خدمة (المدير والمالك وصاحب صلاحية تفاصيل الفاتورة)"),
+			"services.post_invoice_options_quote":  func(l string) core.Rule { return rolePerm(l, []string{"ADMIN", "OWNER"}, "service_prices") }("يجرّب حساب فاتورة الخدمة (المدير والمالك وصاحب صلاحية تفاصيل الفاتورة)"),
 			"services.get_root":                    func(l string) core.Rule { return any_(l) }("يقرا /api/services (الدخول — الفحص بالمعالج)"),
 			"services.post_by_id_skills":           func(l string) core.Rule { return perm(l, "content_technician") }("ينفّذ /api/services/{id}/skills (صلاحية)"),
 			"services.post_root":                   func(l string) core.Rule { return perm(l, "content_technician") }("ينفّذ /api/services (صلاحية)"),

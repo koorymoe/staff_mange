@@ -609,3 +609,5 @@ git push origin origin/avg:refs/heads/prod     # بعد التأكد إنه fast
 ## 11-28 GPS بالإيراد + توقيع عرض المشاريع
 - Revenue: kind GPS = GpsRenewalRequest APPROVED (price>0) بـcreatedAt للـemployeeId. ApplyRevenue يضيف GPS لأي kind، company_costs brought يشمل GPS، money_audit سطر GPS بالإدخال والصافي. بيع الجهاز بلا فاتورة بعده برّا.
 - ProjectCover.signature (بالـcover jsonb، بلا تحديث قاعدة) ← sign-box بآخر صفحة الملخص المالي.
+
+- 11-28 صلاحية service_prices: تفتح /service-invoice-options وراوتات invoice_options (rolePerm ADMIN/OWNER). ترحيل 0542_data_service_prices_permission.
