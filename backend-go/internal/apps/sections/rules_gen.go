@@ -769,6 +769,7 @@ func rules() map[string]map[core.Action]core.Rule {
 			"me_x.post_idea":                        func(l string) core.Rule { return any_(l) }("يرسل فكرة تحسين (الخدمة: باسمه هو بس)"),
 			"me_x.get_ideas":                        func(l string) core.Rule { return any_(l) }("يقرا أفكاره هو وردودها"),
 			"me_x.get_profile":                      func(l string) core.Rule { return any_(l) }("ملفي الشخصي — الموظف عن نفسه بس"),
+			"me_x.put_email":                        func(l string) core.Rule { return any_(l) }("يكتب إيميله هو بس"),
 			"me_x.put_language":                     func(l string) core.Rule { return any_(l) }("يعدّل /api/me/language (الدخول — الفحص بالمعالج)"),
 		},
 		"media": {

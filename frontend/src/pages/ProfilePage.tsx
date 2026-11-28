@@ -4,6 +4,7 @@ import { useSession } from '../session'
 import { useOrgMemberships, greetingTitle } from '../orgDeskAccess'
 import { roleLabel } from '../roleLabels'
 import { card } from '../ui/classes'
+import { notify } from '../ui/notify'
 import MyScoreCard from '../components/MyScoreCard'
 import MyMoneyTargetCard from '../components/MyMoneyTargetCard'
 
@@ -13,7 +14,7 @@ import MyMoneyTargetCard from '../components/MyMoneyTargetCard'
 const MyRanking = lazy(() => import('./MyRanking'))
 
 type Info = {
-  name: string; username: string; phone: string | null; role: string; jobTitle: string | null; certificate: string | null
+  name: string; username: string; phone: string | null; email: string | null; role: string; jobTitle: string | null; certificate: string | null
   salary: number | null; shift: string | null; shiftStart: string | null; shiftEnd: string | null; hireDate: string | null
   contractEnd: string | null; experienceYears: number | null; hasDrivingLicense: boolean; isLeader: boolean; createdAt: string
 }
@@ -33,6 +34,36 @@ function Row({ k, v }: { k: string; v: string | null | undefined }) {
     <div className="flex justify-between gap-3 border-b border-slate-100 py-2 text-sm last:border-0">
       <span className="text-slate-500">{k}</span>
       <b className="text-left text-slate-800">{v || '—'}</b>
+    </div>
+  )
+}
+
+/** (دازاي 11-28) الإيميل — الموظف يكتبه بنفسه */
+function EmailRow({ value, onSaved }: { value: string | null; onSaved: (e: string | null) => void }) {
+  const [edit, setEdit] = useState(false)
+  const [v, setV] = useState(value ?? '')
+  const [busy, setBusy] = useState(false)
+  const save = async () => {
+    setBusy(true)
+    try {
+      const r = await apiRequest<{ email: string }>('/me/email', { method: 'PUT', body: JSON.stringify({ email: v }) })
+      onSaved(r.email || null); setEdit(false); notify('انحفظ الإيميل ✅')
+    } catch (e) { notify(e instanceof Error ? e.message : 'تعذر الحفظ') } finally { setBusy(false) }
+  }
+  if (!edit) {
+    return (
+      <div className="flex justify-between gap-3 border-b border-slate-100 py-2 text-sm">
+        <span className="text-slate-500">الإيميل</span>
+        <span className="flex items-center gap-2"><b className="text-slate-800" dir="ltr">{value || '—'}</b>
+          <button type="button" className="text-xs text-[#2c5aad] underline" onClick={() => { setV(value ?? ''); setEdit(true) }}>{value ? 'غيّر' : 'أضف'}</button></span>
+      </div>
+    )
+  }
+  return (
+    <div className="flex items-center gap-2 border-b border-slate-100 py-2 text-sm">
+      <input type="email" dir="ltr" value={v} onChange={(e) => setV(e.target.value)} placeholder="name@example.com" className="flex-1 rounded-lg border border-slate-300 px-2 py-1" />
+      <button type="button" disabled={busy} onClick={() => void save()} className="rounded-lg bg-[#0f2040] px-3 py-1 text-xs font-bold text-white disabled:opacity-50">حفظ</button>
+      <button type="button" onClick={() => setEdit(false)} className="text-xs text-slate-500">إلغاء</button>
     </div>
   )
 }
@@ -79,6 +110,7 @@ export default function ProfilePage() {
             <Row k="الاسم" v={i.name} />
             <Row k="اسم الدخول" v={i.username} />
             <Row k="رقم الهاتف" v={i.phone} />
+            <EmailRow value={i.email} onSaved={(email) => setP({ ...p, info: { ...i, email } })} />
             <Row k="الدور" v={roleLabel(i.role)} />
             <Row k="المنصب" v={greetingTitle(employee, orgMine)} />
             <Row k="الشهادة" v={i.certificate} />

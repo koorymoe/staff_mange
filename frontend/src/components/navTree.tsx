@@ -310,7 +310,7 @@ export const navItems: NavItem[] = [
       // (دازاي 11-28) «عهدة الأدوات تضهر وي شغلات العدد»: صاحب وحدة العدد يشوفها هناك
       { to: '/tool-custody', label: '🧰 عهدة الأدوات', icon: <></>, roles: [...TECH_ROLES, 'TECHNICIAN', 'MONITOR', 'ADMIN'], hideIfAnyPermission: ['unit_fleet'] },
       // (ع) 11-08: 🔄 عقود الصيانة الدورية — نفس حارس /api/maintenance-contracts (ADMIN أو coordinator)
-      { to: '/maintenance-contracts', label: '🔄 عقود الصيانة', icon: <></>, roles: ['ADMIN'], permission: 'coordinator' },
+      // (دازاي 11-28) انشالت من القائمة لحد ما تنحتاج — تنفتح من «⚙️ الإعدادات ← 🔄 عقود الصيانة»
       // ماتركس — فرص البيع: نفس حارس GET /api/ai/opportunities (ADMIN/OWNER أو sales_booking).
       { monitorMenuHide: true, to: '/sales-opportunities', label: '💡 فرص البيع', icon: <></>, roles: ['ADMIN'], permission: 'sales_booking', hideForRoles: [...TECH_ROLES, 'SALES', 'ADMIN'] }, // قرار (ع) 10-08: ما تطلع للمبيعات
       // قرار (ع) 10-08: طلبات GPS للمبيعات صارت جوّا «العمل».
@@ -1590,6 +1590,8 @@ const OPEN_PATHS = new Set(['/work-reports', '/privacy-policy', '/leaves', '/pro
 type RouteRule = { roles?: EmployeeRole[]; anyPermission?: string[]; leader?: boolean }
 const GPS_DATA: RouteRule = { roles: ['OWNER', 'SALES'], anyPermission: ['gps_system'] } // requireGpsData
 const ROUTE_RULES: Record<string, RouteRule> = {
+  // (11-28) عقود الصيانة انشالت من القائمة — نفس حارس /api/maintenance-contracts
+  '/maintenance-contracts': { roles: ['ADMIN'], anyPermission: ['coordinator'] },
   '/org/assign': { roles: ['ADMIN'] },
   '/org/directors-ranking': { roles: ['ADMIN'] },
   '/staff-reports': { roles: ['ADMIN', 'MONITOR', 'HR_COORDINATOR'], anyPermission: ['monitoring', 'mon_staff', 'staff_management'] },

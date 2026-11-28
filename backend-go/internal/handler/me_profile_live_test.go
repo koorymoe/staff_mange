@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"strings"
 	"testing"
 
 	"github.com/jmoiron/sqlx"
@@ -59,6 +60,22 @@ func TestMeProfileLive(t *testing.T) {
 	}
 	if err := json.Unmarshal(w.Body.Bytes(), &out); err != nil {
 		t.Fatal(err)
+	}
+	// الإيميل: غلط ينرفض، وصح ينحفظ
+	put := func(body string) int {
+		rq := httptest.NewRequest("PUT", "/api/me/email", strings.NewReader(body))
+		rq = rq.WithContext(context.WithValue(rq.Context(), middleware.ContextEmployeeID, "mp-e"))
+		rw := httptest.NewRecorder()
+		NewMeProfileHandler(db).SetEmail(rw, rq)
+		return rw.Code
+	}
+	if put(`{"email":"غلط"}`) != http.StatusBadRequest || put(`{"email":"mp@example.com"}`) != http.StatusOK {
+		t.Fatal("حفظ الإيميل")
+	}
+	var em *string
+	db.Get(&em, `SELECT email FROM "Employee" WHERE id = 'mp-e'`)
+	if em == nil || *em != "mp@example.com" {
+		t.Fatalf("الإيميل ما انحفظ: %v", em)
 	}
 	if out.Info.Name != "mp موظف" || out.Info.Salary == nil || *out.Info.Salary != 500000 {
 		t.Fatalf("المعلومات: %+v", out.Info)

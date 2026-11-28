@@ -681,6 +681,12 @@ func autoMigrations() []Migration {
 			ALTER TABLE "ReworkClaim" ALTER COLUMN "fixBookingId" DROP NOT NULL;
 		`,
 		},
+		{
+			Version: "0541_employee_email",
+			SQL: `
+			ALTER TABLE "Employee" ADD COLUMN IF NOT EXISTS "email" text;
+		`,
+		},
 		// ‹makemigration› — التحديثات الجديدة تنضاف فوگ هالسطر
 	}
 }

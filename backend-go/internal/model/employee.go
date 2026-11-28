@@ -25,9 +25,11 @@ type Employee struct {
 	Name        string  `db:"name" json:"name"`
 	Certificate *string `db:"certificate" json:"certificate"`
 	// مسار صورة الموظف (`/api/files/...`) — فاضي = نعرض أول حرف اسمه
-	PhotoURL        *string `db:"photoUrl" json:"photoUrl"`
-	Position        *string `db:"position" json:"position"`
-	Phone           *string `db:"phone" json:"phone"`
+	PhotoURL *string `db:"photoUrl" json:"photoUrl"`
+	Position *string `db:"position" json:"position"`
+	Phone    *string `db:"phone" json:"phone"`
+	// (دازاي 11-28) إيميل الموظف — يكتبه هو من «ملفي الشخصي»
+	Email           *string `db:"email" json:"email"`
 	Status          string  `db:"status" json:"status"`
 	AuthzViolations int     `db:"authzViolations" json:"-"`
 	// الحظر التلقائي — لازم تكون موجودة بالموديل وإلا sqlx يفشل بـSELECT *
