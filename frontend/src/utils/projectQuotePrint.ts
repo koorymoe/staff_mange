@@ -10,7 +10,9 @@ import { esc } from './printIdentity'
 
 // image: (ل) 11-10 صورة الفصل من مكتبة صور نوع العمل — كل عرض صورة غير، ومتناسقة ويا اسم الفصل
 export type ChapterMeta = { en?: string; desc?: string; image?: string }
-export type ProjectCover = { label?: string; title?: string; subtitle?: string; city?: string; image?: string; chapters?: Record<string, ChapterMeta> }
+export type ProjectCover = { label?: string; title?: string; subtitle?: string; city?: string; image?: string; chapters?: Record<string, ChapterMeta>
+  /** (دازاي 11-28) خانة توقيع الزبون والشركة بآخر الملخص المالي — للعروض الي تنضاف للعقود */
+  signature?: boolean }
 export type AnnexItem = { title: string; text: string }
 export type AnnexPart = { title: string; items: AnnexItem[] }
 export type ProjectItem = {
@@ -203,6 +205,10 @@ export function buildProjectQuoteHtml(q: ProjectQuote, logoUrl: string): string 
       <tfoot><tr><td colspan="2">المجموع</td><td class="c"><bdi dir="ltr">${n(units)}</bdi></td><td></td><td class="num"><bdi dir="ltr">${n(total)}</bdi></td></tr></tfoot>
     </table>
     <div class="grand"><div><h3>القيمة الإجمالية للمشروع</h3><p>${esc(arabicAmountWords(total))}</p></div><div class="gv"><b><bdi dir="ltr">${n(total)}</bdi></b><small>IQD</small></div></div>
+    ${q.cover.signature ? `<div class="sign-box">
+      <div class="sign-col"><div class="sign-head">توقيع الزبون</div><div class="sign-row">الاسم: <span>${esc(q.customerName)}</span></div><div class="sign-row">التوقيع: <i></i></div><div class="sign-row">التاريخ: <i></i></div></div>
+      <div class="sign-col"><div class="sign-head">عن ${esc(COMPANY_AR)}</div><div class="sign-row">الاسم: <i></i></div><div class="sign-row">التوقيع والختم: <i></i></div><div class="sign-row">التاريخ: <i></i></div></div>
+    </div>` : ''}
     ${footer(page, totalPages)}
   </section>`
   page++
@@ -267,6 +273,7 @@ body { margin: 0; font-family: 'Tajawal', sans-serif; color: #1e293b; -webkit-pr
 .circle { width: 46mm; height: 46mm; border-radius: 50%; border: 1px solid #dbe3f4; display: flex; align-items: center; justify-content: center; padding: 6mm } .circle img, .circle svg { max-width: 100%; max-height: 100%; object-fit: contain } .card-img small { font-size: 9px; color: #94a3b8 }
 .illus { width: 100%; height: auto }
 .tbl { width: 100%; border-collapse: collapse; font-size: 11px } .tbl th { background: #1e3a8a; color: #fff; padding: 7px; font-weight: 600 } .tbl td { padding: 6px 7px; border-bottom: 1px solid #e2e8f0; text-align: center } .tbl td.nm { text-align: right; font-weight: 600 } .tbl tr:nth-child(even) td { background: #f8fafc }
+.sign-box { display: flex; gap: 6mm; margin-top: 6mm } .sign-col { flex: 1; border: 1px solid #c7cbe6; border-radius: 10px; padding: 3mm 4mm; color: #1e3a8a } .sign-head { font-weight: 800; text-align: center; margin-bottom: 3mm } .sign-row { display: flex; gap: 4px; align-items: flex-end; font-size: 11px; margin-bottom: 4mm } .sign-row i { flex: 1; border-bottom: 1px dotted #1e3a8a; height: 12px }
 .grand { margin-top: 8mm; background: linear-gradient(160deg, #1e3a8a, #2a4fb0); color: #fff; border-radius: 14px; padding: 8mm; display: flex; justify-content: space-between; align-items: center } .grand h3 { margin: 0 } .grand p { margin: 4px 0 0; font-size: 11px; opacity: .9 }
 .gv { text-align: left } .gv b { display: block; font-size: 30px } .gv small { color: #f59e0b }
 .ax-head small { color: #94a3b8; letter-spacing: 2px; font-size: 9px } .ax-head h2 { margin: 2px 0 8px; color: #1e3a8a }

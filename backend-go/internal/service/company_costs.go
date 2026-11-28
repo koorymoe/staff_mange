@@ -228,7 +228,7 @@ func (c *CompanyCosts) Report(month string, now time.Time) (*CostsReport, error)
 	brought := map[string]float64{}
 	if rev, err := repository.NewMatrixScoreRepository(c.db).Revenue(from.UTC(), to.UTC(), ""); err == nil {
 		for _, x := range rev {
-			if x.Kind == "WORK" {
+			if x.Kind == "WORK" || x.Kind == "GPS" { // (11-28) تجديد الـGPS هم فلوس دخّلها
 				brought[x.EmployeeID] += x.Amount
 			}
 		}

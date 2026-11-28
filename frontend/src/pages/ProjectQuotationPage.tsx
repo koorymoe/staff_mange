@@ -249,6 +249,11 @@ export default function ProjectQuotationPage() {
           </div>
         </div>
         <label className="text-sm md:col-span-2">الوصف<input className={input} placeholder="مثلاً: حلول الحوسبة والمختبرات، والطباعة والأرشفة، والشاشات الذكية" value={cover.subtitle ?? ''} onChange={(e) => setCover({ ...cover, subtitle: e.target.value })} /></label>
+        {/* (دازاي 11-28) نفس عرض السعر العادي — للعروض الي تنضاف للعقود */}
+        <label className="flex items-center gap-2 text-sm font-semibold md:col-span-2">
+          <input type="checkbox" checked={!!cover.signature} onChange={(e) => setCover({ ...cover, signature: e.target.checked })} />
+          ✍️ إضافة توقيع الزبون والشركة بآخر الملخص المالي
+        </label>
       </section>
 
 

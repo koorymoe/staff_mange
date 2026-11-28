@@ -49,6 +49,12 @@ func (r *MatrixScoreRepository) Revenue(from, to time.Time, emp string) ([]Reven
 			FROM "ProjectPayment" pp JOIN "Project" p ON p.id = pp."projectId"
 			WHERE p."responsibleEmployeeId" IS NOT NULL AND pp."cancelledAt" IS NULL AND COALESCE(pp."paidAt", pp."createdAt") >= $1 AND COALESCE(pp."paidAt", pp."createdAt") < $2
 			GROUP BY 1
+			UNION ALL
+			-- (دازاي 11-28) تجديد اشتراكات الـGPS المعتمد — ينحسب للي سجّل التجديد
+			SELECT g."employeeId", 'GPS', sum(g.price)::float8, count(*)::int
+			FROM "GpsRenewalRequest" g
+			WHERE g.status::text = 'APPROVED' AND g.price > 0 AND g."createdAt" >= $1 AND g."createdAt" < $2
+			GROUP BY 1
 		) x WHERE "employeeId" IS NOT NULL AND ($3 = '' OR "employeeId" = $3)`, from, to, emp,
 		ms.StatsLeaderPct, ms.StatsTechPct, ms.StatsNoLeaderTechPct)
 	return rows, err

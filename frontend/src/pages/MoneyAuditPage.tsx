@@ -110,7 +110,7 @@ export default function MoneyAuditPage() {
                 ))}
               </tbody>
             </table>
-            <p className="mt-2 text-xs text-slate-500">ما داخل بالحساب هسه: اشتراكات الـGPS وأي فلوس برّا الفواتير ودفعات المشاريع.</p>
+            <p className="mt-2 text-xs text-slate-500">ما داخل بالحساب هسه: أي فلوس برّا الفواتير ودفعات المشاريع وتجديد الـGPS (مثل بيع جهاز GPS بلا فاتورة).</p>
           </section>
           {a.sections.map((s) => (
             <section key={s.title} className={card}>

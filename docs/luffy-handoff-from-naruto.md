@@ -604,3 +604,8 @@ git push origin origin/avg:refs/heads/prod     # بعد التأكد إنه fast
 - ReworkClaim.fixBookingId صار يقبل فاضي (0540 يدوي — موافقة دازاي ضمن الطلب). Rework.CanReport (QUALITY_ENGINEER/quality_control/complaints/المراقب)، SearchBookings، LinkFix. Decide يرفض الموافقة بلا حجز تصحيح.
 
 - (11-28 ب) company_period صار بالإجازات (Register)، السيارات (performedAt/ratedDate)، booking_page_repository، leader_invoice_page، والـsmart KPI (getMonthRange/getWorkingDays بالفترة). جدول الحضور (attendance board) بقى ميلادي لأنه شبكة أيام الشهر. UpdateEmployeeRequest.Email + email = :email.
+
+
+## 11-28 GPS بالإيراد + توقيع عرض المشاريع
+- Revenue: kind GPS = GpsRenewalRequest APPROVED (price>0) بـcreatedAt للـemployeeId. ApplyRevenue يضيف GPS لأي kind، company_costs brought يشمل GPS، money_audit سطر GPS بالإدخال والصافي. بيع الجهاز بلا فاتورة بعده برّا.
+- ProjectCover.signature (بالـcover jsonb، بلا تحديث قاعدة) ← sign-box بآخر صفحة الملخص المالي.
