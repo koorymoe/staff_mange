@@ -2705,6 +2705,8 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	secs["bookings"].Set("GET /api/rework", "bookings.get_rework", rework.List)
 	secs["bookings"].Set("POST /api/rework", "bookings.post_rework", rework.Submit)
 	secs["bookings"].Set("POST /api/rework/{id}/decide", "bookings.post_rework_decide", rework.Decide)
+	secs["bookings"].Set("GET /api/rework/bookings", "bookings.get_rework_bookings", rework.Search)
+	secs["bookings"].Set("POST /api/rework/{id}/fix", "bookings.post_rework_fix", rework.LinkFix)
 	// (ل) 11-25 دازاي: عهدة الأدوات — الموظف ياخذ بنفسه ويسلّم بصورة، والمالك/المدير يدقق أو يختار عنه
 	custody := handler.NewToolCustodyHandler(service.NewToolCustody(db, inventoryService), db)
 	secs["inventory"].Set("GET /api/tool-custody", "inventory.get_tool_custody", custody.Get)

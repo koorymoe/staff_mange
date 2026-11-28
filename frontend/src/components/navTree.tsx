@@ -304,9 +304,11 @@ export const navItems: NavItem[] = [
       },
       { to: '/my-handovers', label: '🛠️ حجوزاتي المسلّمة', icon: <></>, roles: TECH_ROLES },
       // (ل) 11-24 دازاي: الخطأ الفني والتصحيح — الكادر يسجّل، المراقب يوافق
-      { to: '/rework', label: '🔧 الخطأ الفني والتصحيح', icon: <></>, roles: [...TECH_ROLES, 'TECHNICIAN', 'MONITOR', 'ADMIN'] },
+      // (دازاي 11-28) أبو الجودة يسجّل الخطأ من الاتصال أو الشكوى
+      { to: '/rework', label: '🔧 الخطأ الفني والتصحيح', icon: <></>, roles: [...TECH_ROLES, 'TECHNICIAN', 'MONITOR', 'ADMIN', 'QUALITY_ENGINEER'], hideIfAnyPermission: ['unit_quality'] },
       // (ل) 11-25 دازاي: عهدة الأدوات — الموظف ياخذ ويسلّم بصورة، المالك/المدير يدقق
-      { to: '/tool-custody', label: '🧰 عهدة الأدوات', icon: <></>, roles: [...TECH_ROLES, 'TECHNICIAN', 'MONITOR', 'ADMIN'] },
+      // (دازاي 11-28) «عهدة الأدوات تضهر وي شغلات العدد»: صاحب وحدة العدد يشوفها هناك
+      { to: '/tool-custody', label: '🧰 عهدة الأدوات', icon: <></>, roles: [...TECH_ROLES, 'TECHNICIAN', 'MONITOR', 'ADMIN'], hideIfAnyPermission: ['unit_fleet'] },
       // (ع) 11-08: 🔄 عقود الصيانة الدورية — نفس حارس /api/maintenance-contracts (ADMIN أو coordinator)
       { to: '/maintenance-contracts', label: '🔄 عقود الصيانة', icon: <></>, roles: ['ADMIN'], permission: 'coordinator' },
       // ماتركس — فرص البيع: نفس حارس GET /api/ai/opportunities (ADMIN/OWNER أو sales_booking).
@@ -458,6 +460,8 @@ export const navItems: NavItem[] = [
       { to: '/tech-suppliers', label: '🏪 موردين التقنيين', icon: <></>, roles: ['ADMIN', 'ENGINEER', 'TECHNICAL', 'SERVICE_MANAGER'], unlockPermission: 'tech_suppliers', hideForRoles: ['ADMIN'], hideIfAnyPermission: ['unit_technicians'] },
       {
         to: '/mgmt-finance', label: 'إدارة الحسابات', icon: <></>,
+        // (دازاي 11-28) «ادارة الحسابات تكون داخل وحدة الحسابات»: صاحب الوحدة يشوفها هناك بس
+        hideIfAnyPermission: ['unit_accounts'],
         // ⚠️ محجوبة عن المحاسب: محتواها **نفسه** محتوى «العمل» مالته
         // كلمة بكلمة، فكان يشوف نفس التسع شاشات مرتين — مرة بالإدارة
         // ومرة بالعمل. «ماريد الأوامر تتكرر… أحتاج واحد مو ثنينهن».
@@ -495,6 +499,8 @@ export const navItems: NavItem[] = [
       },
       {
         to: '/mgmt-procurement', label: 'المشتريات والمخازن', icon: <></>,
+        // (دازاي 11-28) «المشتريات والمخازن الي بداخل العمل تصير بداخل وحدة المشتريات»
+        hideIfAnyPermission: ['unit_procurement'],
         children: [
           { to: '/procurement', label: 'طلبات المواد', icon: <></>, roles: ['ADMIN', 'MONITOR', 'PROJECT_MANAGER', 'TECHNICIAN', 'PROCUREMENT_ADMIN'], permission: 'procurement' },
           // جرد الأدوات جان تحت «إدارة الموظفين» — وهو مخزن مو ملف موظف
@@ -532,7 +538,8 @@ export const navItems: NavItem[] = [
   // (دازاي 10-26) ليدر سابق يكمّل ورق حجوزاته — يطلع بس لصاحب الصلاحية المؤقتة
   { to: '/my-paperwork', label: '📄 ورق حجوزاتي القديمة', icon: <span>📄</span>, permission: 'paperwork_carryover' },
   // (ك 11-23) تقارير اتصال التقنيين — المراقب ومدير/نائب العمليات والإدارة (الفحص بـisNavVisible ونفسه بالخادم)
-  { to: '/tech-contact-reports', label: '☎️ تقارير اتصال التقنيين', icon: <span>☎️</span> },
+  // (دازاي 11-28) «داخل وحدة الرقابة»: صاحب الوحدة يشوفها هناك، والباقين بمكانها
+  { to: '/tech-contact-reports', label: '☎️ تقارير اتصال التقنيين', icon: <span>☎️</span>, hideIfAnyPermission: ['unit_monitoring'] },
   // "خريطة المواقع" انشالت من القائمة — الفني هسه يشوف طريق مهمته مباشرة
   // من صفحة "مهامي" (بوب-أب داخل نفس الصفحة، بدون تحويل لصفحة ثانية).
   // مدير المشاريع مدير مو فني: ما عنده مهام تنستلم ولا تقييم ولا تصنيف ولا تقارير عمل
@@ -810,6 +817,7 @@ export const navItems: NavItem[] = [
   // الشي = تكرار صرف. والمسار `/monitor-inbox` يبقى شغّالاً للروابط
   // المحفوظة والإشعارات.
       { to: '/crew-bookings-audit', label: 'تدقيق تنسيق الحجوزات', icon: <></>, permission: 'crew_management' },
+      { to: '/tech-contact-reports', label: '☎️ تقارير اتصال التقنيين', icon: <></> },
       // إدارة سياسة الخصوصية (إضافة/تعديل النقاط) — صلاحية مستقلة تماماً عن
       // قراءتها. القراءة متاحة لكل موظف من الرابط فوق "تسجيل الخروج".
       { to: '/privacy-policy', label: '🔒 إدارة سياسة الخصوصية', icon: <></>, permission: 'privacy_policy_manage' },
@@ -830,6 +838,11 @@ export const navItems: NavItem[] = [
       { to: '/leader-invoices', label: '🧾 فواتير الليدر', icon: <></>, labelFor: leaderInvoicesLabel, roles: ['ADMIN'], anyPermission: ['leader_invoices_view', 'finance', 'finance_audit', 'leader_basket'] },
       { to: '/revolving-fund', label: '💵 الدوار', icon: <></>, capability: 'funds', permission: 'revolving_fund' },
       { to: '/expenses', label: 'إدارة المصاريف', icon: <></>, roles: ['ADMIN', 'FINANCE'], unlockPermission: 'expenses_manage' },
+      // (دازاي 11-28) الي چانت بـ«إدارة الحسابات» جوّا العمل
+      { to: '/vouchers', label: '🧾 سندات الصرف', icon: <></>, roles: ['ADMIN'], unlockAnyPermission: ['finance'] },
+      { to: '/leader-invoices/new', label: '🧮 حساب الكلفة', icon: <></>, permission: 'execution_cost' },
+      { to: '/decor-rates', label: '🪚 أسعار الديكور', icon: <></>, roles: ['ADMIN'], strict: true },
+      { to: '/gps-install-costs', label: '🔧 حساب تكاليف الشد', icon: <></>, roles: ['ADMIN', 'FINANCE'], unlockPermission: 'gps_install_costs' },
     ],
   },
   {
@@ -838,6 +851,9 @@ export const navItems: NavItem[] = [
     children: [
       { to: '/procurement', label: 'طلبات المواد', icon: <></>, roles: ['ADMIN', 'MONITOR', 'PROJECT_MANAGER', 'TECHNICIAN', 'PROCUREMENT_ADMIN'], permission: 'procurement' },
       { to: '/suppliers', label: 'الموردون', icon: <></>, anyPermission: ['suppliers_management'] },
+      // (دازاي 11-28) الجرد وأدوات المخزن هنا لصاحب الوحدة الي ما عنده «وحدة العدد»
+      { to: '/inventory', label: 'جرد الأدوات', icon: <></>, roles: ['ADMIN', 'HR_COORDINATOR', 'MONITOR', 'PROCUREMENT_ADMIN'], permission: 'inventory', hideForRoles: ['MONITOR'], hideIfAnyPermission: ['unit_fleet'] },
+      { to: '/store-tools', label: '🧰 أدوات المخزن', icon: <></>, roles: ['ADMIN', 'PROCUREMENT_ADMIN'], strict: true, hideIfAnyPermission: ['unit_fleet'] },
       // (ع) 10-13: جرد الأدوات انتقل لـ«وحدة العدد والمركبات»
       // قرار (ع) 10-09: إدارة المركبات انشالت من هنا — محلها «المركبات» جوّا العمل
       // لوحة تحكم الأسطول محلها هنا — المخازن هيه المسؤولة عن الأسطول
@@ -856,6 +872,7 @@ export const navItems: NavItem[] = [
       { to: '/inventory', label: 'جرد الأدوات', icon: <></>, roles: ['ADMIN', 'HR_COORDINATOR', 'MONITOR', 'PROCUREMENT_ADMIN'], permission: 'inventory', hideForRoles: ['MONITOR'] },
           // (ع) 10-16: أبو الكميات — يضيف الأدوات التخصصية وعددها وينطي منها (نفس حارس الخادم: ADMIN/PROCUREMENT_ADMIN)
           { to: '/store-tools', label: '🧰 أدوات المخزن', icon: <></>, roles: ['ADMIN', 'PROCUREMENT_ADMIN'], strict: true },
+      { to: '/tool-custody', label: '🧰 عهدة الأدوات', icon: <></>, roles: [...TECH_ROLES, 'TECHNICIAN', 'MONITOR', 'ADMIN', 'PROCUREMENT_ADMIN'] },
     ],
   },
   {
@@ -884,6 +901,7 @@ export const navItems: NavItem[] = [
     unitPermission: 'unit_quality',
     children: [
       { to: '/quality', label: '📝 مراجعة تقارير العمل', icon: <></>, permission: 'quality_control' },
+      { to: '/rework', label: '🔧 الخطأ الفني والتصحيح', icon: <></>, anyPermission: ['quality_control', 'complaints'] },
       { to: '/work-reports-review', label: 'مراجعة تقارير العمل', icon: <></>, anyPermission: ['monitoring', 'quality_control'] },
     ],
   },
@@ -1271,6 +1289,7 @@ export function isNavVisible(item: NavItem, ctx: NavContext, unitGranted = false
   if (item.to === '/my-org') return !!ctx.employee && !!ctx.orgMemberships?.length && !orgDeskAllowed(ctx.employee, ctx.orgMemberships)
   if (item.to === '/org/desk') return orgDeskAllowed(ctx.employee, ctx.orgMemberships)
   if (item.to === '/tech-contact-reports') {
+    if (item.hideIfAnyPermission?.some((p) => ctx.permissions.includes(p))) return false
     return role === 'ADMIN' || ctx.employee?.actualRole === 'OWNER' || role === 'MONITOR' || ctx.permissions.includes('monitoring')
       || !!ctx.orgMemberships?.some((m) => (m.position === 'DIRECTOR' || m.position === 'DEPUTY') && !m.unitId && (m.divisionId === 'ops' || m.divisionId === 'admin'))
   }

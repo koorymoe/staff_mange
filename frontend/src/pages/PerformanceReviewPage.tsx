@@ -410,13 +410,14 @@ function CrewCard({ member, draft, onChange }: {
       {/* ── تقييم عام ── «يحتاج تدريب» غير «مخالفة سلوك»: الأول دورة، والثاني إجراء إداري */}
       <div className="rounded-2xl border border-slate-200 p-3">
         <p className="mb-2 text-sm font-extrabold text-[#0f2040]">تقييم عام لهذا الحجز</p>
-        <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-4">
+        {/* (دازاي 11-28) «الكلام طالع من الدائرة»: ٤ بالسطر چانت تضيق والنص ما ينطوي — هسه ٢ بالسطر وينطوي */}
+        <div className="grid grid-cols-2 gap-1.5">
           {REVIEW_RATINGS.map((r) => {
             const active = draft.rating === r.value
             const t = tones[r.tone]
             return (
               <button key={r.value} onClick={() => onChange({ rating: active ? null : r.value })} title={r.hint}
-                className={`whitespace-nowrap rounded-xl px-1.5 py-2 text-[11px] font-bold transition ${active ? t.on : `border-2 bg-white ${t.off}`}`}>
+                className={`min-h-[40px] rounded-xl px-2 py-2 text-xs font-bold leading-tight transition ${active ? t.on : `border-2 bg-white ${t.off}`}`}>
                 {r.icon} {r.label}
               </button>
             )

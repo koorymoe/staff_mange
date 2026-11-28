@@ -597,3 +597,8 @@ git push origin origin/avg:refs/heads/prod     # بعد التأكد إنه fast
 - Layout يشيل /attendance و/my-ranking من القائمة لغير المدير والمراقب (الحارس ما تغيّر).
 - `MatrixChatBubble` أسفل اليسار لأصحاب agent_matrix؛ بند /matrix-chat انشال من navTree.
 - `greetingTitle()` بـorgDeskAccess: ترتيب مدير إدارة > مدير وحدة > نائب إدارة > نائب وحدة، وإلا roleLabel الكامل.
+
+
+## 11-28 ترتيب القائمة + الخطأ الفني من الجودة
+- navTree: mgmt-finance/mgmt-procurement/tool-custody/tech-contact-reports بـhideIfAnyPermission (unit_accounts/unit_procurement/unit_fleet/unit_monitoring) ونسخها داخل الوحدات. فرع tech-contact الخاص بـisNavVisible صار يحترم hideIfAnyPermission.
+- ReworkClaim.fixBookingId صار يقبل فاضي (0540 يدوي — موافقة دازاي ضمن الطلب). Rework.CanReport (QUALITY_ENGINEER/quality_control/complaints/المراقب)، SearchBookings، LinkFix. Decide يرفض الموافقة بلا حجز تصحيح.

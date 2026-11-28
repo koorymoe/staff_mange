@@ -26,6 +26,7 @@ func TestReworkLive(t *testing.T) {
 	}
 	clean := func() {
 		db.Exec(`DELETE FROM "ReworkClaim" WHERE "createdById" LIKE 'rw-%'`)
+		db.Exec(`DELETE FROM "ReworkClaim" WHERE "originalBookingId" LIKE 'rw-%'`)
 		db.Exec(`DELETE FROM "CostEmployee" WHERE "employeeId" LIKE 'rw-%'`)
 		db.Exec(`DELETE FROM "BookingAssignment" WHERE "bookingId" LIKE 'rw-%'`)
 		db.Exec(`DELETE FROM "Booking" WHERE id LIKE 'rw-%'`)
@@ -35,11 +36,13 @@ func TestReworkLive(t *testing.T) {
 	clean()
 	t.Cleanup(clean)
 	db.MustExec(`INSERT INTO "Employee"(id, name, role, status, "isLeader") VALUES ('rw-am', 'rw صبح', 'TECHNICIAN', 'ACTIVE', true),
-		('rw-pm', 'rw مسا', 'TECHNICIAN', 'ACTIVE', true), ('rw-mon', 'rw مراقب', 'MONITOR', 'ACTIVE', false), ('rw-x', 'rw غريب', 'TECHNICIAN', 'ACTIVE', false)`)
+		('rw-pm', 'rw مسا', 'TECHNICIAN', 'ACTIVE', true), ('rw-mon', 'rw مراقب', 'MONITOR', 'ACTIVE', false), ('rw-x', 'rw غريب', 'TECHNICIAN', 'ACTIVE', false), ('rw-q', 'rw جودة', 'QUALITY_ENGINEER', 'ACTIVE', false)`)
 	db.MustExec(`INSERT INTO "Customer"(id, name, phone) VALUES ('rw-cu', 'x', '07700007777')`)
 	db.MustExec(`INSERT INTO "Booking"(id, code, "customerId", status, "completedAt", "arrivedAt") VALUES
 		('rw-orig', 'RW-ORIG', 'rw-cu', 'COMPLETED', now() - interval '1 day', now() - interval '26 hours'),
-		('rw-fix', 'RW-FIX', 'rw-cu', 'COMPLETED', now() - interval '1 hour', now() - interval '4 hours')`)
+		('rw-fix', 'RW-FIX', 'rw-cu', 'COMPLETED', now() - interval '1 hour', now() - interval '4 hours'),
+		('rw-orig2', 'RW-ORIG2', 'rw-cu', 'COMPLETED', now() - interval '2 days', now() - interval '50 hours'),
+		('rw-fix2', 'RW-FIX2', 'rw-cu', 'COMPLETED', now() - interval '2 hours', now() - interval '3 hours')`)
 	db.MustExec(`INSERT INTO "BookingAssignment"(id, "bookingId", "employeeId", role) VALUES ('rw-a1', 'rw-orig', 'rw-am', 'TECH_1'), ('rw-a2', 'rw-fix', 'rw-pm', 'TECH_1')`)
 	c := NewCompanyCosts(db)
 	// سعر ساعة الي صلّح: 624,000 ÷ 26 يوم ÷ 8 = 3,000 (بلا مصاريف ولا ربح لأن الوحيدين)
@@ -70,7 +73,7 @@ func TestReworkLive(t *testing.T) {
 	// الساعات من الحجز: الوصول قبل ٤ ساعات والإنهاء قبل ساعة = ٣
 	var got *ReworkClaim
 	for i := range items {
-		if items[i].FixCode == "RW-FIX" {
+		if items[i].FixCode != nil && *items[i].FixCode == "RW-FIX" {
 			got = &items[i]
 		}
 	}
@@ -91,5 +94,36 @@ func TestReworkLive(t *testing.T) {
 	}
 	if sum["rw-pm"] < ex-2 || sum["rw-am"] > -ex+2 {
 		t.Fatalf("الانتقال ما طلع بالفلوس: %v", sum)
+	}
+
+	// (11-28) أبو الجودة يسجّل من الاتصال: يلگه الحجز بالبحث، وحجز التصحيح ينربط بعدين
+	found, err := rw.SearchBookings("rw-q", "07700007777")
+	if err != nil || len(found) == 0 {
+		t.Fatalf("البحث برقم الزبون: %v %+v", err, found)
+	}
+	if _, err := rw.SearchBookings("rw-x", "RW"); err != ErrDesignHidden {
+		t.Fatalf("الغريب (ما عنده حجوزات) ما يبحث: %v", err)
+	}
+	if err := rw.Submit("rw-q", "", "RW-ORIG2", "الزبون اشتكى الجهاز ما يشتغل"); err != nil {
+		t.Fatal(err)
+	}
+	if err := rw.Submit("rw-x", "", "RW-ORIG2", "محاولة بلا حجز تصحيح"); err == nil {
+		t.Fatal("غير الجودة لازم يختار حجز التصحيح")
+	}
+	items, _ = rw.List("rw-mon")
+	var q *ReworkClaim
+	for i := range items {
+		if items[i].OrigCode == "RW-ORIG2" {
+			q = &items[i]
+		}
+	}
+	if q == nil || q.FixCode != nil {
+		t.Fatalf("خطأ الجودة لازم يطلع بلا حجز تصحيح: %+v", q)
+	}
+	if err := rw.Decide("rw-mon", q.ID, true, ""); err == nil {
+		t.Fatal("ما ينوافق قبل ربط حجز التصحيح")
+	}
+	if err := rw.LinkFix("rw-q", q.ID, "RW-FIX2"); err != nil {
+		t.Fatal(err)
 	}
 }

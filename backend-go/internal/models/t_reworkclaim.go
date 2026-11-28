@@ -9,7 +9,7 @@ func init() {
 		Name: "ReworkClaim",
 		Columns: []Column{
 			{Name: "id", Type: "text", NotNull: true, Default: "(gen_random_uuid())::text"},
-			{Name: "fixBookingId", Type: "text", NotNull: true},
+			{Name: "fixBookingId", Type: "text"},
 			{Name: "originalBookingId", Type: "text", NotNull: true},
 			{Name: "note", Type: "text", NotNull: true},
 			{Name: "status", Type: "text", NotNull: true, Default: "'PENDING'::text"},
