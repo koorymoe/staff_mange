@@ -35,6 +35,7 @@ var raterStageLabels = map[string]string{
 
 var revenueKindLabels = map[string]string{
 	"BOOKED": "الحجوزات الي سجّلها", "WORK": "الشغل الي اشتغله (حصته من الكادر)", "PROJECT": "دفعات المشاريع الي هو مسؤولها",
+	"GPS": "تجديد اشتراكات الـGPS الي سجّلها",
 }
 
 var groupWhy = map[string]string{

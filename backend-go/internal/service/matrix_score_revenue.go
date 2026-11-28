@@ -86,6 +86,12 @@ func ApplyRevenue(rows []StaffScore, rev []repository.RevenueRow, salaries map[s
 			continue
 		}
 		got := by[s.ID][kind]
+		// (دازاي 11-28) تجديد الـGPS فلوس دخّلها هو — تنضاف لأي دور يدخّل فلوس
+		if kind != "GPS" {
+			g := by[s.ID]["GPS"]
+			got.Amount += g.Amount
+			got.Jobs += g.Jobs
+		}
 		s.Revenue, s.RevenueJobs, s.RevenueKind = math.Round(got.Amount), got.Jobs, kind
 		expected := salaryFor(salaries[s.ID], from, to, now)
 		if expected <= 0 {

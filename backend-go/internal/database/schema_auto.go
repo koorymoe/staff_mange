@@ -674,6 +674,19 @@ func autoMigrations() []Migration {
 			ALTER TABLE "ScoreWeightConfig" ADD CONSTRAINT "ScoreWeightConfig_updatedById_fkey" FOREIGN KEY ("updatedById") REFERENCES "Employee"(id) ON DELETE SET NULL;
 		`,
 		},
+		{
+			// (دازاي 11-28) أبو الجودة يسجّل الخطأ من الاتصال/الشكوى قبل لا ينعرف حجز التصحيح — ينربط بعدين
+			Version: "0540_rework_fix_optional",
+			SQL: `
+			ALTER TABLE "ReworkClaim" ALTER COLUMN "fixBookingId" DROP NOT NULL;
+		`,
+		},
+		{
+			Version: "0541_employee_email",
+			SQL: `
+			ALTER TABLE "Employee" ADD COLUMN IF NOT EXISTS "email" text;
+		`,
+		},
 		// ‹makemigration› — التحديثات الجديدة تنضاف فوگ هالسطر
 	}
 }

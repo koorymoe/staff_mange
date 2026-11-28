@@ -2541,6 +2541,10 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	ideas := handler.NewIdeaHandler(service.NewIdeaService(db, notificationRepo))
 	secs["me_x"].Set("POST /api/me/ideas", "me_x.post_idea", ideas.Submit)
 	secs["me_x"].Set("GET /api/me/ideas", "me_x.get_ideas", ideas.Mine)
+	// 👤 ملفي الشخصي (دازاي 11-28) — كل موظف عن نفسه بس
+	meProfile := handler.NewMeProfileHandler(db)
+	secs["me_x"].Set("GET /api/me/profile", "me_x.get_profile", meProfile.Get)
+	secs["me_x"].Set("PUT /api/me/email", "me_x.put_email", meProfile.SetEmail)
 	secs["late_excuses"].Set("GET /api/ideas", "late_excuses.get_ideas", ideas.Queue)
 	secs["late_excuses"].Set("POST /api/ideas/{id}/decide", "late_excuses.post_idea_decide", ideas.Decide)
 	secs["inventory"].Set("GET /api/inventory/after-shortages", "inventory.get_after_shortages", scoreReview.AfterShortages)
@@ -2703,6 +2707,8 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	secs["bookings"].Set("GET /api/rework", "bookings.get_rework", rework.List)
 	secs["bookings"].Set("POST /api/rework", "bookings.post_rework", rework.Submit)
 	secs["bookings"].Set("POST /api/rework/{id}/decide", "bookings.post_rework_decide", rework.Decide)
+	secs["bookings"].Set("GET /api/rework/bookings", "bookings.get_rework_bookings", rework.Search)
+	secs["bookings"].Set("POST /api/rework/{id}/fix", "bookings.post_rework_fix", rework.LinkFix)
 	// (ل) 11-25 دازاي: عهدة الأدوات — الموظف ياخذ بنفسه ويسلّم بصورة، والمالك/المدير يدقق أو يختار عنه
 	custody := handler.NewToolCustodyHandler(service.NewToolCustody(db, inventoryService), db)
 	secs["inventory"].Set("GET /api/tool-custody", "inventory.get_tool_custody", custody.Get)

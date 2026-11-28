@@ -1,4 +1,5 @@
 import { LineIcon } from '../components/LineIcon'
+import { thisPeriod } from '../utils/format'
 import Modal from '../ui/Modal'
 import { useEffect, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
@@ -146,7 +147,7 @@ const noNumberInv = (inv: LeaderInvoice) => isFreeInv(inv) || inv.auditVerdict =
 export default function LeaderInvoicesListPage({ embedded }: EmbeddedProps = {}) {
   const [params] = useSearchParams()
   // تنزيل إكسل الشهر — بتبويب «داخل الشركة» وبس.
-  const [expMonth, setExpMonth] = useState(() => new Date().toISOString().slice(0, 7))
+  const [expMonth, setExpMonth] = useState(thisPeriod)
   const [expBusy, setExpBusy] = useState(false)
   const [expErr, setExpErr] = useState<string | null>(null)
   const { employee, permissions } = useSession()

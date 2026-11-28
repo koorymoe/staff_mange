@@ -38,3 +38,16 @@ describe('buildProjectQuoteHtml', () => {
     expect(build()).toContain('3,000')
   })
 })
+
+// (11-28) توقيع الزبون بعرض المشاريع — يطلع بس إذا انختار
+describe('توقيع الزبون بعرض المشاريع', () => {
+  const base = { customerName: 'زبون تجربة', items: [{ productName: 'كاميرا', quantity: 1, unitPrice: 1000 }], annex: [], date: new Date('2026-11-28') }
+  it('يطلع ويا اسم الزبون لمن ينختار', () => {
+    const html = mod.buildProjectQuoteHtml({ ...base, cover: { signature: true } }, '/logo.png')
+    expect(html).toContain('sign-box')
+    expect(html).toContain('توقيع الزبون')
+  })
+  it('ما يطلع إذا ما انختار', () => {
+    expect(mod.buildProjectQuoteHtml({ ...base, cover: {} }, '/logo.png')).not.toContain('class="sign-box"')
+  })
+})

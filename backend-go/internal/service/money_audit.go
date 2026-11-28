@@ -192,7 +192,7 @@ func (s *MoneyAuditService) Run(label string) (*MoneyAudit, error) {
 				ELSE inv.n * ((CASE WHEN cnt.has_lead THEN $3::float8 ELSE 0 END) + (CASE WHEN cnt.techs > 0 THEN (CASE WHEN cnt.has_lead THEN $4::float8 ELSE $5::float8 END) ELSE 0 END)) / 100.0 END), 0)::float8 AS expected
 		FROM inv LEFT JOIN cnt ON cnt.inv = inv.id`, from, to, ms.StatsLeaderPct, ms.StatsTechPct, ms.StatsNoLeaderTechPct)
 	rev, _ := s.scores.Repo().Revenue(from, to, "")
-	var work, booked, proj float64
+	var work, booked, proj, gps float64
 	for _, r := range rev {
 		switch r.Kind {
 		case "WORK":
@@ -201,6 +201,8 @@ func (s *MoneyAuditService) Run(label string) (*MoneyAudit, error) {
 			booked += r.Amount
 		case "PROJECT":
 			proj += r.Amount
+		case "GPS":
+			gps += r.Amount
 		}
 	}
 	var rework float64
@@ -234,13 +236,14 @@ func (s *MoneyAuditService) Run(label string) (*MoneyAudit, error) {
 	a.Money = []AuditMoneyLine{
 		{Label: "فواتير الحجوزات (المعتمدة)", Amount: cp.Total, Note: fmt.Sprintf("%d فاتورة", cp.Invoices)},
 		{Label: "دفعات المشاريع", Amount: proj},
-		{Label: "إدخال الشركة الكلي", Amount: cp.Total + proj, Bold: true},
+		{Label: "تجديد اشتراكات الـGPS", Amount: gps},
+		{Label: "إدخال الشركة الكلي", Amount: cp.Total + proj + gps, Bold: true},
 		{Label: fmt.Sprintf("− حصة الليادر (%.0f٪)", ms.RevenueLeaderPct), Amount: -cp.Leaders},
 		{Label: fmt.Sprintf("− حصة الفنيين (%.0f٪)", ms.RevenueTechPct), Amount: -cp.Techs},
 		{Label: "= حصة الشركة من الحجوزات", Amount: cp.Company, Bold: true},
 		{Label: "− الرواتب (من التكاليف)", Amount: -salaries, Note: fmt.Sprintf("%d موظف مدخّل", costPeople)},
 		{Label: "− مصاريف الشهر (من التكاليف)", Amount: -expenses},
-		{Label: "= الصافي (حصة الشركة + المشاريع − الرواتب − المصاريف)", Amount: cp.Company + proj - salaries - expenses, Bold: true},
+		{Label: "= الصافي (حصة الشركة + المشاريع + الـGPS − الرواتب − المصاريف)", Amount: cp.Company + proj + gps - salaries - expenses, Bold: true},
 	}
 	money := AuditSection{Title: "💰 الصافي"}
 	money.Checks = append(money.Checks, AuditCheck{Key: "split_sum", Title: "الليادر + الفنيين + الشركة = مجموع الفواتير",

@@ -296,7 +296,7 @@ func (h *LeaveRequestHandler) PendingCount(w http.ResponseWriter, r *http.Reques
 func (h *LeaveRequestHandler) Register(w http.ResponseWriter, r *http.Request) {
 	month := r.URL.Query().Get("month")
 	if _, err := time.Parse("2006-01", month); err != nil {
-		month = timeutil.ThisMonth()
+		month = timeutil.ThisPeriod()
 	}
 	items, err := h.repo.Register(month)
 	if err != nil {

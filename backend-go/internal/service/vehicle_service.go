@@ -506,7 +506,7 @@ func (s *VehicleService) ExpenseSummary(vehicleID, month, year string) (*model.V
 	} else {
 		m := month
 		if m == "" {
-			m = timeutil.ThisMonth()
+			m = timeutil.ThisPeriod()
 		}
 		t, err := time.Parse("2006-01", m)
 		if err != nil {

@@ -1,4 +1,4 @@
-import { positionTitle } from '../roleLabels'
+import { useOrgMemberships, greetingTitle } from '../orgDeskAccess'
 import SharedStat from '../ui/StatCard'
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
@@ -68,6 +68,7 @@ const ago = (s: string) => {
 
 export default function MonitorHome() {
   const { employee, permissions, gpsServiceId } = useSession()
+  const { items: orgMine } = useOrgMemberships(employee)
   const [board, setBoard] = useState<TodayBoardData | null>(null)
   const [fin, setFin] = useState<FinanceSummary | null>(null)
   const [summary, setSummary] = useState<{ customerCount: number } | null>(null)
@@ -125,7 +126,7 @@ export default function MonitorHome() {
       <section className="flex flex-wrap items-center justify-between gap-4 rounded-3xl bg-gradient-to-l from-[#0f2040] via-[#1e3a8a] to-[#1e40af] p-6 text-white shadow-lg">
         <div>
           <span className="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-3 py-0.5 text-xs"><i className="h-2 w-2 rounded-full bg-emerald-400" /> متصل</span>
-          <h2 className="mt-2 text-3xl font-extrabold">مرحباً يا {positionTitle(employee)}</h2>
+          <h2 className="mt-2 text-3xl font-extrabold">مرحباً يا {greetingTitle(employee, orgMine)}</h2>
           <p className="mt-1 text-sm opacity-80">هذه نظرة سريعة على عملك اليوم</p>
         </div>
         <Clock />

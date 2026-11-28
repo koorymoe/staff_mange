@@ -21,6 +21,21 @@ func TestApplyWeights(t *testing.T) {
 	}
 }
 
+func TestOpinionFollowsWeights(t *testing.T) {
+	low := map[string]float64{"LEADER": 10}
+	base, _ := roleMatrixOpinionW(GroupTechs, low, nil)
+	off, notes := roleMatrixOpinionW(GroupTechs, low, map[string]float64{"LEADER": 0})
+	double, _ := roleMatrixOpinionW(GroupTechs, low, map[string]float64{"LEADER": 60})
+	if base != 70 || off != 100 || len(notes) != 0 || double != 60 {
+		t.Fatalf("base=%v off=%v double=%v notes=%v", base, off, double, notes)
+	}
+	defs := []partDef{{Key: "REPORT", Label: "r", Weight: 30}, {Key: "ATTENDANCE", Label: "a", Weight: 10}}
+	g1, _ := genericOpinion(withWeights(defs, map[string]float64{"REPORT": 0}), map[string]float64{"REPORT": 10})
+	if g1 != 100 {
+		t.Fatalf("المطفي نقّص: %v", g1)
+	}
+}
+
 func TestScoreWeightsLive(t *testing.T) {
 	dsn := os.Getenv("DATABASE_URL")
 	if dsn == "" {

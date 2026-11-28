@@ -55,7 +55,7 @@ func (s *EmployeeMonthlyStatsService) revenueFor(e model.Employee, month string)
 	}
 	sum := 0.0
 	for _, r := range rows {
-		if r.Kind == kind {
+		if r.Kind == kind || r.Kind == "GPS" { // (11-28) ويا تجديد الـGPS
 			sum += r.Amount
 		}
 	}

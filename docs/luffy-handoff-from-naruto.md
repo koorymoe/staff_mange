@@ -590,3 +590,22 @@ git push origin origin/avg:refs/heads/prod     # بعد التأكد إنه fast
 - `ScoreWeightConfig` (0539) weights jsonb {group:{key:weight}} — الي يخالف الأصل بس. `service/score_weights.go`.
 - `applyRoleScores` يقرا الأوزان عبر `scoreWeightsLoader` (ينضبط بـNewMatrixScoreService) و`applyWeights` يطلّع المطفي. رأي ماتركس العام (genericOpinion) بعده بالأوزان الأصلية.
 - `/api/owner/score-weights` GET/PUT (owner)، صفحة `ScoreWeightsPage` تبويب /owner-settings-score.
+
+
+## 11-28 ملفي الشخصي + فقاعة ماتركس + التحية
+- `/api/me/profile` (me_profile_handler.go): info (ويا salary للموظف نفسه — قرار دازاي 11-28)، attendance ٤٥ يوم، deductions من DisciplineRecordRepository.All(me). صفحة `/profile` (ProfilePage) والاسم بالهيدر والقائمة يفتحها.
+- Layout يشيل /attendance و/my-ranking من القائمة لغير المدير والمراقب (الحارس ما تغيّر).
+- `MatrixChatBubble` أسفل اليسار لأصحاب agent_matrix؛ بند /matrix-chat انشال من navTree.
+- `greetingTitle()` بـorgDeskAccess: ترتيب مدير إدارة > مدير وحدة > نائب إدارة > نائب وحدة، وإلا roleLabel الكامل.
+
+
+## 11-28 ترتيب القائمة + الخطأ الفني من الجودة
+- navTree: mgmt-finance/mgmt-procurement/tool-custody/tech-contact-reports بـhideIfAnyPermission (unit_accounts/unit_procurement/unit_fleet/unit_monitoring) ونسخها داخل الوحدات. فرع tech-contact الخاص بـisNavVisible صار يحترم hideIfAnyPermission.
+- ReworkClaim.fixBookingId صار يقبل فاضي (0540 يدوي — موافقة دازاي ضمن الطلب). Rework.CanReport (QUALITY_ENGINEER/quality_control/complaints/المراقب)، SearchBookings، LinkFix. Decide يرفض الموافقة بلا حجز تصحيح.
+
+- (11-28 ب) company_period صار بالإجازات (Register)، السيارات (performedAt/ratedDate)، booking_page_repository، leader_invoice_page، والـsmart KPI (getMonthRange/getWorkingDays بالفترة). جدول الحضور (attendance board) بقى ميلادي لأنه شبكة أيام الشهر. UpdateEmployeeRequest.Email + email = :email.
+
+
+## 11-28 GPS بالإيراد + توقيع عرض المشاريع
+- Revenue: kind GPS = GpsRenewalRequest APPROVED (price>0) بـcreatedAt للـemployeeId. ApplyRevenue يضيف GPS لأي kind، company_costs brought يشمل GPS، money_audit سطر GPS بالإدخال والصافي. بيع الجهاز بلا فاتورة بعده برّا.
+- ProjectCover.signature (بالـcover jsonb، بلا تحديث قاعدة) ← sign-box بآخر صفحة الملخص المالي.

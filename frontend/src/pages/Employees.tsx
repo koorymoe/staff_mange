@@ -138,6 +138,7 @@ export default function Employees({ embedded }: { embedded?: boolean } = {}) {
   const [editIsLeader, setEditIsLeader] = useState(false)
   const [editName, setEditName] = useState('')
   const [editPhone, setEditPhone] = useState('')
+  const [editEmail, setEditEmail] = useState<string | null>(null)
   const [editPosition, setEditPosition] = useState('')
   const [editCertificate, setEditCertificate] = useState('')
 
@@ -265,6 +266,7 @@ export default function Employees({ embedded }: { embedded?: boolean } = {}) {
     setEditIsLeader(selectedEmployee?.isLeader || false)
     setEditName('')
     setEditPhone('')
+    setEditEmail(null)
     setEditPosition('')
     setEditCertificate('')
     setShowCompare(false)
@@ -761,6 +763,12 @@ export default function Employees({ embedded }: { embedded?: boolean } = {}) {
                           </label>
                           <input value={editPhone || selectedEmployee.phone || ''} onChange={(e) => setEditPhone(e.target.value)}
                             onBlur={() => handleFieldBlur('phone', editPhone || selectedEmployee.phone || '')} placeholder="07XXXXXXXXX"
+                            className="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-3 py-2.5 text-sm outline-none transition-colors focus:border-[#2c5aad] focus:bg-white" />
+                        </div>
+                        <div>
+                          <label className="mb-1 block text-xs font-medium text-slate-400">الإيميل</label>
+                          <input type="email" dir="ltr" value={editEmail ?? selectedEmployee.email ?? ''} onChange={(e) => setEditEmail(e.target.value)}
+                            onBlur={() => { if (editEmail !== null && editEmail !== (selectedEmployee.email ?? '')) void handleFieldBlur('email', editEmail) }} placeholder="name@example.com"
                             className="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-3 py-2.5 text-sm outline-none transition-colors focus:border-[#2c5aad] focus:bg-white" />
                         </div>
                         <div>

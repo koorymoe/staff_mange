@@ -1,4 +1,5 @@
 import Modal from '../ui/Modal'
+import { thisPeriod } from '../utils/format'
 import { useEffect, useState, useMemo } from 'react'
 import { api, fileUrl, storeFile, type VehicleDocument, type VehiclePart, type VehiclePhoto, type Vehicle, type VehicleLog, type VehicleIncident, type VehicleMonthlyStatus, type VehicleDailyRating, type Employee, type VehicleIncidentAttachment, type VehicleAlert, type VehicleExpenseSummary, type EmployeeFuelStat, type VehicleWashMonthly } from '../api'
 import { useSession, isAdminOrOwner } from '../session'
@@ -70,10 +71,8 @@ const EMPTY_RATING_FORM = {
   interiorDirt: '' as number | '', smell: '' as number | '',
 }
 
-const currentMonth = () => {
-  const d = new Date()
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
-}
+// (دازاي 11-28) شهر الشركة ٢٦ ← ٢٥
+const currentMonth = thisPeriod
 
 export default function VehiclesPage() {
   // كل حفظ بهاي الشاشة يمر من هنا — الفشل ينعرض بدل ما ينبلع
@@ -95,7 +94,7 @@ export default function VehiclesPage() {
   const [tab, setTab] = useState<'logs' | 'oil' | 'incidents' | 'monthly' | 'rating' | 'washstats' | 'docs' | 'parts' | 'photos'>('logs')
   // ═══ إحصاء الغسل: كل سيارة × شهر ═══
   // ⚠️ الشهر إجباري بالواجهة هم — «كل التاريخ» مو إحصاء شهري.
-  const [washMonth, setWashMonth] = useState(() => new Date().toISOString().slice(0, 7))
+  const [washMonth, setWashMonth] = useState(thisPeriod)
   // null = لسه ما انجاب (جاري التحميل) · [] = انجاب وماكو نتيجة.
   // ⚠️ التفريق مقصود: «جاري الحساب» غير «ماكو ولا غسلة».
   const [washStats, setWashStats] = useState<VehicleWashMonthly[] | null>(null)

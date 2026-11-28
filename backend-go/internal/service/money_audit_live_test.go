@@ -70,7 +70,13 @@ func TestMoneyAuditLive(t *testing.T) {
 	if !found["split_sum"].OK {
 		t.Fatalf("مجموع التوزيع: %s", found["split_sum"].Value)
 	}
-	if len(a.Money) == 0 || a.Money[2].Amount < 1200000 {
+	total := 0.0
+	for _, l := range a.Money {
+		if l.Label == "إدخال الشركة الكلي" {
+			total = l.Amount
+		}
+	}
+	if total < 1200000 {
 		t.Fatalf("إدخال الشركة: %+v", a.Money)
 	}
 	t.Logf("period %s %s..%s problems=%d", a.Period, a.From, a.To, a.Problems)

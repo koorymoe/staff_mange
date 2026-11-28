@@ -103,7 +103,7 @@ func (r *LeaderInvoiceRepository) Page(q LeaderInvoicePageQuery) (*LeaderInvoice
 		filt += ` AND COALESCE("LeaderInvoice".systems, '[]'::jsonb) ? ` + arg(q.System)
 	}
 	if q.Month != "" {
-		filt += ` AND to_char("LeaderInvoice"."createdAt", 'YYYY-MM') = ` + arg(q.Month)
+		filt += ` AND company_period(baghdad_date("LeaderInvoice"."createdAt")) = ` + arg(q.Month)
 	}
 	where := base + filt + ` AND ` + liTabSQL(q.Tab)
 

@@ -11,6 +11,7 @@ func init() {
 			{Name: "certificate", Type: "text"},
 			{Name: "position", Type: "text"},
 			{Name: "phone", Type: "text"},
+			{Name: "email", Type: "text"},
 			{Name: "status", Type: "\"EmployeeStatus\"", NotNull: true, Default: "'ACTIVE'::\"EmployeeStatus\""},
 			{Name: "role", Type: "\"EmployeeRole\"", NotNull: true, Default: "'TECHNICIAN'::\"EmployeeRole\""},
 			{Name: "onDuty", Type: "boolean", NotNull: true, Default: "true"},

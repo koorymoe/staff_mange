@@ -228,7 +228,7 @@ func (c *CompanyCosts) Report(month string, now time.Time) (*CostsReport, error)
 	brought := map[string]float64{}
 	if rev, err := repository.NewMatrixScoreRepository(c.db).Revenue(from.UTC(), to.UTC(), ""); err == nil {
 		for _, x := range rev {
-			if x.Kind == "WORK" {
+			if x.Kind == "WORK" || x.Kind == "GPS" { // (11-28) تجديد الـGPS هم فلوس دخّلها
 				brought[x.EmployeeID] += x.Amount
 			}
 		}
@@ -289,6 +289,43 @@ func (c *CompanyCosts) Report(month string, now time.Time) (*CostsReport, error)
 }
 
 // MyTarget هدف موظف واحد لشاشته (nil إذا مو «يدخّل فلوس» بالتكاليف).
+// TeamProgress (دازاي 11-28) «الفرد للكل والكل للفرد»: الفريق كله شكد دخّل من هدفه — مجاميع بس، بلا أسماء ولا رواتب.
+type TeamProgress struct {
+	Earners  int     `json:"earners"`
+	Brought  float64 `json:"brought"`
+	Target   float64 `json:"target"`
+	Pct      float64 `json:"pct"`
+	Reached  int     `json:"reached"` // كم واحد غطّى هدفه
+	Overhead float64 `json:"overhead"`
+}
+
+// MyTargetAndTeam هدفي ويا مجموع الفريق.
+func (c *CompanyCosts) MyTargetAndTeam(emp string, now time.Time) (*EmployeeTarget, *TeamProgress, error) {
+	rep, err := c.Report(timeutil.ThisPeriod(), now)
+	if err != nil {
+		return nil, nil, err
+	}
+	var mine *EmployeeTarget
+	team := &TeamProgress{}
+	for i := range rep.Targets {
+		t := rep.Targets[i]
+		team.Earners++
+		team.Brought += t.Brought
+		team.Target += t.Target
+		team.Overhead += t.Overhead
+		if t.Brought >= t.Target && t.Target > 0 {
+			team.Reached++
+		}
+		if t.EmployeeID == emp {
+			mine = &t
+		}
+	}
+	if team.Target > 0 {
+		team.Pct = math.Round(team.Brought / team.Target * 100)
+	}
+	return mine, team, nil
+}
+
 func (c *CompanyCosts) MyTarget(emp string, now time.Time) (*EmployeeTarget, error) {
 	rep, err := c.Report(timeutil.ThisPeriod(), now)
 	if err != nil {

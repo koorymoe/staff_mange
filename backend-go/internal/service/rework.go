@@ -22,7 +22,7 @@ const reworkMaxHours = 12
 
 type ReworkClaim struct {
 	ID           string     `db:"id" json:"id"`
-	FixCode      string     `db:"fixCode" json:"fixCode"`
+	FixCode      *string    `db:"fixCode" json:"fixCode"` // (11-28) فاضي = لسه ما انربط حجز التصحيح
 	OrigCode     string     `db:"origCode" json:"origCode"`
 	Note         string     `db:"note" json:"note"`
 	Status       string     `db:"status" json:"status"`
@@ -61,27 +61,50 @@ func (r *Rework) bookingID(code string) (string, error) {
 	return id, nil
 }
 
-// Submit الليدر (أو أي واحد بكادر حجز التصحيح) يسجّل إنه تصحيح خطأ فني من كادر سابق.
+// CanReport (دازاي 11-28) أبو الجودة (ويا الشكاوى) والمراقب يسجّلون الخطأ — هم الي يكتشفوه بالاتصال أو الشكوى.
+func (r *Rework) CanReport(emp string) bool {
+	if r.CanDecide(emp) {
+		return true
+	}
+	var ok bool
+	_ = r.db.Get(&ok, `SELECT EXISTS (SELECT 1 FROM "Employee" e WHERE e.id = $1 AND e.status = 'ACTIVE' AND (
+		e.role::text = 'QUALITY_ENGINEER' OR EXISTS (SELECT 1 FROM "EmployeePermission" ep JOIN "Permission" p ON p.id = ep."permissionId"
+			WHERE ep."employeeId" = e.id AND p.name IN ('quality_control', 'complaints'))))`, emp)
+	return ok
+}
+
+// Submit يسجّل خطأ فني على حجز أصلي. أبو الجودة/المراقب: حجز التصحيح اختياري (ينربط بعدين).
+// الكادر: لازم يكون بكادر حجز التصحيح.
 func (r *Rework) Submit(emp, fixCode, origCode, note string) error {
 	note = strings.TrimSpace(note)
 	if len([]rune(note)) < 5 {
-		return errors.New("اكتب شنو چان الخطأ الفني وشنو صلّحتوا")
-	}
-	fix, err := r.bookingID(fixCode)
-	if err != nil {
-		return err
+		return errors.New("اكتب شنو چان الخطأ الفني")
 	}
 	orig, err := r.bookingID(origCode)
 	if err != nil {
 		return err
 	}
-	if fix == orig {
-		return errors.New("حجز التصحيح لازم غير الحجز الأصلي")
+	reporter := r.CanReport(emp)
+	var fix *string
+	if strings.TrimSpace(fixCode) != "" {
+		f, err := r.bookingID(fixCode)
+		if err != nil {
+			return err
+		}
+		if f == orig {
+			return errors.New("حجز التصحيح لازم غير الحجز الأصلي")
+		}
+		fix = &f
 	}
-	var inCrew bool
-	_ = r.db.Get(&inCrew, `SELECT EXISTS (SELECT 1 FROM "BookingAssignment" WHERE "bookingId" = $1 AND "employeeId" = $2) OR booking_leader_id($1) = $2`, fix, emp)
-	if !inCrew {
-		return errors.New("بس الكادر الي اشتغل حجز التصحيح يسجّله")
+	if !reporter {
+		if fix == nil {
+			return errors.New("اختار حجز التصحيح الي اشتغلتوه")
+		}
+		var inCrew bool
+		_ = r.db.Get(&inCrew, `SELECT EXISTS (SELECT 1 FROM "BookingAssignment" WHERE "bookingId" = $1 AND "employeeId" = $2) OR booking_leader_id($1) = $2`, *fix, emp)
+		if !inCrew {
+			return errors.New("بس الكادر الي اشتغل حجز التصحيح يسجّله")
+		}
 	}
 	if _, err := r.db.Exec(`INSERT INTO "ReworkClaim" ("fixBookingId", "originalBookingId", note, "createdById") VALUES ($1, $2, $3, $4)`, fix, orig, note, emp); err != nil {
 		if strings.Contains(err.Error(), "ReworkClaim_fixBookingId_key") {
@@ -92,6 +115,86 @@ func (r *Rework) Submit(emp, fixCode, origCode, note string) error {
 	return nil
 }
 
+// LinkFix (11-28) يربط حجز التصحيح بخطأ مسجّل — المراقب/أبو الجودة أو كادر حجز التصحيح.
+func (r *Rework) LinkFix(emp, id, fixCode string) error {
+	var c struct {
+		Orig   string  `db:"originalBookingId"`
+		Fix    *string `db:"fixBookingId"`
+		Status string  `db:"status"`
+	}
+	if err := r.db.Get(&c, `SELECT "originalBookingId", "fixBookingId", status FROM "ReworkClaim" WHERE id = $1`, id); err != nil {
+		return ErrDesignHidden
+	}
+	if c.Status != "PENDING" {
+		return errors.New("انقرر عليه من قبل")
+	}
+	f, err := r.bookingID(fixCode)
+	if err != nil {
+		return err
+	}
+	if f == c.Orig {
+		return errors.New("حجز التصحيح لازم غير الحجز الأصلي")
+	}
+	if !r.CanReport(emp) {
+		var inCrew bool
+		_ = r.db.Get(&inCrew, `SELECT EXISTS (SELECT 1 FROM "BookingAssignment" WHERE "bookingId" = $1 AND "employeeId" = $2) OR booking_leader_id($1) = $2`, f, emp)
+		if !inCrew {
+			return ErrDesignHidden
+		}
+	}
+	if _, err := r.db.Exec(`UPDATE "ReworkClaim" SET "fixBookingId" = $2 WHERE id = $1`, id, f); err != nil {
+		if strings.Contains(err.Error(), "ReworkClaim_fixBookingId_key") {
+			return errors.New("هذا الحجز متسجّل تصحيح من قبل")
+		}
+		return err
+	}
+	return nil
+}
+
+// ReworkBooking (11-28) نتيجة البحث: معلومات الحجز تطلع لحالها بدل الكتابة باليد.
+type ReworkBooking struct {
+	Code        string     `db:"code" json:"code"`
+	Customer    string     `db:"customer" json:"customer"`
+	Phone       string     `db:"phone" json:"phone"`
+	Service     string     `db:"service" json:"service"`
+	CompletedAt *time.Time `db:"completedAt" json:"completedAt"`
+	Status      string     `db:"status" json:"status"`
+	Crew        string     `db:"crew" json:"crew"`
+	Complaints  int        `db:"complaints" json:"complaints"`
+}
+
+// SearchBookings بالكود أو رقم/اسم الزبون — آخر ١٨٠ يوم، المكتمل والي بيه شكوى أول.
+func (r *Rework) SearchBookings(emp, q string) ([]ReworkBooking, error) {
+	q = strings.TrimSpace(q)
+	out := []ReworkBooking{}
+	if len([]rune(q)) < 2 {
+		return out, nil
+	}
+	if !r.CanReport(emp) {
+		var crew bool
+		_ = r.db.Get(&crew, `SELECT EXISTS (SELECT 1 FROM "BookingAssignment" WHERE "employeeId" = $1)`, emp)
+		if !crew {
+			return nil, ErrDesignHidden
+		}
+	}
+	digits := strings.Map(func(c rune) rune {
+		if c >= '0' && c <= '9' {
+			return c
+		}
+		return -1
+	}, q)
+	err := r.db.Select(&out, `SELECT b.code, COALESCE(c.name, '') AS customer, COALESCE(c.phone, '') AS phone, COALESCE(s.name, '') AS service,
+		b."completedAt", b.status::text AS status,
+		COALESCE((SELECT string_agg(x.name, '، ') FROM "BookingAssignment" a JOIN "Employee" x ON x.id = a."employeeId" WHERE a."bookingId" = b.id), '') AS crew,
+		(SELECT count(*) FROM "Complaint" k WHERE k."bookingId" = b.id)::int AS complaints
+		FROM "Booking" b LEFT JOIN "Customer" c ON c.id = b."customerId" LEFT JOIN "Service" s ON s.id = b."serviceId"
+		WHERE b."createdAt" > now() - interval '180 days'
+		  AND (upper(b.code) LIKE upper($1) || '%' OR c.name ILIKE '%' || $1 || '%' OR ($2 <> '' AND regexp_replace(COALESCE(c.phone, ''), '\D', '', 'g') LIKE '%' || $2 || '%'))
+		ORDER BY (SELECT count(*) FROM "Complaint" k WHERE k."bookingId" = b.id) > 0 DESC, b.status = 'COMPLETED' DESC, COALESCE(b."completedAt", b."createdAt") DESC
+		LIMIT 12`, q, digits)
+	return out, err
+}
+
 // List المراقب يشوف الكل؛ غيره يشوف الي سجّلها هو أو الي تخصّه.
 func (r *Rework) List(emp string) ([]ReworkClaim, error) {
 	all := r.CanDecide(emp)
@@ -100,7 +203,7 @@ func (r *Rework) List(emp string) ([]ReworkClaim, error) {
 		e.name AS "by", c."createdAt", d.name AS "decidedBy", c."decisionNote", c."decidedAt",
 		COALESCE((SELECT string_agg(x.name, '، ') FROM "BookingAssignment" a JOIN "Employee" x ON x.id = a."employeeId" WHERE a."bookingId" = c."fixBookingId"), '') AS "fixCrew",
 		COALESCE((SELECT string_agg(x.name, '، ') FROM "BookingAssignment" a JOIN "Employee" x ON x.id = a."employeeId" WHERE a."bookingId" = c."originalBookingId"), '') AS "origCrew"
-		FROM "ReworkClaim" c JOIN "Booking" fb ON fb.id = c."fixBookingId" JOIN "Booking" ob ON ob.id = c."originalBookingId"
+		FROM "ReworkClaim" c LEFT JOIN "Booking" fb ON fb.id = c."fixBookingId" JOIN "Booking" ob ON ob.id = c."originalBookingId"
 		JOIN "Employee" e ON e.id = c."createdById" LEFT JOIN "Employee" d ON d.id = c."decidedById"
 		WHERE $2 OR c."createdById" = $1
 		   OR EXISTS (SELECT 1 FROM "BookingAssignment" a WHERE a."employeeId" = $1 AND a."bookingId" IN (c."fixBookingId", c."originalBookingId"))
@@ -119,15 +222,21 @@ func (r *Rework) Decide(emp, id string, approve bool, note string) error {
 	}
 	defer func() { _ = tx.Rollback() }()
 	var c struct {
-		Fix    string `db:"fixBookingId"`
-		Orig   string `db:"originalBookingId"`
-		Status string `db:"status"`
+		FixP   *string `db:"fixBookingId"`
+		Fix    string  `db:"-"`
+		Orig   string  `db:"originalBookingId"`
+		Status string  `db:"status"`
 	}
 	if err := tx.Get(&c, `SELECT "fixBookingId", "originalBookingId", status FROM "ReworkClaim" WHERE id = $1 FOR UPDATE`, id); err != nil {
 		return ErrDesignHidden
 	}
 	if c.Status != "PENDING" {
 		return errors.New("انقرر عليه من قبل")
+	}
+	if c.FixP != nil {
+		c.Fix = *c.FixP
+	} else if approve {
+		return errors.New("اربط حجز التصحيح أول — منه تنحسب ساعات التصليح")
 	}
 	if !approve {
 		_, err := tx.Exec(`UPDATE "ReworkClaim" SET status = 'REJECTED', "decidedById" = $2, "decidedAt" = now(), "decisionNote" = NULLIF(btrim($3), '') WHERE id = $1`, id, emp, note)

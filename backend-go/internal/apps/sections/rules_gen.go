@@ -180,6 +180,8 @@ func rules() map[string]map[core.Action]core.Rule {
 			"bookings.get_rework":                    func(l string) core.Rule { return any_(l) }("يقرا تصحيحات الأخطاء الفنية (الفحص بالخدمة)"),
 			"bookings.post_rework":                   func(l string) core.Rule { return any_(l) }("يسجّل تصحيح خطأ فني (كادر حجز التصحيح — الفحص بالخدمة)"),
 			"bookings.post_rework_decide":            func(l string) core.Rule { return any_(l) }("يوافق/يرفض تصحيح خطأ فني (المراقب — الفحص بالخدمة)"),
+			"bookings.get_rework_bookings":           func(l string) core.Rule { return any_(l) }("يبحث حجز للخطأ الفني (الفحص بالخدمة)"),
+			"bookings.post_rework_fix":               func(l string) core.Rule { return any_(l) }("يربط حجز التصحيح (الفحص بالخدمة)"),
 			"bookings.delete_by_id":                  func(l string) core.Rule { return admin(l) }("يشيل /api/bookings/{id} (مدير النظام)"),
 			"bookings.delete_by_id_assign":           func(l string) core.Rule { return perm(l, "coordinator", "crew_management") }("يشيل /api/bookings/{id}/assign (صلاحية)"),
 			"bookings.get_archived":                  func(l string) core.Rule { return perm(l, "bookings_archive") }("يقرا /api/bookings/archived (صلاحية)"),
@@ -766,6 +768,8 @@ func rules() map[string]map[core.Action]core.Rule {
 			"me_x.post_station_excuse":              func(l string) core.Rule { return any_(l) }("يعتذر عن محطة خسر بيها (الخدمة: بس محطة إله بيها نقاط ناقصة)"),
 			"me_x.post_idea":                        func(l string) core.Rule { return any_(l) }("يرسل فكرة تحسين (الخدمة: باسمه هو بس)"),
 			"me_x.get_ideas":                        func(l string) core.Rule { return any_(l) }("يقرا أفكاره هو وردودها"),
+			"me_x.get_profile":                      func(l string) core.Rule { return any_(l) }("ملفي الشخصي — الموظف عن نفسه بس"),
+			"me_x.put_email":                        func(l string) core.Rule { return any_(l) }("يكتب إيميله هو بس"),
 			"me_x.put_language":                     func(l string) core.Rule { return any_(l) }("يعدّل /api/me/language (الدخول — الفحص بالمعالج)"),
 		},
 		"media": {

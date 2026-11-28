@@ -1,4 +1,5 @@
 import { Fragment, useEffect, useRef, useState } from 'react'
+import { thisPeriod } from '../utils/format'
 import { orgAdmin } from '../orgDeskAccess'
 import { useOutputRegulations } from '../orgOutputs'
 import OutputClauseBinding from '../components/OutputClauseBinding'
@@ -43,10 +44,8 @@ function isThisWeek(dateStr: string): boolean {
   return d >= weekStart
 }
 
-function getCurrentMonth(): string {
-  const now = new Date()
-  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
-}
+// (دازاي 11-28) شهر الشركة ٢٦ ← ٢٥
+const getCurrentMonth = thisPeriod
 
 const BREAKDOWN_LABELS: Record<string, string> = {
   completedBookings: 'الحجوزات المنجزة',

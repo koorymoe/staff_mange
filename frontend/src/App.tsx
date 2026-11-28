@@ -40,6 +40,7 @@ const SolarInquiriesPage = lazyRetry(() => import('./pages/SolarInquiriesPage'))
 // مراقبة النسخ الاحتياطية — الصفحة نفسها تتحقق من actualRole === 'OWNER'
 // والمسار بالباك إند يرجّع 404 لأي حساب ثاني.
 const OwnerBackups = lazyRetry(() => import('./pages/OwnerBackups'))
+const ProfilePage = lazyRetry(() => import('./pages/ProfilePage'))
 const OwnerSettingsHub = lazyRetry(() => import('./pages/OwnerSettingsHub'))
 const ReworkPage = lazyRetry(() => import('./pages/ReworkPage'))
 const ToolCustodyPage = lazyRetry(() => import('./pages/ToolCustodyPage'))
@@ -227,6 +228,7 @@ function App() {
           <Route path="owner-security" element={<SecurityDashboardPage />} />
           <Route path="owner-backups" element={<OwnerBackups />} />
           {/* (11-26) كل إعدادات الفلوس شاشة وحدة بتبويبات — المسارات القديمة نفسها */}
+          <Route path="profile" element={<ProfilePage />} />
           <Route path="owner-settings" element={<OwnerSettingsHub />} />
           <Route path="owner-settings-remote" element={<OwnerSettingsHub />} />
           <Route path="owner-money-audit" element={<OwnerSettingsHub />} />

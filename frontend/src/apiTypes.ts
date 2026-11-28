@@ -132,6 +132,8 @@ export interface Employee {
   photoUrl?: string | null
   position: string | null
   phone: string | null
+  /** (11-28) الإيميل — الموظف يكتبه من ملفه، والإدارة من «إدارة الموظفين» */
+  email?: string | null
   status: 'ACTIVE' | 'INACTIVE' | 'ARCHIVED' | 'DELETED' | 'SUSPENDED'
   role: EmployeeRole
   // الدور الحقيقي للمالك (OWNER) — نطبّع role إلى 'ADMIN' بجلسة الواجهة حتى

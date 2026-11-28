@@ -232,7 +232,7 @@ func (r *VehicleRepository) EmployeeFuelStats(vehicleID, month string) ([]model.
 		WHERE l.type = 'FUEL'
 			AND l."filledByEmployeeId" IS NOT NULL
 			AND ($1 = '' OR l."vehicleId" = $1)
-			AND ($2 = '' OR to_char(baghdad_date(l."performedAt"), 'YYYY-MM') = $2)
+			AND ($2 = '' OR company_period(baghdad_date(l."performedAt")) = $2)
 		GROUP BY l."filledByEmployeeId", e.name
 		ORDER BY "fillCount" DESC
 	`, vehicleID, month)
@@ -545,7 +545,7 @@ func (r *VehicleRepository) VehicleWashMonthlyStats(month, vehicleID string) ([]
 		FROM "VehicleWashRating" w
 		JOIN "VehicleDailyRating" d ON d.id = w."dailyRatingId"
 		JOIN "Vehicle" v            ON v.id = d."vehicleId"
-		WHERE to_char(d."ratedDate", 'YYYY-MM') = $1
+		WHERE company_period(d."ratedDate"::date) = $1
 		  AND ($2 = '' OR v.id = $2)
 		GROUP BY v.id, v.name, v."plateNumber"
 		ORDER BY "washCount" DESC, v.name`, month, vehicleID)
@@ -572,7 +572,7 @@ func (r *VehicleRepository) VehicleWashMonthlyStats(month, vehicleID string) ([]
 			FROM "VehicleWashRating" w
 			JOIN "VehicleDailyRating" d ON d.id = w."dailyRatingId"
 			JOIN "Employee" e           ON e.id = w."employeeId"
-			WHERE d."vehicleId" = $1 AND to_char(d."ratedDate", 'YYYY-MM') = $2
+			WHERE d."vehicleId" = $1 AND company_period(d."ratedDate"::date) = $2
 			GROUP BY e.id, e.name
 			ORDER BY times DESC, e.name`, rr.VehicleID, month); err != nil {
 			return nil, err

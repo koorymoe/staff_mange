@@ -1,3 +1,4 @@
+import { roleLabel } from './roleLabels'
 import { useEffect, useState } from 'react'
 import type { Employee } from './api'
 import { orgApi, type OrgPerson } from './org'
@@ -36,8 +37,10 @@ export const orgDeskSeeds = [
 ]
 // (دازاي 11-01) عنوان المنصب بالهيكل («مدير تطوير الأعمال») — للقائمة والترحيب
 export function orgPositionTitle(items: OrgPerson[] | null | undefined): string | null {
-  const rank = { DIRECTOR: 0, DEPUTY: 1, MEMBER: 2 } as const
-  const m = [...(items ?? [])].sort((a, b) => rank[a.position] - rank[b.position])[0]
+  // (دازاي 11-28) «التحية ع الدرجة»: مدير إدارة > مدير وحدة > نائب إدارة > نائب وحدة > عضو.
+  // يعني مدير المخازن ونائب مدير الإدارة = «مدير المخازن»، وإذا ترقى لمدير الإدارة = «مدير الإدارة».
+  const rank = (p: OrgPerson) => ({ DIRECTOR: 0, DEPUTY: 2, MEMBER: 4 } as const)[p.position] + (p.unitId ? 1 : 0)
+  const m = [...(items ?? [])].sort((a, b) => rank(a) - rank(b))[0]
   if (!m) return null
   const place = m.unitName || m.divisionName
   if (!place) return null
@@ -85,4 +88,14 @@ export function useOrgMemberships(employee: Employee | null | undefined) {
     error: admin ? '' : (current?.error ?? ''),
     retry: () => setReload((n) => n + 1),
   }
+}
+
+/** (دازاي 11-28) لقب التحية الموحّد: أعلى منصب بالهيكل، وإلا الدور بالاسم الكامل («مدير سلاسل التوريد» مو «مخازن»). */
+export function greetingTitle(employee: Employee | null | undefined, items: OrgPerson[] | null | undefined): string {
+  if (!employee) return ''
+  if (employee.actualRole === 'OWNER') return 'صاحب الشركة'
+  const org = orgPositionTitle(items)
+  if (org) return org
+  if (employee.isLeader && (employee.role === 'TECHNICIAN' || employee.role === 'TECHNICAL')) return 'تيم ليدر'
+  return roleLabel(employee.actualRole || employee.role)
 }
